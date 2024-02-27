@@ -2,6 +2,7 @@ config.php
 test/**
 *.htm
 dompdf/**
-macros-libroffice/**
+macros-libreoffice/**
 lib/**
+data/**
 
