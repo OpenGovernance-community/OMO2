@@ -1,0 +1,121 @@
+	:root {
+    --black-bg-color: #000000;
+    --dark-bg-color: #114543;
+    --midsup-bg-color: #21827f;
+    --midlow-bg-color: #3da8a9;
+    --light-bg-color: #97cccc;
+    --verylight-bg-color: #D5EAEA;
+    --white-bg-color: #FFFFFF;
+    --dark-txt-color: #000000;
+    --light-txt-color: #FFFFFF;
+    --greyColor : #DDD;
+	}	
+		
+		
+	* {box-sizing: border-box;}
+	body {height:100%; width:100%; margin:0px; padding:0px;}
+	.interface-top {height:50px;}
+	.interface-bottom {height:50px;}
+	
+	h1 {font-size:150%}
+	h2 {font-size:125%}
+	h3 {font-size:110%}
+	
+	
+	button {
+		color: var(--light-txt-color);
+		background: var(--midlow-bg-color);
+		border-color: var(--midsup-bg-color);
+	}
+	button:hover {
+		color: var(--dark-txt-color);
+		background: var(--light-bg-color);
+		border-color: var(--midlow-bg-color);
+	}
+	.imgbutton {width:30px;margin:10px;opacity:0.5}
+	.imgbutton:hover {opacity:0.8}
+
+	::placeholder {
+		color: rgba(0,0,0,0.7);
+		opacity:0.7;
+	}
+	.popover {pointer-events:none}
+	.btn{color: #000; background:var(--light-bg-color)}
+	.btn:hover{color: #000; background:var(--verylight-bg-color)}
+	#popup_close button { background-color: var(--midlow-bg-color); border-color: var(--midsup-bg-color);;}
+	#popup_close button:hover { background-color: var(--light-bg-color); }
+
+	#popup {padding:20px;z-index:20;opacity:0;width:100%; max-width:600px; height:100%; position:fixed; background:#FFFFFF; top:0px; bottom:0px; margin-left: 100%;box-shadow: 0px 0px 20px 10px rgba(0,0,0,0.3);}
+	#popupbackground {position:fixed; z-index:2; top:0px; left:0px; bottom:0px;right:0px;display:none; background:rgba(0,0,0,0.3);opacity:0}
+	#popup_close {position:absolute; top:0px; right:0px;}
+	#popup select {width:100%}
+	#popup input:not([type=checkbox]), #popup select {width:100%; padding:10px; border-radius:5px; border:1px solid var(--greyColor);margin-bottom:3px;}
+	#popup option {padding:5px;}
+	#popup button {margin-top:6px;}
+	#popup_close button {margin-top:0px; border-radius:0px 0px 0px 10px;}
+	button img {height:20px; background:#FFFFFF;border-radius:50%; padding:3px;vertical-align:text-bottom; margin-right:10px;}
+	#popup_content {height:100%;}
+	
+	.liketext {border:0px !important;}
+	.liketext:focus {outline: none; border:1px solid black;}
+	 .divedit:empty::after {
+	  content: attr(placeholder);
+	  position: absolute;
+	  left: 0px;
+	  top: 0px;
+	  color: #AAAAAA;
+	  z-index: 1; 
+	} 
+	.divedit { display:block;}
+
+
+	.ui-accordion-header {background:#DDD; border:2px solid #AAA; padding:10px; margin-bottom:0px; margin-top:5px;}
+	.ui-accordion-content {border: 1px solid #DDD; border-top:0px;padding:10px;position:relative;}
+
+	div.vertical {
+	   
+		position: relative;
+		top: 50%;
+		-ms-transform: translateY(-50%);
+		-webkit-transform: translateY(-50%);
+		transform: translateY(-50%);
+	}
+
+	form {position:relative}
+	form.disabled {pointer-event:none}
+	form.disabled:after {content: " ";
+		 content: " ";
+		  display: block;
+		  background: rgba(255,255,255,0.5);
+			background-position-x: 0%;
+			background-position-y: 0%;
+			background-repeat: repeat;
+			background-image: none;
+			background-size: auto;
+		  background-image: url(img/loading.gif);
+		  background-size: 72px;
+		  background-position: center center;
+		  background-repeat: no-repeat;
+		  top: 0px;
+		  left: 0px;
+		  right: 0px;
+		  position: absolute;
+		  bottom: 0px;
+	}
+	
+	@media screen {	
+		#tools {background:var(--midlow-bg-color)}
+		#menu {z-index:3;position:fixed; top:0px; right:20px; border-radius: 0px 0px 10px 10px; padding:10px;background-color:#FFFFFF;box-shadow: 5px 5px 10px rgba(0,0,0,0.5)}
+		.interface-top {background:var(--midlow-bg-color)}
+		.interface-bottom { background:url(/img/systemeD.png) 10px center no-repeat var(--midlow-bg-color); background-size: auto 30px}
+		.liketext { background-color:rgba(0,0,0,0)}
+		.liketext:focus {background:var(--verylight-bg-color);   border-color:black;}
+
+	}
+	@media print { 
+		#tools, #menu {display:none}
+		.tooltip { display: none; }
+		.noPrint {display:none}
+
+	}
+

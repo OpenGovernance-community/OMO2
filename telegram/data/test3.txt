@@ -1,0 +1,1 @@
+{"value":"Pour connecter ce groupe \u00e0 un projet, \u00e9diter les propri\u00e9t\u00e9s du projet avec les informations suivantes:\n\nChat ID: 1302873193, Group: "}

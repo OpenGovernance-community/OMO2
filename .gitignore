@@ -1,0 +1,7 @@
+config.php
+test/**
+*.htm
+dompdf/**
+macros-libroffice/**
+lib/**
+

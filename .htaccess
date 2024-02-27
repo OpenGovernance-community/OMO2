@@ -1,0 +1,18 @@
+Options -MultiViews
+
+ErrorDocument  404  /404.php
+
+RewriteEngine On
+
+RewriteCond %{HTTPS} off
+RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI
+
+RewriteRule ^memo$ /memo.php [L]
+RewriteRule ^memo/([0-9]+)/?$ /memo.php?id=$1 [QSA,L]
+RewriteRule ^memo/([0-9]+)/([0-9a-f]+)/?$ /memo.php?id=$1&pwd=$2 [QSA,L]
+
+RewriteRule ^circle$ /circle.php [L]
+RewriteRule ^circle/([0-9]+)/?$ /circle.php?id=$1 [QSA,L]
+
+RewriteRule ^pv$ /pv.php [L]
+RewriteRule ^pv/([0-9]+)/?$ /pv.php?id=$1 [QSA,L]
