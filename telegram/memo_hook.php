@@ -1,6 +1,4 @@
 <?php
-	//https://api.telegram.org/botREDACTED_PUBLISHED_SECRET/setWebhook?url=https://systemdd.ch/telegram/memo_hook.php
-
 	require_once($_SERVER['DOCUMENT_ROOT']."/config.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared_functions.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared/openai.php");
