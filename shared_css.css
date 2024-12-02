@@ -14,7 +14,7 @@
 		
 	* {box-sizing: border-box;}
 	body {height:100%; width:100%; margin:0px; padding:0px;}
-	.interface-top {height:50px;}
+	.interface-top {height:40px;}
 	.interface-bottom {height:50px;}
 	
 	h1 {font-size:150%}
@@ -32,7 +32,7 @@
 		background: var(--light-bg-color);
 		border-color: var(--midlow-bg-color);
 	}
-	.imgbutton {width:30px;margin:10px;opacity:0.5}
+	.imgbutton {width:30px;margin:10px;opacity:0.5; cursor:pointer}
 	.imgbutton:hover {opacity:0.8}
 
 	::placeholder {
@@ -49,7 +49,7 @@
 	#popupbackground {position:fixed; z-index:2; top:0px; left:0px; bottom:0px;right:0px;display:none; background:rgba(0,0,0,0.3);opacity:0}
 	#popup_close {position:absolute; top:0px; right:0px;}
 	#popup select {width:100%}
-	#popup input:not([type=checkbox]), #popup select {width:100%; padding:10px; border-radius:5px; border:1px solid var(--greyColor);margin-bottom:3px;}
+	#popup input:not([type=checkbox]), #popup textarea, #popup select {width:100%; padding:10px; border-radius:5px; border:1px solid var(--greyColor);margin-bottom:3px;}
 	#popup option {padding:5px;}
 	#popup button {margin-top:6px;}
 	#popup_close button {margin-top:0px; border-radius:0px 0px 0px 10px;}
@@ -68,6 +68,10 @@
 	} 
 	.divedit { display:block;}
 
+	  .interface-top:has(> input#id:valid) {padding-left: 30px; background-image:url(/img/diskette.png); background-size:20px 20px; background-position: 5px 5px; background-repeat:no-repeat}
+	  .interface-top:has(> input#id:valid):has(> input#saved:valid) {background-image:url(/img/diskette_warning.png);}
+	  input#id, input#saved {display:none}
+
 
 	.ui-accordion-header {background:#DDD; border:2px solid #AAA; padding:10px; margin-bottom:0px; margin-top:5px;}
 	.ui-accordion-content {border: 1px solid #DDD; border-top:0px;padding:10px;position:relative;}
@@ -79,6 +83,13 @@
 		-ms-transform: translateY(-50%);
 		-webkit-transform: translateY(-50%);
 		transform: translateY(-50%);
+	}
+	
+	.list_item {
+		background: #EEE;
+		padding: 5px;
+		border-radius: 5px;
+		margin-bottom: 5px;	
 	}
 
 	form {position:relative}
@@ -107,15 +118,23 @@
 		#tools {background:var(--midlow-bg-color)}
 		#menu {z-index:3;position:fixed; top:0px; right:20px; border-radius: 0px 0px 10px 10px; padding:10px;background-color:#FFFFFF;box-shadow: 5px 5px 10px rgba(0,0,0,0.5)}
 		.interface-top {background:var(--midlow-bg-color)}
-		.interface-bottom { background:url(/img/systemeD.png) 10px center no-repeat var(--midlow-bg-color); background-size: auto 30px}
+		.interface-bottom { height:50px; background:url(/img/systemeD.png) 10px center no-repeat var(--midlow-bg-color); background-size: auto 30px}
 		.liketext { background-color:rgba(0,0,0,0)}
 		.liketext:focus {background:var(--verylight-bg-color);   border-color:black;}
 
 	}
 	@media print { 
+		.interface-bottom {display:none}
 		#tools, #menu {display:none}
 		.tooltip { display: none; }
 		.noPrint {display:none}
-
+		  input[type="date"], input[type="time"] {
+			-webkit-appearance: none;
+			-moz-appearance: none;
+			appearance: none;
+			border: none;
+			background: none;
+			color: black; /* Pour s'assurer que le texte est visible */
+		  }
 	}
 

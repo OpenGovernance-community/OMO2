@@ -18,10 +18,11 @@
 	// Initialise le login pour chaque page
 	checkLogin();
 	
-	function writeHeadContent($title) {
-		echo '<title>EasyPV - '.$title.'</title>';
+	function writeHeadContent($title,$logiciel="System D2") {
+		echo '<title>'.$logiciel.' - '.$title.'</title>';
+		echo '<link rel="icon" type="image/png" href="/img/favicon-'.$logiciel.'.png" />';
 		echo '<meta charset="utf-8">';
-		echo '<meta name="viewport" content="width=device-width, initial-scale=1" /> ';
+		echo '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /> ';
 		
 		//<!-- JQuery et jquery UI -->
 		echo '<script src="https://code.jquery.com/jquery-3.6.0.js"></script>';
@@ -56,7 +57,11 @@
 	// Fonction de vérification de login, permettant d'une part d'initialiser 
 	// le login à partir d'un cookie, et d'autre part de vérifier si nécessaire la bonne connexion
 	function checkLogin() {
-		if (isset($_SESSION["currentUser"])) return true;
+		if (isset($_SESSION["currentUser"])) {
+			$_SESSION["userRef"]=new \dbObject\User();
+			$_SESSION["userRef"]->load($_SESSION["currentUser"]);
+			return true;
+		}
 		// Pas loggé, est-ce que les cookie permettent de retrouver l'utilisateur?
 		if (isset($_COOKIE["currentUser"]) && isset($_COOKIE["currentCode"])) {
 			// Charge l'utilisateur corrspondant
@@ -69,6 +74,7 @@
 				
 				// Initialise la variable de session
 				$_SESSION["currentUser"]=$user->get("id");
+				$_SESSION["userRef"]=$user;
 				
 				// Confirme que l'utilisateur a bien été trouvé
 				return true;

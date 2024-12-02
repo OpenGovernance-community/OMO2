@@ -7,7 +7,34 @@
 ?>
 <html>
 	<head>
-		<?=writeHeadContent("Bienvenue sur System DD");?>
+		<title>EasyPV - <?=T_("Facilitez-vous la prise de notes !");?>?></title>
+		<meta charset="utf-8">
+		
+		<!-- JQuery et jquery UI -->
+		<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+		<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+		<script>
+			
+		// Change JQueryUI plugin names to fix name collision with Bootstrap.
+		$.widget.bridge('uitooltip', $.ui.tooltip);
+		$.widget.bridge('uibutton', $.ui.button);
+		</script>
+		
+		<!-- Bootstrap (for html editor) Summernote-->
+		<link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet">
+		<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.bundle.min.js"></script>
+
+		<!-- include summernote css/js -->
+		<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote.min.css" rel="stylesheet">
+		<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote.min.js"></script>
+	
+		<!-- Fonctions partagées entre plusieurs pages -->
+		<script src="shared_functions.js"></script>
+		<link href="shared_css.css" rel="stylesheet">
+		
+		<!-- Script Paypal -->
+		<script src="https://www.paypal.com/sdk/js?client-id=AYZnt2y7GXObIwaEE4lE00M5aqQbPnZo2ghT8323MbwnHI9dxGtLLVAQ4LLNVZnPbr9usFpnpra-lvSL&vault=true&intent=subscription" data-sdk-integration-source="button-factory" data-namespace="paypal_sdk"></script>
+		<script src="https://www.paypalobjects.com/donate/sdk/donate-sdk.js" charset="UTF-8"></script>
 		
 		<!-- Script spécifique à la page -->
 		<script>

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+	
+	<xsl:param name="id" select="'0'" />
+	<xsl:param name="baseinc" select="string('&#160;&#160;&#160;&#160;')" />
+	
+    <xsl:template match="/">
+		
+        <xsl:apply-templates select="root" />
+    </xsl:template>
+
+    <xsl:template match="root">
+		<option><xsl:attribute name="value">
+                    <xsl:value-of select="ID" />
+					</xsl:attribute><xsl:value-of select="name" />
+		</option>
+         <xsl:if test="children[type='2']">
+            <xsl:apply-templates select="children[type='2']"><xsl:with-param name="inc" select="$baseinc" /></xsl:apply-templates>
+             <xsl:apply-templates select="children[type='3']"><xsl:with-param name="inc" select="$baseinc" /></xsl:apply-templates>
+        </xsl:if>
+    </xsl:template> 
+
+    <xsl:template match="children[type='3']">
+		<xsl:param name="inc" select="''" />
+			<xsl:apply-templates select="children[type='2']"><xsl:with-param name="inc" select="concat($baseinc,$inc)" /></xsl:apply-templates>
+            <xsl:apply-templates select="children[type='3']" ><xsl:with-param name="inc" select="concat($baseinc,$inc)" /></xsl:apply-templates>
+ 	</xsl:template> 
+
+     
+     <xsl:template match="children[type='2']">
+			<xsl:param name="inc" select="''" />
+			<xsl:if test="ID != $id">
+ 			<option>
+				<xsl:attribute name="value">
+                    <xsl:value-of select="ID" />
+					</xsl:attribute>
+					<xsl:value-of select="$inc" /><xsl:value-of select="name" />
+			</option>
+			<xsl:apply-templates select="children[type='2']"><xsl:with-param name="inc" select="concat($baseinc,$inc)" /></xsl:apply-templates>
+            <xsl:apply-templates select="children[type='3']" ><xsl:with-param name="inc" select="concat($baseinc,$inc)" /></xsl:apply-templates>
+			</xsl:if>
+    </xsl:template>
+
+</xsl:stylesheet>

@@ -1,4 +1,6 @@
 
+
+
 //fonctions génériques de validation
 function countChar(objet, limit) {
 	if (objet.val().length>limit) {
@@ -69,6 +71,86 @@ function enterFullscreen(element) {
 	  const sep = url.includes('?') ? '&' : '?';
 	  return url+sep+"refresh=1";
 	}
+
+
+// Fonction pour convertir un json en HTML en utilisant du XSLT
+// Usage: transformJSONtoHTML(jsondata, xsltFilePath, 'output');
+async function transformJSONtoHTML(jsonData, xsltFilePath, targetElementId=null,  paramName=null, paramValue=null) {
+    // Convert JSON to XML
+    function jsonToXml(json, root = 'root') {
+        let xml = `<${root}>`;
+        for (let key in json) {
+			// Fonction particulière pour éviter les boucles
+			if (key!='parent') {
+				if (Array.isArray(json[key])) {
+					json[key].forEach(item => {
+						xml += jsonToXml(item, key);
+					});
+				} else if (typeof json[key] === 'object') {
+					xml += jsonToXml(json[key], key);
+				} else {
+					xml += `<${key}>${json[key]}</${key}>`;
+				}
+			}
+        }
+        xml += `</${root}>`;
+        //console.log(xml);
+        return xml;
+    }
+
+    // Fetch and parse the XSLT file
+    async function fetchXSLT(xsltFilePath) {
+        const response = await fetch(xsltFilePath);
+        if (!response.ok) {
+            throw new Error(`Failed to load XSLT file: ${response.statusText}`);
+        }
+        const xsltText = await response.text();
+        const parser = new DOMParser();
+        return parser.parseFromString(xsltText, "application/xml");
+    }
+
+    try {
+        // Convert JSON to XML string
+        const xmlString = `<?xml version="1.0" encoding="UTF-8"?>${jsonToXml(jsonData)}`;
+        
+        // Parse XML string to a DOM Document
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlString, "application/xml");
+
+        // Load the XSLT file
+        const xsltDoc = await fetchXSLT(xsltFilePath);
+
+        // Apply the XSLT transformation
+        const xsltProcessor = new XSLTProcessor();
+        xsltProcessor.importStylesheet(xsltDoc);
+        
+        // Définir le paramètre
+        if (paramName)
+			xsltProcessor.setParameter(null, paramName, paramValue);
+
+        const resultDocument = xsltProcessor.transformToFragment(xmlDoc, document);
+
+        // Insert the transformed HTML into the target element
+        if (targetElementId) {
+		
+        const targetElement = document.getElementById(targetElementId);
+        if (targetElement) {
+            targetElement.innerHTML = '';
+            targetElement.appendChild(resultDocument);
+        } else {
+            console.warn(`Element with ID "${targetElementId}" not found.`);
+        }
+        } else {
+			return resultDocument;
+		}
+    } catch (error) {
+        console.error('Error in transformJSONtoHTML:', error);
+        const targetElement = document.getElementById(targetElementId);
+        if (targetElement) {
+            targetElement.innerHTML = `<p>Error: ${error.message}</p>`;
+        }
+    }
+}
 	
 	function refresh(elementID, sourceDocument) {
 	  // Si la source du document est null, utilisez l'URL courante

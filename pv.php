@@ -7,10 +7,129 @@
 ?>
 <html>
 	<head>
-		<?=writeHeadContent("Facilitez-vous la prise de notes !");?>
-		
+		<?=writeHeadContent("Facilitez-vous la prise de PV !");?>
+<style>
+  .sector-1 { fill: #FFFFFF; }
+  .sector-2 { fill: #22AA22; }
+  .sector-3 { fill: #CC0000; }
+  .sector-4 { fill: #4BC0C0; }
+  .interface-top:has(> input#id:valid) {padding-left: 30px; background-image:url(/img/diskette.png); background-size:20px 20px; background-position: 5px 5px; background-repeat:no-repeat}
+  .interface-top:has(> input#id:valid):has(> input#saved:valid) {background-image:url(/img/diskette_warning.png);}
+  input#id, input#saved {display:none}
+
+</style>		
 		<!-- Script spécifique à la page -->
 		<script>
+			
+window.addEventListener('beforeprint', () => {
+  const userLang = navigator.language || 'fr-CH'; // Utilise la langue du navigateur ou 'fr-CH' par défaut
+
+  document.querySelectorAll('input[type="date"]').forEach(input => {
+    const date = new Date(input.value);
+    const formattedDate = date.toLocaleDateString(userLang); // Utilise le format de date du navigateur
+    input.setAttribute('data-original-type', input.type);
+    input.setAttribute('data-original-value', input.value);
+    input.type = 'text';
+    input.value = formattedDate;
+  });
+
+  document.querySelectorAll('input[type="time"]').forEach(input => {
+    const time = input.value;
+    input.setAttribute('data-original-type', input.type);
+    input.setAttribute('data-original-value', input.value);
+    input.type = 'text';
+    input.value = time;
+  });
+});
+
+window.addEventListener('afterprint', () => {
+  document.querySelectorAll('input[data-original-type]').forEach(input => {
+    input.type = input.getAttribute('data-original-type');
+    input.value = input.getAttribute('data-original-value');
+    input.removeAttribute('data-original-type');
+    input.removeAttribute('data-original-value');
+  });
+});
+
+// Fonction pour convertir des angles polaires en coordonnées cartésiennes
+function polarToCartesian(cx, cy, radius, angleInDegrees) {
+  let angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+  return {
+    x: cx + (radius * Math.cos(angleInRadians)),
+    y: cy + (radius * Math.sin(angleInRadians))
+  };
+}
+
+// Fonction qui génère le chemin d'un arc de cercle pour un secteur
+function describeArc(x, y, radius, startAngle, endAngle) {
+  let start = polarToCartesian(x, y, radius, startAngle);
+  let end = polarToCartesian(x, y, radius, endAngle);
+
+  let largeArcFlag = (endAngle - startAngle) <= 180 ? "0" : "1";
+
+  return [
+    "M", x, y, // Déplacement au centre du cercle
+    "L", start.x, start.y, // Ligne vers le début de l'arc
+    "A", radius, radius, 0, largeArcFlag, 1, end.x, end.y, // Arc de cercle
+    "Z" // Fermeture du chemin (retour au centre)
+  ].join(" ");
+}
+
+// Fonction pour dessiner le camembert
+function drawPieChart(data) {
+  const svg = document.getElementById("pieChart");
+
+  // Effacer les anciens secteurs
+  svg.innerHTML = "";
+
+  const cx = 25, cy = 25, radius = 25;
+  let total = data.reduce((sum, val) => sum + val, 0);
+  let currentAngle = 0;
+
+  // Vérifier si une seule valeur est non nulle pour dessiner un cercle complet
+  if (data.filter(value => value > 0).length === 1) {
+    let index = data.findIndex(value => value > 0);
+    let path = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    path.setAttribute("cx", cx);
+    path.setAttribute("cy", cy);
+    path.setAttribute("r", radius);
+    path.setAttribute("class", `sector-${index + 1}`);
+    svg.appendChild(path);
+    
+  } else {
+
+  data.forEach((value, index) => {
+    if (value > 0) { // Ignorer les valeurs nulles
+      let sliceAngle = (value / total) * 360;
+      let pathData = describeArc(cx, cy, radius, currentAngle, currentAngle + sliceAngle);
+
+      // Créer un élément <path> pour chaque secteur
+      let path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", pathData);
+      path.setAttribute("class", `sector-${index + 1}`);
+      svg.appendChild(path);
+
+      currentAngle += sliceAngle;
+    }
+  });
+}
+  let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+ 
+    // Récupérer l'heure actuelle
+  let now = new Date();
+  let timeString = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+
+  text.setAttribute("x", cx); // Centre horizontal
+  text.setAttribute("y", cy); // Centre vertical
+  text.setAttribute("class", "center-text");
+  text.setAttribute("text-anchor", "middle"); // Centrer horizontalement le texte
+  text.setAttribute("dominant-baseline", "middle"); // Centrer verticalement le texte
+  text.textContent = timeString; // Contenu du texte (heure actuelle)
+
+  svg.appendChild(text); // Ajouter l'heure au SVG
+}
+
+
 			// Fonctions appelées après le chargement complet de la page
 			$(function() {
 				
@@ -32,16 +151,17 @@
 				});
 				$("body").delegate(".page","dblclick",function () {
 					if ($(".note-editor").length>0) {
-						alert ("<?=T_("Veuillez préalablement fermer l'éditeur déjà ouvert.",true);?>")
-						$(".note-editor").focus();
-					} else {
-						$(this).find(".content").summernote({focus: true, toolbar: mytoolbar, styleTags: mystyles});
-						// Cache le bouton edit et affiche le bouton sauver
-						$(this).find("button.save").css("display","");
-						$(this).find("button.cancel").css("display","");
-						$(this).find("button.edit").css("display","none");
-						$(this).find("button.delete").css("display","none");
-					}
+						//alert ("<?=T_("Veuillez préalablement fermer l'éditeur déjà ouvert.",true);?>")
+						//$(".note-editor").focus();
+					} 
+					
+					$(this).find(".content").summernote({focus: true, toolbar: mytoolbar, styleTags: mystyles, fontSizes:myfontsize, lang:"fr-FR"});
+					// Cache le bouton edit et affiche le bouton sauver
+					$(this).find("button.save").css("display","");
+					$(this).find("button.cancel").css("display","");
+					$(this).find("button.edit").css("display","none");
+					$(this).find("button.delete").css("display","none");
+			
 				});
 				
 				// ************ Boutons *******************
@@ -54,6 +174,7 @@
 						// Supprime les blocs (sortable et pv)
 						$("#page_"+index).remove();
 						$("#menu_"+index).remove();
+						$("#saved").val(0);
 						save();
 					}
 				});	
@@ -62,17 +183,17 @@
 				$("body").delegate(".edit","click",function () {
 					// S'assure qu'aucun autre éditeur est déjà ouvert
 					if ($(".note-editor").length>0) {
-						alert ("<?=T_("Veuillez préalablement fermer l'éditeur déjà ouvert.")?>")
-						$(".note-editor").focus();
-					} else {
+						//alert ("<?=T_("Veuillez préalablement fermer l'éditeur déjà ouvert.")?>")
+						//$(".note-editor").focus();
+					} 
 
-						$(this).parent().next().summernote({focus: true, toolbar: mytoolbar, styleTags: mystyles});
+						$(this).parent().next().summernote({ focus: true, toolbar: mytoolbar, styleTags: mystyles, fontSizes:myfontsize, lang: "fr-FR"});
 						// Cache le bouton edit et affiche le bouton sauver
 						$(this).parent().find("button.save").css("display","");
 						$(this).parent().find("button.cancel").css("display","");
 						$(this).css("display","none");
 						$(this).parent().find("button.delete").css("display","none");
-					}
+					
 					
 				});
 				
@@ -93,6 +214,7 @@
 					$(this).parent().find("button.cancel").css("display","none");
 					$(this).css("display","none");
 					// Sauve à chaque fois
+					$("#saved").val(0);
 					save();
 					
 				});
@@ -118,7 +240,9 @@
 				$( "#resizeelem" ).draggable({ axis: "x" ,
 
 				  stop: function(event, ui) {
-					$(".interface-left").css("width",$(".interface-left").width()+ui.position.left+4);
+					pos=$(".interface-left").width()+ui.position.left+4;
+					if (pos<250) pos=250;
+					$(".interface-left").css("width",pos);
 					$( "#resizeelem" ).css("left",0);
 				  }
 				});
@@ -157,6 +281,7 @@
 					updateTitles($(this));
 					
 					// Sauve les infos en local, et si nécessaire à distance
+						$("#saved").val(0);
 					save();
 				});	
 				// Update et sauve automatiquement lorsque les paramètres des tensions sont définis
@@ -164,42 +289,40 @@
 					updateTitles($(this));
 					
 					// Sauve les infos en local, et si nécessaire à distance
+					$("#saved").val(0);
 					save();
 				});	
 				// Sauve automatiquement lorsque on quitte les champs d'entête
-				$("body").delegate(".top input","focusout",function (e) {
+				$("body").delegate(".interface-top input","focusout",function (e) {
+					$("#saved").val(0);
 					save();
 				});	
 				// Sauve automatiquement lorsque on quitte les champs d'entête
 				$("body").delegate(".divedit","focusout",function (e) {
+					$("#saved").val(0);
 					save();
 				});	
 				$("body").delegate(".cb","click",function (e) {
 					calcDurees();
 					updateTimer();
 				});	
-
 				
+				$("body").delegate(".duration","keydown", function (e) {
+					if(e.key === "Tab" || e.keyCode === 9) {
+						// Si c'est le dernier élément de la liste, en ajoute un nouveau
+						//$(this).parent().parent().parent().parent().parent().nextAll("li").css( "background", "#FFFF00" );
+						if ($(this).parent().parent().parent().parent().parent().nextAll("li").length == 0)
+							{addTension(); e.preventDefault();}
+						
+					}
+					
+				});
+
 				// *************** Boutons ****************
 				
 				// Ajouter une section
 				$("body").delegate("#btn_menuTension","click",function () {
-					if ($("#meetingSlices").length>0) {
-						cpt=($("#meetingSlices h3").length+1);
-						$("#meetingSlices").append($("<div class='section'><h3><input type='text' value='Section "+cpt+"'  class='liketext'></h3><div><ul id='sortable"+cpt+"' class='tension-sortable list-group ui-sortable'></ul></div></div>"));
-						$("#sortable"+cpt).sortable({axis: "y", containment: ".screenOJ", connectWith: ".tension-sortable", placeholder: "sortable-placeholder", tolerance: "pointer",
-								stop: function( event, ui ) {
-									// Réordre la seconde liste en fonction 
-									$.each($(".list-group-item"),function(index, value) {
-										$("#page_"+$(value).attr("data")).appendTo("#contentright");
-									});
-								}
-							});
-
-					} else {
-						$(".screenOJ").append($("<div id='meetingSlices'><div class='section'><h3><input type='text' value='Section 1' class='liketext'></h3><div class='sectionContent'></div></div></div>"));
-						$("#meetingSlices div.sectionContent").append($("#sortable"));
-					}
+					addSection(); setTimeout (save,50);
 				});
 				
 				// Ajouter une tension
@@ -225,11 +348,17 @@
 				];
 				  
 				var mystyles= [
-					'p','h1', 'h2','h3',
+					{ title: 'Paragraphe', tag: 'p', className: '', value: 'p' },
+					{ title: 'Titre 1', tag: 'h1', className: '', value: 'h1' },
+					{ title: 'Titre 2', tag: 'h2', className: '', value: 'h2' },
+					{ title: 'Titre 3', tag: 'h3', className: '', value: 'h3' },
 					{ title: 'Decision', tag: 'div', className: 'monstyledemenu', value: 'h4' },
 					{ title: 'Tâche/action', tag: 'div', className: 'monstyledemenu', value: 'h5' },
 					   
 				];
+				
+				var myfontsize = ['8', '9', '10', '11', '12', '13', '14', '15', '16', '18', '20', '22' , '24', '28', '32', '36', '40', '48'];
+
 
 					
 				// *******************************************************
@@ -238,13 +367,14 @@
 				
 				// Difflrents boutons de la page
 				$("#btn_save").click(function () {
-					save();
+					saveSQL();
 				});
 				$("#btn_new").click(function () {
 					newDoc();
 				});
 				$("#btn_load").click(function () {
-					load();
+					//loadSQL();
+					showPopup("popup/pv_load.php", "<?=T_("Charger un document",true)?>");
 				});
 				$("#btn_help").click(function () {
 					showPopup("popup/help.php", "<?=T_("Aide",true)?>");
@@ -252,6 +382,9 @@
 
 				$("#btn_download").click(function () {
 					showPopup("popup/download.php", "<?=T_("Télécharger",true)?>");
+				});	
+				$("#btn_share").click(function () {
+					showPopup("popup/pv_share.php", "<?=T_("Partager",true)?>");
 				});	
 				$("#btn_parameters").click(function () {
 					showPopup("popup/parameters.php", "<?=T_("Paramètres",true)?>");
@@ -279,7 +412,7 @@
 					load();
 
 				// Boucle de mise à jour des infos de timer
-				setInterval(updateTimer, 6000);
+				setInterval(updateTimer, 1000);
 			});
 			
 			// *********************************************************
@@ -295,21 +428,59 @@
 				newtitle+=$("#qui_"+id).val();
 				newtitle+=($("#qui_"+id).val()!=""?" - ":"");
 				newtitle+="<b>"+$("#tension_"+id).val()+"</b>";
-				newtitle+="&nbsp;<span style='float:right'>"+$("#duree_"+id).val()+($("#duree_"+id).val()!=""?"'":"")+"</span>";
+				newtitle+="&nbsp;<span style='float:right'>"+($("#realduree_"+id).val()!=""?Math.floor(parseInt($("#realduree_"+id).val())/60) + "' / ":"")+$("#duree_"+id).val()+($("#duree_"+id).val()!=""?"'":"")+"</span>";
 				
 				$("#page_"+id+" .title").html(newtitle);
 				
 				// Mise à jour des timer
 				calcDurees();
-				updateTimer();
+				//updateTimer();
 			}
+			
+			$(document).keydown(function(event) {
+				// Vérifiez si Alt (keyCode 18) et la touche 1 (keyCode 49) sont pressés
+				if (event.altKey && event.key >= "1" && event.key <= "5") {
+					// Empêche l'action par défaut si nécessaire
+					event.preventDefault();
+					
+					$("li.list-group-item.active input.type").attr("value",event.key);
+				}
+				if (event.altKey && event.key == "0" ) {
+					// Empêche l'action par défaut si nécessaire
+					event.preventDefault();
+					
+					$("li.list-group-item.active input.type").attr("value","");
+				}			});
 
-			function addTension(title = "", who = "", duration = "", content ="", checked=false) {
+				function addSection(name=null) {
+					if ($("#meetingSlices").length>0) {
+						cpt=($("#meetingSlices h3").length+1);
+						$("#meetingSlices").append($("<div class='section'><h3><input type='text' value='Section "+cpt+"'  class='liketext'></h3><div><ul id='sortable"+cpt+"' class='tension-sortable list-group ui-sortable'></ul></div></div>"));
+						$("#sortable"+cpt).sortable({axis: "y", containment: ".screenOJ", connectWith: ".tension-sortable", placeholder: "sortable-placeholder", tolerance: "pointer",
+								stop: function( event, ui ) {
+									// Réordre la seconde liste en fonction 
+									$.each($(".list-group-item"),function(index, value) {
+										$("#page_"+$(value).attr("data")).appendTo("#contentright");
+									});
+								}
+							});
+
+					} else {
+						$(".screenOJ").append($("<div id='meetingSlices'><div class='section'><h3><input type='text' value='Section 1' class='liketext'></h3><div class='sectionContent'></div></div></div>"));
+						$("#meetingSlices div.sectionContent").append($("#sortable"));
+					}
+				}
+				
+			function addTension(type="", title = "", who = "", duration = "", realduration = "", content ="", checked=false) {
 
 				cpt=$(".list-group-item").length+1;
-				$("<li id='menu_"+cpt+"' class='list-group-item' data='"+cpt+"'><table cellspacing=0 cellpadding=0 style='width:100%;'><tr><td><input type='checkbox' tabindex='-1' id='cb_"+cpt+"' class='cb' "+(checked?"checked":"")+"></td><td style='width:100%'><input  id='tension_"+cpt+"' class='liketext tension' style='width:100%' placeholder='<?=T_("Description brève",true);?>' value='"+title.replace("'","&apos;")+"'></td></tr><tr><td></td><td><input id='qui_"+cpt+"' class='liketext' style='width:60%;font-size:70%' placeholder='<?=T_("Qui",true);?>' value='"+who.replace("'","&apos;")+"'><input id='duree_"+cpt+"' class='liketext duration' style='width:30%;font-size:70%;text-align:right' placeholder='<?=T_("Durée",true);?>' value='"+duration.replace("'","&apos;")+"'></td></tr></table></li>").appendTo("#sortable");
+				if ($(".tension-sortable:has(li.active)").length>0)
+					$("<li id='menu_"+cpt+"' class='list-group-item' data='"+cpt+"'><table cellspacing=0 cellpadding=0 style='width:100%;'><tr><td><input type='checkbox' tabindex='-1' id='cb_"+cpt+"' class='cb' "+(checked?"checked":"")+"></td><td style='width:100%;padding-right:20px;'><input id='type_"+cpt+"' class='type' value='"+type+"'><input  id='tension_"+cpt+"' class='liketext tension' style='width:100%' placeholder='<?=T_("Description brève",true);?>' value='"+title.replace("'","&apos;")+"'></td></tr><tr><td></td><td><input id='qui_"+cpt+"' class='liketext' style='width:60%;font-size:70%' placeholder='<?=T_("Qui",true);?>' value='"+who.replace("'","&apos;")+"'><input type='hidden' id='realduree_"+cpt+"' value='"+realduration.replace("'","&apos;")+"'><input autocomplete='off' id='duree_"+cpt+"' class='liketext duration' style='width:30%;font-size:70%;text-align:right' placeholder='<?=T_("Durée",true);?>' value='"+duration.replace("'","&apos;")+"'></td></tr></table></li>").appendTo(".tension-sortable:has(li.active)");
+				else
+					$("<li id='menu_"+cpt+"' class='list-group-item' data='"+cpt+"'><table cellspacing=0 cellpadding=0 style='width:100%;'><tr><td><input type='checkbox' tabindex='-1' id='cb_"+cpt+"' class='cb' "+(checked?"checked":"")+"></td><td style='width:100%;padding-right:20px;'><input id='type_"+cpt+"' class='type' value='"+type+"'><input  id='tension_"+cpt+"' class='liketext tension' style='width:100%' placeholder='<?=T_("Description brève",true);?>' value='"+title.replace("'","&apos;")+"'></td></tr><tr><td></td><td><input id='qui_"+cpt+"' class='liketext' style='width:60%;font-size:70%' placeholder='<?=T_("Qui",true);?>' value='"+who.replace("'","&apos;")+"'><input type='hidden' id='realduree_"+cpt+"' value='"+realduration.replace("'","&apos;")+"'><input autocomplete='off' id='duree_"+cpt+"' class='liketext duration' style='width:30%;font-size:70%;text-align:right' placeholder='<?=T_("Durée",true);?>' value='"+duration.replace("'","&apos;")+"'></td></tr></table></li>").appendTo(".tension-sortable");
+			
 				// De la même manière, ajoute une zone d'édition
-				$("<div class='page' id='page_"+cpt+"' data='"+cpt+"'><div class='title'></div><div class='buttons'><button class='edit' data='"+cpt+"'><?=T_("editer");?></button><button class='delete' data='"+cpt+"'><?=T_("supprimer");?></button><button class='save' style='display:none' data='"+cpt+"'><?=T_("sauver");?></button><button class='cancel' style='display:none' data='"+cpt+"'><?=T_("annuler");?></button></div><div class='content'>"+content+"</div></div>").appendTo(".contentRight");	
+				$("<div class='page' id='page_"+cpt+"' data='"+cpt+"'><input type='hidden' class='id' value=''><div class='title'></div><div class='buttons'><button class='edit' data='"+cpt+"'><?=T_("editer");?></button><button class='delete' data='"+cpt+"'><?=T_("supprimer");?></button><button class='save' style='display:none' data='"+cpt+"'><?=T_("sauver");?></button><button class='cancel' style='display:none' data='"+cpt+"'><?=T_("annuler");?></button></div><div class='content'>"+content+"</div></div>").appendTo(".contentRight");	
 				updateTitles($("#tension_"+cpt));
 				// Focus directement sur le champ avec la description du point
 				if (title=="") $("#tension_"+cpt).focus();
@@ -321,6 +492,15 @@
 				newDateObj = new Date(Date.now() + parseInt("0"+$("#restTime").html())*60000);
 				$("#finalTime").html(newDateObj.toLocaleTimeString(navigator.language, {hour: '2-digit',  minute:'2-digit'}));
 				$("#time_svg").text(newDateObj.toLocaleTimeString(navigator.language, {hour: '2-digit',  minute:'2-digit'}));
+		
+				// Ajoute si nécessaire une seconde au point actuellement édité
+				let current = $("div.page.selected:has(div.note-editable)");
+				if (current) {
+					$("#realduree_"+current.attr("data")).val(parseInt("0"+$("#realduree_"+current.attr("data")).val())+1);
+					// Nise à jour du titre
+					updateTitles($("#tension_"+current.attr("data")));
+					
+				}
 			}
 					
 			function load() {
@@ -329,14 +509,20 @@
 				if (saveArray=="")
 					alert ("<?=T_("Aucunes données sauvegardée trouvées",true);?>");
 				else {
+					console.log(saveArray);
 					// Efface les informations existantes
 					$(".list-group-item").remove();
 					$(".page:not(:first-child)").remove();
 					
 					// Parse le document pour ajouter les infos
 					data=JSON.parse(saveArray);
+					$("#id").val(data.id);
+					$("#saved").val(data.saved);
 					$("#title").val(data.title);
 					$("#location").val(data.location);
+					$("#dateevent").val(data.dateevent);
+					$("#starttime").val(data.starttime);
+					$("#endtime").val(data.endtime);
 					$("#participants").html(data.people);
 
 					$("#excuses").html(data.excused); // Excusés
@@ -345,10 +531,24 @@
 					$("#facilitation").html(data.facilitator);
 					$("#memoire").html(data.secretary);				
 					
+					// Ajoute les tensions
 					data.oj.forEach(function(obj) {
-						addTension (obj.title, obj.who, obj.duration, obj.content,obj.checked);
+						addTension (obj.type,obj.title, obj.who, obj.duration, obj.realduration, obj.content,obj.checked);
 						
 					});
+					// Ajoute les sections
+				/*	data.section.forEach(function(sec) {
+						// Ajoute la section
+						addSection();
+						sec.oj.forEach(function(obj) {
+							addTension (obj.type,obj.title, obj.who, obj.duration, obj.realduration, obj.content,obj.checked);
+							
+						});
+						
+					});*/
+					
+					
+					
 					// adapte les timer
 					calcDurees();
 					updateTimer();
@@ -367,11 +567,17 @@
 					localStorage.removeItem("savedata");
 					
 					// Efface les informations existantes
+					//$("#meetingSlices").remove();
 					$(".list-group-item").remove();
 					$(".page:not(:first-child)").remove();
 
+					$("#id").val("");
+					$("#saved").val("");
 					$("#title").val("");
 					$("#location").val("");
+					$("#starttime").val("");
+					$("#dateevent").val("");
+					$("#endtime").val("");
 					$(".divedit").html("");
 									
 					calcDurees();
@@ -379,11 +585,43 @@
 				}			
 				
 			}
+				
+			function saveSQL() {
+				save();
+				$.ajax({
+					url: '/ajax/savepv.php', // Remplacez par l'URL de votre serveur PHP
+					type: 'POST',
+					contentType: 'application/json',
+					dataType: 'json',
+					data: JSON.stringify(JSON.parse(localStorage.getItem("savedata"))),
+					success: function(response) {
+						if (response.status === 'ok') { // Vérifiez si le serveur a renvoyé un statut "ok"
+							// Inscrivez l'ID dans le champ de formulaire caché
+							$('#id').val(response.id);
+							$("#saved").val("");
+							save();
+							alert('Sauvegarde effectuée !');
+							
+						} else {
+							alert('Erreur: ' + response.message);
+						}
+					},
+					error: function(xhr, status, error) {
+						console.log('Erreur de requête : ', error);
+						alert('Une erreur est survenue. Veuillez réessayer.');
+					}
+				});			
+			}	
 						
 			function save() {
 				saveArray = {};
+				saveArray.id = $("#id").val();
+				saveArray.saved = $("#saved").val();
 				saveArray.title = $("#title").val();
 				saveArray.location = $("#location").val();
+				saveArray.dateevent = $("#dateevent").val();
+				saveArray.starttime = $("#starttime").val();
+				saveArray.endtime = $("#endtime").val();
 				saveArray.people = $("#participants").html();
 				saveArray.excused = $("#excuses").html(); // Excusés
 				saveArray.nothere = $("#absents").html(); // 
@@ -407,8 +645,10 @@
 						index=$(value).attr("data");
 						tension.checked=$("#cb_"+index).is(":checked");
 						tension.title=$("#tension_"+index).val();
+						tension.type=$("#type_"+index).val();
 						tension.who=$("#qui_"+index).val();
 						tension.duration=$("#duree_"+index).val();
+						tension.realduration=$("#realduree_"+index).val();
 						tension.content=$("#page_"+index+" .content").html();
 						section.oj.push(tension);
 					});	
@@ -422,14 +662,16 @@
 					index=$(value).attr("data");
 					tension.checked=$("#cb_"+index).is(":checked");
 					tension.title=$("#tension_"+index).val();
+					tension.type=$("#type_"+index).val();
 					tension.who=$("#qui_"+index).val();
 					tension.duration=$("#duree_"+index).val();
+					tension.realduration=$("#realduree_"+index).val();
 					tension.content=$("#page_"+index+" .content").html();
 					saveArray.oj.push(tension);
 				})
-				console.log (saveArray);
+				
 				localStorage.setItem("savedata", JSON.stringify(saveArray));
-				//createCookie("savedata", JSON.stringify(saveArray),365);
+			
 			}
 			
 
@@ -437,22 +679,71 @@
 			function calcDurees() {
 				bigTotal=0;
 				progress=0;
+				let data=[1];
 				$.each($(".list-group-item"),function(index, value) {
 					// Parcours tous les item, pour faire la somme des heures
 					bigTotal+=parseInt("0"+$(value).find(".duration").val());
 					if (!$(value).find(".cb").is(":checked")) progress+=parseInt("0"+$(value).find(".duration").val());
 				});
+				
 				$("#totalTime").html(parseInt(bigTotal));
 				$("#restTime").html(parseInt(progress));
-				$("#time_graph").html('<svg style="float:right; margin:5px;" height="55" width="55" viewBox="0 0 20 20">'+
-			  '<circle r="10" cx="10" cy="10" fill="white" />'+
-			  '<circle r="5" cx="10" cy="10" fill="white"'+
-					 ' stroke="tomato"'+
-					'  stroke-width="10"'+
-					'  stroke-dasharray="calc(0'+parseInt(progress)+' * 31.42 / '+parseInt(bigTotal)+') 31.42" />'+
-			 ' <text id="time_svg" x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="black" style="font-size:5px">12:31</text>'+
-			'</svg>');
+		
+				// Heure de fin
+				endTime = new Date(Date.now() + parseInt("0"+$("#restTime").html())*60000);
+				// Heure actuelle
+				currentTime = new Date(Date.now());
+				
+				const [hours, minutes] = $("#endtime").val().split(':').map(Number);
+
+
+
+
+				planifiedTime = new Date();
+				planifiedTime.setHours(hours, minutes, 0, 0);
+				// Calcul du temps disponible restant avant la fin
+				restTime=(planifiedTime-endTime)/60000;
+				// Calcul du dépassement
+				toMuch=(restTime<0?restTime:"");
+				$("#toMuchTime2").html(toMuch!=""?" ("+parseInt(toMuch)+"')":"");
+	
+				
+				// Construit le camenbert
+
+				// Est-ce qu'une heure de fin est définie?
+				if ($("#endtime").val()!="") {
+					// Heure programmée
+					let timeString = $("#endtime").val(); // Récupérer la valeur du champ input
+					let programmedTime = new Date(); 
+					programmedTime.setHours(...timeString.split(':').map(Number), 0, 0);
+					
+					// Est-ce qu'on fini dans les temps? Si oui, camenbert tout vert
+					if (endTime<=programmedTime) {
+						
+						data = [parseInt(bigTotal)-parseInt(progress),parseInt(progress),0];						
+					} else
+					
+					// Sinon, est-ce qu'on est déjà aux fraises (déjà dépassé)? Si oui, camenbert tout rouge
+					if (currentTime>=programmedTime) {
+						data = [parseInt(bigTotal)-parseInt(progress),0,parseInt(progress)];						
+					} else 
+					// Sinon, besoin de calculer le ratio vert/rouge
+					{
+						// Convertir la différence en minutes (1 minute = 60 000 millisecondes)
+						let differenceInMinutes = (endTime-programmedTime) / (1000 * 60);
+						
+						data = [parseInt(bigTotal)-parseInt(progress),parseInt(progress)-differenceInMinutes,differenceInMinutes];						
+					}
+					
+				} else {
+						data = [parseInt(bigTotal)-parseInt(progress),parseInt(progress)];						
+
+					
+				}
+				drawPieChart(data);	
+
 			}
+			
 
 		
 		</script>
@@ -461,6 +752,11 @@
 		
 
 	@media screen {
+		.panel {margin-bottom:0px;}
+		#backColorPalette.note-holder-custom, #foreColorPalette.note-holder-custom, .note-color-select {display:none}
+		
+		.page:has(.note-editor) .title {background:#FFD}
+		.page:has(.note-editor)  {border-color:#AA0}
 
 		body {overflow:hidden;}
 		.interface-left { background:var(--light-bg-color)}
@@ -475,7 +771,48 @@
 			border-color: var(--midlow-bg-color);
 		}
 		.list-group-item:not(.active):hover {background:var(--verylight-bg-color)}
+		.list-group-item.active:hover {background:var(--midlow-bg-color); border-color:var(--midlow-bg-color)}
+		
+		
+		
+		input.type {display:none}
+		 .list-group-item:has(input.type:not([value=""])):before {
 
+			content: ""; /* Nécessaire pour afficher l'élément pseudo */
+			position: absolute;
+			top: -2px; /* Ajustez selon votre besoin */
+			right: -2px; /* Ajustez selon votre besoin */
+			width: 30px; /* Largeur du cercle */
+			height: 30px; /* Hauteur du cercle */
+			background-color:#FFFFFF;
+			
+			background-size: cover; /* Ajuste l'image pour couvrir le cercle */
+			background-position: center; /* Centre l'image */
+			background-repeat:no-repeat;
+			border-radius: 5px; /* Fait un cercle */
+			border: 2px solid #DDD; /* Bordure optionnelle */
+		 }
+		 .list-group-item:has(input.type[value="1"]):before {
+			 background-image: url("/img/tension_1.jpg"); /* Image de fond */
+			}
+		 .list-group-item:has(input.type[value="2"]):before {
+			 background-image: url("/img/tension_2.jpg"); /* Image de fond */
+			}
+		 .list-group-item:has(input.type[value="3"]):before {
+			 background-image: url("/img/tension_3.jpg"); /* Image de fond */
+			}
+		 .list-group-item:has(input.type[value="4"]):before {
+			 background-image: url("/img/tension_4.jpg"); /* Image de fond */
+			}
+		 .list-group-item:has(input.type[value="5"]):before {
+			 background-image: url("/img/tension_5.jpg"); /* Image de fond */
+			}
+
+		  /* Autre couleur pour quand sélectionné */
+		   .list-group-item.active:has(input.type[value]):before {
+			  border-color: var(--midlow-bg-color);
+		  }
+		 
 		.sortable-placeholder {height:60px}		
 		.screenOJ {width:100%; padding-right:3px ; height:100%; overflow:auto;position: absolute;}
 		.odj {background: var(--light-bg-color);}
@@ -493,11 +830,14 @@
 	.interface-right {height:calc(100% - 100px); padding:2px; position:relative;}
 	.bottom {height:50px;}
 	.resize {width:5px;position:relative;}
-	#resizeelem {width:5px;height:100%; cursor:e-resize;z-index:2}
+	#resizeelem {width:10px;height:100%; cursor:e-resize;z-index:2; background-image: url(/img/dots.png);
+  background-size: 14px;
+  background-repeat: no-repeat;
+  background-position: center;}
 	
 	.odj {font-weight:bold; font-size:110%}
 	
-	.list-group-item {border:2px solid #DDDD; margin:2px; cursor:pointer; padding:5px 5px 5px 15px;}
+	.list-group-item {border:2px solid #DDDD; margin:2px; cursor:pointer; padding:5px 5px 5px 5px;}
 	 ul:has(:nth-child(9)) .list-group-item {padding:0px 5px 0px 15px;}
 	 ul:has(:nth-child(12)) .list-group-item:not(.active) {height:27px;overflow:hidden}
 	.pv {min-height:40px; border:2px solid #DDDD; margin:2px;}
@@ -560,8 +900,8 @@
     
 	.list-group-item:not(.active) input:not([type=checkbox]) {pointer-events:none}
 	.list-group-item.active input::placeholder {
-color: rgba(255,255,255,0.5);
-}
+		color: rgba(255,255,255,0.5);
+	}
 
 	 .divedit:empty::after {
   content: attr(placeholder);
@@ -576,10 +916,14 @@ color: rgba(255,255,255,0.5);
 	.list-group-item:has(input:checked) input.tension {text-decoration: line-through;}
 	.divedit { display:block;}
 
-
+.print-value { display: none; }
 
 	  /* All your print styles go here */
 	  @media print { 
+
+#locationandtime input { display: none; } #locationandtime .print-value { display: inline-block; }
+
+		  
 		  input:autofill {
 			  -webkit-box-shadow: 0 0 0px 1000px white inset;
 			}
@@ -590,9 +934,12 @@ color: rgba(255,255,255,0.5);
 		 .tooltip { display: none; }
 		 .noPrint {display:none}
 		 .list-group-item, .list-group-item.active {border:0px; border-bottom:1px solid black; margin:2px; background:#FFFFFF; border-radius:0px !important; color:#000}
+
+		
+		
 		.top {padding-bottom:20px;}
 	  	.displayTab {height:inherit !important; }
-	  	.leftTab {height:inherit !important; }
+	  	.interface-left, .resize {display:none;}
 		.buttons {display:none !important;}
 		.interface-right, .interface-left {height:inherit; vertical-align:top; }
 		.contentright, .contentleft {height:inherit;}
@@ -612,7 +959,16 @@ color: rgba(255,255,255,0.5);
 		#listepresence:not(:has(.divedit:not(:empty))) {display:none}
 		.page:has(#listepresence):not(:has(.divedit:not(:empty))) {display:none}
 		#menu {display:none}
-		
+		  	.content h4, .note-editable h4 {font-size:inherit; background:rgba(0,255,0,0.3) !important; padding:5px;padding-left:20px;    padding-left: 35px;
+    background-image: url(img/thumb-up.png) !important;
+    background-size: 21px !important;
+    background-repeat: no-repeat !important;
+    background-position: 8px !important;}
+	.content h5, .note-editable h5 {font-size:inherit; background:rgba(255,255,0,0.3) !important; padding:5px;padding-left:20px;    padding-left: 35px;
+    background-image: url(img/clipboard.png) !important;
+    background-size: 21px !important;
+    background-repeat: no-repeat !important;
+    background-position: 8px !important;}		
 	}
 	</style>
 	</head>
@@ -637,9 +993,13 @@ color: rgba(255,255,255,0.5);
 		<table class='displayTab' cellspacing=0 cellpadding=0><tr><td  class='interface-top' colspan=4>
 			<!-- <button id="save" style='float:right'>Sauver</button>
 			<button id="load" style='float:right'>Charger</button> -->
+			<input type='text' id='id' value='' required pattern="[0-9]{1,}">
+			<input type='text' id='saved' value='' required pattern="[0-9]{1,}">
 			<input autocomplete="off" id='title' class='mainTitle liketext' placeholder='<?=T_("Titre de la réunion",true);?>'></input><br>
-			<input autocomplete="off" id='location' class='horaires liketext' placeholder='<?=T_("Lieu, date et horaires",true);?>'></input>
-		
+			<div id='locationandtime'>
+			<input autocomplete="off" id='location' class=' liketext' placeholder='<?=T_("Lieu",true);?>'></input>, <input type='date' autocomplete="off" id='dateevent' class=' liketext' placeholder='<?=T_("date",true);?>'></input>, <input type='time' autocomplete="off" id='starttime' class=' liketext' placeholder='<?=T_("heure de début",true);?>'></input>
+			à <input type='time' autocomplete="off" id='endtime' class=' liketext' placeholder='<?=T_("heure de fin",true);?>'></input>
+			</div>
 		</td></tr>
 		<tr><td class='interface-left'><div class='contentleft'>
 			<table class='leftTab' cellspacing=0 cellpadding=0><tr><td class='odj'>
@@ -653,19 +1013,20 @@ color: rgba(255,255,255,0.5);
 			</span></div>
 			</td></tr><tr><td style='height:100%; position: relative;vertical-align:top'><div class='screenOJ'>
 			<ul id="sortable" class="tension-sortable list-group">
-			  <li id='menu_1' class="list-group-item active ui-icon ui-icon-arrowthick-2-n-s" data="1"><table cellspacing=0 cellpadding=0 style='width:100%;'><tr><td><input type='checkbox' tabindex='-1' id='cb_1' class='cb'></td><td style='width:100%'><input autocomplete="off" id='tension_1' class='liketext tension' style='width:100%' placeholder='Description brève'></td></tr><tr><td></td><td><input autocomplete="off" id='qui_1' class='liketext' style='width:60%;font-size:70%' placeholder='Qui'><input autocomplete="off" id='duree_1' class='liketext duration' style='width:30%;font-size:70%;text-align:right' placeholder='Durée'></td></tr></table></li>
+			  <li id='menu_1' class="list-group-item active ui-icon ui-icon-arrowthick-2-n-s" data="1"><table cellspacing=0 cellpadding=0 style='width:100%;'><tr><td><input type='checkbox' tabindex='-1' id='cb_1' class='cb'></td><td style='width:100%; padding-right:20px;'><input id='type_1' class='type' value=''><input autocomplete="off" id='tension_1' class='liketext tension' style='width:100%' placeholder='Description brève'></td></tr><tr><td></td><td><input autocomplete="off" id='qui_1' class='liketext' style='width:60%;font-size:70%' placeholder='Qui'><input type='hidden' id='realduree_1'><input autocomplete="off" id='duree_1' class='liketext duration' style='width:30%;font-size:70%;text-align:right' placeholder='Durée'></td></tr></table></li>
 
 
 			</ul>
 		
 			</div>
-			</td></tr><tr><td style='background:#eee' class='noPrint'>
-			<div id='time_graph'><svg style='float:right; margin:5px;' height="55" width="55" viewBox="0 0 20 20">
-			  <circle r="10" cx="10" cy="10" fill="white" />
+			</td></tr><tr><td style='background:#eee; padding:10px; font-size:90%' class='noPrint'>
+			<div id='time_graph'><svg id="pieChart" style="float:right;" height="55" width="55" viewBox="0 0 55 55">
+			  <circle r="27" cx="28" cy="28" fill="white" />
 			</svg></div>
-			<?=T_("Durée totale");?> : <span id='totalTime'></span><br>
-			<?=T_("Durée restante");?> : <span id='restTime'></span><br>
-			<?=T_("Heure de fin");?> : <span id='finalTime'></span><br>
+			<?=T_("Durée totale");?> : <span id='totalTime'></span>'<br>
+			<?=T_("Durée restante");?> : <span id='restTime'></span>'<br>
+			<?=T_("Heure de fin");?> : <span id='finalTime'></span><span id='toMuchTime2' style='font-weight:bold; color:red'></span><br>
+
 
 			</td></tr></table>
 		</div></td><td class='resize'><div id='resizeelem'></div></td><td class='interface-right'><div id='contentright' class='contentright'>
@@ -713,6 +1074,14 @@ color: rgba(255,255,255,0.5);
 		//<!-- bouton pour un nouveau fichier -->
 		echo "<img src='img/newfile.png' class='imgbutton' id='btn_new' data-toggle='tooltip' data-placement='left' title='".T_('Nouveau document',true)."'>";
 
+		//<!-- bouton pour sauver -->
+		if ($connected)
+		echo "<img src='img/save-file.png' class='imgbutton' id='btn_save' data-toggle='tooltip' data-placement='left' title='".T_('Enregistrer le document',true)."'>";
+
+		//<!-- bouton pour charger -->
+		if ($connected)
+		echo "<img src='img/up-arrow.png' class='imgbutton' id='btn_load' data-toggle='tooltip' data-placement='left' title='".T_('Charger un document',true)."'>";
+
 		//<!-- bouton pour imprimer -->
 		echo "<img src='img/printing.png' onclick='window.print();' class='imgbutton' id='btn_print' data-toggle='tooltip' data-placement='left' title='".T_('Imprimer',true)."'>";
 
@@ -737,12 +1106,40 @@ color: rgba(255,255,255,0.5);
 		<div id='popupbackground'></div>
 		<div id='popup'><div id='popup_content'></div><div id='popup_close'><button><img src='/img/icon_close.png'><?=T_("Fermer");?></button></div></div>
 
-<script type="text/javascript">
-var _iub = _iub || [];
-_iub.csConfiguration = {"askConsentAtCookiePolicyUpdate":true,"enableFadp":true,"fadpApplies":true,"floatingPreferencesButtonDisplay":"bottom-right","lang":"fr","perPurposeConsent":true,"siteId":3500961,"whitelabel":false,"cookiePolicyId":75698617, "banner":{ "acceptButtonDisplay":true,"closeButtonDisplay":false,"customizeButtonDisplay":true,"explicitWithdrawal":true,"listPurposes":true,"position":"bottom","rejectButtonDisplay":true,"showTitle":false }};
-</script>
-<script type="text/javascript" src="https://cs.iubenda.com/autoblocking/3500961.js"></script>
-<script type="text/javascript" src="//cdn.iubenda.com/cs/iubenda_cs.js" charset="UTF-8" async></script>
-	
+
 	</body>
 </html>
+<script>
+	
+	
+function updatePrintValue(input) { let value = input.val(); if (input.attr('type') === 'date') { value = formatDate(value); } input.next('.print-value').text(value); } function formatDate(date) { const options = { year: 'numeric', month: 'long', day: 'numeric' }; return new Date(date).toLocaleDateString('fr-FR', options); } // Fonction pour mettre à jour les champs par script function updateInputValue(selector, value) { $(selector).val(value).trigger('input'); }	
+	
+$(function() {
+	
+$('input').each(function() 
+{ $(this).after('<span class="print-value"></span>'); updatePrintValue($(this)); }).on('input change', function() { updatePrintValue($(this)); });	
+	
+	
+	
+// Champ de saisie autoresize
+$.fn.textWidth = function(_text, _font){//get width of text with font.  usage: $("div").textWidth();
+        var fakeEl = $('<span>').hide().appendTo(document.body).text(_text || this.val() || this.attr("placeholder") || this.text()).css('font', _font || this.css('font')),
+            width = fakeEl.width();
+        fakeEl.remove();
+        return width;
+    };
+
+$.fn.autoresize = function(options){//resizes elements based on content size.  usage: $('input').autoresize({padding:10,minWidth:0,maxWidth:100});
+  options = $.extend({padding:10,minWidth:0,maxWidth:10000}, options||{});
+  $(this).on('input', function() {
+    $(this).css('width', Math.min(options.maxWidth,Math.max(options.minWidth,$(this).textWidth() + options.padding)));
+  }).trigger('input');
+  return this;
+}
+
+$("#location").autoresize({padding:5,minWidth:0,maxWidth:600});
+});
+
+ 
+
+</script>

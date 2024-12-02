@@ -51,7 +51,7 @@
 				$txt="<select class='".$class."' name='".$key."' id='".$key."' ><option value=''>Choisissez...</option>";
 				// Charge les valeurs et les affiche
 				foreach($object->getValues($key) as $value) {
-					$txt.="<option value='".$value->getId()."'".($default==$value->getId() || (is_null($default) && $value->getId()==$object->get($key))?" selected":"").">".$value->getLabel()."</option>";
+					$txt.="<option value='".$value->getId()."'".($default==$value->getId() || ($default=="" && $value->getId()==$object->get($key))?" selected":"").">".$value->getLabel()."</option>";
 				}
 				$txt.="</select>";
 				return $txt;

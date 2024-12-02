@@ -17,7 +17,7 @@
 				[['id'], 'integer'],							// Nombres entiers
 				[['username','email','firstname','lastname','code'], 'string'],			// Chaînes de caractère (max 250)
 				[['password'], 'password'],						// Chaînes de caractère (max 250)
-				[['parameters'], 'parameters'],						// Textes libres
+				[['parameters','param_easypv','param_easymemo','param_easycircle'], 'parameters'],						// Textes libres
 				[['datecreation','dateconnexion','codeexpiration'], 'datetime'],	// Date avec précision des heures
 				[['active'], 'boolean'],						// Date avec précision des heures
 				[['id','password','email','code','datecreation','dateconnexion','codeexpiration'], 'safe'],			// Champs protégés (n'apparaîssent pas dans les formulaires)
@@ -51,9 +51,9 @@
 		// Défini les informations de taille pour le champ
 		public static function attributeLength() {
 			return [
-				'username' => 15,										// Nombre de caractères maximum
-				'firstname' => 20,										// Nombre de caractères maximum
-				'lastname' => 20,										// Nombre de caractères maximum
+				'username' => 30,										// Nombre de caractères maximum
+				'firstname' => 25,										// Nombre de caractères maximum
+				'lastname' => 25,										// Nombre de caractères maximum
 				'email' => 30										// Nombre de caractères maximum
 			];
 		}			
@@ -77,6 +77,17 @@
 			return false;
 			
 		}
+		
+		// Retourne l'ensemble des médias attachés à un document
+		public function getPrompt() {
+			$prompts=new \dbobject\ArrayAIPrompt();
+			$params= array();	
+			$params["filter"] = "IDuser=".$this->get("id")." or ispublic=1";
+			$prompts->load($params);
+			return $prompts;			
+		}
+		
+		
 		
 	}
 	

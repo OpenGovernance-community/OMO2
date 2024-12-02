@@ -1,60 +1,60 @@
 {
  "name": "Instant Z",
   "ID": "0",
-  "type": "circle",
+  "type": "4",
  "children": [
   {"name": "Suisse",
    "ID": "1",
-   "type": "circle",
+   "type": "2",
    "children": [
-        {"name": "Trésorerie", "ID": "3", "size":10},
-        {"name": "Accompagnment", "ID": "4", "size":10},
-        {"name": "Juridique", "ID": "5", "size":10},
+        {"name": "Trésorerie", "ID": "3", "size":10,"type": "1"},
+        {"name": "Accompagnment", "ID": "4", "size":10,"type": "1"},
+        {"name": "Juridique", "ID": "5", "size":10,"type": "1"},
         {"name": "Clients",
    "ID": "40",
-   "type": "group",
+   "type": "3",
    "children": [
-       {"name": "Formation", "ID": "6", "size":10},
-        {"name": "Communication locale", "ID": "7", "size":10},
-        {"name": "Animations", "ID": "8", "size":10}
+       {"name": "Formation", "ID": "6", "size":10,"type": "1"},
+        {"name": "Communication locale", "ID": "7", "size":10,"type": "1"},
+        {"name": "Animations", "ID": "8", "size":10,"type": "1"}
 
 		]},
-        {"name": "Evenements", "ID": "9", "size":10}
+        {"name": "Evenements", "ID": "9", "size":10,"type": "1"}
 		]
 	},
 	{"name": "France",
     "ID": "2",
-    "type": "circle",
+    "type": "2",
    "children": [
-        {"name": "Agents and business", "ID": "10", "size":10},
-        {"name": "Buyers", "ID": "11", "size":10},
-        {"name": "Wholesale and retail ", "ID": "12", "size":10,"type":"template", "mycolor":"#F00"},
-        {"name": "Purchasing agents,", "ID": "13","type":"template",  "size":10},
-        {"name": "Claims adjusters", "ID": "14", "size":10},
-        {"name": "Compliance officers", "ID": "15", "size":10},
-        {"name": "Cost estimators", "ID": "16", "size":10},
-        {"name": "Human resources workers", "ID": "17", "size":10},
-        {"name": "Financial specialists, all other", "ID": "18", "size":10}
+        {"name": "Agents and business", "ID": "10", "size":10,"type": "1"},
+        {"name": "Buyers", "ID": "11", "size":10,"type": "1"},
+        {"name": "Wholesale and retail ", "ID": "12", "size":10,"type":"template", "mycolor":"#F00","type": "1"},
+        {"name": "Purchasing agents,", "ID": "13","type":"template",  "size":10,"type": "1"},
+        {"name": "Claims adjusters", "ID": "14", "size":10,"type": "1"},
+        {"name": "Compliance officers", "ID": "15", "size":10,"type": "1"},
+        {"name": "Cost estimators", "ID": "16", "size":10,"type": "1"},
+        {"name": "Human resources workers", "ID": "17", "size":10,"type": "1"},
+        {"name": "Financial specialists, all other", "ID": "18", "size":10,"type": "1"}
 		]
 	},
 	{"name": "Finances",
 	"ID": "31",
-	"type": "group",
+	"type": "3",
    "children": [
-		{"name": "Agents and business ", "ID": "19", "size":10},
-		{"name": "Buyers and purchasing", "ID": "20", "size":10},
-		{"name": "Wholesale and retail", "ID": "21", "size":10},
-		{"name": "Purchasing agents", "ID": "22", "size":10},
-		{"name": "Claims adjusters", "ID": "23", "size":10}
+		{"name": "Agents and business ", "ID": "19", "size":10,"type": "1"},
+		{"name": "Buyers and purchasing", "ID": "20", "size":10,"type": "1"},
+		{"name": "Wholesale and retail", "ID": "21", "size":10,"type": "1"},
+		{"name": "Purchasing agents", "ID": "22", "size":10,"type": "1"},
+		{"name": "Claims adjusters", "ID": "23", "size":10,"type": "1"}
 		]
 	},
-	{"name": "Compliance officers", "ID": "24", "size":10},
-	{"name": "Cost estimators", "ID": "25", "size":10},
-	{"name": "Human resources workers", "ID": "26", "size":10},
-	{"name": "Compensation", "ID": "27", "size":10},
-	{"name": "Training", "ID": "28", "size":10},
-	{"name": "Logisticians", "ID": "29", "size":10},
-	{"name": "Management analysts", "ID": "30", "size":10}
+	{"name": "Compliance officers", "ID": "24", "size":10,"type": "1"},
+	{"name": "Cost estimators", "ID": "25", "size":10,"type": "1"},
+	{"name": "Human resources workers", "ID": "26", "size":10,"type": "1"},
+	{"name": "Compensation", "ID": "27", "size":10,"type": "1"},
+	{"name": "Training", "ID": "28", "size":10,"type": "1"},
+	{"name": "Logisticians", "ID": "29", "size":10,"type": "1"},
+	{"name": "Management analysts", "ID": "30","type": "1", "size":10}
 	]
 }
  

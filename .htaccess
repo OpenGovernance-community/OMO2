@@ -12,7 +12,14 @@ RewriteRule ^memo/([0-9]+)/?$ /memo.php?id=$1 [QSA,L]
 RewriteRule ^memo/([0-9]+)/([0-9a-f]+)/?$ /memo.php?id=$1&pwd=$2 [QSA,L]
 
 RewriteRule ^circle$ /circle.php [L]
-RewriteRule ^circle/([0-9]+)/?$ /circle.php?id=$1 [QSA,L]
+RewriteRule ^circle/$ /circle.php [L]
+RewriteRule ^circle/public/([0-9A-Za-z]+)/?$ /circle.php?view=$1 [QSA,L]
 
 RewriteRule ^pv$ /pv.php [L]
 RewriteRule ^pv/([0-9]+)/?$ /pv.php?id=$1 [QSA,L]
+
+RewriteRule ^qr$ /qr.php [L]
+RewriteRule ^qr/([0-9A-Za-z]+)/?$ /qr.php?id=$1 [QSA,L]
+RewriteRule ^qr/([0-9]+)/([0-9A-Za-z_\-]+)/?$ /qr.php?uid=$1&id=$2 [QSA,L]
+RewriteRule ^qr/image/([0-9A-Za-z]+)/?$ /qr.php?output=image&id=$1 [QSA,L]
+RewriteRule ^qr/image/([0-9]+)/([0-9A-Za-z_\-]+)/?$ /qr.php?output=image&uid=$1&id=$2 [QSA,L]

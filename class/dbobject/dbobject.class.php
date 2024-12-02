@@ -864,6 +864,10 @@
 		}
 		
 		// Charge un objet à partir de son id ou d'un tableau de paramètres
+		// Exemple d'utilisation:
+		// $obj=new \dbObject\monObjet();
+		// $obj->load(5); // ID
+		// $obj->load(['key','yopla'])  // Autre paramètre
 		function load($id, $forced=false) {
 			$this->_loaded=true; 
 			if (is_numeric($id)) {
@@ -881,7 +885,9 @@
 						$propertyName = $property->getName();
 						if (property_exists($preloadData, $propertyName)) {
 							// Copiez la propriété depuis $preloadData vers $this
-							$this->$propertyName = $preloadData->$propertyName;
+							
+							@$this->$propertyName = $preloadData->$propertyName;
+							
 						}
 					}
 
@@ -974,13 +980,28 @@
 		public function canEdit() 
 		{
 			// Edition limitée aux personnes connectées, auteur de l'enregistrement
-			return (isset($_SESSION["currentUser"]) && $this->get("IDuser")>0 && $this->get("IDuser")==$_SESSION["currentUser"]);
+			//return (isset($_SESSION["currentUser"]) && $this->get("IDuser")>0 && $this->get("IDuser")==$_SESSION["currentUser"]);
 		}
 		
 		public function canView() 
 		{
 			// Affichage limité aux personnes connectées, auteur de l'enregistrement
-			return (isset($_SESSION["currentUser"]) && $this->get("IDuser")>0 && $this->get("IDuser")==$_SESSION["currentUser"]);
+			//return (isset($_SESSION["currentUser"]) && $this->get("IDuser")>0 && $this->get("IDuser")==$_SESSION["currentUser"]);
+		}
+		
+		protected function getToken($length)
+		{
+			$token = "";
+			$codeAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+			$codeAlphabet.= "0123456789";
+			$codeAlphabet.= "";
+			$max = strlen($codeAlphabet); // edited
+
+			for ($i=0; $i < $length; $i++) {
+				$token .= $codeAlphabet[rand(0, $max-1)];
+			}
+
+			return $token;
 		}
 		
 	}

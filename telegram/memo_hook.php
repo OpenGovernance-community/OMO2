@@ -103,6 +103,7 @@
 		
 		// Quitte la traduction si inactif (à transformer en fonction du profil)
 		$data=loadLocalSession($update['message']['from']['id']);
+		// Vérifie la validité du compte (selon statut dans les données stockées)
 		if (isset($data->active) && !$data->active)
 			exit;
 	
@@ -146,7 +147,7 @@
 				'Authorization: Bearer ' . OpenAI,
 			];
 
-			// Create a CURLFile object / preparing the image for upload
+			// Create a CURLFile object / preparing the sound file for upload
 			$cfile = new CURLFile($temp_file_path);
 			$cfile->setMimeType("audio/ogg");
 			$cfile->setPostFilename("audio.ogg");
@@ -209,7 +210,7 @@
 			$title=$readable->titre;
 			$resume=$readable->resume;
 			$content=$readable->contenu;
-			$hash="#".implode(" #",$readable->hashtag);
+			$hash = "#" . implode(" #", array_map(function($tag) {return str_replace(' ', '_', trim($tag)); }, $readable->hashtag));
 			$dataerr->title=$title;
 			$dataerr->resume=$resume;
 			$dataerr->content=$content;
@@ -219,9 +220,9 @@
 			// *****************************************
 			// Enregistre le memo dans la base de donnée
 			// *****************************************
-			// Rafraichi la connexion
-			$user->refreshDbh();
+			// Rafraichi la connexion, car potentiellement perdu au regard du temps de traitement
 			if ($user->getId()>0) {
+				$user->refreshDbh();
 				try {
 
 				// Crée un document et le rattache à cet utilisateur
@@ -230,6 +231,7 @@
 				$doc->set("title",$title);
 				$doc->set("description",$resume);
 				$doc->set("content",$content);
+				$doc->set("keywords",$hash);
 				$doc->set("IDuser",$user->getId());
 
 				
@@ -293,8 +295,20 @@
 
 		// COMMANDE : Connecter l'utilisateur à un compte SD2
 		if(preg_match('/^\/connect/', $update['message']['text'])) {
-			// Si non, envoie les infos et les instructuions
-			sendMessage($update['message']['chat']['id'], "Pour connecter ce groupe à un projet, éditer les propriétés du projet avec les informations suivantes:\n\nChat ID: ".$update['message']['chat']['id'].", Group: ".$update['message']['message_thread_id'],null,$update['message']['message_thread_id']);
+			
+			// Est-ce un canal direct avec le BOT, ou un groupe avec BOT partagé?
+			if ($update['message']['chat']['id'] == $update['message']['from']['id']) {
+				// Est-ce que l'utilisateur est déjà connecté?
+				if (isset($user) && $user->getId()>0)
+					sendMessage($update['message']['chat']['id'], "Vous êtes déjà connecté avec le compte de ".$user->get("username"));
+				else
+					sendMessage($update['message']['chat']['id'], "Pour connecter EasyMEMO à votre compte Telegram, éditez les paramètres de votre compte avec la valeur suivante pour le champ TelegramID: ".$update['message']['chat']['id']);
+
+			} else {
+
+				// Si non, envoie les infos et les instructuions
+				sendMessage($update['message']['chat']['id'], "Pour connecter ce groupe à un projet, éditer les propriétés du projet avec les informations suivantes:\n\nChat ID: ".$update['message']['chat']['id'].", Group: ".$update['message']['message_thread_id'],null,$update['message']['message_thread_id']);
+			}
 		}
 		else 
 		

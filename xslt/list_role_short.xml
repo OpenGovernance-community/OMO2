@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+    <xsl:template match="/">
+        <html>
+            <body>
+                
+
+                    <xsl:apply-templates select="root" />
+
+            </body>
+        </html>
+    </xsl:template>
+    
+    <xsl:template match="*">
+    <!-- Ne rien faire -->
+	</xsl:template>
+    
+	<xsl:include href="/xslt/format_node.php" />
+    
+       <!-- Template pour <data> -->
+    <xsl:template match="data">
+        <div class="data">
+				<xsl:apply-templates />
+				
+        </div>
+    </xsl:template>
+
+   <xsl:template name="replace-newline">
+        <xsl:param name="text" />
+
+        <!-- Vérifie s'il reste un saut de ligne -->
+        <xsl:choose>
+            <xsl:when test="contains($text, '&#10;')">
+                <!-- Partie avant le saut de ligne -->
+                <xsl:value-of select="substring-before($text, '&#10;')" />
+                <br />
+                <!-- Appel récursif pour traiter le reste -->
+                <xsl:call-template name="replace-newline">
+                    <xsl:with-param name="text" select="substring-after($text, '&#10;')" />
+                </xsl:call-template>
+            </xsl:when>
+            <xsl:otherwise>
+                <!-- Si aucun saut de ligne, affiche le texte restant -->
+                <xsl:value-of select="$text" />
+            </xsl:otherwise>
+        </xsl:choose>
+    </xsl:template>
+    
+    <xsl:template match="root">
+		<xsl:apply-templates select="data" />
+      
+       <ul class='detail_list_role'>
+            <xsl:apply-templates select="children[type='1']" />
+            <xsl:apply-templates select="children[type='3']" ><xsl:with-param name="elem" select="'1'" /></xsl:apply-templates>
+        </ul>
+        <ul class='detail_list_circle'>
+            <xsl:apply-templates select="children[type='2']" />
+             <xsl:apply-templates select="children[type='3']" ><xsl:with-param name="elem" select="'2'" /></xsl:apply-templates>
+       </ul>
+    </xsl:template> 
+
+    <xsl:template match="children[type='3']">
+		<xsl:param name="elem" select="'all'" />
+		<span class='detail_list_group'>
+			<xsl:attribute name="title">
+                    <xsl:value-of select="name" />
+					</xsl:attribute>
+		  <xsl:if test="$elem = '1'">
+			<xsl:apply-templates select="children[type='1']" />
+            <xsl:apply-templates select="children[type='3']" ><xsl:with-param name="elem" select="'1'" /></xsl:apply-templates>
+ 		 </xsl:if>
+		  <xsl:if test="$elem = '2'">
+			<xsl:apply-templates select="children[type='2']" />
+            <xsl:apply-templates select="children[type='3']" ><xsl:with-param name="elem" select="'2'" /></xsl:apply-templates>
+ 		 </xsl:if>
+		  <xsl:if test="$elem = 'all'">
+			<xsl:apply-templates select="children[type='1']" />
+            <xsl:apply-templates select="children[type='3']" ><xsl:with-param name="elem" select="'1'" /></xsl:apply-templates>
+			<xsl:apply-templates select="children[type='2']" />
+            <xsl:apply-templates select="children[type='3']" ><xsl:with-param name="elem" select="'2'" /></xsl:apply-templates>
+ 		 </xsl:if>
+ 		 </span>
+
+	</xsl:template> 
+
+     
+     <xsl:template match="children[type='2']">
+        <li >
+			<xsl:attribute name="class">
+                    node_<xsl:value-of select="ID" />
+			</xsl:attribute>
+            <span class='navTo'><xsl:attribute name="data-src">
+                    <xsl:value-of select="ID" />
+					</xsl:attribute>
+					<xsl:value-of select="name" />
+                
+                </span>
+       </li>
+    </xsl:template>
+
+     <xsl:template match="children[type='1']">
+        <li >
+			<xsl:attribute name="class">
+                    node_<xsl:value-of select="ID" />
+			</xsl:attribute>
+            <span class='navTo'><xsl:attribute name="data-src">
+                    <xsl:value-of select="ID" />
+					</xsl:attribute>
+					<xsl:value-of select="name" />
+                
+                </span>
+       </li>
+    </xsl:template>
+</xsl:stylesheet>

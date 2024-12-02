@@ -15,7 +15,7 @@
 			return [
 				[['title'], 'required'],						// Champs obligatoires
 				[['id','version'], 'integer'],							// Nombres entiers
-				[['title','codeview','codeedit'], 'string'],							// Chaînes de caractère (max 250)
+				[['title','codeview','codeedit','keywords'], 'string'],							// Chaînes de caractère (max 250)
 				[['description','content'], 'text'],			// Textes libres
 				[['datecreation','datemodification'], 'datetime'],	// Date avec précision des heures
 				[['IDuser'], 'fk'],									// Clé étrangères
@@ -31,6 +31,7 @@
 				'title' => 'Titre',
 				'description' => 'Résumé',
 				'content' => 'Contenu',
+				'keywords' => 'Mots clés',
 				'IDuser' => 'Auteur',
 				'datecreation' => 'Date de création',
 				'datemodification' => 'Date de modification',
@@ -66,6 +67,14 @@
 		// Retourne l'ensemble des médias attachés à un document
 		public function getMedias() {
 			$medias=new \dbobject\ArrayMedia();
+			$params= array();	
+			$params["filter"] = "IDdocument=".$this->get("id");
+			$medias->load($params);
+			return $medias;			
+		}
+		// Retourne l'ensemble des médias attachés à un document
+		public function getAltText() {
+			$medias=new \dbobject\ArrayAltText();
 			$params= array();	
 			$params["filter"] = "IDdocument=".$this->get("id");
 			$medias->load($params);

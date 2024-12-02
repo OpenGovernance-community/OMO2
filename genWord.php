@@ -8,24 +8,31 @@
 	//$docx = new CreateDocx();
 	$docx = new CreateDocxFromTemplate('template.docx');
 	if (isset($_POST["data"])) {
-		$style="<style>h1 {font-size:".($_POST["fontsize"]*1.5)."pt;} h2 {font-size:".($_POST["fontsize"]*1.3)."pt;} h3 {font-size:".($_POST["fontsize"]*1.1)."pt;} h4,h5 {margin-left:30px;margin-right:30px; font-size:".($_POST["fontsize"])."pt; font-weight:normal} p {font-size:".($_POST["fontsize"])."pt;  margin-bottom:".($_POST["fontsize"])."pt;} li {font-size:".($_POST["fontsize"])."pt;}</style>";
+		//$style="<style>h1 {font-size:".($_POST["fontsize"]*1.5)."pt;} h2 {font-size:".($_POST["fontsize"]*1.3)."pt;} h3 {font-size:".($_POST["fontsize"]*1.1)."pt;} h4,h5 {margin-left:30px;margin-right:30px; font-size:".($_POST["fontsize"])."pt; font-weight:normal} p {font-size:".($_POST["fontsize"])."pt;  margin-bottom:".($_POST["fontsize"])."pt;} li {font-size:".($_POST["fontsize"])."pt;}</style>";
+		$style="<style>h1, h2, h3 {font-weight:normal;}</style>";
 		$data=json_decode($_POST["data"],true);
 		if (isset($data["oj"]) && isset($data["oj"][0])) {
-			// Le titre
-			$docx->replaceVariableByHTML('TITLE', 'block',$style."<h1>".$data["title"]."</h1>", array('wordStyles' => array('<h4>' => 'Heading4','<h5>' => 'Heading5','<h6>' => 'Heading6',)));
-			//Le lieu
-			$docx->replaceVariableByHTML('LOCATION', 'block',$style."<h2>".$data["location"]."</h2>", array('wordStyles' => array('<h4>' => 'Heading4','<h5>' => 'Heading5','<h6>' => 'Heading6',)));
+			$variables = array('TITLE' => $data["title"], 'LOCATION' => $data["location"].", ".$data["dateevent"].", ".$data["starttime"]."-".$data["endtime"]);
+
+			$options = array('parseLineBreaks' => true);
+			$docx->replaceVariableByText($variables, $options);
+
 
 			// le contenu
 			$allcontent="";
 			foreach ($data["oj"] as $elem) {
-				// Concatène le contenu
-				$allcontent.=$elem["content"];
+				
+				// Ajoute le titre du point et son auteur
+				if ($elem["content"]!="") {
+					$allcontent.="<h1>".($elem["who"]!=""?$elem["who"]." - ":"")."<b>".$elem["title"].(max($elem["duration"],$elem["realduration"])>0?" (".max($elem["duration"],$elem["realduration"])."')":"")."</b></h1>";
+					// Concatène le contenu
+					$allcontent.=$elem["content"]."<br/><hr>";
+				}
 				
 				// Concatène l'ordre du jour
 			}
 			
-			$docx->replaceVariableByHTML('CONTENT', 'block',$style.$allcontent, array('wordStyles' => array('<h4>' => 'Heading4','<h5>' => 'Heading5','<h6>' => 'Heading6',)));
+			$docx->replaceVariableByHTML('CONTENT', 'block',$style.$allcontent, array('addDefaultStyles' => false, 'wordStyles' => array( 'pStyle' => 'Normal','<h1>' => 'Heading1','<h2>' => 'Heading2','<h3>' => 'Heading3','<h4>' => 'Heading4','<h5>' => 'Heading5','<h6>' => 'Heading6','bold' => false ), 'numId' => 0));
 
 			
 			
