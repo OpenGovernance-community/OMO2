@@ -46,6 +46,13 @@
 			return "datecreation";
 		}
 		
+		public function canEdit() 
+		{
+			// Edition limitée aux personnes connectées, auteur de l'enregistrement
+			return (isset($_SESSION["currentUser"]) && $this->get("IDuser")>0 && $this->get("IDuser")==$_SESSION["currentUser"]);
+			
+		}
+		
 		// Overload de la fonction save, pour ajouter la création d'un champ particulier. Sinon, pas besoin de cette fonction.
 		function save() {
 			// S'assure d'avoir un user associé

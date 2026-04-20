@@ -1,15 +1,32 @@
-<?
-	require_once("config.php");
-	require_once("shared_functions.php");
-	
-	// Initialise le login
-	$connected=checklogin();
+<?php
+
+	$routes = [
+		'admin'   => '/admin/index.php',
+		'demo'    => '/omo/index.php',
+	];
+
+	$host = strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
+	$host = preg_replace('/:\d+$/', '', $host);
+	$parts = array_values(array_filter(explode('.', $host)));
+	$subdomain = $parts[0] ?? '';
+	$isLocalhostSubdomain = count($parts) === 2 && ($parts[1] ?? '') === 'localhost';
+
+	if (isset($routes[$subdomain])) {
+		require __DIR__ . $routes[$subdomain];
+		exit;
+	} else {
+		if (count($parts) > 2 || $isLocalhostSubdomain) {
+			require __DIR__ . "/lms/index.php";
+			exit;
+		}
+	}
 ?>
-<html>
-	<head>
-		<title>EasyPV - <?=T_("Facilitez-vous la prise de notes !");?>?></title>
-		<meta charset="utf-8">
-		
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<title>OpenGov.tools - Des outils pour soutenir une collaboration efficace et humaniste</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 		<!-- JQuery et jquery UI -->
 		<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
 		<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
@@ -23,760 +40,465 @@
 		<!-- Bootstrap (for html editor) Summernote-->
 		<link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet">
 		<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.bundle.min.js"></script>
+<script>
+	$(window).on("scroll", function () {
+		$("#bkg_illustration").css('top', -$(window).scrollTop()/2);
+	});
+	$(function() {
+		var $root = $('html, body');
 
-		<!-- include summernote css/js -->
-		<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote.min.css" rel="stylesheet">
-		<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote.min.js"></script>
-	
-		<!-- Fonctions partagées entre plusieurs pages -->
-		<script src="shared_functions.js"></script>
-		<link href="shared_css.css" rel="stylesheet">
-		
-		<!-- Script Paypal -->
-		<script src="https://www.paypal.com/sdk/js?client-id=AYZnt2y7GXObIwaEE4lE00M5aqQbPnZo2ghT8323MbwnHI9dxGtLLVAQ4LLNVZnPbr9usFpnpra-lvSL&vault=true&intent=subscription" data-sdk-integration-source="button-factory" data-namespace="paypal_sdk"></script>
-		<script src="https://www.paypalobjects.com/donate/sdk/donate-sdk.js" charset="UTF-8"></script>
-		
-		<!-- Script spécifique à la page -->
-		<script>
-			// Fonctions appelées après le chargement complet de la page
-			$(function() {
-				
-				// ***********************************
-				// Page de droite
-				// ***********************************
-				
-				// Sélection des pages
-				$("body").delegate(".page:not(.selected)","click", function() {
-					$(".page").removeClass("selected");
-					$(".list-group-item").removeClass("active");
-					$("#menu_"+$(this).attr("data")).click();
-				});
-				
-				// Edition sur double click
-				$("body").delegate(".note-editor","dblclick", function(e) {
-					// évite que le double-click dans l'éditeur soit mal interprété
-					e.stopPropagation();
-				});
-				$("body").delegate(".page","dblclick",function () {
-					if ($(".note-editor").length>0) {
-						alert ("<?=T_("Veuillez préalablement fermer l'éditeur déjà ouvert.",true);?>")
-						$(".note-editor").focus();
-					} else {
-						$(this).find(".content").summernote({focus: true, toolbar: mytoolbar, styleTags: mystyles});
-						// Cache le bouton edit et affiche le bouton sauver
-						$(this).find("button.save").css("display","");
-						$(this).find("button.cancel").css("display","");
-						$(this).find("button.edit").css("display","none");
-						$(this).find("button.delete").css("display","none");
-					}
-				});
-				
-				// ************ Boutons *******************
-				
-				// Supprimer une page
-				$("body").delegate(".delete","click",function () {
-					index=$(this).parents(".page").attr("data");
-					txt=$("#tension_"+index).val();
-					if (confirm("<?=T_("Êtes-vous sûr de vouloir supprimer le point",true);?> \""+(txt!=""?txt:"sans titre")+"\" ?\n\n<?=T_("Le contenu sera définitivement perdu.",true)?>")) {
-						// Supprime les blocs (sortable et pv)
-						$("#page_"+index).remove();
-						$("#menu_"+index).remove();
-						save();
-					}
-				});	
-				
-				// Editer une page, ouvre l'éditeur
-				$("body").delegate(".edit","click",function () {
-					// S'assure qu'aucun autre éditeur est déjà ouvert
-					if ($(".note-editor").length>0) {
-						alert ("<?=T_("Veuillez préalablement fermer l'éditeur déjà ouvert.")?>")
-						$(".note-editor").focus();
-					} else {
+		$('a[href^="#"]').click(function() {
+			var href = $.attr(this, 'href');
 
-						$(this).parent().next().summernote({focus: true, toolbar: mytoolbar, styleTags: mystyles});
-						// Cache le bouton edit et affiche le bouton sauver
-						$(this).parent().find("button.save").css("display","");
-						$(this).parent().find("button.cancel").css("display","");
-						$(this).css("display","none");
-						$(this).parent().find("button.delete").css("display","none");
-					}
-					
-				});
-				
-				// Sauve le contenu de la page
-				$("body").delegate(".save","click",function (){
-					// Récupère le code HTML
-					  var markup = $(this).parent().next().summernote('code');
-					  // L'envoie en ajax pour le sauver
-						$.post(window.location, { id: $(this).attr("data"), value: markup })
-						  .done(function( data ) {
-							//alert( "Sauvé!");
-						  });				  
-					  // Change la zone éditable en texte
-					  $(this).parent().next().summernote('destroy');			
-					// Cache le bouton edit et affiche le bouton sauver
-					$(this).parent().find("button.edit").css("display","");
-					$(this).parent().find("button.delete").css("display","");
-					$(this).parent().find("button.cancel").css("display","none");
-					$(this).css("display","none");
-					// Sauve à chaque fois
-					save();
-					
-				});
-				
-				// Annule l'édition de la page
-				$("body").delegate(".cancel","click",function () {
-							  
-					// Change la zone éditable en texte
-					$(this).parent().next().summernote('reset');			
-					$(this).parent().next().summernote('destroy');			
-					// Cache le bouton edit et affiche le bouton sauver
-					$(this).parent().find("button.delete").css("display","");
-					$(this).parent().find("button.edit").css("display","");
-					$(this).parent().find("button.save").css("display","none");
-					$(this).css("display","none");
-				});	
-						
-				// **************************************
-				// Colonne de gauche
-				// **************************************
-				
-				// Adaptation en largeur de la colonne de gauche
-				$( "#resizeelem" ).draggable({ axis: "x" ,
-
-				  stop: function(event, ui) {
-					$(".left").css("width",$(".left").width()+ui.position.left+4);
-					$( "#resizeelem" ).css("left",0);
-				  }
-				});
-				
-				// Elements de la colonne de gauche ordonnable, avec effet miroir sur la colonne de droite
-				$("#sortable").sortable({axis: "y", containment: ".screenOJ", connectWith: ".tension-sortable", placeholder: "sortable-placeholder", tolerance: "pointer",
-					stop: function( event, ui ) {
-						// Réordre la seconde liste en fonction 
-						$.each($(".list-group-item"),function(index, value) {
-							$("#page_"+$(value).attr("data")).appendTo("#contentright");
-						});
-					}
-				});
-				
-				// *************** Elements actifs *********************
-				
-				// Click sur un élément de la colonne de gauche
-				$("body").delegate(".list-group-item","click",function () {
-					$(".list-group-item").removeClass("active");
-					$(this).addClass("active");
-					$(".page").removeClass("selected");
-					$("#page_"+$(this).attr("data")).addClass("selected");
-					nb=$("#page_"+$(this).attr("data")).position().top+$(".contentright").scrollTop()-30;
-					$(".contentright").animate({ scrollTop:nb});
-				});
-			
-				// Click sur une section
-				$("body").delegate("div.section h3","click",function () {
-					$(this).next().toggle();
-				});
-				
-				// *************** Changements de valeurs *******************
-				
-				// Update et sauve automatiquement lorsque une case à cocher est cliquées
-				$("body").delegate(".list-group-item input[type=checkbox]","click",function (e) {
-					updateTitles($(this));
-					
-					// Sauve les infos en local, et si nécessaire à distance
-					save();
-				});	
-				// Update et sauve automatiquement lorsque les paramètres des tensions sont définis
-				$("body").delegate(".list-group-item input:not([type=checkbox])","focusout",function (e) {
-					updateTitles($(this));
-					
-					// Sauve les infos en local, et si nécessaire à distance
-					save();
-				});	
-				// Sauve automatiquement lorsque on quitte les champs d'entête
-				$("body").delegate(".top input","focusout",function (e) {
-					save();
-				});	
-				// Sauve automatiquement lorsque on quitte les champs d'entête
-				$("body").delegate(".divedit","focusout",function (e) {
-					save();
-				});	
-				$("body").delegate(".cb","click",function (e) {
-					calcDurees();
-					updateTimer();
-				});	
-
-				
-				// *************** Boutons ****************
-				
-				// Ajouter une section
-				$("body").delegate("#btn_menuTension","click",function () {
-					if ($("#meetingSlices").length>0) {
-						cpt=($("#meetingSlices h3").length+1);
-						$("#meetingSlices").append($("<div class='section'><h3><input type='text' value='Section "+cpt+"'  class='liketext'></h3><div><ul id='sortable"+cpt+"' class='tension-sortable list-group ui-sortable'></ul></div></div>"));
-						$("#sortable"+cpt).sortable({axis: "y", containment: ".screenOJ", connectWith: ".tension-sortable", placeholder: "sortable-placeholder", tolerance: "pointer",
-								stop: function( event, ui ) {
-									// Réordre la seconde liste en fonction 
-									$.each($(".list-group-item"),function(index, value) {
-										$("#page_"+$(value).attr("data")).appendTo("#contentright");
-									});
-								}
-							});
-
-					} else {
-						$(".screenOJ").append($("<div id='meetingSlices'><div class='section'><h3><input type='text' value='Section 1' class='liketext'></h3><div class='sectionContent'></div></div></div>"));
-						$("#meetingSlices div.sectionContent").append($("#sortable"));
-					}
-				});
-				
-				// Ajouter une tension
-				$("#btn_add").click(function () {addTension(); setTimeout(save, 50);});
-				$("body").delegate (".list-group-item input",'keypress',function(e) {
-					if(e.which == 13) {
-						$(this).blur();
-					}
-				});
-				
-				// ***************************************
-				// Editeur HTML
-				// ***************************************
-				
-				var mytoolbar= [
-					['style', ['style']],
-					['font', ['bold', 'italic', 'underline', 'clear']],
-					['fontsize', ['fontsize']],
-					['color', ['color']],
-					['para', ['ul', 'ol', 'paragraph']],
-					 ['insert', ['link', 'picture', 'video']],
-					  ['view', ['fullscreen', 'help']],
-				];
-				  
-				var mystyles= [
-					'p','h1', 'h2','h3',
-					{ title: 'Decision', tag: 'div', className: 'monstyledemenu', value: 'h4' },
-					{ title: 'Tâche/action', tag: 'div', className: 'monstyledemenu', value: 'h5' },
-					   
-				];
-
-				// *******************************************************
-				// Menu utilisateur en haut
-				// ******************************************************
-
-				$("body").delegate("#profilbtn","click", function (e) {
-					showPopup("popup/profil.php", "<?=T_("Profil personnel",true)?>");
-				});
-					
-				// *******************************************************
-				// Menu d'option à droite
-				// ******************************************************
-				
-				// Difflrents boutons de la page
-				$("#btn_save").click(function () {
-					save();
-				});
-				$("#btn_new").click(function () {
-					newDoc();
-				});
-				$("#btn_load").click(function () {
-					load();
-				});
-				$("#btn_help").click(function () {
-					showPopup("popup/help.php", "<?=T_("Aide",true)?>");
-				});			
-				$("#login").click(function () {
-					showPopup("popup/login.php", "<?=T_("Se connecter",true)?>");
-				});			
-				$("#btn_download").click(function () {
-					showPopup("popup/download.php", "<?=T_("Télécharger",true)?>");
-				});			
-				$("#popup_close").click(function () {
-					closePopup(); 
-				});
-				$("#btn_zoom").click(function () {
-					enterFullscreen(document.documentElement);  
-				});
-				$("#btn_parameters").click(function () {
-					showPopup("popup/parameters.php", "<?=T_("Paramètres",true)?>");
-				});			
-				$("#btn_support").click(function () {
-					showPopup("popup/support.php", "<?=T_("Soutenez-nous !",true)?>");
-				});			
-				
-				// Activation des tooltips (peut être partout, mais essentiellement à droite
-				$('[data-toggle="tooltip"]').tooltip()
-				
-				// ************** Menu user du haut **************************3
-				
-				// Changement de langue
-				$("body").delegate("#lang","change",function (e) {
-					// Pose un cookie pour la langue (cookie pour le rendre accessible du côté serveur)
-					setCookie("lang",$(this).val(),365);
-					// Recharge la page
-					location.reload();
-					
-				});				
-
-				// Chargement des données si sauvegardée localement
-				if (localStorage.savedata)
-					load();
-
-				// Boucle de mise à jour des infos de timer
-				setInterval(updateTimer, 6000);
+			$root.animate({
+				scrollTop: $(href).offset().top
+			}, 500, function () {
+				//window.location.hash = href;
 			});
-			
-			// *********************************************************
-			// Définition des fonction appelées par les boutons
-			// *********************************************************
-			
-			// Mise à jour des titres des pages de droite
-			function updateTitles(elem) {
-				// Mise à jour du titre
-				var id = elem.parents("li").attr("data");
-				var newtitle="";
-				if ($("#cb_"+id).is(":checked")) newtitle+="<img src='img/check.png' style='width:20px;vertical-align:bottom'> ";
-				newtitle+=$("#qui_"+id).val();
-				newtitle+=($("#qui_"+id).val()!=""?" - ":"");
-				newtitle+="<b>"+$("#tension_"+id).val()+"</b>";
-				newtitle+="&nbsp;<span style='float:right'>"+$("#duree_"+id).val()+($("#duree_"+id).val()!=""?"'":"")+"</span>";
-				
-				$("#page_"+id+" .title").html(newtitle);
-				
-				// Mise à jour des timer
-				calcDurees();
-				updateTimer();
-			}
 
-			function addTension(title = "", who = "", duration = "", content ="", checked=false) {
+			return false;
+		});
+});
+</script>
+<style>
+* {box-sizing: border-box;}
 
-				cpt=$(".list-group-item").length+1;
-				$("<li id='menu_"+cpt+"' class='list-group-item' data='"+cpt+"'><table cellspacing=0 cellpadding=0 style='width:100%;'><tr><td><input type='checkbox' tabindex='-1' id='cb_"+cpt+"' class='cb' "+(checked?"checked":"")+"></td><td style='width:100%'><input  id='tension_"+cpt+"' class='liketext tension' style='width:100%' placeholder='<?=T_("Description brève",true);?>' value='"+title.replace("'","&apos;")+"'></td></tr><tr><td></td><td><input id='qui_"+cpt+"' class='liketext' style='width:60%;font-size:70%' placeholder='<?=T_("Qui",true);?>' value='"+who.replace("'","&apos;")+"'><input id='duree_"+cpt+"' class='liketext duration' style='width:30%;font-size:70%;text-align:right' placeholder='<?=T_("Durée",true);?>' value='"+duration.replace("'","&apos;")+"'></td></tr></table></li>").appendTo("#sortable");
-				// De la même manière, ajoute une zone d'édition
-				$("<div class='page' id='page_"+cpt+"' data='"+cpt+"'><div class='title'></div><div class='buttons'><button class='edit' data='"+cpt+"'><?=T_("editer");?></button><button class='delete' data='"+cpt+"'><?=T_("supprimer");?></button><button class='save' style='display:none' data='"+cpt+"'><?=T_("sauver");?></button><button class='cancel' style='display:none' data='"+cpt+"'><?=T_("annuler");?></button></div><div class='content'>"+content+"</div></div>").appendTo(".contentRight");	
-				updateTitles($("#tension_"+cpt));
-				// Focus directement sur le champ avec la description du point
-				if (title=="") $("#tension_"+cpt).focus();
-			
-				}
-			// Mise à jour de l'heure de fin toutes les minutes
-			function updateTimer() {
-				// Ajoute à l'heure courante le temps en minute du champ restant
-				newDateObj = new Date(Date.now() + parseInt("0"+$("#restTime").html())*60000);
-				$("#finalTime").html(newDateObj.toLocaleTimeString(navigator.language, {hour: '2-digit',  minute:'2-digit'}));
-			}
-					
-			function load() {
-				//saveArray=readCookie("savedata");
-				saveArray=localStorage.getItem("savedata");
-				if (saveArray=="")
-					alert ("<?=T_("Aucunes données sauvegardée trouvées",true);?>");
-				else {
-					// Efface les informations existantes
-					$(".list-group-item").remove();
-					$(".page:not(:first-child)").remove();
-					
-					// Parse le document pour ajouter les infos
-					data=JSON.parse(saveArray);
-					$("#title").val(data.title);
-					$("#location").val(data.location);
-					$("#participants").html(data.people);
+.tools {text-align:right; left:0px; scrollbar-width: thin;width:100%; height:300px; overflow-x:auto; overflow-y: hidden; padding:10px;white-space:nowrap;}
+.tools .tool {text-align:left; font-weight:bold;position:relative;overflow:hidden; display:inline-block; margin-right:10px;white-space:normal; vertical-align:top; background:rgba(255,255,255,0.8); border-radius:10px; width:250px; height:100%;box-shadow: 5px 5px 10px rgba(0,0,0,0.5);}
+.tools .tool h1 {padding:15px; margin:0px;}
+.tools .tool p {margin:5px 10px;}
+.box_title {
+	background-color:#0B6E7A
+}
+.easypv_title {background:#FFC600 url(/img/bkg_pat_easypv.png); background-size:cover;}
 
-					$("#excuses").html(data.excused); // Excusés
-					$("#absents").html(data.nothere); // 
-
-					$("#facilitation").html(data.facilitator);
-					$("#memoire").html(data.secretary);				
-					
-					data.oj.forEach(function(obj) {
-						addTension (obj.title, obj.who, obj.duration, obj.content,obj.checked);
-						
-					});
-					// adapte les timer
-					calcDurees();
-					updateTimer();
-					// Click sur le premier élément
-					$(".list-group-item").first().click();
-				}
-				
-
-				
-			}
-			
-			function newDoc() {
-				if (confirm("<?=T_("Avez-vous imprimé le PV en cours?\n\nLe contenu actuel sera effacé définitivement. Êtes-vous sûr de vouloir continuer ?",true);?>")) { 
-					// Efface le cookie
-					//eraseCookie("savedata");
-					localStorage.removeItem("savedata");
-					
-					// Efface les informations existantes
-					$(".list-group-item").remove();
-					$(".page:not(:first-child)").remove();
-
-					$("#title").val("");
-					$("#location").val("");
-					$(".divedit").html("");
-									
-					calcDurees();
-					updateTimer();
-				}			
-				
-			}
-						
-			function save() {
-				saveArray = {};
-				saveArray.title = $("#title").val();
-				saveArray.location = $("#location").val();
-				saveArray.people = $("#participants").html();
-				saveArray.excused = $("#excuses").html(); // Excusés
-				saveArray.nothere = $("#absents").html(); // 
-
-				saveArray.facilitator = $("#facilitation").html();
-				saveArray.secretary = $("#memoire").html();
-			
-
-				saveArray.oj = [];
-				saveArray.section = [];
-				
-				// Enregistre les sections s'il y en a
-				$.each($(".section"),function (index,value) {
-					section ={};
-					section.title=$(value).find("h3 input").first().val();
-					section.oj = [];
-					
-					// Enregistre les points à l'ordre du jour non hiérarchisé
-					$.each($(value).find(".list-group-item"),function (index,value) {
-						tension = {};
-						index=$(value).attr("data");
-						tension.checked=$("#cb_"+index).is(":checked");
-						tension.title=$("#tension_"+index).val();
-						tension.who=$("#qui_"+index).val();
-						tension.duration=$("#duree_"+index).val();
-						tension.content=$("#page_"+index+" .content").html();
-						section.oj.push(tension);
-					});	
-					saveArray.section.push(section);			
-				});
-			
-				
-				// Enregistre les points à l'ordre du jour non hiérarchisé
-				$.each($("div.screenOJ>ul>li.list-group-item"),function (index,value) {
-					tension = {};
-					index=$(value).attr("data");
-					tension.checked=$("#cb_"+index).is(":checked");
-					tension.title=$("#tension_"+index).val();
-					tension.who=$("#qui_"+index).val();
-					tension.duration=$("#duree_"+index).val();
-					tension.content=$("#page_"+index+" .content").html();
-					saveArray.oj.push(tension);
-				})
-				console.log (saveArray);
-				localStorage.setItem("savedata", JSON.stringify(saveArray));
-				//createCookie("savedata", JSON.stringify(saveArray),365);
-			}
-			
-
-			
-			function calcDurees() {
-				bigTotal=0;
-				progress=0;
-				$.each($(".list-group-item"),function(index, value) {
-					// Parcours tous les item, pour faire la somme des heures
-					bigTotal+=parseInt("0"+$(value).find(".duration").val());
-					if (!$(value).find(".cb").is(":checked")) progress+=parseInt("0"+$(value).find(".duration").val());
-				});
-				$("#totalTime").html(parseInt(bigTotal));
-				$("#restTime").html(parseInt(progress));
-			}
-
-		
-		</script>
-	
-	<style>
-		
-
-	@media screen {
-
-		#tools {background:var(--midlow-bg-color)}
-		.top {background:var(--midlow-bg-color)}
-		.left { background:var(--light-bg-color)}
-		.contentleft {  background:var(--white-bg-color)}
-		.contentright {background:var(--white-bg-color) }
-		.right {  background:var(--light-bg-color)}
-		.bottom { background:var(--midlow-bg-color)}
-		#resizeelem { background:var(--midlow-bg-color);}
-
-		.list-group-item.active {
-			color:var(--dark-txt-color);
-			background-color: var(--light-bg-color);
-			border-color: var(--midlow-bg-color);
-		}
-		.list-group-item:not(.active):hover {background:var(--verylight-bg-color)}
-
-		.sortable-placeholder {height:60px}		
-		.screenOJ {width:100%; padding-right:3px ; height:100%; overflow:auto;position: absolute;}
-		.odj {background: var(--light-bg-color);}
-	}
-	
-	.screenOJ H3 {border:1px solid black; background-color:#EEE; padding:5px; margin:2px;}
-	
-	
-	.displayTab {height:100%; width:100%}
-	.leftTab {height:100%; width:100%}
-	.top {height:50px;}
-	.left {height:calc(100% - 100px);width:300px; padding:2px;}
-	.contentleft {height:100%; border-radius:5px;}
-	.contentright {height:calc(100% - 4px); width:calc(100% - 4px); border-radius:5px;  overflow:auto;position:absolute; left:2px; top:2px;}
-	.right {height:calc(100% - 100px); padding:2px; position:relative;}
-	.bottom {height:50px;}
-	.resize {width:5px;position:relative;}
-	#resizeelem {width:5px;height:100%; cursor:e-resize;z-index:2}
-	
-	.odj {font-weight:bold; font-size:110%}
-	
-	.list-group-item {border:2px solid #DDDD; margin:2px; cursor:pointer; padding:5px 5px 5px 15px;}
-	 ul:has(:nth-child(9)) .list-group-item {padding:0px 5px 0px 15px;}
-	 ul:has(:nth-child(12)) .list-group-item:not(.active) {height:27px;overflow:hidden}
-	.pv {min-height:40px; border:2px solid #DDDD; margin:2px;}
-	
-		.page {
-			border:1px solid #BBBBBB;
-			min-height:136px;
-			margin:10px;
-			padding:0px;
-			box-shadow: 3px 3px 5px rgba(0,0,0,0.3);
-			position:relative;
-		}
-		.content {padding:10px; background:#FFFFFF;}
-		.page.selected .content{padding:8px}
-		.page.selected {
-			border-width:3px;
-			padding:0px;
-		}
-		.page .title {background:#EEE; padding:5px;}
-		
-		.panel-heading {background:#eee;border-bottom:1px solid #ddd}
-		.note-editable {background:#FFF}
-		.tension-sortable:empty {min-height:60px; border:2px dotted #DDD;}
-		
-		
-		.buttons {
-			background: #EEE;
-			padding: 3px;
-			border: 1px solid #BBB;
-			 
-			border-bottom: 0px;
-			border-radius: 5px 5px 0px 0px;
-			position:absolute; 
-			left:10px; top:-30px; 
-			z-index:1;
-			height:30px;
-			display:none;}
-		.buttons button {margin-left:2px; margin-right:2px;}
-		.page.selected .buttons {display:inherit}
-		div.menu {display:none;}
-		div.menu.selected {display:inherit}
-		
-		.mainTitle {font-size:200%;width:100%}
-		.horaires {font-color:#ccc;width:100%}
-		.liketext {border:0px !important;}
-		.liketext:focus {outline: none; border:1px solid black;}
-	
-	
-
-	.content h4, .note-editable h4 {font-size:inherit; background:rgba(0,255,0,0.3); padding:5px;padding-left:20px;    padding-left: 35px;
-    background-image: url(img/thumb-up.png);
-    background-size: 21px;
-    background-repeat: no-repeat;
-    background-position: 8px;}
-	.content h5, .note-editable h5 {font-size:inherit; background:rgba(255,255,0,0.3); padding:5px;padding-left:20px;    padding-left: 35px;
-    background-image: url(img/clipboard.png);
-    background-size: 21px;
-    background-repeat: no-repeat;
-    background-position: 8px;}
-    
-	.list-group-item:not(.active) input:not([type=checkbox]) {pointer-events:none}
-	.list-group-item.active input::placeholder {
-color: rgba(255,255,255,0.5);
+.easycircle_title {background-color:#FFC600; background-image:url(/img/bkg_pat_easycircle.png);background-size:cover;}
+.easymemo_title {background-image:url(/img/bkg_pat_easymemo.png);background-size:cover;}
+.on_dev:after {
+    content: "En développement";
+    position: absolute;
+    transform: rotate(-45deg);
+    background: #F00;
+    left: -75px;
+    top: 55px;
+    white-space: nowrap;
+    padding: 4px 4px;
+    font-size: 20px;
+    opacity: 0.7;
+    width: 300px;
+    text-align: center;
+}
+.on_project:after {
+    content: "En projet";
+    position: absolute;
+    transform: rotate(-45deg);
+    background: #F00;
+    left: -75px;
+    top: 55px;
+    white-space: nowrap;
+    padding: 4px 4px;
+    font-size: 20px;
+    opacity: 0.7;
+    width: 300px;
+    text-align: center;
 }
 
-	 .divedit:empty::after {
-  content: attr(placeholder);
-  position: absolute;
-  left: 0px;
-  top: 0px;
-  color: #AAAAAA;
-  z-index: 1; 
-} 
+
+.contentPres {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+  max-width: 1200px;
+  margin: auto;
+  padding: 20px;
+}
+
+.bloc {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+/* alternance automatique */
+.bloc:nth-child(even) {
+  flex-direction: row-reverse;
+}
+
+.bloc img {
+  border-radius: 10px;
+  height: 300px;
+  width: auto;
+  object-fit: cover;
+}
+
+.bloc h1 {
+  margin-top: 0;
+}
+
+.intro_txt {
+position:relative; 
+margin-left:auto; 
+width:50%;
+color:#FFF; 
+font-size: 1.5vmax;
+overflow:hidden;
+min-height: calc(100dvh - 360px); 
+padding:15px;
+}
+
+.vertical {
+	  /* 🔥 fade transparent réel */
+  -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent);
+  mask-image: linear-gradient(to bottom, black 70%, transparent);
+  height:calc(100dvh - 440px); 
+}
+.intro_txt.expanded .vertical {
+ height:inherit;
+}
+.intro_txt.expanded .vertical{
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.read-more-wrapper {
+  text-align: center;
+  margin-top: 10px;
+}
+
+.read-more {
+  background: none;
+  border: none;
+  padding: 6px 12px;
+
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.8);
+
+  cursor: pointer;
+  position: relative;
+
+   outline: none;
+  -webkit-tap-highlight-color: transparent; /* 🔥 supprime le flash bleu sur mobile */
+
+}
+
+/* petite ligne discrète */
+.read-more::after {
+  content: "";
+  display: block;
+  width: 40px;
+  height: 1px;
+  margin: 6px auto 0;
+  background: rgba(255,255,255,0.5);
+  transition: width 0.2s ease;
+}
+
+.read-more:hover::after {
+  width: 70px;
+}
+
+.read-more:hover {
+  color: white;
+}
 
 
-	.list-group-item:has(input:checked) input.tension {text-decoration: line-through;}
-	.divedit { display:block;}
+/* enlève le contour seulement si ce n'est pas du focus clavier */
+.read-more:focus:not(:focus-visible) {
+  outline: none;
+}
 
-	.imgbutton {width:30px;margin:10px;opacity:0.5}
-	.imgbutton:hover {opacity:0.8}
+.cta-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 
+  text-align: center;
+  font-size: 1.4rem;
+  color: #000;
+  text-decoration: none;
 
-#menu {position:fixed; top:0px; right:20px; border-radius: 0px 0px 10px 10px; padding:10px;background-color:#FFFFFF;box-shadow: 5px 5px 10px rgba(0,0,0,0.5)}
-	  /* All your print styles go here */
-	  @media print { 
-		  input:autofill {
-			  -webkit-box-shadow: 0 0 0px 1000px white inset;
-			}
+  max-width: 100%;
+}
 
-			input:-webkit-autofill {
-			  -webkit-box-shadow: 0 0 0px 1000px white inset;
-			}
-		 .tooltip { display: none; }
-		 .noPrint {display:none}
-		 .list-group-item, .list-group-item.active {border:0px; border-bottom:1px solid black; margin:2px; background:#FFFFFF; border-radius:0px !important; color:#000}
-		.top {padding-bottom:20px;}
-	  	.displayTab {height:inherit !important; }
-	  	.leftTab {height:inherit !important; }
-		.buttons {display:none !important;}
-		.right, .left {height:inherit; vertical-align:top; }
-		.contentright, .contentleft {height:inherit;}
-		.page {
-			border:0px !important;
-			border-bottom:1px solid #ccc !important;
-			min-height:inherit;
-			margin:10px;
-			padding:10px !important;
-		}
-		input::placeholder {color:#FFF ; opacity:0 }
-		.panel-heading, .note-resizebar, .note-status-output {display:none}
-		.note-editable {padding:0px !important;}
-		.note-editor {border:0px !important;}
-		.page:has(.content:empty) {display:none}
-		#listepresence tr:has(.divedit:empty) {display:none}
-		#listepresence:not(:has(.divedit:not(:empty))) {display:none}
-		.page:has(#listepresence):not(:has(.divedit:not(:empty))) {display:none}
-		#menu, #tools {display:none}
-		
-	}
-	</style>
-	</head>
-	<body>
-		<div id="menu"><select id='lang'>
-			
-			<option value=''>Français</option>
-			<option value='DE' <?=(isset($_COOKIE["lang"]) && $_COOKIE["lang"]=="DE"?" selected":"");?>>Deutch</option>
-			<option value='EN' <?=(isset($_COOKIE["lang"]) && $_COOKIE["lang"]=="EN"?" selected":"");?>>English</option>
-			<option value='ES' <?=(isset($_COOKIE["lang"]) && $_COOKIE["lang"]=="ES"?" selected":"");?>>Español</option>
-			
-			</select> 
-<? 
-	if ($connected) {
-		echo "<button id='profilbtn'>".T_("Profil")."</button>";
-		echo "<form name='logoutform' id='logoutform' action='ajax/login.php' class='ajax' style='margin:0px;display:inline-block'><button id='logoutbtn' name='logoutbtn' value='1' type='button'>".T_("Se déconnecter")."</button></form>";		
-	} else {
-			echo "<button id='login'>".T_("Se connecter")."</button>";
-		}
-?>	
-			</div>
-		<table class='displayTab' cellspacing=0 cellpadding=0><tr><td  class='top' colspan=4>
-			<!-- <button id="save" style='float:right'>Sauver</button>
-			<button id="load" style='float:right'>Charger</button> -->
-			<input autocomplete="off" id='title' class='mainTitle liketext' placeholder='<?=T_("Titre de la réunion",true);?>'></input><br>
-			<input autocomplete="off" id='location' class='horaires liketext' placeholder='<?=T_("Lieu, date et horaires",true);?>'></input>
-		
-		</td></tr>
-		<tr><td class='left'><div class='contentleft'>
-			<table class='leftTab' cellspacing=0 cellpadding=0><tr><td class='odj'>
-			<div><?=T_("Ordre du jour");?><span class='noPrint' style='float:right; background:#FFF; border-radius:5px 5px 0px 0px'><img src='img/addentry.png' class='imgbutton' style='margin:0px;' id='btn_add'  data-toggle='tooltip' data-placement='bottom' title='<?=T_('Ajouter une tension',true)?>'>  
-<?
-		if ($connected)
-			echo "<img id='btn_menuTension' src='img/addfolder.png' class='imgbutton'  data-toggle='tooltip' data-placement='bottom' title='".T_('Ajouter une section',true)."' style='margin:0px;'>";
-?>
-			
-			
-			</span></div>
-			</td></tr><tr><td style='height:100%; position: relative;vertical-align:top'><div class='screenOJ'>
-			<ul id="sortable" class="tension-sortable list-group">
-			  <li id='menu_1' class="list-group-item active ui-icon ui-icon-arrowthick-2-n-s" data="1"><table cellspacing=0 cellpadding=0 style='width:100%;'><tr><td><input type='checkbox' tabindex='-1' id='cb_1' class='cb'></td><td style='width:100%'><input autocomplete="off" id='tension_1' class='liketext tension' style='width:100%' placeholder='Description brève'></td></tr><tr><td></td><td><input autocomplete="off" id='qui_1' class='liketext' style='width:60%;font-size:70%' placeholder='Qui'><input autocomplete="off" id='duree_1' class='liketext duration' style='width:30%;font-size:70%;text-align:right' placeholder='Durée'></td></tr></table></li>
+/* texte flexible sur 2 lignes max */
+.cta-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+
+  line-height: 1.2;
+}
+
+/* flèches */
+.arrow {
+  width: 32px;
+  flex-shrink: 0; /* 🔥 empêche de rétrécir */
+}
+
+/* 📱 Mobile */
+@media (max-width: 768px) {
+  .bloc {
+    flex-direction: column !important;
+    text-align: left;
+  }
+
+  .bloc img {
+    width: 100%;
+    height: auto;
+	max-width: 50dvh;
+  }
+  .intro_txt {
+    right:0px;
+	top:0px;
+    width:100%;
+	color:#FFF;
+    font-size: inherit;
+  }
+  .vertical {
+	overflow-y: hidden;
+  }
+  .cta-text {font-size: 80%;}
+}
 
 
-			</ul>
-		
-			</div>
-			</td></tr><tr><td style='background:#eee' class='noPrint'>
-			<?=T_("Durée totale");?> : <span id='totalTime'></span><br>
-			<?=T_("Durée restante");?> : <span id='restTime'></span><br>
-			<?=T_("Heure de fin");?> : <span id='finalTime'></span><br>
-			</td></tr></table>
-		</div></td><td class='resize'><div id='resizeelem'></div></td><td class='right'><div id='contentright' class='contentright'>
-			<div class='page' style='background:#f4f4f4; padding:10px;'>
-				<div id='listepresence'>
-				<div class='odj'><?=T_("Liste des participant-e-s");?>:</div>
-				<table  style='width:100%'>
-					<tr><td><?=T_("Présents");?>&nbsp;:&nbsp;</td><td style='width:100%'><span contenteditable=true id='participants' class='horaires liketext divedit' style='position:relative' placeholder='<?=T_("Liste des personnes présentes",true);?>'></span></td></tr>
-					<tr><td><?=T_("Excusés");?>&nbsp;:&nbsp;</td><td style='width:100%'><span contenteditable=true id='excuses' class='horaires liketext divedit' style='position:relative' placeholder='<?=T_("Liste des personnes excusées",true);?>'></span></td></tr>
-					<tr><td><?=T_("Absents");?>&nbsp;:&nbsp;</td><td style='width:100%'><span contenteditable=true id='absents' class='horaires liketext divedit' style='position:relative' placeholder='<?=T_("Liste des personnes absentes",true);?>'></span></td></tr>
-					</table>
-					<hr></div>
-					<table  style='width:100%'><tr><td><?=T_("Secrétaire");?>&nbsp;:&nbsp;</td><td style='width:50%'><span contenteditable=true id='memoire' class='liketext divedit' style='position:relative' placeholder='<?=T_("Indéfini",true);?>'></span></td><td><?=T_("Facilitation");?>&nbsp;:&nbsp;</td><td style='width:50%'><span contenteditable=true id='facilitation' class='liketext divedit' style='position:relative' placeholder='<?=T_("Indéfini",true);?>'></span></td></tr></table>
-			</div>
-			
-			
-			<div class='page' id='page_1' data="1">
-				<div class='title'><?=T_("Bienvenue");?></div>
+</style>
+<!-- Bootstrap (for html editor) Summernote-->
+<link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet">
+</head>
 
-				<div class='buttons'>
-				<button class='edit' data='1'><?=T_("Editer");?></button>
-				<button class='delete' data='1'><?=T_("Supprimer");?></button>
-				<button class='save' style='display:none' data='1'><?=T_("Sauver");?></button>
-				<button class='cancel' style='display:none' data='1'><?=T_("Annuler");?></button>
-				</div>
-				<div class='content'>
+<body style='margin:0px; padding:0px; background-color: #1A82A3;'>
+<div id='bkg_illustration' style='background:url(/img/home.jpg) #11668B; background-size:cover; background-position: 30% center; height:100vh; width:100%; padding:0px; margin:0px;position:fixed;'></div>
+<div style='background: linear-gradient(to top right, rgba(0,0,0,0), rgba(0,0,0,0.7));height:100vh; width:100%; padding:0px; margin:0px;position:fixed;'></div>
+<div style='margin:0px;position:relative;'>
+	<!-- Affichage du tableau avec les différents éléments -->
+	<div class='intro_txt' id="intro">
+	<div class='vertical'><h1 style='font-size:150%;'>Nous développons une nouvelle version de OpenMyOrganization!</h1>
+	<p>10 ans après la première version, nous lançons un chantier d'envergure: repenser le logiciel en intégrant nos dix années d'expériences, autant d'un point de vue des fonctionnalités que de l'ergonomie ou de la prise en main.</p>
+	<p>Accompagnez-nous dans cette grande aventure, en testant les nouvelles fonctionnalités, en soutenant financièrement son développement ou en amenant des propositions d'amélioration.</p>
+    <p style='text-align:center'><a href="https://www.patreon.com/cw/OpenGovernance" target="_blank" class="btn">
+        Rejoindre la communauté de soutien
+      </a></p>
+</div>
+<div class="read-more-wrapper">
+      <button id="toggleText" class="read-more">
+        Afficher la suite
+      </button>
+    </div>
+</div>
 
-
-					
-<!-- Texte d'intro si PV vide-->
-<?=T_("<h2><b>Bienvenue sur l'éditeur spécial procès verbal de OpenMyOrganization</b></h2><p></p><h5>Pour démarrer un nouveau PV, effacez le texte de ce bloc ou cliquez sur Nouveau (en haut à droite)</h5><p></p><p>Voici un petit outil vous permettant facilement de prendre en main une réunion, en tenant un procès verbal sur un écran que vous pouvez partager. L'avantage, au regard d'un traitement de texte classique, est que l'ordre du jour reste constamment accessible, et qu'il est facile de naviguer entre les points.</p><p>Actuellement, il n'est pas possible de sauver les documents autrement qu'en les imprimant en PDF. Prochainement, il sera possible de sauvegarder les PV ou de les télécharger dans un format Word, vous permettant de finaliser la mise en page à l'issue de la réunion si vous le souhaitez.</p><h3>Vous pouvez utiliser la barre ci-dessus pour ajouter du formatage, comme:</h3><ul><li>Des listes à puces</li><li>Des textes <b>en gras</b> ou en <i>italique</i></li><li>Des couleurs de <font color='#000000' style='background-color: rgb(255, 255, 0);'>surlignage</font></li><li>Des <a href='https://www.linkedin.com/in/daviddraeyer/' target='_blank'>liens</a></li><li>Et même des images.</li></ul><h4>Dans les options de formatage, il existe des options particulières pour faire ressortir les décision.</h4>");?>
-
-
-								</div>
-			
-			</div>
-		
+	<!-- Affichage des outils -->
+	<div class='tools'>
+	<div class='tool'><h1 class='box_title easypv_title'>EasyPV</h1><p>Facilitez vos prises de notes en réunion grâche à cette application permettant de gérer un ordre du jour dynamique!</p><p><a href='/pv'>&gt;Découvrez ce module</a></p></div>
+	<div class='tool'><h1 class='box_title easycircle_title'>EasyCIRCLE</h1><p>Améliorez la lisibilité de la structure de votre organisation grâche à l'affichage en cercles et rôles.</p><p><a href='/circle'>&gt;Découvrez ce module</a></p></div>
+	<div class='tool'><h1 class='box_title easymemo_title on_dev'>EasyMEMO</h1><p>Générez facilement des mémos depuis votre téléphone portable, en utilisant l'IA pour retranscrire et formater vos propos.</p><p><a target='_blank' href='https://t.me/SD2_MemoBot'>&gt;Connectez le BOT Telegram</a><br><a target='_blank' href='/memo'>&gt;Gérez vos memos</a></p></div>
+	<div class='tool'><h1 class='box_title easymgov_title on_dev'>EasyGOV</h1><p>Définissez des règles de fonctionnement sous la forme d'une constitution claire et accessibles à tous et toutes.</p><p><a target='_blank' href='https://jm.instantz.org/constitution.php'>&gt;Visitez le chantier</a></p></div>
+	<div class='tool'><h1 class='box_title easytask_title on_project'>EasyTASK</h1><p>Augmentez votre productivité grâce à notre application de gestion de tâches pour mobile et PC.</p></div>
+	<div class='tool'><h1 class='box_title easypilot_title on_project'>EasyPILOT</h1><p>Pilotez votre organisation en vous appuyant sur des faits, grâche à un cockpit d'indicateurs visuels de qualité.</p></div>
+	<div class='tool'><h1 class='box_title easychoose_title on_project'>EasyCHOICE</h1><p>Décidez collectivement de façon asynchrone: vote, jugement majoritaire, consentement, sondage,... </p></div>
+	<div class='tool'><h1 class='box_title easydate_title on_project'>EasyDATE</h1><p>Organisez et partagez vos agenda, facilitez la prise de rendez-vous en équipe et planifiez des événements.</p></div></div>
 	
-		
-		</div></td><td rowspan="2" id='tools' style='width:50px; vertical-align:top;'>
-<?	
-		//<!-- bouton pour le zoom -->
-		echo "<img src='img/expand.png' class='imgbutton' id='btn_zoom' data-toggle='tooltip' data-placement='right' title='".T_('Plein écran',true)."'>";
 
-		//<!-- bouton pour un nouveau fichier -->
-		echo "<img src='img/newfile.png' class='imgbutton' id='btn_new' data-toggle='tooltip' data-placement='right' title='".T_('Nouveau document',true)."'>";
+	
+</div>
+<div style='min-height:calc(100vh); padding:10px; margin:0px;position:relative; background:#FFF'>
+<a href="#content" class="cta-more">
+  <img src="/img/down-arrow.png" alt="" class="arrow">
+  <span class="cta-text">
+    Découvrez-en plus sur la nouvelle version
+  </span>
+  <img src="/img/down-arrow.png" alt="" class="arrow">
+</a>
+<a name='content' id='content'></a>
+<div class="contentPres">
 
-		//<!-- bouton pour imprimer -->
-		echo "<img src='img/printing.png' onclick='window.print();' class='imgbutton' id='btn_print' data-toggle='tooltip' data-placement='right' title='".T_('Imprimer',true)."'>";
+  <section class="bloc">
+    <img src="/img/ilu_opensource.jpg" alt="Illustration open source">
+    <div>
+      <h2>Open Source</h2>
+      <p>Une avancée majeure qui incarne notre engagement envers la transparence, la communauté et la durabilité: Cette nouvelle version est maintenant entièrement Open Source, grâce à un code fiable qui offre la liberté à chacun d'installer sa propre instance du projet.</p>
+      <p>L'ouverture de notre code source marque une étape cruciale dans notre mission d'autonomisation des utilisateurs et de promotion de la collaboration au sein de la communauté. En permettant à chacun d'accéder, de modifier et de distribuer le code, nous croyons fermement en la création d'un écosystème plus robuste, où la pérennité du logiciel est garantie par la diversité des contributeurs.</p>
+      <p>Que vous soyez un développeur chevronné cherchant à personnaliser le logiciel selon vos besoins spécifiques, ou un utilisateur souhaitant simplement comprendre le fonctionnement interne de l'application, notre engagement envers l'Open Source vise à favoriser l'innovation, l'échange de connaissances et la confiance au sein de notre communauté.</p>
+      <p><a href="https://github.com/DavidDrayer/OMO2" target="_blank">&gt; Voir sur GitHub</a></p>
+    </div>
+  </section>
 
-		//<!-- bouton pour partager -->
-		if ($connected)
-		echo "<img src='img/share.png' class='imgbutton' id='btn_share' data-toggle='tooltip' data-placement='right' title='".T_('Partager',true)."'>";
+  <section class="bloc">
+    <img src="/img/ilu_multilingual.jpg" alt="Illustration multilingue">
+    <div>
+      <h2>Multilingue</h2>
+      <p>Désormais, notre application est non seulement multilingue, offrant la possibilité de traduire l'interface dans différentes langues, mais elle s'adapte également aux subtilités des langages propres à la gouvernance partagée.</p>
+      <p>Vous avez désormais la possibilité de personnaliser le vocabulaire spécifique utilisé dans le logiciel, alignant ainsi les termes tels que les cercles, les redevabilités ou les liens de pilotage avec la culture et les pratiques propres à votre organisation.</p>
+      <p>Cette flexibilité linguistique vise à créer une expérience utilisateur plus fluide, où chaque utilisateur peut interagir avec le logiciel de manière naturelle et conforme à ses préférences linguistiques et culturelles. Nous croyons que cette approche renforce la pertinence de notre logiciel dans des contextes divers, encourageant l'adoption au sein d'organisations aux structures et aux terminologies spécifiques.</p>
+    </div>
+  </section>
 
-		//<!-- bouton pour télécharger -->
-		if ($connected)
-		echo "<img src='img/download.png' class='imgbutton' id='btn_download' data-toggle='tooltip' data-placement='right' title='".T_('Télécharger',true)."'>";
+  <section class="bloc">
+    <img src="/img/ilu_modular2.jpg" alt="Illustration modulaire">
+    <div>
+      <h2>Modulaire</h2>
+      <p>Avec enthousiasme, nous vous dévoilons la dernière évolution de notre logiciel, désormais conçu avec une approche modulaire révolutionnaire. Cette nouvelle fonctionnalité vous offre une flexibilité inégalée, vous permettant de personnaliser votre expérience en activant uniquement les modules nécessaires à vos besoins spécifiques.</p>
+      <p>La modularité de notre logiciel simplifie grandement la prise en main, offrant une interface épurée et une navigation intuitive. Dès le départ, vous avez la liberté de sélectionner les fonctionnalités qui correspondent à vos priorités immédiates, vous permettant ainsi de vous concentrer sur ce qui compte le plus pour votre équipe.</p>
+      <p>Cependant, l'aspect révolutionnaire de notre approche modulaire ne s'arrête pas là. Vous avez également la possibilité d'ajouter des modules supplémentaires au fil du temps, élargissant ainsi progressivement les fonctionnalités de votre logiciel. Cette évolutivité vous donne la possibilité de transformer notre logiciel en une solution complète, permettant la gestion intégrale de l'information au sein de votre équipe.</p>
+      <p>Cette approche modulaire représente une nouvelle ère dans la personnalisation des outils logiciels, où l'adaptabilité devient la clé de l'efficacité.</p>
+    </div>
+  </section>
 
-		//<!-- bouton pour l'aide -->
-		echo "<img src='img/question.png' class='imgbutton' id='btn_help' data-toggle='tooltip' data-placement='right' title='".T_('Afficher l\'aide',true)."'>";
+  <section class="bloc">
+    <img src="/img/ilu_accessible.jpg" alt="Illustration accessible">
+    <div>
+      <h2>Accessible</h2>
+      <p>Nous croyons en un avenir où chaque organisation, en particulier celles qui œuvrent à l'émergence d'un monde enviable, doit avoir accès aux outils nécessaires pour prospérer. C'est dans cet esprit que nous avons rendu notre logiciel non seulement puissant, mais également accessible, en particulier pour les petites organisations partageant des missions sociales ou écologiques importantes.</p>
+      <p>Pour favoriser l'inclusion, les fonctionnalités de base de notre logiciel sont mises à disposition gratuitement. Nous croyons que chaque initiative mérite un accès équitable aux outils nécessaires pour réussir, et cela commence par la fourniture des fonctionnalités essentielles sans coût initial.</p>
+      <p>Comprenant les défis financiers auxquels sont confrontées les petites organisations, nous proposons également différents plans de financement flexibles. Ces plans sont adaptés non seulement à la taille de votre organisation, mais aussi à la mission sociale ou écologique que vous poursuivez. Notre objectif est de soutenir activement ceux qui cherchent à apporter un changement positif dans le monde, en offrant des solutions financières qui correspondent à leurs besoins spécifiques.</p>
+    </div>
+  </section>
 
-		//<!-- bouton pour les paramẗres -->
-		if ($connected)
-		echo "<img src='img/settings.png' class='imgbutton' id='btn_parameters' data-toggle='tooltip' data-placement='right' title='".T_('Paramètres',true)."'>";
-?>		
-		</td></tr>
-		<tr><td class='bottom' colspan=3>&nbsp; <img src='img/systemeD.png' style='height:30px;'><span style='float:right;'><img src='img/support.png' style='height:40px;' id='btn_support'></span></td></tr>
-		</table>
-		<div id='popupbackground'></div>
-		<div id='popup'><div id='popup_content'></div><div id='popup_close'><button><img src='/img/icon_close.png'><?=T_("Fermer");?></button></div></div>
+  <section class="bloc">
+    <img src="/img/ilu_peda.jpg" alt="Illustration pédagogique">
+    <div>
+      <h2>Pedagogique</h2>
+      <p>Nous comprenons les défis auxquels sont confrontés les utilisateurs lorsqu'il s'agit de maîtriser la complexité des informations, c'est pourquoi notre logiciel a été conçu pour rendre cette expérience d'apprentissage aussi accessible et progressive que possible.</p>
+      <p>S'appuyant sur les enseignements tirés au cours de ces dix dernières années d'implémentation chez nos clients, notre logiciel intègre une approche pédagogique unique. Nous avons identifié et compris les obstacles que peuvent rencontrer les utilisateurs lors de la prise en main d'un outil complexe, et nous avons mis en place des solutions pour les surmonter.</p>
+      <p>Pour faciliter votre apprentissage, nous mettons à votre disposition une documentation complète, claire et concise. Chaque fonctionnalité est expliquée en détail, accompagnée d'exemples concrets pour une compréhension approfondie. De plus, notre approche progressive vous permet d'apprendre pas à pas, sans être submergé par la complexité, vous laissant ainsi la liberté de maîtriser les différentes fonctions à votre rythme.</p>
+    </div>
+  </section>
 
-<script type="text/javascript">
-var _iub = _iub || [];
-_iub.csConfiguration = {"askConsentAtCookiePolicyUpdate":true,"enableFadp":true,"fadpApplies":true,"floatingPreferencesButtonDisplay":"bottom-right","lang":"fr","perPurposeConsent":true,"siteId":3500961,"whitelabel":false,"cookiePolicyId":75698617, "banner":{ "acceptButtonDisplay":true,"closeButtonDisplay":false,"customizeButtonDisplay":true,"explicitWithdrawal":true,"listPurposes":true,"position":"bottom","rejectButtonDisplay":true,"showTitle":false }};
+</div>
+
+<!-- Footer d'appel aux dons -->
+
+<div >
+
+</div>
+	</div>
+<style>
+	.footer-cta {
+		background: linear-gradient(rgba(10, 30, 60, 0.9), rgba(10, 30, 60, 0.5)), url('/img/OGC-background.png') center/cover no-repeat;
+  color: white;
+  padding: 3rem 2rem;
+  z-index: 9;
+  position: relative;
+}
+
+
+.footer-content {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.logo {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+}
+
+.footer-text {
+  flex: 1;
+}
+
+.footer-text p {
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.btn {
+  display: inline-block;
+  background: #e2b100;
+  color: white;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: bold;
+  transition: background 0.3s;
+}
+
+.btn:hover {
+  background: #e8c500;
+  color: #003b6b
+}
+@media (max-width: 768px) {
+  .footer-content {
+    flex-direction: column;
+    text-align: center; /* optionnel mais souvent plus joli */
+  }
+
+  .logo {
+    margin-bottom: 1rem; /* espace entre logo et texte */
+  }
+}
+</style>
+
+<footer class="footer-cta">
+  <div class="footer-content">
+    <img src="/img/logo-OGC.png" alt="OpenGovernance.community" class="logo">
+
+    <div class="footer-text">
+      <p>
+        Soutenez le projet OpenGovernance.community et contribuez à construire
+        des outils ouverts et accessibles pour tous.
+      </p>
+      <a href="https://www.patreon.com/cw/OpenGovernance" target="_blank" class="btn">
+        Nous soutenir sur Patreon
+      </a>
+    </div>
+  </div>
+</footer>
+
+</body>
+<script>
+const intro = document.getElementById('intro');
+const textBlock = intro.querySelector('.vertical');
+const btn = document.getElementById('toggleText');
+
+let isExpanded = false;
+
+// toggle
+btn.addEventListener('click', () => {
+  isExpanded = !isExpanded;
+
+  intro.classList.toggle('expanded', isExpanded);
+
+  btn.textContent = isExpanded
+    ? "Réduire"
+    : "Afficher la suite";
+});
+
+// check overflow sur le BON élément
+function checkOverflow() {
+  // force état fermé pour mesurer
+  intro.classList.remove('expanded');
+
+  const hasOverflow = textBlock.scrollHeight > textBlock.clientHeight + 2;
+
+  btn.style.display = hasOverflow ? "inline-block" : "none";
+
+  // restaure état
+  if (isExpanded || !hasOverflow) {
+    intro.classList.add('expanded');
+  }
+}
+
+// debounce
+function debounce(fn, delay) {
+  let t;
+  return () => {
+    clearTimeout(t);
+    t = setTimeout(fn, delay);
+  };
+}
+
+const debouncedCheck = debounce(checkOverflow, 150);
+
+// events
+window.addEventListener('load', checkOverflow);
+window.addEventListener('resize', debouncedCheck);
+
+if (document.fonts) {
+  document.fonts.ready.then(checkOverflow);
+}
 </script>
-<script type="text/javascript" src="https://cs.iubenda.com/autoblocking/3500961.js"></script>
-<script type="text/javascript" src="//cdn.iubenda.com/cs/iubenda_cs.js" charset="UTF-8" async></script>
-	
-	</body>
 </html>

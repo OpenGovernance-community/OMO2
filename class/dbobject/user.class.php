@@ -81,9 +81,12 @@
 		// Retourne l'ensemble des médias attachés à un document
 		public function getPrompt() {
 			$prompts=new \dbobject\ArrayAIPrompt();
-			$params= array();	
-			$params["filter"] = "IDuser=".$this->get("id")." or ispublic=1";
-			$prompts->load($params);
+			$prompts->load([
+				"whereAny" => [
+					["field" => "IDuser", "value" => $this->get("id")],
+					["field" => "ispublic", "value" => 1],
+				],
+			]);
 			return $prompts;			
 		}
 		

@@ -1,0 +1,107 @@
+:root {
+    --omo-install-banner-bg: linear-gradient(135deg, #111827 0%, #1e1b4b 100%);
+    --omo-install-banner-text: #ffffff;
+    --omo-install-banner-text-muted: rgba(255, 255, 255, 0.78);
+    --omo-install-banner-button-bg: #ffffff;
+    --omo-install-banner-button-text: #111827;
+    --omo-install-banner-button-secondary-bg: rgba(255, 255, 255, 0.12);
+    --omo-install-banner-button-secondary-border: rgba(255, 255, 255, 0.16);
+}
+
+.omo-install-banner {
+    display: none;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 12px 18px;
+    background: var(--omo-install-banner-bg);
+    color: var(--omo-install-banner-text);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.omo-install-banner.is-visible {
+    display: flex;
+}
+
+.omo-install-banner__content {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.omo-install-banner__title {
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.omo-install-banner__text {
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--omo-install-banner-text-muted);
+}
+
+.omo-install-banner__actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.omo-install-banner__button {
+    appearance: none;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    padding: 10px 14px;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.18s ease, opacity 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+.omo-install-banner__button:hover,
+.omo-install-banner__button:focus-visible {
+    transform: translateY(-1px);
+}
+
+.omo-install-banner__button--primary {
+    background: var(--omo-install-banner-button-bg);
+    color: var(--omo-install-banner-button-text);
+}
+
+.omo-install-banner__button--secondary {
+    background: var(--omo-install-banner-button-secondary-bg);
+    border-color: var(--omo-install-banner-button-secondary-border);
+    color: var(--omo-install-banner-text);
+}
+
+.omo-install-banner__button[disabled] {
+    opacity: 0.65;
+    cursor: wait;
+    transform: none;
+}
+
+body.auth-page .omo-install-banner {
+    position: relative;
+    z-index: 2;
+}
+
+@media (max-width: 860px) {
+    .omo-install-banner,
+    .omo-install-banner.is-visible {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .omo-install-banner__actions {
+        width: 100%;
+    }
+
+    .omo-install-banner__button {
+        flex: 1;
+        justify-content: center;
+        text-align: center;
+    }
+}

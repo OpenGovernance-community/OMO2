@@ -5,7 +5,8 @@ ErrorDocument  404  /404.php
 RewriteEngine On
 
 RewriteCond %{HTTPS} off
-RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI
+RewriteCond %{HTTP_HOST} !(^|\.)(localhost|127\.0\.0\.1)(:\d+)?$ [NC]
+RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
 
 RewriteRule ^memo$ /memo.php [L]
 RewriteRule ^memo/([0-9]+)/?$ /memo.php?id=$1 [QSA,L]
@@ -23,3 +24,13 @@ RewriteRule ^qr/([0-9A-Za-z]+)/?$ /qr.php?id=$1 [QSA,L]
 RewriteRule ^qr/([0-9]+)/([0-9A-Za-z_\-]+)/?$ /qr.php?uid=$1&id=$2 [QSA,L]
 RewriteRule ^qr/image/([0-9A-Za-z]+)/?$ /qr.php?output=image&id=$1 [QSA,L]
 RewriteRule ^qr/image/([0-9]+)/([0-9A-Za-z_\-]+)/?$ /qr.php?output=image&uid=$1&id=$2 [QSA,L]
+
+
+# 👉 ignorer fichiers statiques
+RewriteCond %{REQUEST_URI} !\.(css|js|png|jpg|jpeg|gif|svg|ico)$ [NC]
+
+# 👉 routes OMO
+RewriteRule ^omo/?$ /omo/index.php [QSA,L]
+RewriteRule ^omo/c/[0-9]+/?$ /omo/index.php [QSA,L]
+RewriteRule ^omo/o/[0-9]+(/c/[0-9]+)?/?$ /omo/index.php [QSA,L]
+

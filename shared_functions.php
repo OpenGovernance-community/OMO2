@@ -2,8 +2,7 @@
 	require_once("config.php");
 	session_start();
 
-	require $_SERVER['DOCUMENT_ROOT'].'/../../vendor/autoload.php';
-	// Pour la traduction automatique
+	require __DIR__ . '/vendor/autoload.php';	// Pour la traduction automatique
 	use Orhanerday\OpenAi\OpenAi;
 	// Pour l'envoi de mails
 	use PHPMailer\PHPMailer\PHPMailer;
@@ -50,8 +49,10 @@
 		echo '<link href="/shared_css.css" rel="stylesheet">';
 		
 		//<!-- Script Paypal -->
-		echo '<script src="https://www.paypal.com/sdk/js?client-id=AYZnt2y7GXObIwaEE4lE00M5aqQbPnZo2ghT8323MbwnHI9dxGtLLVAQ4LLNVZnPbr9usFpnpra-lvSL&vault=true&intent=subscription" data-sdk-integration-source="button-factory" data-namespace="paypal_sdk"></script>';
-		echo '<script src="https://www.paypalobjects.com/donate/sdk/donate-sdk.js" charset="UTF-8"></script>';
+		if (!empty($GLOBALS["paypalClientId"])) {
+			echo '<script src="https://www.paypal.com/sdk/js?client-id='.rawurlencode($GLOBALS["paypalClientId"]).'&vault=true&intent=subscription" data-sdk-integration-source="button-factory" data-namespace="paypal_sdk"></script>';
+			echo '<script src="https://www.paypalobjects.com/donate/sdk/donate-sdk.js" charset="UTF-8"></script>';
+		}
 	}
 	
 	// Fonction de vérification de login, permettant d'une part d'initialiser 
@@ -140,7 +141,7 @@
 	function translate ($text, $language=null, $user=null) {
 		// En attendant de stabiliser la fonction
 
-		// Si aucune langue spécifiée, utilise celle de la license
+		// Si aucune langue spécifiée, utilise celle du user
 		if (is_null($language)) {
 				if (isset($_COOKIE["lang"]))
 					$language=$_COOKIE["lang"];
@@ -181,8 +182,9 @@
 			
 			// Demande à l'IA une traduction du texte
 			$open_ai = new OpenAi($GLOBALS["OpenAI"]);
+			$translationModel = (!empty($GLOBALS["openAiTranslationModel"]) ? $GLOBALS["openAiTranslationModel"] : MODEL);
 			$result = $open_ai->chat([
-				'model' => 'gpt-3.5-turbo',
+				'model' => $translationModel,
 				'messages' => $context,
 				'temperature' => 0.2,
 			   'max_tokens' => 2000,

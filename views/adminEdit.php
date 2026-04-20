@@ -167,10 +167,10 @@
 				$str=$object->get($key); // $str: Contenu du champ  $key: Nom du champ   $class: Classe du champ
 
 				// Valeur enregistrées
-				$tmp= "<input type='hidden' name='".$key."' id='".$key."' style='width:100%' value='".str_replace("'","&apos;",$str)."'>";
+				$tmp= "<input type='hidden' name='".$key."' id='".$key."' style='width:100%' value='".(is_null($str)?"":str_replace("'","&apos;",$str))."'>";
 
 				// Decode le JSon pour récupérer les données et les afficher dans les champs
-				$json = json_decode($str, true);
+				$json = (is_null($str)?json_decode("{}", true):json_decode($str, true));
 				
 				// cherche dans la liste des paramètres tous ceux associés à cette classe
 				$parameters=new \dbobject\ArrayParameter();

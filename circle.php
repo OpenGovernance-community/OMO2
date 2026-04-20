@@ -8,10 +8,6 @@
 <html>
 	<head>
 
-		<!-- Google fonts -->
-		<link href='https://fonts.googleapis.com/css?family=Oswald:300,400' rel='stylesheet' type='text/css'>
-		<link href='https://fonts.googleapis.com/css?family=Merriweather+Sans:400,700' rel='stylesheet' type='text/css'>
-
 		<!-- D3.js -->
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
 		<script src="https://d3js.org/queue.v1.min.js"></script>
@@ -19,19 +15,19 @@
 		<!-- stats -->
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/stats.js/r14/Stats.js"></script>
 		
-		<?writeHeadContent(T_("Dessinez votre organization !"));?>
+		<?writeHeadContent(T_("Dessinez votre organization !"),"EasyCIRCLE");?>
 	
 		<!-- Script spécifique à la page -->
 		<script>
 			
-			let occupations;
+			let root;
 			var canvas, hiddenCanvas, context, hiddenContext;
 			var node = null;
 			var centerX = centerY = null;
 			var zoomInfo = null;
 			var pack;
 			var nodes;
-			var nodeByName;	
+			//var nodeByName;	
 			var mobileSize;
 			var diameter;
 			var mainTextColor
@@ -50,12 +46,14 @@
 			var currentnode = null;
 			var hoverNode=null;
 			
+			var localStorageName="circlestructure";
+			
 			var nodeOld;
 			
 				//Default values for variables - set to root
 			var currentID = "",
-				oldID = "",
-				kids = []; //needed to check which arced titles to show - only those close to the parent node
+				oldID = "";
+			
 
 	var ease;
 	var	timeElapsed = 0;
@@ -68,6 +66,7 @@
 
 	
 	function drawText(ctx, text, fontSize, titleFont, centerX, centerY, radius, fillcolor="#000", strockcolor="#FFF",style="",font="Tahoma") {
+		
 		// startAngle:   In degrees, Where the text will be shown. 0 degrees if the top of the circle
 		// kearning:     0 for normal gap between letters. Positive or negative number to expand/compact gap in pixels
 		if (fontSize<6) return;			// Inutile d'afficher
@@ -75,33 +74,47 @@
 		//Setup letters and positioning
 		ctx.textBaseline = 'alphabetic';
 		ctx.textAlign = 'center'; // Ensure we draw in exact center
-		ctx.font = style+" "+fontSize+"px '"+font+"'";
 		ctx.fillStyle = fillcolor;
 		ctx.strokeStyle = strockcolor;
 		ctx.lineWidth = 5;
 		ctx.setLineDash([]);
 		ctx.lineJoin = 'round';
+		ctx.font = style+" "+fontSize+"pt '"+font+"'";
 		
 		//Get the text back in pieces that will fit inside the node
 		var titleText = getLines(ctx, text, radius*2*0.7, fontSize, font);
+		// Décortique l'objet retourné
+		fontSize=titleText.fontSize;
+		titleText=titleText.lines;
+		
+		if (fontSize<6) return;	// Si après adaptation, c'est trop petit...
+		if (fontSize<12) fontSize=12;	// Taille min (même si ça dépasse)
+		
+		ctx.font = style+" "+fontSize+"pt '"+font+"'";
+
 		//Loop over all the pieces and draw each line
+		cpt=0;
 		titleText.forEach(function(txt, iterator) { 
-			ctx.textBaseline = "middle"; 
-			ctx.strokeText(txt, centerX, centerY + ((-titleText.length/2)+iterator+0.5)*fontSize);
-			ctx.fillText(txt, centerX, centerY + ((-titleText.length/2)+iterator+0.5)*fontSize );
+			if (cpt<4) {
+				if (cpt==3) txt="...";
+				ctx.textBaseline = "middle"; 
+				ctx.strokeText(txt, centerX, centerY + ((-Math.min(titleText.length,4)/2)+iterator+0.5)*fontSize*1.1);
+				ctx.fillText(txt, centerX, centerY + ((-Math.min(titleText.length,4)/2)+iterator+0.5)*fontSize*1.1 );
+			}
+			cpt+=1;
 		})//forEach		
 		
 	}
 
 	//Adjusted from: http://blog.graphicsgen.com/2015/03/html5-canvas-rounded-text.html
-	function drawCircularText(ctx, text, fontSize, titleFont, centerX, centerY, radius, startAngle, kerning) {
+	function drawCircularText(ctx, text, fontSize, fontBold, titleFont, centerX, centerY, radius, startAngle, kerning) {
 		// startAngle:   In degrees, Where the text will be shown. 0 degrees if the top of the circle
 		// kearning:     0 for normal gap between letters. Positive or negative number to expand/compact gap in pixels
 				
 		//Setup letters and positioning
 		ctx.textBaseline = 'alphabetic';
 		ctx.textAlign = 'center'; // Ensure we draw in exact center
-		ctx.font = fontSize + "px " + titleFont;
+		ctx.font = fontBold+" "+fontSize + "pt " + titleFont;
 		ctx.fillStyle = "rgba(255,255,255," + textAlpha +")";
 
 		startAngle = startAngle * (Math.PI / 180); // convert to radians
@@ -136,6 +149,28 @@
 	//The draw function of the canvas that gets called on each frame
 	function drawCanvas(chosenContext, hidden) {
 
+		function drawPolygon(ctx, x, y, radius, sides) {
+			if (sides < 3) return; // Un polygone a au moins 3 côtés
+
+			ctx.beginPath();
+
+			// Tracer chaque sommet du polygone
+			for (let i = 0; i <= sides; i++) {
+				const angle = (2 * Math.PI / sides) * i; // Diviser le cercle en "sides" parties
+				const px = x + radius * Math.cos(angle);
+				const py = y + radius * Math.sin(angle);
+
+				if (i === 0) {
+					ctx.moveTo(px, py); // Début du polygone
+				} else {
+					ctx.lineTo(px, py); // Ligne vers le sommet suivant
+				}
+			}
+
+			ctx.closePath(); // Fermer le chemin pour relier le dernier sommet au premier
+			ctx.stroke(); // Tracer le contour
+		}
+
 		//Clear canvas
 		chosenContext.fillStyle = "#eee";
 		chosenContext.rect(0,0,chartwidth,chartheight);
@@ -148,15 +183,18 @@
 
 			var nodeX = ((node.x - zoomInfo.centerX) * zoomInfo.scale) + centerX,
 				nodeY = ((node.y - zoomInfo.centerY) * zoomInfo.scale) + centerY,
-				nodeR = node.r * zoomInfo.scale * (node.type=="role"?0.9:(node.type=="organization"?1.05:1));
+				nodeR = node.r * zoomInfo.scale * (node.type=="1"?0.9:(node.type=="4"?1.05:1));
 				
 			//Use one node to reset the scale factor for the legend
 			if(i === 0) scaleFactor = node.value/(nodeR * nodeR); 
 						
 			//Draw each circle
-			chosenContext.beginPath();
-			chosenContext.arc(nodeX, nodeY, nodeR, 0,  2 * Math.PI, true);	
-
+			if (node.mod=="hierarchy")
+				drawPolygon(chosenContext, nodeX, nodeY, nodeR, 8);
+			else {
+				chosenContext.beginPath();
+				chosenContext.arc(nodeX, nodeY, nodeR, 0,  2 * Math.PI, true);	
+			}
 			//If the hidden canvas was send into this function and it does not yet have a color, generate a unique one
 			if(hidden) {
 				if(node.color == null) {
@@ -172,29 +210,29 @@
 				
 			} else {
 				// anciennement node.children
-				chosenContext.fillStyle =  node.type=="group" ||  node.type=="circle" ? colorCircle(node.depth) : (node.mycolor?node.mycolor:"rgb(255, 204, 0)"); // Couleur des noeuds
-				if (node.type && node.type=="group") {chosenContext.fillStyle="rgba(0,0,0,0)";}
+				chosenContext.fillStyle =  node.type=="3" ||  node.type=="2" ? colorCircle(node.depth) : (node.mycolor?node.mycolor:"rgb(255, 204, 0)"); // Couleur des noeuds
+				if (node.type && node.type=="3") {chosenContext.fillStyle="rgba(0,0,0,0)";}
 				
-				if (node.type=="organization") {
-				chosenContext.lineWidth = 1;
-				//chosenContext.setLineDash([10, 10]);
-				chosenContext.strokeStyle= "rgba(255,255,255,0.5)"
-				chosenContext.stroke();
-				chosenContext.fillStyle="rgb(61, 168, 169)";
-				chosenContext.fill();
+				if (node.type=="4") {
+					chosenContext.lineWidth = 1;
+					//chosenContext.setLineDash([10, 10]);
+					chosenContext.strokeStyle= "rgba(255,255,255,0.5)"
+					chosenContext.stroke();
+					chosenContext.fillStyle="rgb(61, 168, 169)";
+					chosenContext.fill();
 				
 
 				} else							
-				if (node.type=="group") {
-				chosenContext.lineWidth = 2;
-				chosenContext.setLineDash([10, 10]);
-				chosenContext.strokeStyle= "rgba(255,255,255,0.5)"
-				chosenContext.stroke();
-				chosenContext.fill();
+				if (node.type=="3") {
+					chosenContext.lineWidth = 2;
+					chosenContext.setLineDash([10, 10]);
+					chosenContext.strokeStyle= "rgba(255,255,255,0.5)"
+					chosenContext.stroke();
+					chosenContext.fill();
 
 				} else {
 					chosenContext.fill();
-					if (node.type=="template") {
+					if (node.mod=="template") {
 						var pattern = chosenContext.createPattern(pattern_img,'repeat');
 						chosenContext.fillStyle=pattern;
 						chosenContext.fill();
@@ -202,7 +240,7 @@
 				}
 
 			// Current node layout
-			if (node.ID==currentID) {
+			if (node.ID==currentnode.ID) {
 				chosenContext.lineWidth = 6;
 				chosenContext.setLineDash([]);
 				chosenContext.strokeStyle= "rgba(255,255,255,1)";
@@ -263,34 +301,44 @@
 			
 		}//for i
 		
-		var counter = 0; //Needed for the rotation of the arc titles
+	
 		
 		//Do a second loop because the arc titles always have to be drawn on top
-		for (var i = 0; i < nodeCount; i++) {
+		for (var i = nodeCount-1; i >=0; i--) {
 			node = nodes[i];
 		
 			var nodeX = ((node.x - zoomInfo.centerX) * zoomInfo.scale) + centerX,
 				nodeY = ((node.y - zoomInfo.centerY) * zoomInfo.scale) + centerY,
-				nodeR = node.r * zoomInfo.scale * (node.type=="role"?0.9:(node.type=="organization"?1.05:1));
+				nodeR = node.r * zoomInfo.scale * (node.type=="1"?0.9:(node.type=="4"?1.05:1));
+				
+				
 			
-				titleFont="Arial black";
-				if(!hidden & showText & (node.ID==currentnode.ID || $.inArray(node.ID, kids) >= 0)) {  
+				titleFont="Arial";
+				if(!hidden & showText & (node.ID==currentnode.ID || node.parent==currentnode || (node.parent && node.parent.parent==currentnode) || ((currentnode.parent && (currentnode.type!="2" || currentnode.parent.children.length>1)) && (node.ID==currentnode.parent.ID || (node.parent && node.parent.ID==currentnode.parent.ID))  ))) {  
 					//Calculate the best font size for the non-leaf nodes
+
+					thename=node.name;
 					
-					if (typeof node.children == "undefined" || $.inArray(node.ID, kids) >= 0) {
+					if (node.type != "1" && node==currentnode || currentnode.parent==node) {
+						var fontSizeTitle = Math.round(nodeR / 6);
+						if (fontSizeTitle > 4) drawCircularText(chosenContext, thename.replace(/,? and /g, ' & '), fontSizeTitle, "bold", titleFont, nodeX, nodeY, nodeR, 0, 0);  // rotationText[counter] pour le 1er 0
+					} else {	
+						
 						var fontSizeTitle = Math.round(nodeR / 3);
-						if (typeof node.children == "undefined") {
+
+						if (node.type == "1") {
+							
+							// Limite la taille max pour les rôles, et écrit en noir
 							if (fontSizeTitle>36) fontSizeTitle=36;
-							drawText(chosenContext, node.name.replace(/,? and /g, ' & '), fontSizeTitle, titleFont, nodeX, nodeY, nodeR,"#000000","#FFFFFF");  // rotationText[counter] pour le 1er 0
+							drawText(chosenContext, thename.replace(/,? and /g, ' & '), fontSizeTitle, titleFont, nodeX, nodeY, nodeR,"#000000","#FFFFFF");  // rotationText[counter] pour le 1er 0
 						}
 						else
-							drawText(chosenContext, node.name.replace(/,? and /g, ' & '), fontSizeTitle, titleFont, nodeX, nodeY, nodeR,"#FFFFFF","#000000","bold");  // rotationText[counter] pour le 1er 0
-					} else {
-						var fontSizeTitle = Math.round(nodeR / 6);
-						if (fontSizeTitle > 4) drawCircularText(chosenContext, node.name.replace(/,? and /g, ' & '), fontSizeTitle, titleFont, nodeX, nodeY, nodeR, 0, 0);  // rotationText[counter] pour le 1er 0
+						{
+							drawText(chosenContext, thename.replace(/,? and /g, ' & '), fontSizeTitle, titleFont, nodeX, nodeY, nodeR,"#FFFFFF","#000000","bold");  // rotationText[counter] pour le 1er 0
+						}
 					}
 				}//if
-				counter = counter + 1;
+		
 
 
 		}//for i
@@ -315,19 +363,14 @@
 		
 		//Set the new focus
 		focus = focusNode;
-		var v = [focus.x, focus.y, focus.r * 2.05]; //The center and width of the new "viewport"
+		if (focusNode.type=="1" || focusNode.children && focusNode.children.length<2)
+			var v = [focus.x, focus.y, focus.r * 4.05]; //The center and width of the new "viewport"
+		else 
+			var v = [focus.x, focus.y, focus.r * 2.05];
 
 		zoomInfo.centerX = v[0];
 		zoomInfo.centerY = v[1];
 		zoomInfo.scale = diameter / v[2];
-
-			node=currentnode=focusNode;
-			kids = [];
-			if(typeof node.children !== "undefined") {
-				for(var i = 0; i < node.children.length; i++) {
-					kids.push(node.children[i].ID)
-				}//for i
-			}//if
 
 		drawCanvas(context);
 		drawCanvas(hiddenContext, true);
@@ -368,23 +411,24 @@
 	
 	//Function to run oif a user clicks on the canvas
 	var clickFunction = function(e){
-		//Figure out where the mouse click occurred.
-		var mouseX = e.offsetX*2; //e.layerX;
-		var mouseY = e.offsetY*2; //e.layerY;
+		if (!wasDragging) {
+			//Figure out where the mouse click occurred.
+			var mouseX = e.offsetX*2; //e.layerX;
+			var mouseY = e.offsetY*2; //e.layerY;
 
-		// Get the corresponding pixel color on the hidden canvas and look up the node in our map.
-		// This will return that pixel's color
-		var col = hiddenContext.getImageData(mouseX, mouseY, 1, 1).data;
-		//Our map uses these rgb strings as keys to nodes.
-		var colString = "rgb(" + col[0] + "," + col[1] + ","+ col[2] + ")";
-		var node = colToCircle[colString];
+			// Get the corresponding pixel color on the hidden canvas and look up the node in our map.
+			// This will return that pixel's color
+			var col = hiddenContext.getImageData(mouseX, mouseY, 1, 1).data;
+			//Our map uses these rgb strings as keys to nodes.
+			var colString = "rgb(" + col[0] + "," + col[1] + ","+ col[2] + ")";
+			var node = colToCircle[colString];
 
-		//If there was an actual node clicked on, zoom into this
-		if(node) {
-			//Perform the zoom
-			zoomToCanvas(node);			
-		} else {zoomToCanvas(root)}//if -> node
-		
+			//If there was an actual node clicked on, zoom into this
+			if(node) {
+				//Perform the zoom
+				zoomToCanvas(node);			
+			} else {zoomToCanvas(root)}//if -> node
+		}
 	}//function clickFunction
 
 	//Listen for clicks on the main canvas
@@ -464,8 +508,6 @@
 		$("body").delegate("#canvas","mousemove", mousemoveFunction);
 	
 
-
-				
 				// **************************************
 				// Colonne de gauche
 				// **************************************
@@ -474,9 +516,12 @@
 				$( "#resizeelem" ).draggable({ axis: "x" ,
 
 				  stop: function(event, ui) {
-					$(".left").css("width",$(".left").width()+ui.position.left+4);
+					pos=$(".left").width()+ui.position.left+4;
+					if (pos<250) pos=250;
+					  console.log("resize:"+pos);
+					$(".left").css("width",pos);
 					$( "#resizeelem" ).css("left",0);
-					refresh();
+					refreshCircle(false);
 				  }
 				});
 				
@@ -504,36 +549,86 @@
 				];
 					
 
-							
-
 				// Chargement des données si sauvegardée localement
 				if (localStorage.savecircle)
 					load();
 
-
+<?
+	// N'intègre pas le code d'édition s'il s'agit d'un lien de partage
+	if (!isset($_GET["view"])) {
+?>
+			function saveSQL() {
+				save();
+				$.ajax({
+					url: '/ajax/saveorga.php', // Remplacez par l'URL de votre serveur PHP
+					type: 'POST',
+					contentType: 'application/json',
+					dataType: 'json',
+					data: JSON.stringify(JSON.parse(localStorage.getItem("circlestructure"))),
+					success: function(response) {
+						if (response.status === 'ok') { // Vérifiez si le serveur a renvoyé un statut "ok"
+							// Récupère la nouvelle structure, avec les ID mis à jour
+							
+							localStorage.setItem(localStorageName, JSON.stringify(response.json));
+							root=response.json;
+						
+							refreshCircle(false);refreshCircle(false);
+							alert('Sauvegarde effectuée !');
+							
+						} else {
+							alert('Erreur: ' + response.message);
+						}
+					},
+					error: function(xhr, status, error) {
+						console.log('Erreur de requête : ', error);
+						alert('Une erreur est survenue. Veuillez réessayer.');
+					}
+				});			
+			}	
 			
 				$("#btn_new").click(function () {
-					// Crée une nouvelle organisation avec un seul cercle
-					
+					showPopup("/popup/circle/new.php", "<?=T_("Nouvelle structure",true)?>");
+/*					// Crée une nouvelle organisation avec un seul cercle
 					if (confirm("Voulez-vous réellement créer une nouvelle organisation?\nL'organisation en cours sera remplacée. Créez un compte pour la sauvegarder.") ) {
-						occupations=JSON.parse('{"name": "Mon organisation", "ID": "1", "type": "organization", "children": [{"name": "Ancrage", "ID": "2", "type": "circle", "children": [ {"name": "Trésorerie", "ID": "3","type":"role",  "size":10}, {"name": "Test", "type":"role", "ID": "4", "size":10}]}]}');
+						root=JSON.parse('{"name": "Mon organisation", "ID": "TMP_1", "type": "4", "children": [{"name": "Ancrage", "ID": "TMP_2", "type": "2", "children": [ {"name": "Facilitation", "mycolor":"#FF6600", "ID": "TMP_3","type":"1", "mod":"template",  "size":10}, {"name": "Pilotage",  "mycolor":"#FF2200", "type":"1", "mod":"template", "ID": "TMP_4", "size":10}, {"name": "Mémoire", "mycolor":"#FF9900", "type":"1", "mod":"template", "ID": "TMP_8", "size":10}, {"name": "Role opérationnel", "type":"1", "ID": "TMP_9", "size":10}]},{"name": "CA", "ID": "TMP_5", "type": "2", "children": [ {"name": "Trésorier", "ID": "TMP_6","type":"1",  "size":10}, {"name": "Président", "type":"1", "ID": "TMP_7", "size":10}]}]}');
 						
 						// Stock sur le disque
-						localStorage.setItem('circlestructure', JSON.stringify(occupations));
+						localStorage.setItem(localStorageName, JSON.stringify(root));
+						currentnode=focusNode=root;
 						
 						// Raffraichi l'affichage
-						refresh();
-					}
+						refreshCircle();
+					}*/
 				});
-
-
 				
+
+				$("#btn_save").click(function () {
+					saveSQL();
+				});
+				
+				$("#btn_load").click(function () {
+					//loadSQL();
+					showPopup("/popup/circle/load.php", "<?=T_("Charger un schéma",true)?>");
+				});
+				
+				$("#btn_support").click(function () {
+					showPopup("/popup/support.php", "<?=T_("Soutenez-nous !",true)?>");
+				});	
+				
+				// Boutons pour manipuler l'holarchie
 				$("body").delegate("#btn_add_role","click", function () {
-					showPopup("/popup/addrole.php", "<?=T_("Ajouter un rôle",true)?>");					
+					showPopup("/popup/circle/addrole.php", "<?=T_("Ajouter un noeud",true)?>");					
 				});
-				
-				
-				
+				$("body").delegate("#btn_edit_role","click", function () {
+					showPopup("/popup/circle/editrole.php", "<?=T_("Editer un noeud",true)?>");					
+				});
+				$("body").delegate("#btn_move_role","click", function () {
+					showPopup("/popup/circle/moverole.php", "<?=T_("Déplacer un noeud",true)?>");					
+				});
+<?
+				} 
+?>
+
 				function supprimerNoeud(noeud) {
 					console.log(noeud);
 				  const parent = noeud.parent;
@@ -546,7 +641,6 @@
 					  // Supprimer l'enfant du tableau
 					  parent.children.splice(index, 1);
 					  console.log ("Nouvelle structure");
-					  console.log(parent);
 
 					  // Supprimer la référence Parent dans l'enfant pour éviter des cycles
 					  //delete noeud.parent;
@@ -562,17 +656,13 @@
 					
 						// Se déplace sur le parent
 						gotoNode=currentnode.parent;
-						console.log ("Goto Node");
-						console.log(gotoNode);
+
 						
 						if (confirm("Voulez-vous réellement supprimer ce noeud ?"))	{
-								console.log(supprimerNoeud(currentnode));
-							
-								occupations=root;
-	
+								supprimerNoeud(currentnode);
 								save();
-								nodes = pack.nodes(occupations),
-										root = occupations,
+								nodes = pack.nodes(root),
+
 										focus = root,
 										nodeCount = nodes.length;
 			
@@ -588,18 +678,50 @@
 					if (currentnode) {
 						currentnode.children.push(JSON.parse('{"name": "Role ajouté", "ID": "50", "size":10}'));
 					}
-					occupations=root;
-					refresh();
+					;
+					refreshCircle();
 					
 				});
 				// Sauve automatiquement lorsque on quitte les champs d'entête
 				$("body").delegate(".interface-top input#title2","focusout",function (e) {
 					root.name=$(this).val();
-					occupations=root;
 					save();
-					refresh();
+					refreshCircle();
 				});	
 				
+				function highlightText(text) {
+					if (text.length<3) {
+							// Efface tous les éléments
+							$(".filter_zone").find(".highlight").each(function() {
+								$(this).replaceWith($(this).text()); // Remplace les balises <span> par leur contenu
+							});
+					} else {
+						var allzone = $(".filter_zone");
+						allzone.each(function() {
+							content=$(this);
+							
+							var regex = new RegExp('(>[^<]*?)(' + text + ')([^<]*?<)', 'gi');
+
+							// Efface tous les éléments
+							content.find(".highlight").each(function() {
+								$(this).replaceWith($(this).text()); // Remplace les balises <span> par leur contenu
+							});
+
+							var contentHTML = content.html();
+							content.html(contentHTML.replace(regex, function(match, p1, p2, p3) {
+								return p1 + '<span class="highlight">' + p2 + '</span>' + p3;
+							}));
+						});
+					}
+				}
+    
+				$("body").delegate("#quickfilter","keyup", function () {
+					// Cache toute les lignes
+					$(".memo_item").hide();
+					// Affiche toute les lignes qui contiennent le texte
+					$('.memo_item:icontains('+$(this).val()+')').show();
+					highlightText($(this).val())
+				});					
 	
 			
 			});
@@ -621,16 +743,95 @@
 			}
 						
 			function save() {
-				localStorage.setItem('circlestructure', JSON.stringify(removeCircularReferences(root)));
+				localStorage.setItem(localStorageName, JSON.stringify(removeCircularReferences(root)));
 			}
 			$(window).resize(function() {
-				refresh();
+				refreshCircle();
 			});
 				
 				
 
 		
 		</script>
+
+
+<script>
+	// Script pour le glisser-déplacer
+	     // Cibler le canvas
+        let $canvas;
+        let wasDragging = isDragging = false;
+        $(document).ready(function() {
+            let offsetX, offsetY;
+
+			$('div#showPanel').click(function () {
+				
+				const $div = $('td.left');
+				
+				const isVisible = ($div.css('left') === '0px');
+				if (isVisible) {
+					// Calculer dynamiquement la position de fermeture
+					const closeLeft = `-${$div.outerWidth()}px`;
+					$div.animate({ left: closeLeft }, 500); // Cache la div
+					
+				} else {
+					$div.animate({ left: '0' }, 500); // Montre la div
+					
+				}			
+			});
+
+            // Commencer le déplacement
+            $("body").delegate("#canvas",'mousedown', function(event) {
+				$canvas = $('#canvas');
+                isDragging = true;
+
+                // Calculer l'offset initial entre la souris et le coin du canvas
+                offsetX = event.pageX;
+                offsetY = event.pageY;
+            });
+
+            // Déplacer le canvas
+            $(document).on('mousemove', function(event) {
+                if (isDragging) {
+					wasDragging=true;
+					// Essaie de bouger les coordonnées du centre pour dessiner
+					var v = [vOld[0]+(-event.pageX+offsetX)*2/(diameter / vOld[2]), vOld[1]+(-event.pageY+offsetY)*2/(diameter / vOld[2]), vOld[2]]; //The center and width of the new "viewport"
+					offsetX = event.pageX;
+					offsetY = event.pageY;
+					zoomInfo.centerX = v[0];
+					zoomInfo.centerY = v[1];
+					zoomInfo.scale = diameter / v[2];
+					console.log(diameter / v[2]);
+					
+					vOld=v;
+                } else {
+					wasDragging	=false;
+				}
+            });
+
+            // Arrêter le déplacement
+            $("body").delegate("#canvas",'mouseout', function(event) {
+				if (isDragging) {
+					isDragging = false;
+					drawCanvas(context);
+					drawCanvas(hiddenContext, true);
+				}
+				$('.popoverWrapper').remove(); 
+				$('.popover').each(function() {
+						$('.popover').remove(); 	
+				}); 
+
+			});
+
+            $(document).on('mouseup', function() {
+				if (isDragging) {
+					isDragging = false;
+					drawCanvas(context);
+					drawCanvas(hiddenContext, true);
+				}
+
+            });
+        });
+    </script>
 
 		<script>
 			// ***********************************
@@ -653,71 +854,96 @@ function isJsonString(str) {
 }
 let pattern_img;
 
-function removeColorNodes(json) {
+function removeColorNodes(json, size=10) {
     if (Array.isArray(json)) {
         // Si c'est un tableau, appliquer récursivement sur chaque élément
-        return json.map(removeColorNodes);
+        console.log("zone 1");
+        return json.map(item => removeColorNodes(item, size));
     } else if (typeof json === 'object' && json !== null) {
         // Si c'est un objet, vérifier chaque clé
         for (let key in json) {
             if (key === 'color') {
                 // Supprimer la clé "color"
                 delete json[key];
-            } else {
+            } else if (key === 'size') {
+                // Adapte la clé
+                json[key]=size;
+            } else if (key === 'children') {
                 // Appliquer récursivement sur les propriétés imbriquées, sauf pour le noeud parent
-               if (key!=='parent')
-                json[key] = removeColorNodes(json[key]);
+                json[key] = removeColorNodes(json[key], (json["type"]==2?(size>2?size-2:2):size));
             }
         }
     }
     return json; // Retourner l'objet ou la valeur inchangée
 }
 
-function refresh() {
+function refreshCircle(zoom = true) {
 		// Init fields
 	$("canvas").remove();
 	
 	// Raffraichi les couleurs
 	removeColorNodes(root);
+	console.log (root);
 	
 	var currentID=currentnode.ID;
 	drawAll();
 	// Find the current node again after drawing
-	quickZoomToCanvas(currentnode);
+	if (zoom) quickZoomToCanvas(currentnode);
 
 	
 	for (const [key, value] of Object.entries(colToCircle)) {
 	  if (value.ID==currentID) currentnode=value;
 	}
-	quickZoomToCanvas(currentnode);
 
 }
 
 function init() {
+<?
+		// Comportement différent si appelé avec un paramètre de visualisation ($_GET["view"])
+		if (isset($_GET["view"])) {
+			// Récupère l'organisation
+			$org=new \dbObject\holon();
+			$org->load(['accesskey',$_GET["view"]]);
+			if ($org->getId()>0) {
+			
+?>
+		localStorageName="tmpcirclestructure";
+		// Charge l'organisation avec l'access key, pour bypasser le "canView()"
+		// Attention, mauvaise gestion des erreurs ici...
+		$.getJSON("/ajax/loadorga.php?id=<?=$org->getId()?>&accesskey=<?=$_GET["view"]?>", function( my_var ) {		
+		//my_var=JSON.parse('{"name": "<?=$org->get("name")?>", "ID": "TMP_1", "type": "4", "children": [{"name": "Ancrage", "ID": "TMP_2", "type": "2", "children": [ {"name": "Facilitation", "mycolor":"#FF6600", "ID": "TMP_3","type":"1", "mod":"template",  "size":10}, {"name": "Pilotage",  "mycolor":"#FF2200", "type":"1", "mod":"template", "ID": "TMP_4", "size":10}, {"name": "Mémoire", "mycolor":"#FF9900", "type":"1", "mod":"template", "ID": "TMP_8", "size":10}, {"name": "Role opérationnel", "type":"1", "ID": "TMP_9", "size":10}]},{"name": "CA", "ID": "TMP_5", "type": "2", "children": [ {"name": "Trésorier", "ID": "TMP_6","type":"1",  "size":10}, {"name": "Président", "type":"1", "ID": "TMP_7", "size":10}]}]}');
+		localStorage.setItem(localStorageName, JSON.stringify(my_var));
+		$("canvas").remove();
+		queue().defer(loadImage, "/img/rayures.png").await(drawAll);
+		});	
+
+
+<? 
+	} else {
+		echo "alert('Error!')";
+	}
+
+} else { ?>
+	
 	// Efface tous les canvas
-	if (localStorage.getItem('circlestructure')==null || !isJsonString(localStorage.getItem('circlestructure'))) {
+	if (localStorage.getItem(localStorageName)==null || !isJsonString(localStorage.getItem(localStorageName))) {
 		$.getJSON("/data/occupation.json", function( my_var ) {		
-			localStorage.setItem('circlestructure', JSON.stringify(my_var));
+			localStorage.setItem(localStorageName, JSON.stringify(my_var));
 			$("canvas").remove();
 			queue().defer(loadImage, "/img/rayures.png").await(drawAll);
 		});		
 	} else {
+		// 
 		$("canvas").remove();
 		queue().defer(loadImage, "/img/rayures.png").await(drawAll);
 	}
 	
+<? } ?>
+	
 }
 $(function() {
 	init();
-	$("#chart").on('mouseout', function() {
-		console.log("Out!");
-		$('.popoverWrapper').remove(); 
-				$('.popover').each(function() {
-						$('.popover').remove(); 	
-				}); 
 
-		});
-		
 		
 		
 		$("body").delegate(".navTo","click",function() {
@@ -760,12 +986,7 @@ $(function() {
 		
 		
 		currentnode=focusNode;
-			kids = [];
-			if(typeof focusNode.children !== "undefined") {
-				for(var i = 0; i < focusNode.children.length; i++) {
-					kids.push(focusNode.children[i].ID)
-				}//for i
-			}//if
+		
  
 			// Load the content description
 			if (focus!==focusNode)
@@ -788,12 +1009,13 @@ $(function() {
 			focus=root;
 		else
 			focus = focusNode;
-		var v = [focus.x, focus.y, focus.r * 2.05]; //The center and width of the new "viewport"
-		console.log (vOld);
-		console.log (v);
+		if (focusNode.type=="1" || focusNode.children && focusNode.children.length<2)
+			var v = [focus.x, focus.y, focus.r * 4.05]; //The center and width of the new "viewport"
+		else 
+			var v = [focus.x, focus.y, focus.r * 2.05];
 		if (arraysAreEqual(vOld,v)) {
 			// Rafraîchi simplement l'affichage
-			refresh();
+			refreshCircle();
 		} else {
 			
 
@@ -871,19 +1093,20 @@ $(function() {
 	
 //Initiates practically everything
 function drawAll(error, img) {
+
 	if (img != null) pattern_img=img;
 	
 	// Récupère le json sur le storage interne
-	if (typeof(occupations) == "undefined") {
-		occupations=localStorage.getItem('circlestructure');
-		if (occupations==null) {
-			occupations=JSON.parse('{"name": "Demo", "ID": "0", "type": "circle", "children": [ {"name": "Trésorerie", "ID": "3", "size":10}]}');
+	if (typeof(root) == "undefined") {
+		root=localStorage.getItem(localStorageName);
+		if (root==null) {
+			root=JSON.parse('{"name": "Demo", "ID": "0", "type": "4", "children": [ {"name": "Trésorerie", "ID": "3", "size":10}]}');
 		} else
-			occupations=JSON.parse(occupations);
+			root=JSON.parse(root);
 	}
-	
+	removeColorNodes(root);
 	// Create the list
-	transformJSONtoHTML(occupations, "/xslt/list_role.xml", 'role_list');
+	transformJSONtoHTML(root, "/xslt/list_role.xml", 'role_list');
 	
 	
 	////////////////////////////////////////////////////////////// 
@@ -905,7 +1128,8 @@ function drawAll(error, img) {
 	
 	padding = 0; // Default: 20
 	chartwidth = $("#chart").innerWidth()*2;
-	chartheight = ($("html").innerHeight()-100)*2;
+	chartheight = ($("html").height()-40-$(".interface-bottom").innerHeight())*2;
+	console.log ($(".interface-bottom").height()+" - "+chartheight);
 	//	height = (mobileSize | $("#chart").innerWidth() < 768 ? width : $("#chart").innerHeight() ); // -90?
 
 
@@ -970,7 +1194,7 @@ function drawAll(error, img) {
 		
 		
 	} else {
-		currentnode=occupations;
+		currentnode=root;
 		zoomInfo = {
 			centerX: centerX,
 			centerY: centerY,
@@ -991,15 +1215,14 @@ function drawAll(error, img) {
 	////////////// Create Circle Packing Data ////////////////////
 	////////////////////////////////////////////////////////////// 
 
-	nodes = pack.nodes(occupations),
-		root = occupations,
+	nodes = pack.nodes(root),
 		focus = root,
 		nodeCount = nodes.length;
 
-	nodeByName = {};
+	/*nodeByName = {};
 	nodes.forEach(function(d,i) {
 		nodeByName[d.name] = d;
-	});
+	});*/
 
 	
 
@@ -1008,10 +1231,6 @@ function drawAll(error, img) {
 	/////////////////// Click functionality ////////////////////// 
 	////////////////////////////////////////////////////////////// 
 	
-
-	//Setup the kids variable for the top (root) level	
-	kids = [];		
-	for(var i = 0; i < root.children.length; i++) { kids.push(root.children[i].ID) };	
 	
 	if (!mobileSize) {
 		nodeOld = root;
@@ -1047,17 +1266,17 @@ function drawAll(error, img) {
 	///////////////////// Create Search Box ////////////////////// 
 	////////////////////////////////////////////////////////////// 
 
-	//Create options - all the occupations
+	//Create options - all the root
 	var options = nodes.map(function(d) { return d.name; });
 	
-	//Function to call once the search box is filled in
+	/* //Function to call once the search box is filled in
 	searchEvent = function(occupation) { 
 		//If the occupation is not equal to the default
 		if (occupation !== "" & typeof occupation !== "undefined") {
 			zoomToCanvas(nodeByName[occupation]);
 		}//if 
 	}//searchEvent
-		
+		*/
 	////////////////////////////////////////////////////////////// 
 	/////////////////////// FPS Stats box //////////////////////// 
 	////////////////////////////////////////////////////////////// 
@@ -1086,9 +1305,20 @@ function drawAll(error, img) {
 	//First zoom to get the circles to the right location
 	if (currentnode) {
 		//alert (currentnode.ID);
+			// Raffraichi les couleurs
+		removeColorNodes(root);
+		console.log (root);
+	
+		var currentID=currentnode.ID;
+	
 		quickZoomToCanvas(currentnode);
 	} else {
 		currentnode=root;
+		removeColorNodes(root);
+		console.log (root);
+	
+		var currentID=currentnode.ID;
+		
 		quickZoomToCanvas(root);
 	}
 	//Draw the hZdden canvas at least once
@@ -1102,7 +1332,7 @@ function drawAll(error, img) {
 	
 	//This function runs during changes in the visual - during a zoom
 	$("input#title2").val(root.name);
-	console.log("Il est passé par là : "+root.name);
+	$("input#id").val(root.IDdb);
 		
 }//drawAll
 
@@ -1138,7 +1368,7 @@ function getLines(ctx, text, maxWidth, fontSize, titleFont) {
 	var words = text.split(" ");
 	var lines = [];
 	var currentLine = words[0];
-
+	var maxi="";
 	for (var i = 1; i < words.length; i++) {
 		var word = words[i];
 		ctx.font = fontSize + "pt " + titleFont;
@@ -1147,21 +1377,51 @@ function getLines(ctx, text, maxWidth, fontSize, titleFont) {
 			currentLine += " " + word;
 		} else {
 			lines.push(currentLine);
+			if (currentLine.length>maxi.length) maxi=currentLine;
 			currentLine = word;
 		}
 	}
 	lines.push(currentLine);
-	return lines;
+	if (currentLine.length>maxi.length) maxi=currentLine;
+	
+	// Adapte la taille de la fonte si le mot le plus long dépasse de la taille du cercle
+	if (ctx.measureText(maxi).width>maxWidth) {
+		// Règle de 3 pour redéfinir la taille (passée en référence
+		fontSize=fontSize/ctx.measureText(maxi).width*maxWidth;
+	}
+	
+	// Retourne le tableau adapté, et la taille de police conseillée
+	return {lines:lines,fontSize:fontSize};
 }//function getLines
 
 
 	</script>
 	
 	<style>
-		
+<?
+	if (isset($_GET["view"])) {
+		echo ".menuNode {display:none !important}";
+	}
+?>		
 
 	@media screen {
 		
+		.filter_zone:has(.highlight) li {display:none}
+		li:has(.highlight) {display:list-item !important;}
+		.highlight {background:#FFFF00} 
+		
+		#role_list {padding:15px;}
+		#role_list .data {display:none}
+		#role_list .data:has(.highlight) {display:block}
+		
+		
+.data_field	 {background:rgba(0,0,0,0.1); border-radius:5px; padding:5px;margin-bottom:10px;}	
+.data_field::before {
+		content: attr(title) " :"; /* Texte à afficher avant la liste */
+		display: block; /* Pour que le texte soit affiché sur une nouvelle ligne */
+		font-weight: bold; /* Exemple de style */
+	}
+
 		/* Conteneur de la switch */
 .switch {
   position: relative;
@@ -1245,11 +1505,34 @@ div#contentright:not(:has(input#toggleSwitch:checked)) div#role_list {
 		
 
 		#tools {background:var(--midlow-bg-color)}
+		#tools_scroll {
+			overflow-y: auto; /* Activer le scroll */
+			scrollbar-width: thin; /* Rendre la scrollbar fine (Firefox) */
+			scrollbar-color: rgba(0,0,0,0.2) white; /* Couleurs invisibles (Firefox) */
+		}
+
+		/* Pour les navigateurs basés sur WebKit (Chrome, Safari, Edge) */
+		#tools_scroll::-webkit-scrollbar {
+			width: 4px; /* Rendre la scrollbar aussi fine que possible */			height: 4px; /* Même chose pour la scrollbar horizontale */
+		}
+
+
+		
 		.left { background:var(--light-bg-color)}
 		.contentleft {  background:var(--white-bg-color)}
 		.contentright {background:var(--white-bg-color) }
 		.right {  background:var(--light-bg-color)}
-		#resizeelem { background:var(--midlow-bg-color);}
+		.resize {width:10px;position:relative;}
+		#resizeelem {width: 10px;
+			height: 100%;
+			cursor: e-resize;
+			z-index: 2;
+			background-image: url(/img/dots.png);
+			background-size: 14px;
+			background-repeat: no-repeat;
+			background-position: center;
+			background-color:var(--midlow-bg-color);
+		};
 
 		.list-group-item.active {
 			color:var(--dark-txt-color);
@@ -1269,13 +1552,11 @@ div#contentright:not(:has(input#toggleSwitch:checked)) div#role_list {
 	.displayTab {height:100%; width:100%}
 	.leftTab {height:100%; width:100%}
 
-	.left {height:calc(100% - 100px);width:300px; padding:2px;}
-	.contentleft {height:100%; border-radius:5px;}
+	.left {height:calc(100% - 100px);width:400px; padding:2px;}
+	.contentleft {height:calc(100% - 30px); border-radius:5px;}
 	.contentright {height:calc(100% - 4px); width:calc(100% - 4px); border-radius:5px;  overflow:hidden;position:absolute; left:2px; top:2px;}
 	.right {height:calc(100% - 100px); padding:2px; position:relative;}
 
-	.resize {width:5px;position:relative;}
-	#resizeelem {width:5px;height:100%; cursor:e-resize;z-index:2}
 	
 	.odj {font-weight:bold; font-size:110%}
 	
@@ -1286,10 +1567,39 @@ div#contentright:not(:has(input#toggleSwitch:checked)) div#role_list {
 	.mainTitle {font-size:200%;width:100%}
 	.horaires {font-color:#ccc;width:100%}
 
+	div#showpanel {display:none}
 
 
+	#menu {position:fixed; top:0px; right:20px; border-radius: 0px 0px 10px 10px; padding:10px;background-color:#FFFFFF;box-shadow: 5px 5px 10px rgba(0,0,0,0.5)}
 
-#menu {position:fixed; top:0px; right:20px; border-radius: 0px 0px 10px 10px; padding:10px;background-color:#FFFFFF;box-shadow: 5px 5px 10px rgba(0,0,0,0.5)}
+
+/* Adaptation graphique pour téléphone portable */
+
+/* Supprime le menu du bas si l'écran n'est pas assez haut */
+	@media screen and (max-height: 500px) {
+		.interface-bottom {display:none; height:0px;overflow:hidden}
+		
+	}
+	@media screen and (max-width: 700px) {
+		td.left div#showPanel {display:block;width:40px; height:50px; position:absolute; right:-38px; bottom:30px; background: white; border-radius:0px 15px 15px 0px;overflow:hidden; border:2px solid var(--light-bg-color);border-width: 2px 2px 2px 0px; cursor:pointer; background-image:url(/img/loupe.png); background-size: contain;
+        background-position: center;
+        background-repeat: no-repeat;}
+		td.resize {display:none}
+		td.left {
+			display: block;
+			position: fixed;
+			width: calc(100% - 50px);
+			z-index: 2;
+			left: calc(-100% + 50px);
+			top: 40px;
+
+			height: calc(100% - 90px);
+		}
+	}
+		
+	
+
+
 	  /* All your print styles go here */
 	  @media print { 
 		  td.left {display:none;}
@@ -1354,39 +1664,54 @@ display:none;
 		<table class='displayTab' cellspacing=0 cellpadding=0><tr><td  class='interface-top' colspan=4>
 			<!-- <button id="save" style='float:right'>Sauver</button>
 			<button id="load" style='float:right'>Charger</button> -->
+			<input type='text' id='id' value='' required pattern="[0-9]{1,}">
+			<input type='text' id='saved' value='' required pattern="[0-9]{1,}">
 			<input autocomplete="off" id='title2' class='mainTitle liketext' autocomplete="off" placeholder='<?=T_("Nom de votre organisation",true);?>'></input><br>
 		
 		</td></tr>
-		<tr><td class='left'><div class='contentleft'>
+		<tr><td class='left'><div id='showPanel'></div><div class='contentleft'>
 			<table class='leftTab' cellspacing=0 cellpadding=0><tr><td class='odj'>
-			<div><?=T_("Holarchie");?>
-			<span class='noPrint' style='float:right; background:#FFF; border-radius:5px 5px 0px 0px'><img src='/img/addentry.png' class='imgbutton' style='margin:0px;' id='btn_add_role'  data-toggle='tooltip' data-placement='bottom' title='<?=T_('Ajouter un rôle',true)?>'></span>
-			<span class='noPrint' style='float:right; background:#FFF; border-radius:5px 5px 0px 0px'><img src='/img/addentry.png' class='imgbutton' style='margin:0px;' id='btn_add_circle'  data-toggle='tooltip' data-placement='bottom' title='<?=T_('Ajouter un cercle',true)?>'></span>
+			<div>
 			</div>
 			</td></tr><tr><td style='height:100%; position: relative;vertical-align:top'><div class='screenOJ'>
 
 		
 			</div>
-			</td></tr><tr><td style='background:#eee' class='noPrint'>
-			
-
 			</td></tr></table>
-		</div></td><td class='resize'><div id='resizeelem'></div></td><td class='right'><div id='contentright' class='contentright'>
+		</div>
+		<div style='height:30px; padding:4px;' class='noPrint'>
+			
+			<input type='text' id='quickfilter' placeholder='Filtre rapide'>
+		</div>
+		
+		
+		</td><td class='resize'><div id='resizeelem'></div></td><td class='right'><div id='contentright' class='contentright'>
 			
 		<div id="chart"></div>
-		<div id="role_list" style='height:100%; overflow-y:auto'>Test pour voir où ça s'affiche</div>
+		<div id="role_list" class='filter_zone' style='height:100%; overflow-y:auto'></div>
 		<div class="switch" style='position:absolute; bottom:5px; right:25px;'>
 		  <input type="checkbox" id="toggleSwitch" />
 		  <label for="toggleSwitch" class="slider">🔘 ☰</label>
 		</div>
 		
-		</div></td><td rowspan="2" id='tools' style='width:50px; vertical-align:top;'>
+		</div></td><td rowspan="2" id='tools' style='width:50px; vertical-align:top;'><div id='tools_scroll' style='height:100%; width:100%; overflow-y:auto'>
 <?	
 		//<!-- bouton pour le zoom -->
 		echo "<img src='/img/expand.png' class='imgbutton' id='btn_zoom' data-toggle='tooltip' data-placement='right' title='".T_('Plein écran',true)."'>";
 
+if (!isset($_GET["view"])) {
+
 		//<!-- bouton pour un nouveau fichier -->
 		echo "<img src='/img/newfile.png' class='imgbutton' id='btn_new' data-toggle='tooltip' data-placement='right' title='".T_('Nouveau document',true)."'>";
+
+		//<!-- bouton pour sauver -->
+		if ($connected)
+		echo "<img src='/img/save-file.png' class='imgbutton' id='btn_save' data-toggle='tooltip' data-placement='left' title='".T_('Enregistrer le schéma',true)."'>";
+
+		//<!-- bouton pour charger -->
+		if ($connected)
+		echo "<img src='/img/up-arrow.png' class='imgbutton' id='btn_load' data-toggle='tooltip' data-placement='left' title='".T_('Charger un schéma',true)."'>";
+}
 
 		//<!-- bouton pour imprimer -->
 		echo "<img src='/img/printing.png' onclick='window.print();' class='imgbutton' id='btn_print' data-toggle='tooltip' data-placement='right' title='".T_('Imprimer',true)."'>";
@@ -1398,12 +1723,103 @@ display:none;
 		//<!-- bouton pour les parameẗres -->
 		if ($connected)
 		echo "<img src='/img/settings.png' class='imgbutton' id='btn_parameters' data-toggle='tooltip' data-placement='right' title='".T_('Paramètres',true)."'>";
-?>		
+?>		</div>
 		</td></tr>
-		<tr><td class='interface-bottom' colspan=3><span style='float:right;'><img src='/img/support.png' style='height:40px;' id='btn_support'></span></td></tr>
+		<tr><td class='interface-bottom' colspan=3><span style='float:right;'><img src='/img/support.png' style='height:40px;' id='btn_support'></span><a href='/' target='_blank' style='display:inline-block; cursor:pointer; height:70%; width:115px;'></a></span></td></tr>
 		</table>
 		<div id='popupbackground'></div>
 		<div id='popup'><div id='popup_content'></div><div id='popup_close'><button><img src='/img/icon_close.png'><?=T_("Fermer");?></button></div></div>
+
+		<style>
+.support-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+
+  background: #0a1e3c;
+  color: white;
+
+  overflow: hidden;
+  height: 46px;
+
+  transition: height 0.3s ease;
+  z-index: 1000;
+}
+
+.support-inner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0.6rem;
+}
+
+.support-logo {
+  width: 32px;
+  height: 32px;
+}
+
+.support-text {
+  flex: 1;
+}
+
+.support-text .short {
+	font-size: 120%;
+}
+.support-text .long {
+  display: block;
+  opacity: 0;
+  max-height: 0;
+  transition: all 0.3s ease;
+}
+
+/* Hover ? expansion */
+.support-bar:hover {
+  height: 140px;
+}
+
+.support-bar:hover .support-text .long {
+  opacity: 1;
+  max-height: 100px;
+  margin-top: 0.5rem;
+}
+
+.support-btn {
+  background: #ff424d;
+  color: white;
+  padding: 0.4rem 1rem;
+  border-radius: 5px;
+  text-decoration: none;
+  font-weight: bold;
+  white-space: nowrap;
+}
+</style>
+<div class="support-bar">
+  <div class="support-inner">
+    <img src="https://opengov.tools/img/logo-OGC.png" alt="OGC" class="support-logo">
+
+    <div class="support-text">
+      <span class="short">
+        Soutenez la prochaine génération d'outils coopératifs.
+      </span>
+
+      <div class="long">
+        Vous utiliser une version en développement de l'un des modules du future OpenMyOrganization. Pour contribuer au développement d'un outils libre et accessible soutenant l'être et le faire ensemble, soutenez le projet et rejoignez la communauté OpenGovernance.
+		<p style='padding-top: 10px;'><a href="https://opengov.tools" target="_blank" class="support-btn">
+		En savoir plus sur le projet
+		</a></p>
+	  </div>
+	  
+    </div>
+
+    <a href="https://www.patreon.com/cw/OpenGovernance" target="_blank" class="support-btn">
+      Contribuer
+    </a>
+  </div>
+</div>
 
 	</body>
 </html>

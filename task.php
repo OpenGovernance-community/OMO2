@@ -204,7 +204,7 @@ body {
 }
 
 .card__face--front {
-  background: url(/lib/getImg.php?x=1200&ext=jpg&url=<?=urlencode("https://pottylicense.fun/images/license.php?id=".$license->get("number"))?>);
+  background: url(/library/getImg.php?x=1200&ext=jpg&url=<?=urlencode("https://pottylicense.fun/images/license.php?id=".$license->get("number"))?>);
   background-position:center;
   background-size:cover;
   background-repeat:no-repeat;
@@ -213,7 +213,7 @@ body {
 }
 
 .card__face--back {
-background: url(/lib/getImg.php?x=1200&ext=jpg&url=<?=urlencode("https://pottylicense.fun/images/license_verso.php?id=".$license->get("number"))?>);
+background: url(/library/getImg.php?x=1200&ext=jpg&url=<?=urlencode("https://pottylicense.fun/images/license_verso.php?id=".$license->get("number"))?>);
   background-position:center;
   background-size:cover;
   background-repeat:no-repeat;
@@ -281,9 +281,9 @@ table.RS img {height:30px;}
 				if ($friend->get("validateCaregiver")!=null && $friend->get("validateLittle")!=null ) {
 					// Affiche chaque personne     
 					if ($friend->get("IDlicense_caregiver")!=$license->get("id"))
-						echo "<div  data='".($count)."' style='position:relative;' class='nav check_usr_".$friend->get("license_caregiver")->get("id")."'><img src='https://".$_SERVER['HTTP_HOST']."/lib/getImg.php?x=200&url=".$friend->get("license_caregiver")->get("photo")."'  style='margin:4px; width:60px; border-radius:50%; border:2px solid black;vertical-align:middle;'><img src='/images/star.png' class='star_new' style='position:absolute; top:40px; right:5px; width:20px'></div>";
+						echo "<div  data='".($count)."' style='position:relative;' class='nav check_usr_".$friend->get("license_caregiver")->get("id")."'><img src='https://".$_SERVER['HTTP_HOST']."/library/getImg.php?x=200&url=".$friend->get("license_caregiver")->get("photo")."'  style='margin:4px; width:60px; border-radius:50%; border:2px solid black;vertical-align:middle;'><img src='/images/star.png' class='star_new' style='position:absolute; top:40px; right:5px; width:20px'></div>";
 					else
-						echo "<div data='".($count)."' style='position:relative;' class='nav check_usr_".$friend->get("license_little")->get("id")."'><img src='https://".$_SERVER['HTTP_HOST']."/lib/getImg.php?x=200&url=".$friend->get("license_little")->get("photo")."' style='margin:4px; width:60px; border-radius:50%; border:2px solid black;vertical-align:middle;'><img src='/images/star.png' class='star_new' style='position:absolute; top:40px; right:5px; width:20px'></div>";
+						echo "<div data='".($count)."' style='position:relative;' class='nav check_usr_".$friend->get("license_little")->get("id")."'><img src='https://".$_SERVER['HTTP_HOST']."/library/getImg.php?x=200&url=".$friend->get("license_little")->get("photo")."' style='margin:4px; width:60px; border-radius:50%; border:2px solid black;vertical-align:middle;'><img src='/images/star.png' class='star_new' style='position:absolute; top:40px; right:5px; width:20px'></div>";
 					$count++;
 				}
 			}
@@ -362,7 +362,7 @@ table.RS img {height:30px;}
 						echo "<img src='/images/stat_".$like->get("meteo")->get("IDstatus").".png' style='width:50px;'> ";
 					} else {
 						echo "<img src='/images/stat_".$like->get("meteo")->get("IDstatus").".png' style='position:absolute;width:30px;left:27px; top:27px;'> ";
-						echo "<img class='openPopup' href='/app/viewPicture.php?id=".$like->get("IDmeteo")."' src='https://".$_SERVER['HTTP_HOST']."/lib/getImg.php?x=50&url=".$like->get("meteo")->get("image")."' style='width:50px;'>";
+						echo "<img class='openPopup' href='/app/viewPicture.php?id=".$like->get("IDmeteo")."' src='https://".$_SERVER['HTTP_HOST']."/library/getImg.php?x=50&url=".$like->get("meteo")->get("image")."' style='width:50px;'>";
 					}
 					echo "</td><td>";
 					$oldimg=$like->get("IDmeteo");
@@ -399,7 +399,7 @@ table.RS img {height:30px;}
 					$olddate=$meteo->get("date")->format("d.m.Y");
 				}
 					echo "<span style='padding-left:10px;' class='openPopup' href='/popup/pop_followrequest.php?id=".$meteo->get("id")."'><img src='/images/stat_".$meteo->get("IDstatus").".png' style='position:absolute;width:30px;left:35px; top:20px;'>";
-					echo "<img src='/lib/getImg.php?x=200&url=https://pottylicense.fun".$meteo->get("license")->get("photo")."' style='height:50px; border-radius:50%; border:2px solid black;'> ";
+					echo "<img src='/library/getImg.php?x=200&url=https://pottylicense.fun".$meteo->get("license")->get("photo")."' style='height:50px; border-radius:50%; border:2px solid black;'> ";
 					
 					// Affiche mon évaluation
 					$eval=$meteo->getMyEval();
@@ -414,7 +414,7 @@ table.RS img {height:30px;}
 					} else {
 						if (!is_null($eval))
 							echo "<img src='/images/evaluation_".$eval->get("IDeval").".png' style='position:absolute;width:30px;left:27px; bottom:0px;'> ";
-						echo "<img class='openPopup' href='/app/viewPicture.php?id=".$meteo->get("id")."' src='https://".$_SERVER['HTTP_HOST']."/lib/getImg.php?x=50&url=".$meteo->get("image")."' style='width:50px;'>";
+						echo "<img class='openPopup' href='/app/viewPicture.php?id=".$meteo->get("id")."' src='https://".$_SERVER['HTTP_HOST']."/library/getImg.php?x=50&url=".$meteo->get("image")."' style='width:50px;'>";
 					}
 
 					
@@ -514,8 +514,8 @@ $friendtoconfirmStr="";
 	  <img  src="/images/size_license.jpg" alt="Potty License for <?=$license->get("name")?>" style="max-width:100%;  opacity:0">
 
   <div class="card">
-    <div class="card__face card__face--front" style="background-image: url(/lib/getImg.php?x=1200&ext=jpg&url=<?=urlencode("https://pottylicense.fun/images/license.php?id=".$license->get("number"))?>);" title="Click to flip <?=$license->get("name")?>'s card and see the back side."></div>
-    <div class="card__face card__face--back" style="background-image: url(/lib/getImg.php?x=1200&ext=jpg&url=<?=urlencode("https://pottylicense.fun/images/license_verso.php?id=".$license->get("number"))?>);" title="Click to flip <?=$license->get("name")?>'s card and see the front side."></div>
+    <div class="card__face card__face--front" style="background-image: url(/library/getImg.php?x=1200&ext=jpg&url=<?=urlencode("https://pottylicense.fun/images/license.php?id=".$license->get("number"))?>);" title="Click to flip <?=$license->get("name")?>'s card and see the back side."></div>
+    <div class="card__face card__face--back" style="background-image: url(/library/getImg.php?x=1200&ext=jpg&url=<?=urlencode("https://pottylicense.fun/images/license_verso.php?id=".$license->get("number"))?>);" title="Click to flip <?=$license->get("name")?>'s card and see the front side."></div>
   </div>
 
 </div>

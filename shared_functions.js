@@ -77,7 +77,12 @@ function enterFullscreen(element) {
 // Usage: transformJSONtoHTML(jsondata, xsltFilePath, 'output');
 async function transformJSONtoHTML(jsonData, xsltFilePath, targetElementId=null,  paramName=null, paramValue=null) {
     // Convert JSON to XML
-    function jsonToXml(json, root = 'root') {
+    
+    
+  
+    
+    
+   function jsonToXml(json, root = 'root') {
         let xml = `<${root}>`;
         for (let key in json) {
 			// Fonction particulière pour éviter les boucles
@@ -94,7 +99,7 @@ async function transformJSONtoHTML(jsonData, xsltFilePath, targetElementId=null,
 			}
         }
         xml += `</${root}>`;
-        //console.log(xml);
+        console.log(xml);
         return xml;
     }
 

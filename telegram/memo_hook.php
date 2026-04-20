@@ -180,7 +180,8 @@
 			curl_close($ch); // Close the cURL session
 
 			// Demande un résumé, des mots clés et une version retravaillée à ChatGPT
-			$readable=say("Peux-tu générer un JSON pour le texte suivant, comprenant 4 entrée: une entrée 'titre' avec un titre pour ce document, une entrée 'resume' avec un résumé du texte en maximum 150 caractères, une entrée 'contenu' avec une mise en page lisible et formatée du texte (si nécessaire en HTML pour des titres ou des listes à puce) mais sans résumer le contenu et finalement une entrée 'hashtag' contenant un tableau avec 3 à 5 mots clés pertinents pour ce texte? Voici le texte : \n".$response->text);
+			$prompt="une mise en page lisible, exhaustive, optimisée pour la lecture et structurée du texte (si nécessaire avec des titres ou des listes à puce)";
+			$readable=say("Peux-tu générer un JSON pour le texte suivant, comprenant 4 entrée: une entrée 'titre' avec un titre pour ce document, une entrée 'resume' avec un résumé du texte en maximum 150 caractères, une entrée 'contenu' avec ".$prompt.", et finalement une entrée 'hashtag' contenant un tableau avec 3 à 5 mots clés pertinents pour ce texte? Voici le texte : \n".$response->text);
 
 			// Enregistre le retour pour debug
 			$dataerr=json_decode("{}");
@@ -209,7 +210,9 @@
 			
 			$title=$readable->titre;
 			$resume=$readable->resume;
-			$content=$readable->contenu;
+			$content=$response->text; //$readable->contenu; // Stock le texte brut
+			$content2=$readable->contenu; // Et garde une première version structurée du texte
+			
 			$hash = "#" . implode(" #", array_map(function($tag) {return str_replace(' ', '_', trim($tag)); }, $readable->hashtag));
 			$dataerr->title=$title;
 			$dataerr->resume=$resume;
@@ -241,7 +244,13 @@
 				}
 				
 				$doc->save();
-
+				
+				// Et sauve la version structurée comme une variante
+				$txt=new \dbObject\AltText();
+				$txt->set("IDdocument",$doc->getId());
+				$txt->set("IDaiprompt",0);
+				$txt->set("text",$content2);
+				$txt->save();
 
 				$data->lastDoc=$doc->getId();
 				saveLocalSession($data,$update['message']['from']['id']);

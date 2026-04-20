@@ -49,7 +49,7 @@ $data = array(
     'powerful' => true,
     'google' => false
 );
-
+print_r ($data);
 // Options pour la requête
 $options = array(
     'http' => array(
@@ -58,12 +58,14 @@ $options = array(
         'content' => json_encode($data)
     )
 );
-
+print_r ($options);
 // Création du contexte de la requête
 $context = stream_context_create($options);
 
 // Exécution de la requête et récupération de la réponse
 $response = json_decode(file_get_contents($url, false, $context));
+echo "<p>Reponse brut</p>";
+print_r ($response);
 echo "<h3>Ma réponse:</h3>";
 // Affichage de la réponse
 if ($response->success) {
@@ -98,10 +100,11 @@ if ($response->success) {
 	}
 }
 echo "<br><br>";
-echo "<!--";
+echo "<!--\n";
 print_r ($response);
-}
 echo "-->";
+}
+
 ?>
 <script>
 	$(function() {

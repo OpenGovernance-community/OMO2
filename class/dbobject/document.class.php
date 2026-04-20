@@ -67,17 +67,21 @@
 		// Retourne l'ensemble des médias attachés à un document
 		public function getMedias() {
 			$medias=new \dbobject\ArrayMedia();
-			$params= array();	
-			$params["filter"] = "IDdocument=".$this->get("id");
-			$medias->load($params);
+			$medias->load([
+				"where" => [
+					["field" => "IDdocument", "value" => $this->get("id")],
+				],
+			]);
 			return $medias;			
 		}
 		// Retourne l'ensemble des médias attachés à un document
 		public function getAltText() {
 			$medias=new \dbobject\ArrayAltText();
-			$params= array();	
-			$params["filter"] = "IDdocument=".$this->get("id");
-			$medias->load($params);
+			$medias->load([
+				"where" => [
+					["field" => "IDdocument", "value" => $this->get("id")],
+				],
+			]);
 			return $medias;			
 		}
 		

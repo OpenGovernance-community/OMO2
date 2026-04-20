@@ -1,0 +1,56 @@
+   :root {
+    /* Couleurs principales */
+    --primary: #864caf;
+    --primary-light: #cfa7eb;
+    --primary-dark: #6a3e8e;
+
+    /* Backgrounds */
+    --bg-body: #ffffff;
+    --bg-card: #ffffff;
+    --bg-branch: #fafafa;
+    --bg-header: #f5f5f5;
+
+    /* Texte */
+    --text-main: #222;
+    --text-light: #666;
+
+    /* Bordures */
+    --border-color: #ddd;
+    --border-radius:8px;
+
+    /* Ombres */
+    --shadow: 2px 2px 5px rgba(0,0,0,0.08);
+
+    /* États */
+    --disabled: #ccc;
+
+    /* Progress */
+    --progress-bg: #eee;
+}
+
+body { 
+    font-family: Arial; 
+    background: var(--bg-body);
+    color: var(--text-main);
+    margin:0px;
+    padding:0px;
+}
+.content {
+    padding: 20px;
+}
+button {
+    margin-top: 10px;
+    padding: 8px;
+    cursor: pointer;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+}
+.org-banner {
+    position: relative;
+    padding: 60px 20px 40px;
+    color: white;
+    text-align: center;
+    overflow: hidden;
+}
