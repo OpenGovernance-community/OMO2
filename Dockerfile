@@ -9,6 +9,7 @@ RUN apt-get update \
         libjpeg62-turbo-dev \
         libpng-dev \
         libzip-dev \
+        openssl \
         unzip \
         zip \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
@@ -20,7 +21,16 @@ RUN apt-get update \
         intl \
         mysqli \
         pdo_mysql \
-    && a2enmod headers rewrite expires \
+    && mkdir -p /etc/apache2/ssl \
+    && openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+        -keyout /etc/apache2/ssl/dev-localhost.key \
+        -out /etc/apache2/ssl/dev-localhost.crt \
+        -subj "/C=CH/ST=Zurich/L=Zurich/O=SystemDD/OU=Dev/CN=localhost" \
+        -addext "subjectAltName=DNS:localhost,DNS:*.localhost,DNS:omo.test,DNS:*.omo.test" \
+        -addext "basicConstraints=critical,CA:FALSE" \
+        -addext "keyUsage=critical,digitalSignature,keyEncipherment" \
+        -addext "extendedKeyUsage=serverAuth" \
+    && a2enmod headers rewrite expires ssl socache_shmcb \
     && rm -rf /var/lib/apt/lists/*
 
 COPY docker/apache/vhost.conf /etc/apache2/sites-available/000-default.conf
