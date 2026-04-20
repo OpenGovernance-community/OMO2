@@ -27,7 +27,7 @@
 			var zoomInfo = null;
 			var pack;
 			var nodes;
-			var nodeByName;	
+			//var nodeByName;	
 			var mobileSize;
 			var diameter;
 			var mainTextColor
@@ -316,22 +316,26 @@
 				titleFont="Arial";
 				if(!hidden & showText & (node.ID==currentnode.ID || node.parent==currentnode || (node.parent && node.parent.parent==currentnode) || ((currentnode.parent && (currentnode.type!="2" || currentnode.parent.children.length>1)) && (node.ID==currentnode.parent.ID || (node.parent && node.parent.ID==currentnode.parent.ID))  ))) {  
 					//Calculate the best font size for the non-leaf nodes
+
+					thename=node.name;
 					
 					if (node.type != "1" && node==currentnode || currentnode.parent==node) {
 						var fontSizeTitle = Math.round(nodeR / 6);
-						if (fontSizeTitle > 4) drawCircularText(chosenContext, node.name.replace(/,? and /g, ' & '), fontSizeTitle, "bold", titleFont, nodeX, nodeY, nodeR, 0, 0);  // rotationText[counter] pour le 1er 0
+						if (fontSizeTitle > 4) drawCircularText(chosenContext, thename.replace(/,? and /g, ' & '), fontSizeTitle, "bold", titleFont, nodeX, nodeY, nodeR, 0, 0);  // rotationText[counter] pour le 1er 0
 					} else {	
 						
 						var fontSizeTitle = Math.round(nodeR / 3);
+
 						if (node.type == "1") {
 							
 							// Limite la taille max pour les rôles, et écrit en noir
 							if (fontSizeTitle>36) fontSizeTitle=36;
-							drawText(chosenContext, node.name.replace(/,? and /g, ' & '), fontSizeTitle, titleFont, nodeX, nodeY, nodeR,"#000000","#FFFFFF");  // rotationText[counter] pour le 1er 0
+							drawText(chosenContext, thename.replace(/,? and /g, ' & '), fontSizeTitle, titleFont, nodeX, nodeY, nodeR,"#000000","#FFFFFF");  // rotationText[counter] pour le 1er 0
 						}
 						else
-							drawText(chosenContext, node.name.replace(/,? and /g, ' & '), fontSizeTitle, titleFont, nodeX, nodeY, nodeR,"#FFFFFF","#000000","bold");  // rotationText[counter] pour le 1er 0
-					
+						{
+							drawText(chosenContext, thename.replace(/,? and /g, ' & '), fontSizeTitle, titleFont, nodeX, nodeY, nodeR,"#FFFFFF","#000000","bold");  // rotationText[counter] pour le 1er 0
+						}
 					}
 				}//if
 		
@@ -583,8 +587,8 @@
 			}	
 			
 				$("#btn_new").click(function () {
-					// Crée une nouvelle organisation avec un seul cercle
-					
+					showPopup("/popup/circle/new.php", "<?=T_("Nouvelle structure",true)?>");
+/*					// Crée une nouvelle organisation avec un seul cercle
 					if (confirm("Voulez-vous réellement créer une nouvelle organisation?\nL'organisation en cours sera remplacée. Créez un compte pour la sauvegarder.") ) {
 						root=JSON.parse('{"name": "Mon organisation", "ID": "TMP_1", "type": "4", "children": [{"name": "Ancrage", "ID": "TMP_2", "type": "2", "children": [ {"name": "Facilitation", "mycolor":"#FF6600", "ID": "TMP_3","type":"1", "mod":"template",  "size":10}, {"name": "Pilotage",  "mycolor":"#FF2200", "type":"1", "mod":"template", "ID": "TMP_4", "size":10}, {"name": "Mémoire", "mycolor":"#FF9900", "type":"1", "mod":"template", "ID": "TMP_8", "size":10}, {"name": "Role opérationnel", "type":"1", "ID": "TMP_9", "size":10}]},{"name": "CA", "ID": "TMP_5", "type": "2", "children": [ {"name": "Trésorier", "ID": "TMP_6","type":"1",  "size":10}, {"name": "Président", "type":"1", "ID": "TMP_7", "size":10}]}]}');
 						
@@ -594,7 +598,7 @@
 						
 						// Raffraichi l'affichage
 						refreshCircle();
-					}
+					}*/
 				});
 				
 
@@ -903,12 +907,6 @@ function init() {
 			if ($org->getId()>0) {
 			
 ?>
-
-
-
-
-
-		console.log("Yop");
 		localStorageName="tmpcirclestructure";
 		// Charge l'organisation avec l'access key, pour bypasser le "canView()"
 		// Attention, mauvaise gestion des erreurs ici...
@@ -1221,10 +1219,10 @@ function drawAll(error, img) {
 		focus = root,
 		nodeCount = nodes.length;
 
-	nodeByName = {};
+	/*nodeByName = {};
 	nodes.forEach(function(d,i) {
 		nodeByName[d.name] = d;
-	});
+	});*/
 
 	
 
@@ -1271,14 +1269,14 @@ function drawAll(error, img) {
 	//Create options - all the root
 	var options = nodes.map(function(d) { return d.name; });
 	
-	//Function to call once the search box is filled in
+	/* //Function to call once the search box is filled in
 	searchEvent = function(occupation) { 
 		//If the occupation is not equal to the default
 		if (occupation !== "" & typeof occupation !== "undefined") {
 			zoomToCanvas(nodeByName[occupation]);
 		}//if 
 	}//searchEvent
-		
+		*/
 	////////////////////////////////////////////////////////////// 
 	/////////////////////// FPS Stats box //////////////////////// 
 	////////////////////////////////////////////////////////////// 

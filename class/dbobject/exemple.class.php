@@ -73,9 +73,11 @@
 		// Retourne un tableau d'éléments liés à cet objet
 		public function getEvaluations() {
 			$evaluations=new \dbobject\ArrayEvaluation($dbh);
-			$params= array();	
-			$params["filter"] = "IDlivre=".$this->get("id");
-			$evaluations->load($params);
+			$evaluations->load([
+				"where" => [
+					["field" => "IDlivre", "value" => $this->get("id")],
+				],
+			]);
 			return $evaluations;
 		}
 		

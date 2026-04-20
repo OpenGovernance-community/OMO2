@@ -24,7 +24,7 @@
 			// Trouvé! Est-ce une génération d'image ou une redirection
 			if ($_GET["id"]=="image" || (isset($_GET["output"]) && $_GET["output"]=="image")) {
 				// Génération et sortie de l'image
-				require_once($_SERVER['DOCUMENT_ROOT']."/lib/phpqrcode/qrlib.php");
+				require_once($_SERVER['DOCUMENT_ROOT']."/library/phpqrcode/qrlib.php");
 				header ('Content-Type: image/jpg');
 				header('Content-Disposition: inline; filename="QR_'.$qr->get("uniquekey").'_SD2.jpg"');
 

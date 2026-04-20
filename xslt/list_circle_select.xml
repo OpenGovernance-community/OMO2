@@ -22,9 +22,17 @@
 
     <xsl:template match="children[type='3']">
 		<xsl:param name="inc" select="''" />
+			<xsl:if test="ID != $id">
+ 			<option>
+				<xsl:attribute name="value">
+                    <xsl:value-of select="ID" />
+					</xsl:attribute>
+					<xsl:value-of select="$inc" /><xsl:value-of select="name" />
+			</option>
 			<xsl:apply-templates select="children[type='2']"><xsl:with-param name="inc" select="concat($baseinc,$inc)" /></xsl:apply-templates>
             <xsl:apply-templates select="children[type='3']" ><xsl:with-param name="inc" select="concat($baseinc,$inc)" /></xsl:apply-templates>
- 	</xsl:template> 
+			</xsl:if>
+	 	</xsl:template> 
 
      
      <xsl:template match="children[type='2']">

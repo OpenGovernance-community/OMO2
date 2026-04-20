@@ -51,7 +51,7 @@
 		
 		$("#orgaliste").delegate(".deleteOrga","click",function (e) {
 			e.stopPropagation();
-			if (confirm("<?=T_("Êtes-vous sûr de vouloir effacer cette organisation ?")?>")) {
+			if (confirm("<?=T_("Êtes-vous sûr de vouloir effacer cette organisation ?")?> ("+$(this).attr("data-src")+")")) {
 				// Si supprimé la réunion courante, réinitialise l'ID (pour éviter les erreurs d'écrasement)
 				if ($(this).attr("data-src")==$("#id").val()) {
 					$("#id").val("");

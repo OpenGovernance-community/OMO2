@@ -67,7 +67,7 @@
 					"fields" => array(array("code",null,true),array("email",null,true),"motdepasse"),
 					"buttons" => false,
 					"action" => "/ajax/createaccount.php",
-					"success" => "license.php"
+					"success" => "index.php"
 				);
 			} else {
 				$title="Finalisation de la création du compte";

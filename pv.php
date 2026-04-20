@@ -1106,6 +1106,96 @@ function drawPieChart(data) {
 		<div id='popupbackground'></div>
 		<div id='popup'><div id='popup_content'></div><div id='popup_close'><button><img src='/img/icon_close.png'><?=T_("Fermer");?></button></div></div>
 
+<style>
+.support-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+
+  background: #0a1e3c;
+  color: white;
+
+  overflow: hidden;
+  height: 46px;
+
+  transition: height 0.3s ease;
+  z-index: 1000;
+}
+
+.support-inner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0.6rem;
+}
+
+.support-logo {
+  width: 32px;
+  height: 32px;
+}
+
+.support-text {
+  flex: 1;
+}
+
+.support-text .short {
+	font-size: 120%;
+}
+.support-text .long {
+  display: block;
+  opacity: 0;
+  max-height: 0;
+  transition: all 0.3s ease;
+}
+
+/* Hover ? expansion */
+.support-bar:hover {
+  height: 140px;
+}
+
+.support-bar:hover .support-text .long {
+  opacity: 1;
+  max-height: 100px;
+  margin-top: 0.5rem;
+}
+
+.support-btn {
+  background: #ff424d;
+  color: white;
+  padding: 0.4rem 1rem;
+  border-radius: 5px;
+  text-decoration: none;
+  font-weight: bold;
+  white-space: nowrap;
+}
+</style>
+<div class="support-bar">
+  <div class="support-inner">
+    <img src="https://opengov.tools/img/logo-OGC.png" alt="OGC" class="support-logo">
+
+    <div class="support-text">
+      <span class="short">
+        Soutenez la prochaine génération d'outils coopératifs.
+      </span>
+
+      <div class="long">
+        Vous utiliser une version en développement de l'un des modules du future OpenMyOrganization. Pour contribuer au développement d'un outils libre et accessible soutenant l'être et le faire ensemble, soutenez le projet et rejoignez la communauté OpenGovernance.
+		<p style='padding-top: 10px;'><a href="https://opengov.tools" target="_blank" class="support-btn">
+		En savoir plus sur le projet
+		</a></p>
+	  </div>
+	  
+    </div>
+
+    <a href="https://www.patreon.com/cw/OpenGovernance" target="_blank" class="support-btn">
+      Contribuer
+    </a>
+  </div>
+</div>
 
 	</body>
 </html>

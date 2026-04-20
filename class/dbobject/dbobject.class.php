@@ -1,6 +1,87 @@
 <?php
 	namespace dbObject;
 
+	class PdoResultCompat
+	{
+		private $_rows = array();
+		private $_cursor = 0;
+		public $num_rows = 0;
+
+		public function __construct($rows = array())
+		{
+			$this->_rows = is_array($rows) ? array_values($rows) : array();
+			$this->num_rows = count($this->_rows);
+		}
+
+		public function fetch_assoc()
+		{
+			if ($this->_cursor >= $this->num_rows) {
+				return null;
+			}
+			return $this->_rows[$this->_cursor++];
+		}
+
+		public function data_seek($offset)
+		{
+			$offset = (int)$offset;
+			if ($offset < 0 || $offset >= $this->num_rows) {
+				return false;
+			}
+
+			$this->_cursor = $offset;
+			return true;
+		}
+	}
+
+	class PdoDbhCompat
+	{
+		private $_pdo;
+		public $insert_id = 0;
+
+		public function __construct($pdo)
+		{
+			$this->_pdo = $pdo;
+		}
+
+		public function getPdo()
+		{
+			return $this->_pdo;
+		}
+
+		// Ce wrapper garde l'ancienne API mysqli::query disponible le temps de la migration.
+		public function query($query)
+		{
+			try {
+				$statement = $this->_pdo->query($query);
+				if ($statement === false) {
+					return false;
+				}
+
+				if ($statement->columnCount() > 0) {
+					$rows = $statement->fetchAll(\PDO::FETCH_ASSOC);
+					$statement->closeCursor();
+					return new PdoResultCompat($rows);
+				}
+
+				$statement->closeCursor();
+				$this->insert_id = (int)$this->_pdo->lastInsertId();
+				return true;
+			} catch (\PDOException $e) {
+				return false;
+			}
+		}
+
+		public function prepare($query)
+		{
+			return $this->_pdo->prepare($query);
+		}
+
+		public function lastInsertId()
+		{
+			return $this->_pdo->lastInsertId();
+		}
+	}
+
 
 	abstract class DbObject
 	{
@@ -23,17 +104,122 @@
 		
 		static public function refreshDbh() {
 			// Connexion à la base de donnée
-			self::$_dbh=$mysqli = new \mysqli($GLOBALS["dbServer"], $GLOBALS["dbUser"], $GLOBALS["dbPassword"],$GLOBALS["dbName"]);
-			if(mysqli_connect_errno()){
-				echo mysqli_connect_error();
+			try {
+				$dsn = "mysql:host=".$GLOBALS["dbServer"].";dbname=".$GLOBALS["dbName"].";charset=utf8mb4";
+				$pdo = new \PDO($dsn, $GLOBALS["dbUser"], $GLOBALS["dbPassword"], array(
+					\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+					\PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+					\PDO::ATTR_EMULATE_PREPARES => false,
+				));
+				self::$_dbh = new PdoDbhCompat($pdo);
+			} catch (\PDOException $e) {
+				echo $e->getMessage();
+				self::$_dbh = null;
 			}
-			//self::$_dbh->options(MYSQLI_OPT_CONNECT_TIMEOUT, 300);
-			self::$_dbh->set_charset('utf8mb4');
 			return self::$_dbh;
+		}
+
+		static public function getPdo() {
+			$dbh = self::getDbh();
+			return $dbh ? $dbh->getPdo() : null;
 		}
 
 		static public function executeSQL($query) {
 			return self::getDbh()->query($query);
+		}
+
+		protected static function normalizeSqlValue($value) {
+			if ($value === "") {
+				return null;
+			}
+			if ($value instanceof \DateTimeInterface) {
+				return $value->format('Y-m-d H:i:s');
+			}
+			if (is_object($value) && get_class($value) == "stdClass") {
+				if ((!isset($value->lat) || is_null($value->lat)) && (!isset($value->long) || is_null($value->long))) {
+					return null;
+				}
+				return $value->lat.";".$value->long;
+			}
+			if (is_bool($value)) {
+				return (int)$value;
+			}
+			return $value;
+		}
+
+		protected static function prepareAndExecute($query, $params = array()) {
+			$pdo = self::getPdo();
+			if (!$pdo) {
+				return false;
+			}
+
+			try {
+				$statement = $pdo->prepare($query);
+				foreach ($params as $key => $value) {
+					$paramName = is_int($key) ? $key + 1 : (substr($key, 0, 1) === ":" ? $key : ":".$key);
+					$normalizedValue = self::normalizeSqlValue($value);
+					$paramType = \PDO::PARAM_STR;
+
+					if (is_null($normalizedValue)) {
+						$paramType = \PDO::PARAM_NULL;
+					} elseif (is_int($normalizedValue)) {
+						$paramType = \PDO::PARAM_INT;
+					} elseif (is_bool($normalizedValue)) {
+						$paramType = \PDO::PARAM_BOOL;
+					}
+
+					$statement->bindValue($paramName, $normalizedValue, $paramType);
+				}
+
+				$statement->execute();
+				return $statement;
+			} catch (\PDOException $e) {
+				return false;
+			}
+		}
+
+		static public function execute($query, $params = array()) {
+			$statement = self::prepareAndExecute($query, $params);
+			if ($statement === false) {
+				return false;
+			}
+
+			$statement->closeCursor();
+			self::getDbh()->insert_id = (int)self::getPdo()->lastInsertId();
+			return true;
+		}
+
+		static public function fetchRow($query, $params = array()) {
+			$statement = self::prepareAndExecute($query, $params);
+			if ($statement === false) {
+				return false;
+			}
+
+			$row = $statement->fetch(\PDO::FETCH_ASSOC);
+			$statement->closeCursor();
+			return $row === false ? false : $row;
+		}
+
+		static public function fetchAll($query, $params = array()) {
+			$statement = self::prepareAndExecute($query, $params);
+			if ($statement === false) {
+				return false;
+			}
+
+			$rows = $statement->fetchAll(\PDO::FETCH_ASSOC);
+			$statement->closeCursor();
+			return $rows;
+		}
+
+		static public function fetchValue($query, $params = array()) {
+			$statement = self::prepareAndExecute($query, $params);
+			if ($statement === false) {
+				return false;
+			}
+
+			$value = $statement->fetchColumn();
+			$statement->closeCursor();
+			return $value;
 		}
 		
 		// Fonction pour créer du contenu statique à la demande
@@ -119,13 +305,17 @@
 			}
 		}
 		
+		function clear($field) {
+			unset($this->_fields[$field]);
+		}
+		
 		function set($field, $value) {
+			if ($field=="id") $this->_id=$value; // Spécifique pour réinitialiser des noeuds
 			if ($this->getId()>0 && !$this->_loaded) $this->load($this->getId());
 
 			if (is_null($value) || (is_string($value) && trim($value)==""))
 				$this->_fields[$field]=null;
 			else {
-				
 			
 				// Lit toutes les lignes concernant cette valeur
 				$param = array_filter($this->rules(), function($ar) use ($field) {
@@ -461,7 +651,7 @@
 					return isset($rule[1]) && $rule[1] === 'parameters';
 				});
 				//Si pas trouvé, retourne null
-				if (is_null($parameterlist) || count($parameterlist)==0) return null;
+				if (is_null($parameterlist) || count($parameterlist)==0 || is_null($this->get(current($parameterlist)[0][0]))) return null;
 				// Sinon, le converti en tableau (pour l'instant, un seul parsamètre autorisé)
 				$this->_parameters=json_decode($this->get(current($parameterlist)[0][0]),true); // Sous forme de tableau
 				
@@ -643,127 +833,194 @@
 			return "'".str_replace("'","\'",$value)."'";
 		}
 
-		// Fonction générique pour récupérer un objet sauvegardé
-		function loadBackup($id) {
-			$query="select * from ".$this->tableName()."_historique where id=".$id;
-			$result=self::getDbh()->query($query);
-			if ($result>0 && $result->num_rows>0) {
-				$result->data_seek(($result->num_rows)-1);
-
-				$row=mysqli_fetch_assoc($result);
-				
-				// Charge tous les champs sans contrôle
-				$this->loadFromArray($row);
-				$this->_id=$id;
-				return array ("status"=>true, "text"=>"The record has been recovered", "id"=>"0".$this->_id);
-			} else {
-				// Traitement d'erreur de chargement
-				
-				// $result=0
-				if ($result==0) Die ("Erreur dans la requête : ".$query);
-				// mysql_num_rows<1
-				if (mysql_num_rows<1) return array ("status"=>false, "text"=>"No record found", "id"=>"0".$this->_id);
-
-			}
+		private static function isValidSqlIdentifier($identifier) {
+			return is_string($identifier) && preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $identifier);
 		}
 
-		// Fonction générique de sauvegarde d'un élément
+		private static function quoteIdentifier($identifier) {
+			return "`".$identifier."`";
+		}
+
+		private function getAllowedDbFields() {
+			$fields = array("id");
+
+			foreach (static::rules() as $rule) {
+				if (!isset($rule[0]) || !is_array($rule[0])) {
+					continue;
+				}
+
+				foreach ($rule[0] as $field) {
+					if (!in_array($field, $fields, true)) {
+						$fields[] = $field;
+					}
+
+					if ($this->getFieldType($field)=="daterange" && !in_array($field."_fin", $fields, true)) {
+						$fields[] = $field."_fin";
+					}
+				}
+			}
+
+			return $fields;
+		}
+
+		private function isAllowedLookupField($field) {
+			return self::isValidSqlIdentifier($field) && in_array($field, $this->getAllowedDbFields(), true);
+		}
+
+		private function getQuotedTableName($suffix = "") {
+			$tableName = $this->tableName().$suffix;
+			if (!self::isValidSqlIdentifier($tableName)) {
+				return false;
+			}
+
+			return self::quoteIdentifier($tableName);
+		}
+
+		private function getPersistableFields() {
+			$fields = array();
+
+			foreach ($this->_fields as $key => $value) {
+				if (!self::isValidSqlIdentifier($key)) {
+					return false;
+				}
+				$fields[$key] = $value;
+			}
+
+			return $fields;
+		}
+
+		private function buildInsertParts($fields, $prefix = "field_") {
+			$columns = array();
+			$placeholders = array();
+			$params = array();
+			$index = 0;
+
+			foreach ($fields as $key => $value) {
+				$columns[] = self::quoteIdentifier($key);
+				$paramName = $prefix.$index++;
+				$placeholders[] = ":".$paramName;
+				$params[$paramName] = $value;
+			}
+
+			return array($columns, $placeholders, $params);
+		}
+
+		private function buildUpdateParts($fields, $prefix = "field_") {
+			$assignments = array();
+			$params = array();
+			$index = 0;
+
+			foreach ($fields as $key => $value) {
+				$paramName = $prefix.$index++;
+				$assignments[] = self::quoteIdentifier($key)." = :".$paramName;
+				$params[$paramName] = $value;
+			}
+
+			return array($assignments, $params);
+		}
+
+		// Fonction générique pour récupérer un objet sauvegardé
+		function loadBackup($id) {
+			$tableName = $this->getQuotedTableName("_historique");
+			if ($tableName === false) {
+				return array ("status"=>false, "text"=>"Error", "query"=>"invalid table name");
+			}
+
+			$query="select * from ".$tableName." where `id` = :id";
+			$rows=self::fetchAll($query, array("id" => (int)$id));
+			if ($rows === false) {
+				Die ("Query error : ".$query);
+			}
+			if (count($rows)<1) {
+				return array ("status"=>false, "text"=>"No record found", "id"=>"0".$this->_id);
+			}
+
+			$row=$rows[count($rows)-1];
+			$this->loadFromArray($row);
+			$this->_id=$id;
+			return array ("status"=>true, "text"=>"The record has been recovered", "id"=>"0".$this->_id);
+		}
+
 		function backup() {
 			if ($this->getId()>0 && !$this->_loaded) $this->load($this->getId());
 
-			$query="insert into ".$this->tableName()."_historique";
-			$fp="";
-			$lp="";
-			// Parcours chaque élément
-			$i=0; $max=count($this->_fields);
-			foreach ($this->_fields as $key=>$value) {
-				$fp.=$key;
-				$lp.=$this->value2string($value);
-				 if(++$i != $max) {
-					$fp.=", ";
-					$lp.=", ";
-				 }
+			$tableName = $this->getQuotedTableName("_historique");
+			$fields = $this->getPersistableFields();
+			if ($tableName === false || $fields === false || count($fields)===0) {
+				return array ("status"=>false, "text"=>"Error", "query"=>"invalid archive payload");
 			}
-			$query.=" (".$fp.") VALUES (".$lp.")";
-			$result=self::getDbh()->query($query);
+
+			list($columns, $placeholders, $params) = $this->buildInsertParts($fields, "backup_");
+			$query="insert into ".$tableName." (".implode(", ", $columns).") VALUES (".implode(", ", $placeholders).")";
+			$result=self::execute($query, $params);
 			
 			if ($result) {
-				// Sauvegarde ok
 				return array ("status"=>true, "text"=>"Record archived", "id"=>"0".$this->_id);
 			} else {
-				// Erreur de sauvegarde
 				return array ("status"=>false, "text"=>"Error", "query"=>$query);
 			}
 		}
 
-		// Fonction générique de suppression
 		function delete() {
-			$query="delete from ".$this->tableName()." where id=".$this->getId();
-			$result=self::getDbh()->query($query);
+			$tableName = $this->getQuotedTableName();
+			if ($tableName === false) {
+				return false;
+			}
+
+			return self::execute("delete from ".$tableName." where `id` = :id", array("id" => (int)$this->getId()));
 		}
 			
 		function save() {
-			// Attention si un ID est défini et que ça n'a pas été chargé
 			if ($this->getId()>0 && !$this->_loaded) return;
-			
-			foreach ($this->_fields as $key=>$value) {
-				if ($this->isUnique($key)) {
-					// Contrôle que le champ n'existe pas encore
-					$query="select * from ".$this->tableName()." where ".$key."='".$value."'".(!is_null($this->_id)?" and id!=".$this->_id:"");
-		
-					$result=self::getDbh()->query($query);
-					if ($result>0) {
-						if ($result->num_rows>0) {
-							return array ("status"=>false, "text"=>"The field [".$this->attributeLabels()[$key]."] should be unique. This value is already in use.", "query"=>$query);
-						} 
-					} 
-					
-				}
+
+			$tableName = $this->getQuotedTableName();
+			$fields = $this->getPersistableFields();
+			if ($tableName === false || $fields === false) {
+				return array ("status"=>false, "text"=>"Error saving record.", "query"=>"invalid table or field name");
 			}
 			
-			// Contrôle les données envoyées
-									
-			// Est-ce une mise à jour ou une nouvelle entrée?
+			foreach ($fields as $key=>$value) {
+				if ($this->isUnique($key)) {
+					if (!$this->isAllowedLookupField($key)) {
+						return array ("status"=>false, "text"=>"Error saving record.", "query"=>"invalid unique field");
+					}
+
+					$query="select `id` from ".$tableName." where ".self::quoteIdentifier($key)." = :unique_value".(!is_null($this->_id)?" and `id` != :current_id":"")." limit 1";
+					$params = array("unique_value" => $value);
+					if (!is_null($this->_id)) {
+						$params["current_id"] = (int)$this->_id;
+					}
+
+					$result=self::fetchRow($query, $params);
+					if ($result !== false) {
+						return array ("status"=>false, "text"=>"The field [".$this->attributeLabels()[$key]."] should be unique. This value is already in use.", "query"=>$query);
+					}
+				}
+			}
+							
 			if ($this->_id>0) {
-				$query="update ".$this->tableName()." set ";
-				
-				// Parcours chaque élément
-				$i=0; $max=count($this->_fields);
-				foreach ($this->_fields as $key=>$value) {
-					$query.=$key."=".$this->value2string($value);
-					 if(++$i != $max) {
-						$query.=", ";
-					 }
+				if (count($fields)===0) {
+					return array ("status"=>true, "text"=>"Saved!", "id"=>"0".$this->_id);
 				}
-				
-				$query.=" where id=".$this->_id;
-				//echo $query;
-				$result=self::getDbh()->query($query);
+
+				list($assignments, $params) = $this->buildUpdateParts($fields, "update_");
+				$params["id"] = (int)$this->_id;
+				$query="update ".$tableName." set ".implode(", ", $assignments)." where `id` = :id";
+				$result=self::execute($query, $params);
 			} else {
-				$query="insert into ".$this->tableName();
-				$fp="";
-				$lp="";
-				// Parcours chaque élément
-				$i=0; $max=count($this->_fields);
-				foreach ($this->_fields as $key=>$value) {
-					$fp.=$key;
-					$lp.=$this->value2string($value);
-					 if(++$i != $max) {
-						$fp.=", ";
-						$lp.=", ";
-					 }
+				if (count($fields)===0) {
+					return array ("status"=>false, "text"=>"Error saving record.", "query"=>"empty insert");
 				}
-				$query.=" (".$fp.") VALUES (".$lp.")";
-				$result=self::getDbh()->query($query);
-				// Récupère l'ID et l'assigne
+
+				list($columns, $placeholders, $params) = $this->buildInsertParts($fields, "insert_");
+				$query="insert into ".$tableName." (".implode(", ", $columns).") VALUES (".implode(", ", $placeholders).")";
+				$result=self::execute($query, $params);
 				$this->_id=self::getDbh()->insert_id;
 				$this->set("id",self::getDbh()->insert_id);
 			}
 			if ($result) {
-				// Sauvegarde ok
 				return array ("status"=>true, "text"=>"Saved!", "id"=>"0".$this->_id);
 			} else {
-				// Erreur de sauvegarde
 				return array ("status"=>false, "text"=>"Error saving record.", "query"=>$query);
 			}
 		}
@@ -870,69 +1127,72 @@
 		// $obj->load(['key','yopla'])  // Autre paramètre
 		function load($id, $forced=false) {
 			$this->_loaded=true; 
+			$tableName = $this->getQuotedTableName();
+			if ($tableName === false) {
+				return false;
+			}
+
+			$query = "";
+			$params = array();
 			if (is_numeric($id)) {
-				// Contrôle si l'objet a déjà été chargé précédemment, et si oui en retourne simplement une copie
 				if (isset(self::$preload[$this->tableName()."_".$id]) && !$forced) {
-
 					$preloadData = self::$preload[$this->tableName()."_".$id];
-
-					// Utilisez la réflexion pour obtenir la liste des propriétés de l'objet $this
 					$reflection = new \ReflectionObject($this);
 					$properties = $reflection->getProperties(\ReflectionProperty::IS_PUBLIC | \ReflectionProperty::IS_PROTECTED);
 
-					// Parcourez les propriétés et copiez-les depuis $preloadData
 					foreach ($properties as $property) {
 						$propertyName = $property->getName();
 						if (property_exists($preloadData, $propertyName)) {
-							// Copiez la propriété depuis $preloadData vers $this
-							
 							@$this->$propertyName = $preloadData->$propertyName;
-							
 						}
 					}
-
-
 
 					return true;
 				}
 				
-				$query="select * from ".$this->tableName()." where id=".$id;
+				$query="select * from ".$tableName." where `id` = :id";
+				$params["id"] = (int)$id;
 			}
 			else if (is_array($id)) {
-				if (is_array($id[0])) {
-					// Plusieurs champs de recherche
-					$query="select * from ".$this->tableName()." where 1=1";
-					foreach ($id as $critere) {
-						$query.= " and ".$critere[0]."='".str_replace("'","\'",$critere[1])."'";
+				$where = array();
+
+				if (isset($id[0]) && is_array($id[0])) {
+					foreach ($id as $index => $critere) {
+						if (!isset($critere[0], $critere[1]) || !$this->isAllowedLookupField($critere[0])) {
+							return false;
+						}
+
+						$paramName = "crit_".$index;
+						$where[] = self::quoteIdentifier($critere[0])." = :".$paramName;
+						$params[$paramName] = $critere[1];
 					}
-					
-					
 				} else {
-					// Un seul champ de recherche, probablement autre que l'ID. Retourne le premier élément trouvé
-					$query="select * from ".$this->tableName()." where ".$id[0]."='".str_replace("'","\'",$id[1])."'";
+					if (!isset($id[0], $id[1]) || !$this->isAllowedLookupField($id[0])) {
+						return false;
+					}
+
+					$where[] = self::quoteIdentifier($id[0])." = :crit_0";
+					$params["crit_0"] = $id[1];
 				}
+
+				if (count($where)===0) {
+					return false;
+				}
+
+				$query="select * from ".$tableName." where ".implode(" and ", $where);
 			}
-			$result=self::getDbh()->query($query);
-			if ($result && $result->num_rows==1) {
-				$fields=$this->rules();
-				$row=mysqli_fetch_assoc($result);
-				
-				// Charge tous les champs sans contrôle
-				$this->loadFromArray($row);
-				$this->_id=$row["id"];
-				
-				self::$preload[$this->tableName()."_".$row["id"]] = $this;
-				
-			} else {
-				// Traitement d'erreur de chargement
-				
-				// $result=0
-				if (!$result) Die ("Query error : ".$query." (".$this->tableName().";".$id.")");
-				// mysql_num_rows<1
-				if (mysqli_num_rows($result)<1) return false; //Die ("Aucun enregistrement trouvé : ".$query);
-				// mysql_num_rows>1
-				if (mysqli_num_rows($result)>1) return false; //Die ("Multiples enregistrements trouvés : ".$query);
+
+			$rows=self::fetchAll($query, $params);
+			if ($rows === false) {
+				Die ("Query error : ".$query." (".$this->tableName().";".$id.")");
 			}
+			if (count($rows)<1) return false;
+			if (count($rows)>1) return false;
+
+			$row=$rows[0];
+			$this->loadFromArray($row);
+			$this->_id=$row["id"];
+			self::$preload[$this->tableName()."_".$row["id"]] = $this;
 			return true;
 			
 			/*
@@ -981,12 +1241,14 @@
 		{
 			// Edition limitée aux personnes connectées, auteur de l'enregistrement
 			//return (isset($_SESSION["currentUser"]) && $this->get("IDuser")>0 && $this->get("IDuser")==$_SESSION["currentUser"]);
+			return false;
 		}
 		
 		public function canView() 
 		{
 			// Affichage limité aux personnes connectées, auteur de l'enregistrement
 			//return (isset($_SESSION["currentUser"]) && $this->get("IDuser")>0 && $this->get("IDuser")==$_SESSION["currentUser"]);
+			return true;
 		}
 		
 		protected function getToken($length)

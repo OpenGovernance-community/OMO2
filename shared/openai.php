@@ -17,7 +17,7 @@
 		$params = array(
 		  "model"=> MODEL,
 			'messages' => array_merge($system_param,$data),
-			'temperature' => 0.5
+			'temperature' => 0.7
 		   );
 
 		// Configuration de la requête HTTP
