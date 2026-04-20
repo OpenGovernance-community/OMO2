@@ -1,8 +1,11 @@
-config.php
-test/**
-*.htm
-dompdf/**
-macros-libreoffice/**
-lib/**
-data/**
+/.env
+/docker/app/.env
+/docker/db/init/00-base.local.sql
+/sql/
 
+/test/**
+/*.htm
+/dompdf/**
+/macros-libreoffice/**
+/library/**
+/data/**
