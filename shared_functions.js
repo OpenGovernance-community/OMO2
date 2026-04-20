@@ -2,6 +2,54 @@
 
 
 //fonctions génériques de validation
+const SHARED_THEME_STORAGE_KEY = 'omo-theme-preference';
+const SHARED_THEME_MEDIA_QUERY = '(prefers-color-scheme: dark)';
+
+function sharedGetThemePreference(storageKey = SHARED_THEME_STORAGE_KEY) {
+	try {
+		const storedPreference = window.localStorage.getItem(storageKey);
+
+		if (storedPreference === 'light' || storedPreference === 'dark' || storedPreference === 'system') {
+			return storedPreference;
+		}
+	} catch (error) {
+	}
+
+	return 'system';
+}
+
+function sharedResolveTheme(preference, mediaQuery = SHARED_THEME_MEDIA_QUERY) {
+	if (preference === 'light' || preference === 'dark') {
+		return preference;
+	}
+
+	if (typeof window.matchMedia !== 'function') {
+		return 'light';
+	}
+
+	return window.matchMedia(mediaQuery).matches ? 'dark' : 'light';
+}
+
+function sharedApplyDocumentTheme(options = {}) {
+	const settings = options || {};
+	const storageKey = settings.storageKey || SHARED_THEME_STORAGE_KEY;
+	const mediaQuery = settings.mediaQuery || SHARED_THEME_MEDIA_QUERY;
+	const root = settings.root || document.documentElement;
+	const preference = settings.preference === 'light' || settings.preference === 'dark' || settings.preference === 'system'
+		? settings.preference
+		: sharedGetThemePreference(storageKey);
+	const resolvedTheme = sharedResolveTheme(preference, mediaQuery);
+
+	root.dataset.themePreference = preference;
+	root.dataset.theme = resolvedTheme;
+	root.style.colorScheme = resolvedTheme;
+
+	return {
+		preference: preference,
+		theme: resolvedTheme
+	};
+}
+
 function countChar(objet, limit) {
 	if (objet.val().length>limit) {
 		objet.val(objet.val().substr(0,limit));
@@ -278,38 +326,55 @@ function success(data) {
 	}
 }
 
-$(function () {
-	// *******************************************************
-	// Menu utilisateur en haut
-	// ******************************************************
-	$("body").delegate("#profilbtn","click", function (e) {
-		showPopup("/popup/profil.php", "Profil");
+let sharedJqueryBindingsInitialized = false;
+
+function initializeSharedJqueryBindings() {
+	if (sharedJqueryBindingsInitialized || typeof window.jQuery !== 'function') {
+		return false;
+	}
+
+	sharedJqueryBindingsInitialized = true;
+
+	window.jQuery(function () {
+		// *******************************************************
+		// Menu utilisateur en haut
+		// ******************************************************
+		$("body").delegate("#profilbtn","click", function (e) {
+			showPopup("/popup/profil.php", "Profil");
+		});
+
+		$("body").delegate("#logoutbtn","click", function (e) {
+			sendForm($("#logoutform"),success);
+		});
+		$("body").delegate("#loginbtn","click", function (e) {
+			sendForm($("#loginform"),success);
+		});	
+		
+		// *******************************************************
+		// Menu tools commun
+		// ******************************************************
+		
+		$("#btn_zoom").click(function () {
+			enterFullscreen(document.documentElement);  
+		});
+		
+		// *******************************************************
+		// Popup window
+		// ******************************************************
+		$("#login").click(function () {
+			showPopup("/popup/login.php", "Se connecter");
+		});			
+
+		$("#popup_close").click(function () {
+			closePopup(); 
+		});
 	});
 
-	$("body").delegate("#logoutbtn","click", function (e) {
-		sendForm($("#logoutform"),success);
-	});
-	$("body").delegate("#loginbtn","click", function (e) {
-		sendForm($("#loginform"),success);
-	});	
-	
-	// *******************************************************
-	// Menu tools commun
-	// ******************************************************
-	
-	$("#btn_zoom").click(function () {
-		enterFullscreen(document.documentElement);  
-	});
-	
-	// *******************************************************
-	// Popup window
-	// ******************************************************
-	$("#login").click(function () {
-		showPopup("/popup/login.php", "Se connecter");
-	});			
+	return true;
+}
 
-	$("#popup_close").click(function () {
-		closePopup(); 
-	});
-
-});
+if (!initializeSharedJqueryBindings()) {
+	document.addEventListener('DOMContentLoaded', function () {
+		initializeSharedJqueryBindings();
+	}, { once: true });
+}
