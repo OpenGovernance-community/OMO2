@@ -1,8 +1,5 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
-
-usleep(500000);
-
 use dbObject\ArrayOrganization;
 use dbObject\Holon;
 
@@ -647,7 +644,7 @@ function omoNormalizeSectionKey(value) {
 function omoBuildDirectHolonUrl(cid) {
     const rootId = <?= (int)$root->getId() ?>;
     return Number(cid) === Number(rootId)
-        ? `${window.location.origin}/omo`
+        ? `${window.location.origin}/omo/`
         : `${window.location.origin}/omo/c/${cid}`;
 }
 

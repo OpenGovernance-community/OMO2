@@ -282,6 +282,17 @@ function getNormalizedOmoPath() {
     return path;
 }
 
+function canonicalizeOmoRootPath() {
+
+    if ((window.location.pathname || '') !== '/omo') {
+        return;
+    }
+
+    const canonicalUrl = `/omo/${window.location.search || ''}${window.location.hash || ''}`;
+
+    history.replaceState({}, '', canonicalUrl);
+}
+
 function getSkeleton(type) {
     if (type === 'sidebar') {
         return `<div class="loading">
@@ -512,6 +523,8 @@ function navigate(oid, cid = null, hash = null) {
 
     if (cid) {
         url += `/c/${cid}`;
+    } else {
+        url += '/';
     }
 
     if (hash) {
@@ -636,6 +649,7 @@ function activateMenu(hash) {
 }
 
 $(document).ready(function () {
+    canonicalizeOmoRootPath();
     handleRoute();
 });
 

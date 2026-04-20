@@ -14,3 +14,9 @@ if (!commonGetCurrentUserId() && !commonCanAccessWithoutLogin()) {
     echo "Unauthorized";
     exit;
 }
+
+if (!commonCanAccessWithoutLogin() && !commonCurrentUserHasOrganizationAccess()) {
+    http_response_code(403);
+    echo "Forbidden";
+    exit;
+}
