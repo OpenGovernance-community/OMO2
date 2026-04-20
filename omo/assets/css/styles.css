@@ -122,12 +122,12 @@
     --topbar-panel-border: #283548;
     --topbar-panel-muted: #9fb0c3;
 
-    --chart-group-fill: rgba(124, 156, 255, 0.14);
-    --chart-role-fill: #f6c85f;
-    --chart-role-fill-alt: #f39b5a;
-    --chart-label-light: #f8fafc;
-    --chart-stroke-strong: rgba(248,250,252,0.9);
-    --chart-stroke-soft: color-mix(in srgb, var(--color-border) 70%, black);
+    --chart-group-fill: rgba(0, 0, 0, 0.14);
+    --chart-role-fill: #85610e;
+    --chart-role-fill-alt: #834214;
+    --chart-label-light: #000;
+    --chart-label-dark: #FFF;
+    --chart-stroke-strong: rgba(0,0,0,0.9);
 }
 
 /* RESET */
