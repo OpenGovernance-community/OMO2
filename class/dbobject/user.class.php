@@ -89,6 +89,23 @@
 			]);
 			return $prompts;			
 		}
+
+		public function getAccessibleOrganizations() {
+			$organizations = new ArrayOrganization();
+			$organizations->loadAccessibleForUser($this->getId());
+			return $organizations;
+		}
+
+		public function hasOrganizationAccess($organizationId) {
+			$organizationId = (int)$organizationId;
+			if ((int)$this->getId() <= 0 || $organizationId <= 0) {
+				return false;
+			}
+
+			$organizations = new ArrayOrganization();
+			$organizations->loadAccessibleForUser($this->getId(), $organizationId, 1);
+			return count($organizations) > 0;
+		}
 		
 		
 		

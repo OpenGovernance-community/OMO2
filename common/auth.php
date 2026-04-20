@@ -326,20 +326,12 @@ function commonUserHasOrganizationAccess($userId, $organizationId)
         return false;
     }
 
-    $row = \dbObject\DbObject::fetchRow(
-        "SELECT id
-         FROM user_organization
-         WHERE IDuser = :user_id
-           AND IDorganization = :organization_id
-           AND active = 1
-         LIMIT 1",
-        [
-            'user_id' => $userId,
-            'organization_id' => $organizationId,
-        ]
-    );
+    $user = new \dbObject\User();
+    if (!$user->load($userId)) {
+        return false;
+    }
 
-    return $row !== false;
+    return $user->hasOrganizationAccess($organizationId);
 }
 
 function commonCurrentUserHasOrganizationAccess($organizationId = null)
@@ -349,26 +341,6 @@ function commonCurrentUserHasOrganizationAccess($organizationId = null)
         : (int)($_SESSION['currentOrganization'] ?? 0);
 
     return commonUserHasOrganizationAccess(commonGetCurrentUserId(), $organizationId);
-}
-
-function commonGetAccessibleOrganizations($userId)
-{
-    $userId = (int)$userId;
-    if ($userId <= 0) {
-        return [];
-    }
-
-    $rows = \dbObject\DbObject::fetchAll(
-        "SELECT o.id, o.name, o.shortname, o.domain, o.logo, o.banner, o.color
-         FROM user_organization uo
-         INNER JOIN organization o ON o.id = uo.IDorganization
-         WHERE uo.IDuser = :user_id
-           AND uo.active = 1
-         ORDER BY o.name ASC",
-        ['user_id' => $userId]
-    );
-
-    return is_array($rows) ? $rows : [];
 }
 
 function commonLogoutUser()
@@ -804,6 +776,13 @@ function commonRenderMagicLoginPage(array $options = [])
         'hasOrgDomain' => !empty($organizationContext['domain']),
     ];
 
+    $organizationLogo = !empty($organizationContext['logo'])
+        ? (string)$organizationContext['logo']
+        : '/img/logo-OGC.png';
+    $organizationBanner = !empty($organizationContext['banner'])
+        ? (string)$organizationContext['banner']
+        : '/img/home.jpg';
+
     ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -824,22 +803,11 @@ function commonRenderMagicLoginPage(array $options = [])
 <body class="auth-page">
     <div class="auth-shell">
         <div class="auth-hero" style="background-color: <?= htmlspecialchars($organizationContext['color'] ?: '#4CAF50') ?>;">
-            <?php if (!empty($organizationContext['banner'])) { ?>
-                <div class="auth-hero-bg" style="background-image:url('<?= htmlspecialchars($organizationContext['banner']) ?>')"></div>
-                <?php } else {?>
-                <div class="auth-hero-bg" style="background-image:url('/img/home.jpg')"></div>
- 
-                <?php } ?>
+            <div class="auth-hero-bg" style="background-image:url('<?= htmlspecialchars($organizationBanner) ?>')"></div>
             <div class="auth-hero-content">
-                <?php if (!empty($organizationContext['logo'])){ ?>
-                    <div class="auth-logo">
-                        <img src="<?= htmlspecialchars($organizationContext['logo']) ?>" alt="Logo">
-                    </div>
-                    <? } else { ?>
-                       <div class="auth-logo">
-                        <img src="/img/logo-OGC.png" alt="Logo">
-                    </div>
-                <?php } ?>
+                <div class="auth-logo">
+                    <img src="<?= htmlspecialchars($organizationLogo) ?>" alt="Logo">
+                </div>
                 
                 <h1><?= htmlspecialchars($organizationContext['name'] ?: $appName) ?></h1>
                 <p><?= htmlspecialchars($intro) ?></p>
