@@ -378,7 +378,7 @@
 					$this[]=$object;
 				}
 			} else {
-				Die ("Erreur dans la requÃªte : ".$query);
+				Die ("Erreur dans la requête : ".$query);
 			}
 		}
 		

@@ -1,14 +1,13 @@
-const OMO_THEME_STORAGE_KEY = 'omo-theme-preference';
-const OMO_THEME_MEDIA_QUERY = '(prefers-color-scheme: dark)';
+const OMO_THEME_STORAGE_KEY = typeof SHARED_THEME_STORAGE_KEY === 'string'
+    ? SHARED_THEME_STORAGE_KEY
+    : 'omo-theme-preference';
+const OMO_THEME_MEDIA_QUERY = typeof SHARED_THEME_MEDIA_QUERY === 'string'
+    ? SHARED_THEME_MEDIA_QUERY
+    : '(prefers-color-scheme: dark)';
 
 function omoGetThemePreference() {
-    try {
-        const storedPreference = localStorage.getItem(OMO_THEME_STORAGE_KEY);
-
-        if (storedPreference === 'light' || storedPreference === 'dark' || storedPreference === 'system') {
-            return storedPreference;
-        }
-    } catch (error) {
+    if (typeof sharedGetThemePreference === 'function') {
+        return sharedGetThemePreference(OMO_THEME_STORAGE_KEY);
     }
 
     return 'system';
@@ -23,6 +22,10 @@ function omoGetThemeMediaQuery() {
 }
 
 function omoResolveTheme(preference) {
+    if (typeof sharedResolveTheme === 'function') {
+        return sharedResolveTheme(preference, OMO_THEME_MEDIA_QUERY);
+    }
+
     if (preference === 'dark' || preference === 'light') {
         return preference;
     }
@@ -36,17 +39,32 @@ function omoApplyTheme(preference, persistPreference = false) {
     const safePreference = (preference === 'light' || preference === 'dark' || preference === 'system')
         ? preference
         : 'system';
-    const resolvedTheme = omoResolveTheme(safePreference);
-    const root = document.documentElement;
+    let resolvedTheme = omoResolveTheme(safePreference);
 
-    root.dataset.themePreference = safePreference;
-    root.dataset.theme = resolvedTheme;
-    root.style.colorScheme = resolvedTheme;
+    if (typeof sharedApplyDocumentTheme === 'function') {
+        resolvedTheme = sharedApplyDocumentTheme({
+            storageKey: OMO_THEME_STORAGE_KEY,
+            preference: safePreference
+        }).theme;
+    } else {
+        const root = document.documentElement;
+
+        root.dataset.themePreference = safePreference;
+        root.dataset.theme = resolvedTheme;
+        root.style.colorScheme = resolvedTheme;
+    }
 
     if (persistPreference) {
         try {
             localStorage.setItem(OMO_THEME_STORAGE_KEY, safePreference);
         } catch (error) {
+        }
+
+        if (typeof sharedApplyDocumentTheme === 'function') {
+            resolvedTheme = sharedApplyDocumentTheme({
+                storageKey: OMO_THEME_STORAGE_KEY,
+                preference: safePreference
+            }).theme;
         }
     }
 
@@ -282,6 +300,17 @@ function getNormalizedOmoPath() {
     return path;
 }
 
+function canonicalizeOmoRootPath() {
+
+    if ((window.location.pathname || '') !== '/omo') {
+        return;
+    }
+
+    const canonicalUrl = `/omo/${window.location.search || ''}${window.location.hash || ''}`;
+
+    history.replaceState({}, '', canonicalUrl);
+}
+
 function getSkeleton(type) {
     if (type === 'sidebar') {
         return `<div class="loading">
@@ -512,6 +541,8 @@ function navigate(oid, cid = null, hash = null) {
 
     if (cid) {
         url += `/c/${cid}`;
+    } else {
+        url += '/';
     }
 
     if (hash) {
@@ -636,6 +667,7 @@ function activateMenu(hash) {
 }
 
 $(document).ready(function () {
+    canonicalizeOmoRootPath();
     handleRoute();
 });
 

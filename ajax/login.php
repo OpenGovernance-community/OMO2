@@ -13,8 +13,10 @@
 		unset($_SESSION["currentUser"]);
 		unset($_COOKIE['currentUser']); 
 		unset($_COOKIE['currentCode']); 
-		setcookie('currentUser', '', time()-1, '/', $_SERVER['HTTP_HOST'], false);
-		setcookie('currentCode', '', time()-1, '/', $_SERVER['HTTP_HOST'], false);
+		appExpireCookie('currentUser', false);
+		appExpireCookie('currentCode', false);
+		setcookie('currentUser', '', time()-1, '/');
+		setcookie('currentCode', '', time()-1, '/');
 		echo '{"status":true, "script":"location.reload()"} ';
 		exit;
 	} else
@@ -46,13 +48,13 @@
 		
 		// Si demande de se souvenir, stock l'info dans un cookie pendant 30 jours
 		if (isset($_POST["remember"]) && $_POST["remember"]=="1") {
-			setcookie('currentUser', $user->get("id"), time()+60*60*24*30, '/', $_SERVER['HTTP_HOST'], false);
-			setcookie('currentCode', $user->get("password"), time()+60*60*24*30, '/', $_SERVER['HTTP_HOST'], false);
+			appSetCookie('currentUser', (string)$user->get("id"), time()+60*60*24*30, false);
+			appSetCookie('currentCode', (string)$user->get("password"), time()+60*60*24*30, false);
 		} else {
 			// Sinon, enregistre malgré tout des cookies, mais sur la durée d'ouverture du navigateur afin d'éviter
 			// la déconnexion pour fin de session.
-			setcookie('currentUser', $user->get("id"));
-			setcookie('currentCode', $user->get("password"));
+			appSetCookie('currentUser', (string)$user->get("id"), 0, false);
+			appSetCookie('currentCode', (string)$user->get("password"), 0, false);
 		}
 		echo '{"status":true, "script":"location.reload()"} ';
 		

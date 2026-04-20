@@ -6,6 +6,18 @@ require_once dirname(__DIR__) . '/common/topbar.php';
 $organizationContext = commonResolveOrganizationContext(1);
 commonRestoreRememberedUser();
 $isDemoGuest = commonCanAccessWithoutLogin($organizationContext);
+$omoRootUrl = commonBuildUrl('/omo/', commonGetRootHost());
+$isOrganizationHub = commonGetRequestSubdomain() === '' && !commonIsDemoHost();
+$omoDefaultLogo = '/img/logo-OGC.png';
+$omoDefaultBanner = '/img/home.jpg';
+$omoLandingOrganization = [
+    'name' => 'OMO',
+    'shortname' => '',
+    'domain' => '',
+    'logo' => $omoDefaultLogo,
+    'banner' => $omoDefaultBanner,
+    'color' => '#4f46e5',
+];
 
 $omoPwaHeadHtml = implode(PHP_EOL, [
     '<link rel="manifest" href="/omo/manifest.json">',
@@ -20,19 +32,148 @@ $omoPwaHeadHtml = implode(PHP_EOL, [
 ]);
 
 $omoPwaBodyEndHtml = '<script src="/omo/assets/js/install.js" defer></script>';
+$omoThemeBootstrapHtml = implode(PHP_EOL, [
+    '<script src="/shared_functions.js"></script>',
+    '<script>sharedApplyDocumentTheme();</script>',
+]);
 
 if (!commonGetCurrentUserId() && !$isDemoGuest) {
     commonRenderMagicLoginPage([
-        'title' => ($organizationContext['name'] ?: 'OMO') . ' - OMO',
+        'title' => (($isOrganizationHub ? 'OMO' : $organizationContext['name']) ?: 'OMO') . ' - OMO',
         'appName' => 'OMO',
         'intro' => 'Connectez-vous pour accéder à la structure et aux outils de gouvernance.',
         'returnTo' => commonNormalizeLocalPath($_SERVER['REQUEST_URI'] ?? '/omo/', '/omo/'),
+        'organization' => $isOrganizationHub ? $omoLandingOrganization : $organizationContext,
         'headHtml' => $omoPwaHeadHtml,
-        'bodyEndHtml' => $omoPwaBodyEndHtml,
     ]);
 }
 
 $currentUserName = $isDemoGuest ? 'Démo' : commonGetCurrentUserDisplayName();
+$currentUserId = commonGetCurrentUserId();
+if ($isOrganizationHub && !$isDemoGuest) {
+    $logoutUrl = '/common/logout.php?return_to=' . urlencode('/omo/');
+    $hubUser = new \dbObject\User();
+    $accessibleOrganizations = $hubUser->load($currentUserId)
+        ? $hubUser->getAccessibleOrganizations()
+        : [];
+    $organizationCount = count($accessibleOrganizations);
+
+    if ($organizationCount === 0) {
+        http_response_code(403);
+    }
+    ?>
+<!DOCTYPE html>
+<html lang="fr" class="auth-theme-root">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?= $omoThemeBootstrapHtml . PHP_EOL ?>
+    <title>Vos espaces OMO</title>
+    <?= $omoPwaHeadHtml . PHP_EOL ?>
+    <link rel="stylesheet" href="/omo/assets/css/styles.css">
+    <link rel="stylesheet" href="/common/assets/auth.css">
+</head>
+<body class="auth-state-page auth-state-page--scrollable auth-state-page--themed">
+    <main class="auth-state-card auth-state-card--directory">
+        <span class="auth-state-status auth-state-status--directory<?= $organizationCount === 0 ? ' error' : '' ?>">
+            <?= htmlspecialchars($organizationCount === 0 ? 'Aucune organisation disponible' : ($organizationCount === 1 ? '1 organisation disponible' : $organizationCount . ' organisations disponibles')) ?>
+        </span>
+        <h1>Vos espaces OMO</h1>
+        <?php if ($organizationCount > 0) { ?>
+            <p>Choisissez l'organisation que vous souhaitez ouvrir. Chaque carte vous redirige vers son espace dédié.</p>
+            <div class="auth-org-list auth-org-list--directory">
+                <?php foreach ($accessibleOrganizations as $accessibleOrganization) {
+                    $organizationName = trim((string)$accessibleOrganization->get('name'));
+                    if ($organizationName === '') {
+                        $organizationName = 'Organisation';
+                    }
+                    $organizationShortname = trim((string)$accessibleOrganization->get('shortname'));
+                    $organizationUrl = commonBuildUrl('/omo/', commonBuildOrganizationHost($organizationShortname, commonGetRootHost()));
+                    $organizationLogo = trim((string)$accessibleOrganization->get('logo'));
+                    $organizationBanner = trim((string)$accessibleOrganization->get('banner'));
+                    $organizationColor = trim((string)$accessibleOrganization->get('color')) ?: '#4f46e5';
+                    $organizationDomain = trim((string)$accessibleOrganization->get('domain'));
+                    $organizationInitial = function_exists('mb_substr')
+                        ? mb_strtoupper(mb_substr($organizationName, 0, 1))
+                        : strtoupper(substr($organizationName, 0, 1));
+                    $organizationHostLabel = $organizationShortname !== ''
+                        ? $organizationShortname . '.' . commonGetRootHost()
+                        : ($organizationDomain !== '' ? $organizationDomain : 'Organisation');
+                    ?>
+                <a
+                    class="auth-org-card auth-org-card--directory"
+                    href="<?= htmlspecialchars($organizationUrl) ?>"
+                    style="--auth-org-accent: <?= htmlspecialchars($organizationColor) ?>;"
+                    aria-label="Ouvrir l'espace <?= htmlspecialchars($organizationName) ?>"
+                >
+                    <div class="auth-org-card__banner">
+                        <?php if ($organizationBanner !== '') { ?>
+                        <img src="<?= htmlspecialchars($organizationBanner) ?>" alt="" loading="lazy">
+                        <?php } ?>
+                    </div>
+                    <div class="auth-org-card__body">
+                        <div class="auth-org-card__header">
+                            <?php if ($organizationLogo !== '') { ?>
+                            <img class="auth-org-logo auth-org-logo--directory" src="<?= htmlspecialchars($organizationLogo) ?>" alt="<?= htmlspecialchars($organizationName) ?>" loading="lazy">
+                            <?php } else { ?>
+                            <div class="auth-org-logo-placeholder auth-org-logo-placeholder--directory" aria-hidden="true"><?= htmlspecialchars($organizationInitial) ?></div>
+                            <?php } ?>
+                            <div class="auth-org-info auth-org-info--directory">
+                                <strong class="auth-org-title auth-org-title--directory"><?= htmlspecialchars($organizationName) ?></strong>
+                                <span class="auth-org-meta auth-org-meta--directory"><?= htmlspecialchars($organizationHostLabel) ?></span>
+                            </div>
+                        </div>
+                        <div class="auth-org-card__footer">
+                            <span class="auth-org-badge"><?= htmlspecialchars($organizationDomain !== '' ? $organizationDomain : 'Espace OMO') ?></span>
+                            <span class="auth-org-action">Se connecter</span>
+                        </div>
+                    </div>
+                </a>
+                <?php } ?>
+            </div>
+        <?php } else { ?>
+            <p>Votre compte est bien connecté, mais il n'est rattaché à aucune organisation pour le moment.</p>
+            <p>Pour l'instant, l'accès aux espaces OMO est réservé aux personnes présentes dans la liste des membres autorisés.</p>
+        <?php } ?>
+        <div class="auth-state-actions">
+            <a class="auth-state-btn auth-state-btn--primary" href="<?= htmlspecialchars($logoutUrl) ?>">Se déconnecter</a>
+        </div>
+    </main>
+</body>
+</html>
+<?php
+    exit;
+}
+
+if (!$isDemoGuest && !commonUserHasOrganizationAccess($currentUserId, (int)$organizationContext['id'])) {
+    http_response_code(403);
+    $logoutUrl = '/common/logout.php?return_to=' . urlencode('/omo/');
+    ?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acces interdit - OMO</title>
+    <?= $omoPwaHeadHtml . PHP_EOL ?>
+    <link rel="stylesheet" href="/common/assets/auth.css">
+</head>
+<body class="auth-state-page">
+    <main class="auth-state-card">
+        <h1>Acces interdit</h1>
+        <p>Votre compte est bien connecte, mais il n'a pas encore acces a l'organisation <?= htmlspecialchars($organizationContext['name'] ?: 'demandee') ?>.</p>
+        <p>Pour le moment, l'acces a cet espace est reserve aux personnes presentes dans la liste des membres autorises.</p>
+        <div class="auth-state-actions">
+            <a class="auth-state-btn auth-state-btn--secondary" href="<?= htmlspecialchars($omoRootUrl) ?>">Revenir a l'accueil</a>
+            <a class="auth-state-btn auth-state-btn--primary" href="<?= htmlspecialchars($logoutUrl) ?>">Se deconnecter</a>
+        </div>
+    </main>
+</body>
+</html>
+<?php
+    exit;
+}
+
 $currentUserProfile = [
     'displayName' => $currentUserName,
     'email' => '',
@@ -42,7 +183,7 @@ $currentUserProfile = [
 ];
 
 $currentUser = new \dbObject\User();
-if ($currentUser->load(commonGetCurrentUserId())) {
+if ($currentUser->load($currentUserId)) {
     $currentUserProfile['email'] = (string)$currentUser->get('email');
     $currentUserProfile['username'] = (string)$currentUser->get('username');
 }
@@ -52,28 +193,7 @@ if ($currentUser->load(commonGetCurrentUserId())) {
 <head>
     <meta charset="UTF-8">
     <title>Gouvernance UI</title>
-    <script>
-    (function () {
-        var storageKey = 'omo-theme-preference';
-        var preference = 'system';
-
-        try {
-            var storedPreference = window.localStorage.getItem(storageKey);
-            if (storedPreference === 'light' || storedPreference === 'dark' || storedPreference === 'system') {
-                preference = storedPreference;
-            }
-        } catch (error) {
-        }
-
-        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        var resolvedTheme = preference === 'system' ? (prefersDark ? 'dark' : 'light') : preference;
-        var root = document.documentElement;
-
-        root.dataset.themePreference = preference;
-        root.dataset.theme = resolvedTheme;
-        root.style.colorScheme = resolvedTheme;
-    })();
-    </script>
+    <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
     <link rel="stylesheet" href="/omo/assets/css/styles.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>

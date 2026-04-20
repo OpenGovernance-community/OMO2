@@ -1,6 +1,5 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
-usleep(1000000);
 ?>
 <div class="kanban">
 
