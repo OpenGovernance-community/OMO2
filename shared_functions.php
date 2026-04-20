@@ -1,6 +1,75 @@
 <?
+	function appGetCookieDomain($host = null) {
+		$host = is_string($host) && $host !== '' ? strtolower($host) : strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
+		$host = trim((string)$host);
+		$host = preg_replace('/:\d+$/', '', $host);
+
+		if ($host === '' || filter_var($host, FILTER_VALIDATE_IP)) {
+			return '';
+		}
+
+		if ($host === 'localhost' || preg_match('/(^|\.)localhost$/', $host)) {
+			return '';
+		}
+
+		$parts = array_values(array_filter(explode('.', $host)));
+		if (count($parts) < 2) {
+			return '';
+		}
+
+		return '.' . $parts[count($parts) - 2] . '.' . $parts[count($parts) - 1];
+	}
+
+	function appShouldUseSecureCookies() {
+		$https = strtolower((string)($_SERVER['HTTPS'] ?? ''));
+		if ($https !== '' && $https !== 'off') {
+			return true;
+		}
+
+		if ((string)($_SERVER['SERVER_PORT'] ?? '') === '443') {
+			return true;
+		}
+
+		return strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+	}
+
+	function appBuildCookieOptions($expires = 0, $httpOnly = true, $host = null) {
+		$options = [
+			'expires' => (int)$expires,
+			'path' => '/',
+			'secure' => appShouldUseSecureCookies(),
+			'httponly' => (bool)$httpOnly,
+			'samesite' => 'Lax',
+		];
+
+		$domain = appGetCookieDomain($host);
+		if ($domain !== '') {
+			$options['domain'] = $domain;
+		}
+
+		return $options;
+	}
+
+	function appBuildSessionCookieOptions($host = null) {
+		$options = appBuildCookieOptions(0, true, $host);
+		unset($options['expires']);
+		$options['lifetime'] = 0;
+		return $options;
+	}
+
+	function appSetCookie($name, $value, $expires = 0, $httpOnly = true, $host = null) {
+		return setcookie($name, $value, appBuildCookieOptions($expires, $httpOnly, $host));
+	}
+
+	function appExpireCookie($name, $httpOnly = true, $host = null) {
+		return appSetCookie($name, '', time() - 3600, $httpOnly, $host);
+	}
+
 	require_once("config.php");
-	session_start();
+	if (session_status() === PHP_SESSION_NONE) {
+		session_set_cookie_params(appBuildSessionCookieOptions());
+		session_start();
+	}
 
 	require __DIR__ . '/vendor/autoload.php';	// Pour la traduction automatique
 	use Orhanerday\OpenAi\OpenAi;
@@ -70,8 +139,8 @@
 			$user->load([["id",$_COOKIE["currentUser"]],["password",$_COOKIE["currentCode"]]]);
 			if ($user->get("id")>0) {
 				// Redéfini les cookie pour 30 jours supplémentaires
-				setcookie('currentUser', $user->get("id"), time()+60*60*24*30, '/', $_SERVER['HTTP_HOST'], false);
-				setcookie('currentCode', $user->get("password"), time()+60*60*24*30, '/', $_SERVER['HTTP_HOST'], false);
+				appSetCookie('currentUser', (string)$user->get("id"), time()+60*60*24*30, false);
+				appSetCookie('currentCode', (string)$user->get("password"), time()+60*60*24*30, false);
 				
 				// Initialise la variable de session
 				$_SESSION["currentUser"]=$user->get("id");

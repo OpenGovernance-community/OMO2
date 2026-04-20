@@ -26,9 +26,17 @@ docker compose up --build
 L'application devient alors accessible sur :
 
 - `http://localhost:8080`
+- `https://localhost:8443`
 - `http://demo.localhost:8080`
+- `https://demo.localhost:8443`
 - `http://instantz.localhost:8080`
+- `https://instantz.localhost:8443`
 - `http://trajets.localhost:8080`
+- `https://trajets.localhost:8443`
+- `http://omo.test:8080`
+- `https://omo.test:8443`
+- `http://instantz.omo.test:8080`
+- `https://instantz.omo.test:8443`
 
 Interface email locale :
 
@@ -37,6 +45,33 @@ Interface email locale :
 Interface base de donnees :
 
 - `http://localhost:8081`
+
+### Domaine local partage pour tester les sous-domaines
+
+Pour tester correctement les cookies partages entre organisations, il est recommande d'utiliser un vrai domaine local comme `omo.test` plutot que `localhost`.
+
+Sous Windows, ajouter ces lignes dans `C:\Windows\System32\drivers\etc\hosts` :
+
+```text
+127.0.0.1 omo.test
+127.0.0.1 demo.omo.test
+127.0.0.1 instantz.omo.test
+127.0.0.1 trajets.omo.test
+```
+
+Puis relancer les conteneurs :
+
+```bash
+docker compose down
+docker compose up --build
+```
+
+Ensuite, utiliser de preference :
+
+- `https://omo.test:8443/omo/`
+- `https://instantz.omo.test:8443/omo/`
+
+Le certificat HTTPS local est autosigne. Le navigateur affichera donc un avertissement de securite du type `ERR_CERT_AUTHORITY_INVALID` tant que ce certificat n'est pas ajoute comme certificat de confiance sur la machine. En local, il est possible de continuer manuellement via les options avancees du navigateur.
 
 ### Ce que fait l'initialisation
 
