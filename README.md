@@ -29,14 +29,14 @@ L'application devient alors accessible sur :
 - `https://localhost:8443`
 - `http://demo.localhost:8080`
 - `https://demo.localhost:8443`
-- `http://instantz.localhost:8080`
-- `https://instantz.localhost:8443`
-- `http://trajets.localhost:8080`
-- `https://trajets.localhost:8443`
+- `http://org1.localhost:8080`
+- `https://org1.localhost:8443`
+- `http://org2.localhost:8080`
+- `https://org2.localhost:8443`
 - `http://omo.test:8080`
 - `https://omo.test:8443`
-- `http://instantz.omo.test:8080`
-- `https://instantz.omo.test:8443`
+- `http://org1.omo.test:8080`
+- `https://org1.omo.test:8443`
 
 Interface email locale :
 
@@ -55,8 +55,8 @@ Sous Windows, ajouter ces lignes dans `C:\Windows\System32\drivers\etc\hosts` :
 ```text
 127.0.0.1 omo.test
 127.0.0.1 demo.omo.test
-127.0.0.1 instantz.omo.test
-127.0.0.1 trajets.omo.test
+127.0.0.1 org1.omo.test
+127.0.0.1 org2.omo.test
 ```
 
 Puis relancer les conteneurs :
@@ -69,7 +69,7 @@ docker compose up --build
 Ensuite, utiliser de preference :
 
 - `https://omo.test:8443/omo/`
-- `https://instantz.omo.test:8443/omo/`
+- `https://org1.omo.test:8443/omo/`
 
 Le certificat HTTPS local est autosigne. Le navigateur affichera donc un avertissement de securite du type `ERR_CERT_AUTHORITY_INVALID` tant que ce certificat n'est pas ajoute comme certificat de confiance sur la machine. En local, il est possible de continuer manuellement via les options avancees du navigateur.
 
