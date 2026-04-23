@@ -13,7 +13,7 @@
 		public static function rules()
 		{
 			return [
-				[['email','username'], 'required'],				// Champs obligatoires
+				[['email'], 'required'],				// Champs obligatoires
 				[['id'], 'integer'],							// Nombres entiers
 				[['username','email','firstname','lastname','code'], 'string'],			// Chaînes de caractère (max 250)
 				[['password'], 'password'],						// Chaînes de caractère (max 250)
