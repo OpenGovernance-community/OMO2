@@ -179,32 +179,46 @@
 				$parameters->load($params);
 				
 				// Les affiches tous
-				$tmp.="<div class='form_parameter_".$key."' data-src='".$key."'>";
+				$tmp.="<div class='form_parameter_".$key." dbobject-parameter-group' data-src='".$key."'>";
 				foreach($parameters as $parameter) {
+					$parameterCode=$parameter->get("code");
+					$parameterId="param_".$key."_".$parameterCode;
+					$parameterName=htmlspecialchars($parameter->get("name"), ENT_QUOTES, 'UTF-8');
+					$parameterValue=(isset($json[$parameterCode])?$json[$parameterCode]:"");
 					
 					switch ($parameter->get("type")) {
 						case "string" :	
-							$tmp.=$parameter->get("name").":\n";
-							$tmp.="<input type='text' name='".$parameter->get("code")."' value='".(isset($json[$parameter->get("code")])?$json[$parameter->get("code")]:"")."'>";
+							$tmp.="<div class='dbobject-parameter-item'>";
+							$tmp.="<label class='dbobject-parameter-label' for='".$parameterId."'>".$parameterName."</label>";
+							$tmp.="<div class='dbobject-parameter-control'><input type='text' id='".$parameterId."' name='".$parameterCode."' value='".htmlspecialchars($parameterValue, ENT_QUOTES, 'UTF-8')."'></div>";
+							$tmp.="</div>";
 							break;
 						case "integer" :	
-							$tmp.=$parameter->get("name").":\n";			
-							$tmp.="<input type='number' name='".$parameter->get("code")."' value='".(isset($json[$parameter->get("code")])?$json[$parameter->get("code")]:"")."'>";
+							$tmp.="<div class='dbobject-parameter-item'>";
+							$tmp.="<label class='dbobject-parameter-label' for='".$parameterId."'>".$parameterName."</label>";
+							$tmp.="<div class='dbobject-parameter-control'><input type='number' id='".$parameterId."' name='".$parameterCode."' value='".htmlspecialchars($parameterValue, ENT_QUOTES, 'UTF-8')."'></div>";
+							$tmp.="</div>";
 							break;
 						case "checkbox" :				
-							$tmp.="<div><input type='checkbox' name='".$parameter->get("code")."' ".(isset($json[$parameter->get("code")]) && $json[$parameter->get("code")]==true?" checked":"")."> ";
-							$tmp.=$parameter->get("name")."</div>";
+							$tmp.="<div class='dbobject-parameter-item dbobject-parameter-item--checkbox'>";
+							$tmp.="<label class='dbobject-parameter-checkbox' for='".$parameterId."'>";
+							$tmp.="<input type='checkbox' id='".$parameterId."' name='".$parameterCode."' ".(isset($json[$parameterCode]) && $json[$parameterCode]==true?" checked":"").">";
+							$tmp.="<span>".$parameterName."</span>";
+							$tmp.="</label>";
+							$tmp.="</div>";
 							break;
 						case "select" :	
-							$tmp.=$parameter->get("name").":\n";			
-							$tmp.="<select name='".$parameter->get("code")."'>";
+							$tmp.="<div class='dbobject-parameter-item'>";
+							$tmp.="<label class='dbobject-parameter-label' for='".$parameterId."'>".$parameterName."</label>";
+							$tmp.="<div class='dbobject-parameter-control'><select id='".$parameterId."' name='".$parameterCode."'>";
 							
 							$values=explode(";",$parameter->get("value"));
 							foreach ($values as $value) {
-								$tmp.="<option ".(isset($json[$parameter->get("code")]) && $json[$parameter->get("code")]==$value?" selected":"").">".$value."</option>";
+								$tmp.="<option ".(isset($json[$parameterCode]) && $json[$parameterCode]==$value?" selected":"").">".$value."</option>";
 							}
 							
-							$tmp.="</select>";
+							$tmp.="</select></div>";
+							$tmp.="</div>";
 							break;
 						}
 				}
@@ -468,13 +482,191 @@
 		} 
 	</script>
 	<style>
-		table.dbobjecttable {width:100%}
+		table.dbobjecttable {width:100%; border-collapse:separate; border-spacing:0 12px;}
 		table.dbobjecttable table {width:100%}
 		table.dbobjecttable td, table.dbobjecttable th  {vertical-align:top}
+		table.dbobjecttable tr {background:#fff;}
+		table.dbobjecttable th {
+			width:220px;
+			padding:14px 18px;
+			font-size:14px;
+			font-weight:700;
+			line-height:1.4;
+			color:#0f172a;
+			white-space:nowrap;
+			background:#f8fafc;
+			border:1px solid #dbe4ee;
+			border-right:0;
+			border-radius:14px 0 0 14px;
+		}
+		table.dbobjecttable td {
+			padding:14px 18px;
+			background:#fff;
+			border:1px solid #dbe4ee;
+			border-left:0;
+			border-radius:0 14px 14px 0;
+		}
 		table.dbobjecttable td table td  {padding-left:15px;}
 		table.dbobjecttable td table td:first-of-type  {width:1%; padding-left:0px;}
-		table.dbobjecttable+th {white-space:nowrap}
-		table.dbobjecttable+td {width:100%}
+		table.dbobjecttable input[type="text"],
+		table.dbobjecttable input[type="number"],
+		table.dbobjecttable input[type="email"],
+		table.dbobjecttable input[type="password"],
+		table.dbobjecttable select,
+		table.dbobjecttable textarea {
+			width:100%;
+			min-height:44px;
+			padding:10px 14px;
+			border:1px solid #cbd5e1;
+			border-radius:12px;
+			background:#fff;
+			color:#0f172a;
+			font-size:14px;
+			line-height:1.45;
+			outline:none;
+			transition:border-color .2s ease, box-shadow .2s ease, background-color .2s ease;
+		}
+		table.dbobjecttable textarea {
+			min-height:120px;
+			resize:vertical;
+		}
+		table.dbobjecttable input:focus,
+		table.dbobjecttable select:focus,
+		table.dbobjecttable textarea:focus {
+			border-color:#2563eb;
+			box-shadow:0 0 0 4px rgba(37,99,235,.12);
+		}
+		table.dbobjecttable input[type="checkbox"] {
+			width:18px;
+			height:18px;
+			accent-color:#2563eb;
+		}
+		table.dbobjecttable input[type="range"] {
+			width:100%;
+		}
+		table.dbobjecttable input[type="file"] {
+			width:100%;
+			padding:10px 0;
+		}
+		table.dbobjecttable hr {
+			border:0;
+			border-top:1px solid #dbe4ee;
+			margin:8px 0;
+		}
+		table.dbobjecttable h1,
+		table.dbobjecttable h2,
+		table.dbobjecttable h3,
+		table.dbobjecttable p {
+			margin:0;
+		}
+		table.dbobjecttable .char_count {
+			margin-top:6px;
+			font-size:12px;
+			color:#64748b;
+		}
+		.field_help {
+			display:inline-flex;
+			align-items:center;
+			justify-content:center;
+			width:18px;
+			height:18px;
+			margin-left:8px;
+			border-radius:999px;
+			background:#dbeafe;
+			color:#1d4ed8;
+			font-size:11px;
+			font-weight:700;
+			cursor:help;
+		}
+		.dbobject-parameter-group {
+			display:grid;
+			gap:12px;
+		}
+		.dbobject-parameter-item {
+			display:grid;
+			grid-template-columns:minmax(180px, 220px) minmax(0, 1fr);
+			gap:14px;
+			align-items:center;
+			padding:14px 16px;
+			border:1px solid #e2e8f0;
+			border-radius:14px;
+			background:#f8fafc;
+		}
+		.dbobject-parameter-item--checkbox {
+			grid-template-columns:1fr;
+		}
+		.dbobject-parameter-label {
+			font-size:13px;
+			font-weight:700;
+			color:#334155;
+		}
+		.dbobject-parameter-control {
+			min-width:0;
+		}
+		.dbobject-parameter-checkbox {
+			display:flex;
+			align-items:center;
+			gap:12px;
+			font-size:14px;
+			font-weight:600;
+			color:#0f172a;
+		}
+		#btn_submit,
+		#btn_save {
+			min-height:44px;
+			padding:10px 18px;
+			border:0;
+			border-radius:12px;
+			background:#2563eb;
+			color:#fff;
+			font-weight:700;
+			cursor:pointer;
+			transition:transform .2s ease, box-shadow .2s ease, opacity .2s ease;
+			box-shadow:0 12px 24px rgba(37,99,235,.18);
+		}
+		#btn_submit:hover,
+		#btn_save:hover {
+			transform:translateY(-1px);
+		}
+		#btn_submit:disabled,
+		#btn_save:disabled {
+			opacity:.65;
+			cursor:not-allowed;
+			transform:none;
+		}
+		@media (max-width: 760px) {
+			table.dbobjecttable,
+			table.dbobjecttable tbody,
+			table.dbobjecttable tr,
+			table.dbobjecttable th,
+			table.dbobjecttable td {
+				display:block;
+				width:100%;
+			}
+			table.dbobjecttable {
+				border-spacing:0;
+			}
+			table.dbobjecttable tr {
+				margin-bottom:12px;
+			}
+			table.dbobjecttable th {
+				padding:12px 14px 8px;
+				border-right:1px solid #dbe4ee;
+				border-bottom:0;
+				border-radius:14px 14px 0 0;
+				white-space:normal;
+			}
+			table.dbobjecttable td {
+				padding:0 14px 14px;
+				border-left:1px solid #dbe4ee;
+				border-top:0;
+				border-radius:0 0 14px 14px;
+			}
+			.dbobject-parameter-item {
+				grid-template-columns:1fr;
+				gap:8px;
+			}
+		}
 	</style>
 
 <?

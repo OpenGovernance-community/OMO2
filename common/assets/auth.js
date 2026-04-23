@@ -22,6 +22,8 @@
 
     let useOrgDomain = !!config.hasOrgDomain;
     let pendingToken = '';
+    let loginRequestInFlight = false;
+    let verifyRequestInFlight = false;
     const storageKey = 'commonLoginPendingToken';
     const defaultSubmitLabel = submit.textContent || 'Envoyer le code';
     const challengeSubmitLabel = challengeSubmit ? (challengeSubmit.textContent || 'Valider') : 'Valider';
@@ -126,7 +128,23 @@
         updateChallengeControls(false);
     }
 
+    function setLoginControlsDisabled(disabled) {
+        if (submit) {
+            submit.disabled = !!disabled;
+        }
+        if (challengeSubmit) {
+            challengeSubmit.disabled = !!disabled;
+        }
+        if (resendLink) {
+            resendLink.disabled = !!disabled;
+        }
+    }
+
     function submitLogin(answer) {
+        if (loginRequestInFlight) {
+            return;
+        }
+
         const body = new URLSearchParams();
         body.set('email', buildEmail());
         body.set('remember', remember && remember.checked ? '1' : '0');
@@ -136,19 +154,22 @@
             body.set('answer', String(answer));
         }
 
-        submit.disabled = true;
+        loginRequestInFlight = true;
+        setLoginControlsDisabled(true);
         setStatus('Envoi en cours...');
 
         fetch(config.loginSendPath || '/common/login_send.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            credentials: 'same-origin',
             body: body.toString()
         })
             .then(function (response) {
                 return response.json();
             })
             .then(function (data) {
-                submit.disabled = false;
+                loginRequestInFlight = false;
+                setLoginControlsDisabled(false);
 
                 if (data.challenge) {
                     if (challengeBox) {
@@ -156,6 +177,10 @@
                     }
                     if (challengeQuestion) {
                         challengeQuestion.textContent = data.challenge;
+                    }
+                    if (challengeAnswer) {
+                        challengeAnswer.focus();
+                        challengeAnswer.select();
                     }
                     updateChallengeControls(true);
                     setStatus('Veuillez repondre a la question de verification.');
@@ -165,6 +190,9 @@
                 if ((data.status === 'code_sent' || data.status === 'code_pending') && data.request_token) {
                     storePendingToken(data.request_token);
                     hideChallengeBox();
+                    if (challengeAnswer) {
+                        challengeAnswer.value = '';
+                    }
                     showCodeBox();
                     updateSendControls(true);
                     if (data.status === 'code_pending') {
@@ -190,12 +218,17 @@
                 }
             })
             .catch(function () {
-                submit.disabled = false;
+                loginRequestInFlight = false;
+                setLoginControlsDisabled(false);
                 setStatus("Impossible d'envoyer la demande.", 'error');
             });
     }
 
     function verifyCode() {
+        if (verifyRequestInFlight) {
+            return;
+        }
+
         const token = pendingToken || loadPendingToken();
         const code = codeInput ? codeInput.value.trim().toUpperCase() : '';
 
@@ -212,6 +245,7 @@
         if (codeSubmit) {
             codeSubmit.disabled = true;
         }
+        verifyRequestInFlight = true;
         setStatus('Verification du code...');
 
         const body = new URLSearchParams();
@@ -222,12 +256,14 @@
         fetch(config.loginVerifyPath || '/common/login_verify.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            credentials: 'same-origin',
             body: body.toString()
         })
             .then(function (response) {
                 return response.json();
             })
             .then(function (data) {
+                verifyRequestInFlight = false;
                 if (codeSubmit) {
                     codeSubmit.disabled = false;
                 }
@@ -274,6 +310,7 @@
                 setStatus('Code invalide. Demandez un nouveau code.', 'error');
             })
             .catch(function () {
+                verifyRequestInFlight = false;
                 if (codeSubmit) {
                     codeSubmit.disabled = false;
                 }
@@ -301,6 +338,15 @@
     if (challengeSubmit) {
         challengeSubmit.addEventListener('click', function () {
             submitLogin(challengeAnswer ? challengeAnswer.value : '');
+        });
+    }
+
+    if (challengeAnswer) {
+        challengeAnswer.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                submitLogin(challengeAnswer.value);
+            }
         });
     }
 

@@ -110,6 +110,13 @@
 
 			return null;
 		}
+
+		public function getApplications($userId = null)
+		{
+			$applications = new \dbObject\ArrayApplication();
+			$applications->loadEnabledForOrganization((int)$this->getId(), $userId !== null ? (int)$userId : 0);
+			return $applications;
+		}
 		
 	}
 	
