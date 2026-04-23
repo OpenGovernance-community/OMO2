@@ -3,407 +3,882 @@
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared_functions.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared/openai.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared/telegram.php");
-	
-	// Liste des variable de configuration 
-	$minTimeMessage=10; // Durée minimum en seconde du message pour justifier une transformation
-					
-	// récupération des données envoyées par Telegram, transfo en objet
-	$content = file_get_contents('php://input');
-	$update = json_decode($content, true);
-	
-	//if (!isset($update['message']))
-		//die ("Access denied");
-	
-	// Connecte l'utilisateur en récupérant dans la base le profil lié à cet ID
-	$user=new \dbObject\User();
-	$user->load(["telegramID",$update['message']['from']['id']]);
-	
 
-	// Fonction 
-		// Traite les différents boutons
-	function handleCallbackQuery($callbackQuery) {
-		// Extraire les informations pertinentes de la callback query
-		$callbackId = $callbackQuery['id'];
-		$callbackData = $callbackQuery['data'];
-		$chatId = $callbackQuery['message']['chat']['id'];
-		
-		
-		if (substr($callbackData,0,9) == 'btn_share') {
-			// Récupère le dernier document généré par cet utilisateur
-			$data=loadLocalSession($callbackQuery['message']['chat']['id']);
-			
-			$document=new \dbObject\Document();
-			$document->load($data->lastDoc);
-			if ($document->getId()>0) {
-				// Génère un code d'accès
-				if ($document->get("codeview")==null) {
-					$document->set("codeview",bin2hex(openssl_random_pseudo_bytes(10)));
+	$minTimeMessage = 10; // Durée minimum en seconde du message pour justifier une transformation
+
+	function saveLocalSession($data, $name) {
+		if (!is_dir("data")) {
+			mkdir("data", 0777, true);
+		}
+
+		file_put_contents("data/".$name.".txt", json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
+	}
+
+	function loadLocalSession($name) {
+		$path = "data/".$name.".txt";
+		if (!file_exists($path)) {
+			return json_decode("{}");
+		}
+
+		$data = file_get_contents($path);
+		$decoded = json_decode($data);
+		return is_object($decoded) ? $decoded : json_decode("{}");
+	}
+
+	function getTelegramActorId(array $update): int {
+		if (isset($update['message']['from']['id'])) {
+			return (int)$update['message']['from']['id'];
+		}
+
+		if (isset($update['callback_query']['from']['id'])) {
+			return (int)$update['callback_query']['from']['id'];
+		}
+
+		return 0;
+	}
+
+	function getMessageThreadId(array $message): ?int {
+		return isset($message['message_thread_id']) ? (int)$message['message_thread_id'] : null;
+	}
+
+	function loadTelegramUserByActorId(int $actorId): \dbObject\User {
+		$user = new \dbObject\User();
+		if ($actorId > 0) {
+			$user->load(array('telegramID', $actorId));
+		}
+		return $user;
+	}
+
+	function getTelegramConnectedUserLabel(\dbObject\User $user): string {
+		$firstname = trim((string)$user->get('firstname'));
+		$lastname = trim((string)$user->get('lastname'));
+		$fullName = trim($firstname." ".$lastname);
+		if ($fullName !== '') {
+			return $fullName;
+		}
+
+		$email = trim((string)$user->get('email'));
+		if ($email !== '') {
+			return $email;
+		}
+
+		$username = trim((string)$user->get('username'));
+		if ($username !== '') {
+			return $username;
+		}
+
+		return "votre compte";
+	}
+
+	function formatDocumentLink(\dbObject\Document $document): string {
+		return appBuildAbsoluteUrl("/memo/".$document->getId().($document->get("codeview") ? "/".$document->get("codeview") : ""));
+	}
+
+	function buildMemoActionButtons(): array {
+		return array(
+			array(
+				array('text' => 'Options', 'callback_data' => 'btn_options'),
+				array('text' => 'Delete', 'callback_data' => 'btn_delete'),
+			),
+			array(
+				array('text' => 'Share', 'callback_data' => 'btn_share'),
+				array('text' => 'Classer', 'callback_data' => 'btn_classify'),
+			),
+		);
+	}
+
+	function buildDeleteButtons(): array {
+		return array(
+			array(
+				array('text' => 'Le résumé', 'callback_data' => 'btn_del_resume'),
+				array('text' => 'Le fichier', 'callback_data' => 'btn_del_file'),
+			),
+			array(
+				array('text' => 'Tout', 'callback_data' => 'btn_del_all'),
+				array('text' => 'Annuler', 'callback_data' => 'btn_del_cancel'),
+			),
+		);
+	}
+
+	function loadLastDocumentForActor(int $actorId): ?\dbObject\Document {
+		$data = loadLocalSession($actorId);
+		if (!isset($data->lastDoc) || (int)$data->lastDoc <= 0) {
+			return null;
+		}
+
+		$document = new \dbObject\Document();
+		return $document->load((int)$data->lastDoc) ? $document : null;
+	}
+
+	function clearLastDocumentSessionFields(\stdClass $sessionData): void {
+		unset($sessionData->lastDoc);
+	}
+
+	function clearLastMessageSessionFields(\stdClass $sessionData): void {
+		unset($sessionData->lastID);
+	}
+
+	function deleteDocumentBundle(\dbObject\Document $document): bool {
+		foreach ($document->getAltText() as $altText) {
+			$altText->delete();
+		}
+
+		foreach ($document->getMedias() as $media) {
+			$media->delete();
+		}
+
+		return (bool)$document->delete();
+	}
+
+	function buildHolonPathLabel(\dbObject\Organization $organization, ?\dbObject\Holon $selectedHolon = null): string {
+		$parts = array(trim((string)$organization->get('name')));
+
+		if ($selectedHolon) {
+			foreach ($selectedHolon->getPathHolons() as $pathHolon) {
+				if ((int)$pathHolon->get('IDtypeholon') === 4) {
+					continue;
+				}
+
+				$name = trim((string)$pathHolon->get('name'));
+				if ($name !== '') {
+					$parts[] = $name;
+				}
+			}
+		}
+
+		return implode(" > ", array_filter($parts, function ($value) {
+			return $value !== '';
+		}));
+	}
+
+	function buildHolonChoiceLabel(\dbObject\Holon $holon): string {
+		$typeLabel = $holon->getTypeLabel();
+		$name = trim((string)$holon->get('name'));
+		return $typeLabel." : ".($name !== '' ? $name : 'Sans nom');
+	}
+
+	function getVisibleHolonChildren(\dbObject\Holon $holon): array {
+		$children = array();
+		foreach ($holon->getChildren() as $child) {
+			if (!(bool)$child->get('active') || !(bool)$child->get('visible')) {
+				continue;
+			}
+
+			$children[] = $child;
+		}
+
+		return $children;
+	}
+
+	function collectHolonDescendantOptions(\dbObject\Holon $holon, string $prefix = ''): array {
+		$options = array();
+
+		foreach (getVisibleHolonChildren($holon) as $child) {
+			$label = $prefix !== ''
+				? $prefix." > ".buildHolonChoiceLabel($child)
+				: buildHolonChoiceLabel($child);
+
+			$options[] = array(
+				'holon' => $child,
+				'label' => $label,
+			);
+
+			$options = array_merge($options, collectHolonDescendantOptions($child, $label));
+		}
+
+		return $options;
+	}
+
+	function buildClassificationPrompt(\dbObject\User $user, int $selectedOrganizationId = 0, int $selectedHolonId = 0): array {
+		if ($user->getId() <= 0) {
+			return array(
+				'text' => "Votre compte Telegram n'est pas relié à un utilisateur SystemDD.",
+				'buttons' => array(
+					array(
+						array('text' => 'Fermer', 'callback_data' => 'btn_classify_cancel'),
+					),
+				),
+			);
+		}
+
+		$organizations = new \dbObject\ArrayOrganization();
+		$organizations->loadAccessibleForUser((int)$user->getId());
+
+		if (count($organizations) === 0) {
+			return array(
+				'text' => "Aucune organisation accessible n'est disponible pour classer ce document.",
+				'buttons' => array(
+					array(
+						array('text' => 'Fermer', 'callback_data' => 'btn_classify_cancel'),
+					),
+				),
+			);
+		}
+
+		if ($selectedOrganizationId <= 0) {
+			$buttons = array();
+			foreach ($organizations as $organization) {
+				$buttons[] = array(
+					array(
+						'text' => trim((string)$organization->get('name')),
+						'callback_data' => 'btn_classify_org_'.$organization->getId(),
+					),
+				);
+			}
+
+			$buttons[] = array(
+				array('text' => 'Annuler', 'callback_data' => 'btn_classify_cancel'),
+			);
+
+			return array(
+				'text' => "Classer ce mémo\n\nChoisissez d'abord une organisation.",
+				'buttons' => $buttons,
+			);
+		}
+
+		$organization = new \dbObject\Organization();
+		if (!$organization->load($selectedOrganizationId)) {
+			return buildClassificationPrompt($user, 0, 0);
+		}
+
+		$rootHolon = $organization->getStructuralRootHolon();
+		if (!$rootHolon) {
+			return array(
+				'text' => "Impossible de trouver la structure de cette organisation.",
+				'buttons' => array(
+					array(
+						array('text' => 'Changer d’organisation', 'callback_data' => 'btn_classify_root'),
+					),
+					array(
+						array('text' => 'Annuler', 'callback_data' => 'btn_classify_cancel'),
+					),
+				),
+			);
+		}
+
+		$selectedHolon = null;
+		if ($selectedHolonId > 0) {
+			$selectedHolon = new \dbObject\Holon();
+			if (
+				!$selectedHolon->load($selectedHolonId)
+				|| !(bool)$selectedHolon->get('active')
+				|| !(bool)$selectedHolon->get('visible')
+				|| !$organization->containsHolon($selectedHolon)
+			) {
+				$selectedHolon = null;
+				$selectedHolonId = 0;
+			}
+		}
+
+		$currentPath = buildHolonPathLabel($organization, $selectedHolon);
+		$currentNode = $selectedHolon ?: $rootHolon;
+		$children = getVisibleHolonChildren($currentNode);
+		$descendantOptions = collectHolonDescendantOptions($currentNode);
+		$useIncrementalMode = count($descendantOptions) > 4;
+
+		$buttons = array(
+			array(
+				array(
+					'text' => 'Terminer ici',
+					'callback_data' => 'btn_classify_done_'.$organization->getId().'_'.($selectedHolon ? $selectedHolon->getId() : 0),
+				),
+			),
+		);
+
+		if ($selectedHolon) {
+			$parentHolon = $selectedHolon->getParentHolon();
+			$backTargetHolonId = 0;
+			if ($parentHolon && (int)$parentHolon->get('IDtypeholon') !== 4) {
+				$backTargetHolonId = (int)$parentHolon->getId();
+			}
+
+			$buttons[] = array(
+				array(
+					'text' => 'Retour',
+					'callback_data' => 'btn_classify_nav_'.$organization->getId().'_'.$backTargetHolonId,
+				),
+				array(
+					'text' => 'Changer d’organisation',
+					'callback_data' => 'btn_classify_root',
+				),
+			);
+		} else {
+			$buttons[] = array(
+				array(
+					'text' => 'Changer d’organisation',
+					'callback_data' => 'btn_classify_root',
+				),
+			);
+		}
+
+		if ($useIncrementalMode) {
+			foreach ($children as $child) {
+				$buttons[] = array(
+					array(
+						'text' => buildHolonChoiceLabel($child),
+						'callback_data' => 'btn_classify_nav_'.$organization->getId().'_'.$child->getId(),
+					),
+				);
+			}
+		} else {
+			foreach ($descendantOptions as $option) {
+				$buttons[] = array(
+					array(
+						'text' => $option['label'],
+						'callback_data' => 'btn_classify_done_'.$organization->getId().'_'.$option['holon']->getId(),
+					),
+				);
+			}
+		}
+
+		$buttons[] = array(
+			array('text' => 'Annuler', 'callback_data' => 'btn_classify_cancel'),
+		);
+
+		$text = "Classer ce mémo\n\nEmplacement sélectionné : ".$currentPath;
+		if (count($descendantOptions) > 0 && !$useIncrementalMode) {
+			$text .= "\n\nChoisissez directement une destination ci-dessous, ou utilisez \"Terminer ici\" pour valider cet emplacement.";
+		} elseif (count($children) > 0) {
+			$text .= "\n\nChoisissez un sous-niveau, ou utilisez \"Terminer ici\" pour valider cet emplacement.";
+		} else {
+			$text .= "\n\nAucun sous-niveau supplémentaire n'est disponible ici. Vous pouvez terminer maintenant.";
+		}
+
+		return array(
+			'text' => $text,
+			'buttons' => $buttons,
+		);
+	}
+
+	function extractJsonObjectFromText(string $text): ?string {
+		$text = trim($text);
+		if ($text === '') {
+			return null;
+		}
+
+		$text = preg_replace('/^```json\s*/i', '', $text);
+		$text = preg_replace('/^```\s*/', '', $text);
+		$text = preg_replace('/\s*```$/', '', $text);
+
+		$start = strpos($text, '{');
+		$end = strrpos($text, '}');
+		if ($start === false || $end === false || $end <= $start) {
+			return null;
+		}
+
+		return substr($text, $start, $end - $start + 1);
+	}
+
+	function normalizeHashtagList($value): array {
+		if (is_array($value)) {
+			return $value;
+		}
+
+		if (is_string($value) && trim($value) !== '') {
+			return preg_split('/[,;\n]+/u', $value);
+		}
+
+		return array();
+	}
+
+	function handleCallbackQuery(array $callbackQuery, \dbObject\User $user): void {
+		$callbackId = $callbackQuery['id'] ?? '';
+		$callbackData = $callbackQuery['data'] ?? '';
+		$message = $callbackQuery['message'] ?? array();
+		$chatId = $message['chat']['id'] ?? null;
+		$threadId = getMessageThreadId($message);
+		$actorId = isset($callbackQuery['from']['id']) ? (int)$callbackQuery['from']['id'] : 0;
+		$sessionData = loadLocalSession($actorId);
+		$document = loadLastDocumentForActor($actorId);
+
+		if ($chatId === null || $callbackId === '' || $callbackData === '') {
+			return;
+		}
+
+		if ($callbackData === 'btn_options') {
+			answerCallbackQuery($callbackId, "Choisissez une action.");
+			return;
+		}
+
+		if ($callbackData === 'btn_share') {
+			if ($document && $document->getId() > 0) {
+				if ($document->get("codeview") == null) {
+					$document->set("codeview", bin2hex(random_bytes(10)));
 					$document->save();
 				}
-			
-				// Envoie un message avec le code
-				$msg = sendMessage($callbackQuery['message']['chat']['id'],"https://systemdd.ch/memo/".$document->getId().($document->get("codeview")?"/".$document->get("codeview"):""),null,$callbackQuery['message']['message_thread_id']);		
-			} else
-				$msg = sendMessage($callbackQuery['message']['chat']['id'],"Le fichier n'a pas été trouvé.",null,$callbackQuery['message']['message_thread_id']);		
 
-		} else
-		if ($callbackData == 'btn_delete') {
-				$buttons =  [[
-					['text' => 'Le résumé', 'callback_data' => 'btn_del_resume'],
-					['text' => 'Le fichier', 'callback_data' => 'btn_del_file'],
-					['text' => 'Tout', 'callback_data' => 'btn_del_all']
-				]];
-				$msg = sendMessage($callbackQuery['message']['chat']['id'],"Que dois-je effacer ?",$buttons,$callbackQuery['message']['message_thread_id']);		
-		} 
-		
-		// Répondre à la callback query pour indiquer qu'elle a été traitée
-		file_get_contents("https://api.telegram.org/bot".TOKEN."/answerCallbackQuery?callback_query_id=".$callbackId);  // ."&text=SUCCESS".$callbackId
-
-
-	}
-	// **********************************************
-	// Traite les Callback Query, c'est à dire les appels de boutons
-	// **********************************************
-	if (isset($update['callback_query'])) {
-		// Gérer la callback query
-		handleCallbackQuery($update['callback_query']);
-		exit;
-	}
-	// **********************************************
-	// Traite les images
-	// **********************************************
-	// Comportement de base: attache les images au dernier document généré
-	if (isset($update['message']['photo'])) {
-		// Quitte la traduction si inactif (à transformer en fonction du profil)
-		$data=loadLocalSession($update['message']['from']['id']);
-
-		// Récupérer le lien de l'image
-		$photo=end($update['message']['photo']);	 
-		$file_id = $photo['file_id'];
-
-		// Attache le media son au document
-		$media=new \dbObject\Media();
-		$media->set("title",$update['message']['caption']);
-		$media->set("filename","download.png");
-		$media->set("contenttype","image/png");
-		
-		$media->set("IDdocument",$data->lastDoc);
-		$media->set("IDtype",2); // Image
-		$media->set("IDstorage",1); // Telegram
-		$media->set("accesskey",$file_id); 
-		$media->save();	
-		
-	}
-
-
-	// **********************************************
-	// Traite les messages vocaux
-	// **********************************************
-	if (isset($update['message']['voice'])) {
-		
-		// Quitte la traduction si inactif (à transformer en fonction du profil)
-		$data=loadLocalSession($update['message']['from']['id']);
-		// Vérifie la validité du compte (selon statut dans les données stockées)
-		if (isset($data->active) && !$data->active)
-			exit;
-	
-		// Récupérer les informations de l'enregistrement audio
-		$voice = $update['message']['voice'];
-		$file_id = $voice['file_id'];
-		$duration = $voice['duration'];
-	
-		// Si durée suffisante pour valoir la peine d'être traduit
-		if ($duration>=$minTimeMessage) {
-			
-			$waitmsg=sendMessage($update['message']['chat']['id'],"Un petit moment, je retranscrit tout ça...",null,(isset($update['message']['message_thread_id'])?$update['message']['message_thread_id']:null));	
-
-			// Libère le script pour exécution
-			set_time_limit(240); // Set the max execution time
-			ignore_user_abort(true);
-			header('Connection: close');
-			flush();
-			fastcgi_finish_request();
-
-			// *****************************
-			// Récupère le fichier
-			// *****************************
-			$file_info = getTelegramFile($file_id);
-			// Récupérer le lien direct vers le fichier
-			$file_url = $file_info['result']['file_path'];
-			// Charger le contenu audio à partir de l'URL
-			$audio_url = "https://api.telegram.org/file/bot".TOKEN."/$file_url";
-			$audio_content = file_get_contents($audio_url);
-
-			// Créer un fichier local temporaire pour stocker le contenu audio
-			$temp_file_path = tempnam(sys_get_temp_dir(), 'audio');
-			file_put_contents($temp_file_path, $audio_content);
-
-			// ****************************
-			// Envoie à Whisper
-			// ****************************
-
-		   // Prepare the headers
-			$headers = [
-				'Authorization: Bearer ' . OpenAI,
-			];
-
-			// Create a CURLFile object / preparing the sound file for upload
-			$cfile = new CURLFile($temp_file_path);
-			$cfile->setMimeType("audio/ogg");
-			$cfile->setPostFilename("audio.ogg");
-
-			// Initialize the cURL session
-			$ch = curl_init();
-			curl_setopt($ch, CURLOPT_URL, 'https://api.openai.com/v1/audio/transcriptions');
-			curl_setopt($ch, CURLOPT_POST, 1);
-			curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-
-			// Prepare the request body with the file and model
-			$data2 = [
-				'file' => $cfile,
-				'model' => 'whisper-1',
-			];
-
-			// Set the request body
-			curl_setopt($ch, CURLOPT_POSTFIELDS, $data2);
-			// Set option to return the result instead of outputting it
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-			// Execute the cURL request and get the response
-			$response = json_decode(curl_exec($ch));
-
-			// Check if any error occurred during the request
-			if(curl_errno($ch)){
-				echo 'Request Error:' . curl_error($ch);
-			}
-	
-			curl_close($ch); // Close the cURL session
-
-			// Demande un résumé, des mots clés et une version retravaillée à ChatGPT
-			$prompt="une mise en page lisible, exhaustive, optimisée pour la lecture et structurée du texte (si nécessaire avec des titres ou des listes à puce)";
-			$readable=say("Peux-tu générer un JSON pour le texte suivant, comprenant 4 entrée: une entrée 'titre' avec un titre pour ce document, une entrée 'resume' avec un résumé du texte en maximum 150 caractères, une entrée 'contenu' avec ".$prompt.", et finalement une entrée 'hashtag' contenant un tableau avec 3 à 5 mots clés pertinents pour ce texte? Voici le texte : \n".$response->text);
-
-			// Enregistre le retour pour debug
-			$dataerr=json_decode("{}");
-			$dataerr->GPTreturn=$readable;
-			saveLocalSession ($dataerr,"error_log") ;				
-
-			// Triate le JSON retourné avant de l'enregistrer
-			$pattern = "/\{(.+?)\}/s";
-			if (preg_match($pattern, $readable, $matches)) {
-				// $matches[0] contient la correspondance complète, $matches[1] contient le JSON
-				$readable = "{".$matches[1]."}";
-				$dataerr->regexp=$readable;
-				saveLocalSession ($dataerr,"error_log") ;				
-
+				sendMessage($chatId, formatDocumentLink($document), null, $threadId);
 			} else {
-				sendMessage($update['message']['chat']['id'],"Désolé, problème de conversion du JSON...",null,(isset($update['message']['message_thread_id'])?$update['message']['message_thread_id']:null));		
-				exit;
+				sendMessage($chatId, "Le fichier n'a pas été trouvé.", null, $threadId);
 			}
-			//$readable = preg_replace('/```json(.*)```/s', '$1', $readable);
-			$readable=json_decode($readable);
-			
-			$dataerr->json=$readable;
-			saveLocalSession ($dataerr,"error_log") ;				
 
-			
-			
-			$title=$readable->titre;
-			$resume=$readable->resume;
-			$content=$response->text; //$readable->contenu; // Stock le texte brut
-			$content2=$readable->contenu; // Et garde une première version structurée du texte
-			
-			$hash = "#" . implode(" #", array_map(function($tag) {return str_replace(' ', '_', trim($tag)); }, $readable->hashtag));
-			$dataerr->title=$title;
-			$dataerr->resume=$resume;
-			$dataerr->content=$content;
-			$dataerr->hash=$hash;
-			saveLocalSession ($dataerr,"error_log") ;				
+			answerCallbackQuery($callbackId);
+			return;
+		}
 
-			// *****************************************
-			// Enregistre le memo dans la base de donnée
-			// *****************************************
-			// Rafraichi la connexion, car potentiellement perdu au regard du temps de traitement
-			if ($user->getId()>0) {
-				$user->refreshDbh();
-				try {
+		if ($callbackData === 'btn_delete') {
+			sendMessage($chatId, "Que dois-je effacer ?", buildDeleteButtons(), $threadId);
+			answerCallbackQuery($callbackId);
+			return;
+		}
 
-				// Crée un document et le rattache à cet utilisateur
-				$doc=new \dbObject\Document();
-				
-				$doc->set("title",$title);
-				$doc->set("description",$resume);
-				$doc->set("content",$content);
-				$doc->set("keywords",$hash);
-				$doc->set("IDuser",$user->getId());
+		if ($callbackData === 'btn_del_cancel') {
+			editMessageText($chatId, (int)$message['message_id'], "Suppression annulée.", null, $threadId);
+			answerCallbackQuery($callbackId);
+			return;
+		}
 
-				
-				// Si généré sur un groupe, crée un code d'accès et affiche le lien avec le code
-				if ($update['message']['chat']['id'] != $update['message']['from']['id']) {
-					$doc->set("codeview",bin2hex(openssl_random_pseudo_bytes(10)));
+		if ($callbackData === 'btn_del_resume') {
+			if (isset($sessionData->lastID) && (int)$sessionData->lastID > 0) {
+				deleteMessage($chatId, (int)$sessionData->lastID, $threadId);
+				clearLastMessageSessionFields($sessionData);
+				saveLocalSession($sessionData, $actorId);
+			}
+
+			if (isset($message['message_id'])) {
+				deleteMessage($chatId, (int)$message['message_id'], $threadId);
+			}
+
+			answerCallbackQuery($callbackId, "Résumé effacé.");
+			return;
+		}
+
+		if ($callbackData === 'btn_del_file' || $callbackData === 'btn_del_all') {
+			if ($document && $document->getId() > 0) {
+				deleteDocumentBundle($document);
+				clearLastDocumentSessionFields($sessionData);
+			}
+
+			if (isset($sessionData->lastID) && (int)$sessionData->lastID > 0) {
+				if ($callbackData === 'btn_del_all') {
+					deleteMessage($chatId, (int)$sessionData->lastID, $threadId);
+					clearLastMessageSessionFields($sessionData);
+				} else {
+					editMessageText($chatId, (int)$sessionData->lastID, "Le document lié a été supprimé.", null, $threadId);
 				}
-				
+			}
+
+			saveLocalSession($sessionData, $actorId);
+
+			if (isset($message['message_id'])) {
+				deleteMessage($chatId, (int)$message['message_id'], $threadId);
+			}
+
+			answerCallbackQuery($callbackId, $callbackData === 'btn_del_all' ? "Tout a été supprimé." : "Fichier supprimé.");
+			return;
+		}
+
+		if ($callbackData === 'btn_classify') {
+			$prompt = buildClassificationPrompt($user, 0, 0);
+			sendMessage($chatId, $prompt['text'], $prompt['buttons'], $threadId);
+			answerCallbackQuery($callbackId);
+			return;
+		}
+
+		if ($callbackData === 'btn_classify_root') {
+			$prompt = buildClassificationPrompt($user, 0, 0);
+			editMessageText($chatId, (int)$message['message_id'], $prompt['text'], $prompt['buttons'], $threadId);
+			answerCallbackQuery($callbackId);
+			return;
+		}
+
+		if ($callbackData === 'btn_classify_cancel') {
+			deleteMessage($chatId, (int)$message['message_id']);
+			answerCallbackQuery($callbackId);
+			return;
+		}
+
+		if (preg_match('/^btn_classify_org_(\d+)$/', $callbackData, $matches)) {
+			$organizationId = (int)$matches[1];
+			$prompt = buildClassificationPrompt($user, $organizationId, 0);
+			editMessageText($chatId, (int)$message['message_id'], $prompt['text'], $prompt['buttons'], $threadId);
+			answerCallbackQuery($callbackId);
+			return;
+		}
+
+		if (preg_match('/^btn_classify_nav_(\d+)_(\d+)$/', $callbackData, $matches)) {
+			$organizationId = (int)$matches[1];
+			$holonId = (int)$matches[2];
+			$prompt = buildClassificationPrompt($user, $organizationId, $holonId);
+			editMessageText($chatId, (int)$message['message_id'], $prompt['text'], $prompt['buttons'], $threadId);
+			answerCallbackQuery($callbackId);
+			return;
+		}
+
+		if (preg_match('/^btn_classify_done_(\d+)_(\d+)$/', $callbackData, $matches)) {
+			if (!$document || $document->getId() <= 0) {
+				editMessageText($chatId, (int)$message['message_id'], "Le document n'a pas été trouvé.", null, $threadId);
+				answerCallbackQuery($callbackId);
+				return;
+			}
+
+			$organizationId = (int)$matches[1];
+			$holonId = (int)$matches[2];
+			$result = $document->assignOrganizationContext($organizationId, $holonId > 0 ? $holonId : null);
+
+			if (!empty($result['status'])) {
+				$document->load($document->getId(), true);
+				editMessageText(
+					$chatId,
+					(int)$message['message_id'],
+					"Le document a été classé dans : ".$document->getOrganizationContextLabel(),
+					array(
+						array(
+							array('text' => 'Reclasser', 'callback_data' => 'btn_classify'),
+						),
+					),
+					$threadId
+				);
+				answerCallbackQuery($callbackId, "Classement enregistré.");
+			} else {
+				editMessageText(
+					$chatId,
+					(int)$message['message_id'],
+					"Impossible de classer ce document : ".($result['text'] ?? 'erreur inconnue'),
+					array(
+						array(
+							array('text' => 'Réessayer', 'callback_data' => 'btn_classify'),
+						),
+					),
+					$threadId
+				);
+				answerCallbackQuery($callbackId);
+			}
+		}
+	}
+
+	function handlePhotoMessage(array $message): void {
+		$actorId = isset($message['from']['id']) ? (int)$message['from']['id'] : 0;
+		if ($actorId <= 0 || !isset($message['photo']) || !is_array($message['photo']) || count($message['photo']) === 0) {
+			return;
+		}
+
+		$data = loadLocalSession($actorId);
+		if (!isset($data->lastDoc) || (int)$data->lastDoc <= 0) {
+			return;
+		}
+
+		$photo = end($message['photo']);
+		$fileId = $photo['file_id'] ?? '';
+		if ($fileId === '') {
+			return;
+		}
+
+		$media = new \dbObject\Media();
+		$media->set("title", $message['caption'] ?? null);
+		$media->set("filename", "telegram-photo");
+		$media->set("contenttype", "image/jpeg");
+		$media->set("IDdocument", (int)$data->lastDoc);
+		$media->set("IDtype", 2); // Image
+		$media->set("IDstorage", 1); // Telegram
+		$media->set("accesskey", $fileId);
+		$media->save();
+	}
+
+	function handleVoiceMessage(array $message, \dbObject\User $user, int $minTimeMessage): void {
+		$actorId = isset($message['from']['id']) ? (int)$message['from']['id'] : 0;
+		$chatId = $message['chat']['id'] ?? null;
+		$threadId = getMessageThreadId($message);
+
+		if ($actorId <= 0 || $chatId === null || !isset($message['voice'])) {
+			return;
+		}
+
+		$data = loadLocalSession($actorId);
+		if (isset($data->active) && !$data->active) {
+			return;
+		}
+
+		$voice = $message['voice'];
+		$fileId = $voice['file_id'] ?? '';
+		$duration = isset($voice['duration']) ? (int)$voice['duration'] : 0;
+
+		if ($fileId === '' || $duration < $minTimeMessage) {
+			return;
+		}
+
+		$waitMessageId = sendMessage($chatId, "Un petit moment, je retranscris tout ça...", null, $threadId);
+
+		set_time_limit(240);
+		ignore_user_abort(true);
+		header('Connection: close');
+		flush();
+		if (function_exists('fastcgi_finish_request')) {
+			fastcgi_finish_request();
+		}
+
+		$fileInfo = getTelegramFile($fileId);
+		$filePath = $fileInfo['result']['file_path'] ?? null;
+		if (!$filePath) {
+			if ($waitMessageId) {
+				deleteMessage($chatId, $waitMessageId, $threadId);
+			}
+			sendMessage($chatId, "Désolé, je n'ai pas réussi à récupérer le fichier audio.", null, $threadId);
+			return;
+		}
+
+		$audioUrl = "https://api.telegram.org/file/bot".TOKEN."/".$filePath;
+		$audioContent = @file_get_contents($audioUrl);
+		if ($audioContent === false) {
+			if ($waitMessageId) {
+				deleteMessage($chatId, $waitMessageId, $threadId);
+			}
+			sendMessage($chatId, "Désolé, le téléchargement du fichier audio a échoué.", null, $threadId);
+			return;
+		}
+
+		$tempFilePath = tempnam(sys_get_temp_dir(), 'audio');
+		file_put_contents($tempFilePath, $audioContent);
+
+		$headers = array(
+			'Authorization: Bearer ' . OpenAI,
+		);
+
+		$cfile = new CURLFile($tempFilePath);
+		$cfile->setMimeType("audio/ogg");
+		$cfile->setPostFilename("audio.ogg");
+
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, 'https://api.openai.com/v1/audio/transcriptions');
+		curl_setopt($ch, CURLOPT_POST, 1);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, array(
+			'file' => $cfile,
+			'model' => 'whisper-1',
+		));
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+		$responseRaw = curl_exec($ch);
+		$curlError = curl_errno($ch) ? curl_error($ch) : null;
+		curl_close($ch);
+		@unlink($tempFilePath);
+
+		if ($curlError || !$responseRaw) {
+			if ($waitMessageId) {
+				deleteMessage($chatId, $waitMessageId, $threadId);
+			}
+			sendMessage($chatId, "Désolé, la transcription audio a échoué.", null, $threadId);
+			return;
+		}
+
+		$response = json_decode($responseRaw);
+		if (!is_object($response) || !isset($response->text) || trim((string)$response->text) === '') {
+			if ($waitMessageId) {
+				deleteMessage($chatId, $waitMessageId, $threadId);
+			}
+			sendMessage($chatId, "Désolé, la transcription reçue est vide ou invalide.", null, $threadId);
+			return;
+		}
+
+		$prompt = "une mise en page lisible, exhaustive, optimisée pour la lecture et structurée du texte (si nécessaire avec des titres ou des listes à puce)";
+		$readable = say("Peux-tu générer un JSON pour le texte suivant, comprenant 4 entrée: une entrée 'titre' avec un titre pour ce document, une entrée 'resume' avec un résumé du texte en maximum 150 caractères, une entrée 'contenu' avec ".$prompt.", et finalement une entrée 'hashtag' contenant un tableau avec 3 à 5 mots clés pertinents pour ce texte? Voici le texte : \n".$response->text);
+
+		$dataerr = json_decode("{}");
+		$dataerr->GPTreturn = $readable;
+		saveLocalSession($dataerr, "error_log");
+
+		$readableJson = extractJsonObjectFromText((string)$readable);
+		if ($readableJson === null) {
+			if ($waitMessageId) {
+				deleteMessage($chatId, $waitMessageId, $threadId);
+			}
+			sendMessage($chatId, "Désolé, problème de conversion du JSON...", null, $threadId);
+			return;
+		}
+
+		$dataerr->regexp = $readableJson;
+		saveLocalSession($dataerr, "error_log");
+
+		$readableObject = json_decode($readableJson);
+		if (
+			!is_object($readableObject)
+			|| !isset($readableObject->titre)
+			|| !isset($readableObject->resume)
+			|| !isset($readableObject->contenu)
+		) {
+			if ($waitMessageId) {
+				deleteMessage($chatId, $waitMessageId, $threadId);
+			}
+			sendMessage($chatId, "Désolé, le JSON généré n'est pas exploitable.", null, $threadId);
+			return;
+		}
+
+		$dataerr->json = $readableObject;
+		saveLocalSession($dataerr, "error_log");
+
+		$title = trim((string)$readableObject->titre);
+		$resume = trim((string)$readableObject->resume);
+		$content = (string)$response->text;
+		$content2 = (string)$readableObject->contenu;
+		$hashtags = normalizeHashtagList($readableObject->hashtag ?? array());
+		$hash = "#" . implode(" #", array_filter(array_map(function ($tag) {
+			$tag = str_replace(' ', '_', trim((string)$tag));
+			return $tag !== '' ? $tag : null;
+		}, $hashtags)));
+
+		$dataerr->title = $title;
+		$dataerr->resume = $resume;
+		$dataerr->content = $content;
+		$dataerr->hash = $hash;
+		saveLocalSession($dataerr, "error_log");
+
+		$doc = null;
+		if ($user->getId() > 0) {
+			$user->refreshDbh();
+
+			try {
+				$doc = new \dbObject\Document();
+				$doc->set("title", $title !== '' ? $title : "Mémo vocal");
+				$doc->set("description", $resume);
+				$doc->set("content", $content);
+				$doc->set("keywords", $hash);
+				$doc->set("IDuser", $user->getId());
+
+				if (($message['chat']['id'] ?? null) != ($message['from']['id'] ?? null)) {
+					$doc->set("codeview", bin2hex(random_bytes(10)));
+				}
+
 				$doc->save();
-				
-				// Et sauve la version structurée comme une variante
-				$txt=new \dbObject\AltText();
-				$txt->set("IDdocument",$doc->getId());
-				$txt->set("IDaiprompt",0);
-				$txt->set("text",$content2);
+
+				$txt = new \dbObject\AltText();
+				$txt->set("IDdocument", $doc->getId());
+				$txt->set("IDaiprompt", 0);
+				$txt->set("text", $content2);
 				$txt->save();
 
-				$data->lastDoc=$doc->getId();
-				saveLocalSession($data,$update['message']['from']['id']);
-				
-				// Attache le media son au document
-				$media=new \dbObject\Media();
-				$media->set("title",$title);
-				$media->set("filename","download.oga");
-				$media->set("contenttype","audio/ogg");
-				$media->set("description",$resume);
-				$media->set("IDdocument",$doc->getId());
-				$media->set("IDtype",1); // Audio
-				$media->set("IDstorage",1); // Telegram
-				$media->set("accesskey",$file_id); 
+				$data->lastDoc = $doc->getId();
+				saveLocalSession($data, $actorId);
+
+				$media = new \dbObject\Media();
+				$media->set("title", $title);
+				$media->set("filename", "download.oga");
+				$media->set("contenttype", "audio/ogg");
+				$media->set("description", $resume);
+				$media->set("IDdocument", $doc->getId());
+				$media->set("IDtype", 1); // Audio
+				$media->set("IDstorage", 1); // Telegram
+				$media->set("accesskey", $fileId);
 				$media->save();
-					
-				} catch (Exception $e) {
-					sendMessage($update['message']['chat']['id'],"Désolé, problème de génération du fichier...",null,(isset($update['message']['message_thread_id'])?$update['message']['message_thread_id']:null));		
-				//	exit;
+			} catch (\Exception $e) {
+				$doc = null;
+				sendMessage($chatId, "Désolé, problème de génération du fichier...", null, $threadId);
+			}
+		}
+
+		$buttons = null;
+		if ($doc && $doc->getId() > 0 && ($message['chat']['id'] ?? null) == ($message['from']['id'] ?? null)) {
+			$buttons = buildMemoActionButtons();
+		}
+
+		if ($waitMessageId) {
+			deleteMessage($chatId, $waitMessageId, $threadId);
+		}
+
+		$messageText = "\xE2\xAC\x86 ".$resume."\n".$hash;
+		if ($doc && $doc->getId() > 0) {
+			$messageText .= "\n".formatDocumentLink($doc);
+		}
+
+		$messageId = sendMessage($chatId, $messageText, $buttons, $threadId);
+		if ($messageId !== null) {
+			$data->lastID = $messageId;
+		}
+		saveLocalSession($data, $actorId);
+	}
+
+	function handleTextMessage(array $message, \dbObject\User $user): void {
+		$text = isset($message['text']) ? trim((string)$message['text']) : '';
+		if ($text === '') {
+			return;
+		}
+
+		$actorId = isset($message['from']['id']) ? (int)$message['from']['id'] : 0;
+		$chatId = $message['chat']['id'] ?? null;
+		$threadId = getMessageThreadId($message);
+		if ($actorId <= 0 || $chatId === null) {
+			return;
+		}
+
+		if (preg_match('/^\/connect/', $text)) {
+			if (($message['chat']['id'] ?? null) == ($message['from']['id'] ?? null)) {
+				if ($user->getId() > 0) {
+					sendMessage($chatId, "Connexion confirmée avec ".getTelegramConnectedUserLabel($user).".", null, $threadId);
+				} else {
+					sendMessage($chatId, "Pour connecter EasyMEMO à votre compte Telegram, éditez les paramètres de votre compte avec la valeur suivante pour le champ TelegramID: ".$chatId, null, $threadId);
 				}
-
-			}
-			// *****************************************
-			// Envoie le résumé dans le groupe
-			// *****************************************
-			// Ajoute des boutons si dans une discussion simple
-			if (isset($doc) && $doc->getId()>0 && $update['message']['chat']['id']==$update['message']['from']['id']) {
-			$buttons =  [[
-					['text' => 'Options', 'callback_data' => 'btn_options_'.$update['message']['id']],
-					['text' => 'Delete', 'callback_data' => 'btn_delete'],
-					['text' => 'Share', 'callback_data' => 'btn_share']
-				]];
-			} else  $buttons=null;
-
-			deleteMessage ($update['message']['chat']['id'], $waitmsg);
-			$msgID = sendMessage($update['message']['chat']['id'],"\xE2\xAC\x86 ".$resume."\n".$hash."\n".(isset($doc)?"https://systemdd.ch/memo/".$doc->getId().($doc->get("codeview")?"/".$doc->get("codeview"):""):""),$buttons,(isset($update['message']['message_thread_id'])?$update['message']['message_thread_id']:null));		
-			
-			// Stock le dernier message pour pouvoir l'effacer sur demande
-			if ($msgID!=null) {
-			// Sauve l'id du message
-				$data->lastID=$msgID;
-			}
-			saveLocalSession($data,$update['message']['from']['id']);
-		}
-	}
-
-	// **************************************************************
-	// Traitement des commandes et des messages textes
-	// **************************************************************
-	if (($update['message']['text']) != "") {
-
-		// COMMANDE : Connecter l'utilisateur à un compte SD2
-		if(preg_match('/^\/connect/', $update['message']['text'])) {
-			
-			// Est-ce un canal direct avec le BOT, ou un groupe avec BOT partagé?
-			if ($update['message']['chat']['id'] == $update['message']['from']['id']) {
-				// Est-ce que l'utilisateur est déjà connecté?
-				if (isset($user) && $user->getId()>0)
-					sendMessage($update['message']['chat']['id'], "Vous êtes déjà connecté avec le compte de ".$user->get("username"));
-				else
-					sendMessage($update['message']['chat']['id'], "Pour connecter EasyMEMO à votre compte Telegram, éditez les paramètres de votre compte avec la valeur suivante pour le champ TelegramID: ".$update['message']['chat']['id']);
-
 			} else {
-
-				// Si non, envoie les infos et les instructuions
-				sendMessage($update['message']['chat']['id'], "Pour connecter ce groupe à un projet, éditer les propriétés du projet avec les informations suivantes:\n\nChat ID: ".$update['message']['chat']['id'].", Group: ".$update['message']['message_thread_id'],null,$update['message']['message_thread_id']);
+				sendMessage($chatId, "Pour connecter ce groupe à un projet, éditer les propriétés du projet avec les informations suivantes:\n\nChat ID: ".$chatId.", Group: ".$threadId, null, $threadId);
 			}
-		}
-		else 
-		
-		// COMMANDE : Demander l'heure (fonction de test)   
-		if (preg_match('/^\/time/', $update['message']['text'])) {
-
-				$current=new DateTime();
-				sendMessage($update['message']['chat']['id'], "It's ".$current->format("H:i"),null,$update['message']['message_thread_id']);
-
-		}
-		else 
-		
-		// COMMANDE : Supprime le dernier message résumé   
-		if (preg_match('/^\/delete/', $update['message']['text'])) {
-
-				$data=loadLocalSession($update['message']['from']['id']);
-
-				if (isset($data->lastID)) {
-					deleteMessage ($update['message']['chat']['id'], $data->lastID);	
-					deleteMessage ($update['message']['chat']['id'], $update['message']['message_id']);	
-				}		
-				saveLocalSession($data, $update['message']['from']['id']);
-		}
-		else 
-		// COMMANDE : Stop la transcription   
-		if (preg_match('/^\/stop/', $update['message']['text'])) {
-
-				$data=loadLocalSession($update['message']['from']['id']);
-				sendMessage($update['message']['chat']['id'],"J'arrête les traductions pour ".$update['message']['from']['id'],null,$update['message']['message_thread_id']);
-				$data->active=false;
-				saveLocalSession($data, $update['message']['from']['id']);
-
-
-
-		}
-		else 
-		// COMMANDE : Démarre une connexion avec le BOT, Bienvenue   
-		if (preg_match('/^\/start/', $update['message']['text'])) {
-
-			$data=loadLocalSession($update['message']['from']['id']);
-			$data->active=true;
-			saveLocalSession($data, $update['message']['from']['id']);
+			return;
 		}
 
-		// l'utilisateur envoie autre chose qu'une commande reconnue
-		else 
-		// Est-ce une commande ou un simple commentaire?
-		if(preg_match('/^\//', $update['message']['text'])) {
-			// Si c'est une commande, elle est inconnue
-			$id = "Commande inconnue.";
-			sendMessage($update['message']['chat']['id'], $id);
-		} else
-		
-		// Si c'est un commentaire, regarde si le BOT est référencé
-		if(preg_match('/^@pottylicensebot/', $update['message']['text'])) {
-			// Si oui, retourne un message avec la liste des commandes disponibles
-			$id = "Je ne répond pas aux messages directs, utilisez les commandes.";
-			sendMessage($update['message']['chat']['id'], $id);
-		} else if ($update['message']['text']!="")
-		// Si c'est un commentaire, regarde si le BOT est référencé
-		 {
-		 }
-
-	} 	
-	
-
-			
-			
-	// Si nécessaire, sauve des infos en local pour faire office de session
-	function saveLocalSession ($data,$name) {
-				$file = fopen("data/".$name.".txt", 'w');
-				echo fwrite($file,json_encode($data));
-				fclose($file);
+		if (preg_match('/^\/time/', $text)) {
+			$current = new DateTime();
+			sendMessage($chatId, "It's ".$current->format("H:i"), null, $threadId);
+			return;
 		}
-		
-	// Charge les infos sauvées localement
-	function loadLocalSession($name) {
-			if (file_exists("data/".$name.".txt")) {
-				$handle = fopen("data/".$name.".txt", "r");
-					$data = fread($handle, filesize("data/".$name.".txt"));
-					fclose($handle);	
-					$data=json_decode($data);
-				
-				} else $data=json_decode("{}");
-				return $data;
+
+		if (preg_match('/^\/delete/', $text)) {
+			$data = loadLocalSession($actorId);
+			if (isset($data->lastID)) {
+				deleteMessage($chatId, (int)$data->lastID, $threadId);
+				deleteMessage($chatId, (int)$message['message_id'], $threadId);
+			}
+			saveLocalSession($data, $actorId);
+			return;
+		}
+
+		if (preg_match('/^\/stop/', $text)) {
+			$data = loadLocalSession($actorId);
+			$data->active = false;
+			saveLocalSession($data, $actorId);
+			sendMessage($chatId, "J'arrête les traductions pour ".$actorId, null, $threadId);
+			return;
+		}
+
+		if (preg_match('/^\/start/', $text)) {
+			$data = loadLocalSession($actorId);
+			$data->active = true;
+			saveLocalSession($data, $actorId);
+			return;
+		}
+
+		if (preg_match('/^\//', $text)) {
+			sendMessage($chatId, "Commande inconnue.", null, $threadId);
+			return;
+		}
+
+		if (preg_match('/^@pottylicensebot/', $text)) {
+			sendMessage($chatId, "Je ne réponds pas aux messages directs, utilisez les commandes.", null, $threadId);
+		}
 	}
 
+	$content = file_get_contents('php://input');
+	$update = json_decode($content, true);
+	if (!is_array($update)) {
+		exit;
+	}
 
-?>		
+	$actorId = getTelegramActorId($update);
+	$user = loadTelegramUserByActorId($actorId);
+
+	if (isset($update['callback_query']) && is_array($update['callback_query'])) {
+		handleCallbackQuery($update['callback_query'], $user);
+		exit;
+	}
+
+	$message = isset($update['message']) && is_array($update['message']) ? $update['message'] : null;
+	if (!$message) {
+		exit;
+	}
+
+	if (isset($message['photo'])) {
+		handlePhotoMessage($message);
+	}
+
+	if (isset($message['voice'])) {
+		handleVoiceMessage($message, $user, $minTimeMessage);
+	}
+
+	handleTextMessage($message, $user);
+?>

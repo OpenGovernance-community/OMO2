@@ -128,6 +128,92 @@
 			return $this->matchesOrganizationContext($organizationId, $holonId)
 				&& \commonCurrentUserHasOrganizationAccess($organizationId);
 		}
+
+		public function assignOrganizationContext(int $organizationId, ?int $holonId = null)
+		{
+			$organizationId = (int)$organizationId;
+			$holonId = $holonId !== null ? (int)$holonId : 0;
+
+			if ($organizationId <= 0) {
+				return array(
+					'status' => false,
+					'text' => "Organisation invalide.",
+				);
+			}
+
+			$organization = new \dbObject\Organization();
+			if (!$organization->load($organizationId)) {
+				return array(
+					'status' => false,
+					'text' => "Organisation introuvable.",
+				);
+			}
+
+			$resolvedHolonId = null;
+			if ($holonId > 0) {
+				$holon = new \dbObject\Holon();
+				if (
+					!$holon->load($holonId)
+					|| !(bool)$holon->get('active')
+					|| !(bool)$holon->get('visible')
+					|| !$organization->containsHolon($holon)
+				) {
+					return array(
+						'status' => false,
+						'text' => "Holon introuvable pour cette organisation.",
+					);
+				}
+
+				$resolvedHolonId = $holon->getId();
+			}
+
+			$this->set('IDorganization', $organizationId);
+			$this->set('IDholon', $resolvedHolonId);
+
+			return $this->save();
+		}
+
+		public function getOrganizationContextLabel(): string
+		{
+			$organizationId = (int)$this->get('IDorganization');
+			if ($organizationId <= 0) {
+				return '';
+			}
+
+			$organization = new \dbObject\Organization();
+			if (!$organization->load($organizationId)) {
+				return '';
+			}
+
+			$label = (string)$organization->get('name');
+			$holonId = (int)$this->get('IDholon');
+			if ($holonId <= 0) {
+				return $label;
+			}
+
+			$holon = new \dbObject\Holon();
+			if (!$holon->load($holonId)) {
+				return $label;
+			}
+
+			$pathLabels = array();
+			foreach ($holon->getPathHolons() as $pathHolon) {
+				if ((int)$pathHolon->get('IDtypeholon') === 4) {
+					continue;
+				}
+
+				$name = trim((string)$pathHolon->get('name'));
+				if ($name !== '') {
+					$pathLabels[] = $name;
+				}
+			}
+
+			if (count($pathLabels) === 0) {
+				return $label;
+			}
+
+			return $label." > ".implode(" > ", $pathLabels);
+		}
 	}
 
 ?>

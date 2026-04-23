@@ -90,7 +90,6 @@
 			$holons->load(array(
 				'where' => array(
 					array('field' => 'IDorganization', 'value' => (int)$this->getId()),
-					array('field' => 'IDtypeholon', 'value' => 4),
 					array('field' => 'active', 'value' => 1),
 					array('field' => 'visible', 'value' => 1),
 				),
@@ -109,6 +108,29 @@
 			}
 
 			return null;
+		}
+
+		public function containsHolon($holon): bool
+		{
+			$holonObject = $holon instanceof \dbObject\Holon ? $holon : new \dbObject\Holon();
+			if (!($holon instanceof \dbObject\Holon) && !$holonObject->load((int)$holon)) {
+				return false;
+			}
+
+			if (!(bool)$holonObject->get('active') || !(bool)$holonObject->get('visible')) {
+				return false;
+			}
+
+			if ((int)$holonObject->get('IDorganization') === (int)$this->getId()) {
+				return true;
+			}
+
+			$rootHolon = $this->getStructuralRootHolon();
+			if (!$rootHolon) {
+				return false;
+			}
+
+			return $holonObject->isDescendantOf($rootHolon, true);
 		}
 
 		public function getApplications($userId = null)
