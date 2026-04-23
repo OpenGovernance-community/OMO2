@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 600" role="img" aria-labelledby="title desc">
+  <title id="title">Bannière Org2</title>
+  <desc id="desc">Bannière abstraite neutre pour Org2.</desc>
+  <defs>
+    <linearGradient id="bg" x1="120" y1="84" x2="1490" y2="520" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1d4ed8"/>
+      <stop offset="1" stop-color="#60a5fa"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="600" fill="url(#bg)"/>
+  <g opacity="0.22" fill="#ffffff">
+    <rect x="110" y="112" width="210" height="210" rx="44"/>
+    <rect x="362" y="204" width="160" height="160" rx="36"/>
+    <rect x="1190" y="86" width="250" height="250" rx="54"/>
+  </g>
+  <g fill="none" stroke="#eff6ff" stroke-linecap="round" stroke-width="12">
+    <path d="M842 176h318"/>
+    <path d="M916 246h244"/>
+    <path d="M992 316h168"/>
+  </g>
+  <path d="M0 540c176-42 360-64 546-34 160 26 248 74 398 74 172 0 278-64 420-90 88-16 166-17 236-8V600H0Z" fill="#172554" opacity="0.24"/>
+  <text x="118" y="492" fill="#eff6ff" font-family="Arial, sans-serif" font-size="92" font-weight="700" letter-spacing="6">ORG2</text>
+  <text x="122" y="545" fill="#eff6ff" font-family="Arial, sans-serif" font-size="28" opacity="0.84" letter-spacing="4">Identité de démonstration neutre</text>
+</svg>

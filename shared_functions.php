@@ -1,4 +1,6 @@
 <?
+	require_once __DIR__ . '/shared/date_groups.php';
+
 	function appGetCookieDomain($host = null) {
 		$host = is_string($host) && $host !== '' ? strtolower($host) : strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
 		$host = trim((string)$host);

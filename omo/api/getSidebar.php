@@ -1,72 +1,79 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
-usleep(300000);
 
-$showDocuments = commonGetCurrentUserId() > 0;
+$currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
+$currentUserId = commonGetCurrentUserId();
+
+$applications = new \dbObject\ArrayApplication();
+if ($currentOrganizationId > 0) {
+    $applications->loadEnabledForOrganization($currentOrganizationId, $currentUserId);
+}
+
+$escape = static function ($value) {
+    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+};
+
+$renderMenuItem = static function (array $item) use ($escape) {
+    $attributes = [
+        'class' => 'menu-item',
+        'data-hash' => $item['hash'] ?? '',
+        'data-navigation-mode' => $item['navigationmode'] ?? 'drawer',
+    ];
+
+    if (!empty($item['drawer'])) {
+        $attributes['data-drawer'] = $item['drawer'];
+    }
+
+    if (!empty($item['url'])) {
+        $attributes['data-url'] = $item['url'];
+    }
+
+    if (!empty($item['directory'])) {
+        $attributes['data-directory'] = $item['directory'];
+    }
+
+    $attributeParts = [];
+    foreach ($attributes as $name => $value) {
+        $attributeParts[] = $name . '="' . $escape($value) . '"';
+    }
+    ?>
+<div <?= implode(PHP_EOL . '     ', $attributeParts) ?>>
+
+    <span class="icon">
+        <img src="<?= $escape($item['icon'] ?? '') ?>" class="icon-img">
+    </span>
+    <span class="label"><?= $escape($item['label'] ?? '') ?></span>
+</div>
+<?php
+};
 ?>
 
-<div class="menu-item"
-     data-hash="">
-
-    <span class="icon">
-        <img src="images/tools/connection.png" class="icon-img">
-    </span>
-    <span class="label">Structure</span>
+<div class="menu-primary">
+<?php foreach ($applications as $application): ?>
+    <?php
+    $renderMenuItem([
+        'label' => $application->get('label'),
+        'hash' => $application->getRouteHash(),
+        'directory' => $application->get('directory'),
+        'icon' => $application->get('icon'),
+        'drawer' => $application->getResolvedDrawer(),
+        'url' => $application->getResolvedUrl(),
+        'navigationmode' => $application->getNavigationMode(),
+    ]);
+    ?>
+<?php endforeach; ?>
 </div>
 
-<div class="menu-item"
-     data-drawer="drawer_projects"
-     data-url="api/getProjects.php"
-     data-hash="projects">
-
-    <span class="icon">
-        <img src="images/tools/product.png" class="icon-img">
-    </span>
-    <span class="label">Projets</span>
+<div class="menu-secondary">
+<?php
+$renderMenuItem([
+    'label' => 'Paramètres',
+    'hash' => 'parameters',
+    'directory' => 'parameters',
+    'icon' => '/img/settings.png',
+    'drawer' => 'drawer_parameters',
+    'url' => 'api/parameters/index.php',
+    'navigationmode' => 'drawer',
+]);
+?>
 </div>
-
-<div class="menu-item"
-     data-drawer="drawer_policy"
-     data-url="api/getPolicy.php"
-     data-hash="policy">
-
-    <span class="icon">
-        <img src="images/tools/policy.png" class="icon-img">
-    </span>
-    <span class="label">Règlement</span>
-</div>
-
-<div class="menu-item"
-     data-drawer="drawer_checklists"
-     data-url="api/getChecklists.php"
-     data-hash="checklists">
-
-    <span class="icon">
-        <img src="images/tools/bucket-list.png" class="icon-img">
-    </span>
-    <span class="label">Checklistes</span>
-</div>
-
-<div class="menu-item"
-     data-drawer="drawer_stats"
-     data-url="api/getStat.php"
-     data-hash="stats">
-
-    <span class="icon">
-        <img src="images/tools/stats.png" class="icon-img">
-    </span>
-    <span class="label">Indicateurs</span>
-</div>
-
-<?php if ($showDocuments): ?>
-<div class="menu-item"
-     data-drawer="drawer_documents"
-     data-url="api/documents/index.php"
-     data-hash="documents">
-
-    <span class="icon">
-        <img src="images/tools/documents-folder.png" class="icon-img">
-    </span>
-    <span class="label">Documents</span>
-</div>
-<?php endif; ?>

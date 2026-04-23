@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Logo Org1</title>
+  <desc id="desc">Logo abstrait neutre pour Org1.</desc>
+  <defs>
+    <linearGradient id="bg" x1="32" y1="24" x2="224" y2="232" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0f766e"/>
+      <stop offset="1" stop-color="#34d399"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+  <circle cx="92" cy="112" r="42" fill="#ffffff" opacity="0.22"/>
+  <circle cx="158" cy="112" r="42" fill="#ffffff" opacity="0.18"/>
+  <path d="M88 156c16 18 29 26 40 26s24-8 40-26" fill="none" stroke="#ffffff" stroke-linecap="round" stroke-width="14"/>
+  <path d="M78 72l16 20 18-24" fill="none" stroke="#ecfeff" stroke-linecap="round" stroke-linejoin="round" stroke-width="12"/>
+  <path d="M144 84h34" fill="none" stroke="#ecfeff" stroke-linecap="round" stroke-width="12"/>
+  <text x="128" y="224" fill="#ecfeff" font-family="Arial, sans-serif" font-size="30" font-weight="700" letter-spacing="3" text-anchor="middle">ORG1</text>
+</svg>

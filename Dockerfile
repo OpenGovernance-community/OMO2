@@ -1,9 +1,14 @@
 FROM php:8.2-apache
 
 RUN apt-get update \
+    && if apt-cache show libcurl4-openssl-dev >/dev/null 2>&1; then \
+        curl_dev_pkg='libcurl4-openssl-dev'; \
+    else \
+        curl_dev_pkg='libcurl4t64-openssl-dev'; \
+    fi \
     && apt-get install -y --no-install-recommends \
         default-mysql-client \
-        libcurl4-openssl-dev \
+        "$curl_dev_pkg" \
         libfreetype6-dev \
         libicu-dev \
         libjpeg62-turbo-dev \
