@@ -39,7 +39,7 @@
 			
 			
 			
-			$html="<div style='font-size:70%;'><i>Généré sur pv.systemdd.ch</i></div>";
+			$html="<div style='font-size:70%;'><i>Généré sur ".htmlspecialchars(preg_replace('#^https?://#i', '', appGetCurrentSiteBaseUrl()))."</i></div>";
 		} else {
 			$html = '<h1 style="color: #b70000">Aucun point</h1>';
 			

@@ -34,7 +34,7 @@
 				if ($_GET["id"]=="image")
 					QRcode::png($qr->get("url"), null, QR_ECLEVEL_H, 10); // Génération du QR code
 				else
-					QRcode::png("https://systemdd.ch/qr/".(isset($_GET["uid"])?$_GET["uid"]."/":"").$_GET["id"], null, QR_ECLEVEL_H, 10); // Génération du QR code
+					QRcode::png(appBuildAbsoluteUrl("/qr/".(isset($_GET["uid"])?$_GET["uid"]."/":"").$_GET["id"]), null, QR_ECLEVEL_H, 10); // Génération du QR code
 
 				// créer une image à partir de la chaîne de caractères générée par qrlib
 				$image = imagecreatefromstring(ob_get_contents());
