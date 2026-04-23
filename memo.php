@@ -728,7 +728,7 @@ $steps = json_decode('[
 			// Images
 			if ($media->get("IDtype")==2) {
 				echo "<div class='media-div' style='background-image:url(/img/icon_image.png);'>";
-				echo "<img style='float:right;' src='/shared/getImg.php?url=".urlencode("https://systemdd.ch/shared/getfile.php?id=".$media->getId())."&x=75&y=50&ext=png'>";
+				echo "<img style='float:right;' src='/shared/getImg.php?url=".urlencode(appBuildAbsoluteUrl("/shared/getfile.php?id=".$media->getId()))."&x=75&y=50&ext=png'>";
 				echo "<div class='vertical'><div>".$media->get("title")."</div>";
 				echo "<a href='/shared/getfile.php?id=".$media->getId()."'>Cliquez ici pour voir l'image</a>"."</div>";
 				echo "</div>";

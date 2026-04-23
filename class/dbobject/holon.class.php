@@ -267,6 +267,19 @@
 			return array_reverse($path);
 		}
 
+		public function getTypeLabel() {
+			switch ((int)$this->get('IDtypeholon')) {
+				case 4:
+					return 'Organisation';
+				case 2:
+					return 'Cercle';
+				case 1:
+					return 'Rôle';
+				default:
+					return 'Holon';
+			}
+		}
+
 		public function isDescendantOf($ancestor, $includeSelf = true) {
 			$ancestorId = is_object($ancestor) ? (int)$ancestor->getId() : (int)$ancestor;
 			if ($ancestorId <= 0) {

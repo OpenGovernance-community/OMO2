@@ -96,7 +96,7 @@
 			$msg="Si ce compte existe, la procédure de réinitialisation vous a été envoyée.\\n\\nVeuillez vérifier votre boîte e-mail et suivre les instructions envoyés pour modifier votre mot de passe.";
 			$title="Réinitialisation du mot de passe ".$GLOBALS["siteTitle"];
 			$txt="Bienvenue!";
-			$txt.="\n"."Cliquez ici pour redéfinir votre mot de passe : <a href='https://pv.systemdd.ch/confirm.php?code=".$user->get("code")."'>Accéder à mon compte</a>.";
+			$txt.="\n"."Cliquez ici pour redéfinir votre mot de passe : <a href='".appBuildAbsoluteUrl("/confirm.php?code=".$user->get("code"))."'>Accéder à mon compte</a>.";
 			$formCode="$(this).html('<b>Veuillez vérifier votre boîte e-mail et suivre les instructions du mail envoyé pour modifier votre mot de passe.</b>');";
 
 			
@@ -131,7 +131,7 @@
 			// Création du message
 			$title="Création d'un compte sur ".$GLOBALS["siteTitle"];
 			$txt="Bienvenue!";
-			$txt.="\n"."Cliquez ici pour réactiver votre compte ou redéfinir votre mot de passe : <a href='https://pv.systemdd.ch/confirm.php?code=".$user->get("code")."'>Accéder à mon compte</a>.";
+			$txt.="\n"."Cliquez ici pour réactiver votre compte ou redéfinir votre mot de passe : <a href='".appBuildAbsoluteUrl("/confirm.php?code=".$user->get("code"))."'>Accéder à mon compte</a>.";
 			
 		} else {
 		// Si elle n'existe pas
@@ -143,7 +143,7 @@
 			// Création du message
 			$title="Création d'un compte sur ".$GLOBALS["siteTitle"];
 			$txt="Bienvenue!";
-			$txt.="\n"."Cliquez ici pour finaliser la configuration de votre compte : <a href='https://pv.systemdd.ch/confirm.php?code=".$user->get("code")."'>Finaliser mon inscription</a>.";
+			$txt.="\n"."Cliquez ici pour finaliser la configuration de votre compte : <a href='".appBuildAbsoluteUrl("/confirm.php?code=".$user->get("code"))."'>Finaliser mon inscription</a>.";
 		}	
 		}
 			// Envoie le message
