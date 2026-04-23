@@ -1,6 +1,5 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
-usleep(300000);
 
 $showDocuments = commonGetCurrentUserId() > 0;
 ?>

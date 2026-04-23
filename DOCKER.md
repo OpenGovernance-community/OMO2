@@ -7,8 +7,8 @@ Cette configuration sert a lancer une version locale reproductible du projet ave
 - Mailpit pour tester les emails en local
 - phpMyAdmin pour inspecter la base locale
 - prise en charge de `short_open_tag`
-- acceptation de `localhost`, `demo.localhost`, `instantz.localhost`, `trajets.localhost`
-- acceptation aussi d'un vrai domaine de dev partage comme `omo.test`, `instantz.omo.test`, `trajets.omo.test`
+- acceptation de `localhost`, `demo.localhost`, `org1.localhost`, `org2.localhost`
+- acceptation aussi d'un vrai domaine de dev partage comme `omo.test`, `org1.omo.test`, `org2.omo.test`
 
 ## 1. Preparer le `.env`
 
@@ -34,20 +34,24 @@ MAIL_PORT=1025
 MAIL_AUTH=false
 ```
 
-## 2. Dump SQL local
+## 2. Seed SQL publie
 
-Le dump principal local est attendu dans :
+Le seed principal versionne est dans :
 
-`docker/db/init/00-base.local.sql`
+`docker/db/init/00-base.seed.sql`
 
-Ce fichier est ignore par Git pour pouvoir utiliser un dump local sans le publier.
-Si tu veux utiliser un autre dump plus tard, garde simplement le meme nom de fichier.
+Ce fichier est publie dans le repository pour que l'environnement Docker soit directement utilisable apres clonage.
+
+Si tu veux ajouter des donnees locales non publiees, cree un script supplementaire ignore par Git, par exemple :
+
+`docker/db/init/99-local.override.local.sql`
 
 Au premier demarrage :
 
-- MariaDB importe `00-base.local.sql`
+- MariaDB importe `00-base.seed.sql`
+- MariaDB importe ensuite, s'ils existent, les scripts locaux additionnels comme `99-local.override.local.sql`
 - MariaDB utilise `utf8mb4` par defaut grace a `docker/db/conf.d/charset.cnf`
-- le dump principal contient deja les organisations de prod et la structure de demo
+- le dump principal contient deja les organisations de demo `Org1` et `Org2` ainsi que la structure de demo
 
 ## 3. Lancer les conteneurs
 
@@ -61,20 +65,28 @@ L'application sera disponible sur :
 - `https://localhost:8443`
 - `http://demo.localhost:8080`
 - `https://demo.localhost:8443`
-- `http://instantz.localhost:8080`
-- `https://instantz.localhost:8443`
-- `http://trajets.localhost:8080`
-- `https://trajets.localhost:8443`
+- `http://org1.localhost:8080`
+- `https://org1.localhost:8443`
+- `http://org2.localhost:8080`
+- `https://org2.localhost:8443`
 - `http://omo.test:8080`
 - `https://omo.test:8443`
 - `http://demo.omo.test:8080`
 - `https://demo.omo.test:8443`
-- `http://instantz.omo.test:8080`
-- `https://instantz.omo.test:8443`
-- `http://trajets.omo.test:8080`
-- `https://trajets.omo.test:8443`
+- `http://org1.omo.test:8080`
+- `https://org1.omo.test:8443`
+- `http://org2.omo.test:8080`
+- `https://org2.omo.test:8443`
 - Mailpit : `http://localhost:8025`
 - phpMyAdmin : `http://localhost:8081`
+
+Adresses de demonstration utiles :
+
+- `admin@org1.opengov.tools`
+- `member1@org1.opengov.tools`
+- `admin@org2.opengov.tools`
+
+Les codes de connexion sont envoyes dans Mailpit.
 
 Le HTTPS local utilise un certificat autosigne genere dans l'image Docker, valable pour `localhost`, `*.localhost`, `omo.test` et `*.omo.test`.
 Le navigateur affichera probablement un avertissement de securite la premiere fois : c'est normal en local.
@@ -100,8 +112,8 @@ Sous Windows, ajouter ces lignes dans `C:\Windows\System32\drivers\etc\hosts` :
 ```text
 127.0.0.1 omo.test
 127.0.0.1 demo.omo.test
-127.0.0.1 instantz.omo.test
-127.0.0.1 trajets.omo.test
+127.0.0.1 org1.omo.test
+127.0.0.1 org2.omo.test
 ```
 
 Puis redemarrer Docker :
@@ -114,9 +126,16 @@ docker compose up --build
 Ensuite, utiliser de preference :
 
 - `http://omo.test:8080/omo/`
-- `http://instantz.omo.test:8080/omo/`
+- `http://org1.omo.test:8080/omo/`
+- `http://org2.omo.test:8080/omo/`
 - `https://omo.test:8443/omo/`
-- `https://instantz.omo.test:8443/omo/`
+- `https://org1.omo.test:8443/omo/`
+- `https://org2.omo.test:8443/omo/`
+
+En production, avec un domaine racine comme `opengov.tools`, le meme mecanisme donne :
+
+- `https://org1.opengov.tools/omo/`
+- `https://org2.opengov.tools/omo/`
 
 Dans cette configuration, les cookies peuvent etre poses sur `.omo.test` et donc etre partages entre les sous-domaines, ce qui simule beaucoup mieux la production.
 
@@ -130,6 +149,6 @@ Si ce n'est pas le cas, ajouter temporairement ces entrees dans le fichier hosts
 
 ```text
 127.0.0.1 demo.localhost
-127.0.0.1 instantz.localhost
-127.0.0.1 trajets.localhost
+127.0.0.1 org1.localhost
+127.0.0.1 org2.localhost
 ```
