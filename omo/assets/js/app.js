@@ -267,12 +267,14 @@ $(document).ready(function () {
         // sauvegarde
         let finalWidth = leftPanel.width();
         localStorage.setItem('panelLeftWidth', finalWidth);
+        syncOpenDrawers();
     }
 
     $(document).on('mouseup', stopResizing);
 
     // 🔥 FIX IMPORTANT : si la souris sort de la fenêtre
     $(window).on('blur', stopResizing);
+    $(window).on('resize', syncOpenDrawers);
 
 });
 
@@ -426,9 +428,39 @@ $(document).ready(function () {
 
 });
 
+let omoLastNonMenuView = 'left';
+
+function omoSetAppView(view, options = {}) {
+    const resolvedView = view === 'menu' || view === 'left' || view === 'right'
+        ? view
+        : 'left';
+    const allowToggleMenu = options.allowToggleMenu === true;
+    const body = $('body');
+    const isAlreadyActive = body.hasClass('view-' + resolvedView);
+
+    if (allowToggleMenu && resolvedView === 'menu' && isAlreadyActive) {
+        const fallbackView = omoLastNonMenuView === 'right' ? 'right' : 'left';
+        body
+            .removeClass('view-menu view-left view-right')
+            .addClass('view-' + fallbackView);
+        return fallbackView;
+    }
+
+    body
+        .removeClass('view-menu view-left view-right')
+        .addClass('view-' + resolvedView);
+
+    if (resolvedView !== 'menu') {
+        omoLastNonMenuView = resolvedView;
+    }
+
+    return resolvedView;
+}
+
 function openDrawer(id, url) {
 
     let drawer = $('#' + id);
+
 
     // 👉 si déjà ouvert → on ferme tout et on stop
     if (drawer.length && drawer.hasClass('open')) {
@@ -470,13 +502,57 @@ function openDrawer(id, url) {
     });
 }
 
+function refreshDrawer(id, url) {
+    const drawer = $('#' + id);
+
+    if (!drawer.length) {
+        return false;
+    }
+
+    updateDrawerPosition(drawer);
+    loadContent(drawer.find('.drawer-content'), url, 'panel');
+
+    return true;
+}
+
+function omoIsMobileLayout() {
+    return typeof window.matchMedia === 'function'
+        ? window.matchMedia('(max-width: 768px)').matches
+        : window.innerWidth <= 768;
+}
+
+function omoGetCompactSidebarWidth() {
+    const cssValue = getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width').trim();
+    const parsedWidth = Number.parseFloat(cssValue);
+
+    return Number.isFinite(parsedWidth) && parsedWidth > 0 ? parsedWidth : 48;
+}
+
 function updateDrawerPosition(drawer) {
+    if (!drawer || !drawer.length) {
+        return;
+    }
+
+    if (omoIsMobileLayout()) {
+        const compactSidebarWidth = omoGetCompactSidebarWidth();
+        drawer.css({
+            left: compactSidebarWidth + 'px',
+            width: 'calc(100% - ' + compactSidebarWidth + 'px)'
+        });
+        return;
+    }
 
     const leftWidth = $('#panel-left').outerWidth();
 
     drawer.css({
         left: leftWidth + 'px',
         width: 'calc(100% - ' + leftWidth + 'px)'
+    });
+}
+
+function syncOpenDrawers() {
+    $('.drawer').each(function () {
+        updateDrawerPosition($(this));
     });
 }
 
@@ -488,12 +564,70 @@ function closeAllDrawers() {
     $('.drawer.open').removeClass('open');
 }
 
+function resetDrawers(activeDrawerId = null) {
+    $('.drawer').each(function () {
+        const drawer = $(this);
+
+        if (activeDrawerId && drawer.attr('id') === activeDrawerId) {
+            return;
+        }
+
+        drawer.remove();
+    });
+}
+
+function getSidebarMenuItem(hash = null) {
+    if (!hash) {
+        return $('#menu_sidebar .menu-item[data-navigation-mode="panel"]').first();
+    }
+
+    return $(`#menu_sidebar .menu-item[data-hash="${hash}"]`).first();
+}
+
+function getSidebarMenuConfig(hash = null) {
+    const route = hash ? String(hash).split('/')[0] : null;
+    const item = getSidebarMenuItem(route);
+
+    if (!item.length) {
+        return null;
+    }
+
+    return {
+        drawer: item.attr('data-drawer') || '',
+        url: item.attr('data-url') || '',
+        navigationMode: String(item.attr('data-navigation-mode') || 'drawer').toLowerCase()
+    };
+}
+
+function buildDrawerUrl(baseUrl, oid, cid = null) {
+    const separator = baseUrl.indexOf('?') === -1 ? '?' : '&';
+    let url = `${baseUrl}${separator}oid=${encodeURIComponent(oid)}`;
+
+    if (cid) {
+        url += `&cid=${encodeURIComponent(cid)}`;
+    }
+
+    return url;
+}
+
 $(document).on('click', '[data-hash]', function (e) {
 
     e.preventDefault();
 
     const hash = $(this).data('hash');
     const { oid, cid } = parseUrl();
+    const currentHash = parseUrl().hash;
+    const navigationMode = String($(this).attr('data-navigation-mode') || 'drawer').toLowerCase();
+
+    if (navigationMode === 'panel') {
+        navigate(oid, cid, null);
+        return;
+    }
+
+    if (currentHash === hash) {
+        navigate(oid, cid, null);
+        return;
+    }
 
     navigate(oid, cid, hash);
 
@@ -524,7 +658,13 @@ function updateActiveMenu(hash) {
     // reset global
     $('.menu-item').removeClass('active');
 
-    if (!hash) return;
+    if (!hash) {
+        const defaultItem = getSidebarMenuItem();
+        if (defaultItem && defaultItem.length) {
+            defaultItem.addClass('active');
+        }
+        return;
+    }
 
     const route = hash.split('/')[0];
 
@@ -641,18 +781,34 @@ function handleRoute() {
         omoFocusStructureNode(cid);
     }
 
+    const route = hash ? hash.split('/')[0] : null;
+    const menuConfig = route ? getSidebarMenuConfig(route) : null;
+    const activeDrawerId = route
+        ? (menuConfig && menuConfig.drawer ? menuConfig.drawer : `drawer_${route}`)
+        : null;
+    const activeBaseUrl = route
+        ? (menuConfig && menuConfig.url ? menuConfig.url : `api/${route}/index.php`)
+        : null;
+    const activeDrawerUrl = activeBaseUrl ? buildDrawerUrl(activeBaseUrl, oid, cid) : null;
+
+    if (organizationChanged || cidChanged) {
+        resetDrawers(activeDrawerId);
+
+        if (hash && activeDrawerId && activeDrawerUrl) {
+            if (!refreshDrawer(activeDrawerId, activeDrawerUrl)) {
+                openDrawer(activeDrawerId, activeDrawerUrl);
+            }
+        }
+    }
+
     // 🧩 2. Gérer les drawers (modules)
     if (hashChanged) {
 
-        if (hash) {
-
-            const drawerId = `drawer_${hash}`;
-            const url = `api/${hash}/index.php?oid=${oid}${cid ? '&cid=' + cid : ''}`;
-
-            openDrawer(drawerId, url);
-
+        if (hash && activeDrawerId && activeDrawerUrl) {
+            openDrawer(activeDrawerId, activeDrawerUrl);
         } else {
             closeAllDrawers();
+            resetDrawers();
         }
     }
 }
@@ -719,9 +875,7 @@ $(document).on('click', '[data-view]', function () {
 
     const view = $(this).data('view');
 
-    $('body')
-        .removeClass('view-menu view-left view-right')
-        .addClass('view-' + view);
+    omoSetAppView(view, { allowToggleMenu: true });
 
 });
 
@@ -931,12 +1085,3 @@ function omoHandleTopbarSearch(query) {
     });
 }
 
-$(document).on('click', '[data-view]', function () {
-
-    const view = $(this).data('view');
-
-    $('body')
-        .removeClass('view-menu view-left view-right')
-        .addClass('view-' + view);
-
-});

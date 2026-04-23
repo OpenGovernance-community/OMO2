@@ -1,6 +1,8 @@
 /.env
 /docker/app/.env
-/docker/db/init/00-base.local.sql
+/docker/db/init/*.local.sql
+/docker/db/init/*.private.sql
+/docker/db/init/*.disabled
 /sql/
 
 /test/**
