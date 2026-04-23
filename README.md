@@ -37,8 +37,6 @@ L'application devient alors accessible sur :
 - `https://omo.test:8443`
 - `http://org1.omo.test:8080`
 - `https://org1.omo.test:8443`
-- `http://org2.omo.test:8080`
-- `https://org2.omo.test:8443`
 
 Interface email locale :
 
