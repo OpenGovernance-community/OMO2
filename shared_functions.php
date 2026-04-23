@@ -35,6 +35,34 @@
 		return strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
 	}
 
+	function appGetCurrentSiteBaseUrl() {
+		$host = trim((string)($_SERVER['HTTP_HOST'] ?? ''));
+		if ($host === '') {
+			return '';
+		}
+
+		$scheme = appShouldUseSecureCookies() ? 'https' : 'http';
+		return $scheme . '://' . $host;
+	}
+
+	function appBuildAbsoluteUrl($path = '') {
+		$path = (string)$path;
+		$baseUrl = appGetCurrentSiteBaseUrl();
+		if ($baseUrl === '') {
+			return $path;
+		}
+
+		if ($path === '') {
+			return $baseUrl;
+		}
+
+		if (preg_match('#^https?://#i', $path)) {
+			return $path;
+		}
+
+		return $baseUrl . (substr($path, 0, 1) === '/' ? $path : '/' . $path);
+	}
+
 	function appBuildCookieOptions($expires = 0, $httpOnly = true, $host = null) {
 		$options = [
 			'expires' => (int)$expires,
