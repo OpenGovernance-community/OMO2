@@ -2,95 +2,177 @@
 	require_once($_SERVER['DOCUMENT_ROOT']."/config.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared_functions.php");
 
-
 	// Initialise le login
 	$connected=checklogin();
 
 	// Affichage des champs de formulaires
 	echo "<div id='form_new_node'></div>";
 	echo "<button id='btn_create_role'>Ajouter</button>";
-
-
 ?>
 <script>
-   	// Récuipère l'ID du noeud permettant de générer la liste des propriétés
-	// Si l'IDdb du noeud n'est pas spécifié, s'appuie sur son template. Et si pas de template, récupère l'ID de base, qui doit correspondre à une valeur dans la base de données
 	function getRef(node) {
 	    if (node.IDdb !== undefined && node.IDdb !== null && node.IDdb !== "" && !isNaN(Number(node.IDdb))) return node.IDdb;
 		if (node.t !== undefined && node.t !== null && node.t !== "" && !isNaN(Number(node.t))) {
 			if (node.ID !== undefined && node.ID !== null && node.ID !== "" && !isNaN(Number(node.ID))) return node.ID+","+node.t;
-			else
-				return node.t;
-		} else {
-			if (node.ID !== undefined && node.ID !== null && node.ID !== "" && !isNaN(Number(node.ID))) return node.ID;
+			return node.t;
 		}
-		return null; // Par défaut
+
+		if (node.ID !== undefined && node.ID !== null && node.ID !== "" && !isNaN(Number(node.ID))) {
+			return node.ID;
+		}
+
+		return null;
 	}
-   
-  // Récupère la chaîne des ID des parents, pour récupérer côté serveurs les templates associés
-  function getParentsID(node,sep="") {
-	  ref=getRef(node);
-	  if (node.parent) {
-		if (ref)
-			return sep+ref+getParentsID(node.parent,",");
-		else return getParentsID(node.parent,",");
+
+	function getParentsID(node, sep="") {
+		ref = getRef(node);
+		if (node.parent) {
+			if (ref) {
+				return sep + ref + getParentsID(node.parent, ",");
+			}
+			return getParentsID(node.parent, ",");
+		}
+
+		if (ref) {
+			return sep + ref;
+		}
+
+		return "";
 	}
-	else
-		if (ref)
-			return sep+ref;
-  }	
-	
-  $( function() {
-	 // Récupère les ID des parents (seuls les IDs sauvés peuvent avoir des templates associés)
-	$parents=getParentsID(currentnode);
-	if (!$parents) $parents=root.ID; // Si aucune référence à des noeuds trouvée, alors c'est une nouvelle structure et on utilise l'ID qui est initialisé avec l'ID du modèle dans la DB
-	// Récupère l'interface tenant en compte le type de noeud et des templates disponibles, et l'affiche
-	$("#form_new_node").load("/popup/circle/editinterface.php?p="+$parents);  
-	  
-	// Create account
-	$("#btn_create_role").click(function (e) {
-			// Ajoute un élément au noeud courant
-			console.log(currentnode);
+
+	function parseStoredListValue(rawValue) {
+		if (rawValue === undefined || rawValue === null || rawValue === "") {
+			return [];
+		}
+
+		if (Array.isArray(rawValue)) {
+			return rawValue;
+		}
+
+		try {
+			const decoded = JSON.parse(rawValue);
+			return Array.isArray(decoded) ? decoded : [];
+		} catch (error) {
+			return String(rawValue)
+				.split(/\r\n|\r|\n|\|/)
+				.map(function(item) { return item.trim(); })
+				.filter(Boolean);
+		}
+	}
+
+	function getListInputType(listItemType) {
+		if (listItemType === "number") {
+			return "number";
+		}
+		if (listItemType === "date") {
+			return "date";
+		}
+		return "text";
+	}
+
+	function createListFieldRowHtml(listItemType, value) {
+		const inputType = getListInputType(String(listItemType || "text"));
+		const safeValue = value !== undefined && value !== null ? String(value) : "";
+		const escapedValue = safeValue
+			.replace(/&/g, "&amp;")
+			.replace(/"/g, "&quot;")
+			.replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;");
+		const step = inputType === "number" ? ' step="any"' : "";
+
+		return ''
+			+ '<div class="role-list-field__row">'
+			+ '  <input type="' + inputType + '" class="role-list-field__value" value="' + escapedValue + '"' + step + '>'
+			+ '  <button type="button" class="role-list-field__remove" data-list-remove="1" aria-label="Supprimer">&times;</button>'
+			+ '</div>';
+	}
+
+	function ensureListFieldHasRow($field) {
+		const $items = $field.find(".role-list-field__items");
+		if ($items.children(".role-list-field__row").length > 0) {
+			return;
+		}
+
+		$items.append(createListFieldRowHtml($field.data("list-item-type"), ""));
+	}
+
+	function readRoleFieldValue($field) {
+		const mode = String($field.data("field-mode") || "scalar");
+
+		if (mode === "json-holon-list") {
+			const values = ($field.val() || []).map(function(item) {
+				return Number(item || 0);
+			}).filter(Boolean);
+			return values.length ? JSON.stringify(values) : "";
+		}
+
+		if (mode === "json-list") {
+			const values = $field.find(".role-list-field__value").map(function() {
+				return String($(this).val() || "").trim();
+			}).get().filter(Boolean);
+			return values.length ? JSON.stringify(values) : "";
+		}
+
+		return $field.val();
+	}
+
+	$(function() {
+		$("#form_new_node").on("click", "[data-list-add]", function () {
+			const $field = $(this).closest(".role-list-field");
+			$field.find(".role-list-field__items").append(createListFieldRowHtml($field.data("list-item-type"), ""));
+			$field.find(".role-list-field__value").last().trigger("focus");
+		});
+
+		$("#form_new_node").on("click", "[data-list-remove]", function () {
+			const $field = $(this).closest(".role-list-field");
+			$(this).closest(".role-list-field__row").remove();
+			ensureListFieldHasRow($field);
+		});
+
+		$parents = getParentsID(currentnode);
+		if (!$parents) {
+			$parents = root.ID;
+		}
+
+		$("#form_new_node").load("/popup/circle/editinterface.php?p="+$parents);
+
+		$("#btn_create_role").click(function () {
 			if (currentnode) {
-				if (!currentnode.children)
-					currentnode.children=new Array();
-				
+				if (!currentnode.children) {
+					currentnode.children = new Array();
+				}
+
 				const newNode = {
-				  ID: "TMP_"+Date.now(),
-				  type: $("#type_role").val(), // Définition du type
-				  size:10-currentnode.deph*2, // Taille directment adaptée
-				  t: $("#selected_template").val(),
-				  data : {},
-				};	
+					ID: "TMP_" + Date.now(),
+					type: $("#type_role").val(),
+					size: 10 - currentnode.deph * 2,
+					t: $("#selected_template").val(),
+					data: {},
+				};
+
 				$("[id^='role_field_']").each(function() {
-					let elementId = $(this).attr("id");
-					let key = elementId.replace("role_field_", ""); // Supprime le préfixe
+					const $field = $(this);
+					const elementId = $field.attr("id");
+					const key = elementId.replace("role_field_", "");
 
-				if (key=="name") 
-					newNode[key]=$(this).val();
-				else
-					newNode.data["d"+key]={"value" : $(this).val(),"ancestor" : $("#role_parent_"+key).html()}; // Initialise la valeur si la clé existe
-
+					if (key === "name") {
+						newNode[key] = $field.val();
+					} else {
+						newNode.data["d" + key] = {
+							"value": readRoleFieldValue($field),
+							"ancestor": $("#role_parent_" + key).text()
+						};
+					}
 				});
 
+				currentnode.children.push(newNode);
 
-				console.log(newNode);
-					
-			
-
-			currentnode.children.push(newNode);
-
-			
-			
-			save();
-			refreshCircle();
-			// Ferme la fenêtre
-			closePopup()
-		}
-		
+				save();
+				refreshCircle();
+				closePopup();
+			}
+		});
 	});
-});
 </script>
-<?		
-
+<?
 ?>

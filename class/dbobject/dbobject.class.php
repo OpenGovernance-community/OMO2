@@ -1243,6 +1243,11 @@
 			//return (isset($_SESSION["currentUser"]) && $this->get("IDuser")>0 && $this->get("IDuser")==$_SESSION["currentUser"]);
 			return false;
 		}
+
+		public function canDelete()
+		{
+			return $this->canEdit();
+		}
 		
 		public function canView() 
 		{
