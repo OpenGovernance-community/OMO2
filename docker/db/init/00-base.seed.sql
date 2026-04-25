@@ -314,6 +314,8 @@ CREATE TABLE `holonproperty` (
   `IDproperty` int(11) NOT NULL,
   `value` mediumtext DEFAULT NULL,
   `position` int(11) DEFAULT NULL,
+  `mandatory` tinyint(1) NOT NULL DEFAULT 0,
+  `locked` tinyint(1) NOT NULL DEFAULT 0,
   `active` tinyint(1) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -766,6 +768,8 @@ CREATE TABLE `property` (
   `shortname` varchar(20) NOT NULL COMMENT 'Clé utilisée dans les JSON',
   `name` varchar(255) NOT NULL,
   `IDpropertyformat` int(11) NOT NULL,
+  `listitemtype` varchar(20) DEFAULT NULL,
+  `listholontypeids` varchar(255) DEFAULT NULL,
   `IDholon_organization` int(11) DEFAULT NULL,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
   `position` int(11) DEFAULT NULL,
@@ -819,7 +823,9 @@ CREATE TABLE `propertyformat` (
 
 INSERT INTO `propertyformat` (`id`, `name`) VALUES
 (1, 'Texte libre'),
-(2, 'Liste');
+(2, 'Liste'),
+(3, 'Chiffre'),
+(4, 'Date');
 
 -- --------------------------------------------------------
 
@@ -1404,7 +1410,7 @@ ALTER TABLE `property`
 -- AUTO_INCREMENT pour la table `propertyformat`
 --
 ALTER TABLE `propertyformat`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT pour la table `pv`

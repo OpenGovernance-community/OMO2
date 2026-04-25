@@ -3,6 +3,55 @@
         return window.commonTopbarConfig || {};
     }
 
+    function executeEmbeddedScripts(container) {
+        if (!container) {
+            return;
+        }
+
+        Array.prototype.forEach.call(container.querySelectorAll('script'), function (script) {
+            var replacement = document.createElement('script');
+
+            Array.prototype.forEach.call(script.attributes, function (attribute) {
+                replacement.setAttribute(attribute.name, attribute.value);
+            });
+
+            if (!replacement.src) {
+                replacement.textContent = script.textContent || '';
+            }
+
+            script.parentNode.replaceChild(replacement, script);
+        });
+    }
+
+    function renderRemoteContent(container, url) {
+        if (!container) {
+            return;
+        }
+
+        container.innerHTML = '<div class="loading">Chargement...</div>';
+
+        fetch(url, {
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Erreur de chargement');
+                }
+
+                return response.text();
+            })
+            .then(function (html) {
+                container.innerHTML = html;
+                executeEmbeddedScripts(container);
+            })
+            .catch(function () {
+                container.innerHTML = '<div class="loading">Erreur de chargement</div>';
+            });
+    }
+
     function closeMenus() {
         document.querySelectorAll('.common-topbar__menu.is-open').forEach(function (menu) {
             menu.classList.remove('is-open');
@@ -24,6 +73,8 @@
         titleNode.textContent = title || 'Panneau latéral';
         if (mode === 'iframe') {
             body.innerHTML = '<iframe class="common-topbar-drawer__iframe" src="' + content + '"></iframe>';
+        } else if (mode === 'fetch') {
+            renderRemoteContent(body, content);
         } else {
             body.innerHTML = content || '';
         }
@@ -45,6 +96,8 @@
         titleNode.textContent = title || 'Panneau';
         if (mode === 'iframe') {
             body.innerHTML = '<iframe class="common-topbar-modal__iframe" src="' + content + '"></iframe>';
+        } else if (mode === 'fetch') {
+            renderRemoteContent(body, content);
         } else {
             body.innerHTML = content || '';
         }
@@ -114,10 +167,18 @@
 
         if (item.url) {
             if (item.mode === 'drawer') {
-                openDrawer(item.title || item.label || 'Aide', item.url, item.contentMode === 'html' ? 'html' : 'iframe');
+                openDrawer(
+                    item.title || item.label || 'Aide',
+                    item.url,
+                    item.contentMode === 'html' ? 'html' : (item.contentMode === 'fetch' ? 'fetch' : 'iframe')
+                );
                 return;
             }
-            openModal(item.title || item.label || 'Aide', item.url, item.mode === 'iframe' ? 'iframe' : 'html');
+            openModal(
+                item.title || item.label || 'Aide',
+                item.url,
+                item.mode === 'fetch' ? 'fetch' : (item.mode === 'iframe' ? 'iframe' : 'html')
+            );
             return;
         }
 
@@ -134,7 +195,11 @@
         }
 
         if (profile.editUrl) {
-            openModal(profile.editTitle || 'Profil', profile.editUrl, profile.editMode === 'html' ? 'html' : 'iframe');
+            openModal(
+                profile.editTitle || 'Profil',
+                profile.editUrl,
+                profile.editMode === 'fetch' ? 'fetch' : (profile.editMode === 'html' ? 'html' : 'iframe')
+            );
         }
     }
 

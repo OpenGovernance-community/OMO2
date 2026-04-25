@@ -595,6 +595,7 @@ $(document).on("input", "#role_list_search", function () {
     let stopTimer = false, nextCol = 1;
     let isDragging = false, wasDragging = false;
     let colorCircle;
+    let structureReloadPromise = null;
 
     function getCurrentRoute() {
       if (typeof parseUrl === "function") {
@@ -634,17 +635,91 @@ $(document).on("input", "#role_list_search", function () {
       }) || null;
     }
 
-    function focusStructureNode(nodeId) {
+    // Recharge structure ciblée
+    function reloadStructureAndFocus(nodeId, options) {
+      if (structureReloadPromise) {
+        return structureReloadPromise;
+      }
+
+      const settings = Object.assign({
+        quickZoom: false
+      }, options || {});
+
+      structureReloadPromise = loadStructureData()
+        .then(function() {
+          if (nodeId) {
+            currentnode = {
+              ID: String(nodeId)
+            };
+          } else {
+            currentnode = root;
+          }
+
+          drawAll();
+
+          if (settings.quickZoom) {
+            const quickTargetNode = nodeId ? findPackedNodeById(nodeId) : root;
+            if (quickTargetNode) {
+              quickZoomToCanvas(quickTargetNode);
+            }
+            return;
+          }
+
+          if (nodeId) {
+            const reloadedNode = findPackedNodeById(nodeId);
+            if (reloadedNode) {
+              animateFocusToNode(reloadedNode);
+              return;
+            }
+          }
+
+          animateFocusToNode(root);
+        })
+        .catch(function(error) {
+          console.error(error);
+          renderStructureMessage(error && error.message ? error.message : "Impossible de charger la structure.");
+        })
+        .finally(function() {
+          structureReloadPromise = null;
+        });
+
+      return structureReloadPromise;
+    }
+
+    window.omoReloadStructureAndFocus = function(nodeId, options) {
+      return reloadStructureAndFocus(nodeId, options);
+    };
+
+    function focusStructureNode(nodeId, options) {
       if (!root || !Array.isArray(nodes)) {
         return;
       }
 
-      const targetNode = nodeId ? (findPackedNodeById(nodeId) || root) : root;
+      const settings = Object.assign({
+        allowReload: true,
+        quickZoom: false
+      }, options || {});
+      const requestedNodeId = nodeId === null || nodeId === undefined || nodeId === ""
+        ? null
+        : nodeId;
+      const targetNode = requestedNodeId ? findPackedNodeById(requestedNodeId) : root;
 
-      animateFocusToNode(targetNode);
+      if (!targetNode && requestedNodeId && settings.allowReload) {
+        reloadStructureAndFocus(requestedNodeId, {
+          quickZoom: settings.quickZoom
+        });
+        return;
+      }
+
+      if (settings.quickZoom) {
+        quickZoomToCanvas(targetNode || root);
+        return;
+      }
+
+      animateFocusToNode(targetNode || root);
     }
 
-    function animateFocusToNode(targetNode) {
+    function animateFocusToNode(targetNode, options) {
       if (!targetNode || !canvas) {
         return;
       }
@@ -891,6 +966,57 @@ $(document).on("input", "#role_list_search", function () {
       ctx.stroke();
     }
 
+    const hatchPatternCache = {};
+
+    function getHatchPattern(ctx, nodeType) {
+      const key = String(nodeType || "");
+      if (hatchPatternCache[key]) {
+        return hatchPatternCache[key];
+      }
+
+      const patternCanvas = document.createElement("canvas");
+      patternCanvas.width = 24;
+      patternCanvas.height = 24;
+
+      const patternContext = patternCanvas.getContext("2d");
+      patternContext.clearRect(0, 0, 24, 24);
+      patternContext.strokeStyle = (nodeType == "3")
+        ? "rgba(255,255,255,0.42)"
+        : "rgba(255,255,255,0.34)";
+      patternContext.lineWidth = 6;
+      patternContext.beginPath();
+      patternContext.moveTo(-6, 18);
+      patternContext.lineTo(18, -6);
+      patternContext.moveTo(6, 30);
+      patternContext.lineTo(30, 6);
+      patternContext.stroke();
+
+      hatchPatternCache[key] = ctx.createPattern(patternCanvas, "repeat");
+      return hatchPatternCache[key];
+    }
+
+    function shouldHatchNode(node) {
+      return Boolean(node && node.isVisibleTemplateInstance) && (node.type == "1" || node.type == "2" || node.type == "3");
+    }
+
+    function drawNodeHatch(ctx, node, nodeX, nodeY, nodeR) {
+      if (!shouldHatchNode(node)) {
+        return;
+      }
+
+      const hatchPattern = getHatchPattern(ctx, node.type);
+      if (!hatchPattern) {
+        return;
+      }
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(nodeX, nodeY, nodeR, 0, 2 * Math.PI, true);
+      ctx.fillStyle = hatchPattern;
+      ctx.fill();
+      ctx.restore();
+    }
+
     function drawCanvas(chosenContext, hidden = false) {
       chosenContext.clearRect(0, 0, chartwidth, chartheight);
       chosenContext.fillStyle = chartColors.background;
@@ -939,6 +1065,8 @@ $(document).on("input", "#role_list_search", function () {
             chosenContext.setLineDash([]);
             chosenContext.fill();
           }
+
+          drawNodeHatch(chosenContext, node, nodeX, nodeY, nodeR);
 
           if (currentnode && node.ID === currentnode.ID) {
             chosenContext.lineWidth = 6;
@@ -1398,12 +1526,27 @@ function startChart() {
         window.removeEventListener("omo-structure-focus", window.omoStructureFocusHandler);
       }
 
+      if (window.omoStructureRefreshHandler) {
+        window.removeEventListener("omo-structure-refresh", window.omoStructureRefreshHandler);
+      }
+
       window.omoStructureFocusHandler = function (event) {
         const cid = event && event.detail ? event.detail.cid : null;
-        focusStructureNode(cid);
+        const quickZoom = Boolean(event && event.detail && event.detail.quickZoom);
+        focusStructureNode(cid, {
+          quickZoom: quickZoom
+        });
+      };
+
+      window.omoStructureRefreshHandler = function (event) {
+        const cid = event && event.detail ? event.detail.cid : null;
+        reloadStructureAndFocus(cid, {
+          quickZoom: true
+        });
       };
 
       window.addEventListener("omo-structure-focus", window.omoStructureFocusHandler);
+      window.addEventListener("omo-structure-refresh", window.omoStructureRefreshHandler);
     })
     .catch(function(error) {
       root = null;

@@ -724,10 +724,11 @@ let currentState = {
     hash: null
 };
 
-function omoFocusStructureNode(cid = null) {
+function omoFocusStructureNode(cid = null, options = {}) {
     window.dispatchEvent(new CustomEvent('omo-structure-focus', {
         detail: {
-            cid: cid === null || cid === undefined || cid === '' ? null : Number(cid)
+            cid: cid === null || cid === undefined || cid === '' ? null : Number(cid),
+            quickZoom: Boolean(options.quickZoom)
         }
     }));
 }
@@ -773,7 +774,6 @@ function handleRoute() {
 
         loadContent('#panel-right', rightUrl);
     } else if (cidChanged) {
-
         let leftUrl = `api/getOrg.php?oid=${oid}`;
         if (cid) leftUrl += `&cid=${cid}`;
 
