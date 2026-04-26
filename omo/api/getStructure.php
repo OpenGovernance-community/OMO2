@@ -770,6 +770,35 @@ $(document).on("input", "#role_list_search", function () {
       return normalizedNode;
     }
 
+    function getPackTypeOrder(node) {
+      switch (String(node && node.type ? node.type : "")) {
+        case "4":
+          return 0;
+        case "1":
+          return 1;
+        case "3":
+          return 2;
+        case "2":
+          return 3;
+        default:
+          return 99;
+      }
+    }
+
+    function comparePackNodes(a, b) {
+      const typeDifference = getPackTypeOrder(a) - getPackTypeOrder(b);
+      if (typeDifference !== 0) {
+        return typeDifference;
+      }
+
+      const nameDifference = String(a && a.name ? a.name : "").localeCompare(String(b && b.name ? b.name : ""));
+      if (nameDifference !== 0) {
+        return nameDifference;
+      }
+
+      return String(a && a.ID ? a.ID : "").localeCompare(String(b && b.ID ? b.ID : ""));
+    }
+
     function renderStructureMessage(message) {
       const chart = document.getElementById("chart");
       const roleList = document.getElementById("role_list");
@@ -1455,7 +1484,7 @@ function getChartColors() {
         .padding(1)
         .size([diameter, diameter])
         .value(function(d) { return d.size; })
-        .sort(function(a, b) { return String(a.ID).localeCompare(String(b.ID)); });
+        .sort(comparePackNodes);
 
       nodes = pack.nodes(root);
       nodeCount = nodes.length;
