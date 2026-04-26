@@ -370,9 +370,11 @@ $sections = omoBuildSections($currentHolon);
 $childNavigation = omoBuildChildNavigation($currentHolon);
 $holonTypeLabel = omoGetHolonHeaderLabel($currentHolon);
 $selectedNodeClass = 'node_' . (int)$currentHolon->getId();
-$canCreateChildHolon = $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(2, 4), true);
+$isCurrentTemplateHolon = $root ? $currentHolon->isTemplateNode((int)$root->getId()) : false;
+$editTemplateContextId = $isCurrentTemplateHolon && $currentHolon->getParentHolon() ? (int)$currentHolon->getParentHolon()->getId() : 0;
+$canCreateChildHolon = $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(2, 3, 4), true);
 $canEditHolon = $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
-$canDeleteHolon = $currentHolon->canDelete() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2), true);
+$canDeleteHolon = $currentHolon->canDelete() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
 $deleteDescendantCount = $canDeleteHolon ? (int)$currentHolon->countVisibleDescendants() : 0;
 $parentHolonForDelete = $canDeleteHolon ? $currentHolon->getParentHolon() : null;
 $deleteParentId = $parentHolonForDelete ? (int)$parentHolonForDelete->getId() : 0;
@@ -438,6 +440,8 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
                                 class="circle-menu__item"
                                 data-open-edit-holon="1"
                                 data-hid="<?= (int)$currentHolon->getId() ?>"
+                                data-template-edit="<?= $isCurrentTemplateHolon ? '1' : '0' ?>"
+                                data-template-context-id="<?= (int)$editTemplateContextId ?>"
                             >Edit</button>
                         <?php endif; ?>
                         <?php if ($canDeleteHolon): ?>
@@ -927,9 +931,17 @@ $(document)
 $(document)
   .off('click.omoOrgEditHolon', '#panel-left [data-open-edit-holon="1"]')
   .on('click.omoOrgEditHolon', '#panel-left [data-open-edit-holon="1"]', function () {
-    const hid = Number($(this).data('hid'));
+    const button = $(this);
+    const hid = Number(button.data('hid'));
+    const isTemplateEdit = String(button.data('template-edit')) === '1';
+    const templateContextId = Number(button.data('template-context-id') || 0);
 
     if (!hid || typeof openDrawer !== 'function') {
+        return;
+    }
+
+    if (isTemplateEdit && templateContextId > 0) {
+        openDrawer('drawer_holon_create', '/omo/api/parameters/holon-templates/index.php?cid=' + templateContextId + '&hid=' + hid + '&compact=1');
         return;
     }
 

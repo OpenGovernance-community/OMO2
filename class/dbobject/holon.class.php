@@ -9,30 +9,30 @@
 			return 'holon'; // Nom de la table correspondante
 		}	
 		
-		// DÃ©fini le contenu de la table
+		// Defini le contenu de la table
 		public static function rules()
 		{
 			return [
 				[['id'], 'required'],				// Champs obligatoires
 				[['id'], 'integer'],					
 				[['name','templatename','accesskey'], 'string'],			// Texte libre
-				[['datecreation','datemodification'], 'datetime'],	// Date avec prÃ©cision des heures
-				[['IDuser','IDtypeholon','IDholon_parent','IDholon_template','IDorganization','IDholon_org'], 'fk'],				// ClÃ© Ã©trangÃ¨res
-				[['active','visible','mandatory','link'], 'boolean'],				// ClÃ© Ã©trangÃ¨res
-				[['color'], 'color'],				// Couleur au format hexadÃ©cimal
-				[['id'], 'safe'],								// Champs protÃ©gÃ©s (n'apparaÃ®ssent pas dans les formulaires)
+				[['datecreation','datemodification'], 'datetime'],	// Date avec precision des heures
+				[['IDuser','IDtypeholon','IDholon_parent','IDholon_template','IDorganization','IDholon_org'], 'fk'],				// Cle etrangeres
+				[['active','visible','mandatory','unique','link'], 'boolean'],				// Cle etrangeres
+				[['color'], 'color'],				// Couleur au format hexadecimal
+				[['id'], 'safe'],								// Champs proteges (n'apparaissent pas dans les formulaires)
 			];
 		}
 		
-		// DÃ©fini les labels standarts pour cet objet, affichÃ©s dans les formulaires automatiques
+		// Defini les labels standarts pour cet objet, affiches dans les formulaires automatiques
 		public static function attributeLabels()
 		{
 			return [
 				'id' => 'ID',
 				'name' => 'Nom',
 				'IDholon_org' => 'Organisation',
-				'IDuser' => 'Créateur et administrateur',
-				'datecreation' => 'Date de création',
+				'IDuser' => 'Createur et administrateur',
+				'datecreation' => 'Date de creation',
 				'datemodification' => 'Date de modification',
 				'active' => 'Actif ?',
 				'visible' => 'Visible ?',
@@ -42,8 +42,9 @@
 				'IDtypeholon' => 'Type de holon',
 				'IDholon_parent' => 'Parent',
 				'IDholon_template' => 'Template',
-				'accesskey' => 'Clé accès',
+				'accesskey' => 'Cle acces',
 				'mandatory' => 'Obligatoire ?',
+				'unique' => 'Unique ?',
 				'link' => 'Lien ?',
 			];
 		}
@@ -53,7 +54,7 @@
 			return "name";
 		}
 		
-		// Résout organisation liée
+		// Resout organisation liee
 		protected function resolveOrganizationId()
 		{
 			$organizationId = (int)$this->get('IDorganization');
@@ -89,6 +90,64 @@
 			return $user->load($currentUserId) && $user->hasOrganizationAccess($organizationId);
 		}
 
+		// Charge template lie
+		public function getTemplateHolon()
+		{
+			$templateId = (int)$this->get('IDholon_template');
+			if ($templateId <= 0) {
+				return null;
+			}
+
+			$template = new self();
+			return $template->load($templateId) ? $template : null;
+		}
+
+		// Verifie template obligatoire
+		public function isMandatoryTemplateInstance()
+		{
+			$template = $this->getTemplateHolon();
+			return $template ? (bool)$template->get('mandatory') : false;
+		}
+
+		// Compte instances soeurs
+		public function countSiblingTemplateInstances()
+		{
+			$templateId = (int)$this->get('IDholon_template');
+			$parentHolon = $this->getParentHolon();
+			if ($templateId <= 0 || !$parentHolon) {
+				return 0;
+			}
+
+			$count = 0;
+			foreach ($parentHolon->getChildren() as $child) {
+				if ((int)$child->getId() === (int)$this->getId()) {
+					continue;
+				}
+
+				if ((int)$child->get('IDholon_template') !== $templateId) {
+					continue;
+				}
+
+				$count += 1;
+			}
+
+			return $count;
+		}
+
+		// Controle suppression noeud
+		public function canDelete()
+		{
+			if (!$this->canEdit()) {
+				return false;
+			}
+
+			if ($this->isMandatoryTemplateInstance() && $this->countSiblingTemplateInstances() === 0) {
+				return false;
+			}
+
+			return true;
+		}
+
 		// Retourne tous les enfants (uniquement pour les orga
 		public function getAllChildren() {
 			if ($this->get("IDtypeholon")==4) {
@@ -105,20 +164,20 @@
 		}
 		
 		public function setPropertyValue($key,$value) {
-			// Charge la propriÃ©tÃ© avec cette clÃ© et cette rÃ©fÃ©rence au noeud
+			// Charge la propriete avec cette cle et cette reference au noeud
 			$property=new \dbObject\HolonProperty();
 			$property->load([['IDholon',$this->getId()],['IDproperty',$key]]);
 			$rawValue = isset($value["value"]) ? $value["value"] : null;
 			if (is_array($rawValue)) {
 				$rawValue = json_encode(array_values($rawValue), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 			}
-			// Si trouvÃ©, la rÃ©active et la met Ã  jour
+			// Si trouve, la reactive et la met a jour
 			if ($property->getId()>0) {
 				$property->set("value",$rawValue);
 				$property->set("active",true);
 			} else {
 				
-				// Si pas trouvÃ©, la crÃ©e et l'initialise
+				// Si pas trouve, la cree et l'initialise
 				$property->set("IDholon",$this->getId());
 				$property->set("IDproperty",$key);
 				$property->set("value",$rawValue);
@@ -128,10 +187,10 @@
 				
 		}
 		
-		// Retourne les propriÃ©tÃ©s de l'objet, incluant celles associÃ©es Ã  l'objet et celles associÃ©es Ã  ses templates
+		// Retourne les proprietes de l'objet, incluant celles associees a l'objet et celles associees a ses templates
 		// Pour l'instant, uniquement celles de l'objet
 		public function getProperties() {
-			// RÃ©cupÃ¨re la liste des propriÃ©tÃ©s spÃ©cifiques au noeud
+			// Recupere la liste des proprietes specifiques au noeud
 			$properties=new \dbObject\ArrayProperty();
 			$properties->load([
 				"joins" => ["holonproperty"],
@@ -147,7 +206,7 @@
 		}
 		
 		public function getHolonProperties() {
-			// RÃ©cupÃ¨re la liste des propriÃ©tÃ©s spÃ©cifiques au noeud
+			// Recupere la liste des proprietes specifiques au noeud
 			$properties=new \dbObject\ArrayHolonProperty();
 			$properties->load([
 				"where" => [
@@ -162,7 +221,7 @@
 		}
 		
 		public function getPropertiesValue() {
-			// RÃ©cupÃ¨re l'ensemble des propriÃ©tÃ©s et leurs valeurs
+			// Recupere l'ensemble des proprietes et leurs valeurs
 			$values=new \dbObject\ArrayHolonProperty();
 			$values->loadAllValues($this);
 			return $values;
@@ -344,7 +403,7 @@
 				case 2:
 					return 'Cercle';
 				case 1:
-					return 'RÃ´le';
+					return 'Role';
 				default:
 					return 'Holon';
 			}
@@ -572,7 +631,7 @@
 				: '';
 		}
 
-		// Résout valeur visible
+		// Resout valeur visible
 		protected function getTemplateDefinitionVisibleValue(array $definition)
 		{
 			$localValue = isset($definition['value']) ? (string)$definition['value'] : '';
@@ -596,7 +655,7 @@
 			return $inheritedValue;
 		}
 
-		// Construit définition propriété
+		// Construit definition propriete
 		protected function buildTemplatePropertyDefinition(\dbObject\Property $property, \dbObject\HolonProperty $holonProperty = null, array $overrides = array())
 		{
 			$format = new \dbObject\PropertyFormat();
@@ -633,7 +692,7 @@
 			return $this->finalizeTemplatePropertyDefinition(array_merge($definition, $overrides));
 		}
 
-		// Charge propriétés locales
+		// Charge proprietes locales
 		protected function getLocalTemplateHolonProperties()
 		{
 			$holonProperties = new \dbObject\ArrayHolonProperty();
@@ -650,7 +709,7 @@
 			return $holonProperties;
 		}
 
-		// Agrège propriétés template
+		// Agrege proprietes template
 		public function getTemplatePropertyDefinitions()
 		{
 			$definitionsByPropertyId = array();
@@ -732,7 +791,7 @@
 			return $definitions;
 		}
 
-		// Prépare propriétés création
+		// Prepare proprietes creation
 		public function getHolonCreationPropertyDefinitions()
 		{
 			$definitions = array();
@@ -763,7 +822,7 @@
 			return $definitions;
 		}
 
-		// Prépare propriétés édition
+		// Prepare proprietes edition
 		public function getHolonEditorPropertyDefinitions()
 		{
 			$definitionsByPropertyId = array();
@@ -902,6 +961,7 @@
 				'color' => (string)$this->get('color'),
 				'visible' => (bool)$this->get('visible'),
 				'mandatory' => (bool)$this->get('mandatory'),
+				'unique' => (bool)$this->get('unique'),
 				'link' => (bool)$this->get('link'),
 				'parentId' => (int)$this->get('IDholon_parent'),
 				'inheritsFromId' => (int)$this->get('IDholon_template'),
@@ -921,6 +981,7 @@
 				'color' => (string)$this->get('color'),
 				'visible' => (bool)$this->get('visible'),
 				'mandatory' => (bool)$this->get('mandatory'),
+				'unique' => (bool)$this->get('unique'),
 				'link' => (bool)$this->get('link'),
 				'parentId' => (int)$this->get('IDholon_parent'),
 				'inheritsFromId' => (int)$this->get('IDholon_template'),
@@ -1158,7 +1219,7 @@
 			return $count;
 		}
 
-		// Supprime holon récursif
+		// Supprime holon r?cursif
 		public function delete()
 		{
 			foreach ($this->getDeletionChildren() as $child) {
@@ -1181,7 +1242,7 @@
 			$this->executeSQL($query);
 		}
 
-		// DÃ©sactive tous les enfants
+		// Desactive tous les enfants
 		public function disableAllChildren() {
 			foreach ($this->getAllChildren() as $children) {
 				$children->set("active",false);

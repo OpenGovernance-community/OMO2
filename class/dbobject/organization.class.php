@@ -9,19 +9,19 @@
 			return 'organization'; // Nom de la table correspondante
 		}	
 		
-		// Défini le contenu de la table
+		// Defini le contenu de la table
 		public static function rules()
 		{
 			return [
 				[['name'], 'required'],								// Champs obligatoires
 				[['id'], 'integer'],								// Nombres entiers
-				[['name','shortname','domain','color'], 'string'],	// Chaînes de caractère
+				[['name','shortname','domain','color'], 'string'],	// Chaines de caractere
 				[['logo','banner'], 'image'],						// Images
-				[['id'], 'safe'],									// Champs protégés
+				[['id'], 'safe'],									// Champs proteges
 			];
 		}
 		
-		// Défini les labels standards pour cet objet, affichés dans les formulaires automatiques
+		// Defini les labels standards pour cet objet, affiches dans les formulaires automatiques
 		public static function attributeLabels()
 		{
 			return [
@@ -30,7 +30,7 @@
 				'shortname' => 'Nom court',
 				'domain' => 'Domaine',
 				'logo' => 'Logo',
-				'banner' => 'Bannière',
+				'banner' => 'Banniere',
 				'color' => 'Couleur',
 			];
 		}
@@ -38,11 +38,11 @@
 		public static function attributeDescriptions() {
 			return [
 				'name' => 'Nom complet de l\'organisation',
-				'shortname' => 'Nom abrégé utilisé dans l\'interface',
+				'shortname' => 'Nom abrege utilise dans l\'interface',
 				'domain' => 'Nom de domaine principal de l\'organisation',
 				'logo' => 'Logo de l\'organisation',
-				'banner' => 'Image de bannière de l\'organisation',
-				'color' => 'Couleur principale au format hexadécimal ou texte court',
+				'banner' => 'Image de banniere de l\'organisation',
+				'color' => 'Couleur principale au format hexadecimal ou texte court',
 			];
 		}
 
@@ -322,6 +322,7 @@
 					'color' => (string)$template->get('color'),
 					'visible' => (bool)$template->get('visible'),
 					'mandatory' => (bool)$template->get('mandatory'),
+					'unique' => (bool)$template->get('unique'),
 					'link' => (bool)$template->get('link'),
 					'inheritsFromId' => (int)$template->get('IDholon_template'),
 					'definedInId' => (int)$template->get('IDholon_parent'),
@@ -393,7 +394,7 @@
 				'name' => $holon->getDisplayName(),
 				'typeId' => (int)$holon->get('IDtypeholon'),
 				'typeLabel' => $holon->getTypeLabel(),
-				'pathLabel' => implode(' › ', $currentPath),
+				'pathLabel' => implode(' > ', $currentPath),
 			);
 
 			foreach ($holon->getChildren() as $child) {
@@ -401,20 +402,233 @@
 			}
 		}
 
-		// Prépare données éditeur
+		// Resout scope unique
+		protected function resolveUniqueTemplateScopeHolon(\dbObject\Holon $contextHolon)
+		{
+			$current = $contextHolon;
+			$guard = 0;
+
+			while ($current && $guard < 100) {
+				$typeId = (int)$current->get('IDtypeholon');
+				if (in_array($typeId, array(2, 4), true)) {
+					return $current;
+				}
+
+				$current = $current->getParentHolon();
+				$guard += 1;
+			}
+
+			return $contextHolon;
+		}
+
+		// Liste heritage template
+		protected function getTemplateLineageIds(\dbObject\Holon $template)
+		{
+			$lineageIds = array();
+			$current = $template;
+			$guard = 0;
+
+			while ($current && (int)$current->getId() > 0 && $guard < 100) {
+				$currentId = (int)$current->getId();
+				if (in_array($currentId, $lineageIds, true)) {
+					break;
+				}
+
+				$lineageIds[] = $currentId;
+
+				$parentTemplateId = (int)$current->get('IDholon_template');
+				if ($parentTemplateId <= 0) {
+					break;
+				}
+
+				$parentTemplate = new \dbObject\Holon();
+				if (!$parentTemplate->load($parentTemplateId)) {
+					break;
+				}
+
+				$current = $parentTemplate;
+				$guard += 1;
+			}
+
+			return $lineageIds;
+		}
+
+		// Compare famille template
+		protected function templateMatchesUniqueFamily(\dbObject\Holon $selectedTemplate, \dbObject\Holon $instanceTemplate)
+		{
+			$resolveUniqueFamilyId = function (\dbObject\Holon $template) {
+				$lineageIds = $this->getTemplateLineageIds($template);
+				$uniqueFamilyId = 0;
+
+				foreach ($lineageIds as $templateId) {
+					$currentTemplate = new \dbObject\Holon();
+					if (!$currentTemplate->load((int)$templateId)) {
+						continue;
+					}
+
+					if ((bool)$currentTemplate->get('unique')) {
+						$uniqueFamilyId = (int)$currentTemplate->getId();
+					}
+				}
+
+				return $uniqueFamilyId;
+			};
+
+			$selectedFamilyId = (int)$resolveUniqueFamilyId($selectedTemplate);
+			$instanceFamilyId = (int)$resolveUniqueFamilyId($instanceTemplate);
+
+			if ($selectedFamilyId <= 0 || $instanceFamilyId <= 0) {
+				return false;
+			}
+
+			return $selectedFamilyId === $instanceFamilyId;
+		}
+
+		// Parcourt scope unique
+		protected function scopeHasTemplateInstance(\dbObject\Holon $scopeHolon, $templateId, $excludedHolonId = 0)
+		{
+			$templateId = (int)$templateId;
+			$excludedHolonId = (int)$excludedHolonId;
+			if ($templateId <= 0) {
+				return false;
+			}
+
+			$selectedTemplate = new \dbObject\Holon();
+			if (!$selectedTemplate->load($templateId)) {
+				return false;
+			}
+
+			foreach ($scopeHolon->getChildren() as $child) {
+				$childTemplateId = (int)$child->get('IDholon_template');
+				if (
+					(int)$child->getId() !== $excludedHolonId
+					&& $childTemplateId > 0
+				) {
+					if ($childTemplateId === $templateId) {
+						return true;
+					}
+
+					$instanceTemplate = new \dbObject\Holon();
+					if (
+						$instanceTemplate->load($childTemplateId)
+						&& $this->templateMatchesUniqueFamily($selectedTemplate, $instanceTemplate)
+					) {
+						return true;
+					}
+				}
+
+				if (
+					(int)$child->get('IDtypeholon') === 3
+					&& $this->scopeHasTemplateInstance($child, $templateId, $excludedHolonId)
+				) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		// Filtre template unique
+		protected function isTemplateAvailableForHolonCreation(\dbObject\Holon $template, \dbObject\Holon $contextHolon, $excludedHolonId = 0)
+		{
+			if (!(bool)$template->get('unique')) {
+				return true;
+			}
+
+			$scopeHolon = $this->resolveUniqueTemplateScopeHolon($contextHolon);
+			return !$this->scopeHasTemplateInstance($scopeHolon, (int)$template->getId(), $excludedHolonId);
+		}
+
+		// Prepare donnees editeur
+		// Cherche enfant template
+		protected function circleHasTemplateChild(\dbObject\Holon $parentHolon, $templateId)
+		{
+			$templateId = (int)$templateId;
+			if ($templateId <= 0) {
+				return false;
+			}
+
+			foreach ($parentHolon->getChildren() as $child) {
+				if ((int)$child->get('IDholon_template') === $templateId) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		// Cree enfant obligatoire
+		protected function createMandatoryTemplateChild(\dbObject\Holon $parentHolon, \dbObject\Holon $template, $rootHolonId, $userId = 0)
+		{
+			$child = new \dbObject\Holon();
+			$child->set('name', $template->getDisplayName());
+			$child->set('templatename', null);
+			$child->set('IDtypeholon', (int)$template->get('IDtypeholon'));
+			$child->set('IDholon_parent', (int)$parentHolon->getId());
+			$child->set('IDholon_template', (int)$template->getId());
+			$child->set('IDholon_org', (int)$rootHolonId);
+			$child->set('IDorganization', null);
+			$child->set('IDuser', (int)$userId > 0 ? (int)$userId : (int)$template->get('IDuser'));
+			$child->set('active', true);
+			$child->set('visible', true);
+			$child->set('mandatory', false);
+			$child->set('unique', false);
+			$child->set('link', false);
+			$child->set('color', null);
+			$child->save();
+
+			if ((int)$child->getId() <= 0) {
+				return null;
+			}
+
+			$child->syncEditorPropertyValues(array(), $template->getHolonCreationPropertyDefinitions());
+
+			return $child;
+		}
+
+		// Ajoute enfants obligatoires
+		protected function createMandatoryChildrenForCircle(\dbObject\Holon $circleHolon, $rootHolonId, $userId = 0, array $excludedTemplateIds = array())
+		{
+			$excludedTemplateIds = array_map('intval', $excludedTemplateIds);
+
+			foreach ($this->getAvailableTemplateDefinitionHolons((int)$circleHolon->getId()) as $template) {
+				$templateId = (int)$template->getId();
+				if ($templateId <= 0 || !$template->get('mandatory')) {
+					continue;
+				}
+
+				if (in_array($templateId, $excludedTemplateIds, true)) {
+					continue;
+				}
+
+				$typeId = (int)$template->get('IDtypeholon');
+				if (!in_array($typeId, array(1, 2, 3), true)) {
+					continue;
+				}
+
+				if ($this->circleHasTemplateChild($circleHolon, $templateId)) {
+					continue;
+				}
+
+				$this->createMandatoryTemplateChild($circleHolon, $template, $rootHolonId, $userId);
+			}
+		}
+
 		public function getHolonCreationEditorData($contextHolonId = 0, $holonId = 0)
 		{
 			$rootHolon = $this->getStructuralRootHolon();
 			$holonId = (int)$holonId;
 			$editingHolon = null;
+			$isTemplateEditing = false;
 			if ($holonId > 0) {
 				$editingHolon = new \dbObject\Holon();
 				if (
 					!$editingHolon->load($holonId)
 					|| !$this->containsHolon($editingHolon)
-					|| $editingHolon->isTemplateNode($rootHolon ? (int)$rootHolon->getId() : 0)
 				) {
 					$editingHolon = null;
+				} else {
+					$isTemplateEditing = $editingHolon->isTemplateNode($rootHolon ? (int)$rootHolon->getId() : 0);
 				}
 			}
 
@@ -425,6 +639,7 @@
 				'organizationName' => (string)$this->get('name'),
 				'rootHolonId' => $rootHolon ? (int)$rootHolon->getId() : 0,
 				'mode' => $editingHolon ? 'edit' : 'create',
+				'editorType' => $isTemplateEditing ? 'template' : 'holon',
 				'holonId' => $editingHolon ? (int)$editingHolon->getId() : 0,
 				'contextHolonId' => $contextHolon ? (int)$contextHolon->getId() : 0,
 				'contextHolonName' => $contextHolon ? $contextHolon->getDisplayName() : '',
@@ -443,13 +658,30 @@
 				return $data;
 			}
 
-			$data['canCreate'] = $contextHolon->canEdit() && in_array((int)$contextHolon->get('IDtypeholon'), array(2, 4), true);
+			$data['canCreate'] = !$isTemplateEditing && $contextHolon->canEdit() && in_array((int)$contextHolon->get('IDtypeholon'), array(2, 3, 4), true);
 			$data['canEdit'] = $editingHolon && $editingHolon->canEdit() && in_array((int)$editingHolon->get('IDtypeholon'), array(1, 2, 3), true);
 
 			$typeLabelsById = array();
 			foreach ($this->getAvailableTemplateDefinitionHolons((int)$contextHolon->getId()) as $template) {
 				$typeId = (int)$template->get('IDtypeholon');
 				if ($typeId <= 0 || $typeId === 4) {
+					continue;
+				}
+
+				if ($isTemplateEditing) {
+					if ((int)$template->getId() === (int)$editingHolon->getId()) {
+						continue;
+					}
+
+					if ((int)$editingHolon->get('IDtypeholon') !== $typeId) {
+						continue;
+					}
+				}
+
+				if (
+					!$isTemplateEditing
+					&& !$this->isTemplateAvailableForHolonCreation($template, $contextHolon, $editingHolon ? (int)$editingHolon->getId() : 0)
+				) {
 					continue;
 				}
 
@@ -469,11 +701,14 @@
 					'color' => (string)$template->get('color'),
 					'visible' => (bool)$template->get('visible'),
 					'mandatory' => (bool)$template->get('mandatory'),
+					'unique' => (bool)$template->get('unique'),
 					'link' => (bool)$template->get('link'),
 					'definedInId' => (int)$template->get('IDholon_parent'),
 					'definedInName' => $definitionHolonName,
 					'definedInLabel' => $definitionHolonLabel,
-					'properties' => $template->getHolonCreationPropertyDefinitions(),
+					'properties' => $isTemplateEditing
+						? $template->getTemplatePropertyDefinitions()
+						: $template->getHolonCreationPropertyDefinitions(),
 				);
 
 				$typeLabelsById[$typeId] = $template->getTypeLabel();
@@ -497,19 +732,27 @@
 					'templateId' => (int)$editingHolon->get('IDholon_template'),
 					'typeId' => (int)$editingHolon->get('IDtypeholon'),
 					'typeLabel' => $editingHolon->getTemplateLabel(),
-					'properties' => $editingHolon->getHolonEditorPropertyDefinitions(),
+					'isTemplate' => $isTemplateEditing,
+					'visible' => (bool)$editingHolon->get('visible'),
+					'mandatory' => (bool)$editingHolon->get('mandatory'),
+					'unique' => (bool)$editingHolon->get('unique'),
+					'link' => (bool)$editingHolon->get('link'),
+					'properties' => $isTemplateEditing
+						? $editingHolon->getTemplatePropertyDefinitions()
+						: $editingHolon->getHolonEditorPropertyDefinitions(),
 				);
 			}
 
 			return $data;
 		}
 
-		// Enregistre holon édité
+		// Enregistre holon edite
 		public function saveHolonEditorDefinition(array $payload, $userId = 0, $contextHolonId = 0, $holonId = 0)
 		{
 			$rootHolon = $this->getStructuralRootHolon();
 			$holonId = (int)$holonId;
 			$isEditing = $holonId > 0;
+			$isTemplateEditing = false;
 			$holon = null;
 			$contextHolon = null;
 
@@ -518,14 +761,15 @@
 				if (
 					!$holon->load($holonId)
 					|| !$this->containsHolon($holon)
-					|| $holon->isTemplateNode($rootHolon ? (int)$rootHolon->getId() : 0)
 					|| !in_array((int)$holon->get('IDtypeholon'), array(1, 2, 3), true)
 				) {
 					return array(
 						'status' => false,
-						'message' => 'Le holon à modifier est introuvable.',
+						'message' => 'Le holon a modifier est introuvable.',
 					);
 				}
+
+				$isTemplateEditing = $holon->isTemplateNode($rootHolon ? (int)$rootHolon->getId() : 0);
 
 				if (!$holon->canEdit()) {
 					return array(
@@ -542,15 +786,15 @@
 			if (!$rootHolon) {
 				return array(
 					'status' => false,
-					'message' => "Aucun holon racine n'a été trouvé pour cette organisation.",
+					'message' => "Aucun holon racine n'a ete trouve pour cette organisation.",
 				);
 			}
 
-			if (!$contextHolon || (!$isEditing && !in_array((int)$contextHolon->get('IDtypeholon'), array(2, 4), true))) {
+			if (!$contextHolon || (!$isEditing && !in_array((int)$contextHolon->get('IDtypeholon'), array(2, 3, 4), true))) {
 				return array(
 					'status' => false,
 					'message' => $isEditing
-						? "Le contexte d'édition de ce holon est invalide."
+						? "Le contexte d'edition de ce holon est invalide."
 						: "Le holon courant n'autorise pas l'ajout d'enfant.",
 				);
 			}
@@ -560,34 +804,7 @@
 					'status' => false,
 					'message' => $isEditing
 						? "Vous n'avez pas les droits pour modifier ce holon."
-						: "Vous n'avez pas les droits pour créer un holon ici.",
-				);
-			}
-
-			$templateId = (int)($payload['templateId'] ?? 0);
-			if ($templateId <= 0) {
-				return array(
-					'status' => false,
-					'message' => 'Le modèle de référence est obligatoire.',
-				);
-			}
-
-			$template = new \dbObject\Holon();
-			if (
-				!$template->load($templateId)
-				|| !$this->isTemplateAvailableInContext($template, (int)$contextHolon->getId())
-			) {
-				return array(
-					'status' => false,
-					'message' => "Le modèle sélectionné n'est pas disponible ici.",
-				);
-			}
-
-			$typeId = (int)$template->get('IDtypeholon');
-			if ($typeId <= 0 || $typeId === 4) {
-				return array(
-					'status' => false,
-					'message' => "Le modèle choisi ne peut pas être instancié ici.",
+						: "Vous n'avez pas les droits pour creer un holon ici.",
 				);
 			}
 
@@ -630,34 +847,127 @@
 				}));
 			};
 
-			$templateDefinitions = $template->getHolonCreationPropertyDefinitions();
-			foreach ($templateDefinitions as $definition) {
-				$propertyId = (int)($definition['id'] ?? 0);
-				if ($propertyId <= 0) {
-					continue;
+			$template = null;
+			$templateDefinitions = array();
+			$typeId = 0;
+			$templateId = (int)($payload['templateId'] ?? 0);
+
+			if ($isTemplateEditing) {
+				$typeId = (int)$holon->get('IDtypeholon');
+
+				if ($templateId > 0) {
+					$template = new \dbObject\Holon();
+					if (
+						!$template->load($templateId)
+						|| (int)$template->getId() === (int)$holon->getId()
+						|| !$this->isTemplateAvailableInContext($template, (int)$contextHolon->getId())
+					) {
+						return array(
+							'status' => false,
+							'message' => "Le modele parent selectionne n'est pas disponible ici.",
+						);
+					}
+
+					if ((int)$template->get('IDtypeholon') !== $typeId) {
+						return array(
+							'status' => false,
+							'message' => "Le modele parent doit etre du meme type que ce holon template.",
+						);
+					}
+
+					$currentInheritance = $template;
+					$guard = 0;
+					while ($currentInheritance && $guard < 100) {
+						if ((int)$currentInheritance->getId() === (int)$holon->getId()) {
+							return array(
+								'status' => false,
+								'message' => "Le modele parent choisi creerait une boucle.",
+							);
+						}
+
+						$nextInheritanceId = (int)$currentInheritance->get('IDholon_template');
+						if ($nextInheritanceId <= 0) {
+							break;
+						}
+
+						$nextInheritance = new \dbObject\Holon();
+						if (!$nextInheritance->load($nextInheritanceId)) {
+							break;
+						}
+
+						$currentInheritance = $nextInheritance;
+						$guard += 1;
+					}
 				}
 
-				$localValue = $submittedValuesByPropertyId[$propertyId] ?? '';
-				$localValue = is_scalar($localValue) ? (string)$localValue : '';
-				$inheritedValue = (string)($definition['inheritedValue'] ?? '');
-				$effectiveValue = '';
-
-				if ((int)($definition['formatId'] ?? 0) === \dbObject\PropertyFormat::FORMAT_LIST) {
-					$effectiveItems = !empty($definition['effectiveLocked'])
-						? $parseListValue($inheritedValue)
-						: array_values(array_unique(array_merge($parseListValue($inheritedValue), $parseListValue($localValue)), SORT_REGULAR));
-					$effectiveValue = count($effectiveItems) > 0 ? json_encode($effectiveItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : '';
-				} elseif (!empty($definition['effectiveLocked'])) {
-					$effectiveValue = trim($inheritedValue);
-				} else {
-					$effectiveValue = trim($localValue) !== '' ? trim($localValue) : trim($inheritedValue);
-				}
-
-				if (!empty($definition['effectiveMandatory']) && $effectiveValue === '') {
+				$templateDefinitions = is_array($payload['properties'] ?? null)
+					? array_values($payload['properties'])
+					: array();
+			} else {
+				if ($templateId <= 0) {
 					return array(
 						'status' => false,
-						'message' => 'La propriété "' . (string)($definition['name'] ?? ('#' . $propertyId)) . '" est obligatoire.',
+						'message' => 'Le modele de reference est obligatoire.',
 					);
+				}
+
+				$template = new \dbObject\Holon();
+				if (
+					!$template->load($templateId)
+					|| !$this->isTemplateAvailableInContext($template, (int)$contextHolon->getId())
+				) {
+					return array(
+						'status' => false,
+						'message' => "Le modele selectionne n'est pas disponible ici.",
+					);
+				}
+
+				$typeId = (int)$template->get('IDtypeholon');
+				if ($typeId <= 0 || $typeId === 4) {
+					return array(
+						'status' => false,
+						'message' => "Le modele choisi ne peut pas etre instancie ici.",
+					);
+				}
+
+				if (
+					!$this->isTemplateAvailableForHolonCreation($template, $contextHolon, $isEditing ? (int)$holon->getId() : 0)
+				) {
+					return array(
+						'status' => false,
+						'message' => "Ce modele unique est deja implemente dans ce cercle.",
+					);
+				}
+
+				$templateDefinitions = $template->getHolonCreationPropertyDefinitions();
+				foreach ($templateDefinitions as $definition) {
+					$propertyId = (int)($definition['id'] ?? 0);
+					if ($propertyId <= 0) {
+						continue;
+					}
+
+					$localValue = $submittedValuesByPropertyId[$propertyId] ?? '';
+					$localValue = is_scalar($localValue) ? (string)$localValue : '';
+					$inheritedValue = (string)($definition['inheritedValue'] ?? '');
+					$effectiveValue = '';
+
+					if ((int)($definition['formatId'] ?? 0) === \dbObject\PropertyFormat::FORMAT_LIST) {
+						$effectiveItems = !empty($definition['effectiveLocked'])
+							? $parseListValue($inheritedValue)
+							: array_values(array_unique(array_merge($parseListValue($inheritedValue), $parseListValue($localValue)), SORT_REGULAR));
+						$effectiveValue = count($effectiveItems) > 0 ? json_encode($effectiveItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : '';
+					} elseif (!empty($definition['effectiveLocked'])) {
+						$effectiveValue = trim($inheritedValue);
+					} else {
+						$effectiveValue = trim($localValue) !== '' ? trim($localValue) : trim($inheritedValue);
+					}
+
+					if (!empty($definition['effectiveMandatory']) && $effectiveValue === '') {
+						return array(
+							'status' => false,
+							'message' => 'La propriete "' . (string)($definition['name'] ?? ('#' . $propertyId)) . '" est obligatoire.',
+						);
+					}
 				}
 			}
 
@@ -666,17 +976,18 @@
 			}
 
 			$holon->set('name', $name);
-			$holon->set('templatename', null);
+			$holon->set('templatename', $isTemplateEditing ? $name : null);
 			$holon->set('IDtypeholon', $typeId);
 			$holon->set('IDholon_parent', (int)$contextHolon->getId());
-			$holon->set('IDholon_template', (int)$template->getId());
+			$holon->set('IDholon_template', $templateId > 0 ? $templateId : null);
 			$holon->set('IDholon_org', (int)$rootHolon->getId());
 			$holon->set('IDorganization', null);
-			$holon->set('IDuser', (int)$userId > 0 ? (int)$userId : (int)($holon->get('IDuser') ?: $template->get('IDuser')));
+			$holon->set('IDuser', (int)$userId > 0 ? (int)$userId : (int)($holon->get('IDuser') ?: ($template ? $template->get('IDuser') : 0)));
 			$holon->set('active', true);
-			$holon->set('visible', true);
-			$holon->set('mandatory', false);
-			$holon->set('link', false);
+			$holon->set('visible', $isTemplateEditing ? !empty($payload['visible']) : true);
+			$holon->set('mandatory', $isTemplateEditing ? !empty($payload['mandatory']) : false);
+			$holon->set('unique', $isTemplateEditing ? !empty($payload['unique']) : false);
+			$holon->set('link', $isTemplateEditing ? !empty($payload['link']) : false);
 			$color = trim((string)($payload['color'] ?? ''));
 			$holon->set('color', $color !== '' ? $color : null);
 			$holon->save();
@@ -684,15 +995,28 @@
 			if ((int)$holon->getId() <= 0) {
 				return array(
 					'status' => false,
-					'message' => "Le holon n'a pas pu être enregistré.",
+					'message' => "Le holon n'a pas pu etre enregistre.",
 				);
 			}
 
-			$holon->syncEditorPropertyValues($submittedValuesByPropertyId, $templateDefinitions);
+			if ($isTemplateEditing) {
+				$holon->syncTemplateProperties($templateDefinitions, (int)$rootHolon->getId());
+			} else {
+				$holon->syncEditorPropertyValues($submittedValuesByPropertyId, $templateDefinitions);
+
+				if (!$isEditing && (int)$holon->get('IDtypeholon') === 2) {
+					$excludedTemplateIds = array();
+					if ($templateId > 0) {
+						$excludedTemplateIds[] = $templateId;
+					}
+
+					$this->createMandatoryChildrenForCircle($holon, (int)$rootHolon->getId(), $userId, $excludedTemplateIds);
+				}
+			}
 
 			return array(
 				'status' => true,
-				'message' => $isEditing ? 'Holon enregistré.' : 'Holon créé.',
+				'message' => $isEditing ? 'Holon enregistre.' : 'Holon cree.',
 				'holon' => array(
 					'id' => (int)$holon->getId(),
 					'name' => $holon->getDisplayName(),
@@ -713,7 +1037,7 @@
 			if (!$rootHolon || $holonId <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Le holon à supprimer est invalide.',
+					'message' => 'Le holon a supprimer est invalide.',
 				);
 			}
 
@@ -722,11 +1046,11 @@
 				!$holon->load($holonId)
 				|| !$this->containsHolon($holon)
 				|| $holon->isTemplateNode((int)$rootHolon->getId())
-				|| !in_array((int)$holon->get('IDtypeholon'), array(1, 2), true)
+				|| !in_array((int)$holon->get('IDtypeholon'), array(1, 2, 3), true)
 			) {
 				return array(
 					'status' => false,
-					'message' => 'Le holon à supprimer est introuvable.',
+					'message' => 'Le holon a supprimer est introuvable.',
 				);
 			}
 
@@ -752,13 +1076,13 @@
 			if (!$holon->delete()) {
 				return array(
 					'status' => false,
-					'message' => "Le holon n'a pas pu être supprimé.",
+					'message' => "Le holon n'a pas pu etre supprime.",
 				);
 			}
 
 			return array(
 				'status' => true,
-				'message' => 'Holon supprimé.',
+				'message' => 'Holon supprime.',
 				'holon' => array(
 					'id' => $holonId,
 					'name' => $holonName,
@@ -779,21 +1103,21 @@
 			if (!$rootHolon) {
 				return array(
 					'status' => false,
-					'message' => "Aucun holon racine n'a Ã©tÃ© trouvÃ© pour cette organisation.",
+					'message' => "Aucun holon racine n'a ete trouve pour cette organisation.",
 				);
 			}
 
 			if (!$contextHolon) {
 				return array(
 					'status' => false,
-					'message' => 'Le contexte de définition du modèle est invalide.',
+					'message' => 'Le contexte de definition du modele est invalide.',
 				);
 			}
 
 			if (!$contextHolon->canEdit()) {
 				return array(
 					'status' => false,
-					'message' => "Vous n'avez pas les droits pour modifier les modèles de ce holon.",
+					'message' => "Vous n'avez pas les droits pour modifier les modeles de ce holon.",
 				);
 			}
 
@@ -802,7 +1126,7 @@
 			if ($templateName === '') {
 				return array(
 					'status' => false,
-					'message' => 'Le nom du modÃ¨le est obligatoire.',
+					'message' => 'Le nom du modele est obligatoire.',
 				);
 			}
 
@@ -817,7 +1141,7 @@
 			if (!$type->load($typeId)) {
 				return array(
 					'status' => false,
-					'message' => 'Le type de holon demandÃ© est introuvable.',
+					'message' => 'Le type de holon demande est introuvable.',
 				);
 			}
 
@@ -826,28 +1150,28 @@
 			if ($templateId > 0 && !$template->load($templateId)) {
 				return array(
 					'status' => false,
-					'message' => 'Le modÃ¨le Ã  modifier est introuvable.',
+					'message' => 'Le modele a modifier est introuvable.',
 				);
 			}
 
 			if ($templateId > 0 && !$template->canEdit()) {
 				return array(
 					'status' => false,
-					'message' => "Vous n'avez pas les droits pour modifier ce modèle.",
+					'message' => "Vous n'avez pas les droits pour modifier ce modele.",
 				);
 			}
 
 			if ($template->getId() > 0 && !$template->isTemplateNode((int)$rootHolon->getId())) {
 				return array(
 					'status' => false,
-					'message' => "Ce modÃ¨le n'appartient pas Ã  cette organisation.",
+					'message' => "Ce modele n'appartient pas a cette organisation.",
 				);
 			}
 
 			if ($template->getId() > 0 && (int)$template->get('IDholon_parent') !== (int)$contextHolon->getId()) {
 				return array(
 					'status' => false,
-					'message' => "Ce modèle n'est pas défini dans le holon courant.",
+					'message' => "Ce modele n'est pas defini dans le holon courant.",
 				);
 			}
 
@@ -861,7 +1185,7 @@
 				) {
 					return array(
 						'status' => false,
-						'message' => "Le modÃ¨le d'hÃ©ritage choisi est invalide.",
+						'message' => "Le modele d'heritage choisi est invalide.",
 					);
 				}
 
@@ -872,7 +1196,7 @@
 						if ((int)$currentInheritance->getId() === (int)$template->getId()) {
 							return array(
 								'status' => false,
-								'message' => "Le modÃ¨le d'hÃ©ritage choisi crÃ©erait une boucle.",
+								'message' => "Le modele d'heritage choisi creerait une boucle.",
 							);
 						}
 
@@ -902,7 +1226,7 @@
 				if ($inheritsFromId > 0 && $inheritsFromId === (int)$template->getId()) {
 					return array(
 						'status' => false,
-						'message' => "Un modÃ¨le ne peut pas hÃ©riter de lui-mÃªme.",
+						'message' => "Un modele ne peut pas heriter de lui-meme.",
 					);
 				}
 			}
@@ -919,13 +1243,14 @@
 			$template->set('color', trim((string)($payload['color'] ?? '')) !== '' ? trim((string)$payload['color']) : null);
 			$template->set('visible', !empty($payload['visible']));
 			$template->set('mandatory', !empty($payload['mandatory']));
+			$template->set('unique', !empty($payload['unique']));
 			$template->set('link', !empty($payload['link']));
 			$template->save();
 
 			if ((int)$template->getId() <= 0) {
 				return array(
 					'status' => false,
-					'message' => "Le modÃ¨le n'a pas pu Ãªtre enregistrÃ©.",
+					'message' => "Le modele n'a pas pu etre enregistre.",
 				);
 			}
 
@@ -936,7 +1261,7 @@
 
 			return array(
 				'status' => true,
-				'message' => 'ModÃ¨le enregistrÃ©.',
+				'message' => 'Modele enregistre.',
 				'template' => $template->toTemplateEditorArray((int)$rootHolon->getId()),
 				'data' => $this->getHolonTemplateEditorData((int)$contextHolon->getId()),
 			);
