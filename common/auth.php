@@ -41,6 +41,32 @@ function commonGetRequestPath()
     return $path;
 }
 
+function commonGetReservedEnvironmentSubdomains()
+{
+    return ['dev', 'test'];
+}
+
+function commonGetHostRootPartCount(array $parts)
+{
+    $partCount = count($parts);
+    if ($partCount === 0) {
+        return 0;
+    }
+
+    if ($partCount === 2 && ($parts[1] ?? '') === 'localhost') {
+        return 1;
+    }
+
+    if ($partCount >= 3) {
+        $environmentCandidate = strtolower((string)($parts[$partCount - 3] ?? ''));
+        if (in_array($environmentCandidate, commonGetReservedEnvironmentSubdomains(), true)) {
+            return 3;
+        }
+    }
+
+    return min(2, $partCount);
+}
+
 function commonGetRootHost($host = null)
 {
     $host = is_string($host) && $host !== '' ? strtolower($host) : strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
@@ -57,14 +83,11 @@ function commonGetRootHost($host = null)
     }
 
     $parts = array_values(array_filter(explode('.', $host)));
-    $isLocalhostSubdomain = count($parts) === 2 && ($parts[1] ?? '') === 'localhost';
-
-    if ($isLocalhostSubdomain) {
-        return 'localhost' . $port;
-    }
-
-    if (count($parts) >= 3) {
-        $host = implode('.', array_slice($parts, -2));
+    $rootPartCount = commonGetHostRootPartCount($parts);
+    if ($rootPartCount > 0 && count($parts) > $rootPartCount) {
+        $host = implode('.', array_slice($parts, -$rootPartCount));
+    } elseif ($rootPartCount > 0) {
+        $host = implode('.', $parts);
     }
 
     return $host . $port;
@@ -102,10 +125,8 @@ function commonGetRequestSubdomain($host = null)
 {
     $host = is_string($host) && $host !== '' ? strtolower($host) : commonGetRequestHost();
     $parts = array_values(array_filter(explode('.', $host)));
-
-    $isLocalhostSubdomain = count($parts) === 2 && ($parts[1] ?? '') === 'localhost';
-
-    if (count($parts) < 3 && !$isLocalhostSubdomain) {
+    $rootPartCount = commonGetHostRootPartCount($parts);
+    if (count($parts) <= $rootPartCount) {
         return '';
     }
 
@@ -181,12 +202,12 @@ function commonGetCookieDomain()
         return '';
     }
 
-    $parts = array_values(array_filter(explode('.', $host)));
-    if (count($parts) < 2) {
+    $rootHost = preg_replace('/:\d+$/', '', commonGetRootHost($host));
+    if ($rootHost === '' || $rootHost === 'localhost' || preg_match('/(^|\.)localhost$/', $rootHost)) {
         return '';
     }
 
-    return '.' . $parts[count($parts) - 2] . '.' . $parts[count($parts) - 1];
+    return '.' . $rootHost;
 }
 
 function commonShouldUseSecureCookies()
