@@ -102,6 +102,18 @@ docker compose down -v
 docker compose up --build
 ```
 
+## 4bis. Appliquer les migrations SQL versionnees
+
+Apres le premier seed, les evolutions de schema versionnees dans `sql/` peuvent etre appliquees sans reinitialiser le volume :
+
+```bash
+docker compose exec app php scripts/run-migrations.php
+```
+
+Seuls les fichiers SQL contenant le marqueur `-- @migration` sont executes automatiquement.
+
+Si tu veux appliquer les migrations sur plusieurs bases dans le conteneur, tu peux definir `DB_MIGRATION_DATABASES` dans `docker/app/.env` ou passer l'option `--databases`.
+
 ## 5. Domaine de dev recommande pour partager les cookies
 
 Pour tester la connexion partagee entre sous-domaines, `localhost` n'est pas ideal.
