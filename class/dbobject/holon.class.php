@@ -664,7 +664,7 @@
 		}
 
 		// Construit definition propriete
-		protected function buildTemplatePropertyDefinition(\dbObject\Property $property, \dbObject\HolonProperty $holonProperty = null, array $overrides = array())
+		protected function buildTemplatePropertyDefinition(\dbObject\Property $property, ?\dbObject\HolonProperty $holonProperty = null, array $overrides = array())
 		{
 			$format = new \dbObject\PropertyFormat();
 			$formatName = '';

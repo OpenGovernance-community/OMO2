@@ -169,7 +169,7 @@
 			);
 		}
 
-		protected function createStructuralRootHolon($userId = 0, \dbObject\Holon $sourceTemplate = null)
+		protected function createStructuralRootHolon($userId = 0, ?\dbObject\Holon $sourceTemplate = null)
 		{
 			$organizationName = trim((string)$this->get('name'));
 			if ($organizationName === '') {
