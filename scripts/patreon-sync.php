@@ -30,8 +30,8 @@ foreach (array_slice($argv, 1) as $argument) {
 	exit(1);
 }
 
-if (!patreonIsConfigured()) {
-	fwrite(STDERR, "La configuration Patreon est incomplète.\n");
+if (!patreonIsConfigured('sync')) {
+	fwrite(STDERR, "La configuration Patreon est incomplète : " . patreonGetConfigurationMessage('sync') . "\n");
 	exit(1);
 }
 

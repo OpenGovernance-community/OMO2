@@ -3,6 +3,8 @@
 
 	class UserPatreon extends DbObject
 	{
+		protected static $storageAvailable = null;
+
 		public static function tableName()
 		{
 			return 'user_patreon';
@@ -79,8 +81,39 @@
 			return 'id DESC';
 		}
 
+		public static function isStorageAvailable($refresh = false)
+		{
+			if (!$refresh && self::$storageAvailable !== null) {
+				return self::$storageAvailable;
+			}
+
+			$databaseName = trim((string)($GLOBALS['dbName'] ?? ''));
+			if ($databaseName === '') {
+				self::$storageAvailable = false;
+				return false;
+			}
+
+			$result = self::fetchValue(
+				"SELECT COUNT(*)
+				 FROM information_schema.tables
+				 WHERE table_schema = :database_name
+				   AND table_name = :table_name",
+				[
+					'database_name' => $databaseName,
+					'table_name' => self::tableName(),
+				]
+			);
+
+			self::$storageAvailable = ((int)$result > 0);
+			return self::$storageAvailable;
+		}
+
 		public static function findByUserId($userId)
 		{
+			if (!self::isStorageAvailable()) {
+				return false;
+			}
+
 			$item = new self();
 			if (!$item->load(['IDuser', (int)$userId])) {
 				return false;
@@ -92,6 +125,11 @@
 		public static function loadOrCreateByUserId($userId)
 		{
 			$userId = (int)$userId;
+
+			if (!self::isStorageAvailable()) {
+				return false;
+			}
+
 			$item = self::findByUserId($userId);
 			if ($item !== false) {
 				return $item;
@@ -107,6 +145,10 @@
 
 		public static function loadActiveConnections($userId = 0)
 		{
+			if (!self::isStorageAvailable()) {
+				return [];
+			}
+
 			$query = "
 				SELECT `id`
 				FROM `user_patreon`
