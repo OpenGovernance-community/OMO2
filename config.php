@@ -31,6 +31,11 @@ $GLOBALS['mailPassword'] = envValue('MAIL_PASS', '');
 // Autres acces / integrations
 $GLOBALS['paypalClientId'] = envValue('PAYPAL_CLIENT_ID', '');
 $GLOBALS['telegramToken'] = envValue('TELEGRAM_BOT_TOKEN', '');
+$GLOBALS['patreonClientId'] = envValue('PATREON_CLIENT_ID', '');
+$GLOBALS['patreonClientSecret'] = envValue('PATREON_CLIENT_SECRET', '');
+$GLOBALS['patreonRedirectUri'] = envValue('PATREON_REDIRECT_URI', '');
+$GLOBALS['patreonCreatorCampaignId'] = envValue('PATREON_CREATOR_CAMPAIGN_ID', '');
+$GLOBALS['patreonUserAgent'] = envValue('PATREON_USER_AGENT', 'EasyPV Patreon Sync');
 
 // Constantes historiques
 if (!defined('TOKEN')) {
