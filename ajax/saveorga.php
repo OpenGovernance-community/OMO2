@@ -7,8 +7,43 @@
 	
 	if ($connected) {
 		
-		// Crée un tableau de conversion des ID pour les duplications entre modèles et version finale sauvegardée		
+		// Crée un tableau de conversion des ID pour les duplications entre modèles et version finale sauvegardée
 		$GLOBALS["convertedID"]=array();
+		$GLOBALS["convertedPropertyID"]=array();
+
+		function remapHolonListPropertyValue($propertyDefinition, $rawValue, $root) {
+			$rawValue = trim((string)$rawValue);
+			if ($rawValue === '') {
+				return $rawValue;
+			}
+
+			if ((int)$propertyDefinition->get("IDpropertyformat") !== \dbObject\PropertyFormat::FORMAT_LIST) {
+				return $rawValue;
+			}
+
+			if (\dbObject\Property::normalizeListItemType($propertyDefinition->get("listitemtype")) !== \dbObject\Property::LIST_ITEM_HOLON) {
+				return $rawValue;
+			}
+
+			$decoded = json_decode($rawValue, true);
+			if (!is_array($decoded)) {
+				return $rawValue;
+			}
+
+			$converted = array();
+			foreach ($decoded as $item) {
+				$holonId = is_array($item) ? (int)($item["id"] ?? 0) : (int)$item;
+				if ($holonId <= 0) {
+					continue;
+				}
+
+				$converted[] = updateTemplate($holonId, $root);
+			}
+
+			return count($converted) > 0
+				? json_encode(array_values(array_unique($converted)), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+				: '';
+		}
 		
 		function updateTemplate($idNode,$root) {
 			// Est-ce que le template est déjà dans la table de conversion, auquel cas retourne la valeur dans la table de conversion
@@ -76,6 +111,7 @@
 				$property->set("id",null); // Pour en faire une nouvelle à la sauvegarde
 				$property->set("IDholon",$template->get("id")); // Redéfini le holon au nouvellement créé
 				$property->set("IDproperty",$GLOBALS["convertedPropertyID"][$oldID]); // Redéfini la propriété au nouveau
+				$property->set("value", remapHolonListPropertyValue($realproperty, $property->get("value"), $root));
 				// Supprime les éléments ajoutés par la fonction GetAllValues
 				//$property->clear("liste_parent");
 				//$property->clear("value_parents");
@@ -233,5 +269,5 @@
 			]);	
 		}
 
-	} else echo "Erreur, vous nêtes pas connecté";
+	} else echo "Erreur, vous n'êtes pas connecté";
 ?>
