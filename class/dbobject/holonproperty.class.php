@@ -20,7 +20,7 @@
 				[['id','position'], 'integer'],					
 				[['IDholon','IDproperty'], 'fk'],			// Texte libre
 				[['value'], 'text'],				// Clé étrangères
-				[['active'], 'boolean'],				// Clé étrangères
+				[['active','mandatory','locked'], 'boolean'],				// Clé étrangères
 				[['id'], 'safe'],								// Champs protégés (n'apparaîssent pas dans les formulaires)
 			];
 		}
@@ -34,6 +34,8 @@
 				'IDproperty' => 'Propriété',
 				'value' => 'Valeur',
 				'position' => 'Position',
+				'mandatory' => 'Obligatoire',
+				'locked' => 'Verrouillé',
 				'active' => 'Actif ?',
 			];
 		}

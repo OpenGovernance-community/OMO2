@@ -29,6 +29,18 @@ function commonGetRequestScheme()
     return 'http';
 }
 
+function commonGetRequestPath()
+{
+    $requestUri = (string)($_SERVER['REQUEST_URI'] ?? '/');
+    $path = parse_url($requestUri, PHP_URL_PATH);
+
+    if (!is_string($path) || $path === '') {
+        return '/';
+    }
+
+    return $path;
+}
+
 function commonGetRootHost($host = null)
 {
     $host = is_string($host) && $host !== '' ? strtolower($host) : strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
@@ -140,6 +152,20 @@ function commonNormalizeLocalPath($path, $fallback = '/')
     return $path;
 }
 
+function commonGetRequestedOrganizationId()
+{
+    $path = commonGetRequestPath();
+    if (preg_match('#^/omo/o/(\d+)(?:/c/\d+)?/?$#', $path, $matches)) {
+        return (int)$matches[1];
+    }
+
+    if (isset($_GET['oid']) && is_numeric($_GET['oid'])) {
+        return (int)$_GET['oid'];
+    }
+
+    return 0;
+}
+
 function commonGetCookieDomain()
 {
     if (function_exists('appGetCookieDomain')) {
@@ -202,10 +228,17 @@ function commonExpireCookieValue($name, $httpOnly = true)
 function commonResolveOrganizationContext($defaultOrganizationId = 1)
 {
     $host = commonGetRequestHost();
+    $requestedOrganizationId = commonGetRequestedOrganizationId();
+    $usePathRouting = !commonIsDemoHost($host)
+        && commonGetRequestSubdomain($host) === ''
+        && $requestedOrganizationId > 0;
 
     if (commonIsDemoHost($host)) {
         $organization = new \dbObject\Organization();
         $organization = $organization->load(commonGetDemoOrganizationId()) ? $organization : false;
+    } elseif ($usePathRouting) {
+        $organization = new \dbObject\Organization();
+        $organization = $organization->load($requestedOrganizationId) ? $organization : false;
     } else {
         $organization = \dbObject\Organization::resolveFromHost($host, (int)$defaultOrganizationId);
     }
@@ -225,6 +258,7 @@ function commonResolveOrganizationContext($defaultOrganizationId = 1)
             'host' => $host,
             'error' => 'invalid_subdomain',
             'isDemo' => commonIsDemoHost($host),
+            'routeMode' => $usePathRouting ? 'path' : 'host',
         ];
     }
 
@@ -240,6 +274,7 @@ function commonResolveOrganizationContext($defaultOrganizationId = 1)
         'host' => $host,
         'error' => null,
         'isDemo' => commonIsDemoHost($host),
+        'routeMode' => $usePathRouting ? 'path' : 'host',
     ];
 
     $_SESSION['currentOrganization'] = $context['id'];

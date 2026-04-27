@@ -291,6 +291,12 @@ function getResolvedOrganizationId() {
     return Number.isNaN(parsedOid) ? null : parsedOid;
 }
 
+function getOmoRouteMode() {
+    const routeMode = window.omoConfig && window.omoConfig.routeMode;
+
+    return routeMode === 'path' ? 'path' : 'host';
+}
+
 function getNormalizedOmoPath() {
 
     const path = window.location.pathname || '';
@@ -300,6 +306,31 @@ function getNormalizedOmoPath() {
     }
 
     return path;
+}
+
+function buildOmoUrl(oid, cid = null, hash = null, options = {}) {
+    const absolute = options && options.absolute === true;
+    const resolvedOid = Number(oid);
+    const routeMode = getOmoRouteMode();
+    let url = routeMode === 'path' && Number.isInteger(resolvedOid) && resolvedOid > 0
+        ? `/omo/o/${resolvedOid}`
+        : '/omo';
+
+    if (cid) {
+        url += `/c/${cid}`;
+    } else {
+        url += '/';
+    }
+
+    if (hash) {
+        url += `#${hash}`;
+    }
+
+    if (!absolute) {
+        return url;
+    }
+
+    return `${window.location.origin}${url}`;
 }
 
 function canonicalizeOmoRootPath() {
@@ -599,6 +630,16 @@ function getSidebarMenuConfig(hash = null) {
     };
 }
 
+function omoRefreshSidebar(onLoaded = null) {
+    loadContent('#menu_sidebar', 'api/getSidebar.php', 'sidebar', function () {
+        updateActiveMenu(parseUrl().hash || null);
+
+        if (typeof onLoaded === 'function') {
+            onLoaded();
+        }
+    });
+}
+
 function buildDrawerUrl(baseUrl, oid, cid = null) {
     const separator = baseUrl.indexOf('?') === -1 ? '?' : '&';
     let url = `${baseUrl}${separator}oid=${encodeURIComponent(oid)}`;
@@ -631,6 +672,20 @@ $(document).on('click', '[data-hash]', function (e) {
 
     navigate(oid, cid, hash);
 
+});
+
+$(document).on('click', '[data-omo-open-app-picker="1"]', function (e) {
+    e.preventDefault();
+
+    if (typeof window.commonTopbarOpenModal !== 'function') {
+        return;
+    }
+
+    window.commonTopbarOpenModal(
+        'Ajouter des applications',
+        'api/organization_applications_popup.php',
+        'fetch'
+    );
 });
 
 $(document).on('click', '[data-omo-cid]', function (e) {
@@ -677,18 +732,7 @@ function updateActiveMenu(hash) {
 
 function navigate(oid, cid = null, hash = null) {
 
-    let url = '/omo';
-
-    if (cid) {
-        url += `/c/${cid}`;
-    } else {
-        url += '/';
-    }
-
-    if (hash) {
-        url += `#${hash}`;
-    }
-
+    const url = buildOmoUrl(oid, cid, hash);
     history.pushState({}, '', url);
 
     handleRoute();
@@ -724,10 +768,11 @@ let currentState = {
     hash: null
 };
 
-function omoFocusStructureNode(cid = null) {
+function omoFocusStructureNode(cid = null, options = {}) {
     window.dispatchEvent(new CustomEvent('omo-structure-focus', {
         detail: {
-            cid: cid === null || cid === undefined || cid === '' ? null : Number(cid)
+            cid: cid === null || cid === undefined || cid === '' ? null : Number(cid),
+            quickZoom: Boolean(options.quickZoom)
         }
     }));
 }
@@ -773,7 +818,6 @@ function handleRoute() {
 
         loadContent('#panel-right', rightUrl);
     } else if (cidChanged) {
-
         let leftUrl = `api/getOrg.php?oid=${oid}`;
         if (cid) leftUrl += `&cid=${cid}`;
 
@@ -1084,4 +1128,6 @@ function omoHandleTopbarSearch(query) {
         node.style.display = normalized === '' || text.indexOf(normalized) !== -1 ? '' : 'none';
     });
 }
+
+window.omoRefreshSidebar = omoRefreshSidebar;
 

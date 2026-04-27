@@ -40,6 +40,61 @@ function omoSplitTextItems($text)
     return $items;
 }
 
+function omoParseListItems($rawValue)
+{
+    $rawValue = trim((string)$rawValue);
+    if ($rawValue === '') {
+        return array();
+    }
+
+    $decoded = json_decode($rawValue, true);
+    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+        return array_values($decoded);
+    }
+
+    return omoSplitTextItems($rawValue);
+}
+
+function omoFormatListItemValue($item, array $entry)
+{
+    $listItemType = (string)($entry['listItemType'] ?? '');
+
+    if ($listItemType === 'date') {
+        $value = trim((string)$item);
+        if ($value === '') {
+            return '';
+        }
+
+        try {
+            return (new DateTime($value))->format('d.m.Y');
+        } catch (Exception $exception) {
+            return $value;
+        }
+    }
+
+    if ($listItemType === 'holon') {
+        static $holonLabelCache = array();
+
+        $holonId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+        if ($holonId <= 0) {
+            return is_scalar($item) ? trim((string)$item) : '';
+        }
+
+        if (!isset($holonLabelCache[$holonId])) {
+            $holon = new Holon();
+            $holonLabelCache[$holonId] = $holon->load($holonId) ? $holon->getDisplayName() : (string)$holonId;
+        }
+
+        return $holonLabelCache[$holonId];
+    }
+
+    if (is_array($item)) {
+        return trim((string)($item['label'] ?? $item['value'] ?? ''));
+    }
+
+    return trim((string)$item);
+}
+
 function omoRenderTextBlock($text, $className = 'section-text')
 {
     $text = trim((string)$text);
@@ -50,45 +105,119 @@ function omoRenderTextBlock($text, $className = 'section-text')
     return '<div class="' . omoEscape($className) . '">' . nl2br(omoEscape($text)) . '</div>';
 }
 
+function omoRenderFormattedList(array $items, array $entry, $className = 'section-list')
+{
+    $html = '<ul class="' . omoEscape($className) . '">';
+    foreach ($items as $item) {
+        $formattedItem = omoFormatListItemValue($item, $entry);
+        if ($formattedItem === '') {
+            continue;
+        }
+        $html .= '<li>' . omoEscape($formattedItem) . '</li>';
+    }
+    $html .= '</ul>';
+
+    return $html;
+}
+
+function omoBuildListItemDescriptors(array $ancestorItems, array $currentItems)
+{
+    $descriptors = array();
+
+    foreach ($ancestorItems as $item) {
+        $key = is_array($item)
+            ? json_encode($item, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            : trim((string)$item);
+        if ($key === '') {
+            continue;
+        }
+
+        $descriptors[$key] = array(
+            'item' => $item,
+            'source' => 'inherited',
+        );
+    }
+
+    foreach ($currentItems as $item) {
+        $key = is_array($item)
+            ? json_encode($item, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            : trim((string)$item);
+        if ($key === '') {
+            continue;
+        }
+
+        $descriptors[$key] = array(
+            'item' => $item,
+            'source' => 'local',
+        );
+    }
+
+    return array_values($descriptors);
+}
+
+function omoRenderMixedList(array $ancestorItems, array $currentItems, array $entry, $className = 'section-list')
+{
+    $descriptors = omoBuildListItemDescriptors($ancestorItems, $currentItems);
+    if (count($descriptors) === 0) {
+        return '';
+    }
+
+    $html = '<ul class="' . omoEscape($className) . '">';
+    foreach ($descriptors as $descriptor) {
+        $formattedItem = omoFormatListItemValue($descriptor['item'], $entry);
+        if ($formattedItem === '') {
+            continue;
+        }
+
+        $html .= '<li class="is-' . omoEscape($descriptor['source']) . '">' . omoEscape($formattedItem) . '</li>';
+    }
+    $html .= '</ul>';
+
+    return $html;
+}
+
 function omoRenderSectionBody(array $entry)
 {
     $value = trim((string)($entry['value'] ?? ''));
     $ancestor = trim((string)($entry['ancestor'] ?? ''));
     $effective = trim((string)($entry['effectiveValue'] ?? ''));
+    $formatId = (int)($entry['formatId'] ?? 0);
 
     if ($effective === '') {
         return '';
     }
 
-    $currentItems = omoSplitTextItems($value);
-    $ancestorItems = omoSplitTextItems($ancestor);
-    $effectiveItems = $value !== '' ? $currentItems : $ancestorItems;
+    $currentItems = $formatId === 2 ? omoParseListItems($value) : omoSplitTextItems($value);
+    $ancestorItems = $formatId === 2 ? omoParseListItems($ancestor) : omoSplitTextItems($ancestor);
+    if ($formatId === 2 || count($ancestorItems) > 1 || count($currentItems) > 1) {
+        return omoRenderMixedList($ancestorItems, $currentItems, $entry);
+    }
 
-    $html = '';
+    if ($value !== '') {
+        return omoRenderTextBlock($value, 'section-text section-text--local');
+    }
 
     if ($ancestor !== '' && $value !== '') {
         $html .= '<div class="section-inherited">';
         $html .= '<div class="section-inherited__label">Hérité</div>';
-        $html .= omoRenderTextBlock($ancestor, 'section-inherited__text');
+        if ($formatId === 2) {
+            $html .= omoRenderFormattedList($ancestorItems, $entry, 'section-list section-list--inherited');
+        } else {
+            $html .= omoRenderTextBlock($ancestor, 'section-inherited__text');
+        }
         $html .= '</div>';
     }
 
-    if (count($effectiveItems) > 1) {
-        $html .= '<ul class="section-list">';
-        foreach ($effectiveItems as $item) {
-            $html .= '<li>' . omoEscape($item) . '</li>';
-        }
-        $html .= '</ul>';
-        return $html;
+    if (false) {
+        return $html . omoRenderFormattedList($effectiveItems, $entry);
     }
 
-    return $html . omoRenderTextBlock($effective);
+    return omoRenderTextBlock($ancestor, 'section-text section-text--inherited');
 }
 
 function omoBuildSections(Holon $holon)
 {
     $entries = $holon->getPropertyEntries();
-    $usedIndexes = array();
     $sections = array();
 
     $definitions = array(
@@ -114,17 +243,15 @@ function omoBuildSections(Holon $holon)
         ),
     );
 
-    foreach ($definitions as $definition) {
-        foreach ($entries as $index => $entry) {
-            if (isset($usedIndexes[$index])) {
-                continue;
-            }
+    foreach ($entries as $entry) {
 
-            $effective = trim((string)($entry['effectiveValue'] ?? ''));
-            if ($effective === '') {
-                continue;
-            }
+        $effective = trim((string)($entry['effectiveValue'] ?? ''));
+        if ($effective === '') {
+            continue;
+        }
 
+        $title = trim((string)($entry['name'] ?: $entry['shortname'] ?: ('Propriété ' . $entry['id'])));
+        foreach ($definitions as $definition) {
             $match = in_array((int)$entry['id'], $definition['propertyIds'], true);
             if (!$match) {
                 $searchable = omoNormalizeLabel(($entry['shortname'] ?? '') . ' ' . ($entry['name'] ?? ''));
@@ -137,30 +264,12 @@ function omoBuildSections(Holon $holon)
                 $match = $keywordMatches > 0;
             }
 
-            if (!$match) {
-                continue;
+            if ($match) {
+                $title = $definition['title'];
+                break;
             }
-
-            $sections[] = array(
-                'title' => $definition['title'],
-                'entry' => $entry,
-            );
-            $usedIndexes[$index] = true;
-            break;
-        }
-    }
-
-    foreach ($entries as $index => $entry) {
-        if (isset($usedIndexes[$index])) {
-            continue;
         }
 
-        $effective = trim((string)($entry['effectiveValue'] ?? ''));
-        if ($effective === '') {
-            continue;
-        }
-
-        $title = trim((string)($entry['name'] ?: $entry['shortname'] ?: ('Propriété ' . $entry['id'])));
         $sections[] = array(
             'title' => $title,
             'entry' => $entry,
@@ -199,20 +308,9 @@ function omoBuildChildNavigation(Holon $holon)
     return $items;
 }
 
-function omoGetHolonTypeLabel(Holon $holon)
+function omoGetHolonHeaderLabel(Holon $holon)
 {
-    switch ((int)$holon->get('IDtypeholon')) {
-        case 4:
-            return 'Organisation';
-        case 2:
-            return 'Cercle';
-        case 1:
-            return 'Role';
-        case 3:
-            return 'Groupe';
-        default:
-            return 'Holon';
-    }
+    return $holon->getTemplateLabel(true);
 }
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
@@ -245,6 +343,13 @@ if ($organization === null) {
 
 $root = $organization->getStructuralRootHolon();
 if ($root === null) {
+    require_once __DIR__ . '/organization_setup_panel.php';
+    omoRenderOrganizationInfoPanel($organization);
+    exit;
+}
+
+$root = $organization->getStructuralRootHolon();
+if ($root === null) {
     http_response_code(404);
     ?>
     <div class="circle-panel"><div class="error">Aucune structure racine n'a été trouvée pour cette organisation.</div></div>
@@ -270,8 +375,18 @@ if ($cid > 0) {
 $breadcrumb = $currentHolon->getPathHolons();
 $sections = omoBuildSections($currentHolon);
 $childNavigation = omoBuildChildNavigation($currentHolon);
-$holonTypeLabel = omoGetHolonTypeLabel($currentHolon);
+$holonTypeLabel = omoGetHolonHeaderLabel($currentHolon);
 $selectedNodeClass = 'node_' . (int)$currentHolon->getId();
+$isCurrentTemplateHolon = $root ? $currentHolon->isTemplateNode((int)$root->getId()) : false;
+$editTemplateContextId = $isCurrentTemplateHolon && $currentHolon->getParentHolon() ? (int)$currentHolon->getParentHolon()->getId() : 0;
+$canCreateChildHolon = $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(2, 3, 4), true);
+$canEditHolon = $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
+$canDeleteHolon = $currentHolon->canDelete() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
+$deleteDescendantCount = $canDeleteHolon ? (int)$currentHolon->countVisibleDescendants() : 0;
+$parentHolonForDelete = $canDeleteHolon ? $currentHolon->getParentHolon() : null;
+$deleteParentId = $parentHolonForDelete ? (int)$parentHolonForDelete->getId() : 0;
+$deleteParentIsRoot = $parentHolonForDelete ? ((int)$parentHolonForDelete->get('IDtypeholon') === 4) : false;
+$hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
 ?>
 
 <style>
@@ -308,6 +423,50 @@ $selectedNodeClass = 'node_' . (int)$currentHolon->getId();
             <h2 class="circle-title"><?= omoEscape($currentHolon->get('name')) ?></h2>
         </div>
         <div class="circle-meta">
+            <?php if ($hasHolonActions): ?>
+                <div class="circle-menu" data-holon-menu="1">
+                    <button
+                        type="button"
+                        class="circle-badge circle-badge--menu noMobile"
+                        data-holon-menu-toggle="1"
+                        aria-haspopup="menu"
+                        aria-expanded="false"
+                    >...</button>
+                    <div class="circle-menu__panel" data-holon-menu-panel="1" hidden>
+                        <?php if ($canCreateChildHolon): ?>
+                            <button
+                                type="button"
+                                class="circle-menu__item"
+                                data-open-create-holon="1"
+                                data-cid="<?= (int)$currentHolon->getId() ?>"
+                            >Add</button>
+                        <?php endif; ?>
+                        <?php if ($canEditHolon): ?>
+                            <button
+                                type="button"
+                                class="circle-menu__item"
+                                data-open-edit-holon="1"
+                                data-hid="<?= (int)$currentHolon->getId() ?>"
+                                data-template-edit="<?= $isCurrentTemplateHolon ? '1' : '0' ?>"
+                                data-template-context-id="<?= (int)$editTemplateContextId ?>"
+                            >Edit</button>
+                        <?php endif; ?>
+                        <?php if ($canDeleteHolon): ?>
+                            <button
+                                type="button"
+                                class="circle-menu__item circle-menu__item--danger"
+                                data-delete-holon="1"
+                                data-hid="<?= (int)$currentHolon->getId() ?>"
+                                data-name="<?= omoEscape($currentHolon->get('name')) ?>"
+                                data-type-label="<?= omoEscape($holonTypeLabel) ?>"
+                                data-descendant-count="<?= (int)$deleteDescendantCount ?>"
+                                data-parent-id="<?= (int)$deleteParentId ?>"
+                                data-parent-is-root="<?= $deleteParentIsRoot ? '1' : '0' ?>"
+                            >Del</button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
             <button type="button" class="circle-badge circle-badge--link" data-copy-direct-link="1" data-cid="<?= (int)$currentHolon->getId() ?>">#<?= (int)$currentHolon->getId() ?></button>
         </div>
     </div>
@@ -455,9 +614,89 @@ $selectedNodeClass = 'node_' . (int)$currentHolon->getId();
     cursor: pointer;
 }
 
+.circle-badge--action {
+    cursor: pointer;
+    color: var(--color-primary);
+    border-color: color-mix(in srgb, var(--color-primary) 24%, var(--color-border));
+    background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+}
+
+.circle-badge--action:hover {
+    border-color: var(--color-primary);
+}
+
+.circle-badge--menu {
+    cursor: pointer;
+    min-width: 34px;
+    padding: 6px 8px;
+    color: var(--color-text);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+
+.circle-badge--danger {
+    cursor: pointer;
+    color: #b91c1c;
+    border-color: rgba(220, 38, 38, 0.26);
+    background: rgba(220, 38, 38, 0.08);
+}
+
+.circle-badge--danger:hover {
+    border-color: rgba(220, 38, 38, 0.4);
+    background: rgba(220, 38, 38, 0.14);
+}
+
 .circle-badge--link.copied {
     border-color: var(--color-primary);
     color: var(--color-primary);
+}
+
+.circle-menu {
+    position: relative;
+}
+
+.circle-menu__panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 140px;
+    padding: 6px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-surface, #fff);
+    box-shadow: var(--shadow-md, 0 12px 24px rgba(15, 23, 42, 0.14));
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 15;
+}
+
+.circle-menu__panel[hidden] {
+    display: none;
+}
+
+.circle-menu__item {
+    width: 100%;
+    padding: 9px 11px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text);
+    text-align: left;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.circle-menu__item:hover {
+    background: var(--color-surface-alt, #f0f2f5);
+}
+
+.circle-menu__item--danger {
+    color: #b91c1c;
+}
+
+.circle-menu__item--danger:hover {
+    background: rgba(220, 38, 38, 0.08);
 }
 
 .circle-section {
@@ -484,6 +723,11 @@ $selectedNodeClass = 'node_' . (int)$currentHolon->getId();
     white-space: pre-line;
 }
 
+.section-text--inherited {
+    font-style: italic;
+    color: var(--color-text-light);
+}
+
 .section-list {
     padding-left: 18px;
     display: flex;
@@ -495,6 +739,11 @@ $selectedNodeClass = 'node_' . (int)$currentHolon->getId();
 .section-list li {
     font-size: 14px;
     line-height: 1.4;
+}
+
+.section-list li.is-inherited {
+    font-style: italic;
+    color: var(--color-text-light);
 }
 
 .section-header {
@@ -595,6 +844,14 @@ $selectedNodeClass = 'node_' . (int)$currentHolon->getId();
 </style>
 
 <script>
+function omoCloseHolonMenus() {
+    $('#panel-left [data-holon-menu="1"]').each(function () {
+        $(this).removeClass('is-open');
+        $(this).find('[data-holon-menu-panel="1"]').prop('hidden', true);
+        $(this).find('[data-holon-menu-toggle="1"]').attr('aria-expanded', 'false');
+    });
+}
+
 $(document)
   .off('click.omoOrgSection', '#panel-left .section-header')
   .on('click.omoOrgSection', '#panel-left .section-header', function () {
@@ -632,6 +889,148 @@ $(document)
     navigate(route.oid, cid, route.hash || null);
   });
 
+$(document)
+  .off('click.omoOrgHolonMenu', '#panel-left [data-holon-menu-toggle="1"]')
+  .on('click.omoOrgHolonMenu', '#panel-left [data-holon-menu-toggle="1"]', function (event) {
+    event.stopPropagation();
+
+    const menu = $(this).closest('[data-holon-menu="1"]');
+    const willOpen = !menu.hasClass('is-open');
+    omoCloseHolonMenus();
+
+    if (!willOpen) {
+        return;
+    }
+
+    menu.addClass('is-open');
+    menu.find('[data-holon-menu-panel="1"]').prop('hidden', false);
+    menu.find('[data-holon-menu-toggle="1"]').attr('aria-expanded', 'true');
+  });
+
+$(document)
+  .off('click.omoOrgHolonMenuItem', '#panel-left [data-holon-menu-panel="1"] button')
+  .on('click.omoOrgHolonMenuItem', '#panel-left [data-holon-menu-panel="1"] button', function () {
+    omoCloseHolonMenus();
+  });
+
+$(document)
+  .off('click.omoOrgHolonMenuOutside')
+  .on('click.omoOrgHolonMenuOutside', function (event) {
+    if ($(event.target).closest('#panel-left [data-holon-menu="1"]').length) {
+        return;
+    }
+
+    omoCloseHolonMenus();
+  });
+
+$(document)
+  .off('click.omoOrgCreateHolon', '#panel-left [data-open-create-holon="1"]')
+  .on('click.omoOrgCreateHolon', '#panel-left [data-open-create-holon="1"]', function () {
+    const cid = Number($(this).data('cid'));
+
+    if (!cid || typeof openDrawer !== 'function') {
+        return;
+    }
+
+    openDrawer('drawer_holon_create', '/omo/api/holons/create.php?cid=' + cid);
+  });
+
+$(document)
+  .off('click.omoOrgEditHolon', '#panel-left [data-open-edit-holon="1"]')
+  .on('click.omoOrgEditHolon', '#panel-left [data-open-edit-holon="1"]', function () {
+    const button = $(this);
+    const hid = Number(button.data('hid'));
+    const isTemplateEdit = String(button.data('template-edit')) === '1';
+    const templateContextId = Number(button.data('template-context-id') || 0);
+
+    if (!hid || typeof openDrawer !== 'function') {
+        return;
+    }
+
+    if (isTemplateEdit && templateContextId > 0) {
+        openDrawer('drawer_holon_create', '/omo/api/parameters/holon-templates/index.php?cid=' + templateContextId + '&hid=' + hid + '&compact=1');
+        return;
+    }
+
+    openDrawer('drawer_holon_create', '/omo/api/holons/create.php?hid=' + hid);
+  });
+
+$(document)
+  .off('click.omoOrgDeleteHolon', '#panel-left [data-delete-holon="1"]')
+  .on('click.omoOrgDeleteHolon', '#panel-left [data-delete-holon="1"]', function () {
+    const button = $(this);
+    const hid = Number(button.data('hid'));
+    const descendantCount = Number(button.data('descendant-count') || 0);
+    const holonName = String(button.data('name') || 'cet élément');
+    const typeLabel = String(button.data('type-label') || 'holon').toLowerCase();
+    const parentId = Number(button.data('parent-id') || 0);
+    const parentIsRoot = String(button.data('parent-is-root')) === '1';
+
+    if (!hid || typeof navigate !== 'function' || typeof parseUrl !== 'function') {
+        return;
+    }
+
+    let confirmationMessage = 'Supprimer ' + typeLabel + ' "' + holonName + '" ?';
+    if (descendantCount > 0) {
+        confirmationMessage += '\n\nAttention : ' + descendantCount + ' élément' + (descendantCount > 1 ? 's seront aussi supprimés.' : ' sera aussi supprimé.');
+    }
+
+    if (!window.confirm(confirmationMessage)) {
+        return;
+    }
+
+    const route = parseUrl();
+    const targetCid = parentId > 0 && !parentIsRoot ? parentId : null;
+    let leftUrl = 'api/getOrg.php?oid=' + Number(route.oid || 0);
+
+    if (parentId > 0 && !parentIsRoot) {
+        leftUrl += '&cid=' + parentId;
+    }
+
+    button.prop('disabled', true);
+    navigate(route.oid, targetCid, route.hash || null);
+
+    fetch('/omo/api/holons/delete.php?hid=' + hid, {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+    })
+    .then(function (response) {
+        return response.json().catch(function () {
+            return null;
+        }).then(function (data) {
+            return {
+                ok: response.ok,
+                data: data
+            };
+        });
+    })
+    .then(function (result) {
+        if (!result.ok || !result.data || result.data.status !== 'ok') {
+            throw new Error(result.data && result.data.message ? result.data.message : "Impossible de supprimer le holon.");
+        }
+
+        if (typeof loadContent === 'function') {
+            loadContent('#panel-left', leftUrl);
+        }
+
+        if (typeof window.omoReloadStructureAndFocus === 'function') {
+            return window.omoReloadStructureAndFocus(parentId > 0 ? parentId : null, {
+                quickZoom: true
+            });
+        }
+
+        return null;
+    })
+    .catch(function (error) {
+        button.prop('disabled', false);
+        window.alert(error && error.message ? error.message : "Impossible de supprimer le holon.");
+    });
+  });
+
 function omoNormalizeSectionKey(value) {
     return String(value || '')
         .trim()
@@ -643,9 +1042,20 @@ function omoNormalizeSectionKey(value) {
 
 function omoBuildDirectHolonUrl(cid) {
     const rootId = <?= (int)$root->getId() ?>;
-    return Number(cid) === Number(rootId)
-        ? `${window.location.origin}/omo/`
-        : `${window.location.origin}/omo/c/${cid}`;
+    const route = typeof parseUrl === 'function'
+        ? parseUrl()
+        : { oid: <?= (int)$organizationId ?> };
+    const targetCid = Number(cid) === Number(rootId) ? null : cid;
+
+    if (typeof buildOmoUrl === 'function') {
+        return buildOmoUrl(route.oid, targetCid, null, { absolute: true });
+    }
+
+    if (targetCid) {
+        return `${window.location.origin}/omo/c/${targetCid}`;
+    }
+
+    return `${window.location.origin}/omo/`;
 }
 
 (function restoreSections() {
