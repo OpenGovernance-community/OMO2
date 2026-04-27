@@ -1,0 +1,14 @@
+-- @migration
+
+SET NAMES utf8mb4;
+
+ALTER TABLE `document`
+  ADD COLUMN IF NOT EXISTS `IDorganization` int(11) DEFAULT NULL AFTER `IDuser`,
+  ADD COLUMN IF NOT EXISTS `IDholon` int(11) DEFAULT NULL AFTER `IDorganization`;
+
+SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE
+FROM information_schema.COLUMNS
+WHERE TABLE_SCHEMA = DATABASE()
+  AND TABLE_NAME = 'document'
+  AND COLUMN_NAME IN ('IDorganization', 'IDholon')
+ORDER BY ORDINAL_POSITION ASC;
