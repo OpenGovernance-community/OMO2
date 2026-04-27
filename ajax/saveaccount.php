@@ -33,7 +33,7 @@
 	$msg='Enregistrement réussi';
 	$formCode="";
 	if ($_GET["origin"]=="profil")
-		$formCode="refresh('#popup_content','/popup/profil.php')"; // Raffraichi l'onglet login
+		$formCode="if (window.jQuery && document.getElementById('popup_content')) { refresh('#popup_content','/popup/profil.php'); } if (window.commonTopbarRefreshModalContent) { window.commonTopbarRefreshModalContent('/popup/profil.php'); }"; // Raffraichit le profil
 	if ($_GET["origin"]=="params")
 		$formCode="refresh('#popup_content','/popup/parameters.php')"; // Raffraichi l'onglet paramètres
 	echo '{"status":true, "message":"'.$msg.'","script": "'.$formCode.'"} ';

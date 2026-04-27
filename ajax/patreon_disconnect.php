@@ -19,7 +19,7 @@ if ($connection === false) {
 	echo json_encode([
 		'status' => true,
 		'message' => 'Aucun compte Patreon n’était connecté.',
-		'script' => "refresh('#popup_content','/popup/profil.php')",
+		'script' => "if (window.jQuery && document.getElementById('popup_content')) { refresh('#popup_content','/popup/profil.php'); } if (window.commonTopbarRefreshModalContent) { window.commonTopbarRefreshModalContent('/popup/profil.php'); }",
 	]);
 	exit;
 }
@@ -36,7 +36,7 @@ if (empty($result['status'])) {
 echo json_encode([
 	'status' => true,
 	'message' => 'Compte Patreon déconnecté.',
-	'script' => "refresh('#popup_content','/popup/profil.php')",
+	'script' => "if (window.jQuery && document.getElementById('popup_content')) { refresh('#popup_content','/popup/profil.php'); } if (window.commonTopbarRefreshModalContent) { window.commonTopbarRefreshModalContent('/popup/profil.php'); }",
 ]);
 exit;
 ?>
