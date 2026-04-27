@@ -1,6 +1,7 @@
 <?php
 require_once("../config.php");
 require_once("../shared_functions.php");
+require_once("../common/auth.php");
 require_once("../common/patreon.php");
 
 $connected = checklogin();
@@ -8,14 +9,19 @@ if (!$connected) {
 	die("Login requis");
 }
 
+$currentUserId = function_exists('commonGetCurrentUserId')
+	? (int)commonGetCurrentUserId()
+	: (int)($_SESSION["currentUser"] ?? 0);
+
 $user = new \dbObject\User();
-$user->load($_SESSION["currentUser"]);
+$user->load($currentUserId);
 if (!($user->get("id") > 0)) {
 	die("Utilisateur inconnu");
 }
 
 $patreonConnection = \dbObject\UserPatreon::findByUserId((int)$user->getId());
-$patreonConfigured = patreonIsConfigured();
+$patreonConfigured = patreonIsConfigured('oauth');
+$patreonConfigurationMessage = patreonGetConfigurationMessage('oauth');
 $patreonConnected = $patreonConnection !== false && $patreonConnection->isConnected();
 
 function profilFormatDateTime($value)
@@ -210,7 +216,10 @@ function profilFormatAmountCents($value)
 
 			<?php if (!$patreonConfigured): ?>
 			<div class="profile-panel__note">
-				La connexion Patreon sera disponible après configuration des variables d’environnement `PATREON_CLIENT_ID`, `PATREON_CLIENT_SECRET` et `PATREON_REDIRECT_URI`.
+				La connexion Patreon n'est pas disponible sur cet environnement.
+				<?php if ($patreonConfigurationMessage !== ''): ?>
+				<br><?= htmlspecialchars($patreonConfigurationMessage) ?>
+				<?php endif; ?>
 			</div>
 			<?php endif; ?>
 		</section>

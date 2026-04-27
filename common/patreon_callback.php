@@ -74,8 +74,8 @@ function patreonRenderCallbackPage($title, $message, $isSuccess)
 <?php
 }
 
-if (!patreonIsConfigured()) {
-	patreonRenderCallbackPage('Configuration Patreon manquante', 'Les identifiants Patreon ne sont pas encore configurés sur ce site.', false);
+if (!patreonIsConfigured('oauth')) {
+	patreonRenderCallbackPage('Configuration Patreon manquante', 'La configuration Patreon est incomplète : ' . patreonGetConfigurationMessage('oauth'), false);
 	exit;
 }
 

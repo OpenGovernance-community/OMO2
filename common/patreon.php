@@ -24,10 +24,63 @@ if (!function_exists('patreonRegisterAutoloader')) {
 
 patreonRegisterAutoloader();
 
-function patreonIsConfigured()
+function patreonGetConfigurationIssues($context = 'api')
 {
-	return trim((string)($GLOBALS['patreonClientId'] ?? '')) !== ''
-		&& trim((string)($GLOBALS['patreonClientSecret'] ?? '')) !== '';
+	$context = trim((string)$context);
+	if ($context === '') {
+		$context = 'api';
+	}
+
+	$issues = [];
+
+	if (trim((string)($GLOBALS['patreonClientId'] ?? '')) === '') {
+		$issues[] = 'PATREON_CLIENT_ID manquant';
+	}
+
+	if (trim((string)($GLOBALS['patreonClientSecret'] ?? '')) === '') {
+		$issues[] = 'PATREON_CLIENT_SECRET manquant';
+	}
+
+	if ($context === 'oauth') {
+		$redirectUri = patreonGetRedirectUri();
+		if ($redirectUri === '' || preg_match('#^https?://#i', $redirectUri) !== 1) {
+			$issues[] = 'PATREON_REDIRECT_URI manquant ou URL publique absolue introuvable';
+		}
+	}
+
+	if (in_array($context, ['api', 'oauth', 'sync'], true) && class_exists('\\dbObject\\UserPatreon')) {
+		if (!\dbObject\UserPatreon::isStorageAvailable()) {
+			$issues[] = 'table SQL user_patreon absente';
+		}
+	}
+
+	if (in_array($context, ['api', 'oauth', 'sync'], true) && !function_exists('curl_init')) {
+		$issues[] = 'extension PHP cURL manquante';
+	}
+
+	return array_values(array_unique($issues));
+}
+
+function patreonIsConfigured($context = 'api')
+{
+	return patreonGetConfigurationIssues($context) === [];
+}
+
+function patreonGetConfigurationMessage($context = 'api')
+{
+	$issues = patreonGetConfigurationIssues($context);
+	if ($issues === []) {
+		return '';
+	}
+
+	return implode(' ; ', $issues) . '.';
+}
+
+function patreonAssertConfigured($context = 'api')
+{
+	if (!patreonIsConfigured($context)) {
+		throw new RuntimeException('Configuration Patreon incomplète : ' . patreonGetConfigurationMessage($context));
+	}
 }
 
 function patreonGetRedirectUri()
@@ -38,12 +91,15 @@ function patreonGetRedirectUri()
 	}
 
 	if (function_exists('appBuildAbsoluteUrl')) {
-		return appBuildAbsoluteUrl('/common/patreon_callback.php');
+		$fallback = appBuildAbsoluteUrl('/common/patreon_callback.php');
+		if (preg_match('#^https?://#i', $fallback) === 1) {
+			return $fallback;
+		}
 	}
 
 	$host = trim((string)($_SERVER['HTTP_HOST'] ?? ''));
 	if ($host === '') {
-		return '/common/patreon_callback.php';
+		return '';
 	}
 
 	$https = strtolower((string)($_SERVER['HTTPS'] ?? ''));
@@ -69,9 +125,11 @@ function patreonGetRequestedScopes()
 
 function patreonBuildAuthorizeUrl($state)
 {
+	patreonAssertConfigured('oauth');
+
 	$params = [
 		'response_type' => 'code',
-		'client_id' => (string)$GLOBALS['patreonClientId'],
+		'client_id' => (string)($GLOBALS['patreonClientId'] ?? ''),
 		'redirect_uri' => patreonGetRedirectUri(),
 		'scope' => patreonGetRequestedScopes(),
 		'state' => (string)$state,
@@ -83,7 +141,7 @@ function patreonBuildAuthorizeUrl($state)
 function patreonRequest($method, $url, array $options = [])
 {
 	if (!function_exists('curl_init')) {
-		throw new RuntimeException('cURL est requis pour intégrer Patreon.');
+		throw new RuntimeException('La configuration Patreon est incomplète : extension PHP cURL manquante.');
 	}
 
 	$headers = [
@@ -98,7 +156,7 @@ function patreonRequest($method, $url, array $options = [])
 	$curl = curl_init($url);
 	curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
 	curl_setopt($curl, CURLOPT_FOLLOWLOCATION, false);
-	curl_setopt($curl, CURLOPT_CUSTOMREQUEST, strtoupper($method));
+	curl_setopt($curl, CURLOPT_CUSTOMREQUEST, strtoupper((string)$method));
 	curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
 	curl_setopt($curl, CURLOPT_TIMEOUT, 30);
 
@@ -172,6 +230,8 @@ function patreonNormalizeTokenPayload(array $payload)
 
 function patreonExchangeCodeForTokens($code)
 {
+	patreonAssertConfigured('oauth');
+
 	$response = patreonRequest('POST', 'https://www.patreon.com/api/oauth2/token', [
 		'headers' => [
 			'Content-Type: application/x-www-form-urlencoded',
@@ -179,8 +239,8 @@ function patreonExchangeCodeForTokens($code)
 		'body' => http_build_query([
 			'code' => (string)$code,
 			'grant_type' => 'authorization_code',
-			'client_id' => (string)$GLOBALS['patreonClientId'],
-			'client_secret' => (string)$GLOBALS['patreonClientSecret'],
+			'client_id' => (string)($GLOBALS['patreonClientId'] ?? ''),
+			'client_secret' => (string)($GLOBALS['patreonClientSecret'] ?? ''),
 			'redirect_uri' => patreonGetRedirectUri(),
 		], '', '&', PHP_QUERY_RFC3986),
 	]);
@@ -195,6 +255,8 @@ function patreonExchangeCodeForTokens($code)
 
 function patreonRefreshTokens($refreshToken)
 {
+	patreonAssertConfigured('api');
+
 	$response = patreonRequest('POST', 'https://www.patreon.com/api/oauth2/token', [
 		'headers' => [
 			'Content-Type: application/x-www-form-urlencoded',
@@ -202,8 +264,8 @@ function patreonRefreshTokens($refreshToken)
 		'body' => http_build_query([
 			'grant_type' => 'refresh_token',
 			'refresh_token' => (string)$refreshToken,
-			'client_id' => (string)$GLOBALS['patreonClientId'],
-			'client_secret' => (string)$GLOBALS['patreonClientSecret'],
+			'client_id' => (string)($GLOBALS['patreonClientId'] ?? ''),
+			'client_secret' => (string)($GLOBALS['patreonClientSecret'] ?? ''),
 		], '', '&', PHP_QUERY_RFC3986),
 	]);
 	$payload = patreonDecodeResponse($response);
@@ -229,6 +291,8 @@ function patreonBuildIdentityUrl()
 
 function patreonFetchIdentity($accessToken)
 {
+	patreonAssertConfigured('api');
+
 	$response = patreonRequest('GET', patreonBuildIdentityUrl(), [
 		'headers' => [
 			'Authorization: Bearer ' . (string)$accessToken,
@@ -238,8 +302,7 @@ function patreonFetchIdentity($accessToken)
 
 	if ((int)$response['status'] >= 400) {
 		$message = patreonBuildErrorMessage($response, $payload);
-		$exception = new RuntimeException($message, (int)$response['status']);
-		throw $exception;
+		throw new RuntimeException($message, (int)$response['status']);
 	}
 
 	return $payload;
@@ -350,6 +413,8 @@ function patreonEnsureFreshToken(\dbObject\UserPatreon $connection, $thresholdSe
 
 function patreonSyncConnection(\dbObject\UserPatreon $connection)
 {
+	patreonAssertConfigured('sync');
+
 	if (!$connection->isConnected()) {
 		throw new RuntimeException('Aucun compte Patreon connecté pour cet utilisateur.');
 	}
