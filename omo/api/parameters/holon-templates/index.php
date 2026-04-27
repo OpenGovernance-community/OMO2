@@ -120,6 +120,11 @@ if ($organizationId <= 0) {
                                         <small>Indique que les sous-cercles devront implementer ce template.</small>
                                     </label>
                                     <label class="omo-template-flags__option">
+                                        <input type="checkbox" id="omo-template-locked-name">
+                                        <span>Locked name</span>
+                                        <small>Impose le meme nom a toutes les instances de ce template.</small>
+                                    </label>
+                                    <label class="omo-template-flags__option">
                                         <input type="checkbox" id="omo-template-unique">
                                         <span>Unique</span>
                                         <small>Limite a une seule implementation par cercle, groupes compris.</small>
@@ -190,6 +195,7 @@ const omoHolonTemplateElements = {
     color: omoHolonTemplateRoot.querySelector('#omo-template-color'),
     visible: omoHolonTemplateRoot.querySelector('#omo-template-visible'),
     mandatory: omoHolonTemplateRoot.querySelector('#omo-template-mandatory'),
+    lockedName: omoHolonTemplateRoot.querySelector('#omo-template-locked-name'),
     unique: omoHolonTemplateRoot.querySelector('#omo-template-unique'),
     link: omoHolonTemplateRoot.querySelector('#omo-template-link'),
     properties: omoHolonTemplateRoot.querySelector('#omo-template-properties'),
@@ -454,6 +460,7 @@ function omoHolonTemplateReadCurrentFormState() {
         typeLabel: omoHolonTemplateGetTypeLabel(effectiveTypeId),
         visible: Boolean(omoHolonTemplateElements.visible && omoHolonTemplateElements.visible.checked),
         mandatory: Boolean(omoHolonTemplateElements.mandatory && omoHolonTemplateElements.mandatory.checked),
+        lockedName: Boolean(omoHolonTemplateElements.lockedName && omoHolonTemplateElements.lockedName.checked),
         unique: Boolean(omoHolonTemplateElements.unique && omoHolonTemplateElements.unique.checked),
         link: Boolean(omoHolonTemplateElements.link && omoHolonTemplateElements.link.checked),
         inheritsFromId: effectiveInheritanceId,
@@ -519,6 +526,7 @@ function omoHolonTemplateBuildDraft(inheritsFromId) {
         typeLabel: omoHolonTemplateGetTypeLabel(effectiveTypeId) || String(firstType.name || 'Holon'),
         visible: false,
         mandatory: false,
+        lockedName: false,
         unique: false,
         link: false,
         inheritsFromId: suggestedInheritanceId,
@@ -1348,6 +1356,9 @@ function omoHolonTemplateFillForm(template) {
     if (omoHolonTemplateElements.mandatory) {
         omoHolonTemplateElements.mandatory.checked = Boolean(current.mandatory);
     }
+    if (omoHolonTemplateElements.lockedName) {
+        omoHolonTemplateElements.lockedName.checked = Boolean(current.lockedName);
+    }
     if (omoHolonTemplateElements.unique) {
         omoHolonTemplateElements.unique.checked = Boolean(current.unique);
     }
@@ -1395,6 +1406,7 @@ function omoHolonTemplateSave(event) {
             : '',
         visible: Boolean(omoHolonTemplateElements.visible && omoHolonTemplateElements.visible.checked),
         mandatory: Boolean(omoHolonTemplateElements.mandatory && omoHolonTemplateElements.mandatory.checked),
+        lockedName: Boolean(omoHolonTemplateElements.lockedName && omoHolonTemplateElements.lockedName.checked),
         unique: Boolean(omoHolonTemplateElements.unique && omoHolonTemplateElements.unique.checked),
         link: Boolean(omoHolonTemplateElements.link && omoHolonTemplateElements.link.checked),
         inheritsFromId: omoHolonTemplateGetEffectiveInheritanceIdFromParent(omoHolonTemplateElements.parent.value || 0),

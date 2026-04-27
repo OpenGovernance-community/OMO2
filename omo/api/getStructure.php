@@ -1,6 +1,16 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
 
+$organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
+if ($organizationId > 0) {
+    $organization = new \dbObject\Organization();
+    if ($organization->load($organizationId) && $organization->getStructuralRootHolon() === null) {
+        require_once __DIR__ . '/organization_setup_panel.php';
+        omoRenderOrganizationSetupPanel($organization);
+        exit;
+    }
+}
+
 $structureDataParams = array();
 if (isset($_GET['oid']) && is_numeric($_GET['oid'])) {
     $structureDataParams['oid'] = (int)$_GET['oid'];

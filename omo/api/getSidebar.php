@@ -3,6 +3,7 @@ require_once __DIR__ . '/bootstrap.php';
 
 $currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 $currentUserId = commonGetCurrentUserId();
+$canManageApplications = $currentOrganizationId > 0 && $currentUserId > 0;
 
 $applications = new \dbObject\ArrayApplication();
 if ($currentOrganizationId > 0) {
@@ -62,6 +63,16 @@ $renderMenuItem = static function (array $item) use ($escape) {
     ]);
     ?>
 <?php endforeach; ?>
+<?php if ($canManageApplications): ?>
+    <div
+        class="menu-item menu-item--add"
+        data-omo-open-app-picker="1"
+        title="Ajouter des applications"
+    >
+        <span class="icon icon-text">+</span>
+        <span class="label">Ajouter</span>
+    </div>
+<?php endif; ?>
 </div>
 
 <div class="menu-secondary">

@@ -4,6 +4,7 @@
 /docker/db/init/*.private.sql
 /docker/db/init/*.disabled
 /sql/
+/img/upload/**
 
 /test/**
 /*.htm

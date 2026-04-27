@@ -18,7 +18,7 @@
 				[['name','templatename','accesskey'], 'string'],			// Texte libre
 				[['datecreation','datemodification'], 'datetime'],	// Date avec precision des heures
 				[['IDuser','IDtypeholon','IDholon_parent','IDholon_template','IDorganization','IDholon_org'], 'fk'],				// Cle etrangeres
-				[['active','visible','mandatory','unique','link'], 'boolean'],				// Cle etrangeres
+				[['lockedname','active','visible','mandatory','unique','link'], 'boolean'],				// Cle etrangeres
 				[['color'], 'color'],				// Couleur au format hexadecimal
 				[['id'], 'safe'],								// Champs proteges (n'apparaissent pas dans les formulaires)
 			];
@@ -44,6 +44,7 @@
 				'IDholon_template' => 'Template',
 				'accesskey' => 'Cle acces',
 				'mandatory' => 'Obligatoire ?',
+				'lockedname' => 'Nom verrouille ?',
 				'unique' => 'Unique ?',
 				'link' => 'Lien ?',
 			];
@@ -107,6 +108,13 @@
 		{
 			$template = $this->getTemplateHolon();
 			return $template ? (bool)$template->get('mandatory') : false;
+		}
+
+		// Verifie nom verrouille
+		public function isNameLockedByTemplate()
+		{
+			$template = $this->getTemplateHolon();
+			return $template ? (bool)$template->get('lockedname') : false;
 		}
 
 		// Compte instances soeurs
@@ -961,6 +969,7 @@
 				'color' => (string)$this->get('color'),
 				'visible' => (bool)$this->get('visible'),
 				'mandatory' => (bool)$this->get('mandatory'),
+				'lockedName' => (bool)$this->get('lockedname'),
 				'unique' => (bool)$this->get('unique'),
 				'link' => (bool)$this->get('link'),
 				'parentId' => (int)$this->get('IDholon_parent'),
@@ -981,6 +990,7 @@
 				'color' => (string)$this->get('color'),
 				'visible' => (bool)$this->get('visible'),
 				'mandatory' => (bool)$this->get('mandatory'),
+				'lockedName' => (bool)$this->get('lockedname'),
 				'unique' => (bool)$this->get('unique'),
 				'link' => (bool)$this->get('link'),
 				'parentId' => (int)$this->get('IDholon_parent'),

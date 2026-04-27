@@ -71,6 +71,7 @@ if ($organizationId <= 0) {
                                 <label class="omo-holon-create__field omo-holon-create__field--full">
                                     <span>Nom</span>
                                     <input type="text" id="omo-holon-create-name" maxlength="255" required>
+                                    <small id="omo-holon-create-name-help"></small>
                                 </label>
 
                                 <label class="omo-holon-create__field" id="omo-holon-create-color-field">
@@ -142,6 +143,7 @@ const elements = {
     meta: root.querySelector('#omo-holon-create-template-meta'),
     properties: root.querySelector('#omo-holon-create-properties'),
     hint: root.querySelector('#omo-holon-create-hint'),
+    nameHelp: root.querySelector('#omo-holon-create-name-help'),
     cancel: root.querySelector('#omo-holon-create-cancel')
 };
 
@@ -209,6 +211,42 @@ function getEditingHolon() {
     return state.data && state.data.holon && typeof state.data.holon === 'object'
         ? state.data.holon
         : null;
+}
+
+// Synchronise nom verrouille
+function syncNameField(template) {
+    const editingHolon = getEditingHolon();
+    const isLocked = Boolean((editingHolon && editingHolon.nameLocked) || (template && template.lockedName));
+    const isUnique = Boolean(template && template.unique);
+
+    if (!elements.name) {
+        return;
+    }
+
+    if (isLocked) {
+        elements.name.dataset.unlockedValue = String(elements.name.value || '');
+        elements.name.value = template ? String(template.name || '') : String((editingHolon && editingHolon.name) || '');
+        elements.name.disabled = true;
+        elements.name.required = false;
+        if (elements.nameHelp) {
+            elements.nameHelp.textContent = 'Le nom est verrouille par le modele.';
+        }
+        return;
+    }
+
+    if (elements.name.disabled) {
+        elements.name.value = getMode() === 'edit' && editingHolon
+            ? String(editingHolon.name || '')
+            : String(elements.name.dataset.unlockedValue || '');
+    }
+
+    elements.name.disabled = false;
+    elements.name.required = !isUnique;
+    if (elements.nameHelp) {
+        elements.nameHelp.textContent = isUnique
+            ? 'Si le nom est vide, celui du modele sera utilise.'
+            : '';
+    }
 }
 
 // Synchronise champ couleur
@@ -552,6 +590,7 @@ function renderEditorMeta(template, sourceProperties) {
             : false;
     }
 
+    syncNameField(template);
     syncColorField();
 }
 
@@ -664,6 +703,7 @@ function fillFormFromState() {
     }
 
     elements.name.value = '';
+    elements.name.disabled = false;
     if (elements.visible) {
         elements.visible.checked = false;
     }
