@@ -1,12 +1,17 @@
 <?php
 
 require_once '../shared_functions.php';
+require_once '../common/auth.php';
 require_once '../common/patreon.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 
 $connected = checkLogin();
-if (!$connected || empty($_SESSION['currentUser'])) {
+$currentUserId = function_exists('commonGetCurrentUserId')
+	? (int)commonGetCurrentUserId()
+	: (int)($_SESSION['currentUser'] ?? 0);
+
+if (!$connected || $currentUserId <= 0) {
 	echo json_encode([
 		'status' => false,
 		'message' => 'Connexion requise.',
@@ -14,7 +19,7 @@ if (!$connected || empty($_SESSION['currentUser'])) {
 	exit;
 }
 
-$connection = \dbObject\UserPatreon::findByUserId((int)$_SESSION['currentUser']);
+$connection = \dbObject\UserPatreon::findByUserId($currentUserId);
 if ($connection === false) {
 	echo json_encode([
 		'status' => true,
