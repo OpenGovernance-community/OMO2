@@ -36,13 +36,13 @@ try {
 	echo json_encode([
 		'status' => true,
 		'message' => 'Compte Patreon synchronisé.',
-		'script' => "refresh('#popup_content','/popup/profil.php')",
+		'script' => "if (window.jQuery && document.getElementById('popup_content')) { refresh('#popup_content','/popup/profil.php'); } if (window.commonTopbarRefreshModalContent) { window.commonTopbarRefreshModalContent('/popup/profil.php'); }",
 	]);
 } catch (Throwable $exception) {
 	echo json_encode([
 		'status' => false,
 		'message' => $exception->getMessage(),
-		'script' => "refresh('#popup_content','/popup/profil.php')",
+		'script' => "if (window.jQuery && document.getElementById('popup_content')) { refresh('#popup_content','/popup/profil.php'); } if (window.commonTopbarRefreshModalContent) { window.commonTopbarRefreshModalContent('/popup/profil.php'); }",
 	]);
 }
 
