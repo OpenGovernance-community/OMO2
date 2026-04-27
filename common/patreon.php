@@ -167,12 +167,10 @@ function patreonRequest($method, $url, array $options = [])
 	$body = curl_exec($curl);
 	if ($body === false) {
 		$error = curl_error($curl);
-		curl_close($curl);
 		throw new RuntimeException('Erreur réseau Patreon : ' . $error);
 	}
 
 	$status = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
-	curl_close($curl);
 
 	return [
 		'status' => $status,
