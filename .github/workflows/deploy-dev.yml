@@ -20,3 +20,4 @@ jobs:
             cd ~/sites/dev.opengov.tools
             git fetch origin Dev
             git reset --hard origin/Dev
+            php scripts/run-migrations.php
