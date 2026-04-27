@@ -19,7 +19,15 @@
 			return '';
 		}
 
-		return '.' . $parts[count($parts) - 2] . '.' . $parts[count($parts) - 1];
+		$rootPartCount = 2;
+		if (count($parts) >= 3) {
+			$environmentCandidate = strtolower((string)($parts[count($parts) - 3] ?? ''));
+			if (in_array($environmentCandidate, ['dev', 'test'], true)) {
+				$rootPartCount = 3;
+			}
+		}
+
+		return '.' . implode('.', array_slice($parts, -$rootPartCount));
 	}
 
 	function appShouldUseSecureCookies() {
