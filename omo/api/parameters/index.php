@@ -47,7 +47,7 @@ $currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 
             <button
                 type="button"
-                class="omo-settings__card omo-card omo-card--interactive"
+                class="omo-settings__card omo-card omo-card--interactive noMobile"
                 data-omo-settings-drawer-title="Modèles de holons"
                 data-omo-settings-drawer-url="/omo/api/parameters/holon-templates/index.php"
                 data-omo-settings-drawer-mode="fetch"

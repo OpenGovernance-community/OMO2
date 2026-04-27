@@ -16,7 +16,7 @@
 				[['name'], 'required'],								// Champs obligatoires
 				[['id'], 'integer'],								// Nombres entiers
 				[['name','shortname','domain','color'], 'string'],	// Chaines de caractere
-				[['logo','banner'], 'image'],						// Images
+				[['logo','banner'], 'sizedimage'],						// Images
 				[['id'], 'safe'],									// Champs proteges
 			];
 		}
@@ -51,8 +51,8 @@
 				'name' => 100,
 				'shortname' => 50,
 				'domain' => 100,
-				'logo' => 100,
-				'banner' => 100,
+				'logo' => [[500, 500],[180,180]],
+				'banner' => [[960, 540],[480, 270]],
 				'color' => 10,
 			];
 		}
@@ -108,6 +108,426 @@
 			}
 
 			return null;
+		}
+
+		protected function getStructuralInitializationTemplateName(\dbObject\Holon $holon)
+		{
+			$templateName = trim((string)$holon->get('templatename'));
+			if ($templateName !== '') {
+				return $templateName;
+			}
+
+			return $holon->getDisplayName();
+		}
+
+		public function getStructuralInitializationTemplates()
+		{
+			$templates = array();
+			$holons = new \dbObject\ArrayHolon();
+			$holons->load(array(
+				'filter' => 'active = 1'
+					. ' and IDtypeholon = 4'
+					. ' and templatename is not null'
+					. ' and templatename != ""'
+					. ' and (IDholon_parent is null or IDholon_parent = 0)',
+				'orderBy' => array(
+					array('field' => 'templatename', 'dir' => 'ASC'),
+					array('field' => 'name', 'dir' => 'ASC'),
+					array('field' => 'id', 'dir' => 'ASC'),
+				),
+			));
+
+			foreach ($holons as $holon) {
+				$sourceOrganizationName = '';
+				$sourceOrganizationId = (int)$holon->get('IDorganization');
+				if ($sourceOrganizationId > 0) {
+					$sourceOrganization = new self();
+					if ($sourceOrganization->load($sourceOrganizationId)) {
+						$sourceOrganizationName = trim((string)$sourceOrganization->get('name'));
+					}
+				}
+
+				$templates[] = array(
+					'id' => (int)$holon->getId(),
+					'name' => $this->getStructuralInitializationTemplateName($holon),
+					'sourceOrganizationId' => $sourceOrganizationId,
+					'sourceOrganizationName' => $sourceOrganizationName,
+					'color' => trim((string)$holon->get('color')),
+				);
+			}
+
+			return $templates;
+		}
+
+		public function getStructuralInitializationData()
+		{
+			return array(
+				'organizationId' => (int)$this->getId(),
+				'organizationName' => trim((string)$this->get('name')),
+				'hasStructure' => $this->getStructuralRootHolon() !== null,
+				'templates' => $this->getStructuralInitializationTemplates(),
+			);
+		}
+
+		protected function createStructuralRootHolon($userId = 0, \dbObject\Holon $sourceTemplate = null)
+		{
+			$organizationName = trim((string)$this->get('name'));
+			if ($organizationName === '') {
+				$organizationName = 'Organisation ' . (int)$this->getId();
+			}
+
+			$rootHolon = new \dbObject\Holon();
+			$rootHolon->set('name', $organizationName);
+			$rootHolon->set('templatename', null);
+			$rootHolon->set('IDtypeholon', 4);
+			$rootHolon->set('IDholon_parent', null);
+			$rootHolon->set('IDholon_template', null);
+			$rootHolon->set('IDholon_org', null);
+			$rootHolon->set('IDorganization', (int)$this->getId());
+			$rootHolon->set('IDuser', (int)$userId > 0
+				? (int)$userId
+				: ($sourceTemplate ? (int)$sourceTemplate->get('IDuser') : 0));
+			$rootHolon->set('active', true);
+			$rootHolon->set('visible', true);
+			$rootHolon->set('mandatory', false);
+			$rootHolon->set('lockedname', false);
+			$rootHolon->set('unique', false);
+			$rootHolon->set('link', false);
+			$rootHolon->set('color', $sourceTemplate ? ($sourceTemplate->get('color') ?: null) : null);
+			$rootHolon->set('accesskey', null);
+			$rootHolon->save();
+
+			if ((int)$rootHolon->getId() <= 0) {
+				return null;
+			}
+
+			$rootHolon->set('IDholon_org', (int)$rootHolon->getId());
+			$rootHolon->save();
+
+			return $rootHolon;
+		}
+
+		protected function getStructuralInitializationChildren(\dbObject\Holon $holon)
+		{
+			$children = new \dbObject\ArrayHolon();
+			$children->load(array(
+				'where' => array(
+					array('field' => 'IDholon_parent', 'value' => (int)$holon->getId()),
+					array('field' => 'active', 'value' => 1),
+				),
+				'orderBy' => array(
+					array('field' => 'IDtypeholon', 'dir' => 'ASC'),
+					array('field' => 'name', 'dir' => 'ASC'),
+					array('field' => 'templatename', 'dir' => 'ASC'),
+					array('field' => 'id', 'dir' => 'ASC'),
+				),
+			));
+
+			return $children;
+		}
+
+		protected function cloneStructuralPropertyValue(\dbObject\Property $property, $rawValue, array $holonIdMap)
+		{
+			if ((string)$property->get('listitemtype') !== \dbObject\Property::LIST_ITEM_HOLON) {
+				return $rawValue;
+			}
+
+			$rawValue = is_scalar($rawValue) || $rawValue === null ? (string)$rawValue : '';
+			$trimmedValue = trim($rawValue);
+			if ($trimmedValue === '') {
+				return $rawValue;
+			}
+
+			$decoded = json_decode($trimmedValue, true);
+			if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+				$converted = array();
+				foreach ($decoded as $item) {
+					if (is_array($item)) {
+						$itemId = (int)($item['id'] ?? 0);
+						if ($itemId > 0 && isset($holonIdMap[$itemId])) {
+							$item['id'] = (int)$holonIdMap[$itemId];
+						}
+						$converted[] = $item;
+						continue;
+					}
+
+					$itemId = (int)$item;
+					$converted[] = isset($holonIdMap[$itemId]) ? (int)$holonIdMap[$itemId] : $item;
+				}
+
+				return json_encode($converted, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			}
+
+			$singleHolonId = (int)$trimmedValue;
+			if ($singleHolonId > 0 && isset($holonIdMap[$singleHolonId])) {
+				return (string)$holonIdMap[$singleHolonId];
+			}
+
+			if (strpos($trimmedValue, '|') !== false || preg_match('/\r\n|\r|\n/', $trimmedValue)) {
+				$separator = strpos($trimmedValue, '|') !== false ? '|' : "\n";
+				$items = strpos($trimmedValue, '|') !== false
+					? explode('|', $trimmedValue)
+					: preg_split('/\r\n|\r|\n/', $trimmedValue);
+				$converted = array();
+
+				foreach ($items as $item) {
+					$item = trim((string)$item);
+					if ($item === '') {
+						continue;
+					}
+
+					$itemId = (int)$item;
+					$converted[] = isset($holonIdMap[$itemId]) ? (string)$holonIdMap[$itemId] : $item;
+				}
+
+				return implode($separator, $converted);
+			}
+
+			return $rawValue;
+		}
+
+		protected function cloneStructuralProperty(\dbObject\Property $sourceProperty, $sourceRootHolonId, $targetRootHolonId, array &$propertyIdMap)
+		{
+			$sourcePropertyId = (int)$sourceProperty->getId();
+			if ($sourcePropertyId <= 0) {
+				return 0;
+			}
+
+			if (isset($propertyIdMap[$sourcePropertyId])) {
+				return (int)$propertyIdMap[$sourcePropertyId];
+			}
+
+			if ((int)$sourceProperty->get('IDholon_organization') !== (int)$sourceRootHolonId) {
+				$propertyIdMap[$sourcePropertyId] = $sourcePropertyId;
+				return $sourcePropertyId;
+			}
+
+			$targetProperty = new \dbObject\Property();
+			$targetProperty->set('name', $sourceProperty->get('name'));
+			$targetProperty->set('shortname', $sourceProperty->get('shortname'));
+			$targetProperty->set('IDpropertyformat', (int)$sourceProperty->get('IDpropertyformat'));
+			$targetProperty->set('listitemtype', $sourceProperty->get('listitemtype'));
+			$targetProperty->set('listholontypeids', $sourceProperty->get('listholontypeids'));
+			$targetProperty->set('IDholon_organization', (int)$targetRootHolonId);
+			$targetProperty->set('position', (int)$sourceProperty->get('position'));
+			$targetProperty->set('active', (bool)$sourceProperty->get('active'));
+			$targetProperty->save();
+
+			$propertyIdMap[$sourcePropertyId] = (int)$targetProperty->getId();
+			return (int)$targetProperty->getId();
+		}
+
+		protected function cloneStructuralHolonProperties(\dbObject\Holon $sourceHolon, \dbObject\Holon $targetHolon, $sourceRootHolonId, $targetRootHolonId, array $holonIdMap, array &$propertyIdMap)
+		{
+			foreach ($sourceHolon->getHolonProperties() as $sourceHolonProperty) {
+				$sourceProperty = new \dbObject\Property();
+				if (!$sourceProperty->load((int)$sourceHolonProperty->get('IDproperty'))) {
+					continue;
+				}
+
+				$targetPropertyId = $this->cloneStructuralProperty(
+					$sourceProperty,
+					(int)$sourceRootHolonId,
+					(int)$targetRootHolonId,
+					$propertyIdMap
+				);
+				if ($targetPropertyId <= 0) {
+					continue;
+				}
+
+				$targetHolonProperty = new \dbObject\HolonProperty();
+				$targetHolonProperty->set('IDholon', (int)$targetHolon->getId());
+				$targetHolonProperty->set('IDproperty', $targetPropertyId);
+				$targetHolonProperty->set('value', $this->cloneStructuralPropertyValue($sourceProperty, $sourceHolonProperty->get('value'), $holonIdMap));
+				$targetHolonProperty->set('position', (int)$sourceHolonProperty->get('position'));
+				$targetHolonProperty->set('mandatory', (bool)$sourceHolonProperty->get('mandatory'));
+				$targetHolonProperty->set('locked', (bool)$sourceHolonProperty->get('locked'));
+				$targetHolonProperty->set('active', (bool)$sourceHolonProperty->get('active'));
+				$targetHolonProperty->save();
+			}
+		}
+
+		protected function cloneStructuralChildrenRecursively(\dbObject\Holon $sourceParent, $targetParentId, $targetRootHolonId, $userId, array &$sourceHolonsById, array &$targetHolonsBySourceId, array &$holonIdMap)
+		{
+			foreach ($this->getStructuralInitializationChildren($sourceParent) as $sourceChild) {
+				$targetChild = new \dbObject\Holon();
+				$targetChild->set('name', $sourceChild->get('name'));
+				$targetChild->set('templatename', $sourceChild->get('templatename'));
+				$targetChild->set('IDtypeholon', (int)$sourceChild->get('IDtypeholon'));
+				$targetChild->set('IDholon_parent', (int)$targetParentId);
+				$targetChild->set('IDholon_template', null);
+				$targetChild->set('IDholon_org', (int)$targetRootHolonId);
+				$targetChild->set('IDorganization', null);
+				$targetChild->set('IDuser', (int)$userId > 0 ? (int)$userId : (int)$sourceChild->get('IDuser'));
+				$targetChild->set('active', (bool)$sourceChild->get('active'));
+				$targetChild->set('visible', (bool)$sourceChild->get('visible'));
+				$targetChild->set('mandatory', (bool)$sourceChild->get('mandatory'));
+				$targetChild->set('lockedname', (bool)$sourceChild->get('lockedname'));
+				$targetChild->set('unique', (bool)$sourceChild->get('unique'));
+				$targetChild->set('link', (bool)$sourceChild->get('link'));
+				$targetChild->set('color', $sourceChild->get('color') ?: null);
+				$targetChild->set('accesskey', $sourceChild->get('accesskey') ?: null);
+				$targetChild->save();
+
+				$sourceChildId = (int)$sourceChild->getId();
+				$sourceHolonsById[$sourceChildId] = $sourceChild;
+				$targetHolonsBySourceId[$sourceChildId] = $targetChild;
+				$holonIdMap[$sourceChildId] = (int)$targetChild->getId();
+
+				$this->cloneStructuralChildrenRecursively(
+					$sourceChild,
+					(int)$targetChild->getId(),
+					(int)$targetRootHolonId,
+					(int)$userId,
+					$sourceHolonsById,
+					$targetHolonsBySourceId,
+					$holonIdMap
+				);
+			}
+		}
+
+		protected function initializeStructureFromTemplate(\dbObject\Holon $sourceRootHolon, $userId = 0)
+		{
+			$targetRootHolon = $this->createStructuralRootHolon($userId, $sourceRootHolon);
+			if (!$targetRootHolon) {
+				return array(
+					'status' => false,
+					'message' => "Le holon racine n'a pas pu etre cree.",
+				);
+			}
+
+			$sourceRootHolonId = (int)$sourceRootHolon->getId();
+			$targetRootHolonId = (int)$targetRootHolon->getId();
+			$sourceHolonsById = array(
+				$sourceRootHolonId => $sourceRootHolon,
+			);
+			$targetHolonsBySourceId = array(
+				$sourceRootHolonId => $targetRootHolon,
+			);
+			$holonIdMap = array(
+				$sourceRootHolonId => $targetRootHolonId,
+			);
+			$propertyIdMap = array();
+
+			$this->cloneStructuralChildrenRecursively(
+				$sourceRootHolon,
+				$targetRootHolonId,
+				$targetRootHolonId,
+				(int)$userId,
+				$sourceHolonsById,
+				$targetHolonsBySourceId,
+				$holonIdMap
+			);
+
+			foreach ($sourceHolonsById as $sourceHolonId => $sourceHolon) {
+				$targetHolon = $targetHolonsBySourceId[$sourceHolonId] ?? null;
+				if (!$targetHolon) {
+					continue;
+				}
+
+				$sourceTemplateId = (int)$sourceHolon->get('IDholon_template');
+				$targetTemplateId = 0;
+				if ($sourceTemplateId > 0) {
+					$targetTemplateId = isset($holonIdMap[$sourceTemplateId])
+						? (int)$holonIdMap[$sourceTemplateId]
+						: $sourceTemplateId;
+				}
+
+				$targetHolon->set('IDholon_template', $targetTemplateId > 0 ? $targetTemplateId : null);
+				$targetHolon->save();
+			}
+
+			foreach ($sourceHolonsById as $sourceHolonId => $sourceHolon) {
+				$targetHolon = $targetHolonsBySourceId[$sourceHolonId] ?? null;
+				if (!$targetHolon) {
+					continue;
+				}
+
+				$this->cloneStructuralHolonProperties(
+					$sourceHolon,
+					$targetHolon,
+					$sourceRootHolonId,
+					$targetRootHolonId,
+					$holonIdMap,
+					$propertyIdMap
+				);
+			}
+
+			return array(
+				'status' => true,
+				'message' => 'Organisation initialisee depuis le modele selectionne.',
+				'rootHolon' => $targetRootHolon,
+			);
+		}
+
+		public function initializeStructure($userId = 0, $templateRootHolonId = 0)
+		{
+			if ((int)$this->getId() <= 0) {
+				return array(
+					'status' => false,
+					'message' => "L'organisation demandee est introuvable.",
+				);
+			}
+
+			if ($this->getStructuralRootHolon()) {
+				return array(
+					'status' => false,
+					'message' => 'Cette organisation a deja une structure.',
+				);
+			}
+
+			$templateRootHolonId = (int)$templateRootHolonId;
+			$pdo = \dbObject\DbObject::getPdo();
+			if (!$pdo) {
+				return array(
+					'status' => false,
+					'message' => 'La connexion a la base de donnees est indisponible.',
+				);
+			}
+
+			try {
+				$pdo->beginTransaction();
+
+				if ($templateRootHolonId <= 0) {
+					$rootHolon = $this->createStructuralRootHolon($userId);
+					if (!$rootHolon) {
+						throw new \RuntimeException("Le holon racine n'a pas pu etre cree.");
+					}
+
+					$result = array(
+						'status' => true,
+						'message' => 'Organisation creee.',
+						'rootHolon' => $rootHolon,
+					);
+				} else {
+					$templateRootHolon = new \dbObject\Holon();
+					if (
+						!$templateRootHolon->load($templateRootHolonId)
+						|| (int)$templateRootHolon->get('IDtypeholon') !== 4
+						|| !(bool)$templateRootHolon->get('active')
+						|| trim((string)$templateRootHolon->get('templatename')) === ''
+					) {
+						throw new \RuntimeException("Le modele d'organisation demande est introuvable.");
+					}
+
+					$result = $this->initializeStructureFromTemplate($templateRootHolon, $userId);
+					if (!($result['status'] ?? false)) {
+						throw new \RuntimeException((string)($result['message'] ?? "Le modele n'a pas pu etre duplique."));
+					}
+				}
+
+				$pdo->commit();
+				return $result;
+			} catch (\Throwable $exception) {
+				if ($pdo->inTransaction()) {
+					$pdo->rollBack();
+				}
+
+				return array(
+					'status' => false,
+					'message' => $exception->getMessage(),
+				);
+			}
 		}
 
 		public function containsHolon($holon): bool
@@ -322,6 +742,7 @@
 					'color' => (string)$template->get('color'),
 					'visible' => (bool)$template->get('visible'),
 					'mandatory' => (bool)$template->get('mandatory'),
+					'lockedName' => (bool)$template->get('lockedname'),
 					'unique' => (bool)$template->get('unique'),
 					'link' => (bool)$template->get('link'),
 					'inheritsFromId' => (int)$template->get('IDholon_template'),
@@ -701,6 +1122,7 @@
 					'color' => (string)$template->get('color'),
 					'visible' => (bool)$template->get('visible'),
 					'mandatory' => (bool)$template->get('mandatory'),
+					'lockedName' => (bool)$template->get('lockedname'),
 					'unique' => (bool)$template->get('unique'),
 					'link' => (bool)$template->get('link'),
 					'definedInId' => (int)$template->get('IDholon_parent'),
@@ -735,6 +1157,7 @@
 					'isTemplate' => $isTemplateEditing,
 					'visible' => (bool)$editingHolon->get('visible'),
 					'mandatory' => (bool)$editingHolon->get('mandatory'),
+					'nameLocked' => $isTemplateEditing ? (bool)$editingHolon->get('lockedname') : $editingHolon->isNameLockedByTemplate(),
 					'unique' => (bool)$editingHolon->get('unique'),
 					'link' => (bool)$editingHolon->get('link'),
 					'properties' => $isTemplateEditing
@@ -809,12 +1232,6 @@
 			}
 
 			$name = trim((string)($payload['name'] ?? ''));
-			if ($name === '') {
-				return array(
-					'status' => false,
-					'message' => 'Le nom du holon est obligatoire.',
-				);
-			}
 
 			$submittedValuesByPropertyId = array();
 			if (is_array($payload['properties'] ?? null)) {
@@ -939,6 +1356,12 @@
 					);
 				}
 
+				if ((bool)$template->get('lockedname')) {
+					$name = trim((string)$template->getDisplayName());
+				} elseif ((bool)$template->get('unique') && $name === '') {
+					$name = trim((string)$template->getDisplayName());
+				}
+
 				$templateDefinitions = $template->getHolonCreationPropertyDefinitions();
 				foreach ($templateDefinitions as $definition) {
 					$propertyId = (int)($definition['id'] ?? 0);
@@ -971,6 +1394,13 @@
 				}
 			}
 
+			if ($name === '') {
+				return array(
+					'status' => false,
+					'message' => 'Le nom du holon est obligatoire.',
+				);
+			}
+
 			if (!$holon) {
 				$holon = new \dbObject\Holon();
 			}
@@ -986,6 +1416,7 @@
 			$holon->set('active', true);
 			$holon->set('visible', $isTemplateEditing ? !empty($payload['visible']) : true);
 			$holon->set('mandatory', $isTemplateEditing ? !empty($payload['mandatory']) : false);
+			$holon->set('lockedname', $isTemplateEditing ? !empty($payload['lockedName']) : false);
 			$holon->set('unique', $isTemplateEditing ? !empty($payload['unique']) : false);
 			$holon->set('link', $isTemplateEditing ? !empty($payload['link']) : false);
 			$color = trim((string)($payload['color'] ?? ''));
@@ -1243,6 +1674,7 @@
 			$template->set('color', trim((string)($payload['color'] ?? '')) !== '' ? trim((string)$payload['color']) : null);
 			$template->set('visible', !empty($payload['visible']));
 			$template->set('mandatory', !empty($payload['mandatory']));
+			$template->set('lockedname', !empty($payload['lockedName']));
 			$template->set('unique', !empty($payload['unique']));
 			$template->set('link', !empty($payload['link']));
 			$template->save();

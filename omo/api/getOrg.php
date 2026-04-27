@@ -343,6 +343,13 @@ if ($organization === null) {
 
 $root = $organization->getStructuralRootHolon();
 if ($root === null) {
+    require_once __DIR__ . '/organization_setup_panel.php';
+    omoRenderOrganizationInfoPanel($organization);
+    exit;
+}
+
+$root = $organization->getStructuralRootHolon();
+if ($root === null) {
     http_response_code(404);
     ?>
     <div class="circle-panel"><div class="error">Aucune structure racine n'a été trouvée pour cette organisation.</div></div>
@@ -420,7 +427,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
                 <div class="circle-menu" data-holon-menu="1">
                     <button
                         type="button"
-                        class="circle-badge circle-badge--menu"
+                        class="circle-badge circle-badge--menu noMobile"
                         data-holon-menu-toggle="1"
                         aria-haspopup="menu"
                         aria-expanded="false"
@@ -1035,9 +1042,20 @@ function omoNormalizeSectionKey(value) {
 
 function omoBuildDirectHolonUrl(cid) {
     const rootId = <?= (int)$root->getId() ?>;
-    return Number(cid) === Number(rootId)
-        ? `${window.location.origin}/omo/`
-        : `${window.location.origin}/omo/c/${cid}`;
+    const route = typeof parseUrl === 'function'
+        ? parseUrl()
+        : { oid: <?= (int)$organizationId ?> };
+    const targetCid = Number(cid) === Number(rootId) ? null : cid;
+
+    if (typeof buildOmoUrl === 'function') {
+        return buildOmoUrl(route.oid, targetCid, null, { absolute: true });
+    }
+
+    if (targetCid) {
+        return `${window.location.origin}/omo/c/${targetCid}`;
+    }
+
+    return `${window.location.origin}/omo/`;
 }
 
 (function restoreSections() {

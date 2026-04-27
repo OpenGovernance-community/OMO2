@@ -408,7 +408,98 @@
 				} else
 					
 				if (false !== array_search("sizedimage", array_column($param, 1))) {
+					$target_dir="/img/upload/".$this->tableName();
+					if (!file_exists($_SERVER["DOCUMENT_ROOT"].$target_dir."/")) {
+						mkdir($_SERVER["DOCUMENT_ROOT"].$target_dir."/", 0777, true);
+					}
 					// Si c'est une image, ne peut se contenter d'une string: regarde si un fichier est envoyé
+					if ($value==="newimage" && isset($_FILES[$field]) && ($_FILES[$field]["error"] ?? UPLOAD_ERR_NO_FILE)===UPLOAD_ERR_OK) {
+						$tmpName = $_FILES[$field]["tmp_name"];
+						$mime = function_exists("mime_content_type") ? mime_content_type($tmpName) : ($_FILES[$field]["type"] ?? "");
+						$sizes = $this::attributeLength();
+						$sizeConfig = $sizes[$field] ?? null;
+						$targetWidth = null;
+						$targetHeight = null;
+
+						if (is_array($sizeConfig)) {
+							if (isset($sizeConfig[0]) && is_array($sizeConfig[0])) {
+								$targetWidth = $sizeConfig[0][0] ?? null;
+								$targetHeight = $sizeConfig[0][1] ?? null;
+							} else {
+								$targetWidth = $sizeConfig[0] ?? null;
+								$targetHeight = $sizeConfig[1] ?? null;
+							}
+						}
+
+						switch ($mime) {
+							case "image/jpeg":
+								$src = imagecreatefromjpeg($tmpName);
+								$ext = "jpg";
+								break;
+							case "image/png":
+								$src = imagecreatefrompng($tmpName);
+								$ext = "png";
+								break;
+							case "image/webp":
+								$src = imagecreatefromwebp($tmpName);
+								$ext = "webp";
+								break;
+							default:
+								$src = false;
+								$ext = "";
+								break;
+						}
+
+						if ($src!==false) {
+							$srcWidth = imagesx($src);
+							$srcHeight = imagesy($src);
+
+							if ($targetWidth && $targetHeight) {
+								$dst = imagecreatetruecolor($targetWidth, $targetHeight);
+
+								if ($mime === "image/png") {
+									imagealphablending($dst, false);
+									imagesavealpha($dst, true);
+								}
+
+								imagecopyresampled(
+									$dst, $src,
+									0, 0, 0, 0,
+									$targetWidth, $targetHeight,
+									$srcWidth, $srcHeight
+								);
+							} else {
+								$dst = $src;
+							}
+
+							$fileName = time()."_".uniqid().".".$ext;
+							$imagePath = $target_dir."/".$fileName;
+							$fullPath = $_SERVER["DOCUMENT_ROOT"].$imagePath;
+
+							switch ($mime) {
+								case "image/jpeg":
+									imagejpeg($dst, $fullPath, 90);
+									break;
+								case "image/png":
+									imagepng($dst, $fullPath);
+									break;
+								case "image/webp":
+									imagewebp($dst, $fullPath, 90);
+									break;
+							}
+
+							if ($dst !== $src) {
+								imagedestroy($dst);
+							}
+							imagedestroy($src);
+
+							if (!empty($this->_fields[$field]) && file_exists($_SERVER["DOCUMENT_ROOT"].$this->_fields[$field])) {
+								unlink($_SERVER["DOCUMENT_ROOT"].$this->_fields[$field]);
+							}
+
+							$this->_fields[$field] = $imagePath;
+						}
+					} else
 					if (isset($_POST["imageDataInput_".$field]) && $_POST["imageDataInput_".$field]!="") {
 						$target_dir="/img/upload/".$this->tableName();
 						if (!file_exists($_SERVER["DOCUMENT_ROOT"].$target_dir."/")) {
@@ -424,7 +515,7 @@
 						$this->_fields[$field]=$imagePath;
 						unset($_POST["imageDataInput_".$field]);
 					} else {
-						if (is_string($value) && $value!="[object File]")
+						if (is_string($value) && $value!="[object File]" && $value!="newimage")
 							$this->_fields[$field]=$value;	
 					} // On ne fait rien, ça n'a pas été modifié
 				} else
