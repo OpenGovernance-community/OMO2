@@ -1,6 +1,10 @@
 <?
 	require_once __DIR__ . '/shared/date_groups.php';
 
+	function appGetReservedEnvironmentSubdomains() {
+		return ['dev', 'beta'];
+	}
+
 	function appGetCookieDomain($host = null) {
 		$host = is_string($host) && $host !== '' ? strtolower($host) : strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
 		$host = trim((string)$host);
@@ -22,7 +26,7 @@
 		$rootPartCount = 2;
 		if (count($parts) >= 3) {
 			$environmentCandidate = strtolower((string)($parts[count($parts) - 3] ?? ''));
-			if (in_array($environmentCandidate, ['dev', 'test'], true)) {
+			if (in_array($environmentCandidate, appGetReservedEnvironmentSubdomains(), true)) {
 				$rootPartCount = 3;
 			}
 		}
