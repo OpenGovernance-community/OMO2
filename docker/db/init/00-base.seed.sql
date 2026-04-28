@@ -968,6 +968,44 @@ INSERT INTO `user` (`id`, `email`, `lastname`, `firstname`, `username`, `passwor
 -- --------------------------------------------------------
 
 --
+-- Structure de la table `user_patreon`
+--
+
+CREATE TABLE `user_patreon` (
+  `id` int(11) NOT NULL,
+  `IDuser` int(11) NOT NULL,
+  `access_token` text DEFAULT NULL,
+  `refresh_token` text DEFAULT NULL,
+  `token_expires_at` datetime DEFAULT NULL,
+  `scope` varchar(255) DEFAULT NULL,
+  `token_type` varchar(50) DEFAULT NULL,
+  `patreon_user_id` varchar(50) DEFAULT NULL,
+  `patreon_member_id` varchar(100) DEFAULT NULL,
+  `campaign_id` varchar(50) DEFAULT NULL,
+  `full_name` varchar(255) DEFAULT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `image_url` varchar(500) DEFAULT NULL,
+  `profile_url` varchar(500) DEFAULT NULL,
+  `vanity` varchar(255) DEFAULT NULL,
+  `patron_status` varchar(50) DEFAULT NULL,
+  `last_charge_status` varchar(50) DEFAULT NULL,
+  `last_charge_date` datetime DEFAULT NULL,
+  `next_charge_date` datetime DEFAULT NULL,
+  `currently_entitled_amount_cents` int(11) NOT NULL DEFAULT 0,
+  `campaign_lifetime_support_cents` int(11) NOT NULL DEFAULT 0,
+  `tier_titles` mediumtext DEFAULT NULL,
+  `is_connected` tinyint(1) NOT NULL DEFAULT 0,
+  `connected_at` datetime DEFAULT NULL,
+  `last_sync_at` datetime DEFAULT NULL,
+  `last_sync_status` varchar(50) DEFAULT NULL,
+  `last_sync_error` mediumtext DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Structure de la table `user_faq_response`
 --
 
@@ -1261,6 +1299,14 @@ ALTER TABLE `user`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Index pour la table `user_patreon`
+--
+ALTER TABLE `user_patreon`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uniq_user_patreon_user` (`IDuser`),
+  ADD KEY `idx_user_patreon_connected` (`is_connected`);
+
+--
 -- Index pour la table `user_faq_response`
 --
 ALTER TABLE `user_faq_response`
@@ -1449,6 +1495,12 @@ ALTER TABLE `typeholon`
 --
 ALTER TABLE `user`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=45;
+
+--
+-- AUTO_INCREMENT pour la table `user_patreon`
+--
+ALTER TABLE `user_patreon`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT pour la table `user_faq_response`

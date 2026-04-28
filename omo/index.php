@@ -403,7 +403,7 @@ if ($currentUser->load($currentUserId)) {
                     'buttonLabel' => 'Profil',
                     'editTitle' => 'Votre profil',
                     'editUrl' => '/popup/profil.php',
-                    'editMode' => 'iframe',
+                    'editMode' => 'fetch',
                 ],
             'helpLabel' => 'Aide',
             'helpItems' => [

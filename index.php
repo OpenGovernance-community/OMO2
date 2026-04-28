@@ -10,12 +10,17 @@
 	$parts = array_values(array_filter(explode('.', $host)));
 	$subdomain = $parts[0] ?? '';
 	$isLocalhostSubdomain = count($parts) === 2 && ($parts[1] ?? '') === 'localhost';
+	$reservedEnvironmentSubdomains = ['dev', 'test'];
+	$isEnvironmentRootHost = count($parts) >= 3
+		&& in_array((string)($parts[count($parts) - 3] ?? ''), $reservedEnvironmentSubdomains, true);
+	$rootPartCount = $isEnvironmentRootHost ? 3 : 2;
+	$hasOrganizationSubdomain = $isLocalhostSubdomain || count($parts) > $rootPartCount;
 
 	if (isset($routes[$subdomain])) {
 		require __DIR__ . $routes[$subdomain];
 		exit;
 	} else {
-		if (count($parts) > 2 || $isLocalhostSubdomain) {
+		if ($hasOrganizationSubdomain) {
 			require __DIR__ . "/lms/index.php";
 			exit;
 		}
