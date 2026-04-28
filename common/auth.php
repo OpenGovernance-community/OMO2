@@ -43,7 +43,11 @@ function commonGetRequestPath()
 
 function commonGetReservedEnvironmentSubdomains()
 {
-    return ['dev', 'test'];
+    if (function_exists('appGetReservedEnvironmentSubdomains')) {
+        return appGetReservedEnvironmentSubdomains();
+    }
+
+    return ['dev', 'beta'];
 }
 
 function commonGetHostRootPartCount(array $parts)
@@ -520,7 +524,7 @@ function commonSendLoginCode($userId, $email, array $organizationContext, $remem
 
     $fromAddress = trim((string)($GLOBALS['mailUser'] ?? ''));
     if ($fromAddress === '') {
-        $host = preg_replace('/:\d+$/', '', (string)($_SERVER['HTTP_HOST'] ?? 'localhost'));
+        $host = preg_replace('/:\d+$/', '', commonGetRootHost() ?: 'localhost');
         $fromAddress = 'noreply@' . ($host !== '' ? $host : 'localhost');
     }
 
