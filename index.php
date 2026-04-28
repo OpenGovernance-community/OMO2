@@ -10,7 +10,7 @@
 	$parts = array_values(array_filter(explode('.', $host)));
 	$subdomain = $parts[0] ?? '';
 	$isLocalhostSubdomain = count($parts) === 2 && ($parts[1] ?? '') === 'localhost';
-	$reservedEnvironmentSubdomains = ['dev', 'test'];
+	$reservedEnvironmentSubdomains = ['dev', 'beta'];
 	$isEnvironmentRootHost = count($parts) >= 3
 		&& in_array((string)($parts[count($parts) - 3] ?? ''), $reservedEnvironmentSubdomains, true);
 	$rootPartCount = $isEnvironmentRootHost ? 3 : 2;
