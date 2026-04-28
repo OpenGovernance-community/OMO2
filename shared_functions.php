@@ -22,7 +22,7 @@
 		$rootPartCount = 2;
 		if (count($parts) >= 3) {
 			$environmentCandidate = strtolower((string)($parts[count($parts) - 3] ?? ''));
-			if (in_array($environmentCandidate, ['dev', 'test'], true)) {
+			if (in_array($environmentCandidate, ['dev', 'beta'], true)) {
 				$rootPartCount = 3;
 			}
 		}

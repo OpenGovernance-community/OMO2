@@ -75,7 +75,7 @@
 				$rootPartCount = (int)commonGetHostRootPartCount($parts);
 			} elseif (count($parts) === 2 && ($parts[1] ?? '') === 'localhost') {
 				$rootPartCount = 1;
-			} elseif (count($parts) >= 3 && in_array((string)($parts[count($parts) - 3] ?? ''), array('dev', 'test'), true)) {
+			} elseif (count($parts) >= 3 && in_array((string)($parts[count($parts) - 3] ?? ''), array('dev', 'beta'), true)) {
 				$rootPartCount = 3;
 			} else {
 				$rootPartCount = min(2, count($parts));
