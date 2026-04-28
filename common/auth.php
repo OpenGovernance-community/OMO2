@@ -43,7 +43,7 @@ function commonGetRequestPath()
 
 function commonGetReservedEnvironmentSubdomains()
 {
-    return ['dev', 'test'];
+    return ['dev', 'beta'];
 }
 
 function commonGetHostRootPartCount(array $parts)
