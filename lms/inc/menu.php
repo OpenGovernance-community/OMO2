@@ -1,6 +1,8 @@
 <?php
 require_once dirname(__DIR__, 2) . '/common/topbar.php';
-
+?>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<?php
 commonRenderTopbar([
     'appKey' => 'lms',
     'appLabel' => 'LMS',
@@ -16,7 +18,7 @@ commonRenderTopbar([
         'buttonLabel' => 'Profil',
         'editTitle' => 'Votre profil',
         'editUrl' => '/popup/profil.php',
-        'editMode' => 'iframe',
+        'editMode' => 'fetch',
     ],
     'helpLabel' => 'Aide',
     'helpItems' => [

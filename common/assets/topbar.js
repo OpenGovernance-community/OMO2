@@ -284,4 +284,20 @@
     window.commonTopbarCloseModal = closeModal;
     window.commonTopbarOpenDrawer = openDrawer;
     window.commonTopbarCloseDrawer = closeDrawer;
+    window.commonTopbarRefreshModalContent = function (url) {
+        var body = document.getElementById('commonTopbarModalBody');
+        if (!body || !url) {
+            return;
+        }
+
+        renderRemoteContent(body, url);
+    };
+    window.commonTopbarRefreshDrawerContent = function (url) {
+        var body = document.getElementById('commonTopbarDrawerBody');
+        if (!body || !url) {
+            return;
+        }
+
+        renderRemoteContent(body, url);
+    };
 })();

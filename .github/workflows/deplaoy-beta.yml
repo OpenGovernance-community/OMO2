@@ -3,7 +3,7 @@ name: Deploy Dev
 on:
   push:
     branches:
-      - Dev
+      - Test
 
 jobs:
   deploy:
@@ -17,7 +17,7 @@ jobs:
           username: ${{ secrets.DEV_USER }}
           password: ${{ secrets.DEV_PASSWORD }}
           script: |
-            cd ~/sites/dev.opengov.tools
-            git fetch origin Dev
-            git reset --hard origin/Dev
+            cd ~/sites/beta.opengov.tools
+            git fetch origin Test
+            git reset --hard origin/Test
             php scripts/run-migrations.php

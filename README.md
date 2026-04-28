@@ -93,6 +93,37 @@ Le certificat HTTPS local est autosigne. Le navigateur affichera donc un avertis
 - utilise MariaDB configuree en `utf8mb4` par defaut pour accepter les emoji
 - charge le dump complet, qui contient deja les organisations de demo `Org1` et `Org2` ainsi que la structure de demo
 
+### Migrations SQL automatiques
+
+Les migrations versionnees du projet se trouvent dans `sql/`.
+
+Le deploiement peut les appliquer via :
+
+```bash
+php scripts/run-migrations.php
+```
+
+Le script :
+
+- cree automatiquement la table de suivi `sql_migration`
+- applique dans l'ordre les fichiers `*.sql` qui contiennent le marqueur `-- @migration`
+- n'execute chaque migration qu'une seule fois par base
+- bloque si un fichier deja applique a ete modifie, pour eviter une derive silencieuse
+
+Les scripts SQL de demo, d'import ou d'usage ponctuel peuvent donc rester dans `sql/` sans etre joues au deploiement, tant qu'ils ne portent pas ce marqueur.
+
+Pour cibler plusieurs bases au meme deploiement, par exemple la base principale et une base d'exemple, il est possible de definir :
+
+```env
+DB_MIGRATION_DATABASES=omodev,omoexample
+```
+
+Ou de lancer explicitement :
+
+```bash
+php scripts/run-migrations.php --databases=omodev,omoexample
+```
+
 ### Variante locale privee
 
 Si tu veux ajouter des donnees locales non publiees par-dessus le seed versionne, tu peux deposer un fichier SQL supplementaire dans `docker/db/init/`, par exemple :
