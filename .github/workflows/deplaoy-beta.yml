@@ -1,0 +1,23 @@
+name: Deploy Dev
+
+on:
+  push:
+    branches:
+      - Test
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to Infomaniak
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEV_HOST }}
+          username: ${{ secrets.DEV_USER }}
+          password: ${{ secrets.DEV_PASSWORD }}
+          script: |
+            cd ~/sites/beta.opengov.tools
+            git fetch origin Test
+            git reset --hard origin/Test
+            php scripts/run-migrations.php
