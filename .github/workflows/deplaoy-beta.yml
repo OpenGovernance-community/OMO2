@@ -1,4 +1,4 @@
-name: Deploy Dev
+name: Deploy Test Branch to Infomaniak
 
 on:
   push:
