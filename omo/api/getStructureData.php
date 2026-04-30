@@ -56,4 +56,6 @@ if ($root === null) {
 
 echo $root->toRepresentationJson(array(
     'representation' => 'circle',
+    'includeMemberUserIds' => true,
+    'organizationId' => $organizationId,
 ));

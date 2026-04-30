@@ -12,12 +12,37 @@ if (!$connected) {
 $currentUserId = function_exists('commonGetCurrentUserId')
 	? (int)commonGetCurrentUserId()
 	: (int)($_SESSION["currentUser"] ?? 0);
+$currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 
 $user = new \dbObject\User();
 $user->load($currentUserId);
 if (!($user->get("id") > 0)) {
 	die("Utilisateur inconnu");
 }
+
+$organization = null;
+$organizationMembership = null;
+$hasOrganizationScope = false;
+
+if ($currentOrganizationId > 0) {
+	$organization = new \dbObject\Organization();
+	if ($organization->load($currentOrganizationId)) {
+		$organizationMembership = $user->getOrganizationMembership($currentOrganizationId);
+		if (!$organizationMembership) {
+			$organizationMembership = new \dbObject\UserOrganization();
+			$organizationMembership->set('IDuser', (int)$user->getId());
+			$organizationMembership->set('IDorganization', $currentOrganizationId);
+			$organizationMembership->set('active', true);
+		}
+		$hasOrganizationScope = true;
+	}
+}
+
+$activeEmail = $user->getScopedEmail($currentOrganizationId);
+$activeUsername = $user->getScopedUsername($currentOrganizationId);
+$activePhotoUrl = $user->getScopedProfilePhotoUrl($currentOrganizationId);
+$requestedScope = isset($_GET['scope']) && $_GET['scope'] === 'organization' ? 'organization' : 'general';
+$initialScope = $hasOrganizationScope ? $requestedScope : 'general';
 
 $patreonConnection = \dbObject\UserPatreon::findByUserId((int)$user->getId());
 $patreonConfigured = patreonIsConfigured('oauth');
@@ -84,7 +109,8 @@ function profilFormatAmountCents($value)
 		gap: 10px;
 		margin-top: 16px;
 	}
-	.profile-panel button[type='button'] {
+	.profile-panel button[type='button'],
+	.profile-panel button[type='submit'] {
 		min-height: 44px;
 		padding: 10px 18px;
 		border: 0;
@@ -94,7 +120,8 @@ function profilFormatAmountCents($value)
 		font-weight: 700;
 		cursor: pointer;
 	}
-	.profile-panel button[type='button'].profile-panel__button-secondary {
+	.profile-panel button[type='button'].profile-panel__button-secondary,
+	.profile-panel button[type='submit'].profile-panel__button-secondary {
 		background: #0f172a;
 	}
 	.profile-panel button[type='button'].profile-panel__button-muted {
@@ -125,39 +152,128 @@ function profilFormatAmountCents($value)
 		text-align: left;
 		white-space: nowrap;
 	}
+	.profile-panel__scope-switch {
+		display: inline-flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		margin-bottom: 16px;
+	}
+	.profile-panel__scope-button {
+		background: #e2e8f0 !important;
+		color: #0f172a !important;
+	}
+	.profile-panel__scope-button.is-active {
+		background: #2563eb !important;
+		color: #ffffff !important;
+	}
+	.profile-panel__scope-panel[hidden] {
+		display: none !important;
+	}
+	.profile-panel__photo {
+		width: 72px;
+		height: 72px;
+		border-radius: 999px;
+		background: #dbe4ee center center / cover no-repeat;
+		border: 1px solid #cbd5e1;
+	}
+	.profile-panel__form {
+		display: grid;
+		gap: 14px;
+	}
+	.profile-panel__field {
+		display: grid;
+		gap: 6px;
+	}
+	.profile-panel__field span {
+		font-size: 13px;
+		font-weight: 700;
+		color: #334155;
+	}
+	.profile-panel__field input {
+		width: 100%;
+		min-height: 44px;
+		padding: 10px 12px;
+		border: 1px solid #dbe4ee;
+		border-radius: 12px;
+		background: #fff;
+		color: inherit;
+		font: inherit;
+		box-sizing: border-box;
+	}
+	.profile-panel__field small,
+	.profile-panel__scope-help,
+	.profile-panel__feedback {
+		color: #64748b;
+		line-height: 1.45;
+	}
+	.profile-panel__feedback {
+		min-height: 22px;
+		font-weight: 600;
+	}
+	.profile-panel__feedback.is-success {
+		color: #15803d;
+	}
+	.profile-panel__feedback.is-error {
+		color: #b91c1c;
+	}
+	.profile-panel__photo-preview {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		flex-wrap: wrap;
+	}
+	.profile-panel__photo-empty {
+		color: #64748b;
+		font-size: 0.92rem;
+	}
 </style>
 
 <div class="profile-panel" id="profilePanelRoot">
 	<div class="profile-panel__sections">
 		<section class="profile-panel__section">
-			<h3><?= T_("Votre profil") ?></h3>
+			<h3><?= T_("Votre profil actif") ?></h3>
 			<div class="profile-panel__summary">
 				<div class="profile-panel__item">
-					<strong>E-mail</strong>
-					<?= htmlspecialchars((string)$user->get("email")) ?>
+					<strong>Contexte</strong>
+					<?= htmlspecialchars($hasOrganizationScope && $organization ? 'Organisation : ' . (string)$organization->get('name') : 'Profil général') ?>
 				</div>
 				<div class="profile-panel__item">
-					<strong>Paramètre basic</strong>
-					<?= htmlspecialchars((string)$user->getParameter("basic")) ?>
+					<strong>Photo affichée</strong>
+					<div class="profile-panel__photo"<?= $activePhotoUrl !== '' ? ' style="background-image:url(' . htmlspecialchars($activePhotoUrl, ENT_QUOTES, 'UTF-8') . ')"' : '' ?>></div>
 				</div>
 				<div class="profile-panel__item">
-					<strong>Paramètre numeric</strong>
-					<?= htmlspecialchars((string)$user->getParameter("numeric")) ?>
+					<strong>E-mail affiché</strong>
+					<?= htmlspecialchars($activeEmail !== '' ? $activeEmail : 'Non renseigné') ?>
+				</div>
+				<div class="profile-panel__item">
+					<strong>Identifiant affiché</strong>
+					<?= htmlspecialchars($activeUsername !== '' ? $activeUsername : 'Non renseigné') ?>
 				</div>
 			</div>
 		</section>
 
 		<section class="profile-panel__section">
 			<h3><?= T_("Modifier votre profil") ?></h3>
-			<?php
-			$params = array(
-				"buttons" => false,
-				"action" => "/ajax/saveaccount.php?origin=profil",
-			);
-			$user->display("adminEdit.php", $params);
-			?>
-			<div class="profile-panel__actions">
-				<button type="button" id="updateprofil">Mettre à jour</button>
+
+			<?php if ($hasOrganizationScope): ?>
+			<div class="profile-panel__scope-switch" role="tablist" aria-label="Choix du contexte de profil">
+				<button type="button" class="profile-panel__scope-button<?= $initialScope === 'general' ? ' is-active' : '' ?>" data-profile-scope-target="general">Données générales</button>
+				<button type="button" class="profile-panel__scope-button<?= $initialScope === 'organization' ? ' is-active' : '' ?>" data-profile-scope-target="organization">Données spécifiques à l'organisation</button>
+			</div>
+			<div class="profile-panel__scope-help">
+				Vous pouvez compléter votre profil général, puis définir si besoin une présentation différente pour cette organisation.
+			</div>
+			<?php endif; ?>
+
+			<div
+				id="profileScopeContent"
+				class="profile-panel__scope-panel"
+				data-profile-scope-panel="<?= htmlspecialchars($initialScope, ENT_QUOTES, 'UTF-8') ?>"
+				data-profile-scope-active="<?= htmlspecialchars($initialScope, ENT_QUOTES, 'UTF-8') ?>"
+				data-profile-scope-url-general="/popup/profil_scope.php?scope=general"
+				data-profile-scope-url-organization="/popup/profil_scope.php?scope=organization"
+			>
+				<div class="profile-panel__feedback">Chargement du formulaire…</div>
 			</div>
 		</section>
 
@@ -265,16 +381,106 @@ function profilFormatAmountCents($value)
 		}).then(parseJsonResponse);
 	}
 
-	var updateButton = document.getElementById("updateprofil");
-	if (updateButton) {
-		updateButton.addEventListener("click", function () {
-			if (window.jQuery && window.jQuery("#formulaire-edit").length) {
-				window.jQuery("#formulaire-edit").trigger("submit");
-				return;
+	var scopeContainer = document.getElementById("profileScopeContent");
+	var initialScope = scopeContainer ? (scopeContainer.getAttribute("data-profile-scope-active") || "general") : "general";
+
+	function executeEmbeddedScripts(container) {
+		if (!container) {
+			return;
+		}
+
+		Array.prototype.forEach.call(container.querySelectorAll("script"), function (script) {
+			var replacement = document.createElement("script");
+
+			Array.prototype.forEach.call(script.attributes, function (attribute) {
+				replacement.setAttribute(attribute.name, attribute.value);
+			});
+
+			if (!replacement.src) {
+				replacement.textContent = script.textContent || "";
 			}
 
-			alert("jQuery est requis pour ce formulaire.");
+			script.parentNode.replaceChild(replacement, script);
 		});
+	}
+
+	function setActiveScopeButtons(target) {
+		document.querySelectorAll("[data-profile-scope-target]").forEach(function (item) {
+			item.classList.toggle("is-active", item.getAttribute("data-profile-scope-target") === target);
+		});
+	}
+
+	function buildProfileModalUrl(scope) {
+		return "/popup/profil.php?scope=" + encodeURIComponent(scope === "organization" ? "organization" : "general");
+	}
+
+	function loadProfileScope(target) {
+		if (!scopeContainer) {
+			return;
+		}
+
+		var normalizedTarget = target === "organization" ? "organization" : "general";
+		var scopeUrl = scopeContainer.getAttribute(
+			normalizedTarget === "organization"
+				? "data-profile-scope-url-organization"
+				: "data-profile-scope-url-general"
+		);
+
+		scopeContainer.setAttribute("data-profile-scope-active", normalizedTarget);
+		scopeContainer.setAttribute("data-profile-scope-panel", normalizedTarget);
+		scopeContainer.innerHTML = '<div class="profile-panel__feedback">Chargement du formulaire…</div>';
+		setActiveScopeButtons(normalizedTarget);
+
+		fetch(scopeUrl, {
+			credentials: "same-origin",
+			headers: {
+				"X-Requested-With": "XMLHttpRequest"
+			}
+		})
+			.then(function (response) {
+				if (!response.ok) {
+					throw new Error("Erreur de chargement");
+				}
+
+				return response.text();
+			})
+			.then(function (html) {
+				scopeContainer.innerHTML = html;
+				executeEmbeddedScripts(scopeContainer);
+			})
+			.catch(function () {
+				scopeContainer.innerHTML = '<div class="profile-panel__feedback is-error">Impossible de charger ce formulaire pour le moment.</div>';
+			});
+	}
+
+	window.profileHandleGeneralSaved = function () {
+		var targetUrl = buildProfileModalUrl("general");
+		if (window.commonTopbarRefreshModalContent) {
+			window.commonTopbarRefreshModalContent(targetUrl);
+		}
+		if (window.jQuery && document.getElementById("popup_content")) {
+			window.jQuery("#popup_content").load(targetUrl);
+		}
+	};
+
+	window.profileHandleOrganizationSaved = function () {
+		var targetUrl = buildProfileModalUrl("organization");
+		if (window.commonTopbarRefreshModalContent) {
+			window.commonTopbarRefreshModalContent(targetUrl);
+		}
+		if (window.jQuery && document.getElementById("popup_content")) {
+			window.jQuery("#popup_content").load(targetUrl);
+		}
+	};
+
+	document.querySelectorAll("[data-profile-scope-target]").forEach(function (button) {
+		button.addEventListener("click", function () {
+			loadProfileScope(button.getAttribute("data-profile-scope-target"));
+		});
+	});
+
+	if (scopeContainer) {
+		loadProfileScope(initialScope);
 	}
 
 	var connectButton = document.getElementById("patreon_connect");
@@ -326,11 +532,13 @@ function profilFormatAmountCents($value)
 		}
 
 		if (event.data && event.data.type === "patreon-connected") {
+			var currentScope = scopeContainer ? (scopeContainer.getAttribute("data-profile-scope-active") || "general") : "general";
+			var targetUrl = buildProfileModalUrl(currentScope);
 			if (window.commonTopbarRefreshModalContent) {
-				window.commonTopbarRefreshModalContent("/popup/profil.php");
+				window.commonTopbarRefreshModalContent(targetUrl);
 			}
 			if (window.jQuery && document.getElementById("popup_content")) {
-				refresh("#popup_content", "/popup/profil.php");
+				window.jQuery("#popup_content").load(targetUrl);
 			}
 		}
 	});

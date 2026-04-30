@@ -5,9 +5,7 @@ $documentId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $organizationId = isset($_GET['oid']) ? (int)$_GET['oid'] : (int)($_SESSION['currentOrganization'] ?? 0);
 $holonId = isset($_GET['cid']) ? (int)$_GET['cid'] : 0;
 
-$escape = static function ($value): string {
-    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
-};
+$escape = 'omoApiEscape';
 
 $formatter = class_exists('IntlDateFormatter')
     ? new IntlDateFormatter('fr_FR', IntlDateFormatter::MEDIUM, IntlDateFormatter::SHORT)
