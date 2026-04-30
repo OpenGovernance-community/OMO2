@@ -406,6 +406,15 @@
 							$this->_fields[$field] = new \DateTime($value);
 					}
 				} else
+
+				if (false !== array_search("parameters", array_column($param, 1))) {
+					if (is_array($value) || is_object($value)) {
+						$this->_fields[$field] = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+					} else {
+						$this->_fields[$field] = $value;
+					}
+					$this->_parameters = null;
+				} else
 					
 				if (false !== array_search("sizedimage", array_column($param, 1))) {
 					$target_dir="/img/upload/".$this->tableName();

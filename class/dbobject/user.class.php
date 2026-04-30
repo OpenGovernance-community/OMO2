@@ -16,6 +16,7 @@
 				[['id'], 'integer'], // Nombres entiers
 				[['username', 'email', 'firstname', 'lastname', 'code', 'telegramID'], 'string'], // Chaînes de caractère
 				[['password'], 'password'], // Mot de passe
+				[['image'], 'sizedimage'], // Fichier
 				[['parameters', 'param_easypv', 'param_easymemo', 'param_easycircle'], 'parameters'], // Textes libres
 				[['datecreation', 'dateconnexion', 'codeexpiration'], 'datetime'], // Dates avec heures
 				[['active'], 'boolean'], // Booléens
@@ -31,6 +32,7 @@
 				'firstname' => 'Prénom',
 				'lastname' => 'Nom',
 				'email' => 'E-mail',
+				'image' => 'Image de profil',
 				'telegramID' => 'ID Telegram',
 				'password' => 'Mot de passe',
 				'code' => 'Code',
@@ -100,6 +102,75 @@
 			$organizations = new ArrayOrganization();
 			$organizations->loadAccessibleForUser($this->getId());
 			return $organizations;
+		}
+
+		public function getOrganizationMembership($organizationId = 0)
+		{
+			$organizationId = (int)$organizationId;
+			if ((int)$this->getId() <= 0 || $organizationId <= 0) {
+				return null;
+			}
+
+			$membership = new \dbObject\UserOrganization();
+			return $membership->load([
+				['IDuser', (int)$this->getId()],
+				['IDorganization', $organizationId],
+			]) ? $membership : null;
+		}
+
+		public function getProfilePhotoUrl()
+		{
+			$image = trim((string)$this->get('image'));
+			if ($image !== '') {
+				return $image;
+			}
+
+			return '';
+		}
+
+		public function getScopedProfilePhotoUrl($organizationId = 0)
+		{
+			$membership = $this->getOrganizationMembership($organizationId);
+			if ($membership) {
+				return $membership->getProfilePhotoUrl();
+			}
+
+			return $this->getProfilePhotoUrl();
+		}
+
+		public function getScopedUsername($organizationId = 0)
+		{
+			$membership = $this->getOrganizationMembership($organizationId);
+			if ($membership) {
+				return $membership->getScopedUsername();
+			}
+
+			return trim((string)$this->get('username'));
+		}
+
+		public function getScopedEmail($organizationId = 0)
+		{
+			$membership = $this->getOrganizationMembership($organizationId);
+			if ($membership) {
+				return $membership->getScopedEmail();
+			}
+
+			return trim((string)$this->get('email'));
+		}
+
+		public function getScopedDisplayName($organizationId = 0)
+		{
+			$fullName = trim((string)$this->get('firstname') . ' ' . (string)$this->get('lastname'));
+			if ($fullName !== '') {
+				return $fullName;
+			}
+
+			$username = $this->getScopedUsername($organizationId);
+			if ($username !== '') {
+				return $username;
+			}
+
+			return $this->getScopedEmail($organizationId);
 		}
 
 		public function hasOrganizationAccess($organizationId) {

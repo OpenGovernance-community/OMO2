@@ -349,8 +349,10 @@ $currentUserProfile = [
 
 $currentUser = new \dbObject\User();
 if ($currentUser->load($currentUserId)) {
-    $currentUserProfile['email'] = (string)$currentUser->get('email');
-    $currentUserProfile['username'] = (string)$currentUser->get('username');
+    $currentUserProfile['displayName'] = (string)$currentUser->getScopedDisplayName((int)$organizationContext['id']);
+    $currentUserProfile['email'] = (string)$currentUser->getScopedEmail((int)$organizationContext['id']);
+    $currentUserProfile['username'] = (string)$currentUser->getScopedUsername((int)$organizationContext['id']);
+    $currentUserProfile['photoUrl'] = (string)$currentUser->getScopedProfilePhotoUrl((int)$organizationContext['id']);
 }
 ?>
 <!DOCTYPE html>
