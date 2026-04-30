@@ -10,9 +10,7 @@ if ($currentOrganizationId > 0) {
     $applications->loadEnabledForOrganization($currentOrganizationId, $currentUserId);
 }
 
-$escape = static function ($value) {
-    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
-};
+$escape = 'omoApiEscape';
 
 $renderMenuItem = static function (array $item) use ($escape) {
     $attributes = [

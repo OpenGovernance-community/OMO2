@@ -354,16 +354,19 @@ function commonGetCurrentUserDisplayName()
         return '';
     }
 
+    $organizationId = (int)($_SESSION['currentOrganization'] ?? 0);
+
     $fullName = trim((string)$user->get('firstname') . ' ' . (string)$user->get('lastname'));
     if ($fullName !== '') {
         return $fullName;
     }
 
-    if ((string)$user->get('username') !== '') {
-        return (string)$user->get('username');
+    $username = $user->getScopedUsername($organizationId);
+    if ($username !== '') {
+        return $username;
     }
 
-    return (string)$user->get('email');
+    return $user->getScopedEmail($organizationId);
 }
 
 function commonUserHasOrganizationAccess($userId, $organizationId)

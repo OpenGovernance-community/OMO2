@@ -3,19 +3,6 @@ require_once __DIR__ . '/bootstrap.php';
 use dbObject\ArrayOrganization;
 use dbObject\Holon;
 
-function omoEscape($value)
-{
-    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
-}
-
-function omoNormalizeLabel($value)
-{
-    $value = trim(mb_strtolower((string)$value, 'UTF-8'));
-    $value = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
-    $value = preg_replace('/[^a-z0-9]+/', ' ', (string)$value);
-    return trim((string)$value);
-}
-
 function omoSplitTextItems($text)
 {
     $text = trim((string)$text);
@@ -102,18 +89,18 @@ function omoRenderTextBlock($text, $className = 'section-text')
         return '';
     }
 
-    return '<div class="' . omoEscape($className) . '">' . nl2br(omoEscape($text)) . '</div>';
+    return '<div class="' . omoApiEscape($className) . '">' . nl2br(omoApiEscape($text)) . '</div>';
 }
 
 function omoRenderFormattedList(array $items, array $entry, $className = 'section-list')
 {
-    $html = '<ul class="' . omoEscape($className) . '">';
+    $html = '<ul class="' . omoApiEscape($className) . '">';
     foreach ($items as $item) {
         $formattedItem = omoFormatListItemValue($item, $entry);
         if ($formattedItem === '') {
             continue;
         }
-        $html .= '<li>' . omoEscape($formattedItem) . '</li>';
+        $html .= '<li>' . omoApiEscape($formattedItem) . '</li>';
     }
     $html .= '</ul>';
 
@@ -162,14 +149,14 @@ function omoRenderMixedList(array $ancestorItems, array $currentItems, array $en
         return '';
     }
 
-    $html = '<ul class="' . omoEscape($className) . '">';
+    $html = '<ul class="' . omoApiEscape($className) . '">';
     foreach ($descriptors as $descriptor) {
         $formattedItem = omoFormatListItemValue($descriptor['item'], $entry);
         if ($formattedItem === '') {
             continue;
         }
 
-        $html .= '<li class="is-' . omoEscape($descriptor['source']) . '">' . omoEscape($formattedItem) . '</li>';
+        $html .= '<li class="is-' . omoApiEscape($descriptor['source']) . '">' . omoApiEscape($formattedItem) . '</li>';
     }
     $html .= '</ul>';
 
@@ -254,7 +241,7 @@ function omoBuildSections(Holon $holon)
         foreach ($definitions as $definition) {
             $match = in_array((int)$entry['id'], $definition['propertyIds'], true);
             if (!$match) {
-                $searchable = omoNormalizeLabel(($entry['shortname'] ?? '') . ' ' . ($entry['name'] ?? ''));
+                $searchable = omoApiNormalizeLabel(($entry['shortname'] ?? '') . ' ' . ($entry['name'] ?? ''));
                 $keywordMatches = 0;
                 foreach ($definition['keywords'] as $keyword) {
                     if (strpos($searchable, $keyword) !== false) {
@@ -377,8 +364,15 @@ $sections = omoBuildSections($currentHolon);
 $childNavigation = omoBuildChildNavigation($currentHolon);
 $holonTypeLabel = omoGetHolonHeaderLabel($currentHolon);
 $selectedNodeClass = 'node_' . (int)$currentHolon->getId();
+$memberCards = $currentHolon->getAssociatedMemberCards(array(
+    'organizationId' => $organizationId,
+));
+$memberPreviewLimit = 8;
+$visibleMemberCards = array_slice($memberCards, 0, $memberPreviewLimit);
+$hasHiddenMembers = count($memberCards) > count($visibleMemberCards);
 $isCurrentTemplateHolon = $root ? $currentHolon->isTemplateNode((int)$root->getId()) : false;
 $editTemplateContextId = $isCurrentTemplateHolon && $currentHolon->getParentHolon() ? (int)$currentHolon->getParentHolon()->getId() : 0;
+$canManageMembers = $currentHolon->canEdit();
 $canCreateChildHolon = $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(2, 3, 4), true);
 $canEditHolon = $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
 $canDeleteHolon = $currentHolon->canDelete() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
@@ -390,12 +384,12 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
 ?>
 
 <style>
-.<?= omoEscape($selectedNodeClass) ?> > ul {
+.<?= omoApiEscape($selectedNodeClass) ?> > ul {
     border-left: 1px solid var(--color-primary) !important;
     border-width: 0 0 0 2px !important;
 }
 
-.<?= omoEscape($selectedNodeClass) ?> > .role-item {
+.<?= omoApiEscape($selectedNodeClass) ?> > .role-item {
     box-shadow: inset 0 0 0 2px var(--color-primary);
 }
 </style>
@@ -412,15 +406,15 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
             <span class="crumb<?= $isActive ? ' active' : '' ?>"
                   data-cid="<?= (int)$crumb->getId() ?>"
                   data-is-root="<?= $index === 0 ? '1' : '0' ?>">
-                <?= omoEscape($crumb->get('name')) ?>
+                <?= omoApiEscape($crumb->get('name')) ?>
             </span>
         <?php endforeach; ?>
     </div>
 
     <div class="circle-header">
         <div>
-            <div class="circle-kicker"><?= omoEscape($holonTypeLabel) ?></div>
-            <h2 class="circle-title"><?= omoEscape($currentHolon->get('name')) ?></h2>
+            <div class="circle-kicker"><?= omoApiEscape($holonTypeLabel) ?></div>
+            <h2 class="circle-title"><?= omoApiEscape($currentHolon->get('name')) ?></h2>
         </div>
         <div class="circle-meta">
             <?php if ($hasHolonActions): ?>
@@ -457,8 +451,8 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
                                 class="circle-menu__item circle-menu__item--danger"
                                 data-delete-holon="1"
                                 data-hid="<?= (int)$currentHolon->getId() ?>"
-                                data-name="<?= omoEscape($currentHolon->get('name')) ?>"
-                                data-type-label="<?= omoEscape($holonTypeLabel) ?>"
+                                data-name="<?= omoApiEscape($currentHolon->get('name')) ?>"
+                                data-type-label="<?= omoApiEscape($holonTypeLabel) ?>"
                                 data-descendant-count="<?= (int)$deleteDescendantCount ?>"
                                 data-parent-id="<?= (int)$deleteParentId ?>"
                                 data-parent-is-root="<?= $deleteParentIsRoot ? '1' : '0' ?>"
@@ -470,6 +464,47 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
             <button type="button" class="circle-badge circle-badge--link" data-copy-direct-link="1" data-cid="<?= (int)$currentHolon->getId() ?>">#<?= (int)$currentHolon->getId() ?></button>
         </div>
     </div>
+    <?php if (count($visibleMemberCards) > 0 || $canManageMembers): ?>
+        <div class="circle-members">
+            <div class="circle-members__label">Membres</div>
+            <div class="circle-members__row">
+                <div class="circle-members__list">
+                    <?php foreach ($visibleMemberCards as $member): ?>
+                        <?php $memberTooltip = $member['displayName'] . (!empty($member['isPending']) ? ' - invitation en attente' : ''); ?>
+                        <span
+                            class="circle-member<?= !empty($member['isPending']) ? ' circle-member--pending' : '' ?>"
+                            data-tooltip="<?= omoApiEscape($memberTooltip) ?>"
+                            data-member-user-id="<?= (int)($member['userId'] ?? 0) ?>"
+                            aria-label="<?= omoApiEscape($memberTooltip) ?>"
+                        >
+                            <?php if (trim((string)$member['photoUrl']) !== ''): ?>
+                                <img
+                                    src="<?= omoApiEscape($member['photoUrl']) ?>"
+                                    alt="<?= omoApiEscape($member['displayName']) ?>"
+                                    class="circle-member__photo"
+                                >
+                            <?php else: ?>
+                                <span class="circle-member__initials"><?= omoApiEscape($member['initials']) ?></span>
+                            <?php endif; ?>
+                        </span>
+                    <?php endforeach; ?>
+                    <?php if ($canManageMembers): ?>
+                        <button
+                            type="button"
+                            class="circle-member circle-member--add"
+                            data-open-member-popup="1"
+                            data-hid="<?= (int)$currentHolon->getId() ?>"
+                            aria-label="Ajouter un membre"
+                            title="Ajouter un membre"
+                        >+</button>
+                    <?php endif; ?>
+                </div>
+                <?php if ($hasHiddenMembers): ?>
+                    <button type="button" class="circle-badge circle-badge--action" data-open-team-drawer="1" data-cid="<?= (int)$currentHolon->getId() ?>">Voir tout</button>
+                <?php endif; ?>
+            </div>
+        </div>
+    <?php endif; ?>
     </div>
 
     <?php if (count($sections) === 0): ?>
@@ -482,7 +517,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
     <?php foreach ($sections as $section): ?>
         <div class="circle-section">
             <div class="section-header">
-                <span class="section-title"><?= omoEscape($section['title']) ?></span>
+                <span class="section-title"><?= omoApiEscape($section['title']) ?></span>
                 <span class="section-toggle">▾</span>
             </div>
             <div class="section-content">
@@ -504,7 +539,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
                             <?php foreach ($childNavigation['containers'] as $child): ?>
                                 <button type="button" class="child-nav-item" data-cid="<?= (int)$child['id'] ?>">
                                     <span class="child-nav-dot child-nav-dot--container"></span>
-                                    <span class="child-nav-label"><?= omoEscape($child['name']) ?></span>
+                                    <span class="child-nav-label"><?= omoApiEscape($child['name']) ?></span>
                                 </button>
                             <?php endforeach; ?>
                         </div>
@@ -518,7 +553,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
                             <?php foreach ($childNavigation['roles'] as $child): ?>
                                 <button type="button" class="child-nav-item child-nav-item--role" data-cid="<?= (int)$child['id'] ?>">
                                     <span class="child-nav-dot child-nav-dot--role"></span>
-                                    <span class="child-nav-label"><?= omoEscape($child['name']) ?></span>
+                                    <span class="child-nav-label"><?= omoApiEscape($child['name']) ?></span>
                                 </button>
                             <?php endforeach; ?>
                         </div>
@@ -592,6 +627,91 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
     font-size: 20px;
     font-weight: 600;
     margin: 0;
+}
+
+.circle-members {
+    display: grid;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.circle-members__label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-light);
+}
+
+.circle-members__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.circle-members__list {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.circle-member {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface-alt, #f0f2f5));
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.08));
+}
+
+.circle-member--pending {
+    opacity: 0.55;
+    border-style: dashed;
+}
+
+.circle-member--add {
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+}
+
+.circle-member--add:hover {
+    border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
+    background: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface));
+}
+
+.circle-member__photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.circle-member--pending .circle-member__photo {
+    filter: grayscale(1);
+}
+
+.circle-member__initials {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.circle-member--pending .circle-member__initials {
+    color: var(--color-text-light);
 }
 
 .circle-meta {
@@ -852,6 +972,12 @@ function omoCloseHolonMenus() {
     });
 }
 
+window.dispatchEvent(new CustomEvent('omo-structure-member-highlight', {
+    detail: {
+        userId: null
+    }
+}));
+
 $(document)
   .off('click.omoOrgSection', '#panel-left .section-header')
   .on('click.omoOrgSection', '#panel-left .section-header', function () {
@@ -887,6 +1013,28 @@ $(document)
 
     const route = parseUrl();
     navigate(route.oid, cid, route.hash || null);
+  });
+
+$(document)
+  .off('mouseenter.omoOrgMemberHighlight', '#panel-left .circle-member[data-member-user-id]')
+  .on('mouseenter.omoOrgMemberHighlight', '#panel-left .circle-member[data-member-user-id]', function () {
+    const userId = Number($(this).data('member-user-id'));
+
+    window.dispatchEvent(new CustomEvent('omo-structure-member-highlight', {
+        detail: {
+            userId: userId > 0 ? userId : null
+        }
+    }));
+  });
+
+$(document)
+  .off('mouseleave.omoOrgMemberHighlight', '#panel-left .circle-member[data-member-user-id]')
+  .on('mouseleave.omoOrgMemberHighlight', '#panel-left .circle-member[data-member-user-id]', function () {
+    window.dispatchEvent(new CustomEvent('omo-structure-member-highlight', {
+        detail: {
+            userId: null
+        }
+    }));
   });
 
 $(document)
@@ -953,6 +1101,45 @@ $(document)
     }
 
     openDrawer('drawer_holon_create', '/omo/api/holons/create.php?hid=' + hid);
+  });
+
+$(document)
+  .off('click.omoOrgOpenTeamDrawer', '#panel-left [data-open-team-drawer="1"]')
+  .on('click.omoOrgOpenTeamDrawer', '#panel-left [data-open-team-drawer="1"]', function () {
+    if (typeof openDrawer !== 'function') {
+        return;
+    }
+
+    const route = typeof parseUrl === 'function' ? parseUrl() : { oid: null, cid: null };
+    const targetCid = Number($(this).data('cid') || route.cid || 0);
+    let drawerUrl = '/omo/api/team/index.php';
+
+    if (route && route.oid) {
+        drawerUrl += '?oid=' + encodeURIComponent(route.oid);
+        if (targetCid > 0) {
+            drawerUrl += '&cid=' + encodeURIComponent(targetCid);
+        }
+    } else if (targetCid > 0) {
+        drawerUrl += '?cid=' + encodeURIComponent(targetCid);
+    }
+
+    openDrawer('drawer_team', drawerUrl);
+  });
+
+$(document)
+  .off('click.omoOrgOpenMemberPopup', '#panel-left [data-open-member-popup="1"]')
+  .on('click.omoOrgOpenMemberPopup', '#panel-left [data-open-member-popup="1"]', function () {
+    const hid = Number($(this).data('hid'));
+
+    if (!hid || typeof window.commonTopbarOpenModal !== 'function') {
+        return;
+    }
+
+    window.commonTopbarOpenModal(
+        'Ajouter un membre',
+        'api/holons/member_popup.php?hid=' + hid,
+        'fetch'
+    );
   });
 
 $(document)

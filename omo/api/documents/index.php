@@ -27,20 +27,8 @@ if ($currentOrganizationId > 0) {
 $today = new DateTimeImmutable('today');
 $groups = sharedGetRelativeDateGroups($today);
 
-$escape = static function ($value) {
-    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
-};
-
-$normalizeSortValue = static function ($value): string {
-    $value = trim(mb_strtolower((string)$value, 'UTF-8'));
-    $transliterated = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
-
-    if (is_string($transliterated) && $transliterated !== '') {
-        $value = $transliterated;
-    }
-
-    return preg_replace('/[^a-z0-9]+/', ' ', $value) ?: $value;
-};
+$escape = 'omoApiEscape';
+$normalizeSortValue = 'omoApiSortKey';
 
 $formatter = class_exists('IntlDateFormatter')
     ? new IntlDateFormatter('fr_FR', IntlDateFormatter::MEDIUM, IntlDateFormatter::NONE)
@@ -169,7 +157,7 @@ if (!is_string($documentsPayload)) {
                 ?>
                     <section class="omo-documents__group omo-panel-group">
                         <h3 class="omo-panel-group__title"><?= $escape($entry['groupLabel']) ?></h3>
-                        <div class="omo-documents__list">
+                        <div class="omo-documents__list omo-panel-view__body_content">
                 <?php endif; ?>
                             <a
                                 class="omo-documents__item omo-card omo-card--interactive"
@@ -468,7 +456,7 @@ if (!is_string($documentsPayload)) {
                                     title.textContent = group.label || '';
 
                                     const list = document.createElement('div');
-                                    list.className = 'omo-documents__list';
+                                    list.className = 'omo-documents__list omo-panel-view__body_content';
 
                                     items.forEach(function (documentItem) {
                                         list.appendChild(createItem(documentItem));
@@ -484,7 +472,7 @@ if (!is_string($documentsPayload)) {
 
                             const renderByAlpha = function () {
                                 const list = document.createElement('div');
-                                list.className = 'omo-documents__list omo-documents__list--alphabetical';
+                                list.className = 'omo-documents__list omo-documents__list--alphabetical omo-panel-view__body_content';
 
                                 sortByAlpha(documents).forEach(function (documentItem) {
                                     list.appendChild(createItem(documentItem));

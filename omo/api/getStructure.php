@@ -598,6 +598,7 @@ $(document).on("input", "#role_list_search", function () {
 
     let canvas, hiddenCanvas, context, hiddenContext;
     let pack, nodes, nodeCount, focus, currentnode, hoverNode = null;
+    let highlightedMemberUserId = null;
     let centerX, centerY, chartwidth, chartheight, diameter;
     let zoomInfo, colToCircle = {};
     let ease, interpolator = null, duration = 500, timeElapsed = 0, vOld;
@@ -771,6 +772,13 @@ $(document).on("input", "#role_list_search", function () {
       normalizedNode.ID = String(normalizedNode.ID || "");
       normalizedNode.type = String(normalizedNode.type || "");
       normalizedNode.size = Number(normalizedNode.size || (normalizedNode.type === "1" ? 10 : 20));
+      normalizedNode.userIds = Array.isArray(normalizedNode.userIds)
+        ? normalizedNode.userIds.map(function (userId) {
+            return Number(userId);
+          }).filter(function (userId) {
+            return !Number.isNaN(userId) && userId > 0;
+          })
+        : [];
       normalizedNode.children = children
         .map(normalizeStructureNode)
         .filter(function (child) {
@@ -1056,6 +1064,22 @@ $(document).on("input", "#role_list_search", function () {
       ctx.restore();
     }
 
+    function nodeMatchesHighlightedMember(node) {
+      if (!node || !highlightedMemberUserId) {
+        return false;
+      }
+
+      const targetUserId = Number(highlightedMemberUserId);
+      if (!targetUserId) {
+        return false;
+      }
+
+      const userIds = Array.isArray(node.userIds) ? node.userIds : [];
+      return userIds.some(function (userId) {
+        return Number(userId) === targetUserId;
+      });
+    }
+
     function drawCanvas(chosenContext, hidden = false) {
       chosenContext.clearRect(0, 0, chartwidth, chartheight);
       chosenContext.fillStyle = chartColors.background;
@@ -1108,6 +1132,10 @@ $(document).on("input", "#role_list_search", function () {
           drawNodeHatch(chosenContext, node, nodeX, nodeY, nodeR);
 
           if (currentnode && node.ID === currentnode.ID) {
+            chosenContext.lineWidth = 6;
+            chosenContext.strokeStyle = "rgba(255,255,255,1)";
+            chosenContext.stroke();
+          } else if (nodeMatchesHighlightedMember(node)) {
             chosenContext.lineWidth = 6;
             chosenContext.strokeStyle = "rgba(255,255,255,1)";
             chosenContext.stroke();
@@ -1584,8 +1612,25 @@ function startChart() {
         });
       };
 
+      if (window.omoStructureMemberHighlightHandler) {
+        window.removeEventListener("omo-structure-member-highlight", window.omoStructureMemberHighlightHandler);
+      }
+
+      window.omoStructureMemberHighlightHandler = function (event) {
+        const userId = event && event.detail ? Number(event.detail.userId || 0) : 0;
+        highlightedMemberUserId = userId > 0 ? userId : null;
+
+        if (!root || !canvas || !context || !hiddenContext) {
+          return;
+        }
+
+        drawCanvas(context, false);
+        drawCanvas(hiddenContext, true);
+      };
+
       window.addEventListener("omo-structure-focus", window.omoStructureFocusHandler);
       window.addEventListener("omo-structure-refresh", window.omoStructureRefreshHandler);
+      window.addEventListener("omo-structure-member-highlight", window.omoStructureMemberHighlightHandler);
     })
     .catch(function(error) {
       root = null;

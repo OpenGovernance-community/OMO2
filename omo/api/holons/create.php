@@ -3,11 +3,6 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\Organization;
 
-function omoHolonCreateEscape($value)
-{
-    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
-}
-
 $organizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 $contextHolonId = (int)($_GET['cid'] ?? 0);
 $holonId = (int)($_GET['hid'] ?? 0);
@@ -37,14 +32,14 @@ if ($organizationId <= 0) {
 <div class="omo-holon-create omo-panel-view">
     <div class="omo-panel-view__header">
         <div class="omo-panel-view__header-copy">
-            <h2 class="omo-panel-view__title"><?= omoHolonCreateEscape((($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier le holon' : 'Nouveau holon') ?></h2>
+            <h2 class="omo-panel-view__title"><?= omoApiEscape((($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier le holon' : 'Nouveau holon') ?></h2>
             <p class="omo-panel-view__description">
                 <?php if (($editorData['mode'] ?? 'create') === 'edit'): ?>
                     Modifiez ici ce holon à partir d'un modèle disponible dans
-                    <?= omoHolonCreateEscape($editorData['contextHolonName'] ?? '') ?>.
+                    <?= omoApiEscape($editorData['contextHolonName'] ?? '') ?>.
                 <?php else: ?>
                     Créez ici un nouveau cercle ou rôle à partir d'un modèle disponible dans
-                    <?= omoHolonCreateEscape($editorData['contextHolonName'] ?? '') ?>.
+                    <?= omoApiEscape($editorData['contextHolonName'] ?? '') ?>.
                 <?php endif; ?>
             </p>
         </div>
@@ -52,15 +47,16 @@ if ($organizationId <= 0) {
 
     <div class="omo-panel-view__body">
         <?php if ($errorMessage !== ''): ?>
-            <div class="omo-holon-create__empty"><?= omoHolonCreateEscape($errorMessage) ?></div>
+            <div class="omo-holon-create__empty"><?= omoApiEscape($errorMessage) ?></div>
         <?php else: ?>
             <div class="omo-holon-create__layout" id="omo-holon-create-editor">
                 <section class="omo-holon-create__panel">
                     <div class="omo-holon-create__status" id="omo-holon-create-status" hidden></div>
 
                     <form id="omo-holon-create-form" class="omo-holon-create__form">
+                        <div class="omo-panel-view__body_content">
                         <section class="omo-holon-create__section">
-                            <div class="omo-holon-create__section-title"><?= omoHolonCreateEscape((($editorData['mode'] ?? 'create') === 'edit') ? 'Édition' : 'Création') ?></div>
+                            <div class="omo-holon-create__section-title"><?= omoApiEscape((($editorData['mode'] ?? 'create') === 'edit') ? 'Édition' : 'Création') ?></div>
 
                             <div class="omo-holon-create__grid">
                                 <label class="omo-holon-create__field">
@@ -104,12 +100,12 @@ if ($organizationId <= 0) {
 
                             <div class="omo-holon-create__properties" id="omo-holon-create-properties"></div>
                         </section>
-
+                        </div>
                         <div class="omo-holon-create__footer">
                             <div class="omo-holon-create__hint" id="omo-holon-create-hint"></div>
                             <div class="omo-holon-create__actions">
                                 <button type="button" class="omo-holon-create__button omo-holon-create__button--ghost" id="omo-holon-create-cancel">Fermer</button>
-                                <button type="submit" class="omo-holon-create__button omo-holon-create__button--primary"><?= omoHolonCreateEscape((($editorData['mode'] ?? 'create') === 'edit') ? 'Enregistrer' : 'Créer le holon') ?></button>
+                                <button type="submit" class="omo-holon-create__button omo-holon-create__button--primary"><?= omoApiEscape((($editorData['mode'] ?? 'create') === 'edit') ? 'Enregistrer' : 'Créer le holon') ?></button>
                             </div>
                         </div>
                     </form>
