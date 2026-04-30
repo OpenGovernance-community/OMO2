@@ -878,10 +878,14 @@ html[data-theme] .common-help-card p {
     display: flex;
     flex-direction: column;
     gap: 18px;
-    padding: 0 20px 20px;
+    padding: 0px;
     min-height: 0;
     overflow: auto;
     overscroll-behavior: contain;
+}
+
+.omo-panel-view__body_content {
+    padding: 20px;
 }
 
 .omo-panel-group {
@@ -895,7 +899,7 @@ html[data-theme] .common-help-card p {
     top: 0;
     z-index: 2;
     margin: 0;
-    padding: 18px 0 8px;
+    padding: 18px 14px 8px;
     font-size: 1rem;
     color: var(--color-text-light);
     background: color-mix(in srgb, var(--color-bg) 94%, transparent);
@@ -1113,12 +1117,12 @@ button.omo-card {
         align-self: flex-start;
     }
 
-    .omo-panel-view__body {
-        padding: 0 14px 14px;
+    .omo-panel-view__body_content {
+        padding: 14px 14px;
     }
 
     .omo-panel-group__title {
-        padding: 14px 0 8px;
+        padding: 14px 14px 8px;
     }
 
     .omo-overlay-drawer__panel {

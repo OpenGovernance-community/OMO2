@@ -15,6 +15,7 @@
 				[['id'], 'integer'],
 				[['IDuser', 'IDorganization'], 'fk'],
 				[['username', 'email'], 'string'],
+				[['image'], 'sizedimage'],
 				[['parameters'], 'parameters'],
 				[['datecreation', 'dateconnexion'], 'datetime'],
 				[['active'], 'boolean'],
@@ -30,6 +31,7 @@
 				'IDorganization' => 'Organisation',
 				'username' => 'Identifiant',
 				'email' => 'E-mail',
+				'image' => 'Photo',
 				'parameters' => 'Paramètres',
 				'datecreation' => 'Création',
 				'dateconnexion' => 'Dernière connexion',
@@ -42,11 +44,21 @@
 			return [
 				'IDuser' => 'Utilisateur associé à cette organisation.',
 				'IDorganization' => 'Organisation concernée par ce lien.',
-				'username' => 'Identifiant affiché spécifiquement dans cette organisation.',
-				'email' => 'Adresse e-mail affichée spécifiquement dans cette organisation.',
+				'username' => 'Identifiant affiché spécifiquement dans cette organisation. Laissez vide pour utiliser la valeur générale.',
+				'email' => 'Adresse e-mail affichée spécifiquement dans cette organisation. Laissez vide pour utiliser la valeur générale.',
+				'image' => 'Photo de profil spécifique à cette organisation. Si elle est vide, la photo générale est utilisée.',
 				'parameters' => 'Paramètres spécifiques au rôle de cette personne dans l’organisation.',
 				'datecreation' => 'Date de création du lien avec l’organisation.',
 				'dateconnexion' => 'Dernière activité connue dans cette organisation.',
+			];
+		}
+
+		public static function attributeLength()
+		{
+			return [
+				'image' => [320, 320],
+				'username' => 250,
+				'email' => 250,
 			];
 		}
 
@@ -70,12 +82,12 @@
 				return $fullName;
 			}
 
-			$username = trim((string)$user->get('username'));
+			$username = $this->getScopedUsername();
 			if ($username !== '') {
 				return $username;
 			}
 
-			$email = trim((string)$user->get('email'));
+			$email = $this->getScopedEmail();
 			if ($email !== '') {
 				return $email;
 			}
@@ -149,6 +161,11 @@
 
 		public function getProfilePhotoUrl()
 		{
+			$photoUrl = trim((string)$this->get('image'));
+			if ($photoUrl !== '') {
+				return $photoUrl;
+			}
+
 			$photoUrl = trim((string)$this->getParameter('photo'));
 			if ($photoUrl !== '') {
 				return $photoUrl;
@@ -157,6 +174,11 @@
 			$photoUrl = trim((string)$this->getParameter('photoUrl'));
 			if ($photoUrl !== '') {
 				return $photoUrl;
+			}
+
+			$user = $this->get('user');
+			if ($user && method_exists($user, 'getProfilePhotoUrl')) {
+				return (string)$user->getProfilePhotoUrl();
 			}
 
 			return '';
@@ -212,6 +234,16 @@
 
 			$value = $user->get('dateconnexion');
 			return $value instanceof \DateTimeInterface ? $value : null;
+		}
+
+		public function canEdit()
+		{
+			$currentUserId = (int)\commonGetCurrentUserId();
+			if ($currentUserId <= 0) {
+				return false;
+			}
+
+			return $currentUserId === (int)$this->get('IDuser');
 		}
 	}
 

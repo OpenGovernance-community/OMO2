@@ -1,12 +1,5 @@
 <?php
 
-if (!function_exists('omoSetupEscape')) {
-    function omoSetupEscape($value)
-    {
-        return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
-    }
-}
-
 if (!function_exists('omoRenderOrganizationSetupPanel')) {
     function omoRenderOrganizationSetupPanel(\dbObject\Organization $organization)
     {
@@ -29,7 +22,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
 >
     <div class="omo-setup-panel__hero">
         <div class="omo-setup-panel__kicker">Organisation à initialiser</div>
-        <h2 class="omo-setup-panel__title"><?= omoSetupEscape($organizationName) ?></h2>
+        <h2 class="omo-setup-panel__title"><?= omoApiEscape($organizationName) ?></h2>
         <p class="omo-setup-panel__intro">Cette organisation n'a pas encore de holon racine. Choisissez un point de départ pour créer sa structure.</p>
     </div>
 
@@ -42,7 +35,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
                 data-omo-org-init-button="1"
                 data-template-id="0"
             >
-                <span class="omo-setup-card__media" style="background: <?= omoSetupEscape($organizationColor) ?>;">
+                <span class="omo-setup-card__media" style="background: <?= omoApiEscape($organizationColor) ?>;">
                     <span class="omo-setup-card__badge">Structure vide</span>
                 </span>
                 <span class="omo-setup-card__content">
@@ -65,14 +58,14 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
                     data-omo-org-init-button="1"
                     data-template-id="<?= (int)($template['id'] ?? 0) ?>"
                 >
-                    <span class="omo-setup-card__media" style="background: <?= omoSetupEscape($templateColor) ?>;">
+                    <span class="omo-setup-card__media" style="background: <?= omoApiEscape($templateColor) ?>;">
                         <span class="omo-setup-card__badge">Modèle</span>
                     </span>
                     <span class="omo-setup-card__content">
-                        <span class="omo-setup-card__title"><?= omoSetupEscape($template['name'] ?? 'Modèle') ?></span>
+                        <span class="omo-setup-card__title"><?= omoApiEscape($template['name'] ?? 'Modèle') ?></span>
                         <span class="omo-setup-card__text">
                             <?php if (!empty($template['sourceOrganizationName'])): ?>
-                                Inspiré de <?= omoSetupEscape($template['sourceOrganizationName']) ?>.
+                                Inspiré de <?= omoApiEscape($template['sourceOrganizationName']) ?>.
                             <?php else: ?>
                                 Duplique la structure de ce modèle d'organisation.
                             <?php endif; ?>
@@ -434,14 +427,14 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
         }
 
         $heroStyle = $organizationBanner !== ''
-            ? 'background: linear-gradient(180deg, rgba(15,23,42,0.06), rgba(15,23,42,0.24)), url(' . omoSetupEscape($organizationBanner) . ') center/cover;'
-            : 'background: ' . omoSetupEscape($organizationColor) . ';';
+            ? 'background: linear-gradient(180deg, rgba(15,23,42,0.06), rgba(15,23,42,0.24)), url(' . omoApiEscape($organizationBanner) . ') center/cover;'
+            : 'background: ' . omoApiEscape($organizationColor) . ';';
         ?>
 <div class="omo-org-info-panel">
     <div class="omo-org-info-panel__hero" style="<?= $heroStyle ?>">
         <div class="omo-org-info-panel__hero-content">
             <div class="omo-org-info-panel__kicker">Organisation</div>
-            <h2 class="omo-org-info-panel__title"><?= omoSetupEscape($organizationName) ?></h2>
+            <h2 class="omo-org-info-panel__title"><?= omoApiEscape($organizationName) ?></h2>
         </div>
     </div>
 
@@ -453,23 +446,23 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
         <div class="omo-org-info-list">
             <div class="omo-org-info-list__item">
                 <span class="omo-org-info-list__label">Nom</span>
-                <span class="omo-org-info-list__value"><?= omoSetupEscape($organizationName) ?></span>
+                <span class="omo-org-info-list__value"><?= omoApiEscape($organizationName) ?></span>
             </div>
             <div class="omo-org-info-list__item">
                 <span class="omo-org-info-list__label">Nom court</span>
-                <span class="omo-org-info-list__value"><?= omoSetupEscape($organizationShortname !== '' ? $organizationShortname : 'Non défini') ?></span>
+                <span class="omo-org-info-list__value"><?= omoApiEscape($organizationShortname !== '' ? $organizationShortname : 'Non défini') ?></span>
             </div>
             <div class="omo-org-info-list__item">
                 <span class="omo-org-info-list__label">Domaine</span>
-                <span class="omo-org-info-list__value"><?= omoSetupEscape($organizationDomain !== '' ? $organizationDomain : 'Non défini') ?></span>
+                <span class="omo-org-info-list__value"><?= omoApiEscape($organizationDomain !== '' ? $organizationDomain : 'Non défini') ?></span>
             </div>
             <div class="omo-org-info-list__item">
                 <span class="omo-org-info-list__label">Couleur</span>
-                <span class="omo-org-info-list__value"><?= omoSetupEscape($organizationColor) ?></span>
+                <span class="omo-org-info-list__value"><?= omoApiEscape($organizationColor) ?></span>
             </div>
             <div class="omo-org-info-list__item">
                 <span class="omo-org-info-list__label">Logo</span>
-                <span class="omo-org-info-list__value"><?= omoSetupEscape($organizationLogo !== '' ? $organizationLogo : 'Non défini') ?></span>
+                <span class="omo-org-info-list__value"><?= omoApiEscape($organizationLogo !== '' ? $organizationLogo : 'Non défini') ?></span>
             </div>
         </div>
     </div>

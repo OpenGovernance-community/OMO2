@@ -1,33 +1,38 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 
-use dbObject\ArrayUserOrganization;
+use dbObject\Holon;
 use dbObject\Organization;
+use dbObject\User;
+use dbObject\UserOrganization;
 
-function omoTeamEscape($value)
+function omoTeamHolonTypeLabel(Holon $holon)
 {
-    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
-}
-
-function omoTeamSortKey($value)
-{
-    $value = trim(mb_strtolower((string)$value, 'UTF-8'));
-    $transliterated = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
-    if (is_string($transliterated) && $transliterated !== '') {
-        $value = $transliterated;
+    switch ((int)$holon->get('IDtypeholon')) {
+        case 4:
+            return 'organisation';
+        case 3:
+            return 'groupe';
+        case 2:
+            return 'cercle';
+        case 1:
+            return 'rôle';
+        default:
+            return 'holon';
     }
-
-    return preg_replace('/[^a-z0-9]+/', ' ', $value);
 }
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
+$currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
 
 if ($organizationId <= 0) {
     http_response_code(400);
     ?>
     <div class="omo-team omo-panel-view">
         <div class="omo-panel-view__body">
-            <div class="omo-team__empty omo-empty-state">Organisation invalide.</div>
+            <div class="omo-panel-view__body_content">
+                <div class="omo-team__empty omo-empty-state">Organisation invalide.</div>
+            </div>
         </div>
     </div>
     <?php
@@ -40,15 +45,52 @@ if (!$organization->load($organizationId)) {
     ?>
     <div class="omo-team omo-panel-view">
         <div class="omo-panel-view__body">
-            <div class="omo-team__empty omo-empty-state">Organisation introuvable.</div>
+            <div class="omo-panel-view__body_content">
+                <div class="omo-team__empty omo-empty-state">Organisation introuvable.</div>
+            </div>
         </div>
     </div>
     <?php
     exit;
 }
 
-$memberships = new ArrayUserOrganization();
-$memberships->loadActiveForOrganization($organizationId);
+$currentHolon = $organization->getStructuralRootHolon();
+if ($currentHolon === null) {
+    http_response_code(404);
+    ?>
+    <div class="omo-team omo-panel-view">
+        <div class="omo-panel-view__body">
+            <div class="omo-panel-view__body_content">
+                <div class="omo-team__empty omo-empty-state">Aucun holon racine n'a été trouvé pour cette organisation.</div>
+            </div>
+        </div>
+    </div>
+    <?php
+    exit;
+}
+
+if ($currentHolonId > 0 && (int)$currentHolon->getId() !== $currentHolonId) {
+    $candidate = new Holon();
+    if (!$candidate->load($currentHolonId) || !$candidate->isDescendantOf($currentHolon->getId())) {
+        http_response_code(404);
+        ?>
+        <div class="omo-team omo-panel-view">
+            <div class="omo-panel-view__body">
+                <div class="omo-panel-view__body_content">
+                    <div class="omo-team__empty omo-empty-state">Holon introuvable pour cette organisation.</div>
+                </div>
+            </div>
+        </div>
+        <?php
+        exit;
+    }
+
+    $currentHolon = $candidate;
+}
+
+$rawMemberCards = $currentHolon->getAssociatedMemberCards(array(
+    'organizationId' => $organizationId,
+));
 
 $memberCards = [];
 $adminCount = 0;
@@ -88,36 +130,98 @@ $formatLastSeenLabel = static function ($organizationDate, $globalDate) use ($fo
     return $globalLabel;
 };
 
-foreach ($memberships as $membership) {
-    $isAdmin = $membership->isOrganizationAdmin();
-    $organizationLastSeen = $membership->get('dateconnexion');
-    $organizationJoinedAt = $membership->get('datecreation');
-    $globalLastSeen = $membership->getGlobalLastConnectionAt();
-    $globalJoinedAt = $membership->getGlobalCreatedAt();
+foreach ($rawMemberCards as $rawCard) {
+    $userId = (int)($rawCard['userId'] ?? 0);
+    if ($userId <= 0) {
+        continue;
+    }
+
+    $membership = new UserOrganization();
+    $hasMembership = $membership->load(array(
+        array('IDuser', $userId),
+        array('IDorganization', $organizationId),
+    ));
+
+    $user = new User();
+    $hasUser = $user->load($userId);
+
+    $isPending = !empty($rawCard['isPending']) || ($hasMembership && !(bool)$membership->get('active'));
+    $isAdmin = $hasMembership ? $membership->isOrganizationAdmin() : false;
+    $organizationLastSeen = $hasMembership ? $membership->get('dateconnexion') : null;
+    $organizationJoinedAt = $hasMembership ? $membership->get('datecreation') : null;
+    $globalLastSeen = $hasMembership
+        ? $membership->getGlobalLastConnectionAt()
+        : ($hasUser && $user->get('dateconnexion') instanceof DateTimeInterface ? $user->get('dateconnexion') : null);
+    $globalJoinedAt = $hasMembership
+        ? $membership->getGlobalCreatedAt()
+        : ($hasUser && $user->get('datecreation') instanceof DateTimeInterface ? $user->get('datecreation') : null);
     $effectiveLastSeen = $organizationLastSeen instanceof DateTimeInterface ? $organizationLastSeen : $globalLastSeen;
 
-    if ($isAdmin) {
+    if ($isAdmin && !$isPending) {
         $adminCount += 1;
     }
 
-    if ($effectiveLastSeen instanceof DateTimeInterface) {
+    if (!$isPending && $effectiveLastSeen instanceof DateTimeInterface) {
         $connectedCount += 1;
     }
 
     $effectiveJoinedAt = $organizationJoinedAt instanceof DateTimeInterface ? $organizationJoinedAt : $globalJoinedAt;
-    $displayName = $membership->getUserDisplayName();
+    $displayName = trim((string)($rawCard['displayName'] ?? ''));
+    if ($displayName === '' && $hasMembership) {
+        $displayName = $membership->getUserDisplayName();
+    }
+    if ($displayName === '' && $hasUser) {
+        $displayName = $user->getScopedDisplayName($organizationId);
+    }
 
-    $memberCards[] = [
-        'displayName' => $displayName,
-        'email' => $membership->getScopedEmail(),
-        'username' => $membership->getScopedUsername(),
-        'secondary' => $membership->getScopedEmail() !== '' ? $membership->getScopedEmail() : $membership->getUserSecondaryLabel(),
-        'photoUrl' => $membership->getProfilePhotoUrl(),
-        'initials' => $membership->getUserInitials(),
+    $email = $hasMembership ? $membership->getScopedEmail() : ($hasUser ? $user->getScopedEmail($organizationId) : '');
+    $username = $hasMembership ? $membership->getScopedUsername() : ($hasUser ? $user->getScopedUsername($organizationId) : '');
+    $secondary = $email !== ''
+        ? $email
+        : ($hasMembership
+            ? $membership->getUserSecondaryLabel()
+            : ($username !== '' ? '@' . $username : ''));
+
+    $photoUrl = trim((string)($rawCard['photoUrl'] ?? ''));
+    if ($photoUrl === '' && $hasMembership) {
+        $photoUrl = $membership->getProfilePhotoUrl();
+    }
+    if ($photoUrl === '' && $hasUser) {
+        $photoUrl = $user->getScopedProfilePhotoUrl($organizationId);
+    }
+
+    $initials = trim((string)($rawCard['initials'] ?? ''));
+    if ($initials === '' && $hasMembership) {
+        $initials = $membership->getUserInitials();
+    }
+    if ($initials === '' && $displayName !== '') {
+        $words = preg_split('/\s+/u', $displayName) ?: array();
+        $initials = '';
+        foreach ($words as $word) {
+            $word = trim((string)$word);
+            if ($word === '') {
+                continue;
+            }
+
+            $initials .= mb_substr($word, 0, 1, 'UTF-8');
+            if (mb_strlen($initials, 'UTF-8') >= 2) {
+                break;
+            }
+        }
+    }
+
+    $memberCards[] = array(
+        'displayName' => $displayName !== '' ? $displayName : ('Utilisateur ' . $userId),
+        'email' => $email,
+        'username' => $username,
+        'secondary' => $secondary,
+        'photoUrl' => $photoUrl,
+        'initials' => $initials !== '' ? mb_strtoupper($initials, 'UTF-8') : 'P',
         'isAdmin' => $isAdmin,
+        'isPending' => $isPending,
         'joinedAtLabel' => $effectiveJoinedAt instanceof DateTimeInterface ? $formatDate($effectiveJoinedAt) : '',
         'lastSeenLabel' => $formatLastSeenLabel($organizationLastSeen, $globalLastSeen),
-    ];
+    );
 }
 
 usort($memberCards, static function (array $left, array $right): int {
@@ -126,52 +230,56 @@ usort($memberCards, static function (array $left, array $right): int {
     }
 
     return strcmp(
-        omoTeamSortKey($left['displayName']),
-        omoTeamSortKey($right['displayName'])
+        omoApiSortKey($left['displayName']),
+        omoApiSortKey($right['displayName'])
     );
 });
+
+$currentHolonTypeLabel = omoTeamHolonTypeLabel($currentHolon);
+$currentHolonName = trim((string)$currentHolon->getDisplayName());
 ?>
 <div class="omo-team omo-panel-view">
     <div class="omo-team__hero omo-panel-view__header">
         <div class="omo-panel-view__header-copy">
             <h2 class="omo-panel-view__title">Team</h2>
-            <p class="omo-panel-view__description">Les personnes actuellement associées à <?= omoTeamEscape($organization->get('name')) ?>.</p>
+            <p class="omo-panel-view__description">Les personnes actuellement associées au <?= omoApiEscape($currentHolonTypeLabel) ?> <?= omoApiEscape($currentHolonName) ?>.</p>
         </div>
-        <div class="omo-team__stats" aria-label="Résumé de l’équipe">
+        <div class="omo-team__stats" aria-label="Résumé de l'équipe">
             <div class="omo-team__stat">
-                <strong><?= omoTeamEscape(count($memberCards)) ?></strong>
+                <strong><?= omoApiEscape(count($memberCards)) ?></strong>
                 <span>Membre<?= count($memberCards) > 1 ? 's' : '' ?></span>
             </div>
             <div class="omo-team__stat">
-                <strong><?= omoTeamEscape($adminCount) ?></strong>
+                <strong><?= omoApiEscape($adminCount) ?></strong>
                 <span>Admin<?= $adminCount > 1 ? 's' : '' ?></span>
             </div>
             <div class="omo-team__stat">
-                <strong><?= omoTeamEscape($connectedCount) ?></strong>
+                <strong><?= omoApiEscape($connectedCount) ?></strong>
                 <span>Déjà connecté<?= $connectedCount > 1 ? 's' : '' ?></span>
             </div>
         </div>
     </div>
     <div class="omo-panel-view__body">
+        <div class="omo-panel-view__body_content">
         <?php if (count($memberCards) === 0): ?>
             <div class="omo-team__empty omo-empty-state">
-                Aucune personne n’est encore liée à cette organisation.
+                Aucune personne n'est encore liée à ce <?= omoApiEscape($currentHolonTypeLabel) ?>.
             </div>
         <?php else: ?>
             <div class="omo-team__grid omo-card-grid omo-card-grid--fixed">
                 <?php foreach ($memberCards as $card): ?>
-                    <article class="omo-team-card omo-card omo-card--interactive">
+                    <article class="omo-team-card omo-card omo-card--interactive<?= $card['isPending'] ? ' omo-team-card--pending' : '' ?>">
                         <div class="omo-team-card__banner"></div>
                         <div class="omo-team-card__media">
                             <?php if ($card['photoUrl'] !== ''): ?>
                                 <img
-                                    src="<?= omoTeamEscape($card['photoUrl']) ?>"
-                                    alt="<?= omoTeamEscape($card['displayName']) ?>"
+                                    src="<?= omoApiEscape($card['photoUrl']) ?>"
+                                    alt="<?= omoApiEscape($card['displayName']) ?>"
                                     class="omo-team-card__photo"
                                 >
                             <?php else: ?>
                                 <div class="omo-team-card__photo-placeholder">
-                                    <span class="omo-team-card__initials"><?= omoTeamEscape($card['initials']) ?></span>
+                                    <span class="omo-team-card__initials"><?= omoApiEscape($card['initials']) ?></span>
                                     <span class="omo-team-card__photo-label">Photo à venir</span>
                                 </div>
                             <?php endif; ?>
@@ -180,13 +288,15 @@ usort($memberCards, static function (array $left, array $right): int {
                         <div class="omo-team-card__body">
                             <div class="omo-team-card__head">
                                 <div class="omo-team-card__identity">
-                                    <h3><?= omoTeamEscape($card['displayName']) ?></h3>
+                                    <h3><?= omoApiEscape($card['displayName']) ?></h3>
                                     <?php if ($card['secondary'] !== ''): ?>
-                                        <p><?= omoTeamEscape($card['secondary']) ?></p>
+                                        <p><?= omoApiEscape($card['secondary']) ?></p>
                                     <?php endif; ?>
                                 </div>
 
-                                <?php if ($card['isAdmin']): ?>
+                                <?php if ($card['isPending']): ?>
+                                    <span class="omo-team-card__badge omo-team-card__badge--pending">En attente</span>
+                                <?php elseif ($card['isAdmin']): ?>
                                     <span class="omo-team-card__badge">Admin</span>
                                 <?php endif; ?>
                             </div>
@@ -195,7 +305,7 @@ usort($memberCards, static function (array $left, array $right): int {
                                 <div class="omo-team-card__meta-row">
                                     <span class="omo-team-card__meta-label">E-mail</span>
                                     <span class="omo-team-card__meta-value<?= $card['email'] === '' ? ' omo-team-card__meta-value--muted' : '' ?>">
-                                        <?= omoTeamEscape($card['email'] !== '' ? $card['email'] : 'Non renseigné') ?>
+                                        <?= omoApiEscape($card['email'] !== '' ? $card['email'] : 'Non renseigné') ?>
                                     </span>
                                 </div>
                             </div>
@@ -204,14 +314,14 @@ usort($memberCards, static function (array $left, array $right): int {
                                 <div class="omo-team-card__date">
                                     <span class="omo-team-card__date-label">Ajout</span>
                                     <span class="omo-team-card__date-value<?= $card['joinedAtLabel'] === '' ? ' omo-team-card__date-value--muted' : '' ?>">
-                                        <?= omoTeamEscape($card['joinedAtLabel'] !== '' ? $card['joinedAtLabel'] : 'N/A') ?>
+                                        <?= omoApiEscape($card['joinedAtLabel'] !== '' ? $card['joinedAtLabel'] : 'N/A') ?>
                                     </span>
                                 </div>
 
                                 <div class="omo-team-card__date">
                                     <span class="omo-team-card__date-label">Connexion</span>
                                     <span class="omo-team-card__date-value<?= $card['lastSeenLabel'] === '' ? ' omo-team-card__date-value--muted' : '' ?>">
-                                        <?= omoTeamEscape($card['lastSeenLabel'] !== '' ? $card['lastSeenLabel'] : 'Jamais') ?>
+                                        <?= omoApiEscape($card['lastSeenLabel'] !== '' ? $card['lastSeenLabel'] : 'Jamais') ?>
                                     </span>
                                 </div>
                             </div>
@@ -220,6 +330,7 @@ usort($memberCards, static function (array $left, array $right): int {
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
+        </div>
     </div>
 </div>
 
@@ -263,6 +374,10 @@ usort($memberCards, static function (array $left, array $right): int {
     padding: 0;
 }
 
+.omo-team-card--pending {
+    opacity: 0.7;
+}
+
 .omo-team-card__banner {
     height: 34px;
     background:
@@ -295,6 +410,10 @@ usort($memberCards, static function (array $left, array $right): int {
 
 .omo-team-card__photo {
     object-fit: cover;
+}
+
+.omo-team-card--pending .omo-team-card__photo {
+    filter: grayscale(1);
 }
 
 .omo-team-card__photo-placeholder {
@@ -367,6 +486,11 @@ usort($memberCards, static function (array $left, array $right): int {
     font-size: 0.7rem;
     font-weight: 700;
     white-space: nowrap;
+}
+
+.omo-team-card__badge--pending {
+    background: rgba(100, 116, 139, 0.12);
+    color: #475569;
 }
 
 .omo-team-card__meta {
