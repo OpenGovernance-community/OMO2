@@ -651,74 +651,101 @@ function buildDrawerUrl(baseUrl, oid, cid = null) {
     return url;
 }
 
+function omoNormalizeHashToken(token) {
+    const normalizedToken = String(token || '').trim();
+
+    return normalizedToken === '' ? null : normalizedToken;
+}
+
+function omoParsePopupToken(token = null) {
+    const rawToken = omoNormalizeHashToken(token);
+
+    if (!rawToken || !/^[a-z0-9/_-]+$/i.test(rawToken)) {
+        return {
+            raw: null,
+            key: null,
+            id: null
+        };
+    }
+
+    const tokenMatch = rawToken.match(/^(.*)-(\d+)$/);
+    const popupKey = tokenMatch && tokenMatch[1]
+        ? tokenMatch[1]
+        : rawToken;
+    const popupId = tokenMatch && tokenMatch[2]
+        ? Number(tokenMatch[2])
+        : null;
+
+    return {
+        raw: rawToken,
+        key: popupKey,
+        id: Number.isInteger(popupId) && popupId > 0 ? popupId : null
+    };
+}
+
 function omoParseHashState(rawHash = null) {
     const normalizedHash = String(rawHash === null ? (window.location.hash || '') : rawHash)
         .replace(/^#/, '')
         .trim();
     const tokens = normalizedHash === ''
         ? []
-        : normalizedHash.split('|').map(function (token) {
-            return token.trim();
-        }).filter(Boolean);
-
-    let routeToken = null;
-    let faqToken = null;
-    let faqId = null;
-
-    tokens.forEach(function (token) {
-        const faqMatch = token.match(/^faq(?:-(\d+))?$/i);
-
-        if (faqMatch) {
-            if (!faqToken) {
-                faqToken = faqMatch[1] ? `faq-${Number(faqMatch[1])}` : 'faq';
-                faqId = faqMatch[1] ? Number(faqMatch[1]) : null;
-            }
-            return;
-        }
-
-        if (!routeToken) {
-            routeToken = token;
-        }
-    });
+        : normalizedHash.split('|');
+    const routeToken = omoNormalizeHashToken(tokens.length > 0 ? tokens[0] : null);
+    const popupState = omoParsePopupToken(tokens.length > 1 ? tokens[1] : null);
 
     return {
         raw: normalizedHash,
-        tokens: tokens,
+        tokens: tokens.map(function (token) {
+            return String(token || '').trim();
+        }),
         routeToken: routeToken,
-        faqToken: faqToken,
-        faqId: Number.isInteger(faqId) && faqId > 0 ? faqId : null
+        popupToken: popupState.raw,
+        popupKey: popupState.key,
+        popupId: popupState.id
     };
 }
 
-function omoBuildHashFromState(routeToken = null, faqToken = null) {
-    const tokens = [];
+function omoBuildHashFromState(routeToken = null, popupToken = null) {
+    const normalizedRouteToken = omoNormalizeHashToken(routeToken);
+    const normalizedPopupToken = omoNormalizeHashToken(popupToken);
 
-    if (routeToken) {
-        tokens.push(String(routeToken).trim());
+    if (!normalizedRouteToken && !normalizedPopupToken) {
+        return null;
     }
 
-    if (faqToken) {
-        tokens.push(String(faqToken).trim());
+    if (!normalizedPopupToken) {
+        return normalizedRouteToken;
     }
 
-    return tokens.length ? tokens.join('|') : null;
+    return `${normalizedRouteToken || ''}|${normalizedPopupToken}`;
 }
 
-function omoBuildFaqToken(id = null) {
+function omoBuildPopupToken(key, id = null) {
+    const popupKey = omoNormalizeHashToken(key);
     const parsedId = Number(id);
 
+    if (!popupKey) {
+        return null;
+    }
+
     return Number.isInteger(parsedId) && parsedId > 0
-        ? `faq-${parsedId}`
-        : 'faq';
+        ? `${popupKey}-${parsedId}`
+        : popupKey;
 }
 
-function omoSetFaqHashState(options = {}) {
+function omoSetPopupHashState(options = {}) {
     const route = parseUrl();
     const hashState = omoParseHashState(route.hash);
-    const faqToken = options.open === false
+    const popupKey = options.key !== undefined
+        ? options.key
+        : hashState.popupKey;
+    const popupToken = options.open === false
         ? null
-        : omoBuildFaqToken(options.id || null);
-    const nextHash = omoBuildHashFromState(hashState.routeToken, faqToken);
+        : omoBuildPopupToken(popupKey, options.id || null);
+    const nextHash = omoBuildHashFromState(
+        options.routeToken !== undefined ? options.routeToken : hashState.routeToken,
+        popupToken
+    );
     const currentHash = route.hash || null;
 
     if ((nextHash || null) === currentHash) {
@@ -736,28 +763,28 @@ function omoSetFaqHashState(options = {}) {
     handleRoute();
 }
 
-let omoFaqBootstrapHandled = false;
-let omoFaqModalSyncing = false;
-let omoFaqModalManaged = false;
+let omoPopupBootstrapHandled = false;
+let omoPopupModalSyncing = false;
+let omoPopupModalManaged = false;
 
-function omoEnsureFaqBootstrapState(oid, cid, routeToken, faqId) {
-    if (omoFaqBootstrapHandled) {
+function omoEnsurePopupBootstrapState(oid, cid, routeToken, popupKey, popupId) {
+    if (omoPopupBootstrapHandled) {
         return;
     }
 
-    omoFaqBootstrapHandled = true;
+    omoPopupBootstrapHandled = true;
     const currentHashState = omoParseHashState((window.location.hash || '').replace(/^#/, ''));
     const baseHash = omoBuildHashFromState(routeToken, null);
-    const listHash = omoBuildHashFromState(routeToken, 'faq');
+    const listHash = omoBuildHashFromState(routeToken, omoBuildPopupToken(popupKey));
 
-    if (!currentHashState.faqToken) {
+    if (!currentHashState.popupToken || !popupKey) {
         return;
     }
 
     history.replaceState({}, '', buildOmoUrl(oid, cid, baseHash));
 
-    if (currentHashState.faqId) {
-        const detailHash = omoBuildHashFromState(routeToken, omoBuildFaqToken(faqId));
+    if (currentHashState.popupId) {
+        const detailHash = omoBuildHashFromState(routeToken, omoBuildPopupToken(popupKey, popupId));
         history.pushState({}, '', buildOmoUrl(oid, cid, listHash));
         history.pushState({}, '', buildOmoUrl(oid, cid, detailHash));
         return;
@@ -766,36 +793,108 @@ function omoEnsureFaqBootstrapState(oid, cid, routeToken, faqId) {
     history.pushState({}, '', buildOmoUrl(oid, cid, listHash));
 }
 
-function omoOpenFaqModalFromRoute(faqId = null) {
+function omoFormatPopupTitle(popupKey) {
+    if (!popupKey) {
+        return 'Aide';
+    }
+
+    if (popupKey === 'faq') {
+        return 'FAQ OMO';
+    }
+
+    return (popupKey.split('/').pop() || popupKey)
+        .replace(/[-_]+/g, ' ')
+        .replace(/\b\w/g, function (character) {
+            return character.toUpperCase();
+        });
+}
+
+function omoResolvePopupRoute(popupKey, popupId = null) {
+    const normalizedPopupKey = omoNormalizeHashToken(popupKey);
+    const parsedPopupId = Number(popupId);
+
+    if (!normalizedPopupKey) {
+        return null;
+    }
+
+    let url = `/popup/${normalizedPopupKey}.php`;
+
+    if (Number.isInteger(parsedPopupId) && parsedPopupId > 0) {
+        url += `?id=${encodeURIComponent(parsedPopupId)}`;
+    }
+
+    return {
+        key: normalizedPopupKey,
+        id: Number.isInteger(parsedPopupId) && parsedPopupId > 0 ? parsedPopupId : null,
+        token: omoBuildPopupToken(normalizedPopupKey, parsedPopupId),
+        title: omoFormatPopupTitle(normalizedPopupKey),
+        url: url
+    };
+}
+
+function omoOpenPopupModalFromRoute(popupKey, popupId = null) {
+    const popupRoute = omoResolvePopupRoute(popupKey, popupId);
+
+    if (!popupRoute) {
+        return;
+    }
+
     if (typeof window.commonTopbarOpenModal !== 'function') {
         return;
     }
 
-    omoFaqModalManaged = true;
-    window.omoFaqRequestedId = faqId;
+    omoPopupModalManaged = true;
 
     const modal = document.getElementById('commonTopbarModal');
     const body = document.getElementById('commonTopbarModalBody');
-    const hasFaqContent = body && body.getAttribute('data-omo-faq-modal') === '1';
+    const bodyPopupKey = body ? body.getAttribute('data-omo-popup-key') : null;
+    const bodyPopupUrl = body ? body.getAttribute('data-omo-popup-url') : null;
+    const hasPopupContent = bodyPopupKey === popupRoute.key;
+    const canLiveSync = body && body.getAttribute('data-omo-popup-live-sync') === '1';
 
-    if (!modal || modal.hidden || !hasFaqContent) {
-        omoFaqModalSyncing = true;
-        window.commonTopbarOpenModal('FAQ OMO', '/popup/pop_faq.php', 'fetch');
+    if (!modal || modal.hidden || !hasPopupContent) {
+        omoPopupModalSyncing = true;
+        window.commonTopbarOpenModal(popupRoute.title, popupRoute.url, 'fetch');
+        if (body) {
+            body.setAttribute('data-omo-popup-key', popupRoute.key);
+            body.setAttribute('data-omo-popup-url', popupRoute.url);
+        }
         window.setTimeout(function () {
-            omoFaqModalSyncing = false;
+            omoPopupModalSyncing = false;
         }, 0);
         return;
     }
 
-    window.dispatchEvent(new CustomEvent('omo-faq-route-update', {
-        detail: {
-            faqId: faqId
+    if (body) {
+        body.setAttribute('data-omo-popup-url', popupRoute.url);
+    }
+
+    if (canLiveSync) {
+        window.dispatchEvent(new CustomEvent('omo-popup-route-update', {
+            detail: {
+                popupKey: popupRoute.key,
+                popupId: popupRoute.id,
+                popupToken: popupRoute.token
+            }
+        }));
+        return;
+    }
+
+    if (bodyPopupUrl !== popupRoute.url) {
+        omoPopupModalSyncing = true;
+        window.commonTopbarOpenModal(popupRoute.title, popupRoute.url, 'fetch');
+        if (body) {
+            body.setAttribute('data-omo-popup-key', popupRoute.key);
+            body.setAttribute('data-omo-popup-url', popupRoute.url);
         }
-    }));
+        window.setTimeout(function () {
+            omoPopupModalSyncing = false;
+        }, 0);
+    }
 }
 
-function omoCloseFaqModalFromRoute() {
-    omoFaqModalManaged = false;
+function omoClosePopupModalFromRoute() {
+    omoPopupModalManaged = false;
 
     if (typeof window.commonTopbarCloseModal !== 'function') {
         return;
@@ -806,16 +905,17 @@ function omoCloseFaqModalFromRoute() {
         return;
     }
 
-    omoFaqModalSyncing = true;
+    omoPopupModalSyncing = true;
     window.commonTopbarCloseModal();
     window.setTimeout(function () {
-        omoFaqModalSyncing = false;
+        omoPopupModalSyncing = false;
     }, 0);
 }
 
 function omoOpenFaqHelp() {
-    omoSetFaqHashState({
-        open: true
+    omoSetPopupHashState({
+        open: true,
+        key: 'faq'
     });
     return true;
 }
@@ -831,16 +931,16 @@ $(document).on('click', '[data-hash]', function (e) {
     const navigationMode = String($(this).attr('data-navigation-mode') || 'drawer').toLowerCase();
 
     if (navigationMode === 'panel') {
-        navigate(oid, cid, omoBuildHashFromState(null, currentHashState.faqToken));
+        navigate(oid, cid, omoBuildHashFromState(null, currentHashState.popupToken));
         return;
     }
 
     if (currentHashState.routeToken === hash) {
-        navigate(oid, cid, omoBuildHashFromState(null, currentHashState.faqToken));
+        navigate(oid, cid, omoBuildHashFromState(null, currentHashState.popupToken));
         return;
     }
 
-    navigate(oid, cid, omoBuildHashFromState(hash, currentHashState.faqToken));
+    navigate(oid, cid, omoBuildHashFromState(hash, currentHashState.popupToken));
 
 });
 
@@ -938,7 +1038,7 @@ let currentState = {
     cid: null,
     hash: null,
     routeToken: null,
-    faqToken: null
+    popupToken: null
 };
 
 function omoFocusStructureNode(cid = null, options = {}) {
@@ -955,8 +1055,9 @@ function handleRoute() {
     const { oid, cid, hash } = parseUrl();
     const hashState = omoParseHashState(hash);
     const routeToken = hashState.routeToken;
-    const faqToken = hashState.faqToken;
-    const faqId = hashState.faqId;
+    const popupToken = hashState.popupToken;
+    const popupKey = hashState.popupKey;
+    const popupId = hashState.popupId;
 
     if (!Number.isInteger(Number(oid)) || Number(oid) <= 0) {
 
@@ -965,24 +1066,24 @@ function handleRoute() {
         $('#panel-left').html(errorMessage);
         $('#panel-right').html(errorMessage);
         closeAllDrawers();
-        omoCloseFaqModalFromRoute();
+        omoClosePopupModalFromRoute();
         updateActiveMenu(null);
 
-        currentState = { oid, cid, hash, routeToken, faqToken };
+        currentState = { oid, cid, hash, routeToken, popupToken };
         return;
     }
 
     // 👉 détection des changements
-    omoEnsureFaqBootstrapState(oid, cid, routeToken, faqId);
+    omoEnsurePopupBootstrapState(oid, cid, routeToken, popupKey, popupId);
 
     const organizationChanged = (oid !== currentState.oid);
     const cidChanged = (cid !== currentState.cid);
     const hashChanged = (hash !== currentState.hash);
     const routeChanged = (routeToken !== currentState.routeToken);
-    const faqChanged = (faqToken !== currentState.faqToken);
+    const popupChanged = (popupToken !== currentState.popupToken);
 
     // 👉 mise à jour state
-    currentState = { oid, cid, hash, routeToken, faqToken };
+    currentState = { oid, cid, hash, routeToken, popupToken };
 
     // 👉 menu actif
     updateActiveMenu(hash);
@@ -1037,10 +1138,10 @@ function handleRoute() {
         }
     }
 
-    if (faqToken) {
-        omoOpenFaqModalFromRoute(faqId);
-    } else if (faqChanged || hashChanged) {
-        omoCloseFaqModalFromRoute();
+    if (popupToken && popupKey) {
+        omoOpenPopupModalFromRoute(popupKey, popupId);
+    } else if (popupChanged || hashChanged) {
+        omoClosePopupModalFromRoute();
     }
 }
 
@@ -1061,17 +1162,17 @@ $(document).ready(function () {
 $(window).on('hashchange', handleRoute);
 
 window.addEventListener('common-topbar-modal-close', function () {
-    if (omoFaqModalSyncing || !omoFaqModalManaged) {
+    if (omoPopupModalSyncing || !omoPopupModalManaged) {
         return;
     }
 
     const hashState = omoParseHashState(parseUrl().hash);
 
-    if (!hashState.faqToken) {
+    if (!hashState.popupToken) {
         return;
     }
 
-    omoSetFaqHashState({
+    omoSetPopupHashState({
         open: false
     });
 });
@@ -1333,13 +1434,48 @@ function omoHandleTopbarSearch(query) {
 }
 
 window.omoRefreshSidebar = omoRefreshSidebar;
-window.omoParseFaqHashState = function () {
+window.omoParsePopupHashState = function () {
     return omoParseHashState(parseUrl().hash);
 };
-window.omoSetFaqHashState = omoSetFaqHashState;
-window.omoOpenFaqHashState = function (id, options = {}) {
-    omoSetFaqHashState({
+window.omoSetPopupHashState = omoSetPopupHashState;
+window.omoOpenPopupHashState = function (key, id, options = {}) {
+    if (typeof id === 'object' && id !== null) {
+        options = id;
+        id = null;
+    }
+
+    omoSetPopupHashState({
         open: true,
+        key: key,
+        id: id,
+        replace: options.replace === true
+    });
+};
+window.omoParseFaqHashState = function () {
+    const hashState = omoParseHashState(parseUrl().hash);
+
+    return {
+        faqToken: hashState.popupKey === 'faq' ? hashState.popupToken : null,
+        faqId: hashState.popupKey === 'faq' ? hashState.popupId : null
+    };
+};
+window.omoSetFaqHashState = function (options = {}) {
+    omoSetPopupHashState({
+        open: options.open,
+        key: 'faq',
+        id: options.id,
+        replace: options.replace === true
+    });
+};
+window.omoOpenFaqHashState = function (id, options = {}) {
+    if (typeof id === 'object' && id !== null) {
+        options = id;
+        id = null;
+    }
+
+    omoSetPopupHashState({
+        open: true,
+        key: 'faq',
         id: id,
         replace: options.replace === true
     });

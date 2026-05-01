@@ -13,6 +13,7 @@ $allFAQ->load([
 		['field' => 'isactive', 'value' => 1],
 	],
 	'orderBy' => [
+		['field' => 'viewcount', 'dir' => 'DESC'],
 		['field' => 'displayorder', 'dir' => 'ASC'],
 		['field' => 'updated', 'dir' => 'DESC'],
 	],
@@ -173,8 +174,14 @@ $allFAQ->load([
 				Aucune FAQ ne correspond à cette recherche.
 			</div>
 			<div class="faq-popup__list" data-faq-list>
+				<?php $faqIndex = 0; ?>
 				<?php foreach ($allFAQ as $faq): ?>
-					<div class="faq-popup__item" data-faq-item>
+					<div
+						class="faq-popup__item"
+						data-faq-item
+						data-faq-default-order="<?= $faqIndex ?>"
+						data-faq-viewcount="<?= (int)$faq->get("viewcount") ?>"
+					>
 						<button type="button" class="faq-popup__question" data-faq-toggle><?= htmlspecialchars((string)$faq->get("question")) ?></button>
 						<div class="faq-popup__answer" data-faq-answer>
 							<div data-faq-answer-text><?= nl2br(htmlspecialchars($faq->getShortAnswer(220))) ?></div>
@@ -190,6 +197,7 @@ $allFAQ->load([
 							<?php endif; ?>
 						</div>
 					</div>
+					<?php $faqIndex++; ?>
 				<?php endforeach; ?>
 			</div>
 		</div>
@@ -199,7 +207,9 @@ $allFAQ->load([
 </div>
 <script>
 (function () {
-	if (typeof window.__omoFaqPopupCleanup === 'function') {
+	if (typeof window.__omoPopupCleanup === 'function') {
+		window.__omoPopupCleanup();
+	} else if (typeof window.__omoFaqPopupCleanup === 'function') {
 		window.__omoFaqPopupCleanup();
 	}
 
@@ -215,10 +225,14 @@ $allFAQ->load([
 	const noResult = root.querySelector('[data-faq-no-result]');
 	const list = root.querySelector('[data-faq-list]');
 	const modalBody = document.getElementById('commonTopbarModalBody');
+	const defaultVisibleLimit = 5;
 	let currentViewToken = null;
 
 	if (modalBody) {
 		modalBody.setAttribute('data-omo-faq-modal', '1');
+		modalBody.setAttribute('data-omo-popup-key', 'faq');
+		modalBody.setAttribute('data-omo-popup-url', '/popup/faq.php');
+		modalBody.setAttribute('data-omo-popup-live-sync', '1');
 	}
 
 	function normalize(value) {
@@ -290,17 +304,24 @@ $allFAQ->load([
 		node.innerHTML = html.replace(regex, '<span class="faq-popup__highlight">$1</span>');
 	}
 
-	function getFaqHashState() {
-		if (typeof window.omoParseFaqHashState === 'function') {
-			return window.omoParseFaqHashState();
+	function getPopupHashState() {
+		if (typeof window.omoParsePopupHashState === 'function') {
+			const popupState = window.omoParsePopupHashState();
+
+			return {
+				popupToken: popupState.popupKey === 'faq' ? popupState.popupToken : null,
+				popupId: popupState.popupKey === 'faq' ? popupState.popupId : null
+			};
 		}
 
-		const normalizedHash = (window.location.hash || '').replace(/^#/, '');
-		const faqMatch = normalizedHash.match(/(?:^|\|)faq(?:-(\d+))?(?:\||$)/i);
+		const normalizedHash = (window.location.hash || '').replace(/^#/, '').trim();
+		const hashParts = normalizedHash === '' ? [] : normalizedHash.split('|');
+		const popupToken = String(hashParts.length > 1 ? hashParts[1] : '').trim();
+		const popupMatch = popupToken.match(/^faq(?:-(\d+))?$/i);
 
 		return {
-			faqToken: faqMatch ? (faqMatch[1] ? `faq-${Number(faqMatch[1])}` : 'faq') : null,
-			faqId: faqMatch && faqMatch[1] ? Number(faqMatch[1]) : null
+			popupToken: popupMatch ? (popupMatch[1] ? `faq-${Number(popupMatch[1])}` : 'faq') : null,
+			popupId: popupMatch && popupMatch[1] ? Number(popupMatch[1]) : null
 		};
 	}
 
@@ -312,8 +333,8 @@ $allFAQ->load([
 			detailView.innerHTML = '';
 		}
 
-		if (options.updateHash !== false && typeof window.omoOpenFaqHashState === 'function') {
-			window.omoOpenFaqHashState(null);
+		if (options.updateHash !== false && typeof window.omoOpenPopupHashState === 'function') {
+			window.omoOpenPopupHashState('faq', null);
 		}
 	}
 
@@ -327,8 +348,8 @@ $allFAQ->load([
 		detailView.hidden = false;
 		detailView.innerHTML = '<div class="faq-popup__helper">Chargement...</div>';
 
-		if (options.updateHash !== false && typeof window.omoOpenFaqHashState === 'function') {
-			window.omoOpenFaqHashState(id);
+		if (options.updateHash !== false && typeof window.omoOpenPopupHashState === 'function') {
+			window.omoOpenPopupHashState('faq', id);
 		}
 
 		fetch('/ajax/faq_detail.php?id=' + encodeURIComponent(id), {
@@ -352,19 +373,28 @@ $allFAQ->load([
 	}
 
 	function syncFromHash() {
-		const faqState = getFaqHashState();
-		const targetToken = faqState.faqToken;
+		const popupState = getPopupHashState();
+		const targetToken = popupState.popupToken;
 
 		if (!targetToken || targetToken === currentViewToken) {
 			return;
 		}
 
-		if (faqState.faqId) {
-			showDetail(faqState.faqId, { updateHash: false });
+		if (popupState.popupId) {
+			showDetail(popupState.popupId, { updateHash: false });
 			return;
 		}
 
 		showList({ updateHash: false });
+	}
+
+	function sortItemsByDefaultOrder(items) {
+		return items.sort(function (a, b) {
+			const orderA = Number(a.getAttribute('data-faq-default-order') || 0);
+			const orderB = Number(b.getAttribute('data-faq-default-order') || 0);
+
+			return orderA - orderB;
+		});
 	}
 
 	function filterList() {
@@ -374,23 +404,39 @@ $allFAQ->load([
 
 		const query = searchInput.value.trim();
 		const words = normalize(query).split(/\s+/).filter(Boolean);
+		const items = Array.from(list.querySelectorAll('[data-faq-item]'));
 		let visibleCount = 0;
 		const rankedItems = [];
 
 		resetHighlights(root);
 
-		list.querySelectorAll('[data-faq-item]').forEach(function (item) {
+		if (words.length === 0) {
+			sortItemsByDefaultOrder(items).forEach(function (item, index) {
+				item.hidden = index >= defaultVisibleLimit;
+				item.classList.remove('is-open');
+
+				if (!item.hidden) {
+					visibleCount++;
+				}
+
+				list.appendChild(item);
+			});
+
+			if (helper) {
+				helper.hidden = false;
+			}
+			if (noResult) {
+				noResult.hidden = true;
+			}
+
+			return;
+		}
+
+		items.forEach(function (item) {
 			const question = item.querySelector('.faq-popup__question');
 			const answer = item.querySelector('[data-faq-answer]');
 			const answerText = item.querySelector('[data-faq-answer-text]');
 			const haystack = normalize((question ? question.textContent : '') + ' ' + (answer ? answer.textContent : ''));
-
-			if (words.length === 0) {
-				item.hidden = false;
-				item.classList.remove('is-open');
-				visibleCount++;
-				return;
-			}
 
 			let score = 0;
 			words.forEach(function (word) {
@@ -472,13 +518,16 @@ $allFAQ->load([
 	}
 
 	window.addEventListener('hashchange', syncFromHash);
-	window.addEventListener('omo-faq-route-update', syncFromHash);
+	window.addEventListener('omo-popup-route-update', syncFromHash);
 
-	window.__omoFaqPopupCleanup = function () {
+	window.__omoPopupCleanup = function () {
 		window.removeEventListener('hashchange', syncFromHash);
-		window.removeEventListener('omo-faq-route-update', syncFromHash);
+		window.removeEventListener('omo-popup-route-update', syncFromHash);
 		if (modalBody) {
 			modalBody.removeAttribute('data-omo-faq-modal');
+			modalBody.removeAttribute('data-omo-popup-key');
+			modalBody.removeAttribute('data-omo-popup-url');
+			modalBody.removeAttribute('data-omo-popup-live-sync');
 		}
 	};
 
@@ -486,5 +535,6 @@ $allFAQ->load([
 	if (!currentViewToken) {
 		showList({ updateHash: false });
 	}
+	filterList();
 })();
 </script>
