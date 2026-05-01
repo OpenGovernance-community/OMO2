@@ -3,6 +3,20 @@
         return window.commonTopbarConfig || {};
     }
 
+    function runContainerCleanup(container) {
+        if (!container || container.id !== 'commonTopbarModalBody') {
+            return;
+        }
+
+        if (typeof window.__omoPopupCleanup === 'function') {
+            window.__omoPopupCleanup();
+            window.__omoPopupCleanup = null;
+        } else if (typeof window.__omoFaqPopupCleanup === 'function') {
+            window.__omoFaqPopupCleanup();
+            window.__omoFaqPopupCleanup = null;
+        }
+    }
+
     function executeEmbeddedScripts(container) {
         if (!container) {
             return;
@@ -28,6 +42,7 @@
             return;
         }
 
+        runContainerCleanup(container);
         container.innerHTML = '<div class="loading">Chargement...</div>';
 
         fetch(url, {
@@ -136,8 +151,12 @@
         }
         modal.hidden = true;
         if (body) {
+            runContainerCleanup(body);
             body.innerHTML = '';
             body.removeAttribute('data-omo-faq-modal');
+            body.removeAttribute('data-omo-popup-key');
+            body.removeAttribute('data-omo-popup-url');
+            body.removeAttribute('data-omo-popup-live-sync');
         }
         document.body.classList.remove('common-topbar-modal-open');
         if (!wasHidden) {
