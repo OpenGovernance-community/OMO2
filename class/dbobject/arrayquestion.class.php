@@ -1,10 +1,10 @@
 <?php
 	namespace dbObject;
 
-	class ArrayMissionFaq extends ArrayDbObject
+	class ArrayQuestion extends ArrayDbObject
 	{
 		public static function objectName() {
-			return "\dbObject\MissionFaq";
+			return "\dbObject\Question";
 		}
 	}
 

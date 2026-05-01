@@ -47,7 +47,7 @@
 		}
 
 		public function getQuizCount() {
-			$query = "SELECT COUNT(*) FROM mission_faq WHERE IDmission = :mission_id";
+			$query = "SELECT COUNT(*) FROM mission_question WHERE IDmission = :mission_id";
 			return (int)self::fetchValue($query, ['mission_id' => (int)$this->getId()]);
 		}
 
