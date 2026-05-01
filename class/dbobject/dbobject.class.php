@@ -497,11 +497,6 @@
 									break;
 							}
 
-							if ($dst !== $src) {
-								imagedestroy($dst);
-							}
-							imagedestroy($src);
-
 							if (!empty($this->_fields[$field]) && file_exists($_SERVER["DOCUMENT_ROOT"].$this->_fields[$field])) {
 								unlink($_SERVER["DOCUMENT_ROOT"].$this->_fields[$field]);
 							}
