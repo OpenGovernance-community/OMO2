@@ -14,6 +14,6 @@ if (empty($selected)) {
     exit;
 }
 
-$isCorrect = \dbObject\FaqChoice::isSelectionCorrect($selected);
+$isCorrect = \dbObject\QuestionChoice::isSelectionCorrect($selected);
 
 echo json_encode(['correct' => $isCorrect]);

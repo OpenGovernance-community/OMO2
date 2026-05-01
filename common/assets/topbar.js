@@ -93,6 +93,7 @@
         }
 
         closeDrawer();
+        closeModal();
         titleNode.textContent = title || 'Panneau';
         if (mode === 'iframe') {
             body.innerHTML = '<iframe class="common-topbar-modal__iframe" src="' + content + '"></iframe>';
@@ -104,6 +105,13 @@
 
         modal.hidden = false;
         document.body.classList.add('common-topbar-modal-open');
+        window.dispatchEvent(new CustomEvent('common-topbar-modal-open', {
+            detail: {
+                title: title || 'Panneau',
+                content: content,
+                mode: mode || 'html'
+            }
+        }));
     }
 
     function closeDrawer() {
@@ -122,14 +130,19 @@
     function closeModal() {
         var modal = document.getElementById('commonTopbarModal');
         var body = document.getElementById('commonTopbarModalBody');
+        var wasHidden = !modal || modal.hidden;
         if (!modal) {
             return;
         }
         modal.hidden = true;
         if (body) {
             body.innerHTML = '';
+            body.removeAttribute('data-omo-faq-modal');
         }
         document.body.classList.remove('common-topbar-modal-open');
+        if (!wasHidden) {
+            window.dispatchEvent(new CustomEvent('common-topbar-modal-close'));
+        }
     }
 
     function callNamedFunction(name) {

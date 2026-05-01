@@ -1,11 +1,13 @@
 <?php
-	namespace dbObject;
 
-	class ArrayFaq extends ArrayDbObject
+namespace dbObject;
+
+class ArrayFAQ extends ArrayDbObject
+{
+	public static function objectName()
 	{
-		public static function objectName() {
-			return "\dbObject\Faq";
-		}
+		return "\dbObject\FAQ";
 	}
+}
 
 ?>

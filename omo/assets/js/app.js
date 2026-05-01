@@ -616,7 +616,7 @@ function getSidebarMenuItem(hash = null) {
 }
 
 function getSidebarMenuConfig(hash = null) {
-    const route = hash ? String(hash).split('/')[0] : null;
+    const route = omoParseHashState(hash).routeToken;
     const item = getSidebarMenuItem(route);
 
     if (!item.length) {
@@ -651,26 +651,196 @@ function buildDrawerUrl(baseUrl, oid, cid = null) {
     return url;
 }
 
+function omoParseHashState(rawHash = null) {
+    const normalizedHash = String(rawHash === null ? (window.location.hash || '') : rawHash)
+        .replace(/^#/, '')
+        .trim();
+    const tokens = normalizedHash === ''
+        ? []
+        : normalizedHash.split('|').map(function (token) {
+            return token.trim();
+        }).filter(Boolean);
+
+    let routeToken = null;
+    let faqToken = null;
+    let faqId = null;
+
+    tokens.forEach(function (token) {
+        const faqMatch = token.match(/^faq(?:-(\d+))?$/i);
+
+        if (faqMatch) {
+            if (!faqToken) {
+                faqToken = faqMatch[1] ? `faq-${Number(faqMatch[1])}` : 'faq';
+                faqId = faqMatch[1] ? Number(faqMatch[1]) : null;
+            }
+            return;
+        }
+
+        if (!routeToken) {
+            routeToken = token;
+        }
+    });
+
+    return {
+        raw: normalizedHash,
+        tokens: tokens,
+        routeToken: routeToken,
+        faqToken: faqToken,
+        faqId: Number.isInteger(faqId) && faqId > 0 ? faqId : null
+    };
+}
+
+function omoBuildHashFromState(routeToken = null, faqToken = null) {
+    const tokens = [];
+
+    if (routeToken) {
+        tokens.push(String(routeToken).trim());
+    }
+
+    if (faqToken) {
+        tokens.push(String(faqToken).trim());
+    }
+
+    return tokens.length ? tokens.join('|') : null;
+}
+
+function omoBuildFaqToken(id = null) {
+    const parsedId = Number(id);
+
+    return Number.isInteger(parsedId) && parsedId > 0
+        ? `faq-${parsedId}`
+        : 'faq';
+}
+
+function omoSetFaqHashState(options = {}) {
+    const route = parseUrl();
+    const hashState = omoParseHashState(route.hash);
+    const faqToken = options.open === false
+        ? null
+        : omoBuildFaqToken(options.id || null);
+    const nextHash = omoBuildHashFromState(hashState.routeToken, faqToken);
+    const currentHash = route.hash || null;
+
+    if ((nextHash || null) === currentHash) {
+        return;
+    }
+
+    const url = buildOmoUrl(route.oid, route.cid, nextHash);
+
+    if (options.replace === true) {
+        history.replaceState({}, '', url);
+    } else {
+        history.pushState({}, '', url);
+    }
+
+    handleRoute();
+}
+
+let omoFaqBootstrapHandled = false;
+let omoFaqModalSyncing = false;
+let omoFaqModalManaged = false;
+
+function omoEnsureFaqBootstrapState(oid, cid, routeToken, faqId) {
+    if (omoFaqBootstrapHandled) {
+        return;
+    }
+
+    omoFaqBootstrapHandled = true;
+    const currentHashState = omoParseHashState((window.location.hash || '').replace(/^#/, ''));
+    const baseHash = omoBuildHashFromState(routeToken, null);
+    const listHash = omoBuildHashFromState(routeToken, 'faq');
+
+    if (!currentHashState.faqToken) {
+        return;
+    }
+
+    history.replaceState({}, '', buildOmoUrl(oid, cid, baseHash));
+
+    if (currentHashState.faqId) {
+        const detailHash = omoBuildHashFromState(routeToken, omoBuildFaqToken(faqId));
+        history.pushState({}, '', buildOmoUrl(oid, cid, listHash));
+        history.pushState({}, '', buildOmoUrl(oid, cid, detailHash));
+        return;
+    }
+
+    history.pushState({}, '', buildOmoUrl(oid, cid, listHash));
+}
+
+function omoOpenFaqModalFromRoute(faqId = null) {
+    if (typeof window.commonTopbarOpenModal !== 'function') {
+        return;
+    }
+
+    omoFaqModalManaged = true;
+    window.omoFaqRequestedId = faqId;
+
+    const modal = document.getElementById('commonTopbarModal');
+    const body = document.getElementById('commonTopbarModalBody');
+    const hasFaqContent = body && body.getAttribute('data-omo-faq-modal') === '1';
+
+    if (!modal || modal.hidden || !hasFaqContent) {
+        omoFaqModalSyncing = true;
+        window.commonTopbarOpenModal('FAQ OMO', '/popup/pop_faq.php', 'fetch');
+        window.setTimeout(function () {
+            omoFaqModalSyncing = false;
+        }, 0);
+        return;
+    }
+
+    window.dispatchEvent(new CustomEvent('omo-faq-route-update', {
+        detail: {
+            faqId: faqId
+        }
+    }));
+}
+
+function omoCloseFaqModalFromRoute() {
+    omoFaqModalManaged = false;
+
+    if (typeof window.commonTopbarCloseModal !== 'function') {
+        return;
+    }
+
+    const modal = document.getElementById('commonTopbarModal');
+    if (!modal || modal.hidden) {
+        return;
+    }
+
+    omoFaqModalSyncing = true;
+    window.commonTopbarCloseModal();
+    window.setTimeout(function () {
+        omoFaqModalSyncing = false;
+    }, 0);
+}
+
+function omoOpenFaqHelp() {
+    omoSetFaqHashState({
+        open: true
+    });
+    return true;
+}
+
 $(document).on('click', '[data-hash]', function (e) {
 
     e.preventDefault();
 
-    const hash = $(this).data('hash');
+    const hash = String($(this).data('hash') || '').trim() || null;
     const { oid, cid } = parseUrl();
     const currentHash = parseUrl().hash;
+    const currentHashState = omoParseHashState(currentHash);
     const navigationMode = String($(this).attr('data-navigation-mode') || 'drawer').toLowerCase();
 
     if (navigationMode === 'panel') {
-        navigate(oid, cid, null);
+        navigate(oid, cid, omoBuildHashFromState(null, currentHashState.faqToken));
         return;
     }
 
-    if (currentHash === hash) {
-        navigate(oid, cid, null);
+    if (currentHashState.routeToken === hash) {
+        navigate(oid, cid, omoBuildHashFromState(null, currentHashState.faqToken));
         return;
     }
 
-    navigate(oid, cid, hash);
+    navigate(oid, cid, omoBuildHashFromState(hash, currentHashState.faqToken));
 
 });
 
@@ -713,15 +883,16 @@ function updateActiveMenu(hash) {
     // reset global
     $('.menu-item').removeClass('active');
 
-    if (!hash) {
+    const hashState = omoParseHashState(hash);
+    const route = hashState.routeToken;
+
+    if (!route) {
         const defaultItem = getSidebarMenuItem();
         if (defaultItem && defaultItem.length) {
             defaultItem.addClass('active');
         }
         return;
     }
-
-    const route = hash.split('/')[0];
 
     const item = $(`[data-hash="${route}"]`);
 
@@ -765,7 +936,9 @@ function parseUrl() {
 let currentState = {
     oid: null,
     cid: null,
-    hash: null
+    hash: null,
+    routeToken: null,
+    faqToken: null
 };
 
 function omoFocusStructureNode(cid = null, options = {}) {
@@ -780,6 +953,10 @@ function omoFocusStructureNode(cid = null, options = {}) {
 function handleRoute() {
 
     const { oid, cid, hash } = parseUrl();
+    const hashState = omoParseHashState(hash);
+    const routeToken = hashState.routeToken;
+    const faqToken = hashState.faqToken;
+    const faqId = hashState.faqId;
 
     if (!Number.isInteger(Number(oid)) || Number(oid) <= 0) {
 
@@ -788,19 +965,24 @@ function handleRoute() {
         $('#panel-left').html(errorMessage);
         $('#panel-right').html(errorMessage);
         closeAllDrawers();
+        omoCloseFaqModalFromRoute();
         updateActiveMenu(null);
 
-        currentState = { oid, cid, hash };
+        currentState = { oid, cid, hash, routeToken, faqToken };
         return;
     }
 
     // 👉 détection des changements
+    omoEnsureFaqBootstrapState(oid, cid, routeToken, faqId);
+
     const organizationChanged = (oid !== currentState.oid);
     const cidChanged = (cid !== currentState.cid);
     const hashChanged = (hash !== currentState.hash);
+    const routeChanged = (routeToken !== currentState.routeToken);
+    const faqChanged = (faqToken !== currentState.faqToken);
 
     // 👉 mise à jour state
-    currentState = { oid, cid, hash };
+    currentState = { oid, cid, hash, routeToken, faqToken };
 
     // 👉 menu actif
     updateActiveMenu(hash);
@@ -825,20 +1007,19 @@ function handleRoute() {
         omoFocusStructureNode(cid);
     }
 
-    const route = hash ? hash.split('/')[0] : null;
-    const menuConfig = route ? getSidebarMenuConfig(route) : null;
-    const activeDrawerId = route
-        ? (menuConfig && menuConfig.drawer ? menuConfig.drawer : `drawer_${route}`)
+    const menuConfig = routeToken ? getSidebarMenuConfig(routeToken) : null;
+    const activeDrawerId = routeToken
+        ? (menuConfig && menuConfig.drawer ? menuConfig.drawer : `drawer_${routeToken}`)
         : null;
-    const activeBaseUrl = route
-        ? (menuConfig && menuConfig.url ? menuConfig.url : `api/${route}/index.php`)
+    const activeBaseUrl = routeToken
+        ? (menuConfig && menuConfig.url ? menuConfig.url : `api/${routeToken}/index.php`)
         : null;
     const activeDrawerUrl = activeBaseUrl ? buildDrawerUrl(activeBaseUrl, oid, cid) : null;
 
     if (organizationChanged || cidChanged) {
         resetDrawers(activeDrawerId);
 
-        if (hash && activeDrawerId && activeDrawerUrl) {
+        if (routeToken && activeDrawerId && activeDrawerUrl) {
             if (!refreshDrawer(activeDrawerId, activeDrawerUrl)) {
                 openDrawer(activeDrawerId, activeDrawerUrl);
             }
@@ -846,14 +1027,20 @@ function handleRoute() {
     }
 
     // 🧩 2. Gérer les drawers (modules)
-    if (hashChanged) {
+    if (hashChanged && routeChanged) {
 
-        if (hash && activeDrawerId && activeDrawerUrl) {
+        if (routeToken && activeDrawerId && activeDrawerUrl) {
             openDrawer(activeDrawerId, activeDrawerUrl);
         } else {
             closeAllDrawers();
             resetDrawers();
         }
+    }
+
+    if (faqToken) {
+        omoOpenFaqModalFromRoute(faqId);
+    } else if (faqChanged || hashChanged) {
+        omoCloseFaqModalFromRoute();
     }
 }
 
@@ -872,6 +1059,22 @@ $(document).ready(function () {
 });
 
 $(window).on('hashchange', handleRoute);
+
+window.addEventListener('common-topbar-modal-close', function () {
+    if (omoFaqModalSyncing || !omoFaqModalManaged) {
+        return;
+    }
+
+    const hashState = omoParseHashState(parseUrl().hash);
+
+    if (!hashState.faqToken) {
+        return;
+    }
+
+    omoSetFaqHashState({
+        open: false
+    });
+});
 
 let tooltip = $('#tooltip');
 let tooltipDelay;
@@ -1130,4 +1333,15 @@ function omoHandleTopbarSearch(query) {
 }
 
 window.omoRefreshSidebar = omoRefreshSidebar;
+window.omoParseFaqHashState = function () {
+    return omoParseHashState(parseUrl().hash);
+};
+window.omoSetFaqHashState = omoSetFaqHashState;
+window.omoOpenFaqHashState = function (id, options = {}) {
+    omoSetFaqHashState({
+        open: true,
+        id: id,
+        replace: options.replace === true
+    });
+};
 

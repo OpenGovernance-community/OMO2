@@ -414,7 +414,7 @@ if ($currentUser->load($currentUserId)) {
                     'label' => 'FAQ',
                     'description' => 'Accès aux questions les plus courantes, avec moteur de recherche pour trouver facilement la réponse à ses questions.',
                     'title' => 'FAQ OMO',
-                    'html' => '<div class="common-help-list"><div class="common-help-card"><h4>FAQ</h4><p>Cette entrée pourra regrouper les réponses fréquentes sur la gouvernance, les cercles et les outils.</p></div></div>',
+                    'callback' => 'omoOpenFaqHelp',
                 ],
                 [
                     'key' => 'tour',

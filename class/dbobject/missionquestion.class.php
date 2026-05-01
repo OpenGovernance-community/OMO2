@@ -1,17 +1,17 @@
 <?php
 	namespace dbObject;
 
-	class MissionFaq extends DbObject
+	class MissionQuestion extends DbObject
 	{
 		public static function tableName()
 		{
-			return 'mission_faq';
+			return 'mission_question';
 		}
 
 		public static function rules()
 		{
 			return [
-				[['id', 'IDmission', 'IDfaq', 'position'], 'integer'],
+				[['id', 'IDmission', 'IDquestion', 'position'], 'integer'],
 				[['id'], 'safe'],
 			];
 		}
@@ -21,7 +21,7 @@
 			return [
 				'id' => 'ID',
 				'IDmission' => 'Mission',
-				'IDfaq' => 'FAQ',
+				'IDquestion' => 'Question',
 				'position' => 'Position',
 			];
 		}

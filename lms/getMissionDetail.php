@@ -20,6 +20,12 @@ if ($mission->load($mission_id)) {
 }
 
 function vimeoEmbedUrl($url) {
+    $url = trim((string)$url);
+
+    if ($url === '') {
+        return null;
+    }
+
     if (preg_match('#videos/(\d+)/([a-zA-Z0-9]+)#', $url, $matches)) {
         $videoId = $matches[1];
         $hash = $matches[2];
@@ -27,11 +33,19 @@ function vimeoEmbedUrl($url) {
         return "https://player.vimeo.com/video/$videoId?h=$hash";
     }
 
+    if (preg_match('#vimeo\.com/(?:video/)?(\d+)(?:$|[?/])#', $url, $matches)) {
+        $videoId = $matches[1];
+
+        return "https://player.vimeo.com/video/$videoId";
+    }
+
     return null;
 }
 
 
 if ($m) {
+    $embedVideoUrl = vimeoEmbedUrl($m['video']);
+
     echo "<h2>" . htmlspecialchars($m['title']) . "</h2>";
     echo "<p><em>" . htmlspecialchars($m['resume']) . "</em></p>";
     
@@ -45,7 +59,7 @@ if ($m) {
       }
     </style>
 <?
-    if ($m['video']) {
+    if ($embedVideoUrl) {
 ?>
 
     <style>
@@ -150,7 +164,7 @@ if ($m) {
   <div class="video-inner">
     <iframe 
       id="vimeoPlayer"
-      src="<?php echo vimeoEmbedUrl($m['video']); ?>&controls=0"
+      src="<?php echo htmlspecialchars($embedVideoUrl . (strpos($embedVideoUrl, '?') === false ? '?' : '&') . 'controls=0', ENT_QUOTES, 'UTF-8'); ?>"
       frameborder="0"
       allow="autoplay; fullscreen; picture-in-picture"
       allowfullscreen>
@@ -160,7 +174,7 @@ if ($m) {
   <div class="branding-overlay"></div>
 
   <div class="custom-controls">
-    <button id="playBtn">▶</button>
+    <button id="playBtn">Lire</button>
     <div class="progressvideo">
       <div class="progressvideo-bar"></div>
     </div>
@@ -169,6 +183,10 @@ if ($m) {
 </div>
 </div>
 
+<?
+    } elseif ($m['video']) {
+?>
+    <p>La video de cette mission n'est pas disponible pour le moment.</p>
 <?
     }
     echo $m['html'];
@@ -179,7 +197,9 @@ if ($m) {
 }
 ?>
 <script>
-    initVideoPlayer();
+    if (typeof initVideoPlayer === 'function') {
+        initVideoPlayer();
+    }
  
 
 
