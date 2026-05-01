@@ -240,6 +240,29 @@
 		public function getPendingHolons()
 		{
 			$holons = [];
+			$organization = $this->getOrganizationObject();
+			$hasActiveOrganizationMembership = (int)self::fetchValue(
+				"SELECT COUNT(*) FROM user_organization WHERE IDuser = :user_id AND IDorganization = :organization_id AND active = 1",
+				[
+					'user_id' => (int)$this->get('IDuser'),
+					'organization_id' => (int)$this->get('IDorganization'),
+				]
+			) > 0;
+			$hasInactiveOrganizationMembership = (int)self::fetchValue(
+				"SELECT COUNT(*) FROM user_organization WHERE IDuser = :user_id AND IDorganization = :organization_id AND active = 0",
+				[
+					'user_id' => (int)$this->get('IDuser'),
+					'organization_id' => (int)$this->get('IDorganization'),
+				]
+			) > 0;
+			if ($organization && !$hasActiveOrganizationMembership && $hasInactiveOrganizationMembership) {
+				$holons[] = [
+					'id' => 0,
+					'name' => trim((string)$organization->get('name')),
+					'typeLabel' => 'Organisation',
+				];
+			}
+
 			foreach ($this->getScopedUserHolonLinks(false) as $link) {
 				$holon = new \dbObject\Holon();
 				if (!$holon->load((int)$link->get('IDholon'))) {
@@ -477,6 +500,17 @@
 					throw new \RuntimeException("L'adhésion à l'organisation n'a pas pu être confirmée.");
 				}
 
+				self::execute(
+					"UPDATE user_organization
+					 SET active = 1
+					 WHERE IDuser = :user_id
+					   AND IDorganization = :organization_id",
+					[
+						'user_id' => $userId,
+						'organization_id' => $organizationId,
+					]
+				);
+
 				if ($rootHolonId > 0) {
 					foreach ($this->getScopedUserHolonLinks(false) as $link) {
 						$link->set('active', true);
@@ -560,13 +594,16 @@
 					}
 				}
 
-				$membership = new \dbObject\UserOrganization();
-				if ($membership->load([
-					['IDuser', $userId],
-					['IDorganization', $organizationId],
-				]) && !(bool)$membership->get('active')) {
-					$membership->delete();
-				}
+				self::execute(
+					"DELETE FROM user_organization
+					 WHERE IDuser = :user_id
+					   AND IDorganization = :organization_id
+					   AND active = 0",
+					[
+						'user_id' => $userId,
+						'organization_id' => $organizationId,
+					]
+				);
 
 				$this->set('status', 'declined');
 				$this->set('dateresponse', new \DateTime());

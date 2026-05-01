@@ -23,20 +23,17 @@ docker compose down -v
 docker compose up --build
 ```
 
+Les ports `80` et `443` doivent etre libres sur la machine.
+
 L'application devient alors accessible sur :
 
-- `http://localhost:8080`
-- `https://localhost:8443`
-- `http://demo.localhost:8080`
-- `https://demo.localhost:8443`
-- `http://org1.localhost:8080`
-- `https://org1.localhost:8443`
-- `http://org2.localhost:8080`
-- `https://org2.localhost:8443`
-- `http://omo.test:8080`
-- `https://omo.test:8443`
-- `http://org1.omo.test:8080`
-- `https://org1.omo.test:8443`
+- `http://localhost`
+- `https://localhost`
+- `https://localtest.me`
+- `https://demo.localtest.me`
+- `https://org1.localtest.me`
+- `https://org2.localtest.me`
+- `https://any-subdomain.localtest.me`
 
 Interface email locale :
 
@@ -56,18 +53,11 @@ Les codes de connexion arrivent dans Mailpit.
 
 ### Domaine local partage pour tester les sous-domaines
 
-Pour tester correctement les cookies partages entre organisations, il est recommande d'utiliser un vrai domaine local comme `omo.test` plutot que `localhost`.
+Pour tester correctement les cookies partages entre organisations, il est recommande d'utiliser `localtest.me` plutot que `localhost`.
 
-Sous Windows, ajouter ces lignes dans `C:\Windows\System32\drivers\etc\hosts` :
+`localtest.me` et tous ses sous-domaines resolvent automatiquement vers `127.0.0.1`, donc il n'est plus necessaire de modifier le fichier `hosts`.
 
-```text
-127.0.0.1 omo.test
-127.0.0.1 demo.omo.test
-127.0.0.1 org1.omo.test
-127.0.0.1 org2.omo.test
-```
-
-Puis relancer les conteneurs :
+Si les conteneurs etaient deja lances avec une ancienne configuration, relancer :
 
 ```bash
 docker compose down
@@ -76,9 +66,10 @@ docker compose up --build
 
 Ensuite, utiliser de preference :
 
-- `https://omo.test:8443/omo/`
-- `https://org1.omo.test:8443/omo/`
-- `https://org2.omo.test:8443/omo/`
+- `https://localtest.me/omo/`
+- `https://demo.localtest.me/omo/`
+- `https://org1.localtest.me/omo/`
+- `https://org2.localtest.me/omo/`
 
 En production, avec un domaine racine comme `opengov.tools`, cela donne par exemple :
 
@@ -86,6 +77,8 @@ En production, avec un domaine racine comme `opengov.tools`, cela donne par exem
 - `https://org2.opengov.tools/omo/`
 
 Le certificat HTTPS local est autosigne. Le navigateur affichera donc un avertissement de securite du type `ERR_CERT_AUTHORITY_INVALID` tant que ce certificat n'est pas ajoute comme certificat de confiance sur la machine. En local, il est possible de continuer manuellement via les options avancees du navigateur.
+
+Les anciennes URL en `omo.test` peuvent rester utiles comme configuration legacy si tu conserves des entrees `hosts`, mais la configuration recommandee pour le developpement local est maintenant `localtest.me`.
 
 ### Ce que fait l'initialisation
 
