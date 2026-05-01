@@ -567,6 +567,77 @@
 			return preg_replace('/[^a-z0-9]+/', ' ', $value);
 		}
 
+		protected function isOrganizationHolon()
+		{
+			return (int)$this->get('IDtypeholon') === 4;
+		}
+
+		protected function getOrganizationMemberCards($organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0) {
+				return array();
+			}
+
+			$memberships = new \dbObject\ArrayUserOrganization();
+			$memberships->loadVisibleForOrganization($organizationId);
+
+			$cardsByUserId = array();
+			foreach ($memberships as $membership) {
+				$userId = (int)$membership->get('IDuser');
+				if ($userId <= 0) {
+					continue;
+				}
+
+				$isPending = !(bool)$membership->get('active');
+
+				if (!isset($cardsByUserId[$userId])) {
+					$cardsByUserId[$userId] = array(
+						'userId' => $userId,
+						'displayName' => $membership->getUserDisplayName(),
+						'photoUrl' => $membership->getProfilePhotoUrl(),
+						'initials' => $membership->getUserInitials(),
+						'holonIds' => array((int)$this->getId()),
+						'isPending' => $isPending,
+					);
+					continue;
+				}
+
+				if (!$isPending) {
+					$cardsByUserId[$userId]['displayName'] = $membership->getUserDisplayName();
+					$cardsByUserId[$userId]['photoUrl'] = $membership->getProfilePhotoUrl();
+					$cardsByUserId[$userId]['initials'] = $membership->getUserInitials();
+					$cardsByUserId[$userId]['isPending'] = false;
+				}
+			}
+
+			$cards = array_values($cardsByUserId);
+
+			usort($cards, static function (array $left, array $right) {
+				return strcmp(
+					self::buildMemberSortKey($left['displayName'] ?? ''),
+					self::buildMemberSortKey($right['displayName'] ?? '')
+				);
+			});
+
+			return $cards;
+		}
+
+		protected function getOrganizationMemberUserIds($organizationId)
+		{
+			$userIds = array();
+			foreach ($this->getOrganizationMemberCards($organizationId) as $card) {
+				$userId = (int)($card['userId'] ?? 0);
+				if ($userId <= 0 || isset($userIds[$userId])) {
+					continue;
+				}
+
+				$userIds[$userId] = $userId;
+			}
+
+			return array_values($userIds);
+		}
+
 		protected function collectMemberScopeHolonIds($includeDescendants = true, &$bucket = array(), &$visited = array())
 		{
 			$holonId = (int)$this->getId();
@@ -701,6 +772,10 @@
 				'includeDescendants' => ((int)$this->get('IDtypeholon') !== 1),
 			), $options);
 
+			if ($this->isOrganizationHolon()) {
+				return $this->getOrganizationMemberCards((int)$options['organizationId']);
+			}
+
 			$scopeHolonIds = array();
 			$visitedHolonIds = array();
 			$this->collectMemberScopeHolonIds((bool)$options['includeDescendants'], $scopeHolonIds, $visitedHolonIds);
@@ -762,6 +837,10 @@
 
 		public function getDirectMemberUserIds($organizationId = 0)
 		{
+			if ($this->isOrganizationHolon()) {
+				return $this->getOrganizationMemberUserIds((int)$organizationId > 0 ? (int)$organizationId : $this->resolveOrganizationId());
+			}
+
 			$linkRows = $this->loadVisibleMemberLinkRows(
 				array((int)$this->getId()),
 				(int)$organizationId > 0 ? (int)$organizationId : $this->resolveOrganizationId()
@@ -993,7 +1072,9 @@
 
 				if ($requiresInvitation) {
 					$this->ensureOrganizationMembership($user, $organizationId, false);
-					$this->ensureHolonMembership($user, false);
+					if (!$this->isOrganizationHolon()) {
+						$this->ensureHolonMembership($user, false);
+					}
 
 					$invitationIssue = \dbObject\Invitation::issue(
 						$organizationId,
@@ -1007,7 +1088,9 @@
 					}
 				} else {
 					$this->ensureOrganizationMembership($user, $organizationId, true);
-					$this->ensureHolonMembership($user, true);
+					if (!$this->isOrganizationHolon()) {
+						$this->ensureHolonMembership($user, true);
+					}
 				}
 
 				$this->recordMemberAddedHistory($user, $organizationId);

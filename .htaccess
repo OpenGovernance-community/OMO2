@@ -5,8 +5,8 @@ ErrorDocument  404  /404.php
 RewriteEngine On
 
 RewriteCond %{HTTPS} off
-RewriteCond %{HTTP_HOST} ^([A-Za-z0-9.-]+\.test)(:8080)?$ [NC]
-RewriteRule (.*) https://%1:8443%{REQUEST_URI} [R=302,L]
+RewriteCond %{HTTP_HOST} ^([A-Za-z0-9.-]+\.localtest\.me)(:80)?$ [NC]
+RewriteRule (.*) https://%1%{REQUEST_URI} [R=302,L]
 
 RewriteCond %{HTTPS} off
 RewriteCond %{HTTP_HOST} !(^|\.)(localhost|127\.0\.0\.1)(:\d+)?$ [NC]

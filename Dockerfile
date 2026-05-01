@@ -30,8 +30,8 @@ RUN apt-get update \
     && openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
         -keyout /etc/apache2/ssl/dev-localhost.key \
         -out /etc/apache2/ssl/dev-localhost.crt \
-        -subj "/C=CH/ST=Zurich/L=Zurich/O=SystemDD/OU=Dev/CN=localhost" \
-        -addext "subjectAltName=DNS:localhost,DNS:*.localhost,DNS:omo.test,DNS:*.omo.test" \
+        -subj "/C=CH/ST=Zurich/L=Zurich/O=SystemDD/OU=Dev/CN=localtest.me" \
+        -addext "subjectAltName=DNS:localhost,DNS:*.localhost,DNS:localtest.me,DNS:*.localtest.me,DNS:omo.test,DNS:*.omo.test" \
         -addext "basicConstraints=critical,CA:FALSE" \
         -addext "keyUsage=critical,digitalSignature,keyEncipherment" \
         -addext "extendedKeyUsage=serverAuth" \
