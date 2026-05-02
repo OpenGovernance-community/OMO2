@@ -475,6 +475,11 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
                             class="circle-member<?= !empty($member['isPending']) ? ' circle-member--pending' : '' ?>"
                             data-tooltip="<?= omoApiEscape($memberTooltip) ?>"
                             data-member-user-id="<?= (int)($member['userId'] ?? 0) ?>"
+                            <?php if ((int)($member['userId'] ?? 0) > 0): ?>
+                                data-open-user-context="1"
+                                role="button"
+                                tabindex="0"
+                            <?php endif; ?>
                             aria-label="<?= omoApiEscape($memberTooltip) ?>"
                         >
                             <?php if (trim((string)$member['photoUrl']) !== ''): ?>
@@ -668,6 +673,10 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
     border: 1px solid var(--color-border);
     background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface-alt, #f0f2f5));
     box-shadow: var(--shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.08));
+}
+
+.circle-member[data-open-user-context="1"] {
+    cursor: pointer;
 }
 
 .circle-member--pending {
@@ -1035,6 +1044,29 @@ $(document)
             userId: null
         }
     }));
+  });
+
+$(document)
+  .off('click.omoOrgMemberContext', '#panel-left .circle-member[data-open-user-context="1"]')
+  .on('click.omoOrgMemberContext', '#panel-left .circle-member[data-open-user-context="1"]', function () {
+    const userId = Number($(this).data('member-user-id'));
+
+    if (typeof window.omoOpenUserContextPopup !== 'function') {
+        return;
+    }
+
+    window.omoOpenUserContextPopup(userId);
+  });
+
+$(document)
+  .off('keydown.omoOrgMemberContext', '#panel-left .circle-member[data-open-user-context="1"]')
+  .on('keydown.omoOrgMemberContext', '#panel-left .circle-member[data-open-user-context="1"]', function (event) {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+        return;
+    }
+
+    event.preventDefault();
+    $(this).trigger('click');
   });
 
 $(document)

@@ -159,6 +159,23 @@
 			return (bool)$this->getParameter('isAdmin');
 		}
 
+		public function setOrganizationAdmin($isAdmin)
+		{
+			$parameters = json_decode((string)$this->get('parameters'), true);
+			if (!is_array($parameters)) {
+				$parameters = array();
+			}
+
+			if ($isAdmin) {
+				$parameters['isAdmin'] = true;
+			} else {
+				unset($parameters['isAdmin']);
+			}
+
+			$this->set('parameters', $parameters);
+			return $this->save();
+		}
+
 		public function getProfilePhotoUrl()
 		{
 			$photoUrl = trim((string)$this->get('image'));

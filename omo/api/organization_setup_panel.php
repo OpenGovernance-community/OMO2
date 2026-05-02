@@ -51,6 +51,11 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
                 if ($templateColor === '') {
                     $templateColor = 'linear-gradient(135deg, #dbeafe, #bfdbfe)';
                 }
+                $templateBanner = trim((string)($template['banner'] ?? ''));
+                $templateIcon = trim((string)($template['icon'] ?? ''));
+                $templateMediaStyle = $templateBanner !== ''
+                    ? 'background: linear-gradient(180deg, rgba(15,23,42,0.08), rgba(15,23,42,0.42)), url(' . omoApiEscape($templateBanner) . ') center/cover;'
+                    : 'background: ' . omoApiEscape($templateColor) . ';';
                 ?>
                 <button
                     type="button"
@@ -58,8 +63,13 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
                     data-omo-org-init-button="1"
                     data-template-id="<?= (int)($template['id'] ?? 0) ?>"
                 >
-                    <span class="omo-setup-card__media" style="background: <?= omoApiEscape($templateColor) ?>;">
+                    <span class="omo-setup-card__media" style="<?= $templateMediaStyle ?>">
                         <span class="omo-setup-card__badge">Modèle</span>
+                        <?php if ($templateIcon !== ''): ?>
+                            <span class="omo-setup-card__icon">
+                                <img src="<?= omoApiEscape($templateIcon) ?>" alt="">
+                            </span>
+                        <?php endif; ?>
                     </span>
                     <span class="omo-setup-card__content">
                         <span class="omo-setup-card__title"><?= omoApiEscape($template['name'] ?? 'Modèle') ?></span>
@@ -186,6 +196,27 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
     font-weight: 600;
     letter-spacing: 0.04em;
     backdrop-filter: blur(4px);
+}
+
+.omo-setup-card__icon {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 62px;
+    height: 62px;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.38);
+    background: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.18);
+    backdrop-filter: blur(6px);
+}
+
+.omo-setup-card__icon img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .omo-setup-card__content {
@@ -455,14 +486,6 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
             <div class="omo-org-info-list__item">
                 <span class="omo-org-info-list__label">Domaine</span>
                 <span class="omo-org-info-list__value"><?= omoApiEscape($organizationDomain !== '' ? $organizationDomain : 'Non défini') ?></span>
-            </div>
-            <div class="omo-org-info-list__item">
-                <span class="omo-org-info-list__label">Couleur</span>
-                <span class="omo-org-info-list__value"><?= omoApiEscape($organizationColor) ?></span>
-            </div>
-            <div class="omo-org-info-list__item">
-                <span class="omo-org-info-list__label">Logo</span>
-                <span class="omo-org-info-list__value"><?= omoApiEscape($organizationLogo !== '' ? $organizationLogo : 'Non défini') ?></span>
             </div>
         </div>
     </div>

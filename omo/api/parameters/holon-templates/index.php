@@ -94,20 +94,6 @@ if ($organizationId <= 0) {
                                     <input type="text" name="name" id="omo-template-name" maxlength="255" required>
                                 </label>
 
-                                <div class="omo-field omo-color-field" id="omo-template-color-field">
-                                    <div class="omo-color-field__head">
-                                        <span>Couleur</span>
-                                        <label class="omo-color-field__toggle">
-                                            <input type="checkbox" id="omo-template-color-enabled">
-                                            <span>Redefinir</span>
-                                        </label>
-                                    </div>
-                                    <div class="omo-color-field__body" id="omo-template-color-body">
-                                        <input type="color" name="color" id="omo-template-color" value="#f59e0b">
-                                        <small>Sinon la couleur reste vide.</small>
-                                    </div>
-                                </div>
-
                                 <div class="omo-template-flags omo-field--full">
                                     <label class="omo-template-flags__option">
                                         <input type="checkbox" id="omo-template-visible">
@@ -153,6 +139,59 @@ if ($organizationId <= 0) {
                             <div class="omo-template-properties" id="omo-template-properties"></div>
                         </section>
 
+                        <section class="omo-template-section">
+                            <div class="omo-template-section__head">
+                                <div>
+                                    <div class="omo-template-section__title">Apparence</div>
+                                    <p class="omo-template-section__description">
+                                        La couleur, l'icone et la banniere viennent apres la definition des proprietes.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="omo-template-form__grid">
+                                <div class="omo-field omo-color-field" id="omo-template-color-field">
+                                    <div class="omo-color-field__head">
+                                        <span>Couleur</span>
+                                        <label class="omo-color-field__toggle">
+                                            <input type="checkbox" id="omo-template-color-enabled">
+                                            <span>Redefinir</span>
+                                        </label>
+                                    </div>
+                                    <div class="omo-color-field__body" id="omo-template-color-body">
+                                        <input type="color" name="color" id="omo-template-color" value="#f59e0b">
+                                        <small>Sinon la couleur reste vide.</small>
+                                    </div>
+                                </div>
+
+                                <div class="omo-field omo-field--full">
+                                    <span>Illustrations transmises</span>
+                                    <div class="omo-template-media-grid">
+                                        <div class="omo-template-media-card">
+                                            <div class="omo-template-media-card__head">
+                                                <div class="omo-template-media-card__title">Icone</div>
+                                                <label class="omo-template-media-card__lock">
+                                                    <input type="checkbox" id="omo-template-locked-icon">
+                                                    <span>Locked icon</span>
+                                                </label>
+                                            </div>
+                                            <div id="omo-template-icon-field"></div>
+                                        </div>
+                                        <div class="omo-template-media-card">
+                                            <div class="omo-template-media-card__head">
+                                                <div class="omo-template-media-card__title">Banniere</div>
+                                                <label class="omo-template-media-card__lock">
+                                                    <input type="checkbox" id="omo-template-locked-banner">
+                                                    <span>Locked banner</span>
+                                                </label>
+                                            </div>
+                                            <div id="omo-template-banner-field"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
                         <div class="omo-template-form__footer">
                             <div class="omo-template-form__hint" id="omo-template-selection-hint"></div>
                             <?php if ($isCompactMode): ?>
@@ -168,6 +207,7 @@ if ($organizationId <= 0) {
 </div>
 
 <?php if ($editorData !== null): ?>
+<script src="/omo/assets/js/sized-image-field.js"></script>
 <script>
 (() => {
 const omoHolonTemplateState = {
@@ -193,9 +233,13 @@ const omoHolonTemplateElements = {
     colorEnabled: omoHolonTemplateRoot.querySelector('#omo-template-color-enabled'),
     colorBody: omoHolonTemplateRoot.querySelector('#omo-template-color-body'),
     color: omoHolonTemplateRoot.querySelector('#omo-template-color'),
+    iconField: omoHolonTemplateRoot.querySelector('#omo-template-icon-field'),
+    bannerField: omoHolonTemplateRoot.querySelector('#omo-template-banner-field'),
     visible: omoHolonTemplateRoot.querySelector('#omo-template-visible'),
     mandatory: omoHolonTemplateRoot.querySelector('#omo-template-mandatory'),
     lockedName: omoHolonTemplateRoot.querySelector('#omo-template-locked-name'),
+    lockedIcon: omoHolonTemplateRoot.querySelector('#omo-template-locked-icon'),
+    lockedBanner: omoHolonTemplateRoot.querySelector('#omo-template-locked-banner'),
     unique: omoHolonTemplateRoot.querySelector('#omo-template-unique'),
     link: omoHolonTemplateRoot.querySelector('#omo-template-link'),
     properties: omoHolonTemplateRoot.querySelector('#omo-template-properties'),
@@ -206,6 +250,11 @@ const omoHolonTemplateElements = {
     formTitle: omoHolonTemplateRoot.querySelector('#omo-template-form-title'),
     formDescription: omoHolonTemplateRoot.querySelector('#omo-template-form-description'),
     formBadges: omoHolonTemplateRoot.querySelector('#omo-template-form-badges')
+};
+
+const omoHolonTemplateMediaFields = {
+    icon: null,
+    banner: null
 };
 
 function omoHolonTemplateToggleTypeField(isInherited) {
@@ -247,6 +296,91 @@ function omoHolonTemplateSyncColorField() {
     if (omoHolonTemplateElements.color) {
         omoHolonTemplateElements.color.disabled = !isEnabled;
     }
+}
+
+function omoHolonTemplateGetMediaDisplayConfig(kind) {
+    if (kind === 'banner') {
+        return {
+            displayWidth: 360,
+            displayHeight: 202,
+            targetWidth: 960,
+            targetHeight: 540,
+            emptyText: 'Aucune bannière transmise par ce modèle.'
+        };
+    }
+
+    return {
+        displayWidth: 160,
+        displayHeight: 160,
+        targetWidth: 500,
+        targetHeight: 500,
+        emptyText: 'Aucune icône transmise par ce modèle.'
+    };
+}
+
+function omoHolonTemplateResolveMediaState(kind, template) {
+    const suffix = kind === 'icon' ? 'Icon' : 'Banner';
+    const currentController = omoHolonTemplateMediaFields[kind];
+    const currentTemplateId = Number(omoHolonTemplateElements.form.dataset.templateId || 0);
+    const targetTemplateId = Number((template && template.id) || 0);
+    const shouldReuseController = Boolean(currentController) && currentTemplateId === targetTemplateId;
+    const localValue = shouldReuseController
+        ? currentController.getValue()
+        : String((template && template[kind]) || '');
+    const inheritedLocked = Boolean(template && template['inheritedLocked' + suffix]);
+
+    return {
+        value: inheritedLocked ? '' : localValue,
+        inheritedValue: String((template && template['inherited' + suffix]) || ''),
+        locked: Boolean(template && template['effectiveLocked' + suffix]),
+        inheritedLocked: inheritedLocked,
+        localLocked: Boolean(template && template['locked' + suffix])
+    };
+}
+
+function omoHolonTemplateRenderMediaFields(template) {
+    if (!window.omoSizedImageField) {
+        return;
+    }
+
+    [
+        ['icon', omoHolonTemplateElements.iconField, omoHolonTemplateElements.lockedIcon, 'Icône'],
+        ['banner', omoHolonTemplateElements.bannerField, omoHolonTemplateElements.lockedBanner, 'Bannière']
+    ].forEach(function (entry) {
+        const kind = entry[0];
+        const target = entry[1];
+        const lockField = entry[2];
+        const label = entry[3];
+        if (!target) {
+            return;
+        }
+
+        const mediaState = omoHolonTemplateResolveMediaState(kind, template);
+        const config = omoHolonTemplateGetMediaDisplayConfig(kind);
+        if (lockField) {
+            lockField.checked = Boolean(mediaState.localLocked || mediaState.inheritedLocked);
+            lockField.disabled = Boolean(mediaState.inheritedLocked);
+            lockField.dataset.localValue = mediaState.localLocked ? '1' : '0';
+        }
+
+        omoHolonTemplateMediaFields[kind] = window.omoSizedImageField.mount(target, {
+            inputName: 'template_' + kind,
+            uploadFieldName: kind,
+            value: mediaState.value,
+            inheritedValue: mediaState.inheritedValue,
+            locked: mediaState.locked,
+            displayWidth: config.displayWidth,
+            displayHeight: config.displayHeight,
+            targetWidth: config.targetWidth,
+            targetHeight: config.targetHeight,
+            emptyText: config.emptyText,
+            labels: {
+                choose: 'Choisir une ' + label.toLowerCase(),
+                clear: 'Effacer',
+                zoom: 'Zoom'
+            }
+        });
+    });
 }
 
 function omoHolonTemplateFlatten(templates, items) {
@@ -456,11 +590,23 @@ function omoHolonTemplateReadCurrentFormState() {
         color: Boolean(omoHolonTemplateElements.colorEnabled && omoHolonTemplateElements.colorEnabled.checked)
             ? String(omoHolonTemplateElements.color && omoHolonTemplateElements.color.value ? omoHolonTemplateElements.color.value : '')
             : '',
+        icon: omoHolonTemplateMediaFields.icon ? omoHolonTemplateMediaFields.icon.getValue() : '',
+        banner: omoHolonTemplateMediaFields.banner ? omoHolonTemplateMediaFields.banner.getValue() : '',
         typeId: effectiveTypeId,
         typeLabel: omoHolonTemplateGetTypeLabel(effectiveTypeId),
         visible: Boolean(omoHolonTemplateElements.visible && omoHolonTemplateElements.visible.checked),
         mandatory: Boolean(omoHolonTemplateElements.mandatory && omoHolonTemplateElements.mandatory.checked),
         lockedName: Boolean(omoHolonTemplateElements.lockedName && omoHolonTemplateElements.lockedName.checked),
+        lockedIcon: omoHolonTemplateElements.lockedIcon
+            ? (omoHolonTemplateElements.lockedIcon.disabled
+                ? String(omoHolonTemplateElements.lockedIcon.dataset.localValue || '0') === '1'
+                : Boolean(omoHolonTemplateElements.lockedIcon.checked))
+            : false,
+        lockedBanner: omoHolonTemplateElements.lockedBanner
+            ? (omoHolonTemplateElements.lockedBanner.disabled
+                ? String(omoHolonTemplateElements.lockedBanner.dataset.localValue || '0') === '1'
+                : Boolean(omoHolonTemplateElements.lockedBanner.checked))
+            : false,
         unique: Boolean(omoHolonTemplateElements.unique && omoHolonTemplateElements.unique.checked),
         link: Boolean(omoHolonTemplateElements.link && omoHolonTemplateElements.link.checked),
         inheritsFromId: effectiveInheritanceId,
@@ -511,27 +657,56 @@ function omoHolonTemplateRefreshInheritancePreview() {
     current.typeId = omoHolonTemplateGetEffectiveTypeId(current.typeId, current.inheritsFromId);
     current.typeLabel = omoHolonTemplateGetTypeLabel(current.typeId);
     current.properties = omoHolonTemplateComputeDraftProperties(current.inheritsFromId, current.properties);
+    omoHolonTemplateApplyInheritedMediaState(current);
     omoHolonTemplateFillForm(current);
+}
+
+function omoHolonTemplateApplyInheritedMediaState(template) {
+    const parentTemplate = omoHolonTemplateFind(template && template.inheritsFromId ? template.inheritsFromId : 0);
+
+    template.inheritedIcon = parentTemplate ? String(parentTemplate.effectiveIcon || '') : '';
+    template.inheritedLockedIcon = parentTemplate ? Boolean(parentTemplate.effectiveLockedIcon) : false;
+    template.effectiveIcon = String(template.icon || '').trim() !== '' ? String(template.icon || '') : template.inheritedIcon;
+    template.effectiveLockedIcon = Boolean(template.lockedIcon || template.inheritedLockedIcon);
+
+    template.inheritedBanner = parentTemplate ? String(parentTemplate.effectiveBanner || '') : '';
+    template.inheritedLockedBanner = parentTemplate ? Boolean(parentTemplate.effectiveLockedBanner) : false;
+    template.effectiveBanner = String(template.banner || '').trim() !== '' ? String(template.banner || '') : template.inheritedBanner;
+    template.effectiveLockedBanner = Boolean(template.lockedBanner || template.inheritedLockedBanner);
+
+    return template;
 }
 
 function omoHolonTemplateBuildDraft(inheritsFromId) {
     const firstType = (omoHolonTemplateState.data.types || [])[0] || { id: 1, name: 'Holon' };
     const suggestedInheritanceId = Number(inheritsFromId || 0);
     const effectiveTypeId = omoHolonTemplateGetEffectiveTypeId(firstType.id || 1, suggestedInheritanceId);
-    return {
+    return omoHolonTemplateApplyInheritedMediaState({
         id: 0,
         name: '',
         color: '',
+        icon: '',
+        inheritedIcon: '',
+        effectiveIcon: '',
+        banner: '',
+        inheritedBanner: '',
+        effectiveBanner: '',
         typeId: effectiveTypeId,
         typeLabel: omoHolonTemplateGetTypeLabel(effectiveTypeId) || String(firstType.name || 'Holon'),
         visible: false,
         mandatory: false,
         lockedName: false,
+        lockedIcon: false,
+        inheritedLockedIcon: false,
+        effectiveLockedIcon: false,
+        lockedBanner: false,
+        inheritedLockedBanner: false,
+        effectiveLockedBanner: false,
         unique: false,
         link: false,
         inheritsFromId: suggestedInheritanceId,
         properties: omoHolonTemplateComputeDraftProperties(suggestedInheritanceId, [])
-    };
+    });
 }
 
 function omoHolonTemplateRenderSummary() {
@@ -1359,6 +1534,14 @@ function omoHolonTemplateFillForm(template) {
     if (omoHolonTemplateElements.lockedName) {
         omoHolonTemplateElements.lockedName.checked = Boolean(current.lockedName);
     }
+    if (omoHolonTemplateElements.lockedIcon) {
+        omoHolonTemplateElements.lockedIcon.checked = Boolean(current.lockedIcon || current.inheritedLockedIcon);
+        omoHolonTemplateElements.lockedIcon.disabled = Boolean(current.inheritedLockedIcon);
+    }
+    if (omoHolonTemplateElements.lockedBanner) {
+        omoHolonTemplateElements.lockedBanner.checked = Boolean(current.lockedBanner || current.inheritedLockedBanner);
+        omoHolonTemplateElements.lockedBanner.disabled = Boolean(current.inheritedLockedBanner);
+    }
     if (omoHolonTemplateElements.unique) {
         omoHolonTemplateElements.unique.checked = Boolean(current.unique);
     }
@@ -1374,6 +1557,7 @@ function omoHolonTemplateFillForm(template) {
         : 'Choisissez son type de base puis ajoutez les proprietes a transmettre.';
     omoHolonTemplateRenderFormBadges(current);
     omoHolonTemplateRenderProperties(current.properties || []);
+    omoHolonTemplateRenderMediaFields(current);
 }
 
 function omoHolonTemplateSelect(templateId) {
@@ -1404,9 +1588,21 @@ function omoHolonTemplateSave(event) {
         color: Boolean(omoHolonTemplateElements.colorEnabled && omoHolonTemplateElements.colorEnabled.checked)
             ? String(omoHolonTemplateElements.color && omoHolonTemplateElements.color.value ? omoHolonTemplateElements.color.value : '')
             : '',
+        icon: omoHolonTemplateMediaFields.icon ? omoHolonTemplateMediaFields.icon.getValue() : '',
+        banner: omoHolonTemplateMediaFields.banner ? omoHolonTemplateMediaFields.banner.getValue() : '',
         visible: Boolean(omoHolonTemplateElements.visible && omoHolonTemplateElements.visible.checked),
         mandatory: Boolean(omoHolonTemplateElements.mandatory && omoHolonTemplateElements.mandatory.checked),
         lockedName: Boolean(omoHolonTemplateElements.lockedName && omoHolonTemplateElements.lockedName.checked),
+        lockedIcon: omoHolonTemplateElements.lockedIcon
+            ? (omoHolonTemplateElements.lockedIcon.disabled
+                ? String(omoHolonTemplateElements.lockedIcon.dataset.localValue || '0') === '1'
+                : Boolean(omoHolonTemplateElements.lockedIcon.checked))
+            : false,
+        lockedBanner: omoHolonTemplateElements.lockedBanner
+            ? (omoHolonTemplateElements.lockedBanner.disabled
+                ? String(omoHolonTemplateElements.lockedBanner.dataset.localValue || '0') === '1'
+                : Boolean(omoHolonTemplateElements.lockedBanner.checked))
+            : false,
         unique: Boolean(omoHolonTemplateElements.unique && omoHolonTemplateElements.unique.checked),
         link: Boolean(omoHolonTemplateElements.link && omoHolonTemplateElements.link.checked),
         inheritsFromId: omoHolonTemplateGetEffectiveInheritanceIdFromParent(omoHolonTemplateElements.parent.value || 0),
@@ -1416,12 +1612,18 @@ function omoHolonTemplateSave(event) {
     const saveUrl = '/omo/api/parameters/holon-templates/save.php'
         + (Number(omoHolonTemplateState.data.contextHolonId || 0) > 0 ? '?cid=' + Number(omoHolonTemplateState.data.contextHolonId || 0) : '');
 
+    const formData = new FormData();
+    formData.append('payload', JSON.stringify(payload));
+    if (omoHolonTemplateMediaFields.icon) {
+        omoHolonTemplateMediaFields.icon.appendToFormData(formData);
+    }
+    if (omoHolonTemplateMediaFields.banner) {
+        omoHolonTemplateMediaFields.banner.appendToFormData(formData);
+    }
+
     fetch(saveUrl, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json; charset=UTF-8'
-        },
-        body: JSON.stringify(payload)
+        body: formData
     })
         .then(function (response) {
             return response.json().then(function (data) {
@@ -2091,6 +2293,51 @@ if (Number(omoHolonTemplateState.selectedId || 0) > 0 && omoHolonTemplateFind(om
 .omo-template-flags__option small {
     color: var(--color-text-light);
     line-height: 1.4;
+}
+
+.omo-template-media-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+    margin-top: 8px;
+}
+
+.omo-template-media-card {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    background: var(--color-surface);
+}
+
+.omo-template-media-card__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.omo-template-media-card__title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.omo-template-media-card__lock {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    color: var(--color-text-light);
+}
+
+.omo-template-media-card__lock input {
+    width: 16px;
+    height: 16px;
+    min-height: 16px;
+    margin: 0;
+    accent-color: var(--color-primary);
 }
 
 .omo-field span {

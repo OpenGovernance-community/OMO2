@@ -2,6 +2,7 @@
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
 require_once dirname(__DIR__) . '/common/topbar.php';
+require_once __DIR__ . '/topbar.php';
 
 $organizationContext = commonResolveOrganizationContext(1);
 commonRestoreRememberedUser();
@@ -33,19 +34,28 @@ $omoPwaHeadHtml = implode(PHP_EOL, [
 ]);
 
 $omoPwaBodyEndHtml = '<script src="/omo/assets/js/install.js" defer></script>';
+$omoTopbarThemeHeadHtml = '<link rel="stylesheet" href="/omo/assets/css/topbar-theme.css">';
 $omoThemeBootstrapHtml = implode(PHP_EOL, [
     '<script src="/shared_functions.js"></script>',
     '<script>sharedApplyDocumentTheme();</script>',
 ]);
 
 if (!commonGetCurrentUserId() && !$isDemoGuest) {
+    $loginOrganizationContext = $isOrganizationHub ? $omoLandingOrganization : $organizationContext;
+
     commonRenderMagicLoginPage([
         'title' => (($isOrganizationHub ? 'OMO' : $organizationContext['name']) ?: 'OMO') . ' - OMO',
         'appName' => 'OMO',
         'intro' => 'Connectez-vous pour accéder à la structure et aux outils de gouvernance.',
         'returnTo' => commonNormalizeLocalPath($_SERVER['REQUEST_URI'] ?? '/omo/', '/omo/'),
-        'organization' => $isOrganizationHub ? $omoLandingOrganization : $organizationContext,
-        'headHtml' => $omoPwaHeadHtml,
+        'organization' => $loginOrganizationContext,
+        'headHtml' => $omoThemeBootstrapHtml . PHP_EOL . $omoTopbarThemeHeadHtml . PHP_EOL . $omoPwaHeadHtml,
+        'bodyEndHtml' => $omoPwaBodyEndHtml,
+        'topbar' => omoBuildTopbarOptions($loginOrganizationContext, [
+            'variant' => 'login',
+            'isDemoGuest' => $isDemoGuest,
+            'logoutReturnTo' => '/omo/',
+        ]),
     ]);
 }
 
@@ -72,8 +82,16 @@ if ($isOrganizationHub && !$isDemoGuest) {
     <link rel="stylesheet" href="/omo/assets/css/styles.css">
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
-<body class="auth-state-page auth-state-page--scrollable auth-state-page--themed">
-    <main class="auth-state-card auth-state-card--directory">
+<body class="auth-state-page auth-state-page--scrollable auth-state-page--themed auth-state-page--with-topbar">
+    <?php
+    commonRenderTopbar(omoBuildTopbarOptions($omoLandingOrganization, [
+        'variant' => 'hub',
+        'isDemoGuest' => $isDemoGuest,
+        'logoutReturnTo' => '/omo/',
+    ]));
+    ?>
+    <main class="auth-state-layout auth-state-layout--scrollable">
+    <div class="auth-state-card auth-state-card--directory">
         <span class="auth-state-status auth-state-status--directory">
             <?= htmlspecialchars($organizationCount === 0 ? 'Aucune organisation pour le moment' : ($organizationCount === 1 ? '1 organisation disponible' : $organizationCount . ' organisations disponibles')) ?>
         </span>
@@ -159,6 +177,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
         <div class="auth-state-actions">
             <a class="auth-state-btn auth-state-btn--primary" href="<?= htmlspecialchars($logoutUrl) ?>">Se déconnecter</a>
         </div>
+    </div>
     </main>
 
     <div class="omo-directory-modal" id="omoDirectoryModal" hidden>
@@ -320,11 +339,21 @@ if (!$isDemoGuest && !commonUserHasOrganizationAccess($currentUserId, (int)$orga
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Acces interdit - OMO</title>
+    <?= $omoThemeBootstrapHtml . PHP_EOL ?>
+    <?= $omoTopbarThemeHeadHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
-<body class="auth-state-page">
-    <main class="auth-state-card">
+<body class="auth-state-page auth-state-page--with-topbar">
+    <?php
+    commonRenderTopbar(omoBuildTopbarOptions($organizationContext, [
+        'variant' => 'hub',
+        'isDemoGuest' => $isDemoGuest,
+        'logoutReturnTo' => '/omo/',
+    ]));
+    ?>
+    <main class="auth-state-layout">
+    <div class="auth-state-card">
         <h1>Acces interdit</h1>
         <p>Votre compte est bien connecte, mais il n'a pas encore acces a l'organisation <?= htmlspecialchars($organizationContext['name'] ?: 'demandee') ?>.</p>
         <p>Pour le moment, l'acces a cet espace est reserve aux personnes presentes dans la liste des membres autorises.</p>
@@ -332,6 +361,7 @@ if (!$isDemoGuest && !commonUserHasOrganizationAccess($currentUserId, (int)$orga
             <a class="auth-state-btn auth-state-btn--secondary" href="<?= htmlspecialchars($omoRootUrl) ?>">Revenir a l'accueil</a>
             <a class="auth-state-btn auth-state-btn--primary" href="<?= htmlspecialchars($logoutUrl) ?>">Se deconnecter</a>
         </div>
+    </div>
     </main>
 </body>
 </html>
@@ -386,6 +416,12 @@ if ($currentUser->load($currentUserId)) {
     <div class="main">
 
         <?php
+        commonRenderTopbar(omoBuildTopbarOptions($organizationContext, [
+            'variant' => 'app',
+            'isDemoGuest' => $isDemoGuest,
+            'logoutReturnTo' => '/omo/',
+        ]));
+        /*
         commonRenderTopbar([
             'appKey' => 'omo',
             'appLabel' => 'OMO',
@@ -432,6 +468,7 @@ if ($currentUser->load($currentUserId)) {
                 ],
             ],
         ]);
+        */
         ?>
 
         <!-- Content -->

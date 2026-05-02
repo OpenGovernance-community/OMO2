@@ -2,11 +2,6 @@
 require_once("../config.php");
 require_once("../shared_functions.php");
 
-$connected = checklogin();
-if (!$connected) {
-	die("Login requis");
-}
-
 $allFAQ = new \dbObject\ArrayFAQ();
 $allFAQ->load([
 	'where' => [

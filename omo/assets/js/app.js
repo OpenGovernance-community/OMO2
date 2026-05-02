@@ -160,7 +160,11 @@ function omoGetUserProfile() {
 function omoEnsureProfilePanel() {
     const profileMenu = document.querySelector('[data-topbar-menu="profile"]');
 
-    if (!profileMenu || profileMenu.querySelector('[data-omo-profile-panel]')) {
+    if (
+        !profileMenu
+        || profileMenu.querySelector('[data-omo-profile-panel]')
+        || profileMenu.querySelector('[data-common-topbar-profile-panel]')
+    ) {
         return;
     }
 
@@ -802,6 +806,14 @@ function omoFormatPopupTitle(popupKey) {
         return 'FAQ OMO';
     }
 
+    if (popupKey === 'user') {
+        return 'Profil membre';
+    }
+
+    if (popupKey === 'member-actions') {
+        return 'Actions membre';
+    }
+
     return (popupKey.split('/').pop() || popupKey)
         .replace(/[-_]+/g, ' ')
         .replace(/\b\w/g, function (character) {
@@ -812,15 +824,31 @@ function omoFormatPopupTitle(popupKey) {
 function omoResolvePopupRoute(popupKey, popupId = null) {
     const normalizedPopupKey = omoNormalizeHashToken(popupKey);
     const parsedPopupId = Number(popupId);
+    const currentRoute = typeof parseUrl === 'function'
+        ? parseUrl()
+        : { oid: null, cid: null };
 
     if (!normalizedPopupKey) {
         return null;
     }
 
     let url = `/popup/${normalizedPopupKey}.php`;
+    const queryParts = [];
 
     if (Number.isInteger(parsedPopupId) && parsedPopupId > 0) {
-        url += `?id=${encodeURIComponent(parsedPopupId)}`;
+        queryParts.push(`id=${encodeURIComponent(parsedPopupId)}`);
+    }
+
+    if (Number.isInteger(Number(currentRoute.oid)) && Number(currentRoute.oid) > 0) {
+        queryParts.push(`oid=${encodeURIComponent(Number(currentRoute.oid))}`);
+    }
+
+    if (Number.isInteger(Number(currentRoute.cid)) && Number(currentRoute.cid) > 0) {
+        queryParts.push(`cid=${encodeURIComponent(Number(currentRoute.cid))}`);
+    }
+
+    if (queryParts.length > 0) {
+        url += `?${queryParts.join('&')}`;
     }
 
     return {
@@ -917,6 +945,38 @@ function omoOpenFaqHelp() {
         open: true,
         key: 'faq'
     });
+    return true;
+}
+
+function omoOpenMemberActionsPopup(userId) {
+    const resolvedUserId = Number(userId);
+
+    if (!Number.isInteger(resolvedUserId) || resolvedUserId <= 0) {
+        return false;
+    }
+
+    omoSetPopupHashState({
+        open: true,
+        key: 'member-actions',
+        id: resolvedUserId
+    });
+
+    return true;
+}
+
+function omoOpenUserContextPopup(userId, options = {}) {
+    const resolvedUserId = Number(userId);
+    if (!Number.isInteger(resolvedUserId) || resolvedUserId <= 0) {
+        return false;
+    }
+
+    omoSetPopupHashState({
+        open: true,
+        key: 'user',
+        id: resolvedUserId,
+        replace: options.replace === true
+    });
+
     return true;
 }
 
@@ -1434,6 +1494,8 @@ function omoHandleTopbarSearch(query) {
 }
 
 window.omoRefreshSidebar = omoRefreshSidebar;
+window.omoOpenMemberActionsPopup = omoOpenMemberActionsPopup;
+window.omoOpenUserContextPopup = omoOpenUserContextPopup;
 window.omoParsePopupHashState = function () {
     return omoParseHashState(parseUrl().hash);
 };

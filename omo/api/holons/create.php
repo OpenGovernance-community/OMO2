@@ -70,19 +70,6 @@ if ($organizationId <= 0) {
                                     <small id="omo-holon-create-name-help"></small>
                                 </label>
 
-                                <label class="omo-holon-create__field" id="omo-holon-create-color-field">
-                                    <div class="omo-holon-create__color-head">
-                                        <span>Couleur</span>
-                                        <span class="omo-holon-create__color-toggle">
-                                            <input type="checkbox" id="omo-holon-create-color-enabled">
-                                            <span>Redéfinir</span>
-                                        </span>
-                                    </div>
-                                    <div class="omo-holon-create__color-body" id="omo-holon-create-color-body">
-                                        <input type="color" id="omo-holon-create-color" value="#f59e0b">
-                                        <small>Sinon la couleur reste vide et l’héritage s’applique.</small>
-                                    </div>
-                                </label>
                             </div>
 
                             <div class="omo-holon-create__template-meta" id="omo-holon-create-template-meta"></div>
@@ -101,6 +88,47 @@ if ($organizationId <= 0) {
                             <div class="omo-holon-create__properties" id="omo-holon-create-properties"></div>
                         </section>
                         </div>
+                        <section class="omo-holon-create__section">
+                            <div class="omo-holon-create__section-head">
+                                <div>
+                                    <div class="omo-holon-create__section-title">Apparence</div>
+                                    <p class="omo-holon-create__section-description">
+                                        Les choix visuels viennent ici, apres les proprietes plus importantes.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="omo-holon-create__grid">
+                                <label class="omo-holon-create__field" id="omo-holon-create-color-field">
+                                    <div class="omo-holon-create__color-head">
+                                        <span>Couleur</span>
+                                        <span class="omo-holon-create__color-toggle">
+                                            <input type="checkbox" id="omo-holon-create-color-enabled">
+                                            <span>Redefinir</span>
+                                        </span>
+                                    </div>
+                                    <div class="omo-holon-create__color-body" id="omo-holon-create-color-body">
+                                        <input type="color" id="omo-holon-create-color" value="#f59e0b">
+                                        <small>Sinon la couleur reste vide et l'heritage s'applique.</small>
+                                    </div>
+                                </label>
+
+                                <div class="omo-holon-create__field omo-holon-create__field--full">
+                                    <span>Illustrations</span>
+                                    <div class="omo-holon-create__media-grid">
+                                        <div class="omo-holon-create__media-card">
+                                            <div class="omo-holon-create__media-label">Icone</div>
+                                            <div id="omo-holon-create-icon-field"></div>
+                                        </div>
+                                        <div class="omo-holon-create__media-card">
+                                            <div class="omo-holon-create__media-label">Banniere</div>
+                                            <div id="omo-holon-create-banner-field"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
                         <div class="omo-holon-create__footer">
                             <div class="omo-holon-create__hint" id="omo-holon-create-hint"></div>
                             <div class="omo-holon-create__actions">
@@ -116,6 +144,7 @@ if ($organizationId <= 0) {
 </div>
 
 <?php if ($editorData !== null && $errorMessage === ''): ?>
+<script src="/omo/assets/js/sized-image-field.js"></script>
 <script>
 (() => {
 const state = {
@@ -136,11 +165,18 @@ const elements = {
     colorEnabled: root.querySelector('#omo-holon-create-color-enabled'),
     colorBody: root.querySelector('#omo-holon-create-color-body'),
     color: root.querySelector('#omo-holon-create-color'),
+    iconField: root.querySelector('#omo-holon-create-icon-field'),
+    bannerField: root.querySelector('#omo-holon-create-banner-field'),
     meta: root.querySelector('#omo-holon-create-template-meta'),
     properties: root.querySelector('#omo-holon-create-properties'),
     hint: root.querySelector('#omo-holon-create-hint'),
     nameHelp: root.querySelector('#omo-holon-create-name-help'),
     cancel: root.querySelector('#omo-holon-create-cancel')
+};
+
+const mediaFields = {
+    icon: null,
+    banner: null
 };
 
 // Échappe texte HTML
@@ -256,6 +292,82 @@ function syncColorField() {
     if (elements.color) {
         elements.color.disabled = !isEnabled;
     }
+}
+
+function getMediaDisplayConfig(kind) {
+    if (kind === 'banner') {
+        return {
+            displayWidth: 360,
+            displayHeight: 202,
+            targetWidth: 960,
+            targetHeight: 540,
+            emptyText: 'Aucune bannière définie pour ce holon.'
+        };
+    }
+
+    return {
+        displayWidth: 160,
+        displayHeight: 160,
+        targetWidth: 500,
+        targetHeight: 500,
+        emptyText: 'Aucune icône définie pour ce holon.'
+    };
+}
+
+function resolveMediaState(kind, template) {
+    const editingHolon = getEditingHolon();
+    const suffix = kind === 'icon' ? 'Icon' : 'Banner';
+    const locked = Boolean(template && template['effectiveLocked' + suffix]);
+    const currentController = mediaFields[kind];
+    const fallbackLocalValue = editingHolon && !locked
+        ? String(editingHolon[kind] || '')
+        : '';
+
+    return {
+        value: locked
+            ? ''
+            : (currentController ? currentController.getValue() : fallbackLocalValue),
+        inheritedValue: template ? String(template['effective' + suffix] || '') : '',
+        locked: locked
+    };
+}
+
+function renderMediaFields(template) {
+    if (!window.omoSizedImageField) {
+        return;
+    }
+
+    [
+        ['icon', elements.iconField, 'Icône'],
+        ['banner', elements.bannerField, 'Bannière']
+    ].forEach(function (entry) {
+        const kind = entry[0];
+        const target = entry[1];
+        const label = entry[2];
+        if (!target) {
+            return;
+        }
+
+        const mediaState = resolveMediaState(kind, template);
+        const config = getMediaDisplayConfig(kind);
+        mediaFields[kind] = window.omoSizedImageField.mount(target, {
+            inputName: 'holon_' + kind,
+            uploadFieldName: kind,
+            value: mediaState.value,
+            inheritedValue: mediaState.inheritedValue,
+            locked: mediaState.locked,
+            displayWidth: config.displayWidth,
+            displayHeight: config.displayHeight,
+            targetWidth: config.targetWidth,
+            targetHeight: config.targetHeight,
+            emptyText: config.emptyText,
+            labels: {
+                choose: 'Choisir une ' + label.toLowerCase(),
+                clear: 'Effacer',
+                zoom: 'Zoom'
+            }
+        });
+    });
 }
 
 // Déduit type liste
@@ -588,6 +700,7 @@ function renderEditorMeta(template, sourceProperties) {
 
     syncNameField(template);
     syncColorField();
+    renderMediaFields(template);
 }
 
 function syncTemplateSelection(preferredTemplateId, sourceProperties) {
@@ -751,6 +864,8 @@ function saveHolon(event) {
         color: Boolean(elements.colorEnabled && elements.colorEnabled.checked)
             ? String(elements.color && elements.color.value ? elements.color.value : '')
             : '',
+        icon: mediaFields.icon ? mediaFields.icon.getValue() : '',
+        banner: mediaFields.banner ? mediaFields.banner.getValue() : '',
         properties: readProperties()
     };
 
@@ -765,12 +880,18 @@ function saveHolon(event) {
         saveUrl += '&hid=' + Number(state.data.holonId || 0);
     }
 
+    const formData = new FormData();
+    formData.append('payload', JSON.stringify(payload));
+    if (mediaFields.icon) {
+        mediaFields.icon.appendToFormData(formData);
+    }
+    if (mediaFields.banner) {
+        mediaFields.banner.appendToFormData(formData);
+    }
+
     fetch(saveUrl, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json; charset=UTF-8'
-        },
-        body: JSON.stringify(payload)
+        body: formData
     })
         .then(function (response) {
             return response.json().then(function (data) {
@@ -1061,6 +1182,28 @@ root.addEventListener('click', function (event) {
     display: block;
     font-size: 0.9rem;
     font-weight: 600;
+}
+
+.omo-holon-create__media-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+    margin-top: 8px;
+}
+
+.omo-holon-create__media-card {
+    display: grid;
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    background: var(--color-surface);
+}
+
+.omo-holon-create__media-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--color-text);
 }
 
 .omo-holon-create__field input,
