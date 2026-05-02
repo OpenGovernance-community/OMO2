@@ -1,5 +1,6 @@
 root = true
 
+# Enforce UTF-8 + LF for all tracked text files.
 [*]
 charset = utf-8
 end_of_line = lf

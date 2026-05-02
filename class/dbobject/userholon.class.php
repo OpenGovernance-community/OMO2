@@ -156,6 +156,28 @@
 
 			return '';
 		}
+
+		public function isHolonAdmin()
+		{
+			return (bool)$this->getParameter('isAdmin');
+		}
+
+		public function setHolonAdmin($isAdmin)
+		{
+			$parameters = json_decode((string)$this->get('parameters'), true);
+			if (!is_array($parameters)) {
+				$parameters = array();
+			}
+
+			if ($isAdmin) {
+				$parameters['isAdmin'] = true;
+			} else {
+				unset($parameters['isAdmin']);
+			}
+
+			$this->set('parameters', $parameters);
+			return $this->save();
+		}
 	}
 
 ?>

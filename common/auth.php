@@ -829,6 +829,7 @@ function commonRenderMagicLoginPage(array $options = [])
     $loginSendPath = $options['loginSendPath'] ?? '/common/login_send.php';
     $headHtml = (string)($options['headHtml'] ?? '');
     $bodyEndHtml = (string)($options['bodyEndHtml'] ?? '');
+    $topbar = !empty($options['topbar']) && is_array($options['topbar']) ? $options['topbar'] : null;
 
     $config = [
         'loginSendPath' => $loginSendPath,
@@ -863,7 +864,10 @@ function commonRenderMagicLoginPage(array $options = [])
     <?= $headHtml . PHP_EOL ?>
     <?php endif; ?>
 </head>
-<body class="auth-page">
+<body class="auth-page<?= $topbar !== null ? ' auth-page--with-topbar' : '' ?>">
+    <?php if ($topbar !== null && function_exists('commonRenderTopbar')): ?>
+    <?php commonRenderTopbar($topbar); ?>
+    <?php endif; ?>
     <div class="auth-shell">
         <div class="auth-hero" style="background-color: <?= htmlspecialchars($organizationContext['color'] ?: '#4CAF50') ?>;">
             <div class="auth-hero-bg" style="background-image:url('<?= htmlspecialchars($organizationBanner) ?>')"></div>

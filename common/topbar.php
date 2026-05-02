@@ -1,5 +1,67 @@
 <?php
 
+function commonResolveTopbarProfileData($organizationContext = null, array $profileOptions = [])
+{
+    $defaults = [
+        'displayName' => '',
+        'email' => '',
+        'username' => '',
+        'photoUrl' => '',
+        'phone' => '',
+    ];
+
+    $providedData = [];
+    if (!empty($profileOptions['data']) && is_array($profileOptions['data'])) {
+        $providedData = $profileOptions['data'];
+    }
+
+    $profileData = array_merge($defaults, $providedData);
+
+    if (
+        $profileData['displayName'] !== ''
+        && ($profileData['email'] !== '' || $profileData['username'] !== '' || $profileData['photoUrl'] !== '')
+    ) {
+        return $profileData;
+    }
+
+    if (!function_exists('commonGetCurrentUserId')) {
+        return $profileData;
+    }
+
+    $currentUserId = (int)commonGetCurrentUserId();
+    if ($currentUserId <= 0) {
+        return $profileData;
+    }
+
+    $organizationId = 0;
+    if (is_array($organizationContext) && !empty($organizationContext['id'])) {
+        $organizationId = (int)$organizationContext['id'];
+    }
+
+    $user = new \dbObject\User();
+    if (!$user->load($currentUserId)) {
+        return $profileData;
+    }
+
+    if ($profileData['displayName'] === '') {
+        $profileData['displayName'] = (string)$user->getScopedDisplayName($organizationId);
+    }
+
+    if ($profileData['email'] === '') {
+        $profileData['email'] = (string)$user->getScopedEmail($organizationId);
+    }
+
+    if ($profileData['username'] === '') {
+        $profileData['username'] = (string)$user->getScopedUsername($organizationId);
+    }
+
+    if ($profileData['photoUrl'] === '') {
+        $profileData['photoUrl'] = (string)$user->getScopedProfilePhotoUrl($organizationId);
+    }
+
+    return $profileData;
+}
+
 function commonRenderTopbar(array $options = [])
 {
     static $assetsLoaded = false;
@@ -9,12 +71,20 @@ function commonRenderTopbar(array $options = [])
     if ($brandLogo === '') {
         $brandLogo = '/img/logo-OGC.png';
     }
+    $brandRootHost = commonGetRootHost($organizationContext['host'] ?? null);
+    if ($brandRootHost === '') {
+        $brandRootHost = commonGetRootHost();
+    }
+    $brandHref = commonBuildUrl('/omo/', $brandRootHost);
+    $brandLabel = trim((string)($options['brandLabel'] ?? ($organizationContext['name'] ?? '')));
 
     $config = [
         'appKey' => (string)($options['appKey'] ?? 'app'),
         'appLabel' => (string)($options['appLabel'] ?? 'Application'),
         'userName' => (string)($options['userName'] ?? commonGetCurrentUserDisplayName() ?: 'Profil'),
         'brandAlt' => (string)($options['brandAlt'] ?? ($organizationContext['name'] ?? ($options['appLabel'] ?? 'Application'))),
+        'brandHref' => (string)($options['brandHref'] ?? $brandHref),
+        'brandLabel' => $brandLabel,
         'logoutPath' => (string)($options['logoutPath'] ?? '/common/logout.php'),
         'logoutReturnTo' => commonNormalizeLocalPath($options['logoutReturnTo'] ?? ($_SERVER['REQUEST_URI'] ?? '/'), '/'),
         'search' => [
@@ -25,16 +95,29 @@ function commonRenderTopbar(array $options = [])
         ],
         'profile' => [
             'enabled' => array_key_exists('enabled', $options['profile'] ?? []) ? !empty($options['profile']['enabled']) : true,
-            'editLabel' => (string)($options['profile']['editLabel'] ?? 'Editer le profil'),
+            'editLabel' => (string)($options['profile']['editLabel'] ?? 'Éditer le profil'),
             'editTitle' => (string)($options['profile']['editTitle'] ?? 'Profil'),
             'editMode' => (string)($options['profile']['editMode'] ?? 'fetch'),
             'editUrl' => (string)($options['profile']['editUrl'] ?? '/popup/profil.php'),
             'editCallback' => (string)($options['profile']['editCallback'] ?? ''),
             'buttonLabel' => (string)($options['profile']['buttonLabel'] ?? 'Profil'),
+            'data' => commonResolveTopbarProfileData($organizationContext, $options['profile'] ?? []),
         ],
         'helpLabel' => (string)($options['helpLabel'] ?? 'Aide'),
         'helpItems' => array_values($options['helpItems'] ?? []),
     ];
+
+    $profileDisplayName = trim((string)($config['profile']['data']['displayName'] ?? ''));
+    if ($profileDisplayName === '') {
+        $profileDisplayName = trim((string)$config['userName']);
+    }
+    if ($profileDisplayName === '') {
+        $profileDisplayName = 'Profil';
+    }
+
+    $profileInitial = function_exists('mb_substr')
+        ? mb_strtoupper(mb_substr($profileDisplayName, 0, 1))
+        : strtoupper(substr($profileDisplayName, 0, 1));
 
     if (!$assetsLoaded) {
         echo '<link rel="stylesheet" href="/common/assets/topbar.css">' . PHP_EOL;
@@ -44,9 +127,18 @@ function commonRenderTopbar(array $options = [])
     ?>
 <header class="topbar common-topbar" data-app-key="<?= htmlspecialchars($config['appKey']) ?>">
     <div class="common-topbar__left">
-        <div class="common-topbar__brand" title="<?= htmlspecialchars($config['brandAlt']) ?>">
-            <img src="<?= htmlspecialchars($brandLogo) ?>" alt="<?= htmlspecialchars($config['brandAlt']) ?>" class="common-topbar__brand-logo">
-        </div>
+        <a
+            href="<?= htmlspecialchars($config['brandHref']) ?>"
+            class="common-topbar__brand-link"
+            title="<?= htmlspecialchars($config['brandAlt']) ?>"
+        >
+            <span class="common-topbar__brand">
+                <img src="<?= htmlspecialchars($brandLogo) ?>" alt="<?= htmlspecialchars($config['brandAlt']) ?>" class="common-topbar__brand-logo">
+            </span>
+            <?php if ($config['brandLabel'] !== ''): ?>
+                <span class="common-topbar__brand-name"><?= htmlspecialchars($config['brandLabel']) ?></span>
+            <?php endif; ?>
+        </a>
     </div>
 
     <div class="common-topbar__actions">
@@ -104,12 +196,53 @@ function commonRenderTopbar(array $options = [])
         <?php if (!empty($config['profile']['enabled'])): ?>
         <div class="common-topbar__menu-wrap">
             <button type="button" class="common-topbar__action common-topbar__action--square common-topbar__profile" data-topbar-menu-trigger="profile">
-                <span class="common-topbar__avatar"><?= htmlspecialchars(mb_strtoupper(mb_substr($config['userName'], 0, 1))) ?></span>
+                <span class="common-topbar__avatar"><?= htmlspecialchars($profileInitial) ?></span>
                 <span class="common-topbar__action-label"><?= htmlspecialchars($config['profile']['buttonLabel']) ?></span>
             </button>
             <div class="common-topbar__menu common-topbar__menu--right" data-topbar-menu="profile">
-                <button type="button" class="common-topbar__menu-item" data-topbar-profile-edit><?= htmlspecialchars($config['profile']['editLabel']) ?></button>
-                <button type="button" class="common-topbar__menu-item common-topbar__menu-item--danger" data-topbar-logout>Se déconnecter</button>
+                <div class="common-topbar-profile-panel" data-common-topbar-profile-panel>
+                    <section class="common-topbar-profile-panel__section common-topbar-profile-panel__section--media">
+                        <div class="common-topbar-profile-card">
+                            <?php if (!empty($config['profile']['data']['photoUrl'])): ?>
+                                <img
+                                    src="<?= htmlspecialchars((string)$config['profile']['data']['photoUrl']) ?>"
+                                    alt="<?= htmlspecialchars($profileDisplayName) ?>"
+                                    class="common-topbar-profile-card__photo"
+                                >
+                            <?php else: ?>
+                                <div class="common-topbar-profile-card__placeholder" aria-hidden="true"><?= htmlspecialchars($profileInitial) ?></div>
+                            <?php endif; ?>
+                            <div class="common-topbar-profile-card__identity">
+                                <strong><?= htmlspecialchars($profileDisplayName) ?></strong>
+                                <span><?= htmlspecialchars((string)($config['profile']['data']['email'] ?: 'Résumé du profil')) ?></span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="common-topbar-profile-panel__section common-topbar-profile-panel__section--details">
+                        <div class="common-topbar-profile-details">
+                            <div class="common-topbar-profile-details__row">
+                                <span class="common-topbar-profile-details__label">Nom</span>
+                                <span class="common-topbar-profile-details__value"><?= htmlspecialchars($profileDisplayName) ?></span>
+                            </div>
+                            <div class="common-topbar-profile-details__row">
+                                <span class="common-topbar-profile-details__label">E-mail</span>
+                                <span class="common-topbar-profile-details__value"><?= htmlspecialchars((string)($config['profile']['data']['email'] ?: 'Non renseigné')) ?></span>
+                            </div>
+                            <div class="common-topbar-profile-details__row">
+                                <span class="common-topbar-profile-details__label">Identifiant</span>
+                                <span class="common-topbar-profile-details__value"><?= htmlspecialchars((string)($config['profile']['data']['username'] ?: 'Non renseigné')) ?></span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="common-topbar-profile-panel__section common-topbar-profile-panel__section--actions">
+                        <div class="common-topbar-profile-actions">
+                            <button type="button" class="common-topbar__menu-item common-topbar-profile-actions__button" data-topbar-profile-edit><?= htmlspecialchars($config['profile']['editLabel']) ?></button>
+                            <button type="button" class="common-topbar__menu-item common-topbar__menu-item--danger common-topbar-profile-actions__button" data-topbar-logout>Se déconnecter</button>
+                        </div>
+                    </section>
+                </div>
             </div>
         </div>
         <?php endif; ?>

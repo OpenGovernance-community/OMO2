@@ -2,11 +2,6 @@
 require_once("../config.php");
 require_once("../shared_functions.php");
 
-$connected = checklogin();
-if (!$connected) {
-	die("Login requis");
-}
-
 $faqId = (int)($_GET["id"] ?? 0);
 if ($faqId <= 0) {
 	die("FAQ invalide");

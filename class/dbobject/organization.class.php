@@ -129,6 +129,63 @@
 			return $holon->getDisplayName();
 		}
 
+		protected function getHolonMediaFieldData(\dbObject\Holon $holon, $field, $lockField)
+		{
+			$field = (string)$field;
+			$lockField = (string)$lockField;
+			$template = $holon->getTemplateHolon();
+			$localValue = trim((string)$holon->get($field));
+			$inheritedValue = '';
+			$effectiveValue = '';
+			$localLocked = (bool)$holon->get($lockField);
+			$inheritedLocked = false;
+
+			if ($template) {
+				$inheritedLocked = $template->getEffectiveTemplateBooleanField($lockField);
+				if ($field === 'icon') {
+					$inheritedValue = $template->getEffectiveIcon();
+				} elseif ($field === 'banner') {
+					$inheritedValue = $template->getEffectiveBanner();
+				}
+			}
+
+			if ($field === 'icon') {
+				$effectiveValue = $holon->getEffectiveIcon();
+			} elseif ($field === 'banner') {
+				$effectiveValue = $holon->getEffectiveBanner();
+			}
+
+			return array(
+				'value' => $localValue,
+				'inheritedValue' => $inheritedValue,
+				'effectiveValue' => $effectiveValue,
+				'locked' => $localLocked,
+				'inheritedLocked' => $inheritedLocked,
+				'effectiveLocked' => $localLocked || $inheritedLocked,
+			);
+		}
+
+		protected function getHolonIllustrationData(\dbObject\Holon $holon)
+		{
+			$icon = $this->getHolonMediaFieldData($holon, 'icon', 'lockedicon');
+			$banner = $this->getHolonMediaFieldData($holon, 'banner', 'lockedbanner');
+
+			return array(
+				'icon' => $icon['value'],
+				'inheritedIcon' => $icon['inheritedValue'],
+				'effectiveIcon' => $icon['effectiveValue'],
+				'lockedIcon' => $icon['locked'],
+				'inheritedLockedIcon' => $icon['inheritedLocked'],
+				'effectiveLockedIcon' => $icon['effectiveLocked'],
+				'banner' => $banner['value'],
+				'inheritedBanner' => $banner['inheritedValue'],
+				'effectiveBanner' => $banner['effectiveValue'],
+				'lockedBanner' => $banner['locked'],
+				'inheritedLockedBanner' => $banner['inheritedLocked'],
+				'effectiveLockedBanner' => $banner['effectiveLocked'],
+			);
+		}
+
 		public function getStructuralInitializationTemplates()
 		{
 			$templates = array();
@@ -161,7 +218,9 @@
 					'name' => $this->getStructuralInitializationTemplateName($holon),
 					'sourceOrganizationId' => $sourceOrganizationId,
 					'sourceOrganizationName' => $sourceOrganizationName,
-					'color' => trim((string)$holon->get('color')),
+					'color' => trim((string)$holon->getEffectiveColor()),
+					'icon' => $holon->getEffectiveIcon(),
+					'banner' => $holon->getEffectiveBanner(),
 				);
 			}
 
@@ -200,9 +259,13 @@
 			$rootHolon->set('visible', true);
 			$rootHolon->set('mandatory', false);
 			$rootHolon->set('lockedname', false);
+			$rootHolon->set('lockedicon', false);
+			$rootHolon->set('lockedbanner', false);
 			$rootHolon->set('unique', false);
 			$rootHolon->set('link', false);
-			$rootHolon->set('color', $sourceTemplate ? ($sourceTemplate->get('color') ?: null) : null);
+			$rootHolon->set('color', $sourceTemplate ? ($sourceTemplate->getEffectiveColor() ?: null) : null);
+			$rootHolon->set('icon', $sourceTemplate ? ($sourceTemplate->getEffectiveIcon() ?: null) : null);
+			$rootHolon->set('banner', $sourceTemplate ? ($sourceTemplate->getEffectiveBanner() ?: null) : null);
 			$rootHolon->set('accesskey', null);
 			$rootHolon->save();
 
@@ -372,9 +435,13 @@
 				$targetChild->set('visible', (bool)$sourceChild->get('visible'));
 				$targetChild->set('mandatory', (bool)$sourceChild->get('mandatory'));
 				$targetChild->set('lockedname', (bool)$sourceChild->get('lockedname'));
+				$targetChild->set('lockedicon', (bool)$sourceChild->get('lockedicon'));
+				$targetChild->set('lockedbanner', (bool)$sourceChild->get('lockedbanner'));
 				$targetChild->set('unique', (bool)$sourceChild->get('unique'));
 				$targetChild->set('link', (bool)$sourceChild->get('link'));
 				$targetChild->set('color', $sourceChild->get('color') ?: null);
+				$targetChild->set('icon', $sourceChild->get('icon') ?: null);
+				$targetChild->set('banner', $sourceChild->get('banner') ?: null);
 				$targetChild->set('accesskey', $sourceChild->get('accesskey') ?: null);
 				$targetChild->save();
 
@@ -743,7 +810,7 @@
 					$definitionHolonLabel = $definitionHolon->getTemplateLabel();
 				}
 
-				$data['templateCatalog'][] = array(
+				$data['templateCatalog'][] = array_merge(array(
 					'id' => (int)$template->getId(),
 					'name' => $template->getDisplayName(),
 					'typeId' => (int)$template->get('IDtypeholon'),
@@ -759,7 +826,7 @@
 					'definedInName' => $definitionHolonName,
 					'definedInLabel' => $definitionHolonLabel,
 					'properties' => $template->getTemplatePropertyDefinitions(),
-				);
+				), $this->getHolonIllustrationData($template));
 			}
 
 			foreach ($this->getTemplateDefinitionHolons($contextHolon ? (int)$contextHolon->getId() : 0) as $template) {
@@ -1002,9 +1069,14 @@
 			$child->set('active', true);
 			$child->set('visible', true);
 			$child->set('mandatory', false);
+			$child->set('lockedname', false);
+			$child->set('lockedicon', false);
+			$child->set('lockedbanner', false);
 			$child->set('unique', false);
 			$child->set('link', false);
 			$child->set('color', null);
+			$child->set('icon', null);
+			$child->set('banner', null);
 			$child->save();
 
 			if ((int)$child->getId() <= 0) {
@@ -1123,7 +1195,7 @@
 					$definitionHolonLabel = $definitionHolon->getTemplateLabel();
 				}
 
-				$data['templateCatalog'][] = array(
+				$data['templateCatalog'][] = array_merge(array(
 					'id' => (int)$template->getId(),
 					'name' => $template->getDisplayName(),
 					'typeId' => $typeId,
@@ -1140,7 +1212,7 @@
 					'properties' => $isTemplateEditing
 						? $template->getTemplatePropertyDefinitions()
 						: $template->getHolonCreationPropertyDefinitions(),
-				);
+				), $this->getHolonIllustrationData($template));
 
 				$typeLabelsById[$typeId] = $template->getTypeLabel();
 			}
@@ -1156,7 +1228,7 @@
 			$this->buildSelectableHolonCatalog($rootHolon, $data['holonCatalog'], (int)$rootHolon->getId());
 
 			if ($editingHolon && $data['canEdit']) {
-				$data['holon'] = array(
+				$data['holon'] = array_merge(array(
 					'id' => (int)$editingHolon->getId(),
 					'name' => $editingHolon->getDisplayName(),
 					'color' => (string)$editingHolon->get('color'),
@@ -1172,7 +1244,7 @@
 					'properties' => $isTemplateEditing
 						? $editingHolon->getTemplatePropertyDefinitions()
 						: $editingHolon->getHolonEditorPropertyDefinitions(),
-				);
+				), $this->getHolonIllustrationData($editingHolon));
 			}
 
 			return $data;
@@ -1241,6 +1313,8 @@
 			}
 
 			$name = trim((string)($payload['name'] ?? ''));
+			$iconValue = is_scalar($payload['icon'] ?? null) ? trim((string)$payload['icon']) : '';
+			$bannerValue = is_scalar($payload['banner'] ?? null) ? trim((string)$payload['banner']) : '';
 
 			$submittedValuesByPropertyId = array();
 			if (is_array($payload['properties'] ?? null)) {
@@ -1426,10 +1500,24 @@
 			$holon->set('visible', $isTemplateEditing ? !empty($payload['visible']) : true);
 			$holon->set('mandatory', $isTemplateEditing ? !empty($payload['mandatory']) : false);
 			$holon->set('lockedname', $isTemplateEditing ? !empty($payload['lockedName']) : false);
+			$holon->set('lockedicon', $isTemplateEditing ? !empty($payload['lockedIcon']) : false);
+			$holon->set('lockedbanner', $isTemplateEditing ? !empty($payload['lockedBanner']) : false);
 			$holon->set('unique', $isTemplateEditing ? !empty($payload['unique']) : false);
 			$holon->set('link', $isTemplateEditing ? !empty($payload['link']) : false);
 			$color = trim((string)($payload['color'] ?? ''));
 			$holon->set('color', $color !== '' ? $color : null);
+			$holon->set(
+				'icon',
+				(!$isTemplateEditing && $template && $template->getEffectiveTemplateBooleanField('lockedicon'))
+					? null
+					: ($iconValue !== '' ? $iconValue : null)
+			);
+			$holon->set(
+				'banner',
+				(!$isTemplateEditing && $template && $template->getEffectiveTemplateBooleanField('lockedbanner'))
+					? null
+					: ($bannerValue !== '' ? $bannerValue : null)
+			);
 			$holon->save();
 
 			if ((int)$holon->getId() <= 0) {
@@ -1562,6 +1650,8 @@
 			}
 
 			$templateName = trim((string)($payload['name'] ?? ''));
+			$iconValue = is_scalar($payload['icon'] ?? null) ? trim((string)$payload['icon']) : '';
+			$bannerValue = is_scalar($payload['banner'] ?? null) ? trim((string)$payload['banner']) : '';
 			$typeId = (int)($payload['typeId'] ?? 0);
 			if ($templateName === '') {
 				return array(
@@ -1684,8 +1774,12 @@
 			$template->set('visible', !empty($payload['visible']));
 			$template->set('mandatory', !empty($payload['mandatory']));
 			$template->set('lockedname', !empty($payload['lockedName']));
+			$template->set('lockedicon', !empty($payload['lockedIcon']));
+			$template->set('lockedbanner', !empty($payload['lockedBanner']));
 			$template->set('unique', !empty($payload['unique']));
 			$template->set('link', !empty($payload['link']));
+			$template->set('icon', $iconValue !== '' ? $iconValue : null);
+			$template->set('banner', $bannerValue !== '' ? $bannerValue : null);
 			$template->save();
 
 			if ((int)$template->getId() <= 0) {
