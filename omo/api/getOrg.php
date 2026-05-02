@@ -204,6 +204,8 @@ function omoRenderSectionBody(array $entry)
 
 function omoBuildSections(Holon $holon)
 {
+    return omoBuildOrderedSections($holon);
+
     $entries = $holon->getPropertyEntries();
     $sections = array();
 
@@ -261,6 +263,99 @@ function omoBuildSections(Holon $holon)
             'title' => $title,
             'entry' => $entry,
         );
+    }
+
+    return $sections;
+}
+
+function omoBuildOrderedSections(Holon $holon)
+{
+    $entries = $holon->getPropertyEntries();
+    $definitions = array(
+        'raison_etre' => array(
+            'title' => "Raison d'etre",
+            'propertyIds' => array(5),
+            'keywords' => array('raison', 'etre'),
+        ),
+        'attendus' => array(
+            'title' => 'Attendus',
+            'propertyIds' => array(6),
+            'keywords' => array('attendu'),
+        ),
+        'domaines_autorite' => array(
+            'title' => "Domaines d'autorite",
+            'propertyIds' => array(7),
+            'keywords' => array('autorite', 'domaine'),
+        ),
+        'strategie' => array(
+            'title' => 'Strategie',
+            'propertyIds' => array(8),
+            'keywords' => array('strategie'),
+        ),
+    );
+    $orderedDefinitionKeys = array_keys($definitions);
+    $groupedSections = array();
+    $unmatchedSections = array();
+    $sections = array();
+
+    foreach ($entries as $entry) {
+        $effective = trim((string)($entry['effectiveValue'] ?? ''));
+        if ($effective === '') {
+            continue;
+        }
+
+        $title = trim((string)($entry['name'] ?: $entry['shortname'] ?: ('Propriete ' . $entry['id'])));
+        $matchedDefinitionKey = null;
+
+        foreach ($definitions as $definitionKey => $definition) {
+            $match = in_array((int)$entry['id'], $definition['propertyIds'], true);
+            if (!$match) {
+                $searchable = omoApiNormalizeLabel(($entry['shortname'] ?? '') . ' ' . ($entry['name'] ?? ''));
+                $keywordMatches = 0;
+                foreach ($definition['keywords'] as $keyword) {
+                    if (strpos($searchable, $keyword) !== false) {
+                        $keywordMatches += 1;
+                    }
+                }
+                $match = $keywordMatches > 0;
+            }
+
+            if ($match) {
+                $matchedDefinitionKey = $definitionKey;
+                $title = $definition['title'];
+                break;
+            }
+        }
+
+        $section = array(
+            'title' => $title,
+            'entry' => $entry,
+        );
+
+        if ($matchedDefinitionKey !== null) {
+            if (!isset($groupedSections[$matchedDefinitionKey])) {
+                $groupedSections[$matchedDefinitionKey] = array();
+            }
+
+            $groupedSections[$matchedDefinitionKey][] = $section;
+            continue;
+        }
+
+        $unmatchedSections[] = $section;
+    }
+
+    foreach ($orderedDefinitionKeys as $definitionKey) {
+        if (!isset($groupedSections[$definitionKey])) {
+            continue;
+        }
+
+        foreach ($groupedSections[$definitionKey] as $section) {
+            $sections[] = $section;
+        }
+    }
+
+    foreach ($unmatchedSections as $section) {
+        $sections[] = $section;
     }
 
     return $sections;
