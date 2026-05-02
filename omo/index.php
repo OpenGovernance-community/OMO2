@@ -13,17 +13,17 @@ $isOrganizationHub = commonGetRequestSubdomain() === '' && !commonIsDemoHost() &
 $omoDefaultLogo = '/img/logo-OGC.png';
 $omoDefaultBanner = '/img/home.jpg';
 $omoLandingOrganization = [
-    'name' => 'OMO',
+    'name' => 'OpenMyOrganization',
     'shortname' => '',
     'domain' => '',
     'logo' => $omoDefaultLogo,
     'banner' => $omoDefaultBanner,
-    'color' => '#4f46e5',
+    'color' => 'var(--auth-primary)',
 ];
 
 $omoPwaHeadHtml = implode(PHP_EOL, [
     '<link rel="manifest" href="/omo/manifest.json">',
-    '<meta name="theme-color" content="#4f46e5">',
+    '<meta name="theme-color" content="var(--auth-primary)">',
     '<meta name="mobile-web-app-capable" content="yes">',
     '<meta name="apple-mobile-web-app-capable" content="yes">',
     '<meta name="apple-mobile-web-app-status-bar-style" content="default">',
