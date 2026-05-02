@@ -15,8 +15,9 @@
 			return [
 				[['name'], 'required'],								// Champs obligatoires
 				[['id'], 'integer'],								// Nombres entiers
-				[['name','shortname','domain','color'], 'string'],	// Chaines de caractere
-				[['logo','banner'], 'sizedimage'],						// Images
+				[['name','shortname','domain'], 'string'],	// Chaines de caractere
+				[['logo','banner'], 'sizedimage'],	
+				[['color'],'color'],				// Images
 				[['id'], 'safe'],									// Champs proteges
 			];
 		}

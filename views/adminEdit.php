@@ -13,12 +13,15 @@
 ?>
 <style>
     .navTab a {
-        border: 1px solid black;
-        display: inline-block;
+        border: 1px solid var(--admin-edit-border-strong, #cbd5e1);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         width: 40px;
         height: 40px;
         padding: 5px;
         border-right: 0px;
+        background: var(--admin-edit-surface, #ffffff);
     }
 </style>
 <script>
@@ -49,6 +52,37 @@ if (!isset($params["buttons"])) {
     $params["buttons"] = true;
 }                // Navigation buttons
 
+function adminEditMergeClass($baseClass, $extraClass = '') {
+    $classes = trim((string)$baseClass);
+    $extraClass = trim((string)$extraClass);
+    if ($extraClass !== '') {
+        $classes .= ($classes !== '' ? ' ' : '') . $extraClass;
+    }
+
+    return trim($classes);
+}
+
+function adminEditIsHexColor($value) {
+    return preg_match('/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', trim((string)$value)) === 1;
+}
+
+function adminEditNormalizeColorValue($value, $fallback = '#004663') {
+    $value = trim((string)$value);
+    if (!adminEditIsHexColor($value)) {
+        return strtolower((string)$fallback);
+    }
+
+    $value = strtolower($value);
+    if (strlen($value) === 4) {
+        return '#'
+            . $value[1] . $value[1]
+            . $value[2] . $value[2]
+            . $value[3] . $value[3];
+    }
+
+    return $value;
+}
+
 function getFieldType($object, $key) {
     if (is_object($object)) {
         // Find rows linked to the type
@@ -78,7 +112,7 @@ function getFieldType($object, $key) {
                 case "float" :
                     return "float";
                 case "color" :
-                    return "color";
+                    return "colorpicker";
                 case "fk" :
                     return "fk";
                 case "text" :
@@ -101,7 +135,7 @@ function getFieldType($object, $key) {
 function displayField($object, $key, $default = null, $filter = null) {
 
     $type = $object->getFieldType($key);
-    $class = ($object->isRequired($key) ? "required " : "");
+    $class = adminEditMergeClass(($object->isRequired($key) ? "required" : ""), "admin-edit__control");
     switch ($type) {
         case "fk" :
             // Return this field's text value
@@ -234,6 +268,30 @@ function displayField($object, $key, $default = null, $filter = null) {
                 $str .= " placeholder='" . str_replace("'", "&apos;", $object::attributePlaceholder()[$key]) . "' ";
             }
             $str .= ">";
+
+            return $str;
+            break;
+        case "colorpicker":
+            $colorValue = ($object->get($key) != "" ? $object->get($key) : $default);
+            $colorValue = trim((string)($colorValue ?? ""));
+            $colorPickerValue = adminEditNormalizeColorValue($colorValue);
+            $colorTextClass = adminEditMergeClass($class, "admin-edit__color-text");
+            $str = "<div class='admin-edit__color-field'>";
+            $str .= "<input type='hidden' name='" . $key . "' id='" . $key . "' value='" . str_replace("'", "&apos;", $colorValue) . "'>";
+            $str .= "<input type='color' class='admin-edit__color-picker' id='" . $key . "_picker' value='" . $colorPickerValue . "' data-target='" . $key . "' data-text-target='" . $key . "_text'>";
+            $str .= "<input class='" . $colorTextClass . "' name='" . $key . "_text' id='" . $key . "_text' type='text' value='" . str_replace("'", "&apos;", $colorValue) . "' data-target='" . $key . "' data-picker-target='" . $key . "_picker'";
+            if (isset($object::attributePlaceholder()[$key])) {
+                $str .= " placeholder='" . str_replace("'", "&apos;", $object::attributePlaceholder()[$key]) . "' ";
+            } else {
+                $str .= " placeholder='#004663' ";
+            }
+            if (isset($object::attributeLength()[$key])) {
+                $str .= "maxlength='" . $object::attributeLength()[$key] . "'  onkeyup='countChar($(this), " . $object::attributeLength()[$key] . ")' onkeypress='countChar($(this), " . $object::attributeLength()[$key] . ")' >";
+                $str .= "<div class='char_count'>max " . $object::attributeLength()[$key] . " caracteres</div>";
+            } else {
+                $str .= ">";
+            }
+            $str .= "</div>";
 
             return $str;
             break;
@@ -550,44 +608,407 @@ $colonnes = $this->attributeLabels();
     }
 </script>
 <style>
+    :root {
+        --admin-edit-primary: var(--color-primary, #004663);
+        --admin-edit-surface: var(--color-surface, #ffffff);
+        --admin-edit-surface-alt: var(--color-surface-alt, #f0f2f5);
+        --admin-edit-border: var(--color-border, #e5e7eb);
+        --admin-edit-border-strong: var(--color-border-strong, #cbd5e1);
+        --admin-edit-text: var(--color-text, #111827);
+        --admin-edit-muted: var(--color-text-light, #6b7280);
+        --admin-edit-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+    }
+
+    .admin-edit {
+        color: var(--admin-edit-text);
+    }
+
+    .admin-edit__toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 15;
+        margin: -4px -4px 24px;
+        padding: 16px 18px;
+        background: color-mix(in srgb, var(--admin-edit-surface) 88%, transparent);
+        backdrop-filter: blur(14px);
+        border-bottom: 1px solid color-mix(in srgb, var(--admin-edit-border) 88%, transparent);
+    }
+
+    .admin-edit__toolbar-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .admin-edit__toolbar-copy {
+        display: grid;
+        gap: 4px;
+    }
+
+    .admin-edit__toolbar-title {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 700;
+    }
+
+    .admin-edit__toolbar-text {
+        margin: 0;
+        color: var(--admin-edit-muted);
+        font-size: 0.95rem;
+    }
+
+    .admin-edit__actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .admin-edit__panel {
+        padding: 24px;
+        border: 1px solid var(--admin-edit-border);
+        border-radius: 22px;
+        background: var(--admin-edit-surface);
+        box-shadow: var(--admin-edit-shadow);
+    }
+
     table.dbobjecttable {
-        width: 100%
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 14px;
     }
 
-    table.dbobjecttable table {
-        width: 100%
-    }
-
-    table.dbobjecttable table input[type='text'] {
-        width: 100%
-    }
-
-    table.dbobjecttable td, table.dbobjecttable th {
+    table.dbobjecttable > tbody > tr > th,
+    table.dbobjecttable > tbody > tr > td,
+    table.dbobjecttable > tr > th,
+    table.dbobjecttable > tr > td {
         vertical-align: top;
     }
 
     table.dbobjecttable th {
-        white-space: nowrap;
-        width: 0px;
+        width: 240px;
+        min-width: 220px;
         text-align: left;
-        padding-right: 10px;
+        padding: 16px 18px 0 0;
+        color: var(--admin-edit-text);
+        font-weight: 700;
+        line-height: 1.45;
     }
 
-    @media only screen and (min-width: 700px) {
-        table.dbobjecttable td table td {
-            padding-left: 15px;
+    table.dbobjecttable td {
+        padding: 0;
+    }
+
+    table.dbobjecttable td > input:not([type='checkbox']):not([type='radio']):not([type='button']):not([type='submit']):not([type='hidden']),
+    table.dbobjecttable td > select,
+    table.dbobjecttable td > textarea,
+    table.dbobjecttable td > table,
+    table.dbobjecttable td > div,
+    table.dbobjecttable td > p,
+    table.dbobjecttable td > hr {
+        margin-top: 0;
+    }
+
+    table.dbobjecttable td > input:not([type='checkbox']):not([type='radio']):not([type='button']):not([type='submit']):not([type='hidden']),
+    table.dbobjecttable td > select,
+    table.dbobjecttable td > textarea,
+    table.dbobjecttable td > table,
+    table.dbobjecttable td > div:not(.char_count):not(.field_help),
+    table.dbobjecttable td > p,
+    table.dbobjecttable td > hr,
+    table.dbobjecttable td > h1,
+    table.dbobjecttable td > h2 {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    table.dbobjecttable td > table {
+        border-collapse: separate;
+        border-spacing: 12px 0;
+    }
+
+    table.dbobjecttable td > table td {
+        padding: 0;
+    }
+
+    table.dbobjecttable td > table td:first-child {
+        padding-left: 0;
+    }
+
+    .admin-edit__control,
+    #formulaire-edit input[type='text'],
+    #formulaire-edit input[type='email'],
+    #formulaire-edit input[type='password'],
+    #formulaire-edit input[type='number'],
+    #formulaire-edit input[type='date'],
+    #formulaire-edit input[type='time'],
+    #formulaire-edit input[type='datetime-local'],
+    #formulaire-edit input[type='color'],
+    #formulaire-edit select,
+    #formulaire-edit textarea {
+        width: 100%;
+        min-height: 46px;
+        padding: 12px 14px;
+        border: 1px solid var(--admin-edit-border);
+        border-radius: 14px;
+        background: var(--admin-edit-surface);
+        color: var(--admin-edit-text);
+        font: inherit;
+        line-height: 1.45;
+        transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+        box-sizing: border-box;
+    }
+
+    #formulaire-edit textarea {
+        min-height: 120px;
+        resize: vertical;
+    }
+
+    #formulaire-edit input[type='color'] {
+        width: 72px;
+        min-width: 72px;
+        padding: 6px;
+    }
+
+    .admin-edit__color-field {
+        display: grid;
+        grid-template-columns: 72px minmax(0, 1fr);
+        gap: 12px;
+        align-items: start;
+    }
+
+    .admin-edit__color-picker {
+        width: 72px !important;
+        min-width: 72px;
+        height: 46px;
+        padding: 6px !important;
+        border-radius: 14px;
+        cursor: pointer;
+    }
+
+    .admin-edit__color-text {
+        min-width: 0;
+    }
+
+    #formulaire-edit input[type='file'] {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px dashed var(--admin-edit-border-strong);
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--admin-edit-surface-alt) 68%, var(--admin-edit-surface));
+        color: var(--admin-edit-muted);
+        box-sizing: border-box;
+    }
+
+    #formulaire-edit input[type='file']::file-selector-button {
+        margin-right: 12px;
+        padding: 10px 14px;
+        border: 0;
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--admin-edit-primary) 12%, var(--admin-edit-surface));
+        color: var(--admin-edit-primary);
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    #formulaire-edit input[type='range'] {
+        width: min(360px, 100%);
+        accent-color: var(--admin-edit-primary);
+    }
+
+    #formulaire-edit input[type='checkbox'],
+    #formulaire-edit input[type='radio'] {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--admin-edit-primary);
+    }
+
+    .admin-edit__control:focus,
+    #formulaire-edit input[type='text']:focus,
+    #formulaire-edit input[type='email']:focus,
+    #formulaire-edit input[type='password']:focus,
+    #formulaire-edit input[type='number']:focus,
+    #formulaire-edit input[type='date']:focus,
+    #formulaire-edit input[type='time']:focus,
+    #formulaire-edit input[type='datetime-local']:focus,
+    #formulaire-edit input[type='color']:focus,
+    #formulaire-edit input[type='file']:focus,
+    #formulaire-edit select:focus,
+    #formulaire-edit textarea:focus {
+        outline: none;
+        border-color: var(--admin-edit-primary);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-edit-primary) 18%, transparent);
+    }
+
+    #formulaire-edit button,
+    #formulaire-edit input[type='button'],
+    #formulaire-edit input[type='submit'] {
+        min-height: 44px;
+        padding: 0 18px;
+        border: 1px solid transparent;
+        border-radius: 999px;
+        background: var(--admin-edit-primary);
+        color: #ffffff;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform 0.18s ease, filter 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+    }
+
+    #formulaire-edit button:hover,
+    #formulaire-edit input[type='button']:hover,
+    #formulaire-edit input[type='submit']:hover {
+        filter: brightness(1.03);
+        transform: translateY(-1px);
+    }
+
+    #formulaire-edit button:disabled,
+    #formulaire-edit input[type='button']:disabled,
+    #formulaire-edit input[type='submit']:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    #formulaire-edit .admin-edit__action--secondary,
+    #formulaire-edit .admin-edit__draft-button {
+        background: var(--admin-edit-surface);
+        color: var(--admin-edit-text);
+        border-color: var(--admin-edit-border);
+    }
+
+    #formulaire-edit h1,
+    #formulaire-edit h2 {
+        margin: 0 0 10px;
+        color: var(--admin-edit-text);
+    }
+
+    #formulaire-edit p {
+        margin: 0;
+        color: var(--admin-edit-muted);
+        line-height: 1.6;
+    }
+
+    #formulaire-edit hr {
+        border: 0;
+        border-top: 1px solid var(--admin-edit-border);
+        margin: 8px 0;
+    }
+
+    .char_count {
+        margin-top: 8px;
+        color: var(--admin-edit-muted);
+        font-size: 0.85rem;
+    }
+
+    .field_help {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        margin-left: 6px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--admin-edit-primary) 12%, var(--admin-edit-surface));
+        color: var(--admin-edit-primary);
+        font-size: 0.75rem;
+        font-weight: 700;
+        cursor: help;
+    }
+
+    .required-star {
+        margin-left: 6px;
+        color: #dc2626;
+    }
+
+    .star-rating {
+        display: inline-flex;
+        gap: 6px;
+        padding: 10px 14px;
+        border: 1px solid var(--admin-edit-border);
+        border-radius: 14px;
+        background: var(--admin-edit-surface);
+    }
+
+    .star-rating span {
+        cursor: pointer;
+        font-size: 1.5rem;
+        color: #cbd5e1;
+    }
+
+    .star-rating span.active {
+        color: #f59e0b;
+    }
+
+    .drag_img,
+    [id^='imgContainer_'] {
+        border-radius: 18px;
+    }
+
+    [id^='imgContainer_'] {
+        overflow: hidden;
+        border: 1px solid var(--admin-edit-border-strong) !important;
+        background: color-mix(in srgb, var(--admin-edit-surface-alt) 80%, var(--admin-edit-surface));
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+    }
+
+    @media only screen and (max-width: 860px) {
+        .admin-edit__toolbar {
+            margin-left: 0;
+            margin-right: 0;
+            padding-left: 0;
+            padding-right: 0;
         }
 
-        table.dbobjecttable td table td:first-of-type {
-            padding-left: 0px;
+        .admin-edit__panel {
+            padding: 18px;
+            border-radius: 18px;
         }
 
+        table.dbobjecttable,
+        table.dbobjecttable tbody,
+        table.dbobjecttable tr,
+        table.dbobjecttable th,
+        table.dbobjecttable td {
+            display: block;
+            width: 100%;
+        }
+
+        table.dbobjecttable {
+            border-spacing: 0;
+        }
+
+        table.dbobjecttable tr {
+            margin-bottom: 18px;
+        }
+
+        table.dbobjecttable th {
+            min-width: 0;
+            padding: 0 0 8px;
+        }
+
+        table.dbobjecttable td > table,
+        table.dbobjecttable td > table tr,
+        table.dbobjecttable td > table td {
+            display: block;
+            width: 100%;
+        }
+
+        table.dbobjecttable td > table td + td {
+            margin-top: 12px;
+        }
     }
 </style>
 
 <?php
 
 // Header
+$adminEditToolbarTitle = ($this->getId() != "" ? "Edition" : "Creation");
+echo "<div class='admin-edit'>";
 echo "<form id='formulaire-edit' method='POST' enctype='multipart/form-data'";
 if (isset($params["action"]) && $params["action"]) {
     echo " action='" . $params["action"] . "'";
@@ -597,13 +1018,14 @@ echo "<input type='hidden' name='MAX_FILE_SIZE' value='300000000' />";
 
 // Navigation buttons
 if ($params["buttons"]) {
-    echo "<div style='position:fixed; z-index:10; background:#FFFFFF; height:50px; width:100%;left:0px; padding:5px;'><div class='container'><div class='row'><input type='button' value='Annuler' onclick='history.go(-1)'> <input id='btn_submit' type='button' value='Sauver'>";
+    echo "<div class='admin-edit__toolbar'><div class='admin-edit__toolbar-inner'><div class='admin-edit__toolbar-copy'><h2 class='admin-edit__toolbar-title'>" . $adminEditToolbarTitle . "</h2><p class='admin-edit__toolbar-text'>Renseignez les champs puis enregistrez.</p></div><div class='admin-edit__actions'><input type='button' class='admin-edit__action--secondary' value='Annuler' onclick='history.go(-1)'> <input id='btn_submit' type='button' value='Sauver'>";
 
     if ($params["displayDraft"]) {
-        echo "<input id='btn_save' type='button' value='Enregistrer comme brouillon'>";
+        echo "<input id='btn_save' class='admin-edit__draft-button' type='button' value='Enregistrer comme brouillon'>";
     }
-    echo "</div></div></div><div style='height:60px;'></div>";
+    echo "</div></div></div>";
 }
+echo "<div class='admin-edit__panel'>";
 echo "<table class='dbobjecttable'>";
 $id = false;
 
@@ -730,10 +1152,12 @@ if (isset($params["fields"])) {
     }
 };
 echo "</table>";
+echo "</div>";
 if (!$id && $this->getId() != "") {
     echo "<input type='hidden' id='id' name='id' value='" . $this->getId() . "'>";
 }
 echo "</form>";
+echo "</div>";
 ?>
 
 <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
@@ -742,6 +1166,29 @@ echo "</form>";
     $(function () {
         $(".required").each(function () {
             $(this).closest("tr").find("th").append("<span class='required-star'>*</span>");
+        });
+
+        $(".admin-edit__color-picker").on("input change", function () {
+            var hiddenField = $("#" + $(this).data("target"));
+            var textField = $("#" + $(this).data("text-target"));
+            hiddenField.val($(this).val());
+            textField.val($(this).val());
+            textField.trigger("keyup");
+        });
+
+        $(".admin-edit__color-text").on("input change", function () {
+            var rawValue = $.trim($(this).val());
+            var hiddenField = $("#" + $(this).data("target"));
+            var pickerField = $("#" + $(this).data("picker-target"));
+            hiddenField.val(rawValue);
+
+            if (/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(rawValue)) {
+                var normalizedValue = rawValue.toLowerCase();
+                if (normalizedValue.length === 4) {
+                    normalizedValue = "#" + normalizedValue[1] + normalizedValue[1] + normalizedValue[2] + normalizedValue[2] + normalizedValue[3] + normalizedValue[3];
+                }
+                pickerField.val(normalizedValue);
+            }
         });
 
         $("#btn_submit").click(function () {

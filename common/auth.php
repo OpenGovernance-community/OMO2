@@ -250,6 +250,26 @@ function commonExpireCookieValue($name, $httpOnly = true)
     return commonSetCookieValue($name, '', time() - 3600, $httpOnly);
 }
 
+function commonGetOrganizationExplicitColor(array $organizationContext)
+{
+    $color = trim((string)($organizationContext['color'] ?? ''));
+    if ($color === '' || stripos($color, 'var(') !== false) {
+        return '';
+    }
+
+    return $color;
+}
+
+function commonGetOrganizationAccentColor(array $organizationContext, $fallback = '#004663')
+{
+    $color = commonGetOrganizationExplicitColor($organizationContext);
+    if ($color !== '') {
+        return $color;
+    }
+
+    return (string)$fallback;
+}
+
 function commonResolveOrganizationContext($defaultOrganizationId = 1)
 {
     $host = commonGetRequestHost();
@@ -295,7 +315,7 @@ function commonResolveOrganizationContext($defaultOrganizationId = 1)
         'domain' => (string)$organization->get('domain'),
         'logo' => (string)$organization->get('logo'),
         'banner' => (string)$organization->get('banner'),
-        'color' => (string)($organization->get('color') ?: '#4CAF50'),
+        'color' => trim((string)$organization->get('color')),
         'host' => $host,
         'error' => null,
         'isDemo' => commonIsDemoHost($host),
@@ -472,7 +492,7 @@ function commonSendLoginCode($userId, $email, array $organizationContext, $remem
 
     $subject = "Code de connexion";
     $orgName = htmlspecialchars($organizationContext['name'] ?: ($_SERVER['HTTP_HOST'] ?? 'Organisation'));
-    $color = htmlspecialchars($organizationContext['color'] ?: '#4CAF50');
+    $color = htmlspecialchars(commonGetOrganizationAccentColor($organizationContext, '#004663'));
     $logo = $organizationContext['logo'] ?? '';
     $banner = $organizationContext['banner'] ?? '';
 
@@ -846,6 +866,7 @@ function commonRenderMagicLoginPage(array $options = [])
     $organizationBanner = !empty($organizationContext['banner'])
         ? (string)$organizationContext['banner']
         : '/img/home.jpg';
+    $organizationColor = commonGetOrganizationExplicitColor($organizationContext);
 
     ?>
 <!DOCTYPE html>
@@ -855,11 +876,14 @@ function commonRenderMagicLoginPage(array $options = [])
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($title) ?></title>
     <link rel="stylesheet" href="/common/assets/auth.css">
+    <?php if ($organizationColor !== ''): ?>
     <style>
         :root {
-            --auth-primary: <?= htmlspecialchars($organizationContext['color'] ?: '#4CAF50') ?>;
+            --color-primary: <?= htmlspecialchars($organizationColor) ?>;
+            --auth-primary: <?= htmlspecialchars($organizationColor) ?>;
         }
     </style>
+    <?php endif; ?>
     <?php if ($headHtml !== ''): ?>
     <?= $headHtml . PHP_EOL ?>
     <?php endif; ?>
@@ -869,7 +893,7 @@ function commonRenderMagicLoginPage(array $options = [])
     <?php commonRenderTopbar($topbar); ?>
     <?php endif; ?>
     <div class="auth-shell">
-        <div class="auth-hero" style="background-color: <?= htmlspecialchars($organizationContext['color'] ?: '#4CAF50') ?>;">
+        <div class="auth-hero" style="background-color: var(--auth-primary, var(--color-primary, #004663));">
             <div class="auth-hero-bg" style="background-image:url('<?= htmlspecialchars($organizationBanner) ?>')"></div>
             <div class="auth-hero-content">
                 <div class="auth-logo">

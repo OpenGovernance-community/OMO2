@@ -366,7 +366,11 @@
 			}
 
 			$organizationName = htmlspecialchars((string)$organization->get('name'), ENT_QUOTES, 'UTF-8');
-			$organizationColor = htmlspecialchars((string)($organization->get('color') ?: '#4CAF50'), ENT_QUOTES, 'UTF-8');
+			$organizationColorValue = trim((string)$organization->get('color'));
+			if ($organizationColorValue === '' || stripos($organizationColorValue, 'var(') !== false) {
+				$organizationColorValue = '#004663';
+			}
+			$organizationColor = htmlspecialchars($organizationColorValue, ENT_QUOTES, 'UTF-8');
 			$logo = trim((string)$organization->get('logo'));
 			$banner = trim((string)$organization->get('banner'));
 
