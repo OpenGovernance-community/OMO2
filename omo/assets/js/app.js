@@ -495,7 +495,7 @@ function omoSetAppView(view, options = {}) {
 function openDrawer(id, url) {
 
     let drawer = $('#' + id);
-
+    clearDrawerRemoval(drawer);
 
     // 👉 si déjà ouvert → on ferme tout et on stop
     if (drawer.length && drawer.hasClass('open')) {
@@ -591,12 +591,83 @@ function syncOpenDrawers() {
     });
 }
 
-function closeDrawer(id) {
-    $('#' + id).removeClass('open');
+function clearDrawerRemoval(drawer) {
+    if (!drawer || !drawer.length) {
+        return;
+    }
+
+    const timeoutId = Number(drawer.data('omo-remove-timeout-id') || 0);
+
+    if (timeoutId > 0) {
+        window.clearTimeout(timeoutId);
+    }
+
+    drawer.off('transitionend.omoDrawerRemove');
+    drawer.removeData('omo-remove-timeout-id');
+    drawer.removeData('omo-remove-after-close');
 }
 
-function closeAllDrawers() {
-    $('.drawer.open').removeClass('open');
+function removeDrawerAfterTransition(drawer) {
+    if (!drawer || !drawer.length) {
+        return;
+    }
+
+    const node = drawer.get(0);
+
+    clearDrawerRemoval(drawer);
+    drawer.data('omo-remove-after-close', '1');
+
+    const finalizeRemoval = function () {
+        clearDrawerRemoval(drawer);
+
+        if (!node || !node.isConnected || drawer.hasClass('open')) {
+            return;
+        }
+
+        drawer.remove();
+    };
+
+    drawer.on('transitionend.omoDrawerRemove', function (event) {
+        const originalEvent = event.originalEvent;
+
+        if (event.target !== node) {
+            return;
+        }
+
+        if (originalEvent && originalEvent.propertyName && originalEvent.propertyName !== 'transform') {
+            return;
+        }
+
+        finalizeRemoval();
+    });
+
+    drawer.data('omo-remove-timeout-id', window.setTimeout(finalizeRemoval, 300));
+}
+
+function closeDrawer(id, removeAfterClose = false) {
+    const drawer = $('#' + id);
+
+    if (!drawer.length) {
+        return;
+    }
+
+    drawer.removeClass('open');
+
+    if (removeAfterClose) {
+        removeDrawerAfterTransition(drawer);
+    }
+}
+
+function closeAllDrawers(removeAfterClose = false) {
+    $('.drawer.open').each(function () {
+        const drawer = $(this);
+
+        drawer.removeClass('open');
+
+        if (removeAfterClose) {
+            removeDrawerAfterTransition(drawer);
+        }
+    });
 }
 
 function resetDrawers(activeDrawerId = null) {
@@ -604,6 +675,16 @@ function resetDrawers(activeDrawerId = null) {
         const drawer = $(this);
 
         if (activeDrawerId && drawer.attr('id') === activeDrawerId) {
+            return;
+        }
+
+        if (drawer.hasClass('open')) {
+            drawer.removeClass('open');
+            removeDrawerAfterTransition(drawer);
+            return;
+        }
+
+        if (drawer.data('omo-remove-after-close')) {
             return;
         }
 
@@ -1194,7 +1275,6 @@ function handleRoute() {
             openDrawer(activeDrawerId, activeDrawerUrl);
         } else {
             closeAllDrawers();
-            resetDrawers();
         }
     }
 
