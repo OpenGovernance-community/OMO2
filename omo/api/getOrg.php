@@ -297,7 +297,7 @@ $root = $organization->getStructuralRootHolon();
 if ($root === null) {
     http_response_code(404);
     ?>
-    <div class="circle-panel"><div class="error">Aucune structure racine n'a ÃƒÂ©tÃƒÂ© trouvÃƒÂ©e pour cette organisation.</div></div>
+    <div class="circle-panel"><div class="error">Aucune structure racine n'a &eacute;t&eacute; trouv&eacute;e pour cette organisation.</div></div>
     <?php
     exit;
 }
@@ -360,7 +360,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
     <div class="breadcrumb">
         <?php foreach ($breadcrumb as $index => $crumb): ?>
             <?php if ($index > 0): ?>
-                <span class="separator">Ã¢â‚¬Âº</span>
+                <span class="separator">&rsaquo;</span>
             <?php endif; ?>
 
             <?php $isActive = ((int)$crumb->getId() === (int)$currentHolon->getId()); ?>
@@ -477,7 +477,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
     <?php if (count($sections) === 0): ?>
         <div class="circle-section">
             <div class="section-title">Informations</div>
-            <p class="section-text">Aucun contenu n'est encore renseignÃƒÂ© pour ce holon.</p>
+            <p class="section-text">Aucun contenu n'est encore renseign&eacute; pour ce holon.</p>
         </div>
     <?php endif; ?>
 
@@ -485,7 +485,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
         <div class="circle-section">
             <div class="section-header">
                 <span class="section-title"><?= omoApiEscape($section['title']) ?></span>
-                <span class="section-toggle">Ã¢â€“Â¾</span>
+                <span class="section-toggle">&#9662;</span>
             </div>
             <div class="section-content">
                 <?= omoRenderSectionBody($section['entry']) ?>
@@ -1143,7 +1143,7 @@ $(document)
     const button = $(this);
     const hid = Number(button.data('hid'));
     const descendantCount = Number(button.data('descendant-count') || 0);
-    const holonName = String(button.data('name') || 'cet ÃƒÂ©lÃƒÂ©ment');
+    const holonName = String(button.data('name') || 'cet \u00e9l\u00e9ment');
     const typeLabel = String(button.data('type-label') || 'holon').toLowerCase();
     const parentId = Number(button.data('parent-id') || 0);
     const parentIsRoot = String(button.data('parent-is-root')) === '1';
@@ -1154,7 +1154,7 @@ $(document)
 
     let confirmationMessage = 'Supprimer ' + typeLabel + ' "' + holonName + '" ?';
     if (descendantCount > 0) {
-        confirmationMessage += '\n\nAttention : ' + descendantCount + ' ÃƒÂ©lÃƒÂ©ment' + (descendantCount > 1 ? 's seront aussi supprimÃƒÂ©s.' : ' sera aussi supprimÃƒÂ©.');
+        confirmationMessage += '\n\nAttention : ' + descendantCount + ' \u00e9l\u00e9ment' + (descendantCount > 1 ? 's seront aussi supprim\u00e9s.' : ' sera aussi supprim\u00e9.');
     }
 
     if (!window.confirm(confirmationMessage)) {
