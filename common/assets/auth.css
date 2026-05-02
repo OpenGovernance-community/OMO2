@@ -1,4 +1,5 @@
 :root {
+    --auth-primary: var(--color-primary, #004663);
     --auth-page-bg: linear-gradient(180deg, #eef3f7 0%, #f8fafc 100%);
     --auth-page-text: #1f2937;
     --auth-page-muted: #4b5563;
@@ -154,7 +155,7 @@
     padding: 0;
     border: 0;
     background: transparent;
-    color: var(--auth-primary);
+    color: var(--auth-primary, var(--color-primary, #004663));
     text-align: left;
     cursor: pointer;
     font-size: 14px;
@@ -207,7 +208,7 @@
 .auth-submit,
 .auth-challenge button,
 .auth-code-box button {
-    background: var(--auth-primary);
+    background: var(--auth-primary, var(--color-primary, #004663));
     color: #fff;
 }
 
@@ -372,7 +373,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: var(--auth-primary);
+    background: var(--auth-primary, var(--color-primary, #004663));
     color: #fff;
     font-size: 22px;
     font-weight: 700;
@@ -477,12 +478,12 @@ body.auth-state-page--scrollable {
 .auth-org-card--directory:hover,
 .auth-org-card--directory:focus-visible {
     transform: translateY(-1px);
-    border-color: color-mix(in srgb, var(--auth-org-accent, var(--color-primary, var(--auth-primary))) 18%, var(--color-border-strong, var(--auth-border)));
+    border-color: color-mix(in srgb, var(--auth-org-accent, var(--auth-primary, var(--color-primary, #004663))) 18%, var(--color-border-strong, var(--auth-border)));
     background: color-mix(in srgb, var(--color-surface, #fff) 92%, var(--color-surface-alt, #f3f4f6));
 }
 
 .auth-org-card--directory:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--auth-org-accent, var(--color-primary, var(--auth-primary))) 28%, transparent);
+    outline: 2px solid color-mix(in srgb, var(--auth-org-accent, var(--auth-primary, var(--color-primary, #004663))) 28%, transparent);
     outline-offset: 2px;
 }
 
@@ -490,7 +491,7 @@ body.auth-state-page--scrollable {
     position: relative;
     aspect-ratio: 16 / 9;
     overflow: hidden;
-    background: var(--auth-org-accent, var(--color-primary, var(--auth-primary)));
+    background: var(--auth-org-accent, var(--auth-primary, var(--color-primary, #004663)));
 }
 
 .auth-org-card__banner::after {

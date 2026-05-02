@@ -657,6 +657,7 @@
 					case "sizedimage" : 
 					case "password" : 
 					case "date" : 
+					case "color" : 
 					case "timezone" : 
 					case "datetime" : 
 					case "time" : 

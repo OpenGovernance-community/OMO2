@@ -91,7 +91,13 @@ if ($invitation) {
 }
 
 $organizationName = $organization ? (string)$organization->get('name') : 'Organisation';
-$organizationColor = $organization ? (string)($organization->get('color') ?: '#4CAF50') : '#4CAF50';
+$organizationColor = '';
+if ($organization) {
+	$organizationColor = commonGetOrganizationExplicitColor([
+		'color' => (string)$organization->get('color'),
+	]);
+}
+$organizationAccentColor = $organizationColor !== '' ? $organizationColor : '#004663';
 $organizationLogo = $organization ? trim((string)$organization->get('logo')) : '';
 $organizationBanner = $organization ? trim((string)$organization->get('banner')) : '';
 $invitedEmail = $invitation ? trim((string)$invitation->get('email')) : '';
@@ -108,7 +114,11 @@ if ($invitedEmail === '' && $invitedUser) {
 	<link rel="stylesheet" href="/common/assets/auth.css">
 	<style>
 		:root {
-			--invitation-primary: <?= commonInvitationEscape($organizationColor) ?>;
+			<?php if ($organizationColor !== ''): ?>
+			--color-primary: <?= commonInvitationEscape($organizationColor) ?>;
+			--auth-primary: <?= commonInvitationEscape($organizationColor) ?>;
+			<?php endif; ?>
+			--invitation-primary: <?= commonInvitationEscape($organizationAccentColor) ?>;
 		}
 		.invitation-page {
 			min-height: 100vh;
@@ -132,7 +142,7 @@ if ($invitedEmail === '' && $invitedUser) {
 		.invitation-hero {
 			position: relative;
 			padding: 34px 26px;
-			background: <?= commonInvitationEscape($organizationColor) ?>;
+			background: var(--invitation-primary);
 			color: #ffffff;
 			text-align: center;
 		}
