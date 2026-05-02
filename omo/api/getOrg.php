@@ -370,11 +370,14 @@ $memberCards = $currentHolon->getAssociatedMemberCards(array(
 $memberPreviewLimit = 8;
 $visibleMemberCards = array_slice($memberCards, 0, $memberPreviewLimit);
 $hasHiddenMembers = count($memberCards) > count($visibleMemberCards);
-$isCurrentTemplateHolon = $root ? $currentHolon->isTemplateNode((int)$root->getId()) : false;
-$editTemplateContextId = $isCurrentTemplateHolon && $currentHolon->getParentHolon() ? (int)$currentHolon->getParentHolon()->getId() : 0;
+$isOrganizationDefinitionHolon = (int)$currentHolon->get('IDtypeholon') === 4;
+$isCurrentTemplateHolon = !$isOrganizationDefinitionHolon && $root ? $currentHolon->isTemplateNode((int)$root->getId()) : false;
+$editTemplateContextId = $isCurrentTemplateHolon && $currentHolon->getParentHolon()
+    ? (int)$currentHolon->getParentHolon()->getId()
+    : ($isOrganizationDefinitionHolon ? (int)$currentHolon->getId() : 0);
 $canManageMembers = $currentHolon->canEdit();
 $canCreateChildHolon = $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(2, 3, 4), true);
-$canEditHolon = $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
+$canEditHolon = $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3, 4), true);
 $canDeleteHolon = $currentHolon->canDelete() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
 $deleteDescendantCount = $canDeleteHolon ? (int)$currentHolon->countVisibleDescendants() : 0;
 $parentHolonForDelete = $canDeleteHolon ? $currentHolon->getParentHolon() : null;
@@ -442,6 +445,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
                                 data-open-edit-holon="1"
                                 data-hid="<?= (int)$currentHolon->getId() ?>"
                                 data-template-edit="<?= $isCurrentTemplateHolon ? '1' : '0' ?>"
+                                data-definition-edit="<?= $isOrganizationDefinitionHolon ? '1' : '0' ?>"
                                 data-template-context-id="<?= (int)$editTemplateContextId ?>"
                             >Edit</button>
                         <?php endif; ?>
@@ -1121,13 +1125,14 @@ $(document)
     const button = $(this);
     const hid = Number(button.data('hid'));
     const isTemplateEdit = String(button.data('template-edit')) === '1';
+    const isDefinitionEdit = String(button.data('definition-edit')) === '1';
     const templateContextId = Number(button.data('template-context-id') || 0);
 
     if (!hid || typeof openDrawer !== 'function') {
         return;
     }
 
-    if (isTemplateEdit && templateContextId > 0) {
+    if ((isTemplateEdit || isDefinitionEdit) && templateContextId > 0) {
         openDrawer('drawer_holon_create', '/omo/api/parameters/holon-templates/index.php?cid=' + templateContextId + '&hid=' + hid + '&compact=1');
         return;
     }

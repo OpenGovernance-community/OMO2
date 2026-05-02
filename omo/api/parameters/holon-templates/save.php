@@ -11,7 +11,7 @@ if ($organizationId <= 0) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => "Aucune organisation n'est sélectionnée.",
+            'message' => "Aucune organisation n'est selectionnee.",
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -24,7 +24,7 @@ if (!$organization->load($organizationId)) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => "L'organisation demandée est introuvable.",
+            'message' => "L'organisation demandee est introuvable.",
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -32,6 +32,7 @@ if (!$organization->load($organizationId)) {
 }
 
 $contextHolonId = (int)($_GET['cid'] ?? $_POST['cid'] ?? 0);
+$holonId = (int)($_GET['hid'] ?? $_POST['hid'] ?? 0);
 
 $rawPayload = $_POST['payload'] ?? file_get_contents('php://input');
 $payload = json_decode($rawPayload, true);
@@ -40,20 +41,23 @@ if (!is_array($payload)) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => 'La requête envoyée est invalide.',
+            'message' => 'La requete envoyee est invalide.',
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
     exit;
 }
 
-$result = $organization->saveHolonTemplateDefinition($payload, (int)commonGetCurrentUserId(), $contextHolonId);
+$result = $holonId > 0
+    ? $organization->saveHolonDefinitionEditor($payload, (int)commonGetCurrentUserId(), $holonId)
+    : $organization->saveHolonTemplateDefinition($payload, (int)commonGetCurrentUserId(), $contextHolonId);
+
 if (!($result['status'] ?? false)) {
     http_response_code(422);
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => (string)($result['message'] ?? "Le modèle n'a pas pu être enregistré."),
+            'message' => (string)($result['message'] ?? ($holonId > 0 ? "L'organisation n'a pas pu etre enregistree." : "Le modele n'a pas pu etre enregistre.")),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -63,9 +67,11 @@ if (!($result['status'] ?? false)) {
 echo json_encode(
     array(
         'status' => 'ok',
-        'message' => (string)($result['message'] ?? 'Modèle enregistré.'),
+        'message' => (string)($result['message'] ?? ($holonId > 0 ? 'Organisation enregistree.' : 'Modele enregistre.')),
         'template' => $result['template'] ?? null,
-        'data' => $result['data'] ?? $organization->getHolonTemplateEditorData($contextHolonId),
+        'data' => $result['data'] ?? ($holonId > 0
+            ? $organization->getHolonDefinitionEditorData($holonId)
+            : $organization->getHolonTemplateEditorData($contextHolonId)),
     ),
     JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
 );

@@ -875,6 +875,86 @@
 			return $data;
 		}
 
+		protected function buildHolonDefinitionEditorNode(\dbObject\Holon $holon, $rootHolonId)
+		{
+			$node = $holon->toTemplateEditorNodeArray((int)$rootHolonId);
+			$node['properties'] = $holon->getTemplatePropertyDefinitions();
+			$node['children'] = array();
+			$node['shareAsTemplate'] = trim((string)$holon->get('templatename')) !== '';
+			$node['publicTemplateName'] = trim((string)$holon->get('templatename'));
+
+			return $node;
+		}
+
+		public function getHolonDefinitionEditorData($holonId = 0)
+		{
+			$rootHolon = $this->getStructuralRootHolon();
+			$holonId = (int)$holonId;
+
+			if (!$rootHolon || $holonId <= 0) {
+				return null;
+			}
+
+			$holon = new \dbObject\Holon();
+			if (
+				!$holon->load($holonId)
+				|| !$this->containsHolon($holon)
+				|| (int)$holon->get('IDtypeholon') !== 4
+			) {
+				return null;
+			}
+
+			$types = new \dbObject\ArrayTypeHolon();
+			$types->load(array(
+				'orderBy' => array(
+					array('field' => 'id', 'dir' => 'ASC'),
+				),
+			));
+
+			$formats = new \dbObject\ArrayPropertyFormat();
+			$formats->load(array(
+				'orderBy' => array(
+					array('field' => 'id', 'dir' => 'ASC'),
+				),
+			));
+
+			$data = array(
+				'organizationId' => (int)$this->getId(),
+				'organizationName' => (string)$this->get('name'),
+				'rootHolonId' => (int)$rootHolon->getId(),
+				'contextHolonId' => (int)$holon->getId(),
+				'contextHolonName' => $holon->getDisplayName(),
+				'contextHolonLabel' => $holon->getTypeLabel(),
+				'editorMode' => 'holon-definition',
+				'targetHolonId' => (int)$holon->getId(),
+				'types' => array(),
+				'formats' => array(),
+				'listItemTypes' => \dbObject\Property::getListItemTypeOptions(),
+				'templateCatalog' => array(),
+				'templates' => array(
+					$this->buildHolonDefinitionEditorNode($holon, (int)$rootHolon->getId()),
+				),
+			);
+
+			foreach ($types as $type) {
+				$data['types'][] = array(
+					'id' => (int)$type->getId(),
+					'name' => (string)$type->get('name'),
+					'hasTemplate' => (bool)$type->get('hastemplate'),
+					'hasChild' => (bool)$type->get('haschild'),
+				);
+			}
+
+			foreach ($formats as $format) {
+				$data['formats'][] = array(
+					'id' => (int)$format->getId(),
+					'name' => (string)$format->get('name'),
+				);
+			}
+
+			return $data;
+		}
+
 		// Construit liste holons
 		protected function buildSelectableHolonCatalog(\dbObject\Holon $holon, array &$catalog, $rootHolonId, array $path = array())
 		{
@@ -1799,6 +1879,111 @@
 				'message' => 'Modele enregistre.',
 				'template' => $template->toTemplateEditorArray((int)$rootHolon->getId()),
 				'data' => $this->getHolonTemplateEditorData((int)$contextHolon->getId()),
+			);
+		}
+
+		public function saveHolonDefinitionEditor(array $payload, $userId = 0, $holonId = 0)
+		{
+			$rootHolon = $this->getStructuralRootHolon();
+			$holonId = (int)$holonId;
+
+			if (!$rootHolon || $holonId <= 0) {
+				return array(
+					'status' => false,
+					'message' => "Le holon d'organisation a modifier est invalide.",
+				);
+			}
+
+			$holon = new \dbObject\Holon();
+			if (
+				!$holon->load($holonId)
+				|| !$this->containsHolon($holon)
+				|| (int)$holon->get('IDtypeholon') !== 4
+			) {
+				return array(
+					'status' => false,
+					'message' => "Le holon d'organisation a modifier est introuvable.",
+				);
+			}
+
+			if (!$holon->canEdit()) {
+				return array(
+					'status' => false,
+					'message' => "Vous n'avez pas les droits pour modifier cette organisation.",
+				);
+			}
+
+			$name = trim((string)($payload['name'] ?? ''));
+			if ($name === '') {
+				$name = $holon->getDisplayName();
+			}
+
+			if ($name === '') {
+				return array(
+					'status' => false,
+					'message' => "Le nom de l'organisation est obligatoire.",
+				);
+			}
+
+			$iconValue = is_scalar($payload['icon'] ?? null) ? trim((string)$payload['icon']) : '';
+			$bannerValue = is_scalar($payload['banner'] ?? null) ? trim((string)$payload['banner']) : '';
+			$color = trim((string)($payload['color'] ?? ''));
+			$shareAsTemplate = !empty($payload['shareAsTemplate']);
+			$publicTemplateName = trim((string)($payload['publicTemplateName'] ?? ''));
+			$definitions = is_array($payload['properties'] ?? null)
+				? array_map(function ($definition) {
+					if (!is_array($definition)) {
+						return array();
+					}
+
+					$definition['mandatory'] = false;
+					$definition['locked'] = false;
+					$definition['inheritedMandatory'] = false;
+					$definition['inheritedLocked'] = false;
+					$definition['effectiveMandatory'] = false;
+					$definition['effectiveLocked'] = false;
+
+					return $definition;
+				}, array_values($payload['properties']))
+				: array();
+
+			if ($shareAsTemplate && $publicTemplateName === '') {
+				return array(
+					'status' => false,
+					'message' => "Le nom public du modele d'organisation est obligatoire.",
+				);
+			}
+
+			$holon->set('name', $name);
+			$holon->set('templatename', $shareAsTemplate ? $publicTemplateName : null);
+			$holon->set('color', $color !== '' ? $color : null);
+			$holon->set('icon', $shareAsTemplate && $iconValue !== '' ? $iconValue : null);
+			$holon->set('banner', $shareAsTemplate && $bannerValue !== '' ? $bannerValue : null);
+			$holon->save();
+
+			if ((int)$holon->getId() <= 0) {
+				return array(
+					'status' => false,
+					'message' => "L'organisation n'a pas pu etre enregistree.",
+				);
+			}
+
+			$organizationId = (int)$holon->get('IDorganization');
+			if ($organizationId > 0) {
+				$linkedOrganization = new self();
+				if ($linkedOrganization->load($organizationId)) {
+					$linkedOrganization->set('name', $name);
+					$linkedOrganization->save();
+				}
+			}
+
+			$holon->syncTemplateProperties($definitions, (int)$rootHolon->getId());
+
+			return array(
+				'status' => true,
+				'message' => 'Organisation enregistree.',
+				'template' => $this->buildHolonDefinitionEditorNode($holon, (int)$rootHolon->getId()),
+				'data' => $this->getHolonDefinitionEditorData((int)$holon->getId()),
 			);
 		}
 
