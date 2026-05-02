@@ -268,6 +268,54 @@ function omoBuildSections(Holon $holon)
     return $sections;
 }
 
+function omoResolveSectionDefinitionKey(array $entry, array $definitions)
+{
+    foreach ($definitions as $definitionKey => $definition) {
+        if (in_array((int)($entry['id'] ?? 0), $definition['propertyIds'], true)) {
+            return $definitionKey;
+        }
+    }
+
+    $shortname = omoApiNormalizeLabel((string)($entry['shortname'] ?? ''));
+    $name = omoApiNormalizeLabel((string)($entry['name'] ?? ''));
+    $searchables = array_values(array_filter(array_unique(array($shortname, $name))));
+
+    foreach ($definitions as $definitionKey => $definition) {
+        foreach (($definition['aliases'] ?? array()) as $alias) {
+            $normalizedAlias = omoApiNormalizeLabel((string)$alias);
+            if ($normalizedAlias === '') {
+                continue;
+            }
+
+            if (in_array($normalizedAlias, $searchables, true)) {
+                return $definitionKey;
+            }
+        }
+    }
+
+    foreach ($definitions as $definitionKey => $definition) {
+        $keywords = array_values(array_filter($definition['keywords'] ?? array()));
+        if (count($keywords) === 0) {
+            continue;
+        }
+
+        foreach ($searchables as $searchable) {
+            $keywordMatches = 0;
+            foreach ($keywords as $keyword) {
+                if (strpos($searchable, $keyword) !== false) {
+                    $keywordMatches += 1;
+                }
+            }
+
+            if ($keywordMatches === count($keywords)) {
+                return $definitionKey;
+            }
+        }
+    }
+
+    return null;
+}
+
 function omoBuildOrderedSections(Holon $holon)
 {
     $entries = $holon->getPropertyEntries();
@@ -276,21 +324,25 @@ function omoBuildOrderedSections(Holon $holon)
             'title' => "Raison d'etre",
             'propertyIds' => array(5),
             'keywords' => array('raison', 'etre'),
+            'aliases' => array('raison d etre', 'raison_d_etre'),
         ),
         'attendus' => array(
             'title' => 'Attendus',
             'propertyIds' => array(6),
             'keywords' => array('attendu'),
+            'aliases' => array('attendus', 'attendu'),
         ),
         'domaines_autorite' => array(
             'title' => "Domaines d'autorite",
             'propertyIds' => array(7),
             'keywords' => array('autorite', 'domaine'),
+            'aliases' => array('domaines d autorite', 'domaines_d_autorite', 'domaine d autorite'),
         ),
         'strategie' => array(
             'title' => 'Strategie',
             'propertyIds' => array(8),
             'keywords' => array('strategie'),
+            'aliases' => array('strategie'),
         ),
     );
     $orderedDefinitionKeys = array_keys($definitions);
@@ -305,26 +357,9 @@ function omoBuildOrderedSections(Holon $holon)
         }
 
         $title = trim((string)($entry['name'] ?: $entry['shortname'] ?: ('Propriete ' . $entry['id'])));
-        $matchedDefinitionKey = null;
-
-        foreach ($definitions as $definitionKey => $definition) {
-            $match = in_array((int)$entry['id'], $definition['propertyIds'], true);
-            if (!$match) {
-                $searchable = omoApiNormalizeLabel(($entry['shortname'] ?? '') . ' ' . ($entry['name'] ?? ''));
-                $keywordMatches = 0;
-                foreach ($definition['keywords'] as $keyword) {
-                    if (strpos($searchable, $keyword) !== false) {
-                        $keywordMatches += 1;
-                    }
-                }
-                $match = $keywordMatches > 0;
-            }
-
-            if ($match) {
-                $matchedDefinitionKey = $definitionKey;
-                $title = $definition['title'];
-                break;
-            }
+        $matchedDefinitionKey = omoResolveSectionDefinitionKey($entry, $definitions);
+        if ($matchedDefinitionKey !== null) {
+            $title = $definitions[$matchedDefinitionKey]['title'];
         }
 
         $section = array(
