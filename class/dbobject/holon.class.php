@@ -343,7 +343,7 @@
 
 		protected function shouldHideLocalPropertyValue(\dbObject\HolonProperty $property)
 		{
-			return (bool)$property->get('locked') && $this->propertyHasInheritedDefinition($property);
+			return false;
 		}
 
 		public function getRepresentationData(array $options = array()) {
