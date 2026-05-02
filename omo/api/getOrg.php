@@ -186,7 +186,7 @@ function omoRenderSectionBody(array $entry)
 
     if ($ancestor !== '' && $value !== '') {
         $html .= '<div class="section-inherited">';
-        $html .= '<div class="section-inherited__label">Hérité</div>';
+        $html .= '<div class="section-inherited__label">HÃ©ritÃ©</div>';
         if ($formatId === 2) {
             $html .= omoRenderFormattedList($ancestorItems, $entry, 'section-list section-list--inherited');
         } else {
@@ -204,193 +204,19 @@ function omoRenderSectionBody(array $entry)
 
 function omoBuildSections(Holon $holon)
 {
-    return omoBuildOrderedSections($holon);
-
     $entries = $holon->getPropertyEntries();
     $sections = array();
 
-    $definitions = array(
-        array(
-            'title' => "Raison d'être",
-            'propertyIds' => array(5),
-            'keywords' => array('raison', 'etre'),
-        ),
-        array(
-            'title' => 'Attendus',
-            'propertyIds' => array(6),
-            'keywords' => array('attendu'),
-        ),
-        array(
-            'title' => "Domaines d'autorité",
-            'propertyIds' => array(7),
-            'keywords' => array('autorite', 'domaine'),
-        ),
-        array(
-            'title' => 'Stratégie',
-            'propertyIds' => array(8),
-            'keywords' => array('strategie'),
-        ),
-    );
-
     foreach ($entries as $entry) {
-
         $effective = trim((string)($entry['effectiveValue'] ?? ''));
         if ($effective === '') {
             continue;
-        }
-
-        $title = trim((string)($entry['name'] ?: $entry['shortname'] ?: ('Propriété ' . $entry['id'])));
-        foreach ($definitions as $definition) {
-            $match = in_array((int)$entry['id'], $definition['propertyIds'], true);
-            if (!$match) {
-                $searchable = omoApiNormalizeLabel(($entry['shortname'] ?? '') . ' ' . ($entry['name'] ?? ''));
-                $keywordMatches = 0;
-                foreach ($definition['keywords'] as $keyword) {
-                    if (strpos($searchable, $keyword) !== false) {
-                        $keywordMatches += 1;
-                    }
-                }
-                $match = $keywordMatches > 0;
-            }
-
-            if ($match) {
-                $title = $definition['title'];
-                break;
-            }
         }
 
         $sections[] = array(
-            'title' => $title,
+            'title' => trim((string)($entry['name'] ?: $entry['shortname'] ?: ('Propriete ' . $entry['id']))),
             'entry' => $entry,
         );
-    }
-
-    return $sections;
-}
-
-function omoResolveSectionDefinitionKey(array $entry, array $definitions)
-{
-    foreach ($definitions as $definitionKey => $definition) {
-        if (in_array((int)($entry['id'] ?? 0), $definition['propertyIds'], true)) {
-            return $definitionKey;
-        }
-    }
-
-    $shortname = omoApiNormalizeLabel((string)($entry['shortname'] ?? ''));
-    $name = omoApiNormalizeLabel((string)($entry['name'] ?? ''));
-    $searchables = array_values(array_filter(array_unique(array($shortname, $name))));
-
-    foreach ($definitions as $definitionKey => $definition) {
-        foreach (($definition['aliases'] ?? array()) as $alias) {
-            $normalizedAlias = omoApiNormalizeLabel((string)$alias);
-            if ($normalizedAlias === '') {
-                continue;
-            }
-
-            if (in_array($normalizedAlias, $searchables, true)) {
-                return $definitionKey;
-            }
-        }
-    }
-
-    foreach ($definitions as $definitionKey => $definition) {
-        $keywords = array_values(array_filter($definition['keywords'] ?? array()));
-        if (count($keywords) === 0) {
-            continue;
-        }
-
-        foreach ($searchables as $searchable) {
-            $keywordMatches = 0;
-            foreach ($keywords as $keyword) {
-                if (strpos($searchable, $keyword) !== false) {
-                    $keywordMatches += 1;
-                }
-            }
-
-            if ($keywordMatches === count($keywords)) {
-                return $definitionKey;
-            }
-        }
-    }
-
-    return null;
-}
-
-function omoBuildOrderedSections(Holon $holon)
-{
-    $entries = $holon->getPropertyEntries();
-    $definitions = array(
-        'raison_etre' => array(
-            'title' => "Raison d'etre",
-            'propertyIds' => array(5),
-            'keywords' => array('raison', 'etre'),
-            'aliases' => array('raison d etre', 'raison_d_etre'),
-        ),
-        'attendus' => array(
-            'title' => 'Attendus',
-            'propertyIds' => array(6),
-            'keywords' => array('attendu'),
-            'aliases' => array('attendus', 'attendu'),
-        ),
-        'domaines_autorite' => array(
-            'title' => "Domaines d'autorite",
-            'propertyIds' => array(7),
-            'keywords' => array('autorite', 'domaine'),
-            'aliases' => array('domaines d autorite', 'domaines_d_autorite', 'domaine d autorite'),
-        ),
-        'strategie' => array(
-            'title' => 'Strategie',
-            'propertyIds' => array(8),
-            'keywords' => array('strategie'),
-            'aliases' => array('strategie'),
-        ),
-    );
-    $orderedDefinitionKeys = array_keys($definitions);
-    $groupedSections = array();
-    $unmatchedSections = array();
-    $sections = array();
-
-    foreach ($entries as $entry) {
-        $effective = trim((string)($entry['effectiveValue'] ?? ''));
-        if ($effective === '') {
-            continue;
-        }
-
-        $title = trim((string)($entry['name'] ?: $entry['shortname'] ?: ('Propriete ' . $entry['id'])));
-        $matchedDefinitionKey = omoResolveSectionDefinitionKey($entry, $definitions);
-        if ($matchedDefinitionKey !== null) {
-            $title = $definitions[$matchedDefinitionKey]['title'];
-        }
-
-        $section = array(
-            'title' => $title,
-            'entry' => $entry,
-        );
-
-        if ($matchedDefinitionKey !== null) {
-            if (!isset($groupedSections[$matchedDefinitionKey])) {
-                $groupedSections[$matchedDefinitionKey] = array();
-            }
-
-            $groupedSections[$matchedDefinitionKey][] = $section;
-            continue;
-        }
-
-        $unmatchedSections[] = $section;
-    }
-
-    foreach ($orderedDefinitionKeys as $definitionKey) {
-        if (!isset($groupedSections[$definitionKey])) {
-            continue;
-        }
-
-        foreach ($groupedSections[$definitionKey] as $section) {
-            $sections[] = $section;
-        }
-    }
-
-    foreach ($unmatchedSections as $section) {
-        $sections[] = $section;
     }
 
     return $sections;
@@ -469,7 +295,7 @@ $root = $organization->getStructuralRootHolon();
 if ($root === null) {
     http_response_code(404);
     ?>
-    <div class="circle-panel"><div class="error">Aucune structure racine n'a été trouvée pour cette organisation.</div></div>
+    <div class="circle-panel"><div class="error">Aucune structure racine n'a Ã©tÃ© trouvÃ©e pour cette organisation.</div></div>
     <?php
     exit;
 }
@@ -532,7 +358,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
     <div class="breadcrumb">
         <?php foreach ($breadcrumb as $index => $crumb): ?>
             <?php if ($index > 0): ?>
-                <span class="separator">›</span>
+                <span class="separator">â€º</span>
             <?php endif; ?>
 
             <?php $isActive = ((int)$crumb->getId() === (int)$currentHolon->getId()); ?>
@@ -649,7 +475,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
     <?php if (count($sections) === 0): ?>
         <div class="circle-section">
             <div class="section-title">Informations</div>
-            <p class="section-text">Aucun contenu n'est encore renseigné pour ce holon.</p>
+            <p class="section-text">Aucun contenu n'est encore renseignÃ© pour ce holon.</p>
         </div>
     <?php endif; ?>
 
@@ -657,7 +483,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
         <div class="circle-section">
             <div class="section-header">
                 <span class="section-title"><?= omoApiEscape($section['title']) ?></span>
-                <span class="section-toggle">▾</span>
+                <span class="section-toggle">â–¾</span>
             </div>
             <div class="section-content">
                 <?= omoRenderSectionBody($section['entry']) ?>
@@ -1315,7 +1141,7 @@ $(document)
     const button = $(this);
     const hid = Number(button.data('hid'));
     const descendantCount = Number(button.data('descendant-count') || 0);
-    const holonName = String(button.data('name') || 'cet élément');
+    const holonName = String(button.data('name') || 'cet Ã©lÃ©ment');
     const typeLabel = String(button.data('type-label') || 'holon').toLowerCase();
     const parentId = Number(button.data('parent-id') || 0);
     const parentIsRoot = String(button.data('parent-is-root')) === '1';
@@ -1326,7 +1152,7 @@ $(document)
 
     let confirmationMessage = 'Supprimer ' + typeLabel + ' "' + holonName + '" ?';
     if (descendantCount > 0) {
-        confirmationMessage += '\n\nAttention : ' + descendantCount + ' élément' + (descendantCount > 1 ? 's seront aussi supprimés.' : ' sera aussi supprimé.');
+        confirmationMessage += '\n\nAttention : ' + descendantCount + ' Ã©lÃ©ment' + (descendantCount > 1 ? 's seront aussi supprimÃ©s.' : ' sera aussi supprimÃ©.');
     }
 
     if (!window.confirm(confirmationMessage)) {
