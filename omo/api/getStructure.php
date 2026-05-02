@@ -261,10 +261,44 @@ function escapeHtml(text) {
   });
 }
 
+function colorToTransparentFill(color, alpha, fallback) {
+  const rawColor = String(color || "").trim();
+  const fallbackColor = String(fallback || "rgba(79, 70, 229, 0.12)");
+  const targetAlpha = Number(alpha);
+
+  if (!rawColor) {
+    return fallbackColor;
+  }
+
+  const hexMatch = rawColor.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (hexMatch) {
+    let hex = hexMatch[1];
+    if (hex.length === 3) {
+      hex = hex.split("").map(function (char) { return char + char; }).join("");
+    }
+
+    const red = parseInt(hex.slice(0, 2), 16);
+    const green = parseInt(hex.slice(2, 4), 16);
+    const blue = parseInt(hex.slice(4, 6), 16);
+    return "rgba(" + red + ", " + green + ", " + blue + ", " + targetAlpha + ")";
+  }
+
+  const rgbMatch = rawColor.match(/^rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*[0-9.]+\s*)?\)$/i);
+  if (rgbMatch) {
+    return "rgba(" + rgbMatch[1] + ", " + rgbMatch[2] + ", " + rgbMatch[3] + ", " + targetAlpha + ")";
+  }
+
+  return fallbackColor;
+}
+
 function getListColor(node) {
-  if (node.type == "4") return chartColors.rootFill;
-  if (node.type == "2" || node.type == "3") return chartColors.groupFill1;
+  if (node.type == "4") return node.mycolor || chartColors.rootFill;
+  if (node.type == "2" || node.type == "3") return colorToTransparentFill(node.mycolor, 0.12, chartColors.groupFill);
   return node.mycolor || chartColors.roleFill;
+}
+
+function getGroupStrokeColor(node) {
+  return colorToTransparentFill(node && node.mycolor, 0.55, chartColors.strokeSoft);
 }
 
 function escapeRegExp(text) {
@@ -482,6 +516,9 @@ function renderNodeList(entry, searchQuery) {
   const node = entry.node;
   const children = Array.isArray(entry.children) ? entry.children : [];
   const color = getListColor(node);
+  const dotStyle = node.type == "3"
+    ? "background:transparent;border:2px solid " + getGroupStrokeColor(node)
+    : "background:" + color;
   const itemClasses = ["role-item"];
 
   if (entry.matchesLabel) {
@@ -493,7 +530,7 @@ function renderNodeList(entry, searchQuery) {
   let html = `
     <li class="node_${escapeHtml(node.ID)}">
       <button type="button" class="${itemClasses.join(" ")}" data-omo-cid="${escapeHtml(node.ID)}" data-omo-root="${node.type == "4" ? "1" : "0"}">
-        <span class="role-dot" style="background:${color}"></span>
+        <span class="role-dot" style="${dotStyle}"></span>
         <span class="role-text">
           <span class="role-label">${highlightLabel(node.name || "", searchQuery)}</span>
           ${entry.matchExcerpt ? `<span class="role-excerpt">${entry.matchExcerpt}</span>` : ``}
@@ -1107,14 +1144,14 @@ $(document).on("input", "#role_list_search", function () {
           chosenContext.fill();
         } else {
           chosenContext.fillStyle = (node.type == "3" || node.type == "2")
-            ? colorCircle(node.depth)
+            ? colorToTransparentFill(node.mycolor, 0.12, colorCircle(node.depth))
             : (node.mycolor || "rgb(255, 204, 0)");
 
           if (node.type == "3") {
             chosenContext.fillStyle = "rgba(0,0,0,0)";
             chosenContext.lineWidth = 2;
             chosenContext.setLineDash([10, 10]);
-            chosenContext.strokeStyle = "rgba(255,255,255,0.5)";
+            chosenContext.strokeStyle = getGroupStrokeColor(node);
             chosenContext.stroke();
             chosenContext.fill();
           } else if (node.type == "4") {
@@ -1122,7 +1159,7 @@ $(document).on("input", "#role_list_search", function () {
             chosenContext.setLineDash([]);
             chosenContext.strokeStyle = "rgba(255,255,255,0.5)";
             chosenContext.stroke();
-            chosenContext.fillStyle = chartColors.rootFill;
+            chosenContext.fillStyle = node.mycolor || chartColors.rootFill;
             chosenContext.fill();
           } else {
             chosenContext.setLineDash([]);

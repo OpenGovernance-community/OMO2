@@ -15,22 +15,36 @@ $isCompactMode = !empty($_GET['compact']);
 $organization = new Organization();
 $editorData = null;
 $errorMessage = '';
+$isHolonDefinitionMode = false;
 
 if ($organizationId <= 0) {
     $errorMessage = "Aucune organisation n'est actuellement selectionnee.";
 } elseif (!$organization->load($organizationId)) {
     $errorMessage = "L'organisation demandee est introuvable.";
 } else {
-    $editorData = $organization->getHolonTemplateEditorData($contextHolonId);
+    if ($selectedTemplateId > 0) {
+        $editorData = $organization->getHolonDefinitionEditorData($selectedTemplateId);
+    }
+
+    if ($editorData === null) {
+        $editorData = $organization->getHolonTemplateEditorData($contextHolonId);
+    }
+
+    $isHolonDefinitionMode = (($editorData['editorMode'] ?? 'template') === 'holon-definition');
 }
 ?>
 <div class="omo-template-editor omo-panel-view">
     <div class="omo-panel-view__header">
         <div class="omo-panel-view__header-copy">
-            <h2 class="omo-panel-view__title">Modeles de holons</h2>
+            <h2 class="omo-panel-view__title"><?= $isHolonDefinitionMode ? 'Proprietes de l organisation' : 'Modeles de holons' ?></h2>
             <p class="omo-panel-view__description">
-                Definissez ici les types de noeuds reutilisables de votre organisation:
-                cercle, role, projet, tache ou toute autre structure hierarchique portee par les holons.
+                <?php if ($isHolonDefinitionMode): ?>
+                    Modifiez ici les proprietes, illustrations et reglages locaux du holon d organisation,
+                    meme lorsqu il ne s agit pas d un template.
+                <?php else: ?>
+                    Definissez ici les types de noeuds reutilisables de votre organisation:
+                    cercle, role, projet, tache ou toute autre structure hierarchique portee par les holons.
+                <?php endif; ?>
             </p>
         </div>
     </div>
@@ -39,23 +53,27 @@ if ($organizationId <= 0) {
         <?php if ($errorMessage !== ''): ?>
             <div class="omo-empty-state"><?= omoHolonTemplateEscape($errorMessage) ?></div>
         <?php else: ?>
-            <div class="omo-template-editor__layout<?= $isCompactMode ? ' omo-template-editor__layout--compact' : '' ?>" id="omo-holon-template-editor">
+            <div class="omo-template-editor__layout<?= $isCompactMode ? ' omo-template-editor__layout--compact' : '' ?><?= $isHolonDefinitionMode ? ' omo-template-editor__layout--holon-definition' : '' ?>" id="omo-holon-template-editor">
                 <aside class="omo-template-sidebar">
                     <div class="omo-template-sidebar__hero">
                         <div class="omo-template-editor__eyebrow">Contexte actuel</div>
                         <h3><?= omoHolonTemplateEscape($editorData['contextHolonName'] ?? ($editorData['organizationName'] ?? '')) ?></h3>
-                        <p>Creez une bibliotheque de modeles reutilisables pour vos cercles, roles, projets et autres structures.</p>
+                        <p>
+                            <?= $isHolonDefinitionMode
+                                ? 'Ce panneau agit comme un editeur de definitions locales pour ce holon reel.'
+                                : 'Creez une bibliotheque de modeles reutilisables pour vos cercles, roles, projets et autres structures.' ?>
+                        </p>
                     </div>
 
                     <div class="omo-template-sidebar__stats" id="omo-template-summary"></div>
 
-                    <div class="omo-template-sidebar__actions">
+                    <div class="omo-template-sidebar__actions"<?= $isHolonDefinitionMode ? ' hidden' : '' ?>>
                         <button type="button" class="omo-button omo-button--secondary" data-template-action="new-root">Nouveau modele</button>
                         <button type="button" class="omo-button omo-button--ghost" data-template-action="new-child" disabled>Sous-modele</button>
                     </div>
 
                     <div class="omo-template-tree-wrap">
-                        <div class="omo-template-tree-wrap__title">Arborescence des modeles</div>
+                        <div class="omo-template-tree-wrap__title"><?= $isHolonDefinitionMode ? 'Holon edite' : 'Arborescence des modeles' ?></div>
                         <div class="omo-template-tree" id="omo-template-tree"></div>
                     </div>
                 </aside>
@@ -64,9 +82,11 @@ if ($organizationId <= 0) {
                     <div class="omo-template-form-panel__header">
                         <div>
                             <div class="omo-template-editor__eyebrow">Edition</div>
-                            <h3 class="omo-template-form-panel__title" id="omo-template-form-title">Nouveau modele</h3>
+                            <h3 class="omo-template-form-panel__title" id="omo-template-form-title"><?= $isHolonDefinitionMode ? 'Organisation' : 'Nouveau modele' ?></h3>
                             <p class="omo-template-form-panel__description" id="omo-template-form-description">
-                                Choisissez un type de base, sa place dans l'arborescence et les proprietes qu'il transmettra.
+                                <?= $isHolonDefinitionMode
+                                    ? 'Ajustez ici les proprietes locales de cette organisation.'
+                                    : "Choisissez un type de base, sa place dans l'arborescence et les proprietes qu'il transmettra." ?>
                             </p>
                         </div>
                         <div class="omo-template-form-panel__badges" id="omo-template-form-badges"></div>
@@ -76,25 +96,25 @@ if ($organizationId <= 0) {
 
                     <form id="omo-template-form" class="omo-template-form">
                         <section class="omo-template-section">
-                            <div class="omo-template-section__title">Structure du modele</div>
+                            <div class="omo-template-section__title"><?= $isHolonDefinitionMode ? 'Holon' : 'Structure du modele' ?></div>
 
                             <div class="omo-template-form__grid">
-                                <label class="omo-field" id="omo-template-type-field">
+                                <label class="omo-field<?= $isHolonDefinitionMode ? ' omo-template-field--hidden' : '' ?>" id="omo-template-type-field">
                                     <span>Type de base</span>
                                     <select name="typeId" id="omo-template-type" required></select>
                                 </label>
 
-                                <label class="omo-field">
+                                <label class="omo-field<?= $isHolonDefinitionMode ? ' omo-template-field--hidden' : '' ?>">
                                     <span>Herite de</span>
                                     <select name="parentId" id="omo-template-parent"></select>
                                 </label>
 
                                 <label class="omo-field omo-field--full">
-                                    <span>Nom du modele</span>
+                                    <span><?= $isHolonDefinitionMode ? 'Nom' : 'Nom du modele' ?></span>
                                     <input type="text" name="name" id="omo-template-name" maxlength="255" required>
                                 </label>
 
-                                <div class="omo-template-flags omo-field--full">
+                                <div class="omo-template-flags omo-field--full<?= $isHolonDefinitionMode ? ' omo-template-field--hidden' : '' ?>">
                                     <label class="omo-template-flags__option">
                                         <input type="checkbox" id="omo-template-visible">
                                         <span>Visible</span>
@@ -130,7 +150,9 @@ if ($organizationId <= 0) {
                                 <div>
                                     <div class="omo-template-section__title">Proprietes</div>
                                     <p class="omo-template-section__description">
-                                        Ajoutez les proprietes visibles sur les noeuds derives de ce modele.
+                                        <?= $isHolonDefinitionMode
+                                            ? 'Ajoutez ici les proprietes directement portees par cette organisation.'
+                                            : 'Ajoutez les proprietes visibles sur les noeuds derives de ce modele.' ?>
                                     </p>
                                 </div>
                                 <button type="button" class="omo-button omo-button--secondary" id="omo-template-add-property">Ajouter une propriete</button>
@@ -164,7 +186,7 @@ if ($organizationId <= 0) {
                                     </div>
                                 </div>
 
-                                <div class="omo-field omo-field--full">
+                                <div class="omo-field omo-field--full<?= $isHolonDefinitionMode ? ' omo-template-field--hidden' : '' ?>">
                                     <span>Illustrations transmises</span>
                                     <div class="omo-template-media-grid">
                                         <div class="omo-template-media-card">
@@ -192,12 +214,60 @@ if ($organizationId <= 0) {
                             </div>
                         </section>
 
+                        <?php if ($isHolonDefinitionMode): ?>
+                        <section class="omo-template-section">
+                            <div class="omo-template-section__head">
+                                <div>
+                                    <div class="omo-template-section__title">Partage public</div>
+                                    <p class="omo-template-section__description">
+                                        Ces champs servent uniquement quand l organisation est partagee comme modele reutilisable.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="omo-template-form__grid">
+                                <label class="omo-template-flags__option omo-field--full">
+                                    <input type="checkbox" id="omo-template-share-public">
+                                    <span>Partager publiquement ce modele d'organisation</span>
+                                    <small>Active un modele d organisation recuperable par d autres personnes.</small>
+                                </label>
+
+                                <div class="omo-field omo-field--full" id="omo-template-public-share-fields" hidden>
+                                    <div class="omo-template-form__grid">
+                                        <label class="omo-field omo-field--full">
+                                            <span>Nom public du modele</span>
+                                            <input type="text" id="omo-template-public-name" maxlength="255">
+                                        </label>
+
+                                        <div class="omo-field omo-field--full">
+                                            <span>Illustrations du modele partage</span>
+                                            <div class="omo-template-media-grid">
+                                                <div class="omo-template-media-card">
+                                                    <div class="omo-template-media-card__head">
+                                                        <div class="omo-template-media-card__title">Logo / Icone</div>
+                                                    </div>
+                                                    <div id="omo-template-public-icon-field"></div>
+                                                </div>
+                                                <div class="omo-template-media-card">
+                                                    <div class="omo-template-media-card__head">
+                                                        <div class="omo-template-media-card__title">Banniere</div>
+                                                    </div>
+                                                    <div id="omo-template-public-banner-field"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                        <?php endif; ?>
+
                         <div class="omo-template-form__footer">
                             <div class="omo-template-form__hint" id="omo-template-selection-hint"></div>
                             <?php if ($isCompactMode): ?>
                                 <button type="button" class="omo-button omo-button--ghost" id="omo-template-cancel">Fermer</button>
                             <?php endif; ?>
-                            <button type="submit" class="omo-button omo-button--primary">Enregistrer le modele</button>
+                            <button type="submit" class="omo-button omo-button--primary"><?= $isHolonDefinitionMode ? 'Enregistrer l organisation' : 'Enregistrer le modele' ?></button>
                         </div>
                     </form>
                 </section>
@@ -235,6 +305,11 @@ const omoHolonTemplateElements = {
     color: omoHolonTemplateRoot.querySelector('#omo-template-color'),
     iconField: omoHolonTemplateRoot.querySelector('#omo-template-icon-field'),
     bannerField: omoHolonTemplateRoot.querySelector('#omo-template-banner-field'),
+    sharePublic: omoHolonTemplateRoot.querySelector('#omo-template-share-public'),
+    publicShareFields: omoHolonTemplateRoot.querySelector('#omo-template-public-share-fields'),
+    publicName: omoHolonTemplateRoot.querySelector('#omo-template-public-name'),
+    publicIconField: omoHolonTemplateRoot.querySelector('#omo-template-public-icon-field'),
+    publicBannerField: omoHolonTemplateRoot.querySelector('#omo-template-public-banner-field'),
     visible: omoHolonTemplateRoot.querySelector('#omo-template-visible'),
     mandatory: omoHolonTemplateRoot.querySelector('#omo-template-mandatory'),
     lockedName: omoHolonTemplateRoot.querySelector('#omo-template-locked-name'),
@@ -256,6 +331,17 @@ const omoHolonTemplateMediaFields = {
     icon: null,
     banner: null
 };
+
+function omoHolonTemplateIsHolonDefinitionMode() {
+    return String((omoHolonTemplateState.data || {}).editorMode || 'template') === 'holon-definition';
+}
+
+if (omoHolonTemplateIsHolonDefinitionMode()) {
+    omoHolonTemplateElements.iconField = omoHolonTemplateElements.publicIconField;
+    omoHolonTemplateElements.bannerField = omoHolonTemplateElements.publicBannerField;
+    omoHolonTemplateElements.lockedIcon = null;
+    omoHolonTemplateElements.lockedBanner = null;
+}
 
 function omoHolonTemplateToggleTypeField(isInherited) {
     const typeField = omoHolonTemplateRoot.querySelector('#omo-template-type-field');
@@ -295,6 +381,23 @@ function omoHolonTemplateSyncColorField() {
 
     if (omoHolonTemplateElements.color) {
         omoHolonTemplateElements.color.disabled = !isEnabled;
+    }
+}
+
+function omoHolonTemplateSyncPublicShareFields() {
+    if (!omoHolonTemplateIsHolonDefinitionMode()) {
+        return;
+    }
+
+    const isEnabled = Boolean(omoHolonTemplateElements.sharePublic && omoHolonTemplateElements.sharePublic.checked);
+
+    if (omoHolonTemplateElements.publicShareFields) {
+        omoHolonTemplateElements.publicShareFields.hidden = !isEnabled;
+    }
+
+    if (omoHolonTemplateElements.publicName) {
+        omoHolonTemplateElements.publicName.disabled = !isEnabled;
+        omoHolonTemplateElements.publicName.required = isEnabled;
     }
 }
 
@@ -1266,6 +1369,14 @@ function omoHolonTemplateRenderPropertyMetaHtml(property) {
     const originBadge = property.isInherited
         ? '<span class="omo-template-chip">Heritee</span>'
         : '<span class="omo-template-chip omo-template-chip--accent">Locale</span>';
+
+    if (omoHolonTemplateIsHolonDefinitionMode()) {
+        return ''
+            + '<div class="omo-template-property__meta">'
+            + '  <div class="omo-template-property__origin">' + originBadge + '</div>'
+            + '</div>';
+    }
+
     const mandatoryDisabled = property.inheritedMandatory ? ' disabled' : '';
     const lockedDisabled = property.inheritedLocked ? ' disabled' : '';
 
@@ -1342,6 +1453,7 @@ function omoHolonTemplateCreatePropertyRow(property) {
 }
 
 function omoHolonTemplateReadPropertyState(row) {
+    const isHolonDefinitionMode = omoHolonTemplateIsHolonDefinitionMode();
     const formatId = Number((row.querySelector('.omo-template-property__format') || {}).value || 0);
     const listItemTypeField = row.querySelector('.omo-template-property__list-item-type');
     const listItemType = listItemTypeField ? String(listItemTypeField.value || 'text') : 'text';
@@ -1353,16 +1465,20 @@ function omoHolonTemplateReadPropertyState(row) {
         return Number(input.value || 0);
     }).filter(Boolean);
 
-    const localMandatory = mandatoryField
+    const localMandatory = isHolonDefinitionMode
+        ? false
+        : (mandatoryField
         ? (mandatoryField.disabled && inheritedMandatory
             ? String(row.dataset.localMandatory || '0') === '1'
             : Boolean(mandatoryField.checked))
-        : false;
-    const localLocked = lockedField
+        : false);
+    const localLocked = isHolonDefinitionMode
+        ? false
+        : (lockedField
         ? (lockedField.disabled && inheritedLocked
             ? String(row.dataset.localLocked || '0') === '1'
             : Boolean(lockedField.checked))
-        : false;
+        : false);
 
     return {
         id: Number(row.dataset.propertyId || 0),
@@ -1373,10 +1489,10 @@ function omoHolonTemplateReadPropertyState(row) {
         listHolonTypeIds: listHolonTypeIds,
         mandatory: localMandatory,
         locked: localLocked,
-        inheritedMandatory: inheritedMandatory,
-        inheritedLocked: inheritedLocked,
-        effectiveMandatory: inheritedMandatory || localMandatory,
-        effectiveLocked: inheritedLocked || localLocked,
+        inheritedMandatory: isHolonDefinitionMode ? false : inheritedMandatory,
+        inheritedLocked: isHolonDefinitionMode ? false : inheritedLocked,
+        effectiveMandatory: isHolonDefinitionMode ? false : (inheritedMandatory || localMandatory),
+        effectiveLocked: isHolonDefinitionMode ? false : (inheritedLocked || localLocked),
         isInherited: String(row.dataset.isInherited || '0') === '1',
         isLocal: String(row.dataset.isLocal || '0') === '1',
         inheritedValue: String(row.dataset.inheritedValue || ''),
@@ -1467,6 +1583,14 @@ function omoHolonTemplateShowStatus(message, tone) {
     omoHolonTemplateElements.status.innerHTML = ''
         + '<div class="omo-template-editor__status-copy">' + omoHolonTemplateEscapeHtml(message) + '</div>'
         + '<button type="button" class="omo-template-editor__status-close" aria-label="Fermer le message">&times;</button>';
+    window.requestAnimationFrame(function () {
+        if (omoHolonTemplateElements.status && typeof omoHolonTemplateElements.status.scrollIntoView === 'function') {
+            omoHolonTemplateElements.status.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+    });
     omoHolonTemplateState.statusTimer = window.setTimeout(function () {
         omoHolonTemplateClearStatus();
     }, 40000);
@@ -1498,7 +1622,7 @@ function omoHolonTemplateRenderFormBadges(template) {
 
     badges.push('<span class="omo-template-chip">' + propertyCount + ' propriete' + (propertyCount > 1 ? 's' : '') + '</span>');
 
-    if (Number(template.inheritsFromId || 0) > 0) {
+    if (!omoHolonTemplateIsHolonDefinitionMode() && Number(template.inheritsFromId || 0) > 0) {
         badges.push('<span class="omo-template-chip">Heritage actif</span>');
     }
 
@@ -1508,6 +1632,7 @@ function omoHolonTemplateRenderFormBadges(template) {
 function omoHolonTemplateFillForm(template) {
     const current = template || omoHolonTemplateBuildDraft();
     const isExisting = Number(current.id || 0) > 0;
+    const isHolonDefinitionMode = omoHolonTemplateIsHolonDefinitionMode();
     const resolvedParentId = Number(current.inheritsFromId || 0);
     const effectiveInheritanceId = omoHolonTemplateGetEffectiveInheritanceIdFromParent(resolvedParentId);
     const effectiveTypeId = omoHolonTemplateGetEffectiveTypeId(current.typeId, effectiveInheritanceId);
@@ -1548,16 +1673,29 @@ function omoHolonTemplateFillForm(template) {
     if (omoHolonTemplateElements.link) {
         omoHolonTemplateElements.link.checked = Boolean(current.link);
     }
-    omoHolonTemplateElements.selectionHint.textContent = isExisting
-        ? 'Modification du modele selectionne.'
-        : 'Nouveau modele non encore enregistre.';
-    omoHolonTemplateElements.formTitle.textContent = isExisting ? (current.name || 'Modele') : 'Nouveau modele';
-    omoHolonTemplateElements.formDescription.textContent = isExisting
-        ? 'Ajustez ce modele et ses proprietes heritables.'
-        : 'Choisissez son type de base puis ajoutez les proprietes a transmettre.';
+    if (omoHolonTemplateElements.sharePublic) {
+        omoHolonTemplateElements.sharePublic.checked = Boolean(current.shareAsTemplate);
+    }
+    if (omoHolonTemplateElements.publicName) {
+        omoHolonTemplateElements.publicName.value = String(current.publicTemplateName || '');
+    }
+    if (isHolonDefinitionMode) {
+        omoHolonTemplateElements.selectionHint.textContent = 'Modification des proprietes locales de cette organisation.';
+        omoHolonTemplateElements.formTitle.textContent = current.name || 'Organisation';
+        omoHolonTemplateElements.formDescription.textContent = 'Ajustez ce holon et les proprietes qu il porte directement.';
+    } else {
+        omoHolonTemplateElements.selectionHint.textContent = isExisting
+            ? 'Modification du modele selectionne.'
+            : 'Nouveau modele non encore enregistre.';
+        omoHolonTemplateElements.formTitle.textContent = isExisting ? (current.name || 'Modele') : 'Nouveau modele';
+        omoHolonTemplateElements.formDescription.textContent = isExisting
+            ? 'Ajustez ce modele et ses proprietes heritables.'
+            : 'Choisissez son type de base puis ajoutez les proprietes a transmettre.';
+    }
     omoHolonTemplateRenderFormBadges(current);
     omoHolonTemplateRenderProperties(current.properties || []);
     omoHolonTemplateRenderMediaFields(current);
+    omoHolonTemplateSyncPublicShareFields();
 }
 
 function omoHolonTemplateSelect(templateId) {
@@ -1609,8 +1747,29 @@ function omoHolonTemplateSave(event) {
         properties: omoHolonTemplateReadProperties()
     };
 
+    if (omoHolonTemplateIsHolonDefinitionMode()) {
+        payload.shareAsTemplate = Boolean(omoHolonTemplateElements.sharePublic && omoHolonTemplateElements.sharePublic.checked);
+        payload.publicTemplateName = payload.shareAsTemplate && omoHolonTemplateElements.publicName
+            ? String(omoHolonTemplateElements.publicName.value || '').trim()
+            : '';
+
+        if (!payload.shareAsTemplate) {
+            payload.icon = '';
+            payload.banner = '';
+        }
+    }
+
     const saveUrl = '/omo/api/parameters/holon-templates/save.php'
-        + (Number(omoHolonTemplateState.data.contextHolonId || 0) > 0 ? '?cid=' + Number(omoHolonTemplateState.data.contextHolonId || 0) : '');
+        + (function () {
+            const query = [];
+            if (Number(omoHolonTemplateState.data.contextHolonId || 0) > 0) {
+                query.push('cid=' + Number(omoHolonTemplateState.data.contextHolonId || 0));
+            }
+            if (omoHolonTemplateIsHolonDefinitionMode() && Number(omoHolonTemplateState.data.targetHolonId || 0) > 0) {
+                query.push('hid=' + Number(omoHolonTemplateState.data.targetHolonId || 0));
+            }
+            return query.length ? ('?' + query.join('&')) : '';
+        })();
 
     const formData = new FormData();
     formData.append('payload', JSON.stringify(payload));
@@ -1635,7 +1794,7 @@ function omoHolonTemplateSave(event) {
         })
         .then(function (result) {
             if (!result.ok || !result.data || result.data.status !== 'ok') {
-                throw new Error(result.data && result.data.message ? result.data.message : "Impossible d'enregistrer le modele.");
+                throw new Error(result.data && result.data.message ? result.data.message : (omoHolonTemplateIsHolonDefinitionMode() ? "Impossible d'enregistrer l'organisation." : "Impossible d'enregistrer le modele."));
             }
 
             omoHolonTemplateState.data = result.data.data;
@@ -1668,7 +1827,7 @@ function omoHolonTemplateSave(event) {
             }
         })
         .catch(function (error) {
-            omoHolonTemplateShowStatus(error && error.message ? error.message : "Impossible d'enregistrer le modele.", 'error');
+            omoHolonTemplateShowStatus(error && error.message ? error.message : (omoHolonTemplateIsHolonDefinitionMode() ? "Impossible d'enregistrer l'organisation." : "Impossible d'enregistrer le modele."), 'error');
         });
 }
 
@@ -1681,6 +1840,12 @@ if (omoHolonTemplateElements.cancel) {
         if (typeof closeDrawer === 'function') {
             closeDrawer('drawer_holon_create');
         }
+    });
+}
+
+if (omoHolonTemplateElements.sharePublic) {
+    omoHolonTemplateElements.sharePublic.addEventListener('change', function () {
+        omoHolonTemplateSyncPublicShareFields();
     });
 }
 
@@ -1905,6 +2070,18 @@ if (Number(omoHolonTemplateState.selectedId || 0) > 0 && omoHolonTemplateFind(om
     align-items: start;
 }
 
+.omo-template-editor__layout--holon-definition {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.omo-template-editor__layout--holon-definition .omo-template-sidebar {
+    display: none;
+}
+
+.omo-template-field--hidden {
+    display: none !important;
+}
+
 .omo-template-editor__layout--compact {
     grid-template-columns: minmax(0, 1fr);
 }
@@ -2119,7 +2296,7 @@ if (Number(omoHolonTemplateState.selectedId || 0) > 0 && omoHolonTemplateFind(om
 
 .omo-template-editor__status {
     position: sticky;
-    top: 12px;
+    top: 0;
     z-index: 30;
     display: flex;
     align-items: flex-start;
