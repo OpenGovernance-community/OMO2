@@ -163,6 +163,18 @@ function omoRenderMixedList(array $ancestorItems, array $currentItems, array $en
     return $html;
 }
 
+function omoSplitInheritedTextBlocks($text)
+{
+    $text = trim((string)$text);
+    if ($text === '') {
+        return array();
+    }
+
+    return array_values(array_filter(array_map('trim', explode('|', $text)), function ($item) {
+        return $item !== '';
+    }));
+}
+
 function omoRenderSectionBody(array $entry)
 {
     $value = trim((string)($entry['value'] ?? ''));
@@ -174,32 +186,22 @@ function omoRenderSectionBody(array $entry)
         return '';
     }
 
-    $currentItems = $formatId === 2 ? omoParseListItems($value) : omoSplitTextItems($value);
-    $ancestorItems = $formatId === 2 ? omoParseListItems($ancestor) : omoSplitTextItems($ancestor);
-    if ($formatId === 2 || count($ancestorItems) > 1 || count($currentItems) > 1) {
+    if ($formatId === 2) {
+        $currentItems = omoParseListItems($value);
+        $ancestorItems = omoParseListItems($ancestor);
         return omoRenderMixedList($ancestorItems, $currentItems, $entry);
     }
 
+    $html = '';
+    foreach (omoSplitInheritedTextBlocks($ancestor) as $ancestorBlock) {
+        $html .= omoRenderTextBlock($ancestorBlock, 'section-text section-text--inherited');
+    }
+
     if ($value !== '') {
-        return omoRenderTextBlock($value, 'section-text section-text--local');
+        $html .= omoRenderTextBlock($value, 'section-text section-text--local');
     }
 
-    if ($ancestor !== '' && $value !== '') {
-        $html .= '<div class="section-inherited">';
-        $html .= '<div class="section-inherited__label">HÃ©ritÃ©</div>';
-        if ($formatId === 2) {
-            $html .= omoRenderFormattedList($ancestorItems, $entry, 'section-list section-list--inherited');
-        } else {
-            $html .= omoRenderTextBlock($ancestor, 'section-inherited__text');
-        }
-        $html .= '</div>';
-    }
-
-    if (false) {
-        return $html . omoRenderFormattedList($effectiveItems, $entry);
-    }
-
-    return omoRenderTextBlock($ancestor, 'section-text section-text--inherited');
+    return $html;
 }
 
 function omoBuildSections(Holon $holon)
@@ -295,7 +297,7 @@ $root = $organization->getStructuralRootHolon();
 if ($root === null) {
     http_response_code(404);
     ?>
-    <div class="circle-panel"><div class="error">Aucune structure racine n'a Ã©tÃ© trouvÃ©e pour cette organisation.</div></div>
+    <div class="circle-panel"><div class="error">Aucune structure racine n'a ÃƒÂ©tÃƒÂ© trouvÃƒÂ©e pour cette organisation.</div></div>
     <?php
     exit;
 }
@@ -358,7 +360,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
     <div class="breadcrumb">
         <?php foreach ($breadcrumb as $index => $crumb): ?>
             <?php if ($index > 0): ?>
-                <span class="separator">â€º</span>
+                <span class="separator">Ã¢â‚¬Âº</span>
             <?php endif; ?>
 
             <?php $isActive = ((int)$crumb->getId() === (int)$currentHolon->getId()); ?>
@@ -475,7 +477,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
     <?php if (count($sections) === 0): ?>
         <div class="circle-section">
             <div class="section-title">Informations</div>
-            <p class="section-text">Aucun contenu n'est encore renseignÃ© pour ce holon.</p>
+            <p class="section-text">Aucun contenu n'est encore renseignÃƒÂ© pour ce holon.</p>
         </div>
     <?php endif; ?>
 
@@ -483,7 +485,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
         <div class="circle-section">
             <div class="section-header">
                 <span class="section-title"><?= omoApiEscape($section['title']) ?></span>
-                <span class="section-toggle">â–¾</span>
+                <span class="section-toggle">Ã¢â€“Â¾</span>
             </div>
             <div class="section-content">
                 <?= omoRenderSectionBody($section['entry']) ?>
@@ -1141,7 +1143,7 @@ $(document)
     const button = $(this);
     const hid = Number(button.data('hid'));
     const descendantCount = Number(button.data('descendant-count') || 0);
-    const holonName = String(button.data('name') || 'cet Ã©lÃ©ment');
+    const holonName = String(button.data('name') || 'cet ÃƒÂ©lÃƒÂ©ment');
     const typeLabel = String(button.data('type-label') || 'holon').toLowerCase();
     const parentId = Number(button.data('parent-id') || 0);
     const parentIsRoot = String(button.data('parent-is-root')) === '1';
@@ -1152,7 +1154,7 @@ $(document)
 
     let confirmationMessage = 'Supprimer ' + typeLabel + ' "' + holonName + '" ?';
     if (descendantCount > 0) {
-        confirmationMessage += '\n\nAttention : ' + descendantCount + ' Ã©lÃ©ment' + (descendantCount > 1 ? 's seront aussi supprimÃ©s.' : ' sera aussi supprimÃ©.');
+        confirmationMessage += '\n\nAttention : ' + descendantCount + ' ÃƒÂ©lÃƒÂ©ment' + (descendantCount > 1 ? 's seront aussi supprimÃƒÂ©s.' : ' sera aussi supprimÃƒÂ©.');
     }
 
     if (!window.confirm(confirmationMessage)) {
