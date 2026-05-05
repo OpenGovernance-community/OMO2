@@ -3,6 +3,23 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
 
+const OMO2_EXPORT_FORMAT = 'openmyorganization-structure-export';
+const OMO2_EXPORT_VERSION = 4;
+const OMO2_ROOT_HOLON_ID = 1;
+const OMO2_ROLE_TEMPLATE_ID = 1001;
+const OMO2_CIRCLE_TEMPLATE_ID = 1002;
+const OMO2_FIRST_LINK_TEMPLATE_ID = 1003;
+const OMO2_SECOND_LINK_TEMPLATE_ID = 1004;
+const OMO2_FACILITATION_TEMPLATE_ID = 1005;
+const OMO2_MEMORY_TEMPLATE_ID = 1006;
+const OMO2_REAL_HOLON_ID_OFFSET = 100000;
+const OMO2_GROUP_HOLON_ID_OFFSET = 200000;
+const OMO2_DEFAULT_ORGANIZATION_COLOR = '#3da8a9';
+const OMO2_PROPERTY_RAISON_ETRE = 101;
+const OMO2_PROPERTY_ATTENDUS = 102;
+const OMO2_PROPERTY_DOMAINES = 103;
+const OMO2_PROPERTY_STRATEGIE = 104;
+
 function h(?string $value): string
 {
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
@@ -85,21 +102,29 @@ function normalizeLabel(string $value): string
 function structuralTemplateDefinitions(): array
 {
     return [
-        'facilitation' => [
-            'label' => 'Facilitation',
-            'aliases' => ['facilitation', 'role facilitation'],
-        ],
-        'memory' => [
-            'label' => 'Memoire / secretaire',
-            'aliases' => ['memoire', 'role memoire', 'secretaire', 'role secretaire'],
-        ],
         'first_link' => [
-            'label' => 'Premier lien / pilotage',
-            'aliases' => ['lien pilotage', 'pilotage', 'premier lien', '1er lien'],
+            'id' => OMO2_FIRST_LINK_TEMPLATE_ID,
+            'label' => 'Premier lien',
+            'aliases' => ['premier lien', '1er lien', 'lien pilotage', 'pilotage'],
+            'link' => true,
         ],
         'second_link' => [
-            'label' => 'Second lien / representation',
-            'aliases' => ['representation', 'representant', 'second lien', '2nd lien', 'deuxieme lien'],
+            'id' => OMO2_SECOND_LINK_TEMPLATE_ID,
+            'label' => 'Second lien',
+            'aliases' => ['second lien', '2nd lien', 'deuxieme lien', 'lien representation', 'representation', 'representant'],
+            'link' => true,
+        ],
+        'facilitation' => [
+            'id' => OMO2_FACILITATION_TEMPLATE_ID,
+            'label' => 'Facilitation',
+            'aliases' => ['facilitation', 'role facilitation'],
+            'link' => false,
+        ],
+        'memory' => [
+            'id' => OMO2_MEMORY_TEMPLATE_ID,
+            'label' => 'Memoire',
+            'aliases' => ['memoire', 'role memoire', 'secretaire', 'secretaire', 'role secretaire'],
+            'link' => false,
         ],
     ];
 }
@@ -146,31 +171,10 @@ function simplifyOrganisation(array $organisation): array
         'orga_id' => (int) $organisation['orga_id'],
         'name' => cleanNullable($organisation['orga_name']),
         'short_name' => cleanNullable($organisation['orga_shortname']),
-        'description' => cleanNullable($organisation['orga_description']),
-        'purpose' => cleanNullable($organisation['orga_purpose']),
-        'purpose_text' => cleanNullable($organisation['orga_purposetxt']),
-        'website' => cleanNullable($organisation['orga_website']),
-        'mission' => cleanNullable($organisation['orga_mission']),
-        'mission_text' => cleanNullable($organisation['orga_missiontxt']),
-        'vision' => cleanNullable($organisation['orga_vision']),
-        'vision_text' => cleanNullable($organisation['orga_visiontxt']),
-        'public' => (bool) $organisation['orga_public'],
-        'active' => (bool) $organisation['orga_active'],
-        'type' => toNullableInt($organisation['orga_type']),
-        'holarchy_option' => (bool) $organisation['orga_opt_holarchy'],
-        'created_at' => cleanNullable($organisation['orga_datecreation']),
-    ];
-}
-
-function simplifyIdentity(array $row): array
-{
-    return [
-        'user_id' => (int) $row['user_id'],
-        'first_name' => cleanNullable($row['user_firstName'] ?? null),
-        'last_name' => cleanNullable($row['user_lastName'] ?? null),
-        'email' => cleanNullable($row['user_email'] ?? null),
-        'username' => cleanNullable($row['user_userName'] ?? null),
-        'lang' => cleanNullable($row['user_lang'] ?? null),
+        'description' => cleanNullable($organisation['orga_description'] ?? null),
+        'purpose' => cleanNullable($organisation['orga_purpose'] ?? null),
+        'mission' => cleanNullable($organisation['orga_mission'] ?? null),
+        'vision' => cleanNullable($organisation['orga_vision'] ?? null),
     ];
 }
 
@@ -193,44 +197,24 @@ function simplifyDomain(array $row): array
     ];
 }
 
-function simplifyRoleMetadata(array $role): array
+function collectReferencedRoleIds(array $role): array
 {
-    return [
-        'group' => cleanNullable($role['role_group']),
-        'active' => (bool) $role['role_active'],
-        'project_id' => toNullableInt($role['proj_id']),
-        'created_by_user_id' => toNullableInt($role['user_id']),
-    ];
-}
+    $roleIds = [];
 
-function buildHolonChildSummary(array $holon): array
-{
-    return [
-        'id' => (int) $holon['source']['id'],
-        'name' => $holon['name'],
-        'kind' => $holon['kind'],
-        'role_type' => $holon['role_type'],
-    ];
-}
-
-function addChildRelation(array &$childIdsByParentId, ?int $parentId, int $childId): void
-{
-    if ($parentId === null || $parentId <= 0 || $parentId === $childId) {
-        return;
+    foreach (['role_id_master', 'role_id_source', 'role_id_target'] as $field) {
+        if (($role[$field] ?? null) !== null) {
+            $roleIds[] = (int) $role[$field];
+        }
     }
 
-    if (!isset($childIdsByParentId[$parentId])) {
-        $childIdsByParentId[$parentId] = [];
-    }
-
-    $childIdsByParentId[$parentId][$childId] = true;
+    return array_values(array_unique(array_filter($roleIds)));
 }
 
 function buildRoleContent(array $role, array $accountabilities, array $domains): array
 {
     return [
-        'raison_etre' => cleanNullable($role['role_purpose']),
-        'strategy' => cleanNullable($role['role_strategy']),
+        'raison_etre' => cleanNullable($role['role_purpose'] ?? null),
+        'strategy' => cleanNullable($role['role_strategy'] ?? null),
         'redevabilities' => array_map('simplifyAccountability', $accountabilities),
         'domains' => array_map('simplifyDomain', $domains),
     ];
@@ -266,7 +250,7 @@ function buildStructuralTemplates(array $rolesById, array $roleContentsById): ar
 
     $templates = [];
     foreach (structuralTemplateDefinitions() as $templateKey => $definition) {
-        if (! isset($matches[$templateKey])) {
+        if (!isset($matches[$templateKey])) {
             continue;
         }
 
@@ -293,23 +277,13 @@ function buildStructuralTemplates(array $rolesById, array $roleContentsById): ar
         $bestRole = $rolesById[$bestRoleId];
         $templates[$templateKey] = [
             'template_key' => $templateKey,
+            'template_id' => (int) $definition['id'],
             'label' => $definition['label'],
+            'link' => (bool) $definition['link'],
             'source_role' => [
                 'role_id' => (int) $bestRole['role_id'],
                 'name' => cleanNullable($bestRole['role_name']),
-                'orga_id' => toNullableInt($bestRole['orga_id']),
             ],
-            'matching_role_ids' => array_values(array_unique(array_map('intval', $matches[$templateKey]))),
-            'matching_role_names' => array_values(
-                array_unique(
-                    array_filter(
-                        array_map(
-                            static fn(int $roleId): ?string => cleanNullable($rolesById[$roleId]['role_name'] ?? null),
-                            $matches[$templateKey]
-                        )
-                    )
-                )
-            ),
             'content' => $roleContentsById[$bestRoleId],
         ];
     }
@@ -317,115 +291,367 @@ function buildStructuralTemplates(array $rolesById, array $roleContentsById): ar
     return $templates;
 }
 
-function buildFieldSource(string $type, array $data): array
-{
-    return ['type' => $type] + $data;
-}
-
-function collectReferencedRoleIds(array $role): array
-{
-    $roleIds = [];
-
-    foreach (['role_id_master', 'role_id_source', 'role_id_target'] as $field) {
-        if ($role[$field] !== null) {
-            $roleIds[] = (int) $role[$field];
-        }
-    }
-
-    return array_values(array_unique(array_filter($roleIds)));
-}
-
 function resolveRoleContent(
     array $role,
     array $localContent,
-    array $rolesById,
     array $roleContentsById,
     array $structuralTemplates
 ): array {
-    $roleId = (int) $role['role_id'];
     $candidateSources = [];
 
     foreach (collectReferencedRoleIds($role) as $referenceRoleId) {
-        if (! isset($roleContentsById[$referenceRoleId])) {
+        if (!isset($roleContentsById[$referenceRoleId])) {
             continue;
         }
 
-        $candidateSources[] = [
-            'meta' => buildFieldSource(
-                'role',
-                [
-                    'role_id' => $referenceRoleId,
-                    'name' => cleanNullable($rolesById[$referenceRoleId]['role_name'] ?? null),
-                ]
-            ),
-            'content' => $roleContentsById[$referenceRoleId],
-        ];
+        $candidateSources[] = $roleContentsById[$referenceRoleId];
     }
 
     $templateKey = inferStructuralTemplateKey($role['role_name'] ?? null);
     if ($templateKey !== null && isset($structuralTemplates[$templateKey])) {
-        $candidateSources[] = [
-            'meta' => buildFieldSource(
-                'template',
-                [
-                    'template_key' => $templateKey,
-                    'label' => $structuralTemplates[$templateKey]['label'],
-                    'source_role_id' => $structuralTemplates[$templateKey]['source_role']['role_id'],
-                ]
-            ),
-            'content' => $structuralTemplates[$templateKey]['content'],
-        ];
+        $candidateSources[] = $structuralTemplates[$templateKey]['content'];
     }
 
     $resolvedContent = $localContent;
-    $fieldSources = [
-        'raison_etre' => $localContent['raison_etre'] !== null
-            ? buildFieldSource('local', ['role_id' => $roleId])
-            : null,
-        'strategy' => $localContent['strategy'] !== null
-            ? buildFieldSource('local', ['role_id' => $roleId])
-            : null,
-        'redevabilities' => $localContent['redevabilities'] !== []
-            ? buildFieldSource('local', ['role_id' => $roleId])
-            : null,
-        'domains' => $localContent['domains'] !== []
-            ? buildFieldSource('local', ['role_id' => $roleId])
-            : null,
-    ];
-
     foreach ($candidateSources as $candidateSource) {
-        $candidateContent = $candidateSource['content'];
-
-        if ($resolvedContent['raison_etre'] === null && $candidateContent['raison_etre'] !== null) {
-            $resolvedContent['raison_etre'] = $candidateContent['raison_etre'];
-            $fieldSources['raison_etre'] = $candidateSource['meta'];
+        if ($resolvedContent['raison_etre'] === null && $candidateSource['raison_etre'] !== null) {
+            $resolvedContent['raison_etre'] = $candidateSource['raison_etre'];
         }
 
-        if ($resolvedContent['strategy'] === null && $candidateContent['strategy'] !== null) {
-            $resolvedContent['strategy'] = $candidateContent['strategy'];
-            $fieldSources['strategy'] = $candidateSource['meta'];
+        if ($resolvedContent['strategy'] === null && $candidateSource['strategy'] !== null) {
+            $resolvedContent['strategy'] = $candidateSource['strategy'];
         }
 
-        if ($resolvedContent['redevabilities'] === [] && $candidateContent['redevabilities'] !== []) {
-            $resolvedContent['redevabilities'] = $candidateContent['redevabilities'];
-            $fieldSources['redevabilities'] = $candidateSource['meta'];
+        if ($resolvedContent['redevabilities'] === [] && $candidateSource['redevabilities'] !== []) {
+            $resolvedContent['redevabilities'] = $candidateSource['redevabilities'];
         }
 
-        if ($resolvedContent['domains'] === [] && $candidateContent['domains'] !== []) {
-            $resolvedContent['domains'] = $candidateContent['domains'];
-            $fieldSources['domains'] = $candidateSource['meta'];
+        if ($resolvedContent['domains'] === [] && $candidateSource['domains'] !== []) {
+            $resolvedContent['domains'] = $candidateSource['domains'];
         }
     }
 
     return [
         'structural_template_key' => $templateKey,
-        'candidate_sources' => array_map(static fn(array $source): array => $source['meta'], $candidateSources),
         'content' => $resolvedContent,
-        'field_sources' => $fieldSources,
     ];
 }
 
-function buildExport(PDO $pdo, int $organisationId, string $host, string $database): array
+function buildOmo2PropertyDefinitions(): array
+{
+    return [
+        [
+            'id' => OMO2_PROPERTY_RAISON_ETRE,
+            'name' => "Raison d'etre",
+            'shortname' => 'raison_etre',
+            'formatId' => 1,
+            'position' => 1,
+        ],
+        [
+            'id' => OMO2_PROPERTY_ATTENDUS,
+            'name' => 'Attendus',
+            'shortname' => 'attendus',
+            'formatId' => 2,
+            'listItemType' => 'text',
+            'position' => 2,
+        ],
+        [
+            'id' => OMO2_PROPERTY_DOMAINES,
+            'name' => "Domaines d'autorite",
+            'shortname' => 'domaines_autorite',
+            'formatId' => 2,
+            'listItemType' => 'text',
+            'position' => 3,
+        ],
+        [
+            'id' => OMO2_PROPERTY_STRATEGIE,
+            'name' => 'Strategie',
+            'shortname' => 'strategie',
+            'formatId' => 1,
+            'position' => 4,
+        ],
+    ];
+}
+
+function buildListValue(array $items): ?string
+{
+    $normalized = [];
+
+    foreach ($items as $item) {
+        $item = trim((string) $item);
+        if ($item === '') {
+            continue;
+        }
+
+        $normalized[] = $item;
+    }
+
+    if ($normalized === []) {
+        return null;
+    }
+
+    $json = json_encode(array_values($normalized), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    return is_string($json) ? $json : null;
+}
+
+function stringifyDomain(array $domain): ?string
+{
+    $description = cleanNullable($domain['description'] ?? null);
+    $policies = cleanNullable($domain['policies'] ?? null);
+
+    if ($description === null && $policies === null) {
+        return null;
+    }
+
+    if ($description !== null && $policies !== null) {
+        return $description . "\nPolitiques: " . $policies;
+    }
+
+    return $description ?? $policies;
+}
+
+function buildContentValueMap(array $content): array
+{
+    $attendus = [];
+    foreach (($content['redevabilities'] ?? []) as $accountability) {
+        $description = cleanNullable($accountability['description'] ?? null);
+        if ($description !== null) {
+            $attendus[] = $description;
+        }
+    }
+
+    $domaines = [];
+    foreach (($content['domains'] ?? []) as $domain) {
+        $domainValue = stringifyDomain($domain);
+        if ($domainValue !== null) {
+            $domaines[] = $domainValue;
+        }
+    }
+
+    return [
+        OMO2_PROPERTY_RAISON_ETRE => cleanNullable($content['raison_etre'] ?? null),
+        OMO2_PROPERTY_ATTENDUS => buildListValue($attendus),
+        OMO2_PROPERTY_DOMAINES => buildListValue($domaines),
+        OMO2_PROPERTY_STRATEGIE => cleanNullable($content['strategy'] ?? null),
+    ];
+}
+
+function buildTemplateSchemaRows(): array
+{
+    return [
+        ['propertyId' => OMO2_PROPERTY_RAISON_ETRE, 'position' => 1],
+        ['propertyId' => OMO2_PROPERTY_ATTENDUS, 'position' => 2],
+        ['propertyId' => OMO2_PROPERTY_DOMAINES, 'position' => 3],
+        ['propertyId' => OMO2_PROPERTY_STRATEGIE, 'position' => 4],
+    ];
+}
+
+function buildContentPropertyRows(array $content, ?array $baselineContent = null): array
+{
+    $values = buildContentValueMap($content);
+    $baselineValues = $baselineContent !== null ? buildContentValueMap($baselineContent) : [];
+    $rows = [];
+
+    foreach ([
+        OMO2_PROPERTY_RAISON_ETRE => 1,
+        OMO2_PROPERTY_ATTENDUS => 2,
+        OMO2_PROPERTY_DOMAINES => 3,
+        OMO2_PROPERTY_STRATEGIE => 4,
+    ] as $propertyId => $position) {
+        $value = $values[$propertyId] ?? null;
+        $baselineValue = $baselineValues[$propertyId] ?? null;
+
+        if ($value === null || $value === '' || $value === $baselineValue) {
+            continue;
+        }
+
+        $rows[] = [
+            'propertyId' => $propertyId,
+            'position' => $position,
+            'value' => $value,
+        ];
+    }
+
+    return $rows;
+}
+
+function roleIsCircle(array $roleTypesById, array $role): bool
+{
+    $roleTypeId = (int) ($role['roty_id'] ?? 0);
+    $roleType = $roleTypesById[$roleTypeId] ?? null;
+
+    return $roleType !== null && (int) ($roleType['roty_canBeCircle'] ?? 0) === 1;
+}
+
+function resolveParentRoleId(array $role, array $rolesById, array $roleTypesById): ?int
+{
+    $parentRoleId = toNullableParentRoleId($role['role_id_superCircle'] ?? null);
+    if ($parentRoleId !== null && isset($rolesById[$parentRoleId])) {
+        return $parentRoleId;
+    }
+
+    $sourceRoleId = toNullableInt($role['role_id_source'] ?? null);
+    if ($sourceRoleId !== null && isset($rolesById[$sourceRoleId]) && roleIsCircle($roleTypesById, $rolesById[$sourceRoleId])) {
+        return $sourceRoleId;
+    }
+
+    return null;
+}
+
+function buildRecordSortName(array $record): string
+{
+    return normalizeLabel((string) ($record['name'] ?? ''));
+}
+
+function buildTemplateRecord(
+    int $id,
+    string $name,
+    int $typeId,
+    ?int $templateId = null,
+    array $properties = [],
+    array $overrides = []
+): array {
+    $record = [
+        'id' => $id,
+        'typeId' => $typeId,
+        'name' => $name,
+        'templateName' => $name,
+        'parentId' => OMO2_ROOT_HOLON_ID,
+        'visible' => false,
+        '_sortWeight' => 5,
+        '_sortName' => buildRecordSortName(['name' => $name]),
+    ];
+
+    if ($templateId !== null) {
+        $record['templateId'] = $templateId;
+    }
+
+    if ($properties !== []) {
+        $record['properties'] = $properties;
+    }
+
+    foreach ($overrides as $key => $value) {
+        $record[$key] = $value;
+    }
+
+    return $record;
+}
+
+function buildGroupRecord(int $id, int $parentId, string $name): array
+{
+    return [
+        'id' => $id,
+        'typeId' => 3,
+        'name' => $name,
+        'parentId' => $parentId,
+        'visible' => true,
+        '_sortWeight' => 40,
+        '_sortName' => buildRecordSortName(['name' => $name]),
+    ];
+}
+
+function buildRealHolonRecord(
+    int $exportId,
+    int $parentId,
+    int $typeId,
+    string $name,
+    ?int $templateId,
+    array $properties,
+    array $source,
+    int $sortWeight,
+    array $overrides = []
+): array {
+    $record = [
+        'id' => $exportId,
+        'typeId' => $typeId,
+        'name' => $name,
+        'parentId' => $parentId,
+        'visible' => true,
+        'sourceRoleId' => (int) $source['role_id'],
+        '_sortWeight' => $sortWeight,
+        '_sortName' => buildRecordSortName(['name' => $name]),
+    ];
+
+    if ($templateId !== null) {
+        $record['templateId'] = $templateId;
+    }
+
+    if ($properties !== []) {
+        $record['properties'] = $properties;
+    }
+
+    foreach ($overrides as $key => $value) {
+        $record[$key] = $value;
+    }
+
+    return $record;
+}
+
+function buildHolonTree(array $recordsById): array
+{
+    $childrenByParentId = [];
+
+    foreach ($recordsById as $recordId => $record) {
+        $parentId = (int) ($record['parentId'] ?? 0);
+        if ($parentId <= 0 || !isset($recordsById[$parentId])) {
+            continue;
+        }
+
+        $childrenByParentId[$parentId][] = (int) $recordId;
+    }
+
+    foreach ($childrenByParentId as $parentId => $childIds) {
+        usort($childIds, static function (int $leftId, int $rightId) use ($recordsById): int {
+            $left = $recordsById[$leftId];
+            $right = $recordsById[$rightId];
+            $leftWeight = (int) ($left['_sortWeight'] ?? 99);
+            $rightWeight = (int) ($right['_sortWeight'] ?? 99);
+            if ($leftWeight === $rightWeight) {
+                return strcmp((string) ($left['_sortName'] ?? ''), (string) ($right['_sortName'] ?? ''));
+            }
+
+            return $leftWeight <=> $rightWeight;
+        });
+
+        $childrenByParentId[$parentId] = $childIds;
+    }
+
+    $buildNode = static function (int $recordId) use (&$buildNode, $recordsById, $childrenByParentId): array {
+        $node = $recordsById[$recordId];
+        unset($node['_sortWeight'], $node['_sortName'], $node['parentId']);
+
+        if (isset($childrenByParentId[$recordId])) {
+            $children = [];
+            foreach ($childrenByParentId[$recordId] as $childId) {
+                $children[] = $buildNode($childId);
+            }
+
+            if ($children !== []) {
+                $node['children'] = $children;
+            }
+        }
+
+        return $node;
+    };
+
+    return [$buildNode(OMO2_ROOT_HOLON_ID)];
+}
+
+function countVisibleRecords(array $recordsById): int
+{
+    $count = 0;
+
+    foreach ($recordsById as $record) {
+        if (!array_key_exists('visible', $record) || (bool) $record['visible']) {
+            $count += 1;
+        }
+    }
+
+    return $count;
+}
+
+function buildCompatibleExport(PDO $pdo, int $organisationId, string $host, string $database): array
 {
     $organisationStatement = $pdo->prepare(
         'SELECT *
@@ -435,7 +661,7 @@ function buildExport(PDO $pdo, int $organisationId, string $host, string $databa
     $organisationStatement->execute([$organisationId]);
     $organisation = $organisationStatement->fetch();
 
-    if (! $organisation) {
+    if (!$organisation) {
         throw new RuntimeException("Aucune organisation trouvee pour l'identifiant {$organisationId}.");
     }
 
@@ -446,24 +672,8 @@ function buildExport(PDO $pdo, int $organisationId, string $host, string $databa
     )->fetchAll();
     $roleTypesById = [];
     foreach ($roleTypes as $roleType) {
-        $roleTypesById[$roleType['roty_id']] = $roleType;
+        $roleTypesById[(int) $roleType['roty_id']] = $roleType;
     }
-
-    $organisationMembersStatement = $pdo->prepare(
-        'SELECT
-            om.user_id,
-            u.user_firstName,
-            u.user_lastName,
-            u.user_email,
-            u.user_userName,
-            u.user_lang
-         FROM t_organisationmember om
-         LEFT JOIN t_user u ON u.user_id = om.user_id
-         WHERE om.orga_id = ?
-         ORDER BY om.user_id'
-    );
-    $organisationMembersStatement->execute([$organisationId]);
-    $organisationMembers = array_map('simplifyIdentity', $organisationMembersStatement->fetchAll());
 
     $rolesStatement = $pdo->prepare(
         'SELECT *
@@ -473,6 +683,10 @@ function buildExport(PDO $pdo, int $organisationId, string $host, string $databa
     );
     $rolesStatement->execute([$organisationId]);
     $currentRoles = $rolesStatement->fetchAll();
+
+    if ($currentRoles === []) {
+        throw new RuntimeException("Cette organisation OMO 1 ne contient aucun role exportable.");
+    }
 
     $currentRoleIds = array_values(array_unique(array_map(static fn(array $row): int => (int) $row['role_id'], $currentRoles)));
     $referencedRoleIds = [];
@@ -494,8 +708,8 @@ function buildExport(PDO $pdo, int $organisationId, string $host, string $databa
     foreach ($allRoles as $role) {
         $rolesById[(int) $role['role_id']] = $role;
     }
-    $allRoleIds = array_keys($rolesById);
 
+    $allRoleIds = array_keys($rolesById);
     $accountabilitiesByRole = groupRowsByKey(
         fetchRowsByIds(
             $pdo,
@@ -507,7 +721,6 @@ function buildExport(PDO $pdo, int $organisationId, string $host, string $databa
         ),
         'role_id'
     );
-
     $domainsByRole = groupRowsByKey(
         fetchRowsByIds(
             $pdo,
@@ -516,26 +729,6 @@ function buildExport(PDO $pdo, int $organisationId, string $host, string $databa
              WHERE role_id IN (:ids)
              ORDER BY role_id, scop_id',
             $allRoleIds
-        ),
-        'role_id'
-    );
-
-    $circleMembersByRole = groupRowsByKey(
-        fetchRowsByIds(
-            $pdo,
-            'SELECT
-                cm.role_id,
-                cm.user_id,
-                u.user_firstName,
-                u.user_lastName,
-                u.user_email,
-                u.user_userName,
-                u.user_lang
-             FROM t_circlemember cm
-             LEFT JOIN t_user u ON u.user_id = cm.user_id
-             WHERE cm.role_id IN (:ids)
-             ORDER BY cm.role_id, cm.user_id',
-            $currentRoleIds
         ),
         'role_id'
     );
@@ -550,115 +743,164 @@ function buildExport(PDO $pdo, int $organisationId, string $host, string $databa
     }
 
     $structuralTemplates = buildStructuralTemplates($rolesById, $roleContentsById);
+    $organisationData = simplifyOrganisation($organisation);
+    $organizationName = $organisationData['name'] ?? ('Organisation ' . $organisationId);
+    $organizationShortName = $organisationData['short_name'] ?? $organizationName;
 
-    $holonsById = [];
+    $recordsById = [];
+    $recordsById[OMO2_ROOT_HOLON_ID] = [
+        'id' => OMO2_ROOT_HOLON_ID,
+        'typeId' => 4,
+        'name' => $organizationName,
+        'color' => OMO2_DEFAULT_ORGANIZATION_COLOR,
+        '_sortWeight' => 0,
+        '_sortName' => buildRecordSortName(['name' => $organizationName]),
+    ];
+
+    $recordsById[OMO2_ROLE_TEMPLATE_ID] = buildTemplateRecord(
+        OMO2_ROLE_TEMPLATE_ID,
+        'Template role',
+        1,
+        null,
+        buildTemplateSchemaRows()
+    );
+    $recordsById[OMO2_CIRCLE_TEMPLATE_ID] = buildTemplateRecord(
+        OMO2_CIRCLE_TEMPLATE_ID,
+        'Template cercle',
+        2,
+        null,
+        buildTemplateSchemaRows()
+    );
+
+    foreach (structuralTemplateDefinitions() as $templateKey => $templateDefinition) {
+        $templateContent = $structuralTemplates[$templateKey]['content'] ?? [
+            'raison_etre' => null,
+            'strategy' => null,
+            'redevabilities' => [],
+            'domains' => [],
+        ];
+
+        $recordsById[(int) $templateDefinition['id']] = buildTemplateRecord(
+            (int) $templateDefinition['id'],
+            $templateDefinition['label'],
+            1,
+            OMO2_ROLE_TEMPLATE_ID,
+            buildContentPropertyRows($templateContent),
+            [
+                'mandatory' => true,
+                'unique' => true,
+                'link' => (bool) $templateDefinition['link'],
+            ]
+        );
+    }
+
+    $exportIdByRoleId = [];
+    foreach ($currentRoles as $role) {
+        $exportIdByRoleId[(int) $role['role_id']] = OMO2_REAL_HOLON_ID_OFFSET + (int) $role['role_id'];
+    }
+
+    $groupRecordIdByKey = [];
+    $nextGroupId = OMO2_GROUP_HOLON_ID_OFFSET;
+
     foreach ($currentRoles as $role) {
         $roleId = (int) $role['role_id'];
-        $roleType = $roleTypesById[$role['roty_id']] ?? null;
-        $localContent = $roleContentsById[$roleId];
+        $exportId = $exportIdByRoleId[$roleId];
+        $isCircle = roleIsCircle($roleTypesById, $role);
+        $typeId = $isCircle ? 2 : 1;
+        $parentRoleId = resolveParentRoleId($role, $rolesById, $roleTypesById);
+        $containerParentId = $parentRoleId !== null && isset($exportIdByRoleId[$parentRoleId])
+            ? $exportIdByRoleId[$parentRoleId]
+            : OMO2_ROOT_HOLON_ID;
 
-        $holonsById[$roleId] = [
-            'source' => [
-                'table' => 't_role',
-                'id' => $roleId,
-            ],
-            'name' => cleanNullable($role['role_name']),
-            'kind' => ($roleType && (int) $roleType['roty_canBeCircle'] === 1) ? 'circle' : 'role',
-            'role_type' => simplifyRoleType($roleType),
-            'data' => simplifyRoleMetadata($role),
-            'hierarchy' => [
-                'parent_role_id' => toNullableParentRoleId($role['role_id_superCircle']),
-                'source_circle_id' => toNullableInt($role['circ_id_source']),
-                'source_role_id' => toNullableInt($role['role_id_source']),
-                'target_role_id' => toNullableInt($role['role_id_target']),
-                'master_role_id' => toNullableInt($role['role_id_master']),
-            ],
-            'content' => $localContent,
-            'resolved_content' => resolveRoleContent(
-                $role,
-                $localContent,
-                $rolesById,
-                $roleContentsById,
-                $structuralTemplates
-            ),
-            'members' => array_map('simplifyIdentity', $circleMembersByRole[$roleId] ?? []),
-            'children' => [],
-        ];
-    }
-
-    $childIdsByParentId = [];
-    foreach ($holonsById as $holonId => $holon) {
-        addChildRelation($childIdsByParentId, $holon['hierarchy']['parent_role_id'], $holonId);
-
-        // Dans OMO 1, les roles d'un cercle sont souvent relies via role_id_source
-        // plutot que via role_id_superCircle.
-        addChildRelation($childIdsByParentId, $holon['hierarchy']['source_role_id'], $holonId);
-    }
-
-    foreach ($holonsById as $holonId => &$holon) {
-        $childHolons = [];
-        foreach (array_keys($childIdsByParentId[$holonId] ?? []) as $childId) {
-            if (!isset($holonsById[$childId])) {
-                continue;
+        $groupLabel = !$isCircle ? cleanNullable($role['role_group'] ?? null) : null;
+        $parentId = $containerParentId;
+        if ($groupLabel !== null) {
+            $groupKey = $containerParentId . '|' . normalizeLabel($groupLabel);
+            if (!isset($groupRecordIdByKey[$groupKey])) {
+                $groupRecordIdByKey[$groupKey] = $nextGroupId;
+                $recordsById[$nextGroupId] = buildGroupRecord($nextGroupId, $containerParentId, $groupLabel);
+                $nextGroupId += 1;
             }
 
-            $childHolons[] = buildHolonChildSummary($holonsById[$childId]);
+            $parentId = $groupRecordIdByKey[$groupKey];
         }
 
-        usort(
-            $childHolons,
-            static function (array $left, array $right): int {
-                return strcmp((string) ($left['name'] ?? ''), (string) ($right['name'] ?? ''));
-            }
+        $resolved = resolveRoleContent(
+            $role,
+            $roleContentsById[$roleId],
+            $roleContentsById,
+            $structuralTemplates
         );
+        $resolvedContent = $resolved['content'];
+        $templateKey = !$isCircle ? ($resolved['structural_template_key'] ?? null) : null;
+        $templateId = $isCircle ? OMO2_CIRCLE_TEMPLATE_ID : OMO2_ROLE_TEMPLATE_ID;
+        $templateBaselineContent = null;
 
-        $holon['children'] = $childHolons;
-        $holon['child_holon_ids'] = array_map(
-            static fn(array $childHolon): int => (int) $childHolon['id'],
-            $childHolons
+        if ($templateKey !== null && isset($structuralTemplates[$templateKey])) {
+            $templateId = (int) $structuralTemplates[$templateKey]['template_id'];
+            $templateBaselineContent = $structuralTemplates[$templateKey]['content'];
+        }
+
+        $properties = buildContentPropertyRows($resolvedContent, $templateBaselineContent);
+        $sortWeight = $isCircle
+            ? 10
+            : ($templateKey !== null ? 20 : 30);
+        $overrides = [];
+        if ($templateKey !== null && !empty($structuralTemplates[$templateKey]['link'])) {
+            $overrides['link'] = true;
+        }
+
+        $recordsById[$exportId] = buildRealHolonRecord(
+            $exportId,
+            $parentId,
+            $typeId,
+            (string) ($role['role_name'] ?: ('Role ' . $roleId)),
+            $templateId,
+            $properties,
+            $role,
+            $sortWeight,
+            $overrides
         );
     }
-    unset($holon);
+
+    $holonTree = buildHolonTree($recordsById);
 
     return [
-        'meta' => [
-            'schema' => 'omo1-export-v3',
-            'exported_at' => gmdate('c'),
-            'source' => [
-                'type' => 'mysql',
-                'host' => $host,
-                'database' => $database,
-                'organisation_id' => $organisationId,
-            ],
-            'notes' => [
-                'Export OMO 1 simplifie pour migration via JSON intermediaire.',
-                'Les parametres d organisation et de cercle ont ete retires.',
-                'Les raisons d etre, redevabilites et domaines sont conserves en detail.',
-                'Les enfants combinent les liens structurels role_id_superCircle et les liens de composition role_id_source.',
-                'Des templates structurels sont inferes quand possible, avec tentative de resolution par heritage.',
-            ],
+        'format' => OMO2_EXPORT_FORMAT,
+        'version' => OMO2_EXPORT_VERSION,
+        'exportedAt' => gmdate('c'),
+        'scope' => [
+            'organizationId' => $organisationId,
+            'organizationName' => $organizationName,
+            'organizationRootHolonId' => OMO2_ROOT_HOLON_ID,
+            'navigationRootHolonId' => OMO2_ROOT_HOLON_ID,
+            'exportRootHolonId' => OMO2_ROOT_HOLON_ID,
+            'exportRootHolonName' => $organizationName,
+            'holonCount' => countVisibleRecords($recordsById),
         ],
-        'reference' => [
-            'role_types' => array_map('simplifyRoleType', $roleTypes),
+        'organization' => [
+            'sourceId' => $organisationId,
+            'name' => $organizationName,
+            'shortname' => $organizationShortName,
+            'color' => OMO2_DEFAULT_ORGANIZATION_COLOR,
         ],
-        'organisation' => [
-            'source' => [
-                'table' => 't_organisation',
-                'id' => $organisationId,
-            ],
-            'data' => simplifyOrganisation($organisation),
-            'members' => $organisationMembers,
+        'source' => [
+            'system' => 'omo1',
+            'host' => $host,
+            'database' => $database,
+            'organisation' => $organisationData,
+            'roleTypes' => array_values(array_map('simplifyRoleType', $roleTypes)),
         ],
-        'holon_templates' => array_values($structuralTemplates),
-        'holons' => array_values($holonsById),
+        'holons' => $holonTree,
+        'propertyDefinitions' => buildOmo2PropertyDefinitions(),
     ];
 }
 
 $error = null;
 $defaults = [
-    'db_host' => (string)($GLOBALS['dbServer'] ?? ''),
-    'db_name' => (string)($GLOBALS['dbName'] ?? ''),
-    'db_user' => (string)($GLOBALS['dbUser'] ?? ''),
+    'db_host' => (string) ($GLOBALS['dbServer'] ?? ''),
+    'db_name' => (string) ($GLOBALS['dbName'] ?? ''),
+    'db_user' => (string) ($GLOBALS['dbUser'] ?? ''),
     'db_password' => '',
     'organisation_id' => '',
 ];
@@ -682,7 +924,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException("Merci de remplir le serveur MySQL, la base, le user et l'id de l'organisation.");
         }
 
-        if (! ctype_digit($defaults['organisation_id'])) {
+        if (!ctype_digit($defaults['organisation_id'])) {
             throw new RuntimeException("L'identifiant de l'organisation doit etre un entier positif.");
         }
 
@@ -694,14 +936,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $defaults['db_password']
         );
 
-        $payload = buildExport($pdo, $organisationId, $defaults['db_host'], $defaults['db_name']);
+        $payload = buildCompatibleExport($pdo, $organisationId, $defaults['db_host'], $defaults['db_name']);
         $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         if ($json === false) {
             throw new RuntimeException("Impossible de serialiser le JSON d'export.");
         }
 
-        $fileName = 'omo1_export_orga_' . $organisationId . '_' . gmdate('Ymd_His') . '.json';
+        $fileName = 'omo1_to_omo2_orga_' . $organisationId . '_' . gmdate('Ymd_His') . '.json';
 
         header('Content-Type: application/json; charset=UTF-8');
         header('Content-Disposition: attachment; filename="' . $fileName . '"');
@@ -720,7 +962,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Export OMO 1 vers JSON</title>
+    <title>Export OMO 1 vers OMO 2</title>
     <style>
         body {
             margin: 0;
@@ -850,12 +1092,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="page">
         <div class="card">
             <div class="hero">
-                <h1>Export OMO 1 vers JSON</h1>
+                <h1>Export OMO 1 vers OMO 2</h1>
                 <p class="lead">
-                    Cet outil se connecte directement a une base MySQL OMO 1,
-                    exporte une organisation et telecharge un JSON recentre sur
-                    les donnees de structure, les holons, les templates structurels
-                    inferes et le contenu resolu par heritage quand c'est possible.
+                    Cet outil conserve l'interface actuelle, mais genere maintenant
+                    un JSON directement compatible avec l'import compact OMO 2 :
+                    racine d'organisation, templates a la racine, groupes, cercles,
+                    roles structurels et proprietes generiques.
                 </p>
             </div>
 
@@ -887,19 +1129,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <div class="field full">
                         <label for="organisation_id">ID de l'organisation a exporter</label>
-                        <input type="number" min="1" step="1" id="organisation_id" name="organisation_id" value="<?= h($defaults['organisation_id']) ?>" placeholder="ex: 12" required>
+                        <input type="number" min="1" step="1" id="organisation_id" name="organisation_id" value="<?= h($defaults['organisation_id']) ?>" placeholder="ex: 22" required>
                     </div>
                 </div>
 
                 <div class="hint">
-                    Les parametres d'organisation et de cercle ne sont plus exportes.
-                    Le JSON conserve le detail des raisons d'etre, redevabilites et domaines,
-                    ajoute des templates structurels inferes et tente de remplir le contenu
-                    manquant via les references d'heritage detectees.
+                    Le JSON genere cree a la racine un template de role, un template
+                    de cercle et les 4 templates structurels. Les raisons d'etre,
+                    attendus, domaines d'autorite et strategies OMO 1 sont convertis
+                    en proprietes generiques OMO 2. Les groupes visuels OMO 1 sont
+                    recrees comme holons de type groupe pour rester proches du rendu
+                    de <code>org2.php</code>.
                 </div>
 
                 <div class="actions">
-                    <button type="submit">Generer et telecharger le JSON</button>
+                    <button type="submit">Generer un export compatible OMO 2</button>
                 </div>
             </form>
         </div>
