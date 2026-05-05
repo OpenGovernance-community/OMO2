@@ -497,28 +497,17 @@ function buildContentPropertyRows(array $content, ?array $baselineContent = null
     return $rows;
 }
 
-function roleIsCircle(array $roleTypesById, array $role, array $roleIdsWithChildren = []): bool
+function roleIsCircle(array $role, array $roleIdsWithChildren = []): bool
 {
     $roleId = (int) ($role['role_id'] ?? 0);
     if (inferStructuralTemplateKey($role['role_name'] ?? null) !== null) {
         return false;
     }
 
-    $roleTypeId = (int) ($role['roty_id'] ?? 0);
-    $roleType = $roleTypesById[$roleTypeId] ?? null;
-
-    if ($roleType !== null && (int) ($roleType['roty_canBeCircle'] ?? 0) === 1) {
-        return true;
-    }
-
-    if (roleTypeLabelLooksLikeCircle($roleType)) {
-        return true;
-    }
-
     return $roleId > 0 && isset($roleIdsWithChildren[$roleId]);
 }
 
-function resolveParentRoleId(array $role, array $rolesById, array $roleTypesById, array $roleIdsWithChildren = []): ?int
+function resolveProvisionalParentRoleId(array $role, array $rolesById): ?int
 {
     $parentRoleId = toNullableParentRoleId($role['role_id_superCircle'] ?? null);
     if ($parentRoleId !== null && isset($rolesById[$parentRoleId])) {
@@ -526,15 +515,21 @@ function resolveParentRoleId(array $role, array $rolesById, array $roleTypesById
     }
 
     $sourceRoleId = toNullableInt($role['role_id_source'] ?? null);
-    if (
-        $sourceRoleId !== null
-        && isset($rolesById[$sourceRoleId])
-        && roleIsCircle($roleTypesById, $rolesById[$sourceRoleId], $roleIdsWithChildren)
-    ) {
+    if ($sourceRoleId !== null && isset($rolesById[$sourceRoleId])) {
         return $sourceRoleId;
     }
 
     return null;
+}
+
+function resolveParentRoleId(array $role, array $provisionalParentRoleIds): ?int
+{
+    $roleId = (int) ($role['role_id'] ?? 0);
+    if ($roleId <= 0) {
+        return null;
+    }
+
+    return $provisionalParentRoleIds[$roleId] ?? null;
 }
 
 function buildRecordSortName(array $record): string
@@ -558,6 +553,7 @@ function buildTemplateRecord(
         'parentId' => OMO2_ROOT_HOLON_ID,
         'visible' => false,
         '_sortWeight' => 5,
+        '_sortOrder' => 0,
         '_sortName' => buildRecordSortName(['name' => $name]),
     ];
 
@@ -595,6 +591,7 @@ function buildRealHolonRecord(
         'visible' => true,
         'sourceRoleId' => (int) $source['role_id'],
         '_sortWeight' => $sortWeight,
+        '_sortOrder' => 0,
         '_sortGroupName' => '',
         '_sortName' => buildRecordSortName(['name' => $name]),
     ];
@@ -614,7 +611,7 @@ function buildRealHolonRecord(
     return $record;
 }
 
-function buildGroupRecord(int $exportId, int $parentId, string $name): array
+function buildGroupRecord(int $exportId, int $parentId, string $name, int $sortOrder): array
 {
     return [
         'id' => $exportId,
@@ -624,6 +621,7 @@ function buildGroupRecord(int $exportId, int $parentId, string $name): array
         'visible' => true,
         'templateId' => OMO2_GROUP_TEMPLATE_ID,
         '_sortWeight' => 15,
+        '_sortOrder' => $sortOrder,
         '_sortGroupName' => '',
         '_sortName' => buildRecordSortName(['name' => $name]),
     ];
@@ -649,6 +647,12 @@ function buildHolonTree(array $recordsById): array
             $leftWeight = (int) ($left['_sortWeight'] ?? 99);
             $rightWeight = (int) ($right['_sortWeight'] ?? 99);
             if ($leftWeight === $rightWeight) {
+                $leftOrder = (int) ($left['_sortOrder'] ?? 0);
+                $rightOrder = (int) ($right['_sortOrder'] ?? 0);
+                if ($leftOrder !== $rightOrder) {
+                    return $leftOrder <=> $rightOrder;
+                }
+
                 $leftGroupName = (string) ($left['_sortGroupName'] ?? '');
                 $rightGroupName = (string) ($right['_sortGroupName'] ?? '');
                 if ($leftGroupName !== $rightGroupName) {
@@ -666,7 +670,7 @@ function buildHolonTree(array $recordsById): array
 
     $buildNode = static function (int $recordId) use (&$buildNode, $recordsById, $childrenByParentId): array {
         $node = $recordsById[$recordId];
-        unset($node['_sortWeight'], $node['_sortGroupName'], $node['_sortName'], $node['parentId']);
+        unset($node['_sortWeight'], $node['_sortOrder'], $node['_sortGroupName'], $node['_sortName'], $node['parentId']);
 
         if (isset($childrenByParentId[$recordId])) {
             $children = [];
@@ -742,16 +746,18 @@ function buildCompatibleExport(PDO $pdo, int $organisationId, string $host, stri
         $rolesById[(int) $role['role_id']] = $role;
     }
 
+    $provisionalParentRoleIds = [];
     $roleIdsWithChildren = [];
     foreach ($currentRoles as $role) {
-        $parentRoleId = toNullableParentRoleId($role['role_id_superCircle'] ?? null);
-        if ($parentRoleId !== null && isset($rolesById[$parentRoleId])) {
-            $roleIdsWithChildren[$parentRoleId] = true;
+        $roleId = (int) $role['role_id'];
+        $parentRoleId = resolveProvisionalParentRoleId($role, $rolesById);
+        if ($parentRoleId === $roleId) {
+            $parentRoleId = null;
         }
 
-        $sourceRoleId = toNullableInt($role['role_id_source'] ?? null);
-        if ($sourceRoleId !== null && isset($rolesById[$sourceRoleId])) {
-            $roleIdsWithChildren[$sourceRoleId] = true;
+        $provisionalParentRoleIds[$roleId] = $parentRoleId;
+        if ($parentRoleId !== null) {
+            $roleIdsWithChildren[$parentRoleId] = true;
         }
     }
 
@@ -800,6 +806,7 @@ function buildCompatibleExport(PDO $pdo, int $organisationId, string $host, stri
         'name' => $organizationName,
         'color' => OMO2_DEFAULT_ORGANIZATION_COLOR,
         '_sortWeight' => 0,
+        '_sortOrder' => 0,
         '_sortName' => buildRecordSortName(['name' => $organizationName]),
     ];
 
@@ -855,12 +862,12 @@ function buildCompatibleExport(PDO $pdo, int $organisationId, string $host, stri
     $groupExportIdByKey = [];
     $nextGroupExportId = OMO2_GROUP_HOLON_ID_OFFSET;
 
-    foreach ($currentRoles as $role) {
+    foreach ($currentRoles as $roleIndex => $role) {
         $roleId = (int) $role['role_id'];
         $exportId = $exportIdByRoleId[$roleId];
-        $isCircle = roleIsCircle($roleTypesById, $role, $roleIdsWithChildren);
+        $isCircle = roleIsCircle($role, $roleIdsWithChildren);
         $typeId = $isCircle ? 2 : 1;
-        $parentRoleId = resolveParentRoleId($role, $rolesById, $roleTypesById, $roleIdsWithChildren);
+        $parentRoleId = resolveParentRoleId($role, $provisionalParentRoleIds);
         $containerParentId = $parentRoleId !== null && isset($exportIdByRoleId[$parentRoleId])
             ? $exportIdByRoleId[$parentRoleId]
             : OMO2_ROOT_HOLON_ID;
@@ -871,7 +878,7 @@ function buildCompatibleExport(PDO $pdo, int $organisationId, string $host, stri
             $groupKey = $containerParentId . '|' . normalizeLabel($groupLabel);
             if (!isset($groupExportIdByKey[$groupKey])) {
                 $groupExportIdByKey[$groupKey] = $nextGroupExportId;
-                $recordsById[$nextGroupExportId] = buildGroupRecord($nextGroupExportId, $containerParentId, $groupLabel);
+                $recordsById[$nextGroupExportId] = buildGroupRecord($nextGroupExportId, $containerParentId, $groupLabel, ($roleIndex + 1) * 10);
                 $nextGroupExportId += 1;
             }
 
@@ -904,8 +911,9 @@ function buildCompatibleExport(PDO $pdo, int $organisationId, string $host, stri
         }
         if ($groupLabel !== null) {
             $overrides['groupName'] = $groupLabel;
-            $overrides['_sortGroupName'] = '';
+            $overrides['_sortGroupName'] = normalizeLabel($groupLabel);
         }
+        $overrides['_sortOrder'] = ($roleIndex + 1) * 10;
 
         $recordsById[$exportId] = buildRealHolonRecord(
             $exportId,
