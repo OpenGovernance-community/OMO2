@@ -250,6 +250,26 @@ function commonExpireCookieValue($name, $httpOnly = true)
     return commonSetCookieValue($name, '', time() - 3600, $httpOnly);
 }
 
+function commonGetRememberDurationSeconds()
+{
+    return \dbObject\UserRemember::lifetimeSeconds();
+}
+
+function commonRefreshRememberedUser($remember)
+{
+    if (!$remember) {
+        return;
+    }
+
+    $remember->renew();
+    commonSetCookieValue(
+        'remember_token',
+        (string)$remember->get('token'),
+        time() + commonGetRememberDurationSeconds(),
+        true
+    );
+}
+
 function commonGetOrganizationExplicitColor(array $organizationContext)
 {
     $color = trim((string)($organizationContext['color'] ?? ''));
@@ -337,7 +357,15 @@ function commonRestoreRememberedUser()
     }
 
     if (isset($_SESSION['currentUser']) && (int)$_SESSION['currentUser'] > 0) {
-        return (int)$_SESSION['currentUser'];
+        $currentUserId = (int)$_SESSION['currentUser'];
+        if (isset($_COOKIE['remember_token']) && $_COOKIE['remember_token'] !== '') {
+            $remember = \dbObject\UserRemember::findValidByToken($_COOKIE['remember_token']);
+            if ($remember && (int)$remember->get('IDuser') === $currentUserId) {
+                commonRefreshRememberedUser($remember);
+            }
+        }
+
+        return $currentUserId;
     }
 
     if (!isset($_COOKIE['remember_token']) || $_COOKIE['remember_token'] === '') {
@@ -346,10 +374,12 @@ function commonRestoreRememberedUser()
 
     $remember = \dbObject\UserRemember::findValidByToken($_COOKIE['remember_token']);
     if (!$remember) {
+        commonExpireCookieValue('remember_token', true);
         return 0;
     }
 
     $_SESSION['currentUser'] = (int)$remember->get('IDuser');
+    commonRefreshRememberedUser($remember);
     return (int)$_SESSION['currentUser'];
 }
 
@@ -1014,7 +1044,12 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
             $os
         );
 
-        commonSetCookieValue('remember_token', $rememberToken, time() + (60 * 60 * 24 * 30), true);
+        commonSetCookieValue(
+            'remember_token',
+            $rememberToken,
+            time() + commonGetRememberDurationSeconds(),
+            true
+        );
     }
 
     $loginToken->markUsed();

@@ -33,6 +33,7 @@ if (count($structureDataParams) > 0) {
 
 $isShareMode = function_exists('commonGetCurrentShareToken') && commonGetCurrentShareToken() !== '';
 $canCreateShareLink = !$isShareMode && (int)commonGetCurrentUserId() > 0 && commonCurrentUserHasOrganizationAccess($organizationId);
+$canExportStructure = !$isShareMode && (int)commonGetCurrentUserId() > 0 && commonCurrentUserHasOrganizationAccess($organizationId);
 ?>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js"></script>
@@ -101,7 +102,7 @@ $canCreateShareLink = !$isShareMode && (int)commonGetCurrentUserId() > 0 && comm
   position: absolute;
   top: 16px;
   right: 16px;
-  z-index: 12;
+  z-index: 2;
 }
 
 .structure-actions__toggle {
@@ -313,6 +314,9 @@ input:checked + .slider::before {
         <div class="structure-actions" id="omoStructureActions">
             <button type="button" class="structure-actions__toggle" id="omoStructureActionsToggle" aria-label="Actions">...</button>
             <div class="structure-actions__panel" id="omoStructureActionsPanel">
+                <?php if ($canExportStructure) { ?>
+                    <button type="button" class="structure-actions__item" data-omo-structure-action="export">Export</button>
+                <?php } ?>
                 <?php if ($canCreateShareLink) { ?>
                     <button type="button" class="structure-actions__item" data-omo-structure-action="share">Partager</button>
                 <?php } ?>
@@ -737,6 +741,33 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
     return;
   }
 
+  if (action === "export") {
+    if (!canExportStructure) {
+      return;
+    }
+
+    const route = getCurrentRoute();
+    const currentHolonId = omoGetCurrentStructureHolonId();
+    let exportUrl = "api/exportStructure.php?oid=" + encodeURIComponent(route.oid || 0);
+
+    if (currentHolonId > 0) {
+      exportUrl += "&cid=" + encodeURIComponent(currentHolonId);
+    }
+
+    if (typeof window.omoResolveAppUrl === "function") {
+      exportUrl = window.omoResolveAppUrl(exportUrl);
+    }
+
+    const link = document.createElement("a");
+    link.href = exportUrl;
+    link.download = "";
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    return;
+  }
+
   if (action !== "share" || !canCreateShareLink) {
     return;
   }
@@ -763,6 +794,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
     const structureDataUrl = <?= json_encode($structureDataUrl, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
     const initialCid = <?= (int)$initialCid ?>;
     const canCreateShareLink = <?= $canCreateShareLink ? 'true' : 'false' ?>;
+    const canExportStructure = <?= $canExportStructure ? 'true' : 'false' ?>;
     let root = null;
 
     let canvas, hiddenCanvas, context, hiddenContext;

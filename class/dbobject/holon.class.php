@@ -671,6 +671,130 @@
 			return $entries;
 		}
 
+		public function getCompactExportPropertyRows()
+		{
+			$rows = array();
+
+			foreach ($this->getHolonProperties() as $holonProperty) {
+				$row = array(
+					'propertyId' => (int)$holonProperty->get('IDproperty'),
+				);
+
+				if ($holonProperty->get('value') !== null && trim((string)$holonProperty->get('value')) !== '') {
+					$row['value'] = (string)$holonProperty->get('value');
+				}
+
+				if ((int)$holonProperty->get('position') > 0) {
+					$row['position'] = (int)$holonProperty->get('position');
+				}
+
+				if ((bool)$holonProperty->get('mandatory')) {
+					$row['mandatory'] = true;
+				}
+
+				if ((bool)$holonProperty->get('locked')) {
+					$row['locked'] = true;
+				}
+
+				if (!(bool)$holonProperty->get('active')) {
+					$row['active'] = false;
+				}
+
+				$rows[] = $row;
+			}
+
+			return $rows;
+		}
+
+		public function toCompactExportRecord($rootHolonId = 0, array $options = array())
+		{
+			$options = array_merge(array(
+				'role' => 'structure',
+				'isScopeRoot' => false,
+			), $options);
+
+			$record = array(
+				'id' => (int)$this->getId(),
+				'typeId' => (int)$this->get('IDtypeholon'),
+				'name' => (string)$this->get('name'),
+			);
+
+			if (!empty($options['role']) && (string)$options['role'] !== 'structure') {
+				$record['role'] = (string)$options['role'];
+			}
+
+			if (!empty($options['isScopeRoot'])) {
+				$record['scopeRoot'] = true;
+			}
+
+			if ($this->isTemplateNode((int)$rootHolonId)) {
+				$record['templateNode'] = true;
+			}
+
+			if (trim((string)$this->get('templatename')) !== '') {
+				$record['templateName'] = (string)$this->get('templatename');
+			}
+
+			if ((int)$this->get('IDholon_parent') > 0) {
+				$record['parentId'] = (int)$this->get('IDholon_parent');
+			}
+
+			if ((int)$this->get('IDholon_template') > 0) {
+				$record['templateId'] = (int)$this->get('IDholon_template');
+			}
+
+			if (!(bool)$this->get('visible')) {
+				$record['visible'] = false;
+			}
+
+			if ((bool)$this->get('mandatory')) {
+				$record['mandatory'] = true;
+			}
+
+			if ((bool)$this->get('lockedname')) {
+				$record['lockedName'] = true;
+			}
+
+			if ((bool)$this->get('lockedicon')) {
+				$record['lockedIcon'] = true;
+			}
+
+			if ((bool)$this->get('lockedbanner')) {
+				$record['lockedBanner'] = true;
+			}
+
+			if ((bool)$this->get('unique')) {
+				$record['unique'] = true;
+			}
+
+			if ((bool)$this->get('link')) {
+				$record['link'] = true;
+			}
+
+			if (trim((string)$this->get('color')) !== '') {
+				$record['color'] = (string)$this->get('color');
+			}
+
+			if (trim((string)$this->get('icon')) !== '') {
+				$record['icon'] = (string)$this->get('icon');
+			}
+
+			if (trim((string)$this->get('banner')) !== '') {
+				$record['banner'] = (string)$this->get('banner');
+			}
+
+			if (trim((string)$this->get('accesskey')) !== '') {
+				$record['accessKey'] = (string)$this->get('accesskey');
+			}
+
+			$propertyRows = $this->getCompactExportPropertyRows();
+			if (count($propertyRows) > 0) {
+				$record['properties'] = $propertyRows;
+			}
+
+			return $record;
+		}
+
 		public function getDisplayName()
 		{
 			$name = trim((string)$this->get('name'));
@@ -1260,6 +1384,26 @@
 				);
 			}
 
+			if ($this->isOrganizationHolon()) {
+				$organization = new \dbObject\Organization();
+				$membership = new \dbObject\UserOrganization();
+				if (
+					$organization->load($organizationId)
+					&& $membership->load(array(
+						array('IDuser', $userId),
+						array('IDorganization', $organizationId),
+					))
+					&& (bool)$membership->get('active')
+					&& $membership->isOrganizationAdmin()
+					&& $organization->countActiveAdminMemberships($userId) === 0
+				) {
+					return array(
+						'status' => false,
+						'message' => "Le dernier admin de l'organisation ne peut pas etre retire.",
+					);
+				}
+			}
+
 			$pdo = \dbObject\DbObject::getPdo();
 			if (!$pdo) {
 				return array(
@@ -1272,6 +1416,11 @@
 				$pdo->beginTransaction();
 
 				if ($this->isOrganizationHolon()) {
+					$organization = new \dbObject\Organization();
+					if (!$organization->load($organizationId)) {
+						throw new \RuntimeException("L'organisation est introuvable.");
+					}
+
 					$membership = new \dbObject\UserOrganization();
 					if (!$membership->load(array(
 						array('IDuser', $userId),
@@ -1282,6 +1431,10 @@
 
 					if (!(bool)$membership->get('active')) {
 						throw new \RuntimeException("Le statut admin ne peut être modifié que pour un membre actif de l'organisation.");
+					}
+
+					if (!$isAdmin && $membership->isOrganizationAdmin() && $organization->countActiveAdminMemberships($userId) === 0) {
+						throw new \RuntimeException("Le dernier admin de l'organisation ne peut pas perdre ses droits.");
 					}
 
 					$saveResult = $membership->setOrganizationAdmin($isAdmin);

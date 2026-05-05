@@ -111,6 +111,8 @@ if ($isOrganizationHub && !$isDemoGuest) {
                 if ($organizationName === '') {
                     $organizationName = 'Organisation';
                 }
+                $organizationMembership = $accessibleOrganization->getMembership($currentUserId, true);
+                $canDeleteOrganization = $accessibleOrganization->canDelete();
                 $organizationShortname = trim((string)$accessibleOrganization->get('shortname'));
                 $organizationUrl = $organizationShortname !== ''
                     ? commonBuildUrl('/omo/', commonBuildOrganizationHost($organizationShortname, commonGetRootHost()))
@@ -126,12 +128,43 @@ if ($isOrganizationHub && !$isDemoGuest) {
                     ? $organizationShortname . '.' . commonGetRootHost()
                     : ($organizationDomain !== '' ? $organizationDomain : 'Organisation');
                 ?>
-            <a
-                class="auth-org-card auth-org-card--directory"
-                href="<?= htmlspecialchars($organizationUrl) ?>"
+            <article
+                class="auth-org-card auth-org-card--directory auth-org-card--directory-managed"
                 style="--auth-org-accent: <?= htmlspecialchars($organizationColor) ?>;"
-                aria-label="Ouvrir l'espace <?= htmlspecialchars($organizationName) ?>"
+                data-organization-id="<?= (int)$accessibleOrganization->getId() ?>"
+                data-organization-name="<?= htmlspecialchars($organizationName, ENT_QUOTES, 'UTF-8') ?>"
             >
+                <a
+                    class="auth-org-card__overlay-link"
+                    href="<?= htmlspecialchars($organizationUrl) ?>"
+                    aria-label="Ouvrir l'espace <?= htmlspecialchars($organizationName) ?>"
+                ></a>
+                <?php if ($organizationMembership) { ?>
+                <div class="omo-org-card-menu" data-omo-org-card-menu>
+                    <button
+                        type="button"
+                        class="omo-org-card-menu__trigger"
+                        data-omo-org-menu-trigger
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                        aria-label="Actions pour <?= htmlspecialchars($organizationName) ?>"
+                    >...</button>
+                    <div class="omo-org-card-menu__panel" data-omo-org-menu-panel>
+                        <button
+                            type="button"
+                            class="omo-org-card-menu__item"
+                            data-omo-org-action="leave"
+                        >Quitter</button>
+                        <?php if ($canDeleteOrganization) { ?>
+                        <button
+                            type="button"
+                            class="omo-org-card-menu__item omo-org-card-menu__item--danger"
+                            data-omo-org-action="delete"
+                        >Supprimer</button>
+                        <?php } ?>
+                    </div>
+                </div>
+                <?php } ?>
                 <div class="auth-org-card__banner">
                     <?php if ($organizationBanner !== '') { ?>
                     <img src="<?= htmlspecialchars($organizationBanner) ?>" alt="" loading="lazy">
@@ -154,7 +187,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
                         <span class="auth-org-action">Se connecter</span>
                     </div>
                 </div>
-            </a>
+            </article>
             <?php } ?>
             <button
                 type="button"
@@ -203,6 +236,90 @@ if ($isOrganizationHub && !$isDemoGuest) {
     </div>
 
     <style>
+        .auth-org-card--directory-managed {
+            position: relative;
+        }
+
+        .auth-org-card__overlay-link {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            border-radius: inherit;
+        }
+
+        .auth-org-card--directory-managed .auth-org-card__banner,
+        .auth-org-card--directory-managed .auth-org-card__body {
+            position: relative;
+            z-index: 0;
+        }
+
+        .omo-org-card-menu {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            z-index: 3;
+        }
+
+        .omo-org-card-menu__trigger {
+            min-width: 40px;
+            min-height: 40px;
+            padding: 0 10px 4px;
+            border: 1px solid rgba(15, 23, 42, 0.1);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.92);
+            color: #0f172a;
+            font-size: 22px;
+            line-height: 1;
+            cursor: pointer;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+        }
+
+        .omo-org-card-menu__panel {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            min-width: 164px;
+            padding: 8px;
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            border-radius: 16px;
+            border: 1px solid #dbe4ee;
+            background: #ffffff;
+            box-shadow: 0 18px 42px rgba(15, 23, 42, 0.16);
+        }
+
+        .omo-org-card-menu.is-open .omo-org-card-menu__panel {
+            display: flex;
+        }
+
+        .omo-org-card-menu__item {
+            width: 100%;
+            min-height: 40px;
+            padding: 10px 12px;
+            border: 0;
+            border-radius: 12px;
+            background: #f8fafc;
+            color: #0f172a;
+            text-align: left;
+            font: inherit;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .omo-org-card-menu__item:hover {
+            background: #eef4ff;
+        }
+
+        .omo-org-card-menu__item--danger {
+            color: #b91c1c;
+            background: #fef2f2;
+        }
+
+        .omo-org-card-menu__item--danger:hover {
+            background: #fee2e2;
+        }
+
         .auth-org-card--create {
             border: 1px dashed rgba(37, 99, 235, 0.28);
             background: linear-gradient(180deg, #ffffff, #f8fbff);
@@ -297,9 +414,20 @@ if ($isOrganizationHub && !$isDemoGuest) {
         (function () {
             var modal = document.getElementById('omoDirectoryModal');
             var openButton = document.getElementById('omoCreateOrganizationCard');
+            var organizationActionUrl = '/omo/api/organizations/card_action.php';
 
             if (!modal || !openButton) {
                 return;
+            }
+
+            function closeMenus() {
+                document.querySelectorAll('[data-omo-org-card-menu].is-open').forEach(function (menu) {
+                    var trigger = menu.querySelector('[data-omo-org-menu-trigger]');
+                    menu.classList.remove('is-open');
+                    if (trigger) {
+                        trigger.setAttribute('aria-expanded', 'false');
+                    }
+                });
             }
 
             function closeModal() {
@@ -320,7 +448,110 @@ if ($isOrganizationHub && !$isDemoGuest) {
                 }
             });
 
+            document.addEventListener('click', function (event) {
+                var trigger = event.target.closest('[data-omo-org-menu-trigger]');
+                if (trigger) {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    var menu = trigger.closest('[data-omo-org-card-menu]');
+                    var shouldOpen = !menu.classList.contains('is-open');
+                    closeMenus();
+
+                    if (shouldOpen) {
+                        menu.classList.add('is-open');
+                        trigger.setAttribute('aria-expanded', 'true');
+                    }
+
+                    return;
+                }
+
+                var actionButton = event.target.closest('[data-omo-org-action]');
+                if (actionButton) {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    var card = actionButton.closest('[data-organization-id]');
+                    if (!card) {
+                        return;
+                    }
+
+                    var action = actionButton.getAttribute('data-omo-org-action') || '';
+                    var organizationId = card.getAttribute('data-organization-id') || '';
+                    var organizationName = card.getAttribute('data-organization-name') || 'cette organisation';
+                    var confirmMessage = '';
+
+                    if (action === 'leave') {
+                        confirmMessage = 'Quitter ' + organizationName + ' ?\\n\\nVos liens avec l organisation, ses cercles et ses roles seront retires.';
+                    } else if (action === 'delete') {
+                        confirmMessage = 'Supprimer ' + organizationName + ' ?\\n\\nLa structure, les membres, les cercles, les roles, les partages et les documents relies seront supprimes.';
+                    }
+
+                    if (confirmMessage === '' || !window.confirm(confirmMessage)) {
+                        closeMenus();
+                        return;
+                    }
+
+                    actionButton.disabled = true;
+
+                    var payload = new FormData();
+                    payload.append('oid', organizationId);
+                    payload.append('action', action);
+
+                    fetch(organizationActionUrl, {
+                        method: 'POST',
+                        body: payload,
+                        credentials: 'same-origin'
+                    })
+                        .then(function (response) {
+                            return response.text().then(function (text) {
+                                var data = null;
+
+                                try {
+                                    data = JSON.parse(text);
+                                } catch (error) {
+                                    data = null;
+                                }
+
+                                return {
+                                    ok: response.ok,
+                                    data: data
+                                };
+                            });
+                        })
+                        .then(function (result) {
+                            if (!result.ok || !result.data || result.data.status !== true) {
+                                throw new Error(result.data && result.data.message ? result.data.message : 'Action impossible.');
+                            }
+
+                            closeMenus();
+
+                            if (result.data.redirect) {
+                                window.location.href = result.data.redirect;
+                                return;
+                            }
+
+                            window.location.reload();
+                        })
+                        .catch(function (error) {
+                            actionButton.disabled = false;
+                            closeMenus();
+                            window.alert(error && error.message ? error.message : 'Action impossible.');
+                        });
+
+                    return;
+                }
+
+                if (!event.target.closest('[data-omo-org-card-menu]')) {
+                    closeMenus();
+                }
+            });
+
             document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    closeMenus();
+                }
+
                 if (event.key === 'Escape' && !modal.hidden) {
                     closeModal();
                 }
