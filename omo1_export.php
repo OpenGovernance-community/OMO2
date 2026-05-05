@@ -475,15 +475,20 @@ function buildContentPropertyRows(array $content, ?array $baselineContent = null
     return $rows;
 }
 
-function roleIsCircle(array $roleTypesById, array $role): bool
+function roleIsCircle(array $roleTypesById, array $role, array $roleIdsWithChildren = []): bool
 {
+    $roleId = (int) ($role['role_id'] ?? 0);
     $roleTypeId = (int) ($role['roty_id'] ?? 0);
     $roleType = $roleTypesById[$roleTypeId] ?? null;
 
-    return $roleType !== null && (int) ($roleType['roty_canBeCircle'] ?? 0) === 1;
+    if ($roleType !== null && (int) ($roleType['roty_canBeCircle'] ?? 0) === 1) {
+        return true;
+    }
+
+    return $roleId > 0 && isset($roleIdsWithChildren[$roleId]);
 }
 
-function resolveParentRoleId(array $role, array $rolesById, array $roleTypesById): ?int
+function resolveParentRoleId(array $role, array $rolesById, array $roleTypesById, array $roleIdsWithChildren = []): ?int
 {
     $parentRoleId = toNullableParentRoleId($role['role_id_superCircle'] ?? null);
     if ($parentRoleId !== null && isset($rolesById[$parentRoleId])) {
@@ -491,7 +496,11 @@ function resolveParentRoleId(array $role, array $rolesById, array $roleTypesById
     }
 
     $sourceRoleId = toNullableInt($role['role_id_source'] ?? null);
-    if ($sourceRoleId !== null && isset($rolesById[$sourceRoleId]) && roleIsCircle($roleTypesById, $rolesById[$sourceRoleId])) {
+    if (
+        $sourceRoleId !== null
+        && isset($rolesById[$sourceRoleId])
+        && roleIsCircle($roleTypesById, $rolesById[$sourceRoleId], $roleIdsWithChildren)
+    ) {
         return $sourceRoleId;
     }
 
@@ -688,6 +697,19 @@ function buildCompatibleExport(PDO $pdo, int $organisationId, string $host, stri
         $rolesById[(int) $role['role_id']] = $role;
     }
 
+    $roleIdsWithChildren = [];
+    foreach ($currentRoles as $role) {
+        $parentRoleId = toNullableParentRoleId($role['role_id_superCircle'] ?? null);
+        if ($parentRoleId !== null && isset($rolesById[$parentRoleId])) {
+            $roleIdsWithChildren[$parentRoleId] = true;
+        }
+
+        $sourceRoleId = toNullableInt($role['role_id_source'] ?? null);
+        if ($sourceRoleId !== null && isset($rolesById[$sourceRoleId])) {
+            $roleIdsWithChildren[$sourceRoleId] = true;
+        }
+    }
+
     $allRoleIds = array_keys($rolesById);
     $accountabilitiesByRole = groupRowsByKey(
         fetchRowsByIds(
@@ -781,9 +803,9 @@ function buildCompatibleExport(PDO $pdo, int $organisationId, string $host, stri
     foreach ($currentRoles as $role) {
         $roleId = (int) $role['role_id'];
         $exportId = $exportIdByRoleId[$roleId];
-        $isCircle = roleIsCircle($roleTypesById, $role);
+        $isCircle = roleIsCircle($roleTypesById, $role, $roleIdsWithChildren);
         $typeId = $isCircle ? 2 : 1;
-        $parentRoleId = resolveParentRoleId($role, $rolesById, $roleTypesById);
+        $parentRoleId = resolveParentRoleId($role, $rolesById, $roleTypesById, $roleIdsWithChildren);
         $containerParentId = $parentRoleId !== null && isset($exportIdByRoleId[$parentRoleId])
             ? $exportIdByRoleId[$parentRoleId]
             : OMO2_ROOT_HOLON_ID;
