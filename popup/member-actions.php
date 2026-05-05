@@ -42,6 +42,14 @@ if (!$organization->load($organizationId)) {
     exit;
 }
 
+if (!$organization->canViewDetail()) {
+    http_response_code(403);
+    ?>
+    <div class="omo-member-actions omo-member-actions--error">Acces refuse a cette organisation.</div>
+    <?php
+    exit;
+}
+
 $rootHolon = $organization->getStructuralRootHolon();
 if ($rootHolon === null) {
     http_response_code(404);
@@ -62,6 +70,14 @@ if ($currentHolonId > 0 && (int)$rootHolon->getId() !== $currentHolonId) {
         exit;
     }
 
+    if (!$candidate->canViewDetail()) {
+        http_response_code(403);
+        ?>
+        <div class="omo-member-actions omo-member-actions--error">Acces refuse a ce contexte.</div>
+        <?php
+        exit;
+    }
+
     $currentHolon = $candidate;
 }
 
@@ -70,6 +86,14 @@ if (!$user->load($userId)) {
     http_response_code(404);
     ?>
     <div class="omo-member-actions omo-member-actions--error">Utilisateur introuvable.</div>
+    <?php
+    exit;
+}
+
+if (!$user->canViewDetail()) {
+    http_response_code(403);
+    ?>
+    <div class="omo-member-actions omo-member-actions--error">Acces refuse a cet utilisateur.</div>
     <?php
     exit;
 }
@@ -107,24 +131,29 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
     .omo-member-actions {
         display: grid;
         gap: 16px;
-        color: #0f172a;
+        color: var(--color-text, #1f2937);
     }
 
     .omo-member-actions--error {
         padding: 18px;
         border-radius: 16px;
-        background: #f8fafc;
-        color: #475569;
+        background: var(--color-surface-alt, #f0f2f5);
+        color: var(--color-text-light, #6b7280);
+        border: 1px solid var(--color-border, #e5e7eb);
     }
 
     .omo-member-actions__hero {
         display: grid;
         gap: 8px;
         padding: 18px;
-        border: 1px solid #dbe2ea;
+        border: 1px solid var(--color-border, #e5e7eb);
         border-radius: 20px;
-        background: linear-gradient(135deg, #ffffff, #f8fbff);
-        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+        background: linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--color-surface, #ffffff) 94%, transparent),
+            color-mix(in srgb, var(--color-surface-alt, #f0f2f5) 88%, transparent)
+        );
+        box-shadow: var(--shadow-md, 0 12px 24px rgba(0,0,0,0.12));
     }
 
     .omo-member-actions__eyebrow {
@@ -132,7 +161,7 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
         font-weight: 700;
         letter-spacing: 0.06em;
         text-transform: uppercase;
-        color: #64748b;
+        color: var(--color-text-light, #6b7280);
     }
 
     .omo-member-actions__hero h2 {
@@ -142,7 +171,7 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
     }
 
     .omo-member-actions__secondary {
-        color: #475569;
+        color: var(--color-text-light, #6b7280);
         word-break: break-word;
     }
 
@@ -158,24 +187,26 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
         min-height: 26px;
         padding: 0 10px;
         border-radius: 999px;
-        background: rgba(37, 99, 235, 0.1);
-        color: #1d4ed8;
+        background: color-mix(in srgb, var(--color-primary, #2563eb) 14%, var(--color-surface, #ffffff));
+        color: var(--color-primary, #2563eb);
         font-size: 0.76rem;
         font-weight: 700;
+        border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 30%, var(--color-border, #e5e7eb));
     }
 
     .omo-member-actions__badge--pending {
         background: rgba(100, 116, 139, 0.14);
-        color: #475569;
+        color: var(--color-text-light, #6b7280);
+        border-color: var(--color-border, #e5e7eb);
     }
 
     .omo-member-actions__section {
         display: grid;
         gap: 10px;
         padding: 18px;
-        border: 1px solid #dbe2ea;
+        border: 1px solid var(--color-border, #e5e7eb);
         border-radius: 20px;
-        background: #ffffff;
+        background: var(--color-surface, #ffffff);
     }
 
     .omo-member-actions__section h3 {
@@ -185,7 +216,7 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
 
     .omo-member-actions__section p {
         margin: 0;
-        color: #475569;
+        color: var(--color-text-light, #6b7280);
         line-height: 1.45;
     }
 
@@ -198,10 +229,10 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
         width: 100%;
         min-height: 46px;
         padding: 12px 14px;
-        border: 1px solid #dbe2ea;
+        border: 1px solid var(--color-border, #e5e7eb);
         border-radius: 14px;
-        background: #f8fafc;
-        color: #0f172a;
+        background: var(--color-surface-alt, #f0f2f5);
+        color: var(--color-text, #1f2937);
         text-align: left;
         cursor: pointer;
         font-size: 0.95rem;
@@ -210,8 +241,8 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
     }
 
     .omo-member-actions__button:hover {
-        background: #eff6ff;
-        border-color: #bfdbfe;
+        background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #ffffff));
+        border-color: color-mix(in srgb, var(--color-primary, #2563eb) 30%, var(--color-border, #e5e7eb));
     }
 
     .omo-member-actions__button--danger {
@@ -230,7 +261,7 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
 
     .omo-member-actions__feedback {
         min-height: 22px;
-        color: #475569;
+        color: var(--color-text-light, #6b7280);
         font-size: 0.92rem;
         line-height: 1.4;
     }

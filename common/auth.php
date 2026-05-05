@@ -389,7 +389,191 @@ function commonGetCurrentUserDisplayName()
     return $user->getScopedEmail($organizationId);
 }
 
-function commonUserHasOrganizationAccess($userId, $organizationId)
+function commonUserHasOrganizationMembership($userId, $organizationId)
+{
+    static $cache = array();
+
+    $userId = (int)$userId;
+    $organizationId = (int)$organizationId;
+    $cacheKey = $userId . ':' . $organizationId;
+
+    if (array_key_exists($cacheKey, $cache)) {
+        return $cache[$cacheKey];
+    }
+
+    if ($userId <= 0 || $organizationId <= 0) {
+        $cache[$cacheKey] = false;
+        return false;
+    }
+
+    $hasMembership = \dbObject\DbObject::fetchValue(
+        "SELECT 1
+        FROM user_organization
+        WHERE IDuser = :user_id
+          AND IDorganization = :organization_id
+          AND active = 1
+        LIMIT 1",
+        array(
+            'user_id' => $userId,
+            'organization_id' => $organizationId,
+        )
+    );
+
+    $cache[$cacheKey] = $hasMembership !== false && $hasMembership !== null;
+
+    return $cache[$cacheKey];
+}
+
+function commonNormalizeShareToken($token)
+{
+    $token = trim((string)$token);
+    if ($token === '') {
+        return '';
+    }
+
+    return (string)preg_replace('/[^A-Za-z0-9\-_]/', '', $token);
+}
+
+function commonGetCurrentShareToken()
+{
+    static $resolved = false;
+    static $token = '';
+
+    if ($resolved) {
+        return $token;
+    }
+
+    $resolved = true;
+
+    if (isset($_POST['token'])) {
+        $token = commonNormalizeShareToken($_POST['token']);
+        return $token;
+    }
+
+    if (isset($_GET['token'])) {
+        $token = commonNormalizeShareToken($_GET['token']);
+        return $token;
+    }
+
+    return $token;
+}
+
+function commonIsSharePasswordVerified($token)
+{
+    $token = commonNormalizeShareToken($token);
+    if ($token === '') {
+        return false;
+    }
+
+    return !empty($_SESSION['omo_share_password_verified'][$token]);
+}
+
+function commonRememberSharePasswordVerified($token)
+{
+    $token = commonNormalizeShareToken($token);
+    if ($token === '') {
+        return false;
+    }
+
+    if (!isset($_SESSION['omo_share_password_verified']) || !is_array($_SESSION['omo_share_password_verified'])) {
+        $_SESSION['omo_share_password_verified'] = array();
+    }
+
+    $_SESSION['omo_share_password_verified'][$token] = time();
+    return true;
+}
+
+function commonForgetSharePasswordVerified($token = null)
+{
+    if ($token === null) {
+        unset($_SESSION['omo_share_password_verified']);
+        return;
+    }
+
+    $token = commonNormalizeShareToken($token);
+    if ($token === '' || empty($_SESSION['omo_share_password_verified']) || !is_array($_SESSION['omo_share_password_verified'])) {
+        return;
+    }
+
+    unset($_SESSION['omo_share_password_verified'][$token]);
+    if (count($_SESSION['omo_share_password_verified']) === 0) {
+        unset($_SESSION['omo_share_password_verified']);
+    }
+}
+
+function commonGetCurrentShareLink($requirePasswordVerified = true)
+{
+    static $cache = array();
+
+    $token = commonGetCurrentShareToken();
+    if ($token === '') {
+        return null;
+    }
+
+    $cacheKey = $token . ':' . ($requirePasswordVerified ? '1' : '0');
+    if (array_key_exists($cacheKey, $cache)) {
+        return $cache[$cacheKey];
+    }
+
+    $link = \dbObject\HolonShareLink::findValidByToken($token);
+    if (!$link) {
+        commonForgetSharePasswordVerified($token);
+        $cache[$cacheKey] = null;
+        return null;
+    }
+
+    if ($requirePasswordVerified && $link->requiresPassword() && !commonIsSharePasswordVerified($token)) {
+        $cache[$cacheKey] = null;
+        return null;
+    }
+
+    $cache[$cacheKey] = $link;
+    return $cache[$cacheKey];
+}
+
+function commonCurrentShareCanViewOrganization($organizationId)
+{
+    $link = commonGetCurrentShareLink();
+    return $link ? $link->canViewOrganization((int)$organizationId) : false;
+}
+
+function commonCurrentShareCanViewHolon($holon)
+{
+    $link = commonGetCurrentShareLink();
+    return $link && $holon instanceof \dbObject\Holon ? $link->canViewHolon($holon) : false;
+}
+
+function commonCurrentShareContainsHolon($holon)
+{
+    $link = commonGetCurrentShareLink();
+    return $link && $holon instanceof \dbObject\Holon ? $link->containsHolon($holon) : false;
+}
+
+function commonCurrentShareCanViewUser($user, $requireDetail = false)
+{
+    $link = commonGetCurrentShareLink();
+    return $link && $user instanceof \dbObject\User ? $link->canViewUser($user, $requireDetail) : false;
+}
+
+function commonCurrentShareAllowsStructure()
+{
+    $link = commonGetCurrentShareLink();
+    return $link ? $link->allowsStructure() : false;
+}
+
+function commonCurrentShareAllowsPeople()
+{
+    $link = commonGetCurrentShareLink();
+    return $link ? $link->allowsPeople() : false;
+}
+
+function commonCurrentShareAllowsPeopleDetail()
+{
+    $link = commonGetCurrentShareLink();
+    return $link ? $link->allowsPeopleDetail() : false;
+}
+
+function commonUserCanViewOrganization($userId, $organizationId)
 {
     $userId = (int)$userId;
     $organizationId = (int)$organizationId;
@@ -398,23 +582,23 @@ function commonUserHasOrganizationAccess($userId, $organizationId)
         return false;
     }
 
-    if (commonCanAccessWithoutLogin([
+    if (commonCanAccessWithoutLogin(array(
         'host' => $_SERVER['HTTP_HOST'] ?? '',
         'id' => $organizationId,
-    ])) {
+    ))) {
         return true;
     }
 
-    if ($userId <= 0) {
-        return false;
+    if (commonUserHasOrganizationMembership($userId, $organizationId)) {
+        return true;
     }
 
-    $user = new \dbObject\User();
-    if (!$user->load($userId)) {
-        return false;
-    }
+    return commonCurrentShareCanViewOrganization($organizationId);
+}
 
-    return $user->hasOrganizationAccess($organizationId);
+function commonUserHasOrganizationAccess($userId, $organizationId)
+{
+    return commonUserCanViewOrganization($userId, $organizationId);
 }
 
 function commonCurrentUserHasOrganizationAccess($organizationId = null)
@@ -423,7 +607,16 @@ function commonCurrentUserHasOrganizationAccess($organizationId = null)
         ? (int)$organizationId
         : (int)($_SESSION['currentOrganization'] ?? 0);
 
-    return commonUserHasOrganizationAccess(commonGetCurrentUserId(), $organizationId);
+    if ($organizationId <= 0) {
+        return false;
+    }
+
+    $organization = new \dbObject\Organization();
+    if (!$organization->load($organizationId)) {
+        return false;
+    }
+
+    return $organization->canViewDetail();
 }
 
 function commonLogoutUser()

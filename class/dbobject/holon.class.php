@@ -89,6 +89,33 @@
 			return (int)$rootHolon->get('IDorganization');
 		}
 
+		public function canView()
+		{
+			return $this->canViewDetail();
+		}
+
+		public function canViewDetail()
+		{
+			$organizationId = $this->resolveOrganizationId();
+			if ($organizationId <= 0) {
+				return false;
+			}
+
+			$currentUserId = function_exists('commonGetCurrentUserId')
+				? (int)\commonGetCurrentUserId()
+				: (int)($_SESSION['currentUser'] ?? 0);
+
+			if (function_exists('commonUserHasOrganizationMembership') && \commonUserHasOrganizationMembership($currentUserId, $organizationId)) {
+				return true;
+			}
+
+			if (function_exists('commonCurrentShareCanViewHolon')) {
+				return \commonCurrentShareCanViewHolon($this);
+			}
+
+			return false;
+		}
+
 		public function canEdit() {
 			$currentUserId = (int)\commonGetCurrentUserId();
 			if ($currentUserId <= 0) {
@@ -98,6 +125,10 @@
 			$organizationId = $this->resolveOrganizationId();
 			if ($organizationId <= 0) {
 				return false;
+			}
+
+			if (function_exists('commonUserHasOrganizationMembership')) {
+				return \commonUserHasOrganizationMembership($currentUserId, $organizationId);
 			}
 
 			$user = new \dbObject\User();
@@ -671,6 +702,81 @@
 			return (int)$this->get('IDtypeholon') === 4;
 		}
 
+		protected static function resolveMemberPermission($userId, $skipPermissionFilter = false, $organizationId = 0)
+		{
+			static $cache = array();
+
+			$userId = (int)$userId;
+			$organizationId = (int)$organizationId;
+			if ($userId <= 0) {
+				return array(
+					'canView' => false,
+					'canViewDetail' => false,
+				);
+			}
+
+			if ($skipPermissionFilter) {
+				return array(
+					'canView' => true,
+					'canViewDetail' => true,
+				);
+			}
+
+			$currentUserId = function_exists('commonGetCurrentUserId')
+				? (int)\commonGetCurrentUserId()
+				: (int)($_SESSION['currentUser'] ?? 0);
+			$shareToken = function_exists('commonGetCurrentShareToken')
+				? (string)\commonGetCurrentShareToken()
+				: '';
+			$cacheKey = $userId . ':' . $organizationId . ':' . $currentUserId . ':' . $shareToken;
+
+			if (isset($cache[$cacheKey])) {
+				return $cache[$cacheKey];
+			}
+
+			if (
+				$organizationId > 0
+				&& $currentUserId > 0
+				&& function_exists('commonUserHasOrganizationMembership')
+				&& \commonUserHasOrganizationMembership($currentUserId, $organizationId)
+			) {
+				$cache[$cacheKey] = array(
+					'canView' => true,
+					'canViewDetail' => true,
+				);
+				return $cache[$cacheKey];
+			}
+
+			if (
+				$organizationId > 0
+				&& $shareToken !== ''
+				&& function_exists('commonCurrentShareCanViewOrganization')
+				&& \commonCurrentShareCanViewOrganization($organizationId)
+			) {
+				$cache[$cacheKey] = array(
+					'canView' => function_exists('commonCurrentShareAllowsPeople') ? \commonCurrentShareAllowsPeople() : false,
+					'canViewDetail' => function_exists('commonCurrentShareAllowsPeopleDetail') ? \commonCurrentShareAllowsPeopleDetail() : false,
+				);
+				return $cache[$cacheKey];
+			}
+
+			$user = new \dbObject\User();
+			if (!$user->load($userId)) {
+				$cache[$cacheKey] = array(
+					'canView' => false,
+					'canViewDetail' => false,
+				);
+				return $cache[$cacheKey];
+			}
+
+			$cache[$cacheKey] = array(
+				'canView' => $user->canView(),
+				'canViewDetail' => $user->canViewDetail(),
+			);
+
+			return $cache[$cacheKey];
+		}
+
 		protected function getOrganizationMemberCards($organizationId)
 		{
 			$organizationId = (int)$organizationId;
@@ -690,6 +796,11 @@
 
 				$isPending = !(bool)$membership->get('active');
 
+				$permission = self::resolveMemberPermission($userId, false, $organizationId);
+				if (!$permission['canView']) {
+					continue;
+				}
+
 				if (!isset($cardsByUserId[$userId])) {
 					$cardsByUserId[$userId] = array(
 						'userId' => $userId,
@@ -698,6 +809,7 @@
 						'initials' => $membership->getUserInitials(),
 						'holonIds' => array((int)$this->getId()),
 						'isPending' => $isPending,
+						'canViewDetail' => $permission['canViewDetail'],
 					);
 					continue;
 				}
@@ -707,6 +819,7 @@
 					$cardsByUserId[$userId]['photoUrl'] = $membership->getProfilePhotoUrl();
 					$cardsByUserId[$userId]['initials'] = $membership->getUserInitials();
 					$cardsByUserId[$userId]['isPending'] = false;
+					$cardsByUserId[$userId]['canViewDetail'] = $permission['canViewDetail'];
 				}
 			}
 
@@ -869,6 +982,7 @@
 			$options = array_merge(array(
 				'organizationId' => $this->resolveOrganizationId(),
 				'includeDescendants' => ((int)$this->get('IDtypeholon') !== 1),
+				'skipPermissionFilter' => false,
 			), $options);
 
 			if ($this->isOrganizationHolon()) {
@@ -888,6 +1002,11 @@
 					continue;
 				}
 
+				$permission = self::resolveMemberPermission($userId, !empty($options['skipPermissionFilter']), (int)$options['organizationId']);
+				if (!$permission['canView']) {
+					continue;
+				}
+
 				if (!isset($cardsByUserId[$userId])) {
 					$link = new \dbObject\UserHolon();
 					$link->set('IDuser', $userId);
@@ -898,6 +1017,7 @@
 						'initials' => $link->getUserInitials((int)$options['organizationId']),
 						'holonIds' => array(),
 						'isPending' => false,
+						'canViewDetail' => $permission['canViewDetail'],
 					);
 				}
 
@@ -924,6 +1044,54 @@
 			});
 
 			return $cards;
+		}
+
+		public function getAssociatedMemberUserIds(array $options = array())
+		{
+			$options = array_merge(array(
+				'organizationId' => $this->resolveOrganizationId(),
+				'includeDescendants' => ((int)$this->get('IDtypeholon') !== 1),
+				'skipPermissionFilter' => false,
+			), $options);
+
+			if ($this->isOrganizationHolon()) {
+				if (!empty($options['skipPermissionFilter'])) {
+					$memberships = new \dbObject\ArrayUserOrganization();
+					$memberships->loadVisibleForOrganization((int)$options['organizationId']);
+					$userIds = array();
+					foreach ($memberships as $membership) {
+						$userId = (int)$membership->get('IDuser');
+						if ($userId > 0) {
+							$userIds[$userId] = $userId;
+						}
+					}
+					return array_values($userIds);
+				}
+
+				return $this->getOrganizationMemberUserIds((int)$options['organizationId']);
+			}
+
+			$scopeHolonIds = array();
+			$visitedHolonIds = array();
+			$this->collectMemberScopeHolonIds((bool)$options['includeDescendants'], $scopeHolonIds, $visitedHolonIds);
+
+			$linkRows = $this->loadVisibleMemberLinkRows($scopeHolonIds, (int)$options['organizationId']);
+			$userIds = array();
+			foreach ($linkRows as $row) {
+				$userId = (int)($row['user_id'] ?? 0);
+				if ($userId <= 0 || isset($userIds[$userId])) {
+					continue;
+				}
+
+				$permission = self::resolveMemberPermission($userId, !empty($options['skipPermissionFilter']), (int)$options['organizationId']);
+				if (!$permission['canView']) {
+					continue;
+				}
+
+				$userIds[$userId] = $userId;
+			}
+
+			return array_values($userIds);
 		}
 
 		public function getDirectMemberCards($organizationId = 0)

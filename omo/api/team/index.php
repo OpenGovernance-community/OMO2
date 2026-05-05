@@ -54,6 +54,38 @@ if (!$organization->load($organizationId)) {
     exit;
 }
 
+if (!$organization->canViewDetail()) {
+    http_response_code(403);
+    ?>
+    <div class="omo-team omo-panel-view">
+        <div class="omo-panel-view__body">
+            <div class="omo-panel-view__body_content">
+                <div class="omo-team__empty omo-empty-state">Acces refuse a cette organisation.</div>
+            </div>
+        </div>
+    </div>
+    <?php
+    exit;
+}
+
+if (
+    function_exists('commonGetCurrentShareToken')
+    && commonGetCurrentShareToken() !== ''
+    && !commonCurrentShareAllowsPeople()
+) {
+    http_response_code(403);
+    ?>
+    <div class="omo-team omo-panel-view">
+        <div class="omo-panel-view__body">
+            <div class="omo-panel-view__body_content">
+                <div class="omo-team__empty omo-empty-state">Acces refuse a la liste des personnes.</div>
+            </div>
+        </div>
+    </div>
+    <?php
+    exit;
+}
+
 $currentHolon = $organization->getStructuralRootHolon();
 if ($currentHolon === null) {
     http_response_code(404);
@@ -80,6 +112,22 @@ if ($currentHolonId > 0 && (int)$currentHolon->getId() !== $currentHolonId) {
             <div class="omo-panel-view__body">
                 <div class="omo-panel-view__body_content">
                     <div class="omo-team__empty omo-empty-state">Holon introuvable pour cette organisation.</div>
+                </div>
+            </div>
+        </div>
+        <?php
+        exit;
+    }
+
+    $canViewCandidate = $candidate->canViewDetail()
+        || (function_exists('commonCurrentShareContainsHolon') && commonCurrentShareContainsHolon($candidate));
+    if (!$canViewCandidate) {
+        http_response_code(403);
+        ?>
+        <div class="omo-team omo-panel-view">
+            <div class="omo-panel-view__body">
+                <div class="omo-panel-view__body_content">
+                    <div class="omo-team__empty omo-empty-state">Acces refuse a ce holon.</div>
                 </div>
             </div>
         </div>
@@ -148,6 +196,11 @@ foreach ($rawMemberCards as $rawCard) {
 
     $user = new User();
     $hasUser = $user->load($userId);
+    if ($hasUser && !$user->canView()) {
+        continue;
+    }
+
+    $canViewUserDetail = $hasUser ? $user->canViewDetail() : false;
 
     $isPending = !empty($rawCard['isPending']) || ($hasMembership && !(bool)$membership->get('active'));
     $isOrganizationAdmin = $hasMembership ? $membership->isOrganizationAdmin() : false;
@@ -228,6 +281,7 @@ foreach ($rawMemberCards as $rawCard) {
         'isPending' => $isPending,
         'joinedAtLabel' => $effectiveJoinedAt instanceof DateTimeInterface ? $formatDate($effectiveJoinedAt) : '',
         'lastSeenLabel' => $formatLastSeenLabel($organizationLastSeen, $globalLastSeen),
+        'canViewDetail' => $canViewUserDetail,
     );
 }
 
@@ -286,14 +340,18 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
             <div class="omo-team__grid omo-card-grid omo-card-grid--fixed">
                 <?php foreach ($memberCards as $card): ?>
                     <article
-                        class="omo-team-card omo-card omo-card--interactive<?= $card['isPending'] ? ' omo-team-card--pending' : '' ?>"
+                        class="omo-team-card omo-card<?= $card['canViewDetail'] ? ' omo-card--interactive' : '' ?><?= $card['isPending'] ? ' omo-team-card--pending' : '' ?>"
+                        <?php if ($card['canViewDetail']): ?>
                         data-open-user-context="1"
+                        <?php endif; ?>
                         data-user-id="<?= (int)$card['userId'] ?>"
                         data-context-admin="<?= $card['isContextAdmin'] ? '1' : '0' ?>"
                         data-member-pending="<?= $card['isPending'] ? '1' : '0' ?>"
+                        <?php if ($card['canViewDetail']): ?>
                         tabindex="0"
                         role="button"
                         aria-label="Ouvrir le profil contextuel de <?= omoApiEscape($card['displayName']) ?>"
+                        <?php endif; ?>
                     >
                         <div class="omo-team-card__banner">
                             <?php if ($canManageCurrentHolonMembers): ?>

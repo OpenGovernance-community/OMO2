@@ -37,7 +37,6 @@ function omoBuildPwaHeadHtml($themeColor = '#004663')
 }
 
 $omoPwaBodyEndHtml = '<script src="/omo/assets/js/install.js" defer></script>';
-$omoTopbarThemeHeadHtml = '<link rel="stylesheet" href="/omo/assets/css/topbar-theme.css">';
 $omoThemeBootstrapHtml = implode(PHP_EOL, [
     '<script src="/shared_functions.js"></script>',
     '<script>sharedApplyDocumentTheme();</script>',
@@ -53,7 +52,7 @@ if (!commonGetCurrentUserId() && !$isDemoGuest) {
         'intro' => 'Connectez-vous pour accéder à la structure et aux outils de gouvernance.',
         'returnTo' => commonNormalizeLocalPath($_SERVER['REQUEST_URI'] ?? '/omo/', '/omo/'),
         'organization' => $loginOrganizationContext,
-        'headHtml' => $omoThemeBootstrapHtml . PHP_EOL . $omoTopbarThemeHeadHtml . PHP_EOL . $omoPwaHeadHtml,
+        'headHtml' => $omoThemeBootstrapHtml . PHP_EOL . $omoPwaHeadHtml,
         'bodyEndHtml' => $omoPwaBodyEndHtml,
         'topbar' => omoBuildTopbarOptions($loginOrganizationContext, [
             'variant' => 'login',
@@ -469,7 +468,7 @@ if ($currentUser->load($currentUserId)) {
                     'description' => 'Des formations ciblées pour monter en compétences dans l’utilisation du logiciel.',
                     'title' => 'Tutoriels',
                     'mode' => 'drawer',
-                    'url' => '/lms/parcours.php?idp=1&embed=1',
+                    'url' => commonBuildUrl('/lms/index.php?embed=1', commonGetRootHost()),
                 ],
             ],
         ]);
