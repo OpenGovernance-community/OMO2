@@ -913,7 +913,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException("Impossible de serialiser le JSON d'export.");
         }
 
-        $fileName = 'omo1_to_omo2_orga_' . $organisationId . '_' . gmdate('Ymd_His') . '.json';
+        $fileName = 'omo1_to_omo2_v4_orga_' . $organisationId . '_' . gmdate('Ymd_His') . '.json';
 
         header('Content-Type: application/json; charset=UTF-8');
         header('Content-Disposition: attachment; filename="' . $fileName . '"');
@@ -1062,10 +1062,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="page">
         <div class="card">
             <div class="hero">
-                <h1>Export OMO 1 vers OMO 2</h1>
+                <h1>Export OMO 1 vers OMO 2 v4</h1>
                 <p class="lead">
                     Cet outil conserve l'interface actuelle, mais genere maintenant
-                    un JSON directement compatible avec l'import compact OMO 2 :
+                    un JSON directement compatible avec l'import compact OMO 2 v4 :
                     racine d'organisation, templates a la racine, groupes, cercles,
                     roles structurels et proprietes generiques.
                 </p>
@@ -1113,7 +1113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <div class="actions">
-                    <button type="submit">Generer un export compatible OMO 2</button>
+                    <button type="submit">Generer un export OMO 2 v4</button>
                 </div>
             </form>
         </div>
