@@ -8,11 +8,13 @@ const OMO2_EXPORT_VERSION = 4;
 const OMO2_ROOT_HOLON_ID = 1;
 const OMO2_ROLE_TEMPLATE_ID = 1001;
 const OMO2_CIRCLE_TEMPLATE_ID = 1002;
-const OMO2_FIRST_LINK_TEMPLATE_ID = 1003;
-const OMO2_SECOND_LINK_TEMPLATE_ID = 1004;
-const OMO2_FACILITATION_TEMPLATE_ID = 1005;
-const OMO2_MEMORY_TEMPLATE_ID = 1006;
+const OMO2_GROUP_TEMPLATE_ID = 1003;
+const OMO2_FIRST_LINK_TEMPLATE_ID = 1004;
+const OMO2_SECOND_LINK_TEMPLATE_ID = 1005;
+const OMO2_FACILITATION_TEMPLATE_ID = 1006;
+const OMO2_MEMORY_TEMPLATE_ID = 1007;
 const OMO2_REAL_HOLON_ID_OFFSET = 100000;
+const OMO2_GROUP_HOLON_ID_OFFSET = 200000;
 const OMO2_DEFAULT_ORGANIZATION_COLOR = '#3da8a9';
 const OMO2_PROPERTY_RAISON_ETRE = 101;
 const OMO2_PROPERTY_ATTENDUS = 102;
@@ -146,6 +148,26 @@ function inferStructuralTemplateKey(?string $roleName): ?string
     }
 
     return null;
+}
+
+function roleTypeLabelLooksLikeCircle(?array $roleType): bool
+{
+    if ($roleType === null) {
+        return false;
+    }
+
+    $label = normalizeLabel((string) ($roleType['roty_label'] ?? ''));
+    if ($label === '') {
+        return false;
+    }
+
+    foreach (['circle', 'cercle', 'ancrage', 'super cercle', 'super circle'] as $keyword) {
+        if (strpos($label, normalizeLabel($keyword)) !== false) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function simplifyRoleType(?array $roleType): ?array
@@ -478,10 +500,18 @@ function buildContentPropertyRows(array $content, ?array $baselineContent = null
 function roleIsCircle(array $roleTypesById, array $role, array $roleIdsWithChildren = []): bool
 {
     $roleId = (int) ($role['role_id'] ?? 0);
+    if (inferStructuralTemplateKey($role['role_name'] ?? null) !== null) {
+        return false;
+    }
+
     $roleTypeId = (int) ($role['roty_id'] ?? 0);
     $roleType = $roleTypesById[$roleTypeId] ?? null;
 
     if ($roleType !== null && (int) ($roleType['roty_canBeCircle'] ?? 0) === 1) {
+        return true;
+    }
+
+    if (roleTypeLabelLooksLikeCircle($roleType)) {
         return true;
     }
 
@@ -582,6 +612,21 @@ function buildRealHolonRecord(
     }
 
     return $record;
+}
+
+function buildGroupRecord(int $exportId, int $parentId, string $name): array
+{
+    return [
+        'id' => $exportId,
+        'typeId' => 3,
+        'name' => $name,
+        'parentId' => $parentId,
+        'visible' => true,
+        'templateId' => OMO2_GROUP_TEMPLATE_ID,
+        '_sortWeight' => 15,
+        '_sortGroupName' => '',
+        '_sortName' => buildRecordSortName(['name' => $name]),
+    ];
 }
 
 function buildHolonTree(array $recordsById): array
@@ -772,6 +817,13 @@ function buildCompatibleExport(PDO $pdo, int $organisationId, string $host, stri
         null,
         buildTemplateSchemaRows()
     );
+    $recordsById[OMO2_GROUP_TEMPLATE_ID] = buildTemplateRecord(
+        OMO2_GROUP_TEMPLATE_ID,
+        'Template groupe',
+        3,
+        null,
+        []
+    );
 
     foreach (structuralTemplateDefinitions() as $templateKey => $templateDefinition) {
         $templateContent = $structuralTemplates[$templateKey]['content'] ?? [
@@ -800,6 +852,9 @@ function buildCompatibleExport(PDO $pdo, int $organisationId, string $host, stri
         $exportIdByRoleId[(int) $role['role_id']] = OMO2_REAL_HOLON_ID_OFFSET + (int) $role['role_id'];
     }
 
+    $groupExportIdByKey = [];
+    $nextGroupExportId = OMO2_GROUP_HOLON_ID_OFFSET;
+
     foreach ($currentRoles as $role) {
         $roleId = (int) $role['role_id'];
         $exportId = $exportIdByRoleId[$roleId];
@@ -812,6 +867,16 @@ function buildCompatibleExport(PDO $pdo, int $organisationId, string $host, stri
 
         $groupLabel = !$isCircle ? cleanNullable($role['role_group'] ?? null) : null;
         $parentId = $containerParentId;
+        if ($groupLabel !== null) {
+            $groupKey = $containerParentId . '|' . normalizeLabel($groupLabel);
+            if (!isset($groupExportIdByKey[$groupKey])) {
+                $groupExportIdByKey[$groupKey] = $nextGroupExportId;
+                $recordsById[$nextGroupExportId] = buildGroupRecord($nextGroupExportId, $containerParentId, $groupLabel);
+                $nextGroupExportId += 1;
+            }
+
+            $parentId = $groupExportIdByKey[$groupKey];
+        }
 
         $resolved = resolveRoleContent(
             $role,
@@ -839,7 +904,7 @@ function buildCompatibleExport(PDO $pdo, int $organisationId, string $host, stri
         }
         if ($groupLabel !== null) {
             $overrides['groupName'] = $groupLabel;
-            $overrides['_sortGroupName'] = normalizeLabel($groupLabel);
+            $overrides['_sortGroupName'] = '';
         }
 
         $recordsById[$exportId] = buildRealHolonRecord(
@@ -1127,11 +1192,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <div class="hint">
                     Le JSON genere cree a la racine un template de role, un template
-                    de cercle et les 4 templates structurels. Les raisons d'etre,
+                    de cercle, un template de groupe et les 4 templates structurels. Les raisons d'etre,
                     attendus, domaines d'autorite et strategies OMO 1 sont convertis
-                    en proprietes generiques OMO 2. Les groupes visuels OMO 1 sont
-                    conserves comme metadata de regroupement sur les roles, sans
-                    recreer une fausse hierarchie de parents.
+                    en proprietes generiques OMO 2. Les groupes OMO 1 sont exportes
+                    comme holons de type groupe avec leur propre template, et les
+                    roles concernes sont places dedans.
                 </div>
 
                 <div class="actions">
