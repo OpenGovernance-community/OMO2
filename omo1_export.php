@@ -156,24 +156,28 @@ function structuralTemplateDefinitions(): array
         'first_link' => [
             'id' => OMO2_FIRST_LINK_TEMPLATE_ID,
             'label' => 'Premier lien',
+            'color' => '#FF2200',
             'aliases' => ['premier lien', '1er lien', 'lien pilotage', 'pilotage'],
             'link' => true,
         ],
         'second_link' => [
             'id' => OMO2_SECOND_LINK_TEMPLATE_ID,
             'label' => 'Second lien',
+            'color' => '#FF4400',
             'aliases' => ['second lien', '2nd lien', 'deuxieme lien', 'lien representation', 'representation', 'representant'],
             'link' => true,
         ],
         'facilitation' => [
             'id' => OMO2_FACILITATION_TEMPLATE_ID,
             'label' => 'Facilitation',
+            'color' => '#FF8800',
             'aliases' => ['facilitation', 'role facilitation'],
             'link' => false,
         ],
         'memory' => [
             'id' => OMO2_MEMORY_TEMPLATE_ID,
             'label' => 'Memoire',
+            'color' => '#FF6600',
             'aliases' => ['memoire', 'role memoire', 'secretaire', 'secretaire', 'role secretaire'],
             'link' => false,
         ],
@@ -346,11 +350,13 @@ function buildStructuralTemplates(array $rolesById, array $roleContentsById): ar
         }
 
         $bestRole = $rolesById[$bestRoleId];
+        $resolvedLabel = cleanNullable($bestRole['role_name']) ?: $definition['label'];
         $templates[$templateKey] = [
             'template_key' => $templateKey,
             'template_id' => (int) $definition['id'],
-            'label' => $definition['label'],
+            'label' => $resolvedLabel,
             'link' => (bool) $definition['link'],
+            'color' => (string) ($definition['color'] ?? ''),
             'source_role' => [
                 'role_id' => (int) $bestRole['role_id'],
                 'name' => cleanNullable($bestRole['role_name']),
@@ -850,14 +856,14 @@ function buildCompatibleExport(PDO $pdo, int $organisationId, string $host, stri
 
     $recordsById[OMO2_ROLE_TEMPLATE_ID] = buildTemplateRecord(
         OMO2_ROLE_TEMPLATE_ID,
-        'Template role',
+        'Roles',
         1,
         null,
         buildTemplateSchemaRows()
     );
     $recordsById[OMO2_CIRCLE_TEMPLATE_ID] = buildTemplateRecord(
         OMO2_CIRCLE_TEMPLATE_ID,
-        'Template cercle',
+        'Cercles',
         2,
         null,
         buildTemplateSchemaRows()
@@ -880,7 +886,7 @@ function buildCompatibleExport(PDO $pdo, int $organisationId, string $host, stri
 
         $recordsById[(int) $templateDefinition['id']] = buildTemplateRecord(
             (int) $templateDefinition['id'],
-            $templateDefinition['label'],
+            (string) ($structuralTemplates[$templateKey]['label'] ?? $templateDefinition['label']),
             1,
             OMO2_ROLE_TEMPLATE_ID,
             buildContentPropertyRows($templateContent),
@@ -888,6 +894,7 @@ function buildCompatibleExport(PDO $pdo, int $organisationId, string $host, stri
                 'mandatory' => true,
                 'unique' => true,
                 'link' => (bool) $templateDefinition['link'],
+                'color' => (string) ($structuralTemplates[$templateKey]['color'] ?? $templateDefinition['color'] ?? ''),
             ]
         );
     }
