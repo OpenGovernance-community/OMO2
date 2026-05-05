@@ -45,6 +45,21 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
                 </span>
             </button>
 
+            <button
+                type="button"
+                class="omo-setup-card"
+                data-omo-org-import-button="1"
+            >
+                <span class="omo-setup-card__media" style="background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary, #2563eb) 82%, #0f172a), #0f172a);">
+                    <span class="omo-setup-card__badge">Import JSON</span>
+                </span>
+                <span class="omo-setup-card__content">
+                    <span class="omo-setup-card__title">Importer une organisation</span>
+                    <span class="omo-setup-card__text">Charge un export JSON et reconstruit la structure, les roles et les proprietes dans cette nouvelle organisation.</span>
+                    <span class="omo-setup-card__cta">Selectionner un fichier</span>
+                </span>
+            </button>
+
             <?php foreach (($setupData['templates'] ?? array()) as $template): ?>
                 <?php
                 $templateColor = trim((string)($template['color'] ?? ''));
@@ -381,6 +396,8 @@ function omoReloadOrganizationPanels(oid) {
     loadContent('#panel-right', 'api/getStructure.php?oid=' + targetOid);
 }
 
+window.omoReloadOrganizationPanels = omoReloadOrganizationPanels;
+
 $(document)
   .off('click.omoOrgSetup', '[data-omo-org-setup="1"] [data-omo-org-init-button="1"]')
   .on('click.omoOrgSetup', '[data-omo-org-setup="1"] [data-omo-org-init-button="1"]', function () {
@@ -430,9 +447,29 @@ $(document)
     .catch(function (error) {
         feedback.addClass('is-error').text(error && error.message ? error.message : "Impossible d'initialiser l'organisation.");
     })
-    .finally(function () {
+  .finally(function () {
         panel.find('[data-omo-org-init-button="1"]').prop('disabled', false);
     });
+  });
+
+$(document)
+  .off('click.omoOrgImport', '[data-omo-org-setup="1"] [data-omo-org-import-button="1"]')
+  .on('click.omoOrgImport', '[data-omo-org-setup="1"] [data-omo-org-import-button="1"]', function () {
+    const button = $(this);
+    const panel = button.closest('[data-omo-org-setup="1"]');
+    const organizationId = Number(panel.data('organization-id') || 0);
+
+    if (!organizationId || typeof window.commonTopbarOpenModal !== 'function') {
+        return;
+    }
+
+    let popupUrl = '/omo/api/organizations/import_popup.php?oid=' + encodeURIComponent(organizationId);
+
+    if (typeof window.omoResolveAppUrl === 'function') {
+        popupUrl = window.omoResolveAppUrl(popupUrl);
+    }
+
+    window.commonTopbarOpenModal('Importer une organisation', popupUrl, 'fetch');
   });
 </script>
         <?php

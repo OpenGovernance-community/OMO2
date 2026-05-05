@@ -90,6 +90,484 @@
 			return false;
 		}
 
+		protected function resolveCurrentUserId()
+		{
+			return function_exists('commonGetCurrentUserId')
+				? (int)\commonGetCurrentUserId()
+				: (int)($_SESSION['currentUser'] ?? 0);
+		}
+
+		public function getMembership($userId, $activeOnly = false)
+		{
+			$userId = (int)$userId;
+			if ((int)$this->getId() <= 0 || $userId <= 0) {
+				return null;
+			}
+
+			$membership = new \dbObject\UserOrganization();
+			if (!$membership->load(array(
+				array('IDuser', $userId),
+				array('IDorganization', (int)$this->getId()),
+			))) {
+				return null;
+			}
+
+			if ($activeOnly && !(bool)$membership->get('active')) {
+				return null;
+			}
+
+			return $membership;
+		}
+
+		public function isUserOrganizationAdmin($userId)
+		{
+			$membership = $this->getMembership($userId, true);
+			return $membership ? $membership->isOrganizationAdmin() : false;
+		}
+
+		public function canEdit()
+		{
+			return $this->isUserOrganizationAdmin($this->resolveCurrentUserId());
+		}
+
+		public function canDelete()
+		{
+			return $this->canEdit();
+		}
+
+		public function countActiveAdminMemberships($excludeUserId = 0)
+		{
+			$organizationId = (int)$this->getId();
+			$excludeUserId = (int)$excludeUserId;
+			if ($organizationId <= 0) {
+				return 0;
+			}
+
+			$query = "
+				SELECT parameters
+				FROM user_organization
+				WHERE IDorganization = :organization_id
+				  AND active = 1
+			";
+			$params = array(
+				'organization_id' => $organizationId,
+			);
+
+			if ($excludeUserId > 0) {
+				$query .= "
+				  AND IDuser != :exclude_user_id";
+				$params['exclude_user_id'] = $excludeUserId;
+			}
+
+			$rows = self::fetchAll($query, $params);
+			if ($rows === false) {
+				return 0;
+			}
+
+			$count = 0;
+			foreach ($rows as $row) {
+				$parameters = json_decode((string)($row['parameters'] ?? ''), true);
+				if (is_array($parameters) && !empty($parameters['isAdmin'])) {
+					$count += 1;
+				}
+			}
+
+			return $count;
+		}
+
+		protected static function buildIntPlaceholders(array $ids, $prefix, array &$params)
+		{
+			$placeholders = array();
+			foreach (array_values($ids) as $index => $id) {
+				$key = $prefix . '_' . $index;
+				$placeholders[] = ':' . $key;
+				$params[$key] = (int)$id;
+			}
+
+			return $placeholders;
+		}
+
+		protected function getOrganizationRootHolonIds()
+		{
+			$organizationId = (int)$this->getId();
+			if ($organizationId <= 0) {
+				return array();
+			}
+
+			$rows = self::fetchAll(
+				"SELECT id
+				FROM holon
+				WHERE IDorganization = :organization_id
+				ORDER BY id ASC",
+				array(
+					'organization_id' => $organizationId,
+				)
+			);
+
+			if ($rows === false) {
+				return array();
+			}
+
+			$rootIds = array();
+			foreach ($rows as $row) {
+				$rootId = (int)($row['id'] ?? 0);
+				if ($rootId > 0) {
+					$rootIds[$rootId] = $rootId;
+				}
+			}
+
+			return array_values($rootIds);
+		}
+
+		protected function getOrganizationHolonIds()
+		{
+			$rootIds = $this->getOrganizationRootHolonIds();
+			if (count($rootIds) === 0) {
+				return array();
+			}
+
+			$params = array();
+			$placeholders = self::buildIntPlaceholders($rootIds, 'root_holon', $params);
+			$rows = self::fetchAll(
+				"SELECT id
+				FROM holon
+				WHERE id IN (" . implode(', ', $placeholders) . ")
+				   OR IDholon_org IN (" . implode(', ', $placeholders) . ")
+				ORDER BY id ASC",
+				$params
+			);
+
+			if ($rows === false) {
+				return $rootIds;
+			}
+
+			$holonIds = array();
+			foreach ($rows as $row) {
+				$holonId = (int)($row['id'] ?? 0);
+				if ($holonId > 0) {
+					$holonIds[$holonId] = $holonId;
+				}
+			}
+
+			return array_values($holonIds);
+		}
+
+		protected function deactivateUserHolonLinks($userId, array $holonIds)
+		{
+			$userId = (int)$userId;
+			$holonIds = array_values(array_unique(array_filter(array_map('intval', $holonIds), function ($holonId) {
+				return $holonId > 0;
+			})));
+
+			if ($userId <= 0 || count($holonIds) === 0) {
+				return true;
+			}
+
+			$params = array(
+				'user_id' => $userId,
+			);
+			$placeholders = self::buildIntPlaceholders($holonIds, 'holon', $params);
+			$rows = self::fetchAll(
+				"SELECT id
+				FROM user_holon
+				WHERE IDuser = :user_id
+				  AND IDholon IN (" . implode(', ', $placeholders) . ")",
+				$params
+			);
+
+			if ($rows === false) {
+				return false;
+			}
+
+			foreach ($rows as $row) {
+				$linkId = (int)($row['id'] ?? 0);
+				if ($linkId <= 0) {
+					continue;
+				}
+
+				$link = new \dbObject\UserHolon();
+				if (!$link->load($linkId)) {
+					continue;
+				}
+
+				$link->set('active', false);
+				$saveResult = $link->setHolonAdmin(false);
+				if (!is_array($saveResult) || empty($saveResult['status'])) {
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		protected function deleteOrganizationDocuments(array $holonIds)
+		{
+			$organizationId = (int)$this->getId();
+			if ($organizationId <= 0) {
+				return true;
+			}
+
+			$params = array(
+				'organization_id' => $organizationId,
+			);
+			$query = "
+				SELECT id
+				FROM document
+				WHERE IDorganization = :organization_id
+			";
+
+			$holonIds = array_values(array_unique(array_filter(array_map('intval', $holonIds), function ($holonId) {
+				return $holonId > 0;
+			})));
+			if (count($holonIds) > 0) {
+				$placeholders = self::buildIntPlaceholders($holonIds, 'document_holon', $params);
+				$query .= "
+				   OR IDholon IN (" . implode(', ', $placeholders) . ")";
+			}
+
+			$rows = self::fetchAll($query, $params);
+			if ($rows === false) {
+				return false;
+			}
+
+			$documentIds = array();
+			foreach ($rows as $row) {
+				$documentId = (int)($row['id'] ?? 0);
+				if ($documentId > 0) {
+					$documentIds[$documentId] = $documentId;
+				}
+			}
+
+			if (count($documentIds) === 0) {
+				return true;
+			}
+
+			$documentParams = array();
+			$documentPlaceholders = self::buildIntPlaceholders(array_values($documentIds), 'document', $documentParams);
+
+			if (!self::execute(
+				"DELETE FROM alttext
+				WHERE IDdocument IN (" . implode(', ', $documentPlaceholders) . ")",
+				$documentParams
+			)) {
+				return false;
+			}
+
+			if (!self::execute(
+				"DELETE FROM media
+				WHERE IDdocument IN (" . implode(', ', $documentPlaceholders) . ")",
+				$documentParams
+			)) {
+				return false;
+			}
+
+			return self::execute(
+				"DELETE FROM document
+				WHERE id IN (" . implode(', ', $documentPlaceholders) . ")",
+				$documentParams
+			);
+		}
+
+		public function removeMember($userId, array $options = array())
+		{
+			$organizationId = (int)$this->getId();
+			$userId = (int)$userId;
+			$actorUserId = isset($options['actorUserId']) ? (int)$options['actorUserId'] : $this->resolveCurrentUserId();
+
+			if ($organizationId <= 0 || $userId <= 0) {
+				return array(
+					'status' => false,
+					'message' => 'Membre ou organisation invalide.',
+				);
+			}
+
+			$membership = $this->getMembership($userId);
+			if (!$membership || !(bool)$membership->get('active')) {
+				return array(
+					'status' => false,
+					'message' => "Ce membre n'est pas actif dans cette organisation.",
+				);
+			}
+
+			$isSelfRemoval = $actorUserId > 0 && $actorUserId === $userId;
+			$actorIsAdmin = $this->isUserOrganizationAdmin($actorUserId);
+			if (!$isSelfRemoval && !$actorIsAdmin) {
+				return array(
+					'status' => false,
+					'message' => "Vous n'avez pas le droit de modifier cette organisation.",
+				);
+			}
+
+			if ($membership->isOrganizationAdmin() && $this->countActiveAdminMemberships($userId) === 0) {
+				return array(
+					'status' => false,
+					'message' => "Le dernier admin ne peut pas quitter l'organisation. Nommez un autre admin ou supprimez l'organisation.",
+				);
+			}
+
+			$pdo = \dbObject\DbObject::getPdo();
+			if (!$pdo) {
+				return array(
+					'status' => false,
+					'message' => 'Connexion base de donnees indisponible.',
+				);
+			}
+
+			try {
+				$pdo->beginTransaction();
+
+				if (!$this->deactivateUserHolonLinks($userId, $this->getOrganizationHolonIds())) {
+					throw new \RuntimeException("Le retrait des roles et cercles n'a pas pu etre finalise.");
+				}
+
+				$membership->set('active', false);
+				$saveResult = $membership->setOrganizationAdmin(false);
+				if (!is_array($saveResult) || empty($saveResult['status'])) {
+					throw new \RuntimeException("Le retrait de l'organisation n'a pas pu etre enregistre.");
+				}
+
+				$pdo->commit();
+
+				return array(
+					'status' => true,
+					'message' => $isSelfRemoval
+						? "Vous avez quitte l'organisation."
+						: "Le membre a ete retire de l'organisation.",
+				);
+			} catch (\Throwable $exception) {
+				if ($pdo->inTransaction()) {
+					$pdo->rollBack();
+				}
+
+				return array(
+					'status' => false,
+					'message' => $exception->getMessage(),
+				);
+			}
+		}
+
+		public function delete()
+		{
+			if (!$this->canDelete()) {
+				return false;
+			}
+
+			$organizationId = (int)$this->getId();
+			if ($organizationId <= 0) {
+				return false;
+			}
+
+			$pdo = \dbObject\DbObject::getPdo();
+			if (!$pdo) {
+				return false;
+			}
+
+			try {
+				$pdo->beginTransaction();
+
+				$rootHolonIds = $this->getOrganizationRootHolonIds();
+				$holonIds = $this->getOrganizationHolonIds();
+
+				if (!$this->deleteOrganizationDocuments($holonIds)) {
+					throw new \RuntimeException("Les documents de l'organisation n'ont pas pu etre supprimes.");
+				}
+
+				if (!self::execute(
+					"DELETE FROM holon_share_link
+					WHERE IDorganization = :organization_id",
+					array('organization_id' => $organizationId)
+				)) {
+					throw new \RuntimeException("Les liens de partage n'ont pas pu etre supprimes.");
+				}
+
+				if (!self::execute(
+					"DELETE FROM invitation
+					WHERE IDorganization = :organization_id",
+					array('organization_id' => $organizationId)
+				)) {
+					throw new \RuntimeException("Les invitations n'ont pas pu etre supprimees.");
+				}
+
+				if (!self::execute(
+					"DELETE FROM history
+					WHERE IDorganization = :organization_id",
+					array('organization_id' => $organizationId)
+				)) {
+					throw new \RuntimeException("L'historique n'a pas pu etre supprime.");
+				}
+
+				if (!self::execute(
+					"DELETE FROM organization_application
+					WHERE IDorganization = :organization_id",
+					array('organization_id' => $organizationId)
+				)) {
+					throw new \RuntimeException("Les applications d'organisation n'ont pas pu etre supprimees.");
+				}
+
+				if (!self::execute(
+					"DELETE FROM organization_parcours
+					WHERE IDorganization = :organization_id",
+					array('organization_id' => $organizationId)
+				)) {
+					throw new \RuntimeException("Les parcours d'organisation n'ont pas pu etre supprimes.");
+				}
+
+				if (count($holonIds) > 0) {
+					$holonParams = array();
+					$holonPlaceholders = self::buildIntPlaceholders($holonIds, 'delete_holon', $holonParams);
+
+					if (!self::execute(
+						"DELETE FROM user_holon
+						WHERE IDholon IN (" . implode(', ', $holonPlaceholders) . ")",
+						$holonParams
+					)) {
+						throw new \RuntimeException("Les liens membres des holons n'ont pas pu etre supprimes.");
+					}
+				}
+
+				if (count($rootHolonIds) > 0) {
+					$rootParams = array();
+					$rootPlaceholders = self::buildIntPlaceholders($rootHolonIds, 'root_delete', $rootParams);
+
+					if (!self::execute(
+						"DELETE FROM property
+						WHERE IDholon_organization IN (" . implode(', ', $rootPlaceholders) . ")",
+						$rootParams
+					)) {
+						throw new \RuntimeException("Les definitions de proprietes n'ont pas pu etre supprimees.");
+					}
+
+					foreach ($rootHolonIds as $rootHolonId) {
+						$rootHolon = new \dbObject\Holon();
+						if ($rootHolon->load((int)$rootHolonId) && !$rootHolon->delete()) {
+							throw new \RuntimeException("La structure de l'organisation n'a pas pu etre supprimee.");
+						}
+					}
+				}
+
+				if (!self::execute(
+					"DELETE FROM user_organization
+					WHERE IDorganization = :organization_id",
+					array('organization_id' => $organizationId)
+				)) {
+					throw new \RuntimeException("Les membres de l'organisation n'ont pas pu etre supprimes.");
+				}
+
+				if (!parent::delete()) {
+					throw new \RuntimeException("L'organisation n'a pas pu etre supprimee.");
+				}
+
+				$pdo->commit();
+				return true;
+			} catch (\Throwable $exception) {
+				if ($pdo->inTransaction()) {
+					$pdo->rollBack();
+				}
+
+				return false;
+			}
+		}
+
 		public static function resolveFromHost($host, $defaultId = 1) {
 			$host = is_string($host) ? trim($host) : "";
 			if ($host === "") {
@@ -326,9 +804,9 @@
 			return $children;
 		}
 
-		protected function cloneStructuralPropertyValue(\dbObject\Property $property, $rawValue, array $holonIdMap)
+		protected function remapHolonReferenceValueByListType($listItemType, $rawValue, array $holonIdMap)
 		{
-			if ((string)$property->get('listitemtype') !== \dbObject\Property::LIST_ITEM_HOLON) {
+			if ((string)$listItemType !== \dbObject\Property::LIST_ITEM_HOLON) {
 				return $rawValue;
 			}
 
@@ -384,6 +862,11 @@
 			}
 
 			return $rawValue;
+		}
+
+		protected function cloneStructuralPropertyValue(\dbObject\Property $property, $rawValue, array $holonIdMap)
+		{
+			return $this->remapHolonReferenceValueByListType($property->get('listitemtype'), $rawValue, $holonIdMap);
 		}
 
 		protected function cloneStructuralProperty(\dbObject\Property $sourceProperty, $sourceRootHolonId, $targetRootHolonId, array &$propertyIdMap)
@@ -445,6 +928,340 @@
 				$targetHolonProperty->set('active', (bool)$sourceHolonProperty->get('active'));
 				$targetHolonProperty->save();
 			}
+		}
+
+		protected function getImportedHolonRecords(array $payload)
+		{
+			$holons = $payload['holons'] ?? array();
+			if (!is_array($holons)) {
+				return array();
+			}
+
+			$flattened = array();
+			$flattenNodes = function (array $nodes, $parentId = 0) use (&$flattenNodes, &$flattened) {
+				foreach ($nodes as $node) {
+					if (!is_array($node)) {
+						continue;
+					}
+
+					$record = $node;
+					$children = $record['children'] ?? array();
+					unset($record['children']);
+
+					if ($parentId > 0 && !array_key_exists('parentId', $record)) {
+						$record['parentId'] = (int)$parentId;
+					}
+
+					$flattened[] = $record;
+
+					$currentId = (int)($record['id'] ?? 0);
+					if ($currentId > 0 && is_array($children) && count($children) > 0) {
+						$flattenNodes($children, $currentId);
+					}
+				}
+			};
+
+			$flattenNodes(array_values(array_filter($holons, 'is_array')));
+
+			return $flattened;
+		}
+
+		protected function getImportedCompactPropertyDefinitions(array $payload)
+		{
+			$definitions = $payload['propertyDefinitions'] ?? array();
+			return is_array($definitions) ? array_values(array_filter($definitions, 'is_array')) : array();
+		}
+
+		protected function createImportedPropertiesFromCompactDefinitions(array $definitions, $targetRootHolonId, array &$propertyIdMap)
+		{
+			foreach ($definitions as $definition) {
+				$sourcePropertyId = (int)($definition['id'] ?? 0);
+				if ($sourcePropertyId <= 0) {
+					continue;
+				}
+
+				$property = new \dbObject\Property();
+				$property->set('name', trim((string)($definition['name'] ?? '')) !== '' ? $definition['name'] : 'Propriete');
+				$property->set('shortname', trim((string)($definition['shortname'] ?? '')) !== '' ? $definition['shortname'] : \dbObject\Property::buildShortnameFromName((string)($definition['name'] ?? 'Propriete')));
+				$property->set('IDpropertyformat', (int)($definition['formatId'] ?? 0));
+				$property->set('listitemtype', \dbObject\Property::normalizeListItemType($definition['listItemType'] ?? null));
+				$property->set('listholontypeids', \dbObject\Property::serializeHolonTypeIds($definition['listHolonTypeIds'] ?? array()));
+				$property->set('IDholon_organization', (int)$targetRootHolonId);
+				$property->set('position', (int)($definition['position'] ?? 0));
+				$property->set('active', !array_key_exists('active', $definition) || (bool)$definition['active']);
+				$property->save();
+
+				$propertyIdMap[$sourcePropertyId] = (int)$property->getId();
+			}
+		}
+
+		protected function applyImportedCompactRecordToHolon(\dbObject\Holon $targetHolon, array $record, $userId = 0, $preserveName = false, $isOrganizationRoot = false)
+		{
+			$name = trim((string)($record['name'] ?? ''));
+			if ($name === '') {
+				$name = 'Holon';
+			}
+
+			if (!$preserveName) {
+				$targetHolon->set('name', $name);
+			}
+
+			$templateName = trim((string)($record['templateName'] ?? ''));
+			$targetHolon->set('templatename', $templateName !== '' ? $templateName : null);
+			$targetHolon->set('IDtypeholon', $isOrganizationRoot ? 4 : max(1, (int)($record['typeId'] ?? 1)));
+			$targetHolon->set('IDuser', (int)$userId > 0 ? (int)$userId : (int)$targetHolon->get('IDuser'));
+			$targetHolon->set('active', true);
+			$targetHolon->set('visible', !array_key_exists('visible', $record) || (bool)$record['visible']);
+			$targetHolon->set('mandatory', !empty($record['mandatory']));
+			$targetHolon->set('lockedname', !empty($record['lockedName']));
+			$targetHolon->set('lockedicon', !empty($record['lockedIcon']));
+			$targetHolon->set('lockedbanner', !empty($record['lockedBanner']));
+			$targetHolon->set('unique', !empty($record['unique']));
+			$targetHolon->set('link', !empty($record['link']));
+			$targetHolon->set('color', trim((string)($record['color'] ?? '')) !== '' ? $record['color'] : null);
+			$targetHolon->set('icon', trim((string)($record['icon'] ?? '')) !== '' ? $record['icon'] : null);
+			$targetHolon->set('banner', trim((string)($record['banner'] ?? '')) !== '' ? $record['banner'] : null);
+			$targetHolon->set('accesskey', trim((string)($record['accessKey'] ?? '')) !== '' ? $record['accessKey'] : null);
+
+			if ($isOrganizationRoot) {
+				$targetHolon->set('IDholon_parent', null);
+				$targetHolon->set('IDholon_template', null);
+				$targetHolon->set('IDorganization', (int)$this->getId());
+			}
+
+			$targetHolon->save();
+		}
+
+		protected function createImportedHolonFromCompactRecord(array $record, $targetParentId, $targetRootHolonId, $userId = 0)
+		{
+			$targetHolon = new \dbObject\Holon();
+			$targetHolon->set('IDholon_parent', (int)$targetParentId > 0 ? (int)$targetParentId : null);
+			$targetHolon->set('IDholon_template', null);
+			$targetHolon->set('IDholon_org', (int)$targetRootHolonId);
+			$targetHolon->set('IDorganization', null);
+			$this->applyImportedCompactRecordToHolon($targetHolon, $record, $userId, false, false);
+
+			return $targetHolon;
+		}
+
+		protected function importCompactHolonPropertyRows(array $record, \dbObject\Holon $targetHolon, array $propertyIdMap, array $holonIdMap)
+		{
+			$rows = $record['properties'] ?? array();
+			if (!is_array($rows)) {
+				return;
+			}
+
+			foreach ($rows as $row) {
+				if (!is_array($row)) {
+					continue;
+				}
+
+				$sourcePropertyId = (int)($row['propertyId'] ?? 0);
+				if ($sourcePropertyId <= 0 || !isset($propertyIdMap[$sourcePropertyId])) {
+					continue;
+				}
+
+				$targetProperty = new \dbObject\Property();
+				if (!$targetProperty->load((int)$propertyIdMap[$sourcePropertyId])) {
+					continue;
+				}
+
+				$value = array_key_exists('value', $row)
+					? $this->cloneStructuralPropertyValue($targetProperty, $row['value'], $holonIdMap)
+					: null;
+
+				$holonProperty = new \dbObject\HolonProperty();
+				$holonProperty->set('IDholon', (int)$targetHolon->getId());
+				$holonProperty->set('IDproperty', (int)$targetProperty->getId());
+				$holonProperty->set('value', $value);
+				$holonProperty->set('position', (int)($row['position'] ?? 0));
+				$holonProperty->set('mandatory', !empty($row['mandatory']));
+				$holonProperty->set('locked', !empty($row['locked']));
+				$holonProperty->set('active', !array_key_exists('active', $row) || (bool)$row['active']);
+				$holonProperty->save();
+			}
+		}
+
+		protected function importStructureFromCompactGraph(array $payload, $userId = 0)
+		{
+			$records = $this->getImportedHolonRecords($payload);
+			$propertyDefinitions = $this->getImportedCompactPropertyDefinitions($payload);
+			if (count($records) === 0) {
+				return array(
+					'status' => false,
+					'message' => "Le fichier d'import ne contient pas de holons valides.",
+				);
+			}
+
+			$recordsBySourceId = array();
+			foreach ($records as $record) {
+				$sourceId = (int)($record['id'] ?? 0);
+				if ($sourceId > 0) {
+					$recordsBySourceId[$sourceId] = $record;
+				}
+			}
+
+			$scope = isset($payload['scope']) && is_array($payload['scope']) ? $payload['scope'] : array();
+			$sourceRootId = (int)($scope['organizationRootHolonId'] ?? 0);
+			if ($sourceRootId <= 0 || !isset($recordsBySourceId[$sourceRootId])) {
+				foreach ($recordsBySourceId as $candidateId => $record) {
+					if ((string)($record['role'] ?? '') === 'organization_root') {
+						$sourceRootId = (int)$candidateId;
+						break;
+					}
+				}
+			}
+
+			if ($sourceRootId <= 0 || !isset($recordsBySourceId[$sourceRootId])) {
+				return array(
+					'status' => false,
+					'message' => "Impossible d'identifier la racine de l'organisation dans le fichier compact.",
+				);
+			}
+
+			$pdo = \dbObject\DbObject::getPdo();
+			if (!$pdo) {
+				return array(
+					'status' => false,
+					'message' => 'La connexion a la base de donnees est indisponible.',
+				);
+			}
+
+			try {
+				$pdo->beginTransaction();
+
+				$targetRootHolon = $this->createStructuralRootHolon($userId);
+				if (!$targetRootHolon) {
+					throw new \RuntimeException("Le holon racine n'a pas pu etre cree.");
+				}
+
+				$targetRootHolonId = (int)$targetRootHolon->getId();
+				$this->applyImportedCompactRecordToHolon($targetRootHolon, $recordsBySourceId[$sourceRootId], $userId, true, true);
+
+				$propertyIdMap = array();
+				$this->createImportedPropertiesFromCompactDefinitions($propertyDefinitions, $targetRootHolonId, $propertyIdMap);
+
+				$holonIdMap = array(
+					$sourceRootId => $targetRootHolonId,
+				);
+				$targetHolonsBySourceId = array(
+					$sourceRootId => $targetRootHolon,
+				);
+
+				$pending = $recordsBySourceId;
+				unset($pending[$sourceRootId]);
+
+				$guard = 0;
+				while (count($pending) > 0 && $guard < 1000) {
+					$progress = false;
+
+					foreach ($pending as $sourceId => $record) {
+						$parentSourceId = (int)($record['parentId'] ?? 0);
+						if ($parentSourceId > 0 && !isset($holonIdMap[$parentSourceId])) {
+							continue;
+						}
+
+						$targetParentId = $parentSourceId > 0 ? (int)$holonIdMap[$parentSourceId] : $targetRootHolonId;
+						$targetHolon = $this->createImportedHolonFromCompactRecord($record, $targetParentId, $targetRootHolonId, $userId);
+						if ((int)$targetHolon->getId() <= 0) {
+							throw new \RuntimeException("Un holon du fichier compact n'a pas pu etre cree.");
+						}
+
+						$holonIdMap[$sourceId] = (int)$targetHolon->getId();
+						$targetHolonsBySourceId[$sourceId] = $targetHolon;
+						unset($pending[$sourceId]);
+						$progress = true;
+					}
+
+					if (!$progress) {
+						throw new \RuntimeException("Le graphe compact contient des dependances de parent invalides.");
+					}
+
+					$guard += 1;
+				}
+
+				foreach ($recordsBySourceId as $sourceId => $record) {
+					if (!isset($targetHolonsBySourceId[$sourceId])) {
+						continue;
+					}
+
+					$templateSourceId = (int)($record['templateId'] ?? 0);
+					$targetHolon = $targetHolonsBySourceId[$sourceId];
+					$targetHolon->set(
+						'IDholon_template',
+						($templateSourceId > 0 && isset($holonIdMap[$templateSourceId]))
+							? (int)$holonIdMap[$templateSourceId]
+							: null
+					);
+					$targetHolon->save();
+				}
+
+				foreach ($recordsBySourceId as $sourceId => $record) {
+					if (!isset($targetHolonsBySourceId[$sourceId])) {
+						continue;
+					}
+
+					$this->importCompactHolonPropertyRows(
+						$record,
+						$targetHolonsBySourceId[$sourceId],
+						$propertyIdMap,
+						$holonIdMap
+					);
+				}
+
+				$pdo->commit();
+
+				return array(
+					'status' => true,
+					'message' => "L'organisation a ete importee depuis le format compact.",
+					'rootHolon' => $targetRootHolon,
+				);
+			} catch (\Throwable $exception) {
+				if ($pdo->inTransaction()) {
+					$pdo->rollBack();
+				}
+
+				return array(
+					'status' => false,
+					'message' => $exception->getMessage(),
+				);
+			}
+		}
+
+		public function importStructure(array $payload, $userId = 0)
+		{
+			if ((int)$this->getId() <= 0) {
+				return array(
+					'status' => false,
+					'message' => "L'organisation demandee est introuvable.",
+				);
+			}
+
+			if ($this->getStructuralRootHolon()) {
+				return array(
+					'status' => false,
+					'message' => 'Cette organisation a deja une structure.',
+				);
+			}
+
+			$format = (string)($payload['format'] ?? '');
+			$version = (int)($payload['version'] ?? 0);
+			if ($format !== 'openmyorganization-structure-export' || $version !== 4) {
+				return array(
+					'status' => false,
+					'message' => "Le fichier d'import doit etre un export OMO au format compact version 4.",
+				);
+			}
+
+			$importedHolonRecords = $this->getImportedHolonRecords($payload);
+			if (count($importedHolonRecords) === 0) {
+				return array(
+					'status' => false,
+					'message' => "Le fichier d'import ne contient pas de holons dans le format compact attendu.",
+				);
+			}
+
+			return $this->importStructureFromCompactGraph($payload, $userId);
 		}
 
 		protected function cloneStructuralChildrenRecursively(\dbObject\Holon $sourceParent, $targetParentId, $targetRootHolonId, $userId, array &$sourceHolonsById, array &$targetHolonsBySourceId, array &$holonIdMap)
@@ -747,6 +1564,321 @@
 			return array_values(array_filter($this->getAllTemplateDefinitionHolons(), function ($template) use ($pathIds) {
 				return in_array((int)$template->get('IDholon_parent'), $pathIds, true);
 			}));
+		}
+
+		protected function collectExportScopeHolonIds(\dbObject\Holon $holon, array &$ids)
+		{
+			$holonId = (int)$holon->getId();
+			if ($holonId <= 0 || isset($ids[$holonId])) {
+				return;
+			}
+
+			$ids[$holonId] = $holonId;
+			foreach ($holon->getChildren() as $child) {
+				$this->collectExportScopeHolonIds($child, $ids);
+			}
+		}
+
+		protected function loadExportHolonById($holonId, array &$cache)
+		{
+			$holonId = (int)$holonId;
+			if ($holonId <= 0) {
+				return null;
+			}
+
+			if (isset($cache[$holonId])) {
+				return $cache[$holonId];
+			}
+
+			$holon = new \dbObject\Holon();
+			if (!$holon->load($holonId)) {
+				$cache[$holonId] = null;
+				return null;
+			}
+
+			$cache[$holonId] = $holon;
+			return $holon;
+		}
+
+		protected function addExportHolonIdWithAncestors($holonId, array &$selectedHolonIds, array &$holonCache)
+		{
+			$current = $this->loadExportHolonById((int)$holonId, $holonCache);
+			$guard = 0;
+
+			while ($current instanceof \dbObject\Holon && $guard < 100) {
+				$currentId = (int)$current->getId();
+				if ($currentId <= 0) {
+					break;
+				}
+
+				$selectedHolonIds[$currentId] = $currentId;
+
+				$parentId = (int)$current->get('IDholon_parent');
+				if ($parentId <= 0) {
+					break;
+				}
+
+				$current = $this->loadExportHolonById($parentId, $holonCache);
+				$guard += 1;
+			}
+		}
+
+		protected function getStructureCompactExportHolons(\dbObject\Holon $exportRoot)
+		{
+			$rootHolon = $this->getStructuralRootHolon();
+			if (!$rootHolon || (int)$exportRoot->getId() <= 0) {
+				return array();
+			}
+
+			$visibleScopeIds = array();
+			$this->collectExportScopeHolonIds($exportRoot, $visibleScopeIds);
+
+			$pathIds = array_map(function ($holon) {
+				return (int)$holon->getId();
+			}, $exportRoot->getPathHolons(true));
+
+			$eligibleTemplateContextIds = array();
+			foreach (array_merge(array_values($visibleScopeIds), $pathIds) as $holonId) {
+				$holonId = (int)$holonId;
+				if ($holonId > 0) {
+					$eligibleTemplateContextIds[$holonId] = $holonId;
+				}
+			}
+
+			$selectedHolonIds = array();
+			$holonCache = array();
+
+			foreach (array_values($eligibleTemplateContextIds) as $holonId) {
+				$this->addExportHolonIdWithAncestors($holonId, $selectedHolonIds, $holonCache);
+			}
+
+			$templateById = array();
+			foreach ($this->getAllTemplateDefinitionHolons() as $template) {
+				$templateById[(int)$template->getId()] = $template;
+				$holonCache[(int)$template->getId()] = $template;
+			}
+
+			$selectedTemplateIds = array();
+			$appendTemplateChain = function ($templateId) use (&$appendTemplateChain, &$selectedTemplateIds, &$selectedHolonIds, &$holonCache, $templateById) {
+				$templateId = (int)$templateId;
+				if ($templateId <= 0 || isset($selectedTemplateIds[$templateId]) || !isset($templateById[$templateId])) {
+					return;
+				}
+
+				$template = $templateById[$templateId];
+				$selectedTemplateIds[$templateId] = $templateId;
+				$selectedHolonIds[$templateId] = $templateId;
+				$holonCache[$templateId] = $template;
+
+				$contextHolonId = (int)$template->get('IDholon_parent');
+				if ($contextHolonId > 0) {
+					$this->addExportHolonIdWithAncestors($contextHolonId, $selectedHolonIds, $holonCache);
+				}
+
+				$inheritsFromId = (int)$template->get('IDholon_template');
+				if ($inheritsFromId > 0) {
+					$appendTemplateChain($inheritsFromId);
+				}
+			};
+
+			foreach (array_values($eligibleTemplateContextIds) as $holonId) {
+				$holon = $this->loadExportHolonById($holonId, $holonCache);
+				if (!$holon instanceof \dbObject\Holon) {
+					continue;
+				}
+
+				$templateId = (int)$holon->get('IDholon_template');
+				if ($templateId > 0) {
+					$appendTemplateChain($templateId);
+				}
+			}
+
+			foreach ($templateById as $templateId => $template) {
+				if (isset($eligibleTemplateContextIds[(int)$template->get('IDholon_parent')])) {
+					$appendTemplateChain($templateId);
+				}
+			}
+
+			$items = array();
+			$organizationRootId = (int)$rootHolon->getId();
+			$exportRootId = (int)$exportRoot->getId();
+
+			foreach (array_values($selectedHolonIds) as $holonId) {
+				$holon = $this->loadExportHolonById($holonId, $holonCache);
+				if (!$holon instanceof \dbObject\Holon) {
+					continue;
+				}
+
+				$role = 'context_support';
+				if ($holonId === $organizationRootId) {
+					$role = 'organization_root';
+				} elseif (isset($visibleScopeIds[$holonId])) {
+					$role = $holonId === $exportRootId ? 'export_root' : 'structure';
+				} elseif ($holon->isTemplateNode($organizationRootId)) {
+					$role = 'template';
+				}
+
+				$items[] = array(
+					'holon' => $holon,
+					'role' => $role,
+					'isScopeRoot' => $holonId === $exportRootId,
+				);
+			}
+
+			usort($items, function ($left, $right) {
+				$leftParentId = (int)$left['holon']->get('IDholon_parent');
+				$rightParentId = (int)$right['holon']->get('IDholon_parent');
+				if ($leftParentId === $rightParentId) {
+					return (int)$left['holon']->getId() <=> (int)$right['holon']->getId();
+				}
+
+				return $leftParentId <=> $rightParentId;
+			});
+
+			return $items;
+		}
+
+		public function getStructureCompactExportData(\dbObject\Holon $exportRoot)
+		{
+			$items = $this->getStructureCompactExportHolons($exportRoot);
+			$rootHolon = $this->getStructuralRootHolon();
+			$rootHolonId = $rootHolon ? (int)$rootHolon->getId() : 0;
+			$holonRows = array();
+			$propertyDefinitionIds = array();
+
+			foreach ($items as $item) {
+				$holon = $item['holon'] ?? null;
+				if (!$holon instanceof \dbObject\Holon || (int)$holon->getId() <= 0) {
+					continue;
+				}
+
+				$holonRows[] = $holon->toCompactExportRecord($rootHolonId, array(
+					'role' => (string)($item['role'] ?? 'structure'),
+					'isScopeRoot' => !empty($item['isScopeRoot']),
+				));
+
+				foreach ($holon->getHolonProperties() as $holonProperty) {
+					$propertyId = (int)$holonProperty->get('IDproperty');
+					if ($propertyId > 0) {
+						$propertyDefinitionIds[$propertyId] = $propertyId;
+					}
+				}
+			}
+
+			$propertyDefinitions = array();
+			foreach (array_values($propertyDefinitionIds) as $propertyId) {
+				$property = new \dbObject\Property();
+				if (!$property->load($propertyId)) {
+					continue;
+				}
+
+				$definition = array(
+					'id' => (int)$property->getId(),
+					'name' => (string)$property->get('name'),
+					'shortname' => (string)$property->get('shortname'),
+					'formatId' => (int)$property->get('IDpropertyformat'),
+				);
+
+				if (trim((string)$property->get('listitemtype')) !== '') {
+					$definition['listItemType'] = (string)$property->get('listitemtype');
+				}
+
+				$listHolonTypeIds = \dbObject\Property::parseHolonTypeIds($property->get('listholontypeids'));
+				if (count($listHolonTypeIds) > 0) {
+					$definition['listHolonTypeIds'] = $listHolonTypeIds;
+				}
+
+				if ((int)$property->get('position') > 0) {
+					$definition['position'] = (int)$property->get('position');
+				}
+
+				if (!(bool)$property->get('active')) {
+					$definition['active'] = false;
+				}
+
+				$propertyDefinitions[] = $definition;
+			}
+
+			usort($holonRows, function ($left, $right) {
+				$leftParentId = (int)($left['parentId'] ?? 0);
+				$rightParentId = (int)($right['parentId'] ?? 0);
+				if ($leftParentId === $rightParentId) {
+					return (int)($left['id'] ?? 0) <=> (int)($right['id'] ?? 0);
+				}
+
+				return $leftParentId <=> $rightParentId;
+			});
+
+			usort($propertyDefinitions, function ($left, $right) {
+				return (int)($left['id'] ?? 0) <=> (int)($right['id'] ?? 0);
+			});
+
+			$holonRowsById = array();
+			foreach ($holonRows as $row) {
+				$holonRowsById[(int)$row['id']] = $row;
+			}
+
+			$childrenByParentId = array();
+			foreach ($holonRows as $row) {
+				$parentId = (int)($row['parentId'] ?? 0);
+				if ($parentId <= 0 || !isset($holonRowsById[$parentId])) {
+					continue;
+				}
+
+				if (!isset($childrenByParentId[$parentId])) {
+					$childrenByParentId[$parentId] = array();
+				}
+
+				$childrenByParentId[$parentId][] = (int)$row['id'];
+			}
+
+			$buildNode = function ($holonId) use (&$buildNode, $holonRowsById, $childrenByParentId) {
+				if (!isset($holonRowsById[$holonId])) {
+					return null;
+				}
+
+				$node = $holonRowsById[$holonId];
+				unset($node['parentId']);
+
+				if (isset($childrenByParentId[$holonId])) {
+					$children = array();
+					foreach ($childrenByParentId[$holonId] as $childId) {
+						$childNode = $buildNode((int)$childId);
+						if (is_array($childNode)) {
+							$children[] = $childNode;
+						}
+					}
+
+					if (count($children) > 0) {
+						$node['children'] = $children;
+					}
+				}
+
+				return $node;
+			};
+
+			$holonTree = array();
+			foreach ($holonRows as $row) {
+				$holonId = (int)($row['id'] ?? 0);
+				$parentId = (int)($row['parentId'] ?? 0);
+				if ($holonId <= 0) {
+					continue;
+				}
+
+				if ($parentId > 0 && isset($holonRowsById[$parentId])) {
+					continue;
+				}
+
+				$node = $buildNode($holonId);
+				if (is_array($node)) {
+					$holonTree[] = $node;
+				}
+			}
+
+			return array(
+				'holons' => $holonTree,
+				'propertyDefinitions' => $propertyDefinitions,
+			);
 		}
 
 		public function isTemplateAvailableInContext(\dbObject\Holon $template, $contextHolonId = 0)
