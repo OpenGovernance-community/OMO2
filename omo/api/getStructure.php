@@ -1418,9 +1418,13 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
       }
     }
 
+    function shouldUseTightZoom(focusNode) {
+      return !!focusNode && focusNode.type == "1";
+    }
+
     function quickZoomToCanvas(focusNode) {
       focus = focusNode;
-      const v = (focusNode.type == "1" || (focusNode.children && focusNode.children.length < 2))
+      const v = shouldUseTightZoom(focusNode)
         ? [focus.x, focus.y, focus.r * 4.05]
         : [focus.x, focus.y, focus.r * 2.05];
 
@@ -1451,7 +1455,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
         v = [root.x, root.y, root.r * 2.05];
       } else {
         focus = focusNode;
-        v = (focusNode.type == "1" || (focusNode.children && focusNode.children.length < 2))
+        v = shouldUseTightZoom(focusNode)
           ? [focus.x, focus.y, focus.r * 4.05]
           : [focus.x, focus.y, focus.r * 2.05];
       }
