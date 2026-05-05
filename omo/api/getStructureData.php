@@ -41,6 +41,19 @@ if ($organization === null) {
     exit;
 }
 
+$canViewOrganization = $organization->canViewDetail();
+if (!$canViewOrganization) {
+    http_response_code(403);
+    echo json_encode(
+        array(
+            'error' => true,
+            'message' => "Acces refuse a cette organisation.",
+        ),
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+    );
+    exit;
+}
+
 $root = $organization->getStructuralRootHolon();
 if ($root === null) {
     http_response_code(404);
@@ -54,8 +67,44 @@ if ($root === null) {
     exit;
 }
 
-echo $root->toRepresentationJson(array(
+$navigationRoot = $root;
+$shareLink = function_exists('commonGetCurrentShareLink') ? commonGetCurrentShareLink() : null;
+if ($shareLink && $shareLink->canViewOrganization($organizationId)) {
+    $shareScopeHolon = $shareLink->getScopeHolon();
+    if ($shareScopeHolon instanceof \dbObject\Holon) {
+        $navigationRoot = $shareScopeHolon;
+    }
+}
+
+if (!$navigationRoot->canViewDetail()) {
+    http_response_code(403);
+    echo json_encode(
+        array(
+            'error' => true,
+            'message' => "Acces refuse a ce holon.",
+        ),
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+    );
+    exit;
+}
+
+$representation = $navigationRoot->toRepresentationArray(array(
     'representation' => 'circle',
-    'includeMemberUserIds' => true,
+    'includeMemberUserIds' => !(function_exists('commonGetCurrentShareToken') && commonGetCurrentShareToken() !== '' && !commonCurrentShareAllowsPeople()),
     'organizationId' => $organizationId,
 ));
+
+if ((int)$navigationRoot->getId() !== (int)$root->getId() && (int)$navigationRoot->get('IDtypeholon') !== 4) {
+    $representation['type'] = '4';
+
+    $rootColor = trim((string)$root->getEffectiveColor());
+    if ($rootColor === '') {
+        $rootColor = trim((string)$organization->get('color'));
+    }
+
+    if ($rootColor !== '') {
+        $representation['mycolor'] = $rootColor;
+    }
+}
+
+echo json_encode($representation, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

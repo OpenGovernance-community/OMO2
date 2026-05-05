@@ -301,6 +301,48 @@ function getOmoRouteMode() {
     return routeMode === 'path' ? 'path' : 'host';
 }
 
+function omoIsShareMode() {
+    return Boolean(window.omoConfig && window.omoConfig.mode === 'share');
+}
+
+function omoGetShareToken() {
+    const token = window.omoConfig && typeof window.omoConfig.shareToken === 'string'
+        ? window.omoConfig.shareToken.trim()
+        : '';
+
+    return token !== '' ? token : null;
+}
+
+function omoResolveAppUrl(url) {
+    if (typeof url !== 'string' || url.trim() === '') {
+        return url;
+    }
+
+    const shareToken = omoGetShareToken();
+    if (!omoIsShareMode() || !shareToken) {
+        return url;
+    }
+
+    if (/^[a-z][a-z0-9+\-.]*:/i.test(url)) {
+        return url;
+    }
+
+    let resolvedUrl = url;
+    let hashPart = '';
+    const hashIndex = resolvedUrl.indexOf('#');
+
+    if (hashIndex >= 0) {
+        hashPart = resolvedUrl.slice(hashIndex);
+        resolvedUrl = resolvedUrl.slice(0, hashIndex);
+    }
+
+    if (!/[?&]token=/.test(resolvedUrl)) {
+        resolvedUrl += (resolvedUrl.indexOf('?') === -1 ? '?' : '&') + 'token=' + encodeURIComponent(shareToken);
+    }
+
+    return resolvedUrl + hashPart;
+}
+
 function getNormalizedOmoPath() {
 
     const path = window.location.pathname || '';
@@ -314,6 +356,26 @@ function getNormalizedOmoPath() {
 
 function buildOmoUrl(oid, cid = null, hash = null, options = {}) {
     const absolute = options && options.absolute === true;
+    const shareToken = omoGetShareToken();
+
+    if (omoIsShareMode() && shareToken) {
+        let url = `/omo/share.php?token=${encodeURIComponent(shareToken)}`;
+
+        if (cid) {
+            url += `&cid=${encodeURIComponent(cid)}`;
+        }
+
+        if (hash) {
+            url += `#${hash}`;
+        }
+
+        if (!absolute) {
+            return url;
+        }
+
+        return `${window.location.origin}${url}`;
+    }
+
     const resolvedOid = Number(oid);
     const routeMode = getOmoRouteMode();
     let url = routeMode === 'path' && Number.isInteger(resolvedOid) && resolvedOid > 0
@@ -338,6 +400,9 @@ function buildOmoUrl(oid, cid = null, hash = null, options = {}) {
 }
 
 function canonicalizeOmoRootPath() {
+    if (omoIsShareMode()) {
+        return;
+    }
 
     if ((window.location.pathname || '') !== '/omo') {
         return;
@@ -398,6 +463,7 @@ function loadContent(target, url, type = 'panel', onLoaded = null) {
     const $target = $(target);
     const previousRequest = $target.data('omoXhr');
     const requestId = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const resolvedUrl = omoResolveAppUrl(url);
 
     if (previousRequest && previousRequest.readyState !== 4) {
         previousRequest.abort();
@@ -407,7 +473,7 @@ function loadContent(target, url, type = 'panel', onLoaded = null) {
     $target.html(getSkeleton(type));
 
     const xhr = $.ajax({
-        url: url,
+        url: resolvedUrl,
         method: 'GET',
         cache: false,
 
@@ -496,6 +562,7 @@ function openDrawer(id, url) {
 
     let drawer = $('#' + id);
     clearDrawerRemoval(drawer);
+    const resolvedUrl = omoResolveAppUrl(url);
 
     // 👉 si déjà ouvert → on ferme tout et on stop
     if (drawer.length && drawer.hasClass('open')) {
@@ -520,7 +587,7 @@ function openDrawer(id, url) {
         drawer.find('.drawer-content').html(getSkeleton('panel'));
 
         $.ajax({
-            url: url,
+            url: resolvedUrl,
             success: function (data) {
                 drawer.find('.drawer-content').html(data);
             },
@@ -733,7 +800,7 @@ function buildDrawerUrl(baseUrl, oid, cid = null) {
         url += `&cid=${encodeURIComponent(cid)}`;
     }
 
-    return url;
+    return omoResolveAppUrl(url);
 }
 
 function omoNormalizeHashToken(token) {
@@ -932,6 +999,8 @@ function omoResolvePopupRoute(popupKey, popupId = null) {
         url += `?${queryParts.join('&')}`;
     }
 
+    url = omoResolveAppUrl(url);
+
     return {
         key: normalizedPopupKey,
         id: Number.isInteger(parsedPopupId) && parsedPopupId > 0 ? parsedPopupId : null,
@@ -1094,7 +1163,7 @@ $(document).on('click', '[data-omo-open-app-picker="1"]', function (e) {
 
     window.commonTopbarOpenModal(
         'Ajouter des applications',
-        'api/organization_applications_popup.php',
+        omoResolveAppUrl('api/organization_applications_popup.php'),
         'fetch'
     );
 });
@@ -1151,6 +1220,18 @@ function navigate(oid, cid = null, hash = null) {
 }
 
 function parseUrl() {
+    if (omoIsShareMode()) {
+        const hash = window.location.hash.replace('#', '');
+        const params = new URLSearchParams(window.location.search || '');
+        const oid = getResolvedOrganizationId();
+        const cidParam = params.get('cid');
+        const fallbackCid = window.omoConfig && window.omoConfig.initialCid
+            ? String(window.omoConfig.initialCid)
+            : null;
+        const cid = cidParam || fallbackCid || null;
+
+        return { oid, cid, hash };
+    }
 
     const path = getNormalizedOmoPath();
     const hash = window.location.hash.replace('#', '');
@@ -1576,6 +1657,8 @@ function omoHandleTopbarSearch(query) {
 window.omoRefreshSidebar = omoRefreshSidebar;
 window.omoOpenMemberActionsPopup = omoOpenMemberActionsPopup;
 window.omoOpenUserContextPopup = omoOpenUserContextPopup;
+window.omoResolveAppUrl = omoResolveAppUrl;
+window.omoIsShareMode = omoIsShareMode;
 window.omoParsePopupHashState = function () {
     return omoParseHashState(parseUrl().hash);
 };

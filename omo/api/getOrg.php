@@ -69,7 +69,9 @@ function omoFormatListItemValue($item, array $entry)
 
         if (!isset($holonLabelCache[$holonId])) {
             $holon = new Holon();
-            $holonLabelCache[$holonId] = $holon->load($holonId) ? $holon->getDisplayName() : (string)$holonId;
+            $holonLabelCache[$holonId] = ($holon->load($holonId) && $holon->canView())
+                ? $holon->getDisplayName()
+                : '';
         }
 
         return $holonLabelCache[$holonId];
@@ -286,6 +288,15 @@ if ($organization === null) {
     exit;
 }
 
+$canViewOrganization = $organization->canViewDetail();
+if (!$canViewOrganization) {
+    http_response_code(403);
+    ?>
+    <div class="circle-panel"><div class="error">Acces refuse a cette organisation.</div></div>
+    <?php
+    exit;
+}
+
 $root = $organization->getStructuralRootHolon();
 if ($root === null) {
     require_once __DIR__ . '/organization_setup_panel.php';
@@ -302,11 +313,20 @@ if ($root === null) {
     exit;
 }
 
-$currentHolon = $root;
+$navigationRoot = $root;
+$shareLink = function_exists('commonGetCurrentShareLink') ? commonGetCurrentShareLink() : null;
+if ($shareLink && $shareLink->canViewOrganization($organizationId)) {
+    $shareScopeHolon = $shareLink->getScopeHolon();
+    if ($shareScopeHolon instanceof Holon) {
+        $navigationRoot = $shareScopeHolon;
+    }
+}
+
+$currentHolon = $navigationRoot;
 
 if ($cid > 0) {
     $candidate = new Holon();
-    if (!$candidate->load($cid) || !$candidate->isDescendantOf($root->getId())) {
+    if (!$candidate->load($cid) || !$candidate->isDescendantOf($navigationRoot->getId())) {
         http_response_code(404);
         ?>
         <div class="circle-panel"><div class="error">Holon introuvable pour cette organisation.</div></div>
@@ -314,10 +334,20 @@ if ($cid > 0) {
         exit;
     }
 
+    if (!$candidate->canViewDetail()) {
+        http_response_code(403);
+        ?>
+        <div class="circle-panel"><div class="error">Acces refuse a ce holon.</div></div>
+        <?php
+        exit;
+    }
+
     $currentHolon = $candidate;
 }
 
-$breadcrumb = $currentHolon->getPathHolons();
+$breadcrumb = array_values(array_filter($currentHolon->getPathHolons(), function ($holon) use ($navigationRoot) {
+    return $holon instanceof Holon && $holon->isDescendantOf($navigationRoot->getId(), true);
+}));
 $sections = omoBuildSections($currentHolon);
 $childNavigation = omoBuildChildNavigation($currentHolon);
 $holonTypeLabel = omoGetHolonHeaderLabel($currentHolon);
@@ -325,6 +355,9 @@ $selectedNodeClass = 'node_' . (int)$currentHolon->getId();
 $memberCards = $currentHolon->getAssociatedMemberCards(array(
     'organizationId' => $organizationId,
 ));
+if (function_exists('commonGetCurrentShareToken') && commonGetCurrentShareToken() !== '' && !commonCurrentShareAllowsPeople()) {
+    $memberCards = array();
+}
 $memberPreviewLimit = 8;
 $visibleMemberCards = array_slice($memberCards, 0, $memberPreviewLimit);
 $hasHiddenMembers = count($memberCards) > count($visibleMemberCards);
@@ -437,7 +470,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
                             class="circle-member<?= !empty($member['isPending']) ? ' circle-member--pending' : '' ?>"
                             data-tooltip="<?= omoApiEscape($memberTooltip) ?>"
                             data-member-user-id="<?= (int)($member['userId'] ?? 0) ?>"
-                            <?php if ((int)($member['userId'] ?? 0) > 0): ?>
+                            <?php if ((int)($member['userId'] ?? 0) > 0 && !empty($member['canViewDetail'])): ?>
                                 data-open-user-context="1"
                                 role="button"
                                 tabindex="0"
@@ -1223,7 +1256,7 @@ function omoNormalizeSectionKey(value) {
 }
 
 function omoBuildDirectHolonUrl(cid) {
-    const rootId = <?= (int)$root->getId() ?>;
+    const rootId = <?= (int)$navigationRoot->getId() ?>;
     const route = typeof parseUrl === 'function'
         ? parseUrl()
         : { oid: <?= (int)$organizationId ?> };

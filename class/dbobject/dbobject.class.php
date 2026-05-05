@@ -1352,6 +1352,11 @@
 			return true;
 		}
 		
+		public function canViewDetail()
+		{
+			return $this->canView();
+		}
+
 		protected function getToken($length)
 		{
 			$token = "";

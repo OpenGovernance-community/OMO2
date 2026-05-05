@@ -2,6 +2,8 @@
 
 function omoGetTopbarHelpItems(string $variant = 'app'): array
 {
+    $tutorialsUrl = commonBuildUrl('/lms/index.php?embed=1', commonGetRootHost());
+
     $faqItem = [
         'key' => 'faq',
         'label' => 'FAQ',
@@ -15,7 +17,7 @@ function omoGetTopbarHelpItems(string $variant = 'app'): array
         'description' => 'Des formations ciblées pour monter en compétences dans l’utilisation du logiciel.',
         'title' => 'Tutoriels',
         'mode' => 'drawer',
-        'url' => '/lms/parcours.php?idp=1&embed=1',
+        'url' => $tutorialsUrl,
     ];
 
     if ($variant === 'app') {

@@ -8,7 +8,9 @@ include __DIR__ . '/inc/org.php';
 require_once __DIR__ . '/inc/access.php';
 
 $mission_id = (int)($_POST['mission_id'] ?? 0);
+$homework_id = (int)($_POST['homework_id'] ?? 0);
 $parcours_id = (int)($_POST['parcours_id'] ?? 0);
+$done = (int)($_POST['done'] ?? 0) > 0;
 $accessContext = lmsGetParcoursAccessContext((int)$org['id'], $parcours_id);
 
 if (empty($accessContext['exists'])) {
@@ -23,9 +25,9 @@ if (empty($accessContext['canView'])) {
 	exit;
 }
 
-if ($mission_id <= 0 || $parcours_id <= 0) {
+if ($mission_id <= 0 || $homework_id <= 0 || $parcours_id <= 0) {
 	http_response_code(400);
-	echo "Invalid mission or parcours";
+	echo "Invalid homework request";
 	exit;
 }
 
@@ -45,19 +47,10 @@ if (!$parcoursMission->load([
 	exit;
 }
 
-if (\dbObject\Mission::countHomeworksForMission($mission_id) > 0) {
-	if (lmsIsAnonymousViewer($accessContext)) {
-		$doneHomeworkIds = lmsParseDoneHomeworkIds($_POST['done_homework_ids'] ?? '');
-		if (!\dbObject\Mission::areHomeworkIdsComplete($mission_id, $doneHomeworkIds)) {
-			http_response_code(409);
-			echo "Homework required";
-			exit;
-		}
-	} elseif (!\dbObject\UserHomework::hasCompletedAllForUserMission((int)$accessContext['userId'], $mission_id, $parcours_id)) {
-		http_response_code(409);
-		echo "Homework required";
-		exit;
-	}
+if (!\dbObject\MissionHomework::existsForMission($mission_id, $homework_id)) {
+	http_response_code(400);
+	echo "Homework not found in mission";
+	exit;
 }
 
 if (lmsIsAnonymousViewer($accessContext)) {
@@ -65,7 +58,7 @@ if (lmsIsAnonymousViewer($accessContext)) {
 	exit;
 }
 
-$result = \dbObject\UserMission::markDone((int)$accessContext['userId'], $mission_id, $parcours_id);
+$result = \dbObject\UserHomework::markDone((int)$accessContext['userId'], $mission_id, $homework_id, $parcours_id, $done);
 
 if (empty($result['status'])) {
 	http_response_code(500);

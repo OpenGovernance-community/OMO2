@@ -33,16 +33,25 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: 0');
 
-commonResolveOrganizationContext((int)($_SESSION['currentOrganization'] ?? 1));
+$shareLink = function_exists('commonGetCurrentShareLink')
+    ? commonGetCurrentShareLink()
+    : null;
+
+if ($shareLink) {
+    $_SESSION['currentOrganization'] = (int)$shareLink->get('IDorganization');
+} else {
+    commonResolveOrganizationContext((int)($_SESSION['currentOrganization'] ?? 1));
+}
+
 commonRestoreRememberedUser();
 
-if (!commonGetCurrentUserId() && !commonCanAccessWithoutLogin()) {
+if (!commonGetCurrentUserId() && !commonCanAccessWithoutLogin() && !$shareLink) {
     http_response_code(401);
     echo "Unauthorized";
     exit;
 }
 
-if (!commonCanAccessWithoutLogin() && !commonCurrentUserHasOrganizationAccess()) {
+if (!commonCanAccessWithoutLogin() && !$shareLink && !commonCurrentUserHasOrganizationAccess()) {
     http_response_code(403);
     echo "Forbidden";
     exit;

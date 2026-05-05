@@ -63,6 +63,33 @@
 			return "name";
 		}
 
+		public function canView()
+		{
+			return $this->canViewDetail();
+		}
+
+		public function canViewDetail()
+		{
+			$organizationId = (int)$this->getId();
+			if ($organizationId <= 0) {
+				return false;
+			}
+
+			$currentUserId = function_exists('commonGetCurrentUserId')
+				? (int)\commonGetCurrentUserId()
+				: (int)($_SESSION['currentUser'] ?? 0);
+
+			if (function_exists('commonUserHasOrganizationMembership') && \commonUserHasOrganizationMembership($currentUserId, $organizationId)) {
+				return true;
+			}
+
+			if (function_exists('commonCurrentShareCanViewOrganization')) {
+				return \commonCurrentShareCanViewOrganization($organizationId);
+			}
+
+			return false;
+		}
+
 		public static function resolveFromHost($host, $defaultId = 1) {
 			$host = is_string($host) ? trim($host) : "";
 			if ($host === "") {

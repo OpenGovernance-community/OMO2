@@ -59,6 +59,14 @@ if (!$organization->load($organizationId)) {
     exit;
 }
 
+if (!$organization->canViewDetail()) {
+    http_response_code(403);
+    ?>
+    <div class="omo-user-context omo-user-context--error">Acces refuse a cette organisation.</div>
+    <?php
+    exit;
+}
+
 $rootHolon = $organization->getStructuralRootHolon();
 if ($rootHolon === null) {
     http_response_code(404);
@@ -79,6 +87,16 @@ if ($currentHolonId > 0 && (int)$rootHolon->getId() !== $currentHolonId) {
         exit;
     }
 
+    $canViewCandidate = $candidate->canViewDetail()
+        || (function_exists('commonCurrentShareContainsHolon') && commonCurrentShareContainsHolon($candidate));
+    if (!$canViewCandidate) {
+        http_response_code(403);
+        ?>
+        <div class="omo-user-context omo-user-context--error">Acces refuse a ce contexte.</div>
+        <?php
+        exit;
+    }
+
     $currentHolon = $candidate;
 }
 
@@ -87,6 +105,14 @@ if (!$user->load($userId)) {
     http_response_code(404);
     ?>
     <div class="omo-user-context omo-user-context--error">Utilisateur introuvable.</div>
+    <?php
+    exit;
+}
+
+if (!$user->canViewDetail()) {
+    http_response_code(403);
+    ?>
+    <div class="omo-user-context omo-user-context--error">Acces refuse a cet utilisateur.</div>
     <?php
     exit;
 }
@@ -141,14 +167,15 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
     .omo-user-context {
         display: grid;
         gap: 16px;
-        color: #0f172a;
+        color: var(--color-text, #1f2937);
     }
 
     .omo-user-context--error {
         padding: 18px;
         border-radius: 16px;
-        background: #f8fafc;
-        color: #475569;
+        background: var(--color-surface-alt, #f0f2f5);
+        color: var(--color-text-light, #6b7280);
+        border: 1px solid var(--color-border, #e5e7eb);
     }
 
     .omo-user-context__hero {
@@ -157,10 +184,14 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
         gap: 16px;
         align-items: center;
         padding: 18px;
-        border: 1px solid #dbe2ea;
+        border: 1px solid var(--color-border, #e5e7eb);
         border-radius: 20px;
-        background: linear-gradient(135deg, #ffffff, #f8fbff);
-        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+        background: linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--color-surface, #ffffff) 94%, transparent),
+            color-mix(in srgb, var(--color-surface-alt, #f0f2f5) 88%, transparent)
+        );
+        box-shadow: var(--shadow-md, 0 12px 24px rgba(0,0,0,0.12));
     }
 
     .omo-user-context__photo,
@@ -169,9 +200,9 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
         height: 72px;
         border-radius: 999px;
         overflow: hidden;
-        background: #e2e8f0;
-        border: 2px solid #ffffff;
-        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+        background: var(--color-surface-alt, #f0f2f5);
+        border: 2px solid var(--color-surface, #ffffff);
+        box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.05));
     }
 
     .omo-user-context__photo {
@@ -184,7 +215,7 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
         place-items: center;
         font-size: 24px;
         font-weight: 700;
-        color: #2563eb;
+        color: var(--color-primary, #2563eb);
     }
 
     .omo-user-context__identity {
@@ -200,7 +231,7 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
     }
 
     .omo-user-context__secondary {
-        color: #475569;
+        color: var(--color-text-light, #6b7280);
         word-break: break-word;
     }
 
@@ -216,20 +247,22 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
         min-height: 28px;
         padding: 0 10px;
         border-radius: 999px;
-        background: #e2e8f0;
-        color: #0f172a;
+        background: var(--color-surface-alt, #f0f2f5);
+        color: var(--color-text, #1f2937);
         font-size: 12px;
         font-weight: 700;
+        border: 1px solid var(--color-border, #e5e7eb);
     }
 
     .omo-user-context__badge--admin {
-        background: rgba(37, 99, 235, 0.12);
-        color: #1d4ed8;
+        background: color-mix(in srgb, var(--color-primary, #2563eb) 14%, var(--color-surface, #ffffff));
+        color: var(--color-primary, #2563eb);
+        border-color: color-mix(in srgb, var(--color-primary, #2563eb) 30%, var(--color-border, #e5e7eb));
     }
 
     .omo-user-context__badge--pending {
         background: rgba(100, 116, 139, 0.14);
-        color: #475569;
+        color: var(--color-text-light, #6b7280);
     }
 
     .omo-user-context__meta {
@@ -241,9 +274,9 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
     .omo-user-context__meta-card,
     .omo-user-context__section {
         padding: 16px 18px;
-        border: 1px solid #dbe2ea;
+        border: 1px solid var(--color-border, #e5e7eb);
         border-radius: 18px;
-        background: #ffffff;
+        background: var(--color-surface, #ffffff);
     }
 
     .omo-user-context__meta-label,
@@ -252,19 +285,19 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
         font-size: 11px;
         text-transform: uppercase;
         letter-spacing: 0.08em;
-        color: #64748b;
+        color: var(--color-text-light, #6b7280);
         font-weight: 700;
     }
 
     .omo-user-context__meta-value {
-        color: #0f172a;
+        color: var(--color-text, #1f2937);
         line-height: 1.4;
         word-break: break-word;
     }
 
     .omo-user-context__meta-value--muted,
     .omo-user-context__empty {
-        color: #64748b;
+        color: var(--color-text-light, #6b7280);
     }
 
     .omo-user-context__section {
@@ -289,8 +322,8 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
     .omo-user-context__role {
         padding: 12px 14px;
         border-radius: 14px;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
+        background: var(--color-surface-alt, #f0f2f5);
+        border: 1px solid var(--color-border, #e5e7eb);
     }
 
     .omo-user-context__role-head {
@@ -309,7 +342,7 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
         margin-top: 4px;
         font-size: 13px;
         line-height: 1.4;
-        color: #475569;
+        color: var(--color-text-light, #6b7280);
     }
 
     .omo-user-context__role-status {
@@ -317,7 +350,7 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
         padding: 4px 8px;
         border-radius: 999px;
         background: rgba(100, 116, 139, 0.14);
-        color: #475569;
+        color: var(--color-text-light, #6b7280);
         font-size: 11px;
         font-weight: 700;
     }

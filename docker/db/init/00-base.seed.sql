@@ -1541,6 +1541,73 @@ ALTER TABLE `user_organization`
 --
 ALTER TABLE `user_remember`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- Tables ajoutees apres le dump principal pour garder le seed Docker a jour
+--
+
+CREATE TABLE IF NOT EXISTS `homework` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `title` varchar(150) NOT NULL,
+  `detail` text DEFAULT NULL,
+  `position` int(11) DEFAULT NULL,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  `dateupdate` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_homework_position` (`position`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `mission_homework` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDmission` int(11) NOT NULL,
+  `IDhomework` int(11) NOT NULL,
+  `position` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_mission_homework` (`IDmission`, `IDhomework`),
+  KEY `idx_mission_homework_mission` (`IDmission`),
+  KEY `idx_mission_homework_homework` (`IDhomework`),
+  KEY `idx_mission_homework_position` (`IDmission`, `position`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `user_homework` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDuser` int(11) NOT NULL,
+  `IDmission` int(11) NOT NULL,
+  `IDhomework` int(11) NOT NULL,
+  `IDparcours` int(11) NOT NULL,
+  `done` datetime DEFAULT NULL,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  `dateupdate` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_user_homework` (`IDuser`, `IDmission`, `IDhomework`, `IDparcours`),
+  KEY `idx_user_homework_user` (`IDuser`),
+  KEY `idx_user_homework_mission` (`IDmission`),
+  KEY `idx_user_homework_homework` (`IDhomework`),
+  KEY `idx_user_homework_parcours` (`IDparcours`),
+  KEY `idx_user_homework_done` (`done`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `holon_share_link` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDorganization` int(11) NOT NULL,
+  `IDholon` int(11) NOT NULL,
+  `IDuser` int(11) NOT NULL,
+  `label` varchar(150) DEFAULT NULL,
+  `token` varchar(80) NOT NULL,
+  `password_hash` varchar(255) DEFAULT NULL,
+  `allow_structure` tinyint(1) NOT NULL DEFAULT 1,
+  `allow_people` tinyint(1) NOT NULL DEFAULT 0,
+  `allow_people_detail` tinyint(1) NOT NULL DEFAULT 0,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  `dateexpiration` datetime DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_holon_share_link_token` (`token`),
+  KEY `idx_holon_share_link_org_holon` (`IDorganization`, `IDholon`),
+  KEY `idx_holon_share_link_user` (`IDuser`),
+  KEY `idx_holon_share_link_active` (`active`),
+  KEY `idx_holon_share_link_expiration` (`dateexpiration`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

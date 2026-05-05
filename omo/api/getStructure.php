@@ -4,6 +4,12 @@ require_once __DIR__ . '/bootstrap.php';
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 if ($organizationId > 0) {
     $organization = new \dbObject\Organization();
+    if ($organization->load($organizationId) && !$organization->canViewDetail()) {
+        http_response_code(403);
+        echo '<div class="error">Acces refuse a cette organisation.</div>';
+        exit;
+    }
+
     if ($organization->load($organizationId) && $organization->getStructuralRootHolon() === null) {
         require_once __DIR__ . '/organization_setup_panel.php';
         omoRenderOrganizationSetupPanel($organization);
@@ -24,6 +30,9 @@ $structureDataUrl = 'api/getStructureData.php';
 if (count($structureDataParams) > 0) {
     $structureDataUrl .= '?' . http_build_query($structureDataParams);
 }
+
+$isShareMode = function_exists('commonGetCurrentShareToken') && commonGetCurrentShareToken() !== '';
+$canCreateShareLink = !$isShareMode && (int)commonGetCurrentUserId() > 0 && commonCurrentUserHasOrganizationAccess($organizationId);
 ?>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js"></script>
@@ -86,6 +95,67 @@ if (count($structureDataParams) > 0) {
   right: 16px;
   bottom: 16px;
   z-index: 10;
+}
+
+.structure-actions {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 12;
+}
+
+.structure-actions__toggle {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--color-surface, #ffffff) 96%, transparent);
+  color: var(--color-text, #1f2937);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow-md, 0 12px 24px rgba(0,0,0,0.12));
+}
+
+.structure-actions__toggle:hover,
+.structure-actions__toggle:focus-visible {
+  background: var(--color-surface, #ffffff);
+}
+
+.structure-actions__panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 180px;
+  padding: 8px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--color-surface, #ffffff) 98%, transparent);
+  box-shadow: var(--shadow-md, 0 12px 24px rgba(0,0,0,0.12));
+}
+
+.structure-actions.is-open .structure-actions__panel {
+  display: grid;
+  gap: 4px;
+}
+
+.structure-actions__item {
+  width: 100%;
+  padding: 11px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-text, #1f2937);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.structure-actions__item:hover,
+.structure-actions__item:focus-visible {
+  background: var(--color-surface-alt, #f3f4f6);
 }
 
 .switch {
@@ -240,10 +310,19 @@ input:checked + .slider::before {
     <div id="contentright" class="contentright">
         <div id="chart"></div>
         <div id="role_list" class="filter_zone"></div>
+        <div class="structure-actions" id="omoStructureActions">
+            <button type="button" class="structure-actions__toggle" id="omoStructureActionsToggle" aria-label="Actions">...</button>
+            <div class="structure-actions__panel" id="omoStructureActionsPanel">
+                <?php if ($canCreateShareLink) { ?>
+                    <button type="button" class="structure-actions__item" data-omo-structure-action="share">Partager</button>
+                <?php } ?>
+                <button type="button" class="structure-actions__item" data-omo-structure-action="print">Imprimer</button>
+            </div>
+        </div>
 
         <div class="switch chart-toggle">
             <input type="checkbox" id="toggleSwitch" />
-            <label for="toggleSwitch" class="slider">◉   ☰</label>
+            <label for="toggleSwitch" class="slider">O   L</label>
         </div>
     </div>
 
@@ -629,8 +708,61 @@ $(document).on("input", "#role_list_search", function () {
   updateRoleListResults();
 });
 
+$(document).on("click", "#omoStructureActionsToggle", function (event) {
+  event.preventDefault();
+  event.stopPropagation();
+  $("#omoStructureActions").toggleClass("is-open");
+});
+
+$(document).on("click", function (event) {
+  if (!$(event.target).closest("#omoStructureActions").length) {
+    omoCloseStructureActions();
+  }
+});
+
+$(document).on("keydown", function (event) {
+  if (event.key === "Escape") {
+    omoCloseStructureActions();
+  }
+});
+
+$(document).on("click", "[data-omo-structure-action]", function (event) {
+  event.preventDefault();
+
+  const action = String($(this).data("omo-structure-action") || "").trim();
+  omoCloseStructureActions();
+
+  if (action === "print") {
+    window.print();
+    return;
+  }
+
+  if (action !== "share" || !canCreateShareLink) {
+    return;
+  }
+
+  if (typeof window.commonTopbarOpenModal !== "function") {
+    return;
+  }
+
+  const route = getCurrentRoute();
+  const currentHolonId = omoGetCurrentStructureHolonId();
+  let popupUrl = "api/shares/popup.php?oid=" + encodeURIComponent(route.oid || 0);
+
+  if (currentHolonId > 0) {
+    popupUrl += "&cid=" + encodeURIComponent(currentHolonId);
+  }
+
+  if (typeof window.omoResolveAppUrl === "function") {
+    popupUrl = window.omoResolveAppUrl(popupUrl);
+  }
+
+  window.commonTopbarOpenModal("Partager la structure", popupUrl, "fetch");
+});
+
     const structureDataUrl = <?= json_encode($structureDataUrl, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
     const initialCid = <?= (int)$initialCid ?>;
+    const canCreateShareLink = <?= $canCreateShareLink ? 'true' : 'false' ?>;
     let root = null;
 
     let canvas, hiddenCanvas, context, hiddenContext;
@@ -669,6 +801,29 @@ $(document).on("input", "#role_list_search", function () {
       const targetCid = root && String(root.ID) === nodeId ? null : (nodeId !== "" ? Number(nodeId) : null);
 
       navigate(route.oid, Number.isNaN(targetCid) ? null : targetCid, route.hash || null);
+    }
+
+    function omoCloseStructureActions() {
+      const actions = document.getElementById("omoStructureActions");
+      if (actions) {
+        actions.classList.remove("is-open");
+      }
+    }
+
+    function omoGetCurrentStructureHolonId() {
+      if (currentnode && currentnode.ID) {
+        return Number(currentnode.ID);
+      }
+
+      if (initialCid > 0) {
+        return Number(initialCid);
+      }
+
+      if (root && root.ID) {
+        return Number(root.ID);
+      }
+
+      return 0;
     }
 
     function findPackedNodeById(nodeId) {
@@ -886,8 +1041,12 @@ $(document).on("input", "#role_list_search", function () {
 
     function loadStructureData() {
       return new Promise(function (resolve, reject) {
+        const resolvedStructureDataUrl = (typeof window.omoResolveAppUrl === "function")
+          ? window.omoResolveAppUrl(structureDataUrl)
+          : structureDataUrl;
+
         $.ajax({
-          url: structureDataUrl,
+          url: resolvedStructureDataUrl,
           method: "GET",
           cache: false,
           dataType: "json",
