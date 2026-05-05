@@ -75,6 +75,56 @@ function fetchRowsByIds(PDO $pdo, string $sql, array $ids): array
     return $statement->fetchAll();
 }
 
+function fetchReachableRoles(PDO $pdo, int $organisationId): array
+{
+    $rootStatement = $pdo->prepare(
+        'SELECT *
+         FROM t_role
+         WHERE role_active = 1
+           AND orga_id = ?
+           AND COALESCE(role_id_superCircle, 0) = 0
+         ORDER BY role_id'
+    );
+    $rootStatement->execute([$organisationId]);
+    $rootRoles = $rootStatement->fetchAll();
+    if ($rootRoles === []) {
+        return [];
+    }
+
+    $rolesById = [];
+    $frontierRoleIds = [];
+    foreach ($rootRoles as $role) {
+        $roleId = (int) $role['role_id'];
+        $rolesById[$roleId] = $role;
+        $frontierRoleIds[$roleId] = $roleId;
+    }
+
+    while ($frontierRoleIds !== []) {
+        $children = fetchRowsByIds(
+            $pdo,
+            'SELECT *
+             FROM t_role
+             WHERE role_active = 1
+               AND role_id_superCircle IN (:ids)
+             ORDER BY role_id_superCircle, role_id',
+            array_values($frontierRoleIds)
+        );
+
+        $frontierRoleIds = [];
+        foreach ($children as $childRole) {
+            $childRoleId = (int) $childRole['role_id'];
+            if (isset($rolesById[$childRoleId])) {
+                continue;
+            }
+
+            $rolesById[$childRoleId] = $childRole;
+            $frontierRoleIds[$childRoleId] = $childRoleId;
+        }
+    }
+
+    return array_values($rolesById);
+}
+
 function groupRowsByKey(array $rows, string $key): array
 {
     $grouped = [];
@@ -721,15 +771,7 @@ function buildCompatibleExport(PDO $pdo, int $organisationId, string $host, stri
         $roleTypesById[(int) $roleType['roty_id']] = $roleType;
     }
 
-    $rolesStatement = $pdo->prepare(
-        'SELECT *
-         FROM t_role
-         WHERE orga_id = ?
-           AND role_active = 1
-         ORDER BY COALESCE(role_id_superCircle, 0), role_id'
-    );
-    $rolesStatement->execute([$organisationId]);
-    $currentRoles = $rolesStatement->fetchAll();
+    $currentRoles = fetchReachableRoles($pdo, $organisationId);
 
     if ($currentRoles === []) {
         throw new RuntimeException("Cette organisation OMO 1 ne contient aucun role exportable.");
