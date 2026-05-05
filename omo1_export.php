@@ -514,11 +514,6 @@ function resolveProvisionalParentRoleId(array $role, array $rolesById): ?int
         return $parentRoleId;
     }
 
-    $sourceRoleId = toNullableInt($role['role_id_source'] ?? null);
-    if ($sourceRoleId !== null && isset($rolesById[$sourceRoleId])) {
-        return $sourceRoleId;
-    }
-
     return null;
 }
 
@@ -730,6 +725,7 @@ function buildCompatibleExport(PDO $pdo, int $organisationId, string $host, stri
         'SELECT *
          FROM t_role
          WHERE orga_id = ?
+           AND role_active = 1
          ORDER BY COALESCE(role_id_superCircle, 0), role_id'
     );
     $rolesStatement->execute([$organisationId]);
