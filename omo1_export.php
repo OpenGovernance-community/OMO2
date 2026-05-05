@@ -13,7 +13,6 @@ const OMO2_SECOND_LINK_TEMPLATE_ID = 1004;
 const OMO2_FACILITATION_TEMPLATE_ID = 1005;
 const OMO2_MEMORY_TEMPLATE_ID = 1006;
 const OMO2_REAL_HOLON_ID_OFFSET = 100000;
-const OMO2_GROUP_HOLON_ID_OFFSET = 200000;
 const OMO2_DEFAULT_ORGANIZATION_COLOR = '#3da8a9';
 const OMO2_PROPERTY_RAISON_ETRE = 101;
 const OMO2_PROPERTY_ATTENDUS = 102;
@@ -538,19 +537,6 @@ function buildTemplateRecord(
     return $record;
 }
 
-function buildGroupRecord(int $id, int $parentId, string $name): array
-{
-    return [
-        'id' => $id,
-        'typeId' => 3,
-        'name' => $name,
-        'parentId' => $parentId,
-        'visible' => true,
-        '_sortWeight' => 40,
-        '_sortName' => buildRecordSortName(['name' => $name]),
-    ];
-}
-
 function buildRealHolonRecord(
     int $exportId,
     int $parentId,
@@ -570,6 +556,7 @@ function buildRealHolonRecord(
         'visible' => true,
         'sourceRoleId' => (int) $source['role_id'],
         '_sortWeight' => $sortWeight,
+        '_sortGroupName' => '',
         '_sortName' => buildRecordSortName(['name' => $name]),
     ];
 
@@ -608,6 +595,12 @@ function buildHolonTree(array $recordsById): array
             $leftWeight = (int) ($left['_sortWeight'] ?? 99);
             $rightWeight = (int) ($right['_sortWeight'] ?? 99);
             if ($leftWeight === $rightWeight) {
+                $leftGroupName = (string) ($left['_sortGroupName'] ?? '');
+                $rightGroupName = (string) ($right['_sortGroupName'] ?? '');
+                if ($leftGroupName !== $rightGroupName) {
+                    return strcmp($leftGroupName, $rightGroupName);
+                }
+
                 return strcmp((string) ($left['_sortName'] ?? ''), (string) ($right['_sortName'] ?? ''));
             }
 
@@ -619,7 +612,7 @@ function buildHolonTree(array $recordsById): array
 
     $buildNode = static function (int $recordId) use (&$buildNode, $recordsById, $childrenByParentId): array {
         $node = $recordsById[$recordId];
-        unset($node['_sortWeight'], $node['_sortName'], $node['parentId']);
+        unset($node['_sortWeight'], $node['_sortGroupName'], $node['_sortName'], $node['parentId']);
 
         if (isset($childrenByParentId[$recordId])) {
             $children = [];
@@ -689,21 +682,7 @@ function buildCompatibleExport(PDO $pdo, int $organisationId, string $host, stri
     }
 
     $currentRoleIds = array_values(array_unique(array_map(static fn(array $row): int => (int) $row['role_id'], $currentRoles)));
-    $referencedRoleIds = [];
-    foreach ($currentRoles as $role) {
-        $referencedRoleIds = array_merge($referencedRoleIds, collectReferencedRoleIds($role));
-    }
-
-    $missingReferencedRoleIds = array_values(array_diff(array_unique($referencedRoleIds), $currentRoleIds));
-    $referencedRoles = fetchRowsByIds(
-        $pdo,
-        'SELECT *
-         FROM t_role
-         WHERE role_id IN (:ids)',
-        $missingReferencedRoleIds
-    );
-
-    $allRoles = array_merge($currentRoles, $referencedRoles);
+    $allRoles = $currentRoles;
     $rolesById = [];
     foreach ($allRoles as $role) {
         $rolesById[(int) $role['role_id']] = $role;
@@ -799,9 +778,6 @@ function buildCompatibleExport(PDO $pdo, int $organisationId, string $host, stri
         $exportIdByRoleId[(int) $role['role_id']] = OMO2_REAL_HOLON_ID_OFFSET + (int) $role['role_id'];
     }
 
-    $groupRecordIdByKey = [];
-    $nextGroupId = OMO2_GROUP_HOLON_ID_OFFSET;
-
     foreach ($currentRoles as $role) {
         $roleId = (int) $role['role_id'];
         $exportId = $exportIdByRoleId[$roleId];
@@ -814,16 +790,6 @@ function buildCompatibleExport(PDO $pdo, int $organisationId, string $host, stri
 
         $groupLabel = !$isCircle ? cleanNullable($role['role_group'] ?? null) : null;
         $parentId = $containerParentId;
-        if ($groupLabel !== null) {
-            $groupKey = $containerParentId . '|' . normalizeLabel($groupLabel);
-            if (!isset($groupRecordIdByKey[$groupKey])) {
-                $groupRecordIdByKey[$groupKey] = $nextGroupId;
-                $recordsById[$nextGroupId] = buildGroupRecord($nextGroupId, $containerParentId, $groupLabel);
-                $nextGroupId += 1;
-            }
-
-            $parentId = $groupRecordIdByKey[$groupKey];
-        }
 
         $resolved = resolveRoleContent(
             $role,
@@ -848,6 +814,10 @@ function buildCompatibleExport(PDO $pdo, int $organisationId, string $host, stri
         $overrides = [];
         if ($templateKey !== null && !empty($structuralTemplates[$templateKey]['link'])) {
             $overrides['link'] = true;
+        }
+        if ($groupLabel !== null) {
+            $overrides['groupName'] = $groupLabel;
+            $overrides['_sortGroupName'] = normalizeLabel($groupLabel);
         }
 
         $recordsById[$exportId] = buildRealHolonRecord(
@@ -1138,8 +1108,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     de cercle et les 4 templates structurels. Les raisons d'etre,
                     attendus, domaines d'autorite et strategies OMO 1 sont convertis
                     en proprietes generiques OMO 2. Les groupes visuels OMO 1 sont
-                    recrees comme holons de type groupe pour rester proches du rendu
-                    de <code>org2.php</code>.
+                    conserves comme metadata de regroupement sur les roles, sans
+                    recreer une fausse hierarchie de parents.
                 </div>
 
                 <div class="actions">
