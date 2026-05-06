@@ -83,6 +83,15 @@
 			);
 		}
 
+		public static function getTemplateListItemTypeOptions()
+		{
+			return array(
+				array('id' => self::LIST_ITEM_TEXT, 'name' => 'Texte'),
+				array('id' => self::LIST_ITEM_NUMBER, 'name' => 'Chiffre'),
+				array('id' => self::LIST_ITEM_DATE, 'name' => 'Date'),
+			);
+		}
+
 		public static function normalizeListItemType($value)
 		{
 			$value = trim((string)$value);
@@ -94,6 +103,12 @@
 			);
 
 			return in_array($value, $allowed, true) ? $value : self::LIST_ITEM_TEXT;
+		}
+
+		public static function normalizeTemplateListItemType($value)
+		{
+			$normalized = self::normalizeListItemType($value);
+			return $normalized === self::LIST_ITEM_HOLON ? self::LIST_ITEM_TEXT : $normalized;
 		}
 
 		public static function parseHolonTypeIds($value)

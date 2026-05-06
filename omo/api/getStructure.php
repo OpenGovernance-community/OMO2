@@ -962,7 +962,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
       currentnode = targetNode;
       canvas.style("pointer-events", "none");
 
-      const v = (targetNode.type == "1" || (targetNode.children && targetNode.children.length < 2))
+      const v = shouldUseTightZoom(targetNode)
         ? [targetNode.x, targetNode.y, targetNode.r * 4.05]
         : [targetNode.x, targetNode.y, targetNode.r * 2.05];
 

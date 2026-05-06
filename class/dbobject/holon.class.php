@@ -1990,7 +1990,7 @@
 		protected function buildTemplatePropertyDefinition(\dbObject\Property $property, ?\dbObject\HolonProperty $holonProperty = null, array $overrides = array())
 		{
 			$format = new \dbObject\PropertyFormat();
-			$formatName = '';
+			$formatName = \dbObject\PropertyFormat::getBuiltinFormatName((int)$property->get('IDpropertyformat'));
 			if ((int)$property->get('IDpropertyformat') > 0 && $format->load((int)$property->get('IDpropertyformat'))) {
 				$formatName = (string)$format->get('name');
 			}
@@ -2243,11 +2243,15 @@
 					continue;
 				}
 
+				$formatId = (int)($definition['formatId'] ?? 0);
 				$localValue = $submittedValuesByPropertyId[$propertyId] ?? '';
-				$localValue = is_scalar($localValue) ? trim((string)$localValue) : '';
+				$localValue = \dbObject\PropertyFormat::normalizeValueForStorage($formatId, $localValue);
+				if (!\dbObject\PropertyFormat::isHtmlFormat($formatId)) {
+					$localValue = trim((string)$localValue);
+				}
 				$holonProperty = isset($existingByPropertyId[$propertyId]) ? $existingByPropertyId[$propertyId] : new \dbObject\HolonProperty();
 
-				if ($localValue === '') {
+				if (\dbObject\PropertyFormat::isEmptyValue($formatId, $localValue)) {
 					if ($holonProperty->getId() > 0) {
 						$holonProperty->set('active', false);
 						$holonProperty->set('value', null);
@@ -2394,8 +2398,14 @@
 						]);
 					}
 
-					$definitionValue = array_key_exists('value', $definition) ? (string)$definition['value'] : '';
-					$inheritedValue = (string)($inheritedDefinition['value'] ?? '');
+					$definitionValue = \dbObject\PropertyFormat::normalizeValueForStorage(
+						$propertyFormatId,
+						array_key_exists('value', $definition) ? $definition['value'] : ''
+					);
+					$inheritedValue = \dbObject\PropertyFormat::normalizeValueForStorage(
+						$propertyFormatId,
+						(string)($inheritedDefinition['value'] ?? '')
+					);
 					$inheritedLocked = !empty($inheritedDefinition['effectiveLocked']);
 					$localMandatory = !empty($definition['mandatory']);
 					$localLocked = !empty($definition['locked']);
@@ -2405,7 +2415,14 @@
 						$definitionValue = $inheritedValue;
 					}
 
-					$normalizedValue = trim($definitionValue) === '' ? null : $definitionValue;
+					if (!\dbObject\PropertyFormat::isHtmlFormat($propertyFormatId)) {
+						$definitionValue = trim((string)$definitionValue);
+						$inheritedValue = trim((string)$inheritedValue);
+					}
+
+					$normalizedValue = \dbObject\PropertyFormat::isEmptyValue($propertyFormatId, $definitionValue)
+						? null
+						: $definitionValue;
 					$hasLocalOverride = $canEditValue && $normalizedValue !== null;
 
 					$holonProperty->set('IDholon', $this->getId());
@@ -2443,7 +2460,7 @@
 				$listItemType = null;
 				$listHolonTypeIds = null;
 				if ($propertyFormatId === \dbObject\PropertyFormat::FORMAT_LIST) {
-					$listItemType = \dbObject\Property::normalizeListItemType($definition['listItemType'] ?? '');
+					$listItemType = \dbObject\Property::normalizeTemplateListItemType($definition['listItemType'] ?? '');
 					if ($listItemType === \dbObject\Property::LIST_ITEM_HOLON) {
 						$listHolonTypeIds = \dbObject\Property::serializeHolonTypeIds($definition['listHolonTypeIds'] ?? array());
 					}
@@ -2467,8 +2484,17 @@
 					]);
 				}
 
-				$definitionValue = array_key_exists('value', $definition) ? (string)$definition['value'] : '';
-				$normalizedValue = trim($definitionValue) === '' ? null : $definitionValue;
+				$definitionValue = \dbObject\PropertyFormat::normalizeValueForStorage(
+					$propertyFormatId,
+					array_key_exists('value', $definition) ? $definition['value'] : ''
+				);
+				if (!\dbObject\PropertyFormat::isHtmlFormat($propertyFormatId)) {
+					$definitionValue = trim((string)$definitionValue);
+				}
+
+				$normalizedValue = \dbObject\PropertyFormat::isEmptyValue($propertyFormatId, $definitionValue)
+					? null
+					: $definitionValue;
 				$localMandatory = !empty($definition['mandatory']);
 				$localLocked = !empty($definition['locked']);
 				$holonProperty->set('IDholon', $this->getId());

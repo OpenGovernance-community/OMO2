@@ -1895,6 +1895,42 @@
 			return in_array((int)$template->get('IDholon_parent'), $pathIds, true);
 		}
 
+		protected function buildEditorPropertyFormats($formats)
+		{
+			$formatMap = array();
+
+			if ($formats) {
+				foreach ($formats as $format) {
+					$formatId = (int)$format->getId();
+					if ($formatId <= 0) {
+						continue;
+					}
+
+					$formatMap[$formatId] = array(
+						'id' => $formatId,
+						'name' => (string)$format->get('name'),
+					);
+				}
+			}
+
+			foreach (\dbObject\PropertyFormat::getBuiltinFormats() as $builtinFormat) {
+				$formatId = (int)$builtinFormat['id'];
+				if ($formatId <= 0) {
+					continue;
+				}
+
+				if (!isset($formatMap[$formatId]) || trim((string)$formatMap[$formatId]['name']) === '') {
+					$formatMap[$formatId] = array(
+						'id' => $formatId,
+						'name' => (string)$builtinFormat['name'],
+					);
+				}
+			}
+
+			ksort($formatMap);
+			return array_values($formatMap);
+		}
+
 		public function getHolonTemplateEditorData($contextHolonId = 0)
 		{
 			$rootHolon = $this->getStructuralRootHolon();
@@ -1909,7 +1945,7 @@
 					'contextHolonLabel' => '',
 					'types' => array(),
 					'formats' => array(),
-					'listItemTypes' => \dbObject\Property::getListItemTypeOptions(),
+					'listItemTypes' => \dbObject\Property::getTemplateListItemTypeOptions(),
 					'templateCatalog' => array(),
 					'templates' => array(),
 				);
@@ -1938,7 +1974,7 @@
 				'contextHolonLabel' => $contextHolon ? $contextHolon->getTemplateLabel() : '',
 				'types' => array(),
 				'formats' => array(),
-				'listItemTypes' => \dbObject\Property::getListItemTypeOptions(),
+				'listItemTypes' => \dbObject\Property::getTemplateListItemTypeOptions(),
 				'templateCatalog' => array(),
 				'templates' => array(),
 			);
@@ -1952,12 +1988,7 @@
 				);
 			}
 
-			foreach ($formats as $format) {
-				$data['formats'][] = array(
-					'id' => (int)$format->getId(),
-					'name' => (string)$format->get('name'),
-				);
-			}
+			$data['formats'] = $this->buildEditorPropertyFormats($formats);
 
 			$templateNodes = array();
 			$childrenByParent = array();
@@ -2089,7 +2120,7 @@
 				'targetHolonId' => (int)$holon->getId(),
 				'types' => array(),
 				'formats' => array(),
-				'listItemTypes' => \dbObject\Property::getListItemTypeOptions(),
+				'listItemTypes' => \dbObject\Property::getTemplateListItemTypeOptions(),
 				'templateCatalog' => array(),
 				'templates' => array(
 					$this->buildHolonDefinitionEditorNode($holon, (int)$rootHolon->getId()),
@@ -2105,12 +2136,7 @@
 				);
 			}
 
-			foreach ($formats as $format) {
-				$data['formats'][] = array(
-					'id' => (int)$format->getId(),
-					'name' => (string)$format->get('name'),
-				);
-			}
+			$data['formats'] = $this->buildEditorPropertyFormats($formats);
 
 			return $data;
 		}
@@ -2692,23 +2718,38 @@
 						continue;
 					}
 
-					$localValue = $submittedValuesByPropertyId[$propertyId] ?? '';
-					$localValue = is_scalar($localValue) ? (string)$localValue : '';
-					$inheritedValue = (string)($definition['inheritedValue'] ?? '');
+					$formatId = (int)($definition['formatId'] ?? 0);
+					$localValue = \dbObject\PropertyFormat::normalizeValueForStorage(
+						$formatId,
+						$submittedValuesByPropertyId[$propertyId] ?? ''
+					);
+					$inheritedValue = \dbObject\PropertyFormat::normalizeValueForStorage(
+						$formatId,
+						(string)($definition['inheritedValue'] ?? '')
+					);
 					$effectiveValue = '';
 
-					if ((int)($definition['formatId'] ?? 0) === \dbObject\PropertyFormat::FORMAT_LIST) {
+					if ($formatId === \dbObject\PropertyFormat::FORMAT_LIST) {
 						$effectiveItems = !empty($definition['effectiveLocked'])
 							? $parseListValue($inheritedValue)
 							: array_values(array_unique(array_merge($parseListValue($inheritedValue), $parseListValue($localValue)), SORT_REGULAR));
 						$effectiveValue = count($effectiveItems) > 0 ? json_encode($effectiveItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : '';
 					} elseif (!empty($definition['effectiveLocked'])) {
-						$effectiveValue = trim($inheritedValue);
+						$effectiveValue = \dbObject\PropertyFormat::isHtmlFormat($formatId)
+							? $inheritedValue
+							: trim((string)$inheritedValue);
 					} else {
-						$effectiveValue = trim($localValue) !== '' ? trim($localValue) : trim($inheritedValue);
+						if (!\dbObject\PropertyFormat::isHtmlFormat($formatId)) {
+							$localValue = trim((string)$localValue);
+							$inheritedValue = trim((string)$inheritedValue);
+						}
+
+						$effectiveValue = !\dbObject\PropertyFormat::isEmptyValue($formatId, $localValue)
+							? $localValue
+							: $inheritedValue;
 					}
 
-					if (!empty($definition['effectiveMandatory']) && $effectiveValue === '') {
+					if (!empty($definition['effectiveMandatory']) && \dbObject\PropertyFormat::isEmptyValue($formatId, $effectiveValue)) {
 						return array(
 							'status' => false,
 							'message' => 'La propriete "' . (string)($definition['name'] ?? ('#' . $propertyId)) . '" est obligatoire.',
