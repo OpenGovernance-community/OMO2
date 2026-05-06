@@ -51,7 +51,43 @@
 		return "text";
 	}
 
+	function normalizeDetailedListItem(item) {
+		if (item && typeof item === "object" && !Array.isArray(item)) {
+			return {
+				title: String(item.title || item.label || item.value || "").trim(),
+				description: String(item.description || item.text || "").trim()
+			};
+		}
+
+		return {
+			title: String(item || "").trim(),
+			description: ""
+		};
+	}
+
 	function createListFieldRowHtml(listItemType, value) {
+		if (String(listItemType || "text") === "detail") {
+			const detailItem = normalizeDetailedListItem(value);
+			const escapedTitle = detailItem.title
+				.replace(/&/g, "&amp;")
+				.replace(/"/g, "&quot;")
+				.replace(/</g, "&lt;")
+				.replace(/>/g, "&gt;");
+			const escapedDescription = detailItem.description
+				.replace(/&/g, "&amp;")
+				.replace(/</g, "&lt;")
+				.replace(/>/g, "&gt;");
+
+			return ''
+				+ '<div class="role-list-field__row role-list-field__row--detail">'
+				+ '  <div class="role-list-field__detail-fields">'
+				+ '      <input type="text" class="role-list-field__value role-list-field__value--detail-title" value="' + escapedTitle + '" placeholder="Titre">'
+				+ '      <textarea class="role-list-field__value role-list-field__value--detail-description" rows="3" placeholder="Description">' + escapedDescription + '</textarea>'
+				+ '  </div>'
+				+ '  <button type="button" class="role-list-field__remove" data-list-remove="1" aria-label="Supprimer">&times;</button>'
+				+ '</div>';
+		}
+
 		const inputType = getListInputType(String(listItemType || "text"));
 		const safeValue = value !== undefined && value !== null ? String(value) : "";
 		const escapedValue = safeValue
@@ -89,6 +125,19 @@
 		}
 
 		if (mode === "json-list") {
+			if (String($field.data("list-item-type") || "text") === "detail") {
+				const values = parseStoredListValue(rawValue).map(function(item) {
+					const detailItem = normalizeDetailedListItem(item);
+					return detailItem.title !== "" || detailItem.description !== "" ? detailItem : null;
+				}).filter(Boolean);
+				const $items = $field.find(".role-list-field__items");
+				$items.empty();
+				(values.length ? values : [{ title: "", description: "" }]).forEach(function(item) {
+					$items.append(createListFieldRowHtml($field.data("list-item-type"), item));
+				});
+				return;
+			}
+
 			const values = parseStoredListValue(rawValue).map(function(item) {
 				return Array.isArray(item) ? "" : String(item).trim();
 			}).filter(function(item) {
@@ -116,6 +165,18 @@
 		}
 
 		if (mode === "json-list") {
+			if (String($field.data("list-item-type") || "text") === "detail") {
+				const values = $field.find(".role-list-field__row--detail").map(function() {
+					const $row = $(this);
+					const item = {
+						title: String($row.find(".role-list-field__value--detail-title").val() || "").trim(),
+						description: String($row.find(".role-list-field__value--detail-description").val() || "").trim()
+					};
+					return item.title !== "" || item.description !== "" ? item : null;
+				}).get().filter(Boolean);
+				return values.length ? JSON.stringify(values) : "";
+			}
+
 			const values = $field.find(".role-list-field__value").map(function() {
 				return String($(this).val() || "").trim();
 			}).get().filter(Boolean);

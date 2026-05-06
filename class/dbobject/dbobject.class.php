@@ -67,6 +67,7 @@
 				$this->insert_id = (int)$this->_pdo->lastInsertId();
 				return true;
 			} catch (\PDOException $e) {
+				DbObject::registerDbError($query, array(), $e);
 				return false;
 			}
 		}
@@ -134,6 +135,29 @@
 			self::$_lastDbError = null;
 		}
 
+		protected static function getDbErrorLogPath() {
+			$baseDir = isset($_SERVER["DOCUMENT_ROOT"]) && is_string($_SERVER["DOCUMENT_ROOT"]) && trim($_SERVER["DOCUMENT_ROOT"]) !== ""
+				? rtrim($_SERVER["DOCUMENT_ROOT"], "/\\")
+				: dirname(dirname(__DIR__));
+
+			return $baseDir . DIRECTORY_SEPARATOR . "tmp" . DIRECTORY_SEPARATOR . "dbobject-sql-errors.log";
+		}
+
+		protected static function writeDbErrorLog(array $payload) {
+			$logPath = self::getDbErrorLogPath();
+			$logDir = dirname($logPath);
+			if (!is_dir($logDir)) {
+				@mkdir($logDir, 0777, true);
+			}
+
+			$line = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			if (!is_string($line) || $line === "") {
+				$line = '{"time":"' . date("c") . '","message":"dbobject_log_json_encode_failed"}';
+			}
+
+			error_log($line . PHP_EOL, 3, $logPath);
+		}
+
 		protected static function rememberLastDbError($query, $params = array(), $exception = null) {
 			self::$_lastDbError = array(
 				"query" => (string)$query,
@@ -142,10 +166,29 @@
 				"code" => $exception instanceof \Throwable ? (int)$exception->getCode() : 0,
 				"time" => date("c"),
 			);
+
+			self::writeDbErrorLog(array(
+				"time" => self::$_lastDbError["time"],
+				"query" => self::$_lastDbError["query"],
+				"params" => self::$_lastDbError["params"],
+				"message" => self::$_lastDbError["message"],
+				"code" => self::$_lastDbError["code"],
+				"request_uri" => (string)($_SERVER["REQUEST_URI"] ?? ""),
+				"method" => (string)($_SERVER["REQUEST_METHOD"] ?? ""),
+				"remote_addr" => (string)($_SERVER["REMOTE_ADDR"] ?? ""),
+				"script" => (string)($_SERVER["SCRIPT_NAME"] ?? ""),
+				"database" => (string)($GLOBALS["dbName"] ?? ""),
+				"current_user" => (int)($_SESSION["currentUser"] ?? 0),
+				"current_organization" => (int)($_SESSION["currentOrganization"] ?? 0),
+			));
 		}
 
 		static public function getLastDbError() {
 			return is_array(self::$_lastDbError) ? self::$_lastDbError : null;
+		}
+
+		static public function registerDbError($query, $params = array(), $exception = null) {
+			self::rememberLastDbError($query, $params, $exception);
 		}
 
 		static public function executeSQL($query) {

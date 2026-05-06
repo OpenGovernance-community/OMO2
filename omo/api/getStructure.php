@@ -245,28 +245,93 @@ input:checked + .slider::before {
   margin: 8px 0;
 }
 
+.role-row {
+  display: grid;
+  gap: 8px;
+}
+
+.role-item-shell {
+  display: grid;
+  gap: 0;
+  border-radius: 10px;
+  background: var(--color-surface-alt, #f0f2f5);
+  box-shadow: inset 0 0 0 1px transparent;
+  overflow: hidden;
+}
+
+.role-item-shell.match-direct {
+  background: #fff7d6;
+  box-shadow: inset 0 0 0 1px rgba(217, 119, 6, 0.22);
+}
+
+.role-item-shell.match-content {
+  background: #eef6ff;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.18);
+}
+
+.role-item-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+}
+
+.role-detail-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  width: 38px;
+  min-width: 38px;
+  padding: 8px 10px 8px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted, #6b7280);
+  cursor: pointer;
+  transition: color 0.16s ease;
+}
+
+.role-detail-toggle:hover,
+.role-detail-toggle:focus-visible {
+  color: var(--color-text, #1f2937);
+}
+
+.role-detail-toggle-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  transition: transform 0.16s ease, background 0.16s ease;
+}
+
+.role-detail-toggle:hover .role-detail-toggle-icon,
+.role-detail-toggle:focus-visible .role-detail-toggle-icon {
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.role-detail-toggle.is-open .role-detail-toggle-icon {
+  transform: rotate(90deg);
+}
+
+.role-detail-toggle--placeholder {
+  width: 38px;
+  min-width: 38px;
+}
+
 .role-item {
   display: flex;
   align-items: flex-start;
   gap: 8px;
   width: 100%;
   padding: 8px 10px;
-  border-radius: var(--radius-sm, 6px);
-  background: var(--color-surface-alt, #f0f2f5);
+  background: transparent;
   cursor: pointer;
   border: 0;
   text-align: left;
   color: inherit;
-}
-
-.role-item.match-direct {
-  background: #fff7d6;
-  box-shadow: inset 0 0 0 1px rgba(217, 119, 6, 0.22);
-}
-
-.role-item.match-content {
-  background: #eef6ff;
-  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.18);
 }
 
 .role-dot {
@@ -306,6 +371,85 @@ input:checked + .slider::before {
   padding: 20px 4px;
   color: var(--color-text-muted, #6b7280);
   font-size: 14px;
+}
+
+.role-item-detail {
+  display: none;
+  padding: 0 14px 14px 14px;
+  background: transparent;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.role-item-detail.is-open {
+  display: block;
+}
+
+.role-properties {
+  display: grid;
+  gap: 12px;
+}
+
+.role-property {
+  display: grid;
+  gap: 6px;
+}
+
+.role-property + .role-property {
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border, #eef2f7);
+}
+
+.role-property-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #6b7280);
+}
+
+.role-property-value {
+  color: var(--color-text, #1f2937);
+  line-height: 1.5;
+}
+
+.role-property-text p,
+.role-property-html p {
+  margin: 0 0 8px;
+}
+
+.role-property-text p:last-child,
+.role-property-html p:last-child {
+  margin-bottom: 0;
+}
+
+.role-property-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.role-property-list li + li {
+  margin-top: 4px;
+}
+
+.role-property-detail-list {
+  display: grid;
+  gap: 10px;
+}
+
+.role-property-detail-card {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--color-surface-alt, #f8fafc);
+  border: 1px solid var(--color-border, #e5e7eb);
+}
+
+.role-property-detail-card__title {
+  font-weight: 600;
+}
+
+.role-property-detail-card__body {
+  margin-top: 6px;
+  color: var(--color-text-muted, #4b5563);
 }
 </style>
     <div id="contentright" class="contentright">
@@ -484,7 +628,7 @@ function getNodeSearchEntries(node) {
     const item = data[key];
 
     if (item && typeof item === "object") {
-      const effectiveValue = item.value || item.ancestor || "";
+      const effectiveValue = item.effectiveValue || item.value || item.ancestor || "";
       if (effectiveValue) {
         entries.push(String(effectiveValue));
       }
@@ -559,6 +703,262 @@ function getNodeMatchExcerpt(node, query) {
   return "";
 }
 
+function nl2brHtml(text) {
+  return escapeHtml(String(text || "")).replace(/\r\n|\r|\n/g, "<br>");
+}
+
+function splitListItems(text) {
+  const source = String(text || "").trim();
+
+  if (!source) {
+    return [];
+  }
+
+  const parts = source.indexOf("|") !== -1
+    ? source.split("|")
+    : source.split(/\r\n|\r|\n/);
+
+  return parts
+    .map(function (item) {
+      return String(item || "").trim();
+    })
+    .filter(function (item) {
+      return item !== "";
+    });
+}
+
+function parseListItems(rawValue) {
+  const source = String(rawValue || "").trim();
+
+  if (!source) {
+    return [];
+  }
+
+  try {
+    const decoded = JSON.parse(source);
+    if (Array.isArray(decoded)) {
+      return decoded;
+    }
+  } catch (error) {
+  }
+
+  return splitListItems(source);
+}
+
+function normalizeDetailedListItem(item) {
+  if (item && typeof item === "object" && !Array.isArray(item)) {
+    return {
+      title: String(item.title || item.label || item.value || "").trim(),
+      description: String(item.description || item.text || "").trim()
+    };
+  }
+
+  return {
+    title: String(item || "").trim(),
+    description: ""
+  };
+}
+
+function formatDateValue(value) {
+  const source = String(value || "").trim();
+  const dateMatch = source.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+  if (dateMatch) {
+    return dateMatch[3] + "." + dateMatch[2] + "." + dateMatch[1];
+  }
+
+  return source;
+}
+
+function formatListItemValue(item, entry) {
+  if (String(entry && entry.listItemType || "") === "date") {
+    return formatDateValue(item);
+  }
+
+  if (item && typeof item === "object" && !Array.isArray(item)) {
+    return String(item.label || item.value || item.title || "").trim();
+  }
+
+  return String(item || "").trim();
+}
+
+function getPropertyDisplayLabel(entry) {
+  return String(entry && (entry.name || entry.shortname || entry.key) || "").trim();
+}
+
+function getNodePropertyEntries(node) {
+  const data = node && node.data && typeof node.data === "object" ? node.data : null;
+
+  if (!data) {
+    return [];
+  }
+
+  return Object.keys(data)
+    .map(function (key) {
+      const item = data[key];
+
+      if (!item || typeof item !== "object") {
+        return null;
+      }
+
+      return Object.assign(
+        {
+          key: key,
+          position: Number.MAX_SAFE_INTEGER,
+          name: "",
+          shortname: "",
+          effectiveValue: "",
+          value: "",
+          ancestor: "",
+          formatId: 0,
+          listItemType: ""
+        },
+        item
+      );
+    })
+    .filter(function (item) {
+      if (!item) {
+        return false;
+      }
+
+      return String(item.effectiveValue || item.value || item.ancestor || "").trim() !== "";
+    })
+    .sort(function (left, right) {
+      const leftPosition = Number(left.position || Number.MAX_SAFE_INTEGER);
+      const rightPosition = Number(right.position || Number.MAX_SAFE_INTEGER);
+
+      if (leftPosition !== rightPosition) {
+        return leftPosition - rightPosition;
+      }
+
+      return getPropertyDisplayLabel(left).localeCompare(getPropertyDisplayLabel(right));
+    });
+}
+
+function renderDetailListPropertyHtml(entry) {
+  const items = parseListItems(entry.effectiveValue || entry.value || entry.ancestor || "");
+
+  if (!items.length) {
+    return "";
+  }
+
+  const cards = items
+    .map(function (item) {
+      const detailItem = normalizeDetailedListItem(item);
+
+      if (!detailItem.title && !detailItem.description) {
+        return "";
+      }
+
+      let html = `<div class="role-property-detail-card">`;
+
+      if (detailItem.title) {
+        html += `<div class="role-property-detail-card__title">${escapeHtml(detailItem.title)}</div>`;
+      }
+
+      if (detailItem.description) {
+        html += `<div class="role-property-detail-card__body">${nl2brHtml(detailItem.description)}</div>`;
+      }
+
+      html += `</div>`;
+      return html;
+    })
+    .filter(function (item) {
+      return item !== "";
+    });
+
+  if (!cards.length) {
+    return "";
+  }
+
+  return `<div class="role-property-detail-list">${cards.join("")}</div>`;
+}
+
+function renderStandardListPropertyHtml(entry) {
+  const items = parseListItems(entry.effectiveValue || entry.value || entry.ancestor || "");
+
+  if (!items.length) {
+    return "";
+  }
+
+  const listItems = items
+    .map(function (item) {
+      return formatListItemValue(item, entry);
+    })
+    .filter(function (item) {
+      return item !== "";
+    })
+    .map(function (item) {
+      return `<li>${escapeHtml(item)}</li>`;
+    });
+
+  if (!listItems.length) {
+    return "";
+  }
+
+  return `<ul class="role-property-list">${listItems.join("")}</ul>`;
+}
+
+function renderNodePropertyValueHtml(entry) {
+  const effectiveValue = String(entry.effectiveValue || entry.value || entry.ancestor || "").trim();
+
+  if (!effectiveValue) {
+    return "";
+  }
+
+  if (Number(entry.formatId || 0) === 2) {
+    if (String(entry.listItemType || "") === "detail") {
+      return renderDetailListPropertyHtml(entry);
+    }
+
+    return renderStandardListPropertyHtml(entry);
+  }
+
+  if (Number(entry.formatId || 0) === 5) {
+    return `<div class="role-property-html">${effectiveValue}</div>`;
+  }
+
+  if (Number(entry.formatId || 0) === 4) {
+    return `<div class="role-property-text">${escapeHtml(formatDateValue(effectiveValue))}</div>`;
+  }
+
+  return `<div class="role-property-text">${nl2brHtml(effectiveValue)}</div>`;
+}
+
+function buildNodeDetailHtml(node) {
+  const properties = getNodePropertyEntries(node);
+
+  if (!properties.length) {
+    return "";
+  }
+
+  const blocks = properties
+    .map(function (entry) {
+      const propertyHtml = renderNodePropertyValueHtml(entry);
+      const propertyLabel = getPropertyDisplayLabel(entry);
+
+      if (!propertyHtml || !propertyLabel) {
+        return "";
+      }
+
+      return `
+        <div class="role-property">
+          <div class="role-property-label">${escapeHtml(propertyLabel)}</div>
+          <div class="role-property-value">${propertyHtml}</div>
+        </div>
+      `;
+    })
+    .filter(function (block) {
+      return block !== "";
+    });
+
+  if (!blocks.length) {
+    return "";
+  }
+
+  return `<div class="role-properties">${blocks.join("")}</div>`;
+}
+
 function filterListNode(node, normalizedQuery) {
   const children = Array.isArray(node.children) ? node.children : [];
   const filteredChildren = children
@@ -599,26 +999,57 @@ function renderNodeList(entry, searchQuery) {
   const node = entry.node;
   const children = Array.isArray(entry.children) ? entry.children : [];
   const color = getListColor(node);
+  const nodeId = String(node.ID || "");
+  const escapedNodeId = escapeHtml(nodeId);
   const dotStyle = node.type == "3"
     ? "background:transparent;border:2px solid " + getGroupStrokeColor(node)
     : "background:" + color;
-  const itemClasses = ["role-item"];
+  const shellClasses = ["role-item-shell"];
+  const detailHtml = buildNodeDetailHtml(node);
+  const hasDetails = detailHtml !== "";
+  const isDetailOpen = hasDetails && expandedRoleListNodeIds[nodeId] === true;
 
   if (entry.matchesLabel) {
-    itemClasses.push("match-direct");
+    shellClasses.push("match-direct");
   } else if (entry.matchesContent) {
-    itemClasses.push("match-content");
+    shellClasses.push("match-content");
+  }
+
+  let detailToggleHtml = `<span class="role-detail-toggle role-detail-toggle--placeholder" aria-hidden="true"></span>`;
+  if (hasDetails) {
+    detailToggleHtml = `
+      <button
+        type="button"
+        class="role-detail-toggle${isDetailOpen ? " is-open" : ""}"
+        data-omo-role-detail-toggle="${escapedNodeId}"
+        aria-expanded="${isDetailOpen ? "true" : "false"}"
+        aria-controls="role_item_detail_${escapedNodeId}"
+        aria-label="${isDetailOpen ? "Masquer les proprietes" : "Afficher les proprietes"}"
+      ><span class="role-detail-toggle-icon">&#9654;</span></button>
+    `;
   }
 
   let html = `
-    <li class="node_${escapeHtml(node.ID)}">
-      <button type="button" class="${itemClasses.join(" ")}" data-omo-cid="${escapeHtml(node.ID)}" data-omo-root="${node.type == "4" ? "1" : "0"}">
-        <span class="role-dot" style="${dotStyle}"></span>
-        <span class="role-text">
-          <span class="role-label">${highlightLabel(node.name || "", searchQuery)}</span>
-          ${entry.matchExcerpt ? `<span class="role-excerpt">${entry.matchExcerpt}</span>` : ``}
-        </span>
-      </button>
+    <li class="node_${escapedNodeId}">
+      <div class="role-row">
+        <div class="${shellClasses.join(" ")}">
+          <div class="role-item-main">
+            <button type="button" class="role-item" data-omo-cid="${escapedNodeId}" data-omo-root="${node.type == "4" ? "1" : "0"}">
+              <span class="role-dot" style="${dotStyle}"></span>
+              <span class="role-text">
+                <span class="role-label">${highlightLabel(node.name || "", searchQuery)}</span>
+                ${entry.matchExcerpt ? `<span class="role-excerpt">${entry.matchExcerpt}</span>` : ``}
+              </span>
+            </button>
+            ${detailToggleHtml}
+          </div>
+          ${hasDetails ? `
+      <div class="role-item-detail${isDetailOpen ? " is-open" : ""}" id="role_item_detail_${escapedNodeId}"${isDetailOpen ? "" : " hidden"}>
+        ${detailHtml}
+      </div>
+          ` : ``}
+        </div>
+      </div>
   `;
 
   if (children.length) {
@@ -633,7 +1064,9 @@ function renderNodeList(entry, searchQuery) {
   return html;
 }
 
+const expandedRoleListNodeIds = Object.create(null);
 let listFilterQuery = "";
+let structurePrintPreviousListMode = null;
 
 function ensureRoleListLayout() {
   const roleList = document.getElementById("role_list");
@@ -698,6 +1131,45 @@ function renderRoleList() {
   updateRoleListResults();
 }
 
+function prepareStructureForPrint() {
+  renderRoleList();
+
+  const contentRight = document.getElementById("contentright");
+  if (contentRight) {
+    structurePrintPreviousListMode = contentRight.classList.contains("list-mode");
+    contentRight.classList.remove("list-mode");
+  }
+
+  const hiddenCanvasElement = document.getElementById("hiddenCanvas");
+  if (hiddenCanvasElement) {
+    hiddenCanvasElement.style.setProperty("display", "none", "important");
+    hiddenCanvasElement.style.setProperty("visibility", "hidden", "important");
+  }
+}
+
+function restoreStructureAfterPrint() {
+  const contentRight = document.getElementById("contentright");
+  if (!contentRight) {
+    return;
+  }
+
+  if (structurePrintPreviousListMode === null) {
+    const toggle = document.getElementById("toggleSwitch");
+    contentRight.classList.toggle("list-mode", !!(toggle && toggle.checked));
+    return;
+  }
+
+  contentRight.classList.toggle("list-mode", structurePrintPreviousListMode);
+  structurePrintPreviousListMode = null;
+
+  const hiddenCanvasElement = document.getElementById("hiddenCanvas");
+  if (hiddenCanvasElement) {
+    hiddenCanvasElement.style.setProperty("display", "none");
+    hiddenCanvasElement.style.setProperty("visibility", "hidden");
+    hiddenCanvasElement.style.setProperty("pointer-events", "none");
+  }
+}
+
 $(document).on("change", "#toggleSwitch", function () {
   const isList = $(this).is(":checked");
   $("#contentright").toggleClass("list-mode", isList);
@@ -709,6 +1181,25 @@ $(document).on("change", "#toggleSwitch", function () {
 
 $(document).on("input", "#role_list_search", function () {
   listFilterQuery = $(this).val() || "";
+  updateRoleListResults();
+});
+
+$(document).on("click", "[data-omo-role-detail-toggle]", function (event) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  const nodeId = String($(this).data("omo-role-detail-toggle") || "").trim();
+
+  if (!nodeId) {
+    return;
+  }
+
+  if (expandedRoleListNodeIds[nodeId]) {
+    delete expandedRoleListNodeIds[nodeId];
+  } else {
+    expandedRoleListNodeIds[nodeId] = true;
+  }
+
   updateRoleListResults();
 });
 
@@ -730,6 +1221,11 @@ $(document).on("keydown", function (event) {
   }
 });
 
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeprint", prepareStructureForPrint);
+  window.addEventListener("afterprint", restoreStructureAfterPrint);
+}
+
 $(document).on("click", "[data-omo-structure-action]", function (event) {
   event.preventDefault();
 
@@ -737,6 +1233,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
   omoCloseStructureActions();
 
   if (action === "print") {
+    prepareStructureForPrint();
     window.print();
     return;
   }
@@ -1570,6 +2067,8 @@ function buildCanvas() {
     .style("height", rect.height + "px")
     .style("position", "absolute")
     .style("inset", "0")
+    .style("visibility", "hidden")
+    .style("pointer-events", "none")
     .style("display", "none");
 
   hiddenContext = hiddenCanvas.node().getContext("2d", { willReadFrequently: true });

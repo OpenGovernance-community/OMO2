@@ -44,6 +44,20 @@
 		return $merged;
 	}
 
+	function circleNormalizeDetailedListItem($item) {
+		if (is_array($item)) {
+			return array(
+				'title' => trim((string)($item['title'] ?? $item['label'] ?? $item['value'] ?? '')),
+				'description' => trim((string)($item['description'] ?? $item['text'] ?? '')),
+			);
+		}
+
+		return array(
+			'title' => trim((string)$item),
+			'description' => '',
+		);
+	}
+
 	function circleFormatScalarValue($property, $rawValue) {
 		$rawValue = trim((string)$rawValue);
 		if ($rawValue === '') {
@@ -78,6 +92,11 @@
 				}
 			} elseif ($listItemType === \dbObject\Property::LIST_ITEM_DATE) {
 				$formattedItems[] = circleFormatScalarValue($property, $item);
+			} elseif ($listItemType === \dbObject\Property::LIST_ITEM_DETAIL) {
+				$detailItem = circleNormalizeDetailedListItem($item);
+				if ($detailItem['title'] !== '') {
+					$formattedItems[] = $detailItem['title'];
+				}
 			} else {
 				$formattedItems[] = is_array($item) ? '' : trim((string)$item);
 			}
@@ -180,6 +199,22 @@
 		$placeholder = circleEscape($property->get("name"));
 		$step = $inputType === 'number' ? " step='any'" : '';
 
+		if ($listItemType === \dbObject\Property::LIST_ITEM_DETAIL) {
+			return ""
+				. "<div class='role-list-field' id='role_field_".$propertyId."' data-field-mode='json-list' data-list-item-type='".circleEscape($listItemType)."'>"
+				. "  <div class='role-list-field__items'>"
+				. "      <div class='role-list-field__row role-list-field__row--detail'>"
+				. "          <div class='role-list-field__detail-fields'>"
+				. "              <input type='text' class='role-list-field__value role-list-field__value--detail-title' placeholder='Titre'>"
+				. "              <textarea class='role-list-field__value role-list-field__value--detail-description' rows='3' placeholder='Description'></textarea>"
+				. "          </div>"
+				. "          <button type='button' class='role-list-field__remove' data-list-remove='1' aria-label='Supprimer'>&times;</button>"
+				. "      </div>"
+				. "  </div>"
+				. "  <button type='button' class='role-list-field__add' data-list-add='1'>+</button>"
+				. "</div>";
+		}
+
 		return ""
 			. "<div class='role-list-field' id='role_field_".$propertyId."' data-field-mode='json-list' data-list-item-type='".circleEscape($listItemType)."'>"
 			. "  <div class='role-list-field__items'>"
@@ -260,8 +295,23 @@
 		align-items: center;
 	}
 
+	.role-list-field__row--detail {
+		align-items: start;
+	}
+
+	.role-list-field__detail-fields {
+		display: grid;
+		gap: 8px;
+	}
+
 	.role-list-field__row input {
 		width: 100%;
+	}
+
+	.role-list-field__value--detail-description {
+		width: 100%;
+		min-height: 88px;
+		resize: vertical;
 	}
 
 	.role-list-field__add,

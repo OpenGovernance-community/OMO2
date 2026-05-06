@@ -7,6 +7,7 @@
 		public const LIST_ITEM_TEXT = 'text';
 		public const LIST_ITEM_NUMBER = 'number';
 		public const LIST_ITEM_DATE = 'date';
+		public const LIST_ITEM_DETAIL = 'detail';
 		public const LIST_ITEM_HOLON = 'holon';
 
 	    public static function tableName()
@@ -79,6 +80,7 @@
 				array('id' => self::LIST_ITEM_TEXT, 'name' => 'Texte'),
 				array('id' => self::LIST_ITEM_NUMBER, 'name' => 'Chiffre'),
 				array('id' => self::LIST_ITEM_DATE, 'name' => 'Date'),
+				array('id' => self::LIST_ITEM_DETAIL, 'name' => 'Liste detaillee'),
 				array('id' => self::LIST_ITEM_HOLON, 'name' => 'Holon'),
 			);
 		}
@@ -89,6 +91,7 @@
 				array('id' => self::LIST_ITEM_TEXT, 'name' => 'Texte'),
 				array('id' => self::LIST_ITEM_NUMBER, 'name' => 'Chiffre'),
 				array('id' => self::LIST_ITEM_DATE, 'name' => 'Date'),
+				array('id' => self::LIST_ITEM_DETAIL, 'name' => 'Liste detaillee'),
 			);
 		}
 
@@ -99,6 +102,7 @@
 				self::LIST_ITEM_TEXT,
 				self::LIST_ITEM_NUMBER,
 				self::LIST_ITEM_DATE,
+				self::LIST_ITEM_DETAIL,
 				self::LIST_ITEM_HOLON,
 			);
 

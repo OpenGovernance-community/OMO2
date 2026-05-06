@@ -391,7 +391,10 @@
 				}
 
  				$item = array(
- 					'value' => $value !== null ? (string)$value : '',
+					'name' => (string)$property->get('name'),
+					'shortname' => (string)$property->get('shortname'),
+					'position' => (int)($property->get('effective_position') ?: $property->get('position') ?: 0),
+  					'value' => $value !== null ? (string)$value : '',
   					'formatId' => (int)$property->get('IDpropertyformat'),
   					'formatName' => (string)$property->get('propertyformat_name'),
 					'listItemType' => (string)$property->get('listitemtype'),
@@ -402,6 +405,14 @@
 
 				if ($includeAncestors) {
 					$item['ancestor'] = $ancestor !== null ? (string)$ancestor : '';
+				}
+
+				if ($value !== null && trim((string)$value) !== '') {
+					$item['effectiveValue'] = (string)$value;
+				} elseif ($ancestor !== null && trim((string)$ancestor) !== '') {
+					$item['effectiveValue'] = (string)$ancestor;
+				} else {
+					$item['effectiveValue'] = '';
 				}
 
 				$data[$keyPrefix . $property->get('IDproperty')] = $item;
