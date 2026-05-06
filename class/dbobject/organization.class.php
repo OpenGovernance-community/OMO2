@@ -2165,6 +2165,149 @@
 			}
 		}
 
+		protected function canMoveHolonToParent(\dbObject\Holon $holon, \dbObject\Holon $targetParent, ?\dbObject\Holon $rootHolon = null)
+		{
+			$targetTypeId = (int)$targetParent->get('IDtypeholon');
+			if (!in_array($targetTypeId, array(2, 3, 4), true)) {
+				return false;
+			}
+
+			if (!$this->containsHolon($targetParent)) {
+				return false;
+			}
+
+			if (!$targetParent->canEdit()) {
+				return false;
+			}
+
+			if ($targetParent->isDescendantOf((int)$holon->getId(), true)) {
+				return false;
+			}
+
+			$rootHolon = $rootHolon ?: $this->getStructuralRootHolon();
+			if (
+				$rootHolon
+				&& (int)$targetParent->getId() !== (int)$rootHolon->getId()
+				&& $targetParent->isTemplateNode((int)$rootHolon->getId())
+			) {
+				return false;
+			}
+
+			$templateId = (int)$holon->get('IDholon_template');
+			if ($templateId <= 0) {
+				return true;
+			}
+
+			$template = new \dbObject\Holon();
+			if (!$template->load($templateId)) {
+				return false;
+			}
+
+			if (
+				$rootHolon
+				&& !$this->isTemplateAvailableInContext($template, (int)$targetParent->getId())
+			) {
+				return false;
+			}
+
+			return $this->isTemplateAvailableForHolonCreation($template, $targetParent, (int)$holon->getId());
+		}
+
+		protected function buildMovableHolonDestinationCatalog(\dbObject\Holon $candidate, array &$catalog, $rootHolonId, \dbObject\Holon $movingHolon, array $path = array())
+		{
+			$rootHolonId = (int)$rootHolonId;
+			if ((int)$candidate->getId() !== $rootHolonId && $candidate->isTemplateNode($rootHolonId)) {
+				return;
+			}
+
+			if ($candidate->isDescendantOf((int)$movingHolon->getId(), true)) {
+				return;
+			}
+
+			$currentPath = $path;
+			$currentPath[] = $candidate->getDisplayName();
+
+			if ($this->canMoveHolonToParent($movingHolon, $candidate)) {
+				$catalog[] = array(
+					'id' => (int)$candidate->getId(),
+					'name' => $candidate->getDisplayName(),
+					'typeId' => (int)$candidate->get('IDtypeholon'),
+					'typeLabel' => $candidate->getTypeLabel(),
+					'pathLabel' => implode(' > ', $currentPath),
+					'isCurrentParent' => (int)$candidate->getId() === (int)$movingHolon->get('IDholon_parent'),
+				);
+			}
+
+			foreach ($candidate->getChildren() as $child) {
+				$this->buildMovableHolonDestinationCatalog($child, $catalog, $rootHolonId, $movingHolon, $currentPath);
+			}
+		}
+
+		public function getHolonMoveEditorData($holonId = 0)
+		{
+			$rootHolon = $this->getStructuralRootHolon();
+			$holonId = (int)$holonId;
+			$holon = null;
+			$currentParent = null;
+
+			$data = array(
+				'organizationId' => (int)$this->getId(),
+				'organizationName' => (string)$this->get('name'),
+				'rootHolonId' => $rootHolon ? (int)$rootHolon->getId() : 0,
+				'holonId' => 0,
+				'canMove' => false,
+				'holon' => null,
+				'currentParent' => null,
+				'destinations' => array(),
+			);
+
+			if (!$rootHolon || $holonId <= 0) {
+				return $data;
+			}
+
+			$holon = new \dbObject\Holon();
+			if (
+				!$holon->load($holonId)
+				|| !$this->containsHolon($holon)
+				|| $holon->isTemplateNode((int)$rootHolon->getId())
+				|| !in_array((int)$holon->get('IDtypeholon'), array(1, 2, 3), true)
+			) {
+				return $data;
+			}
+
+			$currentParent = $holon->getParentHolon();
+			$data['holonId'] = (int)$holon->getId();
+			$data['holon'] = array(
+				'id' => (int)$holon->getId(),
+				'name' => $holon->getDisplayName(),
+				'typeId' => (int)$holon->get('IDtypeholon'),
+				'typeLabel' => $holon->getTemplateLabel(),
+				'parentId' => (int)$holon->get('IDholon_parent'),
+				'templateId' => (int)$holon->get('IDholon_template'),
+			);
+
+			if ($currentParent) {
+				$data['currentParent'] = array(
+					'id' => (int)$currentParent->getId(),
+					'name' => $currentParent->getDisplayName(),
+					'typeId' => (int)$currentParent->get('IDtypeholon'),
+					'typeLabel' => $currentParent->getTemplateLabel(),
+					'pathLabel' => implode(' > ', array_map(function ($pathHolon) {
+						return $pathHolon->getDisplayName();
+					}, $currentParent->getPathHolons())),
+				);
+			}
+
+			$data['canMove'] = $currentParent && $holon->canEdit() && $currentParent->canEdit();
+			if (!$data['canMove']) {
+				return $data;
+			}
+
+			$this->buildMovableHolonDestinationCatalog($rootHolon, $data['destinations'], (int)$rootHolon->getId(), $holon);
+
+			return $data;
+		}
+
 		// Resout scope unique
 		protected function resolveUniqueTemplateScopeHolon(\dbObject\Holon $contextHolon)
 		{
@@ -2901,6 +3044,113 @@
 				'parent' => array(
 					'id' => (int)$parentHolon->getId(),
 					'isRoot' => (int)$parentHolon->get('IDtypeholon') === 4,
+				),
+			);
+		}
+
+		public function moveHolonDefinition($holonId = 0, $targetParentId = 0, $userId = 0)
+		{
+			$rootHolon = $this->getStructuralRootHolon();
+			$holonId = (int)$holonId;
+			$targetParentId = (int)$targetParentId;
+
+			if (!$rootHolon || $holonId <= 0 || $targetParentId <= 0) {
+				return array(
+					'status' => false,
+					'message' => 'Le deplacement demande est invalide.',
+				);
+			}
+
+			$holon = new \dbObject\Holon();
+			if (
+				!$holon->load($holonId)
+				|| !$this->containsHolon($holon)
+				|| $holon->isTemplateNode((int)$rootHolon->getId())
+				|| !in_array((int)$holon->get('IDtypeholon'), array(1, 2, 3), true)
+			) {
+				return array(
+					'status' => false,
+					'message' => 'Le holon a deplacer est introuvable.',
+				);
+			}
+
+			$currentParent = $holon->getParentHolon();
+			if (!$currentParent) {
+				return array(
+					'status' => false,
+					'message' => 'Le parent actuel de ce holon est introuvable.',
+				);
+			}
+
+			$targetParent = new \dbObject\Holon();
+			if (
+				!$targetParent->load($targetParentId)
+				|| !$this->containsHolon($targetParent)
+			) {
+				return array(
+					'status' => false,
+					'message' => 'Le parent cible est introuvable.',
+				);
+			}
+
+			if ((int)$currentParent->getId() === $targetParentId) {
+				return array(
+					'status' => false,
+					'message' => 'Ce holon est deja rattache a cet emplacement.',
+				);
+			}
+
+			if (!$holon->canEdit() || !$currentParent->canEdit() || !$targetParent->canEdit()) {
+				return array(
+					'status' => false,
+					'message' => "Vous n'avez pas les droits pour deplacer ce holon.",
+				);
+			}
+
+			if (!$this->canMoveHolonToParent($holon, $targetParent, $rootHolon)) {
+				return array(
+					'status' => false,
+					'message' => "Le parent cible n'est pas compatible avec ce deplacement.",
+				);
+			}
+
+			$previousParentId = (int)$currentParent->getId();
+			$holon->set('IDholon_parent', $targetParentId);
+			$holon->save();
+
+			if ((int)$holon->get('IDholon_parent') !== $targetParentId) {
+				return array(
+					'status' => false,
+					'message' => "Le holon n'a pas pu etre deplace.",
+				);
+			}
+
+			$this->createMandatoryChildrenForCircle($currentParent, (int)$rootHolon->getId(), $userId);
+
+			if (in_array((int)$holon->get('IDtypeholon'), array(2, 3), true)) {
+				$this->createMandatoryChildrenForCircle($holon, (int)$rootHolon->getId(), $userId);
+			}
+
+			return array(
+				'status' => true,
+				'message' => 'Holon deplace.',
+				'holon' => array(
+					'id' => (int)$holon->getId(),
+					'name' => $holon->getDisplayName(),
+					'typeId' => (int)$holon->get('IDtypeholon'),
+					'typeLabel' => $holon->getTemplateLabel(),
+					'parentId' => $targetParentId,
+				),
+				'previousParent' => array(
+					'id' => $previousParentId,
+					'isRoot' => (int)$currentParent->get('IDtypeholon') === 4,
+				),
+				'parent' => array(
+					'id' => (int)$targetParent->getId(),
+					'name' => $targetParent->getDisplayName(),
+					'typeId' => (int)$targetParent->get('IDtypeholon'),
+					'typeLabel' => $targetParent->getTemplateLabel(),
+					'isRoot' => (int)$targetParent->get('IDtypeholon') === 4,
 				),
 			);
 		}

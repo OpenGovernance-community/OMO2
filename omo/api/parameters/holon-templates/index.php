@@ -1056,7 +1056,37 @@ function omoHolonTemplateGetListInputType(listItemType) {
     return 'text';
 }
 
+function omoHolonTemplateNormalizeDetailedListItem(item) {
+    if (item && typeof item === 'object' && !Array.isArray(item)) {
+        return {
+            title: String(item.title || item.label || item.value || '').trim(),
+            description: String(item.description || item.text || '').trim()
+        };
+    }
+
+    return {
+        title: String(item || '').trim(),
+        description: ''
+    };
+}
+
 function omoHolonTemplateRenderSimpleListRow(listItemType, value, disabled) {
+    if (String(listItemType || 'text') === 'detail') {
+        const detailItem = omoHolonTemplateNormalizeDetailedListItem(value);
+        const disabledAttribute = disabled ? ' disabled' : '';
+
+        return ''
+            + '<div class="omo-template-list-input__row omo-template-list-input__row--detail">'
+            + '  <div class="omo-template-list-input__detail-fields">'
+            + '      <input type="text" class="omo-template-property__value-item omo-template-property__value-item--detail-title" value="' + omoHolonTemplateEscapeHtml(detailItem.title) + '" placeholder="Titre"' + disabledAttribute + '>'
+            + '      <textarea class="omo-template-property__value-item omo-template-property__value-item--detail-description" rows="3" placeholder="Description"' + disabledAttribute + '>' + omoHolonTemplateEscapeHtml(detailItem.description) + '</textarea>'
+            + '  </div>'
+            + '  <button type="button" class="omo-button omo-button--ghost omo-template-list-input__move" data-list-move="-1" aria-label="Monter"' + disabledAttribute + '>&uarr;</button>'
+            + '  <button type="button" class="omo-button omo-button--ghost omo-template-list-input__move" data-list-move="1" aria-label="Descendre"' + disabledAttribute + '>&darr;</button>'
+            + '  <button type="button" class="omo-button omo-button--ghost omo-template-list-input__remove" data-list-remove="1" aria-label="Retirer"' + disabledAttribute + '>&times;</button>'
+            + '</div>';
+    }
+
     const inputType = omoHolonTemplateGetListInputType(listItemType);
     const safeValue = value !== undefined && value !== null ? String(value) : '';
     const stepAttribute = inputType === 'number' ? ' step="any"' : '';
@@ -1155,6 +1185,9 @@ function omoHolonTemplateGetListHelpText(property) {
     }
     if (listItemType === 'date') {
         return 'Une ligne par date au format AAAA-MM-JJ. Laissez vide pour ne rien imposer.';
+    }
+    if (listItemType === 'detail') {
+        return 'Chaque ligne contient un titre et une description. Laissez vide pour ne rien imposer.';
     }
     if (listItemType === 'holon') {
         return 'Cochez les holons de base a inclure dans ce template. Les instances pourront ensuite en ajouter.';
@@ -1365,6 +1398,21 @@ function omoHolonTemplateSerializePropertyValue(row, formatId, listItemType) {
             return selectedIds.length ? JSON.stringify(selectedIds) : '';
         }
 
+        if (String(listItemType || 'text') === 'detail') {
+            const items = Array.from(row.querySelectorAll('.omo-template-list-input__row--detail')).map(function (detailRow) {
+                const titleField = detailRow.querySelector('.omo-template-property__value-item--detail-title');
+                const descriptionField = detailRow.querySelector('.omo-template-property__value-item--detail-description');
+                const item = {
+                    title: String(titleField && titleField.value ? titleField.value : '').trim(),
+                    description: String(descriptionField && descriptionField.value ? descriptionField.value : '').trim()
+                };
+
+                return item.title !== '' || item.description !== '' ? item : null;
+            }).filter(Boolean);
+
+            return items.length ? JSON.stringify(items) : '';
+        }
+
         const items = Array.from(row.querySelectorAll('.omo-template-property__value-item')).map(function (input) {
             return String(input.value || '').trim();
         }).filter(Boolean);
@@ -1554,6 +1602,10 @@ function omoHolonTemplateFormatInheritedItem(item, property) {
         return template ? template.name : rawValue;
     }
 
+    if (listItemType === 'detail') {
+        return omoHolonTemplateNormalizeDetailedListItem(item);
+    }
+
     return rawValue;
 }
 
@@ -1577,11 +1629,26 @@ function omoHolonTemplateRenderInheritedValueHtml(property) {
             return '';
         }
 
-        contentHtml = '<ul class="omo-template-property__inherited-list">'
-            + items.map(function (item) {
-                return '<li>' + omoHolonTemplateEscapeHtml(item) + '</li>';
-            }).join('')
-            + '</ul>';
+        if (String(normalizedProperty.listItemType || 'text') === 'detail') {
+            contentHtml = '<div class="omo-template-property__inherited-detail-list">'
+                + items.map(function (item) {
+                    const detailItem = omoHolonTemplateNormalizeDetailedListItem(item);
+                    return ''
+                        + '<details class="omo-template-property__detail-card">'
+                        + '  <summary>' + omoHolonTemplateEscapeHtml(detailItem.title || 'Element') + '</summary>'
+                        + (detailItem.description !== ''
+                            ? '  <div class="omo-template-property__detail-body">' + omoHolonTemplateEscapeHtml(detailItem.description).replace(/\n/g, '<br>') + '</div>'
+                            : '')
+                        + '</details>';
+                }).join('')
+                + '</div>';
+        } else {
+            contentHtml = '<ul class="omo-template-property__inherited-list">'
+                + items.map(function (item) {
+                    return '<li>' + omoHolonTemplateEscapeHtml(item) + '</li>';
+                }).join('')
+                + '</ul>';
+        }
     } else if (Number(normalizedProperty.formatId || 0) === 5) {
         contentHtml = omoHolonTemplateRenderHtmlPreview(inheritedValue, 'omo-template-property__inherited-text');
     } else {
@@ -1636,6 +1703,37 @@ function omoHolonTemplateShowStatus(message, tone) {
     omoHolonTemplateState.statusTimer = window.setTimeout(function () {
         omoHolonTemplateClearStatus();
     }, 40000);
+}
+
+function omoHolonTemplateGetCurrentDrawerRouteToken() {
+    if (typeof parseUrl !== 'function') {
+        return '';
+    }
+
+    const route = parseUrl();
+    const rawHash = String(route && route.hash ? route.hash : '').trim();
+    if (!rawHash) {
+        return '';
+    }
+
+    return rawHash.split('|')[0] || '';
+}
+
+function omoHolonTemplateIsHashManagedCompactDrawer() {
+    return /^holon-template-edit-\d+-\d+$/i.test(omoHolonTemplateGetCurrentDrawerRouteToken());
+}
+
+function omoHolonTemplateCloseCompactDrawer() {
+    if (omoHolonTemplateIsHashManagedCompactDrawer() && typeof window.omoSetDrawerHashState === 'function') {
+        window.omoSetDrawerHashState({
+            open: false
+        });
+        return;
+    }
+
+    if (typeof closeDrawer === 'function') {
+        closeDrawer('drawer_holon_create');
+    }
 }
 
 function omoHolonTemplateClearStatus() {
@@ -1863,9 +1961,7 @@ function omoHolonTemplateSave(event) {
                     }
                 }));
 
-                if (typeof closeDrawer === 'function') {
-                    closeDrawer('drawer_holon_create');
-                }
+                omoHolonTemplateCloseCompactDrawer();
             }
         })
         .catch(function (error) {
@@ -1879,9 +1975,7 @@ if (omoHolonTemplateElements.form) {
 
 if (omoHolonTemplateElements.cancel) {
     omoHolonTemplateElements.cancel.addEventListener('click', function () {
-        if (typeof closeDrawer === 'function') {
-            closeDrawer('drawer_holon_create');
-        }
+        omoHolonTemplateCloseCompactDrawer();
     });
 }
 
@@ -2749,6 +2843,31 @@ if (Number(omoHolonTemplateState.selectedId || 0) > 0 && omoHolonTemplateFind(om
     gap: 6px;
 }
 
+.omo-template-property__inherited-detail-list {
+    display: grid;
+    gap: 8px;
+}
+
+.omo-template-property__detail-card {
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--color-surface-alt) 65%, var(--color-surface));
+    overflow: hidden;
+}
+
+.omo-template-property__detail-card summary {
+    cursor: pointer;
+    padding: 10px 12px;
+    font-weight: 600;
+}
+
+.omo-template-property__detail-body {
+    padding: 0 12px 12px;
+    color: var(--color-text-light);
+    line-height: 1.5;
+    white-space: pre-line;
+}
+
 .omo-template-list-input {
     display: flex;
     flex-direction: column;
@@ -2768,8 +2887,22 @@ if (Number(omoHolonTemplateState.selectedId || 0) > 0 && omoHolonTemplateFind(om
     align-items: center;
 }
 
+.omo-template-list-input__row--detail {
+    align-items: start;
+}
+
+.omo-template-list-input__detail-fields {
+    display: grid;
+    gap: 8px;
+}
+
 .omo-template-property__value-item {
     width: 100%;
+}
+
+.omo-template-property__value-item--detail-description {
+    min-height: 88px;
+    resize: vertical;
 }
 
 .omo-template-list-input__add,

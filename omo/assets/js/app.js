@@ -916,8 +916,84 @@ function getSidebarMenuItem(hash = null) {
     return $(`#menu_sidebar .menu-item[data-hash="${hash}"]`).first();
 }
 
-function getSidebarMenuConfig(hash = null) {
+function omoResolveSpecialDrawerRoute(routeToken, oid = null, cid = null) {
+    const normalizedRouteToken = omoNormalizeHashToken(routeToken);
+
+    if (!normalizedRouteToken) {
+        return null;
+    }
+
+    const holonCreateMatch = normalizedRouteToken.match(/^holon-create-(\d+)$/i);
+    if (holonCreateMatch) {
+        const contextHolonId = Number(holonCreateMatch[1]);
+        if (!Number.isInteger(contextHolonId) || contextHolonId <= 0) {
+            return null;
+        }
+
+        let url = `api/holons/create.php?cid=${encodeURIComponent(contextHolonId)}`;
+        if (Number.isInteger(Number(oid)) && Number(oid) > 0) {
+            url += `&oid=${encodeURIComponent(Number(oid))}`;
+        }
+
+        return {
+            drawer: 'drawer_holon_create',
+            url: '',
+            resolvedUrl: omoResolveAppUrl(url),
+            navigationMode: 'drawer'
+        };
+    }
+
+    const holonEditMatch = normalizedRouteToken.match(/^holon-edit-(\d+)$/i);
+    if (holonEditMatch) {
+        const holonId = Number(holonEditMatch[1]);
+        if (!Number.isInteger(holonId) || holonId <= 0) {
+            return null;
+        }
+
+        let url = `api/holons/create.php?hid=${encodeURIComponent(holonId)}`;
+        if (Number.isInteger(Number(oid)) && Number(oid) > 0) {
+            url += `&oid=${encodeURIComponent(Number(oid))}`;
+        }
+
+        return {
+            drawer: 'drawer_holon_create',
+            url: '',
+            resolvedUrl: omoResolveAppUrl(url),
+            navigationMode: 'drawer'
+        };
+    }
+
+    const holonTemplateEditMatch = normalizedRouteToken.match(/^holon-template-edit-(\d+)-(\d+)$/i);
+    if (holonTemplateEditMatch) {
+        const contextHolonId = Number(holonTemplateEditMatch[1]);
+        const holonId = Number(holonTemplateEditMatch[2]);
+        if (!Number.isInteger(contextHolonId) || contextHolonId <= 0 || !Number.isInteger(holonId) || holonId <= 0) {
+            return null;
+        }
+
+        let url = `api/parameters/holon-templates/index.php?cid=${encodeURIComponent(contextHolonId)}&hid=${encodeURIComponent(holonId)}&compact=1`;
+        if (Number.isInteger(Number(oid)) && Number(oid) > 0) {
+            url += `&oid=${encodeURIComponent(Number(oid))}`;
+        }
+
+        return {
+            drawer: 'drawer_holon_create',
+            url: '',
+            resolvedUrl: omoResolveAppUrl(url),
+            navigationMode: 'drawer'
+        };
+    }
+
+    return null;
+}
+
+function getSidebarMenuConfig(hash = null, oid = null, cid = null) {
     const route = omoParseHashState(hash).routeToken;
+    const specialRoute = omoResolveSpecialDrawerRoute(route, oid, cid);
+    if (specialRoute) {
+        return specialRoute;
+    }
+
     const item = getSidebarMenuItem(route);
 
     if (!item.length) {
@@ -1064,6 +1140,33 @@ function omoSetPopupHashState(options = {}) {
     handleRoute();
 }
 
+function omoSetDrawerHashState(options = {}) {
+    const route = parseUrl();
+    const hashState = omoParseHashState(route.hash);
+    const routeToken = options.open === false
+        ? null
+        : omoNormalizeHashToken(options.routeToken !== undefined ? options.routeToken : hashState.routeToken);
+    const nextHash = omoBuildHashFromState(
+        routeToken,
+        options.popupToken !== undefined ? options.popupToken : hashState.popupToken
+    );
+    const currentHash = route.hash || null;
+
+    if ((nextHash || null) === currentHash) {
+        return;
+    }
+
+    const url = buildOmoUrl(route.oid, route.cid, nextHash);
+
+    if (options.replace === true) {
+        history.replaceState({}, '', url);
+    } else {
+        history.pushState({}, '', url);
+    }
+
+    handleRoute();
+}
+
 let omoPopupBootstrapHandled = false;
 let omoPopupModalSyncing = false;
 let omoPopupModalManaged = false;
@@ -1111,6 +1214,14 @@ function omoFormatPopupTitle(popupKey) {
         return 'Actions membre';
     }
 
+    if (popupKey === 'holon-move') {
+        return 'Deplacer';
+    }
+
+    if (popupKey === 'holon-delete') {
+        return 'Supprimer';
+    }
+
     return (popupKey.split('/').pop() || popupKey)
         .replace(/[-_]+/g, ' ')
         .replace(/\b\w/g, function (character) {
@@ -1132,7 +1243,17 @@ function omoResolvePopupRoute(popupKey, popupId = null) {
     let url = `/popup/${normalizedPopupKey}.php`;
     const queryParts = [];
 
-    if (Number.isInteger(parsedPopupId) && parsedPopupId > 0) {
+    if (normalizedPopupKey === 'holon-move') {
+        url = '/omo/api/holons/move.php';
+        if (Number.isInteger(parsedPopupId) && parsedPopupId > 0) {
+            queryParts.push(`hid=${encodeURIComponent(parsedPopupId)}`);
+        }
+    } else if (normalizedPopupKey === 'holon-delete') {
+        url = '/omo/api/holons/delete_popup.php';
+        if (Number.isInteger(parsedPopupId) && parsedPopupId > 0) {
+            queryParts.push(`hid=${encodeURIComponent(parsedPopupId)}`);
+        }
+    } else if (Number.isInteger(parsedPopupId) && parsedPopupId > 0) {
         queryParts.push(`id=${encodeURIComponent(parsedPopupId)}`);
     }
 
@@ -1479,14 +1600,16 @@ function handleRoute() {
         omoFocusStructureNode(cid);
     }
 
-    const menuConfig = routeToken ? getSidebarMenuConfig(routeToken) : null;
+    const menuConfig = routeToken ? getSidebarMenuConfig(routeToken, oid, cid) : null;
     const activeDrawerId = routeToken
         ? (menuConfig && menuConfig.drawer ? menuConfig.drawer : `drawer_${routeToken}`)
         : null;
     const activeBaseUrl = routeToken
         ? (menuConfig && menuConfig.url ? menuConfig.url : `api/${routeToken}/index.php`)
         : null;
-    const activeDrawerUrl = activeBaseUrl ? buildDrawerUrl(activeBaseUrl, oid, cid) : null;
+    const activeDrawerUrl = menuConfig && menuConfig.resolvedUrl
+        ? menuConfig.resolvedUrl
+        : (activeBaseUrl ? buildDrawerUrl(activeBaseUrl, oid, cid) : null);
 
     if (organizationChanged || cidChanged) {
         resetDrawers(activeDrawerId);
@@ -1814,6 +1937,14 @@ window.omoResolveAppUrl = omoResolveAppUrl;
 window.omoIsShareMode = omoIsShareMode;
 window.omoParsePopupHashState = function () {
     return omoParseHashState(parseUrl().hash);
+};
+window.omoSetDrawerHashState = omoSetDrawerHashState;
+window.omoOpenDrawerHashState = function (routeToken, options = {}) {
+    omoSetDrawerHashState({
+        open: true,
+        routeToken: routeToken,
+        replace: options.replace === true
+    });
 };
 window.omoSetPopupHashState = omoSetPopupHashState;
 window.omoOpenPopupHashState = function (key, id, options = {}) {
