@@ -1028,6 +1028,7 @@ if ($params["buttons"]) {
 echo "<div class='admin-edit__panel'>";
 echo "<table class='dbobjecttable'>";
 $id = false;
+$allowProtectedFields = !empty($params["allowProtectedFields"]);
 
 // Visible-fields param passed
 if (isset($params["fields"])) {
@@ -1049,7 +1050,7 @@ if (isset($params["fields"])) {
         }
         // Only if field is active
         if (is_array($colonne)) {
-            if (!$this->isProtected($colonne[0])) {
+            if ($allowProtectedFields || !$this->isProtected($colonne[0])) {
                 if ($colonne[0] == "id") {
                     $id = true;
                 }
@@ -1118,7 +1119,7 @@ if (isset($params["fields"])) {
                     }
                     echo "</td>";
                     echo "</tr>";
-                } else if (!$this->isProtected($colonne)) {
+                } else if ($allowProtectedFields || !$this->isProtected($colonne)) {
                     if ($colonne == "id") {
                         $id = true;
                     }

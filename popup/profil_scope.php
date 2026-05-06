@@ -81,6 +81,14 @@ if ($requestedScope === 'organization' && $currentOrganizationId > 0) {
 		"buttons" => false,
 		"action" => "/ajax/saveaccount.php?origin=profil&scope=general",
 		"success" => "profileHandleGeneralSaved()",
+		"allowProtectedFields" => true,
+		"fields" => array(
+			"image",
+			"username",
+			"firstname",
+			"lastname",
+			"email",
+		),
 	);
 	$user->display("adminEdit.php", $params);
 	?>

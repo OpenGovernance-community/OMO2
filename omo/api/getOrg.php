@@ -2,6 +2,7 @@
 require_once __DIR__ . '/bootstrap.php';
 use dbObject\ArrayOrganization;
 use dbObject\Holon;
+use dbObject\PropertyFormat;
 
 function omoSplitTextItems($text)
 {
@@ -92,6 +93,16 @@ function omoRenderTextBlock($text, $className = 'section-text')
     }
 
     return '<div class="' . omoApiEscape($className) . '">' . nl2br(omoApiEscape($text)) . '</div>';
+}
+
+function omoRenderHtmlBlock($html, $className = 'section-html')
+{
+    $safeHtml = PropertyFormat::sanitizeHtml($html);
+    if (PropertyFormat::isEmptyValue(PropertyFormat::FORMAT_HTML, $safeHtml)) {
+        return '';
+    }
+
+    return '<div class="' . omoApiEscape($className) . '">' . $safeHtml . '</div>';
 }
 
 function omoRenderFormattedList(array $items, array $entry, $className = 'section-list')
@@ -192,6 +203,18 @@ function omoRenderSectionBody(array $entry)
         $currentItems = omoParseListItems($value);
         $ancestorItems = omoParseListItems($ancestor);
         return omoRenderMixedList($ancestorItems, $currentItems, $entry);
+    }
+
+    if ($formatId === PropertyFormat::FORMAT_HTML) {
+        $html = '';
+        if ($ancestor !== '') {
+            $html .= omoRenderHtmlBlock($ancestor, 'section-html section-text--inherited');
+        }
+        if ($value !== '') {
+            $html .= omoRenderHtmlBlock($value, 'section-html section-text--local');
+        }
+
+        return $html;
     }
 
     $html = '';
@@ -845,6 +868,35 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canDeleteHolon;
     font-size: 14px;
     line-height: 1.5;
     white-space: pre-line;
+}
+
+.section-html {
+    font-size: 14px;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.section-html > :first-child {
+    margin-top: 0;
+}
+
+.section-html > :last-child {
+    margin-bottom: 0;
+}
+
+.section-html p {
+    margin: 0 0 0.85em;
+}
+
+.section-html ul,
+.section-html ol {
+    margin: 0.25em 0;
+    padding-left: 18px;
+}
+
+.section-html a {
+    color: var(--color-primary);
+    text-decoration: underline;
 }
 
 .section-text--inherited {

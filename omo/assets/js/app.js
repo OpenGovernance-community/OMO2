@@ -530,6 +530,7 @@ $(document).ready(function () {
 });
 
 let omoLastNonMenuView = 'left';
+const OMO_APP_VIEWS = ['menu', 'left', 'right'];
 
 function omoSetAppView(view, options = {}) {
     const resolvedView = view === 'menu' || view === 'left' || view === 'right'
@@ -556,6 +557,154 @@ function omoSetAppView(view, options = {}) {
     }
 
     return resolvedView;
+}
+
+function omoGetCurrentAppView() {
+    const body = document.body;
+
+    if (!body) {
+        return 'left';
+    }
+
+    if (body.classList.contains('view-menu')) {
+        return 'menu';
+    }
+
+    if (body.classList.contains('view-right')) {
+        return 'right';
+    }
+
+    return 'left';
+}
+
+function omoActivateAppViewButton(view) {
+    const button = document.querySelector('#omo-mobile-nav [data-view="' + view + '"]');
+
+    if (button instanceof HTMLButtonElement) {
+        button.click();
+        return true;
+    }
+
+    omoSetAppView(view, { allowToggleMenu: true });
+    return true;
+}
+
+function omoActivateAdjacentAppView(direction) {
+    const currentView = omoGetCurrentAppView();
+    const currentIndex = OMO_APP_VIEWS.indexOf(currentView);
+
+    if (currentIndex === -1) {
+        return false;
+    }
+
+    const targetIndex = direction === 'left'
+        ? currentIndex + 1
+        : currentIndex - 1;
+
+    if (targetIndex < 0 || targetIndex >= OMO_APP_VIEWS.length) {
+        return false;
+    }
+
+    return omoActivateAppViewButton(OMO_APP_VIEWS[targetIndex]);
+}
+
+function omoBindMobileSwipeNavigation() {
+    const swipeAreas = [
+        document.getElementById('sidebar'),
+        document.querySelector('.content'),
+        document.getElementById('omo-mobile-nav')
+    ].filter(function (element) {
+        return element instanceof HTMLElement;
+    });
+
+    if (!swipeAreas.length) {
+        return;
+    }
+
+    const mediaQuery = window.matchMedia('(max-width: 768px)');
+    const swipeState = {
+        active: false,
+        startX: 0,
+        startY: 0,
+        lastX: 0,
+        lastY: 0
+    };
+
+    function getTouchPoint(event) {
+        if (event.changedTouches && event.changedTouches.length) {
+            return event.changedTouches[0];
+        }
+
+        if (event.touches && event.touches.length) {
+            return event.touches[0];
+        }
+
+        return null;
+    }
+
+    function resetSwipeState() {
+        swipeState.active = false;
+    }
+
+    function handleTouchStart(event) {
+        const touchPoint = getTouchPoint(event);
+
+        if (!mediaQuery.matches || !touchPoint || (event.touches && event.touches.length !== 1)) {
+            resetSwipeState();
+            return;
+        }
+
+        swipeState.active = true;
+        swipeState.startX = touchPoint.clientX;
+        swipeState.startY = touchPoint.clientY;
+        swipeState.lastX = touchPoint.clientX;
+        swipeState.lastY = touchPoint.clientY;
+    }
+
+    function handleTouchMove(event) {
+        const touchPoint = getTouchPoint(event);
+
+        if (!swipeState.active || !touchPoint) {
+            return;
+        }
+
+        swipeState.lastX = touchPoint.clientX;
+        swipeState.lastY = touchPoint.clientY;
+    }
+
+    function handleTouchEnd(event) {
+        const touchPoint = getTouchPoint(event);
+
+        if (!swipeState.active) {
+            return;
+        }
+
+        if (touchPoint) {
+            swipeState.lastX = touchPoint.clientX;
+            swipeState.lastY = touchPoint.clientY;
+        }
+
+        const deltaX = swipeState.lastX - swipeState.startX;
+        const deltaY = swipeState.lastY - swipeState.startY;
+        resetSwipeState();
+
+        if (Math.abs(deltaX) < 60) {
+            return;
+        }
+
+        if (Math.abs(deltaX) <= Math.abs(deltaY) * 1.2) {
+            return;
+        }
+
+        omoActivateAdjacentAppView(deltaX < 0 ? 'left' : 'right');
+    }
+
+    swipeAreas.forEach(function (element) {
+        element.addEventListener('touchstart', handleTouchStart, { passive: true });
+        element.addEventListener('touchmove', handleTouchMove, { passive: true });
+        element.addEventListener('touchend', handleTouchEnd, { passive: true });
+        element.addEventListener('touchcancel', resetSwipeState, { passive: true });
+    });
 }
 
 function openDrawer(id, url) {
@@ -1446,6 +1595,10 @@ $(document).on('click', '[data-view]', function () {
 
     omoSetAppView(view, { allowToggleMenu: true });
 
+});
+
+$(document).ready(function () {
+    omoBindMobileSwipeNavigation();
 });
 
 const OMO_DRIVER_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/driver.js@latest/dist/driver.js.iife.js';

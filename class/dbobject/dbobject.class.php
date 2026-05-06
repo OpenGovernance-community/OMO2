@@ -91,6 +91,7 @@
 		protected $_parameters; // Espace de chargement des paramètres
 		
 		public static $_dbh;
+		protected static $_lastDbError = null;
 		static $myvariablearray = array();	// Liste de valeurs statiques créées à la demande
 		static $preload = array();	// Liste des valeurs déjà chargées
 		
@@ -113,6 +114,11 @@
 				));
 				self::$_dbh = new PdoDbhCompat($pdo);
 			} catch (\PDOException $e) {
+				self::rememberLastDbError("connect", array(
+					"host" => $GLOBALS["dbServer"] ?? "",
+					"database" => $GLOBALS["dbName"] ?? "",
+					"user" => $GLOBALS["dbUser"] ?? "",
+				), $e);
 				echo $e->getMessage();
 				self::$_dbh = null;
 			}
@@ -122,6 +128,24 @@
 		static public function getPdo() {
 			$dbh = self::getDbh();
 			return $dbh ? $dbh->getPdo() : null;
+		}
+
+		protected static function clearLastDbError() {
+			self::$_lastDbError = null;
+		}
+
+		protected static function rememberLastDbError($query, $params = array(), $exception = null) {
+			self::$_lastDbError = array(
+				"query" => (string)$query,
+				"params" => is_array($params) ? $params : array(),
+				"message" => $exception instanceof \Throwable ? (string)$exception->getMessage() : "",
+				"code" => $exception instanceof \Throwable ? (int)$exception->getCode() : 0,
+				"time" => date("c"),
+			);
+		}
+
+		static public function getLastDbError() {
+			return is_array(self::$_lastDbError) ? self::$_lastDbError : null;
 		}
 
 		static public function executeSQL($query) {
@@ -148,8 +172,12 @@
 		}
 
 		protected static function prepareAndExecute($query, $params = array()) {
+			self::clearLastDbError();
 			$pdo = self::getPdo();
 			if (!$pdo) {
+				if (self::getLastDbError() === null) {
+					self::rememberLastDbError($query, $params);
+				}
 				return false;
 			}
 
@@ -174,6 +202,7 @@
 				$statement->execute();
 				return $statement;
 			} catch (\PDOException $e) {
+				self::rememberLastDbError($query, $params, $e);
 				return false;
 			}
 		}

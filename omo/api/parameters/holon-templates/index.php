@@ -278,6 +278,7 @@ if ($organizationId <= 0) {
 
 <?php if ($editorData !== null): ?>
 <script src="/omo/assets/js/sized-image-field.js"></script>
+<script src="/omo/assets/js/simple-html-field.js"></script>
 <script>
 (() => {
 const omoHolonTemplateState = {
@@ -1110,6 +1111,12 @@ function omoHolonTemplateNormalizeProperty(property) {
 
     normalized.formatId = Number(normalized.formatId || 1);
     normalized.listItemType = String(normalized.listItemType || 'text');
+    if ((omoHolonTemplateState.data.listItemTypes || []).every(function (itemType) {
+        return String(itemType.id || '') !== normalized.listItemType;
+    })) {
+        normalized.listItemType = 'text';
+        normalized.listHolonTypeIds = [];
+    }
     normalized.mandatory = Boolean(normalized.mandatory);
     normalized.locked = Boolean(normalized.locked);
     normalized.inheritedMandatory = Boolean(normalized.inheritedMandatory);
@@ -1129,6 +1136,16 @@ function omoHolonTemplateNormalizeProperty(property) {
         : [];
 
     return normalized;
+}
+
+function omoHolonTemplateRenderHtmlPreview(value, className) {
+    if (window.omoSimpleHtmlField && typeof window.omoSimpleHtmlField.renderPreviewHtml === 'function') {
+        return window.omoSimpleHtmlField.renderPreviewHtml(value, className);
+    }
+
+    return '<div class="' + omoHolonTemplateEscapeHtml(className || 'omo-template-property__inherited-text') + '">'
+        + omoHolonTemplateEscapeHtml(value || '').replace(/\n/g, '<br>')
+        + '</div>';
 }
 
 function omoHolonTemplateGetListHelpText(property) {
@@ -1155,6 +1172,9 @@ function omoHolonTemplateGetValueHelpText(formatId, property) {
     }
     if (numericFormatId === 4) {
         return 'Laissez vide pour ne rien imposer. La date sera heritee au format AAAA-MM-JJ.';
+    }
+    if (numericFormatId === 5) {
+        return 'Format HTML simple: gras, italic, listes et liens.';
     }
     return 'Si cette valeur reste vide, chaque holon derive pourra definir librement son contenu.';
 }
@@ -1235,6 +1255,10 @@ function omoHolonTemplateRenderValueInputHtml(property) {
 
     if (formatId === 4) {
         return '<input type="date" class="omo-template-property__value" value="' + omoHolonTemplateEscapeHtml(safeValue) + '"' + valueDisabled + '>';
+    }
+
+    if (formatId === 5) {
+        return '<div class="omo-template-property__html-editor"></div>';
     }
 
     return '<textarea class="omo-template-property__value" rows="4" placeholder="Laissez vide pour ne rien imposer."' + valueDisabled + '>' + omoHolonTemplateEscapeHtml(safeValue) + '</textarea>';
@@ -1328,6 +1352,11 @@ function omoHolonTemplateRefreshPropertyIndexes() {
 }
 
 function omoHolonTemplateSerializePropertyValue(row, formatId, listItemType) {
+    const htmlFieldHost = row.querySelector('[data-omo-html-field="1"]');
+    if (htmlFieldHost && htmlFieldHost.__omoSimpleHtmlField && typeof htmlFieldHost.__omoSimpleHtmlField.getValue === 'function') {
+        return String(htmlFieldHost.__omoSimpleHtmlField.getValue() || '');
+    }
+
     if (Number(formatId || 0) === 2) {
         if (String(listItemType || 'text') === 'holon') {
             const selectedIds = Array.from(row.querySelectorAll('.omo-template-property__value--holon:checked')).map(function (input) {
@@ -1449,6 +1478,17 @@ function omoHolonTemplateCreatePropertyRow(property) {
         + '  </div>'
         + '</div>';
 
+    if (Number(normalizedProperty.formatId || 0) === 5) {
+        const htmlEditorHost = row.querySelector('.omo-template-property__html-editor');
+        if (htmlEditorHost && window.omoSimpleHtmlField && typeof window.omoSimpleHtmlField.mount === 'function') {
+            window.omoSimpleHtmlField.mount(htmlEditorHost, {
+                value: normalizedProperty.value !== undefined && normalizedProperty.value !== null ? String(normalizedProperty.value) : '',
+                placeholder: 'Laissez vide pour ne rien imposer.',
+                disabled: !normalizedProperty.canEditValue
+            });
+        }
+    }
+
     return row;
 }
 
@@ -1542,6 +1582,8 @@ function omoHolonTemplateRenderInheritedValueHtml(property) {
                 return '<li>' + omoHolonTemplateEscapeHtml(item) + '</li>';
             }).join('')
             + '</ul>';
+    } else if (Number(normalizedProperty.formatId || 0) === 5) {
+        contentHtml = omoHolonTemplateRenderHtmlPreview(inheritedValue, 'omo-template-property__inherited-text');
     } else {
         contentHtml = '<div class="omo-template-property__inherited-text">'
             + omoHolonTemplateEscapeHtml(inheritedValue).replace(/\n/g, '<br>')
