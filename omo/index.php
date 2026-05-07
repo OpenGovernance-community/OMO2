@@ -237,6 +237,22 @@ if ($isOrganizationHub && !$isDemoGuest) {
     </div>
 
     <style>
+        body.auth-state-page--with-topbar.auth-state-page--scrollable {
+            padding-top: var(--topbar-height, 48px);
+        }
+
+        body.auth-state-page--with-topbar.auth-state-page--scrollable > .common-topbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+        }
+
+        body.auth-state-page--with-topbar.auth-state-page--scrollable > .auth-state-layout {
+            min-height: calc(100vh - var(--topbar-height, 48px));
+        }
+
         .auth-org-card--directory-managed {
             position: relative;
         }
@@ -755,6 +771,7 @@ window.omoConfig = <?=
             'routeMode' => $organizationContext['routeMode'] ?? 'host',
             'orgLookupError' => $organizationContext['error'],
             'isDemo' => $isDemoGuest,
+            'currentUserId' => $currentUserId,
             'currentUserName' => $currentUserName,
             'userProfile' => $currentUserProfile,
             'patreonPrompt' => [
