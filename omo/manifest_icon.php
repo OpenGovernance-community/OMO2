@@ -44,6 +44,10 @@ function omoManifestIconOutputFallback($size, $purpose)
 
 function omoManifestIconLoadSourceImage($absolutePath)
 {
+    if (!function_exists('getimagesize')) {
+        return false;
+    }
+
     $imageInfo = @getimagesize($absolutePath);
     if (!is_array($imageInfo) || empty($imageInfo['mime'])) {
         return false;
@@ -51,9 +55,9 @@ function omoManifestIconLoadSourceImage($absolutePath)
 
     switch ($imageInfo['mime']) {
         case 'image/png':
-            return @imagecreatefrompng($absolutePath);
+            return function_exists('imagecreatefrompng') ? @imagecreatefrompng($absolutePath) : false;
         case 'image/jpeg':
-            return @imagecreatefromjpeg($absolutePath);
+            return function_exists('imagecreatefromjpeg') ? @imagecreatefromjpeg($absolutePath) : false;
         case 'image/webp':
             return function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($absolutePath) : false;
     }
@@ -63,6 +67,10 @@ function omoManifestIconLoadSourceImage($absolutePath)
 
 function omoManifestIconCreateCanvas($size, $purpose, $backgroundColor)
 {
+    if (!function_exists('imagecreatetruecolor') || !function_exists('imagealphablending') || !function_exists('imagesavealpha') || !function_exists('imagecolorallocate') || !function_exists('imagecolorallocatealpha') || !function_exists('imagefilledrectangle')) {
+        return false;
+    }
+
     $canvas = imagecreatetruecolor($size, $size);
     imagealphablending($canvas, false);
     imagesavealpha($canvas, true);
@@ -102,7 +110,9 @@ if (!in_array($size, [192, 512], true)) {
 }
 
 $logoPath = trim((string)($context['logo'] ?? ''));
-$absoluteLogoPath = $logoPath !== '' ? $_SERVER['DOCUMENT_ROOT'] . $logoPath : '';
+$absoluteLogoPath = ($logoPath !== '' && strpos($logoPath, '/') === 0)
+    ? $_SERVER['DOCUMENT_ROOT'] . $logoPath
+    : '';
 
 if ($absoluteLogoPath === '' || !is_file($absoluteLogoPath)) {
     omoManifestIconOutputFallback($size, $purpose);
@@ -115,6 +125,20 @@ if ($source === false) {
 
 $backgroundColor = omoManifestIconHexToRgb($context['color'] ?? '');
 $canvas = omoManifestIconCreateCanvas($size, $purpose, $backgroundColor);
+$canRender = $canvas !== false
+    && function_exists('imagesx')
+    && function_exists('imagesy')
+    && function_exists('imagecopyresampled')
+    && function_exists('imagepng')
+    && function_exists('imagedestroy');
+
+if (!$canRender) {
+    if (is_resource($source) || (is_object($source) && get_class($source) === 'GdImage')) {
+        imagedestroy($source);
+    }
+    omoManifestIconOutputFallback($size, $purpose);
+}
+
 $sourceWidth = imagesx($source);
 $sourceHeight = imagesy($source);
 

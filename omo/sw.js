@@ -1,4 +1,4 @@
-const OMO_CACHE_VERSION = 'omo-shell-v3';
+const OMO_CACHE_VERSION = 'omo-shell-v4';
 const OMO_STATIC_ASSETS = [
     '/omo/manifest.php',
     '/omo/manifest_icon.php?size=192',
