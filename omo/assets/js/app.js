@@ -159,6 +159,54 @@ function omoGetUserProfile() {
 
 let omoPatreonWelcomePromptHandled = false;
 
+function omoGetPatreonWelcomePromptCookieName() {
+    const currentUserId = window.omoConfig && window.omoConfig.currentUserId
+        ? Number(window.omoConfig.currentUserId)
+        : 0;
+
+    return 'omo_patreon_prompt_seen_' + String(currentUserId > 0 ? currentUserId : 'guest');
+}
+
+function omoGetTodayDateToken() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+
+    return year + '-' + month + '-' + day;
+}
+
+function omoReadCookie(name) {
+    const cookiePrefix = encodeURIComponent(name) + '=';
+    const cookies = document.cookie ? document.cookie.split(';') : [];
+
+    for (let index = 0; index < cookies.length; index += 1) {
+        const cookie = cookies[index].trim();
+
+        if (cookie.indexOf(cookiePrefix) === 0) {
+            return decodeURIComponent(cookie.slice(cookiePrefix.length));
+        }
+    }
+
+    return '';
+}
+
+function omoMarkPatreonWelcomePromptSeenToday() {
+    const tomorrow = new Date();
+    tomorrow.setHours(24, 0, 0, 0);
+
+    document.cookie = [
+        encodeURIComponent(omoGetPatreonWelcomePromptCookieName()) + '=' + encodeURIComponent(omoGetTodayDateToken()),
+        'expires=' + tomorrow.toUTCString(),
+        'path=/',
+        'SameSite=Lax'
+    ].join('; ');
+}
+
+function omoHasSeenPatreonWelcomePromptToday() {
+    return omoReadCookie(omoGetPatreonWelcomePromptCookieName()) === omoGetTodayDateToken();
+}
+
 function omoMaybeOpenPatreonWelcomeModal() {
     const promptConfig = window.omoConfig && window.omoConfig.patreonPrompt
         ? window.omoConfig.patreonPrompt
@@ -169,6 +217,7 @@ function omoMaybeOpenPatreonWelcomeModal() {
         || promptConfig.shouldShow !== true
         || typeof window.commonTopbarOpenModal !== 'function'
         || omoPatreonWelcomePromptHandled
+        || omoHasSeenPatreonWelcomePromptToday()
     ) {
         return false;
     }
@@ -183,6 +232,7 @@ function omoMaybeOpenPatreonWelcomeModal() {
     }
 
     omoPatreonWelcomePromptHandled = true;
+    omoMarkPatreonWelcomePromptSeenToday();
     window.commonTopbarOpenModal(
         promptConfig.title || 'Soutenir le projet',
         promptConfig.url || '/omo/api/patreon_welcome_popup.php',

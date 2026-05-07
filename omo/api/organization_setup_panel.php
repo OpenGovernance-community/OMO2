@@ -6,6 +6,8 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
         $setupData = $organization->getStructuralInitializationData();
         $organizationName = trim((string)($setupData['organizationName'] ?? ''));
         $organizationColor = trim((string)$organization->get('color'));
+        $emptyCardImage = '/omo/images/organization-setup/rien.png';
+        $importCardImage = '/omo/images/organization-setup/import.png';
 
         if ($organizationName === '') {
             $organizationName = 'Cette organisation';
@@ -14,18 +16,15 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
         if ($organizationColor === '') {
             $organizationColor = 'var(--color-primary, #2563eb)';
         }
+
+        $emptyCardMediaStyle = 'background: linear-gradient(180deg, rgba(15,23,42,0.08), rgba(15,23,42,0.38)), url(' . omoApiEscape($emptyCardImage) . ') center/cover;';
+        $importCardMediaStyle = 'background: linear-gradient(180deg, rgba(15,23,42,0.06), rgba(15,23,42,0.34)), url(' . omoApiEscape($importCardImage) . ') center/cover;';
         ?>
 <div
     class="omo-setup-panel"
     data-omo-org-setup="1"
     data-organization-id="<?= (int)($setupData['organizationId'] ?? 0) ?>"
 >
-    <div class="omo-setup-panel__hero">
-        <div class="omo-setup-panel__kicker">Organisation à initialiser</div>
-        <h2 class="omo-setup-panel__title"><?= omoApiEscape($organizationName) ?></h2>
-        <p class="omo-setup-panel__intro">Cette organisation n'a pas encore de holon racine. Choisissez un point de départ pour créer sa structure.</p>
-    </div>
-
     <div class="omo-setup-panel__section">
         <div class="omo-setup-panel__section-title">Choisissez un point de départ</div>
         <div class="omo-setup-card-grid">
@@ -35,7 +34,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
                 data-omo-org-init-button="1"
                 data-template-id="0"
             >
-                <span class="omo-setup-card__media" style="background: <?= omoApiEscape($organizationColor) ?>;">
+                <span class="omo-setup-card__media" style="<?= $emptyCardMediaStyle ?>">
                     <span class="omo-setup-card__badge">Structure vide</span>
                 </span>
                 <span class="omo-setup-card__content">
@@ -50,7 +49,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
                 class="omo-setup-card"
                 data-omo-org-import-button="1"
             >
-                <span class="omo-setup-card__media" style="background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary, #2563eb) 82%, #0f172a), #0f172a);">
+                <span class="omo-setup-card__media" style="<?= $importCardMediaStyle ?>">
                     <span class="omo-setup-card__badge">Import JSON</span>
                 </span>
                 <span class="omo-setup-card__content">
@@ -114,7 +113,12 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
     display: flex;
     flex-direction: column;
     gap: 18px;
+    height: 100%;
+    min-height: 0;
     padding: 24px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
     color: var(--color-text, #1f2937);
 }
 
@@ -211,6 +215,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
     font-weight: 600;
     letter-spacing: 0.04em;
     backdrop-filter: blur(4px);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
 }
 
 .omo-setup-card__icon {
