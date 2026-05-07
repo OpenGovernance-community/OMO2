@@ -319,25 +319,13 @@ function profilFormatAmountCents($value)
 			</div>
 
 			<div class="profile-panel__actions">
-				<?php if ($patreonConfigured): ?>
 				<button type="button" id="patreon_connect"><?= $patreonConnected ? 'Reconnecter Patreon' : 'Connecter Patreon' ?></button>
 				<?php if ($patreonConnected): ?>
 				<button type="button" id="patreon_sync" class="profile-panel__button-secondary">Rafraîchir maintenant</button>
 				<button type="button" id="patreon_disconnect" class="profile-panel__button-muted">Déconnecter</button>
 				<?php endif; ?>
-				<?php else: ?>
-				<button type="button" class="profile-panel__button-muted" disabled>Configuration Patreon manquante</button>
-				<?php endif; ?>
 			</div>
 
-			<?php if (!$patreonConfigured): ?>
-			<div class="profile-panel__note">
-				La connexion Patreon n'est pas disponible sur cet environnement.
-				<?php if ($patreonConfigurationMessage !== ''): ?>
-				<br><?= htmlspecialchars($patreonConfigurationMessage) ?>
-				<?php endif; ?>
-			</div>
-			<?php endif; ?>
 		</section>
 	</div>
 </div>

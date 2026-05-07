@@ -2,6 +2,7 @@
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
 require_once dirname(__DIR__) . '/common/topbar.php';
+require_once dirname(__DIR__) . '/common/patreon.php';
 require_once __DIR__ . '/topbar.php';
 
 $organizationContext = commonResolveOrganizationContext(1);
@@ -611,6 +612,7 @@ $currentUserProfile = [
     'phone' => '',
     'photoUrl' => '',
 ];
+$patreonPromptShouldShow = false;
 
 $currentUser = new \dbObject\User();
 if ($currentUser->load($currentUserId)) {
@@ -618,6 +620,11 @@ if ($currentUser->load($currentUserId)) {
     $currentUserProfile['email'] = (string)$currentUser->getScopedEmail((int)$organizationContext['id']);
     $currentUserProfile['username'] = (string)$currentUser->getScopedUsername((int)$organizationContext['id']);
     $currentUserProfile['photoUrl'] = (string)$currentUser->getScopedProfilePhotoUrl((int)$organizationContext['id']);
+}
+
+if (!$isDemoGuest && $currentUserId > 0) {
+    $patreonConnection = \dbObject\UserPatreon::findByUserId($currentUserId);
+    $patreonPromptShouldShow = !($patreonConnection !== false && $patreonConnection->isConnected());
 }
 ?>
 <!DOCTYPE html>
@@ -750,6 +757,12 @@ window.omoConfig = <?=
             'isDemo' => $isDemoGuest,
             'currentUserName' => $currentUserName,
             'userProfile' => $currentUserProfile,
+            'patreonPrompt' => [
+                'shouldShow' => $patreonPromptShouldShow,
+                'title' => 'Soutenir le projet',
+                'url' => '/omo/api/patreon_welcome_popup.php',
+                'mode' => 'fetch',
+            ],
         ],
         JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
     );
