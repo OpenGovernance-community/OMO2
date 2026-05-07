@@ -157,6 +157,41 @@ function omoGetUserProfile() {
     `;
 }
 
+let omoPatreonWelcomePromptHandled = false;
+
+function omoMaybeOpenPatreonWelcomeModal() {
+    const promptConfig = window.omoConfig && window.omoConfig.patreonPrompt
+        ? window.omoConfig.patreonPrompt
+        : null;
+
+    if (
+        !promptConfig
+        || promptConfig.shouldShow !== true
+        || typeof window.commonTopbarOpenModal !== 'function'
+        || omoPatreonWelcomePromptHandled
+    ) {
+        return false;
+    }
+
+    const routePopupState = typeof window.omoParsePopupHashState === 'function'
+        ? window.omoParsePopupHashState()
+        : null;
+    const modal = document.getElementById('commonTopbarModal');
+
+    if ((routePopupState && routePopupState.popupToken) || (modal && !modal.hidden)) {
+        return false;
+    }
+
+    omoPatreonWelcomePromptHandled = true;
+    window.commonTopbarOpenModal(
+        promptConfig.title || 'Soutenir le projet',
+        promptConfig.url || '/omo/api/patreon_welcome_popup.php',
+        promptConfig.mode || 'fetch'
+    );
+
+    return true;
+}
+
 function omoEnsureProfilePanel() {
     const profileMenu = document.querySelector('[data-topbar-menu="profile"]');
 
@@ -1650,6 +1685,7 @@ function activateMenu(hash) {
 $(document).ready(function () {
     canonicalizeOmoRootPath();
     handleRoute();
+    window.setTimeout(omoMaybeOpenPatreonWelcomeModal, 300);
 });
 
 $(window).on('hashchange', handleRoute);
@@ -1931,6 +1967,7 @@ function omoHandleTopbarSearch(query) {
 }
 
 window.omoRefreshSidebar = omoRefreshSidebar;
+window.omoMaybeOpenPatreonWelcomeModal = omoMaybeOpenPatreonWelcomeModal;
 window.omoOpenMemberActionsPopup = omoOpenMemberActionsPopup;
 window.omoOpenUserContextPopup = omoOpenUserContextPopup;
 window.omoResolveAppUrl = omoResolveAppUrl;

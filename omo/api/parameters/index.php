@@ -12,37 +12,17 @@ $currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
         </div>
     </div>
     <div class="omo-panel-view__body">
+        <div class='omo-panel-view__body_content'>
         <?php if ($currentUserId <= 0): ?>
         <div class="omo-settings__empty omo-empty-state">
             Connectez-vous pour accéder à vos paramètres utilisateur.
         </div>
         <?php else: ?>
         <div class="omo-settings__grid omo-card-grid omo-card-grid--fluid">
+            
             <button type="button" class="omo-settings__card omo-card omo-card--interactive" data-topbar-profile-edit>
                 <strong>Profil</strong>
                 <span>Ouvrir l’édition de votre profil.</span>
-            </button>
-
-            <button
-                type="button"
-                class="omo-settings__card omo-card omo-card--interactive"
-                data-omo-settings-drawer-title="Paramètres du compte"
-                data-omo-settings-drawer-url="/popup/parameters.php"
-                data-omo-settings-drawer-mode="iframe"
-            >
-                <strong>Compte</strong>
-                <span>Afficher les paramètres généraux de votre compte.</span>
-            </button>
-
-            <button
-                type="button"
-                class="omo-settings__card omo-card omo-card--interactive"
-                data-omo-settings-drawer-title="Paramètres EasyMEMO"
-                data-omo-settings-drawer-url="/popup/memo/parameters.php"
-                data-omo-settings-drawer-mode="iframe"
-            >
-                <strong>EasyMEMO</strong>
-                <span>Ouvrir les réglages spécifiques à EasyMEMO.</span>
             </button>
 
             <button
@@ -59,6 +39,7 @@ $currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
             </button>
         </div>
         <?php endif; ?>
+        </div>
     </div>
 </div>
 
