@@ -251,7 +251,6 @@ imagecopyresampled(
     $sourceHeight
 );
 
-imagedestroy($source);
 if ($omoManifestIconDebug) {
     $omoManifestIconDiagnostics['result'] = 'generated';
     $omoManifestIconDiagnostics['reason'] = 'ok';
