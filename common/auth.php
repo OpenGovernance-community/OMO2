@@ -698,6 +698,78 @@ function commonStorePendingLoginToken($token)
     $_SESSION['pending_login_token'] = (string)$token;
 }
 
+function commonStripLoginFeedbackParams($path, $fallback = '/')
+{
+    $normalized = commonNormalizeLocalPath($path, $fallback);
+    $parsedPath = parse_url($normalized, PHP_URL_PATH);
+    $query = parse_url($normalized, PHP_URL_QUERY);
+    $fragment = parse_url($normalized, PHP_URL_FRAGMENT);
+
+    $params = [];
+    if (is_string($query) && $query !== '') {
+        parse_str($query, $params);
+    }
+
+    unset(
+        $params['login_error'],
+        $params['login_message'],
+        $params['login_status_type'],
+        $params['login_token'],
+        $params['login_remaining_attempts']
+    );
+
+    $rebuilt = is_string($parsedPath) && $parsedPath !== '' ? $parsedPath : $fallback;
+    if ($params !== []) {
+        $rebuilt .= '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+    }
+    if (is_string($fragment) && $fragment !== '') {
+        $rebuilt .= '#' . $fragment;
+    }
+
+    return $rebuilt;
+}
+
+function commonBuildLoginFeedbackUrl($returnTo, array $params = [])
+{
+    $base = commonStripLoginFeedbackParams($returnTo, '/');
+    $path = parse_url($base, PHP_URL_PATH);
+    $query = parse_url($base, PHP_URL_QUERY);
+    $fragment = parse_url($base, PHP_URL_FRAGMENT);
+
+    $merged = [];
+    if (is_string($query) && $query !== '') {
+        parse_str($query, $merged);
+    }
+
+    foreach ($params as $key => $value) {
+        if ($value === null || $value === '') {
+            continue;
+        }
+        $merged[(string)$key] = (string)$value;
+    }
+
+    $rebuilt = is_string($path) && $path !== '' ? $path : '/';
+    if ($merged !== []) {
+        $rebuilt .= '?' . http_build_query($merged, '', '&', PHP_QUERY_RFC3986);
+    }
+    if (is_string($fragment) && $fragment !== '') {
+        $rebuilt .= '#' . $fragment;
+    }
+
+    return $rebuilt;
+}
+
+function commonIsAjaxJsonRequest()
+{
+    $requestedWith = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''));
+    if ($requestedWith === 'xmlhttprequest') {
+        return true;
+    }
+
+    $accept = strtolower((string)($_SERVER['HTTP_ACCEPT'] ?? ''));
+    return strpos($accept, 'application/json') !== false;
+}
+
 function commonSendLoginCode($userId, $email, array $organizationContext, $remember, $returnTo)
 {
     $requestToken = bin2hex(random_bytes(32));
@@ -898,9 +970,6 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
         $returnTo = commonNormalizeLocalPath($_GET['return_to'] ?? $defaultReturnTo, $defaultReturnTo);
 
         if ($token !== '' && $code !== '') {
-            $tokenJs = json_encode($token, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-            $codeJs = json_encode($code, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-            $returnToJs = json_encode($returnTo, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
             ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -925,41 +994,13 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
     <script>
         (function () {
             var status = document.getElementById('verifyStatus');
-            var body = new URLSearchParams();
-            body.set('token', <?= $tokenJs ?>);
-            body.set('code', <?= $codeJs ?>);
-            body.set('return_to', <?= $returnToJs ?>);
-
-            fetch('/common/login_verify.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: body.toString()
-            })
-                .then(function (response) {
-                    return response.json();
-                })
-                .then(function (data) {
-                    if (data.status === 'ok') {
-                        status.textContent = 'Connexion reussie, redirection...';
-                        window.location.href = data.redirect_to || <?= $returnToJs ?>;
-                        return;
-                    }
-
-                    var message = 'Impossible de verifier ce code.';
-                    if (data.error === 'ip_changed') {
-                        message = 'Votre reseau a change. Demandez un nouveau code depuis l application.';
-                    } else if (data.error === 'expired') {
-                        message = 'Ce code a expire. Demandez un nouveau code.';
-                    } else if (data.error === 'locked') {
-                        message = 'Trop de tentatives. Demandez un nouveau code.';
-                    }
-                    status.textContent = message;
-                    status.className = 'auth-state-status error';
-                })
-                .catch(function () {
-                    status.textContent = 'Verification impossible automatiquement. Utilisez le bouton ci-dessous.';
-                    status.className = 'auth-state-status error';
-                });
+            var form = document.getElementById('verifyFallbackForm');
+            if (!form) {
+                status.textContent = 'Verification impossible automatiquement. Utilisez le bouton ci-dessous.';
+                status.className = 'auth-state-status error';
+                return;
+            }
+            form.submit();
         })();
     </script>
 </body>
@@ -972,60 +1013,76 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
         die("Veuillez retourner dans l'application et saisir le code recu par e-mail.");
     }
 
-    header('Content-Type: application/json; charset=UTF-8');
-
     $token = (string)($_POST['token'] ?? ($_SESSION['pending_login_token'] ?? ''));
     $code = commonNormalizeLoginCode($_POST['code'] ?? '');
     $returnTo = commonNormalizeLocalPath($_POST['return_to'] ?? $defaultReturnTo, $defaultReturnTo);
     $currentIp = commonGetRequestIp();
+    $wantsJson = commonIsAjaxJsonRequest();
+
+    if ($wantsJson) {
+        header('Content-Type: application/json; charset=UTF-8');
+    }
+
+    $respondError = function ($error, array $extra = []) use ($wantsJson, $returnTo) {
+        $payload = array_merge(['error' => $error], $extra);
+
+        if ($wantsJson) {
+            echo json_encode($payload);
+            exit;
+        }
+
+        $params = [
+            'login_error' => $error,
+            'login_token' => $extra['login_token'] ?? ($_POST['token'] ?? ''),
+            'login_remaining_attempts' => $extra['remaining_attempts'] ?? null,
+        ];
+
+        header('Location: ' . commonBuildLoginFeedbackUrl($returnTo, $params));
+        exit;
+    };
 
     if ($token === '' || $code === '') {
-        echo json_encode(['error' => 'missing_code']);
-        exit;
+        $respondError('missing_code');
     }
 
     $loginToken = \dbObject\UserLoginToken::findByToken($token);
     if (!$loginToken) {
         commonStorePendingLoginToken(null);
-        echo json_encode(['error' => 'invalid']);
-        exit;
+        $respondError('invalid');
     }
 
     if ((int)$loginToken->get('used') > 0) {
         commonStorePendingLoginToken(null);
-        echo json_encode(['error' => 'expired']);
-        exit;
+        $respondError('expired');
     }
 
     $expiresAt = $loginToken->get('expires_at');
     if (!$expiresAt instanceof \DateTimeInterface || $expiresAt <= new \DateTime()) {
         commonStorePendingLoginToken(null);
-        echo json_encode(['error' => 'expired']);
-        exit;
+        $respondError('expired');
     }
 
     if ((int)$loginToken->get('attempt_count') >= 5) {
         commonStorePendingLoginToken(null);
-        echo json_encode(['error' => 'locked']);
-        exit;
+        $respondError('locked');
     }
 
     if ((string)$loginToken->get('request_ip') !== $currentIp) {
         $loginToken->markUsed();
         commonStorePendingLoginToken(null);
-        echo json_encode(['error' => 'ip_changed']);
-        exit;
+        $respondError('ip_changed');
     }
 
     if (!password_verify($code, (string)$loginToken->get('code_hash'))) {
         $loginToken->incrementAttemptCount();
         $remainingAttempts = max(0, 5 - (int)$loginToken->get('attempt_count'));
-
-        echo json_encode([
-            'error' => $remainingAttempts > 0 ? 'wrong_code' : 'locked',
-            'remaining_attempts' => $remainingAttempts,
-        ]);
-        exit;
+        $respondError(
+            $remainingAttempts > 0 ? 'wrong_code' : 'locked',
+            [
+                'remaining_attempts' => $remainingAttempts,
+                'login_token' => $token,
+            ]
+        );
     }
 
     if ((int)$loginToken->get('remember') > 0) {
@@ -1063,7 +1120,15 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
 
     session_regenerate_id(true);
     $_SESSION['currentUser'] = (int)$loginToken->get('IDuser');
-    echo json_encode(['status' => 'ok', 'redirect_to' => $returnTo]);
+    session_write_close();
+
+    if ($wantsJson) {
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(['status' => 'ok', 'redirect_to' => $returnTo]);
+        exit;
+    }
+
+    header('Location: ' . $returnTo);
     exit;
 }
 
@@ -1073,7 +1138,7 @@ function commonRenderMagicLoginPage(array $options = [])
     $title = $options['title'] ?? 'Connexion';
     $appName = $options['appName'] ?? 'Espace';
     $intro = $options['intro'] ?? 'Connectez-vous pour continuer.';
-    $returnTo = commonNormalizeLocalPath($options['returnTo'] ?? ($_SERVER['REQUEST_URI'] ?? '/'), '/');
+    $returnTo = commonStripLoginFeedbackParams($options['returnTo'] ?? ($_SERVER['REQUEST_URI'] ?? '/'), '/');
     $loginSendPath = $options['loginSendPath'] ?? '/common/login_send.php';
     $headHtml = (string)($options['headHtml'] ?? '');
     $bodyEndHtml = (string)($options['bodyEndHtml'] ?? '');
@@ -1086,6 +1151,9 @@ function commonRenderMagicLoginPage(array $options = [])
         'orgDomain' => $organizationContext['domain'] ?? '',
         'orgName' => $organizationContext['name'] ?? '',
         'hasOrgDomain' => !empty($organizationContext['domain']),
+        'initialPendingToken' => (string)($_GET['login_token'] ?? ''),
+        'initialError' => (string)($_GET['login_error'] ?? ''),
+        'initialRemainingAttempts' => (int)($_GET['login_remaining_attempts'] ?? 0),
     ];
 
     $organizationLogo = !empty($organizationContext['logo'])
@@ -1164,6 +1232,11 @@ function commonRenderMagicLoginPage(array $options = [])
                 <input type="text" id="authCodeInput" inputmode="text" autocomplete="one-time-code" maxlength="6" placeholder="ABC123">
                 <button type="button" id="authCodeSubmit">Valider le code</button>
             </div>
+            <form id="authVerifyForm" method="post" action="/common/login_verify.php" style="display:none;">
+                <input type="hidden" name="token" id="authVerifyToken" value="">
+                <input type="hidden" name="code" id="authVerifyCode" value="">
+                <input type="hidden" name="return_to" value="<?= htmlspecialchars($returnTo) ?>">
+            </form>
 
             <button type="button" class="auth-link-btn auth-resend" id="authResendLink" style="display:none;">Envoyer un nouveau code</button>
             <button type="button" class="auth-submit" id="authLoginSubmit">Envoyer le code</button>
