@@ -201,10 +201,6 @@ $omoManifestIconDiagnostics['render_functions'] = [
 $omoManifestIconDiagnostics['canvas_created'] = $canvas !== false;
 
 if (!$canRender) {
-    $isGdImageObject = is_object($source) && class_exists('GdImage', false) && ($source instanceof GdImage);
-    if (is_resource($source) || $isGdImageObject) {
-        imagedestroy($source);
-    }
     $omoManifestIconDiagnostics['result'] = 'fallback';
     $omoManifestIconDiagnostics['reason'] = 'render_functions_unavailable';
     omoManifestIconOutputFallback($size, $purpose);
@@ -218,8 +214,6 @@ $omoManifestIconDiagnostics['source_size'] = [
 ];
 
 if ($sourceWidth <= 0 || $sourceHeight <= 0) {
-    imagedestroy($source);
-    imagedestroy($canvas);
     $omoManifestIconDiagnostics['result'] = 'fallback';
     $omoManifestIconDiagnostics['reason'] = 'invalid_source_dimensions';
     omoManifestIconOutputFallback($size, $purpose);
@@ -258,18 +252,15 @@ imagecopyresampled(
 );
 
 imagedestroy($source);
-
 if ($omoManifestIconDebug) {
     $omoManifestIconDiagnostics['result'] = 'generated';
     $omoManifestIconDiagnostics['reason'] = 'ok';
     header('Content-Type: application/json; charset=UTF-8');
     echo json_encode($omoManifestIconDiagnostics, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-    imagedestroy($canvas);
     exit;
 }
 
 header('Content-Type: image/png');
 header('Cache-Control: public, max-age=3600');
 imagepng($canvas);
-imagedestroy($canvas);
 exit;
