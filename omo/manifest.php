@@ -28,6 +28,8 @@ if ($requestedOrganizationId > 0) {
 $defaultName = 'OpenMyOrganization';
 $defaultShortName = 'OMO';
 $defaultIcon = '/omo/icons/icon-512.png';
+$defaultIcon192 = '/omo/icons/icon-192.png';
+$defaultMaskableIcon = '/omo/icons/icon-maskable-512.png';
 $defaultThemeColor = '#004663';
 
 $appName = trim((string)($organizationContext['name'] ?? ''));
@@ -77,14 +79,22 @@ $manifest = [
     'theme_color' => $themeColor,
     'icons' => [
         [
-            'src' => $logoUrl,
+            'src' => '/omo/manifest_icon.php' . ($requestedOrganizationId > 0 ? '?oid=' . $requestedOrganizationId . '&size=192' : '?size=192'),
+            'type' => 'image/png',
+            'sizes' => '192x192',
             'purpose' => 'any'
         ],
         [
-            'src' => $defaultIcon,
+            'src' => '/omo/manifest_icon.php' . ($requestedOrganizationId > 0 ? '?oid=' . $requestedOrganizationId . '&size=512' : '?size=512'),
             'type' => 'image/png',
             'sizes' => '512x512',
             'purpose' => 'any'
+        ],
+        [
+            'src' => '/omo/manifest_icon.php' . ($requestedOrganizationId > 0 ? '?oid=' . $requestedOrganizationId . '&size=512&purpose=maskable' : '?size=512&purpose=maskable'),
+            'type' => 'image/png',
+            'sizes' => '512x512',
+            'purpose' => 'maskable'
         ]
     ],
 ];
