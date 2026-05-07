@@ -290,16 +290,90 @@
             return;
         }
 
-        if (!verifyForm || !verifyToken || !verifyCodeInput) {
-            setStatus('Impossible de verifier le code sur cet appareil.', 'error');
+        setStatus('Verification du code...');
+
+        if (verifyForm && verifyToken && verifyCodeInput) {
+            verifyToken.value = token;
+            verifyCodeInput.value = code;
+            storePendingToken('');
+            verifyForm.submit();
             return;
         }
 
-        setStatus('Verification du code...');
-        verifyToken.value = token;
-        verifyCodeInput.value = code;
-        storePendingToken('');
-        verifyForm.submit();
+        if (codeSubmit) {
+            codeSubmit.disabled = true;
+        }
+
+        const body = new URLSearchParams();
+        body.set('token', token);
+        body.set('code', code);
+        body.set('return_to', config.returnTo || '/');
+
+        fetch(config.loginVerifyPath || '/common/login_verify.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin',
+            body: body.toString()
+        })
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (data) {
+                if (codeSubmit) {
+                    codeSubmit.disabled = false;
+                }
+
+                if (data.status === 'ok') {
+                    storePendingToken('');
+                    updateSendControls(false);
+                    window.location.href = data.redirect_to || (config.returnTo || '/');
+                    return;
+                }
+
+                if (data.error === 'wrong_code') {
+                    setStatus('Code incorrect. Il reste ' + (data.remaining_attempts || 0) + ' essai(s).', 'error');
+                    return;
+                }
+
+                if (data.error === 'locked') {
+                    storePendingToken('');
+                    updateSendControls(true);
+                    setStatus('Trop d essais. Demandez un nouveau code.', 'error');
+                    return;
+                }
+
+                if (data.error === 'expired') {
+                    storePendingToken('');
+                    updateSendControls(true);
+                    setStatus('Le code a expire. Demandez un nouveau code.', 'error');
+                    return;
+                }
+
+                if (data.error === 'ip_changed') {
+                    storePendingToken('');
+                    updateSendControls(true);
+                    setStatus('Votre reseau a change. Pour votre securite, demandez un nouveau code.', 'error');
+                    return;
+                }
+
+                if (data.error === 'missing_code') {
+                    setStatus('Veuillez saisir le code recu par e-mail.', 'error');
+                    return;
+                }
+
+                storePendingToken('');
+                setStatus('Code invalide. Demandez un nouveau code.', 'error');
+            })
+            .catch(function () {
+                if (codeSubmit) {
+                    codeSubmit.disabled = false;
+                }
+                setStatus('Impossible de verifier le code.', 'error');
+            });
     }
 
     if (toggle) {
