@@ -1,6 +1,6 @@
 const OMO_CACHE_VERSION = 'omo-shell-v3';
 const OMO_STATIC_ASSETS = [
-    '/omo/manifest.json',
+    '/omo/manifest.php',
     '/omo/offline.html',
     '/omo/icons/icon-192.png',
     '/omo/icons/icon-512.png',
@@ -58,7 +58,7 @@ self.addEventListener('fetch', function (event) {
     const isStaticAsset = (
         requestUrl.pathname.startsWith('/omo/assets/')
         || requestUrl.pathname.startsWith('/omo/icons/')
-        || requestUrl.pathname === '/omo/manifest.json'
+        || requestUrl.pathname === '/omo/manifest.php'
     );
 
     if (!isStaticAsset) {
