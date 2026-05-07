@@ -95,6 +95,24 @@ $manifest = [
             'type' => 'image/png',
             'sizes' => '512x512',
             'purpose' => 'maskable'
+        ],
+        [
+            'src' => $defaultIcon192,
+            'type' => 'image/png',
+            'sizes' => '192x192',
+            'purpose' => 'any'
+        ],
+        [
+            'src' => $defaultIcon,
+            'type' => 'image/png',
+            'sizes' => '512x512',
+            'purpose' => 'any'
+        ],
+        [
+            'src' => $defaultMaskableIcon,
+            'type' => 'image/png',
+            'sizes' => '512x512',
+            'purpose' => 'maskable'
         ]
     ],
 ];
