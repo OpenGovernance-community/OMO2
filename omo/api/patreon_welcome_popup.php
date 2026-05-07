@@ -94,6 +94,9 @@ if ($currentUserId > 0 && $patreonConfigured) {
 .omo-patreon-welcome__video {
     position: relative;
     overflow: hidden;
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
     border-radius: 18px;
     background: #020617;
     aspect-ratio: 16 / 9;
