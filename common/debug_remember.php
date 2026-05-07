@@ -14,7 +14,9 @@ function commonMaskDebugToken($value)
     return substr($value, 0, 4) . str_repeat('*', max(0, $length - 8)) . substr($value, -4);
 }
 
-$rememberCookie = isset($_COOKIE['remember_token']) ? (string)$_COOKIE['remember_token'] : '';
+$rememberCookieName = commonGetRememberCookieName();
+$rememberCookie = commonGetRememberCookieValue();
+$legacyRememberCookie = isset($_COOKIE['remember_token']) ? (string)$_COOKIE['remember_token'] : '';
 $rememberRecord = false;
 if ($rememberCookie !== '') {
     $rememberRecord = \dbObject\UserRemember::findValidByToken($rememberCookie);
@@ -42,6 +44,7 @@ $payload = [
         'request_uri' => (string)($_SERVER['REQUEST_URI'] ?? ''),
         'cookie_domain_expected' => commonGetCookieDomain(),
         'secure_cookies_expected' => commonShouldUseSecureCookies(),
+        'remember_cookie_name_expected' => $rememberCookieName,
     ],
     'session' => [
         'session_id' => session_id(),
@@ -51,9 +54,16 @@ $payload = [
         'restored_user_id' => (int)$restoredUserId,
     ],
     'remember_cookie' => [
+        'name' => $rememberCookieName,
         'present' => $rememberCookie !== '',
         'length' => strlen($rememberCookie),
         'masked' => commonMaskDebugToken($rememberCookie),
+    ],
+    'legacy_remember_cookie' => [
+        'name' => 'remember_token',
+        'present' => $legacyRememberCookie !== '',
+        'length' => strlen($legacyRememberCookie),
+        'masked' => commonMaskDebugToken($legacyRememberCookie),
     ],
     'remember_record' => [
         'found' => $rememberRecord ? true : false,

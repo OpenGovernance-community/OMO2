@@ -255,6 +255,34 @@ function commonGetRememberDurationSeconds()
     return \dbObject\UserRemember::lifetimeSeconds();
 }
 
+function commonGetRememberCookieName()
+{
+    $cookieDomain = ltrim((string)commonGetCookieDomain(), '.');
+    if ($cookieDomain === '') {
+        $cookieDomain = commonGetRequestHost();
+    }
+
+    $suffix = preg_replace('/[^a-z0-9]+/i', '_', strtolower((string)$cookieDomain));
+    $suffix = trim((string)$suffix, '_');
+
+    if ($suffix === '') {
+        return 'remember_token';
+    }
+
+    return 'remember_token_' . $suffix;
+}
+
+function commonGetRememberCookieValue()
+{
+    $cookieName = commonGetRememberCookieName();
+    return isset($_COOKIE[$cookieName]) ? (string)$_COOKIE[$cookieName] : '';
+}
+
+function commonExpireLegacyRememberCookie()
+{
+    commonExpireCookieValue('remember_token', true);
+}
+
 function commonRefreshRememberedUser($remember)
 {
     if (!$remember) {
@@ -263,11 +291,12 @@ function commonRefreshRememberedUser($remember)
 
     $remember->renew();
     commonSetCookieValue(
-        'remember_token',
+        commonGetRememberCookieName(),
         (string)$remember->get('token'),
         time() + commonGetRememberDurationSeconds(),
         true
     );
+    commonExpireLegacyRememberCookie();
 }
 
 function commonGetOrganizationExplicitColor(array $organizationContext)
@@ -358,8 +387,9 @@ function commonRestoreRememberedUser()
 
     if (isset($_SESSION['currentUser']) && (int)$_SESSION['currentUser'] > 0) {
         $currentUserId = (int)$_SESSION['currentUser'];
-        if (isset($_COOKIE['remember_token']) && $_COOKIE['remember_token'] !== '') {
-            $remember = \dbObject\UserRemember::findValidByToken($_COOKIE['remember_token']);
+        $rememberCookie = commonGetRememberCookieValue();
+        if ($rememberCookie !== '') {
+            $remember = \dbObject\UserRemember::findValidByToken($rememberCookie);
             if ($remember && (int)$remember->get('IDuser') === $currentUserId) {
                 commonRefreshRememberedUser($remember);
             }
@@ -368,13 +398,14 @@ function commonRestoreRememberedUser()
         return $currentUserId;
     }
 
-    if (!isset($_COOKIE['remember_token']) || $_COOKIE['remember_token'] === '') {
+    $rememberCookie = commonGetRememberCookieValue();
+    if ($rememberCookie === '') {
         return 0;
     }
 
-    $remember = \dbObject\UserRemember::findValidByToken($_COOKIE['remember_token']);
+    $remember = \dbObject\UserRemember::findValidByToken($rememberCookie);
     if (!$remember) {
-        commonExpireCookieValue('remember_token', true);
+        commonExpireCookieValue(commonGetRememberCookieName(), true);
         return 0;
     }
 
@@ -655,8 +686,8 @@ function commonLogoutUser()
     unset($_SESSION['userRef']);
     unset($_SESSION['challenge']);
 
-    commonExpireCookieValue('remember_token', true);
-    setcookie('remember_token', '', time() - 3600, '/', '', commonShouldUseSecureCookies(), true);
+    commonExpireCookieValue(commonGetRememberCookieName(), true);
+    commonExpireLegacyRememberCookie();
 
     commonExpireCookieValue('currentUser', false);
     commonExpireCookieValue('currentCode', false);
@@ -1102,11 +1133,12 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
         );
 
         commonSetCookieValue(
-            'remember_token',
+            commonGetRememberCookieName(),
             $rememberToken,
             time() + commonGetRememberDurationSeconds(),
             true
         );
+        commonExpireLegacyRememberCookie();
     }
 
     $loginToken->markUsed();
