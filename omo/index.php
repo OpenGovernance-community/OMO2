@@ -22,17 +22,31 @@ $omoLandingOrganization = [
     'color' => '',
 ];
 
-function omoBuildPwaHeadHtml($themeColor = '#004663')
+function omoResolvePwaIconUrl($iconUrl, $fallback = '/omo/icons/icon-192.png')
 {
+    $iconUrl = trim((string)$iconUrl);
+
+    if ($iconUrl === '') {
+        return $fallback;
+    }
+
+    return $iconUrl;
+}
+
+function omoBuildPwaHeadHtml($themeColor = '#004663', $iconUrl = '/omo/icons/icon-192.png', $appTitle = 'OMO', $manifestUrl = '/omo/manifest.php')
+{
+    $resolvedIconUrl = omoResolvePwaIconUrl($iconUrl);
+    $resolvedAppTitle = trim((string)$appTitle) !== '' ? (string)$appTitle : 'OMO';
+
     return implode(PHP_EOL, [
-        '<link rel="manifest" href="/omo/manifest.json">',
+        '<link rel="manifest" href="' . htmlspecialchars((string)$manifestUrl, ENT_QUOTES, 'UTF-8') . '">',
         '<meta name="theme-color" content="' . htmlspecialchars((string)$themeColor, ENT_QUOTES, 'UTF-8') . '">',
         '<meta name="mobile-web-app-capable" content="yes">',
         '<meta name="apple-mobile-web-app-capable" content="yes">',
         '<meta name="apple-mobile-web-app-status-bar-style" content="default">',
-        '<meta name="apple-mobile-web-app-title" content="OMO">',
-        '<link rel="icon" href="/omo/icons/icon-192.png" type="image/png" sizes="192x192">',
-        '<link rel="apple-touch-icon" href="/omo/icons/icon-192.png">',
+        '<meta name="apple-mobile-web-app-title" content="' . htmlspecialchars($resolvedAppTitle, ENT_QUOTES, 'UTF-8') . '">',
+        '<link rel="icon" href="' . htmlspecialchars($resolvedIconUrl, ENT_QUOTES, 'UTF-8') . '">',
+        '<link rel="apple-touch-icon" href="' . htmlspecialchars($resolvedIconUrl, ENT_QUOTES, 'UTF-8') . '">',
         '<link rel="stylesheet" href="/omo/assets/css/install.css">',
     ]);
 }
@@ -45,7 +59,12 @@ $omoThemeBootstrapHtml = implode(PHP_EOL, [
 
 if (!commonGetCurrentUserId() && !$isDemoGuest) {
     $loginOrganizationContext = $isOrganizationHub ? $omoLandingOrganization : $organizationContext;
-    $omoPwaHeadHtml = omoBuildPwaHeadHtml(commonGetOrganizationAccentColor($loginOrganizationContext, '#004663'));
+    $omoPwaHeadHtml = omoBuildPwaHeadHtml(
+        commonGetOrganizationAccentColor($loginOrganizationContext, '#004663'),
+        $loginOrganizationContext['logo'] ?? $omoDefaultLogo,
+        ($loginOrganizationContext['name'] ?? 'OMO') ?: 'OMO',
+        '/omo/manifest.php' . ((!empty($loginOrganizationContext['routeMode']) && $loginOrganizationContext['routeMode'] === 'path' && !empty($loginOrganizationContext['id'])) ? '?oid=' . (int)$loginOrganizationContext['id'] : '')
+    );
 
     commonRenderMagicLoginPage([
         'title' => (($isOrganizationHub ? 'OMO' : $organizationContext['name']) ?: 'OMO') . ' - OMO',
@@ -65,7 +84,12 @@ if (!commonGetCurrentUserId() && !$isDemoGuest) {
 
 $currentUserName = $isDemoGuest ? 'Démo' : commonGetCurrentUserDisplayName();
 $currentUserId = commonGetCurrentUserId();
-$omoPwaHeadHtml = omoBuildPwaHeadHtml('#004663');
+$omoPwaHeadHtml = omoBuildPwaHeadHtml(
+    commonGetOrganizationAccentColor($organizationContext, '#004663'),
+    $organizationContext['logo'] ?? $omoDefaultLogo,
+    ($organizationContext['name'] ?? 'OMO') ?: 'OMO',
+    '/omo/manifest.php' . ((!empty($organizationContext['routeMode']) && $organizationContext['routeMode'] === 'path' && !empty($organizationContext['id'])) ? '?oid=' . (int)$organizationContext['id'] : '')
+);
 if ($isOrganizationHub && !$isDemoGuest) {
     $logoutUrl = '/common/logout.php?return_to=' . urlencode('/omo/');
     $organizationCreateUrl = '/popup/organization_create.php';
