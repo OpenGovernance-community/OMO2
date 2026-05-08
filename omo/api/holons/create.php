@@ -47,7 +47,7 @@ if ($organizationId <= 0) {
 
     <div class="omo-panel-view__body">
         <?php if ($errorMessage !== ''): ?>
-            <div class="omo-holon-create__empty"><?= omoApiEscape($errorMessage) ?></div>
+            <div class="omo-holon-create__empty generic-section"><?= omoApiEscape($errorMessage) ?></div>
         <?php else: ?>
             <div class="omo-holon-create__layout" id="omo-holon-create-editor">
                 <section class="omo-holon-create__panel">
@@ -55,18 +55,18 @@ if ($organizationId <= 0) {
 
                     <form id="omo-holon-create-form" class="omo-holon-create__form">
                         <div class="omo-panel-view__body_content">
-                        <section class="omo-holon-create__section">
-                            <div class="omo-holon-create__section-title"><?= omoApiEscape((($editorData['mode'] ?? 'create') === 'edit') ? 'Édition' : 'Création') ?></div>
+                        <section class="omo-holon-create__section generic-section generic-section--stack">
+                            <div class="omo-holon-create__section-title generic-card-title generic-card-title--eyebrow"><?= omoApiEscape((($editorData['mode'] ?? 'create') === 'edit') ? 'Édition' : 'Création') ?></div>
 
                             <div class="omo-holon-create__grid">
                                 <label class="omo-holon-create__field">
                                     <span>Modèle</span>
-                                    <select id="omo-holon-create-template" required></select>
+                                    <select id="omo-holon-create-template" class="generic-form-control" required></select>
                                 </label>
 
                                 <label class="omo-holon-create__field omo-holon-create__field--full">
                                     <span>Nom</span>
-                                    <input type="text" id="omo-holon-create-name" maxlength="255" required>
+                                    <input type="text" id="omo-holon-create-name" class="generic-form-control" maxlength="255" required>
                                     <small id="omo-holon-create-name-help"></small>
                                 </label>
 
@@ -75,10 +75,10 @@ if ($organizationId <= 0) {
                             <div class="omo-holon-create__template-meta" id="omo-holon-create-template-meta"></div>
                         </section>
 
-                        <section class="omo-holon-create__section">
+                        <section class="omo-holon-create__section generic-section generic-section--stack">
                             <div class="omo-holon-create__section-head">
                                 <div>
-                                    <div class="omo-holon-create__section-title">Propriétés</div>
+                                    <div class="omo-holon-create__section-title generic-card-title generic-card-title--eyebrow">Propriétés</div>
                                     <p class="omo-holon-create__section-description">
                                         Les propriétés héritées du modèle sont affichées ci-dessous.
                                     </p>
@@ -88,10 +88,10 @@ if ($organizationId <= 0) {
                             <div class="omo-holon-create__properties" id="omo-holon-create-properties"></div>
                         </section>
                         </div>
-                        <section class="omo-holon-create__section">
+                        <section class="omo-holon-create__section generic-section generic-section--stack">
                             <div class="omo-holon-create__section-head">
                                 <div>
-                                    <div class="omo-holon-create__section-title">Apparence</div>
+                                    <div class="omo-holon-create__section-title generic-card-title generic-card-title--eyebrow">Apparence</div>
                                     <p class="omo-holon-create__section-description">
                                         Les choix visuels viennent ici, apres les proprietes plus importantes.
                                     </p>
@@ -116,11 +116,11 @@ if ($organizationId <= 0) {
                                 <div class="omo-holon-create__field omo-holon-create__field--full">
                                     <span>Illustrations</span>
                                     <div class="omo-holon-create__media-grid">
-                                        <div class="omo-holon-create__media-card">
+                                        <div class="omo-holon-create__media-card generic-soft-panel generic-soft-panel--stack">
                                             <div class="omo-holon-create__media-label">Icone</div>
                                             <div id="omo-holon-create-icon-field"></div>
                                         </div>
-                                        <div class="omo-holon-create__media-card">
+                                        <div class="omo-holon-create__media-card generic-soft-panel generic-soft-panel--stack">
                                             <div class="omo-holon-create__media-label">Banniere</div>
                                             <div id="omo-holon-create-banner-field"></div>
                                         </div>
@@ -129,11 +129,11 @@ if ($organizationId <= 0) {
                             </div>
                         </section>
 
-                        <div class="omo-holon-create__footer">
+                        <div class="omo-holon-create__footer generic-section">
                             <div class="omo-holon-create__hint" id="omo-holon-create-hint"></div>
                             <div class="omo-holon-create__actions">
-                                <button type="button" class="omo-holon-create__button omo-holon-create__button--ghost" id="omo-holon-create-cancel">Fermer</button>
-                                <button type="submit" class="omo-holon-create__button omo-holon-create__button--primary"><?= omoApiEscape((($editorData['mode'] ?? 'create') === 'edit') ? 'Enregistrer' : 'Créer le holon') ?></button>
+                                <button type="button" class="generic-action-button generic-action-button--secondary" id="omo-holon-create-cancel">Fermer</button>
+                                <button type="submit" class="generic-action-button generic-action-button--main"><?= omoApiEscape((($editorData['mode'] ?? 'create') === 'edit') ? 'Enregistrer' : 'Créer le holon') ?></button>
                             </div>
                         </div>
                     </form>
@@ -411,8 +411,8 @@ function renderSimpleListRow(listItemType, value) {
         return ''
             + '<div class="omo-holon-create__list-row omo-holon-create__list-row--detail">'
             + '  <div class="omo-holon-create__list-detail-fields">'
-            + '      <input type="text" class="omo-holon-create__property-value-item omo-holon-create__property-value-item--detail-title" value="' + escapeHtml(detailItem.title) + '" placeholder="Titre">'
-            + '      <textarea class="omo-holon-create__property-value-item omo-holon-create__property-value-item--detail-description" rows="3" placeholder="Description">' + escapeHtml(detailItem.description) + '</textarea>'
+            + '      <input type="text" class="omo-holon-create__property-value-item omo-holon-create__property-value-item--detail-title generic-form-control" value="' + escapeHtml(detailItem.title) + '" placeholder="Titre">'
+            + '      <textarea class="omo-holon-create__property-value-item omo-holon-create__property-value-item--detail-description generic-form-control" rows="3" placeholder="Description">' + escapeHtml(detailItem.description) + '</textarea>'
             + '  </div>'
             + '  <button type="button" class="omo-holon-create__button omo-holon-create__button--ghost omo-holon-create__list-move" data-list-move="-1" aria-label="Monter">&#8593;</button>'
             + '  <button type="button" class="omo-holon-create__button omo-holon-create__button--ghost omo-holon-create__list-move" data-list-move="1" aria-label="Descendre">&#8595;</button>'
@@ -424,7 +424,7 @@ function renderSimpleListRow(listItemType, value) {
     const stepAttribute = inputType === 'number' ? ' step="any"' : '';
     return ''
         + '<div class="omo-holon-create__list-row">'
-        + '  <input type="' + inputType + '" class="omo-holon-create__property-value-item" value="' + escapeHtml(value !== undefined && value !== null ? value : '') + '"' + stepAttribute + '>'
+        + '  <input type="' + inputType + '" class="omo-holon-create__property-value-item generic-form-control" value="' + escapeHtml(value !== undefined && value !== null ? value : '') + '"' + stepAttribute + '>'
         + '  <button type="button" class="omo-holon-create__button omo-holon-create__button--ghost omo-holon-create__list-move" data-list-move="-1" aria-label="Monter">&#8593;</button>'
         + '  <button type="button" class="omo-holon-create__button omo-holon-create__button--ghost omo-holon-create__list-move" data-list-move="1" aria-label="Descendre">&#8595;</button>'
         + '  <button type="button" class="omo-holon-create__button omo-holon-create__button--ghost omo-holon-create__list-remove" data-list-remove="1" aria-label="Retirer">&times;</button>'
@@ -484,11 +484,11 @@ function renderPropertyInput(property) {
     }
 
     if (formatId === 3) {
-        return '<input type="number" step="any" class="omo-holon-create__property-value" value="' + escapeHtml(localValue) + '" placeholder="Ex.: 42">';
+        return '<input type="number" step="any" class="omo-holon-create__property-value generic-form-control" value="' + escapeHtml(localValue) + '" placeholder="Ex.: 42">';
     }
 
     if (formatId === 4) {
-        return '<input type="date" class="omo-holon-create__property-value" value="' + escapeHtml(localValue) + '">';
+        return '<input type="date" class="omo-holon-create__property-value generic-form-control" value="' + escapeHtml(localValue) + '">';
     }
 
     if (formatId === 5) {
@@ -536,7 +536,7 @@ function renderInheritedValue(property) {
         if (String(property.listItemType || 'text') === 'detail') {
             return ''
                 + '<div class="omo-holon-create__inherited">'
-                + '  <div class="omo-holon-create__inherited-label">Valeur heritee</div>'
+                + '  <div class="omo-holon-create__inherited-label generic-card-title generic-card-title--eyebrow">Valeur heritee</div>'
                 + '  <div class="omo-holon-create__inherited-detail-list">'
                 + items.map(function (item) {
                     return ''
@@ -553,7 +553,7 @@ function renderInheritedValue(property) {
 
         return ''
             + '<div class="omo-holon-create__inherited">'
-            + '  <div class="omo-holon-create__inherited-label">Valeur héritée</div>'
+            + '  <div class="omo-holon-create__inherited-label generic-card-title generic-card-title--eyebrow">Valeur héritée</div>'
             + '  <ul class="omo-holon-create__inherited-list">'
             + items.map(function (item) {
                 return '<li>' + escapeHtml(item) + '</li>';
@@ -565,14 +565,14 @@ function renderInheritedValue(property) {
     if (Number(property.formatId || 0) === 5) {
         return ''
             + '<div class="omo-holon-create__inherited">'
-            + '  <div class="omo-holon-create__inherited-label">Valeur heritee</div>'
+            + '  <div class="omo-holon-create__inherited-label generic-card-title generic-card-title--eyebrow">Valeur heritee</div>'
             +       renderHtmlPreview(inheritedValue, 'omo-holon-create__inherited-text')
             + '</div>';
     }
 
     return ''
         + '<div class="omo-holon-create__inherited">'
-        + '  <div class="omo-holon-create__inherited-label">Valeur héritée</div>'
+        + '  <div class="omo-holon-create__inherited-label generic-card-title generic-card-title--eyebrow">Valeur héritée</div>'
         + '  <div class="omo-holon-create__inherited-text">' + escapeHtml(inheritedValue).replace(/\n/g, '<br>') + '</div>'
         + '</div>';
 }
@@ -580,7 +580,7 @@ function renderInheritedValue(property) {
 // Crée ligne propriété
 function createPropertyRow(property, index) {
     const row = document.createElement('div');
-    row.className = 'omo-holon-create__property';
+    row.className = 'omo-holon-create__property generic-section';
     row.dataset.propertyId = Number(property.id || 0);
     row.dataset.holonPropertyId = Number(property.holonPropertyId || 0);
     row.dataset.formatId = Number(property.formatId || 0);
@@ -1196,24 +1196,26 @@ root.addEventListener('click', function (event) {
 .omo-holon-create__footer,
 .omo-holon-create__property,
 .omo-holon-create__empty {
-    border: 1px solid var(--color-border);
-    border-radius: 16px;
-    background: var(--color-surface);
-    box-shadow: var(--shadow-sm);
+    --generic-section-border: var(--color-border);
+    --generic-section-radius: 16px;
+    --generic-section-background: var(--color-surface);
+    --generic-section-shadow: var(--shadow-sm);
+}
+
+.omo-holon-create__section {
+    --generic-section-gap: 16px;
 }
 
 .omo-holon-create__section,
 .omo-holon-create__footer,
 .omo-holon-create__empty {
-    padding: 16px;
+    --generic-section-padding-block: 16px;
+    --generic-section-padding-inline: 16px;
 }
 
-.omo-holon-create__section-title,
-.omo-holon-create__inherited-label {
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--color-text-light);
+.omo-holon-create__property {
+    --generic-section-padding-block: 12px;
+    --generic-section-padding-inline: 12px;
 }
 
 .omo-holon-create__section-description,
@@ -1244,7 +1246,6 @@ root.addEventListener('click', function (event) {
 }
 
 .omo-holon-create__form,
-.omo-holon-create__section,
 .omo-holon-create__properties {
     display: grid;
     gap: 16px;
@@ -1343,12 +1344,12 @@ root.addEventListener('click', function (event) {
 }
 
 .omo-holon-create__media-card {
-    display: grid;
-    gap: 10px;
-    padding: 14px;
-    border: 1px solid var(--color-border);
-    border-radius: 16px;
-    background: var(--color-surface);
+    --generic-soft-panel-gap: 10px;
+    --generic-soft-panel-padding-block: 14px;
+    --generic-soft-panel-padding-inline: 14px;
+    --generic-soft-panel-radius: 16px;
+    --generic-soft-panel-border: var(--color-border);
+    --generic-soft-panel-background: var(--color-surface);
 }
 
 .omo-holon-create__media-label {
@@ -1357,12 +1358,28 @@ root.addEventListener('click', function (event) {
     color: var(--color-text);
 }
 
-.omo-holon-create__field input,
-.omo-holon-create__field select,
-.omo-holon-create__field textarea {
+.omo-holon-create__field .generic-form-control {
+    --generic-form-control-border: var(--color-border);
+    --generic-form-control-background: var(--color-surface-alt);
+    --generic-form-control-background-focus: var(--color-surface);
+    --generic-form-control-color: var(--color-text);
+}
+
+.omo-holon-create__field textarea.generic-form-control {
+    --generic-form-control-textarea-min-height: 110px;
+}
+
+.omo-holon-create__property-value {
+    --generic-form-control-border: var(--color-border);
+    --generic-form-control-background: var(--color-surface-alt);
+    --generic-form-control-background-focus: var(--color-surface);
+    --generic-form-control-color: var(--color-text);
+}
+
+textarea.omo-holon-create__property-value {
     display: block;
     width: 100%;
-    min-height: 44px;
+    min-height: 110px;
     padding: 11px 12px;
     border: 1px solid var(--color-border);
     border-radius: 12px;
@@ -1370,16 +1387,10 @@ root.addEventListener('click', function (event) {
     color: var(--color-text);
     font: inherit;
     box-sizing: border-box;
-}
-
-.omo-holon-create__field textarea {
-    min-height: 110px;
     resize: vertical;
 }
 
-.omo-holon-create__field input:focus,
-.omo-holon-create__field select:focus,
-.omo-holon-create__field textarea:focus {
+textarea.omo-holon-create__property-value:focus {
     outline: none;
     border-color: color-mix(in srgb, var(--color-primary) 52%, var(--color-border));
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 14%, transparent);
@@ -1416,7 +1427,6 @@ root.addEventListener('click', function (event) {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     gap: 12px;
-    padding: 12px;
 }
 
 .omo-holon-create__property-index {

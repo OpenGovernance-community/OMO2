@@ -86,10 +86,10 @@ $typeLabel = strtolower((string)$holon->getTemplateLabel(true));
         <div id="omoHolonDeletePopupFeedback" class="omo-holon-delete__feedback"></div>
 
         <div class="omo-holon-delete__actions">
-            <button type="button" id="omoHolonDeletePopupCancel" class="omo-holon-delete__button omo-holon-delete__button--ghost">
+            <button type="button" id="omoHolonDeletePopupCancel" class="omo-holon-delete__button generic-action-button generic-action-button--secondary">
                 Annuler
             </button>
-            <button type="submit" id="omoHolonDeletePopupSubmit" class="omo-holon-delete__button omo-holon-delete__button--danger">
+            <button type="submit" id="omoHolonDeletePopupSubmit" class="omo-holon-delete__button generic-action-button generic-action-button--danger">
                 Supprimer
             </button>
         </div>
@@ -248,27 +248,5 @@ $typeLabel = strtolower((string)$holon->getTemplateLabel(true));
             gap: 10px;
         }
 
-        .omo-holon-delete__button {
-            border: 0;
-            border-radius: 10px;
-            padding: 12px 16px;
-            font-weight: 700;
-            cursor: pointer;
-        }
-
-        .omo-holon-delete__button--ghost {
-            background: var(--topbar-panel-border, #e2e8f0);
-            color: inherit;
-        }
-
-        .omo-holon-delete__button--danger {
-            background: #b91c1c;
-            color: #ffffff;
-        }
-
-        .omo-holon-delete__button:disabled {
-            opacity: 0.6;
-            cursor: wait;
-        }
     </style>
 <?php endif; ?>

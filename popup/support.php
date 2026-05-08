@@ -3,11 +3,9 @@
 	require_once("../shared_functions.php");
 ?>
 <style>
-	.ui-accordion-header {background-color:#DDD; border:2px solid #AAA; padding:10px; margin-bottom:0px; margin-top:5px;}
-	.ui-accordion-content {border: 1px solid #DDD; border-top:0px;padding:10px;position:relative;}
 	#rememberbtn {text-decoration:underline;}
 </style>
-<div id="accordion">
+<div id="accordion" class="generic-accordion-ui">
 <?	
 	// Initialise le login
 	$connected=checklogin();

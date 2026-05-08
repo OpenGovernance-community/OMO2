@@ -475,8 +475,8 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
 
     <div class="circle-header">
         <div>
-            <div class="circle-kicker"><?= omoApiEscape($holonTypeLabel) ?></div>
-            <h2 class="circle-title"><?= omoApiEscape($currentHolon->get('name')) ?></h2>
+            <div class="circle-kicker generic-card-title generic-card-title--eyebrow"><?= omoApiEscape($holonTypeLabel) ?></div>
+            <h2 class="circle-title generic-card-title generic-card-title--section"><?= omoApiEscape($currentHolon->get('name')) ?></h2>
         </div>
         <div class="circle-meta">
             <?php if ($hasHolonActions): ?>
@@ -537,7 +537,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
     </div>
     <?php if (count($visibleMemberCards) > 0 || $canManageMembers): ?>
         <div class="circle-members">
-            <div class="circle-members__label">Membres</div>
+            <div class="circle-members__label generic-card-title generic-card-title--eyebrow">Membres</div>
             <div class="circle-members__row">
                 <div class="circle-members__list">
                     <?php foreach ($visibleMemberCards as $member): ?>
@@ -584,33 +584,33 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
     </div>
 
     <?php if (count($sections) === 0): ?>
-        <div class="circle-section">
-            <div class="section-title">Informations</div>
+        <div class="circle-section generic-accordion generic-accordion--card">
+            <div class="circle-section__title generic-card-title generic-card-title--small">Informations</div>
             <p class="section-text">Aucun contenu n'est encore renseign&eacute; pour ce holon.</p>
         </div>
     <?php endif; ?>
 
     <?php foreach ($sections as $section): ?>
-        <div class="circle-section">
-            <div class="section-header">
-                <span class="section-title"><?= omoApiEscape($section['title']) ?></span>
-                <span class="section-toggle">&#9662;</span>
+        <div class="circle-section generic-accordion generic-accordion--card generic-accordion--collapsible">
+            <div class="generic-accordion__header">
+                <span class="generic-accordion__title generic-card-title generic-card-title--small"><?= omoApiEscape($section['title']) ?></span>
+                <span class="generic-accordion__toggle">&#9662;</span>
             </div>
-            <div class="section-content">
+            <div class="generic-accordion__content">
                 <?= omoRenderSectionBody($section['entry']) ?>
             </div>
         </div>
     <?php endforeach; ?>
     <?php if (count($childNavigation['containers']) > 0 || count($childNavigation['roles']) > 0): ?>
-        <div class="circle-section circle-section--navigation">
-            <div class="section-header">
-                <span class="section-title">Dependances</span>
-                <span class="section-toggle">&#9662;</span>
+        <div class="circle-section circle-section--navigation generic-accordion generic-accordion--card generic-accordion--collapsible">
+            <div class="generic-accordion__header">
+                <span class="generic-accordion__title generic-card-title generic-card-title--small">Dependances</span>
+                <span class="generic-accordion__toggle">&#9662;</span>
             </div>
-            <div class="section-content">
+            <div class="generic-accordion__content">
                 <?php if (count($childNavigation['containers']) > 0): ?>
                     <div class="child-nav-group">
-                        <div class="child-nav-subtitle">Cercles</div>
+                        <div class="child-nav-subtitle generic-card-title generic-card-title--small">Cercles</div>
                         <div class="child-nav-list">
                             <?php foreach ($childNavigation['containers'] as $child): ?>
                                 <button type="button" class="child-nav-item" data-cid="<?= (int)$child['id'] ?>">
@@ -624,7 +624,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
 
                 <?php if (count($childNavigation['roles']) > 0): ?>
                     <div class="child-nav-group">
-                        <div class="child-nav-subtitle">Roles</div>
+                        <div class="child-nav-subtitle generic-card-title generic-card-title--small">Roles</div>
                         <div class="child-nav-list">
                             <?php foreach ($childNavigation['roles'] as $child): ?>
                                 <button type="button" class="child-nav-item child-nav-item--role" data-cid="<?= (int)$child['id'] ?>">
@@ -692,16 +692,10 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
 }
 
 .circle-kicker {
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--color-text-light);
     margin-bottom: 6px;
 }
 
 .circle-title {
-    font-size: 20px;
-    font-weight: 600;
     margin: 0;
 }
 
@@ -709,13 +703,6 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
     display: grid;
     gap: 8px;
     margin-top: 14px;
-}
-
-.circle-members__label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--color-text-light);
 }
 
 .circle-members__row {
@@ -899,21 +886,8 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
     background: rgba(220, 38, 38, 0.08);
 }
 
-.circle-section {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    padding: 14px;
-    box-shadow: var(--shadow-sm);
-}
-
-.section-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--color-text-light);
+.circle-section__title {
     margin-bottom: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
 }
 
 .section-text,
@@ -1004,22 +978,6 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
     white-space: pre-line;
 }
 
-.section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-}
-
-.section-toggle {
-    font-size: 12px;
-    transition: transform 0.2s ease;
-}
-
-.section-content {
-    margin-top: 10px;
-}
-
 .section-inherited {
     padding: 10px 12px;
     margin-bottom: 12px;
@@ -1029,19 +987,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
 }
 
 .section-inherited__label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--color-text-light);
     margin-bottom: 6px;
-}
-
-.circle-section.collapsed .section-content {
-    display: none;
-}
-
-.circle-section.collapsed .section-toggle {
-    transform: rotate(-90deg);
 }
 
 .child-nav-group + .child-nav-group {
@@ -1049,12 +995,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
 }
 
 .child-nav-subtitle {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--color-text-light);
     margin-bottom: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
 }
 
 .child-nav-list {
@@ -1117,13 +1058,13 @@ window.dispatchEvent(new CustomEvent('omo-structure-member-highlight', {
 }));
 
 $(document)
-  .off('click.omoOrgSection', '#panel-left .section-header')
-  .on('click.omoOrgSection', '#panel-left .section-header', function () {
-    const section = $(this).closest('.circle-section');
-    const key = omoNormalizeSectionKey(section.find('.section-title').first().text());
+  .off('click.omoOrgSection', '#panel-left .generic-accordion__header')
+  .on('click.omoOrgSection', '#panel-left .generic-accordion__header', function () {
+    const section = $(this).closest('.generic-accordion--collapsible');
+    const key = omoNormalizeSectionKey(section.find('.generic-accordion__title').first().text());
 
-    section.toggleClass('collapsed');
-    localStorage.setItem('section_' + key, section.hasClass('collapsed'));
+    section.toggleClass('is-collapsed');
+    localStorage.setItem('section_' + key, section.hasClass('is-collapsed'));
   });
 
 $(document)
@@ -1356,17 +1297,17 @@ function omoBuildDirectHolonUrl(cid) {
 }
 
 (function restoreSections() {
-    $('#panel-left .circle-section').each(function () {
-        const key = omoNormalizeSectionKey($(this).find('.section-title').first().text());
+    $('#panel-left .generic-accordion--collapsible').each(function () {
+        const key = omoNormalizeSectionKey($(this).find('.generic-accordion__title').first().text());
         const saved = localStorage.getItem('section_' + key);
 
         if (saved === 'true') {
-            $(this).addClass('collapsed');
+            $(this).addClass('is-collapsed');
             return;
         }
 
         if (saved === null && key === 'dependances') {
-            $(this).addClass('collapsed');
+            $(this).addClass('is-collapsed');
         }
     });
 })();

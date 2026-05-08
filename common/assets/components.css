@@ -1,0 +1,310 @@
+.generic-section,
+.omo-card,
+.generic-accordion--card {
+    --generic-section-padding-block: 16px;
+    --generic-section-padding-inline: 18px;
+    --generic-section-border: var(--color-border, #e5e7eb);
+    --generic-section-radius: 18px;
+    --generic-section-background: var(--color-surface, #ffffff);
+    --generic-section-shadow: none;
+    display: block;
+    padding: var(--generic-section-padding-block) var(--generic-section-padding-inline);
+    border: 1px solid var(--generic-section-border);
+    border-radius: var(--generic-section-radius);
+    background: var(--generic-section-background);
+    box-shadow: var(--generic-section-shadow);
+}
+
+.generic-section--stack {
+    display: grid;
+    gap: var(--generic-section-gap, 12px);
+}
+
+.generic-section--alt {
+    --generic-section-background: var(--color-surface-alt, #f0f2f5);
+}
+
+.generic-soft-panel {
+    --generic-soft-panel-padding-block: 12px;
+    --generic-soft-panel-padding-inline: 14px;
+    --generic-soft-panel-radius: 12px;
+    --generic-soft-panel-border: var(--color-border, #d1d5db);
+    --generic-soft-panel-background: var(--color-surface-alt, #f8fafc);
+    display: block;
+    padding: var(--generic-soft-panel-padding-block) var(--generic-soft-panel-padding-inline);
+    border: 1px solid var(--generic-soft-panel-border);
+    border-radius: var(--generic-soft-panel-radius);
+    background: var(--generic-soft-panel-background);
+}
+
+.generic-soft-panel--stack {
+    display: grid;
+    gap: var(--generic-soft-panel-gap, 10px);
+}
+
+.generic-hero-panel {
+    --generic-hero-gap: 8px;
+    --generic-hero-padding: 18px;
+    --generic-hero-radius: 18px;
+    --generic-hero-border: var(--color-border, #e5e7eb);
+    --generic-hero-background:
+        linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--color-surface, #ffffff) 94%, transparent),
+            color-mix(in srgb, var(--color-surface-alt, #f0f2f5) 88%, transparent)
+        );
+    --generic-hero-shadow: none;
+    display: grid;
+    gap: var(--generic-hero-gap);
+    padding: var(--generic-hero-padding);
+    border: 1px solid var(--generic-hero-border);
+    border-radius: var(--generic-hero-radius);
+    background: var(--generic-hero-background);
+    box-shadow: var(--generic-hero-shadow);
+}
+
+.generic-hero-panel--accent {
+    --generic-hero-background:
+        radial-gradient(circle at top right, color-mix(in srgb, var(--color-primary, #2563eb) 16%, transparent), transparent 48%),
+        linear-gradient(135deg, color-mix(in srgb, var(--color-primary, #2563eb) 8%, var(--color-surface, #fff)), var(--color-surface, #fff));
+    --generic-hero-border: color-mix(in srgb, var(--color-primary, #2563eb) 16%, var(--color-border, #d1d5db));
+}
+
+.generic-card-title {
+    margin: 0;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--color-text-light, #6b7280);
+}
+
+.generic-card-title--eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.generic-card-title--small {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.generic-card-title--medium {
+    font-size: 16px;
+    color: var(--color-text, #1f2937);
+}
+
+.generic-card-title--big {
+    font-size: 18px;
+    color: var(--color-text, #1f2937);
+}
+
+.generic-card-title--section {
+    font-size: 20px;
+    color: var(--color-text, #1f2937);
+}
+
+.generic-card-title--large {
+    font-size: 22px;
+    color: var(--color-text, #1f2937);
+}
+
+.generic-action-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 10px 16px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    background: var(--color-surface-alt, #f0f2f5);
+    color: var(--color-text, #1f2937);
+    font: inherit;
+    font-weight: 700;
+    line-height: 1.35;
+    text-decoration: none;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        box-shadow 0.15s ease,
+        color 0.15s ease,
+        transform 0.15s ease;
+}
+
+.generic-action-button--main {
+    background: var(--color-primary, #2563eb);
+    color: var(--color-text-inverse, #ffffff);
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 64%, transparent);
+    box-shadow: var(--shadow-md, 0 12px 24px rgba(0, 0, 0, 0.12));
+}
+
+.generic-action-button--secondary {
+    background: var(--color-surface-alt, #f0f2f5);
+    color: var(--color-text, #1f2937);
+    border-color: var(--color-border, #e5e7eb);
+}
+
+.generic-action-button--danger {
+    background: color-mix(in srgb, #dc2626 12%, var(--color-surface, #ffffff));
+    color: #dc2626;
+    border-color: color-mix(in srgb, #dc2626 30%, var(--color-border, #e5e7eb));
+}
+
+.generic-action-button:not(:disabled):hover {
+    transform: translateY(-1px);
+}
+
+.generic-action-button--main:not(:disabled):hover {
+    box-shadow: 0 14px 28px rgba(37, 99, 235, 0.22);
+}
+
+.generic-action-button--secondary:not(:disabled):hover {
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #ffffff));
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 30%, var(--color-border, #e5e7eb));
+}
+
+.generic-action-button--danger:not(:disabled):hover {
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+
+.generic-action-button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+    box-shadow: none;
+    transform: none;
+}
+
+.generic-form-control {
+    --generic-form-control-min-height: 44px;
+    --generic-form-control-padding-block: 11px;
+    --generic-form-control-padding-inline: 12px;
+    --generic-form-control-border: var(--color-border, #d1d5db);
+    --generic-form-control-border-focus: color-mix(in srgb, var(--color-primary, #2563eb) 52%, var(--generic-form-control-border));
+    --generic-form-control-radius: 12px;
+    --generic-form-control-background: var(--color-surface-alt, #f8fafc);
+    --generic-form-control-background-focus: var(--color-surface, #ffffff);
+    --generic-form-control-color: var(--color-text, #1f2937);
+    --generic-form-control-focus-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 14%, transparent);
+    display: block;
+    width: 100%;
+    min-height: var(--generic-form-control-min-height);
+    padding: var(--generic-form-control-padding-block) var(--generic-form-control-padding-inline);
+    border: 1px solid var(--generic-form-control-border);
+    border-radius: var(--generic-form-control-radius);
+    background: var(--generic-form-control-background);
+    color: var(--generic-form-control-color);
+    font: inherit;
+    box-sizing: border-box;
+}
+
+.generic-form-control:focus {
+    outline: none;
+    border-color: var(--generic-form-control-border-focus);
+    box-shadow: var(--generic-form-control-focus-shadow);
+    background: var(--generic-form-control-background-focus);
+}
+
+textarea.generic-form-control {
+    --generic-form-control-textarea-min-height: 110px;
+    min-height: var(--generic-form-control-textarea-min-height);
+    resize: vertical;
+}
+
+.omo-card {
+    --generic-section-radius: var(--radius-md, 12px);
+    --generic-section-shadow: var(--shadow-sm, none);
+    color: inherit;
+}
+
+.generic-accordion--card {
+    --generic-section-padding-block: 14px;
+    --generic-section-padding-inline: 14px;
+    --generic-section-radius: var(--radius-md, 12px);
+    --generic-section-shadow: var(--shadow-sm, none);
+}
+
+.generic-accordion__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+}
+
+.generic-accordion__toggle {
+    flex: 0 0 auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-size: 12px;
+    color: var(--color-text-light, #475569);
+    line-height: 1;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.generic-accordion__content {
+    margin-top: 10px;
+}
+
+.generic-accordion--collapsible.is-collapsed .generic-accordion__content {
+    display: none;
+}
+
+.generic-accordion--collapsible.is-collapsed .generic-accordion__toggle {
+    transform: rotate(-90deg);
+}
+
+.generic-accordion-ui .ui-accordion-header {
+    background: #ddd;
+    border: 2px solid #aaa;
+    padding: 10px;
+    margin-bottom: 0;
+    margin-top: 5px;
+}
+
+.generic-accordion-ui .ui-accordion-content {
+    border: 1px solid #ddd;
+    border-top: 0;
+    padding: 10px;
+    position: relative;
+}
+
+.generic-accordion-ui--settings .ui-accordion-header {
+    margin-top: 10px;
+    padding: 14px 18px;
+    border: 1px solid #dbe4ee;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    color: #0f172a;
+    font-weight: 700;
+}
+
+.generic-accordion-ui--settings .ui-accordion-header.ui-state-active {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.generic-accordion-ui--settings .ui-accordion-content {
+    padding: 18px;
+    border: 1px solid #dbe4ee;
+    border-top: 0;
+    border-radius: 0 0 16px 16px;
+    background: #ffffff;
+}
+
+.generic-accordion-ui--settings button[type='button'] {
+    min-height: 44px;
+    padding: 10px 18px;
+    border: 0;
+    border-radius: 12px;
+    background: #2563eb;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.18);
+}

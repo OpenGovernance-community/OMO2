@@ -25,8 +25,8 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
     data-omo-org-setup="1"
     data-organization-id="<?= (int)($setupData['organizationId'] ?? 0) ?>"
 >
-    <div class="omo-setup-panel__section">
-        <div class="omo-setup-panel__section-title">Choisissez un point de départ</div>
+    <div class="omo-setup-panel__section generic-section">
+        <div class="omo-setup-panel__section-title generic-card-title generic-card-title--small">Choisissez un point de départ</div>
         <div class="omo-setup-card-grid">
             <button
                 type="button"
@@ -38,7 +38,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
                     <span class="omo-setup-card__badge">Structure vide</span>
                 </span>
                 <span class="omo-setup-card__content">
-                    <span class="omo-setup-card__title">Créer à partir de rien</span>
+                    <span class="omo-setup-card__title generic-card-title generic-card-title--big">Créer à partir de rien</span>
                     <span class="omo-setup-card__text">Crée uniquement le holon racine de type organisation, sans cercle ni rôle.</span>
                     <span class="omo-setup-card__cta">Créer l'organisation</span>
                 </span>
@@ -53,7 +53,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
                     <span class="omo-setup-card__badge">Import JSON</span>
                 </span>
                 <span class="omo-setup-card__content">
-                    <span class="omo-setup-card__title">Importer une organisation</span>
+                    <span class="omo-setup-card__title generic-card-title generic-card-title--big">Importer une organisation</span>
                     <span class="omo-setup-card__text">Charge un export JSON et reconstruit la structure, les roles et les proprietes dans cette nouvelle organisation.</span>
                     <span class="omo-setup-card__cta">Selectionner un fichier</span>
                 </span>
@@ -86,7 +86,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
                         <?php endif; ?>
                     </span>
                     <span class="omo-setup-card__content">
-                        <span class="omo-setup-card__title"><?= omoApiEscape($template['name'] ?? 'Modèle') ?></span>
+                        <span class="omo-setup-card__title generic-card-title generic-card-title--big"><?= omoApiEscape($template['name'] ?? 'Modèle') ?></span>
                         <span class="omo-setup-card__text">
                             <?php if (!empty($template['sourceOrganizationName'])): ?>
                                 Inspiré de <?= omoApiEscape($template['sourceOrganizationName']) ?>.
@@ -105,7 +105,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
         <?php endif; ?>
     </div>
 
-    <div class="omo-setup-panel__feedback" data-omo-org-init-feedback="1" hidden></div>
+    <div class="omo-setup-panel__feedback generic-soft-panel" data-omo-org-init-feedback="1" hidden></div>
 </div>
 
 <style>
@@ -123,12 +123,12 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
 }
 
 .omo-setup-panel__hero {
-    padding: 22px;
-    border-radius: 18px;
-    background:
+    --generic-hero-padding: 22px;
+    --generic-hero-radius: 18px;
+    --generic-hero-background:
         radial-gradient(circle at top right, color-mix(in srgb, var(--color-primary, #2563eb) 18%, transparent), transparent 45%),
         linear-gradient(135deg, color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #fff)), var(--color-surface, #fff));
-    border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 16%, var(--color-border, #d1d5db));
+    --generic-hero-border: color-mix(in srgb, var(--color-primary, #2563eb) 16%, var(--color-border, #d1d5db));
 }
 
 .omo-setup-panel__kicker {
@@ -153,18 +153,14 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
 }
 
 .omo-setup-panel__section {
-    background: var(--color-surface, #fff);
-    border: 1px solid var(--color-border, #d1d5db);
-    border-radius: 16px;
-    padding: 18px;
-    box-shadow: var(--shadow-sm, 0 2px 6px rgba(15, 23, 42, 0.05));
+    --generic-section-padding-block: 18px;
+    --generic-section-padding-inline: 18px;
+    --generic-section-border: var(--color-border, #d1d5db);
+    --generic-section-radius: 16px;
+    --generic-section-shadow: var(--shadow-sm, 0 2px 6px rgba(15, 23, 42, 0.05));
 }
 
 .omo-setup-panel__section-title {
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--color-text-light, #6b7280);
     margin-bottom: 12px;
 }
 
@@ -247,11 +243,6 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
     min-height: 164px;
 }
 
-.omo-setup-card__title {
-    font-weight: 600;
-    font-size: 18px;
-}
-
 .omo-setup-card__text {
     color: var(--color-text-light, #6b7280);
     font-size: 14px;
@@ -275,10 +266,6 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
 }
 
 .omo-setup-panel__feedback {
-    padding: 12px 14px;
-    border-radius: 12px;
-    background: var(--color-surface-alt, #f8fafc);
-    border: 1px solid var(--color-border, #d1d5db);
 }
 
 .omo-setup-panel__feedback.is-error {
@@ -324,9 +311,6 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
 }
 
 .omo-org-info-panel__kicker {
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
     opacity: 0.8;
 }
 
@@ -506,7 +490,7 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
 <div class="omo-org-info-panel">
     <div class="omo-org-info-panel__hero" style="<?= $heroStyle ?>">
         <div class="omo-org-info-panel__hero-content">
-            <div class="omo-org-info-panel__kicker">Organisation</div>
+            <div class="omo-org-info-panel__kicker generic-card-title generic-card-title--eyebrow">Organisation</div>
             <h2 class="omo-org-info-panel__title"><?= omoApiEscape($organizationName) ?></h2>
         </div>
     </div>

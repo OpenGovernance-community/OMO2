@@ -16,6 +16,7 @@
 				[['name'], 'required'],								// Champs obligatoires
 				[['id'], 'integer'],								// Nombres entiers
 				[['name','shortname','domain'], 'string'],	// Chaines de caractere
+				[['shortname'], 'unique'],
 				[['logo','banner'], 'sizedimage'],	
 				[['color'],'color'],				// Images
 				[['id'], 'safe'],									// Champs proteges
@@ -39,7 +40,7 @@
 		public static function attributeDescriptions() {
 			return [
 				'name' => 'Nom complet de l\'organisation',
-				'shortname' => 'Nom abrege utilise dans l\'interface',
+				'shortname' => 'Nom abrege utilise dans l\'interface et dans l\'URL de l\'organisation',
 				'domain' => 'Nom de domaine principal de l\'organisation',
 				'logo' => 'Logo de l\'organisation',
 				'banner' => 'Image de banniere de l\'organisation',
@@ -57,10 +58,95 @@
 				'color' => 10,
 			];
 		}
+
+		public static function attributePattern()
+		{
+			return [
+				'shortname' => [
+					'/^[A-Za-z0-9_-]+$/',
+					'use only letters, digits, "-" and "_"'
+				],
+			];
+		}
+
+		protected function normalizeShortname($value)
+		{
+			$value = is_scalar($value) ? trim((string)$value) : '';
+			if ($value === '') {
+				return null;
+			}
+
+			return strtolower($value);
+		}
+
+		protected function validateShortnameValue($value)
+		{
+			$value = is_scalar($value) ? trim((string)$value) : '';
+			if ($value === '') {
+				return array(
+					'status' => true,
+				);
+			}
+
+			if (!preg_match('/^[A-Za-z0-9_-]+$/', $value)) {
+				return array(
+					'status' => false,
+					'text' => 'Le nom court ne peut contenir que des lettres, chiffres, tirets et underscores.',
+				);
+			}
+
+			$params = array(
+				'shortname' => $value,
+			);
+			$query = "SELECT id
+				FROM organization
+				WHERE LOWER(shortname) = :shortname";
+			if ((int)$this->getId() > 0) {
+				$query .= " AND id != :current_id";
+				$params['current_id'] = (int)$this->getId();
+			}
+			$query .= " LIMIT 1";
+
+			$existing = self::fetchRow($query, $params);
+			if ($existing !== false) {
+				return array(
+					'status' => false,
+					'text' => 'Ce nom court est deja utilise par une autre organisation. Choisissez-en un autre.',
+				);
+			}
+
+			return array(
+				'status' => true,
+			);
+		}
+
+		public function set($field, $value)
+		{
+			if ($field === 'shortname') {
+				$value = $this->normalizeShortname($value);
+			}
+
+			parent::set($field, $value);
+		}
 				
 		// Retourne la valeur de base pour le tri
 		public static function getOrder() {
 			return "name";
+		}
+
+		public function save()
+		{
+			$shortnameValidation = $this->validateShortnameValue($this->get('shortname'));
+			if (!is_array($shortnameValidation) || empty($shortnameValidation['status'])) {
+				return is_array($shortnameValidation)
+					? $shortnameValidation
+					: array(
+						'status' => false,
+						'text' => "Le nom court de l'organisation est invalide.",
+					);
+			}
+
+			return parent::save();
 		}
 
 		public function canView()

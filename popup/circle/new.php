@@ -13,7 +13,7 @@
 			$params= array();	
 			$params["filter"] = "IDtypeholon=4 and active=1 and IDuser=1 and templatename is not null";
 		$listeOrga->load($params);
-		echo '<div id="accordion">';
+		echo '<div id="accordion" class="generic-accordion-ui">';
 		echo '<h3>'.T_("Choisissez un modèle").'</h3>';
 		echo '<div>';
 		echo "<H1>".T_("Modèles de base")."</H1>";

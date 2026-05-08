@@ -13,7 +13,7 @@
 			$params= array();	
 			$params["filter"] = "IDtypeholon=4 and active=1 and IDuser=".$_SESSION["currentUser"];
 		$listeOrga->load($params);
-		echo '<div id="accordion">';
+		echo '<div id="accordion" class="generic-accordion-ui">';
 		echo '<h3>'.T_("Charger depuis le serveur").'</h3>';
 		echo '<div>';
 		echo "<H1>".T_("Structures sauvegardées")."</H1>";

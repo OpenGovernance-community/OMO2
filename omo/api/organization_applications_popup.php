@@ -213,24 +213,6 @@ foreach ($allApplications as $application) {
         gap: 10px;
     }
 
-    .omo-app-picker__button {
-        border: 0;
-        border-radius: 10px;
-        padding: 12px 16px;
-        font-weight: 700;
-        cursor: pointer;
-    }
-
-    .omo-app-picker__button--primary {
-        background: var(--color-primary, #4f46e5);
-        color: #ffffff;
-    }
-
-    .omo-app-picker__button--primary:disabled {
-        opacity: 0.6;
-        cursor: wait;
-    }
-
     .omo-app-picker__feedback {
         min-height: 22px;
         color: #b91c1c;
@@ -295,7 +277,7 @@ foreach ($allApplications as $application) {
         <div id="omoApplicationPickerFeedback" class="omo-app-picker__feedback"></div>
 
         <div class="omo-app-picker__actions">
-            <button type="submit" id="omoApplicationPickerSubmit" class="omo-app-picker__button omo-app-picker__button--primary">
+            <button type="submit" id="omoApplicationPickerSubmit" class="omo-app-picker__button generic-action-button generic-action-button--main">
                 Ajouter la sélection
             </button>
         </div>

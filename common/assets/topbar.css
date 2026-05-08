@@ -347,9 +347,11 @@
 .common-topbar-profile-details,
 .common-topbar-profile-actions {
     height: 100%;
-    padding: 16px;
-    border: 1px solid var(--topbar-menu-border, rgba(255,255,255,0.08));
-    background: var(--topbar-menu-item-bg, rgba(255,255,255,0.06));
+    --generic-section-padding-block: 16px;
+    --generic-section-padding-inline: 16px;
+    --generic-section-border: var(--topbar-menu-border, rgba(255,255,255,0.08));
+    --generic-section-background: var(--topbar-menu-item-bg, rgba(255,255,255,0.06));
+    --generic-section-radius: 0px;
 }
 
 .common-topbar-profile-card {

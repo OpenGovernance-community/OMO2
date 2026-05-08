@@ -76,23 +76,14 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
     }
 
     .omo-share-popup__hero {
-        display: grid;
-        gap: 8px;
-        padding: 18px;
-        border: 1px solid var(--color-border, #e5e7eb);
-        border-radius: 18px;
-        background: linear-gradient(
-            135deg,
-            color-mix(in srgb, var(--color-surface, #ffffff) 94%, transparent),
-            color-mix(in srgb, var(--color-surface-alt, #f0f2f5) 88%, transparent)
-        );
+        --generic-hero-gap: 8px;
+        --generic-hero-padding: 18px;
+        --generic-hero-radius: 18px;
     }
 
     .omo-share-popup__hero h2,
     .omo-share-popup__section-title {
         margin: 0;
-        font-size: 22px;
-        line-height: 1.2;
     }
 
     .omo-share-popup__hero p,
@@ -130,13 +121,11 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
     }
 
     .omo-share-popup__card {
-        display: grid;
-        gap: 10px;
-        padding: 16px;
-        border: 1px solid var(--color-border, #e5e7eb);
-        border-radius: 16px;
-        background: var(--color-surface, #ffffff);
-        box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.05));
+        --generic-section-gap: 10px;
+        --generic-section-padding-block: 16px;
+        --generic-section-padding-inline: 16px;
+        --generic-section-radius: 16px;
+        --generic-section-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.05));
     }
 
     .omo-share-popup__card-head {
@@ -147,9 +136,8 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
         flex-wrap: wrap;
     }
 
-    .omo-share-popup__card-title {
+.omo-share-popup__card-title {
         margin: 0;
-        font-size: 16px;
     }
 
     .omo-share-popup__badges {
@@ -189,34 +177,6 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
         justify-content: flex-end;
     }
 
-    .omo-share-popup__button {
-        min-height: 42px;
-        padding: 10px 16px;
-        border: 0;
-        border-radius: 12px;
-        font: inherit;
-        font-weight: 700;
-        cursor: pointer;
-    }
-
-    .omo-share-popup__button--primary {
-        background: var(--color-primary, #2563eb);
-        color: var(--color-text-inverse, #ffffff);
-        box-shadow: var(--shadow-md, 0 12px 24px rgba(0,0,0,0.12));
-    }
-
-    .omo-share-popup__button--secondary {
-        background: var(--color-surface-alt, #f0f2f5);
-        color: var(--color-text, #1f2937);
-        border: 1px solid var(--color-border, #e5e7eb);
-    }
-
-    .omo-share-popup__button--danger {
-        background: color-mix(in srgb, #dc2626 12%, var(--color-surface, #ffffff));
-        color: #dc2626;
-        border: 1px solid color-mix(in srgb, #dc2626 30%, var(--color-border, #e5e7eb));
-    }
-
     .omo-share-popup__form {
         display: grid;
         gap: 16px;
@@ -249,15 +209,10 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
     }
 
     .omo-share-popup__input {
-        width: 100%;
-        min-height: 44px;
-        padding: 10px 12px;
-        border: 1px solid var(--color-border-strong, #cbd5e1);
-        border-radius: 12px;
-        background: var(--color-surface, #ffffff);
-        color: inherit;
-        font: inherit;
-        box-sizing: border-box;
+        --generic-form-control-padding-block: 10px;
+        --generic-form-control-border: var(--color-border-strong, #cbd5e1);
+        --generic-form-control-background: var(--color-surface, #ffffff);
+        --generic-form-control-background-focus: var(--color-surface, #ffffff);
     }
 
     .omo-share-popup__hint {
@@ -267,12 +222,12 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
     }
 
     .omo-share-popup__permissions {
-        display: grid;
-        gap: 12px;
-        padding: 16px;
-        border: 1px solid var(--color-border, #e5e7eb);
-        border-radius: 16px;
-        background: var(--color-surface-alt, #f0f2f5);
+        --generic-soft-panel-border: var(--color-border, #e5e7eb);
+        --generic-soft-panel-background: var(--color-surface-alt, #f0f2f5);
+        --generic-soft-panel-gap: 12px;
+        --generic-soft-panel-padding-block: 16px;
+        --generic-soft-panel-padding-inline: 16px;
+        --generic-soft-panel-radius: 16px;
     }
 
     .omo-share-popup__check {
@@ -293,8 +248,8 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
     }
     </style>
 
-    <div class="omo-share-popup__hero">
-        <h2>Partager ce contexte</h2>
+    <div class="omo-share-popup__hero generic-hero-panel">
+        <h2 class="generic-card-title generic-card-title--large">Partager ce contexte</h2>
         <p>Le lien demarrera sur <strong><?= htmlspecialchars($defaultLabel, ENT_QUOTES, 'UTF-8') ?></strong> et pourra etre transmis a des personnes externes.</p>
     </div>
 
@@ -302,7 +257,7 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
 
     <div class="omo-share-popup__list" id="omoSharePopupListSection"<?= $hasExistingLinks ? '' : ' hidden' ?>>
         <div class="omo-share-popup__section">
-            <h3 class="omo-share-popup__section-title">Liens existants</h3>
+            <h3 class="omo-share-popup__section-title generic-card-title generic-card-title--large">Liens existants</h3>
             <p class="omo-share-popup__section-text">Tu peux copier, modifier, supprimer ou ajouter un nouveau lien de partage pour ce holon.</p>
         </div>
 
@@ -317,7 +272,7 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
                 $expiresAt = $shareLink->get('dateexpiration');
                 ?>
                 <div
-                    class="omo-share-popup__card"
+                    class="omo-share-popup__card generic-section generic-section--stack"
                     data-share-card="1"
                     data-share-id="<?= (int)$shareLink->getId() ?>"
                     data-label="<?= htmlspecialchars($shareLabel, ENT_QUOTES, 'UTF-8') ?>"
@@ -330,7 +285,7 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
                 >
                     <div class="omo-share-popup__card-head">
                         <div>
-                            <h4 class="omo-share-popup__card-title"><?= htmlspecialchars($shareLabel, ENT_QUOTES, 'UTF-8') ?></h4>
+                            <h4 class="omo-share-popup__card-title generic-card-title generic-card-title--medium"><?= htmlspecialchars($shareLabel, ENT_QUOTES, 'UTF-8') ?></h4>
                             <div class="omo-share-popup__meta">
                                 <span>Cree le <?= htmlspecialchars(omoSharePopupFormatDateTime($shareLink->get('datecreation')), ENT_QUOTES, 'UTF-8') ?></span>
                                 <?php if ($expiresAt): ?>
@@ -360,22 +315,22 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
                     </div>
 
                     <div class="omo-share-popup__card-actions">
-                        <button type="button" class="omo-share-popup__button omo-share-popup__button--secondary" data-share-copy="1">Copier</button>
-                        <button type="button" class="omo-share-popup__button omo-share-popup__button--secondary" data-share-edit="1">Editer</button>
-                        <button type="button" class="omo-share-popup__button omo-share-popup__button--danger" data-share-delete="1">Supprimer</button>
+                        <button type="button" class="omo-share-popup__button generic-action-button generic-action-button--secondary" data-share-copy="1">Copier</button>
+                        <button type="button" class="omo-share-popup__button generic-action-button generic-action-button--secondary" data-share-edit="1">Editer</button>
+                        <button type="button" class="omo-share-popup__button generic-action-button generic-action-button--danger" data-share-delete="1">Supprimer</button>
                     </div>
                 </div>
             <?php endforeach; ?>
         </div>
 
         <div class="omo-share-popup__actions">
-            <button type="button" class="omo-share-popup__button omo-share-popup__button--primary" id="omoSharePopupNewButton">Nouveau lien</button>
+            <button type="button" class="omo-share-popup__button generic-action-button generic-action-button--main" id="omoSharePopupNewButton">Nouveau lien</button>
         </div>
     </div>
 
     <div class="omo-share-popup__form-panel" id="omoSharePopupFormSection"<?= $hasExistingLinks ? ' hidden' : '' ?>>
         <div class="omo-share-popup__section">
-            <h3 class="omo-share-popup__section-title" id="omoSharePopupFormTitle"><?= $hasExistingLinks ? 'Nouveau lien de partage' : 'Creer un lien de partage' ?></h3>
+            <h3 class="omo-share-popup__section-title generic-card-title generic-card-title--large" id="omoSharePopupFormTitle"><?= $hasExistingLinks ? 'Nouveau lien de partage' : 'Creer un lien de partage' ?></h3>
             <p class="omo-share-popup__section-text" id="omoSharePopupFormIntro"><?= $hasExistingLinks ? 'Configure un nouveau lien ou modifie un lien existant.' : 'Aucun lien n existe encore pour ce holon. Creons le premier.' ?></p>
         </div>
 
@@ -387,19 +342,19 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
             <div class="omo-share-popup__grid">
                 <div class="omo-share-popup__field">
                     <label class="omo-share-popup__label" for="omoSharePopupLabel">Libelle interne</label>
-                    <input class="omo-share-popup__input" type="text" id="omoSharePopupLabel" name="label" maxlength="150" value="<?= htmlspecialchars($defaultLabel, ENT_QUOTES, 'UTF-8') ?>">
+                    <input class="omo-share-popup__input generic-form-control" type="text" id="omoSharePopupLabel" name="label" maxlength="150" value="<?= htmlspecialchars($defaultLabel, ENT_QUOTES, 'UTF-8') ?>">
                     <div class="omo-share-popup__hint">Ce libelle est interne et servira a retrouver le lien.</div>
                 </div>
 
                 <div class="omo-share-popup__field">
                     <label class="omo-share-popup__label" for="omoSharePopupExpiration">Expiration</label>
-                    <input class="omo-share-popup__input" type="datetime-local" id="omoSharePopupExpiration" name="dateexpiration">
+                    <input class="omo-share-popup__input generic-form-control" type="datetime-local" id="omoSharePopupExpiration" name="dateexpiration">
                     <div class="omo-share-popup__hint">Laisse vide pour un lien sans date de fin.</div>
                 </div>
 
                 <div class="omo-share-popup__field omo-share-popup__field--full">
                     <label class="omo-share-popup__label" for="omoSharePopupPassword">Mot de passe optionnel</label>
-                    <input class="omo-share-popup__input" type="password" id="omoSharePopupPassword" name="password" autocomplete="new-password">
+                    <input class="omo-share-popup__input generic-form-control" type="password" id="omoSharePopupPassword" name="password" autocomplete="new-password">
                     <div class="omo-share-popup__hint" id="omoSharePopupPasswordHint">Si un mot de passe est defini, il sera demande a l ouverture du lien.</div>
                 </div>
 
@@ -412,7 +367,7 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
                 </label>
             </div>
 
-            <div class="omo-share-popup__permissions">
+            <div class="omo-share-popup__permissions generic-soft-panel generic-soft-panel--stack">
                 <label class="omo-share-popup__check">
                     <input type="checkbox" name="allow_structure" id="omoSharePopupAllowStructure" checked>
                     <span>
@@ -440,9 +395,9 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
 
             <div class="omo-share-popup__actions">
                 <?php if ($hasExistingLinks): ?>
-                    <button type="button" class="omo-share-popup__button omo-share-popup__button--secondary" id="omoSharePopupCancelButton">Retour a la liste</button>
+                    <button type="button" class="omo-share-popup__button generic-action-button generic-action-button--secondary" id="omoSharePopupCancelButton">Retour a la liste</button>
                 <?php endif; ?>
-                <button type="submit" class="omo-share-popup__button omo-share-popup__button--primary" id="omoSharePopupSubmit">Creer le lien</button>
+                <button type="submit" class="omo-share-popup__button generic-action-button generic-action-button--main" id="omoSharePopupSubmit">Creer le lien</button>
             </div>
         </form>
     </div>

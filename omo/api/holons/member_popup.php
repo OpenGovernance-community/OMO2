@@ -92,15 +92,10 @@ foreach ($directMembers as $member) {
 
     .omo-holon-member-popup__select,
     .omo-holon-member-popup__email {
-        width: 100%;
-        min-height: 44px;
-        padding: 11px 12px;
-        border: 1px solid var(--topbar-panel-border, #dbe3ef);
-        border-radius: 12px;
-        background: var(--topbar-panel-bg, #ffffff);
-        color: inherit;
-        font: inherit;
-        box-sizing: border-box;
+        --generic-form-control-border: var(--topbar-panel-border, #dbe3ef);
+        --generic-form-control-background: var(--topbar-panel-bg, #ffffff);
+        --generic-form-control-background-focus: var(--topbar-panel-bg, #ffffff);
+        --generic-form-control-color: inherit;
     }
 
     .omo-holon-member-popup__hint {
@@ -133,24 +128,6 @@ foreach ($directMembers as $member) {
         gap: 10px;
     }
 
-    .omo-holon-member-popup__button {
-        border: 0;
-        border-radius: 10px;
-        padding: 12px 16px;
-        font-weight: 700;
-        cursor: pointer;
-    }
-
-    .omo-holon-member-popup__button--primary {
-        background: var(--color-primary, #4f46e5);
-        color: #ffffff;
-    }
-
-    .omo-holon-member-popup__button--primary:disabled {
-        opacity: 0.6;
-        cursor: wait;
-    }
-
     .omo-holon-member-popup__feedback {
         min-height: 22px;
         color: #b91c1c;
@@ -181,7 +158,7 @@ foreach ($directMembers as $member) {
 
     <div class="omo-holon-member-popup__group">
         <label class="omo-holon-member-popup__label" for="omoHolonMemberExistingUser">Membre existant</label>
-        <select id="omoHolonMemberExistingUser" name="user_id" class="omo-holon-member-popup__select">
+        <select id="omoHolonMemberExistingUser" name="user_id" class="omo-holon-member-popup__select generic-form-control">
             <option value="">Choisir dans l'organisation</option>
             <?php foreach ($memberships as $membership): ?>
                 <?php
@@ -211,7 +188,7 @@ foreach ($directMembers as $member) {
             type="email"
             id="omoHolonMemberEmail"
             name="email"
-            class="omo-holon-member-popup__email"
+            class="omo-holon-member-popup__email generic-form-control"
             placeholder="prenom.nom@exemple.ch"
             inputmode="email"
             autocomplete="email"
@@ -224,7 +201,7 @@ foreach ($directMembers as $member) {
     <div id="omoHolonMemberPopupFeedback" class="omo-holon-member-popup__feedback"></div>
 
     <div class="omo-holon-member-popup__actions">
-        <button type="submit" id="omoHolonMemberPopupSubmit" class="omo-holon-member-popup__button omo-holon-member-popup__button--primary">
+        <button type="submit" id="omoHolonMemberPopupSubmit" class="omo-holon-member-popup__button generic-action-button generic-action-button--main">
             Ajouter au holon
         </button>
     </div>
