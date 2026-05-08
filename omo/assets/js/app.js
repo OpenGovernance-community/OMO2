@@ -101,7 +101,7 @@ function omoGetUserProfile() {
     return `
         <div class="omo-profile-panel" data-omo-profile-panel>
             <section class="omo-profile-panel__section omo-profile-panel__section--media">
-                <div class="omo-profile-card">
+                <div class="omo-profile-card generic-section">
                     ${profile.photoUrl
                         ? `<img src="${omoEscapeHtml(profile.photoUrl)}" alt="${omoEscapeHtml(displayName)}" class="omo-profile-card__photo">`
                         : `<div class="omo-profile-card__placeholder" aria-hidden="true">${omoEscapeHtml(initial)}</div>`
@@ -127,7 +127,7 @@ function omoGetUserProfile() {
             </section>
 
             <section class="omo-profile-panel__section omo-profile-panel__section--details">
-                <div class="omo-profile-details">
+                <div class="omo-profile-details generic-section">
                     <div class="omo-profile-details__row">
                         <span class="omo-profile-details__label">Nom</span>
                         <span class="omo-profile-details__value">${omoEscapeHtml(displayName)}</span>
@@ -148,7 +148,7 @@ function omoGetUserProfile() {
             </section>
 
             <section class="omo-profile-panel__section omo-profile-panel__section--actions">
-                <div class="omo-profile-actions">
+                <div class="omo-profile-actions generic-section">
                     <button type="button" class="common-topbar__menu-item omo-profile-actions__button" data-topbar-profile-edit>Modifier le profil</button>
                     <button type="button" class="common-topbar__menu-item common-topbar__menu-item--danger omo-profile-actions__button" data-topbar-logout>Se déconnecter</button>
                 </div>

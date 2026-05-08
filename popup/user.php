@@ -179,19 +179,12 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
     }
 
     .omo-user-context__hero {
-        display: grid;
         grid-template-columns: auto 1fr;
-        gap: 16px;
         align-items: center;
-        padding: 18px;
-        border: 1px solid var(--color-border, #e5e7eb);
-        border-radius: 20px;
-        background: linear-gradient(
-            135deg,
-            color-mix(in srgb, var(--color-surface, #ffffff) 94%, transparent),
-            color-mix(in srgb, var(--color-surface-alt, #f0f2f5) 88%, transparent)
-        );
-        box-shadow: var(--shadow-md, 0 12px 24px rgba(0,0,0,0.12));
+        --generic-hero-gap: 16px;
+        --generic-hero-padding: 18px;
+        --generic-hero-radius: 20px;
+        --generic-hero-shadow: var(--shadow-md, 0 12px 24px rgba(0,0,0,0.12));
     }
 
     .omo-user-context__photo,
@@ -273,20 +266,12 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
 
     .omo-user-context__meta-card,
     .omo-user-context__section {
-        padding: 16px 18px;
-        border: 1px solid var(--color-border, #e5e7eb);
-        border-radius: 18px;
-        background: var(--color-surface, #ffffff);
+        --generic-section-gap: 12px;
     }
 
     .omo-user-context__meta-label,
     .omo-user-context__section-kicker {
         margin-bottom: 6px;
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: var(--color-text-light, #6b7280);
-        font-weight: 700;
     }
 
     .omo-user-context__meta-value {
@@ -301,14 +286,11 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
     }
 
     .omo-user-context__section {
-        display: grid;
-        gap: 12px;
+        --generic-section-gap: 12px;
     }
 
     .omo-user-context__section h3 {
         margin: 0;
-        font-size: 18px;
-        line-height: 1.2;
     }
 
     .omo-user-context__roles {
@@ -320,10 +302,9 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
     }
 
     .omo-user-context__role {
-        padding: 12px 14px;
-        border-radius: 14px;
-        background: var(--color-surface-alt, #f0f2f5);
-        border: 1px solid var(--color-border, #e5e7eb);
+        --generic-soft-panel-border: var(--color-border, #e5e7eb);
+        --generic-soft-panel-background: var(--color-surface-alt, #f0f2f5);
+        --generic-soft-panel-radius: 14px;
     }
 
     .omo-user-context__role-head {
@@ -356,7 +337,7 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
     }
     </style>
 
-    <div class="omo-user-context__hero">
+    <div class="omo-user-context__hero generic-hero-panel">
         <?php if ($photoUrl !== ''): ?>
             <img
                 src="<?= omoApiEscape($photoUrl) ?>"
@@ -368,7 +349,7 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
         <?php endif; ?>
 
         <div class="omo-user-context__identity">
-            <h2><?= omoApiEscape($displayName !== '' ? $displayName : ('Utilisateur ' . $userId)) ?></h2>
+            <h2 class="generic-card-title generic-card-title--large"><?= omoApiEscape($displayName !== '' ? $displayName : ('Utilisateur ' . $userId)) ?></h2>
             <?php if ($secondaryLabel !== ''): ?>
                 <div class="omo-user-context__secondary"><?= omoApiEscape($secondaryLabel) ?></div>
             <?php endif; ?>
@@ -384,26 +365,26 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
     </div>
 
     <div class="omo-user-context__meta">
-        <div class="omo-user-context__meta-card">
-            <div class="omo-user-context__meta-label">E-mail</div>
+        <div class="omo-user-context__meta-card generic-section">
+            <div class="omo-user-context__meta-label generic-card-title generic-card-title--eyebrow">E-mail</div>
             <div class="omo-user-context__meta-value<?= $email === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
                 <?= omoApiEscape($email !== '' ? $email : 'Non renseigné') ?>
             </div>
         </div>
-        <div class="omo-user-context__meta-card">
-            <div class="omo-user-context__meta-label">Identifiant</div>
+        <div class="omo-user-context__meta-card generic-section">
+            <div class="omo-user-context__meta-label generic-card-title generic-card-title--eyebrow">Identifiant</div>
             <div class="omo-user-context__meta-value<?= $username === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
                 <?= omoApiEscape($username !== '' ? $username : 'Non renseigné') ?>
             </div>
         </div>
-        <div class="omo-user-context__meta-card">
-            <div class="omo-user-context__meta-label">Ajout à l'organisation</div>
+        <div class="omo-user-context__meta-card generic-section">
+            <div class="omo-user-context__meta-label generic-card-title generic-card-title--eyebrow">Ajout à l'organisation</div>
             <div class="omo-user-context__meta-value<?= $joinedAtLabel === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
                 <?= omoApiEscape($joinedAtLabel !== '' ? $joinedAtLabel : 'Inconnu') ?>
             </div>
         </div>
-        <div class="omo-user-context__meta-card">
-            <div class="omo-user-context__meta-label">Dernière connexion</div>
+        <div class="omo-user-context__meta-card generic-section">
+            <div class="omo-user-context__meta-label generic-card-title generic-card-title--eyebrow">Dernière connexion</div>
             <div class="omo-user-context__meta-value<?= $lastSeenLabel === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
                 <?= omoApiEscape($lastSeenLabel !== '' ? $lastSeenLabel : 'Jamais') ?>
             </div>
@@ -411,16 +392,16 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
     </div>
 
     <?php if ($showCurrentScope): ?>
-        <section class="omo-user-context__section">
-            <div class="omo-user-context__section-kicker">Contexte courant</div>
-            <h3>Rôles visibles depuis le <?= omoApiEscape($currentScopeTypeLabel) ?> <?= omoApiEscape($currentScopeName) ?></h3>
+        <section class="omo-user-context__section generic-section generic-section--stack">
+            <div class="omo-user-context__section-kicker generic-card-title generic-card-title--eyebrow">Contexte courant</div>
+            <h3 class="generic-card-title generic-card-title--big">Rôles visibles depuis le <?= omoApiEscape($currentScopeTypeLabel) ?> <?= omoApiEscape($currentScopeName) ?></h3>
 
             <?php if (count($currentAssignments) === 0): ?>
                 <div class="omo-user-context__empty">Aucun rôle visible dans ce contexte.</div>
             <?php else: ?>
                 <ul class="omo-user-context__roles">
                     <?php foreach ($currentAssignments as $assignment): ?>
-                        <li class="omo-user-context__role">
+                        <li class="omo-user-context__role generic-soft-panel">
                             <div class="omo-user-context__role-head">
                                 <div>
                                     <div class="omo-user-context__role-name"><?= omoApiEscape($assignment['name'] ?: ('Rôle ' . (int)$assignment['holonId'])) ?></div>
@@ -439,16 +420,16 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
         </section>
     <?php endif; ?>
 
-    <section class="omo-user-context__section">
-        <div class="omo-user-context__section-kicker">Organisation</div>
-        <h3>Rôles dans toute l'organisation</h3>
+    <section class="omo-user-context__section generic-section generic-section--stack">
+        <div class="omo-user-context__section-kicker generic-card-title generic-card-title--eyebrow">Organisation</div>
+        <h3 class="generic-card-title generic-card-title--big">Rôles dans toute l'organisation</h3>
 
         <?php if (count($organizationAssignments) === 0): ?>
             <div class="omo-user-context__empty">Aucun rôle visible dans l'organisation.</div>
         <?php else: ?>
             <ul class="omo-user-context__roles">
                 <?php foreach ($organizationAssignments as $assignment): ?>
-                    <li class="omo-user-context__role">
+                    <li class="omo-user-context__role generic-soft-panel">
                         <div class="omo-user-context__role-head">
                             <div>
                                 <div class="omo-user-context__role-name"><?= omoApiEscape($assignment['name'] ?: ('Rôle ' . (int)$assignment['holonId'])) ?></div>

@@ -108,6 +108,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <title>Vos espaces OMO</title>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
+    <link rel="stylesheet" href="/common/assets/components.css">
     <link rel="stylesheet" href="/omo/assets/css/styles.css">
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
@@ -618,6 +619,7 @@ if (!$isDemoGuest && !commonUserHasOrganizationAccess($currentUserId, (int)$orga
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoTopbarThemeHeadHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
+    <link rel="stylesheet" href="/common/assets/components.css">
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
 <body class="auth-state-page auth-state-page--with-topbar">
@@ -674,6 +676,7 @@ if (!$isDemoGuest && $currentUserId > 0) {
     <title>Gouvernance UI</title>
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
+    <link rel="stylesheet" href="/common/assets/components.css">
     <link rel="stylesheet" href="/omo/assets/css/styles.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">

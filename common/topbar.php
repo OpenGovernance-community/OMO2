@@ -120,6 +120,7 @@ function commonRenderTopbar(array $options = [])
         : strtoupper(substr($profileDisplayName, 0, 1));
 
     if (!$assetsLoaded) {
+        echo '<link rel="stylesheet" href="/common/assets/components.css">' . PHP_EOL;
         echo '<link rel="stylesheet" href="/common/assets/topbar.css">' . PHP_EOL;
         echo '<script src="/common/assets/topbar.js" defer></script>' . PHP_EOL;
         $assetsLoaded = true;
@@ -202,7 +203,7 @@ function commonRenderTopbar(array $options = [])
             <div class="common-topbar__menu common-topbar__menu--right" data-topbar-menu="profile">
                 <div class="common-topbar-profile-panel" data-common-topbar-profile-panel>
                     <section class="common-topbar-profile-panel__section common-topbar-profile-panel__section--media">
-                        <div class="common-topbar-profile-card">
+                        <div class="common-topbar-profile-card generic-section">
                             <?php if (!empty($config['profile']['data']['photoUrl'])): ?>
                                 <img
                                     src="<?= htmlspecialchars((string)$config['profile']['data']['photoUrl']) ?>"
@@ -220,7 +221,7 @@ function commonRenderTopbar(array $options = [])
                     </section>
 
                     <section class="common-topbar-profile-panel__section common-topbar-profile-panel__section--details">
-                        <div class="common-topbar-profile-details">
+                        <div class="common-topbar-profile-details generic-section">
                             <div class="common-topbar-profile-details__row">
                                 <span class="common-topbar-profile-details__label">Nom</span>
                                 <span class="common-topbar-profile-details__value"><?= htmlspecialchars($profileDisplayName) ?></span>
@@ -237,7 +238,7 @@ function commonRenderTopbar(array $options = [])
                     </section>
 
                     <section class="common-topbar-profile-panel__section common-topbar-profile-panel__section--actions">
-                        <div class="common-topbar-profile-actions">
+                        <div class="common-topbar-profile-actions generic-section">
                             <button type="button" class="common-topbar__menu-item common-topbar-profile-actions__button" data-topbar-profile-edit><?= htmlspecialchars($config['profile']['editLabel']) ?></button>
                             <button type="button" class="common-topbar__menu-item common-topbar__menu-item--danger common-topbar-profile-actions__button" data-topbar-logout>Se déconnecter</button>
                         </div>

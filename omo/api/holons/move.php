@@ -47,19 +47,19 @@ if ($organizationId <= 0) {
 
         <label class="omo-holon-move__field">
             <span>Ou ca va</span>
-            <input type="search" id="omo-holon-move-search" placeholder="Rechercher une destination">
+            <input type="search" id="omo-holon-move-search" class="generic-form-control" placeholder="Rechercher une destination">
         </label>
 
         <label class="omo-holon-move__field">
-            <select id="omo-holon-move-destination" class="omo-holon-move__select" size="10" required></select>
+            <select id="omo-holon-move-destination" class="omo-holon-move__select generic-form-control" size="10" required></select>
         </label>
 
         <div id="omo-holon-move-hint" class="omo-holon-move__hint"></div>
         <div id="omo-holon-move-status" class="omo-holon-move__status" hidden></div>
 
         <div class="omo-holon-move__actions">
-            <button type="button" class="omo-holon-move__button omo-holon-move__button--ghost" id="omo-holon-move-cancel">Annuler</button>
-            <button type="submit" class="omo-holon-move__button omo-holon-move__button--primary" id="omo-holon-move-submit">Deplacer</button>
+            <button type="button" class="omo-holon-move__button generic-action-button generic-action-button--secondary" id="omo-holon-move-cancel">Annuler</button>
+            <button type="submit" class="omo-holon-move__button generic-action-button generic-action-button--main" id="omo-holon-move-submit">Deplacer</button>
         </div>
     </form>
 <?php endif; ?>
@@ -330,29 +330,19 @@ elements.cancel.addEventListener('click', closeMoveDrawer);
     gap: 8px;
 }
 
-.omo-holon-move__field input,
 .omo-holon-move__select {
-    display: block;
-    width: 100%;
-    min-height: 44px;
-    padding: 11px 12px;
-    border: 1px solid var(--topbar-panel-border, #dbe3ef);
-    border-radius: 12px;
-    background: var(--topbar-panel-bg, #ffffff);
-    color: inherit;
-    font: inherit;
-    box-sizing: border-box;
-}
-
-.omo-holon-move__select {
+    --generic-form-control-border: var(--topbar-panel-border, #dbe3ef);
+    --generic-form-control-background: var(--topbar-panel-bg, #ffffff);
+    --generic-form-control-background-focus: var(--topbar-panel-bg, #ffffff);
+    --generic-form-control-color: inherit;
     min-height: 240px;
 }
 
-.omo-holon-move__field input:focus,
-.omo-holon-move__select:focus {
-    outline: none;
-    border-color: color-mix(in srgb, var(--color-primary, #4f46e5) 52%, var(--topbar-panel-border, #dbe3ef));
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #4f46e5) 14%, transparent);
+.omo-holon-move__field input {
+    --generic-form-control-border: var(--topbar-panel-border, #dbe3ef);
+    --generic-form-control-background: var(--topbar-panel-bg, #ffffff);
+    --generic-form-control-background-focus: var(--topbar-panel-bg, #ffffff);
+    --generic-form-control-color: inherit;
 }
 
 .omo-holon-move__status {
@@ -375,26 +365,4 @@ elements.cancel.addEventListener('click', closeMoveDrawer);
     gap: 10px;
 }
 
-.omo-holon-move__button {
-    border: 0;
-    border-radius: 10px;
-    padding: 12px 16px;
-    font-weight: 700;
-    cursor: pointer;
-}
-
-.omo-holon-move__button--primary {
-    background: var(--color-primary, #4f46e5);
-    color: #ffffff;
-}
-
-.omo-holon-move__button--ghost {
-    background: var(--topbar-panel-border, #e2e8f0);
-    color: inherit;
-}
-
-.omo-holon-move__button:disabled {
-    opacity: 0.6;
-    cursor: wait;
-}
 </style>

@@ -143,31 +143,14 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
     }
 
     .omo-member-actions__hero {
-        display: grid;
-        gap: 8px;
-        padding: 18px;
-        border: 1px solid var(--color-border, #e5e7eb);
-        border-radius: 20px;
-        background: linear-gradient(
-            135deg,
-            color-mix(in srgb, var(--color-surface, #ffffff) 94%, transparent),
-            color-mix(in srgb, var(--color-surface-alt, #f0f2f5) 88%, transparent)
-        );
-        box-shadow: var(--shadow-md, 0 12px 24px rgba(0,0,0,0.12));
-    }
-
-    .omo-member-actions__eyebrow {
-        font-size: 0.8rem;
-        font-weight: 700;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        color: var(--color-text-light, #6b7280);
+        --generic-hero-gap: 8px;
+        --generic-hero-padding: 18px;
+        --generic-hero-radius: 20px;
+        --generic-hero-shadow: var(--shadow-md, 0 12px 24px rgba(0,0,0,0.12));
     }
 
     .omo-member-actions__hero h2 {
         margin: 0;
-        font-size: 1.35rem;
-        line-height: 1.15;
     }
 
     .omo-member-actions__secondary {
@@ -201,12 +184,10 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
     }
 
     .omo-member-actions__section {
-        display: grid;
-        gap: 10px;
-        padding: 18px;
-        border: 1px solid var(--color-border, #e5e7eb);
-        border-radius: 20px;
-        background: var(--color-surface, #ffffff);
+        --generic-section-gap: 10px;
+        --generic-section-padding-block: 18px;
+        --generic-section-padding-inline: 18px;
+        --generic-section-radius: 20px;
     }
 
     .omo-member-actions__section h3 {
@@ -227,36 +208,10 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
 
     .omo-member-actions__button {
         width: 100%;
-        min-height: 46px;
-        padding: 12px 14px;
-        border: 1px solid var(--color-border, #e5e7eb);
-        border-radius: 14px;
-        background: var(--color-surface-alt, #f0f2f5);
-        color: var(--color-text, #1f2937);
+        justify-content: flex-start;
         text-align: left;
-        cursor: pointer;
         font-size: 0.95rem;
-        font-weight: 600;
-        line-height: 1.35;
-    }
-
-    .omo-member-actions__button:hover {
-        background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #ffffff));
-        border-color: color-mix(in srgb, var(--color-primary, #2563eb) 30%, var(--color-border, #e5e7eb));
-    }
-
-    .omo-member-actions__button--danger {
-        color: #b91c1c;
-    }
-
-    .omo-member-actions__button--danger:hover {
-        background: #fef2f2;
-        border-color: #fecaca;
-    }
-
-    .omo-member-actions__button:disabled {
-        opacity: 0.6;
-        cursor: wait;
+        white-space: normal;
     }
 
     .omo-member-actions__feedback {
@@ -275,9 +230,9 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
     }
     </style>
 
-    <div class="omo-member-actions__hero">
-        <div class="omo-member-actions__eyebrow">Actions contextuelles</div>
-        <h2><?= htmlspecialchars((string)($displayName !== '' ? $displayName : ('Utilisateur ' . $userId))) ?></h2>
+    <div class="omo-member-actions__hero generic-hero-panel">
+        <div class="omo-member-actions__eyebrow generic-card-title generic-card-title--eyebrow">Actions contextuelles</div>
+        <h2 class="generic-card-title generic-card-title--large"><?= htmlspecialchars((string)($displayName !== '' ? $displayName : ('Utilisateur ' . $userId))) ?></h2>
         <?php if ($secondaryLabel !== ''): ?>
             <div class="omo-member-actions__secondary"><?= htmlspecialchars($secondaryLabel) ?></div>
         <?php endif; ?>
@@ -297,8 +252,8 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
         </div>
     </div>
 
-    <div class="omo-member-actions__section">
-        <h3>Gestion du membre</h3>
+    <div class="omo-member-actions__section generic-section generic-section--stack">
+        <h3 class="generic-card-title generic-card-title--medium">Gestion du membre</h3>
         <?php if (!$canManageCurrentHolonMembers): ?>
             <p>Vous n’avez pas les droits pour modifier ce <?= htmlspecialchars($currentHolonTemplateLabel) ?>.</p>
         <?php else: ?>
@@ -306,13 +261,13 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
             <div class="omo-member-actions__actions">
                 <button
                     type="button"
-                    class="omo-member-actions__button omo-member-actions__button--danger"
+                    class="omo-member-actions__button generic-action-button generic-action-button--danger"
                     data-member-popup-action="remove"
                 >Retirer du contexte <?= htmlspecialchars($currentHolonTemplateLabel) ?></button>
                 <?php if (!$isPending): ?>
                     <button
                         type="button"
-                        class="omo-member-actions__button"
+                        class="omo-member-actions__button generic-action-button generic-action-button--secondary"
                         data-member-popup-action="<?= $isContextAdmin ? 'revoke_admin' : 'grant_admin' ?>"
                     ><?= htmlspecialchars($isContextAdmin ? 'Retirer le statut admin du contexte ' : 'Définir comme admin du contexte ') ?><?= htmlspecialchars($currentHolonTemplateLabel) ?></button>
                 <?php endif; ?>

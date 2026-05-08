@@ -632,9 +632,11 @@ html[data-theme] .common-help-card p {
 .omo-profile-details,
 .omo-profile-actions {
     height: 100%;
-    padding: 16px;
-    border: 1px solid var(--topbar-menu-border);
-    background: var(--topbar-menu-item-bg);
+    --generic-section-padding-block: 16px;
+    --generic-section-padding-inline: 16px;
+    --generic-section-border: var(--topbar-menu-border);
+    --generic-section-background: var(--topbar-menu-item-bg);
+    --generic-section-radius: 0px;
 }
 
 .omo-profile-card {
@@ -1027,13 +1029,7 @@ html[data-theme] .common-help-card p {
 }
 
 .omo-card {
-    display: block;
-    padding: 16px 18px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-surface);
     color: inherit;
-    box-shadow: var(--shadow-sm);
 }
 
 a.omo-card,
@@ -1338,7 +1334,7 @@ body.view-right .panel-right {
     .circle-badge--link,
     .circle-badge--action,
     .circle-member--add,
-    .section-toggle,
+    .generic-accordion__toggle,
     .circle-section--navigation {
         display: none !important;
     }
@@ -1388,7 +1384,7 @@ body.view-right .panel-right {
         page-break-inside: avoid;
     }
 
-    .circle-section.collapsed .section-content {
+    .generic-accordion--collapsible.is-collapsed .generic-accordion__content {
         display: block !important;
     }
 

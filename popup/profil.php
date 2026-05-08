@@ -76,14 +76,12 @@ function profilFormatAmountCents($value)
 		gap: 18px;
 	}
 	.profile-panel__section {
-		padding: 18px;
-		border: 1px solid #dbe4ee;
-		border-radius: 18px;
-		background: #ffffff;
+		--generic-section-padding-block: 18px;
+		--generic-section-padding-inline: 18px;
+		--generic-section-border: #dbe4ee;
 	}
 	.profile-panel__section h3 {
 		margin: 0 0 14px;
-		font-size: 20px;
 	}
 	.profile-panel__summary {
 		display: grid;
@@ -98,10 +96,6 @@ function profilFormatAmountCents($value)
 	.profile-panel__item strong {
 		display: block;
 		margin-bottom: 4px;
-		font-size: 12px;
-		text-transform: uppercase;
-		letter-spacing: .04em;
-		color: #475569;
 	}
 	.profile-panel__actions {
 		display: flex;
@@ -230,30 +224,30 @@ function profilFormatAmountCents($value)
 
 <div class="profile-panel" id="profilePanelRoot">
 	<div class="profile-panel__sections">
-		<section class="profile-panel__section">
-			<h3><?= T_("Votre profil actif") ?></h3>
+		<section class="profile-panel__section generic-section">
+			<h3 class="generic-card-title generic-card-title--section"><?= T_("Votre profil actif") ?></h3>
 			<div class="profile-panel__summary">
 				<div class="profile-panel__item">
-					<strong>Contexte</strong>
+					<strong class="generic-card-title generic-card-title--small">Contexte</strong>
 					<?= htmlspecialchars($hasOrganizationScope && $organization ? 'Organisation : ' . (string)$organization->get('name') : 'Profil général') ?>
 				</div>
 				<div class="profile-panel__item">
-					<strong>Photo affichée</strong>
+					<strong class="generic-card-title generic-card-title--small">Photo affichée</strong>
 					<div class="profile-panel__photo"<?= $activePhotoUrl !== '' ? ' style="background-image:url(' . htmlspecialchars($activePhotoUrl, ENT_QUOTES, 'UTF-8') . ')"' : '' ?>></div>
 				</div>
 				<div class="profile-panel__item">
-					<strong>E-mail affiché</strong>
+					<strong class="generic-card-title generic-card-title--small">E-mail affiché</strong>
 					<?= htmlspecialchars($activeEmail !== '' ? $activeEmail : 'Non renseigné') ?>
 				</div>
 				<div class="profile-panel__item">
-					<strong>Identifiant affiché</strong>
+					<strong class="generic-card-title generic-card-title--small">Identifiant affiché</strong>
 					<?= htmlspecialchars($activeUsername !== '' ? $activeUsername : 'Non renseigné') ?>
 				</div>
 			</div>
 		</section>
 
-		<section class="profile-panel__section">
-			<h3><?= T_("Modifier votre profil") ?></h3>
+		<section class="profile-panel__section generic-section">
+			<h3 class="generic-card-title generic-card-title--section"><?= T_("Modifier votre profil") ?></h3>
 
 			<?php if ($hasOrganizationScope): ?>
 			<div class="profile-panel__scope-switch" role="tablist" aria-label="Choix du contexte de profil">
@@ -277,41 +271,41 @@ function profilFormatAmountCents($value)
 			</div>
 		</section>
 
-		<section class="profile-panel__section">
-			<h3>Patreon</h3>
+		<section class="profile-panel__section generic-section">
+			<h3 class="generic-card-title generic-card-title--section">Patreon</h3>
 			<div class="profile-panel__summary">
 				<div class="profile-panel__item">
-					<strong>Connexion</strong>
+					<strong class="generic-card-title generic-card-title--small">Connexion</strong>
 					<?= $patreonConnected ? 'Compte Patreon connecté' : 'Aucun compte Patreon connecté' ?>
 				</div>
 				<?php if ($patreonConnection !== false): ?>
 				<div class="profile-panel__item">
-					<strong>Nom Patreon</strong>
+					<strong class="generic-card-title generic-card-title--small">Nom Patreon</strong>
 					<?= htmlspecialchars((string)($patreonConnection->get('full_name') ?: 'Non renseigné')) ?>
 				</div>
 				<div class="profile-panel__item">
-					<strong>Statut d’abonnement</strong>
+					<strong class="generic-card-title generic-card-title--small">Statut d’abonnement</strong>
 					<?= htmlspecialchars((string)($patreonConnection->get('patron_status') ?: 'Non renseigné')) ?>
 				</div>
 				<div class="profile-panel__item">
-					<strong>Dernier paiement</strong>
+					<strong class="generic-card-title generic-card-title--small">Dernier paiement</strong>
 					<?= htmlspecialchars((string)($patreonConnection->get('last_charge_status') ?: 'Non renseigné')) ?>
 				</div>
 				<div class="profile-panel__item">
-					<strong>Paliers actifs</strong>
+					<strong class="generic-card-title generic-card-title--small">Paliers actifs</strong>
 					<?= nl2br(htmlspecialchars(trim((string)$patreonConnection->get('tier_titles')) !== '' ? (string)$patreonConnection->get('tier_titles') : 'Aucun')) ?>
 				</div>
 				<div class="profile-panel__item">
-					<strong>Montant actif</strong>
+					<strong class="generic-card-title generic-card-title--small">Montant actif</strong>
 					<?= htmlspecialchars(profilFormatAmountCents((int)$patreonConnection->get('currently_entitled_amount_cents'))) ?>
 				</div>
 				<div class="profile-panel__item">
-					<strong>Dernière synchronisation</strong>
+					<strong class="generic-card-title generic-card-title--small">Dernière synchronisation</strong>
 					<?= htmlspecialchars(profilFormatDateTime($patreonConnection->get('last_sync_at'))) ?>
 				</div>
 				<?php if (trim((string)$patreonConnection->get('last_sync_error')) !== ''): ?>
 				<div class="profile-panel__item">
-					<strong>Dernière erreur</strong>
+					<strong class="generic-card-title generic-card-title--small">Dernière erreur</strong>
 					<?= nl2br(htmlspecialchars((string)$patreonConnection->get('last_sync_error'))) ?>
 				</div>
 				<?php endif; ?>

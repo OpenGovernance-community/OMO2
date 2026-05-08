@@ -3,39 +3,66 @@ require_once __DIR__ . '/../bootstrap.php';
 
 $currentUserId = commonGetCurrentUserId();
 $currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
+$organization = null;
+$canEditOrganization = false;
+$organizationName = '';
+
+if ($currentOrganizationId > 0) {
+    $organization = new \dbObject\Organization();
+    if ($organization->load($currentOrganizationId)) {
+        $canEditOrganization = $organization->canEdit();
+        $organizationName = trim((string)$organization->get('name'));
+    }
+}
+
+if ($organizationName === '') {
+    $organizationName = 'cette organisation';
+}
 ?>
 <div class="omo-settings omo-panel-view">
     <div class="omo-settings__header omo-panel-view__header">
         <div class="omo-panel-view__header-copy">
-            <h2 class="omo-panel-view__title">Paramètres</h2>
-            <p class="omo-panel-view__description">Retrouvez ici vos réglages personnels ainsi que les écrans de configuration disponibles pour l’organisation.</p>
+            <h2 class="omo-panel-view__title">Parametres</h2>
+            <p class="omo-panel-view__description">Retrouvez ici vos reglages personnels ainsi que les ecrans de configuration disponibles pour l'organisation.</p>
         </div>
     </div>
     <div class="omo-panel-view__body">
         <div class='omo-panel-view__body_content'>
         <?php if ($currentUserId <= 0): ?>
         <div class="omo-settings__empty omo-empty-state">
-            Connectez-vous pour accéder à vos paramètres utilisateur.
+            Connectez-vous pour acceder a vos parametres utilisateur.
         </div>
         <?php else: ?>
         <div class="omo-settings__grid omo-card-grid omo-card-grid--fluid">
-            
+
             <button type="button" class="omo-settings__card omo-card omo-card--interactive" data-topbar-profile-edit>
                 <strong>Profil</strong>
-                <span>Ouvrir l’édition de votre profil.</span>
+                <span>Ouvrir l'edition de votre profil.</span>
+            </button>
+
+            <button
+                type="button"
+                class="omo-settings__card omo-card omo-card--interactive"
+                data-omo-settings-modal-title="Organisation"
+                data-omo-settings-modal-url="/popup/organization_create.php?oid=<?= (int)$currentOrganizationId ?>"
+                data-omo-settings-modal-mode="iframe"
+                <?= $canEditOrganization ? '' : 'disabled' ?>
+            >
+                <strong>Organisation</strong>
+                <span><?= htmlspecialchars($canEditOrganization ? "Modifier le nom, le nom court, les illustrations et la couleur de " . $organizationName . "." : "Vous devez etre admin de l'organisation pour modifier ces parametres.", ENT_QUOTES, 'UTF-8') ?></span>
             </button>
 
             <button
                 type="button"
                 class="omo-settings__card omo-card omo-card--interactive noMobile"
-                data-omo-settings-drawer-title="Modèles de holons"
+                data-omo-settings-drawer-title="Modeles de holons"
                 data-omo-settings-drawer-url="/omo/api/parameters/holon-templates/index.php"
                 data-omo-settings-drawer-mode="fetch"
                 data-omo-settings-contextual="1"
                 <?= $currentOrganizationId > 0 ? '' : 'disabled' ?>
             >
-                <strong>Modèles de holons</strong>
-                <span>Configurer les types de nœuds et leurs propriétés pour votre organisation.</span>
+                <strong>Modeles de holons</strong>
+                <span>Configurer les types de noeuds et leurs proprietes pour votre organisation.</span>
             </button>
         </div>
         <?php endif; ?>
@@ -87,9 +114,38 @@ document.querySelectorAll('[data-omo-settings-drawer-url]').forEach(function (bu
         }
 
         window.commonTopbarOpenDrawer(
-            button.getAttribute('data-omo-settings-drawer-title') || 'Paramètres',
+            button.getAttribute('data-omo-settings-drawer-title') || 'Parametres',
             drawerUrl,
             button.getAttribute('data-omo-settings-drawer-mode') || 'iframe'
+        );
+    });
+});
+
+document.querySelectorAll('[data-omo-settings-modal-url]').forEach(function (button) {
+    if (button.dataset.omoSettingsModalReady === '1') {
+        return;
+    }
+
+    button.dataset.omoSettingsModalReady = '1';
+    button.addEventListener('click', function () {
+        if (button.disabled) {
+            return;
+        }
+
+        var modalUrl = button.getAttribute('data-omo-settings-modal-url');
+        if (!modalUrl) {
+            return;
+        }
+
+        if (typeof window.commonTopbarOpenModal !== 'function') {
+            window.location.href = modalUrl;
+            return;
+        }
+
+        window.commonTopbarOpenModal(
+            button.getAttribute('data-omo-settings-modal-title') || 'Parametres',
+            modalUrl,
+            button.getAttribute('data-omo-settings-modal-mode') || 'iframe'
         );
     });
 });

@@ -1,3 +1,5 @@
+	@import url('/common/assets/components.css');
+
 	:root {
     --black-bg-color: #000000;
     --dark-bg-color: #114543;
@@ -71,10 +73,6 @@
 	  .interface-top:has(> input#id:valid) {padding-left: 30px; background-image:url(/img/diskette.png); background-size:20px 20px; background-position: 5px 5px; background-repeat:no-repeat}
 	  .interface-top:has(> input#id:valid):has(> input#saved:valid) {background-image:url(/img/diskette_warning.png);}
 	  input#id, input#saved {display:none}
-
-
-	.ui-accordion-header {background:#DDD; border:2px solid #AAA; padding:10px; margin-bottom:0px; margin-top:5px;}
-	.ui-accordion-content {border: 1px solid #DDD; border-top:0px;padding:10px;position:relative;}
 
 	div.vertical {
 	   

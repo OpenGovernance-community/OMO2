@@ -12,15 +12,15 @@ if (
 ) {
     http_response_code(403);
     ?>
-    <div class="omo-import-popup__feedback omo-import-popup__feedback--error">Acces refuse.</div>
+    <div class="omo-import-popup__feedback omo-import-popup__feedback--error generic-soft-panel">Acces refuse.</div>
     <?php
     exit;
 }
 ?>
 <div class="omo-import-popup" data-omo-org-import-popup="1" data-organization-id="<?= (int)$organizationId ?>">
-    <div class="omo-import-popup__hero">
-        <div class="omo-import-popup__kicker">Import JSON</div>
-        <h3 class="omo-import-popup__title">Importer une organisation</h3>
+    <div class="omo-import-popup__hero generic-hero-panel generic-hero-panel--accent">
+        <div class="omo-import-popup__kicker generic-card-title generic-card-title--eyebrow">Import JSON</div>
+        <h3 class="omo-import-popup__title generic-card-title generic-card-title--large">Importer une organisation</h3>
         <p class="omo-import-popup__text">Selectionnez un fichier JSON exporte depuis le menu structure. L'import reconstruit les holons, roles, proprietes et les references internes du sous-arbre.</p>
     </div>
 
@@ -32,7 +32,7 @@ if (
             <input
                 type="file"
                 name="structure_file"
-                class="omo-import-popup__input"
+                class="omo-import-popup__input generic-form-control"
                 accept=".json,application/json"
                 required
             >
@@ -43,12 +43,12 @@ if (
         </div>
 
         <div class="omo-import-popup__actions">
-            <button type="button" class="omo-import-popup__button omo-import-popup__button--ghost" data-omo-org-import-cancel="1">Annuler</button>
-            <button type="submit" class="omo-import-popup__button omo-import-popup__button--primary">Importer</button>
+            <button type="button" class="omo-import-popup__button generic-action-button generic-action-button--secondary" data-omo-org-import-cancel="1">Annuler</button>
+            <button type="submit" class="omo-import-popup__button generic-action-button generic-action-button--main">Importer</button>
         </div>
     </form>
 
-    <div class="omo-import-popup__feedback" data-omo-org-import-feedback="1" hidden></div>
+    <div class="omo-import-popup__feedback generic-soft-panel" data-omo-org-import-feedback="1" hidden></div>
 </div>
 
 <style>
@@ -60,24 +60,12 @@ if (
 }
 
 .omo-import-popup__hero {
-    padding: 18px;
-    border-radius: 16px;
-    background:
-        radial-gradient(circle at top right, color-mix(in srgb, var(--color-primary, #2563eb) 16%, transparent), transparent 48%),
-        linear-gradient(135deg, color-mix(in srgb, var(--color-primary, #2563eb) 8%, var(--color-surface, #fff)), var(--color-surface, #fff));
-    border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 16%, var(--color-border, #d1d5db));
-}
-
-.omo-import-popup__kicker {
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--color-text-light, #6b7280);
+    --generic-hero-padding: 18px;
+    --generic-hero-radius: 16px;
 }
 
 .omo-import-popup__title {
-    margin: 8px 0 0;
-    font-size: 22px;
+    margin: 0;
 }
 
 .omo-import-popup__text {
@@ -107,11 +95,11 @@ if (
 }
 
 .omo-import-popup__input {
-    padding: 10px 12px;
-    border-radius: 12px;
-    border: 1px solid var(--color-border, #d1d5db);
-    background: var(--color-surface-alt, #f8fafc);
-    color: inherit;
+    --generic-form-control-padding-block: 10px;
+    --generic-form-control-border: var(--color-border, #d1d5db);
+    --generic-form-control-background: var(--color-surface-alt, #f8fafc);
+    --generic-form-control-background-focus: var(--color-surface, #ffffff);
+    --generic-form-control-color: inherit;
 }
 
 .omo-import-popup__hint {
@@ -126,32 +114,7 @@ if (
     gap: 10px;
 }
 
-.omo-import-popup__button {
-    min-height: 42px;
-    padding: 10px 16px;
-    border-radius: 12px;
-    border: 1px solid transparent;
-    font: inherit;
-    cursor: pointer;
-}
-
-.omo-import-popup__button--ghost {
-    background: var(--color-surface-alt, #f3f4f6);
-    border-color: var(--color-border, #d1d5db);
-    color: var(--color-text, #1f2937);
-}
-
-.omo-import-popup__button--primary {
-    background: var(--color-primary, #2563eb);
-    color: #fff;
-    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.18);
-}
-
 .omo-import-popup__feedback {
-    padding: 12px 14px;
-    border-radius: 12px;
-    background: var(--color-surface-alt, #f8fafc);
-    border: 1px solid var(--color-border, #d1d5db);
     color: var(--color-text-light, #6b7280);
 }
 

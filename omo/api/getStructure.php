@@ -159,6 +159,83 @@ $canExportStructure = !$isShareMode && (int)commonGetCurrentUserId() > 0 && comm
   background: var(--color-surface-alt, #f3f4f6);
 }
 
+.structure-browser-warning {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 11;
+  max-width: min(420px, calc(100% - 32px));
+  padding: 12px 14px;
+  border: 1px solid #f5c2c7;
+  border-radius: 14px;
+  background: #fff3cd;
+  color: #7c2d12;
+  box-shadow: var(--shadow-sm, 0 8px 18px rgba(0,0,0,0.08));
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.structure-browser-warning.is-collapsed {
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.structure-browser-warning[hidden] {
+  display: none;
+}
+
+.structure-browser-warning:not([hidden]) ~ .chart-toggle {
+  display: none;
+}
+
+.structure-browser-warning__content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.structure-browser-warning.is-collapsed .structure-browser-warning__content {
+  display: none;
+}
+
+.structure-browser-warning__message {
+  flex: 1 1 auto;
+}
+
+.structure-browser-warning__dismiss,
+.structure-browser-warning__restore {
+  border: 1px solid rgba(124, 45, 18, 0.18);
+  background: rgba(255, 255, 255, 0.72);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.structure-browser-warning__dismiss {
+  flex: 0 0 auto;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+}
+
+.structure-browser-warning__restore {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  box-shadow: var(--shadow-sm, 0 8px 18px rgba(0,0,0,0.08));
+}
+
+.structure-browser-warning.is-collapsed .structure-browser-warning__restore {
+  display: inline-flex;
+}
+
 .switch {
   display: inline-block;
   width: 52px;
@@ -455,6 +532,13 @@ input:checked + .slider::before {
     <div id="contentright" class="contentright">
         <div id="chart"></div>
         <div id="role_list" class="filter_zone"></div>
+        <div id="omoStructureCanvasWarning" class="structure-browser-warning" hidden>
+            <div class="structure-browser-warning__content">
+                <div id="omoStructureCanvasWarningMessage" class="structure-browser-warning__message"></div>
+                <button type="button" id="omoStructureCanvasWarningDismiss" class="structure-browser-warning__dismiss" aria-label="Reduire ce message">x</button>
+            </div>
+            <button type="button" id="omoStructureCanvasWarningRestore" class="structure-browser-warning__restore">Info navigateur</button>
+        </div>
         <div class="structure-actions" id="omoStructureActions">
             <button type="button" class="structure-actions__toggle" id="omoStructureActionsToggle" aria-label="Actions">...</button>
             <div class="structure-actions__panel" id="omoStructureActionsPanel">
@@ -1221,6 +1305,18 @@ $(document).on("keydown", function (event) {
   }
 });
 
+$(document).on("click", "#omoStructureCanvasWarningDismiss", function (event) {
+  event.preventDefault();
+  event.stopPropagation();
+  collapseStructureCanvasWarning();
+});
+
+$(document).on("click", "#omoStructureCanvasWarningRestore", function (event) {
+  event.preventDefault();
+  event.stopPropagation();
+  expandStructureCanvasWarning();
+});
+
 if (typeof window !== "undefined") {
   window.addEventListener("beforeprint", prepareStructureForPrint);
   window.addEventListener("afterprint", restoreStructureAfterPrint);
@@ -1305,6 +1401,22 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
     let isDragging = false, wasDragging = false;
     let colorCircle;
     let structureReloadPromise = null;
+    let structureCanvasPickingIssue = null;
+    let structureCanvasWarningMessage = "";
+    let structureCanvasWarningCollapsed = false;
+    const structureBrowserInfo = {
+      name: "ce navigateur",
+      isBrave: false
+    };
+
+    detectStructureBrowser().then(function (browserInfo) {
+      structureBrowserInfo.name = browserInfo && browserInfo.name ? browserInfo.name : structureBrowserInfo.name;
+      structureBrowserInfo.isBrave = !!(browserInfo && browserInfo.isBrave);
+
+      if (structureCanvasPickingIssue) {
+        showStructureCanvasWarning(buildStructureCanvasWarningMessage(structureCanvasPickingIssue));
+      }
+    });
 
     function getCurrentRoute() {
       if (typeof parseUrl === "function") {
@@ -1336,6 +1448,206 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
       const actions = document.getElementById("omoStructureActions");
       if (actions) {
         actions.classList.remove("is-open");
+      }
+    }
+
+    function detectStructureBrowser() {
+      if (typeof navigator === "undefined") {
+        return Promise.resolve({
+          name: "ce navigateur",
+          isBrave: false
+        });
+      }
+
+      const userAgent = String(navigator.userAgent || "");
+      const browserInfo = {
+        name: "ce navigateur",
+        isBrave: false
+      };
+
+      if (/Firefox/i.test(userAgent)) {
+        browserInfo.name = "Firefox";
+      } else if (/Edg\//i.test(userAgent)) {
+        browserInfo.name = "Microsoft Edge";
+      } else if (/Chrome\//i.test(userAgent)) {
+        browserInfo.name = "Chrome";
+      } else if (/Safari\//i.test(userAgent) && !/Chrome\//i.test(userAgent)) {
+        browserInfo.name = "Safari";
+      }
+
+      if (!navigator.brave || typeof navigator.brave.isBrave !== "function") {
+        return Promise.resolve(browserInfo);
+      }
+
+      return navigator.brave.isBrave()
+        .then(function (isBrave) {
+          if (isBrave) {
+            browserInfo.name = "Brave";
+            browserInfo.isBrave = true;
+          }
+
+          return browserInfo;
+        })
+        .catch(function () {
+          return browserInfo;
+        });
+    }
+
+    function setStructureListMode(enabled, syncToggle) {
+      const contentRight = document.getElementById("contentright");
+      const toggle = document.getElementById("toggleSwitch");
+
+      if (contentRight) {
+        contentRight.classList.toggle("list-mode", !!enabled);
+      }
+
+      if (syncToggle && toggle) {
+        toggle.checked = !!enabled;
+      }
+    }
+
+    function renderStructureCanvasWarning() {
+      const warningElement = document.getElementById("omoStructureCanvasWarning");
+      const messageElement = document.getElementById("omoStructureCanvasWarningMessage");
+      const dismissButton = document.getElementById("omoStructureCanvasWarningDismiss");
+      const restoreButton = document.getElementById("omoStructureCanvasWarningRestore");
+
+      if (!warningElement || !messageElement || !dismissButton || !restoreButton) {
+        return;
+      }
+
+      const hasMessage = structureCanvasWarningMessage !== "";
+      warningElement.hidden = !hasMessage;
+
+      if (!hasMessage) {
+        warningElement.classList.remove("is-collapsed");
+        messageElement.textContent = "";
+        dismissButton.hidden = true;
+        restoreButton.hidden = true;
+        return;
+      }
+
+      warningElement.classList.toggle("is-collapsed", structureCanvasWarningCollapsed);
+      messageElement.textContent = structureCanvasWarningMessage;
+      dismissButton.hidden = structureCanvasWarningCollapsed;
+      restoreButton.hidden = !structureCanvasWarningCollapsed;
+    }
+
+    function showStructureCanvasWarning(message) {
+      structureCanvasWarningMessage = String(message || "");
+      renderStructureCanvasWarning();
+    }
+
+    function hideStructureCanvasWarning() {
+      structureCanvasWarningMessage = "";
+      structureCanvasWarningCollapsed = false;
+      renderStructureCanvasWarning();
+    }
+
+    function collapseStructureCanvasWarning() {
+      if (structureCanvasWarningMessage === "") {
+        return;
+      }
+
+      structureCanvasWarningCollapsed = true;
+      renderStructureCanvasWarning();
+    }
+
+    function expandStructureCanvasWarning() {
+      if (structureCanvasWarningMessage === "") {
+        return;
+      }
+
+      structureCanvasWarningCollapsed = false;
+      renderStructureCanvasWarning();
+    }
+
+    function buildStructureCanvasWarningMessage(issue) {
+      const browserName = structureBrowserInfo && structureBrowserInfo.name
+        ? structureBrowserInfo.name
+        : "ce navigateur";
+
+      if (structureBrowserInfo && structureBrowserInfo.isBrave) {
+        return "Brave semble bloquer la lecture du canvas utilisee pour la navigation graphique, probablement a cause du bouclier anti-empreinte numerique. La vue liste a ete activee pour continuer a naviguer. Vous pouvez aussi assouplir le bouclier pour ce site.";
+      }
+
+      if (issue && issue.reason === "pixel-mismatch") {
+        return browserName + " bloque ou altere la lecture du canvas utilisee pour la navigation graphique. La vue liste a ete activee pour continuer a naviguer.";
+      }
+
+      return "La lecture du canvas utilisee pour la navigation graphique n'est pas disponible dans " + browserName + ". La vue liste a ete activee pour continuer a naviguer.";
+    }
+
+    function applyStructureCanvasPickingIssue(issue) {
+      const chartCanvas = document.getElementById("canvas");
+
+      if (!issue) {
+        structureCanvasPickingIssue = null;
+        hideStructureCanvasWarning();
+
+        if (chartCanvas) {
+          chartCanvas.style.pointerEvents = "auto";
+        }
+
+        return;
+      }
+
+      structureCanvasPickingIssue = issue;
+      showStructureCanvasWarning(buildStructureCanvasWarningMessage(issue));
+
+      if (chartCanvas) {
+        chartCanvas.style.pointerEvents = "none";
+      }
+
+      setStructureListMode(true, true);
+    }
+
+    function probeStructureCanvasPicking() {
+      if (!hiddenContext || typeof hiddenContext.getImageData !== "function") {
+        return {
+          ok: false,
+          reason: "missing-context"
+        };
+      }
+
+      try {
+        hiddenContext.save();
+        hiddenContext.clearRect(0, 0, 2, 2);
+        hiddenContext.fillStyle = "rgba(17, 34, 51, 1)";
+        hiddenContext.fillRect(0, 0, 1, 1);
+
+        const pixel = hiddenContext.getImageData(0, 0, 1, 1).data;
+        hiddenContext.clearRect(0, 0, 2, 2);
+        hiddenContext.restore();
+
+        if (!pixel || pixel.length < 4) {
+          return {
+            ok: false,
+            reason: "empty-pixel"
+          };
+        }
+
+        if (pixel[0] !== 17 || pixel[1] !== 34 || pixel[2] !== 51 || pixel[3] === 0) {
+          return {
+            ok: false,
+            reason: "pixel-mismatch"
+          };
+        }
+
+        return {
+          ok: true
+        };
+      } catch (error) {
+        try {
+          hiddenContext.restore();
+        } catch (restoreError) {
+        }
+
+        return {
+          ok: false,
+          reason: "exception",
+          error: error
+        };
       }
     }
 
@@ -1542,6 +1854,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
       const chart = document.getElementById("chart");
       const roleList = document.getElementById("role_list");
 
+      hideStructureCanvasWarning();
       chart.innerHTML = `
         <div style="display:flex;align-items:center;justify-content:center;height:100%;padding:24px;text-align:center;color:var(--color-text, #1f2937);">
           ${escapeHtml(message)}
@@ -2017,6 +2330,10 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
     }
 
 function getNodeFromEvent(event) {
+  if (structureCanvasPickingIssue) {
+    return null;
+  }
+
   const rect = canvas.node().getBoundingClientRect();
 
   const scaleX = chartwidth / rect.width;
@@ -2028,7 +2345,18 @@ function getNodeFromEvent(event) {
   mouseX = Math.max(0, Math.min(chartwidth - 1, mouseX));
   mouseY = Math.max(0, Math.min(chartheight - 1, mouseY));
 
-  const col = hiddenContext.getImageData(mouseX, mouseY, 1, 1).data;
+  let col;
+
+  try {
+    col = hiddenContext.getImageData(mouseX, mouseY, 1, 1).data;
+  } catch (error) {
+    applyStructureCanvasPickingIssue({
+      reason: "exception",
+      error: error
+    });
+    return null;
+  }
+
   const colString = "rgb(" + col[0] + "," + col[1] + "," + col[2] + ")";
   return colToCircle[colString] || null;
 }
@@ -2236,6 +2564,12 @@ function getChartColors() {
 
       renderRoleList();
       buildCanvas();
+      applyStructureCanvasPickingIssue(null);
+
+      const canvasPickingProbe = probeStructureCanvasPicking();
+      if (!canvasPickingProbe.ok) {
+        applyStructureCanvasPickingIssue(canvasPickingProbe);
+      }
 
  
         colorCircle = d3.scale.ordinal()
