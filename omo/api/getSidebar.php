@@ -10,9 +10,7 @@ if ($currentOrganizationId > 0) {
     $applications->loadEnabledForOrganization($currentOrganizationId, $currentUserId);
 }
 
-$escape = static function ($value) {
-    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
-};
+$escape = 'omoApiEscape';
 
 $renderMenuItem = static function (array $item) use ($escape) {
     $attributes = [
@@ -50,6 +48,15 @@ $renderMenuItem = static function (array $item) use ($escape) {
 ?>
 
 <div class="menu-primary">
+
+<div class="menu-item active" data-hash="" data-navigation-mode="panel">
+
+    <span class="icon">
+        <img src="images/tools/connection.png" class="icon-img">
+    </span>
+    <span class="label">Structure</span>
+</div>
+
 <?php foreach ($applications as $application): ?>
     <?php
     $renderMenuItem([
@@ -67,10 +74,10 @@ $renderMenuItem = static function (array $item) use ($escape) {
     <div
         class="menu-item menu-item--add"
         data-omo-open-app-picker="1"
-        title="Ajouter des applications"
+        title="Gerer les applications"
     >
-        <span class="icon icon-text">+</span>
-        <span class="label">Ajouter</span>
+        <span class="icon"><img src="images/tools/plus.png" class="icon-img" style='width:20px;height:20px; margin:2px'></span>
+        <span class="label">Gerer</span>
     </div>
 <?php endif; ?>
 </div>

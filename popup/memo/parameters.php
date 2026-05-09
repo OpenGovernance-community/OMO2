@@ -21,38 +21,6 @@
 		font-family:Arial, Helvetica, sans-serif;
 		color:#0f172a;
 	}
-	.settings-accordion .ui-accordion-header {
-		margin-top:10px;
-		padding:14px 18px;
-		border:1px solid #dbe4ee;
-		border-radius:16px;
-		background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-		color:#0f172a;
-		font-weight:700;
-	}
-	.settings-accordion .ui-accordion-header.ui-state-active {
-		border-bottom-left-radius:0;
-		border-bottom-right-radius:0;
-	}
-	.settings-accordion .ui-accordion-content {
-		padding:18px;
-		border:1px solid #dbe4ee;
-		border-top:0;
-		border-radius:0 0 16px 16px;
-		background:#ffffff;
-		position:relative;
-	}
-	.settings-accordion button[type='button'] {
-		min-height:44px;
-		padding:10px 18px;
-		border:0;
-		border-radius:12px;
-		background:#2563eb;
-		color:#fff;
-		font-weight:700;
-		cursor:pointer;
-		box-shadow:0 12px 24px rgba(37,99,235,.18);
-	}
 	.settings-summary {
 		display:grid;
 		gap:10px;
@@ -72,7 +40,7 @@
 		color:#475569;
 	}
 </style>
-<div id="accordion" class="settings-accordion">
+<div id="accordion" class="generic-accordion-ui generic-accordion-ui--settings">
   <h3><?=T_("Vos paramètres")?></h3>
   <div>
 <?	

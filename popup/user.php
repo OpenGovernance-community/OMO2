@@ -1,0 +1,449 @@
+<?php
+require_once dirname(__DIR__) . '/omo/api/bootstrap.php';
+
+use dbObject\Holon;
+use dbObject\Organization;
+use dbObject\User;
+
+function omoUserContextFormatDate($value)
+{
+    if (!$value instanceof DateTimeInterface) {
+        return '';
+    }
+
+    if (class_exists('IntlDateFormatter')) {
+        $formatter = new IntlDateFormatter('fr_CH', IntlDateFormatter::MEDIUM, IntlDateFormatter::NONE);
+        $formatted = $formatter->format($value);
+        if (is_string($formatted) && $formatted !== '') {
+            return $formatted;
+        }
+    }
+
+    return $value->format('d.m.Y');
+}
+
+function omoUserContextHolonTypeLabel(Holon $holon)
+{
+    switch ((int)$holon->get('IDtypeholon')) {
+        case 4:
+            return 'organisation';
+        case 3:
+            return 'groupe';
+        case 2:
+            return 'cercle';
+        case 1:
+            return 'rôle';
+        default:
+            return 'contexte';
+    }
+}
+
+$organizationId = (int)($_GET['oid'] ?? ($_SESSION['currentOrganization'] ?? 0));
+$userId = (int)($_GET['id'] ?? 0);
+$currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
+
+if ($organizationId <= 0 || $userId <= 0) {
+    http_response_code(400);
+    ?>
+    <div class="omo-user-context omo-user-context--error">Contexte utilisateur invalide.</div>
+    <?php
+    exit;
+}
+
+$organization = new Organization();
+if (!$organization->load($organizationId)) {
+    http_response_code(404);
+    ?>
+    <div class="omo-user-context omo-user-context--error">Organisation introuvable.</div>
+    <?php
+    exit;
+}
+
+if (!$organization->canViewDetail()) {
+    http_response_code(403);
+    ?>
+    <div class="omo-user-context omo-user-context--error">Acces refuse a cette organisation.</div>
+    <?php
+    exit;
+}
+
+$rootHolon = $organization->getStructuralRootHolon();
+if ($rootHolon === null) {
+    http_response_code(404);
+    ?>
+    <div class="omo-user-context omo-user-context--error">Aucun contexte organisationnel n'est disponible.</div>
+    <?php
+    exit;
+}
+
+$currentHolon = $rootHolon;
+if ($currentHolonId > 0 && (int)$rootHolon->getId() !== $currentHolonId) {
+    $candidate = new Holon();
+    if (!$candidate->load($currentHolonId) || !$candidate->isDescendantOf($rootHolon->getId())) {
+        http_response_code(404);
+        ?>
+        <div class="omo-user-context omo-user-context--error">Contexte introuvable pour cette organisation.</div>
+        <?php
+        exit;
+    }
+
+    $canViewCandidate = $candidate->canViewDetail()
+        || (function_exists('commonCurrentShareContainsHolon') && commonCurrentShareContainsHolon($candidate));
+    if (!$canViewCandidate) {
+        http_response_code(403);
+        ?>
+        <div class="omo-user-context omo-user-context--error">Acces refuse a ce contexte.</div>
+        <?php
+        exit;
+    }
+
+    $currentHolon = $candidate;
+}
+
+$user = new User();
+if (!$user->load($userId)) {
+    http_response_code(404);
+    ?>
+    <div class="omo-user-context omo-user-context--error">Utilisateur introuvable.</div>
+    <?php
+    exit;
+}
+
+if (!$user->canViewDetail()) {
+    http_response_code(403);
+    ?>
+    <div class="omo-user-context omo-user-context--error">Acces refuse a cet utilisateur.</div>
+    <?php
+    exit;
+}
+
+$membership = $user->getOrganizationMembership($organizationId);
+$displayName = trim((string)$user->getScopedDisplayName($organizationId));
+$email = trim((string)$user->getScopedEmail($organizationId));
+$username = trim((string)$user->getScopedUsername($organizationId));
+$photoUrl = trim((string)$user->getScopedProfilePhotoUrl($organizationId));
+$joinedAt = $membership ? ($membership->get('datecreation') instanceof DateTimeInterface ? $membership->get('datecreation') : $membership->getGlobalCreatedAt()) : $user->get('datecreation');
+$lastSeenAt = $membership ? ($membership->get('dateconnexion') instanceof DateTimeInterface ? $membership->get('dateconnexion') : $membership->getGlobalLastConnectionAt()) : $user->get('dateconnexion');
+$joinedAtLabel = omoUserContextFormatDate($joinedAt);
+$lastSeenLabel = omoUserContextFormatDate($lastSeenAt);
+$isPending = $membership ? !(bool)$membership->get('active') : false;
+$isAdmin = $membership ? $membership->isOrganizationAdmin() : false;
+$currentAssignments = $currentHolon->getVisibleRoleAssignmentsForUser($userId, [
+    'organizationId' => $organizationId,
+]);
+$organizationAssignments = $rootHolon->getVisibleRoleAssignmentsForUser($userId, [
+    'organizationId' => $organizationId,
+]);
+$showCurrentScope = (int)$currentHolon->getId() !== (int)$rootHolon->getId();
+$currentScopeTypeLabel = omoUserContextHolonTypeLabel($currentHolon);
+$currentScopeName = trim((string)$currentHolon->getDisplayName());
+$secondaryLabel = $email !== '' ? $email : ($username !== '' ? '@' . $username : '');
+$initials = 'P';
+
+if ($displayName !== '') {
+    $words = preg_split('/\s+/u', $displayName) ?: [];
+    $initials = '';
+    foreach ($words as $word) {
+        $word = trim((string)$word);
+        if ($word === '') {
+            continue;
+        }
+
+        $initials .= mb_substr($word, 0, 1, 'UTF-8');
+        if (mb_strlen($initials, 'UTF-8') >= 2) {
+            break;
+        }
+    }
+
+    if ($initials === '') {
+        $initials = mb_substr($displayName, 0, 1, 'UTF-8');
+    }
+}
+
+$initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
+?>
+<div class="omo-user-context">
+    <style>
+    .omo-user-context {
+        display: grid;
+        gap: 16px;
+        color: var(--color-text, #1f2937);
+    }
+
+    .omo-user-context--error {
+        padding: 18px;
+        border-radius: 16px;
+        background: var(--color-surface-alt, #f0f2f5);
+        color: var(--color-text-light, #6b7280);
+        border: 1px solid var(--color-border, #e5e7eb);
+    }
+
+    .omo-user-context__hero {
+        grid-template-columns: auto 1fr;
+        align-items: center;
+        --generic-hero-gap: 16px;
+        --generic-hero-padding: 18px;
+        --generic-hero-radius: 20px;
+        --generic-hero-shadow: var(--shadow-md, 0 12px 24px rgba(0,0,0,0.12));
+    }
+
+    .omo-user-context__photo,
+    .omo-user-context__photo-placeholder {
+        width: 72px;
+        height: 72px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: var(--color-surface-alt, #f0f2f5);
+        border: 2px solid var(--color-surface, #ffffff);
+        box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.05));
+    }
+
+    .omo-user-context__photo {
+        object-fit: cover;
+        display: block;
+    }
+
+    .omo-user-context__photo-placeholder {
+        display: grid;
+        place-items: center;
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--color-primary, #2563eb);
+    }
+
+    .omo-user-context__identity {
+        display: grid;
+        gap: 6px;
+        min-width: 0;
+    }
+
+    .omo-user-context__identity h2 {
+        margin: 0;
+        font-size: 22px;
+        line-height: 1.1;
+    }
+
+    .omo-user-context__secondary {
+        color: var(--color-text-light, #6b7280);
+        word-break: break-word;
+    }
+
+    .omo-user-context__badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .omo-user-context__badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 0 10px;
+        border-radius: 999px;
+        background: var(--color-surface-alt, #f0f2f5);
+        color: var(--color-text, #1f2937);
+        font-size: 12px;
+        font-weight: 700;
+        border: 1px solid var(--color-border, #e5e7eb);
+    }
+
+    .omo-user-context__badge--admin {
+        background: color-mix(in srgb, var(--color-primary, #2563eb) 14%, var(--color-surface, #ffffff));
+        color: var(--color-primary, #2563eb);
+        border-color: color-mix(in srgb, var(--color-primary, #2563eb) 30%, var(--color-border, #e5e7eb));
+    }
+
+    .omo-user-context__badge--pending {
+        background: rgba(100, 116, 139, 0.14);
+        color: var(--color-text-light, #6b7280);
+    }
+
+    .omo-user-context__meta {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+
+    .omo-user-context__meta-card,
+    .omo-user-context__section {
+        --generic-section-gap: 12px;
+    }
+
+    .omo-user-context__meta-label,
+    .omo-user-context__section-kicker {
+        margin-bottom: 6px;
+    }
+
+    .omo-user-context__meta-value {
+        color: var(--color-text, #1f2937);
+        line-height: 1.4;
+        word-break: break-word;
+    }
+
+    .omo-user-context__meta-value--muted,
+    .omo-user-context__empty {
+        color: var(--color-text-light, #6b7280);
+    }
+
+    .omo-user-context__section {
+        --generic-section-gap: 12px;
+    }
+
+    .omo-user-context__section h3 {
+        margin: 0;
+    }
+
+    .omo-user-context__roles {
+        display: grid;
+        gap: 10px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .omo-user-context__role {
+        --generic-soft-panel-border: var(--color-border, #e5e7eb);
+        --generic-soft-panel-background: var(--color-surface-alt, #f0f2f5);
+        --generic-soft-panel-radius: 14px;
+    }
+
+    .omo-user-context__role-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .omo-user-context__role-name {
+        font-weight: 700;
+        line-height: 1.3;
+    }
+
+    .omo-user-context__role-path {
+        margin-top: 4px;
+        font-size: 13px;
+        line-height: 1.4;
+        color: var(--color-text-light, #6b7280);
+    }
+
+    .omo-user-context__role-status {
+        flex: 0 0 auto;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: rgba(100, 116, 139, 0.14);
+        color: var(--color-text-light, #6b7280);
+        font-size: 11px;
+        font-weight: 700;
+    }
+    </style>
+
+    <div class="omo-user-context__hero generic-hero-panel">
+        <?php if ($photoUrl !== ''): ?>
+            <img
+                src="<?= omoApiEscape($photoUrl) ?>"
+                alt="<?= omoApiEscape($displayName !== '' ? $displayName : ('Utilisateur ' . $userId)) ?>"
+                class="omo-user-context__photo"
+            >
+        <?php else: ?>
+            <div class="omo-user-context__photo-placeholder" aria-hidden="true"><?= omoApiEscape($initials) ?></div>
+        <?php endif; ?>
+
+        <div class="omo-user-context__identity">
+            <h2 class="generic-card-title generic-card-title--large"><?= omoApiEscape($displayName !== '' ? $displayName : ('Utilisateur ' . $userId)) ?></h2>
+            <?php if ($secondaryLabel !== ''): ?>
+                <div class="omo-user-context__secondary"><?= omoApiEscape($secondaryLabel) ?></div>
+            <?php endif; ?>
+            <div class="omo-user-context__badges">
+                <?php if ($isAdmin): ?>
+                    <span class="omo-user-context__badge omo-user-context__badge--admin">Admin de l'organisation</span>
+                <?php endif; ?>
+                <?php if ($isPending): ?>
+                    <span class="omo-user-context__badge omo-user-context__badge--pending">Invitation en attente</span>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <div class="omo-user-context__meta">
+        <div class="omo-user-context__meta-card generic-section">
+            <div class="omo-user-context__meta-label generic-card-title generic-card-title--eyebrow">E-mail</div>
+            <div class="omo-user-context__meta-value<?= $email === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
+                <?= omoApiEscape($email !== '' ? $email : 'Non renseigné') ?>
+            </div>
+        </div>
+        <div class="omo-user-context__meta-card generic-section">
+            <div class="omo-user-context__meta-label generic-card-title generic-card-title--eyebrow">Identifiant</div>
+            <div class="omo-user-context__meta-value<?= $username === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
+                <?= omoApiEscape($username !== '' ? $username : 'Non renseigné') ?>
+            </div>
+        </div>
+        <div class="omo-user-context__meta-card generic-section">
+            <div class="omo-user-context__meta-label generic-card-title generic-card-title--eyebrow">Ajout à l'organisation</div>
+            <div class="omo-user-context__meta-value<?= $joinedAtLabel === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
+                <?= omoApiEscape($joinedAtLabel !== '' ? $joinedAtLabel : 'Inconnu') ?>
+            </div>
+        </div>
+        <div class="omo-user-context__meta-card generic-section">
+            <div class="omo-user-context__meta-label generic-card-title generic-card-title--eyebrow">Dernière connexion</div>
+            <div class="omo-user-context__meta-value<?= $lastSeenLabel === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
+                <?= omoApiEscape($lastSeenLabel !== '' ? $lastSeenLabel : 'Jamais') ?>
+            </div>
+        </div>
+    </div>
+
+    <?php if ($showCurrentScope): ?>
+        <section class="omo-user-context__section generic-section generic-section--stack">
+            <div class="omo-user-context__section-kicker generic-card-title generic-card-title--eyebrow">Contexte courant</div>
+            <h3 class="generic-card-title generic-card-title--big">Rôles visibles depuis le <?= omoApiEscape($currentScopeTypeLabel) ?> <?= omoApiEscape($currentScopeName) ?></h3>
+
+            <?php if (count($currentAssignments) === 0): ?>
+                <div class="omo-user-context__empty">Aucun rôle visible dans ce contexte.</div>
+            <?php else: ?>
+                <ul class="omo-user-context__roles">
+                    <?php foreach ($currentAssignments as $assignment): ?>
+                        <li class="omo-user-context__role generic-soft-panel">
+                            <div class="omo-user-context__role-head">
+                                <div>
+                                    <div class="omo-user-context__role-name"><?= omoApiEscape($assignment['name'] ?: ('Rôle ' . (int)$assignment['holonId'])) ?></div>
+                                    <?php if ((string)$assignment['pathLabel'] !== ''): ?>
+                                        <div class="omo-user-context__role-path"><?= omoApiEscape($assignment['pathLabel']) ?></div>
+                                    <?php endif; ?>
+                                </div>
+                                <?php if (!empty($assignment['isPending'])): ?>
+                                    <span class="omo-user-context__role-status">En attente</span>
+                                <?php endif; ?>
+                            </div>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+        </section>
+    <?php endif; ?>
+
+    <section class="omo-user-context__section generic-section generic-section--stack">
+        <div class="omo-user-context__section-kicker generic-card-title generic-card-title--eyebrow">Organisation</div>
+        <h3 class="generic-card-title generic-card-title--big">Rôles dans toute l'organisation</h3>
+
+        <?php if (count($organizationAssignments) === 0): ?>
+            <div class="omo-user-context__empty">Aucun rôle visible dans l'organisation.</div>
+        <?php else: ?>
+            <ul class="omo-user-context__roles">
+                <?php foreach ($organizationAssignments as $assignment): ?>
+                    <li class="omo-user-context__role generic-soft-panel">
+                        <div class="omo-user-context__role-head">
+                            <div>
+                                <div class="omo-user-context__role-name"><?= omoApiEscape($assignment['name'] ?: ('Rôle ' . (int)$assignment['holonId'])) ?></div>
+                                <?php if ((string)$assignment['pathLabel'] !== ''): ?>
+                                    <div class="omo-user-context__role-path"><?= omoApiEscape($assignment['pathLabel']) ?></div>
+                                <?php endif; ?>
+                            </div>
+                            <?php if (!empty($assignment['isPending'])): ?>
+                                <span class="omo-user-context__role-status">En attente</span>
+                            <?php endif; ?>
+                        </div>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+    </section>
+</div>

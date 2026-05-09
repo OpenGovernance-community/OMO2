@@ -13,6 +13,7 @@
     flex: 0 0 auto;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: 18px;
     padding: 12px 18px;
     background: var(--omo-install-banner-bg);
@@ -83,6 +84,26 @@
     transform: none;
 }
 
+.omo-install-banner__never {
+    appearance: none;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--omo-install-banner-text-muted);
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.4;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    margin-left: auto;
+}
+
+.omo-install-banner__never:hover,
+.omo-install-banner__never:focus-visible {
+    color: var(--omo-install-banner-text);
+}
+
 body.auth-page .omo-install-banner {
     position: relative;
     z-index: 2;
@@ -102,6 +123,12 @@ body.auth-page .omo-install-banner {
     .omo-install-banner__button {
         flex: 1;
         justify-content: center;
+        text-align: center;
+    }
+
+    .omo-install-banner__never {
+        width: 100%;
+        margin-left: 0;
         text-align: center;
     }
 }

@@ -9,27 +9,30 @@
 			return 'pv'; // Nom de la table correspondante
 		}	
 		
-		// Défini le contenu de la table
+		// Defini le contenu de la table
 		public static function rules()
 		{
 			return [
 				[['id'], 'required'],				// Champs obligatoires
 				[['id'], 'integer'],					
 				[['data'], 'text'],			// Texte libre
-				[['datecreation','datemodification'], 'datetime'],	// Date avec précision des heures
-				[['IDuser'], 'fk'],				// Clé étrangères
-				[['id'], 'safe'],								// Champs protégés (n'apparaîssent pas dans les formulaires)
+				[['codeaffichage','codeedition'], 'string'],
+				[['datecreation','datemodification'], 'datetime'],	// Date avec precision des heures
+				[['IDuser'], 'fk'],				// Cles etrangeres
+				[['id'], 'safe'],								// Champs proteges (n'apparaissent pas dans les formulaires)
 			];
 		}
 		
-		// Défini les labels standarts pour cet objet, affichés dans les formulaires automatiques
+		// Defini les labels standarts pour cet objet, affiches dans les formulaires automatiques
 		public static function attributeLabels()
 		{
 			return [
 				'id' => 'ID',
 				'data' => 'JSON data',
-				'datecreation' => 'Date de création',
+				'datecreation' => 'Date de creation',
 				'datemodification' => 'Date de modification',
+				'codeaffichage' => 'Code affichage',
+				'codeedition' => 'Code edition',
 				'IDuser' => 'Auteur',
 			];
 		}
@@ -43,7 +46,24 @@
 				return $_SESSION["currentUser"]==$this->get("IDuser");
 		}
 
-		
+		function save() {
+			if (!$this->get("IDuser")>0) {
+				if (isset($_SESSION["currentUser"]) && $_SESSION["currentUser"]>0)
+					$this->set("IDuser", $_SESSION["currentUser"]);
+				else
+					Die("Error");
+			}
+
+			if (is_null($this->get("codeaffichage"))) {
+				$this->set("codeaffichage", "");
+			}
+
+			if (is_null($this->get("codeedition"))) {
+				$this->set("codeedition", "");
+			}
+
+			return parent::save();
+		}
 	}
 	
 ?>

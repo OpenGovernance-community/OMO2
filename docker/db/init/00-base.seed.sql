@@ -200,6 +200,8 @@ CREATE TABLE `holon` (
   `IDorganization` int(11) DEFAULT NULL,
   `name` varchar(255) DEFAULT NULL,
   `color` varchar(10) DEFAULT NULL COMMENT 'Couleur du noeud, qui peut être héritée du template.',
+  `icon` varchar(255) DEFAULT NULL COMMENT 'Illustration carre du holon ou du template.',
+  `banner` varchar(255) DEFAULT NULL COMMENT 'Illustration large du holon ou du template.',
   `IDholon_org` int(11) DEFAULT NULL,
   `IDuser` int(11) DEFAULT NULL,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
@@ -208,6 +210,8 @@ CREATE TABLE `holon` (
   `visible` tinyint(1) NOT NULL DEFAULT 1 COMMENT 'Est visible? Ou plutôt caché pour pouvoir être réaffiché plus tard ou pour servir de template invisible',
   `mandatory` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Est obligatoire, et est ajouté à tout cercle nouvellement créé',
   `lockedname` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Le nom est impose par le template pour toutes ses instances',
+  `lockedicon` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'L''icone est imposee par le template pour toutes ses instances',
+  `lockedbanner` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'La banniere est imposee par le template pour toutes ses instances',
   `unique` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Est unique dans le cercle de rattachement, groupes compris',
   `link` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Se comporte comme un lien, en étant représenté également dans le cercle englobant',
   `templatename` varchar(150) DEFAULT NULL,
@@ -1537,6 +1541,171 @@ ALTER TABLE `user_organization`
 --
 ALTER TABLE `user_remember`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- Tables ajoutees apres le dump principal pour garder le seed Docker a jour
+--
+
+CREATE TABLE IF NOT EXISTS `homework` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `title` varchar(150) NOT NULL,
+  `detail` text DEFAULT NULL,
+  `position` int(11) DEFAULT NULL,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  `dateupdate` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_homework_position` (`position`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `invitation` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDorganization` int(11) NOT NULL,
+  `IDuser` int(11) NOT NULL,
+  `IDuser_sender` int(11) DEFAULT NULL,
+  `email` varchar(250) DEFAULT NULL,
+  `token` varchar(64) NOT NULL,
+  `status` varchar(20) NOT NULL DEFAULT 'pending',
+  `parameters` mediumtext DEFAULT NULL,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  `dateexpiration` datetime DEFAULT NULL,
+  `dateresponse` datetime DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_invitation_token` (`token`),
+  KEY `idx_invitation_org_user` (`IDorganization`, `IDuser`),
+  KEY `idx_invitation_status` (`status`),
+  KEY `idx_invitation_active` (`active`),
+  KEY `idx_invitation_expiration` (`dateexpiration`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `history` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDorganization` int(11) DEFAULT NULL,
+  `IDuser` int(11) DEFAULT NULL,
+  `action` varchar(100) DEFAULT NULL,
+  `content` mediumtext NOT NULL,
+  `parameters` mediumtext DEFAULT NULL,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  KEY `idx_history_organization` (`IDorganization`),
+  KEY `idx_history_user` (`IDuser`),
+  KEY `idx_history_action` (`action`),
+  KEY `idx_history_datecreation` (`datecreation`),
+  FULLTEXT KEY `ft_history_content` (`content`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `mission_homework` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDmission` int(11) NOT NULL,
+  `IDhomework` int(11) NOT NULL,
+  `position` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_mission_homework` (`IDmission`, `IDhomework`),
+  KEY `idx_mission_homework_mission` (`IDmission`),
+  KEY `idx_mission_homework_homework` (`IDhomework`),
+  KEY `idx_mission_homework_position` (`IDmission`, `position`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `user_homework` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDuser` int(11) NOT NULL,
+  `IDmission` int(11) NOT NULL,
+  `IDhomework` int(11) NOT NULL,
+  `IDparcours` int(11) NOT NULL,
+  `done` datetime DEFAULT NULL,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  `dateupdate` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_user_homework` (`IDuser`, `IDmission`, `IDhomework`, `IDparcours`),
+  KEY `idx_user_homework_user` (`IDuser`),
+  KEY `idx_user_homework_mission` (`IDmission`),
+  KEY `idx_user_homework_homework` (`IDhomework`),
+  KEY `idx_user_homework_parcours` (`IDparcours`),
+  KEY `idx_user_homework_done` (`done`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `holon_share_link` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDorganization` int(11) NOT NULL,
+  `IDholon` int(11) NOT NULL,
+  `IDuser` int(11) NOT NULL,
+  `label` varchar(150) DEFAULT NULL,
+  `token` varchar(80) NOT NULL,
+  `password_hash` varchar(255) DEFAULT NULL,
+  `allow_structure` tinyint(1) NOT NULL DEFAULT 1,
+  `allow_people` tinyint(1) NOT NULL DEFAULT 0,
+  `allow_people_detail` tinyint(1) NOT NULL DEFAULT 0,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  `dateexpiration` datetime DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_holon_share_link_token` (`token`),
+  KEY `idx_holon_share_link_org_holon` (`IDorganization`, `IDholon`),
+  KEY `idx_holon_share_link_user` (`IDuser`),
+  KEY `idx_holon_share_link_active` (`active`),
+  KEY `idx_holon_share_link_expiration` (`dateexpiration`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `document`
+  ADD KEY `idx_document_organization` (`IDorganization`),
+  ADD KEY `idx_document_holon` (`IDholon`),
+  ADD CONSTRAINT `fk_document_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_document_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `holon`
+  ADD KEY `idx_holon_organization` (`IDorganization`),
+  ADD KEY `idx_holon_root` (`IDholon_org`),
+  ADD KEY `idx_holon_parent` (`IDholon_parent`),
+  ADD KEY `idx_holon_template` (`IDholon_template`),
+  ADD CONSTRAINT `fk_holon_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_holon_root` FOREIGN KEY (`IDholon_org`) REFERENCES `holon` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_holon_parent` FOREIGN KEY (`IDholon_parent`) REFERENCES `holon` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_holon_template` FOREIGN KEY (`IDholon_template`) REFERENCES `holon` (`id`) ON DELETE SET NULL;
+
+ALTER TABLE `holonproperty`
+  ADD KEY `idx_holonproperty_holon` (`IDholon`),
+  ADD KEY `idx_holonproperty_property` (`IDproperty`),
+  ADD CONSTRAINT `fk_holonproperty_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_holonproperty_property` FOREIGN KEY (`IDproperty`) REFERENCES `property` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `property`
+  ADD KEY `idx_property_root_holon` (`IDholon_organization`),
+  ADD CONSTRAINT `fk_property_root_holon` FOREIGN KEY (`IDholon_organization`) REFERENCES `holon` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `user_organization`
+  ADD KEY `idx_user_organization_organization_user` (`IDorganization`, `IDuser`),
+  ADD CONSTRAINT `fk_user_organization_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `user_holon`
+  ADD KEY `idx_user_holon_holon_user` (`IDholon`, `IDuser`),
+  ADD CONSTRAINT `fk_user_holon_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `invitation`
+  ADD CONSTRAINT `fk_invitation_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `history`
+  ADD CONSTRAINT `fk_history_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `organization_application`
+  ADD CONSTRAINT `fk_organization_application_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `organization_parcours`
+  ADD KEY `idx_organization_parcours_organization` (`IDorganization`),
+  ADD CONSTRAINT `fk_organization_parcours_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `holon_share_link`
+  ADD CONSTRAINT `fk_holon_share_link_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_holon_share_link_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `media`
+  ADD KEY `idx_media_document` (`IDdocument`),
+  ADD CONSTRAINT `fk_media_document` FOREIGN KEY (`IDdocument`) REFERENCES `document` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `alttext`
+  ADD KEY `idx_alttext_document` (`IDdocument`),
+  ADD CONSTRAINT `fk_alttext_document` FOREIGN KEY (`IDdocument`) REFERENCES `document` (`id`) ON DELETE CASCADE;
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

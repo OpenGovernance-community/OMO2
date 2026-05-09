@@ -43,6 +43,9 @@ function commonGetRequestPath()
 
 function commonGetReservedEnvironmentSubdomains()
 {
+    if (function_exists('appGetReservedEnvironmentSubdomains')) {
+        return appGetReservedEnvironmentSubdomains();
+    }
     return ['dev', 'beta'];
 }
 
@@ -246,6 +249,75 @@ function commonExpireCookieValue($name, $httpOnly = true)
     return commonSetCookieValue($name, '', time() - 3600, $httpOnly);
 }
 
+function commonGetRememberDurationSeconds()
+{
+    return \dbObject\UserRemember::lifetimeSeconds();
+}
+
+function commonGetRememberCookieName()
+{
+    $cookieDomain = ltrim((string)commonGetCookieDomain(), '.');
+    if ($cookieDomain === '') {
+        $cookieDomain = commonGetRequestHost();
+    }
+
+    $suffix = preg_replace('/[^a-z0-9]+/i', '_', strtolower((string)$cookieDomain));
+    $suffix = trim((string)$suffix, '_');
+
+    if ($suffix === '') {
+        return 'remember_token';
+    }
+
+    return 'remember_token_' . $suffix;
+}
+
+function commonGetRememberCookieValue()
+{
+    $cookieName = commonGetRememberCookieName();
+    return isset($_COOKIE[$cookieName]) ? (string)$_COOKIE[$cookieName] : '';
+}
+
+function commonExpireLegacyRememberCookie()
+{
+    commonExpireCookieValue('remember_token', true);
+}
+
+function commonRefreshRememberedUser($remember)
+{
+    if (!$remember) {
+        return;
+    }
+
+    $remember->renew();
+    commonSetCookieValue(
+        commonGetRememberCookieName(),
+        (string)$remember->get('token'),
+        time() + commonGetRememberDurationSeconds(),
+        true
+    );
+    commonExpireLegacyRememberCookie();
+}
+
+function commonGetOrganizationExplicitColor(array $organizationContext)
+{
+    $color = trim((string)($organizationContext['color'] ?? ''));
+    if ($color === '' || stripos($color, 'var(') !== false) {
+        return '';
+    }
+
+    return $color;
+}
+
+function commonGetOrganizationAccentColor(array $organizationContext, $fallback = '#004663')
+{
+    $color = commonGetOrganizationExplicitColor($organizationContext);
+    if ($color !== '') {
+        return $color;
+    }
+
+    return (string)$fallback;
+}
+
 function commonResolveOrganizationContext($defaultOrganizationId = 1)
 {
     $host = commonGetRequestHost();
@@ -291,7 +363,7 @@ function commonResolveOrganizationContext($defaultOrganizationId = 1)
         'domain' => (string)$organization->get('domain'),
         'logo' => (string)$organization->get('logo'),
         'banner' => (string)$organization->get('banner'),
-        'color' => (string)($organization->get('color') ?: '#4CAF50'),
+        'color' => trim((string)$organization->get('color')),
         'host' => $host,
         'error' => null,
         'isDemo' => commonIsDemoHost($host),
@@ -313,19 +385,31 @@ function commonRestoreRememberedUser()
     }
 
     if (isset($_SESSION['currentUser']) && (int)$_SESSION['currentUser'] > 0) {
-        return (int)$_SESSION['currentUser'];
+        $currentUserId = (int)$_SESSION['currentUser'];
+        $rememberCookie = commonGetRememberCookieValue();
+        if ($rememberCookie !== '') {
+            $remember = \dbObject\UserRemember::findValidByToken($rememberCookie);
+            if ($remember && (int)$remember->get('IDuser') === $currentUserId) {
+                commonRefreshRememberedUser($remember);
+            }
+        }
+
+        return $currentUserId;
     }
 
-    if (!isset($_COOKIE['remember_token']) || $_COOKIE['remember_token'] === '') {
+    $rememberCookie = commonGetRememberCookieValue();
+    if ($rememberCookie === '') {
         return 0;
     }
 
-    $remember = \dbObject\UserRemember::findValidByToken($_COOKIE['remember_token']);
+    $remember = \dbObject\UserRemember::findValidByToken($rememberCookie);
     if (!$remember) {
+        commonExpireCookieValue(commonGetRememberCookieName(), true);
         return 0;
     }
 
     $_SESSION['currentUser'] = (int)$remember->get('IDuser');
+    commonRefreshRememberedUser($remember);
     return (int)$_SESSION['currentUser'];
 }
 
@@ -350,19 +434,206 @@ function commonGetCurrentUserDisplayName()
         return '';
     }
 
+    $organizationId = (int)($_SESSION['currentOrganization'] ?? 0);
+
     $fullName = trim((string)$user->get('firstname') . ' ' . (string)$user->get('lastname'));
     if ($fullName !== '') {
         return $fullName;
     }
 
-    if ((string)$user->get('username') !== '') {
-        return (string)$user->get('username');
+    $username = $user->getScopedUsername($organizationId);
+    if ($username !== '') {
+        return $username;
     }
 
-    return (string)$user->get('email');
+    return $user->getScopedEmail($organizationId);
 }
 
-function commonUserHasOrganizationAccess($userId, $organizationId)
+function commonUserHasOrganizationMembership($userId, $organizationId)
+{
+    static $cache = array();
+
+    $userId = (int)$userId;
+    $organizationId = (int)$organizationId;
+    $cacheKey = $userId . ':' . $organizationId;
+
+    if (array_key_exists($cacheKey, $cache)) {
+        return $cache[$cacheKey];
+    }
+
+    if ($userId <= 0 || $organizationId <= 0) {
+        $cache[$cacheKey] = false;
+        return false;
+    }
+
+    $hasMembership = \dbObject\DbObject::fetchValue(
+        "SELECT 1
+        FROM user_organization
+        WHERE IDuser = :user_id
+          AND IDorganization = :organization_id
+          AND active = 1
+        LIMIT 1",
+        array(
+            'user_id' => $userId,
+            'organization_id' => $organizationId,
+        )
+    );
+
+    $cache[$cacheKey] = $hasMembership !== false && $hasMembership !== null;
+
+    return $cache[$cacheKey];
+}
+
+function commonNormalizeShareToken($token)
+{
+    $token = trim((string)$token);
+    if ($token === '') {
+        return '';
+    }
+
+    return (string)preg_replace('/[^A-Za-z0-9\-_]/', '', $token);
+}
+
+function commonGetCurrentShareToken()
+{
+    static $resolved = false;
+    static $token = '';
+
+    if ($resolved) {
+        return $token;
+    }
+
+    $resolved = true;
+
+    if (isset($_POST['token'])) {
+        $token = commonNormalizeShareToken($_POST['token']);
+        return $token;
+    }
+
+    if (isset($_GET['token'])) {
+        $token = commonNormalizeShareToken($_GET['token']);
+        return $token;
+    }
+
+    return $token;
+}
+
+function commonIsSharePasswordVerified($token)
+{
+    $token = commonNormalizeShareToken($token);
+    if ($token === '') {
+        return false;
+    }
+
+    return !empty($_SESSION['omo_share_password_verified'][$token]);
+}
+
+function commonRememberSharePasswordVerified($token)
+{
+    $token = commonNormalizeShareToken($token);
+    if ($token === '') {
+        return false;
+    }
+
+    if (!isset($_SESSION['omo_share_password_verified']) || !is_array($_SESSION['omo_share_password_verified'])) {
+        $_SESSION['omo_share_password_verified'] = array();
+    }
+
+    $_SESSION['omo_share_password_verified'][$token] = time();
+    return true;
+}
+
+function commonForgetSharePasswordVerified($token = null)
+{
+    if ($token === null) {
+        unset($_SESSION['omo_share_password_verified']);
+        return;
+    }
+
+    $token = commonNormalizeShareToken($token);
+    if ($token === '' || empty($_SESSION['omo_share_password_verified']) || !is_array($_SESSION['omo_share_password_verified'])) {
+        return;
+    }
+
+    unset($_SESSION['omo_share_password_verified'][$token]);
+    if (count($_SESSION['omo_share_password_verified']) === 0) {
+        unset($_SESSION['omo_share_password_verified']);
+    }
+}
+
+function commonGetCurrentShareLink($requirePasswordVerified = true)
+{
+    static $cache = array();
+
+    $token = commonGetCurrentShareToken();
+    if ($token === '') {
+        return null;
+    }
+
+    $cacheKey = $token . ':' . ($requirePasswordVerified ? '1' : '0');
+    if (array_key_exists($cacheKey, $cache)) {
+        return $cache[$cacheKey];
+    }
+
+    $link = \dbObject\HolonShareLink::findValidByToken($token);
+    if (!$link) {
+        commonForgetSharePasswordVerified($token);
+        $cache[$cacheKey] = null;
+        return null;
+    }
+
+    if ($requirePasswordVerified && $link->requiresPassword() && !commonIsSharePasswordVerified($token)) {
+        $cache[$cacheKey] = null;
+        return null;
+    }
+
+    $cache[$cacheKey] = $link;
+    return $cache[$cacheKey];
+}
+
+function commonCurrentShareCanViewOrganization($organizationId)
+{
+    $link = commonGetCurrentShareLink();
+    return $link ? $link->canViewOrganization((int)$organizationId) : false;
+}
+
+function commonCurrentShareCanViewHolon($holon)
+{
+    $link = commonGetCurrentShareLink();
+    return $link && $holon instanceof \dbObject\Holon ? $link->canViewHolon($holon) : false;
+}
+
+function commonCurrentShareContainsHolon($holon)
+{
+    $link = commonGetCurrentShareLink();
+    return $link && $holon instanceof \dbObject\Holon ? $link->containsHolon($holon) : false;
+}
+
+function commonCurrentShareCanViewUser($user, $requireDetail = false)
+{
+    $link = commonGetCurrentShareLink();
+    return $link && $user instanceof \dbObject\User ? $link->canViewUser($user, $requireDetail) : false;
+}
+
+function commonCurrentShareAllowsStructure()
+{
+    $link = commonGetCurrentShareLink();
+    return $link ? $link->allowsStructure() : false;
+}
+
+function commonCurrentShareAllowsPeople()
+{
+    $link = commonGetCurrentShareLink();
+    return $link ? $link->allowsPeople() : false;
+}
+
+function commonCurrentShareAllowsPeopleDetail()
+{
+    $link = commonGetCurrentShareLink();
+    return $link ? $link->allowsPeopleDetail() : false;
+}
+
+function commonUserCanViewOrganization($userId, $organizationId)
 {
     $userId = (int)$userId;
     $organizationId = (int)$organizationId;
@@ -371,23 +642,23 @@ function commonUserHasOrganizationAccess($userId, $organizationId)
         return false;
     }
 
-    if (commonCanAccessWithoutLogin([
+    if (commonCanAccessWithoutLogin(array(
         'host' => $_SERVER['HTTP_HOST'] ?? '',
         'id' => $organizationId,
-    ])) {
+    ))) {
         return true;
     }
 
-    if ($userId <= 0) {
-        return false;
+    if (commonUserHasOrganizationMembership($userId, $organizationId)) {
+        return true;
     }
 
-    $user = new \dbObject\User();
-    if (!$user->load($userId)) {
-        return false;
-    }
+    return commonCurrentShareCanViewOrganization($organizationId);
+}
 
-    return $user->hasOrganizationAccess($organizationId);
+function commonUserHasOrganizationAccess($userId, $organizationId)
+{
+    return commonUserCanViewOrganization($userId, $organizationId);
 }
 
 function commonCurrentUserHasOrganizationAccess($organizationId = null)
@@ -396,7 +667,16 @@ function commonCurrentUserHasOrganizationAccess($organizationId = null)
         ? (int)$organizationId
         : (int)($_SESSION['currentOrganization'] ?? 0);
 
-    return commonUserHasOrganizationAccess(commonGetCurrentUserId(), $organizationId);
+    if ($organizationId <= 0) {
+        return false;
+    }
+
+    $organization = new \dbObject\Organization();
+    if (!$organization->load($organizationId)) {
+        return false;
+    }
+
+    return $organization->canViewDetail();
 }
 
 function commonLogoutUser()
@@ -405,8 +685,8 @@ function commonLogoutUser()
     unset($_SESSION['userRef']);
     unset($_SESSION['challenge']);
 
-    commonExpireCookieValue('remember_token', true);
-    setcookie('remember_token', '', time() - 3600, '/', '', commonShouldUseSecureCookies(), true);
+    commonExpireCookieValue(commonGetRememberCookieName(), true);
+    commonExpireLegacyRememberCookie();
 
     commonExpireCookieValue('currentUser', false);
     commonExpireCookieValue('currentCode', false);
@@ -448,6 +728,78 @@ function commonStorePendingLoginToken($token)
     $_SESSION['pending_login_token'] = (string)$token;
 }
 
+function commonStripLoginFeedbackParams($path, $fallback = '/')
+{
+    $normalized = commonNormalizeLocalPath($path, $fallback);
+    $parsedPath = parse_url($normalized, PHP_URL_PATH);
+    $query = parse_url($normalized, PHP_URL_QUERY);
+    $fragment = parse_url($normalized, PHP_URL_FRAGMENT);
+
+    $params = [];
+    if (is_string($query) && $query !== '') {
+        parse_str($query, $params);
+    }
+
+    unset(
+        $params['login_error'],
+        $params['login_message'],
+        $params['login_status_type'],
+        $params['login_token'],
+        $params['login_remaining_attempts']
+    );
+
+    $rebuilt = is_string($parsedPath) && $parsedPath !== '' ? $parsedPath : $fallback;
+    if ($params !== []) {
+        $rebuilt .= '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+    }
+    if (is_string($fragment) && $fragment !== '') {
+        $rebuilt .= '#' . $fragment;
+    }
+
+    return $rebuilt;
+}
+
+function commonBuildLoginFeedbackUrl($returnTo, array $params = [])
+{
+    $base = commonStripLoginFeedbackParams($returnTo, '/');
+    $path = parse_url($base, PHP_URL_PATH);
+    $query = parse_url($base, PHP_URL_QUERY);
+    $fragment = parse_url($base, PHP_URL_FRAGMENT);
+
+    $merged = [];
+    if (is_string($query) && $query !== '') {
+        parse_str($query, $merged);
+    }
+
+    foreach ($params as $key => $value) {
+        if ($value === null || $value === '') {
+            continue;
+        }
+        $merged[(string)$key] = (string)$value;
+    }
+
+    $rebuilt = is_string($path) && $path !== '' ? $path : '/';
+    if ($merged !== []) {
+        $rebuilt .= '?' . http_build_query($merged, '', '&', PHP_QUERY_RFC3986);
+    }
+    if (is_string($fragment) && $fragment !== '') {
+        $rebuilt .= '#' . $fragment;
+    }
+
+    return $rebuilt;
+}
+
+function commonIsAjaxJsonRequest()
+{
+    $requestedWith = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''));
+    if ($requestedWith === 'xmlhttprequest') {
+        return true;
+    }
+
+    $accept = strtolower((string)($_SERVER['HTTP_ACCEPT'] ?? ''));
+    return strpos($accept, 'application/json') !== false;
+}
+
 function commonSendLoginCode($userId, $email, array $organizationContext, $remember, $returnTo)
 {
     $requestToken = bin2hex(random_bytes(32));
@@ -465,7 +817,7 @@ function commonSendLoginCode($userId, $email, array $organizationContext, $remem
 
     $subject = "Code de connexion";
     $orgName = htmlspecialchars($organizationContext['name'] ?: ($_SERVER['HTTP_HOST'] ?? 'Organisation'));
-    $color = htmlspecialchars($organizationContext['color'] ?: '#4CAF50');
+    $color = htmlspecialchars(commonGetOrganizationAccentColor($organizationContext, '#004663'));
     $logo = $organizationContext['logo'] ?? '';
     $banner = $organizationContext['banner'] ?? '';
 
@@ -520,7 +872,7 @@ function commonSendLoginCode($userId, $email, array $organizationContext, $remem
 
     $fromAddress = trim((string)($GLOBALS['mailUser'] ?? ''));
     if ($fromAddress === '') {
-        $host = preg_replace('/:\d+$/', '', (string)($_SERVER['HTTP_HOST'] ?? 'localhost'));
+        $host = preg_replace('/:\d+$/', '', commonGetRootHost() ?: 'localhost');
         $fromAddress = 'noreply@' . ($host !== '' ? $host : 'localhost');
     }
 
@@ -648,9 +1000,6 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
         $returnTo = commonNormalizeLocalPath($_GET['return_to'] ?? $defaultReturnTo, $defaultReturnTo);
 
         if ($token !== '' && $code !== '') {
-            $tokenJs = json_encode($token, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-            $codeJs = json_encode($code, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-            $returnToJs = json_encode($returnTo, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
             ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -675,41 +1024,13 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
     <script>
         (function () {
             var status = document.getElementById('verifyStatus');
-            var body = new URLSearchParams();
-            body.set('token', <?= $tokenJs ?>);
-            body.set('code', <?= $codeJs ?>);
-            body.set('return_to', <?= $returnToJs ?>);
-
-            fetch('/common/login_verify.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: body.toString()
-            })
-                .then(function (response) {
-                    return response.json();
-                })
-                .then(function (data) {
-                    if (data.status === 'ok') {
-                        status.textContent = 'Connexion reussie, redirection...';
-                        window.location.href = data.redirect_to || <?= $returnToJs ?>;
-                        return;
-                    }
-
-                    var message = 'Impossible de verifier ce code.';
-                    if (data.error === 'ip_changed') {
-                        message = 'Votre reseau a change. Demandez un nouveau code depuis l application.';
-                    } else if (data.error === 'expired') {
-                        message = 'Ce code a expire. Demandez un nouveau code.';
-                    } else if (data.error === 'locked') {
-                        message = 'Trop de tentatives. Demandez un nouveau code.';
-                    }
-                    status.textContent = message;
-                    status.className = 'auth-state-status error';
-                })
-                .catch(function () {
-                    status.textContent = 'Verification impossible automatiquement. Utilisez le bouton ci-dessous.';
-                    status.className = 'auth-state-status error';
-                });
+            var form = document.getElementById('verifyFallbackForm');
+            if (!form) {
+                status.textContent = 'Verification impossible automatiquement. Utilisez le bouton ci-dessous.';
+                status.className = 'auth-state-status error';
+                return;
+            }
+            form.submit();
         })();
     </script>
 </body>
@@ -722,60 +1043,76 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
         die("Veuillez retourner dans l'application et saisir le code recu par e-mail.");
     }
 
-    header('Content-Type: application/json; charset=UTF-8');
-
     $token = (string)($_POST['token'] ?? ($_SESSION['pending_login_token'] ?? ''));
     $code = commonNormalizeLoginCode($_POST['code'] ?? '');
     $returnTo = commonNormalizeLocalPath($_POST['return_to'] ?? $defaultReturnTo, $defaultReturnTo);
     $currentIp = commonGetRequestIp();
+    $wantsJson = commonIsAjaxJsonRequest();
+
+    if ($wantsJson) {
+        header('Content-Type: application/json; charset=UTF-8');
+    }
+
+    $respondError = function ($error, array $extra = []) use ($wantsJson, $returnTo) {
+        $payload = array_merge(['error' => $error], $extra);
+
+        if ($wantsJson) {
+            echo json_encode($payload);
+            exit;
+        }
+
+        $params = [
+            'login_error' => $error,
+            'login_token' => $extra['login_token'] ?? ($_POST['token'] ?? ''),
+            'login_remaining_attempts' => $extra['remaining_attempts'] ?? null,
+        ];
+
+        header('Location: ' . commonBuildLoginFeedbackUrl($returnTo, $params));
+        exit;
+    };
 
     if ($token === '' || $code === '') {
-        echo json_encode(['error' => 'missing_code']);
-        exit;
+        $respondError('missing_code');
     }
 
     $loginToken = \dbObject\UserLoginToken::findByToken($token);
     if (!$loginToken) {
         commonStorePendingLoginToken(null);
-        echo json_encode(['error' => 'invalid']);
-        exit;
+        $respondError('invalid');
     }
 
     if ((int)$loginToken->get('used') > 0) {
         commonStorePendingLoginToken(null);
-        echo json_encode(['error' => 'expired']);
-        exit;
+        $respondError('expired');
     }
 
     $expiresAt = $loginToken->get('expires_at');
     if (!$expiresAt instanceof \DateTimeInterface || $expiresAt <= new \DateTime()) {
         commonStorePendingLoginToken(null);
-        echo json_encode(['error' => 'expired']);
-        exit;
+        $respondError('expired');
     }
 
     if ((int)$loginToken->get('attempt_count') >= 5) {
         commonStorePendingLoginToken(null);
-        echo json_encode(['error' => 'locked']);
-        exit;
+        $respondError('locked');
     }
 
     if ((string)$loginToken->get('request_ip') !== $currentIp) {
         $loginToken->markUsed();
         commonStorePendingLoginToken(null);
-        echo json_encode(['error' => 'ip_changed']);
-        exit;
+        $respondError('ip_changed');
     }
 
     if (!password_verify($code, (string)$loginToken->get('code_hash'))) {
         $loginToken->incrementAttemptCount();
         $remainingAttempts = max(0, 5 - (int)$loginToken->get('attempt_count'));
-
-        echo json_encode([
-            'error' => $remainingAttempts > 0 ? 'wrong_code' : 'locked',
-            'remaining_attempts' => $remainingAttempts,
-        ]);
-        exit;
+        $respondError(
+            $remainingAttempts > 0 ? 'wrong_code' : 'locked',
+            [
+                'remaining_attempts' => $remainingAttempts,
+                'login_token' => $token,
+            ]
+        );
     }
 
     if ((int)$loginToken->get('remember') > 0) {
@@ -794,7 +1131,13 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
             $os
         );
 
-        commonSetCookieValue('remember_token', $rememberToken, time() + (60 * 60 * 24 * 30), true);
+        commonSetCookieValue(
+            commonGetRememberCookieName(),
+            $rememberToken,
+            time() + commonGetRememberDurationSeconds(),
+            true
+        );
+        commonExpireLegacyRememberCookie();
     }
 
     $loginToken->markUsed();
@@ -808,7 +1151,15 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
 
     session_regenerate_id(true);
     $_SESSION['currentUser'] = (int)$loginToken->get('IDuser');
-    echo json_encode(['status' => 'ok', 'redirect_to' => $returnTo]);
+    session_write_close();
+
+    if ($wantsJson) {
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(['status' => 'ok', 'redirect_to' => $returnTo]);
+        exit;
+    }
+
+    header('Location: ' . $returnTo);
     exit;
 }
 
@@ -818,10 +1169,11 @@ function commonRenderMagicLoginPage(array $options = [])
     $title = $options['title'] ?? 'Connexion';
     $appName = $options['appName'] ?? 'Espace';
     $intro = $options['intro'] ?? 'Connectez-vous pour continuer.';
-    $returnTo = commonNormalizeLocalPath($options['returnTo'] ?? ($_SERVER['REQUEST_URI'] ?? '/'), '/');
+    $returnTo = commonStripLoginFeedbackParams($options['returnTo'] ?? ($_SERVER['REQUEST_URI'] ?? '/'), '/');
     $loginSendPath = $options['loginSendPath'] ?? '/common/login_send.php';
     $headHtml = (string)($options['headHtml'] ?? '');
     $bodyEndHtml = (string)($options['bodyEndHtml'] ?? '');
+    $topbar = !empty($options['topbar']) && is_array($options['topbar']) ? $options['topbar'] : null;
 
     $config = [
         'loginSendPath' => $loginSendPath,
@@ -830,6 +1182,9 @@ function commonRenderMagicLoginPage(array $options = [])
         'orgDomain' => $organizationContext['domain'] ?? '',
         'orgName' => $organizationContext['name'] ?? '',
         'hasOrgDomain' => !empty($organizationContext['domain']),
+        'initialPendingToken' => (string)($_GET['login_token'] ?? ''),
+        'initialError' => (string)($_GET['login_error'] ?? ''),
+        'initialRemainingAttempts' => (int)($_GET['login_remaining_attempts'] ?? 0),
     ];
 
     $organizationLogo = !empty($organizationContext['logo'])
@@ -838,6 +1193,7 @@ function commonRenderMagicLoginPage(array $options = [])
     $organizationBanner = !empty($organizationContext['banner'])
         ? (string)$organizationContext['banner']
         : '/img/home.jpg';
+    $organizationColor = commonGetOrganizationExplicitColor($organizationContext);
 
     ?>
 <!DOCTYPE html>
@@ -847,18 +1203,24 @@ function commonRenderMagicLoginPage(array $options = [])
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($title) ?></title>
     <link rel="stylesheet" href="/common/assets/auth.css">
+    <?php if ($organizationColor !== ''): ?>
     <style>
         :root {
-            --auth-primary: <?= htmlspecialchars($organizationContext['color'] ?: '#4CAF50') ?>;
+            --color-primary: <?= htmlspecialchars($organizationColor) ?>;
+            --auth-primary: <?= htmlspecialchars($organizationColor) ?>;
         }
     </style>
+    <?php endif; ?>
     <?php if ($headHtml !== ''): ?>
     <?= $headHtml . PHP_EOL ?>
     <?php endif; ?>
 </head>
-<body class="auth-page">
+<body class="auth-page<?= $topbar !== null ? ' auth-page--with-topbar' : '' ?>">
+    <?php if ($topbar !== null && function_exists('commonRenderTopbar')): ?>
+    <?php commonRenderTopbar($topbar); ?>
+    <?php endif; ?>
     <div class="auth-shell">
-        <div class="auth-hero" style="background-color: <?= htmlspecialchars($organizationContext['color'] ?: '#4CAF50') ?>;">
+        <div class="auth-hero" style="background-color: var(--auth-primary, var(--color-primary, #004663));">
             <div class="auth-hero-bg" style="background-image:url('<?= htmlspecialchars($organizationBanner) ?>')"></div>
             <div class="auth-hero-content">
                 <div class="auth-logo">
@@ -901,6 +1263,11 @@ function commonRenderMagicLoginPage(array $options = [])
                 <input type="text" id="authCodeInput" inputmode="text" autocomplete="one-time-code" maxlength="6" placeholder="ABC123">
                 <button type="button" id="authCodeSubmit">Valider le code</button>
             </div>
+            <form id="authVerifyForm" method="post" action="/common/login_verify.php" style="display:none;">
+                <input type="hidden" name="token" id="authVerifyToken" value="">
+                <input type="hidden" name="code" id="authVerifyCode" value="">
+                <input type="hidden" name="return_to" value="<?= htmlspecialchars($returnTo) ?>">
+            </form>
 
             <button type="button" class="auth-link-btn auth-resend" id="authResendLink" style="display:none;">Envoyer un nouveau code</button>
             <button type="button" class="auth-submit" id="authLoginSubmit">Envoyer le code</button>

@@ -1,43 +1,80 @@
-<?
-	
-	// Fonction générique pour sauver un profil utilisateur
+<?php
 
 	require_once("../config.php");
 	require_once("../shared_functions.php");
+	require_once("../common/auth.php");
 
-	$object=new \dbObject\user();
-	$data=$_POST;
-	
-	// S'il y a un ID de posté, charge l'élément
-	if (isset($data["id"]) && $data["id"]>0) {
-		$object->load($data["id"]);
-		if (!$object->getId()>0) {
-			echo '{"status":false, "message":"'.'Utilisateur inconnu'.'"} ';
-			exit;
-		}
-		if (!$object->canEdit()) {
-			echo "{'status':false, 'message':'"."Vous n\\'avez pas le droit d\\'éditer les informations de cet utilisateur"."'} ";
-			exit;
-		}
-		
-	} else {
-		echo '{"status":false, "message":"'.'Erreur, impossible de créer un nouveau compte ici'.'"} ';
+	if (!checklogin()) {
+		echo json_encode([
+			'status' => false,
+			'success' => false,
+			'message' => 'Login requis',
+		], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 		exit;
 	}
 
-	// Met à jour les infos selon les données postées
-	$object->loadFromArray($data);
-	
-	// Enregiste l'élément
-	$object->save();
-	$msg='Enregistrement réussi';
-	$formCode="";
-	if ($_GET["origin"]=="profil")
-		$formCode="if (window.jQuery && document.getElementById('popup_content')) { refresh('#popup_content','/popup/profil.php'); } if (window.commonTopbarRefreshModalContent) { window.commonTopbarRefreshModalContent('/popup/profil.php'); }"; // Raffraichit le profil
-	if ($_GET["origin"]=="params")
-		$formCode="refresh('#popup_content','/popup/parameters.php')"; // Raffraichi l'onglet paramètres
-	echo '{"status":true, "message":"'.$msg.'","script": "'.$formCode.'"} ';
-	
+	$currentUserId = function_exists('commonGetCurrentUserId')
+		? (int)commonGetCurrentUserId()
+		: (int)($_SESSION["currentUser"] ?? 0);
+	if ($currentUserId <= 0) {
+		echo json_encode([
+			'status' => false,
+			'success' => false,
+			'message' => 'Utilisateur inconnu',
+		], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		exit;
+	}
 
+	$object = new \dbObject\user();
+	if (!$object->load($currentUserId) || (int)$object->getId() <= 0) {
+		echo json_encode([
+			'status' => false,
+			'success' => false,
+			'message' => 'Utilisateur inconnu',
+		], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		exit;
+	}
+
+	if (!$object->canEdit()) {
+		echo json_encode([
+			'status' => false,
+			'success' => false,
+			'message' => "Vous n'avez pas le droit d'editer les informations de cet utilisateur",
+		], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		exit;
+	}
+
+	$data = $_POST;
+	$data["id"] = $currentUserId;
+	$object->loadFromArray($data);
+	$saveResult = $object->save();
+
+	if (!is_array($saveResult) || empty($saveResult['status'])) {
+		echo json_encode([
+			'status' => false,
+			'success' => false,
+			'message' => is_array($saveResult) && !empty($saveResult['text']) ? (string)$saveResult['text'] : "Impossible d'enregistrer ce profil.",
+		], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		exit;
+	}
+
+	$msg = 'Enregistrement reussi';
+	$formCode = "";
+	if (isset($_GET["origin"]) && $_GET["origin"] == "profil") {
+		$scope = (isset($_GET["scope"]) && $_GET["scope"] == "organization") ? "organization" : "general";
+		$target = "/popup/profil.php?scope=" . $scope;
+		$formCode = "if (window.jQuery && document.getElementById('popup_content')) { refresh('#popup_content','" . $target . "'); } if (window.commonTopbarRefreshModalContent) { window.commonTopbarRefreshModalContent('" . $target . "'); }";
+	}
+	if (isset($_GET["origin"]) && $_GET["origin"] == "params") {
+		$formCode = "refresh('#popup_content','/popup/parameters.php')";
+	}
+
+	echo json_encode([
+		'status' => true,
+		'success' => true,
+		'message' => $msg,
+		'script' => $formCode,
+		'id' => $saveResult['id'] ?? ('0' . $currentUserId),
+	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
 ?>

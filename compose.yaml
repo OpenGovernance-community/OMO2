@@ -9,8 +9,8 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "8080:80"
-      - "8443:443"
+      - "80:80"
+      - "443:443"
     volumes:
       - ./:/var/www/html
       - ./docker/app/.env:/var/www/html/.env:ro

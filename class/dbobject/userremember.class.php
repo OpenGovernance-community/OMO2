@@ -47,16 +47,29 @@
 			return "id DESC";
 		}
 
+		public static function lifetimeSeconds() {
+			return 60 * 60 * 24 * 7;
+		}
+
+		public static function expiresAtDateTime() {
+			return new \DateTime('+7 days');
+		}
+
 		public static function issue($userId, $token, $ip, $userAgent, $browser, $os) {
 			$item = new self();
 			$item->set('IDuser', (int)$userId);
 			$item->set('token', $token);
-			$item->set('expires_at', new \DateTime('+30 days'));
+			$item->set('expires_at', self::expiresAtDateTime());
 			$item->set('ip', $ip);
 			$item->set('user_agent', $userAgent);
 			$item->set('browser', $browser);
 			$item->set('os', $os);
 			return $item->save();
+		}
+
+		public function renew() {
+			$this->set('expires_at', self::expiresAtDateTime());
+			return $this->save();
 		}
 
 		public static function findValidByToken($token) {

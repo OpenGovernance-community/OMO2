@@ -9,7 +9,7 @@
     --color-text-light: #6b7280;
     --color-text-inverse: #ffffff;
 
-    --color-primary: #4f46e5;
+    --color-primary: #004663;
 
     --color-border: #e5e7eb;
     --color-border-strong: #cbd5e1;
@@ -179,7 +179,6 @@ body {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    padding: 0 16px;
 }
 
 /* CONTENT */
@@ -633,9 +632,11 @@ html[data-theme] .common-help-card p {
 .omo-profile-details,
 .omo-profile-actions {
     height: 100%;
-    padding: 16px;
-    border: 1px solid var(--topbar-menu-border);
-    background: var(--topbar-menu-item-bg);
+    --generic-section-padding-block: 16px;
+    --generic-section-padding-inline: 16px;
+    --generic-section-border: var(--topbar-menu-border);
+    --generic-section-background: var(--topbar-menu-item-bg);
+    --generic-section-radius: 0px;
 }
 
 .omo-profile-card {
@@ -878,10 +879,14 @@ html[data-theme] .common-help-card p {
     display: flex;
     flex-direction: column;
     gap: 18px;
-    padding: 0 20px 20px;
+    padding: 0px;
     min-height: 0;
     overflow: auto;
     overscroll-behavior: contain;
+}
+
+.omo-panel-view__body_content {
+    padding: 20px;
 }
 
 .omo-panel-group {
@@ -895,7 +900,7 @@ html[data-theme] .common-help-card p {
     top: 0;
     z-index: 2;
     margin: 0;
-    padding: 18px 0 8px;
+    padding: 18px 14px 8px;
     font-size: 1rem;
     color: var(--color-text-light);
     background: color-mix(in srgb, var(--color-bg) 94%, transparent);
@@ -1024,13 +1029,7 @@ html[data-theme] .common-help-card p {
 }
 
 .omo-card {
-    display: block;
-    padding: 16px 18px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-surface);
     color: inherit;
-    box-shadow: var(--shadow-sm);
 }
 
 a.omo-card,
@@ -1113,12 +1112,12 @@ button.omo-card {
         align-self: flex-start;
     }
 
-    .omo-panel-view__body {
-        padding: 0 14px 14px;
+    .omo-panel-view__body_content {
+        padding: 14px 14px;
     }
 
     .omo-panel-group__title {
-        padding: 14px 0 8px;
+        padding: 14px 14px 8px;
     }
 
     .omo-overlay-drawer__panel {
@@ -1281,7 +1280,187 @@ body.view-right .mobile-nav button[data-view="right"]::after {
         transform: translateX(-100%);
     }
 
-    body.view-right .panel-right {
+body.view-right .panel-right {
         transform: translateX(0);
+    }
+}
+
+@media print {
+    @page {
+        margin: 12mm;
+    }
+
+    html,
+    body,
+    .app,
+    .main,
+    .content,
+    .panel,
+    .panel-left,
+    .panel-right {
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    html,
+    body {
+        background: #fff !important;
+        color: #000 !important;
+    }
+
+    body {
+        display: block !important;
+    }
+
+    .app,
+    .main,
+    .content {
+        display: block !important;
+    }
+
+    .sidebar,
+    .topbar,
+    .common-topbar,
+    .mobile-nav,
+    .resizer,
+    #tooltip,
+    .structure-actions,
+    .chart-toggle,
+    .role-list-toolbar,
+    .breadcrumb,
+    .circle-menu,
+    .circle-badge--menu,
+    .circle-badge--link,
+    .circle-badge--action,
+    .circle-member--add,
+    .generic-accordion__toggle,
+    .circle-section--navigation {
+        display: none !important;
+    }
+
+    .panel {
+        position: static !important;
+        width: auto !important;
+        min-width: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        transform: none !important;
+    }
+
+    .panel-left,
+    .panel-right {
+        display: block !important;
+        width: 100% !important;
+    }
+
+    .panel-right {
+        margin-top: 12mm !important;
+        background: #fff !important;
+        break-before: auto;
+        page-break-before: auto;
+    }
+
+    .circle-panel {
+        padding: 0 !important;
+        gap: 12px !important;
+    }
+
+    .circle-top {
+        position: static !important;
+        margin: 0 0 12px !important;
+        padding: 0 0 12px !important;
+        border-bottom: 1px solid #d1d5db !important;
+        background: transparent !important;
+    }
+
+    .circle-section,
+    .role-item-shell,
+    .role-item-detail,
+    .role-property,
+    .role-property-detail-card,
+    .section-detail-card {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .generic-accordion--collapsible.is-collapsed .generic-accordion__content {
+        display: block !important;
+    }
+
+    .section-detail-card summary {
+        list-style: none;
+    }
+
+    .section-detail-card summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .section-detail-card__body {
+        display: block !important;
+    }
+
+    #panel-right #contentright {
+        position: static !important;
+        width: auto !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+        background: #fff !important;
+    }
+
+    #panel-right #chart,
+    #panel-right #role_list {
+        position: static !important;
+        inset: auto !important;
+        display: block !important;
+        overflow: visible !important;
+        background: #fff !important;
+    }
+
+    #panel-right #chart {
+        min-height: 160mm !important;
+        margin-bottom: 12mm !important;
+    }
+
+    #panel-right #chart canvas {
+        position: static !important;
+        inset: auto !important;
+        display: block !important;
+        width: 100% !important;
+        height: auto !important;
+        max-width: 100% !important;
+    }
+
+    #panel-right #hiddenCanvas {
+        display: none !important;
+    }
+
+    #panel-right #role_list {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+        border-top: 1px solid #d1d5db !important;
+    }
+
+    #panel-right .role-list-panel {
+        min-height: 0 !important;
+    }
+
+    #panel-right .role-list-results {
+        padding: 16px 0 0 !important;
+    }
+
+    #panel-right .role-detail-toggle,
+    #panel-right .role-detail-toggle--placeholder {
+        display: none !important;
+    }
+
+    #panel-right .role-item-detail,
+    #panel-right .role-item-detail[hidden] {
+        display: block !important;
+    }
+
+    #panel-right .role-item-detail {
+        padding-top: 12px !important;
     }
 }
