@@ -13,7 +13,7 @@
 ?>
   <h3><?=T_("Abonnement mensuel")?></h3>
   <div>
-<h1>Soutenez le développement des outils de System D2!</h1>
+<h1>Soutenez le développement des outils de OpenGovernance!</h1>
 <p>Nous développons un ensemble de logiciels interconnectés soutenant les organisations de façon efficace et humaniste, dans la philosophie de la gouvernance partagée.</p>
 
 <p>Soutenez-nous en vous abonnant pour un franc par mois, avec la possibilité de résilier à tout moment!</p>

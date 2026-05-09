@@ -268,7 +268,10 @@ function commonRenderTopbar(array $options = [])
     <div class="common-topbar-modal__panel" role="dialog" aria-modal="true" aria-labelledby="commonTopbarModalTitle">
         <div class="common-topbar-modal__header">
             <h3 id="commonTopbarModalTitle">Panneau</h3>
-            <button type="button" class="common-topbar-modal__close" data-topbar-modal-close>Fermer</button>
+            <button type="button" class="common-topbar-modal__close" data-topbar-modal-close aria-label="Fermer">
+                <span aria-hidden="true">&times;</span>
+                <span class="common-topbar__visually-hidden">Fermer</span>
+            </button>
         </div>
         <div class="common-topbar-modal__body" id="commonTopbarModalBody"></div>
     </div>
@@ -279,7 +282,10 @@ function commonRenderTopbar(array $options = [])
     <div class="common-topbar-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="commonTopbarDrawerTitle">
         <div class="common-topbar-drawer__header">
             <h3 id="commonTopbarDrawerTitle">Panneau latéral</h3>
-            <button type="button" class="common-topbar-drawer__close" data-topbar-drawer-close>Fermer</button>
+            <button type="button" class="common-topbar-drawer__close" data-topbar-drawer-close aria-label="Fermer">
+                <span aria-hidden="true">&times;</span>
+                <span class="common-topbar__visually-hidden">Fermer</span>
+            </button>
         </div>
         <div class="common-topbar-drawer__body" id="commonTopbarDrawerBody"></div>
     </div>

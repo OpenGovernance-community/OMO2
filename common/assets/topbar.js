@@ -37,6 +37,49 @@
         });
     }
 
+    function enhanceScrollablePanel(container) {
+        if (!container) {
+            return;
+        }
+
+        Array.prototype.forEach.call(
+            container.querySelectorAll('.common-topbar__sticky-actions'),
+            function (node) {
+                node.classList.remove('common-topbar__sticky-actions');
+            }
+        );
+
+        var selectors = [
+            '[class*="__actions"]',
+            '[class$="__footer"]'
+        ];
+        var candidates = Array.prototype.filter.call(
+            container.querySelectorAll(selectors.join(',')),
+            function (node) {
+                if (!node || node.offsetParent === null) {
+                    return false;
+                }
+
+                var buttons = node.querySelectorAll('button, input[type="submit"], a.generic-action-button');
+                if (!buttons.length) {
+                    return false;
+                }
+
+                if (node.querySelector('button[type="submit"], input[type="submit"], .generic-action-button--main')) {
+                    return true;
+                }
+
+                return buttons.length >= 2;
+            }
+        );
+
+        if (!candidates.length) {
+            return;
+        }
+
+        candidates[candidates.length - 1].classList.add('common-topbar__sticky-actions');
+    }
+
     function renderRemoteContent(container, url) {
         if (!container) {
             return;
@@ -61,6 +104,10 @@
             .then(function (html) {
                 container.innerHTML = html;
                 executeEmbeddedScripts(container);
+                enhanceScrollablePanel(container);
+                window.setTimeout(function () {
+                    enhanceScrollablePanel(container);
+                }, 0);
             })
             .catch(function () {
                 container.innerHTML = '<div class="loading">Erreur de chargement</div>';
@@ -92,6 +139,7 @@
             renderRemoteContent(body, content);
         } else {
             body.innerHTML = content || '';
+            enhanceScrollablePanel(body);
         }
 
         drawer.hidden = false;
@@ -116,6 +164,7 @@
             renderRemoteContent(body, content);
         } else {
             body.innerHTML = content || '';
+            enhanceScrollablePanel(body);
         }
 
         modal.hidden = false;

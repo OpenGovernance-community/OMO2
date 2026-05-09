@@ -151,6 +151,18 @@
     background: #e5e7eb;
 }
 
+.common-topbar__visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 .common-topbar__actions {
     display: flex;
     align-items: center;
@@ -526,6 +538,20 @@
     font-size: 18px;
 }
 
+.common-topbar-modal__close,
+.common-topbar-drawer__close {
+    border-radius: 999px;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    font-size: 28px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
 .common-topbar-modal__body {
     padding: 18px;
     overflow: auto;
@@ -585,9 +611,6 @@
     margin: 0;
     background: #f3f4f6;
     color: #111827;
-    border-radius: 0;
-    padding: 10px 14px;
-    font-size: 14px;
     cursor: pointer;
 }
 
@@ -599,6 +622,22 @@
     flex: 1;
     min-height: 0;
     background: #fff;
+}
+
+.common-topbar__sticky-actions {
+    position: sticky;
+    bottom: -18px;
+    z-index: 4;
+    margin: 18px -18px -18px;
+    padding: 14px 18px 18px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.82) 0%, rgba(255,255,255,0.96) 18%, #ffffff 100%);
+    border-top: 1px solid #e5e7eb;
+    backdrop-filter: blur(10px);
+}
+
+.common-topbar-drawer__body .common-topbar__sticky-actions {
+    bottom: 0;
+    margin-bottom: 0;
 }
 
 .common-topbar-drawer__iframe {
@@ -727,6 +766,16 @@ html[data-theme] .common-topbar-drawer__body {
 html[data-theme] .common-topbar-modal__header,
 html[data-theme] .common-topbar-drawer__header {
     border-bottom-color: var(--topbar-panel-border);
+}
+
+html[data-theme] .common-topbar__sticky-actions {
+    background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--topbar-panel-bg) 72%, transparent) 0%,
+        color-mix(in srgb, var(--topbar-panel-bg) 92%, transparent) 18%,
+        var(--topbar-panel-bg) 100%
+    );
+    border-top-color: var(--topbar-panel-border);
 }
 
 html[data-theme] .common-help-card {
