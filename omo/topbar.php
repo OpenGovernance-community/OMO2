@@ -68,6 +68,9 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
             'placeholder' => 'Rechercher un cercle, un rôle ou un outil',
             'buttonLabel' => 'Recherche',
             'callback' => 'omoHandleTopbarSearch',
+            'scopeProvider' => 'omoGetTopbarSearchScopes',
+            'scopeLabel' => 'Chercher dans',
+            'scopeHint' => 'La recherche de la topbar n agit que sur les modules coches.',
         ],
     ];
 

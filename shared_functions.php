@@ -128,7 +128,7 @@
 	// Initialise le login pour chaque page
 	checkLogin();
 	
-	function writeHeadContent($title,$logiciel="System D2") {
+	function writeHeadContent($title,$logiciel="EasyPV") {
 		echo '<title>'.$logiciel.' - '.$title.'</title>';
 		echo '<link rel="icon" type="image/png" href="/img/favicon-'.$logiciel.'.png" />';
 		echo '<meta charset="utf-8">';
@@ -169,6 +169,9 @@
 	// Fonction de vérification de login, permettant d'une part d'initialiser 
 	// le login à partir d'un cookie, et d'autre part de vérifier si nécessaire la bonne connexion
 	function checkLogin() {
+		require_once __DIR__ . '/common/auth.php';
+		commonRestoreRememberedUser();
+
 		if (isset($_SESSION["currentUser"])) {
 			$_SESSION["userRef"]=new \dbObject\User();
 			$_SESSION["userRef"]->load($_SESSION["currentUser"]);

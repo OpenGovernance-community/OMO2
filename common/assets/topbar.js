@@ -174,19 +174,105 @@
         return true;
     }
 
+    function renderSearchScopes(menu) {
+        if (!menu) {
+            return [];
+        }
+
+        var config = getConfig();
+        var searchConfig = config.search || {};
+        var scopeProvider = searchConfig.scopeProvider || '';
+        var scopesContainer = menu.querySelector('[data-topbar-search-scopes]');
+        var scopeList = menu.querySelector('[data-topbar-search-scope-list]');
+
+        if (!scopesContainer || !scopeList) {
+            return [];
+        }
+
+        scopeList.innerHTML = '';
+
+        if (!scopeProvider || typeof window[scopeProvider] !== 'function') {
+            scopesContainer.hidden = true;
+            return [];
+        }
+
+        var scopes = window[scopeProvider](config);
+        if (!Array.isArray(scopes) || scopes.length === 0) {
+            scopesContainer.hidden = true;
+            return [];
+        }
+
+        scopes.forEach(function (scope, index) {
+            if (!scope || !scope.id || !scope.label) {
+                return;
+            }
+
+            var wrapper = document.createElement('label');
+            wrapper.className = 'common-topbar__search-scope';
+
+            var input = document.createElement('input');
+            input.type = 'checkbox';
+            input.className = 'common-topbar__search-scope-input';
+            input.setAttribute('data-topbar-search-scope-input', '1');
+            input.value = String(scope.id);
+            input.checked = !!scope.checked;
+
+            var label = document.createElement('span');
+            label.className = 'common-topbar__search-scope-label';
+            label.textContent = String(scope.label);
+
+            wrapper.appendChild(input);
+            wrapper.appendChild(label);
+            scopeList.appendChild(wrapper);
+        });
+
+        scopesContainer.hidden = scopeList.children.length === 0;
+        return scopes;
+    }
+
+    function readSelectedSearchScopes(form) {
+        if (!form) {
+            return [];
+        }
+
+        return Array.prototype.map.call(
+            form.querySelectorAll('[data-topbar-search-scope-input]:checked'),
+            function (input, index) {
+                var label = input.closest('.common-topbar__search-scope');
+                var labelNode = label ? label.querySelector('.common-topbar__search-scope-label') : null;
+
+                return {
+                    id: input.value,
+                    label: labelNode ? labelNode.textContent : input.value,
+                    position: index
+                };
+            }
+        );
+    }
+
     function handleSearchSubmit(event) {
         event.preventDefault();
 
         var config = getConfig();
-        var input = document.querySelector('[data-topbar-search-input]');
+        var form = event.target && event.target.matches('[data-topbar-search-form]')
+            ? event.target
+            : document.querySelector('[data-topbar-search-form]');
+        var input = form ? form.querySelector('[data-topbar-search-input]') : document.querySelector('[data-topbar-search-input]');
         var query = input ? input.value.trim() : '';
+        var searchState = {
+            query: query,
+            scopes: readSelectedSearchScopes(form),
+            config: config
+        };
 
-        if (callNamedFunction(config.search && config.search.callback, query, config)) {
+        closeMenus();
+
+        if (callNamedFunction(config.search && config.search.callback, query, config, searchState)) {
             return;
         }
 
         window.dispatchEvent(new CustomEvent('common-topbar-search', {
-            detail: { query: query, config: config }
+            detail: searchState
         }));
     }
 
@@ -261,6 +347,9 @@
             closeMenus();
             if (menu && !isOpen) {
                 menu.classList.add('is-open');
+                if (name === 'search') {
+                    renderSearchScopes(menu);
+                }
                 var searchInput = menu.querySelector('[data-topbar-search-input]');
                 if (searchInput) {
                     setTimeout(function () {
