@@ -374,23 +374,23 @@ function drawPieChart(data) {
 				});
 				$("#btn_load").click(function () {
 					//loadSQL();
-					showPopup("popup/pv_load.php", "<?=T_("Charger un document",true)?>");
+					showPopup("/popup/pv_load.php", "<?=T_("Charger un document",true)?>");
 				});
 				$("#btn_help").click(function () {
-					showPopup("popup/help.php", "<?=T_("Aide",true)?>");
+					showPopup("/popup/help.php", "<?=T_("Aide",true)?>");
 				});			
 
 				$("#btn_download").click(function () {
-					showPopup("popup/download.php", "<?=T_("Télécharger",true)?>");
+					showPopup("/popup/download.php", "<?=T_("Télécharger",true)?>");
 				});	
 				$("#btn_share").click(function () {
-					showPopup("popup/pv_share.php", "<?=T_("Partager",true)?>");
+					showPopup("/popup/pv_share.php", "<?=T_("Partager",true)?>");
 				});	
 				$("#btn_parameters").click(function () {
-					showPopup("popup/parameters.php", "<?=T_("Paramètres",true)?>");
+					showPopup("/popup/parameters.php", "<?=T_("Paramètres",true)?>");
 				});			
 				$("#btn_support").click(function () {
-					showPopup("popup/support.php", "<?=T_("Soutenez-nous !",true)?>");
+					showPopup("/popup/support.php", "<?=T_("Soutenez-nous !",true)?>");
 				});			
 				
 				// Activation des tooltips (peut être partout, mais essentiellement à droite
@@ -424,7 +424,7 @@ function drawPieChart(data) {
 				// Mise à jour du titre
 				var id = elem.parents("li").attr("data");
 				var newtitle="";
-				if ($("#cb_"+id).is(":checked")) newtitle+="<img src='img/check.png' style='width:20px;vertical-align:bottom'> ";
+				if ($("#cb_"+id).is(":checked")) newtitle+="<img src='/img/check.png' style='width:20px;vertical-align:bottom'> ";
 				newtitle+=$("#qui_"+id).val();
 				newtitle+=($("#qui_"+id).val()!=""?" - ":"");
 				newtitle+="<b>"+$("#tension_"+id).val()+"</b>";
@@ -888,12 +888,12 @@ function drawPieChart(data) {
 	
 
 	.content h4, .note-editable h4 {font-size:inherit; background:rgba(0,255,0,0.3); padding:5px;padding-left:20px;    padding-left: 35px;
-    background-image: url(img/thumb-up.png);
+    background-image: url(/img/thumb-up.png);
     background-size: 21px;
     background-repeat: no-repeat;
     background-position: 8px;}
 	.content h5, .note-editable h5 {font-size:inherit; background:rgba(255,255,0,0.3); padding:5px;padding-left:20px;    padding-left: 35px;
-    background-image: url(img/clipboard.png);
+    background-image: url(/img/clipboard.png);
     background-size: 21px;
     background-repeat: no-repeat;
     background-position: 8px;}
@@ -960,12 +960,12 @@ function drawPieChart(data) {
 		.page:has(#listepresence):not(:has(.divedit:not(:empty))) {display:none}
 		#menu {display:none}
 		  	.content h4, .note-editable h4 {font-size:inherit; background:rgba(0,255,0,0.3) !important; padding:5px;padding-left:20px;    padding-left: 35px;
-    background-image: url(img/thumb-up.png) !important;
+    background-image: url(/img/thumb-up.png) !important;
     background-size: 21px !important;
     background-repeat: no-repeat !important;
     background-position: 8px !important;}
 	.content h5, .note-editable h5 {font-size:inherit; background:rgba(255,255,0,0.3) !important; padding:5px;padding-left:20px;    padding-left: 35px;
-    background-image: url(img/clipboard.png) !important;
+    background-image: url(/img/clipboard.png) !important;
     background-size: 21px !important;
     background-repeat: no-repeat !important;
     background-position: 8px !important;}		
@@ -984,7 +984,7 @@ function drawPieChart(data) {
 <? 
 	if ($connected) {
 		echo "<button id='profilbtn'>".T_("Profil")."</button>";
-		echo "<form name='logoutform' id='logoutform' action='ajax/login.php' class='ajax' style='margin:0px;display:inline-block'><button id='logoutbtn' name='logoutbtn' value='1' type='button'>".T_("Se déconnecter")."</button></form>";		
+		echo "<form name='logoutform' id='logoutform' action='/common/logout.php' class='ajax' style='margin:0px;display:inline-block'><button id='logoutbtn' name='logoutbtn' value='1' type='button'>".T_("Se déconnecter")."</button></form>";		
 	} else {
 			echo "<button id='login'>".T_("Se connecter")."</button>";
 		}
@@ -1003,10 +1003,10 @@ function drawPieChart(data) {
 		</td></tr>
 		<tr><td class='interface-left'><div class='contentleft'>
 			<table class='leftTab' cellspacing=0 cellpadding=0><tr><td class='odj'>
-			<div><?=T_("Ordre du jour");?><span class='noPrint' style='float:right; background:#FFF; border-radius:5px 5px 0px 0px'><img src='img/addentry.png' class='imgbutton' style='margin:0px;' id='btn_add'  data-toggle='tooltip' data-placement='bottom' title='<?=T_('Ajouter une tension',true)?>'>  
+			<div><?=T_("Ordre du jour");?><span class='noPrint' style='float:right; background:#FFF; border-radius:5px 5px 0px 0px'><img src='/img/addentry.png' class='imgbutton' style='margin:0px;' id='btn_add'  data-toggle='tooltip' data-placement='bottom' title='<?=T_('Ajouter une tension',true)?>'>  
 <?
 		if ($connected)
-			echo "<img id='btn_menuTension' src='img/addfolder.png' class='imgbutton'  data-toggle='tooltip' data-placement='bottom' title='".T_('Ajouter une section',true)."' style='margin:0px;'>";
+			echo "<img id='btn_menuTension' src='/img/addfolder.png' class='imgbutton'  data-toggle='tooltip' data-placement='bottom' title='".T_('Ajouter une section',true)."' style='margin:0px;'>";
 ?>
 			
 			
@@ -1069,39 +1069,39 @@ function drawPieChart(data) {
 		</div></td><td rowspan="2" id='tools' style='width:50px; vertical-align:top;'>
 <?	
 		//<!-- bouton pour le zoom -->
-		echo "<img src='img/expand.png' class='imgbutton' id='btn_zoom' data-toggle='tooltip' data-placement='left' title='".T_('Plein écran',true)."'>";
+		echo "<img src='/img/expand.png' class='imgbutton' id='btn_zoom' data-toggle='tooltip' data-placement='left' title='".T_('Plein écran',true)."'>";
 
 		//<!-- bouton pour un nouveau fichier -->
-		echo "<img src='img/newfile.png' class='imgbutton' id='btn_new' data-toggle='tooltip' data-placement='left' title='".T_('Nouveau document',true)."'>";
+		echo "<img src='/img/newfile.png' class='imgbutton' id='btn_new' data-toggle='tooltip' data-placement='left' title='".T_('Nouveau document',true)."'>";
 
 		//<!-- bouton pour sauver -->
 		if ($connected)
-		echo "<img src='img/save-file.png' class='imgbutton' id='btn_save' data-toggle='tooltip' data-placement='left' title='".T_('Enregistrer le document',true)."'>";
+		echo "<img src='/img/save-file.png' class='imgbutton' id='btn_save' data-toggle='tooltip' data-placement='left' title='".T_('Enregistrer le document',true)."'>";
 
 		//<!-- bouton pour charger -->
 		if ($connected)
-		echo "<img src='img/up-arrow.png' class='imgbutton' id='btn_load' data-toggle='tooltip' data-placement='left' title='".T_('Charger un document',true)."'>";
+		echo "<img src='/img/up-arrow.png' class='imgbutton' id='btn_load' data-toggle='tooltip' data-placement='left' title='".T_('Charger un document',true)."'>";
 
 		//<!-- bouton pour imprimer -->
-		echo "<img src='img/printing.png' onclick='window.print();' class='imgbutton' id='btn_print' data-toggle='tooltip' data-placement='left' title='".T_('Imprimer',true)."'>";
+		echo "<img src='/img/printing.png' onclick='window.print();' class='imgbutton' id='btn_print' data-toggle='tooltip' data-placement='left' title='".T_('Imprimer',true)."'>";
 
 		//<!-- bouton pour partager -->
 		if ($connected)
-		echo "<img src='img/share.png' class='imgbutton' id='btn_share' data-toggle='tooltip' data-placement='left' title='".T_('Partager',true)."'>";
+		echo "<img src='/img/share.png' class='imgbutton' id='btn_share' data-toggle='tooltip' data-placement='left' title='".T_('Partager',true)."'>";
 
 		//<!-- bouton pour télécharger -->
 		if ($connected)
-		echo "<img src='img/download.png' class='imgbutton' id='btn_download' data-toggle='tooltip' data-placement='right' left='".T_('Télécharger',true)."'>";
+		echo "<img src='/img/download.png' class='imgbutton' id='btn_download' data-toggle='tooltip' data-placement='right' left='".T_('Télécharger',true)."'>";
 
 		//<!-- bouton pour l'aide -->
-		echo "<img src='img/question.png' class='imgbutton' id='btn_help' data-toggle='tooltip' data-placement='left' title='".T_('Afficher l\'aide',true)."'>";
+		echo "<img src='/img/question.png' class='imgbutton' id='btn_help' data-toggle='tooltip' data-placement='left' title='".T_('Afficher l\'aide',true)."'>";
 
 		//<!-- bouton pour les paramẗres -->
 		if ($connected)
-		echo "<img src='img/settings.png' class='imgbutton' id='btn_parameters' data-toggle='tooltip' data-placement='left' title='".T_('Paramètres',true)."'>";
+		echo "<img src='/img/settings.png' class='imgbutton' id='btn_parameters' data-toggle='tooltip' data-placement='left' title='".T_('Paramètres',true)."'>";
 ?>		
 		</td></tr>
-		<tr><td class='interface-bottom' colspan=3><span style='float:right;'><img src='img/support.png' style='height:40px;' id='btn_support'></span></td></tr>
+		<tr><td class='interface-bottom' colspan=3><span style='float:right;'><img src='/img/support.png' style='height:40px;' id='btn_support'></span></td></tr>
 		</table>
 		<div id='popupbackground'></div>
 		<div id='popup'><div id='popup_content'></div><div id='popup_close'><button><img src='/img/icon_close.png'><?=T_("Fermer");?></button></div></div>
@@ -1152,12 +1152,12 @@ function drawPieChart(data) {
   transition: all 0.3s ease;
 }
 
-/* Hover ? expansion */
-.support-bar:hover {
+/* Expansion differee */
+.support-bar.is-expanded {
   height: 140px;
 }
 
-.support-bar:hover .support-text .long {
+.support-bar.is-expanded .support-text .long {
   opacity: 1;
   max-height: 100px;
   margin-top: 0.5rem;
@@ -1205,6 +1205,25 @@ function drawPieChart(data) {
 function updatePrintValue(input) { let value = input.val(); if (input.attr('type') === 'date') { value = formatDate(value); } input.next('.print-value').text(value); } function formatDate(date) { const options = { year: 'numeric', month: 'long', day: 'numeric' }; return new Date(date).toLocaleDateString('fr-FR', options); } // Fonction pour mettre à jour les champs par script function updateInputValue(selector, value) { $(selector).val(value).trigger('input'); }	
 	
 $(function() {
+
+const supportBar = document.querySelector('.support-bar');
+if (supportBar) {
+	let supportBarHoverTimeout = null;
+
+	supportBar.addEventListener('mouseenter', function () {
+		supportBarHoverTimeout = window.setTimeout(function () {
+			supportBar.classList.add('is-expanded');
+		}, 1000);
+	});
+
+	supportBar.addEventListener('mouseleave', function () {
+		if (supportBarHoverTimeout !== null) {
+			window.clearTimeout(supportBarHoverTimeout);
+			supportBarHoverTimeout = null;
+		}
+		supportBar.classList.remove('is-expanded');
+	});
+}
 	
 $('input').each(function() 
 { $(this).after('<span class="print-value"></span>'); updatePrintValue($(this)); }).on('input change', function() { updatePrintValue($(this)); });	

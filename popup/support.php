@@ -3,11 +3,9 @@
 	require_once("../shared_functions.php");
 ?>
 <style>
-	.ui-accordion-header {background-color:#DDD; border:2px solid #AAA; padding:10px; margin-bottom:0px; margin-top:5px;}
-	.ui-accordion-content {border: 1px solid #DDD; border-top:0px;padding:10px;position:relative;}
 	#rememberbtn {text-decoration:underline;}
 </style>
-<div id="accordion">
+<div id="accordion" class="generic-accordion-ui">
 <?	
 	// Initialise le login
 	$connected=checklogin();
@@ -15,7 +13,7 @@
 ?>
   <h3><?=T_("Abonnement mensuel")?></h3>
   <div>
-<h1>Soutenez le développement des outils de System D2!</h1>
+<h1>Soutenez le développement des outils de OpenGovernance!</h1>
 <p>Nous développons un ensemble de logiciels interconnectés soutenant les organisations de façon efficace et humaniste, dans la philosophie de la gouvernance partagée.</p>
 
 <p>Soutenez-nous en vous abonnant pour un franc par mois, avec la possibilité de résilier à tout moment!</p>

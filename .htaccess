@@ -5,8 +5,8 @@ ErrorDocument  404  /404.php
 RewriteEngine On
 
 RewriteCond %{HTTPS} off
-RewriteCond %{HTTP_HOST} ^([A-Za-z0-9.-]+\.test)(:8080)?$ [NC]
-RewriteRule (.*) https://%1:8443%{REQUEST_URI} [R=302,L]
+RewriteCond %{HTTP_HOST} ^([A-Za-z0-9.-]+\.localtest\.me)(:80)?$ [NC]
+RewriteRule (.*) https://%1%{REQUEST_URI} [R=302,L]
 
 RewriteCond %{HTTPS} off
 RewriteCond %{HTTP_HOST} !(^|\.)(localhost|127\.0\.0\.1)(:\d+)?$ [NC]
@@ -16,12 +16,9 @@ RewriteRule ^memo$ /memo.php [L]
 RewriteRule ^memo/([0-9]+)/?$ /memo.php?id=$1 [QSA,L]
 RewriteRule ^memo/([0-9]+)/([0-9a-f]+)/?$ /memo.php?id=$1&pwd=$2 [QSA,L]
 
-RewriteRule ^circle$ /circle.php [L]
-RewriteRule ^circle/$ /circle.php [L]
-RewriteRule ^circle/public/([0-9A-Za-z]+)/?$ /circle.php?view=$1 [QSA,L]
+RewriteRule ^circle/public/([0-9A-Za-z]+)/?$ /circle/index.php?view=$1 [QSA,L]
 
-RewriteRule ^pv$ /pv.php [L]
-RewriteRule ^pv/([0-9]+)/?$ /pv.php?id=$1 [QSA,L]
+RewriteRule ^pv/([0-9]+)/?$ /pv/index.php?id=$1 [QSA,L]
 
 RewriteRule ^qr$ /qr.php [L]
 RewriteRule ^qr/([0-9A-Za-z]+)/?$ /qr.php?id=$1 [QSA,L]

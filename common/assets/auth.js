@@ -12,6 +12,9 @@
     const codeBox = document.getElementById('authCodeBox');
     const codeInput = document.getElementById('authCodeInput');
     const codeSubmit = document.getElementById('authCodeSubmit');
+    const verifyForm = document.getElementById('authVerifyForm');
+    const verifyToken = document.getElementById('authVerifyToken');
+    const verifyCodeInput = document.getElementById('authVerifyCode');
     const resendLink = document.getElementById('authResendLink');
     const status = document.getElementById('authStatus');
     const copy = document.querySelector('.auth-copy');
@@ -23,10 +26,55 @@
     let useOrgDomain = !!config.hasOrgDomain;
     let pendingToken = '';
     let loginRequestInFlight = false;
-    let verifyRequestInFlight = false;
     const storageKey = 'commonLoginPendingToken';
     const defaultSubmitLabel = submit.textContent || 'Envoyer le code';
     const challengeSubmitLabel = challengeSubmit ? (challengeSubmit.textContent || 'Valider') : 'Valider';
+
+    function getInitialErrorMessage() {
+        if (config.initialError === 'wrong_code') {
+            return {
+                message: 'Code incorrect. Il reste ' + (config.initialRemainingAttempts || 0) + ' essai(s).',
+                type: 'error'
+            };
+        }
+
+        if (config.initialError === 'locked') {
+            return {
+                message: 'Trop d essais. Demandez un nouveau code.',
+                type: 'error'
+            };
+        }
+
+        if (config.initialError === 'expired') {
+            return {
+                message: 'Le code a expire. Demandez un nouveau code.',
+                type: 'error'
+            };
+        }
+
+        if (config.initialError === 'ip_changed') {
+            return {
+                message: 'Votre reseau a change. Pour votre securite, demandez un nouveau code.',
+                type: 'error'
+            };
+        }
+
+        if (config.initialError === 'missing_code') {
+            return {
+                message: 'Veuillez saisir le code recu par e-mail.',
+                type: 'error'
+            };
+        }
+
+        if (config.initialError === 'invalid') {
+            return {
+                message: 'Code invalide. Demandez un nouveau code.',
+                type: 'error'
+            };
+        }
+
+        return null;
+    }
 
     if (copy) {
         copy.textContent = 'Un code de connexion vous sera envoye par e-mail. Il reste valable 5 minutes.';
@@ -160,7 +208,11 @@
 
         fetch(config.loginSendPath || '/common/login_send.php', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
             credentials: 'same-origin',
             body: body.toString()
         })
@@ -225,10 +277,6 @@
     }
 
     function verifyCode() {
-        if (verifyRequestInFlight) {
-            return;
-        }
-
         const token = pendingToken || loadPendingToken();
         const code = codeInput ? codeInput.value.trim().toUpperCase() : '';
 
@@ -242,11 +290,19 @@
             return;
         }
 
+        setStatus('Verification du code...');
+
+        if (verifyForm && verifyToken && verifyCodeInput) {
+            verifyToken.value = token;
+            verifyCodeInput.value = code;
+            storePendingToken('');
+            verifyForm.submit();
+            return;
+        }
+
         if (codeSubmit) {
             codeSubmit.disabled = true;
         }
-        verifyRequestInFlight = true;
-        setStatus('Verification du code...');
 
         const body = new URLSearchParams();
         body.set('token', token);
@@ -255,7 +311,11 @@
 
         fetch(config.loginVerifyPath || '/common/login_verify.php', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
             credentials: 'same-origin',
             body: body.toString()
         })
@@ -263,7 +323,6 @@
                 return response.json();
             })
             .then(function (data) {
-                verifyRequestInFlight = false;
                 if (codeSubmit) {
                     codeSubmit.disabled = false;
                 }
@@ -310,7 +369,6 @@
                 setStatus('Code invalide. Demandez un nouveau code.', 'error');
             })
             .catch(function () {
-                verifyRequestInFlight = false;
                 if (codeSubmit) {
                     codeSubmit.disabled = false;
                 }
@@ -376,12 +434,20 @@
         });
     }
 
-    pendingToken = loadPendingToken();
+    pendingToken = config.initialPendingToken || loadPendingToken();
+    if (config.initialPendingToken) {
+        storePendingToken(config.initialPendingToken);
+    }
     if (pendingToken) {
         showCodeBox();
         updateSendControls(true);
         updateChallengeControls(false);
-        setStatus('Saisissez le code recu par e-mail.', 'success');
+        const initialError = getInitialErrorMessage();
+        if (initialError) {
+            setStatus(initialError.message, initialError.type);
+        } else {
+            setStatus('Saisissez le code recu par e-mail.', 'success');
+        }
     } else {
         updateSendControls(false);
         updateChallengeControls(false);

@@ -120,7 +120,7 @@ function patreonGetUserAgent()
 
 function patreonGetRequestedScopes()
 {
-	return 'identity identity[email] identity.memberships campaigns';
+	return 'identity';
 }
 
 function patreonBuildAuthorizeUrl($state)
@@ -279,9 +279,9 @@ function patreonBuildIdentityUrl()
 {
 	$params = [
 		'include' => 'memberships.currently_entitled_tiers',
-		'fields[user]' => 'full_name,email,image_url,url,vanity',
+		'fields[user]' => 'full_name',
 		'fields[member]' => 'campaign_lifetime_support_cents,currently_entitled_amount_cents,last_charge_date,last_charge_status,next_charge_date,patron_status',
-		'fields[tier]' => 'title,amount_cents',
+		'fields[tier]' => 'title',
 	];
 
 	return 'https://www.patreon.com/api/oauth2/v2/identity?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
@@ -361,8 +361,13 @@ function patreonExtractProfile(array $identity)
 	$memberAttributes = $membership['attributes'] ?? [];
 	$tierMap = patreonMapIncludedResourcesByType($identity, 'tier');
 	$tierTitles = [];
+	$membershipTiers = [];
 
-	foreach (($membership['relationships']['currently_entitled_tiers']['data'] ?? []) as $tierReference) {
+	if (is_array($membership) && isset($membership['relationships']['currently_entitled_tiers']['data']) && is_array($membership['relationships']['currently_entitled_tiers']['data'])) {
+		$membershipTiers = $membership['relationships']['currently_entitled_tiers']['data'];
+	}
+
+	foreach ($membershipTiers as $tierReference) {
 		$tierId = (string)($tierReference['id'] ?? '');
 		$title = trim((string)($tierMap[$tierId]['attributes']['title'] ?? ''));
 		if ($title !== '') {
@@ -372,13 +377,13 @@ function patreonExtractProfile(array $identity)
 
 	return [
 		'patreon_user_id' => (string)($identity['data']['id'] ?? ''),
-		'patreon_member_id' => (string)($membership['id'] ?? ''),
-		'campaign_id' => (string)($membership['relationships']['campaign']['data']['id'] ?? ''),
+		'patreon_member_id' => is_array($membership) ? (string)($membership['id'] ?? '') : '',
+		'campaign_id' => is_array($membership) ? (string)($membership['relationships']['campaign']['data']['id'] ?? '') : '',
 		'full_name' => (string)($userAttributes['full_name'] ?? ''),
-		'email' => (string)($userAttributes['email'] ?? ''),
-		'image_url' => (string)($userAttributes['image_url'] ?? ''),
-		'profile_url' => (string)($userAttributes['url'] ?? ''),
-		'vanity' => (string)($userAttributes['vanity'] ?? ''),
+		'email' => '',
+		'image_url' => '',
+		'profile_url' => '',
+		'vanity' => '',
 		'patron_status' => (string)($memberAttributes['patron_status'] ?? ''),
 		'last_charge_status' => (string)($memberAttributes['last_charge_status'] ?? ''),
 		'last_charge_date' => !empty($memberAttributes['last_charge_date']) ? new DateTime((string)$memberAttributes['last_charge_date']) : null,

@@ -1,17 +1,17 @@
 <?php
 	namespace dbObject;
 
-	class FaqChoice extends DbObject
+	class QuestionChoice extends DbObject
 	{
 		public static function tableName()
 		{
-			return 'faq_choice';
+			return 'question_choice';
 		}
 
 		public static function rules()
 		{
 			return [
-				[['id', 'IDfaq'], 'integer'],
+				[['id', 'IDquestion'], 'integer'],
 				[['label'], 'text'],
 				[['is_correct'], 'boolean'],
 				[['id'], 'safe'],
@@ -22,7 +22,7 @@
 		{
 			return [
 				'id' => 'ID',
-				'IDfaq' => 'FAQ',
+				'IDquestion' => 'Question',
 				'label' => 'Label',
 				'is_correct' => 'Correct',
 			];
@@ -37,18 +37,18 @@
 				return false;
 			}
 
-			$faqId = self::fetchValue(
-				"SELECT IDfaq FROM faq_choice WHERE id = :choice_id",
+			$questionId = self::fetchValue(
+				"SELECT IDquestion FROM question_choice WHERE id = :choice_id",
 				['choice_id' => (int)$selected[0]]
 			);
 
-			if (!$faqId) {
+			if (!$questionId) {
 				return false;
 			}
 
 			$all = self::fetchAll(
-				"SELECT id, is_correct FROM faq_choice WHERE IDfaq = :faq_id",
-				['faq_id' => (int)$faqId]
+				"SELECT id, is_correct FROM question_choice WHERE IDquestion = :question_id",
+				['question_id' => (int)$questionId]
 			);
 
 			if ($all === false) {

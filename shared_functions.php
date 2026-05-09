@@ -1,6 +1,10 @@
 <?
 	require_once __DIR__ . '/shared/date_groups.php';
 
+	function appGetReservedEnvironmentSubdomains() {
+		return ['dev', 'beta'];
+	}
+
 	function appGetCookieDomain($host = null) {
 		$host = is_string($host) && $host !== '' ? strtolower($host) : strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
 		$host = trim((string)$host);
@@ -22,7 +26,9 @@
 		$rootPartCount = 2;
 		if (count($parts) >= 3) {
 			$environmentCandidate = strtolower((string)($parts[count($parts) - 3] ?? ''));
-			if (in_array($environmentCandidate, ['dev', 'beta'], true)) {
+
+			if (in_array($environmentCandidate, appGetReservedEnvironmentSubdomains(), true)) {
+
 				$rootPartCount = 3;
 			}
 		}
@@ -124,7 +130,7 @@
 	// Initialise le login pour chaque page
 	checkLogin();
 	
-	function writeHeadContent($title,$logiciel="System D2") {
+	function writeHeadContent($title,$logiciel="EasyPV") {
 		echo '<title>'.$logiciel.' - '.$title.'</title>';
 		echo '<link rel="icon" type="image/png" href="/img/favicon-'.$logiciel.'.png" />';
 		echo '<meta charset="utf-8">';
@@ -165,6 +171,9 @@
 	// Fonction de vérification de login, permettant d'une part d'initialiser 
 	// le login à partir d'un cookie, et d'autre part de vérifier si nécessaire la bonne connexion
 	function checkLogin() {
+		require_once __DIR__ . '/common/auth.php';
+		commonRestoreRememberedUser();
+
 		if (isset($_SESSION["currentUser"])) {
 			$_SESSION["userRef"]=new \dbObject\User();
 			$_SESSION["userRef"]->load($_SESSION["currentUser"]);
