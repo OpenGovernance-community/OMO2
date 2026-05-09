@@ -1094,7 +1094,19 @@ function getSidebarMenuConfig(hash = null, oid = null, cid = null) {
 
 function omoRefreshSidebar(onLoaded = null) {
     loadContent('#menu_sidebar', 'api/getSidebar.php', 'sidebar', function () {
-        updateActiveMenu(parseUrl().hash || null);
+        const route = parseUrl();
+        const hashState = omoParseHashState(route.hash || null);
+        const routeToken = hashState.routeToken;
+        const menuConfig = routeToken ? getSidebarMenuConfig(route.hash || null, route.oid, route.cid) : null;
+
+        if (routeToken && !menuConfig) {
+            const nextHash = omoBuildHashFromState(null, hashState.popupToken);
+            history.replaceState({}, '', buildOmoUrl(route.oid, route.cid, nextHash));
+            closeAllDrawers();
+            handleRoute();
+        } else {
+            updateActiveMenu(route.hash || null);
+        }
 
         if (typeof onLoaded === 'function') {
             onLoaded();
@@ -1517,7 +1529,7 @@ $(document).on('click', '[data-omo-open-app-picker="1"]', function (e) {
     }
 
     window.commonTopbarOpenModal(
-        'Ajouter des applications',
+        'Gerer les applications',
         omoResolveAppUrl('api/organization_applications_popup.php'),
         'fetch'
     );
@@ -2002,23 +2014,174 @@ function omoStartGuidedTour() {
         });
 }
 
-function omoHandleTopbarSearch(query) {
-    const normalized = (query || '').trim().toLowerCase();
+function omoGetTopbarSearchStructureScope() {
+    const panelItem = getSidebarMenuItem();
+    const panelLabelNode = panelItem && panelItem.length ? panelItem.find('.label').first() : null;
+    const panelLabel = panelLabelNode && panelLabelNode.length
+        ? String(panelLabelNode.text() || '').trim()
+        : 'Structure';
+    const currentRoute = parseUrl();
+    const currentHashState = omoParseHashState(currentRoute.hash || null);
 
-    document.querySelectorAll('#menu_sidebar .menu-item').forEach(function (item) {
-        const text = (item.textContent || '').toLowerCase();
-        item.style.display = normalized === '' || text.indexOf(normalized) !== -1 ? '' : 'none';
+    return {
+        id: '__structure__',
+        label: panelLabel || 'Structure',
+        checked: !currentHashState.routeToken
+    };
+}
+
+function omoGetTopbarSearchScopes() {
+    const currentRoute = parseUrl();
+    const currentHashState = omoParseHashState(currentRoute.hash || null);
+    const currentRouteToken = currentHashState.routeToken || null;
+    const scopes = [omoGetTopbarSearchStructureScope()];
+    const searchableRouteTokens = {
+        team: true,
+        documents: true
+    };
+
+    document.querySelectorAll('#menu_sidebar .menu-item[data-hash][data-navigation-mode]').forEach(function (item) {
+        if (item.hasAttribute('data-omo-open-app-picker')) {
+            return;
+        }
+
+        const routeToken = String(item.getAttribute('data-hash') || '').trim();
+        const navigationMode = String(item.getAttribute('data-navigation-mode') || '').trim().toLowerCase();
+        const labelNode = item.querySelector('.label');
+        const label = labelNode ? String(labelNode.textContent || '').trim() : routeToken;
+
+        if (!routeToken || navigationMode !== 'drawer' || !label || !searchableRouteTokens[routeToken]) {
+            return;
+        }
+
+        scopes.push({
+            id: routeToken,
+            label: label,
+            checked: currentRouteToken === routeToken
+        });
     });
 
-    document.querySelectorAll('#panel-left .circle-section, #panel-left .breadcrumb, #panel-right .role-item, .drawer .kanban-card').forEach(function (node) {
-        const text = (node.textContent || '').toLowerCase();
-        node.style.display = normalized === '' || text.indexOf(normalized) !== -1 ? '' : 'none';
+    if (!scopes.some(function (scope) { return scope.checked; }) && scopes.length > 0) {
+        scopes[0].checked = true;
+    }
+
+    return scopes;
+}
+
+function omoHandleTopbarSearch(query, config, searchState) {
+    const selectedScopeIds = Array.isArray(searchState && searchState.scopes)
+        ? searchState.scopes.map(function (scope) {
+            return String(scope && scope.id ? scope.id : '').trim();
+        }).filter(function (scopeId) {
+            return scopeId !== '';
+        })
+        : [];
+    const trimmedQuery = String(query || '').trim();
+
+    if (trimmedQuery.length < 2) {
+        if (typeof window.commonTopbarOpenModal === 'function') {
+            window.commonTopbarOpenModal(
+                'Recherche',
+                '<div class="common-help-list"><div class="common-help-card"><p>Saisissez au moins 2 caracteres pour lancer la recherche.</p></div></div>',
+                'html'
+            );
+        }
+        return true;
+    }
+
+    if (selectedScopeIds.length === 0) {
+        if (typeof window.commonTopbarOpenModal === 'function') {
+            window.commonTopbarOpenModal(
+                'Recherche',
+                '<div class="common-help-list"><div class="common-help-card"><p>Choisissez au moins un module de recherche.</p></div></div>',
+                'html'
+            );
+        }
+        return true;
+    }
+
+    const currentRoute = parseUrl();
+    const queryParts = [
+        'q=' + encodeURIComponent(trimmedQuery)
+    ];
+
+    if (Number.isInteger(Number(currentRoute.oid)) && Number(currentRoute.oid) > 0) {
+        queryParts.push('oid=' + encodeURIComponent(Number(currentRoute.oid)));
+    }
+
+    if (Number.isInteger(Number(currentRoute.cid)) && Number(currentRoute.cid) > 0) {
+        queryParts.push('cid=' + encodeURIComponent(Number(currentRoute.cid)));
+    }
+
+    selectedScopeIds.forEach(function (scopeId) {
+        queryParts.push('scopes[]=' + encodeURIComponent(scopeId));
     });
+
+    if (typeof window.commonTopbarOpenModal === 'function') {
+        window.commonTopbarOpenModal(
+            'Recherche',
+            omoResolveAppUrl('api/search_popup.php?' + queryParts.join('&')),
+            'fetch'
+        );
+    }
+
+    return true;
+}
+
+function omoOpenSearchStructureResult(holonId) {
+    const resolvedHolonId = Number(holonId);
+    if (!Number.isInteger(resolvedHolonId) || resolvedHolonId <= 0) {
+        return false;
+    }
+
+    if (typeof window.commonTopbarCloseModal === 'function') {
+        window.commonTopbarCloseModal();
+    }
+
+    const route = parseUrl();
+    navigate(route.oid, resolvedHolonId, null);
+
+    window.setTimeout(function () {
+        omoFocusStructureNode(resolvedHolonId, { quickZoom: true });
+    }, 180);
+
+    return true;
+}
+
+function omoOpenSearchUserResult(userId) {
+    const resolvedUserId = Number(userId);
+    if (!Number.isInteger(resolvedUserId) || resolvedUserId <= 0) {
+        return false;
+    }
+
+    if (typeof window.commonTopbarCloseModal === 'function') {
+        window.commonTopbarCloseModal();
+    }
+
+    return omoOpenUserContextPopup(resolvedUserId);
+}
+
+function omoOpenSearchDocumentResult(documentUrl, title) {
+    const resolvedUrl = String(documentUrl || '').trim();
+    if (resolvedUrl === '' || typeof window.commonTopbarOpenModal !== 'function') {
+        return false;
+    }
+
+    window.commonTopbarOpenModal(
+        String(title || 'Document'),
+        omoResolveAppUrl(resolvedUrl),
+        'fetch'
+    );
+
+    return true;
 }
 
 window.omoRefreshSidebar = omoRefreshSidebar;
 window.omoMaybeOpenPatreonWelcomeModal = omoMaybeOpenPatreonWelcomeModal;
 window.omoOpenMemberActionsPopup = omoOpenMemberActionsPopup;
+window.omoOpenSearchDocumentResult = omoOpenSearchDocumentResult;
+window.omoOpenSearchStructureResult = omoOpenSearchStructureResult;
+window.omoOpenSearchUserResult = omoOpenSearchUserResult;
 window.omoOpenUserContextPopup = omoOpenUserContextPopup;
 window.omoResolveAppUrl = omoResolveAppUrl;
 window.omoIsShareMode = omoIsShareMode;

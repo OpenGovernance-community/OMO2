@@ -7,90 +7,8 @@ $currentUserId = (int)commonGetCurrentUserId();
 if ($currentOrganizationId <= 0 || $currentUserId <= 0) {
     http_response_code(403);
     ?>
-    <div class="omo-app-picker__empty">Vous devez être connecté à une organisation pour ajouter des applications.</div>
+    <div class="omo-app-picker__empty">Vous devez etre connecte a une organisation pour gerer les applications.</div>
     <?php
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    header('Content-Type: application/json; charset=UTF-8');
-
-    $selectedApplicationIds = array();
-    if (isset($_POST['applications']) && is_array($_POST['applications'])) {
-        foreach ($_POST['applications'] as $applicationId) {
-            $applicationId = (int)$applicationId;
-            if ($applicationId > 0) {
-                $selectedApplicationIds[$applicationId] = $applicationId;
-            }
-        }
-    }
-
-    if (count($selectedApplicationIds) === 0) {
-        echo json_encode(array(
-            'status' => false,
-            'message' => 'Sélectionnez au moins une application.',
-        ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        exit;
-    }
-
-    $organizationApplications = new \dbObject\ArrayOrganizationApplication();
-    $organizationApplications->load(array(
-        'where' => array(
-            array('IDorganization', $currentOrganizationId),
-        ),
-    ));
-
-    $linksByApplicationId = array();
-    foreach ($organizationApplications as $organizationApplication) {
-        $linksByApplicationId[(int)$organizationApplication->get('IDapplication')] = $organizationApplication;
-    }
-
-    $savedCount = 0;
-
-    foreach ($selectedApplicationIds as $applicationId) {
-        $application = new \dbObject\Application();
-        if (!$application->load($applicationId) || !(bool)$application->get('active')) {
-            continue;
-        }
-
-        if (isset($linksByApplicationId[$applicationId])) {
-            $organizationApplication = $linksByApplicationId[$applicationId];
-        } else {
-            $organizationApplication = new \dbObject\OrganizationApplication();
-            $organizationApplication->set('IDorganization', $currentOrganizationId);
-            $organizationApplication->set('IDapplication', $applicationId);
-        }
-
-        if ((int)$organizationApplication->get('position') <= 0 && (int)$application->get('position') > 0) {
-            $organizationApplication->set('position', (int)$application->get('position'));
-        }
-
-        $organizationApplication->set('active', true);
-
-        $saveResult = $organizationApplication->save();
-        if (!is_array($saveResult) || empty($saveResult['status'])) {
-            echo json_encode(array(
-                'status' => false,
-                'message' => 'Impossible d’enregistrer les applications sélectionnées.',
-            ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-            exit;
-        }
-
-        $savedCount++;
-    }
-
-    if ($savedCount === 0) {
-        echo json_encode(array(
-            'status' => false,
-            'message' => 'Aucune application valide n’a pu être ajoutée.',
-        ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        exit;
-    }
-
-    echo json_encode(array(
-        'status' => true,
-        'message' => $savedCount === 1 ? '1 application ajoutée.' : $savedCount . ' applications ajoutées.',
-    ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
@@ -105,6 +23,110 @@ $allApplications->load(array(
     ),
 ));
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    header('Content-Type: application/json; charset=UTF-8');
+
+    $selectedApplicationIds = array();
+    if (isset($_POST['applications']) && is_array($_POST['applications'])) {
+        foreach ($_POST['applications'] as $applicationId) {
+            $applicationId = (int)$applicationId;
+            if ($applicationId > 0) {
+                $selectedApplicationIds[$applicationId] = $applicationId;
+            }
+        }
+    }
+
+    $organizationApplications = new \dbObject\ArrayOrganizationApplication();
+    $organizationApplications->load(array(
+        'where' => array(
+            array('IDorganization', $currentOrganizationId),
+        ),
+    ));
+
+    $linksByApplicationId = array();
+    foreach ($organizationApplications as $organizationApplication) {
+        $linksByApplicationId[(int)$organizationApplication->get('IDapplication')] = $organizationApplication;
+    }
+
+    $availableApplicationsById = array();
+    foreach ($allApplications as $application) {
+        $availableApplicationsById[(int)$application->getId()] = $application;
+    }
+
+    $addedCount = 0;
+    $removedCount = 0;
+
+    foreach ($linksByApplicationId as $applicationId => $organizationApplication) {
+        $shouldBeActive = isset($selectedApplicationIds[$applicationId]) && isset($availableApplicationsById[$applicationId]);
+        $wasActive = (bool)$organizationApplication->get('active');
+
+        if ($wasActive === $shouldBeActive) {
+            continue;
+        }
+
+        $organizationApplication->set('active', $shouldBeActive);
+
+        $saveResult = $organizationApplication->save();
+        if (!is_array($saveResult) || empty($saveResult['status'])) {
+            echo json_encode(array(
+                'status' => false,
+                'message' => 'Impossible d enregistrer la selection.',
+            ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        if ($shouldBeActive) {
+            $addedCount++;
+        } else {
+            $removedCount++;
+        }
+    }
+
+    foreach ($selectedApplicationIds as $applicationId) {
+        if (isset($linksByApplicationId[$applicationId]) || !isset($availableApplicationsById[$applicationId])) {
+            continue;
+        }
+
+        $application = $availableApplicationsById[$applicationId];
+        $organizationApplication = new \dbObject\OrganizationApplication();
+        $organizationApplication->set('IDorganization', $currentOrganizationId);
+        $organizationApplication->set('IDapplication', $applicationId);
+
+        if ((int)$organizationApplication->get('position') <= 0 && (int)$application->get('position') > 0) {
+            $organizationApplication->set('position', (int)$application->get('position'));
+        }
+
+        $organizationApplication->set('active', true);
+
+        $saveResult = $organizationApplication->save();
+        if (!is_array($saveResult) || empty($saveResult['status'])) {
+            echo json_encode(array(
+                'status' => false,
+                'message' => 'Impossible d enregistrer la selection.',
+            ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        $addedCount++;
+    }
+
+    $messageParts = array();
+    if ($addedCount > 0) {
+        $messageParts[] = $addedCount === 1 ? '1 application ajoutee.' : $addedCount . ' applications ajoutees.';
+    }
+    if ($removedCount > 0) {
+        $messageParts[] = $removedCount === 1 ? '1 application retiree.' : $removedCount . ' applications retirees.';
+    }
+
+    echo json_encode(array(
+        'status' => true,
+        'message' => count($messageParts) > 0
+            ? 'Selection enregistree. ' . implode(' ', $messageParts)
+            : 'Aucun changement.',
+    ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
 $activeOrganizationApplications = new \dbObject\ArrayOrganizationApplication();
 $activeOrganizationApplications->load(array(
     'where' => array(
@@ -116,14 +138,6 @@ $activeOrganizationApplications->load(array(
 $activeApplicationIds = array();
 foreach ($activeOrganizationApplications as $organizationApplication) {
     $activeApplicationIds[(int)$organizationApplication->get('IDapplication')] = true;
-}
-
-$availableApplications = array();
-foreach ($allApplications as $application) {
-    $applicationId = (int)$application->getId();
-    if (!isset($activeApplicationIds[$applicationId])) {
-        $availableApplications[] = $application;
-    }
 }
 ?>
 <style>
@@ -164,6 +178,11 @@ foreach ($allApplications as $application) {
         box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
     }
 
+    .omo-app-picker__card.is-active {
+        border-color: rgba(21, 128, 61, 0.25);
+        background: rgba(21, 128, 61, 0.04);
+    }
+
     .omo-app-picker__checkbox {
         width: 18px;
         height: 18px;
@@ -195,10 +214,36 @@ foreach ($allApplications as $application) {
         flex-direction: column;
         gap: 4px;
         min-width: 0;
+        width: 100%;
+    }
+
+    .omo-app-picker__content-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
     }
 
     .omo-app-picker__title {
         font-weight: 700;
+    }
+
+    .omo-app-picker__state {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: rgba(100, 116, 139, 0.12);
+        color: #475569;
+        font-size: 0.78rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .omo-app-picker__state--active {
+        background: rgba(21, 128, 61, 0.14);
+        color: #15803d;
     }
 
     .omo-app-picker__meta {
@@ -230,30 +275,32 @@ foreach ($allApplications as $application) {
     }
 </style>
 
-<?php if (count($availableApplications) === 0): ?>
+<?php if (count($allApplications) === 0): ?>
     <div class="omo-app-picker__empty">
-        Toutes les applications actives sont déjà affichées pour cette organisation.
+        Aucune application n est disponible pour le moment.
     </div>
 <?php else: ?>
     <form id="omoApplicationPickerForm" class="omo-app-picker" action="api/organization_applications_popup.php" method="post">
         <p class="omo-app-picker__intro">
-            Sélectionnez les applications à ajouter dans la barre de gauche. La liste sera rafraîchie immédiatement après validation.
+            Cochez les applications a afficher dans la barre de gauche. Decochez une application pour la retirer.
         </p>
 
         <div class="omo-app-picker__list">
-            <?php foreach ($availableApplications as $application): ?>
+            <?php foreach ($allApplications as $application): ?>
                 <?php
                 $applicationLabel = trim((string)$application->get('label'));
                 $applicationHash = trim((string)$application->getRouteHash());
                 $applicationIcon = trim((string)$application->get('icon'));
                 $applicationMode = trim((string)$application->getNavigationMode());
+                $isActive = isset($activeApplicationIds[(int)$application->getId()]);
                 ?>
-                <label class="omo-app-picker__card">
+                <label class="omo-app-picker__card<?= $isActive ? ' is-active' : '' ?>">
                     <input
                         class="omo-app-picker__checkbox"
                         type="checkbox"
                         name="applications[]"
                         value="<?= (int)$application->getId() ?>"
+                        <?= $isActive ? 'checked' : '' ?>
                     >
 
                     <?php if ($applicationIcon !== ''): ?>
@@ -265,7 +312,12 @@ foreach ($allApplications as $application) {
                     <?php endif; ?>
 
                     <span class="omo-app-picker__content">
-                        <span class="omo-app-picker__title"><?= htmlspecialchars($applicationLabel, ENT_QUOTES, 'UTF-8') ?></span>
+                        <span class="omo-app-picker__content-head">
+                            <span class="omo-app-picker__title"><?= htmlspecialchars($applicationLabel, ENT_QUOTES, 'UTF-8') ?></span>
+                            <span class="omo-app-picker__state<?= $isActive ? ' omo-app-picker__state--active' : '' ?>" data-omo-app-picker-state>
+                                <?= $isActive ? 'Visible' : 'Masquee' ?>
+                            </span>
+                        </span>
                         <span class="omo-app-picker__meta">
                             <?= htmlspecialchars($applicationHash !== '' ? '#' . $applicationHash : $applicationMode, ENT_QUOTES, 'UTF-8') ?>
                         </span>
@@ -278,7 +330,7 @@ foreach ($allApplications as $application) {
 
         <div class="omo-app-picker__actions">
             <button type="submit" id="omoApplicationPickerSubmit" class="omo-app-picker__button generic-action-button generic-action-button--main">
-                Ajouter la sélection
+                Enregistrer la selection
             </button>
         </div>
     </form>
@@ -292,6 +344,29 @@ foreach ($allApplications as $application) {
             if (!form || !feedback || !submitButton) {
                 return;
             }
+
+            var updateCardState = function (checkbox) {
+                var card = checkbox.closest('.omo-app-picker__card');
+                var state = card ? card.querySelector('[data-omo-app-picker-state]') : null;
+
+                if (card) {
+                    card.classList.toggle('is-active', checkbox.checked);
+                }
+
+                if (state) {
+                    state.textContent = checkbox.checked ? 'Visible' : 'Masquee';
+                    state.classList.toggle('omo-app-picker__state--active', checkbox.checked);
+                }
+            };
+
+            Array.prototype.forEach.call(form.querySelectorAll('.omo-app-picker__checkbox'), function (checkbox) {
+                updateCardState(checkbox);
+                checkbox.addEventListener('change', function () {
+                    updateCardState(checkbox);
+                    feedback.textContent = '';
+                    feedback.classList.remove('is-success');
+                });
+            });
 
             form.addEventListener('submit', function (event) {
                 event.preventDefault();
@@ -318,7 +393,7 @@ foreach ($allApplications as $application) {
                             return;
                         }
 
-                        feedback.textContent = data.message || 'Applications ajoutées.';
+                        feedback.textContent = data.message || 'Selection enregistree.';
                         feedback.classList.add('is-success');
 
                         if (typeof window.omoRefreshSidebar === 'function') {
@@ -335,7 +410,7 @@ foreach ($allApplications as $application) {
                         }
                     })
                     .catch(function () {
-                        feedback.textContent = 'Impossible d’enregistrer les applications pour le moment.';
+                        feedback.textContent = 'Impossible d enregistrer les applications pour le moment.';
                         submitButton.disabled = false;
                     });
             });

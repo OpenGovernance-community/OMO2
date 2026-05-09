@@ -1655,7 +1655,7 @@ display:none;
 <? 
 	if ($connected) {
 		echo "<button id='profilbtn'>".T_("Profil")."</button>";
-		echo "<form name='logoutform' id='logoutform' action='ajax/login.php' class='ajax' style='margin:0px;display:inline-block'><button id='logoutbtn' name='logoutbtn' value='1' type='button'>".T_("Se déconnecter")."</button></form>";		
+		echo "<form name='logoutform' id='logoutform' action='/common/logout.php' class='ajax' style='margin:0px;display:inline-block'><button id='logoutbtn' name='logoutbtn' value='1' type='button'>".T_("Se déconnecter")."</button></form>";		
 	} else {
 			echo "<button id='login'>".T_("Se connecter")."</button>";
 		}
@@ -1776,12 +1776,12 @@ if (!isset($_GET["view"])) {
   transition: all 0.3s ease;
 }
 
-/* Hover ? expansion */
-.support-bar:hover {
+/* Expansion differee */
+.support-bar.is-expanded {
   height: 140px;
 }
 
-.support-bar:hover .support-text .long {
+.support-bar.is-expanded .support-text .long {
   opacity: 1;
   max-height: 100px;
   margin-top: 0.5rem;
@@ -1820,6 +1820,27 @@ if (!isset($_GET["view"])) {
     </a>
   </div>
 </div>
+
+<script>
+const supportBar = document.querySelector('.support-bar');
+if (supportBar) {
+  let supportBarHoverTimeout = null;
+
+  supportBar.addEventListener('mouseenter', function () {
+    supportBarHoverTimeout = window.setTimeout(function () {
+      supportBar.classList.add('is-expanded');
+    }, 1000);
+  });
+
+  supportBar.addEventListener('mouseleave', function () {
+    if (supportBarHoverTimeout !== null) {
+      window.clearTimeout(supportBarHoverTimeout);
+      supportBarHoverTimeout = null;
+    }
+    supportBar.classList.remove('is-expanded');
+  });
+}
+</script>
 
 	</body>
 </html>

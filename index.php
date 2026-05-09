@@ -75,7 +75,8 @@
 .box_title {
 	background-color:#0B6E7A
 }
-.easypv_title {background:#FFC600 url(/img/bkg_pat_easypv.png); background-size:cover;}
+  .easypv_title {background:#FFC600 url(/img/bkg_pat_easypv.png); background-size:cover;}
+  .omo_title {background:#FFC600 url(/img/bkg_pat_omo.png); background-size:cover;}
 
 .easycircle_title {background-color:#FFC600; background-image:url(/img/bkg_pat_easycircle.png);background-size:cover;}
 .easymemo_title {background-image:url(/img/bkg_pat_easymemo.png);background-size:cover;}
@@ -294,6 +295,7 @@ padding:15px;
 
 	<!-- Affichage des outils -->
 	<div class='tools'>
+	<div class='tool'><h1 class='box_title omo_title'>OMO 2.0</h1><p>Centralisez les informations de votre organisation dans un seul endroit.</p><p><a href='/omo'>&gt;Découvrez le développement en cours (mais déjà fonctionnel)</a></p></div>
 	<div class='tool'><h1 class='box_title easypv_title'>EasyPV</h1><p>Facilitez vos prises de notes en réunion grâche à cette application permettant de gérer un ordre du jour dynamique!</p><p><a href='/pv'>&gt;Découvrez ce module</a></p></div>
 	<div class='tool'><h1 class='box_title easycircle_title'>EasyCIRCLE</h1><p>Améliorez la lisibilité de la structure de votre organisation grâche à l'affichage en cercles et rôles.</p><p><a href='/circle'>&gt;Découvrez ce module</a></p></div>
 	<div class='tool'><h1 class='box_title easymemo_title on_dev'>EasyMEMO</h1><p>Générez facilement des mémos depuis votre téléphone portable, en utilisant l'IA pour retranscrire et formater vos propos.</p><p><a target='_blank' href='https://t.me/SD2_MemoBot'>&gt;Connectez le BOT Telegram</a><br><a target='_blank' href='/memo'>&gt;Gérez vos memos</a></p></div>

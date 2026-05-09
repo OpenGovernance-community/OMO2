@@ -3530,6 +3530,892 @@
 			$applications->loadEnabledForOrganization((int)$this->getId(), $userId !== null ? (int)$userId : 0);
 			return $applications;
 		}
+
+		protected static function normalizeTopbarSearchText($value)
+		{
+			$value = trim((string)$value);
+			if ($value === '') {
+				return '';
+			}
+
+			if (function_exists('mb_strtolower')) {
+				$value = mb_strtolower($value, 'UTF-8');
+			} else {
+				$value = strtolower($value);
+			}
+
+			$value = preg_replace('/\s+/u', ' ', $value);
+			return trim((string)$value);
+		}
+
+		protected static function buildTopbarSearchTerms($query)
+		{
+			$normalizedQuery = self::normalizeTopbarSearchText($query);
+			if ($normalizedQuery === '') {
+				return array();
+			}
+
+			$terms = array($normalizedQuery);
+			$tokens = preg_split('/\s+/u', $normalizedQuery) ?: array();
+
+			foreach ($tokens as $token) {
+				$token = trim((string)$token);
+				if ($token === '') {
+					continue;
+				}
+
+				$length = function_exists('mb_strlen')
+					? (int)mb_strlen($token, 'UTF-8')
+					: (int)strlen($token);
+				if ($length < 2) {
+					continue;
+				}
+
+				$terms[] = $token;
+			}
+
+			$terms = array_values(array_unique($terms));
+			return array_slice($terms, 0, 6);
+		}
+
+		protected static function buildTopbarSearchScoreSql($expression, array $terms, array &$params, $prefix, array $weights = array())
+		{
+			if (count($terms) === 0) {
+				return '0';
+			}
+
+			$resolvedWeights = array_merge(array(
+				'exact' => 60,
+				'prefix' => 35,
+				'like' => 18,
+			), $weights);
+
+			$chunks = array();
+
+			foreach (array_values($terms) as $index => $term) {
+				$paramBase = $prefix . '_' . $index;
+				$params[$paramBase . '_exact'] = $term;
+				$params[$paramBase . '_prefix'] = $term . '%';
+				$params[$paramBase . '_like'] = '%' . $term . '%';
+
+				$chunks[] = '(CASE'
+					. ' WHEN ' . $expression . ' = :' . $paramBase . '_exact THEN ' . (int)$resolvedWeights['exact']
+					. ' WHEN ' . $expression . ' LIKE :' . $paramBase . '_prefix THEN ' . (int)$resolvedWeights['prefix']
+					. ' WHEN ' . $expression . ' LIKE :' . $paramBase . '_like THEN ' . (int)$resolvedWeights['like']
+					. ' ELSE 0 END)';
+			}
+
+			return implode(' + ', $chunks);
+		}
+
+		protected static function buildTopbarSearchAnyMatchSql(array $expressions, array $terms, array &$params, $prefix)
+		{
+			if (count($expressions) === 0 || count($terms) === 0) {
+				return '1 = 0';
+			}
+
+			$chunks = array();
+
+			foreach (array_values($expressions) as $expressionIndex => $expression) {
+				foreach (array_values($terms) as $termIndex => $term) {
+					$paramName = $prefix . '_' . $expressionIndex . '_' . $termIndex;
+					$params[$paramName] = '%' . $term . '%';
+					$chunks[] = $expression . ' LIKE :' . $paramName;
+				}
+			}
+
+			return count($chunks) > 0 ? '(' . implode(' OR ', $chunks) . ')' : '1 = 0';
+		}
+
+		protected static function getTopbarSearchTextScore($value, array $terms, array $weights = array())
+		{
+			if (count($terms) === 0) {
+				return 0;
+			}
+
+			$text = self::normalizeTopbarSearchText(self::cleanTopbarSearchTextValue($value));
+			if ($text === '') {
+				return 0;
+			}
+
+			$resolvedWeights = array_merge(array(
+				'exact' => 60,
+				'prefix' => 35,
+				'like' => 18,
+			), $weights);
+			$score = 0;
+
+			foreach ($terms as $term) {
+				$term = self::normalizeTopbarSearchText($term);
+				if ($term === '') {
+					continue;
+				}
+
+				if ($text === $term) {
+					$score += (int)$resolvedWeights['exact'];
+					continue;
+				}
+
+				if (strpos($text, $term) === 0) {
+					$score += (int)$resolvedWeights['prefix'];
+					continue;
+				}
+
+				if (strpos($text, $term) !== false) {
+					$score += (int)$resolvedWeights['like'];
+				}
+			}
+
+			return $score;
+		}
+
+		protected static function buildTopbarStructurePropertySearchValue(\dbObject\HolonProperty $property)
+		{
+			$parts = array();
+			$value = self::cleanTopbarSearchTextValue((string)$property->get('value'));
+			$ancestorValue = self::cleanTopbarSearchTextValue(str_replace('|', ' | ', (string)$property->get('value_parents')));
+
+			if ($value !== '') {
+				$parts[] = $value;
+			}
+			if ($ancestorValue !== '') {
+				$parts[] = $ancestorValue;
+			}
+
+			return implode(' | ', $parts);
+		}
+
+		protected static function normalizeTopbarSearchViewerContext(array $options = array())
+		{
+			$viewerContext = isset($options['viewerContext']) && is_array($options['viewerContext'])
+				? $options['viewerContext']
+				: array();
+			$type = trim((string)($viewerContext['type'] ?? ''));
+
+			if ($type === '') {
+				if (function_exists('commonGetCurrentShareLink')) {
+					$shareLink = \commonGetCurrentShareLink();
+					if ($shareLink instanceof \dbObject\HolonShareLink) {
+						return array(
+							'type' => 'share',
+							'organizationId' => (int)$shareLink->get('IDorganization'),
+							'shareLinkId' => (int)$shareLink->getId(),
+							'shareHolonId' => (int)$shareLink->get('IDholon'),
+							'allowStructure' => $shareLink->allowsStructure(),
+							'allowPeople' => $shareLink->allowsPeople(),
+							'allowPeopleDetail' => $shareLink->allowsPeopleDetail(),
+							'shareLink' => $shareLink,
+						);
+					}
+				}
+
+				$currentUserId = function_exists('commonGetCurrentUserId')
+					? (int)\commonGetCurrentUserId()
+					: (int)($_SESSION['currentUser'] ?? 0);
+
+				if ($currentUserId > 0) {
+					return array(
+						'type' => 'user',
+						'organizationId' => (int)($viewerContext['organizationId'] ?? ($options['organizationId'] ?? ($_SESSION['currentOrganization'] ?? 0))),
+						'userId' => $currentUserId,
+					);
+				}
+
+				return array(
+					'type' => 'public',
+					'organizationId' => (int)($viewerContext['organizationId'] ?? ($options['organizationId'] ?? ($_SESSION['currentOrganization'] ?? 0))),
+				);
+			}
+
+			$normalized = array(
+				'type' => $type,
+				'organizationId' => (int)($viewerContext['organizationId'] ?? ($options['organizationId'] ?? 0)),
+			);
+
+			if ($type === 'user') {
+				$normalized['userId'] = (int)($viewerContext['userId'] ?? 0);
+				return $normalized;
+			}
+
+			if ($type === 'share') {
+				$normalized['shareLinkId'] = (int)($viewerContext['shareLinkId'] ?? 0);
+				$normalized['shareHolonId'] = (int)($viewerContext['shareHolonId'] ?? 0);
+				$normalized['allowStructure'] = !empty($viewerContext['allowStructure']);
+				$normalized['allowPeople'] = !empty($viewerContext['allowPeople']);
+				$normalized['allowPeopleDetail'] = !empty($viewerContext['allowPeopleDetail']);
+				if (!empty($viewerContext['shareLink']) && $viewerContext['shareLink'] instanceof \dbObject\HolonShareLink) {
+					$normalized['shareLink'] = $viewerContext['shareLink'];
+				}
+			}
+
+			return $normalized;
+		}
+
+		protected static function getTopbarSearchViewerShareLink(array &$viewerContext)
+		{
+			if (($viewerContext['type'] ?? '') !== 'share') {
+				return null;
+			}
+
+			if (!empty($viewerContext['shareLink']) && $viewerContext['shareLink'] instanceof \dbObject\HolonShareLink) {
+				return $viewerContext['shareLink'];
+			}
+
+			$shareLinkId = (int)($viewerContext['shareLinkId'] ?? 0);
+			$organizationId = (int)($viewerContext['organizationId'] ?? 0);
+			$shareHolonId = (int)($viewerContext['shareHolonId'] ?? 0);
+			if ($shareLinkId <= 0 || $organizationId <= 0 || $shareHolonId <= 0) {
+				return null;
+			}
+
+			$shareLink = \dbObject\HolonShareLink::findByIdForContext($shareLinkId, $organizationId, $shareHolonId, true);
+			if (
+				!$shareLink
+				|| !(bool)$shareLink->get('active')
+				|| $shareLink->isExpired()
+			) {
+				return null;
+			}
+
+			$viewerContext['shareLink'] = $shareLink;
+			$viewerContext['allowStructure'] = $shareLink->allowsStructure();
+			$viewerContext['allowPeople'] = $shareLink->allowsPeople();
+			$viewerContext['allowPeopleDetail'] = $shareLink->allowsPeopleDetail();
+
+			return $shareLink;
+		}
+
+		protected static function topbarSearchViewerHasOrganizationAccess(array &$viewerContext, $organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0) {
+				return false;
+			}
+
+			$type = (string)($viewerContext['type'] ?? '');
+			if ($type === 'share') {
+				$shareLink = self::getTopbarSearchViewerShareLink($viewerContext);
+				return $shareLink ? $shareLink->canViewOrganization($organizationId) : false;
+			}
+
+			if ($type === 'user') {
+				$userId = (int)($viewerContext['userId'] ?? 0);
+				return $userId > 0 && function_exists('commonUserHasOrganizationMembership')
+					? \commonUserHasOrganizationMembership($userId, $organizationId)
+					: false;
+			}
+
+			return $type === 'public';
+		}
+
+		protected static function topbarSearchViewerCanSearchPeople(array &$viewerContext, $organizationId)
+		{
+			if (!self::topbarSearchViewerHasOrganizationAccess($viewerContext, $organizationId)) {
+				return false;
+			}
+
+			$type = (string)($viewerContext['type'] ?? '');
+			if ($type === 'share') {
+				return !empty($viewerContext['allowPeople']);
+			}
+
+			return $type === 'user';
+		}
+
+		protected static function topbarSearchViewerCanViewHolon(\dbObject\Holon $holon, array &$viewerContext)
+		{
+			$type = (string)($viewerContext['type'] ?? '');
+			if ($type === 'share') {
+				$shareLink = self::getTopbarSearchViewerShareLink($viewerContext);
+				return $shareLink ? $shareLink->canViewHolon($holon) : false;
+			}
+
+			return self::topbarSearchViewerHasOrganizationAccess($viewerContext, (int)$holon->get('IDorganization') ?: (int)($viewerContext['organizationId'] ?? 0));
+		}
+
+		protected static function topbarSearchViewerCanViewUser(\dbObject\User $user, array &$viewerContext, $requireDetail = false)
+		{
+			$type = (string)($viewerContext['type'] ?? '');
+			if ($type === 'share') {
+				$shareLink = self::getTopbarSearchViewerShareLink($viewerContext);
+				return $shareLink ? $shareLink->canViewUser($user, $requireDetail) : false;
+			}
+
+			if ($type === 'user') {
+				return self::topbarSearchViewerHasOrganizationAccess($viewerContext, (int)($viewerContext['organizationId'] ?? 0));
+			}
+
+			return false;
+		}
+
+		protected static function topbarSearchViewerCanViewDocument(\dbObject\Document $document, array &$viewerContext, $organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			if (!self::topbarSearchViewerHasOrganizationAccess($viewerContext, $organizationId)) {
+				return false;
+			}
+
+			if ((string)($viewerContext['type'] ?? '') !== 'share') {
+				return true;
+			}
+
+			$shareLink = self::getTopbarSearchViewerShareLink($viewerContext);
+			if (!$shareLink) {
+				return false;
+			}
+
+			$documentHolonId = (int)$document->get('IDholon');
+			if ($documentHolonId <= 0) {
+				return true;
+			}
+
+			$documentHolon = new \dbObject\Holon();
+			return $documentHolon->load($documentHolonId) && $shareLink->containsHolon($documentHolon);
+		}
+
+		protected static function cleanTopbarSearchTextValue($value, $limit = 0)
+		{
+			$value = html_entity_decode(strip_tags((string)$value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+			$value = preg_replace('/\s+/u', ' ', $value);
+			$value = trim((string)$value);
+
+			if ($limit > 0) {
+				if (function_exists('mb_substr')) {
+					if (mb_strlen($value, 'UTF-8') > $limit) {
+						$value = rtrim((string)mb_substr($value, 0, $limit, 'UTF-8')) . '...';
+					}
+				} elseif (strlen($value) > $limit) {
+					$value = rtrim(substr($value, 0, $limit)) . '...';
+				}
+			}
+
+			return $value;
+		}
+
+		protected static function buildTopbarSearchSnippet($value, $query, $radius = 90, $fallbackLimit = 220)
+		{
+			$text = self::cleanTopbarSearchTextValue($value);
+			$query = trim((string)$query);
+
+			if ($text === '') {
+				return '';
+			}
+
+			if ($query === '') {
+				return self::cleanTopbarSearchTextValue($text, $fallbackLimit);
+			}
+
+			$lowerText = function_exists('mb_strtolower')
+				? mb_strtolower($text, 'UTF-8')
+				: strtolower($text);
+			$lowerQuery = self::normalizeTopbarSearchText($query);
+
+			if ($lowerQuery === '') {
+				return self::cleanTopbarSearchTextValue($text, $fallbackLimit);
+			}
+
+			$position = function_exists('mb_stripos')
+				? mb_stripos($lowerText, $lowerQuery, 0, 'UTF-8')
+				: stripos($lowerText, $lowerQuery);
+
+			if ($position === false) {
+				return self::cleanTopbarSearchTextValue($text, $fallbackLimit);
+			}
+
+			$queryLength = function_exists('mb_strlen')
+				? (int)mb_strlen($lowerQuery, 'UTF-8')
+				: (int)strlen($lowerQuery);
+			$textLength = function_exists('mb_strlen')
+				? (int)mb_strlen($text, 'UTF-8')
+				: (int)strlen($text);
+
+			$start = max(0, (int)$position - (int)$radius);
+			$length = min($textLength - $start, ((int)$radius * 2) + $queryLength);
+			$snippet = function_exists('mb_substr')
+				? (string)mb_substr($text, $start, $length, 'UTF-8')
+				: (string)substr($text, $start, $length);
+
+			if ($start > 0) {
+				$snippet = '... ' . ltrim($snippet);
+			}
+
+			if ($start + $length < $textLength) {
+				$snippet = rtrim($snippet) . ' ...';
+			}
+
+			return trim($snippet);
+		}
+
+		protected static function getTopbarSearchHolonTypeLabel($typeId)
+		{
+			switch ((int)$typeId) {
+				case 1:
+					return 'Role';
+				case 2:
+					return 'Cercle';
+				case 3:
+					return 'Groupe';
+				case 4:
+					return 'Organisation';
+				default:
+					return 'Holon';
+			}
+		}
+
+		protected function searchTopbarStructureResults($query, array $terms, $limit = 12, array $viewerContext = array())
+		{
+			$rootHolon = $this->getStructuralRootHolon();
+			if (!$rootHolon || (int)$rootHolon->getId() <= 0 || count($terms) === 0) {
+				return array();
+			}
+
+			$rows = self::fetchAll(
+				"SELECT
+					h.id,
+					h.name,
+					h.templatename,
+					h.IDtypeholon,
+					h.datemodification
+				FROM holon h
+				WHERE h.IDholon_org = :root_holon_id
+				  AND h.active = 1
+				  AND h.visible = 1
+				  AND h.IDtypeholon IN (1, 2, 3)
+				ORDER BY h.datemodification DESC, h.id DESC",
+				array(
+					'root_holon_id' => (int)$rootHolon->getId(),
+				)
+			);
+
+			if ($rows === false) {
+				return array();
+			}
+
+			$results = array();
+
+			foreach ($rows as $row) {
+				$holon = new \dbObject\Holon();
+				if (
+					!$holon->load((int)($row['id'] ?? 0))
+					|| !self::topbarSearchViewerCanViewHolon($holon, $viewerContext)
+				) {
+					continue;
+				}
+
+				$nameScore = self::getTopbarSearchTextScore(
+					trim((string)$holon->getDisplayName() . ' ' . (string)$holon->get('templatename')),
+					$terms,
+					array(
+						'exact' => 90,
+						'prefix' => 55,
+						'like' => 28,
+					)
+				);
+
+				$propertyScore = 0;
+				$matchedExcerpt = '';
+				$matchedExcerptScore = 0;
+
+				foreach ($holon->getPropertiesValue() as $property) {
+					$propertyLabel = trim((string)$property->get('name') . ' ' . (string)$property->get('shortname'));
+					$propertyValue = self::buildTopbarStructurePropertySearchValue($property);
+					$propertyRowScore =
+						self::getTopbarSearchTextScore($propertyLabel, $terms, array(
+							'exact' => 26,
+							'prefix' => 16,
+							'like' => 10,
+						))
+						+ self::getTopbarSearchTextScore($propertyValue, $terms, array(
+							'exact' => 18,
+							'prefix' => 10,
+							'like' => 6,
+						));
+
+					if ($propertyRowScore <= 0) {
+						continue;
+					}
+
+					$propertyScore += $propertyRowScore;
+
+					if ($propertyRowScore > $matchedExcerptScore) {
+						$matchedExcerptScore = $propertyRowScore;
+						$matchedExcerpt = trim($propertyLabel);
+						if ($propertyValue !== '') {
+							$matchedExcerpt .= ($matchedExcerpt !== '' ? ': ' : '') . $propertyValue;
+						}
+					}
+				}
+
+				$totalScore = $nameScore + $propertyScore;
+				if ($totalScore <= 0) {
+					continue;
+				}
+
+				$pathLabels = array();
+				foreach ($holon->getPathHolons() as $pathHolon) {
+					if ((int)$pathHolon->get('IDtypeholon') === 4 || (int)$pathHolon->getId() === (int)$holon->getId()) {
+						continue;
+					}
+
+					$pathLabels[] = trim((string)$pathHolon->getDisplayName());
+				}
+
+				if ($matchedExcerpt === '' && $nameScore > 0) {
+					$matchedExcerpt = $holon->getDisplayName();
+				}
+
+				$matchedExcerpt = self::buildTopbarSearchSnippet($matchedExcerpt, $query, 80, 180);
+				$subtitle = self::getTopbarSearchHolonTypeLabel((int)($row['IDtypeholon'] ?? 0));
+				if (count($pathLabels) > 0) {
+					$subtitle .= ' - ' . implode(' > ', $pathLabels);
+				}
+
+				$results[] = array(
+					'module' => 'structure',
+					'moduleLabel' => 'Structure',
+					'title' => $holon->getDisplayName(),
+					'subtitle' => $subtitle,
+					'excerpt' => $matchedExcerpt,
+					'relevance' => $totalScore,
+					'datemodification' => (string)($row['datemodification'] ?? ''),
+					'action' => array(
+						'type' => 'structure',
+						'holonId' => (int)$holon->getId(),
+					),
+				);
+			}
+
+			usort($results, function ($left, $right) {
+				$leftScore = (int)($left['relevance'] ?? 0);
+				$rightScore = (int)($right['relevance'] ?? 0);
+				if ($leftScore !== $rightScore) {
+					return $rightScore <=> $leftScore;
+				}
+
+				$leftDate = (string)($left['datemodification'] ?? '');
+				$rightDate = (string)($right['datemodification'] ?? '');
+				if ($leftDate !== $rightDate) {
+					return strcmp($rightDate, $leftDate);
+				}
+
+				$leftId = (int)($left['action']['holonId'] ?? 0);
+				$rightId = (int)($right['action']['holonId'] ?? 0);
+				return $rightId <=> $leftId;
+			});
+
+			$results = array_slice($results, 0, max(1, (int)$limit));
+			foreach ($results as &$result) {
+				unset($result['datemodification']);
+			}
+			unset($result);
+
+			return $results;
+		}
+
+		protected function searchTopbarTeamResults($query, array $terms, $limit = 10, array $viewerContext = array())
+		{
+			if ((int)$this->getId() <= 0 || count($terms) === 0) {
+				return array();
+			}
+
+			$params = array(
+				'organization_id' => (int)$this->getId(),
+			);
+
+			$identityExpr = "LOWER(CONCAT_WS(' ', COALESCE(u.firstname, ''), COALESCE(u.lastname, ''), COALESCE(NULLIF(uo.username, ''), u.username, ''), COALESCE(NULLIF(uo.email, ''), u.email, '')))";
+			$parameterExpr = "LOWER(CONCAT_WS(' ', COALESCE(u.parameters, ''), COALESCE(uo.parameters, '')))";
+
+			$identityScoreSql = self::buildTopbarSearchScoreSql($identityExpr, $terms, $params, 'team_identity', array(
+				'exact' => 80,
+				'prefix' => 48,
+				'like' => 24,
+			));
+			$parameterScoreSql = self::buildTopbarSearchScoreSql($parameterExpr, $terms, $params, 'team_parameters', array(
+				'exact' => 16,
+				'prefix' => 10,
+				'like' => 5,
+			));
+			$preFilterSql = self::buildTopbarSearchAnyMatchSql(
+				array($identityExpr, $parameterExpr),
+				$terms,
+				$params,
+				'team_prefilter'
+			);
+			$limitSql = max(1, (int)$limit);
+
+			$rows = self::fetchAll(
+				"SELECT
+					u.id,
+					u.firstname,
+					u.lastname,
+					COALESCE(NULLIF(uo.username, ''), u.username, '') AS scoped_username,
+					COALESCE(NULLIF(uo.email, ''), u.email, '') AS scoped_email,
+					uo.active AS membership_active,
+					(" . $identityScoreSql . " + " . $parameterScoreSql . ") AS relevance
+				FROM user_organization uo
+				INNER JOIN user u
+					ON u.id = uo.IDuser
+				WHERE uo.IDorganization = :organization_id
+				  AND " . $preFilterSql . "
+				HAVING relevance > 0
+				ORDER BY relevance DESC, uo.dateconnexion DESC, uo.datecreation DESC, u.id DESC
+				LIMIT " . $limitSql,
+				$params
+			);
+
+			if ($rows === false) {
+				return array();
+			}
+
+			$results = array();
+
+			foreach ($rows as $row) {
+				$user = new \dbObject\User();
+				if (
+					!$user->load((int)($row['id'] ?? 0))
+					|| !self::topbarSearchViewerCanViewUser($user, $viewerContext, false)
+				) {
+					continue;
+				}
+
+				$fullName = trim((string)($row['firstname'] ?? '') . ' ' . (string)($row['lastname'] ?? ''));
+				$scopedUsername = trim((string)($row['scoped_username'] ?? ''));
+				$scopedEmail = trim((string)($row['scoped_email'] ?? ''));
+				$title = $fullName !== '' ? $fullName : ($scopedUsername !== '' ? $scopedUsername : $scopedEmail);
+				if ($title === '') {
+					$title = 'Membre #' . (int)($row['id'] ?? 0);
+				}
+
+				$subtitleParts = array();
+				if ($scopedUsername !== '') {
+					$subtitleParts[] = '@' . $scopedUsername;
+				}
+				if ($scopedEmail !== '') {
+					$subtitleParts[] = $scopedEmail;
+				}
+
+				$results[] = array(
+					'module' => 'team',
+					'moduleLabel' => 'Team',
+					'title' => $title,
+					'subtitle' => implode(' - ', $subtitleParts),
+					'excerpt' => (int)($row['membership_active'] ?? 0) === 1 ? '' : 'Membre en attente ou inactif.',
+					'relevance' => (int)($row['relevance'] ?? 0),
+					'action' => array(
+						'type' => 'user',
+						'userId' => (int)($row['id'] ?? 0),
+					),
+				);
+			}
+
+			return $results;
+		}
+
+		protected function searchTopbarDocumentResults($query, array $terms, $limit = 12, array $viewerContext = array())
+		{
+			if ((int)$this->getId() <= 0 || count($terms) === 0) {
+				return array();
+			}
+
+			$params = array(
+				'organization_id' => (int)$this->getId(),
+			);
+
+			$titleExpr = "LOWER(COALESCE(d.title, ''))";
+			$descriptionExpr = "LOWER(COALESCE(d.description, ''))";
+			$keywordsExpr = "LOWER(COALESCE(d.keywords, ''))";
+			$contentExpr = "LOWER(COALESCE(d.content, ''))";
+
+			$titleScoreSql = self::buildTopbarSearchScoreSql($titleExpr, $terms, $params, 'document_title', array(
+				'exact' => 100,
+				'prefix' => 65,
+				'like' => 34,
+			));
+			$descriptionScoreSql = self::buildTopbarSearchScoreSql($descriptionExpr, $terms, $params, 'document_description', array(
+				'exact' => 30,
+				'prefix' => 18,
+				'like' => 10,
+			));
+			$keywordsScoreSql = self::buildTopbarSearchScoreSql($keywordsExpr, $terms, $params, 'document_keywords', array(
+				'exact' => 40,
+				'prefix' => 26,
+				'like' => 15,
+			));
+			$contentScoreSql = self::buildTopbarSearchScoreSql($contentExpr, $terms, $params, 'document_content', array(
+				'exact' => 18,
+				'prefix' => 12,
+				'like' => 6,
+			));
+			$preFilterSql = self::buildTopbarSearchAnyMatchSql(
+				array($titleExpr, $descriptionExpr, $keywordsExpr, $contentExpr),
+				$terms,
+				$params,
+				'document_prefilter'
+			);
+			$limitSql = max(1, (int)$limit);
+
+			$rows = self::fetchAll(
+				"SELECT
+					d.id,
+					d.title,
+					d.description,
+					d.keywords,
+					d.content,
+					d.IDholon,
+					d.datecreation,
+					d.datemodification,
+					(" . $titleScoreSql . " + " . $descriptionScoreSql . " + " . $keywordsScoreSql . " + " . $contentScoreSql . ") AS relevance
+				FROM document d
+				WHERE d.IDorganization = :organization_id
+				  AND " . $preFilterSql . "
+				HAVING relevance > 0
+				ORDER BY relevance DESC, d.datemodification DESC, d.datecreation DESC, d.id DESC
+				LIMIT " . $limitSql,
+				$params
+			);
+
+			if ($rows === false) {
+				return array();
+			}
+
+			$results = array();
+
+			foreach ($rows as $row) {
+				$document = new \dbObject\Document();
+				if (!$document->load((int)($row['id'] ?? 0))) {
+					continue;
+				}
+
+				if (!self::topbarSearchViewerCanViewDocument($document, $viewerContext, (int)$this->getId())) {
+					continue;
+				}
+
+				$subtitle = $document->getOrganizationContextLabel();
+				$snippetSource = trim((string)($row['description'] ?? '')) !== ''
+					? (string)($row['description'] ?? '')
+					: ((trim((string)($row['keywords'] ?? '')) !== '' ? (string)($row['keywords'] ?? '') : (string)($row['content'] ?? '')));
+				$detailUrl = '/omo/api/documents/detail.php?id=' . (int)$document->getId() . '&oid=' . (int)$this->getId();
+				if ((int)$document->get('IDholon') > 0) {
+					$detailUrl .= '&cid=' . (int)$document->get('IDholon');
+				}
+
+				$results[] = array(
+					'module' => 'documents',
+					'moduleLabel' => 'Documents',
+					'title' => trim((string)$document->get('title')) !== '' ? (string)$document->get('title') : ('Document #' . (int)$document->getId()),
+					'subtitle' => $subtitle,
+					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
+					'relevance' => (int)($row['relevance'] ?? 0),
+					'action' => array(
+						'type' => 'document',
+						'documentId' => (int)$document->getId(),
+						'documentUrl' => $detailUrl,
+					),
+				);
+			}
+
+			return $results;
+		}
+
+		public function searchTopbarResults($query, array $scopes = array(), array $options = array())
+		{
+			$query = trim((string)$query);
+			$normalizedScopes = array();
+
+			foreach ($scopes as $scope) {
+				$scope = trim((string)$scope);
+				if ($scope === '__structure__') {
+					$scope = 'structure';
+				}
+
+				if (in_array($scope, array('structure', 'team', 'documents'), true)) {
+					$normalizedScopes[$scope] = $scope;
+				}
+			}
+
+			if (count($normalizedScopes) === 0) {
+				$normalizedScopes['structure'] = 'structure';
+			}
+
+			$viewerContext = self::normalizeTopbarSearchViewerContext(array(
+				'viewerContext' => isset($options['viewerContext']) && is_array($options['viewerContext'])
+					? $options['viewerContext']
+					: array(),
+				'organizationId' => (int)$this->getId(),
+			));
+
+			$terms = self::buildTopbarSearchTerms($query);
+			$limit = isset($options['limit']) ? max(1, (int)$options['limit']) : 30;
+			$perScopeLimit = isset($options['perScopeLimit']) ? max(1, (int)$options['perScopeLimit']) : 12;
+			$canSearchPeople = array_key_exists('canSearchPeople', $options)
+				? (bool)$options['canSearchPeople']
+				: self::topbarSearchViewerCanSearchPeople($viewerContext, (int)$this->getId());
+
+			$counts = array(
+				'structure' => 0,
+				'team' => 0,
+				'documents' => 0,
+			);
+			$results = array();
+
+			if (
+				$query !== ''
+				&& count($terms) > 0
+				&& self::topbarSearchViewerHasOrganizationAccess($viewerContext, (int)$this->getId())
+			) {
+				if (isset($normalizedScopes['structure'])) {
+					$scopeResults = $this->searchTopbarStructureResults($query, $terms, $perScopeLimit, $viewerContext);
+					$counts['structure'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
+
+				if ($canSearchPeople && isset($normalizedScopes['team'])) {
+					$scopeResults = $this->searchTopbarTeamResults($query, $terms, $perScopeLimit, $viewerContext);
+					$counts['team'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
+
+				if (isset($normalizedScopes['documents'])) {
+					$scopeResults = $this->searchTopbarDocumentResults($query, $terms, $perScopeLimit, $viewerContext);
+					$counts['documents'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
+			}
+
+			$moduleOrder = array(
+				'structure' => 1,
+				'team' => 2,
+				'documents' => 3,
+			);
+
+			usort($results, function ($left, $right) use ($moduleOrder) {
+				$leftScore = (int)($left['relevance'] ?? 0);
+				$rightScore = (int)($right['relevance'] ?? 0);
+				if ($leftScore !== $rightScore) {
+					return $rightScore <=> $leftScore;
+				}
+
+				$leftModuleOrder = $moduleOrder[(string)($left['module'] ?? '')] ?? 99;
+				$rightModuleOrder = $moduleOrder[(string)($right['module'] ?? '')] ?? 99;
+				if ($leftModuleOrder !== $rightModuleOrder) {
+					return $leftModuleOrder <=> $rightModuleOrder;
+				}
+
+				return strcmp((string)($left['title'] ?? ''), (string)($right['title'] ?? ''));
+			});
+
+			if (count($results) > $limit) {
+				$results = array_slice($results, 0, $limit);
+			}
+
+			return array(
+				'query' => $query,
+				'scopes' => array_values($normalizedScopes),
+				'counts' => $counts,
+				'total' => count($results),
+				'results' => $results,
+			);
+		}
 		
 	}
 	

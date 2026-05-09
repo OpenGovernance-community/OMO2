@@ -92,6 +92,9 @@ function commonRenderTopbar(array $options = [])
             'placeholder' => (string)($options['search']['placeholder'] ?? 'Rechercher'),
             'callback' => (string)($options['search']['callback'] ?? ''),
             'buttonLabel' => (string)($options['search']['buttonLabel'] ?? 'Recherche'),
+            'scopeProvider' => (string)($options['search']['scopeProvider'] ?? ''),
+            'scopeLabel' => (string)($options['search']['scopeLabel'] ?? 'Chercher dans'),
+            'scopeHint' => (string)($options['search']['scopeHint'] ?? ''),
         ],
         'profile' => [
             'enabled' => array_key_exists('enabled', $options['profile'] ?? []) ? !empty($options['profile']['enabled']) : true,
@@ -165,7 +168,17 @@ function commonRenderTopbar(array $options = [])
                         >
                         <button type="submit" class="common-topbar__search-button">Lancer</button>
                     </div>
+                    <?php if ($config['search']['scopeProvider'] !== ''): ?>
+                    <div class="common-topbar__search-scopes" data-topbar-search-scopes hidden>
+                        <div class="common-topbar__search-panel-label"><?= htmlspecialchars($config['search']['scopeLabel']) ?></div>
+                        <div class="common-topbar__search-scope-list" data-topbar-search-scope-list></div>
+                        <?php if ($config['search']['scopeHint'] !== ''): ?>
+                            <div class="common-topbar__search-panel-hint"><?= htmlspecialchars($config['search']['scopeHint']) ?></div>
+                        <?php endif; ?>
+                    </div>
+                    <?php else: ?>
                     <div class="common-topbar__search-panel-hint">D’autres filtres avancés pourront s’ajouter ici.</div>
+                    <?php endif; ?>
                 </form>
             </div>
         </div>

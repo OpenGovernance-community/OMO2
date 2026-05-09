@@ -65,10 +65,10 @@ $renderMenuItem = static function (array $item) use ($escape) {
     <div
         class="menu-item menu-item--add"
         data-omo-open-app-picker="1"
-        title="Ajouter des applications"
+        title="Gerer les applications"
     >
         <span class="icon icon-text">+</span>
-        <span class="label">Ajouter</span>
+        <span class="label">Gerer</span>
     </div>
 <?php endif; ?>
 </div>
