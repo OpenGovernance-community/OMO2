@@ -1,5 +1,6 @@
 /.env
 /docker/app/.env
+/docker/app/.env.private
 /docker/db/init/*.local.sql
 /docker/db/init/*.private.sql
 /docker/db/init/*.disabled
