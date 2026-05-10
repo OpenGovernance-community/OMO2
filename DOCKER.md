@@ -19,7 +19,22 @@ Pour Docker, le conteneur web utilise automatiquement :
 
 Cela evite d'utiliser par erreur un `.env` local de production dans le conteneur.
 
-Si tu veux personnaliser l'environnement Docker, modifie ce fichier.
+Ce fichier peut rester public et versionne pour toutes les valeurs non sensibles.
+
+Pour les secrets locaux non publies, le conteneur charge aussi :
+
+`docker/app/.env.private`
+
+Ce second fichier est ignore par Git et injecte comme variables d'environnement du conteneur.
+
+La separation recommandee est donc :
+
+- `docker/app/.env` : valeurs Docker publiques et partageables comme `DB_HOST=db`, `MAIL_HOST=mailpit`, etc.
+- `docker/app/.env.private` : secrets locaux comme `GITHUB_BUGREPORT_TOKEN`, `TELEGRAM_BOT_TOKEN`, `OPENAI_API_KEY`, mots de passe, etc.
+
+Un exemple de depart est fourni dans :
+
+`docker/app/.env.private.example`
 
 Le fichier `.env.example` reste utile pour une configuration hors Docker.
 

@@ -127,6 +127,11 @@ Ce type de fichier est ignore par Git, mais sera bien importe par MariaDB au pre
 
 ### Configuration Docker
 
-Le conteneur web utilise `docker/app/.env`, ce qui evite d'employer par erreur un `.env` local de production.
+Le conteneur web utilise `docker/app/.env` pour les valeurs Docker publiques, et `docker/app/.env.private` pour les secrets locaux non publies.
+
+Exemples :
+
+- `docker/app/.env` : `DB_HOST=db`, `MAIL_HOST=mailpit`
+- `docker/app/.env.private` : `GITHUB_BUGREPORT_TOKEN`, `TELEGRAM_BOT_TOKEN`, `OPENAI_API_KEY`
 
 Pour plus de details, voir [DOCKER.md](DOCKER.md).

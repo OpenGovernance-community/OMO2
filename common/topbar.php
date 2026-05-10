@@ -96,6 +96,14 @@ function commonRenderTopbar(array $options = [])
             'scopeLabel' => (string)($options['search']['scopeLabel'] ?? 'Chercher dans'),
             'scopeHint' => (string)($options['search']['scopeHint'] ?? ''),
         ],
+        'bugReport' => [
+            'enabled' => !empty($options['bugReport']['enabled']),
+            'buttonLabel' => (string)($options['bugReport']['buttonLabel'] ?? 'Bug'),
+            'title' => (string)($options['bugReport']['title'] ?? 'Signaler un bug'),
+            'mode' => (string)($options['bugReport']['mode'] ?? 'fetch'),
+            'url' => (string)($options['bugReport']['url'] ?? ''),
+            'callback' => (string)($options['bugReport']['callback'] ?? ''),
+        ],
         'profile' => [
             'enabled' => array_key_exists('enabled', $options['profile'] ?? []) ? !empty($options['profile']['enabled']) : true,
             'editLabel' => (string)($options['profile']['editLabel'] ?? 'Éditer le profil'),
@@ -146,6 +154,17 @@ function commonRenderTopbar(array $options = [])
     </div>
 
     <div class="common-topbar__actions">
+        <?php if (!empty($config['bugReport']['enabled'])): ?>
+        <div class="common-topbar__menu-wrap">
+            <button type="button" class="common-topbar__action common-topbar__action--square" data-topbar-bug-report>
+                <span class="common-topbar__action-icon" aria-hidden="true">
+                    <img src="/img/punaise.png" alt="" class="common-topbar__icon-image">
+                </span>
+                <span class="common-topbar__action-label"><?= htmlspecialchars($config['bugReport']['buttonLabel']) ?></span>
+            </button>
+        </div>
+        <?php endif; ?>
+
         <?php if (!empty($config['search']['enabled'])): ?>
         <div class="common-topbar__menu-wrap common-topbar__menu-wrap--panel">
             <button type="button" class="common-topbar__action common-topbar__action--square" data-topbar-menu-trigger="search">

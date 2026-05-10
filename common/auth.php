@@ -338,6 +338,7 @@ function commonResolveOrganizationContext($defaultOrganizationId = 1)
 
     if ($organization === false) {
         $_SESSION['currentOrganization'] = -1;
+        $GLOBALS['common_request_organization_id'] = -1;
 
         return [
             'isValid' => false,
@@ -371,8 +372,88 @@ function commonResolveOrganizationContext($defaultOrganizationId = 1)
     ];
 
     $_SESSION['currentOrganization'] = $context['id'];
+    $GLOBALS['common_request_organization_id'] = $context['id'];
 
     return $context;
+}
+
+function commonResolveLoginActivityOrganizationId($returnTo = null)
+{
+    $returnTo = is_string($returnTo) ? trim($returnTo) : '';
+    if ($returnTo !== '') {
+        $normalizedReturnTo = commonNormalizeLocalPath($returnTo, '/');
+        $returnToPath = (string)parse_url($normalizedReturnTo, PHP_URL_PATH);
+        if (preg_match('#^/omo/o/(\d+)(?:/c/\d+)?/?$#', $returnToPath, $matches)) {
+            return (int)$matches[1];
+        }
+
+        $returnToQuery = (string)parse_url($normalizedReturnTo, PHP_URL_QUERY);
+        if ($returnToQuery !== '') {
+            $params = array();
+            parse_str($returnToQuery, $params);
+            if (isset($params['oid']) && is_numeric($params['oid'])) {
+                return (int)$params['oid'];
+            }
+        }
+    }
+
+    $requestedOrganizationId = commonGetRequestedOrganizationId();
+    if ($requestedOrganizationId > 0) {
+        return $requestedOrganizationId;
+    }
+
+    $host = commonGetRequestHost();
+    if ($host !== '' && !commonIsDemoHost($host) && commonGetRequestSubdomain($host) !== '') {
+        $organization = \dbObject\Organization::resolveFromHost($host, 0);
+        if ($organization) {
+            return (int)$organization->getId();
+        }
+    }
+
+    $requestOrganizationId = (int)($GLOBALS['common_request_organization_id'] ?? 0);
+    if ($requestOrganizationId > 0) {
+        return $requestOrganizationId;
+    }
+
+    return 0;
+}
+
+function commonUpdateLastConnection($userId, $returnTo = null, $activateUser = false)
+{
+    $userId = (int)$userId;
+    if ($userId <= 0) {
+        return false;
+    }
+
+    $now = new \DateTimeImmutable();
+    $updated = false;
+
+    $user = new \dbObject\User();
+    if ($user->load($userId)) {
+        $user->set('dateconnexion', $now);
+        if ($activateUser) {
+            $user->set('active', 1);
+        }
+
+        $saveResult = $user->save();
+        $updated = !empty($saveResult['status']);
+    }
+
+    $organizationId = commonResolveLoginActivityOrganizationId($returnTo);
+    if ($organizationId > 0) {
+        $membership = new \dbObject\UserOrganization();
+        if ($membership->load([
+            ['IDuser', $userId],
+            ['IDorganization', $organizationId],
+            ['active', 1],
+        ])) {
+            $membership->set('dateconnexion', $now);
+            $saveResult = $membership->save();
+            $updated = !empty($saveResult['status']) || $updated;
+        }
+    }
+
+    return $updated;
 }
 
 function commonRestoreRememberedUser()
@@ -409,6 +490,7 @@ function commonRestoreRememberedUser()
     }
 
     $_SESSION['currentUser'] = (int)$remember->get('IDuser');
+    commonUpdateLastConnection((int)$_SESSION['currentUser']);
     commonRefreshRememberedUser($remember);
     return (int)$_SESSION['currentUser'];
 }
@@ -1143,11 +1225,7 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
     $loginToken->markUsed();
     commonStorePendingLoginToken(null);
 
-    $user = new \dbObject\User();
-    if ($user->load((int)$loginToken->get('IDuser'))) {
-        $user->set('active', 1);
-        $user->save();
-    }
+    commonUpdateLastConnection((int)$loginToken->get('IDuser'), $returnTo, true);
 
     session_regenerate_id(true);
     $_SESSION['currentUser'] = (int)$loginToken->get('IDuser');
