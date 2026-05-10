@@ -46,7 +46,6 @@ function commonGetReservedEnvironmentSubdomains()
     if (function_exists('appGetReservedEnvironmentSubdomains')) {
         return appGetReservedEnvironmentSubdomains();
     }
-
     return ['dev', 'beta'];
 }
 
