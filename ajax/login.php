@@ -45,6 +45,7 @@
 		
 		// Stock l'info dans la session
 		$_SESSION["currentUser"]=$user->get("id");
+		commonUpdateLastConnection((int)$user->get("id"));
 		
 		// Si demande de se souvenir, stock l'info dans un cookie pendant 30 jours
 		if (isset($_POST["remember"]) && $_POST["remember"]=="1") {

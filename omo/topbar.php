@@ -72,6 +72,13 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
             'scopeLabel' => 'Chercher dans',
             'scopeHint' => 'La recherche de la topbar n agit que sur les modules coches.',
         ],
+        'bugReport' => [
+            'enabled' => !$isDemoGuest && $variant === 'app',
+            'buttonLabel' => 'Bug',
+            'title' => 'Signaler un bug',
+            'url' => '/omo/api/bug_report_popup.php',
+            'mode' => 'fetch',
+        ],
     ];
 
     if ($variant === 'app') {
@@ -84,6 +91,10 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
 
     if (!empty($options['search']) && is_array($options['search'])) {
         $config['search'] = array_replace($config['search'], $options['search']);
+    }
+
+    if (!empty($options['bugReport']) && is_array($options['bugReport'])) {
+        $config['bugReport'] = array_replace($config['bugReport'], $options['bugReport']);
     }
 
     if (!empty($options['profile']) && is_array($options['profile'])) {

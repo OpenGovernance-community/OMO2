@@ -5,6 +5,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    env_file:
+      - ./docker/app/.env.private
     depends_on:
       db:
         condition: service_healthy
