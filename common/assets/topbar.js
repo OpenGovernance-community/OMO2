@@ -370,6 +370,27 @@
         }
     }
 
+    function handleBugReport() {
+        var config = getConfig();
+        var bugReport = config.bugReport || {};
+        closeMenus();
+
+        if (callNamedFunction(bugReport.callback, bugReport, config)) {
+            return;
+        }
+
+        if (bugReport.url) {
+            openModal(
+                bugReport.title || 'Signaler un bug',
+                bugReport.url,
+                bugReport.mode === 'fetch' ? 'fetch' : (bugReport.mode === 'html' ? 'html' : 'iframe')
+            );
+            return;
+        }
+
+        openModal('Signaler un bug', '<p>Formulaire indisponible.</p>', 'html');
+    }
+
     function handleLogout() {
         var config = getConfig();
         var target = (config.logoutReturnTo || window.location.pathname || '/');
@@ -421,6 +442,11 @@
 
         if (event.target.closest('[data-topbar-profile-edit]')) {
             handleProfileEdit();
+            return;
+        }
+
+        if (event.target.closest('[data-topbar-bug-report]')) {
+            handleBugReport();
             return;
         }
 

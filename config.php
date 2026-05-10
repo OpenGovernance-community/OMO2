@@ -36,6 +36,11 @@ $GLOBALS['patreonClientSecret'] = envValue('PATREON_CLIENT_SECRET', '');
 $GLOBALS['patreonRedirectUri'] = envValue('PATREON_REDIRECT_URI', '');
 $GLOBALS['patreonCreatorCampaignId'] = envValue('PATREON_CREATOR_CAMPAIGN_ID', '');
 $GLOBALS['patreonUserAgent'] = envValue('PATREON_USER_AGENT', 'EasyPV Patreon Sync');
+$GLOBALS['githubBugReportToken'] = envValue('GITHUB_BUGREPORT_TOKEN', '');
+$GLOBALS['githubBugReportRepoOwner'] = envValue('GITHUB_BUGREPORT_REPO_OWNER', 'OpenGovernance-community');
+$GLOBALS['githubBugReportRepoName'] = envValue('GITHUB_BUGREPORT_REPO_NAME', 'OMO2');
+$GLOBALS['githubBugReportLabels'] = envValue('GITHUB_BUGREPORT_LABELS', '');
+$GLOBALS['githubBugReportUserAgent'] = envValue('GITHUB_BUGREPORT_USER_AGENT', 'OMO Bug Reporter');
 
 // Constantes historiques
 if (!defined('TOKEN')) {
