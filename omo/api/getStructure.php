@@ -334,6 +334,7 @@ input:checked + .slider::before {
   background: var(--color-surface-alt, #f0f2f5);
   box-shadow: inset 0 0 0 1px transparent;
   overflow: hidden;
+  opacity: var(--role-depth-opacity, 1);
 }
 
 .role-item-shell.match-direct {
@@ -577,26 +578,45 @@ function colorToTransparentFill(color, alpha, fallback) {
   const fallbackColor = String(fallback || "rgba(79, 70, 229, 0.12)");
   const targetAlpha = Number(alpha);
 
-  if (!rawColor) {
-    return fallbackColor;
-  }
-
-  const hexMatch = rawColor.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
-  if (hexMatch) {
-    let hex = hexMatch[1];
-    if (hex.length === 3) {
-      hex = hex.split("").map(function (char) { return char + char; }).join("");
+  function convertColor(sourceColor) {
+    const effectiveColor = String(sourceColor || "").trim();
+    if (!effectiveColor) {
+      return "";
     }
 
-    const red = parseInt(hex.slice(0, 2), 16);
-    const green = parseInt(hex.slice(2, 4), 16);
-    const blue = parseInt(hex.slice(4, 6), 16);
-    return "rgba(" + red + ", " + green + ", " + blue + ", " + targetAlpha + ")";
+    const hexMatch = effectiveColor.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (hexMatch) {
+      let hex = hexMatch[1];
+      if (hex.length === 3) {
+        hex = hex.split("").map(function (char) { return char + char; }).join("");
+      }
+
+      const red = parseInt(hex.slice(0, 2), 16);
+      const green = parseInt(hex.slice(2, 4), 16);
+      const blue = parseInt(hex.slice(4, 6), 16);
+      return "rgba(" + red + ", " + green + ", " + blue + ", " + targetAlpha + ")";
+    }
+
+    const rgbMatch = effectiveColor.match(/^rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*[0-9.]+\s*)?\)$/i);
+    if (rgbMatch) {
+      return "rgba(" + rgbMatch[1] + ", " + rgbMatch[2] + ", " + rgbMatch[3] + ", " + targetAlpha + ")";
+    }
+
+    return "";
   }
 
-  const rgbMatch = rawColor.match(/^rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*[0-9.]+\s*)?\)$/i);
-  if (rgbMatch) {
-    return "rgba(" + rgbMatch[1] + ", " + rgbMatch[2] + ", " + rgbMatch[3] + ", " + targetAlpha + ")";
+  const convertedColor = convertColor(rawColor);
+  if (convertedColor) {
+    return convertedColor;
+  }
+
+  const convertedFallbackColor = convertColor(fallbackColor);
+  if (convertedFallbackColor) {
+    return convertedFallbackColor;
+  }
+
+  if (!rawColor) {
+    return fallbackColor;
   }
 
   return fallbackColor;
@@ -610,6 +630,55 @@ function getListColor(node) {
 
 function getGroupStrokeColor(node) {
   return colorToTransparentFill(node && node.mycolor, 0.55, chartColors.strokeSoft);
+}
+
+function clampNumber(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getNodeDepth(node) {
+  const depth = Number(node && node.depth);
+  return Number.isFinite(depth) && depth >= 0 ? depth : 0;
+}
+
+function getCurrentStructureDepth() {
+  if (currentnode) {
+    return getNodeDepth(currentnode);
+  }
+
+  if (root) {
+    return getNodeDepth(root);
+  }
+
+  return 0;
+}
+
+function getNodeDepthOpacity(node, minOpacity, maxOpacity) {
+  const safeMinOpacity = clampNumber(Number(minOpacity), 0, 1);
+  const safeMaxOpacity = clampNumber(Number(maxOpacity), safeMinOpacity, 1);
+  const distanceFromCurrentLevel = Math.abs(getNodeDepth(node) - getCurrentStructureDepth());
+  const opacityStep = 0.18;
+  const fadeDistance = Math.max(0, distanceFromCurrentLevel - 1);
+  return clampNumber(safeMaxOpacity - (fadeDistance * opacityStep), safeMinOpacity, safeMaxOpacity);
+}
+
+function getNodeVisualOpacity(node) {
+  return getNodeDepthOpacity(node, 0.24, 1);
+}
+
+function getNodeTextOpacity(node) {
+  return clampNumber(getNodeDepthOpacity(node, 0.2, 1) * textAlpha, 0, 1);
+}
+
+function getNodePackSize(node, inheritedSize) {
+  const baseSize = Math.max(2, Number(inheritedSize) || 2);
+
+  if (!node || String(node.type) !== "1") {
+    return baseSize;
+  }
+
+  const depthPenalty = Math.max(0, getNodeDepth(node) - 1) * 1.4;
+  return Math.max(2, baseSize - depthPenalty);
 }
 
 function escapeRegExp(text) {
@@ -1092,6 +1161,7 @@ function renderNodeList(entry, searchQuery) {
   const detailHtml = buildNodeDetailHtml(node);
   const hasDetails = detailHtml !== "";
   const isDetailOpen = hasDetails && expandedRoleListNodeIds[nodeId] === true;
+  const depthOpacity = getNodeDepthOpacity(node, 0.28, 1);
 
   if (entry.matchesLabel) {
     shellClasses.push("match-direct");
@@ -1116,7 +1186,7 @@ function renderNodeList(entry, searchQuery) {
   let html = `
     <li class="node_${escapedNodeId}">
       <div class="role-row">
-        <div class="${shellClasses.join(" ")}">
+        <div class="${shellClasses.join(" ")}" style="--role-depth-opacity:${depthOpacity.toFixed(3)};">
           <div class="role-item-main">
             <button type="button" class="role-item" data-omo-cid="${escapedNodeId}" data-omo-root="${node.type == "4" ? "1" : "0"}">
               <span class="role-dot" style="${dotStyle}"></span>
@@ -1212,6 +1282,14 @@ function updateRoleListResults() {
 function renderRoleList() {
   if (!root) return;
   ensureRoleListLayout();
+  updateRoleListResults();
+}
+
+function refreshRoleListDepthOpacity() {
+  if (!root) {
+    return;
+  }
+
   updateRoleListResults();
 }
 
@@ -1769,6 +1847,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
       }
 
       currentnode = targetNode;
+      refreshRoleListDepthOpacity();
       canvas.style("pointer-events", "none");
 
       const v = shouldUseTightZoom(targetNode)
@@ -1794,17 +1873,19 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
       animate();
     }
 
-    function normalizeStructureNode(node) {
+    function normalizeStructureNode(node, depth) {
       if (!node || typeof node !== "object") {
         return null;
       }
 
       const normalizedNode = Object.assign({}, node);
       const children = Array.isArray(normalizedNode.children) ? normalizedNode.children : [];
+      const normalizedDepth = Number.isFinite(Number(depth)) ? Number(depth) : 0;
 
       normalizedNode.ID = String(normalizedNode.ID || "");
       normalizedNode.type = String(normalizedNode.type || "");
       normalizedNode.size = Number(normalizedNode.size || (normalizedNode.type === "1" ? 10 : 20));
+      normalizedNode.depth = Number.isFinite(Number(normalizedNode.depth)) ? Number(normalizedNode.depth) : normalizedDepth;
       normalizedNode.userIds = Array.isArray(normalizedNode.userIds)
         ? normalizedNode.userIds.map(function (userId) {
             return Number(userId);
@@ -1813,11 +1894,12 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
           })
         : [];
       normalizedNode.children = children
-        .map(normalizeStructureNode)
+        .map(function (childNode) {
+          return normalizeStructureNode(childNode, normalizedNode.depth + 1);
+        })
         .filter(function (child) {
           return child !== null;
         });
-
       return normalizedNode;
     }
 
@@ -1898,7 +1980,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
               return;
             }
 
-            const normalizedRoot = normalizeStructureNode(response);
+            const normalizedRoot = normalizeStructureNode(response, 0);
 
             if (!normalizedRoot) {
               reject(new Error("Structure invalide."));
@@ -1925,7 +2007,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
           if (key === "color") {
             delete json[key];
           } else if (key === "size") {
-            json[key] = size;
+            json[key] = getNodePackSize(json, size);
           } else if (key === "children") {
             json[key] = removeColorNodes(json[key], json.type == 2 ? (size > 2 ? size - 2 : 2) : size);
           }
@@ -1974,14 +2056,14 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
       return { lines, fontSize };
     }
 
-    function drawText(ctx, text, fontSize, centerX, centerY, radius, fillcolor = "#000", strokecolor = "#FFF", style = "", font = "Arial") {
+    function drawText(ctx, text, fontSize, centerX, centerY, radius, fillcolor = "#000", strokecolor = "#FFF", style = "", font = "Arial", opacity = 1) {
       if (fontSize < 6) return;
       if (fontSize < 12) fontSize = 12;
 
       ctx.textBaseline = "alphabetic";
       ctx.textAlign = "center";
-      ctx.fillStyle = fillcolor;
-      ctx.strokeStyle = strokecolor;
+      ctx.fillStyle = colorToTransparentFill(fillcolor, opacity, "rgba(0,0,0," + opacity + ")");
+      ctx.strokeStyle = colorToTransparentFill(strokecolor, opacity, "rgba(255,255,255," + opacity + ")");
       ctx.lineWidth = 5;
       ctx.setLineDash([]);
       ctx.lineJoin = "round";
@@ -2009,11 +2091,11 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
       });
     }
 
-    function drawCircularText(ctx, text, fontSize, fontBold, titleFont, centerX, centerY, radius, startAngle, kerning) {
+    function drawCircularText(ctx, text, fontSize, fontBold, titleFont, centerX, centerY, radius, startAngle, kerning, opacity) {
       ctx.textBaseline = "alphabetic";
       ctx.textAlign = "center";
       ctx.font = fontBold + " " + fontSize + "pt " + titleFont;
-      ctx.fillStyle = "rgba(255,255,255," + textAlpha + ")";
+      ctx.fillStyle = colorToTransparentFill("#ffffff", opacity, "rgba(255,255,255," + opacity + ")");
 
       startAngle = startAngle * (Math.PI / 180);
       text = text.split("").reverse().join("");
@@ -2097,6 +2179,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
       ctx.save();
       ctx.beginPath();
       ctx.arc(nodeX, nodeY, nodeR, 0, 2 * Math.PI, true);
+      ctx.globalAlpha = getNodeVisualOpacity(node);
       ctx.fillStyle = hatchPattern;
       ctx.fill();
       ctx.restore();
@@ -2128,6 +2211,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
         const nodeX = ((node.x - zoomInfo.centerX) * zoomInfo.scale) + centerX;
         const nodeY = ((node.y - zoomInfo.centerY) * zoomInfo.scale) + centerY;
         const nodeR = node.r * zoomInfo.scale * (node.type == "1" ? 0.9 : (node.type == "4" ? 1.05 : 1));
+        const nodeOpacity = getNodeVisualOpacity(node);
 
         if (node.mod === "hierarchy") {
           drawPolygon(chosenContext, nodeX, nodeY, nodeR, 8);
@@ -2145,22 +2229,22 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
           chosenContext.fill();
         } else {
           chosenContext.fillStyle = (node.type == "3" || node.type == "2")
-            ? colorToTransparentFill(node.mycolor, 0.12, colorCircle(node.depth))
-            : (node.mycolor || "rgb(255, 204, 0)");
+            ? colorToTransparentFill(node.mycolor, 0.06 + (0.16 * nodeOpacity), colorCircle(node.depth))
+            : colorToTransparentFill(node.mycolor, nodeOpacity, node.type == "4" ? chartColors.rootFill : chartColors.roleFill);
 
           if (node.type == "3") {
             chosenContext.fillStyle = "rgba(0,0,0,0)";
             chosenContext.lineWidth = 2;
             chosenContext.setLineDash([10, 10]);
-            chosenContext.strokeStyle = getGroupStrokeColor(node);
+            chosenContext.strokeStyle = colorToTransparentFill(node.mycolor, 0.2 + (0.45 * nodeOpacity), chartColors.strokeSoft);
             chosenContext.stroke();
             chosenContext.fill();
           } else if (node.type == "4") {
             chosenContext.lineWidth = 1;
             chosenContext.setLineDash([]);
-            chosenContext.strokeStyle = "rgba(255,255,255,0.5)";
+            chosenContext.strokeStyle = colorToTransparentFill("#ffffff", 0.15 + (0.35 * nodeOpacity), "rgba(255,255,255,0.5)");
             chosenContext.stroke();
-            chosenContext.fillStyle = node.mycolor || chartColors.rootFill;
+            chosenContext.fillStyle = colorToTransparentFill(node.mycolor, nodeOpacity, chartColors.rootFill);
             chosenContext.fill();
           } else {
             chosenContext.setLineDash([]);
@@ -2208,20 +2292,21 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
         ) {
           const thename = node.name;
           const titleFont = "Arial";
+          const nodeTextOpacity = getNodeTextOpacity(node);
 
           if ((node.type != "1" && node === currentnode) || currentnode.parent === node) {
             const fontSizeTitle = Math.round(nodeR / 6);
             if (fontSizeTitle > 4) {
-              drawCircularText(chosenContext, thename.replace(/,? and /g, " & "), fontSizeTitle, "bold", titleFont, nodeX, nodeY, nodeR, 0, 0);
+              drawCircularText(chosenContext, thename.replace(/,? and /g, " & "), fontSizeTitle, "bold", titleFont, nodeX, nodeY, nodeR, 0, 0, nodeTextOpacity);
             }
           } else {
             let fontSizeTitle = Math.round(nodeR / 3);
 
             if (node.type == "1") {
               if (fontSizeTitle > 36) fontSizeTitle = 36;
-              drawText(chosenContext, thename.replace(/,? and /g, " & "), fontSizeTitle, nodeX, nodeY, nodeR, chartColors.labelDark, chartColors.strokeStrong);
+              drawText(chosenContext, thename.replace(/,? and /g, " & "), fontSizeTitle, nodeX, nodeY, nodeR, chartColors.labelDark, chartColors.strokeStrong, "", "Arial", nodeTextOpacity);
             } else {
-              drawText(chosenContext, thename.replace(/,? and /g, " & "), fontSizeTitle, nodeX, nodeY, nodeR, chartColors.labelLight, chartColors.labelDark, "bold");
+              drawText(chosenContext, thename.replace(/,? and /g, " & "), fontSizeTitle, nodeX, nodeY, nodeR, chartColors.labelLight, chartColors.labelDark, "bold", "Arial", nodeTextOpacity);
             }
           }
         }
@@ -2233,6 +2318,8 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
     }
 
     function quickZoomToCanvas(focusNode) {
+      currentnode = focusNode;
+      refreshRoleListDepthOpacity();
       focus = focusNode;
       const v = shouldUseTightZoom(focusNode)
         ? [focus.x, focus.y, focus.r * 4.05]
@@ -2257,6 +2344,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
 
     function zoomToCanvas(focusNode) {
       currentnode = focusNode;
+      refreshRoleListDepthOpacity();
       canvas.style("pointer-events", "none");
 
       let v;
@@ -2562,7 +2650,6 @@ function getChartColors() {
       chartColors = getChartColors();
       removeColorNodes(root);
 
-      renderRoleList();
       buildCanvas();
       applyStructureCanvasPickingIssue(null);
 
@@ -2620,6 +2707,7 @@ function getChartColors() {
       ease = d3.ease("cubic-in-out");
       vOld = [focus.x, focus.y, focus.r * 2.05];
 
+      renderRoleList();
       bindEvents();
       quickZoomToCanvas(currentnode);
     }
