@@ -90,6 +90,48 @@ $omoPwaHeadHtml = omoBuildPwaHeadHtml(
     ($organizationContext['name'] ?? 'OMO') ?: 'OMO',
     '/omo/manifest.php' . ((!empty($organizationContext['routeMode']) && $organizationContext['routeMode'] === 'path' && !empty($organizationContext['id'])) ? '?oid=' . (int)$organizationContext['id'] : '')
 );
+if (empty($organizationContext['isValid'])) {
+    http_response_code(404);
+    $logoutUrl = '/common/logout.php?return_to=' . urlencode('/omo/');
+    ?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organisation introuvable - OMO</title>
+    <?= $omoThemeBootstrapHtml . PHP_EOL ?>
+    <?= $omoPwaHeadHtml . PHP_EOL ?>
+    <link rel="stylesheet" href="/common/assets/components.css">
+    <link rel="stylesheet" href="/common/assets/auth.css">
+</head>
+<body class="auth-state-page auth-state-page--with-topbar">
+    <?php
+    commonRenderTopbar(omoBuildTopbarOptions($organizationContext, [
+        'variant' => 'hub',
+        'isDemoGuest' => $isDemoGuest,
+        'logoutReturnTo' => '/omo/',
+    ]));
+    ?>
+    <main class="auth-state-layout">
+    <div class="auth-state-card">
+        <h1>Organisation introuvable</h1>
+        <p>L'organisation demandee n'existe pas ou n'est plus disponible.</p>
+        <p>Vous pouvez revenir a l'accueil OMO et choisir un autre espace.</p>
+        <div class="auth-state-actions">
+            <a class="auth-state-btn auth-state-btn--secondary" href="<?= htmlspecialchars($omoRootUrl) ?>">Revenir a l'accueil</a>
+            <?php if (!$isDemoGuest) { ?>
+            <a class="auth-state-btn auth-state-btn--primary" href="<?= htmlspecialchars($logoutUrl) ?>">Se deconnecter</a>
+            <?php } ?>
+        </div>
+    </div>
+    </main>
+</body>
+</html>
+<?php
+    exit;
+}
+
 if ($isOrganizationHub && !$isDemoGuest) {
     $logoutUrl = '/common/logout.php?return_to=' . urlencode('/omo/');
     $organizationCreateUrl = '/popup/organization_create.php';
@@ -617,7 +659,6 @@ if (!$isDemoGuest && !commonUserHasOrganizationAccess($currentUserId, (int)$orga
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Acces interdit - OMO</title>
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
-    <?= $omoTopbarThemeHeadHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
     <link rel="stylesheet" href="/common/assets/components.css">
     <link rel="stylesheet" href="/common/assets/auth.css">
