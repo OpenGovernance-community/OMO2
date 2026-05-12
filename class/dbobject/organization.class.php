@@ -4120,10 +4120,13 @@
 
 			$params = array(
 				'organization_id' => (int)$this->getId(),
+				'team_competence_scope_org' => (int)$this->getId(),
 			);
 
 			$identityExpr = "LOWER(CONCAT_WS(' ', COALESCE(u.firstname, ''), COALESCE(u.lastname, ''), COALESCE(NULLIF(uo.username, ''), u.username, ''), COALESCE(NULLIF(uo.email, ''), u.email, '')))";
 			$parameterExpr = "LOWER(CONCAT_WS(' ', COALESCE(u.parameters, ''), COALESCE(uo.parameters, '')))";
+			$competenceNameExpr = "LOWER(COALESCE(c_skill.name, ''))";
+			$competenceDescriptionExpr = "LOWER(COALESCE(uc_skill.description, ''))";
 
 			$identityScoreSql = self::buildTopbarSearchScoreSql($identityExpr, $terms, $params, 'team_identity', array(
 				'exact' => 80,
@@ -4135,8 +4138,28 @@
 				'prefix' => 10,
 				'like' => 5,
 			));
+			$competenceNameScoreSql = self::buildTopbarSearchScoreSql($competenceNameExpr, $terms, $params, 'team_competence_name', array(
+				'exact' => 54,
+				'prefix' => 32,
+				'like' => 16,
+			));
+			$competenceDescriptionScoreSql = self::buildTopbarSearchScoreSql($competenceDescriptionExpr, $terms, $params, 'team_competence_description', array(
+				'exact' => 28,
+				'prefix' => 16,
+				'like' => 8,
+			));
+			$competenceNameRelevanceSql = self::buildTopbarSearchScoreSql($competenceNameExpr, $terms, $params, 'team_competence_name_relevance', array(
+				'exact' => 54,
+				'prefix' => 32,
+				'like' => 16,
+			));
+			$competenceDescriptionRelevanceSql = self::buildTopbarSearchScoreSql($competenceDescriptionExpr, $terms, $params, 'team_competence_description_relevance', array(
+				'exact' => 28,
+				'prefix' => 16,
+				'like' => 8,
+			));
 			$preFilterSql = self::buildTopbarSearchAnyMatchSql(
-				array($identityExpr, $parameterExpr),
+				array($identityExpr, $parameterExpr, $competenceNameExpr, $competenceDescriptionExpr),
 				$terms,
 				$params,
 				'team_prefilter'
@@ -4150,15 +4173,52 @@
 					u.lastname,
 					COALESCE(NULLIF(uo.username, ''), u.username, '') AS scoped_username,
 					COALESCE(NULLIF(uo.email, ''), u.email, '') AS scoped_email,
-					uo.active AS membership_active,
-					(" . $identityScoreSql . " + " . $parameterScoreSql . ") AS relevance
+					MAX(uo.active) AS membership_active,
+					MAX(uo.dateconnexion) AS membership_last_connection,
+					MAX(uo.datecreation) AS membership_created_at,
+					GROUP_CONCAT(
+						DISTINCT NULLIF(
+							CONCAT(
+								COALESCE(c_skill.name, ''),
+								CASE
+									WHEN TRIM(COALESCE(uc_skill.description, '')) <> '' THEN ': '
+									ELSE ''
+								END,
+								COALESCE(uc_skill.description, '')
+							),
+							''
+						)
+						SEPARATOR ' || '
+					) AS competence_excerpt_source,
+					COALESCE(SUM(" . $competenceNameScoreSql . " + " . $competenceDescriptionScoreSql . "), 0) AS competence_relevance,
+					(
+						MAX(" . $identityScoreSql . ")
+						+ MAX(" . $parameterScoreSql . ")
+						+ COALESCE(SUM(" . $competenceNameRelevanceSql . " + " . $competenceDescriptionRelevanceSql . "), 0)
+					) AS relevance
 				FROM user_organization uo
 				INNER JOIN user u
 					ON u.id = uo.IDuser
+				LEFT JOIN user_competence uc_skill
+					ON uc_skill.IDuser = u.id
+					AND (
+						uc_skill.IDorganization IS NULL
+						OR uc_skill.IDorganization = :team_competence_scope_org
+					)
+				LEFT JOIN competence c_skill
+					ON c_skill.id = uc_skill.IDcompetence
 				WHERE uo.IDorganization = :organization_id
 				  AND " . $preFilterSql . "
+				GROUP BY
+					u.id,
+					u.firstname,
+					u.lastname,
+					uo.username,
+					u.username,
+					uo.email,
+					u.email
 				HAVING relevance > 0
-				ORDER BY relevance DESC, uo.dateconnexion DESC, uo.datecreation DESC, u.id DESC
+				ORDER BY relevance DESC, membership_last_connection DESC, membership_created_at DESC, u.id DESC
 				LIMIT " . $limitSql,
 				$params
 			);
@@ -4194,12 +4254,22 @@
 					$subtitleParts[] = $scopedEmail;
 				}
 
+				$matchedCompetenceExcerpt = trim((string)($row['competence_excerpt_source'] ?? ''));
+				$competenceRelevance = (int)($row['competence_relevance'] ?? 0);
+				$excerpt = '';
+				if ($competenceRelevance > 0 && $matchedCompetenceExcerpt !== '') {
+					$excerpt = self::buildTopbarSearchSnippet($matchedCompetenceExcerpt, $query, 90, 220);
+				}
+				if ($excerpt === '' && (int)($row['membership_active'] ?? 0) !== 1) {
+					$excerpt = 'Membre en attente ou inactif.';
+				}
+
 				$results[] = array(
 					'module' => 'team',
 					'moduleLabel' => 'Team',
 					'title' => $title,
 					'subtitle' => implode(' - ', $subtitleParts),
-					'excerpt' => (int)($row['membership_active'] ?? 0) === 1 ? '' : 'Membre en attente ou inactif.',
+					'excerpt' => $excerpt,
 					'relevance' => (int)($row['relevance'] ?? 0),
 					'action' => array(
 						'type' => 'user',

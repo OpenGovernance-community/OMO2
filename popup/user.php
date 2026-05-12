@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__) . '/omo/api/bootstrap.php';
+require_once dirname(__DIR__) . '/common/user_competence_ui.php';
 
 use dbObject\Holon;
 use dbObject\Organization;
@@ -20,22 +21,6 @@ function omoUserContextFormatDate($value)
     }
 
     return $value->format('d.m.Y');
-}
-
-function omoUserContextHolonTypeLabel(Holon $holon)
-{
-    switch ((int)$holon->get('IDtypeholon')) {
-        case 4:
-            return 'organisation';
-        case 3:
-            return 'groupe';
-        case 2:
-            return 'cercle';
-        case 1:
-            return 'rôle';
-        default:
-            return 'contexte';
-    }
 }
 
 $organizationId = (int)($_GET['oid'] ?? ($_SESSION['currentOrganization'] ?? 0));
@@ -118,6 +103,7 @@ if (!$user->canViewDetail()) {
 }
 
 $membership = $user->getOrganizationMembership($organizationId);
+$currentViewerUserId = (int)commonGetCurrentUserId();
 $displayName = trim((string)$user->getScopedDisplayName($organizationId));
 $email = trim((string)$user->getScopedEmail($organizationId));
 $username = trim((string)$user->getScopedUsername($organizationId));
@@ -134,8 +120,13 @@ $currentAssignments = $currentHolon->getVisibleRoleAssignmentsForUser($userId, [
 $organizationAssignments = $rootHolon->getVisibleRoleAssignmentsForUser($userId, [
     'organizationId' => $organizationId,
 ]);
+$competenceRows = $user->getVisibleCompetenceRows($organizationId, $currentViewerUserId);
+$canValidateCompetences = $currentViewerUserId > 0
+    && $currentViewerUserId !== $userId
+    && commonCurrentUserHasOrganizationAccess($organizationId)
+    && (!function_exists('commonGetCurrentShareToken') || commonGetCurrentShareToken() === '');
+$popupReloadUrl = '/popup/user.php?id=' . (int)$userId . '&oid=' . (int)$organizationId . ($currentHolonId > 0 ? '&cid=' . (int)$currentHolonId : '');
 $showCurrentScope = (int)$currentHolon->getId() !== (int)$rootHolon->getId();
-$currentScopeTypeLabel = omoUserContextHolonTypeLabel($currentHolon);
 $currentScopeName = trim((string)$currentHolon->getDisplayName());
 $secondaryLabel = $email !== '' ? $email : ($username !== '' ? '@' . $username : '');
 $initials = 'P';
@@ -162,7 +153,7 @@ if ($displayName !== '') {
 
 $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
 ?>
-<div class="omo-user-context">
+<div class="omo-user-context" data-user-competence-popup-url="<?= omoApiEscape($popupReloadUrl) ?>">
     <style>
     .omo-user-context {
         display: grid;
@@ -289,10 +280,6 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
         --generic-section-gap: 12px;
     }
 
-    .omo-user-context__section h3 {
-        margin: 0;
-    }
-
     .omo-user-context__roles {
         display: grid;
         gap: 10px;
@@ -334,6 +321,171 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
         color: var(--color-text-light, #6b7280);
         font-size: 11px;
         font-weight: 700;
+    }
+
+    .omo-user-context__competences {
+        display: grid;
+        gap: 8px;
+    }
+
+    .omo-user-context__competence {
+        --generic-soft-panel-radius: 12px;
+        --generic-soft-panel-padding: 10px 12px;
+    }
+
+    .omo-user-context__competence-line {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        white-space: nowrap;
+        scrollbar-width: thin;
+    }
+
+    .omo-user-context__competence-main {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    .omo-user-context__competence-name {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    .omo-user-context__competence-description {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: var(--color-text-light, #6b7280);
+        font-size: 12px;
+    }
+
+    .omo-user-context__competence-badges,
+    .omo-user-context__competence-form {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 6px;
+        align-items: center;
+    }
+
+    .omo-user-context__competence-badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 22px;
+        padding: 0 8px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--color-primary, #2563eb) 12%, var(--color-surface, #ffffff));
+        color: var(--color-primary, #2563eb);
+        border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 28%, var(--color-border, #e5e7eb));
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .omo-user-context__competence-badge--muted {
+        background: var(--color-surface-alt, #f0f2f5);
+        color: var(--color-text-light, #6b7280);
+        border-color: var(--color-border, #e5e7eb);
+    }
+
+    .omo-user-context__competence-validators {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex: 0 0 auto;
+    }
+
+    .omo-user-context__competence-validators-label {
+        color: var(--color-text-light, #6b7280);
+        font-size: 11px;
+        flex: 0 0 auto;
+    }
+
+    .omo-user-context__competence-avatar-stack {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 4px;
+        align-items: center;
+        flex: 0 0 auto;
+    }
+
+    .omo-user-context__competence-avatar,
+    .omo-user-context__competence-avatar--placeholder {
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        border: 1px solid var(--color-border, #e5e7eb);
+        background: var(--color-surface-alt, #f0f2f5);
+    }
+
+    .omo-user-context__competence-avatar {
+        object-fit: cover;
+        display: block;
+    }
+
+    .omo-user-context__competence-avatar--placeholder {
+        display: inline-grid;
+        place-items: center;
+        font-size: 9px;
+        font-weight: 700;
+        color: var(--color-primary, #2563eb);
+    }
+
+    .omo-user-context__competence-form {
+        gap: 6px;
+        flex: 0 0 auto;
+    }
+
+    .omo-user-context__competence-form select {
+        min-width: 118px;
+        min-height: 32px;
+        padding: 4px 8px;
+        border-radius: 9px;
+        font-size: 12px;
+    }
+
+    .omo-user-context__competence-form .generic-action-button {
+        min-height: 32px;
+        padding: 6px 10px;
+        border-radius: 9px;
+        font-size: 12px;
+        line-height: 1.1;
+    }
+
+    .omo-user-context__competence-feedback {
+        color: var(--color-text-light, #6b7280);
+        font-size: 13px;
+        line-height: 1.45;
+    }
+
+    .omo-user-context__competence-feedback.is-success {
+        color: #15803d;
+    }
+
+    .omo-user-context__competence-feedback.is-error {
+        color: #b91c1c;
+    }
+
+    @media (max-width: 640px) {
+        .omo-user-context__competence {
+            --generic-soft-panel-padding: 8px 10px;
+        }
+
+        .omo-user-context__competence-line {
+            gap: 8px;
+        }
+
+        .omo-user-context__competence-name {
+            max-width: 180px;
+        }
     }
     </style>
 
@@ -391,11 +543,60 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
         </div>
     </div>
 
-    <?php if ($showCurrentScope): ?>
+ 
+
+ 
+
+
+
+<div class="generic-tabs" data-generic-tabs>
+    <div class="generic-tabs__list">
+        <button class="generic-tabs__tab is-active"
+            data-generic-tab
+            data-generic-tab-target="panel-a">Rôles (context)</button>
+        <button class="generic-tabs__tab"
+            data-generic-tab
+            data-generic-tab-target="panel-b">Rôles (orga)</button>
+        <button class="generic-tabs__tab"
+            data-generic-tab
+            data-generic-tab-target="panel-c">Compétences</button>
+    </div>
+    <div class="generic-tabs__panels">
+        <div id="panel-b" class="generic-tabs__panel" data-generic-tab-panel>
+            
+    <section class="omo-user-context__section generic-section generic-section--stack">
+        <div class="omo-user-context__section-kicker generic-card-title generic-card-title--eyebrow">Organisation</div>
+ 
+        <?php if (count($organizationAssignments) === 0): ?>
+            <div class="omo-user-context__empty">Aucun rôle visible dans l'organisation.</div>
+        <?php else: ?>
+            <ul class="omo-user-context__roles">
+                <?php foreach ($organizationAssignments as $assignment): ?>
+                    <li class="omo-user-context__role generic-soft-panel">
+                        <div class="omo-user-context__role-head">
+                            <div>
+                                <div class="omo-user-context__role-name"><?= omoApiEscape($assignment['name'] ?: ('Rôle ' . (int)$assignment['holonId'])) ?></div>
+                                <?php if ((string)$assignment['pathLabel'] !== ''): ?>
+                                    <div class="omo-user-context__role-path"><?= omoApiEscape($assignment['pathLabel']) ?></div>
+                                <?php endif; ?>
+                            </div>
+                            <?php if (!empty($assignment['isPending'])): ?>
+                                <span class="omo-user-context__role-status">En attente</span>
+                            <?php endif; ?>
+                        </div>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+    </section>
+
+        </div>
+        <div id="panel-a" class="generic-tabs__panel" data-generic-tab-panel hidden>
+            
+   <?php if ($showCurrentScope): ?>
         <section class="omo-user-context__section generic-section generic-section--stack">
             <div class="omo-user-context__section-kicker generic-card-title generic-card-title--eyebrow">Contexte courant</div>
-            <h3 class="generic-card-title generic-card-title--big">Rôles visibles depuis le <?= omoApiEscape($currentScopeTypeLabel) ?> <?= omoApiEscape($currentScopeName) ?></h3>
-
+ 
             <?php if (count($currentAssignments) === 0): ?>
                 <div class="omo-user-context__empty">Aucun rôle visible dans ce contexte.</div>
             <?php else: ?>
@@ -420,30 +621,157 @@ $initials = mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
         </section>
     <?php endif; ?>
 
-    <section class="omo-user-context__section generic-section generic-section--stack">
-        <div class="omo-user-context__section-kicker generic-card-title generic-card-title--eyebrow">Organisation</div>
-        <h3 class="generic-card-title generic-card-title--big">Rôles dans toute l'organisation</h3>
+        </div>
+        <div id="panel-c" class="generic-tabs__panel" data-generic-tab-panel hidden>
 
-        <?php if (count($organizationAssignments) === 0): ?>
-            <div class="omo-user-context__empty">Aucun rôle visible dans l'organisation.</div>
+   <section class="omo-user-context__section generic-section generic-section--stack">
+        <div class="omo-user-context__section-kicker generic-card-title generic-card-title--eyebrow">Competences</div>
+ 
+        <?php if (count($competenceRows) === 0): ?>
+            <div class="omo-user-context__empty">Aucune competence visible pour le moment.</div>
         <?php else: ?>
-            <ul class="omo-user-context__roles">
-                <?php foreach ($organizationAssignments as $assignment): ?>
-                    <li class="omo-user-context__role generic-soft-panel">
-                        <div class="omo-user-context__role-head">
-                            <div>
-                                <div class="omo-user-context__role-name"><?= omoApiEscape($assignment['name'] ?: ('Rôle ' . (int)$assignment['holonId'])) ?></div>
-                                <?php if ((string)$assignment['pathLabel'] !== ''): ?>
-                                    <div class="omo-user-context__role-path"><?= omoApiEscape($assignment['pathLabel']) ?></div>
+            <div class="omo-user-context__competences">
+                <?php foreach ($competenceRows as $competenceRow): ?>
+                    <article class="omo-user-context__competence generic-soft-panel">
+                        <div class="omo-user-context__competence-line">
+                            <div class="omo-user-context__competence-main">
+                                <div class="omo-user-context__competence-name" title="<?= omoApiEscape((string)$competenceRow['name']) ?>"><?= omoApiEscape((string)$competenceRow['name']) ?></div>
+                                <?php if (trim((string)($competenceRow['description'] ?? '')) !== ''): ?>
+                                    <div class="omo-user-context__competence-description" title="<?= omoApiEscape((string)$competenceRow['description']) ?>"><?= omoApiEscape((string)$competenceRow['description']) ?></div>
+                                <?php endif; ?>
+                                <div class="omo-user-context__competence-badges">
+                                    <span class="omo-user-context__competence-badge"><?= omoApiEscape((string)$competenceRow['levelLabel']) ?></span>
+                                    <span class="omo-user-context__competence-badge omo-user-context__competence-badge--muted"><?= omoApiEscape((string)$competenceRow['categoryLabel']) ?></span>
+                                    <?php if ((string)$competenceRow['scope'] === 'organization'): ?>
+                                        <span class="omo-user-context__competence-badge omo-user-context__competence-badge--muted"><?= omoApiEscape((string)$competenceRow['scopeLabel']) ?></span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+
+                            <div class="omo-user-context__competence-validators">
+                                <span class="omo-user-context__competence-validators-label"><?= (int)$competenceRow['validationCount'] ?> avis</span>
+                                <?php if (!empty($competenceRow['validators'])): ?>
+                                    <div class="omo-user-context__competence-avatar-stack">
+                                        <?php foreach ($competenceRow['validators'] as $validator): ?>
+                                            <?php omoRenderCompetenceAvatar([
+                                                'photoUrl' => (string)($validator['photoUrl'] ?? ''),
+                                                'displayName' => (string)($validator['displayName'] ?? ''),
+                                                'initials' => (string)($validator['initials'] ?? 'P'),
+                                                'levelLabel' => (string)($validator['levelLabel'] ?? ''),
+                                            ], 'omo-user-context__competence-avatar'); ?>
+                                        <?php endforeach; ?>
+                                    </div>
                                 <?php endif; ?>
                             </div>
-                            <?php if (!empty($assignment['isPending'])): ?>
-                                <span class="omo-user-context__role-status">En attente</span>
+
+                            <?php if ($canValidateCompetences): ?>
+                                <form class="omo-user-context__competence-form" data-user-competence-validate-form="1">
+                                    <input type="hidden" name="id" value="<?= (int)$competenceRow['id'] ?>">
+                                    <select name="level" class="generic-form-control" title="Votre reconnaissance pour cette competence">
+                                        <?php omoRenderCompetenceLevelOptions((int)$competenceRow['currentViewerValidationLevel'], true); ?>
+                                    </select>
+                                    <button type="submit" class="generic-action-button generic-action-button--main">
+                                        <?= (int)$competenceRow['currentViewerValidationLevel'] > 0 ? 'Maj' : 'Valider' ?>
+                                    </button>
+                                </form>
                             <?php endif; ?>
                         </div>
-                    </li>
+                    </article>
                 <?php endforeach; ?>
-            </ul>
+            </div>
+
+            <?php if ($canValidateCompetences): ?>
+                <div class="omo-user-context__competence-feedback" data-user-competence-feedback="1"></div>
+            <?php endif; ?>
         <?php endif; ?>
     </section>
+
+        </div>
+    </div>
 </div>
+
+</div>
+<?php if ($canValidateCompetences && count($competenceRows) > 0): ?>
+<script>
+(function () {
+    var root = document.querySelector('.omo-user-context[data-user-competence-popup-url]');
+    if (!root) {
+        return;
+    }
+
+    var feedback = root.querySelector('[data-user-competence-feedback="1"]');
+
+    function setFeedback(message, type) {
+        if (!feedback) {
+            return;
+        }
+
+        feedback.textContent = message || '';
+        feedback.className = 'omo-user-context__competence-feedback';
+        if (type === 'success') {
+            feedback.classList.add('is-success');
+        } else if (type === 'error') {
+            feedback.classList.add('is-error');
+        }
+    }
+
+    function parseResponse(response) {
+        return response.text().then(function (text) {
+            try {
+                return JSON.parse(text);
+            } catch (error) {
+                return {
+                    status: false,
+                    message: 'Reponse serveur invalide.'
+                };
+            }
+        });
+    }
+
+    function reloadPopup() {
+        var popupUrl = root.getAttribute('data-user-competence-popup-url') || '';
+        if (popupUrl === '') {
+            return;
+        }
+
+        if (window.jQuery && document.getElementById('popup_content')) {
+            window.jQuery('#popup_content').load(popupUrl);
+            return;
+        }
+
+        if (window.commonTopbarRefreshModalContent) {
+            window.commonTopbarRefreshModalContent(popupUrl);
+        }
+    }
+
+    root.querySelectorAll('[data-user-competence-validate-form="1"]').forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            setFeedback('', '');
+
+            fetch('/omo/api/user_competence_validate.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: new FormData(form),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(parseResponse)
+                .then(function (result) {
+                    if (!result || !result.status) {
+                        setFeedback(result && result.message ? result.message : "Impossible d'enregistrer cette validation.", 'error');
+                        return;
+                    }
+
+                    setFeedback(result.message || 'Validation enregistree.', 'success');
+                    reloadPopup();
+                })
+                .catch(function () {
+                    setFeedback("Impossible d'enregistrer cette validation.", 'error');
+                });
+        });
+    });
+})();
+</script>
+<?php endif; ?>

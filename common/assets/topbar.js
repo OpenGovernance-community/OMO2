@@ -120,6 +120,25 @@
         });
     }
 
+    function focusSearchInput(input) {
+        if (!input) {
+            return;
+        }
+
+        window.setTimeout(function () {
+            input.focus();
+            if (typeof input.select === 'function') {
+                input.select();
+                return;
+            }
+
+            if (typeof input.setSelectionRange === 'function') {
+                var valueLength = String(input.value || '').length;
+                input.setSelectionRange(0, valueLength);
+            }
+        }, 20);
+    }
+
     function openDrawer(title, content, mode) {
         var drawer = document.getElementById('commonTopbarDrawer');
         var body = document.getElementById('commonTopbarDrawerBody');
@@ -419,12 +438,7 @@
                 menu.classList.add('is-open');
                 if (name === 'search') {
                     renderSearchScopes(menu);
-                }
-                var searchInput = menu.querySelector('[data-topbar-search-input]');
-                if (searchInput) {
-                    setTimeout(function () {
-                        searchInput.focus();
-                    }, 20);
+                    focusSearchInput(menu.querySelector('[data-topbar-search-input]'));
                 }
             }
             return;

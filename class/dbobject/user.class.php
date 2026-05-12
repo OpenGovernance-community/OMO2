@@ -287,6 +287,45 @@
 			$organizations->loadAccessibleForUser($this->getId(), $organizationId, 1);
 			return count($organizations) > 0;
 		}
+
+		public function getVisibleCompetenceRows($organizationId = 0, $viewerUserId = 0)
+		{
+			return \dbObject\UserCompetence::buildVisibleCompetenceRows((int)$this->getId(), (int)$organizationId, (int)$viewerUserId);
+		}
+
+		public function getCompetenceRowsForScope($scope = 'general', $organizationId = 0, $viewerUserId = 0)
+		{
+			$scope = $scope === 'organization' ? 'organization' : 'general';
+			$rows = $this->getVisibleCompetenceRows($organizationId, $viewerUserId);
+
+			return array_values(array_filter($rows, static function ($row) use ($scope) {
+				return (string)($row['scope'] ?? 'general') === $scope;
+			}));
+		}
+
+		public function saveCompetenceDeclaration(array $payload, $currentOrganizationId = 0)
+		{
+			if (!$this->canEdit()) {
+				return [
+					'status' => false,
+					'message' => "Vous ne pouvez pas modifier ces competences.",
+				];
+			}
+
+			return \dbObject\UserCompetence::saveDeclarationForUser((int)$this->getId(), $payload, (int)$currentOrganizationId);
+		}
+
+		public function deleteCompetenceDeclaration($userCompetenceId)
+		{
+			if (!$this->canEdit()) {
+				return [
+					'status' => false,
+					'message' => "Vous ne pouvez pas supprimer ces competences.",
+				];
+			}
+
+			return \dbObject\UserCompetence::deleteDeclarationForUser((int)$userCompetenceId, (int)$this->getId());
+		}
 	}
 
 ?>
