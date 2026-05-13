@@ -1857,6 +1857,15 @@ function omoHolonTemplateReadProperties() {
 
 function omoHolonTemplateSave(event) {
     event.preventDefault();
+
+    if (
+        omoHolonTemplateElements.form
+        && typeof window.omoBeginPendingAction === 'function'
+        && !window.omoBeginPendingAction(omoHolonTemplateElements.form)
+    ) {
+        return;
+    }
+
     omoHolonTemplateClearStatus();
 
     const payload = {
@@ -1966,6 +1975,11 @@ function omoHolonTemplateSave(event) {
         })
         .catch(function (error) {
             omoHolonTemplateShowStatus(error && error.message ? error.message : (omoHolonTemplateIsHolonDefinitionMode() ? "Impossible d'enregistrer l'organisation." : "Impossible d'enregistrer le modele."), 'error');
+        })
+        .finally(function () {
+            if (omoHolonTemplateElements.form && typeof window.omoEndPendingAction === 'function') {
+                window.omoEndPendingAction(omoHolonTemplateElements.form);
+            }
         });
 }
 

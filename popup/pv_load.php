@@ -50,11 +50,18 @@
 	$(function() {
 		$("#PVliste").delegate(".deletePV","click",function (e) {
 			e.stopPropagation();
+			var button = $(this);
 			if (confirm("<?=T_("Etes-vous sur de vouloir effacer ce compte-rendu ?")?>")) {
+				if (button.prop("disabled")) {
+					return;
+				}
+				button.prop("disabled", true);
 				if ($(this).attr("data-src")==$("#id").val())
 					$("#id").val("");
 				$.ajax({method: "POST",url: "/ajax/delete.php",data: { type:"PV", id:$(this).attr("data-src")}
-				}).done(function( msg ) {if (msg!="") alert(msg); });
+				}).done(function( msg ) {if (msg!="") alert(msg); }).fail(function() {
+					button.prop("disabled", false);
+				});
 
 				refresh('#PVliste',"/popup/pv_load.php");
 			}

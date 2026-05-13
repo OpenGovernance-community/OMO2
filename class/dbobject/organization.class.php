@@ -2746,6 +2746,986 @@
 		}
 
 		// Enregistre holon edite
+		protected function parseHolonHistoryListValue($rawValue)
+		{
+			$rawValue = trim((string)$rawValue);
+			if ($rawValue === '') {
+				return array();
+			}
+
+			$decoded = json_decode($rawValue, true);
+			if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+				return array_values($decoded);
+			}
+
+			$items = preg_split('/\r\n|\r|\n|\|/', $rawValue);
+			return array_values(array_filter(array_map('trim', $items), function ($item) {
+				return $item !== '';
+			}));
+		}
+
+		protected function mergeHolonHistoryListValues($ancestorValue, $currentValue)
+		{
+			$merged = array();
+			$seen = array();
+
+			foreach (array_merge($this->parseHolonHistoryListValue($ancestorValue), $this->parseHolonHistoryListValue($currentValue)) as $item) {
+				$key = is_array($item)
+					? json_encode($item, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+					: trim((string)$item);
+				if ($key === '' || isset($seen[$key])) {
+					continue;
+				}
+
+				$seen[$key] = true;
+				$merged[] = $item;
+			}
+
+			return count($merged) > 0
+				? json_encode(array_values($merged), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+				: '';
+		}
+
+		protected function buildHolonHistoryVisibleValue(array $definition)
+		{
+			$formatId = (int)($definition['formatId'] ?? 0);
+			$localValue = \dbObject\PropertyFormat::normalizeValueForStorage($formatId, $definition['value'] ?? '');
+			$inheritedValue = \dbObject\PropertyFormat::normalizeValueForStorage($formatId, $definition['inheritedValue'] ?? '');
+
+			if ($formatId === \dbObject\PropertyFormat::FORMAT_LIST) {
+				if (!empty($definition['effectiveLocked'])) {
+					return $inheritedValue;
+				}
+
+				return $this->mergeHolonHistoryListValues($inheritedValue, $localValue);
+			}
+
+			if (!\dbObject\PropertyFormat::isHtmlFormat($formatId)) {
+				$localValue = trim((string)$localValue);
+				$inheritedValue = trim((string)$inheritedValue);
+			}
+
+			if (!empty($definition['effectiveLocked'])) {
+				return $inheritedValue;
+			}
+
+			return !\dbObject\PropertyFormat::isEmptyValue($formatId, $localValue)
+				? $localValue
+				: $inheritedValue;
+		}
+
+		protected function buildHolonHistorySnapshot(\dbObject\Holon $holon)
+		{
+			$properties = array();
+
+			foreach ($holon->getHolonEditorPropertyDefinitions() as $definition) {
+				$propertyId = (int)($definition['id'] ?? 0);
+				if ($propertyId <= 0) {
+					continue;
+				}
+
+				$formatId = (int)($definition['formatId'] ?? 0);
+				$visibleValue = $this->buildHolonHistoryVisibleValue($definition);
+				$properties[$propertyId] = array(
+					'id' => $propertyId,
+					'name' => trim((string)($definition['name'] ?? ('Propriete ' . $propertyId))),
+					'shortname' => trim((string)($definition['shortname'] ?? '')),
+					'formatId' => $formatId,
+					'formatName' => (string)($definition['formatName'] ?? ''),
+					'listItemType' => (string)($definition['listItemType'] ?? ''),
+					'localValue' => (string)($definition['value'] ?? ''),
+					'inheritedValue' => (string)($definition['inheritedValue'] ?? ''),
+					'visibleValue' => (string)$visibleValue,
+					'visibleItems' => $formatId === \dbObject\PropertyFormat::FORMAT_LIST
+						? $this->parseHolonHistoryListValue($visibleValue)
+						: array(),
+				);
+			}
+
+			return array(
+				'holon' => array(
+					'id' => (int)$holon->getId(),
+					'name' => trim((string)$holon->getDisplayName()),
+					'typeId' => (int)$holon->get('IDtypeholon'),
+					'parentId' => (int)$holon->get('IDholon_parent'),
+					'templateId' => (int)$holon->get('IDholon_template'),
+					'color' => trim((string)$holon->get('color')),
+					'icon' => trim((string)$holon->get('icon')),
+					'banner' => trim((string)$holon->get('banner')),
+				),
+				'properties' => $properties,
+			);
+		}
+
+		protected function buildHolonHistoryListItemKey($item)
+		{
+			return is_array($item)
+				? json_encode($item, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+				: trim((string)$item);
+		}
+
+		protected function buildHolonHistoryListItemComparableText($item)
+		{
+			if (is_array($item)) {
+				return trim(implode(' ', array_filter(array(
+					(string)($item['title'] ?? ''),
+					(string)($item['label'] ?? ''),
+					(string)($item['value'] ?? ''),
+					(string)($item['description'] ?? ''),
+					(string)($item['text'] ?? ''),
+					(string)($item['id'] ?? ''),
+				), function ($value) {
+					return trim((string)$value) !== '';
+				})));
+			}
+
+			return trim((string)$item);
+		}
+
+		protected function buildHolonHistoryListItemIdentity($item)
+		{
+			if (!is_array($item)) {
+				return '';
+			}
+
+			$id = trim((string)($item['id'] ?? ''));
+			if ($id !== '') {
+				return 'id:' . mb_strtolower($id, 'UTF-8');
+			}
+
+			$title = trim((string)($item['title'] ?? ''));
+			if ($title !== '') {
+				return 'title:' . mb_strtolower($title, 'UTF-8');
+			}
+
+			$label = trim((string)($item['label'] ?? ''));
+			if ($label !== '') {
+				return 'label:' . mb_strtolower($label, 'UTF-8');
+			}
+
+			$value = trim((string)($item['value'] ?? ''));
+			$description = trim((string)($item['description'] ?? $item['text'] ?? ''));
+			if ($value !== '' && $description === '') {
+				return 'value:' . mb_strtolower($value, 'UTF-8');
+			}
+
+			return '';
+		}
+
+		protected function tokenizeHolonHistoryComparableText($text)
+		{
+			$text = mb_strtolower(trim((string)$text), 'UTF-8');
+			if ($text === '') {
+				return array();
+			}
+
+			preg_match_all('/[\p{L}\p{N}]+/u', $text, $matches);
+			$tokens = array_values(array_unique($matches[0] ?? array()));
+
+			return $tokens;
+		}
+
+		protected function computeHolonHistoryListItemSimilarity($beforeItem, $afterItem, $beforeIndex = 0, $afterIndex = 0)
+		{
+			$beforeIdentity = $this->buildHolonHistoryListItemIdentity($beforeItem);
+			$afterIdentity = $this->buildHolonHistoryListItemIdentity($afterItem);
+			if ($beforeIdentity !== '' && $beforeIdentity === $afterIdentity) {
+				return 2.0;
+			}
+
+			$beforeTokens = $this->tokenizeHolonHistoryComparableText($this->buildHolonHistoryListItemComparableText($beforeItem));
+			$afterTokens = $this->tokenizeHolonHistoryComparableText($this->buildHolonHistoryListItemComparableText($afterItem));
+			$tokenSet = array();
+			$sharedCount = 0;
+
+			foreach ($beforeTokens as $token) {
+				$tokenSet[$token] = true;
+			}
+			foreach ($afterTokens as $token) {
+				if (isset($tokenSet[$token])) {
+					$sharedCount++;
+				}
+				$tokenSet[$token] = true;
+			}
+
+			$unionCount = count($tokenSet);
+			$score = $unionCount > 0 ? ($sharedCount / $unionCount) : 0.0;
+
+			$beforeLabel = '';
+			$afterLabel = '';
+			if (is_array($beforeItem)) {
+				$beforeLabel = trim((string)($beforeItem['title'] ?? $beforeItem['label'] ?? ''));
+			}
+			if (is_array($afterItem)) {
+				$afterLabel = trim((string)($afterItem['title'] ?? $afterItem['label'] ?? ''));
+			}
+
+			if ($beforeLabel !== '' && $beforeLabel === $afterLabel) {
+				$score += 0.9;
+			}
+
+			$distance = abs((int)$beforeIndex - (int)$afterIndex);
+			if ($distance === 0) {
+				$score += 0.15;
+			} elseif ($distance === 1) {
+				$score += 0.05;
+			}
+
+			return $score;
+		}
+
+		protected function pairHolonHistoryModifiedListItems(array $removedItems, array $addedItems)
+		{
+			$removedEntries = array();
+			$addedEntries = array();
+			$candidates = array();
+
+			foreach (array_values($removedItems) as $index => $item) {
+				$removedEntries[] = array(
+					'index' => $index,
+					'item' => $item,
+				);
+			}
+			foreach (array_values($addedItems) as $index => $item) {
+				$addedEntries[] = array(
+					'index' => $index,
+					'item' => $item,
+				);
+			}
+
+			foreach ($removedEntries as $removedEntry) {
+				foreach ($addedEntries as $addedEntry) {
+					$score = $this->computeHolonHistoryListItemSimilarity(
+						$removedEntry['item'],
+						$addedEntry['item'],
+						$removedEntry['index'],
+						$addedEntry['index']
+					);
+					if ($score >= 0.6) {
+						$candidates[] = array(
+							'before' => $removedEntry,
+							'after' => $addedEntry,
+							'score' => $score,
+							'distance' => abs((int)$removedEntry['index'] - (int)$addedEntry['index']),
+						);
+					}
+				}
+			}
+
+			usort($candidates, function ($left, $right) {
+				if ((float)$left['score'] === (float)$right['score']) {
+					return (int)$left['distance'] <=> (int)$right['distance'];
+				}
+
+				return (float)$right['score'] <=> (float)$left['score'];
+			});
+
+			$matchedRemovedIndexes = array();
+			$matchedAddedIndexes = array();
+			$matches = array();
+
+			foreach ($candidates as $candidate) {
+				$removedIndex = (int)($candidate['before']['index'] ?? -1);
+				$addedIndex = (int)($candidate['after']['index'] ?? -1);
+				if (isset($matchedRemovedIndexes[$removedIndex]) || isset($matchedAddedIndexes[$addedIndex])) {
+					continue;
+				}
+
+				$matchedRemovedIndexes[$removedIndex] = true;
+				$matchedAddedIndexes[$addedIndex] = true;
+				$matches[] = array(
+					'beforeIndex' => $removedIndex,
+					'afterIndex' => $addedIndex,
+					'before' => $candidate['before']['item'],
+					'after' => $candidate['after']['item'],
+				);
+			}
+
+			return array(
+				'matches' => $matches,
+				'removed' => array_values(array_filter($removedEntries, function ($entry) use ($matchedRemovedIndexes) {
+					return !isset($matchedRemovedIndexes[(int)($entry['index'] ?? -1)]);
+				})),
+				'added' => array_values(array_filter($addedEntries, function ($entry) use ($matchedAddedIndexes) {
+					return !isset($matchedAddedIndexes[(int)($entry['index'] ?? -1)]);
+				})),
+			);
+		}
+
+		protected function buildHolonHistoryListOrderSignature(array $items, array $modifiedItems, $side = 'before')
+		{
+			$side = $side === 'after' ? 'after' : 'before';
+			$pairTokens = array();
+
+			foreach (array_values($modifiedItems) as $pairIndex => $pair) {
+				$item = $pair[$side] ?? null;
+				$key = $this->buildHolonHistoryListItemKey($item);
+				if ($key === '') {
+					continue;
+				}
+
+				$pairTokens[$key] = '__pair_' . $pairIndex . '__';
+			}
+
+			$signature = array();
+			foreach ($items as $item) {
+				$key = $this->buildHolonHistoryListItemKey($item);
+				if ($key === '') {
+					continue;
+				}
+
+				$signature[] = $pairTokens[$key] ?? '__item_' . $key . '__';
+			}
+
+			return $signature;
+		}
+
+		protected function limitHolonHistoryText($text, $maxLength = 180)
+		{
+			$text = trim((string)$text);
+			if ($text === '') {
+				return '';
+			}
+
+			$text = preg_replace('/\s+/u', ' ', $text);
+			if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+				if (mb_strlen($text, 'UTF-8') <= $maxLength) {
+					return $text;
+				}
+
+				return rtrim(mb_substr($text, 0, max(1, $maxLength - 5), 'UTF-8')) . '[...]';
+			}
+
+			if (strlen($text) <= $maxLength) {
+				return $text;
+			}
+
+			return rtrim(substr($text, 0, max(1, $maxLength - 5))) . '[...]';
+		}
+
+		protected function tokenizeHolonHistoryTextWords($text)
+		{
+			$text = trim((string)$text);
+			if ($text === '') {
+				return array();
+			}
+
+			$tokens = preg_split('/\s+/u', $text);
+			if (!is_array($tokens)) {
+				return array();
+			}
+
+			return array_values(array_filter(array_map('trim', $tokens), function ($token) {
+				return $token !== '';
+			}));
+		}
+
+		protected function buildHolonHistoryTextDiffOperations($beforeText, $afterText, $maxCells = 40000)
+		{
+			$beforeTokens = $this->tokenizeHolonHistoryTextWords($beforeText);
+			$afterTokens = $this->tokenizeHolonHistoryTextWords($afterText);
+			if (count($beforeTokens) === 0 || count($afterTokens) === 0) {
+				return null;
+			}
+
+			if ((count($beforeTokens) + 1) * (count($afterTokens) + 1) > $maxCells) {
+				return null;
+			}
+
+			$matrix = array();
+			for ($i = 0; $i <= count($beforeTokens); $i++) {
+				$matrix[$i] = array_fill(0, count($afterTokens) + 1, 0);
+			}
+
+			for ($i = 1; $i <= count($beforeTokens); $i++) {
+				for ($j = 1; $j <= count($afterTokens); $j++) {
+					if ($beforeTokens[$i - 1] === $afterTokens[$j - 1]) {
+						$matrix[$i][$j] = $matrix[$i - 1][$j - 1] + 1;
+					} else {
+						$matrix[$i][$j] = max($matrix[$i - 1][$j], $matrix[$i][$j - 1]);
+					}
+				}
+			}
+
+			$operations = array();
+			$i = count($beforeTokens);
+			$j = count($afterTokens);
+
+			while ($i > 0 || $j > 0) {
+				if ($i > 0 && $j > 0 && $beforeTokens[$i - 1] === $afterTokens[$j - 1]) {
+					$operations[] = array(
+						'type' => 'equal',
+						'value' => $beforeTokens[$i - 1],
+					);
+					$i--;
+					$j--;
+				} elseif ($j > 0 && ($i === 0 || $matrix[$i][$j - 1] > $matrix[$i - 1][$j])) {
+					$operations[] = array(
+						'type' => 'added',
+						'value' => $afterTokens[$j - 1],
+					);
+					$j--;
+				} else {
+					$operations[] = array(
+						'type' => 'removed',
+						'value' => $beforeTokens[$i - 1],
+					);
+					$i--;
+				}
+			}
+
+			$operations = array_reverse($operations);
+			$merged = array();
+			foreach ($operations as $operation) {
+				$lastIndex = count($merged) - 1;
+				if ($lastIndex >= 0 && $merged[$lastIndex]['type'] === $operation['type']) {
+					$merged[$lastIndex]['values'][] = $operation['value'];
+					continue;
+				}
+
+				$merged[] = array(
+					'type' => $operation['type'],
+					'values' => array($operation['value']),
+				);
+			}
+
+			return array(
+				'beforeTokens' => $beforeTokens,
+				'afterTokens' => $afterTokens,
+				'operations' => $merged,
+			);
+		}
+
+		protected function buildHolonHistoryChangedTextSnippet($beforeText, $afterText, $maxLength = 180, $contextWords = 4)
+		{
+			$beforeText = preg_replace('/\s+/u', ' ', trim((string)$beforeText));
+			$afterText = preg_replace('/\s+/u', ' ', trim((string)$afterText));
+			if ($afterText === '') {
+				return '';
+			}
+
+			$diff = $this->buildHolonHistoryTextDiffOperations($beforeText, $afterText);
+			if (!is_array($diff)) {
+				return $this->limitHolonHistoryText($afterText, $maxLength);
+			}
+
+			$afterTokens = $diff['afterTokens'] ?? array();
+			$operations = $diff['operations'] ?? array();
+			if (count($afterTokens) === 0 || count($operations) === 0) {
+				return $this->limitHolonHistoryText($afterText, $maxLength);
+			}
+
+			$segments = array();
+			$afterCursor = 0;
+			$currentSegmentStart = null;
+			$currentSegmentHasAfterTokens = false;
+
+			foreach ($operations as $operation) {
+				$type = (string)($operation['type'] ?? '');
+				$values = is_array($operation['values'] ?? null) ? $operation['values'] : array();
+				$valueCount = count($values);
+
+				if ($type === 'equal') {
+					if (!is_null($currentSegmentStart)) {
+						$segments[] = array(
+							'start' => $currentSegmentStart,
+							'end' => $currentSegmentHasAfterTokens ? max($currentSegmentStart, $afterCursor - 1) : max(0, $currentSegmentStart - 1),
+						);
+						$currentSegmentStart = null;
+						$currentSegmentHasAfterTokens = false;
+					}
+
+					$afterCursor += $valueCount;
+					continue;
+				}
+
+				if (is_null($currentSegmentStart)) {
+					$currentSegmentStart = $afterCursor;
+				}
+
+				if ($type === 'added') {
+					$currentSegmentHasAfterTokens = true;
+					$afterCursor += $valueCount;
+				}
+			}
+
+			if (!is_null($currentSegmentStart)) {
+				$segments[] = array(
+					'start' => $currentSegmentStart,
+					'end' => $currentSegmentHasAfterTokens ? max($currentSegmentStart, $afterCursor - 1) : max(0, $currentSegmentStart - 1),
+				);
+			}
+
+			if (count($segments) === 0) {
+				return $this->limitHolonHistoryText($afterText, $maxLength);
+			}
+
+			$startIndex = max(0, (int)$segments[0]['start'] - (int)$contextWords);
+			$endIndex = min(count($afterTokens) - 1, (int)$segments[count($segments) - 1]['end'] + (int)$contextWords);
+			if ($endIndex < $startIndex) {
+				$endIndex = min(count($afterTokens) - 1, $startIndex + (int)$contextWords);
+			}
+
+			$ellipsisLength = 10;
+			while ($startIndex > 0 || $endIndex < count($afterTokens) - 1) {
+				$currentTokens = array_slice($afterTokens, $startIndex, $endIndex - $startIndex + 1);
+				$currentText = implode(' ', $currentTokens);
+				$currentLength = function_exists('mb_strlen')
+					? mb_strlen($currentText, 'UTF-8')
+					: strlen($currentText);
+				$currentLength += $startIndex > 0 ? $ellipsisLength : 0;
+				$currentLength += $endIndex < count($afterTokens) - 1 ? $ellipsisLength : 0;
+
+				if ($currentLength >= $maxLength) {
+					break;
+				}
+
+				$expanded = false;
+				if ($startIndex > 0) {
+					$candidateTokens = array_slice($afterTokens, $startIndex - 1, $endIndex - $startIndex + 2);
+					$candidateText = implode(' ', $candidateTokens);
+					$candidateLength = function_exists('mb_strlen')
+						? mb_strlen($candidateText, 'UTF-8')
+						: strlen($candidateText);
+					$candidateLength += ($startIndex - 1) > 0 ? $ellipsisLength : 0;
+					$candidateLength += $endIndex < count($afterTokens) - 1 ? $ellipsisLength : 0;
+					if ($candidateLength <= $maxLength) {
+						$startIndex--;
+						$expanded = true;
+					}
+				}
+
+				if ($endIndex < count($afterTokens) - 1) {
+					$candidateTokens = array_slice($afterTokens, $startIndex, $endIndex - $startIndex + 2);
+					$candidateText = implode(' ', $candidateTokens);
+					$candidateLength = function_exists('mb_strlen')
+						? mb_strlen($candidateText, 'UTF-8')
+						: strlen($candidateText);
+					$candidateLength += $startIndex > 0 ? $ellipsisLength : 0;
+					$candidateLength += ($endIndex + 1) < count($afterTokens) - 1 ? $ellipsisLength : 0;
+					if ($candidateLength <= $maxLength) {
+						$endIndex++;
+						$expanded = true;
+					}
+				}
+
+				if (!$expanded) {
+					break;
+				}
+			}
+
+			$snippetTokens = array_slice($afterTokens, $startIndex, $endIndex - $startIndex + 1);
+			$snippet = implode(' ', $snippetTokens);
+			if ($startIndex > 0) {
+				$snippet = '[...] ' . ltrim($snippet);
+			}
+			if ($endIndex < count($afterTokens) - 1) {
+				$snippet = rtrim($snippet) . ' [...]';
+			}
+
+			return trim($snippet);
+		}
+
+		protected function formatHolonHistoryDateValue($value)
+		{
+			$value = trim((string)$value);
+			if ($value === '') {
+				return '';
+			}
+
+			try {
+				return (new \DateTime($value))->format('d.m.Y');
+			} catch (\Exception $exception) {
+				return $value;
+			}
+		}
+
+		protected function buildHolonHistoryListItemPreview($item, $listItemType = '')
+		{
+			$listItemType = trim((string)$listItemType);
+
+			if ($listItemType === \dbObject\Property::LIST_ITEM_DETAIL) {
+				$title = trim((string)($item['title'] ?? $item['label'] ?? $item['value'] ?? ''));
+				$description = trim((string)($item['description'] ?? $item['text'] ?? ''));
+				$summary = $title;
+				if ($description !== '') {
+					$summary .= ($summary !== '' ? ' - ' : '') . $description;
+				}
+
+				return $this->limitHolonHistoryText($summary);
+			}
+
+			if ($listItemType === \dbObject\Property::LIST_ITEM_DATE) {
+				return $this->formatHolonHistoryDateValue($item);
+			}
+
+			if ($listItemType === \dbObject\Property::LIST_ITEM_HOLON) {
+				$holonId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+				if ($holonId > 0) {
+					$holon = new \dbObject\Holon();
+					if ($holon->load($holonId)) {
+						return $this->limitHolonHistoryText($holon->getDisplayName());
+					}
+				}
+			}
+
+			if (is_array($item)) {
+				return $this->limitHolonHistoryText((string)($item['label'] ?? $item['value'] ?? ''));
+			}
+
+			return $this->limitHolonHistoryText((string)$item);
+		}
+
+		protected function buildHolonHistoryValuePreview(array $propertySnapshot, array $beforePropertySnapshot = array())
+		{
+			$formatId = (int)($propertySnapshot['formatId'] ?? 0);
+			$value = (string)($propertySnapshot['visibleValue'] ?? '');
+			$beforeValue = (string)($beforePropertySnapshot['visibleValue'] ?? '');
+
+			if ($formatId === \dbObject\PropertyFormat::FORMAT_LIST) {
+				$previews = array();
+				foreach (array_slice($propertySnapshot['visibleItems'] ?? array(), 0, 3) as $item) {
+					$preview = $this->buildHolonHistoryListItemPreview($item, $propertySnapshot['listItemType'] ?? '');
+					if ($preview !== '') {
+						$previews[] = $preview;
+					}
+				}
+
+				$remainingCount = max(0, count($propertySnapshot['visibleItems'] ?? array()) - count($previews));
+				if ($remainingCount > 0) {
+					$previews[] = '+' . $remainingCount . ' autre(s)';
+				}
+
+				return implode('; ', $previews);
+			}
+
+			if ($formatId === \dbObject\PropertyFormat::FORMAT_DATE) {
+				return $this->formatHolonHistoryDateValue($value);
+			}
+
+			if ($formatId === \dbObject\PropertyFormat::FORMAT_HTML) {
+				$value = html_entity_decode(
+					strip_tags(str_ireplace(array('<br>', '<br/>', '<br />'), ' ', $value)),
+					ENT_QUOTES | ENT_HTML5,
+					'UTF-8'
+				);
+				$beforeValue = html_entity_decode(
+					strip_tags(str_ireplace(array('<br>', '<br/>', '<br />'), ' ', $beforeValue)),
+					ENT_QUOTES | ENT_HTML5,
+					'UTF-8'
+				);
+			}
+
+			if (
+				in_array($formatId, array(\dbObject\PropertyFormat::FORMAT_TEXT, \dbObject\PropertyFormat::FORMAT_HTML), true)
+				&& trim($beforeValue) !== ''
+				&& trim($value) !== ''
+				&& trim($beforeValue) !== trim($value)
+			) {
+				return $this->buildHolonHistoryChangedTextSnippet($beforeValue, $value);
+			}
+
+			return $this->limitHolonHistoryText($value);
+		}
+
+		protected function buildHolonHistoryPropertyToken(array $propertySnapshot)
+		{
+			$propertyId = (int)($propertySnapshot['id'] ?? 0);
+			$propertyLabel = trim((string)($propertySnapshot['name'] ?? ('Propriete ' . $propertyId)));
+
+			return \dbObject\History::buildReferenceToken('property', $propertyId, $propertyLabel);
+		}
+
+		protected function buildHolonHistoryHolonToken(array $holonSnapshot)
+		{
+			$holonId = (int)($holonSnapshot['id'] ?? 0);
+			$holonLabel = trim((string)($holonSnapshot['name'] ?? ('Holon ' . $holonId)));
+
+			return \dbObject\History::buildReferenceToken('holon', $holonId, $holonLabel);
+		}
+
+		protected function buildHolonHistoryDiff(array $beforeSnapshot, array $afterSnapshot)
+		{
+			$messages = array();
+			$changes = array();
+			$beforeHolon = is_array($beforeSnapshot['holon'] ?? null) ? $beforeSnapshot['holon'] : array();
+			$afterHolon = is_array($afterSnapshot['holon'] ?? null) ? $afterSnapshot['holon'] : array();
+
+			if ((string)($beforeHolon['name'] ?? '') !== (string)($afterHolon['name'] ?? '')) {
+				$messages[] = 'le nom a ete modifie en "' . $this->limitHolonHistoryText((string)($afterHolon['name'] ?? '')) . '"';
+				$changes[] = array(
+					'type' => 'field_changed',
+					'field' => 'name',
+					'before' => (string)($beforeHolon['name'] ?? ''),
+					'after' => (string)($afterHolon['name'] ?? ''),
+				);
+			}
+
+			$mediaFields = array(
+				'color' => 'la couleur a ete modifiee',
+				'icon' => "l'icone a ete modifiee",
+				'banner' => 'la banniere a ete modifiee',
+			);
+			foreach ($mediaFields as $field => $message) {
+				if ((string)($beforeHolon[$field] ?? '') === (string)($afterHolon[$field] ?? '')) {
+					continue;
+				}
+
+				$messages[] = $message;
+				$changes[] = array(
+					'type' => 'field_changed',
+					'field' => $field,
+					'before' => (string)($beforeHolon[$field] ?? ''),
+					'after' => (string)($afterHolon[$field] ?? ''),
+				);
+			}
+
+			$beforeProperties = is_array($beforeSnapshot['properties'] ?? null) ? $beforeSnapshot['properties'] : array();
+			$afterProperties = is_array($afterSnapshot['properties'] ?? null) ? $afterSnapshot['properties'] : array();
+			$propertyIds = array_unique(array_merge(array_keys($beforeProperties), array_keys($afterProperties)));
+			sort($propertyIds);
+
+			foreach ($propertyIds as $propertyId) {
+				$beforeProperty = $beforeProperties[$propertyId] ?? null;
+				$afterProperty = $afterProperties[$propertyId] ?? null;
+
+				if (!is_array($beforeProperty) && !is_array($afterProperty)) {
+					continue;
+				}
+
+				$propertySnapshot = is_array($afterProperty) ? $afterProperty : $beforeProperty;
+				$propertyToken = $this->buildHolonHistoryPropertyToken($propertySnapshot);
+				$formatId = (int)($propertySnapshot['formatId'] ?? 0);
+
+				if (!is_array($beforeProperty)) {
+					$messages[] = 'la propriete ' . $propertyToken . ' a ete ajoutee';
+					$changes[] = array(
+						'type' => 'property_added',
+						'propertyId' => (int)$propertyId,
+						'after' => $afterProperty,
+					);
+					continue;
+				}
+
+				if (!is_array($afterProperty)) {
+					$messages[] = 'la propriete ' . $propertyToken . ' a ete retiree';
+					$changes[] = array(
+						'type' => 'property_removed',
+						'propertyId' => (int)$propertyId,
+						'before' => $beforeProperty,
+					);
+					continue;
+				}
+
+				if ($formatId === \dbObject\PropertyFormat::FORMAT_LIST) {
+					$beforeItemsByKey = array();
+					foreach ($beforeProperty['visibleItems'] ?? array() as $item) {
+						$key = $this->buildHolonHistoryListItemKey($item);
+						if ($key !== '') {
+							$beforeItemsByKey[$key] = $item;
+						}
+					}
+
+					$afterItemsByKey = array();
+					foreach ($afterProperty['visibleItems'] ?? array() as $item) {
+						$key = $this->buildHolonHistoryListItemKey($item);
+						if ($key !== '') {
+							$afterItemsByKey[$key] = $item;
+						}
+					}
+
+					$addedItems = array_values(array_diff_key($afterItemsByKey, $beforeItemsByKey));
+					$removedItems = array_values(array_diff_key($beforeItemsByKey, $afterItemsByKey));
+					$pairing = $this->pairHolonHistoryModifiedListItems($removedItems, $addedItems);
+					$modifiedItems = array_values($pairing['matches'] ?? array());
+					$removedItems = array_map(function ($entry) {
+						return $entry['item'] ?? null;
+					}, $pairing['removed'] ?? array());
+					$removedItems = array_values(array_filter($removedItems, function ($item) {
+						return !is_null($item);
+					}));
+					$addedItems = array_map(function ($entry) {
+						return $entry['item'] ?? null;
+					}, $pairing['added'] ?? array());
+					$addedItems = array_values(array_filter($addedItems, function ($item) {
+						return !is_null($item);
+					}));
+
+					if (count($modifiedItems) > 0) {
+						$itemPreviews = array();
+						foreach (array_slice($modifiedItems, 0, 3) as $itemPair) {
+							$beforePreview = $this->buildHolonHistoryListItemPreview($itemPair['before'] ?? null, $beforeProperty['listItemType'] ?? '');
+							$afterPreview = $this->buildHolonHistoryListItemPreview($itemPair['after'] ?? null, $afterProperty['listItemType'] ?? '');
+							if ($beforePreview !== '' && $afterPreview !== '' && $beforePreview !== $afterPreview) {
+								$itemPreviews[] = $beforePreview . ' -> ' . $afterPreview;
+							} elseif ($afterPreview !== '') {
+								$itemPreviews[] = $afterPreview;
+							} elseif ($beforePreview !== '') {
+								$itemPreviews[] = $beforePreview;
+							}
+						}
+
+						$modifiedCount = count($modifiedItems);
+						$messages[] = $modifiedCount . ' ' . ($modifiedCount > 1 ? 'elements ont ete modifies dans ' : 'element a ete modifie dans ') . $propertyToken
+							. (count($itemPreviews) > 0 ? ' : ' . implode('; ', $itemPreviews) : '');
+						$changes[] = array(
+							'type' => 'property_list_changed',
+							'propertyId' => (int)$propertyId,
+							'items' => $modifiedItems,
+						);
+					}
+
+					if (count($addedItems) > 0) {
+						$itemPreviews = array();
+						foreach (array_slice($addedItems, 0, 3) as $item) {
+							$preview = $this->buildHolonHistoryListItemPreview($item, $afterProperty['listItemType'] ?? '');
+							if ($preview !== '') {
+								$itemPreviews[] = $preview;
+							}
+						}
+
+						$addedCount = count($addedItems);
+						$messages[] = $addedCount . ' ' . ($addedCount > 1 ? 'elements ont ete ajoutes a ' : 'element a ete ajoute a ') . $propertyToken
+							. (count($itemPreviews) > 0 ? ' : ' . implode('; ', $itemPreviews) : '');
+						$changes[] = array(
+							'type' => 'property_list_added',
+							'propertyId' => (int)$propertyId,
+							'items' => $addedItems,
+						);
+					}
+
+					if (count($removedItems) > 0) {
+						$itemPreviews = array();
+						foreach (array_slice($removedItems, 0, 3) as $item) {
+							$preview = $this->buildHolonHistoryListItemPreview($item, $beforeProperty['listItemType'] ?? '');
+							if ($preview !== '') {
+								$itemPreviews[] = $preview;
+							}
+						}
+
+						$removedCount = count($removedItems);
+						$messages[] = $removedCount . ' ' . ($removedCount > 1 ? 'elements ont ete retires de ' : 'element a ete retire de ') . $propertyToken
+							. (count($itemPreviews) > 0 ? ' : ' . implode('; ', $itemPreviews) : '');
+						$changes[] = array(
+							'type' => 'property_list_removed',
+							'propertyId' => (int)$propertyId,
+							'items' => $removedItems,
+						);
+					}
+
+					$beforeOrderSignature = $this->buildHolonHistoryListOrderSignature(
+						array_values($beforeProperty['visibleItems'] ?? array()),
+						$modifiedItems,
+						'before'
+					);
+					$afterOrderSignature = $this->buildHolonHistoryListOrderSignature(
+						array_values($afterProperty['visibleItems'] ?? array()),
+						$modifiedItems,
+						'after'
+					);
+
+					if (
+						count($addedItems) === 0
+						&& count($removedItems) === 0
+						&& $beforeOrderSignature !== $afterOrderSignature
+					) {
+						$messages[] = 'les elements de ' . $propertyToken . ' ont ete reordonnes';
+						$changes[] = array(
+							'type' => 'property_list_reordered',
+							'propertyId' => (int)$propertyId,
+							'before' => array_values($beforeProperty['visibleItems'] ?? array()),
+							'after' => array_values($afterProperty['visibleItems'] ?? array()),
+						);
+					}
+
+					continue;
+				}
+
+				$beforeValue = (string)($beforeProperty['visibleValue'] ?? '');
+				$afterValue = (string)($afterProperty['visibleValue'] ?? '');
+				if ($beforeValue === $afterValue) {
+					continue;
+				}
+
+				$afterPreview = $this->buildHolonHistoryValuePreview($afterProperty, $beforeProperty);
+				if ($beforeValue === '' && $afterValue !== '') {
+					$messages[] = 'la propriete ' . $propertyToken . ' a ete renseignee'
+						. ($afterPreview !== '' ? ' : ' . $afterPreview : '');
+				} elseif ($beforeValue !== '' && $afterValue === '') {
+					$messages[] = 'la propriete ' . $propertyToken . ' a ete videe';
+				} else {
+					$messages[] = 'la propriete ' . $propertyToken . ' a ete modifiee'
+						. ($afterPreview !== '' ? ' : ' . $afterPreview : '');
+				}
+
+				$changes[] = array(
+					'type' => 'property_value_changed',
+					'propertyId' => (int)$propertyId,
+					'before' => $beforeProperty,
+					'after' => $afterProperty,
+				);
+			}
+
+			return array(
+				'messages' => $messages,
+				'changes' => $changes,
+			);
+		}
+
+		protected function recordHolonUpdateHistory(\dbObject\Holon $holon, $authorUserId, array $beforeSnapshot, array $afterSnapshot)
+		{
+			$diff = $this->buildHolonHistoryDiff($beforeSnapshot, $afterSnapshot);
+			if (count($diff['changes']) === 0) {
+				return;
+			}
+
+			$messageLines = array();
+			foreach ($diff['messages'] as $message) {
+				$message = trim((string)$message);
+				if ($message === '') {
+					continue;
+				}
+
+				$messageLines[] = '- ' . rtrim($message, ". \t\n\r\0\x0B") . '.';
+			}
+
+			$content = 'Modification de ' . $this->buildHolonHistoryHolonToken($afterSnapshot['holon'] ?? array()) . ' :';
+			if (count($messageLines) > 0) {
+				$content .= "\n" . implode("\n", $messageLines);
+			}
+
+			\dbObject\History::createEntry(
+				(int)$this->getId(),
+				(int)$authorUserId,
+				'holon_updated',
+				$content,
+				array(
+					'IDholon' => (int)$holon->getId(),
+					'before' => $beforeSnapshot,
+					'after' => $afterSnapshot,
+					'changes' => $diff['changes'],
+				),
+				(int)$holon->getContainingCircleId(false)
+			);
+		}
+
+		protected function recordHolonCreatedHistory(\dbObject\Holon $holon, $authorUserId, array $afterSnapshot)
+		{
+			$content = 'Creation de ' . $this->buildHolonHistoryHolonToken($afterSnapshot['holon'] ?? array()) . '.';
+
+			\dbObject\History::createEntry(
+				(int)$this->getId(),
+				(int)$authorUserId,
+				'holon_created',
+				$content,
+				array(
+					'IDholon' => (int)$holon->getId(),
+					'after' => $afterSnapshot,
+				),
+				(int)$holon->getContainingCircleId(false)
+			);
+		}
+
 		public function saveHolonEditorDefinition(array $payload, $userId = 0, $contextHolonId = 0, $holonId = 0)
 		{
 			$rootHolon = $this->getStructuralRootHolon();
@@ -2754,6 +3734,7 @@
 			$isTemplateEditing = false;
 			$holon = null;
 			$contextHolon = null;
+			$historyBeforeSnapshot = null;
 
 			if ($isEditing) {
 				$holon = new \dbObject\Holon();
@@ -2778,6 +3759,9 @@
 				}
 
 				$contextHolon = $holon->getParentHolon();
+				if (!$isTemplateEditing) {
+					$historyBeforeSnapshot = $this->buildHolonHistorySnapshot($holon);
+				}
 			} else {
 				$contextHolon = $this->getTemplateContextHolon($contextHolonId);
 			}
@@ -3048,7 +4032,15 @@
 						$excludedTemplateIds[] = $templateId;
 					}
 
-					$this->createMandatoryChildrenForCircle($holon, (int)$rootHolon->getId(), $userId, $excludedTemplateIds);
+						$this->createMandatoryChildrenForCircle($holon, (int)$rootHolon->getId(), $userId, $excludedTemplateIds);
+				}
+
+				$holon->load((int)$holon->getId(), true);
+				$historyAfterSnapshot = $this->buildHolonHistorySnapshot($holon);
+				if ($isEditing && is_array($historyBeforeSnapshot)) {
+					$this->recordHolonUpdateHistory($holon, $userId, $historyBeforeSnapshot, $historyAfterSnapshot);
+				} elseif (!$isEditing) {
+					$this->recordHolonCreatedHistory($holon, $userId, $historyAfterSnapshot);
 				}
 			}
 
