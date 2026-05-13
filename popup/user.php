@@ -1316,6 +1316,11 @@ foreach ($competenceRows as $competenceRow) {
     root.querySelectorAll('[data-user-competence-validate-form="1"]').forEach(function (form) {
         form.addEventListener('submit', function (event) {
             event.preventDefault();
+
+            if (typeof window.omoBeginPendingAction === 'function' && !window.omoBeginPendingAction(form)) {
+                return;
+            }
+
             setFeedback('', '');
 
             fetch('/omo/api/user_competence_validate.php', {
@@ -1339,6 +1344,11 @@ foreach ($competenceRows as $competenceRow) {
                 })
                 .catch(function () {
                     setFeedback("Impossible d'enregistrer cette validation.", 'error');
+                })
+                .finally(function () {
+                    if (typeof window.omoEndPendingAction === 'function') {
+                        window.omoEndPendingAction(form);
+                    }
                 });
         });
     });

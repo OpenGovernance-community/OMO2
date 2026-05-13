@@ -322,6 +322,8 @@ CREATE TABLE `holonproperty` (
   `IDproperty` int(11) NOT NULL,
   `value` mediumtext DEFAULT NULL,
   `position` int(11) DEFAULT NULL,
+  `datemodification` datetime DEFAULT NULL,
+  `IDusermodification` int(11) DEFAULT NULL,
   `mandatory` tinyint(1) NOT NULL DEFAULT 0,
   `locked` tinyint(1) NOT NULL DEFAULT 0,
   `active` tinyint(1) NOT NULL DEFAULT 1
@@ -1674,6 +1676,7 @@ CREATE TABLE IF NOT EXISTS `history` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `IDorganization` int(11) DEFAULT NULL,
   `IDuser` int(11) DEFAULT NULL,
+  `IDholon_circle` int(11) DEFAULT NULL,
   `action` varchar(100) DEFAULT NULL,
   `content` mediumtext NOT NULL,
   `parameters` mediumtext DEFAULT NULL,
@@ -1682,6 +1685,7 @@ CREATE TABLE IF NOT EXISTS `history` (
   PRIMARY KEY (`id`),
   KEY `idx_history_organization` (`IDorganization`),
   KEY `idx_history_user` (`IDuser`),
+  KEY `idx_history_holon_circle` (`IDholon_circle`),
   KEY `idx_history_action` (`action`),
   KEY `idx_history_datecreation` (`datecreation`),
   FULLTEXT KEY `ft_history_content` (`content`)
@@ -1758,8 +1762,10 @@ ALTER TABLE `holon`
 ALTER TABLE `holonproperty`
   ADD KEY `idx_holonproperty_holon` (`IDholon`),
   ADD KEY `idx_holonproperty_property` (`IDproperty`),
+  ADD KEY `idx_holonproperty_user_modification` (`IDusermodification`),
   ADD CONSTRAINT `fk_holonproperty_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_holonproperty_property` FOREIGN KEY (`IDproperty`) REFERENCES `property` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `fk_holonproperty_property` FOREIGN KEY (`IDproperty`) REFERENCES `property` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_holonproperty_user_modification` FOREIGN KEY (`IDusermodification`) REFERENCES `user` (`id`) ON DELETE SET NULL;
 
 ALTER TABLE `property`
   ADD KEY `idx_property_root_holon` (`IDholon_organization`),

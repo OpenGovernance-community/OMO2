@@ -338,6 +338,11 @@ $canLimitCompetenceToOrganization = $currentOrganizationId > 0;
 		fragment.querySelectorAll('[data-profile-competence-form="1"]').forEach(function (form) {
 			form.addEventListener('submit', function (event) {
 				event.preventDefault();
+
+				if (typeof window.omoBeginPendingAction === 'function' && !window.omoBeginPendingAction(form)) {
+					return;
+				}
+
 				setFeedback('', '');
 
 				var formData = new FormData(form);
@@ -362,6 +367,11 @@ $canLimitCompetenceToOrganization = $currentOrganizationId > 0;
 					})
 					.catch(function () {
 						setFeedback("Impossible d'enregistrer cette competence.", 'error');
+					})
+					.finally(function () {
+						if (typeof window.omoEndPendingAction === 'function') {
+							window.omoEndPendingAction(form);
+						}
 					});
 			});
 
@@ -381,6 +391,10 @@ $canLimitCompetenceToOrganization = $currentOrganizationId > 0;
 				}
 
 				setFeedback('', '');
+
+				if (typeof window.omoBeginPendingAction === 'function' && !window.omoBeginPendingAction(form)) {
+					return;
+				}
 
 				var formData = new FormData();
 				formData.append('id', identifier.value);
@@ -405,6 +419,11 @@ $canLimitCompetenceToOrganization = $currentOrganizationId > 0;
 					})
 					.catch(function () {
 						setFeedback("Impossible de supprimer cette competence.", 'error');
+					})
+					.finally(function () {
+						if (typeof window.omoEndPendingAction === 'function') {
+							window.omoEndPendingAction(form);
+						}
 					});
 			});
 		});

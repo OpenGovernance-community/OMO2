@@ -985,6 +985,11 @@ function closeCreateDrawer() {
 // Enregistre holon courant
 function saveHolon(event) {
     event.preventDefault();
+
+    if (elements.form && typeof window.omoBeginPendingAction === 'function' && !window.omoBeginPendingAction(elements.form)) {
+        return;
+    }
+
     clearStatus();
 
     const payload = {
@@ -1101,6 +1106,11 @@ function saveHolon(event) {
         })
         .catch(function (error) {
             showStatus(error && error.message ? error.message : (getMode() === 'edit' ? "Impossible d'enregistrer le holon." : "Impossible de créer le holon."), 'error');
+        })
+        .finally(function () {
+            if (elements.form && typeof window.omoEndPendingAction === 'function') {
+                window.omoEndPendingAction(elements.form);
+            }
         });
 }
 

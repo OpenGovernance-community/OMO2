@@ -536,6 +536,30 @@
 			return $parent->load($parentId) ? $parent : null;
 		}
 
+		public function getContainingCircle($includeSelf = false)
+		{
+			$current = $includeSelf ? $this : $this->getParentHolon();
+			$guard = 0;
+
+			while ($current !== null && $guard < 100) {
+				if ((int)$current->get('IDtypeholon') === 2) {
+					return $current;
+				}
+
+				$current = $current->getParentHolon();
+				$guard += 1;
+			}
+
+			return null;
+		}
+
+		public function getContainingCircleId($includeSelf = false)
+		{
+			$circle = $this->getContainingCircle($includeSelf);
+
+			return $circle ? (int)$circle->getId() : 0;
+		}
+
 		public function getPathHolons($includeSelf = true) {
 			$path = array();
 			$current = $includeSelf ? $this : $this->getParentHolon();
@@ -676,6 +700,8 @@
 					'value' => $value !== null ? (string)$value : '',
 					'ancestor' => $ancestor !== null ? (string)$ancestor : '',
 					'effectiveValue' => $effectiveValue !== null ? $effectiveValue : '',
+					'updatedAt' => $property->get('datemodification'),
+					'updatedByUserId' => (int)$property->get('IDusermodification'),
 				);
 			}
 
@@ -1752,7 +1778,8 @@
 					'IDtargetuser' => (int)$memberUser->getId(),
 					'IDholon' => (int)$this->getId(),
 					'authorUserId' => $authorUserId,
-				)
+				),
+				(int)$this->getContainingCircleId(false)
 			);
 
 			if (!is_array($saveResult) || empty($saveResult['status'])) {

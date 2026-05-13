@@ -273,6 +273,90 @@ function omoRenderSectionBody(array $entry)
     return $html;
 }
 
+function omoEntryHasLocalDisplayValue(array $entry)
+{
+    $formatId = (int)($entry['formatId'] ?? 0);
+    $value = $entry['value'] ?? '';
+
+    if ($formatId === PropertyFormat::FORMAT_LIST) {
+        return count(omoParseListItems($value)) > 0;
+    }
+
+    if ($formatId === PropertyFormat::FORMAT_HTML) {
+        return !PropertyFormat::isEmptyValue(PropertyFormat::FORMAT_HTML, $value);
+    }
+
+    return trim((string)$value) !== '';
+}
+
+function omoNormalizeEntryDateTime($value)
+{
+    if ($value instanceof DateTimeInterface) {
+        return $value;
+    }
+
+    $value = trim((string)$value);
+    if ($value === '') {
+        return null;
+    }
+
+    try {
+        return new DateTime($value);
+    } catch (Exception $exception) {
+        return null;
+    }
+}
+
+function omoResolveUserDisplayName($userId, $organizationId = 0)
+{
+    static $cache = array();
+
+    $userId = (int)$userId;
+    $organizationId = (int)$organizationId;
+    if ($userId <= 0) {
+        return '';
+    }
+
+    $cacheKey = $userId . ':' . $organizationId;
+    if (array_key_exists($cacheKey, $cache)) {
+        return $cache[$cacheKey];
+    }
+
+    $user = new \dbObject\User();
+    if (!$user->load($userId)) {
+        $cache[$cacheKey] = '';
+        return '';
+    }
+
+    if (!$user->canView()) {
+        $cache[$cacheKey] = '';
+        return '';
+    }
+
+    $cache[$cacheKey] = trim((string)$user->getScopedDisplayName($organizationId));
+    return $cache[$cacheKey];
+}
+
+function omoRenderSectionUpdateMeta(array $entry, $organizationId = 0)
+{
+    if (!omoEntryHasLocalDisplayValue($entry)) {
+        return '';
+    }
+
+    $updatedAt = omoNormalizeEntryDateTime($entry['updatedAt'] ?? null);
+    if (!$updatedAt) {
+        return '';
+    }
+
+    $metaText = 'Mis a jour le ' . $updatedAt->format('d.m.Y H:i');
+    $updatedByName = omoResolveUserDisplayName((int)($entry['updatedByUserId'] ?? 0), (int)$organizationId);
+    if ($updatedByName !== '') {
+        $metaText .= ' par ' . $updatedByName;
+    }
+
+    return '<div class="section-update-meta">' . omoApiEscape($metaText) . '</div>';
+}
+
 function omoBuildSections(Holon $holon)
 {
     $entries = $holon->getPropertyEntries();
@@ -438,11 +522,12 @@ $canCreateChildHolon = $currentHolon->canEdit() && in_array((int)$currentHolon->
 $canEditHolon = $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3, 4), true);
 $canMoveHolon = !$isCurrentTemplateHolon && $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
 $canDeleteHolon = $currentHolon->canDelete() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
+$canViewHolonHistory = $currentHolon->canViewDetail();
 $deleteDescendantCount = $canDeleteHolon ? (int)$currentHolon->countVisibleDescendants() : 0;
 $parentHolonForDelete = $canDeleteHolon ? $currentHolon->getParentHolon() : null;
 $deleteParentId = $parentHolonForDelete ? (int)$parentHolonForDelete->getId() : 0;
 $deleteParentIsRoot = $parentHolonForDelete ? ((int)$parentHolonForDelete->get('IDtypeholon') === 4) : false;
-$hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $canDeleteHolon;
+$hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $canDeleteHolon || $canViewHolonHistory;
 ?>
 
 <style>
@@ -515,6 +600,14 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
                                 data-open-move-holon="1"
                                 data-hid="<?= (int)$currentHolon->getId() ?>"
                             >Move</button>
+                        <?php endif; ?>
+                        <?php if ($canViewHolonHistory): ?>
+                            <button
+                                type="button"
+                                class="circle-menu__item"
+                                data-open-holon-history="1"
+                                data-hid="<?= (int)$currentHolon->getId() ?>"
+                            >Historique</button>
                         <?php endif; ?>
                         <?php if ($canDeleteHolon): ?>
                             <button
@@ -598,6 +691,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
             </div>
             <div class="generic-accordion__content">
                 <?= omoRenderSectionBody($section['entry']) ?>
+                <?= omoRenderSectionUpdateMeta($section['entry'], $organizationId) ?>
             </div>
         </div>
     <?php endforeach; ?>
@@ -913,6 +1007,13 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
 
 .section-html p {
     margin: 0 0 0.85em;
+}
+
+.section-update-meta {
+    margin-top: 10px;
+    font-size: 11px;
+    line-height: 1.35;
+    color: var(--color-text-light);
 }
 
 .section-html ul,
@@ -1253,6 +1354,22 @@ $(document)
     window.commonTopbarOpenModal(
         'Ajouter un membre',
         'api/holons/member_popup.php?hid=' + hid,
+        'fetch'
+    );
+  });
+
+$(document)
+  .off('click.omoOrgOpenHolonHistory', '#panel-left [data-open-holon-history="1"]')
+  .on('click.omoOrgOpenHolonHistory', '#panel-left [data-open-holon-history="1"]', function () {
+    const hid = Number($(this).data('hid'));
+
+    if (!hid || typeof window.commonTopbarOpenModal !== 'function') {
+        return;
+    }
+
+    window.commonTopbarOpenModal(
+        'Historique',
+        'api/holons/history_popup.php?hid=' + hid,
         'fetch'
     );
   });

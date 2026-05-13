@@ -191,6 +191,91 @@
         toArray(scope.querySelectorAll('[data-generic-accordion]')).forEach(initAccordion);
     }
 
+    function collectPendingActionControls(root) {
+        var selector = 'button, input[type="submit"], input[type="button"]';
+        var controls = [];
+
+        if (!root || root.nodeType !== 1) {
+            return controls;
+        }
+
+        controls = toArray(root.querySelectorAll(selector));
+
+        if (typeof root.matches === 'function' && root.matches(selector)) {
+            controls.unshift(root);
+        }
+
+        return controls;
+    }
+
+    function setPendingActionState(root, isPending) {
+        if (!root || root.nodeType !== 1) {
+            return;
+        }
+
+        collectPendingActionControls(root).forEach(function (control) {
+            var originalDisabled;
+
+            if (!control || typeof control.disabled === 'undefined') {
+                return;
+            }
+
+            if (isPending) {
+                if (!control.hasAttribute('data-generic-pending-original-disabled')) {
+                    control.setAttribute('data-generic-pending-original-disabled', control.disabled ? '1' : '0');
+                }
+
+                control.disabled = true;
+                control.setAttribute('aria-disabled', 'true');
+                return;
+            }
+
+            originalDisabled = control.getAttribute('data-generic-pending-original-disabled');
+            if (originalDisabled !== null) {
+                control.disabled = originalDisabled === '1';
+                control.removeAttribute('data-generic-pending-original-disabled');
+            } else {
+                control.disabled = false;
+            }
+
+            if (control.disabled) {
+                control.setAttribute('aria-disabled', 'true');
+            } else {
+                control.removeAttribute('aria-disabled');
+            }
+        });
+
+        if (isPending) {
+            root.dataset.genericAjaxPending = '1';
+            root.setAttribute('aria-busy', 'true');
+            return;
+        }
+
+        delete root.dataset.genericAjaxPending;
+        root.removeAttribute('aria-busy');
+    }
+
+    function beginPendingAction(root) {
+        if (!root || root.nodeType !== 1) {
+            return true;
+        }
+
+        if (root.dataset.genericAjaxPending === '1') {
+            return false;
+        }
+
+        setPendingActionState(root, true);
+        return true;
+    }
+
+    function endPendingAction(root) {
+        if (!root || root.nodeType !== 1) {
+            return;
+        }
+
+        setPendingActionState(root, false);
+    }
+
     function handleGenericTabClick(event) {
         var nextTab = findClosestByAttribute(event.target, 'data-generic-tab', document);
         var container;
@@ -258,6 +343,8 @@
 
     window.initGenericTabs = initTabs;
     window.initGenericComponents = initGenericComponents;
+    window.omoBeginPendingAction = beginPendingAction;
+    window.omoEndPendingAction = endPendingAction;
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function () {
