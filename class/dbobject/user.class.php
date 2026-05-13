@@ -5,69 +5,70 @@
 	{
 	    public static function tableName()
 		{
-			return 'user'; // Nom de la table correspondante
+			return 'user';
 		}
 
-		// DÃ©fini le contenu de la table
 		public static function rules()
 		{
 			return [
-				[['email'], 'required'], // Champs obligatoires
-				[['id'], 'integer'], // Nombres entiers
-				[['username', 'email', 'firstname', 'lastname', 'code', 'telegramID'], 'string'], // ChaÃ®nes de caractÃ¨re
-				[['password'], 'password'], // Mot de passe
-				[['image'], 'sizedimage'], // Fichier
-				[['parameters', 'param_easypv', 'param_easymemo', 'param_easycircle'], 'parameters'], // Textes libres
-				[['datecreation', 'dateconnexion', 'codeexpiration'], 'datetime'], // Dates avec heures
-				[['active'], 'boolean'], // BoolÃ©ens
-				[['id', 'password', 'email', 'code', 'datecreation', 'dateconnexion', 'codeexpiration', 'telegramID'], 'safe'], // Champs protÃ©gÃ©s
+				[['email'], 'required'],
+				[['id'], 'integer'],
+				[['username', 'email', 'firstname', 'lastname', 'code', 'telegramID'], 'string'],
+				[['presentation'], 'text'],
+				[['password'], 'password'],
+				[['image'], 'sizedimage'],
+				[['parameters', 'param_easypv', 'param_easymemo', 'param_easycircle'], 'parameters'],
+				[['datecreation', 'dateconnexion', 'codeexpiration'], 'datetime'],
+				[['birthdate'], 'date'],
+				[['active'], 'boolean'],
+				[['id', 'password', 'email', 'code', 'datecreation', 'dateconnexion', 'codeexpiration', 'telegramID'], 'safe'],
 			];
 		}
 
-		// DÃ©fini les labels standards pour cet objet, affichÃ©s dans les formulaires automatiques
 		public static function attributeLabels()
 		{
 			return [
 				'username' => 'Nom d\'utilisateur',
-				'firstname' => 'PrÃ©nom',
+				'firstname' => 'Prenom',
 				'lastname' => 'Nom',
+				'presentation' => 'Presentation',
+				'birthdate' => 'Date de naissance',
 				'email' => 'E-mail',
 				'image' => 'Image de profil',
 				'telegramID' => 'ID Telegram',
 				'password' => 'Mot de passe',
 				'code' => 'Code',
-				'parameters' => 'ParamÃ¨tres',
+				'parameters' => 'Parametres',
 			];
 		}
 
-		// Ajoute un champ description, qui peut apparaÃ®tre sous forme de bulle d'information ou en sous-titre
 		public static function attributeDescriptions() {
 			return [
-				'username' => 'Un identifiant utilisÃ© pour vous identifier dans une Ã©quipe, comme des initiales.',
-				'firstname' => 'Simplement votre prÃ©nom.',
+				'username' => 'Un identifiant utilise pour vous identifier dans une equipe, comme des initiales.',
+				'firstname' => 'Simplement votre prenom.',
 				'lastname' => 'Simplement votre nom de famille.',
-				'email' => 'L\'adresse e-mail utilisÃ©e pour vous connecter et pour vous envoyer les messages du systÃ¨me.',
-				'telegramID' => 'Identifiant numÃ©rique utilisÃ© pour associer votre compte Telegram.',
+				'presentation' => 'Petit texte de presentation partage entre les organisations, sauf si une organisation le remplace localement.',
+				'birthdate' => 'Date de naissance facultative, utilisee pour afficher le prochain anniversaire.',
+				'email' => 'L\'adresse e-mail utilisee pour vous connecter et pour vous envoyer les messages du systeme.',
+				'telegramID' => 'Identifiant numerique utilise pour associer votre compte Telegram.',
 			];
 		}
 
-		// DÃ©fini les informations de taille pour le champ
 		public static function attributeLength() {
 			return [
-				'username' => 30, // Nombre de caractÃ¨res maximum
+				'username' => 30,
 				'firstname' => 25,
 				'lastname' => 25,
+				'presentation' => 2000,
 				'email' => 30,
 				'telegramID' => 100,
 			];
 		}
 
-		// Retourne la valeur de base pour le tri
 		public static function getOrder() {
 			return "firstname, lastname";
 		}
 
-		// Retourne un boolean indiquant si oui ou non l'utilisateur connectÃ© a le droit d'afficher ce contenu
 		public function canView() {
 			return $this->resolveViewPermission(false);
 		}
@@ -76,13 +77,11 @@
 			return $this->resolveViewPermission(true);
 		}
 
-		// Retourne un boolean indiquant si oui ou non l'utilisateur connectÃ© a le droit d'Ã©diter ce contenu
 		public function canEdit() {
 			if (isset($_SESSION["currentUser"]) && $_SESSION["currentUser"] == $this->getId()) {
 				return true;
 			}
 
-			// Par dÃ©faut, ne peut complÃ©ter que son profil. A complÃ©ter lorsque des users fantÃ´mes seront crÃ©Ã©s.
 			return false;
 		}
 
@@ -273,6 +272,16 @@
 			return $this->getScopedEmail($organizationId);
 		}
 
+		public function getScopedPresentation($organizationId = 0)
+		{
+			$membership = $this->getOrganizationMembership($organizationId);
+			if ($membership && method_exists($membership, 'getScopedPresentation')) {
+				return $membership->getScopedPresentation();
+			}
+
+			return trim((string)$this->get('presentation'));
+		}
+
 		public function hasOrganizationAccess($organizationId) {
 			$organizationId = (int)$organizationId;
 			if ((int)$this->getId() <= 0 || $organizationId <= 0) {
@@ -286,6 +295,45 @@
 			$organizations = new ArrayOrganization();
 			$organizations->loadAccessibleForUser($this->getId(), $organizationId, 1);
 			return count($organizations) > 0;
+		}
+
+		public function getVisibleCompetenceRows($organizationId = 0, $viewerUserId = 0)
+		{
+			return \dbObject\UserCompetence::buildVisibleCompetenceRows((int)$this->getId(), (int)$organizationId, (int)$viewerUserId);
+		}
+
+		public function getCompetenceRowsForScope($scope = 'general', $organizationId = 0, $viewerUserId = 0)
+		{
+			$scope = $scope === 'organization' ? 'organization' : 'general';
+			$rows = $this->getVisibleCompetenceRows($organizationId, $viewerUserId);
+
+			return array_values(array_filter($rows, static function ($row) use ($scope) {
+				return (string)($row['scope'] ?? 'general') === $scope;
+			}));
+		}
+
+		public function saveCompetenceDeclaration(array $payload, $currentOrganizationId = 0)
+		{
+			if (!$this->canEdit()) {
+				return [
+					'status' => false,
+					'message' => "Vous ne pouvez pas modifier ces competences.",
+				];
+			}
+
+			return \dbObject\UserCompetence::saveDeclarationForUser((int)$this->getId(), $payload, (int)$currentOrganizationId);
+		}
+
+		public function deleteCompetenceDeclaration($userCompetenceId)
+		{
+			if (!$this->canEdit()) {
+				return [
+					'status' => false,
+					'message' => "Vous ne pouvez pas supprimer ces competences.",
+				];
+			}
+
+			return \dbObject\UserCompetence::deleteDeclarationForUser((int)$userCompetenceId, (int)$this->getId());
 		}
 	}
 

@@ -3,6 +3,7 @@ require_once("../config.php");
 require_once("../shared_functions.php");
 require_once("../common/auth.php");
 require_once("../common/patreon.php");
+require_once("../common/user_profile_ui.php");
 
 $connected = checklogin();
 if (!$connected) {
@@ -41,6 +42,10 @@ if ($currentOrganizationId > 0) {
 $activeEmail = $user->getScopedEmail($currentOrganizationId);
 $activeUsername = $user->getScopedUsername($currentOrganizationId);
 $activePhotoUrl = $user->getScopedProfilePhotoUrl($currentOrganizationId);
+$activePresentation = $user->getScopedPresentation($currentOrganizationId);
+$birthdate = $user->get('birthdate');
+$birthdaySummary = commonUserProfileBuildBirthdaySummary($birthdate);
+$birthdateLabel = commonUserProfileFormatBirthDate($birthdate);
 $requestedScope = isset($_GET['scope']) && $_GET['scope'] === 'organization' ? 'organization' : 'general';
 $initialScope = $hasOrganizationScope ? $requestedScope : 'general';
 
@@ -220,6 +225,127 @@ function profilFormatAmountCents($value)
 		color: #64748b;
 		font-size: 0.92rem;
 	}
+	.profile-panel__competence-section {
+		--generic-section-gap: 14px;
+	}
+	.profile-panel__competence-head {
+		display: grid;
+		gap: 6px;
+	}
+	.profile-panel__competence-list {
+		display: grid;
+		gap: 12px;
+	}
+	.profile-panel__competence-card {
+		display: grid;
+		gap: 12px;
+	}
+	.profile-panel__competence-card--new {
+		border-style: dashed;
+	}
+	.profile-panel__competence-grid {
+		display: grid;
+		gap: 12px;
+		grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+	}
+	.profile-panel__competence-field {
+		display: grid;
+		gap: 6px;
+	}
+	.profile-panel__competence-field span,
+	.profile-panel__competence-validators-label {
+		font-size: 13px;
+		font-weight: 700;
+		color: #334155;
+	}
+	.profile-panel__competence-field input,
+	.profile-panel__competence-field select {
+		width: 100%;
+		min-height: 44px;
+		padding: 10px 12px;
+		border: 1px solid #dbe4ee;
+		border-radius: 12px;
+		background: #fff;
+		color: inherit;
+		font: inherit;
+		box-sizing: border-box;
+	}
+	.profile-panel__competence-meta,
+	.profile-panel__competence-actions,
+	.profile-panel__competence-validators,
+	.profile-panel__competence-avatar-stack {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		align-items: center;
+	}
+	.profile-panel__competence-badge {
+		display: inline-flex;
+		align-items: center;
+		min-height: 28px;
+		padding: 0 10px;
+		border-radius: 999px;
+		background: #dbeafe;
+		color: #1d4ed8;
+		font-size: 12px;
+		font-weight: 700;
+	}
+	.profile-panel__competence-badge--muted {
+		background: #e2e8f0;
+		color: #475569;
+	}
+	.profile-panel__competence-avatar,
+	.profile-panel__competence-avatar--placeholder {
+		width: 28px;
+		height: 28px;
+		border-radius: 999px;
+		border: 1px solid #cbd5e1;
+		background: #e2e8f0;
+	}
+	.profile-panel__competence-avatar {
+		object-fit: cover;
+		display: block;
+	}
+	.profile-panel__competence-avatar--placeholder {
+		display: inline-grid;
+		place-items: center;
+		font-size: 11px;
+		font-weight: 700;
+		color: #1e3a8a;
+	}
+	.profile-panel__competence-empty,
+	.profile-panel__competence-feedback {
+		color: #64748b;
+		line-height: 1.45;
+	}
+	.profile-panel__competence-feedback.is-success {
+		color: #15803d;
+	}
+	.profile-panel__competence-feedback.is-error {
+		color: #b91c1c;
+	}
+	.profile-panel__competence-scope-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10px;
+		align-items: center;
+	}
+	.profile-panel__competence-scope-toggle {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		min-height: 40px;
+		padding: 8px 12px;
+		border: 1px solid #dbe4ee;
+		border-radius: 12px;
+		background: #fff;
+		color: #334155;
+		font-size: 13px;
+		font-weight: 600;
+	}
+	.profile-panel__competence-scope-toggle input {
+		margin: 0;
+	}
 </style>
 
 <div class="profile-panel" id="profilePanelRoot">
@@ -243,6 +369,23 @@ function profilFormatAmountCents($value)
 					<strong class="generic-card-title generic-card-title--small">Identifiant affiché</strong>
 					<?= htmlspecialchars($activeUsername !== '' ? $activeUsername : 'Non renseigné') ?>
 				</div>
+				<div class="profile-panel__item">
+					<strong class="generic-card-title generic-card-title--small">Presentation active</strong>
+					<?= nl2br(htmlspecialchars($activePresentation !== '' ? $activePresentation : 'Aucune presentation renseignee', ENT_QUOTES, 'UTF-8')) ?>
+				</div>
+				<div class="profile-panel__item">
+					<strong class="generic-card-title generic-card-title--small">Date de naissance</strong>
+					<?= htmlspecialchars($birthdateLabel !== '' ? $birthdateLabel : 'Non renseignee') ?>
+				</div>
+				<?php if (is_array($birthdaySummary)): ?>
+				<div class="profile-panel__item">
+					<strong class="generic-card-title generic-card-title--small">Anniversaire</strong>
+					<div><?= htmlspecialchars((string)$birthdaySummary['headline'], ENT_QUOTES, 'UTF-8') ?></div>
+					<?php if ((string)($birthdaySummary['detail'] ?? '') !== ''): ?>
+						<small><?= htmlspecialchars((string)$birthdaySummary['detail'], ENT_QUOTES, 'UTF-8') ?></small>
+					<?php endif; ?>
+				</div>
+				<?php endif; ?>
 			</div>
 		</section>
 

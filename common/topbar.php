@@ -132,6 +132,7 @@ function commonRenderTopbar(array $options = [])
 
     if (!$assetsLoaded) {
         echo '<link rel="stylesheet" href="/common/assets/components.css">' . PHP_EOL;
+        echo '<script src="/common/assets/components.js" defer></script>' . PHP_EOL;
         echo '<link rel="stylesheet" href="/common/assets/topbar.css">' . PHP_EOL;
         echo '<script src="/common/assets/topbar.js" defer></script>' . PHP_EOL;
         $assetsLoaded = true;
