@@ -2613,6 +2613,21 @@
 			return $count;
 		}
 
+		public function getVisibleDescendantIds($includeSelf = true)
+		{
+			$ids = array();
+
+			if ($includeSelf) {
+				$ids[] = (int)$this->getId();
+			}
+
+			foreach ($this->getChildren() as $child) {
+				$ids = array_merge($ids, $child->getVisibleDescendantIds(true));
+			}
+
+			return array_values(array_unique(array_map('intval', $ids)));
+		}
+
 		// Supprime holon r?cursif
 		public function delete()
 		{

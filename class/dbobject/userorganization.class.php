@@ -15,6 +15,7 @@
 				[['id'], 'integer'],
 				[['IDuser', 'IDorganization'], 'fk'],
 				[['username', 'email'], 'string'],
+				[['presentation'], 'text'],
 				[['image'], 'sizedimage'],
 				[['parameters'], 'parameters'],
 				[['datecreation', 'dateconnexion'], 'datetime'],
@@ -31,10 +32,11 @@
 				'IDorganization' => 'Organisation',
 				'username' => 'Identifiant',
 				'email' => 'E-mail',
+				'presentation' => 'Presentation',
 				'image' => 'Photo',
-				'parameters' => 'Paramètres',
-				'datecreation' => 'Création',
-				'dateconnexion' => 'Dernière connexion',
+				'parameters' => 'Parametres',
+				'datecreation' => 'Creation',
+				'dateconnexion' => 'Derniere connexion',
 				'active' => 'Actif',
 			];
 		}
@@ -42,14 +44,15 @@
 		public static function attributeDescriptions()
 		{
 			return [
-				'IDuser' => 'Utilisateur associé à cette organisation.',
-				'IDorganization' => 'Organisation concernée par ce lien.',
-				'username' => 'Identifiant affiché spécifiquement dans cette organisation. Laissez vide pour utiliser la valeur générale.',
-				'email' => 'Adresse e-mail affichée spécifiquement dans cette organisation. Laissez vide pour utiliser la valeur générale.',
-				'image' => 'Photo de profil spécifique à cette organisation. Si elle est vide, la photo générale est utilisée.',
-				'parameters' => 'Paramètres spécifiques au rôle de cette personne dans l’organisation.',
-				'datecreation' => 'Date de création du lien avec l’organisation.',
-				'dateconnexion' => 'Dernière activité connue dans cette organisation.',
+				'IDuser' => 'Utilisateur associe a cette organisation.',
+				'IDorganization' => 'Organisation concernee par ce lien.',
+				'username' => 'Identifiant affiche specifiquement dans cette organisation. Laissez vide pour utiliser la valeur generale.',
+				'email' => 'Adresse e-mail affichee specifiquement dans cette organisation. Laissez vide pour utiliser la valeur generale.',
+				'presentation' => 'Presentation visible uniquement dans cette organisation. Laissez vide pour reutiliser la presentation generale.',
+				'image' => 'Photo de profil specifique a cette organisation. Si elle est vide, la photo generale est utilisee.',
+				'parameters' => 'Parametres specifiques au role de cette personne dans l organisation.',
+				'datecreation' => 'Date de creation du lien avec l organisation.',
+				'dateconnexion' => 'Derniere activite connue dans cette organisation.',
 			];
 		}
 
@@ -59,6 +62,7 @@
 				'image' => [320, 320],
 				'username' => 250,
 				'email' => 250,
+				'presentation' => 2000,
 			];
 		}
 
@@ -229,6 +233,21 @@
 			}
 
 			return trim((string)$user->get('email'));
+		}
+
+		public function getScopedPresentation()
+		{
+			$presentation = trim((string)$this->get('presentation'));
+			if ($presentation !== '') {
+				return $presentation;
+			}
+
+			$user = $this->get('user');
+			if ($user && method_exists($user, 'getScopedPresentation')) {
+				return (string)$user->getScopedPresentation();
+			}
+
+			return '';
 		}
 
 		public function getGlobalCreatedAt()

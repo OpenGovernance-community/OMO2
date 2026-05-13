@@ -53,4 +53,14 @@ if (!function_exists('omoRenderCompetenceAvatar')) {
 	}
 }
 
+if (!function_exists('omoRenderCompetenceScopeToggle')) {
+	function omoRenderCompetenceScopeToggle($checked = false, $enabled = true, $label = 'Limiter a cette organisation')
+	{
+		echo '<label class="profile-panel__competence-scope-toggle">';
+		echo '<input type="checkbox" name="limit_to_organization" value="1"' . (!empty($checked) ? ' checked' : '') . (!empty($enabled) ? '' : ' disabled') . '>';
+		echo '<span>' . htmlspecialchars((string)$label, ENT_QUOTES, 'UTF-8') . '</span>';
+		echo '</label>';
+	}
+}
+
 ?>

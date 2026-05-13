@@ -23,6 +23,10 @@
         border-right: 0px;
         background: var(--admin-edit-surface, #ffffff);
     }
+    .admin-edit__date-range {
+        display: grid;
+        gap: 8px;
+    }
 </style>
 <script>
 
@@ -81,6 +85,61 @@ function adminEditNormalizeColorValue($value, $fallback = '#004663') {
     }
 
     return $value;
+}
+
+function adminEditFormatTemporalValue($value, $format) {
+    if ($value instanceof DateTimeInterface) {
+        return $value->format($format);
+    }
+
+    if (is_string($value) && trim($value) !== '') {
+        try {
+            $date = new DateTime($value);
+            return $date->format($format);
+        } catch (Throwable $exception) {
+            return '';
+        }
+    }
+
+    if (is_numeric($value)) {
+        try {
+            $date = new DateTime('@' . (int)$value);
+            return $date->format($format);
+        } catch (Throwable $exception) {
+            return '';
+        }
+    }
+
+    return '';
+}
+
+function adminEditBuildTemporalInput($type, $name, $value, $class, $disabled = false, $attributes = []) {
+    $html = "<input class='" . $class . "' name='" . $name . "' id='" . $name . "' type='" . $type . "'";
+
+    if ($value !== '') {
+        $html .= " value='" . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . "'";
+    }
+
+    foreach ($attributes as $attributeName => $attributeValue) {
+        if ($attributeValue === null || $attributeValue === false || $attributeValue === '') {
+            continue;
+        }
+
+        if ($attributeValue === true) {
+            $html .= ' ' . $attributeName;
+            continue;
+        }
+
+        $html .= ' ' . $attributeName . "='" . htmlspecialchars((string)$attributeValue, ENT_QUOTES, 'UTF-8') . "'";
+    }
+
+    if ($disabled) {
+        $html .= ' disabled';
+    }
+
+    $html .= '>';
+
+    return $html;
 }
 
 function getFieldType($object, $key) {
@@ -150,37 +209,52 @@ function displayField($object, $key, $default = null, $filter = null) {
             return $txt;
             break;
         case "date" :
-            $datewg = new \widget\DateWidget($key, "", $object->get($key));
-            if ($object->isProtected($key)) {
-                $datewg->disable();
-            }
-
-            return $datewg->getString("defaultDate.php");
+            return adminEditBuildTemporalInput(
+                'date',
+                $key,
+                adminEditFormatTemporalValue($object->get($key), 'Y-m-d'),
+                $class,
+                $object->isProtected($key)
+            );
             break;
         case "time" :
-            $datewg = new \widget\DateWidget($key, "", $object->get($key));
-            if ($object->isProtected($key)) {
-                $datewg->disable();
-            }
-
-            return $datewg->getString("defaultTime.php");
+            return adminEditBuildTemporalInput(
+                'time',
+                $key,
+                adminEditFormatTemporalValue($object->get($key), 'H:i'),
+                $class,
+                $object->isProtected($key)
+            );
             break;
         case "datetime" :
-            $datewg = new \widget\DateWidget($key, "", $object->get($key));
-            if ($object->isProtected($key)) {
-                $datewg->disable();
-            }
-
-            return $datewg->getString("defaultDateTime.php");
+            return adminEditBuildTemporalInput(
+                'datetime-local',
+                $key,
+                adminEditFormatTemporalValue($object->get($key), 'Y-m-d\TH:i'),
+                $class,
+                $object->isProtected($key)
+            );
             break;
         case "daterange" :
-            $datewg = new \widget\DateWidget($key, "", ($object->get($key) ? $object->get($key) : $default), ($object->get($key . "_fin") ? $object->get($key . "_fin") : $default));
-            if ($object->isProtected($key)) {
-                $datewg->disable();
-            }
+            $rangeStartValue = $object->get($key) ? $object->get($key) : $default;
+            $rangeEndValue = $object->get($key . "_fin") ? $object->get($key . "_fin") : $default;
 
-            return $datewg->getString("defaultDateRange.php");
-            //return "<input class='".$class."' type='text' value='".date_format(date_create($object->get($key)), 'd.m.Y H:i:s')."'>";
+            return "<div class='admin-edit__date-range'>"
+                . adminEditBuildTemporalInput(
+                    'datetime-local',
+                    $key,
+                    adminEditFormatTemporalValue($rangeStartValue, 'Y-m-d\TH:i'),
+                    $class,
+                    $object->isProtected($key)
+                )
+                . adminEditBuildTemporalInput(
+                    'datetime-local',
+                    $key . "_fin",
+                    adminEditFormatTemporalValue($rangeEndValue, 'Y-m-d\TH:i'),
+                    $class,
+                    $object->isProtected($key)
+                )
+                . "</div>";
             break;
         case "timezone" :
             $str = "<select name='" . $key . "' id='" . $key . "'>";

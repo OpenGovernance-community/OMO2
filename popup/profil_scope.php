@@ -43,8 +43,9 @@ $competenceSectionTitle = $scope === 'organization'
 	? "Competences liees a l'organisation"
 	: 'Competences generales';
 $competenceSectionHelp = $scope === 'organization'
-	? "Ajoutez ici les competences visibles uniquement dans l'organisation active."
-	: 'Ajoutez ici les competences visibles dans toutes vos organisations.';
+	? "Ajoutez ici les competences du contexte actif. Cochez la case pour les limiter a cette organisation."
+	: 'Ajoutez ici les competences visibles dans toutes vos organisations, ou limitez-les au contexte actif.';
+$canLimitCompetenceToOrganization = $currentOrganizationId > 0;
 ?>
 <div class="profile-panel__scope-fragment" data-profile-loaded-scope="<?= htmlspecialchars($scope, ENT_QUOTES, 'UTF-8') ?>">
 	<?php if ($scope === 'organization' && $organizationMembership): ?>
@@ -60,6 +61,7 @@ $competenceSectionHelp = $scope === 'organization'
 			"image",
 			"username",
 			"email",
+			"presentation",
 		),
 	);
 	$organizationMembership->display("adminEdit.php", $params);
@@ -96,6 +98,8 @@ $competenceSectionHelp = $scope === 'organization'
 			"username",
 			"firstname",
 			"lastname",
+			"presentation",
+			"birthdate",
 			"email",
 		),
 	);
@@ -167,10 +171,19 @@ $competenceSectionHelp = $scope === 'organization'
 						<div class="profile-panel__competence-meta">
 							<span class="profile-panel__competence-badge"><?= htmlspecialchars((string)$competenceRow['levelLabel'], ENT_QUOTES, 'UTF-8') ?></span>
 							<span class="profile-panel__competence-badge profile-panel__competence-badge--muted"><?= htmlspecialchars((string)$competenceRow['categoryLabel'], ENT_QUOTES, 'UTF-8') ?></span>
+							<?php if ((string)($competenceRow['scope'] ?? 'general') === 'organization'): ?>
+								<span class="profile-panel__competence-badge profile-panel__competence-badge--muted"><?= htmlspecialchars((string)$competenceRow['scopeLabel'], ENT_QUOTES, 'UTF-8') ?></span>
+							<?php endif; ?>
 							<?php if ((int)$competenceRow['validationCount'] > 0): ?>
 								<span class="profile-panel__competence-badge profile-panel__competence-badge--muted"><?= (int)$competenceRow['validationCount'] ?> validation<?= (int)$competenceRow['validationCount'] > 1 ? 's' : '' ?></span>
 							<?php endif; ?>
 						</div>
+
+						<?php if ($canLimitCompetenceToOrganization): ?>
+							<div class="profile-panel__competence-scope-row">
+								<?php omoRenderCompetenceScopeToggle((string)($competenceRow['scope'] ?? 'general') === 'organization'); ?>
+							</div>
+						<?php endif; ?>
 
 						<?php if (!empty($competenceRow['validators'])): ?>
 							<div class="profile-panel__competence-validators">
@@ -226,6 +239,12 @@ $competenceSectionHelp = $scope === 'organization'
 					</select>
 				</label>
 			</div>
+
+			<?php if ($canLimitCompetenceToOrganization): ?>
+				<div class="profile-panel__competence-scope-row">
+					<?php omoRenderCompetenceScopeToggle($scope === 'organization'); ?>
+				</div>
+			<?php endif; ?>
 
 			<div class="profile-panel__competence-actions">
 				<button type="submit" class="generic-action-button generic-action-button--main">Ajouter</button>

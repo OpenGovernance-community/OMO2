@@ -3,6 +3,7 @@ require_once("../config.php");
 require_once("../shared_functions.php");
 require_once("../common/auth.php");
 require_once("../common/patreon.php");
+require_once("../common/user_profile_ui.php");
 
 $connected = checklogin();
 if (!$connected) {
@@ -41,6 +42,10 @@ if ($currentOrganizationId > 0) {
 $activeEmail = $user->getScopedEmail($currentOrganizationId);
 $activeUsername = $user->getScopedUsername($currentOrganizationId);
 $activePhotoUrl = $user->getScopedProfilePhotoUrl($currentOrganizationId);
+$activePresentation = $user->getScopedPresentation($currentOrganizationId);
+$birthdate = $user->get('birthdate');
+$birthdaySummary = commonUserProfileBuildBirthdaySummary($birthdate);
+$birthdateLabel = commonUserProfileFormatBirthDate($birthdate);
 $requestedScope = isset($_GET['scope']) && $_GET['scope'] === 'organization' ? 'organization' : 'general';
 $initialScope = $hasOrganizationScope ? $requestedScope : 'general';
 
@@ -319,6 +324,28 @@ function profilFormatAmountCents($value)
 	.profile-panel__competence-feedback.is-error {
 		color: #b91c1c;
 	}
+	.profile-panel__competence-scope-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10px;
+		align-items: center;
+	}
+	.profile-panel__competence-scope-toggle {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		min-height: 40px;
+		padding: 8px 12px;
+		border: 1px solid #dbe4ee;
+		border-radius: 12px;
+		background: #fff;
+		color: #334155;
+		font-size: 13px;
+		font-weight: 600;
+	}
+	.profile-panel__competence-scope-toggle input {
+		margin: 0;
+	}
 </style>
 
 <div class="profile-panel" id="profilePanelRoot">
@@ -342,6 +369,23 @@ function profilFormatAmountCents($value)
 					<strong class="generic-card-title generic-card-title--small">Identifiant affiché</strong>
 					<?= htmlspecialchars($activeUsername !== '' ? $activeUsername : 'Non renseigné') ?>
 				</div>
+				<div class="profile-panel__item">
+					<strong class="generic-card-title generic-card-title--small">Presentation active</strong>
+					<?= nl2br(htmlspecialchars($activePresentation !== '' ? $activePresentation : 'Aucune presentation renseignee', ENT_QUOTES, 'UTF-8')) ?>
+				</div>
+				<div class="profile-panel__item">
+					<strong class="generic-card-title generic-card-title--small">Date de naissance</strong>
+					<?= htmlspecialchars($birthdateLabel !== '' ? $birthdateLabel : 'Non renseignee') ?>
+				</div>
+				<?php if (is_array($birthdaySummary)): ?>
+				<div class="profile-panel__item">
+					<strong class="generic-card-title generic-card-title--small">Anniversaire</strong>
+					<div><?= htmlspecialchars((string)$birthdaySummary['headline'], ENT_QUOTES, 'UTF-8') ?></div>
+					<?php if ((string)($birthdaySummary['detail'] ?? '') !== ''): ?>
+						<small><?= htmlspecialchars((string)$birthdaySummary['detail'], ENT_QUOTES, 'UTF-8') ?></small>
+					<?php endif; ?>
+				</div>
+				<?php endif; ?>
 			</div>
 		</section>
 
