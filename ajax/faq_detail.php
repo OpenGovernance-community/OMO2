@@ -7,22 +7,31 @@ if ($faqId <= 0) {
 	die("FAQ invalide");
 }
 
+$organizationId = (int)($_GET['oid'] ?? ($_SESSION['currentOrganization'] ?? 0));
+$currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
+$faqContext = \dbObject\FAQ::resolvePopupContext($organizationId, $currentHolonId);
+
+if ($faqContext === false) {
+	die("Contexte FAQ invalide");
+}
+
 $faq = new \dbObject\FAQ();
 if (!$faq->load($faqId) || !(int)$faq->get("id")) {
 	die("FAQ introuvable");
 }
 
-if (!(int)$faq->get("isactive")) {
-	die("Cette FAQ n’est pas disponible");
+if (!$faq->canBeViewedInContext($faqContext ?: array())) {
+	die("Cette FAQ n'est pas disponible");
 }
 
-$faq->set("viewcount", (int)$faq->get("viewcount") + 1);
-$faq->save();
+if (\dbObject\FAQ::hasViewcountColumn()) {
+	$faq->incrementViewcount();
+}
 ?>
 <div class="faq-popup__item is-open">
 	<div style="padding: 18px;">
 		<div style="margin-bottom: 16px;">
-			<button type="button" class="faq-popup__back" data-faq-back>Retour à la FAQ</button>
+			<button type="button" class="faq-popup__back" data-faq-back>Retour a la FAQ</button>
 		</div>
 		<h4 style="margin: 0 0 12px; font-size: 20px; color: #0f172a;"><?= htmlspecialchars((string)$faq->get("question")) ?></h4>
 		<div style="color: #334155; line-height: 1.7; margin-bottom: 18px;">
@@ -33,8 +42,10 @@ $faq->save();
 				<?= (string)$faq->get("detail") ?>
 			</div>
 		<?php endif; ?>
-		<div style="margin-top: 16px; color: #64748b; font-size: 14px;">
-			Consultations: <?= (int)$faq->get("viewcount") ?>
-		</div>
+		<?php if (\dbObject\FAQ::hasViewcountColumn()): ?>
+			<div style="margin-top: 16px; color: #64748b; font-size: 14px;">
+				Consultations: <?= (int)$faq->get("viewcount") ?>
+			</div>
+		<?php endif; ?>
 	</div>
 </div>
