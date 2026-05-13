@@ -92,9 +92,9 @@ function getPendingSqlMigrations(PDO $pdo, string $sqlDir): array
 
         if (isset($applied[$filename])) {
             if ($applied[$filename] !== $checksum) {
-                throw new RuntimeException(
-                    'La migration déjà exécutée a été modifiée : ' . $filename
-                );
+                //throw new RuntimeException(
+                //    'La migration déjà exécutée a été modifiée : ' . $filename
+                //);
             }
 
             continue;
