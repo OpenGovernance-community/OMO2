@@ -375,7 +375,7 @@
 						'level' => $level,
 						'levelLabel' => self::getLevelLabel($level),
 						'scope' => $scope,
-						'scopeLabel' => $scope === 'organization' ? 'Organisation' : 'General',
+						'scopeLabel' => $scope === 'organization' ? 'Cette organisation' : 'Toutes les organisations',
 						'validationCount' => 0,
 						'validators' => [],
 						'currentViewerValidationLevel' => 0,
@@ -429,7 +429,8 @@
 			$userId = (int)$userId;
 			$currentOrganizationId = (int)$currentOrganizationId;
 			$scope = (($payload['scope'] ?? 'general') === 'organization') ? 'organization' : 'general';
-			$scopeOrganizationId = $scope === 'organization' ? $currentOrganizationId : 0;
+			$limitToOrganization = !empty($payload['limit_to_organization']) && $currentOrganizationId > 0;
+			$scopeOrganizationId = $limitToOrganization ? $currentOrganizationId : 0;
 			$name = Competence::normalizeName($payload['name'] ?? '');
 			$description = self::normalizeDescription($payload['description'] ?? '');
 			$category = self::normalizeCategory($payload['category'] ?? 'technical');
@@ -485,14 +486,6 @@
 					return [
 						'status' => false,
 						'message' => "Vous ne pouvez pas modifier cette competence.",
-					];
-				}
-
-				$itemScopeOrganizationId = (int)$item->get('IDorganization');
-				if (($scopeOrganizationId > 0 && $itemScopeOrganizationId !== $scopeOrganizationId) || ($scopeOrganizationId <= 0 && $itemScopeOrganizationId > 0)) {
-					return [
-						'status' => false,
-						'message' => 'Le scope de cette competence ne correspond pas au formulaire.',
 					];
 				}
 			}

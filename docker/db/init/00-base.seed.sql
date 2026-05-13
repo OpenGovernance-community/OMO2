@@ -148,11 +148,13 @@ INSERT INTO `document` (`id`, `title`, `description`, `content`, `keywords`, `ID
 CREATE TABLE `faq` (
   `id` int(10) UNSIGNED NOT NULL,
   `IDhowto` int(10) UNSIGNED DEFAULT NULL,
+  `IDholon` int(10) UNSIGNED DEFAULT NULL,
   `question` varchar(255) NOT NULL,
   `answer` text NOT NULL,
   `detail` text DEFAULT NULL,
   `displayorder` int(11) DEFAULT 0,
   `isactive` tinyint(1) DEFAULT 1,
+  `viewcount` int(11) DEFAULT 0,
   `created` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
