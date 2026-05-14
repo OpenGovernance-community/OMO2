@@ -129,14 +129,7 @@ function autoInstallGetFieldDefinitions()
                     'label' => 'Mot de passe MySQL',
                     'type' => 'password',
                     'required' => true,
-                ],
-                [
-                    'key' => 'DB_MIGRATION_DATABASES',
-                    'label' => 'Bases pour les migrations automatiques',
-                    'type' => 'text',
-                    'required' => false,
-                    'placeholder' => 'base1,base2',
-                    'help' => 'Optionnel. Laissez vide si une seule base doit etre migree.',
+                    'placeholder' => 'Mot de passe MySQL',
                 ],
             ],
         ],
@@ -180,6 +173,8 @@ function autoInstallGetFieldDefinitions()
                     'type' => 'password',
                     'required' => true,
                     'persist' => false,
+                    'placeholder' => 'Choisissez un mot de passe solide',
+                    'help' => 'Preferez une phrase de passe longue, unique et difficile a deviner.',
                 ],
                 [
                     'key' => 'INSTALL_ADMIN_PASSWORD_CONFIRM',
@@ -187,6 +182,7 @@ function autoInstallGetFieldDefinitions()
                     'type' => 'password',
                     'required' => true,
                     'persist' => false,
+                    'placeholder' => 'Retapez le mot de passe',
                 ],
             ],
         ],
@@ -355,13 +351,27 @@ function autoInstallGetFieldDefinitions()
         ],
     ];
 
+    $definitions = autoInstallApplyExampleValues($definitions, $exampleDefaults);
+
+    return $definitions;
+}
+
+function autoInstallApplyExampleValues(array $definitions, array $exampleDefaults)
+{
     foreach ($definitions as $sectionKey => $section) {
         foreach ($section['fields'] as $fieldIndex => $field) {
             $key = (string)$field['key'];
+            $fieldType = (string)($field['type'] ?? 'text');
 
             if (array_key_exists($key, $exampleDefaults)) {
-                $definitions[$sectionKey]['fields'][$fieldIndex]['default'] = $exampleDefaults[$key];
-                continue;
+                $definitions[$sectionKey]['fields'][$fieldIndex]['example'] = $exampleDefaults[$key];
+
+                if (
+                    !array_key_exists('placeholder', $field)
+                    && !in_array($fieldType, ['password', 'select'], true)
+                ) {
+                    $definitions[$sectionKey]['fields'][$fieldIndex]['placeholder'] = $exampleDefaults[$key];
+                }
             }
 
             if (!array_key_exists('default', $field)) {
@@ -426,7 +436,8 @@ function autoInstallBuildInitialValues(array $definitions)
 
     foreach ($definitions as $section) {
         foreach ($section['fields'] as $field) {
-            $values[$field['key']] = (string)($field['default'] ?? '');
+            $defaultValue = array_key_exists('initial', $field) ? (string)$field['initial'] : '';
+            $values[$field['key']] = $defaultValue;
         }
     }
 
@@ -485,8 +496,12 @@ function autoInstallValidateValues(array $definitions, array $values, $envPath)
         $errors[] = 'L adresse e-mail de l administrateur est invalide.';
     }
 
-    if (strlen((string)($values['INSTALL_ADMIN_PASSWORD'] ?? '')) < 8) {
-        $errors[] = 'Le mot de passe administrateur doit faire au moins 8 caracteres.';
+    $passwordCheck = autoInstallEvaluateAdminPassword(
+        (string)($values['INSTALL_ADMIN_PASSWORD'] ?? ''),
+        (string)($values['INSTALL_ADMIN_EMAIL'] ?? '')
+    );
+    if (!$passwordCheck['valid']) {
+        $errors[] = 'Le mot de passe administrateur doit faire au moins 12 caracteres et contenir une minuscule, une majuscule, un chiffre et un caractere special.';
     }
 
     if ((string)($values['INSTALL_ADMIN_PASSWORD'] ?? '') !== (string)($values['INSTALL_ADMIN_PASSWORD_CONFIRM'] ?? '')) {
@@ -503,6 +518,32 @@ function autoInstallValidateValues(array $definitions, array $values, $envPath)
 function autoInstallGetSeedPath()
 {
     return dirname(__DIR__) . '/docker/db/init/00-base.seed.sql';
+}
+
+function autoInstallEvaluateAdminPassword($password, $email = '')
+{
+    $password = (string)$password;
+    $email = trim(strtolower((string)$email));
+    $emailLocalPart = '';
+
+    if ($email !== '' && strpos($email, '@') !== false) {
+        $emailParts = explode('@', $email, 2);
+        $emailLocalPart = trim((string)($emailParts[0] ?? ''));
+    }
+
+    $rules = [
+        'length' => strlen($password) >= 12,
+        'lower' => preg_match('/[a-z]/', $password) === 1,
+        'upper' => preg_match('/[A-Z]/', $password) === 1,
+        'digit' => preg_match('/\d/', $password) === 1,
+        'special' => preg_match('/[^a-zA-Z0-9]/', $password) === 1,
+        'email' => $emailLocalPart === '' || strlen($emailLocalPart) < 4 || stripos($password, $emailLocalPart) === false,
+    ];
+
+    return [
+        'rules' => $rules,
+        'valid' => $rules['length'] && $rules['lower'] && $rules['upper'] && $rules['digit'] && $rules['special'],
+    ];
 }
 
 function autoInstallPrepareDatabase(array $values)
@@ -750,9 +791,23 @@ function autoInstallWriteEnvFile($envPath, array $definitions, array $values)
     $lines = [];
 
     foreach ($definitions as $section) {
-        $persistedFields = array_values(array_filter($section['fields'], static function ($field) {
-            return !array_key_exists('persist', $field) || $field['persist'];
-        }));
+        $persistedFields = [];
+
+        foreach ($section['fields'] as $field) {
+            if (array_key_exists('persist', $field) && !$field['persist']) {
+                continue;
+            }
+
+            $key = (string)$field['key'];
+            $value = (string)($values[$key] ?? '');
+            $isRequired = !empty($field['required']);
+
+            if (!$isRequired && $value === '') {
+                continue;
+            }
+
+            $persistedFields[] = $field;
+        }
 
         if ($persistedFields === []) {
             continue;
@@ -951,6 +1006,43 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors)
             color: #8a1c14;
         }
 
+        .auto-install-password-panel {
+            display: grid;
+            gap: 10px;
+            padding: 14px 16px;
+            border: 1px solid var(--color-border);
+            border-radius: 16px;
+            background: rgba(15, 118, 110, 0.04);
+        }
+
+        .auto-install-password-status,
+        .auto-install-password-match {
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--color-text-light);
+        }
+
+        .auto-install-password-rules {
+            margin: 0;
+            padding-left: 18px;
+            display: grid;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--color-text-light);
+        }
+
+        .auto-install-password-rule.is-valid,
+        .auto-install-password-match.is-valid,
+        .auto-install-password-status.is-valid {
+            color: #0f6b43;
+        }
+
+        .auto-install-password-rule.is-invalid,
+        .auto-install-password-match.is-invalid,
+        .auto-install-password-status.is-invalid {
+            color: #8a1c14;
+        }
+
         .auto-install-error-list {
             margin: 0;
             padding-left: 18px;
@@ -1006,7 +1098,7 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors)
             <h1 class="auto-install-title">Configuration initiale du site</h1>
             <p class="auto-install-intro">
                 Aucun fichier <span class="auto-install-code">.env</span> n a ete detecte.
-                Renseignez les parametres obligatoires pour demarrer le site, puis ajoutez si vous le souhaitez les integrations optionnelles.
+                Renseignez les parametres obligatoires pour demarrer le site. Les champs laisses vides utilisent les valeurs par defaut du projet quand elles existent.
             </p>
         </section>
 
@@ -1036,6 +1128,7 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors)
                                 $key = (string)$field['key'];
                                 $fieldType = (string)($field['type'] ?? 'text');
                                 $fieldValue = (string)($values[$key] ?? '');
+                                $fieldPlaceholder = (string)($field['placeholder'] ?? '');
                                 $fieldClass = 'auto-install-field';
                                 if ($fieldType === 'password' || $fieldType === 'text' || strlen($fieldValue) > 42 || !empty($field['help'])) {
                                     $fieldClass .= ' auto-install-field--full';
@@ -1055,6 +1148,9 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors)
                                             name="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"
                                             id="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"
                                         >
+                                            <?php if (empty($field['required'])): ?>
+                                                <option value=""<?= $fieldValue === '' ? ' selected' : '' ?>>Choisir si necessaire</option>
+                                            <?php endif; ?>
                                             <?php foreach (($field['options'] ?? []) as $optionValue => $optionLabel): ?>
                                                 <option value="<?= htmlspecialchars((string)$optionValue, ENT_QUOTES, 'UTF-8') ?>"<?= $fieldValue === (string)$optionValue ? ' selected' : '' ?>>
                                                     <?= htmlspecialchars((string)$optionLabel, ENT_QUOTES, 'UTF-8') ?>
@@ -1068,14 +1164,33 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors)
                                             name="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"
                                             id="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"
                                             value="<?= htmlspecialchars($fieldValue, ENT_QUOTES, 'UTF-8') ?>"
-                                            placeholder="<?= htmlspecialchars((string)($field['placeholder'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                            placeholder="<?= htmlspecialchars($fieldPlaceholder, ENT_QUOTES, 'UTF-8') ?>"
                                             <?= !empty($field['required']) ? 'required' : '' ?>
+                                            <?= $key === 'INSTALL_ADMIN_PASSWORD' ? 'minlength="12"' : '' ?>
                                             autocomplete="off"
                                         >
                                     <?php endif; ?>
 
                                     <?php if (!empty($field['help'])): ?>
                                         <span class="auto-install-help"><?= htmlspecialchars((string)$field['help'], ENT_QUOTES, 'UTF-8') ?></span>
+                                    <?php endif; ?>
+
+                                    <?php if ($key === 'INSTALL_ADMIN_PASSWORD'): ?>
+                                        <div class="auto-install-password-panel" data-password-panel>
+                                            <span class="auto-install-password-status" data-password-status aria-live="polite">Le mot de passe doit respecter les criteres ci-dessous.</span>
+                                            <ul class="auto-install-password-rules">
+                                                <li class="auto-install-password-rule" data-password-rule="length">Au moins 12 caracteres</li>
+                                                <li class="auto-install-password-rule" data-password-rule="lower">Au moins une minuscule</li>
+                                                <li class="auto-install-password-rule" data-password-rule="upper">Au moins une majuscule</li>
+                                                <li class="auto-install-password-rule" data-password-rule="digit">Au moins un chiffre</li>
+                                                <li class="auto-install-password-rule" data-password-rule="special">Au moins un caractere special ou un espace</li>
+                                                <li class="auto-install-password-rule" data-password-rule="email">Evitez de reprendre votre e-mail ou votre identifiant</li>
+                                            </ul>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <?php if ($key === 'INSTALL_ADMIN_PASSWORD_CONFIRM'): ?>
+                                        <span class="auto-install-password-match" data-password-match aria-live="polite">Retapez le meme mot de passe pour confirmation.</span>
                                     <?php endif; ?>
                                 </label>
                             <?php endforeach; ?>
@@ -1112,6 +1227,96 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors)
             </aside>
         </div>
     </main>
+    <script>
+        (function () {
+            var passwordInput = document.getElementById('INSTALL_ADMIN_PASSWORD');
+            var emailInput = document.getElementById('INSTALL_ADMIN_EMAIL');
+            var confirmInput = document.getElementById('INSTALL_ADMIN_PASSWORD_CONFIRM');
+            var statusNode = document.querySelector('[data-password-status]');
+            var matchNode = document.querySelector('[data-password-match]');
+            var ruleNodes = document.querySelectorAll('[data-password-rule]');
+
+            if (!passwordInput || !statusNode || ruleNodes.length === 0) {
+                return;
+            }
+
+            function evaluatePassword(password, email) {
+                var emailLocalPart = '';
+                var atIndex = email.indexOf('@');
+
+                if (atIndex > 0) {
+                    emailLocalPart = email.slice(0, atIndex).toLowerCase();
+                }
+
+                return {
+                    length: password.length >= 12,
+                    lower: /[a-z]/.test(password),
+                    upper: /[A-Z]/.test(password),
+                    digit: /\d/.test(password),
+                    special: /[^a-zA-Z0-9]/.test(password),
+                    email: emailLocalPart.length < 4 || password.toLowerCase().indexOf(emailLocalPart) === -1
+                };
+            }
+
+            function setNodeState(node, isValid, isInvalid) {
+                node.classList.toggle('is-valid', isValid);
+                node.classList.toggle('is-invalid', isInvalid);
+            }
+
+            function updatePasswordUi() {
+                var password = passwordInput.value || '';
+                var email = emailInput ? (emailInput.value || '') : '';
+                var checks = evaluatePassword(password, email);
+                var requiredKeys = ['length', 'lower', 'upper', 'digit', 'special'];
+                var isEmpty = password.length === 0;
+                var isValid = requiredKeys.every(function (key) {
+                    return checks[key];
+                });
+
+                ruleNodes.forEach(function (node) {
+                    var ruleName = node.getAttribute('data-password-rule');
+                    var passed = !!checks[ruleName];
+                    setNodeState(node, !isEmpty && passed, !isEmpty && !passed);
+                });
+
+                if (isEmpty) {
+                    statusNode.textContent = 'Le mot de passe doit respecter les criteres ci-dessous.';
+                    setNodeState(statusNode, false, false);
+                } else if (isValid) {
+                    statusNode.textContent = 'Mot de passe OK.';
+                    setNodeState(statusNode, true, false);
+                } else {
+                    statusNode.textContent = 'Mot de passe encore incomplet.';
+                    setNodeState(statusNode, false, true);
+                }
+
+                if (matchNode && confirmInput) {
+                    var confirmation = confirmInput.value || '';
+
+                    if (confirmation === '') {
+                        matchNode.textContent = 'Retapez le meme mot de passe pour confirmation.';
+                        setNodeState(matchNode, false, false);
+                    } else if (confirmation === password) {
+                        matchNode.textContent = 'Confirmation OK.';
+                        setNodeState(matchNode, true, false);
+                    } else {
+                        matchNode.textContent = 'La confirmation ne correspond pas encore.';
+                        setNodeState(matchNode, false, true);
+                    }
+                }
+            }
+
+            passwordInput.addEventListener('input', updatePasswordUi);
+            if (emailInput) {
+                emailInput.addEventListener('input', updatePasswordUi);
+            }
+            if (confirmInput) {
+                confirmInput.addEventListener('input', updatePasswordUi);
+            }
+
+            updatePasswordUi();
+        })();
+    </script>
 </body>
 </html>
     <?php

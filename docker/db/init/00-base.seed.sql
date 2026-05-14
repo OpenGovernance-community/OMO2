@@ -277,6 +277,7 @@ INSERT INTO `holon` (`id`, `IDorganization`, `name`, `color`, `IDholon_org`, `ID
 (666, NULL, 'Lien pilotage', NULL, 661, 1, '2024-12-03 13:02:06', NULL, 1, 1, 0, 0, 'Lien pilotage', 1, 663, 6, NULL),
 (667, NULL, 'Mémoire', NULL, 661, 1, '2024-12-03 13:02:06', NULL, 1, 1, 0, 0, 'Rôle mémoire', 1, 663, 6, NULL),
 (668, NULL, 'Opérations', NULL, 661, 1, '2024-12-03 13:02:06', NULL, 1, 1, 0, 0, NULL, 1, 663, 6, NULL),
+(669, NULL, 'fdsfds', NULL, 661, 16, '2025-08-03 16:37:02', NULL, 1, 1, 0, 0, NULL, 2, 663, 662, NULL),
 (670, NULL, 'Facilitation', NULL, 661, 16, '2025-08-03 16:37:02', NULL, 1, 1, 0, 0, NULL, 1, 669, 665, NULL),
 (671, NULL, 'CA', NULL, 661, 1, '2024-12-03 09:51:41', NULL, 1, 1, 0, 0, NULL, 2, 661, 7, NULL),
 (672, NULL, 'Président', NULL, 661, 1, '2024-12-04 05:30:56', NULL, 1, 1, 0, 0, NULL, 1, 671, 6, NULL),
