@@ -14,6 +14,8 @@ function autoInstallBootstrap($envPath)
         return;
     }
 
+    autoInstallStartSessionIfNeeded();
+
     $currentPath = autoInstallGetRequestPath();
     if ($currentPath !== '/install.php') {
         header('Location: /install.php');
@@ -22,6 +24,13 @@ function autoInstallBootstrap($envPath)
 
     autoInstallHandleRequest($envPath);
     exit;
+}
+
+function autoInstallStartSessionIfNeeded()
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
 }
 
 function autoInstallGetRequestPath()
@@ -38,28 +47,62 @@ function autoInstallGetRequestPath()
 
 function autoInstallHandleRequest($envPath)
 {
+    autoInstallStartSessionIfNeeded();
+
     $definitions = autoInstallGetFieldDefinitions();
     $values = autoInstallBuildInitialValues($definitions);
     $errors = [];
+    $messages = [];
+    $verificationState = autoInstallGetMailVerificationState($values);
 
     if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST') {
         $values = autoInstallReadSubmittedValues($definitions);
+        $verificationState = autoInstallGetMailVerificationState($values);
+        $action = autoInstallGetFormAction();
         $errors = autoInstallValidateValues($definitions, $values, $envPath);
+        $errors = array_merge($errors, autoInstallValidateMailConfiguration($values));
 
         if ($errors === []) {
-            try {
-                autoInstallPrepareDatabase($values);
-                autoInstallWriteEnvFile($envPath, $definitions, $values);
-                header('Location: /');
-                exit;
-            } catch (Throwable $exception) {
-                $errors[] = $exception->getMessage();
+            if ($action === 'send_verification_code') {
+                $sendResult = autoInstallSendVerificationCode($values);
+                if (empty($sendResult['status'])) {
+                    $errors[] = (string)($sendResult['error'] ?? 'Impossible d envoyer l e-mail de verification.');
+                    $verificationState = autoInstallGetMailVerificationState($values);
+                } else {
+                    $messages[] = 'Un code de verification vient d etre envoye a l adresse administrateur.';
+                    $verificationState = autoInstallGetMailVerificationState($values);
+                }
+            } else {
+                $verifyResult = autoInstallVerifyOrReuseMailCode(
+                    $values,
+                    (string)($_POST['INSTALL_MAIL_VERIFICATION_CODE'] ?? '')
+                );
+
+                if (empty($verifyResult['status'])) {
+                    $errors[] = (string)($verifyResult['error'] ?? 'La verification e-mail a echoue.');
+                    $verificationState = autoInstallGetMailVerificationState($values);
+                } else {
+                    if (!empty($verifyResult['message'])) {
+                        $messages[] = (string)$verifyResult['message'];
+                    }
+                    $verificationState = autoInstallGetMailVerificationState($values);
+
+                    try {
+                        autoInstallPrepareDatabase($values);
+                        autoInstallWriteEnvFile($envPath, $definitions, $values);
+                        autoInstallClearMailVerificationState();
+                        header('Location: /');
+                        exit;
+                    } catch (Throwable $exception) {
+                        $errors[] = $exception->getMessage();
+                    }
+                }
             }
         }
     }
 
     http_response_code(503);
-    autoInstallRenderPage($definitions, $values, $errors);
+    autoInstallRenderPage($definitions, $values, $errors, $messages, $verificationState);
 }
 
 function autoInstallGetFieldDefinitions()
@@ -459,6 +502,16 @@ function autoInstallReadSubmittedValues(array $definitions)
     return $values;
 }
 
+function autoInstallGetFormAction()
+{
+    $action = trim((string)($_POST['install_action'] ?? 'complete_install'));
+    if ($action === '') {
+        return 'complete_install';
+    }
+
+    return $action;
+}
+
 function autoInstallSanitizeSubmittedValue($value)
 {
     $value = str_replace(["\r\n", "\r"], "\n", (string)$value);
@@ -488,10 +541,6 @@ function autoInstallValidateValues(array $definitions, array $values, $envPath)
         $errors[] = 'Le dossier cible n est pas accessible en ecriture pour creer le fichier .env.';
     }
 
-    if (isset($values['MAIL_PORT']) && $values['MAIL_PORT'] !== '' && !ctype_digit((string)$values['MAIL_PORT'])) {
-        $errors[] = 'Le port SMTP doit etre numerique.';
-    }
-
     if (!filter_var((string)($values['INSTALL_ADMIN_EMAIL'] ?? ''), FILTER_VALIDATE_EMAIL)) {
         $errors[] = 'L adresse e-mail de l administrateur est invalide.';
     }
@@ -510,6 +559,43 @@ function autoInstallValidateValues(array $definitions, array $values, $envPath)
 
     if (!is_file(autoInstallGetSeedPath())) {
         $errors[] = 'Le fichier seed Docker est introuvable.';
+    }
+
+    return $errors;
+}
+
+function autoInstallValidateMailConfiguration(array $values)
+{
+    $errors = [];
+    $mailHost = trim((string)($values['MAIL_HOST'] ?? ''));
+    $mailPort = trim((string)($values['MAIL_PORT'] ?? ''));
+    $mailAuth = strtolower(trim((string)($values['MAIL_AUTH'] ?? '')));
+    $mailUser = trim((string)($values['MAIL_USER'] ?? ''));
+    $mailPass = (string)($values['MAIL_PASS'] ?? '');
+
+    if ($mailHost === '') {
+        $errors[] = 'Le serveur SMTP est obligatoire pour verifier l envoi d e-mail.';
+    }
+
+    if ($mailPort === '' || !ctype_digit($mailPort) || (int)$mailPort <= 0) {
+        $errors[] = 'Le port SMTP doit etre renseigne avec une valeur numerique valide.';
+    }
+
+    if ($mailAuth === '') {
+        $errors[] = 'Choisissez explicitement si le serveur SMTP demande une authentification.';
+    }
+
+    if ($mailAuth !== '' && !in_array($mailAuth, ['true', 'false', '1', '0', 'yes', 'no', 'on', 'off'], true)) {
+        $errors[] = 'La valeur d authentification SMTP est invalide.';
+    }
+
+    $shouldAuth = autoInstallResolveMailAuth($values);
+    if ($shouldAuth && $mailUser === '') {
+        $errors[] = 'L utilisateur SMTP est obligatoire quand l authentification est active.';
+    }
+
+    if ($shouldAuth && $mailPass === '') {
+        $errors[] = 'Le mot de passe SMTP est obligatoire quand l authentification est active.';
     }
 
     return $errors;
@@ -543,6 +629,241 @@ function autoInstallEvaluateAdminPassword($password, $email = '')
     return [
         'rules' => $rules,
         'valid' => $rules['length'] && $rules['lower'] && $rules['upper'] && $rules['digit'] && $rules['special'],
+    ];
+}
+
+function autoInstallGetMailVerificationSessionKey()
+{
+    return 'auto_install_mail_verification';
+}
+
+function autoInstallBuildMailVerificationFingerprint(array $values)
+{
+    $payload = [
+        'site_title' => trim((string)($values['SITE_TITLE'] ?? '')),
+        'admin_email' => strtolower(trim((string)($values['INSTALL_ADMIN_EMAIL'] ?? ''))),
+        'mail_host' => strtolower(trim((string)($values['MAIL_HOST'] ?? ''))),
+        'mail_port' => trim((string)($values['MAIL_PORT'] ?? '')),
+        'mail_secure' => strtolower(trim((string)($values['MAIL_SECURE'] ?? ''))),
+        'mail_auth' => autoInstallResolveMailAuth($values) ? '1' : '0',
+        'mail_user' => trim((string)($values['MAIL_USER'] ?? '')),
+        'mail_pass' => (string)($values['MAIL_PASS'] ?? ''),
+    ];
+
+    return hash('sha256', json_encode($payload));
+}
+
+function autoInstallGetMailVerificationState(array $values)
+{
+    $sessionKey = autoInstallGetMailVerificationSessionKey();
+    $state = $_SESSION[$sessionKey] ?? null;
+
+    if (!is_array($state)) {
+        return null;
+    }
+
+    $fingerprint = autoInstallBuildMailVerificationFingerprint($values);
+    if (($state['fingerprint'] ?? '') !== $fingerprint) {
+        return null;
+    }
+
+    return $state;
+}
+
+function autoInstallSaveMailVerificationState(array $state)
+{
+    $_SESSION[autoInstallGetMailVerificationSessionKey()] = $state;
+}
+
+function autoInstallClearMailVerificationState()
+{
+    unset($_SESSION[autoInstallGetMailVerificationSessionKey()]);
+}
+
+function autoInstallGenerateVerificationCode()
+{
+    return str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+}
+
+function autoInstallNormalizeVerificationCode($code)
+{
+    $code = strtoupper(trim((string)$code));
+    return preg_replace('/[^A-Z0-9]/', '', $code);
+}
+
+function autoInstallResolveMailAuth(array $values)
+{
+    $mailAuth = strtolower(trim((string)($values['MAIL_AUTH'] ?? '')));
+
+    if (in_array($mailAuth, ['true', '1', 'yes', 'on'], true)) {
+        return true;
+    }
+
+    if (in_array($mailAuth, ['false', '0', 'no', 'off'], true)) {
+        return false;
+    }
+
+    $mailUser = trim((string)($values['MAIL_USER'] ?? ''));
+    $mailPass = (string)($values['MAIL_PASS'] ?? '');
+    return $mailUser !== '' || $mailPass !== '';
+}
+
+function autoInstallBuildMailConfiguration(array $values)
+{
+    return [
+        'host' => trim((string)($values['MAIL_HOST'] ?? '')),
+        'port' => (int)($values['MAIL_PORT'] ?? 0),
+        'secure' => trim((string)($values['MAIL_SECURE'] ?? '')),
+        'auth' => autoInstallResolveMailAuth($values),
+        'charset' => trim((string)($values['MAIL_CHARSET'] ?? '')) ?: 'UTF-8',
+        'user' => trim((string)($values['MAIL_USER'] ?? '')),
+        'pass' => (string)($values['MAIL_PASS'] ?? ''),
+    ];
+}
+
+function autoInstallResolveVerificationFromAddress(array $values, array $mailConfig)
+{
+    $mailUser = trim((string)($mailConfig['user'] ?? ''));
+    if ($mailUser !== '' && filter_var($mailUser, FILTER_VALIDATE_EMAIL)) {
+        return $mailUser;
+    }
+
+    $host = preg_replace('/:\d+$/', '', commonGetRootHost() ?: '');
+    if ($host === '') {
+        $host = 'localhost';
+    }
+
+    return 'noreply@' . $host;
+}
+
+function autoInstallSendVerificationCode(array $values)
+{
+    $mailConfig = autoInstallBuildMailConfiguration($values);
+    $code = autoInstallGenerateVerificationCode();
+    $sendResult = autoInstallSendVerificationMail($values, $mailConfig, $code);
+
+    if (empty($sendResult['status'])) {
+        autoInstallClearMailVerificationState();
+        return $sendResult;
+    }
+
+    autoInstallSaveMailVerificationState([
+        'fingerprint' => autoInstallBuildMailVerificationFingerprint($values),
+        'email' => trim((string)($values['INSTALL_ADMIN_EMAIL'] ?? '')),
+        'code' => $code,
+        'sent_at' => time(),
+        'expires_at' => time() + 900,
+        'verified' => false,
+    ]);
+
+    return ['status' => true];
+}
+
+function autoInstallSendVerificationMail(array $values, array $mailConfig, $code)
+{
+    require_once dirname(__DIR__) . '/vendor/autoload.php';
+
+    $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+
+    try {
+        $mail->isSMTP();
+        $mail->Host = (string)$mailConfig['host'];
+        $mail->Port = (int)$mailConfig['port'];
+        $mail->SMTPAuth = !empty($mailConfig['auth']);
+        $mail->CharSet = (string)$mailConfig['charset'];
+
+        $secure = trim((string)($mailConfig['secure'] ?? ''));
+        if ($secure !== '') {
+            $mail->SMTPSecure = $secure;
+        }
+
+        if (!empty($mailConfig['user'])) {
+            $mail->Username = (string)$mailConfig['user'];
+        }
+
+        if (!empty($mailConfig['pass'])) {
+            $mail->Password = (string)$mailConfig['pass'];
+        }
+
+        $siteTitle = trim((string)($values['SITE_TITLE'] ?? ''));
+        if ($siteTitle === '') {
+            $siteTitle = 'OpenGov.tools';
+        }
+
+        $fromAddress = autoInstallResolveVerificationFromAddress($values, $mailConfig);
+        $mail->setFrom($fromAddress, $siteTitle);
+        $mail->addAddress(trim((string)($values['INSTALL_ADMIN_EMAIL'] ?? '')));
+        $mail->Subject = 'Code de verification e-mail';
+        $mail->isHTML(true);
+        $mail->Body =
+            '<p>Voici votre code de verification pour finaliser l installation du site :</p>'
+            . '<p style="font:700 30px/1.2 Consolas, monospace; letter-spacing:0.18em;">' . htmlspecialchars($code, ENT_QUOTES, 'UTF-8') . '</p>'
+            . '<p>Entrez ce code dans la page d installation pour confirmer que les e-mails sortants fonctionnent bien.</p>'
+            . '<p>Ce code expire dans 15 minutes.</p>';
+        $mail->AltBody =
+            "Code de verification : " . $code . "\n\n"
+            . "Entrez ce code dans la page d installation pour confirmer que les e-mails sortants fonctionnent bien.\n"
+            . "Ce code expire dans 15 minutes.";
+
+        $mail->send();
+
+        return ['status' => true];
+    } catch (\Throwable $exception) {
+        return [
+            'status' => false,
+            'error' => 'Le test e-mail a echoue : ' . $exception->getMessage(),
+        ];
+    }
+}
+
+function autoInstallVerifyOrReuseMailCode(array $values, $submittedCode)
+{
+    $state = autoInstallGetMailVerificationState($values);
+    if (!is_array($state)) {
+        return [
+            'status' => false,
+            'error' => 'Envoyez d abord un code de verification e-mail.',
+        ];
+    }
+
+    if (!empty($state['verified'])) {
+        return [
+            'status' => true,
+            'message' => 'Adresse e-mail deja verifiee pour cette configuration.',
+        ];
+    }
+
+    if ((int)($state['expires_at'] ?? 0) < time()) {
+        autoInstallClearMailVerificationState();
+        return [
+            'status' => false,
+            'error' => 'Le code de verification a expire. Envoyez-en un nouveau.',
+        ];
+    }
+
+    $submittedCode = autoInstallNormalizeVerificationCode($submittedCode);
+    if ($submittedCode === '') {
+        return [
+            'status' => false,
+            'error' => 'Saisissez le code recu par e-mail avant de finaliser l installation.',
+        ];
+    }
+
+    if (!hash_equals((string)($state['code'] ?? ''), $submittedCode)) {
+        return [
+            'status' => false,
+            'error' => 'Le code de verification e-mail est incorrect.',
+        ];
+    }
+
+    $state['verified'] = true;
+    $state['verified_at'] = time();
+    unset($state['code']);
+    autoInstallSaveMailVerificationState($state);
+
+    return [
+        'status' => true,
+        'message' => 'Verification e-mail confirmee.',
     ];
 }
 
@@ -848,8 +1169,10 @@ function autoInstallEncodeEnvValue($value)
     return $value;
 }
 
-function autoInstallRenderPage(array $definitions, array $values, array $errors)
+function autoInstallRenderPage(array $definitions, array $values, array $errors, array $messages = [], $verificationState = null)
 {
+    $isMailVerified = is_array($verificationState) && !empty($verificationState['verified']);
+    $hasVerificationCode = is_array($verificationState) && !$isMailVerified;
     ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -1006,6 +1329,12 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors)
             color: #8a1c14;
         }
 
+        .auto-install-success {
+            --generic-soft-panel-border: #b7e2c2;
+            --generic-soft-panel-background: #eefbf1;
+            color: #0f6b43;
+        }
+
         .auto-install-password-panel {
             display: grid;
             gap: 10px;
@@ -1041,6 +1370,22 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors)
         .auto-install-password-match.is-invalid,
         .auto-install-password-status.is-invalid {
             color: #8a1c14;
+        }
+
+        .auto-install-verification-box {
+            display: grid;
+            gap: 12px;
+            padding: 14px 16px;
+            border: 1px dashed var(--color-border);
+            border-radius: 16px;
+            background: rgba(15, 118, 110, 0.03);
+        }
+
+        .auto-install-verification-status {
+            margin: 0;
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--color-text-light);
         }
 
         .auto-install-error-list {
@@ -1110,6 +1455,17 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors)
                         <ul class="auto-install-error-list">
                             <?php foreach ($errors as $error): ?>
                                 <li><?= htmlspecialchars((string)$error, ENT_QUOTES, 'UTF-8') ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($messages !== []): ?>
+                    <div class="auto-install-success generic-soft-panel generic-soft-panel--stack">
+                        <h2 class="generic-card-title generic-card-title--medium">Verification en cours</h2>
+                        <ul class="auto-install-error-list">
+                            <?php foreach ($messages as $message): ?>
+                                <li><?= htmlspecialchars((string)$message, ENT_QUOTES, 'UTF-8') ?></li>
                             <?php endforeach; ?>
                         </ul>
                     </div>
@@ -1199,10 +1555,45 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors)
                 <?php endforeach; ?>
 
                 <section class="auto-install-section generic-section generic-section--stack">
+                    <div class="auto-install-section-header">
+                        <p class="generic-card-title generic-card-title--small">Verification e-mail</p>
+                        <p class="auto-install-section-intro">Le site envoie un code a l adresse administrateur pour confirmer que le SMTP fonctionne vraiment avant la fin de l installation.</p>
+                    </div>
+
+                    <div class="auto-install-verification-box">
+                        <p class="auto-install-verification-status">
+                            <?php if ($isMailVerified): ?>
+                                L adresse e-mail administrateur est deja verifiee pour cette configuration.
+                            <?php elseif ($hasVerificationCode): ?>
+                                Un code a deja ete envoye. Vous pouvez le saisir ci-dessous ou en demander un nouveau.
+                            <?php else: ?>
+                                Envoyez un code de verification a l adresse administrateur avant de finaliser l installation.
+                            <?php endif; ?>
+                        </p>
+
+                        <label class="auto-install-field auto-install-field--full" for="INSTALL_MAIL_VERIFICATION_CODE">
+                            <span class="auto-install-label">Code de verification e-mail</span>
+                            <input
+                                class="generic-form-control"
+                                type="text"
+                                name="INSTALL_MAIL_VERIFICATION_CODE"
+                                id="INSTALL_MAIL_VERIFICATION_CODE"
+                                value="<?= htmlspecialchars((string)($_POST['INSTALL_MAIL_VERIFICATION_CODE'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                placeholder="Exemple : 123456"
+                                inputmode="numeric"
+                                autocomplete="one-time-code"
+                            >
+                            <span class="auto-install-help">Le code est memorise en session jusqu a verification ou expiration.</span>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="auto-install-section generic-section generic-section--stack">
                     <div class="auto-install-actions">
-                        <button type="submit" class="generic-action-button generic-action-button--main">Creer le fichier .env</button>
+                        <button type="submit" name="install_action" value="send_verification_code" class="generic-action-button">Envoyer un code de verification</button>
+                        <button type="submit" name="install_action" value="complete_install" class="generic-action-button generic-action-button--main"><?= $isMailVerified ? 'Creer le fichier .env' : 'Verifier le code et terminer' ?></button>
                         <p class="auto-install-meta">
-                            La connexion MySQL est testee avant l ecriture. Les services optionnels pourront etre completes plus tard en modifiant le fichier <span class="auto-install-code">.env</span>.
+                            La connexion MySQL est testee avant l ecriture, puis un e-mail de verification doit etre confirme. Les services optionnels pourront etre completes plus tard en modifiant le fichier <span class="auto-install-code">.env</span>.
                         </p>
                     </div>
                 </section>
