@@ -93,7 +93,19 @@ DB_MIGRATION_DATABASES=base1,base2
 
 ## 5. Mettre le site a jour plus tard
 
-Si le site est deja clone sur le serveur, une mise a jour typique ressemble a ceci :
+Si le serveur autorise PHP a piloter Git et la ligne de commande, le site peut proposer la mise a jour automatiquement a l'admin du site lors du chargement de `/omo/index.php`.
+
+Dans ce cas, le site :
+
+- verifie la branche Git suivie par le clone local
+- detecte si un commit plus recent existe sur le depot distant
+- propose l'installation de la nouvelle version
+- bloque les mises a jour concurrentes
+- execute aussi `php scripts/run-migrations.php` a la fin
+
+Si le serveur ne permet pas cela, rien ne sera affiche et il faudra faire la mise a jour a la main.
+
+Procedure manuelle typique :
 
 ```bash
 cd /chemin/du/site
@@ -101,6 +113,8 @@ git fetch origin Dev
 git reset --hard origin/Dev
 php scripts/run-migrations.php
 ```
+
+Le plus souvent, la branche a utiliser est celle que suit deja le clone du serveur, par exemple `Dev`.
 
 Si vous avez fait des modifications locales non versionnees sur le serveur, evitez `reset --hard` et utilisez une procedure adaptee.
 
