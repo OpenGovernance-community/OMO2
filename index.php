@@ -170,127 +170,82 @@
 
 .home-contributors {
   position: relative;
-  display: grid;
-  gap: 1.5rem;
-  padding: 2rem;
-  border-radius: 28px;
-  border: 1px solid rgba(11, 110, 122, 0.12);
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid rgba(9, 49, 71, 0.22);
+  background: linear-gradient(180deg, rgba(247, 251, 255, 0.98), rgba(236, 244, 252, 0.98));
+  box-shadow:
+    0 18px 36px rgba(8, 35, 52, 0.14),
+    0 3px 0 rgba(255, 255, 255, 0.65) inset;
+}
+
+.home-contributors::after {
+  content: "";
+  position: absolute;
+  inset: 0;
   background:
-    radial-gradient(circle at top left, rgba(255, 198, 0, 0.18), rgba(255, 255, 255, 0) 30%),
-    radial-gradient(circle at bottom right, rgba(26, 130, 163, 0.14), rgba(255, 255, 255, 0) 35%),
-    linear-gradient(135deg, #fdfefe, #edf5fb);
-  box-shadow: 0 18px 40px rgba(11, 78, 99, 0.08);
+    radial-gradient(circle at top right, rgba(255, 198, 0, 0.18), transparent 26%),
+    radial-gradient(circle at bottom left, rgba(26, 130, 163, 0.12), transparent 32%);
+  pointer-events: none;
   overflow: hidden;
 }
 
-.home-contributors::before {
-  content: "";
-  position: absolute;
-  inset: auto auto -80px -60px;
-  width: 200px;
-  height: 200px;
-  border-radius: 50%;
-  background: rgba(255, 198, 0, 0.09);
-  filter: blur(6px);
+.home-contributors__header {
+  position: relative;
+  z-index: 1;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #0b6e7a, #155a78 55%, #1a82a3);
+  color: #fff;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.12);
 }
 
-.home-contributors__layout {
+.home-contributors__header-title {
+  margin: 0;
+  font-size: clamp(1.4rem, 2.3vw, 2rem);
+  font-weight: bold;
+  line-height: 1.1;
+}
+
+.home-contributors__body {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
-  gap: 1.5rem;
-  align-items: center;
+  gap: 1.25rem;
+  padding: 1.6rem 1.5rem 1.7rem;
+  justify-items: center;
+  text-align: center;
 }
 
-.home-contributors__content {
-  display: grid;
-  gap: 0.85rem;
-}
-
-.home-contributors__eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: fit-content;
-  padding: 0.45rem 0.8rem;
-  border-radius: 999px;
-  background: rgba(255, 198, 0, 0.18);
-  color: #8a6100;
-  font-size: 0.82rem;
-  font-weight: bold;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.home-contributors__title,
 .home-contributors__text {
   margin: 0;
 }
 
-.home-contributors__title {
-  font-size: clamp(2rem, 3vw, 3.1rem);
-  line-height: 1.05;
-  color: #1f2937;
-}
-
 .home-contributors__text {
-  max-width: 40rem;
-  font-size: 1.08rem;
+  max-width: 48rem;
+  font-size: 1.05rem;
   line-height: 1.55;
-  color: #425466;
-}
-
-.home-contributors__summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.85rem;
-  align-items: center;
-}
-
-.home-contributors__count,
-.home-contributors__more {
-  display: inline-flex;
-  align-items: center;
-  min-height: 42px;
-  padding: 0.65rem 1rem;
-  border-radius: 999px;
-  font-weight: bold;
-}
-
-.home-contributors__count {
-  background: #0b6e7a;
-  color: #fff;
-  box-shadow: 0 10px 22px rgba(11, 110, 122, 0.2);
+  color: #3f5364;
 }
 
 .home-contributors__avatars {
   position: relative;
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: center;
-  gap: 1rem;
-  padding: 1.15rem;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(11, 110, 122, 0.08);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
-}
-
-.home-contributors__avatar-card {
-  display: grid;
-  justify-items: center;
-  gap: 0.55rem;
-  min-width: 88px;
+  gap: 0.9rem;
+  width: 100%;
 }
 
 .home-contributors__portrait,
 .home-contributors__portrait--placeholder {
-  width: 82px;
-  height: 82px;
+  width: 78px;
+  height: 78px;
   border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.95);
-  box-shadow: 0 12px 24px rgba(17, 64, 96, 0.2);
+  border: 4px solid rgba(255, 255, 255, 0.98);
+  box-shadow:
+    0 12px 22px rgba(9, 49, 71, 0.18),
+    0 0 0 1px rgba(11, 110, 122, 0.18);
 }
 
 .home-contributors__portrait {
@@ -308,18 +263,16 @@
   font-size: 1.35rem;
 }
 
-.home-contributors__name {
-  max-width: 92px;
-  font-size: 0.9rem;
-  line-height: 1.2;
-  text-align: center;
-  color: #355064;
-}
-
 .home-contributors__more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 1rem;
+  border-radius: 999px;
   background: rgba(11, 110, 122, 0.1);
   color: #0b4e63;
   border: 1px solid rgba(11, 110, 122, 0.1);
+  font-weight: bold;
 }
 
 .intro_txt {
@@ -447,29 +400,18 @@ padding:15px;
   }
   .cta-text {font-size: 80%;}
   .home-contributors {
-    padding: 1.5rem;
-  }
-  .home-contributors__layout {
-    grid-template-columns: 1fr;
-    text-align: center;
-  }
-  .home-contributors__content {
-    justify-items: center;
-  }
-  .home-contributors__summary {
-    justify-content: center;
-  }
-  .home-contributors__avatar-card {
-    min-width: 78px;
+    border-radius: 18px;
   }
   .home-contributors__portrait,
   .home-contributors__portrait--placeholder {
-    width: 68px;
-    height: 68px;
+    width: 66px;
+    height: 66px;
   }
-  .home-contributors__name {
-    max-width: 78px;
-    font-size: 0.82rem;
+  .home-contributors__header {
+    padding: 0.9rem 1.1rem;
+  }
+  .home-contributors__body {
+    padding: 1.25rem 1rem 1.35rem;
   }
 }
 
@@ -579,18 +521,11 @@ padding:15px;
 
   <?php if (!empty($homepagePatreonContributors['items'])): ?>
   <section class="home-contributors">
-    <div class="home-contributors__layout">
-      <div class="home-contributors__content">
-        <span class="home-contributors__eyebrow">Communaute Patreon</span>
-        <h2 class="home-contributors__title">Ils soutiennent deja le projet</h2>
-        <p class="home-contributors__text">Des personnes choisissent deja d'accompagner OpenGovernance.community. Leur presence rend le chantier plus stable, plus libre et plus durable.</p>
-        <div class="home-contributors__summary">
-          <span class="home-contributors__count"><?= (int)($homepagePatreonContributors['totalCount'] ?? count($homepagePatreonContributors['items'])) ?> compte<?= ((int)($homepagePatreonContributors['totalCount'] ?? count($homepagePatreonContributors['items'])) > 1) ? 's' : '' ?> connecte<?= ((int)($homepagePatreonContributors['totalCount'] ?? count($homepagePatreonContributors['items'])) > 1) ? 's' : '' ?></span>
-          <?php if ((int)($homepagePatreonContributors['extraCount'] ?? 0) > 0): ?>
-            <span class="home-contributors__more">et <?= (int)$homepagePatreonContributors['extraCount'] ?> de plus</span>
-          <?php endif; ?>
-        </div>
-      </div>
+    <div class="home-contributors__header">
+      <h2 class="home-contributors__header-title">Ils soutiennent deja le projet</h2>
+    </div>
+    <div class="home-contributors__body">
+      <p class="home-contributors__text">Merci aux contributeurs Patreon qui accompagnent activement le developpement du projet et l'aident a rester ouvert, libre et durable.</p>
       <div class="home-contributors__avatars">
         <?php foreach ($homepagePatreonContributors['items'] as $contributor): ?>
           <?php
@@ -599,24 +534,24 @@ padding:15px;
             $initials = trim((string)($contributor['initials'] ?? 'P'));
             $portraitAlt = $displayName !== '' ? $displayName : $initials;
           ?>
-          <div class="home-contributors__avatar-card">
-            <?php if ($photoUrl !== ''): ?>
-              <img
-                src="<?= htmlspecialchars($photoUrl, ENT_QUOTES, 'UTF-8') ?>"
-                alt="<?= htmlspecialchars($portraitAlt, ENT_QUOTES, 'UTF-8') ?>"
-                title="<?= htmlspecialchars($portraitAlt, ENT_QUOTES, 'UTF-8') ?>"
-                class="home-contributors__portrait"
-                loading="lazy"
-              >
-            <?php else: ?>
-              <span
-                class="home-contributors__portrait--placeholder"
-                title="<?= htmlspecialchars($portraitAlt, ENT_QUOTES, 'UTF-8') ?>"
-              ><?= htmlspecialchars($initials, ENT_QUOTES, 'UTF-8') ?></span>
-            <?php endif; ?>
-            <span class="home-contributors__name"><?= htmlspecialchars($portraitAlt, ENT_QUOTES, 'UTF-8') ?></span>
-          </div>
+          <?php if ($photoUrl !== ''): ?>
+            <img
+              src="<?= htmlspecialchars($photoUrl, ENT_QUOTES, 'UTF-8') ?>"
+              alt="<?= htmlspecialchars($portraitAlt, ENT_QUOTES, 'UTF-8') ?>"
+              title="<?= htmlspecialchars($portraitAlt, ENT_QUOTES, 'UTF-8') ?>"
+              class="home-contributors__portrait"
+              loading="lazy"
+            >
+          <?php else: ?>
+            <span
+              class="home-contributors__portrait--placeholder"
+              title="<?= htmlspecialchars($portraitAlt, ENT_QUOTES, 'UTF-8') ?>"
+            ><?= htmlspecialchars($initials, ENT_QUOTES, 'UTF-8') ?></span>
+          <?php endif; ?>
         <?php endforeach; ?>
+        <?php if ((int)($homepagePatreonContributors['extraCount'] ?? 0) > 0): ?>
+          <span class="home-contributors__more">et <?= (int)$homepagePatreonContributors['extraCount'] ?> de plus</span>
+        <?php endif; ?>
       </div>
     </div>
   </section>
