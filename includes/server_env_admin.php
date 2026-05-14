@@ -42,6 +42,16 @@ function serverEnvAdminGetEditableSections()
                         'EN' => 'EN',
                     ],
                 ],
+                [
+                    'key' => 'ORGANIZATION_SUBDOMAIN_ROUTING',
+                    'label' => 'Sous-domaines par organisation',
+                    'type' => 'select',
+                    'options' => [
+                        'true' => 'Oui',
+                        'false' => 'Non',
+                    ],
+                    'help' => 'Active les URL du type orgname.domaine.com. Cela demande une configuration speciale de l hebergement, avec DNS wildcard et serveur web capable d accepter les sous-domaines.',
+                ],
             ],
         ],
         'mail' => [

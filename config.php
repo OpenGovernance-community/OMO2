@@ -11,6 +11,7 @@ loadEnv($autoInstallEnvPath);
 $GLOBALS['siteTitle'] = envValue('SITE_TITLE', 'EasyPV');
 $GLOBALS['homeTitle'] = envValue('HOME_TITLE', 'Home');
 $GLOBALS['lang'] = envValue('APP_LANG', 'FR');
+$GLOBALS['organizationSubdomainRouting'] = envBool('ORGANIZATION_SUBDOMAIN_ROUTING', false);
 
 // Config base de donnees
 $GLOBALS['dbName'] = envValue('DB_NAME', '');

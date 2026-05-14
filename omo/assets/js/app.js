@@ -1747,6 +1747,9 @@ function activateMenu(hash) {
 $(document).ready(function () {
     canonicalizeOmoRootPath();
     handleRoute();
+    if (typeof window.omoInitSiteUpdateCheck === 'function' && window.omoConfig && window.omoConfig.siteUpdate) {
+        window.omoInitSiteUpdateCheck(window.omoConfig.siteUpdate);
+    }
     window.setTimeout(omoMaybeOpenPatreonWelcomeModal, 300);
 });
 
@@ -2239,4 +2242,3 @@ window.omoOpenFaqHashState = function (id, options = {}) {
         replace: options.replace === true
     });
 };
-
