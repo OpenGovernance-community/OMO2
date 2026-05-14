@@ -1,4 +1,4 @@
-Texte de vérif de la mise à jour
+Texte de vérif de la mise à jour version 2
 
 Bienvenue sur le repository de OMO2, la nouvelle version de OpenMyOrganization.
 
