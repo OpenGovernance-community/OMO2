@@ -10,5 +10,5 @@ ALTER TABLE `holonproperty`
   ADD KEY IF NOT EXISTS `idx_holonproperty_user_modification` (`IDusermodification`);
 
 ALTER TABLE `holonproperty`
-  ADD CONSTRAINT IF NOT EXISTS `fk_holonproperty_user_modification`
+  ADD CONSTRAINT `fk_holonproperty_user_modification`
   FOREIGN KEY (`IDusermodification`) REFERENCES `user` (`id`) ON DELETE SET NULL;
