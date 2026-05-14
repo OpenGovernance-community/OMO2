@@ -1,3 +1,5 @@
+Texte de vérif de la mise à jour
+
 Bienvenue sur le repository de OMO2, la nouvelle version de OpenMyOrganization.
 
 Le depot peut etre utilise de deux manieres distinctes :
