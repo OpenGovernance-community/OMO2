@@ -240,6 +240,12 @@ function executeSqlMigrationStatements(PDO $pdo, string $sql): void
     }
 }
 
+function executeSqlFile(PDO $pdo, string $path): void
+{
+    $sql = loadSqlMigrationContent($path);
+    executeSqlMigrationStatements($pdo, $sql);
+}
+
 function markSqlMigrationAsExecuted(PDO $pdo, string $filename, string $checksum): void
 {
     $statement = $pdo->prepare(

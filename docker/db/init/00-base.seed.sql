@@ -953,10 +953,11 @@ CREATE TABLE `user` (
   `lastname` varchar(150) DEFAULT NULL,
   `firstname` varchar(150) DEFAULT NULL,
   `username` varchar(100) DEFAULT NULL,
-  `password` varchar(40) DEFAULT NULL,
+  `password` varchar(80) DEFAULT NULL,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
   `dateconnexion` datetime DEFAULT NULL,
   `active` tinyint(1) NOT NULL DEFAULT 0,
+  `siteadmin` tinyint(1) NOT NULL DEFAULT 0,
   `code` varchar(30) DEFAULT NULL,
   `codeexpiration` datetime DEFAULT NULL,
   `parameters` mediumtext DEFAULT NULL,
@@ -970,8 +971,8 @@ CREATE TABLE `user` (
 -- Déchargement des données de la table `user`
 --
 
-INSERT INTO `user` (`id`, `email`, `lastname`, `firstname`, `username`, `password`, `datecreation`, `dateconnexion`, `active`, `code`, `codeexpiration`, `parameters`, `param_easypv`, `param_easymemo`, `param_easycircle`, `telegramID`) VALUES
-(1, 'admin@omo.test', 'Organization', 'Open', 'Admin', NULL, '2026-04-21 09:01:00', NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `user` (`id`, `email`, `lastname`, `firstname`, `username`, `password`, `datecreation`, `dateconnexion`, `active`, `siteadmin`, `code`, `codeexpiration`, `parameters`, `param_easypv`, `param_easymemo`, `param_easycircle`, `telegramID`) VALUES
+(1, 'admin@omo.test', 'Organization', 'Open', 'Admin', NULL, '2026-04-21 09:01:00', NULL, 1, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 

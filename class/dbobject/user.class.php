@@ -20,7 +20,7 @@
 				[['parameters', 'param_easypv', 'param_easymemo', 'param_easycircle'], 'parameters'],
 				[['datecreation', 'dateconnexion', 'codeexpiration'], 'datetime'],
 				[['birthdate'], 'date'],
-				[['active'], 'boolean'],
+				[['active', 'siteadmin'], 'boolean'],
 				[['id', 'password', 'email', 'code', 'datecreation', 'dateconnexion', 'codeexpiration', 'telegramID'], 'safe'],
 			];
 		}
@@ -37,6 +37,7 @@
 				'image' => 'Image de profil',
 				'telegramID' => 'ID Telegram',
 				'password' => 'Mot de passe',
+				'siteadmin' => 'Admin du site',
 				'code' => 'Code',
 				'parameters' => 'Parametres',
 			];
@@ -51,6 +52,7 @@
 				'birthdate' => 'Date de naissance facultative, utilisee pour afficher le prochain anniversaire.',
 				'email' => 'L\'adresse e-mail utilisee pour vous connecter et pour vous envoyer les messages du systeme.',
 				'telegramID' => 'Identifiant numerique utilise pour associer votre compte Telegram.',
+				'siteadmin' => 'Donne un acces global a l administration du serveur.',
 			];
 		}
 
@@ -83,6 +85,31 @@
 			}
 
 			return false;
+		}
+
+		public function isSiteAdmin()
+		{
+			$siteAdmin = $this->get('siteadmin');
+			if ($siteAdmin !== null && $siteAdmin !== '') {
+				return (bool)$siteAdmin;
+			}
+
+			return (bool)$this->getParameter('isSiteAdmin');
+		}
+
+		public function setSiteAdmin($isSiteAdmin)
+		{
+			$this->set('siteadmin', $isSiteAdmin ? 1 : 0);
+
+			$parameters = json_decode((string)$this->get('parameters'), true);
+			if (!is_array($parameters)) {
+				$parameters = array();
+			}
+
+			unset($parameters['isSiteAdmin']);
+
+			$this->set('parameters', $parameters);
+			return $this->save();
 		}
 
 		public function getPrompt() {
@@ -171,6 +198,11 @@
 			}
 
 			if ($currentUserId > 0 && $currentUserId === $targetUserId) {
+				$cache[$cacheKey] = true;
+				return true;
+			}
+
+			if (function_exists('commonUserIsSiteAdmin') && \commonUserIsSiteAdmin($currentUserId)) {
 				$cache[$cacheKey] = true;
 				return true;
 			}
