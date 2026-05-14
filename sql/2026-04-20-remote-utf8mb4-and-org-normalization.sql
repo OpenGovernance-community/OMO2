@@ -76,14 +76,7 @@ WHERE id = 2
    OR domain = 'trajets.org';
 
 -- Verifications rapides
-SELECT DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME
-FROM information_schema.SCHEMATA
-WHERE SCHEMA_NAME = @schema_name;
-
-SELECT TABLE_NAME, TABLE_COLLATION
-FROM information_schema.TABLES
-WHERE TABLE_SCHEMA = @schema_name
-  AND TABLE_NAME IN ('organization', 'holon', 'aiprompt', 'document', 'pv');
+SELECT @@character_set_database AS current_character_set, @@collation_database AS current_collation;
 
 SELECT id, name, shortname, domain
 FROM organization
