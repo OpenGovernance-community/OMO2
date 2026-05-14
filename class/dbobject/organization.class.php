@@ -1,6 +1,8 @@
 <?php
 	namespace dbObject;
 
+	require_once dirname(__DIR__, 2) . '/common/environment_subdomains.php';
+
 
 	class Organization extends DbObject
 	{
@@ -671,7 +673,7 @@
 				$rootPartCount = (int)commonGetHostRootPartCount($parts);
 			} elseif (count($parts) === 2 && ($parts[1] ?? '') === 'localhost') {
 				$rootPartCount = 1;
-			} elseif (count($parts) >= 3 && in_array((string)($parts[count($parts) - 3] ?? ''), array('dev', 'beta'), true)) {
+			} elseif (count($parts) >= 3 && in_array((string)($parts[count($parts) - 3] ?? ''), commonGetConfiguredEnvironmentSubdomains(), true)) {
 				$rootPartCount = 3;
 			} else {
 				$rootPartCount = min(2, count($parts));

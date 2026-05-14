@@ -1,5 +1,7 @@
 <?php
 
+	require_once __DIR__ . '/common/environment_subdomains.php';
+
 	$routes = [
 		'admin'   => '/admin/index.php',
 		'demo'    => '/omo/index.php',
@@ -10,7 +12,7 @@
 	$parts = array_values(array_filter(explode('.', $host)));
 	$subdomain = $parts[0] ?? '';
 	$isLocalhostSubdomain = count($parts) === 2 && ($parts[1] ?? '') === 'localhost';
-	$reservedEnvironmentSubdomains = ['dev', 'beta'];
+	$reservedEnvironmentSubdomains = commonGetConfiguredEnvironmentSubdomains();
 	$isEnvironmentRootHost = count($parts) >= 3
 		&& in_array((string)($parts[count($parts) - 3] ?? ''), $reservedEnvironmentSubdomains, true);
 	$rootPartCount = $isEnvironmentRootHost ? 3 : 2;
@@ -171,7 +173,7 @@
 .home-contributors {
   position: relative;
   overflow: hidden;
-  border-radius: 20px;
+  border-radius: 10px;
   border: 1px solid rgba(9, 49, 71, 0.22);
   background: linear-gradient(180deg, rgba(247, 251, 255, 0.98), rgba(236, 244, 252, 0.98));
   box-shadow:

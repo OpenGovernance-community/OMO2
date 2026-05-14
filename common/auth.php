@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/environment_subdomains.php';
+
 function commonGetDemoOrganizationId()
 {
     return 1;
@@ -46,7 +48,7 @@ function commonGetReservedEnvironmentSubdomains()
     if (function_exists('appGetReservedEnvironmentSubdomains')) {
         return appGetReservedEnvironmentSubdomains();
     }
-    return ['dev', 'beta'];
+    return commonGetConfiguredEnvironmentSubdomains();
 }
 
 function commonGetHostRootPartCount(array $parts)

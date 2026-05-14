@@ -1,8 +1,9 @@
 <?
 	require_once __DIR__ . '/shared/date_groups.php';
+	require_once __DIR__ . '/common/environment_subdomains.php';
 
 	function appGetReservedEnvironmentSubdomains() {
-		return ['dev', 'beta'];
+		return commonGetConfiguredEnvironmentSubdomains();
 	}
 
 	function appGetCookieDomain($host = null) {
