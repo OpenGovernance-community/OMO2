@@ -708,6 +708,11 @@ function autoInstallResolveMailAuth(array $values)
     return $mailUser !== '' || $mailPass !== '';
 }
 
+function autoInstallGetMailTimeoutSeconds()
+{
+    return 10;
+}
+
 function autoInstallBuildMailConfiguration(array $values)
 {
     return [
@@ -770,6 +775,9 @@ function autoInstallSendVerificationMail(array $values, array $mailConfig, $code
         $mail->Host = (string)$mailConfig['host'];
         $mail->Port = (int)$mailConfig['port'];
         $mail->SMTPAuth = !empty($mailConfig['auth']);
+        $mail->Timeout = autoInstallGetMailTimeoutSeconds();
+        $mail->Timelimit = autoInstallGetMailTimeoutSeconds();
+        $mail->SMTPKeepAlive = false;
         $mail->CharSet = (string)$mailConfig['charset'];
 
         $secure = trim((string)($mailConfig['secure'] ?? ''));
@@ -1173,6 +1181,7 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors,
 {
     $isMailVerified = is_array($verificationState) && !empty($verificationState['verified']);
     $hasVerificationCode = is_array($verificationState) && !$isMailVerified;
+    $canCompleteInstall = $isMailVerified || $hasVerificationCode;
     ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -1335,6 +1344,54 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors,
             color: #0f6b43;
         }
 
+        .auto-install-flash-stack {
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            z-index: 1000;
+            width: min(720px, calc(100% - 24px));
+            transform: translateX(-50%);
+            display: grid;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .auto-install-flash {
+            pointer-events: auto;
+            display: grid;
+            gap: 10px;
+            padding: 16px 18px;
+            border: 1px solid var(--generic-soft-panel-border, var(--color-border));
+            border-radius: 18px;
+            background: var(--generic-soft-panel-background, #ffffff);
+            box-shadow: var(--shadow-md);
+        }
+
+        .auto-install-flash-header {
+            display: flex;
+            align-items: start;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .auto-install-flash-title {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 700;
+            color: currentColor;
+        }
+
+        .auto-install-flash-close {
+            border: 0;
+            background: transparent;
+            color: currentColor;
+            font: inherit;
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0;
+        }
+
         .auto-install-password-panel {
             display: grid;
             gap: 10px;
@@ -1437,6 +1494,38 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors,
     </style>
 </head>
 <body>
+    <?php if ($errors !== [] || $messages !== []): ?>
+        <div class="auto-install-flash-stack" aria-live="polite" aria-atomic="true">
+            <?php if ($errors !== []): ?>
+                <div class="auto-install-flash auto-install-errors generic-soft-panel generic-soft-panel--stack" data-auto-install-flash data-auto-dismiss-ms="9000" role="alert">
+                    <div class="auto-install-flash-header">
+                        <h2 class="auto-install-flash-title">Configuration incomplete</h2>
+                        <button type="button" class="auto-install-flash-close" data-auto-install-flash-close aria-label="Fermer">&times;</button>
+                    </div>
+                    <ul class="auto-install-error-list">
+                        <?php foreach ($errors as $error): ?>
+                            <li><?= htmlspecialchars((string)$error, ENT_QUOTES, 'UTF-8') ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($messages !== []): ?>
+                <div class="auto-install-flash auto-install-success generic-soft-panel generic-soft-panel--stack" data-auto-install-flash data-auto-dismiss-ms="6000" role="status">
+                    <div class="auto-install-flash-header">
+                        <h2 class="auto-install-flash-title">Verification en cours</h2>
+                        <button type="button" class="auto-install-flash-close" data-auto-install-flash-close aria-label="Fermer">&times;</button>
+                    </div>
+                    <ul class="auto-install-error-list">
+                        <?php foreach ($messages as $message): ?>
+                            <li><?= htmlspecialchars((string)$message, ENT_QUOTES, 'UTF-8') ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+
     <main class="auto-install-page">
         <section class="auto-install-hero generic-hero-panel generic-hero-panel--accent">
             <p class="auto-install-eyebrow">Premier demarrage</p>
@@ -1449,28 +1538,6 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors,
 
         <div class="auto-install-layout">
             <form method="post" action="/install.php" class="auto-install-form">
-                <?php if ($errors !== []): ?>
-                    <div class="auto-install-errors generic-soft-panel generic-soft-panel--stack">
-                        <h2 class="generic-card-title generic-card-title--medium">Configuration incomplete</h2>
-                        <ul class="auto-install-error-list">
-                            <?php foreach ($errors as $error): ?>
-                                <li><?= htmlspecialchars((string)$error, ENT_QUOTES, 'UTF-8') ?></li>
-                            <?php endforeach; ?>
-                        </ul>
-                    </div>
-                <?php endif; ?>
-
-                <?php if ($messages !== []): ?>
-                    <div class="auto-install-success generic-soft-panel generic-soft-panel--stack">
-                        <h2 class="generic-card-title generic-card-title--medium">Verification en cours</h2>
-                        <ul class="auto-install-error-list">
-                            <?php foreach ($messages as $message): ?>
-                                <li><?= htmlspecialchars((string)$message, ENT_QUOTES, 'UTF-8') ?></li>
-                            <?php endforeach; ?>
-                        </ul>
-                    </div>
-                <?php endif; ?>
-
                 <?php foreach ($definitions as $sectionKey => $section): ?>
                     <section class="auto-install-section generic-section generic-section--stack">
                         <div class="auto-install-section-header">
@@ -1591,10 +1658,13 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors,
                 <section class="auto-install-section generic-section generic-section--stack">
                     <div class="auto-install-actions">
                         <button type="submit" name="install_action" value="send_verification_code" class="generic-action-button">Envoyer un code de verification</button>
-                        <button type="submit" name="install_action" value="complete_install" class="generic-action-button generic-action-button--main"><?= $isMailVerified ? 'Creer le fichier .env' : 'Verifier le code et terminer' ?></button>
+                        <button type="submit" name="install_action" value="complete_install" class="generic-action-button generic-action-button--main"<?= $canCompleteInstall ? '' : ' disabled aria-disabled="true"' ?>><?= $isMailVerified ? 'Creer le fichier .env' : 'Verifier le code et terminer' ?></button>
                         <p class="auto-install-meta">
                             La connexion MySQL est testee avant l ecriture, puis un e-mail de verification doit etre confirme. Les services optionnels pourront etre completes plus tard en modifiant le fichier <span class="auto-install-code">.env</span>.
                         </p>
+                        <?php if (!$canCompleteInstall): ?>
+                            <p class="auto-install-meta">Le bouton principal sera active apres un premier envoi de code.</p>
+                        <?php endif; ?>
                     </div>
                 </section>
             </form>
@@ -1620,6 +1690,22 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors,
     </main>
     <script>
         (function () {
+            document.querySelectorAll('[data-auto-install-flash]').forEach(function (flash) {
+                var closeButton = flash.querySelector('[data-auto-install-flash-close]');
+                var dismiss = function () {
+                    flash.remove();
+                };
+
+                if (closeButton) {
+                    closeButton.addEventListener('click', dismiss);
+                }
+
+                var autoDismissMs = parseInt(flash.getAttribute('data-auto-dismiss-ms') || '0', 10);
+                if (autoDismissMs > 0) {
+                    window.setTimeout(dismiss, autoDismissMs);
+                }
+            });
+
             var passwordInput = document.getElementById('INSTALL_ADMIN_PASSWORD');
             var emailInput = document.getElementById('INSTALL_ADMIN_EMAIL');
             var confirmInput = document.getElementById('INSTALL_ADMIN_PASSWORD_CONFIRM');
