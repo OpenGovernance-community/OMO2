@@ -579,34 +579,45 @@ padding:15px;
 
   <?php if (!empty($homepagePatreonContributors['items'])): ?>
   <section class="home-contributors">
-    <h2>Ils soutiennent deja le projet</h2>
-    <p>Merci aux contributeurs Patreon qui accompagnent activement son developpement.</p>
-    <div class="home-contributors__avatars">
-      <?php foreach ($homepagePatreonContributors['items'] as $contributor): ?>
-        <?php
-          $displayName = trim((string)($contributor['displayName'] ?? ''));
-          $photoUrl = trim((string)($contributor['photoUrl'] ?? ''));
-          $initials = trim((string)($contributor['initials'] ?? 'P'));
-          $portraitAlt = $displayName !== '' ? $displayName : $initials;
-        ?>
-        <?php if ($photoUrl !== ''): ?>
-          <img
-            src="<?= htmlspecialchars($photoUrl, ENT_QUOTES, 'UTF-8') ?>"
-            alt="<?= htmlspecialchars($portraitAlt, ENT_QUOTES, 'UTF-8') ?>"
-            title="<?= htmlspecialchars($portraitAlt, ENT_QUOTES, 'UTF-8') ?>"
-            class="home-contributors__portrait"
-            loading="lazy"
-          >
-        <?php else: ?>
-          <span
-            class="home-contributors__portrait--placeholder"
-            title="<?= htmlspecialchars($portraitAlt, ENT_QUOTES, 'UTF-8') ?>"
-          ><?= htmlspecialchars($initials, ENT_QUOTES, 'UTF-8') ?></span>
-        <?php endif; ?>
-      <?php endforeach; ?>
-      <?php if ((int)($homepagePatreonContributors['extraCount'] ?? 0) > 0): ?>
-        <span class="home-contributors__more">et <?= (int)$homepagePatreonContributors['extraCount'] ?> de plus</span>
-      <?php endif; ?>
+    <div class="home-contributors__layout">
+      <div class="home-contributors__content">
+        <span class="home-contributors__eyebrow">Communaute Patreon</span>
+        <h2 class="home-contributors__title">Ils soutiennent deja le projet</h2>
+        <p class="home-contributors__text">Des personnes choisissent deja d'accompagner OpenGovernance.community. Leur presence rend le chantier plus stable, plus libre et plus durable.</p>
+        <div class="home-contributors__summary">
+          <span class="home-contributors__count"><?= (int)($homepagePatreonContributors['totalCount'] ?? count($homepagePatreonContributors['items'])) ?> compte<?= ((int)($homepagePatreonContributors['totalCount'] ?? count($homepagePatreonContributors['items'])) > 1) ? 's' : '' ?> connecte<?= ((int)($homepagePatreonContributors['totalCount'] ?? count($homepagePatreonContributors['items'])) > 1) ? 's' : '' ?></span>
+          <?php if ((int)($homepagePatreonContributors['extraCount'] ?? 0) > 0): ?>
+            <span class="home-contributors__more">et <?= (int)$homepagePatreonContributors['extraCount'] ?> de plus</span>
+          <?php endif; ?>
+        </div>
+      </div>
+      <div class="home-contributors__avatars">
+        <?php foreach ($homepagePatreonContributors['items'] as $contributor): ?>
+          <?php
+            $displayName = trim((string)($contributor['displayName'] ?? ''));
+            $photoUrl = trim((string)($contributor['photoUrl'] ?? ''));
+            $initials = trim((string)($contributor['initials'] ?? 'P'));
+            $portraitAlt = $displayName !== '' ? $displayName : $initials;
+          ?>
+          <div class="home-contributors__avatar-card">
+            <?php if ($photoUrl !== ''): ?>
+              <img
+                src="<?= htmlspecialchars($photoUrl, ENT_QUOTES, 'UTF-8') ?>"
+                alt="<?= htmlspecialchars($portraitAlt, ENT_QUOTES, 'UTF-8') ?>"
+                title="<?= htmlspecialchars($portraitAlt, ENT_QUOTES, 'UTF-8') ?>"
+                class="home-contributors__portrait"
+                loading="lazy"
+              >
+            <?php else: ?>
+              <span
+                class="home-contributors__portrait--placeholder"
+                title="<?= htmlspecialchars($portraitAlt, ENT_QUOTES, 'UTF-8') ?>"
+              ><?= htmlspecialchars($initials, ENT_QUOTES, 'UTF-8') ?></span>
+            <?php endif; ?>
+            <span class="home-contributors__name"><?= htmlspecialchars($portraitAlt, ENT_QUOTES, 'UTF-8') ?></span>
+          </div>
+        <?php endforeach; ?>
+      </div>
     </div>
   </section>
   <?php endif; ?>
