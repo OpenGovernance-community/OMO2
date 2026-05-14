@@ -108,497 +108,91 @@ SET h.IDholon_template = NULL
 WHERE h.IDholon_template IS NOT NULL
   AND template_holon.id IS NULL;
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.statistics
-		WHERE table_schema = DATABASE()
-		  AND table_name = 'document'
-		  AND index_name = 'idx_document_organization'
-	),
-	'SELECT 1',
-	'ALTER TABLE `document` ADD KEY `idx_document_organization` (`IDorganization`)'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `document`
+  ADD KEY IF NOT EXISTS `idx_document_organization` (`IDorganization`),
+  ADD KEY IF NOT EXISTS `idx_document_holon` (`IDholon`);
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.statistics
-		WHERE table_schema = DATABASE()
-		  AND table_name = 'document'
-		  AND index_name = 'idx_document_holon'
-	),
-	'SELECT 1',
-	'ALTER TABLE `document` ADD KEY `idx_document_holon` (`IDholon`)'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `holon`
+  ADD KEY IF NOT EXISTS `idx_holon_organization` (`IDorganization`),
+  ADD KEY IF NOT EXISTS `idx_holon_root` (`IDholon_org`),
+  ADD KEY IF NOT EXISTS `idx_holon_parent` (`IDholon_parent`),
+  ADD KEY IF NOT EXISTS `idx_holon_template` (`IDholon_template`);
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.statistics
-		WHERE table_schema = DATABASE()
-		  AND table_name = 'holon'
-		  AND index_name = 'idx_holon_organization'
-	),
-	'SELECT 1',
-	'ALTER TABLE `holon` ADD KEY `idx_holon_organization` (`IDorganization`)'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `holonproperty`
+  ADD KEY IF NOT EXISTS `idx_holonproperty_holon` (`IDholon`),
+  ADD KEY IF NOT EXISTS `idx_holonproperty_property` (`IDproperty`);
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.statistics
-		WHERE table_schema = DATABASE()
-		  AND table_name = 'holon'
-		  AND index_name = 'idx_holon_root'
-	),
-	'SELECT 1',
-	'ALTER TABLE `holon` ADD KEY `idx_holon_root` (`IDholon_org`)'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `property`
+  ADD KEY IF NOT EXISTS `idx_property_root_holon` (`IDholon_organization`);
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.statistics
-		WHERE table_schema = DATABASE()
-		  AND table_name = 'holon'
-		  AND index_name = 'idx_holon_parent'
-	),
-	'SELECT 1',
-	'ALTER TABLE `holon` ADD KEY `idx_holon_parent` (`IDholon_parent`)'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `user_organization`
+  ADD KEY IF NOT EXISTS `idx_user_organization_organization_user` (`IDorganization`, `IDuser`);
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.statistics
-		WHERE table_schema = DATABASE()
-		  AND table_name = 'holon'
-		  AND index_name = 'idx_holon_template'
-	),
-	'SELECT 1',
-	'ALTER TABLE `holon` ADD KEY `idx_holon_template` (`IDholon_template`)'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `user_holon`
+  ADD KEY IF NOT EXISTS `idx_user_holon_holon_user` (`IDholon`, `IDuser`);
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.statistics
-		WHERE table_schema = DATABASE()
-		  AND table_name = 'holonproperty'
-		  AND index_name = 'idx_holonproperty_holon'
-	),
-	'SELECT 1',
-	'ALTER TABLE `holonproperty` ADD KEY `idx_holonproperty_holon` (`IDholon`)'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `organization_parcours`
+  ADD KEY IF NOT EXISTS `idx_organization_parcours_organization` (`IDorganization`);
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.statistics
-		WHERE table_schema = DATABASE()
-		  AND table_name = 'holonproperty'
-		  AND index_name = 'idx_holonproperty_property'
-	),
-	'SELECT 1',
-	'ALTER TABLE `holonproperty` ADD KEY `idx_holonproperty_property` (`IDproperty`)'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `media`
+  ADD KEY IF NOT EXISTS `idx_media_document` (`IDdocument`);
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.statistics
-		WHERE table_schema = DATABASE()
-		  AND table_name = 'property'
-		  AND index_name = 'idx_property_root_holon'
-	),
-	'SELECT 1',
-	'ALTER TABLE `property` ADD KEY `idx_property_root_holon` (`IDholon_organization`)'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `alttext`
+  ADD KEY IF NOT EXISTS `idx_alttext_document` (`IDdocument`);
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.statistics
-		WHERE table_schema = DATABASE()
-		  AND table_name = 'user_organization'
-		  AND index_name = 'idx_user_organization_organization_user'
-	),
-	'SELECT 1',
-	'ALTER TABLE `user_organization` ADD KEY `idx_user_organization_organization_user` (`IDorganization`, `IDuser`)'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `document`
+  ADD CONSTRAINT `fk_document_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE;
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.statistics
-		WHERE table_schema = DATABASE()
-		  AND table_name = 'user_holon'
-		  AND index_name = 'idx_user_holon_holon_user'
-	),
-	'SELECT 1',
-	'ALTER TABLE `user_holon` ADD KEY `idx_user_holon_holon_user` (`IDholon`, `IDuser`)'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `document`
+  ADD CONSTRAINT `fk_document_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE;
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.statistics
-		WHERE table_schema = DATABASE()
-		  AND table_name = 'organization_parcours'
-		  AND index_name = 'idx_organization_parcours_organization'
-	),
-	'SELECT 1',
-	'ALTER TABLE `organization_parcours` ADD KEY `idx_organization_parcours_organization` (`IDorganization`)'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `holon`
+  ADD CONSTRAINT `fk_holon_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE;
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.statistics
-		WHERE table_schema = DATABASE()
-		  AND table_name = 'media'
-		  AND index_name = 'idx_media_document'
-	),
-	'SELECT 1',
-	'ALTER TABLE `media` ADD KEY `idx_media_document` (`IDdocument`)'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `holon`
+  ADD CONSTRAINT `fk_holon_root` FOREIGN KEY (`IDholon_org`) REFERENCES `holon` (`id`) ON DELETE CASCADE;
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.statistics
-		WHERE table_schema = DATABASE()
-		  AND table_name = 'alttext'
-		  AND index_name = 'idx_alttext_document'
-	),
-	'SELECT 1',
-	'ALTER TABLE `alttext` ADD KEY `idx_alttext_document` (`IDdocument`)'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `holon`
+  ADD CONSTRAINT `fk_holon_parent` FOREIGN KEY (`IDholon_parent`) REFERENCES `holon` (`id`) ON DELETE CASCADE;
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.referential_constraints
-		WHERE constraint_schema = DATABASE()
-		  AND table_name = 'document'
-		  AND constraint_name = 'fk_document_organization'
-	),
-	'SELECT 1',
-	'ALTER TABLE `document` ADD CONSTRAINT `fk_document_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `holon`
+  ADD CONSTRAINT `fk_holon_template` FOREIGN KEY (`IDholon_template`) REFERENCES `holon` (`id`) ON DELETE SET NULL;
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.referential_constraints
-		WHERE constraint_schema = DATABASE()
-		  AND table_name = 'document'
-		  AND constraint_name = 'fk_document_holon'
-	),
-	'SELECT 1',
-	'ALTER TABLE `document` ADD CONSTRAINT `fk_document_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `holonproperty`
+  ADD CONSTRAINT `fk_holonproperty_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE;
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.referential_constraints
-		WHERE constraint_schema = DATABASE()
-		  AND table_name = 'holon'
-		  AND constraint_name = 'fk_holon_organization'
-	),
-	'SELECT 1',
-	'ALTER TABLE `holon` ADD CONSTRAINT `fk_holon_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `holonproperty`
+  ADD CONSTRAINT `fk_holonproperty_property` FOREIGN KEY (`IDproperty`) REFERENCES `property` (`id`) ON DELETE CASCADE;
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.referential_constraints
-		WHERE constraint_schema = DATABASE()
-		  AND table_name = 'holon'
-		  AND constraint_name = 'fk_holon_root'
-	),
-	'SELECT 1',
-	'ALTER TABLE `holon` ADD CONSTRAINT `fk_holon_root` FOREIGN KEY (`IDholon_org`) REFERENCES `holon` (`id`) ON DELETE CASCADE'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `property`
+  ADD CONSTRAINT `fk_property_root_holon` FOREIGN KEY (`IDholon_organization`) REFERENCES `holon` (`id`) ON DELETE CASCADE;
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.referential_constraints
-		WHERE constraint_schema = DATABASE()
-		  AND table_name = 'holon'
-		  AND constraint_name = 'fk_holon_parent'
-	),
-	'SELECT 1',
-	'ALTER TABLE `holon` ADD CONSTRAINT `fk_holon_parent` FOREIGN KEY (`IDholon_parent`) REFERENCES `holon` (`id`) ON DELETE CASCADE'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `user_organization`
+  ADD CONSTRAINT `fk_user_organization_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE;
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.referential_constraints
-		WHERE constraint_schema = DATABASE()
-		  AND table_name = 'holon'
-		  AND constraint_name = 'fk_holon_template'
-	),
-	'SELECT 1',
-	'ALTER TABLE `holon` ADD CONSTRAINT `fk_holon_template` FOREIGN KEY (`IDholon_template`) REFERENCES `holon` (`id`) ON DELETE SET NULL'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `user_holon`
+  ADD CONSTRAINT `fk_user_holon_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE;
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.referential_constraints
-		WHERE constraint_schema = DATABASE()
-		  AND table_name = 'holonproperty'
-		  AND constraint_name = 'fk_holonproperty_holon'
-	),
-	'SELECT 1',
-	'ALTER TABLE `holonproperty` ADD CONSTRAINT `fk_holonproperty_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `invitation`
+  ADD CONSTRAINT `fk_invitation_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE;
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.referential_constraints
-		WHERE constraint_schema = DATABASE()
-		  AND table_name = 'holonproperty'
-		  AND constraint_name = 'fk_holonproperty_property'
-	),
-	'SELECT 1',
-	'ALTER TABLE `holonproperty` ADD CONSTRAINT `fk_holonproperty_property` FOREIGN KEY (`IDproperty`) REFERENCES `property` (`id`) ON DELETE CASCADE'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `history`
+  ADD CONSTRAINT `fk_history_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE;
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.referential_constraints
-		WHERE constraint_schema = DATABASE()
-		  AND table_name = 'property'
-		  AND constraint_name = 'fk_property_root_holon'
-	),
-	'SELECT 1',
-	'ALTER TABLE `property` ADD CONSTRAINT `fk_property_root_holon` FOREIGN KEY (`IDholon_organization`) REFERENCES `holon` (`id`) ON DELETE CASCADE'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `organization_application`
+  ADD CONSTRAINT `fk_organization_application_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE;
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.referential_constraints
-		WHERE constraint_schema = DATABASE()
-		  AND table_name = 'user_organization'
-		  AND constraint_name = 'fk_user_organization_org'
-	),
-	'SELECT 1',
-	'ALTER TABLE `user_organization` ADD CONSTRAINT `fk_user_organization_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `organization_parcours`
+  ADD CONSTRAINT `fk_organization_parcours_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE;
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.referential_constraints
-		WHERE constraint_schema = DATABASE()
-		  AND table_name = 'user_holon'
-		  AND constraint_name = 'fk_user_holon_holon'
-	),
-	'SELECT 1',
-	'ALTER TABLE `user_holon` ADD CONSTRAINT `fk_user_holon_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `holon_share_link`
+  ADD CONSTRAINT `fk_holon_share_link_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE;
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.referential_constraints
-		WHERE constraint_schema = DATABASE()
-		  AND table_name = 'invitation'
-		  AND constraint_name = 'fk_invitation_org'
-	),
-	'SELECT 1',
-	'ALTER TABLE `invitation` ADD CONSTRAINT `fk_invitation_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `holon_share_link`
+  ADD CONSTRAINT `fk_holon_share_link_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE;
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.referential_constraints
-		WHERE constraint_schema = DATABASE()
-		  AND table_name = 'history'
-		  AND constraint_name = 'fk_history_org'
-	),
-	'SELECT 1',
-	'ALTER TABLE `history` ADD CONSTRAINT `fk_history_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `media`
+  ADD CONSTRAINT `fk_media_document` FOREIGN KEY (`IDdocument`) REFERENCES `document` (`id`) ON DELETE CASCADE;
 
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.referential_constraints
-		WHERE constraint_schema = DATABASE()
-		  AND table_name = 'organization_application'
-		  AND constraint_name = 'fk_organization_application_org'
-	),
-	'SELECT 1',
-	'ALTER TABLE `organization_application` ADD CONSTRAINT `fk_organization_application_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.referential_constraints
-		WHERE constraint_schema = DATABASE()
-		  AND table_name = 'organization_parcours'
-		  AND constraint_name = 'fk_organization_parcours_org'
-	),
-	'SELECT 1',
-	'ALTER TABLE `organization_parcours` ADD CONSTRAINT `fk_organization_parcours_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.referential_constraints
-		WHERE constraint_schema = DATABASE()
-		  AND table_name = 'holon_share_link'
-		  AND constraint_name = 'fk_holon_share_link_org'
-	),
-	'SELECT 1',
-	'ALTER TABLE `holon_share_link` ADD CONSTRAINT `fk_holon_share_link_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.referential_constraints
-		WHERE constraint_schema = DATABASE()
-		  AND table_name = 'holon_share_link'
-		  AND constraint_name = 'fk_holon_share_link_holon'
-	),
-	'SELECT 1',
-	'ALTER TABLE `holon_share_link` ADD CONSTRAINT `fk_holon_share_link_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.referential_constraints
-		WHERE constraint_schema = DATABASE()
-		  AND table_name = 'media'
-		  AND constraint_name = 'fk_media_document'
-	),
-	'SELECT 1',
-	'ALTER TABLE `media` ADD CONSTRAINT `fk_media_document` FOREIGN KEY (`IDdocument`) REFERENCES `document` (`id`) ON DELETE CASCADE'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
-SET @sql = IF(
-	EXISTS (
-		SELECT 1
-		FROM information_schema.referential_constraints
-		WHERE constraint_schema = DATABASE()
-		  AND table_name = 'alttext'
-		  AND constraint_name = 'fk_alttext_document'
-	),
-	'SELECT 1',
-	'ALTER TABLE `alttext` ADD CONSTRAINT `fk_alttext_document` FOREIGN KEY (`IDdocument`) REFERENCES `document` (`id`) ON DELETE CASCADE'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `alttext`
+  ADD CONSTRAINT `fk_alttext_document` FOREIGN KEY (`IDdocument`) REFERENCES `document` (`id`) ON DELETE CASCADE;
