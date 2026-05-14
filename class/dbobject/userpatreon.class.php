@@ -192,21 +192,15 @@
 				return $result;
 			}
 
-			$params = [
-				'patron_status' => 'active_patron',
-			];
 			$whereClause = "
 				FROM `user_patreon` up
 				INNER JOIN `user` u ON u.`id` = up.`IDuser`
 				WHERE up.`is_connected` = 1
-				  AND up.`patron_status` = :patron_status
-				  AND up.`currently_entitled_amount_cents` > 0
 				  AND u.`active` = 1
 			";
 
 			$totalCount = (int)self::fetchValue(
-				"SELECT COUNT(*) " . $whereClause,
-				$params
+				"SELECT COUNT(*) " . $whereClause
 			);
 			if ($totalCount <= 0) {
 				return $result;
@@ -218,7 +212,6 @@
 				ORDER BY RAND()
 				LIMIT :limit_count",
 				[
-					'patron_status' => 'active_patron',
 					'limit_count' => $limit,
 				]
 			);
