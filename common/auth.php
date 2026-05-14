@@ -531,6 +531,30 @@ function commonGetCurrentUserDisplayName()
     return $user->getScopedEmail($organizationId);
 }
 
+function commonUserIsSiteAdmin($userId)
+{
+    static $cache = array();
+
+    $userId = (int)$userId;
+    if ($userId <= 0) {
+        return false;
+    }
+
+    if (array_key_exists($userId, $cache)) {
+        return $cache[$userId];
+    }
+
+    $user = new \dbObject\User();
+    $cache[$userId] = $user->load($userId) && $user->isSiteAdmin();
+
+    return $cache[$userId];
+}
+
+function commonCurrentUserIsSiteAdmin()
+{
+    return commonUserIsSiteAdmin(commonGetCurrentUserId());
+}
+
 function commonUserHasOrganizationMembership($userId, $organizationId)
 {
     static $cache = array();
@@ -546,6 +570,11 @@ function commonUserHasOrganizationMembership($userId, $organizationId)
     if ($userId <= 0 || $organizationId <= 0) {
         $cache[$cacheKey] = false;
         return false;
+    }
+
+    if (commonUserIsSiteAdmin($userId)) {
+        $cache[$cacheKey] = true;
+        return true;
     }
 
     $hasMembership = \dbObject\DbObject::fetchValue(
@@ -785,6 +814,23 @@ function commonNormalizeLoginCode($code)
 {
     $code = strtoupper(trim((string)$code));
     return preg_replace('/[^A-Z0-9]/', '', $code);
+}
+
+function commonHashUserPassword($password)
+{
+    return password_hash((string)$password, PASSWORD_DEFAULT);
+}
+
+function commonVerifyUserPassword($password, $hash)
+{
+    $password = (string)$password;
+    $hash = (string)$hash;
+
+    if ($password === '' || $hash === '') {
+        return false;
+    }
+
+    return password_verify($password, $hash);
 }
 
 function commonGenerateLoginCode($length = 6)

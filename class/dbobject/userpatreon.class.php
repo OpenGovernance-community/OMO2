@@ -179,6 +179,87 @@
 			return $items;
 		}
 
+		public static function getHomepageContributorCards($limit = 5)
+		{
+			$limit = max(1, (int)$limit);
+			$result = [
+				'items' => [],
+				'totalCount' => 0,
+				'extraCount' => 0,
+			];
+
+			if (!self::isStorageAvailable()) {
+				return $result;
+			}
+
+			$params = [
+				'patron_status' => 'active_patron',
+			];
+			$whereClause = "
+				FROM `user_patreon` up
+				INNER JOIN `user` u ON u.`id` = up.`IDuser`
+				WHERE up.`is_connected` = 1
+				  AND up.`patron_status` = :patron_status
+				  AND up.`currently_entitled_amount_cents` > 0
+				  AND u.`active` = 1
+			";
+
+			$totalCount = (int)self::fetchValue(
+				"SELECT COUNT(*) " . $whereClause,
+				$params
+			);
+			if ($totalCount <= 0) {
+				return $result;
+			}
+
+			$rows = self::fetchAll(
+				"SELECT up.`id`, up.`IDuser`
+				" . $whereClause . "
+				ORDER BY RAND()
+				LIMIT :limit_count",
+				[
+					'patron_status' => 'active_patron',
+					'limit_count' => $limit,
+				]
+			);
+			if ($rows === false) {
+				$result['totalCount'] = $totalCount;
+				$result['extraCount'] = max(0, $totalCount);
+				return $result;
+			}
+
+			foreach ($rows as $row) {
+				$connection = new self();
+				$user = new User();
+				if (!$connection->load((int)($row['id'] ?? 0)) || !$user->load((int)($row['IDuser'] ?? 0))) {
+					continue;
+				}
+
+				$displayName = trim((string)$user->getScopedDisplayName());
+				if ($displayName === '') {
+					$displayName = trim((string)$connection->get('full_name'));
+				}
+
+				$photoUrl = trim((string)$user->getProfilePhotoUrl());
+				if ($photoUrl === '') {
+					$photoUrl = trim((string)$connection->get('image_url'));
+				}
+
+				$result['items'][] = [
+					'userId' => (int)$user->getId(),
+					'displayName' => $displayName,
+					'photoUrl' => $photoUrl,
+					'initials' => self::buildContributorInitials($displayName),
+					'amountCents' => (int)$connection->get('currently_entitled_amount_cents'),
+				];
+			}
+
+			$result['totalCount'] = $totalCount;
+			$result['extraCount'] = max(0, $totalCount - count($result['items']));
+
+			return $result;
+		}
+
 		public function isConnected()
 		{
 			return (int)$this->get('is_connected') > 0
@@ -281,6 +362,40 @@
 			}
 
 			return array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $value))));
+		}
+
+		protected static function buildContributorInitials($displayName)
+		{
+			$displayName = trim((string)$displayName);
+			if ($displayName === '') {
+				return 'P';
+			}
+
+			$parts = preg_split('/[\s\-_]+/u', $displayName);
+			$letters = [];
+
+			foreach ($parts as $part) {
+				$part = trim((string)$part);
+				if ($part === '') {
+					continue;
+				}
+
+				$letters[] = function_exists('mb_substr')
+					? mb_substr($part, 0, 1, 'UTF-8')
+					: substr($part, 0, 1);
+
+				if (count($letters) >= 2) {
+					break;
+				}
+			}
+
+			if ($letters === []) {
+				$letters[] = function_exists('mb_substr')
+					? mb_substr($displayName, 0, 1, 'UTF-8')
+					: substr($displayName, 0, 1);
+			}
+
+			return strtoupper(implode('', $letters));
 		}
 	}
 

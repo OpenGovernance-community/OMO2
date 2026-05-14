@@ -25,6 +25,33 @@
 			exit;
 		}
 	}
+
+	if (!function_exists('homepageRegisterAutoloader')) {
+		function homepageRegisterAutoloader()
+		{
+			static $registered = false;
+
+			if ($registered) {
+				return;
+			}
+
+			spl_autoload_register(function ($class) {
+				$path = __DIR__ . '/class/' . str_replace('\\', '/', strtolower((string)$class)) . '.class.php';
+				if (is_file($path)) {
+					require_once $path;
+				}
+			});
+
+			$registered = true;
+		}
+	}
+
+	require_once __DIR__ . '/config.php';
+	homepageRegisterAutoloader();
+
+	$homepagePatreonContributors = class_exists('\\dbObject\\UserPatreon')
+		? \dbObject\UserPatreon::getHomepageContributorCards(5)
+		: ['items' => [], 'totalCount' => 0, 'extraCount' => 0];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -139,6 +166,67 @@
 
 .bloc h1 {
   margin-top: 0;
+}
+
+.home-contributors {
+  display: grid;
+  gap: 1rem;
+  justify-items: center;
+  text-align: center;
+  padding: 2rem;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top, rgba(255, 198, 0, 0.22), rgba(255, 255, 255, 0) 55%),
+    linear-gradient(135deg, #f7fbff, #eef6ff);
+  box-shadow: 0 10px 30px rgba(17, 64, 96, 0.08);
+}
+
+.home-contributors h2,
+.home-contributors p {
+  margin: 0;
+}
+
+.home-contributors__avatars {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+}
+
+.home-contributors__portrait,
+.home-contributors__portrait--placeholder {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 8px 18px rgba(17, 64, 96, 0.18);
+}
+
+.home-contributors__portrait {
+  object-fit: cover;
+  background: #dbe8f4;
+}
+
+.home-contributors__portrait--placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0b6e7a, #1a82a3);
+  color: #fff;
+  font-weight: bold;
+  font-size: 1.35rem;
+}
+
+.home-contributors__more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 76px;
+  padding: 0 1rem;
+  border-radius: 999px;
+  background: rgba(11, 110, 122, 0.1);
+  color: #0b4e63;
+  font-weight: bold;
 }
 
 .intro_txt {
@@ -265,6 +353,17 @@ padding:15px;
 	overflow-y: hidden;
   }
   .cta-text {font-size: 80%;}
+  .home-contributors {
+    padding: 1.5rem;
+  }
+  .home-contributors__portrait,
+  .home-contributors__portrait--placeholder {
+    width: 64px;
+    height: 64px;
+  }
+  .home-contributors__more {
+    min-height: 64px;
+  }
 }
 
 
@@ -370,6 +469,40 @@ padding:15px;
       <p>Pour faciliter votre apprentissage, nous mettons à votre disposition une documentation complète, claire et concise. Chaque fonctionnalité est expliquée en détail, accompagnée d'exemples concrets pour une compréhension approfondie. De plus, notre approche progressive vous permet d'apprendre pas à pas, sans être submergé par la complexité, vous laissant ainsi la liberté de maîtriser les différentes fonctions à votre rythme.</p>
     </div>
   </section>
+
+  <?php if (!empty($homepagePatreonContributors['items'])): ?>
+  <section class="home-contributors">
+    <h2>Ils soutiennent deja le projet</h2>
+    <p>Merci aux contributeurs Patreon qui accompagnent activement son developpement.</p>
+    <div class="home-contributors__avatars">
+      <?php foreach ($homepagePatreonContributors['items'] as $contributor): ?>
+        <?php
+          $displayName = trim((string)($contributor['displayName'] ?? ''));
+          $photoUrl = trim((string)($contributor['photoUrl'] ?? ''));
+          $initials = trim((string)($contributor['initials'] ?? 'P'));
+          $portraitAlt = $displayName !== '' ? $displayName : $initials;
+        ?>
+        <?php if ($photoUrl !== ''): ?>
+          <img
+            src="<?= htmlspecialchars($photoUrl, ENT_QUOTES, 'UTF-8') ?>"
+            alt="<?= htmlspecialchars($portraitAlt, ENT_QUOTES, 'UTF-8') ?>"
+            title="<?= htmlspecialchars($portraitAlt, ENT_QUOTES, 'UTF-8') ?>"
+            class="home-contributors__portrait"
+            loading="lazy"
+          >
+        <?php else: ?>
+          <span
+            class="home-contributors__portrait--placeholder"
+            title="<?= htmlspecialchars($portraitAlt, ENT_QUOTES, 'UTF-8') ?>"
+          ><?= htmlspecialchars($initials, ENT_QUOTES, 'UTF-8') ?></span>
+        <?php endif; ?>
+      <?php endforeach; ?>
+      <?php if ((int)($homepagePatreonContributors['extraCount'] ?? 0) > 0): ?>
+        <span class="home-contributors__more">et <?= (int)$homepagePatreonContributors['extraCount'] ?> de plus</span>
+      <?php endif; ?>
+    </div>
+  </section>
+  <?php endif; ?>
 
 </div>
 

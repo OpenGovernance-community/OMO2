@@ -207,6 +207,10 @@
 
 		public function isUserOrganizationAdmin($userId)
 		{
+			if (function_exists('commonUserIsSiteAdmin') && \commonUserIsSiteAdmin($userId)) {
+				return true;
+			}
+
 			$membership = $this->getMembership($userId, true);
 			return $membership ? $membership->isOrganizationAdmin() : false;
 		}

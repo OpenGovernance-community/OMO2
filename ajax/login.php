@@ -7,6 +7,7 @@
 
 	require_once("../config.php");
 	require_once("../shared_functions.php");
+	require_once("../common/auth.php");
 
 	// Si c'est une déconnexion
 	if (!isset($_POST["user"]) && !isset($_POST["email"])) {
@@ -35,10 +36,10 @@
 
 		// S'assure que l'adresse e-mail n'existe pas déjà dans la table, ou que les données n'ont pas été complétées
 		$user=new \dbObject\user();
-		$user->load([["email",$_POST["email"]],["password",md5($_POST["password"])]]); // Chargement sur la base de l'email
+		$user->load(["email",$_POST["email"]]); // Chargement sur la base de l'email
 		
 		// Pas trouvé
-		if (!$user->get("id")>0) {
+		if (!$user->get("id")>0 || !commonVerifyUserPassword($_POST["password"], (string)$user->get("password"))) {
 			echo '{"status":false, "message":"Utilisateur inconnu","script":"$(\'#password\').focus()"} ';
 			exit;
 		}
