@@ -169,38 +169,128 @@
 }
 
 .home-contributors {
+  position: relative;
   display: grid;
-  gap: 1rem;
-  justify-items: center;
-  text-align: center;
+  gap: 1.5rem;
   padding: 2rem;
-  border-radius: 18px;
+  border-radius: 28px;
+  border: 1px solid rgba(11, 110, 122, 0.12);
   background:
-    radial-gradient(circle at top, rgba(255, 198, 0, 0.22), rgba(255, 255, 255, 0) 55%),
-    linear-gradient(135deg, #f7fbff, #eef6ff);
-  box-shadow: 0 10px 30px rgba(17, 64, 96, 0.08);
+    radial-gradient(circle at top left, rgba(255, 198, 0, 0.18), rgba(255, 255, 255, 0) 30%),
+    radial-gradient(circle at bottom right, rgba(26, 130, 163, 0.14), rgba(255, 255, 255, 0) 35%),
+    linear-gradient(135deg, #fdfefe, #edf5fb);
+  box-shadow: 0 18px 40px rgba(11, 78, 99, 0.08);
+  overflow: hidden;
 }
 
-.home-contributors h2,
-.home-contributors p {
+.home-contributors::before {
+  content: "";
+  position: absolute;
+  inset: auto auto -80px -60px;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: rgba(255, 198, 0, 0.09);
+  filter: blur(6px);
+}
+
+.home-contributors__layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.home-contributors__content {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.home-contributors__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: fit-content;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(255, 198, 0, 0.18);
+  color: #8a6100;
+  font-size: 0.82rem;
+  font-weight: bold;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.home-contributors__title,
+.home-contributors__text {
   margin: 0;
 }
 
-.home-contributors__avatars {
+.home-contributors__title {
+  font-size: clamp(2rem, 3vw, 3.1rem);
+  line-height: 1.05;
+  color: #1f2937;
+}
+
+.home-contributors__text {
+  max-width: 40rem;
+  font-size: 1.08rem;
+  line-height: 1.55;
+  color: #425466;
+}
+
+.home-contributors__summary {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
   gap: 0.85rem;
+  align-items: center;
+}
+
+.home-contributors__count,
+.home-contributors__more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 0.65rem 1rem;
+  border-radius: 999px;
+  font-weight: bold;
+}
+
+.home-contributors__count {
+  background: #0b6e7a;
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(11, 110, 122, 0.2);
+}
+
+.home-contributors__avatars {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.15rem;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(11, 110, 122, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.home-contributors__avatar-card {
+  display: grid;
+  justify-items: center;
+  gap: 0.55rem;
+  min-width: 88px;
 }
 
 .home-contributors__portrait,
 .home-contributors__portrait--placeholder {
-  width: 76px;
-  height: 76px;
+  width: 82px;
+  height: 82px;
   border-radius: 50%;
   border: 3px solid rgba(255, 255, 255, 0.95);
-  box-shadow: 0 8px 18px rgba(17, 64, 96, 0.18);
+  box-shadow: 0 12px 24px rgba(17, 64, 96, 0.2);
 }
 
 .home-contributors__portrait {
@@ -218,15 +308,18 @@
   font-size: 1.35rem;
 }
 
+.home-contributors__name {
+  max-width: 92px;
+  font-size: 0.9rem;
+  line-height: 1.2;
+  text-align: center;
+  color: #355064;
+}
+
 .home-contributors__more {
-  display: inline-flex;
-  align-items: center;
-  min-height: 76px;
-  padding: 0 1rem;
-  border-radius: 999px;
   background: rgba(11, 110, 122, 0.1);
   color: #0b4e63;
-  font-weight: bold;
+  border: 1px solid rgba(11, 110, 122, 0.1);
 }
 
 .intro_txt {
@@ -356,13 +449,27 @@ padding:15px;
   .home-contributors {
     padding: 1.5rem;
   }
+  .home-contributors__layout {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+  .home-contributors__content {
+    justify-items: center;
+  }
+  .home-contributors__summary {
+    justify-content: center;
+  }
+  .home-contributors__avatar-card {
+    min-width: 78px;
+  }
   .home-contributors__portrait,
   .home-contributors__portrait--placeholder {
-    width: 64px;
-    height: 64px;
+    width: 68px;
+    height: 68px;
   }
-  .home-contributors__more {
-    min-height: 64px;
+  .home-contributors__name {
+    max-width: 78px;
+    font-size: 0.82rem;
   }
 }
 
