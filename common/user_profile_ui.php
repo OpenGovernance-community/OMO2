@@ -58,7 +58,7 @@ if (!function_exists('commonUserProfileFormatBirthDate')) {
 }
 
 if (!function_exists('commonUserProfileBuildBirthdaySummary')) {
-    function commonUserProfileBuildBirthdaySummary($birthDate, DateTimeInterface $referenceDate = null, DateTimeZone $timezone = null)
+    function commonUserProfileBuildBirthdaySummary($birthDate, ?DateTimeInterface $referenceDate = null, ?DateTimeZone $timezone = null)
     {
         if (!$birthDate instanceof DateTimeInterface) {
             return null;
@@ -102,4 +102,3 @@ if (!function_exists('commonUserProfileBuildBirthdaySummary')) {
         ];
     }
 }
-
