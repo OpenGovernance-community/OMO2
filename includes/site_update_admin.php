@@ -55,8 +55,35 @@ function siteUpdateAdminGetGitBinary()
 
 function siteUpdateAdminGetPhpBinary()
 {
-    if (defined('PHP_BINARY') && is_string(PHP_BINARY) && PHP_BINARY !== '') {
+    if (function_exists('envValue')) {
+        $configuredBinary = trim((string)envValue('SITE_UPDATE_PHP_BINARY', ''));
+        if ($configuredBinary !== '') {
+            return $configuredBinary;
+        }
+    }
+
+    if (PHP_SAPI === 'cli' && defined('PHP_BINARY') && is_string(PHP_BINARY) && PHP_BINARY !== '') {
         return PHP_BINARY;
+    }
+
+    if (defined('PHP_BINDIR') && is_string(PHP_BINDIR) && PHP_BINDIR !== '') {
+        $candidates = array(
+            rtrim(PHP_BINDIR, '/\\') . DIRECTORY_SEPARATOR . 'php',
+            rtrim(PHP_BINDIR, '/\\') . DIRECTORY_SEPARATOR . 'php.exe',
+        );
+
+        foreach ($candidates as $candidate) {
+            if (is_file($candidate)) {
+                return $candidate;
+            }
+        }
+    }
+
+    if (defined('PHP_BINARY') && is_string(PHP_BINARY) && PHP_BINARY !== '') {
+        $binaryName = strtolower(basename(PHP_BINARY));
+        if (strpos($binaryName, 'fpm') === false && strpos($binaryName, 'cgi') === false) {
+            return PHP_BINARY;
+        }
     }
 
     return 'php';
@@ -168,8 +195,13 @@ function siteUpdateAdminBuildUpdatingPayload()
         'available' => false,
         'message' => (string)($state['message'] ?? 'Une mise a jour est deja en cours.'),
         'branch' => (string)($state['branch'] ?? ''),
+        'behindCount' => (int)($state['behindCount'] ?? 0),
         'localCommit' => (string)($state['localCommit'] ?? ''),
         'remoteCommit' => (string)($state['remoteCommit'] ?? ''),
+        'localHeadline' => (string)($state['localHeadline'] ?? ''),
+        'remoteHeadline' => (string)($state['remoteHeadline'] ?? ''),
+        'localDate' => (string)($state['localDate'] ?? ''),
+        'remoteDate' => (string)($state['remoteDate'] ?? ''),
         'startedAt' => (string)($state['startedAt'] ?? ''),
         'updatedAt' => (string)($state['updatedAt'] ?? ''),
     );
@@ -294,6 +326,76 @@ function siteUpdateAdminFetchRemoteCommit(array $context)
     return trim((string)$remoteCommit);
 }
 
+function siteUpdateAdminGetCommitSummary(array $context, $ref)
+{
+    $repoRoot = $context['repoRoot'];
+    $exitCode = 0;
+    $output = siteUpdateAdminRunCommand(
+        array(siteUpdateAdminGetGitBinary(), 'log', '-1', '--pretty=format:%H%x1f%s%x1f%cI', (string)$ref),
+        $repoRoot,
+        $exitCode
+    );
+
+    if ($exitCode !== 0 || trim((string)$output) === '') {
+        return array(
+            'commit' => '',
+            'headline' => '',
+            'date' => '',
+        );
+    }
+
+    $parts = explode("\x1f", $output);
+
+    return array(
+        'commit' => trim((string)($parts[0] ?? '')),
+        'headline' => trim((string)($parts[1] ?? '')),
+        'date' => trim((string)($parts[2] ?? '')),
+    );
+}
+
+function siteUpdateAdminGetBehindCount(array $context, $localCommit, $remoteCommit)
+{
+    if (trim((string)$localCommit) === '' || trim((string)$remoteCommit) === '' || $localCommit === $remoteCommit) {
+        return 0;
+    }
+
+    $repoRoot = $context['repoRoot'];
+    $exitCode = 0;
+    $output = siteUpdateAdminRunCommand(
+        array(siteUpdateAdminGetGitBinary(), 'rev-list', '--count', trim((string)$localCommit) . '..' . trim((string)$remoteCommit)),
+        $repoRoot,
+        $exitCode
+    );
+
+    if ($exitCode !== 0) {
+        return 0;
+    }
+
+    return max(0, (int)trim((string)$output));
+}
+
+function siteUpdateAdminBuildAvailableMessage($behindCount, array $remoteSummary)
+{
+    $behindCount = max(0, (int)$behindCount);
+    $headline = trim((string)($remoteSummary['headline'] ?? ''));
+
+    if ($behindCount <= 0 && $headline === '') {
+        return 'Une nouvelle version est disponible.';
+    }
+
+    if ($headline === '') {
+        return $behindCount <= 1
+            ? 'Une mise a jour est disponible.'
+            : $behindCount . ' mises a jour sont disponibles.';
+    }
+
+    if ($behindCount <= 1) {
+        return 'Une mise a jour est disponible : ' . $headline;
+    }
+
+    return $behindCount . ' mises a jour sont disponibles. Derniere version : ' . $headline;
+}
+
 function siteUpdateAdminHasTrackedLocalChanges(array $context)
 {
     $repoRoot = $context['repoRoot'];
@@ -368,6 +470,10 @@ function siteUpdateAdminCheckVersionStatus()
         );
     }
 
+    $localSummary = siteUpdateAdminGetCommitSummary($context, $context['localCommit']);
+    $remoteSummary = siteUpdateAdminGetCommitSummary($context, $remoteCommit);
+    $behindCount = siteUpdateAdminGetBehindCount($context, $context['localCommit'], $remoteCommit);
+
     return array(
         'status' => true,
         'supported' => true,
@@ -375,10 +481,15 @@ function siteUpdateAdminCheckVersionStatus()
         'available' => $remoteCommit !== $context['localCommit'],
         'branch' => (string)$context['branch'],
         'tracking' => (string)$context['tracking'],
+        'behindCount' => $behindCount,
         'localCommit' => (string)$context['localCommit'],
         'remoteCommit' => (string)$remoteCommit,
+        'localHeadline' => (string)($localSummary['headline'] ?? ''),
+        'remoteHeadline' => (string)($remoteSummary['headline'] ?? ''),
+        'localDate' => (string)($localSummary['date'] ?? ''),
+        'remoteDate' => (string)($remoteSummary['date'] ?? ''),
         'message' => $remoteCommit !== $context['localCommit']
-            ? 'Une nouvelle version est disponible.'
+            ? siteUpdateAdminBuildAvailableMessage($behindCount, $remoteSummary)
             : 'Le site est deja a jour.',
     );
 }
@@ -403,6 +514,9 @@ function siteUpdateAdminRunUpdate($actorUserId)
 
         $remoteCommit = siteUpdateAdminFetchRemoteCommit($context);
         $localCommit = (string)$context['localCommit'];
+        $localSummary = siteUpdateAdminGetCommitSummary($context, $localCommit);
+        $remoteSummary = siteUpdateAdminGetCommitSummary($context, $remoteCommit);
+        $behindCount = siteUpdateAdminGetBehindCount($context, $localCommit, $remoteCommit);
 
         siteUpdateAdminWriteState(array(
             'status' => 'running',
@@ -410,8 +524,13 @@ function siteUpdateAdminRunUpdate($actorUserId)
             'startedAt' => gmdate('c'),
             'userId' => $actorUserId,
             'branch' => (string)$context['tracking'],
+            'behindCount' => $behindCount,
             'localCommit' => $localCommit,
             'remoteCommit' => $remoteCommit,
+            'localHeadline' => (string)($localSummary['headline'] ?? ''),
+            'remoteHeadline' => (string)($remoteSummary['headline'] ?? ''),
+            'localDate' => (string)($localSummary['date'] ?? ''),
+            'remoteDate' => (string)($remoteSummary['date'] ?? ''),
         ));
 
         if ($remoteCommit === $localCommit) {
@@ -419,8 +538,13 @@ function siteUpdateAdminRunUpdate($actorUserId)
                 'status' => true,
                 'updated' => false,
                 'message' => 'Le site est deja a jour.',
+                'behindCount' => 0,
                 'localCommit' => $localCommit,
                 'remoteCommit' => $remoteCommit,
+                'localHeadline' => (string)($localSummary['headline'] ?? ''),
+                'remoteHeadline' => (string)($remoteSummary['headline'] ?? ''),
+                'localDate' => (string)($localSummary['date'] ?? ''),
+                'remoteDate' => (string)($remoteSummary['date'] ?? ''),
                 'branch' => (string)$context['tracking'],
             );
         }
@@ -442,8 +566,13 @@ function siteUpdateAdminRunUpdate($actorUserId)
             'startedAt' => gmdate('c'),
             'userId' => $actorUserId,
             'branch' => (string)$context['tracking'],
+            'behindCount' => $behindCount,
             'localCommit' => $localCommit,
             'remoteCommit' => $remoteCommit,
+            'localHeadline' => (string)($localSummary['headline'] ?? ''),
+            'remoteHeadline' => (string)($remoteSummary['headline'] ?? ''),
+            'localDate' => (string)($localSummary['date'] ?? ''),
+            'remoteDate' => (string)($remoteSummary['date'] ?? ''),
         ));
 
         $migrationOutput = siteUpdateAdminRunCommand(
@@ -464,12 +593,19 @@ function siteUpdateAdminRunUpdate($actorUserId)
             $updatedLocalCommit = $remoteCommit;
         }
 
+        $updatedSummary = siteUpdateAdminGetCommitSummary($context, trim((string)$updatedLocalCommit));
+
         return array(
             'status' => true,
             'updated' => true,
             'message' => 'La mise a jour du site est terminee.',
+            'behindCount' => 0,
             'localCommit' => trim((string)$updatedLocalCommit),
             'remoteCommit' => $remoteCommit,
+            'localHeadline' => (string)($updatedSummary['headline'] ?? ''),
+            'remoteHeadline' => (string)($remoteSummary['headline'] ?? ''),
+            'localDate' => (string)($updatedSummary['date'] ?? ''),
+            'remoteDate' => (string)($remoteSummary['date'] ?? ''),
             'branch' => (string)$context['tracking'],
             'migrationOutput' => siteUpdateAdminFormatCommandOutput($migrationOutput),
             'resetOutput' => siteUpdateAdminFormatCommandOutput($resetOutput),

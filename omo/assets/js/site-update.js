@@ -13,6 +13,27 @@
         return value ? value.slice(0, 7) : '';
     }
 
+    function formatDate(value) {
+        var raw = String(value || '').trim();
+        if (!raw) {
+            return '';
+        }
+
+        var parsed = new Date(raw);
+        if (Number.isNaN(parsed.getTime())) {
+            return '';
+        }
+
+        try {
+            return new Intl.DateTimeFormat('fr-CH', {
+                dateStyle: 'medium',
+                timeStyle: 'short'
+            }).format(parsed);
+        } catch (error) {
+            return parsed.toLocaleString();
+        }
+    }
+
     function ensureBannerRoot() {
         var existing = document.getElementById('omoSiteUpdateBanner');
         if (existing) {
@@ -168,15 +189,23 @@
     function renderMeta(payload) {
         var pills = [];
         var branch = payload && payload.branch ? String(payload.branch) : '';
+        var behindCount = payload && payload.behindCount ? Number(payload.behindCount) : 0;
+        var localDate = formatDate(payload && payload.localDate);
+        var remoteDate = formatDate(payload && payload.remoteDate);
         var localCommit = shortenCommit(payload && payload.localCommit);
-        var remoteCommit = shortenCommit(payload && payload.remoteCommit);
 
         if (branch) {
             pills.push('<span class="omo-site-update-banner__pill">' + escapeHtml(branch) + '</span>');
         }
 
-        if (localCommit && remoteCommit && localCommit !== remoteCommit) {
-            pills.push('<span class="omo-site-update-banner__pill">' + escapeHtml(localCommit + ' -> ' + remoteCommit) + '</span>');
+        if (behindCount > 0) {
+            pills.push('<span class="omo-site-update-banner__pill">' + escapeHtml(behindCount + (behindCount > 1 ? ' versions' : ' version')) + '</span>');
+        }
+
+        if (remoteDate) {
+            pills.push('<span class="omo-site-update-banner__pill">' + escapeHtml('Derniere version: ' + remoteDate) + '</span>');
+        } else if (localDate) {
+            pills.push('<span class="omo-site-update-banner__pill">' + escapeHtml('Version installee: ' + localDate) + '</span>');
         } else if (localCommit) {
             pills.push('<span class="omo-site-update-banner__pill">' + escapeHtml(localCommit) + '</span>');
         }
@@ -271,10 +300,11 @@
                 }
 
                 if (payload.available === true) {
+                    var behindCount = payload.behindCount ? Number(payload.behindCount) : 0;
                     setBannerState(root, {
                         type: '',
-                        title: 'Nouvelle version disponible',
-                        message: payload.message || 'Une version plus recente du site peut etre installee maintenant.',
+                        title: behindCount > 1 ? (behindCount + ' mises a jour disponibles') : 'Nouvelle version disponible',
+                        message: payload.message || payload.remoteHeadline || 'Une version plus recente du site peut etre installee maintenant.',
                         metaHtml: renderMeta(payload),
                         showRun: true,
                         runDisabled: false,
@@ -341,7 +371,7 @@
                     setBannerState(root, {
                         type: 'success',
                         title: payload.updated === false ? 'Site deja a jour' : 'Mise a jour terminee',
-                        message: payload.message || 'La mise a jour du site est terminee.',
+                        message: payload.message || payload.localHeadline || 'La mise a jour du site est terminee.',
                         metaHtml: renderMeta(payload),
                         showRun: false,
                         showDismiss: true
