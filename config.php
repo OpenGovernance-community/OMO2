@@ -31,6 +31,7 @@ $GLOBALS['mailAuth'] = envBool('MAIL_AUTH', true);
 $GLOBALS['mailCharset'] = envValue('MAIL_CHARSET', 'UTF-8');
 $GLOBALS['mailUser'] = envValue('MAIL_USER', '');
 $GLOBALS['mailPassword'] = envValue('MAIL_PASS', '');
+$GLOBALS['mailTimeout'] = max(3, envInt('MAIL_TIMEOUT', 10));
 
 // Autres acces / integrations
 $GLOBALS['paypalClientId'] = envValue('PAYPAL_CLIENT_ID', '');

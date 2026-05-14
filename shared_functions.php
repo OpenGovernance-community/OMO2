@@ -217,6 +217,9 @@
 		$mail->Port = $GLOBALS["mailPort"];
 		$mail->SMTPSecure = $GLOBALS["mailSecure"];
 		$mail->SMTPAuth = $GLOBALS["mailAuth"];
+		$mail->Timeout = max(3, (int)($GLOBALS["mailTimeout"] ?? 10));
+		$mail->Timelimit = max(3, (int)($GLOBALS["mailTimeout"] ?? 10));
+		$mail->SMTPKeepAlive = false;
 		
 		$mail->CharSet = $GLOBALS["mailCharset"];
 
