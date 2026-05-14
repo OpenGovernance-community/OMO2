@@ -84,6 +84,7 @@ if (!commonGetCurrentUserId() && !$isDemoGuest) {
 
 $currentUserName = $isDemoGuest ? 'Démo' : commonGetCurrentUserDisplayName();
 $currentUserId = commonGetCurrentUserId();
+$isSiteAdmin = !$isDemoGuest && commonCurrentUserIsSiteAdmin();
 $omoPwaHeadHtml = omoBuildPwaHeadHtml(
     commonGetOrganizationAccentColor($organizationContext, '#004663'),
     $organizationContext['logo'] ?? $omoDefaultLogo,
@@ -182,9 +183,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
                 $organizationMembership = $accessibleOrganization->getMembership($currentUserId, true);
                 $canDeleteOrganization = $accessibleOrganization->canDelete();
                 $organizationShortname = trim((string)$accessibleOrganization->get('shortname'));
-                $organizationUrl = $organizationShortname !== ''
-                    ? commonBuildUrl('/omo/', commonBuildOrganizationHost($organizationShortname, commonGetRootHost()))
-                    : commonBuildUrl('/omo/o/' . (int)$accessibleOrganization->getId(), commonGetRootHost());
+                $organizationUrl = commonBuildOrganizationHomeUrl((int)$accessibleOrganization->getId(), $organizationShortname, commonGetRootHost());
                 $organizationLogo = trim((string)$accessibleOrganization->get('logo'));
                 $organizationBanner = trim((string)$accessibleOrganization->get('banner'));
                 $organizationColor = trim((string)$accessibleOrganization->get('color')) ?: '#4f46e5';
@@ -192,9 +191,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
                 $organizationInitial = function_exists('mb_substr')
                     ? mb_strtoupper(mb_substr($organizationName, 0, 1))
                     : strtoupper(substr($organizationName, 0, 1));
-                $organizationHostLabel = $organizationShortname !== ''
-                    ? $organizationShortname . '.' . commonGetRootHost()
-                    : ($organizationDomain !== '' ? $organizationDomain : 'Organisation');
+                $organizationHostLabel = commonBuildOrganizationAccessLabel((int)$accessibleOrganization->getId(), $organizationShortname, commonGetRootHost());
                 ?>
             <article
                 class="auth-org-card auth-org-card--directory auth-org-card--directory-managed"
@@ -642,6 +639,19 @@ if ($isOrganizationHub && !$isDemoGuest) {
             });
         })();
     </script>
+    <?php if ($isSiteAdmin) { ?>
+    <script>
+        window.omoSiteUpdateConfig = {
+            enabled: true,
+            statusUrl: '/omo/api/parameters/site_update_status.php',
+            runUrl: '/omo/api/parameters/site_update_run.php'
+        };
+    </script>
+    <script src="/omo/assets/js/site-update.js"></script>
+    <script>
+        window.omoInitSiteUpdateCheck(window.omoSiteUpdateConfig);
+    </script>
+    <?php } ?>
 </body>
 </html>
 <?php
@@ -842,6 +852,13 @@ window.omoConfig = <?=
             'currentUserId' => $currentUserId,
             'currentUserName' => $currentUserName,
             'userProfile' => $currentUserProfile,
+            'siteUpdate' => $isSiteAdmin ? [
+                'enabled' => true,
+                'statusUrl' => '/omo/api/parameters/site_update_status.php',
+                'runUrl' => '/omo/api/parameters/site_update_run.php',
+            ] : [
+                'enabled' => false,
+            ],
             'patreonPrompt' => [
                 'shouldShow' => $patreonPromptShouldShow,
                 'title' => 'Soutenir le projet',
@@ -854,6 +871,9 @@ window.omoConfig = <?=
 ?>;
 </script>
 <script src="/omo/assets/js/install.js" defer></script>
+<?php if ($isSiteAdmin) { ?>
+<script src="/omo/assets/js/site-update.js"></script>
+<?php } ?>
 <script src="assets/js/app.js"></script>
 
 <script>

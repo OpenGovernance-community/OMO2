@@ -489,12 +489,12 @@
 			$organization = new Organization();
 			if ($organization->load((int)$this->get('IDorganization'))) {
 				$shortname = trim((string)$organization->get('shortname'));
-				if ($shortname !== '') {
+				if (commonUseOrganizationSubdomains() && $shortname !== '') {
 					return \commonBuildUrl($path, \commonBuildOrganizationHost($shortname, \commonGetRootHost()));
 				}
 			}
 
-			return \commonBuildUrl($path, \commonGetRequestHost());
+			return \commonBuildUrl($path, \commonGetRootHost(\commonGetRequestHost()));
 		}
 	}
 

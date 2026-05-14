@@ -142,6 +142,17 @@ function autoInstallGetFieldDefinitions()
                         'EN' => 'EN',
                     ],
                 ],
+                [
+                    'key' => 'ORGANIZATION_SUBDOMAIN_ROUTING',
+                    'label' => 'Sous-domaines par organisation',
+                    'type' => 'select',
+                    'required' => false,
+                    'options' => [
+                        'true' => 'Oui',
+                        'false' => 'Non',
+                    ],
+                    'help' => 'Active les URL du type orgname.domaine.com. Cela demande une configuration speciale de l hebergement, avec DNS wildcard et serveur web capable d accepter les sous-domaines.',
+                ],
             ],
         ],
         'database' => [
@@ -1182,6 +1193,7 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors,
     $isMailVerified = is_array($verificationState) && !empty($verificationState['verified']);
     $hasVerificationCode = is_array($verificationState) && !$isMailVerified;
     $canCompleteInstall = $isMailVerified || $hasVerificationCode;
+    $shouldFocusVerificationCode = $hasVerificationCode || $isMailVerified;
     ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -1537,7 +1549,7 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors,
         </section>
 
         <div class="auto-install-layout">
-            <form method="post" action="/install.php" class="auto-install-form">
+            <form method="post" action="/install.php#mail-verification" class="auto-install-form">
                 <?php foreach ($definitions as $sectionKey => $section): ?>
                     <section class="auto-install-section generic-section generic-section--stack">
                         <div class="auto-install-section-header">
@@ -1621,7 +1633,7 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors,
                     </section>
                 <?php endforeach; ?>
 
-                <section class="auto-install-section generic-section generic-section--stack">
+                <section id="mail-verification" class="auto-install-section generic-section generic-section--stack">
                     <div class="auto-install-section-header">
                         <p class="generic-card-title generic-card-title--small">Verification e-mail</p>
                         <p class="auto-install-section-intro">Le site envoie un code a l adresse administrateur pour confirmer que le SMTP fonctionne vraiment avant la fin de l installation.</p>
@@ -1792,6 +1804,16 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors,
             }
 
             updatePasswordUi();
+
+            <?php if ($shouldFocusVerificationCode): ?>
+            var verificationCodeInput = document.getElementById('INSTALL_MAIL_VERIFICATION_CODE');
+            if (verificationCodeInput) {
+                window.setTimeout(function () {
+                    verificationCodeInput.focus();
+                    verificationCodeInput.select();
+                }, 0);
+            }
+            <?php endif; ?>
         })();
     </script>
 </body>

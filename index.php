@@ -13,10 +13,11 @@
 	$subdomain = $parts[0] ?? '';
 	$isLocalhostSubdomain = count($parts) === 2 && ($parts[1] ?? '') === 'localhost';
 	$reservedEnvironmentSubdomains = commonGetConfiguredEnvironmentSubdomains();
+	$organizationSubdomainRoutingEnabled = commonUseOrganizationSubdomains();
 	$isEnvironmentRootHost = count($parts) >= 3
 		&& in_array((string)($parts[count($parts) - 3] ?? ''), $reservedEnvironmentSubdomains, true);
 	$rootPartCount = $isEnvironmentRootHost ? 3 : 2;
-	$hasOrganizationSubdomain = $isLocalhostSubdomain || count($parts) > $rootPartCount;
+	$hasOrganizationSubdomain = $organizationSubdomainRoutingEnabled && ($isLocalhostSubdomain || count($parts) > $rootPartCount);
 
 	if (isset($routes[$subdomain])) {
 		require __DIR__ . $routes[$subdomain];

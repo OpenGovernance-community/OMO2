@@ -98,9 +98,7 @@ if (!$isEditMode) {
 }
 
 $shortname = trim((string)$organization->get("shortname"));
-$redirectUrl = $shortname !== ''
-    ? commonBuildUrl('/omo/', commonBuildOrganizationHost($shortname, commonGetRootHost()))
-    : commonBuildUrl('/omo/o/' . (int)$organization->getId(), commonGetRootHost());
+$redirectUrl = commonBuildOrganizationHomeUrl((int)$organization->getId(), $shortname, commonGetRootHost());
 
 echo json_encode(array(
     "success" => true,

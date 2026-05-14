@@ -51,6 +51,11 @@ function commonGetReservedEnvironmentSubdomains()
     return commonGetConfiguredEnvironmentSubdomains();
 }
 
+function commonBuildOrganizationEntryPath($organizationId)
+{
+    return '/omo/o/' . (int)$organizationId;
+}
+
 function commonGetHostRootPartCount(array $parts)
 {
     $partCount = count($parts);
@@ -124,6 +129,34 @@ function commonBuildOrganizationHost($shortname, $baseHost = null)
     }
 
     return $shortname . '.' . $hostOnly . $port;
+}
+
+function commonBuildOrganizationHomeUrl($organizationId, $shortname = '', $baseHost = null, $scheme = null)
+{
+    $organizationId = (int)$organizationId;
+    $shortname = strtolower(trim((string)$shortname));
+
+    if (commonUseOrganizationSubdomains() && $shortname !== '') {
+        return commonBuildUrl('/omo/', commonBuildOrganizationHost($shortname, commonGetRootHost($baseHost)), $scheme);
+    }
+
+    return commonBuildUrl(commonBuildOrganizationEntryPath($organizationId), commonGetRootHost($baseHost), $scheme);
+}
+
+function commonBuildOrganizationAccessLabel($organizationId, $shortname = '', $baseHost = null)
+{
+    $rootHost = commonGetRootHost($baseHost);
+    $shortname = strtolower(trim((string)$shortname));
+
+    if (commonUseOrganizationSubdomains() && $shortname !== '' && $rootHost !== '') {
+        return $shortname . '.' . $rootHost;
+    }
+
+    if ($rootHost === '') {
+        return commonBuildOrganizationEntryPath($organizationId);
+    }
+
+    return $rootHost . commonBuildOrganizationEntryPath($organizationId);
 }
 
 function commonGetRequestSubdomain($host = null)
@@ -324,9 +357,12 @@ function commonResolveOrganizationContext($defaultOrganizationId = 1)
 {
     $host = commonGetRequestHost();
     $requestedOrganizationId = commonGetRequestedOrganizationId();
+    $organizationSubdomainsEnabled = commonUseOrganizationSubdomains();
+    $requestSubdomain = commonGetRequestSubdomain($host);
     $usePathRouting = !commonIsDemoHost($host)
-        && commonGetRequestSubdomain($host) === ''
+        && (!$organizationSubdomainsEnabled || $requestSubdomain === '')
         && $requestedOrganizationId > 0;
+    $routeMode = commonIsDemoHost($host) ? 'host' : (($organizationSubdomainsEnabled && !$usePathRouting) ? 'host' : 'path');
 
     if (commonIsDemoHost($host)) {
         $organization = new \dbObject\Organization();
@@ -334,6 +370,8 @@ function commonResolveOrganizationContext($defaultOrganizationId = 1)
     } elseif ($usePathRouting) {
         $organization = new \dbObject\Organization();
         $organization = $organization->load($requestedOrganizationId) ? $organization : false;
+    } elseif (!$organizationSubdomainsEnabled && $requestSubdomain !== '') {
+        $organization = false;
     } else {
         $organization = \dbObject\Organization::resolveFromHost($host, (int)$defaultOrganizationId);
     }
@@ -354,7 +392,7 @@ function commonResolveOrganizationContext($defaultOrganizationId = 1)
             'host' => $host,
             'error' => 'invalid_subdomain',
             'isDemo' => commonIsDemoHost($host),
-            'routeMode' => $usePathRouting ? 'path' : 'host',
+            'routeMode' => $routeMode,
         ];
     }
 
@@ -370,7 +408,7 @@ function commonResolveOrganizationContext($defaultOrganizationId = 1)
         'host' => $host,
         'error' => null,
         'isDemo' => commonIsDemoHost($host),
-        'routeMode' => $usePathRouting ? 'path' : 'host',
+        'routeMode' => $routeMode,
     ];
 
     $_SESSION['currentOrganization'] = $context['id'];
@@ -405,7 +443,7 @@ function commonResolveLoginActivityOrganizationId($returnTo = null)
     }
 
     $host = commonGetRequestHost();
-    if ($host !== '' && !commonIsDemoHost($host) && commonGetRequestSubdomain($host) !== '') {
+    if (commonUseOrganizationSubdomains() && $host !== '' && !commonIsDemoHost($host) && commonGetRequestSubdomain($host) !== '') {
         $organization = \dbObject\Organization::resolveFromHost($host, 0);
         if ($organization) {
             return (int)$organization->getId();

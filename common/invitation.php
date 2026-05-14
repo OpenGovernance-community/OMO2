@@ -13,16 +13,7 @@ function commonInvitationEscape($value)
 
 function commonInvitationBuildRedirectUrl(\dbObject\Organization $organization)
 {
-	$targetHost = commonGetRequestHost();
-	$shortname = trim((string)$organization->get('shortname'));
-	if ($shortname !== '') {
-		$builtHost = commonBuildOrganizationHost($shortname, commonGetRootHost($targetHost));
-		if (trim((string)$builtHost) !== '') {
-			$targetHost = $builtHost;
-		}
-	}
-
-	return commonBuildUrl('/omo/', $targetHost);
+	return commonBuildOrganizationHomeUrl((int)$organization->getId(), (string)$organization->get('shortname'), commonGetRequestHost());
 }
 
 $token = trim((string)($_GET['token'] ?? $_POST['token'] ?? ''));

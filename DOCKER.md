@@ -30,6 +30,7 @@ Ce second fichier est ignore par Git et injecte comme variables d'environnement 
 La separation recommandee est donc :
 
 - `docker/app/.env` : valeurs Docker publiques et partageables comme `DB_HOST=db`, `MAIL_HOST=mailpit`, etc.
+- `docker/app/.env` force aussi `ORGANIZATION_SUBDOMAIN_ROUTING=true` pour garder le routage par sous-domaines avec `localtest.me`
 - `docker/app/.env.private` : secrets locaux comme `GITHUB_BUGREPORT_TOKEN`, `TELEGRAM_BOT_TOKEN`, `OPENAI_API_KEY`, mots de passe, etc.
 
 Un exemple de depart est fourni dans :
