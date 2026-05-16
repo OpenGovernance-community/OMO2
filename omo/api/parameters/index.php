@@ -8,6 +8,11 @@ $organization = null;
 $canEditOrganization = false;
 $organizationName = '';
 $isSiteAdmin = commonCurrentUserIsSiteAdmin();
+$currentLocale = strtolower(trim((string)($_COOKIE['lang'] ?? 'fr')));
+
+if (!in_array($currentLocale, ['fr', 'en', 'de'], true)) {
+    $currentLocale = 'fr';
+}
 
 if ($currentOrganizationId > 0) {
     $organization = new \dbObject\Organization();
@@ -82,10 +87,39 @@ if ($organizationName === '') {
         </div>
         <?php endif; ?>
         </div>
+        <section class="omo-settings-display generic-section generic-section--stack" data-omo-display-settings>
+            <div class="omo-settings-display__header">
+                <h3 class="generic-card-title generic-card-title--section">Affichage</h3>
+                <p class="omo-settings-display__hint">Choisissez ici la langue et l'apparence de l'interface.</p>
+            </div>
+            <div class="omo-settings-display__grid">
+                <label class="omo-settings-display__field">
+                    <span class="omo-settings-display__label">Langue</span>
+                    <select class="generic-form-control" data-omo-language-select>
+                        <option value="fr" <?= $currentLocale === 'fr' ? 'selected' : '' ?>>FR</option>
+                        <option value="en" <?= $currentLocale === 'en' ? 'selected' : '' ?>>EN</option>
+                        <option value="de" <?= $currentLocale === 'de' ? 'selected' : '' ?>>DE</option>
+                    </select>
+                </label>
+                <label class="omo-settings-display__field">
+                    <span class="omo-settings-display__label">Theme</span>
+                    <select class="generic-form-control" data-omo-theme-select>
+                        <option value="system">Systeme</option>
+                        <option value="light">Clair</option>
+                        <option value="dark">Sombre</option>
+                    </select>
+                </label>
+            </div>
+            <p class="omo-settings-display__note">La langue recharge la page. Le theme est applique tout de suite.</p>
+        </section>
     </div>
 </div>
 
 <style>
+.omo-settings .omo-panel-view__body_content {
+    padding-bottom: 112px;
+}
+
 .omo-settings__grid {
     align-items: start;
 }
@@ -104,9 +138,95 @@ if ($organizationName === '') {
 .omo-settings__card span {
     color: var(--color-text-light);
 }
+
+.omo-settings-display {
+    position: sticky;
+    bottom: 0;
+    z-index: 4;
+    margin-top: 20px;
+    --generic-section-padding-block: 16px;
+    --generic-section-padding-inline: 18px;
+    background:
+        linear-gradient(135deg, color-mix(in srgb, var(--color-surface, #ffffff) 94%, transparent), color-mix(in srgb, var(--color-surface-alt, #f8fafc) 88%, transparent));
+    box-shadow: 0 -10px 30px rgba(15, 23, 42, 0.08);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.omo-settings-display__header {
+    display: grid;
+    gap: 6px;
+}
+
+.omo-settings-display__hint,
+.omo-settings-display__note {
+    margin: 0;
+    color: var(--color-text-light);
+}
+
+.omo-settings-display__grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.omo-settings-display__field {
+    display: grid;
+    gap: 8px;
+}
+
+.omo-settings-display__label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+@media (max-width: 720px) {
+    .omo-settings .omo-panel-view__body_content {
+        padding-bottom: 132px;
+    }
+
+    .omo-settings-display__grid {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
 
 <script>
+(function () {
+var languageSelect = document.querySelector('[data-omo-language-select]');
+var themeSelect = document.querySelector('[data-omo-theme-select]');
+
+if (themeSelect) {
+    if (typeof window.sharedGetThemePreference === 'function') {
+        themeSelect.value = window.sharedGetThemePreference();
+    } else {
+        try {
+            themeSelect.value = window.localStorage.getItem('omo-theme-preference') || 'system';
+        } catch (error) {
+            themeSelect.value = 'system';
+        }
+    }
+}
+
+if (languageSelect) {
+    languageSelect.addEventListener('change', function () {
+        var nextLocale = String(languageSelect.value || '').toLowerCase();
+
+        if (nextLocale !== 'fr' && nextLocale !== 'en' && nextLocale !== 'de') {
+            return;
+        }
+
+        if (typeof window.setCookie === 'function') {
+            window.setCookie('lang', nextLocale, 365);
+        } else {
+            document.cookie = 'lang=' + encodeURIComponent(nextLocale) + ';path=/;max-age=' + String(365 * 24 * 60 * 60) + ';SameSite=Lax';
+        }
+
+        window.location.reload();
+    });
+}
+
 document.querySelectorAll('[data-omo-settings-drawer-url]').forEach(function (button) {
     if (button.dataset.omoSettingsReady === '1') {
         return;
@@ -167,5 +287,6 @@ document.querySelectorAll('[data-omo-settings-modal-url]').forEach(function (but
             button.getAttribute('data-omo-settings-modal-mode') || 'iframe'
         );
     });
+});
 })();
 </script>

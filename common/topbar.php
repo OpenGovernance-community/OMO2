@@ -71,10 +71,12 @@ function commonRenderTopbar(array $options = [])
     if ($brandLogo === '') {
         $brandLogo = '/img/logo-OGC.png';
     }
+
     $brandRootHost = commonGetRootHost($organizationContext['host'] ?? null);
     if ($brandRootHost === '') {
         $brandRootHost = commonGetRootHost();
     }
+
     $brandHref = commonBuildUrl('/omo/', $brandRootHost);
     $brandLabel = trim((string)($options['brandLabel'] ?? ($organizationContext['name'] ?? '')));
 
@@ -92,9 +94,11 @@ function commonRenderTopbar(array $options = [])
             'placeholder' => (string)($options['search']['placeholder'] ?? 'Rechercher'),
             'callback' => (string)($options['search']['callback'] ?? ''),
             'buttonLabel' => (string)($options['search']['buttonLabel'] ?? 'Recherche'),
+            'submitLabel' => (string)($options['search']['submitLabel'] ?? 'Lancer'),
             'scopeProvider' => (string)($options['search']['scopeProvider'] ?? ''),
             'scopeLabel' => (string)($options['search']['scopeLabel'] ?? 'Chercher dans'),
             'scopeHint' => (string)($options['search']['scopeHint'] ?? ''),
+            'advancedHint' => (string)($options['search']['advancedHint'] ?? 'D autres filtres avances pourront s ajouter ici.'),
         ],
         'bugReport' => [
             'enabled' => !empty($options['bugReport']['enabled']),
@@ -106,16 +110,40 @@ function commonRenderTopbar(array $options = [])
         ],
         'profile' => [
             'enabled' => array_key_exists('enabled', $options['profile'] ?? []) ? !empty($options['profile']['enabled']) : true,
-            'editLabel' => (string)($options['profile']['editLabel'] ?? 'Éditer le profil'),
+            'editLabel' => (string)($options['profile']['editLabel'] ?? 'Editer le profil'),
             'editTitle' => (string)($options['profile']['editTitle'] ?? 'Profil'),
             'editMode' => (string)($options['profile']['editMode'] ?? 'fetch'),
             'editUrl' => (string)($options['profile']['editUrl'] ?? '/popup/profil.php'),
             'editCallback' => (string)($options['profile']['editCallback'] ?? ''),
             'buttonLabel' => (string)($options['profile']['buttonLabel'] ?? 'Profil'),
+            'summaryFallback' => (string)($options['profile']['summaryFallback'] ?? 'Resume du profil'),
+            'details' => [
+                'nameLabel' => (string)($options['profile']['details']['nameLabel'] ?? 'Nom'),
+                'emailLabel' => (string)($options['profile']['details']['emailLabel'] ?? 'E-mail'),
+                'usernameLabel' => (string)($options['profile']['details']['usernameLabel'] ?? 'Identifiant'),
+                'emptyValueLabel' => (string)($options['profile']['details']['emptyValueLabel'] ?? 'Non renseigne'),
+            ],
             'data' => commonResolveTopbarProfileData($organizationContext, $options['profile'] ?? []),
         ],
         'helpLabel' => (string)($options['helpLabel'] ?? 'Aide'),
         'helpItems' => array_values($options['helpItems'] ?? []),
+        'logoutLabel' => (string)($options['logoutLabel'] ?? 'Se deconnecter'),
+        'modal' => [
+            'defaultTitle' => (string)($options['modal']['defaultTitle'] ?? 'Panneau'),
+            'closeLabel' => (string)($options['modal']['closeLabel'] ?? 'Fermer'),
+        ],
+        'drawer' => [
+            'defaultTitle' => (string)($options['drawer']['defaultTitle'] ?? 'Panneau lateral'),
+            'closeLabel' => (string)($options['drawer']['closeLabel'] ?? 'Fermer'),
+        ],
+        'i18n' => [
+            'loadingLabel' => (string)($options['i18n']['loadingLabel'] ?? 'Chargement...'),
+            'loadErrorLabel' => (string)($options['i18n']['loadErrorLabel'] ?? 'Erreur de chargement'),
+            'helpFallbackLabel' => (string)($options['i18n']['helpFallbackLabel'] ?? 'Aide'),
+            'helpUnavailableHtml' => (string)($options['i18n']['helpUnavailableHtml'] ?? '<p>Contenu indisponible.</p>'),
+            'helpPendingHtml' => (string)($options['i18n']['helpPendingHtml'] ?? '<p>Contenu a venir.</p>'),
+            'bugReportUnavailableHtml' => (string)($options['i18n']['bugReportUnavailableHtml'] ?? '<p>Formulaire indisponible.</p>'),
+        ],
     ];
 
     $profileDisplayName = trim((string)($config['profile']['data']['displayName'] ?? ''));
@@ -123,7 +151,7 @@ function commonRenderTopbar(array $options = [])
         $profileDisplayName = trim((string)$config['userName']);
     }
     if ($profileDisplayName === '') {
-        $profileDisplayName = 'Profil';
+        $profileDisplayName = (string)$config['profile']['buttonLabel'];
     }
 
     $profileInitial = function_exists('mb_substr')
@@ -186,7 +214,7 @@ function commonRenderTopbar(array $options = [])
                             placeholder="<?= htmlspecialchars($config['search']['placeholder']) ?>"
                             aria-label="<?= htmlspecialchars($config['search']['placeholder']) ?>"
                         >
-                        <button type="submit" class="common-topbar__search-button">Lancer</button>
+                        <button type="submit" class="common-topbar__search-button"><?= htmlspecialchars($config['search']['submitLabel']) ?></button>
                     </div>
                     <?php if ($config['search']['scopeProvider'] !== ''): ?>
                     <div class="common-topbar__search-scopes" data-topbar-search-scopes hidden>
@@ -197,7 +225,7 @@ function commonRenderTopbar(array $options = [])
                         <?php endif; ?>
                     </div>
                     <?php else: ?>
-                    <div class="common-topbar__search-panel-hint">D’autres filtres avancés pourront s’ajouter ici.</div>
+                    <div class="common-topbar__search-panel-hint"><?= htmlspecialchars($config['search']['advancedHint']) ?></div>
                     <?php endif; ?>
                 </form>
             </div>
@@ -218,7 +246,7 @@ function commonRenderTopbar(array $options = [])
                         class="common-topbar__menu-item common-topbar__help-item"
                         data-topbar-help-item='<?= htmlspecialchars(json_encode($item, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8') ?>'
                     >
-                        <span class="common-topbar__help-title"><?= htmlspecialchars($item['label'] ?? 'Aide') ?></span>
+                        <span class="common-topbar__help-title"><?= htmlspecialchars($item['label'] ?? $config['i18n']['helpFallbackLabel']) ?></span>
                         <?php if (!empty($item['description'])): ?>
                             <span class="common-topbar__help-description"><?= htmlspecialchars($item['description']) ?></span>
                         <?php endif; ?>
@@ -248,7 +276,7 @@ function commonRenderTopbar(array $options = [])
                             <?php endif; ?>
                             <div class="common-topbar-profile-card__identity">
                                 <strong><?= htmlspecialchars($profileDisplayName) ?></strong>
-                                <span><?= htmlspecialchars((string)($config['profile']['data']['email'] ?: 'Résumé du profil')) ?></span>
+                                <span><?= htmlspecialchars((string)($config['profile']['data']['email'] ?: $config['profile']['summaryFallback'])) ?></span>
                             </div>
                         </div>
                     </section>
@@ -256,16 +284,16 @@ function commonRenderTopbar(array $options = [])
                     <section class="common-topbar-profile-panel__section common-topbar-profile-panel__section--details">
                         <div class="common-topbar-profile-details generic-section">
                             <div class="common-topbar-profile-details__row">
-                                <span class="common-topbar-profile-details__label">Nom</span>
+                                <span class="common-topbar-profile-details__label"><?= htmlspecialchars($config['profile']['details']['nameLabel']) ?></span>
                                 <span class="common-topbar-profile-details__value"><?= htmlspecialchars($profileDisplayName) ?></span>
                             </div>
                             <div class="common-topbar-profile-details__row">
-                                <span class="common-topbar-profile-details__label">E-mail</span>
-                                <span class="common-topbar-profile-details__value"><?= htmlspecialchars((string)($config['profile']['data']['email'] ?: 'Non renseigné')) ?></span>
+                                <span class="common-topbar-profile-details__label"><?= htmlspecialchars($config['profile']['details']['emailLabel']) ?></span>
+                                <span class="common-topbar-profile-details__value"><?= htmlspecialchars((string)($config['profile']['data']['email'] ?: $config['profile']['details']['emptyValueLabel'])) ?></span>
                             </div>
                             <div class="common-topbar-profile-details__row">
-                                <span class="common-topbar-profile-details__label">Identifiant</span>
-                                <span class="common-topbar-profile-details__value"><?= htmlspecialchars((string)($config['profile']['data']['username'] ?: 'Non renseigné')) ?></span>
+                                <span class="common-topbar-profile-details__label"><?= htmlspecialchars($config['profile']['details']['usernameLabel']) ?></span>
+                                <span class="common-topbar-profile-details__value"><?= htmlspecialchars((string)($config['profile']['data']['username'] ?: $config['profile']['details']['emptyValueLabel'])) ?></span>
                             </div>
                         </div>
                     </section>
@@ -273,7 +301,7 @@ function commonRenderTopbar(array $options = [])
                     <section class="common-topbar-profile-panel__section common-topbar-profile-panel__section--actions">
                         <div class="common-topbar-profile-actions generic-section">
                             <button type="button" class="common-topbar__menu-item common-topbar-profile-actions__button" data-topbar-profile-edit><?= htmlspecialchars($config['profile']['editLabel']) ?></button>
-                            <button type="button" class="common-topbar__menu-item common-topbar__menu-item--danger common-topbar-profile-actions__button" data-topbar-logout>Se déconnecter</button>
+                            <button type="button" class="common-topbar__menu-item common-topbar__menu-item--danger common-topbar-profile-actions__button" data-topbar-logout><?= htmlspecialchars($config['logoutLabel']) ?></button>
                         </div>
                     </section>
                 </div>
@@ -287,10 +315,10 @@ function commonRenderTopbar(array $options = [])
     <div class="common-topbar-modal__backdrop" data-topbar-modal-close></div>
     <div class="common-topbar-modal__panel" role="dialog" aria-modal="true" aria-labelledby="commonTopbarModalTitle">
         <div class="common-topbar-modal__header">
-            <h3 id="commonTopbarModalTitle">Panneau</h3>
-            <button type="button" class="common-topbar-modal__close" data-topbar-modal-close aria-label="Fermer">
+            <h3 id="commonTopbarModalTitle"><?= htmlspecialchars($config['modal']['defaultTitle']) ?></h3>
+            <button type="button" class="common-topbar-modal__close" data-topbar-modal-close aria-label="<?= htmlspecialchars($config['modal']['closeLabel']) ?>">
                 <span aria-hidden="true">&times;</span>
-                <span class="common-topbar__visually-hidden">Fermer</span>
+                <span class="common-topbar__visually-hidden"><?= htmlspecialchars($config['modal']['closeLabel']) ?></span>
             </button>
         </div>
         <div class="common-topbar-modal__body" id="commonTopbarModalBody"></div>
@@ -301,10 +329,10 @@ function commonRenderTopbar(array $options = [])
     <div class="common-topbar-drawer__backdrop" data-topbar-drawer-close></div>
     <div class="common-topbar-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="commonTopbarDrawerTitle">
         <div class="common-topbar-drawer__header">
-            <h3 id="commonTopbarDrawerTitle">Panneau latéral</h3>
-            <button type="button" class="common-topbar-drawer__close" data-topbar-drawer-close aria-label="Fermer">
+            <h3 id="commonTopbarDrawerTitle"><?= htmlspecialchars($config['drawer']['defaultTitle']) ?></h3>
+            <button type="button" class="common-topbar-drawer__close" data-topbar-drawer-close aria-label="<?= htmlspecialchars($config['drawer']['closeLabel']) ?>">
                 <span aria-hidden="true">&times;</span>
-                <span class="common-topbar__visually-hidden">Fermer</span>
+                <span class="common-topbar__visually-hidden"><?= htmlspecialchars($config['drawer']['closeLabel']) ?></span>
             </button>
         </div>
         <div class="common-topbar-drawer__body" id="commonTopbarDrawerBody"></div>
@@ -316,3 +344,5 @@ window.commonTopbarConfig = <?= json_encode($config, JSON_UNESCAPED_UNICODE | JS
 </script>
 <?php
 }
+
+?>

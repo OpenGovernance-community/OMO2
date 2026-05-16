@@ -3,7 +3,7 @@ require_once __DIR__ . '/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/common/patreon.php';
 
 $currentUserId = (int)commonGetCurrentUserId();
-$patreonConfigured = patreonIsConfigured('oauth');
+$patreonConfigured = patreonSupportUiIsEnabled();
 $patreonConfigurationMessage = patreonGetConfigurationMessage('oauth');
 $patreonConnection = false;
 $patreonConnected = false;
@@ -11,6 +11,17 @@ $patreonConnected = false;
 if ($currentUserId > 0 && $patreonConfigured) {
     $patreonConnection = \dbObject\UserPatreon::findByUserId($currentUserId);
     $patreonConnected = $patreonConnection !== false && $patreonConnection->isConnected();
+}
+
+if (!$patreonConfigured) {
+    http_response_code(404);
+    ?>
+<div class="generic-section generic-section--stack">
+    <h3 class="generic-card-title generic-card-title--medium">Fonction indisponible</h3>
+    <p>Le module Patreon n est pas configure sur ce serveur.</p>
+</div>
+<?php
+    exit;
 }
 ?>
 <div class="omo-patreon-welcome">
