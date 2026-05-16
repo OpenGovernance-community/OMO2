@@ -1,16 +1,6 @@
 <?php
 
-if (!class_exists('\dbObject\DbObject', false)) {
-    require_once dirname(__DIR__) . '/class/dbObject/dbobject.class.php';
-}
-
-if (!class_exists('\dbObject\TranslationBundle', false)) {
-    require_once dirname(__DIR__) . '/class/dbObject/translationbundle.class.php';
-}
-
-if (!class_exists('\dbObject\TranslationBundleRefreshJob', false)) {
-    require_once dirname(__DIR__) . '/class/dbObject/translationbundlerefreshjob.class.php';
-}
+// This helper expects the shared dbObject autoload to already be initialized.
 
 function translationBundleNormalizeLocale($locale)
 {
