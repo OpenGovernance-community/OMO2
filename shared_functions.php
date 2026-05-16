@@ -60,6 +60,44 @@
 		return $scheme . '://' . $host;
 	}
 
+	function appGetEnvironmentSubdomain($host = null) {
+		$host = is_string($host) && $host !== '' ? strtolower($host) : strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
+		$host = trim((string)$host);
+		$host = preg_replace('/:\d+$/', '', $host);
+
+		if ($host === '' || filter_var($host, FILTER_VALIDATE_IP)) {
+			return '';
+		}
+
+		$parts = array_values(array_filter(explode('.', $host)));
+		if (count($parts) < 3) {
+			return '';
+		}
+
+		$environmentCandidate = strtolower((string)($parts[count($parts) - 3] ?? ''));
+		if (in_array($environmentCandidate, appGetReservedEnvironmentSubdomains(), true)) {
+			return $environmentCandidate;
+		}
+
+		return '';
+	}
+
+	function appShouldExposeDevDiagnostics() {
+		if (function_exists('envBool') && envBool('APP_DEBUG', false)) {
+			return true;
+		}
+
+		return appGetEnvironmentSubdomain() === 'dev';
+	}
+
+	function appSetLastMailError($message) {
+		$GLOBALS['lastMailError'] = trim((string)$message);
+	}
+
+	function appGetLastMailError() {
+		return trim((string)($GLOBALS['lastMailError'] ?? ''));
+	}
+
 	function appBuildAbsoluteUrl($path = '') {
 		$path = (string)$path;
 		$baseUrl = appGetCurrentSiteBaseUrl();
@@ -208,19 +246,33 @@
 	function myHTMLMail($from,$to,$subject,$body,$cc=null, $bcc=null) {
 
 
-		$mail = new PHPMailer();
+		appSetLastMailError('');
+		$mail = new PHPMailer(true);
+		$debugLines = [];
 
 		// Configuration du serveur SMTP
 		$mail->isSMTP();
 		$mail->Host = $GLOBALS["mailHost"];
 		$mail->Port = $GLOBALS["mailPort"];
-		$mail->SMTPSecure = $GLOBALS["mailSecure"];
+		$mailSecure = strtolower(trim((string)($GLOBALS["mailSecure"] ?? '')));
+		if ($mailSecure === 'tls') {
+			$mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+		} elseif ($mailSecure === 'ssl') {
+			$mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+		} else {
+			$mail->SMTPSecure = $mailSecure;
+		}
 		$mail->SMTPAuth = $GLOBALS["mailAuth"];
 		$mail->Timeout = max(3, (int)($GLOBALS["mailTimeout"] ?? 10));
-		$mail->Timelimit = max(3, (int)($GLOBALS["mailTimeout"] ?? 10));
 		$mail->SMTPKeepAlive = false;
 		
 		$mail->CharSet = $GLOBALS["mailCharset"];
+		if (appShouldExposeDevDiagnostics()) {
+			$mail->SMTPDebug = SMTP::DEBUG_SERVER;
+			$mail->Debugoutput = function ($message, $level) use (&$debugLines) {
+				$debugLines[] = 'SMTP[' . (int)$level . '] ' . trim((string)$message);
+			};
+		}
 
 		// Informations d'identification pour accéder au compte mail
 		$mail->Username = $GLOBALS["mailUser"];
@@ -246,7 +298,28 @@
 			$mail->IsHTML(true);  
 		
 		// Envoi de l'e-mail
-		return $mail->send();
+		try {
+			$result = $mail->send();
+			if ($result) {
+				return true;
+			}
+		} catch (\Throwable $exception) {
+			$mailError = trim((string)$mail->ErrorInfo);
+			$debugOutput = trim(implode("\n", $debugLines));
+			$errorMessage = trim(($mailError !== '' ? $mailError : $exception->getMessage()) . ($debugOutput !== '' ? "\n" . $debugOutput : ''));
+			appSetLastMailError($errorMessage);
+			error_log('Mail send failed: ' . $errorMessage);
+			return false;
+		}
+
+		$mailError = trim((string)$mail->ErrorInfo);
+		$debugOutput = trim(implode("\n", $debugLines));
+		$errorMessage = trim($mailError . ($debugOutput !== '' ? "\n" . $debugOutput : ''));
+		appSetLastMailError($errorMessage);
+		if ($errorMessage !== '') {
+			error_log('Mail send failed: ' . $errorMessage);
+		}
+		return false;
 	}
 	
 	// Fonction de traduction raccourcie pour texte courant dans les pages
