@@ -1049,11 +1049,15 @@ function commonSendLoginCode($userId, $email, array $organizationContext, $remem
     commonStorePendingLoginToken($requestToken);
 
     if (!myHTMLMail([$fromAddress, $fromName], $email, $subject, $message)) {
-        return [
+        $response = [
             'request_token' => $requestToken,
             'return_to' => $returnTo,
             'delivery_failed' => true,
         ];
+        if (function_exists('appShouldExposeDevDiagnostics') && appShouldExposeDevDiagnostics()) {
+            $response['mail_error'] = function_exists('appGetLastMailError') ? appGetLastMailError() : '';
+        }
+        return $response;
     }
 
     return [
@@ -1085,11 +1089,15 @@ function commonHandleMagicLoginSend($defaultReturnTo = '/')
             exit;
         }
         if (!empty($loginRequest['delivery_failed'])) {
-            echo json_encode([
+            $response = [
                 'status' => 'code_pending',
                 'request_token' => $loginRequest['request_token'],
                 'warning' => 'delivery_uncertain',
-            ]);
+            ];
+            if (!empty($loginRequest['mail_error'])) {
+                $response['mail_error'] = (string)$loginRequest['mail_error'];
+            }
+            echo json_encode($response);
             exit;
         }
         echo json_encode(['status' => 'code_sent', 'request_token' => $loginRequest['request_token']]);
