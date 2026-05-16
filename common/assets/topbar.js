@@ -3,6 +3,22 @@
         return window.commonTopbarConfig || {};
     }
 
+    function getI18nValue(path, fallback) {
+        var config = getConfig();
+        var current = config;
+
+        String(path || '').split('.').forEach(function (part) {
+            if (!part || !current || typeof current !== 'object' || !(part in current)) {
+                current = null;
+                return;
+            }
+
+            current = current[part];
+        });
+
+        return typeof current === 'string' && current !== '' ? current : fallback;
+    }
+
     function runContainerCleanup(container) {
         if (!container || container.id !== 'commonTopbarModalBody') {
             return;
@@ -86,7 +102,7 @@
         }
 
         runContainerCleanup(container);
-        container.innerHTML = '<div class="loading">Chargement...</div>';
+        container.innerHTML = '<div class="loading">' + getI18nValue('i18n.loadingLabel', 'Chargement...') + '</div>';
 
         fetch(url, {
             credentials: 'same-origin',
@@ -96,7 +112,7 @@
         })
             .then(function (response) {
                 if (!response.ok) {
-                    throw new Error('Erreur de chargement');
+                    throw new Error(getI18nValue('i18n.loadErrorLabel', 'Erreur de chargement'));
                 }
 
                 return response.text();
@@ -110,7 +126,7 @@
                 }, 0);
             })
             .catch(function () {
-                container.innerHTML = '<div class="loading">Erreur de chargement</div>';
+                container.innerHTML = '<div class="loading">' + getI18nValue('i18n.loadErrorLabel', 'Erreur de chargement') + '</div>';
             });
     }
 
@@ -151,7 +167,7 @@
         closeModal();
         closeDrawer();
 
-        titleNode.textContent = title || 'Panneau latéral';
+        titleNode.textContent = title || getI18nValue('drawer.defaultTitle', 'Panneau lateral');
         if (mode === 'iframe') {
             body.innerHTML = '<iframe class="common-topbar-drawer__iframe" src="' + content + '"></iframe>';
         } else if (mode === 'fetch') {
@@ -176,7 +192,7 @@
 
         closeDrawer();
         closeModal();
-        titleNode.textContent = title || 'Panneau';
+        titleNode.textContent = title || getI18nValue('modal.defaultTitle', 'Panneau');
         if (mode === 'iframe') {
             body.innerHTML = '<iframe class="common-topbar-modal__iframe" src="' + content + '"></iframe>';
         } else if (mode === 'fetch') {
@@ -190,7 +206,7 @@
         document.body.classList.add('common-topbar-modal-open');
         window.dispatchEvent(new CustomEvent('common-topbar-modal-open', {
             detail: {
-                title: title || 'Panneau',
+                title: title || getI18nValue('modal.defaultTitle', 'Panneau'),
                 content: content,
                 mode: mode || 'html'
             }
@@ -270,7 +286,7 @@
             return [];
         }
 
-        scopes.forEach(function (scope, index) {
+        scopes.forEach(function (scope) {
             if (!scope || !scope.id || !scope.label) {
                 return;
             }
@@ -354,21 +370,25 @@
         if (item.url) {
             if (item.mode === 'drawer') {
                 openDrawer(
-                    item.title || item.label || 'Aide',
+                    item.title || item.label || getI18nValue('i18n.helpFallbackLabel', 'Aide'),
                     item.url,
                     item.contentMode === 'html' ? 'html' : (item.contentMode === 'fetch' ? 'fetch' : 'iframe')
                 );
                 return;
             }
             openModal(
-                item.title || item.label || 'Aide',
+                item.title || item.label || getI18nValue('i18n.helpFallbackLabel', 'Aide'),
                 item.url,
                 item.mode === 'fetch' ? 'fetch' : (item.mode === 'iframe' ? 'iframe' : 'html')
             );
             return;
         }
 
-        openModal(item.title || item.label || 'Aide', item.html || '<p>Contenu à venir.</p>', 'html');
+        openModal(
+            item.title || item.label || getI18nValue('i18n.helpFallbackLabel', 'Aide'),
+            item.html || getI18nValue('i18n.helpPendingHtml', '<p>Contenu a venir.</p>'),
+            'html'
+        );
     }
 
     function handleProfileEdit() {
@@ -382,7 +402,7 @@
 
         if (profile.editUrl) {
             openModal(
-                profile.editTitle || 'Profil',
+                profile.editTitle || getI18nValue('profile.editTitle', 'Profil'),
                 profile.editUrl,
                 profile.editMode === 'fetch' ? 'fetch' : (profile.editMode === 'html' ? 'html' : 'iframe')
             );
@@ -400,14 +420,18 @@
 
         if (bugReport.url) {
             openModal(
-                bugReport.title || 'Signaler un bug',
+                bugReport.title || getI18nValue('bugReport.title', 'Signaler un bug'),
                 bugReport.url,
                 bugReport.mode === 'fetch' ? 'fetch' : (bugReport.mode === 'html' ? 'html' : 'iframe')
             );
             return;
         }
 
-        openModal('Signaler un bug', '<p>Formulaire indisponible.</p>', 'html');
+        openModal(
+            getI18nValue('bugReport.title', 'Signaler un bug'),
+            getI18nValue('i18n.bugReportUnavailableHtml', '<p>Formulaire indisponible.</p>'),
+            'html'
+        );
     }
 
     function handleLogout() {
@@ -449,7 +473,10 @@
             try {
                 handleHelpItemClick(JSON.parse(helpItem.getAttribute('data-topbar-help-item')));
             } catch (e) {
-                handleHelpItemClick({ label: 'Aide', html: '<p>Contenu indisponible.</p>' });
+                handleHelpItemClick({
+                    label: getI18nValue('i18n.helpFallbackLabel', 'Aide'),
+                    html: getI18nValue('i18n.helpUnavailableHtml', '<p>Contenu indisponible.</p>')
+                });
             }
             return;
         }

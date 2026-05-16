@@ -50,9 +50,11 @@
 	}
 
 	require_once __DIR__ . '/config.php';
+	require_once __DIR__ . '/common/patreon.php';
 	homepageRegisterAutoloader();
 
-	$homepagePatreonContributors = class_exists('\\dbObject\\UserPatreon')
+	$patreonHomepageEnabled = patreonSupportUiIsEnabled();
+	$homepagePatreonContributors = $patreonHomepageEnabled && class_exists('\\dbObject\\UserPatreon')
 		? \dbObject\UserPatreon::getHomepageContributorCards(5)
 		: ['items' => [], 'totalCount' => 0, 'extraCount' => 0];
 ?>
@@ -433,9 +435,11 @@ padding:15px;
 	<div class='vertical'><h1 style='font-size:150%;'>Nous développons une nouvelle version de OpenMyOrganization!</h1>
 	<p>10 ans après la première version, nous lançons un chantier d'envergure: repenser le logiciel en intégrant nos dix années d'expériences, autant d'un point de vue des fonctionnalités que de l'ergonomie ou de la prise en main.</p>
 	<p>Accompagnez-nous dans cette grande aventure, en testant les nouvelles fonctionnalités, en soutenant financièrement son développement ou en amenant des propositions d'amélioration.</p>
+	<?php if ($patreonHomepageEnabled): ?>
     <p style='text-align:center'><a href="https://www.patreon.com/cw/OpenGovernance" target="_blank" class="btn">
         Rejoindre la communauté de soutien
       </a></p>
+	<?php endif; ?>
 </div>
 <div class="read-more-wrapper">
       <button id="toggleText" class="read-more">
@@ -522,7 +526,7 @@ padding:15px;
     </div>
   </section>
 
-  <?php if (!empty($homepagePatreonContributors['items'])): ?>
+  <?php if ($patreonHomepageEnabled && !empty($homepagePatreonContributors['items'])): ?>
   <section class="home-contributors">
     <div class="home-contributors__header">
       <h2 class="home-contributors__header-title">Ils soutiennent deja le projet</h2>
@@ -628,6 +632,7 @@ padding:15px;
 }
 </style>
 
+<?php if ($patreonHomepageEnabled): ?>
 <footer class="footer-cta">
   <div class="footer-content">
     <img src="/img/logo-OGC.png" alt="OpenGovernance.community" class="logo">
@@ -643,6 +648,7 @@ padding:15px;
     </div>
   </div>
 </footer>
+<?php endif; ?>
 
 </body>
 <script>

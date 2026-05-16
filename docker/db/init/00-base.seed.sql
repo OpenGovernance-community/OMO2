@@ -906,22 +906,6 @@ CREATE TABLE `tips` (
 
 -- --------------------------------------------------------
 
---
--- Structure de la table `translation`
---
-
-CREATE TABLE `translation` (
-  `id` int(11) NOT NULL,
-  `uid` varchar(200) NOT NULL,
-  `value` mediumtext NOT NULL,
-  `original` mediumtext DEFAULT NULL,
-  `date` datetime NOT NULL DEFAULT current_timestamp(),
-  `cpt` int(11) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
 -- Structure de la table `typeholon`
 --
 

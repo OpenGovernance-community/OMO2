@@ -1,12 +1,101 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
 
+function omoGetStructurePanelSourceLang(): array
+{
+    return [
+        'structure.actions.export' => [
+            'text' => 'Export',
+            'context' => 'Structure action menu item used to export the current structure.',
+        ],
+        'structure.actions.menu_aria' => [
+            'text' => 'Actions',
+            'context' => 'Aria label for the structure action menu toggle button.',
+        ],
+        'structure.actions.print' => [
+            'text' => 'Imprimer',
+            'context' => 'Structure action menu item used to print the current structure.',
+        ],
+        'structure.actions.share' => [
+            'text' => 'Partager',
+            'context' => 'Structure action menu item used to open the sharing dialog for the current structure.',
+        ],
+        'structure.browser.generic_name' => [
+            'text' => 'ce navigateur',
+            'context' => 'Fallback browser name used in structure warnings when the exact browser cannot be detected.',
+        ],
+        'structure.error.organization_access_denied' => [
+            'text' => 'Acces refuse a cette organisation.',
+            'context' => 'Error message shown when the structure view cannot access the current organization.',
+        ],
+        'structure.list.empty_search' => [
+            'text' => 'Aucun noeud ne correspond a cette recherche.',
+            'context' => 'Message shown in the structure list view when the current search returns no visible nodes.',
+        ],
+        'structure.list.properties.hide_aria' => [
+            'text' => 'Masquer les proprietes',
+            'context' => 'Aria label for the button that collapses role details in the structure list view.',
+        ],
+        'structure.list.properties.show_aria' => [
+            'text' => 'Afficher les proprietes',
+            'context' => 'Aria label for the button that expands role details in the structure list view.',
+        ],
+        'structure.list.search.placeholder' => [
+            'text' => 'Filtre rapide',
+            'context' => 'Placeholder shown above the structure list view search field.',
+        ],
+        'structure.message.invalid' => [
+            'text' => 'Structure invalide.',
+            'context' => 'Fallback error message shown when the structure data payload is invalid.',
+        ],
+        'structure.message.load_error' => [
+            'text' => 'Impossible de charger la structure.',
+            'context' => 'Fallback error message shown when the structure view fails to load its data.',
+        ],
+        'structure.message.no_structure' => [
+            'text' => 'Aucune structure disponible pour cette organisation.',
+            'context' => 'Message shown when the current organization has no visible structure to display.',
+        ],
+        'structure.share.modal_title' => [
+            'text' => 'Partager la structure',
+            'context' => 'Modal title used when opening the share dialog from the structure action menu.',
+        ],
+        'structure.view.toggle_label' => [
+            'text' => 'O   L',
+            'context' => 'Short toggle label used to switch between organization graph view and list view in the structure panel.',
+        ],
+        'structure.warning.brave' => [
+            'text' => 'Brave semble bloquer la lecture du canvas utilisee pour la navigation graphique, probablement a cause du bouclier anti-empreinte numerique. La vue liste a ete activee pour continuer a naviguer. Vous pouvez aussi assouplir le bouclier pour ce site.',
+            'context' => 'Warning shown in the structure panel when Brave blocks canvas pixel reading.',
+        ],
+        'structure.warning.dismiss_aria' => [
+            'text' => 'Reduire ce message',
+            'context' => 'Aria label for the button that collapses the structure browser warning.',
+        ],
+        'structure.warning.pixel_mismatch' => [
+            'text' => '{browserName} bloque ou altere la lecture du canvas utilisee pour la navigation graphique. La vue liste a ete activee pour continuer a naviguer.',
+            'context' => 'Warning shown in the structure panel when the browser alters canvas pixel reading.',
+        ],
+        'structure.warning.restore' => [
+            'text' => 'Info navigateur',
+            'context' => 'Button label used to reopen the collapsed browser warning in the structure panel.',
+        ],
+        'structure.warning.unavailable' => [
+            'text' => 'La lecture du canvas utilisee pour la navigation graphique n est pas disponible dans {browserName}. La vue liste a ete activee pour continuer a naviguer.',
+            'context' => 'Warning shown in the structure panel when canvas pixel reading is unavailable in the current browser.',
+        ],
+    ];
+}
+
+$sourceLang = omoGetStructurePanelSourceLang();
+$lang = translationBundleInit('omo_get_structure_panel', omoGetTranslationLocale(), $sourceLang);
+
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 if ($organizationId > 0) {
     $organization = new \dbObject\Organization();
     if ($organization->load($organizationId) && !$organization->canViewDetail()) {
         http_response_code(403);
-        echo '<div class="error">Acces refuse a cette organisation.</div>';
+        echo '<div class="error">' . omoApiEscape(t('structure.error.organization_access_denied')) . '</div>';
         exit;
     }
 
@@ -34,6 +123,27 @@ if (count($structureDataParams) > 0) {
 $isShareMode = function_exists('commonGetCurrentShareToken') && commonGetCurrentShareToken() !== '';
 $canCreateShareLink = !$isShareMode && (int)commonGetCurrentUserId() > 0 && commonCurrentUserHasOrganizationAccess($organizationId);
 $canExportStructure = !$isShareMode && (int)commonGetCurrentUserId() > 0 && commonCurrentUserHasOrganizationAccess($organizationId);
+$structureI18n = [
+    'actionsMenuAria' => t('structure.actions.menu_aria'),
+    'actionsExport' => t('structure.actions.export'),
+    'actionsPrint' => t('structure.actions.print'),
+    'actionsShare' => t('structure.actions.share'),
+    'browserGenericName' => t('structure.browser.generic_name'),
+    'emptySearch' => t('structure.list.empty_search'),
+    'hidePropertiesAria' => t('structure.list.properties.hide_aria'),
+    'invalidStructure' => t('structure.message.invalid'),
+    'loadError' => t('structure.message.load_error'),
+    'noStructure' => t('structure.message.no_structure'),
+    'searchPlaceholder' => t('structure.list.search.placeholder'),
+    'shareModalTitle' => t('structure.share.modal_title'),
+    'showPropertiesAria' => t('structure.list.properties.show_aria'),
+    'toggleLabel' => t('structure.view.toggle_label'),
+    'warningBrave' => t('structure.warning.brave'),
+    'warningDismissAria' => t('structure.warning.dismiss_aria'),
+    'warningPixelMismatch' => t('structure.warning.pixel_mismatch'),
+    'warningRestore' => t('structure.warning.restore'),
+    'warningUnavailable' => t('structure.warning.unavailable'),
+];
 ?>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js"></script>
@@ -536,30 +646,32 @@ input:checked + .slider::before {
         <div id="omoStructureCanvasWarning" class="structure-browser-warning" hidden>
             <div class="structure-browser-warning__content">
                 <div id="omoStructureCanvasWarningMessage" class="structure-browser-warning__message"></div>
-                <button type="button" id="omoStructureCanvasWarningDismiss" class="structure-browser-warning__dismiss" aria-label="Reduire ce message">x</button>
+                <button type="button" id="omoStructureCanvasWarningDismiss" class="structure-browser-warning__dismiss" aria-label="<?= omoApiEscape(t('structure.warning.dismiss_aria')) ?>">x</button>
             </div>
-            <button type="button" id="omoStructureCanvasWarningRestore" class="structure-browser-warning__restore">Info navigateur</button>
+            <button type="button" id="omoStructureCanvasWarningRestore" class="structure-browser-warning__restore"><?= omoApiEscape(t('structure.warning.restore')) ?></button>
         </div>
         <div class="structure-actions" id="omoStructureActions">
-            <button type="button" class="structure-actions__toggle" id="omoStructureActionsToggle" aria-label="Actions">...</button>
+            <button type="button" class="structure-actions__toggle" id="omoStructureActionsToggle" aria-label="<?= omoApiEscape(t('structure.actions.menu_aria')) ?>">...</button>
             <div class="structure-actions__panel" id="omoStructureActionsPanel">
                 <?php if ($canExportStructure) { ?>
-                    <button type="button" class="structure-actions__item" data-omo-structure-action="export">Export</button>
+                    <button type="button" class="structure-actions__item" data-omo-structure-action="export"><?= omoApiEscape(t('structure.actions.export')) ?></button>
                 <?php } ?>
                 <?php if ($canCreateShareLink) { ?>
-                    <button type="button" class="structure-actions__item" data-omo-structure-action="share">Partager</button>
+                    <button type="button" class="structure-actions__item" data-omo-structure-action="share"><?= omoApiEscape(t('structure.actions.share')) ?></button>
                 <?php } ?>
-                <button type="button" class="structure-actions__item" data-omo-structure-action="print">Imprimer</button>
+                <button type="button" class="structure-actions__item" data-omo-structure-action="print"><?= omoApiEscape(t('structure.actions.print')) ?></button>
             </div>
         </div>
 
         <div class="switch chart-toggle">
             <input type="checkbox" id="toggleSwitch" />
-            <label for="toggleSwitch" class="slider">O   L</label>
+            <label for="toggleSwitch" class="slider"><?= omoApiEscape(t('structure.view.toggle_label')) ?></label>
         </div>
     </div>
 
   <script>
+
+const structureI18n = <?= json_encode($structureI18n, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
 function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, function (char) {
@@ -1178,7 +1290,7 @@ function renderNodeList(entry, searchQuery) {
         data-omo-role-detail-toggle="${escapedNodeId}"
         aria-expanded="${isDetailOpen ? "true" : "false"}"
         aria-controls="role_item_detail_${escapedNodeId}"
-        aria-label="${isDetailOpen ? "Masquer les proprietes" : "Afficher les proprietes"}"
+        aria-label="${isDetailOpen ? structureI18n.hidePropertiesAria : structureI18n.showPropertiesAria}"
       ><span class="role-detail-toggle-icon">&#9654;</span></button>
     `;
   }
@@ -1237,7 +1349,7 @@ function ensureRoleListLayout() {
             type="search"
             id="role_list_search"
             class="role-list-search"
-            placeholder="Filtre rapide"
+            placeholder="${escapeHtml(structureI18n.searchPlaceholder)}"
             autocomplete="off"
             spellcheck="false"
           >
@@ -1272,7 +1384,7 @@ function updateRoleListResults() {
   }
 
   if (!filteredRoot) {
-    roleListResults.innerHTML = `<div class="role-list-empty">Aucun noeud ne correspond a cette recherche.</div>`;
+    roleListResults.innerHTML = `<div class="role-list-empty">${escapeHtml(structureI18n.emptySearch)}</div>`;
     return;
   }
 
@@ -1459,7 +1571,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
     popupUrl = window.omoResolveAppUrl(popupUrl);
   }
 
-  window.commonTopbarOpenModal("Partager la structure", popupUrl, "fetch");
+  window.commonTopbarOpenModal(structureI18n.shareModalTitle, popupUrl, "fetch");
 });
 
     const structureDataUrl = <?= json_encode($structureDataUrl, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
@@ -1483,7 +1595,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
     let structureCanvasWarningMessage = "";
     let structureCanvasWarningCollapsed = false;
     const structureBrowserInfo = {
-      name: "ce navigateur",
+      name: structureI18n.browserGenericName,
       isBrave: false
     };
 
@@ -1532,14 +1644,14 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
     function detectStructureBrowser() {
       if (typeof navigator === "undefined") {
         return Promise.resolve({
-          name: "ce navigateur",
+          name: structureI18n.browserGenericName,
           isBrave: false
         });
       }
 
       const userAgent = String(navigator.userAgent || "");
       const browserInfo = {
-        name: "ce navigateur",
+        name: structureI18n.browserGenericName,
         isBrave: false
       };
 
@@ -1643,17 +1755,17 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
     function buildStructureCanvasWarningMessage(issue) {
       const browserName = structureBrowserInfo && structureBrowserInfo.name
         ? structureBrowserInfo.name
-        : "ce navigateur";
+        : structureI18n.browserGenericName;
 
       if (structureBrowserInfo && structureBrowserInfo.isBrave) {
-        return "Brave semble bloquer la lecture du canvas utilisee pour la navigation graphique, probablement a cause du bouclier anti-empreinte numerique. La vue liste a ete activee pour continuer a naviguer. Vous pouvez aussi assouplir le bouclier pour ce site.";
+        return structureI18n.warningBrave;
       }
 
       if (issue && issue.reason === "pixel-mismatch") {
-        return browserName + " bloque ou altere la lecture du canvas utilisee pour la navigation graphique. La vue liste a ete activee pour continuer a naviguer.";
+        return structureI18n.warningPixelMismatch.replace('{browserName}', browserName);
       }
 
-      return "La lecture du canvas utilisee pour la navigation graphique n'est pas disponible dans " + browserName + ". La vue liste a ete activee pour continuer a naviguer.";
+      return structureI18n.warningUnavailable.replace('{browserName}', browserName);
     }
 
     function applyStructureCanvasPickingIssue(issue) {
@@ -1799,7 +1911,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
         })
         .catch(function(error) {
           console.error(error);
-          renderStructureMessage(error && error.message ? error.message : "Impossible de charger la structure.");
+          renderStructureMessage(error && error.message ? error.message : structureI18n.loadError);
         })
         .finally(function() {
           structureReloadPromise = null;
@@ -1960,7 +2072,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
         }
       }
 
-      return "Impossible de charger la structure.";
+      return structureI18n.loadError;
     }
 
     function loadStructureData() {
@@ -1976,14 +2088,14 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
           dataType: "json",
           success: function (response) {
             if (!response || response.error) {
-              reject(new Error(response && response.message ? response.message : "Structure invalide."));
+              reject(new Error(response && response.message ? response.message : structureI18n.invalidStructure));
               return;
             }
 
             const normalizedRoot = normalizeStructureNode(response, 0);
 
             if (!normalizedRoot) {
-              reject(new Error("Structure invalide."));
+              reject(new Error(structureI18n.invalidStructure));
               return;
             }
 
@@ -2643,7 +2755,7 @@ function getChartColors() {
 
     function drawAll() {
       if (!root) {
-        renderStructureMessage("Aucune structure disponible pour cette organisation.");
+        renderStructureMessage(structureI18n.noStructure);
         return;
       }
 
@@ -2789,7 +2901,7 @@ function startChart() {
       root = null;
       currentnode = null;
       console.error(error);
-      renderStructureMessage(error && error.message ? error.message : "Impossible de charger la structure.");
+      renderStructureMessage(error && error.message ? error.message : structureI18n.loadError);
     });
 }
 

@@ -116,8 +116,7 @@
 		session_start();
 	}
 
-	require __DIR__ . '/vendor/autoload.php';	// Pour la traduction automatique
-	use Orhanerday\OpenAi\OpenAi;
+	require __DIR__ . '/vendor/autoload.php';
 	// Pour l'envoi de mails
 	use PHPMailer\PHPMailer\PHPMailer;
 	use PHPMailer\PHPMailer\SMTP;
@@ -260,6 +259,7 @@
 	
 	// Fonction de traduction complète, utilisant l'IA pour traduire les éléments qui n'ont pas été traduits manuellement
 	function translate ($text, $language=null, $user=null) {
+		return $text;
 		// En attendant de stabiliser la fonction
 
 		// Si aucune langue spécifiée, utilise celle du user
@@ -280,7 +280,7 @@
 			return $_SESSION[$language."-".$id];
 		}
 		// Cherche dans la base de données si ce texte a déjà été traduit dans cette langue
-		$translation = new \dbObject\translation();
+		$translation = null;
 		$translation->load(["uid",$language."-".$id]);
 		if ($translation->get("id")>0) {
 			// Trouvé, retourne la valeur
@@ -302,8 +302,13 @@
 		
 			
 			// Demande à l'IA une traduction du texte
-			$open_ai = new OpenAi($GLOBALS["OpenAI"]);
+			$openAiApiKey = trim((string)($GLOBALS["OpenAI"] ?? ""));
+			if ($openAiApiKey === "") {
+				return $text;
+			}
+			$open_ai = null;
 			$translationModel = (!empty($GLOBALS["openAiTranslationModel"]) ? $GLOBALS["openAiTranslationModel"] : MODEL);
+			try {
 			$result = $open_ai->chat([
 				'model' => $translationModel,
 				'messages' => $context,
@@ -313,10 +318,10 @@
 			
 			$ret = json_decode($result, true);
 			if (isset($ret['error'])) {
-				throw new \Exception($ret['error']['message']);
+				return $text;
 			}
 			if (! isset($ret['choices'][0]['message']['content'])) {
-				throw new \Exception("Unknown error: " . $result);
+				return $text;
 			}
 			
 			// Si la traduction a l'air correct (à peu près le même nombre de caractères)
@@ -328,7 +333,10 @@
 				$translation->save();
 				$_SESSION[$language."-".$id]=$ret['choices'][0]['message']['content'];
 			}
-			return $ret['choices'][0]['message']['content'];	
+			return $ret['choices'][0]['message']['content'];
+			} catch (\Throwable $exception) {
+				return $text;
+			}
 		}
 		} else {
 			return $text;

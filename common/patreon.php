@@ -66,6 +66,11 @@ function patreonIsConfigured($context = 'api')
 	return patreonGetConfigurationIssues($context) === [];
 }
 
+function patreonSupportUiIsEnabled()
+{
+	return patreonIsConfigured('oauth');
+}
+
 function patreonGetConfigurationMessage($context = 'api')
 {
 	$issues = patreonGetConfigurationIssues($context);

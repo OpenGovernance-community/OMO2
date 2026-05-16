@@ -1,6 +1,7 @@
 <?php
 
 require_once dirname(__DIR__) . '/config.php';
+require_once __DIR__ . '/patreon.php';
 
 if (!function_exists('githubBugReportGetToken')) {
     function githubBugReportGetToken()
@@ -84,6 +85,13 @@ if (!function_exists('githubBugReportIsConfigured')) {
     function githubBugReportIsConfigured()
     {
         return githubBugReportGetConfigurationIssues() === [];
+    }
+}
+
+if (!function_exists('githubBugReportUiIsEnabled')) {
+    function githubBugReportUiIsEnabled()
+    {
+        return githubBugReportIsConfigured() && patreonSupportUiIsEnabled();
     }
 }
 
