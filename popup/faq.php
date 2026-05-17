@@ -2,9 +2,7 @@
 require_once("../config.php");
 require_once("../shared_functions.php");
 
-$organizationId = (int)($_GET['oid'] ?? ($_SESSION['currentOrganization'] ?? 0));
-$currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
-$faqContext = \dbObject\FAQ::resolvePopupContext($organizationId, $currentHolonId);
+$faqContext = \dbObject\FAQ::resolvePopupRequestContext($_GET);
 
 if ($faqContext === false) {
 	http_response_code(403);

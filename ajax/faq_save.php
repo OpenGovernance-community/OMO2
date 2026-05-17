@@ -16,9 +16,7 @@ if (!checklogin()) {
 $currentUserId = function_exists('commonGetCurrentUserId')
 	? (int)commonGetCurrentUserId()
 	: (int)($_SESSION["currentUser"] ?? 0);
-$organizationId = (int)($_GET['oid'] ?? ($_SESSION['currentOrganization'] ?? 0));
-$currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
-$faqContext = \dbObject\FAQ::resolvePopupContext($organizationId, $currentHolonId);
+$faqContext = \dbObject\FAQ::resolvePopupRequestContext($_GET);
 
 if ($currentUserId <= 0 || $faqContext === false) {
 	echo json_encode([
