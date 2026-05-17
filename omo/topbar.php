@@ -1,7 +1,7 @@
 <?php
 
 require_once dirname(__DIR__) . '/common/github_bug_report.php';
-require_once __DIR__ . '/i18n.php';
+require_once __DIR__ . '/translations.php';
 
 function omoGetTopbarSourceLang(): array
 {
@@ -114,6 +114,26 @@ function omoGetTopbarSourceLang(): array
             'text' => 'Votre profil',
             'context' => 'Modal title used when opening the profile editor from the OMO topbar.',
         ],
+        'topbar.profile.preferences.language_label' => [
+            'text' => 'Langue',
+            'context' => 'Label of the compact language selector shown in the OMO topbar profile panel.',
+        ],
+        'topbar.profile.preferences.theme_dark' => [
+            'text' => 'Sombre',
+            'context' => 'Dark theme option label shown in the OMO topbar profile panel.',
+        ],
+        'topbar.profile.preferences.theme_label' => [
+            'text' => 'Theme',
+            'context' => 'Label of the compact theme selector shown in the OMO topbar profile panel.',
+        ],
+        'topbar.profile.preferences.theme_light' => [
+            'text' => 'Clair',
+            'context' => 'Light theme option label shown in the OMO topbar profile panel.',
+        ],
+        'topbar.profile.preferences.theme_system' => [
+            'text' => 'Systeme',
+            'context' => 'System theme option label shown in the OMO topbar profile panel.',
+        ],
         'topbar.profile.summary_fallback' => [
             'text' => 'Resume du profil',
             'context' => 'Fallback summary text shown below the profile name in the OMO topbar when no email is available.',
@@ -213,6 +233,9 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
 {
     $variant = (string)($options['variant'] ?? 'app');
     $isDemoGuest = !empty($options['isDemoGuest']);
+    $translationOptions = !empty($options['translations']) && is_array($options['translations'])
+        ? $options['translations']
+        : [];
 
     $config = [
         'appKey' => 'omo',
@@ -229,6 +252,14 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
             'editUrl' => '/popup/profil.php',
             'editMode' => 'fetch',
             'summaryFallback' => omoTopbarTranslate('topbar.profile.summary_fallback'),
+            'preferences' => [
+                'languageLabel' => omoTopbarTranslate('topbar.profile.preferences.language_label'),
+                'themeLabel' => omoTopbarTranslate('topbar.profile.preferences.theme_label'),
+                'currentLocale' => omoGetTranslationLocale(),
+                'themeSystemLabel' => omoTopbarTranslate('topbar.profile.preferences.theme_system'),
+                'themeLightLabel' => omoTopbarTranslate('topbar.profile.preferences.theme_light'),
+                'themeDarkLabel' => omoTopbarTranslate('topbar.profile.preferences.theme_dark'),
+            ],
             'details' => [
                 'nameLabel' => omoTopbarTranslate('topbar.profile.details.name'),
                 'emailLabel' => omoTopbarTranslate('topbar.profile.details.email'),
@@ -263,7 +294,7 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
             'defaultTitle' => omoTopbarTranslate('topbar.drawer.default_title'),
             'closeLabel' => omoTopbarTranslate('topbar.close'),
         ],
-        'i18n' => [
+        'translations' => [
             'loadingLabel' => omoTopbarTranslate('topbar.loading'),
             'loadErrorLabel' => omoTopbarTranslate('topbar.load_error'),
             'helpFallbackLabel' => omoTopbarTranslate('topbar.help.fallback_label'),
@@ -305,8 +336,8 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
         $config['drawer'] = array_replace($config['drawer'], $options['drawer']);
     }
 
-    if (!empty($options['i18n']) && is_array($options['i18n'])) {
-        $config['i18n'] = array_replace($config['i18n'], $options['i18n']);
+    if (!empty($translationOptions)) {
+        $config['translations'] = array_replace($config['translations'], $translationOptions);
     }
 
     return $config;

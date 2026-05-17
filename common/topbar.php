@@ -66,6 +66,31 @@ function commonRenderTopbar(array $options = [])
 {
     static $assetsLoaded = false;
 
+    $translationOptions = !empty($options['translations']) && is_array($options['translations'])
+        ? $options['translations']
+        : [];
+
+    if (!function_exists('translationBundleGetLanguageOptions') && is_file(__DIR__ . '/translation_bundles.php')) {
+        require_once __DIR__ . '/translation_bundles.php';
+    }
+
+    $languageOptions = !empty($options['profile']['preferences']['languageOptions']) && is_array($options['profile']['preferences']['languageOptions'])
+        ? array_values($options['profile']['preferences']['languageOptions'])
+        : (
+            function_exists('translationBundleGetLanguageOptions')
+                ? translationBundleGetLanguageOptions()
+                : [
+                    ['locale' => 'fr', 'label' => 'Francais'],
+                    ['locale' => 'en', 'label' => 'English'],
+                    ['locale' => 'de', 'label' => 'Deutsch'],
+                    ['locale' => 'es', 'label' => 'Espanol'],
+                    ['locale' => 'it', 'label' => 'Italiano'],
+                    ['locale' => 'pt', 'label' => 'Portugues'],
+                    ['locale' => 'nl', 'label' => 'Nederlands'],
+                    ['locale' => 'pl', 'label' => 'Polski'],
+                ]
+        );
+
     $organizationContext = $options['organization'] ?? null;
     $brandLogo = (string)($options['brandLogo'] ?? ($organizationContext['logo'] ?? '/img/logo-OGC.png'));
     if ($brandLogo === '') {
@@ -79,6 +104,9 @@ function commonRenderTopbar(array $options = [])
 
     $brandHref = commonBuildUrl('/omo/', $brandRootHost);
     $brandLabel = trim((string)($options['brandLabel'] ?? ($organizationContext['name'] ?? '')));
+    $currentLocale = function_exists('translationBundleResolveRequestLocale')
+        ? translationBundleResolveRequestLocale('lang')
+        : (string)($_COOKIE['lang'] ?? 'fr');
 
     $config = [
         'appKey' => (string)($options['appKey'] ?? 'app'),
@@ -117,6 +145,16 @@ function commonRenderTopbar(array $options = [])
             'editCallback' => (string)($options['profile']['editCallback'] ?? ''),
             'buttonLabel' => (string)($options['profile']['buttonLabel'] ?? 'Profil'),
             'summaryFallback' => (string)($options['profile']['summaryFallback'] ?? 'Resume du profil'),
+            'preferences' => [
+                'enabled' => array_key_exists('enabled', $options['profile']['preferences'] ?? []) ? !empty($options['profile']['preferences']['enabled']) : true,
+                'languageLabel' => (string)($options['profile']['preferences']['languageLabel'] ?? 'Langue'),
+                'languageOptions' => $languageOptions,
+                'themeLabel' => (string)($options['profile']['preferences']['themeLabel'] ?? 'Theme'),
+                'currentLocale' => (string)($options['profile']['preferences']['currentLocale'] ?? $currentLocale),
+                'themeSystemLabel' => (string)($options['profile']['preferences']['themeSystemLabel'] ?? 'Systeme'),
+                'themeLightLabel' => (string)($options['profile']['preferences']['themeLightLabel'] ?? 'Clair'),
+                'themeDarkLabel' => (string)($options['profile']['preferences']['themeDarkLabel'] ?? 'Sombre'),
+            ],
             'details' => [
                 'nameLabel' => (string)($options['profile']['details']['nameLabel'] ?? 'Nom'),
                 'emailLabel' => (string)($options['profile']['details']['emailLabel'] ?? 'E-mail'),
@@ -136,13 +174,13 @@ function commonRenderTopbar(array $options = [])
             'defaultTitle' => (string)($options['drawer']['defaultTitle'] ?? 'Panneau lateral'),
             'closeLabel' => (string)($options['drawer']['closeLabel'] ?? 'Fermer'),
         ],
-        'i18n' => [
-            'loadingLabel' => (string)($options['i18n']['loadingLabel'] ?? 'Chargement...'),
-            'loadErrorLabel' => (string)($options['i18n']['loadErrorLabel'] ?? 'Erreur de chargement'),
-            'helpFallbackLabel' => (string)($options['i18n']['helpFallbackLabel'] ?? 'Aide'),
-            'helpUnavailableHtml' => (string)($options['i18n']['helpUnavailableHtml'] ?? '<p>Contenu indisponible.</p>'),
-            'helpPendingHtml' => (string)($options['i18n']['helpPendingHtml'] ?? '<p>Contenu a venir.</p>'),
-            'bugReportUnavailableHtml' => (string)($options['i18n']['bugReportUnavailableHtml'] ?? '<p>Formulaire indisponible.</p>'),
+        'translations' => [
+            'loadingLabel' => (string)($translationOptions['loadingLabel'] ?? 'Chargement...'),
+            'loadErrorLabel' => (string)($translationOptions['loadErrorLabel'] ?? 'Erreur de chargement'),
+            'helpFallbackLabel' => (string)($translationOptions['helpFallbackLabel'] ?? 'Aide'),
+            'helpUnavailableHtml' => (string)($translationOptions['helpUnavailableHtml'] ?? '<p>Contenu indisponible.</p>'),
+            'helpPendingHtml' => (string)($translationOptions['helpPendingHtml'] ?? '<p>Contenu a venir.</p>'),
+            'bugReportUnavailableHtml' => (string)($translationOptions['bugReportUnavailableHtml'] ?? '<p>Formulaire indisponible.</p>'),
         ],
     ];
 
@@ -246,7 +284,7 @@ function commonRenderTopbar(array $options = [])
                         class="common-topbar__menu-item common-topbar__help-item"
                         data-topbar-help-item='<?= htmlspecialchars(json_encode($item, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8') ?>'
                     >
-                        <span class="common-topbar__help-title"><?= htmlspecialchars($item['label'] ?? $config['i18n']['helpFallbackLabel']) ?></span>
+                        <span class="common-topbar__help-title"><?= htmlspecialchars($item['label'] ?? $config['translations']['helpFallbackLabel']) ?></span>
                         <?php if (!empty($item['description'])): ?>
                             <span class="common-topbar__help-description"><?= htmlspecialchars($item['description']) ?></span>
                         <?php endif; ?>
@@ -300,6 +338,26 @@ function commonRenderTopbar(array $options = [])
 
                     <section class="common-topbar-profile-panel__section common-topbar-profile-panel__section--actions">
                         <div class="common-topbar-profile-actions generic-section">
+                            <?php if (!empty($config['profile']['preferences']['enabled'])): ?>
+                                <div class="common-topbar-profile-preferences">
+                                    <label class="common-topbar-profile-preferences__field">
+                                        <span class="common-topbar-profile-preferences__label"><?= htmlspecialchars($config['profile']['preferences']['languageLabel']) ?></span>
+                                        <select class="common-topbar-profile-preferences__select" data-topbar-language-select>
+                                            <?php foreach ($config['profile']['preferences']['languageOptions'] as $languageOption): ?>
+                                            <option value="<?= htmlspecialchars((string)($languageOption['locale'] ?? '')) ?>" <?= $config['profile']['preferences']['currentLocale'] === (string)($languageOption['locale'] ?? '') ? 'selected' : '' ?>><?= htmlspecialchars((string)($languageOption['label'] ?? '')) ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </label>
+                                    <label class="common-topbar-profile-preferences__field">
+                                        <span class="common-topbar-profile-preferences__label"><?= htmlspecialchars($config['profile']['preferences']['themeLabel']) ?></span>
+                                        <select class="common-topbar-profile-preferences__select" data-omo-theme-select>
+                                            <option value="system"><?= htmlspecialchars($config['profile']['preferences']['themeSystemLabel']) ?></option>
+                                            <option value="light"><?= htmlspecialchars($config['profile']['preferences']['themeLightLabel']) ?></option>
+                                            <option value="dark"><?= htmlspecialchars($config['profile']['preferences']['themeDarkLabel']) ?></option>
+                                        </select>
+                                    </label>
+                                </div>
+                            <?php endif; ?>
                             <button type="button" class="common-topbar__menu-item common-topbar-profile-actions__button" data-topbar-profile-edit><?= htmlspecialchars($config['profile']['editLabel']) ?></button>
                             <button type="button" class="common-topbar__menu-item common-topbar__menu-item--danger common-topbar-profile-actions__button" data-topbar-logout><?= htmlspecialchars($config['logoutLabel']) ?></button>
                         </div>

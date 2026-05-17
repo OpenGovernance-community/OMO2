@@ -1,6 +1,27 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
 
+$sourceLang = [
+    'sidebar.applications.manage_label' => [
+        'text' => 'Gerer',
+        'context' => 'Label of the sidebar item used to open the application management picker.'
+    ],
+    'sidebar.applications.manage_title' => [
+        'text' => 'Gerer les applications',
+        'context' => 'Tooltip of the sidebar item used to open the application management picker.'
+    ],
+    'sidebar.parameters.label' => [
+        'text' => 'Parametres',
+        'context' => 'Label of the parameters entry in the sidebar.'
+    ],
+    'sidebar.structure.label' => [
+        'text' => 'Structure',
+        'context' => 'Label of the main structure entry in the sidebar.'
+    ],
+];
+
+$lang = omoLoadTranslationBundle('omo_get_sidebar_panel', $sourceLang);
+
 $currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 $currentUserId = commonGetCurrentUserId();
 $canManageApplications = $currentOrganizationId > 0 && $currentUserId > 0;
@@ -54,7 +75,7 @@ $renderMenuItem = static function (array $item) use ($escape) {
     <span class="icon">
         <img src="images/tools/connection.png" class="icon-img">
     </span>
-    <span class="label">Structure</span>
+    <span class="label"><?= $escape(t('sidebar.structure.label', [], $lang, $sourceLang)) ?></span>
 </div>
 
 <?php foreach ($applications as $application): ?>
@@ -74,10 +95,10 @@ $renderMenuItem = static function (array $item) use ($escape) {
     <div
         class="menu-item menu-item--add"
         data-omo-open-app-picker="1"
-        title="Gerer les applications"
+        title="<?= $escape(t('sidebar.applications.manage_title', [], $lang, $sourceLang)) ?>"
     >
         <span class="icon"><img src="images/tools/plus.png" class="icon-img" style='width:20px;height:20px; margin:2px'></span>
-        <span class="label">Gerer</span>
+        <span class="label"><?= $escape(t('sidebar.applications.manage_label', [], $lang, $sourceLang)) ?></span>
     </div>
 <?php endif; ?>
 </div>
@@ -85,7 +106,7 @@ $renderMenuItem = static function (array $item) use ($escape) {
 <div class="menu-secondary">
 <?php
 $renderMenuItem([
-    'label' => 'Paramètres',
+    'label' => t('sidebar.parameters.label', [], $lang, $sourceLang),
     'hash' => 'parameters',
     'directory' => 'parameters',
     'icon' => '/img/settings.png',

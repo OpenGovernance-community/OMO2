@@ -8,6 +8,220 @@ function translationBundleNormalizeLocale($locale)
     return str_replace('_', '-', $locale);
 }
 
+function translationBundleGetBuiltInLanguageCatalog()
+{
+    return [
+        [
+            'locale' => 'fr',
+            'name' => 'Francais',
+            'native_name' => 'Francais',
+            'sort_order' => 10,
+            'active' => 1,
+            'is_source' => 1,
+        ],
+        [
+            'locale' => 'en',
+            'name' => 'Anglais',
+            'native_name' => 'English',
+            'sort_order' => 20,
+            'active' => 1,
+            'is_source' => 0,
+        ],
+        [
+            'locale' => 'de',
+            'name' => 'Allemand',
+            'native_name' => 'Deutsch',
+            'sort_order' => 30,
+            'active' => 1,
+            'is_source' => 0,
+        ],
+        [
+            'locale' => 'es',
+            'name' => 'Espagnol',
+            'native_name' => 'Espanol',
+            'sort_order' => 40,
+            'active' => 1,
+            'is_source' => 0,
+        ],
+        [
+            'locale' => 'it',
+            'name' => 'Italien',
+            'native_name' => 'Italiano',
+            'sort_order' => 50,
+            'active' => 1,
+            'is_source' => 0,
+        ],
+        [
+            'locale' => 'pt',
+            'name' => 'Portugais',
+            'native_name' => 'Portugues',
+            'sort_order' => 60,
+            'active' => 1,
+            'is_source' => 0,
+        ],
+        [
+            'locale' => 'nl',
+            'name' => 'Neerlandais',
+            'native_name' => 'Nederlands',
+            'sort_order' => 70,
+            'active' => 1,
+            'is_source' => 0,
+        ],
+        [
+            'locale' => 'pl',
+            'name' => 'Polonais',
+            'native_name' => 'Polski',
+            'sort_order' => 80,
+            'active' => 1,
+            'is_source' => 0,
+        ],
+    ];
+}
+
+function translationBundleNormalizeLanguageCatalogRows(array $rows)
+{
+    $normalizedRows = [];
+
+    foreach ($rows as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+
+        $locale = translationBundleNormalizeLocale($row['locale'] ?? '');
+        if ($locale === '' || !translationBundleIsValidLocale($locale)) {
+            continue;
+        }
+
+        $normalizedRows[$locale] = [
+            'locale' => $locale,
+            'name' => trim((string)($row['name'] ?? '')),
+            'native_name' => trim((string)($row['native_name'] ?? '')),
+            'sort_order' => (int)($row['sort_order'] ?? 0),
+            'active' => !empty($row['active']) ? 1 : 0,
+            'is_source' => !empty($row['is_source']) ? 1 : 0,
+        ];
+    }
+
+    $builtInRows = translationBundleGetBuiltInLanguageCatalog();
+    foreach ($builtInRows as $row) {
+        $locale = translationBundleNormalizeLocale($row['locale'] ?? '');
+        if ($locale === '' || isset($normalizedRows[$locale])) {
+            continue;
+        }
+
+        if ($locale === 'fr') {
+            $normalizedRows[$locale] = $row;
+        }
+    }
+
+    uasort($normalizedRows, function (array $left, array $right) {
+        if ((int)$left['is_source'] !== (int)$right['is_source']) {
+            return ((int)$left['is_source'] > (int)$right['is_source']) ? -1 : 1;
+        }
+
+        if ((int)$left['sort_order'] !== (int)$right['sort_order']) {
+            return ((int)$left['sort_order'] < (int)$right['sort_order']) ? -1 : 1;
+        }
+
+        return strcmp((string)$left['locale'], (string)$right['locale']);
+    });
+
+    return array_values($normalizedRows);
+}
+
+function translationBundleGetAvailableLanguages($refresh = false)
+{
+    static $cachedRows = null;
+
+    if (!$refresh && is_array($cachedRows)) {
+        return $cachedRows;
+    }
+
+    $rows = [];
+
+    if (class_exists('\dbObject\TranslationLanguage') && \dbObject\TranslationLanguage::isStorageAvailable()) {
+        $rows = \dbObject\TranslationLanguage::loadActiveCatalogRows();
+    }
+
+    if (!is_array($rows) || count($rows) === 0) {
+        $rows = translationBundleGetBuiltInLanguageCatalog();
+    }
+
+    $cachedRows = translationBundleNormalizeLanguageCatalogRows($rows);
+    return $cachedRows;
+}
+
+function translationBundleGetLanguageOptions($refresh = false)
+{
+    $options = [];
+
+    foreach (translationBundleGetAvailableLanguages($refresh) as $row) {
+        $label = trim((string)($row['native_name'] ?? ''));
+        if ($label === '') {
+            $label = trim((string)($row['name'] ?? ''));
+        }
+        if ($label === '') {
+            $label = strtoupper((string)$row['locale']);
+        }
+
+        $options[] = [
+            'locale' => (string)$row['locale'],
+            'label' => $label,
+        ];
+    }
+
+    return $options;
+}
+
+function translationBundleGetSupportedLocales()
+{
+    return array_column(translationBundleGetAvailableLanguages(), 'locale');
+}
+
+function translationBundleResolveSupportedLocale($locale, array $supportedLocales = [])
+{
+    $supportedLocales = $supportedLocales ?: translationBundleGetSupportedLocales();
+    $normalizedLocale = translationBundleNormalizeLocale($locale);
+    $candidates = translationBundleBuildLocaleCandidates($normalizedLocale);
+
+    foreach ($candidates as $candidate) {
+        if (in_array($candidate, $supportedLocales, true)) {
+            return $candidate;
+        }
+    }
+
+    return '';
+}
+
+function translationBundleResolveBrowserLocale(array $supportedLocales = [], $fallback = 'fr')
+{
+    $supportedLocales = $supportedLocales ?: translationBundleGetSupportedLocales();
+    $acceptLanguage = (string)($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '');
+    $fallbackLocale = translationBundleResolveSupportedLocale($fallback, $supportedLocales);
+
+    foreach (explode(',', $acceptLanguage) as $part) {
+        $rawLocale = trim((string)preg_replace('/;.*$/', '', $part));
+        $resolvedLocale = translationBundleResolveSupportedLocale($rawLocale, $supportedLocales);
+        if ($resolvedLocale !== '') {
+            return $resolvedLocale;
+        }
+    }
+
+    return $fallbackLocale !== '' ? $fallbackLocale : (string)reset($supportedLocales);
+}
+
+function translationBundleResolveRequestLocale($cookieName = 'lang', array $supportedLocales = [], $fallback = 'fr')
+{
+    $supportedLocales = $supportedLocales ?: translationBundleGetSupportedLocales();
+    $cookieLocale = translationBundleResolveSupportedLocale($_COOKIE[$cookieName] ?? '', $supportedLocales);
+
+    if ($cookieLocale !== '') {
+        return $cookieLocale;
+    }
+
+    return translationBundleResolveBrowserLocale($supportedLocales, $fallback);
+}
+
 function translationBundleIsValidLocale($locale)
 {
     return preg_match('/^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/', translationBundleNormalizeLocale($locale)) === 1;

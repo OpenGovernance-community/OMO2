@@ -123,7 +123,7 @@ if (count($structureDataParams) > 0) {
 $isShareMode = function_exists('commonGetCurrentShareToken') && commonGetCurrentShareToken() !== '';
 $canCreateShareLink = !$isShareMode && (int)commonGetCurrentUserId() > 0 && commonCurrentUserHasOrganizationAccess($organizationId);
 $canExportStructure = !$isShareMode && (int)commonGetCurrentUserId() > 0 && commonCurrentUserHasOrganizationAccess($organizationId);
-$structureI18n = [
+$structureTranslations = [
     'actionsMenuAria' => t('structure.actions.menu_aria'),
     'actionsExport' => t('structure.actions.export'),
     'actionsPrint' => t('structure.actions.print'),
@@ -671,7 +671,7 @@ input:checked + .slider::before {
 
   <script>
 
-const structureI18n = <?= json_encode($structureI18n, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+const structureTranslations = <?= json_encode($structureTranslations, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
 function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, function (char) {
@@ -1290,7 +1290,7 @@ function renderNodeList(entry, searchQuery) {
         data-omo-role-detail-toggle="${escapedNodeId}"
         aria-expanded="${isDetailOpen ? "true" : "false"}"
         aria-controls="role_item_detail_${escapedNodeId}"
-        aria-label="${isDetailOpen ? structureI18n.hidePropertiesAria : structureI18n.showPropertiesAria}"
+        aria-label="${isDetailOpen ? structureTranslations.hidePropertiesAria : structureTranslations.showPropertiesAria}"
       ><span class="role-detail-toggle-icon">&#9654;</span></button>
     `;
   }
@@ -1349,7 +1349,7 @@ function ensureRoleListLayout() {
             type="search"
             id="role_list_search"
             class="role-list-search"
-            placeholder="${escapeHtml(structureI18n.searchPlaceholder)}"
+            placeholder="${escapeHtml(structureTranslations.searchPlaceholder)}"
             autocomplete="off"
             spellcheck="false"
           >
@@ -1384,7 +1384,7 @@ function updateRoleListResults() {
   }
 
   if (!filteredRoot) {
-    roleListResults.innerHTML = `<div class="role-list-empty">${escapeHtml(structureI18n.emptySearch)}</div>`;
+    roleListResults.innerHTML = `<div class="role-list-empty">${escapeHtml(structureTranslations.emptySearch)}</div>`;
     return;
   }
 
@@ -1571,7 +1571,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
     popupUrl = window.omoResolveAppUrl(popupUrl);
   }
 
-  window.commonTopbarOpenModal(structureI18n.shareModalTitle, popupUrl, "fetch");
+  window.commonTopbarOpenModal(structureTranslations.shareModalTitle, popupUrl, "fetch");
 });
 
     const structureDataUrl = <?= json_encode($structureDataUrl, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
@@ -1595,7 +1595,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
     let structureCanvasWarningMessage = "";
     let structureCanvasWarningCollapsed = false;
     const structureBrowserInfo = {
-      name: structureI18n.browserGenericName,
+      name: structureTranslations.browserGenericName,
       isBrave: false
     };
 
@@ -1644,14 +1644,14 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
     function detectStructureBrowser() {
       if (typeof navigator === "undefined") {
         return Promise.resolve({
-          name: structureI18n.browserGenericName,
+          name: structureTranslations.browserGenericName,
           isBrave: false
         });
       }
 
       const userAgent = String(navigator.userAgent || "");
       const browserInfo = {
-        name: structureI18n.browserGenericName,
+        name: structureTranslations.browserGenericName,
         isBrave: false
       };
 
@@ -1755,17 +1755,17 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
     function buildStructureCanvasWarningMessage(issue) {
       const browserName = structureBrowserInfo && structureBrowserInfo.name
         ? structureBrowserInfo.name
-        : structureI18n.browserGenericName;
+        : structureTranslations.browserGenericName;
 
       if (structureBrowserInfo && structureBrowserInfo.isBrave) {
-        return structureI18n.warningBrave;
+        return structureTranslations.warningBrave;
       }
 
       if (issue && issue.reason === "pixel-mismatch") {
-        return structureI18n.warningPixelMismatch.replace('{browserName}', browserName);
+        return structureTranslations.warningPixelMismatch.replace('{browserName}', browserName);
       }
 
-      return structureI18n.warningUnavailable.replace('{browserName}', browserName);
+      return structureTranslations.warningUnavailable.replace('{browserName}', browserName);
     }
 
     function applyStructureCanvasPickingIssue(issue) {
@@ -1911,7 +1911,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
         })
         .catch(function(error) {
           console.error(error);
-          renderStructureMessage(error && error.message ? error.message : structureI18n.loadError);
+          renderStructureMessage(error && error.message ? error.message : structureTranslations.loadError);
         })
         .finally(function() {
           structureReloadPromise = null;
@@ -2072,7 +2072,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
         }
       }
 
-      return structureI18n.loadError;
+      return structureTranslations.loadError;
     }
 
     function loadStructureData() {
@@ -2088,14 +2088,14 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
           dataType: "json",
           success: function (response) {
             if (!response || response.error) {
-              reject(new Error(response && response.message ? response.message : structureI18n.invalidStructure));
+              reject(new Error(response && response.message ? response.message : structureTranslations.invalidStructure));
               return;
             }
 
             const normalizedRoot = normalizeStructureNode(response, 0);
 
             if (!normalizedRoot) {
-              reject(new Error(structureI18n.invalidStructure));
+              reject(new Error(structureTranslations.invalidStructure));
               return;
             }
 
@@ -2755,7 +2755,7 @@ function getChartColors() {
 
     function drawAll() {
       if (!root) {
-        renderStructureMessage(structureI18n.noStructure);
+        renderStructureMessage(structureTranslations.noStructure);
         return;
       }
 
@@ -2901,7 +2901,7 @@ function startChart() {
       root = null;
       currentnode = null;
       console.error(error);
-      renderStructureMessage(error && error.message ? error.message : structureI18n.loadError);
+      renderStructureMessage(error && error.message ? error.message : structureTranslations.loadError);
     });
 }
 
