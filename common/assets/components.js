@@ -279,6 +279,10 @@
     function normalizeLocalePreference(locale) {
         var normalized = String(locale || '').trim().toLowerCase().replace(/_/g, '-');
 
+        if (normalized === 'system') {
+            return 'system';
+        }
+
         if (/^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/.test(normalized)) {
             return normalized;
         }
@@ -293,12 +297,21 @@
             return false;
         }
 
-        document.cookie = [
-            'lang=' + encodeURIComponent(normalized),
-            'path=/',
-            'max-age=' + String(365 * 24 * 60 * 60),
-            'SameSite=Lax'
-        ].join('; ');
+        if (normalized === 'system') {
+            document.cookie = [
+                'lang=',
+                'path=/',
+                'expires=Thu, 01 Jan 1970 00:00:00 GMT',
+                'SameSite=Lax'
+            ].join('; ');
+        } else {
+            document.cookie = [
+                'lang=' + encodeURIComponent(normalized),
+                'path=/',
+                'max-age=' + String(365 * 24 * 60 * 60),
+                'SameSite=Lax'
+            ].join('; ');
+        }
 
         if (reloadPage) {
             window.location.reload();

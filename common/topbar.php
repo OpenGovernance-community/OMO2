@@ -107,6 +107,9 @@ function commonRenderTopbar(array $options = [])
     $currentLocale = function_exists('translationBundleResolveRequestLocale')
         ? translationBundleResolveRequestLocale('lang')
         : (string)($_COOKIE['lang'] ?? 'fr');
+    $currentLocalePreference = function_exists('translationBundleGetRequestLocalePreference')
+        ? translationBundleGetRequestLocalePreference('lang')
+        : $currentLocale;
 
     $config = [
         'appKey' => (string)($options['appKey'] ?? 'app'),
@@ -150,7 +153,9 @@ function commonRenderTopbar(array $options = [])
                 'languageLabel' => (string)($options['profile']['preferences']['languageLabel'] ?? 'Langue'),
                 'languageOptions' => $languageOptions,
                 'themeLabel' => (string)($options['profile']['preferences']['themeLabel'] ?? 'Theme'),
-                'currentLocale' => (string)($options['profile']['preferences']['currentLocale'] ?? $currentLocale),
+                'currentLocale' => (string)($options['profile']['preferences']['currentLocale'] ?? $currentLocalePreference),
+                'resolvedLocale' => (string)($options['profile']['preferences']['resolvedLocale'] ?? $currentLocale),
+                'systemLabel' => (string)($options['profile']['preferences']['systemLabel'] ?? 'Systeme'),
                 'themeSystemLabel' => (string)($options['profile']['preferences']['themeSystemLabel'] ?? 'Systeme'),
                 'themeLightLabel' => (string)($options['profile']['preferences']['themeLightLabel'] ?? 'Clair'),
                 'themeDarkLabel' => (string)($options['profile']['preferences']['themeDarkLabel'] ?? 'Sombre'),
@@ -343,6 +348,7 @@ function commonRenderTopbar(array $options = [])
                                     <label class="common-topbar-profile-preferences__field">
                                         <span class="common-topbar-profile-preferences__label"><?= htmlspecialchars($config['profile']['preferences']['languageLabel']) ?></span>
                                         <select class="common-topbar-profile-preferences__select" data-topbar-language-select>
+                                            <option value="system" <?= $config['profile']['preferences']['currentLocale'] === 'system' ? 'selected' : '' ?>><?= htmlspecialchars($config['profile']['preferences']['systemLabel']) ?> (<?= htmlspecialchars(strtoupper((string)$config['profile']['preferences']['resolvedLocale'])) ?>)</option>
                                             <?php foreach ($config['profile']['preferences']['languageOptions'] as $languageOption): ?>
                                             <option value="<?= htmlspecialchars((string)($languageOption['locale'] ?? '')) ?>" <?= $config['profile']['preferences']['currentLocale'] === (string)($languageOption['locale'] ?? '') ? 'selected' : '' ?>><?= htmlspecialchars((string)($languageOption['label'] ?? '')) ?></option>
                                             <?php endforeach; ?>

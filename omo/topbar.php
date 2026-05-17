@@ -118,6 +118,10 @@ function omoGetTopbarSourceLang(): array
             'text' => 'Langue',
             'context' => 'Label of the compact language selector shown in the OMO topbar profile panel.',
         ],
+        'topbar.profile.preferences.language_system' => [
+            'text' => 'Systeme',
+            'context' => 'System language option label shown in the compact language selector of the OMO topbar profile panel.',
+        ],
         'topbar.profile.preferences.theme_dark' => [
             'text' => 'Sombre',
             'context' => 'Dark theme option label shown in the OMO topbar profile panel.',
@@ -254,8 +258,10 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
             'summaryFallback' => omoTopbarTranslate('topbar.profile.summary_fallback'),
             'preferences' => [
                 'languageLabel' => omoTopbarTranslate('topbar.profile.preferences.language_label'),
+                'systemLabel' => omoTopbarTranslate('topbar.profile.preferences.language_system'),
                 'themeLabel' => omoTopbarTranslate('topbar.profile.preferences.theme_label'),
-                'currentLocale' => omoGetTranslationLocale(),
+                'currentLocale' => translationBundleGetRequestLocalePreference('lang'),
+                'resolvedLocale' => omoGetTranslationLocale(),
                 'themeSystemLabel' => omoTopbarTranslate('topbar.profile.preferences.theme_system'),
                 'themeLightLabel' => omoTopbarTranslate('topbar.profile.preferences.theme_light'),
                 'themeDarkLabel' => omoTopbarTranslate('topbar.profile.preferences.theme_dark'),

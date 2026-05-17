@@ -510,6 +510,10 @@ function commonGetAuthPhpSourceLang(): array
             'text' => 'Langue',
             'context' => 'Label of the language selector shown on the shared authentication login page.'
         ],
+        'auth.page.language_system_label' => [
+            'text' => 'Systeme',
+            'context' => 'System language option label shown in the shared authentication login page selector.'
+        ],
         'auth.page.login.app_default' => [
             'text' => 'Espace',
             'context' => 'Default application name shown in the shared authentication page hero.'
@@ -1677,6 +1681,8 @@ function commonRenderMagicLoginPage(array $options = [])
     $sourceLang = commonGetAuthPhpSourceLang();
     $lang = commonAuthLoadBundle('common_auth_page', $sourceLang);
     $languageOptions = translationBundleGetLanguageOptions();
+    $currentLocalePreference = translationBundleGetRequestLocalePreference('lang');
+    $resolvedLocale = commonAuthGetTranslationLocale();
     $organizationContext = $options['organization'] ?? commonResolveOrganizationContext(1);
     $title = $options['title'] ?? commonAuthT('auth.page.login.title_default', [], $lang, $sourceLang);
     $appName = $options['appName'] ?? commonAuthT('auth.page.login.app_default', [], $lang, $sourceLang);
@@ -1751,8 +1757,9 @@ function commonRenderMagicLoginPage(array $options = [])
             <label class="auth-language-picker" for="authLanguageSelect">
                 <span><?= htmlspecialchars(commonAuthT('auth.page.language_label', [], $lang, $sourceLang)) ?></span>
                 <select id="authLanguageSelect" data-auth-language-select>
+                    <option value="system" <?= $currentLocalePreference === 'system' ? 'selected' : '' ?>><?= htmlspecialchars(commonAuthT('auth.page.language_system_label', [], $lang, $sourceLang)) ?> (<?= htmlspecialchars(strtoupper($resolvedLocale)) ?>)</option>
                     <?php foreach ($languageOptions as $languageOption): ?>
-                    <option value="<?= htmlspecialchars((string)$languageOption['locale']) ?>" <?= commonAuthGetTranslationLocale() === (string)$languageOption['locale'] ? 'selected' : '' ?>><?= htmlspecialchars((string)$languageOption['label']) ?></option>
+                    <option value="<?= htmlspecialchars((string)$languageOption['locale']) ?>" <?= $currentLocalePreference === (string)$languageOption['locale'] ? 'selected' : '' ?>><?= htmlspecialchars((string)$languageOption['label']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </label>
