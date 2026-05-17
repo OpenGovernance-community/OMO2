@@ -8,6 +8,8 @@ include __DIR__ . '/inc/org.php';
 
 $returnTo = commonNormalizeLocalPath($_GET['return_to'] ?? '/lms/', '/lms/');
 $organizationColor = commonGetOrganizationExplicitColor($org);
+$authSourceLang = commonGetAuthPhpSourceLang();
+$authLang = commonAuthLoadBundle('common_auth_page', $authSourceLang);
 $config = [
 	'loginSendPath' => '/common/login_send.php',
 	'loginVerifyPath' => '/common/login_verify.php',
@@ -49,38 +51,38 @@ $config = [
 <?php endif; ?>
 <div class="lms-login-drawer-shell">
 	<div class="auth-card">
-		<h2>Connexion</h2>
-		<p class="auth-copy">Un code de connexion vous sera envoye par e-mail.</p>
+		<h2><?php echo htmlspecialchars(commonAuthT('auth.page.login.title_default', [], $authLang, $authSourceLang)); ?></h2>
+		<p class="auth-copy"><?php echo htmlspecialchars(commonAuthT('auth.copy.login_code', [], $authLang, $authSourceLang)); ?></p>
 
 		<div class="auth-email-row" id="authEmailRow">
-			<input type="text" id="authEmailInput" placeholder="<?php echo !empty($org['domain']) ? 'username' : 'nom@domaine.ch'; ?>" autofocus>
+			<input type="text" id="authEmailInput" placeholder="<?php echo htmlspecialchars(!empty($org['domain']) ? commonAuthT('auth.placeholder.username', [], $authLang, $authSourceLang) : commonAuthT('auth.placeholder.full_email', [], $authLang, $authSourceLang)); ?>" autofocus>
 			<?php if (!empty($org['domain'])): ?>
 				<div class="auth-email-domain" id="authEmailDomain">@<?php echo htmlspecialchars($org['domain']); ?></div>
 			<?php endif; ?>
 		</div>
 
 		<?php if (!empty($org['domain'])): ?>
-			<button type="button" class="auth-link-btn" id="authToggleMode">Utiliser une autre adresse e-mail</button>
+			<button type="button" class="auth-link-btn" id="authToggleMode"><?php echo htmlspecialchars(commonAuthT('auth.toggle.use_other_email', [], $authLang, $authSourceLang)); ?></button>
 		<?php endif; ?>
 
 		<label class="auth-remember">
-			<input type="checkbox" id="authRememberMe"> Se souvenir de moi sur cet appareil
+			<input type="checkbox" id="authRememberMe"> <?php echo htmlspecialchars(commonAuthT('auth.remember_me', [], $authLang, $authSourceLang)); ?>
 		</label>
 
 		<div id="authChallengeBox" class="auth-challenge" style="display:none;">
 			<p id="authChallengeQuestion"></p>
-			<input type="text" id="authChallengeAnswer" placeholder="Votre reponse">
-			<button type="button" id="authChallengeSubmit">Valider</button>
+			<input type="text" id="authChallengeAnswer" placeholder="<?php echo htmlspecialchars(commonAuthT('auth.challenge.answer_placeholder', [], $authLang, $authSourceLang)); ?>">
+			<button type="button" id="authChallengeSubmit"><?php echo htmlspecialchars(commonAuthT('auth.button.validate', [], $authLang, $authSourceLang)); ?></button>
 		</div>
 
 		<div id="authCodeBox" class="auth-code-box" style="display:none;">
-			<p>Entrez le code recu par e-mail sur cet appareil.</p>
-			<input type="text" id="authCodeInput" inputmode="text" autocomplete="one-time-code" maxlength="6" placeholder="ABC123">
-			<button type="button" id="authCodeSubmit">Valider le code</button>
+			<p><?php echo htmlspecialchars(commonAuthT('auth.code.instructions', [], $authLang, $authSourceLang)); ?></p>
+			<input type="text" id="authCodeInput" inputmode="text" autocomplete="one-time-code" maxlength="6" placeholder="<?php echo htmlspecialchars(commonAuthT('auth.code.placeholder', [], $authLang, $authSourceLang)); ?>">
+			<button type="button" id="authCodeSubmit"><?php echo htmlspecialchars(commonAuthT('auth.button.validate_code', [], $authLang, $authSourceLang)); ?></button>
 		</div>
 
-		<button type="button" class="auth-link-btn auth-resend" id="authResendLink" style="display:none;">Envoyer un nouveau code</button>
-		<button type="button" class="auth-submit" id="authLoginSubmit">Envoyer le code</button>
+		<button type="button" class="auth-link-btn auth-resend" id="authResendLink" style="display:none;"><?php echo htmlspecialchars(commonAuthT('auth.button.resend_code', [], $authLang, $authSourceLang)); ?></button>
+		<button type="button" class="auth-submit" id="authLoginSubmit"><?php echo htmlspecialchars(commonAuthT('auth.button.send_code', [], $authLang, $authSourceLang)); ?></button>
 		<div id="authStatus" class="auth-status" aria-live="polite"></div>
 	</div>
 </div>

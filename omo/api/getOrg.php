@@ -4,6 +4,119 @@ use dbObject\ArrayOrganization;
 use dbObject\Holon;
 use dbObject\PropertyFormat;
 
+function omoGetOrgPanelSourceLang(): array
+{
+    return [
+        'leftbar.actions.add' => [
+            'text' => 'Ajouter',
+            'context' => 'Action menu label to create a child holon in the left panel.',
+        ],
+        'leftbar.actions.delete' => [
+            'text' => 'Supprimer',
+            'context' => 'Action menu label to delete the current holon in the left panel.',
+        ],
+        'leftbar.actions.edit' => [
+            'text' => 'Modifier',
+            'context' => 'Action menu label to edit the current holon in the left panel.',
+        ],
+        'leftbar.actions.history' => [
+            'text' => 'Historique',
+            'context' => 'Action menu label to open the current holon history in the left panel.',
+        ],
+        'leftbar.actions.move' => [
+            'text' => 'Deplacer',
+            'context' => 'Action menu label to move the current holon in the left panel.',
+        ],
+        'leftbar.children.circles' => [
+            'text' => 'Cercles',
+            'context' => 'Subtitle for child circles listed in the left panel navigation.',
+        ],
+        'leftbar.children.roles' => [
+            'text' => 'Roles',
+            'context' => 'Subtitle for child roles listed in the left panel navigation.',
+        ],
+        'leftbar.children.section_title' => [
+            'text' => 'Dependances',
+            'context' => 'Accordion title for child navigation in the left panel.',
+        ],
+        'leftbar.copy_link.error' => [
+            'text' => 'Impossible de copier le lien direct.',
+            'context' => 'Console error message when the direct holon link cannot be copied from the left panel.',
+        ],
+        'leftbar.copy_link.success' => [
+            'text' => 'Lien copie',
+            'context' => 'Temporary button label shown after copying a direct holon link from the left panel.',
+        ],
+        'leftbar.detail.item_fallback' => [
+            'text' => 'Element',
+            'context' => 'Fallback title for a detail card item in the left panel when no title is available.',
+        ],
+        'leftbar.detail.property_fallback' => [
+            'text' => 'Propriete {propertyId}',
+            'context' => 'Fallback section title for a holon property in the left panel when no label is available.',
+        ],
+        'leftbar.detail.updated_at' => [
+            'text' => 'Mis a jour le {date}',
+            'context' => 'Update metadata shown below a left panel section when the updater is unknown.',
+        ],
+        'leftbar.detail.updated_by' => [
+            'text' => 'Mis a jour le {date} par {userName}',
+            'context' => 'Update metadata shown below a left panel section when the updater is known.',
+        ],
+        'leftbar.empty.message' => [
+            'text' => 'Aucun contenu n est encore renseigne pour ce holon.',
+            'context' => 'Message shown in the left panel when the current holon has no visible content.',
+        ],
+        'leftbar.empty.section_title' => [
+            'text' => 'Informations',
+            'context' => 'Section title shown in the left panel when the current holon has no visible content.',
+        ],
+        'leftbar.error.holon_access_denied' => [
+            'text' => 'Acces refuse a ce holon.',
+            'context' => 'Error message shown in the left panel when the current holon cannot be viewed.',
+        ],
+        'leftbar.error.holon_not_found' => [
+            'text' => 'Holon introuvable pour cette organisation.',
+            'context' => 'Error message shown in the left panel when the requested holon cannot be found.',
+        ],
+        'leftbar.error.organization_access_denied' => [
+            'text' => 'Acces refuse a cette organisation.',
+            'context' => 'Error message shown in the left panel when the current organization cannot be viewed.',
+        ],
+        'leftbar.error.organization_invalid' => [
+            'text' => 'Organisation invalide.',
+            'context' => 'Error message shown in the left panel when no valid organization identifier is available.',
+        ],
+        'leftbar.error.organization_not_found' => [
+            'text' => 'Organisation introuvable.',
+            'context' => 'Error message shown in the left panel when the requested organization cannot be found.',
+        ],
+        'leftbar.error.root_not_found' => [
+            'text' => 'Aucune structure racine n a ete trouvee pour cette organisation.',
+            'context' => 'Error message shown in the left panel when the organization has no structural root holon.',
+        ],
+        'leftbar.members.add' => [
+            'text' => 'Ajouter un membre',
+            'context' => 'Button label and modal title used to add a member from the left panel.',
+        ],
+        'leftbar.members.pending_tooltip' => [
+            'text' => '{memberName} - invitation en attente',
+            'context' => 'Tooltip shown for a pending invited member avatar in the left panel.',
+        ],
+        'leftbar.members.section_title' => [
+            'text' => 'Membres',
+            'context' => 'Section title shown above the member avatars in the left panel.',
+        ],
+        'leftbar.members.view_all' => [
+            'text' => 'Voir tout',
+            'context' => 'Button label to open the complete team drawer from the left panel.',
+        ],
+    ];
+}
+
+$sourceLang = omoGetOrgPanelSourceLang();
+$lang = translationBundleInit('omo_get_org_panel', omoGetTranslationLocale(), $sourceLang);
+
 function omoSplitTextItems($text)
 {
     $text = trim((string)$text);
@@ -206,7 +319,7 @@ function omoRenderDetailedList(array $ancestorItems, array $currentItems, array 
         }
 
         $html .= '<details class="section-detail-card is-' . omoApiEscape($descriptor['source']) . '">';
-        $html .= '<summary>' . omoApiEscape($detailItem['title'] !== '' ? $detailItem['title'] : 'Element') . '</summary>';
+        $html .= '<summary>' . omoApiEscape($detailItem['title'] !== '' ? $detailItem['title'] : t('leftbar.detail.item_fallback')) . '</summary>';
         if ($detailItem['description'] !== '') {
             $html .= '<div class="section-detail-card__body">' . nl2br(omoApiEscape($detailItem['description'])) . '</div>';
         }
@@ -273,6 +386,94 @@ function omoRenderSectionBody(array $entry)
     return $html;
 }
 
+function omoEntryHasLocalDisplayValue(array $entry)
+{
+    $formatId = (int)($entry['formatId'] ?? 0);
+    $value = $entry['value'] ?? '';
+
+    if ($formatId === PropertyFormat::FORMAT_LIST) {
+        return count(omoParseListItems($value)) > 0;
+    }
+
+    if ($formatId === PropertyFormat::FORMAT_HTML) {
+        return !PropertyFormat::isEmptyValue(PropertyFormat::FORMAT_HTML, $value);
+    }
+
+    return trim((string)$value) !== '';
+}
+
+function omoNormalizeEntryDateTime($value)
+{
+    if ($value instanceof DateTimeInterface) {
+        return $value;
+    }
+
+    $value = trim((string)$value);
+    if ($value === '') {
+        return null;
+    }
+
+    try {
+        return new DateTime($value);
+    } catch (Exception $exception) {
+        return null;
+    }
+}
+
+function omoResolveUserDisplayName($userId, $organizationId = 0)
+{
+    static $cache = array();
+
+    $userId = (int)$userId;
+    $organizationId = (int)$organizationId;
+    if ($userId <= 0) {
+        return '';
+    }
+
+    $cacheKey = $userId . ':' . $organizationId;
+    if (array_key_exists($cacheKey, $cache)) {
+        return $cache[$cacheKey];
+    }
+
+    $user = new \dbObject\User();
+    if (!$user->load($userId)) {
+        $cache[$cacheKey] = '';
+        return '';
+    }
+
+    if (!$user->canView()) {
+        $cache[$cacheKey] = '';
+        return '';
+    }
+
+    $cache[$cacheKey] = trim((string)$user->getScopedDisplayName($organizationId));
+    return $cache[$cacheKey];
+}
+
+function omoRenderSectionUpdateMeta(array $entry, $organizationId = 0)
+{
+    if (!omoEntryHasLocalDisplayValue($entry)) {
+        return '';
+    }
+
+    $updatedAt = omoNormalizeEntryDateTime($entry['updatedAt'] ?? null);
+    if (!$updatedAt) {
+        return '';
+    }
+
+    $formattedDate = $updatedAt->format('d.m.Y H:i');
+    $metaText = t('leftbar.detail.updated_at', ['date' => $formattedDate]);
+    $updatedByName = omoResolveUserDisplayName((int)($entry['updatedByUserId'] ?? 0), (int)$organizationId);
+    if ($updatedByName !== '') {
+        $metaText = t('leftbar.detail.updated_by', [
+            'date' => $formattedDate,
+            'userName' => $updatedByName,
+        ]);
+    }
+
+    return '<div class="section-update-meta">' . omoApiEscape($metaText) . '</div>';
+}
+
 function omoBuildSections(Holon $holon)
 {
     $entries = $holon->getPropertyEntries();
@@ -285,7 +486,9 @@ function omoBuildSections(Holon $holon)
         }
 
         $sections[] = array(
-            'title' => trim((string)($entry['name'] ?: $entry['shortname'] ?: ('Propriete ' . $entry['id']))),
+            'title' => trim((string)($entry['name'] ?: $entry['shortname'] ?: t('leftbar.detail.property_fallback', [
+                'propertyId' => (int)$entry['id'],
+            ]))),
             'entry' => $entry,
         );
     }
@@ -333,7 +536,7 @@ $cid = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
 if ($organizationId <= 0) {
     http_response_code(400);
     ?>
-    <div class="circle-panel"><div class="error">Organisation invalide.</div></div>
+    <div class="circle-panel"><div class="error"><?= omoApiEscape(t('leftbar.error.organization_invalid')) ?></div></div>
     <?php
     exit;
 }
@@ -350,7 +553,7 @@ $organization = $organizations->get($organizationId);
 if ($organization === null) {
     http_response_code(404);
     ?>
-    <div class="circle-panel"><div class="error">Organisation introuvable.</div></div>
+    <div class="circle-panel"><div class="error"><?= omoApiEscape(t('leftbar.error.organization_not_found')) ?></div></div>
     <?php
     exit;
 }
@@ -359,7 +562,7 @@ $canViewOrganization = $organization->canViewDetail();
 if (!$canViewOrganization) {
     http_response_code(403);
     ?>
-    <div class="circle-panel"><div class="error">Acces refuse a cette organisation.</div></div>
+    <div class="circle-panel"><div class="error"><?= omoApiEscape(t('leftbar.error.organization_access_denied')) ?></div></div>
     <?php
     exit;
 }
@@ -375,7 +578,7 @@ $root = $organization->getStructuralRootHolon();
 if ($root === null) {
     http_response_code(404);
     ?>
-    <div class="circle-panel"><div class="error">Aucune structure racine n'a &eacute;t&eacute; trouv&eacute;e pour cette organisation.</div></div>
+    <div class="circle-panel"><div class="error"><?= omoApiEscape(t('leftbar.error.root_not_found')) ?></div></div>
     <?php
     exit;
 }
@@ -396,7 +599,7 @@ if ($cid > 0) {
     if (!$candidate->load($cid) || !$candidate->isDescendantOf($navigationRoot->getId())) {
         http_response_code(404);
         ?>
-        <div class="circle-panel"><div class="error">Holon introuvable pour cette organisation.</div></div>
+        <div class="circle-panel"><div class="error"><?= omoApiEscape(t('leftbar.error.holon_not_found')) ?></div></div>
         <?php
         exit;
     }
@@ -404,7 +607,7 @@ if ($cid > 0) {
     if (!$candidate->canViewDetail()) {
         http_response_code(403);
         ?>
-        <div class="circle-panel"><div class="error">Acces refuse a ce holon.</div></div>
+        <div class="circle-panel"><div class="error"><?= omoApiEscape(t('leftbar.error.holon_access_denied')) ?></div></div>
         <?php
         exit;
     }
@@ -438,11 +641,12 @@ $canCreateChildHolon = $currentHolon->canEdit() && in_array((int)$currentHolon->
 $canEditHolon = $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3, 4), true);
 $canMoveHolon = !$isCurrentTemplateHolon && $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
 $canDeleteHolon = $currentHolon->canDelete() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
+$canViewHolonHistory = $currentHolon->canViewDetail();
 $deleteDescendantCount = $canDeleteHolon ? (int)$currentHolon->countVisibleDescendants() : 0;
 $parentHolonForDelete = $canDeleteHolon ? $currentHolon->getParentHolon() : null;
 $deleteParentId = $parentHolonForDelete ? (int)$parentHolonForDelete->getId() : 0;
 $deleteParentIsRoot = $parentHolonForDelete ? ((int)$parentHolonForDelete->get('IDtypeholon') === 4) : false;
-$hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $canDeleteHolon;
+$hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $canDeleteHolon || $canViewHolonHistory;
 ?>
 
 <style>
@@ -495,7 +699,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
                                 class="circle-menu__item"
                                 data-open-create-holon="1"
                                 data-cid="<?= (int)$currentHolon->getId() ?>"
-                            >Add</button>
+                            ><?= omoApiEscape(t('leftbar.actions.add')) ?></button>
                         <?php endif; ?>
                         <?php if ($canEditHolon): ?>
                             <button
@@ -506,7 +710,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
                                 data-template-edit="<?= $isCurrentTemplateHolon ? '1' : '0' ?>"
                                 data-definition-edit="<?= $isOrganizationDefinitionHolon ? '1' : '0' ?>"
                                 data-template-context-id="<?= (int)$editTemplateContextId ?>"
-                            >Edit</button>
+                            ><?= omoApiEscape(t('leftbar.actions.edit')) ?></button>
                         <?php endif; ?>
                         <?php if ($canMoveHolon): ?>
                             <button
@@ -514,7 +718,15 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
                                 class="circle-menu__item"
                                 data-open-move-holon="1"
                                 data-hid="<?= (int)$currentHolon->getId() ?>"
-                            >Move</button>
+                            ><?= omoApiEscape(t('leftbar.actions.move')) ?></button>
+                        <?php endif; ?>
+                        <?php if ($canViewHolonHistory): ?>
+                            <button
+                                type="button"
+                                class="circle-menu__item"
+                                data-open-holon-history="1"
+                                data-hid="<?= (int)$currentHolon->getId() ?>"
+                            ><?= omoApiEscape(t('leftbar.actions.history')) ?></button>
                         <?php endif; ?>
                         <?php if ($canDeleteHolon): ?>
                             <button
@@ -527,7 +739,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
                                 data-descendant-count="<?= (int)$deleteDescendantCount ?>"
                                 data-parent-id="<?= (int)$deleteParentId ?>"
                                 data-parent-is-root="<?= $deleteParentIsRoot ? '1' : '0' ?>"
-                            >Del</button>
+                            ><?= omoApiEscape(t('leftbar.actions.delete')) ?></button>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -537,11 +749,13 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
     </div>
     <?php if (count($visibleMemberCards) > 0 || $canManageMembers): ?>
         <div class="circle-members">
-            <div class="circle-members__label generic-card-title generic-card-title--eyebrow">Membres</div>
+            <div class="circle-members__label generic-card-title generic-card-title--eyebrow"><?= omoApiEscape(t('leftbar.members.section_title')) ?></div>
             <div class="circle-members__row">
                 <div class="circle-members__list">
                     <?php foreach ($visibleMemberCards as $member): ?>
-                        <?php $memberTooltip = $member['displayName'] . (!empty($member['isPending']) ? ' - invitation en attente' : ''); ?>
+                        <?php $memberTooltip = !empty($member['isPending'])
+                            ? t('leftbar.members.pending_tooltip', ['memberName' => $member['displayName']])
+                            : (string)$member['displayName']; ?>
                         <span
                             class="circle-member<?= !empty($member['isPending']) ? ' circle-member--pending' : '' ?>"
                             data-tooltip="<?= omoApiEscape($memberTooltip) ?>"
@@ -570,13 +784,13 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
                             class="circle-member circle-member--add"
                             data-open-member-popup="1"
                             data-hid="<?= (int)$currentHolon->getId() ?>"
-                            aria-label="Ajouter un membre"
-                            title="Ajouter un membre"
+                            aria-label="<?= omoApiEscape(t('leftbar.members.add')) ?>"
+                            title="<?= omoApiEscape(t('leftbar.members.add')) ?>"
                         >+</button>
                     <?php endif; ?>
                 </div>
                 <?php if ($hasHiddenMembers): ?>
-                    <button type="button" class="circle-badge circle-badge--action" data-open-team-drawer="1" data-cid="<?= (int)$currentHolon->getId() ?>">Voir tout</button>
+                    <button type="button" class="circle-badge circle-badge--action" data-open-team-drawer="1" data-cid="<?= (int)$currentHolon->getId() ?>"><?= omoApiEscape(t('leftbar.members.view_all')) ?></button>
                 <?php endif; ?>
             </div>
         </div>
@@ -585,8 +799,8 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
 
     <?php if (count($sections) === 0): ?>
         <div class="circle-section generic-accordion generic-accordion--card">
-            <div class="circle-section__title generic-card-title generic-card-title--small">Informations</div>
-            <p class="section-text">Aucun contenu n'est encore renseign&eacute; pour ce holon.</p>
+            <div class="circle-section__title generic-card-title generic-card-title--small"><?= omoApiEscape(t('leftbar.empty.section_title')) ?></div>
+            <p class="section-text"><?= omoApiEscape(t('leftbar.empty.message')) ?></p>
         </div>
     <?php endif; ?>
 
@@ -598,19 +812,20 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
             </div>
             <div class="generic-accordion__content">
                 <?= omoRenderSectionBody($section['entry']) ?>
+                <?= omoRenderSectionUpdateMeta($section['entry'], $organizationId) ?>
             </div>
         </div>
     <?php endforeach; ?>
     <?php if (count($childNavigation['containers']) > 0 || count($childNavigation['roles']) > 0): ?>
-        <div class="circle-section circle-section--navigation generic-accordion generic-accordion--card generic-accordion--collapsible">
+        <div class="circle-section circle-section--navigation generic-accordion generic-accordion--card generic-accordion--collapsible" data-section-key="dependencies">
             <div class="generic-accordion__header">
-                <span class="generic-accordion__title generic-card-title generic-card-title--small">Dependances</span>
+                <span class="generic-accordion__title generic-card-title generic-card-title--small"><?= omoApiEscape(t('leftbar.children.section_title')) ?></span>
                 <span class="generic-accordion__toggle">&#9662;</span>
             </div>
             <div class="generic-accordion__content">
                 <?php if (count($childNavigation['containers']) > 0): ?>
                     <div class="child-nav-group">
-                        <div class="child-nav-subtitle generic-card-title generic-card-title--small">Cercles</div>
+                        <div class="child-nav-subtitle generic-card-title generic-card-title--small"><?= omoApiEscape(t('leftbar.children.circles')) ?></div>
                         <div class="child-nav-list">
                             <?php foreach ($childNavigation['containers'] as $child): ?>
                                 <button type="button" class="child-nav-item" data-cid="<?= (int)$child['id'] ?>">
@@ -624,7 +839,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
 
                 <?php if (count($childNavigation['roles']) > 0): ?>
                     <div class="child-nav-group">
-                        <div class="child-nav-subtitle generic-card-title generic-card-title--small">Roles</div>
+                        <div class="child-nav-subtitle generic-card-title generic-card-title--small"><?= omoApiEscape(t('leftbar.children.roles')) ?></div>
                         <div class="child-nav-list">
                             <?php foreach ($childNavigation['roles'] as $child): ?>
                                 <button type="button" class="child-nav-item child-nav-item--role" data-cid="<?= (int)$child['id'] ?>">
@@ -915,6 +1130,13 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
     margin: 0 0 0.85em;
 }
 
+.section-update-meta {
+    margin-top: 10px;
+    font-size: 11px;
+    line-height: 1.35;
+    color: var(--color-text-light);
+}
+
 .section-html ul,
 .section-html ol {
     margin: 0.25em 0;
@@ -1061,7 +1283,7 @@ $(document)
   .off('click.omoOrgSection', '#panel-left .generic-accordion__header')
   .on('click.omoOrgSection', '#panel-left .generic-accordion__header', function () {
     const section = $(this).closest('.generic-accordion--collapsible');
-    const key = omoNormalizeSectionKey(section.find('.generic-accordion__title').first().text());
+    const key = String(section.data('section-key') || omoNormalizeSectionKey(section.find('.generic-accordion__title').first().text()));
 
     section.toggleClass('is-collapsed');
     localStorage.setItem('section_' + key, section.hasClass('is-collapsed'));
@@ -1251,8 +1473,24 @@ $(document)
     }
 
     window.commonTopbarOpenModal(
-        'Ajouter un membre',
+        <?= json_encode(t('leftbar.members.add'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
         'api/holons/member_popup.php?hid=' + hid,
+        'fetch'
+    );
+  });
+
+$(document)
+  .off('click.omoOrgOpenHolonHistory', '#panel-left [data-open-holon-history="1"]')
+  .on('click.omoOrgOpenHolonHistory', '#panel-left [data-open-holon-history="1"]', function () {
+    const hid = Number($(this).data('hid'));
+
+    if (!hid || typeof window.commonTopbarOpenModal !== 'function') {
+        return;
+    }
+
+    window.commonTopbarOpenModal(
+        <?= json_encode(t('leftbar.actions.history'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+        'api/holons/history_popup.php?hid=' + hid,
         'fetch'
     );
   });
@@ -1298,7 +1536,7 @@ function omoBuildDirectHolonUrl(cid) {
 
 (function restoreSections() {
     $('#panel-left .generic-accordion--collapsible').each(function () {
-        const key = omoNormalizeSectionKey($(this).find('.generic-accordion__title').first().text());
+        const key = String($(this).data('section-key') || omoNormalizeSectionKey($(this).find('.generic-accordion__title').first().text()));
         const saved = localStorage.getItem('section_' + key);
 
         if (saved === 'true') {
@@ -1306,7 +1544,7 @@ function omoBuildDirectHolonUrl(cid) {
             return;
         }
 
-        if (saved === null && key === 'dependances') {
+        if (saved === null && key === 'dependencies') {
             $(this).addClass('is-collapsed');
         }
     });
@@ -1337,14 +1575,14 @@ $(document)
 
         const originalText = button.textContent;
         $(button).addClass('copied');
-        button.textContent = 'Lien copie';
+        button.textContent = <?= json_encode(t('leftbar.copy_link.success'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
         window.setTimeout(function () {
             button.textContent = originalText;
             $(button).removeClass('copied');
         }, 1200);
     } catch (error) {
-        console.error('Impossible de copier le lien direct.', error);
+        console.error(<?= json_encode(t('leftbar.copy_link.error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>, error);
     }
   });
 </script>

@@ -2,6 +2,7 @@
 CREATE TABLE IF NOT EXISTS `faq` (
   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `IDhowto` int(10) UNSIGNED DEFAULT NULL,
+  `IDholon` int(10) UNSIGNED DEFAULT NULL,
   `question` varchar(255) NOT NULL,
   `answer` text NOT NULL,
   `detail` mediumtext DEFAULT NULL,
@@ -14,4 +15,5 @@ CREATE TABLE IF NOT EXISTS `faq` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 ALTER TABLE `faq`
+  ADD COLUMN IF NOT EXISTS `IDholon` int(10) UNSIGNED DEFAULT NULL AFTER `IDhowto`,
   ADD COLUMN IF NOT EXISTS `viewcount` int(11) DEFAULT 0 AFTER `isactive`;

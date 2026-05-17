@@ -148,11 +148,13 @@ INSERT INTO `document` (`id`, `title`, `description`, `content`, `keywords`, `ID
 CREATE TABLE `faq` (
   `id` int(10) UNSIGNED NOT NULL,
   `IDhowto` int(10) UNSIGNED DEFAULT NULL,
+  `IDholon` int(10) UNSIGNED DEFAULT NULL,
   `question` varchar(255) NOT NULL,
   `answer` text NOT NULL,
   `detail` text DEFAULT NULL,
   `displayorder` int(11) DEFAULT 0,
   `isactive` tinyint(1) DEFAULT 1,
+  `viewcount` int(11) DEFAULT 0,
   `created` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -275,6 +277,7 @@ INSERT INTO `holon` (`id`, `IDorganization`, `name`, `color`, `IDholon_org`, `ID
 (666, NULL, 'Lien pilotage', NULL, 661, 1, '2024-12-03 13:02:06', NULL, 1, 1, 0, 0, 'Lien pilotage', 1, 663, 6, NULL),
 (667, NULL, 'Mémoire', NULL, 661, 1, '2024-12-03 13:02:06', NULL, 1, 1, 0, 0, 'Rôle mémoire', 1, 663, 6, NULL),
 (668, NULL, 'Opérations', NULL, 661, 1, '2024-12-03 13:02:06', NULL, 1, 1, 0, 0, NULL, 1, 663, 6, NULL),
+(669, NULL, 'fdsfds', NULL, 661, 16, '2025-08-03 16:37:02', NULL, 1, 1, 0, 0, NULL, 2, 663, 662, NULL),
 (670, NULL, 'Facilitation', NULL, 661, 16, '2025-08-03 16:37:02', NULL, 1, 1, 0, 0, NULL, 1, 669, 665, NULL),
 (671, NULL, 'CA', NULL, 661, 1, '2024-12-03 09:51:41', NULL, 1, 1, 0, 0, NULL, 2, 661, 7, NULL),
 (672, NULL, 'Président', NULL, 661, 1, '2024-12-04 05:30:56', NULL, 1, 1, 0, 0, NULL, 1, 671, 6, NULL),
@@ -320,6 +323,8 @@ CREATE TABLE `holonproperty` (
   `IDproperty` int(11) NOT NULL,
   `value` mediumtext DEFAULT NULL,
   `position` int(11) DEFAULT NULL,
+  `datemodification` datetime DEFAULT NULL,
+  `IDusermodification` int(11) DEFAULT NULL,
   `mandatory` tinyint(1) NOT NULL DEFAULT 0,
   `locked` tinyint(1) NOT NULL DEFAULT 0,
   `active` tinyint(1) NOT NULL DEFAULT 1
@@ -901,22 +906,6 @@ CREATE TABLE `tips` (
 
 -- --------------------------------------------------------
 
---
--- Structure de la table `translation`
---
-
-CREATE TABLE `translation` (
-  `id` int(11) NOT NULL,
-  `uid` varchar(200) NOT NULL,
-  `value` mediumtext NOT NULL,
-  `original` mediumtext DEFAULT NULL,
-  `date` datetime NOT NULL DEFAULT current_timestamp(),
-  `cpt` int(11) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
 -- Structure de la table `typeholon`
 --
 
@@ -949,10 +938,11 @@ CREATE TABLE `user` (
   `lastname` varchar(150) DEFAULT NULL,
   `firstname` varchar(150) DEFAULT NULL,
   `username` varchar(100) DEFAULT NULL,
-  `password` varchar(40) DEFAULT NULL,
+  `password` varchar(80) DEFAULT NULL,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
   `dateconnexion` datetime DEFAULT NULL,
   `active` tinyint(1) NOT NULL DEFAULT 0,
+  `siteadmin` tinyint(1) NOT NULL DEFAULT 0,
   `code` varchar(30) DEFAULT NULL,
   `codeexpiration` datetime DEFAULT NULL,
   `parameters` mediumtext DEFAULT NULL,
@@ -966,8 +956,56 @@ CREATE TABLE `user` (
 -- Déchargement des données de la table `user`
 --
 
-INSERT INTO `user` (`id`, `email`, `lastname`, `firstname`, `username`, `password`, `datecreation`, `dateconnexion`, `active`, `code`, `codeexpiration`, `parameters`, `param_easypv`, `param_easymemo`, `param_easycircle`, `telegramID`) VALUES
-(1, 'admin@omo.test', 'Organization', 'Open', 'Admin', NULL, '2026-04-21 09:01:00', NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `user` (`id`, `email`, `lastname`, `firstname`, `username`, `password`, `datecreation`, `dateconnexion`, `active`, `siteadmin`, `code`, `codeexpiration`, `parameters`, `param_easypv`, `param_easymemo`, `param_easycircle`, `telegramID`) VALUES
+(1, 'admin@omo.test', 'Organization', 'Open', 'Admin', NULL, '2026-04-21 09:01:00', NULL, 1, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `competence`
+--
+
+CREATE TABLE `competence` (
+  `id` int(11) NOT NULL,
+  `IDorganization` int(11) DEFAULT NULL,
+  `name` varchar(190) NOT NULL,
+  `normalized_name` varchar(190) NOT NULL,
+  `category` varchar(30) NOT NULL DEFAULT 'technical',
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `user_competence`
+--
+
+CREATE TABLE `user_competence` (
+  `id` int(11) NOT NULL,
+  `IDuser` int(11) NOT NULL,
+  `IDcompetence` int(11) NOT NULL,
+  `IDorganization` int(11) DEFAULT NULL,
+  `level` tinyint(4) NOT NULL DEFAULT 1,
+  `description` varchar(500) DEFAULT NULL,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  `datemodification` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `user_competence_validation`
+--
+
+CREATE TABLE `user_competence_validation` (
+  `id` int(11) NOT NULL,
+  `IDuser_competence` int(11) NOT NULL,
+  `IDvalidator_user` int(11) NOT NULL,
+  `IDorganization` int(11) NOT NULL,
+  `level` tinyint(4) NOT NULL DEFAULT 1,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  `datemodification` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -1303,6 +1341,30 @@ ALTER TABLE `user`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Index pour la table `competence`
+--
+ALTER TABLE `competence`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_competence_scope_name` (`IDorganization`, `normalized_name`),
+  ADD KEY `idx_competence_category` (`category`);
+
+--
+-- Index pour la table `user_competence`
+--
+ALTER TABLE `user_competence`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_user_competence_user_scope` (`IDuser`, `IDorganization`),
+  ADD KEY `idx_user_competence_competence` (`IDcompetence`);
+
+--
+-- Index pour la table `user_competence_validation`
+--
+ALTER TABLE `user_competence_validation`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uniq_user_competence_validation` (`IDuser_competence`, `IDvalidator_user`, `IDorganization`),
+  ADD KEY `idx_user_competence_validation_org` (`IDorganization`);
+
+--
 -- Index pour la table `user_patreon`
 --
 ALTER TABLE `user_patreon`
@@ -1501,6 +1563,24 @@ ALTER TABLE `user`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=45;
 
 --
+-- AUTO_INCREMENT pour la table `competence`
+--
+ALTER TABLE `competence`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT pour la table `user_competence`
+--
+ALTER TABLE `user_competence`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT pour la table `user_competence_validation`
+--
+ALTER TABLE `user_competence_validation`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT pour la table `user_patreon`
 --
 ALTER TABLE `user_patreon`
@@ -1582,6 +1662,7 @@ CREATE TABLE IF NOT EXISTS `history` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `IDorganization` int(11) DEFAULT NULL,
   `IDuser` int(11) DEFAULT NULL,
+  `IDholon_circle` int(11) DEFAULT NULL,
   `action` varchar(100) DEFAULT NULL,
   `content` mediumtext NOT NULL,
   `parameters` mediumtext DEFAULT NULL,
@@ -1590,6 +1671,7 @@ CREATE TABLE IF NOT EXISTS `history` (
   PRIMARY KEY (`id`),
   KEY `idx_history_organization` (`IDorganization`),
   KEY `idx_history_user` (`IDuser`),
+  KEY `idx_history_holon_circle` (`IDholon_circle`),
   KEY `idx_history_action` (`action`),
   KEY `idx_history_datecreation` (`datecreation`),
   FULLTEXT KEY `ft_history_content` (`content`)
@@ -1666,8 +1748,10 @@ ALTER TABLE `holon`
 ALTER TABLE `holonproperty`
   ADD KEY `idx_holonproperty_holon` (`IDholon`),
   ADD KEY `idx_holonproperty_property` (`IDproperty`),
+  ADD KEY `idx_holonproperty_user_modification` (`IDusermodification`),
   ADD CONSTRAINT `fk_holonproperty_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_holonproperty_property` FOREIGN KEY (`IDproperty`) REFERENCES `property` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `fk_holonproperty_property` FOREIGN KEY (`IDproperty`) REFERENCES `property` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_holonproperty_user_modification` FOREIGN KEY (`IDusermodification`) REFERENCES `user` (`id`) ON DELETE SET NULL;
 
 ALTER TABLE `property`
   ADD KEY `idx_property_root_holon` (`IDholon_organization`),

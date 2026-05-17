@@ -1,137 +1,34 @@
+Texte de vérif de la mise à jour version 2
+
 Bienvenue sur le repository de OMO2, la nouvelle version de OpenMyOrganization.
 
-10 ans après la première version, nous lançons un chantier d'envergure: repenser le logiciel en intégrant nos dix années d'expériences, autant d'un point de vue des fonctionnalités que de l'ergonomie ou de la prise en main.
+Le depot peut etre utilise de deux manieres distinctes :
 
-Accompagnez-nous dans cette grande aventure, en testant les nouvelles fonctionnalités, en soutenant financièrement son développement ou en amenant des propositions d'amélioration, entre autre sur cette plateforme.
-Vous pouvez accéder à la version actuellement en ligne ici: https://systemdd.ch
+## 1. Developpement local avec Docker
 
-Être proposé en OpenSource a toujours été l'objectif de OpenMyOrganization, mais une architecture de base un peu bacale et de grosses failles de sécurité ont empêché le projet de se concrétiser. Dans cette nouvelle version, nous espérons commencer sur de meilleures base et porter d'emblée une attention à ces aspects.
+Utiliser ce parcours si vous voulez lancer une version locale reproductible du projet, avec base de demo, Mailpit, phpMyAdmin et tests de sous-domaines avec `localtest.me`.
 
-## Docker en local
-
-Le projet peut maintenant etre lance en local avec Docker pour obtenir un environnement de test reproductible.
-
-### Prerequis
-
-- Docker Desktop en cours d'execution
-- Le seed SQL publie dans `docker/db/init/00-base.seed.sql`
-
-### Demarrage rapide
+Resume rapide :
 
 ```bash
+git clone <url-du-repo>
+cd OMO2
 docker compose down -v
 docker compose up --build
 ```
 
-Les ports `80` et `443` doivent etre libres sur la machine.
+Guide complet : [DOCKER.md](DOCKER.md)
 
-L'application devient alors accessible sur :
+## 2. Installation sur un site ou un serveur
 
-- `http://localhost`
-- `https://localhost`
-- `https://localtest.me`
-- `https://demo.localtest.me`
-- `https://org1.localtest.me`
-- `https://org2.localtest.me`
-- `https://any-subdomain.localtest.me`
+Utiliser ce parcours si vous voulez deployer l'application sur un hebergement reel.
 
-Interface email locale :
-
-- `http://localhost:8025`
-
-Interface base de donnees :
-
-- `http://localhost:8081`
-
-Comptes de demonstration conseilles :
-
-- `admin@org1.opengov.tools`
-- `member1@org1.opengov.tools`
-- `admin@org2.opengov.tools`
-
-Les codes de connexion arrivent dans Mailpit.
-
-### Domaine local partage pour tester les sous-domaines
-
-Pour tester correctement les cookies partages entre organisations, il est recommande d'utiliser `localtest.me` plutot que `localhost`.
-
-`localtest.me` et tous ses sous-domaines resolvent automatiquement vers `127.0.0.1`, donc il n'est plus necessaire de modifier le fichier `hosts`.
-
-Si les conteneurs etaient deja lances avec une ancienne configuration, relancer :
+Resume rapide :
 
 ```bash
-docker compose down
-docker compose up --build
+git clone -b Dev <url-du-repo> .
 ```
 
-Ensuite, utiliser de preference :
+Puis ouvrir le site dans le navigateur. Si le fichier `.env` est absent, le site redirige automatiquement vers `install.php` et lance l'assistant d'installation.
 
-- `https://localtest.me/omo/`
-- `https://demo.localtest.me/omo/`
-- `https://org1.localtest.me/omo/`
-- `https://org2.localtest.me/omo/`
-
-En production, avec un domaine racine comme `opengov.tools`, cela donne par exemple :
-
-- `https://org1.opengov.tools/omo/`
-- `https://org2.opengov.tools/omo/`
-
-Le certificat HTTPS local est autosigne. Le navigateur affichera donc un avertissement de securite du type `ERR_CERT_AUTHORITY_INVALID` tant que ce certificat n'est pas ajoute comme certificat de confiance sur la machine. En local, il est possible de continuer manuellement via les options avancees du navigateur.
-
-Les anciennes URL en `omo.test` peuvent rester utiles comme configuration legacy si tu conserves des entrees `hosts`, mais la configuration recommandee pour le developpement local est maintenant `localtest.me`.
-
-### Ce que fait l'initialisation
-
-- importe le seed principal `docker/db/init/00-base.seed.sql`
-- utilise MariaDB configuree en `utf8mb4` par defaut pour accepter les emoji
-- charge le dump complet, qui contient deja les organisations de demo `Org1` et `Org2` ainsi que la structure de demo
-
-### Migrations SQL automatiques
-
-Les migrations versionnees du projet se trouvent dans `sql/`.
-
-Le deploiement peut les appliquer via :
-
-```bash
-php scripts/run-migrations.php
-```
-
-Le script :
-
-- cree automatiquement la table de suivi `sql_migration`
-- applique dans l'ordre les fichiers `*.sql` qui contiennent le marqueur `-- @migration`
-- n'execute chaque migration qu'une seule fois par base
-- bloque si un fichier deja applique a ete modifie, pour eviter une derive silencieuse
-
-Les scripts SQL de demo, d'import ou d'usage ponctuel peuvent donc rester dans `sql/` sans etre joues au deploiement, tant qu'ils ne portent pas ce marqueur.
-
-Pour cibler plusieurs bases au meme deploiement, par exemple la base principale et une base d'exemple, il est possible de definir :
-
-```env
-DB_MIGRATION_DATABASES=omodev,omoexample
-```
-
-Ou de lancer explicitement :
-
-```bash
-php scripts/run-migrations.php --databases=omodev,omoexample
-```
-
-### Variante locale privee
-
-Si tu veux ajouter des donnees locales non publiees par-dessus le seed versionne, tu peux deposer un fichier SQL supplementaire dans `docker/db/init/`, par exemple :
-
-- `docker/db/init/99-local.override.local.sql`
-
-Ce type de fichier est ignore par Git, mais sera bien importe par MariaDB au premier demarrage du volume, apres le seed principal.
-
-### Configuration Docker
-
-Le conteneur web utilise `docker/app/.env` pour les valeurs Docker publiques, et `docker/app/.env.private` pour les secrets locaux non publies.
-
-Exemples :
-
-- `docker/app/.env` : `DB_HOST=db`, `MAIL_HOST=mailpit`
-- `docker/app/.env.private` : `GITHUB_BUGREPORT_TOKEN`, `TELEGRAM_BOT_TOKEN`, `OPENAI_API_KEY`
-
-Pour plus de details, voir [DOCKER.md](DOCKER.md).
+Guide complet : [DEPLOY.md](DEPLOY.md)

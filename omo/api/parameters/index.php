@@ -1,12 +1,13 @@
 <?php
 require_once __DIR__ . '/../bootstrap.php';
+require_once dirname(__DIR__, 3) . '/includes/server_env_admin.php';
 
 $currentUserId = commonGetCurrentUserId();
 $currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 $organization = null;
 $canEditOrganization = false;
 $organizationName = '';
-
+$isSiteAdmin = commonCurrentUserIsSiteAdmin();
 if ($currentOrganizationId > 0) {
     $organization = new \dbObject\Organization();
     if ($organization->load($currentOrganizationId)) {
@@ -64,6 +65,19 @@ if ($organizationName === '') {
                 <strong>Modeles de holons</strong>
                 <span>Configurer les types de noeuds et leurs proprietes pour votre organisation.</span>
             </button>
+
+            <?php if ($isSiteAdmin): ?>
+            <button
+                type="button"
+                class="omo-settings__card omo-card omo-card--interactive"
+                data-omo-settings-modal-title="Admin du serveur"
+                data-omo-settings-modal-url="/omo/api/parameters/server_env_popup.php"
+                data-omo-settings-modal-mode="fetch"
+            >
+                <strong>Admin du serveur</strong>
+                <span>Ouvrir les reglages globaux sensibles du fichier .env, hors configuration de la base de donnees.</span>
+            </button>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
         </div>
@@ -71,6 +85,10 @@ if ($organizationName === '') {
 </div>
 
 <style>
+.omo-settings__grid {
+    align-items: start;
+}
+
 .omo-settings__card {
     display: grid;
     gap: 8px;
@@ -88,6 +106,7 @@ if ($organizationName === '') {
 </style>
 
 <script>
+(function () {
 document.querySelectorAll('[data-omo-settings-drawer-url]').forEach(function (button) {
     if (button.dataset.omoSettingsReady === '1') {
         return;
@@ -149,4 +168,5 @@ document.querySelectorAll('[data-omo-settings-modal-url]').forEach(function (but
         );
     });
 });
+})();
 </script>

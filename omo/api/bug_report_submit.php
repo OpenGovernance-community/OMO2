@@ -262,11 +262,11 @@ if ($currentUserId <= 0) {
     exit;
 }
 
-if (!githubBugReportIsConfigured()) {
-    http_response_code(500);
+if (!githubBugReportUiIsEnabled()) {
+    http_response_code(404);
     echo json_encode([
         'status' => false,
-        'message' => 'Configuration GitHub incomplete: ' . implode(' ; ', githubBugReportGetConfigurationIssues()) . '.',
+        'message' => 'Le module de signalement n est pas disponible sur ce serveur.',
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }

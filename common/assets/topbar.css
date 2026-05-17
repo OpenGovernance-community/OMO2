@@ -61,6 +61,38 @@
     --topbar-panel-muted: #9fb0c3;
 }
 
+@media (prefers-color-scheme: dark) {
+    :root[data-theme-preference="system"] {
+        --color-bg: #0f1720;
+        --color-surface: #16202b;
+        --color-surface-alt: #101923;
+        --color-text: #e5edf7;
+        --color-text-light: #9fb0c3;
+        --color-border: #283548;
+
+        --topbar-bg: rgba(11,18,32,0.92);
+        --topbar-border: rgba(159,176,195,0.18);
+        --topbar-brand-bg: #111827;
+        --topbar-action-bg: #1b2632;
+        --topbar-action-bg-hover: #253346;
+        --topbar-action-text: #e5edf7;
+        --topbar-avatar-bg: #7c9cff;
+        --topbar-avatar-text: #0f1720;
+        --topbar-menu-bg: rgba(15,23,32,0.98);
+        --topbar-menu-border: rgba(159,176,195,0.18);
+        --topbar-menu-item-bg: rgba(159,176,195,0.1);
+        --topbar-menu-item-bg-hover: rgba(124,156,255,0.18);
+        --topbar-menu-text: #f8fafc;
+        --topbar-menu-text-muted: rgba(229,237,247,0.76);
+        --topbar-input-bg: #16202b;
+        --topbar-input-border: #32455c;
+        --topbar-input-text: #e5edf7;
+        --topbar-panel-bg: #16202b;
+        --topbar-panel-border: #283548;
+        --topbar-panel-muted: #9fb0c3;
+    }
+}
+
 .common-topbar {
     display: flex;
     align-items: center;
@@ -483,8 +515,46 @@
 .common-topbar-profile-actions {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 12px;
+}
+
+.common-topbar-profile-preferences {
+    display: grid;
+    gap: 10px;
+}
+
+.common-topbar-profile-preferences__field {
+    display: grid;
+    gap: 6px;
+}
+
+.common-topbar-profile-preferences__label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--topbar-panel-muted, rgba(255,255,255,0.78));
+}
+
+.common-topbar-profile-preferences__select {
+    width: 100%;
+    min-height: 36px;
+    padding: 8px 10px;
+    border: 1px solid var(--topbar-panel-border, rgba(255,255,255,0.12));
+    border-radius: 10px;
+    background: rgba(255,255,255,0.08);
+    color: var(--topbar-menu-text, #f9fafb);
+    font: inherit;
+}
+
+.common-topbar-profile-preferences__select:focus {
+    outline: 2px solid rgba(255,255,255,0.18);
+    outline-offset: 1px;
+}
+
+.common-topbar-profile-preferences__select option {
+    color: #111827;
 }
 
 .common-topbar-profile-actions__button {

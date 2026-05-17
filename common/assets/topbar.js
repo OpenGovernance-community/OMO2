@@ -3,6 +3,28 @@
         return window.commonTopbarConfig || {};
     }
 
+    function getConfigValue(path) {
+        var config = getConfig();
+        var current = config;
+
+        String(path || '').split('.').forEach(function (part) {
+            if (!part || !current || typeof current !== 'object' || !(part in current)) {
+                current = null;
+                return;
+            }
+
+            current = current[part];
+        });
+
+        return current;
+    }
+
+    function getConfigTextValue(path, fallback) {
+        var current = getConfigValue(path);
+
+        return typeof current === 'string' && current !== '' ? current : fallback;
+    }
+
     function runContainerCleanup(container) {
         if (!container || container.id !== 'commonTopbarModalBody') {
             return;
@@ -86,7 +108,7 @@
         }
 
         runContainerCleanup(container);
-        container.innerHTML = '<div class="loading">Chargement...</div>';
+        container.innerHTML = '<div class="loading">' + getConfigTextValue('translations.loadingLabel', 'Chargement...') + '</div>';
 
         fetch(url, {
             credentials: 'same-origin',
@@ -96,7 +118,7 @@
         })
             .then(function (response) {
                 if (!response.ok) {
-                    throw new Error('Erreur de chargement');
+                    throw new Error(getConfigTextValue('translations.loadErrorLabel', 'Erreur de chargement'));
                 }
 
                 return response.text();
@@ -110,7 +132,7 @@
                 }, 0);
             })
             .catch(function () {
-                container.innerHTML = '<div class="loading">Erreur de chargement</div>';
+                container.innerHTML = '<div class="loading">' + getConfigTextValue('translations.loadErrorLabel', 'Erreur de chargement') + '</div>';
             });
     }
 
@@ -118,6 +140,25 @@
         document.querySelectorAll('.common-topbar__menu.is-open').forEach(function (menu) {
             menu.classList.remove('is-open');
         });
+    }
+
+    function focusSearchInput(input) {
+        if (!input) {
+            return;
+        }
+
+        window.setTimeout(function () {
+            input.focus();
+            if (typeof input.select === 'function') {
+                input.select();
+                return;
+            }
+
+            if (typeof input.setSelectionRange === 'function') {
+                var valueLength = String(input.value || '').length;
+                input.setSelectionRange(0, valueLength);
+            }
+        }, 20);
     }
 
     function openDrawer(title, content, mode) {
@@ -132,7 +173,7 @@
         closeModal();
         closeDrawer();
 
-        titleNode.textContent = title || 'Panneau latéral';
+        titleNode.textContent = title || getConfigTextValue('drawer.defaultTitle', 'Panneau lateral');
         if (mode === 'iframe') {
             body.innerHTML = '<iframe class="common-topbar-drawer__iframe" src="' + content + '"></iframe>';
         } else if (mode === 'fetch') {
@@ -157,7 +198,7 @@
 
         closeDrawer();
         closeModal();
-        titleNode.textContent = title || 'Panneau';
+        titleNode.textContent = title || getConfigTextValue('modal.defaultTitle', 'Panneau');
         if (mode === 'iframe') {
             body.innerHTML = '<iframe class="common-topbar-modal__iframe" src="' + content + '"></iframe>';
         } else if (mode === 'fetch') {
@@ -171,7 +212,7 @@
         document.body.classList.add('common-topbar-modal-open');
         window.dispatchEvent(new CustomEvent('common-topbar-modal-open', {
             detail: {
-                title: title || 'Panneau',
+                title: title || getConfigTextValue('modal.defaultTitle', 'Panneau'),
                 content: content,
                 mode: mode || 'html'
             }
@@ -251,7 +292,7 @@
             return [];
         }
 
-        scopes.forEach(function (scope, index) {
+        scopes.forEach(function (scope) {
             if (!scope || !scope.id || !scope.label) {
                 return;
             }
@@ -335,21 +376,25 @@
         if (item.url) {
             if (item.mode === 'drawer') {
                 openDrawer(
-                    item.title || item.label || 'Aide',
+                    item.title || item.label || getConfigTextValue('translations.helpFallbackLabel', 'Aide'),
                     item.url,
                     item.contentMode === 'html' ? 'html' : (item.contentMode === 'fetch' ? 'fetch' : 'iframe')
                 );
                 return;
             }
             openModal(
-                item.title || item.label || 'Aide',
+                item.title || item.label || getConfigTextValue('translations.helpFallbackLabel', 'Aide'),
                 item.url,
                 item.mode === 'fetch' ? 'fetch' : (item.mode === 'iframe' ? 'iframe' : 'html')
             );
             return;
         }
 
-        openModal(item.title || item.label || 'Aide', item.html || '<p>Contenu à venir.</p>', 'html');
+        openModal(
+            item.title || item.label || getConfigTextValue('translations.helpFallbackLabel', 'Aide'),
+            item.html || getConfigTextValue('translations.helpPendingHtml', '<p>Contenu a venir.</p>'),
+            'html'
+        );
     }
 
     function handleProfileEdit() {
@@ -363,7 +408,7 @@
 
         if (profile.editUrl) {
             openModal(
-                profile.editTitle || 'Profil',
+                profile.editTitle || getConfigTextValue('profile.editTitle', 'Profil'),
                 profile.editUrl,
                 profile.editMode === 'fetch' ? 'fetch' : (profile.editMode === 'html' ? 'html' : 'iframe')
             );
@@ -381,14 +426,18 @@
 
         if (bugReport.url) {
             openModal(
-                bugReport.title || 'Signaler un bug',
+                bugReport.title || getConfigTextValue('bugReport.title', 'Signaler un bug'),
                 bugReport.url,
                 bugReport.mode === 'fetch' ? 'fetch' : (bugReport.mode === 'html' ? 'html' : 'iframe')
             );
             return;
         }
 
-        openModal('Signaler un bug', '<p>Formulaire indisponible.</p>', 'html');
+        openModal(
+            getConfigTextValue('bugReport.title', 'Signaler un bug'),
+            getConfigTextValue('translations.bugReportUnavailableHtml', '<p>Formulaire indisponible.</p>'),
+            'html'
+        );
     }
 
     function handleLogout() {
@@ -408,6 +457,128 @@
             });
     }
 
+    function handleLanguageChange(select) {
+        if (!select) {
+            return;
+        }
+
+        if (typeof window.sharedSetLanguagePreference === 'function') {
+            window.sharedSetLanguagePreference(select.value, true);
+            return;
+        }
+
+        document.cookie = [
+            'lang=' + encodeURIComponent(String(select.value || '').toLowerCase()),
+            'path=/',
+            'max-age=' + String(365 * 24 * 60 * 60),
+            'SameSite=Lax'
+        ].join('; ');
+        window.location.reload();
+    }
+
+    function getThemePreference() {
+        if (typeof window.sharedGetThemePreference === 'function') {
+            return window.sharedGetThemePreference();
+        }
+
+        try {
+            var storedPreference = window.localStorage.getItem('omo-theme-preference');
+            if (storedPreference === 'light' || storedPreference === 'dark' || storedPreference === 'system') {
+                return storedPreference;
+            }
+        } catch (error) {
+        }
+
+        return 'system';
+    }
+
+    function applyThemePreference(preference, persistPreference) {
+        var safePreference = (preference === 'light' || preference === 'dark' || preference === 'system')
+            ? preference
+            : 'system';
+        var resolvedTheme = safePreference;
+
+        if (persistPreference) {
+            try {
+                window.localStorage.setItem('omo-theme-preference', safePreference);
+            } catch (error) {
+            }
+        }
+
+        if (typeof window.sharedApplyDocumentTheme === 'function') {
+            resolvedTheme = window.sharedApplyDocumentTheme({
+                preference: safePreference
+            }).theme;
+        } else {
+            var root = document.documentElement;
+            var prefersDark = typeof window.matchMedia === 'function'
+                && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            resolvedTheme = safePreference === 'system'
+                ? (prefersDark ? 'dark' : 'light')
+                : safePreference;
+
+            root.dataset.themePreference = safePreference;
+            root.dataset.theme = resolvedTheme;
+            root.style.colorScheme = resolvedTheme;
+        }
+
+        Array.prototype.forEach.call(
+            document.querySelectorAll('[data-omo-theme-select]'),
+            function (select) {
+                select.value = safePreference;
+            }
+        );
+
+        window.dispatchEvent(new CustomEvent('omo-theme-change', {
+            detail: {
+                preference: safePreference,
+                theme: resolvedTheme
+            }
+        }));
+    }
+
+    function handleThemeChange(select) {
+        if (!select) {
+            return;
+        }
+
+        applyThemePreference(select.value, true);
+    }
+
+    function bindPreferenceSelects(root) {
+        var scope = root || document;
+
+        Array.prototype.forEach.call(
+            scope.querySelectorAll('[data-topbar-language-select]'),
+            function (select) {
+                if (!select || select.dataset.topbarLanguageReady === '1') {
+                    return;
+                }
+
+                select.dataset.topbarLanguageReady = '1';
+                select.addEventListener('change', function () {
+                    handleLanguageChange(select);
+                });
+            }
+        );
+
+        Array.prototype.forEach.call(
+            scope.querySelectorAll('[data-omo-theme-select]'),
+            function (select) {
+                if (!select || select.dataset.topbarThemeReady === '1') {
+                    return;
+                }
+
+                select.dataset.topbarThemeReady = '1';
+                select.value = getThemePreference();
+                select.addEventListener('change', function () {
+                    handleThemeChange(select);
+                });
+            }
+        );
+    }
+
     document.addEventListener('click', function (event) {
         var trigger = event.target.closest('[data-topbar-menu-trigger]');
         if (trigger) {
@@ -419,12 +590,7 @@
                 menu.classList.add('is-open');
                 if (name === 'search') {
                     renderSearchScopes(menu);
-                }
-                var searchInput = menu.querySelector('[data-topbar-search-input]');
-                if (searchInput) {
-                    setTimeout(function () {
-                        searchInput.focus();
-                    }, 20);
+                    focusSearchInput(menu.querySelector('[data-topbar-search-input]'));
                 }
             }
             return;
@@ -435,7 +601,10 @@
             try {
                 handleHelpItemClick(JSON.parse(helpItem.getAttribute('data-topbar-help-item')));
             } catch (e) {
-                handleHelpItemClick({ label: 'Aide', html: '<p>Contenu indisponible.</p>' });
+                handleHelpItemClick({
+                    label: getConfigTextValue('translations.helpFallbackLabel', 'Aide'),
+                    html: getConfigTextValue('translations.helpUnavailableHtml', '<p>Contenu indisponible.</p>')
+                });
             }
             return;
         }
@@ -465,6 +634,10 @@
             return;
         }
 
+        if (event.target.closest('[data-topbar-language-select]') || event.target.closest('[data-omo-theme-select]')) {
+            return;
+        }
+
         if (!event.target.closest('.common-topbar__menu-wrap')) {
             closeMenus();
         }
@@ -473,6 +646,20 @@
     document.addEventListener('submit', function (event) {
         if (event.target.matches('[data-topbar-search-form]')) {
             handleSearchSubmit(event);
+        }
+    });
+
+    document.addEventListener('change', function (event) {
+        var select = event.target.closest('[data-topbar-language-select]');
+
+        if (select) {
+            handleLanguageChange(select);
+            return;
+        }
+
+        select = event.target.closest('[data-omo-theme-select]');
+        if (select) {
+            handleThemeChange(select);
         }
     });
 
@@ -496,4 +683,6 @@
 
         renderRemoteContent(body, url);
     };
+
+    bindPreferenceSelects(document);
 })();

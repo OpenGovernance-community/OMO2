@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS `history` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `IDorganization` int(11) DEFAULT NULL,
   `IDuser` int(11) DEFAULT NULL,
+  `IDholon_circle` int(11) DEFAULT NULL,
   `action` varchar(100) DEFAULT NULL,
   `content` mediumtext NOT NULL,
   `parameters` mediumtext DEFAULT NULL,
@@ -16,6 +17,7 @@ CREATE TABLE IF NOT EXISTS `history` (
   PRIMARY KEY (`id`),
   KEY `idx_history_organization` (`IDorganization`),
   KEY `idx_history_user` (`IDuser`),
+  KEY `idx_history_holon_circle` (`IDholon_circle`),
   KEY `idx_history_action` (`action`),
   KEY `idx_history_datecreation` (`datecreation`),
   FULLTEXT KEY `ft_history_content` (`content`)

@@ -1,12 +1,17 @@
 <?php
 require_once __DIR__ . '/includes/env.php';
+require_once __DIR__ . '/includes/auto_install.php';
 
-loadEnv(__DIR__ . '/.env');
+$autoInstallEnvPath = __DIR__ . '/.env';
+autoInstallBootstrap($autoInstallEnvPath);
+
+loadEnv($autoInstallEnvPath);
 
 // Identite du site
 $GLOBALS['siteTitle'] = envValue('SITE_TITLE', 'EasyPV');
 $GLOBALS['homeTitle'] = envValue('HOME_TITLE', 'Home');
 $GLOBALS['lang'] = envValue('APP_LANG', 'FR');
+$GLOBALS['organizationSubdomainRouting'] = envBool('ORGANIZATION_SUBDOMAIN_ROUTING', false);
 
 // Config base de donnees
 $GLOBALS['dbName'] = envValue('DB_NAME', '');
@@ -27,6 +32,7 @@ $GLOBALS['mailAuth'] = envBool('MAIL_AUTH', true);
 $GLOBALS['mailCharset'] = envValue('MAIL_CHARSET', 'UTF-8');
 $GLOBALS['mailUser'] = envValue('MAIL_USER', '');
 $GLOBALS['mailPassword'] = envValue('MAIL_PASS', '');
+$GLOBALS['mailTimeout'] = max(3, envInt('MAIL_TIMEOUT', 10));
 
 // Autres acces / integrations
 $GLOBALS['paypalClientId'] = envValue('PAYPAL_CLIENT_ID', '');

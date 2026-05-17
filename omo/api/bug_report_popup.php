@@ -18,10 +18,11 @@ if ($currentOrganizationId > 0) {
 $destination = githubBugReportGetDestinationSummary();
 $configurationIssues = githubBugReportGetConfigurationIssues();
 $isConfigured = githubBugReportIsConfigured();
+$featureEnabled = githubBugReportUiIsEnabled();
 $patreonConnection = false;
 $patreonConnected = false;
 
-if ($currentUserId > 0 && $isConfigured && patreonIsConfigured('oauth')) {
+if ($currentUserId > 0 && $featureEnabled) {
     $patreonConnection = \dbObject\UserPatreon::findByUserId($currentUserId);
     $patreonConnected = $patreonConnection !== false && $patreonConnection->isConnected();
 }
@@ -226,10 +227,10 @@ if ($currentUserId > 0 && $isConfigured && patreonIsConfigured('oauth')) {
             <h3 class="generic-card-title generic-card-title--medium">Connexion requise</h3>
             <p>Le signalement automatique vers GitHub n est disponible que pour un utilisateur connecte.</p>
         </div>
-    <?php elseif (!$isConfigured): ?>
+    <?php elseif (!$featureEnabled): ?>
         <div class="omo-bug-report-popup__error generic-section generic-section--stack">
-            <h3 class="generic-card-title generic-card-title--medium">Configuration GitHub incomplete</h3>
-            <p>Le bouton est en place, mais le serveur n a pas encore les acces GitHub necessaires.</p>
+            <h3 class="generic-card-title generic-card-title--medium">Fonction indisponible</h3>
+            <p>Le module de signalement n est pas configure sur ce serveur.</p>
             <?php if ($configurationIssues !== []): ?>
                 <ul>
                     <?php foreach ($configurationIssues as $issue): ?>
@@ -237,7 +238,9 @@ if ($currentUserId > 0 && $isConfigured && patreonIsConfigured('oauth')) {
                     <?php endforeach; ?>
                 </ul>
             <?php endif; ?>
-            <p>Le token doit avoir au minimum le droit repository Issues: write.</p>
+            <?php if (!patreonSupportUiIsEnabled()): ?>
+                <p>La configuration Patreon est egalement requise pour activer ce module.</p>
+            <?php endif; ?>
         </div>
     <?php elseif (!$patreonConnected): ?>
         <div class="omo-bug-report-popup__error generic-section generic-section--stack">

@@ -42,6 +42,7 @@ $errorLabel = $isEditMode ? "Impossible d'enregistrer l'organisation." : "Imposs
 $shortnamePreviewScheme = commonGetRequestScheme();
 $shortnamePreviewHost = commonGetRootHost();
 $shortnamePreviewPath = '/omo/';
+$organizationSubdomainRoutingEnabled = commonUseOrganizationSubdomains();
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -192,6 +193,7 @@ $shortnamePreviewPath = '/omo/';
             var shortnamePreviewScheme = <?= json_encode($shortnamePreviewScheme, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
             var shortnamePreviewHost = <?= json_encode($shortnamePreviewHost, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
             var shortnamePreviewPath = <?= json_encode($shortnamePreviewPath, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+            var organizationSubdomainRoutingEnabled = <?= $organizationSubdomainRoutingEnabled ? 'true' : 'false' ?>;
             var submitButton = document.getElementById('organization_create_submit');
             var cancelButton = document.getElementById('organization_create_cancel');
             var form = document.getElementById('formulaire-edit');
@@ -206,7 +208,16 @@ $shortnamePreviewPath = '/omo/';
 
             function buildShortnamePreviewUrl(value) {
                 var normalizedValue = String(value || '').trim().toLowerCase();
-                if (!normalizedValue || !shortnamePreviewHost) {
+                if (!shortnamePreviewHost) {
+                    return '';
+                }
+
+                if (!organizationSubdomainRoutingEnabled) {
+                    var targetId = organizationId > 0 ? organizationId : 123;
+                    return shortnamePreviewScheme + '://' + shortnamePreviewHost + '/omo/o/' + targetId;
+                }
+
+                if (!normalizedValue) {
                     return '';
                 }
 
@@ -244,7 +255,11 @@ $shortnamePreviewPath = '/omo/';
 
                 var previewUrl = buildShortnamePreviewUrl(shortnameInput ? shortnameInput.value : '');
                 if (previewUrl) {
-                    hint.innerHTML = "Ce nom court sera utilise dans l'URL de base du site :<br><code>" + previewUrl + "</code>";
+                    if (organizationSubdomainRoutingEnabled) {
+                        hint.innerHTML = "Ce nom court sera utilise dans l'URL de base du site :<br><code>" + previewUrl + "</code>";
+                    } else {
+                        hint.innerHTML = "Les sous-domaines d'organisation sont desactives sur ce serveur. L'acces se fera via une URL de type :<br><code>" + previewUrl + "</code>";
+                    }
                     return;
                 }
 
