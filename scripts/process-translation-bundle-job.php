@@ -77,6 +77,39 @@ function translationWorkerBuildExceptionReport(array $jobData, \Throwable $excep
     return implode(PHP_EOL, $lines);
 }
 
+function translationWorkerGetConfiguredHttpToken()
+{
+    return function_exists('envValue')
+        ? trim((string)envValue('TRANSLATION_WORKER_HTTP_TOKEN', ''))
+        : '';
+}
+
+function translationWorkerGetHttpRequestToken()
+{
+    $token = trim((string)($_GET['token'] ?? $_POST['token'] ?? ''));
+    if ($token !== '') {
+        return $token;
+    }
+
+    $headerToken = trim((string)($_SERVER['HTTP_X_TRANSLATION_WORKER_TOKEN'] ?? ''));
+    if ($headerToken !== '') {
+        return $headerToken;
+    }
+
+    $authorization = trim((string)($_SERVER['HTTP_AUTHORIZATION'] ?? ''));
+    if (preg_match('/^Bearer\s+(.+)$/i', $authorization, $matches)) {
+        return trim((string)$matches[1]);
+    }
+
+    return '';
+}
+
+function translationWorkerParseBoolFlag($value)
+{
+    $normalized = strtolower(trim((string)$value));
+    return in_array($normalized, ['1', 'true', 'yes', 'on'], true);
+}
+
 function translationWorkerProcessJob(\dbObject\TranslationBundleRefreshJob $job, $verbose = false)
 {
     $jobData = [
@@ -117,30 +150,72 @@ function translationWorkerProcessJob(\dbObject\TranslationBundleRefreshJob $job,
     }
 }
 
-if (PHP_SAPI !== 'cli') {
-    translationWorkerWriteError("This script must run in CLI. Current SAPI: " . PHP_SAPI . PHP_EOL);
-    exit(1);
+$isCli = PHP_SAPI === 'cli';
+
+if (!$isCli) {
+    if (!headers_sent()) {
+        header('Content-Type: text/plain; charset=UTF-8');
+    }
+
+    if (function_exists('session_status') && session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
+    }
+
+    if (function_exists('ignore_user_abort')) {
+        @ignore_user_abort(true);
+    }
+
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(0);
+    }
+
+    $configuredHttpToken = translationWorkerGetConfiguredHttpToken();
+    if ($configuredHttpToken === '') {
+        if (!headers_sent()) {
+            http_response_code(503);
+        }
+        translationWorkerWriteError(
+            "HTTP access is disabled for this worker. Configure TRANSLATION_WORKER_HTTP_TOKEN.\n"
+        );
+        exit(1);
+    }
+
+    $providedHttpToken = translationWorkerGetHttpRequestToken();
+    if ($providedHttpToken === '' || !hash_equals($configuredHttpToken, $providedHttpToken)) {
+        if (!headers_sent()) {
+            http_response_code(403);
+        }
+        translationWorkerWriteError("Forbidden.\n");
+        exit(1);
+    }
 }
 
 $jobId = 0;
 $maxJobs = 1;
 $verbose = false;
-$arguments = isset($argv) && is_array($argv) ? array_slice($argv, 1) : [];
 
-foreach ($arguments as $argument) {
-    if (strpos($argument, '--job=') === 0) {
-        $jobId = (int)substr($argument, strlen('--job='));
-        continue;
-    }
+if ($isCli) {
+    $arguments = isset($argv) && is_array($argv) ? array_slice($argv, 1) : [];
 
-    if (strpos($argument, '--max=') === 0) {
-        $maxJobs = max(1, (int)substr($argument, strlen('--max=')));
-        continue;
-    }
+    foreach ($arguments as $argument) {
+        if (strpos($argument, '--job=') === 0) {
+            $jobId = (int)substr($argument, strlen('--job='));
+            continue;
+        }
 
-    if ($argument === '--verbose') {
-        $verbose = true;
+        if (strpos($argument, '--max=') === 0) {
+            $maxJobs = max(1, (int)substr($argument, strlen('--max=')));
+            continue;
+        }
+
+        if ($argument === '--verbose') {
+            $verbose = true;
+        }
     }
+} else {
+    $jobId = isset($_GET['job']) ? (int)$_GET['job'] : (isset($_POST['job']) ? (int)$_POST['job'] : 0);
+    $maxJobs = isset($_GET['max']) ? max(1, (int)$_GET['max']) : (isset($_POST['max']) ? max(1, (int)$_POST['max']) : 1);
+    $verbose = translationWorkerParseBoolFlag($_GET['verbose'] ?? ($_POST['verbose'] ?? '0'));
 }
 
 if ($jobId > 0) {
