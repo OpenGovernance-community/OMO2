@@ -389,14 +389,32 @@ function translationBundleIsExecAvailable()
 
 function translationBundleGetPhpBinary()
 {
+    $isCliCandidate = function ($path) {
+        $path = trim((string)$path);
+        if ($path === '') {
+            return false;
+        }
+
+        $basename = strtolower((string)pathinfo($path, PATHINFO_BASENAME));
+        if ($basename === '') {
+            return false;
+        }
+
+        if (strpos($basename, 'php-fpm') !== false || strpos($basename, 'php-cgi') !== false) {
+            return false;
+        }
+
+        return strpos($basename, 'php') !== false;
+    };
+
     if (function_exists('envValue')) {
         $configuredBinary = trim((string)envValue('TRANSLATION_WORKER_PHP_BINARY', ''));
-        if ($configuredBinary !== '') {
+        if ($isCliCandidate($configuredBinary)) {
             return $configuredBinary;
         }
     }
 
-    if (defined('PHP_BINARY') && is_string(PHP_BINARY) && PHP_BINARY !== '') {
+    if (defined('PHP_BINARY') && is_string(PHP_BINARY) && PHP_BINARY !== '' && $isCliCandidate(PHP_BINARY)) {
         return PHP_BINARY;
     }
 
@@ -404,12 +422,28 @@ function translationBundleGetPhpBinary()
         $candidates = [
             rtrim(PHP_BINDIR, '/\\') . DIRECTORY_SEPARATOR . 'php',
             rtrim(PHP_BINDIR, '/\\') . DIRECTORY_SEPARATOR . 'php.exe',
+            rtrim(PHP_BINDIR, '/\\') . DIRECTORY_SEPARATOR . 'php-cli',
+            rtrim(PHP_BINDIR, '/\\') . DIRECTORY_SEPARATOR . 'php-cli.exe',
+            dirname(rtrim(PHP_BINDIR, '/\\')) . DIRECTORY_SEPARATOR . 'bin' . DIRECTORY_SEPARATOR . 'php',
+            dirname(rtrim(PHP_BINDIR, '/\\')) . DIRECTORY_SEPARATOR . 'bin' . DIRECTORY_SEPARATOR . 'php-cli',
         ];
 
         foreach ($candidates as $candidate) {
-            if (is_file($candidate)) {
+            if (is_file($candidate) && $isCliCandidate($candidate)) {
                 return $candidate;
             }
+        }
+    }
+
+    $fallbackCandidates = [
+        '/usr/bin/php',
+        '/usr/local/bin/php',
+        '/bin/php',
+    ];
+
+    foreach ($fallbackCandidates as $candidate) {
+        if (is_file($candidate) && $isCliCandidate($candidate)) {
+            return $candidate;
         }
     }
 
