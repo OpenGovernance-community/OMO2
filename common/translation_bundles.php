@@ -421,6 +421,40 @@ function translationBundleGetWorkerScriptPath()
     return dirname(__DIR__) . '/scripts/process-translation-bundle-job.php';
 }
 
+function translationBundleGetWorkerLogPath()
+{
+    if (function_exists('envValue')) {
+        $configuredPath = trim((string)envValue('TRANSLATION_WORKER_LOG', ''));
+        if ($configuredPath !== '') {
+            return $configuredPath;
+        }
+    }
+
+    return '';
+}
+
+function translationBundleWriteWorkerDebug($message, $jobId = 0, $persistToJob = true)
+{
+    $message = '[' . date('Y-m-d H:i:s') . '] ' . trim((string)$message);
+    $jobId = (int)$jobId;
+
+    $logPath = translationBundleGetWorkerLogPath();
+    if ($logPath !== '') {
+        @file_put_contents($logPath, $message . PHP_EOL, FILE_APPEND);
+    } else {
+        error_log($message);
+    }
+
+    if (
+        $persistToJob
+        && $jobId > 0
+        && class_exists('\dbObject\TranslationBundleRefreshJob')
+        && method_exists('\dbObject\TranslationBundleRefreshJob', 'setLastError')
+    ) {
+        \dbObject\TranslationBundleRefreshJob::setLastError($jobId, $message);
+    }
+}
+
 function translationBundleInterpolate(string $text, array $variables = [])
 {
     foreach ($variables as $name => $value) {
@@ -435,13 +469,26 @@ function translationBundleInterpolate(string $text, array $variables = [])
 function translationBundleTriggerAsyncRefreshJob($jobId)
 {
     $jobId = (int)$jobId;
-    if ($jobId <= 0 || !translationBundleIsExecAvailable()) {
+    if ($jobId <= 0) {
+        translationBundleWriteWorkerDebug('Refused async trigger because job id is invalid.', $jobId);
+        return false;
+    }
+
+    if (!translationBundleIsExecAvailable()) {
+        translationBundleWriteWorkerDebug(
+            'Unable to trigger translation worker asynchronously because exec() is unavailable.',
+            $jobId
+        );
         return false;
     }
 
     $phpBinary = translationBundleGetPhpBinary();
     $scriptPath = translationBundleGetWorkerScriptPath();
     if (!is_file($scriptPath)) {
+        translationBundleWriteWorkerDebug(
+            'Unable to trigger translation worker because the worker script is missing: ' . $scriptPath,
+            $jobId
+        );
         return false;
     }
 
@@ -453,12 +500,35 @@ function translationBundleTriggerAsyncRefreshJob($jobId)
     $command = implode(' ', $commandParts);
 
     if (DIRECTORY_SEPARATOR === '\\') {
-        @exec('start /B "" ' . $command . ' >NUL 2>&1');
+        $dispatchCommand = 'start /B "" ' . $command . ' >NUL 2>&1';
+        @exec($dispatchCommand);
+        translationBundleWriteWorkerDebug(
+            'Dispatched translation worker command on Windows for job=' . $jobId . ' command=' . $dispatchCommand,
+            $jobId
+        );
         return true;
     }
 
-    @exec($command . ' >/dev/null 2>&1 &');
-    return true;
+    $dispatchCommand = $command . ' >/dev/null 2>&1 & echo $!';
+    $output = [];
+    $exitCode = 0;
+    @exec($dispatchCommand, $output, $exitCode);
+    $pid = trim((string)(count($output) > 0 ? $output[count($output) - 1] : ''));
+    $success = $exitCode === 0;
+
+    translationBundleWriteWorkerDebug(
+        'Async dispatch ' . ($success ? 'requested' : 'failed')
+        . ' for job=' . $jobId
+        . ' php=' . $phpBinary
+        . ' script=' . $scriptPath
+        . ' pid=' . ($pid !== '' ? $pid : 'n/a')
+        . ' exit_code=' . $exitCode
+        . ' sapi=' . PHP_SAPI
+        . ' command=' . $dispatchCommand,
+        $jobId
+    );
+
+    return $success;
 }
 
 function translationBundleQueueRefresh(string $bundleKey, string $locale, array $sourceLang, string $storageLocale = ''): bool

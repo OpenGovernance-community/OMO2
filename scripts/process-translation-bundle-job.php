@@ -7,6 +7,10 @@ function translationWorkerWriteError($message)
 {
     $message = (string)$message;
 
+    if (function_exists('translationBundleWriteWorkerDebug')) {
+        translationBundleWriteWorkerDebug('[worker-stderr] ' . trim($message), 0, false);
+    }
+
     if (PHP_SAPI !== 'cli') {
         if (!headers_sent()) {
             http_response_code(400);
@@ -35,6 +39,10 @@ function translationWorkerWriteError($message)
 function translationWorkerWriteInfo($message)
 {
     $message = (string)$message;
+
+    if (function_exists('translationBundleWriteWorkerDebug')) {
+        translationBundleWriteWorkerDebug('[worker-stdout] ' . trim($message), 0, false);
+    }
 
     if (defined('STDOUT')) {
         fwrite(STDOUT, $message);
