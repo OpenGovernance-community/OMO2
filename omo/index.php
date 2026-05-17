@@ -3,7 +3,186 @@ require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
 require_once dirname(__DIR__) . '/common/topbar.php';
 require_once dirname(__DIR__) . '/common/patreon.php';
+require_once dirname(__DIR__) . '/common/translation_bundles.php';
 require_once __DIR__ . '/topbar.php';
+
+$sourceLang = [
+    'app.access_denied.message' => [
+        'text' => "Votre compte est bien connecte, mais il n'a pas encore acces a l'organisation {organizationName}.",
+        'context' => 'Message shown on the forbidden access page when the user is logged in but has no access to the organization.',
+    ],
+    'app.access_denied.organization_fallback' => [
+        'text' => 'demandee',
+        'context' => 'Fallback organization name used on the forbidden access page when the organization name is missing.',
+    ],
+    'app.access_denied.page_description' => [
+        'text' => "Pour le moment, l'acces a cet espace est reserve aux personnes presentes dans la liste des membres autorises.",
+        'context' => 'Additional explanation shown on the forbidden access page.',
+    ],
+    'app.access_denied.page_heading' => [
+        'text' => 'Acces interdit',
+        'context' => 'Main heading shown on the forbidden access page.',
+    ],
+    'app.access_denied.page_title' => [
+        'text' => 'Acces interdit - OMO',
+        'context' => 'Browser title shown on the forbidden access page.',
+    ],
+    'app.directory.create.action' => [
+        'text' => 'Ouvrir le formulaire',
+        'context' => 'Action label displayed on the create organization card.',
+    ],
+    'app.directory.create.aria_label' => [
+        'text' => 'Creer une nouvelle organisation',
+        'context' => 'Aria label for the create organization card button.',
+    ],
+    'app.directory.create.badge' => [
+        'text' => 'Nouveau',
+        'context' => 'Badge shown on the create organization card.',
+    ],
+    'app.directory.create.description' => [
+        'text' => 'Nom, domaine, logo, banniere, couleur',
+        'context' => 'Subtitle shown on the create organization card.',
+    ],
+    'app.directory.create.modal_title' => [
+        'text' => 'Creer une nouvelle organisation',
+        'context' => 'Title shown in the create organization modal and iframe title.',
+    ],
+    'app.directory.create.title' => [
+        'text' => 'Creer une nouvelle organisation',
+        'context' => 'Title shown on the create organization card.',
+    ],
+    'app.directory.cta.connect' => [
+        'text' => 'Se connecter',
+        'context' => 'Action label shown on an organization card to enter its workspace.',
+    ],
+    'app.directory.description.empty' => [
+        'text' => "Votre compte est bien connecté, mais il n'est rattaché à aucune organisation pour le moment. Vous pouvez en créer une nouvelle ci-dessous.",
+        'context' => 'Message shown on the organization directory when the user has no accessible organizations.',
+    ],
+    'app.directory.description.with_results' => [
+        'text' => "Choisissez l'organisation que vous souhaitez ouvrir. Chaque carte vous redirige vers son espace dédié.",
+        'context' => 'Message shown on the organization directory when organizations are available.',
+    ],
+    'app.directory.fallback_badge' => [
+        'text' => 'Espace OMO',
+        'context' => 'Fallback badge label on an organization card when no custom domain is available.',
+    ],
+    'app.directory.fallback_organization_name' => [
+        'text' => 'Organisation',
+        'context' => 'Fallback organization name used when an organization record has no visible name.',
+    ],
+    'app.directory.heading' => [
+        'text' => 'Vos espaces OMO',
+        'context' => 'Main heading shown on the organization directory page.',
+    ],
+    'app.directory.js.action_error' => [
+        'text' => 'Action impossible.',
+        'context' => 'Fallback error message shown in JavaScript when an organization card action fails.',
+    ],
+    'app.directory.js.default_organization_name' => [
+        'text' => 'cette organisation',
+        'context' => 'Fallback organization name used in JavaScript confirmation dialogs when the name is missing.',
+    ],
+    'app.directory.js.delete_confirm' => [
+        'text' => "Supprimer {organizationName} ?\n\nLa structure, les membres, les cercles, les roles, les partages et les documents relies seront supprimes.",
+        'context' => 'Confirmation dialog shown before deleting an organization from the directory page.',
+    ],
+    'app.directory.js.leave_confirm' => [
+        'text' => "Quitter {organizationName} ?\n\nVos liens avec l'organisation, ses cercles et ses roles seront retires.",
+        'context' => 'Confirmation dialog shown before leaving an organization from the directory page.',
+    ],
+    'app.directory.menu.actions_aria_label' => [
+        'text' => 'Actions pour {organizationName}',
+        'context' => 'Aria label for the actions menu button on an organization card.',
+    ],
+    'app.directory.menu.delete' => [
+        'text' => 'Supprimer',
+        'context' => 'Menu item label used to delete an organization from the directory page.',
+    ],
+    'app.directory.menu.leave' => [
+        'text' => 'Quitter',
+        'context' => 'Menu item label used to leave an organization from the directory page.',
+    ],
+    'app.directory.modal.close' => [
+        'text' => 'Fermer',
+        'context' => 'Button label used to close the create organization modal.',
+    ],
+    'app.directory.open_organization_aria_label' => [
+        'text' => "Ouvrir l'espace {organizationName}",
+        'context' => 'Aria label for the clickable overlay opening an organization workspace.',
+    ],
+    'app.directory.page_title' => [
+        'text' => 'Vos espaces OMO',
+        'context' => 'Browser title shown on the organization directory page.',
+    ],
+    'app.directory.status.none' => [
+        'text' => 'Aucune organisation pour le moment',
+        'context' => 'Status label shown on the organization directory page when the user has no accessible organizations.',
+    ],
+    'app.directory.status.available' => [
+        'one' => '{count} organisation disponible',
+        'other' => '{count} organisations disponibles',
+        'context' => 'Status label shown on the organization directory page with the number of accessible organizations.',
+    ],
+    'app.login.intro' => [
+        'text' => 'Connectez-vous pour acceder à la structure et aux outils de gouvernance.',
+        'context' => 'Intro text shown on the login page before accessing OMO.',
+    ],
+    'app.login.page_title' => [
+        'text' => '{organizationName} - OMO',
+        'context' => 'Browser title shown on the login page.',
+    ],
+    'app.main.page_title' => [
+        'text' => 'Gouvernance UI',
+        'context' => 'Browser title shown on the main OMO application page.',
+    ],
+    'app.mobile.context' => [
+        'text' => 'Contexte',
+        'context' => 'Mobile navigation label for the context panel.',
+    ],
+    'app.mobile.menu' => [
+        'text' => 'Outils',
+        'context' => 'Mobile navigation label for the tools panel.',
+    ],
+    'app.mobile.structure' => [
+        'text' => 'Structure',
+        'context' => 'Mobile navigation label for the structure panel.',
+    ],
+    'app.not_found.message' => [
+        'text' => "L'organisation demandée n'existe pas ou n'est plus disponible.",
+        'context' => 'Main message shown on the organization not found page.',
+    ],
+    'app.not_found.page_description' => [
+        'text' => "Vous pouvez revenir à l'accueil OMO et choisir un autre espace.",
+        'context' => 'Additional explanation shown on the organization not found page.',
+    ],
+    'app.not_found.page_heading' => [
+        'text' => 'Organisation introuvable',
+        'context' => 'Main heading shown on the organization not found page.',
+    ],
+    'app.not_found.page_title' => [
+        'text' => 'Organisation introuvable - OMO',
+        'context' => 'Browser title shown on the organization not found page.',
+    ],
+    'app.patreon.prompt_title' => [
+        'text' => 'Soutenir le projet',
+        'context' => 'Title passed to the Patreon welcome popup configuration.',
+    ],
+    'app.user.demo' => [
+        'text' => 'Demo',
+        'context' => 'Display name shown for a demo guest user.',
+    ],
+    'common.back_to_home' => [
+        'text' => "Revenir à l'accueil",
+        'context' => 'Generic action label used to return to the OMO home page.',
+    ],
+    'common.logout' => [
+        'text' => 'Se deconnecter',
+        'context' => 'Generic action label used to log out from OMO.',
+    ],
+];
+
+$lang = translationBundleInit('omo_index_page', omoGetTranslationLocale(), $sourceLang);
 
 $organizationContext = commonResolveOrganizationContext(1);
 commonRestoreRememberedUser();
@@ -67,9 +246,11 @@ if (!commonGetCurrentUserId() && !$isDemoGuest) {
     );
 
     commonRenderMagicLoginPage([
-        'title' => (($isOrganizationHub ? 'OMO' : $organizationContext['name']) ?: 'OMO') . ' - OMO',
+        'title' => t('app.login.page_title', [
+            'organizationName' => (($isOrganizationHub ? 'OMO' : $organizationContext['name']) ?: 'OMO'),
+        ]),
         'appName' => 'OMO',
-        'intro' => 'Connectez-vous pour accéder à la structure et aux outils de gouvernance.',
+        'intro' => t('app.login.intro'),
         'returnTo' => commonNormalizeLocalPath($_SERVER['REQUEST_URI'] ?? '/omo/', '/omo/'),
         'organization' => $loginOrganizationContext,
         'headHtml' => $omoThemeBootstrapHtml . PHP_EOL . $omoPwaHeadHtml,
@@ -82,8 +263,9 @@ if (!commonGetCurrentUserId() && !$isDemoGuest) {
     ]);
 }
 
-$currentUserName = $isDemoGuest ? 'Démo' : commonGetCurrentUserDisplayName();
+$currentUserName = $isDemoGuest ? t('app.user.demo') : commonGetCurrentUserDisplayName();
 $currentUserId = commonGetCurrentUserId();
+$isSiteAdmin = !$isDemoGuest && commonCurrentUserIsSiteAdmin();
 $omoPwaHeadHtml = omoBuildPwaHeadHtml(
     commonGetOrganizationAccentColor($organizationContext, '#004663'),
     $organizationContext['logo'] ?? $omoDefaultLogo,
@@ -99,7 +281,7 @@ if (empty($organizationContext['isValid'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Organisation introuvable - OMO</title>
+    <title><?= htmlspecialchars(t('app.not_found.page_title')) ?></title>
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
     <link rel="stylesheet" href="/common/assets/components.css">
@@ -115,13 +297,13 @@ if (empty($organizationContext['isValid'])) {
     ?>
     <main class="auth-state-layout">
     <div class="auth-state-card">
-        <h1>Organisation introuvable</h1>
-        <p>L'organisation demandee n'existe pas ou n'est plus disponible.</p>
-        <p>Vous pouvez revenir a l'accueil OMO et choisir un autre espace.</p>
+        <h1><?= htmlspecialchars(t('app.not_found.page_heading')) ?></h1>
+        <p><?= htmlspecialchars(t('app.not_found.message')) ?></p>
+        <p><?= htmlspecialchars(t('app.not_found.page_description')) ?></p>
         <div class="auth-state-actions">
-            <a class="auth-state-btn auth-state-btn--secondary" href="<?= htmlspecialchars($omoRootUrl) ?>">Revenir a l'accueil</a>
+            <a class="auth-state-btn auth-state-btn--secondary" href="<?= htmlspecialchars($omoRootUrl) ?>"><?= htmlspecialchars(t('common.back_to_home')) ?></a>
             <?php if (!$isDemoGuest) { ?>
-            <a class="auth-state-btn auth-state-btn--primary" href="<?= htmlspecialchars($logoutUrl) ?>">Se deconnecter</a>
+            <a class="auth-state-btn auth-state-btn--primary" href="<?= htmlspecialchars($logoutUrl) ?>"><?= htmlspecialchars(t('common.logout')) ?></a>
             <?php } ?>
         </div>
     </div>
@@ -140,6 +322,15 @@ if ($isOrganizationHub && !$isDemoGuest) {
         ? $hubUser->getAccessibleOrganizations()
         : [];
     $organizationCount = count($accessibleOrganizations);
+    $organizationStatusLabel = $organizationCount === 0
+        ? t('app.directory.status.none')
+        : t('app.directory.status.available', ['count' => $organizationCount]);
+    $directoryJsTranslations = [
+        'actionError' => t('app.directory.js.action_error'),
+        'defaultOrganizationName' => t('app.directory.js.default_organization_name'),
+        'deleteConfirm' => t('app.directory.js.delete_confirm', ['organizationName' => '{organizationName}']),
+        'leaveConfirm' => t('app.directory.js.leave_confirm', ['organizationName' => '{organizationName}']),
+    ];
 
     ?>
 <!DOCTYPE html>
@@ -148,7 +339,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
-    <title>Vos espaces OMO</title>
+    <title><?= htmlspecialchars(t('app.directory.page_title')) ?></title>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
     <link rel="stylesheet" href="/common/assets/components.css">
     <link rel="stylesheet" href="/omo/assets/css/styles.css">
@@ -165,26 +356,24 @@ if ($isOrganizationHub && !$isDemoGuest) {
     <main class="auth-state-layout auth-state-layout--scrollable">
     <div class="auth-state-card auth-state-card--directory">
         <span class="auth-state-status auth-state-status--directory">
-            <?= htmlspecialchars($organizationCount === 0 ? 'Aucune organisation pour le moment' : ($organizationCount === 1 ? '1 organisation disponible' : $organizationCount . ' organisations disponibles')) ?>
+            <?= htmlspecialchars($organizationStatusLabel) ?>
         </span>
-        <h1>Vos espaces OMO</h1>
+        <h1><?= htmlspecialchars(t('app.directory.heading')) ?></h1>
         <?php if ($organizationCount > 0) { ?>
-            <p>Choisissez l'organisation que vous souhaitez ouvrir. Chaque carte vous redirige vers son espace dédié.</p>
+            <p><?= htmlspecialchars(t('app.directory.description.with_results')) ?></p>
         <?php } else { ?>
-            <p>Votre compte est bien connecté, mais il n'est rattaché à aucune organisation pour le moment. Vous pouvez en créer une nouvelle ci-dessous.</p>
+            <p><?= htmlspecialchars(t('app.directory.description.empty')) ?></p>
         <?php } ?>
         <div class="auth-org-list auth-org-list--directory">
             <?php foreach ($accessibleOrganizations as $accessibleOrganization) {
                 $organizationName = trim((string)$accessibleOrganization->get('name'));
                 if ($organizationName === '') {
-                    $organizationName = 'Organisation';
+                    $organizationName = t('app.directory.fallback_organization_name');
                 }
                 $organizationMembership = $accessibleOrganization->getMembership($currentUserId, true);
                 $canDeleteOrganization = $accessibleOrganization->canDelete();
                 $organizationShortname = trim((string)$accessibleOrganization->get('shortname'));
-                $organizationUrl = $organizationShortname !== ''
-                    ? commonBuildUrl('/omo/', commonBuildOrganizationHost($organizationShortname, commonGetRootHost()))
-                    : commonBuildUrl('/omo/o/' . (int)$accessibleOrganization->getId(), commonGetRootHost());
+                $organizationUrl = commonBuildOrganizationHomeUrl((int)$accessibleOrganization->getId(), $organizationShortname, commonGetRootHost());
                 $organizationLogo = trim((string)$accessibleOrganization->get('logo'));
                 $organizationBanner = trim((string)$accessibleOrganization->get('banner'));
                 $organizationColor = trim((string)$accessibleOrganization->get('color')) ?: '#4f46e5';
@@ -192,9 +381,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
                 $organizationInitial = function_exists('mb_substr')
                     ? mb_strtoupper(mb_substr($organizationName, 0, 1))
                     : strtoupper(substr($organizationName, 0, 1));
-                $organizationHostLabel = $organizationShortname !== ''
-                    ? $organizationShortname . '.' . commonGetRootHost()
-                    : ($organizationDomain !== '' ? $organizationDomain : 'Organisation');
+                $organizationHostLabel = commonBuildOrganizationAccessLabel((int)$accessibleOrganization->getId(), $organizationShortname, commonGetRootHost());
                 ?>
             <article
                 class="auth-org-card auth-org-card--directory auth-org-card--directory-managed"
@@ -205,7 +392,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
                 <a
                     class="auth-org-card__overlay-link"
                     href="<?= htmlspecialchars($organizationUrl) ?>"
-                    aria-label="Ouvrir l'espace <?= htmlspecialchars($organizationName) ?>"
+                    aria-label="<?= htmlspecialchars(t('app.directory.open_organization_aria_label', ['organizationName' => $organizationName])) ?>"
                 ></a>
                 <?php if ($organizationMembership) { ?>
                 <div class="omo-org-card-menu" data-omo-org-card-menu>
@@ -215,20 +402,20 @@ if ($isOrganizationHub && !$isDemoGuest) {
                         data-omo-org-menu-trigger
                         aria-haspopup="true"
                         aria-expanded="false"
-                        aria-label="Actions pour <?= htmlspecialchars($organizationName) ?>"
+                        aria-label="<?= htmlspecialchars(t('app.directory.menu.actions_aria_label', ['organizationName' => $organizationName])) ?>"
                     >...</button>
                     <div class="omo-org-card-menu__panel" data-omo-org-menu-panel>
                         <button
                             type="button"
                             class="omo-org-card-menu__item"
                             data-omo-org-action="leave"
-                        >Quitter</button>
+                        ><?= htmlspecialchars(t('app.directory.menu.leave')) ?></button>
                         <?php if ($canDeleteOrganization) { ?>
                         <button
                             type="button"
                             class="omo-org-card-menu__item omo-org-card-menu__item--danger"
                             data-omo-org-action="delete"
-                        >Supprimer</button>
+                        ><?= htmlspecialchars(t('app.directory.menu.delete')) ?></button>
                         <?php } ?>
                     </div>
                 </div>
@@ -251,8 +438,8 @@ if ($isOrganizationHub && !$isDemoGuest) {
                         </div>
                     </div>
                     <div class="auth-org-card__footer">
-                        <span class="auth-org-badge"><?= htmlspecialchars($organizationDomain !== '' ? $organizationDomain : 'Espace OMO') ?></span>
-                        <span class="auth-org-action">Se connecter</span>
+                        <span class="auth-org-badge"><?= htmlspecialchars($organizationDomain !== '' ? $organizationDomain : t('app.directory.fallback_badge')) ?></span>
+                        <span class="auth-org-action"><?= htmlspecialchars(t('app.directory.cta.connect')) ?></span>
                     </div>
                 </div>
             </article>
@@ -261,26 +448,26 @@ if ($isOrganizationHub && !$isDemoGuest) {
                 type="button"
                 class="auth-org-card auth-org-card--directory auth-org-card--create"
                 id="omoCreateOrganizationCard"
-                aria-label="Créer une nouvelle organisation"
+                aria-label="<?= htmlspecialchars(t('app.directory.create.aria_label')) ?>"
             >
                 <div class="auth-org-card__banner auth-org-card__banner--create"></div>
                 <div class="auth-org-card__body">
                     <div class="auth-org-card__header">
                         <div class="auth-org-logo-placeholder auth-org-logo-placeholder--directory auth-org-logo-placeholder--create" aria-hidden="true">+</div>
                         <div class="auth-org-info auth-org-info--directory">
-                            <strong class="auth-org-title auth-org-title--directory">Créer une nouvelle organisation</strong>
-                            <span class="auth-org-meta auth-org-meta--directory">Nom, domaine, logo, bannière, couleur</span>
+                            <strong class="auth-org-title auth-org-title--directory"><?= htmlspecialchars(t('app.directory.create.title')) ?></strong>
+                            <span class="auth-org-meta auth-org-meta--directory"><?= htmlspecialchars(t('app.directory.create.description')) ?></span>
                         </div>
                     </div>
                     <div class="auth-org-card__footer">
-                        <span class="auth-org-badge">Nouveau</span>
-                        <span class="auth-org-action">Ouvrir le formulaire</span>
+                        <span class="auth-org-badge"><?= htmlspecialchars(t('app.directory.create.badge')) ?></span>
+                        <span class="auth-org-action"><?= htmlspecialchars(t('app.directory.create.action')) ?></span>
                     </div>
                 </div>
             </button>
         </div>
         <div class="auth-state-actions">
-            <a class="auth-state-btn auth-state-btn--primary" href="<?= htmlspecialchars($logoutUrl) ?>">Se déconnecter</a>
+            <a class="auth-state-btn auth-state-btn--primary" href="<?= htmlspecialchars($logoutUrl) ?>"><?= htmlspecialchars(t('common.logout')) ?></a>
         </div>
     </div>
     </main>
@@ -289,19 +476,22 @@ if ($isOrganizationHub && !$isDemoGuest) {
         <div class="omo-directory-modal__backdrop" data-omo-directory-close></div>
         <div class="omo-directory-modal__panel" role="dialog" aria-modal="true" aria-labelledby="omoDirectoryModalTitle">
             <div class="omo-directory-modal__header">
-                <h2 id="omoDirectoryModalTitle">Créer une nouvelle organisation</h2>
-                <button type="button" class="omo-directory-modal__close" data-omo-directory-close>Fermer</button>
+                <h2 id="omoDirectoryModalTitle"><?= htmlspecialchars(t('app.directory.create.modal_title')) ?></h2>
+                <button type="button" class="omo-directory-modal__close" data-omo-directory-close><?= htmlspecialchars(t('app.directory.modal.close')) ?></button>
             </div>
             <div class="omo-directory-modal__body">
                 <iframe
                     class="omo-directory-modal__iframe"
                     src="<?= htmlspecialchars($organizationCreateUrl) ?>"
                     loading="lazy"
-                    title="Créer une nouvelle organisation"
+                    title="<?= htmlspecialchars(t('app.directory.create.modal_title')) ?>"
                 ></iframe>
             </div>
         </div>
     </div>
+    <script>
+        window.omoDirectoryTranslations = <?= json_encode($directoryJsTranslations, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+    </script>
 
     <style>
         body.auth-state-page--with-topbar.auth-state-page--scrollable {
@@ -504,6 +694,12 @@ if ($isOrganizationHub && !$isDemoGuest) {
                 return;
             }
 
+            function interpolateTemplate(template, variables) {
+                return String(template || '').replace(/\{(\w+)\}/g, function (match, key) {
+                    return Object.prototype.hasOwnProperty.call(variables, key) ? String(variables[key]) : match;
+                });
+            }
+
             function closeMenus() {
                 document.querySelectorAll('[data-omo-org-card-menu].is-open').forEach(function (menu) {
                     var trigger = menu.querySelector('[data-omo-org-menu-trigger]');
@@ -562,13 +758,17 @@ if ($isOrganizationHub && !$isDemoGuest) {
 
                     var action = actionButton.getAttribute('data-omo-org-action') || '';
                     var organizationId = card.getAttribute('data-organization-id') || '';
-                    var organizationName = card.getAttribute('data-organization-name') || 'cette organisation';
+                    var organizationName = card.getAttribute('data-organization-name') || window.omoDirectoryTranslations.defaultOrganizationName;
                     var confirmMessage = '';
 
                     if (action === 'leave') {
-                        confirmMessage = 'Quitter ' + organizationName + ' ?\\n\\nVos liens avec l organisation, ses cercles et ses roles seront retires.';
+                        confirmMessage = interpolateTemplate(window.omoDirectoryTranslations.leaveConfirm, {
+                            organizationName: organizationName
+                        });
                     } else if (action === 'delete') {
-                        confirmMessage = 'Supprimer ' + organizationName + ' ?\\n\\nLa structure, les membres, les cercles, les roles, les partages et les documents relies seront supprimes.';
+                        confirmMessage = interpolateTemplate(window.omoDirectoryTranslations.deleteConfirm, {
+                            organizationName: organizationName
+                        });
                     }
 
                     if (confirmMessage === '' || !window.confirm(confirmMessage)) {
@@ -605,7 +805,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
                         })
                         .then(function (result) {
                             if (!result.ok || !result.data || result.data.status !== true) {
-                                throw new Error(result.data && result.data.message ? result.data.message : 'Action impossible.');
+                                throw new Error(result.data && result.data.message ? result.data.message : window.omoDirectoryTranslations.actionError);
                             }
 
                             closeMenus();
@@ -620,7 +820,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
                         .catch(function (error) {
                             actionButton.disabled = false;
                             closeMenus();
-                            window.alert(error && error.message ? error.message : 'Action impossible.');
+                            window.alert(error && error.message ? error.message : window.omoDirectoryTranslations.actionError);
                         });
 
                     return;
@@ -642,6 +842,19 @@ if ($isOrganizationHub && !$isDemoGuest) {
             });
         })();
     </script>
+    <?php if ($isSiteAdmin) { ?>
+    <script>
+        window.omoSiteUpdateConfig = {
+            enabled: true,
+            statusUrl: '/omo/api/parameters/site_update_status.php',
+            runUrl: '/omo/api/parameters/site_update_run.php'
+        };
+    </script>
+    <script src="/omo/assets/js/site-update.js"></script>
+    <script>
+        window.omoInitSiteUpdateCheck(window.omoSiteUpdateConfig);
+    </script>
+    <?php } ?>
 </body>
 </html>
 <?php
@@ -657,7 +870,7 @@ if (!$isDemoGuest && !commonUserHasOrganizationAccess($currentUserId, (int)$orga
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Acces interdit - OMO</title>
+    <title><?= htmlspecialchars(t('app.access_denied.page_title')) ?></title>
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
     <link rel="stylesheet" href="/common/assets/components.css">
@@ -673,12 +886,12 @@ if (!$isDemoGuest && !commonUserHasOrganizationAccess($currentUserId, (int)$orga
     ?>
     <main class="auth-state-layout">
     <div class="auth-state-card">
-        <h1>Acces interdit</h1>
-        <p>Votre compte est bien connecte, mais il n'a pas encore acces a l'organisation <?= htmlspecialchars($organizationContext['name'] ?: 'demandee') ?>.</p>
-        <p>Pour le moment, l'acces a cet espace est reserve aux personnes presentes dans la liste des membres autorises.</p>
+        <h1><?= htmlspecialchars(t('app.access_denied.page_heading')) ?></h1>
+        <p><?= htmlspecialchars(t('app.access_denied.message', ['organizationName' => ($organizationContext['name'] ?: t('app.access_denied.organization_fallback'))])) ?></p>
+        <p><?= htmlspecialchars(t('app.access_denied.page_description')) ?></p>
         <div class="auth-state-actions">
-            <a class="auth-state-btn auth-state-btn--secondary" href="<?= htmlspecialchars($omoRootUrl) ?>">Revenir a l'accueil</a>
-            <a class="auth-state-btn auth-state-btn--primary" href="<?= htmlspecialchars($logoutUrl) ?>">Se deconnecter</a>
+            <a class="auth-state-btn auth-state-btn--secondary" href="<?= htmlspecialchars($omoRootUrl) ?>"><?= htmlspecialchars(t('common.back_to_home')) ?></a>
+            <a class="auth-state-btn auth-state-btn--primary" href="<?= htmlspecialchars($logoutUrl) ?>"><?= htmlspecialchars(t('common.logout')) ?></a>
         </div>
     </div>
     </main>
@@ -705,7 +918,7 @@ if ($currentUser->load($currentUserId)) {
     $currentUserProfile['photoUrl'] = (string)$currentUser->getScopedProfilePhotoUrl((int)$organizationContext['id']);
 }
 
-if (!$isDemoGuest && $currentUserId > 0) {
+if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
     $patreonConnection = \dbObject\UserPatreon::findByUserId($currentUserId);
     $patreonPromptShouldShow = !($patreonConnection !== false && $patreonConnection->isConnected());
 }
@@ -714,7 +927,7 @@ if (!$isDemoGuest && $currentUserId > 0) {
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Gouvernance UI</title>
+    <title><?= htmlspecialchars(t('app.main.page_title')) ?></title>
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
     <link rel="stylesheet" href="/common/assets/components.css">
@@ -819,9 +1032,9 @@ if (!$isDemoGuest && $currentUserId > 0) {
 
     <div class="mobile-nav" id="omo-mobile-nav">
 
-    <button data-view="menu" class="nav-btn">Outils</button>
-    <button data-view="left" class="nav-btn">Contexte</button>
-    <button data-view="right" class="nav-btn">Structure</button>
+    <button data-view="menu" class="nav-btn"><?= htmlspecialchars(t('app.mobile.menu')) ?></button>
+    <button data-view="left" class="nav-btn"><?= htmlspecialchars(t('app.mobile.context')) ?></button>
+    <button data-view="right" class="nav-btn"><?= htmlspecialchars(t('app.mobile.structure')) ?></button>
 
 </div>
 
@@ -842,9 +1055,16 @@ window.omoConfig = <?=
             'currentUserId' => $currentUserId,
             'currentUserName' => $currentUserName,
             'userProfile' => $currentUserProfile,
+            'siteUpdate' => $isSiteAdmin ? [
+                'enabled' => true,
+                'statusUrl' => '/omo/api/parameters/site_update_status.php',
+                'runUrl' => '/omo/api/parameters/site_update_run.php',
+            ] : [
+                'enabled' => false,
+            ],
             'patreonPrompt' => [
                 'shouldShow' => $patreonPromptShouldShow,
-                'title' => 'Soutenir le projet',
+                'title' => t('app.patreon.prompt_title'),
                 'url' => '/omo/api/patreon_welcome_popup.php',
                 'mode' => 'fetch',
             ],
@@ -854,6 +1074,9 @@ window.omoConfig = <?=
 ?>;
 </script>
 <script src="/omo/assets/js/install.js" defer></script>
+<?php if ($isSiteAdmin) { ?>
+<script src="/omo/assets/js/site-update.js"></script>
+<?php } ?>
 <script src="assets/js/app.js"></script>
 
 <script>

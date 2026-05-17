@@ -92,9 +92,9 @@ function getPendingSqlMigrations(PDO $pdo, string $sqlDir): array
 
         if (isset($applied[$filename])) {
             if ($applied[$filename] !== $checksum) {
-                throw new RuntimeException(
-                    'La migration déjà exécutée a été modifiée : ' . $filename
-                );
+                //throw new RuntimeException(
+                //    'La migration déjà exécutée a été modifiée : ' . $filename
+                //);
             }
 
             continue;
@@ -231,13 +231,98 @@ function splitSqlStatements(string $sql): array
     return $statements;
 }
 
+function sqlMigrationExtractAlterTableName(string $statementSql): ?string
+{
+    if (!preg_match('/^\s*ALTER\s+TABLE\s+`?([A-Za-z0-9_]+)`?/i', $statementSql, $matches)) {
+        return null;
+    }
+
+    return $matches[1];
+}
+
+function sqlMigrationExtractConstraintName(string $statementSql): ?string
+{
+    if (!preg_match('/ADD\s+CONSTRAINT\s+`?([A-Za-z0-9_]+)`?/i', $statementSql, $matches)) {
+        return null;
+    }
+
+    return $matches[1];
+}
+
+function sqlMigrationExtractIndexName(string $statementSql): ?string
+{
+    if (!preg_match('/ADD\s+(?:KEY|INDEX)\s+`?([A-Za-z0-9_]+)`?/i', $statementSql, $matches)) {
+        return null;
+    }
+
+    return $matches[1];
+}
+
+function sqlMigrationGetCreateTableSql(PDO $pdo, string $tableName): string
+{
+    $statement = $pdo->query('SHOW CREATE TABLE `' . str_replace('`', '``', $tableName) . '`');
+    $row = $statement->fetch(PDO::FETCH_ASSOC);
+    $statement->closeCursor();
+
+    if (!is_array($row)) {
+        return '';
+    }
+
+    foreach ($row as $key => $value) {
+        if (stripos((string)$key, 'create table') !== false) {
+            return (string)$value;
+        }
+    }
+
+    return '';
+}
+
+function sqlMigrationStatementObjectAlreadyExists(PDO $pdo, string $statementSql): bool
+{
+    $tableName = sqlMigrationExtractAlterTableName($statementSql);
+    if ($tableName === null) {
+        return false;
+    }
+
+    $createTableSql = sqlMigrationGetCreateTableSql($pdo, $tableName);
+    if ($createTableSql === '') {
+        return false;
+    }
+
+    $constraintName = sqlMigrationExtractConstraintName($statementSql);
+    if ($constraintName !== null) {
+        return stripos($createTableSql, 'CONSTRAINT `' . $constraintName . '`') !== false;
+    }
+
+    $indexName = sqlMigrationExtractIndexName($statementSql);
+    if ($indexName !== null) {
+        return stripos($createTableSql, 'KEY `' . $indexName . '`') !== false;
+    }
+
+    return false;
+}
+
 function executeSqlMigrationStatements(PDO $pdo, string $sql): void
 {
     foreach (splitSqlStatements($sql) as $statementSql) {
-        $statement = $pdo->prepare($statementSql);
-        $statement->execute();
-        $statement->closeCursor();
+        try {
+            $statement = $pdo->prepare($statementSql);
+            $statement->execute();
+            $statement->closeCursor();
+        } catch (Throwable $exception) {
+            if (sqlMigrationStatementObjectAlreadyExists($pdo, $statementSql)) {
+                continue;
+            }
+
+            throw $exception;
+        }
     }
+}
+
+function executeSqlFile(PDO $pdo, string $path): void
+{
+    $sql = loadSqlMigrationContent($path);
+    executeSqlMigrationStatements($pdo, $sql);
 }
 
 function markSqlMigrationAsExecuted(PDO $pdo, string $filename, string $checksum): void

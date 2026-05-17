@@ -23,8 +23,16 @@ function createPDOConnection(?string $databaseName = null): PDO
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ];
 
-    if (defined('PDO::MYSQL_ATTR_MULTI_STATEMENTS')) {
-        $options[PDO::MYSQL_ATTR_MULTI_STATEMENTS] = true;
+    $multiStatementsAttribute = null;
+
+    if (class_exists('Pdo\\Mysql') && defined('Pdo\\Mysql::ATTR_MULTI_STATEMENTS')) {
+        $multiStatementsAttribute = constant('Pdo\\Mysql::ATTR_MULTI_STATEMENTS');
+    } elseif (defined('PDO::MYSQL_ATTR_MULTI_STATEMENTS')) {
+        $multiStatementsAttribute = constant('PDO::MYSQL_ATTR_MULTI_STATEMENTS');
+    }
+
+    if ($multiStatementsAttribute !== null) {
+        $options[$multiStatementsAttribute] = true;
     }
 
     return new PDO(

@@ -1,5 +1,7 @@
 <?php
 
+	require_once __DIR__ . '/common/environment_subdomains.php';
+
 	$routes = [
 		'admin'   => '/admin/index.php',
 		'demo'    => '/omo/index.php',
@@ -10,11 +12,12 @@
 	$parts = array_values(array_filter(explode('.', $host)));
 	$subdomain = $parts[0] ?? '';
 	$isLocalhostSubdomain = count($parts) === 2 && ($parts[1] ?? '') === 'localhost';
-	$reservedEnvironmentSubdomains = ['dev', 'beta'];
+	$reservedEnvironmentSubdomains = commonGetConfiguredEnvironmentSubdomains();
+	$organizationSubdomainRoutingEnabled = commonUseOrganizationSubdomains();
 	$isEnvironmentRootHost = count($parts) >= 3
 		&& in_array((string)($parts[count($parts) - 3] ?? ''), $reservedEnvironmentSubdomains, true);
 	$rootPartCount = $isEnvironmentRootHost ? 3 : 2;
-	$hasOrganizationSubdomain = $isLocalhostSubdomain || count($parts) > $rootPartCount;
+	$hasOrganizationSubdomain = $organizationSubdomainRoutingEnabled && ($isLocalhostSubdomain || count($parts) > $rootPartCount);
 
 	if (isset($routes[$subdomain])) {
 		require __DIR__ . $routes[$subdomain];
@@ -25,6 +28,35 @@
 			exit;
 		}
 	}
+
+	if (!function_exists('homepageRegisterAutoloader')) {
+		function homepageRegisterAutoloader()
+		{
+			static $registered = false;
+
+			if ($registered) {
+				return;
+			}
+
+			spl_autoload_register(function ($class) {
+				$path = __DIR__ . '/class/' . str_replace('\\', '/', strtolower((string)$class)) . '.class.php';
+				if (is_file($path)) {
+					require_once $path;
+				}
+			});
+
+			$registered = true;
+		}
+	}
+
+	require_once __DIR__ . '/config.php';
+	require_once __DIR__ . '/common/patreon.php';
+	homepageRegisterAutoloader();
+
+	$patreonHomepageEnabled = patreonSupportUiIsEnabled();
+	$homepagePatreonContributors = $patreonHomepageEnabled && class_exists('\\dbObject\\UserPatreon')
+		? \dbObject\UserPatreon::getHomepageContributorCards(5)
+		: ['items' => [], 'totalCount' => 0, 'extraCount' => 0];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -139,6 +171,113 @@
 
 .bloc h1 {
   margin-top: 0;
+}
+
+.home-contributors {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid rgba(9, 49, 71, 0.22);
+  background: linear-gradient(180deg, rgba(247, 251, 255, 0.98), rgba(236, 244, 252, 0.98));
+  box-shadow:
+    0 18px 36px rgba(8, 35, 52, 0.14),
+    0 3px 0 rgba(255, 255, 255, 0.65) inset;
+}
+
+.home-contributors::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at top right, rgba(255, 198, 0, 0.18), transparent 26%),
+    radial-gradient(circle at bottom left, rgba(26, 130, 163, 0.12), transparent 32%);
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.home-contributors__header {
+  position: relative;
+  z-index: 1;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #0b6e7a, #155a78 55%, #1a82a3);
+  color: #fff;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.home-contributors__header-title {
+  margin: 0;
+  font-size: clamp(1.4rem, 2.3vw, 2rem);
+  font-weight: bold;
+  line-height: 1.1;
+}
+
+.home-contributors__body {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.6rem 1.5rem 1.7rem;
+  justify-items: center;
+  text-align: center;
+}
+
+.home-contributors__text {
+  margin: 0;
+}
+
+.home-contributors__text {
+  max-width: 48rem;
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: #3f5364;
+}
+
+.home-contributors__avatars {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+  width: 100%;
+}
+
+.home-contributors__portrait,
+.home-contributors__portrait--placeholder {
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.98);
+  box-shadow:
+    0 12px 22px rgba(9, 49, 71, 0.18),
+    0 0 0 1px rgba(11, 110, 122, 0.18);
+}
+
+.home-contributors__portrait {
+  object-fit: cover;
+  background: #dbe8f4;
+}
+
+.home-contributors__portrait--placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0b6e7a, #1a82a3);
+  color: #fff;
+  font-weight: bold;
+  font-size: 1.35rem;
+}
+
+.home-contributors__more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 1rem;
+  border-radius: 999px;
+  background: rgba(11, 110, 122, 0.1);
+  color: #0b4e63;
+  border: 1px solid rgba(11, 110, 122, 0.1);
+  font-weight: bold;
 }
 
 .intro_txt {
@@ -265,6 +404,20 @@ padding:15px;
 	overflow-y: hidden;
   }
   .cta-text {font-size: 80%;}
+  .home-contributors {
+    border-radius: 18px;
+  }
+  .home-contributors__portrait,
+  .home-contributors__portrait--placeholder {
+    width: 66px;
+    height: 66px;
+  }
+  .home-contributors__header {
+    padding: 0.9rem 1.1rem;
+  }
+  .home-contributors__body {
+    padding: 1.25rem 1rem 1.35rem;
+  }
 }
 
 
@@ -282,9 +435,11 @@ padding:15px;
 	<div class='vertical'><h1 style='font-size:150%;'>Nous développons une nouvelle version de OpenMyOrganization!</h1>
 	<p>10 ans après la première version, nous lançons un chantier d'envergure: repenser le logiciel en intégrant nos dix années d'expériences, autant d'un point de vue des fonctionnalités que de l'ergonomie ou de la prise en main.</p>
 	<p>Accompagnez-nous dans cette grande aventure, en testant les nouvelles fonctionnalités, en soutenant financièrement son développement ou en amenant des propositions d'amélioration.</p>
+	<?php if ($patreonHomepageEnabled): ?>
     <p style='text-align:center'><a href="https://www.patreon.com/cw/OpenGovernance" target="_blank" class="btn">
         Rejoindre la communauté de soutien
       </a></p>
+	<?php endif; ?>
 </div>
 <div class="read-more-wrapper">
       <button id="toggleText" class="read-more">
@@ -371,6 +526,44 @@ padding:15px;
     </div>
   </section>
 
+  <?php if ($patreonHomepageEnabled && !empty($homepagePatreonContributors['items'])): ?>
+  <section class="home-contributors">
+    <div class="home-contributors__header">
+      <h2 class="home-contributors__header-title">Ils soutiennent deja le projet</h2>
+    </div>
+    <div class="home-contributors__body">
+      <p class="home-contributors__text">Merci aux contributeurs Patreon qui accompagnent activement le developpement du projet et l'aident a rester ouvert, libre et durable.</p>
+      <div class="home-contributors__avatars">
+        <?php foreach ($homepagePatreonContributors['items'] as $contributor): ?>
+          <?php
+            $displayName = trim((string)($contributor['displayName'] ?? ''));
+            $photoUrl = trim((string)($contributor['photoUrl'] ?? ''));
+            $initials = trim((string)($contributor['initials'] ?? 'P'));
+            $portraitAlt = $displayName !== '' ? $displayName : $initials;
+          ?>
+          <?php if ($photoUrl !== ''): ?>
+            <img
+              src="<?= htmlspecialchars($photoUrl, ENT_QUOTES, 'UTF-8') ?>"
+              alt="<?= htmlspecialchars($portraitAlt, ENT_QUOTES, 'UTF-8') ?>"
+              title="<?= htmlspecialchars($portraitAlt, ENT_QUOTES, 'UTF-8') ?>"
+              class="home-contributors__portrait"
+              loading="lazy"
+            >
+          <?php else: ?>
+            <span
+              class="home-contributors__portrait--placeholder"
+              title="<?= htmlspecialchars($portraitAlt, ENT_QUOTES, 'UTF-8') ?>"
+            ><?= htmlspecialchars($initials, ENT_QUOTES, 'UTF-8') ?></span>
+          <?php endif; ?>
+        <?php endforeach; ?>
+        <?php if ((int)($homepagePatreonContributors['extraCount'] ?? 0) > 0): ?>
+          <span class="home-contributors__more">et <?= (int)$homepagePatreonContributors['extraCount'] ?> de plus</span>
+        <?php endif; ?>
+      </div>
+    </div>
+  </section>
+  <?php endif; ?>
+
 </div>
 
 <!-- Footer d'appel aux dons -->
@@ -439,6 +632,7 @@ padding:15px;
 }
 </style>
 
+<?php if ($patreonHomepageEnabled): ?>
 <footer class="footer-cta">
   <div class="footer-content">
     <img src="/img/logo-OGC.png" alt="OpenGovernance.community" class="logo">
@@ -454,6 +648,7 @@ padding:15px;
     </div>
   </div>
 </footer>
+<?php endif; ?>
 
 </body>
 <script>

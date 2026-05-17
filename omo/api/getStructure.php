@@ -1,12 +1,101 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
 
+function omoGetStructurePanelSourceLang(): array
+{
+    return [
+        'structure.actions.export' => [
+            'text' => 'Export',
+            'context' => 'Structure action menu item used to export the current structure.',
+        ],
+        'structure.actions.menu_aria' => [
+            'text' => 'Actions',
+            'context' => 'Aria label for the structure action menu toggle button.',
+        ],
+        'structure.actions.print' => [
+            'text' => 'Imprimer',
+            'context' => 'Structure action menu item used to print the current structure.',
+        ],
+        'structure.actions.share' => [
+            'text' => 'Partager',
+            'context' => 'Structure action menu item used to open the sharing dialog for the current structure.',
+        ],
+        'structure.browser.generic_name' => [
+            'text' => 'ce navigateur',
+            'context' => 'Fallback browser name used in structure warnings when the exact browser cannot be detected.',
+        ],
+        'structure.error.organization_access_denied' => [
+            'text' => 'Acces refuse a cette organisation.',
+            'context' => 'Error message shown when the structure view cannot access the current organization.',
+        ],
+        'structure.list.empty_search' => [
+            'text' => 'Aucun noeud ne correspond a cette recherche.',
+            'context' => 'Message shown in the structure list view when the current search returns no visible nodes.',
+        ],
+        'structure.list.properties.hide_aria' => [
+            'text' => 'Masquer les proprietes',
+            'context' => 'Aria label for the button that collapses role details in the structure list view.',
+        ],
+        'structure.list.properties.show_aria' => [
+            'text' => 'Afficher les proprietes',
+            'context' => 'Aria label for the button that expands role details in the structure list view.',
+        ],
+        'structure.list.search.placeholder' => [
+            'text' => 'Filtre rapide',
+            'context' => 'Placeholder shown above the structure list view search field.',
+        ],
+        'structure.message.invalid' => [
+            'text' => 'Structure invalide.',
+            'context' => 'Fallback error message shown when the structure data payload is invalid.',
+        ],
+        'structure.message.load_error' => [
+            'text' => 'Impossible de charger la structure.',
+            'context' => 'Fallback error message shown when the structure view fails to load its data.',
+        ],
+        'structure.message.no_structure' => [
+            'text' => 'Aucune structure disponible pour cette organisation.',
+            'context' => 'Message shown when the current organization has no visible structure to display.',
+        ],
+        'structure.share.modal_title' => [
+            'text' => 'Partager la structure',
+            'context' => 'Modal title used when opening the share dialog from the structure action menu.',
+        ],
+        'structure.view.toggle_label' => [
+            'text' => 'O   L',
+            'context' => 'Short toggle label used to switch between organization graph view and list view in the structure panel.',
+        ],
+        'structure.warning.brave' => [
+            'text' => 'Brave semble bloquer la lecture du canvas utilisee pour la navigation graphique, probablement a cause du bouclier anti-empreinte numerique. La vue liste a ete activee pour continuer a naviguer. Vous pouvez aussi assouplir le bouclier pour ce site.',
+            'context' => 'Warning shown in the structure panel when Brave blocks canvas pixel reading.',
+        ],
+        'structure.warning.dismiss_aria' => [
+            'text' => 'Reduire ce message',
+            'context' => 'Aria label for the button that collapses the structure browser warning.',
+        ],
+        'structure.warning.pixel_mismatch' => [
+            'text' => '{browserName} bloque ou altere la lecture du canvas utilisee pour la navigation graphique. La vue liste a ete activee pour continuer a naviguer.',
+            'context' => 'Warning shown in the structure panel when the browser alters canvas pixel reading.',
+        ],
+        'structure.warning.restore' => [
+            'text' => 'Info navigateur',
+            'context' => 'Button label used to reopen the collapsed browser warning in the structure panel.',
+        ],
+        'structure.warning.unavailable' => [
+            'text' => 'La lecture du canvas utilisee pour la navigation graphique n est pas disponible dans {browserName}. La vue liste a ete activee pour continuer a naviguer.',
+            'context' => 'Warning shown in the structure panel when canvas pixel reading is unavailable in the current browser.',
+        ],
+    ];
+}
+
+$sourceLang = omoGetStructurePanelSourceLang();
+$lang = translationBundleInit('omo_get_structure_panel', omoGetTranslationLocale(), $sourceLang);
+
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 if ($organizationId > 0) {
     $organization = new \dbObject\Organization();
     if ($organization->load($organizationId) && !$organization->canViewDetail()) {
         http_response_code(403);
-        echo '<div class="error">Acces refuse a cette organisation.</div>';
+        echo '<div class="error">' . omoApiEscape(t('structure.error.organization_access_denied')) . '</div>';
         exit;
     }
 
@@ -34,6 +123,27 @@ if (count($structureDataParams) > 0) {
 $isShareMode = function_exists('commonGetCurrentShareToken') && commonGetCurrentShareToken() !== '';
 $canCreateShareLink = !$isShareMode && (int)commonGetCurrentUserId() > 0 && commonCurrentUserHasOrganizationAccess($organizationId);
 $canExportStructure = !$isShareMode && (int)commonGetCurrentUserId() > 0 && commonCurrentUserHasOrganizationAccess($organizationId);
+$structureTranslations = [
+    'actionsMenuAria' => t('structure.actions.menu_aria'),
+    'actionsExport' => t('structure.actions.export'),
+    'actionsPrint' => t('structure.actions.print'),
+    'actionsShare' => t('structure.actions.share'),
+    'browserGenericName' => t('structure.browser.generic_name'),
+    'emptySearch' => t('structure.list.empty_search'),
+    'hidePropertiesAria' => t('structure.list.properties.hide_aria'),
+    'invalidStructure' => t('structure.message.invalid'),
+    'loadError' => t('structure.message.load_error'),
+    'noStructure' => t('structure.message.no_structure'),
+    'searchPlaceholder' => t('structure.list.search.placeholder'),
+    'shareModalTitle' => t('structure.share.modal_title'),
+    'showPropertiesAria' => t('structure.list.properties.show_aria'),
+    'toggleLabel' => t('structure.view.toggle_label'),
+    'warningBrave' => t('structure.warning.brave'),
+    'warningDismissAria' => t('structure.warning.dismiss_aria'),
+    'warningPixelMismatch' => t('structure.warning.pixel_mismatch'),
+    'warningRestore' => t('structure.warning.restore'),
+    'warningUnavailable' => t('structure.warning.unavailable'),
+];
 ?>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js"></script>
@@ -334,6 +444,7 @@ input:checked + .slider::before {
   background: var(--color-surface-alt, #f0f2f5);
   box-shadow: inset 0 0 0 1px transparent;
   overflow: hidden;
+  opacity: var(--role-depth-opacity, 1);
 }
 
 .role-item-shell.match-direct {
@@ -535,30 +646,32 @@ input:checked + .slider::before {
         <div id="omoStructureCanvasWarning" class="structure-browser-warning" hidden>
             <div class="structure-browser-warning__content">
                 <div id="omoStructureCanvasWarningMessage" class="structure-browser-warning__message"></div>
-                <button type="button" id="omoStructureCanvasWarningDismiss" class="structure-browser-warning__dismiss" aria-label="Reduire ce message">x</button>
+                <button type="button" id="omoStructureCanvasWarningDismiss" class="structure-browser-warning__dismiss" aria-label="<?= omoApiEscape(t('structure.warning.dismiss_aria')) ?>">x</button>
             </div>
-            <button type="button" id="omoStructureCanvasWarningRestore" class="structure-browser-warning__restore">Info navigateur</button>
+            <button type="button" id="omoStructureCanvasWarningRestore" class="structure-browser-warning__restore"><?= omoApiEscape(t('structure.warning.restore')) ?></button>
         </div>
         <div class="structure-actions" id="omoStructureActions">
-            <button type="button" class="structure-actions__toggle" id="omoStructureActionsToggle" aria-label="Actions">...</button>
+            <button type="button" class="structure-actions__toggle" id="omoStructureActionsToggle" aria-label="<?= omoApiEscape(t('structure.actions.menu_aria')) ?>">...</button>
             <div class="structure-actions__panel" id="omoStructureActionsPanel">
                 <?php if ($canExportStructure) { ?>
-                    <button type="button" class="structure-actions__item" data-omo-structure-action="export">Export</button>
+                    <button type="button" class="structure-actions__item" data-omo-structure-action="export"><?= omoApiEscape(t('structure.actions.export')) ?></button>
                 <?php } ?>
                 <?php if ($canCreateShareLink) { ?>
-                    <button type="button" class="structure-actions__item" data-omo-structure-action="share">Partager</button>
+                    <button type="button" class="structure-actions__item" data-omo-structure-action="share"><?= omoApiEscape(t('structure.actions.share')) ?></button>
                 <?php } ?>
-                <button type="button" class="structure-actions__item" data-omo-structure-action="print">Imprimer</button>
+                <button type="button" class="structure-actions__item" data-omo-structure-action="print"><?= omoApiEscape(t('structure.actions.print')) ?></button>
             </div>
         </div>
 
         <div class="switch chart-toggle">
             <input type="checkbox" id="toggleSwitch" />
-            <label for="toggleSwitch" class="slider">O   L</label>
+            <label for="toggleSwitch" class="slider"><?= omoApiEscape(t('structure.view.toggle_label')) ?></label>
         </div>
     </div>
 
   <script>
+
+const structureTranslations = <?= json_encode($structureTranslations, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
 function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, function (char) {
@@ -577,26 +690,45 @@ function colorToTransparentFill(color, alpha, fallback) {
   const fallbackColor = String(fallback || "rgba(79, 70, 229, 0.12)");
   const targetAlpha = Number(alpha);
 
-  if (!rawColor) {
-    return fallbackColor;
-  }
-
-  const hexMatch = rawColor.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
-  if (hexMatch) {
-    let hex = hexMatch[1];
-    if (hex.length === 3) {
-      hex = hex.split("").map(function (char) { return char + char; }).join("");
+  function convertColor(sourceColor) {
+    const effectiveColor = String(sourceColor || "").trim();
+    if (!effectiveColor) {
+      return "";
     }
 
-    const red = parseInt(hex.slice(0, 2), 16);
-    const green = parseInt(hex.slice(2, 4), 16);
-    const blue = parseInt(hex.slice(4, 6), 16);
-    return "rgba(" + red + ", " + green + ", " + blue + ", " + targetAlpha + ")";
+    const hexMatch = effectiveColor.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (hexMatch) {
+      let hex = hexMatch[1];
+      if (hex.length === 3) {
+        hex = hex.split("").map(function (char) { return char + char; }).join("");
+      }
+
+      const red = parseInt(hex.slice(0, 2), 16);
+      const green = parseInt(hex.slice(2, 4), 16);
+      const blue = parseInt(hex.slice(4, 6), 16);
+      return "rgba(" + red + ", " + green + ", " + blue + ", " + targetAlpha + ")";
+    }
+
+    const rgbMatch = effectiveColor.match(/^rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*[0-9.]+\s*)?\)$/i);
+    if (rgbMatch) {
+      return "rgba(" + rgbMatch[1] + ", " + rgbMatch[2] + ", " + rgbMatch[3] + ", " + targetAlpha + ")";
+    }
+
+    return "";
   }
 
-  const rgbMatch = rawColor.match(/^rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*[0-9.]+\s*)?\)$/i);
-  if (rgbMatch) {
-    return "rgba(" + rgbMatch[1] + ", " + rgbMatch[2] + ", " + rgbMatch[3] + ", " + targetAlpha + ")";
+  const convertedColor = convertColor(rawColor);
+  if (convertedColor) {
+    return convertedColor;
+  }
+
+  const convertedFallbackColor = convertColor(fallbackColor);
+  if (convertedFallbackColor) {
+    return convertedFallbackColor;
+  }
+
+  if (!rawColor) {
+    return fallbackColor;
   }
 
   return fallbackColor;
@@ -610,6 +742,55 @@ function getListColor(node) {
 
 function getGroupStrokeColor(node) {
   return colorToTransparentFill(node && node.mycolor, 0.55, chartColors.strokeSoft);
+}
+
+function clampNumber(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getNodeDepth(node) {
+  const depth = Number(node && node.depth);
+  return Number.isFinite(depth) && depth >= 0 ? depth : 0;
+}
+
+function getCurrentStructureDepth() {
+  if (currentnode) {
+    return getNodeDepth(currentnode);
+  }
+
+  if (root) {
+    return getNodeDepth(root);
+  }
+
+  return 0;
+}
+
+function getNodeDepthOpacity(node, minOpacity, maxOpacity) {
+  const safeMinOpacity = clampNumber(Number(minOpacity), 0, 1);
+  const safeMaxOpacity = clampNumber(Number(maxOpacity), safeMinOpacity, 1);
+  const distanceFromCurrentLevel = Math.abs(getNodeDepth(node) - getCurrentStructureDepth());
+  const opacityStep = 0.18;
+  const fadeDistance = Math.max(0, distanceFromCurrentLevel - 1);
+  return clampNumber(safeMaxOpacity - (fadeDistance * opacityStep), safeMinOpacity, safeMaxOpacity);
+}
+
+function getNodeVisualOpacity(node) {
+  return getNodeDepthOpacity(node, 0.24, 1);
+}
+
+function getNodeTextOpacity(node) {
+  return clampNumber(getNodeDepthOpacity(node, 0.2, 1) * textAlpha, 0, 1);
+}
+
+function getNodePackSize(node, inheritedSize) {
+  const baseSize = Math.max(2, Number(inheritedSize) || 2);
+
+  if (!node || String(node.type) !== "1") {
+    return baseSize;
+  }
+
+  const depthPenalty = Math.max(0, getNodeDepth(node) - 1) * 1.4;
+  return Math.max(2, baseSize - depthPenalty);
 }
 
 function escapeRegExp(text) {
@@ -1092,6 +1273,7 @@ function renderNodeList(entry, searchQuery) {
   const detailHtml = buildNodeDetailHtml(node);
   const hasDetails = detailHtml !== "";
   const isDetailOpen = hasDetails && expandedRoleListNodeIds[nodeId] === true;
+  const depthOpacity = getNodeDepthOpacity(node, 0.28, 1);
 
   if (entry.matchesLabel) {
     shellClasses.push("match-direct");
@@ -1108,7 +1290,7 @@ function renderNodeList(entry, searchQuery) {
         data-omo-role-detail-toggle="${escapedNodeId}"
         aria-expanded="${isDetailOpen ? "true" : "false"}"
         aria-controls="role_item_detail_${escapedNodeId}"
-        aria-label="${isDetailOpen ? "Masquer les proprietes" : "Afficher les proprietes"}"
+        aria-label="${isDetailOpen ? structureTranslations.hidePropertiesAria : structureTranslations.showPropertiesAria}"
       ><span class="role-detail-toggle-icon">&#9654;</span></button>
     `;
   }
@@ -1116,7 +1298,7 @@ function renderNodeList(entry, searchQuery) {
   let html = `
     <li class="node_${escapedNodeId}">
       <div class="role-row">
-        <div class="${shellClasses.join(" ")}">
+        <div class="${shellClasses.join(" ")}" style="--role-depth-opacity:${depthOpacity.toFixed(3)};">
           <div class="role-item-main">
             <button type="button" class="role-item" data-omo-cid="${escapedNodeId}" data-omo-root="${node.type == "4" ? "1" : "0"}">
               <span class="role-dot" style="${dotStyle}"></span>
@@ -1167,7 +1349,7 @@ function ensureRoleListLayout() {
             type="search"
             id="role_list_search"
             class="role-list-search"
-            placeholder="Filtre rapide"
+            placeholder="${escapeHtml(structureTranslations.searchPlaceholder)}"
             autocomplete="off"
             spellcheck="false"
           >
@@ -1202,7 +1384,7 @@ function updateRoleListResults() {
   }
 
   if (!filteredRoot) {
-    roleListResults.innerHTML = `<div class="role-list-empty">Aucun noeud ne correspond a cette recherche.</div>`;
+    roleListResults.innerHTML = `<div class="role-list-empty">${escapeHtml(structureTranslations.emptySearch)}</div>`;
     return;
   }
 
@@ -1212,6 +1394,14 @@ function updateRoleListResults() {
 function renderRoleList() {
   if (!root) return;
   ensureRoleListLayout();
+  updateRoleListResults();
+}
+
+function refreshRoleListDepthOpacity() {
+  if (!root) {
+    return;
+  }
+
   updateRoleListResults();
 }
 
@@ -1381,7 +1571,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
     popupUrl = window.omoResolveAppUrl(popupUrl);
   }
 
-  window.commonTopbarOpenModal("Partager la structure", popupUrl, "fetch");
+  window.commonTopbarOpenModal(structureTranslations.shareModalTitle, popupUrl, "fetch");
 });
 
     const structureDataUrl = <?= json_encode($structureDataUrl, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
@@ -1405,7 +1595,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
     let structureCanvasWarningMessage = "";
     let structureCanvasWarningCollapsed = false;
     const structureBrowserInfo = {
-      name: "ce navigateur",
+      name: structureTranslations.browserGenericName,
       isBrave: false
     };
 
@@ -1454,14 +1644,14 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
     function detectStructureBrowser() {
       if (typeof navigator === "undefined") {
         return Promise.resolve({
-          name: "ce navigateur",
+          name: structureTranslations.browserGenericName,
           isBrave: false
         });
       }
 
       const userAgent = String(navigator.userAgent || "");
       const browserInfo = {
-        name: "ce navigateur",
+        name: structureTranslations.browserGenericName,
         isBrave: false
       };
 
@@ -1565,17 +1755,17 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
     function buildStructureCanvasWarningMessage(issue) {
       const browserName = structureBrowserInfo && structureBrowserInfo.name
         ? structureBrowserInfo.name
-        : "ce navigateur";
+        : structureTranslations.browserGenericName;
 
       if (structureBrowserInfo && structureBrowserInfo.isBrave) {
-        return "Brave semble bloquer la lecture du canvas utilisee pour la navigation graphique, probablement a cause du bouclier anti-empreinte numerique. La vue liste a ete activee pour continuer a naviguer. Vous pouvez aussi assouplir le bouclier pour ce site.";
+        return structureTranslations.warningBrave;
       }
 
       if (issue && issue.reason === "pixel-mismatch") {
-        return browserName + " bloque ou altere la lecture du canvas utilisee pour la navigation graphique. La vue liste a ete activee pour continuer a naviguer.";
+        return structureTranslations.warningPixelMismatch.replace('{browserName}', browserName);
       }
 
-      return "La lecture du canvas utilisee pour la navigation graphique n'est pas disponible dans " + browserName + ". La vue liste a ete activee pour continuer a naviguer.";
+      return structureTranslations.warningUnavailable.replace('{browserName}', browserName);
     }
 
     function applyStructureCanvasPickingIssue(issue) {
@@ -1721,7 +1911,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
         })
         .catch(function(error) {
           console.error(error);
-          renderStructureMessage(error && error.message ? error.message : "Impossible de charger la structure.");
+          renderStructureMessage(error && error.message ? error.message : structureTranslations.loadError);
         })
         .finally(function() {
           structureReloadPromise = null;
@@ -1769,6 +1959,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
       }
 
       currentnode = targetNode;
+      refreshRoleListDepthOpacity();
       canvas.style("pointer-events", "none");
 
       const v = shouldUseTightZoom(targetNode)
@@ -1794,17 +1985,19 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
       animate();
     }
 
-    function normalizeStructureNode(node) {
+    function normalizeStructureNode(node, depth) {
       if (!node || typeof node !== "object") {
         return null;
       }
 
       const normalizedNode = Object.assign({}, node);
       const children = Array.isArray(normalizedNode.children) ? normalizedNode.children : [];
+      const normalizedDepth = Number.isFinite(Number(depth)) ? Number(depth) : 0;
 
       normalizedNode.ID = String(normalizedNode.ID || "");
       normalizedNode.type = String(normalizedNode.type || "");
       normalizedNode.size = Number(normalizedNode.size || (normalizedNode.type === "1" ? 10 : 20));
+      normalizedNode.depth = Number.isFinite(Number(normalizedNode.depth)) ? Number(normalizedNode.depth) : normalizedDepth;
       normalizedNode.userIds = Array.isArray(normalizedNode.userIds)
         ? normalizedNode.userIds.map(function (userId) {
             return Number(userId);
@@ -1813,11 +2006,12 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
           })
         : [];
       normalizedNode.children = children
-        .map(normalizeStructureNode)
+        .map(function (childNode) {
+          return normalizeStructureNode(childNode, normalizedNode.depth + 1);
+        })
         .filter(function (child) {
           return child !== null;
         });
-
       return normalizedNode;
     }
 
@@ -1878,7 +2072,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
         }
       }
 
-      return "Impossible de charger la structure.";
+      return structureTranslations.loadError;
     }
 
     function loadStructureData() {
@@ -1894,14 +2088,14 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
           dataType: "json",
           success: function (response) {
             if (!response || response.error) {
-              reject(new Error(response && response.message ? response.message : "Structure invalide."));
+              reject(new Error(response && response.message ? response.message : structureTranslations.invalidStructure));
               return;
             }
 
-            const normalizedRoot = normalizeStructureNode(response);
+            const normalizedRoot = normalizeStructureNode(response, 0);
 
             if (!normalizedRoot) {
-              reject(new Error("Structure invalide."));
+              reject(new Error(structureTranslations.invalidStructure));
               return;
             }
 
@@ -1925,7 +2119,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
           if (key === "color") {
             delete json[key];
           } else if (key === "size") {
-            json[key] = size;
+            json[key] = getNodePackSize(json, size);
           } else if (key === "children") {
             json[key] = removeColorNodes(json[key], json.type == 2 ? (size > 2 ? size - 2 : 2) : size);
           }
@@ -1974,14 +2168,14 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
       return { lines, fontSize };
     }
 
-    function drawText(ctx, text, fontSize, centerX, centerY, radius, fillcolor = "#000", strokecolor = "#FFF", style = "", font = "Arial") {
+    function drawText(ctx, text, fontSize, centerX, centerY, radius, fillcolor = "#000", strokecolor = "#FFF", style = "", font = "Arial", opacity = 1) {
       if (fontSize < 6) return;
       if (fontSize < 12) fontSize = 12;
 
       ctx.textBaseline = "alphabetic";
       ctx.textAlign = "center";
-      ctx.fillStyle = fillcolor;
-      ctx.strokeStyle = strokecolor;
+      ctx.fillStyle = colorToTransparentFill(fillcolor, opacity, "rgba(0,0,0," + opacity + ")");
+      ctx.strokeStyle = colorToTransparentFill(strokecolor, opacity, "rgba(255,255,255," + opacity + ")");
       ctx.lineWidth = 5;
       ctx.setLineDash([]);
       ctx.lineJoin = "round";
@@ -2009,11 +2203,11 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
       });
     }
 
-    function drawCircularText(ctx, text, fontSize, fontBold, titleFont, centerX, centerY, radius, startAngle, kerning) {
+    function drawCircularText(ctx, text, fontSize, fontBold, titleFont, centerX, centerY, radius, startAngle, kerning, opacity) {
       ctx.textBaseline = "alphabetic";
       ctx.textAlign = "center";
       ctx.font = fontBold + " " + fontSize + "pt " + titleFont;
-      ctx.fillStyle = "rgba(255,255,255," + textAlpha + ")";
+      ctx.fillStyle = colorToTransparentFill("#ffffff", opacity, "rgba(255,255,255," + opacity + ")");
 
       startAngle = startAngle * (Math.PI / 180);
       text = text.split("").reverse().join("");
@@ -2097,6 +2291,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
       ctx.save();
       ctx.beginPath();
       ctx.arc(nodeX, nodeY, nodeR, 0, 2 * Math.PI, true);
+      ctx.globalAlpha = getNodeVisualOpacity(node);
       ctx.fillStyle = hatchPattern;
       ctx.fill();
       ctx.restore();
@@ -2128,6 +2323,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
         const nodeX = ((node.x - zoomInfo.centerX) * zoomInfo.scale) + centerX;
         const nodeY = ((node.y - zoomInfo.centerY) * zoomInfo.scale) + centerY;
         const nodeR = node.r * zoomInfo.scale * (node.type == "1" ? 0.9 : (node.type == "4" ? 1.05 : 1));
+        const nodeOpacity = getNodeVisualOpacity(node);
 
         if (node.mod === "hierarchy") {
           drawPolygon(chosenContext, nodeX, nodeY, nodeR, 8);
@@ -2145,22 +2341,22 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
           chosenContext.fill();
         } else {
           chosenContext.fillStyle = (node.type == "3" || node.type == "2")
-            ? colorToTransparentFill(node.mycolor, 0.12, colorCircle(node.depth))
-            : (node.mycolor || "rgb(255, 204, 0)");
+            ? colorToTransparentFill(node.mycolor, 0.06 + (0.16 * nodeOpacity), colorCircle(node.depth))
+            : colorToTransparentFill(node.mycolor, nodeOpacity, node.type == "4" ? chartColors.rootFill : chartColors.roleFill);
 
           if (node.type == "3") {
             chosenContext.fillStyle = "rgba(0,0,0,0)";
             chosenContext.lineWidth = 2;
             chosenContext.setLineDash([10, 10]);
-            chosenContext.strokeStyle = getGroupStrokeColor(node);
+            chosenContext.strokeStyle = colorToTransparentFill(node.mycolor, 0.2 + (0.45 * nodeOpacity), chartColors.strokeSoft);
             chosenContext.stroke();
             chosenContext.fill();
           } else if (node.type == "4") {
             chosenContext.lineWidth = 1;
             chosenContext.setLineDash([]);
-            chosenContext.strokeStyle = "rgba(255,255,255,0.5)";
+            chosenContext.strokeStyle = colorToTransparentFill("#ffffff", 0.15 + (0.35 * nodeOpacity), "rgba(255,255,255,0.5)");
             chosenContext.stroke();
-            chosenContext.fillStyle = node.mycolor || chartColors.rootFill;
+            chosenContext.fillStyle = colorToTransparentFill(node.mycolor, nodeOpacity, chartColors.rootFill);
             chosenContext.fill();
           } else {
             chosenContext.setLineDash([]);
@@ -2208,20 +2404,21 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
         ) {
           const thename = node.name;
           const titleFont = "Arial";
+          const nodeTextOpacity = getNodeTextOpacity(node);
 
           if ((node.type != "1" && node === currentnode) || currentnode.parent === node) {
             const fontSizeTitle = Math.round(nodeR / 6);
             if (fontSizeTitle > 4) {
-              drawCircularText(chosenContext, thename.replace(/,? and /g, " & "), fontSizeTitle, "bold", titleFont, nodeX, nodeY, nodeR, 0, 0);
+              drawCircularText(chosenContext, thename.replace(/,? and /g, " & "), fontSizeTitle, "bold", titleFont, nodeX, nodeY, nodeR, 0, 0, nodeTextOpacity);
             }
           } else {
             let fontSizeTitle = Math.round(nodeR / 3);
 
             if (node.type == "1") {
               if (fontSizeTitle > 36) fontSizeTitle = 36;
-              drawText(chosenContext, thename.replace(/,? and /g, " & "), fontSizeTitle, nodeX, nodeY, nodeR, chartColors.labelDark, chartColors.strokeStrong);
+              drawText(chosenContext, thename.replace(/,? and /g, " & "), fontSizeTitle, nodeX, nodeY, nodeR, chartColors.labelDark, chartColors.strokeStrong, "", "Arial", nodeTextOpacity);
             } else {
-              drawText(chosenContext, thename.replace(/,? and /g, " & "), fontSizeTitle, nodeX, nodeY, nodeR, chartColors.labelLight, chartColors.labelDark, "bold");
+              drawText(chosenContext, thename.replace(/,? and /g, " & "), fontSizeTitle, nodeX, nodeY, nodeR, chartColors.labelLight, chartColors.labelDark, "bold", "Arial", nodeTextOpacity);
             }
           }
         }
@@ -2233,6 +2430,8 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
     }
 
     function quickZoomToCanvas(focusNode) {
+      currentnode = focusNode;
+      refreshRoleListDepthOpacity();
       focus = focusNode;
       const v = shouldUseTightZoom(focusNode)
         ? [focus.x, focus.y, focus.r * 4.05]
@@ -2257,6 +2456,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
 
     function zoomToCanvas(focusNode) {
       currentnode = focusNode;
+      refreshRoleListDepthOpacity();
       canvas.style("pointer-events", "none");
 
       let v;
@@ -2555,14 +2755,13 @@ function getChartColors() {
 
     function drawAll() {
       if (!root) {
-        renderStructureMessage("Aucune structure disponible pour cette organisation.");
+        renderStructureMessage(structureTranslations.noStructure);
         return;
       }
 
       chartColors = getChartColors();
       removeColorNodes(root);
 
-      renderRoleList();
       buildCanvas();
       applyStructureCanvasPickingIssue(null);
 
@@ -2620,6 +2819,7 @@ function getChartColors() {
       ease = d3.ease("cubic-in-out");
       vOld = [focus.x, focus.y, focus.r * 2.05];
 
+      renderRoleList();
       bindEvents();
       quickZoomToCanvas(currentnode);
     }
@@ -2701,7 +2901,7 @@ function startChart() {
       root = null;
       currentnode = null;
       console.error(error);
-      renderStructureMessage(error && error.message ? error.message : "Impossible de charger la structure.");
+      renderStructureMessage(error && error.message ? error.message : structureTranslations.loadError);
     });
 }
 

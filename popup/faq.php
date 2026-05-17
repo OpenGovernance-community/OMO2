@@ -2,19 +2,54 @@
 require_once("../config.php");
 require_once("../shared_functions.php");
 
+$organizationId = (int)($_GET['oid'] ?? ($_SESSION['currentOrganization'] ?? 0));
+$currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
+$faqContext = \dbObject\FAQ::resolvePopupContext($organizationId, $currentHolonId);
+
+if ($faqContext === false) {
+	http_response_code(403);
+	?>
+	<div class="faq-popup__empty">Contexte FAQ invalide.</div>
+	<?php
+	return;
+}
+
+$contextHolon = $faqContext['currentHolon'] ?? null;
+$contextHolonId = $contextHolon ? (int)$contextHolon->getId() : 0;
+$contextOrganizationId = (int)($faqContext['organizationId'] ?? 0);
+$currentUserId = function_exists('commonGetCurrentUserId')
+	? (int)commonGetCurrentUserId()
+	: (int)($_SESSION['currentUser'] ?? 0);
+$canCreateContextualFaq = $contextHolon
+	? \dbObject\FAQ::canCreateContextualForHolon($contextHolon, $currentUserId, $contextOrganizationId)
+	: false;
+
 $allFAQ = new \dbObject\ArrayFAQ();
-$allFAQ->load([
-	'where' => [
-		['field' => 'isactive', 'value' => 1],
-	],
-	'orderBy' => [
-		['field' => 'viewcount', 'dir' => 'DESC'],
-		['field' => 'displayorder', 'dir' => 'ASC'],
-		['field' => 'updated', 'dir' => 'DESC'],
-	],
-]);
+$allFAQ->load(\dbObject\FAQ::buildPopupLoadParams($faqContext ?: array()));
+
+$newFaq = new \dbObject\FAQ();
+$newFaq->set('IDholon', $contextHolonId > 0 ? $contextHolonId : null);
+$newFaq->set('isactive', true);
+
+$popupReloadUrl = '/popup/faq.php';
+$popupReloadQuery = array();
+if ($contextOrganizationId > 0) {
+	$popupReloadQuery[] = 'oid=' . rawurlencode((string)$contextOrganizationId);
+}
+if ($contextHolonId > 0) {
+	$popupReloadQuery[] = 'cid=' . rawurlencode((string)$contextHolonId);
+}
+if (count($popupReloadQuery) > 0) {
+	$popupReloadUrl .= '?' . implode('&', $popupReloadQuery);
+}
 ?>
-<div class="faq-popup" id="faqPopupRoot">
+<div
+	class="faq-popup"
+	id="faqPopupRoot"
+	data-faq-oid="<?= (int)$contextOrganizationId ?>"
+	data-faq-cid="<?= (int)$contextHolonId ?>"
+	data-faq-reload-url="<?= htmlspecialchars($popupReloadUrl, ENT_QUOTES, 'UTF-8') ?>"
+>
 	<style>
 	.faq-popup {
 		position: relative;
@@ -56,6 +91,19 @@ $allFAQ->load([
 	.faq-popup__list {
 		display: grid;
 		gap: 12px;
+	}
+
+	.faq-popup__footer {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 12px;
+		flex-wrap: wrap;
+	}
+
+	.faq-popup__context {
+		font-size: 13px;
+		color: #64748b;
 	}
 
 	.faq-popup__item {
@@ -113,7 +161,8 @@ $allFAQ->load([
 	}
 
 	.faq-popup__detail-link,
-	.faq-popup__back {
+	.faq-popup__back,
+	.faq-popup__add {
 		border: 0;
 		background: #e2e8f0;
 		color: #0f172a;
@@ -124,8 +173,38 @@ $allFAQ->load([
 	}
 
 	.faq-popup__detail-link:hover,
-	.faq-popup__back:hover {
+	.faq-popup__back:hover,
+	.faq-popup__add:hover {
 		background: #cbd5e1;
+	}
+
+	.faq-popup__add {
+		background: #0f172a;
+		color: #ffffff;
+	}
+
+	.faq-popup__add:hover {
+		background: #1e293b;
+	}
+
+	.faq-popup__editor-shell {
+		padding: 18px;
+		display: grid;
+		gap: 16px;
+	}
+
+	.faq-popup__editor-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: 12px;
+		flex-wrap: wrap;
+	}
+
+	.faq-popup__editor-status {
+		padding: 12px 14px;
+		border-radius: 12px;
+		background: #f8fafc;
+		color: #475569;
 	}
 
 	.faq-popup__detail {
@@ -151,10 +230,8 @@ $allFAQ->load([
 	}
 	</style>
 
-	<?php if (count($allFAQ) === 0): ?>
-		<div class="faq-popup__empty">Aucune FAQ n’est disponible pour le moment.</div>
-	<?php else: ?>
-		<div class="faq-popup__search" data-faq-search-view>
+	<div class="faq-popup__search" data-faq-search-view>
+		<?php if (count($allFAQ) > 0): ?>
 			<input
 				type="search"
 				class="faq-popup__search-input"
@@ -162,42 +239,82 @@ $allFAQ->load([
 				placeholder="Rechercher dans la FAQ..."
 				aria-label="Rechercher dans la FAQ"
 			>
-			<div class="faq-popup__helper" data-faq-helper>
-				Tapez quelques mots-clés pour filtrer les réponses, puis ouvrez la question qui vous intéresse.
-			</div>
-			<div class="faq-popup__no-result" data-faq-no-result hidden>
-				Aucune FAQ ne correspond à cette recherche.
-			</div>
-			<div class="faq-popup__list" data-faq-list>
-				<?php $faqIndex = 0; ?>
-				<?php foreach ($allFAQ as $faq): ?>
-					<div
-						class="faq-popup__item"
-						data-faq-item
-						data-faq-default-order="<?= $faqIndex ?>"
-						data-faq-viewcount="<?= (int)$faq->get("viewcount") ?>"
-					>
-						<button type="button" class="faq-popup__question" data-faq-toggle><?= htmlspecialchars((string)$faq->get("question")) ?></button>
-						<div class="faq-popup__answer" data-faq-answer>
-							<div data-faq-answer-text><?= nl2br(htmlspecialchars($faq->getShortAnswer(220))) ?></div>
-							<?php if ((string)$faq->get("detail") !== ''): ?>
-								<div class="faq-popup__actions">
-									<button
-										type="button"
-										class="faq-popup__detail-link"
-										data-faq-detail
-										data-faq-id="<?= (int)$faq->get("id") ?>"
-									>Voir le détail</button>
-								</div>
-							<?php endif; ?>
-						</div>
+		<?php endif; ?>
+		<div class="faq-popup__helper" data-faq-helper<?= count($allFAQ) === 0 ? ' hidden' : '' ?>>
+			Tapez quelques mots cles pour filtrer les reponses, puis ouvrez la question utile.
+		</div>
+		<div class="faq-popup__no-result" data-faq-no-result hidden>
+			Aucune FAQ ne correspond a cette recherche.
+		</div>
+		<?php if (count($allFAQ) === 0): ?>
+			<div class="faq-popup__empty">Aucune FAQ n'est disponible pour le moment.</div>
+		<?php endif; ?>
+		<div class="faq-popup__list" data-faq-list<?= count($allFAQ) === 0 ? ' hidden' : '' ?>>
+			<?php $faqIndex = 0; ?>
+			<?php foreach ($allFAQ as $faq): ?>
+				<div
+					class="faq-popup__item"
+					data-faq-item
+					data-faq-default-order="<?= $faqIndex ?>"
+					data-faq-viewcount="<?= (int)$faq->get("viewcount") ?>"
+				>
+					<button type="button" class="faq-popup__question" data-faq-toggle><?= htmlspecialchars((string)$faq->get("question")) ?></button>
+					<div class="faq-popup__answer" data-faq-answer>
+						<div data-faq-answer-text><?= nl2br(htmlspecialchars($faq->getShortAnswer(220))) ?></div>
+						<?php if ((string)$faq->get("detail") !== ''): ?>
+							<div class="faq-popup__actions">
+								<button
+									type="button"
+									class="faq-popup__detail-link"
+									data-faq-detail
+									data-faq-id="<?= (int)$faq->get("id") ?>"
+								>Voir le detail</button>
+							</div>
+						<?php endif; ?>
 					</div>
-					<?php $faqIndex++; ?>
-				<?php endforeach; ?>
+				</div>
+				<?php $faqIndex++; ?>
+			<?php endforeach; ?>
+		</div>
+		<?php if ($canCreateContextualFaq): ?>
+			<div class="faq-popup__footer">
+				<div class="faq-popup__context">
+					Contexte: <?= htmlspecialchars((string)$contextHolon->getDisplayName(), ENT_QUOTES, 'UTF-8') ?>
+				</div>
+				<button type="button" class="faq-popup__add" data-faq-add>Add</button>
+			</div>
+		<?php endif; ?>
+	</div>
+
+	<div class="faq-popup__detail" data-faq-detail-view hidden></div>
+	<?php if ($canCreateContextualFaq): ?>
+		<div class="faq-popup__detail" data-faq-editor-view hidden>
+			<div class="faq-popup__editor-shell">
+				<div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;">
+					<h4 style="margin:0; font-size:20px; color:#0f172a;">Nouvelle FAQ contextuelle</h4>
+					<button type="button" class="faq-popup__back" data-faq-back>Retour</button>
+				</div>
+				<div class="faq-popup__editor-status">
+					Cette FAQ sera rattachee a <?= htmlspecialchars((string)$contextHolon->getDisplayName(), ENT_QUOTES, 'UTF-8') ?>.
+				</div>
+				<?php
+				$params = array(
+					'buttons' => false,
+					'action' => '/ajax/faq_save.php?oid=' . rawurlencode((string)$contextOrganizationId) . '&cid=' . rawurlencode((string)$contextHolonId),
+					'fields' => array(
+						'question',
+						'answer',
+						'detail',
+					),
+				);
+				$newFaq->display('adminEdit.php', $params);
+				?>
+				<div class="faq-popup__editor-actions">
+					<button type="button" class="faq-popup__back" data-faq-back>Annuler</button>
+					<button type="button" class="faq-popup__add" data-faq-save>Enregistrer</button>
+				</div>
 			</div>
 		</div>
-
-		<div class="faq-popup__detail" data-faq-detail-view hidden></div>
 	<?php endif; ?>
 </div>
 <script>
@@ -215,18 +332,23 @@ $allFAQ->load([
 
 	const searchView = root.querySelector('[data-faq-search-view]');
 	const detailView = root.querySelector('[data-faq-detail-view]');
+	const editorView = root.querySelector('[data-faq-editor-view]');
+	const editorForm = editorView ? editorView.querySelector('#formulaire-edit') : null;
 	const searchInput = root.querySelector('[data-faq-search-input]');
 	const helper = root.querySelector('[data-faq-helper]');
 	const noResult = root.querySelector('[data-faq-no-result]');
 	const list = root.querySelector('[data-faq-list]');
 	const modalBody = document.getElementById('commonTopbarModalBody');
 	const defaultVisibleLimit = 5;
+	const currentOid = Number(root.getAttribute('data-faq-oid') || 0);
+	const currentCid = Number(root.getAttribute('data-faq-cid') || 0);
+	const reloadUrl = root.getAttribute('data-faq-reload-url') || '/popup/faq.php';
 	let currentViewToken = null;
 
 	if (modalBody) {
 		modalBody.setAttribute('data-omo-faq-modal', '1');
 		modalBody.setAttribute('data-omo-popup-key', 'faq');
-		modalBody.setAttribute('data-omo-popup-url', '/popup/faq.php');
+		modalBody.setAttribute('data-omo-popup-url', reloadUrl);
 		modalBody.setAttribute('data-omo-popup-live-sync', '1');
 	}
 
@@ -243,14 +365,14 @@ $allFAQ->load([
 
 	function buildAccentInsensitivePattern(word) {
 		const accentMap = {
-			a: '[aàáâãäå]',
-			c: '[cç]',
-			e: '[eèéêë]',
-			i: '[iìíîï]',
-			n: '[nñ]',
-			o: '[oòóôõöø]',
-			u: '[uùúûü]',
-			y: '[yÿý]'
+			a: '[a\\u00E0\\u00E1\\u00E2\\u00E3\\u00E4\\u00E5]',
+			c: '[c\\u00E7]',
+			e: '[e\\u00E8\\u00E9\\u00EA\\u00EB]',
+			i: '[i\\u00EC\\u00ED\\u00EE\\u00EF]',
+			n: '[n\\u00F1]',
+			o: '[o\\u00F2\\u00F3\\u00F4\\u00F5\\u00F6\\u00F8]',
+			u: '[u\\u00F9\\u00FA\\u00FB\\u00FC]',
+			y: '[y\\u00FF\\u00FD]'
 		};
 
 		return word
@@ -259,6 +381,17 @@ $allFAQ->load([
 				return accentMap[char] || escapeRegExp(char);
 			})
 			.join('');
+	}
+
+	function buildFaqQuery(id) {
+		const query = ['id=' + encodeURIComponent(id)];
+		if (currentOid > 0) {
+			query.push('oid=' + encodeURIComponent(currentOid));
+		}
+		if (currentCid > 0) {
+			query.push('cid=' + encodeURIComponent(currentCid));
+		}
+		return query.join('&');
 	}
 
 	function resetHighlights(container) {
@@ -327,10 +460,27 @@ $allFAQ->load([
 			detailView.hidden = true;
 			detailView.innerHTML = '';
 		}
+		if (editorView) {
+			editorView.hidden = true;
+		}
 
 		if (options.updateHash !== false && typeof window.omoOpenPopupHashState === 'function') {
 			window.omoOpenPopupHashState('faq', null);
 		}
+	}
+
+	function showEditor() {
+		if (!editorView) {
+			return;
+		}
+
+		currentViewToken = 'faq-create';
+		root.classList.add('faq-popup--detail-open');
+		if (detailView) {
+			detailView.hidden = true;
+			detailView.innerHTML = '';
+		}
+		editorView.hidden = false;
 	}
 
 	function showDetail(id, options = {}) {
@@ -340,6 +490,9 @@ $allFAQ->load([
 
 		currentViewToken = `faq-${Number(id)}`;
 		root.classList.add('faq-popup--detail-open');
+		if (editorView) {
+			editorView.hidden = true;
+		}
 		detailView.hidden = false;
 		detailView.innerHTML = '<div class="faq-popup__helper">Chargement...</div>';
 
@@ -347,7 +500,7 @@ $allFAQ->load([
 			window.omoOpenPopupHashState('faq', id);
 		}
 
-		fetch('/ajax/faq_detail.php?id=' + encodeURIComponent(id), {
+		fetch('/ajax/faq_detail.php?' + buildFaqQuery(id), {
 			credentials: 'same-origin',
 			headers: {
 				'X-Requested-With': 'XMLHttpRequest'
@@ -479,6 +632,33 @@ $allFAQ->load([
 		}
 	}
 
+	function handleSaveResponse(data) {
+		let payload = data;
+
+		if (typeof payload === 'string') {
+			try {
+				payload = JSON.parse(payload);
+			} catch (error) {
+				payload = null;
+			}
+		}
+
+		if (!payload || payload.status === false) {
+			window.alert(payload && payload.message ? payload.message : "Impossible d'enregistrer cette FAQ.");
+			return;
+		}
+
+		if (payload.script) {
+			eval(payload.script);
+		} else if (typeof window.commonTopbarRefreshModalContent === 'function') {
+			window.commonTopbarRefreshModalContent(reloadUrl);
+		}
+
+		if (payload.message) {
+			window.alert(payload.message);
+		}
+	}
+
 	root.addEventListener('click', function (event) {
 		const toggle = event.target.closest('[data-faq-toggle]');
 		if (toggle) {
@@ -500,6 +680,18 @@ $allFAQ->load([
 		const detailButton = event.target.closest('[data-faq-detail]');
 		if (detailButton) {
 			showDetail(detailButton.getAttribute('data-faq-id'));
+			return;
+		}
+
+		if (event.target.closest('[data-faq-add]')) {
+			showEditor();
+			return;
+		}
+
+		if (event.target.closest('[data-faq-save]')) {
+			if (editorForm && typeof window.jQuery === 'function' && typeof window.sendForm === 'function') {
+				window.sendForm(window.jQuery(editorForm), handleSaveResponse);
+			}
 			return;
 		}
 

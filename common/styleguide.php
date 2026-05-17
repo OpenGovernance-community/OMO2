@@ -13,6 +13,7 @@ if (!checklogin()) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Styleguide generique</title>
     <link rel="stylesheet" href="/common/assets/components.css">
+    <script src="/common/assets/components.js" defer></script>
     <style>
         :root {
             color-scheme: light;
@@ -123,6 +124,11 @@ if (!checklogin()) {
             gap: 10px;
         }
 
+        .styleguide-tab-example {
+            display: grid;
+            gap: 12px;
+        }
+
         .styleguide-divider {
             height: 1px;
             background: color-mix(in srgb, var(--color-border, #e5e7eb) 85%, transparent);
@@ -160,6 +166,7 @@ if (!checklogin()) {
                 <span class="styleguide-pill">generic-card-title</span>
                 <span class="styleguide-pill">generic-action-button</span>
                 <span class="styleguide-pill">generic-form-control</span>
+                <span class="styleguide-pill">generic-tabs</span>
                 <span class="styleguide-pill">generic-accordion</span>
             </div>
         </section>
@@ -255,12 +262,68 @@ Overrides possibles via variables:
         </section>
 
         <section class="generic-section generic-section--stack">
+            <div class="generic-card-title generic-card-title--eyebrow">Onglets</div>
+            <div class="styleguide-grid">
+                <div class="styleguide-tab-example">
+                    <div class="generic-tabs" data-generic-tabs>
+                        <div class="generic-tabs__list" aria-label="Exemple d onglets">
+                            <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="styleguide-tab-overview">Apercu</button>
+                            <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="styleguide-tab-form">Formulaire</button>
+                            <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="styleguide-tab-notes">Notes</button>
+                        </div>
+                        <div class="generic-tabs__panels">
+                            <div id="styleguide-tab-overview" class="generic-tabs__panel styleguide-stack" data-generic-tab-panel>
+                                <div class="generic-card-title generic-card-title--small">Container libre</div>
+                                <div class="styleguide-note">Le systeme se contente d afficher le bon bloc et de masquer les autres.</div>
+                                <div class="styleguide-row">
+                                    <span class="styleguide-pill">JS minimal</span>
+                                    <span class="styleguide-pill">sans jQuery</span>
+                                </div>
+                            </div>
+                            <div id="styleguide-tab-form" class="generic-tabs__panel styleguide-stack" data-generic-tab-panel hidden>
+                                <label class="styleguide-field">
+                                    <span class="styleguide-label">Champ dans un onglet</span>
+                                    <input type="text" class="generic-form-control" value="Le contenu peut etre interactif">
+                                </label>
+                            </div>
+                            <div id="styleguide-tab-notes" class="generic-tabs__panel styleguide-stack" data-generic-tab-panel hidden>
+                                <div class="generic-card-title generic-card-title--small">Usage recommande</div>
+                                <div class="styleguide-note">Conserver le style dans le CSS partage et utiliser seulement des IDs de panneaux cote HTML.</div>
+                                <div class="styleguide-note">Si un bloc est injecte apres un fetch, les clics sont maintenant captes par delegation. En cas de besoin, on peut aussi appeler <code>window.initGenericTabs(container)</code>.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <pre class="styleguide-code">&lt;link rel="stylesheet" href="/common/assets/components.css"&gt;
+&lt;script src="/common/assets/components.js" defer&gt;&lt;/script&gt;
+
+&lt;div class="generic-tabs" data-generic-tabs&gt;
+    &lt;div class="generic-tabs__list"&gt;
+        &lt;button class="generic-tabs__tab is-active"
+            data-generic-tab
+            data-generic-tab-target="panel-a"&gt;A&lt;/button&gt;
+        &lt;button class="generic-tabs__tab"
+            data-generic-tab
+            data-generic-tab-target="panel-b"&gt;B&lt;/button&gt;
+    &lt;/div&gt;
+    &lt;div class="generic-tabs__panels"&gt;
+        &lt;div id="panel-a" class="generic-tabs__panel" data-generic-tab-panel&gt;...&lt;/div&gt;
+        &lt;div id="panel-b" class="generic-tabs__panel" data-generic-tab-panel hidden&gt;...&lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+
+Apres injection dynamique facultatif:
+window.initGenericTabs(container);</pre>
+            </div>
+        </section>
+
+        <section class="generic-section generic-section--stack">
             <div class="generic-card-title generic-card-title--eyebrow">Accordion</div>
             <div class="styleguide-accordion-list">
-                <div class="generic-accordion generic-accordion--card generic-accordion--collapsible is-collapsed" data-styleguide-accordion>
+                <div class="generic-accordion generic-accordion--card generic-accordion--collapsible is-collapsed" data-generic-accordion>
                     <div class="generic-accordion__header">
                         <div class="generic-card-title generic-card-title--small">Accordion simple</div>
-                        <button type="button" class="generic-accordion__toggle" data-styleguide-toggle aria-label="Ouvrir ou fermer">▾</button>
+                        <button type="button" class="generic-accordion__toggle" data-generic-accordion-toggle aria-label="Ouvrir ou fermer">&#9662;</button>
                     </div>
                     <div class="generic-accordion__content">
                         <div class="styleguide-note">Le header, la carte et le comportement pliable viennent des classes generiques.</div>
@@ -270,7 +333,7 @@ Overrides possibles via variables:
                 <div class="generic-accordion generic-accordion--card generic-section--stack">
                     <div class="generic-accordion__header">
                         <div class="generic-card-title generic-card-title--small">Accordion ouvert</div>
-                        <span class="generic-accordion__toggle" aria-hidden="true">▾</span>
+                        <span class="generic-accordion__toggle" aria-hidden="true">&#9662;</span>
                     </div>
                     <div class="generic-accordion__content">
                         <div class="generic-soft-panel generic-soft-panel--stack">
@@ -291,20 +354,5 @@ Overrides possibles via variables:
         </section>
     </main>
 
-    <script>
-    (function () {
-        var accordions = document.querySelectorAll('[data-styleguide-accordion]');
-        accordions.forEach(function (accordion) {
-            var toggle = accordion.querySelector('[data-styleguide-toggle]');
-            if (!toggle) {
-                return;
-            }
-
-            toggle.addEventListener('click', function () {
-                accordion.classList.toggle('is-collapsed');
-            });
-        });
-    })();
-    </script>
 </body>
 </html>

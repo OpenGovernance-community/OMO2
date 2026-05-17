@@ -222,11 +222,13 @@
 
 			$targetHost = commonGetRequestHost();
 			$shortname = trim((string)$organization->get('shortname'));
-			if ($shortname !== '') {
+			if (commonUseOrganizationSubdomains() && $shortname !== '') {
 				$builtHost = commonBuildOrganizationHost($shortname, commonGetRootHost($targetHost));
 				if (trim((string)$builtHost) !== '') {
 					$targetHost = $builtHost;
 				}
+			} else {
+				$targetHost = commonGetRootHost($targetHost);
 			}
 
 			return commonBuildUrl($path, $targetHost);
