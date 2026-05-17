@@ -276,6 +276,37 @@
         setPendingActionState(root, false);
     }
 
+    function normalizeLocalePreference(locale) {
+        var normalized = String(locale || '').trim().toLowerCase().replace(/_/g, '-');
+
+        if (/^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/.test(normalized)) {
+            return normalized;
+        }
+
+        return '';
+    }
+
+    function setLanguagePreference(locale, reloadPage) {
+        var normalized = normalizeLocalePreference(locale);
+
+        if (!normalized) {
+            return false;
+        }
+
+        document.cookie = [
+            'lang=' + encodeURIComponent(normalized),
+            'path=/',
+            'max-age=' + String(365 * 24 * 60 * 60),
+            'SameSite=Lax'
+        ].join('; ');
+
+        if (reloadPage) {
+            window.location.reload();
+        }
+
+        return true;
+    }
+
     function handleGenericTabClick(event) {
         var nextTab = findClosestByAttribute(event.target, 'data-generic-tab', document);
         var container;
@@ -345,6 +376,8 @@
     window.initGenericComponents = initGenericComponents;
     window.omoBeginPendingAction = beginPendingAction;
     window.omoEndPendingAction = endPendingAction;
+    window.sharedNormalizeLocalePreference = normalizeLocalePreference;
+    window.sharedSetLanguagePreference = setLanguagePreference;
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function () {

@@ -182,7 +182,7 @@ $sourceLang = [
     ],
 ];
 
-$lang = translationBundleInit('omo_index_page', (string)($_COOKIE['lang'] ?? 'fr'), $sourceLang);
+$lang = translationBundleInit('omo_index_page', omoGetTranslationLocale(), $sourceLang);
 
 $organizationContext = commonResolveOrganizationContext(1);
 commonRestoreRememberedUser();
@@ -490,7 +490,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
         </div>
     </div>
     <script>
-        window.omoI18n = <?= json_encode($directoryJsTranslations, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+        window.omoDirectoryTranslations = <?= json_encode($directoryJsTranslations, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
     </script>
 
     <style>
@@ -694,7 +694,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
                 return;
             }
 
-            function formatI18n(template, variables) {
+            function interpolateTemplate(template, variables) {
                 return String(template || '').replace(/\{(\w+)\}/g, function (match, key) {
                     return Object.prototype.hasOwnProperty.call(variables, key) ? String(variables[key]) : match;
                 });
@@ -758,15 +758,15 @@ if ($isOrganizationHub && !$isDemoGuest) {
 
                     var action = actionButton.getAttribute('data-omo-org-action') || '';
                     var organizationId = card.getAttribute('data-organization-id') || '';
-                    var organizationName = card.getAttribute('data-organization-name') || window.omoI18n.defaultOrganizationName;
+                    var organizationName = card.getAttribute('data-organization-name') || window.omoDirectoryTranslations.defaultOrganizationName;
                     var confirmMessage = '';
 
                     if (action === 'leave') {
-                        confirmMessage = formatI18n(window.omoI18n.leaveConfirm, {
+                        confirmMessage = interpolateTemplate(window.omoDirectoryTranslations.leaveConfirm, {
                             organizationName: organizationName
                         });
                     } else if (action === 'delete') {
-                        confirmMessage = formatI18n(window.omoI18n.deleteConfirm, {
+                        confirmMessage = interpolateTemplate(window.omoDirectoryTranslations.deleteConfirm, {
                             organizationName: organizationName
                         });
                     }
@@ -805,7 +805,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
                         })
                         .then(function (result) {
                             if (!result.ok || !result.data || result.data.status !== true) {
-                                throw new Error(result.data && result.data.message ? result.data.message : window.omoI18n.actionError);
+                                throw new Error(result.data && result.data.message ? result.data.message : window.omoDirectoryTranslations.actionError);
                             }
 
                             closeMenus();
@@ -820,7 +820,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
                         .catch(function (error) {
                             actionButton.disabled = false;
                             closeMenus();
-                            window.alert(error && error.message ? error.message : window.omoI18n.actionError);
+                            window.alert(error && error.message ? error.message : window.omoDirectoryTranslations.actionError);
                         });
 
                     return;
