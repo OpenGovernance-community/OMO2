@@ -7,6 +7,16 @@ function translationWorkerWriteError($message)
 {
     $message = (string)$message;
 
+    if (PHP_SAPI !== 'cli') {
+        if (!headers_sent()) {
+            http_response_code(400);
+            header('Content-Type: text/plain; charset=UTF-8');
+        }
+
+        echo $message;
+        return;
+    }
+
     if (defined('STDERR')) {
         fwrite(STDERR, $message);
         return;
@@ -59,12 +69,53 @@ function translationWorkerBuildExceptionReport(array $jobData, \Throwable $excep
     return implode(PHP_EOL, $lines);
 }
 
+function translationWorkerProcessJob(\dbObject\TranslationBundleRefreshJob $job, $verbose = false)
+{
+    $jobData = [
+        'id' => (int)$job->getId(),
+        'bundle_key' => (string)$job->get('bundle_key'),
+        'locale' => (string)$job->get('locale'),
+        'source_hash' => (string)$job->get('source_hash'),
+        'source_json' => (string)$job->get('source_json'),
+    ];
+
+    if ($verbose) {
+        translationWorkerWriteInfo('[translation-worker] Processing ' . translationWorkerFormatJobLabel($jobData) . PHP_EOL);
+    }
+
+    try {
+        translationBundleProcessRefreshJob($jobData);
+        \dbObject\TranslationBundleRefreshJob::markCompleted((int)$job->getId());
+
+        if ($verbose) {
+            translationWorkerWriteInfo('[translation-worker] Completed ' . translationWorkerFormatJobLabel($jobData) . PHP_EOL);
+        }
+
+        return [
+            'status' => true,
+            'jobData' => $jobData,
+            'error' => '',
+        ];
+    } catch (\Throwable $exception) {
+        $errorReport = translationWorkerBuildExceptionReport($jobData, $exception);
+        \dbObject\TranslationBundleRefreshJob::markFailed((int)$job->getId(), $errorReport);
+        translationWorkerWriteError($errorReport . PHP_EOL);
+
+        return [
+            'status' => false,
+            'jobData' => $jobData,
+            'error' => $errorReport,
+        ];
+    }
+}
+
 if (PHP_SAPI !== 'cli') {
     translationWorkerWriteError("This script must run in CLI. Current SAPI: " . PHP_SAPI . PHP_EOL);
     exit(1);
 }
 
 $jobId = 0;
+$maxJobs = 1;
 $verbose = false;
 $arguments = isset($argv) && is_array($argv) ? array_slice($argv, 1) : [];
 
@@ -74,52 +125,64 @@ foreach ($arguments as $argument) {
         continue;
     }
 
+    if (strpos($argument, '--max=') === 0) {
+        $maxJobs = max(1, (int)substr($argument, strlen('--max=')));
+        continue;
+    }
+
     if ($argument === '--verbose') {
         $verbose = true;
     }
 }
 
-$job = $jobId > 0
-    ? \dbObject\TranslationBundleRefreshJob::claimPendingById($jobId)
-    : \dbObject\TranslationBundleRefreshJob::claimNextPending();
+if ($jobId > 0) {
+    $job = \dbObject\TranslationBundleRefreshJob::claimPendingById($jobId);
 
-if (!$job instanceof \dbObject\TranslationBundleRefreshJob) {
-    if ($verbose) {
-        $message = $jobId > 0
-            ? '[translation-worker] No pending job claimed for job=' . $jobId
-            : '[translation-worker] No pending translation job found';
-        translationWorkerWriteInfo($message . PHP_EOL);
+    if (!$job instanceof \dbObject\TranslationBundleRefreshJob) {
+        if ($verbose) {
+            translationWorkerWriteInfo('[translation-worker] No pending job claimed for job=' . $jobId . PHP_EOL);
+        }
+
+        exit(0);
     }
 
-    exit(0);
+    $result = translationWorkerProcessJob($job, $verbose);
+    exit(!empty($result['status']) ? 0 : 1);
 }
 
-$jobData = [
-    'id' => (int)$job->getId(),
-    'bundle_key' => (string)$job->get('bundle_key'),
-    'locale' => (string)$job->get('locale'),
-    'source_hash' => (string)$job->get('source_hash'),
-    'source_json' => (string)$job->get('source_json'),
-];
+$processedCount = 0;
+$failedCount = 0;
+
+while ($processedCount < $maxJobs) {
+    $job = \dbObject\TranslationBundleRefreshJob::claimNextPending();
+    if (!$job instanceof \dbObject\TranslationBundleRefreshJob) {
+        break;
+    }
+
+    $processedCount++;
+    $result = translationWorkerProcessJob($job, $verbose);
+    if (empty($result['status'])) {
+        $failedCount++;
+    }
+}
 
 if ($verbose) {
-    translationWorkerWriteInfo('[translation-worker] Processing ' . translationWorkerFormatJobLabel($jobData) . PHP_EOL);
+    if ($processedCount === 0) {
+        translationWorkerWriteInfo('[translation-worker] No pending translation job found' . PHP_EOL);
+    } else {
+        translationWorkerWriteInfo(
+            '[translation-worker] Run summary processed=' . $processedCount
+            . ' failed=' . $failedCount
+            . ' max=' . $maxJobs
+            . PHP_EOL
+        );
+    }
 }
 
-try {
-    translationBundleProcessRefreshJob($jobData);
-    \dbObject\TranslationBundleRefreshJob::markCompleted((int)$job->getId());
-
-    if ($verbose) {
-        translationWorkerWriteInfo('[translation-worker] Completed ' . translationWorkerFormatJobLabel($jobData) . PHP_EOL);
-    }
-
-    exit(0);
-} catch (\Throwable $exception) {
-    $errorReport = translationWorkerBuildExceptionReport($jobData, $exception);
-    \dbObject\TranslationBundleRefreshJob::markFailed((int)$job->getId(), $errorReport);
-    translationWorkerWriteError($errorReport . PHP_EOL);
+if ($failedCount > 0) {
     exit(1);
 }
+
+exit(0);
 
 ?>
