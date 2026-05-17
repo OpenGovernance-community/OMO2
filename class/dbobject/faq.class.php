@@ -143,6 +143,18 @@ class FAQ extends DbObject
 		return $context;
 	}
 
+	public static function resolvePopupRequestContext(array $request = array())
+	{
+		$organizationId = isset($request['oid']) && is_numeric($request['oid'])
+			? (int)$request['oid']
+			: 0;
+		$currentHolonId = isset($request['cid']) && is_numeric($request['cid'])
+			? (int)$request['cid']
+			: 0;
+
+		return self::resolvePopupContext($organizationId, $currentHolonId);
+	}
+
 	public static function buildPopupLoadParams(array $context = array())
 	{
 		$params = array(

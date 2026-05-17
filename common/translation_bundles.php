@@ -222,6 +222,14 @@ function translationBundleResolveRequestLocale($cookieName = 'lang', array $supp
     return translationBundleResolveBrowserLocale($supportedLocales, $fallback);
 }
 
+function translationBundleGetRequestLocalePreference($cookieName = 'lang', array $supportedLocales = [])
+{
+    $supportedLocales = $supportedLocales ?: translationBundleGetSupportedLocales();
+    $cookieLocale = translationBundleResolveSupportedLocale($_COOKIE[$cookieName] ?? '', $supportedLocales);
+
+    return $cookieLocale !== '' ? $cookieLocale : 'system';
+}
+
 function translationBundleIsValidLocale($locale)
 {
     return preg_match('/^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/', translationBundleNormalizeLocale($locale)) === 1;
