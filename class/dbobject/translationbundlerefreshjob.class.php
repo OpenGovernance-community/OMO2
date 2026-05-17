@@ -229,6 +229,19 @@ class TranslationBundleRefreshJob extends DbObject
             ]
         );
     }
+
+    public static function setLastError($jobId, $errorMessage)
+    {
+        return self::execute(
+            'UPDATE `translation_bundle_refresh_jobs`
+             SET `last_error` = :last_error, `updated_at` = NOW()
+             WHERE `id` = :id',
+            [
+                'last_error' => trim((string)$errorMessage),
+                'id' => (int)$jobId,
+            ]
+        );
+    }
 }
 
 ?>
