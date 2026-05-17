@@ -7,9 +7,7 @@ if ($faqId <= 0) {
 	die("FAQ invalide");
 }
 
-$organizationId = (int)($_GET['oid'] ?? ($_SESSION['currentOrganization'] ?? 0));
-$currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
-$faqContext = \dbObject\FAQ::resolvePopupContext($organizationId, $currentHolonId);
+$faqContext = \dbObject\FAQ::resolvePopupRequestContext($_GET);
 
 if ($faqContext === false) {
 	die("Contexte FAQ invalide");
