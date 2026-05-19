@@ -50,6 +50,14 @@ function omoGetTopbarSourceLang(): array
             'text' => '<p>Contenu a venir.</p>',
             'context' => 'Fallback HTML shown when a help item exists but does not yet have content in the OMO topbar.',
         ],
+        'topbar.help.privacy.label' => [
+            'text' => 'Politique de confidentialite',
+            'context' => 'Label of the privacy policy text link shown in the OMO topbar help menu.',
+        ],
+        'topbar.help.terms.label' => [
+            'text' => 'Conditions generales',
+            'context' => 'Label of the terms and conditions text link shown in the OMO topbar help menu.',
+        ],
         'topbar.help.tour.description' => [
             'text' => 'Tour des fonctions visibles a l ecran avec explication pour chaque bouton et chaque possibilite.',
             'context' => 'Description of the guided tour help entry in the OMO topbar.',
@@ -233,6 +241,40 @@ function omoGetTopbarHelpItems(string $variant = 'app'): array
     ];
 }
 
+function omoGetTopbarHelpLinks(): array
+{
+    $helpLinks = [
+        [
+            'label' => omoTopbarTranslate('topbar.help.terms.label'),
+            'href' => commonBuildUrl('/common/conditions-generales.php', commonGetRootHost()),
+            'url' => commonBuildUrl('/common/conditions-generales.php', commonGetRootHost()),
+            'mode' => 'fetch',
+            'title' => omoTopbarTranslate('topbar.help.terms.label'),
+        ],
+        [
+            'label' => omoTopbarTranslate('topbar.help.privacy.label'),
+            'href' => commonBuildUrl('/common/politique-confidentialite.php', commonGetRootHost()),
+            'url' => commonBuildUrl('/common/politique-confidentialite.php', commonGetRootHost()),
+            'mode' => 'fetch',
+            'title' => omoTopbarTranslate('topbar.help.privacy.label'),
+        ],
+    ];
+
+    $adminEmail = trim((string)($GLOBALS['siteAdminEmail'] ?? ''));
+    if ($adminEmail === '' && function_exists('envValue')) {
+        $adminEmail = trim((string)envValue('INSTALL_ADMIN_EMAIL', ''));
+    }
+
+    if ($adminEmail !== '' && filter_var($adminEmail, FILTER_VALIDATE_EMAIL)) {
+        $helpLinks[] = [
+            'label' => $adminEmail,
+            'href' => 'mailto:' . $adminEmail,
+        ];
+    }
+
+    return $helpLinks;
+}
+
 function omoBuildTopbarOptions(array $organizationContext, array $options = []): array
 {
     $variant = (string)($options['variant'] ?? 'app');
@@ -248,6 +290,7 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
         'logoutReturnTo' => (string)($options['logoutReturnTo'] ?? '/omo/'),
         'helpLabel' => omoTopbarTranslate('topbar.help.button'),
         'helpItems' => omoGetTopbarHelpItems($variant),
+        'helpLinks' => omoGetTopbarHelpLinks(),
         'profile' => [
             'enabled' => !$isDemoGuest,
             'buttonLabel' => omoTopbarTranslate('topbar.profile.button'),
@@ -332,6 +375,10 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
 
     if (!empty($options['helpItems']) && is_array($options['helpItems'])) {
         $config['helpItems'] = array_values($options['helpItems']);
+    }
+
+    if (array_key_exists('helpLinks', $options) && is_array($options['helpLinks'])) {
+        $config['helpLinks'] = array_values($options['helpLinks']);
     }
 
     if (!empty($options['modal']) && is_array($options['modal'])) {

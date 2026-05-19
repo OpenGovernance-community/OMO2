@@ -334,6 +334,29 @@
     color: rgba(255,255,255,0.78);
 }
 
+.common-topbar__help-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px 14px;
+    padding-top: 4px;
+    border-top: 1px solid rgba(255,255,255,0.14);
+    text-align: center;
+}
+
+.common-topbar__help-link {
+    color: rgba(255,255,255,0.8);
+    font-size: 13px;
+    line-height: 1.4;
+    text-decoration: none;
+}
+
+.common-topbar__help-link:hover,
+.common-topbar__help-link:focus-visible {
+    color: #ffffff;
+    text-decoration: underline;
+}
+
 .common-topbar__menu-item--danger {
     color: #fecaca;
 }
@@ -810,6 +833,19 @@ html[data-theme] .common-topbar__search-panel-hint {
     color: var(--topbar-menu-text-muted);
 }
 
+html[data-theme] .common-topbar__help-links {
+    border-top-color: var(--topbar-menu-border);
+}
+
+html[data-theme] .common-topbar__help-link {
+    color: var(--topbar-menu-text-muted);
+}
+
+html[data-theme] .common-topbar__help-link:hover,
+html[data-theme] .common-topbar__help-link:focus-visible {
+    color: var(--topbar-menu-text);
+}
+
 html[data-theme] .common-topbar__search-scope {
     background: var(--topbar-menu-item-bg);
     border-color: var(--topbar-menu-border);
@@ -899,6 +935,12 @@ html[data-theme] .common-help-card p {
         display: none;
     }
 
+    .common-topbar__help-links {
+        gap: 8px 12px;
+        padding-top: 0;
+        border-top: 0;
+    }
+
     .common-topbar__menu[data-topbar-menu="profile"] {
         left: 0;
         right: 0;
@@ -934,5 +976,10 @@ html[data-theme] .common-help-card p {
         min-height: 148px;
         justify-content: flex-start;
         padding: 16px;
+    }
+
+    .common-topbar__help-links {
+        grid-column: 1 / -1;
+        padding-top: 2px;
     }
 }
