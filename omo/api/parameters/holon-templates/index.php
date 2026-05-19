@@ -164,6 +164,19 @@ if ($organizationId <= 0) {
                         <section class="omo-template-section">
                             <div class="omo-template-section__head">
                                 <div>
+                                    <div class="omo-template-section__title">Droits</div>
+                                    <p class="omo-template-section__description">
+                                        Activez ici les droits portes par ce template et choisissez leurs portees.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="omo-template-permissions" id="omo-template-permissions"></div>
+                        </section>
+
+                        <section class="omo-template-section">
+                            <div class="omo-template-section__head">
+                                <div>
                                     <div class="omo-template-section__title">Apparence</div>
                                     <p class="omo-template-section__description">
                                         La couleur, l'icone et la banniere viennent apres la definition des proprietes.
@@ -276,6 +289,104 @@ if ($organizationId <= 0) {
     </div>
 </div>
 
+<style>
+.omo-template-permissions__table {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.omo-template-permissions__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 0.9rem;
+    align-items: start;
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 0.9rem;
+    background: rgba(255, 255, 255, 0.78);
+}
+
+.omo-template-permissions__main {
+    min-width: 0;
+}
+
+.omo-template-permissions__title {
+    font-weight: 600;
+}
+
+.omo-template-permissions__meta,
+.omo-template-permissions__description {
+    font-size: 0.88rem;
+    opacity: 0.76;
+}
+
+.omo-template-permissions__picker {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.omo-template-permissions__tokens {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    min-height: 2rem;
+}
+
+.omo-template-permissions__token {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.08);
+    font-size: 0.85rem;
+}
+
+.omo-template-permissions__token-remove {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    padding: 0;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.omo-template-permissions__select {
+    width: 100%;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: 0.75rem;
+    padding: 0.7rem 0.85rem;
+    background: #fff;
+}
+
+.omo-template-permissions__empty {
+    font-size: 0.85rem;
+    opacity: 0.7;
+}
+
+.omo-template-permissions__checkbox {
+    width: 1.1rem;
+    height: 1.1rem;
+}
+
+@media (max-width: 900px) {
+    .omo-template-permissions__header {
+        display: none;
+    }
+
+    .omo-template-permissions__row {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .omo-template-permissions__main {
+        grid-column: 1 / -1;
+    }
+}
+</style>
+
 <?php if ($editorData !== null): ?>
 <script src="/omo/assets/js/sized-image-field.js"></script>
 <script src="/omo/assets/js/simple-html-field.js"></script>
@@ -319,6 +430,7 @@ const omoHolonTemplateElements = {
     unique: omoHolonTemplateRoot.querySelector('#omo-template-unique'),
     link: omoHolonTemplateRoot.querySelector('#omo-template-link'),
     properties: omoHolonTemplateRoot.querySelector('#omo-template-properties'),
+    permissions: omoHolonTemplateRoot.querySelector('#omo-template-permissions'),
     selectionHint: omoHolonTemplateRoot.querySelector('#omo-template-selection-hint'),
     cancel: omoHolonTemplateRoot.querySelector('#omo-template-cancel'),
     newChildButton: omoHolonTemplateRoot.querySelector('[data-template-action="new-child"]'),
@@ -714,8 +826,196 @@ function omoHolonTemplateReadCurrentFormState() {
         unique: Boolean(omoHolonTemplateElements.unique && omoHolonTemplateElements.unique.checked),
         link: Boolean(omoHolonTemplateElements.link && omoHolonTemplateElements.link.checked),
         inheritsFromId: effectiveInheritanceId,
+        permissionAssignments: omoHolonTemplateReadPermissions(),
         properties: omoHolonTemplateReadProperties()
     };
+}
+
+function omoHolonTemplateRenderPermissions(permissionAssignments) {
+    const permissionCatalog = Array.isArray(omoHolonTemplateState.data.permissionCatalog)
+        ? omoHolonTemplateState.data.permissionCatalog
+        : [];
+    const rangeOptions = Array.isArray(omoHolonTemplateState.data.permissionRanges)
+        ? omoHolonTemplateState.data.permissionRanges
+        : [
+            { key: 'self', label: 'Element courant' },
+            { key: 'parent_circle', label: 'Cercle englobant seul' },
+            { key: 'parent_circle_elements', label: 'Elements du cercle parent' },
+            { key: 'parent_circle_descendants', label: 'Cercle englobant et descendants' },
+            { key: 'organization', label: 'Toute l organisation' }
+        ];
+    const assignments = permissionAssignments && typeof permissionAssignments === 'object'
+        ? permissionAssignments
+        : {};
+
+    if (!omoHolonTemplateElements.permissions) {
+        return;
+    }
+
+    if (!permissionCatalog.length) {
+        omoHolonTemplateElements.permissions.innerHTML = '<div class="omo-template-properties__empty">Aucun droit n est disponible.</div>';
+        return;
+    }
+
+    let html = '<div class="omo-template-permissions__table">';
+
+    permissionCatalog.forEach(function (permission) {
+        const selectedRanges = omoHolonTemplateNormalizePermissionRanges(assignments[permission.key]);
+
+        html += ''
+            + '<div class="omo-template-permissions__row" data-permission-key="' + omoHolonTemplateEscapeHtml(permission.key) + '">'
+            + '  <div class="omo-template-permissions__main">'
+            + '      <div class="omo-template-permissions__title">' + omoHolonTemplateEscapeHtml(permission.title || permission.key) + '</div>'
+            + '      <div class="omo-template-permissions__meta">' + omoHolonTemplateEscapeHtml(permission.key) + '</div>';
+
+        if (String(permission.description || '').trim() !== '') {
+            html += '<div class="omo-template-permissions__description">' + omoHolonTemplateEscapeHtml(permission.description) + '</div>';
+        }
+
+        html += ''
+            + '  </div>'
+            + '  <div class="omo-template-permissions__picker">'
+            + '      <div class="omo-template-permissions__tokens" data-permission-tokens></div>'
+            + '      <select class="omo-template-permissions__select" data-permission-select>'
+            + '          <option value="">Ajouter une portee...</option>';
+
+        rangeOptions.forEach(function (range) {
+            html += '<option value="' + omoHolonTemplateEscapeHtml(range.key) + '">' + omoHolonTemplateEscapeHtml(range.label || range.key) + '</option>';
+        });
+
+        html += ''
+            + '      </select>'
+            + '  </div>'
+            + '</div>';
+
+    });
+
+    html += '</div>';
+    omoHolonTemplateElements.permissions.innerHTML = html;
+
+    Array.from(omoHolonTemplateElements.permissions.querySelectorAll('[data-permission-key]')).forEach(function (row) {
+        const permissionKey = String(row.getAttribute('data-permission-key') || '').trim();
+        const selectedRanges = omoHolonTemplateNormalizePermissionRanges(assignments[permissionKey]);
+        omoHolonTemplateBindPermissionRow(row, rangeOptions);
+        omoHolonTemplateSetPermissionRowRanges(row, selectedRanges, rangeOptions);
+    });
+}
+
+function omoHolonTemplateReadPermissions() {
+    if (!omoHolonTemplateElements.permissions) {
+        return {};
+    }
+
+    const assignments = {};
+    Array.from(omoHolonTemplateElements.permissions.querySelectorAll('[data-permission-key]')).forEach(function (row) {
+        const permissionKey = String(row.getAttribute('data-permission-key') || '').trim();
+        if (!permissionKey) {
+            return;
+        }
+
+        const selectedRanges = Array.from(row.querySelectorAll('[data-permission-token]')).map(function (token) {
+            return String(token.getAttribute('data-permission-token') || '').trim();
+        }).filter(function (range) {
+            return range !== '';
+        });
+
+        if (selectedRanges.length) {
+            assignments[permissionKey] = selectedRanges;
+        }
+    });
+
+    return assignments;
+}
+
+function omoHolonTemplateNormalizePermissionRanges(value) {
+    const ranges = Array.isArray(value) ? value : (String(value || '').trim() !== '' ? [value] : []);
+    const normalized = [];
+    const seen = new Set();
+
+    ranges.forEach(function (range) {
+        const normalizedRange = String(range || '').trim();
+        if (!normalizedRange || seen.has(normalizedRange)) {
+            return;
+        }
+
+        seen.add(normalizedRange);
+        normalized.push(normalizedRange);
+    });
+
+    return normalized;
+}
+
+function omoHolonTemplateGetPermissionRangeLabel(rangeKey, rangeOptions) {
+    const range = (rangeOptions || []).find(function (item) {
+        return String(item.key || '') === String(rangeKey || '');
+    });
+
+    return range ? String(range.label || range.key || '') : String(rangeKey || '');
+}
+
+function omoHolonTemplateSetPermissionRowRanges(row, selectedRanges, rangeOptions) {
+    const tokensContainer = row.querySelector('[data-permission-tokens]');
+    const select = row.querySelector('[data-permission-select]');
+    const normalizedRanges = omoHolonTemplateNormalizePermissionRanges(selectedRanges);
+
+    if (!tokensContainer) {
+        return;
+    }
+
+    if (!normalizedRanges.length) {
+        tokensContainer.innerHTML = '<span class="omo-template-permissions__empty">Aucune portee selectionnee.</span>';
+    } else {
+        tokensContainer.innerHTML = normalizedRanges.map(function (rangeKey) {
+            return ''
+                + '<span class="omo-template-permissions__token" data-permission-token="' + omoHolonTemplateEscapeHtml(rangeKey) + '">'
+                + '  <span>' + omoHolonTemplateEscapeHtml(omoHolonTemplateGetPermissionRangeLabel(rangeKey, rangeOptions)) + '</span>'
+                + '  <button type="button" class="omo-template-permissions__token-remove" data-permission-remove="' + omoHolonTemplateEscapeHtml(rangeKey) + '" aria-label="Retirer cette portee">&times;</button>'
+                + '</span>';
+        }).join('');
+    }
+
+    if (select) {
+        select.value = '';
+    }
+}
+
+function omoHolonTemplateBindPermissionRow(row, rangeOptions) {
+    const select = row.querySelector('[data-permission-select]');
+    if (!select || String(select.dataset.bound || '') === '1') {
+        return;
+    }
+
+    select.dataset.bound = '1';
+    select.addEventListener('change', function () {
+        const nextRange = String(select.value || '').trim();
+        if (!nextRange) {
+            return;
+        }
+
+        const currentRanges = Array.from(row.querySelectorAll('[data-permission-token]')).map(function (token) {
+            return String(token.getAttribute('data-permission-token') || '').trim();
+        });
+        currentRanges.push(nextRange);
+        omoHolonTemplateSetPermissionRowRanges(row, currentRanges, rangeOptions);
+    });
+
+    row.addEventListener('click', function (event) {
+        const removeButton = event.target instanceof Element
+            ? event.target.closest('[data-permission-remove]')
+            : null;
+        if (!removeButton) {
+            return;
+        }
+
+        const removedRange = String(removeButton.getAttribute('data-permission-remove') || '').trim();
+        const remainingRanges = Array.from(row.querySelectorAll('[data-permission-token]')).map(function (token) {
+            return String(token.getAttribute('data-permission-token') || '').trim();
+        }).filter(function (range) {
+            return range !== '' && range !== removedRange;
+        });
+
+        omoHolonTemplateSetPermissionRowRanges(row, remainingRanges, rangeOptions);
+    });
 }
 
 function omoHolonTemplatePropertyHasLocalData(property) {
@@ -808,6 +1108,7 @@ function omoHolonTemplateBuildDraft(inheritsFromId) {
         effectiveLockedBanner: false,
         unique: false,
         link: false,
+        permissionAssignments: {},
         inheritsFromId: suggestedInheritanceId,
         properties: omoHolonTemplateComputeDraftProperties(suggestedInheritanceId, [])
     });
@@ -1833,6 +2134,7 @@ function omoHolonTemplateFillForm(template) {
             : 'Choisissez son type de base puis ajoutez les proprietes a transmettre.';
     }
     omoHolonTemplateRenderFormBadges(current);
+    omoHolonTemplateRenderPermissions(current.permissionAssignments || {});
     omoHolonTemplateRenderProperties(current.properties || []);
     omoHolonTemplateRenderMediaFields(current);
     omoHolonTemplateSyncPublicShareFields();
@@ -1893,6 +2195,7 @@ function omoHolonTemplateSave(event) {
         unique: Boolean(omoHolonTemplateElements.unique && omoHolonTemplateElements.unique.checked),
         link: Boolean(omoHolonTemplateElements.link && omoHolonTemplateElements.link.checked),
         inheritsFromId: omoHolonTemplateGetEffectiveInheritanceIdFromParent(omoHolonTemplateElements.parent.value || 0),
+        permissions: omoHolonTemplateReadPermissions(),
         properties: omoHolonTemplateReadProperties()
     };
 
@@ -2014,6 +2317,22 @@ if (omoHolonTemplateElements.root) {
 
         if (event.target === omoHolonTemplateElements.colorEnabled) {
             omoHolonTemplateSyncColorField();
+            return;
+        }
+
+        if (event.target.classList.contains('omo-template-permissions__checkbox')) {
+            const permissionRow = event.target.closest('[data-permission-key]');
+            if (!permissionRow) {
+                return;
+            }
+
+            if (event.target.checked) {
+                Array.from(permissionRow.querySelectorAll('.omo-template-permissions__checkbox')).forEach(function (checkbox) {
+                    if (checkbox !== event.target) {
+                        checkbox.checked = false;
+                    }
+                });
+            }
             return;
         }
 

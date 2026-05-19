@@ -209,7 +209,7 @@
 
 		public function isUserOrganizationAdmin($userId)
 		{
-			if (function_exists('commonUserIsSiteAdmin') && \commonUserIsSiteAdmin($userId)) {
+			if (function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($userId, (int)$this->getId())) {
 				return true;
 			}
 
@@ -874,7 +874,45 @@
 			$rootHolon->set('IDholon_org', (int)$rootHolon->getId());
 			$rootHolon->save();
 
+			if ((int)$userId > 0 && !$this->ensureActiveMembershipForUser((int)$userId)) {
+				return null;
+			}
+
 			return $rootHolon;
+		}
+
+		protected function ensureActiveMembershipForUser($userId)
+		{
+			$userId = (int)$userId;
+			$organizationId = (int)$this->getId();
+			if ($userId <= 0 || $organizationId <= 0) {
+				return false;
+			}
+
+			$membership = new \dbObject\UserOrganization();
+			if (!$membership->load(array(
+				array('IDuser', $userId),
+				array('IDorganization', $organizationId),
+			))) {
+				$membership->set('IDuser', $userId);
+				$membership->set('IDorganization', $organizationId);
+			}
+
+			$user = new \dbObject\User();
+			if ($user->load($userId)) {
+				if (trim((string)$membership->get('email')) === '' && trim((string)$user->get('email')) !== '') {
+					$membership->set('email', trim((string)$user->get('email')));
+				}
+
+				if (trim((string)$membership->get('username')) === '' && trim((string)$user->get('username')) !== '') {
+					$membership->set('username', trim((string)$user->get('username')));
+				}
+			}
+
+			$membership->set('active', true);
+			$saveResult = $membership->save();
+
+			return is_array($saveResult) && !empty($saveResult['status']);
 		}
 
 		protected function getStructuralInitializationChildren(\dbObject\Holon $holon)
@@ -2038,6 +2076,8 @@
 					'types' => array(),
 					'formats' => array(),
 					'listItemTypes' => \dbObject\Property::getTemplateListItemTypeOptions(),
+					'permissionCatalog' => \dbObject\Permission::getEditorCatalog(),
+					'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
 					'templateCatalog' => array(),
 					'templates' => array(),
 				);
@@ -2067,6 +2107,8 @@
 				'types' => array(),
 				'formats' => array(),
 				'listItemTypes' => \dbObject\Property::getTemplateListItemTypeOptions(),
+				'permissionCatalog' => \dbObject\Permission::getEditorCatalog(),
+				'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
 				'templateCatalog' => array(),
 				'templates' => array(),
 			);
@@ -2213,6 +2255,8 @@
 				'types' => array(),
 				'formats' => array(),
 				'listItemTypes' => \dbObject\Property::getTemplateListItemTypeOptions(),
+				'permissionCatalog' => \dbObject\Permission::getEditorCatalog(),
+				'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
 				'templateCatalog' => array(),
 				'templates' => array(
 					$this->buildHolonDefinitionEditorNode($holon, (int)$rootHolon->getId()),
@@ -4409,6 +4453,16 @@
 				(int)$rootHolon->getId()
 			);
 
+			if (!\dbObject\HolonPermission::syncAssignmentsForHolon(
+				(int)$template->getId(),
+				is_array($payload['permissions'] ?? null) ? $payload['permissions'] : array()
+			)) {
+				return array(
+					'status' => false,
+					'message' => "Les droits du modele n'ont pas pu etre enregistres.",
+				);
+			}
+
 			return array(
 				'status' => true,
 				'message' => 'Modele enregistre.',
@@ -4513,6 +4567,16 @@
 			}
 
 			$holon->syncTemplateProperties($definitions, (int)$rootHolon->getId());
+
+			if (!\dbObject\HolonPermission::syncAssignmentsForHolon(
+				(int)$holon->getId(),
+				is_array($payload['permissions'] ?? null) ? $payload['permissions'] : array()
+			)) {
+				return array(
+					'status' => false,
+					'message' => "Les droits de l'organisation n'ont pas pu etre enregistres.",
+				);
+			}
 
 			return array(
 				'status' => true,

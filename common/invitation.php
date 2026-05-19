@@ -39,6 +39,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			if ($user->load((int)$result['userId']) && $organization->load((int)$result['organizationId'])) {
 				session_regenerate_id(true);
 				$_SESSION['currentUser'] = (int)$user->getId();
+				commonClearCurrentUserAdminMode();
+				$_SESSION['permissionCacheByOrganization'] = array();
 				$_SESSION['userRef'] = $user;
 				$_SESSION['currentOrganization'] = (int)$organization->getId();
 				$acceptedRedirectUrl = commonInvitationBuildRedirectUrl($organization);

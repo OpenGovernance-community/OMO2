@@ -302,7 +302,9 @@ $currentHolonTemplateLabel = trim((string)$currentHolon->getTemplateLabel(true))
 if ($currentHolonTemplateLabel === '') {
     $currentHolonTemplateLabel = $currentHolonTypeLabel;
 }
-$canManageCurrentHolonMembers = $currentHolon->canEdit();
+$canRemoveCurrentHolonMembers = $currentHolon->canEdit();
+$canGrantCurrentHolonAdmin = $currentHolon->isAllowed('CAN_ADD_ADMIN');
+$canManageCurrentHolonMembers = $canRemoveCurrentHolonMembers || $canGrantCurrentHolonAdmin;
 ?>
 <div class="omo-team omo-panel-view">
     <div class="omo-team__hero omo-panel-view__header">
@@ -365,13 +367,15 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
                                         aria-label="Actions pour <?= omoApiEscape($card['displayName']) ?>"
                                     >...</button>
                                     <div class="omo-team-card__menu-panel" data-team-member-menu-panel="1" hidden>
-                                        <button
-                                            type="button"
-                                            class="omo-team-card__menu-item omo-team-card__menu-item--danger"
-                                            data-member-action="remove"
-                                            data-user-id="<?= (int)$card['userId'] ?>"
-                                        >Retirer du contexte <?= omoApiEscape($currentHolonTemplateLabel) ?></button>
-                                        <?php if (!$card['isPending']): ?>
+                                        <?php if ($canRemoveCurrentHolonMembers): ?>
+                                            <button
+                                                type="button"
+                                                class="omo-team-card__menu-item omo-team-card__menu-item--danger"
+                                                data-member-action="remove"
+                                                data-user-id="<?= (int)$card['userId'] ?>"
+                                            >Retirer du contexte <?= omoApiEscape($currentHolonTemplateLabel) ?></button>
+                                        <?php endif; ?>
+                                        <?php if ($canGrantCurrentHolonAdmin && !$card['isPending']): ?>
                                             <button
                                                 type="button"
                                                 class="omo-team-card__menu-item"

@@ -114,6 +114,22 @@ function omoGetTopbarSourceLang(): array
             'text' => 'Votre profil',
             'context' => 'Modal title used when opening the profile editor from the OMO topbar.',
         ],
+        'topbar.profile.admin_mode.enable' => [
+            'text' => 'Passer en mode admin',
+            'context' => 'Button label used in the OMO topbar profile panel to enable admin mode for the current session.',
+        ],
+        'topbar.profile.admin_mode.disable' => [
+            'text' => 'Quitter le mode admin',
+            'context' => 'Button label used in the OMO topbar profile panel to disable admin mode for the current session.',
+        ],
+        'topbar.profile.admin_mode.active' => [
+            'text' => 'Mode admin actif',
+            'context' => 'Status label shown in the OMO topbar profile panel when admin mode is active.',
+        ],
+        'topbar.profile.admin_mode.inactive' => [
+            'text' => 'Mode admin inactif',
+            'context' => 'Status label shown in the OMO topbar profile panel when admin mode is inactive.',
+        ],
         'topbar.profile.preferences.language_label' => [
             'text' => 'Langue',
             'context' => 'Label of the compact language selector shown in the OMO topbar profile panel.',
@@ -237,6 +253,7 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
 {
     $variant = (string)($options['variant'] ?? 'app');
     $isDemoGuest = !empty($options['isDemoGuest']);
+    $hasOrganizationContext = !empty($organizationContext['isValid']) && !empty($organizationContext['id']);
     $translationOptions = !empty($options['translations']) && is_array($options['translations'])
         ? $options['translations']
         : [];
@@ -256,6 +273,16 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
             'editUrl' => '/popup/profil.php',
             'editMode' => 'fetch',
             'summaryFallback' => omoTopbarTranslate('topbar.profile.summary_fallback'),
+            'adminMode' => [
+                'enabled' => $hasOrganizationContext && commonCurrentUserCanUseAdminMode(),
+                'active' => $hasOrganizationContext && commonCurrentUserIsAdminModeEnabled((int)$organizationContext['id']),
+                'organizationId' => $hasOrganizationContext ? (int)$organizationContext['id'] : 0,
+                'enableLabel' => omoTopbarTranslate('topbar.profile.admin_mode.enable'),
+                'disableLabel' => omoTopbarTranslate('topbar.profile.admin_mode.disable'),
+                'statusActiveLabel' => omoTopbarTranslate('topbar.profile.admin_mode.active'),
+                'statusInactiveLabel' => omoTopbarTranslate('topbar.profile.admin_mode.inactive'),
+                'toggleUrl' => '/common/admin_mode.php',
+            ],
             'preferences' => [
                 'languageLabel' => omoTopbarTranslate('topbar.profile.preferences.language_label'),
                 'systemLabel' => omoTopbarTranslate('topbar.profile.preferences.language_system'),

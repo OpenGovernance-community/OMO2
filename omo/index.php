@@ -265,7 +265,7 @@ if (!commonGetCurrentUserId() && !$isDemoGuest) {
 
 $currentUserName = $isDemoGuest ? t('app.user.demo') : commonGetCurrentUserDisplayName();
 $currentUserId = commonGetCurrentUserId();
-$isSiteAdmin = !$isDemoGuest && commonCurrentUserIsSiteAdmin();
+$isSiteAdmin = !$isDemoGuest && commonCurrentUserIsAdminModeEnabled();
 $omoPwaHeadHtml = omoBuildPwaHeadHtml(
     commonGetOrganizationAccentColor($organizationContext, '#004663'),
     $organizationContext['logo'] ?? $omoDefaultLogo,
