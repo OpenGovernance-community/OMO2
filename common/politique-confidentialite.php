@@ -1,160 +1,75 @@
 <?php
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/legal_page_helper.php';
 
 $siteTitle = trim((string)($GLOBALS['siteTitle'] ?? 'Le site'));
-?>
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Politique de confidentialité - <?= htmlspecialchars($siteTitle) ?></title>
-	<style>
-		:root {
-			--pc-bg: #f8fafc;
-			--pc-card: #ffffff;
-			--pc-text: #0f172a;
-			--pc-muted: #475569;
-			--pc-accent: #0f766e;
-			--pc-border: #dbe4ee;
-		}
 
-		* {
-			box-sizing: border-box;
-		}
-
-		body {
-			margin: 0;
-			font-family: Arial, Helvetica, sans-serif;
-			background: linear-gradient(180deg, #ecfeff 0%, var(--pc-bg) 220px);
-			color: var(--pc-text);
-		}
-
-		.pc-shell {
-			max-width: 920px;
-			margin: 0 auto;
-			padding: 32px 20px 48px;
-		}
-
-		.pc-card {
-			background: var(--pc-card);
-			border: 1px solid var(--pc-border);
-			border-radius: 24px;
-			padding: 28px;
-			box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
-		}
-
-		h1 {
-			margin: 0 0 10px;
-			font-size: 32px;
-			line-height: 1.15;
-		}
-
-		h2 {
-			margin-top: 28px;
-			font-size: 20px;
-		}
-
-		p, li {
-			line-height: 1.7;
-			color: var(--pc-muted);
-		}
-
-		.pc-badge {
-			display: inline-block;
-			margin-bottom: 14px;
-			padding: 6px 10px;
-			border-radius: 999px;
-			background: #ccfbf1;
-			color: var(--pc-accent);
-			font-size: 13px;
-			font-weight: 700;
-			letter-spacing: .02em;
-		}
-
-		.pc-note {
-			margin-top: 22px;
-			padding: 14px 16px;
-			border-left: 4px solid var(--pc-accent);
-			background: #f0fdfa;
-			border-radius: 12px;
-		}
-
-		a {
-			color: var(--pc-accent);
-		}
-	</style>
-</head>
-<body>
-	<div class="pc-shell">
-		<div class="pc-card">
-			<div class="pc-badge">Version provisoire</div>
-			<h1>Politique de confidentialité</h1>
-			<p>
-				Cette page constitue une version temporaire de la politique de confidentialité de
-				<strong><?= htmlspecialchars($siteTitle) ?></strong>.
-				Elle est publiée afin de permettre l'activation technique de certaines intégrations
-				et sera complétée, relue et validée ultérieurement.
-			</p>
-
-			<h2>1. Données concernées</h2>
-			<p>
-				Le site peut être amené à traiter certaines données nécessaires à son fonctionnement,
-				à la gestion des comptes utilisateurs, à la sécurité des accès, ainsi qu'à certaines
-				intégrations techniques avec des services tiers.
-			</p>
-
-			<h2>2. Finalités du traitement</h2>
-			<p>
-				Les données peuvent être utilisées, à titre provisoire et non exhaustif, pour :
-			</p>
-			<ul>
-				<li>permettre l'accès au service et l'authentification des utilisateurs ;</li>
-				<li>gérer les préférences et paramètres liés au compte ;</li>
-				<li>assurer la sécurité technique, la maintenance et le suivi du service ;</li>
-				<li>vérifier l'état d'une connexion ou d'un abonnement via un service tiers autorisé.</li>
-			</ul>
-
-			<h2>3. Services tiers</h2>
-			<p>
-				Certaines fonctionnalités peuvent impliquer des échanges avec des plateformes tierces.
-				Dans ce cadre, les données strictement nécessaires à l'intégration concernée peuvent
-				être reçues, stockées ou mises à jour selon les autorisations accordées par l'utilisateur.
-			</p>
-
-			<h2>4. Conservation</h2>
-			<p>
-				Les données sont conservées pendant la durée nécessaire au fonctionnement du service,
-				sous réserve des obligations légales, techniques ou contractuelles applicables.
-			</p>
-
-			<h2>5. Sécurité</h2>
-			<p>
-				L'éditeur met en œuvre des mesures raisonnables pour limiter les accès non autorisés,
-				les usages abusifs et les pertes de données, sans pouvoir garantir une sécurité absolue.
-			</p>
-
-			<h2>6. Droits des personnes</h2>
-			<p>
-				Une version définitive de cette politique précisera les modalités d'exercice des droits
-				d'accès, de rectification, d'effacement, d'opposition et, le cas échéant, de portabilité.
-			</p>
-
-			<h2>7. Caractère provisoire</h2>
-			<p>
-				Ce document est fourni à titre transitoire. Il sera remplacé par une version complète
-				intégrant les mentions légales, les bases juridiques, les coordonnées de contact et les
-				détails opérationnels du traitement.
-			</p>
-
-			<div class="pc-note">
-				<p>
-					Document de travail à compléter. Prévoir ensuite l'ajout des catégories exactes de
-					données, des durées de conservation, des sous-traitants, des transferts éventuels
-					et du contact de référence pour les demandes liées à la confidentialité.
-				</p>
-			</div>
-		</div>
-	</div>
-</body>
-</html>
+commonRenderLegalPage([
+    'siteTitle' => $siteTitle,
+    'pageTitle' => 'Politique de confidentialite - ' . $siteTitle,
+    'documentTitle' => 'Politique de confidentialite',
+    'badge' => 'Version provisoire',
+    'accent' => '#0f766e',
+    'accentSoft' => '#ccfbf1',
+    'backgroundStart' => '#ecfeff',
+    'pageBackground' => '#f8fafc',
+    'noteBackground' => '#f0fdfa',
+    'borderColor' => '#dbe4ee',
+    'intro' => [
+        'Cette page constitue une version temporaire de la politique de confidentialite de <strong>{siteTitle}</strong>.',
+        'Elle est publiee afin de permettre l activation technique de certaines integrations et sera completee, relue et validee ulterieurement.',
+    ],
+    'sections' => [
+        [
+            'title' => '1. Donnees concernees',
+            'paragraphs' => [
+                'Le site peut etre amene a traiter certaines donnees necessaires a son fonctionnement, a la gestion des comptes utilisateurs, a la securite des acces, ainsi qu a certaines integrations techniques avec des services tiers.',
+            ],
+        ],
+        [
+            'title' => '2. Finalites du traitement',
+            'paragraphs' => [
+                'Les donnees peuvent etre utilisees, a titre provisoire et non exhaustif, pour :',
+            ],
+            'list' => [
+                'permettre l acces au service et l authentification des utilisateurs ;',
+                'gerer les preferences et parametres lies au compte ;',
+                'assurer la securite technique, la maintenance et le suivi du service ;',
+                'verifier l etat d une connexion ou d un abonnement via un service tiers autorise.',
+            ],
+        ],
+        [
+            'title' => '3. Services tiers',
+            'paragraphs' => [
+                'Certaines fonctionnalites peuvent impliquer des echanges avec des plateformes tierces. Dans ce cadre, les donnees strictement necessaires a l integration concernee peuvent etre recues, stockees ou mises a jour selon les autorisations accordees par l utilisateur.',
+            ],
+        ],
+        [
+            'title' => '4. Conservation',
+            'paragraphs' => [
+                'Les donnees sont conservees pendant la duree necessaire au fonctionnement du service, sous reserve des obligations legales, techniques ou contractuelles applicables.',
+            ],
+        ],
+        [
+            'title' => '5. Securite',
+            'paragraphs' => [
+                'L editeur met en oeuvre des mesures raisonnables pour limiter les acces non autorises, les usages abusifs et les pertes de donnees, sans pouvoir garantir une securite absolue.',
+            ],
+        ],
+        [
+            'title' => '6. Droits des personnes',
+            'paragraphs' => [
+                'Une version definitive de cette politique precisera les modalites d exercice des droits d acces, de rectification, d effacement, d opposition et, le cas echeant, de portabilite.',
+            ],
+        ],
+        [
+            'title' => '7. Caractere provisoire',
+            'paragraphs' => [
+                'Ce document est fourni a titre transitoire. Il sera remplace par une version complete integrant les mentions legales, les bases juridiques, les coordonnees de contact et les details operationnels du traitement.',
+            ],
+        ],
+    ],
+    'note' => [
+        'Document de travail a completer. Prevoir ensuite l ajout des categories exactes de donnees, des durees de conservation, des sous-traitants, des transferts eventuels et du contact de reference pour les demandes liees a la confidentialite.',
+    ],
+]);

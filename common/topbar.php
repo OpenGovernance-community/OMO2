@@ -170,6 +170,7 @@ function commonRenderTopbar(array $options = [])
         ],
         'helpLabel' => (string)($options['helpLabel'] ?? 'Aide'),
         'helpItems' => array_values($options['helpItems'] ?? []),
+        'helpLinks' => array_values($options['helpLinks'] ?? []),
         'logoutLabel' => (string)($options['logoutLabel'] ?? 'Se deconnecter'),
         'modal' => [
             'defaultTitle' => (string)($options['modal']['defaultTitle'] ?? 'Panneau'),
@@ -295,6 +296,35 @@ function commonRenderTopbar(array $options = [])
                         <?php endif; ?>
                     </button>
                 <?php endforeach; ?>
+                <?php if (!empty($config['helpLinks'])): ?>
+                    <div class="common-topbar__help-links">
+                        <?php foreach ($config['helpLinks'] as $link): ?>
+                            <?php
+                            $href = trim((string)($link['href'] ?? ''));
+                            if ($href === '') {
+                                continue;
+                            }
+                            $label = trim((string)($link['label'] ?? $href));
+                            $target = trim((string)($link['target'] ?? ''));
+                            $rel = trim((string)($link['rel'] ?? ''));
+                            $helpLinkItem = [];
+                            if (!empty($link['callback']) || !empty($link['url']) || !empty($link['mode']) || !empty($link['html']) || !empty($link['title'])) {
+                                $helpLinkItem = $link;
+                                if (empty($helpLinkItem['url'])) {
+                                    $helpLinkItem['url'] = $href;
+                                }
+                            }
+                            ?>
+                            <a
+                                href="<?= htmlspecialchars($href) ?>"
+                                class="common-topbar__help-link"
+                                <?php if (!empty($helpLinkItem)): ?>data-topbar-help-link-item='<?= htmlspecialchars(json_encode($helpLinkItem, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8') ?>'<?php endif; ?>
+                                <?php if ($target !== ''): ?>target="<?= htmlspecialchars($target) ?>"<?php endif; ?>
+                                <?php if ($rel !== ''): ?>rel="<?= htmlspecialchars($rel) ?>"<?php endif; ?>
+                            ><?= htmlspecialchars($label) ?></a>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
 
