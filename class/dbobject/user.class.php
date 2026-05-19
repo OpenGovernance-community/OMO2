@@ -129,6 +129,11 @@
 			return $organizations;
 		}
 
+		public function getPendingOrganizationInvitations()
+		{
+			return \dbObject\Invitation::findPendingForUser((int)$this->getId());
+		}
+
 		protected static function loadActiveOrganizationIdsForUser($userId)
 		{
 			static $cache = array();
@@ -202,7 +207,10 @@
 				return true;
 			}
 
-			if (function_exists('commonCurrentUserIsAdminModeEnabled') && \commonCurrentUserIsAdminModeEnabled()) {
+			$currentOrganizationId = function_exists('commonGetCurrentUserOrganizationId')
+				? (int)\commonGetCurrentUserOrganizationId()
+				: (int)($_SESSION['currentOrganization'] ?? 0);
+			if (function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($currentUserId, $currentOrganizationId)) {
 				$cache[$cacheKey] = true;
 				return true;
 			}

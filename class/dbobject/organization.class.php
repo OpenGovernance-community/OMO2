@@ -213,6 +213,10 @@
 				return true;
 			}
 
+			if ($userId === $this->resolveCurrentUserId()) {
+				return false;
+			}
+
 			$membership = $this->getMembership($userId, true);
 			return $membership ? $membership->isOrganizationAdmin() : false;
 		}

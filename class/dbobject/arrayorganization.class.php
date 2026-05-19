@@ -19,7 +19,7 @@
 				return;
 			}
 
-			if (function_exists('commonUserIsSiteAdmin') && \commonUserIsSiteAdmin($userId)) {
+			if (function_exists('commonUserHasSiteAdminOverride') && \commonUserHasSiteAdminOverride($userId)) {
 				$query = "
 					SELECT o.id
 					FROM organization o

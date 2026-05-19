@@ -82,6 +82,53 @@
 			return $item;
 		}
 
+		public static function findPendingForUser($userId)
+		{
+			$userId = (int)$userId;
+			if ($userId <= 0) {
+				return [];
+			}
+
+			$query = "
+				SELECT inv.id
+				FROM invitation inv
+				LEFT JOIN user_organization uo
+					ON uo.IDuser = inv.IDuser
+					AND uo.IDorganization = inv.IDorganization
+					AND uo.active = 1
+				WHERE inv.IDuser = :user_id
+				  AND inv.status = 'pending'
+				  AND inv.active = 1
+				  AND (inv.dateexpiration IS NULL OR inv.dateexpiration > NOW())
+				  AND uo.id IS NULL
+				ORDER BY inv.datecreation DESC, inv.id DESC
+			";
+
+			$rows = self::fetchAll($query, [
+				'user_id' => $userId,
+			]);
+			if ($rows === false) {
+				return [];
+			}
+
+			$itemsByOrganizationId = [];
+			foreach ($rows as $row) {
+				$item = new self();
+				if (!$item->load((int)($row['id'] ?? 0))) {
+					continue;
+				}
+
+				$organizationId = (int)$item->get('IDorganization');
+				if ($organizationId <= 0 || isset($itemsByOrganizationId[$organizationId])) {
+					continue;
+				}
+
+				$itemsByOrganizationId[$organizationId] = $item;
+			}
+
+			return array_values($itemsByOrganizationId);
+		}
+
 		public static function findByToken($token)
 		{
 			$query = "
