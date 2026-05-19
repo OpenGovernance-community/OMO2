@@ -839,6 +839,8 @@ function commonRestoreRememberedUser()
 {
     if (commonIsDemoHost()) {
         unset($_SESSION['currentUser']);
+        commonClearCurrentUserAdminMode();
+        unset($_SESSION['permissionCacheByOrganization']);
         unset($_SESSION['userRef']);
         unset($_SESSION['challenge']);
         return 0;
@@ -868,6 +870,8 @@ function commonRestoreRememberedUser()
         return 0;
     }
 
+    unset($_SESSION['permissionCacheByOrganization']);
+    commonClearCurrentUserAdminMode();
     $_SESSION['currentUser'] = (int)$remember->get('IDuser');
     commonUpdateLastConnection((int)$_SESSION['currentUser']);
     commonRefreshRememberedUser($remember);
@@ -932,6 +936,81 @@ function commonUserIsSiteAdmin($userId)
 function commonCurrentUserIsSiteAdmin()
 {
     return commonUserIsSiteAdmin(commonGetCurrentUserId());
+}
+
+function commonClearCurrentUserAdminMode()
+{
+    unset($_SESSION['isAdmin']);
+    unset($_SESSION['isAdminByOrganization']);
+}
+
+function commonCurrentUserCanUseAdminMode($organizationId = null)
+{
+    return commonCurrentUserIsSiteAdmin();
+}
+
+function commonCurrentUserIsAdminModeEnabled($organizationId = null)
+{
+    $organizationId = $organizationId !== null
+        ? (int)$organizationId
+        : (int)($_SESSION['currentOrganization'] ?? 0);
+
+    if (!commonCurrentUserCanUseAdminMode($organizationId) || $organizationId <= 0) {
+        return false;
+    }
+
+    if (!isset($_SESSION['isAdminByOrganization']) || !is_array($_SESSION['isAdminByOrganization'])) {
+        if (!empty($_SESSION['isAdmin'])) {
+            $_SESSION['isAdminByOrganization'] = [
+                $organizationId => true,
+            ];
+            unset($_SESSION['isAdmin']);
+        } else {
+            return false;
+        }
+    }
+
+    return !empty($_SESSION['isAdminByOrganization'][$organizationId]);
+}
+
+function commonUserHasAdminOverride($userId, $organizationId = null)
+{
+    $userId = (int)$userId;
+    if ($userId <= 0) {
+        return false;
+    }
+
+    return $userId === (int)commonGetCurrentUserId() && commonCurrentUserIsAdminModeEnabled($organizationId);
+}
+
+function commonSetCurrentUserAdminMode($enabled, $organizationId = null)
+{
+    $enabled = (bool)$enabled;
+    $organizationId = $organizationId !== null
+        ? (int)$organizationId
+        : (int)($_SESSION['currentOrganization'] ?? 0);
+
+    if (!commonCurrentUserCanUseAdminMode($organizationId) || $organizationId <= 0) {
+        commonClearCurrentUserAdminMode();
+        commonClearCurrentUserPermissionCache();
+        return false;
+    }
+
+    if (!isset($_SESSION['isAdminByOrganization']) || !is_array($_SESSION['isAdminByOrganization'])) {
+        $_SESSION['isAdminByOrganization'] = [];
+    }
+
+    if ($enabled) {
+        $_SESSION['isAdminByOrganization'][$organizationId] = true;
+    } else {
+        unset($_SESSION['isAdminByOrganization'][$organizationId]);
+        if ($_SESSION['isAdminByOrganization'] === []) {
+            unset($_SESSION['isAdminByOrganization']);
+        }
+    }
+
+    commonClearCurrentUserPermissionCache();
+    return !empty($_SESSION['isAdminByOrganization'][$organizationId]);
 }
 
 function commonUserHasOrganizationMembership($userId, $organizationId)
@@ -1169,9 +1248,138 @@ function commonCurrentUserHasOrganizationAccess($organizationId = null)
     return $organization->canViewDetail();
 }
 
+function commonClearCurrentUserPermissionCache()
+{
+    unset($_SESSION['permissionCacheByOrganization']);
+}
+
+function commonGetCurrentUserOrganizationPermissionSet($organizationId = null, $forceRefresh = false)
+{
+    $organizationId = $organizationId !== null
+        ? (int)$organizationId
+        : (int)($_SESSION['currentOrganization'] ?? 0);
+    $currentUserId = (int)commonGetCurrentUserId();
+
+    if ($currentUserId <= 0 || $organizationId <= 0) {
+        return [
+            'cacheVersion' => \dbObject\HolonPermission::PERMISSION_CACHE_VERSION,
+            'userId' => $currentUserId,
+            'organizationId' => $organizationId,
+            'permissions' => [],
+        ];
+    }
+
+    if (
+        !$forceRefresh
+        && isset($_SESSION['permissionCacheByOrganization'][$organizationId])
+        && (int)($_SESSION['permissionCacheByOrganization'][$organizationId]['cacheVersion'] ?? 0) === \dbObject\HolonPermission::PERMISSION_CACHE_VERSION
+        && (int)($_SESSION['permissionCacheByOrganization'][$organizationId]['userId'] ?? 0) === $currentUserId
+    ) {
+        return $_SESSION['permissionCacheByOrganization'][$organizationId];
+    }
+
+    $permissionSet = \dbObject\HolonPermission::buildUserPermissionSetForOrganization($currentUserId, $organizationId);
+    if (!isset($_SESSION['permissionCacheByOrganization']) || !is_array($_SESSION['permissionCacheByOrganization'])) {
+        $_SESSION['permissionCacheByOrganization'] = [];
+    }
+
+    $_SESSION['permissionCacheByOrganization'][$organizationId] = $permissionSet;
+    return $permissionSet;
+}
+
+function commonCurrentUserHasPermission($permissionKey, $contextHolon = null, $organizationId = null, $forceRefresh = false)
+{
+    $permissionKey = trim((string)$permissionKey);
+    if ($permissionKey === '') {
+        return false;
+    }
+
+    $currentUserId = (int)commonGetCurrentUserId();
+    if ($currentUserId <= 0) {
+        return false;
+    }
+
+    $organizationId = $organizationId !== null
+        ? (int)$organizationId
+        : (int)($_SESSION['currentOrganization'] ?? 0);
+    if ($organizationId <= 0) {
+        return false;
+    }
+
+    if (commonCurrentUserIsAdminModeEnabled($organizationId)) {
+        return true;
+    }
+
+    $permissionSet = commonGetCurrentUserOrganizationPermissionSet($organizationId, $forceRefresh);
+    $scope = $permissionSet['permissions'][$permissionKey] ?? null;
+    if (!is_array($scope)) {
+        return false;
+    }
+
+    if ($contextHolon === null) {
+        return false;
+    }
+
+    $holon = null;
+    if (is_object($contextHolon) && $contextHolon instanceof \dbObject\Holon) {
+        $holon = $contextHolon;
+    } else {
+        $holonId = is_object($contextHolon) && method_exists($contextHolon, 'getId')
+            ? (int)$contextHolon->getId()
+            : (int)$contextHolon;
+
+        if ($holonId <= 0) {
+            return false;
+        }
+
+        $holon = new \dbObject\Holon();
+        if (!$holon->load($holonId)) {
+            return false;
+        }
+    }
+
+    $contextHolonId = (int)$holon->getId();
+    if ($contextHolonId <= 0) {
+        return false;
+    }
+
+    $contextOrganizationId = (int)$holon->get('IDorganization');
+    if ($contextOrganizationId <= 0) {
+        $rootHolonId = (int)$holon->get('IDholon_org');
+        if ($rootHolonId > 0) {
+            $rootHolon = new \dbObject\Holon();
+            if ($rootHolon->load($rootHolonId)) {
+                $contextOrganizationId = (int)$rootHolon->get('IDorganization');
+            }
+        }
+    }
+
+    if ($contextOrganizationId !== $organizationId) {
+        return false;
+    }
+
+    if (!empty($scope['organization'])) {
+        return true;
+    }
+
+    if (!empty($scope['exact'][$contextHolonId])) {
+        return true;
+    }
+
+    foreach (array_keys($scope['subtree'] ?? []) as $rootHolonId) {
+        if ($holon->isDescendantOf((int)$rootHolonId, true)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function commonLogoutUser()
 {
     unset($_SESSION['currentUser']);
+    commonClearCurrentUserAdminMode();
+    unset($_SESSION['permissionCacheByOrganization']);
     unset($_SESSION['userRef']);
     unset($_SESSION['challenge']);
 
@@ -1664,6 +1872,8 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
 
     session_regenerate_id(true);
     $_SESSION['currentUser'] = (int)$loginToken->get('IDuser');
+    commonClearCurrentUserAdminMode();
+    unset($_SESSION['permissionCacheByOrganization']);
     session_write_close();
 
     if ($wantsJson) {

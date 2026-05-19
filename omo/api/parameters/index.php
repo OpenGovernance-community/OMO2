@@ -7,7 +7,7 @@ $currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 $organization = null;
 $canEditOrganization = false;
 $organizationName = '';
-$isSiteAdmin = commonCurrentUserIsSiteAdmin();
+$isSiteAdmin = commonCurrentUserIsAdminModeEnabled();
 if ($currentOrganizationId > 0) {
     $organization = new \dbObject\Organization();
     if ($organization->load($currentOrganizationId)) {

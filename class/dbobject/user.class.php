@@ -202,7 +202,7 @@
 				return true;
 			}
 
-			if (function_exists('commonUserIsSiteAdmin') && \commonUserIsSiteAdmin($currentUserId)) {
+			if (function_exists('commonCurrentUserIsAdminModeEnabled') && \commonCurrentUserIsAdminModeEnabled()) {
 				$cache[$cacheKey] = true;
 				return true;
 			}

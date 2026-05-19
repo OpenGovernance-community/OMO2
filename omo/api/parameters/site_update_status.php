@@ -13,7 +13,7 @@ if ((int)commonGetCurrentUserId() <= 0) {
     exit;
 }
 
-if (!commonCurrentUserIsSiteAdmin()) {
+if (!commonCurrentUserIsAdminModeEnabled()) {
     http_response_code(403);
     echo json_encode([
         'status' => false,

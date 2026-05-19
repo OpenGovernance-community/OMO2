@@ -148,6 +148,16 @@ function commonRenderTopbar(array $options = [])
             'editCallback' => (string)($options['profile']['editCallback'] ?? ''),
             'buttonLabel' => (string)($options['profile']['buttonLabel'] ?? 'Profil'),
             'summaryFallback' => (string)($options['profile']['summaryFallback'] ?? 'Resume du profil'),
+            'adminMode' => [
+                'enabled' => !empty($options['profile']['adminMode']['enabled']),
+                'active' => !empty($options['profile']['adminMode']['active']),
+                'organizationId' => (int)($options['profile']['adminMode']['organizationId'] ?? 0),
+                'enableLabel' => (string)($options['profile']['adminMode']['enableLabel'] ?? 'Passer en mode admin'),
+                'disableLabel' => (string)($options['profile']['adminMode']['disableLabel'] ?? 'Quitter le mode admin'),
+                'statusActiveLabel' => (string)($options['profile']['adminMode']['statusActiveLabel'] ?? 'Mode admin actif'),
+                'statusInactiveLabel' => (string)($options['profile']['adminMode']['statusInactiveLabel'] ?? 'Mode admin inactif'),
+                'toggleUrl' => (string)($options['profile']['adminMode']['toggleUrl'] ?? '/common/admin_mode.php'),
+            ],
             'preferences' => [
                 'enabled' => array_key_exists('enabled', $options['profile']['preferences'] ?? []) ? !empty($options['profile']['preferences']['enabled']) : true,
                 'languageLabel' => (string)($options['profile']['preferences']['languageLabel'] ?? 'Langue'),
@@ -365,6 +375,20 @@ function commonRenderTopbar(array $options = [])
                                 </div>
                             <?php endif; ?>
                             <button type="button" class="common-topbar__menu-item common-topbar-profile-actions__button" data-topbar-profile-edit><?= htmlspecialchars($config['profile']['editLabel']) ?></button>
+                            <?php if (!empty($config['profile']['adminMode']['enabled'])): ?>
+                                <form method="post" action="<?= htmlspecialchars($config['profile']['adminMode']['toggleUrl']) ?>">
+                                    <input type="hidden" name="organization_id" value="<?= (int)$config['profile']['adminMode']['organizationId'] ?>">
+                                    <input type="hidden" name="enabled" value="<?= !empty($config['profile']['adminMode']['active']) ? '0' : '1' ?>">
+                                    <input type="hidden" name="return_to" value="<?= htmlspecialchars(commonNormalizeLocalPath($_SERVER['REQUEST_URI'] ?? '/', '/')) ?>">
+                                    <button
+                                        type="submit"
+                                        class="common-topbar__menu-item<?= !empty($config['profile']['adminMode']['active']) ? ' common-topbar__menu-item--danger' : '' ?> common-topbar-profile-actions__button"
+                                    ><?= htmlspecialchars(!empty($config['profile']['adminMode']['active']) ? $config['profile']['adminMode']['disableLabel'] : $config['profile']['adminMode']['enableLabel']) ?></button>
+                                </form>
+                                <div class="common-topbar-profile-details__value<?= !empty($config['profile']['adminMode']['active']) ? '' : ' common-topbar-profile-details__value--muted' ?>">
+                                    <?= htmlspecialchars(!empty($config['profile']['adminMode']['active']) ? $config['profile']['adminMode']['statusActiveLabel'] : $config['profile']['adminMode']['statusInactiveLabel']) ?>
+                                </div>
+                            <?php endif; ?>
                             <button type="button" class="common-topbar__menu-item common-topbar__menu-item--danger common-topbar-profile-actions__button" data-topbar-logout><?= htmlspecialchars($config['logoutLabel']) ?></button>
                         </div>
                     </section>

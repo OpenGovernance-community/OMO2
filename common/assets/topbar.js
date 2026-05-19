@@ -457,6 +457,51 @@
             });
     }
 
+    function handleAdminModeToggle(button) {
+        var config = getConfig();
+        var profile = config.profile || {};
+        var adminMode = profile.adminMode || {};
+        var targetUrl = String(adminMode.toggleUrl || '').trim();
+
+        if (!button || targetUrl === '') {
+            return;
+        }
+
+        var formData = new FormData();
+        formData.append('enabled', button.getAttribute('data-admin-mode-enabled') === '1' ? '1' : '0');
+        formData.append('return_to', window.location.pathname + window.location.search + window.location.hash);
+
+        button.disabled = true;
+
+        fetch(targetUrl, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(function (response) {
+                return response.json().then(function (data) {
+                    return {
+                        ok: response.ok,
+                        data: data
+                    };
+                });
+            })
+            .then(function (result) {
+                if (!result.ok || !result.data || !result.data.status) {
+                    throw new Error('admin_mode_toggle_failed');
+                }
+
+                window.location.href = result.data.redirect_to || (window.location.pathname + window.location.search + window.location.hash);
+            })
+            .catch(function () {
+                button.disabled = false;
+            });
+    }
+
     function handleLanguageChange(select) {
         if (!select) {
             return;
@@ -611,6 +656,12 @@
 
         if (event.target.closest('[data-topbar-profile-edit]')) {
             handleProfileEdit();
+            return;
+        }
+
+        var adminModeToggle = event.target.closest('[data-topbar-admin-mode-toggle]');
+        if (adminModeToggle) {
+            handleAdminModeToggle(adminModeToggle);
             return;
         }
 
