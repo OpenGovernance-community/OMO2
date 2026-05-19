@@ -3,7 +3,7 @@ require_once __DIR__ . '/../bootstrap.php';
 require_once dirname(__DIR__, 3) . '/includes/server_env_admin.php';
 
 $currentUserId = (int)commonGetCurrentUserId();
-$isSiteAdmin = commonCurrentUserIsAdminModeEnabled();
+$isSiteAdmin = commonCurrentUserIsSiteAdminModeEnabled();
 $isUnlocked = $isSiteAdmin && serverEnvAdminIsUnlocked($currentUserId);
 $hasLocalPassword = $isSiteAdmin && serverEnvAdminHasLocalPassword($currentUserId);
 $unlockTtlMinutes = (int)max(1, round(serverEnvAdminGetUnlockTtlSeconds() / 60));

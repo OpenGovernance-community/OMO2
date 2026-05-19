@@ -55,6 +55,10 @@ $sourceLang = [
         'text' => 'Se connecter',
         'context' => 'Action label shown on an organization card to enter its workspace.',
     ],
+    'app.directory.cta.view_invitation' => [
+        'text' => "Voir l'invitation",
+        'context' => 'Action label shown on a pending invitation card to open the invitation instead of the organization workspace.',
+    ],
     'app.directory.description.empty' => [
         'text' => "Votre compte est bien connecté, mais il n'est rattaché à aucune organisation pour le moment. Vous pouvez en créer une nouvelle ci-dessous.",
         'context' => 'Message shown on the organization directory when the user has no accessible organizations.',
@@ -66,6 +70,19 @@ $sourceLang = [
     'app.directory.fallback_badge' => [
         'text' => 'Espace OMO',
         'context' => 'Fallback badge label on an organization card when no custom domain is available.',
+    ],
+    'app.directory.invitation.badge' => [
+        'text' => 'Invitation en attente',
+        'context' => 'Badge shown on an organization card when the user has a pending invitation for that organization.',
+    ],
+    'app.directory.invitation.pending_holons' => [
+        'one' => '{count} holon en attente',
+        'other' => '{count} holons en attente',
+        'context' => 'Summary shown on a pending invitation organization card with the number of holons included in the invitation.',
+    ],
+    'app.directory.invitation.pending_organization' => [
+        'text' => 'Acces a confirmer',
+        'context' => 'Summary shown on a pending invitation organization card when there is no holon detail to display.',
     ],
     'app.directory.fallback_organization_name' => [
         'text' => 'Organisation',
@@ -265,7 +282,7 @@ if (!commonGetCurrentUserId() && !$isDemoGuest) {
 
 $currentUserName = $isDemoGuest ? t('app.user.demo') : commonGetCurrentUserDisplayName();
 $currentUserId = commonGetCurrentUserId();
-$isSiteAdmin = !$isDemoGuest && commonCurrentUserIsAdminModeEnabled();
+$isSiteAdmin = !$isDemoGuest && commonCurrentUserIsSiteAdminModeEnabled();
 $omoPwaHeadHtml = omoBuildPwaHeadHtml(
     commonGetOrganizationAccentColor($organizationContext, '#004663'),
     $organizationContext['logo'] ?? $omoDefaultLogo,
@@ -321,7 +338,43 @@ if ($isOrganizationHub && !$isDemoGuest) {
     $accessibleOrganizations = $hubUser->load($currentUserId)
         ? $hubUser->getAccessibleOrganizations()
         : [];
-    $organizationCount = count($accessibleOrganizations);
+    $pendingInvitations = $hubUser->getId() > 0
+        ? $hubUser->getPendingOrganizationInvitations()
+        : [];
+    $directoryEntries = [];
+    $directoryOrganizationIds = [];
+    foreach ($accessibleOrganizations as $accessibleOrganization) {
+        $organizationId = (int)$accessibleOrganization->getId();
+        if ($organizationId <= 0 || isset($directoryOrganizationIds[$organizationId])) {
+            continue;
+        }
+
+        $directoryEntries[] = [
+            'organization' => $accessibleOrganization,
+            'pendingInvitation' => null,
+        ];
+        $directoryOrganizationIds[$organizationId] = true;
+    }
+
+    foreach ($pendingInvitations as $pendingInvitation) {
+        if (!($pendingInvitation instanceof \dbObject\Invitation)) {
+            continue;
+        }
+
+        $organization = new \dbObject\Organization();
+        $organizationId = (int)$pendingInvitation->get('IDorganization');
+        if ($organizationId <= 0 || isset($directoryOrganizationIds[$organizationId]) || !$organization->load($organizationId)) {
+            continue;
+        }
+
+        $directoryEntries[] = [
+            'organization' => $organization,
+            'pendingInvitation' => $pendingInvitation,
+        ];
+        $directoryOrganizationIds[$organizationId] = true;
+    }
+
+    $organizationCount = count($directoryEntries);
     $organizationStatusLabel = $organizationCount === 0
         ? t('app.directory.status.none')
         : t('app.directory.status.available', ['count' => $organizationCount]);
@@ -365,15 +418,19 @@ if ($isOrganizationHub && !$isDemoGuest) {
             <p><?= htmlspecialchars(t('app.directory.description.empty')) ?></p>
         <?php } ?>
         <div class="auth-org-list auth-org-list--directory">
-            <?php foreach ($accessibleOrganizations as $accessibleOrganization) {
+            <?php foreach ($directoryEntries as $directoryEntry) {
+                $accessibleOrganization = $directoryEntry['organization'];
+                $pendingInvitation = $directoryEntry['pendingInvitation'];
                 $organizationName = trim((string)$accessibleOrganization->get('name'));
                 if ($organizationName === '') {
                     $organizationName = t('app.directory.fallback_organization_name');
                 }
-                $organizationMembership = $accessibleOrganization->getMembership($currentUserId, true);
+                $organizationMembership = $pendingInvitation ? null : $accessibleOrganization->getMembership($currentUserId, true);
                 $canDeleteOrganization = $accessibleOrganization->canDelete();
                 $organizationShortname = trim((string)$accessibleOrganization->get('shortname'));
-                $organizationUrl = commonBuildOrganizationHomeUrl((int)$accessibleOrganization->getId(), $organizationShortname, commonGetRootHost());
+                $organizationUrl = $pendingInvitation
+                    ? $pendingInvitation->getInvitationUrl()
+                    : commonBuildOrganizationHomeUrl((int)$accessibleOrganization->getId(), $organizationShortname, commonGetRootHost());
                 $organizationLogo = trim((string)$accessibleOrganization->get('logo'));
                 $organizationBanner = trim((string)$accessibleOrganization->get('banner'));
                 $organizationColor = trim((string)$accessibleOrganization->get('color')) ?: '#4f46e5';
@@ -382,9 +439,26 @@ if ($isOrganizationHub && !$isDemoGuest) {
                     ? mb_strtoupper(mb_substr($organizationName, 0, 1))
                     : strtoupper(substr($organizationName, 0, 1));
                 $organizationHostLabel = commonBuildOrganizationAccessLabel((int)$accessibleOrganization->getId(), $organizationShortname, commonGetRootHost());
+                $invitationPendingHolons = $pendingInvitation ? $pendingInvitation->getPendingHolons() : [];
+                $organizationCardMeta = $pendingInvitation
+                    ? (
+                        count($invitationPendingHolons) > 0
+                            ? t('app.directory.invitation.pending_holons', ['count' => count($invitationPendingHolons)])
+                            : t('app.directory.invitation.pending_organization')
+                    )
+                    : $organizationHostLabel;
+                $organizationCardBadge = $pendingInvitation
+                    ? t('app.directory.invitation.badge')
+                    : ($organizationDomain !== '' ? $organizationDomain : t('app.directory.fallback_badge'));
+                $organizationCardAction = $pendingInvitation
+                    ? t('app.directory.cta.view_invitation')
+                    : t('app.directory.cta.connect');
+                $organizationAriaLabel = $pendingInvitation
+                    ? t('app.directory.cta.view_invitation') . ' - ' . $organizationName
+                    : t('app.directory.open_organization_aria_label', ['organizationName' => $organizationName]);
                 ?>
             <article
-                class="auth-org-card auth-org-card--directory auth-org-card--directory-managed"
+                class="auth-org-card auth-org-card--directory auth-org-card--directory-managed<?= $pendingInvitation ? ' auth-org-card--directory-pending' : '' ?>"
                 style="--auth-org-accent: <?= htmlspecialchars($organizationColor) ?>;"
                 data-organization-id="<?= (int)$accessibleOrganization->getId() ?>"
                 data-organization-name="<?= htmlspecialchars($organizationName, ENT_QUOTES, 'UTF-8') ?>"
@@ -392,7 +466,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
                 <a
                     class="auth-org-card__overlay-link"
                     href="<?= htmlspecialchars($organizationUrl) ?>"
-                    aria-label="<?= htmlspecialchars(t('app.directory.open_organization_aria_label', ['organizationName' => $organizationName])) ?>"
+                    aria-label="<?= htmlspecialchars($organizationAriaLabel) ?>"
                 ></a>
                 <?php if ($organizationMembership) { ?>
                 <div class="omo-org-card-menu" data-omo-org-card-menu>
@@ -434,12 +508,12 @@ if ($isOrganizationHub && !$isDemoGuest) {
                         <?php } ?>
                         <div class="auth-org-info auth-org-info--directory">
                             <strong class="auth-org-title auth-org-title--directory"><?= htmlspecialchars($organizationName) ?></strong>
-                            <span class="auth-org-meta auth-org-meta--directory"><?= htmlspecialchars($organizationHostLabel) ?></span>
+                            <span class="auth-org-meta auth-org-meta--directory"><?= htmlspecialchars($organizationCardMeta) ?></span>
                         </div>
                     </div>
                     <div class="auth-org-card__footer">
-                        <span class="auth-org-badge"><?= htmlspecialchars($organizationDomain !== '' ? $organizationDomain : t('app.directory.fallback_badge')) ?></span>
-                        <span class="auth-org-action"><?= htmlspecialchars(t('app.directory.cta.connect')) ?></span>
+                        <span class="auth-org-badge<?= $pendingInvitation ? ' auth-org-badge--pending' : '' ?>"><?= htmlspecialchars($organizationCardBadge) ?></span>
+                        <span class="auth-org-action"><?= htmlspecialchars($organizationCardAction) ?></span>
                     </div>
                 </div>
             </article>
@@ -514,6 +588,11 @@ if ($isOrganizationHub && !$isDemoGuest) {
             position: relative;
         }
 
+        .auth-org-card--directory-pending {
+            outline: 2px dashed color-mix(in srgb, var(--auth-org-accent) 48%, white);
+            outline-offset: 2px;
+        }
+
         .auth-org-card__overlay-link {
             position: absolute;
             inset: 0;
@@ -525,6 +604,11 @@ if ($isOrganizationHub && !$isDemoGuest) {
         .auth-org-card--directory-managed .auth-org-card__body {
             position: relative;
             z-index: 0;
+        }
+
+        .auth-org-badge--pending {
+            background: color-mix(in srgb, var(--auth-org-accent) 16%, white);
+            color: color-mix(in srgb, var(--auth-org-accent) 72%, black);
         }
 
         .omo-org-card-menu {

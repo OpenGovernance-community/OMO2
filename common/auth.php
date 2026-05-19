@@ -944,7 +944,33 @@ function commonClearCurrentUserAdminMode()
     unset($_SESSION['isAdminByOrganization']);
 }
 
+function commonClearCurrentUserSiteAdminMode()
+{
+    unset($_SESSION['isSiteAdminModeEnabled']);
+    unset($_SESSION['isAdminModeEnabled']);
+}
+
 function commonCurrentUserCanUseAdminMode($organizationId = null)
+{
+    $organizationId = $organizationId !== null
+        ? (int)$organizationId
+        : (int)($_SESSION['currentOrganization'] ?? 0);
+    $currentUserId = (int)commonGetCurrentUserId();
+
+    if ($currentUserId <= 0 || $organizationId <= 0) {
+        return false;
+    }
+
+    $user = new \dbObject\User();
+    if (!$user->load($currentUserId)) {
+        return false;
+    }
+
+    $membership = $user->getOrganizationMembership($organizationId);
+    return $membership && (bool)$membership->get('active') && $membership->isOrganizationAdmin();
+}
+
+function commonCurrentUserCanUseSiteAdminMode()
 {
     return commonCurrentUserIsSiteAdmin();
 }
@@ -973,6 +999,30 @@ function commonCurrentUserIsAdminModeEnabled($organizationId = null)
     return !empty($_SESSION['isAdminByOrganization'][$organizationId]);
 }
 
+function commonCurrentUserIsSiteAdminModeEnabled()
+{
+    if (!commonCurrentUserCanUseSiteAdminMode()) {
+        return false;
+    }
+
+    if (!array_key_exists('isSiteAdminModeEnabled', $_SESSION)) {
+        $_SESSION['isSiteAdminModeEnabled'] = !empty($_SESSION['isAdminModeEnabled']);
+        unset($_SESSION['isAdminModeEnabled']);
+    }
+
+    return !empty($_SESSION['isSiteAdminModeEnabled']);
+}
+
+function commonUserHasSiteAdminOverride($userId)
+{
+    $userId = (int)$userId;
+    if ($userId <= 0) {
+        return false;
+    }
+
+    return $userId === (int)commonGetCurrentUserId() && commonCurrentUserIsSiteAdminModeEnabled();
+}
+
 function commonUserHasAdminOverride($userId, $organizationId = null)
 {
     $userId = (int)$userId;
@@ -980,7 +1030,15 @@ function commonUserHasAdminOverride($userId, $organizationId = null)
         return false;
     }
 
-    return $userId === (int)commonGetCurrentUserId() && commonCurrentUserIsAdminModeEnabled($organizationId);
+    if ($userId !== (int)commonGetCurrentUserId()) {
+        return false;
+    }
+
+    if (commonUserHasSiteAdminOverride($userId)) {
+        return true;
+    }
+
+    return commonCurrentUserIsAdminModeEnabled($organizationId);
 }
 
 function commonSetCurrentUserAdminMode($enabled, $organizationId = null)
@@ -1009,8 +1067,30 @@ function commonSetCurrentUserAdminMode($enabled, $organizationId = null)
         }
     }
 
+    unset($_SESSION['isAdmin']);
     commonClearCurrentUserPermissionCache();
     return !empty($_SESSION['isAdminByOrganization'][$organizationId]);
+}
+
+function commonSetCurrentUserSiteAdminMode($enabled)
+{
+    $enabled = (bool)$enabled;
+
+    if (!commonCurrentUserCanUseSiteAdminMode()) {
+        commonClearCurrentUserSiteAdminMode();
+        commonClearCurrentUserPermissionCache();
+        return false;
+    }
+
+    if ($enabled) {
+        $_SESSION['isSiteAdminModeEnabled'] = true;
+    } else {
+        unset($_SESSION['isSiteAdminModeEnabled']);
+    }
+
+    unset($_SESSION['isAdminModeEnabled']);
+    commonClearCurrentUserPermissionCache();
+    return !empty($_SESSION['isSiteAdminModeEnabled']);
 }
 
 function commonUserHasOrganizationMembership($userId, $organizationId)
@@ -1030,7 +1110,7 @@ function commonUserHasOrganizationMembership($userId, $organizationId)
         return false;
     }
 
-    if (commonUserIsSiteAdmin($userId)) {
+    if (commonUserHasSiteAdminOverride($userId)) {
         $cache[$cacheKey] = true;
         return true;
     }
@@ -1306,7 +1386,7 @@ function commonCurrentUserHasPermission($permissionKey, $contextHolon = null, $o
         return false;
     }
 
-    if (commonCurrentUserIsAdminModeEnabled($organizationId)) {
+    if (commonUserHasAdminOverride($currentUserId, $organizationId)) {
         return true;
     }
 

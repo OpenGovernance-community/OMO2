@@ -115,20 +115,36 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Modal title used when opening the profile editor from the OMO topbar.',
         ],
         'topbar.profile.admin_mode.enable' => [
-            'text' => 'Passer en mode admin',
-            'context' => 'Button label used in the OMO topbar profile panel to enable admin mode for the current session.',
+            'text' => 'Activer le mode admin d organisation',
+            'context' => 'Button label used in the OMO topbar profile panel to enable organization admin mode for the current session.',
         ],
         'topbar.profile.admin_mode.disable' => [
-            'text' => 'Quitter le mode admin',
-            'context' => 'Button label used in the OMO topbar profile panel to disable admin mode for the current session.',
+            'text' => 'Quitter le mode admin d organisation',
+            'context' => 'Button label used in the OMO topbar profile panel to disable organization admin mode for the current session.',
         ],
         'topbar.profile.admin_mode.active' => [
-            'text' => 'Mode admin actif',
-            'context' => 'Status label shown in the OMO topbar profile panel when admin mode is active.',
+            'text' => 'Mode admin d organisation actif',
+            'context' => 'Status label shown in the OMO topbar profile panel when organization admin mode is active.',
         ],
         'topbar.profile.admin_mode.inactive' => [
-            'text' => 'Mode admin inactif',
-            'context' => 'Status label shown in the OMO topbar profile panel when admin mode is inactive.',
+            'text' => 'Mode admin d organisation inactif',
+            'context' => 'Status label shown in the OMO topbar profile panel when organization admin mode is inactive.',
+        ],
+        'topbar.profile.site_admin_mode.enable' => [
+            'text' => 'Activer le mode super admin',
+            'context' => 'Button label used in the OMO topbar profile panel to enable site admin mode for the current session.',
+        ],
+        'topbar.profile.site_admin_mode.disable' => [
+            'text' => 'Quitter le mode super admin',
+            'context' => 'Button label used in the OMO topbar profile panel to disable site admin mode for the current session.',
+        ],
+        'topbar.profile.site_admin_mode.active' => [
+            'text' => 'Mode super admin actif',
+            'context' => 'Status label shown in the OMO topbar profile panel when site admin mode is active.',
+        ],
+        'topbar.profile.site_admin_mode.inactive' => [
+            'text' => 'Mode super admin inactif',
+            'context' => 'Status label shown in the OMO topbar profile panel when site admin mode is inactive.',
         ],
         'topbar.profile.preferences.language_label' => [
             'text' => 'Langue',
@@ -274,7 +290,7 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
             'editMode' => 'fetch',
             'summaryFallback' => omoTopbarTranslate('topbar.profile.summary_fallback'),
             'adminMode' => [
-                'enabled' => $hasOrganizationContext && commonCurrentUserCanUseAdminMode(),
+                'enabled' => $hasOrganizationContext && commonCurrentUserCanUseAdminMode((int)$organizationContext['id']),
                 'active' => $hasOrganizationContext && commonCurrentUserIsAdminModeEnabled((int)$organizationContext['id']),
                 'organizationId' => $hasOrganizationContext ? (int)$organizationContext['id'] : 0,
                 'enableLabel' => omoTopbarTranslate('topbar.profile.admin_mode.enable'),
@@ -282,6 +298,15 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
                 'statusActiveLabel' => omoTopbarTranslate('topbar.profile.admin_mode.active'),
                 'statusInactiveLabel' => omoTopbarTranslate('topbar.profile.admin_mode.inactive'),
                 'toggleUrl' => '/common/admin_mode.php',
+            ],
+            'siteAdminMode' => [
+                'enabled' => commonCurrentUserCanUseSiteAdminMode(),
+                'active' => commonCurrentUserIsSiteAdminModeEnabled(),
+                'enableLabel' => omoTopbarTranslate('topbar.profile.site_admin_mode.enable'),
+                'disableLabel' => omoTopbarTranslate('topbar.profile.site_admin_mode.disable'),
+                'statusActiveLabel' => omoTopbarTranslate('topbar.profile.site_admin_mode.active'),
+                'statusInactiveLabel' => omoTopbarTranslate('topbar.profile.site_admin_mode.inactive'),
+                'toggleUrl' => '/common/site_admin_mode.php',
             ],
             'preferences' => [
                 'languageLabel' => omoTopbarTranslate('topbar.profile.preferences.language_label'),

@@ -458,10 +458,8 @@
     }
 
     function handleAdminModeToggle(button) {
-        var config = getConfig();
-        var profile = config.profile || {};
-        var adminMode = profile.adminMode || {};
-        var targetUrl = String(adminMode.toggleUrl || '').trim();
+        var targetUrl = String(button && button.getAttribute('data-admin-mode-url') || '').trim();
+        var organizationId = String(button && button.getAttribute('data-admin-mode-organization-id') || '').trim();
 
         if (!button || targetUrl === '') {
             return;
@@ -469,7 +467,10 @@
 
         var formData = new FormData();
         formData.append('enabled', button.getAttribute('data-admin-mode-enabled') === '1' ? '1' : '0');
-        formData.append('return_to', window.location.pathname + window.location.search + window.location.hash);
+        formData.append('return_to', window.location.pathname + window.location.search);
+        if (organizationId !== '') {
+            formData.append('organization_id', organizationId);
+        }
 
         button.disabled = true;
 
@@ -495,7 +496,7 @@
                     throw new Error('admin_mode_toggle_failed');
                 }
 
-                window.location.href = result.data.redirect_to || (window.location.pathname + window.location.search + window.location.hash);
+                window.location.reload();
             })
             .catch(function () {
                 button.disabled = false;
@@ -661,6 +662,7 @@
 
         var adminModeToggle = event.target.closest('[data-topbar-admin-mode-toggle]');
         if (adminModeToggle) {
+            event.preventDefault();
             handleAdminModeToggle(adminModeToggle);
             return;
         }
