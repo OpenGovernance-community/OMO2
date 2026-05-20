@@ -3,7 +3,7 @@ namespace dbObject;
 
 class HolonPermission extends DbObject
 {
-    const PERMISSION_CACHE_VERSION = 8;
+    const PERMISSION_CACHE_VERSION = 10;
     const RANGE_SELF = 'self';
     const RANGE_PARENT_CIRCLE = 'parent_circle';
     const RANGE_PARENT_CIRCLE_ELEMENTS = 'parent_circle_elements';
@@ -436,7 +436,23 @@ class HolonPermission extends DbObject
         return ' AND p.`permission_key` IN (' . implode(', ', $placeholders) . ')';
     }
 
-    protected static function loadActiveUserHolonRowsForOrganization($userId, array $organizationHolonIds)
+    protected static function hasActiveUserOrganizationMembership($userId, $organizationId)
+    {
+        return (bool)self::fetchValue(
+            'SELECT 1
+             FROM `user_organization`
+             WHERE `IDuser` = :user_id
+               AND `IDorganization` = :organization_id
+               AND `active` = 1
+             LIMIT 1',
+            [
+                'user_id' => (int)$userId,
+                'organization_id' => (int)$organizationId,
+            ]
+        );
+    }
+
+    protected static function loadActiveUserHolonRowsForOrganization($userId, array $organizationHolonIds, $organizationId = 0, $organizationRootHolonId = 0)
     {
         $userId = (int)$userId;
         if ($userId <= 0 || count($organizationHolonIds) === 0) {
@@ -444,7 +460,35 @@ class HolonPermission extends DbObject
         }
 
         $rows = \dbObject\UserHolon::fetchEffectiveRowsForUserAndHolonIds($userId, $organizationHolonIds);
-        return is_array($rows) ? $rows : [];
+        $rows = is_array($rows) ? $rows : [];
+
+        $organizationId = (int)$organizationId;
+        $organizationRootHolonId = (int)$organizationRootHolonId;
+        if (
+            $organizationId > 0
+            && $organizationRootHolonId > 0
+            && in_array($organizationRootHolonId, $organizationHolonIds, true)
+            && self::hasActiveUserOrganizationMembership($userId, $organizationId)
+        ) {
+            $hasRootAssignment = false;
+            foreach ($rows as $row) {
+                if ((int)($row['IDholon'] ?? 0) === $organizationRootHolonId) {
+                    $hasRootAssignment = true;
+                    break;
+                }
+            }
+
+            if (!$hasRootAssignment) {
+                $rows[] = [
+                    'IDholon' => $organizationRootHolonId,
+                    'holon_active' => 1,
+                    'holon_effective_active' => 1,
+                    'virtual_organization_membership' => true,
+                ];
+            }
+        }
+
+        return $rows;
     }
 
     protected static function loadPermissionAssignmentsForOrganization(array $organizationHolonIds, array $permissionKeys = [])
@@ -495,6 +539,47 @@ class HolonPermission extends DbObject
             $collected[$currentHolonId] = $currentHolonId;
             $currentHolonId = (int)($holonsById[$currentHolonId]['IDholon_template'] ?? 0);
             $guard += 1;
+        }
+
+        return array_values($collected);
+    }
+
+    protected static function collectAncestorChainHolonIds($holonId, array $holonsById)
+    {
+        $holonId = (int)$holonId;
+        if ($holonId <= 0 || !isset($holonsById[$holonId])) {
+            return [];
+        }
+
+        $collected = [];
+        $visited = [];
+        $currentHolonId = $holonId;
+        $guard = 0;
+
+        while ($currentHolonId > 0 && isset($holonsById[$currentHolonId]) && $guard < 100) {
+            if (isset($visited[$currentHolonId])) {
+                break;
+            }
+
+            $visited[$currentHolonId] = true;
+            $collected[$currentHolonId] = $currentHolonId;
+            $currentHolonId = (int)($holonsById[$currentHolonId]['IDholon_parent'] ?? 0);
+            $guard += 1;
+        }
+
+        return array_values($collected);
+    }
+
+    protected static function collectPermissionSourceHolonIds($assignedHolonId, array $holonsById)
+    {
+        $collected = [];
+
+        foreach (self::collectAncestorChainHolonIds($assignedHolonId, $holonsById) as $holonId) {
+            $collected[(int)$holonId] = (int)$holonId;
+        }
+
+        foreach (self::collectTemplateChainHolonIds($assignedHolonId, $holonsById) as $holonId) {
+            $collected[(int)$holonId] = (int)$holonId;
         }
 
         return array_values($collected);
@@ -654,10 +739,11 @@ class HolonPermission extends DbObject
             'organizationId' => $organizationId,
             'organizationRootHolonId' => 0,
             'organizationHolonIds' => [],
+            'hasActiveOrganizationMembership' => false,
             'rawUserHolonRows' => [],
             'activeUserHolonRows' => [],
             'permissionAssignments' => [],
-            'templateChainsByAssignedHolonId' => [],
+            'permissionSourceHolonIdsByAssignedHolonId' => [],
             'permissionSet' => [
                 'cacheVersion' => self::PERMISSION_CACHE_VERSION,
                 'userId' => $userId,
@@ -679,9 +765,10 @@ class HolonPermission extends DbObject
         $holonsById = self::loadOrganizationHolonRows($organizationRootHolonId);
         $organizationHolonIds = array_keys($holonsById);
         $debug['organizationHolonIds'] = $organizationHolonIds;
+        $debug['hasActiveOrganizationMembership'] = self::hasActiveUserOrganizationMembership($userId, $organizationId);
 
         $debug['rawUserHolonRows'] = \dbObject\UserHolon::fetchRawRowsForUserAndHolonIds($userId, $organizationHolonIds);
-        $activeUserHolonRows = self::loadActiveUserHolonRowsForOrganization($userId, $organizationHolonIds);
+        $activeUserHolonRows = self::loadActiveUserHolonRowsForOrganization($userId, $organizationHolonIds, $organizationId, $organizationRootHolonId);
         $debug['activeUserHolonRows'] = $activeUserHolonRows;
 
         $permissionAssignments = self::loadPermissionAssignmentsForOrganization($organizationHolonIds, $permissionKeys);
@@ -693,7 +780,7 @@ class HolonPermission extends DbObject
                 continue;
             }
 
-            $debug['templateChainsByAssignedHolonId'][$assignedHolonId] = self::collectTemplateChainHolonIds($assignedHolonId, $holonsById);
+            $debug['permissionSourceHolonIdsByAssignedHolonId'][$assignedHolonId] = self::collectPermissionSourceHolonIds($assignedHolonId, $holonsById);
         }
 
         $debug['permissionSet'] = self::buildUserPermissionSetForOrganization($userId, $organizationId, $permissionKeys);
@@ -769,14 +856,14 @@ class HolonPermission extends DbObject
             return $permissionSet;
         }
 
-        $activeUserHolonRows = self::loadActiveUserHolonRowsForOrganization($userId, $organizationHolonIds);
+        $activeUserHolonRows = self::loadActiveUserHolonRowsForOrganization($userId, $organizationHolonIds, $organizationId, $organizationRootHolonId);
         foreach ($activeUserHolonRows as $membershipRow) {
             $assignedHolonId = (int)($membershipRow['IDholon'] ?? 0);
             if ($assignedHolonId <= 0 || !isset($holonsById[$assignedHolonId])) {
                 continue;
             }
 
-            $permissionSourceHolonIds = self::collectTemplateChainHolonIds($assignedHolonId, $holonsById);
+            $permissionSourceHolonIds = self::collectPermissionSourceHolonIds($assignedHolonId, $holonsById);
             foreach ($permissionSourceHolonIds as $permissionSourceHolonId) {
                 if (empty($assignmentsByHolonId[$permissionSourceHolonId])) {
                     continue;
