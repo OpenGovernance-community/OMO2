@@ -1064,6 +1064,18 @@
 			}
 		}
 
+		protected function cloneStructuralHolonPermissions(\dbObject\Holon $sourceHolon, \dbObject\Holon $targetHolon)
+		{
+			$sourceHolonId = (int)$sourceHolon->getId();
+			$targetHolonId = (int)$targetHolon->getId();
+			if ($sourceHolonId <= 0 || $targetHolonId <= 0) {
+				return false;
+			}
+
+			$assignments = \dbObject\HolonPermission::getAssignmentKeyMapForHolon($sourceHolonId);
+			return \dbObject\HolonPermission::syncAssignmentsForHolon($targetHolonId, $assignments);
+		}
+
 		protected function getImportedHolonRecords(array $payload)
 		{
 			$holons = $payload['holons'] ?? array();
@@ -1216,6 +1228,39 @@
 			}
 		}
 
+		protected function importCompactHolonPermissionRows(array $record, \dbObject\Holon $targetHolon)
+		{
+			$targetHolonId = (int)$targetHolon->getId();
+			if ($targetHolonId <= 0) {
+				return false;
+			}
+
+			$rows = $record['permissions'] ?? array();
+			$assignmentsByPermissionKey = array();
+
+			if (is_array($rows)) {
+				foreach ($rows as $row) {
+					if (!is_array($row)) {
+						continue;
+					}
+
+					$permissionKey = trim((string)($row['permissionKey'] ?? ''));
+					$range = trim((string)($row['range'] ?? ''));
+					if ($permissionKey === '' || $range === '') {
+						continue;
+					}
+
+					if (!isset($assignmentsByPermissionKey[$permissionKey])) {
+						$assignmentsByPermissionKey[$permissionKey] = array();
+					}
+
+					$assignmentsByPermissionKey[$permissionKey][] = $range;
+				}
+			}
+
+			return \dbObject\HolonPermission::syncAssignmentsForHolon($targetHolonId, $assignmentsByPermissionKey);
+		}
+
 		protected function importStructureFromCompactGraph(array $payload, $userId = 0)
 		{
 			$records = $this->getImportedHolonRecords($payload);
@@ -1341,6 +1386,10 @@
 						$propertyIdMap,
 						$holonIdMap
 					);
+
+					if (!$this->importCompactHolonPermissionRows($record, $targetHolonsBySourceId[$sourceId])) {
+						throw new \RuntimeException("Les droits d'un holon importe n'ont pas pu etre recrees.");
+					}
 				}
 
 				$pdo->commit();
@@ -1506,6 +1555,13 @@
 					$holonIdMap,
 					$propertyIdMap
 				);
+
+				if (!$this->cloneStructuralHolonPermissions($sourceHolon, $targetHolon)) {
+					return array(
+						'status' => false,
+						'message' => "Les droits du modele n'ont pas pu etre dupliques.",
+					);
+				}
 			}
 
 			return array(

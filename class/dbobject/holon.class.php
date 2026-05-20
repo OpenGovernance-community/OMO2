@@ -789,6 +789,41 @@
 			return $rows;
 		}
 
+		public function getCompactExportPermissionRows()
+		{
+			$assignmentsByPermissionKey = \dbObject\HolonPermission::getAssignmentKeyMapForHolon((int)$this->getId());
+			if (!is_array($assignmentsByPermissionKey) || count($assignmentsByPermissionKey) === 0) {
+				return array();
+			}
+
+			$rows = array();
+			ksort($assignmentsByPermissionKey);
+
+			foreach ($assignmentsByPermissionKey as $permissionKey => $ranges) {
+				$permissionKey = trim((string)$permissionKey);
+				if ($permissionKey === '') {
+					continue;
+				}
+
+				$ranges = is_array($ranges) ? array_values($ranges) : array();
+				sort($ranges);
+
+				foreach ($ranges as $range) {
+					$range = trim((string)$range);
+					if ($range === '') {
+						continue;
+					}
+
+					$rows[] = array(
+						'permissionKey' => $permissionKey,
+						'range' => $range,
+					);
+				}
+			}
+
+			return $rows;
+		}
+
 		public function toCompactExportRecord($rootHolonId = 0, array $options = array())
 		{
 			$options = array_merge(array(
@@ -873,6 +908,11 @@
 			$propertyRows = $this->getCompactExportPropertyRows();
 			if (count($propertyRows) > 0) {
 				$record['properties'] = $propertyRows;
+			}
+
+			$permissionRows = $this->getCompactExportPermissionRows();
+			if (count($permissionRows) > 0) {
+				$record['permissions'] = $permissionRows;
 			}
 
 			return $record;
