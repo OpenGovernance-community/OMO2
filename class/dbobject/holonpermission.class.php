@@ -367,9 +367,10 @@ class HolonPermission extends DbObject
             'SELECT `id`, `name`, `IDtypeholon`, `IDholon_parent`, `IDholon_template`, `IDorganization`, `IDholon_org`, `active`
              FROM `holon`
              WHERE `active` = 1
-               AND (`id` = :root_holon_id OR `IDholon_org` = :root_holon_id)',
+               AND (`id` = :root_holon_id_self OR `IDholon_org` = :root_holon_id_org)',
             [
-                'root_holon_id' => $organizationRootHolonId,
+                'root_holon_id_self' => $organizationRootHolonId,
+                'root_holon_id_org' => $organizationRootHolonId,
             ]
         );
 
