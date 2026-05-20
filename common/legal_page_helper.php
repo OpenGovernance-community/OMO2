@@ -32,15 +32,37 @@ function commonRenderLegalPage(array $config): void
     $style = <<<CSS
 <style>
     :root {
-        --legal-bg: {$pageBackground};
-        --legal-surface: #ffffff;
-        --legal-text: #0f172a;
-        --legal-muted: #475569;
+        --legal-bg: var(--color-surface-alt, {$pageBackground});
+        --legal-surface: var(--color-surface, #ffffff);
+        --legal-text: var(--color-text, #0f172a);
+        --legal-muted: var(--color-text-light, #475569);
         --legal-accent: {$accent};
         --legal-accent-soft: {$accentSoft};
-        --legal-border: {$borderColor};
+        --legal-border: var(--color-border, {$borderColor});
         --legal-note-bg: {$noteBackground};
         --legal-bg-start: {$backgroundStart};
+        color-scheme: light;
+    }
+
+    html[data-theme="dark"],
+    :root[data-theme="dark"] {
+        --legal-accent-soft: color-mix(in srgb, {$accent} 22%, var(--legal-surface));
+        --legal-note-bg: color-mix(in srgb, {$accent} 14%, var(--legal-surface));
+        color-scheme: dark;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root:not([data-theme]) {
+            --legal-bg: #101923;
+            --legal-surface: #16202b;
+            --legal-text: #e5edf7;
+            --legal-muted: #9fb0c3;
+            --legal-border: #283548;
+            --legal-accent-soft: color-mix(in srgb, {$accent} 22%, #16202b);
+            --legal-note-bg: color-mix(in srgb, {$accent} 14%, #16202b);
+            --legal-bg-start: #0b1220;
+            color-scheme: dark;
+        }
     }
 
     * {
@@ -104,6 +126,10 @@ function commonRenderLegalPage(array $config): void
         color: var(--legal-accent);
     }
 
+    .common-legal-page-content strong {
+        color: var(--legal-text);
+    }
+
     body.common-legal-page-body {
         margin: 0;
         font-family: Arial, Helvetica, sans-serif;
@@ -113,6 +139,7 @@ function commonRenderLegalPage(array $config): void
 
     .common-legal-page-content--embed {
         padding: 0;
+        color: var(--legal-text);
     }
 
     .common-legal-page-content--embed .common-legal-page-note {
