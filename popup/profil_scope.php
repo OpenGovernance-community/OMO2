@@ -99,6 +99,7 @@ $canLimitCompetenceToOrganization = $currentOrganizationId > 0;
 			"firstname",
 			"lastname",
 			"presentation",
+			"latlong",
 			"birthdate",
 			"email",
 		),
