@@ -535,6 +535,24 @@
         );
     }
 
+    function shouldBypassHelpLinkInterception(event, link) {
+        if (!event || !link) {
+            return true;
+        }
+
+        if (event.defaultPrevented || event.button !== 0) {
+            return true;
+        }
+
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+            return true;
+        }
+
+        var target = link.getAttribute('target');
+
+        return !!target && target.toLowerCase() !== '_self';
+    }
+
     function handleProfileEdit() {
         var config = getConfig();
         var profile = config.profile || {};
@@ -789,6 +807,21 @@
                     label: getConfigTextValue('translations.helpFallbackLabel', 'Aide'),
                     html: getConfigTextValue('translations.helpUnavailableHtml', '<p>Contenu indisponible.</p>')
                 });
+            }
+            return;
+        }
+
+        var helpLink = event.target.closest('[data-topbar-help-link-item]');
+        if (helpLink) {
+            if (shouldBypassHelpLinkInterception(event, helpLink)) {
+                return;
+            }
+
+            event.preventDefault();
+            try {
+                handleHelpItemClick(JSON.parse(helpLink.getAttribute('data-topbar-help-link-item')));
+            } catch (e) {
+                window.location.href = helpLink.getAttribute('href') || '/';
             }
             return;
         }
