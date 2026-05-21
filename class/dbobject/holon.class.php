@@ -1124,6 +1124,27 @@
 			}
 		}
 
+		protected function collectRoleScopeHolonIds($includeDescendants = true, &$bucket = array(), &$visited = array())
+		{
+			$holonId = (int)$this->getId();
+			if ($holonId <= 0 || isset($visited[$holonId])) {
+				return;
+			}
+
+			$visited[$holonId] = true;
+			if ((int)$this->get('IDtypeholon') === 1) {
+				$bucket[$holonId] = $holonId;
+			}
+
+			if (!$includeDescendants) {
+				return;
+			}
+
+			foreach ($this->getChildren() as $child) {
+				$child->collectRoleScopeHolonIds(true, $bucket, $visited);
+			}
+		}
+
 		protected function collectLinkRoleIdsForEnglobingCircleMembership($targetCircleId, &$bucket = array(), &$visited = array())
 		{
 			$targetCircleId = (int)$targetCircleId;
@@ -1497,7 +1518,8 @@
 
 			$scopeHolonIds = array();
 			$visitedHolonIds = array();
-			$this->collectMemberScopeHolonIds((bool)$options['includeDescendants'], $scopeHolonIds, $visitedHolonIds);
+			$this->collectRoleScopeHolonIds((bool)$options['includeDescendants'], $scopeHolonIds, $visitedHolonIds);
+			$scopeHolonIds = array_values($scopeHolonIds);
 
 			$linkRows = $this->loadVisibleMemberLinkRows($scopeHolonIds, (int)$options['organizationId']);
 			$assignmentsByHolonId = array();

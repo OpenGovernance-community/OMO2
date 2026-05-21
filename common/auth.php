@@ -1391,6 +1391,10 @@ function commonCurrentUserHasPermission($permissionKey, $contextHolon = null, $o
     }
 
     $permissionSet = commonGetCurrentUserOrganizationPermissionSet($organizationId, $forceRefresh);
+    if (empty($permissionSet['definedPermissionKeys'][$permissionKey])) {
+        return \dbObject\Permission::existsKey($permissionKey);
+    }
+
     $scope = $permissionSet['permissions'][$permissionKey] ?? null;
     if (!is_array($scope)) {
         return false;
