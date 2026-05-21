@@ -148,6 +148,25 @@ function commonRenderTopbar(array $options = [])
             'editCallback' => (string)($options['profile']['editCallback'] ?? ''),
             'buttonLabel' => (string)($options['profile']['buttonLabel'] ?? 'Profil'),
             'summaryFallback' => (string)($options['profile']['summaryFallback'] ?? 'Resume du profil'),
+            'adminMode' => [
+                'enabled' => !empty($options['profile']['adminMode']['enabled']),
+                'active' => !empty($options['profile']['adminMode']['active']),
+                'organizationId' => (int)($options['profile']['adminMode']['organizationId'] ?? 0),
+                'enableLabel' => (string)($options['profile']['adminMode']['enableLabel'] ?? 'Activer le mode admin d organisation'),
+                'disableLabel' => (string)($options['profile']['adminMode']['disableLabel'] ?? 'Quitter le mode admin d organisation'),
+                'statusActiveLabel' => (string)($options['profile']['adminMode']['statusActiveLabel'] ?? 'Mode admin d organisation actif'),
+                'statusInactiveLabel' => (string)($options['profile']['adminMode']['statusInactiveLabel'] ?? 'Mode admin d organisation inactif'),
+                'toggleUrl' => (string)($options['profile']['adminMode']['toggleUrl'] ?? '/common/admin_mode.php'),
+            ],
+            'siteAdminMode' => [
+                'enabled' => !empty($options['profile']['siteAdminMode']['enabled']),
+                'active' => !empty($options['profile']['siteAdminMode']['active']),
+                'enableLabel' => (string)($options['profile']['siteAdminMode']['enableLabel'] ?? 'Activer le mode super admin'),
+                'disableLabel' => (string)($options['profile']['siteAdminMode']['disableLabel'] ?? 'Quitter le mode super admin'),
+                'statusActiveLabel' => (string)($options['profile']['siteAdminMode']['statusActiveLabel'] ?? 'Mode super admin actif'),
+                'statusInactiveLabel' => (string)($options['profile']['siteAdminMode']['statusInactiveLabel'] ?? 'Mode super admin inactif'),
+                'toggleUrl' => (string)($options['profile']['siteAdminMode']['toggleUrl'] ?? '/common/site_admin_mode.php'),
+            ],
             'preferences' => [
                 'enabled' => array_key_exists('enabled', $options['profile']['preferences'] ?? []) ? !empty($options['profile']['preferences']['enabled']) : true,
                 'languageLabel' => (string)($options['profile']['preferences']['languageLabel'] ?? 'Langue'),
@@ -395,6 +414,25 @@ function commonRenderTopbar(array $options = [])
                                 </div>
                             <?php endif; ?>
                             <button type="button" class="common-topbar__menu-item common-topbar-profile-actions__button" data-topbar-profile-edit><?= htmlspecialchars($config['profile']['editLabel']) ?></button>
+                            <?php if (!empty($config['profile']['adminMode']['enabled'])): ?>
+                                <button
+                                    type="button"
+                                    class="common-topbar__menu-item common-topbar-profile-actions__button common-topbar-profile-actions__button--mode <?= !empty($config['profile']['adminMode']['active']) ? 'common-topbar-profile-actions__button--active' : 'common-topbar-profile-actions__button--inactive' ?>"
+                                    data-topbar-admin-mode-toggle
+                                    data-admin-mode-url="<?= htmlspecialchars($config['profile']['adminMode']['toggleUrl']) ?>"
+                                    data-admin-mode-organization-id="<?= (int)$config['profile']['adminMode']['organizationId'] ?>"
+                                    data-admin-mode-enabled="<?= !empty($config['profile']['adminMode']['active']) ? '0' : '1' ?>"
+                                ><?= htmlspecialchars(!empty($config['profile']['adminMode']['active']) ? $config['profile']['adminMode']['disableLabel'] : $config['profile']['adminMode']['enableLabel']) ?></button>
+                            <?php endif; ?>
+                            <?php if (!empty($config['profile']['siteAdminMode']['enabled'])): ?>
+                                <button
+                                    type="button"
+                                    class="common-topbar__menu-item common-topbar-profile-actions__button common-topbar-profile-actions__button--mode <?= !empty($config['profile']['siteAdminMode']['active']) ? 'common-topbar-profile-actions__button--active' : 'common-topbar-profile-actions__button--inactive' ?>"
+                                    data-topbar-admin-mode-toggle
+                                    data-admin-mode-url="<?= htmlspecialchars($config['profile']['siteAdminMode']['toggleUrl']) ?>"
+                                    data-admin-mode-enabled="<?= !empty($config['profile']['siteAdminMode']['active']) ? '0' : '1' ?>"
+                                ><?= htmlspecialchars(!empty($config['profile']['siteAdminMode']['active']) ? $config['profile']['siteAdminMode']['disableLabel'] : $config['profile']['siteAdminMode']['enableLabel']) ?></button>
+                            <?php endif; ?>
                             <button type="button" class="common-topbar__menu-item common-topbar__menu-item--danger common-topbar-profile-actions__button" data-topbar-logout><?= htmlspecialchars($config['logoutLabel']) ?></button>
                         </div>
                     </section>

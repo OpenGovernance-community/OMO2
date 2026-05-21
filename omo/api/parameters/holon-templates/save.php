@@ -64,6 +64,10 @@ if (!($result['status'] ?? false)) {
     exit;
 }
 
+if (function_exists('commonClearCurrentUserPermissionCache')) {
+    commonClearCurrentUserPermissionCache();
+}
+
 echo json_encode(
     array(
         'status' => 'ok',

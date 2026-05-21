@@ -209,8 +209,12 @@
 
 		public function isUserOrganizationAdmin($userId)
 		{
-			if (function_exists('commonUserIsSiteAdmin') && \commonUserIsSiteAdmin($userId)) {
+			if (function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($userId, (int)$this->getId())) {
 				return true;
+			}
+
+			if ($userId === $this->resolveCurrentUserId()) {
+				return false;
 			}
 
 			$membership = $this->getMembership($userId, true);
@@ -874,7 +878,45 @@
 			$rootHolon->set('IDholon_org', (int)$rootHolon->getId());
 			$rootHolon->save();
 
+			if ((int)$userId > 0 && !$this->ensureActiveMembershipForUser((int)$userId)) {
+				return null;
+			}
+
 			return $rootHolon;
+		}
+
+		protected function ensureActiveMembershipForUser($userId)
+		{
+			$userId = (int)$userId;
+			$organizationId = (int)$this->getId();
+			if ($userId <= 0 || $organizationId <= 0) {
+				return false;
+			}
+
+			$membership = new \dbObject\UserOrganization();
+			if (!$membership->load(array(
+				array('IDuser', $userId),
+				array('IDorganization', $organizationId),
+			))) {
+				$membership->set('IDuser', $userId);
+				$membership->set('IDorganization', $organizationId);
+			}
+
+			$user = new \dbObject\User();
+			if ($user->load($userId)) {
+				if (trim((string)$membership->get('email')) === '' && trim((string)$user->get('email')) !== '') {
+					$membership->set('email', trim((string)$user->get('email')));
+				}
+
+				if (trim((string)$membership->get('username')) === '' && trim((string)$user->get('username')) !== '') {
+					$membership->set('username', trim((string)$user->get('username')));
+				}
+			}
+
+			$membership->set('active', true);
+			$saveResult = $membership->save();
+
+			return is_array($saveResult) && !empty($saveResult['status']);
 		}
 
 		protected function getStructuralInitializationChildren(\dbObject\Holon $holon)
@@ -1020,6 +1062,18 @@
 				$targetHolonProperty->set('active', (bool)$sourceHolonProperty->get('active'));
 				$targetHolonProperty->save();
 			}
+		}
+
+		protected function cloneStructuralHolonPermissions(\dbObject\Holon $sourceHolon, \dbObject\Holon $targetHolon)
+		{
+			$sourceHolonId = (int)$sourceHolon->getId();
+			$targetHolonId = (int)$targetHolon->getId();
+			if ($sourceHolonId <= 0 || $targetHolonId <= 0) {
+				return false;
+			}
+
+			$assignments = \dbObject\HolonPermission::getAssignmentKeyMapForHolon($sourceHolonId);
+			return \dbObject\HolonPermission::syncAssignmentsForHolon($targetHolonId, $assignments);
 		}
 
 		protected function getImportedHolonRecords(array $payload)
@@ -1174,6 +1228,39 @@
 			}
 		}
 
+		protected function importCompactHolonPermissionRows(array $record, \dbObject\Holon $targetHolon)
+		{
+			$targetHolonId = (int)$targetHolon->getId();
+			if ($targetHolonId <= 0) {
+				return false;
+			}
+
+			$rows = $record['permissions'] ?? array();
+			$assignmentsByPermissionKey = array();
+
+			if (is_array($rows)) {
+				foreach ($rows as $row) {
+					if (!is_array($row)) {
+						continue;
+					}
+
+					$permissionKey = trim((string)($row['permissionKey'] ?? ''));
+					$range = trim((string)($row['range'] ?? ''));
+					if ($permissionKey === '' || $range === '') {
+						continue;
+					}
+
+					if (!isset($assignmentsByPermissionKey[$permissionKey])) {
+						$assignmentsByPermissionKey[$permissionKey] = array();
+					}
+
+					$assignmentsByPermissionKey[$permissionKey][] = $range;
+				}
+			}
+
+			return \dbObject\HolonPermission::syncAssignmentsForHolon($targetHolonId, $assignmentsByPermissionKey);
+		}
+
 		protected function importStructureFromCompactGraph(array $payload, $userId = 0)
 		{
 			$records = $this->getImportedHolonRecords($payload);
@@ -1299,6 +1386,10 @@
 						$propertyIdMap,
 						$holonIdMap
 					);
+
+					if (!$this->importCompactHolonPermissionRows($record, $targetHolonsBySourceId[$sourceId])) {
+						throw new \RuntimeException("Les droits d'un holon importe n'ont pas pu etre recrees.");
+					}
 				}
 
 				$pdo->commit();
@@ -1464,6 +1555,13 @@
 					$holonIdMap,
 					$propertyIdMap
 				);
+
+				if (!$this->cloneStructuralHolonPermissions($sourceHolon, $targetHolon)) {
+					return array(
+						'status' => false,
+						'message' => "Les droits du modele n'ont pas pu etre dupliques.",
+					);
+				}
 			}
 
 			return array(
@@ -2038,6 +2136,8 @@
 					'types' => array(),
 					'formats' => array(),
 					'listItemTypes' => \dbObject\Property::getTemplateListItemTypeOptions(),
+					'permissionCatalog' => \dbObject\Permission::getEditorCatalog(),
+					'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
 					'templateCatalog' => array(),
 					'templates' => array(),
 				);
@@ -2067,6 +2167,8 @@
 				'types' => array(),
 				'formats' => array(),
 				'listItemTypes' => \dbObject\Property::getTemplateListItemTypeOptions(),
+				'permissionCatalog' => \dbObject\Permission::getEditorCatalog(),
+				'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
 				'templateCatalog' => array(),
 				'templates' => array(),
 			);
@@ -2213,6 +2315,8 @@
 				'types' => array(),
 				'formats' => array(),
 				'listItemTypes' => \dbObject\Property::getTemplateListItemTypeOptions(),
+				'permissionCatalog' => \dbObject\Permission::getEditorCatalog(),
+				'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
 				'templateCatalog' => array(),
 				'templates' => array(
 					$this->buildHolonDefinitionEditorNode($holon, (int)$rootHolon->getId()),
@@ -4409,6 +4513,16 @@
 				(int)$rootHolon->getId()
 			);
 
+			if (!\dbObject\HolonPermission::syncAssignmentsForHolon(
+				(int)$template->getId(),
+				is_array($payload['permissions'] ?? null) ? $payload['permissions'] : array()
+			)) {
+				return array(
+					'status' => false,
+					'message' => "Les droits du modele n'ont pas pu etre enregistres.",
+				);
+			}
+
 			return array(
 				'status' => true,
 				'message' => 'Modele enregistre.',
@@ -4513,6 +4627,16 @@
 			}
 
 			$holon->syncTemplateProperties($definitions, (int)$rootHolon->getId());
+
+			if (!\dbObject\HolonPermission::syncAssignmentsForHolon(
+				(int)$holon->getId(),
+				is_array($payload['permissions'] ?? null) ? $payload['permissions'] : array()
+			)) {
+				return array(
+					'status' => false,
+					'message' => "Les droits de l'organisation n'ont pas pu etre enregistres.",
+				);
+			}
 
 			return array(
 				'status' => true,

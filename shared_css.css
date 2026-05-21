@@ -10,8 +10,40 @@
     --white-bg-color: #FFFFFF;
     --dark-txt-color: #000000;
     --light-txt-color: #FFFFFF;
-    --greyColor : #DDD;
+	    --greyColor : #DDD;
+    --color-bg: var(--white-bg-color);
+    --color-surface: var(--white-bg-color);
+    --color-surface-alt: var(--verylight-bg-color);
+    --color-text: var(--dark-txt-color);
+    --color-text-light: color-mix(in srgb, var(--dark-txt-color) 62%, var(--white-bg-color));
+    --color-border: var(--greyColor);
+    --color-primary: var(--dark-bg-color);
+    --color-text-inverse: var(--light-txt-color);
 	}	
+
+    :root[data-theme="dark"] {
+        --color-bg: #0f1720;
+        --color-surface: #16202b;
+        --color-surface-alt: #101923;
+        --color-text: #e5edf7;
+        --color-text-light: #9fb0c3;
+        --color-border: #283548;
+        --color-primary: #7c9cff;
+        --color-text-inverse: #0f1720;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root[data-theme-preference="system"] {
+            --color-bg: #0f1720;
+            --color-surface: #16202b;
+            --color-surface-alt: #101923;
+            --color-text: #e5edf7;
+            --color-text-light: #9fb0c3;
+            --color-border: #283548;
+            --color-primary: #7c9cff;
+            --color-text-inverse: #0f1720;
+        }
+    }
 		
 		
 	* {box-sizing: border-box;}
@@ -135,4 +167,3 @@
 			color: black; /* Pour s'assurer que le texte est visible */
 		  }
 	}
-
