@@ -85,6 +85,27 @@ class Permission extends DbObject
         return $permission;
     }
 
+    public static function existsKey($permissionKey)
+    {
+        static $cache = array();
+
+        $permissionKey = trim((string)$permissionKey);
+        if ($permissionKey === '') {
+            return false;
+        }
+
+        if (array_key_exists($permissionKey, $cache)) {
+            return $cache[$permissionKey];
+        }
+
+        $cache[$permissionKey] = (bool)self::fetchValue(
+            'SELECT 1 FROM `permission` WHERE `permission_key` = :permission_key LIMIT 1',
+            ['permission_key' => $permissionKey]
+        );
+
+        return $cache[$permissionKey];
+    }
+
     public static function getEditorCatalog()
     {
         $permissions = new \dbObject\ArrayPermission();

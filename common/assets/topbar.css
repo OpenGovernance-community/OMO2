@@ -620,11 +620,17 @@
     gap: 16px;
     padding: 16px 18px;
     border-bottom: 1px solid var(--topbar-panel-border, #e5e7eb);
+    cursor: grab;
+    user-select: none;
 }
 
 .common-topbar-modal__header h3 {
     margin: 0;
     font-size: 18px;
+}
+
+.common-topbar-modal__panel.is-dragging .common-topbar-modal__header {
+    cursor: grabbing;
 }
 
 .common-topbar-modal__close,

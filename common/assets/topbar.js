@@ -1,4 +1,13 @@
 (function () {
+    var modalDragState = {
+        active: false,
+        pointerId: null,
+        startX: 0,
+        startY: 0,
+        offsetX: 0,
+        offsetY: 0
+    };
+
     function getConfig() {
         return window.commonTopbarConfig || {};
     }
@@ -161,6 +170,128 @@
         }, 20);
     }
 
+    function getModalPanel() {
+        return document.querySelector('#commonTopbarModal .common-topbar-modal__panel');
+    }
+
+    function applyModalPanelOffset(offsetX, offsetY) {
+        var panel = getModalPanel();
+        if (!panel) {
+            return;
+        }
+
+        modalDragState.offsetX = Number(offsetX) || 0;
+        modalDragState.offsetY = Number(offsetY) || 0;
+        panel.style.transform = 'translate(' + modalDragState.offsetX + 'px, ' + modalDragState.offsetY + 'px)';
+    }
+
+    function resetModalPanelOffset() {
+        var panel = getModalPanel();
+        modalDragState.offsetX = 0;
+        modalDragState.offsetY = 0;
+
+        if (!panel) {
+            return;
+        }
+
+        panel.style.transform = '';
+        panel.classList.remove('is-dragging');
+    }
+
+    function clampModalOffset(offsetX, offsetY) {
+        var panel = getModalPanel();
+        if (!panel) {
+            return {
+                x: Number(offsetX) || 0,
+                y: Number(offsetY) || 0
+            };
+        }
+
+        var rect = panel.getBoundingClientRect();
+        var viewportWidth = window.innerWidth || document.documentElement.clientWidth || rect.width;
+        var viewportHeight = window.innerHeight || document.documentElement.clientHeight || rect.height;
+        var currentOffsetX = modalDragState.offsetX || 0;
+        var currentOffsetY = modalDragState.offsetY || 0;
+        var baseLeft = rect.left - currentOffsetX;
+        var baseRight = rect.right - currentOffsetX;
+        var baseTop = rect.top - currentOffsetY;
+        var baseBottom = rect.bottom - currentOffsetY;
+
+        var minX = 12 - baseLeft;
+        var maxX = viewportWidth - 12 - baseRight;
+        var minY = 12 - baseTop;
+        var maxY = viewportHeight - 12 - baseBottom;
+
+        return {
+            x: Math.min(Math.max(Number(offsetX) || 0, minX), maxX),
+            y: Math.min(Math.max(Number(offsetY) || 0, minY), maxY)
+        };
+    }
+
+    function stopModalDrag() {
+        var panel = getModalPanel();
+
+        modalDragState.active = false;
+        modalDragState.pointerId = null;
+
+        if (!panel) {
+            return;
+        }
+
+        panel.classList.remove('is-dragging');
+    }
+
+    function handleModalHeaderPointerDown(event) {
+        var header = event.target && event.target.closest
+            ? event.target.closest('.common-topbar-modal__header')
+            : null;
+        var panel = getModalPanel();
+
+        if (!header || !panel) {
+            return;
+        }
+
+        if (event.button !== 0) {
+            return;
+        }
+
+        if (event.target && event.target.closest && event.target.closest('[data-topbar-modal-close]')) {
+            return;
+        }
+
+        modalDragState.active = true;
+        modalDragState.pointerId = event.pointerId;
+        modalDragState.startX = event.clientX - modalDragState.offsetX;
+        modalDragState.startY = event.clientY - modalDragState.offsetY;
+        panel.classList.add('is-dragging');
+
+        if (typeof header.setPointerCapture === 'function') {
+            try {
+                header.setPointerCapture(event.pointerId);
+            } catch (error) {
+            }
+        }
+
+        event.preventDefault();
+    }
+
+    function handleModalHeaderPointerMove(event) {
+        if (!modalDragState.active) {
+            return;
+        }
+
+        if (modalDragState.pointerId !== null && event.pointerId !== modalDragState.pointerId) {
+            return;
+        }
+
+        var nextOffset = clampModalOffset(
+            event.clientX - modalDragState.startX,
+            event.clientY - modalDragState.startY
+        );
+
+        applyModalPanelOffset(nextOffset.x, nextOffset.y);
+    }
+
     function openDrawer(title, content, mode) {
         var drawer = document.getElementById('commonTopbarDrawer');
         var body = document.getElementById('commonTopbarDrawerBody');
@@ -198,6 +329,7 @@
 
         closeDrawer();
         closeModal();
+        resetModalPanelOffset();
         titleNode.textContent = title || getConfigTextValue('modal.defaultTitle', 'Panneau');
         if (mode === 'iframe') {
             body.innerHTML = '<iframe class="common-topbar-modal__iframe" src="' + content + '"></iframe>';
@@ -239,6 +371,7 @@
         if (!modal) {
             return;
         }
+        stopModalDrag();
         modal.hidden = true;
         if (body) {
             runContainerCleanup(body);
@@ -253,6 +386,11 @@
             window.dispatchEvent(new CustomEvent('common-topbar-modal-close'));
         }
     }
+
+    document.addEventListener('pointerdown', handleModalHeaderPointerDown);
+    document.addEventListener('pointermove', handleModalHeaderPointerMove);
+    document.addEventListener('pointerup', stopModalDrag);
+    document.addEventListener('pointercancel', stopModalDrag);
 
     function callNamedFunction(name) {
         if (!name || typeof window[name] !== 'function') {

@@ -3,7 +3,7 @@ namespace dbObject;
 
 class HolonPermission extends DbObject
 {
-    const PERMISSION_CACHE_VERSION = 10;
+    const PERMISSION_CACHE_VERSION = 11;
     const RANGE_SELF = 'self';
     const RANGE_PARENT_CIRCLE = 'parent_circle';
     const RANGE_PARENT_CIRCLE_ELEMENTS = 'parent_circle_elements';
@@ -749,6 +749,7 @@ class HolonPermission extends DbObject
                 'cacheVersion' => self::PERMISSION_CACHE_VERSION,
                 'userId' => $userId,
                 'organizationId' => $organizationId,
+                'definedPermissionKeys' => [],
                 'permissions' => [],
             ],
         ];
@@ -796,6 +797,7 @@ class HolonPermission extends DbObject
             'cacheVersion' => self::PERMISSION_CACHE_VERSION,
             'userId' => $userId,
             'organizationId' => $organizationId,
+            'definedPermissionKeys' => [],
             'permissions' => [],
         ];
 
@@ -809,6 +811,7 @@ class HolonPermission extends DbObject
                 if ($permissionKey === '') {
                     continue;
                 }
+                $permissionSet['definedPermissionKeys'][$permissionKey] = true;
                 $permissionSet['permissions'][$permissionKey] = [
                     'exact' => [],
                     'subtree' => [],
@@ -836,12 +839,15 @@ class HolonPermission extends DbObject
         }
 
         $assignmentsByHolonId = [];
+        $definedPermissionKeys = [];
         foreach ($permissionAssignments as $assignmentRow) {
             $permissionHolonId = (int)($assignmentRow['IDholon'] ?? 0);
             $permissionKey = trim((string)($assignmentRow['permission_key'] ?? ''));
             if ($permissionHolonId <= 0 || $permissionKey === '') {
                 continue;
             }
+
+            $definedPermissionKeys[$permissionKey] = true;
 
             if (!isset($assignmentsByHolonId[$permissionHolonId])) {
                 $assignmentsByHolonId[$permissionHolonId] = [];
@@ -856,6 +862,8 @@ class HolonPermission extends DbObject
         if (count($assignmentsByHolonId) === 0) {
             return $permissionSet;
         }
+
+        $permissionSet['definedPermissionKeys'] = $definedPermissionKeys;
 
         $activeUserHolonRows = self::loadActiveUserHolonRowsForOrganization($userId, $organizationHolonIds, $organizationId, $organizationRootHolonId);
         foreach ($activeUserHolonRows as $membershipRow) {
@@ -901,6 +909,10 @@ class HolonPermission extends DbObject
         }
 
         $permissionSet = self::buildUserPermissionSetForOrganization($userId, $organizationId, [$permissionKey]);
+        if (empty($permissionSet['definedPermissionKeys'][$permissionKey])) {
+            return \dbObject\Permission::existsKey($permissionKey);
+        }
+
         $scope = $permissionSet['permissions'][$permissionKey] ?? null;
         if (!is_array($scope)) {
             return false;
