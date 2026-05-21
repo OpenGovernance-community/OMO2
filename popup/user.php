@@ -467,6 +467,29 @@ foreach ($competenceRows as $competenceRow) {
         --generic-soft-panel-padding-inline: 16px;
     }
 
+    .omo-user-context__role-link {
+        width: 100%;
+        border: 0;
+        text-align: left;
+        cursor: pointer;
+        transition:
+            transform 0.15s ease,
+            box-shadow 0.15s ease,
+            border-color 0.15s ease,
+            background 0.15s ease;
+    }
+
+    .omo-user-context__role-link:hover {
+        transform: translateY(-1px);
+        border-color: color-mix(in srgb, var(--color-primary, #2563eb) 26%, var(--color-border, #e5e7eb));
+        box-shadow: 0 12px 28px color-mix(in srgb, var(--color-primary, #2563eb) 10%, transparent);
+    }
+
+    .omo-user-context__role-link:focus-visible {
+        outline: 2px solid color-mix(in srgb, var(--color-primary, #2563eb) 54%, #ffffff);
+        outline-offset: 2px;
+    }
+
     .omo-user-context__role-head {
         display: flex;
         align-items: flex-start;
@@ -1131,18 +1154,25 @@ foreach ($competenceRows as $competenceRow) {
                                 <?php else: ?>
                                     <ul class="omo-user-context__roles">
                                         <?php foreach ($currentAssignments as $assignment): ?>
-                                            <li class="omo-user-context__role generic-soft-panel">
-                                                <div class="omo-user-context__role-head">
-                                                    <div>
-                                                        <div class="omo-user-context__role-name"><?= omoApiEscape($assignment['name'] ?: ('Role ' . (int)$assignment['holonId'])) ?></div>
-                                                        <?php if ((string)$assignment['pathLabel'] !== ''): ?>
-                                                            <div class="omo-user-context__role-path"><?= omoApiEscape($assignment['pathLabel']) ?></div>
+                                            <li>
+                                                <button
+                                                    type="button"
+                                                    class="omo-user-context__role omo-user-context__role-link generic-soft-panel"
+                                                    data-user-role-cid="<?= (int)$assignment['holonId'] ?>"
+                                                    aria-label="<?= omoApiEscape('Ouvrir le role ' . ($assignment['name'] ?: ('Role ' . (int)$assignment['holonId']))) ?>"
+                                                >
+                                                    <div class="omo-user-context__role-head">
+                                                        <div>
+                                                            <div class="omo-user-context__role-name"><?= omoApiEscape($assignment['name'] ?: ('Role ' . (int)$assignment['holonId'])) ?></div>
+                                                            <?php if ((string)$assignment['pathLabel'] !== ''): ?>
+                                                                <div class="omo-user-context__role-path"><?= omoApiEscape($assignment['pathLabel']) ?></div>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                        <?php if (!empty($assignment['isPending'])): ?>
+                                                            <span class="omo-user-context__role-status">En attente</span>
                                                         <?php endif; ?>
                                                     </div>
-                                                    <?php if (!empty($assignment['isPending'])): ?>
-                                                        <span class="omo-user-context__role-status">En attente</span>
-                                                    <?php endif; ?>
-                                                </div>
+                                                </button>
                                             </li>
                                         <?php endforeach; ?>
                                     </ul>
@@ -1164,18 +1194,25 @@ foreach ($competenceRows as $competenceRow) {
                             <?php else: ?>
                                 <ul class="omo-user-context__roles">
                                     <?php foreach ($organizationAssignments as $assignment): ?>
-                                        <li class="omo-user-context__role generic-soft-panel">
-                                            <div class="omo-user-context__role-head">
-                                                <div>
-                                                    <div class="omo-user-context__role-name"><?= omoApiEscape($assignment['name'] ?: ('Role ' . (int)$assignment['holonId'])) ?></div>
-                                                    <?php if ((string)$assignment['pathLabel'] !== ''): ?>
-                                                        <div class="omo-user-context__role-path"><?= omoApiEscape($assignment['pathLabel']) ?></div>
+                                        <li>
+                                            <button
+                                                type="button"
+                                                class="omo-user-context__role omo-user-context__role-link generic-soft-panel"
+                                                data-user-role-cid="<?= (int)$assignment['holonId'] ?>"
+                                                aria-label="<?= omoApiEscape('Ouvrir le role ' . ($assignment['name'] ?: ('Role ' . (int)$assignment['holonId']))) ?>"
+                                            >
+                                                <div class="omo-user-context__role-head">
+                                                    <div>
+                                                        <div class="omo-user-context__role-name"><?= omoApiEscape($assignment['name'] ?: ('Role ' . (int)$assignment['holonId'])) ?></div>
+                                                        <?php if ((string)$assignment['pathLabel'] !== ''): ?>
+                                                            <div class="omo-user-context__role-path"><?= omoApiEscape($assignment['pathLabel']) ?></div>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                    <?php if (!empty($assignment['isPending'])): ?>
+                                                        <span class="omo-user-context__role-status">En attente</span>
                                                     <?php endif; ?>
                                                 </div>
-                                                <?php if (!empty($assignment['isPending'])): ?>
-                                                    <span class="omo-user-context__role-status">En attente</span>
-                                                <?php endif; ?>
-                                            </div>
+                                            </button>
                                         </li>
                                     <?php endforeach; ?>
                                 </ul>
@@ -1187,6 +1224,45 @@ foreach ($competenceRows as $competenceRow) {
         </div>
     </div>
 </div>
+<script>
+(function () {
+    var root = document.querySelector('.omo-user-context');
+    var modalBody = document.getElementById('commonTopbarModalBody');
+
+    if (!root) {
+        return;
+    }
+
+    if (modalBody) {
+        modalBody.setAttribute('data-omo-popup-live-sync', '1');
+    }
+
+    root.querySelectorAll('[data-user-role-cid]').forEach(function (button) {
+        button.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            var cid = Number(button.getAttribute('data-user-role-cid') || '0');
+            if (!Number.isInteger(cid) || cid <= 0) {
+                return;
+            }
+
+            if (typeof navigate !== 'function' || typeof parseUrl !== 'function') {
+                return;
+            }
+
+            var route = parseUrl();
+            navigate(route.oid, cid, route.hash || null);
+
+            if (typeof omoFocusStructureNode === 'function') {
+                window.setTimeout(function () {
+                    omoFocusStructureNode(cid, { quickZoom: true });
+                }, 140);
+            }
+        });
+    });
+})();
+</script>
 <?php if ($canValidateCompetences && count($competenceRows) > 0): ?>
 <script>
 (function () {

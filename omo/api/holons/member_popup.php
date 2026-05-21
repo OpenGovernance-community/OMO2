@@ -28,10 +28,14 @@ if (!$organization->load($organizationId) || !$holon->load($holonId) || !$organi
     exit;
 }
 
-if (!$holon->canEdit()) {
+$canAddMember = $_SERVER['REQUEST_METHOD'] === 'POST'
+    ? $holon->isAllowed('CAN_ADD_MEMBER', false)
+    : $holon->isAllowed('CAN_ADD_MEMBER');
+
+if (!$canAddMember) {
     http_response_code(403);
     ?>
-    <div class="omo-holon-member-popup__empty">Vous n'avez pas le droit de modifier ce holon.</div>
+    <div class="omo-holon-member-popup__empty">Vous n'avez pas le droit d'ajouter un membre dans ce contexte.</div>
     <?php
     exit;
 }
