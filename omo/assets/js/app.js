@@ -1115,11 +1115,22 @@ function omoRefreshSidebar(onLoaded = null) {
 }
 
 function buildDrawerUrl(baseUrl, oid, cid = null) {
+    let resolvedCid = cid;
+
+    if ((!resolvedCid || Number(resolvedCid) <= 0) && typeof baseUrl === 'string' && baseUrl.indexOf('api/decision/') !== -1) {
+        if (typeof window.omoGetCurrentStructureHolonId === 'function') {
+            const structureCid = Number(window.omoGetCurrentStructureHolonId() || 0);
+            if (Number.isInteger(structureCid) && structureCid > 0) {
+                resolvedCid = structureCid;
+            }
+        }
+    }
+
     const separator = baseUrl.indexOf('?') === -1 ? '?' : '&';
     let url = `${baseUrl}${separator}oid=${encodeURIComponent(oid)}`;
 
-    if (cid) {
-        url += `&cid=${encodeURIComponent(cid)}`;
+    if (resolvedCid) {
+        url += `&cid=${encodeURIComponent(resolvedCid)}`;
     }
 
     return omoResolveAppUrl(url);
