@@ -250,6 +250,7 @@ function omoBuildPwaHeadHtml($themeColor = '#004663', $iconUrl = '/omo/icons/ico
 $omoPwaBodyEndHtml = '<script src="/omo/assets/js/install.js" defer></script>';
 $omoThemeBootstrapHtml = implode(PHP_EOL, [
     '<script src="/shared_functions.js"></script>',
+    '<link rel="stylesheet" href="/shared_css.css">',
     '<script>sharedApplyDocumentTheme();</script>',
 ]);
 
@@ -301,7 +302,6 @@ if (empty($organizationContext['isValid'])) {
     <title><?= htmlspecialchars(t('app.not_found.page_title')) ?></title>
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-    <link rel="stylesheet" href="/common/assets/components.css">
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
 <body class="auth-state-page auth-state-page--with-topbar">
@@ -394,7 +394,6 @@ if ($isOrganizationHub && !$isDemoGuest) {
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <title><?= htmlspecialchars(t('app.directory.page_title')) ?></title>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-    <link rel="stylesheet" href="/common/assets/components.css">
     <link rel="stylesheet" href="/omo/assets/css/styles.css">
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
@@ -957,7 +956,6 @@ if (!$isDemoGuest && !commonUserHasOrganizationAccess($currentUserId, (int)$orga
     <title><?= htmlspecialchars(t('app.access_denied.page_title')) ?></title>
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-    <link rel="stylesheet" href="/common/assets/components.css">
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
 <body class="auth-state-page auth-state-page--with-topbar">
@@ -1014,7 +1012,6 @@ if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
     <title><?= htmlspecialchars(t('app.main.page_title')) ?></title>
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-    <link rel="stylesheet" href="/common/assets/components.css">
     <link rel="stylesheet" href="/omo/assets/css/styles.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">

@@ -677,12 +677,13 @@ foreach ($decisionRows as $row) {
     $scopeMeta = omoDecisionsIndexResolveScopeMeta($organization, $holonId, $holonLabel);
     $ownerCard = omoDecisionsIndexResolveOwnerCard((int)$decision->get('IDuser'), $currentOrganizationId);
 
-    $viewUrl = omoDecisionBuildEditorUrl(
+    $viewUrl = omoDecisionBuildParticipationPreviewUrl(
         $currentOrganizationId,
         $currentHolonId > 0 ? $currentHolonId : $holonId,
         $decisionId,
         $method,
-        'view'
+        'view',
+        true
     );
     $manageUrl = omoDecisionBuildEditorUrl(
         $currentOrganizationId,
@@ -691,12 +692,13 @@ foreach ($decisionRows as $row) {
         $method,
         'manage'
     );
-    $participateUrl = omoDecisionBuildEditorUrl(
+    $participateUrl = omoDecisionBuildParticipationPreviewUrl(
         $currentOrganizationId,
         $currentHolonId > 0 ? $currentHolonId : $holonId,
         $decisionId,
         $method,
-        'participate'
+        'participate',
+        true
     );
 
     $badges = [];
@@ -988,8 +990,11 @@ if (!is_string($payloadJson)) {
                 </div>
             </div>
         </div>
-    </div>
 </div>
+</div>
+
+<link rel="stylesheet" href="/common/choice/decision_cards.css">
+<script src="/common/choice/decision_cards.js"></script>
 
 <style>
 .omo-decisions {
@@ -1097,11 +1102,6 @@ if (!is_string($payloadJson)) {
     justify-content: flex-end;
 }
 
-.omo-decisions__list {
-    display: grid;
-    gap: 10px;
-}
-
 .omo-decisions__state {
     color: var(--color-text-light, #475569);
     line-height: 1.6;
@@ -1125,187 +1125,6 @@ if (!is_string($payloadJson)) {
     line-height: 1.6;
 }
 
-.omo-decisions-card {
-    gap: 0;
-}
-
-.omo-decisions-card__header {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    align-items: flex-start;
-}
-
-.omo-decisions-card__summary {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    width: 100%;
-    min-width: 0;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    text-align: left;
-    color: inherit;
-    cursor: pointer;
-}
-
-.omo-decisions-card__title {
-    margin: 0;
-    font-size: 0.98rem;
-    font-weight: 700;
-    color: var(--color-text, #1f2937);
-}
-
-.omo-decisions-card__owner-avatar,
-.omo-decisions-card__owner-photo,
-.omo-decisions-card__owner-placeholder {
-    width: 42px;
-    height: 42px;
-    border-radius: 999px;
-    flex: 0 0 auto;
-}
-
-.omo-decisions-card__owner-photo {
-    display: block;
-    object-fit: cover;
-}
-
-.omo-decisions-card__owner-placeholder {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: color-mix(in srgb, var(--color-primary, #2563eb) 14%, var(--color-surface-alt, #f8fafc));
-    color: var(--color-text, #1f2937);
-    font-size: 0.88rem;
-    font-weight: 700;
-}
-
-.omo-decisions-card__summary-copy {
-    display: grid;
-    gap: 6px;
-    min-width: 0;
-    flex: 1 1 auto;
-}
-
-.omo-decisions-card__summary-top,
-.omo-decisions-card__summary-bottom {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 10px;
-    align-items: center;
-}
-
-.omo-decisions-card__owner-name {
-    color: var(--color-text-light, #475569);
-    font-size: 0.9rem;
-}
-
-.omo-decisions-card__description {
-    margin: 0;
-    color: var(--color-text-light, #475569);
-    line-height: 1.55;
-}
-
-.omo-decisions-card__status {
-    display: inline-flex;
-    align-items: center;
-    padding: 5px 9px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface-alt, #f8fafc));
-    color: var(--color-text, #1f2937);
-    font-size: 0.8rem;
-    font-weight: 700;
-    white-space: nowrap;
-}
-
-.omo-decisions-card__badges,
-.omo-decisions-card__meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.omo-decisions-card__badge,
-.omo-decisions-card__meta-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 9px;
-    border-radius: 999px;
-    background: rgba(148, 163, 184, 0.12);
-    color: var(--color-text-light, #475569);
-    font-size: 0.8rem;
-}
-
-.omo-decisions-card__meta-item strong {
-    color: var(--color-text, #1f2937);
-}
-
-.omo-decisions-card__stats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
-.omo-decisions-card__stat {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 9px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 86%, var(--color-surface, #ffffff));
-    border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 82%, transparent);
-}
-
-.omo-decisions-card__stat strong {
-    font-size: 0.92rem;
-    color: var(--color-text, #1f2937);
-}
-
-.omo-decisions-card__stat span {
-    color: var(--color-text-light, #475569);
-    font-size: 0.8rem;
-}
-
-.omo-decisions-card__content {
-    display: grid;
-    gap: 12px;
-}
-
-.omo-decisions-card__dates {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.omo-decisions-card__date {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 9px;
-    border-radius: 999px;
-    background: rgba(148, 163, 184, 0.08);
-    color: var(--color-text-light, #475569);
-    font-size: 0.8rem;
-}
-
-.omo-decisions-card__date strong {
-    color: var(--color-text, #1f2937);
-}
-
-.omo-decisions-card__action {
-    flex: 0 0 auto;
-}
-
-.omo-decisions-card__actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 8px;
-    flex: 0 0 auto;
-}
-
 @media (max-width: 720px) {
     .omo-decisions__hero,
     .omo-decisions__status-bar,
@@ -1321,15 +1140,6 @@ if (!is_string($payloadJson)) {
 
     .omo-decisions__filters-grid {
         grid-template-columns: 1fr;
-    }
-
-    .omo-decisions-card__action {
-        width: 100%;
-    }
-
-    .omo-decisions-card__actions {
-        width: 100%;
-        justify-content: stretch;
     }
 
     .omo-decisions__filters-toggle {
@@ -1651,11 +1461,79 @@ function showStateContainer(html, variant) {
     setVisible(elements.state, true);
 }
 
-function buildMetaItem(label, value) {
-    return '<span class="omo-decisions-card__meta-item"><strong>' + escapeHtml(label) + '</strong><span>' + escapeHtml(value) + '</span></span>';
-}
-
 function renderCard(item) {
+    const sharedCards = window.commonChoiceDecisionCards;
+    if (sharedCards && typeof sharedCards.renderCard === 'function') {
+        const owner = item && item.owner ? item.owner : {};
+        const ownerName = String(owner.displayName || '').trim();
+        const metaItems = [
+            {
+                label: payload.text.typeLabel || 'Type',
+                value: String(item.decisionTypeLabel || '')
+            },
+            {
+                label: payload.text.methodLabel || 'Methode',
+                value: String(item.evaluationMethodLabel || '')
+            },
+            {
+                label: String(item.scopeTypeLabel || payload.text.scopeLabel || 'Structure'),
+                value: String(item.holonLabel || '')
+            }
+        ];
+        const stats = [
+            {
+                value: String(Number(item.proposalCount || 0)),
+                label: payload.text.proposalsLabel || 'Propositions'
+            },
+            {
+                value: String(Number(item.participantCount || 0)),
+                label: payload.text.participantsLabel || 'Participants'
+            },
+            {
+                value: String(Number(item.responseCount || 0)),
+                label: payload.text.responsesLabel || 'Reponses'
+            }
+        ];
+        const dateItems = [];
+
+        if (ownerName !== '') {
+            metaItems.unshift({
+                label: payload.text.ownerLabel || 'En charge',
+                value: ownerName
+            });
+        }
+
+        if (item.deadlineLabel) {
+            dateItems.push({
+                label: payload.text.deadlineLabel || 'Echeance',
+                value: item.deadlineLabel
+            });
+        }
+
+        if (item.lastActivityLabel) {
+            dateItems.push({
+                label: payload.text.lastActivityLabel || 'Derniere activite',
+                value: item.lastActivityLabel
+            });
+        }
+
+        return sharedCards.renderCard({
+            title: String(item.title || ''),
+            description: String(item.description || '').trim(),
+            statusLabel: String(item.statusLabel || ''),
+            owner: owner,
+            badges: Array.isArray(item.badges) ? item.badges : [],
+            actions: Array.isArray(item.actions) ? item.actions : [],
+            metaItems: metaItems,
+            stats: stats,
+            dateItems: dateItems
+        }, {
+            fallbackTitle: payload.text.drawerTitle || 'Prises de decision',
+            openUrlAttribute: 'data-open-url',
+            openTitleAttribute: 'data-open-title'
+        });
+    }
+
     const article = document.createElement('article');
     article.className = 'omo-decisions-card generic-section generic-accordion generic-accordion--card generic-accordion--collapsible is-collapsed';
     article.setAttribute('data-generic-accordion', '1');
@@ -1859,6 +1737,18 @@ if (elements.filtersToggle) {
 
 window.omoDecisionOpenNestedDrawer = function (title, url, description) {
     openDecisionEditor(url, title, description);
+};
+
+window.omoRefreshDecisionView = function (url, options) {
+    const targetUrl = String(url || '').trim();
+    if (!targetUrl) {
+        return;
+    }
+
+    const settings = options && typeof options === 'object' ? options : {};
+    const title = String(settings.title || (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de decision')).trim();
+    const description = String(settings.description || '').trim();
+    openDecisionEditor(targetUrl, title, description);
 };
 
 window.omoDecisionCloseNestedDrawer = function () {

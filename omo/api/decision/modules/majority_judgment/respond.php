@@ -110,12 +110,6 @@ if (empty($saveResult['status'])) {
 omoDecisionModuleJsonResponse(200, [
     'status' => true,
     'message' => 'Vote enregistre.',
-    'redirectUrl' => omoDecisionBuildEditorUrl(
-        (int)$context['organizationId'],
-        (int)$context['targetHolonId'],
-        (int)$decision->getId(),
-        DecisionProcess::METHOD_MAJORITY_JUDGMENT,
-        'participate'
-    ),
+    'redirectUrl' => omoDecisionBuildContextualEditorUrl($context, 'participate'),
     'drawerTitle' => 'Prises de decision',
 ]);

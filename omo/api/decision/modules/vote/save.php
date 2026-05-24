@@ -45,9 +45,11 @@ $choiceMode = omoDecisionVoteNormalizeChoiceMode($_POST['choice_mode'] ?? 'singl
 $maxChoices = omoDecisionVoteNormalizeMaxChoices($_POST['max_choices'] ?? 1, $choiceMode);
 $isAnonymous = !empty($_POST['is_anonymous']);
 $allowConsultationProposals = !empty($_POST['allow_consultation_proposals']);
-$proposalLines = isset($_POST['proposals']) && is_array($_POST['proposals'])
-    ? omoDecisionModuleParseUniqueTextItems($_POST['proposals'])
-    : omoDecisionModuleParseUniqueTextItems($_POST['proposals_text'] ?? '');
+$proposalItems = omoDecisionBuildProposalItemsFromInput(
+    $_POST['proposals'] ?? [],
+    $_POST['proposal_descriptions'] ?? [],
+    $_POST['proposal_info_urls'] ?? []
+);
 
 if (!$coreLocked && $title === '') {
     omoDecisionModuleJsonResponse(400, [
@@ -56,7 +58,7 @@ if (!$coreLocked && $title === '') {
     ]);
 }
 
-if (!$coreLocked && count($proposalLines) < 2) {
+if (!$coreLocked && count($proposalItems) < 2) {
     omoDecisionModuleJsonResponse(400, [
         'status' => false,
         'message' => 'Un vote simple a besoin d au moins deux propositions.',
@@ -91,15 +93,15 @@ $currentVoteConfig = $decision instanceof DecisionProcess
     ];
 $canEditProposals = !$coreLocked || (!$startDatesLocked && !empty($currentVoteConfig['allow_consultation_proposals']));
 
-if ($canEditProposals && count($proposalLines) < 2) {
+if ($canEditProposals && count($proposalItems) < 2) {
     omoDecisionModuleJsonResponse(400, [
         'status' => false,
         'message' => 'Un vote simple a besoin d au moins deux propositions.',
     ]);
 }
 
-if (!$coreLocked && $choiceMode === 'multiple' && $maxChoices > 0 && $maxChoices > count($proposalLines)) {
-    $maxChoices = max(count($proposalLines), 1);
+if (!$coreLocked && $choiceMode === 'multiple' && $maxChoices > 0 && $maxChoices > count($proposalItems)) {
+    $maxChoices = max(count($proposalItems), 1);
 }
 
 $pdo = DbObject::getPdo();
@@ -132,8 +134,8 @@ try {
 
     $existingVoteParameters = omoDecisionModuleGetMethodParameters($decision->get('parameters'), omoDecisionVoteGetMethodKey());
     $proposalCount = $canEditProposals
-        ? count($proposalLines)
-        : (int)($existingVoteParameters['proposal_count'] ?? count($proposalLines));
+        ? count($proposalItems)
+        : (int)($existingVoteParameters['proposal_count'] ?? count($proposalItems));
     $extraParameters = [
         'proposal_count' => $proposalCount,
         'created_from_module' => 'vote',
@@ -187,11 +189,12 @@ try {
             $existingActiveProposals[] = $proposal;
         }
 
-        foreach ($proposalLines as $index => $proposalTitle) {
+        foreach ($proposalItems as $index => $proposalItem) {
             $proposal = $existingActiveProposals[$index] ?? new DecisionProposal();
             $proposal->set('IDdecision_process', $decisionId);
-            $proposal->set('title', $proposalTitle);
-            $proposal->set('description', null);
+            $proposal->set('title', (string)$proposalItem['title']);
+            $proposal->set('description', $proposalItem['description'] ?? null);
+            $proposal->set('info_url', $proposalItem['info_url'] ?? null);
             $proposal->set('position', $index + 1);
             $proposal->set('parameters', [
                 omoDecisionVoteGetMethodKey() => [
@@ -206,7 +209,7 @@ try {
             }
         }
 
-        for ($index = count($proposalLines); $index < count($existingActiveProposals); $index++) {
+        for ($index = count($proposalItems); $index < count($existingActiveProposals); $index++) {
             $proposal = $existingActiveProposals[$index];
             $proposal->set('active', 0);
             $saveProposal = $proposal->save();

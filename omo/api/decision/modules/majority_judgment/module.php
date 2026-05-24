@@ -34,9 +34,12 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleGetSourceLang')) {
             'decisions.majority_judgment.field.proposals_remove' => ['text' => 'Supprimer', 'context' => 'Button label to remove a proposal field.'],
             'decisions.majority_judgment.field.proposals_reorder' => ['text' => 'Reordonner', 'context' => 'Aria label for the proposal drag handle.'],
             'decisions.majority_judgment.field.proposals_item' => ['text' => 'Proposition {index}', 'context' => 'Visible label prefix for one proposal row.'],
+            'decisions.majority_judgment.field.proposal_details' => ['text' => 'Details', 'context' => 'Button label opening the proposal detail popup.'],
+            'decisions.majority_judgment.field.proposal_description' => ['text' => 'Description de la proposition', 'context' => 'Label for the proposal description field.'],
+            'decisions.majority_judgment.field.proposal_info_url' => ['text' => 'URL d information', 'context' => 'Label for the proposal info URL field.'],
             'decisions.majority_judgment.field.settings' => ['text' => 'Parametres du scrutin', 'context' => 'Section title for judgment-specific settings.'],
             'decisions.majority_judgment.field.scale' => ['text' => 'Echelle de mentions', 'context' => 'Label for the scale summary.'],
-            'decisions.majority_judgment.field.scale_summary' => ['text' => '7 mentions de "A rejeter" a "Parfaitement"', 'context' => 'Summary label for the fixed majority judgment scale.'],
+            'decisions.majority_judgment.field.scale_summary' => ['text' => '7 mentions de "Aucunement" a "Parfaitement"', 'context' => 'Summary label for the fixed majority judgment scale.'],
             'decisions.majority_judgment.field.anonymous' => ['text' => 'Vote anonyme', 'context' => 'Label for the anonymity setting.'],
             'decisions.majority_judgment.field.allow_consultation_proposals' => ['text' => 'Autoriser les propositions pendant la consultation', 'context' => 'Label for allowing proposals during consultation.'],
             'decisions.majority_judgment.field.your_scores' => ['text' => 'Vos mentions', 'context' => 'Legend for the participant scoring fieldset.'],
@@ -59,12 +62,14 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleGetSourceLang')) {
             'decisions.majority_judgment.placeholder.title' => ['text' => 'Ex. Prioriser les prochains chantiers', 'context' => 'Placeholder for the title field.'],
             'decisions.majority_judgment.placeholder.description' => ['text' => 'Contexte, consignes, informations utiles...', 'context' => 'Placeholder for the description field.'],
             'decisions.majority_judgment.placeholder.proposals' => ['text' => 'Nom de la proposition', 'context' => 'Placeholder for one proposal input.'],
+            'decisions.majority_judgment.placeholder.proposal_info_url' => ['text' => 'https://...', 'context' => 'Placeholder for one proposal info URL input.'],
             'decisions.majority_judgment.action.create' => ['text' => 'Creer le scrutin', 'context' => 'Submit label for a new majority judgment.'],
             'decisions.majority_judgment.action.save' => ['text' => 'Enregistrer le scrutin', 'context' => 'Submit label for an existing majority judgment.'],
             'decisions.majority_judgment.action.saving' => ['text' => 'Enregistrement...', 'context' => 'Temporary label while saving.'],
             'decisions.majority_judgment.action.configure' => ['text' => 'Configurer', 'context' => 'Button label to open the settings modal.'],
             'decisions.majority_judgment.action.close' => ['text' => 'Fermer', 'context' => 'Button label to close the settings modal.'],
             'decisions.majority_judgment.action.apply' => ['text' => 'Appliquer', 'context' => 'Button label to apply the settings modal changes.'],
+            'decisions.majority_judgment.action.proposal_apply' => ['text' => 'Enregistrer les details', 'context' => 'Button label used to save proposal detail popup fields.'],
             'decisions.majority_judgment.action.submit_response' => ['text' => 'Enregistrer mes mentions', 'context' => 'Submit label for a new response.'],
             'decisions.majority_judgment.action.update_response' => ['text' => 'Mettre a jour mes mentions', 'context' => 'Submit label when updating an existing response.'],
             'decisions.majority_judgment.action.submitting_response' => ['text' => 'Enregistrement du vote...', 'context' => 'Temporary label while saving a response.'],
@@ -113,18 +118,25 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
             : DecisionProcess::STATUS_DRAFT;
 
         $proposalObjects = [];
-        $proposalLines = [];
+        $proposalItems = [];
         if ($decision instanceof DecisionProcess) {
             foreach ($decision->getProposals(true) as $proposal) {
                 $proposalObjects[] = $proposal;
-                $proposalLines[] = trim((string)$proposal->get('title'));
+                $proposalItems[] = [
+                    'title' => trim((string)$proposal->get('title')),
+                    'description' => trim((string)$proposal->get('description')) ?: null,
+                    'info_url' => omoDecisionNormalizeProposalInfoUrl($proposal->get('info_url')),
+                ];
             }
         }
 
-        if (count($proposalLines) === 0) {
-            $proposalLines = ['', ''];
-        } elseif (count($proposalLines) === 1) {
-            $proposalLines[] = '';
+        if (count($proposalItems) === 0) {
+            $proposalItems = [
+                ['title' => '', 'description' => null, 'info_url' => null],
+                ['title' => '', 'description' => null, 'info_url' => null],
+            ];
+        } elseif (count($proposalItems) === 1) {
+            $proposalItems[] = ['title' => '', 'description' => null, 'info_url' => null];
         }
 
         $config = $decision instanceof DecisionProcess
@@ -144,6 +156,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
         $canEditStructure = $isEditable && !$coreLocked;
         $canEditProposals = $isEditable && (!$consultationStarted || (!$hasSubmittedResponses && $allowConsultationProposals));
         $canEditStartDates = $isEditable && !$startDatesLocked;
+        $publicLayout = (($context['accessMode'] ?? '') === 'public') || !empty($context['previewLayout']);
 
         $participant = $context['participant'] ?? null;
         $selectedResponse = null;
@@ -175,13 +188,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
 
         $managePayload = [
             'saveUrl' => '/omo/api/decision/modules/majority_judgment/save.php',
-            'redirectUrl' => omoDecisionBuildEditorUrl(
-                (int)$context['organizationId'],
-                (int)$context['targetHolonId'],
-                $decision instanceof DecisionProcess ? (int)$decision->getId() : 0,
-                DecisionProcess::METHOD_MAJORITY_JUDGMENT,
-                'manage'
-            ),
+            'redirectUrl' => omoDecisionBuildContextualEditorUrl($context, 'manage'),
             'drawerTitle' => t('decisions.majority_judgment.drawer_title', [], $lang, $sourceLang),
             'proposalEditable' => $canEditProposals,
             'texts' => [
@@ -192,8 +199,13 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                 'success' => t('decisions.majority_judgment.feedback.success', [], $lang, $sourceLang),
                 'error' => t('decisions.majority_judgment.feedback.error', [], $lang, $sourceLang),
                 'proposalPlaceholder' => t('decisions.majority_judgment.placeholder.proposals', [], $lang, $sourceLang),
+                'proposalInfoUrlPlaceholder' => t('decisions.majority_judgment.placeholder.proposal_info_url', [], $lang, $sourceLang),
                 'proposalRemove' => t('decisions.majority_judgment.field.proposals_remove', [], $lang, $sourceLang),
                 'proposalReorder' => t('decisions.majority_judgment.field.proposals_reorder', [], $lang, $sourceLang),
+                'proposalDetails' => t('decisions.majority_judgment.field.proposal_details', [], $lang, $sourceLang),
+                'proposalDescriptionLabel' => t('decisions.majority_judgment.field.proposal_description', [], $lang, $sourceLang),
+                'proposalInfoUrlLabel' => t('decisions.majority_judgment.field.proposal_info_url', [], $lang, $sourceLang),
+                'proposalApply' => t('decisions.majority_judgment.action.proposal_apply', [], $lang, $sourceLang),
                 'proposalItemTemplate' => t('decisions.majority_judgment.field.proposals_item', ['index' => '__INDEX__'], $lang, $sourceLang),
                 'yesLabel' => t('decisions.majority_judgment.option.common.yes', [], $lang, $sourceLang),
                 'noLabel' => t('decisions.majority_judgment.option.common.no', [], $lang, $sourceLang),
@@ -202,13 +214,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
 
         $responsePayload = [
             'saveUrl' => '/omo/api/decision/modules/majority_judgment/respond.php',
-            'redirectUrl' => omoDecisionBuildEditorUrl(
-                (int)$context['organizationId'],
-                (int)$context['targetHolonId'],
-                $decision instanceof DecisionProcess ? (int)$decision->getId() : 0,
-                DecisionProcess::METHOD_MAJORITY_JUDGMENT,
-                'participate'
-            ),
+            'redirectUrl' => omoDecisionBuildContextualEditorUrl($context, 'participate'),
             'drawerTitle' => t('decisions.majority_judgment.drawer_title', [], $lang, $sourceLang),
             'texts' => [
                 'save' => $selectedResponse instanceof DecisionResponse
@@ -228,8 +234,12 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
             $responsePayload,
             '{"saveUrl":"","redirectUrl":"","drawerTitle":"","texts":{}}'
         );
+        $consultationProposalPanel = ($publicLayout && $decision instanceof DecisionProcess)
+            ? omoDecisionRenderConsultationProposalPublicPanel($decision, $context, $escape, 'omo-decision-majority-judgment__consultation-panel')
+            : '';
         ?>
         <section class="generic-section generic-section--stack omo-decision-majority-judgment">
+            <?php if (!$publicLayout): ?>
             <div class="omo-decision-majority-judgment__head">
                 <div class="omo-decision-majority-judgment__copy">
                     <h3 class="generic-card-title generic-card-title--section"><?= $escape(t($headerTitleKey, [], $lang, $sourceLang)) ?></h3>
@@ -247,8 +257,9 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                 </a>
                 <?php endif; ?>
             </div>
+            <?php endif; ?>
 
-            <?php if ($resultsMode): ?>
+            <?php if ($resultsMode && !$publicLayout): ?>
             <div class="generic-soft-panel generic-soft-panel--stack omo-decision-majority-judgment__notice">
                 <p class="omo-decision-majority-judgment__text"><?= $escape(t('decisions.majority_judgment.notice.results', [], $lang, $sourceLang)) ?></p>
             </div>
@@ -272,6 +283,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                     <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                     <input type="hidden" name="id" value="<?= $escape($decision instanceof DecisionProcess ? (int)$decision->getId() : 0) ?>">
                     <input type="hidden" name="intent" value="manage">
+                    <?= omoDecisionRenderPublicTokenInput($context, $escape) ?>
                     <input type="hidden" name="evaluation_method" value="<?= $escape(DecisionProcess::METHOD_MAJORITY_JUDGMENT) ?>">
 
                     <div class="omo-decision-majority-judgment__grid">
@@ -386,13 +398,16 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                     <label class="omo-decision-majority-judgment__field">
                         <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.proposals', [], $lang, $sourceLang)) ?></span>
                         <div class="omo-decision-majority-judgment__proposal-list" data-omo-decision-mj-proposal-list>
-                            <?php foreach ($proposalLines as $proposalIndex => $proposalLine): ?>
+                            <?php foreach ($proposalItems as $proposalIndex => $proposalItem): ?>
                             <div class="omo-decision-majority-judgment__proposal-card" data-omo-decision-mj-proposal-card draggable="<?= $canEditProposals ? 'true' : 'false' ?>">
                                 <button type="button" class="omo-decision-majority-judgment__proposal-drag" data-omo-decision-mj-proposal-drag title="<?= $escape(t('decisions.majority_judgment.field.proposals_reorder', [], $lang, $sourceLang)) ?>" aria-label="<?= $escape(t('decisions.majority_judgment.field.proposals_reorder', [], $lang, $sourceLang)) ?>" <?= $canEditProposals ? '' : 'disabled' ?>>&#8942;&#8942;</button>
                                 <div class="omo-decision-majority-judgment__proposal-main">
                                     <span class="omo-decision-majority-judgment__proposal-label" data-omo-decision-mj-proposal-label><?= $escape(str_replace('{index}', (string)($proposalIndex + 1), t('decisions.majority_judgment.field.proposals_item', ['index' => (string)($proposalIndex + 1)], $lang, $sourceLang))) ?></span>
-                                    <input type="text" name="proposals[]" class="generic-form-control" value="<?= $escape($proposalLine) ?>" placeholder="<?= $escape(t('decisions.majority_judgment.placeholder.proposals', [], $lang, $sourceLang)) ?>" <?= $canEditProposals ? '' : 'disabled' ?>>
+                                    <input type="text" name="proposals[]" class="generic-form-control" value="<?= $escape((string)$proposalItem['title']) ?>" placeholder="<?= $escape(t('decisions.majority_judgment.placeholder.proposals', [], $lang, $sourceLang)) ?>" <?= $canEditProposals ? '' : 'disabled' ?>>
+                                    <input type="hidden" name="proposal_descriptions[]" value="<?= $escape((string)($proposalItem['description'] ?? '')) ?>" data-omo-decision-mj-proposal-description>
+                                    <input type="hidden" name="proposal_info_urls[]" value="<?= $escape((string)($proposalItem['info_url'] ?? '')) ?>" data-omo-decision-mj-proposal-info-url>
                                 </div>
+                                <button type="button" class="generic-action-button generic-action-button--secondary omo-decision-majority-judgment__proposal-settings" data-omo-decision-mj-proposal-settings title="<?= $escape(t('decisions.majority_judgment.field.proposal_details', [], $lang, $sourceLang)) ?>" aria-label="<?= $escape(t('decisions.majority_judgment.field.proposal_details', [], $lang, $sourceLang)) ?>">&#9881;</button>
                                 <button type="button" class="generic-action-button generic-action-button--secondary omo-decision-majority-judgment__proposal-remove" data-omo-decision-mj-proposal-remove <?= $canEditProposals ? '' : 'disabled' ?>><?= $escape(t('decisions.majority_judgment.field.proposals_remove', [], $lang, $sourceLang)) ?></button>
                             </div>
                             <?php endforeach; ?>
@@ -411,6 +426,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                     <script type="application/json" data-omo-decision-mj-data><?= $managePayloadJson ?></script>
                 </form>
             <?php else: ?>
+                <?php if (!$publicLayout): ?>
                 <div class="omo-decision-majority-judgment__summary-grid">
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.majority_judgment.field.status', [], $lang, $sourceLang), t('decisions.majority_judgment.option.status.' . $status, [], $lang, $sourceLang), $escape, 'omo-decision-majority-judgment__meta-card') ?>
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.majority_judgment.field.type', [], $lang, $sourceLang), $decisionType === DecisionProcess::TYPE_CONSULTATION ? t('decisions.majority_judgment.option.type.consultation', [], $lang, $sourceLang) : t('decisions.majority_judgment.option.type.decision', [], $lang, $sourceLang), $escape, 'omo-decision-majority-judgment__meta-card') ?>
@@ -423,8 +439,9 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.majority_judgment.field.total_votes', [], $lang, $sourceLang), (string)$submittedVoteCount, $escape, 'omo-decision-majority-judgment__meta-card') ?>
                     <?php endif; ?>
                 </div>
+                <?php endif; ?>
 
-                <?php if ($decision instanceof DecisionProcess && trim((string)$decision->get('description')) !== ''): ?>
+                <?php if (!$publicLayout && $decision instanceof DecisionProcess && trim((string)$decision->get('description')) !== ''): ?>
                 <div class="generic-soft-panel generic-soft-panel--stack">
                     <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.description', [], $lang, $sourceLang)) ?></span>
                     <p class="omo-decision-majority-judgment__text"><?= nl2br($escape(trim((string)$decision->get('description')))) ?></p>
@@ -437,10 +454,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                     <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                     <input type="hidden" name="id" value="<?= $escape($decision instanceof DecisionProcess ? (int)$decision->getId() : 0) ?>">
                     <input type="hidden" name="intent" value="participate">
+                    <?= omoDecisionRenderPublicTokenInput($context, $escape) ?>
 
-                    <fieldset class="omo-decision-majority-judgment__fieldset">
-                        <legend class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.your_scores', [], $lang, $sourceLang)) ?></legend>
-                        <p class="omo-decision-majority-judgment__text"><?= $escape(t('decisions.majority_judgment.field.select_all', [], $lang, $sourceLang)) ?></p>
 
                         <?php if (count($proposalObjects) === 0): ?>
                         <p class="omo-decision-majority-judgment__text"><?= $escape(t('decisions.majority_judgment.empty_proposals', [], $lang, $sourceLang)) ?></p>
@@ -451,15 +466,24 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                             <div class="generic-soft-panel generic-soft-panel--stack omo-decision-majority-judgment__rating-card">
                                 <div class="omo-decision-majority-judgment__rating-head">
                                     <strong><?= $escape(trim((string)$proposal->get('title'))) ?></strong>
+                                    <?= omoDecisionRenderProposalSupplementHtml($proposal->get('description'), $proposal->get('info_url'), $escape, 'omo-decision-majority-judgment__text', 'omo-decision-majority-judgment__link') ?>
                                 </div>
-                                <div class="omo-decision-majority-judgment__rating-scale">
+                                <div class="omo-decision-majority-judgment__rating-scale" role="radiogroup" aria-label="<?= $escape(t('decisions.majority_judgment.field.your_scores', [], $lang, $sourceLang)) ?>">
                                     <?php foreach ($mentions as $score => $mentionLabel): ?>
-                                    <div class="omo-decision-majority-judgment__rating-option<?= array_key_exists($proposalId, $selectedScores) && (int)$selectedScores[$proposalId] === (int)$score ? ' is-selected' : '' ?>">
+                                    <div class="omo-decision-majority-judgment__rating-option omo-decision-majority-judgment__rating-option--<?= $escape((string)$score) ?><?= array_key_exists($proposalId, $selectedScores) && (int)$selectedScores[$proposalId] === (int)$score ? ' is-selected' : '' ?>">
                                         <input class="omo-decision-majority-judgment__rating-input" type="radio" name="scores[<?= $escape($proposalId) ?>]" value="<?= $escape($score) ?>" <?= array_key_exists($proposalId, $selectedScores) && (int)$selectedScores[$proposalId] === (int)$score ? 'checked' : '' ?> required>
-                                        <button type="button" class="omo-decision-majority-judgment__rating-chip" data-omo-decision-mj-rating-trigger aria-pressed="<?= array_key_exists($proposalId, $selectedScores) && (int)$selectedScores[$proposalId] === (int)$score ? 'true' : 'false' ?>">
-                                            <strong><?= $escape((string)$score) ?></strong>
-                                            <small><?= $escape($mentionLabel) ?></small>
-                                        </button>
+                                        <label
+                                            class="omo-decision-majority-judgment__rating-chip"
+                                            data-omo-decision-mj-rating-trigger
+                                            title="<?= $escape($mentionLabel) ?>"
+                                            aria-label="<?= $escape($mentionLabel) ?>"
+                                            aria-checked="<?= array_key_exists($proposalId, $selectedScores) && (int)$selectedScores[$proposalId] === (int)$score ? 'true' : 'false' ?>"
+                                            role="radio"
+                                            tabindex="0"
+                                        >
+                                            <span class="omo-decision-majority-judgment__rating-chip-check" aria-hidden="true">L</span>
+                                            <span class="omo-decision-majority-judgment__sr-only"><?= $escape($mentionLabel) ?></span>
+                                        </label>
                                     </div>
                                     <?php endforeach; ?>
                                 </div>
@@ -467,7 +491,10 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                             <?php endforeach; ?>
                         </div>
                         <?php endif; ?>
-                    </fieldset>
+
+                    <?php if ($consultationProposalPanel !== ''): ?>
+                    <?= $consultationProposalPanel ?>
+                    <?php endif; ?>
 
                     <div class="omo-decision-majority-judgment__footer">
                         <button type="submit" class="generic-action-button generic-action-button--main" data-omo-decision-mj-response-submit><?= $escape($selectedResponse instanceof DecisionResponse ? t('decisions.majority_judgment.action.update_response', [], $lang, $sourceLang) : t('decisions.majority_judgment.action.submit_response', [], $lang, $sourceLang)) ?></button>
@@ -493,13 +520,16 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         ?>
                         <div class="omo-decision-majority-judgment__result-card<?= array_key_exists($proposalId, $selectedScores) ? ' is-selected' : '' ?>">
                             <div class="omo-decision-majority-judgment__result-head">
-                                <strong><?= $escape(trim((string)$proposal->get('title'))) ?></strong>
+                                <div>
+                                    <strong><?= $escape(trim((string)$proposal->get('title'))) ?></strong>
+                                    <?= omoDecisionRenderProposalSupplementHtml($proposal->get('description'), $proposal->get('info_url'), $escape, 'omo-decision-majority-judgment__text', 'omo-decision-majority-judgment__link') ?>
+                                </div>
                                 <?php if ($resultsMode && $stat['count'] > 0): ?>
-                                <span class="omo-decision-majority-judgment__majority-badge">
+                                <span class="omo-decision-majority-judgment__majority-badge omo-decision-majority-judgment__majority-badge--<?= $escape((string)$stat['majority_score']) ?>">
                                     <?= $escape(t('decisions.majority_judgment.field.majority_mention', [], $lang, $sourceLang)) ?>: <?= $escape((string)$stat['majority_label']) ?>
                                 </span>
                                 <?php elseif (array_key_exists($proposalId, $selectedScores)): ?>
-                                <span class="omo-decision-majority-judgment__majority-badge">
+                                <span class="omo-decision-majority-judgment__majority-badge omo-decision-majority-judgment__majority-badge--<?= $escape((string)$selectedScores[$proposalId]) ?>">
                                     <?= $escape((string)$mentions[(int)$selectedScores[$proposalId]]) ?>
                                 </span>
                                 <?php endif; ?>
@@ -544,6 +574,9 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         </div>
                         <?php endforeach; ?>
                     </div>
+                    <?php if ($consultationProposalPanel !== ''): ?>
+                    <?= $consultationProposalPanel ?>
+                    <?php endif; ?>
                 </div>
                 <?php endif; ?>
             <?php endif; ?>
@@ -578,6 +611,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         const proposalAddButton = form.querySelector('[data-omo-decision-mj-proposal-add]');
                         const settingsOpenButton = form.querySelector('[data-omo-decision-mj-settings-open]');
                         const invitationOpenButton = form.querySelector('[data-omo-decision-invitations-open]');
+                        const invitationSendOpenButton = form.querySelector('[data-omo-decision-invitations-send-open]');
                         const settingsTemplate = form.querySelector('[data-omo-decision-mj-settings-template]');
                         const hiddenAnonymousInput = form.querySelector('[data-omo-decision-mj-hidden-anonymous]');
                         const hiddenConsultationInput = form.querySelector('[data-omo-decision-mj-hidden-consultation-proposals]');
@@ -629,6 +663,25 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                 invitationOpenButton.getAttribute('data-omo-decision-invitations-title')
                                 || invitationOpenButton.textContent
                                 || 'Inviter des participants'
+                            );
+
+                            window.commonTopbarOpenModal(invitationTitle, invitationUrl, 'fetch');
+                        };
+
+                        const openInvitationSendModal = function () {
+                            if (!invitationSendOpenButton || typeof window.commonTopbarOpenModal !== 'function') {
+                                return;
+                            }
+
+                            const invitationUrl = String(invitationSendOpenButton.getAttribute('data-omo-decision-invitations-send-url') || '');
+                            if (invitationUrl === '') {
+                                return;
+                            }
+
+                            const invitationTitle = String(
+                                invitationSendOpenButton.getAttribute('data-omo-decision-invitations-send-title')
+                                || invitationSendOpenButton.textContent
+                                || 'Envoyer les invitations'
                             );
 
                             window.commonTopbarOpenModal(invitationTitle, invitationUrl, 'fetch');
@@ -704,6 +757,79 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                             }
 
                             const removeButton = card.querySelector('[data-omo-decision-mj-proposal-remove]');
+                            const detailsButton = card.querySelector('[data-omo-decision-mj-proposal-settings]');
+                            const titleInput = card.querySelector('input[name="proposals[]"]');
+                            const descriptionInput = card.querySelector('[data-omo-decision-mj-proposal-description]');
+                            const infoUrlInput = card.querySelector('[data-omo-decision-mj-proposal-info-url]');
+
+                            if (detailsButton) {
+                                detailsButton.addEventListener('click', function () {
+                                    if (detailsButton.disabled || typeof window.commonTopbarOpenModal !== 'function') {
+                                        return;
+                                    }
+
+                                    const proposalLabelNode = card.querySelector('[data-omo-decision-mj-proposal-label]');
+                                    const modalTitle = proposalLabelNode
+                                        ? String(proposalLabelNode.textContent || '').trim()
+                                        : String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : 'Details');
+                                    const modalHtml = ''
+                                        + '<div class="generic-section generic-section--stack" style="display:grid;gap:12px;">'
+                                        + '  <label style="display:grid;gap:6px;">'
+                                        + '    <span class="generic-card-title generic-card-title--small">' + String(payload.texts && payload.texts.proposalDescriptionLabel ? payload.texts.proposalDescriptionLabel : 'Description') + '</span>'
+                                        + '    <textarea class="generic-form-control" rows="6" data-omo-decision-mj-proposal-modal-description></textarea>'
+                                        + '  </label>'
+                                        + '  <label style="display:grid;gap:6px;">'
+                                        + '    <span class="generic-card-title generic-card-title--small">' + String(payload.texts && payload.texts.proposalInfoUrlLabel ? payload.texts.proposalInfoUrlLabel : 'URL') + '</span>'
+                                        + '    <input type="url" class="generic-form-control" data-omo-decision-mj-proposal-modal-info-url placeholder="' + String(payload.texts && payload.texts.proposalInfoUrlPlaceholder ? payload.texts.proposalInfoUrlPlaceholder : 'https://...') + '">'
+                                        + '  </label>'
+                                        + '  <div style="display:flex;justify-content:flex-end;gap:8px;">'
+                                        + '    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-mj-proposal-modal-cancel>Fermer</button>'
+                                        + '    <button type="button" class="generic-action-button generic-action-button--main" data-omo-decision-mj-proposal-modal-apply>' + String(payload.texts && payload.texts.proposalApply ? payload.texts.proposalApply : 'Enregistrer') + '</button>'
+                                        + '  </div>'
+                                        + '</div>';
+
+                                    window.commonTopbarOpenModal(modalTitle || 'Details', modalHtml, 'html');
+                                    const modalBody = document.getElementById('commonTopbarModalBody');
+                                    if (!modalBody) {
+                                        return;
+                                    }
+
+                                    const modalDescription = modalBody.querySelector('[data-omo-decision-mj-proposal-modal-description]');
+                                    const modalInfoUrl = modalBody.querySelector('[data-omo-decision-mj-proposal-modal-info-url]');
+                                    const modalCancel = modalBody.querySelector('[data-omo-decision-mj-proposal-modal-cancel]');
+                                    const modalApply = modalBody.querySelector('[data-omo-decision-mj-proposal-modal-apply]');
+                                    if (modalDescription) {
+                                        modalDescription.value = descriptionInput ? String(descriptionInput.value || '') : '';
+                                    }
+                                    if (modalInfoUrl) {
+                                        modalInfoUrl.value = infoUrlInput ? String(infoUrlInput.value || '') : '';
+                                    }
+                                    if (modalCancel) {
+                                        modalCancel.addEventListener('click', function () {
+                                            if (typeof window.commonTopbarCloseModal === 'function') {
+                                                window.commonTopbarCloseModal();
+                                            }
+                                        });
+                                    }
+                                    if (modalApply) {
+                                        modalApply.addEventListener('click', function () {
+                                            if (descriptionInput && modalDescription) {
+                                                descriptionInput.value = String(modalDescription.value || '').trim();
+                                            }
+                                            if (infoUrlInput && modalInfoUrl) {
+                                                infoUrlInput.value = String(modalInfoUrl.value || '').trim();
+                                            }
+                                            if (typeof window.commonTopbarCloseModal === 'function') {
+                                                window.commonTopbarCloseModal();
+                                            }
+                                            if (titleInput) {
+                                                titleInput.focus();
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+
                             if (removeButton && !removeButton.disabled) {
                                 removeButton.addEventListener('click', function () {
                                     card.parentNode.removeChild(card);
@@ -728,7 +854,10 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                 + '<div class="omo-decision-majority-judgment__proposal-main">'
                                 + '    <span class="omo-decision-majority-judgment__proposal-label" data-omo-decision-mj-proposal-label></span>'
                                 + '    <input type="text" name="proposals[]" class="generic-form-control" placeholder="' + String(payload.texts && payload.texts.proposalPlaceholder ? payload.texts.proposalPlaceholder : 'Nom de la proposition') + '">'
+                                + '    <input type="hidden" name="proposal_descriptions[]" value="" data-omo-decision-mj-proposal-description>'
+                                + '    <input type="hidden" name="proposal_info_urls[]" value="" data-omo-decision-mj-proposal-info-url>'
                                 + '</div>'
+                                + '<button type="button" class="generic-action-button generic-action-button--secondary omo-decision-majority-judgment__proposal-settings" data-omo-decision-mj-proposal-settings title="' + String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : 'Details') + '" aria-label="' + String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : 'Details') + '">&#9881;</button>'
                                 + '<button type="button" class="generic-action-button generic-action-button--secondary omo-decision-majority-judgment__proposal-remove" data-omo-decision-mj-proposal-remove>' + String(payload.texts && payload.texts.proposalRemove ? payload.texts.proposalRemove : 'Supprimer') + '</button>';
 
                             const input = card.querySelector('input[name="proposals[]"]');
@@ -754,6 +883,10 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
 
                         if (invitationOpenButton) {
                             invitationOpenButton.addEventListener('click', openInvitationModal);
+                        }
+
+                        if (invitationSendOpenButton) {
+                            invitationSendOpenButton.addEventListener('click', openInvitationSendModal);
                         }
 
                         if (payload.proposalEditable && typeof window.commonCreateVerticalSortableList === 'function') {
@@ -870,7 +1003,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                 const isSelected = !!(radio && radio.checked);
                                 ratingOption.classList.toggle('is-selected', isSelected);
                                 if (trigger) {
-                                    trigger.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+                                    trigger.setAttribute('aria-checked', isSelected ? 'true' : 'false');
                                 }
                             });
                         };
@@ -904,6 +1037,20 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                             }
 
                             syncRatingState();
+                        });
+
+                        form.addEventListener('keydown', function (event) {
+                            const trigger = event.target.closest('[data-omo-decision-mj-rating-trigger]');
+                            if (!trigger || !form.contains(trigger)) {
+                                return;
+                            }
+
+                            if (event.key !== ' ' && event.key !== 'Enter') {
+                                return;
+                            }
+
+                            event.preventDefault();
+                            trigger.click();
                         });
 
                         syncRatingState();
@@ -966,6 +1113,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
         .omo-decision-majority-judgment {
             display: grid;
             gap: 16px;
+            touch-action: pan-y pinch-zoom;
         }
 
         .omo-decision-majority-judgment__head,
@@ -1015,6 +1163,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
         .omo-decision-majority-judgment__result-list {
             display: grid;
             gap: 12px;
+            touch-action: pan-y pinch-zoom;
         }
 
         .omo-decision-majority-judgment__proposal-card {
@@ -1067,23 +1216,38 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
         }
 
         .omo-decision-majority-judgment__feedback.is-error {
-            color: #b42318;
+            color: var(--color-danger, #b42318);
         }
 
         .omo-decision-majority-judgment__feedback.is-success {
-            color: #027a48;
+            color: var(--color-success, #027a48);
         }
 
         .omo-decision-majority-judgment__rating-scale {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
-            gap: 8px;
+            display: flex;
+            align-items: stretch;
+            width: 100%;
+            overflow: hidden;
+            touch-action: pan-y pinch-zoom;
+            border-radius: 10px;
+            border: 1px solid color-mix(in srgb, var(--color-text-light, #64748b) 20%, var(--color-surface, #ffffff));
+            background: color-mix(in srgb, var(--color-text-light, #64748b) 8%, var(--color-surface, #ffffff));
+            box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-surface, #ffffff) 78%, transparent);
         }
 
         .omo-decision-majority-judgment__rating-option {
             display: block;
             position: relative;
+            flex: 1 1 0;
         }
+
+        .omo-decision-majority-judgment__rating-option--0 { --omo-decision-mj-score: var(--color-palette-red, #c62828); }
+        .omo-decision-majority-judgment__rating-option--1 { --omo-decision-mj-score: var(--color-palette-orange, #ef6c00); }
+        .omo-decision-majority-judgment__rating-option--2 { --omo-decision-mj-score: var(--color-palette-yellow, #f9a825); }
+        .omo-decision-majority-judgment__rating-option--3 { --omo-decision-mj-score: var(--color-palette-gray, #9ca3af); }
+        .omo-decision-majority-judgment__rating-option--4 { --omo-decision-mj-score: var(--color-palette-green-light, #9ccc65); }
+        .omo-decision-majority-judgment__rating-option--5 { --omo-decision-mj-score: var(--color-palette-green-medium, #43a047); }
+        .omo-decision-majority-judgment__rating-option--6 { --omo-decision-mj-score: var(--color-palette-green-dark, #1b5e20); }
 
         .omo-decision-majority-judgment__rating-input {
             position: absolute;
@@ -1094,32 +1258,84 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
         }
 
         .omo-decision-majority-judgment__rating-chip {
-            display: grid;
-            gap: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             width: 100%;
-            min-height: 74px;
-            padding: 10px;
-            border-radius: 14px;
-            border: 1px solid color-mix(in srgb, var(--color-text-light, #64748b) 18%, white);
-            background: white;
-            text-align: left;
+            min-height: 48px;
+            padding: 0;
+            border: 0;
+            border-radius: 0;
+            background: var(--omo-decision-mj-score, var(--color-primary, #2563eb));
             cursor: pointer;
             font: inherit;
-            color: inherit;
+            color: var(--color-surface, #ffffff);
+            transition: filter 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+            position: relative;
+            touch-action: pan-y pinch-zoom;
         }
 
-        .omo-decision-majority-judgment__rating-chip strong {
-            font-size: 16px;
+        .omo-decision-majority-judgment__rating-chip::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            background:
+                radial-gradient(circle at 50% 32%, rgba(255, 255, 255, 0.22), transparent 52%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 38%, rgba(0, 0, 0, 0.12) 100%);
+            pointer-events: none;
         }
 
-        .omo-decision-majority-judgment__rating-chip small {
-            color: var(--color-text-light, #475569);
-            line-height: 1.3;
+        .omo-decision-majority-judgment__rating-option + .omo-decision-majority-judgment__rating-option .omo-decision-majority-judgment__rating-chip {
+            box-shadow: inset 1px 0 0 color-mix(in srgb, var(--color-surface, #ffffff) 30%, transparent);
+        }
+
+        .omo-decision-majority-judgment__rating-chip:hover,
+        .omo-decision-majority-judgment__rating-chip:focus-visible {
+            filter: brightness(1.05);
+            outline: none;
+        }
+
+        .omo-decision-majority-judgment__rating-chip-check {
+            font-size: 30px;
+            font-weight: 900;
+            line-height: 1;
+            opacity: 0;
+            transform: scaleX(-1) rotate(-45deg) scale(0.7);
+            transform-origin: center;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+            text-shadow:
+                0 1px 2px rgba(0, 0, 0, 0.25),
+                0 0 8px rgba(255, 255, 255, 0.18);
+            position: relative;
+            z-index: 1;
+            color: #ffffff;
         }
 
         .omo-decision-majority-judgment__rating-option.is-selected .omo-decision-majority-judgment__rating-chip {
-            border-color: color-mix(in srgb, var(--color-primary, #2563eb) 40%, white);
-            background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, white);
+            filter: brightness(0.92);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.18),
+                inset 0 0 10px rgba(255, 255, 255, 0.12),
+                inset 0 0 22px rgba(0, 0, 0, 0.10),
+                inset 0 -12px 20px rgba(0, 0, 0, 0.14);
+        }
+
+        .omo-decision-majority-judgment__rating-option.is-selected .omo-decision-majority-judgment__rating-chip-check {
+            opacity: 1;
+            transform: scaleX(-1) rotate(-45deg) scale(1);
+        }
+
+        .omo-decision-majority-judgment__sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
         }
 
         .omo-decision-majority-judgment__result-card,
@@ -1129,12 +1345,13 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
             padding: 14px;
             border-radius: 16px;
             border: 1px solid color-mix(in srgb, var(--color-text-light, #64748b) 14%, white);
-            background: white;
+            background: var(--color-surface, #ffffff);
+            touch-action: pan-y pinch-zoom;
         }
 
         .omo-decision-majority-judgment__result-card.is-selected {
-            border-color: color-mix(in srgb, var(--color-primary, #2563eb) 32%, white);
-            background: color-mix(in srgb, var(--color-primary, #2563eb) 7%, white);
+            border-color: color-mix(in srgb, var(--color-primary, #2563eb) 32%, var(--color-surface, #ffffff));
+            background: color-mix(in srgb, var(--color-primary, #2563eb) 7%, var(--color-surface, #ffffff));
         }
 
         .omo-decision-majority-judgment__result-meta {
@@ -1157,9 +1374,17 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
             padding: 6px 10px;
             border-radius: 999px;
             background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, white);
-            color: var(--color-text-dark, #0f172a);
+            color: var(--color-text, #0f172a);
             font-size: 13px;
         }
+
+        .omo-decision-majority-judgment__majority-badge--0 { background: color-mix(in srgb, var(--color-palette-red, #c62828) 18%, var(--color-surface, #ffffff)); }
+        .omo-decision-majority-judgment__majority-badge--1 { background: color-mix(in srgb, var(--color-palette-orange, #ef6c00) 18%, var(--color-surface, #ffffff)); }
+        .omo-decision-majority-judgment__majority-badge--2 { background: color-mix(in srgb, var(--color-palette-yellow, #f9a825) 20%, var(--color-surface, #ffffff)); }
+        .omo-decision-majority-judgment__majority-badge--3 { background: color-mix(in srgb, var(--color-palette-gray, #9ca3af) 22%, var(--color-surface, #ffffff)); }
+        .omo-decision-majority-judgment__majority-badge--4 { background: color-mix(in srgb, var(--color-palette-green-light, #9ccc65) 20%, var(--color-surface, #ffffff)); }
+        .omo-decision-majority-judgment__majority-badge--5 { background: color-mix(in srgb, var(--color-palette-green-medium, #43a047) 18%, var(--color-surface, #ffffff)); }
+        .omo-decision-majority-judgment__majority-badge--6 { background: color-mix(in srgb, var(--color-palette-green-dark, #1b5e20) 20%, var(--color-surface, #ffffff)); color: var(--color-text, #0f172a); }
 
         .omo-decision-majority-judgment__distribution {
             display: flex;
@@ -1185,31 +1410,31 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
         }
 
         .omo-decision-majority-judgment__distribution-segment--0 {
-            background: #c62828;
+            background: var(--color-palette-red, #c62828);
         }
 
         .omo-decision-majority-judgment__distribution-segment--1 {
-            background: #ef6c00;
+            background: var(--color-palette-orange, #ef6c00);
         }
 
         .omo-decision-majority-judgment__distribution-segment--2 {
-            background: #f9a825;
+            background: var(--color-palette-yellow, #f9a825);
         }
 
         .omo-decision-majority-judgment__distribution-segment--3 {
-            background: #9ca3af;
+            background: var(--color-palette-gray, #9ca3af);
         }
 
         .omo-decision-majority-judgment__distribution-segment--4 {
-            background: #9ccc65;
+            background: var(--color-palette-green-light, #9ccc65);
         }
 
         .omo-decision-majority-judgment__distribution-segment--5 {
-            background: #43a047;
+            background: var(--color-palette-green-medium, #43a047);
         }
 
         .omo-decision-majority-judgment__distribution-segment--6 {
-            background: #1b5e20;
+            background: var(--color-palette-green-dark, #1b5e20);
         }
 
         .omo-decision-majority-judgment__distribution-scale {
@@ -1225,8 +1450,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                 grid-template-columns: 1fr;
             }
 
-            .omo-decision-majority-judgment__rating-scale {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+            .omo-decision-majority-judgment__rating-chip {
+                min-height: 42px;
             }
         }
         </style>

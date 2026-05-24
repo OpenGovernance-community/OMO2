@@ -116,7 +116,9 @@ function omoDecisionInvitationsRenderHolonTreeNode(array $node)
     <?php
 }
 
-$input = $_SERVER['REQUEST_METHOD'] === 'POST' ? $_POST : $_GET;
+$input = $_SERVER['REQUEST_METHOD'] === 'POST'
+    ? array_merge($_GET, $_POST)
+    : $_GET;
 $context = omoDecisionResolveEditorContext($input);
 
 if (empty($context['status']) || empty($context['decision']) || !($context['decision'] instanceof DecisionProcess) || empty($context['canManage'])) {

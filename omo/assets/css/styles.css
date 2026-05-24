@@ -939,7 +939,7 @@ html[data-theme] .common-help-card p {
     padding: 0px;
     min-height: 0;
     overflow: auto;
-    overscroll-behavior: contain;
+    overscroll-behavior: auto;
 }
 
 .omo-panel-view__body_content {

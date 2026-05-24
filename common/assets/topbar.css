@@ -739,6 +739,9 @@
 .common-topbar-drawer__body {
     flex: 1;
     min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: auto;
+    -webkit-overflow-scrolling: touch;
     background: var(--topbar-panel-bg, #ffffff);
     color: var(--color-text, #1f2937);
 }
