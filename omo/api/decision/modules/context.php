@@ -6,6 +6,8 @@ use dbObject\Holon;
 use dbObject\Organization;
 use dbObject\User;
 
+require_once __DIR__ . '/public_access.php';
+
 if (!function_exists('omoDecisionBuildEditorUrl')) {
     function omoDecisionBuildEditorUrl($organizationId, $holonId = 0, $decisionId = 0, $method = '', $intent = '')
     {
@@ -35,9 +37,167 @@ if (!function_exists('omoDecisionBuildEditorUrl')) {
     }
 }
 
+if (!function_exists('omoDecisionBuildContextualEditorUrl')) {
+    function omoDecisionBuildContextualEditorUrl(array $context, $intent = '')
+    {
+        $intent = trim((string)$intent);
+
+        if (
+            (($context['accessMode'] ?? '') === 'public')
+            && trim((string)($context['publicToken'] ?? '')) !== ''
+        ) {
+            return omoDecisionBuildPublicParticipationUrl((string)$context['publicToken'], $intent);
+        }
+
+        return omoDecisionBuildEditorUrl(
+            (int)($context['organizationId'] ?? 0),
+            (int)($context['targetHolonId'] ?? 0),
+            (int)($context['decisionId'] ?? 0),
+            trim((string)(($context['decision'] instanceof DecisionProcess) ? $context['decision']->get('evaluation_method') : ($context['method'] ?? ''))),
+            $intent
+        );
+    }
+}
+
+if (!function_exists('omoDecisionBuildParticipationPreviewUrl')) {
+    function omoDecisionBuildParticipationPreviewUrl($organizationId, $holonId = 0, $decisionId = 0, $method = '', $intent = 'view', $embedded = false)
+    {
+        $query = [
+            'oid' => (int)$organizationId,
+            'id' => (int)$decisionId,
+        ];
+
+        if ((int)$holonId > 0) {
+            $query['cid'] = (int)$holonId;
+        }
+
+        $method = trim((string)$method);
+        if ($method !== '') {
+            $query['method'] = $method;
+        }
+
+        $intent = trim((string)$intent);
+        if ($intent !== '') {
+            $query['intent'] = $intent;
+        }
+
+        if ($embedded) {
+            $query['embedded'] = '1';
+        }
+
+        return '/common/decision_participation.php?' . http_build_query($query);
+    }
+}
+
 if (!function_exists('omoDecisionResolveEditorContext')) {
     function omoDecisionResolveEditorContext(array $input)
     {
+        $publicToken = trim((string)($input['token'] ?? ''));
+        if ($publicToken !== '') {
+            $participant = omoDecisionResolvePublicParticipantByToken($publicToken);
+            if (!($participant instanceof DecisionParticipant)) {
+                return [
+                    'status' => false,
+                    'code' => 403,
+                    'error_key' => 'decisions.edit.context.decision_denied',
+                ];
+            }
+
+            $decision = $participant->getDecisionProcess();
+            if (!($decision instanceof DecisionProcess) || !$decision->load((int)$decision->getId())) {
+                return [
+                    'status' => false,
+                    'code' => 404,
+                    'error_key' => 'decisions.edit.context.decision_not_found',
+                ];
+            }
+
+            $decision->syncLifecycleStatus();
+
+            $organizationId = (int)$decision->get('IDorganization');
+            $organization = new Organization();
+            if ($organizationId <= 0 || !$organization->load($organizationId)) {
+                return [
+                    'status' => false,
+                    'code' => 404,
+                    'error_key' => 'decisions.edit.context.organization_not_found',
+                ];
+            }
+
+            $currentHolon = $organization->getStructuralRootHolon();
+            $decisionHolon = null;
+            $decisionHolonId = (int)$decision->get('IDholon');
+            if ($decisionHolonId > 0) {
+                $decisionHolon = new Holon();
+                if (!$decisionHolon->load($decisionHolonId) || !$organization->containsHolon($decisionHolon)) {
+                    return [
+                        'status' => false,
+                        'code' => 404,
+                        'error_key' => 'decisions.edit.context.holon_not_found',
+                    ];
+                }
+            }
+
+            $effectiveHolon = $decisionHolon ?: $currentHolon;
+            $requestedIntent = isset($input['intent']) ? trim((string)$input['intent']) : '';
+            $participantStatus = DecisionParticipant::normalizeStatus($participant->get('status'));
+            $hasParticipation = (int)$participant->get('active') === 1
+                && !in_array($participantStatus, [
+                    DecisionParticipant::STATUS_DECLINED,
+                    DecisionParticipant::STATUS_REVOKED,
+                ], true);
+            $canManage = false;
+            $canCreate = false;
+            $canView = $hasParticipation;
+            $canParticipate = $hasParticipation && $decision->isParticipationOpen();
+
+            $intent = $canParticipate ? 'participate' : 'view';
+            if (in_array($requestedIntent, ['view', 'participate'], true)) {
+                $intent = $requestedIntent;
+            }
+
+            if ($intent === 'participate' && !$canParticipate) {
+                return [
+                    'status' => false,
+                    'code' => 403,
+                    'error_key' => 'decisions.edit.context.decision_denied',
+                ];
+            }
+
+            if ($intent === 'view' && !$canView) {
+                return [
+                    'status' => false,
+                    'code' => 403,
+                    'error_key' => 'decisions.edit.context.decision_denied',
+                ];
+            }
+
+            return [
+                'status' => true,
+                'accessMode' => 'public',
+                'publicToken' => $publicToken,
+                'organizationId' => $organizationId,
+                'requestedHolonId' => $effectiveHolon ? (int)$effectiveHolon->getId() : 0,
+                'targetHolonId' => $effectiveHolon ? (int)$effectiveHolon->getId() : 0,
+                'decisionId' => (int)$decision->getId(),
+                'currentUserId' => 0,
+                'organization' => $organization,
+                'currentHolon' => $currentHolon,
+                'decisionHolon' => $decisionHolon,
+                'effectiveHolon' => $effectiveHolon,
+                'decision' => $decision,
+                'participant' => $participant,
+                'currentUserEmail' => trim((string)$participant->get('email')),
+                'intent' => $intent,
+                'canCreate' => $canCreate,
+                'canManage' => $canManage,
+                'canView' => $canView,
+                'canParticipate' => $canParticipate,
+                'hasParticipation' => $hasParticipation,
+                'isOwner' => false,
+            ];
+        }
+
         $organizationId = isset($input['oid']) ? (int)$input['oid'] : (int)($_SESSION['currentOrganization'] ?? 0);
         $requestedHolonId = isset($input['cid']) ? (int)$input['cid'] : 0;
         $decisionId = isset($input['id']) ? (int)$input['id'] : 0;
@@ -174,9 +334,15 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
         }
 
         $effectiveHolon = $decisionHolon ?: $currentHolon;
+        $isOwnerParticipant = $participant instanceof DecisionParticipant
+            && (int)$participant->get('active') === 1
+            && DecisionParticipant::normalizeRole($participant->get('role')) === DecisionParticipant::ROLE_OWNER;
         $isOwner = $decision instanceof DecisionProcess
             && $currentUserId > 0
-            && (int)$decision->get('IDuser') === $currentUserId;
+            && (
+                (int)$decision->get('IDuser') === $currentUserId
+                || $isOwnerParticipant
+            );
         $canCreate = $effectiveHolon ? $effectiveHolon->canEdit() : $organization->canEdit();
         $canManage = $decision instanceof DecisionProcess ? $isOwner : $canCreate;
         $canView = $decision instanceof DecisionProcess
@@ -238,6 +404,8 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
 
         return [
             'status' => true,
+            'accessMode' => 'app',
+            'publicToken' => '',
             'organizationId' => $organizationId,
             'requestedHolonId' => $requestedHolonId,
             'targetHolonId' => $effectiveHolon ? (int)$effectiveHolon->getId() : 0,

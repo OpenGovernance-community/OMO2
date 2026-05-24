@@ -16,12 +16,12 @@ if (!function_exists('omoDecisionMajorityJudgmentGetMentions')) {
     function omoDecisionMajorityJudgmentGetMentions()
     {
         return [
-            0 => 'A rejeter',
-            1 => 'Insuffisant',
-            2 => 'Passable',
-            3 => 'Assez bien',
-            4 => 'Bien',
-            5 => 'Tres bien',
+            0 => 'Aucunement',
+            1 => 'Tres peu',
+            2 => 'Pas assez',
+            3 => 'Sans avis',
+            4 => 'Suffisamment',
+            5 => 'Correctement',
             6 => 'Parfaitement',
         ];
     }

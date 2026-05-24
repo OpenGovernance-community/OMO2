@@ -34,6 +34,9 @@ if (!function_exists('omoDecisionConsentModuleGetSourceLang')) {
             'decisions.consent.field.proposals_remove' => ['text' => 'Supprimer', 'context' => 'Button label to remove a proposal field.'],
             'decisions.consent.field.proposals_reorder' => ['text' => 'Reordonner', 'context' => 'Aria label for the proposal drag handle.'],
             'decisions.consent.field.proposals_item' => ['text' => 'Proposition {index}', 'context' => 'Visible label prefix for one proposal row.'],
+            'decisions.consent.field.proposal_details' => ['text' => 'Details', 'context' => 'Button label opening the proposal detail popup.'],
+            'decisions.consent.field.proposal_description' => ['text' => 'Description de la proposition', 'context' => 'Label for the proposal description field.'],
+            'decisions.consent.field.proposal_info_url' => ['text' => 'URL d information', 'context' => 'Label for the proposal info URL field.'],
             'decisions.consent.field.settings' => ['text' => 'Parametres du scrutin', 'context' => 'Section title for consent-specific settings.'],
             'decisions.consent.field.scale' => ['text' => 'Positions possibles', 'context' => 'Label for the position summary.'],
             'decisions.consent.field.scale_summary' => ['text' => 'Pour / Pas d objection / Objection', 'context' => 'Summary label for the consent scale.'],
@@ -61,12 +64,14 @@ if (!function_exists('omoDecisionConsentModuleGetSourceLang')) {
             'decisions.consent.placeholder.title' => ['text' => 'Ex. Valider la prochaine proposition d organisation', 'context' => 'Placeholder for the title field.'],
             'decisions.consent.placeholder.description' => ['text' => 'Contexte, cadre, motifs des propositions...', 'context' => 'Placeholder for the description field.'],
             'decisions.consent.placeholder.proposals' => ['text' => 'Nom de la proposition', 'context' => 'Placeholder for one proposal input.'],
+            'decisions.consent.placeholder.proposal_info_url' => ['text' => 'https://...', 'context' => 'Placeholder for one proposal info URL input.'],
             'decisions.consent.action.create' => ['text' => 'Creer le scrutin', 'context' => 'Submit label for a new consent process.'],
             'decisions.consent.action.save' => ['text' => 'Enregistrer le scrutin', 'context' => 'Submit label for an existing consent process.'],
             'decisions.consent.action.saving' => ['text' => 'Enregistrement...', 'context' => 'Temporary label while saving.'],
             'decisions.consent.action.configure' => ['text' => 'Configurer', 'context' => 'Button label to open the settings modal.'],
             'decisions.consent.action.close' => ['text' => 'Fermer', 'context' => 'Button label to close the settings modal.'],
             'decisions.consent.action.apply' => ['text' => 'Appliquer', 'context' => 'Button label to apply the settings modal changes.'],
+            'decisions.consent.action.proposal_apply' => ['text' => 'Enregistrer les details', 'context' => 'Button label used to save proposal detail popup fields.'],
             'decisions.consent.action.submit_response' => ['text' => 'Enregistrer mes positions', 'context' => 'Submit label for a new response.'],
             'decisions.consent.action.update_response' => ['text' => 'Mettre a jour mes positions', 'context' => 'Submit label when updating an existing response.'],
             'decisions.consent.action.submitting_response' => ['text' => 'Enregistrement du vote...', 'context' => 'Temporary label while saving a response.'],
@@ -117,17 +122,13 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
             : DecisionProcess::STATUS_DRAFT;
 
         $proposalObjects = [];
-        $proposalLines = [];
         if ($decision instanceof DecisionProcess) {
             foreach ($decision->getProposals(true) as $proposal) {
                 $proposalObjects[] = $proposal;
-                $proposalLines[] = trim((string)$proposal->get('title'));
             }
         }
 
-        if (count($proposalLines) === 0) {
-            $proposalLines = [''];
-        }
+        $proposalItems = omoDecisionBuildProposalItemsFromDecision($decision, 1);
 
         $config = $decision instanceof DecisionProcess
             ? omoDecisionConsentBuildConfig($decision)
@@ -146,6 +147,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
         $canEditStructure = $isEditable && !$coreLocked;
         $canEditProposals = $isEditable && (!$consultationStarted || (!$hasSubmittedResponses && $allowConsultationProposals));
         $canEditStartDates = $isEditable && !$startDatesLocked;
+        $publicLayout = (($context['accessMode'] ?? '') === 'public') || !empty($context['previewLayout']);
 
         $participant = $context['participant'] ?? null;
         $selectedResponse = null;
@@ -177,13 +179,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
 
         $managePayload = [
             'saveUrl' => '/omo/api/decision/modules/consent/save.php',
-            'redirectUrl' => omoDecisionBuildEditorUrl(
-                (int)$context['organizationId'],
-                (int)$context['targetHolonId'],
-                $decision instanceof DecisionProcess ? (int)$decision->getId() : 0,
-                DecisionProcess::METHOD_CONSENT,
-                'manage'
-            ),
+            'redirectUrl' => omoDecisionBuildContextualEditorUrl($context, 'manage'),
             'drawerTitle' => t('decisions.consent.drawer_title', [], $lang, $sourceLang),
             'proposalEditable' => $canEditProposals,
             'texts' => [
@@ -194,8 +190,13 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                 'success' => t('decisions.consent.feedback.success', [], $lang, $sourceLang),
                 'error' => t('decisions.consent.feedback.error', [], $lang, $sourceLang),
                 'proposalPlaceholder' => t('decisions.consent.placeholder.proposals', [], $lang, $sourceLang),
+                'proposalInfoUrlPlaceholder' => t('decisions.consent.placeholder.proposal_info_url', [], $lang, $sourceLang),
                 'proposalRemove' => t('decisions.consent.field.proposals_remove', [], $lang, $sourceLang),
                 'proposalReorder' => t('decisions.consent.field.proposals_reorder', [], $lang, $sourceLang),
+                'proposalDetails' => t('decisions.consent.field.proposal_details', [], $lang, $sourceLang),
+                'proposalDescriptionLabel' => t('decisions.consent.field.proposal_description', [], $lang, $sourceLang),
+                'proposalInfoUrlLabel' => t('decisions.consent.field.proposal_info_url', [], $lang, $sourceLang),
+                'proposalApply' => t('decisions.consent.action.proposal_apply', [], $lang, $sourceLang),
                 'proposalItemTemplate' => t('decisions.consent.field.proposals_item', ['index' => '__INDEX__'], $lang, $sourceLang),
                 'yesLabel' => t('decisions.consent.option.common.yes', [], $lang, $sourceLang),
                 'noLabel' => t('decisions.consent.option.common.no', [], $lang, $sourceLang),
@@ -204,13 +205,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
 
         $responsePayload = [
             'saveUrl' => '/omo/api/decision/modules/consent/respond.php',
-            'redirectUrl' => omoDecisionBuildEditorUrl(
-                (int)$context['organizationId'],
-                (int)$context['targetHolonId'],
-                $decision instanceof DecisionProcess ? (int)$decision->getId() : 0,
-                DecisionProcess::METHOD_CONSENT,
-                'participate'
-            ),
+            'redirectUrl' => omoDecisionBuildContextualEditorUrl($context, 'participate'),
             'drawerTitle' => t('decisions.consent.drawer_title', [], $lang, $sourceLang),
             'texts' => [
                 'save' => $selectedResponse instanceof DecisionResponse
@@ -224,20 +219,25 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
 
         $managePayloadJson = omoDecisionModuleEncodeJsonPayload($managePayload);
         $responsePayloadJson = omoDecisionModuleEncodeJsonPayload($responsePayload);
+        $consultationProposalPanel = ($publicLayout && $decision instanceof DecisionProcess)
+            ? omoDecisionRenderConsultationProposalPublicPanel($decision, $context, $escape, 'omo-decision-consent__consultation-panel')
+            : '';
         ?>
         <section class="omo-decision-consent generic-section generic-section--stack">
+            <?php if (!$publicLayout): ?>
             <div class="generic-hero-panel generic-hero-panel--accent">
                 <div class="omo-decision-consent__head">
                     <h3 class="generic-card-title"><?= $escape(t($headerTitleKey, [], $lang, $sourceLang)) ?></h3>
                     <p class="omo-decision-consent__text"><?= $escape(t($headerDescriptionKey, [], $lang, $sourceLang)) ?></p>
                 </div>
             </div>
+            <?php endif; ?>
 
-            <?php if ($resultsMode): ?>
+            <?php if ($resultsMode && !$publicLayout): ?>
             <div class="generic-soft-panel generic-soft-panel--stack">
                 <p class="omo-decision-consent__text"><?= $escape(t('decisions.consent.notice.results', [], $lang, $sourceLang)) ?></p>
             </div>
-            <?php elseif ($coreLocked): ?>
+            <?php elseif ($coreLocked && !$publicLayout): ?>
             <div class="generic-soft-panel generic-soft-panel--stack">
                 <p class="omo-decision-consent__text"><?= $escape(t('decisions.consent.notice.started', [], $lang, $sourceLang)) ?></p>
                 <?php if ($startDatesLocked): ?>
@@ -255,6 +255,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                 <input type="hidden" name="id" value="<?= $escape($decision instanceof DecisionProcess ? (int)$decision->getId() : 0) ?>">
                 <input type="hidden" name="method" value="<?= $escape(DecisionProcess::METHOD_CONSENT) ?>">
                 <input type="hidden" name="intent" value="manage">
+                <?= omoDecisionRenderPublicTokenInput($context, $escape) ?>
 
                 <div class="omo-decision-consent__grid">
                     <label class="omo-decision-consent__field">
@@ -363,13 +364,16 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                     </div>
 
                     <div class="omo-decision-consent__proposal-list" data-omo-decision-consent-proposal-list>
-                        <?php foreach ($proposalLines as $index => $proposalLine): ?>
+                        <?php foreach ($proposalItems as $index => $proposalItem): ?>
                         <div class="omo-decision-consent__proposal-card" data-omo-decision-consent-proposal-card>
                             <button type="button" class="omo-decision-consent__proposal-drag" data-omo-decision-consent-proposal-drag aria-label="<?= $escape(t('decisions.consent.field.proposals_reorder', [], $lang, $sourceLang)) ?>" <?= $canEditProposals ? '' : 'disabled' ?>>::</button>
                             <div class="omo-decision-consent__proposal-field">
                                 <span class="generic-card-title generic-card-title--small" data-omo-decision-consent-proposal-label><?= $escape(str_replace('{index}', (string)($index + 1), t('decisions.consent.field.proposals_item', ['index' => (string)($index + 1)], $lang, $sourceLang))) ?></span>
-                                <input type="text" class="generic-form-control" name="proposals[]" value="<?= $escape($proposalLine) ?>" placeholder="<?= $escape(t('decisions.consent.placeholder.proposals', [], $lang, $sourceLang)) ?>" <?= $canEditProposals ? '' : 'readonly' ?>>
+                                <input type="text" class="generic-form-control" name="proposals[]" value="<?= $escape((string)$proposalItem['title']) ?>" placeholder="<?= $escape(t('decisions.consent.placeholder.proposals', [], $lang, $sourceLang)) ?>" <?= $canEditProposals ? '' : 'readonly' ?>>
+                                <input type="hidden" name="proposal_descriptions[]" value="<?= $escape((string)($proposalItem['description'] ?? '')) ?>" data-omo-decision-consent-proposal-description>
+                                <input type="hidden" name="proposal_info_urls[]" value="<?= $escape((string)($proposalItem['info_url'] ?? '')) ?>" data-omo-decision-consent-proposal-info-url>
                             </div>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-consent-proposal-settings title="<?= $escape(t('decisions.consent.field.proposal_details', [], $lang, $sourceLang)) ?>" aria-label="<?= $escape(t('decisions.consent.field.proposal_details', [], $lang, $sourceLang)) ?>">&#9881;</button>
                             <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-consent-proposal-remove <?= $canEditProposals ? '' : 'disabled' ?>><?= $escape(t('decisions.consent.field.proposals_remove', [], $lang, $sourceLang)) ?></button>
                         </div>
                         <?php endforeach; ?>
@@ -388,6 +392,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                 <script type="application/json" data-omo-decision-consent-data><?= $managePayloadJson ?></script>
             </form>
             <?php else: ?>
+                <?php if (!$publicLayout): ?>
                 <div class="omo-decision-consent__summary-grid">
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.consent.field.scale', [], $lang, $sourceLang), t('decisions.consent.field.scale_summary', [], $lang, $sourceLang), $escape, 'omo-decision-consent__meta-card') ?>
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.consent.field.anonymous', [], $lang, $sourceLang), $isAnonymous ? t('decisions.consent.option.common.yes', [], $lang, $sourceLang) : t('decisions.consent.option.common.no', [], $lang, $sourceLang), $escape, 'omo-decision-consent__meta-card') ?>
@@ -396,8 +401,9 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.consent.field.total_votes', [], $lang, $sourceLang), (string)$submittedVoteCount, $escape, 'omo-decision-consent__meta-card') ?>
                     <?php endif; ?>
                 </div>
+                <?php endif; ?>
 
-                <?php if ($decision instanceof DecisionProcess && trim((string)$decision->get('description')) !== ''): ?>
+                <?php if (!$publicLayout && $decision instanceof DecisionProcess && trim((string)$decision->get('description')) !== ''): ?>
                 <div class="generic-soft-panel generic-soft-panel--stack">
                     <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.consent.field.description', [], $lang, $sourceLang)) ?></span>
                     <p class="omo-decision-consent__text"><?= nl2br($escape(trim((string)$decision->get('description')))) ?></p>
@@ -410,6 +416,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                     <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                     <input type="hidden" name="id" value="<?= $escape($decision instanceof DecisionProcess ? (int)$decision->getId() : 0) ?>">
                     <input type="hidden" name="intent" value="participate">
+                    <?= omoDecisionRenderPublicTokenInput($context, $escape) ?>
 
                     <fieldset class="omo-decision-consent__fieldset">
                         <legend class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.consent.field.your_choices', [], $lang, $sourceLang)) ?></legend>
@@ -424,6 +431,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                             <div class="generic-soft-panel generic-soft-panel--stack omo-decision-consent__choice-card">
                                 <div class="omo-decision-consent__choice-head">
                                     <strong><?= $escape(trim((string)$proposal->get('title'))) ?></strong>
+                                    <?= omoDecisionRenderProposalSupplementHtml($proposal->get('description'), $proposal->get('info_url'), $escape, 'omo-decision-consent__text', 'omo-decision-consent__link') ?>
                                 </div>
                                 <div class="omo-decision-consent__choice-scale">
                                     <?php foreach ($choices as $choiceKey => $choiceLabel): ?>
@@ -440,6 +448,9 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         </div>
                         <?php endif; ?>
                     </fieldset>
+                    <?php if ($consultationProposalPanel !== ''): ?>
+                    <?= $consultationProposalPanel ?>
+                    <?php endif; ?>
 
                     <div class="omo-decision-consent__footer">
                         <button type="submit" class="generic-action-button generic-action-button--main" data-omo-decision-consent-response-submit><?= $escape($selectedResponse instanceof DecisionResponse ? t('decisions.consent.action.update_response', [], $lang, $sourceLang) : t('decisions.consent.action.submit_response', [], $lang, $sourceLang)) ?></button>
@@ -476,6 +487,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         <div class="omo-decision-consent__result-card<?= $selectedChoice !== '' ? ' is-selected' : '' ?>">
                             <div class="omo-decision-consent__result-head">
                                 <strong><?= $escape(trim((string)$proposal->get('title'))) ?></strong>
+                                <?= omoDecisionRenderProposalSupplementHtml($proposal->get('description'), $proposal->get('info_url'), $escape, 'omo-decision-consent__text', 'omo-decision-consent__link') ?>
                                 <?php if ($resultsMode): ?>
                                 <span class="omo-decision-consent__summary-badge"><?= $escape($summaryLabel) ?></span>
                                 <?php elseif ($selectedChoice !== ''): ?>
@@ -523,6 +535,9 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         </div>
                         <?php endforeach; ?>
                     </div>
+                    <?php if ($consultationProposalPanel !== ''): ?>
+                    <?= $consultationProposalPanel ?>
+                    <?php endif; ?>
                 </div>
                 <?php endif; ?>
             <?php endif; ?>
@@ -557,6 +572,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                     const proposalAddButton = form.querySelector('[data-omo-decision-consent-proposal-add]');
                     const settingsOpenButton = form.querySelector('[data-omo-decision-consent-settings-open]');
                     const invitationOpenButton = form.querySelector('[data-omo-decision-invitations-open]');
+                    const invitationSendOpenButton = form.querySelector('[data-omo-decision-invitations-send-open]');
                     const settingsTemplate = form.querySelector('[data-omo-decision-consent-settings-template]');
                     const hiddenAnonymousInput = form.querySelector('[data-omo-decision-consent-hidden-anonymous]');
                     const hiddenConsultationInput = form.querySelector('[data-omo-decision-consent-hidden-consultation-proposals]');
@@ -605,6 +621,112 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         });
                     };
 
+                    const bindProposalCard = function (card) {
+                        if (!card || card.dataset.omoDecisionConsentProposalReady === '1') {
+                            return;
+                        }
+
+                        const titleInput = card.querySelector('input[name="proposals[]"]');
+                        const descriptionInput = card.querySelector('[data-omo-decision-consent-proposal-description]');
+                        const infoUrlInput = card.querySelector('[data-omo-decision-consent-proposal-info-url]');
+                        const detailsButton = card.querySelector('[data-omo-decision-consent-proposal-settings]');
+                        const removeButton = card.querySelector('[data-omo-decision-consent-proposal-remove]');
+
+                        if (detailsButton) {
+                            detailsButton.addEventListener('click', function () {
+                                if (detailsButton.disabled || typeof window.commonTopbarOpenModal !== 'function') {
+                                    return;
+                                }
+
+                                const proposalLabelNode = card.querySelector('[data-omo-decision-consent-proposal-label]');
+                                const modalTitle = proposalLabelNode
+                                    ? String(proposalLabelNode.textContent || '').trim()
+                                    : String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : 'Details');
+                                const modalHtml = ''
+                                    + '<div class="generic-section generic-section--stack" style="display:grid;gap:12px;">'
+                                    + '  <label style="display:grid;gap:6px;">'
+                                    + '    <span class="generic-card-title generic-card-title--small">' + String(payload.texts && payload.texts.proposalDescriptionLabel ? payload.texts.proposalDescriptionLabel : 'Description') + '</span>'
+                                    + '    <textarea class="generic-form-control" rows="6" data-omo-decision-consent-proposal-modal-description></textarea>'
+                                    + '  </label>'
+                                    + '  <label style="display:grid;gap:6px;">'
+                                    + '    <span class="generic-card-title generic-card-title--small">' + String(payload.texts && payload.texts.proposalInfoUrlLabel ? payload.texts.proposalInfoUrlLabel : 'URL') + '</span>'
+                                    + '    <input type="url" class="generic-form-control" data-omo-decision-consent-proposal-modal-info-url placeholder="' + String(payload.texts && payload.texts.proposalInfoUrlPlaceholder ? payload.texts.proposalInfoUrlPlaceholder : 'https://...') + '">'
+                                    + '  </label>'
+                                    + '  <div style="display:flex;justify-content:flex-end;gap:8px;">'
+                                    + '    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-consent-proposal-modal-cancel>Fermer</button>'
+                                    + '    <button type="button" class="generic-action-button generic-action-button--main" data-omo-decision-consent-proposal-modal-apply>' + String(payload.texts && payload.texts.proposalApply ? payload.texts.proposalApply : 'Enregistrer') + '</button>'
+                                    + '  </div>'
+                                    + '</div>';
+
+                                window.commonTopbarOpenModal(modalTitle || 'Details', modalHtml, 'html');
+                                const modalBody = document.getElementById('commonTopbarModalBody');
+                                if (!modalBody) {
+                                    return;
+                                }
+
+                                const modalDescription = modalBody.querySelector('[data-omo-decision-consent-proposal-modal-description]');
+                                const modalInfoUrl = modalBody.querySelector('[data-omo-decision-consent-proposal-modal-info-url]');
+                                const modalCancel = modalBody.querySelector('[data-omo-decision-consent-proposal-modal-cancel]');
+                                const modalApply = modalBody.querySelector('[data-omo-decision-consent-proposal-modal-apply]');
+                                if (modalDescription) {
+                                    modalDescription.value = descriptionInput ? String(descriptionInput.value || '') : '';
+                                }
+                                if (modalInfoUrl) {
+                                    modalInfoUrl.value = infoUrlInput ? String(infoUrlInput.value || '') : '';
+                                }
+                                if (modalCancel) {
+                                    modalCancel.addEventListener('click', function () {
+                                        if (typeof window.commonTopbarCloseModal === 'function') {
+                                            window.commonTopbarCloseModal();
+                                        }
+                                    });
+                                }
+                                if (modalApply) {
+                                    modalApply.addEventListener('click', function () {
+                                        if (descriptionInput && modalDescription) {
+                                            descriptionInput.value = String(modalDescription.value || '').trim();
+                                        }
+                                        if (infoUrlInput && modalInfoUrl) {
+                                            infoUrlInput.value = String(modalInfoUrl.value || '').trim();
+                                        }
+                                        if (typeof window.commonTopbarCloseModal === 'function') {
+                                            window.commonTopbarCloseModal();
+                                        }
+                                        if (titleInput) {
+                                            titleInput.focus();
+                                        }
+                                    });
+                                }
+                            });
+                        }
+
+                        if (removeButton) {
+                            removeButton.addEventListener('click', function () {
+                                const cards = proposalList.querySelectorAll('[data-omo-decision-consent-proposal-card]');
+                                if (cards.length <= 1) {
+                                    if (titleInput) {
+                                        titleInput.value = '';
+                                        titleInput.focus();
+                                    }
+                                    if (descriptionInput) {
+                                        descriptionInput.value = '';
+                                    }
+                                    if (infoUrlInput) {
+                                        infoUrlInput.value = '';
+                                    }
+                                    return;
+                                }
+
+                                card.remove();
+                                refreshProposalLabels();
+                            });
+                        }
+
+                        card.dataset.omoDecisionConsentProposalReady = '1';
+                    };
+
+                    let sortable = null;
+
                     const createProposalCard = function (value) {
                         const card = document.createElement('div');
                         card.className = 'omo-decision-consent__proposal-card';
@@ -631,6 +753,26 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         input.value = String(value || '');
                         input.placeholder = String(payload.texts && payload.texts.proposalPlaceholder ? payload.texts.proposalPlaceholder : '');
 
+                        const descriptionInput = document.createElement('input');
+                        descriptionInput.type = 'hidden';
+                        descriptionInput.name = 'proposal_descriptions[]';
+                        descriptionInput.value = '';
+                        descriptionInput.setAttribute('data-omo-decision-consent-proposal-description', '');
+
+                        const infoUrlInput = document.createElement('input');
+                        infoUrlInput.type = 'hidden';
+                        infoUrlInput.name = 'proposal_info_urls[]';
+                        infoUrlInput.value = '';
+                        infoUrlInput.setAttribute('data-omo-decision-consent-proposal-info-url', '');
+
+                        const detailsButton = document.createElement('button');
+                        detailsButton.type = 'button';
+                        detailsButton.className = 'generic-action-button generic-action-button--secondary';
+                        detailsButton.setAttribute('data-omo-decision-consent-proposal-settings', '');
+                        detailsButton.setAttribute('title', String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : 'Details'));
+                        detailsButton.setAttribute('aria-label', String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : 'Details'));
+                        detailsButton.innerHTML = '&#9881;';
+
                         const removeButton = document.createElement('button');
                         removeButton.type = 'button';
                         removeButton.className = 'generic-action-button generic-action-button--secondary';
@@ -639,22 +781,17 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
 
                         field.appendChild(label);
                         field.appendChild(input);
+                        field.appendChild(descriptionInput);
+                        field.appendChild(infoUrlInput);
                         card.appendChild(dragButton);
                         card.appendChild(field);
+                        card.appendChild(detailsButton);
                         card.appendChild(removeButton);
 
-                        removeButton.addEventListener('click', function () {
-                            const cards = proposalList.querySelectorAll('[data-omo-decision-consent-proposal-card]');
-                            if (cards.length <= 1) {
-                                input.value = '';
-                                input.focus();
-                                return;
-                            }
-
-                            card.remove();
-                            refreshProposalLabels();
-                        });
-
+                        bindProposalCard(card);
+                        if (sortable && typeof sortable.bindItem === 'function') {
+                            sortable.bindItem(card);
+                        }
                         return card;
                     };
 
@@ -724,6 +861,25 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         window.commonTopbarOpenModal(invitationTitle, invitationUrl, 'fetch');
                     };
 
+                    const openInvitationSendModal = function () {
+                        if (!invitationSendOpenButton || typeof window.commonTopbarOpenModal !== 'function') {
+                            return;
+                        }
+
+                        const invitationUrl = String(invitationSendOpenButton.getAttribute('data-omo-decision-invitations-send-url') || '');
+                        if (invitationUrl === '') {
+                            return;
+                        }
+
+                        const invitationTitle = String(
+                            invitationSendOpenButton.getAttribute('data-omo-decision-invitations-send-title')
+                            || invitationSendOpenButton.textContent
+                            || 'Envoyer les invitations'
+                        );
+
+                        window.commonTopbarOpenModal(invitationTitle, invitationUrl, 'fetch');
+                    };
+
                     if (settingsOpenButton) {
                         settingsOpenButton.addEventListener('click', openSettingsModal);
                     }
@@ -732,8 +888,12 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         invitationOpenButton.addEventListener('click', openInvitationModal);
                     }
 
+                    if (invitationSendOpenButton) {
+                        invitationSendOpenButton.addEventListener('click', openInvitationSendModal);
+                    }
+
                     if (payload.proposalEditable && typeof window.commonCreateVerticalSortableList === 'function') {
-                        window.commonCreateVerticalSortableList({
+                        sortable = window.commonCreateVerticalSortableList({
                             list: proposalList,
                             itemSelector: '[data-omo-decision-consent-proposal-card]',
                             handleSelector: '[data-omo-decision-consent-proposal-drag]',
@@ -763,6 +923,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         });
                     }
 
+                    Array.prototype.forEach.call(proposalList.querySelectorAll('[data-omo-decision-consent-proposal-card]'), bindProposalCard);
                     refreshProposalLabels();
                     syncSettingsSummary();
 

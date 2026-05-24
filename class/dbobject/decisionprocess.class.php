@@ -488,6 +488,202 @@ class DecisionProcess extends DbObject
         ) > 0;
     }
 
+    protected function getRootParametersArray()
+    {
+        $parameters = $this->get('parameters');
+        if (is_array($parameters)) {
+            return $parameters;
+        }
+
+        $parameters = trim((string)$parameters);
+        if ($parameters === '') {
+            return [];
+        }
+
+        $decoded = json_decode($parameters, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    protected function persistRootParametersArray(array $parameters)
+    {
+        $this->set('parameters', $parameters);
+        $saveResult = $this->save();
+        return is_array($saveResult) && !empty($saveResult['status']);
+    }
+
+    public function getOrganizationObject()
+    {
+        $organizationId = (int)$this->get('IDorganization');
+        if ($organizationId <= 0) {
+            return null;
+        }
+
+        $organization = new \dbObject\Organization();
+        return $organization->load($organizationId) ? $organization : null;
+    }
+
+    public function getHolonObject()
+    {
+        $holonId = (int)$this->get('IDholon');
+        if ($holonId <= 0) {
+            return null;
+        }
+
+        $holon = new \dbObject\Holon();
+        return $holon->load($holonId) ? $holon : null;
+    }
+
+    public function getAccessUrl($intent = 'view')
+    {
+        $organization = $this->getOrganizationObject();
+        $organizationId = (int)$this->get('IDorganization');
+        $path = '/omo/api/decision/edit.php?' . http_build_query([
+            'oid' => $organizationId,
+            'cid' => (int)$this->get('IDholon'),
+            'id' => (int)$this->getId(),
+            'method' => self::normalizeEvaluationMethod($this->get('evaluation_method')),
+            'intent' => trim((string)$intent) !== '' ? trim((string)$intent) : 'view',
+        ]);
+
+        $targetHost = \commonGetRequestHost();
+        if ($organization) {
+            $shortname = trim((string)$organization->get('shortname'));
+            if (\commonUseOrganizationSubdomains() && $shortname !== '') {
+                $targetHost = \commonBuildOrganizationHost($shortname, \commonGetRootHost($targetHost));
+            } else {
+                $targetHost = \commonGetRootHost($targetHost);
+            }
+        }
+
+        return \commonBuildUrl($path, $targetHost);
+    }
+
+    public function getInvitationEmailState()
+    {
+        $parameters = $this->getRootParametersArray();
+        $state = $parameters['decision_invitation_mail'] ?? [];
+        return is_array($state) ? $state : [];
+    }
+
+    public function saveInvitationEmailState(array $state)
+    {
+        $parameters = $this->getRootParametersArray();
+        $parameters['decision_invitation_mail'] = $state;
+        return $this->persistRootParametersArray($parameters);
+    }
+
+    public function buildDefaultInvitationEmailMessage()
+    {
+        $organization = $this->getOrganizationObject();
+        $holon = $this->getHolonObject();
+        $title = trim((string)$this->get('title'));
+        $organizationName = $organization ? trim((string)$organization->get('name')) : 'cette organisation';
+        $messageLines = [
+            'Bonjour,',
+            '',
+            'Vous etes invite a participer a la prise de decision "' . ($title !== '' ? $title : 'sans titre') . '" dans ' . $organizationName . '.',
+        ];
+
+        if ($holon) {
+            $messageLines[] = 'Contexte: ' . trim((string)$holon->getTemplateLabel(true)) . ' ' . trim((string)$holon->getDisplayName()) . '.';
+        }
+
+        $consultationStart = self::normalizeDateTimeValue($this->get('consultation_start_at'));
+        $consultationEnd = self::normalizeDateTimeValue($this->get('consultation_end_at'));
+
+        if ($consultationStart instanceof \DateTimeInterface) {
+            $messageLines[] = 'Debut: ' . $consultationStart->format('d.m.Y H:i') . '.';
+        }
+        if ($consultationEnd instanceof \DateTimeInterface) {
+            $messageLines[] = 'Fin: ' . $consultationEnd->format('d.m.Y H:i') . '.';
+        }
+
+        $messageLines[] = '';
+        $messageLines[] = 'Vous pouvez consulter les details du scrutin en ouvrant le lien ci-dessous.';
+        $messageLines[] = '';
+        $messageLines[] = 'A bientot,';
+        $messageLines[] = $organizationName;
+
+        return implode("\n", $messageLines);
+    }
+
+    public function getInvitationEmailRecipients()
+    {
+        $organizationId = (int)$this->get('IDorganization');
+        $ownerUserId = (int)$this->get('IDuser');
+        $recipients = [];
+
+        foreach ($this->getParticipants(true) as $participant) {
+            if (!($participant instanceof \dbObject\DecisionParticipant)) {
+                continue;
+            }
+
+            $participantStatus = \dbObject\DecisionParticipant::normalizeStatus($participant->get('status'));
+            if (in_array($participantStatus, [
+                \dbObject\DecisionParticipant::STATUS_DECLINED,
+                \dbObject\DecisionParticipant::STATUS_REVOKED,
+            ], true)) {
+                continue;
+            }
+
+            $userId = (int)$participant->get('IDuser');
+            if ($userId > 0 && $userId === $ownerUserId) {
+                continue;
+            }
+
+            $email = '';
+            $displayName = trim((string)$participant->get('display_name'));
+
+            if ($userId > 0) {
+                $membership = new \dbObject\UserOrganization();
+                if ($membership->load([
+                    ['IDorganization', $organizationId],
+                    ['IDuser', $userId],
+                ]) && (bool)$membership->get('active')) {
+                    $email = trim(mb_strtolower((string)$membership->getScopedEmail(), 'UTF-8'));
+                    if ($displayName === '') {
+                        $displayName = trim((string)$membership->getUserDisplayName());
+                    }
+                } else {
+                    $user = new \dbObject\User();
+                    if ($user->load($userId)) {
+                        $email = trim(mb_strtolower((string)$user->getScopedEmail($organizationId), 'UTF-8'));
+                        if ($displayName === '') {
+                            $firstname = trim((string)$user->get('firstname'));
+                            $lastname = trim((string)$user->get('lastname'));
+                            $displayName = trim($firstname . ' ' . $lastname);
+                            if ($displayName === '') {
+                                $displayName = trim((string)$user->get('username'));
+                            }
+                        }
+                    }
+                }
+            } else {
+                $email = trim(mb_strtolower((string)$participant->get('email'), 'UTF-8'));
+            }
+
+            if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                continue;
+            }
+
+            if ($displayName === '') {
+                $displayName = $email;
+            }
+
+            if (!isset($recipients[$email])) {
+                $recipients[$email] = [
+                    'email' => $email,
+                    'display_name' => $displayName,
+                    'participant_ids' => [],
+                ];
+            }
+
+            $recipients[$email]['participant_ids'][] = (int)$participant->getId();
+        }
+
+        return array_values($recipients);
+    }
+
     public function syncParticipantsFromInvitations()
     {
         $decisionId = (int)$this->getId();
@@ -713,7 +909,31 @@ class DecisionProcess extends DbObject
             return false;
         }
 
-        return $this->hasConsultationStarted($referenceDateTime);
+        return $this->hasEvaluationStarted($referenceDateTime);
+    }
+
+    public function hasEvaluationStarted($referenceDateTime = null)
+    {
+        $status = self::normalizeStatus($this->get('status'));
+        if (in_array($status, [
+            self::STATUS_EVALUATION,
+            self::STATUS_RESULTS,
+            self::STATUS_ARCHIVED,
+        ], true)) {
+            return true;
+        }
+
+        $evaluationStart = self::normalizeDateTimeValue($this->get('evaluation_start_at'));
+        if (!$evaluationStart instanceof \DateTimeInterface) {
+            return false;
+        }
+
+        $referenceDateTime = self::normalizeDateTimeValue($referenceDateTime);
+        if (!$referenceDateTime instanceof \DateTimeInterface) {
+            $referenceDateTime = new \DateTimeImmutable('now');
+        }
+
+        return $evaluationStart <= $referenceDateTime;
     }
 
     public static function fetchListRowsForOrganization($organizationId, $userId = 0, $userEmail = '')
@@ -797,6 +1017,167 @@ class DecisionProcess extends DbObject
         );
 
         return is_array($rows) ? $rows : [];
+    }
+
+    public static function fetchRelevantRowsForUser($userId, $userEmail = '')
+    {
+        $userId = (int)$userId;
+        $userEmail = trim(mb_strtolower((string)$userEmail, 'UTF-8'));
+
+        if ($userId <= 0 && $userEmail === '') {
+            return [];
+        }
+
+        $rows = self::fetchAll(
+            'SELECT
+                dp.*,
+                o.`name` AS `organization_name`,
+                o.`color` AS `organization_color`,
+                h.`name` AS `holon_name`,
+                COALESCE(
+                    (
+                        SELECT participant_user_match.`id`
+                        FROM `decision_participant` participant_user_match
+                        WHERE participant_user_match.`IDdecision_process` = dp.`id`
+                          AND participant_user_match.`active` = 1
+                          AND participant_user_match.`IDuser` = :user_id_participant_match
+                          AND participant_user_match.`status` NOT IN (:declined_status_participant_match, :revoked_status_participant_match)
+                        ORDER BY participant_user_match.`id` DESC
+                        LIMIT 1
+                    ),
+                    (
+                        SELECT participant_email_match.`id`
+                        FROM `decision_participant` participant_email_match
+                        WHERE participant_email_match.`IDdecision_process` = dp.`id`
+                          AND participant_email_match.`active` = 1
+                          AND participant_email_match.`email` = :user_email_participant_match
+                          AND participant_email_match.`status` NOT IN (:declined_status_email_match, :revoked_status_email_match)
+                        ORDER BY participant_email_match.`id` DESC
+                        LIMIT 1
+                    )
+                ) AS `participant_id`,
+                EXISTS(
+                    SELECT 1
+                    FROM `decision_participant` participant_user
+                    WHERE participant_user.`IDdecision_process` = dp.`id`
+                      AND participant_user.`active` = 1
+                      AND participant_user.`IDuser` = :user_id_has_user
+                      AND participant_user.`status` NOT IN (:declined_status_has_user, :revoked_status_has_user)
+                ) AS `has_user_participation`,
+                EXISTS(
+                    SELECT 1
+                    FROM `decision_participant` participant_email
+                    WHERE participant_email.`IDdecision_process` = dp.`id`
+                      AND participant_email.`active` = 1
+                      AND participant_email.`email` = :user_email_has_email
+                      AND participant_email.`status` NOT IN (:declined_status_has_email, :revoked_status_has_email)
+                ) AS `has_email_participation`,
+                (
+                    SELECT COUNT(*)
+                    FROM `decision_proposal` proposal
+                    WHERE proposal.`IDdecision_process` = dp.`id`
+                      AND proposal.`active` = 1
+                ) AS `proposal_count`,
+                (
+                    SELECT COUNT(*)
+                    FROM `decision_participant` participant_count
+                    WHERE participant_count.`IDdecision_process` = dp.`id`
+                      AND participant_count.`active` = 1
+                      AND participant_count.`status` NOT IN (:declined_status_count, :revoked_status_count)
+                ) AS `participant_count`,
+                (
+                    SELECT COUNT(*)
+                    FROM `decision_response` response_count
+                    WHERE response_count.`IDdecision_process` = dp.`id`
+                      AND response_count.`status` = :submitted_status_count
+                ) AS `response_count`,
+                (
+                    SELECT MAX(proposal_activity.`updated_at`)
+                    FROM `decision_proposal` proposal_activity
+                    WHERE proposal_activity.`IDdecision_process` = dp.`id`
+                ) AS `proposals_updated_at`,
+                (
+                    SELECT MAX(participant_activity.`updated_at`)
+                    FROM `decision_participant` participant_activity
+                    WHERE participant_activity.`IDdecision_process` = dp.`id`
+                ) AS `participants_updated_at`,
+                (
+                    SELECT MAX(response_activity.`updated_at`)
+                    FROM `decision_response` response_activity
+                    WHERE response_activity.`IDdecision_process` = dp.`id`
+                ) AS `responses_updated_at`,
+                (
+                    SELECT MAX(response_submission.`submitted_at`)
+                    FROM `decision_response` response_submission
+                    WHERE response_submission.`IDdecision_process` = dp.`id`
+                ) AS `responses_submitted_at`
+            FROM `decision_process` dp
+            LEFT JOIN `organization` o ON o.`id` = dp.`IDorganization`
+            LEFT JOIN `holon` h ON h.`id` = dp.`IDholon`
+            WHERE dp.`IDuser` = :user_id_owner
+               OR EXISTS(
+                    SELECT 1
+                    FROM `decision_participant` participant_user
+                    WHERE participant_user.`IDdecision_process` = dp.`id`
+                      AND participant_user.`active` = 1
+                      AND participant_user.`IDuser` = :user_id_access
+                      AND participant_user.`status` NOT IN (:declined_status_access, :revoked_status_access)
+                )
+               OR EXISTS(
+                    SELECT 1
+                    FROM `decision_participant` participant_email
+                    WHERE participant_email.`IDdecision_process` = dp.`id`
+                      AND participant_email.`active` = 1
+                      AND participant_email.`email` = :user_email_access
+                      AND participant_email.`status` NOT IN (:declined_status_email_access, :revoked_status_email_access)
+                )
+            ORDER BY dp.`updated_at` DESC, dp.`id` DESC',
+            [
+                'user_id_participant_match' => $userId,
+                'declined_status_participant_match' => \dbObject\DecisionParticipant::STATUS_DECLINED,
+                'revoked_status_participant_match' => \dbObject\DecisionParticipant::STATUS_REVOKED,
+                'user_email_participant_match' => $userEmail,
+                'declined_status_email_match' => \dbObject\DecisionParticipant::STATUS_DECLINED,
+                'revoked_status_email_match' => \dbObject\DecisionParticipant::STATUS_REVOKED,
+                'user_id_has_user' => $userId,
+                'declined_status_has_user' => \dbObject\DecisionParticipant::STATUS_DECLINED,
+                'revoked_status_has_user' => \dbObject\DecisionParticipant::STATUS_REVOKED,
+                'user_email_has_email' => $userEmail,
+                'declined_status_has_email' => \dbObject\DecisionParticipant::STATUS_DECLINED,
+                'revoked_status_has_email' => \dbObject\DecisionParticipant::STATUS_REVOKED,
+                'declined_status_count' => \dbObject\DecisionParticipant::STATUS_DECLINED,
+                'revoked_status_count' => \dbObject\DecisionParticipant::STATUS_REVOKED,
+                'submitted_status_count' => \dbObject\DecisionResponse::STATUS_SUBMITTED,
+                'user_id_owner' => $userId,
+                'user_id_access' => $userId,
+                'declined_status_access' => \dbObject\DecisionParticipant::STATUS_DECLINED,
+                'revoked_status_access' => \dbObject\DecisionParticipant::STATUS_REVOKED,
+                'user_email_access' => $userEmail,
+                'declined_status_email_access' => \dbObject\DecisionParticipant::STATUS_DECLINED,
+                'revoked_status_email_access' => \dbObject\DecisionParticipant::STATUS_REVOKED,
+            ]
+        );
+
+        if (!is_array($rows) || count($rows) === 0) {
+            return [];
+        }
+
+        foreach ($rows as $index => $row) {
+            if (!is_array($row) || !isset($row['id'])) {
+                continue;
+            }
+
+            $decision = new self();
+            $decision->loadFromArray($row);
+            $decision->setId((int)$row['id']);
+            $decision->syncLifecycleStatus();
+
+            $rows[$index]['status'] = (string)$decision->get('status');
+            $rows[$index]['results_published_at'] = $decision->get('results_published_at');
+            $rows[$index]['archived_at'] = $decision->get('archived_at');
+        }
+
+        return $rows;
     }
 }
 

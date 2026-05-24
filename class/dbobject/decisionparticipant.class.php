@@ -24,10 +24,10 @@ class DecisionParticipant extends DbObject
             [['id'], 'integer'],
             [['IDdecision_process', 'IDuser'], 'fk'],
             [['email'], 'mail'],
-            [['display_name', 'role', 'status'], 'string'],
+            [['display_name', 'role', 'status', 'access_token'], 'string'],
             [['parameters'], 'parameters'],
             [['active'], 'boolean'],
-            [['created_at', 'updated_at'], 'datetime'],
+            [['created_at', 'updated_at', 'invitation_sent_at', 'invitation_opened_at'], 'datetime'],
             [['id'], 'safe'],
         ];
     }
@@ -42,6 +42,9 @@ class DecisionParticipant extends DbObject
             'display_name' => 'Nom affiche',
             'role' => 'Role',
             'status' => 'Statut',
+            'access_token' => 'Jeton public',
+            'invitation_sent_at' => 'Invitation envoyee',
+            'invitation_opened_at' => 'Invitation ouverte',
             'parameters' => 'Parametres',
             'active' => 'Active',
             'created_at' => 'Creation',
@@ -53,6 +56,7 @@ class DecisionParticipant extends DbObject
     {
         return [
             'email' => 'Permet de rattacher une personne invitee qui n a pas encore de compte.',
+            'access_token' => 'Permet un acces public personnalise a la page de participation de cette personne.',
             'parameters' => 'Metadonnees additionnelles comme la source d invitation ou des droits fins.',
         ];
     }
@@ -64,6 +68,7 @@ class DecisionParticipant extends DbObject
             'display_name' => 190,
             'role' => 30,
             'status' => 30,
+            'access_token' => 64,
         ];
     }
 
@@ -159,6 +164,40 @@ class DecisionParticipant extends DbObject
         return $item;
     }
 
+    public static function findByAccessToken($token)
+    {
+        $row = self::fetchRow(
+            'SELECT * FROM `decision_participant`
+             WHERE `access_token` = :access_token
+             ORDER BY `id` DESC
+             LIMIT 1',
+            [
+                'access_token' => trim((string)$token),
+            ]
+        );
+
+        if (!is_array($row) || !isset($row['id'])) {
+            return null;
+        }
+
+        $item = new self();
+        $item->loadFromArray($row);
+        $item->setId((int)$row['id']);
+        return $item;
+    }
+
+    protected static function generateAccessToken()
+    {
+        for ($attempt = 0; $attempt < 5; $attempt += 1) {
+            $token = bin2hex(random_bytes(32));
+            if (!self::findByAccessToken($token)) {
+                return $token;
+            }
+        }
+
+        throw new \RuntimeException('The decision participant access token could not be generated.');
+    }
+
     protected function hasIdentity()
     {
         return (int)$this->get('IDuser') > 0 || trim((string)$this->get('email')) !== '';
@@ -180,6 +219,11 @@ class DecisionParticipant extends DbObject
 
         $this->set('role', self::normalizeRole($this->get('role')));
         $this->set('status', self::normalizeStatus($this->get('status')));
+
+        $accessToken = trim((string)$this->get('access_token'));
+        if ($accessToken !== '') {
+            $this->set('access_token', $accessToken);
+        }
 
         return parent::save();
     }
@@ -208,6 +252,49 @@ class DecisionParticipant extends DbObject
     {
         $decision = new \dbObject\DecisionProcess();
         return $decision->load((int)$this->get('IDdecision_process')) ? $decision : null;
+    }
+
+    public function ensureAccessToken()
+    {
+        $existingToken = trim((string)$this->get('access_token'));
+        if ($existingToken !== '') {
+            return $existingToken;
+        }
+
+        $token = self::generateAccessToken();
+        $this->set('access_token', $token);
+        return $token;
+    }
+
+    public function markInvitationSent($dateTime = null)
+    {
+        if (!$dateTime instanceof \DateTimeInterface) {
+            $dateTime = new \DateTimeImmutable('now');
+        }
+
+        $this->set('invitation_sent_at', $dateTime);
+        return $this->save();
+    }
+
+    public function markInvitationOpened($dateTime = null)
+    {
+        if (!$dateTime instanceof \DateTimeInterface) {
+            $dateTime = new \DateTimeImmutable('now');
+        }
+
+        $this->set('invitation_opened_at', $dateTime);
+        return $this->save();
+    }
+
+    public function getPublicAccessUrl()
+    {
+        $token = $this->ensureAccessToken();
+        return \commonBuildUrl('/common/decision_participation.php?token=' . rawurlencode($token), \commonGetRequestHost());
+    }
+
+    public function getPublicInvitationUrl()
+    {
+        return $this->getPublicAccessUrl();
     }
 }
 

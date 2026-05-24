@@ -43,9 +43,11 @@ $evaluationStartAt = trim((string)($_POST['evaluation_start_at'] ?? ''));
 $evaluationEndAt = trim((string)($_POST['evaluation_end_at'] ?? ''));
 $isAnonymous = !empty($_POST['is_anonymous']);
 $allowConsultationProposals = !empty($_POST['allow_consultation_proposals']);
-$proposalLines = isset($_POST['proposals']) && is_array($_POST['proposals'])
-    ? omoDecisionModuleParseUniqueTextItems($_POST['proposals'])
-    : omoDecisionModuleParseUniqueTextItems($_POST['proposals_text'] ?? '');
+$proposalItems = omoDecisionBuildProposalItemsFromInput(
+    $_POST['proposals'] ?? [],
+    $_POST['proposal_descriptions'] ?? [],
+    $_POST['proposal_info_urls'] ?? []
+);
 
 if (!$coreLocked && $title === '') {
     omoDecisionModuleJsonResponse(400, [
@@ -54,7 +56,7 @@ if (!$coreLocked && $title === '') {
     ]);
 }
 
-if (!$coreLocked && count($proposalLines) < 2) {
+if (!$coreLocked && count($proposalItems) < 2) {
     omoDecisionModuleJsonResponse(400, [
         'status' => false,
         'message' => 'Le jugement majoritaire a besoin d au moins deux propositions.',
@@ -87,7 +89,7 @@ $currentConfig = $decision instanceof DecisionProcess
     ];
 $canEditProposals = !$coreLocked || (!$startDatesLocked && !empty($currentConfig['allow_consultation_proposals']));
 
-if ($canEditProposals && count($proposalLines) < 2) {
+if ($canEditProposals && count($proposalItems) < 2) {
     omoDecisionModuleJsonResponse(400, [
         'status' => false,
         'message' => 'Le jugement majoritaire a besoin d au moins deux propositions.',
@@ -124,8 +126,8 @@ try {
 
     $existingParameters = omoDecisionModuleGetMethodParameters($decision->get('parameters'), omoDecisionMajorityJudgmentGetMethodKey());
     $proposalCount = $canEditProposals
-        ? count($proposalLines)
-        : (int)($existingParameters['proposal_count'] ?? count($proposalLines));
+        ? count($proposalItems)
+        : (int)($existingParameters['proposal_count'] ?? count($proposalItems));
 
     $parameters = omoDecisionMajorityJudgmentMergeConfigIntoParameters(
         $decision->get('parameters'),
@@ -170,11 +172,12 @@ try {
             $existingActiveProposals[] = $proposal;
         }
 
-        foreach ($proposalLines as $index => $proposalTitle) {
+        foreach ($proposalItems as $index => $proposalItem) {
             $proposal = $existingActiveProposals[$index] ?? new DecisionProposal();
             $proposal->set('IDdecision_process', $decisionId);
-            $proposal->set('title', $proposalTitle);
-            $proposal->set('description', null);
+            $proposal->set('title', (string)$proposalItem['title']);
+            $proposal->set('description', $proposalItem['description'] ?? null);
+            $proposal->set('info_url', $proposalItem['info_url'] ?? null);
             $proposal->set('position', $index + 1);
             $proposal->set('parameters', [
                 omoDecisionMajorityJudgmentGetMethodKey() => [
@@ -189,7 +192,7 @@ try {
             }
         }
 
-        for ($index = count($proposalLines); $index < count($existingActiveProposals); $index++) {
+        for ($index = count($proposalItems); $index < count($existingActiveProposals); $index++) {
             $proposal = $existingActiveProposals[$index];
             $proposal->set('active', 0);
             $saveProposal = $proposal->save();

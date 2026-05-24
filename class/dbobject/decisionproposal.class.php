@@ -16,6 +16,7 @@ class DecisionProposal extends DbObject
             [['IDdecision_process'], 'fk'],
             [['title'], 'string'],
             [['description'], 'text'],
+            [['info_url'], 'string'],
             [['parameters'], 'parameters'],
             [['active'], 'boolean'],
             [['created_at', 'updated_at'], 'datetime'],
@@ -30,6 +31,7 @@ class DecisionProposal extends DbObject
             'IDdecision_process' => 'Prise de decision',
             'title' => 'Titre',
             'description' => 'Description',
+            'info_url' => 'Lien d information',
             'position' => 'Ordre',
             'parameters' => 'Parametres',
             'active' => 'Active',
@@ -49,6 +51,7 @@ class DecisionProposal extends DbObject
     {
         return [
             'title' => 190,
+            'info_url' => 500,
         ];
     }
 
