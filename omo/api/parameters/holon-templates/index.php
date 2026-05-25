@@ -302,9 +302,9 @@ if ($organizationId <= 0) {
     gap: 0.9rem;
     align-items: start;
     padding: 0.85rem 1rem;
-    border: 1px solid rgba(15, 23, 42, 0.08);
+    border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 88%, transparent);
     border-radius: 0.9rem;
-    background: rgba(255, 255, 255, 0.78);
+    background: color-mix(in srgb, var(--color-surface, #ffffff) 88%, var(--color-surface-alt, #f8fafc));
 }
 
 .omo-template-permissions__main {
@@ -313,12 +313,13 @@ if ($organizationId <= 0) {
 
 .omo-template-permissions__title {
     font-weight: 600;
+    color: var(--color-text, #111827);
 }
 
 .omo-template-permissions__meta,
 .omo-template-permissions__description {
     font-size: 0.88rem;
-    opacity: 0.76;
+    color: var(--color-text-light, #6b7280);
 }
 
 .omo-template-permissions__picker {
@@ -340,7 +341,9 @@ if ($organizationId <= 0) {
     gap: 0.35rem;
     padding: 0.35rem 0.65rem;
     border-radius: 999px;
-    background: rgba(15, 23, 42, 0.08);
+    border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 20%, var(--color-border, #d1d5db));
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #ffffff));
+    color: var(--color-text, #111827);
     font-size: 0.85rem;
 }
 
@@ -356,15 +359,25 @@ if ($organizationId <= 0) {
 
 .omo-template-permissions__select {
     width: 100%;
-    border: 1px solid rgba(15, 23, 42, 0.12);
+    border: 1px solid var(--color-border, #d1d5db);
     border-radius: 0.75rem;
     padding: 0.7rem 0.85rem;
-    background: #fff;
+    background: var(--color-surface-alt, #f8fafc);
+    color: var(--color-text, #111827);
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.omo-template-permissions__select:focus {
+    outline: none;
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 55%, var(--color-border, #d1d5db));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 14%, transparent);
+    background: var(--color-surface, #ffffff);
 }
 
 .omo-template-permissions__empty {
     font-size: 0.85rem;
-    opacity: 0.7;
+    color: var(--color-text-light, #6b7280);
 }
 
 .omo-template-permissions__checkbox {

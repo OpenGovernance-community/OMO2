@@ -327,6 +327,7 @@ if ($currentHolonTemplateLabel === '') {
 $canRemoveCurrentHolonMembers = $currentHolon->canEdit();
 $canGrantCurrentHolonAdmin = $currentHolon->isAllowed('CAN_ADD_ADMIN');
 $canManageCurrentHolonMembers = $canRemoveCurrentHolonMembers || $canGrantCurrentHolonAdmin;
+$leafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafletMapsEnabled();
 $mapMembers = array_values(array_filter($memberCards, static function (array $card): bool {
     return is_array($card['latlong'] ?? null);
 }));
@@ -348,9 +349,12 @@ $mapMemberPayload = array_map(static function (array $card): array {
         'long' => (float)$card['latlong']['long'],
     );
 }, $mapMembers);
-ob_start();
-commonRenderLeafletAssets();
-$leafletAssetsHtml = ob_get_clean();
+$leafletAssetsHtml = '';
+if ($leafletMapsEnabled) {
+    ob_start();
+    commonRenderLeafletAssets();
+    $leafletAssetsHtml = ob_get_clean();
+}
 ?>
 <?= $leafletAssetsHtml ?>
 <div class="omo-team omo-panel-view">
@@ -380,7 +384,9 @@ $leafletAssetsHtml = ob_get_clean();
         </div>
         <div class="omo-team__view-switch" role="tablist" aria-label="Choix de la vue">
             <button type="button" class="omo-team__view-button is-active" data-team-view-button="cards" aria-pressed="true">Cartes</button>
+            <?php if ($leafletMapsEnabled): ?>
             <button type="button" class="omo-team__view-button" data-team-view-button="map" aria-pressed="false">Carte geo</button>
+            <?php endif; ?>
         </div>
     </div>
     <div class="omo-panel-view__body">
@@ -500,6 +506,7 @@ $leafletAssetsHtml = ob_get_clean();
             </div>
         <?php endif; ?>
         </section>
+        <?php if ($leafletMapsEnabled): ?>
         <section class="omo-team__view-panel" data-team-view-panel="map" hidden>
             <?php if (count($mapMembers) === 0): ?>
                 <div class="omo-team__empty omo-empty-state">
@@ -514,6 +521,7 @@ $leafletAssetsHtml = ob_get_clean();
                 </div>
             <?php endif; ?>
         </section>
+        <?php endif; ?>
         </div>
     </div>
 </div>
@@ -1043,6 +1051,7 @@ $leafletAssetsHtml = ob_get_clean();
 
 <script>
 var omoTeamViewStorageKey = <?= json_encode('omo-team-view:' . (int)$organizationId . ':' . (int)$currentHolon->getId(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+var omoTeamMapEnabled = <?= $leafletMapsEnabled ? 'true' : 'false' ?>;
 var omoTeamMapMembers = <?= json_encode($mapMemberPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 var omoTeamLeafletMap = null;
 var omoTeamLeafletLayer = null;
@@ -1058,7 +1067,7 @@ function omoTeamEscapeHtml(value) {
 }
 
 function omoTeamApplyView(viewName) {
-    const normalizedView = viewName === 'map' ? 'map' : 'cards';
+    const normalizedView = viewName === 'map' && omoTeamMapEnabled ? 'map' : 'cards';
     $('[data-team-view-button]').each(function () {
         const isActive = $(this).data('team-view-button') === normalizedView;
         $(this).toggleClass('is-active', isActive).attr('aria-pressed', isActive ? 'true' : 'false');
@@ -1074,7 +1083,7 @@ function omoTeamApplyView(viewName) {
     } catch (error) {
     }
 
-    if (normalizedView === 'map') {
+    if (normalizedView === 'map' && omoTeamMapEnabled) {
         if (typeof window.commonWhenLeafletReady === 'function') {
             window.commonWhenLeafletReady(function () {
                 omoTeamEnsureMapReady();
