@@ -112,6 +112,29 @@ function commonBuildUrl($path = '/', $host = null, $scheme = null)
     return $scheme . '://' . $host . $path;
 }
 
+function commonBuildAbsoluteAssetUrl($pathOrUrl, $host = null, $scheme = null)
+{
+    $value = trim((string)$pathOrUrl);
+    if ($value === '') {
+        return '';
+    }
+
+    if (preg_match('#^https?://#i', $value) === 1) {
+        return $value;
+    }
+
+    if (strpos($value, '//') === 0) {
+        $resolvedScheme = is_string($scheme) && $scheme !== '' ? strtolower($scheme) : commonGetRequestScheme();
+        return $resolvedScheme . ':' . $value;
+    }
+
+    if ($value[0] !== '/') {
+        $value = '/' . ltrim($value, '/');
+    }
+
+    return commonBuildUrl($value, $host, $scheme);
+}
+
 function commonBuildOrganizationHost($shortname, $baseHost = null)
 {
     $shortname = strtolower(trim((string)$shortname));
@@ -1619,8 +1642,8 @@ function commonSendLoginCode($userId, $email, array $organizationContext, $remem
     $subject = commonAuthT('auth.email.subject', [], $lang, $sourceLang);
     $orgName = htmlspecialchars($organizationContext['name'] ?: ($_SERVER['HTTP_HOST'] ?? 'Organisation'));
     $color = htmlspecialchars(commonGetOrganizationAccentColor($organizationContext, '#004663'));
-    $logo = $organizationContext['logo'] ?? '';
-    $banner = $organizationContext['banner'] ?? '';
+    $logo = commonBuildAbsoluteAssetUrl($organizationContext['logo'] ?? '');
+    $banner = commonBuildAbsoluteAssetUrl($organizationContext['banner'] ?? '');
 
     $message = "
 <html>
