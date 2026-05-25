@@ -130,6 +130,13 @@ function serverEnvAdminGetEditableSections()
                     'label' => 'Modele de traduction OpenAI',
                     'type' => 'text',
                 ],
+                [
+                    'key' => 'STADIA_MAPS_API_KEY',
+                    'label' => 'Cle Stadia Maps',
+                    'type' => 'password',
+                    'secret' => true,
+                    'help' => 'Laissez vide pour conserver la valeur actuelle.',
+                ],
             ],
         ],
         'integrations' => [

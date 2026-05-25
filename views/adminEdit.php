@@ -10,6 +10,7 @@
 -->
 <?php
 //error_reporting(E_ALL | E_ALL);
+require_once dirname(__DIR__) . '/common/leaflet_helper.php';
 ?>
 <style>
     .navTab a {
@@ -26,6 +27,32 @@
     .admin-edit__date-range {
         display: grid;
         gap: 8px;
+    }
+    .admin-edit__latlong-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        align-items: end;
+    }
+    .admin-edit__latlong-map {
+        width: 100%;
+        height: 260px;
+        margin-top: 8px;
+        margin-bottom: 5px;
+        border-radius: 10px;
+        border: 1px solid var(--admin-edit-border-strong, #cbd5e1);
+        overflow: hidden;
+    }
+    .admin-edit__latlong-help {
+        margin-top: 6px;
+        color: #64748b;
+        font-size: 0.88rem;
+        line-height: 1.4;
+    }
+    @media (max-width: 640px) {
+        .admin-edit__latlong-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 <script>
@@ -296,20 +323,73 @@ function displayField($object, $key, $default = null, $filter = null) {
             return $str;
             break;
         case "latlong" :
-            $str = "<input class='" . $class . "' name='" . $key . "[]' id='" . $key . "_lat' type='text' value='" . $object->get($key)->lat . "'> <input class='" . $class . "' name='" . $key . "[]' id='" . $key . "_long' type='text' value='" . $object->get($key)->long . "'>";
-            $str .= "<div id='map_" . $key . "' style='width:100%; height:200px; margin-top:5px; margin-bottom:5px; border-radius:10px; border:1px solid black'></div>";
-            $str .= "<script>var currentMarker;\nvar map_" . $key . ";\nfunction initMap() {\nmap_" . $key . " = new google.maps.Map(document.getElementById('map_" . $key . "'), {\n";
-            $str .= "    center: { lat: " . ($object->get($key)->lat ? $object->get($key)->lat : 0) . ", lng: " . ($object->get($key)->long ? $object->get($key)->long : 0) . " },\n";
-            $str .= "    zoom: " . ($object->get($key)->lat ? 13 : 3) . "\n  });";
-            $str .= "	currentMarker = new google.maps.Marker({position: { lat: " . ($object->get($key)->lat ? $object->get($key)->lat : 0) . ", lng: " . ($object->get($key)->long ? $object->get($key)->long : 0) . " },map: map_" . $key . " });\n";
-            // Map click captures coordinates
-            $str .= "map_" . $key . ".addListener('click', function(event) {\n";
-            $str .= "  var latitude = event.latLng.lat();$('#" . $key . "_lat').val(latitude);\n";
-            $str .= "  var longitude = event.latLng.lng();$('#" . $key . "_long').val(longitude);\n";
-            $str .= "if (currentMarker) { currentMarker.setMap(null); }"; // Clear existing marker
-            $str .= "	currentMarker = new google.maps.Marker({position: { lat: latitude, lng: longitude },map: map_" . $key . " });\n";
-            $str .= "});\n";
-            $str .= "}\n</script>";
+            ob_start();
+            commonRenderLeafletAssets();
+            $leafletAssets = ob_get_clean();
+
+            $latitude = 0.0;
+            $longitude = 0.0;
+            $hasCoordinates = false;
+            $latlongValue = $object->get($key);
+            if (is_object($latlongValue)) {
+                $rawLatitude = $latlongValue->lat ?? null;
+                $rawLongitude = $latlongValue->long ?? null;
+                $hasCoordinates = is_numeric($rawLatitude) && is_numeric($rawLongitude);
+                if ($hasCoordinates) {
+                    $latitude = (float)$rawLatitude;
+                    $longitude = (float)$rawLongitude;
+                }
+            }
+
+            $str = $leafletAssets;
+            $str .= "<div class='admin-edit__latlong-grid'>";
+            $str .= "<input class='" . $class . "' name='" . $key . "[]' id='" . $key . "_lat' type='text' value='" . htmlspecialchars((string)($hasCoordinates ? $latitude : ''), ENT_QUOTES, 'UTF-8') . "' placeholder='Latitude'>";
+            $str .= "<input class='" . $class . "' name='" . $key . "[]' id='" . $key . "_long' type='text' value='" . htmlspecialchars((string)($hasCoordinates ? $longitude : ''), ENT_QUOTES, 'UTF-8') . "' placeholder='Longitude'>";
+            $str .= "</div>";
+            $str .= "<div id='map_" . $key . "' class='admin-edit__latlong-map'></div>";
+            $str .= "<div class='admin-edit__latlong-help'>Cliquez sur la carte pour choisir l'emplacement du membre.</div>";
+            $str .= "<script>(function(){";
+            $str .= "var runMapInit = function(){";
+            $str .= "var mapElement = document.getElementById('map_" . $key . "');";
+            $str .= "var latInput = document.getElementById('" . $key . "_lat');";
+            $str .= "var longInput = document.getElementById('" . $key . "_long');";
+            $str .= "if (!mapElement || !latInput || !longInput) { return; }";
+            $str .= "if (mapElement.dataset.leafletReady === '1') { return; }";
+            $str .= "mapElement.dataset.leafletReady = '1';";
+            $str .= "var initialLat = " . json_encode($hasCoordinates ? $latitude : null) . ";";
+            $str .= "var initialLng = " . json_encode($hasCoordinates ? $longitude : null) . ";";
+            $str .= "var defaultCenter = [46.8182, 8.2275];";
+            $str .= "var center = (typeof initialLat === 'number' && typeof initialLng === 'number') ? [initialLat, initialLng] : defaultCenter;";
+            $str .= "var zoom = (typeof initialLat === 'number' && typeof initialLng === 'number') ? 13 : 7;";
+            $str .= "var map = L.map(mapElement).setView(center, zoom);";
+            $str .= "var tileState = { layer: null, theme: null };";
+            $str .= "if (typeof window.commonBindLeafletTheme === 'function') { window.commonBindLeafletTheme(map, tileState); }";
+            $str .= "var marker = null;";
+            $str .= "function updateMarker(lat, lng, shouldCenter){";
+            $str .= "  if (typeof lat !== 'number' || typeof lng !== 'number' || Number.isNaN(lat) || Number.isNaN(lng)) { return; }";
+            $str .= "  if (marker) { marker.setLatLng([lat, lng]); } else { marker = L.circleMarker([lat, lng], {radius: 9, color: '#0f766e', weight: 2, fillColor: '#14b8a6', fillOpacity: 0.85}).addTo(map); }";
+            $str .= "  if (shouldCenter) { map.setView([lat, lng], Math.max(map.getZoom(), 13)); }";
+            $str .= "}";
+            $str .= "function setCoordinates(lat, lng, shouldCenter){";
+            $str .= "  latInput.value = Number(lat).toFixed(6);";
+            $str .= "  longInput.value = Number(lng).toFixed(6);";
+            $str .= "  updateMarker(Number(lat), Number(lng), shouldCenter);";
+            $str .= "}";
+            $str .= "map.on('click', function(event){ setCoordinates(event.latlng.lat, event.latlng.lng, true); });";
+            $str .= "function syncInputs(){";
+            $str .= "  var lat = parseFloat(latInput.value);";
+            $str .= "  var lng = parseFloat(longInput.value);";
+            $str .= "  if (Number.isNaN(lat) || Number.isNaN(lng)) { return; }";
+            $str .= "  updateMarker(lat, lng, true);";
+            $str .= "}";
+            $str .= "latInput.addEventListener('change', syncInputs);";
+            $str .= "longInput.addEventListener('change', syncInputs);";
+            $str .= "if (typeof initialLat === 'number' && typeof initialLng === 'number') { updateMarker(initialLat, initialLng, false); }";
+            $str .= "window.setTimeout(function(){ map.invalidateSize(); }, 0);";
+            $str .= "window.setTimeout(function(){ map.invalidateSize(); }, 250);";
+            $str .= "};";
+            $str .= "if (typeof window.commonWhenLeafletReady === 'function') { window.commonWhenLeafletReady(runMapInit); } else { runMapInit(); }";
+            $str .= "})();</script>";
 
             return $str;
 

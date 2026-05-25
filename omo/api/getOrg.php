@@ -2,6 +2,8 @@
 require_once __DIR__ . '/bootstrap.php';
 use dbObject\ArrayOrganization;
 use dbObject\Holon;
+use dbObject\HolonPermission;
+use dbObject\Permission;
 use dbObject\PropertyFormat;
 
 function omoGetOrgPanelSourceLang(): array
@@ -636,7 +638,7 @@ $isCurrentTemplateHolon = !$isOrganizationDefinitionHolon && $root ? $currentHol
 $editTemplateContextId = $isCurrentTemplateHolon && $currentHolon->getParentHolon()
     ? (int)$currentHolon->getParentHolon()->getId()
     : ($isOrganizationDefinitionHolon ? (int)$currentHolon->getId() : 0);
-$canManageMembers = $currentHolon->canEdit();
+$canAddMembers = $currentHolon->isAllowed('CAN_ADD_MEMBER');
 $canCreateChildHolon = $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(2, 3, 4), true);
 $canEditHolon = $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3, 4), true);
 $canMoveHolon = !$isCurrentTemplateHolon && $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
@@ -647,6 +649,24 @@ $parentHolonForDelete = $canDeleteHolon ? $currentHolon->getParentHolon() : null
 $deleteParentId = $parentHolonForDelete ? (int)$parentHolonForDelete->getId() : 0;
 $deleteParentIsRoot = $parentHolonForDelete ? ((int)$parentHolonForDelete->get('IDtypeholon') === 4) : false;
 $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $canDeleteHolon || $canViewHolonHistory;
+$debugPermissionCatalog = Permission::getEditorCatalog();
+$debugPermissionEntries = array();
+foreach ($debugPermissionCatalog as $permissionEntry) {
+    $permissionKey = trim((string)($permissionEntry['key'] ?? ''));
+    if ($permissionKey === '') {
+        continue;
+    }
+
+    $debugPermissionEntries[] = array(
+        'key' => $permissionKey,
+        'isAllowed' => $currentHolon->isAllowed($permissionKey),
+    );
+}
+$debugPermissionSessionCache = $_SESSION['permissionCacheByOrganization'][(int)$organizationId] ?? null;
+$debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
+    (int)commonGetCurrentUserId(),
+    (int)$organizationId
+);
 ?>
 
 <style>
@@ -747,7 +767,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
             <button type="button" class="circle-badge circle-badge--link" data-copy-direct-link="1" data-cid="<?= (int)$currentHolon->getId() ?>">#<?= (int)$currentHolon->getId() ?></button>
         </div>
     </div>
-    <?php if (count($visibleMemberCards) > 0 || $canManageMembers): ?>
+    <?php if (count($visibleMemberCards) > 0 || $canAddMembers): ?>
         <div class="circle-members">
             <div class="circle-members__label generic-card-title generic-card-title--eyebrow"><?= omoApiEscape(t('leftbar.members.section_title')) ?></div>
             <div class="circle-members__row">
@@ -778,7 +798,7 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
                             <?php endif; ?>
                         </span>
                     <?php endforeach; ?>
-                    <?php if ($canManageMembers): ?>
+                    <?php if ($canAddMembers): ?>
                         <button
                             type="button"
                             class="circle-member circle-member--add"
@@ -853,6 +873,26 @@ $hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $ca
             </div>
         </div>
     <?php endif; ?>
+
+    <?php if (count($debugPermissionEntries) > 0 && 1==0): ?>
+        <div class="circle-section generic-accordion generic-accordion--card">
+            <div class="circle-section__title generic-card-title generic-card-title--small">Permissions</div>
+            <p class="section-text">Codes disponibles sur ce holon. Ceux que vous avez sont en gras.</p>
+            <div class="section-text">
+                <?php foreach ($debugPermissionEntries as $index => $permissionEntry): ?>
+                    <?php if ($index > 0): ?>, <?php endif; ?>
+                    <?php if (!empty($permissionEntry['isAllowed'])): ?>
+                        <strong><?= omoApiEscape($permissionEntry['key']) ?></strong>
+                    <?php else: ?>
+                        <span><?= omoApiEscape($permissionEntry['key']) ?></span>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </div>
+            <pre class="section-text" style="white-space: pre-wrap; font-size: 12px; margin-top: 12px;"><?= omoApiEscape(json_encode($debugPermissionSessionCache, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?></pre>
+            <pre class="section-text" style="white-space: pre-wrap; font-size: 12px; margin-top: 12px;"><?= omoApiEscape(json_encode($debugPermissionRebuild, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?></pre>
+        </div>
+    <?php endif; ?>
+
 </div>
 
 <style>
