@@ -42,8 +42,14 @@ $birthdateLabel = commonUserProfileFormatBirthDate($birthdate);
 $requestedScope = isset($_GET['scope']) && $_GET['scope'] === 'organization' ? 'organization' : 'general';
 $initialScope = $hasOrganizationScope ? $requestedScope : 'general';
 
-$patreonConnection = \dbObject\UserPatreon::findByUserId((int)$user->getId());
-$patreonConnected = $patreonConnection !== false && $patreonConnection->isConnected();
+$patreonUiEnabled = patreonSupportUiIsEnabled();
+$patreonConnection = false;
+$patreonConnected = false;
+
+if ($patreonUiEnabled) {
+    $patreonConnection = \dbObject\UserPatreon::findByUserId((int)$user->getId());
+    $patreonConnected = $patreonConnection !== false && $patreonConnection->isConnected();
+}
 
 function profilFormatDateTime($value)
 {
@@ -424,6 +430,7 @@ function profilFormatAmountCents($value)
             </div>
         </section>
 
+        <?php if ($patreonUiEnabled): ?>
         <section class="profile-panel__section generic-section">
             <h3 class="generic-card-title generic-card-title--section"><?= htmlspecialchars(profilPopupT('profile.popup.section.patreon.title')) ?></h3>
             <div class="profile-panel__summary">
@@ -479,6 +486,7 @@ function profilFormatAmountCents($value)
                 <?php endif; ?>
             </div>
         </section>
+        <?php endif; ?>
     </div>
 </div>
 
