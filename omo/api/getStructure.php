@@ -734,10 +734,106 @@ function colorToTransparentFill(color, alpha, fallback) {
   return fallbackColor;
 }
 
+const structureColorParserCanvas = typeof document !== "undefined" ? document.createElement("canvas") : null;
+const structureColorParserContext = structureColorParserCanvas ? structureColorParserCanvas.getContext("2d") : null;
+
+function parseColorChannels(color, fallback) {
+  const candidates = [
+    String(color || "").trim(),
+    String(fallback || "").trim()
+  ];
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    let effectiveColor = candidates[index];
+
+    if (!effectiveColor) {
+      continue;
+    }
+
+    if (structureColorParserContext) {
+      try {
+        structureColorParserContext.fillStyle = "#000000";
+        structureColorParserContext.fillStyle = effectiveColor;
+        effectiveColor = String(structureColorParserContext.fillStyle || effectiveColor).trim();
+      } catch (error) {
+      }
+    }
+
+    const hexMatch = effectiveColor.match(/^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i);
+    if (hexMatch) {
+      let hex = hexMatch[1];
+      if (hex.length === 3 || hex.length === 4) {
+        hex = hex.split("").map(function (char) { return char + char; }).join("");
+      }
+
+      return {
+        red: parseInt(hex.slice(0, 2), 16),
+        green: parseInt(hex.slice(2, 4), 16),
+        blue: parseInt(hex.slice(4, 6), 16),
+        alpha: hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1
+      };
+    }
+
+    const rgbMatch = effectiveColor.match(/^rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*([0-9.]+)\s*)?\)$/i);
+    if (rgbMatch) {
+      return {
+        red: Math.max(0, Math.min(255, Number(rgbMatch[1]))),
+        green: Math.max(0, Math.min(255, Number(rgbMatch[2]))),
+        blue: Math.max(0, Math.min(255, Number(rgbMatch[3]))),
+        alpha: rgbMatch[4] !== undefined ? Math.max(0, Math.min(1, Number(rgbMatch[4]))) : 1
+      };
+    }
+  }
+
+  return null;
+}
+
+function colorToDesaturatedGray(color, fallback) {
+  const channels = parseColorChannels(color, fallback);
+
+  if (!channels) {
+    return String(fallback || color || "");
+  }
+
+  const gray = Math.round(
+    (channels.red * 0.299) +
+    (channels.green * 0.587) +
+    (channels.blue * 0.114)
+  );
+
+  if (channels.alpha < 1) {
+    return "rgba(" + gray + ", " + gray + ", " + gray + ", " + channels.alpha + ")";
+  }
+
+  return "rgb(" + gray + ", " + gray + ", " + gray + ")";
+}
+
+function roleHasAttachedUsers(node) {
+  if (String(node && node.type || "") !== "1") {
+    return true;
+  }
+
+  return Array.isArray(node.userIds) && node.userIds.length > 0;
+}
+
+function getNodeDisplayColor(node, fallbackColor) {
+  const baseColor = String(node && node.mycolor || fallbackColor || "").trim();
+
+  if (!baseColor) {
+    return "";
+  }
+
+  if (!roleHasAttachedUsers(node)) {
+    return colorToDesaturatedGray(baseColor, fallbackColor);
+  }
+
+  return baseColor;
+}
+
 function getListColor(node) {
   if (node.type == "4") return node.mycolor || chartColors.rootFill;
   if (node.type == "2" || node.type == "3") return colorToTransparentFill(node.mycolor, 0.12, chartColors.groupFill);
-  return node.mycolor || chartColors.roleFill;
+  return getNodeDisplayColor(node, chartColors.roleFill);
 }
 
 function getGroupStrokeColor(node) {
@@ -2340,9 +2436,10 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
           chosenContext.fillStyle = node.color;
           chosenContext.fill();
         } else {
+          const displayColor = getNodeDisplayColor(node, node.type == "4" ? chartColors.rootFill : chartColors.roleFill);
           chosenContext.fillStyle = (node.type == "3" || node.type == "2")
             ? colorToTransparentFill(node.mycolor, 0.06 + (0.16 * nodeOpacity), colorCircle(node.depth))
-            : colorToTransparentFill(node.mycolor, nodeOpacity, node.type == "4" ? chartColors.rootFill : chartColors.roleFill);
+            : colorToTransparentFill(displayColor, nodeOpacity, node.type == "4" ? chartColors.rootFill : chartColors.roleFill);
 
           if (node.type == "3") {
             chosenContext.fillStyle = "rgba(0,0,0,0)";
@@ -2356,7 +2453,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
             chosenContext.setLineDash([]);
             chosenContext.strokeStyle = colorToTransparentFill("#ffffff", 0.15 + (0.35 * nodeOpacity), "rgba(255,255,255,0.5)");
             chosenContext.stroke();
-            chosenContext.fillStyle = colorToTransparentFill(node.mycolor, nodeOpacity, chartColors.rootFill);
+            chosenContext.fillStyle = colorToTransparentFill(displayColor, nodeOpacity, chartColors.rootFill);
             chosenContext.fill();
           } else {
             chosenContext.setLineDash([]);
