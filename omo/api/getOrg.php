@@ -874,7 +874,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
         </div>
     <?php endif; ?>
 
-    <?php if (count($debugPermissionEntries) > 0): ?>
+    <?php if (count($debugPermissionEntries) > 0 && 1==0): ?>
         <div class="circle-section generic-accordion generic-accordion--card">
             <div class="circle-section__title generic-card-title generic-card-title--small">Permissions</div>
             <p class="section-text">Codes disponibles sur ce holon. Ceux que vous avez sont en gras.</p>
