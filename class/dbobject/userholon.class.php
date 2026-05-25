@@ -178,6 +178,82 @@
 			$this->set('parameters', $parameters);
 			return $this->save();
 		}
+
+		public static function fetchEffectiveRowsForUserAndHolonIds($userId, array $holonIds)
+		{
+			$userId = (int)$userId;
+			$holonIds = array_values(array_unique(array_filter(array_map('intval', $holonIds), function ($holonId) {
+				return $holonId > 0;
+			})));
+
+			if ($userId <= 0 || count($holonIds) === 0) {
+				return array();
+			}
+
+			$params = array(
+				'user_id' => $userId,
+			);
+			$placeholders = array();
+			foreach ($holonIds as $index => $holonId) {
+				$placeholder = 'holon_' . $index;
+				$placeholders[] = ':' . $placeholder;
+				$params[$placeholder] = $holonId;
+			}
+
+			$query = "
+				SELECT DISTINCT
+					uh.IDholon,
+					uh.active AS holon_active,
+					uh.active AS holon_effective_active
+				FROM user_holon uh
+				WHERE uh.IDuser = :user_id
+				  AND uh.IDholon IN (" . implode(', ', $placeholders) . ")
+				  AND uh.active = 1
+				ORDER BY uh.IDholon ASC
+			";
+
+			$rows = \dbObject\DbObject::fetchAll($query, $params);
+			return $rows !== false ? $rows : array();
+		}
+
+		public static function fetchRawRowsForUserAndHolonIds($userId, array $holonIds)
+		{
+			$userId = (int)$userId;
+			$holonIds = array_values(array_unique(array_filter(array_map('intval', $holonIds), function ($holonId) {
+				return $holonId > 0;
+			})));
+
+			if ($userId <= 0 || count($holonIds) === 0) {
+				return array();
+			}
+
+			$params = array(
+				'user_id' => $userId,
+			);
+			$placeholders = array();
+			foreach ($holonIds as $index => $holonId) {
+				$placeholder = 'holon_' . $index;
+				$placeholders[] = ':' . $placeholder;
+				$params[$placeholder] = $holonId;
+			}
+
+			$query = "
+				SELECT
+					id,
+					IDholon,
+					active,
+					parameters,
+					datecreation,
+					dateconnexion
+				FROM user_holon
+				WHERE IDuser = :user_id
+				  AND IDholon IN (" . implode(', ', $placeholders) . ")
+				ORDER BY IDholon ASC, id ASC
+			";
+
+			$rows = \dbObject\DbObject::fetchAll($query, $params);
+			return $rows !== false ? $rows : array();
+		}
 	}
 
 ?>

@@ -322,6 +322,13 @@ function autoInstallGetFieldDefinitions()
                     'type' => 'text',
                     'required' => false,
                 ],
+                [
+                    'key' => 'STADIA_MAPS_API_KEY',
+                    'label' => 'Cle Stadia Maps',
+                    'type' => 'text',
+                    'required' => false,
+                    'help' => 'Optionnel. Utile pour les cartes Leaflet hors localhost, par exemple sur localtest.me.',
+                ],
             ],
         ],
         'integrations' => [

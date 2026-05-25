@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
+require_once dirname(__DIR__, 3) . '/common/leaflet_helper.php';
 
 use dbObject\Holon;
 use dbObject\Organization;
@@ -20,6 +21,24 @@ function omoTeamHolonTypeLabel(Holon $holon)
         default:
             return 'holon';
     }
+}
+
+function omoTeamNormalizeLatLong($value)
+{
+    if (!is_object($value)) {
+        return null;
+    }
+
+    $latitude = $value->lat ?? null;
+    $longitude = $value->long ?? null;
+    if (!is_numeric($latitude) || !is_numeric($longitude)) {
+        return null;
+    }
+
+    return array(
+        'lat' => (float)$latitude,
+        'long' => (float)$longitude,
+    );
 }
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
@@ -268,6 +287,8 @@ foreach ($rawMemberCards as $rawCard) {
         }
     }
 
+    $latlong = $hasUser ? omoTeamNormalizeLatLong($user->get('latlong')) : null;
+
     $memberCards[] = array(
         'userId' => $userId,
         'displayName' => $displayName !== '' ? $displayName : ('Utilisateur ' . $userId),
@@ -282,6 +303,7 @@ foreach ($rawMemberCards as $rawCard) {
         'joinedAtLabel' => $effectiveJoinedAt instanceof DateTimeInterface ? $formatDate($effectiveJoinedAt) : '',
         'lastSeenLabel' => $formatLastSeenLabel($organizationLastSeen, $globalLastSeen),
         'canViewDetail' => $canViewUserDetail,
+        'latlong' => $latlong,
     );
 }
 
@@ -302,8 +324,35 @@ $currentHolonTemplateLabel = trim((string)$currentHolon->getTemplateLabel(true))
 if ($currentHolonTemplateLabel === '') {
     $currentHolonTemplateLabel = $currentHolonTypeLabel;
 }
-$canManageCurrentHolonMembers = $currentHolon->canEdit();
+$canRemoveCurrentHolonMembers = $currentHolon->canEdit();
+$canGrantCurrentHolonAdmin = $currentHolon->isAllowed('CAN_ADD_ADMIN');
+$canManageCurrentHolonMembers = $canRemoveCurrentHolonMembers || $canGrantCurrentHolonAdmin;
+$mapMembers = array_values(array_filter($memberCards, static function (array $card): bool {
+    return is_array($card['latlong'] ?? null);
+}));
+$mapMemberPayload = array_map(static function (array $card): array {
+    return array(
+        'userId' => (int)$card['userId'],
+        'displayName' => (string)$card['displayName'],
+        'secondary' => (string)($card['secondary'] ?? ''),
+        'email' => (string)($card['email'] ?? ''),
+        'joinedAtLabel' => (string)($card['joinedAtLabel'] ?? ''),
+        'lastSeenLabel' => (string)($card['lastSeenLabel'] ?? ''),
+        'photoUrl' => (string)($card['photoUrl'] ?? ''),
+        'initials' => (string)($card['initials'] ?? 'P'),
+        'isContextAdmin' => !empty($card['isContextAdmin']),
+        'isOrganizationAdmin' => !empty($card['isOrganizationAdmin']),
+        'isPending' => !empty($card['isPending']),
+        'canViewDetail' => !empty($card['canViewDetail']),
+        'lat' => (float)$card['latlong']['lat'],
+        'long' => (float)$card['latlong']['long'],
+    );
+}, $mapMembers);
+ob_start();
+commonRenderLeafletAssets();
+$leafletAssetsHtml = ob_get_clean();
 ?>
+<?= $leafletAssetsHtml ?>
 <div class="omo-team omo-panel-view">
     <div class="omo-team__hero omo-panel-view__header">
         <div class="omo-panel-view__header-copy">
@@ -329,9 +378,14 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
             · <?= omoApiEscape($adminCount) ?> admin<?= $adminCount > 1 ? 's' : '' ?>
             · <?= omoApiEscape($connectedCount) ?> connecté<?= $connectedCount > 1 ? 's' : '' ?>
         </div>
+        <div class="omo-team__view-switch" role="tablist" aria-label="Choix de la vue">
+            <button type="button" class="omo-team__view-button is-active" data-team-view-button="cards" aria-pressed="true">Cartes</button>
+            <button type="button" class="omo-team__view-button" data-team-view-button="map" aria-pressed="false">Carte geo</button>
+        </div>
     </div>
     <div class="omo-panel-view__body">
         <div class="omo-panel-view__body_content">
+        <section class="omo-team__view-panel" data-team-view-panel="cards">
         <?php if (count($memberCards) === 0): ?>
             <div class="omo-team__empty omo-empty-state">
                 Aucune personne n'est encore liée à ce <?= omoApiEscape($currentHolonTypeLabel) ?>.
@@ -365,13 +419,15 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
                                         aria-label="Actions pour <?= omoApiEscape($card['displayName']) ?>"
                                     >...</button>
                                     <div class="omo-team-card__menu-panel" data-team-member-menu-panel="1" hidden>
-                                        <button
-                                            type="button"
-                                            class="omo-team-card__menu-item omo-team-card__menu-item--danger"
-                                            data-member-action="remove"
-                                            data-user-id="<?= (int)$card['userId'] ?>"
-                                        >Retirer du contexte <?= omoApiEscape($currentHolonTemplateLabel) ?></button>
-                                        <?php if (!$card['isPending']): ?>
+                                        <?php if ($canRemoveCurrentHolonMembers): ?>
+                                            <button
+                                                type="button"
+                                                class="omo-team-card__menu-item omo-team-card__menu-item--danger"
+                                                data-member-action="remove"
+                                                data-user-id="<?= (int)$card['userId'] ?>"
+                                            >Retirer du contexte <?= omoApiEscape($currentHolonTemplateLabel) ?></button>
+                                        <?php endif; ?>
+                                        <?php if ($canGrantCurrentHolonAdmin && !$card['isPending']): ?>
                                             <button
                                                 type="button"
                                                 class="omo-team-card__menu-item"
@@ -443,6 +499,21 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
+        </section>
+        <section class="omo-team__view-panel" data-team-view-panel="map" hidden>
+            <?php if (count($mapMembers) === 0): ?>
+                <div class="omo-team__empty omo-empty-state">
+                    Aucun membre n'a encore de position geographique dans cette organisation.
+                </div>
+            <?php else: ?>
+                <div class="omo-team__map-shell generic-soft-panel">
+                    <div class="omo-team__map-summary">
+                        <?= omoApiEscape(count($mapMembers)) ?> membre<?= count($mapMembers) > 1 ? 's' : '' ?> geolocalise<?= count($mapMembers) > 1 ? 's' : '' ?>.
+                    </div>
+                    <div id="omo-team-map" class="omo-team__map" data-team-map="1"></div>
+                </div>
+            <?php endif; ?>
+        </section>
         </div>
     </div>
 </div>
@@ -484,6 +555,186 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
     font-size: 0.88rem;
     line-height: 1.4;
     text-align: center;
+}
+
+.omo-team__view-switch {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+}
+
+.omo-team__view-button {
+    min-height: 36px;
+    padding: 8px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.omo-team__view-button.is-active {
+    background: color-mix(in srgb, var(--color-primary) 16%, var(--color-surface));
+    border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+    color: var(--color-primary);
+}
+
+.omo-team__view-panel[hidden] {
+    display: none !important;
+}
+
+.omo-team__map-shell {
+    display: grid;
+    gap: 12px;
+}
+
+.omo-team__map-summary {
+    color: var(--color-text-light);
+    font-size: 0.9rem;
+}
+
+.omo-team__map {
+    width: 100%;
+    min-height: 460px;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    background:
+        radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary) 14%, transparent), transparent 42%),
+        linear-gradient(180deg, var(--color-surface-alt), var(--color-surface));
+}
+
+.omo-team__map-popup {
+    display: grid;
+    gap: 10px;
+    min-width: 220px;
+    max-width: 280px;
+}
+
+.omo-team__map-popup-head {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 10px;
+}
+
+.omo-team__map-popup-photo,
+.omo-team__map-popup-photo-placeholder {
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 8px 16px rgba(15, 23, 42, 0.14);
+}
+
+.omo-team__map-popup-photo {
+    object-fit: cover;
+}
+
+.omo-team__map-popup-photo-placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #14b8a6, #0f766e);
+    color: #ffffff;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.omo-team__map-popup-identity {
+    min-width: 0;
+}
+
+.omo-team__map-popup-name {
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.omo-team__map-popup-secondary {
+    margin-top: 2px;
+    color: #475569;
+    font-size: 0.82rem;
+    line-height: 1.25;
+    word-break: break-word;
+}
+
+.omo-team__map-popup-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.omo-team__map-popup-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: rgba(20, 184, 166, 0.12);
+    color: #0f766e;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.omo-team__map-popup-badge--admin {
+    background: rgba(245, 158, 11, 0.16);
+    color: #b45309;
+}
+
+.omo-team__map-popup-badge--pending {
+    background: rgba(100, 116, 139, 0.14);
+    color: #475569;
+}
+
+.omo-team__map-popup-meta {
+    display: grid;
+    gap: 6px;
+}
+
+.omo-team__map-popup-meta-row {
+    display: grid;
+    gap: 1px;
+}
+
+.omo-team__map-popup-meta-label {
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+}
+
+.omo-team__map-popup-meta-value {
+    color: #0f172a;
+    font-size: 0.82rem;
+    line-height: 1.3;
+    word-break: break-word;
+}
+
+.omo-team__map-popup-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: #0f766e;
+    color: #ffffff;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.omo-team__map-popup-action:hover {
+    background: #115e59;
+}
+
+.leaflet-popup-content-wrapper {
+    border-radius: 16px;
 }
 
 .omo-team__grid {
@@ -772,13 +1023,206 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
         display: block;
     }
 
+    .omo-team__view-switch {
+        justify-content: stretch;
+    }
+
+    .omo-team__view-button {
+        flex: 1 1 calc(50% - 4px);
+    }
+
     .omo-team__grid {
         grid-template-columns: 1fr;
+    }
+
+    .omo-team__map {
+        min-height: 320px;
     }
 }
 </style>
 
 <script>
+var omoTeamViewStorageKey = <?= json_encode('omo-team-view:' . (int)$organizationId . ':' . (int)$currentHolon->getId(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+var omoTeamMapMembers = <?= json_encode($mapMemberPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+var omoTeamLeafletMap = null;
+var omoTeamLeafletLayer = null;
+var omoTeamLeafletTileState = {layer: null, theme: null};
+
+function omoTeamEscapeHtml(value) {
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function omoTeamApplyView(viewName) {
+    const normalizedView = viewName === 'map' ? 'map' : 'cards';
+    $('[data-team-view-button]').each(function () {
+        const isActive = $(this).data('team-view-button') === normalizedView;
+        $(this).toggleClass('is-active', isActive).attr('aria-pressed', isActive ? 'true' : 'false');
+    });
+
+    $('[data-team-view-panel]').each(function () {
+        const shouldShow = $(this).data('team-view-panel') === normalizedView;
+        $(this).prop('hidden', !shouldShow);
+    });
+
+    try {
+        window.sessionStorage.setItem(omoTeamViewStorageKey, normalizedView);
+    } catch (error) {
+    }
+
+    if (normalizedView === 'map') {
+        if (typeof window.commonWhenLeafletReady === 'function') {
+            window.commonWhenLeafletReady(function () {
+                omoTeamEnsureMapReady();
+            });
+        } else {
+            omoTeamEnsureMapReady();
+        }
+    }
+}
+
+function omoTeamEnsureMapReady() {
+    if (typeof L === 'undefined' || !Array.isArray(omoTeamMapMembers) || omoTeamMapMembers.length === 0) {
+        return;
+    }
+
+    const mapElement = document.getElementById('omo-team-map');
+    if (!mapElement) {
+        return;
+    }
+
+    if (!omoTeamLeafletMap) {
+        omoTeamLeafletMap = L.map(mapElement, {
+            zoomControl: true,
+            scrollWheelZoom: true
+        });
+
+        if (typeof window.commonBindLeafletTheme === 'function') {
+            window.commonBindLeafletTheme(omoTeamLeafletMap, omoTeamLeafletTileState);
+        }
+
+        omoTeamLeafletLayer = L.layerGroup().addTo(omoTeamLeafletMap);
+        const bounds = [];
+
+        omoTeamMapMembers.forEach(function (member) {
+            const lat = Number(member.lat);
+            const lng = Number(member.long);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+                return;
+            }
+
+            const popupBits = ['<div class="omo-team__map-popup">'];
+
+            popupBits.push('<div class="omo-team__map-popup-head">');
+            if (member.photoUrl) {
+                popupBits.push('<img class="omo-team__map-popup-photo" src="' + omoTeamEscapeHtml(member.photoUrl) + '" alt="' + omoTeamEscapeHtml(member.displayName || ('Utilisateur ' + member.userId)) + '">');
+            } else {
+                popupBits.push('<div class="omo-team__map-popup-photo-placeholder">' + omoTeamEscapeHtml(member.initials || 'P') + '</div>');
+            }
+
+            popupBits.push('<div class="omo-team__map-popup-identity">');
+            popupBits.push('<div class="omo-team__map-popup-name">' + omoTeamEscapeHtml(member.displayName || ('Utilisateur ' + member.userId)) + '</div>');
+            if (member.secondary) {
+                popupBits.push('<div class="omo-team__map-popup-secondary">' + omoTeamEscapeHtml(member.secondary) + '</div>');
+            } else if (member.email) {
+                popupBits.push('<div class="omo-team__map-popup-secondary">' + omoTeamEscapeHtml(member.email) + '</div>');
+            }
+            popupBits.push('</div>');
+            popupBits.push('</div>');
+
+            popupBits.push('<div class="omo-team__map-popup-badges">');
+            if (member.isPending) {
+                popupBits.push('<span class="omo-team__map-popup-badge omo-team__map-popup-badge--pending">En attente</span>');
+            }
+            if (member.isContextAdmin) {
+                popupBits.push('<span class="omo-team__map-popup-badge omo-team__map-popup-badge--admin">Admin du contexte</span>');
+            }
+            if (member.isOrganizationAdmin) {
+                popupBits.push('<span class="omo-team__map-popup-badge">Admin organisation</span>');
+            }
+            popupBits.push('</div>');
+
+            popupBits.push('<div class="omo-team__map-popup-meta">');
+            popupBits.push('<div class="omo-team__map-popup-meta-row"><div class="omo-team__map-popup-meta-label">E-mail</div><div class="omo-team__map-popup-meta-value">' + omoTeamEscapeHtml(member.email || 'Non renseigne') + '</div></div>');
+            popupBits.push('<div class="omo-team__map-popup-meta-row"><div class="omo-team__map-popup-meta-label">Ajout</div><div class="omo-team__map-popup-meta-value">' + omoTeamEscapeHtml(member.joinedAtLabel || 'N/A') + '</div></div>');
+            popupBits.push('<div class="omo-team__map-popup-meta-row"><div class="omo-team__map-popup-meta-label">Connexion</div><div class="omo-team__map-popup-meta-value">' + omoTeamEscapeHtml(member.lastSeenLabel || 'Jamais') + '</div></div>');
+            popupBits.push('</div>');
+
+            if (member.canViewDetail) {
+                popupBits.push('<button type="button" class="omo-team__map-popup-action" data-map-popup-open-user="' + Number(member.userId) + '">Ouvrir la fiche</button>');
+            }
+
+            popupBits.push('</div>');
+
+            const marker = L.circleMarker([lat, lng], {
+                radius: member.isContextAdmin ? 9 : 7,
+                color: member.isContextAdmin ? '#b45309' : '#0f766e',
+                weight: 2,
+                fillColor: member.isContextAdmin ? '#f59e0b' : '#14b8a6',
+                fillOpacity: 0.88
+            });
+
+            marker.bindPopup(popupBits.join(''));
+            if (member.canViewDetail) {
+                marker.on('dblclick', function () {
+                    if (typeof window.omoOpenUserContextPopup === 'function') {
+                        window.omoOpenUserContextPopup(Number(member.userId));
+                    }
+                });
+            }
+
+            marker.addTo(omoTeamLeafletLayer);
+            bounds.push([lat, lng]);
+        });
+
+        if (bounds.length === 1) {
+            omoTeamLeafletMap.setView(bounds[0], 13);
+        } else if (bounds.length > 1) {
+            omoTeamLeafletMap.fitBounds(bounds, {padding: [28, 28]});
+        } else {
+            omoTeamLeafletMap.setView([46.8182, 8.2275], 7);
+        }
+    }
+
+    window.setTimeout(function () {
+        if (omoTeamLeafletMap) {
+            omoTeamLeafletMap.invalidateSize();
+        }
+    }, 0);
+    window.setTimeout(function () {
+        if (omoTeamLeafletMap) {
+            omoTeamLeafletMap.invalidateSize();
+        }
+    }, 250);
+}
+
+$(document)
+  .off('click.omoTeamViewToggle', '[data-team-view-button]')
+  .on('click.omoTeamViewToggle', '[data-team-view-button]', function () {
+    omoTeamApplyView(String($(this).data('team-view-button') || 'cards'));
+  });
+
+$(function () {
+    let initialView = 'cards';
+    try {
+        initialView = window.sessionStorage.getItem(omoTeamViewStorageKey) || 'cards';
+    } catch (error) {
+    }
+
+    omoTeamApplyView(initialView);
+    if (typeof window.commonWhenLeafletReady === 'function') {
+        window.commonWhenLeafletReady(function () {
+            if (($('[data-team-view-button].is-active').data('team-view-button') || 'cards') === 'map') {
+                omoTeamEnsureMapReady();
+            }
+        });
+    }
+});
+
 function omoCloseTeamMemberMenus() {
     $('[data-team-member-menu="1"]').each(function () {
         $(this).removeClass('is-open');
@@ -786,6 +1230,18 @@ function omoCloseTeamMemberMenus() {
         $(this).find('[data-team-member-menu-toggle="1"]').attr('aria-expanded', 'false');
     });
 }
+
+$(document)
+  .off('click.omoTeamMapPopupAction', '[data-map-popup-open-user]')
+  .on('click.omoTeamMapPopupAction', '[data-map-popup-open-user]', function (event) {
+    event.preventDefault();
+    const userId = Number($(this).data('map-popup-open-user') || 0);
+    if (!userId || typeof window.omoOpenUserContextPopup !== 'function') {
+        return;
+    }
+
+    window.omoOpenUserContextPopup(userId);
+  });
 
 $(document)
   .off('click.omoTeamUserContext', '.omo-team-card[data-open-user-context="1"]')

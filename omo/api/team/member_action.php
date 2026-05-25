@@ -32,27 +32,42 @@ if (!$organization->load($organizationId) || !$holon->load($holonId) || !$organi
     exit;
 }
 
-if (!$holon->canEdit()) {
-    http_response_code(403);
-    echo json_encode(array(
-        'status' => false,
-        'message' => "Vous n'avez pas le droit de modifier ce contexte.",
-    ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    exit;
-}
-
 switch ($action) {
     case 'remove':
+        if (!$holon->canEdit()) {
+            http_response_code(403);
+            echo json_encode(array(
+                'status' => false,
+                'message' => "Vous n'avez pas le droit de modifier ce contexte.",
+            ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
         $result = $holon->removeMember($userId, array(
             'organizationId' => $organizationId,
         ));
         break;
 
     case 'grant_admin':
+        if (!$holon->isAllowed('CAN_ADD_ADMIN', false)) {
+            http_response_code(403);
+            echo json_encode(array(
+                'status' => false,
+                'message' => "Vous n'avez pas le droit de gerer le statut admin dans ce contexte.",
+            ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
         $result = $holon->setMemberContextAdmin($userId, true, $organizationId);
         break;
 
     case 'revoke_admin':
+        if (!$holon->isAllowed('CAN_ADD_ADMIN', false)) {
+            http_response_code(403);
+            echo json_encode(array(
+                'status' => false,
+                'message' => "Vous n'avez pas le droit de gerer le statut admin dans ce contexte.",
+            ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
         $result = $holon->setMemberContextAdmin($userId, false, $organizationId);
         break;
 
