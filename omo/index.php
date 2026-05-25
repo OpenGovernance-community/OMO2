@@ -546,23 +546,6 @@ if ($isOrganizationHub && !$isDemoGuest) {
     </div>
     </main>
 
-    <div class="omo-directory-modal" id="omoDirectoryModal" hidden>
-        <div class="omo-directory-modal__backdrop" data-omo-directory-close></div>
-        <div class="omo-directory-modal__panel" role="dialog" aria-modal="true" aria-labelledby="omoDirectoryModalTitle">
-            <div class="omo-directory-modal__header">
-                <h2 id="omoDirectoryModalTitle"><?= htmlspecialchars(t('app.directory.create.modal_title')) ?></h2>
-                <button type="button" class="omo-directory-modal__close" data-omo-directory-close><?= htmlspecialchars(t('app.directory.modal.close')) ?></button>
-            </div>
-            <div class="omo-directory-modal__body">
-                <iframe
-                    class="omo-directory-modal__iframe"
-                    src="<?= htmlspecialchars($organizationCreateUrl) ?>"
-                    loading="lazy"
-                    title="<?= htmlspecialchars(t('app.directory.create.modal_title')) ?>"
-                ></iframe>
-            </div>
-        </div>
-    </div>
     <script>
         window.omoDirectoryTranslations = <?= json_encode($directoryJsTranslations, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
     </script>
@@ -607,8 +590,8 @@ if ($isOrganizationHub && !$isDemoGuest) {
         }
 
         .auth-org-badge--pending {
-            background: color-mix(in srgb, var(--auth-org-accent) 16%, white);
-            color: color-mix(in srgb, var(--auth-org-accent) 72%, black);
+            background: color-mix(in srgb, var(--auth-org-accent) 16%, var(--color-surface, #ffffff));
+            color: color-mix(in srgb, var(--auth-org-accent) 72%, var(--color-text, #111827));
         }
 
         .omo-org-card-menu {
@@ -622,14 +605,14 @@ if ($isOrganizationHub && !$isDemoGuest) {
             min-width: 40px;
             min-height: 40px;
             padding: 0 10px 4px;
-            border: 1px solid rgba(15, 23, 42, 0.1);
+            border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 86%, transparent);
             border-radius: 999px;
-            background: rgba(255, 255, 255, 0.92);
-            color: #0f172a;
+            background: color-mix(in srgb, var(--color-surface, #ffffff) 90%, transparent);
+            color: var(--color-text, #0f172a);
             font-size: 22px;
             line-height: 1;
             cursor: pointer;
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+            box-shadow: 0 10px 24px color-mix(in srgb, var(--color-text, #0f172a) 12%, transparent);
         }
 
         .omo-org-card-menu__panel {
@@ -642,9 +625,9 @@ if ($isOrganizationHub && !$isDemoGuest) {
             flex-direction: column;
             gap: 6px;
             border-radius: 16px;
-            border: 1px solid #dbe4ee;
-            background: #ffffff;
-            box-shadow: 0 18px 42px rgba(15, 23, 42, 0.16);
+            border: 1px solid var(--color-border, #dbe4ee);
+            background: var(--color-surface, #ffffff);
+            box-shadow: 0 18px 42px color-mix(in srgb, var(--color-text, #0f172a) 16%, transparent);
         }
 
         .omo-org-card-menu.is-open .omo-org-card-menu__panel {
@@ -657,8 +640,8 @@ if ($isOrganizationHub && !$isDemoGuest) {
             padding: 10px 12px;
             border: 0;
             border-radius: 12px;
-            background: #f8fafc;
-            color: #0f172a;
+            background: var(--color-surface-alt, #f8fafc);
+            color: var(--color-text, #0f172a);
             text-align: left;
             font: inherit;
             font-weight: 600;
@@ -666,21 +649,26 @@ if ($isOrganizationHub && !$isDemoGuest) {
         }
 
         .omo-org-card-menu__item:hover {
-            background: #eef4ff;
+            background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #ffffff));
         }
 
         .omo-org-card-menu__item--danger {
             color: #b91c1c;
-            background: #fef2f2;
+            background: color-mix(in srgb, #dc2626 10%, var(--color-surface, #ffffff));
         }
 
         .omo-org-card-menu__item--danger:hover {
-            background: #fee2e2;
+            background: color-mix(in srgb, #dc2626 18%, var(--color-surface, #ffffff));
         }
 
         .auth-org-card--create {
-            border: 1px dashed rgba(37, 99, 235, 0.28);
-            background: linear-gradient(180deg, #ffffff, #f8fbff);
+            border: 1px dashed color-mix(in srgb, var(--color-primary, #2563eb) 28%, var(--color-border, #d1d5db));
+            background:
+                linear-gradient(
+                    180deg,
+                    color-mix(in srgb, var(--color-surface, #ffffff) 96%, var(--color-primary, #2563eb) 4%),
+                    color-mix(in srgb, var(--color-surface-alt, #f8fbff) 92%, var(--color-primary, #2563eb) 8%)
+                );
             cursor: pointer;
             text-align: left;
         }
@@ -692,89 +680,20 @@ if ($isOrganizationHub && !$isDemoGuest) {
         }
 
         .auth-org-logo-placeholder--create {
-            background: rgba(37, 99, 235, 0.12);
-            color: #2563eb;
+            background: color-mix(in srgb, var(--color-primary, #2563eb) 16%, var(--color-surface, #ffffff));
+            color: var(--color-primary, #2563eb);
         }
 
-        .omo-directory-modal[hidden] {
-            display: none;
-        }
-
-        .omo-directory-modal {
-            position: fixed;
-            inset: 0;
-            z-index: 60;
-        }
-
-        .omo-directory-modal__backdrop {
-            position: absolute;
-            inset: 0;
-            background: rgba(15, 23, 42, 0.56);
-            backdrop-filter: blur(4px);
-        }
-
-        .omo-directory-modal__panel {
-            position: relative;
-            width: min(1120px, calc(100vw - 32px));
-            height: min(880px, calc(100vh - 32px));
-            margin: 16px auto;
-            display: flex;
-            flex-direction: column;
-            border-radius: 22px;
-            overflow: hidden;
-            background: #fff;
-            box-shadow: 0 30px 80px rgba(15, 23, 42, 0.28);
-        }
-
-        .omo-directory-modal__header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            padding: 16px 18px;
-            border-bottom: 1px solid #e2e8f0;
-            background: #fff;
-        }
-
-        .omo-directory-modal__header h2 {
-            margin: 0;
-            font-size: 20px;
-            color: #0f172a;
-        }
-
-        .omo-directory-modal__close {
-            min-height: 40px;
-            padding: 8px 14px;
-            border: 0;
-            border-radius: 10px;
-            background: #e2e8f0;
-            color: #0f172a;
-            font-weight: 700;
-            cursor: pointer;
-        }
-
-        .omo-directory-modal__body {
-            flex: 1 1 auto;
-            min-height: 0;
-            background: #f8fafc;
-        }
-
-        .omo-directory-modal__iframe {
-            width: 100%;
-            height: 100%;
-            border: 0;
-            display: block;
-            background: #f8fafc;
-        }
     </style>
 
     <script>
         (function () {
-            var modal = document.getElementById('omoDirectoryModal');
             var openButton = document.getElementById('omoCreateOrganizationCard');
             var organizationActionUrl = '/omo/api/organizations/card_action.php';
+            var organizationCreateUrl = <?= json_encode($organizationCreateUrl, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+            var organizationCreateModalTitle = <?= json_encode(t('app.directory.create.modal_title'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
 
-            if (!modal || !openButton) {
+            if (!openButton) {
                 return;
             }
 
@@ -794,23 +713,16 @@ if ($isOrganizationHub && !$isDemoGuest) {
                 });
             }
 
-            function closeModal() {
-                modal.hidden = true;
-                document.body.classList.remove('omo-directory-modal-open');
-            }
-
             function openModal() {
-                modal.hidden = false;
-                document.body.classList.add('omo-directory-modal-open');
+                if (typeof window.commonTopbarOpenModal === 'function') {
+                    window.commonTopbarOpenModal(organizationCreateModalTitle, organizationCreateUrl, 'fetch');
+                    return;
+                }
+
+                window.location.href = organizationCreateUrl;
             }
 
             openButton.addEventListener('click', openModal);
-
-            modal.addEventListener('click', function (event) {
-                if (event.target.closest('[data-omo-directory-close]')) {
-                    closeModal();
-                }
-            });
 
             document.addEventListener('click', function (event) {
                 var trigger = event.target.closest('[data-omo-org-menu-trigger]');
@@ -918,10 +830,6 @@ if ($isOrganizationHub && !$isDemoGuest) {
             document.addEventListener('keydown', function (event) {
                 if (event.key === 'Escape') {
                     closeMenus();
-                }
-
-                if (event.key === 'Escape' && !modal.hidden) {
-                    closeModal();
                 }
             });
         })();
