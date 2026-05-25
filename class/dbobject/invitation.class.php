@@ -420,8 +420,8 @@
 				$organizationColorValue = '#004663';
 			}
 			$organizationColor = htmlspecialchars($organizationColorValue, ENT_QUOTES, 'UTF-8');
-			$logo = trim((string)$organization->get('logo'));
-			$banner = trim((string)$organization->get('banner'));
+			$logo = commonBuildAbsoluteAssetUrl((string)$organization->get('logo'));
+			$banner = commonBuildAbsoluteAssetUrl((string)$organization->get('banner'));
 
 			$message = "
 <html>
