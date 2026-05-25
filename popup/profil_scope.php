@@ -3,6 +3,7 @@ require_once("../config.php");
 require_once("../shared_functions.php");
 require_once("../common/auth.php");
 require_once("../common/user_competence_ui.php");
+require_once("../common/leaflet_helper.php");
 require_once(__DIR__ . "/profil_translation_helper.php");
 
 $connected = checklogin();
@@ -47,6 +48,7 @@ $competenceSectionHelp = $scope === 'organization'
     ? profilPopupT('profile.popup.competence.section.organization_help')
     : profilPopupT('profile.popup.competence.section.general_help');
 $canLimitCompetenceToOrganization = $currentOrganizationId > 0;
+$leafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafletMapsEnabled();
 ?>
 <div class="profile-panel__scope-fragment" data-profile-loaded-scope="<?= htmlspecialchars($scope, ENT_QUOTES, 'UTF-8') ?>">
     <?php if ($scope === 'organization' && $organizationMembership): ?>
@@ -83,11 +85,13 @@ $canLimitCompetenceToOrganization = $currentOrganizationId > 0;
             "firstname",
             "lastname",
             "presentation",
-            "latlong",
             "birthdate",
             "email",
         ),
     );
+    if ($leafletMapsEnabled) {
+        array_splice($params["fields"], 5, 0, "latlong");
+    }
     $user->display("adminEdit.php", $params);
     ?>
     <div class="profile-panel__actions">
