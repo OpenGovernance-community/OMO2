@@ -924,7 +924,6 @@ if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
     <?= $omoPwaHeadHtml . PHP_EOL ?>
     <link rel="stylesheet" href="/common/assets/components.css">
     <link rel="stylesheet" href="/omo/assets/css/styles.css">
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <base href="/omo/">
 </head>
