@@ -200,7 +200,156 @@
 			return $placeholders;
 		}
 
+		protected static function bindSqlValue(array &$params, $prefix, $value)
+		{
+			$key = $prefix . count($params);
+			$params[$key] = $value;
+			return ':' . $key;
+		}
+
+		protected static function buildUserDependencyAvailabilitySql(array &$params, $userId, $parcoursId)
+		{
+			$depParcoursIdA = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+			$depParcoursIdB = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+			$depParcoursIdC = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+			$depParcoursIdD = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+			$depParcoursIdE = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+			$reqUserIdA = self::bindSqlValue($params, 'req_user_', (int)$userId);
+			$reqParcoursIdA = self::bindSqlValue($params, 'req_parcours_', (int)$parcoursId);
+			$reqUserIdB = self::bindSqlValue($params, 'req_user_', (int)$userId);
+			$reqParcoursIdB = self::bindSqlValue($params, 'req_parcours_', (int)$parcoursId);
+
+			return "
+				(
+					NOT EXISTS (
+						SELECT 1
+						FROM mission_dependencies md
+						WHERE md.IDmission_child = m.id
+						  AND md.IDparcours = $depParcoursIdA
+					)
+					OR
+					(
+						EXISTS (
+							SELECT 1
+							FROM mission_dependencies md
+							WHERE md.IDmission_child = m.id
+							  AND md.IDparcours = $depParcoursIdB
+							  AND md.required = 1
+						)
+						AND NOT EXISTS (
+							SELECT 1
+							FROM mission_dependencies md
+							LEFT JOIN user_mission lm
+								ON lm.IDmission = md.IDmission_parent
+								AND lm.IDuser = $reqUserIdA
+								AND lm.IDparcours = $reqParcoursIdA
+							WHERE md.IDmission_child = m.id
+							  AND md.IDparcours = $depParcoursIdC
+							  AND md.required = 1
+							  AND lm.done IS NULL
+						)
+					)
+					OR
+					(
+						NOT EXISTS (
+							SELECT 1
+							FROM mission_dependencies md
+							WHERE md.IDmission_child = m.id
+							  AND md.IDparcours = $depParcoursIdD
+							  AND md.required = 1
+						)
+						AND EXISTS (
+							SELECT 1
+							FROM mission_dependencies md
+							INNER JOIN user_mission lm
+								ON lm.IDmission = md.IDmission_parent
+								AND lm.IDuser = $reqUserIdB
+								AND lm.IDparcours = $reqParcoursIdB
+								AND lm.done IS NOT NULL
+							WHERE md.IDmission_child = m.id
+							  AND md.IDparcours = $depParcoursIdE
+						)
+					)
+				)
+			";
+		}
+
+		protected static function buildMissionIdsDependencyAvailabilitySql(array &$params, array $donePlaceholders, $parcoursId)
+		{
+			$depParcoursIdA = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+			$depParcoursIdB = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+			$depParcoursIdC = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+			$depParcoursIdD = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+			$depParcoursIdE = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+			$depParcoursIdF = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+			$completedDependencySql = count($donePlaceholders) > 0
+				? "SELECT 1
+					FROM mission_dependencies md
+					WHERE md.IDmission_child = m.id
+					  AND md.IDparcours = $depParcoursIdA
+					  AND md.IDmission_parent IN (" . implode(', ', $donePlaceholders) . ")"
+				: "SELECT 1
+					FROM mission_dependencies md
+					WHERE 1 = 0";
+
+			$unmetRequiredDependencySql = count($donePlaceholders) > 0
+				? "SELECT 1
+					FROM mission_dependencies md
+					WHERE md.IDmission_child = m.id
+					  AND md.IDparcours = $depParcoursIdB
+					  AND md.required = 1
+					  AND md.IDmission_parent NOT IN (" . implode(', ', $donePlaceholders) . ")"
+				: "SELECT 1
+					FROM mission_dependencies md
+					WHERE md.IDmission_child = m.id
+					  AND md.IDparcours = $depParcoursIdC
+					  AND md.required = 1";
+
+			return "
+				(
+					NOT EXISTS (
+						SELECT 1
+						FROM mission_dependencies md
+						WHERE md.IDmission_child = m.id
+						  AND md.IDparcours = $depParcoursIdD
+					)
+					OR
+					(
+						EXISTS (
+							SELECT 1
+							FROM mission_dependencies md
+							WHERE md.IDmission_child = m.id
+							  AND md.IDparcours = $depParcoursIdE
+							  AND md.required = 1
+						)
+						AND NOT EXISTS (
+							$unmetRequiredDependencySql
+						)
+					)
+					OR
+					(
+						NOT EXISTS (
+							SELECT 1
+							FROM mission_dependencies md
+							WHERE md.IDmission_child = m.id
+							  AND md.IDparcours = $depParcoursIdF
+							  AND md.required = 1
+						)
+						AND EXISTS (
+							$completedDependencySql
+						)
+					)
+				)
+			";
+		}
+
 		public static function fetchAvailableForUserParcours($userId, $parcoursId) {
+			$params = [
+				'pm_parcours_id' => (int)$parcoursId,
+				'done_user_id' => (int)$userId,
+				'done_parcours_id' => (int)$parcoursId,
+			];
+			$dependencyAvailabilitySql = self::buildUserDependencyAvailabilitySql($params, $userId, $parcoursId);
 			$query = "
 				SELECT m.*, pm.branch
 				FROM mission m
@@ -216,65 +365,24 @@
 						  AND lm_done.IDparcours = :done_parcours_id
 						  AND lm_done.done IS NOT NULL
 					)
-					AND
-					(
-						NOT EXISTS (
-							SELECT 1
-							FROM mission_dependencies md
-							WHERE md.IDmission_child = m.id
-							  AND md.IDparcours = :dep_parcours_id
-						)
-						OR
-						NOT EXISTS (
-							SELECT 1
-							FROM mission_dependencies md
-							LEFT JOIN user_mission lm
-								ON lm.IDmission = md.IDmission_parent
-								AND lm.IDuser = :req_user_id
-								AND lm.IDparcours = :req_parcours_id
-							WHERE md.IDmission_child = m.id
-							  AND md.IDparcours = :req_dep_parcours_id
-							  AND md.required = 1
-							  AND lm.done IS NULL
-						)
-					)
+					AND $dependencyAvailabilitySql
 				ORDER BY pm.branch ASC, m.position ASC
 			";
 
-			return self::fetchAll($query, [
-				'pm_parcours_id' => (int)$parcoursId,
-				'done_user_id' => (int)$userId,
-				'done_parcours_id' => (int)$parcoursId,
-				'dep_parcours_id' => (int)$parcoursId,
-				'req_user_id' => (int)$userId,
-				'req_parcours_id' => (int)$parcoursId,
-				'req_dep_parcours_id' => (int)$parcoursId,
-			]);
+			return self::fetchAll($query, $params);
 		}
 
 		public static function fetchAvailableForMissionIds($parcoursId, array $doneMissionIds)
 		{
 			$params = [
 				'pm_parcours_id' => (int)$parcoursId,
-				'req_dep_parcours_id' => (int)$parcoursId,
 			];
 			$donePlaceholdersExclude = self::buildMissionIdPlaceholders($doneMissionIds, 'done_exclude_', $params);
 			$donePlaceholdersDeps = self::buildMissionIdPlaceholders($doneMissionIds, 'done_dep_', $params);
+			$dependencyAvailabilitySql = self::buildMissionIdsDependencyAvailabilitySql($params, $donePlaceholdersDeps, $parcoursId);
 			$doneSql = count($donePlaceholdersExclude) > 0
 				? "AND m.id NOT IN (" . implode(', ', $donePlaceholdersExclude) . ")"
 				: '';
-			$unmetDependencySql = count($donePlaceholdersDeps) > 0
-				? "SELECT 1
-					FROM mission_dependencies md
-					WHERE md.IDmission_child = m.id
-					  AND md.IDparcours = :req_dep_parcours_id
-					  AND md.required = 1
-					  AND md.IDmission_parent NOT IN (" . implode(', ', $donePlaceholdersDeps) . ")"
-				: "SELECT 1
-					FROM mission_dependencies md
-					WHERE md.IDmission_child = m.id
-					  AND md.IDparcours = :req_dep_parcours_id
-					  AND md.required = 1";
 
 			$query = "
 				SELECT m.*, pm.branch
@@ -284,9 +392,7 @@
 					AND pm.IDparcours = :pm_parcours_id
 				WHERE 1=1
 					$doneSql
-					AND NOT EXISTS (
-						$unmetDependencySql
-					)
+					AND $dependencyAvailabilitySql
 				ORDER BY pm.branch ASC, m.position ASC
 			";
 
@@ -294,6 +400,12 @@
 		}
 
 		public static function fetchLockedForUserParcours($userId, $parcoursId) {
+			$params = [
+				'pm_parcours_id' => (int)$parcoursId,
+				'done_user_id' => (int)$userId,
+				'done_parcours_id' => (int)$parcoursId,
+			];
+			$dependencyAvailabilitySql = self::buildUserDependencyAvailabilitySql($params, $userId, $parcoursId);
 			$query = "
 				SELECT m.*, pm.branch
 				FROM mission m
@@ -309,55 +421,24 @@
 						  AND lm.IDparcours = :done_parcours_id
 						  AND lm.done IS NOT NULL
 					)
-					AND
-					EXISTS (
-						SELECT 1
-						FROM mission_dependencies md
-						LEFT JOIN user_mission lm
-							ON lm.IDmission = md.IDmission_parent
-							AND lm.IDuser = :req_user_id
-							AND lm.IDparcours = :req_parcours_id
-						WHERE md.IDmission_child = m.id
-						  AND md.IDparcours = :req_dep_parcours_id
-						  AND md.required = 1
-						  AND lm.done IS NULL
-					)
+					AND NOT $dependencyAvailabilitySql
 				ORDER BY pm.branch ASC, m.position ASC
 			";
 
-			return self::fetchAll($query, [
-				'pm_parcours_id' => (int)$parcoursId,
-				'done_user_id' => (int)$userId,
-				'done_parcours_id' => (int)$parcoursId,
-				'req_user_id' => (int)$userId,
-				'req_parcours_id' => (int)$parcoursId,
-				'req_dep_parcours_id' => (int)$parcoursId,
-			]);
+			return self::fetchAll($query, $params);
 		}
 
 		public static function fetchLockedForMissionIds($parcoursId, array $doneMissionIds)
 		{
 			$params = [
 				'pm_parcours_id' => (int)$parcoursId,
-				'req_dep_parcours_id' => (int)$parcoursId,
 			];
 			$donePlaceholdersExclude = self::buildMissionIdPlaceholders($doneMissionIds, 'done_exclude_', $params);
 			$donePlaceholdersDeps = self::buildMissionIdPlaceholders($doneMissionIds, 'done_dep_', $params);
+			$dependencyAvailabilitySql = self::buildMissionIdsDependencyAvailabilitySql($params, $donePlaceholdersDeps, $parcoursId);
 			$doneSql = count($donePlaceholdersExclude) > 0
 				? "AND m.id NOT IN (" . implode(', ', $donePlaceholdersExclude) . ")"
 				: '';
-			$missingDependencySql = count($donePlaceholdersDeps) > 0
-				? "SELECT 1
-					FROM mission_dependencies md
-					WHERE md.IDmission_child = m.id
-					  AND md.IDparcours = :req_dep_parcours_id
-					  AND md.required = 1
-					  AND md.IDmission_parent NOT IN (" . implode(', ', $donePlaceholdersDeps) . ")"
-				: "SELECT 1
-					FROM mission_dependencies md
-					WHERE md.IDmission_child = m.id
-					  AND md.IDparcours = :req_dep_parcours_id
-					  AND md.required = 1";
 
 			$query = "
 				SELECT m.*, pm.branch
@@ -367,9 +448,7 @@
 					AND pm.IDparcours = :pm_parcours_id
 				WHERE 1=1
 					$doneSql
-					AND EXISTS (
-						$missingDependencySql
-					)
+					AND NOT $dependencyAvailabilitySql
 				ORDER BY pm.branch ASC, m.position ASC
 			";
 
