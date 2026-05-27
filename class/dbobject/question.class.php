@@ -59,6 +59,16 @@
 			return $choices;
 		}
 
+		protected static function shuffleChoicesForDisplay(array $choices)
+		{
+			if (count($choices) <= 1) {
+				return $choices;
+			}
+
+			shuffle($choices);
+			return $choices;
+		}
+
 		public static function fetchQuestionsForMission($missionId) {
 			$query = "
 				SELECT f.id, f.question
@@ -87,6 +97,12 @@
 					}
 				}
 
+				foreach ($row['choices'] as &$choiceRow) {
+					unset($choiceRow['is_correct']);
+				}
+				unset($choiceRow);
+
+				$row['choices'] = self::shuffleChoicesForDisplay($row['choices']);
 				$row['multiple'] = $correctCount > 1;
 			}
 

@@ -448,13 +448,15 @@ input:checked + .slider::before {
 }
 
 .role-item-shell.match-direct {
-  background: #fff7d6;
-  box-shadow: inset 0 0 0 1px rgba(217, 119, 6, 0.22);
+  background: color-mix(in srgb, var(--color-surface-alt, #f0f2f5) 68%, #f59e0b 32%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary, #2563eb) 8%, #d97706 92%);
+  color: var(--color-text, #1f2937);
 }
 
 .role-item-shell.match-content {
-  background: #eef6ff;
-  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.18);
+  background: color-mix(in srgb, var(--color-surface-alt, #f0f2f5) 78%, var(--color-primary, #2563eb) 22%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-surface, #ffffff) 78%, var(--color-primary, #2563eb) 22%);
+  color: var(--color-text, #1f2937);
 }
 
 .role-item-main {
@@ -549,10 +551,11 @@ input:checked + .slider::before {
 }
 
 .role-highlight {
-  background: #fff3a3;
-  color: inherit;
+  background: color-mix(in srgb, var(--color-surface, #ffffff) 46%, #facc15 54%);
+  color: var(--color-text, #1f2937);
   padding: 0 1px;
   border-radius: 2px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-surface, #ffffff) 70%, #ca8a04 30%);
 }
 
 .role-list-empty {
