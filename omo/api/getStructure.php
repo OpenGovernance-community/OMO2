@@ -1,9 +1,104 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
 
+function omoGetStructurePanelSourceLang(): array
+{
+    return [
+        'structure.actions.export' => [
+            'text' => 'Export',
+            'context' => 'Structure action menu item used to export the current structure.',
+        ],
+        'structure.actions.menu_aria' => [
+            'text' => 'Actions',
+            'context' => 'Aria label for the structure action menu toggle button.',
+        ],
+        'structure.actions.print' => [
+            'text' => 'Imprimer',
+            'context' => 'Structure action menu item used to print the current structure.',
+        ],
+        'structure.actions.share' => [
+            'text' => 'Partager',
+            'context' => 'Structure action menu item used to open the sharing dialog for the current structure.',
+        ],
+        'structure.browser.generic_name' => [
+            'text' => 'ce navigateur',
+            'context' => 'Fallback browser name used in structure warnings when the exact browser cannot be detected.',
+        ],
+        'structure.error.organization_access_denied' => [
+            'text' => 'Acces refuse a cette organisation.',
+            'context' => 'Error message shown when the structure view cannot access the current organization.',
+        ],
+        'structure.list.empty_search' => [
+            'text' => 'Aucun noeud ne correspond a cette recherche.',
+            'context' => 'Message shown in the structure list view when the current search returns no visible nodes.',
+        ],
+        'structure.list.properties.hide_aria' => [
+            'text' => 'Masquer les proprietes',
+            'context' => 'Aria label for the button that collapses role details in the structure list view.',
+        ],
+        'structure.list.properties.show_aria' => [
+            'text' => 'Afficher les proprietes',
+            'context' => 'Aria label for the button that expands role details in the structure list view.',
+        ],
+        'structure.list.search.placeholder' => [
+            'text' => 'Filtre rapide',
+            'context' => 'Placeholder shown above the structure list view search field.',
+        ],
+        'structure.message.invalid' => [
+            'text' => 'Structure invalide.',
+            'context' => 'Fallback error message shown when the structure data payload is invalid.',
+        ],
+        'structure.message.load_error' => [
+            'text' => 'Impossible de charger la structure.',
+            'context' => 'Fallback error message shown when the structure view fails to load its data.',
+        ],
+        'structure.message.no_structure' => [
+            'text' => 'Aucune structure disponible pour cette organisation.',
+            'context' => 'Message shown when the current organization has no visible structure to display.',
+        ],
+        'structure.share.modal_title' => [
+            'text' => 'Partager la structure',
+            'context' => 'Modal title used when opening the share dialog from the structure action menu.',
+        ],
+        'structure.view.toggle_label' => [
+            'text' => 'O   L',
+            'context' => 'Short toggle label used to switch between organization graph view and list view in the structure panel.',
+        ],
+        'structure.warning.brave' => [
+            'text' => 'Brave semble bloquer la lecture du canvas utilisee pour la navigation graphique, probablement a cause du bouclier anti-empreinte numerique. La vue liste a ete activee pour continuer a naviguer. Vous pouvez aussi assouplir le bouclier pour ce site.',
+            'context' => 'Warning shown in the structure panel when Brave blocks canvas pixel reading.',
+        ],
+        'structure.warning.dismiss_aria' => [
+            'text' => 'Reduire ce message',
+            'context' => 'Aria label for the button that collapses the structure browser warning.',
+        ],
+        'structure.warning.pixel_mismatch' => [
+            'text' => '{browserName} bloque ou altere la lecture du canvas utilisee pour la navigation graphique. La vue liste a ete activee pour continuer a naviguer.',
+            'context' => 'Warning shown in the structure panel when the browser alters canvas pixel reading.',
+        ],
+        'structure.warning.restore' => [
+            'text' => 'Info navigateur',
+            'context' => 'Button label used to reopen the collapsed browser warning in the structure panel.',
+        ],
+        'structure.warning.unavailable' => [
+            'text' => 'La lecture du canvas utilisee pour la navigation graphique n est pas disponible dans {browserName}. La vue liste a ete activee pour continuer a naviguer.',
+            'context' => 'Warning shown in the structure panel when canvas pixel reading is unavailable in the current browser.',
+        ],
+    ];
+}
+
+$sourceLang = omoGetStructurePanelSourceLang();
+$lang = translationBundleInit('omo_get_structure_panel', omoGetTranslationLocale(), $sourceLang);
+
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 if ($organizationId > 0) {
     $organization = new \dbObject\Organization();
+    if ($organization->load($organizationId) && !$organization->canViewDetail()) {
+        http_response_code(403);
+        echo '<div class="error">' . omoApiEscape(t('structure.error.organization_access_denied')) . '</div>';
+        exit;
+    }
+
     if ($organization->load($organizationId) && $organization->getStructuralRootHolon() === null) {
         require_once __DIR__ . '/organization_setup_panel.php';
         omoRenderOrganizationSetupPanel($organization);
@@ -24,6 +119,31 @@ $structureDataUrl = 'api/getStructureData.php';
 if (count($structureDataParams) > 0) {
     $structureDataUrl .= '?' . http_build_query($structureDataParams);
 }
+
+$isShareMode = function_exists('commonGetCurrentShareToken') && commonGetCurrentShareToken() !== '';
+$canCreateShareLink = !$isShareMode && (int)commonGetCurrentUserId() > 0 && commonCurrentUserHasOrganizationAccess($organizationId);
+$canExportStructure = !$isShareMode && (int)commonGetCurrentUserId() > 0 && commonCurrentUserHasOrganizationAccess($organizationId);
+$structureTranslations = [
+    'actionsMenuAria' => t('structure.actions.menu_aria'),
+    'actionsExport' => t('structure.actions.export'),
+    'actionsPrint' => t('structure.actions.print'),
+    'actionsShare' => t('structure.actions.share'),
+    'browserGenericName' => t('structure.browser.generic_name'),
+    'emptySearch' => t('structure.list.empty_search'),
+    'hidePropertiesAria' => t('structure.list.properties.hide_aria'),
+    'invalidStructure' => t('structure.message.invalid'),
+    'loadError' => t('structure.message.load_error'),
+    'noStructure' => t('structure.message.no_structure'),
+    'searchPlaceholder' => t('structure.list.search.placeholder'),
+    'shareModalTitle' => t('structure.share.modal_title'),
+    'showPropertiesAria' => t('structure.list.properties.show_aria'),
+    'toggleLabel' => t('structure.view.toggle_label'),
+    'warningBrave' => t('structure.warning.brave'),
+    'warningDismissAria' => t('structure.warning.dismiss_aria'),
+    'warningPixelMismatch' => t('structure.warning.pixel_mismatch'),
+    'warningRestore' => t('structure.warning.restore'),
+    'warningUnavailable' => t('structure.warning.unavailable'),
+];
 ?>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js"></script>
@@ -86,6 +206,144 @@ if (count($structureDataParams) > 0) {
   right: 16px;
   bottom: 16px;
   z-index: 10;
+}
+
+.structure-actions {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+}
+
+.structure-actions__toggle {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--color-surface, #ffffff) 96%, transparent);
+  color: var(--color-text, #1f2937);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow-md, 0 12px 24px rgba(0,0,0,0.12));
+}
+
+.structure-actions__toggle:hover,
+.structure-actions__toggle:focus-visible {
+  background: var(--color-surface, #ffffff);
+}
+
+.structure-actions__panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 180px;
+  padding: 8px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--color-surface, #ffffff) 98%, transparent);
+  box-shadow: var(--shadow-md, 0 12px 24px rgba(0,0,0,0.12));
+}
+
+.structure-actions.is-open .structure-actions__panel {
+  display: grid;
+  gap: 4px;
+}
+
+.structure-actions__item {
+  width: 100%;
+  padding: 11px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-text, #1f2937);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.structure-actions__item:hover,
+.structure-actions__item:focus-visible {
+  background: var(--color-surface-alt, #f3f4f6);
+}
+
+.structure-browser-warning {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 11;
+  max-width: min(420px, calc(100% - 32px));
+  padding: 12px 14px;
+  border: 1px solid #f5c2c7;
+  border-radius: 14px;
+  background: #fff3cd;
+  color: #7c2d12;
+  box-shadow: var(--shadow-sm, 0 8px 18px rgba(0,0,0,0.08));
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.structure-browser-warning.is-collapsed {
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.structure-browser-warning[hidden] {
+  display: none;
+}
+
+.structure-browser-warning:not([hidden]) ~ .chart-toggle {
+  display: none;
+}
+
+.structure-browser-warning__content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.structure-browser-warning.is-collapsed .structure-browser-warning__content {
+  display: none;
+}
+
+.structure-browser-warning__message {
+  flex: 1 1 auto;
+}
+
+.structure-browser-warning__dismiss,
+.structure-browser-warning__restore {
+  border: 1px solid rgba(124, 45, 18, 0.18);
+  background: rgba(255, 255, 255, 0.72);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.structure-browser-warning__dismiss {
+  flex: 0 0 auto;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+}
+
+.structure-browser-warning__restore {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  box-shadow: var(--shadow-sm, 0 8px 18px rgba(0,0,0,0.08));
+}
+
+.structure-browser-warning.is-collapsed .structure-browser-warning__restore {
+  display: inline-flex;
 }
 
 .switch {
@@ -174,28 +432,96 @@ input:checked + .slider::before {
   margin: 8px 0;
 }
 
+.role-row {
+  display: grid;
+  gap: 8px;
+}
+
+.role-item-shell {
+  display: grid;
+  gap: 0;
+  border-radius: 10px;
+  background: var(--color-surface-alt, #f0f2f5);
+  box-shadow: inset 0 0 0 1px transparent;
+  overflow: hidden;
+  opacity: var(--role-depth-opacity, 1);
+}
+
+.role-item-shell.match-direct {
+  background: color-mix(in srgb, var(--color-surface-alt, #f0f2f5) 68%, #f59e0b 32%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary, #2563eb) 8%, #d97706 92%);
+  color: var(--color-text, #1f2937);
+}
+
+.role-item-shell.match-content {
+  background: color-mix(in srgb, var(--color-surface-alt, #f0f2f5) 78%, var(--color-primary, #2563eb) 22%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-surface, #ffffff) 78%, var(--color-primary, #2563eb) 22%);
+  color: var(--color-text, #1f2937);
+}
+
+.role-item-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+}
+
+.role-detail-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  width: 38px;
+  min-width: 38px;
+  padding: 8px 10px 8px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted, #6b7280);
+  cursor: pointer;
+  transition: color 0.16s ease;
+}
+
+.role-detail-toggle:hover,
+.role-detail-toggle:focus-visible {
+  color: var(--color-text, #1f2937);
+}
+
+.role-detail-toggle-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  transition: transform 0.16s ease, background 0.16s ease;
+}
+
+.role-detail-toggle:hover .role-detail-toggle-icon,
+.role-detail-toggle:focus-visible .role-detail-toggle-icon {
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.role-detail-toggle.is-open .role-detail-toggle-icon {
+  transform: rotate(90deg);
+}
+
+.role-detail-toggle--placeholder {
+  width: 38px;
+  min-width: 38px;
+}
+
 .role-item {
   display: flex;
   align-items: flex-start;
   gap: 8px;
   width: 100%;
   padding: 8px 10px;
-  border-radius: var(--radius-sm, 6px);
-  background: var(--color-surface-alt, #f0f2f5);
+  background: transparent;
   cursor: pointer;
   border: 0;
   text-align: left;
   color: inherit;
-}
-
-.role-item.match-direct {
-  background: #fff7d6;
-  box-shadow: inset 0 0 0 1px rgba(217, 119, 6, 0.22);
-}
-
-.role-item.match-content {
-  background: #eef6ff;
-  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.18);
 }
 
 .role-dot {
@@ -225,10 +551,11 @@ input:checked + .slider::before {
 }
 
 .role-highlight {
-  background: #fff3a3;
-  color: inherit;
+  background: color-mix(in srgb, var(--color-surface, #ffffff) 46%, #facc15 54%);
+  color: var(--color-text, #1f2937);
   padding: 0 1px;
   border-radius: 2px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-surface, #ffffff) 70%, #ca8a04 30%);
 }
 
 .role-list-empty {
@@ -236,18 +563,118 @@ input:checked + .slider::before {
   color: var(--color-text-muted, #6b7280);
   font-size: 14px;
 }
+
+.role-item-detail {
+  display: none;
+  padding: 0 14px 14px 14px;
+  background: transparent;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.role-item-detail.is-open {
+  display: block;
+}
+
+.role-properties {
+  display: grid;
+  gap: 12px;
+}
+
+.role-property {
+  display: grid;
+  gap: 6px;
+}
+
+.role-property + .role-property {
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border, #eef2f7);
+}
+
+.role-property-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #6b7280);
+}
+
+.role-property-value {
+  color: var(--color-text, #1f2937);
+  line-height: 1.5;
+}
+
+.role-property-text p,
+.role-property-html p {
+  margin: 0 0 8px;
+}
+
+.role-property-text p:last-child,
+.role-property-html p:last-child {
+  margin-bottom: 0;
+}
+
+.role-property-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.role-property-list li + li {
+  margin-top: 4px;
+}
+
+.role-property-detail-list {
+  display: grid;
+  gap: 10px;
+}
+
+.role-property-detail-card {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--color-surface-alt, #f8fafc);
+  border: 1px solid var(--color-border, #e5e7eb);
+}
+
+.role-property-detail-card__title {
+  font-weight: 600;
+}
+
+.role-property-detail-card__body {
+  margin-top: 6px;
+  color: var(--color-text-muted, #4b5563);
+}
 </style>
     <div id="contentright" class="contentright">
         <div id="chart"></div>
         <div id="role_list" class="filter_zone"></div>
+        <div id="omoStructureCanvasWarning" class="structure-browser-warning" hidden>
+            <div class="structure-browser-warning__content">
+                <div id="omoStructureCanvasWarningMessage" class="structure-browser-warning__message"></div>
+                <button type="button" id="omoStructureCanvasWarningDismiss" class="structure-browser-warning__dismiss" aria-label="<?= omoApiEscape(t('structure.warning.dismiss_aria')) ?>">x</button>
+            </div>
+            <button type="button" id="omoStructureCanvasWarningRestore" class="structure-browser-warning__restore"><?= omoApiEscape(t('structure.warning.restore')) ?></button>
+        </div>
+        <div class="structure-actions" id="omoStructureActions">
+            <button type="button" class="structure-actions__toggle" id="omoStructureActionsToggle" aria-label="<?= omoApiEscape(t('structure.actions.menu_aria')) ?>">...</button>
+            <div class="structure-actions__panel" id="omoStructureActionsPanel">
+                <?php if ($canExportStructure) { ?>
+                    <button type="button" class="structure-actions__item" data-omo-structure-action="export"><?= omoApiEscape(t('structure.actions.export')) ?></button>
+                <?php } ?>
+                <?php if ($canCreateShareLink) { ?>
+                    <button type="button" class="structure-actions__item" data-omo-structure-action="share"><?= omoApiEscape(t('structure.actions.share')) ?></button>
+                <?php } ?>
+                <button type="button" class="structure-actions__item" data-omo-structure-action="print"><?= omoApiEscape(t('structure.actions.print')) ?></button>
+            </div>
+        </div>
 
         <div class="switch chart-toggle">
             <input type="checkbox" id="toggleSwitch" />
-            <label for="toggleSwitch" class="slider">◉   ☰</label>
+            <label for="toggleSwitch" class="slider"><?= omoApiEscape(t('structure.view.toggle_label')) ?></label>
         </div>
     </div>
 
   <script>
+
+const structureTranslations = <?= json_encode($structureTranslations, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
 function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, function (char) {
@@ -261,10 +688,208 @@ function escapeHtml(text) {
   });
 }
 
+function colorToTransparentFill(color, alpha, fallback) {
+  const rawColor = String(color || "").trim();
+  const fallbackColor = String(fallback || "rgba(79, 70, 229, 0.12)");
+  const targetAlpha = Number(alpha);
+
+  function convertColor(sourceColor) {
+    const effectiveColor = String(sourceColor || "").trim();
+    if (!effectiveColor) {
+      return "";
+    }
+
+    const hexMatch = effectiveColor.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (hexMatch) {
+      let hex = hexMatch[1];
+      if (hex.length === 3) {
+        hex = hex.split("").map(function (char) { return char + char; }).join("");
+      }
+
+      const red = parseInt(hex.slice(0, 2), 16);
+      const green = parseInt(hex.slice(2, 4), 16);
+      const blue = parseInt(hex.slice(4, 6), 16);
+      return "rgba(" + red + ", " + green + ", " + blue + ", " + targetAlpha + ")";
+    }
+
+    const rgbMatch = effectiveColor.match(/^rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*[0-9.]+\s*)?\)$/i);
+    if (rgbMatch) {
+      return "rgba(" + rgbMatch[1] + ", " + rgbMatch[2] + ", " + rgbMatch[3] + ", " + targetAlpha + ")";
+    }
+
+    return "";
+  }
+
+  const convertedColor = convertColor(rawColor);
+  if (convertedColor) {
+    return convertedColor;
+  }
+
+  const convertedFallbackColor = convertColor(fallbackColor);
+  if (convertedFallbackColor) {
+    return convertedFallbackColor;
+  }
+
+  if (!rawColor) {
+    return fallbackColor;
+  }
+
+  return fallbackColor;
+}
+
+const structureColorParserCanvas = typeof document !== "undefined" ? document.createElement("canvas") : null;
+const structureColorParserContext = structureColorParserCanvas ? structureColorParserCanvas.getContext("2d") : null;
+
+function parseColorChannels(color, fallback) {
+  const candidates = [
+    String(color || "").trim(),
+    String(fallback || "").trim()
+  ];
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    let effectiveColor = candidates[index];
+
+    if (!effectiveColor) {
+      continue;
+    }
+
+    if (structureColorParserContext) {
+      try {
+        structureColorParserContext.fillStyle = "#000000";
+        structureColorParserContext.fillStyle = effectiveColor;
+        effectiveColor = String(structureColorParserContext.fillStyle || effectiveColor).trim();
+      } catch (error) {
+      }
+    }
+
+    const hexMatch = effectiveColor.match(/^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i);
+    if (hexMatch) {
+      let hex = hexMatch[1];
+      if (hex.length === 3 || hex.length === 4) {
+        hex = hex.split("").map(function (char) { return char + char; }).join("");
+      }
+
+      return {
+        red: parseInt(hex.slice(0, 2), 16),
+        green: parseInt(hex.slice(2, 4), 16),
+        blue: parseInt(hex.slice(4, 6), 16),
+        alpha: hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1
+      };
+    }
+
+    const rgbMatch = effectiveColor.match(/^rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*([0-9.]+)\s*)?\)$/i);
+    if (rgbMatch) {
+      return {
+        red: Math.max(0, Math.min(255, Number(rgbMatch[1]))),
+        green: Math.max(0, Math.min(255, Number(rgbMatch[2]))),
+        blue: Math.max(0, Math.min(255, Number(rgbMatch[3]))),
+        alpha: rgbMatch[4] !== undefined ? Math.max(0, Math.min(1, Number(rgbMatch[4]))) : 1
+      };
+    }
+  }
+
+  return null;
+}
+
+function colorToDesaturatedGray(color, fallback) {
+  const channels = parseColorChannels(color, fallback);
+
+  if (!channels) {
+    return String(fallback || color || "");
+  }
+
+  const gray = Math.round(
+    (channels.red * 0.299) +
+    (channels.green * 0.587) +
+    (channels.blue * 0.114)
+  );
+
+  if (channels.alpha < 1) {
+    return "rgba(" + gray + ", " + gray + ", " + gray + ", " + channels.alpha + ")";
+  }
+
+  return "rgb(" + gray + ", " + gray + ", " + gray + ")";
+}
+
+function roleHasAttachedUsers(node) {
+  if (String(node && node.type || "") !== "1") {
+    return true;
+  }
+
+  return Array.isArray(node.userIds) && node.userIds.length > 0;
+}
+
+function getNodeDisplayColor(node, fallbackColor) {
+  const baseColor = String(node && node.mycolor || fallbackColor || "").trim();
+
+  if (!baseColor) {
+    return "";
+  }
+
+  if (!roleHasAttachedUsers(node)) {
+    return colorToDesaturatedGray(baseColor, fallbackColor);
+  }
+
+  return baseColor;
+}
+
 function getListColor(node) {
-  if (node.type == "4") return chartColors.rootFill;
-  if (node.type == "2" || node.type == "3") return chartColors.groupFill1;
-  return node.mycolor || chartColors.roleFill;
+  if (node.type == "4") return node.mycolor || chartColors.rootFill;
+  if (node.type == "2" || node.type == "3") return colorToTransparentFill(node.mycolor, 0.12, chartColors.groupFill);
+  return getNodeDisplayColor(node, chartColors.roleFill);
+}
+
+function getGroupStrokeColor(node) {
+  return colorToTransparentFill(node && node.mycolor, 0.55, chartColors.strokeSoft);
+}
+
+function clampNumber(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getNodeDepth(node) {
+  const depth = Number(node && node.depth);
+  return Number.isFinite(depth) && depth >= 0 ? depth : 0;
+}
+
+function getCurrentStructureDepth() {
+  if (currentnode) {
+    return getNodeDepth(currentnode);
+  }
+
+  if (root) {
+    return getNodeDepth(root);
+  }
+
+  return 0;
+}
+
+function getNodeDepthOpacity(node, minOpacity, maxOpacity) {
+  const safeMinOpacity = clampNumber(Number(minOpacity), 0, 1);
+  const safeMaxOpacity = clampNumber(Number(maxOpacity), safeMinOpacity, 1);
+  const distanceFromCurrentLevel = Math.abs(getNodeDepth(node) - getCurrentStructureDepth());
+  const opacityStep = 0.18;
+  const fadeDistance = Math.max(0, distanceFromCurrentLevel - 1);
+  return clampNumber(safeMaxOpacity - (fadeDistance * opacityStep), safeMinOpacity, safeMaxOpacity);
+}
+
+function getNodeVisualOpacity(node) {
+  return getNodeDepthOpacity(node, 0.24, 1);
+}
+
+function getNodeTextOpacity(node) {
+  return clampNumber(getNodeDepthOpacity(node, 0.2, 1) * textAlpha, 0, 1);
+}
+
+function getNodePackSize(node, inheritedSize) {
+  const baseSize = Math.max(2, Number(inheritedSize) || 2);
+
+  if (!node || String(node.type) !== "1") {
+    return baseSize;
+  }
+
+  const depthPenalty = Math.max(0, getNodeDepth(node) - 1) * 1.4;
+  return Math.max(2, baseSize - depthPenalty);
 }
 
 function escapeRegExp(text) {
@@ -367,7 +992,7 @@ function getNodeSearchEntries(node) {
     const item = data[key];
 
     if (item && typeof item === "object") {
-      const effectiveValue = item.value || item.ancestor || "";
+      const effectiveValue = item.effectiveValue || item.value || item.ancestor || "";
       if (effectiveValue) {
         entries.push(String(effectiveValue));
       }
@@ -442,6 +1067,262 @@ function getNodeMatchExcerpt(node, query) {
   return "";
 }
 
+function nl2brHtml(text) {
+  return escapeHtml(String(text || "")).replace(/\r\n|\r|\n/g, "<br>");
+}
+
+function splitListItems(text) {
+  const source = String(text || "").trim();
+
+  if (!source) {
+    return [];
+  }
+
+  const parts = source.indexOf("|") !== -1
+    ? source.split("|")
+    : source.split(/\r\n|\r|\n/);
+
+  return parts
+    .map(function (item) {
+      return String(item || "").trim();
+    })
+    .filter(function (item) {
+      return item !== "";
+    });
+}
+
+function parseListItems(rawValue) {
+  const source = String(rawValue || "").trim();
+
+  if (!source) {
+    return [];
+  }
+
+  try {
+    const decoded = JSON.parse(source);
+    if (Array.isArray(decoded)) {
+      return decoded;
+    }
+  } catch (error) {
+  }
+
+  return splitListItems(source);
+}
+
+function normalizeDetailedListItem(item) {
+  if (item && typeof item === "object" && !Array.isArray(item)) {
+    return {
+      title: String(item.title || item.label || item.value || "").trim(),
+      description: String(item.description || item.text || "").trim()
+    };
+  }
+
+  return {
+    title: String(item || "").trim(),
+    description: ""
+  };
+}
+
+function formatDateValue(value) {
+  const source = String(value || "").trim();
+  const dateMatch = source.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+  if (dateMatch) {
+    return dateMatch[3] + "." + dateMatch[2] + "." + dateMatch[1];
+  }
+
+  return source;
+}
+
+function formatListItemValue(item, entry) {
+  if (String(entry && entry.listItemType || "") === "date") {
+    return formatDateValue(item);
+  }
+
+  if (item && typeof item === "object" && !Array.isArray(item)) {
+    return String(item.label || item.value || item.title || "").trim();
+  }
+
+  return String(item || "").trim();
+}
+
+function getPropertyDisplayLabel(entry) {
+  return String(entry && (entry.name || entry.shortname || entry.key) || "").trim();
+}
+
+function getNodePropertyEntries(node) {
+  const data = node && node.data && typeof node.data === "object" ? node.data : null;
+
+  if (!data) {
+    return [];
+  }
+
+  return Object.keys(data)
+    .map(function (key) {
+      const item = data[key];
+
+      if (!item || typeof item !== "object") {
+        return null;
+      }
+
+      return Object.assign(
+        {
+          key: key,
+          position: Number.MAX_SAFE_INTEGER,
+          name: "",
+          shortname: "",
+          effectiveValue: "",
+          value: "",
+          ancestor: "",
+          formatId: 0,
+          listItemType: ""
+        },
+        item
+      );
+    })
+    .filter(function (item) {
+      if (!item) {
+        return false;
+      }
+
+      return String(item.effectiveValue || item.value || item.ancestor || "").trim() !== "";
+    })
+    .sort(function (left, right) {
+      const leftPosition = Number(left.position || Number.MAX_SAFE_INTEGER);
+      const rightPosition = Number(right.position || Number.MAX_SAFE_INTEGER);
+
+      if (leftPosition !== rightPosition) {
+        return leftPosition - rightPosition;
+      }
+
+      return getPropertyDisplayLabel(left).localeCompare(getPropertyDisplayLabel(right));
+    });
+}
+
+function renderDetailListPropertyHtml(entry) {
+  const items = parseListItems(entry.effectiveValue || entry.value || entry.ancestor || "");
+
+  if (!items.length) {
+    return "";
+  }
+
+  const cards = items
+    .map(function (item) {
+      const detailItem = normalizeDetailedListItem(item);
+
+      if (!detailItem.title && !detailItem.description) {
+        return "";
+      }
+
+      let html = `<div class="role-property-detail-card">`;
+
+      if (detailItem.title) {
+        html += `<div class="role-property-detail-card__title">${escapeHtml(detailItem.title)}</div>`;
+      }
+
+      if (detailItem.description) {
+        html += `<div class="role-property-detail-card__body">${nl2brHtml(detailItem.description)}</div>`;
+      }
+
+      html += `</div>`;
+      return html;
+    })
+    .filter(function (item) {
+      return item !== "";
+    });
+
+  if (!cards.length) {
+    return "";
+  }
+
+  return `<div class="role-property-detail-list">${cards.join("")}</div>`;
+}
+
+function renderStandardListPropertyHtml(entry) {
+  const items = parseListItems(entry.effectiveValue || entry.value || entry.ancestor || "");
+
+  if (!items.length) {
+    return "";
+  }
+
+  const listItems = items
+    .map(function (item) {
+      return formatListItemValue(item, entry);
+    })
+    .filter(function (item) {
+      return item !== "";
+    })
+    .map(function (item) {
+      return `<li>${escapeHtml(item)}</li>`;
+    });
+
+  if (!listItems.length) {
+    return "";
+  }
+
+  return `<ul class="role-property-list">${listItems.join("")}</ul>`;
+}
+
+function renderNodePropertyValueHtml(entry) {
+  const effectiveValue = String(entry.effectiveValue || entry.value || entry.ancestor || "").trim();
+
+  if (!effectiveValue) {
+    return "";
+  }
+
+  if (Number(entry.formatId || 0) === 2) {
+    if (String(entry.listItemType || "") === "detail") {
+      return renderDetailListPropertyHtml(entry);
+    }
+
+    return renderStandardListPropertyHtml(entry);
+  }
+
+  if (Number(entry.formatId || 0) === 5) {
+    return `<div class="role-property-html">${effectiveValue}</div>`;
+  }
+
+  if (Number(entry.formatId || 0) === 4) {
+    return `<div class="role-property-text">${escapeHtml(formatDateValue(effectiveValue))}</div>`;
+  }
+
+  return `<div class="role-property-text">${nl2brHtml(effectiveValue)}</div>`;
+}
+
+function buildNodeDetailHtml(node) {
+  const properties = getNodePropertyEntries(node);
+
+  if (!properties.length) {
+    return "";
+  }
+
+  const blocks = properties
+    .map(function (entry) {
+      const propertyHtml = renderNodePropertyValueHtml(entry);
+      const propertyLabel = getPropertyDisplayLabel(entry);
+
+      if (!propertyHtml || !propertyLabel) {
+        return "";
+      }
+
+      return `
+        <div class="role-property">
+          <div class="role-property-label">${escapeHtml(propertyLabel)}</div>
+          <div class="role-property-value">${propertyHtml}</div>
+        </div>
+      `;
+    })
+    .filter(function (block) {
+      return block !== "";
+    });
+
+  if (!blocks.length) {
+    return "";
+  }
+
+  return `<div class="role-properties">${blocks.join("")}</div>`;
+}
+
 function filterListNode(node, normalizedQuery) {
   const children = Array.isArray(node.children) ? node.children : [];
   const filteredChildren = children
@@ -482,23 +1363,58 @@ function renderNodeList(entry, searchQuery) {
   const node = entry.node;
   const children = Array.isArray(entry.children) ? entry.children : [];
   const color = getListColor(node);
-  const itemClasses = ["role-item"];
+  const nodeId = String(node.ID || "");
+  const escapedNodeId = escapeHtml(nodeId);
+  const dotStyle = node.type == "3"
+    ? "background:transparent;border:2px solid " + getGroupStrokeColor(node)
+    : "background:" + color;
+  const shellClasses = ["role-item-shell"];
+  const detailHtml = buildNodeDetailHtml(node);
+  const hasDetails = detailHtml !== "";
+  const isDetailOpen = hasDetails && expandedRoleListNodeIds[nodeId] === true;
+  const depthOpacity = getNodeDepthOpacity(node, 0.28, 1);
 
   if (entry.matchesLabel) {
-    itemClasses.push("match-direct");
+    shellClasses.push("match-direct");
   } else if (entry.matchesContent) {
-    itemClasses.push("match-content");
+    shellClasses.push("match-content");
+  }
+
+  let detailToggleHtml = `<span class="role-detail-toggle role-detail-toggle--placeholder" aria-hidden="true"></span>`;
+  if (hasDetails) {
+    detailToggleHtml = `
+      <button
+        type="button"
+        class="role-detail-toggle${isDetailOpen ? " is-open" : ""}"
+        data-omo-role-detail-toggle="${escapedNodeId}"
+        aria-expanded="${isDetailOpen ? "true" : "false"}"
+        aria-controls="role_item_detail_${escapedNodeId}"
+        aria-label="${isDetailOpen ? structureTranslations.hidePropertiesAria : structureTranslations.showPropertiesAria}"
+      ><span class="role-detail-toggle-icon">&#9654;</span></button>
+    `;
   }
 
   let html = `
-    <li class="node_${escapeHtml(node.ID)}">
-      <button type="button" class="${itemClasses.join(" ")}" data-omo-cid="${escapeHtml(node.ID)}" data-omo-root="${node.type == "4" ? "1" : "0"}">
-        <span class="role-dot" style="background:${color}"></span>
-        <span class="role-text">
-          <span class="role-label">${highlightLabel(node.name || "", searchQuery)}</span>
-          ${entry.matchExcerpt ? `<span class="role-excerpt">${entry.matchExcerpt}</span>` : ``}
-        </span>
-      </button>
+    <li class="node_${escapedNodeId}">
+      <div class="role-row">
+        <div class="${shellClasses.join(" ")}" style="--role-depth-opacity:${depthOpacity.toFixed(3)};">
+          <div class="role-item-main">
+            <button type="button" class="role-item" data-omo-cid="${escapedNodeId}" data-omo-root="${node.type == "4" ? "1" : "0"}">
+              <span class="role-dot" style="${dotStyle}"></span>
+              <span class="role-text">
+                <span class="role-label">${highlightLabel(node.name || "", searchQuery)}</span>
+                ${entry.matchExcerpt ? `<span class="role-excerpt">${entry.matchExcerpt}</span>` : ``}
+              </span>
+            </button>
+            ${detailToggleHtml}
+          </div>
+          ${hasDetails ? `
+      <div class="role-item-detail${isDetailOpen ? " is-open" : ""}" id="role_item_detail_${escapedNodeId}"${isDetailOpen ? "" : " hidden"}>
+        ${detailHtml}
+      </div>
+          ` : ``}
+        </div>
+      </div>
   `;
 
   if (children.length) {
@@ -513,7 +1429,9 @@ function renderNodeList(entry, searchQuery) {
   return html;
 }
 
+const expandedRoleListNodeIds = Object.create(null);
 let listFilterQuery = "";
+let structurePrintPreviousListMode = null;
 
 function ensureRoleListLayout() {
   const roleList = document.getElementById("role_list");
@@ -530,7 +1448,7 @@ function ensureRoleListLayout() {
             type="search"
             id="role_list_search"
             class="role-list-search"
-            placeholder="Filtre rapide"
+            placeholder="${escapeHtml(structureTranslations.searchPlaceholder)}"
             autocomplete="off"
             spellcheck="false"
           >
@@ -565,7 +1483,7 @@ function updateRoleListResults() {
   }
 
   if (!filteredRoot) {
-    roleListResults.innerHTML = `<div class="role-list-empty">Aucun noeud ne correspond a cette recherche.</div>`;
+    roleListResults.innerHTML = `<div class="role-list-empty">${escapeHtml(structureTranslations.emptySearch)}</div>`;
     return;
   }
 
@@ -576,6 +1494,53 @@ function renderRoleList() {
   if (!root) return;
   ensureRoleListLayout();
   updateRoleListResults();
+}
+
+function refreshRoleListDepthOpacity() {
+  if (!root) {
+    return;
+  }
+
+  updateRoleListResults();
+}
+
+function prepareStructureForPrint() {
+  renderRoleList();
+
+  const contentRight = document.getElementById("contentright");
+  if (contentRight) {
+    structurePrintPreviousListMode = contentRight.classList.contains("list-mode");
+    contentRight.classList.remove("list-mode");
+  }
+
+  const hiddenCanvasElement = document.getElementById("hiddenCanvas");
+  if (hiddenCanvasElement) {
+    hiddenCanvasElement.style.setProperty("display", "none", "important");
+    hiddenCanvasElement.style.setProperty("visibility", "hidden", "important");
+  }
+}
+
+function restoreStructureAfterPrint() {
+  const contentRight = document.getElementById("contentright");
+  if (!contentRight) {
+    return;
+  }
+
+  if (structurePrintPreviousListMode === null) {
+    const toggle = document.getElementById("toggleSwitch");
+    contentRight.classList.toggle("list-mode", !!(toggle && toggle.checked));
+    return;
+  }
+
+  contentRight.classList.toggle("list-mode", structurePrintPreviousListMode);
+  structurePrintPreviousListMode = null;
+
+  const hiddenCanvasElement = document.getElementById("hiddenCanvas");
+  if (hiddenCanvasElement) {
+    hiddenCanvasElement.style.setProperty("display", "none");
+    hiddenCanvasElement.style.setProperty("visibility", "hidden");
+    hiddenCanvasElement.style.setProperty("pointer-events", "none");
+  }
 }
 
 $(document).on("change", "#toggleSwitch", function () {
@@ -592,12 +1557,131 @@ $(document).on("input", "#role_list_search", function () {
   updateRoleListResults();
 });
 
+$(document).on("click", "[data-omo-role-detail-toggle]", function (event) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  const nodeId = String($(this).data("omo-role-detail-toggle") || "").trim();
+
+  if (!nodeId) {
+    return;
+  }
+
+  if (expandedRoleListNodeIds[nodeId]) {
+    delete expandedRoleListNodeIds[nodeId];
+  } else {
+    expandedRoleListNodeIds[nodeId] = true;
+  }
+
+  updateRoleListResults();
+});
+
+$(document).on("click", "#omoStructureActionsToggle", function (event) {
+  event.preventDefault();
+  event.stopPropagation();
+  $("#omoStructureActions").toggleClass("is-open");
+});
+
+$(document).on("click", function (event) {
+  if (!$(event.target).closest("#omoStructureActions").length) {
+    omoCloseStructureActions();
+  }
+});
+
+$(document).on("keydown", function (event) {
+  if (event.key === "Escape") {
+    omoCloseStructureActions();
+  }
+});
+
+$(document).on("click", "#omoStructureCanvasWarningDismiss", function (event) {
+  event.preventDefault();
+  event.stopPropagation();
+  collapseStructureCanvasWarning();
+});
+
+$(document).on("click", "#omoStructureCanvasWarningRestore", function (event) {
+  event.preventDefault();
+  event.stopPropagation();
+  expandStructureCanvasWarning();
+});
+
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeprint", prepareStructureForPrint);
+  window.addEventListener("afterprint", restoreStructureAfterPrint);
+}
+
+$(document).on("click", "[data-omo-structure-action]", function (event) {
+  event.preventDefault();
+
+  const action = String($(this).data("omo-structure-action") || "").trim();
+  omoCloseStructureActions();
+
+  if (action === "print") {
+    prepareStructureForPrint();
+    window.print();
+    return;
+  }
+
+  if (action === "export") {
+    if (!canExportStructure) {
+      return;
+    }
+
+    const route = getCurrentRoute();
+    const currentHolonId = omoGetCurrentStructureHolonId();
+    let exportUrl = "api/exportStructure.php?oid=" + encodeURIComponent(route.oid || 0);
+
+    if (currentHolonId > 0) {
+      exportUrl += "&cid=" + encodeURIComponent(currentHolonId);
+    }
+
+    if (typeof window.omoResolveAppUrl === "function") {
+      exportUrl = window.omoResolveAppUrl(exportUrl);
+    }
+
+    const link = document.createElement("a");
+    link.href = exportUrl;
+    link.download = "";
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    return;
+  }
+
+  if (action !== "share" || !canCreateShareLink) {
+    return;
+  }
+
+  if (typeof window.commonTopbarOpenModal !== "function") {
+    return;
+  }
+
+  const route = getCurrentRoute();
+  const currentHolonId = omoGetCurrentStructureHolonId();
+  let popupUrl = "api/shares/popup.php?oid=" + encodeURIComponent(route.oid || 0);
+
+  if (currentHolonId > 0) {
+    popupUrl += "&cid=" + encodeURIComponent(currentHolonId);
+  }
+
+  if (typeof window.omoResolveAppUrl === "function") {
+    popupUrl = window.omoResolveAppUrl(popupUrl);
+  }
+
+  window.commonTopbarOpenModal(structureTranslations.shareModalTitle, popupUrl, "fetch");
+});
+
     const structureDataUrl = <?= json_encode($structureDataUrl, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
     const initialCid = <?= (int)$initialCid ?>;
+    const canCreateShareLink = <?= $canCreateShareLink ? 'true' : 'false' ?>;
+    const canExportStructure = <?= $canExportStructure ? 'true' : 'false' ?>;
     let root = null;
 
     let canvas, hiddenCanvas, context, hiddenContext;
     let pack, nodes, nodeCount, focus, currentnode, hoverNode = null;
+    let highlightedMemberUserId = null;
     let centerX, centerY, chartwidth, chartheight, diameter;
     let zoomInfo, colToCircle = {};
     let ease, interpolator = null, duration = 500, timeElapsed = 0, vOld;
@@ -606,6 +1690,22 @@ $(document).on("input", "#role_list_search", function () {
     let isDragging = false, wasDragging = false;
     let colorCircle;
     let structureReloadPromise = null;
+    let structureCanvasPickingIssue = null;
+    let structureCanvasWarningMessage = "";
+    let structureCanvasWarningCollapsed = false;
+    const structureBrowserInfo = {
+      name: structureTranslations.browserGenericName,
+      isBrave: false
+    };
+
+    detectStructureBrowser().then(function (browserInfo) {
+      structureBrowserInfo.name = browserInfo && browserInfo.name ? browserInfo.name : structureBrowserInfo.name;
+      structureBrowserInfo.isBrave = !!(browserInfo && browserInfo.isBrave);
+
+      if (structureCanvasPickingIssue) {
+        showStructureCanvasWarning(buildStructureCanvasWarningMessage(structureCanvasPickingIssue));
+      }
+    });
 
     function getCurrentRoute() {
       if (typeof parseUrl === "function") {
@@ -631,6 +1731,229 @@ $(document).on("input", "#role_list_search", function () {
       const targetCid = root && String(root.ID) === nodeId ? null : (nodeId !== "" ? Number(nodeId) : null);
 
       navigate(route.oid, Number.isNaN(targetCid) ? null : targetCid, route.hash || null);
+    }
+
+    function omoCloseStructureActions() {
+      const actions = document.getElementById("omoStructureActions");
+      if (actions) {
+        actions.classList.remove("is-open");
+      }
+    }
+
+    function detectStructureBrowser() {
+      if (typeof navigator === "undefined") {
+        return Promise.resolve({
+          name: structureTranslations.browserGenericName,
+          isBrave: false
+        });
+      }
+
+      const userAgent = String(navigator.userAgent || "");
+      const browserInfo = {
+        name: structureTranslations.browserGenericName,
+        isBrave: false
+      };
+
+      if (/Firefox/i.test(userAgent)) {
+        browserInfo.name = "Firefox";
+      } else if (/Edg\//i.test(userAgent)) {
+        browserInfo.name = "Microsoft Edge";
+      } else if (/Chrome\//i.test(userAgent)) {
+        browserInfo.name = "Chrome";
+      } else if (/Safari\//i.test(userAgent) && !/Chrome\//i.test(userAgent)) {
+        browserInfo.name = "Safari";
+      }
+
+      if (!navigator.brave || typeof navigator.brave.isBrave !== "function") {
+        return Promise.resolve(browserInfo);
+      }
+
+      return navigator.brave.isBrave()
+        .then(function (isBrave) {
+          if (isBrave) {
+            browserInfo.name = "Brave";
+            browserInfo.isBrave = true;
+          }
+
+          return browserInfo;
+        })
+        .catch(function () {
+          return browserInfo;
+        });
+    }
+
+    function setStructureListMode(enabled, syncToggle) {
+      const contentRight = document.getElementById("contentright");
+      const toggle = document.getElementById("toggleSwitch");
+
+      if (contentRight) {
+        contentRight.classList.toggle("list-mode", !!enabled);
+      }
+
+      if (syncToggle && toggle) {
+        toggle.checked = !!enabled;
+      }
+    }
+
+    function renderStructureCanvasWarning() {
+      const warningElement = document.getElementById("omoStructureCanvasWarning");
+      const messageElement = document.getElementById("omoStructureCanvasWarningMessage");
+      const dismissButton = document.getElementById("omoStructureCanvasWarningDismiss");
+      const restoreButton = document.getElementById("omoStructureCanvasWarningRestore");
+
+      if (!warningElement || !messageElement || !dismissButton || !restoreButton) {
+        return;
+      }
+
+      const hasMessage = structureCanvasWarningMessage !== "";
+      warningElement.hidden = !hasMessage;
+
+      if (!hasMessage) {
+        warningElement.classList.remove("is-collapsed");
+        messageElement.textContent = "";
+        dismissButton.hidden = true;
+        restoreButton.hidden = true;
+        return;
+      }
+
+      warningElement.classList.toggle("is-collapsed", structureCanvasWarningCollapsed);
+      messageElement.textContent = structureCanvasWarningMessage;
+      dismissButton.hidden = structureCanvasWarningCollapsed;
+      restoreButton.hidden = !structureCanvasWarningCollapsed;
+    }
+
+    function showStructureCanvasWarning(message) {
+      structureCanvasWarningMessage = String(message || "");
+      renderStructureCanvasWarning();
+    }
+
+    function hideStructureCanvasWarning() {
+      structureCanvasWarningMessage = "";
+      structureCanvasWarningCollapsed = false;
+      renderStructureCanvasWarning();
+    }
+
+    function collapseStructureCanvasWarning() {
+      if (structureCanvasWarningMessage === "") {
+        return;
+      }
+
+      structureCanvasWarningCollapsed = true;
+      renderStructureCanvasWarning();
+    }
+
+    function expandStructureCanvasWarning() {
+      if (structureCanvasWarningMessage === "") {
+        return;
+      }
+
+      structureCanvasWarningCollapsed = false;
+      renderStructureCanvasWarning();
+    }
+
+    function buildStructureCanvasWarningMessage(issue) {
+      const browserName = structureBrowserInfo && structureBrowserInfo.name
+        ? structureBrowserInfo.name
+        : structureTranslations.browserGenericName;
+
+      if (structureBrowserInfo && structureBrowserInfo.isBrave) {
+        return structureTranslations.warningBrave;
+      }
+
+      if (issue && issue.reason === "pixel-mismatch") {
+        return structureTranslations.warningPixelMismatch.replace('{browserName}', browserName);
+      }
+
+      return structureTranslations.warningUnavailable.replace('{browserName}', browserName);
+    }
+
+    function applyStructureCanvasPickingIssue(issue) {
+      const chartCanvas = document.getElementById("canvas");
+
+      if (!issue) {
+        structureCanvasPickingIssue = null;
+        hideStructureCanvasWarning();
+
+        if (chartCanvas) {
+          chartCanvas.style.pointerEvents = "auto";
+        }
+
+        return;
+      }
+
+      structureCanvasPickingIssue = issue;
+      showStructureCanvasWarning(buildStructureCanvasWarningMessage(issue));
+
+      if (chartCanvas) {
+        chartCanvas.style.pointerEvents = "none";
+      }
+
+      setStructureListMode(true, true);
+    }
+
+    function probeStructureCanvasPicking() {
+      if (!hiddenContext || typeof hiddenContext.getImageData !== "function") {
+        return {
+          ok: false,
+          reason: "missing-context"
+        };
+      }
+
+      try {
+        hiddenContext.save();
+        hiddenContext.clearRect(0, 0, 2, 2);
+        hiddenContext.fillStyle = "rgba(17, 34, 51, 1)";
+        hiddenContext.fillRect(0, 0, 1, 1);
+
+        const pixel = hiddenContext.getImageData(0, 0, 1, 1).data;
+        hiddenContext.clearRect(0, 0, 2, 2);
+        hiddenContext.restore();
+
+        if (!pixel || pixel.length < 4) {
+          return {
+            ok: false,
+            reason: "empty-pixel"
+          };
+        }
+
+        if (pixel[0] !== 17 || pixel[1] !== 34 || pixel[2] !== 51 || pixel[3] === 0) {
+          return {
+            ok: false,
+            reason: "pixel-mismatch"
+          };
+        }
+
+        return {
+          ok: true
+        };
+      } catch (error) {
+        try {
+          hiddenContext.restore();
+        } catch (restoreError) {
+        }
+
+        return {
+          ok: false,
+          reason: "exception",
+          error: error
+        };
+      }
+    }
+
+    function omoGetCurrentStructureHolonId() {
+      if (currentnode && currentnode.ID) {
+        return Number(currentnode.ID);
+      }
+
+      if (initialCid > 0) {
+        return Number(initialCid);
+      }
+
+      if (root && root.ID) {
+        return Number(root.ID);
+      }
+
+      return 0;
     }
 
     function findPackedNodeById(nodeId) {
@@ -687,7 +2010,7 @@ $(document).on("input", "#role_list_search", function () {
         })
         .catch(function(error) {
           console.error(error);
-          renderStructureMessage(error && error.message ? error.message : "Impossible de charger la structure.");
+          renderStructureMessage(error && error.message ? error.message : structureTranslations.loadError);
         })
         .finally(function() {
           structureReloadPromise = null;
@@ -735,9 +2058,10 @@ $(document).on("input", "#role_list_search", function () {
       }
 
       currentnode = targetNode;
+      refreshRoleListDepthOpacity();
       canvas.style("pointer-events", "none");
 
-      const v = (targetNode.type == "1" || (targetNode.children && targetNode.children.length < 2))
+      const v = shouldUseTightZoom(targetNode)
         ? [targetNode.x, targetNode.y, targetNode.r * 4.05]
         : [targetNode.x, targetNode.y, targetNode.r * 2.05];
 
@@ -760,23 +2084,33 @@ $(document).on("input", "#role_list_search", function () {
       animate();
     }
 
-    function normalizeStructureNode(node) {
+    function normalizeStructureNode(node, depth) {
       if (!node || typeof node !== "object") {
         return null;
       }
 
       const normalizedNode = Object.assign({}, node);
       const children = Array.isArray(normalizedNode.children) ? normalizedNode.children : [];
+      const normalizedDepth = Number.isFinite(Number(depth)) ? Number(depth) : 0;
 
       normalizedNode.ID = String(normalizedNode.ID || "");
       normalizedNode.type = String(normalizedNode.type || "");
       normalizedNode.size = Number(normalizedNode.size || (normalizedNode.type === "1" ? 10 : 20));
+      normalizedNode.depth = Number.isFinite(Number(normalizedNode.depth)) ? Number(normalizedNode.depth) : normalizedDepth;
+      normalizedNode.userIds = Array.isArray(normalizedNode.userIds)
+        ? normalizedNode.userIds.map(function (userId) {
+            return Number(userId);
+          }).filter(function (userId) {
+            return !Number.isNaN(userId) && userId > 0;
+          })
+        : [];
       normalizedNode.children = children
-        .map(normalizeStructureNode)
+        .map(function (childNode) {
+          return normalizeStructureNode(childNode, normalizedNode.depth + 1);
+        })
         .filter(function (child) {
           return child !== null;
         });
-
       return normalizedNode;
     }
 
@@ -813,6 +2147,7 @@ $(document).on("input", "#role_list_search", function () {
       const chart = document.getElementById("chart");
       const roleList = document.getElementById("role_list");
 
+      hideStructureCanvasWarning();
       chart.innerHTML = `
         <div style="display:flex;align-items:center;justify-content:center;height:100%;padding:24px;text-align:center;color:var(--color-text, #1f2937);">
           ${escapeHtml(message)}
@@ -836,26 +2171,30 @@ $(document).on("input", "#role_list_search", function () {
         }
       }
 
-      return "Impossible de charger la structure.";
+      return structureTranslations.loadError;
     }
 
     function loadStructureData() {
       return new Promise(function (resolve, reject) {
+        const resolvedStructureDataUrl = (typeof window.omoResolveAppUrl === "function")
+          ? window.omoResolveAppUrl(structureDataUrl)
+          : structureDataUrl;
+
         $.ajax({
-          url: structureDataUrl,
+          url: resolvedStructureDataUrl,
           method: "GET",
           cache: false,
           dataType: "json",
           success: function (response) {
             if (!response || response.error) {
-              reject(new Error(response && response.message ? response.message : "Structure invalide."));
+              reject(new Error(response && response.message ? response.message : structureTranslations.invalidStructure));
               return;
             }
 
-            const normalizedRoot = normalizeStructureNode(response);
+            const normalizedRoot = normalizeStructureNode(response, 0);
 
             if (!normalizedRoot) {
-              reject(new Error("Structure invalide."));
+              reject(new Error(structureTranslations.invalidStructure));
               return;
             }
 
@@ -879,7 +2218,7 @@ $(document).on("input", "#role_list_search", function () {
           if (key === "color") {
             delete json[key];
           } else if (key === "size") {
-            json[key] = size;
+            json[key] = getNodePackSize(json, size);
           } else if (key === "children") {
             json[key] = removeColorNodes(json[key], json.type == 2 ? (size > 2 ? size - 2 : 2) : size);
           }
@@ -928,14 +2267,14 @@ $(document).on("input", "#role_list_search", function () {
       return { lines, fontSize };
     }
 
-    function drawText(ctx, text, fontSize, centerX, centerY, radius, fillcolor = "#000", strokecolor = "#FFF", style = "", font = "Arial") {
+    function drawText(ctx, text, fontSize, centerX, centerY, radius, fillcolor = "#000", strokecolor = "#FFF", style = "", font = "Arial", opacity = 1) {
       if (fontSize < 6) return;
       if (fontSize < 12) fontSize = 12;
 
       ctx.textBaseline = "alphabetic";
       ctx.textAlign = "center";
-      ctx.fillStyle = fillcolor;
-      ctx.strokeStyle = strokecolor;
+      ctx.fillStyle = colorToTransparentFill(fillcolor, opacity, "rgba(0,0,0," + opacity + ")");
+      ctx.strokeStyle = colorToTransparentFill(strokecolor, opacity, "rgba(255,255,255," + opacity + ")");
       ctx.lineWidth = 5;
       ctx.setLineDash([]);
       ctx.lineJoin = "round";
@@ -963,11 +2302,11 @@ $(document).on("input", "#role_list_search", function () {
       });
     }
 
-    function drawCircularText(ctx, text, fontSize, fontBold, titleFont, centerX, centerY, radius, startAngle, kerning) {
+    function drawCircularText(ctx, text, fontSize, fontBold, titleFont, centerX, centerY, radius, startAngle, kerning, opacity) {
       ctx.textBaseline = "alphabetic";
       ctx.textAlign = "center";
       ctx.font = fontBold + " " + fontSize + "pt " + titleFont;
-      ctx.fillStyle = "rgba(255,255,255," + textAlpha + ")";
+      ctx.fillStyle = colorToTransparentFill("#ffffff", opacity, "rgba(255,255,255," + opacity + ")");
 
       startAngle = startAngle * (Math.PI / 180);
       text = text.split("").reverse().join("");
@@ -1051,9 +2390,26 @@ $(document).on("input", "#role_list_search", function () {
       ctx.save();
       ctx.beginPath();
       ctx.arc(nodeX, nodeY, nodeR, 0, 2 * Math.PI, true);
+      ctx.globalAlpha = getNodeVisualOpacity(node);
       ctx.fillStyle = hatchPattern;
       ctx.fill();
       ctx.restore();
+    }
+
+    function nodeMatchesHighlightedMember(node) {
+      if (!node || !highlightedMemberUserId) {
+        return false;
+      }
+
+      const targetUserId = Number(highlightedMemberUserId);
+      if (!targetUserId) {
+        return false;
+      }
+
+      const userIds = Array.isArray(node.userIds) ? node.userIds : [];
+      return userIds.some(function (userId) {
+        return Number(userId) === targetUserId;
+      });
     }
 
     function drawCanvas(chosenContext, hidden = false) {
@@ -1066,6 +2422,7 @@ $(document).on("input", "#role_list_search", function () {
         const nodeX = ((node.x - zoomInfo.centerX) * zoomInfo.scale) + centerX;
         const nodeY = ((node.y - zoomInfo.centerY) * zoomInfo.scale) + centerY;
         const nodeR = node.r * zoomInfo.scale * (node.type == "1" ? 0.9 : (node.type == "4" ? 1.05 : 1));
+        const nodeOpacity = getNodeVisualOpacity(node);
 
         if (node.mod === "hierarchy") {
           drawPolygon(chosenContext, nodeX, nodeY, nodeR, 8);
@@ -1082,23 +2439,24 @@ $(document).on("input", "#role_list_search", function () {
           chosenContext.fillStyle = node.color;
           chosenContext.fill();
         } else {
+          const displayColor = getNodeDisplayColor(node, node.type == "4" ? chartColors.rootFill : chartColors.roleFill);
           chosenContext.fillStyle = (node.type == "3" || node.type == "2")
-            ? colorCircle(node.depth)
-            : (node.mycolor || "rgb(255, 204, 0)");
+            ? colorToTransparentFill(node.mycolor, 0.06 + (0.16 * nodeOpacity), colorCircle(node.depth))
+            : colorToTransparentFill(displayColor, nodeOpacity, node.type == "4" ? chartColors.rootFill : chartColors.roleFill);
 
           if (node.type == "3") {
             chosenContext.fillStyle = "rgba(0,0,0,0)";
             chosenContext.lineWidth = 2;
             chosenContext.setLineDash([10, 10]);
-            chosenContext.strokeStyle = "rgba(255,255,255,0.5)";
+            chosenContext.strokeStyle = colorToTransparentFill(node.mycolor, 0.2 + (0.45 * nodeOpacity), chartColors.strokeSoft);
             chosenContext.stroke();
             chosenContext.fill();
           } else if (node.type == "4") {
             chosenContext.lineWidth = 1;
             chosenContext.setLineDash([]);
-            chosenContext.strokeStyle = "rgba(255,255,255,0.5)";
+            chosenContext.strokeStyle = colorToTransparentFill("#ffffff", 0.15 + (0.35 * nodeOpacity), "rgba(255,255,255,0.5)");
             chosenContext.stroke();
-            chosenContext.fillStyle = chartColors.rootFill;
+            chosenContext.fillStyle = colorToTransparentFill(displayColor, nodeOpacity, chartColors.rootFill);
             chosenContext.fill();
           } else {
             chosenContext.setLineDash([]);
@@ -1108,6 +2466,10 @@ $(document).on("input", "#role_list_search", function () {
           drawNodeHatch(chosenContext, node, nodeX, nodeY, nodeR);
 
           if (currentnode && node.ID === currentnode.ID) {
+            chosenContext.lineWidth = 6;
+            chosenContext.strokeStyle = "rgba(255,255,255,1)";
+            chosenContext.stroke();
+          } else if (nodeMatchesHighlightedMember(node)) {
             chosenContext.lineWidth = 6;
             chosenContext.strokeStyle = "rgba(255,255,255,1)";
             chosenContext.stroke();
@@ -1142,29 +2504,36 @@ $(document).on("input", "#role_list_search", function () {
         ) {
           const thename = node.name;
           const titleFont = "Arial";
+          const nodeTextOpacity = getNodeTextOpacity(node);
 
           if ((node.type != "1" && node === currentnode) || currentnode.parent === node) {
             const fontSizeTitle = Math.round(nodeR / 6);
             if (fontSizeTitle > 4) {
-              drawCircularText(chosenContext, thename.replace(/,? and /g, " & "), fontSizeTitle, "bold", titleFont, nodeX, nodeY, nodeR, 0, 0);
+              drawCircularText(chosenContext, thename.replace(/,? and /g, " & "), fontSizeTitle, "bold", titleFont, nodeX, nodeY, nodeR, 0, 0, nodeTextOpacity);
             }
           } else {
             let fontSizeTitle = Math.round(nodeR / 3);
 
             if (node.type == "1") {
               if (fontSizeTitle > 36) fontSizeTitle = 36;
-              drawText(chosenContext, thename.replace(/,? and /g, " & "), fontSizeTitle, nodeX, nodeY, nodeR, chartColors.labelDark, chartColors.strokeStrong);
+              drawText(chosenContext, thename.replace(/,? and /g, " & "), fontSizeTitle, nodeX, nodeY, nodeR, chartColors.labelDark, chartColors.strokeStrong, "", "Arial", nodeTextOpacity);
             } else {
-              drawText(chosenContext, thename.replace(/,? and /g, " & "), fontSizeTitle, nodeX, nodeY, nodeR, chartColors.labelLight, chartColors.labelDark, "bold");
+              drawText(chosenContext, thename.replace(/,? and /g, " & "), fontSizeTitle, nodeX, nodeY, nodeR, chartColors.labelLight, chartColors.labelDark, "bold", "Arial", nodeTextOpacity);
             }
           }
         }
       }
     }
 
+    function shouldUseTightZoom(focusNode) {
+      return !!focusNode && focusNode.type == "1";
+    }
+
     function quickZoomToCanvas(focusNode) {
+      currentnode = focusNode;
+      refreshRoleListDepthOpacity();
       focus = focusNode;
-      const v = (focusNode.type == "1" || (focusNode.children && focusNode.children.length < 2))
+      const v = shouldUseTightZoom(focusNode)
         ? [focus.x, focus.y, focus.r * 4.05]
         : [focus.x, focus.y, focus.r * 2.05];
 
@@ -1187,6 +2556,7 @@ $(document).on("input", "#role_list_search", function () {
 
     function zoomToCanvas(focusNode) {
       currentnode = focusNode;
+      refreshRoleListDepthOpacity();
       canvas.style("pointer-events", "none");
 
       let v;
@@ -1195,7 +2565,7 @@ $(document).on("input", "#role_list_search", function () {
         v = [root.x, root.y, root.r * 2.05];
       } else {
         focus = focusNode;
-        v = (focusNode.type == "1" || (focusNode.children && focusNode.children.length < 2))
+        v = shouldUseTightZoom(focusNode)
           ? [focus.x, focus.y, focus.r * 4.05]
           : [focus.x, focus.y, focus.r * 2.05];
       }
@@ -1260,6 +2630,10 @@ $(document).on("input", "#role_list_search", function () {
     }
 
 function getNodeFromEvent(event) {
+  if (structureCanvasPickingIssue) {
+    return null;
+  }
+
   const rect = canvas.node().getBoundingClientRect();
 
   const scaleX = chartwidth / rect.width;
@@ -1271,7 +2645,18 @@ function getNodeFromEvent(event) {
   mouseX = Math.max(0, Math.min(chartwidth - 1, mouseX));
   mouseY = Math.max(0, Math.min(chartheight - 1, mouseY));
 
-  const col = hiddenContext.getImageData(mouseX, mouseY, 1, 1).data;
+  let col;
+
+  try {
+    col = hiddenContext.getImageData(mouseX, mouseY, 1, 1).data;
+  } catch (error) {
+    applyStructureCanvasPickingIssue({
+      reason: "exception",
+      error: error
+    });
+    return null;
+  }
+
   const colString = "rgb(" + col[0] + "," + col[1] + "," + col[2] + ")";
   return colToCircle[colString] || null;
 }
@@ -1310,6 +2695,8 @@ function buildCanvas() {
     .style("height", rect.height + "px")
     .style("position", "absolute")
     .style("inset", "0")
+    .style("visibility", "hidden")
+    .style("pointer-events", "none")
     .style("display", "none");
 
   hiddenContext = hiddenCanvas.node().getContext("2d", { willReadFrequently: true });
@@ -1468,15 +2855,20 @@ function getChartColors() {
 
     function drawAll() {
       if (!root) {
-        renderStructureMessage("Aucune structure disponible pour cette organisation.");
+        renderStructureMessage(structureTranslations.noStructure);
         return;
       }
 
       chartColors = getChartColors();
       removeColorNodes(root);
 
-      renderRoleList();
       buildCanvas();
+      applyStructureCanvasPickingIssue(null);
+
+      const canvasPickingProbe = probeStructureCanvasPicking();
+      if (!canvasPickingProbe.ok) {
+        applyStructureCanvasPickingIssue(canvasPickingProbe);
+      }
 
  
         colorCircle = d3.scale.ordinal()
@@ -1527,6 +2919,7 @@ function getChartColors() {
       ease = d3.ease("cubic-in-out");
       vOld = [focus.x, focus.y, focus.r * 2.05];
 
+      renderRoleList();
       bindEvents();
       quickZoomToCanvas(currentnode);
     }
@@ -1584,14 +2977,31 @@ function startChart() {
         });
       };
 
+      if (window.omoStructureMemberHighlightHandler) {
+        window.removeEventListener("omo-structure-member-highlight", window.omoStructureMemberHighlightHandler);
+      }
+
+      window.omoStructureMemberHighlightHandler = function (event) {
+        const userId = event && event.detail ? Number(event.detail.userId || 0) : 0;
+        highlightedMemberUserId = userId > 0 ? userId : null;
+
+        if (!root || !canvas || !context || !hiddenContext) {
+          return;
+        }
+
+        drawCanvas(context, false);
+        drawCanvas(hiddenContext, true);
+      };
+
       window.addEventListener("omo-structure-focus", window.omoStructureFocusHandler);
       window.addEventListener("omo-structure-refresh", window.omoStructureRefreshHandler);
+      window.addEventListener("omo-structure-member-highlight", window.omoStructureMemberHighlightHandler);
     })
     .catch(function(error) {
       root = null;
       currentnode = null;
       console.error(error);
-      renderStructureMessage(error && error.message ? error.message : "Impossible de charger la structure.");
+      renderStructureMessage(error && error.message ? error.message : structureTranslations.loadError);
     });
 }
 

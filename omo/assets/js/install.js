@@ -1,5 +1,8 @@
 (function () {
-    const OMO_INSTALL_SESSION_KEY = 'omo-install-banner-dismissed';
+    const OMO_INSTALL_NEXT_PROMPT_COOKIE = 'omo-install-next-prompt-at';
+    const OMO_INSTALL_REFUSAL_COUNT_COOKIE = 'omo-install-refusal-count';
+    const OMO_INSTALL_NEVER_COOKIE = 'omo-install-never';
+    const OMO_INSTALL_DELAY_DAYS = [1, 3, 7, 14, 30, 90];
     const OMO_SW_URL = '/omo/sw.js';
     const OMO_SW_SCOPE = '/omo/';
     let deferredInstallPrompt = null;
@@ -13,19 +16,96 @@
         return (standaloneQuery && standaloneQuery.matches) || window.navigator.standalone === true;
     }
 
-    function omoMarkBannerDismissed() {
-        try {
-            window.sessionStorage.setItem(OMO_INSTALL_SESSION_KEY, '1');
-        } catch (error) {
+    function omoSetCookie(name, value, expiresAt) {
+        const parts = [
+            encodeURIComponent(name) + '=' + encodeURIComponent(value),
+            'path=/',
+            'SameSite=Lax'
+        ];
+
+        if (expiresAt instanceof Date) {
+            parts.push('expires=' + expiresAt.toUTCString());
         }
+
+        document.cookie = parts.join('; ');
     }
 
-    function omoIsBannerDismissed() {
-        try {
-            return window.sessionStorage.getItem(OMO_INSTALL_SESSION_KEY) === '1';
-        } catch (error) {
+    function omoGetCookie(name) {
+        const cookiePrefix = encodeURIComponent(name) + '=';
+        const cookies = document.cookie ? document.cookie.split(';') : [];
+
+        for (let index = 0; index < cookies.length; index += 1) {
+            const cookie = cookies[index].trim();
+
+            if (cookie.indexOf(cookiePrefix) === 0) {
+                return decodeURIComponent(cookie.slice(cookiePrefix.length));
+            }
+        }
+
+        return '';
+    }
+
+    function omoDeleteCookie(name) {
+        omoSetCookie(name, '', new Date(0));
+    }
+
+    function omoGetRefusalCount() {
+        const value = Number(omoGetCookie(OMO_INSTALL_REFUSAL_COUNT_COOKIE));
+
+        if (!Number.isFinite(value) || value < 0) {
+            return 0;
+        }
+
+        return Math.floor(value);
+    }
+
+    function omoGetNextDelayDays(refusalCount) {
+        if (refusalCount < 0) {
+            return OMO_INSTALL_DELAY_DAYS[0];
+        }
+
+        return OMO_INSTALL_DELAY_DAYS[Math.min(refusalCount, OMO_INSTALL_DELAY_DAYS.length - 1)];
+    }
+
+    function omoScheduleNextPrompt() {
+        const nextRefusalCount = omoGetRefusalCount() + 1;
+        const delayDays = omoGetNextDelayDays(nextRefusalCount - 1);
+        const nextPromptAt = new Date();
+
+        nextPromptAt.setDate(nextPromptAt.getDate() + delayDays);
+
+        omoSetCookie(OMO_INSTALL_REFUSAL_COUNT_COOKIE, String(nextRefusalCount), new Date(Date.now() + (365 * 24 * 60 * 60 * 1000)));
+        omoSetCookie(OMO_INSTALL_NEXT_PROMPT_COOKIE, nextPromptAt.toISOString(), nextPromptAt);
+    }
+
+    function omoClearPromptSchedule() {
+        omoDeleteCookie(OMO_INSTALL_NEXT_PROMPT_COOKIE);
+        omoDeleteCookie(OMO_INSTALL_REFUSAL_COUNT_COOKIE);
+    }
+
+    function omoNeverShowPromptAgain() {
+        const expiresAt = new Date();
+        expiresAt.setFullYear(expiresAt.getFullYear() + 10);
+        omoSetCookie(OMO_INSTALL_NEVER_COOKIE, '1', expiresAt);
+        omoHideBanner();
+    }
+
+    function omoShouldSuppressBanner() {
+        if (omoGetCookie(OMO_INSTALL_NEVER_COOKIE) === '1') {
+            return true;
+        }
+
+        const nextPromptValue = omoGetCookie(OMO_INSTALL_NEXT_PROMPT_COOKIE);
+        if (nextPromptValue === '') {
             return false;
         }
+
+        const nextPromptAt = new Date(nextPromptValue);
+        if (Number.isNaN(nextPromptAt.getTime())) {
+            return false;
+        }
+
+        return nextPromptAt.getTime() > Date.now();
     }
 
     function omoFindBannerHost() {
@@ -61,6 +141,7 @@
             '    <button type="button" class="omo-install-banner__button omo-install-banner__button--secondary" data-omo-install-dismiss>Plus tard</button>',
             '    <button type="button" class="omo-install-banner__button omo-install-banner__button--primary" data-omo-install-confirm>Installer</button>',
             '</div>',
+            '<button type="button" class="omo-install-banner__never" data-omo-install-never>Ne plus me demander</button>'
         ].join('');
 
         const host = omoFindBannerHost();
@@ -72,17 +153,18 @@
         }
 
         bannerElement.querySelector('[data-omo-install-dismiss]').addEventListener('click', function () {
-            omoMarkBannerDismissed();
+            omoScheduleNextPrompt();
             omoHideBanner();
         });
 
         bannerElement.querySelector('[data-omo-install-confirm]').addEventListener('click', omoPromptInstall);
+        bannerElement.querySelector('[data-omo-install-never]').addEventListener('click', omoNeverShowPromptAgain);
 
         return bannerElement;
     }
 
     function omoShowBanner() {
-        if (!deferredInstallPrompt || omoIsStandalone() || omoIsBannerDismissed()) {
+        if (!deferredInstallPrompt || omoIsStandalone() || omoShouldSuppressBanner()) {
             return;
         }
 
@@ -115,7 +197,13 @@
 
         try {
             deferredInstallPrompt.prompt();
-            await deferredInstallPrompt.userChoice;
+            const result = await deferredInstallPrompt.userChoice;
+
+            if (!result || result.outcome !== 'accepted') {
+                omoScheduleNextPrompt();
+            } else {
+                omoClearPromptSchedule();
+            }
         } catch (error) {
             console.error('Impossible d\'ouvrir le prompt d\'installation OMO.', error);
         } finally {
@@ -155,6 +243,7 @@
 
     window.addEventListener('appinstalled', function () {
         deferredInstallPrompt = null;
+        omoClearPromptSchedule();
         omoHideBanner();
     });
 

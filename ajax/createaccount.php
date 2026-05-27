@@ -5,6 +5,7 @@
 	
 	require_once("../config.php");
 	require_once("../shared_functions.php");
+	require_once("../common/auth.php");
 
 	// Vérifie les données reçues
 	if (!$_POST["id"]>0) {
@@ -41,7 +42,7 @@
 	if (isset($_POST["username"])) $user->set("username",$_POST["username"]);
 	if (isset($_POST["firstname"])) $user->set("firstname",$_POST["firstname"]);
 	if (isset($_POST["lastname"])) $user->set("lastname",$_POST["lastname"]);
-	$user->set("password",md5($_POST["password"]));
+	$user->set("password",commonHashUserPassword($_POST["password"]));
 	$user->set("code",null);
 	$user->set("codeexpiration", null);
 	$user->save();

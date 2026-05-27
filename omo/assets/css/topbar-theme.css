@@ -1,0 +1,160 @@
+:root {
+    --color-bg: #f7f8fa;
+    --color-surface: #ffffff;
+    --color-surface-alt: #f0f2f5;
+    --color-text: #1f2937;
+    --color-text-light: #6b7280;
+    --color-border: #e5e7eb;
+
+    --topbar-height: 48px;
+    --topbar-bottom-offset: 0px;
+    --topbar-bg: rgba(255,255,255,0.92);
+    --topbar-border: rgba(229,231,235,0.9);
+    --topbar-brand-bg: #ffffff;
+    --topbar-action-bg: #f3f4f6;
+    --topbar-action-bg-hover: #e5e7eb;
+    --topbar-action-text: #111827;
+    --topbar-avatar-bg: #111827;
+    --topbar-avatar-text: #ffffff;
+    --topbar-menu-bg: rgba(17,24,39,0.96);
+    --topbar-menu-border: rgba(255,255,255,0.08);
+    --topbar-menu-item-bg: rgba(255,255,255,0.06);
+    --topbar-menu-item-bg-hover: rgba(255,255,255,0.18);
+    --topbar-menu-text: #f9fafb;
+    --topbar-menu-text-muted: rgba(255,255,255,0.78);
+    --topbar-input-bg: rgba(255,255,255,0.96);
+    --topbar-input-border: #d1d5db;
+    --topbar-input-text: #111827;
+    --topbar-panel-bg: #ffffff;
+    --topbar-panel-border: #e5e7eb;
+    --topbar-panel-muted: #6b7280;
+}
+
+:root[data-theme="dark"] {
+    --color-bg: #0f1720;
+    --color-surface: #16202b;
+    --color-surface-alt: #101923;
+    --color-text: #e5edf7;
+    --color-text-light: #9fb0c3;
+    --color-border: #283548;
+
+    --topbar-bg: rgba(11,18,32,0.92);
+    --topbar-border: rgba(159,176,195,0.18);
+    --topbar-brand-bg: #111827;
+    --topbar-action-bg: #1b2632;
+    --topbar-action-bg-hover: #253346;
+    --topbar-action-text: #e5edf7;
+    --topbar-avatar-bg: #7c9cff;
+    --topbar-avatar-text: #0f1720;
+    --topbar-menu-bg: rgba(15,23,32,0.98);
+    --topbar-menu-border: rgba(159,176,195,0.18);
+    --topbar-menu-item-bg: rgba(159,176,195,0.1);
+    --topbar-menu-item-bg-hover: rgba(124,156,255,0.18);
+    --topbar-menu-text: #f8fafc;
+    --topbar-menu-text-muted: rgba(229,237,247,0.76);
+    --topbar-input-bg: #16202b;
+    --topbar-input-border: #32455c;
+    --topbar-input-text: #e5edf7;
+    --topbar-panel-bg: #16202b;
+    --topbar-panel-border: #283548;
+    --topbar-panel-muted: #9fb0c3;
+}
+
+html[data-theme] .common-topbar {
+    background: var(--topbar-bg);
+    border-bottom-color: var(--topbar-border);
+}
+
+html[data-theme] .common-topbar__brand {
+    background: var(--topbar-brand-bg);
+}
+
+html[data-theme] .common-topbar__menu-wrap + .common-topbar__menu-wrap {
+    border-left-color: var(--topbar-border);
+}
+
+html[data-theme] .common-topbar__action,
+html[data-theme] .common-topbar__search-button,
+html[data-theme] .common-topbar__menu-item,
+html[data-theme] .common-topbar-modal__close,
+html[data-theme] .common-topbar-drawer__close {
+    background: var(--topbar-action-bg);
+    color: var(--topbar-action-text);
+}
+
+html[data-theme] .common-topbar__action--square {
+    background: transparent;
+    color: var(--topbar-action-text);
+}
+
+html[data-theme] .common-topbar__action:hover,
+html[data-theme] .common-topbar__search-button:hover,
+html[data-theme] .common-topbar-modal__close:hover,
+html[data-theme] .common-topbar-drawer__close:hover {
+    background: var(--topbar-action-bg-hover);
+}
+
+html[data-theme] .common-topbar__avatar {
+    background: var(--topbar-avatar-bg);
+    color: var(--topbar-avatar-text);
+}
+
+html[data-theme="dark"] .common-topbar__icon-image {
+    filter: invert(1) brightness(1.25);
+}
+
+html[data-theme] .common-topbar__menu {
+    background: var(--topbar-menu-bg);
+    border-top-color: var(--topbar-menu-border);
+}
+
+html[data-theme] .common-topbar__menu[data-topbar-menu="profile"] {
+    left: auto;
+    right: 0;
+    width: min(860px, calc(100vw - 24px));
+    padding: 18px;
+    max-height: calc(100dvh - var(--topbar-height) - var(--topbar-bottom-offset, 0px));
+    overflow-y: auto;
+}
+
+html[data-theme] .common-topbar__menu-item {
+    background: var(--topbar-menu-item-bg);
+    color: var(--topbar-menu-text);
+}
+
+html[data-theme] .common-topbar__menu-item:hover {
+    background: var(--topbar-menu-item-bg-hover);
+}
+
+html[data-theme] .common-topbar__help-description,
+html[data-theme] .common-topbar__search-panel-label,
+html[data-theme] .common-topbar__search-panel-hint {
+    color: var(--topbar-menu-text-muted);
+}
+
+html[data-theme] .common-topbar__search-input {
+    background: var(--topbar-input-bg);
+    border-color: var(--topbar-input-border);
+    color: var(--topbar-input-text);
+}
+
+html[data-theme] .common-topbar-modal__panel,
+html[data-theme] .common-topbar-drawer__panel,
+html[data-theme] .common-topbar-drawer__body {
+    background: var(--topbar-panel-bg);
+    color: var(--color-text);
+}
+
+html[data-theme] .common-topbar-modal__header,
+html[data-theme] .common-topbar-drawer__header {
+    border-bottom-color: var(--topbar-panel-border);
+}
+
+html[data-theme] .common-help-card {
+    background: var(--color-surface-alt);
+    border-color: var(--color-border);
+}
+
+html[data-theme] .common-help-card p {
+    color: var(--color-text-light);
+}

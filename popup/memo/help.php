@@ -14,7 +14,7 @@
 	 } );
 
 </script>
-<div id="accordion">
+<div id="accordion" class="generic-accordion-ui">
   <h3><?=T_("Comment ça marche ?")?></h3>
   <div>
     <p>

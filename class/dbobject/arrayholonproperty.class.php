@@ -39,6 +39,8 @@
 						hp.IDproperty,
 						hp.value,
 						hp.position,
+						hp.datemodification,
+						hp.IDusermodification,
 						hp.mandatory,
 						hp.locked,
 						hp.active,
@@ -93,6 +95,24 @@
 							ELSE NULL
 						END
 					) AS value,
+
+					MAX(
+						CASE
+							WHEN rd.depth = 0
+								AND rd.active = 1
+							THEN rd.datemodification
+							ELSE NULL
+						END
+					) AS datemodification,
+
+					MAX(
+						CASE
+							WHEN rd.depth = 0
+								AND rd.active = 1
+							THEN rd.IDusermodification
+							ELSE NULL
+						END
+					) AS IDusermodification,
 
 					GROUP_CONCAT(
 						CASE

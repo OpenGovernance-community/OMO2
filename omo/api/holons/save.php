@@ -33,7 +33,8 @@ if (!$organization->load($organizationId)) {
 
 $contextHolonId = (int)($_GET['cid'] ?? $_POST['cid'] ?? 0);
 $holonId = (int)($_GET['hid'] ?? $_POST['hid'] ?? 0);
-$payload = json_decode(file_get_contents('php://input'), true);
+$rawPayload = $_POST['payload'] ?? file_get_contents('php://input');
+$payload = json_decode($rawPayload, true);
 if (!is_array($payload)) {
     http_response_code(400);
     echo json_encode(
