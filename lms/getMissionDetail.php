@@ -310,7 +310,7 @@ if ($m) {
 			position: absolute;
 			inset: 0;
 			pointer-events: none;
-			background: url("/lms/branding-client.png") center/cover no-repeat;
+			background: url("/lms/branding-client.png") center/contain no-repeat;
 		}
 
 		.video-portal {
