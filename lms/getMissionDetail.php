@@ -409,7 +409,8 @@ if ($m) {
 
 		.custom-controls button {
 			border: none;
-			padding: 5px 10px;
+			padding: 8px 12px;
+			min-height: 40px;
 			cursor: pointer;
 		}
 
@@ -437,6 +438,53 @@ if ($m) {
 			height: 100%;
 			width: 0%;
 			background: #fff;
+		}
+
+		@media (hover: none), (pointer: coarse) {
+			.custom-controls {
+				opacity: 1;
+				transform: none;
+				padding: 14px;
+				flex-wrap: wrap;
+				row-gap: 12px;
+			}
+
+			.progressvideo {
+				order: 10;
+				flex: 1 0 100%;
+				height: 10px;
+			}
+
+			#time {
+				order: 11;
+			}
+
+			.volume-controls {
+				margin-left: 0;
+				flex: 1 1 100%;
+				justify-content: flex-start;
+			}
+
+			.volume-controls input[type="range"] {
+				width: min(180px, 100%);
+				min-height: 32px;
+			}
+		}
+
+		@media (max-width: 640px) {
+			.custom-controls {
+				padding: 12px;
+				gap: 8px;
+			}
+
+			.custom-controls button {
+				padding: 8px 10px;
+				min-width: 76px;
+			}
+
+			.volume-controls {
+				flex-wrap: wrap;
+			}
 		}
 	</style>
 
