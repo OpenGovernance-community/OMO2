@@ -839,6 +839,59 @@
 			);
 		}
 
+		public function getSharedTemplateRootHolon()
+		{
+			static $cache = array();
+
+			$organizationId = (int)$this->getId();
+			if ($organizationId <= 0) {
+				return null;
+			}
+
+			if (array_key_exists($organizationId, $cache)) {
+				return $cache[$organizationId] ?: null;
+			}
+
+			$row = self::fetchRow(
+				"SELECT id
+				FROM holon
+				WHERE IDorganization = :organization_id
+				  AND IDtypeholon = 4
+				  AND active = 1
+				  AND templatename IS NOT NULL
+				  AND templatename != ''
+				  AND (IDholon_parent IS NULL OR IDholon_parent = 0)
+				ORDER BY id ASC
+				LIMIT 1",
+				array(
+					'organization_id' => $organizationId,
+				)
+			);
+
+			$holonId = $row !== false ? (int)($row['id'] ?? 0) : 0;
+			if ($holonId <= 0) {
+				$cache[$organizationId] = false;
+				return null;
+			}
+
+			$holon = new \dbObject\Holon();
+			$cache[$organizationId] = $holon->load($holonId) ? $holon : false;
+
+			return $cache[$organizationId] ?: null;
+		}
+
+		public function isSharedAsTemplate()
+		{
+			return $this->getSharedTemplateRootHolon() !== null;
+		}
+
+		public function getSharedTemplateName()
+		{
+			$templateHolon = $this->getSharedTemplateRootHolon();
+
+			return $templateHolon ? $this->getStructuralInitializationTemplateName($templateHolon) : '';
+		}
+
 		protected function createStructuralRootHolon($userId = 0, ?\dbObject\Holon $sourceTemplate = null)
 		{
 			$organizationName = trim((string)$this->get('name'));
