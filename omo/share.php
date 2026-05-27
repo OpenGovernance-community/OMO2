@@ -157,7 +157,6 @@ $organizationContext = array(
     <script src="/shared_functions.js"></script>
     <script>sharedApplyDocumentTheme();</script>
     <link rel="stylesheet" href="/omo/assets/css/styles.css">
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <base href="/omo/">
     <style>
     body.omo-share-body {
