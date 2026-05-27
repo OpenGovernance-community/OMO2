@@ -795,11 +795,14 @@ function omoBindMobileSwipeNavigation() {
 function openDrawer(id, url) {
 
     let drawer = $('#' + id);
-    clearDrawerRemoval(drawer);
     const resolvedUrl = omoResolveAppUrl(url);
+    const currentUrl = drawer.length ? String(drawer.data('omo-drawer-url') || '') : '';
+    const shouldReloadContent = !drawer.length || currentUrl !== resolvedUrl;
+
+    clearDrawerRemoval(drawer);
 
     // 👉 si déjà ouvert → on ferme tout et on stop
-    if (drawer.length && drawer.hasClass('open')) {
+    if (drawer.length && drawer.hasClass('open') && !shouldReloadContent) {
         closeAllDrawers();
         return;
     }
@@ -817,19 +820,10 @@ function openDrawer(id, url) {
         `);
 
         $('.content').append(drawer);
-
-        drawer.find('.drawer-content').html(getSkeleton('panel'));
-
-        $.ajax({
-            url: resolvedUrl,
-            success: function (data) {
-                drawer.find('.drawer-content').html(data);
-            },
-            error: function () {
-                drawer.find('.drawer-content').html('Erreur');
-            }
-        });
     }
+
+    drawer.data('omo-drawer-url', resolvedUrl);
+    loadContent(drawer.find('.drawer-content'), resolvedUrl, 'panel');
 
     updateDrawerPosition(drawer);
 
@@ -840,13 +834,15 @@ function openDrawer(id, url) {
 
 function refreshDrawer(id, url) {
     const drawer = $('#' + id);
+    const resolvedUrl = omoResolveAppUrl(url);
 
     if (!drawer.length) {
         return false;
     }
 
+    drawer.data('omo-drawer-url', resolvedUrl);
     updateDrawerPosition(drawer);
-    loadContent(drawer.find('.drawer-content'), url, 'panel');
+    loadContent(drawer.find('.drawer-content'), resolvedUrl, 'panel');
 
     return true;
 }
