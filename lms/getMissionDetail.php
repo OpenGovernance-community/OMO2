@@ -271,8 +271,16 @@ if ($m) {
 		  margin-top: 16px;
 	  }
 
-	  .quiz {
+	  #quiz-zone {
 		  margin-top: 16px;
+		  background: transparent;
+	  }
+
+	  #quiz-zone:empty {
+		  display: none;
+	  }
+
+	  .quiz {
 		  padding: 18px;
 		  border: 1px solid var(--border-color, #d8e0e8);
 		  border-radius: 18px;
@@ -320,6 +328,12 @@ if ($m) {
 		  margin: 2px 0 0;
 		  accent-color: var(--primary, #004663);
 		  flex: 0 0 auto;
+	  }
+
+	  #doneBtn {
+		  background: var(--primary, #004663);
+		  color: var(--color-text-inverse, #ffffff);
+		  border: 1px solid color-mix(in srgb, var(--primary, #004663) 72%, transparent);
 	  }
 	</style>
 <?php
@@ -755,7 +769,7 @@ if ($m) {
 				<label>
 					<input type="${q.multiple ? 'checkbox' : 'radio'}" name="qcm" value="${c.id}">
 					${c.label}
-				</label><br>
+				</label>
 			`;
 		});
 
