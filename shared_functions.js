@@ -336,6 +336,10 @@ function initializeSharedJqueryBindings() {
 	sharedJqueryBindingsInitialized = true;
 
 	window.jQuery(function () {
+		function sharedGetCurrentReturnTo() {
+			return window.location.pathname + window.location.search + window.location.hash;
+		}
+
 		// *******************************************************
 		// Menu utilisateur en haut
 		// ******************************************************
@@ -344,7 +348,7 @@ function initializeSharedJqueryBindings() {
 		});
 
 		$("body").delegate("#logoutbtn","click", function (e) {
-			sendForm($("#logoutform"),success);
+			window.location.href = "/common/logout.php?return_to=" + encodeURIComponent(sharedGetCurrentReturnTo());
 		});
 		$("body").delegate("#loginbtn","click", function (e) {
 			sendForm($("#loginform"),success);
@@ -362,7 +366,7 @@ function initializeSharedJqueryBindings() {
 		// Popup window
 		// ******************************************************
 		$("#login").click(function () {
-			showPopup("/popup/login.php", "Se connecter");
+			showPopup("/popup/login.php?return_to=" + encodeURIComponent(sharedGetCurrentReturnTo()), "Se connecter");
 		});			
 
 		$("#popup_close").click(function () {

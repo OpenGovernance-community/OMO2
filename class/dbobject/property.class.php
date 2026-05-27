@@ -7,6 +7,7 @@
 		public const LIST_ITEM_TEXT = 'text';
 		public const LIST_ITEM_NUMBER = 'number';
 		public const LIST_ITEM_DATE = 'date';
+		public const LIST_ITEM_DETAIL = 'detail';
 		public const LIST_ITEM_HOLON = 'holon';
 
 	    public static function tableName()
@@ -79,7 +80,18 @@
 				array('id' => self::LIST_ITEM_TEXT, 'name' => 'Texte'),
 				array('id' => self::LIST_ITEM_NUMBER, 'name' => 'Chiffre'),
 				array('id' => self::LIST_ITEM_DATE, 'name' => 'Date'),
+				array('id' => self::LIST_ITEM_DETAIL, 'name' => 'Liste detaillee'),
 				array('id' => self::LIST_ITEM_HOLON, 'name' => 'Holon'),
+			);
+		}
+
+		public static function getTemplateListItemTypeOptions()
+		{
+			return array(
+				array('id' => self::LIST_ITEM_TEXT, 'name' => 'Texte'),
+				array('id' => self::LIST_ITEM_NUMBER, 'name' => 'Chiffre'),
+				array('id' => self::LIST_ITEM_DATE, 'name' => 'Date'),
+				array('id' => self::LIST_ITEM_DETAIL, 'name' => 'Liste detaillee'),
 			);
 		}
 
@@ -90,10 +102,17 @@
 				self::LIST_ITEM_TEXT,
 				self::LIST_ITEM_NUMBER,
 				self::LIST_ITEM_DATE,
+				self::LIST_ITEM_DETAIL,
 				self::LIST_ITEM_HOLON,
 			);
 
 			return in_array($value, $allowed, true) ? $value : self::LIST_ITEM_TEXT;
+		}
+
+		public static function normalizeTemplateListItemType($value)
+		{
+			$normalized = self::normalizeListItemType($value);
+			return $normalized === self::LIST_ITEM_HOLON ? self::LIST_ITEM_TEXT : $normalized;
 		}
 
 		public static function parseHolonTypeIds($value)

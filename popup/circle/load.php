@@ -13,7 +13,7 @@
 			$params= array();	
 			$params["filter"] = "IDtypeholon=4 and active=1 and IDuser=".$_SESSION["currentUser"];
 		$listeOrga->load($params);
-		echo '<div id="accordion">';
+		echo '<div id="accordion" class="generic-accordion-ui">';
 		echo '<h3>'.T_("Charger depuis le serveur").'</h3>';
 		echo '<div>';
 		echo "<H1>".T_("Structures sauvegardées")."</H1>";
@@ -51,7 +51,12 @@
 		
 		$("#orgaliste").delegate(".deleteOrga","click",function (e) {
 			e.stopPropagation();
+			var button = $(this);
 			if (confirm("<?=T_("Êtes-vous sûr de vouloir effacer cette organisation ?")?> ("+$(this).attr("data-src")+")")) {
+				if (button.prop("disabled")) {
+					return;
+				}
+				button.prop("disabled", true);
 				// Si supprimé la réunion courante, réinitialise l'ID (pour éviter les erreurs d'écrasement)
 				if ($(this).attr("data-src")==$("#id").val()) {
 					$("#id").val("");
@@ -60,7 +65,9 @@
 					refreshCircle();
 				}
 				$.ajax({method: "POST",url: "/ajax/delete.php",data: { type:"Holon", id:$(this).attr("data-src")}
-				}).done(function( msg ) {if (msg!="") alert(msg); });						
+				}).done(function( msg ) {if (msg!="") alert(msg); }).fail(function() {
+					button.prop("disabled", false);
+				});						
 
 				// Raffraîchi la liste
 
@@ -111,4 +118,3 @@
 	.loading_element:hover .delete_option {display:block; float:right; background:rgba(0,0,0,0.1); padding:3px; border-radius:3px;}
 	.loading_element:hover .delete_option:hover {background:#FFFF00 }
 </style>
-

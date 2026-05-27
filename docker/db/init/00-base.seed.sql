@@ -148,11 +148,13 @@ INSERT INTO `document` (`id`, `title`, `description`, `content`, `keywords`, `ID
 CREATE TABLE `faq` (
   `id` int(10) UNSIGNED NOT NULL,
   `IDhowto` int(10) UNSIGNED DEFAULT NULL,
+  `IDholon` int(10) UNSIGNED DEFAULT NULL,
   `question` varchar(255) NOT NULL,
   `answer` text NOT NULL,
   `detail` text DEFAULT NULL,
   `displayorder` int(11) DEFAULT 0,
   `isactive` tinyint(1) DEFAULT 1,
+  `viewcount` int(11) DEFAULT 0,
   `created` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -200,6 +202,8 @@ CREATE TABLE `holon` (
   `IDorganization` int(11) DEFAULT NULL,
   `name` varchar(255) DEFAULT NULL,
   `color` varchar(10) DEFAULT NULL COMMENT 'Couleur du noeud, qui peut être héritée du template.',
+  `icon` varchar(255) DEFAULT NULL COMMENT 'Illustration carre du holon ou du template.',
+  `banner` varchar(255) DEFAULT NULL COMMENT 'Illustration large du holon ou du template.',
   `IDholon_org` int(11) DEFAULT NULL,
   `IDuser` int(11) DEFAULT NULL,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
@@ -208,6 +212,8 @@ CREATE TABLE `holon` (
   `visible` tinyint(1) NOT NULL DEFAULT 1 COMMENT 'Est visible? Ou plutôt caché pour pouvoir être réaffiché plus tard ou pour servir de template invisible',
   `mandatory` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Est obligatoire, et est ajouté à tout cercle nouvellement créé',
   `lockedname` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Le nom est impose par le template pour toutes ses instances',
+  `lockedicon` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'L''icone est imposee par le template pour toutes ses instances',
+  `lockedbanner` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'La banniere est imposee par le template pour toutes ses instances',
   `unique` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Est unique dans le cercle de rattachement, groupes compris',
   `link` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Se comporte comme un lien, en étant représenté également dans le cercle englobant',
   `templatename` varchar(150) DEFAULT NULL,
@@ -271,6 +277,7 @@ INSERT INTO `holon` (`id`, `IDorganization`, `name`, `color`, `IDholon_org`, `ID
 (666, NULL, 'Lien pilotage', NULL, 661, 1, '2024-12-03 13:02:06', NULL, 1, 1, 0, 0, 'Lien pilotage', 1, 663, 6, NULL),
 (667, NULL, 'Mémoire', NULL, 661, 1, '2024-12-03 13:02:06', NULL, 1, 1, 0, 0, 'Rôle mémoire', 1, 663, 6, NULL),
 (668, NULL, 'Opérations', NULL, 661, 1, '2024-12-03 13:02:06', NULL, 1, 1, 0, 0, NULL, 1, 663, 6, NULL),
+(669, NULL, 'fdsfds', NULL, 661, 16, '2025-08-03 16:37:02', NULL, 1, 1, 0, 0, NULL, 2, 663, 662, NULL),
 (670, NULL, 'Facilitation', NULL, 661, 16, '2025-08-03 16:37:02', NULL, 1, 1, 0, 0, NULL, 1, 669, 665, NULL),
 (671, NULL, 'CA', NULL, 661, 1, '2024-12-03 09:51:41', NULL, 1, 1, 0, 0, NULL, 2, 661, 7, NULL),
 (672, NULL, 'Président', NULL, 661, 1, '2024-12-04 05:30:56', NULL, 1, 1, 0, 0, NULL, 1, 671, 6, NULL),
@@ -316,6 +323,8 @@ CREATE TABLE `holonproperty` (
   `IDproperty` int(11) NOT NULL,
   `value` mediumtext DEFAULT NULL,
   `position` int(11) DEFAULT NULL,
+  `datemodification` datetime DEFAULT NULL,
+  `IDusermodification` int(11) DEFAULT NULL,
   `mandatory` tinyint(1) NOT NULL DEFAULT 0,
   `locked` tinyint(1) NOT NULL DEFAULT 0,
   `active` tinyint(1) NOT NULL DEFAULT 1
@@ -897,22 +906,6 @@ CREATE TABLE `tips` (
 
 -- --------------------------------------------------------
 
---
--- Structure de la table `translation`
---
-
-CREATE TABLE `translation` (
-  `id` int(11) NOT NULL,
-  `uid` varchar(200) NOT NULL,
-  `value` mediumtext NOT NULL,
-  `original` mediumtext DEFAULT NULL,
-  `date` datetime NOT NULL DEFAULT current_timestamp(),
-  `cpt` int(11) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
 -- Structure de la table `typeholon`
 --
 
@@ -945,10 +938,11 @@ CREATE TABLE `user` (
   `lastname` varchar(150) DEFAULT NULL,
   `firstname` varchar(150) DEFAULT NULL,
   `username` varchar(100) DEFAULT NULL,
-  `password` varchar(40) DEFAULT NULL,
+  `password` varchar(80) DEFAULT NULL,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
   `dateconnexion` datetime DEFAULT NULL,
   `active` tinyint(1) NOT NULL DEFAULT 0,
+  `siteadmin` tinyint(1) NOT NULL DEFAULT 0,
   `code` varchar(30) DEFAULT NULL,
   `codeexpiration` datetime DEFAULT NULL,
   `parameters` mediumtext DEFAULT NULL,
@@ -962,8 +956,94 @@ CREATE TABLE `user` (
 -- Déchargement des données de la table `user`
 --
 
-INSERT INTO `user` (`id`, `email`, `lastname`, `firstname`, `username`, `password`, `datecreation`, `dateconnexion`, `active`, `code`, `codeexpiration`, `parameters`, `param_easypv`, `param_easymemo`, `param_easycircle`, `telegramID`) VALUES
-(1, 'admin@omo.test', 'Organization', 'Open', 'Admin', NULL, '2026-04-21 09:01:00', NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `user` (`id`, `email`, `lastname`, `firstname`, `username`, `password`, `datecreation`, `dateconnexion`, `active`, `siteadmin`, `code`, `codeexpiration`, `parameters`, `param_easypv`, `param_easymemo`, `param_easycircle`, `telegramID`) VALUES
+(1, 'admin@omo.test', 'Organization', 'Open', 'Admin', NULL, '2026-04-21 09:01:00', NULL, 1, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `competence`
+--
+
+CREATE TABLE `competence` (
+  `id` int(11) NOT NULL,
+  `IDorganization` int(11) DEFAULT NULL,
+  `name` varchar(190) NOT NULL,
+  `normalized_name` varchar(190) NOT NULL,
+  `category` varchar(30) NOT NULL DEFAULT 'technical',
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `user_competence`
+--
+
+CREATE TABLE `user_competence` (
+  `id` int(11) NOT NULL,
+  `IDuser` int(11) NOT NULL,
+  `IDcompetence` int(11) NOT NULL,
+  `IDorganization` int(11) DEFAULT NULL,
+  `level` tinyint(4) NOT NULL DEFAULT 1,
+  `description` varchar(500) DEFAULT NULL,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  `datemodification` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `user_competence_validation`
+--
+
+CREATE TABLE `user_competence_validation` (
+  `id` int(11) NOT NULL,
+  `IDuser_competence` int(11) NOT NULL,
+  `IDvalidator_user` int(11) NOT NULL,
+  `IDorganization` int(11) NOT NULL,
+  `level` tinyint(4) NOT NULL DEFAULT 1,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  `datemodification` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `user_patreon`
+--
+
+CREATE TABLE `user_patreon` (
+  `id` int(11) NOT NULL,
+  `IDuser` int(11) NOT NULL,
+  `access_token` text DEFAULT NULL,
+  `refresh_token` text DEFAULT NULL,
+  `token_expires_at` datetime DEFAULT NULL,
+  `scope` varchar(255) DEFAULT NULL,
+  `token_type` varchar(50) DEFAULT NULL,
+  `patreon_user_id` varchar(50) DEFAULT NULL,
+  `patreon_member_id` varchar(100) DEFAULT NULL,
+  `campaign_id` varchar(50) DEFAULT NULL,
+  `full_name` varchar(255) DEFAULT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `image_url` varchar(500) DEFAULT NULL,
+  `profile_url` varchar(500) DEFAULT NULL,
+  `vanity` varchar(255) DEFAULT NULL,
+  `patron_status` varchar(50) DEFAULT NULL,
+  `last_charge_status` varchar(50) DEFAULT NULL,
+  `last_charge_date` datetime DEFAULT NULL,
+  `next_charge_date` datetime DEFAULT NULL,
+  `currently_entitled_amount_cents` int(11) NOT NULL DEFAULT 0,
+  `campaign_lifetime_support_cents` int(11) NOT NULL DEFAULT 0,
+  `tier_titles` mediumtext DEFAULT NULL,
+  `is_connected` tinyint(1) NOT NULL DEFAULT 0,
+  `connected_at` datetime DEFAULT NULL,
+  `last_sync_at` datetime DEFAULT NULL,
+  `last_sync_status` varchar(50) DEFAULT NULL,
+  `last_sync_error` mediumtext DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -1261,6 +1341,38 @@ ALTER TABLE `user`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Index pour la table `competence`
+--
+ALTER TABLE `competence`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_competence_scope_name` (`IDorganization`, `normalized_name`),
+  ADD KEY `idx_competence_category` (`category`);
+
+--
+-- Index pour la table `user_competence`
+--
+ALTER TABLE `user_competence`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_user_competence_user_scope` (`IDuser`, `IDorganization`),
+  ADD KEY `idx_user_competence_competence` (`IDcompetence`);
+
+--
+-- Index pour la table `user_competence_validation`
+--
+ALTER TABLE `user_competence_validation`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uniq_user_competence_validation` (`IDuser_competence`, `IDvalidator_user`, `IDorganization`),
+  ADD KEY `idx_user_competence_validation_org` (`IDorganization`);
+
+--
+-- Index pour la table `user_patreon`
+--
+ALTER TABLE `user_patreon`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uniq_user_patreon_user` (`IDuser`),
+  ADD KEY `idx_user_patreon_connected` (`is_connected`);
+
+--
 -- Index pour la table `user_faq_response`
 --
 ALTER TABLE `user_faq_response`
@@ -1451,6 +1563,30 @@ ALTER TABLE `user`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=45;
 
 --
+-- AUTO_INCREMENT pour la table `competence`
+--
+ALTER TABLE `competence`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT pour la table `user_competence`
+--
+ALTER TABLE `user_competence`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT pour la table `user_competence_validation`
+--
+ALTER TABLE `user_competence_validation`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT pour la table `user_patreon`
+--
+ALTER TABLE `user_patreon`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT pour la table `user_faq_response`
 --
 ALTER TABLE `user_faq_response`
@@ -1485,6 +1621,175 @@ ALTER TABLE `user_organization`
 --
 ALTER TABLE `user_remember`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- Tables ajoutees apres le dump principal pour garder le seed Docker a jour
+--
+
+CREATE TABLE IF NOT EXISTS `homework` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `title` varchar(150) NOT NULL,
+  `detail` text DEFAULT NULL,
+  `position` int(11) DEFAULT NULL,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  `dateupdate` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_homework_position` (`position`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `invitation` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDorganization` int(11) NOT NULL,
+  `IDuser` int(11) NOT NULL,
+  `IDuser_sender` int(11) DEFAULT NULL,
+  `email` varchar(250) DEFAULT NULL,
+  `token` varchar(64) NOT NULL,
+  `status` varchar(20) NOT NULL DEFAULT 'pending',
+  `parameters` mediumtext DEFAULT NULL,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  `dateexpiration` datetime DEFAULT NULL,
+  `dateresponse` datetime DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_invitation_token` (`token`),
+  KEY `idx_invitation_org_user` (`IDorganization`, `IDuser`),
+  KEY `idx_invitation_status` (`status`),
+  KEY `idx_invitation_active` (`active`),
+  KEY `idx_invitation_expiration` (`dateexpiration`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `history` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDorganization` int(11) DEFAULT NULL,
+  `IDuser` int(11) DEFAULT NULL,
+  `IDholon_circle` int(11) DEFAULT NULL,
+  `action` varchar(100) DEFAULT NULL,
+  `content` mediumtext NOT NULL,
+  `parameters` mediumtext DEFAULT NULL,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  KEY `idx_history_organization` (`IDorganization`),
+  KEY `idx_history_user` (`IDuser`),
+  KEY `idx_history_holon_circle` (`IDholon_circle`),
+  KEY `idx_history_action` (`action`),
+  KEY `idx_history_datecreation` (`datecreation`),
+  FULLTEXT KEY `ft_history_content` (`content`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `mission_homework` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDmission` int(11) NOT NULL,
+  `IDhomework` int(11) NOT NULL,
+  `position` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_mission_homework` (`IDmission`, `IDhomework`),
+  KEY `idx_mission_homework_mission` (`IDmission`),
+  KEY `idx_mission_homework_homework` (`IDhomework`),
+  KEY `idx_mission_homework_position` (`IDmission`, `position`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `user_homework` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDuser` int(11) NOT NULL,
+  `IDmission` int(11) NOT NULL,
+  `IDhomework` int(11) NOT NULL,
+  `IDparcours` int(11) NOT NULL,
+  `done` datetime DEFAULT NULL,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  `dateupdate` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_user_homework` (`IDuser`, `IDmission`, `IDhomework`, `IDparcours`),
+  KEY `idx_user_homework_user` (`IDuser`),
+  KEY `idx_user_homework_mission` (`IDmission`),
+  KEY `idx_user_homework_homework` (`IDhomework`),
+  KEY `idx_user_homework_parcours` (`IDparcours`),
+  KEY `idx_user_homework_done` (`done`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `holon_share_link` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDorganization` int(11) NOT NULL,
+  `IDholon` int(11) NOT NULL,
+  `IDuser` int(11) NOT NULL,
+  `label` varchar(150) DEFAULT NULL,
+  `token` varchar(80) NOT NULL,
+  `password_hash` varchar(255) DEFAULT NULL,
+  `allow_structure` tinyint(1) NOT NULL DEFAULT 1,
+  `allow_people` tinyint(1) NOT NULL DEFAULT 0,
+  `allow_people_detail` tinyint(1) NOT NULL DEFAULT 0,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  `dateexpiration` datetime DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_holon_share_link_token` (`token`),
+  KEY `idx_holon_share_link_org_holon` (`IDorganization`, `IDholon`),
+  KEY `idx_holon_share_link_user` (`IDuser`),
+  KEY `idx_holon_share_link_active` (`active`),
+  KEY `idx_holon_share_link_expiration` (`dateexpiration`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `document`
+  ADD KEY `idx_document_organization` (`IDorganization`),
+  ADD KEY `idx_document_holon` (`IDholon`),
+  ADD CONSTRAINT `fk_document_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_document_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `holon`
+  ADD KEY `idx_holon_organization` (`IDorganization`),
+  ADD KEY `idx_holon_root` (`IDholon_org`),
+  ADD KEY `idx_holon_parent` (`IDholon_parent`),
+  ADD KEY `idx_holon_template` (`IDholon_template`),
+  ADD CONSTRAINT `fk_holon_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_holon_root` FOREIGN KEY (`IDholon_org`) REFERENCES `holon` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_holon_parent` FOREIGN KEY (`IDholon_parent`) REFERENCES `holon` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_holon_template` FOREIGN KEY (`IDholon_template`) REFERENCES `holon` (`id`) ON DELETE SET NULL;
+
+ALTER TABLE `holonproperty`
+  ADD KEY `idx_holonproperty_holon` (`IDholon`),
+  ADD KEY `idx_holonproperty_property` (`IDproperty`),
+  ADD KEY `idx_holonproperty_user_modification` (`IDusermodification`),
+  ADD CONSTRAINT `fk_holonproperty_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_holonproperty_property` FOREIGN KEY (`IDproperty`) REFERENCES `property` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_holonproperty_user_modification` FOREIGN KEY (`IDusermodification`) REFERENCES `user` (`id`) ON DELETE SET NULL;
+
+ALTER TABLE `property`
+  ADD KEY `idx_property_root_holon` (`IDholon_organization`),
+  ADD CONSTRAINT `fk_property_root_holon` FOREIGN KEY (`IDholon_organization`) REFERENCES `holon` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `user_organization`
+  ADD KEY `idx_user_organization_organization_user` (`IDorganization`, `IDuser`),
+  ADD CONSTRAINT `fk_user_organization_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `user_holon`
+  ADD KEY `idx_user_holon_holon_user` (`IDholon`, `IDuser`),
+  ADD CONSTRAINT `fk_user_holon_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `invitation`
+  ADD CONSTRAINT `fk_invitation_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `history`
+  ADD CONSTRAINT `fk_history_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `organization_application`
+  ADD CONSTRAINT `fk_organization_application_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `organization_parcours`
+  ADD KEY `idx_organization_parcours_organization` (`IDorganization`),
+  ADD CONSTRAINT `fk_organization_parcours_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `holon_share_link`
+  ADD CONSTRAINT `fk_holon_share_link_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_holon_share_link_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `media`
+  ADD KEY `idx_media_document` (`IDdocument`),
+  ADD CONSTRAINT `fk_media_document` FOREIGN KEY (`IDdocument`) REFERENCES `document` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `alttext`
+  ADD KEY `idx_alttext_document` (`IDdocument`),
+  ADD CONSTRAINT `fk_alttext_document` FOREIGN KEY (`IDdocument`) REFERENCES `document` (`id`) ON DELETE CASCADE;
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

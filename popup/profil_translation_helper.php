@@ -1,0 +1,296 @@
+<?php
+
+require_once dirname(__DIR__) . '/omo/translations.php';
+
+function profilPopupGetSourceLang(): array
+{
+    static $sourceLang = null;
+    if ($sourceLang !== null) {
+        return $sourceLang;
+    }
+
+    $sourceLang = [
+        'profile.popup.error.login_required' => [
+            'text' => 'Login requis',
+            'context' => 'Error message shown when the profile popup is opened without an authenticated user.',
+        ],
+        'profile.popup.error.unknown_user' => [
+            'text' => 'Utilisateur inconnu',
+            'context' => 'Error message shown when the current user record cannot be loaded for the profile popup.',
+        ],
+        'profile.popup.section.active.title' => [
+            'text' => 'Votre profil actif',
+            'context' => 'Section title shown at the top of the personal profile popup.',
+        ],
+        'profile.popup.section.edit.title' => [
+            'text' => 'Modifier votre profil',
+            'context' => 'Section title shown above the editable profile forms.',
+        ],
+        'profile.popup.section.patreon.title' => [
+            'text' => 'Patreon',
+            'context' => 'Section title shown for the Patreon connection block in the profile popup.',
+        ],
+        'profile.popup.active.context.label' => [
+            'text' => 'Contexte',
+            'context' => 'Label shown for the active profile context summary item.',
+        ],
+        'profile.popup.active.context.organization' => [
+            'text' => 'Organisation : {organizationName}',
+            'context' => 'Summary value shown when the active profile context is scoped to an organization.',
+        ],
+        'profile.popup.active.context.general' => [
+            'text' => 'Profil general',
+            'context' => 'Summary value shown when the active profile context is the general user profile.',
+        ],
+        'profile.popup.active.photo.label' => [
+            'text' => 'Photo affichee',
+            'context' => 'Label shown for the active profile photo summary item.',
+        ],
+        'profile.popup.active.email.label' => [
+            'text' => 'E-mail affiche',
+            'context' => 'Label shown for the active profile email summary item.',
+        ],
+        'profile.popup.active.username.label' => [
+            'text' => 'Identifiant affiche',
+            'context' => 'Label shown for the active profile username summary item.',
+        ],
+        'profile.popup.active.presentation.label' => [
+            'text' => 'Presentation active',
+            'context' => 'Label shown for the active profile presentation summary item.',
+        ],
+        'profile.popup.active.birthdate.label' => [
+            'text' => 'Date de naissance',
+            'context' => 'Label shown for the birth date summary item.',
+        ],
+        'profile.popup.active.birthday.label' => [
+            'text' => 'Anniversaire',
+            'context' => 'Label shown for the birthday summary item.',
+        ],
+        'profile.popup.value.not_provided' => [
+            'text' => 'Non renseigne',
+            'context' => 'Fallback text shown in the profile popup when a value is missing.',
+        ],
+        'profile.popup.value.no_presentation' => [
+            'text' => 'Aucune presentation renseignee',
+            'context' => 'Fallback text shown when the user has no active presentation text.',
+        ],
+        'profile.popup.scope.switch_aria' => [
+            'text' => 'Choix du contexte de profil',
+            'context' => 'Aria label used for the profile scope switch buttons.',
+        ],
+        'profile.popup.scope.general_button' => [
+            'text' => 'Donnees generales',
+            'context' => 'Button label used to switch to the general profile form.',
+        ],
+        'profile.popup.scope.organization_button' => [
+            'text' => "Donnees specifiques a l'organisation",
+            'context' => 'Button label used to switch to the organization-specific profile form.',
+        ],
+        'profile.popup.scope.help' => [
+            'text' => 'Vous pouvez completer votre profil general, puis definir si besoin une presentation differente pour cette organisation.',
+            'context' => 'Help text shown below the profile scope switch.',
+        ],
+        'profile.popup.scope.loading' => [
+            'text' => 'Chargement du formulaire...',
+            'context' => 'Status text shown while a profile scope fragment is loading.',
+        ],
+        'profile.popup.scope.load_error' => [
+            'text' => 'Impossible de charger ce formulaire pour le moment.',
+            'context' => 'Error message shown when the profile scope fragment fails to load.',
+        ],
+        'profile.popup.patreon.connection.label' => [
+            'text' => 'Connexion',
+            'context' => 'Label shown for the Patreon connection summary item.',
+        ],
+        'profile.popup.patreon.connection.connected' => [
+            'text' => 'Compte Patreon connecte',
+            'context' => 'Summary value shown when a Patreon account is linked to the current user.',
+        ],
+        'profile.popup.patreon.connection.disconnected' => [
+            'text' => 'Aucun compte Patreon connecte',
+            'context' => 'Summary value shown when no Patreon account is linked to the current user.',
+        ],
+        'profile.popup.patreon.name.label' => [
+            'text' => 'Nom Patreon',
+            'context' => 'Label shown for the Patreon full name summary item.',
+        ],
+        'profile.popup.patreon.status.label' => [
+            'text' => "Statut d'abonnement",
+            'context' => 'Label shown for the Patreon subscription status summary item.',
+        ],
+        'profile.popup.patreon.payment.label' => [
+            'text' => 'Dernier paiement',
+            'context' => 'Label shown for the last Patreon payment summary item.',
+        ],
+        'profile.popup.patreon.tiers.label' => [
+            'text' => 'Paliers actifs',
+            'context' => 'Label shown for the active Patreon tiers summary item.',
+        ],
+        'profile.popup.patreon.amount.label' => [
+            'text' => 'Montant actif',
+            'context' => 'Label shown for the current Patreon amount summary item.',
+        ],
+        'profile.popup.patreon.sync_at.label' => [
+            'text' => 'Derniere synchronisation',
+            'context' => 'Label shown for the last Patreon synchronization date summary item.',
+        ],
+        'profile.popup.patreon.sync_error.label' => [
+            'text' => 'Derniere erreur',
+            'context' => 'Label shown for the last Patreon synchronization error summary item.',
+        ],
+        'profile.popup.patreon.tiers.none' => [
+            'text' => 'Aucun',
+            'context' => 'Fallback text shown when the Patreon account has no active tier title.',
+        ],
+        'profile.popup.patreon.connect' => [
+            'text' => 'Connecter Patreon',
+            'context' => 'Primary button label shown when the Patreon account is not connected yet.',
+        ],
+        'profile.popup.patreon.reconnect' => [
+            'text' => 'Reconnecter Patreon',
+            'context' => 'Primary button label shown when the Patreon account is already connected.',
+        ],
+        'profile.popup.patreon.sync' => [
+            'text' => 'Rafraichir maintenant',
+            'context' => 'Secondary button label used to refresh Patreon data on demand.',
+        ],
+        'profile.popup.patreon.disconnect' => [
+            'text' => 'Deconnecter',
+            'context' => 'Secondary button label used to disconnect Patreon from the current user.',
+        ],
+        'profile.popup.js.invalid_response' => [
+            'text' => 'Reponse serveur invalide.',
+            'context' => 'Fallback JavaScript error message shown when an AJAX endpoint returns invalid JSON.',
+        ],
+        'profile.popup.js.disconnect_confirm' => [
+            'text' => 'Deconnecter le compte Patreon de ce profil ?',
+            'context' => 'Confirmation dialog shown before disconnecting Patreon from the current profile.',
+        ],
+        'profile.popup.scope.organization_intro' => [
+            'text' => "Ces donnees remplacent le profil general uniquement dans cette organisation. Laissez un champ vide pour continuer a utiliser la valeur generale.",
+            'context' => 'Help text shown above the organization-specific profile form.',
+        ],
+        'profile.popup.scope.organization_submit' => [
+            'text' => "Mettre a jour les donnees de l'organisation",
+            'context' => 'Button label used to submit the organization-specific profile form.',
+        ],
+        'profile.popup.scope.general_submit' => [
+            'text' => 'Mettre a jour les donnees generales',
+            'context' => 'Button label used to submit the general profile form.',
+        ],
+        'profile.popup.scope.jquery_required' => [
+            'text' => 'jQuery est requis pour ce formulaire.',
+            'context' => 'Alert message shown when the adminEdit profile form is missing its expected jQuery runtime.',
+        ],
+        'profile.popup.competence.section.organization_title' => [
+            'text' => "Competences liees a l'organisation",
+            'context' => 'Section title shown above the organization-specific competence editor list.',
+        ],
+        'profile.popup.competence.section.general_title' => [
+            'text' => 'Competences generales',
+            'context' => 'Section title shown above the general competence editor list.',
+        ],
+        'profile.popup.competence.section.organization_help' => [
+            'text' => "Ajoutez ici les competences du contexte actif. Cochez la case pour les limiter a cette organisation.",
+            'context' => 'Help text shown above the organization-specific competence editor list.',
+        ],
+        'profile.popup.competence.section.general_help' => [
+            'text' => 'Ajoutez ici les competences visibles dans toutes vos organisations, ou limitez-les au contexte actif.',
+            'context' => 'Help text shown above the general competence editor list.',
+        ],
+        'profile.popup.competence.empty' => [
+            'text' => 'Aucune competence pour ce scope.',
+            'context' => 'Message shown when there are no competences to edit for the current scope.',
+        ],
+        'profile.popup.competence.field.name' => [
+            'text' => 'Competence',
+            'context' => 'Label shown for the competence name field.',
+        ],
+        'profile.popup.competence.field.new_name' => [
+            'text' => 'Nouvelle competence',
+            'context' => 'Label shown for the new competence name field.',
+        ],
+        'profile.popup.competence.field.description' => [
+            'text' => 'Descriptif',
+            'context' => 'Label shown for the competence description field.',
+        ],
+        'profile.popup.competence.field.description_placeholder' => [
+            'text' => 'Ex: PHP / MySQL',
+            'context' => 'Placeholder shown for the competence description field.',
+        ],
+        'profile.popup.competence.field.category' => [
+            'text' => 'Type',
+            'context' => 'Label shown for the competence category field.',
+        ],
+        'profile.popup.competence.field.level' => [
+            'text' => 'Votre niveau',
+            'context' => 'Label shown for the competence level field.',
+        ],
+        'profile.popup.competence.validation_count' => [
+            'one' => '{count} validation',
+            'other' => '{count} validations',
+            'context' => 'Badge text shown with the number of validations received for a competence.',
+        ],
+        'profile.popup.competence.validators_label' => [
+            'text' => 'Reconnu par',
+            'context' => 'Label shown above the list of validators for a competence.',
+        ],
+        'profile.popup.competence.save' => [
+            'text' => 'Enregistrer',
+            'context' => 'Button label used to save an existing competence.',
+        ],
+        'profile.popup.competence.delete' => [
+            'text' => 'Supprimer',
+            'context' => 'Button label used to delete an existing competence.',
+        ],
+        'profile.popup.competence.add' => [
+            'text' => 'Ajouter',
+            'context' => 'Button label used to create a new competence.',
+        ],
+        'profile.popup.competence.js.reload_error' => [
+            'text' => 'Impossible de recharger les competences.',
+            'context' => 'Error message shown when the competence list cannot be refreshed after a save or delete.',
+        ],
+        'profile.popup.competence.js.save_error' => [
+            'text' => "Impossible d'enregistrer cette competence.",
+            'context' => 'Error message shown when saving a competence fails.',
+        ],
+        'profile.popup.competence.js.save_success' => [
+            'text' => 'Competence enregistree.',
+            'context' => 'Success message shown after saving a competence.',
+        ],
+        'profile.popup.competence.js.delete_confirm' => [
+            'text' => 'Supprimer cette competence ?',
+            'context' => 'Confirmation dialog shown before deleting a competence.',
+        ],
+        'profile.popup.competence.js.delete_error' => [
+            'text' => 'Impossible de supprimer cette competence.',
+            'context' => 'Error message shown when deleting a competence fails.',
+        ],
+        'profile.popup.competence.js.delete_success' => [
+            'text' => 'Competence supprimee.',
+            'context' => 'Success message shown after deleting a competence.',
+        ],
+    ];
+
+    return $sourceLang;
+}
+
+function profilPopupLoadBundle(): array
+{
+    static $bundle = null;
+    if ($bundle !== null) {
+        return $bundle;
+    }
+
+    $bundle = omoLoadTranslationBundle('popup_profile_editor', profilPopupGetSourceLang());
+    return $bundle;
+}
+
+function profilPopupT(string $key, array $variables = [], ?array $bundle = null, ?array $sourceLang = null): string
+{
+    $sourceLang = is_array($sourceLang) ? $sourceLang : profilPopupGetSourceLang();
+    $bundle = is_array($bundle) ? $bundle : profilPopupLoadBundle();
+
+    return t($key, $variables, $bundle, $sourceLang);
+}

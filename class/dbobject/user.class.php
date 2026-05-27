@@ -5,84 +5,115 @@
 	{
 	    public static function tableName()
 		{
-			return 'user'; // Nom de la table correspondante
+			return 'user';
 		}
 
-		// Défini le contenu de la table
 		public static function rules()
 		{
 			return [
-				[['email'], 'required'], // Champs obligatoires
-				[['id'], 'integer'], // Nombres entiers
-				[['username', 'email', 'firstname', 'lastname', 'code', 'telegramID'], 'string'], // Chaînes de caractère
-				[['password'], 'password'], // Mot de passe
-				[['parameters', 'param_easypv', 'param_easymemo', 'param_easycircle'], 'parameters'], // Textes libres
-				[['datecreation', 'dateconnexion', 'codeexpiration'], 'datetime'], // Dates avec heures
-				[['active'], 'boolean'], // Booléens
-				[['id', 'password', 'email', 'code', 'datecreation', 'dateconnexion', 'codeexpiration', 'telegramID'], 'safe'], // Champs protégés
+				[['email'], 'required'],
+				[['id'], 'integer'],
+				[['username', 'email', 'firstname', 'lastname', 'code', 'telegramID'], 'string'],
+				[['presentation'], 'text'],
+				[['latlong'], 'latlong'],
+				[['password'], 'password'],
+				[['image'], 'sizedimage'],
+				[['parameters', 'param_easypv', 'param_easymemo', 'param_easycircle'], 'parameters'],
+				[['datecreation', 'dateconnexion', 'codeexpiration'], 'datetime'],
+				[['birthdate'], 'date'],
+				[['active', 'siteadmin'], 'boolean'],
+				[['id', 'password', 'email', 'code', 'datecreation', 'dateconnexion', 'codeexpiration', 'telegramID'], 'safe'],
 			];
 		}
 
-		// Défini les labels standards pour cet objet, affichés dans les formulaires automatiques
 		public static function attributeLabels()
 		{
 			return [
 				'username' => 'Nom d\'utilisateur',
-				'firstname' => 'Prénom',
+				'firstname' => 'Prenom',
 				'lastname' => 'Nom',
+				'presentation' => 'Presentation',
+				'latlong' => 'Position geographique',
+				'birthdate' => 'Date de naissance',
 				'email' => 'E-mail',
+				'image' => 'Image de profil',
 				'telegramID' => 'ID Telegram',
 				'password' => 'Mot de passe',
+				'siteadmin' => 'Admin du site',
 				'code' => 'Code',
-				'parameters' => 'Paramètres',
+				'parameters' => 'Parametres',
 			];
 		}
 
-		// Ajoute un champ description, qui peut apparaître sous forme de bulle d'information ou en sous-titre
 		public static function attributeDescriptions() {
 			return [
-				'username' => 'Un identifiant utilisé pour vous identifier dans une équipe, comme des initiales.',
-				'firstname' => 'Simplement votre prénom.',
+				'username' => 'Un identifiant utilise pour vous identifier dans une equipe, comme des initiales.',
+				'firstname' => 'Simplement votre prenom.',
 				'lastname' => 'Simplement votre nom de famille.',
-				'email' => 'L\'adresse e-mail utilisée pour vous connecter et pour vous envoyer les messages du système.',
-				'telegramID' => 'Identifiant numérique utilisé pour associer votre compte Telegram.',
+				'presentation' => 'Petit texte de presentation partage entre les organisations, sauf si une organisation le remplace localement.',
+				'latlong' => 'Position geographique generale, partagee dans toutes les organisations.',
+				'birthdate' => 'Date de naissance facultative, utilisee pour afficher le prochain anniversaire.',
+				'email' => 'L\'adresse e-mail utilisee pour vous connecter et pour vous envoyer les messages du systeme.',
+				'telegramID' => 'Identifiant numerique utilise pour associer votre compte Telegram.',
+				'siteadmin' => 'Donne un acces global a l administration du serveur.',
 			];
 		}
 
-		// Défini les informations de taille pour le champ
 		public static function attributeLength() {
 			return [
-				'username' => 30, // Nombre de caractères maximum
+				'username' => 30,
 				'firstname' => 25,
 				'lastname' => 25,
+				'presentation' => 2000,
+				'latlong' => 100,
 				'email' => 30,
 				'telegramID' => 100,
 			];
 		}
 
-		// Retourne la valeur de base pour le tri
 		public static function getOrder() {
 			return "firstname, lastname";
 		}
 
-		// Retourne un boolean indiquant si oui ou non l'utilisateur connecté a le droit d'afficher ce contenu
 		public function canView() {
-			if (isset($_SESSION["currentUser"])) {
-				return true;
-			}
-
-			// Par défaut, ne peut voir que son profil. A compléter lorsque les users seront attachés à des équipes et des organisations.
-			return false;
+			return $this->resolveViewPermission(false);
 		}
 
-		// Retourne un boolean indiquant si oui ou non l'utilisateur connecté a le droit d'éditer ce contenu
+		public function canViewDetail() {
+			return $this->resolveViewPermission(true);
+		}
+
 		public function canEdit() {
 			if (isset($_SESSION["currentUser"]) && $_SESSION["currentUser"] == $this->getId()) {
 				return true;
 			}
 
-			// Par défaut, ne peut compléter que son profil. A compléter lorsque des users fantômes seront créés.
 			return false;
+		}
+
+		public function isSiteAdmin()
+		{
+			$siteAdmin = $this->get('siteadmin');
+			if ($siteAdmin !== null && $siteAdmin !== '') {
+				return (bool)$siteAdmin;
+			}
+
+			return (bool)$this->getParameter('isSiteAdmin');
+		}
+
+		public function setSiteAdmin($isSiteAdmin)
+		{
+			$this->set('siteadmin', $isSiteAdmin ? 1 : 0);
+
+			$parameters = json_decode((string)$this->get('parameters'), true);
+			if (!is_array($parameters)) {
+				$parameters = array();
+			}
+
+			unset($parameters['isSiteAdmin']);
+
+			$this->set('parameters', $parameters);
+			return $this->save();
 		}
 
 		public function getPrompt() {
@@ -102,15 +133,251 @@
 			return $organizations;
 		}
 
+		public function getPendingOrganizationInvitations()
+		{
+			return \dbObject\Invitation::findPendingForUser((int)$this->getId());
+		}
+
+		protected static function loadActiveOrganizationIdsForUser($userId)
+		{
+			static $cache = array();
+
+			$userId = (int)$userId;
+			if ($userId <= 0) {
+				return array();
+			}
+
+			if (array_key_exists($userId, $cache)) {
+				return $cache[$userId];
+			}
+
+			$rows = self::fetchAll(
+				"SELECT IDorganization
+				FROM user_organization
+				WHERE IDuser = :user_id
+				  AND active = 1
+				ORDER BY IDorganization ASC",
+				array(
+					'user_id' => $userId,
+				)
+			);
+
+			if ($rows === false) {
+				$cache[$userId] = array();
+				return $cache[$userId];
+			}
+
+			$organizationIds = array();
+			foreach ($rows as $row) {
+				$organizationId = (int)($row['IDorganization'] ?? 0);
+				if ($organizationId > 0) {
+					$organizationIds[$organizationId] = $organizationId;
+				}
+			}
+
+			$cache[$userId] = array_values($organizationIds);
+
+			return $cache[$userId];
+		}
+
+		protected function getActiveOrganizationIds()
+		{
+			return self::loadActiveOrganizationIdsForUser((int)$this->getId());
+		}
+
+		protected function resolveViewPermission($requireDetail = false)
+		{
+			static $cache = array();
+
+			$targetUserId = (int)$this->getId();
+			if ($targetUserId <= 0) {
+				return false;
+			}
+
+			$currentUserId = function_exists('commonGetCurrentUserId')
+				? (int)\commonGetCurrentUserId()
+				: (int)($_SESSION["currentUser"] ?? 0);
+			$shareToken = function_exists('commonGetCurrentShareToken')
+				? (string)\commonGetCurrentShareToken()
+				: '';
+			$cacheKey = $targetUserId . ':' . $currentUserId . ':' . ($requireDetail ? '1' : '0') . ':' . $shareToken;
+
+			if (array_key_exists($cacheKey, $cache)) {
+				return $cache[$cacheKey];
+			}
+
+			if ($currentUserId > 0 && $currentUserId === $targetUserId) {
+				$cache[$cacheKey] = true;
+				return true;
+			}
+
+			$currentOrganizationId = function_exists('commonGetCurrentUserOrganizationId')
+				? (int)\commonGetCurrentUserOrganizationId()
+				: (int)($_SESSION['currentOrganization'] ?? 0);
+			if (function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($currentUserId, $currentOrganizationId)) {
+				$cache[$cacheKey] = true;
+				return true;
+			}
+
+			$targetOrganizationIds = $this->getActiveOrganizationIds();
+			if (count($targetOrganizationIds) > 0) {
+				$currentOrganizationIds = self::loadActiveOrganizationIdsForUser($currentUserId);
+				if (count(array_intersect($targetOrganizationIds, $currentOrganizationIds)) > 0) {
+					$cache[$cacheKey] = true;
+					return true;
+				}
+			}
+
+			if (function_exists('commonCurrentShareCanViewUser')) {
+				$cache[$cacheKey] = \commonCurrentShareCanViewUser($this, $requireDetail);
+				return $cache[$cacheKey];
+			}
+
+			$cache[$cacheKey] = false;
+			return false;
+		}
+
+		public function getOrganizationMembership($organizationId = 0)
+		{
+			static $cache = array();
+
+			$organizationId = (int)$organizationId;
+			$userId = (int)$this->getId();
+			if ($userId <= 0 || $organizationId <= 0) {
+				return null;
+			}
+
+			$cacheKey = $userId . ':' . $organizationId;
+			if (array_key_exists($cacheKey, $cache)) {
+				return $cache[$cacheKey] ?: null;
+			}
+
+			$membership = new \dbObject\UserOrganization();
+			$cache[$cacheKey] = $membership->load([
+				['IDuser', $userId],
+				['IDorganization', $organizationId],
+			]) ? $membership : false;
+
+			return $cache[$cacheKey] ?: null;
+		}
+
+		public function getProfilePhotoUrl()
+		{
+			$image = trim((string)$this->get('image'));
+			if ($image !== '') {
+				return $image;
+			}
+
+			return '';
+		}
+
+		public function getScopedProfilePhotoUrl($organizationId = 0)
+		{
+			$membership = $this->getOrganizationMembership($organizationId);
+			if ($membership) {
+				return $membership->getProfilePhotoUrl();
+			}
+
+			return $this->getProfilePhotoUrl();
+		}
+
+		public function getScopedUsername($organizationId = 0)
+		{
+			$membership = $this->getOrganizationMembership($organizationId);
+			if ($membership) {
+				return $membership->getScopedUsername();
+			}
+
+			return trim((string)$this->get('username'));
+		}
+
+		public function getScopedEmail($organizationId = 0)
+		{
+			$membership = $this->getOrganizationMembership($organizationId);
+			if ($membership) {
+				return $membership->getScopedEmail();
+			}
+
+			return trim((string)$this->get('email'));
+		}
+
+		public function getScopedDisplayName($organizationId = 0)
+		{
+			$fullName = trim((string)$this->get('firstname') . ' ' . (string)$this->get('lastname'));
+			if ($fullName !== '') {
+				return $fullName;
+			}
+
+			$username = $this->getScopedUsername($organizationId);
+			if ($username !== '') {
+				return $username;
+			}
+
+			return $this->getScopedEmail($organizationId);
+		}
+
+		public function getScopedPresentation($organizationId = 0)
+		{
+			$membership = $this->getOrganizationMembership($organizationId);
+			if ($membership && method_exists($membership, 'getScopedPresentation')) {
+				return $membership->getScopedPresentation();
+			}
+
+			return trim((string)$this->get('presentation'));
+		}
+
 		public function hasOrganizationAccess($organizationId) {
 			$organizationId = (int)$organizationId;
 			if ((int)$this->getId() <= 0 || $organizationId <= 0) {
 				return false;
 			}
 
+			if (function_exists('commonUserHasOrganizationMembership')) {
+				return \commonUserHasOrganizationMembership((int)$this->getId(), $organizationId);
+			}
+
 			$organizations = new ArrayOrganization();
 			$organizations->loadAccessibleForUser($this->getId(), $organizationId, 1);
 			return count($organizations) > 0;
+		}
+
+		public function getVisibleCompetenceRows($organizationId = 0, $viewerUserId = 0)
+		{
+			return \dbObject\UserCompetence::buildVisibleCompetenceRows((int)$this->getId(), (int)$organizationId, (int)$viewerUserId);
+		}
+
+		public function getCompetenceRowsForScope($scope = 'general', $organizationId = 0, $viewerUserId = 0)
+		{
+			$scope = $scope === 'organization' ? 'organization' : 'general';
+			$rows = $this->getVisibleCompetenceRows($organizationId, $viewerUserId);
+
+			return array_values(array_filter($rows, static function ($row) use ($scope) {
+				return (string)($row['scope'] ?? 'general') === $scope;
+			}));
+		}
+
+		public function saveCompetenceDeclaration(array $payload, $currentOrganizationId = 0)
+		{
+			if (!$this->canEdit()) {
+				return [
+					'status' => false,
+					'message' => "Vous ne pouvez pas modifier ces competences.",
+				];
+			}
+
+			return \dbObject\UserCompetence::saveDeclarationForUser((int)$this->getId(), $payload, (int)$currentOrganizationId);
+		}
+
+		public function deleteCompetenceDeclaration($userCompetenceId)
+		{
+			if (!$this->canEdit()) {
+				return [
+					'status' => false,
+					'message' => "Vous ne pouvez pas supprimer ces competences.",
+				];
+			}
+
+			return \dbObject\UserCompetence::deleteDeclarationForUser((int)$userCompetenceId, (int)$this->getId());
 		}
 	}
 

@@ -15,6 +15,8 @@
 				[['id'], 'integer'],
 				[['IDuser', 'IDorganization'], 'fk'],
 				[['username', 'email'], 'string'],
+				[['presentation'], 'text'],
+				[['image'], 'sizedimage'],
 				[['parameters'], 'parameters'],
 				[['datecreation', 'dateconnexion'], 'datetime'],
 				[['active'], 'boolean'],
@@ -30,9 +32,11 @@
 				'IDorganization' => 'Organisation',
 				'username' => 'Identifiant',
 				'email' => 'E-mail',
-				'parameters' => 'Paramètres',
-				'datecreation' => 'Création',
-				'dateconnexion' => 'Dernière connexion',
+				'presentation' => 'Presentation',
+				'image' => 'Photo',
+				'parameters' => 'Parametres',
+				'datecreation' => 'Creation',
+				'dateconnexion' => 'Derniere connexion',
 				'active' => 'Actif',
 			];
 		}
@@ -40,13 +44,25 @@
 		public static function attributeDescriptions()
 		{
 			return [
-				'IDuser' => 'Utilisateur associé à cette organisation.',
-				'IDorganization' => 'Organisation concernée par ce lien.',
-				'username' => 'Identifiant affiché spécifiquement dans cette organisation.',
-				'email' => 'Adresse e-mail affichée spécifiquement dans cette organisation.',
-				'parameters' => 'Paramètres spécifiques au rôle de cette personne dans l’organisation.',
-				'datecreation' => 'Date de création du lien avec l’organisation.',
-				'dateconnexion' => 'Dernière activité connue dans cette organisation.',
+				'IDuser' => 'Utilisateur associe a cette organisation.',
+				'IDorganization' => 'Organisation concernee par ce lien.',
+				'username' => 'Identifiant affiche specifiquement dans cette organisation. Laissez vide pour utiliser la valeur generale.',
+				'email' => 'Adresse e-mail affichee specifiquement dans cette organisation. Laissez vide pour utiliser la valeur generale.',
+				'presentation' => 'Presentation visible uniquement dans cette organisation. Laissez vide pour reutiliser la presentation generale.',
+				'image' => 'Photo de profil specifique a cette organisation. Si elle est vide, la photo generale est utilisee.',
+				'parameters' => 'Parametres specifiques au role de cette personne dans l organisation.',
+				'datecreation' => 'Date de creation du lien avec l organisation.',
+				'dateconnexion' => 'Derniere activite connue dans cette organisation.',
+			];
+		}
+
+		public static function attributeLength()
+		{
+			return [
+				'image' => [320, 320],
+				'username' => 250,
+				'email' => 250,
+				'presentation' => 2000,
 			];
 		}
 
@@ -70,12 +86,12 @@
 				return $fullName;
 			}
 
-			$username = trim((string)$user->get('username'));
+			$username = $this->getScopedUsername();
 			if ($username !== '') {
 				return $username;
 			}
 
-			$email = trim((string)$user->get('email'));
+			$email = $this->getScopedEmail();
 			if ($email !== '') {
 				return $email;
 			}
@@ -147,8 +163,30 @@
 			return (bool)$this->getParameter('isAdmin');
 		}
 
+		public function setOrganizationAdmin($isAdmin)
+		{
+			$parameters = json_decode((string)$this->get('parameters'), true);
+			if (!is_array($parameters)) {
+				$parameters = array();
+			}
+
+			if ($isAdmin) {
+				$parameters['isAdmin'] = true;
+			} else {
+				unset($parameters['isAdmin']);
+			}
+
+			$this->set('parameters', $parameters);
+			return $this->save();
+		}
+
 		public function getProfilePhotoUrl()
 		{
+			$photoUrl = trim((string)$this->get('image'));
+			if ($photoUrl !== '') {
+				return $photoUrl;
+			}
+
 			$photoUrl = trim((string)$this->getParameter('photo'));
 			if ($photoUrl !== '') {
 				return $photoUrl;
@@ -157,6 +195,11 @@
 			$photoUrl = trim((string)$this->getParameter('photoUrl'));
 			if ($photoUrl !== '') {
 				return $photoUrl;
+			}
+
+			$user = $this->get('user');
+			if ($user && method_exists($user, 'getProfilePhotoUrl')) {
+				return (string)$user->getProfilePhotoUrl();
 			}
 
 			return '';
@@ -192,6 +235,21 @@
 			return trim((string)$user->get('email'));
 		}
 
+		public function getScopedPresentation()
+		{
+			$presentation = trim((string)$this->get('presentation'));
+			if ($presentation !== '') {
+				return $presentation;
+			}
+
+			$user = $this->get('user');
+			if ($user && method_exists($user, 'getScopedPresentation')) {
+				return (string)$user->getScopedPresentation();
+			}
+
+			return '';
+		}
+
 		public function getGlobalCreatedAt()
 		{
 			$user = $this->get('user');
@@ -212,6 +270,16 @@
 
 			$value = $user->get('dateconnexion');
 			return $value instanceof \DateTimeInterface ? $value : null;
+		}
+
+		public function canEdit()
+		{
+			$currentUserId = (int)\commonGetCurrentUserId();
+			if ($currentUserId <= 0) {
+				return false;
+			}
+
+			return $currentUserId === (int)$this->get('IDuser');
 		}
 	}
 

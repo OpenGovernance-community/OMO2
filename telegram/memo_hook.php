@@ -1,10 +1,10 @@
-<?php
+﻿<?php
 	require_once($_SERVER['DOCUMENT_ROOT']."/config.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared_functions.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared/openai.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared/telegram.php");
 
-	$minTimeMessage = 10; // Durée minimum en seconde du message pour justifier une transformation
+	$minTimeMessage = 10; // DurÃ©e minimum en seconde du message pour justifier une transformation
 
 	function saveLocalSession($data, $name) {
 		if (!is_dir("data")) {
@@ -70,6 +70,244 @@
 		return "votre compte";
 	}
 
+	function clearTelegramConnectState(\stdClass $sessionData): void {
+		unset($sessionData->connect);
+	}
+
+	function beginTelegramConnectFlow(int $actorId): \stdClass {
+		$sessionData = loadLocalSession($actorId);
+		clearTelegramConnectState($sessionData);
+		$sessionData->connect = (object) array(
+			'step' => 'await_email',
+			'startedAt' => time(),
+		);
+		saveLocalSession($sessionData, $actorId);
+		return $sessionData;
+	}
+
+	function startTelegramConnectCodeRequest(int $actorId, \dbObject\User $targetUser): array {
+		$email = trim((string)$targetUser->get('email'));
+		if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+			return array(
+				'status' => false,
+				'message' => "Ce compte n'a pas d'adresse e-mail valide.",
+			);
+		}
+
+		$organizationContext = commonResolveOrganizationContext(1);
+		$loginRequest = commonSendLoginCode((int)$targetUser->getId(), $email, $organizationContext, 0, '/');
+		if ($loginRequest === false || empty($loginRequest['request_token'])) {
+			return array(
+				'status' => false,
+				'message' => "Impossible d'envoyer le code pour le moment.",
+			);
+		}
+
+		$sessionData = loadLocalSession($actorId);
+		$sessionData->connect = (object) array(
+			'step' => 'await_code',
+			'userId' => (int)$targetUser->getId(),
+			'email' => $email,
+			'requestToken' => (string)$loginRequest['request_token'],
+			'expiresAt' => time() + 300,
+		);
+		saveLocalSession($sessionData, $actorId);
+
+		$message = !empty($loginRequest['delivery_failed'])
+			? "Le code a peut-etre deja ete envoye a ".$email.". Si vous le recevez, repondez ici avec ce code dans les 5 minutes."
+			: "Un code a ete envoye a ".$email.". Repondez ici avec ce code dans les 5 minutes.";
+
+		return array(
+			'status' => true,
+			'message' => $message,
+		);
+	}
+
+	function completeTelegramConnectFlow(int $actorId, string $rawCode): array {
+		$sessionData = loadLocalSession($actorId);
+		$connectState = isset($sessionData->connect) && is_object($sessionData->connect)
+			? $sessionData->connect
+			: null;
+
+		if (!$connectState || ($connectState->step ?? '') !== 'await_code') {
+			return array(
+				'status' => false,
+				'message' => "Aucune connexion n'est en attente. Envoyez /connect pour recommencer.",
+			);
+		}
+
+		$requestToken = trim((string)($connectState->requestToken ?? ''));
+		$userId = (int)($connectState->userId ?? 0);
+		$code = commonNormalizeLoginCode($rawCode);
+
+		if ($requestToken === '' || $userId <= 0) {
+			clearTelegramConnectState($sessionData);
+			saveLocalSession($sessionData, $actorId);
+			return array(
+				'status' => false,
+				'message' => "La demande de connexion est invalide. Envoyez /connect pour recommencer.",
+			);
+		}
+
+		if (strlen($code) !== 6) {
+			return array(
+				'status' => false,
+				'message' => "Veuillez saisir le code complet a 6 caracteres.",
+			);
+		}
+
+		$loginToken = \dbObject\UserLoginToken::findByToken($requestToken);
+		if (!$loginToken) {
+			clearTelegramConnectState($sessionData);
+			saveLocalSession($sessionData, $actorId);
+			return array(
+				'status' => false,
+				'message' => "Le code n'est plus valide. Envoyez /connect pour recommencer.",
+			);
+		}
+
+		if ((int)$loginToken->get('IDuser') !== $userId || (int)$loginToken->get('used') > 0) {
+			clearTelegramConnectState($sessionData);
+			saveLocalSession($sessionData, $actorId);
+			return array(
+				'status' => false,
+				'message' => "Le code n'est plus valide. Envoyez /connect pour recommencer.",
+			);
+		}
+
+		$expiresAt = $loginToken->get('expires_at');
+		if (!$expiresAt instanceof \DateTimeInterface || $expiresAt <= new \DateTime()) {
+			clearTelegramConnectState($sessionData);
+			saveLocalSession($sessionData, $actorId);
+			return array(
+				'status' => false,
+				'message' => "Le code a expire. Envoyez /connect pour recommencer.",
+			);
+		}
+
+		if ((int)$loginToken->get('attempt_count') >= 5) {
+			clearTelegramConnectState($sessionData);
+			saveLocalSession($sessionData, $actorId);
+			return array(
+				'status' => false,
+				'message' => "Trop d'essais. Envoyez /connect pour recommencer.",
+			);
+		}
+
+		if (!password_verify($code, (string)$loginToken->get('code_hash'))) {
+			$loginToken->incrementAttemptCount();
+			$remainingAttempts = max(0, 5 - (int)$loginToken->get('attempt_count'));
+			if ($remainingAttempts <= 0) {
+				clearTelegramConnectState($sessionData);
+				saveLocalSession($sessionData, $actorId);
+				return array(
+					'status' => false,
+					'message' => "Trop d'essais. Envoyez /connect pour recommencer.",
+				);
+			}
+
+			return array(
+				'status' => false,
+				'message' => "Code incorrect. Il reste ".$remainingAttempts." essai(s).",
+			);
+		}
+
+		$targetUser = new \dbObject\User();
+		if (!$targetUser->load($userId)) {
+			$loginToken->markUsed();
+			clearTelegramConnectState($sessionData);
+			saveLocalSession($sessionData, $actorId);
+			return array(
+				'status' => false,
+				'message' => "Le compte utilisateur est introuvable.",
+			);
+		}
+
+		$alreadyLinkedUser = loadTelegramUserByActorId($actorId);
+		if ($alreadyLinkedUser->getId() > 0 && (int)$alreadyLinkedUser->getId() !== $userId) {
+			$alreadyLinkedUser->set('telegramID', null);
+			$alreadyLinkedUser->save();
+		}
+
+		$targetUser->set('telegramID', (string)$actorId);
+		$saveResult = $targetUser->save();
+		$loginToken->markUsed();
+
+		if (!is_array($saveResult) || empty($saveResult['status'])) {
+			return array(
+				'status' => false,
+				'message' => "Le compte Telegram n'a pas pu etre enregistre.",
+			);
+		}
+
+		clearTelegramConnectState($sessionData);
+		saveLocalSession($sessionData, $actorId);
+
+		return array(
+			'status' => true,
+			'message' => "Connexion confirmee avec ".getTelegramConnectedUserLabel($targetUser).".",
+		);
+	}
+
+	function handleTelegramConnectConversation(array $message, \dbObject\User $user): bool {
+		$text = isset($message['text']) ? trim((string)$message['text']) : '';
+		$actorId = isset($message['from']['id']) ? (int)$message['from']['id'] : 0;
+		$chatId = $message['chat']['id'] ?? null;
+		$threadId = getMessageThreadId($message);
+		if ($text === '' || $actorId <= 0 || $chatId === null) {
+			return false;
+		}
+
+		if (($message['chat']['id'] ?? null) != ($message['from']['id'] ?? null)) {
+			return false;
+		}
+
+		$sessionData = loadLocalSession($actorId);
+		$connectState = isset($sessionData->connect) && is_object($sessionData->connect)
+			? $sessionData->connect
+			: null;
+		if (!$connectState || !isset($connectState->step)) {
+			return false;
+		}
+
+		if (preg_match('/^\/cancel/i', $text)) {
+			clearTelegramConnectState($sessionData);
+			saveLocalSession($sessionData, $actorId);
+			sendMessage($chatId, "Connexion annulee.", null, $threadId);
+			return true;
+		}
+
+		if (preg_match('/^\//', $text)) {
+			return false;
+		}
+
+		if (($connectState->step ?? '') === 'await_email') {
+			$email = strtolower(trim($text));
+			if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+				sendMessage($chatId, "Veuillez repondre avec une adresse e-mail valide, ou /cancel.", null, $threadId);
+				return true;
+			}
+
+			$targetUser = new \dbObject\User();
+			if (!$targetUser->load(array('email', $email))) {
+				sendMessage($chatId, "Aucun compte n'a ete trouve avec cette adresse. Reessayez ou envoyez /cancel.", null, $threadId);
+				return true;
+			}
+
+			$result = startTelegramConnectCodeRequest($actorId, $targetUser);
+			sendMessage($chatId, $result['message'] ?? "Impossible d'envoyer le code.", null, $threadId);
+			return true;
+		}
+
+		if (($connectState->step ?? '') === 'await_code') {
+			$result = completeTelegramConnectFlow($actorId, $text);
+			sendMessage($chatId, $result['message'] ?? "Impossible de verifier le code.", null, $threadId);
+			return true;
+		}
+
+		return false;
+	}
+
 	function formatDocumentLink(\dbObject\Document $document): string {
 		return appBuildAbsoluteUrl("/memo/".$document->getId().($document->get("codeview") ? "/".$document->get("codeview") : ""));
 	}
@@ -90,7 +328,7 @@
 	function buildDeleteButtons(): array {
 		return array(
 			array(
-				array('text' => 'Le résumé', 'callback_data' => 'btn_del_resume'),
+				array('text' => 'Le rÃ©sumÃ©', 'callback_data' => 'btn_del_resume'),
 				array('text' => 'Le fichier', 'callback_data' => 'btn_del_file'),
 			),
 			array(
@@ -192,7 +430,7 @@
 	function buildClassificationPrompt(\dbObject\User $user, int $selectedOrganizationId = 0, int $selectedHolonId = 0): array {
 		if ($user->getId() <= 0) {
 			return array(
-				'text' => "Votre compte Telegram n'est pas relié à un utilisateur SystemDD.",
+				'text' => "Votre compte Telegram n'est pas reliÃ© Ã  un utilisateur SystemDD.",
 				'buttons' => array(
 					array(
 						array('text' => 'Fermer', 'callback_data' => 'btn_classify_cancel'),
@@ -231,7 +469,7 @@
 			);
 
 			return array(
-				'text' => "Classer ce mémo\n\nChoisissez d'abord une organisation.",
+				'text' => "Classer ce mÃ©mo\n\nChoisissez d'abord une organisation.",
 				'buttons' => $buttons,
 			);
 		}
@@ -247,7 +485,7 @@
 				'text' => "Impossible de trouver la structure de cette organisation.",
 				'buttons' => array(
 					array(
-						array('text' => 'Changer d’organisation', 'callback_data' => 'btn_classify_root'),
+						array('text' => 'Changer dâ€™organisation', 'callback_data' => 'btn_classify_root'),
 					),
 					array(
 						array('text' => 'Annuler', 'callback_data' => 'btn_classify_cancel'),
@@ -298,14 +536,14 @@
 					'callback_data' => 'btn_classify_nav_'.$organization->getId().'_'.$backTargetHolonId,
 				),
 				array(
-					'text' => 'Changer d’organisation',
+					'text' => 'Changer dâ€™organisation',
 					'callback_data' => 'btn_classify_root',
 				),
 			);
 		} else {
 			$buttons[] = array(
 				array(
-					'text' => 'Changer d’organisation',
+					'text' => 'Changer dâ€™organisation',
 					'callback_data' => 'btn_classify_root',
 				),
 			);
@@ -335,13 +573,13 @@
 			array('text' => 'Annuler', 'callback_data' => 'btn_classify_cancel'),
 		);
 
-		$text = "Classer ce mémo\n\nEmplacement sélectionné : ".$currentPath;
+		$text = "Classer ce mÃ©mo\n\nEmplacement sÃ©lectionnÃ© : ".$currentPath;
 		if (count($descendantOptions) > 0 && !$useIncrementalMode) {
 			$text .= "\n\nChoisissez directement une destination ci-dessous, ou utilisez \"Terminer ici\" pour valider cet emplacement.";
 		} elseif (count($children) > 0) {
 			$text .= "\n\nChoisissez un sous-niveau, ou utilisez \"Terminer ici\" pour valider cet emplacement.";
 		} else {
-			$text .= "\n\nAucun sous-niveau supplémentaire n'est disponible ici. Vous pouvez terminer maintenant.";
+			$text .= "\n\nAucun sous-niveau supplÃ©mentaire n'est disponible ici. Vous pouvez terminer maintenant.";
 		}
 
 		return array(
@@ -409,7 +647,7 @@
 
 				sendMessage($chatId, formatDocumentLink($document), null, $threadId);
 			} else {
-				sendMessage($chatId, "Le fichier n'a pas été trouvé.", null, $threadId);
+				sendMessage($chatId, "Le fichier n'a pas Ã©tÃ© trouvÃ©.", null, $threadId);
 			}
 
 			answerCallbackQuery($callbackId);
@@ -423,7 +661,7 @@
 		}
 
 		if ($callbackData === 'btn_del_cancel') {
-			editMessageText($chatId, (int)$message['message_id'], "Suppression annulée.", null, $threadId);
+			editMessageText($chatId, (int)$message['message_id'], "Suppression annulÃ©e.", null, $threadId);
 			answerCallbackQuery($callbackId);
 			return;
 		}
@@ -439,7 +677,7 @@
 				deleteMessage($chatId, (int)$message['message_id'], $threadId);
 			}
 
-			answerCallbackQuery($callbackId, "Résumé effacé.");
+			answerCallbackQuery($callbackId, "RÃ©sumÃ© effacÃ©.");
 			return;
 		}
 
@@ -454,7 +692,7 @@
 					deleteMessage($chatId, (int)$sessionData->lastID, $threadId);
 					clearLastMessageSessionFields($sessionData);
 				} else {
-					editMessageText($chatId, (int)$sessionData->lastID, "Le document lié a été supprimé.", null, $threadId);
+					editMessageText($chatId, (int)$sessionData->lastID, "Le document liÃ© a Ã©tÃ© supprimÃ©.", null, $threadId);
 				}
 			}
 
@@ -464,7 +702,7 @@
 				deleteMessage($chatId, (int)$message['message_id'], $threadId);
 			}
 
-			answerCallbackQuery($callbackId, $callbackData === 'btn_del_all' ? "Tout a été supprimé." : "Fichier supprimé.");
+			answerCallbackQuery($callbackId, $callbackData === 'btn_del_all' ? "Tout a Ã©tÃ© supprimÃ©." : "Fichier supprimÃ©.");
 			return;
 		}
 
@@ -507,7 +745,7 @@
 
 		if (preg_match('/^btn_classify_done_(\d+)_(\d+)$/', $callbackData, $matches)) {
 			if (!$document || $document->getId() <= 0) {
-				editMessageText($chatId, (int)$message['message_id'], "Le document n'a pas été trouvé.", null, $threadId);
+				editMessageText($chatId, (int)$message['message_id'], "Le document n'a pas Ã©tÃ© trouvÃ©.", null, $threadId);
 				answerCallbackQuery($callbackId);
 				return;
 			}
@@ -521,7 +759,7 @@
 				editMessageText(
 					$chatId,
 					(int)$message['message_id'],
-					"Le document a été classé dans : ".$document->getOrganizationContextLabel(),
+					"Le document a Ã©tÃ© classÃ© dans : ".$document->getOrganizationContextLabel(),
 					array(
 						array(
 							array('text' => 'Reclasser', 'callback_data' => 'btn_classify'),
@@ -529,7 +767,7 @@
 					),
 					$threadId
 				);
-				answerCallbackQuery($callbackId, "Classement enregistré.");
+				answerCallbackQuery($callbackId, "Classement enregistrÃ©.");
 			} else {
 				editMessageText(
 					$chatId,
@@ -537,7 +775,7 @@
 					"Impossible de classer ce document : ".($result['text'] ?? 'erreur inconnue'),
 					array(
 						array(
-							array('text' => 'Réessayer', 'callback_data' => 'btn_classify'),
+							array('text' => 'RÃ©essayer', 'callback_data' => 'btn_classify'),
 						),
 					),
 					$threadId
@@ -597,7 +835,7 @@
 			return;
 		}
 
-		$waitMessageId = sendMessage($chatId, "Un petit moment, je retranscris tout ça...", null, $threadId);
+		$waitMessageId = sendMessage($chatId, "Un petit moment, je retranscris tout Ã§a...", null, $threadId);
 
 		set_time_limit(240);
 		ignore_user_abort(true);
@@ -613,7 +851,7 @@
 			if ($waitMessageId) {
 				deleteMessage($chatId, $waitMessageId, $threadId);
 			}
-			sendMessage($chatId, "Désolé, je n'ai pas réussi à récupérer le fichier audio.", null, $threadId);
+			sendMessage($chatId, "DÃ©solÃ©, je n'ai pas rÃ©ussi Ã  rÃ©cupÃ©rer le fichier audio.", null, $threadId);
 			return;
 		}
 
@@ -623,7 +861,7 @@
 			if ($waitMessageId) {
 				deleteMessage($chatId, $waitMessageId, $threadId);
 			}
-			sendMessage($chatId, "Désolé, le téléchargement du fichier audio a échoué.", null, $threadId);
+			sendMessage($chatId, "DÃ©solÃ©, le tÃ©lÃ©chargement du fichier audio a Ã©chouÃ©.", null, $threadId);
 			return;
 		}
 
@@ -657,7 +895,7 @@
 			if ($waitMessageId) {
 				deleteMessage($chatId, $waitMessageId, $threadId);
 			}
-			sendMessage($chatId, "Désolé, la transcription audio a échoué.", null, $threadId);
+			sendMessage($chatId, "DÃ©solÃ©, la transcription audio a Ã©chouÃ©.", null, $threadId);
 			return;
 		}
 
@@ -666,12 +904,12 @@
 			if ($waitMessageId) {
 				deleteMessage($chatId, $waitMessageId, $threadId);
 			}
-			sendMessage($chatId, "Désolé, la transcription reçue est vide ou invalide.", null, $threadId);
+			sendMessage($chatId, "DÃ©solÃ©, la transcription reÃ§ue est vide ou invalide.", null, $threadId);
 			return;
 		}
 
-		$prompt = "une mise en page lisible, exhaustive, optimisée pour la lecture et structurée du texte (si nécessaire avec des titres ou des listes à puce)";
-		$readable = say("Peux-tu générer un JSON pour le texte suivant, comprenant 4 entrée: une entrée 'titre' avec un titre pour ce document, une entrée 'resume' avec un résumé du texte en maximum 150 caractères, une entrée 'contenu' avec ".$prompt.", et finalement une entrée 'hashtag' contenant un tableau avec 3 à 5 mots clés pertinents pour ce texte? Voici le texte : \n".$response->text);
+		$prompt = "une mise en page lisible, exhaustive, optimisÃ©e pour la lecture et structurÃ©e du texte (si nÃ©cessaire avec des titres ou des listes Ã  puce)";
+		$readable = say("Peux-tu gÃ©nÃ©rer un JSON pour le texte suivant, comprenant 4 entrÃ©e: une entrÃ©e 'titre' avec un titre pour ce document, une entrÃ©e 'resume' avec un rÃ©sumÃ© du texte en maximum 150 caractÃ¨res, une entrÃ©e 'contenu' avec ".$prompt.", et finalement une entrÃ©e 'hashtag' contenant un tableau avec 3 Ã  5 mots clÃ©s pertinents pour ce texte? Voici le texte : \n".$response->text);
 
 		$dataerr = json_decode("{}");
 		$dataerr->GPTreturn = $readable;
@@ -682,7 +920,7 @@
 			if ($waitMessageId) {
 				deleteMessage($chatId, $waitMessageId, $threadId);
 			}
-			sendMessage($chatId, "Désolé, problème de conversion du JSON...", null, $threadId);
+			sendMessage($chatId, "DÃ©solÃ©, problÃ¨me de conversion du JSON...", null, $threadId);
 			return;
 		}
 
@@ -699,7 +937,7 @@
 			if ($waitMessageId) {
 				deleteMessage($chatId, $waitMessageId, $threadId);
 			}
-			sendMessage($chatId, "Désolé, le JSON généré n'est pas exploitable.", null, $threadId);
+			sendMessage($chatId, "DÃ©solÃ©, le JSON gÃ©nÃ©rÃ© n'est pas exploitable.", null, $threadId);
 			return;
 		}
 
@@ -728,7 +966,7 @@
 
 			try {
 				$doc = new \dbObject\Document();
-				$doc->set("title", $title !== '' ? $title : "Mémo vocal");
+				$doc->set("title", $title !== '' ? $title : "MÃ©mo vocal");
 				$doc->set("description", $resume);
 				$doc->set("content", $content);
 				$doc->set("keywords", $hash);
@@ -761,7 +999,7 @@
 				$media->save();
 			} catch (\Exception $e) {
 				$doc = null;
-				sendMessage($chatId, "Désolé, problème de génération du fichier...", null, $threadId);
+				sendMessage($chatId, "DÃ©solÃ©, problÃ¨me de gÃ©nÃ©ration du fichier...", null, $threadId);
 			}
 		}
 
@@ -799,18 +1037,25 @@
 			return;
 		}
 
-		if (preg_match('/^\/connect/', $text)) {
+		if (handleTelegramConnectConversation($message, $user)) {
+			return;
+		}
+
+		if (preg_match('/^\/connect\b/i', $text)) {
 			if (($message['chat']['id'] ?? null) == ($message['from']['id'] ?? null)) {
+				beginTelegramConnectFlow($actorId);
+				$messageText = "Envoyez l'adresse e-mail de votre compte pour connecter Telegram.";
 				if ($user->getId() > 0) {
-					sendMessage($chatId, "Connexion confirmée avec ".getTelegramConnectedUserLabel($user).".", null, $threadId);
-				} else {
-					sendMessage($chatId, "Pour connecter EasyMEMO à votre compte Telegram, éditez les paramètres de votre compte avec la valeur suivante pour le champ TelegramID: ".$chatId, null, $threadId);
+					$messageText .= "\nCompte actuellement lie: ".getTelegramConnectedUserLabel($user).".";
 				}
+				$messageText .= "\nVous pouvez envoyer /cancel pour annuler.";
+				sendMessage($chatId, $messageText, null, $threadId);
 			} else {
-				sendMessage($chatId, "Pour connecter ce groupe à un projet, éditer les propriétés du projet avec les informations suivantes:\n\nChat ID: ".$chatId.", Group: ".$threadId, null, $threadId);
+				sendMessage($chatId, "Pour connecter ce groupe a un projet, editer les proprietes du projet avec les informations suivantes:\n\nChat ID: ".$chatId.", Group: ".$threadId, null, $threadId);
 			}
 			return;
 		}
+
 
 		if (preg_match('/^\/time/', $text)) {
 			$current = new DateTime();
@@ -832,7 +1077,7 @@
 			$data = loadLocalSession($actorId);
 			$data->active = false;
 			saveLocalSession($data, $actorId);
-			sendMessage($chatId, "J'arrête les traductions pour ".$actorId, null, $threadId);
+			sendMessage($chatId, "J'arrÃªte les traductions pour ".$actorId, null, $threadId);
 			return;
 		}
 
@@ -849,7 +1094,7 @@
 		}
 
 		if (preg_match('/^@pottylicensebot/', $text)) {
-			sendMessage($chatId, "Je ne réponds pas aux messages directs, utilisez les commandes.", null, $threadId);
+			sendMessage($chatId, "Je ne rÃ©ponds pas aux messages directs, utilisez les commandes.", null, $threadId);
 		}
 	}
 
@@ -882,3 +1127,4 @@
 
 	handleTextMessage($message, $user);
 ?>
+
