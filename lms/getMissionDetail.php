@@ -284,18 +284,18 @@ if ($m) {
 		}
 
 		.video-portal {
+			--video-aspect-ratio: 16 / 9;
 			position: relative;
 			max-width: 800px;
 			font-family: sans-serif;
 			overflow: hidden;
 			margin: auto;
 			max-height: 50dvh;
-			aspect-ratio: 1.8;
 		}
 
 		.video-inner {
-			padding-top: 56.25%;
 			position: relative;
+			aspect-ratio: var(--video-aspect-ratio);
 		}
 
 		.video-inner iframe {
