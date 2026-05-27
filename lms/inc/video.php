@@ -44,12 +44,14 @@ function initVideoPlayer() {
     const applyVideoAspectRatio = (width, height) => {
         const safeWidth = Number(width) || 0;
         const safeHeight = Number(height) || 0;
+        const safeRatio = safeHeight > 0 ? (safeWidth / safeHeight) : 0;
 
-        if (!videoPortal || safeWidth <= 0 || safeHeight <= 0) {
+        if (!videoPortal || safeWidth <= 0 || safeHeight <= 0 || safeRatio <= 0) {
             return;
         }
 
         videoPortal.style.setProperty('--video-aspect-ratio', safeWidth + ' / ' + safeHeight);
+        videoPortal.style.setProperty('--video-ratio-number', String(safeRatio));
     };
 
     Promise.all([
