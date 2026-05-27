@@ -398,6 +398,7 @@ if ($m) {
 }
 ?>
 <script>
+(() => {
 	if (typeof initVideoPlayer === 'function') {
 		initVideoPlayer();
 	}
@@ -803,5 +804,7 @@ if ($m) {
 
 		submitAnswer();
 	};
+	window.initMissionUI = initMissionUI;
+})();
 </script>
 </div>

@@ -13,6 +13,7 @@ $hasOrganizationAccess = commonUserHasOrganizationAccess($user_id, (int)$org['id
 $isGuestAllowed = commonCanAccessWithoutLogin($org);
 $showPublicCatalog = false;
 $hiddenParcoursCount = 0;
+$organizationColor = commonGetOrganizationExplicitColor($org);
 
 if ($user_id <= 0 && !$isGuestAllowed) {
     $parcours = \dbObject\Parcours::fetchEverybodyForOrganizationWithProgress($org['id'], 0);
@@ -36,7 +37,21 @@ if ($user_id <= 0 && !$isGuestAllowed && !$showPublicCatalog) {
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($org['name']); ?></title>
+    <link rel="stylesheet" href="/shared_css.css">
     <link rel="stylesheet" href="/lms/css/std.css">
+    <script src="/shared_functions.js"></script>
+    <script>
+    sharedApplyDocumentTheme({
+        preference: <?php echo $user_id > 0 ? 'undefined' : "'system'"; ?>
+    });
+    </script>
+    <style>
+        :root {
+            <?php if ($organizationColor !== ''): ?>
+            --color-primary: <?php echo htmlspecialchars($organizationColor); ?>;
+            <?php endif; ?>
+        }
+    </style>
     
     <style>
         h1 {
@@ -52,14 +67,15 @@ if ($user_id <= 0 && !$isGuestAllowed && !$showPublicCatalog) {
         }
 
         .card {
-            border: 1px solid #ddd;
-            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
             overflow: hidden;
-            background: white;
+            background: var(--bg-card);
             cursor: pointer;
             transition: 0.2s;
             display: flex;
             flex-direction: column;
+            box-shadow: var(--shadow);
         }
 
         .card-footer {
@@ -91,7 +107,7 @@ if ($user_id <= 0 && !$isGuestAllowed && !$showPublicCatalog) {
 
         .card:hover {
             transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 18px 34px rgba(15,23,42,0.12);
         }
 
         .banner-bg {
@@ -111,7 +127,7 @@ if ($user_id <= 0 && !$isGuestAllowed && !$showPublicCatalog) {
             width: 100px;
             height: 100px;
             border-radius: 50%;
-            background: white;
+            background: var(--bg-card);
             padding: 5px;
             margin: 0 auto 15px;
             display: flex;
@@ -144,11 +160,11 @@ if ($user_id <= 0 && !$isGuestAllowed && !$showPublicCatalog) {
         }
 
         .bg {
-            stroke: #ddd;
+            stroke: var(--progress-bg);
         }
 
         .progress {
-            stroke: #4caf50;
+            stroke: var(--primary);
             stroke-linecap: round;
             transition: stroke-dashoffset 0.6s ease;
         }
@@ -166,10 +182,10 @@ if ($user_id <= 0 && !$isGuestAllowed && !$showPublicCatalog) {
             max-width: 860px;
             margin: 0 auto 24px;
             padding: 14px 18px;
-            background: #fff8e5;
-            border: 1px solid #f0d995;
-            border-radius: 10px;
-            color: #5f4a11;
+            background: color-mix(in srgb, var(--primary) 10%, var(--bg-card));
+            border: 1px solid color-mix(in srgb, var(--primary) 26%, var(--border-color));
+            border-radius: var(--border-radius);
+            color: var(--text-main);
         }
 
         .lms-access-note strong {
