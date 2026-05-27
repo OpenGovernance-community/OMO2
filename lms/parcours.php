@@ -50,6 +50,7 @@ if ($parcoursRef->load($parcours_id)) {
 $isAnonymousViewer = lmsIsAnonymousViewer($accessContext);
 $showLoginDrawerButton = $user_id <= 0 && !commonCanAccessWithoutLogin($org);
 $loginDrawerReturnTo = '/lms/parcours.php?idp=' . $parcours_id . ($isEmbedded ? '&embed=1' : '');
+$organizationColor = commonGetOrganizationExplicitColor($org);
 ?>
 
 <!DOCTYPE html>
@@ -57,7 +58,21 @@ $loginDrawerReturnTo = '/lms/parcours.php?idp=' . $parcours_id . ($isEmbedded ? 
 <head>
 	<title><?php echo htmlspecialchars($parcours['title']); ?></title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="/shared_css.css">
 	<link rel="stylesheet" href="/lms/css/std.css">
+	<script src="/shared_functions.js"></script>
+	<script>
+	sharedApplyDocumentTheme({
+		preference: <?php echo $user_id > 0 ? 'undefined' : "'system'"; ?>
+	});
+	</script>
+	<style>
+		:root {
+			<?php if ($organizationColor !== ''): ?>
+			--color-primary: <?php echo htmlspecialchars($organizationColor); ?>;
+			<?php endif; ?>
+		}
+	</style>
 
 	<style>
 		.missions {
@@ -68,10 +83,10 @@ $loginDrawerReturnTo = '/lms/parcours.php?idp=' . $parcours_id . ($isEmbedded ? 
 		}
 
 		.card {
-			border: 1px solid #ddd;
-			border-radius: 10px;
+			border: 1px solid var(--border-color);
+			border-radius: var(--border-radius);
 			overflow: hidden;
-			background: white;
+			background: var(--bg-card);
 			box-shadow: var(--shadow);
 			flex: 1 1 calc(100% - 10px);
 			max-width: 400px;
@@ -95,7 +110,7 @@ $loginDrawerReturnTo = '/lms/parcours.php?idp=' . $parcours_id . ($isEmbedded ? 
 
 		.card:hover {
 			transform: translateY(-3px);
-			box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+			box-shadow: 0 18px 34px rgba(15,23,42,0.12);
 		}
 
 		.card-content {
@@ -141,6 +156,8 @@ $loginDrawerReturnTo = '/lms/parcours.php?idp=' . $parcours_id . ($isEmbedded ? 
 			width: 100%;
 			background: var(--primary-light);
 			padding: 12px;
+			border: 1px solid color-mix(in srgb, var(--primary) 16%, var(--border-color));
+			border-bottom: 0;
 			border-radius: var(--border-radius) var(--border-radius) 0 0;
 			cursor: pointer;
 			box-sizing: border-box;
@@ -156,6 +173,7 @@ $loginDrawerReturnTo = '/lms/parcours.php?idp=' . $parcours_id . ($isEmbedded ? 
 
 		.branch.closed .branch-header {
 			border-radius: var(--border-radius);
+			border-bottom: 1px solid color-mix(in srgb, var(--primary) 16%, var(--border-color));
 		}
 
 		.branch-header::after {
@@ -212,7 +230,7 @@ $loginDrawerReturnTo = '/lms/parcours.php?idp=' . $parcours_id . ($isEmbedded ? 
 
 		.view-switch button.active {
 			background: var(--primary);
-			color: white;
+			color: var(--color-text-inverse, #ffffff);
 		}
 
 		.card.locked {
@@ -253,10 +271,10 @@ $loginDrawerReturnTo = '/lms/parcours.php?idp=' . $parcours_id . ($isEmbedded ? 
 		.lms-anonymous-note {
 			margin: 16px 0 0;
 			padding: 12px 16px;
-			border-radius: 10px;
-			background: #fff8e5;
-			border: 1px solid #f0d995;
-			color: #5f4a11;
+			border-radius: var(--border-radius);
+			background: color-mix(in srgb, var(--primary) 10%, var(--bg-card));
+			border: 1px solid color-mix(in srgb, var(--primary) 26%, var(--border-color));
+			color: var(--text-main);
 		}
 	</style>
 </head>
