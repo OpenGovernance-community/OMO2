@@ -7,6 +7,8 @@ function initVideoPlayer() {
 
     const videoPortal = document.querySelector('.video-portal');
     const playBtn = document.getElementById('playBtn');
+    const volumeBtn = document.getElementById('volumeBtn');
+    const volumeSlider = document.getElementById('volumeSlider');
     const progressvideoBar = document.querySelector('.progressvideo-bar');
     const progressvideo = document.querySelector('.progressvideo');
     const timeDisplay = document.getElementById('time');
@@ -66,6 +68,23 @@ function initVideoPlayer() {
     }
 
     let duration = 0;
+    let lastNonZeroVolume = 1;
+
+    const updateVolumeUI = (volumeValue) => {
+        const safeVolume = Math.max(0, Math.min(1, Number(volumeValue) || 0));
+
+        if (safeVolume > 0) {
+            lastNonZeroVolume = safeVolume;
+        }
+
+        if (volumeSlider) {
+            volumeSlider.value = String(Math.round(safeVolume * 100));
+        }
+
+        if (volumeBtn) {
+            volumeBtn.textContent = safeVolume <= 0 ? "Muet" : "Son";
+        }
+    };
 
     player.getDuration()
         .then(d => {
@@ -73,6 +92,14 @@ function initVideoPlayer() {
         })
         .catch(() => {
             duration = 0;
+        });
+
+    player.getVolume()
+        .then(volume => {
+            updateVolumeUI(volume);
+        })
+        .catch(() => {
+            updateVolumeUI(1);
         });
 
     playBtn.addEventListener('click', async () => {
@@ -89,6 +116,30 @@ function initVideoPlayer() {
             console.warn('Lecture Vimeo indisponible.', error);
         }
     });
+
+    if (volumeSlider) {
+        volumeSlider.addEventListener('input', e => {
+            const nextVolume = Math.max(0, Math.min(1, Number(e.target.value) / 100 || 0));
+            player.setVolume(nextVolume)
+                .then(() => {
+                    updateVolumeUI(nextVolume);
+                })
+                .catch(() => {});
+        });
+    }
+
+    if (volumeBtn) {
+        volumeBtn.addEventListener('click', () => {
+            player.getVolume()
+                .then(currentVolume => {
+                    const nextVolume = (Number(currentVolume) || 0) > 0 ? 0 : lastNonZeroVolume;
+                    return player.setVolume(nextVolume).then(() => {
+                        updateVolumeUI(nextVolume);
+                    });
+                })
+                .catch(() => {});
+        });
+    }
 
     player.on('timeupdate', data => {
         const percent = duration > 0 ? (data.seconds / duration) * 100 : 0;
@@ -107,6 +158,14 @@ function initVideoPlayer() {
     player.on('error', error => {
         console.warn('Erreur Vimeo.', error);
         disableVideoControls();
+    });
+
+    player.on('volumechange', data => {
+        if (!data || typeof data.volume === 'undefined') {
+            return;
+        }
+
+        updateVolumeUI(data.volume);
     });
 
     function formatTime(seconds) {
