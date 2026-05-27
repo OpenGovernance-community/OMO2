@@ -68,6 +68,7 @@ function initVideoPlayer() {
     }
 
     let duration = 0;
+    let isPaused = true;
     let lastNonZeroVolume = 1;
 
     const updateVolumeUI = (volumeValue) => {
@@ -102,19 +103,41 @@ function initVideoPlayer() {
             updateVolumeUI(1);
         });
 
-    playBtn.addEventListener('click', async () => {
-        try {
-            const paused = await player.getPaused();
-            if (paused) {
-                await player.play();
-                playBtn.textContent = "Pause";
-            } else {
-                await player.pause();
-                playBtn.textContent = "Lire";
+    player.getPaused()
+        .then(paused => {
+            isPaused = !!paused;
+            playBtn.textContent = isPaused ? "Lire" : "Pause";
+        })
+        .catch(() => {
+            isPaused = true;
+            playBtn.textContent = "Lire";
+        });
+
+    playBtn.addEventListener('click', () => {
+        if (isPaused) {
+            const desiredVolume = volumeSlider
+                ? Math.max(0, Math.min(1, Number(volumeSlider.value) / 100 || 0))
+                : lastNonZeroVolume;
+
+            if (desiredVolume > 0) {
+                player.setVolume(desiredVolume).catch(() => {});
             }
-        } catch (error) {
-            console.warn('Lecture Vimeo indisponible.', error);
+
+            player.play()
+                .then(() => {
+                    if (desiredVolume > 0) {
+                        player.setVolume(desiredVolume).catch(() => {});
+                    }
+                })
+                .catch(error => {
+                    console.warn('Lecture Vimeo indisponible.', error);
+                });
+            return;
         }
+
+        player.pause().catch(error => {
+            console.warn('Pause Vimeo indisponible.', error);
+        });
     });
 
     if (volumeSlider) {
@@ -145,6 +168,16 @@ function initVideoPlayer() {
         const percent = duration > 0 ? (data.seconds / duration) * 100 : 0;
         progressvideoBar.style.width = percent + "%";
         timeDisplay.textContent = formatTime(data.seconds);
+    });
+
+    player.on('play', () => {
+        isPaused = false;
+        playBtn.textContent = "Pause";
+    });
+
+    player.on('pause', () => {
+        isPaused = true;
+        playBtn.textContent = "Lire";
     });
 
     progressvideo.addEventListener('click', e => {
