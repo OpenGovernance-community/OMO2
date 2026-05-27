@@ -5,6 +5,7 @@ function initVideoPlayer() {
     const iframe = document.getElementById('vimeoPlayer');
     if (!iframe) return null;
 
+    const videoPortal = document.querySelector('.video-portal');
     const playBtn = document.getElementById('playBtn');
     const progressvideoBar = document.querySelector('.progressvideo-bar');
     const progressvideo = document.querySelector('.progressvideo');
@@ -39,6 +40,24 @@ function initVideoPlayer() {
         disableVideoControls();
         return null;
     }
+
+    const applyVideoAspectRatio = (width, height) => {
+        const safeWidth = Number(width) || 0;
+        const safeHeight = Number(height) || 0;
+
+        if (!videoPortal || safeWidth <= 0 || safeHeight <= 0) {
+            return;
+        }
+
+        videoPortal.style.setProperty('--video-aspect-ratio', safeWidth + ' / ' + safeHeight);
+    };
+
+    Promise.all([
+        player.getVideoWidth().catch(() => 0),
+        player.getVideoHeight().catch(() => 0)
+    ]).then(([width, height]) => {
+        applyVideoAspectRatio(width, height);
+    }).catch(() => {});
 
     if (!playBtn || !progressvideoBar || !progressvideo || !timeDisplay) {
         return player;
