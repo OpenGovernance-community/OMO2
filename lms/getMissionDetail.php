@@ -409,8 +409,7 @@ if ($m) {
 
 		.custom-controls button {
 			border: none;
-			padding: 8px 12px;
-			min-height: 40px;
+			padding: 5px 10px;
 			cursor: pointer;
 		}
 
@@ -440,50 +439,73 @@ if ($m) {
 			background: #fff;
 		}
 
-		@media (hover: none), (pointer: coarse) {
-			.custom-controls {
+		@media (max-width: 640px) {
+			.video-portal {
+				width: min(100%, calc(42dvh * var(--video-ratio-number)));
+			}
+
+			.video-portal .custom-controls {
+				position: static;
+				width: auto;
 				opacity: 1;
 				transform: none;
-				padding: 14px;
+				padding: 8px 10px;
+				gap: 8px;
 				flex-wrap: wrap;
-				row-gap: 12px;
+				align-items: center;
+				background: color-mix(in srgb, var(--bg-card, #111827) 88%, #000);
+				border-top: 1px solid color-mix(in srgb, var(--border-color, #374151) 55%, transparent);
 			}
 
-			.progressvideo {
+			.video-portal .custom-controls button {
+				padding: 6px 10px;
+				min-width: 0;
+				min-height: 34px;
+				border-radius: 999px;
+				font-size: 0.9rem;
+			}
+
+			.video-portal #playBtn,
+			.video-portal #volumeBtn {
+				flex: 0 0 auto;
+			}
+
+			.video-portal .progressvideo {
 				order: 10;
 				flex: 1 0 100%;
-				height: 10px;
+				height: 6px;
 			}
 
-			#time {
-				order: 11;
+			.video-portal #time {
+				font-size: 0.82rem;
+				opacity: 0.9;
 			}
 
-			.volume-controls {
-				margin-left: 0;
-				flex: 1 1 100%;
-				justify-content: flex-start;
+			.video-portal .volume-controls {
+				margin-left: auto;
+				gap: 6px;
+				flex: 0 1 auto;
 			}
 
-			.volume-controls input[type="range"] {
-				width: min(180px, 100%);
-				min-height: 32px;
+			.video-portal .volume-controls input[type="range"] {
+				width: 78px;
 			}
 		}
 
-		@media (max-width: 640px) {
-			.custom-controls {
-				padding: 12px;
-				gap: 8px;
+		@media (max-width: 420px) {
+			.video-portal .custom-controls {
+				padding: 7px 8px;
+				gap: 6px;
 			}
 
-			.custom-controls button {
-				padding: 8px 10px;
-				min-width: 76px;
+			.video-portal .custom-controls button {
+				padding: 5px 8px;
+				min-height: 32px;
+				font-size: 0.85rem;
 			}
 
-			.volume-controls {
-				flex-wrap: wrap;
+			.video-portal .volume-controls input[type="range"] {
+				width: 64px;
 			}
 		}
 	</style>
