@@ -285,12 +285,12 @@ if ($m) {
 
 		.video-portal {
 			--video-aspect-ratio: 16 / 9;
+			--video-ratio-number: 1.7777778;
 			position: relative;
-			max-width: 800px;
+			width: min(100%, 960px, calc(50dvh * var(--video-ratio-number)));
 			font-family: sans-serif;
 			overflow: hidden;
 			margin: auto;
-			max-height: 50dvh;
 		}
 
 		.video-inner {
