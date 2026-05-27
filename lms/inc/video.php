@@ -1,7 +1,52 @@
 <script src="https://player.vimeo.com/api/player.js"></script>
 
 <script id="videoinit">
+const LMS_VIDEO_VOLUME_STORAGE_KEY = 'omo-lms-video-volume';
+
+function clampLmsVideoVolume(volumeValue) {
+    if (volumeValue === null || typeof volumeValue === 'undefined' || volumeValue === '') {
+        return 1;
+    }
+
+    const numericVolume = Number(volumeValue);
+    if (!Number.isFinite(numericVolume)) {
+        return 1;
+    }
+
+    return Math.max(0, Math.min(1, numericVolume));
+}
+
+function readStoredLmsVideoVolume() {
+    try {
+        return clampLmsVideoVolume(window.localStorage.getItem(LMS_VIDEO_VOLUME_STORAGE_KEY));
+    } catch (error) {
+        return 1;
+    }
+}
+
+function storeLmsVideoVolume(volumeValue) {
+    try {
+        window.localStorage.setItem(
+            LMS_VIDEO_VOLUME_STORAGE_KEY,
+            String(clampLmsVideoVolume(volumeValue))
+        );
+    } catch (error) {
+    }
+}
+
+window.lmsDestroyCurrentVideoPlayer = function(options) {
+    if (typeof window.lmsCurrentVideoPlayerCleanup === 'function') {
+        return window.lmsCurrentVideoPlayerCleanup(options);
+    }
+
+    return Promise.resolve();
+};
+
 function initVideoPlayer() {
+    if (typeof window.lmsDestroyCurrentVideoPlayer === 'function') {
+        window.lmsDestroyCurrentVideoPlayer({ unload: true, resetFrame: false }).catch(() => {});
+    }
+
     const iframe = document.getElementById('vimeoPlayer');
     if (!iframe) return null;
 
@@ -70,9 +115,11 @@ function initVideoPlayer() {
     let duration = 0;
     let isPaused = true;
     let lastNonZeroVolume = 1;
+    let isCleaningUp = false;
+    const initialStoredVolume = readStoredLmsVideoVolume();
 
     const updateVolumeUI = (volumeValue) => {
-        const safeVolume = Math.max(0, Math.min(1, Number(volumeValue) || 0));
+        const safeVolume = clampLmsVideoVolume(volumeValue);
 
         if (safeVolume > 0) {
             lastNonZeroVolume = safeVolume;
@@ -85,6 +132,8 @@ function initVideoPlayer() {
         if (volumeBtn) {
             volumeBtn.textContent = safeVolume <= 0 ? "Muet" : "Son";
         }
+
+        storeLmsVideoVolume(safeVolume);
     };
 
     player.getDuration()
@@ -95,12 +144,18 @@ function initVideoPlayer() {
             duration = 0;
         });
 
-    player.getVolume()
-        .then(volume => {
-            updateVolumeUI(volume);
+    player.setVolume(initialStoredVolume)
+        .then(() => {
+            updateVolumeUI(initialStoredVolume);
         })
         .catch(() => {
-            updateVolumeUI(1);
+            player.getVolume()
+                .then(volume => {
+                    updateVolumeUI(volume);
+                })
+                .catch(() => {
+                    updateVolumeUI(initialStoredVolume);
+                });
         });
 
     player.getPaused()
@@ -200,6 +255,43 @@ function initVideoPlayer() {
 
         updateVolumeUI(data.volume);
     });
+
+    const cleanupPlayer = (options = {}) => {
+        if (isCleaningUp) {
+            return Promise.resolve();
+        }
+
+        isCleaningUp = true;
+
+        const shouldUnload = !!options.unload;
+        const shouldResetFrame = !!options.resetFrame;
+        const cleanupTasks = [
+            player.pause().catch(() => {})
+        ];
+
+        if (shouldUnload) {
+            cleanupTasks.push(player.unload().catch(() => {}));
+        }
+
+        if (shouldResetFrame) {
+            cleanupTasks.push(Promise.resolve().then(() => {
+                iframe.setAttribute('src', 'about:blank');
+            }));
+        }
+
+        return Promise.all(cleanupTasks).finally(() => {
+            if (window.lmsCurrentVideoPlayer === player) {
+                window.lmsCurrentVideoPlayer = null;
+            }
+            if (window.lmsCurrentVideoPlayerCleanup === cleanupPlayer) {
+                window.lmsCurrentVideoPlayerCleanup = null;
+            }
+            isCleaningUp = false;
+        });
+    };
+
+    window.lmsCurrentVideoPlayer = player;
+    window.lmsCurrentVideoPlayerCleanup = cleanupPlayer;
 
     function formatTime(seconds) {
         const min = Math.floor(seconds / 60);
