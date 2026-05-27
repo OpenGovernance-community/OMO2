@@ -62,6 +62,18 @@ function commonResolveTopbarProfileData($organizationContext = null, array $prof
     return $profileData;
 }
 
+function commonRenderTopbarJqueryAssets()
+{
+    static $jqueryLoaded = false;
+
+    if ($jqueryLoaded) {
+        return;
+    }
+
+    echo '<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>' . PHP_EOL;
+    $jqueryLoaded = true;
+}
+
 function commonRenderTopbar(array $options = [])
 {
     static $assetsLoaded = false;
@@ -222,6 +234,7 @@ function commonRenderTopbar(array $options = [])
         : strtoupper(substr($profileDisplayName, 0, 1));
 
     if (!$assetsLoaded) {
+        commonRenderTopbarJqueryAssets();
         echo '<link rel="stylesheet" href="/common/assets/components.css">' . PHP_EOL;
         echo '<script src="/common/assets/components.js" defer></script>' . PHP_EOL;
         echo '<link rel="stylesheet" href="/common/assets/topbar.css">' . PHP_EOL;
