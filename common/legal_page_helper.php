@@ -15,7 +15,7 @@ function commonGetLegalSharedSourceLang(): array
             'context' => 'Badge displayed on temporary legal documents such as terms and privacy pages.',
         ],
         'legal.shared.intro.activation_notice' => [
-            'text' => 'Elle est publiee afin de permettre l activation technique de certaines integrations et sera completee, relue et validee ulterieurement.',
+            'text' => 'Elle est publiee afin de permettre l’activation technique de certaines integrations et sera completee, relue et validée ultérieurement.',
             'context' => 'Shared explanatory paragraph on temporary legal pages.',
         ],
     ];
