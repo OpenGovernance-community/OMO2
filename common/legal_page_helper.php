@@ -1,5 +1,12 @@
 <?php
 
+function commonLegalEnsureTranslationHelpers(): void
+{
+    if (!function_exists('loadTranslationBundle')) {
+        require_once __DIR__ . '/translation_bundles.php';
+    }
+}
+
 function commonGetLegalSharedSourceLang(): array
 {
     return [
@@ -16,16 +23,16 @@ function commonGetLegalSharedSourceLang(): array
 
 function commonLegalResolveLocale(): string
 {
-    if (function_exists('translationBundleResolveRequestLocale')) {
-        return (string)translationBundleResolveRequestLocale('lang');
-    }
+    commonLegalEnsureTranslationHelpers();
 
-    return 'fr';
+    return (string)translationBundleResolveRequestLocale('lang');
 }
 
 function commonLegalLoadBundle(string $bundleKey, array $sourceLang, ?string $locale = null): array
 {
     static $cache = [];
+
+    commonLegalEnsureTranslationHelpers();
 
     $resolvedLocale = $locale !== null && $locale !== ''
         ? (string)$locale
@@ -43,18 +50,9 @@ function commonLegalLoadBundle(string $bundleKey, array $sourceLang, ?string $lo
 
 function commonLegalT(string $key, array $variables = [], ?array $bundle = null, ?array $sourceLang = null): string
 {
-    if (function_exists('translationBundleTranslate')) {
-        return translationBundleTranslate($key, $variables, $bundle, $sourceLang);
-    }
+    commonLegalEnsureTranslationHelpers();
 
-    $entry = $sourceLang[$key] ?? '';
-    $text = is_array($entry) ? (string)($entry['text'] ?? '') : (string)$entry;
-
-    foreach ($variables as $variableKey => $variableValue) {
-        $text = str_replace('{' . $variableKey . '}', (string)$variableValue, $text);
-    }
-
-    return $text;
+    return translationBundleTranslate($key, $variables, $bundle, $sourceLang);
 }
 
 function commonLegalPageIsEmbedded(): bool
