@@ -363,7 +363,17 @@ function commonRenderTopbar(array $options = [])
         <?php if (!empty($config['profile']['enabled'])): ?>
         <div class="common-topbar__menu-wrap">
             <button type="button" class="common-topbar__action common-topbar__action--square common-topbar__profile" data-topbar-menu-trigger="profile">
-                <span class="common-topbar__avatar"><?= htmlspecialchars($profileInitial) ?></span>
+                <span class="common-topbar__avatar">
+                    <?php if (!empty($config['profile']['data']['photoUrl'])): ?>
+                        <img
+                            src="<?= htmlspecialchars((string)$config['profile']['data']['photoUrl']) ?>"
+                            alt="<?= htmlspecialchars($profileDisplayName) ?>"
+                            class="common-topbar__avatar-image"
+                        >
+                    <?php else: ?>
+                        <span class="common-topbar__avatar-initial" aria-hidden="true"><?= htmlspecialchars($profileInitial) ?></span>
+                    <?php endif; ?>
+                </span>
                 <span class="common-topbar__action-label"><?= htmlspecialchars($config['profile']['buttonLabel']) ?></span>
             </button>
             <div class="common-topbar__menu common-topbar__menu--right" data-topbar-menu="profile">
