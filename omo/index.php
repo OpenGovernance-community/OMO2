@@ -252,8 +252,14 @@ function omoBuildManifestUrlForContext(array $organizationContext, $fallback = '
 
 function omoBuildManifestIconUrlForContext(array $organizationContext, $size = 192, $purpose = 'any')
 {
+    $payload = implode('|', [
+        (string)($organizationContext['id'] ?? 0),
+        (string)($organizationContext['logo'] ?? ''),
+        (string)($organizationContext['color'] ?? ''),
+    ]);
     $query = [
         'size' => (int)$size,
+        'v' => substr(sha1($payload), 0, 12),
     ];
 
     $organizationId = (int)($organizationContext['id'] ?? 0);

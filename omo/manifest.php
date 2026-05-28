@@ -2,6 +2,36 @@
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
 
+function omoManifestBuildIconVersionToken(array $organizationContext)
+{
+    $payload = implode('|', [
+        (string)($organizationContext['id'] ?? 0),
+        (string)($organizationContext['logo'] ?? ''),
+        (string)($organizationContext['color'] ?? ''),
+    ]);
+
+    return substr(sha1($payload), 0, 12);
+}
+
+function omoManifestBuildIconUrl(array $organizationContext, $size, $purpose = 'any')
+{
+    $query = [
+        'size' => (int)$size,
+        'v' => omoManifestBuildIconVersionToken($organizationContext),
+    ];
+
+    $organizationId = (int)($organizationContext['id'] ?? 0);
+    if ($organizationId > 0) {
+        $query['oid'] = $organizationId;
+    }
+
+    if ($purpose === 'maskable') {
+        $query['purpose'] = 'maskable';
+    }
+
+    return '/omo/manifest_icon.php?' . http_build_query($query);
+}
+
 $organizationContext = commonResolveOrganizationContext(1);
 $requestedOrganizationId = isset($_GET['oid']) ? (int)$_GET['oid'] : 0;
 
@@ -51,17 +81,55 @@ if (trim($shortName) === '') {
 }
 
 $themeColor = commonGetOrganizationAccentColor($organizationContext, $defaultThemeColor);
-$logoUrl = trim((string)($organizationContext['logo'] ?? ''));
-if ($logoUrl === '') {
-    $logoUrl = $defaultIcon;
-}
-
 $startUrl = '/omo/';
 $scope = '/omo/';
 
 if (!empty($organizationContext['routeMode']) && $organizationContext['routeMode'] === 'path' && !empty($organizationContext['id'])) {
     $startUrl = '/omo/o/' . (int)$organizationContext['id'];
     $scope = '/omo/';
+}
+
+$hasOrganizationSpecificIcon = !empty($organizationContext['isValid']) && trim((string)($organizationContext['logo'] ?? '')) !== '';
+$manifestIcons = [];
+
+if ($hasOrganizationSpecificIcon) {
+    $manifestIcons[] = [
+        'src' => omoManifestBuildIconUrl($organizationContext, 192),
+        'type' => 'image/png',
+        'sizes' => '192x192',
+        'purpose' => 'any'
+    ];
+    $manifestIcons[] = [
+        'src' => omoManifestBuildIconUrl($organizationContext, 512),
+        'type' => 'image/png',
+        'sizes' => '512x512',
+        'purpose' => 'any'
+    ];
+    $manifestIcons[] = [
+        'src' => omoManifestBuildIconUrl($organizationContext, 512, 'maskable'),
+        'type' => 'image/png',
+        'sizes' => '512x512',
+        'purpose' => 'maskable'
+    ];
+} else {
+    $manifestIcons[] = [
+        'src' => $defaultIcon192,
+        'type' => 'image/png',
+        'sizes' => '192x192',
+        'purpose' => 'any'
+    ];
+    $manifestIcons[] = [
+        'src' => $defaultIcon,
+        'type' => 'image/png',
+        'sizes' => '512x512',
+        'purpose' => 'any'
+    ];
+    $manifestIcons[] = [
+        'src' => $defaultMaskableIcon,
+        'type' => 'image/png',
+        'sizes' => '512x512',
+        'purpose' => 'maskable'
+    ];
 }
 
 $manifest = [
@@ -77,44 +145,7 @@ $manifest = [
     'orientation' => 'any',
     'background_color' => '#f7f8fa',
     'theme_color' => $themeColor,
-    'icons' => [
-        [
-            'src' => '/omo/manifest_icon.php' . ($requestedOrganizationId > 0 ? '?oid=' . $requestedOrganizationId . '&size=192' : '?size=192'),
-            'type' => 'image/png',
-            'sizes' => '192x192',
-            'purpose' => 'any'
-        ],
-        [
-            'src' => '/omo/manifest_icon.php' . ($requestedOrganizationId > 0 ? '?oid=' . $requestedOrganizationId . '&size=512' : '?size=512'),
-            'type' => 'image/png',
-            'sizes' => '512x512',
-            'purpose' => 'any'
-        ],
-        [
-            'src' => '/omo/manifest_icon.php' . ($requestedOrganizationId > 0 ? '?oid=' . $requestedOrganizationId . '&size=512&purpose=maskable' : '?size=512&purpose=maskable'),
-            'type' => 'image/png',
-            'sizes' => '512x512',
-            'purpose' => 'maskable'
-        ],
-        [
-            'src' => $defaultIcon192,
-            'type' => 'image/png',
-            'sizes' => '192x192',
-            'purpose' => 'any'
-        ],
-        [
-            'src' => $defaultIcon,
-            'type' => 'image/png',
-            'sizes' => '512x512',
-            'purpose' => 'any'
-        ],
-        [
-            'src' => $defaultMaskableIcon,
-            'type' => 'image/png',
-            'sizes' => '512x512',
-            'purpose' => 'maskable'
-        ]
-    ],
+    'icons' => $manifestIcons,
 ];
 
 header('Content-Type: application/manifest+json; charset=UTF-8');
