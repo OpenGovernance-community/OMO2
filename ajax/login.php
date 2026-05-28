@@ -9,15 +9,31 @@
 	require_once("../shared_functions.php");
 	require_once("../common/auth.php");
 
+	$currentUserCookieName = function_exists('appGetCurrentUserCookieName')
+		? appGetCurrentUserCookieName()
+		: 'currentUser';
+	$currentCodeCookieName = function_exists('appGetCurrentCodeCookieName')
+		? appGetCurrentCodeCookieName()
+		: 'currentCode';
+
 	// Si c'est une déconnexion
 	if (!isset($_POST["user"]) && !isset($_POST["email"])) {
 		unset($_SESSION["currentUser"]);
+		unset($_COOKIE[$currentUserCookieName]);
+		unset($_COOKIE[$currentCodeCookieName]);
 		unset($_COOKIE['currentUser']); 
 		unset($_COOKIE['currentCode']); 
-		appExpireCookie('currentUser', false);
-		appExpireCookie('currentCode', false);
-		setcookie('currentUser', '', time()-1, '/');
-		setcookie('currentCode', '', time()-1, '/');
+		if (function_exists('appExpireCookieAcrossDomains')) {
+			appExpireCookieAcrossDomains($currentUserCookieName, false);
+			appExpireCookieAcrossDomains($currentCodeCookieName, false);
+			appExpireCookieAcrossDomains('currentUser', false);
+			appExpireCookieAcrossDomains('currentCode', false);
+		} else {
+			appExpireCookie($currentUserCookieName, false);
+			appExpireCookie($currentCodeCookieName, false);
+			appExpireCookie('currentUser', false);
+			appExpireCookie('currentCode', false);
+		}
 		echo '{"status":true, "script":"location.reload()"} ';
 		exit;
 	} else
@@ -50,13 +66,17 @@
 		
 		// Si demande de se souvenir, stock l'info dans un cookie pendant 30 jours
 		if (isset($_POST["remember"]) && $_POST["remember"]=="1") {
-			appSetCookie('currentUser', (string)$user->get("id"), time()+60*60*24*30, false);
-			appSetCookie('currentCode', (string)$user->get("password"), time()+60*60*24*30, false);
+			appSetCookie($currentUserCookieName, (string)$user->get("id"), time()+60*60*24*30, false);
+			appSetCookie($currentCodeCookieName, (string)$user->get("password"), time()+60*60*24*30, false);
 		} else {
 			// Sinon, enregistre malgré tout des cookies, mais sur la durée d'ouverture du navigateur afin d'éviter
 			// la déconnexion pour fin de session.
-			appSetCookie('currentUser', (string)$user->get("id"), 0, false);
-			appSetCookie('currentCode', (string)$user->get("password"), 0, false);
+			appSetCookie($currentUserCookieName, (string)$user->get("id"), 0, false);
+			appSetCookie($currentCodeCookieName, (string)$user->get("password"), 0, false);
+		}
+		if (function_exists('appExpireCookieAcrossDomains')) {
+			appExpireCookieAcrossDomains('currentUser', false);
+			appExpireCookieAcrossDomains('currentCode', false);
 		}
 		echo '{"status":true, "script":"location.reload()"} ';
 		

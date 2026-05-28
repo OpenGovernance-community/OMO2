@@ -153,6 +153,19 @@ function autoInstallGetFieldDefinitions()
                     ],
                     'help' => 'Active les URL du type orgname.domaine.com. Cela demande une configuration speciale de l hebergement, avec DNS wildcard et serveur web capable d accepter les sous-domaines.',
                 ],
+                [
+                    'key' => 'COOKIE_SCOPE_MODE',
+                    'label' => 'Portee des cookies',
+                    'type' => 'select',
+                    'required' => false,
+                    'options' => [
+                        'auto' => 'Auto',
+                        'host' => 'Host',
+                        'environment' => 'Environment',
+                        'parent' => 'Parent',
+                    ],
+                    'help' => 'Auto isole par defaut dev, beta et deploy en host-only. Environment partage dans *.dev.domaine.tld. Parent partage dans *.domaine.tld. Host force un cookie limite au host courant.',
+                ],
             ],
         ],
         'database' => [
