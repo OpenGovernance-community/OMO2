@@ -304,6 +304,10 @@ function commonSetCookieValue($name, $value, $expires, $httpOnly = true)
 
 function commonExpireCookieValue($name, $httpOnly = true)
 {
+    if (function_exists('appExpireCookieAcrossDomains')) {
+        return appExpireCookieAcrossDomains($name, $httpOnly, commonGetRequestHost());
+    }
+
     return commonSetCookieValue($name, '', time() - 3600, $httpOnly);
 }
 
@@ -314,6 +318,13 @@ function commonGetRememberDurationSeconds()
 
 function commonGetRememberCookieName()
 {
+    if (function_exists('appShouldScopeSensitiveCookieNames')
+        && function_exists('appBuildScopedCookieName')
+        && appShouldScopeSensitiveCookieNames(commonGetRequestHost())
+    ) {
+        return appBuildScopedCookieName('remember_token', commonGetRequestHost());
+    }
+
     $cookieDomain = ltrim((string)commonGetCookieDomain(), '.');
     if ($cookieDomain === '') {
         $cookieDomain = commonGetRequestHost();
@@ -329,15 +340,67 @@ function commonGetRememberCookieName()
     return 'remember_token_' . $suffix;
 }
 
+function commonBuildRememberCookieNameFromSuffixSource($suffixSource)
+{
+    $suffix = preg_replace('/[^a-z0-9]+/i', '_', strtolower(trim((string)$suffixSource)));
+    $suffix = trim((string)$suffix, '_');
+
+    if ($suffix === '') {
+        return 'remember_token';
+    }
+
+    return 'remember_token_' . $suffix;
+}
+
+function commonGetRememberLegacyCookieNames()
+{
+    $names = ['remember_token'];
+    $host = commonGetRequestHost();
+
+    if (function_exists('appGetEnvironmentCookieDomain')) {
+        $environmentDomain = ltrim((string)appGetEnvironmentCookieDomain($host), '.');
+        if ($environmentDomain !== '') {
+            $names[] = commonBuildRememberCookieNameFromSuffixSource($environmentDomain);
+        }
+    }
+
+    if (function_exists('appGetParentCookieDomain')) {
+        $parentDomain = ltrim((string)appGetParentCookieDomain($host), '.');
+        if ($parentDomain !== '') {
+            $names[] = commonBuildRememberCookieNameFromSuffixSource($parentDomain);
+        }
+    }
+
+    $currentName = commonGetRememberCookieName();
+    $uniqueNames = [];
+    foreach ($names as $name) {
+        $name = trim((string)$name);
+        if ($name === '' || $name === $currentName || in_array($name, $uniqueNames, true)) {
+            continue;
+        }
+
+        $uniqueNames[] = $name;
+    }
+
+    return $uniqueNames;
+}
+
 function commonGetRememberCookieValue()
 {
-    $cookieName = commonGetRememberCookieName();
-    return isset($_COOKIE[$cookieName]) ? (string)$_COOKIE[$cookieName] : '';
+    foreach (array_merge([commonGetRememberCookieName()], commonGetRememberLegacyCookieNames()) as $cookieName) {
+        if (isset($_COOKIE[$cookieName]) && $_COOKIE[$cookieName] !== '') {
+            return (string)$_COOKIE[$cookieName];
+        }
+    }
+
+    return '';
 }
 
 function commonExpireLegacyRememberCookie()
 {
-    commonExpireCookieValue('remember_token', true);
+    foreach (commonGetRememberLegacyCookieNames() as $cookieName) {
+        commonExpireCookieValue($cookieName, true);
+    }
 }
 
 function commonRefreshRememberedUser($remember)
@@ -890,6 +953,7 @@ function commonRestoreRememberedUser()
     $remember = \dbObject\UserRemember::findValidByToken($rememberCookie);
     if (!$remember) {
         commonExpireCookieValue(commonGetRememberCookieName(), true);
+        commonExpireLegacyRememberCookie();
         return 0;
     }
 
@@ -1484,6 +1548,13 @@ function commonCurrentUserHasPermission($permissionKey, $contextHolon = null, $o
 
 function commonLogoutUser()
 {
+    $currentUserCookieName = function_exists('appGetCurrentUserCookieName')
+        ? appGetCurrentUserCookieName(commonGetRequestHost())
+        : 'currentUser';
+    $currentCodeCookieName = function_exists('appGetCurrentCodeCookieName')
+        ? appGetCurrentCodeCookieName(commonGetRequestHost())
+        : 'currentCode';
+
     unset($_SESSION['currentUser']);
     commonClearCurrentUserAdminMode();
     unset($_SESSION['permissionCacheByOrganization']);
@@ -1493,10 +1564,10 @@ function commonLogoutUser()
     commonExpireCookieValue(commonGetRememberCookieName(), true);
     commonExpireLegacyRememberCookie();
 
+    commonExpireCookieValue($currentUserCookieName, false);
+    commonExpireCookieValue($currentCodeCookieName, false);
     commonExpireCookieValue('currentUser', false);
     commonExpireCookieValue('currentCode', false);
-    setcookie('currentUser', '', time() - 3600, '/');
-    setcookie('currentCode', '', time() - 3600, '/');
 }
 
 function commonGetRequestIp()

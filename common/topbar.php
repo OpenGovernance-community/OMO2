@@ -122,6 +122,34 @@ function commonRenderTopbar(array $options = [])
     $currentLocalePreference = function_exists('translationBundleGetRequestLocalePreference')
         ? translationBundleGetRequestLocalePreference('lang')
         : $currentLocale;
+    $helpItems = array_values($options['helpItems'] ?? []);
+    $faqHelpIndex = null;
+    foreach ($helpItems as $index => $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $faqSignals = [
+            (string)($item['label'] ?? ''),
+            (string)($item['title'] ?? ''),
+            (string)($item['url'] ?? ''),
+            (string)($item['callback'] ?? ''),
+        ];
+
+        foreach ($faqSignals as $signal) {
+            if (stripos($signal, 'faq') !== false) {
+                $faqHelpIndex = $index;
+                break 2;
+            }
+        }
+    }
+
+    if ($faqHelpIndex !== null) {
+        $faqHelpItem = $helpItems[$faqHelpIndex];
+        array_splice($helpItems, $faqHelpIndex, 1);
+        $faqTargetIndex = min(2, count($helpItems));
+        array_splice($helpItems, $faqTargetIndex, 0, [$faqHelpItem]);
+    }
 
     $config = [
         'appKey' => (string)($options['appKey'] ?? 'app'),
@@ -200,7 +228,7 @@ function commonRenderTopbar(array $options = [])
             'data' => commonResolveTopbarProfileData($organizationContext, $options['profile'] ?? []),
         ],
         'helpLabel' => (string)($options['helpLabel'] ?? 'Aide'),
-        'helpItems' => array_values($options['helpItems'] ?? []),
+        'helpItems' => $helpItems,
         'helpLinks' => array_values($options['helpLinks'] ?? []),
         'logoutLabel' => (string)($options['logoutLabel'] ?? 'Se deconnecter'),
         'modal' => [
