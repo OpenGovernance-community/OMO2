@@ -1740,6 +1740,20 @@ function activateMenu(hash) {
     $(`[data-hash="${hash}"]`).addClass('active');
 }
 
+let omoBrowserRouteSyncPending = false;
+
+function scheduleBrowserRouteSync() {
+    if (omoBrowserRouteSyncPending) {
+        return;
+    }
+
+    omoBrowserRouteSyncPending = true;
+    window.setTimeout(function () {
+        omoBrowserRouteSyncPending = false;
+        handleRoute();
+    }, 0);
+}
+
 $(document).ready(function () {
     canonicalizeOmoRootPath();
     handleRoute();
@@ -1749,7 +1763,8 @@ $(document).ready(function () {
     window.setTimeout(omoMaybeOpenPatreonWelcomeModal, 300);
 });
 
-$(window).on('hashchange', handleRoute);
+$(window).on('hashchange', scheduleBrowserRouteSync);
+$(window).on('popstate', scheduleBrowserRouteSync);
 
 window.addEventListener('common-topbar-modal-close', function () {
     if (omoPopupModalSyncing || !omoPopupModalManaged) {
