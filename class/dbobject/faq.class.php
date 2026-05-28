@@ -5,6 +5,7 @@ namespace dbObject;
 class FAQ extends DbObject
 {
 	protected static $_hasViewcountColumn = null;
+	protected static $_organizationIdByHolonId = array();
 
 	public static function tableName()
 	{
@@ -15,8 +16,8 @@ class FAQ extends DbObject
 	{
 		return [
 			[['question', 'answer'], 'required'],
-			[['id', 'IDhowto', 'displayorder', 'viewcount'], 'integer'],
-			[['IDholon'], 'fk'],
+			[['id', 'IDhowto', 'IDorganization', 'displayorder', 'viewcount'], 'integer'],
+			[['IDorganization', 'IDholon'], 'fk'],
 			[['question'], 'string'],
 			[['answer'], 'text'],
 			[['detail'], 'html'],
@@ -31,14 +32,15 @@ class FAQ extends DbObject
 		return [
 			'id' => 'ID',
 			'IDhowto' => 'Howto',
+			'IDorganization' => 'Organisation',
 			'IDholon' => 'Holon',
 			'question' => 'Question',
-			'detail' => 'Réponse complète',
-			'answer' => 'Réponse courte',
+			'detail' => 'Reponse complete',
+			'answer' => 'Reponse courte',
 			'displayorder' => 'Ordre',
 			'isactive' => 'Active',
-			'created' => 'Créée le',
-			'updated' => 'Mise à jour le',
+			'created' => 'Creee le',
+			'updated' => 'Mise a jour le',
 			'viewcount' => 'Nombre de vues',
 		];
 	}
@@ -155,29 +157,90 @@ class FAQ extends DbObject
 		return self::resolvePopupContext($organizationId, $currentHolonId);
 	}
 
-	public static function buildPopupLoadParams(array $context = array())
+	public static function normalizePopupScope($scope = null, array $context = array())
 	{
+		$scope = strtolower(trim((string)$scope));
+		if ($scope !== 'global' && $scope !== 'contextual') {
+			$scope = 'contextual';
+		}
+
+		if ($scope === 'global' && (int)($context['organizationId'] ?? 0) <= 0) {
+			return 'contextual';
+		}
+
+		return $scope;
+	}
+
+	public static function buildPopupLoadParams(array $context = array(), $scope = 'contextual')
+	{
+		$viewerAccess = self::resolveViewerAccess($context);
 		$params = array(
-			'where' => array(
-				array('field' => 'isactive', 'value' => 1),
-			),
 			'orderBy' => self::getPopupOrderBy(),
 		);
 
-		$currentHolon = isset($context['currentHolon']) && $context['currentHolon'] instanceof \dbObject\Holon
-			? $context['currentHolon']
-			: null;
-
-		if ($currentHolon && (int)$currentHolon->getId() > 0) {
-			$params['whereAny'] = array(
-				array('field' => 'IDholon', 'op' => 'is null'),
-				array('field' => 'IDholon', 'op' => 'in', 'value' => $currentHolon->getVisibleDescendantIds(true)),
+		if (empty($viewerAccess['canManageAllFaqs']) && empty($viewerAccess['canManageOrganizationFaqs'])) {
+			$params['where'] = array(
+				array('field' => 'isactive', 'value' => 1),
 			);
-		} else {
-			$params['where'][] = array('field' => 'IDholon', 'op' => 'is null');
 		}
 
 		return $params;
+	}
+
+	protected static function resolveCurrentUserId()
+	{
+		return function_exists('commonGetCurrentUserId')
+			? (int)\commonGetCurrentUserId()
+			: (int)($_SESSION['currentUser'] ?? 0);
+	}
+
+	public static function currentViewerHasSiteAdminAccess()
+	{
+		return function_exists('commonCurrentUserIsSiteAdminModeEnabled')
+			&& \commonCurrentUserIsSiteAdminModeEnabled();
+	}
+
+	public static function currentViewerHasOrganizationAdminAccess($organizationId = 0)
+	{
+		$organizationId = (int)$organizationId;
+		if ($organizationId <= 0) {
+			return false;
+		}
+
+		if (self::currentViewerHasSiteAdminAccess()) {
+			return true;
+		}
+
+		return function_exists('commonCurrentUserIsAdminModeEnabled')
+			&& \commonCurrentUserIsAdminModeEnabled($organizationId);
+	}
+
+	public static function resolveViewerAccess(array $context = array())
+	{
+		$organizationId = (int)($context['organizationId'] ?? 0);
+
+		return array(
+			'userId' => self::resolveCurrentUserId(),
+			'organizationId' => $organizationId,
+			'canManageAllFaqs' => self::currentViewerHasSiteAdminAccess(),
+			'canManageOrganizationFaqs' => self::currentViewerHasOrganizationAdminAccess($organizationId),
+		);
+	}
+
+	public static function loadPopupCollection(array $context = array(), $scope = 'contextual')
+	{
+		$scope = self::normalizePopupScope($scope, $context);
+		$allFaq = new \dbObject\ArrayFAQ();
+		$allFaq->load(self::buildPopupLoadParams($context, $scope));
+
+		$filteredFaq = new \dbObject\ArrayFAQ();
+		foreach ($allFaq as $faq) {
+			if ($faq instanceof self && $faq->canBeViewedInContext($context, $scope)) {
+				$filteredFaq->append($faq);
+			}
+		}
+
+		return $filteredFaq;
 	}
 
 	public static function canCreateContextualForHolon($holon, $userId = 0, $organizationId = 0)
@@ -225,27 +288,130 @@ class FAQ extends DbObject
 		return $holon->load($holonId) ? $holon : null;
 	}
 
-	public function canBeViewedInContext(array $context = array())
+	protected static function resolveOrganizationIdForHolon($holonId)
 	{
+		$holonId = (int)$holonId;
+		if ($holonId <= 0) {
+			return 0;
+		}
+
+		if (array_key_exists($holonId, self::$_organizationIdByHolonId)) {
+			return (int)self::$_organizationIdByHolonId[$holonId];
+		}
+
+		$holon = new \dbObject\Holon();
+		if (!$holon->load($holonId)) {
+			self::$_organizationIdByHolonId[$holonId] = 0;
+			return 0;
+		}
+
+		self::$_organizationIdByHolonId[$holonId] = (int)$holon->get('IDorganization');
+		return (int)self::$_organizationIdByHolonId[$holonId];
+	}
+
+	public function getResolvedOrganizationId()
+	{
+		$organizationId = (int)$this->get('IDorganization');
+		if ($organizationId > 0) {
+			return $organizationId;
+		}
+
+		return self::resolveOrganizationIdForHolon((int)$this->get('IDholon'));
+	}
+
+	public function getResolvedOrganization()
+	{
+		$organizationId = $this->getResolvedOrganizationId();
+		if ($organizationId <= 0) {
+			return null;
+		}
+
+		$organization = new \dbObject\Organization();
+		return $organization->load($organizationId) ? $organization : null;
+	}
+
+	public function isGeneric()
+	{
+		return (int)$this->getResolvedOrganizationId() <= 0 && (int)$this->get('IDholon') <= 0;
+	}
+
+	public function canBeEditedInContext(array $context = array())
+	{
+		$viewerAccess = self::resolveViewerAccess($context);
+		if (!empty($viewerAccess['canManageAllFaqs'])) {
+			return true;
+		}
+
+		$organizationId = $this->getResolvedOrganizationId();
+		if ($organizationId <= 0) {
+			return false;
+		}
+
+		return !empty($viewerAccess['canManageOrganizationFaqs'])
+			&& $organizationId === (int)($viewerAccess['organizationId'] ?? 0);
+	}
+
+	public function canBeDetachedInContext(array $context = array())
+	{
+		$viewerAccess = self::resolveViewerAccess($context);
+		return !empty($viewerAccess['canManageAllFaqs']);
+	}
+
+	public function canBeViewedInContext(array $context = array(), $scope = 'contextual')
+	{
+		$scope = self::normalizePopupScope($scope, $context);
+		$viewerAccess = self::resolveViewerAccess($context);
+		$faqOrganizationId = $this->getResolvedOrganizationId();
+		$holon = $this->getContextHolon();
+		$contextOrganizationId = (int)($context['organizationId'] ?? 0);
+		$currentHolon = isset($context['currentHolon']) && $context['currentHolon'] instanceof \dbObject\Holon
+			? $context['currentHolon']
+			: null;
+		$matchesScope = false;
+
+		if ($scope === 'global') {
+			if (!empty($viewerAccess['canManageAllFaqs'])) {
+				$matchesScope = true;
+			} elseif ($faqOrganizationId <= 0) {
+				$matchesScope = true;
+			} else {
+				$matchesScope = $faqOrganizationId === $contextOrganizationId;
+			}
+		} else {
+			if ($holon instanceof \dbObject\Holon) {
+				if ($currentHolon && (int)$currentHolon->getId() > 0) {
+					$matchesScope = $currentHolon->isDescendantOf($holon->getId(), true);
+				} else {
+					$matchesScope = false;
+				}
+			} elseif ($faqOrganizationId <= 0) {
+				$matchesScope = true;
+			} else {
+				$matchesScope = $faqOrganizationId === $contextOrganizationId;
+			}
+		}
+
+		if (!$matchesScope) {
+			return false;
+		}
+
+		if (
+			!empty($viewerAccess['canManageAllFaqs'])
+			|| (
+				!empty($viewerAccess['canManageOrganizationFaqs'])
+				&& $faqOrganizationId > 0
+				&& $faqOrganizationId === (int)($viewerAccess['organizationId'] ?? 0)
+			)
+		) {
+			return true;
+		}
+
 		if (!(int)$this->get('isactive')) {
 			return false;
 		}
 
-		$holon = $this->getContextHolon();
-		if (!$holon) {
-			return true;
-		}
-
-		if (!$holon->canViewDetail()) {
+		if ($holon && !$holon->canViewDetail()) {
 			return false;
-		}
-
-		$currentHolon = isset($context['currentHolon']) && $context['currentHolon'] instanceof \dbObject\Holon
-			? $context['currentHolon']
-			: null;
-
-		if ($currentHolon && (int)$currentHolon->getId() > 0) {
-			return $holon->isDescendantOf($currentHolon->getId(), true);
 		}
 
 		return true;

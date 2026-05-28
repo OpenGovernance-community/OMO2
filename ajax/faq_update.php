@@ -14,13 +14,11 @@ if (!checklogin()) {
 	exit;
 }
 
-$currentUserId = function_exists('commonGetCurrentUserId')
-	? (int)commonGetCurrentUserId()
-	: (int)($_SESSION["currentUser"] ?? 0);
+$faqId = (int)($_GET['id'] ?? 0);
 $faqContext = \dbObject\FAQ::resolvePopupRequestContext($_GET);
 $faqScope = \dbObject\FAQ::normalizePopupScope($_GET['faq_scope'] ?? null, $faqContext ?: array());
 
-if ($currentUserId <= 0 || $faqContext === false) {
+if ($faqId <= 0 || $faqContext === false) {
 	echo json_encode([
 		'status' => false,
 		'success' => false,
@@ -29,26 +27,26 @@ if ($currentUserId <= 0 || $faqContext === false) {
 	exit;
 }
 
-$contextHolon = $faqContext['currentHolon'] ?? null;
-$contextOrganizationId = (int)($faqContext['organizationId'] ?? 0);
-$viewerAccess = \dbObject\FAQ::resolveViewerAccess($faqContext ?: array());
-$canManageFaqCollection = !empty($viewerAccess['canManageAllFaqs']) || !empty($viewerAccess['canManageOrganizationFaqs']);
-$canCreateContextualFaq = $contextHolon
-	? \dbObject\FAQ::canCreateContextualForHolon($contextHolon, $currentUserId, $contextOrganizationId)
-	: false;
-
-if (!$canManageFaqCollection && !$canCreateContextualFaq) {
+$faq = new \dbObject\FAQ();
+if (!$faq->load($faqId) || !(int)$faq->getId()) {
 	echo json_encode([
 		'status' => false,
 		'success' => false,
-		'message' => "Vous n'avez pas le droit d'ajouter une FAQ dans ce contexte.",
+		'message' => 'FAQ introuvable.',
 	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
 }
 
-$scope = faqPopupResolveSubmittedScope($faqContext ?: array(), $_POST, array(
-	'allowContextualCreate' => $canCreateContextualFaq,
-));
+if (!$faq->canBeEditedInContext($faqContext ?: array())) {
+	echo json_encode([
+		'status' => false,
+		'success' => false,
+		'message' => "Vous n'avez pas le droit d'editer cette FAQ.",
+	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	exit;
+}
+
+$scope = faqPopupResolveSubmittedScope($faqContext ?: array(), $_POST);
 if (empty($scope['status'])) {
 	echo json_encode([
 		'status' => false,
@@ -58,15 +56,11 @@ if (empty($scope['status'])) {
 	exit;
 }
 
-$faq = new \dbObject\FAQ();
 $data = $_POST;
 unset($data['id']);
 $faq->loadFromArray($data);
 $faq->set('IDorganization', $scope['organizationId'] ?? null);
 $faq->set('IDholon', $scope['holonId'] ?? null);
-if (!$canManageFaqCollection) {
-	$faq->set('isactive', true);
-}
 
 if (trim((string)$faq->get('question')) === '' || trim((string)$faq->get('answer')) === '') {
 	echo json_encode([
@@ -89,8 +83,8 @@ if (!is_array($saveResult) || empty($saveResult['status'])) {
 
 $popupReloadUrl = '/popup/faq.php';
 $popupReloadQuery = array();
-if ($contextOrganizationId > 0) {
-	$popupReloadQuery[] = 'oid=' . rawurlencode((string)$contextOrganizationId);
+if ((int)($faqContext['organizationId'] ?? 0) > 0) {
+	$popupReloadQuery[] = 'oid=' . rawurlencode((string)$faqContext['organizationId']);
 }
 if ((int)($faqContext['currentHolonId'] ?? 0) > 0) {
 	$popupReloadQuery[] = 'cid=' . rawurlencode((string)$faqContext['currentHolonId']);
@@ -102,13 +96,19 @@ if (count($popupReloadQuery) > 0) {
 	$popupReloadUrl .= '?' . implode('&', $popupReloadQuery);
 }
 
+$focusId = $faq->canBeViewedInContext($faqContext ?: array(), $faqScope)
+	? (int)$faq->getId()
+	: null;
+
+$script = "if (window.commonTopbarRefreshModalContent) { window.commonTopbarRefreshModalContent('" . $popupReloadUrl . "'); }";
+
 echo json_encode([
 	'status' => true,
 	'success' => true,
-	'message' => 'FAQ enregistree.',
+	'message' => 'FAQ mise a jour.',
 	'reloadUrl' => $popupReloadUrl,
-	'script' => "if (window.commonTopbarRefreshModalContent) { window.commonTopbarRefreshModalContent('" . $popupReloadUrl . "'); }",
-	'id' => $saveResult['id'] ?? ('0' . (int)$faq->getId()),
+	'focusId' => $focusId,
+	'script' => $script,
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
 ?>
