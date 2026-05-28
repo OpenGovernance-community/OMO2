@@ -311,10 +311,6 @@
     font: 700 24px/1.2 Consolas, Monaco, monospace;
 }
 
-.auth-code-box input::placeholder {
-    letter-spacing: normal;
-    font: 600 16px/1.2 system-ui, sans-serif;
-}
 
 .auth-resend {
     align-self: flex-start;
