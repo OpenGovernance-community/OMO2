@@ -92,10 +92,79 @@ if ($canManageAllFaqs) {
 >
 	<style>
 	.faq-popup {
+		--faq-bg: var(--topbar-panel-bg, var(--color-surface, #ffffff));
+		--faq-surface: var(--color-surface-alt, #f8fafc);
+		--faq-surface-strong: color-mix(in srgb, var(--faq-surface) 80%, var(--faq-bg));
+		--faq-border: var(--topbar-panel-border, var(--color-border, #d0d7de));
+		--faq-border-soft: color-mix(in srgb, var(--faq-border) 76%, transparent);
+		--faq-text: var(--color-text, #1f2937);
+		--faq-text-muted: var(--topbar-panel-muted, var(--color-text-light, #475569));
+		--faq-heading: color-mix(in srgb, var(--faq-text) 92%, #000000);
+		--faq-accent: var(--color-primary, #2563eb);
+		--faq-accent-soft: color-mix(in srgb, var(--faq-accent) 16%, var(--faq-bg));
+		--faq-accent-strong: color-mix(in srgb, var(--faq-accent) 84%, #1d4ed8);
+		--faq-badge-bg: color-mix(in srgb, var(--faq-accent) 12%, var(--faq-bg));
+		--faq-badge-text: color-mix(in srgb, var(--faq-accent) 72%, var(--faq-text));
+		--faq-generic-bg: color-mix(in srgb, var(--faq-text-muted) 12%, var(--faq-bg));
+		--faq-generic-text: color-mix(in srgb, var(--faq-text-muted) 90%, var(--faq-bg));
+		--faq-organization-bg: color-mix(in srgb, #14b8a6 14%, var(--faq-bg));
+		--faq-organization-text: color-mix(in srgb, #0f766e 78%, var(--faq-text));
+		--faq-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+		--faq-shadow-strong: 0 18px 40px rgba(15, 23, 42, 0.16);
 		position: relative;
 		height: clamp(360px, calc(100dvh - 220px), 760px);
 		overflow: hidden;
-		color: #1f2937;
+		background: var(--faq-bg);
+		color: var(--faq-text);
+		color-scheme: light;
+	}
+
+	html[data-theme="dark"] .faq-popup {
+		--faq-bg: var(--topbar-panel-bg, var(--color-surface, #16202b));
+		--faq-surface: var(--color-surface-alt, #101923);
+		--faq-surface-strong: color-mix(in srgb, var(--faq-surface) 82%, var(--faq-bg));
+		--faq-border: var(--topbar-panel-border, var(--color-border, #283548));
+		--faq-border-soft: color-mix(in srgb, var(--faq-border) 78%, transparent);
+		--faq-text: var(--color-text, #e5edf7);
+		--faq-text-muted: var(--topbar-panel-muted, #9fb0c3);
+		--faq-heading: var(--faq-text);
+		--faq-accent: var(--color-primary, #7c9cff);
+		--faq-accent-soft: color-mix(in srgb, var(--faq-accent) 18%, var(--faq-bg));
+		--faq-accent-strong: color-mix(in srgb, var(--faq-accent) 92%, #9db4ff);
+		--faq-badge-bg: color-mix(in srgb, var(--faq-accent) 18%, var(--faq-bg));
+		--faq-badge-text: color-mix(in srgb, var(--faq-accent) 82%, var(--faq-text));
+		--faq-generic-bg: color-mix(in srgb, var(--faq-text-muted) 16%, var(--faq-bg));
+		--faq-generic-text: color-mix(in srgb, var(--faq-text-muted) 96%, var(--faq-bg));
+		--faq-organization-bg: color-mix(in srgb, #14b8a6 18%, var(--faq-bg));
+		--faq-organization-text: color-mix(in srgb, #67e8f9 74%, var(--faq-text));
+		--faq-shadow: 0 12px 26px rgba(0, 0, 0, 0.24);
+		--faq-shadow-strong: 0 18px 40px rgba(0, 0, 0, 0.34);
+		color-scheme: dark;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		html[data-theme-preference="system"] .faq-popup {
+			--faq-bg: var(--topbar-panel-bg, var(--color-surface, #16202b));
+			--faq-surface: var(--color-surface-alt, #101923);
+			--faq-surface-strong: color-mix(in srgb, var(--faq-surface) 82%, var(--faq-bg));
+			--faq-border: var(--topbar-panel-border, var(--color-border, #283548));
+			--faq-border-soft: color-mix(in srgb, var(--faq-border) 78%, transparent);
+			--faq-text: var(--color-text, #e5edf7);
+			--faq-text-muted: var(--topbar-panel-muted, #9fb0c3);
+			--faq-heading: var(--faq-text);
+			--faq-accent: var(--color-primary, #7c9cff);
+			--faq-accent-soft: color-mix(in srgb, var(--faq-accent) 18%, var(--faq-bg));
+			--faq-accent-strong: color-mix(in srgb, var(--faq-accent) 92%, #9db4ff);
+			--faq-badge-bg: color-mix(in srgb, var(--faq-accent) 18%, var(--faq-bg));
+			--faq-badge-text: color-mix(in srgb, var(--faq-accent) 82%, var(--faq-text));
+			--faq-generic-bg: color-mix(in srgb, var(--faq-text-muted) 16%, var(--faq-bg));
+			--faq-generic-text: color-mix(in srgb, var(--faq-text-muted) 96%, var(--faq-bg));
+			--faq-organization-bg: color-mix(in srgb, #14b8a6 18%, var(--faq-bg));
+			--faq-organization-text: color-mix(in srgb, #67e8f9 74%, var(--faq-text));
+			--faq-shadow: 0 12px 26px rgba(0, 0, 0, 0.24);
+			--faq-shadow-strong: 0 18px 40px rgba(0, 0, 0, 0.34);
+			color-scheme: dark;
+		}
 	}
 
 	.faq-popup__search {
@@ -114,8 +183,10 @@ if ($canManageAllFaqs) {
 	.faq-popup__search-input {
 		width: 100%;
 		padding: 12px 14px;
-		border: 1px solid #d0d7de;
+		border: 1px solid var(--faq-border);
 		border-radius: 12px;
+		background: var(--faq-bg);
+		color: var(--faq-text);
 		font-size: 15px;
 	}
 
@@ -124,12 +195,12 @@ if ($canManageAllFaqs) {
 	.faq-popup__empty {
 		padding: 16px 18px;
 		border-radius: 14px;
-		background: #f8fafc;
-		color: #475569;
+		background: var(--faq-surface);
+		color: var(--faq-text-muted);
 	}
 
 	.faq-popup__helper strong {
-		color: #0f172a;
+		color: var(--faq-heading);
 	}
 
 	.faq-popup__toolbar {
@@ -161,11 +232,11 @@ if ($canManageAllFaqs) {
 		min-width: 0;
 		font-size: 13px;
 		line-height: 1.45;
-		color: #475569;
+		color: var(--faq-text-muted);
 	}
 
 	.faq-popup__toolbar-note strong {
-		color: #0f172a;
+		color: var(--faq-heading);
 	}
 
 	.faq-popup__scope-toggle {
@@ -176,7 +247,7 @@ if ($canManageAllFaqs) {
 		gap: 0;
 		padding: 4px;
 		border-radius: 999px;
-		background: #e2e8f0;
+		background: var(--faq-surface-strong);
 		width: fit-content;
 		flex: 0 0 auto;
 		isolation: isolate;
@@ -191,7 +262,7 @@ if ($canManageAllFaqs) {
 		bottom: 4px;
 		width: calc(50% - 4px);
 		border-radius: 999px;
-		background: #ffffff;
+		background: var(--faq-bg);
 		box-shadow: 0 4px 10px rgba(15, 23, 42, 0.10);
 		transform: translateX(0);
 		transition: transform 220ms ease, box-shadow 220ms ease;
@@ -207,7 +278,7 @@ if ($canManageAllFaqs) {
 		z-index: 1;
 		border: 0;
 		background: transparent;
-		color: #334155;
+		color: var(--faq-text-muted);
 		padding: 9px 14px;
 		border-radius: 999px;
 		cursor: pointer;
@@ -217,7 +288,7 @@ if ($canManageAllFaqs) {
 	}
 
 	.faq-popup__scope-toggle-button.is-active {
-		color: #0f172a;
+		color: var(--faq-heading);
 	}
 
 	.faq-popup.is-loading .faq-popup__scope-toggle {
@@ -247,14 +318,14 @@ if ($canManageAllFaqs) {
 
 	.faq-popup__load-more-note {
 		font-size: 13px;
-		color: #64748b;
+		color: var(--faq-text-muted);
 	}
 
 	.faq-popup__item {
-		border: 1px solid #dbe2ea;
+		border: 1px solid var(--faq-border-soft);
 		border-radius: 16px;
-		background: #ffffff;
-		box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+		background: var(--faq-bg);
+		box-shadow: var(--faq-shadow);
 		overflow: hidden;
 	}
 
@@ -267,7 +338,7 @@ if ($canManageAllFaqs) {
 		text-align: left;
 		font-size: 16px;
 		font-weight: 700;
-		color: #0f172a;
+		color: var(--faq-heading);
 		cursor: pointer;
 		display: block;
 	}
@@ -279,7 +350,7 @@ if ($canManageAllFaqs) {
 		top: 22px;
 		font-size: 22px;
 		line-height: 1;
-		color: #2563eb;
+		color: var(--faq-accent);
 	}
 
 	.faq-popup__item.is-open .faq-popup__question::after {
@@ -298,27 +369,27 @@ if ($canManageAllFaqs) {
 		align-items: center;
 		padding: 2px 7px;
 		border-radius: 999px;
-		background: #eef2ff;
-		color: #3730a3;
+		background: var(--faq-badge-bg);
+		color: var(--faq-badge-text);
 		font-size: 10px;
 		font-weight: 600;
 		line-height: 1.05;
 	}
 
 	.faq-popup__meta-badge--generic {
-		background: #f1f5f9;
-		color: #334155;
+		background: var(--faq-generic-bg);
+		color: var(--faq-generic-text);
 	}
 
 	.faq-popup__meta-badge--organization {
-		background: #ecfeff;
-		color: #155e75;
+		background: var(--faq-organization-bg);
+		color: var(--faq-organization-text);
 	}
 
 	.faq-popup__answer {
 		display: none;
 		padding: 0 18px 18px;
-		color: #475569;
+		color: var(--faq-text-muted);
 		line-height: 1.6;
 	}
 
@@ -339,8 +410,8 @@ if ($canManageAllFaqs) {
 	.faq-popup__add,
 	.faq-popup__edit {
 		border: 0;
-		background: #e2e8f0;
-		color: #0f172a;
+		background: var(--faq-surface-strong);
+		color: var(--faq-heading);
 		padding: 10px 14px;
 		border-radius: 999px;
 		cursor: pointer;
@@ -351,16 +422,16 @@ if ($canManageAllFaqs) {
 	.faq-popup__back:hover,
 	.faq-popup__add:hover,
 	.faq-popup__edit:hover {
-		background: #cbd5e1;
+		background: color-mix(in srgb, var(--faq-surface-strong) 72%, var(--faq-accent-soft));
 	}
 
 	.faq-popup__add {
-		background: #0f172a;
-		color: #ffffff;
+		background: var(--faq-heading);
+		color: var(--faq-bg);
 	}
 
 	.faq-popup__add:hover {
-		background: #1e293b;
+		background: color-mix(in srgb, var(--faq-heading) 86%, var(--faq-accent-strong));
 	}
 
 	.faq-popup__editor-shell {
@@ -379,8 +450,8 @@ if ($canManageAllFaqs) {
 	.faq-popup__editor-status {
 		padding: 12px 14px;
 		border-radius: 12px;
-		background: #f8fafc;
-		color: #475569;
+		background: var(--faq-surface);
+		color: var(--faq-text-muted);
 	}
 
 	.faq-popup__detail {
@@ -389,9 +460,9 @@ if ($canManageAllFaqs) {
 		z-index: 5;
 		padding: 2px;
 		border-radius: 18px;
-		background: #ffffff;
+		background: var(--faq-bg);
 		overflow: auto;
-		box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+		box-shadow: var(--faq-shadow-strong);
 	}
 
 	.faq-popup__detail[hidden] {
@@ -399,7 +470,7 @@ if ($canManageAllFaqs) {
 	}
 
 	.faq-popup__highlight {
-		background: #fef08a;
+		background: color-mix(in srgb, #fef08a 84%, var(--faq-bg));
 		color: inherit;
 		border-radius: 4px;
 		padding: 0 2px;
@@ -419,23 +490,23 @@ if ($canManageAllFaqs) {
 	.faq-popup__scope-label {
 		font-size: 13px;
 		font-weight: 600;
-		color: #334155;
+		color: var(--faq-heading);
 	}
 
 	.faq-popup__scope-control,
 	.faq-popup__scope-fixed {
 		width: 100%;
 		padding: 12px 14px;
-		border: 1px solid #d0d7de;
+		border: 1px solid var(--faq-border);
 		border-radius: 12px;
-		background: #ffffff;
-		color: #0f172a;
+		background: var(--faq-bg);
+		color: var(--faq-text);
 		font-size: 14px;
 	}
 
 	.faq-popup__scope-control:disabled {
-		background: #f8fafc;
-		color: #94a3b8;
+		background: var(--faq-surface);
+		color: color-mix(in srgb, var(--faq-text-muted) 72%, transparent);
 		cursor: not-allowed;
 	}
 
