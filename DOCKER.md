@@ -49,7 +49,10 @@ DB_PASS=omodev
 MAIL_HOST=mailpit
 MAIL_PORT=1025
 MAIL_AUTH=false
+COOKIE_SCOPE_MODE=auto
 ```
+
+Avec `COOKIE_SCOPE_MODE=auto`, les hosts reserves comme `dev`, `beta` et `deploy` sont isoles automatiquement. Pour partager volontairement les cookies dans `*.dev.domaine.tld`, utiliser `COOKIE_SCOPE_MODE=environment`.
 
 ## 2. Seed SQL publie
 

@@ -6,10 +6,27 @@
 		return commonGetConfiguredEnvironmentSubdomains();
 	}
 
-	function appGetCookieDomain($host = null) {
+	function appNormalizeCookieHost($host = null) {
 		$host = is_string($host) && $host !== '' ? strtolower($host) : strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
 		$host = trim((string)$host);
-		$host = preg_replace('/:\d+$/', '', $host);
+		return preg_replace('/:\d+$/', '', $host);
+	}
+
+	function appGetCookieScopeMode($host = null) {
+		$mode = strtolower(trim((string)commonReadRuntimeEnvValue('COOKIE_SCOPE_MODE', 'auto')));
+		if (in_array($mode, ['host', 'environment', 'parent'], true)) {
+			return $mode;
+		}
+
+		if (appGetEnvironmentSubdomain($host) !== '') {
+			return 'host';
+		}
+
+		return 'parent';
+	}
+
+	function appGetParentCookieDomain($host = null) {
+		$host = appNormalizeCookieHost($host);
 
 		if ($host === '' || filter_var($host, FILTER_VALIDATE_IP)) {
 			return '';
@@ -24,17 +41,57 @@
 			return '';
 		}
 
-		$rootPartCount = 2;
-		if (count($parts) >= 3) {
-			$environmentCandidate = strtolower((string)($parts[count($parts) - 3] ?? ''));
+		return '.' . implode('.', array_slice($parts, -2));
+	}
 
-			if (in_array($environmentCandidate, appGetReservedEnvironmentSubdomains(), true)) {
+	function appGetEnvironmentCookieDomain($host = null) {
+		$host = appNormalizeCookieHost($host);
 
-				$rootPartCount = 3;
+		if ($host === '' || filter_var($host, FILTER_VALIDATE_IP)) {
+			return '';
+		}
+
+		if ($host === 'localhost' || preg_match('/(^|\.)localhost$/', $host)) {
+			return '';
+		}
+
+		$parts = array_values(array_filter(explode('.', $host)));
+		if (count($parts) < 3) {
+			return '';
+		}
+
+		$environmentCandidate = strtolower((string)($parts[count($parts) - 3] ?? ''));
+		if (!in_array($environmentCandidate, appGetReservedEnvironmentSubdomains(), true)) {
+			return '';
+		}
+
+		return '.' . implode('.', array_slice($parts, -3));
+	}
+
+	function appGetCookieDomain($host = null) {
+		$host = appNormalizeCookieHost($host);
+
+		if ($host === '' || filter_var($host, FILTER_VALIDATE_IP)) {
+			return '';
+		}
+
+		if ($host === 'localhost' || preg_match('/(^|\.)localhost$/', $host)) {
+			return '';
+		}
+
+		$scopeMode = appGetCookieScopeMode($host);
+		if ($scopeMode === 'host') {
+			return '';
+		}
+
+		if ($scopeMode === 'environment') {
+			$environmentDomain = appGetEnvironmentCookieDomain($host);
+			if ($environmentDomain !== '') {
+				return $environmentDomain;
 			}
 		}
 
-		return '.' . implode('.', array_slice($parts, -$rootPartCount));
+		return appGetParentCookieDomain($host);
 	}
 
 	function appShouldUseSecureCookies() {
@@ -133,11 +190,96 @@
 		return $options;
 	}
 
+	function appBuildCookieOptionsForDomain($expires = 0, $httpOnly = true, $domain = '') {
+		$options = [
+			'expires' => (int)$expires,
+			'path' => '/',
+			'secure' => appShouldUseSecureCookies(),
+			'httponly' => (bool)$httpOnly,
+			'samesite' => 'Lax',
+		];
+
+		$domain = trim((string)$domain);
+		if ($domain !== '') {
+			$options['domain'] = $domain;
+		}
+
+		return $options;
+	}
+
 	function appBuildSessionCookieOptions($host = null) {
 		$options = appBuildCookieOptions(0, true, $host);
 		unset($options['expires']);
 		$options['lifetime'] = 0;
 		return $options;
+	}
+
+	function appGetCookieDomainCandidates($host = null) {
+		$host = appNormalizeCookieHost($host);
+		$candidates = [''];
+
+		foreach ([appGetCookieDomain($host), appGetEnvironmentCookieDomain($host), appGetParentCookieDomain($host)] as $domain) {
+			$domain = trim((string)$domain);
+			if ($domain !== '' && !in_array($domain, $candidates, true)) {
+				$candidates[] = $domain;
+			}
+		}
+
+		return $candidates;
+	}
+
+	function appShouldScopeSensitiveCookieNames($host = null) {
+		return appGetEnvironmentSubdomain($host) !== '' || appGetCookieScopeMode($host) === 'host';
+	}
+
+	function appGetCookieScopeKey($host = null) {
+		$domain = ltrim((string)appGetCookieDomain($host), '.');
+		if ($domain !== '') {
+			return $domain;
+		}
+
+		return appNormalizeCookieHost($host);
+	}
+
+	function appBuildScopedCookieName($baseName, $host = null) {
+		$baseName = trim((string)$baseName);
+		if ($baseName === '' || !appShouldScopeSensitiveCookieNames($host)) {
+			return $baseName;
+		}
+
+		$suffix = preg_replace('/[^a-z0-9]+/i', '_', strtolower((string)appGetCookieScopeKey($host)));
+		$suffix = trim((string)$suffix, '_');
+		if ($suffix === '') {
+			return $baseName;
+		}
+
+		return $baseName . '_' . $suffix;
+	}
+
+	function appGetCurrentUserCookieName($host = null) {
+		return appBuildScopedCookieName('currentUser', $host);
+	}
+
+	function appGetCurrentCodeCookieName($host = null) {
+		return appBuildScopedCookieName('currentCode', $host);
+	}
+
+	function appGetSessionCookieName($host = null) {
+		return appBuildScopedCookieName('PHPSESSID', $host);
+	}
+
+	function appExpireCookieAcrossDomains($name, $httpOnly = true, $host = null) {
+		$name = trim((string)$name);
+		if ($name === '') {
+			return false;
+		}
+
+		$expired = false;
+		foreach (appGetCookieDomainCandidates($host) as $domain) {
+			$expired = setcookie($name, '', appBuildCookieOptionsForDomain(time() - 3600, $httpOnly, $domain)) || $expired;
+		}
+
+		return $expired;
 	}
 
 	function appSetCookie($name, $value, $expires = 0, $httpOnly = true, $host = null) {
@@ -150,6 +292,7 @@
 
 	require_once("config.php");
 	if (session_status() === PHP_SESSION_NONE) {
+		session_name(appGetSessionCookieName());
 		session_set_cookie_params(appBuildSessionCookieOptions());
 		session_start();
 	}
@@ -218,14 +361,20 @@
 			return true;
 		}
 		// Pas loggé, est-ce que les cookie permettent de retrouver l'utilisateur?
-		if (isset($_COOKIE["currentUser"]) && isset($_COOKIE["currentCode"])) {
+		$currentUserCookieName = appGetCurrentUserCookieName();
+		$currentCodeCookieName = appGetCurrentCodeCookieName();
+		$currentUserCookieValue = $_COOKIE[$currentUserCookieName] ?? ($_COOKIE["currentUser"] ?? null);
+		$currentCodeCookieValue = $_COOKIE[$currentCodeCookieName] ?? ($_COOKIE["currentCode"] ?? null);
+		if ($currentUserCookieValue !== null && $currentCodeCookieValue !== null) {
 			// Charge l'utilisateur corrspondant
 			$user=new \dbObject\User();
-			$user->load([["id",$_COOKIE["currentUser"]],["password",$_COOKIE["currentCode"]]]);
+			$user->load([["id",$currentUserCookieValue],["password",$currentCodeCookieValue]]);
 			if ($user->get("id")>0) {
 				// Redéfini les cookie pour 30 jours supplémentaires
-				appSetCookie('currentUser', (string)$user->get("id"), time()+60*60*24*30, false);
-				appSetCookie('currentCode', (string)$user->get("password"), time()+60*60*24*30, false);
+				appSetCookie($currentUserCookieName, (string)$user->get("id"), time()+60*60*24*30, false);
+				appSetCookie($currentCodeCookieName, (string)$user->get("password"), time()+60*60*24*30, false);
+				appExpireCookieAcrossDomains('currentUser', false);
+				appExpireCookieAcrossDomains('currentCode', false);
 				
 				// Initialise la variable de session
 				$_SESSION["currentUser"]=$user->get("id");
@@ -236,6 +385,10 @@
 				return true;
 			} else {
 				// Pas trouvé de correspondance
+				appExpireCookieAcrossDomains($currentUserCookieName, false);
+				appExpireCookieAcrossDomains($currentCodeCookieName, false);
+				appExpireCookieAcrossDomains('currentUser', false);
+				appExpireCookieAcrossDomains('currentCode', false);
 				return false;
 			}
 		}
