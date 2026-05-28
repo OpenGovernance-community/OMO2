@@ -206,6 +206,13 @@
     color: var(--auth-page-text);
 }
 
+.auth-email-row input::placeholder,
+.auth-challenge input::placeholder,
+.auth-code-box input::placeholder {
+    color: color-mix(in srgb, var(--auth-page-muted) 88%, transparent);
+    opacity: 1;
+}
+
 .auth-email-domain {
     display: flex;
     align-items: center;
@@ -302,6 +309,11 @@
     text-align: center;
     letter-spacing: 0.22em;
     font: 700 24px/1.2 Consolas, Monaco, monospace;
+}
+
+.auth-code-box input::placeholder {
+    letter-spacing: normal;
+    font: 600 16px/1.2 system-ui, sans-serif;
 }
 
 .auth-resend {
