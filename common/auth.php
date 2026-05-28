@@ -2037,6 +2037,7 @@ function commonRenderMagicLoginPage(array $options = [])
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($title) ?></title>
+    <link rel="stylesheet" href="/shared_css.css">
     <link rel="stylesheet" href="/common/assets/auth.css">
     <?php if ($organizationColor !== ''): ?>
     <style>
@@ -2049,6 +2050,12 @@ function commonRenderMagicLoginPage(array $options = [])
     <?php if ($headHtml !== ''): ?>
     <?= $headHtml . PHP_EOL ?>
     <?php endif; ?>
+    <script src="/shared_functions.js"></script>
+    <script>
+    if (typeof window.sharedApplyDocumentTheme === 'function') {
+        window.sharedApplyDocumentTheme(document);
+    }
+    </script>
 </head>
 <body class="auth-page<?= $topbar !== null ? ' auth-page--with-topbar' : '' ?>">
     <?php if ($topbar !== null && function_exists('commonRenderTopbar')): ?>
