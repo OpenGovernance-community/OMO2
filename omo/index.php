@@ -980,7 +980,20 @@ if ($isOrganizationHub && !$isDemoGuest) {
     exit;
 }
 
-if (!$isDemoGuest && !commonUserHasOrganizationAccess($currentUserId, (int)$organizationContext['id'])) {
+if (
+    !$isDemoGuest
+    && $currentUserId > 0
+    && !commonUserHasOrganizationAccess($currentUserId, (int)$organizationContext['id'])
+) {
+    $pendingInvitation = \dbObject\Invitation::findPendingForOrganizationUser(
+        (int)$organizationContext['id'],
+        $currentUserId
+    );
+    if ($pendingInvitation instanceof \dbObject\Invitation) {
+        header('Location: ' . $pendingInvitation->getInvitationUrl());
+        exit;
+    }
+
     http_response_code(403);
     $logoutUrl = '/common/logout.php?return_to=' . urlencode('/omo/');
     ?>
