@@ -12,10 +12,41 @@
 		return preg_replace('/:\d+$/', '', $host);
 	}
 
+	function appGetConfiguredCookieRootHost() {
+		$host = strtolower(trim((string)commonReadRuntimeEnvValue('COOKIE_ROOT_HOST', '')));
+		$host = preg_replace('/:\d+$/', '', $host);
+
+		if ($host === '' || $host === 'localhost' || preg_match('/(^|\.)localhost$/', $host)) {
+			return '';
+		}
+
+		return $host;
+	}
+
+	function appHostMatchesCookieRootHost($host, $rootHost) {
+		$host = appNormalizeCookieHost($host);
+		$rootHost = appNormalizeCookieHost($rootHost);
+
+		if ($host === '' || $rootHost === '') {
+			return false;
+		}
+
+		if ($host === $rootHost) {
+			return true;
+		}
+
+		return substr($host, -strlen('.' . $rootHost)) === '.' . $rootHost;
+	}
+
 	function appGetCookieScopeMode($host = null) {
 		$mode = strtolower(trim((string)commonReadRuntimeEnvValue('COOKIE_SCOPE_MODE', 'auto')));
 		if (in_array($mode, ['host', 'environment', 'parent'], true)) {
 			return $mode;
+		}
+
+		$configuredRootHost = appGetConfiguredCookieRootHost();
+		if ($configuredRootHost !== '' && appHostMatchesCookieRootHost($host, $configuredRootHost)) {
+			return 'environment';
 		}
 
 		if (appGetEnvironmentSubdomain($host) !== '') {
@@ -27,6 +58,11 @@
 
 	function appGetParentCookieDomain($host = null) {
 		$host = appNormalizeCookieHost($host);
+		$configuredRootHost = appGetConfiguredCookieRootHost();
+
+		if ($configuredRootHost !== '' && appHostMatchesCookieRootHost($host, $configuredRootHost)) {
+			return '.' . $configuredRootHost;
+		}
 
 		if ($host === '' || filter_var($host, FILTER_VALIDATE_IP)) {
 			return '';
@@ -46,6 +82,11 @@
 
 	function appGetEnvironmentCookieDomain($host = null) {
 		$host = appNormalizeCookieHost($host);
+		$configuredRootHost = appGetConfiguredCookieRootHost();
+
+		if ($configuredRootHost !== '' && appHostMatchesCookieRootHost($host, $configuredRootHost)) {
+			return '.' . $configuredRootHost;
+		}
 
 		if ($host === '' || filter_var($host, FILTER_VALIDATE_IP)) {
 			return '';

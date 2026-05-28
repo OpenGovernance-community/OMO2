@@ -64,6 +64,13 @@ function serverEnvAdminGetEditableSections()
                     ],
                     'help' => 'Auto isole par defaut dev, beta et deploy en host-only. Environment partage dans *.dev.domaine.tld. Parent partage dans *.domaine.tld. Host force un cookie limite au host courant.',
                 ],
+                [
+                    'key' => 'COOKIE_ROOT_HOST',
+                    'label' => 'Racine cookies',
+                    'type' => 'text',
+                    'placeholder' => 'dev.opengov.tools',
+                    'help' => 'Optionnel. Si renseigne, force le partage des cookies a cette racine exacte, par exemple dev.opengov.tools pour partager entre dev.opengov.tools et *.dev.opengov.tools sans toucher a la prod.',
+                ],
             ],
         ],
         'mail' => [

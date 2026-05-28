@@ -80,6 +80,14 @@ Modes disponibles :
 - `environment` : partage les cookies dans un environnement du type `*.dev.domaine.com`
 - `parent` : partage les cookies dans tout `*.domaine.com`
 
+Si une instance de dev doit partager la session entre `dev.domaine.com` et `*.dev.domaine.com` sans partager avec la prod, definir aussi :
+
+```env
+COOKIE_ROOT_HOST=dev.domaine.com
+```
+
+Cette valeur devient prioritaire pour la portee reelle des cookies et pour leurs noms scopes.
+
 ## 4. Appliquer les migrations SQL versionnees
 
 Apres l'installation initiale, ou lors d'une mise a jour du code, appliquer les migrations SQL si necessaire :
