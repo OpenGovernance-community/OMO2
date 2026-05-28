@@ -237,6 +237,37 @@ function omoResolvePwaIconUrl($iconUrl, $fallback = '/omo/icons/icon-192.png')
     return $iconUrl;
 }
 
+function omoBuildManifestUrlForContext(array $organizationContext, $fallback = '/omo/manifest.php')
+{
+    $manifestPath = (string)$fallback;
+    $organizationId = (int)($organizationContext['id'] ?? 0);
+
+    if ($organizationId <= 0) {
+        return $manifestPath;
+    }
+
+    $separator = strpos($manifestPath, '?') === false ? '?' : '&';
+    return $manifestPath . $separator . 'oid=' . $organizationId;
+}
+
+function omoBuildManifestIconUrlForContext(array $organizationContext, $size = 192, $purpose = 'any')
+{
+    $query = [
+        'size' => (int)$size,
+    ];
+
+    $organizationId = (int)($organizationContext['id'] ?? 0);
+    if ($organizationId > 0) {
+        $query['oid'] = $organizationId;
+    }
+
+    if ($purpose === 'maskable') {
+        $query['purpose'] = 'maskable';
+    }
+
+    return '/omo/manifest_icon.php?' . http_build_query($query);
+}
+
 function omoBuildPwaHeadHtml($themeColor = '#004663', $iconUrl = '/omo/icons/icon-192.png', $appTitle = 'OMO', $manifestUrl = '/omo/manifest.php')
 {
     $resolvedIconUrl = omoResolvePwaIconUrl($iconUrl);
@@ -406,9 +437,9 @@ if (!commonGetCurrentUserId() && !$isDemoGuest) {
     $loginOrganizationContext = $isOrganizationHub ? $omoLandingOrganization : $organizationContext;
     $omoPwaHeadHtml = omoBuildPwaHeadHtml(
         commonGetOrganizationAccentColor($loginOrganizationContext, '#004663'),
-        $loginOrganizationContext['logo'] ?? $omoDefaultLogo,
+        omoBuildManifestIconUrlForContext($loginOrganizationContext, 192),
         ($loginOrganizationContext['name'] ?? 'OMO') ?: 'OMO',
-        '/omo/manifest.php' . ((!empty($loginOrganizationContext['routeMode']) && $loginOrganizationContext['routeMode'] === 'path' && !empty($loginOrganizationContext['id'])) ? '?oid=' . (int)$loginOrganizationContext['id'] : '')
+        omoBuildManifestUrlForContext($loginOrganizationContext)
     );
 
     commonRenderMagicLoginPage([
@@ -434,9 +465,9 @@ $currentUserId = commonGetCurrentUserId();
 $isSiteAdmin = !$isDemoGuest && commonCurrentUserIsSiteAdminModeEnabled();
 $omoPwaHeadHtml = omoBuildPwaHeadHtml(
     commonGetOrganizationAccentColor($organizationContext, '#004663'),
-    $organizationContext['logo'] ?? $omoDefaultLogo,
+    omoBuildManifestIconUrlForContext($organizationContext, 192),
     ($organizationContext['name'] ?? 'OMO') ?: 'OMO',
-    '/omo/manifest.php' . ((!empty($organizationContext['routeMode']) && $organizationContext['routeMode'] === 'path' && !empty($organizationContext['id'])) ? '?oid=' . (int)$organizationContext['id'] : '')
+    omoBuildManifestUrlForContext($organizationContext)
 );
 if (empty($organizationContext['isValid'])) {
     http_response_code(404);
