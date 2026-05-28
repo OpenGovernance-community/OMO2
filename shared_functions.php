@@ -309,6 +309,28 @@
 		return appBuildScopedCookieName('PHPSESSID', $host);
 	}
 
+	function appGetLegacySessionCookieNames($host = null) {
+		$host = appNormalizeCookieHost($host);
+		$currentName = appGetSessionCookieName($host);
+		$legacyNames = [];
+		$hostSpecificName = appBuildScopedCookieName('PHPSESSID', $host);
+
+		if ($hostSpecificName !== '' && $hostSpecificName !== $currentName) {
+			$legacyNames[] = $hostSpecificName;
+		}
+
+		$normalizedHostSuffix = preg_replace('/[^a-z0-9]+/i', '_', strtolower((string)$host));
+		$normalizedHostSuffix = trim((string)$normalizedHostSuffix, '_');
+		if ($normalizedHostSuffix !== '') {
+			$legacyHostOnlyName = 'PHPSESSID_' . $normalizedHostSuffix;
+			if ($legacyHostOnlyName !== $currentName && !in_array($legacyHostOnlyName, $legacyNames, true)) {
+				$legacyNames[] = $legacyHostOnlyName;
+			}
+		}
+
+		return $legacyNames;
+	}
+
 	function appExpireCookieAcrossDomains($name, $httpOnly = true, $host = null) {
 		$name = trim((string)$name);
 		if ($name === '') {
@@ -336,6 +358,9 @@
 		session_name(appGetSessionCookieName());
 		session_set_cookie_params(appBuildSessionCookieOptions());
 		session_start();
+		foreach (appGetLegacySessionCookieNames() as $legacySessionCookieName) {
+			appExpireCookieAcrossDomains($legacySessionCookieName, true);
+		}
 	}
 
 	require __DIR__ . '/vendor/autoload.php';
