@@ -37,7 +37,7 @@ if (!function_exists('faqPopupDescribeScope')) {
 }
 
 if (!function_exists('faqPopupLoadOrganizationOptions')) {
-	function faqPopupLoadOrganizationOptions(array $faqContext, \dbObject\FAQ $faq = null)
+	function faqPopupLoadOrganizationOptions(array $faqContext, ?\dbObject\FAQ $faq = null)
 	{
 		$viewerAccess = \dbObject\FAQ::resolveViewerAccess($faqContext);
 		$options = array();
