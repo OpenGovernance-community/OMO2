@@ -485,7 +485,15 @@ $isFetchRequest = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) 
                     var blob = window.croppedImages[key];
 
                     if (blob) {
-                        formData.append(key, blob, key + '.jpg');
+                        var extension = 'jpg';
+
+                        if (blob.type === 'image/png') {
+                            extension = 'png';
+                        } else if (blob.type === 'image/webp') {
+                            extension = 'webp';
+                        }
+
+                        formData.append(key, blob, key + '.' + extension);
                     }
                 });
             }
