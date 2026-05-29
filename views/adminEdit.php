@@ -577,6 +577,37 @@ function displayField($object, $key, $default = null, $filter = null) {
                     var zoomSlider_<?=$key?> = $('#zoomSlider_<?=$key?>');
                     var zoomValue_<?=$key?> = 1;
                     var oldZoomValue_<?=$key?> = 1;
+                    var exportMime_<?=$key?> = 'image/jpeg';
+
+                    function resolveExportFormat_<?=$key?>(source) {
+                        var normalized = String(source || '').toLowerCase();
+
+                        if (normalized.indexOf('image/png') !== -1 || normalized.match(/\.png(?:$|\?)/)) {
+                            return {
+                                mime: 'image/png',
+                                extension: 'png'
+                            };
+                        }
+
+                        if (normalized.indexOf('image/webp') !== -1 || normalized.match(/\.webp(?:$|\?)/)) {
+                            return {
+                                mime: 'image/webp',
+                                extension: 'webp'
+                            };
+                        }
+
+                        return {
+                            mime: 'image/jpeg',
+                            extension: 'jpg'
+                        };
+                    }
+
+                    function setExportFormat_<?=$key?>(source) {
+                        var format = resolveExportFormat_<?=$key?>(source);
+                        exportMime_<?=$key?> = format.mime;
+                    }
+
+                    setExportFormat_<?=$key?>($('#<?=$key?>').val() || (img1 ? img1.currentSrc || img1.src : ''));
 
                     if (imgHeight_<?=$key?> == 0) {
                         imgContainer_<?=$key?>.css("display", "none");
@@ -617,7 +648,7 @@ function displayField($object, $key, $default = null, $filter = null) {
 
                             console.log("Blob prêt pour image :", blob);
 
-                        }, 'image/jpeg', 0.9);
+                        }, exportMime_<?=$key?>, exportMime_<?=$key?> === 'image/png' ? undefined : 0.9);
                     }
 
                     function updateImg_<?=$key?>() {
@@ -657,6 +688,7 @@ function displayField($object, $key, $default = null, $filter = null) {
                     $('#imageFileInput_<?=$key?>').on('change', function (event) {
                         console.log("#imageFileInput_<?=$key?>.change()");
                         var file = event.target.files[0];
+                        setExportFormat_<?=$key?>(file ? file.type : '');
                         var reader = new FileReader();
                         reader.onload = function (event) {
                             // Remove existing image
@@ -1392,7 +1424,15 @@ echo "</div>";
 
                     if (blob) {
                         console.log("Ajout image :", key, blob);
-                        formData.append(key, blob, key + '.jpg');
+                        let extension = 'jpg';
+
+                        if (blob.type === 'image/png') {
+                            extension = 'png';
+                        } else if (blob.type === 'image/webp') {
+                            extension = 'webp';
+                        }
+
+                        formData.append(key, blob, key + '.' + extension);
                     }
                 }
             } else {
