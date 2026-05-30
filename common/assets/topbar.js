@@ -49,23 +49,47 @@
     }
 
     function executeEmbeddedScripts(container) {
+        var scripts;
+        var sequence;
+
         if (!container) {
-            return;
+            return Promise.resolve();
         }
 
-        Array.prototype.forEach.call(container.querySelectorAll('script'), function (script) {
-            var replacement = document.createElement('script');
+        scripts = Array.prototype.slice.call(container.querySelectorAll('script'));
+        sequence = Promise.resolve();
 
-            Array.prototype.forEach.call(script.attributes, function (attribute) {
-                replacement.setAttribute(attribute.name, attribute.value);
+        scripts.forEach(function (script) {
+            sequence = sequence.then(function () {
+                return new Promise(function (resolve) {
+                    var replacement = document.createElement('script');
+
+                    Array.prototype.forEach.call(script.attributes, function (attribute) {
+                        replacement.setAttribute(attribute.name, attribute.value);
+                    });
+
+                    if (replacement.src) {
+                        replacement.async = false;
+                        replacement.addEventListener('load', function () {
+                            resolve();
+                        }, { once: true });
+                        replacement.addEventListener('error', function () {
+                            resolve();
+                        }, { once: true });
+                    } else {
+                        replacement.textContent = script.textContent || '';
+                    }
+
+                    script.parentNode.replaceChild(replacement, script);
+
+                    if (!replacement.src) {
+                        resolve();
+                    }
+                });
             });
-
-            if (!replacement.src) {
-                replacement.textContent = script.textContent || '';
-            }
-
-            script.parentNode.replaceChild(replacement, script);
         });
+
+        return sequence;
     }
 
     function enhanceScrollablePanel(container) {

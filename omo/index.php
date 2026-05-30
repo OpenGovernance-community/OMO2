@@ -92,6 +92,14 @@ $sourceLang = [
         'text' => 'Vos espaces OMO',
         'context' => 'Main heading shown on the organization directory page.',
     ],
+    'app.directory.template.badge' => [
+        'text' => "Template partage",
+        'context' => 'Badge shown on a shared organization template card.',
+    ],
+    'app.directory.templates.heading' => [
+        'text' => "Vos template d'organisation",
+        'context' => 'Heading shown above the shared organization template cards on the directory page.',
+    ],
     'app.directory.js.action_error' => [
         'text' => 'Action impossible.',
         'context' => 'Fallback error message shown in JavaScript when an organization card action fails.',
@@ -229,6 +237,43 @@ function omoResolvePwaIconUrl($iconUrl, $fallback = '/omo/icons/icon-192.png')
     return $iconUrl;
 }
 
+function omoBuildManifestUrlForContext(array $organizationContext, $fallback = '/omo/manifest.php')
+{
+    $manifestPath = (string)$fallback;
+    $organizationId = (int)($organizationContext['id'] ?? 0);
+
+    if ($organizationId <= 0) {
+        return $manifestPath;
+    }
+
+    $separator = strpos($manifestPath, '?') === false ? '?' : '&';
+    return $manifestPath . $separator . 'oid=' . $organizationId;
+}
+
+function omoBuildManifestIconUrlForContext(array $organizationContext, $size = 192, $purpose = 'any')
+{
+    $payload = implode('|', [
+        (string)($organizationContext['id'] ?? 0),
+        (string)($organizationContext['logo'] ?? ''),
+        (string)($organizationContext['color'] ?? ''),
+    ]);
+    $query = [
+        'size' => (int)$size,
+        'v' => substr(sha1($payload), 0, 12),
+    ];
+
+    $organizationId = (int)($organizationContext['id'] ?? 0);
+    if ($organizationId > 0) {
+        $query['oid'] = $organizationId;
+    }
+
+    if ($purpose === 'maskable') {
+        $query['purpose'] = 'maskable';
+    }
+
+    return '/omo/manifest_icon.php?' . http_build_query($query);
+}
+
 function omoBuildPwaHeadHtml($themeColor = '#004663', $iconUrl = '/omo/icons/icon-192.png', $appTitle = 'OMO', $manifestUrl = '/omo/manifest.php')
 {
     $resolvedIconUrl = omoResolvePwaIconUrl($iconUrl);
@@ -247,6 +292,147 @@ function omoBuildPwaHeadHtml($themeColor = '#004663', $iconUrl = '/omo/icons/ico
     ]);
 }
 
+function omoBuildDirectoryCardData(array $directoryEntry, $currentUserId)
+{
+    $accessibleOrganization = $directoryEntry['organization'] ?? null;
+    if (!($accessibleOrganization instanceof \dbObject\Organization)) {
+        return null;
+    }
+
+    $pendingInvitation = ($directoryEntry['pendingInvitation'] ?? null) instanceof \dbObject\Invitation
+        ? $directoryEntry['pendingInvitation']
+        : null;
+    $organizationName = trim((string)$accessibleOrganization->get('name'));
+    if ($organizationName === '') {
+        $organizationName = t('app.directory.fallback_organization_name');
+    }
+
+    $organizationMembership = $pendingInvitation ? null : $accessibleOrganization->getMembership($currentUserId, true);
+    $organizationShortname = trim((string)$accessibleOrganization->get('shortname'));
+    $organizationUrl = $pendingInvitation
+        ? $pendingInvitation->getInvitationUrl()
+        : commonBuildOrganizationHomeUrl((int)$accessibleOrganization->getId(), $organizationShortname, commonGetRootHost());
+    $organizationDomain = trim((string)$accessibleOrganization->get('domain'));
+    $organizationInitial = function_exists('mb_substr')
+        ? mb_strtoupper(mb_substr($organizationName, 0, 1))
+        : strtoupper(substr($organizationName, 0, 1));
+    $organizationHostLabel = commonBuildOrganizationAccessLabel((int)$accessibleOrganization->getId(), $organizationShortname, commonGetRootHost());
+    $invitationPendingHolons = $pendingInvitation ? $pendingInvitation->getPendingHolons() : [];
+    $isTemplateOrganization = $accessibleOrganization->isSharedAsTemplate();
+
+    return [
+        'organization' => $accessibleOrganization,
+        'pendingInvitation' => $pendingInvitation,
+        'organizationMembership' => $organizationMembership,
+        'canDeleteOrganization' => $accessibleOrganization->canDelete(),
+        'organizationName' => $organizationName,
+        'organizationUrl' => $organizationUrl,
+        'organizationLogo' => trim((string)$accessibleOrganization->get('logo')),
+        'organizationBanner' => trim((string)$accessibleOrganization->get('banner')),
+        'organizationColor' => trim((string)$accessibleOrganization->get('color')) ?: '#4f46e5',
+        'organizationInitial' => $organizationInitial,
+        'organizationCardMeta' => $pendingInvitation
+            ? (
+                count($invitationPendingHolons) > 0
+                    ? t('app.directory.invitation.pending_holons', ['count' => count($invitationPendingHolons)])
+                    : t('app.directory.invitation.pending_organization')
+            )
+            : $organizationHostLabel,
+        'organizationCardBadge' => $pendingInvitation
+            ? t('app.directory.invitation.badge')
+            : ($isTemplateOrganization
+                ? t('app.directory.template.badge')
+                : ($organizationDomain !== '' ? $organizationDomain : t('app.directory.fallback_badge'))),
+        'organizationCardAction' => $pendingInvitation
+            ? t('app.directory.cta.view_invitation')
+            : t('app.directory.cta.connect'),
+        'organizationAriaLabel' => $pendingInvitation
+            ? t('app.directory.cta.view_invitation') . ' - ' . $organizationName
+            : t('app.directory.open_organization_aria_label', ['organizationName' => $organizationName]),
+        'isTemplateOrganization' => $isTemplateOrganization,
+    ];
+}
+
+function omoRenderDirectoryCard(array $directoryCardData)
+{
+    $accessibleOrganization = $directoryCardData['organization'];
+    $pendingInvitation = $directoryCardData['pendingInvitation'];
+    $organizationMembership = $directoryCardData['organizationMembership'];
+    $canDeleteOrganization = !empty($directoryCardData['canDeleteOrganization']);
+    $organizationName = (string)$directoryCardData['organizationName'];
+    $organizationUrl = (string)$directoryCardData['organizationUrl'];
+    $organizationLogo = (string)$directoryCardData['organizationLogo'];
+    $organizationBanner = (string)$directoryCardData['organizationBanner'];
+    $organizationColor = (string)$directoryCardData['organizationColor'];
+    $organizationInitial = (string)$directoryCardData['organizationInitial'];
+    $organizationCardMeta = (string)$directoryCardData['organizationCardMeta'];
+    $organizationCardBadge = (string)$directoryCardData['organizationCardBadge'];
+    $organizationCardAction = (string)$directoryCardData['organizationCardAction'];
+    $organizationAriaLabel = (string)$directoryCardData['organizationAriaLabel'];
+    ?>
+            <article
+                class="auth-org-card auth-org-card--directory auth-org-card--directory-managed<?= $pendingInvitation ? ' auth-org-card--directory-pending' : '' ?>"
+                style="--auth-org-accent: <?= htmlspecialchars($organizationColor) ?>;"
+                data-organization-id="<?= (int)$accessibleOrganization->getId() ?>"
+                data-organization-name="<?= htmlspecialchars($organizationName, ENT_QUOTES, 'UTF-8') ?>"
+            >
+                <a
+                    class="auth-org-card__overlay-link"
+                    href="<?= htmlspecialchars($organizationUrl) ?>"
+                    aria-label="<?= htmlspecialchars($organizationAriaLabel) ?>"
+                ></a>
+                <?php if ($organizationMembership) { ?>
+                <div class="omo-org-card-menu" data-omo-org-card-menu>
+                    <button
+                        type="button"
+                        class="omo-org-card-menu__trigger"
+                        data-omo-org-menu-trigger
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                        aria-label="<?= htmlspecialchars(t('app.directory.menu.actions_aria_label', ['organizationName' => $organizationName])) ?>"
+                    >...</button>
+                    <div class="omo-org-card-menu__panel" data-omo-org-menu-panel>
+                        <button
+                            type="button"
+                            class="omo-org-card-menu__item"
+                            data-omo-org-action="leave"
+                        ><?= htmlspecialchars(t('app.directory.menu.leave')) ?></button>
+                        <?php if ($canDeleteOrganization) { ?>
+                        <button
+                            type="button"
+                            class="omo-org-card-menu__item omo-org-card-menu__item--danger"
+                            data-omo-org-action="delete"
+                        ><?= htmlspecialchars(t('app.directory.menu.delete')) ?></button>
+                        <?php } ?>
+                    </div>
+                </div>
+                <?php } ?>
+                <div class="auth-org-card__banner">
+                    <?php if ($organizationBanner !== '') { ?>
+                    <img src="<?= htmlspecialchars($organizationBanner) ?>" alt="" loading="lazy">
+                    <?php } ?>
+                </div>
+                <div class="auth-org-card__body">
+                    <div class="auth-org-card__header">
+                        <?php if ($organizationLogo !== '') { ?>
+                        <img class="auth-org-logo auth-org-logo--directory" src="<?= htmlspecialchars($organizationLogo) ?>" alt="<?= htmlspecialchars($organizationName) ?>" loading="lazy">
+                        <?php } else { ?>
+                        <div class="auth-org-logo-placeholder auth-org-logo-placeholder--directory" aria-hidden="true"><?= htmlspecialchars($organizationInitial) ?></div>
+                        <?php } ?>
+                        <div class="auth-org-info auth-org-info--directory">
+                            <strong class="auth-org-title auth-org-title--directory"><?= htmlspecialchars($organizationName) ?></strong>
+                            <span class="auth-org-meta auth-org-meta--directory"><?= htmlspecialchars($organizationCardMeta) ?></span>
+                        </div>
+                    </div>
+                    <div class="auth-org-card__footer">
+                        <span class="auth-org-badge<?= $pendingInvitation ? ' auth-org-badge--pending' : '' ?>"><?= htmlspecialchars($organizationCardBadge) ?></span>
+                        <span class="auth-org-action"><?= htmlspecialchars($organizationCardAction) ?></span>
+                    </div>
+                </div>
+            </article>
+    <?php
+}
+
 $omoPwaBodyEndHtml = '<script src="/omo/assets/js/install.js" defer></script>';
 $omoThemeBootstrapHtml = implode(PHP_EOL, [
     '<script src="/shared_functions.js"></script>',
@@ -258,9 +444,9 @@ if (!commonGetCurrentUserId() && !$isDemoGuest) {
     $loginOrganizationContext = $isOrganizationHub ? $omoLandingOrganization : $organizationContext;
     $omoPwaHeadHtml = omoBuildPwaHeadHtml(
         commonGetOrganizationAccentColor($loginOrganizationContext, '#004663'),
-        $loginOrganizationContext['logo'] ?? $omoDefaultLogo,
+        omoBuildManifestIconUrlForContext($loginOrganizationContext, 192),
         ($loginOrganizationContext['name'] ?? 'OMO') ?: 'OMO',
-        '/omo/manifest.php' . ((!empty($loginOrganizationContext['routeMode']) && $loginOrganizationContext['routeMode'] === 'path' && !empty($loginOrganizationContext['id'])) ? '?oid=' . (int)$loginOrganizationContext['id'] : '')
+        omoBuildManifestUrlForContext($loginOrganizationContext)
     );
 
     commonRenderMagicLoginPage([
@@ -286,9 +472,9 @@ $currentUserId = commonGetCurrentUserId();
 $isSiteAdmin = !$isDemoGuest && commonCurrentUserIsSiteAdminModeEnabled();
 $omoPwaHeadHtml = omoBuildPwaHeadHtml(
     commonGetOrganizationAccentColor($organizationContext, '#004663'),
-    $organizationContext['logo'] ?? $omoDefaultLogo,
+    omoBuildManifestIconUrlForContext($organizationContext, 192),
     ($organizationContext['name'] ?? 'OMO') ?: 'OMO',
-    '/omo/manifest.php' . ((!empty($organizationContext['routeMode']) && $organizationContext['routeMode'] === 'path' && !empty($organizationContext['id'])) ? '?oid=' . (int)$organizationContext['id'] : '')
+    omoBuildManifestUrlForContext($organizationContext)
 );
 if (empty($organizationContext['isValid'])) {
     http_response_code(404);
@@ -374,7 +560,23 @@ if ($isOrganizationHub && !$isDemoGuest) {
         $directoryOrganizationIds[$organizationId] = true;
     }
 
-    $organizationCount = count($directoryEntries);
+    $organizationDirectoryCards = [];
+    $templateDirectoryCards = [];
+    foreach ($directoryEntries as $directoryEntry) {
+        $directoryCardData = omoBuildDirectoryCardData($directoryEntry, $currentUserId);
+        if ($directoryCardData === null) {
+            continue;
+        }
+
+        if (!empty($directoryCardData['isTemplateOrganization'])) {
+            $templateDirectoryCards[] = $directoryCardData;
+            continue;
+        }
+
+        $organizationDirectoryCards[] = $directoryCardData;
+    }
+
+    $organizationCount = count($organizationDirectoryCards) + count($templateDirectoryCards);
     $organizationStatusLabel = $organizationCount === 0
         ? t('app.directory.status.none')
         : t('app.directory.status.available', ['count' => $organizationCount]);
@@ -410,6 +612,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
         <span class="auth-state-status auth-state-status--directory">
             <?= htmlspecialchars($organizationStatusLabel) ?>
         </span>
+        <div class="omo-directory-section">
         <h1><?= htmlspecialchars(t('app.directory.heading')) ?></h1>
         <?php if ($organizationCount > 0) { ?>
             <p><?= htmlspecialchars(t('app.directory.description.with_results')) ?></p>
@@ -417,106 +620,9 @@ if ($isOrganizationHub && !$isDemoGuest) {
             <p><?= htmlspecialchars(t('app.directory.description.empty')) ?></p>
         <?php } ?>
         <div class="auth-org-list auth-org-list--directory">
-            <?php foreach ($directoryEntries as $directoryEntry) {
-                $accessibleOrganization = $directoryEntry['organization'];
-                $pendingInvitation = $directoryEntry['pendingInvitation'];
-                $organizationName = trim((string)$accessibleOrganization->get('name'));
-                if ($organizationName === '') {
-                    $organizationName = t('app.directory.fallback_organization_name');
-                }
-                $organizationMembership = $pendingInvitation ? null : $accessibleOrganization->getMembership($currentUserId, true);
-                $canDeleteOrganization = $accessibleOrganization->canDelete();
-                $organizationShortname = trim((string)$accessibleOrganization->get('shortname'));
-                $organizationUrl = $pendingInvitation
-                    ? $pendingInvitation->getInvitationUrl()
-                    : commonBuildOrganizationHomeUrl((int)$accessibleOrganization->getId(), $organizationShortname, commonGetRootHost());
-                $organizationLogo = trim((string)$accessibleOrganization->get('logo'));
-                $organizationBanner = trim((string)$accessibleOrganization->get('banner'));
-                $organizationColor = trim((string)$accessibleOrganization->get('color')) ?: '#4f46e5';
-                $organizationDomain = trim((string)$accessibleOrganization->get('domain'));
-                $organizationInitial = function_exists('mb_substr')
-                    ? mb_strtoupper(mb_substr($organizationName, 0, 1))
-                    : strtoupper(substr($organizationName, 0, 1));
-                $organizationHostLabel = commonBuildOrganizationAccessLabel((int)$accessibleOrganization->getId(), $organizationShortname, commonGetRootHost());
-                $invitationPendingHolons = $pendingInvitation ? $pendingInvitation->getPendingHolons() : [];
-                $organizationCardMeta = $pendingInvitation
-                    ? (
-                        count($invitationPendingHolons) > 0
-                            ? t('app.directory.invitation.pending_holons', ['count' => count($invitationPendingHolons)])
-                            : t('app.directory.invitation.pending_organization')
-                    )
-                    : $organizationHostLabel;
-                $organizationCardBadge = $pendingInvitation
-                    ? t('app.directory.invitation.badge')
-                    : ($organizationDomain !== '' ? $organizationDomain : t('app.directory.fallback_badge'));
-                $organizationCardAction = $pendingInvitation
-                    ? t('app.directory.cta.view_invitation')
-                    : t('app.directory.cta.connect');
-                $organizationAriaLabel = $pendingInvitation
-                    ? t('app.directory.cta.view_invitation') . ' - ' . $organizationName
-                    : t('app.directory.open_organization_aria_label', ['organizationName' => $organizationName]);
-                ?>
-            <article
-                class="auth-org-card auth-org-card--directory auth-org-card--directory-managed<?= $pendingInvitation ? ' auth-org-card--directory-pending' : '' ?>"
-                style="--auth-org-accent: <?= htmlspecialchars($organizationColor) ?>;"
-                data-organization-id="<?= (int)$accessibleOrganization->getId() ?>"
-                data-organization-name="<?= htmlspecialchars($organizationName, ENT_QUOTES, 'UTF-8') ?>"
-            >
-                <a
-                    class="auth-org-card__overlay-link"
-                    href="<?= htmlspecialchars($organizationUrl) ?>"
-                    aria-label="<?= htmlspecialchars($organizationAriaLabel) ?>"
-                ></a>
-                <?php if ($organizationMembership) { ?>
-                <div class="omo-org-card-menu" data-omo-org-card-menu>
-                    <button
-                        type="button"
-                        class="omo-org-card-menu__trigger"
-                        data-omo-org-menu-trigger
-                        aria-haspopup="true"
-                        aria-expanded="false"
-                        aria-label="<?= htmlspecialchars(t('app.directory.menu.actions_aria_label', ['organizationName' => $organizationName])) ?>"
-                    >...</button>
-                    <div class="omo-org-card-menu__panel" data-omo-org-menu-panel>
-                        <button
-                            type="button"
-                            class="omo-org-card-menu__item"
-                            data-omo-org-action="leave"
-                        ><?= htmlspecialchars(t('app.directory.menu.leave')) ?></button>
-                        <?php if ($canDeleteOrganization) { ?>
-                        <button
-                            type="button"
-                            class="omo-org-card-menu__item omo-org-card-menu__item--danger"
-                            data-omo-org-action="delete"
-                        ><?= htmlspecialchars(t('app.directory.menu.delete')) ?></button>
-                        <?php } ?>
-                    </div>
-                </div>
-                <?php } ?>
-                <div class="auth-org-card__banner">
-                    <?php if ($organizationBanner !== '') { ?>
-                    <img src="<?= htmlspecialchars($organizationBanner) ?>" alt="" loading="lazy">
-                    <?php } ?>
-                </div>
-                <div class="auth-org-card__body">
-                    <div class="auth-org-card__header">
-                        <?php if ($organizationLogo !== '') { ?>
-                        <img class="auth-org-logo auth-org-logo--directory" src="<?= htmlspecialchars($organizationLogo) ?>" alt="<?= htmlspecialchars($organizationName) ?>" loading="lazy">
-                        <?php } else { ?>
-                        <div class="auth-org-logo-placeholder auth-org-logo-placeholder--directory" aria-hidden="true"><?= htmlspecialchars($organizationInitial) ?></div>
-                        <?php } ?>
-                        <div class="auth-org-info auth-org-info--directory">
-                            <strong class="auth-org-title auth-org-title--directory"><?= htmlspecialchars($organizationName) ?></strong>
-                            <span class="auth-org-meta auth-org-meta--directory"><?= htmlspecialchars($organizationCardMeta) ?></span>
-                        </div>
-                    </div>
-                    <div class="auth-org-card__footer">
-                        <span class="auth-org-badge<?= $pendingInvitation ? ' auth-org-badge--pending' : '' ?>"><?= htmlspecialchars($organizationCardBadge) ?></span>
-                        <span class="auth-org-action"><?= htmlspecialchars($organizationCardAction) ?></span>
-                    </div>
-                </div>
-            </article>
-            <?php } ?>
+            <?php foreach ($organizationDirectoryCards as $directoryCardData) {
+                omoRenderDirectoryCard($directoryCardData);
+            } ?>
             <button
                 type="button"
                 class="auth-org-card auth-org-card--directory auth-org-card--create"
@@ -539,29 +645,23 @@ if ($isOrganizationHub && !$isDemoGuest) {
                 </div>
             </button>
         </div>
+        </div>
+        <?php if (count($templateDirectoryCards) > 0) { ?>
+        <section class="omo-directory-section omo-directory-section--templates" aria-labelledby="omoDirectoryTemplatesHeading">
+            <h2 id="omoDirectoryTemplatesHeading" class="omo-directory-section__title generic-card-title generic-card-title--big"><?= htmlspecialchars(t('app.directory.templates.heading')) ?></h2>
+            <div class="auth-org-list auth-org-list--directory">
+                <?php foreach ($templateDirectoryCards as $directoryCardData) {
+                    omoRenderDirectoryCard($directoryCardData);
+                } ?>
+            </div>
+        </section>
+        <?php } ?>
         <div class="auth-state-actions">
             <a class="auth-state-btn auth-state-btn--primary" href="<?= htmlspecialchars($logoutUrl) ?>"><?= htmlspecialchars(t('common.logout')) ?></a>
         </div>
     </div>
     </main>
 
-    <div class="omo-directory-modal" id="omoDirectoryModal" hidden>
-        <div class="omo-directory-modal__backdrop" data-omo-directory-close></div>
-        <div class="omo-directory-modal__panel" role="dialog" aria-modal="true" aria-labelledby="omoDirectoryModalTitle">
-            <div class="omo-directory-modal__header">
-                <h2 id="omoDirectoryModalTitle"><?= htmlspecialchars(t('app.directory.create.modal_title')) ?></h2>
-                <button type="button" class="omo-directory-modal__close" data-omo-directory-close><?= htmlspecialchars(t('app.directory.modal.close')) ?></button>
-            </div>
-            <div class="omo-directory-modal__body">
-                <iframe
-                    class="omo-directory-modal__iframe"
-                    src="<?= htmlspecialchars($organizationCreateUrl) ?>"
-                    loading="lazy"
-                    title="<?= htmlspecialchars(t('app.directory.create.modal_title')) ?>"
-                ></iframe>
-            </div>
-        </div>
-    </div>
     <script>
         window.omoDirectoryTranslations = <?= json_encode($directoryJsTranslations, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
     </script>
@@ -581,6 +681,16 @@ if ($isOrganizationHub && !$isDemoGuest) {
 
         body.auth-state-page--with-topbar.auth-state-page--scrollable > .auth-state-layout {
             min-height: calc(100vh - var(--topbar-height, 48px));
+        }
+
+        .omo-directory-section + .omo-directory-section {
+            margin-top: 28px;
+            padding-top: 24px;
+            border-top: 1px solid var(--color-border, #dbe4ee);
+        }
+
+        .omo-directory-section__title {
+            margin: 0 0 14px;
         }
 
         .auth-org-card--directory-managed {
@@ -606,8 +716,8 @@ if ($isOrganizationHub && !$isDemoGuest) {
         }
 
         .auth-org-badge--pending {
-            background: color-mix(in srgb, var(--auth-org-accent) 16%, white);
-            color: color-mix(in srgb, var(--auth-org-accent) 72%, black);
+            background: color-mix(in srgb, var(--auth-org-accent) 16%, var(--color-surface, #ffffff));
+            color: color-mix(in srgb, var(--auth-org-accent) 72%, var(--color-text, #111827));
         }
 
         .omo-org-card-menu {
@@ -621,14 +731,14 @@ if ($isOrganizationHub && !$isDemoGuest) {
             min-width: 40px;
             min-height: 40px;
             padding: 0 10px 4px;
-            border: 1px solid rgba(15, 23, 42, 0.1);
+            border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 86%, transparent);
             border-radius: 999px;
-            background: rgba(255, 255, 255, 0.92);
-            color: #0f172a;
+            background: color-mix(in srgb, var(--color-surface, #ffffff) 90%, transparent);
+            color: var(--color-text, #0f172a);
             font-size: 22px;
             line-height: 1;
             cursor: pointer;
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+            box-shadow: 0 10px 24px color-mix(in srgb, var(--color-text, #0f172a) 12%, transparent);
         }
 
         .omo-org-card-menu__panel {
@@ -641,9 +751,9 @@ if ($isOrganizationHub && !$isDemoGuest) {
             flex-direction: column;
             gap: 6px;
             border-radius: 16px;
-            border: 1px solid #dbe4ee;
-            background: #ffffff;
-            box-shadow: 0 18px 42px rgba(15, 23, 42, 0.16);
+            border: 1px solid var(--color-border, #dbe4ee);
+            background: var(--color-surface, #ffffff);
+            box-shadow: 0 18px 42px color-mix(in srgb, var(--color-text, #0f172a) 16%, transparent);
         }
 
         .omo-org-card-menu.is-open .omo-org-card-menu__panel {
@@ -656,8 +766,8 @@ if ($isOrganizationHub && !$isDemoGuest) {
             padding: 10px 12px;
             border: 0;
             border-radius: 12px;
-            background: #f8fafc;
-            color: #0f172a;
+            background: var(--color-surface-alt, #f8fafc);
+            color: var(--color-text, #0f172a);
             text-align: left;
             font: inherit;
             font-weight: 600;
@@ -665,21 +775,26 @@ if ($isOrganizationHub && !$isDemoGuest) {
         }
 
         .omo-org-card-menu__item:hover {
-            background: #eef4ff;
+            background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #ffffff));
         }
 
         .omo-org-card-menu__item--danger {
             color: #b91c1c;
-            background: #fef2f2;
+            background: color-mix(in srgb, #dc2626 10%, var(--color-surface, #ffffff));
         }
 
         .omo-org-card-menu__item--danger:hover {
-            background: #fee2e2;
+            background: color-mix(in srgb, #dc2626 18%, var(--color-surface, #ffffff));
         }
 
         .auth-org-card--create {
-            border: 1px dashed rgba(37, 99, 235, 0.28);
-            background: linear-gradient(180deg, #ffffff, #f8fbff);
+            border: 1px dashed color-mix(in srgb, var(--color-primary, #2563eb) 28%, var(--color-border, #d1d5db));
+            background:
+                linear-gradient(
+                    180deg,
+                    color-mix(in srgb, var(--color-surface, #ffffff) 96%, var(--color-primary, #2563eb) 4%),
+                    color-mix(in srgb, var(--color-surface-alt, #f8fbff) 92%, var(--color-primary, #2563eb) 8%)
+                );
             cursor: pointer;
             text-align: left;
         }
@@ -691,89 +806,20 @@ if ($isOrganizationHub && !$isDemoGuest) {
         }
 
         .auth-org-logo-placeholder--create {
-            background: rgba(37, 99, 235, 0.12);
-            color: #2563eb;
+            background: color-mix(in srgb, var(--color-primary, #2563eb) 16%, var(--color-surface, #ffffff));
+            color: var(--color-primary, #2563eb);
         }
 
-        .omo-directory-modal[hidden] {
-            display: none;
-        }
-
-        .omo-directory-modal {
-            position: fixed;
-            inset: 0;
-            z-index: 60;
-        }
-
-        .omo-directory-modal__backdrop {
-            position: absolute;
-            inset: 0;
-            background: rgba(15, 23, 42, 0.56);
-            backdrop-filter: blur(4px);
-        }
-
-        .omo-directory-modal__panel {
-            position: relative;
-            width: min(1120px, calc(100vw - 32px));
-            height: min(880px, calc(100vh - 32px));
-            margin: 16px auto;
-            display: flex;
-            flex-direction: column;
-            border-radius: 22px;
-            overflow: hidden;
-            background: #fff;
-            box-shadow: 0 30px 80px rgba(15, 23, 42, 0.28);
-        }
-
-        .omo-directory-modal__header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            padding: 16px 18px;
-            border-bottom: 1px solid #e2e8f0;
-            background: #fff;
-        }
-
-        .omo-directory-modal__header h2 {
-            margin: 0;
-            font-size: 20px;
-            color: #0f172a;
-        }
-
-        .omo-directory-modal__close {
-            min-height: 40px;
-            padding: 8px 14px;
-            border: 0;
-            border-radius: 10px;
-            background: #e2e8f0;
-            color: #0f172a;
-            font-weight: 700;
-            cursor: pointer;
-        }
-
-        .omo-directory-modal__body {
-            flex: 1 1 auto;
-            min-height: 0;
-            background: #f8fafc;
-        }
-
-        .omo-directory-modal__iframe {
-            width: 100%;
-            height: 100%;
-            border: 0;
-            display: block;
-            background: #f8fafc;
-        }
     </style>
 
     <script>
         (function () {
-            var modal = document.getElementById('omoDirectoryModal');
             var openButton = document.getElementById('omoCreateOrganizationCard');
             var organizationActionUrl = '/omo/api/organizations/card_action.php';
+            var organizationCreateUrl = <?= json_encode($organizationCreateUrl, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+            var organizationCreateModalTitle = <?= json_encode(t('app.directory.create.modal_title'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
 
-            if (!modal || !openButton) {
+            if (!openButton) {
                 return;
             }
 
@@ -793,23 +839,16 @@ if ($isOrganizationHub && !$isDemoGuest) {
                 });
             }
 
-            function closeModal() {
-                modal.hidden = true;
-                document.body.classList.remove('omo-directory-modal-open');
-            }
-
             function openModal() {
-                modal.hidden = false;
-                document.body.classList.add('omo-directory-modal-open');
+                if (typeof window.commonTopbarOpenModal === 'function') {
+                    window.commonTopbarOpenModal(organizationCreateModalTitle, organizationCreateUrl, 'fetch');
+                    return;
+                }
+
+                window.location.href = organizationCreateUrl;
             }
 
             openButton.addEventListener('click', openModal);
-
-            modal.addEventListener('click', function (event) {
-                if (event.target.closest('[data-omo-directory-close]')) {
-                    closeModal();
-                }
-            });
 
             document.addEventListener('click', function (event) {
                 var trigger = event.target.closest('[data-omo-org-menu-trigger]');
@@ -918,10 +957,6 @@ if ($isOrganizationHub && !$isDemoGuest) {
                 if (event.key === 'Escape') {
                     closeMenus();
                 }
-
-                if (event.key === 'Escape' && !modal.hidden) {
-                    closeModal();
-                }
             });
         })();
     </script>
@@ -944,7 +979,20 @@ if ($isOrganizationHub && !$isDemoGuest) {
     exit;
 }
 
-if (!$isDemoGuest && !commonUserHasOrganizationAccess($currentUserId, (int)$organizationContext['id'])) {
+if (
+    !$isDemoGuest
+    && $currentUserId > 0
+    && !commonUserHasOrganizationAccess($currentUserId, (int)$organizationContext['id'])
+) {
+    $pendingInvitation = \dbObject\Invitation::findPendingForOrganizationUser(
+        (int)$organizationContext['id'],
+        $currentUserId
+    );
+    if ($pendingInvitation instanceof \dbObject\Invitation) {
+        header('Location: ' . $pendingInvitation->getInvitationUrl());
+        exit;
+    }
+
     http_response_code(403);
     $logoutUrl = '/common/logout.php?return_to=' . urlencode('/omo/');
     ?>
@@ -1013,7 +1061,6 @@ if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
     <link rel="stylesheet" href="/omo/assets/css/styles.css">
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <base href="/omo/">
 </head>

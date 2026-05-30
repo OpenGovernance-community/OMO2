@@ -112,6 +112,29 @@ function commonBuildUrl($path = '/', $host = null, $scheme = null)
     return $scheme . '://' . $host . $path;
 }
 
+function commonBuildAbsoluteAssetUrl($pathOrUrl, $host = null, $scheme = null)
+{
+    $value = trim((string)$pathOrUrl);
+    if ($value === '') {
+        return '';
+    }
+
+    if (preg_match('#^https?://#i', $value) === 1) {
+        return $value;
+    }
+
+    if (strpos($value, '//') === 0) {
+        $resolvedScheme = is_string($scheme) && $scheme !== '' ? strtolower($scheme) : commonGetRequestScheme();
+        return $resolvedScheme . ':' . $value;
+    }
+
+    if ($value[0] !== '/') {
+        $value = '/' . ltrim($value, '/');
+    }
+
+    return commonBuildUrl($value, $host, $scheme);
+}
+
 function commonBuildOrganizationHost($shortname, $baseHost = null)
 {
     $shortname = strtolower(trim((string)$shortname));
@@ -281,6 +304,10 @@ function commonSetCookieValue($name, $value, $expires, $httpOnly = true)
 
 function commonExpireCookieValue($name, $httpOnly = true)
 {
+    if (function_exists('appExpireCookieAcrossDomains')) {
+        return appExpireCookieAcrossDomains($name, $httpOnly, commonGetRequestHost());
+    }
+
     return commonSetCookieValue($name, '', time() - 3600, $httpOnly);
 }
 
@@ -291,6 +318,13 @@ function commonGetRememberDurationSeconds()
 
 function commonGetRememberCookieName()
 {
+    if (function_exists('appShouldScopeSensitiveCookieNames')
+        && function_exists('appBuildScopedCookieName')
+        && appShouldScopeSensitiveCookieNames(commonGetRequestHost())
+    ) {
+        return appBuildScopedCookieName('remember_token', commonGetRequestHost());
+    }
+
     $cookieDomain = ltrim((string)commonGetCookieDomain(), '.');
     if ($cookieDomain === '') {
         $cookieDomain = commonGetRequestHost();
@@ -306,15 +340,67 @@ function commonGetRememberCookieName()
     return 'remember_token_' . $suffix;
 }
 
+function commonBuildRememberCookieNameFromSuffixSource($suffixSource)
+{
+    $suffix = preg_replace('/[^a-z0-9]+/i', '_', strtolower(trim((string)$suffixSource)));
+    $suffix = trim((string)$suffix, '_');
+
+    if ($suffix === '') {
+        return 'remember_token';
+    }
+
+    return 'remember_token_' . $suffix;
+}
+
+function commonGetRememberLegacyCookieNames()
+{
+    $names = ['remember_token'];
+    $host = commonGetRequestHost();
+
+    if (function_exists('appGetEnvironmentCookieDomain')) {
+        $environmentDomain = ltrim((string)appGetEnvironmentCookieDomain($host), '.');
+        if ($environmentDomain !== '') {
+            $names[] = commonBuildRememberCookieNameFromSuffixSource($environmentDomain);
+        }
+    }
+
+    if (function_exists('appGetParentCookieDomain')) {
+        $parentDomain = ltrim((string)appGetParentCookieDomain($host), '.');
+        if ($parentDomain !== '') {
+            $names[] = commonBuildRememberCookieNameFromSuffixSource($parentDomain);
+        }
+    }
+
+    $currentName = commonGetRememberCookieName();
+    $uniqueNames = [];
+    foreach ($names as $name) {
+        $name = trim((string)$name);
+        if ($name === '' || $name === $currentName || in_array($name, $uniqueNames, true)) {
+            continue;
+        }
+
+        $uniqueNames[] = $name;
+    }
+
+    return $uniqueNames;
+}
+
 function commonGetRememberCookieValue()
 {
-    $cookieName = commonGetRememberCookieName();
-    return isset($_COOKIE[$cookieName]) ? (string)$_COOKIE[$cookieName] : '';
+    foreach (array_merge([commonGetRememberCookieName()], commonGetRememberLegacyCookieNames()) as $cookieName) {
+        if (isset($_COOKIE[$cookieName]) && $_COOKIE[$cookieName] !== '') {
+            return (string)$_COOKIE[$cookieName];
+        }
+    }
+
+    return '';
 }
 
 function commonExpireLegacyRememberCookie()
 {
-    commonExpireCookieValue('remember_token', true);
+    foreach (commonGetRememberLegacyCookieNames() as $cookieName) {
+        commonExpireCookieValue($cookieName, true);
+    }
 }
 
 function commonRefreshRememberedUser($remember)
@@ -867,6 +953,7 @@ function commonRestoreRememberedUser()
     $remember = \dbObject\UserRemember::findValidByToken($rememberCookie);
     if (!$remember) {
         commonExpireCookieValue(commonGetRememberCookieName(), true);
+        commonExpireLegacyRememberCookie();
         return 0;
     }
 
@@ -1461,6 +1548,13 @@ function commonCurrentUserHasPermission($permissionKey, $contextHolon = null, $o
 
 function commonLogoutUser()
 {
+    $currentUserCookieName = function_exists('appGetCurrentUserCookieName')
+        ? appGetCurrentUserCookieName(commonGetRequestHost())
+        : 'currentUser';
+    $currentCodeCookieName = function_exists('appGetCurrentCodeCookieName')
+        ? appGetCurrentCodeCookieName(commonGetRequestHost())
+        : 'currentCode';
+
     unset($_SESSION['currentUser']);
     commonClearCurrentUserAdminMode();
     unset($_SESSION['permissionCacheByOrganization']);
@@ -1470,10 +1564,10 @@ function commonLogoutUser()
     commonExpireCookieValue(commonGetRememberCookieName(), true);
     commonExpireLegacyRememberCookie();
 
+    commonExpireCookieValue($currentUserCookieName, false);
+    commonExpireCookieValue($currentCodeCookieName, false);
     commonExpireCookieValue('currentUser', false);
     commonExpireCookieValue('currentCode', false);
-    setcookie('currentUser', '', time() - 3600, '/');
-    setcookie('currentCode', '', time() - 3600, '/');
 }
 
 function commonGetRequestIp()
@@ -1619,8 +1713,8 @@ function commonSendLoginCode($userId, $email, array $organizationContext, $remem
     $subject = commonAuthT('auth.email.subject', [], $lang, $sourceLang);
     $orgName = htmlspecialchars($organizationContext['name'] ?: ($_SERVER['HTTP_HOST'] ?? 'Organisation'));
     $color = htmlspecialchars(commonGetOrganizationAccentColor($organizationContext, '#004663'));
-    $logo = $organizationContext['logo'] ?? '';
-    $banner = $organizationContext['banner'] ?? '';
+    $logo = commonBuildAbsoluteAssetUrl($organizationContext['logo'] ?? '');
+    $banner = commonBuildAbsoluteAssetUrl($organizationContext['banner'] ?? '');
 
     $message = "
 <html>
@@ -2014,6 +2108,7 @@ function commonRenderMagicLoginPage(array $options = [])
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($title) ?></title>
+    <link rel="stylesheet" href="/shared_css.css">
     <link rel="stylesheet" href="/common/assets/auth.css">
     <?php if ($organizationColor !== ''): ?>
     <style>
@@ -2026,6 +2121,12 @@ function commonRenderMagicLoginPage(array $options = [])
     <?php if ($headHtml !== ''): ?>
     <?= $headHtml . PHP_EOL ?>
     <?php endif; ?>
+    <script src="/shared_functions.js"></script>
+    <script>
+    if (typeof window.sharedApplyDocumentTheme === 'function') {
+        window.sharedApplyDocumentTheme(document);
+    }
+    </script>
 </head>
 <body class="auth-page<?= $topbar !== null ? ' auth-page--with-topbar' : '' ?>">
     <?php if ($topbar !== null && function_exists('commonRenderTopbar')): ?>

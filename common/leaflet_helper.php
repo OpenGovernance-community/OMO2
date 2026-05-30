@@ -1,5 +1,13 @@
 <?php
 
+if (!function_exists('commonLeafletMapsEnabled')) {
+    function commonLeafletMapsEnabled()
+    {
+        $apiKey = function_exists('envValue') ? trim((string)envValue('STADIA_MAPS_API_KEY', '')) : '';
+        return $apiKey !== '';
+    }
+}
+
 if (!function_exists('commonGetLeafletAssetConfig')) {
     function commonGetLeafletAssetConfig()
     {
@@ -12,7 +20,7 @@ if (!function_exists('commonGetLeafletAssetConfig')) {
         return array(
             'css' => 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
             'js' => 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
-            'apiKeyConfigured' => $apiKey !== '',
+            'apiKeyConfigured' => commonLeafletMapsEnabled(),
             'tiles' => array(
                 'light' => array(
                     'url' => 'https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png' . $suffix,
