@@ -1,6 +1,7 @@
 <?php
 
 use dbObject\DecisionInvitation;
+use dbObject\DecisionGroup;
 use dbObject\DecisionParticipant;
 use dbObject\DecisionProcess;
 use dbObject\DecisionProposal;
@@ -111,7 +112,7 @@ if (!function_exists('omoDecisionBuildProposalItemsFromDecision')) {
     function omoDecisionBuildProposalItemsFromDecision($decision, $minimumCount = 0)
     {
         $items = [];
-        if ($decision instanceof DecisionProcess) {
+        if ((is_object($decision) && method_exists($decision, 'getProposals'))) {
             foreach ($decision->getProposals(true) as $proposal) {
                 if (!$proposal instanceof DecisionProposal) {
                     continue;
@@ -221,7 +222,10 @@ if (!function_exists('omoDecisionEnsureMethodSharedLoaded')) {
 if (!function_exists('omoDecisionBuildMethodConfig')) {
     function omoDecisionBuildMethodConfig($decision)
     {
-        if (!$decision instanceof DecisionProcess) {
+        if (
+            !($decision instanceof DecisionProcess)
+            && !($decision instanceof DecisionGroup)
+        ) {
             return [];
         }
 
@@ -259,7 +263,10 @@ if (!function_exists('omoDecisionCanSubmitConsultationProposal')) {
             ];
         }
 
-        $config = omoDecisionBuildMethodConfig($decision);
+        $decisionGroup = ($context['decisionGroup'] ?? null) instanceof DecisionGroup
+            ? $context['decisionGroup']
+            : $decision->getPrimaryGroup(false);
+        $config = omoDecisionBuildMethodConfig($decisionGroup instanceof DecisionGroup ? $decisionGroup : $decision);
         if (empty($config['allow_consultation_proposals'])) {
             return [
                 'allowed' => false,
@@ -469,7 +476,8 @@ if (!function_exists('omoDecisionRenderConsultationProposalPublicPanel')) {
                 . '<input type="hidden" name="oid" value="' . $escape((int)($context['organizationId'] ?? 0)) . '">'
                 . '<input type="hidden" name="cid" value="' . $escape((int)($context['targetHolonId'] ?? 0)) . '">'
                 . '<input type="hidden" name="id" value="' . $escape((int)$decision->getId()) . '">'
-                . '<input type="hidden" name="method" value="' . $escape((string)$decision->get('evaluation_method')) . '">'
+                . '<input type="hidden" name="gid" value="' . $escape((int)((($context['decisionGroup'] ?? null) instanceof DecisionGroup) ? $context['decisionGroup']->getId() : 0)) . '">'
+                . '<input type="hidden" name="method" value="' . $escape((string)(((($context['decisionGroup'] ?? null) instanceof DecisionGroup) ? $context['decisionGroup']->get('evaluation_method') : $decision->get('evaluation_method')))) . '">'
                 . '<input type="hidden" name="intent" value="view">'
                 . '<input type="hidden" name="ajax" value="1">'
                 . '<input type="hidden" name="return_url" value="' . $escape($returnUrl) . '">'
@@ -621,6 +629,96 @@ if (!function_exists('omoDecisionBuildInvitationSendPopupUrl')) {
     }
 }
 
+if (!function_exists('omoDecisionSendParticipantAccessEmail')) {
+    function omoDecisionSendParticipantAccessEmail(DecisionProcess $decision, DecisionParticipant $participant, $message = '', $subject = '')
+    {
+        $recipient = $decision->getParticipantInvitationRecipientData($participant);
+        $email = trim((string)($recipient['email'] ?? ''));
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return [
+                'status' => false,
+                'message' => 'Aucune adresse e-mail valide n a ete trouvee pour ce participant.',
+            ];
+        }
+
+        require_once dirname(__DIR__, 4) . '/common/email_layout.php';
+
+        $organization = $decision->getOrganizationObject();
+        $organizationName = $organization ? trim((string)$organization->get('name')) : 'Organisation';
+        $decisionTitle = trim((string)$decision->get('title'));
+        $message = trim((string)$message);
+        if ($message === '') {
+            $message = $decision->buildPublicAccessRequestEmailMessage();
+        }
+
+        $subject = trim((string)$subject);
+        if ($subject === '') {
+            $subject = 'Acces a la prise de decision';
+            if ($decisionTitle !== '') {
+                $subject .= ' : ' . $decisionTitle;
+            }
+        }
+
+        $fromAddress = trim((string)($GLOBALS['mailUser'] ?? ''));
+        if ($fromAddress === '') {
+            $host = preg_replace('/:\d+$/', '', commonGetRootHost() ?: 'localhost');
+            $fromAddress = 'noreply@' . ($host !== '' ? $host : 'localhost');
+        }
+
+        $holon = $decision->getHolonObject();
+        $detailsItems = [];
+        if ($holon instanceof Holon) {
+            $detailsItems[] = '<li><strong>Contexte</strong>: '
+                . commonMailEscape(trim((string)$holon->getTemplateLabel(true)) . ' ' . trim((string)$holon->getDisplayName()))
+                . '</li>';
+        }
+
+        $consultationStart = DecisionProcess::normalizeDateTimeValue($decision->get('consultation_start_at'));
+        if ($consultationStart instanceof DateTimeInterface) {
+            $detailsItems[] = '<li><strong>Debut</strong>: ' . commonMailEscape($consultationStart->format('d.m.Y H:i')) . '</li>';
+        }
+
+        $consultationEnd = DecisionProcess::normalizeDateTimeValue($decision->get('consultation_end_at'));
+        if ($consultationEnd instanceof DateTimeInterface) {
+            $detailsItems[] = '<li><strong>Fin</strong>: ' . commonMailEscape($consultationEnd->format('d.m.Y H:i')) . '</li>';
+        }
+
+        $detailsHtml = count($detailsItems) > 0
+            ? '<ul style="margin:0; padding-left:18px; color:#475569; line-height:1.7;">' . implode('', $detailsItems) . '</ul>'
+            : '';
+
+        $html = commonRenderMailLayout([
+            'brand_name' => $organizationName,
+            'brand_color' => $organization ? trim((string)$organization->get('color')) : '',
+            'logo_url' => $organization ? trim((string)$organization->get('logo')) : '',
+            'banner_url' => $organization ? trim((string)$organization->get('banner')) : '',
+            'heading' => $decisionTitle !== '' ? $decisionTitle : 'Prise de decision',
+            'intro_html' => commonMailTextToHtml($message),
+            'details_html' => $detailsHtml,
+            'button_label' => 'Ouvrir la prise de decision',
+            'button_url' => $participant->getPublicAccessUrl(),
+            'footer_html' => '<p style="margin:0;">Ce message a ete envoye depuis ' . commonMailEscape($organizationName) . '.</p>',
+        ]);
+
+        $mailSent = myHTMLMail([$fromAddress, $organizationName !== '' ? $organizationName : 'Organisation'], $email, $subject, $html);
+        if (!$mailSent) {
+            return [
+                'status' => false,
+                'message' => 'Impossible d envoyer ce lien pour le moment.',
+            ];
+        }
+
+        $participant->markInvitationSent();
+
+        return [
+            'status' => true,
+            'email' => $email,
+            'display_name' => trim((string)($recipient['display_name'] ?? '')),
+            'access_url' => $participant->getPublicAccessUrl(),
+        ];
+    }
+}
+
 if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
     function omoDecisionBuildInvitationSummaryData($decision, array $context, $lang = null, array $sourceLang = [])
     {
@@ -634,6 +732,7 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
             'isPersisted' => $decision instanceof DecisionProcess && (int)$decision->getId() > 0,
             'popupUrl' => '',
             'sendPopupUrl' => '',
+            'publicUrl' => '',
             'sendEnabled' => false,
             'summary' => '',
         ];
@@ -655,6 +754,7 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
             (int)$decision->getId(),
             $method
         );
+        $data['publicUrl'] = $decision->getGenericPublicAccessUrl('view');
         $data['sendEnabled'] = count($decision->getInvitationEmailRecipients()) > 0
             && DecisionProcess::normalizeStatus($decision->get('status')) !== DecisionProcess::STATUS_DRAFT;
 
@@ -762,6 +862,15 @@ if (!function_exists('omoDecisionRenderInvitationSection')) {
                     . '>'
                         . $escape(t('decisions.invitations.send', [], $lang, $sourceLang))
                     . '</button>'
+                    . '<a'
+                        . ' class="generic-action-button generic-action-button--secondary"'
+                        . ' href="' . $escape((string)$summaryData['publicUrl']) . '"'
+                        . ' target="_blank"'
+                        . ' rel="noopener noreferrer"'
+                        . (trim((string)$summaryData['publicUrl']) === '' ? ' aria-disabled="true"' : '')
+                    . '>'
+                        . $escape('Lien public')
+                    . '</a>'
                 . '</div>'
             . '</div>'
             . '<p style="margin:0;color:var(--color-text-light,#475569);line-height:1.6;" data-omo-decision-invitations-summary>'

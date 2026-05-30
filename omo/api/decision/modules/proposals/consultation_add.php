@@ -165,10 +165,15 @@ if ($normalizedTitle === '' || isset($existingTitles[$normalizedTitle])) {
 $participant = $context['participant'] ?? null;
 $participantId = $participant ? (int)$participant->getId() : 0;
 $createdCount = 0;
+$decisionGroup = $decision->ensurePrimaryGroup();
+if (!$decisionGroup || (int)$decisionGroup->getId() <= 0) {
+    omoDecisionConsultationProposalRedirect($context, 'error');
+}
 
 $maxPosition++;
 $proposal = new DecisionProposal();
 $proposal->set('IDdecision_process', (int)$decision->getId());
+$proposal->set('IDdecision_group', (int)$decisionGroup->getId());
 $proposal->set('title', $proposalTitle);
 $proposal->set('description', $proposalDescription !== '' ? $proposalDescription : null);
 $proposal->set('info_url', $proposalInfoUrl);

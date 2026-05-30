@@ -1,6 +1,7 @@
 <?php
 
 use dbObject\DecisionProcess;
+use dbObject\DecisionGroup;
 
 $viewInput = isset($omoDecisionInput) && is_array($omoDecisionInput) ? $omoDecisionInput : $_GET;
 
@@ -145,11 +146,29 @@ $baseSourceLang = [
         'text' => 'Vous n avez pas les droits necessaires pour modifier cette prise de decision.',
         'context' => 'Error when the user cannot manage the requested decision.',
     ],
+    'decisions.edit.groups.title' => [
+        'text' => 'Groupes',
+        'context' => 'Section title for decision groups navigation.',
+    ],
+    'decisions.edit.groups.text' => [
+        'text' => 'Ajoutez plusieurs blocs de decision dans le meme processus, puis passez de l un a l autre.',
+        'context' => 'Help text for decision groups navigation.',
+    ],
+    'decisions.edit.groups.add' => [
+        'text' => 'Ajouter un groupe',
+        'context' => 'Button label to create a new decision group.',
+    ],
 ];
 
+$selectedGroup = (!empty($context['decisionGroup']) && $context['decisionGroup'] instanceof DecisionGroup)
+    ? $context['decisionGroup']
+    : null;
+$groupAction = trim((string)($viewInput['group_action'] ?? ''));
 $selectedMethod = '';
-if (!empty($context['decision']) && $context['decision'] instanceof DecisionProcess) {
+if (!($selectedGroup instanceof DecisionGroup) && !empty($context['decision']) && $context['decision'] instanceof DecisionProcess) {
     $selectedMethod = DecisionProcess::normalizeEvaluationMethod($context['decision']->get('evaluation_method'));
+} elseif ($selectedGroup instanceof DecisionGroup && !($context['decision'] instanceof DecisionProcess && $groupAction === 'create' && !isset($viewInput['method']))) {
+    $selectedMethod = DecisionProcess::normalizeEvaluationMethod($selectedGroup->get('evaluation_method'));
 } elseif (isset($viewInput['method'])) {
     $requestedMethod = trim((string)$viewInput['method']);
     if ($requestedMethod !== '' && omoDecisionGetModuleDefinition($requestedMethod)) {
@@ -199,6 +218,7 @@ $decision = $context['decision'];
 $effectiveHolon = $context['effectiveHolon'];
 $intent = (string)($context['intent'] ?? 'manage');
 $isEditing = $decision instanceof DecisionProcess;
+$decisionGroups = $isEditing ? $decision->getDecisionGroups(false) : [];
 $modeLabel = $isEditing
     ? t('decisions.edit.summary.mode_edit', [], $lang, $baseSourceLang)
     : t('decisions.edit.summary.mode_create', [], $lang, $baseSourceLang);
@@ -211,6 +231,56 @@ $selectedLabel = $selectedDefinition
     ? t((string)$selectedDefinition['label_key'], [], $lang, $baseSourceLang)
     : '';
 $showContextSummary = (($context['accessMode'] ?? '') !== 'public') && empty($context['previewLayout']);
+
+if (!function_exists('omoDecisionRenderEditorGroupSwitch')) {
+    function omoDecisionRenderEditorGroupSwitch(array $context, ?DecisionProcess $decision, ?DecisionGroup $selectedGroup, iterable $decisionGroups, array $lang, array $baseSourceLang, string $escape): void
+    {
+        if (!$decision instanceof DecisionProcess || (($context['intent'] ?? 'manage') !== 'manage')) {
+            return;
+        }
+        ?>
+        <section class="generic-soft-panel generic-soft-panel--stack omo-decision-edit__group-switch">
+            <div class="omo-decision-edit__section-head">
+                <div>
+                    <h3 class="generic-card-title generic-card-title--section"><?= $escape(t('decisions.edit.groups.title', [], $lang, $baseSourceLang)) ?></h3>
+                    <p class="omo-decision-edit__lead"><?= $escape(t('decisions.edit.groups.text', [], $lang, $baseSourceLang)) ?></p>
+                </div>
+                <a
+                    class="generic-action-button generic-action-button--secondary"
+                    href="<?= $escape(omoDecisionBuildEditorUrl((int)$context['organizationId'], (int)$context['targetHolonId'], (int)$decision->getId(), '', 'manage', 0, 'create')) ?>"
+                    data-omo-decision-editor-link
+                    data-omo-decision-editor-title="<?= $escape(t('decisions.edit.edit_title', [], $lang, $baseSourceLang)) ?>"
+                >
+                    <?= $escape(t('decisions.edit.groups.add', [], $lang, $baseSourceLang)) ?>
+                </a>
+            </div>
+            <div class="omo-decision-edit__group-tabs">
+                <?php foreach ($decisionGroups as $groupItem): ?>
+                    <?php
+                    $groupId = (int)$groupItem->getId();
+                    $groupMethodDefinition = omoDecisionGetModuleDefinition((string)$groupItem->get('evaluation_method'));
+                    $groupMethodLabel = $groupMethodDefinition
+                        ? t((string)$groupMethodDefinition['label_key'], [], $lang, $baseSourceLang)
+                        : trim((string)$groupItem->get('evaluation_method'));
+                    $groupTitle = trim((string)$groupItem->get('title'));
+                    if ($groupTitle === '') {
+                        $groupTitle = 'Bloc ' . (string)$groupItem->get('position');
+                    }
+                    ?>
+                    <a
+                        class="generic-action-button <?= $selectedGroup && (int)$selectedGroup->getId() === $groupId ? 'generic-action-button--main' : 'generic-action-button--secondary' ?>"
+                        href="<?= $escape(omoDecisionBuildEditorUrl((int)$context['organizationId'], (int)$context['targetHolonId'], (int)$decision->getId(), trim((string)$groupItem->get('evaluation_method')), 'manage', $groupId)) ?>"
+                        data-omo-decision-editor-link
+                        data-omo-decision-editor-title="<?= $escape(t('decisions.edit.edit_title', [], $lang, $baseSourceLang)) ?>"
+                    >
+                        <?= $escape($groupTitle) ?> - <?= $escape($groupMethodLabel) ?>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        </section>
+        <?php
+    }
+}
 ?>
 <div class="omo-decision-edit omo-panel-view">
     <div class="omo-panel-view__body">
@@ -250,12 +320,54 @@ $showContextSummary = (($context['accessMode'] ?? '') !== 'public') && empty($co
             </section>
             <?php endif; ?>
 
-            <?php if (!$isEditing && $selectedMethod === ''): ?>
+            <?php if (false && $isEditing && $intent === 'manage'): ?>
+            <section class="generic-soft-panel generic-soft-panel--stack omo-decision-edit__group-switch">
+                <div class="omo-decision-edit__section-head">
+                    <div>
+                        <h3 class="generic-card-title generic-card-title--section">Groupes</h3>
+                        <p class="omo-decision-edit__lead">Ajoutez plusieurs blocs de decision dans le meme processus, puis passez de l un a l autre.</p>
+                    </div>
+                    <a
+                        class="generic-action-button generic-action-button--secondary"
+                        href="<?= $escape(omoDecisionBuildEditorUrl((int)$context['organizationId'], (int)$context['targetHolonId'], (int)$decision->getId(), '', 'manage', 0, 'create')) ?>"
+                        data-omo-decision-editor-link
+                        data-omo-decision-editor-title="<?= $escape(t('decisions.edit.edit_title', [], $lang, $baseSourceLang)) ?>"
+                    >
+                        Ajouter un groupe
+                    </a>
+                </div>
+                <div class="omo-decision-edit__group-tabs">
+                    <?php foreach ($decisionGroups as $groupItem): ?>
+                        <?php
+                        $groupId = (int)$groupItem->getId();
+                        $groupMethodDefinition = omoDecisionGetModuleDefinition((string)$groupItem->get('evaluation_method'));
+                        $groupMethodLabel = $groupMethodDefinition
+                            ? t((string)$groupMethodDefinition['label_key'], [], $lang, $baseSourceLang)
+                            : trim((string)$groupItem->get('evaluation_method'));
+                        $groupTitle = trim((string)$groupItem->get('title'));
+                        if ($groupTitle === '') {
+                            $groupTitle = 'Bloc ' . (string)$groupItem->get('position');
+                        }
+                        ?>
+                        <a
+                            class="generic-action-button <?= $selectedGroup && (int)$selectedGroup->getId() === $groupId ? 'generic-action-button--main' : 'generic-action-button--secondary' ?>"
+                            href="<?= $escape(omoDecisionBuildEditorUrl((int)$context['organizationId'], (int)$context['targetHolonId'], (int)$decision->getId(), trim((string)$groupItem->get('evaluation_method')), 'manage', $groupId)) ?>"
+                            data-omo-decision-editor-link
+                            data-omo-decision-editor-title="<?= $escape(t('decisions.edit.edit_title', [], $lang, $baseSourceLang)) ?>"
+                        >
+                            <?= $escape($groupTitle) ?> · <?= $escape($groupMethodLabel) ?>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+            <?php endif; ?>
+
+            <?php if ((!$isEditing && $selectedMethod === '') || ($isEditing && $groupAction === 'create' && $selectedMethod === '')): ?>
             <section class="generic-section generic-section--stack">
                 <div class="omo-decision-edit__section-head">
                     <div>
                         <h3 class="generic-card-title generic-card-title--section"><?= $escape(t('decisions.edit.choose_title', [], $lang, $baseSourceLang)) ?></h3>
-                        <p class="omo-decision-edit__lead"><?= $escape(t('decisions.edit.choose_text', [], $lang, $baseSourceLang)) ?></p>
+                        <p class="omo-decision-edit__lead"><?= $escape($isEditing ? 'Choisissez la methode du nouveau groupe.' : t('decisions.edit.choose_text', [], $lang, $baseSourceLang)) ?></p>
                     </div>
                 </div>
 
@@ -265,8 +377,11 @@ $showContextSummary = (($context['accessMode'] ?? '') !== 'public') && empty($co
                         $methodUrl = omoDecisionBuildEditorUrl(
                             (int)$context['organizationId'],
                             (int)$context['targetHolonId'],
+                            $isEditing ? (int)$decision->getId() : 0,
+                            (string)$methodKey,
+                            'manage',
                             0,
-                            (string)$methodKey
+                            $isEditing ? 'create' : ''
                         );
                         $isAvailable = !empty($definition['available']);
                         ?>
@@ -286,7 +401,7 @@ $showContextSummary = (($context['accessMode'] ?? '') !== 'public') && empty($co
                                 class="generic-action-button generic-action-button--main omo-decision-edit__module-action"
                                 href="<?= $escape($methodUrl) ?>"
                                 data-omo-decision-editor-link
-                                data-omo-decision-editor-title="<?= $escape(t('decisions.edit.create_title', [], $lang, $baseSourceLang)) ?>"
+                                data-omo-decision-editor-title="<?= $escape($isEditing ? t('decisions.edit.edit_title', [], $lang, $baseSourceLang) : t('decisions.edit.create_title', [], $lang, $baseSourceLang)) ?>"
                             >
                                 <?= $escape(t('decisions.edit.method.open', [], $lang, $baseSourceLang)) ?>
                             </a>

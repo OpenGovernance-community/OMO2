@@ -1822,9 +1822,31 @@ CREATE TABLE IF NOT EXISTS `decision_process` (
   CONSTRAINT `fk_decision_process_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `decision_group` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDdecision_process` int(11) NOT NULL,
+  `decision_type` varchar(20) NOT NULL DEFAULT 'decision',
+  `evaluation_method` varchar(40) NOT NULL DEFAULT 'simple_vote',
+  `title` varchar(190) NOT NULL,
+  `description` mediumtext DEFAULT NULL,
+  `parameters` mediumtext DEFAULT NULL,
+  `position` int(11) NOT NULL DEFAULT 1,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_decision_group_process` (`IDdecision_process`),
+  KEY `idx_decision_group_position` (`IDdecision_process`, `position`),
+  KEY `idx_decision_group_active` (`active`),
+  KEY `idx_decision_group_type` (`decision_type`),
+  KEY `idx_decision_group_method` (`evaluation_method`),
+  CONSTRAINT `fk_decision_group_process` FOREIGN KEY (`IDdecision_process`) REFERENCES `decision_process` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `decision_proposal` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `IDdecision_process` int(11) NOT NULL,
+  `IDdecision_group` int(11) NOT NULL,
   `title` varchar(190) NOT NULL,
   `description` mediumtext DEFAULT NULL,
   `info_url` varchar(500) DEFAULT NULL,
@@ -1835,9 +1857,12 @@ CREATE TABLE IF NOT EXISTS `decision_proposal` (
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `idx_decision_proposal_process` (`IDdecision_process`),
+  KEY `idx_decision_proposal_group` (`IDdecision_group`),
   KEY `idx_decision_proposal_position` (`IDdecision_process`, `position`),
+  KEY `idx_decision_proposal_group_position` (`IDdecision_group`, `position`),
   KEY `idx_decision_proposal_active` (`active`),
-  CONSTRAINT `fk_decision_proposal_process` FOREIGN KEY (`IDdecision_process`) REFERENCES `decision_process` (`id`) ON DELETE CASCADE
+  CONSTRAINT `fk_decision_proposal_process` FOREIGN KEY (`IDdecision_process`) REFERENCES `decision_process` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_decision_proposal_group` FOREIGN KEY (`IDdecision_group`) REFERENCES `decision_group` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `decision_participant` (
@@ -1893,6 +1918,7 @@ CREATE TABLE IF NOT EXISTS `decision_invitation` (
 CREATE TABLE IF NOT EXISTS `decision_response` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `IDdecision_process` int(11) NOT NULL,
+  `IDdecision_group` int(11) NOT NULL,
   `IDdecision_participant` int(11) NOT NULL,
   `status` varchar(30) NOT NULL DEFAULT 'draft',
   `parameters` mediumtext DEFAULT NULL,
@@ -1900,15 +1926,18 @@ CREATE TABLE IF NOT EXISTS `decision_response` (
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_decision_response_participant` (`IDdecision_process`, `IDdecision_participant`),
+  UNIQUE KEY `uniq_decision_response_group_participant` (`IDdecision_group`, `IDdecision_participant`),
+  KEY `idx_decision_response_group` (`IDdecision_group`),
   KEY `idx_decision_response_status` (`status`),
   CONSTRAINT `fk_decision_response_process` FOREIGN KEY (`IDdecision_process`) REFERENCES `decision_process` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_decision_response_group` FOREIGN KEY (`IDdecision_group`) REFERENCES `decision_group` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_decision_response_participant` FOREIGN KEY (`IDdecision_participant`) REFERENCES `decision_participant` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `decision_result` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `IDdecision_process` int(11) NOT NULL,
+  `IDdecision_group` int(11) NOT NULL,
   `status` varchar(30) NOT NULL DEFAULT 'pending',
   `summary` mediumtext DEFAULT NULL,
   `parameters` mediumtext DEFAULT NULL,
@@ -1917,9 +1946,11 @@ CREATE TABLE IF NOT EXISTS `decision_result` (
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_decision_result_process` (`IDdecision_process`),
+  UNIQUE KEY `uniq_decision_result_group` (`IDdecision_group`),
+  KEY `idx_decision_result_group` (`IDdecision_group`),
   KEY `idx_decision_result_status` (`status`),
-  CONSTRAINT `fk_decision_result_process` FOREIGN KEY (`IDdecision_process`) REFERENCES `decision_process` (`id`) ON DELETE CASCADE
+  CONSTRAINT `fk_decision_result_process` FOREIGN KEY (`IDdecision_process`) REFERENCES `decision_process` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_decision_result_group` FOREIGN KEY (`IDdecision_group`) REFERENCES `decision_group` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 COMMIT;

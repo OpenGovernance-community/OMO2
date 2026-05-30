@@ -217,7 +217,17 @@ class DecisionProcess extends DbObject
         $this->set('status', self::normalizeStatus($this->get('status')));
         $this->set('evaluation_method', self::normalizeEvaluationMethod($this->get('evaluation_method')));
 
-        return parent::save();
+        $saveResult = parent::save();
+        if (empty($saveResult['status']) || (int)$this->getId() <= 0) {
+            return $saveResult;
+        }
+
+        $groups = $this->getDecisionGroups(false);
+        if (count($groups) <= 1) {
+            $this->syncPrimaryGroupFromProcess();
+        }
+
+        return $saveResult;
     }
 
     public function resolveAutomaticStatus($referenceDateTime = null)
@@ -341,13 +351,126 @@ class DecisionProcess extends DbObject
 
     public function getMethodDefinition()
     {
+        $primaryGroup = $this->getPrimaryGroup(false);
+        if ($primaryGroup instanceof \dbObject\DecisionGroup) {
+            return $primaryGroup->getMethodDefinition();
+        }
+
         $catalog = self::getEvaluationMethodCatalog();
         $method = self::normalizeEvaluationMethod($this->get('evaluation_method'));
         return isset($catalog[$method]) ? $catalog[$method] : $catalog[self::METHOD_SIMPLE_VOTE];
     }
 
+    public function getDecisionGroups($activeOnly = false)
+    {
+        $items = new \dbObject\ArrayDecisionGroup();
+        $params = [
+            'where' => [
+                ['field' => 'IDdecision_process', 'value' => (int)$this->getId()],
+            ],
+            'orderBy' => [
+                ['field' => 'position', 'dir' => 'ASC'],
+                ['field' => 'id', 'dir' => 'ASC'],
+            ],
+        ];
+
+        if ($activeOnly) {
+            $params['where'][] = ['field' => 'active', 'value' => 1];
+        }
+
+        $items->load($params);
+        return $items;
+    }
+
+    public function getPrimaryGroup($createIfMissing = false)
+    {
+        $group = \dbObject\DecisionGroup::findPrimaryByDecisionProcessId((int)$this->getId());
+        if ($group instanceof \dbObject\DecisionGroup || !$createIfMissing) {
+            return $group;
+        }
+
+        return $this->ensurePrimaryGroup();
+    }
+
+    protected function applyLegacyProcessFieldsToGroup(\dbObject\DecisionGroup $group)
+    {
+        $group->set('IDdecision_process', (int)$this->getId());
+        $group->set('decision_type', self::normalizeDecisionType($this->get('decision_type')));
+        $group->set('evaluation_method', self::normalizeEvaluationMethod($this->get('evaluation_method')));
+        $group->set('title', trim((string)$this->get('title')));
+        $group->set('description', $this->get('description'));
+        $group->set('parameters', $this->get('parameters'));
+        $group->set('position', max(1, (int)$group->get('position')));
+        $group->set('active', 1);
+    }
+
+    public function ensurePrimaryGroup()
+    {
+        if ((int)$this->getId() <= 0) {
+            return null;
+        }
+
+        $group = $this->getPrimaryGroup(false);
+        if ($group instanceof \dbObject\DecisionGroup) {
+            return $group;
+        }
+
+        $group = new \dbObject\DecisionGroup();
+        $group->set('position', 1);
+        $this->applyLegacyProcessFieldsToGroup($group);
+        $saveResult = $group->save();
+        return !empty($saveResult['status']) ? $group : null;
+    }
+
+    public function buildNextDecisionGroupTitle()
+    {
+        $groups = $this->getDecisionGroups(false);
+        return 'Bloc ' . (string)(count($groups) + 1);
+    }
+
+    public function addDecisionGroup($evaluationMethod, $decisionType = '', $title = '', $description = null)
+    {
+        if ((int)$this->getId() <= 0) {
+            return null;
+        }
+
+        $group = new \dbObject\DecisionGroup();
+        $group->set('IDdecision_process', (int)$this->getId());
+        $group->set('decision_type', self::normalizeDecisionType($decisionType !== '' ? $decisionType : $this->get('decision_type')));
+        $group->set('evaluation_method', self::normalizeEvaluationMethod($evaluationMethod));
+        $group->set('title', trim((string)$title) !== '' ? trim((string)$title) : $this->buildNextDecisionGroupTitle());
+        $group->set('description', $description);
+        $group->set('parameters', []);
+        $group->set('position', count($this->getDecisionGroups(false)) + 1);
+        $group->set('active', 1);
+        $saveResult = $group->save();
+        return !empty($saveResult['status']) ? $group : null;
+    }
+
+    public function syncPrimaryGroupFromProcess()
+    {
+        if ((int)$this->getId() <= 0) {
+            return false;
+        }
+
+        $group = $this->getPrimaryGroup(false);
+        if (!$group instanceof \dbObject\DecisionGroup) {
+            $group = new \dbObject\DecisionGroup();
+            $group->set('position', 1);
+        }
+
+        $this->applyLegacyProcessFieldsToGroup($group);
+        $saveResult = $group->save();
+        return !empty($saveResult['status']);
+    }
+
     public function getProposals($activeOnly = false)
     {
+        $primaryGroup = $this->getPrimaryGroup(false);
+        if ($primaryGroup instanceof \dbObject\DecisionGroup) {
+            return $primaryGroup->getProposals($activeOnly);
+        }
+
         $items = new \dbObject\ArrayDecisionProposal();
         $params = [
             'where' => [
@@ -411,6 +534,11 @@ class DecisionProcess extends DbObject
 
     public function getResponses($status = '')
     {
+        $primaryGroup = $this->getPrimaryGroup(false);
+        if ($primaryGroup instanceof \dbObject\DecisionGroup) {
+            return $primaryGroup->getResponses($status);
+        }
+
         $items = new \dbObject\ArrayDecisionResponse();
         $params = [
             'where' => [
@@ -433,6 +561,11 @@ class DecisionProcess extends DbObject
 
     public function getResult()
     {
+        $primaryGroup = $this->getPrimaryGroup(false);
+        if ($primaryGroup instanceof \dbObject\DecisionGroup) {
+            return $primaryGroup->getResult();
+        }
+
         return \dbObject\DecisionResult::findByDecisionProcessId((int)$this->getId());
     }
 
@@ -558,6 +691,39 @@ class DecisionProcess extends DbObject
         return \commonBuildUrl($path, $targetHost);
     }
 
+    public function getGenericPublicAccessUrl($intent = 'view')
+    {
+        $organization = $this->getOrganizationObject();
+        $organizationId = (int)$this->get('IDorganization');
+        $query = [
+            'public' => '1',
+            'oid' => $organizationId,
+            'id' => (int)$this->getId(),
+        ];
+
+        $holonId = (int)$this->get('IDholon');
+        if ($holonId > 0) {
+            $query['cid'] = $holonId;
+        }
+
+        $intent = trim((string)$intent);
+        if ($intent !== '') {
+            $query['intent'] = $intent;
+        }
+
+        $targetHost = \commonGetRequestHost();
+        if ($organization) {
+            $shortname = trim((string)$organization->get('shortname'));
+            if (\commonUseOrganizationSubdomains() && $shortname !== '') {
+                $targetHost = \commonBuildOrganizationHost($shortname, \commonGetRootHost($targetHost));
+            } else {
+                $targetHost = \commonGetRootHost($targetHost);
+            }
+        }
+
+        return \commonBuildUrl('/common/decision_participation.php?' . http_build_query($query), $targetHost);
+    }
+
     public function getInvitationEmailState()
     {
         $parameters = $this->getRootParametersArray();
@@ -607,10 +773,11 @@ class DecisionProcess extends DbObject
         return implode("\n", $messageLines);
     }
 
-    public function getInvitationEmailRecipients()
+    public function getInvitationEmailRecipients($includeOwner = false)
     {
         $organizationId = (int)$this->get('IDorganization');
         $ownerUserId = (int)$this->get('IDuser');
+        $includeOwner = (bool)$includeOwner;
         $recipients = [];
 
         foreach ($this->getParticipants(true) as $participant) {
@@ -627,7 +794,7 @@ class DecisionProcess extends DbObject
             }
 
             $userId = (int)$participant->get('IDuser');
-            if ($userId > 0 && $userId === $ownerUserId) {
+            if (!$includeOwner && $userId > 0 && $userId === $ownerUserId) {
                 continue;
             }
 
@@ -635,6 +802,7 @@ class DecisionProcess extends DbObject
             $displayName = trim((string)$participant->get('display_name'));
 
             if ($userId > 0) {
+                $user = null;
                 $membership = new \dbObject\UserOrganization();
                 if ($membership->load([
                     ['IDorganization', $organizationId],
@@ -644,10 +812,14 @@ class DecisionProcess extends DbObject
                     if ($displayName === '') {
                         $displayName = trim((string)$membership->getUserDisplayName());
                     }
-                } else {
+                }
+
+                if ($email === '' || $displayName === '') {
                     $user = new \dbObject\User();
                     if ($user->load($userId)) {
-                        $email = trim(mb_strtolower((string)$user->getScopedEmail($organizationId), 'UTF-8'));
+                        if ($email === '') {
+                            $email = trim(mb_strtolower((string)$user->getScopedEmail($organizationId), 'UTF-8'));
+                        }
                         if ($displayName === '') {
                             $firstname = trim((string)$user->get('firstname'));
                             $lastname = trim((string)$user->get('lastname'));
@@ -682,6 +854,94 @@ class DecisionProcess extends DbObject
         }
 
         return array_values($recipients);
+    }
+
+    public function getParticipantInvitationRecipientData($participant)
+    {
+        if (!($participant instanceof \dbObject\DecisionParticipant) || (int)$participant->getId() <= 0) {
+            return null;
+        }
+
+        foreach ($this->getInvitationEmailRecipients(true) as $recipient) {
+            $participantIds = array_map('intval', (array)($recipient['participant_ids'] ?? []));
+            if (!in_array((int)$participant->getId(), $participantIds, true)) {
+                continue;
+            }
+
+            return [
+                'email' => trim((string)($recipient['email'] ?? '')),
+                'display_name' => trim((string)($recipient['display_name'] ?? '')),
+                'participant_ids' => $participantIds,
+            ];
+        }
+
+        $email = trim(mb_strtolower((string)$participant->get('email'), 'UTF-8'));
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return null;
+        }
+
+        return [
+            'email' => $email,
+            'display_name' => trim((string)$participant->get('display_name')),
+            'participant_ids' => [(int)$participant->getId()],
+        ];
+    }
+
+    public function findAccessibleParticipantByEmail($email)
+    {
+        $email = trim(mb_strtolower((string)$email, 'UTF-8'));
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return null;
+        }
+
+        $syncResult = $this->syncParticipantsFromInvitations();
+        if (!is_array($syncResult) || empty($syncResult['status'])) {
+            return null;
+        }
+
+        foreach ($this->getInvitationEmailRecipients(true) as $recipient) {
+            if (trim(mb_strtolower((string)($recipient['email'] ?? ''), 'UTF-8')) !== $email) {
+                continue;
+            }
+
+            foreach ((array)($recipient['participant_ids'] ?? []) as $participantId) {
+                $participant = new \dbObject\DecisionParticipant();
+                if (!$participant->load((int)$participantId) || (int)$participant->get('active') !== 1) {
+                    continue;
+                }
+
+                $participantStatus = \dbObject\DecisionParticipant::normalizeStatus($participant->get('status'));
+                if (in_array($participantStatus, [
+                    \dbObject\DecisionParticipant::STATUS_DECLINED,
+                    \dbObject\DecisionParticipant::STATUS_REVOKED,
+                ], true)) {
+                    continue;
+                }
+
+                return $participant;
+            }
+        }
+
+        return null;
+    }
+
+    public function buildPublicAccessRequestEmailMessage()
+    {
+        $organization = $this->getOrganizationObject();
+        $organizationName = $organization ? trim((string)$organization->get('name')) : 'cette organisation';
+        $title = trim((string)$this->get('title'));
+
+        $messageLines = [
+            'Bonjour,',
+            '',
+            'Vous avez demande un acces a la prise de decision "' . ($title !== '' ? $title : 'sans titre') . '" dans ' . $organizationName . '.',
+            'Utilisez le lien ci-dessous pour ouvrir directement la page de participation.',
+            '',
+            'A bientot,',
+            $organizationName,
+        ];
+
+        return implode("\n", $messageLines);
     }
 
     public function syncParticipantsFromInvitations()

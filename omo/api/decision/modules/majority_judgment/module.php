@@ -1,6 +1,7 @@
 <?php
 
 use dbObject\DecisionProcess;
+use dbObject\DecisionGroup;
 use dbObject\DecisionResponse;
 
 require_once __DIR__ . '/shared.php';
@@ -20,8 +21,12 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleGetSourceLang')) {
             'decisions.majority_judgment.notice.responses' => ['text' => 'Au moins une reponse a deja ete soumise. Seuls le statut et les dates de fin restent ajustables.', 'context' => 'Notice shown when some schedule fields are also locked.'],
             'decisions.majority_judgment.notice.consultation_proposals' => ['text' => 'Les propositions restent ajustables pendant la consultation tant qu aucune reponse n a ete soumise.', 'context' => 'Notice shown when proposal editing remains allowed.'],
             'decisions.majority_judgment.notice.results' => ['text' => 'Ce scrutin est termine. Seule la consultation des resultats reste disponible.', 'context' => 'Notice shown when the vote is in results or archived mode.'],
-            'decisions.majority_judgment.field.title' => ['text' => 'Titre du scrutin', 'context' => 'Label for the title field.'],
-            'decisions.majority_judgment.field.description' => ['text' => 'Description', 'context' => 'Label for the description field.'],
+            'decisions.majority_judgment.field.title' => ['text' => 'Question', 'context' => 'Label for the group title field.'],
+            'decisions.majority_judgment.field.description' => ['text' => 'Description de la question', 'context' => 'Label for the group description field.'],
+            'decisions.majority_judgment.field.process_title' => ['text' => 'Titre du processus', 'context' => 'Label for the process title field.'],
+            'decisions.majority_judgment.field.process_description' => ['text' => 'Description du contexte', 'context' => 'Label for the process description field.'],
+            'decisions.majority_judgment.field.process_section' => ['text' => 'Contexte du processus', 'context' => 'Section title for process-level context fields.'],
+            'decisions.majority_judgment.field.group_section' => ['text' => 'Question de ce groupe', 'context' => 'Section title for group-level question fields.'],
             'decisions.majority_judgment.field.type' => ['text' => 'Type de prise de decision', 'context' => 'Label for the decision type field.'],
             'decisions.majority_judgment.field.status' => ['text' => 'Statut', 'context' => 'Label for the status field.'],
             'decisions.majority_judgment.field.consultation_start' => ['text' => 'Debut de consultation', 'context' => 'Label for the consultation start field.'],
@@ -59,8 +64,10 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleGetSourceLang')) {
             'decisions.majority_judgment.option.status.archived' => ['text' => 'Archivee', 'context' => 'Archived status option.'],
             'decisions.majority_judgment.option.common.yes' => ['text' => 'Oui', 'context' => 'Generic yes option label.'],
             'decisions.majority_judgment.option.common.no' => ['text' => 'Non', 'context' => 'Generic no option label.'],
-            'decisions.majority_judgment.placeholder.title' => ['text' => 'Ex. Prioriser les prochains chantiers', 'context' => 'Placeholder for the title field.'],
-            'decisions.majority_judgment.placeholder.description' => ['text' => 'Contexte, consignes, informations utiles...', 'context' => 'Placeholder for the description field.'],
+            'decisions.majority_judgment.placeholder.title' => ['text' => 'Ex. Quelle option preferez-vous ?', 'context' => 'Placeholder for the group title field.'],
+            'decisions.majority_judgment.placeholder.description' => ['text' => 'Precisez la question, les nuances et les criteres utiles...', 'context' => 'Placeholder for the group description field.'],
+            'decisions.majority_judgment.placeholder.process_title' => ['text' => 'Ex. Organisation du repas de fin d annee', 'context' => 'Placeholder for the process title field.'],
+            'decisions.majority_judgment.placeholder.process_description' => ['text' => 'Contexte global, informations communes, cadre de la consultation...', 'context' => 'Placeholder for the process description field.'],
             'decisions.majority_judgment.placeholder.proposals' => ['text' => 'Nom de la proposition', 'context' => 'Placeholder for one proposal input.'],
             'decisions.majority_judgment.placeholder.proposal_info_url' => ['text' => 'https://...', 'context' => 'Placeholder for one proposal info URL input.'],
             'decisions.majority_judgment.action.create' => ['text' => 'Creer le scrutin', 'context' => 'Submit label for a new majority judgment.'],
@@ -101,6 +108,9 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
     {
         $context = $renderContext['context'];
         $decision = $renderContext['decision'];
+        $decisionGroup = ($context['decisionGroup'] ?? null) instanceof DecisionGroup
+            ? $context['decisionGroup']
+            : ($decision instanceof DecisionProcess ? $decision->getPrimaryGroup(false) : null);
         $lang = $renderContext['lang'];
         $sourceLang = $renderContext['sourceLang'];
         $escape = $renderContext['escape'];
@@ -110,8 +120,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
         $isParticipateMode = $intent === 'participate';
         $isViewMode = !$isManageMode && !$isParticipateMode;
 
-        $decisionType = $decision instanceof DecisionProcess
-            ? DecisionProcess::normalizeDecisionType($decision->get('decision_type'))
+        $decisionType = $decisionGroup instanceof DecisionGroup
+            ? DecisionProcess::normalizeDecisionType($decisionGroup->get('decision_type'))
             : DecisionProcess::TYPE_DECISION;
         $status = $decision instanceof DecisionProcess
             ? DecisionProcess::normalizeStatus($decision->get('status'))
@@ -119,8 +129,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
 
         $proposalObjects = [];
         $proposalItems = [];
-        if ($decision instanceof DecisionProcess) {
-            foreach ($decision->getProposals(true) as $proposal) {
+        if ($decisionGroup instanceof DecisionGroup) {
+            foreach ($decisionGroup->getProposals(true) as $proposal) {
                 $proposalObjects[] = $proposal;
                 $proposalItems[] = [
                     'title' => trim((string)$proposal->get('title')),
@@ -139,8 +149,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
             $proposalItems[] = ['title' => '', 'description' => null, 'info_url' => null];
         }
 
-        $config = $decision instanceof DecisionProcess
-            ? omoDecisionMajorityJudgmentBuildConfig($decision)
+        $config = $decisionGroup instanceof DecisionGroup
+            ? omoDecisionMajorityJudgmentBuildConfig($decisionGroup)
             : omoDecisionMajorityJudgmentBuildConfig([]);
         $isAnonymous = !empty($config['is_anonymous']);
         $allowConsultationProposals = !empty($config['allow_consultation_proposals']);
@@ -162,14 +172,14 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
         $selectedResponse = null;
         $selectedScores = [];
         if ($decision instanceof DecisionProcess && $participant && (int)$participant->getId() > 0) {
-            $selectedResponse = DecisionResponse::findByDecisionAndParticipant((int)$decision->getId(), (int)$participant->getId());
+            $selectedResponse = DecisionResponse::findByDecisionAndParticipant((int)$decision->getId(), (int)$participant->getId(), $decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->getId() : 0);
             $selectedScores = omoDecisionMajorityJudgmentExtractScores($selectedResponse);
         }
 
         $submittedResponses = [];
         $submittedVoteCount = 0;
         if ($decision instanceof DecisionProcess) {
-            foreach ($decision->getResponses(DecisionResponse::STATUS_SUBMITTED) as $submittedResponse) {
+            foreach (($decisionGroup instanceof DecisionGroup ? $decisionGroup->getResponses(DecisionResponse::STATUS_SUBMITTED) : $decision->getResponses(DecisionResponse::STATUS_SUBMITTED)) as $submittedResponse) {
                 $submittedResponses[] = $submittedResponse;
                 $submittedVoteCount++;
             }
@@ -282,24 +292,24 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                     <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
                     <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                     <input type="hidden" name="id" value="<?= $escape($decision instanceof DecisionProcess ? (int)$decision->getId() : 0) ?>">
+                    <input type="hidden" name="gid" value="<?= $escape($decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->getId() : 0) ?>">
                     <input type="hidden" name="intent" value="manage">
                     <?= omoDecisionRenderPublicTokenInput($context, $escape) ?>
                     <input type="hidden" name="evaluation_method" value="<?= $escape(DecisionProcess::METHOD_MAJORITY_JUDGMENT) ?>">
 
+                    <div class="generic-card-title"><?= $escape(t('decisions.majority_judgment.field.process_section', [], $lang, $sourceLang)) ?></div>
+
+                    <label class="omo-decision-majority-judgment__field">
+                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.process_title', [], $lang, $sourceLang)) ?></span>
+                        <input type="text" name="process_title" class="generic-form-control" required maxlength="190" value="<?= $escape($decision instanceof DecisionProcess ? trim((string)$decision->get('title')) : '') ?>" placeholder="<?= $escape(t('decisions.majority_judgment.placeholder.process_title', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'disabled' ?>>
+                    </label>
+
+                    <label class="omo-decision-majority-judgment__field">
+                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.process_description', [], $lang, $sourceLang)) ?></span>
+                        <textarea name="process_description" class="generic-form-control omo-decision-majority-judgment__textarea" rows="3" placeholder="<?= $escape(t('decisions.majority_judgment.placeholder.process_description', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'disabled' ?>><?= $escape($decision instanceof DecisionProcess ? trim((string)$decision->get('description')) : '') ?></textarea>
+                    </label>
+
                     <div class="omo-decision-majority-judgment__grid">
-                        <label class="omo-decision-majority-judgment__field">
-                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.title', [], $lang, $sourceLang)) ?></span>
-                            <input type="text" name="title" class="generic-form-control" required maxlength="190" value="<?= $escape($decision instanceof DecisionProcess ? trim((string)$decision->get('title')) : '') ?>" placeholder="<?= $escape(t('decisions.majority_judgment.placeholder.title', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'disabled' ?>>
-                        </label>
-
-                        <label class="omo-decision-majority-judgment__field">
-                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.type', [], $lang, $sourceLang)) ?></span>
-                            <select name="decision_type" class="generic-form-control" <?= $canEditStructure ? '' : 'disabled' ?>>
-                                <option value="<?= $escape(DecisionProcess::TYPE_DECISION) ?>"<?= $decisionType === DecisionProcess::TYPE_DECISION ? ' selected' : '' ?>><?= $escape(t('decisions.majority_judgment.option.type.decision', [], $lang, $sourceLang)) ?></option>
-                                <option value="<?= $escape(DecisionProcess::TYPE_CONSULTATION) ?>"<?= $decisionType === DecisionProcess::TYPE_CONSULTATION ? ' selected' : '' ?>><?= $escape(t('decisions.majority_judgment.option.type.consultation', [], $lang, $sourceLang)) ?></option>
-                            </select>
-                        </label>
-
                         <label class="omo-decision-majority-judgment__field">
                             <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.status', [], $lang, $sourceLang)) ?></span>
                             <select name="status" class="generic-form-control" <?= $isEditable ? '' : 'disabled' ?>>
@@ -337,10 +347,31 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         </label>
                     </div>
 
+                    <?php if (function_exists('omoDecisionRenderEditorGroupSwitch')) {
+                        omoDecisionRenderEditorGroupSwitch($context, $decision instanceof DecisionProcess ? $decision : null, $decisionGroup instanceof DecisionGroup ? $decisionGroup : null, $decision instanceof DecisionProcess ? $decision->getDecisionGroups(false) : [], $lang, $sourceLang, $escape);
+                    } ?>
+
+                    <div class="generic-card-title"><?= $escape(t('decisions.majority_judgment.field.group_section', [], $lang, $sourceLang)) ?></div>
+
+                    <label class="omo-decision-majority-judgment__field">
+                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.title', [], $lang, $sourceLang)) ?></span>
+                        <input type="text" name="title" class="generic-form-control" required maxlength="190" value="<?= $escape($decisionGroup instanceof DecisionGroup ? trim((string)$decisionGroup->get('title')) : '') ?>" placeholder="<?= $escape(t('decisions.majority_judgment.placeholder.title', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'disabled' ?>>
+                    </label>
+
                     <label class="omo-decision-majority-judgment__field">
                         <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.description', [], $lang, $sourceLang)) ?></span>
-                        <textarea name="description" class="generic-form-control omo-decision-majority-judgment__textarea" rows="4" placeholder="<?= $escape(t('decisions.majority_judgment.placeholder.description', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'disabled' ?>><?= $escape($decision instanceof DecisionProcess ? trim((string)$decision->get('description')) : '') ?></textarea>
+                        <textarea name="description" class="generic-form-control omo-decision-majority-judgment__textarea" rows="4" placeholder="<?= $escape(t('decisions.majority_judgment.placeholder.description', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'disabled' ?>><?= $escape($decisionGroup instanceof DecisionGroup ? trim((string)$decisionGroup->get('description')) : '') ?></textarea>
                     </label>
+
+                    <div class="omo-decision-majority-judgment__grid">
+                        <label class="omo-decision-majority-judgment__field">
+                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.type', [], $lang, $sourceLang)) ?></span>
+                            <select name="decision_type" class="generic-form-control" <?= $canEditStructure ? '' : 'disabled' ?>>
+                                <option value="<?= $escape(DecisionProcess::TYPE_DECISION) ?>"<?= $decisionType === DecisionProcess::TYPE_DECISION ? ' selected' : '' ?>><?= $escape(t('decisions.majority_judgment.option.type.decision', [], $lang, $sourceLang)) ?></option>
+                                <option value="<?= $escape(DecisionProcess::TYPE_CONSULTATION) ?>"<?= $decisionType === DecisionProcess::TYPE_CONSULTATION ? ' selected' : '' ?>><?= $escape(t('decisions.majority_judgment.option.type.consultation', [], $lang, $sourceLang)) ?></option>
+                            </select>
+                        </label>
+                    </div>
 
                     <div class="generic-soft-panel generic-soft-panel--stack omo-decision-majority-judgment__settings-summary">
                         <input type="hidden" name="is_anonymous" value="<?= $isAnonymous ? '1' : '' ?>" data-omo-decision-mj-hidden-anonymous>
@@ -453,6 +484,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                     <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
                     <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                     <input type="hidden" name="id" value="<?= $escape($decision instanceof DecisionProcess ? (int)$decision->getId() : 0) ?>">
+                    <input type="hidden" name="gid" value="<?= $escape($decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->getId() : 0) ?>">
+                    <input type="hidden" name="method" value="<?= $escape(DecisionProcess::METHOD_MAJORITY_JUDGMENT) ?>">
                     <input type="hidden" name="intent" value="participate">
                     <?= omoDecisionRenderPublicTokenInput($context, $escape) ?>
 

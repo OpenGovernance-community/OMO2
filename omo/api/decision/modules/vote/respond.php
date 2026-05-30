@@ -4,6 +4,7 @@ require_once dirname(__DIR__) . '/context.php';
 require_once __DIR__ . '/shared.php';
 
 use dbObject\DecisionParticipant;
+use dbObject\DecisionGroup;
 use dbObject\DecisionProcess;
 use dbObject\DecisionResponse;
 
@@ -54,14 +55,27 @@ if (!$decision instanceof DecisionProcess || !$participant || (int)$participant-
     ]);
 }
 
-if (DecisionProcess::normalizeEvaluationMethod($decision->get('evaluation_method')) !== DecisionProcess::METHOD_SIMPLE_VOTE) {
+$decisionGroup = ($context['decisionGroup'] ?? null) instanceof DecisionGroup
+    ? $context['decisionGroup']
+    : $decision->getPrimaryGroup(false);
+if (!$decisionGroup instanceof DecisionGroup && $decision instanceof DecisionProcess) {
+    $decisionGroup = $decision->ensurePrimaryGroup();
+}
+if (!$decisionGroup || (int)$decisionGroup->getId() <= 0) {
+    omoDecisionModuleJsonResponse(500, [
+        'status' => false,
+        'message' => 'Impossible de preparer le groupe de participation.',
+    ]);
+}
+
+if (DecisionProcess::normalizeEvaluationMethod($decisionGroup->get('evaluation_method')) !== DecisionProcess::METHOD_SIMPLE_VOTE) {
     omoDecisionModuleJsonResponse(400, [
         'status' => false,
         'message' => 'Ce scrutin n utilise pas le vote simple.',
     ]);
 }
 
-$voteConfig = omoDecisionVoteBuildConfig($decision->get('parameters'));
+$voteConfig = omoDecisionVoteBuildConfig($decisionGroup);
 $choiceMode = (string)$voteConfig['choice_mode'];
 $maxChoices = (int)$voteConfig['max_choices'];
 $proposalIds = [];
@@ -98,7 +112,7 @@ if ($choiceMode === 'multiple' && $maxChoices > 0 && count($proposalIds) > $maxC
 $selectedTitles = [];
 $selectedPositions = [];
 $matchedProposalIds = [];
-foreach ($decision->getProposals(true) as $proposal) {
+foreach ($decisionGroup->getProposals(true) as $proposal) {
     $proposalId = (int)$proposal->getId();
     if (!isset($proposalIds[$proposalId])) {
         continue;
@@ -116,10 +130,11 @@ if (count($matchedProposalIds) !== count($proposalIds)) {
     ]);
 }
 
-$response = DecisionResponse::findByDecisionAndParticipant((int)$decision->getId(), (int)$participant->getId());
+$response = DecisionResponse::findByDecisionAndParticipant((int)$decision->getId(), (int)$participant->getId(), (int)$decisionGroup->getId());
 if (!$response) {
     $response = new DecisionResponse();
     $response->set('IDdecision_process', (int)$decision->getId());
+    $response->set('IDdecision_group', (int)$decisionGroup->getId());
     $response->set('IDdecision_participant', (int)$participant->getId());
 }
 

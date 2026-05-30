@@ -1,6 +1,7 @@
 <?php
 
 use dbObject\DecisionProcess;
+use dbObject\DecisionGroup;
 use dbObject\DecisionParticipant;
 use dbObject\Holon;
 use dbObject\Organization;
@@ -9,7 +10,7 @@ use dbObject\User;
 require_once __DIR__ . '/public_access.php';
 
 if (!function_exists('omoDecisionBuildEditorUrl')) {
-    function omoDecisionBuildEditorUrl($organizationId, $holonId = 0, $decisionId = 0, $method = '', $intent = '')
+    function omoDecisionBuildEditorUrl($organizationId, $holonId = 0, $decisionId = 0, $method = '', $intent = '', $decisionGroupId = 0, $groupAction = '')
     {
         $query = [
             'oid' => (int)$organizationId,
@@ -23,6 +24,10 @@ if (!function_exists('omoDecisionBuildEditorUrl')) {
             $query['id'] = (int)$decisionId;
         }
 
+        if ((int)$decisionGroupId > 0) {
+            $query['gid'] = (int)$decisionGroupId;
+        }
+
         $method = trim((string)$method);
         if ($method !== '') {
             $query['method'] = $method;
@@ -31,6 +36,11 @@ if (!function_exists('omoDecisionBuildEditorUrl')) {
         $intent = trim((string)$intent);
         if ($intent !== '') {
             $query['intent'] = $intent;
+        }
+
+        $groupAction = trim((string)$groupAction);
+        if ($groupAction !== '') {
+            $query['group_action'] = $groupAction;
         }
 
         return '/omo/api/decision/edit.php?' . http_build_query($query);
@@ -53,8 +63,13 @@ if (!function_exists('omoDecisionBuildContextualEditorUrl')) {
             (int)($context['organizationId'] ?? 0),
             (int)($context['targetHolonId'] ?? 0),
             (int)($context['decisionId'] ?? 0),
-            trim((string)(($context['decision'] instanceof DecisionProcess) ? $context['decision']->get('evaluation_method') : ($context['method'] ?? ''))),
-            $intent
+            trim((string)(
+                (($context['decisionGroup'] ?? null) instanceof DecisionGroup)
+                    ? $context['decisionGroup']->get('evaluation_method')
+                    : ((($context['decision'] ?? null) instanceof DecisionProcess) ? $context['decision']->get('evaluation_method') : ($context['method'] ?? ''))
+            )),
+            $intent,
+            (int)($context['decisionGroupId'] ?? 0)
         );
     }
 }
@@ -139,6 +154,7 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
             }
 
             $effectiveHolon = $decisionHolon ?: $currentHolon;
+            $decisionGroup = $decision->getPrimaryGroup(true);
             $requestedIntent = isset($input['intent']) ? trim((string)$input['intent']) : '';
             $participantStatus = DecisionParticipant::normalizeStatus($participant->get('status'));
             $hasParticipation = (int)$participant->get('active') === 1
@@ -180,12 +196,14 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
                 'requestedHolonId' => $effectiveHolon ? (int)$effectiveHolon->getId() : 0,
                 'targetHolonId' => $effectiveHolon ? (int)$effectiveHolon->getId() : 0,
                 'decisionId' => (int)$decision->getId(),
+                'decisionGroupId' => $decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->getId() : 0,
                 'currentUserId' => 0,
                 'organization' => $organization,
                 'currentHolon' => $currentHolon,
                 'decisionHolon' => $decisionHolon,
                 'effectiveHolon' => $effectiveHolon,
                 'decision' => $decision,
+                'decisionGroup' => $decisionGroup,
                 'participant' => $participant,
                 'currentUserEmail' => trim((string)$participant->get('email')),
                 'intent' => $intent,
@@ -201,11 +219,16 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
         $organizationId = isset($input['oid']) ? (int)$input['oid'] : (int)($_SESSION['currentOrganization'] ?? 0);
         $requestedHolonId = isset($input['cid']) ? (int)$input['cid'] : 0;
         $decisionId = isset($input['id']) ? (int)$input['id'] : 0;
+        $decisionGroupId = isset($input['gid']) ? (int)$input['gid'] : 0;
         $requestedIntent = isset($input['intent']) ? trim((string)$input['intent']) : '';
         $currentUserId = function_exists('commonGetCurrentUserId')
             ? (int)commonGetCurrentUserId()
             : (int)($_SESSION['currentUser'] ?? 0);
         $currentUserEmail = '';
+
+        if (!empty($input['public'])) {
+            return omoDecisionResolveGenericPublicContext($input);
+        }
 
         $organization = new Organization();
         if ($organizationId <= 0) {
@@ -270,6 +293,7 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
         }
 
         $decision = null;
+        $decisionGroup = null;
         $decisionHolon = null;
         $participant = null;
         $hasParticipation = false;
@@ -331,6 +355,23 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
                         DecisionParticipant::STATUS_REVOKED,
                     ], true);
             }
+
+            $decisionGroup = $decision->getPrimaryGroup(true);
+            if ($decisionGroupId > 0) {
+                $candidateGroup = new DecisionGroup();
+                if (
+                    !$candidateGroup->load($decisionGroupId)
+                    || (int)$candidateGroup->get('IDdecision_process') !== (int)$decision->getId()
+                ) {
+                    return [
+                        'status' => false,
+                        'code' => 404,
+                        'error_key' => 'decisions.edit.context.decision_not_found',
+                    ];
+                }
+                $decisionGroup = $candidateGroup;
+            }
+            $decisionGroupId = $decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->getId() : 0;
         }
 
         $effectiveHolon = $decisionHolon ?: $currentHolon;
@@ -410,12 +451,14 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
             'requestedHolonId' => $requestedHolonId,
             'targetHolonId' => $effectiveHolon ? (int)$effectiveHolon->getId() : 0,
             'decisionId' => $decisionId,
+            'decisionGroupId' => $decisionGroupId,
             'currentUserId' => $currentUserId,
             'organization' => $organization,
             'currentHolon' => $currentHolon,
             'decisionHolon' => $decisionHolon,
             'effectiveHolon' => $effectiveHolon,
             'decision' => $decision,
+            'decisionGroup' => $decisionGroup,
             'participant' => $participant,
             'currentUserEmail' => $currentUserEmail,
             'intent' => $intent,

@@ -35,7 +35,7 @@ if (!function_exists('omoDecisionConsentNormalizeChoice')) {
 if (!function_exists('omoDecisionConsentBuildConfig')) {
     function omoDecisionConsentBuildConfig($decisionOrParameters)
     {
-        $parameters = $decisionOrParameters instanceof DecisionProcess
+        $parameters = is_object($decisionOrParameters) && method_exists($decisionOrParameters, 'get')
             ? omoDecisionModuleDecodeParameters($decisionOrParameters->get('parameters'))
             : omoDecisionModuleDecodeParameters($decisionOrParameters);
         $methodParameters = omoDecisionModuleGetMethodParameters($parameters, omoDecisionConsentGetMethodKey());

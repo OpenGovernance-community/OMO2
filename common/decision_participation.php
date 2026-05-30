@@ -9,6 +9,7 @@ require_once dirname(__DIR__) . '/omo/api/decision/modules/common.php';
 
 use dbObject\DecisionParticipant;
 use dbObject\DecisionInvitation;
+use dbObject\DecisionGroup;
 use dbObject\DecisionProcess;
 use dbObject\Holon;
 
@@ -52,6 +53,54 @@ function commonDecisionParticipationFormatDateTime($value)
     }
 
     return $dateTime->format('d.m.Y H:i');
+}
+
+function commonDecisionParticipationGetRenderableGroups(DecisionProcess $decision)
+{
+    $groups = [];
+    foreach ($decision->getDecisionGroups(false) as $group) {
+        if (!($group instanceof DecisionGroup)) {
+            continue;
+        }
+
+        if ((int)$group->get('active') !== 1) {
+            continue;
+        }
+
+        $groups[] = $group;
+    }
+
+    if (count($groups) === 0) {
+        $primaryGroup = $decision->getPrimaryGroup(false);
+        if ($primaryGroup instanceof DecisionGroup) {
+            $groups[] = $primaryGroup;
+        }
+    }
+
+    return $groups;
+}
+
+function commonDecisionParticipationGetMethodLabel($method)
+{
+    $method = DecisionProcess::normalizeEvaluationMethod($method);
+    if ($method === DecisionProcess::METHOD_SIMPLE_VOTE) {
+        return 'Vote simple';
+    }
+    if ($method === DecisionProcess::METHOD_MAJORITY_JUDGMENT) {
+        return 'Jugement majoritaire';
+    }
+    if ($method === DecisionProcess::METHOD_CONSENT) {
+        return 'Consentement';
+    }
+
+    return 'Mode de decision';
+}
+
+function commonDecisionParticipationGetDecisionTypeLabel($decisionType)
+{
+    return trim((string)$decisionType) === DecisionProcess::TYPE_CONSULTATION
+        ? 'consultation'
+        : 'decision';
 }
 
 function commonDecisionParticipationGetTimelineDates(DecisionProcess $decision)
@@ -281,24 +330,30 @@ function commonDecisionParticipationBuildOrganizerData($decision, $organization,
 function commonDecisionParticipationBuildMethodSummary($decision)
 {
     if (!$decision instanceof DecisionProcess) {
-        return '';
+        return [
+            'label' => 'Methode',
+            'value' => '',
+        ];
     }
 
-    $method = DecisionProcess::normalizeEvaluationMethod($decision->get('evaluation_method'));
-    $decisionType = trim((string)$decision->get('decision_type')) === DecisionProcess::TYPE_CONSULTATION
-        ? 'consultation uniquement'
-        : 'decision';
-
-    $label = 'Mode de decision';
-    if ($method === DecisionProcess::METHOD_SIMPLE_VOTE) {
-        $label = 'Vote simple';
-    } elseif ($method === DecisionProcess::METHOD_MAJORITY_JUDGMENT) {
-        $label = 'Jugement majoritaire';
-    } elseif ($method === DecisionProcess::METHOD_CONSENT) {
-        $label = 'Consentement';
+    $groups = commonDecisionParticipationGetRenderableGroups($decision);
+    if (count($groups) === 0) {
+        return [
+            'label' => 'Methode',
+            'value' => '',
+        ];
     }
 
-    return $label . ' pour ' . $decisionType;
+    $parts = [];
+    foreach ($groups as $group) {
+        $parts[] = commonDecisionParticipationGetMethodLabel($group->get('evaluation_method'))
+            . ' (' . commonDecisionParticipationGetDecisionTypeLabel($group->get('decision_type')) . ')';
+    }
+
+    return [
+        'label' => count($parts) > 1 ? 'Methodes' : 'Methode',
+        'value' => implode(' / ', array_values(array_unique($parts))),
+    ];
 }
 
 function commonDecisionParticipationBuildInvitationSummary($decision, $organization, array $context)
@@ -367,13 +422,10 @@ function commonDecisionParticipationBuildOptionLines($decision, array $context)
         return [];
     }
 
-    $config = omoDecisionBuildMethodConfig($decision);
+    $groups = commonDecisionParticipationGetRenderableGroups($decision);
     $lines = [];
-    $lines[] = !empty($config['is_anonymous'])
-        ? 'Ce sondage est anonyme'
-        : 'Ce sondage n est pas anonyme';
-
     $status = DecisionProcess::normalizeStatus($decision->get('status'));
+
     if ($status === DecisionProcess::STATUS_RESULTS || $status === DecisionProcess::STATUS_ARCHIVED) {
         $lines[] = 'Vos reponses ne sont plus modifiables';
     } else {
@@ -386,7 +438,106 @@ function commonDecisionParticipationBuildOptionLines($decision, array $context)
         $lines[] = 'Les resultats sont visibles';
     }
 
+    $anonymousFlags = [];
+    foreach ($groups as $group) {
+        $config = omoDecisionBuildMethodConfig($group);
+        if (array_key_exists('is_anonymous', $config)) {
+            $anonymousFlags[] = !empty($config['is_anonymous']);
+        }
+    }
+
+    if (count($anonymousFlags) > 0) {
+        $uniqueFlags = array_values(array_unique($anonymousFlags));
+        if (count($uniqueFlags) === 1) {
+            $lines[] = $uniqueFlags[0]
+                ? 'Ce sondage est anonyme'
+                : 'Ce sondage n est pas anonyme';
+        } else {
+            $lines[] = 'Le caractere anonyme peut varier selon les blocs';
+        }
+    }
+
     return $lines;
+}
+
+function commonDecisionParticipationRenderGroupBlocks(DecisionProcess $decision, array $context)
+{
+    $groups = commonDecisionParticipationGetRenderableGroups($decision);
+    if (count($groups) === 0) {
+        return '';
+    }
+
+    $registry = omoDecisionGetModuleRegistry();
+    ob_start();
+    ?>
+    <div class="decision-public-groups">
+        <?php foreach ($groups as $groupIndex => $group): ?>
+            <?php
+            $method = DecisionProcess::normalizeEvaluationMethod($group->get('evaluation_method'));
+            $definition = $registry[$method] ?? null;
+            $groupTitle = trim((string)$group->get('title'));
+            if ($groupTitle === '') {
+                $groupTitle = 'Bloc ' . (string)($groupIndex + 1);
+            }
+            $groupDescription = trim((string)$group->get('description'));
+            $groupContext = $context;
+            $groupContext['decisionGroup'] = $group;
+            $groupContext['decisionGroupId'] = (int)$group->getId();
+            $groupContext['method'] = $method;
+            ?>
+            <section class="generic-section generic-section--stack decision-public-group">
+                <div class="generic-soft-panel generic-soft-panel--stack decision-public-group__header">
+                    <div class="decision-public-group__header-top">
+                        <span class="decision-public-group__badge">
+                            Bloc <?= omoApiEscape((string)($groupIndex + 1)) ?> · <?= omoApiEscape(commonDecisionParticipationGetMethodLabel($method)) ?> · <?= omoApiEscape(commonDecisionParticipationGetDecisionTypeLabel($group->get('decision_type'))) ?>
+                        </span>
+                    </div>
+                    <h2 class="decision-public-group__title"><?= omoApiEscape($groupTitle) ?></h2>
+                    <?php if ($groupDescription !== ''): ?>
+                    <p class="decision-public-group__description"><?= nl2br(omoApiEscape($groupDescription)) ?></p>
+                    <?php endif; ?>
+                </div>
+
+                <?php if ($definition && !empty($definition['render_function'])): ?>
+                    <?php
+                    if (!empty($definition['shared_file']) && is_file((string)$definition['shared_file'])) {
+                        require_once (string)$definition['shared_file'];
+                    }
+                    if (!empty($definition['editor_file']) && is_file((string)$definition['editor_file'])) {
+                        require_once (string)$definition['editor_file'];
+                    }
+
+                    $groupSourceLang = [];
+                    $sourceLangFunction = (string)($definition['source_lang_function'] ?? '');
+                    if ($sourceLangFunction !== '' && function_exists($sourceLangFunction)) {
+                        $groupSourceLang = $sourceLangFunction();
+                    }
+                    $groupLang = omoLoadTranslationBundle('omo_decision_group_' . $method, $groupSourceLang);
+                    $renderFunction = (string)$definition['render_function'];
+                    if (function_exists($renderFunction)) {
+                        $renderFunction([
+                            'context' => $groupContext,
+                            'decision' => $decision,
+                            'organization' => $context['organization'] ?? null,
+                            'effectiveHolon' => $context['effectiveHolon'] ?? null,
+                            'lang' => $groupLang,
+                            'sourceLang' => $groupSourceLang,
+                            'escape' => 'omoApiEscape',
+                            'selectedMethod' => $method,
+                        ]);
+                    }
+                    ?>
+                <?php else: ?>
+                <div class="generic-soft-panel generic-soft-panel--stack">
+                    <p style="margin:0;line-height:1.6;">Ce bloc n a pas encore d interface disponible.</p>
+                </div>
+                <?php endif; ?>
+            </section>
+        <?php endforeach; ?>
+    </div>
+    <?php
+
+    return (string)ob_get_clean();
 }
 
 function commonDecisionParticipationBuildTimelineData(array $items, ?DecisionProcess $decision = null)
@@ -598,6 +749,47 @@ $participant = !empty($context['participant']) && $context['participant'] instan
     ? $context['participant']
     : null;
 $organization = !empty($context['organization']) ? $context['organization'] : null;
+$requiresPublicAccessEmail = (($context['accessMode'] ?? '') === 'public_request');
+
+if ($requiresPublicAccessEmail && (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST')) {
+    header('Content-Type: application/json; charset=UTF-8');
+
+    if (!$decision instanceof DecisionProcess) {
+        omoDecisionModuleJsonResponse(404, [
+            'status' => false,
+            'message' => 'Cette prise de decision est introuvable.',
+        ]);
+    }
+
+    $requestedEmail = trim((string)($_POST['email'] ?? ''));
+    if ($requestedEmail === '' || !filter_var($requestedEmail, FILTER_VALIDATE_EMAIL)) {
+        omoDecisionModuleJsonResponse(422, [
+            'status' => false,
+            'message' => 'Merci de saisir une adresse e-mail valide.',
+        ]);
+    }
+
+    $participantForEmail = $decision->findAccessibleParticipantByEmail($requestedEmail);
+    if (!($participantForEmail instanceof DecisionParticipant)) {
+        omoDecisionModuleJsonResponse(403, [
+            'status' => false,
+            'message' => 'Cette adresse e-mail ne fait pas partie des personnes invitees a ce scrutin.',
+        ]);
+    }
+
+    $sendResult = omoDecisionSendParticipantAccessEmail($decision, $participantForEmail);
+    if (empty($sendResult['status'])) {
+        omoDecisionModuleJsonResponse(500, [
+            'status' => false,
+            'message' => trim((string)($sendResult['message'] ?? 'Impossible d envoyer le lien d acces pour le moment.')),
+        ]);
+    }
+
+    omoDecisionModuleJsonResponse(200, [
+        'status' => true,
+        'message' => 'Un lien personnel vient d etre envoye a ' . trim((string)($sendResult['email'] ?? $requestedEmail)) . '.',
+    ]);
+}
 
 if ((($context['accessMode'] ?? '') === 'public') && $participant instanceof DecisionParticipant) {
     $openedAt = $participant->get('invitation_opened_at');
@@ -613,6 +805,7 @@ $organizationName = $organization ? trim((string)$organization->get('name')) : '
 $decisionTitle = $decision ? trim((string)$decision->get('title')) : 'Prise de decision';
 $participantLabel = $participant ? trim((string)$participant->getIdentityLabel()) : '';
 $accentColor = $organization ? trim((string)$organization->get('color')) : '';
+$decisionGroups = $decision ? commonDecisionParticipationGetRenderableGroups($decision) : [];
 $timelineItems = $decision ? commonDecisionParticipationBuildTimelineItems($decision) : [];
 $timelineData = commonDecisionParticipationBuildTimelineData($timelineItems, $decision);
 $timelineSegments = $decision ? commonDecisionParticipationBuildTimelineSegments($decision, $timelineData) : [];
@@ -628,9 +821,13 @@ $invitationSummary = commonDecisionParticipationBuildInvitationSummary($decision
 $optionLines = commonDecisionParticipationBuildOptionLines($decision, $context);
 $statusCopy = 'Ce lien ne permet pas d acceder a cette prise de decision.';
 if (!empty($context['status'])) {
-    $statusCopy = !empty($context['canParticipate'])
-        ? 'Vous pouvez participer a ce scrutin depuis cette page publique.'
-        : 'Vous pouvez consulter ce scrutin depuis cette page publique.';
+    if ($requiresPublicAccessEmail) {
+        $statusCopy = 'Entrez votre adresse e-mail pour recevoir votre lien personnel de participation.';
+    } else {
+        $statusCopy = !empty($context['canParticipate'])
+            ? 'Vous pouvez participer a ce scrutin depuis cette page publique.'
+            : 'Vous pouvez consulter ce scrutin depuis cette page publique.';
+    }
 }
 
 if (empty($context['status'])) {
@@ -978,12 +1175,89 @@ if (empty($context['status'])) {
             gap: 16px;
         }
 
+        .decision-public-access-request {
+            display: grid;
+            gap: 14px;
+        }
+
+        .decision-public-access-request__text {
+            margin: 0;
+            color: var(--color-text-light, #475569);
+            line-height: 1.6;
+        }
+
+        .decision-public-access-request__form {
+            display: grid;
+            gap: 12px;
+        }
+
+        .decision-public-access-request__actions {
+            display: flex;
+            justify-content: flex-start;
+        }
+
+        .decision-public-access-request__feedback {
+            min-height: 22px;
+            font-weight: 600;
+            color: var(--decision-public-danger);
+        }
+
+        .decision-public-access-request__feedback.is-success {
+            color: var(--decision-public-success);
+        }
+
         .decision-public-content .omo-panel-view__body {
             padding: 0;
         }
 
         .decision-public-content .omo-panel-view__body_content {
             padding: 0;
+        }
+
+        .decision-public-groups {
+            display: grid;
+            gap: 18px;
+        }
+
+        .decision-public-group {
+            gap: 14px;
+        }
+
+        .decision-public-group__header {
+            gap: 10px;
+        }
+
+        .decision-public-group__header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .decision-public-group__badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--decision-public-accent) 10%, var(--color-surface, #ffffff));
+            color: var(--color-text-light, #475569);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .decision-public-group__title {
+            margin: 0;
+            font-size: clamp(22px, 3vw, 30px);
+            line-height: 1.15;
+            color: var(--color-text, #0f172a);
+        }
+
+        .decision-public-group__description {
+            margin: 0;
+            color: var(--color-text-light, #475569);
+            line-height: 1.7;
         }
 
         .decision-public-status {
@@ -1038,7 +1312,6 @@ if (empty($context['status'])) {
             <p class="decision-public-status"><?= omoApiEscape($statusCopy) ?></p>
         </section>
 
-        <?php if (count($timelineData['items']) > 0): ?>
         <section class="generic-section generic-section--stack generic-accordion--card generic-accordion--collapsible is-collapsed decision-public-timeline-accordion" data-decision-public-timeline>
             <button
                 type="button"
@@ -1054,6 +1327,7 @@ if (empty($context['status'])) {
             </button>
             <div class="generic-accordion__content">
                 <div class="generic-accordion__content-inner">
+                    <?php if (count($timelineData['items']) > 0): ?>
                     <div class="decision-public-timeline">
                         <div class="decision-public-timeline-axis">
                             <?php foreach ($timelineSegments as $timelineSegment): ?>
@@ -1105,6 +1379,7 @@ if (empty($context['status'])) {
                         </div>
                         <?php endforeach; ?>
                     </div>
+                    <?php endif; ?>
 
                     <div class="decision-public-context">
                         <div class="decision-public-context-grid">
@@ -1118,10 +1393,10 @@ if (empty($context['status'])) {
                             </div>
                             <?php endif; ?>
 
-                            <?php if ($methodSummary !== ''): ?>
+                            <?php if (trim((string)($methodSummary['value'] ?? '')) !== ''): ?>
                             <div class="generic-soft-panel generic-soft-panel--stack">
-                                <span class="generic-card-title generic-card-title--small">Methode</span>
-                                <strong><?= omoApiEscape($methodSummary) ?></strong>
+                                <span class="generic-card-title generic-card-title--small"><?= omoApiEscape((string)($methodSummary['label'] ?? 'Methode')) ?></span>
+                                <strong><?= omoApiEscape((string)($methodSummary['value'] ?? '')) ?></strong>
                             </div>
                             <?php endif; ?>
 
@@ -1147,7 +1422,6 @@ if (empty($context['status'])) {
                 </div>
             </div>
         </section>
-        <?php endif; ?>
 
         <section class="generic-section generic-section--stack decision-public-title-block">
             <h1><?= omoApiEscape($decisionTitle !== '' ? $decisionTitle : 'Prise de decision') ?></h1>
@@ -1157,9 +1431,39 @@ if (empty($context['status'])) {
         </section>
 
         <section class="decision-public-content">
-            <?php
-            require dirname(__DIR__) . '/omo/api/decision/edit_shared.php';
-            ?>
+            <?php if ($requiresPublicAccessEmail): ?>
+            <section class="generic-section generic-section--stack decision-public-access-request">
+                <span class="generic-card-title generic-card-title--section">Recevoir mon lien d acces</span>
+                <p class="decision-public-access-request__text">
+                    Saisissez l adresse e-mail avec laquelle vous avez ete invite afin de recevoir votre lien personnel vers cette page.
+                </p>
+                <form
+                    class="decision-public-access-request__form"
+                    id="decisionPublicAccessRequestForm"
+                    action="<?= omoApiEscape((string)($_SERVER['REQUEST_URI'] ?? '')) ?>"
+                    method="post"
+                >
+                    <label class="generic-card-title generic-card-title--small" for="decisionPublicAccessRequestEmail">Adresse e-mail</label>
+                    <input
+                        id="decisionPublicAccessRequestEmail"
+                        name="email"
+                        type="email"
+                        class="generic-form-control"
+                        autocomplete="email"
+                        placeholder="nom@exemple.org"
+                        required
+                    >
+                    <div id="decisionPublicAccessRequestFeedback" class="decision-public-access-request__feedback" aria-live="polite"></div>
+                    <div class="decision-public-access-request__actions">
+                        <button type="submit" id="decisionPublicAccessRequestSubmit" class="generic-action-button generic-action-button--main">
+                            Envoyer mon lien
+                        </button>
+                    </div>
+                </form>
+            </section>
+            <?php else: ?>
+            <?= $decision instanceof DecisionProcess ? commonDecisionParticipationRenderGroupBlocks($decision, $context) : '' ?>
+            <?php endif; ?>
         </section>
         <?php if (trim((string)($organizerData['email'] ?? '')) !== ''): ?>
         <section class="generic-section generic-section--stack decision-public-context-contact">
@@ -1417,6 +1721,53 @@ if (empty($context['status'])) {
                         .catch(function () {
                             setSubmitting(targetForm, false);
                             setFeedback(targetForm, 'error', 'Impossible d ajouter la proposition pour le moment.');
+                        });
+                });
+            }
+
+            var accessRequestForm = document.getElementById('decisionPublicAccessRequestForm');
+            var accessRequestFeedback = document.getElementById('decisionPublicAccessRequestFeedback');
+            var accessRequestSubmit = document.getElementById('decisionPublicAccessRequestSubmit');
+            if (accessRequestForm && accessRequestFeedback && accessRequestSubmit) {
+                accessRequestForm.addEventListener('submit', function (event) {
+                    event.preventDefault();
+                    accessRequestFeedback.textContent = '';
+                    accessRequestFeedback.classList.remove('is-success');
+                    accessRequestSubmit.disabled = true;
+
+                    fetch(accessRequestForm.getAttribute('action') || window.location.href, {
+                        method: 'POST',
+                        body: new FormData(accessRequestForm),
+                        credentials: 'same-origin',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                        .then(function (response) {
+                            return response.json().then(function (data) {
+                                return {
+                                    ok: response.ok,
+                                    data: data
+                                };
+                            });
+                        })
+                        .then(function (result) {
+                            if (!result.ok || !result.data || !result.data.status) {
+                                accessRequestFeedback.textContent = result.data && result.data.message
+                                    ? result.data.message
+                                    : 'Impossible d envoyer le lien pour le moment.';
+                                accessRequestSubmit.disabled = false;
+                                return;
+                            }
+
+                            accessRequestFeedback.textContent = result.data.message || 'Lien envoye.';
+                            accessRequestFeedback.classList.add('is-success');
+                            accessRequestForm.reset();
+                            accessRequestSubmit.disabled = false;
+                        })
+                        .catch(function () {
+                            accessRequestFeedback.textContent = 'Impossible d envoyer le lien pour le moment.';
+                            accessRequestSubmit.disabled = false;
                         });
                 });
             }

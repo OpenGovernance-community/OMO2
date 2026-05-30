@@ -8,6 +8,7 @@ if (!function_exists('omoSearchPopupGetScopeLabels')) {
             'structure' => 'Structure',
             'team' => 'Team',
             'documents' => 'Documents',
+            'decision' => 'Decisions',
         );
     }
 }
@@ -282,6 +283,9 @@ if (!function_exists('omoSearchPopupRenderContent')) {
                         } elseif ($module === 'documents' && !empty($action['documentUrl'])) {
                             $buttonAttributes = ' data-omo-search-open-document="' . htmlspecialchars((string)$action['documentUrl'], ENT_QUOTES, 'UTF-8') . '"'
                                 . ' data-omo-search-document-title="' . htmlspecialchars((string)($result['title'] ?? 'Document'), ENT_QUOTES, 'UTF-8') . '"';
+                        } elseif ($module === 'decision' && !empty($action['decisionId'])) {
+                            $buttonAttributes = ' data-omo-search-open-decision-id="' . (int)$action['decisionId'] . '"'
+                                . ' data-omo-search-open-decision-holon="' . (int)($action['holonId'] ?? 0) . '"';
                         }
                         ?>
                         <article class="omo-search-popup__result generic-section">
@@ -392,6 +396,7 @@ omoSearchPopupRenderStyles();
                     'structure' => 0,
                     'team' => 0,
                     'documents' => 0,
+                    'decision' => 0,
                 ),
             ), $escape);
         } else {
@@ -461,6 +466,15 @@ omoSearchPopupRenderStyles();
                                 window.omoOpenSearchDocumentResult(
                                     documentButton.getAttribute('data-omo-search-open-document') || '',
                                     documentButton.getAttribute('data-omo-search-document-title') || 'Document'
+                                );
+                                return;
+                            }
+
+                            var decisionButton = event.target.closest('[data-omo-search-open-decision-id]');
+                            if (decisionButton && typeof window.omoOpenSearchDecisionResult === 'function') {
+                                window.omoOpenSearchDecisionResult(
+                                    Number(decisionButton.getAttribute('data-omo-search-open-decision-id') || '0'),
+                                    Number(decisionButton.getAttribute('data-omo-search-open-decision-holon') || '0')
                                 );
                             }
                         });

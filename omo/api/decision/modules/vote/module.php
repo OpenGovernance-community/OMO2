@@ -1,6 +1,7 @@
 <?php
 
 use dbObject\DecisionProcess;
+use dbObject\DecisionGroup;
 use dbObject\DecisionResponse;
 
 require_once __DIR__ . '/shared.php';
@@ -54,12 +55,28 @@ if (!function_exists('omoDecisionVoteModuleGetSourceLang')) {
                 'context' => 'Notice shown when the vote is in results or archived mode.',
             ],
             'decisions.vote.field.title' => [
-                'text' => 'Titre du scrutin',
-                'context' => 'Label for the vote title field.',
+                'text' => 'Question',
+                'context' => 'Label for the group title field.',
             ],
             'decisions.vote.field.description' => [
-                'text' => 'Description',
-                'context' => 'Label for the vote description field.',
+                'text' => 'Description de la question',
+                'context' => 'Label for the group description field.',
+            ],
+            'decisions.vote.field.process_title' => [
+                'text' => 'Titre du processus',
+                'context' => 'Label for the decision process title field.',
+            ],
+            'decisions.vote.field.process_description' => [
+                'text' => 'Description du contexte',
+                'context' => 'Label for the decision process description field.',
+            ],
+            'decisions.vote.field.process_section' => [
+                'text' => 'Contexte du processus',
+                'context' => 'Section title for process-level context fields.',
+            ],
+            'decisions.vote.field.group_section' => [
+                'text' => 'Question de ce groupe',
+                'context' => 'Section title for group-level question fields.',
             ],
             'decisions.vote.field.type' => [
                 'text' => 'Type de prise de décision',
@@ -222,12 +239,20 @@ if (!function_exists('omoDecisionVoteModuleGetSourceLang')) {
                 'context' => 'Generic no option label.',
             ],
             'decisions.vote.placeholder.title' => [
-                'text' => 'Ex. Choix du prochain projet prioritaire',
-                'context' => 'Placeholder for the vote title field.',
+                'text' => 'Ex. Quelle option preferez-vous ?',
+                'context' => 'Placeholder for the group title field.',
             ],
             'decisions.vote.placeholder.description' => [
-                'text' => 'Contexte, consignes de vote, informations utiles...',
-                'context' => 'Placeholder for the vote description field.',
+                'text' => 'Precisez la question, les nuances et les criteres utiles...',
+                'context' => 'Placeholder for the group description field.',
+            ],
+            'decisions.vote.placeholder.process_title' => [
+                'text' => 'Ex. Preparation de la sortie annuelle',
+                'context' => 'Placeholder for the decision process title field.',
+            ],
+            'decisions.vote.placeholder.process_description' => [
+                'text' => 'Contexte global, informations communes, cadre de la consultation...',
+                'context' => 'Placeholder for the decision process description field.',
             ],
             'decisions.vote.placeholder.proposals' => [
                 'text' => 'Nom de la proposition',
@@ -313,6 +338,9 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
     {
         $context = $renderContext['context'];
         $decision = $renderContext['decision'];
+        $decisionGroup = ($context['decisionGroup'] ?? null) instanceof DecisionGroup
+            ? $context['decisionGroup']
+            : ($decision instanceof DecisionProcess ? $decision->getPrimaryGroup(false) : null);
         $lang = $renderContext['lang'];
         $sourceLang = $renderContext['sourceLang'];
         $escape = $renderContext['escape'];
@@ -322,8 +350,8 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
         $isParticipateMode = $intent === 'participate';
         $isViewMode = !$isManageMode && !$isParticipateMode;
 
-        $decisionType = $decision instanceof DecisionProcess
-            ? DecisionProcess::normalizeDecisionType($decision->get('decision_type'))
+        $decisionType = $decisionGroup instanceof DecisionGroup
+            ? DecisionProcess::normalizeDecisionType($decisionGroup->get('decision_type'))
             : DecisionProcess::TYPE_DECISION;
         $status = $decision instanceof DecisionProcess
             ? DecisionProcess::normalizeStatus($decision->get('status'))
@@ -331,8 +359,8 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
 
         $proposalObjects = [];
         $proposalItems = [];
-        if ($decision instanceof DecisionProcess) {
-            foreach ($decision->getProposals(true) as $proposal) {
+        if ($decisionGroup instanceof DecisionGroup) {
+            foreach ($decisionGroup->getProposals(true) as $proposal) {
                 $proposalObjects[] = $proposal;
                 $proposalItems[] = [
                     'title' => trim((string)$proposal->get('title')),
@@ -351,8 +379,8 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
             $proposalItems[] = ['title' => '', 'description' => null, 'info_url' => null];
         }
 
-        $voteConfig = $decision instanceof DecisionProcess
-            ? omoDecisionVoteBuildConfig($decision)
+        $voteConfig = $decisionGroup instanceof DecisionGroup
+            ? omoDecisionVoteBuildConfig($decisionGroup)
             : omoDecisionVoteBuildConfig([]);
         $choiceMode = (string)$voteConfig['choice_mode'];
         $maxChoices = (int)$voteConfig['max_choices'];
@@ -378,12 +406,12 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
         $proposalVoteCounts = [];
         $participant = $context['participant'] ?? null;
         if ($decision instanceof DecisionProcess && $participant && (int)$participant->getId() > 0) {
-            $selectedResponse = DecisionResponse::findByDecisionAndParticipant((int)$decision->getId(), (int)$participant->getId());
+            $selectedResponse = DecisionResponse::findByDecisionAndParticipant((int)$decision->getId(), (int)$participant->getId(), $decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->getId() : 0);
             $selectedProposalIds = omoDecisionVoteExtractSelectedProposalIds($selectedResponse);
             $selectedProposalId = count($selectedProposalIds) > 0 ? (int)$selectedProposalIds[0] : 0;
         }
         if ($decision instanceof DecisionProcess) {
-            foreach ($decision->getResponses(DecisionResponse::STATUS_SUBMITTED) as $submittedResponse) {
+            foreach (($decisionGroup instanceof DecisionGroup ? $decisionGroup->getResponses(DecisionResponse::STATUS_SUBMITTED) : $decision->getResponses(DecisionResponse::STATUS_SUBMITTED)) as $submittedResponse) {
                 $submittedProposalIds = omoDecisionVoteExtractSelectedProposalIds($submittedResponse);
                 if (count($submittedProposalIds) === 0) {
                     continue;
@@ -514,37 +542,39 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                     <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
                     <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                     <input type="hidden" name="id" value="<?= $escape($decision instanceof DecisionProcess ? (int)$decision->getId() : 0) ?>">
+                    <input type="hidden" name="gid" value="<?= $escape($decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->getId() : 0) ?>">
                     <input type="hidden" name="intent" value="manage">
                     <?= omoDecisionRenderPublicTokenInput($context, $escape) ?>
                     <input type="hidden" name="evaluation_method" value="<?= $escape(DecisionProcess::METHOD_SIMPLE_VOTE) ?>">
 
+                    <div class="generic-card-title"><?= $escape(t('decisions.vote.field.process_section', [], $lang, $sourceLang)) ?></div>
+
+                    <label class="omo-decision-vote__field">
+                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.process_title', [], $lang, $sourceLang)) ?></span>
+                        <input
+                            type="text"
+                            name="process_title"
+                            class="generic-form-control"
+                            required
+                            maxlength="190"
+                            value="<?= $escape($decision instanceof DecisionProcess ? trim((string)$decision->get('title')) : '') ?>"
+                            placeholder="<?= $escape(t('decisions.vote.placeholder.process_title', [], $lang, $sourceLang)) ?>"
+                            <?= $canEditStructure ? '' : 'disabled' ?>
+                        >
+                    </label>
+
+                    <label class="omo-decision-vote__field">
+                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.process_description', [], $lang, $sourceLang)) ?></span>
+                        <textarea
+                            name="process_description"
+                            class="generic-form-control omo-decision-vote__textarea"
+                            rows="3"
+                            placeholder="<?= $escape(t('decisions.vote.placeholder.process_description', [], $lang, $sourceLang)) ?>"
+                            <?= $canEditStructure ? '' : 'disabled' ?>
+                        ><?= $escape($decision instanceof DecisionProcess ? trim((string)$decision->get('description')) : '') ?></textarea>
+                    </label>
+
                     <div class="omo-decision-vote__grid">
-                        <label class="omo-decision-vote__field">
-                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.title', [], $lang, $sourceLang)) ?></span>
-                            <input
-                                type="text"
-                                name="title"
-                                class="generic-form-control"
-                                required
-                                maxlength="190"
-                                value="<?= $escape($decision instanceof DecisionProcess ? trim((string)$decision->get('title')) : '') ?>"
-                                placeholder="<?= $escape(t('decisions.vote.placeholder.title', [], $lang, $sourceLang)) ?>"
-                                <?= $canEditStructure ? '' : 'disabled' ?>
-                            >
-                        </label>
-
-                        <label class="omo-decision-vote__field">
-                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.type', [], $lang, $sourceLang)) ?></span>
-                            <select name="decision_type" class="generic-form-control" <?= $canEditStructure ? '' : 'disabled' ?>>
-                                <option value="<?= $escape(DecisionProcess::TYPE_DECISION) ?>"<?= $decisionType === DecisionProcess::TYPE_DECISION ? ' selected' : '' ?>>
-                                    <?= $escape(t('decisions.vote.option.type.decision', [], $lang, $sourceLang)) ?>
-                                </option>
-                                <option value="<?= $escape(DecisionProcess::TYPE_CONSULTATION) ?>"<?= $decisionType === DecisionProcess::TYPE_CONSULTATION ? ' selected' : '' ?>>
-                                    <?= $escape(t('decisions.vote.option.type.consultation', [], $lang, $sourceLang)) ?>
-                                </option>
-                            </select>
-                        </label>
-
                         <label class="omo-decision-vote__field">
                             <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.status', [], $lang, $sourceLang)) ?></span>
                             <select name="status" class="generic-form-control" <?= $isEditable ? '' : 'disabled' ?>>
@@ -606,6 +636,26 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                         </label>
                     </div>
 
+                    <?php if (function_exists('omoDecisionRenderEditorGroupSwitch')) {
+                        omoDecisionRenderEditorGroupSwitch($context, $decision instanceof DecisionProcess ? $decision : null, $decisionGroup instanceof DecisionGroup ? $decisionGroup : null, $decision instanceof DecisionProcess ? $decision->getDecisionGroups(false) : [], $lang, $sourceLang, $escape);
+                    } ?>
+
+                    <div class="generic-card-title"><?= $escape(t('decisions.vote.field.group_section', [], $lang, $sourceLang)) ?></div>
+
+                    <label class="omo-decision-vote__field">
+                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.title', [], $lang, $sourceLang)) ?></span>
+                        <input
+                            type="text"
+                            name="title"
+                            class="generic-form-control"
+                            required
+                            maxlength="190"
+                            value="<?= $escape($decisionGroup instanceof DecisionGroup ? trim((string)$decisionGroup->get('title')) : '') ?>"
+                            placeholder="<?= $escape(t('decisions.vote.placeholder.title', [], $lang, $sourceLang)) ?>"
+                            <?= $canEditStructure ? '' : 'disabled' ?>
+                        >
+                    </label>
+
                     <label class="omo-decision-vote__field">
                         <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.description', [], $lang, $sourceLang)) ?></span>
                         <textarea
@@ -614,8 +664,22 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                             rows="4"
                             placeholder="<?= $escape(t('decisions.vote.placeholder.description', [], $lang, $sourceLang)) ?>"
                             <?= $canEditStructure ? '' : 'disabled' ?>
-                        ><?= $escape($decision instanceof DecisionProcess ? trim((string)$decision->get('description')) : '') ?></textarea>
+                        ><?= $escape($decisionGroup instanceof DecisionGroup ? trim((string)$decisionGroup->get('description')) : '') ?></textarea>
                     </label>
+
+                    <div class="omo-decision-vote__grid">
+                        <label class="omo-decision-vote__field">
+                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.type', [], $lang, $sourceLang)) ?></span>
+                            <select name="decision_type" class="generic-form-control" <?= $canEditStructure ? '' : 'disabled' ?>>
+                                <option value="<?= $escape(DecisionProcess::TYPE_DECISION) ?>"<?= $decisionType === DecisionProcess::TYPE_DECISION ? ' selected' : '' ?>>
+                                    <?= $escape(t('decisions.vote.option.type.decision', [], $lang, $sourceLang)) ?>
+                                </option>
+                                <option value="<?= $escape(DecisionProcess::TYPE_CONSULTATION) ?>"<?= $decisionType === DecisionProcess::TYPE_CONSULTATION ? ' selected' : '' ?>>
+                                    <?= $escape(t('decisions.vote.option.type.consultation', [], $lang, $sourceLang)) ?>
+                                </option>
+                            </select>
+                        </label>
+                    </div>
 
                     <div class="generic-soft-panel generic-soft-panel--stack omo-decision-vote__settings-summary">
                         <input type="hidden" name="choice_mode" value="<?= $escape($choiceMode) ?>" data-omo-decision-vote-hidden-choice-mode>
@@ -814,6 +878,8 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                     <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
                     <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                     <input type="hidden" name="id" value="<?= $escape($decision instanceof DecisionProcess ? (int)$decision->getId() : 0) ?>">
+                    <input type="hidden" name="gid" value="<?= $escape($decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->getId() : 0) ?>">
+                    <input type="hidden" name="method" value="<?= $escape(DecisionProcess::METHOD_SIMPLE_VOTE) ?>">
                     <input type="hidden" name="intent" value="participate">
                     <?= omoDecisionRenderPublicTokenInput($context, $escape) ?>
                     <input type="hidden" name="choice_mode" value="<?= $escape($choiceMode) ?>">
