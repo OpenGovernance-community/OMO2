@@ -15,9 +15,9 @@ class DecisionResponse extends DbObject
     public static function rules()
     {
         return [
-            [['IDdecision_process', 'IDdecision_participant', 'status'], 'required'],
+            [['IDdecision_group', 'IDdecision_participant', 'status'], 'required'],
             [['id'], 'integer'],
-            [['IDdecision_process', 'IDdecision_participant'], 'fk'],
+            [['IDdecision_process', 'IDdecision_group', 'IDdecision_participant'], 'fk'],
             [['status'], 'string'],
             [['parameters'], 'parameters'],
             [['submitted_at', 'created_at', 'updated_at'], 'datetime'],
@@ -30,6 +30,7 @@ class DecisionResponse extends DbObject
         return [
             'id' => 'ID',
             'IDdecision_process' => 'Prise de decision',
+            'IDdecision_group' => 'Groupe de decision',
             'IDdecision_participant' => 'Participant',
             'status' => 'Statut',
             'parameters' => 'Parametres',
@@ -78,11 +79,44 @@ class DecisionResponse extends DbObject
         return self::isValidStatus($status) ? $status : self::STATUS_DRAFT;
     }
 
-    public static function findByDecisionAndParticipant($decisionProcessId, $participantId)
+    public static function findByDecisionGroupAndParticipant($decisionGroupId, $participantId)
     {
         $row = self::fetchRow(
             'SELECT * FROM `decision_response`
+             WHERE `IDdecision_group` = :decision_group_id AND `IDdecision_participant` = :participant_id
+             LIMIT 1',
+            [
+                'decision_group_id' => (int)$decisionGroupId,
+                'participant_id' => (int)$participantId,
+            ]
+        );
+
+        if (!is_array($row) || !isset($row['id'])) {
+            return null;
+        }
+
+        $item = new self();
+        $item->loadFromArray($row);
+        $item->setId((int)$row['id']);
+        return $item;
+    }
+
+    public static function findByDecisionAndParticipant($decisionProcessId, $participantId, $decisionGroupId = 0)
+    {
+        $decisionGroupId = (int)$decisionGroupId;
+        if ($decisionGroupId <= 0) {
+            $group = \dbObject\DecisionGroup::findPrimaryByDecisionProcessId((int)$decisionProcessId);
+            $decisionGroupId = $group ? (int)$group->getId() : 0;
+        }
+
+        if ($decisionGroupId > 0) {
+            return self::findByDecisionGroupAndParticipant($decisionGroupId, $participantId);
+        }
+
+        $row = self::fetchRow(
+            'SELECT * FROM `decision_response`
              WHERE `IDdecision_process` = :decision_process_id AND `IDdecision_participant` = :participant_id
+             ORDER BY `id` ASC
              LIMIT 1',
             [
                 'decision_process_id' => (int)$decisionProcessId,
@@ -105,15 +139,51 @@ class DecisionResponse extends DbObject
         $this->set('status', self::normalizeStatus($this->get('status')));
 
         $participant = new \dbObject\DecisionParticipant();
-        if (
-            !$participant->load((int)$this->get('IDdecision_participant'))
-            || (int)$participant->get('IDdecision_process') !== (int)$this->get('IDdecision_process')
-        ) {
+        if (!$participant->load((int)$this->get('IDdecision_participant'))) {
+            return [
+                'status' => false,
+                'text' => 'The linked participant could not be found.',
+            ];
+        }
+
+        $decisionGroupId = (int)$this->get('IDdecision_group');
+        $decisionProcessId = (int)$this->get('IDdecision_process');
+
+        if ($decisionGroupId <= 0 && $decisionProcessId > 0) {
+            $decision = new \dbObject\DecisionProcess();
+            if ($decision->load($decisionProcessId)) {
+                $group = $decision->ensurePrimaryGroup();
+                if ($group) {
+                    $decisionGroupId = (int)$group->getId();
+                    $this->set('IDdecision_group', $decisionGroupId);
+                }
+            }
+        }
+
+        $group = new \dbObject\DecisionGroup();
+        if ($decisionGroupId <= 0 || !$group->load($decisionGroupId)) {
+            return [
+                'status' => false,
+                'text' => 'The linked decision group does not exist.',
+            ];
+        }
+
+        $groupProcessId = (int)$group->get('IDdecision_process');
+        if ((int)$participant->get('IDdecision_process') !== $groupProcessId) {
             return [
                 'status' => false,
                 'text' => 'The linked participant does not belong to the decision process.',
             ];
         }
+
+        if ($decisionProcessId > 0 && $decisionProcessId !== $groupProcessId) {
+            return [
+                'status' => false,
+                'text' => 'The linked decision process does not match the decision group.',
+            ];
+        }
+
+        $this->set('IDdecision_process', $groupProcessId);
 
         if (
             (string)$this->get('status') === self::STATUS_SUBMITTED
@@ -127,8 +197,19 @@ class DecisionResponse extends DbObject
 
     public function getDecisionProcess()
     {
+        $group = $this->getDecisionGroup();
+        if ($group instanceof \dbObject\DecisionGroup) {
+            return $group->getDecisionProcess();
+        }
+
         $decision = new \dbObject\DecisionProcess();
         return $decision->load((int)$this->get('IDdecision_process')) ? $decision : null;
+    }
+
+    public function getDecisionGroup()
+    {
+        $group = new \dbObject\DecisionGroup();
+        return $group->load((int)$this->get('IDdecision_group')) ? $group : null;
     }
 
     public function getParticipant()

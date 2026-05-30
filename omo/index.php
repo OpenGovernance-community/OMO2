@@ -1038,6 +1038,14 @@ $currentUserProfile = [
     'phone' => '',
     'photoUrl' => '',
 ];
+$organizationRootHolonId = 0;
+$organizationForConfig = new \dbObject\Organization();
+if ($organizationForConfig->load((int)$organizationContext['id'])) {
+    $organizationRootHolon = $organizationForConfig->getStructuralRootHolon();
+    if ($organizationRootHolon) {
+        $organizationRootHolonId = (int)$organizationRootHolon->getId();
+    }
+}
 $patreonPromptShouldShow = false;
 
 $currentUser = new \dbObject\User();
@@ -1178,6 +1186,7 @@ window.omoConfig = <?=
             'name' => $organizationContext['name'],
             'host' => $organizationContext['host'],
             'routeMode' => $organizationContext['routeMode'] ?? 'host',
+            'rootHolonId' => $organizationRootHolonId,
             'orgLookupError' => $organizationContext['error'],
             'isDemo' => $isDemoGuest,
             'currentUserId' => $currentUserId,

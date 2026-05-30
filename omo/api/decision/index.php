@@ -460,6 +460,32 @@ $escape = 'omoApiEscape';
 
 $currentOrganizationId = isset($_GET['oid']) ? (int)$_GET['oid'] : (int)($_SESSION['currentOrganization'] ?? 0);
 $currentHolonId = isset($_GET['cid']) ? (int)$_GET['cid'] : 0;
+$initialOpenDecisionId = isset($_GET['open_decision_id']) ? (int)$_GET['open_decision_id'] : 0;
+
+$refreshUrl = trim((string)($_SERVER['REQUEST_URI'] ?? ''));
+if ($refreshUrl !== '') {
+    $refreshUrlParts = parse_url($refreshUrl);
+    if (!is_array($refreshUrlParts)) {
+        $refreshUrlParts = [];
+    }
+
+    $refreshPath = isset($refreshUrlParts['path']) ? (string)$refreshUrlParts['path'] : '';
+    $refreshQueryParams = [];
+    if (!empty($refreshUrlParts['query'])) {
+        parse_str((string)$refreshUrlParts['query'], $refreshQueryParams);
+    }
+
+    unset($refreshQueryParams['open_decision_id']);
+
+    $refreshUrl = $refreshPath;
+    $refreshQuery = http_build_query($refreshQueryParams);
+    if ($refreshQuery !== '') {
+        $refreshUrl .= '?' . $refreshQuery;
+    }
+    if (!empty($refreshUrlParts['fragment'])) {
+        $refreshUrl .= '#' . (string)$refreshUrlParts['fragment'];
+    }
+}
 $currentUserId = (int)commonGetCurrentUserId();
 $currentUserEmail = '';
 $currentUser = null;
@@ -843,6 +869,7 @@ $statusFilterCatalog = [
 
 $payload = [
     'items' => array_values($decisionEntries),
+    'openDecisionId' => $initialOpenDecisionId > 0 ? $initialOpenDecisionId : 0,
     'statusFilters' => $statusFilterCatalog,
     'statusCounts' => $statusCounts,
     'typeOptions' => [
@@ -894,6 +921,7 @@ $payload = [
     'newUrl' => $canCreateDecision
         ? '/omo/api/decision/edit.php?oid=' . $currentOrganizationId . ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '')
         : '',
+    'refreshUrl' => $refreshUrl,
 ];
 
 $payloadJson = json_encode(
@@ -901,10 +929,11 @@ $payloadJson = json_encode(
     JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
 );
 if (!is_string($payloadJson)) {
-    $payloadJson = '{"items":[],"statusFilters":[],"statusCounts":{},"typeOptions":[],"methodOptions":[],"holonOptions":[],"text":{},"newUrl":""}';
+    $payloadJson = '{"items":[],"openDecisionId":0,"statusFilters":[],"statusCounts":{},"typeOptions":[],"methodOptions":[],"holonOptions":[],"text":{},"newUrl":"","refreshUrl":""}';
 }
 ?>
 <div class="omo-decisions omo-panel-view" id="omo-decisions-root">
+    <script type="application/json" data-omo-decisions-payload><?= $payloadJson ?></script>
     <div class="omo-panel-view__header omo-decisions__hero">
         <div class="omo-panel-view__header-copy">
             <h2 class="omo-panel-view__title"><?= $escape(t('decisions.index.title', [], $lang, $sourceLang)) ?></h2>
@@ -1155,7 +1184,21 @@ if (!root) {
     return;
 }
 
-const payload = <?= $payloadJson ?>;
+function omoDecisionParseIndexPayload(node) {
+    if (!node) {
+        return null;
+    }
+
+    try {
+        const parsed = JSON.parse(node.textContent || '{}');
+        return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (error) {
+        return null;
+    }
+}
+
+const payloadNode = root.querySelector('[data-omo-decisions-payload]');
+const payload = omoDecisionParseIndexPayload(payloadNode) || <?= $payloadJson ?>;
 const elements = {
     newButton: root.querySelector('[data-omo-decisions-new]'),
     count: root.querySelector('[data-omo-decisions-count]'),
@@ -1183,6 +1226,7 @@ const state = {
     holon: 'all',
     filtersExpanded: false
 };
+let omoDecisionIndexRefreshToken = 0;
 
 function normalizeText(value) {
     return String(value || '')
@@ -1211,6 +1255,76 @@ function formatCountLabel(count) {
         .replace('__COUNT__', String(Number(count) || 0));
 }
 
+function restoreSelectValue(select, preferredValue) {
+    if (!select) {
+        return 'all';
+    }
+
+    const normalizedPreferredValue = String(preferredValue || 'all');
+    const hasPreferredOption = Array.prototype.some.call(select.options || [], function (option) {
+        return String(option.value || '') === normalizedPreferredValue;
+    });
+
+    select.value = hasPreferredOption ? normalizedPreferredValue : 'all';
+    return String(select.value || 'all');
+}
+
+function replacePayload(nextPayload) {
+    Object.keys(payload).forEach(function (key) {
+        delete payload[key];
+    });
+
+    if (nextPayload && typeof nextPayload === 'object') {
+        Object.keys(nextPayload).forEach(function (key) {
+            payload[key] = nextPayload[key];
+        });
+    }
+}
+
+function applyDecisionIndexPayload(nextPayload) {
+    if (!nextPayload || typeof nextPayload !== 'object') {
+        return;
+    }
+
+    const preservedState = {
+        status: state.status,
+        search: state.search,
+        type: state.type,
+        method: state.method,
+        holon: state.holon,
+        filtersExpanded: state.filtersExpanded
+    };
+
+    replacePayload(nextPayload);
+
+    populateSelect(elements.type, payload.typeOptions);
+    populateSelect(elements.method, payload.methodOptions);
+    populateSelect(elements.holon, payload.holonOptions);
+
+    state.status = preservedState.status;
+    state.search = preservedState.search;
+    state.type = restoreSelectValue(elements.type, preservedState.type);
+    state.method = restoreSelectValue(elements.method, preservedState.method);
+    state.holon = restoreSelectValue(elements.holon, preservedState.holon);
+    state.filtersExpanded = preservedState.filtersExpanded;
+
+    if (elements.search) {
+        elements.search.value = state.search;
+    }
+
+    if (elements.newButton) {
+        const hasNewUrl = String(payload.newUrl || '').trim() !== '';
+        elements.newButton.hidden = !hasNewUrl;
+        elements.newButton.disabled = !hasNewUrl;
+    }
+
+    if (payloadNode) {
+        payloadNode.textContent = JSON.stringify(payload);
+    }
+
+    renderList();
+}
+
 function openDecisionEditor(url, title) {
     const resolvedTitle = title || (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de décision');
     if (typeof window.commonTopbarOpenDrawer === 'function') {
@@ -1222,6 +1336,60 @@ function openDecisionEditor(url, title) {
 }
 
 let omoDecisionEditorRequestToken = 0;
+function omoDecisionRefreshIndex(options) {
+    if (!document.body.contains(root)) {
+        return Promise.resolve(false);
+    }
+
+    const refreshUrl = String(payload.refreshUrl || '').trim();
+    if (refreshUrl === '') {
+        return Promise.resolve(false);
+    }
+
+    const settings = options && typeof options === 'object' ? options : {};
+    const requestToken = ++omoDecisionIndexRefreshToken;
+    const resolvedUrl = typeof window.omoResolveAppUrl === 'function'
+        ? window.omoResolveAppUrl(refreshUrl)
+        : refreshUrl;
+
+    return fetch(resolvedUrl, {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store'
+    })
+        .then(function (response) {
+            if (!response.ok) {
+                throw new Error('refresh_failed');
+            }
+
+            return response.text();
+        })
+        .then(function (html) {
+            if (requestToken !== omoDecisionIndexRefreshToken || !document.body.contains(root)) {
+                return false;
+            }
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(String(html || ''), 'text/html');
+            const nextPayload = omoDecisionParseIndexPayload(doc.querySelector('[data-omo-decisions-payload]'));
+            if (!nextPayload) {
+                throw new Error('payload_missing');
+            }
+
+            applyDecisionIndexPayload(nextPayload);
+            return true;
+        })
+        .catch(function () {
+            if (!settings.silent) {
+                showStateContainer(
+                    '<div class="omo-decisions__state-message">' + escapeHtml(payload.text && payload.text.error ? payload.text.error : 'Impossible de charger la liste pour le moment.') + '</div>',
+                    'default'
+                );
+            }
+
+            return false;
+        });
+}
 
 function omoDecisionOpenNestedEditorDrawer() {
     if (!elements.editorDrawer) {
@@ -1234,17 +1402,25 @@ function omoDecisionOpenNestedEditorDrawer() {
     });
 }
 
-function omoDecisionCloseNestedEditorDrawer() {
+function omoDecisionCloseNestedEditorDrawer(options) {
     if (!elements.editorDrawer) {
         return;
     }
 
+    const wasOpen = !elements.editorDrawer.hidden || elements.editorDrawer.classList.contains('is-open');
+    const settings = options && typeof options === 'object' ? options : {};
     elements.editorDrawer.classList.remove('is-open');
     window.setTimeout(function () {
         if (!elements.editorDrawer.classList.contains('is-open')) {
             elements.editorDrawer.hidden = true;
         }
     }, 200);
+
+    if (wasOpen && settings.refreshIndex !== false) {
+        window.setTimeout(function () {
+            omoDecisionRefreshIndex({ silent: true });
+        }, 0);
+    }
 }
 
 function omoDecisionRenderNestedEditorLoading() {
@@ -1336,6 +1512,73 @@ openDecisionEditor = function (url, title, description) {
         }
     });
 };
+
+function findDecisionItemById(decisionId) {
+    const resolvedDecisionId = Number(decisionId);
+    if (!Number.isInteger(resolvedDecisionId) || resolvedDecisionId <= 0 || !Array.isArray(payload.items)) {
+        return null;
+    }
+
+    for (let index = 0; index < payload.items.length; index += 1) {
+        const item = payload.items[index];
+        if (Number(item && item.id ? item.id : 0) === resolvedDecisionId) {
+            return item;
+        }
+    }
+
+    return null;
+}
+
+function resolveDecisionAutoOpenAction(item) {
+    const actions = Array.isArray(item && item.actions) ? item.actions : [];
+    let fallbackAction = null;
+
+    for (let index = 0; index < actions.length; index += 1) {
+        const action = actions[index];
+        const actionUrl = String(action && action.url ? action.url : '').trim();
+        if (actionUrl === '') {
+            continue;
+        }
+
+        if (!fallbackAction) {
+            fallbackAction = action;
+        }
+
+        if (String(action && action.variant ? action.variant : '').trim() === 'main') {
+            return action;
+        }
+    }
+
+    return fallbackAction;
+}
+
+function openInitialDecisionFromPayload() {
+    const decisionId = Number(payload.openDecisionId || 0);
+    if (!Number.isInteger(decisionId) || decisionId <= 0) {
+        return false;
+    }
+
+    payload.openDecisionId = 0;
+
+    const item = findDecisionItemById(decisionId);
+    if (!item) {
+        return false;
+    }
+
+    const action = resolveDecisionAutoOpenAction(item);
+    const actionUrl = String(action && action.url ? action.url : '').trim();
+    if (actionUrl === '') {
+        return false;
+    }
+
+    openDecisionEditor(
+        actionUrl,
+        String(item.title || (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de decision')),
+        String(item.description || '')
+    );
+
+    return true;
+}
 
 function populateSelect(select, options) {
     if (!select) {
@@ -1709,6 +1952,7 @@ try {
     populateSelect(elements.method, payload.methodOptions);
     populateSelect(elements.holon, payload.holonOptions);
     renderList();
+    window.setTimeout(openInitialDecisionFromPayload, 0);
 } catch (error) {
     showStateContainer(
         '<div class="omo-decisions__state-message">' + escapeHtml(payload.text.error || 'Impossible de charger la liste pour le moment.') + '</div>',
@@ -1737,6 +1981,10 @@ if (elements.filtersToggle) {
 
 window.omoDecisionOpenNestedDrawer = function (title, url, description) {
     openDecisionEditor(url, title, description);
+};
+
+window.omoRefreshDecisionIndex = function (options) {
+    return omoDecisionRefreshIndex(options);
 };
 
 window.omoRefreshDecisionView = function (url, options) {

@@ -44,7 +44,7 @@ if (!function_exists('omoDecisionMajorityJudgmentNormalizeScore')) {
 if (!function_exists('omoDecisionMajorityJudgmentBuildConfig')) {
     function omoDecisionMajorityJudgmentBuildConfig($decisionOrParameters)
     {
-        $parameters = $decisionOrParameters instanceof DecisionProcess
+        $parameters = is_object($decisionOrParameters) && method_exists($decisionOrParameters, 'get')
             ? omoDecisionModuleDecodeParameters($decisionOrParameters->get('parameters'))
             : omoDecisionModuleDecodeParameters($decisionOrParameters);
         $methodParameters = omoDecisionModuleGetMethodParameters($parameters, omoDecisionMajorityJudgmentGetMethodKey());

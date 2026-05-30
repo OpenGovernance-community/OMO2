@@ -4,6 +4,7 @@ require_once dirname(__DIR__) . '/context.php';
 require_once __DIR__ . '/shared.php';
 
 use dbObject\DecisionParticipant;
+use dbObject\DecisionGroup;
 use dbObject\DecisionProcess;
 use dbObject\DecisionResponse;
 
@@ -54,7 +55,20 @@ if (!$decision instanceof DecisionProcess || !$participant || (int)$participant-
     ]);
 }
 
-if (DecisionProcess::normalizeEvaluationMethod($decision->get('evaluation_method')) !== DecisionProcess::METHOD_MAJORITY_JUDGMENT) {
+$decisionGroup = ($context['decisionGroup'] ?? null) instanceof DecisionGroup
+    ? $context['decisionGroup']
+    : $decision->getPrimaryGroup(false);
+if (!$decisionGroup instanceof DecisionGroup && $decision instanceof DecisionProcess) {
+    $decisionGroup = $decision->ensurePrimaryGroup();
+}
+if (!$decisionGroup || (int)$decisionGroup->getId() <= 0) {
+    omoDecisionModuleJsonResponse(500, [
+        'status' => false,
+        'message' => 'Impossible de preparer le groupe de participation.',
+    ]);
+}
+
+if (DecisionProcess::normalizeEvaluationMethod($decisionGroup->get('evaluation_method')) !== DecisionProcess::METHOD_MAJORITY_JUDGMENT) {
     omoDecisionModuleJsonResponse(400, [
         'status' => false,
         'message' => 'Ce scrutin n utilise pas le jugement majoritaire.',
@@ -63,7 +77,7 @@ if (DecisionProcess::normalizeEvaluationMethod($decision->get('evaluation_method
 
 $scoreMap = [];
 $proposalMeta = [];
-$activeProposals = $decision->getProposals(true);
+$activeProposals = $decisionGroup->getProposals(true);
 
 foreach ($activeProposals as $proposal) {
     $proposalId = (int)$proposal->getId();
@@ -89,10 +103,11 @@ if (count($scoreMap) === 0) {
     ]);
 }
 
-$response = DecisionResponse::findByDecisionAndParticipant((int)$decision->getId(), (int)$participant->getId());
+$response = DecisionResponse::findByDecisionAndParticipant((int)$decision->getId(), (int)$participant->getId(), (int)$decisionGroup->getId());
 if (!$response) {
     $response = new DecisionResponse();
     $response->set('IDdecision_process', (int)$decision->getId());
+    $response->set('IDdecision_group', (int)$decisionGroup->getId());
     $response->set('IDdecision_participant', (int)$participant->getId());
 }
 

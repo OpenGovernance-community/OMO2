@@ -2,56 +2,8 @@
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/modules/context.php';
 require_once __DIR__ . '/modules/common.php';
-require_once dirname(__DIR__, 3) . '/common/email_layout.php';
-
 use dbObject\DecisionProcess;
 use dbObject\DecisionParticipant;
-
-function omoDecisionSendInvitationsPopupBuildDetailsHtml(DecisionProcess $decision)
-{
-    $items = [];
-    $holon = $decision->getHolonObject();
-    $consultationStart = null;
-    $consultationEnd = null;
-
-    $consultationStartValue = trim((string)$decision->get('consultation_start_at'));
-    if ($consultationStartValue !== '') {
-        try {
-            $consultationStart = new DateTimeImmutable($consultationStartValue);
-        } catch (Throwable $exception) {
-            $consultationStart = null;
-        }
-    }
-
-    $consultationEndValue = trim((string)$decision->get('consultation_end_at'));
-    if ($consultationEndValue !== '') {
-        try {
-            $consultationEnd = new DateTimeImmutable($consultationEndValue);
-        } catch (Throwable $exception) {
-            $consultationEnd = null;
-        }
-    }
-
-    if ($holon) {
-        $items[] = '<li><strong>Contexte</strong>: '
-            . commonMailEscape(trim((string)$holon->getTemplateLabel(true)) . ' ' . trim((string)$holon->getDisplayName()))
-            . '</li>';
-    }
-
-    if ($consultationStart instanceof DateTimeInterface) {
-        $items[] = '<li><strong>Debut</strong>: ' . commonMailEscape($consultationStart->format('d.m.Y H:i')) . '</li>';
-    }
-
-    if ($consultationEnd instanceof DateTimeInterface) {
-        $items[] = '<li><strong>Fin</strong>: ' . commonMailEscape($consultationEnd->format('d.m.Y H:i')) . '</li>';
-    }
-
-    if (count($items) === 0) {
-        return '';
-    }
-
-    return '<ul style="margin:0; padding-left:18px; color:#475569; line-height:1.7;">' . implode('', $items) . '</ul>';
-}
 
 $input = $_SERVER['REQUEST_METHOD'] === 'POST'
     ? array_merge($_GET, $_POST)
@@ -102,20 +54,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
     }
 
-    $organizationName = trim((string)$organization->get('name'));
-    $decisionTitle = trim((string)$decision->get('title'));
-    $subject = 'Invitation a participer';
-    if ($decisionTitle !== '') {
-        $subject .= ' : ' . $decisionTitle;
-    }
-
-    $detailsHtml = omoDecisionSendInvitationsPopupBuildDetailsHtml($decision);
-    $fromAddress = trim((string)($GLOBALS['mailUser'] ?? ''));
-    if ($fromAddress === '') {
-        $host = preg_replace('/:\d+$/', '', commonGetRootHost() ?: 'localhost');
-        $fromAddress = 'noreply@' . ($host !== '' ? $host : 'localhost');
-    }
-
     $sentCount = 0;
     $failedRecipients = [];
     foreach ($recipientList as $recipient) {
@@ -138,31 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             continue;
         }
 
-        $hadToken = trim((string)$participant->get('access_token')) !== '';
-        $accessUrl = $participant->getPublicAccessUrl();
-        if (!$hadToken) {
-            $tokenSaveResult = $participant->save();
-            if (empty($tokenSaveResult['status'])) {
-                $failedRecipients[] = $email;
-                continue;
-            }
-        }
-
-        $html = commonRenderMailLayout([
-            'brand_name' => $organizationName,
-            'brand_color' => trim((string)$organization->get('color')),
-            'logo_url' => trim((string)$organization->get('logo')),
-            'banner_url' => trim((string)$organization->get('banner')),
-            'heading' => $decisionTitle !== '' ? $decisionTitle : 'Prise de decision',
-            'intro_html' => commonMailTextToHtml($message),
-            'details_html' => $detailsHtml,
-            'button_label' => 'Ouvrir la prise de decision',
-            'button_url' => $accessUrl,
-            'footer_html' => '<p style="margin:0;">Ce message a ete envoye depuis ' . commonMailEscape($organizationName !== '' ? $organizationName : 'votre organisation') . '.</p>',
-        ]);
-
-        if (myHTMLMail([$fromAddress, $organizationName !== '' ? $organizationName : 'Organisation'], $email, $subject, $html)) {
-            $participant->markInvitationSent();
+        $sendResult = omoDecisionSendParticipantAccessEmail($decision, $participant, $message);
+        if (!empty($sendResult['status'])) {
             $sentCount++;
             continue;
         }

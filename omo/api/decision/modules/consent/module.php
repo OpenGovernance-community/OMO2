@@ -1,6 +1,7 @@
 <?php
 
 use dbObject\DecisionProcess;
+use dbObject\DecisionGroup;
 use dbObject\DecisionResponse;
 
 require_once __DIR__ . '/shared.php';
@@ -20,8 +21,12 @@ if (!function_exists('omoDecisionConsentModuleGetSourceLang')) {
             'decisions.consent.notice.responses' => ['text' => 'Au moins une reponse a deja ete soumise. Seuls le statut et les dates de fin restent ajustables.', 'context' => 'Notice shown when some schedule fields are also locked.'],
             'decisions.consent.notice.consultation_proposals' => ['text' => 'Les propositions restent ajustables pendant la consultation tant qu aucune reponse n a ete soumise.', 'context' => 'Notice shown when proposal editing remains allowed.'],
             'decisions.consent.notice.results' => ['text' => 'Ce scrutin est termine. Seule la consultation des resultats reste disponible.', 'context' => 'Notice shown when the vote is in results or archived mode.'],
-            'decisions.consent.field.title' => ['text' => 'Titre du scrutin', 'context' => 'Label for the title field.'],
-            'decisions.consent.field.description' => ['text' => 'Description', 'context' => 'Label for the description field.'],
+            'decisions.consent.field.title' => ['text' => 'Question', 'context' => 'Label for the group title field.'],
+            'decisions.consent.field.description' => ['text' => 'Description de la question', 'context' => 'Label for the group description field.'],
+            'decisions.consent.field.process_title' => ['text' => 'Titre du processus', 'context' => 'Label for the process title field.'],
+            'decisions.consent.field.process_description' => ['text' => 'Description du contexte', 'context' => 'Label for the process description field.'],
+            'decisions.consent.field.process_section' => ['text' => 'Contexte du processus', 'context' => 'Section title for process-level context fields.'],
+            'decisions.consent.field.group_section' => ['text' => 'Question de ce groupe', 'context' => 'Section title for group-level question fields.'],
             'decisions.consent.field.type' => ['text' => 'Type de prise de decision', 'context' => 'Label for the decision type field.'],
             'decisions.consent.field.status' => ['text' => 'Statut', 'context' => 'Label for the status field.'],
             'decisions.consent.field.consultation_start' => ['text' => 'Debut de consultation', 'context' => 'Label for the consultation start field.'],
@@ -61,8 +66,10 @@ if (!function_exists('omoDecisionConsentModuleGetSourceLang')) {
             'decisions.consent.option.choice.favor' => ['text' => 'Pour', 'context' => 'Consent choice label meaning support.'],
             'decisions.consent.option.choice.no_objection' => ['text' => 'Pas d objection', 'context' => 'Consent choice label meaning no objection.'],
             'decisions.consent.option.choice.objection' => ['text' => 'Objection', 'context' => 'Consent choice label meaning objection.'],
-            'decisions.consent.placeholder.title' => ['text' => 'Ex. Valider la prochaine proposition d organisation', 'context' => 'Placeholder for the title field.'],
-            'decisions.consent.placeholder.description' => ['text' => 'Contexte, cadre, motifs des propositions...', 'context' => 'Placeholder for the description field.'],
+            'decisions.consent.placeholder.title' => ['text' => 'Ex. Quelle formulation retenez-vous ?', 'context' => 'Placeholder for the group title field.'],
+            'decisions.consent.placeholder.description' => ['text' => 'Precisez la question, les nuances et les criteres utiles...', 'context' => 'Placeholder for the group description field.'],
+            'decisions.consent.placeholder.process_title' => ['text' => 'Ex. Preparation de l assemblee d equipe', 'context' => 'Placeholder for the process title field.'],
+            'decisions.consent.placeholder.process_description' => ['text' => 'Contexte global, informations communes, cadre de la consultation...', 'context' => 'Placeholder for the process description field.'],
             'decisions.consent.placeholder.proposals' => ['text' => 'Nom de la proposition', 'context' => 'Placeholder for one proposal input.'],
             'decisions.consent.placeholder.proposal_info_url' => ['text' => 'https://...', 'context' => 'Placeholder for one proposal info URL input.'],
             'decisions.consent.action.create' => ['text' => 'Creer le scrutin', 'context' => 'Submit label for a new consent process.'],
@@ -105,6 +112,9 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
     {
         $context = $renderContext['context'];
         $decision = $renderContext['decision'];
+        $decisionGroup = ($context['decisionGroup'] ?? null) instanceof DecisionGroup
+            ? $context['decisionGroup']
+            : ($decision instanceof DecisionProcess ? $decision->getPrimaryGroup(false) : null);
         $lang = $renderContext['lang'];
         $sourceLang = $renderContext['sourceLang'];
         $escape = $renderContext['escape'];
@@ -114,24 +124,26 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
         $isParticipateMode = $intent === 'participate';
         $isViewMode = !$isManageMode && !$isParticipateMode;
 
-        $decisionType = $decision instanceof DecisionProcess
-            ? DecisionProcess::normalizeDecisionType($decision->get('decision_type'))
+        $decisionType = $decisionGroup instanceof DecisionGroup
+            ? DecisionProcess::normalizeDecisionType($decisionGroup->get('decision_type'))
             : DecisionProcess::TYPE_DECISION;
         $status = $decision instanceof DecisionProcess
             ? DecisionProcess::normalizeStatus($decision->get('status'))
             : DecisionProcess::STATUS_DRAFT;
 
         $proposalObjects = [];
-        if ($decision instanceof DecisionProcess) {
-            foreach ($decision->getProposals(true) as $proposal) {
+        if ($decisionGroup instanceof DecisionGroup) {
+            foreach ($decisionGroup->getProposals(true) as $proposal) {
                 $proposalObjects[] = $proposal;
             }
         }
 
-        $proposalItems = omoDecisionBuildProposalItemsFromDecision($decision, 1);
+        $proposalItems = $decisionGroup instanceof DecisionGroup
+            ? omoDecisionBuildProposalItemsFromDecision($decisionGroup, 1)
+            : omoDecisionBuildProposalItemsFromDecision($decision, 1);
 
-        $config = $decision instanceof DecisionProcess
-            ? omoDecisionConsentBuildConfig($decision)
+        $config = $decisionGroup instanceof DecisionGroup
+            ? omoDecisionConsentBuildConfig($decisionGroup)
             : omoDecisionConsentBuildConfig([]);
         $isAnonymous = !empty($config['is_anonymous']);
         $allowConsultationProposals = !empty($config['allow_consultation_proposals']);
@@ -153,14 +165,14 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
         $selectedResponse = null;
         $selectedChoices = [];
         if ($decision instanceof DecisionProcess && $participant && (int)$participant->getId() > 0) {
-            $selectedResponse = \dbObject\DecisionResponse::findByDecisionAndParticipant((int)$decision->getId(), (int)$participant->getId());
+            $selectedResponse = \dbObject\DecisionResponse::findByDecisionAndParticipant((int)$decision->getId(), (int)$participant->getId(), $decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->getId() : 0);
             $selectedChoices = omoDecisionConsentExtractChoices($selectedResponse);
         }
 
         $submittedResponses = [];
         $submittedVoteCount = 0;
         if ($decision instanceof DecisionProcess) {
-            foreach ($decision->getResponses(DecisionResponse::STATUS_SUBMITTED) as $submittedResponse) {
+            foreach (($decisionGroup instanceof DecisionGroup ? $decisionGroup->getResponses(DecisionResponse::STATUS_SUBMITTED) : $decision->getResponses(DecisionResponse::STATUS_SUBMITTED)) as $submittedResponse) {
                 $submittedResponses[] = $submittedResponse;
                 $submittedVoteCount++;
             }
@@ -253,24 +265,24 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                 <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
                 <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                 <input type="hidden" name="id" value="<?= $escape($decision instanceof DecisionProcess ? (int)$decision->getId() : 0) ?>">
+                <input type="hidden" name="gid" value="<?= $escape($decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->getId() : 0) ?>">
                 <input type="hidden" name="method" value="<?= $escape(DecisionProcess::METHOD_CONSENT) ?>">
                 <input type="hidden" name="intent" value="manage">
                 <?= omoDecisionRenderPublicTokenInput($context, $escape) ?>
 
+                <div class="generic-card-title"><?= $escape(t('decisions.consent.field.process_section', [], $lang, $sourceLang)) ?></div>
+
+                <label class="omo-decision-consent__field">
+                    <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.consent.field.process_title', [], $lang, $sourceLang)) ?></span>
+                    <input type="text" class="generic-form-control" name="process_title" value="<?= $escape($decision instanceof DecisionProcess ? trim((string)$decision->get('title')) : '') ?>" placeholder="<?= $escape(t('decisions.consent.placeholder.process_title', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'readonly' ?>>
+                </label>
+
+                <label class="omo-decision-consent__field">
+                    <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.consent.field.process_description', [], $lang, $sourceLang)) ?></span>
+                    <textarea class="generic-form-control omo-decision-consent__textarea" name="process_description" placeholder="<?= $escape(t('decisions.consent.placeholder.process_description', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'readonly' ?>><?= $escape($decision instanceof DecisionProcess ? trim((string)$decision->get('description')) : '') ?></textarea>
+                </label>
+
                 <div class="omo-decision-consent__grid">
-                    <label class="omo-decision-consent__field">
-                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.consent.field.title', [], $lang, $sourceLang)) ?></span>
-                        <input type="text" class="generic-form-control" name="title" value="<?= $escape($decision instanceof DecisionProcess ? trim((string)$decision->get('title')) : '') ?>" placeholder="<?= $escape(t('decisions.consent.placeholder.title', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'readonly' ?>>
-                    </label>
-
-                    <label class="omo-decision-consent__field">
-                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.consent.field.type', [], $lang, $sourceLang)) ?></span>
-                        <select class="generic-form-control" name="decision_type" <?= $canEditStructure ? '' : 'disabled' ?>>
-                            <option value="<?= $escape(DecisionProcess::TYPE_DECISION) ?>" <?= $decisionType === DecisionProcess::TYPE_DECISION ? 'selected' : '' ?>><?= $escape(t('decisions.consent.option.type.decision', [], $lang, $sourceLang)) ?></option>
-                            <option value="<?= $escape(DecisionProcess::TYPE_CONSULTATION) ?>" <?= $decisionType === DecisionProcess::TYPE_CONSULTATION ? 'selected' : '' ?>><?= $escape(t('decisions.consent.option.type.consultation', [], $lang, $sourceLang)) ?></option>
-                        </select>
-                    </label>
-
                     <label class="omo-decision-consent__field">
                         <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.consent.field.status', [], $lang, $sourceLang)) ?></span>
                         <select class="generic-form-control" name="status">
@@ -304,10 +316,31 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                     </label>
                 </div>
 
+                <?php if (function_exists('omoDecisionRenderEditorGroupSwitch')) {
+                    omoDecisionRenderEditorGroupSwitch($context, $decision instanceof DecisionProcess ? $decision : null, $decisionGroup instanceof DecisionGroup ? $decisionGroup : null, $decision instanceof DecisionProcess ? $decision->getDecisionGroups(false) : [], $lang, $sourceLang, $escape);
+                } ?>
+
+                <div class="generic-card-title"><?= $escape(t('decisions.consent.field.group_section', [], $lang, $sourceLang)) ?></div>
+
+                <label class="omo-decision-consent__field">
+                    <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.consent.field.title', [], $lang, $sourceLang)) ?></span>
+                    <input type="text" class="generic-form-control" name="title" value="<?= $escape($decisionGroup instanceof DecisionGroup ? trim((string)$decisionGroup->get('title')) : '') ?>" placeholder="<?= $escape(t('decisions.consent.placeholder.title', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'readonly' ?>>
+                </label>
+
                 <label class="omo-decision-consent__field">
                     <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.consent.field.description', [], $lang, $sourceLang)) ?></span>
-                    <textarea class="generic-form-control omo-decision-consent__textarea" name="description" placeholder="<?= $escape(t('decisions.consent.placeholder.description', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'readonly' ?>><?= $escape($decision instanceof DecisionProcess ? trim((string)$decision->get('description')) : '') ?></textarea>
+                    <textarea class="generic-form-control omo-decision-consent__textarea" name="description" placeholder="<?= $escape(t('decisions.consent.placeholder.description', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'readonly' ?>><?= $escape($decisionGroup instanceof DecisionGroup ? trim((string)$decisionGroup->get('description')) : '') ?></textarea>
                 </label>
+
+                <div class="omo-decision-consent__grid">
+                    <label class="omo-decision-consent__field">
+                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.consent.field.type', [], $lang, $sourceLang)) ?></span>
+                        <select class="generic-form-control" name="decision_type" <?= $canEditStructure ? '' : 'disabled' ?>>
+                            <option value="<?= $escape(DecisionProcess::TYPE_DECISION) ?>" <?= $decisionType === DecisionProcess::TYPE_DECISION ? 'selected' : '' ?>><?= $escape(t('decisions.consent.option.type.decision', [], $lang, $sourceLang)) ?></option>
+                            <option value="<?= $escape(DecisionProcess::TYPE_CONSULTATION) ?>" <?= $decisionType === DecisionProcess::TYPE_CONSULTATION ? 'selected' : '' ?>><?= $escape(t('decisions.consent.option.type.consultation', [], $lang, $sourceLang)) ?></option>
+                        </select>
+                    </label>
+                </div>
 
                 <div class="generic-soft-panel generic-soft-panel--stack">
                     <div class="omo-decision-consent__settings-head">
@@ -415,6 +448,8 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                     <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
                     <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                     <input type="hidden" name="id" value="<?= $escape($decision instanceof DecisionProcess ? (int)$decision->getId() : 0) ?>">
+                    <input type="hidden" name="gid" value="<?= $escape($decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->getId() : 0) ?>">
+                    <input type="hidden" name="method" value="<?= $escape(DecisionProcess::METHOD_CONSENT) ?>">
                     <input type="hidden" name="intent" value="participate">
                     <?= omoDecisionRenderPublicTokenInput($context, $escape) ?>
 

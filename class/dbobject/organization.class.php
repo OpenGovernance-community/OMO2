@@ -5048,6 +5048,112 @@
 			return $documentHolon->load($documentHolonId) && $shareLink->containsHolon($documentHolon);
 		}
 
+		protected static function getTopbarSearchViewerScopedEmail(array &$viewerContext, $organizationId)
+		{
+			if ((string)($viewerContext['type'] ?? '') !== 'user') {
+				return '';
+			}
+
+			if (array_key_exists('scopedEmail', $viewerContext)) {
+				return trim((string)$viewerContext['scopedEmail']);
+			}
+
+			$userId = (int)($viewerContext['userId'] ?? 0);
+			if ($userId <= 0) {
+				$viewerContext['scopedEmail'] = '';
+				return '';
+			}
+
+			$user = new \dbObject\User();
+			if (!$user->load($userId)) {
+				$viewerContext['scopedEmail'] = '';
+				return '';
+			}
+
+			$viewerContext['scopedEmail'] = trim(mb_strtolower((string)$user->getScopedEmail((int)$organizationId), 'UTF-8'));
+			return (string)$viewerContext['scopedEmail'];
+		}
+
+		protected static function topbarSearchResolveDecisionAccess(\dbObject\DecisionProcess $decision, array &$viewerContext, $organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			if (
+				$organizationId <= 0
+				|| (int)$decision->getId() <= 0
+				|| (int)$decision->get('IDorganization') !== $organizationId
+				|| !self::topbarSearchViewerHasOrganizationAccess($viewerContext, $organizationId)
+			) {
+				return false;
+			}
+
+			$decisionHolonId = (int)$decision->get('IDholon');
+			if ($decisionHolonId > 0) {
+				$decisionHolon = new \dbObject\Holon();
+				if (
+					!$decisionHolon->load($decisionHolonId)
+					|| !self::topbarSearchViewerCanViewHolon($decisionHolon, $viewerContext)
+				) {
+					return false;
+				}
+			}
+
+			$participant = null;
+			$hasParticipation = false;
+			$isOwner = false;
+			$status = \dbObject\DecisionProcess::normalizeStatus($decision->get('status'));
+
+			if ((string)($viewerContext['type'] ?? '') === 'user') {
+				$userId = (int)($viewerContext['userId'] ?? 0);
+				if ($userId > 0) {
+					$participant = \dbObject\DecisionParticipant::findByDecisionAndUser((int)$decision->getId(), $userId);
+				}
+
+				if (!$participant || (int)$participant->get('active') !== 1) {
+					$scopedEmail = self::getTopbarSearchViewerScopedEmail($viewerContext, $organizationId);
+					if ($scopedEmail !== '') {
+						$participant = \dbObject\DecisionParticipant::findByDecisionAndEmail((int)$decision->getId(), $scopedEmail);
+					}
+				}
+
+				if ($participant instanceof \dbObject\DecisionParticipant) {
+					$participantStatus = \dbObject\DecisionParticipant::normalizeStatus($participant->get('status'));
+					$hasParticipation = (int)$participant->get('active') === 1
+						&& !in_array($participantStatus, array(
+							\dbObject\DecisionParticipant::STATUS_DECLINED,
+							\dbObject\DecisionParticipant::STATUS_REVOKED,
+						), true);
+					$isOwner = $userId > 0 && (
+						(int)$decision->get('IDuser') === $userId
+						|| \dbObject\DecisionParticipant::normalizeRole($participant->get('role')) === \dbObject\DecisionParticipant::ROLE_OWNER
+					);
+				} elseif ($userId > 0) {
+					$isOwner = (int)$decision->get('IDuser') === $userId;
+				}
+			}
+
+			$canManage = $isOwner;
+			$canParticipate = ($isOwner || $hasParticipation) && $decision->isParticipationOpen();
+			$canView = $canManage || $hasParticipation || $status !== \dbObject\DecisionProcess::STATUS_DRAFT;
+
+			if (!$canView && !$canParticipate) {
+				return false;
+			}
+
+			$intent = 'view';
+			if ($canManage) {
+				$intent = 'manage';
+			} elseif ($canParticipate) {
+				$intent = 'participate';
+			}
+
+			return array(
+				'intent' => $intent,
+				'canManage' => $canManage,
+				'canParticipate' => $canParticipate,
+				'canView' => $canView,
+			);
+		}
+
 		protected static function cleanTopbarSearchTextValue($value, $limit = 0)
 		{
 			$value = html_entity_decode(strip_tags((string)$value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
@@ -5562,6 +5668,269 @@
 			return $results;
 		}
 
+		protected function searchTopbarDecisionResults($query, array $terms, $limit = 12, array $viewerContext = array())
+		{
+			if ((int)$this->getId() <= 0 || count($terms) === 0) {
+				return array();
+			}
+
+			$params = array(
+				'organization_id' => (int)$this->getId(),
+			);
+
+			$processTitleExpr = "LOWER(COALESCE(search_rows.process_title, ''))";
+			$processDescriptionExpr = "LOWER(COALESCE(search_rows.process_description, ''))";
+			$groupTitleExpr = "LOWER(COALESCE(search_rows.group_titles, ''))";
+			$groupDescriptionExpr = "LOWER(COALESCE(search_rows.group_descriptions, ''))";
+			$proposalTitleExpr = "LOWER(COALESCE(search_rows.proposal_titles, ''))";
+			$proposalDescriptionExpr = "LOWER(COALESCE(search_rows.proposal_descriptions, ''))";
+
+			$processTitleScoreSql = self::buildTopbarSearchScoreSql($processTitleExpr, $terms, $params, 'decision_process_title', array(
+				'exact' => 110,
+				'prefix' => 72,
+				'like' => 38,
+			));
+			$processDescriptionScoreSql = self::buildTopbarSearchScoreSql($processDescriptionExpr, $terms, $params, 'decision_process_description', array(
+				'exact' => 34,
+				'prefix' => 22,
+				'like' => 12,
+			));
+			$groupTitleScoreSql = self::buildTopbarSearchScoreSql($groupTitleExpr, $terms, $params, 'decision_group_title', array(
+				'exact' => 92,
+				'prefix' => 58,
+				'like' => 30,
+			));
+			$groupDescriptionScoreSql = self::buildTopbarSearchScoreSql($groupDescriptionExpr, $terms, $params, 'decision_group_description', array(
+				'exact' => 42,
+				'prefix' => 28,
+				'like' => 16,
+			));
+			$proposalTitleScoreSql = self::buildTopbarSearchScoreSql($proposalTitleExpr, $terms, $params, 'decision_proposal_title', array(
+				'exact' => 76,
+				'prefix' => 48,
+				'like' => 26,
+			));
+			$proposalDescriptionScoreSql = self::buildTopbarSearchScoreSql($proposalDescriptionExpr, $terms, $params, 'decision_proposal_description', array(
+				'exact' => 28,
+				'prefix' => 18,
+				'like' => 10,
+			));
+			$preFilterSql = self::buildTopbarSearchAnyMatchSql(
+				array(
+					$processTitleExpr,
+					$processDescriptionExpr,
+					$groupTitleExpr,
+					$groupDescriptionExpr,
+					$proposalTitleExpr,
+					$proposalDescriptionExpr,
+				),
+				$terms,
+				$params,
+				'decision_prefilter'
+			);
+			$limitSql = max(1, (int)$limit);
+
+			$rows = self::fetchAll(
+				"SELECT
+					search_rows.*,
+					(" . $processTitleScoreSql . " + " . $processDescriptionScoreSql . " + " . $groupTitleScoreSql . " + " . $groupDescriptionScoreSql . " + " . $proposalTitleScoreSql . " + " . $proposalDescriptionScoreSql . ") AS relevance
+				FROM (
+					SELECT
+						dp.`id`,
+						dp.`title` AS `process_title`,
+						dp.`description` AS `process_description`,
+						dp.`IDholon`,
+						dp.`IDuser`,
+						dp.`status`,
+						dp.`evaluation_method`,
+						dp.`created_at`,
+						dp.`updated_at`,
+						h.`name` AS `holon_name`,
+						COALESCE(GROUP_CONCAT(DISTINCT NULLIF(dg.`title`, '') ORDER BY dg.`position` ASC, dg.`id` ASC SEPARATOR ' | '), '') AS `group_titles`,
+						COALESCE(GROUP_CONCAT(DISTINCT NULLIF(dg.`description`, '') ORDER BY dg.`position` ASC, dg.`id` ASC SEPARATOR ' | '), '') AS `group_descriptions`,
+						COALESCE(GROUP_CONCAT(DISTINCT NULLIF(proposal.`title`, '') ORDER BY proposal.`position` ASC, proposal.`id` ASC SEPARATOR ' | '), '') AS `proposal_titles`,
+						COALESCE(GROUP_CONCAT(DISTINCT NULLIF(proposal.`description`, '') ORDER BY proposal.`position` ASC, proposal.`id` ASC SEPARATOR ' | '), '') AS `proposal_descriptions`
+					FROM `decision_process` dp
+					LEFT JOIN `holon` h
+						ON h.`id` = dp.`IDholon`
+					LEFT JOIN `decision_group` dg
+						ON dg.`IDdecision_process` = dp.`id`
+					   AND dg.`active` = 1
+					LEFT JOIN `decision_proposal` proposal
+						ON proposal.`IDdecision_process` = dp.`id`
+					   AND proposal.`active` = 1
+					WHERE dp.`IDorganization` = :organization_id
+					GROUP BY
+						dp.`id`,
+						dp.`title`,
+						dp.`description`,
+						dp.`IDholon`,
+						dp.`IDuser`,
+						dp.`status`,
+						dp.`evaluation_method`,
+						dp.`created_at`,
+						dp.`updated_at`,
+						h.`name`
+				) search_rows
+				WHERE " . $preFilterSql . "
+				HAVING relevance > 0
+				ORDER BY relevance DESC, search_rows.`updated_at` DESC, search_rows.`created_at` DESC, search_rows.`id` DESC
+				LIMIT " . $limitSql,
+				$params
+			);
+
+			if ($rows === false) {
+				return array();
+			}
+
+			$results = array();
+
+			foreach ($rows as $row) {
+				$decision = new \dbObject\DecisionProcess();
+				if (!$decision->load((int)($row['id'] ?? 0))) {
+					continue;
+				}
+
+				$decision->syncLifecycleStatus();
+				$decisionAccess = self::topbarSearchResolveDecisionAccess($decision, $viewerContext, (int)$this->getId());
+				if ($decisionAccess === false) {
+					continue;
+				}
+
+				$bestGroupTitle = '';
+				$bestGroupDescription = '';
+				$bestProposalTitle = '';
+				$bestProposalDescription = '';
+				$bestGroupScore = 0;
+
+				foreach ($decision->getDecisionGroups(false) as $group) {
+					if (!($group instanceof \dbObject\DecisionGroup) || (int)$group->get('active') !== 1) {
+						continue;
+					}
+
+					$groupTitle = trim((string)$group->get('title'));
+					$groupDescription = trim((string)$group->get('description'));
+					$groupScore = self::getTopbarSearchTextScore($groupTitle, $terms, array(
+						'exact' => 92,
+						'prefix' => 58,
+						'like' => 30,
+					)) + self::getTopbarSearchTextScore($groupDescription, $terms, array(
+						'exact' => 42,
+						'prefix' => 28,
+						'like' => 16,
+					));
+
+					$matchedProposalTitle = '';
+					$matchedProposalDescription = '';
+					foreach ($group->getProposals(true) as $proposal) {
+						if (!($proposal instanceof \dbObject\DecisionProposal)) {
+							continue;
+						}
+
+						$proposalTitle = trim((string)$proposal->get('title'));
+						$proposalDescription = trim((string)$proposal->get('description'));
+						$proposalScore = self::getTopbarSearchTextScore($proposalTitle, $terms, array(
+							'exact' => 76,
+							'prefix' => 48,
+							'like' => 26,
+						)) + self::getTopbarSearchTextScore($proposalDescription, $terms, array(
+							'exact' => 28,
+							'prefix' => 18,
+							'like' => 10,
+						));
+
+						if ($proposalScore <= 0) {
+							continue;
+						}
+
+						$groupScore += $proposalScore;
+						if ($matchedProposalTitle === '') {
+							$matchedProposalTitle = $proposalTitle;
+							$matchedProposalDescription = $proposalDescription;
+						}
+					}
+
+					if ($groupScore <= $bestGroupScore) {
+						continue;
+					}
+
+					$bestGroupScore = $groupScore;
+					$bestGroupTitle = $groupTitle;
+					$bestGroupDescription = $groupDescription;
+					$bestProposalTitle = $matchedProposalTitle;
+					$bestProposalDescription = $matchedProposalDescription;
+				}
+
+				$processTitle = trim((string)($row['process_title'] ?? ''));
+				$processDescription = trim((string)($row['process_description'] ?? ''));
+				$holonName = trim((string)($row['holon_name'] ?? ''));
+				$resultTitle = $processTitle !== '' ? $processTitle : ($bestGroupTitle !== '' ? $bestGroupTitle : ('Decision #' . (int)$decision->getId()));
+
+				$subtitleParts = array();
+				if ($holonName !== '') {
+					$subtitleParts[] = $holonName;
+				}
+				if ($bestGroupTitle !== '' && $bestGroupTitle !== $resultTitle) {
+					$subtitleParts[] = $bestGroupTitle;
+				}
+				$subtitle = implode(' | ', $subtitleParts);
+
+				$snippetCandidates = array(
+					$processDescription,
+					$bestGroupDescription,
+					$bestProposalDescription,
+					$bestProposalTitle,
+					$bestGroupTitle,
+					$processTitle,
+				);
+				$snippetSource = '';
+				$snippetScore = -1;
+				foreach ($snippetCandidates as $candidate) {
+					$candidate = trim((string)$candidate);
+					if ($candidate === '') {
+						continue;
+					}
+
+					$candidateScore = self::getTopbarSearchTextScore($candidate, $terms);
+					if ($candidateScore <= $snippetScore) {
+						continue;
+					}
+
+					$snippetScore = $candidateScore;
+					$snippetSource = $candidate;
+				}
+
+				if ($snippetSource === '') {
+					$snippetSource = trim((string)($row['group_descriptions'] ?? ''));
+				}
+				if ($snippetSource === '') {
+					$snippetSource = trim((string)($row['proposal_descriptions'] ?? ''));
+				}
+				if ($snippetSource === '') {
+					$snippetSource = trim((string)($row['group_titles'] ?? ''));
+				}
+				if ($snippetSource === '') {
+					$snippetSource = trim((string)($row['proposal_titles'] ?? ''));
+				}
+
+				$results[] = array(
+					'module' => 'decision',
+					'moduleLabel' => 'Decisions',
+					'title' => $resultTitle,
+					'subtitle' => $subtitle,
+					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
+					'relevance' => (int)($row['relevance'] ?? 0),
+					'action' => array(
+						'type' => 'decision',
+						'decisionId' => (int)$decision->getId(),
+						'holonId' => (int)$decision->get('IDholon'),
+					),
+				);
+			}
+
+			return $results;
+		}
+
 		public function searchTopbarResults($query, array $scopes = array(), array $options = array())
 		{
 			$query = trim((string)$query);
@@ -5573,7 +5942,7 @@
 					$scope = 'structure';
 				}
 
-				if (in_array($scope, array('structure', 'team', 'documents'), true)) {
+				if (in_array($scope, array('structure', 'team', 'documents', 'decision'), true)) {
 					$normalizedScopes[$scope] = $scope;
 				}
 			}
@@ -5600,6 +5969,7 @@
 				'structure' => 0,
 				'team' => 0,
 				'documents' => 0,
+				'decision' => 0,
 			);
 			$results = array();
 
@@ -5625,12 +5995,19 @@
 					$counts['documents'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
+
+				if (isset($normalizedScopes['decision'])) {
+					$scopeResults = $this->searchTopbarDecisionResults($query, $terms, $perScopeLimit, $viewerContext);
+					$counts['decision'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
 			}
 
 			$moduleOrder = array(
 				'structure' => 1,
 				'team' => 2,
-				'documents' => 3,
+				'decision' => 3,
+				'documents' => 4,
 			);
 
 			usort($results, function ($left, $right) use ($moduleOrder) {

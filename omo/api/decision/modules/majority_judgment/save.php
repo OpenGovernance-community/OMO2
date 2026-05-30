@@ -4,6 +4,7 @@ require_once dirname(__DIR__) . '/context.php';
 require_once __DIR__ . '/shared.php';
 
 use dbObject\DbObject;
+use dbObject\DecisionGroup;
 use dbObject\DecisionParticipant;
 use dbObject\DecisionProcess;
 use dbObject\DecisionProposal;
@@ -26,6 +27,7 @@ if (empty($context['status'])) {
 }
 
 $decision = $context['decision'];
+$selectedGroup = $context['decisionGroup'] ?? null;
 $currentUserId = (int)$context['currentUserId'];
 $organizationId = (int)$context['organizationId'];
 $targetHolonId = (int)$context['targetHolonId'];
@@ -33,6 +35,8 @@ $decisionId = $decision instanceof DecisionProcess ? (int)$decision->getId() : 0
 $coreLocked = $decision instanceof DecisionProcess ? $decision->hasConsultationStarted() : false;
 $startDatesLocked = $decision instanceof DecisionProcess ? $decision->hasSubmittedResponses() : false;
 
+$processTitle = trim((string)($_POST['process_title'] ?? ''));
+$processDescription = trim((string)($_POST['process_description'] ?? ''));
 $title = trim((string)($_POST['title'] ?? ''));
 $description = trim((string)($_POST['description'] ?? ''));
 $decisionType = DecisionProcess::normalizeDecisionType((string)($_POST['decision_type'] ?? DecisionProcess::TYPE_DECISION));
@@ -49,10 +53,17 @@ $proposalItems = omoDecisionBuildProposalItemsFromInput(
     $_POST['proposal_info_urls'] ?? []
 );
 
+if (!$coreLocked && $processTitle === '') {
+    omoDecisionModuleJsonResponse(400, [
+        'status' => false,
+        'message' => 'Le titre du processus est obligatoire.',
+    ]);
+}
+
 if (!$coreLocked && $title === '') {
     omoDecisionModuleJsonResponse(400, [
         'status' => false,
-        'message' => 'Le titre du scrutin est obligatoire.',
+        'message' => 'Le titre du groupe est obligatoire.',
     ]);
 }
 
@@ -64,7 +75,9 @@ if (!$coreLocked && count($proposalItems) < 2) {
 }
 
 if ($decision instanceof DecisionProcess) {
-    $existingMethod = DecisionProcess::normalizeEvaluationMethod($decision->get('evaluation_method'));
+    $existingMethod = $selectedGroup instanceof DecisionGroup
+        ? DecisionProcess::normalizeEvaluationMethod($selectedGroup->get('evaluation_method'))
+        : DecisionProcess::normalizeEvaluationMethod($decision->get('evaluation_method'));
     if ($existingMethod !== DecisionProcess::METHOD_MAJORITY_JUDGMENT) {
         omoDecisionModuleJsonResponse(400, [
             'status' => false,
@@ -82,7 +95,7 @@ if ($decision instanceof DecisionProcess) {
 }
 
 $currentConfig = $decision instanceof DecisionProcess
-    ? omoDecisionMajorityJudgmentBuildConfig($decision->get('parameters'))
+    ? omoDecisionMajorityJudgmentBuildConfig($selectedGroup instanceof DecisionGroup ? $selectedGroup : $decision->get('parameters'))
     : [
         'is_anonymous' => $isAnonymous,
         'allow_consultation_proposals' => $allowConsultationProposals,
@@ -107,14 +120,12 @@ if (!$pdo) {
 try {
     $pdo->beginTransaction();
 
-    if (!$coreLocked) {
-        $decision->set('title', $title);
-        $decision->set('description', $description !== '' ? $description : null);
-        $decision->set('decision_type', $decisionType);
-    }
-
     $decision->set('status', $status);
     $decision->set('evaluation_method', DecisionProcess::METHOD_MAJORITY_JUDGMENT);
+    if (!$coreLocked) {
+        $decision->set('title', $processTitle);
+        $decision->set('description', $processDescription !== '' ? $processDescription : null);
+    }
 
     if (!$startDatesLocked) {
         $decision->set('consultation_start_at', $consultationStartAt !== '' ? $consultationStartAt : null);
@@ -124,13 +135,19 @@ try {
     $decision->set('consultation_end_at', $consultationEndAt !== '' ? $consultationEndAt : null);
     $decision->set('evaluation_end_at', $evaluationEndAt !== '' ? $evaluationEndAt : null);
 
-    $existingParameters = omoDecisionModuleGetMethodParameters($decision->get('parameters'), omoDecisionMajorityJudgmentGetMethodKey());
+    $decisionGroup = $selectedGroup instanceof DecisionGroup ? $selectedGroup : null;
+    $primaryGroup = $decision instanceof DecisionProcess ? $decision->getPrimaryGroup(false) : null;
+    $isPrimaryGroup = !$decisionGroup || ($primaryGroup instanceof DecisionGroup && (int)$primaryGroup->getId() === (int)$decisionGroup->getId());
+    $existingParameters = omoDecisionModuleGetMethodParameters(
+        $decisionGroup instanceof DecisionGroup ? $decisionGroup->get('parameters') : $decision->get('parameters'),
+        omoDecisionMajorityJudgmentGetMethodKey()
+    );
     $proposalCount = $canEditProposals
         ? count($proposalItems)
         : (int)($existingParameters['proposal_count'] ?? count($proposalItems));
 
     $parameters = omoDecisionMajorityJudgmentMergeConfigIntoParameters(
-        $decision->get('parameters'),
+        $decisionGroup instanceof DecisionGroup ? $decisionGroup->get('parameters') : $decision->get('parameters'),
         [
             'is_anonymous' => $isAnonymous,
             'allow_consultation_proposals' => $allowConsultationProposals,
@@ -140,14 +157,41 @@ try {
             'created_from_module' => 'majority_judgment',
         ]
     );
-    $decision->set('parameters', $parameters);
-
     $saveDecision = $decision->save();
     if (empty($saveDecision['status'])) {
         throw new RuntimeException('decision_save_failed');
     }
 
     $decisionId = (int)$decision->getId();
+    if (!$decisionGroup instanceof DecisionGroup) {
+        $decisionGroup = $decision->ensurePrimaryGroup();
+        $isPrimaryGroup = true;
+    }
+    if (!$decisionGroup instanceof DecisionGroup || (int)$decisionGroup->getId() <= 0) {
+        throw new RuntimeException('decision_group_save_failed');
+    }
+    if (!$coreLocked) {
+        $decisionGroup->set('title', $title);
+        $decisionGroup->set('description', $description !== '' ? $description : null);
+        $decisionGroup->set('decision_type', $decisionType);
+    }
+    $decisionGroup->set('evaluation_method', DecisionProcess::METHOD_MAJORITY_JUDGMENT);
+    $decisionGroup->set('parameters', $parameters);
+    $saveDecisionGroup = $decisionGroup->save();
+    if (empty($saveDecisionGroup['status'])) {
+        throw new RuntimeException('decision_group_update_failed');
+    }
+    $decisionGroupId = (int)$decisionGroup->getId();
+
+    if ($isPrimaryGroup) {
+        $decision->set('decision_type', $decisionType);
+        $decision->set('parameters', $parameters);
+        $decision->set('evaluation_method', DecisionProcess::METHOD_MAJORITY_JUDGMENT);
+        $saveDecisionMirror = $decision->save();
+        if (empty($saveDecisionMirror['status'])) {
+            throw new RuntimeException('decision_mirror_save_failed');
+        }
+    }
 
     $ownerParticipant = DecisionParticipant::findByDecisionAndUser($decisionId, $currentUserId);
     if (!$ownerParticipant) {
@@ -165,7 +209,7 @@ try {
 
     if ($canEditProposals) {
         $existingActiveProposals = [];
-        foreach ($decision->getProposals(false) as $proposal) {
+        foreach ($decisionGroup->getProposals(false) as $proposal) {
             if ((int)$proposal->get('active') !== 1) {
                 continue;
             }
@@ -175,6 +219,7 @@ try {
         foreach ($proposalItems as $index => $proposalItem) {
             $proposal = $existingActiveProposals[$index] ?? new DecisionProposal();
             $proposal->set('IDdecision_process', $decisionId);
+            $proposal->set('IDdecision_group', $decisionGroupId);
             $proposal->set('title', (string)$proposalItem['title']);
             $proposal->set('description', $proposalItem['description'] ?? null);
             $proposal->set('info_url', $proposalItem['info_url'] ?? null);
@@ -225,6 +270,6 @@ omoDecisionModuleJsonResponse(200, [
         ? 'Scrutin mis a jour.'
         : 'Scrutin cree.',
     'decisionId' => $decisionId,
-    'redirectUrl' => omoDecisionBuildEditorUrl($organizationId, $targetHolonId, $decisionId, DecisionProcess::METHOD_MAJORITY_JUDGMENT, 'manage'),
+    'redirectUrl' => omoDecisionBuildEditorUrl($organizationId, $targetHolonId, $decisionId, DecisionProcess::METHOD_MAJORITY_JUDGMENT, 'manage', $decisionGroupId),
     'drawerTitle' => 'Prises de decision',
 ]);
