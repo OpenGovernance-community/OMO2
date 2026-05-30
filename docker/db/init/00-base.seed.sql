@@ -148,6 +148,7 @@ INSERT INTO `document` (`id`, `title`, `description`, `content`, `keywords`, `ID
 CREATE TABLE `faq` (
   `id` int(10) UNSIGNED NOT NULL,
   `IDhowto` int(10) UNSIGNED DEFAULT NULL,
+  `IDorganization` int(10) UNSIGNED DEFAULT NULL,
   `IDholon` int(10) UNSIGNED DEFAULT NULL,
   `question` varchar(255) NOT NULL,
   `answer` text NOT NULL,

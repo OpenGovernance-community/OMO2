@@ -247,10 +247,27 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+    flex: 0 0 30px;
     background: var(--topbar-avatar-bg, #111827);
     color: var(--topbar-avatar-text, #ffffff);
     font-weight: 700;
     font-size: 13px;
+}
+
+.common-topbar__avatar-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.common-topbar__avatar-initial {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
 }
 
 .common-topbar__menu {

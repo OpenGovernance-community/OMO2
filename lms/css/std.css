@@ -1,56 +1,60 @@
-   :root {
-    /* Couleurs principales */
-    --primary: #864caf;
-    --primary-light: #cfa7eb;
-    --primary-dark: #6a3e8e;
+:root {
+    --primary: var(--color-primary, #004663);
+    --primary-light: color-mix(in srgb, var(--primary) 14%, var(--color-surface, #ffffff));
+    --primary-dark: color-mix(in srgb, var(--primary) 78%, #000000);
 
-    /* Backgrounds */
-    --bg-body: #ffffff;
-    --bg-card: #ffffff;
-    --bg-branch: #fafafa;
-    --bg-header: #f5f5f5;
+    --bg-main: var(--color-bg, var(--color-surface-alt, #f4f7fa));
+    --bg-body: var(--color-bg, #ffffff);
+    --bg-card: var(--color-surface, #ffffff);
+    --bg-branch: var(--color-surface, #ffffff);
+    --bg-header: var(--color-surface-alt, #f3f7fa);
 
-    /* Texte */
-    --text-main: #222;
-    --text-light: #666;
+    --text-main: var(--color-text, #1f2937);
+    --text-light: var(--color-text-light, #6b7280);
 
-    /* Bordures */
-    --border-color: #ddd;
-    --border-radius:8px;
-
-    /* Ombres */
-    --shadow: 2px 2px 5px rgba(0,0,0,0.08);
-
-    /* États */
-    --disabled: #ccc;
-
-    /* Progress */
-    --progress-bg: #eee;
+    --border-color: var(--color-border, #d1d5db);
+    --border-radius: 12px;
+    --shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+    --disabled: color-mix(in srgb, var(--text-main) 18%, var(--bg-card));
+    --progress-bg: color-mix(in srgb, var(--border-color) 64%, var(--bg-card));
 }
 
-body { 
-    font-family: Arial; 
+body {
+    font-family: Arial, Helvetica, sans-serif;
     background: var(--bg-body);
     color: var(--text-main);
-    margin:0px;
-    padding:0px;
+    margin: 0;
+    padding: 0;
 }
+
 .content {
     padding: 20px;
 }
+
 button {
     margin-top: 10px;
-    padding: 8px;
+    padding: 8px 12px;
     cursor: pointer;
     background: var(--primary);
-    color: white;
-    border: none;
-    border-radius: 6px;
+    color: var(--color-text-inverse, #ffffff);
+    border: 1px solid color-mix(in srgb, var(--primary) 72%, transparent);
+    border-radius: 8px;
 }
+
+button:hover {
+    background: color-mix(in srgb, var(--primary) 88%, #ffffff);
+}
+
+button:disabled {
+    background: var(--disabled);
+    border-color: var(--disabled);
+    color: var(--text-light);
+}
+
 .org-banner {
     position: relative;
     padding: 60px 20px 40px;
-    color: white;
+    color: var(--color-text-inverse, #ffffff);
     text-align: center;
     overflow: hidden;
 }

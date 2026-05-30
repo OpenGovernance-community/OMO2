@@ -88,7 +88,7 @@ if ($m) {
 ?>
 	<style>
 	  button:disabled {
-		  background: #ccc;
+		  background: var(--disabled, color-mix(in srgb, var(--text-main, #1f2937) 18%, var(--bg-card, #ffffff)));
 		  cursor: not-allowed;
 		  opacity: 0.7;
 	  }
@@ -99,13 +99,13 @@ if ($m) {
 		  justify-content: space-between;
 		  gap: 12px;
 		  padding: 14px 16px;
-		  border-top: 1px solid #ddd;
-		  background: #faf6e9;
+		  border-top: 1px solid var(--border-color, #ddd);
+		  background: color-mix(in srgb, var(--primary, #004663) 10%, var(--bg-card, #faf6e9));
 	  }
 
 	  .lms-login-invite p {
 		  margin: 0;
-		  color: #5f4a11;
+		  color: var(--text-main, #5f4a11);
 	  }
 
 	  .lms-login-invite button {
@@ -113,21 +113,22 @@ if ($m) {
 		  border-radius: 10px;
 		  padding: 10px 14px;
 		  background: var(--color-primary, #004663);
-		  color: #fff;
+		  color: var(--color-text-inverse, #fff);
 		  cursor: pointer;
 	  }
 
 	  .lms-homework-section {
 		  margin-top: 24px;
 		  padding: 18px;
-		  border: 1px solid #d8e0e8;
+		  border: 1px solid var(--border-color, #d8e0e8);
 		  border-radius: 18px;
-		  background: #f8fbfd;
+		  background: var(--bg-header, #f8fbfd);
 	  }
 
 	  .lms-homework-section h3 {
 		  margin: 0 0 14px;
 		  font-size: 1.05rem;
+		  color: var(--text-main, #22313f);
 	  }
 
 	  .lms-homework-list {
@@ -137,15 +138,15 @@ if ($m) {
 	  }
 
 	  .lms-homework-item {
-		  border: 1px solid #d9e3ea;
+		  border: 1px solid var(--border-color, #d9e3ea);
 		  border-radius: 14px;
-		  background: #fff;
+		  background: var(--bg-card, #fff);
 		  overflow: hidden;
 	  }
 
 	  .lms-homework-item.is-done {
-		  border-color: #9bc7b5;
-		  background: #f5fbf8;
+		  border-color: color-mix(in srgb, var(--primary, #004663) 45%, var(--border-color, #d9e3ea));
+		  background: color-mix(in srgb, var(--primary, #004663) 10%, var(--bg-card, #ffffff));
 	  }
 
 	  .lms-homework-row {
@@ -171,13 +172,13 @@ if ($m) {
 
 	  .lms-homework-title {
 		  font-weight: 600;
-		  color: #22313f;
+		  color: var(--text-main, #22313f);
 	  }
 
 	  .lms-homework-meta {
 		  margin-top: 4px;
 		  font-size: 0.9rem;
-		  color: #5f6f7f;
+		  color: var(--text-light, #5f6f7f);
 	  }
 
 	  .lms-homework-actions {
@@ -191,9 +192,9 @@ if ($m) {
 		  position: relative;
 		  width: 28px;
 		  height: 28px;
-		  border: 2px solid #90a4b4;
+		  border: 2px solid color-mix(in srgb, var(--border-color, #90a4b4) 85%, var(--text-light, #5f6f7f));
 		  border-radius: 8px;
-		  background: #fff;
+		  background: var(--bg-card, #fff);
 		  cursor: pointer;
 		  margin: 0;
 		  flex: 0 0 auto;
@@ -213,27 +214,27 @@ if ($m) {
 	  }
 
 	  .lms-homework-check:hover {
-		  border-color: #5f7d92;
-		  box-shadow: 0 0 0 3px rgba(0, 70, 99, 0.08);
+		  border-color: color-mix(in srgb, var(--primary, #004663) 55%, var(--border-color, #5f7d92));
+		  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #004663) 10%, transparent);
 	  }
 
 	  .lms-homework-check.is-done {
-		  border-color: #4d9a76;
-		  background: #4d9a76;
-		  color: #fff;
+		  border-color: var(--primary, #4d9a76);
+		  background: var(--primary, #4d9a76);
+		  color: var(--color-text-inverse, #fff);
 	  }
 
 	  .lms-homework-check.is-done::after {
-		  border-right-color: #fff;
-		  border-bottom-color: #fff;
+		  border-right-color: var(--color-text-inverse, #fff);
+		  border-bottom-color: var(--color-text-inverse, #fff);
 	  }
 
 	  .lms-homework-expand {
-		  border: 1px solid #c9d5df;
+		  border: 1px solid var(--border-color, #c9d5df);
 		  border-radius: 10px;
 		  padding: 8px 12px;
-		  background: #fff;
-		  color: #22313f;
+		  background: var(--bg-card, #fff);
+		  color: var(--text-main, #22313f);
 		  cursor: pointer;
 		  margin: 0;
 	  }
@@ -246,9 +247,9 @@ if ($m) {
 
 	  .lms-homework-detail {
 		  padding: 0 16px 16px 39px;
-		  color: #3b4d5d;
+		  color: var(--text-main, #3b4d5d);
 		  line-height: 1.5;
-		  border-top: 1px solid #eef3f6;
+		  border-top: 1px solid color-mix(in srgb, var(--border-color, #d8e0e8) 60%, transparent);
 	  }
 
 	  .lms-homework-detail[hidden] {
@@ -257,16 +258,82 @@ if ($m) {
 
 	  .lms-homework-help {
 		  margin: 14px 0 0;
-		  color: #5f6f7f;
+		  color: var(--text-light, #5f6f7f);
 		  font-size: 0.92rem;
 	  }
 
 	  .quiz-info {
 		  padding: 14px 16px;
 		  border-radius: 14px;
-		  background: #eff5f8;
-		  color: #264052;
+		  border: 1px solid var(--border-color, #d8e0e8);
+		  background: var(--bg-header, #eff5f8);
+		  color: var(--text-main, #264052);
 		  margin-top: 16px;
+	  }
+
+	  #quiz-zone {
+		  margin-top: 16px;
+		  background: transparent;
+	  }
+
+	  #quiz-zone:empty {
+		  display: none;
+	  }
+
+	  .quiz {
+		  padding: 18px;
+		  border: 1px solid var(--border-color, #d8e0e8);
+		  border-radius: 18px;
+		  background: var(--bg-card, #ffffff);
+		  color: var(--text-main, #22313f);
+	  }
+
+	  .quiz strong {
+		  display: block;
+		  margin-bottom: 10px;
+		  color: var(--text-main, #22313f);
+	  }
+
+	  .quiz p {
+		  margin: 0 0 12px;
+		  color: var(--text-main, #22313f);
+	  }
+
+	  .quiz small {
+		  display: block;
+		  margin: 0 0 14px;
+		  color: var(--text-light, #5f6f7f);
+	  }
+
+	  .quiz label {
+		  display: flex;
+		  align-items: flex-start;
+		  gap: 10px;
+		  margin: 10px 0 0;
+		  padding: 12px 14px;
+		  border: 1px solid var(--border-color, #d8e0e8);
+		  border-radius: 12px;
+		  background: color-mix(in srgb, var(--bg-card, #ffffff) 82%, var(--bg-header, #f8fbfd));
+		  color: var(--text-main, #22313f);
+		  cursor: pointer;
+		  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+	  }
+
+	  .quiz label:hover {
+		  border-color: color-mix(in srgb, var(--primary, #004663) 45%, var(--border-color, #d8e0e8));
+		  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #004663) 10%, transparent);
+	  }
+
+	  .quiz input[name="qcm"] {
+		  margin: 2px 0 0;
+		  accent-color: var(--primary, #004663);
+		  flex: 0 0 auto;
+	  }
+
+	  #doneBtn {
+		  background: var(--primary, #004663);
+		  color: var(--color-text-inverse, #ffffff);
+		  border: 1px solid color-mix(in srgb, var(--primary, #004663) 72%, transparent);
 	  }
 	</style>
 <?php
@@ -284,18 +351,18 @@ if ($m) {
 		}
 
 		.video-portal {
+			--video-aspect-ratio: 16 / 9;
+			--video-ratio-number: 1.7777778;
 			position: relative;
-			max-width: 800px;
+			width: min(100%, 960px, calc(50dvh * var(--video-ratio-number)));
 			font-family: sans-serif;
 			overflow: hidden;
 			margin: auto;
-			max-height: 50dvh;
-			aspect-ratio: 1.8;
 		}
 
 		.video-inner {
-			padding-top: 56.25%;
 			position: relative;
+			aspect-ratio: var(--video-aspect-ratio);
 		}
 
 		.video-inner iframe {
@@ -310,7 +377,7 @@ if ($m) {
 			position: absolute;
 			inset: 0;
 			pointer-events: none;
-			background: url("/lms/branding-client.png") center/cover no-repeat;
+			background: url("/lms/branding-client.png") center/contain no-repeat;
 		}
 
 		.video-portal {
@@ -346,6 +413,18 @@ if ($m) {
 			cursor: pointer;
 		}
 
+		.volume-controls {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			margin-left: 12px;
+		}
+
+		.volume-controls input[type="range"] {
+			width: 96px;
+			cursor: pointer;
+		}
+
 		.progressvideo {
 			flex: 1;
 			height: 6px;
@@ -358,6 +437,76 @@ if ($m) {
 			height: 100%;
 			width: 0%;
 			background: #fff;
+		}
+
+		@media (max-width: 640px) {
+			.video-portal {
+				width: min(100%, calc(42dvh * var(--video-ratio-number)));
+			}
+
+			.video-portal .custom-controls {
+				position: static;
+				width: auto;
+				opacity: 1;
+				transform: none;
+				padding: 8px 10px;
+				gap: 8px;
+				flex-wrap: wrap;
+				align-items: center;
+				background: color-mix(in srgb, var(--bg-card, #111827) 88%, #000);
+				border-top: 1px solid color-mix(in srgb, var(--border-color, #374151) 55%, transparent);
+			}
+
+			.video-portal .custom-controls button {
+				padding: 6px 10px;
+				min-width: 0;
+				min-height: 34px;
+				border-radius: 999px;
+				font-size: 0.9rem;
+			}
+
+			.video-portal #playBtn,
+			.video-portal #volumeBtn {
+				flex: 0 0 auto;
+			}
+
+			.video-portal .progressvideo {
+				order: 10;
+				flex: 1 0 100%;
+				height: 6px;
+			}
+
+			.video-portal #time {
+				font-size: 0.82rem;
+				opacity: 0.9;
+			}
+
+			.video-portal .volume-controls {
+				margin-left: auto;
+				gap: 6px;
+				flex: 0 1 auto;
+			}
+
+			.video-portal .volume-controls input[type="range"] {
+				width: 78px;
+			}
+		}
+
+		@media (max-width: 420px) {
+			.video-portal .custom-controls {
+				padding: 7px 8px;
+				gap: 6px;
+			}
+
+			.video-portal .custom-controls button {
+				padding: 5px 8px;
+				min-height: 32px;
+				font-size: 0.85rem;
+			}
+
+			.video-portal .volume-controls input[type="range"] {
+				width: 64px;
+			}
 		}
 	</style>
 
@@ -380,6 +529,10 @@ if ($m) {
 				<div class="progressvideo-bar"></div>
 			</div>
 			<span id="time">0:00</span>
+			<div class="volume-controls">
+				<button id="volumeBtn" type="button">Son</button>
+				<input id="volumeSlider" type="range" min="0" max="100" step="1" value="100" aria-label="Volume">
+			</div>
 		</div>
 	</div>
 
@@ -398,6 +551,7 @@ if ($m) {
 }
 ?>
 <script>
+(() => {
 	if (typeof initVideoPlayer === 'function') {
 		initVideoPlayer();
 	}
@@ -685,7 +839,7 @@ if ($m) {
 				<label>
 					<input type="${q.multiple ? 'checkbox' : 'radio'}" name="qcm" value="${c.id}">
 					${c.label}
-				</label><br>
+				</label>
 			`;
 		});
 
@@ -803,5 +957,7 @@ if ($m) {
 
 		submitAnswer();
 	};
+	window.initMissionUI = initMissionUI;
+})();
 </script>
 </div>

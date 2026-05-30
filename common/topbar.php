@@ -62,6 +62,18 @@ function commonResolveTopbarProfileData($organizationContext = null, array $prof
     return $profileData;
 }
 
+function commonRenderTopbarJqueryAssets()
+{
+    static $jqueryLoaded = false;
+
+    if ($jqueryLoaded) {
+        return;
+    }
+
+    echo '<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>' . PHP_EOL;
+    $jqueryLoaded = true;
+}
+
 function commonRenderTopbar(array $options = [])
 {
     static $assetsLoaded = false;
@@ -110,6 +122,34 @@ function commonRenderTopbar(array $options = [])
     $currentLocalePreference = function_exists('translationBundleGetRequestLocalePreference')
         ? translationBundleGetRequestLocalePreference('lang')
         : $currentLocale;
+    $helpItems = array_values($options['helpItems'] ?? []);
+    $faqHelpIndex = null;
+    foreach ($helpItems as $index => $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $faqSignals = [
+            (string)($item['label'] ?? ''),
+            (string)($item['title'] ?? ''),
+            (string)($item['url'] ?? ''),
+            (string)($item['callback'] ?? ''),
+        ];
+
+        foreach ($faqSignals as $signal) {
+            if (stripos($signal, 'faq') !== false) {
+                $faqHelpIndex = $index;
+                break 2;
+            }
+        }
+    }
+
+    if ($faqHelpIndex !== null) {
+        $faqHelpItem = $helpItems[$faqHelpIndex];
+        array_splice($helpItems, $faqHelpIndex, 1);
+        $faqTargetIndex = min(2, count($helpItems));
+        array_splice($helpItems, $faqTargetIndex, 0, [$faqHelpItem]);
+    }
 
     $config = [
         'appKey' => (string)($options['appKey'] ?? 'app'),
@@ -188,7 +228,7 @@ function commonRenderTopbar(array $options = [])
             'data' => commonResolveTopbarProfileData($organizationContext, $options['profile'] ?? []),
         ],
         'helpLabel' => (string)($options['helpLabel'] ?? 'Aide'),
-        'helpItems' => array_values($options['helpItems'] ?? []),
+        'helpItems' => $helpItems,
         'helpLinks' => array_values($options['helpLinks'] ?? []),
         'logoutLabel' => (string)($options['logoutLabel'] ?? 'Se deconnecter'),
         'modal' => [
@@ -222,6 +262,7 @@ function commonRenderTopbar(array $options = [])
         : strtoupper(substr($profileDisplayName, 0, 1));
 
     if (!$assetsLoaded) {
+        commonRenderTopbarJqueryAssets();
         echo '<link rel="stylesheet" href="/common/assets/components.css">' . PHP_EOL;
         echo '<script src="/common/assets/components.js" defer></script>' . PHP_EOL;
         echo '<link rel="stylesheet" href="/common/assets/topbar.css">' . PHP_EOL;
@@ -350,7 +391,17 @@ function commonRenderTopbar(array $options = [])
         <?php if (!empty($config['profile']['enabled'])): ?>
         <div class="common-topbar__menu-wrap">
             <button type="button" class="common-topbar__action common-topbar__action--square common-topbar__profile" data-topbar-menu-trigger="profile">
-                <span class="common-topbar__avatar"><?= htmlspecialchars($profileInitial) ?></span>
+                <span class="common-topbar__avatar">
+                    <?php if (!empty($config['profile']['data']['photoUrl'])): ?>
+                        <img
+                            src="<?= htmlspecialchars((string)$config['profile']['data']['photoUrl']) ?>"
+                            alt="<?= htmlspecialchars($profileDisplayName) ?>"
+                            class="common-topbar__avatar-image"
+                        >
+                    <?php else: ?>
+                        <span class="common-topbar__avatar-initial" aria-hidden="true"><?= htmlspecialchars($profileInitial) ?></span>
+                    <?php endif; ?>
+                </span>
                 <span class="common-topbar__action-label"><?= htmlspecialchars($config['profile']['buttonLabel']) ?></span>
             </button>
             <div class="common-topbar__menu common-topbar__menu--right" data-topbar-menu="profile">

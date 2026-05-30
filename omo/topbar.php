@@ -278,15 +278,15 @@ function omoGetTopbarHelpLinks(): array
     $helpLinks = [
         [
             'label' => omoTopbarTranslate('topbar.help.terms.label'),
-            'href' => commonBuildUrl('/common/conditions-generales.php', commonGetRootHost()),
-            'url' => commonBuildUrl('/common/conditions-generales.php', commonGetRootHost()),
+            'href' => commonBuildUrl('/common/conditions-generales.php'),
+            'url' => commonBuildUrl('/common/conditions-generales.php'),
             'mode' => 'fetch',
             'title' => omoTopbarTranslate('topbar.help.terms.label'),
         ],
         [
             'label' => omoTopbarTranslate('topbar.help.privacy.label'),
-            'href' => commonBuildUrl('/common/politique-confidentialite.php', commonGetRootHost()),
-            'url' => commonBuildUrl('/common/politique-confidentialite.php', commonGetRootHost()),
+            'href' => commonBuildUrl('/common/politique-confidentialite.php'),
+            'url' => commonBuildUrl('/common/politique-confidentialite.php'),
             'mode' => 'fetch',
             'title' => omoTopbarTranslate('topbar.help.privacy.label'),
         ],

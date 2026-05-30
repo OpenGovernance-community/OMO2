@@ -59,12 +59,36 @@
 </div>
 <script>
 function closeDrawer() {
-    document.getElementById('drawer').classList.remove('open');
-    document.getElementById('overlay').style.display = 'none';
+    const drawer = document.getElementById('drawer');
+    const overlay = document.getElementById('overlay');
+    const content = document.getElementById('drawer-content');
+    const quizZone = document.getElementById('quiz-zone');
+
+    if (typeof window.lmsDestroyCurrentVideoPlayer === 'function') {
+        window.lmsDestroyCurrentVideoPlayer({ unload: true }).catch(() => {});
+    }
+
+    drawer.classList.remove('open');
+    overlay.style.display = 'none';
+
+    window.setTimeout(() => {
+        if (drawer.classList.contains('open')) {
+            return;
+        }
+
+        content.innerHTML = '';
+        quizZone.innerHTML = '';
+    }, 320);
 }
 function openDrawer(content) {
     const container = document.getElementById('drawer-content');
+
+    if (typeof window.lmsDestroyCurrentVideoPlayer === 'function') {
+        window.lmsDestroyCurrentVideoPlayer({ unload: true }).catch(() => {});
+    }
+
     container.innerHTML = content;
+    document.getElementById('quiz-zone').innerHTML = '';
 
     container.querySelectorAll('script').forEach(s => {
         const script = document.createElement('script');

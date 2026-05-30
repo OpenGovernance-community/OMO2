@@ -46,7 +46,7 @@ if ($organizationName === '') {
                 class="omo-settings__card omo-card omo-card--interactive"
                 data-omo-settings-modal-title="Organisation"
                 data-omo-settings-modal-url="/popup/organization_create.php?oid=<?= (int)$currentOrganizationId ?>"
-                data-omo-settings-modal-mode="iframe"
+                data-omo-settings-modal-mode="fetch"
                 <?= $canEditOrganization ? '' : 'disabled' ?>
             >
                 <strong>Organisation</strong>
