@@ -2,21 +2,39 @@
 require_once __DIR__ . '/bootstrap.php';
 
 if (!function_exists('omoSearchPopupGetScopeLabels')) {
-    function omoSearchPopupGetScopeLabels()
+    function omoSearchPopupGetScopeLabels(\dbObject\Organization $organization = null)
     {
-        return array(
+        $scopeLabels = array(
             'structure' => 'Structure',
             'team' => 'Team',
             'documents' => 'Documents',
             'decision' => 'Decisions',
         );
+
+        if (!$organization instanceof \dbObject\Organization || (int)$organization->getId() <= 0) {
+            return $scopeLabels;
+        }
+
+        $scopeAppHashes = array(
+            'structure' => 'structure',
+            'team' => 'team',
+            'documents' => 'documents',
+            'decision' => 'decision',
+        );
+
+        foreach ($scopeAppHashes as $scopeId => $hash) {
+            if (!$organization->isApplicationEnabled($hash)) {
+                unset($scopeLabels[$scopeId]);
+            }
+        }
+
+        return $scopeLabels;
     }
 }
 
 if (!function_exists('omoSearchPopupResolveScopes')) {
-    function omoSearchPopupResolveScopes($rawScopes)
+    function omoSearchPopupResolveScopes($rawScopes, array $scopeLabels)
     {
-        $scopeLabels = omoSearchPopupGetScopeLabels();
         if (!is_array($rawScopes)) {
             $rawScopes = array($rawScopes);
         }
@@ -34,7 +52,7 @@ if (!function_exists('omoSearchPopupResolveScopes')) {
         }
 
         if (count($selectedScopes) === 0) {
-            $selectedScopes['structure'] = 'structure';
+            $selectedScopes = $scopeLabels;
         }
 
         return $selectedScopes;
@@ -322,8 +340,6 @@ if (!function_exists('omoSearchPopupRenderContent')) {
 $organizationId = isset($_GET['oid']) ? (int)$_GET['oid'] : (int)($_SESSION['currentOrganization'] ?? 0);
 $currentHolonId = isset($_GET['cid']) ? (int)$_GET['cid'] : 0;
 $query = trim((string)($_GET['q'] ?? ''));
-$selectedScopes = omoSearchPopupResolveScopes($_GET['scopes'] ?? array());
-$scopeLabels = omoSearchPopupGetScopeLabels();
 $escape = 'omoApiEscape';
 $isPartial = !empty($_GET['partial']);
 
@@ -350,6 +366,8 @@ if (!$organization->load($organizationId) || !$organization->canViewDetail()) {
     exit;
 }
 
+$scopeLabels = omoSearchPopupGetScopeLabels($organization);
+$selectedScopes = omoSearchPopupResolveScopes($_GET['scopes'] ?? array(), $scopeLabels);
 $viewerContext = \dbObject\SearchJob::buildViewerContextFromGlobals($organizationId, $currentHolonId);
 
 if ($isPartial) {
@@ -367,7 +385,7 @@ if ($isPartial) {
     }
 
     $query = trim((string)$job->get('query'));
-    $selectedScopes = omoSearchPopupResolveScopes($job->getScopes());
+    $selectedScopes = omoSearchPopupResolveScopes($job->getScopes(), $scopeLabels);
 
     $jobPayload = array(
         'status' => (string)$job->get('status'),

@@ -126,10 +126,10 @@ if (!function_exists('omoDecisionResolveGenericPublicContext')) {
 
         $decision->syncLifecycleStatus();
 
-        $currentHolon = $organization->getStructuralRootHolon();
+        $currentHolon = $organization->getEnabledStructuralRootHolon();
         $decisionHolon = null;
         $decisionHolonId = (int)$decision->get('IDholon');
-        if ($decisionHolonId > 0) {
+        if ($decisionHolonId > 0 && $organization->isStructureApplicationEnabled()) {
             $decisionHolon = new Holon();
             if (!$decisionHolon->load($decisionHolonId) || !$organization->containsHolon($decisionHolon)) {
                 return [

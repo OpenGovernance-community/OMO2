@@ -6,12 +6,14 @@ $currentUserId = commonGetCurrentUserId();
 $currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 $organization = null;
 $canEditOrganization = false;
+$hasStructureTemplates = false;
 $organizationName = '';
 $isSiteAdmin = commonCurrentUserIsSiteAdminModeEnabled();
 if ($currentOrganizationId > 0) {
     $organization = new \dbObject\Organization();
     if ($organization->load($currentOrganizationId)) {
         $canEditOrganization = $organization->canEdit();
+        $hasStructureTemplates = $organization->getEnabledStructuralRootHolon() !== null;
         $organizationName = trim((string)$organization->get('name'));
     }
 }
@@ -53,6 +55,7 @@ if ($organizationName === '') {
                 <span><?= htmlspecialchars($canEditOrganization ? "Modifier le nom, le nom court, les illustrations et la couleur de " . $organizationName . "." : "Vous devez etre admin de l'organisation pour modifier ces parametres.", ENT_QUOTES, 'UTF-8') ?></span>
             </button>
 
+            <?php if ($hasStructureTemplates): ?>
             <button
                 type="button"
                 class="omo-settings__card omo-card omo-card--interactive noMobile"
@@ -60,11 +63,11 @@ if ($organizationName === '') {
                 data-omo-settings-drawer-url="/omo/api/parameters/holon-templates/index.php"
                 data-omo-settings-drawer-mode="fetch"
                 data-omo-settings-contextual="1"
-                <?= $currentOrganizationId > 0 ? '' : 'disabled' ?>
             >
                 <strong>Modeles de holons</strong>
                 <span>Configurer les types de noeuds et leurs proprietes pour votre organisation.</span>
             </button>
+            <?php endif; ?>
 
             <?php if ($isSiteAdmin): ?>
             <button

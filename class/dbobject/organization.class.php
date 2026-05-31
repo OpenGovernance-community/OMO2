@@ -542,6 +542,86 @@
 			}
 		}
 
+		public function addMember($userId = 0, $email = '')
+		{
+			$organizationId = (int)$this->getId();
+			if ($organizationId <= 0) {
+				return array(
+					'status' => false,
+					'message' => "L'organisation cible est invalide.",
+				);
+			}
+
+			if (!$this->canEdit()) {
+				return array(
+					'status' => false,
+					'message' => "Vous n'avez pas le droit de modifier cette organisation.",
+				);
+			}
+
+			$pdo = \dbObject\DbObject::getPdo();
+			if (!$pdo) {
+				return array(
+					'status' => false,
+					'message' => 'Connexion base de donnees indisponible.',
+				);
+			}
+
+			try {
+				$pdo->beginTransaction();
+
+				$user = $this->resolveMemberUser($userId, $email);
+				$hasActiveMembership = $this->hasActiveMembershipForUser($user, $organizationId);
+				$requiresInvitation = !$hasActiveMembership;
+
+				if ($requiresInvitation) {
+					$this->ensureOrganizationMembershipState($user, $organizationId, false);
+					$invitationIssue = \dbObject\Invitation::issue(
+						$organizationId,
+						(int)$user->getId(),
+						(int)$this->resolveCurrentUserId(),
+						trim((string)$user->get('email'))
+					);
+
+					if (!empty($invitationIssue['created']) && isset($invitationIssue['invitation'])) {
+						$invitationIssue['invitation']->sendEmail();
+					}
+				} else {
+					$this->ensureOrganizationMembershipState($user, $organizationId, true);
+				}
+
+				$this->recordMemberAddedHistory($user, $organizationId);
+
+				$pdo->commit();
+
+				return array(
+					'status' => true,
+					'message' => $requiresInvitation
+						? (
+							!empty($invitationIssue['created'])
+								? 'Invitation envoyee : ' . trim((string)$user->get('email'))
+								: 'Ajout en attente de confirmation : ' . trim((string)$user->get('email'))
+						)
+						: (
+							trim((string)$user->get('email')) !== ''
+								? 'Membre ajoute : ' . trim((string)$user->get('email'))
+								: 'Membre ajoute.'
+						),
+					'userId' => (int)$user->getId(),
+					'pending' => $requiresInvitation,
+				);
+			} catch (\Throwable $exception) {
+				if ($pdo->inTransaction()) {
+					$pdo->rollBack();
+				}
+
+				return array(
+					'status' => false,
+					'message' => $exception->getMessage(),
+				);
+			}
+		}
+
 		public function delete()
 		{
 			if (!$this->canDelete()) {
@@ -970,6 +1050,140 @@
 			$saveResult = $membership->save();
 
 			return is_array($saveResult) && !empty($saveResult['status']);
+		}
+
+		protected function ensureOrganizationMembershipState(\dbObject\User $user, $organizationId, $isActive = true)
+		{
+			$organizationId = (int)$organizationId;
+			if ((int)$user->getId() <= 0 || $organizationId <= 0) {
+				throw new \RuntimeException("L'organisation cible est invalide.");
+			}
+
+			$membership = new \dbObject\UserOrganization();
+			if (!$membership->load(array(
+				array('IDuser', (int)$user->getId()),
+				array('IDorganization', $organizationId),
+			))) {
+				$membership->set('IDuser', (int)$user->getId());
+				$membership->set('IDorganization', $organizationId);
+			}
+
+			if (trim((string)$membership->get('email')) === '' && trim((string)$user->get('email')) !== '') {
+				$membership->set('email', trim((string)$user->get('email')));
+			}
+
+			if (trim((string)$membership->get('username')) === '' && trim((string)$user->get('username')) !== '') {
+				$membership->set('username', trim((string)$user->get('username')));
+			}
+
+			$membership->set('active', (bool)$isActive);
+			$saveResult = $membership->save();
+			if (!is_array($saveResult) || empty($saveResult['status'])) {
+				throw new \RuntimeException("Impossible d'attacher cette personne a l'organisation.");
+			}
+
+			return $membership;
+		}
+
+		protected function hasActiveMembershipForUser(\dbObject\User $user, $organizationId)
+		{
+			$membership = new \dbObject\UserOrganization();
+			return $membership->load(array(
+				array('IDuser', (int)$user->getId()),
+				array('IDorganization', (int)$organizationId),
+			)) && (bool)$membership->get('active');
+		}
+
+		protected function recordMemberAddedHistory(\dbObject\User $memberUser, $organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			$authorUserId = (int)$this->resolveCurrentUserId();
+			$authorLabel = 'Utilisateur';
+
+			if ($authorUserId > 0) {
+				$author = new \dbObject\User();
+				if ($author->load($authorUserId)) {
+					$authorLabel = trim((string)$author->getScopedDisplayName($organizationId));
+				}
+			}
+
+			if ($authorLabel === '') {
+				$authorLabel = 'Utilisateur ' . $authorUserId;
+			}
+
+			$memberLabel = trim((string)$memberUser->getScopedDisplayName($organizationId));
+			if ($memberLabel === '') {
+				$memberLabel = trim((string)$memberUser->get('email'));
+			}
+			if ($memberLabel === '') {
+				$memberLabel = 'Utilisateur ' . (int)$memberUser->getId();
+			}
+
+			$organizationLabel = trim((string)$this->get('name'));
+			if ($organizationLabel === '') {
+				$organizationLabel = 'organisation';
+			}
+
+			$content = \dbObject\History::buildReferenceToken('user', (int)$memberUser->getId(), $memberLabel)
+				. ' a ete ajoute a '
+				. \dbObject\History::buildReferenceToken('organization', $organizationId, $organizationLabel)
+				. ' par '
+				. \dbObject\History::buildReferenceToken('user', $authorUserId, $authorLabel)
+				. '.';
+
+			$saveResult = \dbObject\History::createEntry(
+				$organizationId,
+				$authorUserId,
+				'holon_member_added',
+				$content,
+				array(
+					'IDtargetuser' => (int)$memberUser->getId(),
+					'IDorganization' => $organizationId,
+					'authorUserId' => $authorUserId,
+				),
+				0
+			);
+
+			if (!is_array($saveResult) || empty($saveResult['status'])) {
+				throw new \RuntimeException("L'historique de l'ajout n'a pas pu etre enregistre.");
+			}
+		}
+
+		protected function resolveMemberUser($userId = 0, $email = '')
+		{
+			$userId = (int)$userId;
+			$email = trim(mb_strtolower((string)$email, 'UTF-8'));
+
+			if ($userId > 0) {
+				$user = new \dbObject\User();
+				if (!$user->load($userId)) {
+					throw new \RuntimeException('La personne selectionnee est introuvable.');
+				}
+
+				return $user;
+			}
+
+			if ($email === '') {
+				throw new \RuntimeException('Selectionnez une personne ou saisissez une adresse e-mail.');
+			}
+
+			if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+				throw new \RuntimeException("L'adresse e-mail saisie n'est pas valide.");
+			}
+
+			$user = new \dbObject\User();
+			if ($user->load(array('email', $email))) {
+				return $user;
+			}
+
+			$user->set('email', $email);
+			$user->set('active', false);
+			$saveResult = $user->save();
+			if (!is_array($saveResult) || empty($saveResult['status']) || (int)$user->getId() <= 0) {
+				throw new \RuntimeException("Le profil n'a pas pu etre cree.");
+			}
+
+			return $user;
 		}
 
 		protected function getStructuralInitializationChildren(\dbObject\Holon $holon)
@@ -1705,13 +1919,13 @@
 				return false;
 			}
 
-			if ((int)$holonObject->get('IDorganization') === (int)$this->getId()) {
-				return true;
-			}
-
-			$rootHolon = $this->getStructuralRootHolon();
+			$rootHolon = $this->getEnabledStructuralRootHolon();
 			if (!$rootHolon) {
 				return false;
+			}
+
+			if ((int)$holonObject->get('IDorganization') === (int)$this->getId()) {
+				return true;
 			}
 
 			return $holonObject->isDescendantOf($rootHolon, true);
@@ -1719,7 +1933,7 @@
 
 		public function getTemplateContextHolon($contextHolonId = 0)
 		{
-			$rootHolon = $this->getStructuralRootHolon();
+			$rootHolon = $this->getEnabledStructuralRootHolon();
 			if (!$rootHolon) {
 				return null;
 			}
@@ -4706,6 +4920,78 @@
 			return $applications;
 		}
 
+		public function isApplicationEnabled($hash, $userId = null)
+		{
+			static $cache = array();
+
+			$organizationId = (int)$this->getId();
+			$hash = trim(mb_strtolower((string)$hash, 'UTF-8'));
+			$userId = $userId !== null
+				? (int)$userId
+				: (function_exists('commonGetCurrentUserId')
+					? (int)\commonGetCurrentUserId()
+					: (int)($_SESSION['currentUser'] ?? 0));
+
+			$cacheKey = $organizationId . ':' . $userId . ':' . $hash;
+			if (array_key_exists($cacheKey, $cache)) {
+				return $cache[$cacheKey];
+			}
+
+			if ($organizationId <= 0 || $hash === '') {
+				$cache[$cacheKey] = false;
+				return false;
+			}
+
+			$rows = self::fetchAll(
+				"SELECT
+					a.id,
+					a.active AS app_active,
+					a.navigationmode,
+					a.requires_login,
+					oa.active AS organization_active
+				FROM application a
+				LEFT JOIN organization_application oa
+					ON oa.IDapplication = a.id
+					AND oa.IDorganization = :organization_id
+				WHERE LOWER(a.hash) = :hash
+				ORDER BY a.id ASC
+				LIMIT 1",
+				array(
+					'organization_id' => $organizationId,
+					'hash' => $hash,
+				)
+			);
+
+			if ($rows === false || count($rows) === 0) {
+				$cache[$cacheKey] = true;
+				return true;
+			}
+
+			$row = $rows[0];
+			$cache[$cacheKey] = (
+				(int)($row['app_active'] ?? 0) === 1
+				&& trim((string)($row['navigationmode'] ?? '')) !== 'panel'
+				&& ((int)($row['requires_login'] ?? 0) === 0 || $userId > 0)
+				&& array_key_exists('organization_active', $row)
+				&& (int)$row['organization_active'] === 1
+			);
+			return $cache[$cacheKey];
+		}
+
+		public function isStructureApplicationEnabled($userId = null)
+		{
+			return $this->isApplicationEnabled('structure', $userId);
+		}
+
+		public function getEnabledStructuralRootHolon($userId = null)
+		{
+			if (!$this->isStructureApplicationEnabled($userId)) {
+				return null;
+			}
+
+			return $this->getStructuralRootHolon();
+		}
+
 		protected static function normalizeTopbarSearchText($value)
 		{
 			$value = trim((string)$value);
@@ -5245,7 +5531,7 @@
 
 		protected function searchTopbarStructureResults($query, array $terms, $limit = 12, array $viewerContext = array())
 		{
-			$rootHolon = $this->getStructuralRootHolon();
+			$rootHolon = $this->getEnabledStructuralRootHolon(isset($viewerContext['userId']) ? (int)$viewerContext['userId'] : null);
 			if (!$rootHolon || (int)$rootHolon->getId() <= 0 || count($terms) === 0) {
 				return array();
 			}
@@ -5934,6 +6220,21 @@
 		public function searchTopbarResults($query, array $scopes = array(), array $options = array())
 		{
 			$query = trim((string)$query);
+			$requestedUserId = isset($options['viewerContext']['userId']) && is_numeric($options['viewerContext']['userId'])
+				? (int)$options['viewerContext']['userId']
+				: null;
+			$scopeAppHashes = array(
+				'structure' => 'structure',
+				'team' => 'team',
+				'documents' => 'documents',
+				'decision' => 'decision',
+			);
+			$enabledScopes = array();
+			foreach ($scopeAppHashes as $scopeId => $hash) {
+				if ($this->isApplicationEnabled($hash, $requestedUserId)) {
+					$enabledScopes[$scopeId] = $scopeId;
+				}
+			}
 			$normalizedScopes = array();
 
 			foreach ($scopes as $scope) {
@@ -5942,13 +6243,13 @@
 					$scope = 'structure';
 				}
 
-				if (in_array($scope, array('structure', 'team', 'documents', 'decision'), true)) {
+				if (isset($enabledScopes[$scope])) {
 					$normalizedScopes[$scope] = $scope;
 				}
 			}
 
 			if (count($normalizedScopes) === 0) {
-				$normalizedScopes['structure'] = 'structure';
+				$normalizedScopes = $enabledScopes;
 			}
 
 			$viewerContext = self::normalizeTopbarSearchViewerContext(array(
