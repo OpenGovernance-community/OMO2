@@ -147,7 +147,7 @@ function omoDecisionsIndexResolveScopeMeta(Organization $organization, $holonId,
     }
 
     $organizationName = trim((string)$organization->get('name'));
-    $rootHolon = $organization->getStructuralRootHolon();
+    $rootHolon = $organization->getEnabledStructuralRootHolon();
     $organizationTypeLabel = $rootHolon ? trim((string)$rootHolon->getTemplateLabel(true)) : 'Organisation';
 
     if ($holonId <= 0) {
@@ -540,15 +540,18 @@ if (!$organization->canViewDetail()) {
     exit;
 }
 
-$currentContextHolon = $organization->getStructuralRootHolon();
-$allowedContextHolonIds = [];
-if ($currentContextHolon === null) {
-    http_response_code(404);
+$holonContext = omoDecisionResolveOrganizationHolonContext($organization, $currentHolonId);
+if (empty($holonContext['status'])) {
+    http_response_code((int)($holonContext['code'] ?? 404));
+    $errorKey = (string)($holonContext['error_key'] ?? 'decisions.edit.context.holon_not_found');
+    $messageKey = $errorKey === 'decisions.edit.context.holon_denied'
+        ? 'decisions.index.context.holon_denied'
+        : 'decisions.index.context.holon_not_found';
     ?>
     <div class="omo-decisions omo-panel-view">
         <div class="omo-panel-view__body">
             <div class="omo-panel-view__body_content">
-                <div class="omo-empty-state"><?= $escape(t('decisions.index.context.holon_not_found', [], $lang, $sourceLang)) ?></div>
+                <div class="omo-empty-state"><?= $escape(t($messageKey, [], $lang, $sourceLang)) ?></div>
             </div>
         </div>
     </div>
@@ -556,39 +559,10 @@ if ($currentContextHolon === null) {
     exit;
 }
 
-if ($currentHolonId > 0 && (int)$currentContextHolon->getId() !== $currentHolonId) {
-    $candidateHolon = new Holon();
-    if (!$candidateHolon->load($currentHolonId) || !$organization->containsHolon($candidateHolon)) {
-        http_response_code(404);
-        ?>
-        <div class="omo-decisions omo-panel-view">
-            <div class="omo-panel-view__body">
-                <div class="omo-panel-view__body_content">
-                    <div class="omo-empty-state"><?= $escape(t('decisions.index.context.holon_not_found', [], $lang, $sourceLang)) ?></div>
-                </div>
-            </div>
-        </div>
-        <?php
-        exit;
-    }
-
-    if (!$candidateHolon->canViewDetail()) {
-        http_response_code(403);
-        ?>
-        <div class="omo-decisions omo-panel-view">
-            <div class="omo-panel-view__body">
-                <div class="omo-panel-view__body_content">
-                    <div class="omo-empty-state"><?= $escape(t('decisions.index.context.holon_denied', [], $lang, $sourceLang)) ?></div>
-                </div>
-            </div>
-        </div>
-        <?php
-        exit;
-    }
-
-    $currentContextHolon = $candidateHolon;
-}
-$allowedContextHolonIds = array_fill_keys($currentContextHolon->getVisibleDescendantIds(true), true);
+$currentContextHolon = $holonContext['holon'] ?? null;
+$allowedContextHolonIds = $currentContextHolon
+    ? array_fill_keys($currentContextHolon->getVisibleDescendantIds(true), true)
+    : [];
 
 $statusLabels = [
     DecisionProcess::STATUS_DRAFT => t('decisions.index.filters.status.draft', [], $lang, $sourceLang),
@@ -617,7 +591,7 @@ $dateTimeFormatter = class_exists('IntlDateFormatter')
     ? new IntlDateFormatter('fr_CH', IntlDateFormatter::MEDIUM, IntlDateFormatter::SHORT)
     : null;
 
-$organizationCanEdit = $organization->canEdit();
+$organizationCanEdit = omoDecisionCanCreateAtOrganizationLevel($organization, $currentUserId);
 $canCreateDecision = $currentContextHolon ? $currentContextHolon->canEdit() : $organizationCanEdit;
 $decisionRows = DecisionProcess::fetchListRowsForOrganization($currentOrganizationId, $currentUserId, $currentUserEmail);
 $decisionEntries = [];

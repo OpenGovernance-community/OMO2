@@ -21,6 +21,8 @@ if ($organizationId <= 0) {
     $errorMessage = "Aucune organisation n'est actuellement selectionnee.";
 } elseif (!$organization->load($organizationId)) {
     $errorMessage = "L'organisation demandee est introuvable.";
+} elseif ($organization->getEnabledStructuralRootHolon() === null) {
+    $errorMessage = "Les modeles de holons sont disponibles uniquement lorsqu une structure existe et que l app Structure est active.";
 } else {
     if ($selectedTemplateId > 0) {
         $editorData = $organization->getHolonDefinitionEditorData($selectedTemplateId);

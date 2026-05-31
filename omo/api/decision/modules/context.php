@@ -104,6 +104,72 @@ if (!function_exists('omoDecisionBuildParticipationPreviewUrl')) {
     }
 }
 
+if (!function_exists('omoDecisionResolveOrganizationHolonContext')) {
+    function omoDecisionResolveOrganizationHolonContext(Organization $organization, $requestedHolonId)
+    {
+        $requestedHolonId = (int)$requestedHolonId;
+        $currentHolon = $organization->getEnabledStructuralRootHolon();
+
+        if ($requestedHolonId <= 0) {
+            return [
+                'status' => true,
+                'holon' => $currentHolon instanceof Holon ? $currentHolon : null,
+            ];
+        }
+
+        if ($currentHolon instanceof Holon && (int)$currentHolon->getId() === $requestedHolonId) {
+            return [
+                'status' => true,
+                'holon' => $currentHolon,
+            ];
+        }
+
+        $candidateHolon = new Holon();
+        if (!$candidateHolon->load($requestedHolonId) || !$organization->containsHolon($candidateHolon)) {
+            return [
+                'status' => false,
+                'code' => 404,
+                'error_key' => 'decisions.edit.context.holon_not_found',
+            ];
+        }
+
+        if (!$candidateHolon->canViewDetail()) {
+            return [
+                'status' => false,
+                'code' => 403,
+                'error_key' => 'decisions.edit.context.holon_denied',
+            ];
+        }
+
+        return [
+            'status' => true,
+            'holon' => $candidateHolon,
+        ];
+    }
+}
+
+if (!function_exists('omoDecisionCanCreateAtOrganizationLevel')) {
+    function omoDecisionCanCreateAtOrganizationLevel(Organization $organization, $userId = 0)
+    {
+        $organizationId = (int)$organization->getId();
+        $userId = (int)$userId;
+
+        if ($organizationId <= 0) {
+            return false;
+        }
+
+        if ($userId <= 0) {
+            $userId = function_exists('commonGetCurrentUserId')
+                ? (int)commonGetCurrentUserId()
+                : (int)($_SESSION['currentUser'] ?? 0);
+        }
+
+        return $userId > 0
+            && function_exists('commonUserHasOrganizationMembership')
+            && commonUserHasOrganizationMembership($userId, $organizationId);
+    }
+}
+
 if (!function_exists('omoDecisionResolveEditorContext')) {
     function omoDecisionResolveEditorContext(array $input)
     {
@@ -139,10 +205,10 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
                 ];
             }
 
-            $currentHolon = $organization->getStructuralRootHolon();
+            $currentHolon = $organization->getEnabledStructuralRootHolon();
             $decisionHolon = null;
             $decisionHolonId = (int)$decision->get('IDholon');
-            if ($decisionHolonId > 0) {
+            if ($decisionHolonId > 0 && $organization->isStructureApplicationEnabled()) {
                 $decisionHolon = new Holon();
                 if (!$decisionHolon->load($decisionHolonId) || !$organization->containsHolon($decisionHolon)) {
                     return [
@@ -262,35 +328,15 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
             }
         }
 
-        $currentHolon = $organization->getStructuralRootHolon();
-        if (!$currentHolon) {
+        $holonContext = omoDecisionResolveOrganizationHolonContext($organization, $requestedHolonId);
+        if (empty($holonContext['status'])) {
             return [
                 'status' => false,
-                'code' => 404,
-                'error_key' => 'decisions.edit.context.holon_not_found',
+                'code' => (int)($holonContext['code'] ?? 404),
+                'error_key' => (string)($holonContext['error_key'] ?? 'decisions.edit.context.holon_not_found'),
             ];
         }
-
-        if ($requestedHolonId > 0 && (int)$currentHolon->getId() !== $requestedHolonId) {
-            $candidateHolon = new Holon();
-            if (!$candidateHolon->load($requestedHolonId) || !$organization->containsHolon($candidateHolon)) {
-                return [
-                    'status' => false,
-                    'code' => 404,
-                    'error_key' => 'decisions.edit.context.holon_not_found',
-                ];
-            }
-
-            if (!$candidateHolon->canViewDetail()) {
-                return [
-                    'status' => false,
-                    'code' => 403,
-                    'error_key' => 'decisions.edit.context.holon_denied',
-                ];
-            }
-
-            $currentHolon = $candidateHolon;
-        }
+        $currentHolon = $holonContext['holon'] ?? null;
 
         $decision = null;
         $decisionGroup = null;
@@ -318,7 +364,7 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
             $decision->syncLifecycleStatus();
 
             $decisionHolonId = (int)$decision->get('IDholon');
-            if ($decisionHolonId > 0) {
+            if ($decisionHolonId > 0 && $organization->isStructureApplicationEnabled()) {
                 $decisionHolon = new Holon();
                 if (!$decisionHolon->load($decisionHolonId) || !$organization->containsHolon($decisionHolon)) {
                     return [
@@ -384,7 +430,9 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
                 (int)$decision->get('IDuser') === $currentUserId
                 || $isOwnerParticipant
             );
-        $canCreate = $effectiveHolon ? $effectiveHolon->canEdit() : $organization->canEdit();
+        $canCreate = $effectiveHolon
+            ? $effectiveHolon->canEdit()
+            : omoDecisionCanCreateAtOrganizationLevel($organization, $currentUserId);
         $canManage = $decision instanceof DecisionProcess ? $isOwner : $canCreate;
         $canView = $decision instanceof DecisionProcess
             ? ($canManage || $hasParticipation || DecisionProcess::normalizeStatus($decision->get('status')) !== DecisionProcess::STATUS_DRAFT)
@@ -434,7 +482,7 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
                 ];
             }
 
-            if (!$effectiveHolon && !$organization->canEdit()) {
+            if (!$effectiveHolon && !omoDecisionCanCreateAtOrganizationLevel($organization, $currentUserId)) {
                 return [
                     'status' => false,
                     'code' => 403,

@@ -301,10 +301,12 @@ $selectedHolonIds = array_values(array_unique(array_filter($selectedHolonIds)));
 $selectedUserIds = array_values(array_unique(array_filter($selectedUserIds)));
 $selectedEmails = array_values(array_unique(array_filter($selectedEmails)));
 
-$rootHolon = $organization instanceof Organization ? $organization->getStructuralRootHolon() : null;
+$rootHolon = $organization instanceof Organization ? $organization->getEnabledStructuralRootHolon() : null;
 $holonTree = $rootHolon instanceof Holon
     ? omoDecisionInvitationsBuildHolonTreeData($rootHolon, $organization, $selectedHolonIds, $targetHolonId)
     : null;
+$hasHolonStructure = is_array($holonTree);
+$currentContextLabel = $effectiveHolon instanceof Holon ? 'du contexte courant' : 'de l organisation';
 
 $memberships = new ArrayUserOrganization();
 $memberships->loadActiveForOrganization($organizationId);
@@ -468,16 +470,28 @@ $memberships->loadActiveForOrganization($organizationId);
     method="post"
 >
     <p class="omo-decision-invitations-popup__intro">
-        Definissez ici les participants explicites du scrutin. Si vous laissez tout vide, seuls les membres du contexte courant restent autorises.
+        Definissez ici les participants explicites du scrutin. Si vous laissez tout vide, seuls les membres <?= omoApiEscape($currentContextLabel) ?> restent autorises.
     </p>
+
+    <?php if (!$hasHolonStructure): ?>
+    <p class="omo-decision-invitations-popup__hint">
+        Cette organisation n a pas encore de structure. Vous pouvez inviter directement des membres de l organisation ou des adresses e-mail externes.
+    </p>
+    <?php endif; ?>
 
     <div class="generic-tabs omo-decision-invitations-popup__tabs" data-generic-tabs>
         <div class="generic-tabs__list" aria-label="Categories d invitations">
+            <?php if ($hasHolonStructure): ?>
             <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="omoDecisionInvitationsTabHolons">Holons</button>
             <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omoDecisionInvitationsTabMembers">Membres</button>
             <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omoDecisionInvitationsTabGuests">Invites</button>
+            <?php else: ?>
+            <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="omoDecisionInvitationsTabMembers">Membres</button>
+            <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omoDecisionInvitationsTabGuests">Invites</button>
+            <?php endif; ?>
         </div>
         <div class="generic-tabs__panels">
+            <?php if ($hasHolonStructure): ?>
             <div id="omoDecisionInvitationsTabHolons" class="generic-tabs__panel omo-decision-invitations-popup__tab-panel" data-generic-tab-panel>
                 <strong>Holons invites</strong>
                 <p class="omo-decision-invitations-popup__hint">
@@ -489,8 +503,9 @@ $memberships->loadActiveForOrganization($organizationId);
                     <?php endif; ?>
                 </div>
             </div>
+            <?php endif; ?>
 
-            <div id="omoDecisionInvitationsTabMembers" class="generic-tabs__panel omo-decision-invitations-popup__tab-panel" data-generic-tab-panel hidden>
+            <div id="omoDecisionInvitationsTabMembers" class="generic-tabs__panel omo-decision-invitations-popup__tab-panel" data-generic-tab-panel<?= $hasHolonStructure ? ' hidden' : '' ?>>
                 <strong>Membres supplementaires de l organisation</strong>
                 <div class="omo-decision-invitations-popup__member-list">
                     <?php foreach ($memberships as $membership): ?>
@@ -514,7 +529,9 @@ $memberships->loadActiveForOrganization($organizationId);
                     <?php endforeach; ?>
                 </div>
                 <p class="omo-decision-invitations-popup__hint">
-                    Cochez les membres a inviter individuellement, en plus des holons selectionnes.
+                    <?= $hasHolonStructure
+                        ? 'Cochez les membres a inviter individuellement, en plus des holons selectionnes.'
+                        : 'Cochez les membres a inviter individuellement. Sans structure, ils representent le contexte organisationnel.' ?>
                 </p>
             </div>
 

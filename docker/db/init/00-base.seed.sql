@@ -1325,13 +1325,6 @@ ALTER TABLE `qr`
 ALTER TABLE `tips`
   ADD PRIMARY KEY (`id`);
 
---
--- Index pour la table `translation`
---
-ALTER TABLE `translation`
-  ADD PRIMARY KEY (`id`);
-
---
 -- Index pour la table `typeholon`
 --
 ALTER TABLE `typeholon`
@@ -1547,13 +1540,6 @@ ALTER TABLE `qr`
 ALTER TABLE `tips`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT pour la table `translation`
---
-ALTER TABLE `translation`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
 -- AUTO_INCREMENT pour la table `typeholon`
 --
 ALTER TABLE `typeholon`

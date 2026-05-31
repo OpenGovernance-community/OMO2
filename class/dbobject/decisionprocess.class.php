@@ -1069,6 +1069,32 @@ class DecisionProcess extends DbObject
                     ],
                 ];
             }
+        } elseif (count($activeInvitations) === 0 && (int)$this->get('IDorganization') > 0) {
+            $organizationMembers = new \dbObject\ArrayUserOrganization();
+            $organizationMembers->loadActiveForOrganization((int)$this->get('IDorganization'));
+            foreach ($organizationMembers as $membership) {
+                $userId = (int)$membership->get('IDuser');
+                if ($userId <= 0) {
+                    continue;
+                }
+
+                $key = 'user:' . $userId;
+                if (isset($desiredParticipants[$key]) && $desiredParticipants[$key]['role'] === \dbObject\DecisionParticipant::ROLE_OWNER) {
+                    continue;
+                }
+
+                $desiredParticipants[$key] = [
+                    'IDuser' => $userId,
+                    'email' => '',
+                    'display_name' => trim((string)$membership->getUserDisplayName()),
+                    'role' => \dbObject\DecisionParticipant::ROLE_PARTICIPANT,
+                    'status' => \dbObject\DecisionParticipant::STATUS_ACTIVE,
+                    'active' => 1,
+                    'parameters' => [
+                        'sync_source' => 'implicit_organization',
+                    ],
+                ];
+            }
         }
 
         $existingByKey = [];
