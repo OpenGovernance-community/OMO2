@@ -569,14 +569,14 @@ if (!$canViewOrganization) {
     exit;
 }
 
-$root = $organization->getStructuralRootHolon();
+$root = $organization->getEnabledStructuralRootHolon();
 if ($root === null) {
     require_once __DIR__ . '/organization_setup_panel.php';
     omoRenderOrganizationInfoPanel($organization);
     exit;
 }
 
-$root = $organization->getStructuralRootHolon();
+$root = $organization->getEnabledStructuralRootHolon();
 if ($root === null) {
     http_response_code(404);
     ?>

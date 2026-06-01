@@ -261,6 +261,34 @@
         return normalizeHtmlValue(sanitized);
     }
 
+    function buildTextInsertionHtml(text) {
+        const normalizedText = String(text || '')
+            .replace(/\r\n?/g, '\n')
+            .trim();
+
+        if (!normalizedText) {
+            return '';
+        }
+
+        return escapeHtml(normalizedText).replace(/\n/g, '<br>');
+    }
+
+    function normalizePlainText(text) {
+        return String(text || '')
+            .replace(/\r\n?/g, '\n')
+            .replace(/\u00a0/g, ' ')
+            .replace(/[ \t]+\n/g, '\n')
+            .replace(/\n{3,}/g, '\n\n')
+            .replace(/[ \t]{2,}/g, ' ')
+            .trim();
+    }
+
+    function htmlToPlainText(html) {
+        const temp = document.createElement('div');
+        temp.innerHTML = sanitizeHtml(html);
+        return normalizePlainText(temp.innerText || temp.textContent || '');
+    }
+
     function mount(container, options) {
         if (!container) {
             return null;
@@ -274,7 +302,8 @@
             value: '',
             placeholder: 'Saisissez du contenu HTML simple.',
             disabled: false,
-            height: 180
+            height: 180,
+            customButtons: []
         }, options || {});
 
         const safeInitialValue = sanitizeHtml(state.value);
@@ -283,6 +312,21 @@
         let destroyed = false;
         let initialized = false;
         let $editor = null;
+        const toolbarButtons = {};
+        const toolbarButtonState = {};
+        const customToolbarButtons = Array.isArray(state.customButtons)
+            ? state.customButtons.filter(function (buttonConfig) {
+                return buttonConfig && String(buttonConfig.name || '').trim() !== '';
+            }).map(function (buttonConfig) {
+                const normalizedConfig = Object.assign({}, buttonConfig);
+                normalizedConfig.name = String(buttonConfig.name || '').trim();
+                normalizedConfig.group = String(buttonConfig.group || 'custom').trim() || 'custom';
+                normalizedConfig.label = String(buttonConfig.label || buttonConfig.name || '').trim() || normalizedConfig.name;
+                normalizedConfig.title = String(buttonConfig.title || buttonConfig.label || buttonConfig.name || '').trim() || normalizedConfig.label;
+                normalizedConfig.className = String(buttonConfig.className || '').trim();
+                return normalizedConfig;
+            })
+            : [];
 
         container.setAttribute('data-omo-html-field', '1');
         container.innerHTML = ''
@@ -311,12 +355,192 @@
             return sanitizeHtml(state.value);
         }
 
+        function getEditableElement() {
+            return container.querySelector('.note-editable');
+        }
+
+        function restoreRange() {
+            if (initialized && $editor) {
+                try {
+                    $editor.summernote('restoreRange');
+                } catch (error) {
+                    // ignore selection restore issues
+                }
+            }
+        }
+
+        function getSelectionRange() {
+            restoreRange();
+            const selection = window.getSelection ? window.getSelection() : null;
+            const editable = getEditableElement();
+
+            if (!selection || selection.rangeCount === 0) {
+                return null;
+            }
+
+            const range = selection.getRangeAt(0);
+            if (!editable) {
+                return range;
+            }
+
+            const commonNode = range.commonAncestorContainer;
+            if (commonNode === editable || editable.contains(commonNode)) {
+                return range;
+            }
+
+            return null;
+        }
+
         function setValue(nextValue) {
             setRawValue(nextValue);
 
             if (initialized && $editor) {
                 $editor.summernote('code', state.value);
+                saveRange();
             }
+        }
+
+        function saveRange() {
+            if (initialized && $editor) {
+                try {
+                    $editor.summernote('saveRange');
+                } catch (error) {
+                    // ignore selection save issues
+                }
+            }
+        }
+
+        function applyToolbarButtonState(name, nextState) {
+            const buttonName = String(name || '').trim();
+            if (!buttonName) {
+                return;
+            }
+
+            toolbarButtonState[buttonName] = Object.assign({}, toolbarButtonState[buttonName] || {}, nextState || {});
+            const $button = toolbarButtons[buttonName];
+            if (!$button || !$button.length) {
+                return;
+            }
+
+            const resolvedState = toolbarButtonState[buttonName];
+            const label = resolvedState && resolvedState.label !== undefined
+                ? String(resolvedState.label || '')
+                : null;
+            const title = resolvedState && resolvedState.title !== undefined
+                ? String(resolvedState.title || '')
+                : null;
+            const isDisabled = !!(resolvedState && resolvedState.disabled);
+            const isHidden = !!(resolvedState && resolvedState.hidden);
+            const isActive = !!(resolvedState && resolvedState.active);
+
+            if (label !== null) {
+                $button.html(escapeHtml(label));
+            }
+
+            if (title !== null) {
+                $button.attr('title', title);
+                $button.attr('aria-label', title);
+            }
+
+            $button.prop('disabled', isDisabled);
+            $button.toggleClass('disabled', isDisabled);
+            $button.attr('aria-disabled', isDisabled ? 'true' : 'false');
+            $button.toggleClass('is-active', isActive);
+            $button.attr('aria-hidden', isHidden ? 'true' : 'false');
+            $button.css('display', isHidden ? 'none' : '');
+
+            const $group = $button.closest('.note-btn-group');
+            if ($group && $group.length) {
+                const hasVisibleButtons = $group.find('button').toArray().some(function (groupButton) {
+                    return window.getComputedStyle(groupButton).display !== 'none';
+                });
+                $group.css('display', hasVisibleButtons ? '' : 'none');
+            }
+        }
+
+        function insertHtmlAtCursor(nextHtml) {
+            const safeHtml = sanitizeHtml(nextHtml);
+            if (!safeHtml) {
+                return '';
+            }
+
+            if (initialized && $editor) {
+                try {
+                    $editor.summernote('focus');
+                    restoreRange();
+
+                    const selectionRange = getSelectionRange();
+                    if (selectionRange) {
+                        const temp = document.createElement('div');
+                        const selection = window.getSelection ? window.getSelection() : null;
+                        temp.innerHTML = safeHtml;
+
+                        const nodes = Array.from(temp.childNodes || []);
+                        let lastInsertedNode = null;
+                        const fragment = document.createDocumentFragment();
+
+                        nodes.forEach(function (node) {
+                            lastInsertedNode = node;
+                            fragment.appendChild(node);
+                        });
+
+                        selectionRange.deleteContents();
+                        selectionRange.insertNode(fragment);
+
+                        if (selection && lastInsertedNode) {
+                            const collapsedRange = document.createRange();
+                            collapsedRange.setStartAfter(lastInsertedNode);
+                            collapsedRange.collapse(true);
+                            selection.removeAllRanges();
+                            selection.addRange(collapsedRange);
+                        }
+                    } else {
+                        $editor.summernote('pasteHTML', safeHtml);
+                    }
+
+                    saveRange();
+                    setRawValue($editor.summernote('code'));
+                } catch (error) {
+                    setRawValue((state.value || '') + safeHtml);
+                    $editor.summernote('code', state.value);
+                    saveRange();
+                }
+
+                return safeHtml;
+            }
+
+            setRawValue((state.value || '') + safeHtml);
+            return safeHtml;
+        }
+
+        function insertTextAtCursor(text) {
+            return insertHtmlAtCursor(buildTextInsertionHtml(text));
+        }
+
+        function getSelectedText() {
+            const range = getSelectionRange();
+            if (!range) {
+                return '';
+            }
+
+            const fragment = range.cloneContents();
+            const temp = document.createElement('div');
+            temp.appendChild(fragment);
+
+            return normalizePlainText(temp.innerText || temp.textContent || '');
+        }
+
+        function hasSelection() {
+            const range = getSelectionRange();
+            return !!(range && !range.collapsed && normalizePlainText(range.toString()) !== '');
+        }
+
+        function getPlainText() {
+            return htmlToPlainText(getValue());
+        }
+
+        function replaceSelectionWithText(text) {
+            return insertTextAtCursor(text);
         }
 
         function destroy() {
@@ -343,6 +567,62 @@
                     return;
                 }
 
+                const toolbar = [
+                    ['font', ['bold', 'italic', 'underline', 'clear']],
+                    ['para', ['ul', 'ol']],
+                    ['insert', ['link']]
+                ];
+                const toolbarGroups = {};
+                const buttonsConfig = {};
+
+                customToolbarButtons.forEach(function (buttonConfig) {
+                    if (!toolbarGroups[buttonConfig.group]) {
+                        toolbarGroups[buttonConfig.group] = [];
+                    }
+
+                    toolbarGroups[buttonConfig.group].push(buttonConfig.name);
+                    buttonsConfig[buttonConfig.name] = function () {
+                        const ui = window.jQuery && window.jQuery.summernote
+                            ? window.jQuery.summernote.ui
+                            : null;
+
+                        if (!ui) {
+                            return window.jQuery('<button type="button"></button>').text(buttonConfig.label);
+                        }
+
+                        const $button = ui.button({
+                            contents: escapeHtml(buttonConfig.label),
+                            tooltip: buttonConfig.title,
+                            className: buttonConfig.className,
+                            click: function (event) {
+                                if (typeof buttonConfig.onClick === 'function') {
+                                    buttonConfig.onClick({
+                                        event: event,
+                                        name: buttonConfig.name,
+                                        api: container.__omoSimpleHtmlField || null
+                                    });
+                                }
+                            }
+                        }).render();
+
+                        toolbarButtons[buttonConfig.name] = $button;
+                        $button.attr('data-omo-toolbar-button-name', buttonConfig.name);
+                        applyToolbarButtonState(buttonConfig.name, {
+                            label: buttonConfig.label,
+                            title: buttonConfig.title,
+                            hidden: !!buttonConfig.hidden,
+                            disabled: !!buttonConfig.disabled,
+                            active: !!buttonConfig.active
+                        });
+
+                        return $button;
+                    };
+                });
+
+                Object.keys(toolbarGroups).forEach(function (groupName) {
+                    toolbar.push([groupName, toolbarGroups[groupName]]);
+                });
+
                 $editor = window.jQuery(textarea);
                 $editor.summernote({
                     lang: 'fr-FR',
@@ -350,14 +630,24 @@
                     height: Number(state.height || 180),
                     dialogsInBody: true,
                     disableDragAndDrop: true,
-                    toolbar: [
-                        ['font', ['bold', 'italic', 'underline', 'clear']],
-                        ['para', ['ul', 'ol']],
-                        ['insert', ['link']]
-                    ],
+                    toolbar: toolbar,
+                    buttons: buttonsConfig,
                     callbacks: {
                         onChange: function (contents) {
                             setRawValue(contents);
+                            saveRange();
+                        },
+                        onFocus: function () {
+                            saveRange();
+                        },
+                        onBlur: function () {
+                            saveRange();
+                        },
+                        onKeyup: function () {
+                            saveRange();
+                        },
+                        onMouseup: function () {
+                            saveRange();
                         }
                     }
                 });
@@ -368,6 +658,7 @@
                 }
 
                 initialized = true;
+                saveRange();
             })
             .catch(function (error) {
                 if (destroyed) {
@@ -388,6 +679,15 @@
                     $editor.summernote('focus');
                 }
             },
+            saveRange: saveRange,
+            restoreRange: restoreRange,
+            insertHtmlAtCursor: insertHtmlAtCursor,
+            insertTextAtCursor: insertTextAtCursor,
+            replaceSelectionWithText: replaceSelectionWithText,
+            getSelectedText: getSelectedText,
+            hasSelection: hasSelection,
+            getPlainText: getPlainText,
+            setToolbarButtonState: applyToolbarButtonState,
             destroy: destroy
         };
         container.__omoSimpleHtmlFieldDestroy = destroy;

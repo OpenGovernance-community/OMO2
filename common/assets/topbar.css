@@ -227,6 +227,16 @@
     flex: 0 0 22px;
 }
 
+.common-topbar__action img,
+.common-topbar-modal__close img,
+.common-topbar-drawer__close img {
+    margin-right: 0;
+    padding: 0;
+    background: transparent;
+    border-radius: 0;
+    vertical-align: middle;
+}
+
 .common-topbar__icon-image {
     display: block;
     width: 100%;
@@ -756,6 +766,9 @@
 .common-topbar-drawer__body {
     flex: 1;
     min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: auto;
+    -webkit-overflow-scrolling: touch;
     background: var(--topbar-panel-bg, #ffffff);
     color: var(--color-text, #1f2937);
 }
