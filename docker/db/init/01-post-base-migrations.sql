@@ -132,3 +132,85 @@ ON DUPLICATE KEY UPDATE
 -- Defensive guard for fresh Docker databases
 ALTER TABLE `user`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+-- Local Docker dev account bootstrap
+-- User 1 password plaintext: LocalAdmin123!
+UPDATE `user`
+SET
+  `password` = '$2y$10$IbIoX862O2WQD/baKTL8x.CfqU9ArcphckXpsg7UqD9d6cPMc2M4i',
+  `active` = 1,
+  `siteadmin` = 1
+WHERE `id` = 1;
+
+UPDATE `user_organization`
+SET `parameters` = '{"isAdmin":true}'
+WHERE `IDuser` = 1;
+
+INSERT INTO `user_patreon` (
+  `IDuser`,
+  `access_token`,
+  `refresh_token`,
+  `token_expires_at`,
+  `scope`,
+  `token_type`,
+  `patreon_user_id`,
+  `patreon_member_id`,
+  `campaign_id`,
+  `full_name`,
+  `email`,
+  `patron_status`,
+  `last_charge_status`,
+  `currently_entitled_amount_cents`,
+  `campaign_lifetime_support_cents`,
+  `tier_titles`,
+  `is_connected`,
+  `connected_at`,
+  `last_sync_at`,
+  `last_sync_status`,
+  `created_at`,
+  `updated_at`
+) VALUES (
+  1,
+  'docker-local-access-token',
+  'docker-local-refresh-token',
+  DATE_ADD(NOW(), INTERVAL 1 YEAR),
+  'identity identity[email] campaigns.members',
+  'Bearer',
+  'docker-local-user-1',
+  'docker-local-member-1',
+  'docker-local-campaign-1',
+  'Open Organization Admin',
+  'admin@omo.test',
+  'active_patron',
+  'Paid',
+  500,
+  500,
+  '["Local Dev"]',
+  1,
+  NOW(),
+  NOW(),
+  'ok',
+  NOW(),
+  NOW()
+)
+ON DUPLICATE KEY UPDATE
+  `access_token` = VALUES(`access_token`),
+  `refresh_token` = VALUES(`refresh_token`),
+  `token_expires_at` = VALUES(`token_expires_at`),
+  `scope` = VALUES(`scope`),
+  `token_type` = VALUES(`token_type`),
+  `patreon_user_id` = VALUES(`patreon_user_id`),
+  `patreon_member_id` = VALUES(`patreon_member_id`),
+  `campaign_id` = VALUES(`campaign_id`),
+  `full_name` = VALUES(`full_name`),
+  `email` = VALUES(`email`),
+  `patron_status` = VALUES(`patron_status`),
+  `last_charge_status` = VALUES(`last_charge_status`),
+  `currently_entitled_amount_cents` = VALUES(`currently_entitled_amount_cents`),
+  `campaign_lifetime_support_cents` = VALUES(`campaign_lifetime_support_cents`),
+  `tier_titles` = VALUES(`tier_titles`),
+  `is_connected` = 1,
+  `connected_at` = NOW(),
+  `last_sync_at` = NOW(),
+  `last_sync_status` = 'ok',
+  `updated_at` = NOW();

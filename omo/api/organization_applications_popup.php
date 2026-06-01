@@ -518,6 +518,9 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
 
                         if (typeof window.omoRefreshSidebar === 'function') {
                             window.omoRefreshSidebar(function () {
+                                if (typeof window.omoRefreshMainRightPanel === 'function') {
+                                    window.omoRefreshMainRightPanel();
+                                }
                                 if (typeof window.commonTopbarCloseModal === 'function') {
                                     window.commonTopbarCloseModal();
                                 }

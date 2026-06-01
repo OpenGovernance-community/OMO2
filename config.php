@@ -2,10 +2,12 @@
 require_once __DIR__ . '/includes/env.php';
 require_once __DIR__ . '/includes/auto_install.php';
 
-$autoInstallEnvPath = __DIR__ . '/.env';
+$autoInstallEnvPath = envGetPrimaryEnvPath();
 autoInstallBootstrap($autoInstallEnvPath);
 
-loadEnv($autoInstallEnvPath);
+foreach (envGetRuntimeEnvPaths() as $runtimeEnvPath) {
+    loadEnv($runtimeEnvPath);
+}
 
 // Identite du site
 $GLOBALS['siteTitle'] = envValue('SITE_TITLE', 'EasyPV');

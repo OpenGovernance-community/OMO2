@@ -609,7 +609,103 @@ function loadContent(target, url, type = 'panel', onLoaded = null) {
 }
 
 function omoResetMainRightPanel() {
+    $('#panel-right').data('omo-main-right-loaded-url', '');
     $('#panel-right').empty();
+}
+
+let omoMainRightPanelDesiredUrl = '';
+
+function omoBuildMainRightPanelUrl(oid, cid = null) {
+    const resolvedOrganizationId = Number(oid);
+    if (!Number.isInteger(resolvedOrganizationId) || resolvedOrganizationId <= 0) {
+        return '';
+    }
+
+    let url = omoIsShareMode()
+        ? `api/getStructure.php?oid=${resolvedOrganizationId}`
+        : `api/personal_space.php?oid=${resolvedOrganizationId}`;
+
+    const resolvedHolonId = Number(cid);
+    if (Number.isInteger(resolvedHolonId) && resolvedHolonId > 0) {
+        url += `&cid=${resolvedHolonId}`;
+    }
+
+    return url;
+}
+
+function omoGetMainRightPanelLoadedUrl() {
+    return String($('#panel-right').data('omo-main-right-loaded-url') || '').trim();
+}
+
+function omoHasOpenDrawers() {
+    return $('.drawer.open').length > 0;
+}
+
+function omoRefreshMainRightPanel(oid = null, cid = null, options = {}) {
+    const route = typeof parseUrl === 'function' ? parseUrl() : { oid: null, cid: null };
+    const resolvedOrganizationId = oid === null ? Number(route.oid) : Number(oid);
+    const resolvedHolonId = cid === null || cid === undefined ? Number(route.cid || 0) : Number(cid);
+    const rightUrl = omoBuildMainRightPanelUrl(resolvedOrganizationId, resolvedHolonId);
+    const routeWillOpenDrawer = options.routeWillOpenDrawer === true;
+    const forceRefresh = options.force === true;
+    const $panelRight = $('#panel-right');
+
+    omoMainRightPanelDesiredUrl = rightUrl;
+
+    if (rightUrl === '') {
+        omoResetMainRightPanel();
+        return false;
+    }
+
+    if (routeWillOpenDrawer || omoHasOpenDrawers()) {
+        return false;
+    }
+
+    const hasLoadedContent = $panelRight.children().length > 0;
+    const loadedUrl = omoGetMainRightPanelLoadedUrl();
+    if (!forceRefresh && hasLoadedContent && loadedUrl === rightUrl) {
+        return true;
+    }
+
+    $panelRight.data('omo-main-right-loaded-url', rightUrl);
+    loadContent('#panel-right', rightUrl, 'panel', function () {
+        if (omoMainRightPanelDesiredUrl === rightUrl) {
+            $('#panel-right').data('omo-main-right-loaded-url', rightUrl);
+        }
+    });
+
+    return true;
+}
+
+function omoEnsureMainRightPanelCurrent(oid = null, cid = null, options = {}) {
+    const route = typeof parseUrl === 'function' ? parseUrl() : { oid: null, cid: null };
+    const resolvedOrganizationId = oid === null ? Number(route.oid) : Number(oid);
+    const resolvedHolonId = cid === null || cid === undefined ? Number(route.cid || 0) : Number(cid);
+    const rightUrl = omoBuildMainRightPanelUrl(resolvedOrganizationId, resolvedHolonId);
+    const $panelRight = $('#panel-right');
+    const loadedUrl = omoGetMainRightPanelLoadedUrl();
+    const hasLoadedContent = $panelRight.children().length > 0;
+
+    omoMainRightPanelDesiredUrl = rightUrl;
+
+    if (rightUrl === '') {
+        if (loadedUrl !== '' || hasLoadedContent) {
+            omoResetMainRightPanel();
+        }
+        return true;
+    }
+
+    if (options.routeWillOpenDrawer === true || omoHasOpenDrawers()) {
+        return false;
+    }
+
+    if (options.force === true || loadedUrl !== rightUrl || !hasLoadedContent) {
+        return omoRefreshMainRightPanel(resolvedOrganizationId, resolvedHolonId, {
+            force: options.force === true
+        });
+    }
+
+    return true;
 }
 
 $(document).ready(function () {
@@ -1066,6 +1162,27 @@ function omoParseDecisionRouteToken(routeToken = null) {
     };
 }
 
+function omoParseDocumentRouteToken(routeToken = null) {
+    const normalizedRouteToken = omoNormalizeHashToken(routeToken);
+    if (!normalizedRouteToken) {
+        return null;
+    }
+
+    const documentMatch = normalizedRouteToken.match(/^documents-(\d+)$/i);
+    if (!documentMatch) {
+        return null;
+    }
+
+    const documentId = Number(documentMatch[1]);
+    if (!Number.isInteger(documentId) || documentId <= 0) {
+        return null;
+    }
+
+    return {
+        documentId: documentId
+    };
+}
+
 function omoBuildDecisionRouteToken(decisionId) {
     const resolvedDecisionId = Number(decisionId);
     if (!Number.isInteger(resolvedDecisionId) || resolvedDecisionId <= 0) {
@@ -1073,6 +1190,15 @@ function omoBuildDecisionRouteToken(decisionId) {
     }
 
     return `decision-${resolvedDecisionId}`;
+}
+
+function omoBuildDocumentRouteToken(documentId) {
+    const resolvedDocumentId = Number(documentId);
+    if (!Number.isInteger(resolvedDocumentId) || resolvedDocumentId <= 0) {
+        return null;
+    }
+
+    return `documents-${resolvedDocumentId}`;
 }
 
 function omoGetMenuHashForRouteToken(routeToken = null) {
@@ -1083,6 +1209,10 @@ function omoGetMenuHashForRouteToken(routeToken = null) {
 
     if (omoParseDecisionRouteToken(normalizedRouteToken)) {
         return 'decision';
+    }
+
+    if (omoParseDocumentRouteToken(normalizedRouteToken)) {
+        return 'documents';
     }
 
     return normalizedRouteToken;
@@ -1175,6 +1305,15 @@ function omoResolveSpecialDrawerRoute(routeToken, oid = null, cid = null) {
         return {
             drawer: 'drawer_decisions',
             url: `api/decision/index.php?open_decision_id=${encodeURIComponent(decisionRoute.decisionId)}`,
+            navigationMode: 'drawer'
+        };
+    }
+
+    const documentRoute = omoParseDocumentRouteToken(normalizedRouteToken);
+    if (documentRoute) {
+        return {
+            drawer: 'drawer_documents',
+            url: `api/documents/index.php?open_document_id=${encodeURIComponent(documentRoute.documentId)}&document_scope=global`,
             navigationMode: 'drawer'
         };
     }
@@ -1656,6 +1795,40 @@ $(document).on('click', '[data-omo-open-app-picker="1"]', function (e) {
     );
 });
 
+$(document).on('click', '[data-omo-personal-space-route-token]', function (e) {
+    e.preventDefault();
+
+    const routeToken = String($(this).attr('data-omo-personal-space-route-token') || '').trim();
+    if (routeToken === '' || typeof window.omoOpenDrawerHashState !== 'function') {
+        return;
+    }
+
+    window.omoOpenDrawerHashState(routeToken);
+});
+
+$(document).on('click', '[data-omo-personal-space-document-url]', function (e) {
+    e.preventDefault();
+
+    const documentUrl = String($(this).attr('data-omo-personal-space-document-url') || '').trim();
+    const documentTitle = String($(this).attr('data-omo-personal-space-document-title') || '').trim();
+    if (documentUrl === '' || typeof window.omoOpenSearchDocumentResult !== 'function') {
+        return;
+    }
+
+    window.omoOpenSearchDocumentResult(documentUrl, documentTitle);
+});
+
+$(document).on('click', '[data-omo-personal-space-user-id]', function (e) {
+    e.preventDefault();
+
+    const userId = Number($(this).attr('data-omo-personal-space-user-id') || 0);
+    if (!Number.isInteger(userId) || userId <= 0 || typeof window.omoOpenUserContextPopup !== 'function') {
+        return;
+    }
+
+    window.omoOpenUserContextPopup(userId);
+});
+
 $(document).on('click', '[data-omo-cid]', function (e) {
 
     e.preventDefault();
@@ -1764,6 +1937,7 @@ function handleRoute() {
     const popupToken = hashState.popupToken;
     const popupKey = hashState.popupKey;
     const popupId = hashState.popupId;
+    const previousState = currentState;
 
     if (!Number.isInteger(Number(oid)) || Number(oid) <= 0) {
 
@@ -1782,43 +1956,17 @@ function handleRoute() {
     // 👉 détection des changements
     omoEnsurePopupBootstrapState(oid, cid, routeToken, popupKey, popupId);
 
-    const organizationChanged = (oid !== currentState.oid);
-    const cidChanged = (cid !== currentState.cid);
-    const hashChanged = (hash !== currentState.hash);
-    const routeChanged = (routeToken !== currentState.routeToken);
-    const popupChanged = (popupToken !== currentState.popupToken);
+    const organizationChanged = (oid !== previousState.oid);
+    const cidChanged = (cid !== previousState.cid);
+    const hashChanged = (hash !== previousState.hash);
+    const routeChanged = (routeToken !== previousState.routeToken);
+    const popupChanged = (popupToken !== previousState.popupToken);
 
     // 👉 mise à jour state
     currentState = { oid, cid, hash, routeToken, popupToken };
 
     // 👉 menu actif
     updateActiveMenu(hash);
-
-    // 🧱 1. Charger panels seulement si contexte change
-    if (organizationChanged) {
-
-        let leftUrl = `api/getOrg.php?oid=${oid}`;
-        if (cid) leftUrl += `&cid=${cid}`;
-
-        loadContent('#panel-left', leftUrl);
-
-        if (omoIsShareMode()) {
-            let rightUrl = `api/getStructure.php?oid=${oid}`;
-            if (cid) rightUrl += `&cid=${cid}`;
-
-            loadContent('#panel-right', rightUrl);
-        } else {
-            omoResetMainRightPanel();
-        }
-    } else if (cidChanged) {
-        let leftUrl = `api/getOrg.php?oid=${oid}`;
-        if (cid) leftUrl += `&cid=${cid}`;
-
-        loadContent('#panel-left', leftUrl);
-        if (omoIsShareMode() && omoGetMenuHashForRouteToken(routeToken) !== 'structure') {
-            omoFocusStructureNode(cid);
-        }
-    }
 
     const menuConfig = routeToken ? getSidebarMenuConfig(routeToken, oid, cid) : null;
     const activeDrawerId = routeToken
@@ -1830,10 +1978,56 @@ function handleRoute() {
     const activeDrawerUrl = menuConfig && menuConfig.resolvedUrl
         ? menuConfig.resolvedUrl
         : (activeBaseUrl ? buildDrawerUrl(activeBaseUrl, oid, cid) : null);
+    const routeWillOpenDrawer = Boolean(routeToken && activeDrawerId && activeDrawerUrl);
+
+    // 🧱 1. Charger panels seulement si contexte change
+    if (organizationChanged) {
+
+        let leftUrl = `api/getOrg.php?oid=${oid}`;
+        if (cid) leftUrl += `&cid=${cid}`;
+
+        loadContent('#panel-left', leftUrl);
+
+        omoRefreshMainRightPanel(oid, cid, {
+            routeWillOpenDrawer: routeWillOpenDrawer
+        });
+    } else if (cidChanged) {
+        let leftUrl = `api/getOrg.php?oid=${oid}`;
+        if (cid) leftUrl += `&cid=${cid}`;
+
+        loadContent('#panel-left', leftUrl);
+        if (!omoIsShareMode()) {
+            omoRefreshMainRightPanel(oid, cid, {
+                routeWillOpenDrawer: routeWillOpenDrawer
+            });
+        }
+        if (omoIsShareMode() && omoGetMenuHashForRouteToken(routeToken) !== 'structure') {
+            omoFocusStructureNode(cid);
+        }
+    }
 
     const activeMenuHash = routeToken ? omoGetMenuHashForRouteToken(routeToken) : null;
+    const previousMenuHash = previousState.routeToken ? omoGetMenuHashForRouteToken(previousState.routeToken) : null;
     const isStructureRoute = activeMenuHash === 'structure';
     const drawerHandledByContextChange = organizationChanged || (cidChanged && !isStructureRoute);
+    const documentRoute = omoParseDocumentRouteToken(routeToken);
+    const previousDocumentRoute = omoParseDocumentRouteToken(previousState.routeToken);
+    const isInDocumentDrawerOnlyRouteChange = !drawerHandledByContextChange
+        && routeChanged
+        && !popupChanged
+        && activeMenuHash === 'documents'
+        && previousMenuHash === 'documents';
+
+    if (isInDocumentDrawerOnlyRouteChange) {
+        window.dispatchEvent(new CustomEvent('omo-documents-route-change', {
+            detail: {
+                documentId: documentRoute ? Number(documentRoute.documentId) : 0,
+                previousDocumentId: previousDocumentRoute ? Number(previousDocumentRoute.documentId) : 0,
+                routeToken: routeToken,
+                previousRouteToken: previousState.routeToken || null
+            }
+        }));
+    }
 
     if (drawerHandledByContextChange) {
         resetDrawers(activeDrawerId);
@@ -1848,13 +2042,17 @@ function handleRoute() {
     }
 
     // 🧩 2. Gérer les drawers (modules)
-    if (!drawerHandledByContextChange && hashChanged && routeChanged) {
+    if (!drawerHandledByContextChange && hashChanged && routeChanged && !isInDocumentDrawerOnlyRouteChange) {
 
         if (routeToken && activeDrawerId && activeDrawerUrl) {
             openDrawer(activeDrawerId, activeDrawerUrl);
         } else {
             closeAllDrawers();
         }
+    }
+
+    if (!routeWillOpenDrawer) {
+        omoEnsureMainRightPanelCurrent(oid, cid);
     }
 
     if (popupToken && popupKey) {
@@ -2357,20 +2555,104 @@ function omoOpenSearchDecisionResult(decisionId, holonId) {
     return true;
 }
 
+function omoExecuteFetchedScripts(container) {
+    if (!container) {
+        return;
+    }
+
+    Array.from(container.querySelectorAll('script')).forEach(function (script) {
+        const executableScript = document.createElement('script');
+        Array.from(script.attributes).forEach(function (attribute) {
+            executableScript.setAttribute(attribute.name, attribute.value);
+        });
+        executableScript.text = script.textContent || '';
+        document.body.appendChild(executableScript);
+        document.body.removeChild(executableScript);
+    });
+}
+
+function omoReplaceFetchedPanelRoot(options = {}) {
+    const rootSelector = String(options.rootSelector || '').trim();
+    const url = String(options.url || '').trim();
+    const currentRoot = options.currentRoot || (rootSelector ? document.querySelector(rootSelector) : null);
+    const setLoadingState = typeof options.setLoadingState === 'function'
+        ? options.setLoadingState
+        : null;
+    const beforeReplace = typeof options.beforeReplace === 'function'
+        ? options.beforeReplace
+        : null;
+
+    if (!rootSelector || !url || !currentRoot || !currentRoot.parentNode) {
+        return Promise.reject(new Error('omo_panel_reload_invalid'));
+    }
+
+    if (setLoadingState) {
+        setLoadingState(true);
+    }
+
+    const resolvedUrl = typeof window.omoResolveAppUrl === 'function'
+        ? window.omoResolveAppUrl(url)
+        : url;
+
+    return fetch(resolvedUrl, {
+        credentials: 'same-origin',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        cache: 'no-store'
+    })
+        .then(function (response) {
+            if (!response.ok) {
+                throw new Error('omo_panel_reload_failed');
+            }
+
+            return response.text();
+        })
+        .then(function (html) {
+            const temp = document.createElement('div');
+            temp.innerHTML = html;
+
+            const nextRoot = temp.querySelector(rootSelector);
+            if (!nextRoot || !currentRoot.parentNode) {
+                throw new Error('omo_panel_reload_invalid');
+            }
+
+            const scriptSource = nextRoot.cloneNode(true);
+
+            if (beforeReplace) {
+                beforeReplace(currentRoot);
+            }
+
+            currentRoot.parentNode.replaceChild(nextRoot, currentRoot);
+            omoExecuteFetchedScripts(scriptSource);
+            return nextRoot;
+        })
+        .finally(function () {
+            if (setLoadingState) {
+                setLoadingState(false);
+            }
+        });
+}
+
 window.omoRefreshSidebar = omoRefreshSidebar;
 window.omoResetMainRightPanel = omoResetMainRightPanel;
+window.omoRefreshMainRightPanel = omoRefreshMainRightPanel;
 window.omoMaybeOpenPatreonWelcomeModal = omoMaybeOpenPatreonWelcomeModal;
 window.omoOpenMemberActionsPopup = omoOpenMemberActionsPopup;
 window.omoOpenSearchDecisionResult = omoOpenSearchDecisionResult;
+window.omoBuildDocumentRouteToken = omoBuildDocumentRouteToken;
 window.omoOpenSearchDocumentResult = omoOpenSearchDocumentResult;
 window.omoOpenSearchStructureResult = omoOpenSearchStructureResult;
 window.omoOpenSearchUserResult = omoOpenSearchUserResult;
 window.omoOpenUserContextPopup = omoOpenUserContextPopup;
+window.omoReplaceFetchedPanelRoot = omoReplaceFetchedPanelRoot;
 window.omoResolveAppUrl = omoResolveAppUrl;
 window.omoIsShareMode = omoIsShareMode;
+window.omoBuildHashFromState = omoBuildHashFromState;
 window.omoParsePopupHashState = function () {
     return omoParseHashState(parseUrl().hash);
 };
+window.omoNavigate = navigate;
 window.omoSetDrawerHashState = omoSetDrawerHashState;
 window.omoOpenDrawerHashState = function (routeToken, options = {}) {
     omoSetDrawerHashState({
