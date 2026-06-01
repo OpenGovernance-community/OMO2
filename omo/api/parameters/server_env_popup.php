@@ -7,6 +7,7 @@ $isSiteAdmin = commonCurrentUserIsSiteAdminModeEnabled();
 $isUnlocked = $isSiteAdmin && serverEnvAdminIsUnlocked($currentUserId);
 $hasLocalPassword = $isSiteAdmin && serverEnvAdminHasLocalPassword($currentUserId);
 $unlockTtlMinutes = (int)max(1, round(serverEnvAdminGetUnlockTtlSeconds() / 60));
+$serverEnvTargetLabel = serverEnvAdminGetEnvTargetLabel();
 
 if ($currentUserId <= 0) {
     http_response_code(401);
@@ -193,9 +194,9 @@ $serverEnvSecretStates = $isUnlocked ? serverEnvAdminBuildSecretStateMap($server
     <div class="omo-server-env-popup__hero generic-hero-panel">
         <div class="generic-card-title generic-card-title--eyebrow">Configuration sensible</div>
         <h2 class="generic-card-title generic-card-title--large">Admin du serveur</h2>
-        <p>Ce panneau permet de completer les variables globales du fichier .env hors base de donnees, comme Telegram, Patreon, OpenAI, SMTP ou GitHub.</p>
+        <p>Ce panneau permet de completer les variables globales du fichier d environnement hors base de donnees, comme Telegram, Patreon, OpenAI, SMTP ou GitHub.</p>
         <div class="omo-server-env-popup__meta">
-            <span class="omo-server-env-popup__badge">Fichier cible: .env</span>
+            <span class="omo-server-env-popup__badge">Fichier cible: <?= htmlspecialchars($serverEnvTargetLabel, ENT_QUOTES, 'UTF-8') ?></span>
             <span class="omo-server-env-popup__badge">Verification valable <?= $unlockTtlMinutes ?> min</span>
         </div>
     </div>
@@ -203,7 +204,7 @@ $serverEnvSecretStates = $isUnlocked ? serverEnvAdminBuildSecretStateMap($server
     <?php if (!$hasLocalPassword): ?>
         <div class="omo-server-env-popup__error generic-section generic-section--stack">
             <h3 class="generic-card-title generic-card-title--medium">Mot de passe indisponible</h3>
-            <p>Ce compte n a pas de mot de passe local verifiable. L edition du .env via ce panneau est donc bloquee pour le moment.</p>
+            <p>Ce compte n a pas de mot de passe local verifiable. L edition de <?= htmlspecialchars($serverEnvTargetLabel, ENT_QUOTES, 'UTF-8') ?> via ce panneau est donc bloquee pour le moment.</p>
         </div>
     <?php elseif (!$isUnlocked): ?>
         <div class="omo-server-env-popup__panel generic-section generic-section--stack">
@@ -233,7 +234,7 @@ $serverEnvSecretStates = $isUnlocked ? serverEnvAdminBuildSecretStateMap($server
         </div>
     <?php else: ?>
         <div class="omo-server-env-popup__panel generic-section generic-section--stack">
-            <h3 class="generic-card-title generic-card-title--medium">Modifier le .env</h3>
+            <h3 class="generic-card-title generic-card-title--medium">Modifier <?= htmlspecialchars($serverEnvTargetLabel, ENT_QUOTES, 'UTF-8') ?></h3>
             <p class="omo-server-env-popup__hint">Les champs secrets restent masques. Si vous laissez un champ secret vide, la valeur actuelle est conservee.</p>
 
             <form id="omoServerEnvForm" class="omo-server-env-popup__form">
@@ -300,7 +301,7 @@ $serverEnvSecretStates = $isUnlocked ? serverEnvAdminBuildSecretStateMap($server
 
                 <div class="omo-server-env-popup__actions">
                     <button type="button" class="generic-action-button generic-action-button--secondary" id="omoServerEnvClose">Fermer</button>
-                    <button type="submit" class="generic-action-button generic-action-button--main" id="omoServerEnvSubmit">Enregistrer le .env</button>
+                    <button type="submit" class="generic-action-button generic-action-button--main" id="omoServerEnvSubmit">Enregistrer <?= htmlspecialchars($serverEnvTargetLabel, ENT_QUOTES, 'UTF-8') ?></button>
                 </div>
             </form>
         </div>
@@ -314,6 +315,7 @@ $serverEnvSecretStates = $isUnlocked ? serverEnvAdminBuildSecretStateMap($server
         return;
     }
 
+    var envTargetLabel = <?= json_encode($serverEnvTargetLabel, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
     var popupUrl = root.getAttribute('data-popup-url') || '/omo/api/parameters/server_env_popup.php';
     var unlockUrl = root.getAttribute('data-unlock-url') || '/omo/api/parameters/server_env_unlock.php';
     var saveUrl = root.getAttribute('data-save-url') || '/omo/api/parameters/server_env_save.php';
@@ -496,7 +498,7 @@ $serverEnvSecretStates = $isUnlocked ? serverEnvAdminBuildSecretStateMap($server
             });
         })
         .catch(function () {
-            setFeedback(feedback, 'Impossible d enregistrer le fichier .env.', 'error');
+            setFeedback(feedback, 'Impossible d enregistrer le fichier ' + envTargetLabel + '.', 'error');
         })
         .finally(function () {
             if (submitButton) {

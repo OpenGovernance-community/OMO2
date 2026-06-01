@@ -2,6 +2,7 @@
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__, 3) . '/common/leaflet_helper.php';
 
+use dbObject\ArrayUserOrganization;
 use dbObject\Holon;
 use dbObject\Organization;
 use dbObject\User;
@@ -105,24 +106,11 @@ if (
     exit;
 }
 
-$currentHolon = $organization->getStructuralRootHolon();
-if ($currentHolon === null) {
-    http_response_code(404);
-    ?>
-    <div class="omo-team omo-panel-view">
-        <div class="omo-panel-view__body">
-            <div class="omo-panel-view__body_content">
-                <div class="omo-team__empty omo-empty-state">Aucun holon racine n'a été trouvé pour cette organisation.</div>
-            </div>
-        </div>
-    </div>
-    <?php
-    exit;
-}
+$rootHolon = $organization->getEnabledStructuralRootHolon();
+$hasStructureContext = $rootHolon instanceof Holon;
+$currentHolon = $rootHolon;
 
-$rootHolon = $currentHolon;
-
-if ($currentHolonId > 0 && (int)$currentHolon->getId() !== $currentHolonId) {
+if ($hasStructureContext && $currentHolonId > 0 && (int)$currentHolon->getId() !== $currentHolonId) {
     $candidate = new Holon();
     if (!$candidate->load($currentHolonId) || !$candidate->isDescendantOf($currentHolon->getId())) {
         http_response_code(404);
@@ -157,15 +145,44 @@ if ($currentHolonId > 0 && (int)$currentHolon->getId() !== $currentHolonId) {
     $currentHolon = $candidate;
 }
 
-$rawMemberCards = $currentHolon->getAssociatedMemberCards(array(
-    'organizationId' => $organizationId,
-));
+$rawMemberCards = array();
+$contextAdminUserIds = array();
+$isOrganizationContext = true;
+
+if ($hasStructureContext) {
+    $rawMemberCards = $currentHolon->getAssociatedMemberCards(array(
+        'organizationId' => $organizationId,
+    ));
+    $contextAdminUserIds = array_fill_keys($currentHolon->getDirectContextAdminUserIds($organizationId), true);
+    $isOrganizationContext = (int)$currentHolon->getId() === (int)$rootHolon->getId();
+} else {
+    $memberships = new ArrayUserOrganization();
+    $memberships->loadVisibleForOrganization($organizationId);
+
+    foreach ($memberships as $membership) {
+        if (!$membership instanceof UserOrganization) {
+            continue;
+        }
+
+        $userId = (int)$membership->get('IDuser');
+        if ($userId <= 0) {
+            continue;
+        }
+
+        if ($membership->isOrganizationAdmin() && (bool)$membership->get('active')) {
+            $contextAdminUserIds[$userId] = true;
+        }
+
+        $rawMemberCards[] = array(
+            'userId' => $userId,
+            'isPending' => !(bool)$membership->get('active'),
+        );
+    }
+}
 
 $memberCards = [];
 $adminCount = 0;
 $connectedCount = 0;
-$contextAdminUserIds = array_fill_keys($currentHolon->getDirectContextAdminUserIds($organizationId), true);
-$isOrganizationContext = (int)$currentHolon->getId() === (int)$rootHolon->getId();
 
 $formatter = class_exists('IntlDateFormatter')
     ? new IntlDateFormatter('fr_CH', IntlDateFormatter::MEDIUM, IntlDateFormatter::NONE)
@@ -223,7 +240,9 @@ foreach ($rawMemberCards as $rawCard) {
 
     $isPending = !empty($rawCard['isPending']) || ($hasMembership && !(bool)$membership->get('active'));
     $isOrganizationAdmin = $hasMembership ? $membership->isOrganizationAdmin() : false;
-    $isContextAdmin = isset($contextAdminUserIds[$userId]);
+    $isContextAdmin = $hasStructureContext
+        ? isset($contextAdminUserIds[$userId])
+        : $isOrganizationAdmin;
     $organizationLastSeen = $hasMembership ? $membership->get('dateconnexion') : null;
     $organizationJoinedAt = $hasMembership ? $membership->get('datecreation') : null;
     $globalLastSeen = $hasMembership
@@ -318,14 +337,18 @@ usort($memberCards, static function (array $left, array $right): int {
     );
 });
 
-$currentHolonTypeLabel = omoTeamHolonTypeLabel($currentHolon);
-$currentHolonName = trim((string)$currentHolon->getDisplayName());
-$currentHolonTemplateLabel = trim((string)$currentHolon->getTemplateLabel(true));
+$currentHolonTypeLabel = $hasStructureContext ? omoTeamHolonTypeLabel($currentHolon) : 'organisation';
+$currentHolonName = $hasStructureContext
+    ? trim((string)$currentHolon->getDisplayName())
+    : trim((string)$organization->get('name'));
+$currentHolonTemplateLabel = $hasStructureContext
+    ? trim((string)$currentHolon->getTemplateLabel(true))
+    : 'organisation';
 if ($currentHolonTemplateLabel === '') {
     $currentHolonTemplateLabel = $currentHolonTypeLabel;
 }
-$canRemoveCurrentHolonMembers = $currentHolon->canEdit();
-$canGrantCurrentHolonAdmin = $currentHolon->isAllowed('CAN_ADD_ADMIN');
+$canRemoveCurrentHolonMembers = $hasStructureContext ? $currentHolon->canEdit() : false;
+$canGrantCurrentHolonAdmin = $hasStructureContext ? $currentHolon->isAllowed('CAN_ADD_ADMIN') : false;
 $canManageCurrentHolonMembers = $canRemoveCurrentHolonMembers || $canGrantCurrentHolonAdmin;
 $leafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafletMapsEnabled();
 $mapMembers = array_values(array_filter($memberCards, static function (array $card): bool {
@@ -1050,7 +1073,7 @@ if ($leafletMapsEnabled) {
 </style>
 
 <script>
-var omoTeamViewStorageKey = <?= json_encode('omo-team-view:' . (int)$organizationId . ':' . (int)$currentHolon->getId(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+var omoTeamViewStorageKey = <?= json_encode('omo-team-view:' . (int)$organizationId . ':' . ($hasStructureContext ? (int)$currentHolon->getId() : 0), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 var omoTeamMapEnabled = <?= $leafletMapsEnabled ? 'true' : 'false' ?>;
 var omoTeamMapMembers = <?= json_encode($mapMemberPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 var omoTeamLeafletMap = null;
@@ -1329,8 +1352,8 @@ $(document)
     const action = String(button.data('member-action') || '');
     const userId = Number(button.data('user-id') || card.data('user-id') || 0);
     const organizationId = <?= (int)$organizationId ?>;
-    const currentHolonId = <?= (int)$currentHolon->getId() ?>;
-    const rootHolonId = <?= (int)$rootHolon->getId() ?>;
+    const currentHolonId = <?= $hasStructureContext ? (int)$currentHolon->getId() : 0 ?>;
+    const rootHolonId = <?= $hasStructureContext ? (int)$rootHolon->getId() : 0 ?>;
     const contextLabel = <?= json_encode($currentHolonTemplateLabel, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const displayName = $.trim(card.find('.omo-team-card__identity h3').first().text()) || 'ce membre';
     let confirmationMessage = '';
@@ -1405,7 +1428,7 @@ $(document)
             loadContent('#panel-left', leftUrl);
         }
 
-        if (typeof window.omoReloadStructureAndFocus === 'function') {
+        if (rootHolonId > 0 && typeof window.omoReloadStructureAndFocus === 'function') {
             window.omoReloadStructureAndFocus(currentHolonId > 0 && currentHolonId !== rootHolonId ? currentHolonId : null, {
                 quickZoom: true
             });
