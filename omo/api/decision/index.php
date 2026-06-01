@@ -460,6 +460,10 @@ $escape = 'omoApiEscape';
 
 $currentOrganizationId = isset($_GET['oid']) ? (int)$_GET['oid'] : (int)($_SESSION['currentOrganization'] ?? 0);
 $currentHolonId = isset($_GET['cid']) ? (int)$_GET['cid'] : 0;
+$decisionScope = strtolower(trim((string)($_GET['decision_scope'] ?? 'contextual')));
+if ($decisionScope !== 'global') {
+    $decisionScope = 'contextual';
+}
 $initialOpenDecisionId = isset($_GET['open_decision_id']) ? (int)$_GET['open_decision_id'] : 0;
 
 $refreshUrl = trim((string)($_SERVER['REQUEST_URI'] ?? ''));
@@ -563,6 +567,7 @@ $currentContextHolon = $holonContext['holon'] ?? null;
 $allowedContextHolonIds = $currentContextHolon
     ? array_fill_keys($currentContextHolon->getVisibleDescendantIds(true), true)
     : [];
+$canToggleDecisionScope = $organization->getEnabledStructuralRootHolon() !== null;
 
 $statusLabels = [
     DecisionProcess::STATUS_DRAFT => t('decisions.index.filters.status.draft', [], $lang, $sourceLang),
@@ -617,7 +622,7 @@ foreach ($decisionRows as $row) {
     }
 
     $holonId = (int)$decision->get('IDholon');
-    if ($currentContextHolon && $holonId > 0 && !isset($allowedContextHolonIds[$holonId])) {
+    if ($decisionScope !== 'global' && $currentContextHolon && $holonId > 0 && !isset($allowedContextHolonIds[$holonId])) {
         continue;
     }
 
@@ -906,7 +911,13 @@ if (!is_string($payloadJson)) {
     $payloadJson = '{"items":[],"openDecisionId":0,"statusFilters":[],"statusCounts":{},"typeOptions":[],"methodOptions":[],"holonOptions":[],"text":{},"newUrl":"","refreshUrl":""}';
 }
 ?>
-<div class="omo-decisions omo-panel-view" id="omo-decisions-root">
+<div
+    class="omo-decisions omo-panel-view"
+    id="omo-decisions-root"
+    data-omo-decision-scope="<?= $escape($decisionScope) ?>"
+    data-omo-decision-oid="<?= (int)$currentOrganizationId ?>"
+    data-omo-decision-cid="<?= (int)$currentHolonId ?>"
+>
     <script type="application/json" data-omo-decisions-payload><?= $payloadJson ?></script>
     <div class="omo-panel-view__header omo-decisions__hero">
         <div class="omo-panel-view__header-copy">
@@ -924,6 +935,38 @@ if (!is_string($payloadJson)) {
 
     <div class="omo-panel-view__body">
         <div class="omo-panel-view__body_content">
+            <?php if ($canToggleDecisionScope): ?>
+            <div class="omo-decisions__scope-toolbar omo-scope-toolbar">
+                <div class="omo-scope-toolbar__main">
+                    <div
+                        class="omo-scope-toggle"
+                        role="tablist"
+                        aria-label="Portee des decisions"
+                        data-omo-scope-switch="<?= $escape($decisionScope) ?>"
+                    >
+                        <button
+                            type="button"
+                            class="omo-scope-toggle__button<?= $decisionScope === 'contextual' ? ' is-active' : '' ?>"
+                            data-omo-decision-scope-toggle="contextual"
+                            aria-pressed="<?= $decisionScope === 'contextual' ? 'true' : 'false' ?>"
+                        >Contextuel</button>
+                        <button
+                            type="button"
+                            class="omo-scope-toggle__button<?= $decisionScope === 'global' ? ' is-active' : '' ?>"
+                            data-omo-decision-scope-toggle="global"
+                            aria-pressed="<?= $decisionScope === 'global' ? 'true' : 'false' ?>"
+                        >Global</button>
+                    </div>
+                    <div class="omo-scope-toolbar__note">
+                        <?php if ($decisionScope === 'global'): ?>
+                            <strong>Mode global:</strong> toutes les prises de decision visibles dans l organisation sont affichees ici.
+                        <?php else: ?>
+                            <strong>Mode contextuel:</strong> seules les prises de decision liees au contexte courant restent affichees ici.
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
             <div class="omo-decisions__filters" aria-label="Filtres">
                 <div class="omo-decisions__status-bar generic-section">
                     <div class="omo-decisions__status-tabs" data-omo-decisions-status-tabs></div>
@@ -1020,6 +1063,10 @@ if (!is_string($payloadJson)) {
 .omo-decisions__filters {
     display: grid;
     gap: 12px;
+    margin-bottom: 16px;
+}
+
+.omo-decisions__scope-toolbar {
     margin-bottom: 16px;
 }
 
@@ -1201,6 +1248,68 @@ const state = {
     filtersExpanded: false
 };
 let omoDecisionIndexRefreshToken = 0;
+let omoDecisionScopeRefreshToken = 0;
+
+function omoDecisionGetCurrentScope() {
+    return String(root.getAttribute('data-omo-decision-scope') || 'contextual').trim().toLowerCase() === 'global'
+        ? 'global'
+        : 'contextual';
+}
+
+function omoDecisionBuildScopeUrl(scope) {
+    const resolvedScope = String(scope || '').trim().toLowerCase() === 'global' ? 'global' : 'contextual';
+    const query = [];
+    const organizationId = Number(root.getAttribute('data-omo-decision-oid') || 0);
+    const holonId = Number(root.getAttribute('data-omo-decision-cid') || 0);
+
+    if (organizationId > 0) {
+        query.push('oid=' + encodeURIComponent(String(organizationId)));
+    }
+    if (holonId > 0) {
+        query.push('cid=' + encodeURIComponent(String(holonId)));
+    }
+    if (resolvedScope !== 'contextual') {
+        query.push('decision_scope=' + encodeURIComponent(resolvedScope));
+    }
+
+    return '/omo/api/decision/index.php' + (query.length ? ('?' + query.join('&')) : '');
+}
+
+function omoDecisionSetScopeLoadingState(isLoading, nextScope) {
+    root.classList.toggle('is-loading', !!isLoading);
+    root.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+
+    const scopeSwitch = root.querySelector('[data-omo-scope-switch]');
+    if (scopeSwitch && nextScope) {
+        scopeSwitch.setAttribute('data-omo-scope-switch', String(nextScope).trim().toLowerCase() === 'global' ? 'global' : 'contextual');
+    }
+
+    root.querySelectorAll('[data-omo-decision-scope-toggle]').forEach(function (button) {
+        button.disabled = !!isLoading;
+    });
+}
+
+function omoDecisionReloadForScope(scope) {
+    const targetScope = String(scope || '').trim().toLowerCase() === 'global' ? 'global' : 'contextual';
+    const requestId = ++omoDecisionScopeRefreshToken;
+
+    if (typeof window.omoReplaceFetchedPanelRoot !== 'function') {
+        window.location.href = omoDecisionBuildScopeUrl(targetScope);
+        return Promise.resolve(null);
+    }
+
+    return window.omoReplaceFetchedPanelRoot({
+        rootSelector: '#omo-decisions-root',
+        currentRoot: root,
+        url: omoDecisionBuildScopeUrl(targetScope),
+        setLoadingState: function (isLoading) {
+            if (requestId !== omoDecisionScopeRefreshToken && !isLoading) {
+                return;
+            }
+            omoDecisionSetScopeLoadingState(isLoading, targetScope);
+        }
+    });
+}
 
 function normalizeText(value) {
     return String(value || '')
@@ -1952,6 +2061,20 @@ if (elements.filtersToggle) {
         syncAdvancedFiltersVisibility();
     });
 }
+
+root.querySelectorAll('[data-omo-decision-scope-toggle]').forEach(function (button) {
+    button.addEventListener('click', function () {
+        const targetScope = String(button.getAttribute('data-omo-decision-scope-toggle') || 'contextual').trim().toLowerCase() === 'global'
+            ? 'global'
+            : 'contextual';
+
+        if (targetScope === omoDecisionGetCurrentScope()) {
+            return;
+        }
+
+        omoDecisionReloadForScope(targetScope);
+    });
+});
 
 window.omoDecisionOpenNestedDrawer = function (title, url, description) {
     openDecisionEditor(url, title, description);

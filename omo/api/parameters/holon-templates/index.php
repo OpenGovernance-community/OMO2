@@ -10,8 +10,13 @@ function omoHolonTemplateEscape($value)
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 $contextHolonId = (int)($_GET['cid'] ?? 0);
-$selectedTemplateId = (int)($_GET['hid'] ?? 0);
+$targetHolonId = (int)($_GET['hid'] ?? 0);
+$selectedTemplateId = (int)($_GET['tid'] ?? 0);
 $isCompactMode = !empty($_GET['compact']);
+$templateScope = strtolower(trim((string)($_GET['template_scope'] ?? 'contextual')));
+if ($templateScope !== 'global') {
+    $templateScope = 'contextual';
+}
 $organization = new Organization();
 $editorData = null;
 $errorMessage = '';
@@ -24,37 +29,79 @@ if ($organizationId <= 0) {
 } elseif ($organization->getEnabledStructuralRootHolon() === null) {
     $errorMessage = "Les modeles de holons sont disponibles uniquement lorsqu une structure existe et que l app Structure est active.";
 } else {
-    if ($selectedTemplateId > 0) {
-        $editorData = $organization->getHolonDefinitionEditorData($selectedTemplateId);
+    if ($targetHolonId > 0) {
+        $editorData = $organization->getHolonDefinitionEditorData($targetHolonId);
     }
 
     if ($editorData === null) {
-        $editorData = $organization->getHolonTemplateEditorData($contextHolonId);
+        $editorData = $organization->getHolonTemplateEditorData($contextHolonId, $templateScope);
     }
 
     $isHolonDefinitionMode = (($editorData['editorMode'] ?? 'template') === 'holon-definition');
+    if ($isHolonDefinitionMode) {
+        $templateScope = 'contextual';
+        $selectedTemplateId = 0;
+    }
 }
 ?>
-<div class="omo-template-editor omo-panel-view">
+<div
+    class="omo-template-editor omo-panel-view"
+    id="omo-holon-template-page"
+    data-omo-template-scope="<?= omoHolonTemplateEscape($templateScope) ?>"
+    data-omo-template-cid="<?= (int)$contextHolonId ?>"
+>
+    <?php if ($isHolonDefinitionMode): ?>
     <div class="omo-panel-view__header">
         <div class="omo-panel-view__header-copy">
             <h2 class="omo-panel-view__title"><?= $isHolonDefinitionMode ? 'Proprietes de l organisation' : 'Modeles de holons' ?></h2>
             <p class="omo-panel-view__description">
-                <?php if ($isHolonDefinitionMode): ?>
+                
                     Modifiez ici les proprietes, illustrations et reglages locaux du holon d organisation,
                     meme lorsqu il ne s agit pas d un template.
-                <?php else: ?>
-                    Definissez ici les types de noeuds reutilisables de votre organisation:
-                    cercle, role, projet, tache ou toute autre structure hierarchique portee par les holons.
-                <?php endif; ?>
+               
             </p>
         </div>
     </div>
+    <?php endif; ?>
 
     <div class="omo-panel-view__body">
         <?php if ($errorMessage !== ''): ?>
             <div class="omo-empty-state"><?= omoHolonTemplateEscape($errorMessage) ?></div>
         <?php else: ?>
+            <?php if (!$isHolonDefinitionMode): ?>
+            <div class="omo-panel-view__body_content">
+                <div class="omo-scope-toolbar">
+                    <div class="omo-scope-toolbar__main">
+                        <div
+                            class="omo-scope-toggle"
+                            role="tablist"
+                            aria-label="Portee des modeles"
+                            data-omo-scope-switch="<?= omoHolonTemplateEscape($templateScope) ?>"
+                        >
+                            <button
+                                type="button"
+                                class="omo-scope-toggle__button<?= $templateScope === 'contextual' ? ' is-active' : '' ?>"
+                                data-omo-template-scope-toggle="contextual"
+                                aria-pressed="<?= $templateScope === 'contextual' ? 'true' : 'false' ?>"
+                            >Contextuel</button>
+                            <button
+                                type="button"
+                                class="omo-scope-toggle__button<?= $templateScope === 'global' ? ' is-active' : '' ?>"
+                                data-omo-template-scope-toggle="global"
+                                aria-pressed="<?= $templateScope === 'global' ? 'true' : 'false' ?>"
+                            >Global</button>
+                        </div>
+                        <div class="omo-scope-toolbar__note">
+                            <?php if ($templateScope === 'global'): ?>
+                                <strong>Mode global:</strong> tous les modeles de l organisation sont affiches ici, quel que soit leur holon de definition.
+                            <?php else: ?>
+                                <strong>Mode contextuel:</strong> seuls les modeles utiles au contexte <?= omoHolonTemplateEscape($editorData['contextHolonName'] ?? ($editorData['organizationName'] ?? 'courant')) ?> sont affiches ici.
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
             <div class="omo-template-editor__layout<?= $isCompactMode ? ' omo-template-editor__layout--compact' : '' ?><?= $isHolonDefinitionMode ? ' omo-template-editor__layout--holon-definition' : '' ?>" id="omo-holon-template-editor">
                 <aside class="omo-template-sidebar">
                     <div class="omo-template-sidebar__hero">
@@ -407,12 +454,17 @@ if ($organizationId <= 0) {
 <script src="/omo/assets/js/simple-html-field.js"></script>
 <script>
 (() => {
+const omoHolonTemplatePageRoot = document.getElementById('omo-holon-template-page');
 const omoHolonTemplateState = {
     data: <?= json_encode($editorData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
     selectedId: <?= (int)$selectedTemplateId ?>,
     compactMode: <?= $isCompactMode ? 'true' : 'false' ?>,
     statusTimer: null
 };
+
+if (!omoHolonTemplatePageRoot) {
+    return;
+}
 
 const omoHolonTemplateRoot = document.getElementById('omo-holon-template-editor');
 if (!omoHolonTemplateRoot) {
@@ -460,8 +512,68 @@ const omoHolonTemplateMediaFields = {
     banner: null
 };
 
+function omoHolonTemplateGetScope() {
+    return String(omoHolonTemplatePageRoot.getAttribute('data-omo-template-scope') || 'contextual').trim().toLowerCase() === 'global'
+        ? 'global'
+        : 'contextual';
+}
+
 function omoHolonTemplateIsHolonDefinitionMode() {
     return String((omoHolonTemplateState.data || {}).editorMode || 'template') === 'holon-definition';
+}
+
+function omoHolonTemplateBuildScopeUrl(scope, options) {
+    const resolvedScope = String(scope || '').trim().toLowerCase() === 'global' ? 'global' : 'contextual';
+    const settings = options && typeof options === 'object' ? options : {};
+    const query = [];
+    const requestedContextHolonId = Number(omoHolonTemplatePageRoot.getAttribute('data-omo-template-cid') || 0);
+    const contextHolonId = Number(settings.contextHolonId || requestedContextHolonId || 0);
+    const templateId = Number(settings.templateId || 0);
+
+    if (contextHolonId > 0) {
+        query.push('cid=' + encodeURIComponent(String(contextHolonId)));
+    }
+    if (templateId > 0) {
+        query.push('tid=' + encodeURIComponent(String(templateId)));
+    }
+    if (resolvedScope !== 'contextual') {
+        query.push('template_scope=' + encodeURIComponent(resolvedScope));
+    }
+
+    return '/omo/api/parameters/holon-templates/index.php' + (query.length ? ('?' + query.join('&')) : '');
+}
+
+function omoHolonTemplateSetScopeLoadingState(isLoading, nextScope) {
+    omoHolonTemplatePageRoot.classList.toggle('is-loading', !!isLoading);
+    omoHolonTemplatePageRoot.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+
+    const scopeSwitch = omoHolonTemplatePageRoot.querySelector('[data-omo-scope-switch]');
+    if (scopeSwitch && nextScope) {
+        scopeSwitch.setAttribute('data-omo-scope-switch', String(nextScope).trim().toLowerCase() === 'global' ? 'global' : 'contextual');
+    }
+
+    omoHolonTemplatePageRoot.querySelectorAll('[data-omo-template-scope-toggle]').forEach(function (button) {
+        button.disabled = !!isLoading;
+    });
+}
+
+function omoHolonTemplateReloadPage(scope, options) {
+    const targetScope = String(scope || '').trim().toLowerCase() === 'global' ? 'global' : 'contextual';
+    const targetUrl = omoHolonTemplateBuildScopeUrl(targetScope, options);
+
+    if (typeof window.omoReplaceFetchedPanelRoot !== 'function') {
+        window.location.href = targetUrl;
+        return Promise.resolve(null);
+    }
+
+    return window.omoReplaceFetchedPanelRoot({
+        rootSelector: '#omo-holon-template-page',
+        currentRoot: omoHolonTemplatePageRoot,
+        url: targetUrl,
+        setLoadingState: function (isLoading) {
+            omoHolonTemplateSetScopeLoadingState(isLoading, targetScope);
+        }
+    });
 }
 
 if (omoHolonTemplateIsHolonDefinitionMode()) {
@@ -1156,15 +1268,23 @@ function omoHolonTemplateRenderTreeNodes(nodes) {
         const isSelected = Number(omoHolonTemplateState.selectedId || 0) === Number(node.id);
         const propertyCount = Array.isArray(node.properties) ? node.properties.length : 0;
         const childCount = Array.isArray(node.children) ? node.children.length : 0;
+        const definedInId = Number(node.definedInId || 0);
+        const definedInName = String(node.definedInName || '').trim();
+        const isForeignContext = omoHolonTemplateGetScope() === 'global'
+            && definedInId > 0
+            && definedInId !== Number(omoHolonTemplateState.data.contextHolonId || 0);
 
         html += '<li class="omo-template-tree__item">';
-        html += '<button type="button" class="omo-template-tree__button' + (isSelected ? ' is-selected' : '') + '" data-template-select="' + Number(node.id) + '">';
+        html += '<button type="button" class="omo-template-tree__button' + (isSelected ? ' is-selected' : '') + '" data-template-select="' + Number(node.id) + '" data-template-context-id="' + definedInId + '">';
         html += '  <span class="omo-template-tree__name">' + omoHolonTemplateEscapeHtml(node.name) + '</span>';
         html += '  <span class="omo-template-tree__meta-row">';
         html += '      <span class="omo-template-chip omo-template-chip--accent">' + omoHolonTemplateEscapeHtml(node.typeLabel || '') + '</span>';
         html += '      <span class="omo-template-chip">' + propertyCount + ' propriete' + (propertyCount > 1 ? 's' : '') + '</span>';
         if (childCount > 0) {
             html += '  <span class="omo-template-chip">' + childCount + ' sous-modele' + (childCount > 1 ? 's' : '') + '</span>';
+        }
+        if (isForeignContext && definedInName !== '') {
+            html += '  <span class="omo-template-chip">' + omoHolonTemplateEscapeHtml(definedInName) + '</span>';
         }
         html += '  </span>';
         html += '</button>';
@@ -2235,6 +2355,9 @@ function omoHolonTemplateSave(event) {
             if (omoHolonTemplateIsHolonDefinitionMode() && Number(omoHolonTemplateState.data.targetHolonId || 0) > 0) {
                 query.push('hid=' + Number(omoHolonTemplateState.data.targetHolonId || 0));
             }
+            if (!omoHolonTemplateIsHolonDefinitionMode() && omoHolonTemplateGetScope() !== 'contextual') {
+                query.push('template_scope=' + encodeURIComponent(omoHolonTemplateGetScope()));
+            }
             return query.length ? ('?' + query.join('&')) : '';
         })();
 
@@ -2317,6 +2440,20 @@ if (omoHolonTemplateElements.sharePublic) {
     });
 }
 
+omoHolonTemplatePageRoot.addEventListener('click', function (event) {
+    const scopeToggleButton = event.target.closest('[data-omo-template-scope-toggle]');
+    if (!scopeToggleButton || omoHolonTemplateIsHolonDefinitionMode()) {
+        return;
+    }
+
+    const targetScope = scopeToggleButton.getAttribute('data-omo-template-scope-toggle') || 'contextual';
+    if (targetScope !== omoHolonTemplateGetScope()) {
+        omoHolonTemplateReloadPage(targetScope, {
+            templateId: Number(omoHolonTemplateState.selectedId || 0)
+        });
+    }
+});
+
 if (omoHolonTemplateElements.root) {
     omoHolonTemplateElements.root.addEventListener('change', function (event) {
         if (event.target === omoHolonTemplateElements.parent) {
@@ -2369,7 +2506,22 @@ if (omoHolonTemplateElements.root) {
     omoHolonTemplateElements.root.addEventListener('click', function (event) {
         const selectButton = event.target.closest('[data-template-select]');
         if (selectButton) {
-            omoHolonTemplateSelect(Number(selectButton.getAttribute('data-template-select')));
+            const targetTemplateId = Number(selectButton.getAttribute('data-template-select') || 0);
+            const targetContextId = Number(selectButton.getAttribute('data-template-context-id') || 0);
+            if (
+                omoHolonTemplateGetScope() === 'global'
+                && targetTemplateId > 0
+                && targetContextId > 0
+                && targetContextId !== Number(omoHolonTemplateState.data.contextHolonId || 0)
+            ) {
+                omoHolonTemplateReloadPage('global', {
+                    contextHolonId: targetContextId,
+                    templateId: targetTemplateId
+                });
+                return;
+            }
+
+            omoHolonTemplateSelect(targetTemplateId);
             return;
         }
 

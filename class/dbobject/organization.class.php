@@ -2388,14 +2388,22 @@
 			return array_values($formatMap);
 		}
 
-		public function getHolonTemplateEditorData($contextHolonId = 0)
+		protected function normalizeTemplateEditorScope($scope = 'contextual')
 		{
+			$scope = strtolower(trim((string)$scope));
+			return $scope === 'global' ? 'global' : 'contextual';
+		}
+
+		public function getHolonTemplateEditorData($contextHolonId = 0, $scope = 'contextual')
+		{
+			$scope = $this->normalizeTemplateEditorScope($scope);
 			$rootHolon = $this->getStructuralRootHolon();
 			$contextHolon = $this->getTemplateContextHolon($contextHolonId);
 			if (!$rootHolon) {
 				return array(
 					'organizationId' => (int)$this->getId(),
 					'organizationName' => (string)$this->get('name'),
+					'scope' => $scope,
 					'rootHolonId' => 0,
 					'contextHolonId' => 0,
 					'contextHolonName' => '',
@@ -2427,6 +2435,7 @@
 			$data = array(
 				'organizationId' => (int)$this->getId(),
 				'organizationName' => (string)$this->get('name'),
+				'scope' => $scope,
 				'rootHolonId' => (int)$rootHolon->getId(),
 				'contextHolonId' => $contextHolon ? (int)$contextHolon->getId() : 0,
 				'contextHolonName' => $contextHolon ? $contextHolon->getDisplayName() : '',
@@ -2451,16 +2460,48 @@
 
 			$data['formats'] = $this->buildEditorPropertyFormats($formats);
 
+			$templateCatalogSource = $this->getAvailableTemplateDefinitionHolons($contextHolon ? (int)$contextHolon->getId() : 0);
+			$templateTreeSource = $scope === 'global'
+				? $this->getAllTemplateDefinitionHolons()
+				: $this->getTemplateDefinitionHolons($contextHolon ? (int)$contextHolon->getId() : 0);
+			$definitionHolonMetaCache = array();
+
+			$resolveDefinitionHolonMeta = function ($definitionHolonId) use (&$definitionHolonMetaCache) {
+				$definitionHolonId = (int)$definitionHolonId;
+				if ($definitionHolonId <= 0) {
+					return array(
+						'id' => 0,
+						'name' => '',
+						'label' => '',
+					);
+				}
+
+				if (isset($definitionHolonMetaCache[$definitionHolonId])) {
+					return $definitionHolonMetaCache[$definitionHolonId];
+				}
+
+				$definitionHolon = new \dbObject\Holon();
+				if (!$definitionHolon->load($definitionHolonId)) {
+					$definitionHolonMetaCache[$definitionHolonId] = array(
+						'id' => $definitionHolonId,
+						'name' => '',
+						'label' => '',
+					);
+					return $definitionHolonMetaCache[$definitionHolonId];
+				}
+
+				$definitionHolonMetaCache[$definitionHolonId] = array(
+					'id' => $definitionHolonId,
+					'name' => $definitionHolon->getDisplayName(),
+					'label' => $definitionHolon->getTemplateLabel(),
+				);
+				return $definitionHolonMetaCache[$definitionHolonId];
+			};
+
 			$templateNodes = array();
 			$childrenByParent = array();
-			foreach ($this->getAvailableTemplateDefinitionHolons($contextHolon ? (int)$contextHolon->getId() : 0) as $template) {
-				$definitionHolon = new \dbObject\Holon();
-				$definitionHolonName = '';
-				$definitionHolonLabel = '';
-				if ($definitionHolon->load((int)$template->get('IDholon_parent'))) {
-					$definitionHolonName = $definitionHolon->getDisplayName();
-					$definitionHolonLabel = $definitionHolon->getTemplateLabel();
-				}
+			foreach ($templateCatalogSource as $template) {
+				$definitionHolonMeta = $resolveDefinitionHolonMeta((int)$template->get('IDholon_parent'));
 
 				$data['templateCatalog'][] = array_merge(array(
 					'id' => (int)$template->getId(),
@@ -2474,15 +2515,19 @@
 					'unique' => (bool)$template->get('unique'),
 					'link' => (bool)$template->get('link'),
 					'inheritsFromId' => (int)$template->get('IDholon_template'),
-					'definedInId' => (int)$template->get('IDholon_parent'),
-					'definedInName' => $definitionHolonName,
-					'definedInLabel' => $definitionHolonLabel,
+					'definedInId' => (int)$definitionHolonMeta['id'],
+					'definedInName' => (string)$definitionHolonMeta['name'],
+					'definedInLabel' => (string)$definitionHolonMeta['label'],
 					'properties' => $template->getTemplatePropertyDefinitions(),
 				), $this->getHolonIllustrationData($template));
 			}
 
-			foreach ($this->getTemplateDefinitionHolons($contextHolon ? (int)$contextHolon->getId() : 0) as $template) {
+			foreach ($templateTreeSource as $template) {
 				$templateNode = $template->toTemplateEditorNodeArray((int)$rootHolon->getId());
+				$definitionHolonMeta = $resolveDefinitionHolonMeta((int)$template->get('IDholon_parent'));
+				$templateNode['definedInId'] = (int)$definitionHolonMeta['id'];
+				$templateNode['definedInName'] = (string)$definitionHolonMeta['name'];
+				$templateNode['definedInLabel'] = (string)$definitionHolonMeta['label'];
 				$templateNodes[(int)$template->getId()] = $templateNode;
 				$parentId = (int)$templateNode['inheritsFromId'];
 
@@ -4610,10 +4655,11 @@
 			);
 		}
 
-		public function saveHolonTemplateDefinition(array $payload, $userId = 0, $contextHolonId = 0)
+		public function saveHolonTemplateDefinition(array $payload, $userId = 0, $contextHolonId = 0, $scope = 'contextual')
 		{
 			$rootHolon = $this->getStructuralRootHolon();
 			$contextHolon = $this->getTemplateContextHolon($contextHolonId);
+			$scope = $this->normalizeTemplateEditorScope($scope);
 			if (!$rootHolon) {
 				return array(
 					'status' => false,
@@ -4794,7 +4840,7 @@
 				'status' => true,
 				'message' => 'Modele enregistre.',
 				'template' => $template->toTemplateEditorArray((int)$rootHolon->getId()),
-				'data' => $this->getHolonTemplateEditorData((int)$contextHolon->getId()),
+				'data' => $this->getHolonTemplateEditorData((int)$contextHolon->getId(), $scope),
 			);
 		}
 
@@ -4990,6 +5036,26 @@
 			}
 
 			return $this->getStructuralRootHolon();
+		}
+
+		public function getEnabledApplicationHashes($userId = null)
+		{
+			$hashes = array();
+
+			foreach ($this->getApplications($userId) as $application) {
+				if (!($application instanceof \dbObject\Application)) {
+					continue;
+				}
+
+				$hash = trim(mb_strtolower((string)$application->getRouteHash(), 'UTF-8'));
+				if ($hash === '') {
+					continue;
+				}
+
+				$hashes[$hash] = $hash;
+			}
+
+			return array_values($hashes);
 		}
 
 		protected static function normalizeTopbarSearchText($value)
@@ -5312,26 +5378,39 @@
 		protected static function topbarSearchViewerCanViewDocument(\dbObject\Document $document, array &$viewerContext, $organizationId)
 		{
 			$organizationId = (int)$organizationId;
-			if (!self::topbarSearchViewerHasOrganizationAccess($viewerContext, $organizationId)) {
+			if (
+				$organizationId <= 0
+				|| (int)$document->getId() <= 0
+				|| (int)$document->get('IDorganization') !== $organizationId
+				|| !self::topbarSearchViewerHasOrganizationAccess($viewerContext, $organizationId)
+			) {
 				return false;
 			}
 
-			if ((string)($viewerContext['type'] ?? '') !== 'share') {
-				return true;
+			if (!array_key_exists('roleHolonIds', $viewerContext)) {
+				$viewerContext['roleHolonIds'] = null;
 			}
 
-			$shareLink = self::getTopbarSearchViewerShareLink($viewerContext);
-			if (!$shareLink) {
-				return false;
+			if (!array_key_exists('circleHolonIds', $viewerContext)) {
+				$viewerContext['circleHolonIds'] = null;
 			}
 
-			$documentHolonId = (int)$document->get('IDholon');
-			if ($documentHolonId <= 0) {
-				return true;
-			}
+			$viewerContext['organizationId'] = $organizationId;
 
-			$documentHolon = new \dbObject\Holon();
-			return $documentHolon->load($documentHolonId) && $shareLink->containsHolon($documentHolon);
+			$ruleRow = \dbObject\ObjectVisibility::loadActiveRuleRow(
+				\dbObject\Document::getVisibilityObjectType(),
+				(int)$document->getId(),
+				$organizationId
+			);
+
+			return \dbObject\ObjectVisibility::viewerCanAccessRule(
+				$ruleRow,
+				$viewerContext,
+				array(
+					'organizationId' => $organizationId,
+					'ownerUserId' => (int)$document->get('IDuser'),
+				)
+			);
 		}
 
 		protected static function getTopbarSearchViewerScopedEmail(array &$viewerContext, $organizationId)

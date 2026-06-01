@@ -169,9 +169,9 @@ $sourceLang = [
         'text' => 'Outils',
         'context' => 'Mobile navigation label for the tools panel.',
     ],
-    'app.mobile.structure' => [
-        'text' => 'Structure',
-        'context' => 'Mobile navigation label for the structure panel.',
+    'app.mobile.right_panel' => [
+        'text' => 'Resume',
+        'context' => 'Mobile navigation label for the right panel.',
     ],
     'app.not_found.message' => [
         'text' => "L'organisation demandée n'existe pas ou n'est plus disponible.",
@@ -1170,7 +1170,7 @@ if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
 
     <button data-view="menu" class="nav-btn"><?= htmlspecialchars(t('app.mobile.menu')) ?></button>
     <button data-view="left" class="nav-btn"><?= htmlspecialchars(t('app.mobile.context')) ?></button>
-    <button data-view="right" class="nav-btn"><?= htmlspecialchars(t('app.mobile.structure')) ?></button>
+    <button data-view="right" class="nav-btn"><?= htmlspecialchars(t('app.mobile.right_panel')) ?></button>
 
 </div>
 

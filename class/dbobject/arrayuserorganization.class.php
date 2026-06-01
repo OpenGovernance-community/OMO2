@@ -109,6 +109,79 @@
 				$this[] = $item;
 			}
 		}
+
+		public function buildUpcomingCelebrations($organizationId, $limit = 6, $referenceDate = null, array $labels = array())
+		{
+			require_once dirname(__DIR__, 2) . '/common/user_profile_ui.php';
+
+			$organizationId = (int)$organizationId;
+			$limit = max(1, (int)$limit);
+			$items = array();
+
+			$this->loadActiveForOrganization($organizationId);
+
+			foreach ($this as $membership) {
+				if (!($membership instanceof \dbObject\UserOrganization)) {
+					continue;
+				}
+
+				$userId = (int)$membership->get('IDuser');
+				if ($userId <= 0) {
+					continue;
+				}
+
+				$user = new \dbObject\User();
+				if (!$user->load($userId) || !$user->canView()) {
+					continue;
+				}
+
+				$displayName = trim((string)$user->getScopedDisplayName($organizationId));
+				if ($displayName === '') {
+					$displayName = 'Utilisateur ' . $userId;
+				}
+
+				$birthSummary = \commonUserProfileBuildBirthdaySummary($user->get('birthdate'), $referenceDate);
+				if (is_array($birthSummary)) {
+					$items[] = array(
+						'userId' => $userId,
+						'displayName' => $displayName,
+						'tagType' => 'personal',
+						'headline' => (string)($birthSummary['headline'] ?? ''),
+						'detail' => (string)($birthSummary['detail'] ?? ''),
+						'daysUntil' => (int)($birthSummary['daysUntil'] ?? 9999),
+					);
+				}
+
+				$joinSummary = \commonUserProfileBuildRecurringDateSummary($membership->get('datecreation'), array(
+					'today' => (string)($labels['proToday'] ?? "Anniversaire pro aujourd'hui"),
+					'soonPrefix' => (string)($labels['proSoonPrefix'] ?? 'Anniversaire pro dans'),
+					'monthPrefix' => (string)($labels['proMonthPrefix'] ?? 'Anniversaire pro en'),
+					'detailPrefix' => 'Le',
+				), $referenceDate);
+				if (is_array($joinSummary)) {
+					$items[] = array(
+						'userId' => $userId,
+						'displayName' => $displayName,
+						'tagType' => 'pro',
+						'headline' => (string)($joinSummary['headline'] ?? ''),
+						'detail' => (string)($joinSummary['detail'] ?? ''),
+						'daysUntil' => (int)($joinSummary['daysUntil'] ?? 9999),
+					);
+				}
+			}
+
+			usort($items, static function (array $left, array $right) {
+				$leftDays = (int)($left['daysUntil'] ?? 9999);
+				$rightDays = (int)($right['daysUntil'] ?? 9999);
+				if ($leftDays !== $rightDays) {
+					return $leftDays <=> $rightDays;
+				}
+
+				return strcmp((string)($left['displayName'] ?? ''), (string)($right['displayName'] ?? ''));
+			});
+
+			return array_slice($items, 0, $limit);
+		}
 	}
 
 ?>

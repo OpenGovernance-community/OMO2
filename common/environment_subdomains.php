@@ -12,8 +12,10 @@ function commonLoadRuntimeEnvIfAvailable()
     if (is_file($envLoaderPath)) {
         require_once $envLoaderPath;
 
-        if (function_exists('loadEnv')) {
-            loadEnv(dirname(__DIR__) . '/.env');
+        if (function_exists('loadEnv') && function_exists('envGetRuntimeEnvPaths')) {
+            foreach (envGetRuntimeEnvPaths() as $runtimeEnvPath) {
+                loadEnv($runtimeEnvPath);
+            }
         }
     }
 

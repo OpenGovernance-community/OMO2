@@ -52,7 +52,7 @@ try {
 
     echo json_encode([
         'status' => true,
-        'message' => 'Le fichier .env a ete mis a jour.',
+        'message' => 'Le fichier ' . serverEnvAdminGetEnvTargetLabel() . ' a ete mis a jour.',
         'configuredSecrets' => serverEnvAdminBuildSecretStateMap($mergedValues),
     ]);
     exit;
