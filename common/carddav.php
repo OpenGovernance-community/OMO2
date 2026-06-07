@@ -120,14 +120,14 @@ if (!function_exists('commonCardDavAuthenticateRequest')) {
             return null;
         }
 
-        $email = trim((string)$credentials[0]);
+        $identifier = trim((string)$credentials[0]);
         $password = (string)$credentials[1];
-        if ($email === '' || $password === '') {
+        if ($identifier === '' || $password === '') {
             return null;
         }
 
-        $user = new User();
-        if (!$user->load(array('email', $email))) {
+        $user = User::findByLoginIdentifier($identifier, true);
+        if (!$user) {
             return null;
         }
 
