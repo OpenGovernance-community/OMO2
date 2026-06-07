@@ -184,6 +184,241 @@
         });
     }
 
+    function createVerticalSortableList(options) {
+        var settings = options || {};
+        var list = settings.list || null;
+        var itemSelector = settings.itemSelector || '[draggable="true"]';
+        var handleSelector = settings.handleSelector || '';
+        var draggingClass = settings.draggingClass || 'is-dragging';
+        var dropTargetClass = settings.dropTargetClass || 'is-drop-target';
+        var placeholderClass = settings.placeholderClass || '';
+        var draggedItem = null;
+        var placeholderItem = null;
+
+        if (!list || list.nodeType !== 1) {
+            return null;
+        }
+
+        function getItems() {
+            return toArray(list.querySelectorAll(itemSelector)).filter(function (item) {
+                return item && item !== placeholderItem;
+            });
+        }
+
+        function clearDropTargets() {
+            if (!dropTargetClass) {
+                return;
+            }
+
+            getItems().forEach(function (item) {
+                item.classList.remove(dropTargetClass);
+            });
+        }
+
+        function removePlaceholder() {
+            if (placeholderItem && placeholderItem.parentNode) {
+                placeholderItem.parentNode.removeChild(placeholderItem);
+            }
+
+            placeholderItem = null;
+        }
+
+        function buildPlaceholder(item) {
+            var placeholder = null;
+
+            if (typeof settings.createPlaceholder === 'function') {
+                placeholder = settings.createPlaceholder(item);
+            }
+
+            if (!placeholder) {
+                placeholder = document.createElement('div');
+            }
+
+            if (placeholderClass) {
+                placeholder.classList.add(placeholderClass);
+            }
+
+            if (!placeholder.style.height) {
+                placeholder.style.height = Math.max(item.getBoundingClientRect().height, 1) + 'px';
+            }
+
+            return placeholder;
+        }
+
+        function getInsertionTarget(clientY) {
+            var items = getItems().filter(function (item) {
+                return item !== draggedItem;
+            });
+            var index;
+            var item;
+            var bounds;
+            var centerY;
+
+            if (!items.length) {
+                return null;
+            }
+
+            for (index = 0; index < items.length; index += 1) {
+                item = items[index];
+                bounds = item.getBoundingClientRect();
+                centerY = bounds.top + (bounds.height / 2);
+
+                if (clientY < centerY) {
+                    return {
+                        item: item,
+                        placeAfter: false
+                    };
+                }
+            }
+
+            return {
+                item: items[items.length - 1],
+                placeAfter: true
+            };
+        }
+
+        function bindHandle(item) {
+            if (!handleSelector) {
+                return;
+            }
+
+            toArray(item.querySelectorAll(handleSelector)).forEach(function (handle) {
+                ['mousedown', 'touchstart'].forEach(function (eventName) {
+                    handle.addEventListener(eventName, function () {
+                        item.setAttribute('data-generic-sortable-drag-ready', '1');
+                    }, { passive: true });
+                });
+
+                ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(function (eventName) {
+                    handle.addEventListener(eventName, function () {
+                        item.removeAttribute('data-generic-sortable-drag-ready');
+                    }, { passive: true });
+                });
+            });
+        }
+
+        function bindItem(item) {
+            if (!item || item.nodeType !== 1 || item.dataset.genericSortableReady === '1') {
+                return item;
+            }
+
+            bindHandle(item);
+
+            item.addEventListener('dragstart', function (event) {
+                if (handleSelector && item.getAttribute('data-generic-sortable-drag-ready') !== '1') {
+                    event.preventDefault();
+                    return;
+                }
+
+                draggedItem = item;
+                item.classList.add(draggingClass);
+
+                if (typeof settings.onDragStart === 'function') {
+                    settings.onDragStart(item, list);
+                }
+
+                placeholderItem = buildPlaceholder(item);
+                list.insertBefore(placeholderItem, item.nextSibling);
+
+                if (event.dataTransfer) {
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('text/plain', item.getAttribute('data-sortable-id') || '');
+                }
+
+                window.setTimeout(function () {
+                    if (draggedItem === item) {
+                        item.style.display = 'none';
+                    }
+                }, 0);
+            });
+
+            item.addEventListener('dragend', function () {
+                item.classList.remove(draggingClass);
+                item.removeAttribute('data-generic-sortable-drag-ready');
+                item.style.display = '';
+
+                if (placeholderItem && placeholderItem.parentNode) {
+                    placeholderItem.parentNode.insertBefore(item, placeholderItem);
+                }
+
+                removePlaceholder();
+                draggedItem = null;
+                clearDropTargets();
+
+                if (typeof settings.onDragEnd === 'function') {
+                    settings.onDragEnd(item, list);
+                }
+            });
+
+            item.dataset.genericSortableReady = '1';
+            return item;
+        }
+
+        function handleDragOver(event) {
+            var target;
+
+            if (!draggedItem) {
+                return;
+            }
+
+            event.preventDefault();
+            clearDropTargets();
+
+            if (!placeholderItem) {
+                return;
+            }
+
+            target = getInsertionTarget(event.clientY);
+            if (!target || !target.item) {
+                list.appendChild(placeholderItem);
+                return;
+            }
+
+            if (dropTargetClass) {
+                target.item.classList.add(dropTargetClass);
+            }
+
+            if (target.placeAfter) {
+                list.insertBefore(placeholderItem, target.item.nextSibling);
+                return;
+            }
+
+            list.insertBefore(placeholderItem, target.item);
+        }
+
+        function handleDrop(event) {
+            if (!draggedItem) {
+                return;
+            }
+
+            event.preventDefault();
+            clearDropTargets();
+
+            if (placeholderItem && placeholderItem.parentNode) {
+                placeholderItem.parentNode.insertBefore(draggedItem, placeholderItem);
+            }
+
+            if (typeof settings.onDrop === 'function') {
+                settings.onDrop(draggedItem, list);
+            }
+        }
+
+        getItems().forEach(bindItem);
+        list.addEventListener('dragover', handleDragOver);
+        list.addEventListener('drop', handleDrop);
+
+        return {
+            bindItem: bindItem,
+            getItems: getItems,
+            destroy: function () {
+                removePlaceholder();
+                clearDropTargets();
+                list.removeEventListener('dragover', handleDragOver);
+                list.removeEventListener('drop', handleDrop);
+            }
+        };
+    }
+
     function initGenericComponents(root) {
         var scope = root || document;
 
@@ -387,6 +622,7 @@
 
     window.initGenericTabs = initTabs;
     window.initGenericComponents = initGenericComponents;
+    window.commonCreateVerticalSortableList = createVerticalSortableList;
     window.omoBeginPendingAction = beginPendingAction;
     window.omoEndPendingAction = endPendingAction;
     window.sharedNormalizeLocalePreference = normalizeLocalePreference;

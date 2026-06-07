@@ -169,9 +169,9 @@ $sourceLang = [
         'text' => 'Outils',
         'context' => 'Mobile navigation label for the tools panel.',
     ],
-    'app.mobile.structure' => [
-        'text' => 'Structure',
-        'context' => 'Mobile navigation label for the structure panel.',
+    'app.mobile.right_panel' => [
+        'text' => 'Resume',
+        'context' => 'Mobile navigation label for the right panel.',
     ],
     'app.not_found.message' => [
         'text' => "L'organisation demandée n'existe pas ou n'est plus disponible.",
@@ -436,6 +436,7 @@ function omoRenderDirectoryCard(array $directoryCardData)
 $omoPwaBodyEndHtml = '<script src="/omo/assets/js/install.js" defer></script>';
 $omoThemeBootstrapHtml = implode(PHP_EOL, [
     '<script src="/shared_functions.js"></script>',
+    '<link rel="stylesheet" href="/shared_css.css">',
     '<script>sharedApplyDocumentTheme();</script>',
 ]);
 
@@ -487,7 +488,6 @@ if (empty($organizationContext['isValid'])) {
     <title><?= htmlspecialchars(t('app.not_found.page_title')) ?></title>
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-    <link rel="stylesheet" href="/common/assets/components.css">
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
 <body class="auth-state-page auth-state-page--with-topbar">
@@ -596,7 +596,6 @@ if ($isOrganizationHub && !$isDemoGuest) {
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <title><?= htmlspecialchars(t('app.directory.page_title')) ?></title>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-    <link rel="stylesheet" href="/common/assets/components.css">
     <link rel="stylesheet" href="/omo/assets/css/styles.css">
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
@@ -1005,7 +1004,6 @@ if (
     <title><?= htmlspecialchars(t('app.access_denied.page_title')) ?></title>
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-    <link rel="stylesheet" href="/common/assets/components.css">
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
 <body class="auth-state-page auth-state-page--with-topbar">
@@ -1040,6 +1038,14 @@ $currentUserProfile = [
     'phone' => '',
     'photoUrl' => '',
 ];
+$organizationRootHolonId = 0;
+$organizationForConfig = new \dbObject\Organization();
+if ($organizationForConfig->load((int)$organizationContext['id'])) {
+    $organizationRootHolon = $organizationForConfig->getStructuralRootHolon();
+    if ($organizationRootHolon) {
+        $organizationRootHolonId = (int)$organizationRootHolon->getId();
+    }
+}
 $patreonPromptShouldShow = false;
 
 $currentUser = new \dbObject\User();
@@ -1062,7 +1068,6 @@ if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
     <title><?= htmlspecialchars(t('app.main.page_title')) ?></title>
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-    <link rel="stylesheet" href="/common/assets/components.css">
     <link rel="stylesheet" href="/omo/assets/css/styles.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <base href="/omo/">
@@ -1165,7 +1170,7 @@ if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
 
     <button data-view="menu" class="nav-btn"><?= htmlspecialchars(t('app.mobile.menu')) ?></button>
     <button data-view="left" class="nav-btn"><?= htmlspecialchars(t('app.mobile.context')) ?></button>
-    <button data-view="right" class="nav-btn"><?= htmlspecialchars(t('app.mobile.structure')) ?></button>
+    <button data-view="right" class="nav-btn"><?= htmlspecialchars(t('app.mobile.right_panel')) ?></button>
 
 </div>
 
@@ -1181,6 +1186,7 @@ window.omoConfig = <?=
             'name' => $organizationContext['name'],
             'host' => $organizationContext['host'],
             'routeMode' => $organizationContext['routeMode'] ?? 'host',
+            'rootHolonId' => $organizationRootHolonId,
             'orgLookupError' => $organizationContext['error'],
             'isDemo' => $isDemoGuest,
             'currentUserId' => $currentUserId,

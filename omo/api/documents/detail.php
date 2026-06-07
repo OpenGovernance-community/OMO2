@@ -64,6 +64,7 @@ $authorObject = $document->get('user');
 $author = is_object($authorObject) && method_exists($authorObject, 'get')
     ? trim((string)$authorObject->get('username'))
     : '';
+$visibility = $document->getVisibilityDisplayData($organizationId);
 ?>
 <div class="omo-document-detail">
     <article class="omo-document-detail__article">
@@ -79,6 +80,10 @@ $author = is_object($authorObject) && method_exists($authorObject, 'get')
 
                 <?php if ($author !== ''): ?>
                     <span class="omo-pill">Par <?= $escape($author) ?></span>
+                <?php endif; ?>
+
+                <?php if (trim((string)($visibility['badgeText'] ?? '')) !== ''): ?>
+                    <span class="omo-pill"><?= $escape((string)$visibility['badgeText']) ?></span>
                 <?php endif; ?>
             </div>
 

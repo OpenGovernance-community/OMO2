@@ -50,7 +50,7 @@ if (!$organization->canViewDetail()) {
     exit;
 }
 
-$rootHolon = $organization->getStructuralRootHolon();
+$rootHolon = $organization->getEnabledStructuralRootHolon();
 if ($rootHolon === null) {
     http_response_code(404);
     ?>
