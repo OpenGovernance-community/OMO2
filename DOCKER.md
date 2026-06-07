@@ -64,6 +64,12 @@ Le seed principal versionne est dans :
 
 Ce fichier est publie dans le repository pour que l'environnement Docker soit directement utilisable apres clonage.
 
+Les evolutions versionnees ajoutees apres le snapshot de ce dump sont appliquees automatiquement juste apres par :
+
+`docker/db/init/01-post-base-migrations.sql`
+
+Ce second fichier rejoue les migrations SQL publiees manquantes pour aligner une base Docker neuve avec l'etat courant du schema et des donnees de reference, sans devoir lancer manuellement les migrations apres chaque recreation de volume.
+
 Si tu veux ajouter des donnees locales non publiees, cree un script supplementaire ignore par Git, par exemple :
 
 `docker/db/init/99-local.override.local.sql`
@@ -71,6 +77,7 @@ Si tu veux ajouter des donnees locales non publiees, cree un script supplementai
 Au premier demarrage :
 
 - MariaDB importe `00-base.seed.sql`
+- MariaDB importe ensuite `01-post-base-migrations.sql` pour rejouer les migrations versionnees manquantes depuis le snapshot du dump
 - MariaDB importe ensuite, s'ils existent, les scripts locaux additionnels comme `99-local.override.local.sql`
 - MariaDB utilise `utf8mb4` par defaut grace a `docker/db/conf.d/charset.cnf`
 - le dump principal contient deja les organisations de demo `Org1` et `Org2` ainsi que la structure de demo
@@ -119,7 +126,7 @@ docker compose up --build
 
 ## 4bis. Appliquer les migrations SQL versionnees
 
-Apres le premier seed, les evolutions de schema versionnees dans `sql/` peuvent etre appliquees sans reinitialiser le volume :
+Apres le premier seed, les evolutions de schema versionnees dans `sql/` peuvent encore etre appliquees sans reinitialiser le volume :
 
 ```bash
 docker compose exec app php scripts/run-migrations.php

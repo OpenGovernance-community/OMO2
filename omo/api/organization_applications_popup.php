@@ -430,9 +430,6 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
                 return;
             }
 
-            var draggedCard = null;
-            var placeholderCard = null;
-
             var clearFeedback = function () {
                 feedback.textContent = '';
                 feedback.classList.remove('is-success');
@@ -452,47 +449,6 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
                 }
             };
 
-            var clearDropTargets = function () {
-                Array.prototype.forEach.call(list.querySelectorAll('.omo-app-picker__card.is-drop-target'), function (card) {
-                    card.classList.remove('is-drop-target');
-                });
-            };
-
-            var removePlaceholder = function () {
-                if (placeholderCard && placeholderCard.parentNode) {
-                    placeholderCard.parentNode.removeChild(placeholderCard);
-                }
-
-                placeholderCard = null;
-            };
-
-            var getInsertionTarget = function (clientY) {
-                var cards = Array.prototype.slice.call(list.querySelectorAll('[data-omo-app-picker-card]')).filter(function (card) {
-                    return card !== draggedCard;
-                });
-
-                if (cards.length === 0) {
-                    return null;
-                }
-
-                for (var index = 0; index < cards.length; index++) {
-                    var card = cards[index];
-                    var bounds = card.getBoundingClientRect();
-                    var centerY = bounds.top + (bounds.height / 2);
-                    if (clientY < centerY) {
-                        return {
-                            card: card,
-                            placeAfter: false
-                        };
-                    }
-                }
-
-                return {
-                    card: cards[cards.length - 1],
-                    placeAfter: true
-                };
-            };
-
             Array.prototype.forEach.call(form.querySelectorAll('.omo-app-picker__checkbox'), function (checkbox) {
                 updateCardState(checkbox);
                 checkbox.addEventListener('change', function () {
@@ -501,106 +457,27 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
                 });
             });
 
-            Array.prototype.forEach.call(list.querySelectorAll('[data-omo-app-picker-card]'), function (card) {
-                var dragHandle = card.querySelector('[data-omo-app-picker-drag]');
-
-                if (dragHandle) {
-                    dragHandle.addEventListener('mousedown', function () {
-                        card.setAttribute('data-omo-drag-ready', '1');
-                    });
-
-                    dragHandle.addEventListener('mouseup', function () {
-                        card.removeAttribute('data-omo-drag-ready');
-                    });
-
-                    dragHandle.addEventListener('mouseleave', function () {
-                        card.removeAttribute('data-omo-drag-ready');
-                    });
-                }
-
-                card.addEventListener('dragstart', function (event) {
-                    if (card.getAttribute('data-omo-drag-ready') !== '1') {
-                        event.preventDefault();
-                        return;
+            if (typeof window.commonCreateVerticalSortableList === 'function') {
+                window.commonCreateVerticalSortableList({
+                    list: list,
+                    itemSelector: '[data-omo-app-picker-card]',
+                    handleSelector: '[data-omo-app-picker-drag]',
+                    draggingClass: 'is-dragging',
+                    dropTargetClass: 'is-drop-target',
+                    placeholderClass: 'omo-app-picker__placeholder',
+                    createPlaceholder: function (card) {
+                        var placeholderCard = document.createElement('div');
+                        placeholderCard.style.height = card.getBoundingClientRect().height + 'px';
+                        return placeholderCard;
+                    },
+                    onDragStart: function () {
+                        clearFeedback();
+                    },
+                    onDrop: function () {
+                        clearFeedback();
                     }
-
-                    draggedCard = card;
-                    card.classList.add('is-dragging');
-                    clearFeedback();
-
-                    placeholderCard = document.createElement('div');
-                    placeholderCard.className = 'omo-app-picker__placeholder';
-                    placeholderCard.style.height = card.getBoundingClientRect().height + 'px';
-                    list.insertBefore(placeholderCard, card.nextSibling);
-
-                    if (event.dataTransfer) {
-                        event.dataTransfer.effectAllowed = 'move';
-                        event.dataTransfer.setData('text/plain', card.getAttribute('data-omo-app-id') || '');
-                    }
-
-                    window.setTimeout(function () {
-                        if (draggedCard === card) {
-                            card.style.display = 'none';
-                        }
-                    }, 0);
                 });
-
-                card.addEventListener('dragend', function () {
-                    card.classList.remove('is-dragging');
-                    card.removeAttribute('data-omo-drag-ready');
-                    card.style.display = '';
-
-                    if (placeholderCard && placeholderCard.parentNode) {
-                        placeholderCard.parentNode.insertBefore(card, placeholderCard);
-                    }
-
-                    removePlaceholder();
-                    draggedCard = null;
-                    clearDropTargets();
-                });
-            });
-
-            list.addEventListener('dragover', function (event) {
-                if (!draggedCard) {
-                    return;
-                }
-
-                event.preventDefault();
-                clearDropTargets();
-
-                if (!placeholderCard) {
-                    return;
-                }
-
-                var target = getInsertionTarget(event.clientY);
-                if (!target || !target.card) {
-                    list.appendChild(placeholderCard);
-                    return;
-                }
-
-                target.card.classList.add('is-drop-target');
-
-                if (target.placeAfter) {
-                    list.insertBefore(placeholderCard, target.card.nextSibling);
-                    return;
-                }
-
-                list.insertBefore(placeholderCard, target.card);
-            });
-
-            list.addEventListener('drop', function (event) {
-                if (!draggedCard) {
-                    return;
-                }
-
-                event.preventDefault();
-                clearDropTargets();
-                clearFeedback();
-
-                if (placeholderCard && placeholderCard.parentNode) {
-                    placeholderCard.parentNode.insertBefore(draggedCard, placeholderCard);
-                }
-            });
+            }
 
             form.addEventListener('submit', function (event) {
                 event.preventDefault();
@@ -641,6 +518,9 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
 
                         if (typeof window.omoRefreshSidebar === 'function') {
                             window.omoRefreshSidebar(function () {
+                                if (typeof window.omoRefreshMainRightPanel === 'function') {
+                                    window.omoRefreshMainRightPanel();
+                                }
                                 if (typeof window.commonTopbarCloseModal === 'function') {
                                     window.commonTopbarCloseModal();
                                 }

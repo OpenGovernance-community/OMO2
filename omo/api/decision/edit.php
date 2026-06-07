@@ -1,0 +1,66 @@
+<?php
+require_once dirname(__DIR__) . '/bootstrap.php';
+require_once __DIR__ . '/modules/context.php';
+require_once __DIR__ . '/modules/registry.php';
+
+$omoDecisionInput = $_GET;
+$context = omoDecisionResolveEditorContext($omoDecisionInput);
+$groupAction = trim((string)($omoDecisionInput['group_action'] ?? ''));
+
+if (
+    !empty($context['status'])
+    && ($context['intent'] ?? '') === 'manage'
+    && $groupAction === 'create'
+    && !empty($context['decision'])
+    && $context['decision'] instanceof \dbObject\DecisionProcess
+) {
+    $requestedMethod = trim((string)($omoDecisionInput['method'] ?? ''));
+    $moduleDefinition = $requestedMethod !== '' ? omoDecisionGetModuleDefinition($requestedMethod) : null;
+    if ($moduleDefinition && !empty($moduleDefinition['available'])) {
+        $decision = $context['decision'];
+        $group = $decision->addDecisionGroup(
+            $requestedMethod,
+            \dbObject\DecisionProcess::normalizeDecisionType($decision->get('decision_type'))
+        );
+        if ($group instanceof \dbObject\DecisionGroup) {
+            $redirectUrl = omoDecisionBuildEditorUrl(
+                (int)($context['organizationId'] ?? 0),
+                (int)($context['targetHolonId'] ?? 0),
+                (int)$decision->getId(),
+                trim((string)$group->get('evaluation_method')),
+                'manage',
+                (int)$group->getId()
+            );
+            header('Location: ' . $redirectUrl);
+            exit;
+        }
+    }
+}
+
+if (
+    !empty($context['status'])
+    && ($context['intent'] ?? '') === 'participate'
+    && !empty($context['decision'])
+    && $context['decision'] instanceof \dbObject\DecisionProcess
+) {
+    $decision = $context['decision'];
+    $method = \dbObject\DecisionProcess::normalizeEvaluationMethod($decision->get('evaluation_method'));
+    $redirectUrl = omoDecisionBuildParticipationPreviewUrl(
+        (int)($context['organizationId'] ?? 0),
+        (int)($context['targetHolonId'] ?? 0),
+        (int)$decision->getId(),
+        $method,
+        'participate',
+        true
+    );
+
+    if (($context['accessMode'] ?? '') === 'public' && trim((string)($context['publicToken'] ?? '')) !== '') {
+        $redirectUrl .= (strpos($redirectUrl, '?') === false ? '?' : '&')
+            . 'token=' . rawurlencode((string)$context['publicToken']);
+    }
+
+    header('Location: ' . $redirectUrl);
+    exit;
+}
+
+require __DIR__ . '/edit_shared.php';

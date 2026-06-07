@@ -57,10 +57,10 @@ if (!function_exists('commonUserProfileFormatBirthDate')) {
     }
 }
 
-if (!function_exists('commonUserProfileBuildBirthdaySummary')) {
-    function commonUserProfileBuildBirthdaySummary($birthDate, ?DateTimeInterface $referenceDate = null, ?DateTimeZone $timezone = null)
+if (!function_exists('commonUserProfileBuildRecurringDateSummary')) {
+    function commonUserProfileBuildRecurringDateSummary($dateValue, array $labels = [], ?DateTimeInterface $referenceDate = null, ?DateTimeZone $timezone = null)
     {
-        if (!$birthDate instanceof DateTimeInterface) {
+        if (!$dateValue instanceof DateTimeInterface) {
             return null;
         }
 
@@ -74,31 +74,50 @@ if (!function_exists('commonUserProfileBuildBirthdaySummary')) {
             $today = new DateTimeImmutable('today', $timezone);
         }
 
-        $birthMonth = (int)$birthDate->format('n');
-        $birthDay = (int)$birthDate->format('j');
-        $nextBirthday = commonUserProfileBuildBirthdayDate((int)$today->format('Y'), $birthMonth, $birthDay, $timezone);
-        if ($nextBirthday < $today) {
-            $nextBirthday = commonUserProfileBuildBirthdayDate(((int)$today->format('Y')) + 1, $birthMonth, $birthDay, $timezone);
+        $month = (int)$dateValue->format('n');
+        $day = (int)$dateValue->format('j');
+        $monthName = commonUserProfileMonthName($month);
+        $shortDateLabel = commonUserProfileFormatBirthDate($dateValue, false);
+        $nextOccurrence = commonUserProfileBuildBirthdayDate((int)$today->format('Y'), $month, $day, $timezone);
+
+        if ($nextOccurrence < $today) {
+            $nextOccurrence = commonUserProfileBuildBirthdayDate(((int)$today->format('Y')) + 1, $month, $day, $timezone);
         }
 
-        $daysUntil = (int)$today->diff($nextBirthday)->format('%a');
-        $monthName = commonUserProfileMonthName($birthMonth);
-        $shortDateLabel = commonUserProfileFormatBirthDate($birthDate, false);
+        $daysUntil = (int)$today->diff($nextOccurrence)->format('%a');
+        $todayLabel = (string)($labels['today'] ?? "Evenement aujourd'hui");
+        $soonPrefix = (string)($labels['soonPrefix'] ?? 'Evenement dans');
+        $monthPrefix = (string)($labels['monthPrefix'] ?? 'Evenement en');
+        $detailPrefix = array_key_exists('detailPrefix', $labels)
+            ? (string)$labels['detailPrefix']
+            : 'Le';
 
         if ($daysUntil === 0) {
-            $headline = "Anniversaire aujourd'hui";
+            $headline = $todayLabel;
         } elseif ($daysUntil <= 14) {
-            $headline = 'Anniversaire dans ' . $daysUntil . ' jour' . ($daysUntil > 1 ? 's' : '');
+            $headline = $soonPrefix . ' ' . $daysUntil . ' jour' . ($daysUntil > 1 ? 's' : '');
         } else {
-            $headline = 'Anniversaire en ' . $monthName;
+            $headline = $monthPrefix . ' ' . $monthName;
         }
 
         return [
             'headline' => $headline,
-            'detail' => $shortDateLabel !== '' ? 'Le ' . $shortDateLabel : '',
+            'detail' => $shortDateLabel !== '' ? trim($detailPrefix . ' ' . $shortDateLabel) : '',
             'daysUntil' => $daysUntil,
-            'nextBirthday' => $nextBirthday,
+            'nextBirthday' => $nextOccurrence,
             'monthName' => $monthName,
         ];
+    }
+}
+
+if (!function_exists('commonUserProfileBuildBirthdaySummary')) {
+    function commonUserProfileBuildBirthdaySummary($birthDate, ?DateTimeInterface $referenceDate = null, ?DateTimeZone $timezone = null)
+    {
+        return commonUserProfileBuildRecurringDateSummary($birthDate, [
+            'today' => "Anniversaire aujourd'hui",
+            'soonPrefix' => 'Anniversaire dans',
+            'monthPrefix' => 'Anniversaire en',
+            'detailPrefix' => 'Le',
+        ], $referenceDate, $timezone);
     }
 }
