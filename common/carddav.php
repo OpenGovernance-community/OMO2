@@ -85,6 +85,34 @@ if (!function_exists('commonCardDavGetBasicCredentials')) {
         }
 
         $header = trim((string)($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? ''));
+        if ($header === '') {
+            $header = trim((string)(getenv('HTTP_AUTHORIZATION') ?: getenv('REDIRECT_HTTP_AUTHORIZATION') ?: ''));
+        }
+
+        if ($header === '' && function_exists('getallheaders')) {
+            $headers = getallheaders();
+            if (is_array($headers)) {
+                foreach ($headers as $name => $value) {
+                    if (strcasecmp((string)$name, 'Authorization') === 0) {
+                        $header = trim((string)$value);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if ($header === '' && function_exists('apache_request_headers')) {
+            $headers = apache_request_headers();
+            if (is_array($headers)) {
+                foreach ($headers as $name => $value) {
+                    if (strcasecmp((string)$name, 'Authorization') === 0) {
+                        $header = trim((string)$value);
+                        break;
+                    }
+                }
+            }
+        }
+
         if ($header === '' || stripos($header, 'Basic ') !== 0) {
             return null;
         }
