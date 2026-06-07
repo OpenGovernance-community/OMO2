@@ -220,7 +220,7 @@ if (!function_exists('commonCardDavClarkName')) {
 }
 
 if (!function_exists('commonCardDavParsePropRequest')) {
-    function commonCardDavParsePropRequest(DOMDocument $document = null)
+    function commonCardDavParsePropRequest(?DOMDocument $document = null)
     {
         if (!$document) {
             return array(
@@ -562,7 +562,7 @@ if (!function_exists('commonCardDavFoldVCardLine')) {
 }
 
 if (!function_exists('commonCardDavFormatTimestamp')) {
-    function commonCardDavFormatTimestamp(DateTimeInterface $dateTime = null)
+    function commonCardDavFormatTimestamp(?DateTimeInterface $dateTime = null)
     {
         if (!$dateTime) {
             return '';
@@ -1277,7 +1277,7 @@ if (!function_exists('commonCardDavHandlePropfind')) {
 }
 
 if (!function_exists('commonCardDavMatchesQueryFilter')) {
-    function commonCardDavMatchesQueryFilter(array $contact, DOMDocument $document = null)
+    function commonCardDavMatchesQueryFilter(array $contact, ?DOMDocument $document = null)
     {
         if (!$document || !$document->documentElement) {
             return true;
@@ -1353,7 +1353,7 @@ if (!function_exists('commonCardDavMatchesQueryFilter')) {
 }
 
 if (!function_exists('commonCardDavBuildReportPropRequest')) {
-    function commonCardDavBuildReportPropRequest(DOMDocument $document = null)
+    function commonCardDavBuildReportPropRequest(?DOMDocument $document = null)
     {
         if (!$document || !$document->documentElement) {
             return array(
@@ -1370,7 +1370,7 @@ if (!function_exists('commonCardDavBuildReportPropRequest')) {
 }
 
 if (!function_exists('commonCardDavHandleAddressbookQueryReport')) {
-    function commonCardDavHandleAddressbookQueryReport(User $viewer, array $resource, DOMDocument $document = null)
+    function commonCardDavHandleAddressbookQueryReport(User $viewer, array $resource, ?DOMDocument $document = null)
     {
         $contactMap = commonCardDavLoadContactsForViewer((int)$viewer->getId());
         $reportRequest = commonCardDavBuildReportPropRequest($document);
@@ -1391,7 +1391,7 @@ if (!function_exists('commonCardDavHandleAddressbookQueryReport')) {
 }
 
 if (!function_exists('commonCardDavExtractRequestedHrefs')) {
-    function commonCardDavExtractRequestedHrefs(DOMDocument $document = null)
+    function commonCardDavExtractRequestedHrefs(?DOMDocument $document = null)
     {
         if (!$document || !$document->documentElement) {
             return array();
@@ -1409,7 +1409,7 @@ if (!function_exists('commonCardDavExtractRequestedHrefs')) {
 }
 
 if (!function_exists('commonCardDavHandleAddressbookMultigetReport')) {
-    function commonCardDavHandleAddressbookMultigetReport(User $viewer, array $resource, DOMDocument $document = null)
+    function commonCardDavHandleAddressbookMultigetReport(User $viewer, array $resource, ?DOMDocument $document = null)
     {
         $contactMap = commonCardDavLoadContactsForViewer((int)$viewer->getId());
         $hrefIndex = array();
@@ -1438,7 +1438,7 @@ if (!function_exists('commonCardDavHandleAddressbookMultigetReport')) {
 }
 
 if (!function_exists('commonCardDavHandleSyncCollectionReport')) {
-    function commonCardDavHandleSyncCollectionReport(User $viewer, array $resource, DOMDocument $document = null)
+    function commonCardDavHandleSyncCollectionReport(User $viewer, array $resource, ?DOMDocument $document = null)
     {
         $contactMap = commonCardDavLoadContactsForViewer((int)$viewer->getId());
         $requestedProperties = (array)commonCardDavBuildReportPropRequest($document)['properties'];
