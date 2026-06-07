@@ -1,3 +1,4 @@
+-- @migration
 -- OpenMyOrganization
 -- Ajout de la gestion des applications activables par organisation
 --
@@ -5,8 +6,6 @@
 --   mariadb -u <user> -p <database> < sql/2026-04-23-organization-applications.sql
 --
 -- Sauvegarde recommandee avant execution.
-
--- @migration
 
 SET NAMES utf8mb4;
 
@@ -41,7 +40,7 @@ CREATE TABLE IF NOT EXISTS `organization_application` (
 INSERT INTO `application` (
   `id`, `label`, `hash`, `directory`, `icon`, `drawer`, `url`, `navigationmode`, `position`, `requires_login`, `active`
 ) VALUES
-  (1, 'Structure', NULL, NULL, 'images/tools/connection.png', NULL, NULL, 'panel', 10, 0, 1),
+  (1, 'Structure', 'structure', NULL, 'images/tools/connection.png', 'drawer_structure', 'api/getStructure.php?drawer=1', 'drawer', 10, 0, 1),
   (2, 'Projets', 'projects', 'projects', 'images/tools/product.png', 'drawer_projects', 'api/projects/index.php', 'drawer', 20, 0, 1),
   (3, 'Règlement', 'policy', 'policy', 'images/tools/policy.png', 'drawer_policy', 'api/policy/index.php', 'drawer', 30, 0, 1),
   (4, 'Checklistes', 'checklists', 'checklists', 'images/tools/bucket-list.png', 'drawer_checklists', 'api/checklists/index.php', 'drawer', 40, 0, 1),
