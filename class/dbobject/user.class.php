@@ -138,6 +138,88 @@
 			return \dbObject\Invitation::findPendingForUser((int)$this->getId());
 		}
 
+		public static function findByLoginIdentifier($identifier, $allowUsername = false)
+		{
+			$normalizedIdentifier = trim(mb_strtolower((string)$identifier, 'UTF-8'));
+			if ($normalizedIdentifier === '') {
+				return null;
+			}
+
+			$conditions = array(
+				"LOWER(u.email) = :identity",
+				"LOWER(COALESCE(NULLIF(uo.email, ''), '')) = :identity",
+			);
+
+			$caseBranches = array(
+				"WHEN LOWER(u.email) = :identity THEN 0",
+				"WHEN LOWER(COALESCE(NULLIF(uo.email, ''), '')) = :identity THEN 1",
+			);
+
+			if ($allowUsername) {
+				$conditions[] = "LOWER(u.username) = :identity";
+				$conditions[] = "LOWER(COALESCE(NULLIF(uo.username, ''), '')) = :identity";
+				$caseBranches[] = "WHEN LOWER(u.username) = :identity THEN 2";
+				$caseBranches[] = "WHEN LOWER(COALESCE(NULLIF(uo.username, ''), '')) = :identity THEN 3";
+			}
+
+			$query = "
+				SELECT DISTINCT
+					u.id,
+					CASE
+						" . implode("\n\t\t\t\t\t\t", $caseBranches) . "
+						ELSE 99
+					END AS match_rank
+				FROM `user` u
+				LEFT JOIN user_organization uo
+					ON uo.IDuser = u.id
+					AND uo.active = 1
+				WHERE " . implode("\n\t\t\t\t\tOR ", $conditions) . "
+				ORDER BY match_rank ASC, u.id ASC
+			";
+
+			$rows = self::fetchAll($query, array(
+				'identity' => $normalizedIdentifier,
+			));
+
+			if (!is_array($rows) || count($rows) === 0) {
+				return null;
+			}
+
+			$bestRank = null;
+			$matchedUserIds = array();
+
+			foreach ($rows as $row) {
+				$userId = (int)($row['id'] ?? 0);
+				$matchRank = (int)($row['match_rank'] ?? 99);
+
+				if ($userId <= 0) {
+					continue;
+				}
+
+				if ($bestRank === null) {
+					$bestRank = $matchRank;
+				}
+
+				if ($matchRank !== $bestRank) {
+					break;
+				}
+
+				$matchedUserIds[$userId] = $userId;
+			}
+
+			if (count($matchedUserIds) !== 1) {
+				return null;
+			}
+
+			$userId = (int)reset($matchedUserIds);
+			if ($userId <= 0) {
+				return null;
+			}
+
+			$user = new self();
+			return $user->load($userId) ? $user : null;
+		}
+
 		protected static function loadActiveOrganizationIdsForUser($userId)
 		{
 			static $cache = array();
