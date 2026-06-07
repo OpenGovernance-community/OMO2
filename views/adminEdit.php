@@ -1339,6 +1339,9 @@ if (isset($params["fields"])) {
     }
 };
 echo "</table>";
+if (isset($params["afterTableHtml"]) && is_string($params["afterTableHtml"]) && trim($params["afterTableHtml"]) !== "") {
+    echo $params["afterTableHtml"];
+}
 echo "</div>";
 if (!$id && $this->getId() != "") {
     echo "<input type='hidden' id='id' name='id' value='" . $this->getId() . "'>";
