@@ -49,6 +49,108 @@ $competenceSectionHelp = $scope === 'organization'
     : profilPopupT('profile.popup.competence.section.general_help');
 $canLimitCompetenceToOrganization = $currentOrganizationId > 0;
 $leafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafletMapsEnabled();
+$userHasPassword = trim((string)$user->get('password')) !== '';
+
+function profilBuildPasswordSectionHtml($userHasPassword)
+{
+    $passwordPolicyStatusEmpty = htmlspecialchars(profilPopupT('profile.popup.password.policy.status.empty'), ENT_QUOTES, 'UTF-8');
+    $passwordPolicyStatusValid = htmlspecialchars(profilPopupT('profile.popup.password.policy.status.valid'), ENT_QUOTES, 'UTF-8');
+    $passwordPolicyStatusInvalid = htmlspecialchars(profilPopupT('profile.popup.password.policy.status.invalid'), ENT_QUOTES, 'UTF-8');
+    $passwordPolicyMatchEmpty = htmlspecialchars(profilPopupT('profile.popup.password.policy.match.empty'), ENT_QUOTES, 'UTF-8');
+    $passwordPolicyMatchValid = htmlspecialchars(profilPopupT('profile.popup.password.policy.match.valid'), ENT_QUOTES, 'UTF-8');
+    $passwordPolicyMatchInvalid = htmlspecialchars(profilPopupT('profile.popup.password.policy.match.invalid'), ENT_QUOTES, 'UTF-8');
+    $sectionTitle = htmlspecialchars(profilPopupT('profile.popup.password.section.title'), ENT_QUOTES, 'UTF-8');
+    $sectionHelp = htmlspecialchars(profilPopupT('profile.popup.password.section.help'), ENT_QUOTES, 'UTF-8');
+    $statusText = htmlspecialchars(
+        $userHasPassword
+            ? profilPopupT('profile.popup.password.status.defined')
+            : profilPopupT('profile.popup.password.status.missing'),
+        ENT_QUOTES,
+        'UTF-8'
+    );
+    $currentFieldHtml = '';
+
+    if ($userHasPassword) {
+        $currentFieldHtml = '
+            <label class="profile-panel__password-field">
+                <span>' . htmlspecialchars(profilPopupT('profile.popup.password.current.label'), ENT_QUOTES, 'UTF-8') . '</span>
+                <input
+                    type="password"
+                    class="generic-form-control"
+                    name="current_password"
+                    id="current_password"
+                    autocomplete="current-password"
+                    placeholder="' . htmlspecialchars(profilPopupT('profile.popup.password.current.placeholder'), ENT_QUOTES, 'UTF-8') . '"
+                    data-profile-password-field="1"
+                >
+            </label>
+        ';
+    }
+
+    return '
+        <section class="profile-panel__password-section generic-soft-panel generic-soft-panel--stack">
+            <div class="profile-panel__password-head">
+                <h4 class="generic-card-title generic-card-title--section">' . $sectionTitle . '</h4>
+                <p class="profile-panel__scope-help">' . $sectionHelp . '</p>
+                <div class="profile-panel__password-status">' . $statusText . '</div>
+            </div>
+            <div class="profile-panel__password-grid">
+                ' . $currentFieldHtml . '
+                <label class="profile-panel__password-field">
+                    <span>' . htmlspecialchars(profilPopupT('profile.popup.password.new.label'), ENT_QUOTES, 'UTF-8') . '</span>
+                    <input
+                        type="password"
+                        class="generic-form-control"
+                        name="new_password"
+                        id="new_password"
+                        autocomplete="new-password"
+                        placeholder="' . htmlspecialchars(profilPopupT('profile.popup.password.new.placeholder'), ENT_QUOTES, 'UTF-8') . '"
+                        data-profile-password-field="1"
+                    >
+                </label>
+                <label class="profile-panel__password-field">
+                    <span>' . htmlspecialchars(profilPopupT('profile.popup.password.confirm.label'), ENT_QUOTES, 'UTF-8') . '</span>
+                    <input
+                        type="password"
+                        class="generic-form-control"
+                        name="new_password_confirm"
+                        id="new_password_confirm"
+                        autocomplete="new-password"
+                        placeholder="' . htmlspecialchars(profilPopupT('profile.popup.password.confirm.placeholder'), ENT_QUOTES, 'UTF-8') . '"
+                        data-profile-password-field="1"
+                    >
+                </label>
+            </div>
+            <div
+                class="common-password-policy"
+                data-password-policy="1"
+                data-password-policy-password-selector="#new_password"
+                data-password-policy-confirm-selector="#new_password_confirm"
+                data-password-policy-email-selector="#email"
+                data-password-policy-min-length="' . (int)commonGetPasswordPolicyMinLength() . '"
+                data-password-policy-required-keys="length,lower,upper,digit,special"
+                data-password-policy-status-empty="' . $passwordPolicyStatusEmpty . '"
+                data-password-policy-status-valid="' . $passwordPolicyStatusValid . '"
+                data-password-policy-status-invalid="' . $passwordPolicyStatusInvalid . '"
+                data-password-policy-match-empty="' . $passwordPolicyMatchEmpty . '"
+                data-password-policy-match-valid="' . $passwordPolicyMatchValid . '"
+                data-password-policy-match-invalid="' . $passwordPolicyMatchInvalid . '"
+            >
+                <span class="common-password-policy__status" data-password-status aria-live="polite">' . $passwordPolicyStatusEmpty . '</span>
+                <ul class="common-password-policy__rules">
+                    <li class="common-password-policy__rule" data-password-rule="length">' . htmlspecialchars(profilPopupT('profile.popup.password.policy.rule.length'), ENT_QUOTES, 'UTF-8') . '</li>
+                    <li class="common-password-policy__rule" data-password-rule="lower">' . htmlspecialchars(profilPopupT('profile.popup.password.policy.rule.lower'), ENT_QUOTES, 'UTF-8') . '</li>
+                    <li class="common-password-policy__rule" data-password-rule="upper">' . htmlspecialchars(profilPopupT('profile.popup.password.policy.rule.upper'), ENT_QUOTES, 'UTF-8') . '</li>
+                    <li class="common-password-policy__rule" data-password-rule="digit">' . htmlspecialchars(profilPopupT('profile.popup.password.policy.rule.digit'), ENT_QUOTES, 'UTF-8') . '</li>
+                    <li class="common-password-policy__rule" data-password-rule="special">' . htmlspecialchars(profilPopupT('profile.popup.password.policy.rule.special'), ENT_QUOTES, 'UTF-8') . '</li>
+                    <li class="common-password-policy__rule" data-password-rule="email">' . htmlspecialchars(profilPopupT('profile.popup.password.policy.rule.email'), ENT_QUOTES, 'UTF-8') . '</li>
+                </ul>
+                <span class="common-password-policy__match" data-password-match aria-live="polite">' . $passwordPolicyMatchEmpty . '</span>
+            </div>
+            <div class="profile-panel__password-note">' . htmlspecialchars(profilPopupT('profile.popup.password.no_paste'), ENT_QUOTES, 'UTF-8') . '</div>
+        </section>
+    ';
+}
 ?>
 <div class="profile-panel__scope-fragment" data-profile-loaded-scope="<?= htmlspecialchars($scope, ENT_QUOTES, 'UTF-8') ?>">
     <?php if ($scope === 'organization' && $organizationMembership): ?>
@@ -79,6 +181,7 @@ $leafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafl
         "action" => "/ajax/saveaccount.php?origin=profil&scope=general",
         "success" => "profileHandleGeneralSaved()",
         "allowProtectedFields" => true,
+        "afterTableHtml" => profilBuildPasswordSectionHtml($userHasPassword),
         "fields" => array(
             "image",
             "username",
@@ -234,6 +337,7 @@ $leafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafl
         }
 
         var feedback = fragment.querySelector('[data-profile-competence-feedback="1"]');
+        var passwordFieldActionBlockedMessage = <?= json_encode(profilPopupT('profile.popup.password.js.paste_blocked'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         var reloadErrorMessage = <?= json_encode(profilPopupT('profile.popup.competence.js.reload_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         var invalidResponseMessage = <?= json_encode(profilPopupT('profile.popup.js.invalid_response'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         var saveErrorMessage = <?= json_encode(profilPopupT('profile.popup.competence.js.save_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -257,6 +361,15 @@ $leafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafl
                 }
 
                 field.classList.add('generic-form-control');
+            });
+
+            Array.prototype.forEach.call(form.querySelectorAll('[data-profile-password-field="1"]'), function (field) {
+                ['paste', 'copy', 'cut', 'drop'].forEach(function (eventName) {
+                    field.addEventListener(eventName, function (event) {
+                        event.preventDefault();
+                        alert(passwordFieldActionBlockedMessage);
+                    });
+                });
             });
         }
 
@@ -333,6 +446,9 @@ $leafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafl
         }
 
         decorateAdminEditForm();
+        if (typeof window.commonInitPasswordPolicy === 'function') {
+            window.commonInitPasswordPolicy(fragment);
+        }
 
         ['updateprofil-general', 'updateprofil-organization'].forEach(function (buttonId) {
             var button = document.getElementById(buttonId);

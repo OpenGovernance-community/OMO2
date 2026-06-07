@@ -261,6 +261,13 @@
 			return $cache[$cacheKey] ?: null;
 		}
 
+		public function getSharedOrganizationMembershipsForViewer($viewerUserId)
+		{
+			$memberships = new \dbObject\ArrayUserOrganization();
+			$memberships->loadCardDavSharedForViewerAndUser((int)$viewerUserId, (int)$this->getId());
+			return $memberships;
+		}
+
 		public function getProfilePhotoUrl()
 		{
 			$image = trim((string)$this->get('image'));

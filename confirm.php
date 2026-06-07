@@ -23,6 +23,7 @@
 		<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote.min.js"></script>
 
 		<script src="shared_functions.js"></script>
+		<script src="/common/assets/password_policy.js"></script>
 		<script>
 			$(function() {		
 				$("#btn_finalize").click(function (e) {
@@ -47,7 +48,19 @@
 <?
 
 		function fct_motdepasse($object, $colonne, $default) {
-			$content="<input type='password' autocomplete='off' id='password' name='password' placeholder='Choisissez un mot de passe'><br><input type='password' autocomplete='off' id='password2' name='password2' placeholder='Confirmez votre mot de passe'>";
+			$content="<input type='password' autocomplete='off' id='password' name='password' placeholder='Choisissez un mot de passe' minlength='12'><br><input type='password' autocomplete='off' id='password2' name='password2' placeholder='Confirmez votre mot de passe' minlength='12'>";
+			$content.="<div class='common-password-policy' data-password-policy='1' data-password-policy-password-selector='#password' data-password-policy-confirm-selector='#password2' data-password-policy-email-selector='#email' data-password-policy-min-length='12' data-password-policy-required-keys='length,lower,upper,digit,special' data-password-policy-status-empty='Le mot de passe doit respecter les criteres ci-dessous.' data-password-policy-status-valid='Mot de passe OK.' data-password-policy-status-invalid='Mot de passe encore incomplet.' data-password-policy-match-empty='Retapez le meme mot de passe pour confirmation.' data-password-policy-match-valid='Confirmation OK.' data-password-policy-match-invalid='La confirmation ne correspond pas encore.'>";
+			$content.="<span class='common-password-policy__status' data-password-status aria-live='polite'>Le mot de passe doit respecter les criteres ci-dessous.</span>";
+			$content.="<ul class='common-password-policy__rules'>";
+			$content.="<li class='common-password-policy__rule' data-password-rule='length'>Au moins 12 caracteres</li>";
+			$content.="<li class='common-password-policy__rule' data-password-rule='lower'>Au moins une minuscule</li>";
+			$content.="<li class='common-password-policy__rule' data-password-rule='upper'>Au moins une majuscule</li>";
+			$content.="<li class='common-password-policy__rule' data-password-rule='digit'>Au moins un chiffre</li>";
+			$content.="<li class='common-password-policy__rule' data-password-rule='special'>Au moins un caractere special ou un espace</li>";
+			$content.="<li class='common-password-policy__rule' data-password-rule='email'>Evitez de reprendre votre e-mail ou votre identifiant</li>";
+			$content.="</ul>";
+			$content.="<span class='common-password-policy__match' data-password-match aria-live='polite'>Retapez le meme mot de passe pour confirmation.</span>";
+			$content.="</div>";
 			return array("Mot de passe",$content);
 		}
 		

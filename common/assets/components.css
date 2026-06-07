@@ -409,3 +409,40 @@ textarea.generic-form-control {
     cursor: pointer;
     box-shadow: 0 12px 24px rgba(37, 99, 235, 0.18);
 }
+
+.common-password-policy {
+    display: grid;
+    gap: 10px;
+    padding: 14px 16px;
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 4%, var(--color-surface-alt, #f8fafc));
+}
+
+.common-password-policy__status,
+.common-password-policy__match {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--color-text-light, #64748b);
+}
+
+.common-password-policy__rules {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--color-text-light, #64748b);
+}
+
+.common-password-policy__rule.is-valid,
+.common-password-policy__match.is-valid,
+.common-password-policy__status.is-valid {
+    color: #0f6b43;
+}
+
+.common-password-policy__rule.is-invalid,
+.common-password-policy__match.is-invalid,
+.common-password-policy__status.is-invalid {
+    color: #8a1c14;
+}
