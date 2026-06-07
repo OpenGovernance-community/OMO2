@@ -14,10 +14,6 @@ $sourceLang = [
         'text' => 'Parametres',
         'context' => 'Label of the parameters entry in the sidebar.'
     ],
-    'sidebar.structure.label' => [
-        'text' => 'Structure',
-        'context' => 'Label of the main structure entry in the sidebar.'
-    ],
 ];
 
 $lang = omoLoadTranslationBundle('omo_get_sidebar_panel', $sourceLang);
@@ -69,15 +65,6 @@ $renderMenuItem = static function (array $item) use ($escape) {
 ?>
 
 <div class="menu-primary">
-
-<div class="menu-item active" data-hash="" data-navigation-mode="panel">
-
-    <span class="icon">
-        <img src="images/tools/connection.png" class="icon-img">
-    </span>
-    <span class="label"><?= $escape(t('sidebar.structure.label', [], $lang, $sourceLang)) ?></span>
-</div>
-
 <?php foreach ($applications as $application): ?>
     <?php
     $renderMenuItem([

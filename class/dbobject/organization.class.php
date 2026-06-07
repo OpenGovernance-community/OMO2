@@ -542,6 +542,86 @@
 			}
 		}
 
+		public function addMember($userId = 0, $email = '')
+		{
+			$organizationId = (int)$this->getId();
+			if ($organizationId <= 0) {
+				return array(
+					'status' => false,
+					'message' => "L'organisation cible est invalide.",
+				);
+			}
+
+			if (!$this->canEdit()) {
+				return array(
+					'status' => false,
+					'message' => "Vous n'avez pas le droit de modifier cette organisation.",
+				);
+			}
+
+			$pdo = \dbObject\DbObject::getPdo();
+			if (!$pdo) {
+				return array(
+					'status' => false,
+					'message' => 'Connexion base de donnees indisponible.',
+				);
+			}
+
+			try {
+				$pdo->beginTransaction();
+
+				$user = $this->resolveMemberUser($userId, $email);
+				$hasActiveMembership = $this->hasActiveMembershipForUser($user, $organizationId);
+				$requiresInvitation = !$hasActiveMembership;
+
+				if ($requiresInvitation) {
+					$this->ensureOrganizationMembershipState($user, $organizationId, false);
+					$invitationIssue = \dbObject\Invitation::issue(
+						$organizationId,
+						(int)$user->getId(),
+						(int)$this->resolveCurrentUserId(),
+						trim((string)$user->get('email'))
+					);
+
+					if (!empty($invitationIssue['created']) && isset($invitationIssue['invitation'])) {
+						$invitationIssue['invitation']->sendEmail();
+					}
+				} else {
+					$this->ensureOrganizationMembershipState($user, $organizationId, true);
+				}
+
+				$this->recordMemberAddedHistory($user, $organizationId);
+
+				$pdo->commit();
+
+				return array(
+					'status' => true,
+					'message' => $requiresInvitation
+						? (
+							!empty($invitationIssue['created'])
+								? 'Invitation envoyee : ' . trim((string)$user->get('email'))
+								: 'Ajout en attente de confirmation : ' . trim((string)$user->get('email'))
+						)
+						: (
+							trim((string)$user->get('email')) !== ''
+								? 'Membre ajoute : ' . trim((string)$user->get('email'))
+								: 'Membre ajoute.'
+						),
+					'userId' => (int)$user->getId(),
+					'pending' => $requiresInvitation,
+				);
+			} catch (\Throwable $exception) {
+				if ($pdo->inTransaction()) {
+					$pdo->rollBack();
+				}
+
+				return array(
+					'status' => false,
+					'message' => $exception->getMessage(),
+				);
+			}
+		}
+
 		public function delete()
 		{
 			if (!$this->canDelete()) {
@@ -970,6 +1050,140 @@
 			$saveResult = $membership->save();
 
 			return is_array($saveResult) && !empty($saveResult['status']);
+		}
+
+		protected function ensureOrganizationMembershipState(\dbObject\User $user, $organizationId, $isActive = true)
+		{
+			$organizationId = (int)$organizationId;
+			if ((int)$user->getId() <= 0 || $organizationId <= 0) {
+				throw new \RuntimeException("L'organisation cible est invalide.");
+			}
+
+			$membership = new \dbObject\UserOrganization();
+			if (!$membership->load(array(
+				array('IDuser', (int)$user->getId()),
+				array('IDorganization', $organizationId),
+			))) {
+				$membership->set('IDuser', (int)$user->getId());
+				$membership->set('IDorganization', $organizationId);
+			}
+
+			if (trim((string)$membership->get('email')) === '' && trim((string)$user->get('email')) !== '') {
+				$membership->set('email', trim((string)$user->get('email')));
+			}
+
+			if (trim((string)$membership->get('username')) === '' && trim((string)$user->get('username')) !== '') {
+				$membership->set('username', trim((string)$user->get('username')));
+			}
+
+			$membership->set('active', (bool)$isActive);
+			$saveResult = $membership->save();
+			if (!is_array($saveResult) || empty($saveResult['status'])) {
+				throw new \RuntimeException("Impossible d'attacher cette personne a l'organisation.");
+			}
+
+			return $membership;
+		}
+
+		protected function hasActiveMembershipForUser(\dbObject\User $user, $organizationId)
+		{
+			$membership = new \dbObject\UserOrganization();
+			return $membership->load(array(
+				array('IDuser', (int)$user->getId()),
+				array('IDorganization', (int)$organizationId),
+			)) && (bool)$membership->get('active');
+		}
+
+		protected function recordMemberAddedHistory(\dbObject\User $memberUser, $organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			$authorUserId = (int)$this->resolveCurrentUserId();
+			$authorLabel = 'Utilisateur';
+
+			if ($authorUserId > 0) {
+				$author = new \dbObject\User();
+				if ($author->load($authorUserId)) {
+					$authorLabel = trim((string)$author->getScopedDisplayName($organizationId));
+				}
+			}
+
+			if ($authorLabel === '') {
+				$authorLabel = 'Utilisateur ' . $authorUserId;
+			}
+
+			$memberLabel = trim((string)$memberUser->getScopedDisplayName($organizationId));
+			if ($memberLabel === '') {
+				$memberLabel = trim((string)$memberUser->get('email'));
+			}
+			if ($memberLabel === '') {
+				$memberLabel = 'Utilisateur ' . (int)$memberUser->getId();
+			}
+
+			$organizationLabel = trim((string)$this->get('name'));
+			if ($organizationLabel === '') {
+				$organizationLabel = 'organisation';
+			}
+
+			$content = \dbObject\History::buildReferenceToken('user', (int)$memberUser->getId(), $memberLabel)
+				. ' a ete ajoute a '
+				. \dbObject\History::buildReferenceToken('organization', $organizationId, $organizationLabel)
+				. ' par '
+				. \dbObject\History::buildReferenceToken('user', $authorUserId, $authorLabel)
+				. '.';
+
+			$saveResult = \dbObject\History::createEntry(
+				$organizationId,
+				$authorUserId,
+				'holon_member_added',
+				$content,
+				array(
+					'IDtargetuser' => (int)$memberUser->getId(),
+					'IDorganization' => $organizationId,
+					'authorUserId' => $authorUserId,
+				),
+				0
+			);
+
+			if (!is_array($saveResult) || empty($saveResult['status'])) {
+				throw new \RuntimeException("L'historique de l'ajout n'a pas pu etre enregistre.");
+			}
+		}
+
+		protected function resolveMemberUser($userId = 0, $email = '')
+		{
+			$userId = (int)$userId;
+			$email = trim(mb_strtolower((string)$email, 'UTF-8'));
+
+			if ($userId > 0) {
+				$user = new \dbObject\User();
+				if (!$user->load($userId)) {
+					throw new \RuntimeException('La personne selectionnee est introuvable.');
+				}
+
+				return $user;
+			}
+
+			if ($email === '') {
+				throw new \RuntimeException('Selectionnez une personne ou saisissez une adresse e-mail.');
+			}
+
+			if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+				throw new \RuntimeException("L'adresse e-mail saisie n'est pas valide.");
+			}
+
+			$user = new \dbObject\User();
+			if ($user->load(array('email', $email))) {
+				return $user;
+			}
+
+			$user->set('email', $email);
+			$user->set('active', false);
+			$saveResult = $user->save();
+			if (!is_array($saveResult) || empty($saveResult['status']) || (int)$user->getId() <= 0) {
+				throw new \RuntimeException("Le profil n'a pas pu etre cree.");
+			}
+
+			return $user;
 		}
 
 		protected function getStructuralInitializationChildren(\dbObject\Holon $holon)
@@ -1705,13 +1919,13 @@
 				return false;
 			}
 
-			if ((int)$holonObject->get('IDorganization') === (int)$this->getId()) {
-				return true;
-			}
-
-			$rootHolon = $this->getStructuralRootHolon();
+			$rootHolon = $this->getEnabledStructuralRootHolon();
 			if (!$rootHolon) {
 				return false;
+			}
+
+			if ((int)$holonObject->get('IDorganization') === (int)$this->getId()) {
+				return true;
 			}
 
 			return $holonObject->isDescendantOf($rootHolon, true);
@@ -1719,7 +1933,7 @@
 
 		public function getTemplateContextHolon($contextHolonId = 0)
 		{
-			$rootHolon = $this->getStructuralRootHolon();
+			$rootHolon = $this->getEnabledStructuralRootHolon();
 			if (!$rootHolon) {
 				return null;
 			}
@@ -2174,14 +2388,22 @@
 			return array_values($formatMap);
 		}
 
-		public function getHolonTemplateEditorData($contextHolonId = 0)
+		protected function normalizeTemplateEditorScope($scope = 'contextual')
 		{
+			$scope = strtolower(trim((string)$scope));
+			return $scope === 'global' ? 'global' : 'contextual';
+		}
+
+		public function getHolonTemplateEditorData($contextHolonId = 0, $scope = 'contextual')
+		{
+			$scope = $this->normalizeTemplateEditorScope($scope);
 			$rootHolon = $this->getStructuralRootHolon();
 			$contextHolon = $this->getTemplateContextHolon($contextHolonId);
 			if (!$rootHolon) {
 				return array(
 					'organizationId' => (int)$this->getId(),
 					'organizationName' => (string)$this->get('name'),
+					'scope' => $scope,
 					'rootHolonId' => 0,
 					'contextHolonId' => 0,
 					'contextHolonName' => '',
@@ -2213,6 +2435,7 @@
 			$data = array(
 				'organizationId' => (int)$this->getId(),
 				'organizationName' => (string)$this->get('name'),
+				'scope' => $scope,
 				'rootHolonId' => (int)$rootHolon->getId(),
 				'contextHolonId' => $contextHolon ? (int)$contextHolon->getId() : 0,
 				'contextHolonName' => $contextHolon ? $contextHolon->getDisplayName() : '',
@@ -2237,16 +2460,48 @@
 
 			$data['formats'] = $this->buildEditorPropertyFormats($formats);
 
+			$templateCatalogSource = $this->getAvailableTemplateDefinitionHolons($contextHolon ? (int)$contextHolon->getId() : 0);
+			$templateTreeSource = $scope === 'global'
+				? $this->getAllTemplateDefinitionHolons()
+				: $this->getTemplateDefinitionHolons($contextHolon ? (int)$contextHolon->getId() : 0);
+			$definitionHolonMetaCache = array();
+
+			$resolveDefinitionHolonMeta = function ($definitionHolonId) use (&$definitionHolonMetaCache) {
+				$definitionHolonId = (int)$definitionHolonId;
+				if ($definitionHolonId <= 0) {
+					return array(
+						'id' => 0,
+						'name' => '',
+						'label' => '',
+					);
+				}
+
+				if (isset($definitionHolonMetaCache[$definitionHolonId])) {
+					return $definitionHolonMetaCache[$definitionHolonId];
+				}
+
+				$definitionHolon = new \dbObject\Holon();
+				if (!$definitionHolon->load($definitionHolonId)) {
+					$definitionHolonMetaCache[$definitionHolonId] = array(
+						'id' => $definitionHolonId,
+						'name' => '',
+						'label' => '',
+					);
+					return $definitionHolonMetaCache[$definitionHolonId];
+				}
+
+				$definitionHolonMetaCache[$definitionHolonId] = array(
+					'id' => $definitionHolonId,
+					'name' => $definitionHolon->getDisplayName(),
+					'label' => $definitionHolon->getTemplateLabel(),
+				);
+				return $definitionHolonMetaCache[$definitionHolonId];
+			};
+
 			$templateNodes = array();
 			$childrenByParent = array();
-			foreach ($this->getAvailableTemplateDefinitionHolons($contextHolon ? (int)$contextHolon->getId() : 0) as $template) {
-				$definitionHolon = new \dbObject\Holon();
-				$definitionHolonName = '';
-				$definitionHolonLabel = '';
-				if ($definitionHolon->load((int)$template->get('IDholon_parent'))) {
-					$definitionHolonName = $definitionHolon->getDisplayName();
-					$definitionHolonLabel = $definitionHolon->getTemplateLabel();
-				}
+			foreach ($templateCatalogSource as $template) {
+				$definitionHolonMeta = $resolveDefinitionHolonMeta((int)$template->get('IDholon_parent'));
 
 				$data['templateCatalog'][] = array_merge(array(
 					'id' => (int)$template->getId(),
@@ -2260,15 +2515,19 @@
 					'unique' => (bool)$template->get('unique'),
 					'link' => (bool)$template->get('link'),
 					'inheritsFromId' => (int)$template->get('IDholon_template'),
-					'definedInId' => (int)$template->get('IDholon_parent'),
-					'definedInName' => $definitionHolonName,
-					'definedInLabel' => $definitionHolonLabel,
+					'definedInId' => (int)$definitionHolonMeta['id'],
+					'definedInName' => (string)$definitionHolonMeta['name'],
+					'definedInLabel' => (string)$definitionHolonMeta['label'],
 					'properties' => $template->getTemplatePropertyDefinitions(),
 				), $this->getHolonIllustrationData($template));
 			}
 
-			foreach ($this->getTemplateDefinitionHolons($contextHolon ? (int)$contextHolon->getId() : 0) as $template) {
+			foreach ($templateTreeSource as $template) {
 				$templateNode = $template->toTemplateEditorNodeArray((int)$rootHolon->getId());
+				$definitionHolonMeta = $resolveDefinitionHolonMeta((int)$template->get('IDholon_parent'));
+				$templateNode['definedInId'] = (int)$definitionHolonMeta['id'];
+				$templateNode['definedInName'] = (string)$definitionHolonMeta['name'];
+				$templateNode['definedInLabel'] = (string)$definitionHolonMeta['label'];
 				$templateNodes[(int)$template->getId()] = $templateNode;
 				$parentId = (int)$templateNode['inheritsFromId'];
 
@@ -4396,10 +4655,11 @@
 			);
 		}
 
-		public function saveHolonTemplateDefinition(array $payload, $userId = 0, $contextHolonId = 0)
+		public function saveHolonTemplateDefinition(array $payload, $userId = 0, $contextHolonId = 0, $scope = 'contextual')
 		{
 			$rootHolon = $this->getStructuralRootHolon();
 			$contextHolon = $this->getTemplateContextHolon($contextHolonId);
+			$scope = $this->normalizeTemplateEditorScope($scope);
 			if (!$rootHolon) {
 				return array(
 					'status' => false,
@@ -4580,7 +4840,7 @@
 				'status' => true,
 				'message' => 'Modele enregistre.',
 				'template' => $template->toTemplateEditorArray((int)$rootHolon->getId()),
-				'data' => $this->getHolonTemplateEditorData((int)$contextHolon->getId()),
+				'data' => $this->getHolonTemplateEditorData((int)$contextHolon->getId(), $scope),
 			);
 		}
 
@@ -4704,6 +4964,98 @@
 			$applications = new \dbObject\ArrayApplication();
 			$applications->loadEnabledForOrganization((int)$this->getId(), $userId !== null ? (int)$userId : 0);
 			return $applications;
+		}
+
+		public function isApplicationEnabled($hash, $userId = null)
+		{
+			static $cache = array();
+
+			$organizationId = (int)$this->getId();
+			$hash = trim(mb_strtolower((string)$hash, 'UTF-8'));
+			$userId = $userId !== null
+				? (int)$userId
+				: (function_exists('commonGetCurrentUserId')
+					? (int)\commonGetCurrentUserId()
+					: (int)($_SESSION['currentUser'] ?? 0));
+
+			$cacheKey = $organizationId . ':' . $userId . ':' . $hash;
+			if (array_key_exists($cacheKey, $cache)) {
+				return $cache[$cacheKey];
+			}
+
+			if ($organizationId <= 0 || $hash === '') {
+				$cache[$cacheKey] = false;
+				return false;
+			}
+
+			$rows = self::fetchAll(
+				"SELECT
+					a.id,
+					a.active AS app_active,
+					a.navigationmode,
+					a.requires_login,
+					oa.active AS organization_active
+				FROM application a
+				LEFT JOIN organization_application oa
+					ON oa.IDapplication = a.id
+					AND oa.IDorganization = :organization_id
+				WHERE LOWER(a.hash) = :hash
+				ORDER BY a.id ASC
+				LIMIT 1",
+				array(
+					'organization_id' => $organizationId,
+					'hash' => $hash,
+				)
+			);
+
+			if ($rows === false || count($rows) === 0) {
+				$cache[$cacheKey] = true;
+				return true;
+			}
+
+			$row = $rows[0];
+			$cache[$cacheKey] = (
+				(int)($row['app_active'] ?? 0) === 1
+				&& trim((string)($row['navigationmode'] ?? '')) !== 'panel'
+				&& ((int)($row['requires_login'] ?? 0) === 0 || $userId > 0)
+				&& array_key_exists('organization_active', $row)
+				&& (int)$row['organization_active'] === 1
+			);
+			return $cache[$cacheKey];
+		}
+
+		public function isStructureApplicationEnabled($userId = null)
+		{
+			return $this->isApplicationEnabled('structure', $userId);
+		}
+
+		public function getEnabledStructuralRootHolon($userId = null)
+		{
+			if (!$this->isStructureApplicationEnabled($userId)) {
+				return null;
+			}
+
+			return $this->getStructuralRootHolon();
+		}
+
+		public function getEnabledApplicationHashes($userId = null)
+		{
+			$hashes = array();
+
+			foreach ($this->getApplications($userId) as $application) {
+				if (!($application instanceof \dbObject\Application)) {
+					continue;
+				}
+
+				$hash = trim(mb_strtolower((string)$application->getRouteHash(), 'UTF-8'));
+				if ($hash === '') {
+					continue;
+				}
+
+				$hashes[$hash] = $hash;
+			}
+
+			return array_values($hashes);
 		}
 
 		protected static function normalizeTopbarSearchText($value)
@@ -5026,26 +5378,145 @@
 		protected static function topbarSearchViewerCanViewDocument(\dbObject\Document $document, array &$viewerContext, $organizationId)
 		{
 			$organizationId = (int)$organizationId;
-			if (!self::topbarSearchViewerHasOrganizationAccess($viewerContext, $organizationId)) {
+			if (
+				$organizationId <= 0
+				|| (int)$document->getId() <= 0
+				|| (int)$document->get('IDorganization') !== $organizationId
+				|| !self::topbarSearchViewerHasOrganizationAccess($viewerContext, $organizationId)
+			) {
 				return false;
 			}
 
-			if ((string)($viewerContext['type'] ?? '') !== 'share') {
-				return true;
+			if (!array_key_exists('roleHolonIds', $viewerContext)) {
+				$viewerContext['roleHolonIds'] = null;
 			}
 
-			$shareLink = self::getTopbarSearchViewerShareLink($viewerContext);
-			if (!$shareLink) {
+			if (!array_key_exists('circleHolonIds', $viewerContext)) {
+				$viewerContext['circleHolonIds'] = null;
+			}
+
+			$viewerContext['organizationId'] = $organizationId;
+
+			$ruleRow = \dbObject\ObjectVisibility::loadActiveRuleRow(
+				\dbObject\Document::getVisibilityObjectType(),
+				(int)$document->getId(),
+				$organizationId
+			);
+
+			return \dbObject\ObjectVisibility::viewerCanAccessRule(
+				$ruleRow,
+				$viewerContext,
+				array(
+					'organizationId' => $organizationId,
+					'ownerUserId' => (int)$document->get('IDuser'),
+				)
+			);
+		}
+
+		protected static function getTopbarSearchViewerScopedEmail(array &$viewerContext, $organizationId)
+		{
+			if ((string)($viewerContext['type'] ?? '') !== 'user') {
+				return '';
+			}
+
+			if (array_key_exists('scopedEmail', $viewerContext)) {
+				return trim((string)$viewerContext['scopedEmail']);
+			}
+
+			$userId = (int)($viewerContext['userId'] ?? 0);
+			if ($userId <= 0) {
+				$viewerContext['scopedEmail'] = '';
+				return '';
+			}
+
+			$user = new \dbObject\User();
+			if (!$user->load($userId)) {
+				$viewerContext['scopedEmail'] = '';
+				return '';
+			}
+
+			$viewerContext['scopedEmail'] = trim(mb_strtolower((string)$user->getScopedEmail((int)$organizationId), 'UTF-8'));
+			return (string)$viewerContext['scopedEmail'];
+		}
+
+		protected static function topbarSearchResolveDecisionAccess(\dbObject\DecisionProcess $decision, array &$viewerContext, $organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			if (
+				$organizationId <= 0
+				|| (int)$decision->getId() <= 0
+				|| (int)$decision->get('IDorganization') !== $organizationId
+				|| !self::topbarSearchViewerHasOrganizationAccess($viewerContext, $organizationId)
+			) {
 				return false;
 			}
 
-			$documentHolonId = (int)$document->get('IDholon');
-			if ($documentHolonId <= 0) {
-				return true;
+			$decisionHolonId = (int)$decision->get('IDholon');
+			if ($decisionHolonId > 0) {
+				$decisionHolon = new \dbObject\Holon();
+				if (
+					!$decisionHolon->load($decisionHolonId)
+					|| !self::topbarSearchViewerCanViewHolon($decisionHolon, $viewerContext)
+				) {
+					return false;
+				}
 			}
 
-			$documentHolon = new \dbObject\Holon();
-			return $documentHolon->load($documentHolonId) && $shareLink->containsHolon($documentHolon);
+			$participant = null;
+			$hasParticipation = false;
+			$isOwner = false;
+			$status = \dbObject\DecisionProcess::normalizeStatus($decision->get('status'));
+
+			if ((string)($viewerContext['type'] ?? '') === 'user') {
+				$userId = (int)($viewerContext['userId'] ?? 0);
+				if ($userId > 0) {
+					$participant = \dbObject\DecisionParticipant::findByDecisionAndUser((int)$decision->getId(), $userId);
+				}
+
+				if (!$participant || (int)$participant->get('active') !== 1) {
+					$scopedEmail = self::getTopbarSearchViewerScopedEmail($viewerContext, $organizationId);
+					if ($scopedEmail !== '') {
+						$participant = \dbObject\DecisionParticipant::findByDecisionAndEmail((int)$decision->getId(), $scopedEmail);
+					}
+				}
+
+				if ($participant instanceof \dbObject\DecisionParticipant) {
+					$participantStatus = \dbObject\DecisionParticipant::normalizeStatus($participant->get('status'));
+					$hasParticipation = (int)$participant->get('active') === 1
+						&& !in_array($participantStatus, array(
+							\dbObject\DecisionParticipant::STATUS_DECLINED,
+							\dbObject\DecisionParticipant::STATUS_REVOKED,
+						), true);
+					$isOwner = $userId > 0 && (
+						(int)$decision->get('IDuser') === $userId
+						|| \dbObject\DecisionParticipant::normalizeRole($participant->get('role')) === \dbObject\DecisionParticipant::ROLE_OWNER
+					);
+				} elseif ($userId > 0) {
+					$isOwner = (int)$decision->get('IDuser') === $userId;
+				}
+			}
+
+			$canManage = $isOwner;
+			$canParticipate = ($isOwner || $hasParticipation) && $decision->isParticipationOpen();
+			$canView = $canManage || $hasParticipation || $status !== \dbObject\DecisionProcess::STATUS_DRAFT;
+
+			if (!$canView && !$canParticipate) {
+				return false;
+			}
+
+			$intent = 'view';
+			if ($canManage) {
+				$intent = 'manage';
+			} elseif ($canParticipate) {
+				$intent = 'participate';
+			}
+
+			return array(
+				'intent' => $intent,
+				'canManage' => $canManage,
+				'canParticipate' => $canParticipate,
+				'canView' => $canView,
+			);
 		}
 
 		protected static function cleanTopbarSearchTextValue($value, $limit = 0)
@@ -5139,7 +5610,7 @@
 
 		protected function searchTopbarStructureResults($query, array $terms, $limit = 12, array $viewerContext = array())
 		{
-			$rootHolon = $this->getStructuralRootHolon();
+			$rootHolon = $this->getEnabledStructuralRootHolon(isset($viewerContext['userId']) ? (int)$viewerContext['userId'] : null);
 			if (!$rootHolon || (int)$rootHolon->getId() <= 0 || count($terms) === 0) {
 				return array();
 			}
@@ -5562,9 +6033,287 @@
 			return $results;
 		}
 
+		protected function searchTopbarDecisionResults($query, array $terms, $limit = 12, array $viewerContext = array())
+		{
+			if ((int)$this->getId() <= 0 || count($terms) === 0) {
+				return array();
+			}
+
+			$params = array(
+				'organization_id' => (int)$this->getId(),
+			);
+
+			$processTitleExpr = "LOWER(COALESCE(search_rows.process_title, ''))";
+			$processDescriptionExpr = "LOWER(COALESCE(search_rows.process_description, ''))";
+			$groupTitleExpr = "LOWER(COALESCE(search_rows.group_titles, ''))";
+			$groupDescriptionExpr = "LOWER(COALESCE(search_rows.group_descriptions, ''))";
+			$proposalTitleExpr = "LOWER(COALESCE(search_rows.proposal_titles, ''))";
+			$proposalDescriptionExpr = "LOWER(COALESCE(search_rows.proposal_descriptions, ''))";
+
+			$processTitleScoreSql = self::buildTopbarSearchScoreSql($processTitleExpr, $terms, $params, 'decision_process_title', array(
+				'exact' => 110,
+				'prefix' => 72,
+				'like' => 38,
+			));
+			$processDescriptionScoreSql = self::buildTopbarSearchScoreSql($processDescriptionExpr, $terms, $params, 'decision_process_description', array(
+				'exact' => 34,
+				'prefix' => 22,
+				'like' => 12,
+			));
+			$groupTitleScoreSql = self::buildTopbarSearchScoreSql($groupTitleExpr, $terms, $params, 'decision_group_title', array(
+				'exact' => 92,
+				'prefix' => 58,
+				'like' => 30,
+			));
+			$groupDescriptionScoreSql = self::buildTopbarSearchScoreSql($groupDescriptionExpr, $terms, $params, 'decision_group_description', array(
+				'exact' => 42,
+				'prefix' => 28,
+				'like' => 16,
+			));
+			$proposalTitleScoreSql = self::buildTopbarSearchScoreSql($proposalTitleExpr, $terms, $params, 'decision_proposal_title', array(
+				'exact' => 76,
+				'prefix' => 48,
+				'like' => 26,
+			));
+			$proposalDescriptionScoreSql = self::buildTopbarSearchScoreSql($proposalDescriptionExpr, $terms, $params, 'decision_proposal_description', array(
+				'exact' => 28,
+				'prefix' => 18,
+				'like' => 10,
+			));
+			$preFilterSql = self::buildTopbarSearchAnyMatchSql(
+				array(
+					$processTitleExpr,
+					$processDescriptionExpr,
+					$groupTitleExpr,
+					$groupDescriptionExpr,
+					$proposalTitleExpr,
+					$proposalDescriptionExpr,
+				),
+				$terms,
+				$params,
+				'decision_prefilter'
+			);
+			$limitSql = max(1, (int)$limit);
+
+			$rows = self::fetchAll(
+				"SELECT
+					search_rows.*,
+					(" . $processTitleScoreSql . " + " . $processDescriptionScoreSql . " + " . $groupTitleScoreSql . " + " . $groupDescriptionScoreSql . " + " . $proposalTitleScoreSql . " + " . $proposalDescriptionScoreSql . ") AS relevance
+				FROM (
+					SELECT
+						dp.`id`,
+						dp.`title` AS `process_title`,
+						dp.`description` AS `process_description`,
+						dp.`IDholon`,
+						dp.`IDuser`,
+						dp.`status`,
+						dp.`evaluation_method`,
+						dp.`created_at`,
+						dp.`updated_at`,
+						h.`name` AS `holon_name`,
+						COALESCE(GROUP_CONCAT(DISTINCT NULLIF(dg.`title`, '') ORDER BY dg.`position` ASC, dg.`id` ASC SEPARATOR ' | '), '') AS `group_titles`,
+						COALESCE(GROUP_CONCAT(DISTINCT NULLIF(dg.`description`, '') ORDER BY dg.`position` ASC, dg.`id` ASC SEPARATOR ' | '), '') AS `group_descriptions`,
+						COALESCE(GROUP_CONCAT(DISTINCT NULLIF(proposal.`title`, '') ORDER BY proposal.`position` ASC, proposal.`id` ASC SEPARATOR ' | '), '') AS `proposal_titles`,
+						COALESCE(GROUP_CONCAT(DISTINCT NULLIF(proposal.`description`, '') ORDER BY proposal.`position` ASC, proposal.`id` ASC SEPARATOR ' | '), '') AS `proposal_descriptions`
+					FROM `decision_process` dp
+					LEFT JOIN `holon` h
+						ON h.`id` = dp.`IDholon`
+					LEFT JOIN `decision_group` dg
+						ON dg.`IDdecision_process` = dp.`id`
+					   AND dg.`active` = 1
+					LEFT JOIN `decision_proposal` proposal
+						ON proposal.`IDdecision_process` = dp.`id`
+					   AND proposal.`active` = 1
+					WHERE dp.`IDorganization` = :organization_id
+					GROUP BY
+						dp.`id`,
+						dp.`title`,
+						dp.`description`,
+						dp.`IDholon`,
+						dp.`IDuser`,
+						dp.`status`,
+						dp.`evaluation_method`,
+						dp.`created_at`,
+						dp.`updated_at`,
+						h.`name`
+				) search_rows
+				WHERE " . $preFilterSql . "
+				HAVING relevance > 0
+				ORDER BY relevance DESC, search_rows.`updated_at` DESC, search_rows.`created_at` DESC, search_rows.`id` DESC
+				LIMIT " . $limitSql,
+				$params
+			);
+
+			if ($rows === false) {
+				return array();
+			}
+
+			$results = array();
+
+			foreach ($rows as $row) {
+				$decision = new \dbObject\DecisionProcess();
+				if (!$decision->load((int)($row['id'] ?? 0))) {
+					continue;
+				}
+
+				$decision->syncLifecycleStatus();
+				$decisionAccess = self::topbarSearchResolveDecisionAccess($decision, $viewerContext, (int)$this->getId());
+				if ($decisionAccess === false) {
+					continue;
+				}
+
+				$bestGroupTitle = '';
+				$bestGroupDescription = '';
+				$bestProposalTitle = '';
+				$bestProposalDescription = '';
+				$bestGroupScore = 0;
+
+				foreach ($decision->getDecisionGroups(false) as $group) {
+					if (!($group instanceof \dbObject\DecisionGroup) || (int)$group->get('active') !== 1) {
+						continue;
+					}
+
+					$groupTitle = trim((string)$group->get('title'));
+					$groupDescription = trim((string)$group->get('description'));
+					$groupScore = self::getTopbarSearchTextScore($groupTitle, $terms, array(
+						'exact' => 92,
+						'prefix' => 58,
+						'like' => 30,
+					)) + self::getTopbarSearchTextScore($groupDescription, $terms, array(
+						'exact' => 42,
+						'prefix' => 28,
+						'like' => 16,
+					));
+
+					$matchedProposalTitle = '';
+					$matchedProposalDescription = '';
+					foreach ($group->getProposals(true) as $proposal) {
+						if (!($proposal instanceof \dbObject\DecisionProposal)) {
+							continue;
+						}
+
+						$proposalTitle = trim((string)$proposal->get('title'));
+						$proposalDescription = trim((string)$proposal->get('description'));
+						$proposalScore = self::getTopbarSearchTextScore($proposalTitle, $terms, array(
+							'exact' => 76,
+							'prefix' => 48,
+							'like' => 26,
+						)) + self::getTopbarSearchTextScore($proposalDescription, $terms, array(
+							'exact' => 28,
+							'prefix' => 18,
+							'like' => 10,
+						));
+
+						if ($proposalScore <= 0) {
+							continue;
+						}
+
+						$groupScore += $proposalScore;
+						if ($matchedProposalTitle === '') {
+							$matchedProposalTitle = $proposalTitle;
+							$matchedProposalDescription = $proposalDescription;
+						}
+					}
+
+					if ($groupScore <= $bestGroupScore) {
+						continue;
+					}
+
+					$bestGroupScore = $groupScore;
+					$bestGroupTitle = $groupTitle;
+					$bestGroupDescription = $groupDescription;
+					$bestProposalTitle = $matchedProposalTitle;
+					$bestProposalDescription = $matchedProposalDescription;
+				}
+
+				$processTitle = trim((string)($row['process_title'] ?? ''));
+				$processDescription = trim((string)($row['process_description'] ?? ''));
+				$holonName = trim((string)($row['holon_name'] ?? ''));
+				$resultTitle = $processTitle !== '' ? $processTitle : ($bestGroupTitle !== '' ? $bestGroupTitle : ('Decision #' . (int)$decision->getId()));
+
+				$subtitleParts = array();
+				if ($holonName !== '') {
+					$subtitleParts[] = $holonName;
+				}
+				if ($bestGroupTitle !== '' && $bestGroupTitle !== $resultTitle) {
+					$subtitleParts[] = $bestGroupTitle;
+				}
+				$subtitle = implode(' | ', $subtitleParts);
+
+				$snippetCandidates = array(
+					$processDescription,
+					$bestGroupDescription,
+					$bestProposalDescription,
+					$bestProposalTitle,
+					$bestGroupTitle,
+					$processTitle,
+				);
+				$snippetSource = '';
+				$snippetScore = -1;
+				foreach ($snippetCandidates as $candidate) {
+					$candidate = trim((string)$candidate);
+					if ($candidate === '') {
+						continue;
+					}
+
+					$candidateScore = self::getTopbarSearchTextScore($candidate, $terms);
+					if ($candidateScore <= $snippetScore) {
+						continue;
+					}
+
+					$snippetScore = $candidateScore;
+					$snippetSource = $candidate;
+				}
+
+				if ($snippetSource === '') {
+					$snippetSource = trim((string)($row['group_descriptions'] ?? ''));
+				}
+				if ($snippetSource === '') {
+					$snippetSource = trim((string)($row['proposal_descriptions'] ?? ''));
+				}
+				if ($snippetSource === '') {
+					$snippetSource = trim((string)($row['group_titles'] ?? ''));
+				}
+				if ($snippetSource === '') {
+					$snippetSource = trim((string)($row['proposal_titles'] ?? ''));
+				}
+
+				$results[] = array(
+					'module' => 'decision',
+					'moduleLabel' => 'Decisions',
+					'title' => $resultTitle,
+					'subtitle' => $subtitle,
+					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
+					'relevance' => (int)($row['relevance'] ?? 0),
+					'action' => array(
+						'type' => 'decision',
+						'decisionId' => (int)$decision->getId(),
+						'holonId' => (int)$decision->get('IDholon'),
+					),
+				);
+			}
+
+			return $results;
+		}
+
 		public function searchTopbarResults($query, array $scopes = array(), array $options = array())
 		{
 			$query = trim((string)$query);
+			$requestedUserId = isset($options['viewerContext']['userId']) && is_numeric($options['viewerContext']['userId'])
+				? (int)$options['viewerContext']['userId']
+				: null;
+			$scopeAppHashes = array(
+				'structure' => 'structure',
+				'team' => 'team',
+				'documents' => 'documents',
+				'decision' => 'decision',
+			);
+			$enabledScopes = array();
+			foreach ($scopeAppHashes as $scopeId => $hash) {
+				if ($this->isApplicationEnabled($hash, $requestedUserId)) {
+					$enabledScopes[$scopeId] = $scopeId;
+				}
+			}
 			$normalizedScopes = array();
 
 			foreach ($scopes as $scope) {
@@ -5573,13 +6322,13 @@
 					$scope = 'structure';
 				}
 
-				if (in_array($scope, array('structure', 'team', 'documents'), true)) {
+				if (isset($enabledScopes[$scope])) {
 					$normalizedScopes[$scope] = $scope;
 				}
 			}
 
 			if (count($normalizedScopes) === 0) {
-				$normalizedScopes['structure'] = 'structure';
+				$normalizedScopes = $enabledScopes;
 			}
 
 			$viewerContext = self::normalizeTopbarSearchViewerContext(array(
@@ -5600,6 +6349,7 @@
 				'structure' => 0,
 				'team' => 0,
 				'documents' => 0,
+				'decision' => 0,
 			);
 			$results = array();
 
@@ -5625,12 +6375,19 @@
 					$counts['documents'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
+
+				if (isset($normalizedScopes['decision'])) {
+					$scopeResults = $this->searchTopbarDecisionResults($query, $terms, $perScopeLimit, $viewerContext);
+					$counts['decision'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
 			}
 
 			$moduleOrder = array(
 				'structure' => 1,
 				'team' => 2,
-				'documents' => 3,
+				'decision' => 3,
+				'documents' => 4,
 			);
 
 			usort($results, function ($left, $right) use ($moduleOrder) {

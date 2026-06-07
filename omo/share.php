@@ -55,6 +55,9 @@ if (!$organization->load((int)$shareLink->get('IDorganization'))) {
     exit;
 }
 
+$organizationRootHolon = $organization->getStructuralRootHolon();
+$organizationRootHolonId = $organizationRootHolon ? (int)$organizationRootHolon->getId() : 0;
+
 $scopeHolon = $shareLink->getScopeHolon();
 if (!$scopeHolon) {
     http_response_code(404);
@@ -247,6 +250,7 @@ window.omoConfig = <?= json_encode(array(
     'name' => (string)$organization->get('name'),
     'host' => commonGetRequestHost(),
     'routeMode' => 'share',
+    'rootHolonId' => $organizationRootHolonId,
     'orgLookupError' => null,
     'isDemo' => false,
     'currentUserName' => 'Invite',
