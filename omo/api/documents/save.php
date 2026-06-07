@@ -21,6 +21,8 @@ $title = trim((string)($_POST['title'] ?? ''));
 $description = trim((string)($_POST['description'] ?? ''));
 $content = (string)($_POST['content'] ?? '');
 $visibilityType = trim((string)($_POST['visibility_type'] ?? 'organization'));
+$isFolder = !empty($_POST['is_folder']);
+$parentDocumentId = isset($_POST['parent_document_id']) ? (int)$_POST['parent_document_id'] : 0;
 
 if ($title === '') {
     http_response_code(422);
@@ -37,6 +39,8 @@ $payload = array(
     'description' => $description,
     'content' => $content,
     'visibility_type' => $visibilityType,
+    'is_folder' => $isFolder,
+    'parent_document_id' => $parentDocumentId,
 );
 
 if ($documentId > 0) {

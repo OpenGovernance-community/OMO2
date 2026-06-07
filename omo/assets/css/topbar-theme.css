@@ -99,10 +99,6 @@ html[data-theme] .common-topbar__avatar {
     color: var(--topbar-avatar-text);
 }
 
-html[data-theme="dark"] .common-topbar__icon-image {
-    filter: invert(1) brightness(1.25);
-}
-
 html[data-theme] .common-topbar__menu {
     background: var(--topbar-menu-bg);
     border-top-color: var(--topbar-menu-border);

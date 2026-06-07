@@ -1571,6 +1571,10 @@ function omoFormatPopupTitle(popupKey) {
         return 'Actions membre';
     }
 
+    if (popupKey === 'document-move') {
+        return 'Deplacer';
+    }
+
     if (popupKey === 'holon-move') {
         return 'Deplacer';
     }
@@ -1600,7 +1604,12 @@ function omoResolvePopupRoute(popupKey, popupId = null) {
     let url = `/popup/${normalizedPopupKey}.php`;
     const queryParts = [];
 
-    if (normalizedPopupKey === 'holon-move') {
+    if (normalizedPopupKey === 'document-move') {
+        url = '/omo/api/documents/move.php';
+        if (Number.isInteger(parsedPopupId) && parsedPopupId > 0) {
+            queryParts.push(`id=${encodeURIComponent(parsedPopupId)}`);
+        }
+    } else if (normalizedPopupKey === 'holon-move') {
         url = '/omo/api/holons/move.php';
         if (Number.isInteger(parsedPopupId) && parsedPopupId > 0) {
             queryParts.push(`hid=${encodeURIComponent(parsedPopupId)}`);

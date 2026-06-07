@@ -329,6 +329,11 @@
 				'organizationId' => $organizationId,
 				'type' => $shareLink ? 'share' : ($userId > 0 ? 'user' : ''),
 				'userId' => $userId,
+				'hasAdminOverride' => !$shareLink
+					&& $userId > 0
+					&& function_exists('commonUserHasAdminOverride')
+					? \commonUserHasAdminOverride($userId, $organizationId)
+					: false,
 				'shareLink' => $shareLink,
 				'roleHolonIds' => null,
 				'circleHolonIds' => null,
@@ -474,6 +479,10 @@
 			$organizationId = (int)($objectContext['organizationId'] ?? ($viewerContext['organizationId'] ?? 0));
 			if (!self::viewerHasOrganizationAccess($viewerContext, $organizationId)) {
 				return false;
+			}
+
+			if (!empty($viewerContext['hasAdminOverride'])) {
+				return true;
 			}
 
 			$ruleRow = is_array($ruleRow)
