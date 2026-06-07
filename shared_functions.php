@@ -474,10 +474,14 @@
 		$mail->Host = $GLOBALS["mailHost"];
 		$mail->Port = $GLOBALS["mailPort"];
 		$mailSecure = strtolower(trim((string)($GLOBALS["mailSecure"] ?? '')));
-		if ($mailSecure === 'tls') {
+		if ($mailSecure === 'starttls' || $mailSecure === 'tls') {
 			$mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
 		} elseif ($mailSecure === 'ssl') {
-			$mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+			if ((int)$mail->Port === 587) {
+				$mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+			} else {
+				$mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+			}
 		} else {
 			$mail->SMTPSecure = $mailSecure;
 		}
