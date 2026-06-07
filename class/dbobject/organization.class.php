@@ -2751,6 +2751,36 @@
 			}
 		}
 
+		protected function buildDocumentDestinationCatalog(\dbObject\Holon $candidate, array &$catalog, array $path = array())
+		{
+			if (!(bool)$candidate->get('active') || !(bool)$candidate->get('visible')) {
+				return;
+			}
+
+			$typeId = (int)$candidate->get('IDtypeholon');
+			$currentPath = $path;
+			$displayName = trim((string)$candidate->getDisplayName());
+
+			if ($typeId !== 4 && $displayName !== '') {
+				$currentPath[] = $displayName;
+
+				if (in_array($typeId, array(1, 2, 3), true)) {
+					$catalog[] = array(
+						'key' => 'holon-' . (int)$candidate->getId(),
+						'holonId' => (int)$candidate->getId(),
+						'name' => $displayName,
+						'typeId' => $typeId,
+						'typeLabel' => $candidate->getTypeLabel(),
+						'pathLabel' => implode(' > ', $currentPath),
+					);
+				}
+			}
+
+			foreach ($candidate->getChildren() as $child) {
+				$this->buildDocumentDestinationCatalog($child, $catalog, $currentPath);
+			}
+		}
+
 		public function getHolonMoveEditorData($holonId = 0)
 		{
 			$rootHolon = $this->getStructuralRootHolon();
@@ -2812,6 +2842,165 @@
 			}
 
 			$this->buildMovableHolonDestinationCatalog($rootHolon, $data['destinations'], (int)$rootHolon->getId(), $holon);
+
+			return $data;
+		}
+
+		protected function sortDocumentMoveDestinations(array &$destinations)
+		{
+			usort($destinations, function ($left, $right) {
+				$leftKey = (string)($left['key'] ?? '');
+				$rightKey = (string)($right['key'] ?? '');
+				if ($leftKey === 'organization' || $rightKey === 'organization') {
+					if ($leftKey === $rightKey) {
+						return 0;
+					}
+
+					return $leftKey === 'organization' ? -1 : 1;
+				}
+
+				$leftPath = trim((string)($left['pathLabel'] ?? $left['name'] ?? ''));
+				$rightPath = trim((string)($right['pathLabel'] ?? $right['name'] ?? ''));
+				$comparison = strnatcasecmp($leftPath, $rightPath);
+				if ($comparison !== 0) {
+					return $comparison;
+				}
+
+				$leftTypeId = (int)($left['typeId'] ?? 0);
+				$rightTypeId = (int)($right['typeId'] ?? 0);
+				if ($leftTypeId !== $rightTypeId) {
+					return $leftTypeId <=> $rightTypeId;
+				}
+
+				return strnatcasecmp(
+					trim((string)($left['name'] ?? '')),
+					trim((string)($right['name'] ?? ''))
+				);
+			});
+		}
+
+		public function getDocumentMoveEditorData($documentId = 0)
+		{
+			$rootHolon = $this->getEnabledStructuralRootHolon();
+			$documentId = (int)$documentId;
+			$document = new \dbObject\Document();
+			$organizationLabel = trim((string)$this->get('name'));
+
+			$data = array(
+				'organizationId' => (int)$this->getId(),
+				'organizationName' => $organizationLabel,
+				'documentId' => 0,
+				'canMove' => false,
+				'document' => null,
+				'currentDestination' => null,
+				'destinations' => array(),
+			);
+
+			if ($documentId <= 0) {
+				return $data;
+			}
+
+			if (
+				!$document->load($documentId)
+				|| (int)$document->get('IDorganization') !== (int)$this->getId()
+			) {
+				return $data;
+			}
+
+			$currentHolonId = (int)$document->get('IDholon');
+			$currentParentDocumentId = (int)$document->get('IDdocument_parent');
+			$currentDestinationKey = $currentParentDocumentId > 0
+				? 'folder-' . $currentParentDocumentId
+				: ($currentHolonId > 0 ? 'holon-' . $currentHolonId : 'organization');
+			$currentPathLabel = $document->getOrganizationContextLabel();
+			if ($currentPathLabel === '') {
+				$currentPathLabel = $organizationLabel;
+			}
+
+			$data['documentId'] = (int)$document->getId();
+			$data['document'] = array(
+				'id' => (int)$document->getId(),
+				'title' => (string)$document->get('title'),
+				'holonId' => $currentHolonId,
+				'isFolder' => $document->isFolder(),
+				'parentDocumentId' => $currentParentDocumentId,
+			);
+			$data['currentDestination'] = array(
+				'key' => $currentDestinationKey,
+				'holonId' => $currentHolonId,
+				'parentDocumentId' => $currentParentDocumentId,
+				'pathLabel' => $currentPathLabel,
+			);
+			$data['canMove'] = $document->canEditInOrganizationContext((int)$this->getId());
+
+			if (!$data['canMove']) {
+				return $data;
+			}
+
+			$data['destinations'][] = array(
+				'key' => 'organization',
+				'holonId' => 0,
+				'name' => $organizationLabel !== '' ? $organizationLabel : 'Organisation',
+				'typeId' => 0,
+				'typeLabel' => 'Organisation',
+				'pathLabel' => $organizationLabel !== '' ? $organizationLabel : 'Organisation',
+				'isCurrentDestination' => $currentHolonId <= 0,
+			);
+
+			if ($rootHolon) {
+				$this->buildDocumentDestinationCatalog(
+					$rootHolon,
+					$data['destinations'],
+					$organizationLabel !== '' ? array($organizationLabel) : array('Organisation')
+				);
+			}
+
+			$folderDocuments = new \dbObject\ArrayDocument();
+			$folderDocuments->loadVisibleForOrganizationContext((int)$this->getId(), 0, 'global');
+			foreach ($folderDocuments as $folderDocument) {
+				if (
+					!($folderDocument instanceof \dbObject\Document)
+					|| !$folderDocument->isFolder()
+				) {
+					continue;
+				}
+
+				$folderId = (int)$folderDocument->getId();
+				if ($folderId <= 0 || $folderId === (int)$document->getId()) {
+					continue;
+				}
+
+				if ($document->isFolder() && $folderDocument->isDescendantOfDocument((int)$document->getId(), false)) {
+					continue;
+				}
+
+				$folderPathLabel = $folderDocument->getOrganizationContextLabel();
+				$folderName = trim((string)$folderDocument->get('title'));
+				if ($folderName !== '') {
+					$folderPathLabel = $folderPathLabel !== ''
+						? ($folderPathLabel . ' > ' . $folderName)
+						: $folderName;
+				}
+
+				$data['destinations'][] = array(
+					'key' => 'folder-' . $folderId,
+					'holonId' => (int)$folderDocument->get('IDholon'),
+					'parentDocumentId' => $folderId,
+					'name' => $folderName !== '' ? $folderName : ('Dossier #' . $folderId),
+					'typeId' => -1,
+					'typeLabel' => 'Dossier',
+					'pathLabel' => $folderPathLabel,
+					'isCurrentDestination' => $folderId === $currentParentDocumentId,
+				);
+			}
+
+			foreach ($data['destinations'] as $index => $destination) {
+				$data['destinations'][$index]['isCurrentDestination'] = (
+					(string)($destination['key'] ?? '') === $currentDestinationKey
+				);
+			}
+
+			$this->sortDocumentMoveDestinations($data['destinations']);
 
 			return $data;
 		}

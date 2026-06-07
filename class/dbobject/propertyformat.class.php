@@ -157,6 +157,30 @@
 				return $document->createDocumentFragment();
 			}
 
+			if (self::isAllowedDocumentEmbedNode($node)) {
+				$element = $document->createElement('span');
+				$element->setAttribute('class', 'omo-document-embed');
+				$element->setAttribute('contenteditable', 'false');
+				$element->setAttribute('data-omo-embed-type', 'document');
+				$element->setAttribute('data-omo-document-id', (string)self::getDocumentEmbedNodeId($node));
+
+				$title = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-document-title'));
+				if ($title !== '') {
+					$element->setAttribute('data-omo-document-title', $title);
+				}
+
+				$description = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-document-description'));
+				if ($description !== '') {
+					$element->setAttribute('data-omo-document-description', $description);
+				}
+
+				foreach (iterator_to_array($node->childNodes) as $childNode) {
+					self::appendSanitizedHtmlChild($element, self::sanitizeHtmlNode($childNode, $document));
+				}
+
+				return $element;
+			}
+
 			$tagName = $sourceTagName === 'DIV' ? 'p' : strtolower($sourceTagName);
 			$allowedTags = array(
 				'p',
@@ -209,6 +233,33 @@
 			}
 
 			return $element;
+		}
+
+		protected static function getDomNodeAttributeValue(\DOMNode $node, string $attributeName): string
+		{
+			if (!$node instanceof \DOMElement || !$node->hasAttribute($attributeName)) {
+				return '';
+			}
+
+			return (string)$node->getAttribute($attributeName);
+		}
+
+		protected static function getDocumentEmbedNodeId(\DOMNode $node): int
+		{
+			return (int)trim((string)self::getDomNodeAttributeValue($node, 'data-omo-document-id'));
+		}
+
+		protected static function isAllowedDocumentEmbedNode(\DOMNode $node): bool
+		{
+			if (!($node instanceof \DOMElement)) {
+				return false;
+			}
+
+			if (trim((string)$node->getAttribute('data-omo-embed-type')) !== 'document') {
+				return false;
+			}
+
+			return self::getDocumentEmbedNodeId($node) > 0;
 		}
 
 		protected static function appendSanitizedHtmlChild(\DOMNode $parentNode, \DOMNode $childNode)

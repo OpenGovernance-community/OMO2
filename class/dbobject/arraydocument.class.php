@@ -3,9 +3,20 @@
 
 	class ArrayDocument extends ArrayDbObject
 	{
+		protected $lastVisibilityStats = array(
+			'loaded' => 0,
+			'visible' => 0,
+			'hidden' => 0,
+		);
+
 		public static function objectName()
 		{
 			return "\dbObject\Document";
+		}
+
+		public function getLastVisibilityStats(): array
+		{
+			return $this->lastVisibilityStats;
 		}
 
 		protected function getVisibilityRuleMap($organizationId = 0): array
@@ -33,12 +44,17 @@
 			$organizationId = (int)$organizationId;
 			$ruleMap = is_array($ruleMap) ? $ruleMap : $this->getVisibilityRuleMap($organizationId);
 			$viewerContext = \dbObject\ObjectVisibility::buildCurrentViewerContext($organizationId);
-			$visibleDocuments = array();
+			$candidateVisibleDocuments = array();
+			$documentsById = array();
+			$loadedCount = 0;
 
 			foreach ($this as $document) {
 				if (!($document instanceof \dbObject\Document) || (int)$document->getId() <= 0) {
 					continue;
 				}
+
+				$loadedCount += 1;
+				$documentsById[(int)$document->getId()] = $document;
 
 				$documentId = (int)$document->getId();
 				$documentOrganizationId = (int)$document->get('IDorganization');
@@ -55,10 +71,49 @@
 					continue;
 				}
 
-				$visibleDocuments[] = $document;
+				$candidateVisibleDocuments[] = $document;
+			}
+
+			$candidateVisibleIds = array();
+			foreach ($candidateVisibleDocuments as $document) {
+				$candidateVisibleIds[(int)$document->getId()] = true;
+			}
+
+			$visibleDocuments = array();
+			foreach ($candidateVisibleDocuments as $document) {
+				$parentDocumentId = (int)$document->get('IDdocument_parent');
+				$visitedParentIds = array();
+				$hasVisibleChain = true;
+
+				while ($parentDocumentId > 0) {
+					if (isset($visitedParentIds[$parentDocumentId])) {
+						$hasVisibleChain = false;
+						break;
+					}
+
+					$visitedParentIds[$parentDocumentId] = true;
+					if (
+						!isset($candidateVisibleIds[$parentDocumentId])
+						|| !isset($documentsById[$parentDocumentId])
+					) {
+						$hasVisibleChain = false;
+						break;
+					}
+
+					$parentDocumentId = (int)$documentsById[$parentDocumentId]->get('IDdocument_parent');
+				}
+
+				if ($hasVisibleChain) {
+					$visibleDocuments[] = $document;
+				}
 			}
 
 			$this->exchangeArray($visibleDocuments);
+			$this->lastVisibilityStats = array(
+				'loaded' => $loadedCount,
+				'visible' => count($visibleDocuments),
+				'hidden' => max(0, $loadedCount - count($visibleDocuments)),
+			);
 			return $ruleMap;
 		}
 
@@ -72,6 +127,11 @@
 			}
 
 			$this->exchangeArray([]);
+			$this->lastVisibilityStats = array(
+				'loaded' => 0,
+				'visible' => 0,
+				'hidden' => 0,
+			);
 
 			if ($organizationId <= 0) {
 				return array();
@@ -116,6 +176,7 @@
 					array('field' => 'IDorganization', 'value' => $organizationId),
 				),
 				'orderBy' => array(
+					array('field' => 'datemodification', 'dir' => 'DESC'),
 					array('field' => 'datecreation', 'dir' => 'DESC'),
 					array('field' => 'id', 'dir' => 'DESC'),
 				),
@@ -128,7 +189,34 @@
 			$this->load($loadParams);
 			$this->filterVisibleForCurrentViewer($organizationId);
 
-			$items = array_slice($this->getArrayCopy(), 0, $limit);
+			$items = array_values(array_filter($this->getArrayCopy(), function ($document) {
+				return $document instanceof \dbObject\Document
+					&& !$document->isFolder()
+					&& (int)$document->getId() > 0;
+			}));
+
+			usort($items, function ($left, $right) {
+				$leftDate = $left instanceof \dbObject\Document ? $left->get('datemodification') : null;
+				$rightDate = $right instanceof \dbObject\Document ? $right->get('datemodification') : null;
+
+				if (!($leftDate instanceof \DateTimeInterface) && $left instanceof \dbObject\Document) {
+					$leftDate = $left->get('datecreation');
+				}
+
+				if (!($rightDate instanceof \DateTimeInterface) && $right instanceof \dbObject\Document) {
+					$rightDate = $right->get('datecreation');
+				}
+
+				$leftTimestamp = $leftDate instanceof \DateTimeInterface ? (int)$leftDate->getTimestamp() : 0;
+				$rightTimestamp = $rightDate instanceof \DateTimeInterface ? (int)$rightDate->getTimestamp() : 0;
+				if ($leftTimestamp !== $rightTimestamp) {
+					return $rightTimestamp <=> $leftTimestamp;
+				}
+
+				return (int)$right->getId() <=> (int)$left->getId();
+			});
+
+			$items = array_slice($items, 0, $limit);
 			$this->exchangeArray($items);
 		}
 
@@ -159,6 +247,11 @@
 						: 'Document #' . (int)$document->getId(),
 					'description' => trim((string)$document->get('description')),
 					'datecreation' => $document->get('datecreation'),
+					'datemodification' => $document->get('datemodification'),
+					'createdByUserId' => $document->getCreatedByUserId(),
+					'updatedByUserId' => $document->getUpdatedByUserId(),
+					'createdByName' => $document->getCreatedByDisplayName(),
+					'updatedByName' => $document->getUpdatedByDisplayName(),
 					'visibility' => $visibility,
 					'contextUrl' => '/omo/api/documents/detail.php?id=' . (int)$document->getId()
 						. '&oid=' . $resolvedOrganizationId
