@@ -849,6 +849,19 @@ if (!function_exists('commonCardDavFormatTimestamp')) {
     }
 }
 
+if (!function_exists('commonCardDavFormatHttpDate')) {
+    function commonCardDavFormatHttpDate(?DateTimeInterface $dateTime = null)
+    {
+        if (!$dateTime) {
+            return '';
+        }
+
+        $gmt = new DateTimeZone('GMT');
+        $timestamp = DateTimeImmutable::createFromInterface($dateTime)->setTimezone($gmt);
+        return $timestamp->format('D, d M Y H:i:s') . ' GMT';
+    }
+}
+
 if (!function_exists('commonCardDavExtractGeo')) {
     function commonCardDavExtractGeo($value)
     {
@@ -1414,7 +1427,7 @@ if (!function_exists('commonCardDavBuildPropertyMap')) {
                     '{DAV:}getetag' => array('type' => 'text', 'value' => (string)($resource['etag'] ?? '')),
                     '{DAV:}getcontenttype' => array('type' => 'text', 'value' => (string)($resource['contentType'] ?? 'text/vcard; charset=utf-8')),
                     '{DAV:}getcontentlength' => array('type' => 'text', 'value' => (string)($resource['contentLength'] ?? 0)),
-                    '{DAV:}getlastmodified' => array('type' => 'text', 'value' => !empty($resource['lastModified']) ? gmdate(DATE_RFC7231, DateTimeImmutable::createFromInterface($resource['lastModified'])->getTimestamp()) : ''),
+                    '{DAV:}getlastmodified' => array('type' => 'text', 'value' => commonCardDavFormatHttpDate($resource['lastModified'] ?? null)),
                     '{DAV:}creationdate' => array('type' => 'text', 'value' => !empty($resource['lastModified']) ? DateTimeImmutable::createFromInterface($resource['lastModified'])->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z') : ''),
                     '{DAV:}resource-id' => array('type' => 'href', 'value' => (string)($resource['resourceId'] ?? '')),
                     '{urn:ietf:params:xml:ns:carddav}address-data' => array('type' => 'text', 'value' => (string)($resource['vcard'] ?? '')),
@@ -1854,7 +1867,7 @@ if (!function_exists('commonCardDavSendCard')) {
         header('Pragma: no-cache');
 
         if (!empty($resource['lastModified']) && $resource['lastModified'] instanceof DateTimeInterface) {
-            header('Last-Modified: ' . gmdate(DATE_RFC7231, DateTimeImmutable::createFromInterface($resource['lastModified'])->getTimestamp()));
+            header('Last-Modified: ' . commonCardDavFormatHttpDate($resource['lastModified']));
         }
 
         commonCardDavSetDebugValue('request_method', $sendBody ? 'GET' : 'HEAD');
