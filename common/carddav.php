@@ -1052,7 +1052,10 @@ if (!function_exists('commonCardDavBuildContactResource')) {
         ));
         $presentationValues = commonCardDavCollectUniqueStrings($presentationValues);
 
-        $displayName = trim((string)$user->get('firstname') . ' ' . (string)$user->get('lastname'));
+        $firstname = trim((string)$user->get('firstname'));
+        $lastname = trim((string)$user->get('lastname'));
+
+        $displayName = trim($firstname . ' ' . $lastname);
         if ($displayName === '' && count($usernames) > 0) {
             $displayName = $usernames[0];
         }
@@ -1061,6 +1064,10 @@ if (!function_exists('commonCardDavBuildContactResource')) {
         }
         if ($displayName === '') {
             $displayName = 'Member ' . (int)$user->getId();
+        }
+
+        if ($firstname === '' && $lastname === '') {
+            $firstname = $displayName;
         }
 
         $noteParts = array();
@@ -1082,8 +1089,8 @@ if (!function_exists('commonCardDavBuildContactResource')) {
             'viewerUserId' => $viewerUserId,
             'uid' => commonCardDavBuildUid($user),
             'displayName' => $displayName,
-            'firstname' => trim((string)$user->get('firstname')),
-            'lastname' => trim((string)$user->get('lastname')),
+            'firstname' => $firstname,
+            'lastname' => $lastname,
             'emails' => $emails,
             'usernames' => $usernames,
             'organizationNames' => $organizationNames,
