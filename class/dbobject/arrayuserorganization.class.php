@@ -45,6 +45,39 @@
 			}
 		}
 
+		public function loadActiveForUser($userId)
+		{
+			$userId = (int)$userId;
+
+			$this->exchangeArray([]);
+
+			if ($userId <= 0) {
+				return;
+			}
+
+			$query = "
+				SELECT uo.id
+				FROM user_organization uo
+				WHERE uo.IDuser = :user_id
+				  AND uo.active = 1
+				ORDER BY uo.IDorganization ASC, uo.id ASC
+			";
+
+			$rows = \dbObject\DbObject::fetchAll($query, [
+				'user_id' => $userId,
+			]);
+
+			if ($rows === false) {
+				return;
+			}
+
+			foreach ($rows as $row) {
+				$item = new UserOrganization();
+				$item->setId((int)$row['id']);
+				$this[] = $item;
+			}
+		}
+
 		public function loadVisibleForOrganization($organizationId)
 		{
 			$organizationId = (int)$organizationId;
