@@ -78,4 +78,6 @@ L'application calendrier OMO permet maintenant de creer des evenements simples r
 
 Une premiere couche CalDAV en lecture seule a egalement ete mise en place sous `/omo/api/caldav/`, avec route `/.well-known/caldav`. Chaque utilisateur peut y exposer un calendrier par organisation a laquelle il appartient quand l'application `calendar` est active, afin de synchroniser les evenements sur un telephone ou un client agenda compatible.
 
+Un correctif de compatibilite XML a aussi ete applique au endpoint CalDAV pour eviter des reponses `207 Multi-Status` mal formees sur certains clients stricts comme DAVx5. Les proprietes CalDAV specifiques sont maintenant generees via des noeuds DOM explicites plutot que par fragments XML libres.
+
 Cette base technique prepare la suite pour les invitations, les participants et, plus tard, les ecritures CalDAV ou l'export de types d'evenements plus riches.
