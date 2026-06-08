@@ -225,6 +225,7 @@ if (!function_exists('commonCardDavGetBasicCredentials')) {
         if (isset($_SERVER['PHP_AUTH_USER'])) {
             commonCardDavSetAuthDebugValue('source', 'php_auth_user');
             commonCardDavSetAuthDebugValue('credentials', 'present');
+            commonCardDavSetAuthDebugValue('identifier_type', strpos((string)$_SERVER['PHP_AUTH_USER'], '@') !== false ? 'email_like' : 'opaque');
             return array(
                 (string)$_SERVER['PHP_AUTH_USER'],
                 (string)($_SERVER['PHP_AUTH_PW'] ?? ''),
@@ -247,6 +248,63 @@ if (!function_exists('commonCardDavGetBasicCredentials')) {
         commonCardDavSetAuthDebugValue('credentials', 'present');
         commonCardDavSetAuthDebugValue('identifier_type', strpos($username, '@') !== false ? 'email_like' : 'opaque');
         return array((string)$username, (string)$password);
+    }
+}
+
+if (!function_exists('commonCardDavBuildLoginIdentifierCandidates')) {
+    function commonCardDavBuildLoginIdentifierCandidates($identifier)
+    {
+        $identifier = trim((string)$identifier);
+        if ($identifier === '') {
+            commonCardDavSetAuthDebugValue('lookup_mode', 'empty_identifier');
+            return array();
+        }
+
+        $candidates = array();
+        if (strpos($identifier, '@') === false && function_exists('commonResolveOrganizationContext')) {
+            $organizationContext = commonResolveOrganizationContext(1);
+            $organizationDomain = trim((string)($organizationContext['domain'] ?? ''));
+            if ($organizationDomain !== '') {
+                $candidates[] = $identifier . '@' . $organizationDomain;
+                commonCardDavSetAuthDebugValue('lookup_mode', 'org_domain_then_raw');
+            } else {
+                commonCardDavSetAuthDebugValue('lookup_mode', 'raw_only_no_org_domain');
+            }
+        } else {
+            commonCardDavSetAuthDebugValue('lookup_mode', strpos($identifier, '@') !== false ? 'raw_email' : 'raw_only');
+        }
+
+        $candidates[] = $identifier;
+        $uniqueCandidates = array();
+
+        foreach ($candidates as $candidate) {
+            $candidate = trim((string)$candidate);
+            if ($candidate === '' || in_array($candidate, $uniqueCandidates, true)) {
+                continue;
+            }
+
+            $uniqueCandidates[] = $candidate;
+        }
+
+        commonCardDavSetAuthDebugValue('identifier_candidates', (string)count($uniqueCandidates));
+        return $uniqueCandidates;
+    }
+}
+
+if (!function_exists('commonCardDavFindUserByIdentifier')) {
+    function commonCardDavFindUserByIdentifier($identifier)
+    {
+        $candidates = commonCardDavBuildLoginIdentifierCandidates($identifier);
+        foreach ($candidates as $index => $candidate) {
+            $user = User::findByLoginIdentifier($candidate);
+            if ($user) {
+                commonCardDavSetAuthDebugValue('matched_candidate', $index === 0 ? 'first' : 'fallback');
+                return $user;
+            }
+        }
+
+        commonCardDavSetAuthDebugValue('matched_candidate', 'none');
+        return null;
     }
 }
 
@@ -280,7 +338,7 @@ if (!function_exists('commonCardDavAuthenticateRequest')) {
             return null;
         }
 
-        $user = User::findByLoginIdentifier($identifier, true);
+        $user = commonCardDavFindUserByIdentifier($identifier);
         if (!$user) {
             commonCardDavSetAuthDebugValue('result', 'user_not_found');
             return null;

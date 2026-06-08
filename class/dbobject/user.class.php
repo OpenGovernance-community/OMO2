@@ -138,7 +138,7 @@
 			return \dbObject\Invitation::findPendingForUser((int)$this->getId());
 		}
 
-		public static function findByLoginIdentifier($identifier, $allowUsername = false)
+		public static function findByLoginIdentifier($identifier)
 		{
 			$normalizedIdentifier = trim(mb_strtolower((string)$identifier, 'UTF-8'));
 			if ($normalizedIdentifier === '') {
@@ -154,13 +154,6 @@
 				"WHEN LOWER(u.email) = :identity THEN 0",
 				"WHEN LOWER(COALESCE(NULLIF(uo.email, ''), '')) = :identity THEN 1",
 			);
-
-			if ($allowUsername) {
-				$conditions[] = "LOWER(u.username) = :identity";
-				$conditions[] = "LOWER(COALESCE(NULLIF(uo.username, ''), '')) = :identity";
-				$caseBranches[] = "WHEN LOWER(u.username) = :identity THEN 2";
-				$caseBranches[] = "WHEN LOWER(COALESCE(NULLIF(uo.username, ''), '')) = :identity THEN 3";
-			}
 
 			$query = "
 				SELECT DISTINCT
