@@ -3,6 +3,11 @@
 
 	class document extends DbObject
 	{
+		public const TYPE_HTML = 'html';
+		public const TYPE_EXTERNAL_LINK = 'external_link';
+		public const TYPE_UPLOADED_FILE = 'uploaded_file';
+		public const TYPE_FOLDER = 'folder';
+
 	    public static function tableName()
 		{
 			return 'document'; // Nom de la table correspondante
@@ -13,8 +18,8 @@
 		{
 			return [
 				[['title'], 'required'],						// Champs obligatoires
-				[['id', 'version', 'estDossier'], 'integer'],				// Nombres entiers
-				[['title', 'codeview', 'codeedit', 'keywords'], 'string'],	// Chaines de caractere
+				[['id', 'version', 'estDossier', 'openinnewwindow', 'storedfilesize'], 'integer'],				// Nombres entiers
+				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime'], 'string'],	// Chaines de caractere
 				[['description', 'content', 'contentedition'], 'text'],			// Textes libres
 				[['datecreation', 'datemodification', 'dateedition', 'datecontentedition'], 'datetime'],	// Date avec precision des heures
 				[['IDuser', 'IDusercreation', 'IDusermodification', 'IDuseredition', 'IDorganization', 'IDholon', 'IDdocument_parent'], 'fk'],	// Cles etrangeres
@@ -47,6 +52,13 @@
 				'version' => 'Version',
 				'codeview' => 'Code d affichage',
 				'codeedit' => 'Code d edition',
+				'documenttype' => 'Type de document',
+				'externalurl' => 'URL externe',
+				'openinnewwindow' => 'Ouvrir dans une nouvelle fenetre',
+				'storedfilepath' => 'Chemin distant du fichier',
+				'storedfilename' => 'Nom original du fichier',
+				'storedfilemime' => 'Type MIME du fichier',
+				'storedfilesize' => 'Taille du fichier',
 			];
 		}
 
@@ -68,6 +80,13 @@
 				'IDdocument_parent' => 'Dossier qui contient ce document',
 				'dateedition' => 'Date du dernier signal de presence pendant l edition',
 				'datecontentedition' => 'Date de mise a jour du brouillon temporaire',
+				'documenttype' => 'Permet de distinguer les documents HTML, les liens externes et les dossiers',
+				'externalurl' => 'Adresse du site a ouvrir pour un document de type lien externe',
+				'openinnewwindow' => 'Ouvre le lien externe directement dans une autre fenetre',
+				'storedfilepath' => 'Chemin du fichier sur le stockage Nextcloud de l organisation',
+				'storedfilename' => 'Nom du fichier televerse par l utilisateur',
+				'storedfilemime' => 'Type MIME detecte pour le fichier distant',
+				'storedfilesize' => 'Taille du fichier distant en octets',
 			];
 		}
 
@@ -76,6 +95,10 @@
 		{
 			return [
 				'title' => 100,									// Nombre de caracteres maximum
+				'externalurl' => 2000,
+				'storedfilepath' => 1000,
+				'storedfilename' => 255,
+				'storedfilemime' => 255,
 			];
 		}
 
@@ -150,6 +173,108 @@
 		public function isFolder(): bool
 		{
 			return (bool)$this->get('estDossier');
+		}
+
+		public static function normalizeDocumentType($rawType, bool $isFolder = false): string
+		{
+			if ($isFolder) {
+				return self::TYPE_FOLDER;
+			}
+
+			$documentType = trim(mb_strtolower((string)$rawType, 'UTF-8'));
+			if ($documentType === self::TYPE_EXTERNAL_LINK) {
+				return self::TYPE_EXTERNAL_LINK;
+			}
+
+			if ($documentType === self::TYPE_UPLOADED_FILE) {
+				return self::TYPE_UPLOADED_FILE;
+			}
+
+			return self::TYPE_HTML;
+		}
+
+		public function getDocumentType(): string
+		{
+			return self::normalizeDocumentType($this->get('documenttype'), $this->isFolder());
+		}
+
+		public function isExternalLink(): bool
+		{
+			return $this->getDocumentType() === self::TYPE_EXTERNAL_LINK;
+		}
+
+		public function supportsHtmlContent(): bool
+		{
+			return $this->getDocumentType() === self::TYPE_HTML;
+		}
+
+		public function isUploadedFile(): bool
+		{
+			return $this->getDocumentType() === self::TYPE_UPLOADED_FILE;
+		}
+
+		public function canBeEmbedded(): bool
+		{
+			return !$this->isFolder() && $this->supportsHtmlContent();
+		}
+
+		public static function sanitizeExternalUrl($url): string
+		{
+			$url = trim((string)$url);
+			if ($url === '') {
+				return '';
+			}
+
+			if (!preg_match('/^https?:\/\//i', $url)) {
+				return '';
+			}
+
+			return filter_var($url, FILTER_VALIDATE_URL) ? $url : '';
+		}
+
+		public function getExternalUrl(): string
+		{
+			return self::sanitizeExternalUrl($this->get('externalurl'));
+		}
+
+		public function shouldOpenExternalLinkInNewWindow(): bool
+		{
+			return $this->isExternalLink() && (bool)$this->get('openinnewwindow');
+		}
+
+		public function hasStoredFile(): bool
+		{
+			return $this->isUploadedFile() && trim((string)$this->get('storedfilepath')) !== '';
+		}
+
+		public function getStoredFileDownloadName(): string
+		{
+			$filename = trim((string)$this->get('storedfilename'));
+			if ($filename !== '') {
+				return $filename;
+			}
+
+			$title = trim((string)$this->get('title'));
+			return $title !== '' ? $title : ('document-' . (int)$this->getId());
+		}
+
+		public function getStoredFileMimeType(): string
+		{
+			$mimeType = trim((string)$this->get('storedfilemime'));
+			return $mimeType !== '' ? $mimeType : 'application/octet-stream';
+		}
+
+		public function getStoredFileSize(): int
+		{
+			return max(0, (int)$this->get('storedfilesize'));
+		}
+
+		protected function clearStoredFileState(): void
+		{
+			$this->set('storedfilepath', null);
+			$this->set('storedfilename', null);
+			$this->set('storedfilemime', null);
+			$this->set('storedfilesize', null);
 		}
 
 		protected static function resolveUserDisplayNameById(int $userId): string
@@ -246,6 +371,10 @@
 
 		public function getEffectiveEditingContentForUser(int $userId): string
 		{
+			if (!$this->supportsHtmlContent()) {
+				return '';
+			}
+
 			$userId = (int)$userId;
 			if (
 				$userId > 0
@@ -269,13 +398,16 @@
 			$editingUserId = $this->getEditingUserId();
 			$editingUserName = $this->getEditingUserDisplayName();
 			$draftIsActive = $allowDraft
+				&& $this->supportsHtmlContent()
 				&& $editingUserId > 0
 				&& $this->hasRecentDraft()
 				&& trim((string)$this->get('contentedition')) !== '';
 
-			$content = $draftIsActive
-				? (string)$this->get('contentedition')
-				: (string)$this->get('content');
+			$content = !$this->supportsHtmlContent()
+				? ''
+				: ($draftIsActive
+					? (string)$this->get('contentedition')
+					: (string)$this->get('content'));
 			$dateValue = $draftIsActive
 				? $this->get('datecontentedition')
 				: $this->get('datemodification');
@@ -343,6 +475,62 @@
 			$html .= '</div>';
 
 			return $html;
+		}
+
+		protected function renderExternalLinkForViewer(): string
+		{
+			$externalUrl = $this->getExternalUrl();
+			if ($externalUrl === '') {
+				return '<div class="omo-document-external omo-document-external--invalid">Lien externe invalide.</div>';
+			}
+
+			$escapedUrl = htmlspecialchars($externalUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+			$linkHtml = '<a class="generic-action-button generic-action-button--secondary omo-document-external__link" href="'
+				. $escapedUrl
+				. '" target="_blank" rel="noopener noreferrer">Ouvrir le site</a>';
+
+			if ($this->shouldOpenExternalLinkInNewWindow()) {
+				return '<div class="omo-document-external omo-document-external--window">'
+					. '<p>Ce document ouvre un site externe dans une nouvelle fenetre.</p>'
+					. $linkHtml
+					. '</div>';
+			}
+
+			return '<div class="omo-document-external omo-document-external--iframe">'
+				. '<div class="omo-document-external__toolbar">'
+				. '<span class="omo-document-external__hint">Site externe affiche dans OMO.</span>'
+				. $linkHtml
+				. '</div>'
+				. '<iframe class="omo-document-external__frame" src="' . $escapedUrl . '" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>'
+				. '<p class="omo-document-external__fallback">Si le site refuse l affichage en iframe, utilisez le bouton pour l ouvrir directement.</p>'
+				. '</div>';
+		}
+
+		protected function renderUploadedFileForViewer(): string
+		{
+			if (!$this->hasStoredFile()) {
+				return '<div class="omo-document-file omo-document-file--empty">Aucun fichier n est actuellement televerse pour ce document.</div>';
+			}
+
+			$downloadUrl = '/omo/api/documents/download.php?id=' . (int)$this->getId();
+			$fileSize = $this->getStoredFileSize();
+			$fileMeta = array();
+			if ($this->getStoredFileMimeType() !== '') {
+				$fileMeta[] = htmlspecialchars($this->getStoredFileMimeType(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+			}
+			if ($fileSize > 0) {
+				$fileMeta[] = number_format($fileSize, 0, '.', '\'') . ' octets';
+			}
+
+			return '<div class="omo-document-file">'
+				. '<div class="omo-document-file__title">' . htmlspecialchars($this->getStoredFileDownloadName(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</div>'
+				. (count($fileMeta) > 0
+					? '<div class="omo-document-file__meta">' . implode(' · ', $fileMeta) . '</div>'
+					: '')
+				. '<a class="generic-action-button generic-action-button--main omo-document-file__download" href="'
+				. htmlspecialchars($downloadUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+				. '">Telecharger le fichier</a>'
+				. '</div>';
 		}
 
 		protected function renderResolvedHtmlNode(\DOMNode $node, int $organizationId, array $options = array()): string
@@ -422,8 +610,12 @@
 			}
 
 			$targetDocument = new \dbObject\Document();
-			if (!$targetDocument->load($targetDocumentId) || $targetDocument->isFolder()) {
+			if (!$targetDocument->load($targetDocumentId)) {
 				return self::buildDocumentEmbedDisplayHtml($targetDocumentId, $fallbackTitle, $fallbackDescription, '', 'missing', 'Document introuvable.');
+			}
+
+			if (!$targetDocument->canBeEmbedded()) {
+				return self::buildDocumentEmbedDisplayHtml($targetDocumentId, $fallbackTitle, $fallbackDescription, '', 'unsupported', 'Ce type de document ne peut pas etre integre ici.');
 			}
 
 			$targetOrganizationId = (int)$targetDocument->get('IDorganization');
@@ -503,6 +695,14 @@
 
 		public function getRenderedContentForCurrentViewer(): string
 		{
+			if ($this->isExternalLink()) {
+				return $this->renderExternalLinkForViewer();
+			}
+
+			if ($this->isUploadedFile()) {
+				return $this->renderUploadedFileForViewer();
+			}
+
 			return $this->renderResolvedHtmlForViewer(
 				(string)$this->get('content'),
 				(int)$this->get('IDorganization')
@@ -537,7 +737,11 @@
 			$payload = array(
 				'title' => trim((string)$this->get('title')),
 				'description' => trim((string)$this->get('description')),
-				'content' => $this->renderResolvedHtmlForViewer($content, (int)$this->get('IDorganization')),
+				'content' => $this->isExternalLink()
+					? $this->renderExternalLinkForViewer()
+					: ($this->isUploadedFile()
+						? $this->renderUploadedFileForViewer()
+						: $this->renderResolvedHtmlForViewer($content, (int)$this->get('IDorganization'))),
 				'isDraft' => !empty($snapshot['isDraft']),
 				'editingUserName' => trim((string)($snapshot['editingUserName'] ?? '')),
 				'updatedAt' => $updatedAt,
@@ -619,13 +823,13 @@
 			$this->set('IDuseredition', $userId);
 			$this->set('dateedition', $now);
 			if ($draftContent !== null) {
-				$sanitizedDraftContent = $this->isFolder()
+				$sanitizedDraftContent = !$this->supportsHtmlContent()
 					? null
 					: \dbObject\PropertyFormat::sanitizeHtml((string)$draftContent);
-				$currentDraftContent = $this->isFolder() ? null : (string)$this->get('contentedition');
+				$currentDraftContent = $this->supportsHtmlContent() ? (string)$this->get('contentedition') : null;
 
 				$this->set('contentedition', $sanitizedDraftContent);
-				if ($this->isFolder()) {
+				if (!$this->supportsHtmlContent()) {
 					$this->set('datecontentedition', null);
 				} elseif ((string)$sanitizedDraftContent !== (string)$currentDraftContent) {
 					$this->set('datecontentedition', $now);
@@ -1066,6 +1270,56 @@
 			return $this->save();
 		}
 
+		protected static function extractValidUploadedFile($uploadedFile): ?array
+		{
+			if (!is_array($uploadedFile)) {
+				return null;
+			}
+
+			$errorCode = (int)($uploadedFile['error'] ?? UPLOAD_ERR_NO_FILE);
+			$tmpName = trim((string)($uploadedFile['tmp_name'] ?? ''));
+			if ($errorCode !== UPLOAD_ERR_OK || $tmpName === '' || !is_file($tmpName)) {
+				return null;
+			}
+
+			return $uploadedFile;
+		}
+
+		protected function deleteStoredFileFromOrganizationStorage(\dbObject\Organization $organization): array
+		{
+			$storedPath = trim((string)$this->get('storedfilepath'));
+			if ($storedPath === '') {
+				$this->clearStoredFileState();
+				return array('status' => true);
+			}
+
+			$deleteResult = $organization->deleteDocumentFileFromNextcloud($storedPath);
+			if (!is_array($deleteResult) || empty($deleteResult['status'])) {
+				return $deleteResult;
+			}
+
+			$this->clearStoredFileState();
+			return array('status' => true);
+		}
+
+		protected function applyUploadedFileToOrganizationStorage(\dbObject\Organization $organization, array $uploadedFile): array
+		{
+			$uploadResult = $organization->uploadDocumentFileToNextcloud((int)$this->getId(), $uploadedFile);
+			if (!is_array($uploadResult) || empty($uploadResult['status'])) {
+				return $uploadResult;
+			}
+
+			$this->set('storedfilepath', (string)($uploadResult['relativePath'] ?? ''));
+			$this->set('storedfilename', (string)($uploadResult['originalName'] ?? ''));
+			$this->set('storedfilemime', (string)($uploadResult['mimeType'] ?? 'application/octet-stream'));
+			$this->set('storedfilesize', (int)($uploadResult['size'] ?? 0));
+
+			return array(
+				'status' => true,
+				'uploadedPath' => (string)($uploadResult['relativePath'] ?? ''),
+			);
+		}
+
 		public function createInOrganizationContext(int $organizationId, ?int $holonId, int $userId, array $values = array())
 		{
 			$userId = (int)$userId;
@@ -1085,11 +1339,32 @@
 			}
 
 			$description = trim((string)($values['description'] ?? ''));
-			$isFolder = !empty($values['is_folder']);
+			$requestedDocumentType = (string)($values['document_type'] ?? '');
+			$isFolder = !empty($values['is_folder']) || trim(mb_strtolower($requestedDocumentType, 'UTF-8')) === self::TYPE_FOLDER;
+			$documentType = self::normalizeDocumentType($requestedDocumentType, $isFolder);
+			$uploadedFile = $documentType === self::TYPE_UPLOADED_FILE
+				? self::extractValidUploadedFile($values['uploaded_file'] ?? null)
+				: null;
 			$parentDocumentId = isset($values['parent_document_id']) ? (int)$values['parent_document_id'] : 0;
-			$content = $isFolder
-				? ''
-				: \dbObject\PropertyFormat::sanitizeHtml((string)($values['content'] ?? ''));
+			$content = $documentType === self::TYPE_HTML
+				? \dbObject\PropertyFormat::sanitizeHtml((string)($values['content'] ?? ''))
+				: '';
+			$externalUrl = $documentType === self::TYPE_EXTERNAL_LINK
+				? self::sanitizeExternalUrl($values['external_url'] ?? '')
+				: '';
+			$openInNewWindow = $documentType === self::TYPE_EXTERNAL_LINK && !empty($values['open_in_new_window']);
+			if ($documentType === self::TYPE_EXTERNAL_LINK && $externalUrl === '') {
+				return array(
+					'status' => false,
+					'text' => "L URL externe est obligatoire.",
+				);
+			}
+			if ($documentType === self::TYPE_UPLOADED_FILE && $uploadedFile === null) {
+				return array(
+					'status' => false,
+					'text' => 'Un fichier est obligatoire pour ce type de document.',
+				);
+			}
 			$keywords = trim((string)($values['keywords'] ?? ''));
 			$visibilityType = (string)($values['visibility_type'] ?? \dbObject\ObjectVisibility::getDefaultVisibilityType());
 			$now = new \DateTimeImmutable();
@@ -1097,8 +1372,13 @@
 			$this->set('title', $title);
 			$this->set('description', $description);
 			$this->set('content', $content);
+			$this->set('contentedition', null);
+			$this->set('datecontentedition', null);
 			$this->set('keywords', $keywords);
 			$this->set('estDossier', $isFolder ? 1 : 0);
+			$this->set('documenttype', $documentType);
+			$this->set('externalurl', $externalUrl !== '' ? $externalUrl : null);
+			$this->set('openinnewwindow', $openInNewWindow ? 1 : 0);
 			$this->set('IDuser', $userId);
 			$this->set('IDusercreation', $userId);
 			$this->set('IDusermodification', $userId);
@@ -1115,10 +1395,33 @@
 
 			$pdo = self::getPdo();
 			$startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
+			$organization = new \dbObject\Organization();
 
 			try {
 				if ($startedTransaction) {
 					$pdo->beginTransaction();
+				}
+
+				if (!$organization->load($organizationId)) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+
+					return array(
+						'status' => false,
+						'text' => 'Organisation introuvable.',
+					);
+				}
+
+				if ($documentType === self::TYPE_UPLOADED_FILE && !$organization->hasNextcloudDocumentStorage()) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+
+					return array(
+						'status' => false,
+						'text' => 'Le stockage Nextcloud n est pas configure pour cette organisation.',
+					);
 				}
 
 				$resolvedParent = $this->resolveParentDocumentForContext($organizationId, $parentDocumentId);
@@ -1146,6 +1449,30 @@
 					}
 
 					return $contextSaveResult;
+				}
+
+				if ($documentType === self::TYPE_UPLOADED_FILE) {
+					$fileStorageResult = $this->applyUploadedFileToOrganizationStorage($organization, $uploadedFile);
+					if (!is_array($fileStorageResult) || empty($fileStorageResult['status'])) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return $fileStorageResult;
+					}
+
+					$fileMetadataSaveResult = $this->save();
+					if (!is_array($fileMetadataSaveResult) || ($fileMetadataSaveResult['status'] ?? false) !== true) {
+						$uploadedPath = trim((string)($fileStorageResult['uploadedPath'] ?? ''));
+						if ($uploadedPath !== '') {
+							$organization->deleteDocumentFileFromNextcloud($uploadedPath);
+						}
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return $fileMetadataSaveResult;
+					}
 				}
 
 				$visibilitySaveResult = $this->saveVisibilityRule($visibilityType);
@@ -1211,9 +1538,30 @@
 			}
 
 			$description = trim((string)($values['description'] ?? ''));
-			$content = $this->isFolder()
-				? ''
-				: \dbObject\PropertyFormat::sanitizeHtml((string)($values['content'] ?? ''));
+			$documentType = $this->getDocumentType();
+			$uploadedFile = $documentType === self::TYPE_UPLOADED_FILE
+				? self::extractValidUploadedFile($values['uploaded_file'] ?? null)
+				: null;
+			$removeUploadedFile = $documentType === self::TYPE_UPLOADED_FILE && !empty($values['remove_uploaded_file']);
+			$content = $documentType === self::TYPE_HTML
+				? \dbObject\PropertyFormat::sanitizeHtml((string)($values['content'] ?? ''))
+				: '';
+			$externalUrl = $documentType === self::TYPE_EXTERNAL_LINK
+				? self::sanitizeExternalUrl($values['external_url'] ?? '')
+				: '';
+			$openInNewWindow = $documentType === self::TYPE_EXTERNAL_LINK && !empty($values['open_in_new_window']);
+			if ($documentType === self::TYPE_EXTERNAL_LINK && $externalUrl === '') {
+				return array(
+					'status' => false,
+					'text' => 'L URL externe est obligatoire.',
+				);
+			}
+			if ($documentType === self::TYPE_UPLOADED_FILE && $uploadedFile === null && $removeUploadedFile && !$this->hasStoredFile()) {
+				return array(
+					'status' => false,
+					'text' => 'Aucun fichier n est actuellement associe a ce document.',
+				);
+			}
 			$keywords = trim((string)($values['keywords'] ?? ''));
 			$visibilityType = (string)($values['visibility_type'] ?? \dbObject\ObjectVisibility::getDefaultVisibilityType());
 			$now = new \DateTimeImmutable();
@@ -1222,15 +1570,44 @@
 			$this->set('description', $description);
 			$this->set('content', $content);
 			$this->set('keywords', $keywords);
+			$this->set('documenttype', $documentType);
+			$this->set('externalurl', $externalUrl !== '' ? $externalUrl : null);
+			$this->set('openinnewwindow', $openInNewWindow ? 1 : 0);
+			if ($documentType !== self::TYPE_HTML) {
+				$this->clearDraftContentState();
+			}
 			$this->set('IDusermodification', $userId);
 			$this->set('datemodification', $now);
 
 			$pdo = self::getPdo();
 			$startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
+			$organization = new \dbObject\Organization();
 
 			try {
 				if ($startedTransaction) {
 					$pdo->beginTransaction();
+				}
+
+				if (!$organization->load($organizationId)) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+
+					return array(
+						'status' => false,
+						'text' => 'Organisation introuvable.',
+					);
+				}
+
+				if ($documentType === self::TYPE_UPLOADED_FILE && !$organization->hasNextcloudDocumentStorage()) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+
+					return array(
+						'status' => false,
+						'text' => 'Le stockage Nextcloud n est pas configure pour cette organisation.',
+					);
 				}
 
 				$saveResult = $this->save();
@@ -1240,6 +1617,47 @@
 					}
 
 					return $saveResult;
+				}
+
+				if ($documentType === self::TYPE_UPLOADED_FILE) {
+					$previousStoredPath = trim((string)$this->get('storedfilepath'));
+					if ($removeUploadedFile) {
+						$deleteResult = $this->deleteStoredFileFromOrganizationStorage($organization);
+						if (!is_array($deleteResult) || empty($deleteResult['status'])) {
+							if ($startedTransaction && $pdo->inTransaction()) {
+								$pdo->rollBack();
+							}
+
+							return $deleteResult;
+						}
+					}
+
+					if ($uploadedFile !== null) {
+						$fileStorageResult = $this->applyUploadedFileToOrganizationStorage($organization, $uploadedFile);
+						if (!is_array($fileStorageResult) || empty($fileStorageResult['status'])) {
+							if ($startedTransaction && $pdo->inTransaction()) {
+								$pdo->rollBack();
+							}
+
+							return $fileStorageResult;
+						}
+
+						$newStoredPath = trim((string)($fileStorageResult['uploadedPath'] ?? ''));
+						if ($previousStoredPath !== '' && $previousStoredPath !== $newStoredPath) {
+							$organization->deleteDocumentFileFromNextcloud($previousStoredPath);
+						}
+					}
+
+					if ($removeUploadedFile || $uploadedFile !== null) {
+						$fileMetadataSaveResult = $this->save();
+						if (!is_array($fileMetadataSaveResult) || ($fileMetadataSaveResult['status'] ?? false) !== true) {
+							if ($startedTransaction && $pdo->inTransaction()) {
+								$pdo->rollBack();
+							}
+
+							return $fileMetadataSaveResult;
+						}
+					}
 				}
 
 				$visibilitySaveResult = $this->saveVisibilityRule($visibilityType);

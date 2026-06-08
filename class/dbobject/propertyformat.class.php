@@ -105,7 +105,7 @@
 			}
 
 			if (!class_exists('\DOMDocument')) {
-				$fallback = strip_tags($html, '<p><br><strong><b><em><i><u><ul><ol><li><a>');
+				$fallback = strip_tags($html, '<p><br><strong><b><em><i><u><ul><ol><li><a><h1><h2><h3><blockquote><table><thead><tbody><tr><th><td>');
 				return self::isEmptyValue(self::FORMAT_TEXT, $fallback) ? '' : trim($fallback);
 			}
 
@@ -184,6 +184,16 @@
 			$tagName = $sourceTagName === 'DIV' ? 'p' : strtolower($sourceTagName);
 			$allowedTags = array(
 				'p',
+				'h1',
+				'h2',
+				'h3',
+				'blockquote',
+				'table',
+				'thead',
+				'tbody',
+				'tr',
+				'th',
+				'td',
 				'br',
 				'strong',
 				'b',
@@ -223,6 +233,20 @@
 				if ($target === '_blank') {
 					$element->setAttribute('target', '_blank');
 					$element->setAttribute('rel', 'noopener noreferrer');
+				}
+			} elseif (in_array($tagName, array('th', 'td'), true)) {
+				$element = $document->createElement($tagName);
+
+				$colspanAttribute = $node->attributes ? $node->attributes->getNamedItem('colspan') : null;
+				$colspanValue = $colspanAttribute ? max(1, (int)$colspanAttribute->nodeValue) : 0;
+				if ($colspanValue > 1) {
+					$element->setAttribute('colspan', (string)$colspanValue);
+				}
+
+				$rowspanAttribute = $node->attributes ? $node->attributes->getNamedItem('rowspan') : null;
+				$rowspanValue = $rowspanAttribute ? max(1, (int)$rowspanAttribute->nodeValue) : 0;
+				if ($rowspanValue > 1) {
+					$element->setAttribute('rowspan', (string)$rowspanValue);
 				}
 			} else {
 				$element = $document->createElement($tagName);

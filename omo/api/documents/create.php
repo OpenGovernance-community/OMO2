@@ -6,6 +6,7 @@ require_once dirname(__DIR__, 3) . '/common/openai_text.php';
 use dbObject\Document;
 use dbObject\Holon;
 use dbObject\ObjectVisibility;
+use dbObject\Organization;
 
 $organizationId = isset($_GET['oid']) ? (int)$_GET['oid'] : (int)($_SESSION['currentOrganization'] ?? 0);
 $holonId = isset($_GET['cid']) ? (int)$_GET['cid'] : 0;
@@ -46,6 +47,12 @@ $visibilityOptions = ObjectVisibility::getVisibilityTypeOptions();
 $documentTitle = '';
 $documentDescription = '';
 $documentContent = '';
+$documentType = Document::TYPE_HTML;
+$documentExternalUrl = '';
+$documentOpenInNewWindow = false;
+$documentStoredFilename = '';
+$documentStoredFileMime = '';
+$documentStoredFileSize = 0;
 $isFolder = false;
 $selectedVisibilityType = ObjectVisibility::TYPE_ORGANIZATION;
 $disabledVisibilityTypes = array();
@@ -53,6 +60,9 @@ $visibilityHelpText = 'Les portees cercle et role suivent automatiquement le hol
 $contextHolonId = $isEditing ? (int)$document->get('IDholon') : $holonId;
 $parentFolderTitle = '';
 $embeddableDocumentsPayload = array();
+$organization = new Organization();
+$organizationLoaded = $organizationId > 0 && $organization->load($organizationId);
+$nextcloudDocumentsAvailable = $organizationLoaded && $organization->hasNextcloudDocumentStorage();
 
 if (!$isEditing && $parentDocumentId > 0) {
     $parentDocument = new Document();
@@ -90,6 +100,12 @@ if ($isEditing) {
     $documentTitle = trim((string)$document->get('title'));
     $documentDescription = trim((string)$document->get('description'));
     $documentContent = $document->getEffectiveEditingContentForUser($currentUserId);
+    $documentType = $document->getDocumentType();
+    $documentExternalUrl = $document->getExternalUrl();
+    $documentOpenInNewWindow = $document->shouldOpenExternalLinkInNewWindow();
+    $documentStoredFilename = $document->getStoredFileDownloadName();
+    $documentStoredFileMime = $document->getStoredFileMimeType();
+    $documentStoredFileSize = $document->getStoredFileSize();
     $isFolder = $document->isFolder();
     $parentDocumentId = (int)$document->get('IDdocument_parent');
     if ($parentDocumentId > 0) {
@@ -114,7 +130,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     foreach ($visibleDocuments as $visibleDocument) {
         if (
             !($visibleDocument instanceof \dbObject\Document)
-            || $visibleDocument->isFolder()
+            || !$visibleDocument->canBeEmbedded()
             || (int)$visibleDocument->getId() <= 0
             || ($documentId > 0 && (int)$visibleDocument->getId() === $documentId)
         ) {
@@ -159,7 +175,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     <?php if (!$canUseForm): ?>
         <div class="omo-empty-state"><?= $escape($formErrorMessage !== '' ? $formErrorMessage : ($isEditing ? 'Impossible de modifier ce document.' : 'Impossible de creer un document dans ce contexte.')) ?></div>
     <?php else: ?>
-        <form class="omo-document-editor__form" action="/omo/api/documents/save.php" method="post" data-omo-document-create-form>
+        <form class="omo-document-editor__form" action="/omo/api/documents/save.php" method="post" enctype="multipart/form-data" data-omo-document-create-form>
             <input type="hidden" name="oid" value="<?= $escape($organizationId) ?>">
             <input type="hidden" name="cid" value="<?= $escape($holonId) ?>">
             <input type="hidden" name="parent_document_id" value="<?= (int)$parentDocumentId ?>">
@@ -171,16 +187,20 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                 <label class="omo-document-editor__field">
                     <span class="omo-document-editor__label">Type</span>
                     <select
-                        name="is_folder"
+                        name="document_type"
                         class="generic-form-control"
                         data-omo-document-type
                         <?= $isEditing ? 'disabled' : '' ?>
                     >
-                        <option value="0" <?= !$isFolder ? ' selected' : '' ?>>Document</option>
-                        <option value="1" <?= $isFolder ? ' selected' : '' ?>>Dossier</option>
+                        <option value="<?= $escape(Document::TYPE_HTML) ?>" <?= $documentType === Document::TYPE_HTML ? ' selected' : '' ?>>Document HTML</option>
+                        <option value="<?= $escape(Document::TYPE_EXTERNAL_LINK) ?>" <?= $documentType === Document::TYPE_EXTERNAL_LINK ? ' selected' : '' ?>>Lien externe</option>
+                        <?php if ($nextcloudDocumentsAvailable || $documentType === Document::TYPE_UPLOADED_FILE): ?>
+                            <option value="<?= $escape(Document::TYPE_UPLOADED_FILE) ?>" <?= $documentType === Document::TYPE_UPLOADED_FILE ? ' selected' : '' ?>>Fichier uploade</option>
+                        <?php endif; ?>
+                        <option value="<?= $escape(Document::TYPE_FOLDER) ?>" <?= $documentType === Document::TYPE_FOLDER ? ' selected' : '' ?>>Dossier</option>
                     </select>
                     <?php if ($isEditing): ?>
-                        <input type="hidden" name="is_folder" value="<?= $isFolder ? '1' : '0' ?>">
+                        <input type="hidden" name="document_type" value="<?= $escape($documentType) ?>">
                     <?php endif; ?>
                 </label>
 
@@ -232,12 +252,76 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                     <span class="omo-document-editor__hint"><?= $escape($visibilityHelpText) ?></span>
                 </label>
 
-                <div class="omo-document-editor__content-section" data-omo-document-content-section<?= $isFolder ? ' hidden' : '' ?>>
+                <div class="omo-document-editor__content-section" data-omo-document-content-section<?= $documentType !== Document::TYPE_HTML ? ' hidden' : '' ?>>
                     <div class="omo-document-editor__field" data-omo-document-content-field>
                         <span class="omo-document-editor__label">Contenu HTML</span>
                         <div class="omo-document-editor__html" data-omo-document-editor-html></div>
                         <div class="omo-document-editor__dictation-status" data-omo-document-dictation-status hidden></div>
                     </div>
+                </div>
+
+                <div class="omo-document-editor__external-section" data-omo-document-external-section<?= $documentType !== Document::TYPE_EXTERNAL_LINK ? ' hidden' : '' ?>>
+                    <label class="omo-document-editor__field">
+                        <span class="omo-document-editor__label">URL externe</span>
+                        <input
+                            type="url"
+                            name="external_url"
+                            class="generic-form-control"
+                            maxlength="2000"
+                            autocomplete="off"
+                            placeholder="https://example.com/"
+                            data-omo-document-external-url
+                            value="<?= $escape($documentExternalUrl) ?>"
+                        >
+                        <span class="omo-document-editor__hint">Utilisez une adresse complete en http:// ou https://.</span>
+                    </label>
+
+                    <label class="omo-document-editor__checkbox">
+                        <input
+                            type="checkbox"
+                            name="open_in_new_window"
+                            value="1"
+                            <?= $documentOpenInNewWindow ? ' checked' : '' ?>
+                        >
+                        <span>Ouvrir dans une autre fenetre</span>
+                    </label>
+                </div>
+
+                <div class="omo-document-editor__upload-section" data-omo-document-upload-section<?= $documentType !== Document::TYPE_UPLOADED_FILE ? ' hidden' : '' ?>>
+                    <label class="omo-document-editor__field">
+                        <span class="omo-document-editor__label">Fichier</span>
+                        <input
+                            type="file"
+                            name="uploaded_file"
+                            class="generic-form-control"
+                            data-omo-document-upload-input
+                        >
+                        <span class="omo-document-editor__hint">
+                            <?php if ($nextcloudDocumentsAvailable): ?>
+                                Le fichier sera envoye vers le stockage Nextcloud configure pour cette organisation.
+                            <?php else: ?>
+                                Aucun stockage Nextcloud n est configure pour cette organisation.
+                            <?php endif; ?>
+                        </span>
+                    </label>
+
+                    <?php if ($documentType === Document::TYPE_UPLOADED_FILE && $documentStoredFilename !== ''): ?>
+                        <div class="omo-document-editor__upload-current">
+                            <div class="omo-document-editor__upload-current-title">Fichier actuel</div>
+                            <div class="omo-document-editor__upload-current-name"><?= $escape($documentStoredFilename) ?></div>
+                            <div class="omo-document-editor__upload-current-meta">
+                                <?= $escape($documentStoredFileMime) ?>
+                                <?php if ($documentStoredFileSize > 0): ?>
+                                    · <?= $escape(number_format($documentStoredFileSize, 0, '.', '\'')) ?> octets
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <label class="omo-document-editor__checkbox">
+                            <input type="checkbox" name="remove_uploaded_file" value="1">
+                            <span>Supprimer le fichier distant</span>
+                        </label>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -280,6 +364,48 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 .omo-document-editor__hint {
     color: var(--color-text-light);
     font-size: 0.82rem;
+}
+
+.omo-document-editor__checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--color-text);
+    font-size: 0.92rem;
+}
+
+.omo-document-editor__checkbox input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+}
+
+.omo-document-editor__upload-current {
+    display: grid;
+    gap: 4px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-alt);
+}
+
+.omo-document-editor__upload-current-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--color-text-light);
+}
+
+.omo-document-editor__upload-current-name {
+    font-weight: 600;
+    color: var(--color-text);
+    word-break: break-word;
+}
+
+.omo-document-editor__upload-current-meta {
+    font-size: 0.84rem;
+    color: var(--color-text-light);
 }
 
 .omo-document-editor__status {
@@ -398,6 +524,11 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     const cancelButton = form.querySelector('[data-omo-document-editor-cancel]');
     const typeSelect = form.querySelector('[data-omo-document-type]');
     const contentSection = form.querySelector('[data-omo-document-content-section]');
+    const externalSection = form.querySelector('[data-omo-document-external-section]');
+    const uploadSection = form.querySelector('[data-omo-document-upload-section]');
+    const externalUrlField = form.querySelector('[data-omo-document-external-url]');
+    const uploadInput = form.querySelector('[data-omo-document-upload-input]');
+    const uploadHasExistingFile = <?= $documentType === Document::TYPE_UPLOADED_FILE && $documentStoredFilename !== '' ? 'true' : 'false' ?>;
     const aiToolsEnabled = <?= $canUseAiTools ? 'true' : 'false' ?>;
     const initialHtmlValue = <?= json_encode($documentContent, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     const embeddableDocuments = <?= json_encode($embeddableDocumentsPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
@@ -422,22 +553,52 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     let editLockHeartbeatTimer = null;
     let draftSyncTimer = null;
 
-    function isFolderTypeSelected() {
+    function getSelectedDocumentType() {
         if (!typeSelect) {
-            return false;
+            return 'html';
         }
 
-        return String(typeSelect.value || '0') === '1';
+        return String(typeSelect.value || 'html').trim().toLowerCase() || 'html';
+    }
+
+    function isFolderTypeSelected() {
+        return getSelectedDocumentType() === 'folder';
+    }
+
+    function isHtmlTypeSelected() {
+        return getSelectedDocumentType() === 'html';
+    }
+
+    function isUploadedFileTypeSelected() {
+        return getSelectedDocumentType() === 'uploaded_file';
     }
 
     function syncTypeUi() {
-        const isFolder = isFolderTypeSelected();
+        const isHtmlDocument = isHtmlTypeSelected();
+        const isExternalLink = getSelectedDocumentType() === 'external_link';
+        const isUploadedFile = isUploadedFileTypeSelected();
 
         if (contentSection) {
-            contentSection.hidden = isFolder;
+            contentSection.hidden = !isHtmlDocument;
         }
 
-        if (isFolder) {
+        if (externalSection) {
+            externalSection.hidden = !isExternalLink;
+        }
+
+        if (externalUrlField) {
+            externalUrlField.required = isExternalLink;
+        }
+
+        if (uploadSection) {
+            uploadSection.hidden = !isUploadedFile;
+        }
+
+        if (uploadInput) {
+            uploadInput.required = isUploadedFile && !uploadHasExistingFile;
+        }
+
+        if (!isHtmlDocument) {
             cleanupDictation({ discard: true });
             cleanupRewrite({ keepStatus: true });
             cleanupSummarize({ keepStatus: true });
@@ -809,7 +970,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     }
 
     function getCurrentDraftContent() {
-        if (isFolderTypeSelected()) {
+        if (!isHtmlTypeSelected()) {
             return '';
         }
 
@@ -867,7 +1028,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     }
 
     function scheduleDraftSync(delayMs) {
-        if (!hasEditLockSupport() || editLockLost || isFolderTypeSelected()) {
+        if (!hasEditLockSupport() || editLockLost || !isHtmlTypeSelected()) {
             return;
         }
 
@@ -1269,7 +1430,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     function mountHtmlField() {
         if (
             !htmlHost
-            || isFolderTypeSelected()
+            || !isHtmlTypeSelected()
             || htmlField
             || !window.omoSimpleHtmlField
             || typeof window.omoSimpleHtmlField.mount !== 'function'
@@ -1412,7 +1573,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     }
 
     function ensureHtmlFieldMounted() {
-        if (isFolderTypeSelected()) {
+        if (!isHtmlTypeSelected()) {
             destroyHtmlField();
             return;
         }
@@ -1794,7 +1955,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         }
 
         const formData = new FormData(form);
-        formData.set('content', isFolderTypeSelected()
+        formData.set('content', !isHtmlTypeSelected()
             ? ''
             : (htmlField && typeof htmlField.getValue === 'function'
                 ? String(htmlField.getValue() || '')

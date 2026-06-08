@@ -20,8 +20,11 @@ if ($organizationId <= 0 || $currentUserId <= 0 || !commonCurrentUserHasOrganiza
 $title = trim((string)($_POST['title'] ?? ''));
 $description = trim((string)($_POST['description'] ?? ''));
 $content = (string)($_POST['content'] ?? '');
+$documentType = trim((string)($_POST['document_type'] ?? ''));
+$externalUrl = trim((string)($_POST['external_url'] ?? ''));
+$openInNewWindow = !empty($_POST['open_in_new_window']);
 $visibilityType = trim((string)($_POST['visibility_type'] ?? 'organization'));
-$isFolder = !empty($_POST['is_folder']);
+$isFolder = !empty($_POST['is_folder']) || trim(mb_strtolower($documentType, 'UTF-8')) === \dbObject\Document::TYPE_FOLDER;
 $parentDocumentId = isset($_POST['parent_document_id']) ? (int)$_POST['parent_document_id'] : 0;
 
 if ($title === '') {
@@ -38,6 +41,11 @@ $payload = array(
     'title' => $title,
     'description' => $description,
     'content' => $content,
+    'document_type' => $documentType,
+    'external_url' => $externalUrl,
+    'open_in_new_window' => $openInNewWindow,
+    'uploaded_file' => $_FILES['uploaded_file'] ?? null,
+    'remove_uploaded_file' => !empty($_POST['remove_uploaded_file']),
     'visibility_type' => $visibilityType,
     'is_folder' => $isFolder,
     'parent_document_id' => $parentDocumentId,
