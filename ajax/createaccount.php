@@ -18,19 +18,23 @@
 	}
 	// Contrôle que le username est unique
 	
+	// Charge d'abord le compte cible
+	$user=new \dbObject\user();
+	$user->load($_POST["id"]); // Chargement sur la base de l'id
+
 	// Contrôle que le mot de passe soit valide
-	if (strlen($_POST["password"])<8) {
-		echo '{"status":false, "message":"Le mot de passe doit faire au moins 8 caractères","script":"$(\'#password\').focus()"} ';
+	$passwordCheck = commonEvaluatePasswordComplexity(
+		(string)($_POST["password"] ?? ""),
+		(string)$user->get("email")
+	);
+	if (empty($passwordCheck["valid"])) {
+		echo '{"status":false, "message":"Le mot de passe doit faire au moins 12 caracteres et contenir une minuscule, une majuscule, un chiffre et un caractere special.","script":"$(\'#password\').focus()"} ';
 		exit;		
 	}
 	if ($_POST["password"]!=$_POST["password2"]) {
 		echo '{"status":false, "message":"Les deux mots de passe ne correspondent pas.","script":"$(\'#password\').focus()"} ';
 		exit;		
 	}
-	
-	// Si tout est bon, crée le compte
-	$user=new \dbObject\user();
-	$user->load($_POST["id"]); // Chargement sur la base de l'id
 	
 	// Contrôle que le code envoyé correspond, sinon empêche l'exécution de la suite du script
 	if ($user->get("code")!=$_POST["code"]) {

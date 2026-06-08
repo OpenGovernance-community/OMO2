@@ -110,6 +110,90 @@
 			}
 		}
 
+		public function loadCardDavVisibleForViewer($viewerUserId)
+		{
+			$viewerUserId = (int)$viewerUserId;
+
+			$this->exchangeArray([]);
+
+			if ($viewerUserId <= 0) {
+				return;
+			}
+
+			$query = "
+				SELECT DISTINCT uo.id
+				FROM user_organization viewer_uo
+				INNER JOIN user_organization uo
+					ON uo.IDorganization = viewer_uo.IDorganization
+				INNER JOIN `user` u
+					ON u.id = uo.IDuser
+				INNER JOIN organization o
+					ON o.id = uo.IDorganization
+				WHERE viewer_uo.IDuser = :viewer_user_id
+				  AND viewer_uo.active = 1
+				  AND uo.active = 1
+				ORDER BY
+				  COALESCE(NULLIF(u.lastname, ''), NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,
+				  COALESCE(NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,
+				  o.name ASC,
+				  uo.id ASC
+			";
+
+			$rows = \dbObject\DbObject::fetchAll($query, [
+				'viewer_user_id' => $viewerUserId,
+			]);
+
+			if ($rows === false) {
+				return;
+			}
+
+			foreach ($rows as $row) {
+				$item = new UserOrganization();
+				$item->setId((int)$row['id']);
+				$this[] = $item;
+			}
+		}
+
+		public function loadCardDavSharedForViewerAndUser($viewerUserId, $targetUserId)
+		{
+			$viewerUserId = (int)$viewerUserId;
+			$targetUserId = (int)$targetUserId;
+
+			$this->exchangeArray([]);
+
+			if ($viewerUserId <= 0 || $targetUserId <= 0) {
+				return;
+			}
+
+			$query = "
+				SELECT DISTINCT uo.id
+				FROM user_organization viewer_uo
+				INNER JOIN user_organization uo
+					ON uo.IDorganization = viewer_uo.IDorganization
+				INNER JOIN organization o
+					ON o.id = uo.IDorganization
+				WHERE viewer_uo.IDuser = :viewer_user_id
+				  AND viewer_uo.active = 1
+				  AND uo.IDuser = :target_user_id
+				  AND uo.active = 1
+				ORDER BY o.name ASC, uo.id ASC
+			";
+
+			$rows = \dbObject\DbObject::fetchAll($query, [
+				'viewer_user_id' => $viewerUserId,
+				'target_user_id' => $targetUserId,
+			]);
+
+			if ($rows === false) {
+				return;
+			}
+
+			foreach ($rows as $row) {
+				$item = new UserOrganization();
+				$item->setId((int)$row['id']);
+				$this[] = $item;
+			}
+    }
 		public function buildUpcomingCelebrations($organizationId, $limit = 6, $referenceDate = null, array $labels = array())
 		{
 			require_once dirname(__DIR__, 2) . '/common/user_profile_ui.php';
