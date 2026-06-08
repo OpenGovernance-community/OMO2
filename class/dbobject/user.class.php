@@ -145,29 +145,12 @@
 				return null;
 			}
 
-			$conditions = array(
-				"LOWER(u.email) = :identity",
-				"LOWER(COALESCE(NULLIF(uo.email, ''), '')) = :identity",
-			);
-
-			$caseBranches = array(
-				"WHEN LOWER(u.email) = :identity THEN 0",
-				"WHEN LOWER(COALESCE(NULLIF(uo.email, ''), '')) = :identity THEN 1",
-			);
-
 			$query = "
-				SELECT DISTINCT
-					u.id,
-					CASE
-						" . implode("\n\t\t\t\t\t\t", $caseBranches) . "
-						ELSE 99
-					END AS match_rank
+				SELECT
+					u.id
 				FROM `user` u
-				LEFT JOIN user_organization uo
-					ON uo.IDuser = u.id
-					AND uo.active = 1
-				WHERE " . implode("\n\t\t\t\t\tOR ", $conditions) . "
-				ORDER BY match_rank ASC, u.id ASC
+				WHERE LOWER(u.email) = :identity
+				ORDER BY u.id ASC
 			";
 
 			$rows = self::fetchAll($query, array(
@@ -178,23 +161,12 @@
 				return null;
 			}
 
-			$bestRank = null;
 			$matchedUserIds = array();
 
 			foreach ($rows as $row) {
 				$userId = (int)($row['id'] ?? 0);
-				$matchRank = (int)($row['match_rank'] ?? 99);
-
 				if ($userId <= 0) {
 					continue;
-				}
-
-				if ($bestRank === null) {
-					$bestRank = $matchRank;
-				}
-
-				if ($matchRank !== $bestRank) {
-					break;
 				}
 
 				$matchedUserIds[$userId] = $userId;
@@ -211,6 +183,50 @@
 
 			$user = new self();
 			return $user->load($userId) ? $user : null;
+		}
+
+		public static function debugLoginIdentifierMatchSummary($identifier)
+		{
+			$normalizedIdentifier = trim(mb_strtolower((string)$identifier, 'UTF-8'));
+			$summary = array(
+				'normalizedIdentifier' => $normalizedIdentifier,
+				'globalEmailMatches' => 0,
+				'organizationEmailMatches' => 0,
+				'resolvedUserIds' => array(),
+			);
+
+			if ($normalizedIdentifier === '') {
+				return $summary;
+			}
+
+			$rows = self::fetchAll(
+				"SELECT
+					u.id,
+					1 AS global_email_match
+				FROM `user` u
+				WHERE LOWER(u.email) = :identity
+				ORDER BY u.id ASC",
+				array(
+					'identity' => $normalizedIdentifier,
+				)
+			);
+
+			if (!is_array($rows)) {
+				return $summary;
+			}
+
+			$userIds = array();
+			foreach ($rows as $row) {
+				$userId = (int)($row['id'] ?? 0);
+				if ($userId > 0) {
+					$userIds[$userId] = $userId;
+				}
+
+				$summary['globalEmailMatches'] += (int)($row['global_email_match'] ?? 0);
+			}
+
+			$summary['resolvedUserIds'] = array_values($userIds);
+			return $summary;
 		}
 
 		protected static function loadActiveOrganizationIdsForUser($userId)
