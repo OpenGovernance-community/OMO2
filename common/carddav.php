@@ -1089,6 +1089,7 @@ if (!function_exists('commonCardDavBuildContactResource')) {
         $etag = '"' . sha1($vcard) . '"';
 
         return array(
+            'type' => 'card',
             'href' => $href,
             'cardName' => $cardName,
             'etag' => $etag,
