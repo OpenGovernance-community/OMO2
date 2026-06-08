@@ -81,6 +81,13 @@ if (!function_exists('commonCardDavCanExposeAuthDebug')) {
     }
 }
 
+if (!function_exists('commonCardDavCanExposeDebug')) {
+    function commonCardDavCanExposeDebug()
+    {
+        return commonCardDavCanExposeAuthDebug();
+    }
+}
+
 if (!function_exists('commonCardDavSetAuthDebugValue')) {
     function commonCardDavSetAuthDebugValue($key, $value)
     {
@@ -102,6 +109,27 @@ if (!function_exists('commonCardDavSetAuthDebugValue')) {
     }
 }
 
+if (!function_exists('commonCardDavSetDebugValue')) {
+    function commonCardDavSetDebugValue($key, $value)
+    {
+        if (!commonCardDavCanExposeDebug()) {
+            return;
+        }
+
+        $key = trim((string)$key);
+        if ($key === '') {
+            return;
+        }
+
+        if (!isset($GLOBALS['commonCardDavDebug']) || !is_array($GLOBALS['commonCardDavDebug'])) {
+            $GLOBALS['commonCardDavDebug'] = array();
+        }
+
+        $sanitizedValue = preg_replace('/[^A-Za-z0-9._:,\-]/', '_', trim((string)$value));
+        $GLOBALS['commonCardDavDebug'][$key] = $sanitizedValue === '' ? 'empty' : $sanitizedValue;
+    }
+}
+
 if (!function_exists('commonCardDavSendAuthDebugHeaders')) {
     function commonCardDavSendAuthDebugHeaders()
     {
@@ -115,6 +143,24 @@ if (!function_exists('commonCardDavSendAuthDebugHeaders')) {
 
         foreach ($debugValues as $key => $value) {
             $headerName = 'X-CardDAV-Auth-' . str_replace(' ', '-', ucwords(str_replace(array('-', '_'), ' ', (string)$key)));
+            header($headerName . ': ' . (string)$value);
+        }
+    }
+}
+
+if (!function_exists('commonCardDavSendDebugHeaders')) {
+    function commonCardDavSendDebugHeaders()
+    {
+        if (!commonCardDavCanExposeDebug()) {
+            return;
+        }
+
+        $debugValues = isset($GLOBALS['commonCardDavDebug']) && is_array($GLOBALS['commonCardDavDebug'])
+            ? $GLOBALS['commonCardDavDebug']
+            : array();
+
+        foreach ($debugValues as $key => $value) {
+            $headerName = 'X-CardDAV-Debug-' . str_replace(' ', '-', ucwords(str_replace(array('-', '_'), ' ', (string)$key)));
             header($headerName . ': ' . (string)$value);
         }
     }
@@ -393,6 +439,7 @@ if (!function_exists('commonCardDavSendStatusText')) {
         header('Content-Type: text/plain; charset=UTF-8');
         header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         header('Pragma: no-cache');
+        commonCardDavSendDebugHeaders();
         echo (string)$message;
         exit;
     }
@@ -407,6 +454,7 @@ if (!function_exists('commonCardDavSendOptions')) {
         header('MS-Author-Via: DAV');
         header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         header('Pragma: no-cache');
+        commonCardDavSendDebugHeaders();
         http_response_code(204);
         exit;
     }
@@ -703,6 +751,7 @@ if (!function_exists('commonCardDavSendMultistatus')) {
         header('Content-Type: application/xml; charset=UTF-8');
         header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         header('Pragma: no-cache');
+        commonCardDavSendDebugHeaders();
         echo $document->saveXML();
         exit;
     }
@@ -1061,15 +1110,24 @@ if (!function_exists('commonCardDavLoadContactsForViewer')) {
 
         $viewerUserId = (int)$viewerUserId;
         if ($viewerUserId <= 0) {
+            commonCardDavSetDebugValue('viewer_user_id', '0');
+            commonCardDavSetDebugValue('contacts_returned', '0');
             return array();
         }
 
         if (array_key_exists($viewerUserId, $cache)) {
+            commonCardDavSetDebugValue('viewer_user_id', (string)$viewerUserId);
+            commonCardDavSetDebugValue('contacts_cache', 'hit');
+            commonCardDavSetDebugValue('contacts_returned', (string)count($cache[$viewerUserId]));
             return $cache[$viewerUserId];
         }
 
+        commonCardDavSetDebugValue('viewer_user_id', (string)$viewerUserId);
+        commonCardDavSetDebugValue('contacts_cache', 'miss');
+
         $memberships = new ArrayUserOrganization();
         $memberships->loadCardDavVisibleForViewer($viewerUserId);
+        commonCardDavSetDebugValue('shared_membership_rows', (string)count($memberships));
 
         $groupedMemberships = array();
         $userIds = array();
@@ -1092,8 +1150,12 @@ if (!function_exists('commonCardDavLoadContactsForViewer')) {
             $groupedMemberships[$userId][] = $membership;
         }
 
+        commonCardDavSetDebugValue('distinct_candidate_users', (string)count($userIds));
+
         if (count($userIds) === 0) {
             $cache[$viewerUserId] = array();
+            commonCardDavSetDebugValue('viewable_users', '0');
+            commonCardDavSetDebugValue('contacts_returned', '0');
             return $cache[$viewerUserId];
         }
 
@@ -1115,6 +1177,7 @@ if (!function_exists('commonCardDavLoadContactsForViewer')) {
         ));
 
         $contactMap = array();
+        $viewableUserCount = 0;
         foreach ($users as $user) {
             if (!$user instanceof User) {
                 continue;
@@ -1129,9 +1192,12 @@ if (!function_exists('commonCardDavLoadContactsForViewer')) {
                 continue;
             }
 
+            $viewableUserCount++;
             $contact = commonCardDavBuildContactResource($viewerUserId, $user, $groupedMemberships[$userId]);
             $contactMap[$contact['cardName']] = $contact;
         }
+
+        commonCardDavSetDebugValue('viewable_users', (string)$viewableUserCount);
 
         uasort($contactMap, static function (array $left, array $right) {
             $leftLabel = (string)($left['payload']['displayName'] ?? '');
@@ -1149,6 +1215,7 @@ if (!function_exists('commonCardDavLoadContactsForViewer')) {
         });
 
         $cache[$viewerUserId] = $contactMap;
+        commonCardDavSetDebugValue('contacts_returned', (string)count($contactMap));
         return $cache[$viewerUserId];
     }
 }
@@ -1161,6 +1228,43 @@ if (!function_exists('commonCardDavBuildSyncToken')) {
             $seed .= '|' . (string)($contact['cardName'] ?? '') . ':' . (string)($contact['etag'] ?? '');
         }
         return commonCardDavBuildHref('sync/' . sha1($seed));
+    }
+}
+
+if (!function_exists('commonCardDavBuildContactsDebugSummary')) {
+    function commonCardDavBuildContactsDebugSummary(User $viewer, $sampleSize = 10)
+    {
+        $sampleSize = max(1, (int)$sampleSize);
+        $contactMap = commonCardDavLoadContactsForViewer((int)$viewer->getId());
+        $debugValues = isset($GLOBALS['commonCardDavDebug']) && is_array($GLOBALS['commonCardDavDebug'])
+            ? $GLOBALS['commonCardDavDebug']
+            : array();
+
+        $contacts = array();
+        $count = 0;
+        foreach ($contactMap as $cardName => $contact) {
+            $contacts[] = array(
+                'cardName' => (string)$cardName,
+                'href' => (string)($contact['href'] ?? ''),
+                'displayName' => (string)($contact['payload']['displayName'] ?? ''),
+                'emails' => array_values((array)($contact['payload']['emails'] ?? array())),
+                'organizations' => array_values((array)($contact['payload']['organizationNames'] ?? array())),
+            );
+
+            $count++;
+            if ($count >= $sampleSize) {
+                break;
+            }
+        }
+
+        return array(
+            'viewerUserId' => (int)$viewer->getId(),
+            'viewerEmail' => trim((string)$viewer->get('email')),
+            'routePath' => commonCardDavGetRoutePath(),
+            'debug' => $debugValues,
+            'contactCount' => count($contactMap),
+            'sampleContacts' => $contacts,
+        );
     }
 }
 
@@ -1486,6 +1590,10 @@ if (!function_exists('commonCardDavHandlePropfind')) {
             ? (array)$request['properties']
             : array();
         $contactMap = commonCardDavLoadContactsForViewer((int)$viewer->getId());
+        commonCardDavSetDebugValue('request_method', 'PROPFIND');
+        commonCardDavSetDebugValue('resource_type', (string)($resource['type'] ?? 'unknown'));
+        commonCardDavSetDebugValue('request_depth', (string)commonCardDavNormalizeDepth());
+        commonCardDavSetDebugValue('requested_property_count', (string)count($requestedProperties));
         $context = array('contactMap' => $contactMap);
 
         $responses = array(
@@ -1603,6 +1711,9 @@ if (!function_exists('commonCardDavHandleAddressbookQueryReport')) {
         $requestedProperties = (array)$reportRequest['properties'];
         $context = array('contactMap' => $contactMap);
         $responses = array();
+        commonCardDavSetDebugValue('request_method', 'REPORT-query');
+        commonCardDavSetDebugValue('resource_type', (string)($resource['type'] ?? 'unknown'));
+        commonCardDavSetDebugValue('requested_property_count', (string)count($requestedProperties));
 
         foreach ($contactMap as $contact) {
             if (!commonCardDavMatchesQueryFilter($contact, $document)) {
@@ -1612,6 +1723,7 @@ if (!function_exists('commonCardDavHandleAddressbookQueryReport')) {
             $responses[] = commonCardDavBuildResponseForResource($contact, $viewer, $requestedProperties, false, $context);
         }
 
+        commonCardDavSetDebugValue('report_matches', (string)count($responses));
         commonCardDavSendMultistatus($responses, false);
     }
 }
@@ -1646,6 +1758,9 @@ if (!function_exists('commonCardDavHandleAddressbookMultigetReport')) {
         $requestedProperties = (array)commonCardDavBuildReportPropRequest($document)['properties'];
         $context = array('contactMap' => $contactMap);
         $responses = array();
+        commonCardDavSetDebugValue('request_method', 'REPORT-multiget');
+        commonCardDavSetDebugValue('resource_type', (string)($resource['type'] ?? 'unknown'));
+        commonCardDavSetDebugValue('requested_property_count', (string)count($requestedProperties));
 
         foreach (commonCardDavExtractRequestedHrefs($document) as $href) {
             if (!isset($hrefIndex[$href])) {
@@ -1659,6 +1774,7 @@ if (!function_exists('commonCardDavHandleAddressbookMultigetReport')) {
             $responses[] = commonCardDavBuildResponseForResource($hrefIndex[$href], $viewer, $requestedProperties, false, $context);
         }
 
+        commonCardDavSetDebugValue('report_matches', (string)count($responses));
         commonCardDavSendMultistatus($responses, false);
     }
 }
@@ -1674,10 +1790,14 @@ if (!function_exists('commonCardDavHandleSyncCollectionReport')) {
 
         $context = array('contactMap' => $contactMap);
         $responses = array();
+        commonCardDavSetDebugValue('request_method', 'REPORT-sync');
+        commonCardDavSetDebugValue('resource_type', (string)($resource['type'] ?? 'unknown'));
+        commonCardDavSetDebugValue('requested_property_count', (string)count($requestedProperties));
         foreach ($contactMap as $contact) {
             $responses[] = commonCardDavBuildResponseForResource($contact, $viewer, $requestedProperties, false, $context);
         }
 
+        commonCardDavSetDebugValue('report_matches', (string)count($responses));
         commonCardDavSendMultistatus(
             $responses,
             false,
@@ -1736,7 +1856,10 @@ if (!function_exists('commonCardDavSendCard')) {
             header('Last-Modified: ' . gmdate(DATE_RFC7231, DateTimeImmutable::createFromInterface($resource['lastModified'])->getTimestamp()));
         }
 
+        commonCardDavSetDebugValue('request_method', $sendBody ? 'GET' : 'HEAD');
+        commonCardDavSetDebugValue('resource_type', (string)($resource['type'] ?? 'card'));
         http_response_code(200);
+        commonCardDavSendDebugHeaders();
         if ($sendBody) {
             echo (string)($resource['vcard'] ?? '');
         }

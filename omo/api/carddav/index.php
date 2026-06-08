@@ -10,6 +10,19 @@ if (!$viewer) {
     commonCardDavSendUnauthorized();
 }
 
+$debugMode = trim((string)($_GET['debug'] ?? ''));
+if ($debugMode === 'contacts' && commonCardDavCanExposeDebug()) {
+    http_response_code(200);
+    header('Content-Type: application/json; charset=UTF-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+    echo json_encode(
+        commonCardDavBuildContactsDebugSummary($viewer),
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT
+    );
+    exit;
+}
+
 $resource = commonCardDavResolveRouteResource($viewer, commonCardDavGetRoutePath());
 if (!is_array($resource) || empty($resource['type'])) {
     commonCardDavSendStatusText(404, 'CardDAV resource not found.');
@@ -62,4 +75,3 @@ if ($method === 'GET') {
     echo 'Principal: ' . commonCardDavBuildHref('principals/' . (int)$viewer->getId() . '/') . "\n";
     echo 'Addressbook: ' . commonCardDavBuildHref('addressbooks/' . (int)$viewer->getId() . '/members/') . "\n";
 }
-
