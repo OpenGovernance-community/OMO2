@@ -20,3 +20,4 @@
 - When several connected apps share the same UI rendering pattern and no existing shared primitive fits, place the shared CSS, browser scripts, and PHP rendering helpers under `/common/<module>/` instead of duplicating them inside each app.
 - For decision-related shared UI between apps, prefer `/common/choice/` for shared CSS, JS, and rendering helpers so `/omo/` and `/choice/` can evolve or be removed independently.
 - Keep data access helpers out of those shared UI folders: SQL and shared data logic must stay centralized in the related `dbObject` classes.
+- Maintain `NOUVEAUTES.md` at the repository root. After each meaningful functional or technical change, add or update a short entry so the file stays current.

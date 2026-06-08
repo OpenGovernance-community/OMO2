@@ -12,6 +12,7 @@
 
     let stylesInjected = false;
     let dependencyPromise = null;
+    let cursorMarkerCounter = 0;
 
     function escapeHtml(value) {
         return String(value || '')
@@ -36,6 +37,24 @@
             + '.omo-simple-html-field .note-editing-area .note-editable{min-height:140px;padding:14px;line-height:1.55;color:var(--color-text,#1f2937);}'
             + '.omo-simple-html-field .note-placeholder{color:var(--color-text-light,#6b7280);}'
             + '.omo-simple-html-field .note-statusbar{display:none;}'
+            + '.omo-simple-html-field .note-editable h1,.omo-simple-html-render h1{margin:0 0 .6em;font-size:1.8rem;line-height:1.15;font-weight:850;color:var(--color-text,#1f2937);}'
+            + '.omo-simple-html-field .note-editable h2,.omo-simple-html-render h2{margin:0 0 .55em;font-size:1.45rem;line-height:1.2;font-weight:800;color:var(--color-text,#1f2937);}'
+            + '.omo-simple-html-field .note-editable h3,.omo-simple-html-render h3{margin:0 0 .5em;font-size:1.16rem;line-height:1.25;font-weight:750;color:var(--color-text,#1f2937);}'
+            + '.omo-simple-html-field .note-editable blockquote,.omo-simple-html-render blockquote{margin:0 0 1em;padding:.2em 0 .2em 1em;border-left:3px solid color-mix(in srgb,var(--color-primary,#2563eb) 38%,var(--color-border,#d1d5db));color:var(--color-text-light,#6b7280);font-style:italic;}'
+            + '.omo-simple-html-field .note-editable table,.omo-simple-html-render table{width:100%;max-width:100%;margin:0 0 1em;border-collapse:collapse;border-spacing:0;font-size:.97em;}'
+            + '.omo-simple-html-field .note-editable th,.omo-simple-html-field .note-editable td,.omo-simple-html-render th,.omo-simple-html-render td{padding:9px 12px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,var(--color-text,#1f2937) 12%);text-align:left;vertical-align:top;}'
+            + '.omo-simple-html-field .note-editable th,.omo-simple-html-render th{background:color-mix(in srgb,var(--color-surface-alt,#f8fafc) 82%,var(--color-text,#1f2937) 18%);font-weight:700;}'
+            + '.omo-simple-html-field .note-editable tbody tr:nth-child(even),.omo-simple-html-render tbody tr:nth-child(even){background:color-mix(in srgb,var(--color-surface,#fff) 92%,var(--color-surface-alt,#f8fafc) 8%);}'
+            + '.omo-simple-html-field .note-editable .omo-document-embed,.omo-simple-html-render .omo-document-embed{display:block;margin:0 0 1em;padding:12px 14px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,#2563eb 12%);border-radius:14px;background:color-mix(in srgb,var(--color-surface,#fff) 90%,#eff6ff 10%);box-shadow:0 10px 24px -20px rgba(37,99,235,.45);cursor:pointer;white-space:normal;line-height:1.5;}'
+            + '.omo-simple-html-field .note-editable .omo-document-embed:last-child,.omo-simple-html-render .omo-document-embed:last-child{margin-bottom:0;}'
+            + '.omo-simple-html-field .note-editable .omo-document-embed__label,.omo-simple-html-render .omo-document-embed__label{display:block;margin:0 0 6px;color:var(--color-text-light,#6b7280);font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}'
+            + '.omo-simple-html-field .note-editable .omo-document-embed__title,.omo-simple-html-render .omo-document-embed__title{display:block;margin:0;color:var(--color-text,#1f2937);font-weight:700;}'
+            + '.omo-simple-html-field .note-editable .omo-document-embed__description,.omo-simple-html-render .omo-document-embed__description{display:block;margin:6px 0 0;color:var(--color-text-light,#6b7280);font-size:13px;line-height:1.5;}'
+            + '.omo-simple-html-field .note-editable .omo-document-embed > p:first-child,.omo-simple-html-render .omo-document-embed > p:first-child{margin:0 0 6px;color:var(--color-text-light,#6b7280);font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}'
+            + '.omo-simple-html-field .note-editable .omo-document-embed > p:nth-child(2),.omo-simple-html-render .omo-document-embed > p:nth-child(2){margin:0;color:var(--color-text,#1f2937);font-weight:700;}'
+            + '.omo-simple-html-field .note-editable .omo-document-embed > p:nth-child(3),.omo-simple-html-render .omo-document-embed > p:nth-child(3){margin:6px 0 0;color:var(--color-text-light,#6b7280);font-size:13px;line-height:1.5;}'
+            + '.omo-simple-html-field .note-editable .omo-document-embed > strong:first-child,.omo-simple-html-render .omo-document-embed > strong:first-child{display:block;margin:0 0 6px;color:var(--color-text-light,#6b7280);font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}'
+            + '.omo-simple-html-field .note-editable .omo-document-embed > strong:nth-of-type(2),.omo-simple-html-render .omo-document-embed > strong:nth-of-type(2){display:block;margin:0;color:var(--color-text,#1f2937);font-weight:700;}'
             + '.omo-simple-html-field__meta{font-size:12px;line-height:1.45;color:var(--color-text-light,#6b7280);}'
             + '.omo-simple-html-render{line-height:1.55;word-break:break-word;white-space:normal;}'
             + '.omo-simple-html-render > :first-child{margin-top:0;}'
@@ -147,6 +166,33 @@
         parentNode.appendChild(childNode);
     }
 
+    function getElementAttributeValue(element, attributeName) {
+        if (!element || element.nodeType !== 1 || !element.hasAttribute(attributeName)) {
+            return '';
+        }
+
+        return String(element.getAttribute(attributeName) || '');
+    }
+
+    function getDocumentEmbedElementId(element) {
+        const rawValue = getElementAttributeValue(element, 'data-omo-document-id').trim();
+        const parsed = Number.parseInt(rawValue, 10);
+        return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+    }
+
+    function isTemporaryCursorMarkerElement(element) {
+        return !!(element && element.nodeType === 1 && getElementAttributeValue(element, 'data-omo-cursor-marker').trim() !== '');
+    }
+
+    function isAllowedDocumentEmbedElement(element) {
+        if (!element || element.nodeType !== 1) {
+            return false;
+        }
+
+        return getElementAttributeValue(element, 'data-omo-embed-type').trim() === 'document'
+            && getDocumentEmbedElementId(element) > 0;
+    }
+
     function buildSanitizedNode(sourceNode, ownerDocument) {
         if (!sourceNode) {
             return ownerDocument.createDocumentFragment();
@@ -169,9 +215,47 @@
             return ownerDocument.createDocumentFragment();
         }
 
+        if (isTemporaryCursorMarkerElement(sourceNode)) {
+            return ownerDocument.createDocumentFragment();
+        }
+
+        if (isAllowedDocumentEmbedElement(sourceNode)) {
+            const embedNode = ownerDocument.createElement('span');
+            embedNode.setAttribute('class', 'omo-document-embed');
+            embedNode.setAttribute('contenteditable', 'false');
+            embedNode.setAttribute('data-omo-embed-type', 'document');
+            embedNode.setAttribute('data-omo-document-id', String(getDocumentEmbedElementId(sourceNode)));
+
+            const title = getElementAttributeValue(sourceNode, 'data-omo-document-title').trim();
+            if (title) {
+                embedNode.setAttribute('data-omo-document-title', title);
+            }
+
+            const description = getElementAttributeValue(sourceNode, 'data-omo-document-description').trim();
+            if (description) {
+                embedNode.setAttribute('data-omo-document-description', description);
+            }
+
+            Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
+                appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument));
+            });
+
+            return embedNode;
+        }
+
         const normalizedTagName = sourceTagName === 'DIV' ? 'P' : sourceTagName;
         const allowedTags = {
             P: true,
+            H1: true,
+            H2: true,
+            H3: true,
+            BLOCKQUOTE: true,
+            TABLE: true,
+            THEAD: true,
+            TBODY: true,
+            TR: true,
+            TH: true,
+            TD: true,
             BR: true,
             STRONG: true,
             B: true,
@@ -219,6 +303,19 @@
         }
 
         const elementNode = ownerDocument.createElement(normalizedTagName.toLowerCase());
+        if (normalizedTagName === 'TH' || normalizedTagName === 'TD') {
+            const colspan = Number.parseInt(sourceNode.getAttribute('colspan') || '', 10);
+            const rowspan = Number.parseInt(sourceNode.getAttribute('rowspan') || '', 10);
+
+            if (Number.isInteger(colspan) && colspan > 1) {
+                elementNode.setAttribute('colspan', String(colspan));
+            }
+
+            if (Number.isInteger(rowspan) && rowspan > 1) {
+                elementNode.setAttribute('rowspan', String(rowspan));
+            }
+        }
+
         Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
             appendSanitizedChild(elementNode, buildSanitizedNode(childNode, ownerDocument));
         });
@@ -303,7 +400,9 @@
             placeholder: 'Saisissez du contenu HTML simple.',
             disabled: false,
             height: 180,
-            customButtons: []
+            customButtons: [],
+            onChange: null,
+            onDoubleClick: null
         }, options || {});
 
         const safeInitialValue = sanitizeHtml(state.value);
@@ -312,6 +411,7 @@
         let destroyed = false;
         let initialized = false;
         let $editor = null;
+        let nativeSavedRange = null;
         const toolbarButtons = {};
         const toolbarButtonState = {};
         const customToolbarButtons = Array.isArray(state.customButtons)
@@ -332,7 +432,7 @@
         container.innerHTML = ''
             + '<div class="omo-simple-html-field">'
             + '  <textarea id="' + escapeHtml(textareaId) + '"></textarea>'
-            + '  <div class="omo-simple-html-field__meta">Edition HTML via Summernote: gras, italic, listes et liens.</div>'
+            + '  <div class="omo-simple-html-field__meta">Edition HTML via Summernote: titres H1 a H3, citation, gras, italic, listes, liens et tableaux simples.</div>'
             + '</div>';
 
         const textarea = container.querySelector('textarea');
@@ -359,6 +459,56 @@
             return container.querySelector('.note-editable');
         }
 
+        function cloneRange(range) {
+            if (!range || typeof range.cloneRange !== 'function') {
+                return null;
+            }
+
+            try {
+                return range.cloneRange();
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function captureCurrentSelectionRange() {
+            const selection = window.getSelection ? window.getSelection() : null;
+            const editable = getEditableElement();
+
+            if (!selection || selection.rangeCount === 0 || !editable) {
+                return null;
+            }
+
+            const range = selection.getRangeAt(0);
+            const commonNode = range.commonAncestorContainer;
+            if (commonNode !== editable && !editable.contains(commonNode)) {
+                return null;
+            }
+
+            return cloneRange(range);
+        }
+
+        function restoreNativeSavedRange() {
+            const editable = getEditableElement();
+            const selection = window.getSelection ? window.getSelection() : null;
+            if (!editable || !selection || !nativeSavedRange) {
+                return false;
+            }
+
+            try {
+                const commonNode = nativeSavedRange.commonAncestorContainer;
+                if (commonNode !== editable && !editable.contains(commonNode)) {
+                    return false;
+                }
+
+                selection.removeAllRanges();
+                selection.addRange(nativeSavedRange);
+                return true;
+            } catch (error) {
+                return false;
+            }
+        }
+
         function restoreRange() {
             if (initialized && $editor) {
                 try {
@@ -367,6 +517,8 @@
                     // ignore selection restore issues
                 }
             }
+
+            restoreNativeSavedRange();
         }
 
         function getSelectionRange() {
@@ -398,6 +550,13 @@
                 $editor.summernote('code', state.value);
                 saveRange();
             }
+
+            if (typeof state.onChange === 'function') {
+                try {
+                    state.onChange(getValue(), container.__omoSimpleHtmlField || null);
+                } catch (error) {
+                }
+            }
         }
 
         function saveRange() {
@@ -406,6 +565,30 @@
                     $editor.summernote('saveRange');
                 } catch (error) {
                     // ignore selection save issues
+                }
+            }
+
+            nativeSavedRange = captureCurrentSelectionRange();
+        }
+
+        function emitChange() {
+            if (typeof state.onChange === 'function') {
+                try {
+                    state.onChange(getValue(), container.__omoSimpleHtmlField || null);
+                } catch (error) {
+                }
+            }
+        }
+
+        function emitDoubleClick(targetNode, event) {
+            if (typeof state.onDoubleClick === 'function') {
+                try {
+                    state.onDoubleClick({
+                        target: targetNode || null,
+                        event: event || null,
+                        api: container.__omoSimpleHtmlField || null
+                    });
+                } catch (error) {
                 }
             }
         }
@@ -517,6 +700,206 @@
             return insertHtmlAtCursor(buildTextInsertionHtml(text));
         }
 
+        function replaceNodeWithHtml(targetNode, nextHtml) {
+            const safeHtml = sanitizeHtml(nextHtml);
+            const editable = getEditableElement();
+
+            if (!safeHtml || !editable || !targetNode || !editable.contains(targetNode)) {
+                return insertHtmlAtCursor(safeHtml);
+            }
+
+            const temp = document.createElement('div');
+            temp.innerHTML = safeHtml;
+
+            const nodes = Array.from(temp.childNodes || []);
+            if (!nodes.length) {
+                return '';
+            }
+
+            const fragment = document.createDocumentFragment();
+            let lastInsertedNode = null;
+            nodes.forEach(function (node) {
+                lastInsertedNode = node;
+                fragment.appendChild(node);
+            });
+
+            targetNode.replaceWith(fragment);
+
+            if (window.getSelection && lastInsertedNode) {
+                const selection = window.getSelection();
+                const range = document.createRange();
+                range.setStartAfter(lastInsertedNode);
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+
+            saveRange();
+
+            if (initialized && $editor) {
+                setRawValue($editor.summernote('code'));
+            } else {
+                setRawValue(editable.innerHTML);
+            }
+
+            emitChange();
+            return safeHtml;
+        }
+
+        function buildCursorMarkerNode() {
+            const markerNode = document.createElement('span');
+            cursorMarkerCounter += 1;
+            markerNode.setAttribute('data-omo-cursor-marker', 'omo-cursor-marker-' + String(cursorMarkerCounter));
+            markerNode.setAttribute('contenteditable', 'false');
+            markerNode.className = 'omo-html-cursor-marker';
+            return markerNode;
+        }
+
+        function createTemporaryCursorMarker() {
+            const editable = getEditableElement();
+            if (!editable) {
+                return null;
+            }
+
+            restoreRange();
+            let range = getSelectionRange();
+            if (!range) {
+                range = document.createRange();
+                range.selectNodeContents(editable);
+                range.collapse(false);
+            } else {
+                range = cloneRange(range) || range;
+            }
+
+            const markerNode = buildCursorMarkerNode();
+
+            try {
+                range.deleteContents();
+                range.insertNode(markerNode);
+            } catch (error) {
+                editable.appendChild(markerNode);
+            }
+
+            if (window.getSelection) {
+                const selection = window.getSelection();
+                const caretRange = document.createRange();
+                caretRange.setStartAfter(markerNode);
+                caretRange.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(caretRange);
+            }
+
+            saveRange();
+            return markerNode;
+        }
+
+        function replaceMarkerWithHtml(markerNode, nextHtml) {
+            const editable = getEditableElement();
+            const safeHtml = sanitizeHtml(nextHtml);
+
+            if (!editable || !markerNode || !editable.contains(markerNode)) {
+                return insertHtmlAtCursor(safeHtml);
+            }
+
+            const temp = document.createElement('div');
+            temp.innerHTML = safeHtml;
+            const nodes = Array.from(temp.childNodes || []);
+            const fragment = document.createDocumentFragment();
+            let lastInsertedNode = null;
+
+            nodes.forEach(function (node) {
+                lastInsertedNode = node;
+                fragment.appendChild(node);
+            });
+
+            markerNode.replaceWith(fragment);
+
+            if (window.getSelection) {
+                const selection = window.getSelection();
+                const range = document.createRange();
+                if (lastInsertedNode) {
+                    range.setStartAfter(lastInsertedNode);
+                } else {
+                    range.selectNodeContents(editable);
+                    range.collapse(false);
+                }
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+
+            saveRange();
+
+            if (initialized && $editor) {
+                setRawValue($editor.summernote('code'));
+            } else {
+                setRawValue(editable.innerHTML);
+            }
+
+            emitChange();
+            return safeHtml;
+        }
+
+        function removeTemporaryMarker(markerNode) {
+            const editable = getEditableElement();
+            if (!editable || !markerNode || !editable.contains(markerNode)) {
+                return false;
+            }
+
+            if (window.getSelection) {
+                const selection = window.getSelection();
+                const range = document.createRange();
+                range.setStartBefore(markerNode);
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+
+            markerNode.remove();
+            saveRange();
+            return true;
+        }
+
+        function removeNode(targetNode) {
+            const editable = getEditableElement();
+            if (!editable || !targetNode || !editable.contains(targetNode)) {
+                return false;
+            }
+
+            const nextSibling = targetNode.nextSibling;
+            const previousSibling = targetNode.previousSibling;
+            targetNode.remove();
+
+            if (window.getSelection) {
+                const selection = window.getSelection();
+                const range = document.createRange();
+
+                if (nextSibling && editable.contains(nextSibling)) {
+                    range.setStartBefore(nextSibling);
+                } else if (previousSibling && editable.contains(previousSibling)) {
+                    range.setStartAfter(previousSibling);
+                } else {
+                    range.selectNodeContents(editable);
+                    range.collapse(false);
+                }
+
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+
+            saveRange();
+
+            if (initialized && $editor) {
+                setRawValue($editor.summernote('code'));
+            } else {
+                setRawValue(editable.innerHTML);
+            }
+
+            emitChange();
+            return true;
+        }
+
         function getSelectedText() {
             const range = getSelectionRange();
             if (!range) {
@@ -568,9 +951,10 @@
                 }
 
                 const toolbar = [
+                    ['style', ['style']],
                     ['font', ['bold', 'italic', 'underline', 'clear']],
                     ['para', ['ul', 'ol']],
-                    ['insert', ['link']]
+                    ['insert', ['link', 'table']]
                 ];
                 const toolbarGroups = {};
                 const buttonsConfig = {};
@@ -606,6 +990,13 @@
                         }).render();
 
                         toolbarButtons[buttonConfig.name] = $button;
+                        if ($button && $button.length) {
+                            const buttonNode = $button.get(0);
+                            if (buttonNode) {
+                                buttonNode.addEventListener('mousedown', saveRange);
+                                buttonNode.addEventListener('pointerdown', saveRange);
+                            }
+                        }
                         $button.attr('data-omo-toolbar-button-name', buttonConfig.name);
                         applyToolbarButtonState(buttonConfig.name, {
                             label: buttonConfig.label,
@@ -630,12 +1021,20 @@
                     height: Number(state.height || 180),
                     dialogsInBody: true,
                     disableDragAndDrop: true,
+                    styleTags: [
+                        'p',
+                        { title: 'Titre 1', tag: 'h1', className: '', value: 'h1' },
+                        { title: 'Titre 2', tag: 'h2', className: '', value: 'h2' },
+                        { title: 'Titre 3', tag: 'h3', className: '', value: 'h3' },
+                        { title: 'Citation', tag: 'blockquote', className: '', value: 'blockquote' }
+                    ],
                     toolbar: toolbar,
                     buttons: buttonsConfig,
                     callbacks: {
                         onChange: function (contents) {
                             setRawValue(contents);
                             saveRange();
+                            emitChange();
                         },
                         onFocus: function () {
                             saveRange();
@@ -659,6 +1058,14 @@
 
                 initialized = true;
                 saveRange();
+
+                const editable = getEditableElement();
+                if (editable) {
+                    editable.addEventListener('dblclick', function (event) {
+                        saveRange();
+                        emitDoubleClick(event.target || null, event);
+                    });
+                }
             })
             .catch(function (error) {
                 if (destroyed) {
@@ -682,11 +1089,17 @@
             saveRange: saveRange,
             restoreRange: restoreRange,
             insertHtmlAtCursor: insertHtmlAtCursor,
+            createTemporaryCursorMarker: createTemporaryCursorMarker,
+            replaceMarkerWithHtml: replaceMarkerWithHtml,
+            removeTemporaryMarker: removeTemporaryMarker,
             insertTextAtCursor: insertTextAtCursor,
+            replaceNodeWithHtml: replaceNodeWithHtml,
+            removeNode: removeNode,
             replaceSelectionWithText: replaceSelectionWithText,
             getSelectedText: getSelectedText,
             hasSelection: hasSelection,
             getPlainText: getPlainText,
+            getEditableElement: getEditableElement,
             setToolbarButtonState: applyToolbarButtonState,
             destroy: destroy
         };

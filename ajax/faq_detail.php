@@ -112,6 +112,7 @@ if (\dbObject\FAQ::hasViewcountColumn()) {
 				<?= (string)$faq->get("detail") ?>
 			</div>
 		<?php endif; ?>
+		<?php faqPopupRenderVoteBlock($faq); ?>
 		<?php if (\dbObject\FAQ::hasViewcountColumn()): ?>
 			<div style="margin-top: 16px; color: #64748b; font-size: 14px;">
 				Consultations: <?= (int)$faq->get("viewcount") ?>

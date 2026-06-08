@@ -56,7 +56,7 @@ $renderMenuItem = static function (array $item) use ($escape) {
 <div <?= implode(PHP_EOL . '     ', $attributeParts) ?>>
 
     <span class="icon">
-        <img src="<?= $escape($item['icon'] ?? '') ?>" class="icon-img">
+        <img src="<?= $escape($item['icon'] ?? '') ?>" class="icon-img black-icon">
     </span>
     <span class="label"><?= $escape($item['label'] ?? '') ?></span>
 </div>
@@ -84,7 +84,7 @@ $renderMenuItem = static function (array $item) use ($escape) {
         data-omo-open-app-picker="1"
         title="<?= $escape(t('sidebar.applications.manage_title', [], $lang, $sourceLang)) ?>"
     >
-        <span class="icon"><img src="images/tools/plus.png" class="icon-img" style='width:20px;height:20px; margin:2px'></span>
+        <span class="icon"><img src="images/tools/plus.png" class="icon-img black-icon" style='width:20px;height:20px; margin:2px'></span>
         <span class="label"><?= $escape(t('sidebar.applications.manage_label', [], $lang, $sourceLang)) ?></span>
     </div>
 <?php endif; ?>

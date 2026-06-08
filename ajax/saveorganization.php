@@ -48,6 +48,8 @@ if ($isEditMode) {
     $organization->set("id", $organizationId);
 }
 
+$organization->updateNextcloudDocumentsConfig($_POST, $isEditMode);
+
 $name = trim((string)$organization->get("name"));
 if ($name === "") {
     echo json_encode(array(
