@@ -282,7 +282,7 @@ function autoInstallGetFieldDefinitions()
                     'label' => 'Securite SMTP',
                     'type' => 'text',
                     'required' => false,
-                    'placeholder' => 'SSL, tls ou vide',
+                    'placeholder' => 'STARTTLS/TLS, SSL ou vide',
                 ],
                 [
                     'key' => 'MAIL_AUTH',
@@ -647,28 +647,7 @@ function autoInstallGetSeedPath()
 
 function autoInstallEvaluateAdminPassword($password, $email = '')
 {
-    $password = (string)$password;
-    $email = trim(strtolower((string)$email));
-    $emailLocalPart = '';
-
-    if ($email !== '' && strpos($email, '@') !== false) {
-        $emailParts = explode('@', $email, 2);
-        $emailLocalPart = trim((string)($emailParts[0] ?? ''));
-    }
-
-    $rules = [
-        'length' => strlen($password) >= 12,
-        'lower' => preg_match('/[a-z]/', $password) === 1,
-        'upper' => preg_match('/[A-Z]/', $password) === 1,
-        'digit' => preg_match('/\d/', $password) === 1,
-        'special' => preg_match('/[^a-zA-Z0-9]/', $password) === 1,
-        'email' => $emailLocalPart === '' || strlen($emailLocalPart) < 4 || stripos($password, $emailLocalPart) === false,
-    ];
-
-    return [
-        'rules' => $rules,
-        'valid' => $rules['length'] && $rules['lower'] && $rules['upper'] && $rules['digit'] && $rules['special'],
-    ];
+    return commonEvaluatePasswordComplexity($password, $email, commonGetPasswordPolicyMinLength());
 }
 
 function autoInstallGetMailVerificationSessionKey()

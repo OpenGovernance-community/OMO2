@@ -208,7 +208,8 @@
 
 .auth-email-row input::placeholder,
 .auth-challenge input::placeholder,
-.auth-code-box input::placeholder {
+.auth-code-box input::placeholder,
+.auth-password-box input::placeholder {
     color: color-mix(in srgb, var(--auth-page-muted) 88%, transparent);
     opacity: 1;
 }
@@ -237,6 +238,25 @@
     text-decoration: underline;
 }
 
+.auth-link-btn.is-disabled,
+.auth-link-btn[aria-disabled="true"] {
+    opacity: 0.55;
+    pointer-events: none;
+    text-decoration: none;
+}
+
+.auth-login-links {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: -6px;
+}
+
+.auth-login-switch {
+    align-self: flex-start;
+}
+
 .auth-remember {
     display: flex;
     align-items: center;
@@ -261,7 +281,8 @@
 }
 
 .auth-challenge input,
-.auth-code-box input {
+.auth-code-box input,
+.auth-password-box input {
     border: 1px solid var(--auth-border);
     border-radius: 10px;
     padding: 12px 14px;
@@ -302,6 +323,17 @@
 .auth-code-box p {
     margin: 0;
     color: var(--auth-panel-text);
+}
+
+.auth-password-box {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.auth-reset-link {
+    align-self: flex-start;
+    margin-top: -2px;
 }
 
 .auth-code-box input {
@@ -407,6 +439,7 @@
     border-radius: 999px;
     text-decoration: none;
     font-weight: 600;
+    cursor: pointer;
 }
 
 .auth-state-btn--primary {
@@ -417,6 +450,44 @@
 .auth-state-btn--secondary {
     background: var(--auth-input-muted-bg);
     color: var(--auth-page-text);
+}
+
+.auth-state-btn--accent {
+    background: var(--auth-primary, var(--color-primary, #004663));
+    color: #fff;
+}
+
+.auth-state-form {
+    display: grid;
+    gap: 14px;
+    margin-top: 24px;
+}
+
+.auth-state-field {
+    display: grid;
+    gap: 8px;
+}
+
+.auth-state-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--auth-panel-text);
+}
+
+.auth-state-input {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid var(--auth-border);
+    border-radius: 12px;
+    padding: 13px 14px;
+    font-size: 16px;
+    background: var(--auth-input-bg);
+    color: var(--auth-page-text);
+}
+
+.auth-state-input::placeholder {
+    color: color-mix(in srgb, var(--auth-page-muted) 88%, transparent);
+    opacity: 1;
 }
 
 .auth-org-list {

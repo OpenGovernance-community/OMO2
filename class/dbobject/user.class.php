@@ -138,6 +138,97 @@
 			return \dbObject\Invitation::findPendingForUser((int)$this->getId());
 		}
 
+		public static function findByLoginIdentifier($identifier)
+		{
+			$normalizedIdentifier = trim(mb_strtolower((string)$identifier, 'UTF-8'));
+			if ($normalizedIdentifier === '') {
+				return null;
+			}
+
+			$query = "
+				SELECT
+					u.id
+				FROM `user` u
+				WHERE LOWER(u.email) = :identity
+				ORDER BY u.id ASC
+			";
+
+			$rows = self::fetchAll($query, array(
+				'identity' => $normalizedIdentifier,
+			));
+
+			if (!is_array($rows) || count($rows) === 0) {
+				return null;
+			}
+
+			$matchedUserIds = array();
+
+			foreach ($rows as $row) {
+				$userId = (int)($row['id'] ?? 0);
+				if ($userId <= 0) {
+					continue;
+				}
+
+				$matchedUserIds[$userId] = $userId;
+			}
+
+			if (count($matchedUserIds) !== 1) {
+				return null;
+			}
+
+			$userId = (int)reset($matchedUserIds);
+			if ($userId <= 0) {
+				return null;
+			}
+
+			$user = new self();
+			return $user->load($userId) ? $user : null;
+		}
+
+		public static function debugLoginIdentifierMatchSummary($identifier)
+		{
+			$normalizedIdentifier = trim(mb_strtolower((string)$identifier, 'UTF-8'));
+			$summary = array(
+				'normalizedIdentifier' => $normalizedIdentifier,
+				'globalEmailMatches' => 0,
+				'organizationEmailMatches' => 0,
+				'resolvedUserIds' => array(),
+			);
+
+			if ($normalizedIdentifier === '') {
+				return $summary;
+			}
+
+			$rows = self::fetchAll(
+				"SELECT
+					u.id,
+					1 AS global_email_match
+				FROM `user` u
+				WHERE LOWER(u.email) = :identity
+				ORDER BY u.id ASC",
+				array(
+					'identity' => $normalizedIdentifier,
+				)
+			);
+
+			if (!is_array($rows)) {
+				return $summary;
+			}
+
+			$userIds = array();
+			foreach ($rows as $row) {
+				$userId = (int)($row['id'] ?? 0);
+				if ($userId > 0) {
+					$userIds[$userId] = $userId;
+				}
+
+				$summary['globalEmailMatches'] += (int)($row['global_email_match'] ?? 0);
+			}
+
+			$summary['resolvedUserIds'] = array_values($userIds);
+			return $summary;
+		}
+
 		protected static function loadActiveOrganizationIdsForUser($userId)
 		{
 			static $cache = array();
@@ -259,6 +350,13 @@
 			]) ? $membership : false;
 
 			return $cache[$cacheKey] ?: null;
+		}
+
+		public function getSharedOrganizationMembershipsForViewer($viewerUserId)
+		{
+			$memberships = new \dbObject\ArrayUserOrganization();
+			$memberships->loadCardDavSharedForViewerAndUser((int)$viewerUserId, (int)$this->getId());
+			return $memberships;
 		}
 
 		public function getProfilePhotoUrl()
