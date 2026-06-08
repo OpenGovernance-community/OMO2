@@ -21,6 +21,7 @@ if (
     || $currentUserId <= 0
     || !$document->load($documentId)
     || $document->isFolder()
+    || !$document->supportsHtmlContent()
     || !$document->canEditInOrganizationContext((int)$document->get('IDorganization'))
 ) {
     http_response_code(403);

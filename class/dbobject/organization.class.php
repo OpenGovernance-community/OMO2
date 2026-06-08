@@ -18,6 +18,7 @@
 				[['name'], 'required'],								// Champs obligatoires
 				[['id'], 'integer'],								// Nombres entiers
 				[['name','shortname','domain'], 'string'],	// Chaines de caractere
+				[['parameters'], 'parameters'],
 				[['shortname'], 'unique'],
 				[['logo','banner'], 'sizedimage'],	
 				[['color'],'color'],				// Images
@@ -59,6 +60,382 @@
 				'banner' => [[960, 540],[480, 270]],
 				'color' => 10,
 			];
+		}
+
+		public function getParametersArray(): array
+		{
+			$parameters = json_decode((string)$this->get('parameters'), true);
+			return is_array($parameters) ? $parameters : array();
+		}
+
+		public function setParametersArray(array $parameters): void
+		{
+			$this->set('parameters', $parameters);
+		}
+
+		public function getNextcloudDocumentsConfig(): array
+		{
+			$parameters = $this->getParametersArray();
+			$config = isset($parameters['nextcloudDocuments']) && is_array($parameters['nextcloudDocuments'])
+				? $parameters['nextcloudDocuments']
+				: array();
+
+			$baseUrl = trim((string)($config['baseUrl'] ?? ''));
+			$username = trim((string)($config['username'] ?? ''));
+			$appPassword = trim((string)($config['appPassword'] ?? ''));
+			$folder = trim((string)($config['folder'] ?? ''));
+			$folder = trim(str_replace('\\', '/', $folder), '/');
+
+			return array(
+				'baseUrl' => rtrim($baseUrl, '/'),
+				'username' => $username,
+				'appPassword' => $appPassword,
+				'folder' => $folder,
+			);
+		}
+
+		public function hasNextcloudDocumentStorage(): bool
+		{
+			$config = $this->getNextcloudDocumentsConfig();
+			return $config['baseUrl'] !== ''
+				&& $config['username'] !== ''
+				&& $config['appPassword'] !== '';
+		}
+
+		public function updateNextcloudDocumentsConfig(array $values, bool $preserveExistingPassword = true): void
+		{
+			$parameters = $this->getParametersArray();
+			$currentConfig = $this->getNextcloudDocumentsConfig();
+			$clearConfig = !empty($values['nextcloud_clear_config']);
+
+			if ($clearConfig) {
+				unset($parameters['nextcloudDocuments']);
+				$this->setParametersArray($parameters);
+				return;
+			}
+
+			$baseUrl = trim((string)($values['nextcloud_base_url'] ?? ''));
+			$username = trim((string)($values['nextcloud_username'] ?? ''));
+			$appPassword = trim((string)($values['nextcloud_app_password'] ?? ''));
+			$folder = trim((string)($values['nextcloud_folder'] ?? ''));
+			$folder = trim(str_replace('\\', '/', $folder), '/');
+
+			if ($preserveExistingPassword && $appPassword === '' && $currentConfig['appPassword'] !== '') {
+				$appPassword = $currentConfig['appPassword'];
+			}
+
+			if ($baseUrl === '' && $username === '' && $appPassword === '' && $folder === '') {
+				unset($parameters['nextcloudDocuments']);
+				$this->setParametersArray($parameters);
+				return;
+			}
+
+			$parameters['nextcloudDocuments'] = array(
+				'baseUrl' => rtrim($baseUrl, '/'),
+				'username' => $username,
+				'appPassword' => $appPassword,
+				'folder' => $folder,
+			);
+			$this->setParametersArray($parameters);
+		}
+
+		protected function buildNextcloudDocumentsDavUrl(string $relativePath = ''): string
+		{
+			$config = $this->getNextcloudDocumentsConfig();
+			if (!$this->hasNextcloudDocumentStorage()) {
+				return '';
+			}
+
+			$segments = array_filter(
+				array_map('trim', explode('/', trim($relativePath, '/'))),
+				static function ($segment) {
+					return $segment !== '';
+				}
+			);
+
+			$encodedPath = '';
+			if (count($segments) > 0) {
+				$encodedPath = '/' . implode('/', array_map('rawurlencode', $segments));
+			}
+
+			return $config['baseUrl']
+				. '/remote.php/dav/files/'
+				. rawurlencode($config['username'])
+				. $encodedPath;
+		}
+
+		protected function executeNextcloudDocumentsRequest(string $method, string $relativePath = '', array $options = array()): array
+		{
+			if (!$this->hasNextcloudDocumentStorage()) {
+				return array(
+					'status' => false,
+					'text' => 'Le stockage Nextcloud n est pas configure pour cette organisation.',
+				);
+			}
+
+			if (!function_exists('curl_init')) {
+				return array(
+					'status' => false,
+					'text' => 'cURL est requis pour communiquer avec Nextcloud.',
+				);
+			}
+
+			$config = $this->getNextcloudDocumentsConfig();
+			$url = $this->buildNextcloudDocumentsDavUrl($relativePath);
+			if ($url === '') {
+				return array(
+					'status' => false,
+					'text' => 'URL Nextcloud invalide.',
+				);
+			}
+
+			$headers = array();
+			if (!empty($options['headers']) && is_array($options['headers'])) {
+				$headers = array_values($options['headers']);
+			}
+
+			$curl = curl_init($url);
+			$body = array_key_exists('body', $options) ? $options['body'] : null;
+			$timeout = isset($options['timeout']) ? max(5, (int)$options['timeout']) : 120;
+
+			curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+			curl_setopt($curl, CURLOPT_FOLLOWLOCATION, false);
+			curl_setopt($curl, CURLOPT_CUSTOMREQUEST, strtoupper($method));
+			curl_setopt($curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+			curl_setopt($curl, CURLOPT_USERPWD, $config['username'] . ':' . $config['appPassword']);
+			curl_setopt($curl, CURLOPT_TIMEOUT, $timeout);
+			curl_setopt($curl, CURLOPT_HEADER, true);
+			curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
+
+			if ($body !== null) {
+				curl_setopt($curl, CURLOPT_POSTFIELDS, $body);
+			}
+
+			$response = curl_exec($curl);
+			$curlError = curl_error($curl);
+			$httpCode = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+			$headerSize = (int)curl_getinfo($curl, CURLINFO_HEADER_SIZE);
+			curl_close($curl);
+
+			if ($response === false) {
+				return array(
+					'status' => false,
+					'text' => $curlError !== '' ? $curlError : 'La requete Nextcloud a echoue.',
+				);
+			}
+
+			$rawHeaders = substr((string)$response, 0, max(0, $headerSize));
+			$responseBody = substr((string)$response, max(0, $headerSize));
+			$headerMap = array();
+			foreach (preg_split("/\r\n|\n|\r/", $rawHeaders) as $headerLine) {
+				$separatorPosition = strpos($headerLine, ':');
+				if ($separatorPosition === false) {
+					continue;
+				}
+
+				$headerName = strtolower(trim(substr($headerLine, 0, $separatorPosition)));
+				$headerValue = trim(substr($headerLine, $separatorPosition + 1));
+				if ($headerName !== '') {
+					$headerMap[$headerName] = $headerValue;
+				}
+			}
+
+			return array(
+				'status' => $httpCode >= 200 && $httpCode < 300,
+				'httpCode' => $httpCode,
+				'headers' => $headerMap,
+				'body' => $responseBody,
+				'url' => $url,
+				'text' => ($httpCode >= 200 && $httpCode < 300) ? 'OK' : ('Requete Nextcloud refusee (' . $httpCode . ').'),
+			);
+		}
+
+		protected function ensureNextcloudDocumentsFolder(string $relativeFolder): array
+		{
+			$normalizedFolder = trim(str_replace('\\', '/', $relativeFolder), '/');
+			if ($normalizedFolder === '') {
+				return array('status' => true);
+			}
+
+			$segments = array_filter(explode('/', $normalizedFolder), static function ($segment) {
+				return trim((string)$segment) !== '';
+			});
+			$currentPath = '';
+
+			foreach ($segments as $segment) {
+				$currentPath = $currentPath === '' ? $segment : ($currentPath . '/' . $segment);
+				$result = $this->executeNextcloudDocumentsRequest('MKCOL', $currentPath, array(
+					'timeout' => 30,
+				));
+
+				if (!is_array($result)) {
+					return array(
+						'status' => false,
+						'text' => 'Impossible de creer le dossier distant.',
+					);
+				}
+
+				$httpCode = (int)($result['httpCode'] ?? 0);
+				if (!in_array($httpCode, array(201, 405), true) && empty($result['status'])) {
+					return array(
+						'status' => false,
+						'text' => trim((string)($result['text'] ?? 'Impossible de preparer le dossier distant.')),
+					);
+				}
+			}
+
+			return array('status' => true);
+		}
+
+		protected function buildNextcloudDocumentStorageRoot(): string
+		{
+			$config = $this->getNextcloudDocumentsConfig();
+			$parts = array();
+			if ($config['folder'] !== '') {
+				$parts[] = trim($config['folder'], '/');
+			}
+
+			$parts[] = 'omo-documents';
+
+			return implode('/', $parts);
+		}
+
+		protected static function sanitizeNextcloudRemoteFilename(string $filename): string
+		{
+			$filename = basename(trim($filename));
+			$filename = preg_replace('/[^\pL\pN._-]+/u', '-', $filename);
+			$filename = trim((string)$filename, '.-');
+			return $filename !== '' ? $filename : ('document-' . date('Ymd-His'));
+		}
+
+		public function uploadDocumentFileToNextcloud(int $documentId, array $uploadedFile): array
+		{
+			$documentId = (int)$documentId;
+			if ($documentId <= 0) {
+				return array(
+					'status' => false,
+					'text' => 'Document invalide pour le stockage distant.',
+				);
+			}
+
+			$tmpName = trim((string)($uploadedFile['tmp_name'] ?? ''));
+			$errorCode = (int)($uploadedFile['error'] ?? UPLOAD_ERR_NO_FILE);
+			if ($errorCode !== UPLOAD_ERR_OK || $tmpName === '' || !is_file($tmpName)) {
+				return array(
+					'status' => false,
+					'text' => 'Aucun fichier valide n a ete televerse.',
+				);
+			}
+
+			$originalName = trim((string)($uploadedFile['name'] ?? ''));
+			$mimeType = trim((string)($uploadedFile['type'] ?? ''));
+			if ($mimeType === '' && function_exists('mime_content_type')) {
+				$mimeType = trim((string)mime_content_type($tmpName));
+			}
+			if ($mimeType === '') {
+				$mimeType = 'application/octet-stream';
+			}
+
+			$fileSize = isset($uploadedFile['size']) ? (int)$uploadedFile['size'] : (int)filesize($tmpName);
+			$remoteFilename = self::sanitizeNextcloudRemoteFilename($originalName !== '' ? $originalName : ('document-' . $documentId));
+			$storageDirectory = $this->buildNextcloudDocumentStorageRoot() . '/' . $documentId;
+
+			$directoryResult = $this->ensureNextcloudDocumentsFolder($storageDirectory);
+			if (!is_array($directoryResult) || empty($directoryResult['status'])) {
+				return $directoryResult;
+			}
+
+			$fileContent = file_get_contents($tmpName);
+			if ($fileContent === false) {
+				return array(
+					'status' => false,
+					'text' => 'Impossible de lire le fichier a envoyer.',
+				);
+			}
+
+			$relativePath = $storageDirectory . '/' . $remoteFilename;
+			$uploadResult = $this->executeNextcloudDocumentsRequest('PUT', $relativePath, array(
+				'body' => $fileContent,
+				'timeout' => 300,
+				'headers' => array(
+					'Content-Type: ' . $mimeType,
+					'Content-Length: ' . strlen($fileContent),
+				),
+			));
+
+			if (!is_array($uploadResult) || empty($uploadResult['status'])) {
+				return array(
+					'status' => false,
+					'text' => trim((string)($uploadResult['text'] ?? 'Impossible d envoyer le fichier vers Nextcloud.')),
+				);
+			}
+
+			return array(
+				'status' => true,
+				'relativePath' => $relativePath,
+				'originalName' => $originalName !== '' ? $originalName : $remoteFilename,
+				'mimeType' => $mimeType,
+				'size' => max(0, $fileSize),
+			);
+		}
+
+		public function deleteDocumentFileFromNextcloud(string $relativePath): array
+		{
+			$normalizedPath = trim(str_replace('\\', '/', $relativePath), '/');
+			if ($normalizedPath === '') {
+				return array('status' => true);
+			}
+
+			$result = $this->executeNextcloudDocumentsRequest('DELETE', $normalizedPath, array(
+				'timeout' => 120,
+			));
+			if (!is_array($result)) {
+				return array(
+					'status' => false,
+					'text' => 'Impossible de supprimer le fichier distant.',
+				);
+			}
+
+			$httpCode = (int)($result['httpCode'] ?? 0);
+			if (in_array($httpCode, array(204, 404), true) || !empty($result['status'])) {
+				return array('status' => true);
+			}
+
+			return array(
+				'status' => false,
+				'text' => trim((string)($result['text'] ?? 'Impossible de supprimer le fichier distant.')),
+			);
+		}
+
+		public function downloadDocumentFileFromNextcloud(string $relativePath): array
+		{
+			$normalizedPath = trim(str_replace('\\', '/', $relativePath), '/');
+			if ($normalizedPath === '') {
+				return array(
+					'status' => false,
+					'text' => 'Chemin de fichier distant invalide.',
+				);
+			}
+
+			$result = $this->executeNextcloudDocumentsRequest('GET', $normalizedPath, array(
+				'timeout' => 300,
+				'headers' => array(
+					'Accept: */*',
+				),
+			));
+			if (!is_array($result) || empty($result['status'])) {
+				return array(
+					'status' => false,
+					'text' => trim((string)($result['text'] ?? 'Impossible de recuperer le fichier distant.')),
+				);
+			}
+
+			return array(
+				'status' => true,
+				'body' => (string)($result['body'] ?? ''),
+				'contentType' => trim((string)(($result['headers']['content-type'] ?? 'application/octet-stream'))),
+				'contentLength' => isset($result['headers']['content-length']) ? (int)$result['headers']['content-length'] : strlen((string)($result['body'] ?? '')),
+			);
 		}
 
 		public static function attributePattern()

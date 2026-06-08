@@ -109,6 +109,8 @@ foreach ($documents as $document) {
         $documentVisibilityRuleMap[$documentId] ?? null
     );
     $isFolder = $document->isFolder();
+    $isExternalLink = $document->isExternalLink();
+    $canShareDocument = !$isFolder && $document->supportsHtmlContent();
     $activityDate = $isFolder && $updatedAt instanceof DateTimeInterface
         ? $updatedAt
         : $createdAt;
@@ -120,7 +122,12 @@ foreach ($documents as $document) {
         'id' => $documentId,
         'href' => '/memo/' . $documentId,
         'title' => (string)$document->get('title'),
+        'documentType' => $document->getDocumentType(),
         'isFolder' => $isFolder,
+        'isExternalLink' => $isExternalLink,
+        'externalUrl' => $document->getExternalUrl(),
+        'openInNewWindow' => $document->shouldOpenExternalLinkInNewWindow(),
+        'canShare' => $canShareDocument,
         'parentDocumentId' => $parentDocumentId > 0 ? $parentDocumentId : 0,
         'contextLabel' => $documentScope === 'global'
             ? trim((string)$document->getOrganizationContextLabel())
@@ -297,6 +304,8 @@ if (!is_string($documentsPayload)) {
                                     data-omo-document-id="<?= $escape($entry['id']) ?>"
                                     data-omo-document-href="<?= $escape($entry['href']) ?>"
                                     data-omo-document-context-url="<?= $escape($entry['contextUrl']) ?>"
+                                    data-omo-document-external-url="<?= $escape($entry['externalUrl']) ?>"
+                                    data-omo-document-open-in-new-window="<?= !empty($entry['openInNewWindow']) ? '1' : '0' ?>"
                                     data-omo-document-title="<?= $escape($entry['title']) ?>"
                                     data-omo-document-full-date="<?= $escape($entry['fullDateLabel']) ?>"
                                 >
@@ -348,6 +357,7 @@ if (!is_string($documentsPayload)) {
                                             data-omo-document-menu-title="<?= $escape($entry['title']) ?>"
                                             data-omo-document-menu-edit-url="<?= $escape($entry['editUrl']) ?>"
                                             data-omo-document-menu-is-folder="<?= !empty($entry['isFolder']) ? '1' : '0' ?>"
+                                            data-omo-document-menu-can-share="<?= !empty($entry['canShare']) ? '1' : '0' ?>"
                                             aria-haspopup="menu"
                                             aria-expanded="false"
                                             aria-label="Actions pour <?= $escape($entry['title']) ?>"
@@ -379,7 +389,41 @@ if (!is_string($documentsPayload)) {
             (function () {
                 const omoDocumentsPreferencesStorageKey = 'omoDocumentsDisplayPreferences';
                 const omoDocumentsFileIconUrl = '/omo/assets/images/documents/file.png';
+                const omoDocumentsDownloadIconUrl = '/omo/assets/images/documents/download.png';
                 const omoDocumentsFolderIconUrl = '/omo/assets/images/documents/folder.png';
+                const omoDocumentsLinkIconUrl = '/omo/assets/images/documents/link.png';
+
+                const omoDocumentsGetIconUrl = function (documentItem) {
+                    if (documentItem && documentItem.isFolder) {
+                        return omoDocumentsFolderIconUrl;
+                    }
+
+                    if (documentItem && documentItem.isExternalLink) {
+                        return omoDocumentsLinkIconUrl;
+                    }
+
+                    if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === 'uploaded_file') {
+                        return omoDocumentsDownloadIconUrl;
+                    }
+
+                    return omoDocumentsFileIconUrl;
+                };
+
+                const omoDocumentsGetIconAlt = function (documentItem) {
+                    if (documentItem && documentItem.isFolder) {
+                        return 'Dossier';
+                    }
+
+                    if (documentItem && documentItem.isExternalLink) {
+                        return 'Lien externe';
+                    }
+
+                    if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === 'uploaded_file') {
+                        return 'Fichier a telecharger';
+                    }
+
+                    return 'Fichier';
+                };
 
                 const omoDocumentsNormalizeSortPreference = function (value) {
                     return String(value || '').trim().toLowerCase() === 'alpha'
@@ -597,6 +641,55 @@ if (!is_string($documentsPayload)) {
                                 });
                             };
 
+                            const buildExternalFaviconUrl = function (externalUrl) {
+                                const trimmedUrl = String(externalUrl || '').trim();
+                                if (trimmedUrl === '') {
+                                    return '';
+                                }
+
+                                try {
+                                    const parsedUrl = new URL(trimmedUrl, window.location.origin);
+                                    if (!/^https?:$/i.test(parsedUrl.protocol)) {
+                                        return '';
+                                    }
+
+                                    return parsedUrl.origin.replace(/\/+$/, '') + '/favicon.ico';
+                                } catch (error) {
+                                    return '';
+                                }
+                            };
+
+                            const appendExternalFaviconBadge = function (iconBox, externalUrl) {
+                                if (!iconBox) {
+                                    return;
+                                }
+
+                                const faviconUrl = buildExternalFaviconUrl(externalUrl);
+                                if (faviconUrl === '') {
+                                    return;
+                                }
+
+                                const faviconBadge = document.createElement('span');
+                                faviconBadge.className = 'omo-documents__favicon-badge';
+                                faviconBadge.hidden = true;
+
+                                const faviconImage = document.createElement('img');
+                                faviconImage.className = 'omo-documents__favicon-image';
+                                faviconImage.src = faviconUrl;
+                                faviconImage.alt = '';
+                                faviconImage.loading = 'lazy';
+                                faviconImage.referrerPolicy = 'no-referrer';
+                                faviconImage.addEventListener('load', function () {
+                                    faviconBadge.hidden = false;
+                                }, { once: true });
+                                faviconImage.addEventListener('error', function () {
+                                    faviconBadge.remove();
+                                }, { once: true });
+
+                                faviconBadge.appendChild(faviconImage);
+                                iconBox.appendChild(faviconBadge);
+                            };
+
                             const childrenByParentId = new Map();
                             documents.forEach(function (documentItem) {
                                 const parentDocumentId = Number(documentItem && documentItem.parentDocumentId ? documentItem.parentDocumentId : 0);
@@ -645,6 +738,8 @@ if (!is_string($documentsPayload)) {
                                     container.setAttribute('data-omo-document-id', documentItem.id || '');
                                     container.setAttribute('data-omo-document-href', documentItem.href || '');
                                     container.setAttribute('data-omo-document-context-url', documentItem.contextUrl || '');
+                                    container.setAttribute('data-omo-document-external-url', documentItem.externalUrl || '');
+                                    container.setAttribute('data-omo-document-open-in-new-window', documentItem.openInNewWindow ? '1' : '0');
                                     container.setAttribute('data-omo-document-title', documentItem.title || '');
                                     container.setAttribute('data-omo-document-full-date', documentItem.fullDateLabel || '');
                                 }
@@ -666,13 +761,14 @@ if (!is_string($documentsPayload)) {
 
                                 const icon = document.createElement('img');
                                 icon.className = 'omo-documents__icon black-icon';
-                                icon.src = documentItem.isFolder
-                                    ? omoDocumentsFolderIconUrl
-                                    : omoDocumentsFileIconUrl;
-                                icon.alt = documentItem.isFolder ? 'Dossier' : 'Fichier';
+                                icon.src = omoDocumentsGetIconUrl(documentItem);
+                                icon.alt = omoDocumentsGetIconAlt(documentItem);
                                 icon.loading = 'lazy';
 
                                 iconBox.appendChild(icon);
+                                if (documentItem.isExternalLink) {
+                                    appendExternalFaviconBadge(iconBox, documentItem.externalUrl || '');
+                                }
                                 visual.appendChild(iconBox);
 
                                 const content = document.createElement('div');
@@ -779,9 +875,7 @@ if (!is_string($documentsPayload)) {
                                     compactTypeInline.className = 'omo-documents__compact-type-inline generic-file-list__type';
                                     const compactTypeIcon = document.createElement('img');
                                     compactTypeIcon.className = 'omo-documents__compact-type-icon black-icon';
-                                    compactTypeIcon.src = documentItem.isFolder
-                                        ? omoDocumentsFolderIconUrl
-                                        : omoDocumentsFileIconUrl;
+                                    compactTypeIcon.src = omoDocumentsGetIconUrl(documentItem);
                                     compactTypeIcon.alt = '';
                                     compactTypeIcon.loading = 'lazy';
                                     const compactTypeText = document.createElement('span');
@@ -946,6 +1040,7 @@ if (!is_string($documentsPayload)) {
                                 toggle.setAttribute('data-omo-document-menu-title', String(documentItem.title || ''));
                                 toggle.setAttribute('data-omo-document-menu-edit-url', String(documentItem.editUrl || ''));
                                 toggle.setAttribute('data-omo-document-menu-is-folder', documentItem.isFolder ? '1' : '0');
+                                toggle.setAttribute('data-omo-document-menu-can-share', documentItem.canShare ? '1' : '0');
                                 toggle.setAttribute('aria-haspopup', 'menu');
                                 toggle.setAttribute('aria-expanded', 'false');
                                 toggle.setAttribute('aria-label', 'Actions pour ' + String(documentItem.title || 'ce document'));
@@ -1156,8 +1251,34 @@ if (!is_string($documentsPayload)) {
                                 detailBody.innerHTML = '<div class="loading"><div class="omo-empty-state">Impossible de charger ce document.</div></div>';
                             };
 
+                            const openExternalDocumentWindow = function (documentItem) {
+                                const externalUrl = documentItem && documentItem.externalUrl
+                                    ? String(documentItem.externalUrl).trim()
+                                    : '';
+
+                                if (externalUrl === '') {
+                                    return false;
+                                }
+
+                                const link = document.createElement('a');
+                                link.href = externalUrl;
+                                link.target = '_blank';
+                                link.rel = 'noopener noreferrer';
+                                link.style.display = 'none';
+                                document.body.appendChild(link);
+                                link.click();
+                                link.remove();
+
+                                return true;
+                            };
+
                             const openDocumentDetail = function (documentItem) {
                                 if (!detailDrawer || !detailBody || !documentItem || !documentItem.id || documentItem.isFolder) {
+                                    return;
+                                }
+
+                                if (documentItem.openInNewWindow && documentItem.externalUrl) {
+                                    openExternalDocumentWindow(documentItem);
                                     return;
                                 }
 
@@ -1922,6 +2043,12 @@ if (!is_string($documentsPayload)) {
             };
 
             window.omoOpenDocumentDetailByPayload = function (documentItem, rootOverride) {
+                if (documentItem && documentItem.openInNewWindow && documentItem.externalUrl) {
+                    if (openExternalDocumentWindow(documentItem)) {
+                        return true;
+                    }
+                }
+
                 const root = rootOverride instanceof Element
                     ? rootOverride
                     : getDocumentsRoot();
@@ -2012,6 +2139,8 @@ if (!is_string($documentsPayload)) {
                 const root = trigger.closest('#omo-documents-root') || getDocumentsRoot();
                 const opened = window.omoOpenDocumentDetailByPayload({
                     contextUrl: String(trigger.getAttribute('data-omo-document-context-url') || '').trim(),
+                    externalUrl: String(trigger.getAttribute('data-omo-document-external-url') || '').trim(),
+                    openInNewWindow: String(trigger.getAttribute('data-omo-document-open-in-new-window') || '').trim() === '1',
                     title: String(trigger.getAttribute('data-omo-document-title') || '').trim(),
                     fullDateLabel: String(trigger.getAttribute('data-omo-document-full-date') || '').trim()
                 }, root);
@@ -2058,6 +2187,7 @@ if (!is_string($documentsPayload)) {
                 const documentTitle = String(toggle && toggle.getAttribute('data-omo-document-menu-title') || '').trim();
                 const editUrl = String(toggle && toggle.getAttribute('data-omo-document-menu-edit-url') || '').trim();
                 const isFolder = String(toggle && toggle.getAttribute('data-omo-document-menu-is-folder') || '') === '1';
+                const canShare = String(toggle && toggle.getAttribute('data-omo-document-menu-can-share') || '') === '1';
                 const fragment = ownerDocument.createDocumentFragment();
 
                 if (Number.isInteger(documentId) && documentId > 0) {
@@ -2066,7 +2196,7 @@ if (!is_string($documentsPayload)) {
                         'data-omo-document-move-id': String(documentId)
                     }));
 
-                    if (!isFolder) {
+                    if (!isFolder && canShare) {
                         fragment.appendChild(buildDocumentMenuItem('Partager', {
                             'data-omo-document-share': '1',
                             'data-omo-document-share-id': String(documentId)
@@ -2307,6 +2437,11 @@ if (!is_string($documentsPayload)) {
     padding: 0;
 }
 
+.omo-documents__detail-drawer,
+.omo-documents__editor-drawer {
+    z-index: 6000;
+}
+
 .omo-documents__results {
     display: flex;
     flex-direction: column;
@@ -2522,6 +2657,7 @@ if (!is_string($documentsPayload)) {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    position: relative;
     width: 56px;
     height: 56px;
     border-radius: 18px;
@@ -2532,6 +2668,30 @@ if (!is_string($documentsPayload)) {
 .omo-documents__icon {
     width: 34px;
     height: 34px;
+    display: block;
+    object-fit: contain;
+}
+
+.omo-documents__favicon-badge {
+    position: absolute;
+    right: -4px;
+    bottom: -4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: var(--color-surface, #fff);
+    box-shadow:
+        0 4px 10px rgba(15, 23, 42, 0.12),
+        inset 0 0 0 1px color-mix(in srgb, var(--color-border) 84%, white 16%);
+    overflow: hidden;
+}
+
+.omo-documents__favicon-image {
+    width: 14px;
+    height: 14px;
     display: block;
     object-fit: contain;
 }
@@ -2777,6 +2937,18 @@ if (!is_string($documentsPayload)) {
 .omo-documents__item--compact .omo-documents__icon {
     width: 20px;
     height: 20px;
+}
+
+.omo-documents__item--compact .omo-documents__favicon-badge {
+    width: 18px;
+    height: 18px;
+    right: -3px;
+    bottom: -3px;
+}
+
+.omo-documents__item--compact .omo-documents__favicon-image {
+    width: 10px;
+    height: 10px;
 }
 
 .omo-documents__compact-cell {

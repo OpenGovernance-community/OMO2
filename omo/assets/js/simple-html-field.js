@@ -37,6 +37,14 @@
             + '.omo-simple-html-field .note-editing-area .note-editable{min-height:140px;padding:14px;line-height:1.55;color:var(--color-text,#1f2937);}'
             + '.omo-simple-html-field .note-placeholder{color:var(--color-text-light,#6b7280);}'
             + '.omo-simple-html-field .note-statusbar{display:none;}'
+            + '.omo-simple-html-field .note-editable h1,.omo-simple-html-render h1{margin:0 0 .6em;font-size:1.8rem;line-height:1.15;font-weight:850;color:var(--color-text,#1f2937);}'
+            + '.omo-simple-html-field .note-editable h2,.omo-simple-html-render h2{margin:0 0 .55em;font-size:1.45rem;line-height:1.2;font-weight:800;color:var(--color-text,#1f2937);}'
+            + '.omo-simple-html-field .note-editable h3,.omo-simple-html-render h3{margin:0 0 .5em;font-size:1.16rem;line-height:1.25;font-weight:750;color:var(--color-text,#1f2937);}'
+            + '.omo-simple-html-field .note-editable blockquote,.omo-simple-html-render blockquote{margin:0 0 1em;padding:.2em 0 .2em 1em;border-left:3px solid color-mix(in srgb,var(--color-primary,#2563eb) 38%,var(--color-border,#d1d5db));color:var(--color-text-light,#6b7280);font-style:italic;}'
+            + '.omo-simple-html-field .note-editable table,.omo-simple-html-render table{width:100%;max-width:100%;margin:0 0 1em;border-collapse:collapse;border-spacing:0;font-size:.97em;}'
+            + '.omo-simple-html-field .note-editable th,.omo-simple-html-field .note-editable td,.omo-simple-html-render th,.omo-simple-html-render td{padding:9px 12px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,var(--color-text,#1f2937) 12%);text-align:left;vertical-align:top;}'
+            + '.omo-simple-html-field .note-editable th,.omo-simple-html-render th{background:color-mix(in srgb,var(--color-surface-alt,#f8fafc) 82%,var(--color-text,#1f2937) 18%);font-weight:700;}'
+            + '.omo-simple-html-field .note-editable tbody tr:nth-child(even),.omo-simple-html-render tbody tr:nth-child(even){background:color-mix(in srgb,var(--color-surface,#fff) 92%,var(--color-surface-alt,#f8fafc) 8%);}'
             + '.omo-simple-html-field .note-editable .omo-document-embed,.omo-simple-html-render .omo-document-embed{display:block;margin:0 0 1em;padding:12px 14px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,#2563eb 12%);border-radius:14px;background:color-mix(in srgb,var(--color-surface,#fff) 90%,#eff6ff 10%);box-shadow:0 10px 24px -20px rgba(37,99,235,.45);cursor:pointer;white-space:normal;line-height:1.5;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed:last-child,.omo-simple-html-render .omo-document-embed:last-child{margin-bottom:0;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed__label,.omo-simple-html-render .omo-document-embed__label{display:block;margin:0 0 6px;color:var(--color-text-light,#6b7280);font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}'
@@ -238,6 +246,16 @@
         const normalizedTagName = sourceTagName === 'DIV' ? 'P' : sourceTagName;
         const allowedTags = {
             P: true,
+            H1: true,
+            H2: true,
+            H3: true,
+            BLOCKQUOTE: true,
+            TABLE: true,
+            THEAD: true,
+            TBODY: true,
+            TR: true,
+            TH: true,
+            TD: true,
             BR: true,
             STRONG: true,
             B: true,
@@ -285,6 +303,19 @@
         }
 
         const elementNode = ownerDocument.createElement(normalizedTagName.toLowerCase());
+        if (normalizedTagName === 'TH' || normalizedTagName === 'TD') {
+            const colspan = Number.parseInt(sourceNode.getAttribute('colspan') || '', 10);
+            const rowspan = Number.parseInt(sourceNode.getAttribute('rowspan') || '', 10);
+
+            if (Number.isInteger(colspan) && colspan > 1) {
+                elementNode.setAttribute('colspan', String(colspan));
+            }
+
+            if (Number.isInteger(rowspan) && rowspan > 1) {
+                elementNode.setAttribute('rowspan', String(rowspan));
+            }
+        }
+
         Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
             appendSanitizedChild(elementNode, buildSanitizedNode(childNode, ownerDocument));
         });
@@ -401,7 +432,7 @@
         container.innerHTML = ''
             + '<div class="omo-simple-html-field">'
             + '  <textarea id="' + escapeHtml(textareaId) + '"></textarea>'
-            + '  <div class="omo-simple-html-field__meta">Edition HTML via Summernote: gras, italic, listes et liens.</div>'
+            + '  <div class="omo-simple-html-field__meta">Edition HTML via Summernote: titres H1 a H3, citation, gras, italic, listes, liens et tableaux simples.</div>'
             + '</div>';
 
         const textarea = container.querySelector('textarea');
@@ -920,9 +951,10 @@
                 }
 
                 const toolbar = [
+                    ['style', ['style']],
                     ['font', ['bold', 'italic', 'underline', 'clear']],
                     ['para', ['ul', 'ol']],
-                    ['insert', ['link']]
+                    ['insert', ['link', 'table']]
                 ];
                 const toolbarGroups = {};
                 const buttonsConfig = {};
@@ -989,6 +1021,13 @@
                     height: Number(state.height || 180),
                     dialogsInBody: true,
                     disableDragAndDrop: true,
+                    styleTags: [
+                        'p',
+                        { title: 'Titre 1', tag: 'h1', className: '', value: 'h1' },
+                        { title: 'Titre 2', tag: 'h2', className: '', value: 'h2' },
+                        { title: 'Titre 3', tag: 'h3', className: '', value: 'h3' },
+                        { title: 'Citation', tag: 'blockquote', className: '', value: 'blockquote' }
+                    ],
                     toolbar: toolbar,
                     buttons: buttonsConfig,
                     callbacks: {

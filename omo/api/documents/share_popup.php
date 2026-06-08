@@ -46,6 +46,7 @@ if (
     $documentId <= 0
     || !$document->load($documentId)
     || $document->isFolder()
+    || !$document->supportsHtmlContent()
     || !$document->canEditInOrganizationContext((int)$document->get('IDorganization'))
 ) {
     ?>
