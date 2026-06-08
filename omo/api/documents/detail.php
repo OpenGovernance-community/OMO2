@@ -60,11 +60,10 @@ $description = trim((string)$document->get('description'));
 $keywords = trim((string)$document->get('keywords'));
 $createdAt = $document->get('datecreation');
 $updatedAt = $document->get('datemodification');
-$authorObject = $document->get('user');
-$author = is_object($authorObject) && method_exists($authorObject, 'get')
-    ? trim((string)$authorObject->get('username'))
-    : '';
+$author = $document->getCreatedByDisplayName();
+$updatedBy = $document->getUpdatedByDisplayName();
 $visibility = $document->getVisibilityDisplayData($organizationId);
+$renderedContent = $document->getRenderedContentForCurrentViewer();
 ?>
 <div class="omo-document-detail">
     <article class="omo-document-detail__article">
@@ -80,6 +79,10 @@ $visibility = $document->getVisibilityDisplayData($organizationId);
 
                 <?php if ($author !== ''): ?>
                     <span class="omo-pill">Par <?= $escape($author) ?></span>
+                <?php endif; ?>
+
+                <?php if ($updatedBy !== '' && $updatedBy !== $author): ?>
+                    <span class="omo-pill">Modifie par <?= $escape($updatedBy) ?></span>
                 <?php endif; ?>
 
                 <?php if (trim((string)($visibility['badgeText'] ?? '')) !== ''): ?>
@@ -106,7 +109,7 @@ $visibility = $document->getVisibilityDisplayData($organizationId);
 
         <section class="omo-document-detail__section omo-card">
             <div class="omo-document-detail__content prose">
-                <?= (string)$document->get('content') ?>
+                <?= $renderedContent ?>
             </div>
         </section>
 
@@ -227,6 +230,113 @@ $visibility = $document->getVisibilityDisplayData($organizationId);
 }
 
 .omo-document-detail__content > :last-child {
+    margin-bottom: 0;
+}
+
+.omo-document-detail__content .omo-document-external {
+    display: grid;
+    gap: 14px;
+}
+
+.omo-document-detail__content .omo-document-external--iframe {
+    gap: 12px;
+}
+
+.omo-document-detail__content .omo-document-external__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.omo-document-detail__content .omo-document-external__hint,
+.omo-document-detail__content .omo-document-external__fallback {
+    color: var(--color-text-light);
+    line-height: 1.6;
+}
+
+.omo-document-detail__content .omo-document-external__frame {
+    width: 100%;
+    min-height: 72vh;
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    background: #fff;
+}
+
+.omo-document-detail__content .omo-document-file {
+    display: grid;
+    gap: 10px;
+    padding: 16px 18px;
+    border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--color-border) 85%, #2563eb 15%);
+    background: color-mix(in srgb, var(--color-surface) 92%, #eff6ff 8%);
+}
+
+.omo-document-detail__content .omo-document-file--empty {
+    color: var(--color-text-light);
+}
+
+.omo-document-detail__content .omo-document-file__title {
+    font-size: 1.02rem;
+    font-weight: 700;
+    color: var(--color-text);
+    word-break: break-word;
+}
+
+.omo-document-detail__content .omo-document-file__meta {
+    color: var(--color-text-light);
+    font-size: 0.9rem;
+}
+
+.omo-document-detail__content .omo-document-file__download {
+    justify-self: flex-start;
+}
+
+.omo-document-detail__content .omo-document-embed {
+    display: grid;
+    gap: 10px;
+    margin: 0 0 1em;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--color-border) 85%, #2563eb 15%);
+    background: color-mix(in srgb, var(--color-surface) 90%, #eff6ff 10%);
+}
+
+.omo-document-detail__content .omo-document-embed:last-child {
+    margin-bottom: 0;
+}
+
+.omo-document-detail__content .omo-document-embed__label {
+    color: var(--color-text-light);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.omo-document-detail__content .omo-document-embed__title {
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.omo-document-detail__content .omo-document-embed__description,
+.omo-document-detail__content .omo-document-embed__message {
+    color: var(--color-text-light);
+    line-height: 1.6;
+}
+
+.omo-document-detail__content .omo-document-embed__body {
+    display: grid;
+    gap: 0.9em;
+    padding-top: 2px;
+}
+
+.omo-document-detail__content .omo-document-embed__body > :first-child {
+    margin-top: 0;
+}
+
+.omo-document-detail__content .omo-document-embed__body > :last-child {
     margin-bottom: 0;
 }
 

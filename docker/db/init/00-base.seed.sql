@@ -156,6 +156,12 @@ CREATE TABLE `faq` (
   `displayorder` int(11) DEFAULT 0,
   `isactive` tinyint(1) DEFAULT 1,
   `viewcount` int(11) DEFAULT 0,
+  `positive_score` float NOT NULL DEFAULT 0,
+  `negative_score` float NOT NULL DEFAULT 0,
+  `total_votes` int(11) NOT NULL DEFAULT 0,
+  `reliability` float NOT NULL DEFAULT 0,
+  `reliability_updated_at` datetime DEFAULT NULL,
+  `score_decayed_at` datetime DEFAULT NULL,
   `created` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -1212,7 +1218,9 @@ ALTER TABLE `document`
 -- Index pour la table `faq`
 --
 ALTER TABLE `faq`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_faq_reliability` (`reliability`),
+  ADD KEY `idx_faq_reliability_updated_at` (`reliability_updated_at`);
 
 --
 -- Index pour la table `faq_choice`

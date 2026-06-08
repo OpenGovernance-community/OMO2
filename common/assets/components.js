@@ -179,9 +179,91 @@
         }
 
         accordion.dataset.genericAccordionReady = '1';
-        toggle.addEventListener('click', function () {
+        toggle.addEventListener('click', function (event) {
+            var interactiveTarget = event.target.closest('a, button, input, select, textarea, label, [data-generic-accordion-ignore-toggle]');
+
+            if (interactiveTarget && interactiveTarget !== toggle && toggle.contains(interactiveTarget)) {
+                return;
+            }
+
             accordion.classList.toggle('is-collapsed');
         });
+    }
+
+    function syncFileList(root) {
+        var firstHeader;
+        var firstGroupTitle;
+        var groupTitleHeight;
+        var headerHeight;
+        var groups;
+        var groupCount;
+
+        if (!root || root.nodeType !== 1) {
+            return;
+        }
+
+        if (!root.classList.contains('generic-file-list--stacked-sticky')) {
+            root.style.setProperty('--generic-file-list-header-offset', '0px');
+            root.style.setProperty('--generic-file-list-folder-offset', '0px');
+            return;
+        }
+
+        firstHeader = root.querySelector('.generic-file-list__header');
+        firstGroupTitle = root.querySelector('.generic-file-list__group-title');
+        groupTitleHeight = firstGroupTitle ? Math.ceil(firstGroupTitle.getBoundingClientRect().height) : 0;
+        headerHeight = firstHeader ? Math.ceil(firstHeader.getBoundingClientRect().height) : 0;
+
+        root.style.setProperty('--generic-file-list-header-offset', String(Math.max(0, groupTitleHeight)) + 'px');
+        root.style.setProperty('--generic-file-list-folder-offset', String(Math.max(0, groupTitleHeight + headerHeight)) + 'px');
+
+        groups = toArray(root.querySelectorAll('.generic-file-list__group'));
+        groupCount = groups.length;
+
+        groups.forEach(function (group, index) {
+            var layerBase = Math.max(0, (groupCount - index) * 10);
+            group.style.setProperty('--generic-file-list-group-title-z', String(layerBase + 3));
+            group.style.setProperty('--generic-file-list-group-header-z', String(layerBase + 2));
+            group.style.setProperty('--generic-file-list-group-folder-z', String(layerBase + 1));
+        });
+    }
+
+    function initFileList(root) {
+        var resizeHandler;
+
+        if (!root) {
+            return;
+        }
+
+        if (root.dataset.genericFileListReady === '1') {
+            syncFileList(root);
+            return;
+        }
+
+        root.dataset.genericFileListReady = '1';
+        resizeHandler = function () {
+            syncFileList(root);
+        };
+
+        root.__genericFileListResizeHandler = resizeHandler;
+        window.addEventListener('resize', resizeHandler);
+        window.requestAnimationFrame(function () {
+            syncFileList(root);
+        });
+    }
+
+    function collectFileLists(root) {
+        var scope = root || document;
+        var lists = toArray(scope.querySelectorAll('[data-generic-file-list]'));
+
+        if (scope.nodeType === 1 && scope.hasAttribute('data-generic-file-list')) {
+            lists.unshift(scope);
+        }
+
+        return lists;
+    }
+
+    function initFileLists(root) {
+        collectFileLists(root).forEach(initFileList);
     }
 
     function createVerticalSortableList(options) {
@@ -422,6 +504,7 @@
     function initGenericComponents(root) {
         var scope = root || document;
 
+        initFileLists(scope);
         toArray(scope.querySelectorAll('[data-generic-tabs]')).forEach(initTabs);
         toArray(scope.querySelectorAll('[data-generic-accordion]')).forEach(initAccordion);
     }
@@ -622,6 +705,10 @@
 
     window.initGenericTabs = initTabs;
     window.initGenericComponents = initGenericComponents;
+    window.initGenericFileLists = initFileLists;
+    window.syncGenericFileLists = function (root) {
+        collectFileLists(root).forEach(syncFileList);
+    };
     window.commonCreateVerticalSortableList = createVerticalSortableList;
     window.omoBeginPendingAction = beginPendingAction;
     window.omoEndPendingAction = endPendingAction;

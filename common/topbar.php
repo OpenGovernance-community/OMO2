@@ -291,7 +291,7 @@ function commonRenderTopbar(array $options = [])
         <div class="common-topbar__menu-wrap">
             <button type="button" class="common-topbar__action common-topbar__action--square" data-topbar-bug-report>
                 <span class="common-topbar__action-icon" aria-hidden="true">
-                    <img src="/img/punaise.png" alt="" class="common-topbar__icon-image">
+                    <img src="/img/punaise.png" alt="" class="common-topbar__icon-image black-icon">
                 </span>
                 <span class="common-topbar__action-label"><?= htmlspecialchars($config['bugReport']['buttonLabel']) ?></span>
             </button>
@@ -302,7 +302,7 @@ function commonRenderTopbar(array $options = [])
         <div class="common-topbar__menu-wrap common-topbar__menu-wrap--panel">
             <button type="button" class="common-topbar__action common-topbar__action--square" data-topbar-menu-trigger="search">
                 <span class="common-topbar__action-icon" aria-hidden="true">
-                    <img src="/common/assets/icon-topbar-search.png" alt="" class="common-topbar__icon-image">
+                    <img src="/common/assets/icon-topbar-search.png" alt="" class="common-topbar__icon-image black-icon">
                 </span>
                 <span class="common-topbar__action-label"><?= htmlspecialchars($config['search']['buttonLabel']) ?></span>
             </button>
@@ -339,7 +339,7 @@ function commonRenderTopbar(array $options = [])
         <div class="common-topbar__menu-wrap">
             <button type="button" class="common-topbar__action common-topbar__action--square" data-topbar-menu-trigger="help">
                 <span class="common-topbar__action-icon" aria-hidden="true">
-                    <img src="/common/assets/icon-topbar-help.png" alt="" class="common-topbar__icon-image">
+                    <img src="/common/assets/icon-topbar-help.png" alt="" class="common-topbar__icon-image black-icon">
                 </span>
                 <span class="common-topbar__action-label"><?= htmlspecialchars($config['helpLabel']) ?></span>
             </button>

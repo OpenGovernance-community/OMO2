@@ -1,0 +1,81 @@
+# Journal Des Nouveautes
+
+Ce fichier sert a garder une trace courte des evolutions fonctionnelles et techniques recentes du projet.
+
+## 2026-06 Documents OMO
+
+Les documents OMO ont fortement evolue. Ils peuvent maintenant etre classes dans des dossiers imbriques, deplaces via une popup en arbre, et leur affichage tient compte de la visibilite avec un compteur `visible (total)` plus explicite.
+
+L'edition a ete enrichie avec un verrou temporaire, un brouillon live, le partage public avec suivi en temps reel, ainsi que l'insertion d'autres documents a l'interieur d'un contenu. L'editeur HTML accepte aussi davantage d'elements de mise en page, notamment les titres et les tables.
+
+Le systeme gere desormais plusieurs types de documents: contenu HTML, lien externe et fichier telecharge. Les liens externes peuvent s'ouvrir en iframe ou dans une nouvelle fenetre, et les fichiers peuvent etre stockes dans Nextcloud via une configuration d'organisation.
+
+L'interface a ete retravaillee avec de meilleurs rendus pour les fichiers et dossiers, des icones dediees, l'affichage des mots-cles en tags, la memorisation temporaire de l'ouverture des dossiers, et quelques correctifs d'integration comme le `z-index` des drawers internes.
+
+Une liste compacte plus generique a aussi ete introduite, avec entetes sticky sur plusieurs niveaux, ligne de dossier persistante pendant le scroll, menu d'actions flottant sorti des lignes, et un composant reutilisable `generic-file-list` documente dans la page de styleguide.
+
+Le stockage des fichiers a encore ete consolide avec des champs dedies pour le chemin, le nom, le type MIME et la taille du fichier effectivement stocke. Un point de configuration `parameters` a egalement ete ajoute sur l'organisation pour centraliser des reglages globaux comme ceux relies au stockage documentaire.
+
+Ces evolutions s'appuient sur plusieurs migrations SQL autour de la visibilite, des dossiers, du suivi d'edition, du partage, des types de documents, du stockage des fichiers et des parametres d'organisation.
+
+L'ecran documents a aussi gagne en ergonomie: en-tete plus compacte, modes `detail/compact` et `date/alphabetique` memorises dans le navigateur, navigation globale ou contextuelle plus lisible, fil d'ariane cliquable via le hash, et menu `...` pour editer rapidement un document existant.
+
+L'editeur de documents integre maintenant plusieurs aides IA via OpenAI. Une zone `IA` peut afficher a la demande des actions pour dicter un texte, inserer sa transcription a la position du curseur, reecrire une selection pour l'harmoniser avec le reste du document, ou la resumer par etapes. Ces outils restent masques si OpenAI n'est pas configure ou si la connexion Patreon de l'utilisateur n'est pas active.
+
+La visibilite des documents repose enfin sur un mecanisme reutilisable de portee par objet. Un document peut etre visible pour tous, pour l'organisation, pour un cercle, pour un role ou pour soi, avec filtrage automatique a l'affichage et indicateur de visibilite dans les listes et les details.
+
+## 2026-06 Espace Personnel OMO
+
+La page d'accueil OMO peut maintenant afficher a droite un espace personnel charge via `fetch`, sans alourdir directement `index.php`. Ce panneau rassemble un resume des elements qui concernent l'utilisateur selon les applications actives de l'organisation.
+
+Selon le contexte, il peut montrer un recapitulatif des decisions en cours, les derniers documents ajoutes, les anniversaires d'equipe ou les dernieres modifications de structure. La logique de collecte a ete repartie autant que possible dans les `dbObject` et `array...` correspondants pour garder une base reutilisable.
+
+Le chargement de ce panneau a aussi ete optimise pour ne pas recalculer inutilement son contenu: si un drawer est ouvert, aucun `fetch` n'est lance, et la mise a jour est rattrapee seulement quand le panneau redevient visible et que le contexte a vraiment change.
+
+## 2026-06 Admin Local Et Environnement
+
+Le panneau d'administration serveur permet maintenant de modifier plus facilement les variables sensibles comme Patreon, OpenAI, SMTP, Telegram ou GitHub, avec verification temporaire par mot de passe et edition des secrets sans les reafficher.
+
+En developpement local sur `localhost` ou `localtest.me`, les changements ne sont plus ecrits dans le fichier versionne principal. L'application charge d'abord le `.env` normal puis un override non versionne `docker/app/.env.private`, et le panneau d'admin ecrit automatiquement dans ce fichier local.
+
+Le seed Docker local a aussi ete renforce pour faciliter les tests: un utilisateur `1` peut etre prepare avec droits admin, mot de passe local et connexion Patreon simulee, afin d'acceder directement aux fonctions d'administration et aux outils IA sans parcours externe complet.
+
+## 2026-06 FAQ OMO
+
+Le module de FAQ a ete enrichi avec un systeme de vote positif et negatif. Chaque question peut maintenant cumuler un score positif, un score negatif, ainsi qu'un total historique de votes.
+
+Pour limiter les abus sans alourdir le parcours, un blocage simple par session PHP empeche de revoter sur la meme FAQ le meme jour, tout en autorisant un nouveau vote des le lendemain.
+
+La FAQ prepare aussi une logique de score evolutif dans le temps. En plus des compteurs de votes, une notion de `reliability` et des dates de recalcul et d'oubli progressif ont ete ajoutees pour permettre ensuite un mecanisme de decay.
+
+L'affichage a ete adapte en consequence: la liste peut montrer une note relative sur 5 etoiles calculee par comparaison avec les autres FAQ, tandis que la vue individuelle reconstruit un affichage lisible des votes positifs et negatifs a partir du total et des proportions enregistrees.
+
+## 2026-06 Recherche Topbar OMO
+
+La recherche de la topbar repose maintenant sur un systeme de jobs asynchrones. Une table `search_job` stocke les recherches en attente, en cours ou terminees, avec leur contexte, leurs scopes et leur resultat.
+
+Le popup de recherche affiche les resultats par module et peut desormais relancer une recherche directement depuis la popup elle-meme. Le champ de recherche et la selection des scopes y sont repris pour permettre d'ajuster le texte ou les modules sans revenir au menu principal.
+
+Le schema SQL correspondant a aussi ete reporte dans le seed Docker local pour que les nouvelles bases de developpement disposent directement de cette infrastructure de recherche.
+
+## 2026-06 CardDAV Et Authentification
+
+Un endpoint CardDAV en lecture a ete ajoute pour exposer la liste des membres des organisations communes a chaque utilisateur. Il est disponible sous `/omo/api/carddav/`, avec prise en charge des routes `/.well-known/carddav`, et permet a un telephone ou a un client compatible de synchroniser un carnet d'adresses de membres.
+
+L'authentification a ete etendue pour que CardDAV fonctionne avec le mot de passe utilisateur et plusieurs formes d'identite selon le contexte: e-mail principal, e-mail d'organisation, ainsi que les identifiants scopes lorsqu'ils sont non ambigus. Plusieurs ajustements de compatibilite PHP ont aussi ete faits sur le code CardDAV, ainsi qu'un correctif de diagnostics pour eviter des avertissements de type `deprecated`.
+
+La gestion du mot de passe utilisateur a ete ajoutee dans le profil, avec creation ou modification du mot de passe selon le cas. Lors d'une modification, l'ancien mot de passe est demande, la confirmation est obligatoire, et l'interface empeche le copie-colle dans les champs sensibles pour favoriser une saisie volontaire.
+
+La page principale de connexion prend maintenant en charge deux modes: le code magique par e-mail et la connexion directe par mot de passe. Un lien permet de basculer entre les deux interfaces, et le lien de reinitialisation du mot de passe n'apparait que dans le mode mot de passe, juste sous le champ concerne.
+
+Un parcours complet de reinitialisation du mot de passe a ete ajoute: demande depuis l'ecran de connexion, envoi d'un lien par e-mail, puis page dediee pour definir un nouveau mot de passe dans le style des autres parcours e-mail du projet. Le systeme d'envoi a aussi ete ajuste pour mieux fonctionner avec la configuration SMTP Infomaniak.
+
+La politique de robustesse des mots de passe a ete harmonisee avec celle de l'installation initiale. Les formulaires de profil, de reinitialisation, de confirmation et de creation de compte reutilisent maintenant une validation commune avec indicateur visuel de progression, exigences minimales explicites, et verification de correspondance entre les deux champs de saisie.
+
+## 2026-06 Calendar Et CalDAV
+
+L'application calendrier OMO permet maintenant de creer des evenements simples relies a une organisation, avec createur, titre, plage horaire, statut, journee entiere optionnelle et rattachement possible a un cercle ou un role. Une vue mensuelle dediee a aussi ete ajoutee dans `/omo/api/calendar/`, avec navigation par mois, grille d'affichage et drawer interne pour ajouter rapidement un evenement.
+
+Une premiere couche CalDAV en lecture seule a egalement ete mise en place sous `/omo/api/caldav/`, avec route `/.well-known/caldav`. Chaque utilisateur peut y exposer un calendrier par organisation a laquelle il appartient quand l'application `calendar` est active, afin de synchroniser les evenements sur un telephone ou un client agenda compatible.
+
+Cette base technique prepare la suite pour les invitations, les participants et, plus tard, les ecritures CalDAV ou l'export de types d'evenements plus riches.

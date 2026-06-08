@@ -44,6 +44,8 @@ $shortnamePreviewHost = commonGetRootHost();
 $shortnamePreviewPath = '/omo/';
 $organizationSubdomainRoutingEnabled = commonUseOrganizationSubdomains();
 $isFetchRequest = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
+$nextcloudConfig = $organization->getNextcloudDocumentsConfig();
+$nextcloudConfigured = $organization->hasNextcloudDocumentStorage();
 ?>
 <?php if (!$isFetchRequest) { ?>
 <!DOCTYPE html>
@@ -196,6 +198,60 @@ $isFetchRequest = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) 
         font-size: 12px;
     }
 
+    .organization-create-nextcloud {
+        display: grid;
+        gap: 14px;
+        margin-top: 18px;
+        padding-top: 18px;
+        border-top: 1px solid var(--color-border, #dbe4ee);
+    }
+
+    .organization-create-nextcloud__grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .organization-create-nextcloud__field {
+        display: grid;
+        gap: 8px;
+    }
+
+    .organization-create-nextcloud__field--full {
+        grid-column: 1 / -1;
+    }
+
+    .organization-create-nextcloud__label {
+        font-size: 0.92rem;
+        font-weight: 600;
+        color: var(--color-text, #0f172a);
+    }
+
+    .organization-create-nextcloud__hint {
+        color: var(--color-text-light, #64748b);
+        font-size: 0.82rem;
+        line-height: 1.45;
+    }
+
+    .organization-create-nextcloud__checkbox {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--color-text, #0f172a);
+        font-size: 0.92rem;
+    }
+
+    .organization-create-nextcloud__status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: var(--color-surface-alt, #f8fafc);
+        color: var(--color-text-light, #475569);
+        border: 1px solid var(--color-border, #dbe4ee);
+    }
+
     #commonTopbarModalBody .organization-create-view {
         max-width: none;
     }
@@ -220,6 +276,10 @@ $isFetchRequest = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) 
 
         .organization-create-actions .generic-action-button {
             flex: 1 1 220px;
+        }
+
+        .organization-create-nextcloud__grid {
+            grid-template-columns: 1fr;
         }
     }
 </style>
@@ -248,6 +308,80 @@ $isFetchRequest = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) 
         );
         $organization->display("adminEdit.php", $params);
 ?>
+
+        <div class="organization-create-nextcloud">
+            <div class="generic-card-title generic-card-title--small">Stockage Nextcloud des documents</div>
+            <div class="organization-create-nextcloud__status">
+                <?= $nextcloudConfigured ? 'Connexion Nextcloud configuree pour les documents uploades.' : 'Aucune connexion Nextcloud configuree. Le type de document upload ne sera pas propose.' ?>
+            </div>
+
+            <div class="organization-create-nextcloud__grid">
+                <label class="organization-create-nextcloud__field organization-create-nextcloud__field--full">
+                    <span class="organization-create-nextcloud__label">URL du serveur Nextcloud</span>
+                    <input
+                        type="url"
+                        name="nextcloud_base_url"
+                        form="formulaire-edit"
+                        class="generic-form-control"
+                        maxlength="500"
+                        autocomplete="off"
+                        placeholder="https://cloud.example.com/nextcloud"
+                        value="<?= htmlspecialchars((string)($nextcloudConfig['baseUrl'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                    >
+                    <span class="organization-create-nextcloud__hint">URL de base du serveur Nextcloud. Le WebDAV utilise ensuite automatiquement `remote.php/dav/files/...`.</span>
+                </label>
+
+                <label class="organization-create-nextcloud__field">
+                    <span class="organization-create-nextcloud__label">Utilisateur Nextcloud</span>
+                    <input
+                        type="text"
+                        name="nextcloud_username"
+                        form="formulaire-edit"
+                        class="generic-form-control"
+                        maxlength="150"
+                        autocomplete="off"
+                        placeholder="nom.utilisateur"
+                        value="<?= htmlspecialchars((string)($nextcloudConfig['username'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                    >
+                </label>
+
+                <label class="organization-create-nextcloud__field">
+                    <span class="organization-create-nextcloud__label">Mot de passe applicatif</span>
+                    <input
+                        type="password"
+                        name="nextcloud_app_password"
+                        form="formulaire-edit"
+                        class="generic-form-control"
+                        maxlength="255"
+                        autocomplete="new-password"
+                        placeholder="<?= $nextcloudConfigured ? 'Laisser vide pour conserver le mot de passe actuel' : 'Mot de passe applicatif Nextcloud' ?>"
+                    >
+                    <span class="organization-create-nextcloud__hint">Utilise de preference un mot de passe applicatif Nextcloud plutot que le mot de passe principal.</span>
+                </label>
+
+                <label class="organization-create-nextcloud__field organization-create-nextcloud__field--full">
+                    <span class="organization-create-nextcloud__label">Dossier distant</span>
+                    <input
+                        type="text"
+                        name="nextcloud_folder"
+                        form="formulaire-edit"
+                        class="generic-form-control"
+                        maxlength="255"
+                        autocomplete="off"
+                        placeholder="Documents/OMO"
+                        value="<?= htmlspecialchars((string)($nextcloudConfig['folder'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                    >
+                    <span class="organization-create-nextcloud__hint">Optionnel. Si vide, OMO utilisera directement un dossier `omo-documents` a la racine du compte.</span>
+                </label>
+
+                <?php if ($isEditMode && $nextcloudConfigured): ?>
+                    <label class="organization-create-nextcloud__checkbox organization-create-nextcloud__field--full">
+                        <input type="checkbox" name="nextcloud_clear_config" value="1" form="formulaire-edit">
+                        <span>Supprimer cette configuration Nextcloud</span>
+                    </label>
+                <?php endif; ?>
+            </div>
+        </div>
 
         <div class="organization-create-actions">
             <button type="button" class="generic-action-button generic-action-button--secondary" id="organization_create_cancel">Annuler</button>

@@ -1,10 +1,13 @@
 <?php
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
+require_once dirname(__DIR__) . '/common/faq_fake_cron.php';
 require_once dirname(__DIR__) . '/common/topbar.php';
 require_once dirname(__DIR__) . '/common/patreon.php';
 require_once dirname(__DIR__) . '/common/translation_bundles.php';
 require_once __DIR__ . '/topbar.php';
+
+faq_maybe_run_fake_cron();
 
 $sourceLang = [
     'app.access_denied.message' => [

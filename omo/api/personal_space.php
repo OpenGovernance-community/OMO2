@@ -249,7 +249,7 @@ $historyItems = is_array($structureHistory['items'] ?? null) ? $structureHistory
                                     data-omo-personal-space-document-title="<?= omoApiEscape($documentItem['title'] ?? '') ?>"
                                 >
                                     <span class="omo-personal-space__item-title"><?= omoApiEscape($documentItem['title'] ?? '') ?></span>
-                                    <span class="omo-personal-space__item-meta"><?= omoApiEscape($formatDateTime($documentItem['datecreation'] ?? null, true)) ?></span>
+                                    <span class="omo-personal-space__item-meta"><?= omoApiEscape($formatDateTime($documentItem['datemodification'] ?? $documentItem['datecreation'] ?? null, true)) ?></span>
                                     <?php if (trim((string)($documentItem['visibility']['badgeText'] ?? '')) !== ''): ?>
                                         <span class="omo-personal-space__item-meta"><?= omoApiEscape((string)$documentItem['visibility']['badgeText']) ?></span>
                                     <?php endif; ?>
