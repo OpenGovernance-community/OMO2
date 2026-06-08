@@ -214,6 +214,52 @@ if (!function_exists('commonCalDavAppendPropertyValue')) {
             return;
         }
 
+        if ($type === 'email-address-set') {
+            foreach ((array)($value['value'] ?? array()) as $emailAddress) {
+                $emailAddress = trim((string)$emailAddress);
+                if ($emailAddress === '') {
+                    continue;
+                }
+
+                $element = $document->createElementNS('http://calendarserver.org/ns/', 'cs:email-address');
+                $element->appendChild($document->createTextNode($emailAddress));
+                $propertyElement->appendChild($element);
+            }
+            return;
+        }
+
+        if ($type === 'calendar-component-set') {
+            foreach ((array)($value['value'] ?? array()) as $componentName) {
+                $componentName = trim((string)$componentName);
+                if ($componentName === '') {
+                    continue;
+                }
+
+                $element = $document->createElementNS('urn:ietf:params:xml:ns:caldav', 'cal:comp');
+                $element->setAttribute('name', $componentName);
+                $propertyElement->appendChild($element);
+            }
+            return;
+        }
+
+        if ($type === 'calendar-data-support') {
+            foreach ((array)($value['value'] ?? array()) as $format) {
+                $element = $document->createElementNS('urn:ietf:params:xml:ns:caldav', 'cal:calendar-data');
+                $contentType = trim((string)($format['contentType'] ?? 'text/calendar'));
+                if ($contentType !== '') {
+                    $element->setAttribute('content-type', $contentType);
+                }
+
+                $version = trim((string)($format['version'] ?? ''));
+                if ($version !== '') {
+                    $element->setAttribute('version', $version);
+                }
+
+                $propertyElement->appendChild($element);
+            }
+            return;
+        }
+
         if ($type === 'raw-xml') {
             $xml = trim((string)($value['value'] ?? ''));
             if ($xml === '') {
@@ -810,8 +856,8 @@ if (!function_exists('commonCalDavBuildPropertyMap')) {
                     '{DAV:}supported-report-set' => array('type' => 'supported-report-set', 'value' => commonCalDavSupportedReports()),
                     '{urn:ietf:params:xml:ns:caldav}calendar-home-set' => array('type' => 'href', 'value' => $calendarRootHref),
                     '{http://calendarserver.org/ns/}email-address-set' => array(
-                        'type' => 'raw-xml',
-                        'value' => $viewerEmail !== '' ? '<cs:email-address>' . htmlspecialchars($viewerEmail, ENT_XML1 | ENT_COMPAT, 'UTF-8') . '</cs:email-address>' : '',
+                        'type' => 'email-address-set',
+                        'value' => $viewerEmail !== '' ? array($viewerEmail) : array(),
                     ),
                     '{DAV:}resource-id' => array('type' => 'href', 'value' => 'urn:uuid:' . commonCardDavBuildStableUuid('caldav:principal:' . $viewerUserId)),
                 );
@@ -853,12 +899,17 @@ if (!function_exists('commonCalDavBuildPropertyMap')) {
                     '{DAV:}supported-report-set' => array('type' => 'supported-report-set', 'value' => commonCalDavSupportedReports()),
                     '{urn:ietf:params:xml:ns:caldav}calendar-description' => array('type' => 'text', 'value' => (string)($resource['description'] ?? '')),
                     '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => array(
-                        'type' => 'raw-xml',
-                        'value' => '<cal:comp name="VEVENT"/>',
+                        'type' => 'calendar-component-set',
+                        'value' => array('VEVENT'),
                     ),
                     '{urn:ietf:params:xml:ns:caldav}supported-calendar-data' => array(
-                        'type' => 'raw-xml',
-                        'value' => '<cal:calendar-data content-type="text/calendar" version="2.0"/>',
+                        'type' => 'calendar-data-support',
+                        'value' => array(
+                            array(
+                                'contentType' => 'text/calendar',
+                                'version' => '2.0',
+                            ),
+                        ),
                     ),
                     '{DAV:}sync-token' => array('type' => 'text', 'value' => (string)($resource['syncToken'] ?? '')),
                     '{http://calendarserver.org/ns/}getctag' => array('type' => 'text', 'value' => (string)($resource['ctag'] ?? '')),
