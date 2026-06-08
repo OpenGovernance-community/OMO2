@@ -296,6 +296,14 @@ if (!function_exists('commonCardDavFindUserByIdentifier')) {
     {
         $candidates = commonCardDavBuildLoginIdentifierCandidates($identifier);
         foreach ($candidates as $index => $candidate) {
+            if (method_exists('dbObject\\User', 'debugLoginIdentifierMatchSummary')) {
+                $summary = User::debugLoginIdentifierMatchSummary($candidate);
+                commonCardDavSetAuthDebugValue('lookup_scope', 'user_email_only');
+                commonCardDavSetAuthDebugValue('global_email_matches', (string)((int)($summary['globalEmailMatches'] ?? 0)));
+                commonCardDavSetAuthDebugValue('organization_email_matches', (string)((int)($summary['organizationEmailMatches'] ?? 0)));
+                commonCardDavSetAuthDebugValue('resolved_user_ids', (string)count((array)($summary['resolvedUserIds'] ?? array())));
+            }
+
             $user = User::findByLoginIdentifier($candidate);
             if ($user) {
                 commonCardDavSetAuthDebugValue('matched_candidate', $index === 0 ? 'first' : 'fallback');
