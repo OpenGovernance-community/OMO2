@@ -74,55 +74,178 @@ if (!function_exists('commonCardDavGetRoutePath')) {
     }
 }
 
+if (!function_exists('commonCardDavCanExposeAuthDebug')) {
+    function commonCardDavCanExposeAuthDebug()
+    {
+        return function_exists('appShouldExposeDevDiagnostics') && appShouldExposeDevDiagnostics();
+    }
+}
+
+if (!function_exists('commonCardDavSetAuthDebugValue')) {
+    function commonCardDavSetAuthDebugValue($key, $value)
+    {
+        if (!commonCardDavCanExposeAuthDebug()) {
+            return;
+        }
+
+        $key = trim((string)$key);
+        if ($key === '') {
+            return;
+        }
+
+        if (!isset($GLOBALS['commonCardDavAuthDebug']) || !is_array($GLOBALS['commonCardDavAuthDebug'])) {
+            $GLOBALS['commonCardDavAuthDebug'] = array();
+        }
+
+        $sanitizedValue = preg_replace('/[^A-Za-z0-9._:-]/', '_', trim((string)$value));
+        $GLOBALS['commonCardDavAuthDebug'][$key] = $sanitizedValue === '' ? 'empty' : $sanitizedValue;
+    }
+}
+
+if (!function_exists('commonCardDavSendAuthDebugHeaders')) {
+    function commonCardDavSendAuthDebugHeaders()
+    {
+        if (!commonCardDavCanExposeAuthDebug()) {
+            return;
+        }
+
+        $debugValues = isset($GLOBALS['commonCardDavAuthDebug']) && is_array($GLOBALS['commonCardDavAuthDebug'])
+            ? $GLOBALS['commonCardDavAuthDebug']
+            : array();
+
+        foreach ($debugValues as $key => $value) {
+            $headerName = 'X-CardDAV-Auth-' . str_replace(' ', '-', ucwords(str_replace(array('-', '_'), ' ', (string)$key)));
+            header($headerName . ': ' . (string)$value);
+        }
+    }
+}
+
+if (!function_exists('commonCardDavFindAuthorizationHeader')) {
+    function commonCardDavFindAuthorizationHeader()
+    {
+        $serverCandidates = array(
+            'PHP_AUTH_DIGEST' => false,
+            'HTTP_AUTHORIZATION' => true,
+            'REDIRECT_HTTP_AUTHORIZATION' => true,
+            'Authorization' => true,
+            'REDIRECT_Authorization' => true,
+        );
+
+        foreach ($serverCandidates as $serverKey => $shouldTrim) {
+            if (!isset($_SERVER[$serverKey])) {
+                continue;
+            }
+
+            $value = $shouldTrim
+                ? trim((string)$_SERVER[$serverKey])
+                : (string)$_SERVER[$serverKey];
+            if ($value === '') {
+                continue;
+            }
+
+            commonCardDavSetAuthDebugValue('source', 'server_' . strtolower($serverKey));
+            return $value;
+        }
+
+        $envCandidates = array(
+            'HTTP_AUTHORIZATION',
+            'REDIRECT_HTTP_AUTHORIZATION',
+        );
+
+        foreach ($envCandidates as $envKey) {
+            $value = trim((string)(getenv($envKey) ?: ''));
+            if ($value === '') {
+                continue;
+            }
+
+            commonCardDavSetAuthDebugValue('source', 'env_' . strtolower($envKey));
+            return $value;
+        }
+
+        foreach ($_SERVER as $serverKey => $serverValue) {
+            if (stripos((string)$serverKey, 'AUTHORIZATION') === false) {
+                continue;
+            }
+
+            $value = trim((string)$serverValue);
+            if ($value === '') {
+                continue;
+            }
+
+            commonCardDavSetAuthDebugValue('source', 'server_scan_' . strtolower((string)$serverKey));
+            return $value;
+        }
+
+        if (function_exists('getallheaders')) {
+            $headers = getallheaders();
+            if (is_array($headers)) {
+                foreach ($headers as $name => $value) {
+                    if (strcasecmp((string)$name, 'Authorization') !== 0) {
+                        continue;
+                    }
+
+                    $value = trim((string)$value);
+                    if ($value === '') {
+                        continue;
+                    }
+
+                    commonCardDavSetAuthDebugValue('source', 'getallheaders');
+                    return $value;
+                }
+            }
+        }
+
+        if (function_exists('apache_request_headers')) {
+            $headers = apache_request_headers();
+            if (is_array($headers)) {
+                foreach ($headers as $name => $value) {
+                    if (strcasecmp((string)$name, 'Authorization') !== 0) {
+                        continue;
+                    }
+
+                    $value = trim((string)$value);
+                    if ($value === '') {
+                        continue;
+                    }
+
+                    commonCardDavSetAuthDebugValue('source', 'apache_request_headers');
+                    return $value;
+                }
+            }
+        }
+
+        commonCardDavSetAuthDebugValue('source', 'missing');
+        return '';
+    }
+}
+
 if (!function_exists('commonCardDavGetBasicCredentials')) {
     function commonCardDavGetBasicCredentials()
     {
         if (isset($_SERVER['PHP_AUTH_USER'])) {
+            commonCardDavSetAuthDebugValue('source', 'php_auth_user');
+            commonCardDavSetAuthDebugValue('credentials', 'present');
             return array(
                 (string)$_SERVER['PHP_AUTH_USER'],
                 (string)($_SERVER['PHP_AUTH_PW'] ?? ''),
             );
         }
 
-        $header = trim((string)($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? ''));
-        if ($header === '') {
-            $header = trim((string)(getenv('HTTP_AUTHORIZATION') ?: getenv('REDIRECT_HTTP_AUTHORIZATION') ?: ''));
-        }
-
-        if ($header === '' && function_exists('getallheaders')) {
-            $headers = getallheaders();
-            if (is_array($headers)) {
-                foreach ($headers as $name => $value) {
-                    if (strcasecmp((string)$name, 'Authorization') === 0) {
-                        $header = trim((string)$value);
-                        break;
-                    }
-                }
-            }
-        }
-
-        if ($header === '' && function_exists('apache_request_headers')) {
-            $headers = apache_request_headers();
-            if (is_array($headers)) {
-                foreach ($headers as $name => $value) {
-                    if (strcasecmp((string)$name, 'Authorization') === 0) {
-                        $header = trim((string)$value);
-                        break;
-                    }
-                }
-            }
-        }
-
+        $header = commonCardDavFindAuthorizationHeader();
         if ($header === '' || stripos($header, 'Basic ') !== 0) {
+            commonCardDavSetAuthDebugValue('credentials', $header === '' ? 'missing' : 'not_basic');
             return null;
         }
 
         $decoded = base64_decode(substr($header, 6), true);
         if (!is_string($decoded) || strpos($decoded, ':') === false) {
+            commonCardDavSetAuthDebugValue('credentials', 'invalid_basic_payload');
             return null;
         }
 
         list($username, $password) = explode(':', $decoded, 2);
+        commonCardDavSetAuthDebugValue('credentials', 'present');
+        commonCardDavSetAuthDebugValue('identifier_type', strpos($username, '@') !== false ? 'email_like' : 'opaque');
         return array((string)$username, (string)$password);
     }
 }
@@ -132,10 +255,12 @@ if (!function_exists('commonCardDavAuthenticateRequest')) {
     {
         commonRestoreRememberedUser();
 
+        $credentials = commonCardDavGetBasicCredentials();
         $currentUserId = (int)commonGetCurrentUserId();
-        if ($currentUserId > 0) {
+        if ($currentUserId > 0 && !is_array($credentials)) {
             $user = new User();
             if ($user->load($currentUserId)) {
+                commonCardDavSetAuthDebugValue('result', 'session_user');
                 if (session_status() === PHP_SESSION_ACTIVE) {
                     session_write_close();
                 }
@@ -143,29 +268,35 @@ if (!function_exists('commonCardDavAuthenticateRequest')) {
             }
         }
 
-        $credentials = commonCardDavGetBasicCredentials();
         if (!is_array($credentials) || count($credentials) !== 2) {
+            commonCardDavSetAuthDebugValue('result', 'missing_credentials');
             return null;
         }
 
         $identifier = trim((string)$credentials[0]);
         $password = (string)$credentials[1];
         if ($identifier === '' || $password === '') {
+            commonCardDavSetAuthDebugValue('result', 'empty_identifier_or_password');
             return null;
         }
 
         $user = User::findByLoginIdentifier($identifier, true);
         if (!$user) {
+            commonCardDavSetAuthDebugValue('result', 'user_not_found');
             return null;
         }
 
-        if (!commonVerifyUserPassword($password, (string)$user->get('password'))) {
+        $passwordHash = (string)$user->get('password');
+        commonCardDavSetAuthDebugValue('password_hash', $passwordHash === '' ? 'missing' : 'present');
+        if (!commonVerifyUserPassword($password, $passwordHash)) {
+            commonCardDavSetAuthDebugValue('result', $passwordHash === '' ? 'user_has_no_password' : 'password_invalid');
             return null;
         }
 
         $_SESSION['currentUser'] = (int)$user->getId();
         $_SESSION['userRef'] = $user;
         unset($_SESSION['permissionCacheByOrganization']);
+        commonCardDavSetAuthDebugValue('result', 'basic_auth_ok');
 
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_write_close();
@@ -183,6 +314,7 @@ if (!function_exists('commonCardDavSendUnauthorized')) {
         header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         header('Pragma: no-cache');
         header('WWW-Authenticate: Basic realm="' . addslashes(commonCardDavAuthRealm()) . '", charset="UTF-8"');
+        commonCardDavSendAuthDebugHeaders();
         echo 'Authentication required.';
         exit;
     }
