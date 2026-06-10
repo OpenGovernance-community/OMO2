@@ -1440,11 +1440,19 @@ $(document)
   .on('click.omoOrgCreateHolon', '#panel-left [data-open-create-holon="1"]', function () {
     const cid = Number($(this).data('cid'));
 
-    if (!cid || typeof window.omoOpenDrawerHashState !== 'function') {
+    if (!cid) {
         return;
     }
 
-    window.omoOpenDrawerHashState('holon-create-' + cid);
+    if (typeof window.omoOpenExternalRouteDrawer === 'function' && window.omoOpenExternalRouteDrawer('holon-create-' + cid, {
+        title: 'Ajouter'
+    })) {
+        return;
+    }
+
+    if (typeof window.omoOpenDrawerHashState === 'function') {
+        window.omoOpenDrawerHashState('holon-create-' + cid);
+    }
   });
 
 $(document)
@@ -1456,16 +1464,24 @@ $(document)
     const isDefinitionEdit = String(button.data('definition-edit')) === '1';
     const templateContextId = Number(button.data('template-context-id') || 0);
 
-    if (!hid || typeof window.omoOpenDrawerHashState !== 'function') {
+    if (!hid) {
         return;
     }
 
+    let routeToken = 'holon-edit-' + hid;
     if ((isTemplateEdit || isDefinitionEdit) && templateContextId > 0) {
-        window.omoOpenDrawerHashState('holon-template-edit-' + templateContextId + '-' + hid);
+        routeToken = 'holon-template-edit-' + templateContextId + '-' + hid;
+    }
+
+    if (typeof window.omoOpenExternalRouteDrawer === 'function' && window.omoOpenExternalRouteDrawer(routeToken, {
+        title: 'Modifier'
+    })) {
         return;
     }
 
-    window.omoOpenDrawerHashState('holon-edit-' + hid);
+    if (typeof window.omoOpenDrawerHashState === 'function') {
+        window.omoOpenDrawerHashState(routeToken);
+    }
   });
 
 $(document)

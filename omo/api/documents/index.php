@@ -195,20 +195,41 @@ if (!is_string($documentsPayload)) {
     data-omo-document-oid="<?= (int)$currentOrganizationId ?>"
     data-omo-document-cid="<?= (int)$currentHolonId ?>"
 >
-    <div class="omo-documents__header omo-panel-view__header">
-        <div class="omo-panel-view__header-copy">
-            <div class="omo-documents__title-row">
-                <h2 class="omo-panel-view__title">Documents</h2>
-                <span class="omo-documents__count omo-panel-view__count">
-                    <?= $escape($visibleDocumentsCount) ?>
-                    <?php if ($totalDocumentsCount > $visibleDocumentsCount): ?>
-                        (<?= $escape($totalDocumentsCount) ?>)
-                    <?php endif; ?>
+    <div class="omo-documents__header omo-panel-view__header omo-panel-view__header--stacked">
+        <div class="omo-panel-view__header-main">
+            <div class="omo-panel-view__title-cluster">
+                <span class="omo-panel-view__app-icon omo-documents__app-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <path d="M14 3.5v4a1.5 1.5 0 0 0 1.5 1.5h4"></path>
+                        <path d="M8 13h8"></path>
+                        <path d="M8 17h5"></path>
+                        <path d="M13.5 3.5H8A2.5 2.5 0 0 0 5.5 6v12A2.5 2.5 0 0 0 8 20.5h8A2.5 2.5 0 0 0 18.5 18V8.5z"></path>
+                    </svg>
                 </span>
+                <div class="omo-panel-view__header-copy">
+                    <div class="omo-documents__title-row">
+                        <h2 class="omo-panel-view__title">Documents</h2>
+                        <span class="omo-documents__count omo-panel-view__count">
+                            <?= $escape($visibleDocumentsCount) ?>
+                            <?php if ($totalDocumentsCount > $visibleDocumentsCount): ?>
+                                (<?= $escape($totalDocumentsCount) ?>)
+                            <?php endif; ?>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="omo-panel-view__aside omo-documents__header-main-actions">
+                <?php if ($canCreateDocument): ?>
+                    <button
+                        type="button"
+                        class="generic-action-button generic-action-button--main omo-documents__new-button"
+                        data-omo-documents-new
+                        data-omo-documents-new-url="<?= $escape($newDocumentUrl) ?>"
+                    >Nouveau</button>
+                <?php endif; ?>
             </div>
         </div>
-        <div class="omo-panel-view__aside omo-documents__aside">
-            <div class="omo-documents__controls-row">
+        <div class="omo-panel-view__header-secondary omo-documents__header-actions">
             <?php if ($canToggleDocumentScope): ?>
                 <div
                     class="omo-scope-toggle"
@@ -232,14 +253,6 @@ if (!is_string($documentsPayload)) {
                     >Global</button>
                 </div>
             <?php endif; ?>
-            <?php if ($canCreateDocument): ?>
-                <button
-                    type="button"
-                    class="generic-action-button generic-action-button--main omo-documents__new-button"
-                    data-omo-documents-new
-                    data-omo-documents-new-url="<?= $escape($newDocumentUrl) ?>"
-                >Nouveau</button>
-            <?php endif; ?>
             <?php if (count($documentEntries) > 0): ?>
                 <div class="omo-documents__controls omo-panel-controls">
                     <div class="omo-segmented" role="group" aria-label="Tri des documents">
@@ -252,7 +265,6 @@ if (!is_string($documentsPayload)) {
                     </div>
                 </div>
             <?php endif; ?>
-            </div>
         </div>
     </div>
     <div class="omo-panel-view__body">
@@ -2389,36 +2401,44 @@ if (!is_string($documentsPayload)) {
 </div>
 
 <style>
+.omo-documents__app-icon {
+    --omo-panel-view-app-icon-accent: #d97706;
+}
+
+.omo-documents__header {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    justify-content: stretch;
+    align-items: initial;
+}
+
 .omo-documents__title-row {
     display: flex;
     align-items: baseline;
     gap: 10px;
+    flex-wrap: wrap;
 }
 
 .omo-documents__count {
     min-width: 0;
 }
 
-.omo-documents__aside {
-    display: flex;
-    width: 100%;
-    justify-content: flex-end;
-}
-
-.omo-documents__controls-row {
+.omo-documents__header-actions {
     display: grid;
-    grid-template-columns: auto 1fr auto;
-    grid-template-areas:
-        ". . new"
-        "scope . controls";
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "scope controls";
     align-items: center;
     gap: 12px;
     width: 100%;
 }
 
+.omo-documents__header-main-actions {
+    justify-content: flex-end;
+}
+
 .omo-documents__new-button {
-    grid-area: new;
-    justify-self: end;
+    flex: 0 0 auto;
 }
 
 .omo-documents__controls {
@@ -2429,7 +2449,7 @@ if (!is_string($documentsPayload)) {
     gap: 12px;
 }
 
-.omo-documents__controls-row .omo-scope-toggle {
+.omo-documents__header-actions .omo-scope-toggle {
     grid-area: scope;
 }
 
@@ -3156,26 +3176,28 @@ if (!is_string($documentsPayload)) {
         gap: 6px 10px;
     }
 
-    .omo-documents__aside {
+    .omo-documents__header-actions {
         align-items: stretch;
         justify-content: flex-start;
     }
 
-    .omo-documents__controls-row,
     .omo-documents__controls {
         justify-content: flex-start;
     }
 
-    .omo-documents__controls-row {
+    .omo-documents__header-actions {
         grid-template-columns: 1fr;
         grid-template-areas:
-            "new"
             "scope"
             "controls";
     }
 
-    .omo-documents__new-button {
-        justify-self: stretch;
+    .omo-documents__header-main-actions {
+        width: 100%;
+    }
+
+    .omo-documents__header-main-actions .omo-documents__new-button {
+        width: 100%;
     }
 
     .omo-documents__list-header {

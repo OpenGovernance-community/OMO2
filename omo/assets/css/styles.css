@@ -986,8 +986,60 @@ html[data-theme] .common-help-card p {
     -webkit-backdrop-filter: blur(10px);
 }
 
+.omo-panel-view__header--stacked {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    justify-content: stretch;
+    align-items: initial;
+}
+
+.omo-panel-view__header-main,
+.omo-panel-view__header-secondary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-width: 0;
+}
+
+.omo-panel-view__header-secondary {
+    margin-top: 12px;
+}
+
 .omo-panel-view__header-copy {
     min-width: 0;
+}
+
+.omo-panel-view__title-cluster {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.omo-panel-view__app-icon {
+    --omo-panel-view-app-icon-accent: var(--color-primary, #2563eb);
+    width: 38px;
+    height: 38px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    background: color-mix(in srgb, var(--omo-panel-view-app-icon-accent) 11%, var(--color-surface, #ffffff) 89%);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--omo-panel-view-app-icon-accent) 16%, var(--color-border, #dbe2ea));
+}
+
+.omo-panel-view__app-icon svg {
+    width: 20px;
+    height: 20px;
+    stroke: var(--omo-panel-view-app-icon-accent);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
 }
 
 .omo-panel-view__title {
@@ -1217,6 +1269,17 @@ html[data-theme] .common-help-card p {
     pointer-events: none;
 }
 
+.omo-external-panel-drawer {
+    inset: 0 auto 0 0;
+    right: auto;
+    z-index: calc(var(--omo-overlay-drawer-z-index) + 10);
+}
+
+.omo-external-panel-drawer .omo-overlay-drawer__panel {
+    width: 100%;
+    max-width: none;
+}
+
 .omo-overlay-drawer__backdrop,
 .omo-overlay-drawer__panel {
     opacity: 0;
@@ -1399,6 +1462,11 @@ button.omo-card {
         flex-direction: column;
         align-items: stretch;
         padding: 14px;
+    }
+
+    .omo-panel-view__header-main,
+    .omo-panel-view__header-secondary {
+        grid-template-columns: 1fr;
     }
 
     .omo-panel-view__aside {

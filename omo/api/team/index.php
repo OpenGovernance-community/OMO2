@@ -381,35 +381,52 @@ if ($leafletMapsEnabled) {
 ?>
 <?= $leafletAssetsHtml ?>
 <div class="omo-team omo-panel-view">
-    <div class="omo-team__hero omo-panel-view__header">
-        <div class="omo-panel-view__header-copy">
-            <h2 class="omo-panel-view__title">Team</h2>
-            <p class="omo-panel-view__description">Les personnes actuellement associées au <?= omoApiEscape($currentHolonTypeLabel) ?> <?= omoApiEscape($currentHolonName) ?>.</p>
-        </div>
-        <div class="omo-team__stats" aria-label="Résumé de l'équipe">
-            <div class="omo-team__stat">
-                <strong><?= omoApiEscape(count($memberCards)) ?></strong>
-                <span>Membre<?= count($memberCards) > 1 ? 's' : '' ?></span>
+    <div class="omo-team__hero omo-panel-view__header omo-panel-view__header--stacked">
+        <div class="omo-panel-view__header-main">
+            <div class="omo-panel-view__title-cluster">
+                <span class="omo-panel-view__app-icon omo-team__app-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <path d="M7.5 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"></path>
+                        <path d="M16.5 10a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"></path>
+                        <path d="M3.5 18.5a4.5 4.5 0 0 1 8 0"></path>
+                        <path d="M13 18.5a3.8 3.8 0 0 1 7 0"></path>
+                    </svg>
+                </span>
+                <div class="omo-panel-view__header-copy">
+                    <div class="omo-team__title-row">
+                        <h2 class="omo-panel-view__title">Team</h2>
+                        <span class="omo-panel-view__count"><?= omoApiEscape(count($memberCards)) ?></span>
+                    </div>
+                </div>
             </div>
-            <div class="omo-team__stat">
-                <strong><?= omoApiEscape($adminCount) ?></strong>
-                <span>Admin<?= $adminCount > 1 ? 's' : '' ?></span>
+            <div class="omo-team__stats" aria-label="Resume de l equipe">
+                <div class="omo-team__stat">
+                    <strong><?= omoApiEscape(count($memberCards)) ?></strong>
+                    <span>Membre<?= count($memberCards) > 1 ? 's' : '' ?></span>
+                </div>
+                <div class="omo-team__stat">
+                    <strong><?= omoApiEscape($adminCount) ?></strong>
+                    <span>Admin<?= $adminCount > 1 ? 's' : '' ?></span>
+                </div>
+                <div class="omo-team__stat">
+                    <strong><?= omoApiEscape($connectedCount) ?></strong>
+                    <span>Deja connecte<?= $connectedCount > 1 ? 's' : '' ?></span>
+                </div>
             </div>
-            <div class="omo-team__stat">
-                <strong><?= omoApiEscape($connectedCount) ?></strong>
-                <span>Déjà connecté<?= $connectedCount > 1 ? 's' : '' ?></span>
+            <div class="omo-team__stats-compact" aria-label="Resume compact de l equipe">
+                <?= omoApiEscape(count($memberCards)) ?> membre<?= count($memberCards) > 1 ? 's' : '' ?>
+                - <?= omoApiEscape($adminCount) ?> admin<?= $adminCount > 1 ? 's' : '' ?>
+                - <?= omoApiEscape($connectedCount) ?> connecte<?= $connectedCount > 1 ? 's' : '' ?>
             </div>
         </div>
-        <div class="omo-team__stats-compact" aria-label="Résumé compact de l'équipe">
-            <?= omoApiEscape(count($memberCards)) ?> membre<?= count($memberCards) > 1 ? 's' : '' ?>
-            · <?= omoApiEscape($adminCount) ?> admin<?= $adminCount > 1 ? 's' : '' ?>
-            · <?= omoApiEscape($connectedCount) ?> connecté<?= $connectedCount > 1 ? 's' : '' ?>
-        </div>
-        <div class="omo-team__view-switch" role="tablist" aria-label="Choix de la vue">
-            <button type="button" class="omo-team__view-button is-active" data-team-view-button="cards" aria-pressed="true">Cartes</button>
-            <?php if ($leafletMapsEnabled): ?>
-            <button type="button" class="omo-team__view-button" data-team-view-button="map" aria-pressed="false">Carte geo</button>
-            <?php endif; ?>
+        <div class="omo-panel-view__header-secondary omo-team__header-secondary">
+            <p class="omo-panel-view__description omo-team__header-description">Les personnes actuellement associees au <?= omoApiEscape($currentHolonTypeLabel) ?> <?= omoApiEscape($currentHolonName) ?>.</p>
+            <div class="omo-segmented omo-team__view-switch" role="tablist" aria-label="Choix de la vue">
+                <button type="button" class="omo-team__view-button omo-segmented__button is-active" data-team-view-button="cards" aria-pressed="true">Cartes</button>
+                <?php if ($leafletMapsEnabled): ?>
+                <button type="button" class="omo-team__view-button omo-segmented__button" data-team-view-button="map" aria-pressed="false">Carte geo</button>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
     <div class="omo-panel-view__body">
@@ -550,11 +567,31 @@ if ($leafletMapsEnabled) {
 </div>
 
 <style>
+.omo-team__app-icon {
+    --omo-panel-view-app-icon-accent: #0f766e;
+}
+
+.omo-team__title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.omo-team__header-secondary {
+    align-items: end;
+}
+
+.omo-team__header-description {
+    max-width: 56ch;
+}
+
 .omo-team__stats {
     display: grid;
     grid-template-columns: repeat(3, minmax(90px, 1fr));
     gap: 10px;
     min-width: min(100%, 320px);
+    justify-self: end;
 }
 
 .omo-team__stat {
@@ -586,31 +623,15 @@ if ($leafletMapsEnabled) {
     font-size: 0.88rem;
     line-height: 1.4;
     text-align: center;
+    justify-self: end;
 }
 
 .omo-team__view-switch {
-    display: inline-flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    width: 100%;
+    justify-self: end;
 }
 
 .omo-team__view-button {
-    min-height: 36px;
-    padding: 8px 14px;
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
-    background: var(--color-surface);
-    color: var(--color-text);
-    cursor: pointer;
-    font-size: 0.85rem;
-    font-weight: 700;
-}
-
-.omo-team__view-button.is-active {
-    background: color-mix(in srgb, var(--color-primary) 16%, var(--color-surface));
-    border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
-    color: var(--color-primary);
+    min-width: 0;
 }
 
 .omo-team__view-panel[hidden] {
@@ -1055,11 +1076,14 @@ if ($leafletMapsEnabled) {
     }
 
     .omo-team__view-switch {
-        justify-content: stretch;
+        display: flex;
+        width: 100%;
+        justify-self: stretch;
     }
 
     .omo-team__view-button {
         flex: 1 1 calc(50% - 4px);
+        text-align: center;
     }
 
     .omo-team__grid {
