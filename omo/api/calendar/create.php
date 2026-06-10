@@ -11,9 +11,17 @@ $sourceLang = [
         'text' => 'Nouvel evenement',
         'context' => 'Title shown at the top of the event creation form.',
     ],
+    'calendar.edit.title' => [
+        'text' => 'Modifier l evenement',
+        'context' => 'Title shown at the top of the event edition form.',
+    ],
     'calendar.create.description' => [
         'text' => 'Planifiez une date, un horaire et un contexte de rattachement.',
         'context' => 'Intro text shown in the event creation form.',
+    ],
+    'calendar.edit.description' => [
+        'text' => 'Mettez a jour la date, l horaire et le contexte de rattachement.',
+        'context' => 'Intro text shown in the event edition form.',
     ],
     'calendar.create.field.title' => [
         'text' => 'Titre',
@@ -47,9 +55,17 @@ $sourceLang = [
         'text' => 'Creer l evenement',
         'context' => 'Submit button label of the event creation form.',
     ],
+    'calendar.edit.submit' => [
+        'text' => 'Enregistrer les modifications',
+        'context' => 'Submit button label of the event edition form.',
+    ],
     'calendar.create.success' => [
         'text' => 'Evenement cree.',
         'context' => 'Success message returned after an event is created.',
+    ],
+    'calendar.edit.success' => [
+        'text' => 'Evenement mis a jour.',
+        'context' => 'Success message returned after an event is updated.',
     ],
     'calendar.create.error.title' => [
         'text' => 'Le titre est obligatoire.',
@@ -106,6 +122,7 @@ function omoCalendarParseLocalDateTime($rawValue)
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_REQUEST['oid'] ?? 0));
 $currentHolonId = isset($_REQUEST['cid']) && is_numeric($_REQUEST['cid']) ? (int)$_REQUEST['cid'] : 0;
 $currentUserId = (int)commonGetCurrentUserId();
+$eventId = isset($_REQUEST['id']) && is_numeric($_REQUEST['id']) ? (int)$_REQUEST['id'] : 0;
 
 if ($organizationId <= 0 || $currentUserId <= 0) {
     http_response_code(403);
@@ -136,6 +153,31 @@ if (!$organization->load($organizationId) || !$organization->canViewDetail()) {
     exit;
 }
 
+$event = new Event();
+$isEditMode = false;
+
+if ($eventId > 0) {
+    if (
+        !$event->load($eventId)
+        || (int)$event->get('IDorganization') !== $organizationId
+        || (int)$event->get('IDuser') !== $currentUserId
+    ) {
+        http_response_code(403);
+        if (commonIsAjaxJsonRequest()) {
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode([
+                'status' => false,
+                'message' => 'Evenement invalide.',
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } else {
+            echo '<div class="omo-empty-state">Evenement invalide.</div>';
+        }
+        exit;
+    }
+
+    $isEditMode = true;
+}
+
 $holons = new ArrayHolon();
 $holons->loadVisibilityTargetsForOrganization($organizationId, [2, 1]);
 $holonOptions = $holons->buildVisibilityTargetOptions();
@@ -150,6 +192,15 @@ foreach (['circle', 'role'] as $typeKey) {
 $defaultHolonId = 0;
 if ($currentHolonId > 0 && isset($allowedHolonIds[$currentHolonId])) {
     $defaultHolonId = $currentHolonId;
+}
+
+if ($isEditMode) {
+    $loadedHolonId = (int)$event->get('IDholon');
+    if ($loadedHolonId > 0 && isset($allowedHolonIds[$loadedHolonId])) {
+        $defaultHolonId = $loadedHolonId;
+    } else {
+        $defaultHolonId = 0;
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -186,6 +237,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    if ($endAt < $startAt) {
+        $endAt = (clone $startAt);
+    }
+
     if ($selectedHolonId > 0 && !isset($allowedHolonIds[$selectedHolonId])) {
         echo json_encode([
             'status' => false,
@@ -199,10 +254,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $endAt = (clone $endAt)->setTime(23, 59, 59);
     }
 
-    $event = new Event();
+    if (!$isEditMode) {
+        $event = new Event();
+        $event->set('IDuser', $currentUserId);
+        $event->set('active', 1);
+    }
+
     $event->set('IDorganization', $organizationId);
     $event->set('IDholon', $selectedHolonId > 0 ? $selectedHolonId : null);
-    $event->set('IDuser', $currentUserId);
     $event->set('title', $title);
     $event->set('description', $description !== '' ? $description : null);
     $event->set('status', Event::STATUS_CONFIRMED);
@@ -210,7 +269,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $event->set('start_at', $startAt);
     $event->set('end_at', $endAt);
     $event->set('is_all_day', $isAllDay ? 1 : 0);
-    $event->set('active', 1);
 
     $saveResult = $event->save();
     if (!is_array($saveResult) || empty($saveResult['status'])) {
@@ -225,29 +283,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     echo json_encode([
         'status' => true,
-        'message' => omoCalendarCreateT('calendar.create.success'),
+        'message' => omoCalendarCreateT($isEditMode ? 'calendar.edit.success' : 'calendar.create.success'),
         'eventId' => (int)$event->getId(),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
 $initialDate = trim((string)($_GET['date'] ?? ''));
-$startDefault = omoCalendarParseLocalDateTime($initialDate !== '' ? ($initialDate . 'T09:00') : '') ?: new \DateTime('today 09:00');
-$endDefault = (clone $startDefault)->modify('+1 hour');
+$startDefault = $isEditMode
+    ? $event->get('start_at')
+    : (omoCalendarParseLocalDateTime($initialDate !== '' ? ($initialDate . 'T09:00') : '') ?: new \DateTime('today 09:00'));
+$endDefault = $isEditMode
+    ? $event->get('end_at')
+    : (clone $startDefault)->modify('+1 hour');
+$titleDefault = $isEditMode ? trim((string)$event->get('title')) : '';
+$descriptionDefault = $isEditMode ? trim((string)$event->get('description')) : '';
+$isAllDayDefault = $isEditMode ? (bool)$event->get('is_all_day') : false;
 ?>
 <div class="omo-calendar-create">
     <div class="generic-section generic-section--stack omo-calendar-create__shell">
         <div class="omo-calendar-create__head">
-            <h2 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoCalendarCreateT('calendar.create.title')) ?></h2>
-            <p class="omo-calendar-create__text"><?= omoApiEscape(omoCalendarCreateT('calendar.create.description')) ?></p>
+            <h2 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoCalendarCreateT($isEditMode ? 'calendar.edit.title' : 'calendar.create.title')) ?></h2>
+            <p class="omo-calendar-create__text"><?= omoApiEscape(omoCalendarCreateT($isEditMode ? 'calendar.edit.description' : 'calendar.create.description')) ?></p>
         </div>
 
         <form
             class="omo-calendar-create__form"
             method="post"
-            action="/omo/api/calendar/create.php?oid=<?= (int)$organizationId ?><?= $currentHolonId > 0 ? '&cid=' . (int)$currentHolonId : '' ?>"
+            action="/omo/api/calendar/create.php?oid=<?= (int)$organizationId ?><?= $currentHolonId > 0 ? '&cid=' . (int)$currentHolonId : '' ?><?= $isEditMode ? '&id=' . (int)$event->getId() : '' ?>"
             data-omo-calendar-create-form
         >
+            <?php if ($isEditMode): ?>
+                <input type="hidden" name="id" value="<?= (int)$event->getId() ?>">
+            <?php endif; ?>
             <div class="omo-calendar-create__grid">
                 <label class="omo-calendar-create__field">
                     <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.title')) ?></span>
@@ -255,6 +323,7 @@ $endDefault = (clone $startDefault)->modify('+1 hour');
                         type="text"
                         name="title"
                         class="generic-form-control"
+                        value="<?= omoApiEscape($titleDefault) ?>"
                         maxlength="190"
                         required
                     >
@@ -302,18 +371,18 @@ $endDefault = (clone $startDefault)->modify('+1 hour');
                 <textarea
                     name="description"
                     class="generic-form-control"
-                ></textarea>
+                ><?= omoApiEscape($descriptionDefault) ?></textarea>
             </label>
 
             <label class="omo-calendar-create__check">
-                <input type="checkbox" name="is_all_day" value="1">
+                <input type="checkbox" name="is_all_day" value="1"<?= $isAllDayDefault ? ' checked' : '' ?>>
                 <span><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.all_day')) ?></span>
             </label>
 
             <div class="omo-calendar-create__footer">
                 <div class="omo-calendar-create__feedback" data-omo-calendar-create-feedback></div>
                 <button type="submit" class="generic-action-button generic-action-button--main" data-omo-calendar-create-submit>
-                    <?= omoApiEscape(omoCalendarCreateT('calendar.create.submit')) ?>
+                    <?= omoApiEscape(omoCalendarCreateT($isEditMode ? 'calendar.edit.submit' : 'calendar.create.submit')) ?>
                 </button>
             </div>
         </form>

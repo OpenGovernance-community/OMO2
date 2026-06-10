@@ -197,6 +197,57 @@ class ArrayEvent extends ArrayDbObject
         }
     }
 
+    public function loadForCalendarContext($organizationId, $holonId = 0, $includeInactive = false)
+    {
+        $organizationId = (int)$organizationId;
+        $holonId = (int)$holonId;
+        $this->exchangeArray([]);
+
+        if ($organizationId <= 0) {
+            return;
+        }
+
+        $query = "
+            SELECT e.id
+            FROM `event` e
+            WHERE e.IDorganization = :organization_id
+        ";
+
+        $params = [
+            'organization_id' => $organizationId,
+        ];
+
+        if ($holonId > 0) {
+            $query .= "
+              AND (e.IDholon = :holon_id OR e.IDholon IS NULL)
+            ";
+            $params['holon_id'] = $holonId;
+        }
+
+        if (!$includeInactive) {
+            $query .= "
+              AND e.active = 1
+              AND e.status <> :cancelled_status
+            ";
+            $params['cancelled_status'] = \dbObject\Event::STATUS_CANCELLED;
+        }
+
+        $query .= "
+            ORDER BY e.start_at ASC, e.end_at ASC, e.id ASC
+        ";
+
+        $rows = \dbObject\DbObject::fetchAll($query, $params);
+        if ($rows === false) {
+            return;
+        }
+
+        foreach ($rows as $row) {
+            $item = new Event();
+            $item->setId((int)($row['id'] ?? 0));
+            $this[] = $item;
+        }
+    }
+
     public function loadForOrganizationDateRange($organizationId, $rangeStart = null, $rangeEnd = null, $includeInactive = false)
     {
         $organizationId = (int)$organizationId;
@@ -234,6 +285,59 @@ class ArrayEvent extends ArrayDbObject
             $query .= "
               AND e.active = 1
             ";
+        }
+
+        $query .= "
+            ORDER BY e.start_at ASC, e.end_at ASC, e.id ASC
+        ";
+
+        $rows = \dbObject\DbObject::fetchAll($query, $params);
+        if ($rows === false) {
+            return;
+        }
+
+        foreach ($rows as $row) {
+            $item = new Event();
+            $item->setId((int)($row['id'] ?? 0));
+            $this[] = $item;
+        }
+    }
+
+    public function loadUpcomingForCalendarList($organizationId, $referenceStart, $holonId = 0, $includeInactive = false)
+    {
+        $organizationId = (int)$organizationId;
+        $holonId = (int)$holonId;
+        $this->exchangeArray([]);
+
+        if ($organizationId <= 0 || !($referenceStart instanceof \DateTimeInterface)) {
+            return;
+        }
+
+        $query = "
+            SELECT e.id
+            FROM `event` e
+            WHERE e.IDorganization = :organization_id
+              AND e.end_at >= :reference_start
+        ";
+
+        $params = [
+            'organization_id' => $organizationId,
+            'reference_start' => $referenceStart->format('Y-m-d H:i:s'),
+        ];
+
+        if ($holonId > 0) {
+            $query .= "
+              AND (e.IDholon = :holon_id OR e.IDholon IS NULL)
+            ";
+            $params['holon_id'] = $holonId;
+        }
+
+        if (!$includeInactive) {
+            $query .= "
+              AND e.active = 1
+              AND e.status <> :cancelled_status
+            ";
+            $params['cancelled_status'] = \dbObject\Event::STATUS_CANCELLED;
         }
 
         $query .= "
