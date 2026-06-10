@@ -919,54 +919,62 @@ if (!is_string($payloadJson)) {
     data-omo-decision-cid="<?= (int)$currentHolonId ?>"
 >
     <script type="application/json" data-omo-decisions-payload><?= $payloadJson ?></script>
-    <div class="omo-panel-view__header omo-decisions__hero">
-        <div class="omo-panel-view__header-copy">
-            <h2 class="omo-panel-view__title"><?= $escape(t('decisions.index.title', [], $lang, $sourceLang)) ?></h2>
-            <p class="omo-panel-view__description"><?= $escape(t('decisions.index.description', [], $lang, $sourceLang)) ?></p>
+    <div class="omo-panel-view__header omo-panel-view__header--stacked omo-decisions__hero">
+        <div class="omo-panel-view__header-main">
+            <div class="omo-panel-view__title-cluster">
+                <span class="omo-panel-view__app-icon omo-decisions__app-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <path d="M7 6.5h10"></path>
+                        <path d="M7 11.5h6"></path>
+                        <path d="M7 16.5h5"></path>
+                        <path d="M15 15.5l1.6 1.6L20 13.7"></path>
+                        <rect x="4" y="3.5" width="16" height="17" rx="3"></rect>
+                    </svg>
+                </span>
+                <div class="omo-panel-view__header-copy">
+                    <div class="omo-decisions__title-row">
+                        <h2 class="omo-panel-view__title"><?= $escape(t('decisions.index.title', [], $lang, $sourceLang)) ?></h2>
+                        <span class="omo-panel-view__count" data-omo-decisions-count><?= $escape((string)count($decisionEntries)) ?></span>
+                    </div>
+                </div>
+            </div>
+            <div class="omo-panel-view__aside omo-decisions__header-actions">
+                <?php if ($canCreateDecision): ?>
+                <button type="button" class="generic-action-button generic-action-button--main" data-omo-decisions-new>
+                    <?= $escape(t('decisions.index.new', [], $lang, $sourceLang)) ?>
+                </button>
+                <?php endif; ?>
+            </div>
         </div>
-        <div class="omo-panel-view__aside omo-decisions__header-actions">
-            <?php if ($canCreateDecision): ?>
-            <button type="button" class="generic-action-button generic-action-button--main" data-omo-decisions-new>
-                <?= $escape(t('decisions.index.new', [], $lang, $sourceLang)) ?>
-            </button>
-            <?php endif; ?>
+        <?php if ($canToggleDecisionScope): ?>
+        <div class="omo-panel-view__header-secondary">
+            <div class="omo-decisions__scope-slot">
+                <div
+                    class="omo-scope-toggle"
+                    role="tablist"
+                    aria-label="Portee des decisions"
+                    data-omo-scope-switch="<?= $escape($decisionScope) ?>"
+                >
+                    <button
+                        type="button"
+                        class="omo-scope-toggle__button<?= $decisionScope === 'contextual' ? ' is-active' : '' ?>"
+                        data-omo-decision-scope-toggle="contextual"
+                        aria-pressed="<?= $decisionScope === 'contextual' ? 'true' : 'false' ?>"
+                    >Contextuel</button>
+                    <button
+                        type="button"
+                        class="omo-scope-toggle__button<?= $decisionScope === 'global' ? ' is-active' : '' ?>"
+                        data-omo-decision-scope-toggle="global"
+                        aria-pressed="<?= $decisionScope === 'global' ? 'true' : 'false' ?>"
+                    >Global</button>
+                </div>
+            </div>
         </div>
+        <?php endif; ?>
     </div>
 
     <div class="omo-panel-view__body">
         <div class="omo-panel-view__body_content">
-            <?php if ($canToggleDecisionScope): ?>
-            <div class="omo-decisions__scope-toolbar omo-scope-toolbar">
-                <div class="omo-scope-toolbar__main">
-                    <div
-                        class="omo-scope-toggle"
-                        role="tablist"
-                        aria-label="Portee des decisions"
-                        data-omo-scope-switch="<?= $escape($decisionScope) ?>"
-                    >
-                        <button
-                            type="button"
-                            class="omo-scope-toggle__button<?= $decisionScope === 'contextual' ? ' is-active' : '' ?>"
-                            data-omo-decision-scope-toggle="contextual"
-                            aria-pressed="<?= $decisionScope === 'contextual' ? 'true' : 'false' ?>"
-                        >Contextuel</button>
-                        <button
-                            type="button"
-                            class="omo-scope-toggle__button<?= $decisionScope === 'global' ? ' is-active' : '' ?>"
-                            data-omo-decision-scope-toggle="global"
-                            aria-pressed="<?= $decisionScope === 'global' ? 'true' : 'false' ?>"
-                        >Global</button>
-                    </div>
-                    <div class="omo-scope-toolbar__note">
-                        <?php if ($decisionScope === 'global'): ?>
-                            <strong>Mode global:</strong> toutes les prises de decision visibles dans l organisation sont affichees ici.
-                        <?php else: ?>
-                            <strong>Mode contextuel:</strong> seules les prises de decision liees au contexte courant restent affichees ici.
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-            <?php endif; ?>
             <div class="omo-decisions__filters" aria-label="Filtres">
                 <div class="omo-decisions__status-bar generic-section">
                     <div class="omo-decisions__status-tabs" data-omo-decisions-status-tabs></div>
@@ -1047,26 +1055,32 @@ if (!is_string($payloadJson)) {
     min-height: 100%;
 }
 
-.omo-decisions__hero {
+.omo-decisions__title-row {
     display: flex;
-    justify-content: space-between;
-    gap: 16px;
-    align-items: flex-start;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.omo-decisions__app-icon {
+    --omo-panel-view-app-icon-accent: #0f766e;
 }
 
 .omo-decisions__header-actions {
-    display: grid;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
     gap: 10px;
-    justify-items: end;
+}
+
+.omo-decisions__scope-slot {
+    min-width: 0;
 }
 
 .omo-decisions__filters {
     display: grid;
     gap: 12px;
-    margin-bottom: 16px;
-}
-
-.omo-decisions__scope-toolbar {
     margin-bottom: 16px;
 }
 
@@ -1176,7 +1190,6 @@ if (!is_string($payloadJson)) {
 }
 
 @media (max-width: 720px) {
-    .omo-decisions__hero,
     .omo-decisions__status-bar,
     .omo-decisions-card__header {
         flex-direction: column;
@@ -1185,11 +1198,15 @@ if (!is_string($payloadJson)) {
 
     .omo-decisions__header-actions {
         width: 100%;
-        justify-items: stretch;
+        justify-content: flex-start;
     }
 
     .omo-decisions__filters-grid {
         grid-template-columns: 1fr;
+    }
+
+    .omo-decisions__header-actions .generic-action-button {
+        width: 100%;
     }
 
     .omo-decisions__filters-toggle {

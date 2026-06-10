@@ -2082,6 +2082,12 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
       const settings = Object.assign({
         quickZoom: false
       }, options || {});
+      const previousZoomState = {
+        centerX: zoomInfo && Number.isFinite(zoomInfo.centerX) ? zoomInfo.centerX : null,
+        centerY: zoomInfo && Number.isFinite(zoomInfo.centerY) ? zoomInfo.centerY : null,
+        scale: zoomInfo && Number.isFinite(zoomInfo.scale) ? zoomInfo.scale : null,
+        view: Array.isArray(vOld) ? vOld.slice() : null
+      };
 
       structureReloadPromise = loadStructureData()
         .then(function() {
@@ -2093,7 +2099,10 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
             currentnode = root;
           }
 
-          drawAll();
+          drawAll({
+            skipInitialFocus: !settings.quickZoom,
+            zoomState: !settings.quickZoom ? previousZoomState : null
+          });
 
           if (settings.quickZoom) {
             const quickTargetNode = nodeId ? findPackedNodeById(nodeId) : root;
@@ -2966,7 +2975,12 @@ function getChartColors() {
 
     let chartColors = getChartColors();
 
-    function drawAll() {
+    function drawAll(options) {
+      const settings = Object.assign({
+        skipInitialFocus: false,
+        zoomState: null
+      }, options || {});
+
       if (!root) {
         renderStructureMessage(structureTranslations.noStructure);
         return;
@@ -3036,6 +3050,27 @@ function getChartColors() {
 
       renderRoleList();
       bindEvents();
+
+      if (
+        settings.skipInitialFocus
+        && settings.zoomState
+        && Number.isFinite(settings.zoomState.centerX)
+        && Number.isFinite(settings.zoomState.centerY)
+        && Number.isFinite(settings.zoomState.scale)
+        && Array.isArray(settings.zoomState.view)
+        && settings.zoomState.view.length === 3
+      ) {
+        zoomInfo = {
+          centerX: settings.zoomState.centerX,
+          centerY: settings.zoomState.centerY,
+          scale: settings.zoomState.scale
+        };
+        vOld = settings.zoomState.view.slice();
+        drawCanvas(context, false);
+        drawCanvas(hiddenContext, true);
+        return;
+      }
+
       quickZoomToCanvas(currentnode);
     }
 
@@ -3094,8 +3129,11 @@ function startChart() {
 
       window.omoStructureRefreshHandler = function (event) {
         const cid = event && event.detail ? event.detail.cid : null;
+        const quickZoom = event && event.detail && Object.prototype.hasOwnProperty.call(event.detail, 'quickZoom')
+          ? Boolean(event.detail.quickZoom)
+          : true;
         reloadStructureAndFocus(cid, {
-          quickZoom: true
+          quickZoom: quickZoom
         });
       };
 

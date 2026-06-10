@@ -1020,6 +1020,8 @@ function syncOpenDrawers() {
     $('.drawer').each(function () {
         updateDrawerPosition($(this));
     });
+
+    updateExternalPanelDrawerPosition();
 }
 
 function clearDrawerRemoval(drawer) {
@@ -1383,6 +1385,302 @@ function buildDrawerUrl(baseUrl, oid, cid = null) {
     }
 
     return omoResolveAppUrl(url);
+}
+
+function updateExternalPanelDrawerPosition(drawer = null) {
+    const externalDrawer = drawer || document.getElementById('omoExternalPanelDrawer');
+    if (!externalDrawer) {
+        return;
+    }
+
+    if (omoIsMobileLayout()) {
+        const compactSidebarWidth = omoGetCompactSidebarWidth();
+        externalDrawer.style.left = compactSidebarWidth + 'px';
+        externalDrawer.style.width = 'calc(100% - ' + compactSidebarWidth + 'px)';
+        return;
+    }
+
+    const leftWidth = $('#panel-left').outerWidth() || 0;
+    externalDrawer.style.left = leftWidth + 'px';
+    externalDrawer.style.width = 'calc(100% - ' + leftWidth + 'px)';
+}
+
+function omoEnsureExternalPanelDrawer() {
+    const content = document.querySelector('.content');
+    if (!content) {
+        return null;
+    }
+
+    let drawer = document.getElementById('omoExternalPanelDrawer');
+    if (!drawer) {
+        drawer = document.createElement('div');
+        drawer.id = 'omoExternalPanelDrawer';
+        drawer.hidden = true;
+        drawer.className = 'omo-overlay-drawer omo-external-panel-drawer';
+        drawer.setAttribute('data-omo-external-panel-drawer', '1');
+        drawer.innerHTML = ''
+            + '<div class="omo-overlay-drawer__backdrop" data-omo-external-panel-drawer-close="1"></div>'
+            + '<div class="omo-overlay-drawer__panel">'
+            + '  <div class="omo-overlay-drawer__header">'
+            + '    <div class="omo-overlay-drawer__header-copy">'
+            + '      <h3 class="omo-overlay-drawer__title" data-omo-external-panel-drawer-title>Edition</h3>'
+            + '      <p class="omo-overlay-drawer__description" data-omo-external-panel-drawer-description hidden></p>'
+            + '    </div>'
+            + '    <button type="button" class="omo-overlay-drawer__close" data-omo-external-panel-drawer-close="1">Fermer</button>'
+            + '  </div>'
+            + '  <div class="omo-overlay-drawer__body" data-omo-external-panel-drawer-body></div>'
+            + '</div>';
+
+        drawer.querySelectorAll('[data-omo-external-panel-drawer-close="1"]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                omoCloseExternalPanelDrawer();
+            });
+        });
+
+        content.appendChild(drawer);
+    }
+
+    updateExternalPanelDrawerPosition(drawer);
+    return drawer;
+}
+
+function omoResolveExternalPanelHostContext() {
+    const route = typeof parseUrl === 'function'
+        ? parseUrl()
+        : { oid: null, cid: null, hash: null };
+    const hashState = omoParseHashState(route && route.hash ? route.hash : null);
+    const hostDrawer = $('.drawer.open').last();
+
+    if (hostDrawer.length) {
+        return {
+            hostKind: 'drawer',
+            hostRouteToken: hashState.routeToken || '',
+            hostDrawerId: String(hostDrawer.attr('id') || ''),
+            hostUrl: String(hostDrawer.data('omo-drawer-url') || ''),
+            hostPanelUrl: '',
+            oid: Number(route && route.oid ? route.oid : 0),
+            cid: Number(route && route.cid ? route.cid : 0)
+        };
+    }
+
+    return {
+        hostKind: 'panel-right',
+        hostRouteToken: '',
+        hostDrawerId: '',
+        hostUrl: '',
+        hostPanelUrl: omoGetMainRightPanelLoadedUrl() || omoBuildMainRightPanelUrl(route ? route.oid : null, route ? route.cid : null),
+        oid: Number(route && route.oid ? route.oid : 0),
+        cid: Number(route && route.cid ? route.cid : 0)
+    };
+}
+
+function omoGetExternalPanelDrawerContext(target = null) {
+    let drawer = null;
+
+    if (target instanceof Element) {
+        drawer = target.closest('[data-omo-external-panel-drawer="1"]');
+    } else if (target && target.jquery && target.length) {
+        drawer = target.get(0).closest('[data-omo-external-panel-drawer="1"]');
+    }
+
+    if (!drawer) {
+        drawer = document.getElementById('omoExternalPanelDrawer');
+    }
+
+    if (!drawer) {
+        return null;
+    }
+
+    return {
+        drawer: drawer,
+        hostKind: String(drawer.dataset.omoHostKind || ''),
+        hostRouteToken: String(drawer.dataset.omoHostRouteToken || ''),
+        hostDrawerId: String(drawer.dataset.omoHostDrawerId || ''),
+        hostUrl: String(drawer.dataset.omoHostUrl || ''),
+        hostPanelUrl: String(drawer.dataset.omoHostPanelUrl || ''),
+        oid: Number(drawer.dataset.omoHostOid || 0),
+        cid: Number(drawer.dataset.omoHostCid || 0)
+    };
+}
+
+function omoRefreshExternalPanelDrawerHost(target = null) {
+    const context = omoGetExternalPanelDrawerContext(target);
+    if (!context) {
+        return false;
+    }
+
+    const route = typeof parseUrl === 'function'
+        ? parseUrl()
+        : {
+            oid: context.oid || null,
+            cid: context.cid || null,
+            hash: null
+        };
+
+    if (context.hostKind === 'drawer') {
+        let resolvedUrl = context.hostUrl;
+
+        if (context.hostRouteToken) {
+            const menuConfig = getSidebarMenuConfig(context.hostRouteToken, route.oid, route.cid);
+            if (menuConfig) {
+                if (menuConfig.resolvedUrl) {
+                    resolvedUrl = menuConfig.resolvedUrl;
+                } else if (menuConfig.url) {
+                    resolvedUrl = buildDrawerUrl(menuConfig.url, route.oid, route.cid);
+                }
+            }
+        }
+
+        if (context.hostDrawerId && resolvedUrl && typeof refreshDrawer === 'function') {
+            return refreshDrawer(context.hostDrawerId, resolvedUrl);
+        }
+
+        return false;
+    }
+
+    const panelUrl = omoBuildMainRightPanelUrl(route.oid, route.cid) || context.hostPanelUrl;
+    if (panelUrl && typeof loadContent === 'function') {
+        $('#panel-right').data('omo-main-right-loaded-url', panelUrl);
+        loadContent('#panel-right', panelUrl, 'panel', function () {
+            $('#panel-right').data('omo-main-right-loaded-url', panelUrl);
+        });
+        return true;
+    }
+
+    return false;
+}
+
+function omoCloseExternalPanelDrawer() {
+    const drawer = document.getElementById('omoExternalPanelDrawer');
+    if (!drawer) {
+        return;
+    }
+
+    drawer.classList.remove('is-open');
+    window.setTimeout(function () {
+        if (drawer.classList.contains('is-open')) {
+            return;
+        }
+
+        drawer.hidden = true;
+        const body = drawer.querySelector('[data-omo-external-panel-drawer-body]');
+        if (body) {
+            body.innerHTML = '';
+        }
+    }, 200);
+}
+
+function omoFormatExternalDrawerTitle(routeToken = '') {
+    const normalizedRouteToken = omoNormalizeHashToken(routeToken);
+
+    if (!normalizedRouteToken) {
+        return 'Edition';
+    }
+
+    if (/^holon-create-\d+$/i.test(normalizedRouteToken)) {
+        return 'Ajouter';
+    }
+
+    if (/^holon-edit-\d+$/i.test(normalizedRouteToken)) {
+        return 'Modifier';
+    }
+
+    if (/^holon-template-edit-\d+-\d+$/i.test(normalizedRouteToken)) {
+        return 'Modifier';
+    }
+
+    return 'Edition';
+}
+
+function omoOpenExternalPanelDrawer(options = {}) {
+    const drawer = omoEnsureExternalPanelDrawer();
+    if (!drawer) {
+        return false;
+    }
+
+    const hostContext = omoResolveExternalPanelHostContext();
+    const url = String(options.url || '').trim();
+    const mode = String(options.mode || 'fetch').trim().toLowerCase();
+    const title = String(options.title || 'Edition').trim() || 'Edition';
+    const description = String(options.description || '').trim();
+    const body = drawer.querySelector('[data-omo-external-panel-drawer-body]');
+    const titleNode = drawer.querySelector('[data-omo-external-panel-drawer-title]');
+    const descriptionNode = drawer.querySelector('[data-omo-external-panel-drawer-description]');
+
+    if (!body || !url) {
+        return false;
+    }
+
+    drawer.dataset.omoHostKind = hostContext.hostKind || '';
+    drawer.dataset.omoHostRouteToken = hostContext.hostRouteToken || '';
+    drawer.dataset.omoHostDrawerId = hostContext.hostDrawerId || '';
+    drawer.dataset.omoHostUrl = hostContext.hostUrl || '';
+    drawer.dataset.omoHostPanelUrl = hostContext.hostPanelUrl || '';
+    drawer.dataset.omoHostOid = String(hostContext.oid || 0);
+    drawer.dataset.omoHostCid = String(hostContext.cid || 0);
+
+    if (titleNode) {
+        titleNode.textContent = title;
+    }
+
+    if (descriptionNode) {
+        if (description !== '') {
+            descriptionNode.hidden = false;
+            descriptionNode.textContent = description;
+        } else {
+            descriptionNode.hidden = true;
+            descriptionNode.textContent = '';
+        }
+    }
+
+    updateExternalPanelDrawerPosition(drawer);
+    drawer.hidden = false;
+    window.requestAnimationFrame(function () {
+        drawer.classList.add('is-open');
+    });
+
+    if (mode === 'fetch') {
+        loadContent(body, url, 'panel');
+        return true;
+    }
+
+    if (mode === 'html') {
+        body.innerHTML = url;
+        return true;
+    }
+
+    window.location.href = url;
+    return true;
+}
+
+function omoOpenExternalRouteDrawer(routeToken, options = {}) {
+    const normalizedRouteToken = omoNormalizeHashToken(routeToken);
+    if (!normalizedRouteToken) {
+        return false;
+    }
+
+    const route = typeof parseUrl === 'function'
+        ? parseUrl()
+        : { oid: null, cid: null };
+    const menuConfig = getSidebarMenuConfig(normalizedRouteToken, route.oid, route.cid);
+    if (!menuConfig) {
+        return false;
+    }
+
+    const resolvedUrl = menuConfig.resolvedUrl
+        ? menuConfig.resolvedUrl
+        : (menuConfig.url ? buildDrawerUrl(menuConfig.url, route.oid, route.cid) : '');
+
+    if (!resolvedUrl) {
+        return false;
+    }
+
+    return omoOpenExternalPanelDrawer({
+        title: String(options.title || omoFormatExternalDrawerTitle(normalizedRouteToken)).trim() || 'Edition',
+        description: String(options.description || '').trim(),
+        url: resolvedUrl,
+        mode: 'fetch'
+    });
 }
 
 function omoNormalizeHashToken(token) {
@@ -2658,6 +2956,11 @@ window.omoReplaceFetchedPanelRoot = omoReplaceFetchedPanelRoot;
 window.omoResolveAppUrl = omoResolveAppUrl;
 window.omoIsShareMode = omoIsShareMode;
 window.omoBuildHashFromState = omoBuildHashFromState;
+window.omoGetExternalPanelDrawerContext = omoGetExternalPanelDrawerContext;
+window.omoRefreshExternalPanelDrawerHost = omoRefreshExternalPanelDrawerHost;
+window.omoCloseExternalPanelDrawer = omoCloseExternalPanelDrawer;
+window.omoOpenExternalPanelDrawer = omoOpenExternalPanelDrawer;
+window.omoOpenExternalRouteDrawer = omoOpenExternalRouteDrawer;
 window.omoParsePopupHashState = function () {
     return omoParseHashState(parseUrl().hash);
 };

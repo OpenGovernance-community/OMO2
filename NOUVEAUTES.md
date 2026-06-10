@@ -2,6 +2,20 @@
 
 Ce fichier sert a garder une trace courte des evolutions fonctionnelles et techniques recentes du projet.
 
+## 2026-06 Structure OMO
+
+Les actions `Ajouter` et `Modifier` du panneau gauche de structure n'ouvrent plus un module OMO classique qui remplace le drawer courant. Elles passent maintenant par un drawer global externe, affiche au-dessus de la zone de travail OMO.
+
+Ce drawer externe peut se superposer a l'application actuellement ouverte, mais aussi a l'espace personnel de droite quand aucune application n'est active. La sauvegarde referme ensuite ce drawer temporaire et relance un rafraichissement du contexte sous-jacent, y compris pour la structure et les editions compactes de modeles.
+
+Quand le contexte sous-jacent est precisement le panneau `Structure`, le retour apres sauvegarde evite maintenant le rechargement complet du drawer. La structure recharge seulement ses donnees internes puis recentre le noeud cible avec un mouvement plus doux.
+
+## 2026-06 Entetes OMO
+
+Les entetes des applications `Decisions`, `Documents` et `Team` ont ete rapproches du modele du calendrier. Le titre peut maintenant afficher une icone dediee, les actions principales restent alignees a droite, et les selecteurs de portee ou de vue sont mieux regroupes dans la zone haute.
+
+Dans `Decisions`, le basculement `Contextuel/Global` a ete remonte dans l entete au lieu de rester dans le contenu. `Documents` et `Team` profitent aussi d une hierarchie plus proche du calendrier, avec des controles mieux separes entre titre, actions et changement de vue.
+
 ## 2026-06 Documents OMO
 
 Les documents OMO ont fortement evolue. Ils peuvent maintenant etre classes dans des dossiers imbriques, deplaces via une popup en arbre, et leur affichage tient compte de la visibilite avec un compteur `visible (total)` plus explicite.
