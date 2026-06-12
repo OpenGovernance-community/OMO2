@@ -104,6 +104,23 @@ if (!function_exists('omoDecisionBuildParticipationPreviewUrl')) {
     }
 }
 
+if (!function_exists('omoDecisionNormalizeContextHolonId')) {
+    function omoDecisionNormalizeContextHolonId(Organization $organization, $holonId)
+    {
+        $holonId = (int)$holonId;
+        if ($holonId <= 0) {
+            return 0;
+        }
+
+        $rootHolon = $organization->getEnabledStructuralRootHolon();
+        if ($rootHolon instanceof Holon && (int)$rootHolon->getId() === $holonId) {
+            return 0;
+        }
+
+        return $holonId;
+    }
+}
+
 if (!function_exists('omoDecisionResolveOrganizationHolonContext')) {
     function omoDecisionResolveOrganizationHolonContext(Organization $organization, $requestedHolonId)
     {

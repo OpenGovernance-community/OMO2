@@ -52,12 +52,12 @@ $sourceLang = [
         'context' => 'Label used for the all-day row in week and day views.',
     ],
     'calendar.drawer.title' => [
-        'text' => 'Nouvel evenement',
-        'context' => 'Title of the internal drawer used to create an event from the calendar application.',
+        'text' => 'Evenement',
+        'context' => 'Title of the internal drawer used to inspect or edit an event from the calendar application.',
     ],
     'calendar.drawer.description' => [
-        'text' => 'Creation d un evenement dans le contexte courant.',
-        'context' => 'Description shown in the internal event creation drawer.',
+        'text' => 'Consultez les details puis modifiez si besoin.',
+        'context' => 'Description shown in the internal event drawer.',
     ],
     'calendar.empty.month' => [
         'text' => 'Aucun evenement sur cette periode.',
@@ -121,8 +121,8 @@ $sourceLang = [
         'context' => 'Loading label shown while fetching the event creation form.',
     ],
     'calendar.error.load_form' => [
-        'text' => 'Impossible de charger le formulaire.',
-        'context' => 'Error shown inside the drawer when the event creation form could not be loaded.',
+        'text' => 'Impossible de charger ce contenu.',
+        'context' => 'Error shown inside the drawer when the event detail or form could not be loaded.',
     ],
     'calendar.section.today' => [
         'text' => 'Aujourd hui',
@@ -538,6 +538,7 @@ function omoCalendarAssignTimelineColumns(array $segments)
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 $currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
+$openEventId = isset($_GET['open_event_id']) && is_numeric($_GET['open_event_id']) ? (int)$_GET['open_event_id'] : 0;
 $viewMode = omoCalendarParseView($_GET['view'] ?? '');
 $calendarScope = omoCalendarParseScope($_GET['scope'] ?? '');
 $requestedMonth = omoCalendarParseMonth($_GET['month'] ?? '');
@@ -572,6 +573,60 @@ if (!$organization->canViewDetail()) {
 }
 
 $rootHolon = $organization->getEnabledStructuralRootHolon();
+$currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+$openedEvent = null;
+$openedEventHolonId = 0;
+$requestedScopeRaw = trim((string)($_GET['scope'] ?? ''));
+$requestedViewRaw = trim((string)($_GET['view'] ?? ''));
+
+if ($openEventId > 0) {
+    $candidateEvent = new Event();
+    if (
+        $candidateEvent->load($openEventId)
+        && (int)$candidateEvent->get('IDorganization') === $organizationId
+        && (int)$candidateEvent->get('active') === 1
+        && Event::normalizeStatus($candidateEvent->get('status')) !== Event::STATUS_CANCELLED
+    ) {
+        $candidateHolonId = (int)$candidateEvent->get('IDholon');
+        $canUseCandidateEvent = true;
+
+        if ($candidateHolonId > 0) {
+            $candidateHolon = new Holon();
+            if (
+                !$candidateHolon->load($candidateHolonId)
+                || !($rootHolon instanceof Holon)
+                || !$candidateHolon->isDescendantOf((int)$rootHolon->getId(), true)
+                || !$candidateHolon->canViewDetail()
+            ) {
+                $canUseCandidateEvent = false;
+            }
+        }
+
+        if ($canUseCandidateEvent) {
+            $openedEvent = $candidateEvent;
+            $openedEventHolonId = $candidateHolonId;
+
+            $eventStartAt = $candidateEvent->get('start_at');
+            if ($eventStartAt instanceof \DateTimeInterface && $requestedDate === null && $requestedMonth === null) {
+                $anchorDate = \DateTimeImmutable::createFromInterface($eventStartAt)->setTime(0, 0, 0);
+                $monthStart = $anchorDate->modify('first day of this month')->setTime(0, 0, 0);
+            }
+
+            if ($requestedViewRaw === '') {
+                $viewMode = 'day';
+            }
+
+            if (
+                $requestedScopeRaw === ''
+                && $openedEventHolonId > 0
+                && ($currentHolonId <= 0 || $currentHolonId !== $openedEventHolonId)
+            ) {
+                $calendarScope = 'global';
+            }
+        }
+    }
+}
+
 $currentHolon = null;
 $canToggleScope = false;
 
@@ -610,6 +665,7 @@ $todayDayKey = $todayStart->format('Y-m-d');
 
 $events = new ArrayEvent();
 $events->loadForCalendarContext($organizationId, 0, false);
+$openEventTargetId = $openedEvent instanceof Event ? (int)$openedEvent->getId() : 0;
 
 $holonLabelsById = [];
 $calendarScopes = $canToggleScope ? ['contextual', 'global'] : ['contextual'];
@@ -726,6 +782,7 @@ foreach ($events as $event) {
                 'status' => $eventStatus,
                 'holonLabel' => $eventHolonLabel,
                 'isFaded' => $isFadedInScope,
+                'isRouteTarget' => $openEventTargetId > 0 && $eventId === $openEventTargetId,
             ];
 
             $cursor = $cursor->modify('+1 day');
@@ -761,6 +818,7 @@ foreach ($events as $event) {
                 'holonLabel' => $eventHolonLabel,
                 'sort' => (int)$startAt->format('U'),
                 'isFaded' => $isFadedInScope,
+                'isRouteTarget' => $openEventTargetId > 0 && $eventId === $openEventTargetId,
             ];
 
             $viewCountsByScope[$scopeKey]['list'] += 1;
@@ -797,6 +855,7 @@ foreach ($events as $event) {
                     'status' => $eventStatus,
                     'holonLabel' => $eventHolonLabel,
                     'isFaded' => $isFadedInScope,
+                    'isRouteTarget' => $openEventTargetId > 0 && $eventId === $openEventTargetId,
                 ];
                 continue;
             }
@@ -816,6 +875,7 @@ foreach ($events as $event) {
                 'startMinute' => $startMinute,
                 'endMinute' => min(1440, $displayEndMinute),
                 'isFaded' => $isFadedInScope,
+                'isRouteTarget' => $openEventTargetId > 0 && $eventId === $openEventTargetId,
             ];
         }
         unset($timelineDay);
@@ -843,6 +903,7 @@ foreach ($events as $event) {
                     'status' => $eventStatus,
                     'holonLabel' => $eventHolonLabel,
                     'isFaded' => $isFadedInScope,
+                    'isRouteTarget' => $openEventTargetId > 0 && $eventId === $openEventTargetId,
                 ];
                 continue;
             }
@@ -862,6 +923,7 @@ foreach ($events as $event) {
                 'startMinute' => $startMinute,
                 'endMinute' => min(1440, $displayEndMinute),
                 'isFaded' => $isFadedInScope,
+                'isRouteTarget' => $openEventTargetId > 0 && $eventId === $openEventTargetId,
             ];
         }
         unset($timelineDay);
@@ -970,8 +1032,10 @@ foreach ($calendarScopes as $scopeKey) {
 
 $currentUrl = $viewUrlsByScope[$calendarScope][$viewMode] ?? $viewUrlsByScope['contextual']['month'];
 $createUrl = '/omo/api/calendar/create.php?oid=' . rawurlencode((string)$organizationId);
+$detailUrl = '/omo/api/calendar/detail.php?oid=' . rawurlencode((string)$organizationId);
 if ($currentHolon instanceof Holon) {
     $createUrl .= '&cid=' . rawurlencode((string)(int)$currentHolon->getId());
+    $detailUrl .= '&cid=' . rawurlencode((string)(int)$currentHolon->getId());
 }
 
 $viewSummariesByScope = [];
@@ -1015,9 +1079,11 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     id="omo-calendar-root"
     data-omo-calendar-current-url="<?= omoApiEscape($currentUrl) ?>"
     data-omo-calendar-create-url="<?= omoApiEscape($createUrl) ?>"
+    data-omo-calendar-detail-url="<?= omoApiEscape($detailUrl) ?>"
     data-omo-calendar-month="<?= omoApiEscape($monthStart->format('Y-m')) ?>"
     data-omo-calendar-view="<?= omoApiEscape($viewMode) ?>"
     data-omo-calendar-scope="<?= omoApiEscape($calendarScope) ?>"
+    data-omo-calendar-open-event-id="<?= (int)$openEventTargetId ?>"
 >
     <div class="omo-calendar__header omo-panel-view__header">
         <div class="omo-calendar__header-main">
@@ -1218,7 +1284,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                                 <div class="omo-calendar__cell-items">
                                     <?php foreach ($visibleItems as $item): ?>
                                         <div
-                                            class="omo-calendar__event-chip is-status-<?= omoApiEscape($item['status']) ?><?= !empty($item['isFaded']) ? ' is-faded' : '' ?>"
+                                            class="omo-calendar__event-chip is-status-<?= omoApiEscape($item['status']) ?><?= !empty($item['isFaded']) ? ' is-faded' : '' ?><?= !empty($item['isRouteTarget']) ? ' is-route-target' : '' ?>"
                                             data-omo-calendar-event-id="<?= (int)$item['id'] ?>"
                                         >
                                             <?php if ($item['timeLabel'] !== ''): ?>
@@ -1284,7 +1350,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                                         <?php if (count($timelineDay['allDay']) > 0): ?>
                                             <?php foreach ($timelineDay['allDay'] as $item): ?>
                                                 <div
-                                                    class="omo-calendar__time-all-day-chip is-status-<?= omoApiEscape($item['status']) ?><?= !empty($item['isFaded']) ? ' is-faded' : '' ?>"
+                                                    class="omo-calendar__time-all-day-chip is-status-<?= omoApiEscape($item['status']) ?><?= !empty($item['isFaded']) ? ' is-faded' : '' ?><?= !empty($item['isRouteTarget']) ? ' is-route-target' : '' ?>"
                                                     data-omo-calendar-event-id="<?= (int)$item['id'] ?>"
                                                 >
                                                     <strong><?= omoApiEscape($item['title']) ?></strong>
@@ -1319,7 +1385,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                                         $width = 100 / $columnCount;
                                         ?>
                                         <article
-                                            class="omo-calendar__time-event is-status-<?= omoApiEscape($item['status']) ?><?= !empty($item['isFaded']) ? ' is-faded' : '' ?>"
+                                            class="omo-calendar__time-event is-status-<?= omoApiEscape($item['status']) ?><?= !empty($item['isFaded']) ? ' is-faded' : '' ?><?= !empty($item['isRouteTarget']) ? ' is-route-target' : '' ?>"
                                             data-omo-calendar-event-id="<?= (int)$item['id'] ?>"
                                             style="top: <?= omoApiEscape(number_format($top, 4, '.', '')) ?>%; height: <?= omoApiEscape(number_format(min(100 - $top, $height), 4, '.', '')) ?>%; left: calc(<?= omoApiEscape(number_format($left, 4, '.', '')) ?>% + 4px); width: calc(<?= omoApiEscape(number_format($width, 4, '.', '')) ?>% - 8px);"
                                         >
@@ -1360,7 +1426,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                                         <div class="omo-calendar__list-header-cell generic-file-list__header-cell"><?= omoApiEscape(omoCalendarT('calendar.list.column.date')) ?></div>
                                     </div>
                                     <?php foreach ($section['items'] as $item): ?>
-                                        <article class="omo-calendar__item-shell generic-file-list__item-shell is-status-<?= omoApiEscape($item['status']) ?><?= !empty($item['isFaded']) ? ' is-faded' : '' ?>" data-omo-calendar-event-id="<?= (int)$item['id'] ?>">
+                                        <article class="omo-calendar__item-shell generic-file-list__item-shell is-status-<?= omoApiEscape($item['status']) ?><?= !empty($item['isFaded']) ? ' is-faded' : '' ?><?= !empty($item['isRouteTarget']) ? ' is-route-target' : '' ?>" data-omo-calendar-event-id="<?= (int)$item['id'] ?>">
                                             <div class="omo-calendar__list-item generic-file-list__row">
                                                 <div class="omo-calendar__list-cell omo-calendar__list-cell--name generic-file-list__cell generic-file-list__cell--name" data-label="<?= omoApiEscape(omoCalendarT('calendar.list.column.event')) ?>">
                                                     <div class="omo-calendar__list-name-main generic-file-list__name-main">
@@ -1437,9 +1503,15 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             : 'contextual';
         var calendarPreferencesStorageKey = 'omoCalendarDisplayPreferences';
         var createUrl = root.getAttribute('data-omo-calendar-create-url') || '';
+        var detailUrl = root.getAttribute('data-omo-calendar-detail-url') || '';
         var headerCount = root.querySelector('[data-omo-calendar-header-count]');
         var headerSummary = root.querySelector('[data-omo-calendar-header-summary]');
         var requestToken = 0;
+        var initialOpenEventId = Number(root.getAttribute('data-omo-calendar-open-event-id') || '0');
+        if (!Number.isInteger(initialOpenEventId) || initialOpenEventId <= 0) {
+            initialOpenEventId = 0;
+        }
+        var initialOpenEventDrawerOpened = false;
 
         function normalizeViewPreference(viewName) {
             var normalizedView = String(viewName || '').trim().toLowerCase();
@@ -1512,6 +1584,15 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             }
 
             return url + (url.indexOf('?') === -1 ? '?' : '&') + 'date=' + encodeURIComponent(dateValue);
+        }
+
+        function buildDetailUrl(eventId) {
+            var url = detailUrl;
+            if (!url || !eventId) {
+                return url;
+            }
+
+            return url + (url.indexOf('?') === -1 ? '?' : '&') + 'id=' + encodeURIComponent(String(eventId));
         }
 
         function buildEditUrl(eventId) {
@@ -1777,6 +1858,59 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             });
         }
 
+        function findActiveViewPanel() {
+            return root.querySelector(
+                '[data-omo-calendar-view-panel="' + currentView + '"][data-omo-calendar-view-scope="' + currentScope + '"]'
+            );
+        }
+
+        function findRouteTargetNode() {
+            if (initialOpenEventId <= 0) {
+                return null;
+            }
+
+            var activePanel = findActiveViewPanel();
+            if (!activePanel) {
+                return null;
+            }
+
+            return activePanel.querySelector('[data-omo-calendar-event-id="' + String(initialOpenEventId) + '"]');
+        }
+
+        function focusRouteTargetEvent(behavior) {
+            var routeTargetNode = findRouteTargetNode();
+            if (!routeTargetNode) {
+                return false;
+            }
+
+            routeTargetNode.classList.remove('is-route-target-active');
+            void routeTargetNode.offsetWidth;
+            routeTargetNode.classList.add('is-route-target-active');
+
+            try {
+                routeTargetNode.scrollIntoView({
+                    block: 'center',
+                    inline: 'nearest',
+                    behavior: behavior || 'smooth'
+                });
+            } catch (error) {
+                routeTargetNode.scrollIntoView(true);
+            }
+
+            return true;
+        }
+
+        function maybeOpenInitialEventDetail() {
+            if (initialOpenEventId <= 0 || initialOpenEventDrawerOpened) {
+                return;
+            }
+
+            initialOpenEventDrawerOpened = true;
+            window.setTimeout(function () {
+                openDrawerWithUrl(buildDetailUrl(initialOpenEventId));
+            }, 40);
+        }
+
         function setActiveView(nextView, nextUrl, nextCount, nextSummary) {
             if (!nextView) {
                 return;
@@ -1818,6 +1952,9 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
             window.requestAnimationFrame(function () {
                 scrollTimelineToBusinessStart(nextView);
+                if (initialOpenEventId > 0) {
+                    focusRouteTargetEvent('auto');
+                }
             });
         }
 
@@ -1883,11 +2020,26 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     return;
                 }
 
-                openDrawerWithUrl(buildEditUrl(eventId));
+                openDrawerWithUrl(buildDetailUrl(eventId));
             });
         });
 
         if (drawerBody) {
+            drawerBody.addEventListener('click', function (event) {
+                var editButton = event.target.closest('[data-omo-calendar-open-edit-url]');
+                if (!editButton) {
+                    return;
+                }
+
+                event.preventDefault();
+                var editUrl = editButton.getAttribute('data-omo-calendar-open-edit-url') || '';
+                if (!editUrl) {
+                    return;
+                }
+
+                openDrawerWithUrl(editUrl);
+            });
+
             drawerBody.addEventListener('change', function (event) {
                 var startField = event.target.closest('input[name="start_at"]');
                 if (!startField) {
@@ -1956,18 +2108,24 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             });
         }
 
-        var savedPreferences = readCalendarPreferences();
-        var preferredView = normalizeViewPreference(savedPreferences.view);
+        if (initialOpenEventId <= 0) {
+            var savedPreferences = readCalendarPreferences();
+            var preferredView = normalizeViewPreference(savedPreferences.view);
 
-        if (preferredView !== currentView && root.querySelector('[data-omo-calendar-set-view="' + preferredView + '"]')) {
-            var preferredViewMeta = resolveViewMeta(preferredView, currentScope);
-            setActiveView(preferredView, preferredViewMeta.url, preferredViewMeta.count, preferredViewMeta.summary);
+            if (preferredView !== currentView && root.querySelector('[data-omo-calendar-set-view="' + preferredView + '"]')) {
+                var preferredViewMeta = resolveViewMeta(preferredView, currentScope);
+                setActiveView(preferredView, preferredViewMeta.url, preferredViewMeta.count, preferredViewMeta.summary);
+            }
         }
 
         syncScopeButtons(currentScope);
         syncTodayButtons(currentView);
         window.requestAnimationFrame(function () {
             scrollTimelineToBusinessStart(currentView);
+            if (initialOpenEventId > 0) {
+                focusRouteTargetEvent('auto');
+                maybeOpenInitialEventDetail();
+            }
         });
     })();
     </script>
@@ -2332,6 +2490,38 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 .omo-calendar__item-shell.is-faded .omo-calendar__list-item {
     opacity: 0.58;
     filter: saturate(0.72);
+}
+
+.omo-calendar__event-chip.is-route-target,
+.omo-calendar__time-all-day-chip.is-route-target,
+.omo-calendar__time-event.is-route-target,
+.omo-calendar__item-shell.is-route-target .omo-calendar__list-item {
+    scroll-margin-top: 96px;
+    scroll-margin-bottom: 32px;
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 42%, var(--color-border, #dbe2ea));
+    box-shadow:
+        0 0 0 2px color-mix(in srgb, var(--color-primary, #2563eb) 16%, transparent),
+        0 14px 28px -24px rgba(37, 99, 235, 0.55);
+}
+
+.omo-calendar__event-chip.is-route-target-active,
+.omo-calendar__time-all-day-chip.is-route-target-active,
+.omo-calendar__time-event.is-route-target-active,
+.omo-calendar__item-shell.is-route-target-active .omo-calendar__list-item {
+    animation: omo-calendar-route-target-pulse 1.35s ease-out 1;
+}
+
+@keyframes omo-calendar-route-target-pulse {
+    0% {
+        box-shadow:
+            0 0 0 0 color-mix(in srgb, var(--color-primary, #2563eb) 22%, transparent),
+            0 14px 28px -24px rgba(37, 99, 235, 0.28);
+    }
+    100% {
+        box-shadow:
+            0 0 0 14px rgba(37, 99, 235, 0),
+            0 14px 28px -24px rgba(37, 99, 235, 0);
+    }
 }
 
 .omo-calendar__event-time,

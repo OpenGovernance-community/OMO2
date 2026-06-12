@@ -37,7 +37,7 @@ if (!$patreonConfigured) {
 
     <div class="omo-patreon-welcome__video">
         <iframe
-            src="https://player.vimeo.com/video/1188749847"
+            src="https://player.vimeo.com/video/1200446731"
             title="Presentation OpenGovernance"
             loading="lazy"
             allow="autoplay; fullscreen; picture-in-picture"

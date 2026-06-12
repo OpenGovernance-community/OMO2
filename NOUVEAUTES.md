@@ -16,6 +16,10 @@ Les entetes des applications `Decisions`, `Documents` et `Team` ont ete rapproch
 
 Dans `Decisions`, le basculement `Contextuel/Global` a ete remonte dans l entete au lieu de rester dans le contenu. `Documents` et `Team` profitent aussi d une hierarchie plus proche du calendrier, avec des controles mieux separes entre titre, actions et changement de vue.
 
+Un correctif a aussi ete ajoute dans `Documents` pour garder toute la zone de contenu dans le conteneur principal au premier chargement. Cela retablit le bon style initial et permet aux boutons de changement d affichage de s initialiser des l ouverture de la page.
+
+Le chargeur AJAX OMO preserve maintenant aussi les scripts de donnees non executables comme `application/json` lors de l injection initiale d un drawer. Cela evite que certains modules, notamment `Documents`, perdent leur payload de rendu au premier chargement alors qu un rechargement interne continuait ensuite a fonctionner.
+
 ## 2026-06 Documents OMO
 
 Les documents OMO ont fortement evolue. Ils peuvent maintenant etre classes dans des dossiers imbriques, deplaces via une popup en arbre, et leur affichage tient compte de la visibilite avec un compteur `visible (total)` plus explicite.
@@ -69,6 +73,10 @@ L'affichage a ete adapte en consequence: la liste peut montrer une note relative
 La recherche de la topbar repose maintenant sur un systeme de jobs asynchrones. Une table `search_job` stocke les recherches en attente, en cours ou terminees, avec leur contexte, leurs scopes et leur resultat.
 
 Le popup de recherche affiche les resultats par module et peut desormais relancer une recherche directement depuis la popup elle-meme. Le champ de recherche et la selection des scopes y sont repris pour permettre d'ajuster le texte ou les modules sans revenir au menu principal.
+
+La recherche couvre maintenant aussi les decisions et le calendrier. Les events retrouves peuvent ouvrir directement le bon drawer via le hash, par exemple `#calendar-event-12`, avec recentrage sur l evenement cible et ouverture de sa fiche detail dans le drawer interne. Depuis cette fiche, l auteur peut ensuite basculer vers `Modifier` sans exposer directement le formulaire aux autres utilisateurs.
+
+Le module `Decisions` normalise aussi mieux le contexte implicite de l organisation. Quand le cercle courant correspond en fait au holon racine, le switch `Contextuel/Global`, les liens d action et certaines ouvertures internes n injectent plus ce `cid` dans les URLs, ce qui evite des chargements bloques autour de la portee globale.
 
 Le schema SQL correspondant a aussi ete reporte dans le seed Docker local pour que les nouvelles bases de developpement disposent directement de cette infrastructure de recherche.
 
