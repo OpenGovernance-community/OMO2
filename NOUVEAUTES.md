@@ -2,6 +2,10 @@
 
 Ce fichier sert a garder une trace courte des evolutions fonctionnelles et techniques recentes du projet.
 
+## 2026-06 Decisions OMO
+
+L'ecran `omo/api/decision/index.php` reprend maintenant la meme logique d'affichage que `documents`, avec memorisation locale des modes `detail/compact` et `temporel/alphabetique`. Le mode compact reutilise `generic-file-list`, ses entetes sticky et ses groupes temporels, tandis que le mode detail garde les cartes de decision en les triant de facon coherente selon le mode choisi.
+
 ## 2026-06 Documents OMO
 
 Les documents OMO ont fortement evolue. Ils peuvent maintenant etre classes dans des dossiers imbriques, deplaces via une popup en arbre, et leur affichage tient compte de la visibilite avec un compteur `visible (total)` plus explicite.
