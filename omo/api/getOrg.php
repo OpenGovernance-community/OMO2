@@ -682,24 +682,27 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 
 <div class="circle-panel">
     <div class="circle-top">
-    <div class="breadcrumb">
+    
+
+    <div class="circle-header">
+        <div>
+            <div class="circle-kicker generic-card-title generic-card-title--eyebrow"><?= omoApiEscape($holonTypeLabel) ?></div>
+ <div class="breadcrumb">
         <?php foreach ($breadcrumb as $index => $crumb): ?>
             <?php if ($index > 0): ?>
                 <span class="separator">&rsaquo;</span>
             <?php endif; ?>
 
             <?php $isActive = ((int)$crumb->getId() === (int)$currentHolon->getId()); ?>
+            <?php if (!$isActive): ?>
             <span class="crumb<?= $isActive ? ' active' : '' ?>"
                   data-cid="<?= (int)$crumb->getId() ?>"
                   data-is-root="<?= $index === 0 ? '1' : '0' ?>">
                 <?= omoApiEscape($crumb->get('name')) ?>
             </span>
+            <?php endif; ?>
         <?php endforeach; ?>
     </div>
-
-    <div class="circle-header">
-        <div>
-            <div class="circle-kicker generic-card-title generic-card-title--eyebrow"><?= omoApiEscape($holonTypeLabel) ?></div>
             <h2 class="circle-title generic-card-title generic-card-title--section"><?= omoApiEscape($currentHolon->get('name')) ?></h2>
         </div>
         <div class="circle-meta">
@@ -1440,11 +1443,19 @@ $(document)
   .on('click.omoOrgCreateHolon', '#panel-left [data-open-create-holon="1"]', function () {
     const cid = Number($(this).data('cid'));
 
-    if (!cid || typeof window.omoOpenDrawerHashState !== 'function') {
+    if (!cid) {
         return;
     }
 
-    window.omoOpenDrawerHashState('holon-create-' + cid);
+    if (typeof window.omoOpenExternalRouteDrawer === 'function' && window.omoOpenExternalRouteDrawer('holon-create-' + cid, {
+        title: 'Ajouter'
+    })) {
+        return;
+    }
+
+    if (typeof window.omoOpenDrawerHashState === 'function') {
+        window.omoOpenDrawerHashState('holon-create-' + cid);
+    }
   });
 
 $(document)
@@ -1456,16 +1467,24 @@ $(document)
     const isDefinitionEdit = String(button.data('definition-edit')) === '1';
     const templateContextId = Number(button.data('template-context-id') || 0);
 
-    if (!hid || typeof window.omoOpenDrawerHashState !== 'function') {
+    if (!hid) {
         return;
     }
 
+    let routeToken = 'holon-edit-' + hid;
     if ((isTemplateEdit || isDefinitionEdit) && templateContextId > 0) {
-        window.omoOpenDrawerHashState('holon-template-edit-' + templateContextId + '-' + hid);
+        routeToken = 'holon-template-edit-' + templateContextId + '-' + hid;
+    }
+
+    if (typeof window.omoOpenExternalRouteDrawer === 'function' && window.omoOpenExternalRouteDrawer(routeToken, {
+        title: 'Modifier'
+    })) {
         return;
     }
 
-    window.omoOpenDrawerHashState('holon-edit-' + hid);
+    if (typeof window.omoOpenDrawerHashState === 'function') {
+        window.omoOpenDrawerHashState(routeToken);
+    }
   });
 
 $(document)

@@ -6085,6 +6085,33 @@
 			);
 		}
 
+		protected static function topbarSearchViewerCanViewEvent(\dbObject\Event $event, array &$viewerContext, $organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			if (
+				$organizationId <= 0
+				|| (int)$event->getId() <= 0
+				|| (int)$event->get('IDorganization') !== $organizationId
+				|| !self::topbarSearchViewerHasOrganizationAccess($viewerContext, $organizationId)
+			) {
+				return false;
+			}
+
+			$eventHolonId = (int)$event->get('IDholon');
+			if ($eventHolonId > 0) {
+				$eventHolon = new \dbObject\Holon();
+				if (
+					!$eventHolon->load($eventHolonId)
+					|| !self::topbarSearchViewerCanViewHolon($eventHolon, $viewerContext)
+				) {
+					return false;
+				}
+			}
+
+			return (int)$event->get('active') === 1
+				&& \dbObject\Event::normalizeStatus($event->get('status')) !== \dbObject\Event::STATUS_CANCELLED;
+		}
+
 		protected static function cleanTopbarSearchTextValue($value, $limit = 0)
 		{
 			$value = html_entity_decode(strip_tags((string)$value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
@@ -6862,6 +6889,145 @@
 			return $results;
 		}
 
+		protected function searchTopbarCalendarResults($query, array $terms, $limit = 12, array $viewerContext = array())
+		{
+			if ((int)$this->getId() <= 0 || count($terms) === 0) {
+				return array();
+			}
+
+			$params = array(
+				'organization_id' => (int)$this->getId(),
+				'cancelled_status' => \dbObject\Event::STATUS_CANCELLED,
+			);
+
+			$titleExpr = "LOWER(COALESCE(search_rows.title, ''))";
+			$descriptionExpr = "LOWER(COALESCE(search_rows.description, ''))";
+			$holonExpr = "LOWER(COALESCE(search_rows.holon_name, ''))";
+			$statusExpr = "LOWER(COALESCE(search_rows.status, ''))";
+
+			$titleScoreSql = self::buildTopbarSearchScoreSql($titleExpr, $terms, $params, 'calendar_title', array(
+				'exact' => 108,
+				'prefix' => 68,
+				'like' => 36,
+			));
+			$descriptionScoreSql = self::buildTopbarSearchScoreSql($descriptionExpr, $terms, $params, 'calendar_description', array(
+				'exact' => 34,
+				'prefix' => 22,
+				'like' => 12,
+			));
+			$holonScoreSql = self::buildTopbarSearchScoreSql($holonExpr, $terms, $params, 'calendar_holon', array(
+				'exact' => 46,
+				'prefix' => 30,
+				'like' => 16,
+			));
+			$statusScoreSql = self::buildTopbarSearchScoreSql($statusExpr, $terms, $params, 'calendar_status', array(
+				'exact' => 16,
+				'prefix' => 10,
+				'like' => 6,
+			));
+			$preFilterSql = self::buildTopbarSearchAnyMatchSql(
+				array($titleExpr, $descriptionExpr, $holonExpr, $statusExpr),
+				$terms,
+				$params,
+				'calendar_prefilter'
+			);
+			$limitSql = max(1, (int)$limit);
+
+			$rows = self::fetchAll(
+				"SELECT
+					search_rows.*,
+					(" . $titleScoreSql . " + " . $descriptionScoreSql . " + " . $holonScoreSql . " + " . $statusScoreSql . ") AS relevance
+				FROM (
+					SELECT
+						e.`id`,
+						e.`title`,
+						e.`description`,
+						e.`IDholon`,
+						e.`IDuser`,
+						e.`status`,
+						e.`start_at`,
+						e.`end_at`,
+						e.`updated_at`,
+						h.`name` AS `holon_name`
+					FROM `event` e
+					LEFT JOIN `holon` h
+						ON h.`id` = e.`IDholon`
+					WHERE e.`IDorganization` = :organization_id
+					  AND e.`active` = 1
+					  AND e.`status` <> :cancelled_status
+				) search_rows
+				WHERE " . $preFilterSql . "
+				HAVING relevance > 0
+				ORDER BY relevance DESC, search_rows.`start_at` ASC, search_rows.`updated_at` DESC, search_rows.`id` DESC
+				LIMIT " . $limitSql,
+				$params
+			);
+
+			if ($rows === false) {
+				return array();
+			}
+
+			$results = array();
+
+			foreach ($rows as $row) {
+				$event = new \dbObject\Event();
+				if (!$event->load((int)($row['id'] ?? 0))) {
+					continue;
+				}
+
+				if (!self::topbarSearchViewerCanViewEvent($event, $viewerContext, (int)$this->getId())) {
+					continue;
+				}
+
+				$eventTitle = trim((string)$event->get('title'));
+				$holonName = trim((string)($row['holon_name'] ?? ''));
+				$subtitleParts = array();
+				if ($holonName !== '') {
+					$subtitleParts[] = $holonName;
+				} else {
+					$subtitleParts[] = trim((string)$this->get('name'));
+				}
+
+				$startAt = $event->get('start_at');
+				$endAt = $event->get('end_at');
+				if ($startAt instanceof \DateTimeInterface && $endAt instanceof \DateTimeInterface) {
+					if ((int)$event->get('is_all_day') === 1) {
+						$subtitleParts[] = $startAt->format('d.m.Y');
+					} elseif ($startAt->format('Y-m-d') === $endAt->format('Y-m-d')) {
+						$subtitleParts[] = $startAt->format('d.m.Y H:i') . ' - ' . $endAt->format('H:i');
+					} else {
+						$subtitleParts[] = $startAt->format('d.m.Y H:i') . ' -> ' . $endAt->format('d.m.Y H:i');
+					}
+				}
+
+				$snippetSource = trim((string)$event->get('description'));
+				if ($snippetSource === '') {
+					$snippetSource = $holonName;
+				}
+				if ($snippetSource === '') {
+					$snippetSource = trim((string)$event->get('status'));
+				}
+
+				$results[] = array(
+					'module' => 'calendar',
+					'moduleLabel' => 'Calendrier',
+					'title' => $eventTitle !== '' ? $eventTitle : ('Evenement #' . (int)$event->getId()),
+					'subtitle' => implode(' | ', array_values(array_filter($subtitleParts, function ($part) {
+						return trim((string)$part) !== '';
+					}))),
+					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
+					'relevance' => (int)($row['relevance'] ?? 0),
+					'action' => array(
+						'type' => 'calendar_event',
+						'eventId' => (int)$event->getId(),
+						'holonId' => (int)$event->get('IDholon'),
+					),
+				);
+			}
+
+			return $results;
+		}
+
 		public function searchTopbarResults($query, array $scopes = array(), array $options = array())
 		{
 			$query = trim((string)$query);
@@ -6871,6 +7037,7 @@
 			$scopeAppHashes = array(
 				'structure' => 'structure',
 				'team' => 'team',
+				'calendar' => 'calendar',
 				'documents' => 'documents',
 				'decision' => 'decision',
 			);
@@ -6914,6 +7081,7 @@
 			$counts = array(
 				'structure' => 0,
 				'team' => 0,
+				'calendar' => 0,
 				'documents' => 0,
 				'decision' => 0,
 			);
@@ -6936,6 +7104,12 @@
 					$results = array_merge($results, $scopeResults);
 				}
 
+				if (isset($normalizedScopes['calendar'])) {
+					$scopeResults = $this->searchTopbarCalendarResults($query, $terms, $perScopeLimit, $viewerContext);
+					$counts['calendar'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
+
 				if (isset($normalizedScopes['documents'])) {
 					$scopeResults = $this->searchTopbarDocumentResults($query, $terms, $perScopeLimit, $viewerContext);
 					$counts['documents'] = count($scopeResults);
@@ -6952,8 +7126,9 @@
 			$moduleOrder = array(
 				'structure' => 1,
 				'team' => 2,
-				'decision' => 3,
-				'documents' => 4,
+				'calendar' => 3,
+				'decision' => 4,
+				'documents' => 5,
 			);
 
 			usort($results, function ($left, $right) use ($moduleOrder) {

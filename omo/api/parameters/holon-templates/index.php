@@ -2159,7 +2159,21 @@ function omoHolonTemplateIsHashManagedCompactDrawer() {
     return /^holon-template-edit-\d+-\d+$/i.test(omoHolonTemplateGetCurrentDrawerRouteToken());
 }
 
+function omoHolonTemplateGetExternalDrawerContext() {
+    if (typeof window.omoGetExternalPanelDrawerContext !== 'function') {
+        return null;
+    }
+
+    return window.omoGetExternalPanelDrawerContext(omoHolonTemplateRoot);
+}
+
 function omoHolonTemplateCloseCompactDrawer() {
+    const externalDrawerContext = omoHolonTemplateGetExternalDrawerContext();
+    if (externalDrawerContext && typeof window.omoCloseExternalPanelDrawer === 'function') {
+        window.omoCloseExternalPanelDrawer();
+        return;
+    }
+
     if (omoHolonTemplateIsHashManagedCompactDrawer() && typeof window.omoSetDrawerHashState === 'function') {
         window.omoSetDrawerHashState({
             open: false
@@ -2400,16 +2414,54 @@ function omoHolonTemplateSave(event) {
                         cid: null
                     };
                 const targetHolonId = result.data.template ? Number(result.data.template.id || 0) : 0;
+                const externalDrawerContext = omoHolonTemplateGetExternalDrawerContext();
+                const externalStructureHost = externalDrawerContext
+                    && String(externalDrawerContext.hostRouteToken || '').trim().toLowerCase() === 'structure';
+                const currentRouteCid = Number(route && route.cid ? route.cid : 0);
+                const shouldNavigate = targetHolonId > 0
+                    && typeof navigate === 'function'
+                    && Number(route && route.oid ? route.oid : 0) > 0
+                    && currentRouteCid !== targetHolonId;
 
-                if (targetHolonId > 0 && typeof loadContent === 'function') {
+                if (!shouldNavigate && targetHolonId > 0 && typeof loadContent === 'function') {
                     loadContent('#panel-left', 'api/getOrg.php?oid=' + Number(route.oid || omoHolonTemplateState.data.organizationId || 0) + '&cid=' + targetHolonId);
                 }
 
                 window.dispatchEvent(new CustomEvent('omo-structure-refresh', {
                     detail: {
-                        cid: targetHolonId > 0 ? targetHolonId : null
+                        cid: targetHolonId > 0 ? targetHolonId : null,
+                        quickZoom: externalStructureHost ? false : true
                     }
                 }));
+
+                if (shouldNavigate) {
+                    if (externalDrawerContext) {
+                        omoHolonTemplateCloseCompactDrawer();
+                    }
+
+                    navigate(route.oid, targetHolonId, route.hash || null);
+
+                    if (
+                        externalDrawerContext
+                        && !externalStructureHost
+                        && typeof window.omoRefreshExternalPanelDrawerHost === 'function'
+                    ) {
+                        window.omoRefreshExternalPanelDrawerHost(externalDrawerContext.drawer);
+                    }
+
+                    return;
+                }
+
+                if (externalDrawerContext && typeof window.omoRefreshExternalPanelDrawerHost === 'function') {
+                    if (externalStructureHost) {
+                        omoHolonTemplateCloseCompactDrawer();
+                        return;
+                    }
+
+                    omoHolonTemplateCloseCompactDrawer();
+                    window.omoRefreshExternalPanelDrawerHost(externalDrawerContext.drawer);
+                    return;
+                }
 
                 omoHolonTemplateCloseCompactDrawer();
             }
