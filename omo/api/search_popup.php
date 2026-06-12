@@ -7,6 +7,7 @@ if (!function_exists('omoSearchPopupGetScopeLabels')) {
         $scopeLabels = array(
             'structure' => 'Structure',
             'team' => 'Team',
+            'calendar' => 'Calendrier',
             'documents' => 'Documents',
             'decision' => 'Decisions',
         );
@@ -18,6 +19,7 @@ if (!function_exists('omoSearchPopupGetScopeLabels')) {
         $scopeAppHashes = array(
             'structure' => 'structure',
             'team' => 'team',
+            'calendar' => 'calendar',
             'documents' => 'documents',
             'decision' => 'decision',
         );
@@ -424,6 +426,9 @@ if (!function_exists('omoSearchPopupRenderContent')) {
                             $buttonAttributes = ' data-omo-search-open-structure="' . (int)$action['holonId'] . '"';
                         } elseif ($module === 'team' && !empty($action['userId'])) {
                             $buttonAttributes = ' data-omo-search-open-user="' . (int)$action['userId'] . '"';
+                        } elseif ($module === 'calendar' && !empty($action['eventId'])) {
+                            $buttonAttributes = ' data-omo-search-open-calendar-event-id="' . (int)$action['eventId'] . '"'
+                                . ' data-omo-search-open-calendar-event-holon="' . (int)($action['holonId'] ?? 0) . '"';
                         } elseif ($module === 'documents' && !empty($action['documentUrl'])) {
                             $buttonAttributes = ' data-omo-search-open-document="' . htmlspecialchars((string)$action['documentUrl'], ENT_QUOTES, 'UTF-8') . '"'
                                 . ' data-omo-search-document-title="' . htmlspecialchars((string)($result['title'] ?? 'Document'), ENT_QUOTES, 'UTF-8') . '"';
@@ -545,6 +550,7 @@ omoSearchPopupRenderStyles();
                 'counts' => array(
                     'structure' => 0,
                     'team' => 0,
+                    'calendar' => 0,
                     'documents' => 0,
                     'decision' => 0,
                 ),
@@ -740,6 +746,15 @@ omoSearchPopupRenderStyles();
             window.omoOpenSearchDocumentResult(
                 documentButton.getAttribute('data-omo-search-open-document') || '',
                 documentButton.getAttribute('data-omo-search-document-title') || 'Document'
+            );
+            return;
+        }
+
+        var calendarEventButton = event.target.closest('[data-omo-search-open-calendar-event-id]');
+        if (calendarEventButton && typeof window.omoOpenSearchCalendarEventResult === 'function') {
+            window.omoOpenSearchCalendarEventResult(
+                Number(calendarEventButton.getAttribute('data-omo-search-open-calendar-event-id') || '0'),
+                Number(calendarEventButton.getAttribute('data-omo-search-open-calendar-event-holon') || '0')
             );
             return;
         }

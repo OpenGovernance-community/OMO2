@@ -648,6 +648,7 @@ $allowedContextHolonIds = $currentContextHolon
     ? array_fill_keys($currentContextHolon->getVisibleDescendantIds(true), true)
     : [];
 $canToggleDecisionScope = $organization->getEnabledStructuralRootHolon() !== null;
+$normalizedCurrentHolonId = omoDecisionNormalizeContextHolonId($organization, $currentHolonId);
 
 $statusLabels = [
     DecisionProcess::STATUS_DRAFT => t('decisions.index.filters.status.draft', [], $lang, $sourceLang),
@@ -777,7 +778,7 @@ foreach ($decisionRows as $row) {
 
     $viewUrl = omoDecisionBuildParticipationPreviewUrl(
         $currentOrganizationId,
-        $currentHolonId > 0 ? $currentHolonId : $holonId,
+        $normalizedCurrentHolonId > 0 ? $normalizedCurrentHolonId : $holonId,
         $decisionId,
         $method,
         'view',
@@ -785,14 +786,14 @@ foreach ($decisionRows as $row) {
     );
     $manageUrl = omoDecisionBuildEditorUrl(
         $currentOrganizationId,
-        $currentHolonId > 0 ? $currentHolonId : $holonId,
+        $normalizedCurrentHolonId > 0 ? $normalizedCurrentHolonId : $holonId,
         $decisionId,
         $method,
         'manage'
     );
     $participateUrl = omoDecisionBuildParticipationPreviewUrl(
         $currentOrganizationId,
-        $currentHolonId > 0 ? $currentHolonId : $holonId,
+        $normalizedCurrentHolonId > 0 ? $normalizedCurrentHolonId : $holonId,
         $decisionId,
         $method,
         'participate',
@@ -1013,7 +1014,7 @@ $payload = [
         'compactHeaderActivity' => t('decisions.index.compact.header.activity', [], $lang, $sourceLang),
     ],
     'newUrl' => $canCreateDecision
-        ? '/omo/api/decision/edit.php?oid=' . $currentOrganizationId . ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '')
+        ? '/omo/api/decision/edit.php?oid=' . $currentOrganizationId . ($normalizedCurrentHolonId > 0 ? '&cid=' . $normalizedCurrentHolonId : '')
         : '',
     'refreshUrl' => $refreshUrl,
 ];
@@ -1031,66 +1032,65 @@ if (!is_string($payloadJson)) {
     id="omo-decisions-root"
     data-omo-decision-scope="<?= $escape($decisionScope) ?>"
     data-omo-decision-oid="<?= (int)$currentOrganizationId ?>"
-    data-omo-decision-cid="<?= (int)$currentHolonId ?>"
+    data-omo-decision-cid="<?= (int)$normalizedCurrentHolonId ?>"
 >
     <script type="application/json" data-omo-decisions-payload><?= $payloadJson ?></script>
-    <div class="omo-panel-view__header omo-decisions__hero">
-        <div class="omo-panel-view__header-copy">
-            <div class="omo-decisions__title-row">
-                <h2 class="omo-panel-view__title"><?= $escape(t('decisions.index.title', [], $lang, $sourceLang)) ?></h2>
-                <span class="omo-decisions__count omo-panel-view__count" data-omo-decisions-count><?= $escape(count($decisionEntries)) ?></span>
+    <div class="omo-panel-view__header omo-panel-view__header--stacked omo-decisions__hero">
+        <div class="omo-panel-view__header-main">
+            <div class="omo-panel-view__title-cluster">
+                <span class="omo-panel-view__app-icon omo-decisions__app-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <path d="M7 6.5h10"></path>
+                        <path d="M7 11.5h6"></path>
+                        <path d="M7 16.5h5"></path>
+                        <path d="M15 15.5l1.6 1.6L20 13.7"></path>
+                        <rect x="4" y="3.5" width="16" height="17" rx="3"></rect>
+                    </svg>
+                </span>
+                <div class="omo-panel-view__header-copy">
+                    <div class="omo-decisions__title-row">
+                        <h2 class="omo-panel-view__title"><?= $escape(t('decisions.index.title', [], $lang, $sourceLang)) ?></h2>
+                        <span class="omo-panel-view__count" data-omo-decisions-count><?= $escape((string)count($decisionEntries)) ?></span>
+                    </div>
+                </div>
+            </div>
+            <div class="omo-panel-view__aside omo-decisions__header-actions">
+                <?php if ($canCreateDecision): ?>
+                <button type="button" class="generic-action-button generic-action-button--main" data-omo-decisions-new>
+                    <?= $escape(t('decisions.index.new', [], $lang, $sourceLang)) ?>
+                </button>
+                <?php endif; ?>
             </div>
         </div>
-        <div class="omo-panel-view__aside omo-decisions__header-actions">
-            <?php if ($canCreateDecision): ?>
-            <button type="button" class="generic-action-button generic-action-button--main" data-omo-decisions-new>
-                <?= $escape(t('decisions.index.new', [], $lang, $sourceLang)) ?>
-            </button>
-            <?php endif; ?>
+        <?php if ($canToggleDecisionScope): ?>
+        <div class="omo-panel-view__header-secondary">
+            <div class="omo-decisions__scope-slot">
+                <div
+                    class="omo-scope-toggle"
+                    role="tablist"
+                    aria-label="Portee des decisions"
+                    data-omo-scope-switch="<?= $escape($decisionScope) ?>"
+                >
+                    <button
+                        type="button"
+                        class="omo-scope-toggle__button<?= $decisionScope === 'contextual' ? ' is-active' : '' ?>"
+                        data-omo-decision-scope-toggle="contextual"
+                        aria-pressed="<?= $decisionScope === 'contextual' ? 'true' : 'false' ?>"
+                    >Contextuel</button>
+                    <button
+                        type="button"
+                        class="omo-scope-toggle__button<?= $decisionScope === 'global' ? ' is-active' : '' ?>"
+                        data-omo-decision-scope-toggle="global"
+                        aria-pressed="<?= $decisionScope === 'global' ? 'true' : 'false' ?>"
+                    >Global</button>
+                </div>
+            </div>
         </div>
+        <?php endif; ?>
     </div>
 
     <div class="omo-panel-view__body">
         <div class="omo-panel-view__body_content">
-            <?php if ($canToggleDecisionScope || count($decisionEntries) > 0): ?>
-            <div class="omo-decisions__controls-row">
-                <?php if ($canToggleDecisionScope): ?>
-                <div class="omo-decisions__scope-controls">
-                    <div
-                        class="omo-scope-toggle"
-                        role="tablist"
-                        aria-label="Portee des decisions"
-                        data-omo-scope-switch="<?= $escape($decisionScope) ?>"
-                    >
-                        <button
-                            type="button"
-                            class="omo-scope-toggle__button<?= $decisionScope === 'contextual' ? ' is-active' : '' ?>"
-                            data-omo-decision-scope-toggle="contextual"
-                            aria-pressed="<?= $decisionScope === 'contextual' ? 'true' : 'false' ?>"
-                            onclick="return window.omoToggleDecisionsScope ? window.omoToggleDecisionsScope(this, event) : false;"
-                        >Contextuel</button>
-                        <button
-                            type="button"
-                            class="omo-scope-toggle__button<?= $decisionScope === 'global' ? ' is-active' : '' ?>"
-                            data-omo-decision-scope-toggle="global"
-                            aria-pressed="<?= $decisionScope === 'global' ? 'true' : 'false' ?>"
-                            onclick="return window.omoToggleDecisionsScope ? window.omoToggleDecisionsScope(this, event) : false;"
-                        >Global</button>
-                    </div>
-                </div>
-                <?php endif; ?>
-                <div class="omo-decisions__display-controls omo-panel-controls" data-omo-decisions-display-controls<?= count($decisionEntries) > 0 ? '' : ' hidden' ?>>
-                    <div class="omo-segmented" role="group" aria-label="<?= $escape(t('decisions.index.controls.sort.aria', [], $lang, $sourceLang)) ?>">
-                        <button type="button" class="omo-segmented__button is-active" data-omo-decisions-sort="time" aria-pressed="true"><?= $escape(t('decisions.index.controls.sort.time', [], $lang, $sourceLang)) ?></button>
-                        <button type="button" class="omo-segmented__button" data-omo-decisions-sort="alpha" aria-pressed="false"><?= $escape(t('decisions.index.controls.sort.alpha', [], $lang, $sourceLang)) ?></button>
-                    </div>
-                    <div class="omo-segmented" role="group" aria-label="<?= $escape(t('decisions.index.controls.density.aria', [], $lang, $sourceLang)) ?>">
-                        <button type="button" class="omo-segmented__button is-active" data-omo-decisions-density="detail" aria-pressed="true"><?= $escape(t('decisions.index.controls.density.detail', [], $lang, $sourceLang)) ?></button>
-                        <button type="button" class="omo-segmented__button" data-omo-decisions-density="compact" aria-pressed="false"><?= $escape(t('decisions.index.controls.density.compact', [], $lang, $sourceLang)) ?></button>
-                    </div>
-                </div>
-            </div>
-            <?php endif; ?>
             <div class="omo-decisions__filters" aria-label="Filtres">
                 <div class="omo-decisions__status-bar generic-section">
                     <div class="omo-decisions__status-tabs" data-omo-decisions-status-tabs></div>
@@ -1178,56 +1178,25 @@ if (!is_string($payloadJson)) {
     flex-wrap: wrap;
 }
 
-.omo-decisions__count {
-    min-width: 0;
-}
-
-.omo-decisions__hero {
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
-    align-items: flex-start;
+.omo-decisions__app-icon {
+    --omo-panel-view-app-icon-accent: #0f766e;
 }
 
 .omo-decisions__header-actions {
-    display: grid;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
     gap: 10px;
-    justify-items: end;
+}
+
+.omo-decisions__scope-slot {
+    min-width: 0;
 }
 
 .omo-decisions__filters {
     display: grid;
     gap: 12px;
-    margin-bottom: 16px;
-}
-
-.omo-decisions__controls-row {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
-}
-
-.omo-decisions__scope-controls {
-    display: flex;
-    flex: 1 1 auto;
-    justify-content: flex-start;
-}
-
-.omo-decisions__display-controls {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 12px;
-}
-
-.omo-decisions__display-controls[hidden] {
-    display: none !important;
-}
-
-.omo-decisions__scope-toolbar {
     margin-bottom: 16px;
 }
 
@@ -1461,7 +1430,6 @@ if (!is_string($payloadJson)) {
 }
 
 @media (max-width: 720px) {
-    .omo-decisions__hero,
     .omo-decisions__status-bar,
     .omo-decisions-card__header {
         flex-direction: column;
@@ -1470,18 +1438,15 @@ if (!is_string($payloadJson)) {
 
     .omo-decisions__header-actions {
         width: 100%;
-        justify-items: stretch;
-    }
-
-    .omo-decisions__controls-row,
-    .omo-decisions__scope-controls,
-    .omo-decisions__display-controls {
-        width: 100%;
         justify-content: flex-start;
     }
 
     .omo-decisions__filters-grid {
         grid-template-columns: 1fr;
+    }
+
+    .omo-decisions__header-actions .generic-action-button {
+        width: 100%;
     }
 
     .omo-decisions__filters-toggle {
@@ -1637,7 +1602,11 @@ function omoDecisionBuildScopeUrl(scope) {
     const resolvedScope = String(scope || '').trim().toLowerCase() === 'global' ? 'global' : 'contextual';
     const query = [];
     const organizationId = Number(root.getAttribute('data-omo-decision-oid') || 0);
-    const holonId = Number(root.getAttribute('data-omo-decision-cid') || 0);
+    let holonId = Number(root.getAttribute('data-omo-decision-cid') || 0);
+
+    if (typeof window.omoNormalizeRouteCid === 'function') {
+        holonId = Number(window.omoNormalizeRouteCid(holonId) || 0);
+    }
 
     if (organizationId > 0) {
         query.push('oid=' + encodeURIComponent(String(organizationId)));
@@ -2307,224 +2276,17 @@ function showStateContainer(html, variant) {
 }
 
 function buildMetaItem(label, value) {
-    const resolvedLabel = String(label || '').trim();
-    const resolvedValue = String(value || '').trim();
-    if (resolvedLabel === '' || resolvedValue === '') {
+    const normalizedLabel = String(label || '').trim();
+    const normalizedValue = String(value || '').trim();
+    if (normalizedLabel === '' || normalizedValue === '') {
         return '';
     }
 
-    return '<span class="omo-decisions-card__meta-item"><strong>' + escapeHtml(resolvedLabel) + '</strong><span>' + escapeHtml(resolvedValue) + '</span></span>';
-}
-
-function buildCompactAvatar(owner) {
-    const resolvedOwner = owner && typeof owner === 'object' ? owner : {};
-    const ownerName = String(resolvedOwner.displayName || '').trim();
-    const ownerInitials = String(resolvedOwner.initials || 'P').trim() || 'P';
-    const ownerPhotoUrl = String(resolvedOwner.photoUrl || '').trim();
-
-    if (ownerPhotoUrl !== '') {
-        return '<span class="omo-decisions__compact-avatar"><img src="' + escapeHtml(ownerPhotoUrl) + '" alt="' + escapeHtml(ownerName !== '' ? ownerName : ownerInitials) + '" class="omo-decisions__compact-avatar-photo"></span>';
-    }
-
-    return '<span class="omo-decisions__compact-avatar"><span class="omo-decisions__compact-avatar-placeholder">' + escapeHtml(ownerInitials) + '</span></span>';
-}
-
-function buildCompactMetaLine(item) {
-    const metaParts = [];
-    const ownerName = String(item && item.owner && item.owner.displayName ? item.owner.displayName : '').trim();
-    const typeLabel = String(item && item.decisionTypeLabel ? item.decisionTypeLabel : '').trim();
-    const methodLabel = String(item && item.evaluationMethodLabel ? item.evaluationMethodLabel : '').trim();
-    const badges = Array.isArray(item && item.badges) ? item.badges : [];
-
-    if (ownerName !== '') {
-        metaParts.push(ownerName);
-    }
-    if (typeLabel !== '') {
-        metaParts.push(typeLabel);
-    }
-    if (methodLabel !== '') {
-        metaParts.push(methodLabel);
-    }
-    badges.forEach(function (badge) {
-        const normalizedBadge = String(badge || '').trim();
-        if (normalizedBadge !== '') {
-            metaParts.push(normalizedBadge);
-        }
-    });
-
-    return metaParts.map(function (part, index) {
-        const separator = index > 0 ? '<span class="omo-decisions__compact-meta-separator">|</span>' : '';
-        return separator + '<span>' + escapeHtml(part) + '</span>';
-    }).join('');
-}
-
-function buildCompactListHeader() {
-    const header = document.createElement('div');
-    header.className = 'generic-file-list__header';
-    header.innerHTML = ''
-        + '<div class="generic-file-list__header-cell">' + escapeHtml(payload.text && payload.text.compactHeaderName ? payload.text.compactHeaderName : 'Decision') + '</div>'
-        + '<div class="generic-file-list__header-cell">' + escapeHtml(payload.text && payload.text.compactHeaderStatus ? payload.text.compactHeaderStatus : 'Statut') + '</div>'
-        + '<div class="generic-file-list__header-cell">' + escapeHtml(payload.text && payload.text.compactHeaderScope ? payload.text.compactHeaderScope : 'Structure') + '</div>'
-        + '<div class="generic-file-list__header-cell">' + escapeHtml(payload.text && payload.text.compactHeaderActivity ? payload.text.compactHeaderActivity : 'Activite') + '</div>';
-    return header;
-}
-
-function renderCompactRow(item) {
-    const article = document.createElement('article');
-    article.className = 'omo-decisions__item-shell generic-file-list__item-shell';
-
-    const primaryAction = resolveDecisionAutoOpenAction(item);
-    const primaryActionUrl = String(primaryAction && primaryAction.url ? primaryAction.url : '').trim();
-    const row = document.createElement(primaryActionUrl !== '' ? 'button' : 'div');
-    const activityLabel = String(item && item.lastActivityLabel ? item.lastActivityLabel : (item && item.deadlineLabel ? item.deadlineLabel : '')).trim();
-    const scopeLabel = String(item && item.holonLabel ? item.holonLabel : '').trim();
-
-    row.className = 'omo-decisions__compact-row generic-file-list__row';
-    if (primaryActionUrl !== '') {
-        row.type = 'button';
-        row.setAttribute('data-open-url', primaryActionUrl);
-        row.setAttribute('data-open-title', String(item && item.title ? item.title : ''));
-        row.setAttribute('data-open-description', String(item && item.description ? item.description : ''));
-    }
-
-    row.innerHTML = ''
-        + '<div class="generic-file-list__cell generic-file-list__cell--name" data-label="' + escapeHtml(payload.text && payload.text.compactHeaderName ? payload.text.compactHeaderName : 'Decision') + '">'
-            + '<div class="omo-decisions__compact-name-main generic-file-list__name-main">'
-                + buildCompactAvatar(item && item.owner ? item.owner : {})
-                + '<div class="omo-decisions__compact-title-block generic-file-list__title-block">'
-                    + '<div class="generic-file-list__title-row">'
-                        + '<strong class="generic-file-list__title">' + escapeHtml(item && item.title ? item.title : '') + '</strong>'
-                    + '</div>'
-                    + '<div class="omo-decisions__compact-meta generic-file-list__meta-line">' + buildCompactMetaLine(item) + '</div>'
-                + '</div>'
-            + '</div>'
-        + '</div>'
-        + '<div class="generic-file-list__cell" data-label="' + escapeHtml(payload.text && payload.text.compactHeaderStatus ? payload.text.compactHeaderStatus : 'Statut') + '">'
-            + '<span class="omo-decisions__compact-status">' + escapeHtml(item && item.statusLabel ? item.statusLabel : '') + '</span>'
-        + '</div>'
-        + '<div class="generic-file-list__cell" data-label="' + escapeHtml(payload.text && payload.text.compactHeaderScope ? payload.text.compactHeaderScope : 'Structure') + '">'
-            + '<span class="omo-decisions__compact-scope">' + escapeHtml(scopeLabel) + '</span>'
-        + '</div>'
-        + '<div class="generic-file-list__cell generic-file-list__cell--date" data-label="' + escapeHtml(payload.text && payload.text.compactHeaderActivity ? payload.text.compactHeaderActivity : 'Activite') + '">'
-            + '<span class="omo-decisions__compact-activity">' + escapeHtml(activityLabel) + '</span>'
-        + '</div>';
-
-    article.appendChild(row);
-    return article;
-}
-
-function renderDetailedList(items, groupMode) {
-    const sortedItems = getSortedItems(items, groupMode === 'alpha' ? 'alpha' : 'time');
-    const fragment = document.createDocumentFragment();
-
-    if (groupMode === 'alpha') {
-        const list = document.createElement('div');
-        list.className = 'omo-decisions__card-list';
-        sortedItems.forEach(function (item) {
-            list.appendChild(renderCard(item));
-        });
-        fragment.appendChild(list);
-        return fragment;
-    }
-
-    const itemsByGroupKey = new Map();
-    sortedItems.forEach(function (item) {
-        const groupKey = String(item && item.activityGroupKey ? item.activityGroupKey : 'too_far');
-        if (!itemsByGroupKey.has(groupKey)) {
-            itemsByGroupKey.set(groupKey, []);
-        }
-        itemsByGroupKey.get(groupKey).push(item);
-    });
-
-    getOrderedGroups().forEach(function (group) {
-        const groupKey = String(group && group.key ? group.key : '');
-        const groupItems = itemsByGroupKey.get(groupKey) || [];
-        if (groupItems.length === 0) {
-            return;
-        }
-
-        const section = document.createElement('section');
-        section.className = 'omo-decisions__group omo-panel-group';
-
-        const title = document.createElement('h3');
-        title.className = 'omo-panel-group__title';
-        title.textContent = String(group && group.label ? group.label : '');
-
-        const list = document.createElement('div');
-        list.className = 'omo-decisions__card-list';
-        groupItems.forEach(function (item) {
-            list.appendChild(renderCard(item));
-        });
-
-        section.appendChild(title);
-        section.appendChild(list);
-        fragment.appendChild(section);
-    });
-
-    return fragment;
-}
-
-function renderCompactList(items, groupMode) {
-    const sortedItems = getSortedItems(items, groupMode === 'alpha' ? 'alpha' : 'time');
-    const fragment = document.createDocumentFragment();
-
-    elements.list.classList.add('generic-file-list', 'generic-file-list--structured');
-    elements.list.setAttribute('data-generic-file-list', '1');
-
-    if (groupMode === 'alpha') {
-        const section = document.createElement('section');
-        section.className = 'omo-decisions__group generic-file-list__group';
-
-        const table = document.createElement('div');
-        table.className = 'generic-file-list__table';
-        table.appendChild(buildCompactListHeader());
-        sortedItems.forEach(function (item) {
-            table.appendChild(renderCompactRow(item));
-        });
-
-        section.appendChild(table);
-        fragment.appendChild(section);
-        return fragment;
-    }
-
-    elements.list.classList.add('generic-file-list--stacked-sticky');
-
-    const itemsByGroupKey = new Map();
-    sortedItems.forEach(function (item) {
-        const groupKey = String(item && item.activityGroupKey ? item.activityGroupKey : 'too_far');
-        if (!itemsByGroupKey.has(groupKey)) {
-            itemsByGroupKey.set(groupKey, []);
-        }
-        itemsByGroupKey.get(groupKey).push(item);
-    });
-
-    getOrderedGroups().forEach(function (group) {
-        const groupKey = String(group && group.key ? group.key : '');
-        const groupItems = itemsByGroupKey.get(groupKey) || [];
-        if (groupItems.length === 0) {
-            return;
-        }
-
-        const section = document.createElement('section');
-        section.className = 'omo-decisions__group generic-file-list__group';
-
-        const title = document.createElement('h3');
-        title.className = 'omo-panel-group__title generic-file-list__group-title';
-        title.textContent = String(group && group.label ? group.label : '');
-
-        const table = document.createElement('div');
-        table.className = 'generic-file-list__table';
-        table.appendChild(buildCompactListHeader());
-        groupItems.forEach(function (item) {
-            table.appendChild(renderCompactRow(item));
-        });
-
-        section.appendChild(title);
-        section.appendChild(table);
-        fragment.appendChild(section);
-    });
-
-    return fragment;
+    return '<span class="omo-decisions-card__meta-item"><strong>'
+        + escapeHtml(normalizedLabel)
+        + '</strong><span>'
+        + escapeHtml(normalizedValue)
+        + '</span></span>';
 }
 
 function renderCard(item) {
