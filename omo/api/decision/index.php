@@ -568,6 +568,7 @@ $allowedContextHolonIds = $currentContextHolon
     ? array_fill_keys($currentContextHolon->getVisibleDescendantIds(true), true)
     : [];
 $canToggleDecisionScope = $organization->getEnabledStructuralRootHolon() !== null;
+$normalizedCurrentHolonId = omoDecisionNormalizeContextHolonId($organization, $currentHolonId);
 
 $statusLabels = [
     DecisionProcess::STATUS_DRAFT => t('decisions.index.filters.status.draft', [], $lang, $sourceLang),
@@ -684,7 +685,7 @@ foreach ($decisionRows as $row) {
 
     $viewUrl = omoDecisionBuildParticipationPreviewUrl(
         $currentOrganizationId,
-        $currentHolonId > 0 ? $currentHolonId : $holonId,
+        $normalizedCurrentHolonId > 0 ? $normalizedCurrentHolonId : $holonId,
         $decisionId,
         $method,
         'view',
@@ -692,14 +693,14 @@ foreach ($decisionRows as $row) {
     );
     $manageUrl = omoDecisionBuildEditorUrl(
         $currentOrganizationId,
-        $currentHolonId > 0 ? $currentHolonId : $holonId,
+        $normalizedCurrentHolonId > 0 ? $normalizedCurrentHolonId : $holonId,
         $decisionId,
         $method,
         'manage'
     );
     $participateUrl = omoDecisionBuildParticipationPreviewUrl(
         $currentOrganizationId,
-        $currentHolonId > 0 ? $currentHolonId : $holonId,
+        $normalizedCurrentHolonId > 0 ? $normalizedCurrentHolonId : $holonId,
         $decisionId,
         $method,
         'participate',
@@ -898,7 +899,7 @@ $payload = [
         'filtersToggleHide' => t('decisions.index.filters.toggle.hide', [], $lang, $sourceLang),
     ],
     'newUrl' => $canCreateDecision
-        ? '/omo/api/decision/edit.php?oid=' . $currentOrganizationId . ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '')
+        ? '/omo/api/decision/edit.php?oid=' . $currentOrganizationId . ($normalizedCurrentHolonId > 0 ? '&cid=' . $normalizedCurrentHolonId : '')
         : '',
     'refreshUrl' => $refreshUrl,
 ];
@@ -916,7 +917,7 @@ if (!is_string($payloadJson)) {
     id="omo-decisions-root"
     data-omo-decision-scope="<?= $escape($decisionScope) ?>"
     data-omo-decision-oid="<?= (int)$currentOrganizationId ?>"
-    data-omo-decision-cid="<?= (int)$currentHolonId ?>"
+    data-omo-decision-cid="<?= (int)$normalizedCurrentHolonId ?>"
 >
     <script type="application/json" data-omo-decisions-payload><?= $payloadJson ?></script>
     <div class="omo-panel-view__header omo-panel-view__header--stacked omo-decisions__hero">
@@ -1277,7 +1278,11 @@ function omoDecisionBuildScopeUrl(scope) {
     const resolvedScope = String(scope || '').trim().toLowerCase() === 'global' ? 'global' : 'contextual';
     const query = [];
     const organizationId = Number(root.getAttribute('data-omo-decision-oid') || 0);
-    const holonId = Number(root.getAttribute('data-omo-decision-cid') || 0);
+    let holonId = Number(root.getAttribute('data-omo-decision-cid') || 0);
+
+    if (typeof window.omoNormalizeRouteCid === 'function') {
+        holonId = Number(window.omoNormalizeRouteCid(holonId) || 0);
+    }
 
     if (organizationId > 0) {
         query.push('oid=' + encodeURIComponent(String(organizationId)));
@@ -1802,6 +1807,20 @@ function showStateContainer(html, variant) {
         : 'generic-section');
     elements.state.innerHTML = String(html || '');
     setVisible(elements.state, true);
+}
+
+function buildMetaItem(label, value) {
+    const normalizedLabel = String(label || '').trim();
+    const normalizedValue = String(value || '').trim();
+    if (normalizedLabel === '' || normalizedValue === '') {
+        return '';
+    }
+
+    return '<span class="omo-decisions-card__meta-item"><strong>'
+        + escapeHtml(normalizedLabel)
+        + '</strong><span>'
+        + escapeHtml(normalizedValue)
+        + '</span></span>';
 }
 
 function renderCard(item) {

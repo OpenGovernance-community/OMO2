@@ -93,6 +93,20 @@ function omoEscapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
+function omoIsExecutableScriptTag(script) {
+    if (!script || script.tagName !== 'SCRIPT') {
+        return false;
+    }
+
+    const rawType = String(script.getAttribute('type') || '').trim().toLowerCase();
+
+    if (rawType === '' || rawType === 'text/javascript' || rawType === 'application/javascript') {
+        return true;
+    }
+
+    return rawType === 'module';
+}
+
 function omoGetUserProfile() {
     const profile = window.omoConfig && window.omoConfig.userProfile ? window.omoConfig.userProfile : {};
     const displayName = (profile.displayName || window.omoConfig.currentUserName || 'Profil').trim();
@@ -581,7 +595,18 @@ function loadContent(target, url, type = 'panel', onLoaded = null) {
                 return;
             }
 
-            $target.html(data);
+            const temp = document.createElement('div');
+            temp.innerHTML = String(data || '');
+            const scriptSource = temp.cloneNode(true);
+
+            Array.from(temp.querySelectorAll('script')).forEach(function (script) {
+                if (omoIsExecutableScriptTag(script)) {
+                    script.remove();
+                }
+            });
+
+            $target.html(temp.innerHTML);
+            omoExecuteFetchedScripts(scriptSource);
 
             if (typeof onLoaded === 'function') {
                 onLoaded();
@@ -1164,6 +1189,27 @@ function omoParseDecisionRouteToken(routeToken = null) {
     };
 }
 
+function omoParseCalendarEventRouteToken(routeToken = null) {
+    const normalizedRouteToken = omoNormalizeHashToken(routeToken);
+    if (!normalizedRouteToken) {
+        return null;
+    }
+
+    const eventMatch = normalizedRouteToken.match(/^calendar-event-(\d+)$/i);
+    if (!eventMatch) {
+        return null;
+    }
+
+    const eventId = Number(eventMatch[1]);
+    if (!Number.isInteger(eventId) || eventId <= 0) {
+        return null;
+    }
+
+    return {
+        eventId: eventId
+    };
+}
+
 function omoParseDocumentRouteToken(routeToken = null) {
     const normalizedRouteToken = omoNormalizeHashToken(routeToken);
     if (!normalizedRouteToken) {
@@ -1194,6 +1240,15 @@ function omoBuildDecisionRouteToken(decisionId) {
     return `decision-${resolvedDecisionId}`;
 }
 
+function omoBuildCalendarEventRouteToken(eventId) {
+    const resolvedEventId = Number(eventId);
+    if (!Number.isInteger(resolvedEventId) || resolvedEventId <= 0) {
+        return null;
+    }
+
+    return `calendar-event-${resolvedEventId}`;
+}
+
 function omoBuildDocumentRouteToken(documentId) {
     const resolvedDocumentId = Number(documentId);
     if (!Number.isInteger(resolvedDocumentId) || resolvedDocumentId <= 0) {
@@ -1211,6 +1266,10 @@ function omoGetMenuHashForRouteToken(routeToken = null) {
 
     if (omoParseDecisionRouteToken(normalizedRouteToken)) {
         return 'decision';
+    }
+
+    if (omoParseCalendarEventRouteToken(normalizedRouteToken)) {
+        return 'calendar';
     }
 
     if (omoParseDocumentRouteToken(normalizedRouteToken)) {
@@ -1311,6 +1370,15 @@ function omoResolveSpecialDrawerRoute(routeToken, oid = null, cid = null) {
         };
     }
 
+    const calendarEventRoute = omoParseCalendarEventRouteToken(normalizedRouteToken);
+    if (calendarEventRoute) {
+        return {
+            drawer: 'drawer_calendar',
+            url: `api/calendar/index.php?open_event_id=${encodeURIComponent(calendarEventRoute.eventId)}`,
+            navigationMode: 'drawer'
+        };
+    }
+
     const documentRoute = omoParseDocumentRouteToken(normalizedRouteToken);
     if (documentRoute) {
         return {
@@ -1376,6 +1444,8 @@ function buildDrawerUrl(baseUrl, oid, cid = null) {
             }
         }
     }
+
+    resolvedCid = omoNormalizeRouteCid(resolvedCid);
 
     const separator = baseUrl.indexOf('?') === -1 ? '?' : '&';
     let url = `${baseUrl}${separator}oid=${encodeURIComponent(oid)}`;
@@ -2698,6 +2768,7 @@ function omoGetTopbarSearchScopes() {
     }
     const searchableRouteTokens = {
         team: true,
+        calendar: true,
         documents: true,
         decision: true
     };
@@ -2862,16 +2933,48 @@ function omoOpenSearchDecisionResult(decisionId, holonId) {
     return true;
 }
 
+function omoOpenSearchCalendarEventResult(eventId, holonId) {
+    const calendarEventRouteToken = omoBuildCalendarEventRouteToken(eventId);
+    if (!calendarEventRouteToken) {
+        return false;
+    }
+
+    if (typeof window.commonTopbarCloseModal === 'function') {
+        window.commonTopbarCloseModal();
+    }
+
+    const route = parseUrl();
+    if (!Number.isInteger(Number(route.oid)) || Number(route.oid) <= 0) {
+        return false;
+    }
+
+    const resolvedHolonId = Number(holonId);
+    const targetCid = Number.isInteger(resolvedHolonId) && resolvedHolonId > 0
+        ? resolvedHolonId
+        : null;
+
+    navigate(route.oid, targetCid, calendarEventRouteToken);
+    return true;
+}
+
 function omoExecuteFetchedScripts(container) {
     if (!container) {
         return;
     }
 
     Array.from(container.querySelectorAll('script')).forEach(function (script) {
+        if (!omoIsExecutableScriptTag(script)) {
+            return;
+        }
+
         const executableScript = document.createElement('script');
+        const sourceUrl = String(script.getAttribute('src') || '').trim();
         Array.from(script.attributes).forEach(function (attribute) {
             executableScript.setAttribute(attribute.name, attribute.value);
         });
+        if (sourceUrl !== '') {
+            executableScript.async = false;
+        }
         executableScript.text = script.textContent || '';
         document.body.appendChild(executableScript);
         document.body.removeChild(executableScript);
@@ -2924,7 +3027,9 @@ function omoReplaceFetchedPanelRoot(options = {}) {
                 throw new Error('omo_panel_reload_invalid');
             }
 
-            const scriptSource = nextRoot.cloneNode(true);
+            // Some module bootstraps live next to the replaced root instead of inside it.
+            // Re-run scripts from the full fetched fragment so dynamic reloads keep working.
+            const scriptSource = temp.cloneNode(true);
 
             if (beforeReplace) {
                 beforeReplace(currentRoot);
@@ -2946,6 +3051,9 @@ window.omoResetMainRightPanel = omoResetMainRightPanel;
 window.omoRefreshMainRightPanel = omoRefreshMainRightPanel;
 window.omoMaybeOpenPatreonWelcomeModal = omoMaybeOpenPatreonWelcomeModal;
 window.omoOpenMemberActionsPopup = omoOpenMemberActionsPopup;
+window.omoNormalizeRouteCid = omoNormalizeRouteCid;
+window.omoBuildCalendarEventRouteToken = omoBuildCalendarEventRouteToken;
+window.omoOpenSearchCalendarEventResult = omoOpenSearchCalendarEventResult;
 window.omoOpenSearchDecisionResult = omoOpenSearchDecisionResult;
 window.omoBuildDocumentRouteToken = omoBuildDocumentRouteToken;
 window.omoOpenSearchDocumentResult = omoOpenSearchDocumentResult;

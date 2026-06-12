@@ -682,24 +682,27 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 
 <div class="circle-panel">
     <div class="circle-top">
-    <div class="breadcrumb">
+    
+
+    <div class="circle-header">
+        <div>
+            <div class="circle-kicker generic-card-title generic-card-title--eyebrow"><?= omoApiEscape($holonTypeLabel) ?></div>
+ <div class="breadcrumb">
         <?php foreach ($breadcrumb as $index => $crumb): ?>
             <?php if ($index > 0): ?>
                 <span class="separator">&rsaquo;</span>
             <?php endif; ?>
 
             <?php $isActive = ((int)$crumb->getId() === (int)$currentHolon->getId()); ?>
+            <?php if (!$isActive): ?>
             <span class="crumb<?= $isActive ? ' active' : '' ?>"
                   data-cid="<?= (int)$crumb->getId() ?>"
                   data-is-root="<?= $index === 0 ? '1' : '0' ?>">
                 <?= omoApiEscape($crumb->get('name')) ?>
             </span>
+            <?php endif; ?>
         <?php endforeach; ?>
     </div>
-
-    <div class="circle-header">
-        <div>
-            <div class="circle-kicker generic-card-title generic-card-title--eyebrow"><?= omoApiEscape($holonTypeLabel) ?></div>
             <h2 class="circle-title generic-card-title generic-card-title--section"><?= omoApiEscape($currentHolon->get('name')) ?></h2>
         </div>
         <div class="circle-meta">
