@@ -337,6 +337,86 @@ $sourceLang = [
         'text' => 'Masquer les filtres',
         'context' => 'Button label used to hide advanced filters below the status tabs.',
     ],
+    'decisions.index.controls.sort.aria' => [
+        'text' => 'Tri des prises de decision',
+        'context' => 'Accessible label for the sort segmented control.',
+    ],
+    'decisions.index.controls.sort.time' => [
+        'text' => 'Temporel',
+        'context' => 'Label for time-based sorting in the decisions list.',
+    ],
+    'decisions.index.controls.sort.alpha' => [
+        'text' => 'Alphabetique',
+        'context' => 'Label for alphabetical sorting in the decisions list.',
+    ],
+    'decisions.index.controls.density.aria' => [
+        'text' => 'Densite d affichage des prises de decision',
+        'context' => 'Accessible label for the display density segmented control.',
+    ],
+    'decisions.index.controls.density.detail' => [
+        'text' => 'Detail',
+        'context' => 'Label for the detailed decisions list density.',
+    ],
+    'decisions.index.controls.density.compact' => [
+        'text' => 'Compact',
+        'context' => 'Label for the compact decisions list density.',
+    ],
+    'decisions.index.compact.header.name' => [
+        'text' => 'Decision',
+        'context' => 'Column header for the compact decisions list main column.',
+    ],
+    'decisions.index.compact.header.status' => [
+        'text' => 'Statut',
+        'context' => 'Column header for the compact decisions list status column.',
+    ],
+    'decisions.index.compact.header.scope' => [
+        'text' => 'Structure',
+        'context' => 'Column header for the compact decisions list scope column.',
+    ],
+    'decisions.index.compact.header.activity' => [
+        'text' => 'Activite',
+        'context' => 'Column header for the compact decisions list activity column.',
+    ],
+    'decisions.index.group.today' => [
+        'text' => 'Aujourd hui',
+        'context' => 'Relative date group title for decisions updated today.',
+    ],
+    'decisions.index.group.yesterday' => [
+        'text' => 'Hier',
+        'context' => 'Relative date group title for decisions updated yesterday.',
+    ],
+    'decisions.index.group.this_week' => [
+        'text' => 'Cette semaine',
+        'context' => 'Relative date group title for decisions updated this week.',
+    ],
+    'decisions.index.group.last_week' => [
+        'text' => 'La semaine passee',
+        'context' => 'Relative date group title for decisions updated last week.',
+    ],
+    'decisions.index.group.this_month' => [
+        'text' => 'Ce mois',
+        'context' => 'Relative date group title for decisions updated this month.',
+    ],
+    'decisions.index.group.last_month' => [
+        'text' => 'Le mois passe',
+        'context' => 'Relative date group title for decisions updated last month.',
+    ],
+    'decisions.index.group.this_year' => [
+        'text' => 'Cette annee',
+        'context' => 'Relative date group title for decisions updated this year.',
+    ],
+    'decisions.index.group.last_year' => [
+        'text' => 'L annee passee',
+        'context' => 'Relative date group title for decisions updated last year.',
+    ],
+    'decisions.index.group.earlier' => [
+        'text' => 'Precedemment',
+        'context' => 'Relative date group title for older decisions.',
+    ],
+    'decisions.index.group.too_far' => [
+        'text' => 'Trop loin',
+        'context' => 'Fallback relative date group title for decisions with missing dates.',
+    ],
     'decisions.index.type_label' => [
         'text' => 'Type',
         'context' => 'Card metadata label for the decision type.',
@@ -595,6 +675,19 @@ $dateFormatter = class_exists('IntlDateFormatter')
 $dateTimeFormatter = class_exists('IntlDateFormatter')
     ? new IntlDateFormatter('fr_CH', IntlDateFormatter::MEDIUM, IntlDateFormatter::SHORT)
     : null;
+$today = new DateTimeImmutable('today');
+$decisionGroups = sharedGetRelativeDateGroups($today, [
+    'today' => t('decisions.index.group.today', [], $lang, $sourceLang),
+    'yesterday' => t('decisions.index.group.yesterday', [], $lang, $sourceLang),
+    'this_week' => t('decisions.index.group.this_week', [], $lang, $sourceLang),
+    'last_week' => t('decisions.index.group.last_week', [], $lang, $sourceLang),
+    'this_month' => t('decisions.index.group.this_month', [], $lang, $sourceLang),
+    'last_month' => t('decisions.index.group.last_month', [], $lang, $sourceLang),
+    'this_year' => t('decisions.index.group.this_year', [], $lang, $sourceLang),
+    'last_year' => t('decisions.index.group.last_year', [], $lang, $sourceLang),
+    'earlier' => t('decisions.index.group.earlier', [], $lang, $sourceLang),
+    'too_far' => t('decisions.index.group.too_far', [], $lang, $sourceLang),
+]);
 
 $organizationCanEdit = omoDecisionCanCreateAtOrganizationLevel($organization, $currentUserId);
 $canCreateDecision = $currentContextHolon ? $currentContextHolon->canEdit() : $organizationCanEdit;
@@ -772,9 +865,13 @@ foreach ($decisionRows as $row) {
         $statusCounts['active']++;
     }
 
+    $activityGroupIndex = sharedGetRelativeDateGroupIndexForDate($lastActivity, $decisionGroups, $today);
+    $activityGroup = $decisionGroups[$activityGroupIndex] ?? ['key' => 'too_far', 'label' => t('decisions.index.group.too_far', [], $lang, $sourceLang)];
+
     $decisionEntries[] = [
         'id' => $decisionId,
         'title' => trim((string)$decision->get('title')),
+        'sortTitle' => omoApiSortKey(trim((string)$decision->get('title'))),
         'description' => trim((string)$decision->get('description')),
         'status' => $status,
         'statusLabel' => $statusLabels[$status] ?? ucfirst($status),
@@ -797,6 +894,8 @@ foreach ($decisionRows as $row) {
         'deadlineTimestamp' => $deadline instanceof DateTimeInterface ? (int)$deadline->format('U') : 0,
         'lastActivityLabel' => omoDecisionsIndexFormatDateTime($lastActivity, $dateTimeFormatter),
         'lastActivityTimestamp' => $lastActivity instanceof DateTimeInterface ? (int)$lastActivity->format('U') : 0,
+        'activityGroupKey' => (string)($activityGroup['key'] ?? 'too_far'),
+        'activityGroupLabel' => (string)($activityGroup['label'] ?? t('decisions.index.group.too_far', [], $lang, $sourceLang)),
         'badges' => $badges,
         'isOwner' => $isOwner,
         'isActiveDefault' => $isActiveDefault,
@@ -849,6 +948,12 @@ $statusFilterCatalog = [
 $payload = [
     'items' => array_values($decisionEntries),
     'openDecisionId' => $initialOpenDecisionId > 0 ? $initialOpenDecisionId : 0,
+    'groups' => array_map(static function (array $group): array {
+        return [
+            'key' => (string)($group['key'] ?? ''),
+            'label' => (string)($group['label'] ?? ''),
+        ];
+    }, $decisionGroups),
     'statusFilters' => $statusFilterCatalog,
     'statusCounts' => $statusCounts,
     'typeOptions' => [
@@ -896,6 +1001,16 @@ $payload = [
         'drawerTitle' => t('decisions.index.action.open_editor_title', [], $lang, $sourceLang),
         'filtersToggleShow' => t('decisions.index.filters.toggle.show', [], $lang, $sourceLang),
         'filtersToggleHide' => t('decisions.index.filters.toggle.hide', [], $lang, $sourceLang),
+        'sortAriaLabel' => t('decisions.index.controls.sort.aria', [], $lang, $sourceLang),
+        'sortTimeLabel' => t('decisions.index.controls.sort.time', [], $lang, $sourceLang),
+        'sortAlphaLabel' => t('decisions.index.controls.sort.alpha', [], $lang, $sourceLang),
+        'densityAriaLabel' => t('decisions.index.controls.density.aria', [], $lang, $sourceLang),
+        'densityDetailLabel' => t('decisions.index.controls.density.detail', [], $lang, $sourceLang),
+        'densityCompactLabel' => t('decisions.index.controls.density.compact', [], $lang, $sourceLang),
+        'compactHeaderName' => t('decisions.index.compact.header.name', [], $lang, $sourceLang),
+        'compactHeaderStatus' => t('decisions.index.compact.header.status', [], $lang, $sourceLang),
+        'compactHeaderScope' => t('decisions.index.compact.header.scope', [], $lang, $sourceLang),
+        'compactHeaderActivity' => t('decisions.index.compact.header.activity', [], $lang, $sourceLang),
     ],
     'newUrl' => $canCreateDecision
         ? '/omo/api/decision/edit.php?oid=' . $currentOrganizationId . ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '')
@@ -908,7 +1023,7 @@ $payloadJson = json_encode(
     JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
 );
 if (!is_string($payloadJson)) {
-    $payloadJson = '{"items":[],"openDecisionId":0,"statusFilters":[],"statusCounts":{},"typeOptions":[],"methodOptions":[],"holonOptions":[],"text":{},"newUrl":"","refreshUrl":""}';
+    $payloadJson = '{"items":[],"openDecisionId":0,"groups":[],"statusFilters":[],"statusCounts":{},"typeOptions":[],"methodOptions":[],"holonOptions":[],"text":{},"newUrl":"","refreshUrl":""}';
 }
 ?>
 <div
@@ -921,8 +1036,10 @@ if (!is_string($payloadJson)) {
     <script type="application/json" data-omo-decisions-payload><?= $payloadJson ?></script>
     <div class="omo-panel-view__header omo-decisions__hero">
         <div class="omo-panel-view__header-copy">
-            <h2 class="omo-panel-view__title"><?= $escape(t('decisions.index.title', [], $lang, $sourceLang)) ?></h2>
-            <p class="omo-panel-view__description"><?= $escape(t('decisions.index.description', [], $lang, $sourceLang)) ?></p>
+            <div class="omo-decisions__title-row">
+                <h2 class="omo-panel-view__title"><?= $escape(t('decisions.index.title', [], $lang, $sourceLang)) ?></h2>
+                <span class="omo-decisions__count omo-panel-view__count" data-omo-decisions-count><?= $escape(count($decisionEntries)) ?></span>
+            </div>
         </div>
         <div class="omo-panel-view__aside omo-decisions__header-actions">
             <?php if ($canCreateDecision): ?>
@@ -935,9 +1052,10 @@ if (!is_string($payloadJson)) {
 
     <div class="omo-panel-view__body">
         <div class="omo-panel-view__body_content">
-            <?php if ($canToggleDecisionScope): ?>
-            <div class="omo-decisions__scope-toolbar omo-scope-toolbar">
-                <div class="omo-scope-toolbar__main">
+            <?php if ($canToggleDecisionScope || count($decisionEntries) > 0): ?>
+            <div class="omo-decisions__controls-row">
+                <?php if ($canToggleDecisionScope): ?>
+                <div class="omo-decisions__scope-controls">
                     <div
                         class="omo-scope-toggle"
                         role="tablist"
@@ -949,20 +1067,26 @@ if (!is_string($payloadJson)) {
                             class="omo-scope-toggle__button<?= $decisionScope === 'contextual' ? ' is-active' : '' ?>"
                             data-omo-decision-scope-toggle="contextual"
                             aria-pressed="<?= $decisionScope === 'contextual' ? 'true' : 'false' ?>"
+                            onclick="return window.omoToggleDecisionsScope ? window.omoToggleDecisionsScope(this, event) : false;"
                         >Contextuel</button>
                         <button
                             type="button"
                             class="omo-scope-toggle__button<?= $decisionScope === 'global' ? ' is-active' : '' ?>"
                             data-omo-decision-scope-toggle="global"
                             aria-pressed="<?= $decisionScope === 'global' ? 'true' : 'false' ?>"
+                            onclick="return window.omoToggleDecisionsScope ? window.omoToggleDecisionsScope(this, event) : false;"
                         >Global</button>
                     </div>
-                    <div class="omo-scope-toolbar__note">
-                        <?php if ($decisionScope === 'global'): ?>
-                            <strong>Mode global:</strong> toutes les prises de decision visibles dans l organisation sont affichees ici.
-                        <?php else: ?>
-                            <strong>Mode contextuel:</strong> seules les prises de decision liees au contexte courant restent affichees ici.
-                        <?php endif; ?>
+                </div>
+                <?php endif; ?>
+                <div class="omo-decisions__display-controls omo-panel-controls" data-omo-decisions-display-controls<?= count($decisionEntries) > 0 ? '' : ' hidden' ?>>
+                    <div class="omo-segmented" role="group" aria-label="<?= $escape(t('decisions.index.controls.sort.aria', [], $lang, $sourceLang)) ?>">
+                        <button type="button" class="omo-segmented__button is-active" data-omo-decisions-sort="time" aria-pressed="true"><?= $escape(t('decisions.index.controls.sort.time', [], $lang, $sourceLang)) ?></button>
+                        <button type="button" class="omo-segmented__button" data-omo-decisions-sort="alpha" aria-pressed="false"><?= $escape(t('decisions.index.controls.sort.alpha', [], $lang, $sourceLang)) ?></button>
+                    </div>
+                    <div class="omo-segmented" role="group" aria-label="<?= $escape(t('decisions.index.controls.density.aria', [], $lang, $sourceLang)) ?>">
+                        <button type="button" class="omo-segmented__button is-active" data-omo-decisions-density="detail" aria-pressed="true"><?= $escape(t('decisions.index.controls.density.detail', [], $lang, $sourceLang)) ?></button>
+                        <button type="button" class="omo-segmented__button" data-omo-decisions-density="compact" aria-pressed="false"><?= $escape(t('decisions.index.controls.density.compact', [], $lang, $sourceLang)) ?></button>
                     </div>
                 </div>
             </div>
@@ -1047,6 +1171,17 @@ if (!is_string($payloadJson)) {
     min-height: 100%;
 }
 
+.omo-decisions__title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.omo-decisions__count {
+    min-width: 0;
+}
+
 .omo-decisions__hero {
     display: flex;
     justify-content: space-between;
@@ -1064,6 +1199,32 @@ if (!is_string($payloadJson)) {
     display: grid;
     gap: 12px;
     margin-bottom: 16px;
+}
+
+.omo-decisions__controls-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.omo-decisions__scope-controls {
+    display: flex;
+    flex: 1 1 auto;
+    justify-content: flex-start;
+}
+
+.omo-decisions__display-controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.omo-decisions__display-controls[hidden] {
+    display: none !important;
 }
 
 .omo-decisions__scope-toolbar {
@@ -1157,6 +1318,130 @@ if (!is_string($payloadJson)) {
     line-height: 1.6;
 }
 
+.omo-decisions__list {
+    display: grid;
+    gap: 18px;
+}
+
+.omo-decisions__list[hidden] {
+    display: none !important;
+}
+
+.omo-decisions__list.generic-file-list {
+    --generic-file-list-columns: minmax(0, 2.7fr) minmax(130px, 0.95fr) minmax(150px, 1.1fr) minmax(132px, 0.95fr);
+    --generic-file-list-title-gap: 18px;
+    --generic-file-list-table-margin-inline: 12px;
+    --generic-file-list-padding-inline-start: 16px;
+    --generic-file-list-padding-inline-end: 18px;
+    --generic-file-list-header-padding-block: 14px;
+    --generic-file-list-row-padding-block: 12px;
+    --generic-file-list-menu-space: 0px;
+}
+
+.omo-decisions__list.generic-file-list .generic-file-list__group-title {
+    padding: 15px 12px;
+    font-size: 0.9rem;
+}
+
+.omo-decisions__list.generic-file-list .generic-file-list__table {
+    margin-inline: 10px;
+}
+
+.omo-decisions__group {
+    position: relative;
+}
+
+.omo-decisions__card-list {
+    display: grid;
+    gap: 10px;
+}
+
+.omo-decisions__compact-row {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.omo-decisions__compact-row:hover,
+.omo-decisions__compact-row:focus-visible {
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 4%, var(--color-surface, #ffffff));
+}
+
+.omo-decisions__compact-avatar,
+.omo-decisions__compact-avatar-photo,
+.omo-decisions__compact-avatar-placeholder {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    flex: 0 0 auto;
+}
+
+.omo-decisions__compact-avatar-photo {
+    display: block;
+    object-fit: cover;
+}
+
+.omo-decisions__compact-avatar-placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 14%, var(--color-surface-alt, #f8fafc));
+    color: var(--color-text, #1f2937);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.omo-decisions__compact-name-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    min-width: 0;
+}
+
+.omo-decisions__compact-title-block {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+
+.omo-decisions__compact-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    color: var(--color-text-light, #475569);
+    font-size: 0.78rem;
+    line-height: 1.35;
+}
+
+.omo-decisions__compact-meta-separator {
+    opacity: 0.5;
+}
+
+.omo-decisions__compact-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface-alt, #f8fafc));
+    color: var(--color-text, #1f2937);
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.omo-decisions__compact-scope {
+    color: var(--color-text, #1f2937);
+}
+
+.omo-decisions__compact-activity {
+    color: var(--color-text-light, #475569);
+}
+
 .omo-decisions__state[hidden] {
     display: none !important;
 }
@@ -1188,12 +1473,31 @@ if (!is_string($payloadJson)) {
         justify-items: stretch;
     }
 
+    .omo-decisions__controls-row,
+    .omo-decisions__scope-controls,
+    .omo-decisions__display-controls {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
     .omo-decisions__filters-grid {
         grid-template-columns: 1fr;
     }
 
     .omo-decisions__filters-toggle {
         width: 100%;
+    }
+
+    .omo-decisions__list.generic-file-list .generic-file-list__table {
+        margin-inline: 0;
+    }
+
+    .omo-decisions__compact-name-main {
+        gap: 10px;
+    }
+
+    .omo-decisions__compact-title-block {
+        gap: 5px;
     }
 }
 </style>
@@ -1220,9 +1524,11 @@ function omoDecisionParseIndexPayload(node) {
 
 const payloadNode = root.querySelector('[data-omo-decisions-payload]');
 const payload = omoDecisionParseIndexPayload(payloadNode) || <?= $payloadJson ?>;
+const omoDecisionsPreferencesStorageKey = 'omoDecisionsDisplayPreferences';
 const elements = {
     newButton: root.querySelector('[data-omo-decisions-new]'),
     count: root.querySelector('[data-omo-decisions-count]'),
+    displayControls: root.querySelector('[data-omo-decisions-display-controls]'),
     statusTabs: root.querySelector('[data-omo-decisions-status-tabs]'),
     filtersToggle: root.querySelector('[data-omo-decisions-filters-toggle]'),
     filtersPanel: root.querySelector('[data-omo-decisions-filters-panel]'),
@@ -1238,17 +1544,88 @@ const elements = {
     editorDescription: root.querySelector('[data-omo-decision-editor-description]'),
     editorBody: root.querySelector('[data-omo-decision-editor-body]')
 };
-
+const collator = typeof Intl !== 'undefined' && typeof Intl.Collator === 'function'
+    ? new Intl.Collator('fr', { sensitivity: 'base', numeric: true })
+    : null;
+const savedPreferences = omoDecisionsReadPreferences();
 const state = {
     status: 'active',
     search: '',
     type: 'all',
     method: 'all',
     holon: 'all',
-    filtersExpanded: false
+    filtersExpanded: false,
+    sort: savedPreferences.sort,
+    density: savedPreferences.density
 };
 let omoDecisionIndexRefreshToken = 0;
 let omoDecisionScopeRefreshToken = 0;
+
+function omoDecisionsNormalizeSortPreference(value) {
+    return String(value || '').trim().toLowerCase() === 'alpha'
+        ? 'alpha'
+        : 'time';
+}
+
+function omoDecisionsNormalizeDensityPreference(value) {
+    return String(value || '').trim().toLowerCase() === 'compact'
+        ? 'compact'
+        : 'detail';
+}
+
+function omoDecisionsReadPreferences() {
+    let rawValue = '';
+
+    try {
+        rawValue = window.localStorage
+            ? String(window.localStorage.getItem(omoDecisionsPreferencesStorageKey) || '')
+            : '';
+    } catch (error) {
+        rawValue = '';
+    }
+
+    if (rawValue === '') {
+        return {
+            sort: 'time',
+            density: 'detail'
+        };
+    }
+
+    try {
+        const parsed = JSON.parse(rawValue);
+
+        return {
+            sort: omoDecisionsNormalizeSortPreference(parsed && parsed.sort ? parsed.sort : null),
+            density: omoDecisionsNormalizeDensityPreference(parsed && parsed.density ? parsed.density : null)
+        };
+    } catch (error) {
+        return {
+            sort: 'time',
+            density: 'detail'
+        };
+    }
+}
+
+function omoDecisionsWritePreferences(preferences) {
+    const normalizedPreferences = {
+        sort: omoDecisionsNormalizeSortPreference(preferences && preferences.sort ? preferences.sort : null),
+        density: omoDecisionsNormalizeDensityPreference(preferences && preferences.density ? preferences.density : null)
+    };
+
+    try {
+        if (window.localStorage) {
+            window.localStorage.setItem(
+                omoDecisionsPreferencesStorageKey,
+                JSON.stringify(normalizedPreferences)
+            );
+        }
+    } catch (error) {
+    }
+
+    window.dispatchEvent(new CustomEvent('omo-decisions-preferences-change', {
+        detail: normalizedPreferences
+    }));
+}
 
 function omoDecisionGetCurrentScope() {
     return String(root.getAttribute('data-omo-decision-scope') || 'contextual').trim().toLowerCase() === 'global'
@@ -1271,6 +1648,7 @@ function omoDecisionBuildScopeUrl(scope) {
     if (resolvedScope !== 'contextual') {
         query.push('decision_scope=' + encodeURIComponent(resolvedScope));
     }
+    query.push('_=' + String(Date.now()));
 
     return '/omo/api/decision/index.php' + (query.length ? ('?' + query.join('&')) : '');
 }
@@ -1285,7 +1663,14 @@ function omoDecisionSetScopeLoadingState(isLoading, nextScope) {
     }
 
     root.querySelectorAll('[data-omo-decision-scope-toggle]').forEach(function (button) {
+        const buttonScope = String(button.getAttribute('data-omo-decision-scope-toggle') || '').trim().toLowerCase() === 'global'
+            ? 'global'
+            : 'contextual';
+        const isActive = buttonScope === (String(nextScope || '').trim().toLowerCase() === 'global' ? 'global' : 'contextual');
+
         button.disabled = !!isLoading;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
     });
 }
 
@@ -1310,6 +1695,48 @@ function omoDecisionReloadForScope(scope) {
         }
     });
 }
+
+window.omoToggleDecisionsScope = function (button, event) {
+    if (event) {
+        if (typeof event.preventDefault === 'function') {
+            event.preventDefault();
+        }
+        if (typeof event.stopPropagation === 'function') {
+            event.stopPropagation();
+        }
+        if (typeof event.stopImmediatePropagation === 'function') {
+            event.stopImmediatePropagation();
+        }
+    }
+
+    if (!(button instanceof Element)) {
+        return false;
+    }
+
+    const panel = button.closest('#omo-decisions-root');
+    if (!panel) {
+        return false;
+    }
+
+    const currentScope = String(panel.getAttribute('data-omo-decision-scope') || 'contextual').trim().toLowerCase() === 'global'
+        ? 'global'
+        : 'contextual';
+    const targetScope = String(button.getAttribute('data-omo-decision-scope-toggle') || '').trim().toLowerCase() === 'global'
+        ? 'global'
+        : 'contextual';
+
+    if (targetScope === currentScope) {
+        return false;
+    }
+
+    omoDecisionSetScopeLoadingState(true, targetScope);
+
+    omoDecisionReloadForScope(targetScope).catch(function () {
+        omoDecisionSetScopeLoadingState(false, currentScope);
+    });
+
+    return false;
+};
 
 function normalizeText(value) {
     return String(value || '')
@@ -1375,7 +1802,9 @@ function applyDecisionIndexPayload(nextPayload) {
         type: state.type,
         method: state.method,
         holon: state.holon,
-        filtersExpanded: state.filtersExpanded
+        filtersExpanded: state.filtersExpanded,
+        sort: state.sort,
+        density: state.density
     };
 
     replacePayload(nextPayload);
@@ -1390,6 +1819,8 @@ function applyDecisionIndexPayload(nextPayload) {
     state.method = restoreSelectValue(elements.method, preservedState.method);
     state.holon = restoreSelectValue(elements.holon, preservedState.holon);
     state.filtersExpanded = preservedState.filtersExpanded;
+    state.sort = omoDecisionsNormalizeSortPreference(preservedState.sort);
+    state.density = omoDecisionsNormalizeDensityPreference(preservedState.density);
 
     if (elements.search) {
         elements.search.value = state.search;
@@ -1399,6 +1830,10 @@ function applyDecisionIndexPayload(nextPayload) {
         const hasNewUrl = String(payload.newUrl || '').trim() !== '';
         elements.newButton.hidden = !hasNewUrl;
         elements.newButton.disabled = !hasNewUrl;
+    }
+
+    if (elements.displayControls) {
+        elements.displayControls.hidden = !Array.isArray(payload.items) || payload.items.length === 0;
     }
 
     if (payloadNode) {
@@ -1701,6 +2136,90 @@ function renderStatusTabs() {
     });
 }
 
+function compareText(left, right) {
+    const normalizedLeft = String(left || '');
+    const normalizedRight = String(right || '');
+
+    if (collator) {
+        return collator.compare(normalizedLeft, normalizedRight);
+    }
+
+    return normalizedLeft.localeCompare(normalizedRight);
+}
+
+function sortItemsByTime(items) {
+    return items.slice().sort(function (left, right) {
+        const activityDiff = Number(right && right.lastActivityTimestamp ? right.lastActivityTimestamp : 0)
+            - Number(left && left.lastActivityTimestamp ? left.lastActivityTimestamp : 0);
+
+        if (activityDiff !== 0) {
+            return activityDiff;
+        }
+
+        return compareText(
+            left && left.sortTitle ? left.sortTitle : (left && left.title ? left.title : ''),
+            right && right.sortTitle ? right.sortTitle : (right && right.title ? right.title : '')
+        );
+    });
+}
+
+function sortItemsByAlpha(items) {
+    return items.slice().sort(function (left, right) {
+        const titleDiff = compareText(
+            left && left.sortTitle ? left.sortTitle : (left && left.title ? left.title : ''),
+            right && right.sortTitle ? right.sortTitle : (right && right.title ? right.title : '')
+        );
+
+        if (titleDiff !== 0) {
+            return titleDiff;
+        }
+
+        return Number(right && right.lastActivityTimestamp ? right.lastActivityTimestamp : 0)
+            - Number(left && left.lastActivityTimestamp ? left.lastActivityTimestamp : 0);
+    });
+}
+
+function getSortedItems(items, sortMode) {
+    return sortMode === 'alpha'
+        ? sortItemsByAlpha(items)
+        : sortItemsByTime(items);
+}
+
+function getOrderedGroups() {
+    return Array.isArray(payload.groups) ? payload.groups : [];
+}
+
+function syncDisplayControlsVisibility() {
+    if (!elements.displayControls) {
+        return;
+    }
+
+    elements.displayControls.hidden = !Array.isArray(payload.items) || payload.items.length === 0;
+}
+
+function syncDisplayButtons() {
+    root.querySelectorAll('[data-omo-decisions-sort]').forEach(function (button) {
+        const isActive = String(button.getAttribute('data-omo-decisions-sort') || '') === state.sort;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+
+    root.querySelectorAll('[data-omo-decisions-density]').forEach(function (button) {
+        const isActive = String(button.getAttribute('data-omo-decisions-density') || '') === state.density;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+}
+
+function resetListPresentation() {
+    if (!elements.list) {
+        return;
+    }
+
+    elements.list.className = 'omo-decisions__list';
+    elements.list.removeAttribute('data-generic-file-list');
+}
+
 function syncAdvancedFiltersVisibility() {
     const isVisible = !!state.filtersExpanded;
 
@@ -1785,6 +2304,227 @@ function showStateContainer(html, variant) {
         : 'generic-section');
     elements.state.innerHTML = String(html || '');
     setVisible(elements.state, true);
+}
+
+function buildMetaItem(label, value) {
+    const resolvedLabel = String(label || '').trim();
+    const resolvedValue = String(value || '').trim();
+    if (resolvedLabel === '' || resolvedValue === '') {
+        return '';
+    }
+
+    return '<span class="omo-decisions-card__meta-item"><strong>' + escapeHtml(resolvedLabel) + '</strong><span>' + escapeHtml(resolvedValue) + '</span></span>';
+}
+
+function buildCompactAvatar(owner) {
+    const resolvedOwner = owner && typeof owner === 'object' ? owner : {};
+    const ownerName = String(resolvedOwner.displayName || '').trim();
+    const ownerInitials = String(resolvedOwner.initials || 'P').trim() || 'P';
+    const ownerPhotoUrl = String(resolvedOwner.photoUrl || '').trim();
+
+    if (ownerPhotoUrl !== '') {
+        return '<span class="omo-decisions__compact-avatar"><img src="' + escapeHtml(ownerPhotoUrl) + '" alt="' + escapeHtml(ownerName !== '' ? ownerName : ownerInitials) + '" class="omo-decisions__compact-avatar-photo"></span>';
+    }
+
+    return '<span class="omo-decisions__compact-avatar"><span class="omo-decisions__compact-avatar-placeholder">' + escapeHtml(ownerInitials) + '</span></span>';
+}
+
+function buildCompactMetaLine(item) {
+    const metaParts = [];
+    const ownerName = String(item && item.owner && item.owner.displayName ? item.owner.displayName : '').trim();
+    const typeLabel = String(item && item.decisionTypeLabel ? item.decisionTypeLabel : '').trim();
+    const methodLabel = String(item && item.evaluationMethodLabel ? item.evaluationMethodLabel : '').trim();
+    const badges = Array.isArray(item && item.badges) ? item.badges : [];
+
+    if (ownerName !== '') {
+        metaParts.push(ownerName);
+    }
+    if (typeLabel !== '') {
+        metaParts.push(typeLabel);
+    }
+    if (methodLabel !== '') {
+        metaParts.push(methodLabel);
+    }
+    badges.forEach(function (badge) {
+        const normalizedBadge = String(badge || '').trim();
+        if (normalizedBadge !== '') {
+            metaParts.push(normalizedBadge);
+        }
+    });
+
+    return metaParts.map(function (part, index) {
+        const separator = index > 0 ? '<span class="omo-decisions__compact-meta-separator">|</span>' : '';
+        return separator + '<span>' + escapeHtml(part) + '</span>';
+    }).join('');
+}
+
+function buildCompactListHeader() {
+    const header = document.createElement('div');
+    header.className = 'generic-file-list__header';
+    header.innerHTML = ''
+        + '<div class="generic-file-list__header-cell">' + escapeHtml(payload.text && payload.text.compactHeaderName ? payload.text.compactHeaderName : 'Decision') + '</div>'
+        + '<div class="generic-file-list__header-cell">' + escapeHtml(payload.text && payload.text.compactHeaderStatus ? payload.text.compactHeaderStatus : 'Statut') + '</div>'
+        + '<div class="generic-file-list__header-cell">' + escapeHtml(payload.text && payload.text.compactHeaderScope ? payload.text.compactHeaderScope : 'Structure') + '</div>'
+        + '<div class="generic-file-list__header-cell">' + escapeHtml(payload.text && payload.text.compactHeaderActivity ? payload.text.compactHeaderActivity : 'Activite') + '</div>';
+    return header;
+}
+
+function renderCompactRow(item) {
+    const article = document.createElement('article');
+    article.className = 'omo-decisions__item-shell generic-file-list__item-shell';
+
+    const primaryAction = resolveDecisionAutoOpenAction(item);
+    const primaryActionUrl = String(primaryAction && primaryAction.url ? primaryAction.url : '').trim();
+    const row = document.createElement(primaryActionUrl !== '' ? 'button' : 'div');
+    const activityLabel = String(item && item.lastActivityLabel ? item.lastActivityLabel : (item && item.deadlineLabel ? item.deadlineLabel : '')).trim();
+    const scopeLabel = String(item && item.holonLabel ? item.holonLabel : '').trim();
+
+    row.className = 'omo-decisions__compact-row generic-file-list__row';
+    if (primaryActionUrl !== '') {
+        row.type = 'button';
+        row.setAttribute('data-open-url', primaryActionUrl);
+        row.setAttribute('data-open-title', String(item && item.title ? item.title : ''));
+        row.setAttribute('data-open-description', String(item && item.description ? item.description : ''));
+    }
+
+    row.innerHTML = ''
+        + '<div class="generic-file-list__cell generic-file-list__cell--name" data-label="' + escapeHtml(payload.text && payload.text.compactHeaderName ? payload.text.compactHeaderName : 'Decision') + '">'
+            + '<div class="omo-decisions__compact-name-main generic-file-list__name-main">'
+                + buildCompactAvatar(item && item.owner ? item.owner : {})
+                + '<div class="omo-decisions__compact-title-block generic-file-list__title-block">'
+                    + '<div class="generic-file-list__title-row">'
+                        + '<strong class="generic-file-list__title">' + escapeHtml(item && item.title ? item.title : '') + '</strong>'
+                    + '</div>'
+                    + '<div class="omo-decisions__compact-meta generic-file-list__meta-line">' + buildCompactMetaLine(item) + '</div>'
+                + '</div>'
+            + '</div>'
+        + '</div>'
+        + '<div class="generic-file-list__cell" data-label="' + escapeHtml(payload.text && payload.text.compactHeaderStatus ? payload.text.compactHeaderStatus : 'Statut') + '">'
+            + '<span class="omo-decisions__compact-status">' + escapeHtml(item && item.statusLabel ? item.statusLabel : '') + '</span>'
+        + '</div>'
+        + '<div class="generic-file-list__cell" data-label="' + escapeHtml(payload.text && payload.text.compactHeaderScope ? payload.text.compactHeaderScope : 'Structure') + '">'
+            + '<span class="omo-decisions__compact-scope">' + escapeHtml(scopeLabel) + '</span>'
+        + '</div>'
+        + '<div class="generic-file-list__cell generic-file-list__cell--date" data-label="' + escapeHtml(payload.text && payload.text.compactHeaderActivity ? payload.text.compactHeaderActivity : 'Activite') + '">'
+            + '<span class="omo-decisions__compact-activity">' + escapeHtml(activityLabel) + '</span>'
+        + '</div>';
+
+    article.appendChild(row);
+    return article;
+}
+
+function renderDetailedList(items, groupMode) {
+    const sortedItems = getSortedItems(items, groupMode === 'alpha' ? 'alpha' : 'time');
+    const fragment = document.createDocumentFragment();
+
+    if (groupMode === 'alpha') {
+        const list = document.createElement('div');
+        list.className = 'omo-decisions__card-list';
+        sortedItems.forEach(function (item) {
+            list.appendChild(renderCard(item));
+        });
+        fragment.appendChild(list);
+        return fragment;
+    }
+
+    const itemsByGroupKey = new Map();
+    sortedItems.forEach(function (item) {
+        const groupKey = String(item && item.activityGroupKey ? item.activityGroupKey : 'too_far');
+        if (!itemsByGroupKey.has(groupKey)) {
+            itemsByGroupKey.set(groupKey, []);
+        }
+        itemsByGroupKey.get(groupKey).push(item);
+    });
+
+    getOrderedGroups().forEach(function (group) {
+        const groupKey = String(group && group.key ? group.key : '');
+        const groupItems = itemsByGroupKey.get(groupKey) || [];
+        if (groupItems.length === 0) {
+            return;
+        }
+
+        const section = document.createElement('section');
+        section.className = 'omo-decisions__group omo-panel-group';
+
+        const title = document.createElement('h3');
+        title.className = 'omo-panel-group__title';
+        title.textContent = String(group && group.label ? group.label : '');
+
+        const list = document.createElement('div');
+        list.className = 'omo-decisions__card-list';
+        groupItems.forEach(function (item) {
+            list.appendChild(renderCard(item));
+        });
+
+        section.appendChild(title);
+        section.appendChild(list);
+        fragment.appendChild(section);
+    });
+
+    return fragment;
+}
+
+function renderCompactList(items, groupMode) {
+    const sortedItems = getSortedItems(items, groupMode === 'alpha' ? 'alpha' : 'time');
+    const fragment = document.createDocumentFragment();
+
+    elements.list.classList.add('generic-file-list', 'generic-file-list--structured');
+    elements.list.setAttribute('data-generic-file-list', '1');
+
+    if (groupMode === 'alpha') {
+        const section = document.createElement('section');
+        section.className = 'omo-decisions__group generic-file-list__group';
+
+        const table = document.createElement('div');
+        table.className = 'generic-file-list__table';
+        table.appendChild(buildCompactListHeader());
+        sortedItems.forEach(function (item) {
+            table.appendChild(renderCompactRow(item));
+        });
+
+        section.appendChild(table);
+        fragment.appendChild(section);
+        return fragment;
+    }
+
+    elements.list.classList.add('generic-file-list--stacked-sticky');
+
+    const itemsByGroupKey = new Map();
+    sortedItems.forEach(function (item) {
+        const groupKey = String(item && item.activityGroupKey ? item.activityGroupKey : 'too_far');
+        if (!itemsByGroupKey.has(groupKey)) {
+            itemsByGroupKey.set(groupKey, []);
+        }
+        itemsByGroupKey.get(groupKey).push(item);
+    });
+
+    getOrderedGroups().forEach(function (group) {
+        const groupKey = String(group && group.key ? group.key : '');
+        const groupItems = itemsByGroupKey.get(groupKey) || [];
+        if (groupItems.length === 0) {
+            return;
+        }
+
+        const section = document.createElement('section');
+        section.className = 'omo-decisions__group generic-file-list__group';
+
+        const title = document.createElement('h3');
+        title.className = 'omo-panel-group__title generic-file-list__group-title';
+        title.textContent = String(group && group.label ? group.label : '');
+
+        const table = document.createElement('div');
+        table.className = 'generic-file-list__table';
+        table.appendChild(buildCompactListHeader());
+        groupItems.forEach(function (item) {
+            table.appendChild(renderCompactRow(item));
+        });
+
+        section.appendChild(title);
+        section.appendChild(table);
+        fragment.appendChild(section);
+    });
+
+    return fragment;
 }
 
 function renderCard(item) {
@@ -1965,6 +2705,7 @@ function renderList() {
 
     if (elements.list) {
         elements.list.innerHTML = '';
+        resetListPresentation();
     }
 
     if (!Array.isArray(payload.items)) {
@@ -1981,6 +2722,8 @@ function renderList() {
     }
 
     renderStatusTabs();
+    syncDisplayControlsVisibility();
+    syncDisplayButtons();
 
     if (payload.items.length === 0) {
         showStateContainer(buildStateCardHtml(
@@ -1998,11 +2741,15 @@ function renderList() {
     }
 
     if (elements.list) {
-        filteredItems.forEach(function (item) {
-            elements.list.appendChild(renderCard(item));
-        });
+        const fragment = state.density === 'compact'
+            ? renderCompactList(filteredItems, state.sort)
+            : renderDetailedList(filteredItems, state.sort);
+        elements.list.appendChild(fragment);
         if (typeof window.initGenericComponents === 'function') {
             window.initGenericComponents(elements.list);
+        }
+        if (typeof window.syncGenericFileLists === 'function') {
+            window.syncGenericFileLists(elements.list);
         }
     }
     setVisible(elements.list, true);
@@ -2062,17 +2809,41 @@ if (elements.filtersToggle) {
     });
 }
 
-root.querySelectorAll('[data-omo-decision-scope-toggle]').forEach(function (button) {
+root.querySelectorAll('[data-omo-decisions-sort]').forEach(function (button) {
     button.addEventListener('click', function () {
-        const targetScope = String(button.getAttribute('data-omo-decision-scope-toggle') || 'contextual').trim().toLowerCase() === 'global'
-            ? 'global'
-            : 'contextual';
+        const nextSort = omoDecisionsNormalizeSortPreference(
+            button.getAttribute('data-omo-decisions-sort')
+        );
 
-        if (targetScope === omoDecisionGetCurrentScope()) {
+        if (nextSort === state.sort) {
             return;
         }
 
-        omoDecisionReloadForScope(targetScope);
+        state.sort = nextSort;
+        omoDecisionsWritePreferences({
+            sort: state.sort,
+            density: state.density
+        });
+        renderList();
+    });
+});
+
+root.querySelectorAll('[data-omo-decisions-density]').forEach(function (button) {
+    button.addEventListener('click', function () {
+        const nextDensity = omoDecisionsNormalizeDensityPreference(
+            button.getAttribute('data-omo-decisions-density')
+        );
+
+        if (nextDensity === state.density) {
+            return;
+        }
+
+        state.density = nextDensity;
+        omoDecisionsWritePreferences({
+            sort: state.sort,
+            density: state.density
+        });
+        renderList();
     });
 });
 
@@ -2170,7 +2941,14 @@ root.addEventListener('click', function (event) {
         return;
     }
 
-    openDecisionEditor(targetUrl, payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de décision');
+    const targetTitle = String(button.getAttribute('data-open-title') || '').trim();
+    const targetDescription = String(button.getAttribute('data-open-description') || '').trim();
+
+    openDecisionEditor(
+        targetUrl,
+        targetTitle !== '' ? targetTitle : (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de décision'),
+        targetDescription
+    );
     event.preventDefault();
 });
 })();
