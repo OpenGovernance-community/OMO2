@@ -285,40 +285,7 @@ if (!function_exists('omoDecisionRenderEditorGroupSwitch')) {
 <div class="omo-decision-edit omo-panel-view">
     <div class="omo-panel-view__body">
         <div class="omo-panel-view__body_content omo-decision-edit__stack">
-            <?php if ($showContextSummary): ?>
-            <section class="generic-hero-panel generic-hero-panel--accent omo-decision-edit__summary">
-                <div class="omo-decision-edit__summary-grid">
-                    <div class="generic-soft-panel generic-soft-panel--stack">
-                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.summary.organization', [], $lang, $baseSourceLang)) ?></span>
-                        <strong><?= $escape(trim((string)$organization->get('name'))) ?></strong>
-                    </div>
-
-                    <div class="generic-soft-panel generic-soft-panel--stack">
-                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.summary.context', [], $lang, $baseSourceLang)) ?></span>
-                        <strong><?= $escape($contextLabel) ?></strong>
-                    </div>
-
-                    <div class="generic-soft-panel generic-soft-panel--stack">
-                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.summary.mode', [], $lang, $baseSourceLang)) ?></span>
-                        <strong><?= $escape($modeLabel) ?></strong>
-                    </div>
-
-                    <?php if ($selectedLabel !== ''): ?>
-                    <div class="generic-soft-panel generic-soft-panel--stack">
-                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.summary.method', [], $lang, $baseSourceLang)) ?></span>
-                        <strong><?= $escape($selectedLabel) ?></strong>
-                    </div>
-                    <?php endif; ?>
-
-                    <?php if ($isEditing): ?>
-                    <div class="generic-soft-panel generic-soft-panel--stack">
-                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.summary.target', [], $lang, $baseSourceLang)) ?></span>
-                        <strong><?= $escape(trim((string)$decision->get('title'))) ?></strong>
-                    </div>
-                    <?php endif; ?>
-                </div>
-            </section>
-            <?php endif; ?>
+            
 
             <?php if (false && $isEditing && $intent === 'manage'): ?>
             <section class="generic-soft-panel generic-soft-panel--stack omo-decision-edit__group-switch">

@@ -2,7 +2,7 @@
     /* COLORS */
     --color-bg: #f7f8fa;
     --color-surface: #ffffff;
-    --color-surface-alt: #f0f2f5;
+    --color-surface-alt: #e7e9ec;
     --color-surface-raised: #ffffff;
 
     --color-text: #1f2937;
@@ -1143,7 +1143,7 @@ html[data-theme] .common-help-card p {
 }
 
 .omo-panel-view__body_content {
-    padding: 20px;
+    
 }
 
 .omo-panel-group {
@@ -1481,9 +1481,7 @@ button.omo-card {
         align-self: flex-start;
     }
 
-    .omo-panel-view__body_content {
-        padding: 14px 14px;
-    }
+ 
 
     .omo-panel-group__title {
         padding: 14px 14px 8px;

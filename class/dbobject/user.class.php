@@ -359,6 +359,70 @@
 			return $memberships;
 		}
 
+		public static function buildInitials($label, $fallback = 'P')
+		{
+			$label = trim((string)$label);
+			$fallback = trim((string)$fallback);
+			if ($fallback === '') {
+				$fallback = 'P';
+			}
+
+			if ($label === '') {
+				$label = $fallback;
+			}
+
+			$initials = '';
+			$tokens = preg_split('/[\s\.\-_@]+/u', $label) ?: array();
+
+			foreach ($tokens as $token) {
+				$token = trim((string)$token);
+				if ($token === '') {
+					continue;
+				}
+
+				if (function_exists('mb_substr')) {
+					$initials .= mb_substr($token, 0, 1, 'UTF-8');
+					if (mb_strlen($initials, 'UTF-8') >= 2) {
+						break;
+					}
+				} else {
+					$initials .= substr($token, 0, 1);
+					if (strlen($initials) >= 2) {
+						break;
+					}
+				}
+			}
+
+			$collapsed = preg_replace('/[\s\.\-_@]+/u', '', $label);
+			if (!is_string($collapsed)) {
+				$collapsed = '';
+			}
+
+			if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+				$collapsedLength = mb_strlen($collapsed, 'UTF-8');
+				$offset = mb_strlen($initials, 'UTF-8');
+				while ($collapsed !== '' && mb_strlen($initials, 'UTF-8') < 2 && $offset < $collapsedLength) {
+					$initials .= mb_substr($collapsed, $offset, 1, 'UTF-8');
+					$offset++;
+				}
+			} else {
+				$collapsedLength = strlen($collapsed);
+				$offset = strlen($initials);
+				while ($collapsed !== '' && strlen($initials) < 2 && $offset < $collapsedLength) {
+					$initials .= substr($collapsed, $offset, 1);
+					$offset++;
+				}
+			}
+
+			if ($initials === '') {
+				$initials = $fallback;
+			}
+
+			return function_exists('mb_strtoupper')
+				? mb_strtoupper($initials, 'UTF-8')
+				: strtoupper($initials);
+		}
+
 		public function getProfilePhotoUrl()
 		{
 			$image = trim((string)$this->get('image'));
@@ -412,6 +476,16 @@
 			}
 
 			return $this->getScopedEmail($organizationId);
+		}
+
+		public function getScopedInitials($organizationId = 0)
+		{
+			$membership = $this->getOrganizationMembership($organizationId);
+			if ($membership && method_exists($membership, 'getUserInitials')) {
+				return $membership->getUserInitials();
+			}
+
+			return self::buildInitials($this->getScopedDisplayName($organizationId));
 		}
 
 		public function getScopedPresentation($organizationId = 0)

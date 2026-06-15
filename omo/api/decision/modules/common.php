@@ -653,10 +653,7 @@ if (!function_exists('omoDecisionSendParticipantAccessEmail')) {
 
         $subject = trim((string)$subject);
         if ($subject === '') {
-            $subject = 'Acces a la prise de decision';
-            if ($decisionTitle !== '') {
-                $subject .= ' : ' . $decisionTitle;
-            }
+            $subject = $decision->buildDefaultInvitationEmailSubject();
         }
 
         $fromAddress = trim((string)($GLOBALS['mailUser'] ?? ''));

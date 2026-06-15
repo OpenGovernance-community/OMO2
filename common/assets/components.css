@@ -1,6 +1,5 @@
 .generic-section,
-.omo-card,
-.generic-accordion--card {
+.omo-card {
     --generic-section-padding-block: 16px;
     --generic-section-padding-inline: 18px;
     --generic-section-border: var(--color-border, #e5e7eb);
@@ -15,19 +14,28 @@
     box-shadow: var(--generic-section-shadow);
 }
 
+.generic-title-section {
+    --generic-section-radius: 0px;
+    --generic-section-padding-block: 16px;
+    --generic-section-padding-inline: 18px;
+    --generic-section-border: var(--color-border, #e5e7eb);
+    border-bottom: 1px solid var(--generic-section-border);
+    padding: var(--generic-section-padding-block) var(--generic-section-padding-inline);
+}
+
 .generic-section--stack {
     display: grid;
-    gap: var(--generic-section-gap, 12px);
+    gap: var(--generic-section-gap, 0px);
 }
 
 .generic-section--alt {
     --generic-section-background: var(--color-surface-alt, #f0f2f5);
 }
 
-.generic-soft-panel {
+.generic-soft-panel, .generic-soft-panel-square {
     --generic-soft-panel-padding-block: 12px;
     --generic-soft-panel-padding-inline: 14px;
-    --generic-soft-panel-radius: 12px;
+    --generic-soft-panel-radius: 0px;
     --generic-soft-panel-border: var(--color-border, #d1d5db);
     --generic-soft-panel-background: var(--color-surface-alt, #f8fafc);
     display: block;
@@ -35,6 +43,9 @@
     border: 1px solid var(--generic-soft-panel-border);
     border-radius: var(--generic-soft-panel-radius);
     background: var(--generic-soft-panel-background);
+}
+.generic-soft-panel {
+    --generic-soft-panel-radius: 12px;
 }
 
 .generic-soft-panel--stack {
@@ -729,11 +740,12 @@ textarea.generic-form-control {
     padding: 0;
     border: 0;
     background: transparent;
-    font-size: 12px;
+    font-size: 24px;
     color: var(--color-text-light, #475569);
     line-height: 1;
     cursor: pointer;
     transition: transform 0.2s ease;
+    margin:-6px;
 }
 
 .generic-accordion__content {
