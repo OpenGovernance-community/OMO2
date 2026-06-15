@@ -30,6 +30,22 @@ $sourceLang = [
         'text' => 'Acces interdit - OMO',
         'context' => 'Browser title shown on the forbidden access page.',
     ],
+    'app.access_denied.request_action' => [
+        'text' => "Demander l'acces",
+        'context' => 'Button label shown on the forbidden access page to let the current user request access to the organization.',
+    ],
+    'app.access_denied.request_modal_title' => [
+        'text' => "Demander l'acces a l'organisation",
+        'context' => 'Modal title shown for the organization access request popup.',
+    ],
+    'app.access_denied.request_pending' => [
+        'text' => 'Demande deja envoyee',
+        'context' => 'Disabled button label shown when a membership request is already pending for the current user.',
+    ],
+    'app.access_denied.request_pending_notice' => [
+        'text' => 'Une demande est deja en attente aupres des administrateurs de cette organisation.',
+        'context' => 'Notice shown on the forbidden access page when the current user already requested access.',
+    ],
     'app.directory.create.action' => [
         'text' => 'Ouvrir le formulaire',
         'context' => 'Action label displayed on the create organization card.',
@@ -991,13 +1007,17 @@ if (
         (int)$organizationContext['id'],
         $currentUserId
     );
-    if ($pendingInvitation instanceof \dbObject\Invitation) {
+    $pendingMemberRequest = null;
+    if ($pendingInvitation instanceof \dbObject\Invitation && $pendingInvitation->isAdminInitiatedInvitation()) {
         header('Location: ' . $pendingInvitation->getInvitationUrl());
         exit;
+    } elseif ($pendingInvitation instanceof \dbObject\Invitation && $pendingInvitation->isMemberInitiatedRequest()) {
+        $pendingMemberRequest = $pendingInvitation;
     }
 
     http_response_code(403);
     $logoutUrl = '/common/logout.php?return_to=' . urlencode('/omo/');
+    $accessRequestPopupUrl = '/omo/api/organization/access_request_popup.php?oid=' . rawurlencode((string)$organizationContext['id']);
     ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -1022,12 +1042,48 @@ if (
         <h1><?= htmlspecialchars(t('app.access_denied.page_heading')) ?></h1>
         <p><?= htmlspecialchars(t('app.access_denied.message', ['organizationName' => ($organizationContext['name'] ?: t('app.access_denied.organization_fallback'))])) ?></p>
         <p><?= htmlspecialchars(t('app.access_denied.page_description')) ?></p>
+        <?php if ($pendingMemberRequest instanceof \dbObject\Invitation): ?>
+            <p><?= htmlspecialchars(t('app.access_denied.request_pending_notice')) ?></p>
+        <?php endif; ?>
         <div class="auth-state-actions">
             <a class="auth-state-btn auth-state-btn--secondary" href="<?= htmlspecialchars($omoRootUrl) ?>"><?= htmlspecialchars(t('common.back_to_home')) ?></a>
+            <button
+                type="button"
+                class="auth-state-btn auth-state-btn--secondary"
+                id="omoAccessRequestButton"
+                data-modal-url="<?= htmlspecialchars($accessRequestPopupUrl) ?>"
+                data-modal-title="<?= htmlspecialchars(t('app.access_denied.request_modal_title')) ?>"
+                <?= $pendingMemberRequest instanceof \dbObject\Invitation ? 'disabled' : '' ?>
+            ><?= htmlspecialchars($pendingMemberRequest instanceof \dbObject\Invitation ? t('app.access_denied.request_pending') : t('app.access_denied.request_action')) ?></button>
             <a class="auth-state-btn auth-state-btn--primary" href="<?= htmlspecialchars($logoutUrl) ?>"><?= htmlspecialchars(t('common.logout')) ?></a>
         </div>
     </div>
     </main>
+    <script>
+        (function () {
+            var button = document.getElementById('omoAccessRequestButton');
+            if (!button || button.disabled) {
+                return;
+            }
+
+            button.addEventListener('click', function () {
+                if (typeof window.commonTopbarOpenModal !== 'function') {
+                    window.location.href = button.getAttribute('data-modal-url') || '/omo/';
+                    return;
+                }
+
+                window.commonTopbarOpenModal(
+                    button.getAttribute('data-modal-title') || 'Demander l acces',
+                    button.getAttribute('data-modal-url') || '',
+                    'fetch'
+                );
+            });
+
+            window.addEventListener('omo-access-request-submitted', function () {
+                window.location.reload();
+            });
+        })();
+    </script>
 </body>
 </html>
 <?php

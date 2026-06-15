@@ -27,6 +27,13 @@ if (!function_exists('omoDecisionMajorityJudgmentGetMentions')) {
     }
 }
 
+if (!function_exists('omoDecisionMajorityJudgmentGetNoOpinionScore')) {
+    function omoDecisionMajorityJudgmentGetNoOpinionScore()
+    {
+        return 3;
+    }
+}
+
 if (!function_exists('omoDecisionMajorityJudgmentNormalizeScore')) {
     function omoDecisionMajorityJudgmentNormalizeScore($value)
     {
@@ -38,6 +45,108 @@ if (!function_exists('omoDecisionMajorityJudgmentNormalizeScore')) {
             return 6;
         }
         return $score;
+    }
+}
+
+if (!function_exists('omoDecisionMajorityJudgmentGetEmptyDistribution')) {
+    function omoDecisionMajorityJudgmentGetEmptyDistribution()
+    {
+        return [0 => 0, 1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0, 6 => 0];
+    }
+}
+
+if (!function_exists('omoDecisionMajorityJudgmentNormalizeDistribution')) {
+    function omoDecisionMajorityJudgmentNormalizeDistribution(array $distribution)
+    {
+        $normalized = omoDecisionMajorityJudgmentGetEmptyDistribution();
+
+        foreach ($distribution as $score => $count) {
+            $normalizedScore = omoDecisionMajorityJudgmentNormalizeScore($score);
+            $normalized[$normalizedScore] = max(0, (int)$count);
+        }
+
+        return $normalized;
+    }
+}
+
+if (!function_exists('omoDecisionMajorityJudgmentGetCountedDistribution')) {
+    function omoDecisionMajorityJudgmentGetCountedDistribution(array $distribution)
+    {
+        $normalized = omoDecisionMajorityJudgmentNormalizeDistribution($distribution);
+        $normalized[omoDecisionMajorityJudgmentGetNoOpinionScore()] = 0;
+        return $normalized;
+    }
+}
+
+if (!function_exists('omoDecisionMajorityJudgmentGetNoOpinionCount')) {
+    function omoDecisionMajorityJudgmentGetNoOpinionCount(array $distribution)
+    {
+        $normalized = omoDecisionMajorityJudgmentNormalizeDistribution($distribution);
+        return (int)($normalized[omoDecisionMajorityJudgmentGetNoOpinionScore()] ?? 0);
+    }
+}
+
+if (!function_exists('omoDecisionMajorityJudgmentResolveMajorityScore')) {
+    function omoDecisionMajorityJudgmentResolveMajorityScore(array $distribution)
+    {
+        $normalizedDistribution = omoDecisionMajorityJudgmentGetCountedDistribution($distribution);
+        $totalCount = array_sum($normalizedDistribution);
+        if ($totalCount <= 0) {
+            return null;
+        }
+
+        $threshold = (int)ceil($totalCount / 2);
+        $running = 0;
+        for ($score = 0; $score <= 6; $score++) {
+            $running += (int)$normalizedDistribution[$score];
+            if ($running >= $threshold) {
+                return $score;
+            }
+        }
+
+        return 6;
+    }
+}
+
+if (!function_exists('omoDecisionMajorityJudgmentCompareStats')) {
+    function omoDecisionMajorityJudgmentCompareStats(array $leftStat, array $rightStat)
+    {
+        $leftDistribution = omoDecisionMajorityJudgmentGetCountedDistribution((array)($leftStat['distribution'] ?? []));
+        $rightDistribution = omoDecisionMajorityJudgmentGetCountedDistribution((array)($rightStat['distribution'] ?? []));
+        $leftRemaining = array_sum($leftDistribution);
+        $rightRemaining = array_sum($rightDistribution);
+
+        if ($leftRemaining <= 0 || $rightRemaining <= 0) {
+            if ($leftRemaining === $rightRemaining) {
+                return 0;
+            }
+
+            return $rightRemaining <=> $leftRemaining;
+        }
+
+        while ($leftRemaining > 0 && $rightRemaining > 0) {
+            $leftMajorityScore = omoDecisionMajorityJudgmentResolveMajorityScore($leftDistribution);
+            $rightMajorityScore = omoDecisionMajorityJudgmentResolveMajorityScore($rightDistribution);
+
+            if ($leftMajorityScore === null || $rightMajorityScore === null) {
+                break;
+            }
+
+            if ($leftMajorityScore !== $rightMajorityScore) {
+                return $rightMajorityScore <=> $leftMajorityScore;
+            }
+
+            if ((int)$leftDistribution[$leftMajorityScore] <= 0 || (int)$rightDistribution[$rightMajorityScore] <= 0) {
+                break;
+            }
+
+            $leftDistribution[$leftMajorityScore]--;
+            $rightDistribution[$rightMajorityScore]--;
+            $leftRemaining--;
+            $rightRemaining--;
+        }
+
+        return 0;
     }
 }
 
@@ -144,8 +253,10 @@ if (!function_exists('omoDecisionMajorityJudgmentBuildStats')) {
         foreach ($proposalObjects as $proposal) {
             $proposalId = (int)$proposal->getId();
             $stats[$proposalId] = [
-                'distribution' => [0 => 0, 1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0, 6 => 0],
+                'distribution' => omoDecisionMajorityJudgmentGetEmptyDistribution(),
                 'count' => 0,
+                'counted_count' => 0,
+                'no_opinion_count' => 0,
                 'majority_score' => null,
                 'majority_label' => '',
             ];
@@ -167,15 +278,18 @@ if (!function_exists('omoDecisionMajorityJudgmentBuildStats')) {
                 continue;
             }
 
-            $threshold = (int)ceil($item['count'] / 2);
-            $running = 0;
-            $majorityScore = 0;
-            for ($score = 0; $score <= 6; $score++) {
-                $running += (int)$item['distribution'][$score];
-                if ($running >= $threshold) {
-                    $majorityScore = $score;
-                    break;
-                }
+            $noOpinionCount = omoDecisionMajorityJudgmentGetNoOpinionCount($item['distribution']);
+            $countedCount = max(0, (int)$item['count'] - $noOpinionCount);
+            $stats[$proposalId]['no_opinion_count'] = $noOpinionCount;
+            $stats[$proposalId]['counted_count'] = $countedCount;
+
+            if ($countedCount <= 0) {
+                continue;
+            }
+
+            $majorityScore = omoDecisionMajorityJudgmentResolveMajorityScore($item['distribution']);
+            if ($majorityScore === null) {
+                continue;
             }
 
             $stats[$proposalId]['majority_score'] = $majorityScore;

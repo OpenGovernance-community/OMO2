@@ -157,6 +157,10 @@ ON DUPLICATE KEY UPDATE
 
 -- Defensive guard for fresh Docker databases
 ALTER TABLE `user`
+  ADD COLUMN IF NOT EXISTS `presentation` text DEFAULT NULL AFTER `lastname`,
+  ADD COLUMN IF NOT EXISTS `birthdate` date DEFAULT NULL AFTER `presentation`,
+  ADD COLUMN IF NOT EXISTS `latlong` varchar(100) DEFAULT NULL AFTER `presentation`,
+  ADD COLUMN IF NOT EXISTS `image` varchar(100) DEFAULT NULL AFTER `username`,
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 -- Local Docker dev account bootstrap

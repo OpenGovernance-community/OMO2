@@ -485,8 +485,8 @@ function commonDecisionParticipationRenderGroupBlocks(DecisionProcess $decision,
             $groupContext['decisionGroupId'] = (int)$group->getId();
             $groupContext['method'] = $method;
             ?>
-            <section class="generic-section generic-section--stack decision-public-group">
-                <div class="generic-soft-panel generic-soft-panel--stack decision-public-group__header">
+            <section class="generic-noborder-section generic-section--stack decision-public-group">
+                <div class="generic-soft-panel-square generic-soft-panel--stack decision-public-group__header decision-public-group__header--sticky">
                     <div class="decision-public-group__header-top">
                         <span class="decision-public-group__badge">
                             Bloc <?= omoApiEscape((string)($groupIndex + 1)) ?> · <?= omoApiEscape(commonDecisionParticipationGetMethodLabel($method)) ?> · <?= omoApiEscape(commonDecisionParticipationGetDecisionTypeLabel($group->get('decision_type'))) ?>
@@ -867,11 +867,13 @@ if (empty($context['status'])) {
         }
 
         .decision-public-shell {
+            --decision-public-sticky-top: 0px;
+            --decision-public-title-sticky-height: 0px;
+            --decision-public-sticky-gap: 0px;
             width: min(1100px, calc(100% - 32px));
             margin: 0 auto;
             padding: 28px 0 40px;
             display: grid;
-            gap: 18px;
         }
 
         .decision-public-shell--embedded {
@@ -882,6 +884,16 @@ if (empty($context['status'])) {
         .decision-public-title-block {
             display: grid;
             gap: 10px;
+        }
+
+        .decision-public-title-block--sticky {
+            position: sticky;
+            top: var(--decision-public-sticky-top);
+            z-index: 10;
+            background: color-mix(in srgb, var(--color-surface, #ffffff) 94%, transparent);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 1px 0 color-mix(in srgb, var(--color-border, #d1d5db) 80%, transparent);
         }
 
         .decision-public-hero {
@@ -918,11 +930,6 @@ if (empty($context['status'])) {
             padding-left: 18px;
             color: var(--color-text-light, #475569);
             line-height: 1.7;
-        }
-
-        .decision-public-context-contact {
-            display: grid;
-            gap: 8px;
         }
 
         .decision-public-context-contact a {
@@ -1227,6 +1234,13 @@ if (empty($context['status'])) {
             gap: 10px;
         }
 
+        .decision-public-group__header--sticky {
+            position: sticky;
+            top: calc(var(--decision-public-sticky-top) + var(--decision-public-title-sticky-height) + var(--decision-public-sticky-gap));
+            z-index: 9;
+            box-shadow: 0 1px 0 color-mix(in srgb, var(--color-border, #d1d5db) 80%, transparent);
+        }
+
         .decision-public-group__header-top {
             display: flex;
             align-items: center;
@@ -1312,7 +1326,7 @@ if (empty($context['status'])) {
             <p class="decision-public-status"><?= omoApiEscape($statusCopy) ?></p>
         </section>
 
-        <section class="generic-section generic-section--stack generic-accordion--card generic-accordion--collapsible is-collapsed decision-public-timeline-accordion" data-decision-public-timeline>
+        <section class="generic-title-section generic-section--stack generic-accordion--card generic-accordion--collapsible is-collapsed decision-public-timeline-accordion" data-decision-public-timeline>
             <button
                 type="button"
                 class="decision-public-timeline-summary-button generic-accordion__header"
@@ -1423,7 +1437,7 @@ if (empty($context['status'])) {
             </div>
         </section>
 
-        <section class="generic-section generic-section--stack decision-public-title-block">
+        <section class="generic-title-section generic-section--stack decision-public-title-block decision-public-title-block--sticky">
             <h1><?= omoApiEscape($decisionTitle !== '' ? $decisionTitle : 'Prise de decision') ?></h1>
             <?php if (trim((string)($decision ? $decision->get('description') : '')) !== ''): ?>
             <p><?= nl2br(omoApiEscape(trim((string)$decision->get('description')))) ?></p>
@@ -1432,7 +1446,7 @@ if (empty($context['status'])) {
 
         <section class="decision-public-content">
             <?php if ($requiresPublicAccessEmail): ?>
-            <section class="generic-section generic-section--stack decision-public-access-request">
+            <section class="generic-section-title generic-section--stack decision-public-access-request">
                 <span class="generic-card-title generic-card-title--section">Recevoir mon lien d acces</span>
                 <p class="decision-public-access-request__text">
                     Saisissez l adresse e-mail avec laquelle vous avez ete invite afin de recevoir votre lien personnel vers cette page.
@@ -1466,8 +1480,8 @@ if (empty($context['status'])) {
             <?php endif; ?>
         </section>
         <?php if (trim((string)($organizerData['email'] ?? '')) !== ''): ?>
-        <section class="generic-section generic-section--stack decision-public-context-contact">
-            <span class="generic-card-title generic-card-title--section">Contacter l organisateur</span>
+        <section class="generic-soft-panel-square decision-public-context-contact">
+            <span>Contacter l organisateur: </span>
             <a href="mailto:<?= omoApiEscape((string)$organizerData['email']) ?>"><?= omoApiEscape((string)$organizerData['email']) ?></a>
         </section>
         <?php endif; ?>
@@ -1501,6 +1515,32 @@ if (empty($context['status'])) {
                     var isCollapsed = parentAccordion.classList.toggle('is-collapsed');
                     this.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
                 });
+            }
+        })();
+
+        (function () {
+            function syncStickyOffsets() {
+                var shells = document.querySelectorAll('.decision-public-shell');
+                for (var shellIndex = 0; shellIndex < shells.length; shellIndex += 1) {
+                    var shell = shells[shellIndex];
+                    var titleBlock = shell.querySelector('.decision-public-title-block--sticky');
+                    if (!titleBlock) {
+                        continue;
+                    }
+
+                    shell.style.setProperty('--decision-public-title-sticky-height', String(titleBlock.offsetHeight || 0) + 'px');
+                }
+            }
+
+            syncStickyOffsets();
+            window.addEventListener('resize', syncStickyOffsets);
+
+            if (typeof ResizeObserver === 'function') {
+                var resizeObserver = new ResizeObserver(syncStickyOffsets);
+                var stickyTitleBlocks = document.querySelectorAll('.decision-public-title-block--sticky');
+                for (var index = 0; index < stickyTitleBlocks.length; index += 1) {
+                    resizeObserver.observe(stickyTitleBlocks[index]);
+                }
             }
         })();
 

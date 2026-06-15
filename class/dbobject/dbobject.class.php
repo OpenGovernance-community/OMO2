@@ -1,6 +1,8 @@
 <?php
 	namespace dbObject;
 
+	require_once dirname(__DIR__, 2) . '/common/avatar.php';
+
 	class PdoResultCompat
 	{
 		private $_rows = array();

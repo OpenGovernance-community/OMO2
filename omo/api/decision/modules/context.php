@@ -47,6 +47,13 @@ if (!function_exists('omoDecisionBuildEditorUrl')) {
     }
 }
 
+if (!function_exists('omoDecisionBuildActionUrl')) {
+    function omoDecisionBuildActionUrl()
+    {
+        return '/omo/api/decision/action.php';
+    }
+}
+
 if (!function_exists('omoDecisionBuildContextualEditorUrl')) {
     function omoDecisionBuildContextualEditorUrl(array $context, $intent = '')
     {

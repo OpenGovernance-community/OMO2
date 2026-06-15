@@ -517,6 +517,34 @@ $sourceLang = [
         'text' => 'Consulter',
         'context' => 'Primary action label for an archived decision.',
     ],
+    'decisions.index.action.archive' => [
+        'text' => 'Archiver',
+        'context' => 'Manager action used to archive a decision that already has votes.',
+    ],
+    'decisions.index.action.delete' => [
+        'text' => 'Supprimer',
+        'context' => 'Manager action used to delete a decision that has no submitted votes yet.',
+    ],
+    'decisions.index.action.more' => [
+        'text' => '...',
+        'context' => 'Label of the secondary menu button shown on detailed decision cards.',
+    ],
+    'decisions.index.action.more_aria' => [
+        'text' => 'Plus d actions pour cette prise de decision',
+        'context' => 'Accessible label for the secondary action menu button shown on detailed cards.',
+    ],
+    'decisions.index.action.confirm_archive' => [
+        'text' => 'Archiver cette prise de decision ?',
+        'context' => 'Confirmation message before archiving a decision from the list.',
+    ],
+    'decisions.index.action.confirm_delete' => [
+        'text' => 'Supprimer definitivement cette prise de decision et ses elements lies ?',
+        'context' => 'Confirmation message before deleting a decision from the list.',
+    ],
+    'decisions.index.action.error_update' => [
+        'text' => 'Impossible de mettre a jour cette prise de decision pour le moment.',
+        'context' => 'Fallback error message shown when a decision archive or delete action fails.',
+    ],
     'decisions.index.action.open_editor_title' => [
         'text' => 'Prises de décision',
         'context' => 'Drawer title used when opening the decision editor from the list.',
@@ -645,7 +673,7 @@ if (empty($holonContext['status'])) {
 
 $currentContextHolon = $holonContext['holon'] ?? null;
 $allowedContextHolonIds = $currentContextHolon
-    ? array_fill_keys($currentContextHolon->getVisibleDescendantIds(true), true)
+    ? [(int)$currentContextHolon->getId() => true]
     : [];
 $canToggleDecisionScope = $organization->getEnabledStructuralRootHolon() !== null;
 $normalizedCurrentHolonId = omoDecisionNormalizeContextHolonId($organization, $currentHolonId);
@@ -799,6 +827,9 @@ foreach ($decisionRows as $row) {
         'participate',
         true
     );
+    $actionUrl = omoDecisionBuildActionUrl();
+    $hasSubmittedResponses = (int)($row['response_count'] ?? 0) > 0
+        || omoDecisionsIndexToDateTime($row['responses_submitted_at'] ?? '') instanceof DateTimeInterface;
 
     $badges = [];
     if ($isOwner) {
@@ -848,6 +879,44 @@ foreach ($decisionRows as $row) {
                 'label' => t('decisions.index.action.view', [], $lang, $sourceLang),
                 'url' => $viewUrl,
                 'variant' => 'secondary',
+            ];
+        }
+    }
+
+    $menuActions = [];
+    if ($canManage && $actionUrl !== '') {
+        $canDeleteDecision = !$hasSubmittedResponses
+            && $status !== DecisionProcess::STATUS_RESULTS
+            && $status !== DecisionProcess::STATUS_ARCHIVED;
+
+        if ($canDeleteDecision) {
+            $menuActions[] = [
+                'label' => t('decisions.index.action.delete', [], $lang, $sourceLang),
+                'behavior' => 'mutation',
+                'variant' => 'danger',
+                'requestUrl' => $actionUrl,
+                'requestPayload' => [
+                    'oid' => $currentOrganizationId,
+                    'cid' => $normalizedCurrentHolonId > 0 ? $normalizedCurrentHolonId : $holonId,
+                    'id' => $decisionId,
+                    'method' => $method,
+                    'decision_action' => 'delete',
+                ],
+                'confirmMessage' => t('decisions.index.action.confirm_delete', [], $lang, $sourceLang),
+            ];
+        } else {
+            $menuActions[] = [
+                'label' => t('decisions.index.action.archive', [], $lang, $sourceLang),
+                'behavior' => 'mutation',
+                'requestUrl' => $actionUrl,
+                'requestPayload' => [
+                    'oid' => $currentOrganizationId,
+                    'cid' => $normalizedCurrentHolonId > 0 ? $normalizedCurrentHolonId : $holonId,
+                    'id' => $decisionId,
+                    'method' => $method,
+                    'decision_action' => 'archive',
+                ],
+                'confirmMessage' => t('decisions.index.action.confirm_archive', [], $lang, $sourceLang),
             ];
         }
     }
@@ -904,6 +973,7 @@ foreach ($decisionRows as $row) {
         'canParticipate' => $canParticipate,
         'consultationStarted' => $consultationStarted,
         'actions' => $actions,
+        'menuActions' => $menuActions,
         'searchIndex' => omoApiSortKey(
             trim((string)$decision->get('title')) . ' ' .
             trim((string)$decision->get('description')) . ' ' .
@@ -999,6 +1069,9 @@ $payload = [
         'responsesLabel' => t('decisions.index.responses_label', [], $lang, $sourceLang),
         'deadlineLabel' => t('decisions.index.deadline_label', [], $lang, $sourceLang),
         'lastActivityLabel' => t('decisions.index.last_activity_label', [], $lang, $sourceLang),
+        'moreActionLabel' => t('decisions.index.action.more', [], $lang, $sourceLang),
+        'moreActionAriaLabel' => t('decisions.index.action.more_aria', [], $lang, $sourceLang),
+        'actionErrorUpdate' => t('decisions.index.action.error_update', [], $lang, $sourceLang),
         'drawerTitle' => t('decisions.index.action.open_editor_title', [], $lang, $sourceLang),
         'filtersToggleShow' => t('decisions.index.filters.toggle.show', [], $lang, $sourceLang),
         'filtersToggleHide' => t('decisions.index.filters.toggle.hide', [], $lang, $sourceLang),
@@ -1030,6 +1103,7 @@ if (!is_string($payloadJson)) {
 <div
     class="omo-decisions omo-panel-view"
     id="omo-decisions-root"
+    data-omo-decisions-initialized="0"
     data-omo-decision-scope="<?= $escape($decisionScope) ?>"
     data-omo-decision-oid="<?= (int)$currentOrganizationId ?>"
     data-omo-decision-cid="<?= (int)$normalizedCurrentHolonId ?>"
@@ -1062,8 +1136,9 @@ if (!is_string($payloadJson)) {
                 <?php endif; ?>
             </div>
         </div>
-        <?php if ($canToggleDecisionScope): ?>
-        <div class="omo-panel-view__header-secondary">
+        <?php if ($canToggleDecisionScope || count($decisionEntries) > 0): ?>
+        <div class="omo-panel-view__header-secondary omo-decisions__header-secondary">
+            <?php if ($canToggleDecisionScope): ?>
             <div class="omo-decisions__scope-slot">
                 <div
                     class="omo-scope-toggle"
@@ -1076,70 +1151,94 @@ if (!is_string($payloadJson)) {
                         class="omo-scope-toggle__button<?= $decisionScope === 'contextual' ? ' is-active' : '' ?>"
                         data-omo-decision-scope-toggle="contextual"
                         aria-pressed="<?= $decisionScope === 'contextual' ? 'true' : 'false' ?>"
+                        onclick="return window.omoToggleDecisionsScope ? window.omoToggleDecisionsScope(this, event) : false;"
                     >Contextuel</button>
                     <button
                         type="button"
                         class="omo-scope-toggle__button<?= $decisionScope === 'global' ? ' is-active' : '' ?>"
                         data-omo-decision-scope-toggle="global"
                         aria-pressed="<?= $decisionScope === 'global' ? 'true' : 'false' ?>"
+                        onclick="return window.omoToggleDecisionsScope ? window.omoToggleDecisionsScope(this, event) : false;"
                     >Global</button>
+                </div>
+            </div>
+            <?php endif; ?>
+            <div class="omo-decisions__controls omo-panel-controls" data-omo-decisions-display-controls<?= count($decisionEntries) > 0 ? '' : ' hidden' ?>>
+                <div class="omo-segmented" role="group" aria-label="<?= $escape(t('decisions.index.controls.sort.aria', [], $lang, $sourceLang)) ?>">
+                    <button type="button" class="omo-segmented__button is-active" data-omo-decisions-sort="time" aria-pressed="true"><?= $escape(t('decisions.index.controls.sort.time', [], $lang, $sourceLang)) ?></button>
+                    <button type="button" class="omo-segmented__button" data-omo-decisions-sort="alpha" aria-pressed="false"><?= $escape(t('decisions.index.controls.sort.alpha', [], $lang, $sourceLang)) ?></button>
+                </div>
+                <div class="omo-segmented" role="group" aria-label="<?= $escape(t('decisions.index.controls.density.aria', [], $lang, $sourceLang)) ?>">
+                    <button type="button" class="omo-segmented__button is-active" data-omo-decisions-density="detail" aria-pressed="true"><?= $escape(t('decisions.index.controls.density.detail', [], $lang, $sourceLang)) ?></button>
+                    <button type="button" class="omo-segmented__button" data-omo-decisions-density="compact" aria-pressed="false"><?= $escape(t('decisions.index.controls.density.compact', [], $lang, $sourceLang)) ?></button>
                 </div>
             </div>
         </div>
         <?php endif; ?>
     </div>
 
-    <div class="omo-panel-view__body">
-        <div class="omo-panel-view__body_content">
-            <div class="omo-decisions__filters" aria-label="Filtres">
-                <div class="omo-decisions__status-bar generic-section">
-                    <div class="omo-decisions__status-tabs" data-omo-decisions-status-tabs></div>
-                    <button
-                        type="button"
-                        class="generic-action-button generic-action-button--secondary omo-decisions__filters-toggle"
-                        data-omo-decisions-filters-toggle
-                        aria-expanded="false"
+    <div class="omo-decisions__filters" aria-label="Filtres">
+        
+            <div class="omo-decisions__status-scroll" data-omo-decisions-status-scroll>
+                <button
+                    type="button"
+                    class="omo-decisions__status-scroll-button omo-decisions__status-scroll-button--prev"
+                    data-omo-decisions-status-scroll-prev
+                    aria-label="Defiler les etats vers la gauche"
+                    hidden
+                >&lt;</button>
+                <div class="omo-decisions__status-tabs" data-omo-decisions-status-tabs></div>
+                <button
+                    type="button"
+                    class="omo-decisions__status-scroll-button omo-decisions__status-scroll-button--next"
+                    data-omo-decisions-status-scroll-next
+                    aria-label="Defiler les etats vers la droite"
+                    hidden
+                >&gt;</button>
+            </div>
+            <button
+                type="button"
+                class="generic-action-button generic-action-button--secondary omo-decisions__filters-toggle"
+                data-omo-decisions-filters-toggle
+                aria-expanded="false"
+            >
+                <?= $escape(t('decisions.index.filters.toggle.show', [], $lang, $sourceLang)) ?>
+            </button>
+        
+
+        <section class="omo-decisions__filters-panel generic-section generic-section--stack" data-omo-decisions-filters-panel hidden>
+            <div class="omo-decisions__filters-grid">
+                <label class="omo-decisions__field omo-decisions__field--full">
+                    <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.index.filters.search.label', [], $lang, $sourceLang)) ?></span>
+                    <input
+                        type="search"
+                        class="generic-form-control"
+                        data-omo-decisions-search
+                        placeholder="<?= $escape(t('decisions.index.filters.search.placeholder', [], $lang, $sourceLang)) ?>"
                     >
-                        <?= $escape(t('decisions.index.filters.toggle.show', [], $lang, $sourceLang)) ?>
-                    </button>
-                </div>
+                </label>
 
-                <section class="omo-decisions__filters-panel generic-section generic-section--stack" data-omo-decisions-filters-panel hidden>
-                    <div class="omo-decisions__filters-grid">
-                        <label class="omo-decisions__field">
-                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.index.filters.search.label', [], $lang, $sourceLang)) ?></span>
-                            <input
-                                type="search"
-                                class="generic-form-control"
-                                data-omo-decisions-search
-                                placeholder="<?= $escape(t('decisions.index.filters.search.placeholder', [], $lang, $sourceLang)) ?>"
-                            >
-                        </label>
+                <label class="omo-decisions__field">
+                    <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.index.filters.type.label', [], $lang, $sourceLang)) ?></span>
+                    <select class="generic-form-control" data-omo-decisions-type></select>
+                </label>
 
-                        <label class="omo-decisions__field">
-                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.index.filters.type.label', [], $lang, $sourceLang)) ?></span>
-                            <select class="generic-form-control" data-omo-decisions-type></select>
-                        </label>
-
-                        <label class="omo-decisions__field">
-                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.index.filters.method.label', [], $lang, $sourceLang)) ?></span>
-                            <select class="generic-form-control" data-omo-decisions-method></select>
-                        </label>
-
-                        <label class="omo-decisions__field">
-                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.index.filters.holon.label', [], $lang, $sourceLang)) ?></span>
-                            <select class="generic-form-control" data-omo-decisions-holon></select>
-                        </label>
-                    </div>
-
-                    <div class="omo-decisions__filter-actions">
-                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decisions-reset>
-                            <?= $escape(t('decisions.index.filters.reset', [], $lang, $sourceLang)) ?>
-                        </button>
-                    </div>
-                </section>
+                <label class="omo-decisions__field">
+                    <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.index.filters.method.label', [], $lang, $sourceLang)) ?></span>
+                    <select class="generic-form-control" data-omo-decisions-method></select>
+                </label>
             </div>
 
+            <div class="omo-decisions__filter-actions">
+                <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decisions-reset>
+                    <?= $escape(t('decisions.index.filters.reset', [], $lang, $sourceLang)) ?>
+                </button>
+            </div>
+        </section>
+    </div>
+
+    <div class="omo-panel-view__body">
+        <div class="omo-panel-view__body_content">
             <div class="omo-decisions__state generic-section" data-omo-decisions-state>
                 <?= $escape(t('decisions.index.loading', [], $lang, $sourceLang)) ?>
             </div>
@@ -1190,14 +1289,34 @@ if (!is_string($payloadJson)) {
     gap: 10px;
 }
 
+.omo-decisions__header-secondary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
 .omo-decisions__scope-slot {
     min-width: 0;
+}
+
+.omo-decisions__controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 12px;
 }
 
 .omo-decisions__filters {
     display: grid;
     gap: 12px;
-    margin-bottom: 16px;
+    margin: 0;
+    padding: 12px 20px;
+    background: color-mix(in srgb, var(--color-bg, #f8fafc) 94%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--color-border, #d1d5db) 80%, transparent);
 }
 
 .omo-decisions__status-bar {
@@ -1205,13 +1324,41 @@ if (!is_string($payloadJson)) {
     justify-content: space-between;
     gap: 12px;
     align-items: center;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.omo-decisions__status-scroll {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .omo-decisions__status-tabs {
+    position: relative;
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-wrap: nowrap;
+    gap: 0;
     flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    padding: 3px 3px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 80%, var(--color-surface, #ffffff));
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-behavior: smooth;
+    overscroll-behavior-x: contain;
+}
+
+.omo-decisions__status-tabs::-webkit-scrollbar {
+    display: none;
 }
 
 .omo-decisions__filters-toggle {
@@ -1226,30 +1373,69 @@ if (!is_string($payloadJson)) {
     display: none !important;
 }
 
+.omo-decisions__status-scroll-button {
+    position: absolute;
+    top: 50%;
+    z-index: 2;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-surface, #ffffff) 92%, transparent);
+    color: var(--color-text, #1f2937);
+    font: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    transform: translateY(-50%);
+    box-shadow:
+        0 6px 18px rgba(15, 23, 42, 0.12),
+        inset 0 0 0 1px color-mix(in srgb, var(--color-border, #d1d5db) 82%, white 18%);
+}
+
+.omo-decisions__status-scroll-button:hover {
+    background: var(--color-surface, #ffffff);
+}
+
+.omo-decisions__status-scroll-button--prev {
+    left: 5px;
+}
+
+.omo-decisions__status-scroll-button--next {
+    right: 5px;
+}
+
+.omo-decisions__status-scroll-button[hidden] {
+    display: none !important;
+}
+
 .omo-decisions__status-tab {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    min-height: 40px;
-    padding: 9px 14px;
-    border: 1px solid var(--color-border, #d1d5db);
+    min-height: 37px;
+    padding: 7px 12px;
+    border: 0;
     border-radius: 999px;
-    background: var(--color-surface-alt, #f8fafc);
+    background: transparent;
     color: var(--color-text-light, #475569);
     font: inherit;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 600;
     cursor: pointer;
-    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+    white-space: nowrap;
+    transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .omo-decisions__status-tab:hover {
-    transform: translateY(-1px);
-    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 32%, var(--color-border, #d1d5db));
+    color: var(--color-text, #1f2937);
 }
 
 .omo-decisions__status-tab.is-active {
-    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #ffffff));
-    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 24%, var(--color-border, #d1d5db));
+    background: var(--color-surface, #ffffff);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.10);
     color: var(--color-text, #1f2937);
 }
 
@@ -1261,15 +1447,20 @@ if (!is_string($payloadJson)) {
     justify-content: center;
     padding: 0 7px;
     border-radius: 999px;
-    background: rgba(148, 163, 184, 0.16);
+    background: color-mix(in srgb, rgba(148, 163, 184, 0.16) 78%, transparent);
     color: inherit;
-    font-size: 0.82rem;
+    font-size: 0.76rem;
+    line-height: 1;
 }
 
 .omo-decisions__filters-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
+}
+
+.omo-decisions__field--full {
+    grid-column: 1 / -1;
 }
 
 .omo-decisions__field {
@@ -1411,6 +1602,75 @@ if (!is_string($payloadJson)) {
     color: var(--color-text-light, #475569);
 }
 
+.omo-decisions__compact-menu-toggle {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 8px;
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--color-surface, #ffffff) 92%, white);
+    color: var(--color-text, #1f2937);
+    cursor: pointer;
+}
+
+.omo-decisions-card__menu-toggle {
+    min-width: 42px;
+    padding-left: 12px;
+    padding-right: 12px;
+}
+
+.omo-decisions__compact-menu.is-open .omo-decisions__compact-menu-toggle {
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 36%, var(--color-border, #d1d5db));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 12%, transparent);
+}
+
+.omo-decisions__compact-menu.is-open .omo-decisions-card__menu-toggle {
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 36%, var(--color-border, #d1d5db));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 12%, transparent);
+}
+
+.omo-decisions__menu-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    min-width: 140px;
+    max-width: calc(100vw - 24px);
+    padding: 6px;
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: 12px;
+    background: var(--color-surface, #ffffff);
+    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
+    z-index: 5000;
+}
+
+.omo-decisions__menu-panel--floating[hidden] {
+    display: none;
+}
+
+.omo-decisions__menu-item {
+    display: block;
+    width: 100%;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text, #1f2937);
+    text-align: left;
+    cursor: pointer;
+}
+
+.omo-decisions__menu-item:hover {
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #ffffff));
+}
+
+.omo-decisions__menu-item--danger {
+    color: var(--color-danger, #dc2626);
+}
+
+.omo-decisions__menu-item--danger:hover {
+    background: color-mix(in srgb, var(--color-danger, #dc2626) 10%, var(--color-surface, #ffffff));
+}
+
 .omo-decisions__state[hidden] {
     display: none !important;
 }
@@ -1441,6 +1701,12 @@ if (!is_string($payloadJson)) {
         justify-content: flex-start;
     }
 
+    .omo-decisions__header-secondary,
+    .omo-decisions__controls {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
     .omo-decisions__filters-grid {
         grid-template-columns: 1fr;
     }
@@ -1450,6 +1716,10 @@ if (!is_string($payloadJson)) {
     }
 
     .omo-decisions__filters-toggle {
+        width: 100%;
+    }
+
+    .omo-decisions__status-scroll {
         width: 100%;
     }
 
@@ -1494,13 +1764,15 @@ const elements = {
     newButton: root.querySelector('[data-omo-decisions-new]'),
     count: root.querySelector('[data-omo-decisions-count]'),
     displayControls: root.querySelector('[data-omo-decisions-display-controls]'),
+    statusScroll: root.querySelector('[data-omo-decisions-status-scroll]'),
     statusTabs: root.querySelector('[data-omo-decisions-status-tabs]'),
+    statusScrollPrev: root.querySelector('[data-omo-decisions-status-scroll-prev]'),
+    statusScrollNext: root.querySelector('[data-omo-decisions-status-scroll-next]'),
     filtersToggle: root.querySelector('[data-omo-decisions-filters-toggle]'),
     filtersPanel: root.querySelector('[data-omo-decisions-filters-panel]'),
     search: root.querySelector('[data-omo-decisions-search]'),
     type: root.querySelector('[data-omo-decisions-type]'),
     method: root.querySelector('[data-omo-decisions-method]'),
-    holon: root.querySelector('[data-omo-decisions-holon]'),
     reset: root.querySelector('[data-omo-decisions-reset]'),
     state: root.querySelector('[data-omo-decisions-state]'),
     list: root.querySelector('[data-omo-decisions-list]'),
@@ -1518,13 +1790,45 @@ const state = {
     search: '',
     type: 'all',
     method: 'all',
-    holon: 'all',
     filtersExpanded: false,
     sort: savedPreferences.sort,
     density: savedPreferences.density
 };
 let omoDecisionIndexRefreshToken = 0;
-let omoDecisionScopeRefreshToken = 0;
+
+function omoDecisionDebugLog(stage, details) {
+    if (!window.console || typeof window.console.log !== 'function') {
+        return;
+    }
+
+    if (details && typeof details === 'object') {
+        console.log('[OMO][Decisions][panel]', stage, details);
+        return;
+    }
+
+    console.log('[OMO][Decisions][panel]', stage, details);
+}
+
+function omoDecisionDebugError(stage, error, details) {
+    if (!window.console || typeof window.console.error !== 'function') {
+        return;
+    }
+
+    if (details && typeof details === 'object') {
+        console.error('[OMO][Decisions][panel]', stage, error, details);
+        return;
+    }
+
+    console.error('[OMO][Decisions][panel]', stage, error);
+}
+
+omoDecisionDebugLog('bootstrap:start', {
+    oid: Number(root.getAttribute('data-omo-decision-oid') || 0),
+    cid: Number(root.getAttribute('data-omo-decision-cid') || 0),
+    scope: String(root.getAttribute('data-omo-decision-scope') || 'contextual'),
+    payloadItemCount: Array.isArray(payload.items) ? payload.items.length : null,
+    refreshUrl: String(payload.refreshUrl || '')
+});
 
 function omoDecisionsNormalizeSortPreference(value) {
     return String(value || '').trim().toLowerCase() === 'alpha'
@@ -1598,73 +1902,6 @@ function omoDecisionGetCurrentScope() {
         : 'contextual';
 }
 
-function omoDecisionBuildScopeUrl(scope) {
-    const resolvedScope = String(scope || '').trim().toLowerCase() === 'global' ? 'global' : 'contextual';
-    const query = [];
-    const organizationId = Number(root.getAttribute('data-omo-decision-oid') || 0);
-    let holonId = Number(root.getAttribute('data-omo-decision-cid') || 0);
-
-    if (typeof window.omoNormalizeRouteCid === 'function') {
-        holonId = Number(window.omoNormalizeRouteCid(holonId) || 0);
-    }
-
-    if (organizationId > 0) {
-        query.push('oid=' + encodeURIComponent(String(organizationId)));
-    }
-    if (holonId > 0) {
-        query.push('cid=' + encodeURIComponent(String(holonId)));
-    }
-    if (resolvedScope !== 'contextual') {
-        query.push('decision_scope=' + encodeURIComponent(resolvedScope));
-    }
-    query.push('_=' + String(Date.now()));
-
-    return '/omo/api/decision/index.php' + (query.length ? ('?' + query.join('&')) : '');
-}
-
-function omoDecisionSetScopeLoadingState(isLoading, nextScope) {
-    root.classList.toggle('is-loading', !!isLoading);
-    root.setAttribute('aria-busy', isLoading ? 'true' : 'false');
-
-    const scopeSwitch = root.querySelector('[data-omo-scope-switch]');
-    if (scopeSwitch && nextScope) {
-        scopeSwitch.setAttribute('data-omo-scope-switch', String(nextScope).trim().toLowerCase() === 'global' ? 'global' : 'contextual');
-    }
-
-    root.querySelectorAll('[data-omo-decision-scope-toggle]').forEach(function (button) {
-        const buttonScope = String(button.getAttribute('data-omo-decision-scope-toggle') || '').trim().toLowerCase() === 'global'
-            ? 'global'
-            : 'contextual';
-        const isActive = buttonScope === (String(nextScope || '').trim().toLowerCase() === 'global' ? 'global' : 'contextual');
-
-        button.disabled = !!isLoading;
-        button.classList.toggle('is-active', isActive);
-        button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-    });
-}
-
-function omoDecisionReloadForScope(scope) {
-    const targetScope = String(scope || '').trim().toLowerCase() === 'global' ? 'global' : 'contextual';
-    const requestId = ++omoDecisionScopeRefreshToken;
-
-    if (typeof window.omoReplaceFetchedPanelRoot !== 'function') {
-        window.location.href = omoDecisionBuildScopeUrl(targetScope);
-        return Promise.resolve(null);
-    }
-
-    return window.omoReplaceFetchedPanelRoot({
-        rootSelector: '#omo-decisions-root',
-        currentRoot: root,
-        url: omoDecisionBuildScopeUrl(targetScope),
-        setLoadingState: function (isLoading) {
-            if (requestId !== omoDecisionScopeRefreshToken && !isLoading) {
-                return;
-            }
-            omoDecisionSetScopeLoadingState(isLoading, targetScope);
-        }
-    });
-}
-
 window.omoToggleDecisionsScope = function (button, event) {
     if (event) {
         if (typeof event.preventDefault === 'function') {
@@ -1698,10 +1935,43 @@ window.omoToggleDecisionsScope = function (button, event) {
         return false;
     }
 
-    omoDecisionSetScopeLoadingState(true, targetScope);
+    const organizationId = Number(panel.getAttribute('data-omo-decision-oid') || 0);
+    let holonId = Number(panel.getAttribute('data-omo-decision-cid') || 0);
+    const query = [];
 
-    omoDecisionReloadForScope(targetScope).catch(function () {
-        omoDecisionSetScopeLoadingState(false, currentScope);
+    if (typeof window.omoNormalizeRouteCid === 'function') {
+        holonId = Number(window.omoNormalizeRouteCid(holonId) || 0);
+    }
+
+    if (organizationId > 0) {
+        query.push('oid=' + encodeURIComponent(String(organizationId)));
+    }
+
+    if (holonId > 0) {
+        query.push('cid=' + encodeURIComponent(String(holonId)));
+    }
+
+    query.push('decision_scope=' + encodeURIComponent(targetScope));
+    query.push('_=' + String(Date.now()));
+
+    const targetUrl = '/omo/api/decision/index.php' + (query.length > 0 ? '?' + query.join('&') : '');
+
+    panel.classList.add('is-loading');
+
+    if (typeof window.omoReplaceFetchedPanelRoot !== 'function') {
+        window.location.href = targetUrl;
+        return false;
+    }
+
+    window.omoReplaceFetchedPanelRoot({
+        rootSelector: '#omo-decisions-root',
+        currentRoot: panel,
+        url: targetUrl,
+        setLoadingState: function (isLoading) {
+            panel.classList.toggle('is-loading', !!isLoading);
+        }
+    }).catch(function () {
+        panel.classList.remove('is-loading');
     });
 
     return false;
@@ -1765,12 +2035,16 @@ function applyDecisionIndexPayload(nextPayload) {
         return;
     }
 
+    omoDecisionDebugLog('applyPayload:start', {
+        nextPayloadItemCount: Array.isArray(nextPayload.items) ? nextPayload.items.length : null,
+        nextRefreshUrl: String(nextPayload.refreshUrl || '')
+    });
+
     const preservedState = {
         status: state.status,
         search: state.search,
         type: state.type,
         method: state.method,
-        holon: state.holon,
         filtersExpanded: state.filtersExpanded,
         sort: state.sort,
         density: state.density
@@ -1780,13 +2054,11 @@ function applyDecisionIndexPayload(nextPayload) {
 
     populateSelect(elements.type, payload.typeOptions);
     populateSelect(elements.method, payload.methodOptions);
-    populateSelect(elements.holon, payload.holonOptions);
 
     state.status = preservedState.status;
     state.search = preservedState.search;
     state.type = restoreSelectValue(elements.type, preservedState.type);
     state.method = restoreSelectValue(elements.method, preservedState.method);
-    state.holon = restoreSelectValue(elements.holon, preservedState.holon);
     state.filtersExpanded = preservedState.filtersExpanded;
     state.sort = omoDecisionsNormalizeSortPreference(preservedState.sort);
     state.density = omoDecisionsNormalizeDensityPreference(preservedState.density);
@@ -1810,6 +2082,13 @@ function applyDecisionIndexPayload(nextPayload) {
     }
 
     renderList();
+
+    omoDecisionDebugLog('applyPayload:end', {
+        currentStatus: state.status,
+        currentSort: state.sort,
+        currentDensity: state.density,
+        currentItemCount: Array.isArray(payload.items) ? payload.items.length : null
+    });
 }
 
 function openDecisionEditor(url, title) {
@@ -1839,6 +2118,12 @@ function omoDecisionRefreshIndex(options) {
         ? window.omoResolveAppUrl(refreshUrl)
         : refreshUrl;
 
+    omoDecisionDebugLog('refreshIndex:start', {
+        requestToken: requestToken,
+        resolvedUrl: resolvedUrl,
+        silent: settings.silent === true
+    });
+
     return fetch(resolvedUrl, {
         method: 'GET',
         credentials: 'same-origin',
@@ -1863,10 +2148,21 @@ function omoDecisionRefreshIndex(options) {
                 throw new Error('payload_missing');
             }
 
+            omoDecisionDebugLog('refreshIndex:success', {
+                requestToken: requestToken,
+                nextPayloadItemCount: Array.isArray(nextPayload.items) ? nextPayload.items.length : null
+            });
+
             applyDecisionIndexPayload(nextPayload);
             return true;
         })
-        .catch(function () {
+        .catch(function (error) {
+            omoDecisionDebugError('refreshIndex:error', error, {
+                requestToken: requestToken,
+                resolvedUrl: resolvedUrl,
+                silent: settings.silent === true
+            });
+
             if (!settings.silent) {
                 showStateContainer(
                     '<div class="omo-decisions__state-message">' + escapeHtml(payload.text && payload.text.error ? payload.text.error : 'Impossible de charger la liste pour le moment.') + '</div>',
@@ -2087,13 +2383,22 @@ function renderStatusTabs() {
     }
 
     elements.statusTabs.innerHTML = '';
-    (Array.isArray(payload.statusFilters) ? payload.statusFilters : []).forEach(function (filter) {
+    const statusFilters = Array.isArray(payload.statusFilters) ? payload.statusFilters : [];
+    const lastFilterIndex = Math.max(0, statusFilters.length - 1);
+
+    statusFilters.forEach(function (filter, index) {
         const key = String(filter && filter.key ? filter.key : 'all');
         const count = key === 'all'
             ? (Array.isArray(payload.items) ? payload.items.length : 0)
             : (key === 'active'
                 ? Number(payload.statusCounts && payload.statusCounts.active ? payload.statusCounts.active : 0)
                 : Number(payload.statusCounts && payload.statusCounts[key] ? payload.statusCounts[key] : 0));
+
+        const shouldAlwaysShow = index === 0 || index === lastFilterIndex;
+        if (!shouldAlwaysShow && count <= 0 && state.status !== key) {
+            return;
+        }
+
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'omo-decisions__status-tab' + (state.status === key ? ' is-active' : '');
@@ -2103,6 +2408,8 @@ function renderStatusTabs() {
             + '<span class="omo-decisions__status-count">' + String(count) + '</span>';
         elements.statusTabs.appendChild(button);
     });
+
+    window.requestAnimationFrame(syncStatusTabsOverflow);
 }
 
 function compareText(left, right) {
@@ -2189,6 +2496,31 @@ function resetListPresentation() {
     elements.list.removeAttribute('data-generic-file-list');
 }
 
+function syncStatusTabsOverflow() {
+    if (!elements.statusTabs || !elements.statusScrollPrev || !elements.statusScrollNext) {
+        return;
+    }
+
+    const maxScrollLeft = Math.max(0, elements.statusTabs.scrollWidth - elements.statusTabs.clientWidth);
+    const hasOverflow = maxScrollLeft > 4;
+    const scrollLeft = Math.max(0, elements.statusTabs.scrollLeft);
+
+    elements.statusScrollPrev.hidden = !hasOverflow || scrollLeft <= 4;
+    elements.statusScrollNext.hidden = !hasOverflow || scrollLeft >= (maxScrollLeft - 4);
+}
+
+function scrollStatusTabs(direction) {
+    if (!elements.statusTabs) {
+        return;
+    }
+
+    const offset = Math.max(120, Math.floor(elements.statusTabs.clientWidth * 0.7));
+    elements.statusTabs.scrollBy({
+        left: direction < 0 ? -offset : offset,
+        behavior: 'smooth'
+    });
+}
+
 function syncAdvancedFiltersVisibility() {
     const isVisible = !!state.filtersExpanded;
 
@@ -2202,7 +2534,7 @@ function syncAdvancedFiltersVisibility() {
         ? String(payload.text && payload.text.filtersToggleHide ? payload.text.filtersToggleHide : 'Masquer les filtres')
         : String(payload.text && payload.text.filtersToggleShow ? payload.text.filtersToggleShow : 'Afficher les filtres');
     elements.filtersToggle.setAttribute('aria-expanded', isVisible ? 'true' : 'false');
-    elements.filtersToggle.classList.toggle('is-active', state.search !== '' || state.type !== 'all' || state.method !== 'all' || state.holon !== 'all');
+    elements.filtersToggle.classList.toggle('is-active', state.search !== '' || state.type !== 'all' || state.method !== 'all');
 }
 
 function getFilteredItems() {
@@ -2223,14 +2555,6 @@ function getFilteredItems() {
         }
 
         if (state.method !== 'all' && String(item.evaluationMethod || '') !== state.method) {
-            return false;
-        }
-
-        if (state.holon === '__none__' && Number(item.holonId || 0) > 0) {
-            return false;
-        }
-
-        if (state.holon !== 'all' && state.holon !== '__none__' && String(Number(item.holonId || 0)) !== state.holon) {
             return false;
         }
 
@@ -2289,6 +2613,311 @@ function buildMetaItem(label, value) {
         + '</span></span>';
 }
 
+function buildCompactAvatar(owner) {
+    const resolvedOwner = owner && typeof owner === 'object' ? owner : {};
+    const ownerName = String(resolvedOwner.displayName || '').trim();
+    const ownerInitials = String(resolvedOwner.initials || 'P').trim() || 'P';
+    const ownerPhotoUrl = String(resolvedOwner.photoUrl || '').trim();
+
+    if (ownerPhotoUrl !== '') {
+        return '<span class="omo-decisions__compact-avatar"><img src="' + escapeHtml(ownerPhotoUrl) + '" alt="' + escapeHtml(ownerName !== '' ? ownerName : ownerInitials) + '" class="omo-decisions__compact-avatar-photo"></span>';
+    }
+
+    return '<span class="omo-decisions__compact-avatar"><span class="omo-decisions__compact-avatar-placeholder">' + escapeHtml(ownerInitials) + '</span></span>';
+}
+
+function buildCompactMetaLine(item) {
+    const metaParts = [];
+    const ownerName = String(item && item.owner && item.owner.displayName ? item.owner.displayName : '').trim();
+    const typeLabel = String(item && item.decisionTypeLabel ? item.decisionTypeLabel : '').trim();
+    const methodLabel = String(item && item.evaluationMethodLabel ? item.evaluationMethodLabel : '').trim();
+    const badges = Array.isArray(item && item.badges) ? item.badges : [];
+
+    if (ownerName !== '') {
+        metaParts.push(ownerName);
+    }
+    if (typeLabel !== '') {
+        metaParts.push(typeLabel);
+    }
+    if (methodLabel !== '') {
+        metaParts.push(methodLabel);
+    }
+
+    badges.forEach(function (badge) {
+        const normalizedBadge = String(badge || '').trim();
+        if (normalizedBadge !== '') {
+            metaParts.push(normalizedBadge);
+        }
+    });
+
+    return metaParts.map(function (part, index) {
+        const separator = index > 0 ? '<span class="omo-decisions__compact-meta-separator">|</span>' : '';
+        return separator + '<span>' + escapeHtml(part) + '</span>';
+    }).join('');
+}
+
+function buildCompactListHeader() {
+    const header = document.createElement('div');
+    header.className = 'generic-file-list__header';
+    header.innerHTML = ''
+        + '<div class="generic-file-list__header-cell">' + escapeHtml(payload.text && payload.text.compactHeaderName ? payload.text.compactHeaderName : 'Decision') + '</div>'
+        + '<div class="generic-file-list__header-cell">' + escapeHtml(payload.text && payload.text.compactHeaderStatus ? payload.text.compactHeaderStatus : 'Statut') + '</div>'
+        + '<div class="generic-file-list__header-cell">' + escapeHtml(payload.text && payload.text.compactHeaderScope ? payload.text.compactHeaderScope : 'Structure') + '</div>'
+        + '<div class="generic-file-list__header-cell">' + escapeHtml(payload.text && payload.text.compactHeaderActivity ? payload.text.compactHeaderActivity : 'Activite') + '</div>';
+    return header;
+}
+
+function isDecisionMenuActionUsable(action) {
+    if (!action || typeof action !== 'object') {
+        return false;
+    }
+
+    if (String(action.behavior || '').trim() === 'mutation') {
+        return String(action.requestUrl || '').trim() !== '';
+    }
+
+    return String(action.url || '').trim() !== '';
+}
+
+function getDecisionDetailMenuActions(item) {
+    return (Array.isArray(item && item.menuActions) ? item.menuActions : []).filter(isDecisionMenuActionUsable);
+}
+
+function getDecisionCompactMenuActions(item) {
+    const primaryActions = Array.isArray(item && item.actions) ? item.actions : [];
+    return primaryActions.concat(getDecisionDetailMenuActions(item)).filter(isDecisionMenuActionUsable);
+}
+
+function buildDecisionActionMenuToggle(item, actions, className) {
+    const resolvedActions = Array.isArray(actions) ? actions.filter(isDecisionMenuActionUsable) : [];
+    if (resolvedActions.length === 0) {
+        return null;
+    }
+
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = String(className || '').trim() || 'omo-decisions__compact-menu-toggle';
+    toggle.setAttribute('data-omo-decision-compact-menu-toggle', '1');
+    toggle.setAttribute('data-omo-decision-compact-menu-actions', JSON.stringify(resolvedActions));
+    toggle.setAttribute('data-omo-decision-compact-menu-title', String(item && item.title ? item.title : ''));
+    toggle.setAttribute('data-omo-decision-compact-menu-description', String(item && item.description ? item.description : ''));
+    toggle.setAttribute('aria-haspopup', 'menu');
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute('aria-label', String(payload.text && payload.text.moreActionAriaLabel ? payload.text.moreActionAriaLabel : 'Plus d actions pour cette prise de decision'));
+    toggle.textContent = String(payload.text && payload.text.moreActionLabel ? payload.text.moreActionLabel : '...');
+    return toggle;
+}
+
+function buildCompactActionMenu(item) {
+    const actions = getDecisionCompactMenuActions(item);
+
+    if (actions.length === 0) {
+        return null;
+    }
+
+    const menu = document.createElement('div');
+    menu.className = 'omo-decisions__compact-menu generic-file-list__menu';
+    menu.setAttribute('data-omo-decision-compact-menu', '1');
+
+    const toggle = buildDecisionActionMenuToggle(item, actions, 'omo-decisions__compact-menu-toggle generic-file-list__menu-toggle');
+    if (!toggle) {
+        return null;
+    }
+
+    menu.appendChild(toggle);
+
+    return menu;
+}
+
+function buildDetailedActionMenuButton(item) {
+    const actions = getDecisionDetailMenuActions(item);
+    if (actions.length === 0) {
+        return null;
+    }
+
+    const menu = document.createElement('div');
+    menu.className = 'omo-decisions__compact-menu';
+    menu.setAttribute('data-omo-decision-compact-menu', '1');
+
+    const toggle = buildDecisionActionMenuToggle(
+        item,
+        actions,
+        'generic-action-button generic-action-button--secondary omo-decisions-card__action omo-decisions-card__menu-toggle'
+    );
+    if (!toggle) {
+        return null;
+    }
+
+    menu.appendChild(toggle);
+    return menu;
+}
+
+function renderCompactRow(item) {
+    const article = document.createElement('article');
+    article.className = 'omo-decisions__item-shell generic-file-list__item-shell';
+
+    const primaryAction = resolveDecisionAutoOpenAction(item);
+    const primaryActionUrl = String(primaryAction && primaryAction.url ? primaryAction.url : '').trim();
+    const compactMenu = buildCompactActionMenu(item);
+    const row = document.createElement(primaryActionUrl !== '' ? 'button' : 'div');
+    const activityLabel = String(item && item.lastActivityLabel ? item.lastActivityLabel : (item && item.deadlineLabel ? item.deadlineLabel : '')).trim();
+    const scopeLabel = String(item && item.holonLabel ? item.holonLabel : '').trim();
+
+    if (compactMenu) {
+        article.classList.add('generic-file-list__item-shell--with-menu');
+    }
+
+    row.className = 'omo-decisions__compact-row generic-file-list__row';
+    if (primaryActionUrl !== '') {
+        row.type = 'button';
+        row.setAttribute('data-open-url', primaryActionUrl);
+        row.setAttribute('data-open-title', String(item && item.title ? item.title : ''));
+        row.setAttribute('data-open-description', String(item && item.description ? item.description : ''));
+    }
+
+    row.innerHTML = ''
+        + '<div class="generic-file-list__cell generic-file-list__cell--name" data-label="' + escapeHtml(payload.text && payload.text.compactHeaderName ? payload.text.compactHeaderName : 'Decision') + '">'
+            + '<div class="omo-decisions__compact-name-main generic-file-list__name-main">'
+                + buildCompactAvatar(item && item.owner ? item.owner : {})
+                + '<div class="omo-decisions__compact-title-block generic-file-list__title-block">'
+                    + '<div class="generic-file-list__title-row">'
+                        + '<strong class="generic-file-list__title">' + escapeHtml(item && item.title ? item.title : '') + '</strong>'
+                    + '</div>'
+                    + '<div class="omo-decisions__compact-meta generic-file-list__meta-line">' + buildCompactMetaLine(item) + '</div>'
+                + '</div>'
+            + '</div>'
+        + '</div>'
+        + '<div class="generic-file-list__cell" data-label="' + escapeHtml(payload.text && payload.text.compactHeaderStatus ? payload.text.compactHeaderStatus : 'Statut') + '">'
+            + '<span class="omo-decisions__compact-status">' + escapeHtml(item && item.statusLabel ? item.statusLabel : '') + '</span>'
+        + '</div>'
+        + '<div class="generic-file-list__cell" data-label="' + escapeHtml(payload.text && payload.text.compactHeaderScope ? payload.text.compactHeaderScope : 'Structure') + '">'
+            + '<span class="omo-decisions__compact-scope">' + escapeHtml(scopeLabel) + '</span>'
+        + '</div>'
+        + '<div class="generic-file-list__cell generic-file-list__cell--date" data-label="' + escapeHtml(payload.text && payload.text.compactHeaderActivity ? payload.text.compactHeaderActivity : 'Activite') + '">'
+            + '<span class="omo-decisions__compact-activity">' + escapeHtml(activityLabel) + '</span>'
+        + '</div>';
+
+    article.appendChild(row);
+    if (compactMenu) {
+        article.appendChild(compactMenu);
+    }
+    return article;
+}
+
+function renderDetailedList(items, groupMode) {
+    const sortedItems = getSortedItems(items, groupMode === 'alpha' ? 'alpha' : 'time');
+    const fragment = document.createDocumentFragment();
+
+    if (groupMode === 'alpha') {
+        const list = document.createElement('div');
+        list.className = 'omo-decisions__card-list';
+        sortedItems.forEach(function (item) {
+            list.appendChild(renderCard(item));
+        });
+        fragment.appendChild(list);
+        return fragment;
+    }
+
+    const itemsByGroupKey = new Map();
+    sortedItems.forEach(function (item) {
+        const groupKey = String(item && item.activityGroupKey ? item.activityGroupKey : 'too_far');
+        if (!itemsByGroupKey.has(groupKey)) {
+            itemsByGroupKey.set(groupKey, []);
+        }
+        itemsByGroupKey.get(groupKey).push(item);
+    });
+
+    getOrderedGroups().forEach(function (group) {
+        const groupKey = String(group && group.key ? group.key : '');
+        const groupItems = itemsByGroupKey.get(groupKey) || [];
+        if (groupItems.length === 0) {
+            return;
+        }
+
+        const section = document.createElement('section');
+        section.className = 'omo-decisions__group omo-panel-group';
+
+        const title = document.createElement('h3');
+        title.className = 'omo-panel-group__title';
+        title.textContent = String(group && group.label ? group.label : '');
+
+        const list = document.createElement('div');
+        list.className = 'omo-decisions__card-list';
+        groupItems.forEach(function (entry) {
+            list.appendChild(renderCard(entry));
+        });
+
+        section.appendChild(title);
+        section.appendChild(list);
+        fragment.appendChild(section);
+    });
+
+    return fragment;
+}
+
+function renderCompactList(items, groupMode) {
+    const sortedItems = getSortedItems(items, groupMode === 'alpha' ? 'alpha' : 'time');
+    const fragment = document.createDocumentFragment();
+
+    elements.list.classList.add('generic-file-list', 'generic-file-list--structured');
+    elements.list.setAttribute('data-generic-file-list', '1');
+
+    if (groupMode === 'alpha') {
+        const section = document.createElement('section');
+        section.className = 'omo-decisions__group generic-file-list__group';
+
+        const table = document.createElement('div');
+        table.className = 'generic-file-list__table';
+        table.appendChild(buildCompactListHeader());
+        sortedItems.forEach(function (item) {
+            table.appendChild(renderCompactRow(item));
+        });
+
+        section.appendChild(table);
+        fragment.appendChild(section);
+        return fragment;
+    }
+
+    elements.list.classList.add('generic-file-list--stacked-sticky');
+
+    const itemsByGroupKey = new Map();
+    sortedItems.forEach(function (item) {
+        const groupKey = String(item && item.activityGroupKey ? item.activityGroupKey : 'too_far');
+        if (!itemsByGroupKey.has(groupKey)) {
+            itemsByGroupKey.set(groupKey, []);
+        }
+        itemsByGroupKey.get(groupKey).push(item);
+    });
+
+    getOrderedGroups().forEach(function (group) {
+        const groupKey = String(group && group.key ? group.key : '');
+        const groupItems = itemsByGroupKey.get(groupKey) || [];
+        if (groupItems.length === 0) {
+            return;
+        }
+
+        const section = document.createElement('section');
+        section.className = 'omo-decisions__group generic-file-list__group';
+
+        const title = document.createElement('h3');
+        title.className = 'omo-panel-group__title generic-file-list__group-title';
+        title.textContent = String(group && group.label ? group.label : '');
+
+        const table = document.createElement('div');
+        table.className = 'generic-file-list__table';
+        table.appendChild(buildCompactListHeader());
+        groupItems.forEach(function (entry) {
+            table.appendChild(renderCompactRow(entry));
+        });
+
+        section.appendChild(title);
+        section.appendChild(table);
+        fragment.appendChild(section);
+    });
+
+    return fragment;
+}
+
 function renderCard(item) {
     const sharedCards = window.commonChoiceDecisionCards;
     if (sharedCards && typeof sharedCards.renderCard === 'function') {
@@ -2345,7 +2974,7 @@ function renderCard(item) {
             });
         }
 
-        return sharedCards.renderCard({
+        const card = sharedCards.renderCard({
             title: String(item.title || ''),
             description: String(item.description || '').trim(),
             statusLabel: String(item.statusLabel || ''),
@@ -2360,6 +2989,8 @@ function renderCard(item) {
             openUrlAttribute: 'data-open-url',
             openTitleAttribute: 'data-open-title'
         });
+
+        return card;
     }
 
     const article = document.createElement('article');
@@ -2437,6 +3068,12 @@ function renderCard(item) {
             + '</div>'
         + '</div>';
 
+    const detailMenuButton = buildDetailedActionMenuButton(item);
+    const actionsContainer = article.querySelector('.omo-decisions-card__actions');
+    if (detailMenuButton && actionsContainer) {
+        actionsContainer.appendChild(detailMenuButton);
+    }
+
     return article;
 }
 
@@ -2461,9 +3098,20 @@ function renderNoResults() {
 }
 
 function renderList() {
+    omoDecisionDebugLog('renderList:start', {
+        payloadItemCount: Array.isArray(payload.items) ? payload.items.length : null,
+        status: state.status,
+        search: state.search,
+        type: state.type,
+        method: state.method,
+        sort: state.sort,
+        density: state.density
+    });
+
     syncAdvancedFiltersVisibility();
     resetStateContainer();
     setVisible(elements.list, false);
+    root.setAttribute('data-omo-decisions-initialized', '0');
 
     if (elements.list) {
         elements.list.innerHTML = '';
@@ -2494,11 +3142,21 @@ function renderList() {
             payload.text.emptyCta || '',
             payload.newUrl || ''
         ), 'empty');
+        root.setAttribute('data-omo-decisions-initialized', '1');
+        omoDecisionDebugLog('renderList:end-empty', {
+            initialized: String(root.getAttribute('data-omo-decisions-initialized') || ''),
+            filteredItemCount: 0
+        });
         return;
     }
 
     if (filteredItems.length === 0) {
         showStateContainer(renderNoResults(), 'default');
+        root.setAttribute('data-omo-decisions-initialized', '1');
+        omoDecisionDebugLog('renderList:end-no-results', {
+            initialized: String(root.getAttribute('data-omo-decisions-initialized') || ''),
+            filteredItemCount: filteredItems.length
+        });
         return;
     }
 
@@ -2515,6 +3173,16 @@ function renderList() {
         }
     }
     setVisible(elements.list, true);
+    root.setAttribute('data-omo-decisions-initialized', '1');
+    omoDecisionDebugLog('renderList:end', {
+        filteredItemCount: filteredItems.length,
+        listChildCount: elements.list ? elements.list.childElementCount : null,
+        initialized: String(root.getAttribute('data-omo-decisions-initialized') || ''),
+        listHidden: elements.list ? elements.list.hidden : null,
+        stateHidden: elements.state ? elements.state.hidden : null,
+        drawerOpen: Boolean(root.closest('.drawer.open')),
+        drawerId: root.closest('.drawer') ? String(root.closest('.drawer').id || '') : ''
+    });
 }
 
 function resetFilters() {
@@ -2522,7 +3190,6 @@ function resetFilters() {
     state.search = '';
     state.type = 'all';
     state.method = 'all';
-    state.holon = 'all';
     state.filtersExpanded = false;
 
     if (elements.search) {
@@ -2534,18 +3201,250 @@ function resetFilters() {
     if (elements.method) {
         elements.method.value = 'all';
     }
-    if (elements.holon) {
-        elements.holon.value = 'all';
+}
+
+const ownerDocument = root.ownerDocument || document;
+let floatingCompactMenu = ownerDocument.querySelector('[data-omo-decision-floating-menu="1"]');
+if (!floatingCompactMenu) {
+    floatingCompactMenu = ownerDocument.createElement('div');
+    floatingCompactMenu.className = 'omo-decisions__menu-panel omo-decisions__menu-panel--floating';
+    floatingCompactMenu.setAttribute('data-omo-decision-floating-menu', '1');
+    floatingCompactMenu.setAttribute('role', 'menu');
+    floatingCompactMenu.hidden = true;
+    ownerDocument.body.appendChild(floatingCompactMenu);
+}
+
+let activeCompactMenuToggle = null;
+
+function buildCompactMenuItem(action, title, description) {
+    const button = ownerDocument.createElement('button');
+    const behavior = String(action && action.behavior ? action.behavior : '').trim();
+    const requestPayload = action && action.requestPayload && typeof action.requestPayload === 'object'
+        ? action.requestPayload
+        : {};
+    button.type = 'button';
+    button.className = 'omo-decisions__menu-item';
+    if (String(action && action.variant ? action.variant : '').trim() === 'danger') {
+        button.classList.add('omo-decisions__menu-item--danger');
+    }
+    button.setAttribute('data-omo-decision-compact-menu-action', '1');
+    button.setAttribute('role', 'menuitem');
+    button.setAttribute('data-omo-decision-menu-behavior', behavior === 'mutation' ? 'mutation' : 'open');
+    if (behavior === 'mutation') {
+        button.setAttribute('data-omo-decision-menu-request-url', String(action && action.requestUrl ? action.requestUrl : ''));
+        button.setAttribute('data-omo-decision-menu-request-payload', JSON.stringify(requestPayload));
+        button.setAttribute('data-omo-decision-menu-confirm', String(action && action.confirmMessage ? action.confirmMessage : ''));
+    } else {
+        button.setAttribute('data-open-url', String(action && action.url ? action.url : ''));
+        button.setAttribute('data-open-title', String(action && action.title ? action.title : title || ''));
+        button.setAttribute('data-open-description', String(description || ''));
+    }
+    button.textContent = String(action && action.label ? action.label : '');
+    return button;
+}
+
+function parseCompactMenuActions(toggle) {
+    if (!(toggle instanceof Element)) {
+        return [];
+    }
+
+    try {
+        const parsed = JSON.parse(String(toggle.getAttribute('data-omo-decision-compact-menu-actions') || '[]'));
+        return Array.isArray(parsed)
+            ? parsed.filter(isDecisionMenuActionUsable)
+            : [];
+    } catch (error) {
+        return [];
     }
 }
 
+function populateCompactMenu(toggle) {
+    const actions = parseCompactMenuActions(toggle);
+    const title = String(toggle && toggle.getAttribute('data-omo-decision-compact-menu-title') || '').trim();
+    const description = String(toggle && toggle.getAttribute('data-omo-decision-compact-menu-description') || '').trim();
+    const fragment = ownerDocument.createDocumentFragment();
+
+    actions.forEach(function (action) {
+        fragment.appendChild(buildCompactMenuItem(action, title, description));
+    });
+
+    floatingCompactMenu.replaceChildren(fragment);
+}
+
+function positionCompactMenu(toggle) {
+    if (!(toggle instanceof Element) || !toggle.isConnected) {
+        closeCompactMenus();
+        return;
+    }
+
+    floatingCompactMenu.hidden = false;
+    floatingCompactMenu.style.visibility = 'hidden';
+    floatingCompactMenu.style.top = '0px';
+    floatingCompactMenu.style.left = '0px';
+
+    const toggleRect = toggle.getBoundingClientRect();
+    const menuRect = floatingCompactMenu.getBoundingClientRect();
+    const viewportPadding = 12;
+    const gap = 8;
+    let top = toggleRect.bottom + gap;
+    let left = toggleRect.right - menuRect.width;
+
+    if (top + menuRect.height > window.innerHeight - viewportPadding) {
+        top = Math.max(viewportPadding, toggleRect.top - menuRect.height - gap);
+    }
+
+    if (left + menuRect.width > window.innerWidth - viewportPadding) {
+        left = Math.max(viewportPadding, window.innerWidth - menuRect.width - viewportPadding);
+    }
+
+    if (left < viewportPadding) {
+        left = viewportPadding;
+    }
+
+    floatingCompactMenu.style.top = String(Math.round(top)) + 'px';
+    floatingCompactMenu.style.left = String(Math.round(left)) + 'px';
+    floatingCompactMenu.style.visibility = '';
+}
+
+function closeCompactMenus() {
+    root.querySelectorAll('[data-omo-decision-compact-menu="1"]').forEach(function (menu) {
+        menu.classList.remove('is-open');
+    });
+
+    root.querySelectorAll('[data-omo-decision-compact-menu-toggle="1"]').forEach(function (toggle) {
+        toggle.setAttribute('aria-expanded', 'false');
+    });
+
+    activeCompactMenuToggle = null;
+    floatingCompactMenu.hidden = true;
+    floatingCompactMenu.style.visibility = '';
+    floatingCompactMenu.replaceChildren();
+}
+
+function openCompactMenu(toggle) {
+    const parentMenu = toggle ? toggle.closest('[data-omo-decision-compact-menu="1"]') : null;
+    const shouldOpen = !!toggle && (!activeCompactMenuToggle || activeCompactMenuToggle !== toggle || floatingCompactMenu.hidden);
+
+    closeCompactMenus();
+
+    if (!toggle || !parentMenu || !shouldOpen) {
+        return;
+    }
+
+    populateCompactMenu(toggle);
+    if (!floatingCompactMenu.childElementCount) {
+        return;
+    }
+
+    activeCompactMenuToggle = toggle;
+    parentMenu.classList.add('is-open');
+    toggle.setAttribute('aria-expanded', 'true');
+    positionCompactMenu(toggle);
+}
+
+function parseDecisionMenuRequestPayload(button) {
+    if (!(button instanceof Element)) {
+        return {};
+    }
+
+    try {
+        const parsed = JSON.parse(String(button.getAttribute('data-omo-decision-menu-request-payload') || '{}'));
+        return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (error) {
+        return {};
+    }
+}
+
+function submitDecisionMenuAction(button) {
+    if (!(button instanceof Element)) {
+        return Promise.resolve(false);
+    }
+
+    const requestUrl = String(button.getAttribute('data-omo-decision-menu-request-url') || '').trim();
+    if (requestUrl === '') {
+        return Promise.resolve(false);
+    }
+
+    const confirmMessage = String(button.getAttribute('data-omo-decision-menu-confirm') || '').trim();
+    if (confirmMessage !== '' && !window.confirm(confirmMessage)) {
+        return Promise.resolve(false);
+    }
+
+    const formData = new FormData();
+    const requestPayload = parseDecisionMenuRequestPayload(button);
+    Object.keys(requestPayload).forEach(function (key) {
+        const value = requestPayload[key];
+        if (value === null || typeof value === 'undefined') {
+            return;
+        }
+
+        formData.append(key, String(value));
+    });
+
+    const resolvedUrl = typeof window.omoResolveAppUrl === 'function'
+        ? window.omoResolveAppUrl(requestUrl)
+        : requestUrl;
+
+    button.disabled = true;
+    closeCompactMenus();
+
+    return fetch(resolvedUrl, {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin',
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+        .then(function (response) {
+            return response.json().catch(function () {
+                return null;
+            }).then(function (data) {
+                return {
+                    ok: response.ok,
+                    data: data
+                };
+            });
+        })
+        .then(function (result) {
+            if (!result.ok || !result.data || !result.data.status) {
+                const message = result.data && result.data.message
+                    ? String(result.data.message)
+                    : String(payload.text && payload.text.actionErrorUpdate ? payload.text.actionErrorUpdate : 'Impossible de mettre a jour cette prise de decision pour le moment.');
+                throw new Error(message);
+            }
+
+            return omoDecisionRefreshIndex({ silent: false });
+        })
+        .catch(function (error) {
+            window.alert(error && error.message ? error.message : (payload.text && payload.text.actionErrorUpdate ? payload.text.actionErrorUpdate : 'Impossible de mettre a jour cette prise de decision pour le moment.'));
+            return false;
+        })
+        .finally(function () {
+            button.disabled = false;
+        });
+}
+
 try {
+    omoDecisionDebugLog('bootstrap:beforePopulate', {
+        typeOptionCount: Array.isArray(payload.typeOptions) ? payload.typeOptions.length : null,
+        methodOptionCount: Array.isArray(payload.methodOptions) ? payload.methodOptions.length : null,
+    });
+
     populateSelect(elements.type, payload.typeOptions);
     populateSelect(elements.method, payload.methodOptions);
-    populateSelect(elements.holon, payload.holonOptions);
     renderList();
+    omoDecisionDebugLog('bootstrap:afterRender', {
+        initialized: String(root.getAttribute('data-omo-decisions-initialized') || ''),
+        listChildCount: elements.list ? elements.list.childElementCount : null
+    });
     window.setTimeout(openInitialDecisionFromPayload, 0);
 } catch (error) {
+    root.setAttribute('data-omo-decisions-initialized', '0');
+    omoDecisionDebugError('bootstrap:error', error, {
+        initialized: String(root.getAttribute('data-omo-decisions-initialized') || '')
+    });
     showStateContainer(
         '<div class="omo-decisions__state-message">' + escapeHtml(payload.text.error || 'Impossible de charger la liste pour le moment.') + '</div>',
         'default'
@@ -2570,6 +3469,80 @@ if (elements.filtersToggle) {
         syncAdvancedFiltersVisibility();
     });
 }
+
+if (elements.statusTabs) {
+    elements.statusTabs.addEventListener('scroll', syncStatusTabsOverflow, { passive: true });
+}
+
+if (elements.statusScrollPrev) {
+    elements.statusScrollPrev.addEventListener('click', function () {
+        scrollStatusTabs(-1);
+    });
+}
+
+if (elements.statusScrollNext) {
+    elements.statusScrollNext.addEventListener('click', function () {
+        scrollStatusTabs(1);
+    });
+}
+
+ownerDocument.addEventListener('click', function (event) {
+    const toggle = event.target.closest('[data-omo-decision-compact-menu-toggle="1"]');
+    if (toggle) {
+        return;
+    }
+
+    const actionButton = event.target.closest('[data-omo-decision-compact-menu-action="1"]');
+    if (actionButton && floatingCompactMenu.contains(actionButton)) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const behavior = String(actionButton.getAttribute('data-omo-decision-menu-behavior') || 'open').trim();
+        if (behavior === 'mutation') {
+            submitDecisionMenuAction(actionButton);
+            return;
+        }
+
+        const targetUrl = String(actionButton.getAttribute('data-open-url') || '').trim();
+        if (targetUrl !== '') {
+            openDecisionEditor(
+                targetUrl,
+                String(actionButton.getAttribute('data-open-title') || '').trim() || (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de decision')
+            );
+        }
+
+        closeCompactMenus();
+        return;
+    }
+
+    if (!event.target.closest('[data-omo-decision-floating-menu="1"]')) {
+        closeCompactMenus();
+    }
+});
+
+ownerDocument.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && !floatingCompactMenu.hidden) {
+        closeCompactMenus();
+    }
+});
+
+ownerDocument.addEventListener('scroll', function () {
+    if (!activeCompactMenuToggle || floatingCompactMenu.hidden) {
+        return;
+    }
+
+    positionCompactMenu(activeCompactMenuToggle);
+}, true);
+
+window.addEventListener('resize', function () {
+    if (!activeCompactMenuToggle || floatingCompactMenu.hidden) {
+        return;
+    }
+
+    positionCompactMenu(activeCompactMenuToggle);
+});
+
+window.addEventListener('resize', syncStatusTabsOverflow);
 
 root.querySelectorAll('[data-omo-decisions-sort]').forEach(function (button) {
     button.addEventListener('click', function () {
@@ -2666,13 +3639,6 @@ if (elements.method) {
     });
 }
 
-if (elements.holon) {
-    elements.holon.addEventListener('change', function () {
-        state.holon = String(elements.holon.value || 'all');
-        renderList();
-    });
-}
-
 if (elements.reset) {
     elements.reset.addEventListener('click', function () {
         resetFilters();
@@ -2691,6 +3657,14 @@ root.addEventListener('click', function (event) {
 
             accordionToggle.setAttribute('aria-expanded', accordion.classList.contains('is-collapsed') ? 'false' : 'true');
         }, 0);
+    }
+
+    const compactMenuToggle = event.target.closest('[data-omo-decision-compact-menu-toggle="1"]');
+    if (compactMenuToggle) {
+        event.preventDefault();
+        event.stopPropagation();
+        openCompactMenu(compactMenuToggle);
+        return;
     }
 
     const button = event.target.closest('[data-open-url]');

@@ -392,13 +392,21 @@ class DecisionProcess extends DbObject
         return $this->ensurePrimaryGroup();
     }
 
-    protected function applyLegacyProcessFieldsToGroup(\dbObject\DecisionGroup $group)
+    protected function applyLegacyProcessFieldsToGroup(\dbObject\DecisionGroup $group, $preservePresentation = false)
     {
         $group->set('IDdecision_process', (int)$this->getId());
         $group->set('decision_type', self::normalizeDecisionType($this->get('decision_type')));
         $group->set('evaluation_method', self::normalizeEvaluationMethod($this->get('evaluation_method')));
-        $group->set('title', trim((string)$this->get('title')));
-        $group->set('description', $this->get('description'));
+        $currentGroupTitle = trim((string)$group->get('title'));
+        if (!$preservePresentation || $currentGroupTitle === '') {
+            $group->set('title', trim((string)$this->get('title')));
+        }
+
+        $currentGroupDescription = trim((string)$group->get('description'));
+        if (!$preservePresentation || $currentGroupDescription === '') {
+            $group->set('description', $this->get('description'));
+        }
+
         $group->set('parameters', $this->get('parameters'));
         $group->set('position', max(1, (int)$group->get('position')));
         $group->set('active', 1);
@@ -454,12 +462,14 @@ class DecisionProcess extends DbObject
         }
 
         $group = $this->getPrimaryGroup(false);
+        $preservePresentation = $group instanceof \dbObject\DecisionGroup;
         if (!$group instanceof \dbObject\DecisionGroup) {
             $group = new \dbObject\DecisionGroup();
             $group->set('position', 1);
+            $preservePresentation = false;
         }
 
-        $this->applyLegacyProcessFieldsToGroup($group);
+        $this->applyLegacyProcessFieldsToGroup($group, $preservePresentation);
         $saveResult = $group->save();
         return !empty($saveResult['status']);
     }
@@ -593,7 +603,10 @@ class DecisionProcess extends DbObject
             'SELECT COUNT(*)
              FROM `decision_response`
              WHERE `IDdecision_process` = :decision_process_id
-               AND `status` = :submitted_status',
+               AND (
+                    `status` = :submitted_status
+                    OR `submitted_at` IS NOT NULL
+               )',
             [
                 'decision_process_id' => (int)$this->getId(),
                 'submitted_status' => \dbObject\DecisionResponse::STATUS_SUBMITTED,
@@ -604,6 +617,166 @@ class DecisionProcess extends DbObject
     public function hasSubmittedResponses()
     {
         return $this->getSubmittedResponseCount() > 0;
+    }
+
+    public function resolveManagerCloseAction()
+    {
+        return $this->hasSubmittedResponses() ? 'archive' : 'delete';
+    }
+
+    public function archiveForManager($referenceDateTime = null)
+    {
+        if ((int)$this->getId() <= 0) {
+            return [
+                'status' => false,
+                'action' => 'archive',
+                'message' => 'Prise de decision introuvable.',
+            ];
+        }
+
+        $referenceDateTime = self::normalizeDateTimeValue($referenceDateTime);
+        if (!$referenceDateTime instanceof \DateTimeInterface) {
+            $referenceDateTime = new \DateTimeImmutable('now');
+        }
+
+        $pdo = self::getPdo();
+        if (!$pdo) {
+            return [
+                'status' => false,
+                'action' => 'archive',
+                'message' => 'Connexion a la base impossible.',
+            ];
+        }
+
+        try {
+            $startedTransaction = !$pdo->inTransaction();
+            if ($startedTransaction) {
+                $pdo->beginTransaction();
+            }
+
+            $this->set('status', self::STATUS_ARCHIVED);
+            $this->set('archived_at', $referenceDateTime);
+            $saveResult = $this->save();
+            if (!is_array($saveResult) || empty($saveResult['status'])) {
+                throw new \RuntimeException('decision_archive_save_failed');
+            }
+
+            $resultUpdate = self::execute(
+                'UPDATE `decision_result`
+                 SET `status` = :archived_status
+                 WHERE `IDdecision_process` = :decision_process_id
+                   AND `status` != :current_status',
+                [
+                    'archived_status' => \dbObject\DecisionResult::STATUS_ARCHIVED,
+                    'current_status' => \dbObject\DecisionResult::STATUS_ARCHIVED,
+                    'decision_process_id' => (int)$this->getId(),
+                ]
+            );
+            if ($resultUpdate === false) {
+                throw new \RuntimeException('decision_archive_result_update_failed');
+            }
+
+            if ($startedTransaction && $pdo->inTransaction()) {
+                $pdo->commit();
+            }
+
+            return [
+                'status' => true,
+                'action' => 'archive',
+                'message' => 'Prise de decision archivee.',
+            ];
+        } catch (\Throwable $exception) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            return [
+                'status' => false,
+                'action' => 'archive',
+                'message' => 'Impossible d archiver cette prise de decision pour le moment.',
+            ];
+        }
+    }
+
+    public function deleteWithRelations()
+    {
+        if ((int)$this->getId() <= 0) {
+            return [
+                'status' => false,
+                'action' => 'delete',
+                'message' => 'Prise de decision introuvable.',
+            ];
+        }
+
+        $pdo = self::getPdo();
+        if (!$pdo) {
+            return [
+                'status' => false,
+                'action' => 'delete',
+                'message' => 'Connexion a la base impossible.',
+            ];
+        }
+
+        $decisionId = (int)$this->getId();
+
+        try {
+            $startedTransaction = !$pdo->inTransaction();
+            if ($startedTransaction) {
+                $pdo->beginTransaction();
+            }
+
+            $deleteQueries = [
+                'DELETE FROM `decision_result` WHERE `IDdecision_process` = :decision_process_id',
+                'DELETE FROM `decision_response` WHERE `IDdecision_process` = :decision_process_id',
+                'DELETE FROM `decision_participant` WHERE `IDdecision_process` = :decision_process_id',
+                'DELETE FROM `decision_invitation` WHERE `IDdecision_process` = :decision_process_id',
+                'DELETE FROM `decision_proposal` WHERE `IDdecision_process` = :decision_process_id',
+                'DELETE FROM `decision_group` WHERE `IDdecision_process` = :decision_process_id',
+            ];
+
+            foreach ($deleteQueries as $query) {
+                $deleteResult = self::execute($query, [
+                    'decision_process_id' => $decisionId,
+                ]);
+                if ($deleteResult === false) {
+                    throw new \RuntimeException('decision_related_delete_failed');
+                }
+            }
+
+            if (!parent::delete()) {
+                throw new \RuntimeException('decision_delete_failed');
+            }
+
+            if ($startedTransaction && $pdo->inTransaction()) {
+                $pdo->commit();
+            }
+
+            return [
+                'status' => true,
+                'action' => 'delete',
+                'message' => 'Prise de decision supprimee.',
+            ];
+        } catch (\Throwable $exception) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            return [
+                'status' => false,
+                'action' => 'delete',
+                'message' => 'Impossible de supprimer cette prise de decision pour le moment.',
+            ];
+        }
+    }
+
+    public function closeForManager($referenceDateTime = null)
+    {
+        $action = $this->resolveManagerCloseAction();
+        if ($action === 'archive') {
+            return $this->archiveForManager($referenceDateTime);
+        }
+
+        return $this->deleteWithRelations();
     }
 
     public function hasExplicitInvitations()
@@ -773,12 +946,62 @@ class DecisionProcess extends DbObject
         return implode("\n", $messageLines);
     }
 
-    public function getInvitationEmailRecipients($includeOwner = false)
+    public function buildDefaultInvitationEmailSubject()
+    {
+        $title = trim((string)$this->get('title'));
+        $subject = 'Acces a la prise de decision';
+        if ($title !== '') {
+            $subject .= ' : ' . $title;
+        }
+
+        return $subject;
+    }
+
+    public function getSubmittedResponseParticipantIds()
+    {
+        if ((int)$this->getId() <= 0) {
+            return [];
+        }
+
+        $rows = self::fetchAll(
+            'SELECT DISTINCT `IDdecision_participant`
+             FROM `decision_response`
+             WHERE `IDdecision_process` = :decision_process_id
+               AND (
+                    `status` = :submitted_status
+                    OR `submitted_at` IS NOT NULL
+               )',
+            [
+                'decision_process_id' => (int)$this->getId(),
+                'submitted_status' => \dbObject\DecisionResponse::STATUS_SUBMITTED,
+            ]
+        );
+
+        if (!is_array($rows)) {
+            return [];
+        }
+
+        $participantIds = [];
+        foreach ($rows as $row) {
+            $participantId = (int)($row['IDdecision_participant'] ?? 0);
+            if ($participantId > 0) {
+                $participantIds[$participantId] = $participantId;
+            }
+        }
+
+        return array_values($participantIds);
+    }
+
+    public function getInvitationEmailRecipients($includeOwner = false, $onlyPendingResponses = false)
     {
         $organizationId = (int)$this->get('IDorganization');
         $ownerUserId = (int)$this->get('IDuser');
         $includeOwner = (bool)$includeOwner;
+        $onlyPendingResponses = (bool)$onlyPendingResponses;
         $recipients = [];
+        $submittedParticipantIds = $onlyPendingResponses
+            ? array_fill_keys($this->getSubmittedResponseParticipantIds(), true)
+            : [];
 
         foreach ($this->getParticipants(true) as $participant) {
             if (!($participant instanceof \dbObject\DecisionParticipant)) {
@@ -790,6 +1013,11 @@ class DecisionProcess extends DbObject
                 \dbObject\DecisionParticipant::STATUS_DECLINED,
                 \dbObject\DecisionParticipant::STATUS_REVOKED,
             ], true)) {
+                continue;
+            }
+
+            $participantId = (int)$participant->getId();
+            if ($onlyPendingResponses && isset($submittedParticipantIds[$participantId])) {
                 continue;
             }
 
@@ -850,7 +1078,7 @@ class DecisionProcess extends DbObject
                 ];
             }
 
-            $recipients[$email]['participant_ids'][] = (int)$participant->getId();
+            $recipients[$email]['participant_ids'][] = $participantId;
         }
 
         return array_values($recipients);
@@ -947,6 +1175,7 @@ class DecisionProcess extends DbObject
     public function syncParticipantsFromInvitations()
     {
         $decisionId = (int)$this->getId();
+        $organizationId = (int)$this->get('IDorganization');
         if ($decisionId <= 0) {
             return [
                 'status' => false,
@@ -1042,6 +1271,45 @@ class DecisionProcess extends DbObject
             return $holonId > 0;
         })));
 
+        $organizationRootHolonId = 0;
+        if ($organizationId > 0) {
+            $organization = $this->getOrganizationObject();
+            $rootHolon = $organization ? $organization->getEnabledStructuralRootHolon() : null;
+            $organizationRootHolonId = $rootHolon instanceof \dbObject\Holon ? (int)$rootHolon->getId() : 0;
+        }
+
+        $appendOrganizationMembers = function ($syncSource) use (&$desiredParticipants, $ownerUserId, $organizationId) {
+            if ($organizationId <= 0) {
+                return;
+            }
+
+            $organizationMembers = new \dbObject\ArrayUserOrganization();
+            $organizationMembers->loadActiveForOrganization($organizationId);
+            foreach ($organizationMembers as $membership) {
+                $userId = (int)$membership->get('IDuser');
+                if ($userId <= 0) {
+                    continue;
+                }
+
+                $key = 'user:' . $userId;
+                if (isset($desiredParticipants[$key]) && $desiredParticipants[$key]['role'] === \dbObject\DecisionParticipant::ROLE_OWNER) {
+                    continue;
+                }
+
+                $desiredParticipants[$key] = [
+                    'IDuser' => $userId,
+                    'email' => '',
+                    'display_name' => trim((string)$membership->getUserDisplayName()),
+                    'role' => \dbObject\DecisionParticipant::ROLE_PARTICIPANT,
+                    'status' => \dbObject\DecisionParticipant::STATUS_ACTIVE,
+                    'active' => 1,
+                    'parameters' => [
+                        'sync_source' => (string)$syncSource,
+                    ],
+                ];
+            }
+        };
+
         if (count($holonIds) > 0) {
             $holonMembers = new \dbObject\ArrayUserHolon();
             $holonMembers->loadActiveForHolonIds($holonIds);
@@ -1069,32 +1337,11 @@ class DecisionProcess extends DbObject
                     ],
                 ];
             }
-        } elseif (count($activeInvitations) === 0 && (int)$this->get('IDorganization') > 0) {
-            $organizationMembers = new \dbObject\ArrayUserOrganization();
-            $organizationMembers->loadActiveForOrganization((int)$this->get('IDorganization'));
-            foreach ($organizationMembers as $membership) {
-                $userId = (int)$membership->get('IDuser');
-                if ($userId <= 0) {
-                    continue;
-                }
-
-                $key = 'user:' . $userId;
-                if (isset($desiredParticipants[$key]) && $desiredParticipants[$key]['role'] === \dbObject\DecisionParticipant::ROLE_OWNER) {
-                    continue;
-                }
-
-                $desiredParticipants[$key] = [
-                    'IDuser' => $userId,
-                    'email' => '',
-                    'display_name' => trim((string)$membership->getUserDisplayName()),
-                    'role' => \dbObject\DecisionParticipant::ROLE_PARTICIPANT,
-                    'status' => \dbObject\DecisionParticipant::STATUS_ACTIVE,
-                    'active' => 1,
-                    'parameters' => [
-                        'sync_source' => 'implicit_organization',
-                    ],
-                ];
+            if ($organizationRootHolonId > 0 && in_array($organizationRootHolonId, $holonIds, true)) {
+                $appendOrganizationMembers(count($activeInvitations) === 0 ? 'implicit_organization' : 'invited_organization');
             }
+        } elseif (count($activeInvitations) === 0 && $organizationId > 0) {
+            $appendOrganizationMembers('implicit_organization');
         }
 
         $existingByKey = [];
@@ -1268,7 +1515,10 @@ class DecisionProcess extends DbObject
                     SELECT COUNT(*)
                     FROM `decision_response` response_count
                     WHERE response_count.`IDdecision_process` = dp.`id`
-                      AND response_count.`status` = :submitted_status
+                      AND (
+                            response_count.`status` = :submitted_status
+                            OR response_count.`submitted_at` IS NOT NULL
+                      )
                 ) AS `response_count`,
                 (
                     SELECT MAX(proposal_activity.`updated_at`)
@@ -1375,7 +1625,10 @@ class DecisionProcess extends DbObject
                     SELECT COUNT(*)
                     FROM `decision_response` response_count
                     WHERE response_count.`IDdecision_process` = dp.`id`
-                      AND response_count.`status` = :submitted_status_count
+                      AND (
+                            response_count.`status` = :submitted_status_count
+                            OR response_count.`submitted_at` IS NOT NULL
+                      )
                 ) AS `response_count`,
                 (
                     SELECT MAX(proposal_activity.`updated_at`)
