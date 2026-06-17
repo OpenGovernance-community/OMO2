@@ -1258,6 +1258,7 @@ class DecisionProcess extends DbObject
 
         $participantCandidates = [];
         $participantCandidateIds = [];
+        $hasUnavailableExistingParticipant = false;
         $registerParticipantCandidate = static function ($participant) use (&$participantCandidates, &$participantCandidateIds) {
             if (!($participant instanceof \dbObject\DecisionParticipant)) {
                 return;
@@ -1308,13 +1309,10 @@ class DecisionProcess extends DbObject
                     \dbObject\DecisionParticipant::STATUS_DECLINED,
                     \dbObject\DecisionParticipant::STATUS_REVOKED,
                 ], true)) {
-                    return [
-                        'status' => false,
-                        'reason' => 'participant_unavailable',
-                    ];
+                    $hasUnavailableExistingParticipant = true;
+                } else {
+                    $registerParticipantCandidate($userParticipant);
                 }
-
-                $registerParticipantCandidate($userParticipant);
             }
         }
 
@@ -1325,13 +1323,10 @@ class DecisionProcess extends DbObject
                 \dbObject\DecisionParticipant::STATUS_DECLINED,
                 \dbObject\DecisionParticipant::STATUS_REVOKED,
             ], true)) {
-                return [
-                    'status' => false,
-                    'reason' => 'participant_unavailable',
-                ];
+                $hasUnavailableExistingParticipant = true;
+            } else {
+                $registerParticipantCandidate($emailParticipant);
             }
-
-            $registerParticipantCandidate($emailParticipant);
         }
 
         if (count($participantCandidates) > 0) {
@@ -1367,7 +1362,7 @@ class DecisionProcess extends DbObject
         if (!$allowCreateIfMissing || !$this->isPublicSelfRegistrationEnabled()) {
             return [
                 'status' => false,
-                'reason' => 'not_allowed',
+                'reason' => $hasUnavailableExistingParticipant ? 'participant_unavailable' : 'not_allowed',
             ];
         }
 
