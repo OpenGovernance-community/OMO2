@@ -77,6 +77,10 @@ CREATE TABLE IF NOT EXISTS `search_job` (
     KEY `idx_search_job_creation` (`datecreation`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+ALTER TABLE `faq`
+  ADD COLUMN IF NOT EXISTS `image` varchar(1000) DEFAULT NULL AFTER `answer`,
+  ADD COLUMN IF NOT EXISTS `video` varchar(1000) DEFAULT NULL AFTER `image`;
+
 INSERT INTO `translation_languages` (`locale`, `name`, `native_name`, `sort_order`, `active`, `is_source`) VALUES
     ('fr', 'Francais', 'Francais', 10, 1, 1),
     ('en', 'Anglais', 'English', 20, 1, 0),
@@ -157,6 +161,10 @@ ON DUPLICATE KEY UPDATE
 
 -- Defensive guard for fresh Docker databases
 ALTER TABLE `user`
+  ADD COLUMN IF NOT EXISTS `presentation` text DEFAULT NULL AFTER `lastname`,
+  ADD COLUMN IF NOT EXISTS `birthdate` date DEFAULT NULL AFTER `presentation`,
+  ADD COLUMN IF NOT EXISTS `latlong` varchar(100) DEFAULT NULL AFTER `presentation`,
+  ADD COLUMN IF NOT EXISTS `image` varchar(100) DEFAULT NULL AFTER `username`,
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 -- Local Docker dev account bootstrap

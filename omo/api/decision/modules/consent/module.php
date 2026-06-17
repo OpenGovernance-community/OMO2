@@ -388,8 +388,6 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                     </template>
                 </div>
 
-                <?= omoDecisionRenderInvitationSection($decision, $context, $lang, $sourceLang, $escape, 'omo-decision-consent__invitation-summary') ?>
-
                 <div class="generic-soft-panel generic-soft-panel--stack">
                     <div class="omo-decision-consent__proposal-main">
                         <span class="generic-card-title"><?= $escape(t('decisions.consent.field.proposals', [], $lang, $sourceLang)) ?></span>
@@ -398,16 +396,25 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
 
                     <div class="omo-decision-consent__proposal-list" data-omo-decision-consent-proposal-list>
                         <?php foreach ($proposalItems as $index => $proposalItem): ?>
-                        <div class="omo-decision-consent__proposal-card" data-omo-decision-consent-proposal-card>
-                            <button type="button" class="omo-decision-consent__proposal-drag" data-omo-decision-consent-proposal-drag aria-label="<?= $escape(t('decisions.consent.field.proposals_reorder', [], $lang, $sourceLang)) ?>" <?= $canEditProposals ? '' : 'disabled' ?>>::</button>
+                        <div class="omo-decision-consent__proposal-card<?= $canEditProposals ? '' : ' omo-decision-consent__proposal-card--locked' ?>" data-omo-decision-consent-proposal-card>
+                            <?php if ($canEditProposals): ?>
+                            <button type="button" class="omo-decision-consent__proposal-drag" data-omo-decision-consent-proposal-drag aria-label="<?= $escape(t('decisions.consent.field.proposals_reorder', [], $lang, $sourceLang)) ?>">::</button>
+                            <?php endif; ?>
                             <div class="omo-decision-consent__proposal-field">
                                 <span class="generic-card-title generic-card-title--small" data-omo-decision-consent-proposal-label><?= $escape(str_replace('{index}', (string)($index + 1), t('decisions.consent.field.proposals_item', ['index' => (string)($index + 1)], $lang, $sourceLang))) ?></span>
                                 <input type="text" class="generic-form-control" name="proposals[]" value="<?= $escape((string)$proposalItem['title']) ?>" placeholder="<?= $escape(t('decisions.consent.placeholder.proposals', [], $lang, $sourceLang)) ?>" <?= $canEditProposals ? '' : 'readonly' ?>>
                                 <input type="hidden" name="proposal_descriptions[]" value="<?= $escape((string)($proposalItem['description'] ?? '')) ?>" data-omo-decision-consent-proposal-description>
                                 <input type="hidden" name="proposal_info_urls[]" value="<?= $escape((string)($proposalItem['info_url'] ?? '')) ?>" data-omo-decision-consent-proposal-info-url>
                             </div>
-                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-consent-proposal-settings title="<?= $escape(t('decisions.consent.field.proposal_details', [], $lang, $sourceLang)) ?>" aria-label="<?= $escape(t('decisions.consent.field.proposal_details', [], $lang, $sourceLang)) ?>">&#9881;</button>
-                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-consent-proposal-remove <?= $canEditProposals ? '' : 'disabled' ?>><?= $escape(t('decisions.consent.field.proposals_remove', [], $lang, $sourceLang)) ?></button>
+                            <div class="omo-decision-consent__proposal-menu" data-omo-decision-consent-proposal-menu>
+                                <button type="button" class="generic-action-button generic-action-button--secondary omo-decision-consent__proposal-menu-toggle" data-omo-decision-consent-proposal-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Actions">...</button>
+                                <div class="omo-decision-consent__proposal-menu-panel" data-omo-decision-consent-proposal-menu-panel role="menu" hidden>
+                                    <button type="button" class="generic-action-button generic-action-button--secondary omo-decision-consent__proposal-menu-item" data-omo-decision-consent-proposal-settings role="menuitem"><?= $escape(t('decisions.consent.field.proposal_details', [], $lang, $sourceLang)) ?></button>
+                                    <?php if ($canEditProposals): ?>
+                                    <button type="button" class="generic-action-button generic-action-button--danger omo-decision-consent__proposal-menu-item" data-omo-decision-consent-proposal-remove role="menuitem"><?= $escape(t('decisions.consent.field.proposals_remove', [], $lang, $sourceLang)) ?></button>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
                         </div>
                         <?php endforeach; ?>
                     </div>
@@ -416,6 +423,8 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-consent-proposal-add <?= $canEditProposals ? '' : 'disabled' ?>><?= $escape(t('decisions.consent.field.proposals_add', [], $lang, $sourceLang)) ?></button>
                     </div>
                 </div>
+
+                <?= omoDecisionRenderInvitationSection($decision, $context, $lang, $sourceLang, $escape, 'omo-decision-consent__invitation-summary') ?>
 
                 <div class="omo-decision-consent__footer">
                     <button type="submit" class="generic-action-button generic-action-button--main" data-omo-decision-consent-submit><?= $escape($decision instanceof DecisionProcess ? t('decisions.consent.action.save', [], $lang, $sourceLang) : t('decisions.consent.action.create', [], $lang, $sourceLang)) ?></button>
@@ -617,6 +626,10 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         return;
                     }
 
+                    if (typeof window.omoDecisionInitInvitationEditors === 'function') {
+                        window.omoDecisionInitInvitationEditors(form);
+                    }
+
                     let payload = {};
                     try {
                         payload = JSON.parse(payloadNode.textContent || '{}');
@@ -656,6 +669,23 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         });
                     };
 
+                    const closeProposalMenus = function (exceptCard) {
+                        Array.prototype.forEach.call(proposalList.querySelectorAll('[data-omo-decision-consent-proposal-card]'), function (menuCard) {
+                            if (exceptCard && menuCard === exceptCard) {
+                                return;
+                            }
+
+                            const menuPanel = menuCard.querySelector('[data-omo-decision-consent-proposal-menu-panel]');
+                            const menuToggle = menuCard.querySelector('[data-omo-decision-consent-proposal-menu-toggle]');
+                            if (menuPanel) {
+                                menuPanel.hidden = true;
+                            }
+                            if (menuToggle) {
+                                menuToggle.setAttribute('aria-expanded', 'false');
+                            }
+                        });
+                    };
+
                     const bindProposalCard = function (card) {
                         if (!card || card.dataset.omoDecisionConsentProposalReady === '1') {
                             return;
@@ -666,9 +696,28 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         const infoUrlInput = card.querySelector('[data-omo-decision-consent-proposal-info-url]');
                         const detailsButton = card.querySelector('[data-omo-decision-consent-proposal-settings]');
                         const removeButton = card.querySelector('[data-omo-decision-consent-proposal-remove]');
+                        const menuToggle = card.querySelector('[data-omo-decision-consent-proposal-menu-toggle]');
+                        const menuPanel = card.querySelector('[data-omo-decision-consent-proposal-menu-panel]');
+
+                        if (menuToggle && menuPanel) {
+                            menuToggle.addEventListener('click', function (event) {
+                                event.preventDefault();
+                                event.stopPropagation();
+
+                                const shouldOpen = menuPanel.hidden;
+                                closeProposalMenus(card);
+                                menuPanel.hidden = !shouldOpen;
+                                menuToggle.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+                            });
+
+                            menuPanel.addEventListener('click', function (event) {
+                                event.stopPropagation();
+                            });
+                        }
 
                         if (detailsButton) {
                             detailsButton.addEventListener('click', function () {
+                                closeProposalMenus();
                                 if (detailsButton.disabled || typeof window.commonTopbarOpenModal !== 'function') {
                                     return;
                                 }
@@ -737,6 +786,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
 
                         if (removeButton) {
                             removeButton.addEventListener('click', function () {
+                                closeProposalMenus();
                                 const cards = proposalList.querySelectorAll('[data-omo-decision-consent-proposal-card]');
                                 if (cards.length <= 1) {
                                     if (titleInput) {
@@ -800,19 +850,43 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         infoUrlInput.value = '';
                         infoUrlInput.setAttribute('data-omo-decision-consent-proposal-info-url', '');
 
+                        const menu = document.createElement('div');
+                        menu.className = 'omo-decision-consent__proposal-menu';
+                        menu.setAttribute('data-omo-decision-consent-proposal-menu', '');
+
+                        const menuToggle = document.createElement('button');
+                        menuToggle.type = 'button';
+                        menuToggle.className = 'generic-action-button generic-action-button--secondary omo-decision-consent__proposal-menu-toggle';
+                        menuToggle.setAttribute('data-omo-decision-consent-proposal-menu-toggle', '');
+                        menuToggle.setAttribute('aria-haspopup', 'menu');
+                        menuToggle.setAttribute('aria-expanded', 'false');
+                        menuToggle.setAttribute('aria-label', 'Actions');
+                        menuToggle.textContent = '...';
+
+                        const menuPanel = document.createElement('div');
+                        menuPanel.className = 'omo-decision-consent__proposal-menu-panel';
+                        menuPanel.setAttribute('data-omo-decision-consent-proposal-menu-panel', '');
+                        menuPanel.setAttribute('role', 'menu');
+                        menuPanel.hidden = true;
+
                         const detailsButton = document.createElement('button');
                         detailsButton.type = 'button';
-                        detailsButton.className = 'generic-action-button generic-action-button--secondary';
+                        detailsButton.className = 'generic-action-button generic-action-button--secondary omo-decision-consent__proposal-menu-item';
                         detailsButton.setAttribute('data-omo-decision-consent-proposal-settings', '');
-                        detailsButton.setAttribute('title', String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : 'Details'));
-                        detailsButton.setAttribute('aria-label', String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : 'Details'));
-                        detailsButton.innerHTML = '&#9881;';
+                        detailsButton.setAttribute('role', 'menuitem');
+                        detailsButton.textContent = String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : 'Details');
 
                         const removeButton = document.createElement('button');
                         removeButton.type = 'button';
-                        removeButton.className = 'generic-action-button generic-action-button--secondary';
+                        removeButton.className = 'generic-action-button generic-action-button--danger omo-decision-consent__proposal-menu-item';
                         removeButton.setAttribute('data-omo-decision-consent-proposal-remove', '');
+                        removeButton.setAttribute('role', 'menuitem');
                         removeButton.textContent = String(payload.texts && payload.texts.proposalRemove ? payload.texts.proposalRemove : 'Supprimer');
+
+                        menuPanel.appendChild(detailsButton);
+                        menuPanel.appendChild(removeButton);
+                        menu.appendChild(menuToggle);
+                        menu.appendChild(menuPanel);
 
                         field.appendChild(label);
                         field.appendChild(input);
@@ -820,8 +894,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         field.appendChild(infoUrlInput);
                         card.appendChild(dragButton);
                         card.appendChild(field);
-                        card.appendChild(detailsButton);
-                        card.appendChild(removeButton);
+                        card.appendChild(menu);
 
                         bindProposalCard(card);
                         if (sortable && typeof sortable.bindItem === 'function') {
@@ -957,6 +1030,12 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                             }
                         });
                     }
+
+                    document.addEventListener('click', function (event) {
+                        if (!proposalList.contains(event.target)) {
+                            closeProposalMenus();
+                        }
+                    });
 
                     Array.prototype.forEach.call(proposalList.querySelectorAll('[data-omo-decision-consent-proposal-card]'), bindProposalCard);
                     refreshProposalLabels();
@@ -1181,13 +1260,17 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
 
         .omo-decision-consent__proposal-card {
             display: grid;
-            grid-template-columns: auto 1fr auto;
+            grid-template-columns: auto minmax(0, 1fr) auto;
             gap: 10px;
             align-items: center;
             padding: 12px;
             border-radius: 14px;
             border: 1px solid color-mix(in srgb, var(--color-text-light, #64748b) 14%, white);
             background: white;
+        }
+
+        .omo-decision-consent__proposal-card--locked {
+            grid-template-columns: minmax(0, 1fr) auto;
         }
 
         .omo-decision-consent__proposal-placeholder {
@@ -1207,6 +1290,41 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
         .omo-decision-consent__proposal-field {
             display: grid;
             gap: 8px;
+        }
+
+        .omo-decision-consent__proposal-menu {
+            position: relative;
+            align-self: start;
+        }
+
+        .omo-decision-consent__proposal-menu-toggle {
+            min-width: 42px;
+            padding-inline: 12px;
+        }
+
+        .omo-decision-consent__proposal-menu-panel {
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            min-width: 180px;
+            display: grid;
+            gap: 6px;
+            padding: 8px;
+            border: 1px solid var(--color-border, #d1d5db);
+            border-radius: 12px;
+            background: var(--color-surface, #ffffff);
+            box-shadow: 0 16px 30px rgba(15, 23, 42, 0.14);
+            z-index: 5;
+        }
+
+        .omo-decision-consent__proposal-menu-panel[hidden] {
+            display: none;
+        }
+
+        .omo-decision-consent__proposal-menu-item {
+            width: 100%;
+            justify-content: flex-start;
+            box-shadow: none;
         }
 
         .omo-decision-consent__feedback {

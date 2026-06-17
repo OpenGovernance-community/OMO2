@@ -1,0 +1,48 @@
+.omo-public-body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at top right, color-mix(in srgb, var(--omo-public-accent, var(--color-primary, #2563eb)) 14%, transparent), transparent 28%),
+        linear-gradient(180deg, var(--color-surface-alt, #f8fafc) 0%, color-mix(in srgb, var(--color-surface-alt, #eef2f7) 72%, var(--color-surface, #ffffff)) 100%);
+    color: var(--color-text, #0f172a);
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.omo-public-page {
+    min-height: 100vh;
+}
+
+.omo-public-shell {
+    width: min(1100px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 18px 0 40px;
+}
+
+.omo-public-banner {
+    margin: 0 0 18px;
+    padding: 7px 14px;
+    border: 0;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--omo-public-accent, var(--color-primary, #2563eb)) 22%, var(--color-surface-alt, #eef2f7));
+    color: var(--color-text, #0f172a);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.omo-public-banner strong {
+    font-weight: 700;
+}
+
+@media (max-width: 720px) {
+    .omo-public-shell {
+        width: min(100% - 20px, 1100px);
+        padding-top: 14px;
+        padding-bottom: 24px;
+    }
+
+    .omo-public-banner {
+        margin-bottom: 14px;
+        padding: 6px 11px;
+        border-radius: 10px;
+    }
+}

@@ -74,6 +74,8 @@ $editorAllowGeneric = false;
 $editorFields = array(
 	'question',
 	'answer',
+	'image',
+	'video',
 	'detail',
 );
 
@@ -640,6 +642,52 @@ if ($canManageAllFaqs) {
 		flex-wrap: wrap;
 		margin-top: 0;
 		flex: 0 0 auto;
+	}
+
+	.faq-popup__media {
+		display: grid;
+		gap: 16px;
+		margin-bottom: 18px;
+	}
+
+	.faq-popup__media-figure,
+	.faq-popup__media-video,
+	.faq-popup__media-fallback {
+		border-radius: 16px;
+		background: var(--faq-surface);
+		box-shadow: inset 0 0 0 1px var(--faq-border-soft);
+		overflow: hidden;
+	}
+
+	.faq-popup__media-image {
+		display: block;
+		width: 100%;
+		max-height: 440px;
+		object-fit: contain;
+		background: var(--faq-surface);
+	}
+
+	.faq-popup__media-video {
+		position: relative;
+		aspect-ratio: 16 / 9;
+	}
+
+	.faq-popup__media-video iframe {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		border: 0;
+	}
+
+	.faq-popup__media-fallback {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		padding: 16px;
+		flex-wrap: wrap;
+		color: var(--faq-text-muted);
 	}
 
 	.faq-popup__vote {
@@ -1707,6 +1755,52 @@ if ($canManageAllFaqs) {
 		}
 	}
 
+	function syncFaqRichTextFields(form) {
+		if (!form || typeof window.jQuery !== 'function') {
+			return;
+		}
+
+		window.jQuery(form).find('textarea.summernote').each(function () {
+			const field = window.jQuery(this);
+			if (typeof field.summernote === 'function') {
+				try {
+					field.val(field.summernote('code'));
+				} catch (error) {
+				}
+			}
+		});
+	}
+
+	function submitFaqForm(form) {
+		if (!form) {
+			return;
+		}
+
+		syncFaqRichTextFields(form);
+		form.classList.add('disabled');
+
+		fetch(form.getAttribute('action'), {
+			method: 'POST',
+			credentials: 'same-origin',
+			headers: {
+				'X-Requested-With': 'XMLHttpRequest'
+			},
+			body: new FormData(form)
+		})
+			.then(function (response) {
+				return response.text();
+			})
+			.then(function (data) {
+				handleSaveResponse(data);
+			})
+			.catch(function () {
+				window.alert("Impossible d'enregistrer cette FAQ.");
+			})
+			.finally(function () {
+				form.classList.remove('disabled');
+			});
+	}
+
 	function formatVoteScore(value) {
 		const numericValue = Number(value || 0);
 		if (!Number.isFinite(numericValue)) {
@@ -1951,8 +2045,8 @@ if ($canManageAllFaqs) {
 		if (saveButton) {
 			const scope = saveButton.closest('[data-faq-form-shell]') || editorView || detailView;
 			const form = scope ? scope.querySelector('#formulaire-edit') : null;
-			if (form && typeof window.jQuery === 'function' && typeof window.sendForm === 'function') {
-				window.sendForm(window.jQuery(form), handleSaveResponse);
+			if (form) {
+				submitFaqForm(form);
 			}
 			return;
 		}

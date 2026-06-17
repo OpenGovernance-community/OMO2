@@ -36,6 +36,56 @@ if (!function_exists('faqPopupDescribeScope')) {
 	}
 }
 
+if (!function_exists('faqPopupRenderMediaBlock')) {
+	function faqPopupRenderMediaBlock(\dbObject\FAQ $faq)
+	{
+		$media = $faq->getMediaDisplayData();
+		if (empty($media['hasMedia'])) {
+			return;
+		}
+		?>
+		<div class="faq-popup__media">
+			<?php if (!empty($media['hasImage'])): ?>
+				<div class="faq-popup__media-figure">
+					<img
+						class="faq-popup__media-image"
+						src="<?= htmlspecialchars((string)$media['imageUrl'], ENT_QUOTES, 'UTF-8') ?>"
+						alt="<?= htmlspecialchars((string)$faq->get('question'), ENT_QUOTES, 'UTF-8') ?>"
+						loading="lazy"
+					>
+				</div>
+			<?php endif; ?>
+			<?php if (!empty($media['hasVideo'])): ?>
+				<div class="faq-popup__media-video-shell">
+					<?php if (trim((string)($media['embeddedVideoUrl'] ?? '')) !== ''): ?>
+						<div class="faq-popup__media-video">
+							<iframe
+								src="<?= htmlspecialchars((string)$media['embeddedVideoUrl'], ENT_QUOTES, 'UTF-8') ?>"
+								loading="lazy"
+								allow="autoplay; fullscreen; picture-in-picture"
+								allowfullscreen
+								referrerpolicy="strict-origin-when-cross-origin"
+								title="<?= htmlspecialchars((string)$faq->get('question'), ENT_QUOTES, 'UTF-8') ?>"
+							></iframe>
+						</div>
+					<?php else: ?>
+						<div class="faq-popup__media-fallback">
+							<span>Video non integrable automatiquement.</span>
+							<a
+								class="generic-action-button generic-action-button--secondary"
+								href="<?= htmlspecialchars((string)$media['videoUrl'], ENT_QUOTES, 'UTF-8') ?>"
+								target="_blank"
+								rel="noopener noreferrer"
+							>Ouvrir la video</a>
+						</div>
+					<?php endif; ?>
+				</div>
+			<?php endif; ?>
+		</div>
+		<?php
+	}
+}
+
 if (!function_exists('faqPopupGetVoteSessionDate')) {
 	function faqPopupGetVoteSessionDate($faqId)
 	{
