@@ -948,10 +948,19 @@
 				$pdo->beginTransaction();
 
 				$user = $this->resolveMemberUser($userId, $email);
+				$pendingInvitation = \dbObject\Invitation::findPendingForOrganizationUser($organizationId, (int)$user->getId());
 				$hasActiveMembership = $this->hasActiveMembershipForUser($user, $organizationId);
-				$requiresInvitation = !$hasActiveMembership;
+				$requiresInvitation = !$hasActiveMembership && !($pendingInvitation instanceof \dbObject\Invitation);
 
-				if ($requiresInvitation) {
+				if ($pendingInvitation instanceof \dbObject\Invitation) {
+					$approvalResult = $pendingInvitation->approveByAdmin([
+						'approvedByUserId' => (int)$this->resolveCurrentUserId(),
+						'sendConfirmationEmail' => false,
+					]);
+					if (!($approvalResult['status'] ?? false)) {
+						throw new \RuntimeException((string)($approvalResult['message'] ?? "L'ajout en attente n'a pas pu etre finalise."));
+					}
+				} elseif ($requiresInvitation) {
 					$this->ensureOrganizationMembershipState($user, $organizationId, false);
 					$invitationIssue = \dbObject\Invitation::issue(
 						$organizationId,
@@ -986,6 +995,110 @@
 						),
 					'userId' => (int)$user->getId(),
 					'pending' => $requiresInvitation,
+				);
+			} catch (\Throwable $exception) {
+				if ($pdo->inTransaction()) {
+					$pdo->rollBack();
+				}
+
+				return array(
+					'status' => false,
+					'message' => $exception->getMessage(),
+				);
+			}
+		}
+
+		public function requestAccess($userId, $message = '')
+		{
+			$organizationId = (int)$this->getId();
+			$userId = (int)$userId;
+			$message = trim((string)$message);
+
+			if ($organizationId <= 0 || $userId <= 0) {
+				return array(
+					'status' => false,
+					'message' => "L'organisation demandee est invalide.",
+				);
+			}
+
+			if ($this->resolveCurrentUserId() !== $userId) {
+				return array(
+					'status' => false,
+					'message' => 'Vous ne pouvez demander cet acces que pour votre propre compte.',
+				);
+			}
+
+			$user = new \dbObject\User();
+			if (!$user->load($userId)) {
+				return array(
+					'status' => false,
+					'message' => 'Votre profil utilisateur est introuvable.',
+				);
+			}
+
+			if ($this->hasActiveMembershipForUser($user, $organizationId)) {
+				return array(
+					'status' => false,
+					'message' => 'Votre compte a deja acces a cette organisation.',
+				);
+			}
+
+			$email = trim(mb_strtolower((string)$user->getScopedEmail($organizationId), 'UTF-8'));
+			if ($email === '') {
+				$email = trim(mb_strtolower((string)$user->get('email'), 'UTF-8'));
+			}
+
+			if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+				return array(
+					'status' => false,
+					'message' => "Votre compte doit disposer d'une adresse e-mail valide pour envoyer cette demande.",
+				);
+			}
+
+			$pdo = \dbObject\DbObject::getPdo();
+			if (!$pdo) {
+				return array(
+					'status' => false,
+					'message' => 'Connexion base de donnees indisponible.',
+				);
+			}
+
+			try {
+				$pdo->beginTransaction();
+
+				$this->ensureOrganizationMembershipState($user, $organizationId, false);
+				$invitationIssue = \dbObject\Invitation::issue(
+					$organizationId,
+					$userId,
+					$userId,
+					$email,
+					[
+						'requestOrigin' => \dbObject\Invitation::REQUEST_ORIGIN_MEMBER,
+						'requestMessage' => $message,
+					]
+				);
+
+				if (!empty($invitationIssue['created']) && isset($invitationIssue['invitation'])) {
+					$invitationIssue['invitation']->sendEmail();
+				}
+
+				$pdo->commit();
+
+				$existingInvitation = $invitationIssue['invitation'] ?? null;
+				if ($existingInvitation instanceof \dbObject\Invitation && !$existingInvitation->isMemberInitiatedRequest()) {
+					return array(
+						'status' => true,
+						'created' => false,
+						'message' => 'Une invitation est deja en attente pour cette organisation.',
+					);
+				}
+
+				return array(
+					'status' => true,
+					'created' => !empty($invitationIssue['created']),
+					'message' => !empty($invitationIssue['created'])
+						? 'Votre demande a ete envoyee aux administrateurs.'
+						: 'Une demande est deja en attente pour cette organisation.',
 				);
 			} catch (\Throwable $exception) {
 				if ($pdo->inTransaction()) {

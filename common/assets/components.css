@@ -1,6 +1,5 @@
 .generic-section,
-.omo-card,
-.generic-accordion--card {
+.omo-card {
     --generic-section-padding-block: 16px;
     --generic-section-padding-inline: 18px;
     --generic-section-border: var(--color-border, #e5e7eb);
@@ -15,19 +14,28 @@
     box-shadow: var(--generic-section-shadow);
 }
 
+.generic-title-section {
+    --generic-section-radius: 0px;
+    --generic-section-padding-block: 16px;
+    --generic-section-padding-inline: 18px;
+    --generic-section-border: var(--color-border, #e5e7eb);
+    border-bottom: 1px solid var(--generic-section-border);
+    padding: var(--generic-section-padding-block) var(--generic-section-padding-inline);
+}
+
 .generic-section--stack {
     display: grid;
-    gap: var(--generic-section-gap, 12px);
+    gap: var(--generic-section-gap, 0px);
 }
 
 .generic-section--alt {
     --generic-section-background: var(--color-surface-alt, #f0f2f5);
 }
 
-.generic-soft-panel {
+.generic-soft-panel, .generic-soft-panel-square {
     --generic-soft-panel-padding-block: 12px;
     --generic-soft-panel-padding-inline: 14px;
-    --generic-soft-panel-radius: 12px;
+    --generic-soft-panel-radius: 0px;
     --generic-soft-panel-border: var(--color-border, #d1d5db);
     --generic-soft-panel-background: var(--color-surface-alt, #f8fafc);
     display: block;
@@ -35,6 +43,9 @@
     border: 1px solid var(--generic-soft-panel-border);
     border-radius: var(--generic-soft-panel-radius);
     background: var(--generic-soft-panel-background);
+}
+.generic-soft-panel {
+    --generic-soft-panel-radius: 12px;
 }
 
 .generic-soft-panel--stack {
@@ -328,6 +339,121 @@ textarea.generic-form-control {
 }
 
 .generic-tabs__panel[hidden] {
+    display: none !important;
+}
+
+.omo-decision-invitations-editor {
+    display: grid;
+    gap: 14px;
+}
+
+.omo-decision-invitations-editor__intro,
+.omo-decision-invitations-editor__hint {
+    margin: 0;
+    color: var(--color-text-light, #64748b);
+    line-height: 1.5;
+}
+
+.omo-decision-invitations-editor__tabs {
+    --generic-tabs-panel-padding-block: 14px;
+    --generic-tabs-panel-padding-inline: 14px;
+}
+
+.omo-decision-invitations-editor__tab-panel {
+    display: grid;
+    gap: 10px;
+}
+
+.omo-decision-invitations-editor__checklist {
+    display: grid;
+    gap: 8px;
+    max-height: 360px;
+    overflow: auto;
+    padding-right: 4px;
+}
+
+.omo-decision-invitations-editor__member-list {
+    display: grid;
+    gap: 8px;
+    max-height: 260px;
+    overflow: auto;
+    padding-right: 4px;
+}
+
+.omo-decision-invitations-editor__check {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    flex: 1 1 auto;
+}
+
+.omo-decision-invitations-editor__check-meta {
+    display: grid;
+    gap: 2px;
+}
+
+.omo-decision-invitations-editor__check-type,
+.omo-decision-invitations-editor__member-email {
+    color: var(--color-text-light, #64748b);
+    font-size: 0.9rem;
+}
+
+.omo-decision-invitations-editor__textarea {
+    min-height: 120px;
+}
+
+.omo-decision-invitations-editor__tree-node {
+    display: grid;
+    gap: 6px;
+}
+
+.omo-decision-invitations-editor__tree-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.omo-decision-invitations-editor__tree-toggle,
+.omo-decision-invitations-editor__tree-spacer {
+    width: 28px;
+    min-width: 28px;
+    height: 28px;
+    margin-top: 2px;
+}
+
+.omo-decision-invitations-editor__tree-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-text-light, #64748b) 12%, transparent);
+    color: inherit;
+    cursor: pointer;
+}
+
+.omo-decision-invitations-editor__tree-toggle span {
+    display: inline-block;
+    transition: transform 0.18s ease;
+}
+
+.omo-decision-invitations-editor__tree-toggle[aria-expanded="false"] span {
+    transform: rotate(-90deg);
+}
+
+.omo-decision-invitations-editor__tree-spacer {
+    display: inline-block;
+}
+
+.omo-decision-invitations-editor__tree-children {
+    display: grid;
+    gap: 8px;
+    margin-left: 18px;
+    padding-left: 14px;
+    border-left: 1px solid var(--color-border, #dbe3ef);
+}
+
+.omo-decision-invitations-editor__tree-children[hidden] {
     display: none !important;
 }
 
@@ -729,11 +855,12 @@ textarea.generic-form-control {
     padding: 0;
     border: 0;
     background: transparent;
-    font-size: 12px;
+    font-size: 24px;
     color: var(--color-text-light, #475569);
     line-height: 1;
     cursor: pointer;
     transition: transform 0.2s ease;
+    margin:-6px;
 }
 
 .generic-accordion__content {

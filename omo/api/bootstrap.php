@@ -31,6 +31,18 @@ if (!function_exists('omoApiSortKey')) {
     }
 }
 
+if (!function_exists('omoApiCanBypassOrganizationAccessCheck')) {
+    function omoApiCanBypassOrganizationAccessCheck()
+    {
+        $requestPath = trim((string)commonGetRequestPath());
+        if ($requestPath === '') {
+            return false;
+        }
+
+        return $requestPath === '/omo/api/organization/access_request_popup.php';
+    }
+}
+
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: 0');
@@ -70,7 +82,13 @@ if (!commonGetCurrentUserId() && !commonCanAccessWithoutLogin() && !$shareLink &
     exit;
 }
 
-if (!commonCanAccessWithoutLogin() && !$shareLink && !$publicDecisionTokenAccess && !commonCurrentUserHasOrganizationAccess()) {
+if (
+    !commonCanAccessWithoutLogin()
+    && !$shareLink
+    && !$publicDecisionTokenAccess
+    && !omoApiCanBypassOrganizationAccessCheck()
+    && !commonCurrentUserHasOrganizationAccess()
+) {
     http_response_code(403);
     echo "Forbidden";
     exit;

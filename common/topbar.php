@@ -1,9 +1,13 @@
 <?php
 
+require_once __DIR__ . '/avatar.php';
+
 function commonResolveTopbarProfileData($organizationContext = null, array $profileOptions = [])
 {
     $defaults = [
+        'userId' => 0,
         'displayName' => '',
+        'initials' => '',
         'email' => '',
         'username' => '',
         'photoUrl' => '',
@@ -17,46 +21,58 @@ function commonResolveTopbarProfileData($organizationContext = null, array $prof
 
     $profileData = array_merge($defaults, $providedData);
 
-    if (
+    $hasEnoughProvidedData =
         $profileData['displayName'] !== ''
         && ($profileData['email'] !== '' || $profileData['username'] !== '' || $profileData['photoUrl'] !== '')
-    ) {
-        return $profileData;
+    ;
+
+    if (!$hasEnoughProvidedData && function_exists('commonGetCurrentUserId')) {
+        $currentUserId = (int)commonGetCurrentUserId();
+        if ($currentUserId > 0) {
+            $organizationId = 0;
+            if (is_array($organizationContext) && !empty($organizationContext['id'])) {
+                $organizationId = (int)$organizationContext['id'];
+            }
+
+            $user = new \dbObject\User();
+            if ($user->load($currentUserId)) {
+                if ((int)$profileData['userId'] <= 0) {
+                    $profileData['userId'] = (int)$user->getId();
+                }
+
+                if ($profileData['displayName'] === '') {
+                    $profileData['displayName'] = (string)$user->getScopedDisplayName($organizationId);
+                }
+
+                if ($profileData['email'] === '') {
+                    $profileData['email'] = (string)$user->getScopedEmail($organizationId);
+                }
+
+                if ($profileData['username'] === '') {
+                    $profileData['username'] = (string)$user->getScopedUsername($organizationId);
+                }
+
+                if ($profileData['photoUrl'] === '') {
+                    $profileData['photoUrl'] = (string)$user->getScopedProfilePhotoUrl($organizationId);
+                }
+
+                if ($profileData['initials'] === '') {
+                    $profileData['initials'] = (string)$user->getScopedInitials($organizationId);
+                }
+            }
+        }
     }
 
-    if (!function_exists('commonGetCurrentUserId')) {
-        return $profileData;
-    }
+    if ($profileData['initials'] === '') {
+        $seedLabel = trim((string)$profileData['displayName']);
+        if ($seedLabel === '') {
+            $seedLabel = trim((string)$profileData['username']);
+        }
+        if ($seedLabel === '') {
+            $seedLabel = trim((string)$profileData['email']);
+        }
 
-    $currentUserId = (int)commonGetCurrentUserId();
-    if ($currentUserId <= 0) {
-        return $profileData;
-    }
-
-    $organizationId = 0;
-    if (is_array($organizationContext) && !empty($organizationContext['id'])) {
-        $organizationId = (int)$organizationContext['id'];
-    }
-
-    $user = new \dbObject\User();
-    if (!$user->load($currentUserId)) {
-        return $profileData;
-    }
-
-    if ($profileData['displayName'] === '') {
-        $profileData['displayName'] = (string)$user->getScopedDisplayName($organizationId);
-    }
-
-    if ($profileData['email'] === '') {
-        $profileData['email'] = (string)$user->getScopedEmail($organizationId);
-    }
-
-    if ($profileData['username'] === '') {
-        $profileData['username'] = (string)$user->getScopedUsername($organizationId);
-    }
-
-    if ($profileData['photoUrl'] === '') {
-        $profileData['photoUrl'] = (string)$user->getScopedProfilePhotoUrl($organizationId);
+        $profileData['initials'] = \dbObject\User::buildInitials($seedLabel);
     }
 
     return $profileData;
@@ -257,9 +273,20 @@ function commonRenderTopbar(array $options = [])
         $profileDisplayName = (string)$config['profile']['buttonLabel'];
     }
 
-    $profileInitial = function_exists('mb_substr')
-        ? mb_strtoupper(mb_substr($profileDisplayName, 0, 1))
-        : strtoupper(substr($profileDisplayName, 0, 1));
+    $profileInitials = trim((string)($config['profile']['data']['initials'] ?? ''));
+    if ($profileInitials === '') {
+        $profileInitials = \dbObject\User::buildInitials($profileDisplayName);
+    }
+
+    $profileAvatarPalette = commonBuildAvatarPalette(
+        $profileInitials,
+        (int)($config['profile']['data']['userId'] ?? 0),
+        commonBuildAvatarSeedLabel(
+            (string)($config['profile']['data']['displayName'] ?? ''),
+            (string)($config['profile']['data']['email'] ?? '')
+        )
+    );
+    $profileAvatarStyle = 'background-color: ' . $profileAvatarPalette['background'] . '; color: ' . $profileAvatarPalette['foreground'] . ';';
 
     if (!$assetsLoaded) {
         commonRenderTopbarJqueryAssets();
@@ -391,7 +418,7 @@ function commonRenderTopbar(array $options = [])
         <?php if (!empty($config['profile']['enabled'])): ?>
         <div class="common-topbar__menu-wrap">
             <button type="button" class="common-topbar__action common-topbar__action--square common-topbar__profile" data-topbar-menu-trigger="profile">
-                <span class="common-topbar__avatar">
+                <span class="common-topbar__avatar"<?= empty($config['profile']['data']['photoUrl']) ? ' style="' . htmlspecialchars($profileAvatarStyle, ENT_QUOTES, 'UTF-8') . '"' : '' ?>>
                     <?php if (!empty($config['profile']['data']['photoUrl'])): ?>
                         <img
                             src="<?= htmlspecialchars((string)$config['profile']['data']['photoUrl']) ?>"
@@ -399,7 +426,7 @@ function commonRenderTopbar(array $options = [])
                             class="common-topbar__avatar-image"
                         >
                     <?php else: ?>
-                        <span class="common-topbar__avatar-initial" aria-hidden="true"><?= htmlspecialchars($profileInitial) ?></span>
+                        <span class="common-topbar__avatar-initial" aria-hidden="true"><?= htmlspecialchars($profileInitials) ?></span>
                     <?php endif; ?>
                 </span>
                 <span class="common-topbar__action-label"><?= htmlspecialchars($config['profile']['buttonLabel']) ?></span>
@@ -415,7 +442,7 @@ function commonRenderTopbar(array $options = [])
                                     class="common-topbar-profile-card__photo"
                                 >
                             <?php else: ?>
-                                <div class="common-topbar-profile-card__placeholder" aria-hidden="true"><?= htmlspecialchars($profileInitial) ?></div>
+                                <div class="common-topbar-profile-card__placeholder" style="<?= htmlspecialchars($profileAvatarStyle, ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"><?= htmlspecialchars($profileInitials) ?></div>
                             <?php endif; ?>
                             <div class="common-topbar-profile-card__identity">
                                 <strong><?= htmlspecialchars($profileDisplayName) ?></strong>

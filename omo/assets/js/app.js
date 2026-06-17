@@ -571,12 +571,90 @@ function getSkeleton(type) {
 
 function syncOmoPanelLayout() {}
 
+function omoIsDecisionIndexUrl(url = '') {
+    return /(?:^|\/)api\/decision\/index\.php(?:[?#]|$)/i.test(String(url || ''));
+}
+
+function omoShouldTraceDecisionLoad(target, url = '') {
+    if (omoIsDecisionIndexUrl(url)) {
+        return true;
+    }
+
+    if (typeof target === 'string') {
+        return target.indexOf('drawer_decisions') !== -1
+            || target.indexOf('omo-decisions-root') !== -1;
+    }
+
+    const element = target && target.jquery
+        ? target.get(0)
+        : target;
+
+    if (!(element instanceof Element)) {
+        return false;
+    }
+
+    return element.id === 'drawer_decisions'
+        || Boolean(element.closest && element.closest('#drawer_decisions'));
+}
+
+function omoTraceDecisionLoad(stage, details = null) {
+    if (!window.console || typeof window.console.log !== 'function') {
+        return;
+    }
+
+    if (details && typeof details === 'object') {
+        console.log('[OMO][Decisions][load]', stage, details);
+        return;
+    }
+
+    console.log('[OMO][Decisions][load]', stage, details);
+}
+
+function omoNormalizeDrawerId(id = '') {
+    const normalizedId = String(id || '').trim();
+
+    if (normalizedId === 'drawer_decision') {
+        return 'drawer_decisions';
+    }
+
+    return normalizedId;
+}
+
+function omoResolveDrawer(id = '') {
+    const normalizedId = omoNormalizeDrawerId(id);
+    let drawer = normalizedId !== ''
+        ? $('#' + normalizedId)
+        : $();
+
+    if (!drawer.length && normalizedId === 'drawer_decisions') {
+        drawer = $('#drawer_decision');
+        if (drawer.length) {
+            drawer.attr('id', normalizedId);
+        }
+    }
+
+    return {
+        id: normalizedId,
+        drawer: drawer
+    };
+}
+
 function loadContent(target, url, type = 'panel', onLoaded = null) {
 
     const $target = $(target);
     const previousRequest = $target.data('omoXhr');
     const requestId = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const resolvedUrl = omoResolveAppUrl(url);
+    const shouldTraceDecisionLoad = omoShouldTraceDecisionLoad($target, resolvedUrl);
+
+    if (shouldTraceDecisionLoad) {
+        omoTraceDecisionLoad('loadContent:start', {
+            requestId: requestId,
+            target: $target.get(0) && $target.get(0).id ? $target.get(0).id : '',
+            resolvedUrl: resolvedUrl,
+            type: type
+        });
+    }
 
     if (previousRequest && previousRequest.readyState !== 4) {
         previousRequest.abort();
@@ -598,6 +676,20 @@ function loadContent(target, url, type = 'panel', onLoaded = null) {
             const temp = document.createElement('div');
             temp.innerHTML = String(data || '');
             const scriptSource = temp.cloneNode(true);
+            const containsDecisionRoot = !!temp.querySelector('#omo-decisions-root');
+            const executableScriptCount = Array.from(scriptSource.querySelectorAll('script')).filter(function (script) {
+                return omoIsExecutableScriptTag(script);
+            }).length;
+
+            if (shouldTraceDecisionLoad || containsDecisionRoot) {
+                omoTraceDecisionLoad('loadContent:success', {
+                    requestId: requestId,
+                    resolvedUrl: resolvedUrl,
+                    htmlLength: String(data || '').length,
+                    containsDecisionRoot: containsDecisionRoot,
+                    executableScriptCount: executableScriptCount
+                });
+            }
 
             Array.from(temp.querySelectorAll('script')).forEach(function (script) {
                 if (omoIsExecutableScriptTag(script)) {
@@ -608,15 +700,33 @@ function loadContent(target, url, type = 'panel', onLoaded = null) {
             $target.html(temp.innerHTML);
             omoExecuteFetchedScripts(scriptSource);
 
+            if (shouldTraceDecisionLoad || containsDecisionRoot) {
+                omoTraceDecisionLoad('loadContent:afterScriptExecution', {
+                    requestId: requestId,
+                    resolvedUrl: resolvedUrl,
+                    targetChildCount: $target.children().length
+                });
+            }
+
             if (typeof onLoaded === 'function') {
                 onLoaded();
             }
 
         },
 
-        error: function () {
+        error: function (xhr, textStatus, errorThrown) {
             if ($target.data('omoRequestId') !== requestId) {
                 return;
+            }
+
+            if (shouldTraceDecisionLoad) {
+                omoTraceDecisionLoad('loadContent:error', {
+                    requestId: requestId,
+                    resolvedUrl: resolvedUrl,
+                    status: xhr && typeof xhr.status !== 'undefined' ? xhr.status : null,
+                    textStatus: textStatus || '',
+                    error: errorThrown || ''
+                });
             }
 
             $target.html('<div class="error">Erreur de chargement</div>');
@@ -651,7 +761,7 @@ function omoBuildMainRightPanelUrl(oid, cid = null) {
         : `api/personal_space.php?oid=${resolvedOrganizationId}`;
 
     const resolvedHolonId = Number(cid);
-    if (Number.isInteger(resolvedHolonId) && resolvedHolonId > 0) {
+    if (!omoIsShareMode() && Number.isInteger(resolvedHolonId) && resolvedHolonId > 0) {
         url += `&cid=${resolvedHolonId}`;
     }
 
@@ -933,20 +1043,37 @@ function omoBindMobileSwipeNavigation() {
 
 function openDrawer(id, url) {
 
-    let drawer = $('#' + id);
+    const drawerReference = omoResolveDrawer(id);
+    const drawerId = drawerReference.id;
+    let drawer = drawerReference.drawer;
     const resolvedUrl = omoResolveAppUrl(url);
     const currentUrl = drawer.length ? String(drawer.data('omo-drawer-url') || '') : '';
-    const shouldReloadContent = !drawer.length || currentUrl !== resolvedUrl;
+    const canReuseCachedDrawer = omoCanReuseCachedPanelDrawer(drawer, resolvedUrl, currentUrl);
+    const shouldReloadContent = !drawer.length || (!canReuseCachedDrawer && currentUrl !== resolvedUrl);
     const hasLoadedContent = drawer.length
         ? drawer.find('.drawer-content').children().length > 0
         : false;
-    const isReopeningCachedStructureDrawer = id === 'drawer_structure'
+    const isReopeningCachedStructureDrawer = drawerId === 'drawer_structure'
         && drawer.length
         && !drawer.hasClass('open')
         && !shouldReloadContent
         && hasLoadedContent;
 
     clearDrawerRemoval(drawer);
+
+    if (drawerId === 'drawer_decisions' || omoIsDecisionIndexUrl(resolvedUrl) || omoIsDecisionIndexUrl(currentUrl)) {
+        omoTraceDecisionLoad('openDrawer', {
+            requestedDrawerId: id,
+            drawerId: drawerId,
+            resolvedUrl: resolvedUrl,
+            currentUrl: currentUrl,
+            drawerExists: drawer.length > 0,
+            drawerIsOpen: drawer.length ? drawer.hasClass('open') : false,
+            hasLoadedContent: hasLoadedContent,
+            canReuseCachedDrawer: canReuseCachedDrawer,
+            shouldReloadContent: shouldReloadContent
+        });
+    }
 
     // 👉 si déjà ouvert → on ferme tout et on stop
     if (drawer.length && drawer.hasClass('open') && !shouldReloadContent) {
@@ -961,7 +1088,7 @@ function openDrawer(id, url) {
     if (drawer.length === 0) {
 
         drawer = $(`
-            <div class="drawer" id="${id}">
+            <div class="drawer" id="${drawerId}">
                 <div class="drawer-content"></div>
             </div>
         `);
@@ -987,12 +1114,40 @@ function openDrawer(id, url) {
 
         requestAnimationFrame(() => {
             drawer.addClass('open');
+
+            if (drawerId === 'drawer_decisions' || omoIsDecisionIndexUrl(resolvedUrl)) {
+                requestAnimationFrame(() => {
+                    const node = drawer.get(0);
+                    const contentNode = drawer.find('.drawer-content').get(0);
+                    const decisionRoot = contentNode instanceof Element
+                        ? contentNode.querySelector('#omo-decisions-root')
+                        : null;
+                    const decisionList = decisionRoot instanceof Element
+                        ? decisionRoot.querySelector('[data-omo-decisions-list]')
+                        : null;
+                    const decisionState = decisionRoot instanceof Element
+                        ? decisionRoot.querySelector('[data-omo-decisions-state]')
+                        : null;
+
+                    omoTraceDecisionLoad('openDrawer:afterOpen', {
+                        requestedDrawerId: id,
+                        drawerId: drawerId,
+                        drawerIsOpen: drawer.hasClass('open'),
+                        drawerWidth: node ? Math.round(node.getBoundingClientRect().width) : null,
+                        drawerChildCount: contentNode ? contentNode.childElementCount : null,
+                        hasDecisionRoot: !!decisionRoot,
+                        listHidden: decisionList ? decisionList.hidden : null,
+                        stateHidden: decisionState ? decisionState.hidden : null
+                    });
+                });
+            }
         });
     });
 }
 
 function refreshDrawer(id, url) {
-    const drawer = $('#' + id);
+    const drawerReference = omoResolveDrawer(id);
+    const drawer = drawerReference.drawer;
     const resolvedUrl = omoResolveAppUrl(url);
 
     if (!drawer.length) {
@@ -1103,7 +1258,7 @@ function removeDrawerAfterTransition(drawer) {
 }
 
 function closeDrawer(id, removeAfterClose = false) {
-    const drawer = $('#' + id);
+    const drawer = omoResolveDrawer(id).drawer;
 
     if (!drawer.length) {
         return;
@@ -1129,11 +1284,12 @@ function closeAllDrawers(removeAfterClose = false) {
 }
 
 function resetDrawers(activeDrawerId = null) {
+    const normalizedActiveDrawerId = activeDrawerId ? omoNormalizeDrawerId(activeDrawerId) : null;
     $('.drawer').each(function () {
         const drawer = $(this);
         const drawerId = String(drawer.attr('id') || '');
 
-        if (activeDrawerId && drawer.attr('id') === activeDrawerId) {
+        if (normalizedActiveDrawerId && drawerId === normalizedActiveDrawerId) {
             return;
         }
 
@@ -1405,7 +1561,7 @@ function getSidebarMenuConfig(hash = null, oid = null, cid = null) {
     }
 
     return {
-        drawer: item.attr('data-drawer') || '',
+        drawer: omoNormalizeDrawerId(item.attr('data-drawer') || ''),
         url: item.attr('data-url') || '',
         navigationMode: String(item.attr('data-navigation-mode') || 'drawer').toLowerCase()
     };
@@ -1455,6 +1611,194 @@ function buildDrawerUrl(baseUrl, oid, cid = null) {
     }
 
     return omoResolveAppUrl(url);
+}
+
+function omoParseReusableDrawerUrl(url) {
+    let parsedUrl = null;
+
+    try {
+        parsedUrl = new URL(
+            String(url || ''),
+            document.baseURI || window.location.href || window.location.origin
+        );
+    } catch (error) {
+        return null;
+    }
+
+    if (!parsedUrl || !/\/api\/[^/?#]+\/index\.php$/i.test(parsedUrl.pathname || '')) {
+        return null;
+    }
+
+    const searchKeys = Array.from(parsedUrl.searchParams.keys());
+    if (searchKeys.some(function (key) {
+        return /^open_/i.test(String(key || ''));
+    })) {
+        return null;
+    }
+
+    return parsedUrl;
+}
+
+function omoExtractDrawerContextFromRoot(root) {
+    if (!(root instanceof Element)) {
+        return null;
+    }
+
+    let oidAttribute = null;
+    let cidAttribute = null;
+    Array.from(root.attributes || []).forEach(function (attribute) {
+        const attributeName = String(attribute && attribute.name ? attribute.name : '').trim().toLowerCase();
+        if (!oidAttribute && /^data-omo-[a-z0-9-]+-oid$/i.test(attributeName)) {
+            oidAttribute = attribute.value;
+            return;
+        }
+
+        if (!cidAttribute && /^data-omo-[a-z0-9-]+-cid$/i.test(attributeName)) {
+            cidAttribute = attribute.value;
+        }
+    });
+
+    if (oidAttribute === null || cidAttribute === null) {
+        return null;
+    }
+
+    return {
+        oid: Number(oidAttribute || 0),
+        cid: Number(omoNormalizeRouteCid(cidAttribute || 0) || 0)
+    };
+}
+
+function omoFindDrawerContextRoot(drawer) {
+    if (!drawer || !drawer.length) {
+        return null;
+    }
+
+    const content = drawer.find('.drawer-content').get(0);
+    if (!(content instanceof Element)) {
+        return null;
+    }
+
+    const directChildren = Array.from(content.children || []);
+    for (let index = 0; index < directChildren.length; index += 1) {
+        const context = omoExtractDrawerContextFromRoot(directChildren[index]);
+        if (context) {
+            return {
+                root: directChildren[index],
+                context: context
+            };
+        }
+    }
+
+    const descendants = content.querySelectorAll('*');
+    for (let index = 0; index < descendants.length; index += 1) {
+        const context = omoExtractDrawerContextFromRoot(descendants[index]);
+        if (context) {
+            return {
+                root: descendants[index],
+                context: context
+            };
+        }
+    }
+
+    return null;
+}
+
+function omoCanReuseCachedDecisionDrawer(drawer, resolvedUrl) {
+    if (!drawer || !drawer.length) {
+        return false;
+    }
+
+    if (String(drawer.attr('id') || '') !== 'drawer_decisions') {
+        return false;
+    }
+
+    const decisionRoot = drawer.find('#omo-decisions-root').get(0);
+    if (!(decisionRoot instanceof HTMLElement)) {
+        omoTraceDecisionLoad('reuseDecision:missingRoot', {
+            resolvedUrl: resolvedUrl,
+            currentUrl: String(drawer.data('omo-drawer-url') || '')
+        });
+        return false;
+    }
+
+    if (String(decisionRoot.getAttribute('data-omo-decisions-initialized') || '') !== '1') {
+        omoTraceDecisionLoad('reuseDecision:notInitialized', {
+            resolvedUrl: resolvedUrl,
+            currentUrl: String(drawer.data('omo-drawer-url') || ''),
+            initialized: String(decisionRoot.getAttribute('data-omo-decisions-initialized') || '')
+        });
+        return false;
+    }
+
+    const targetUrl = omoParseReusableDrawerUrl(resolvedUrl);
+    if (!targetUrl) {
+        omoTraceDecisionLoad('reuseDecision:invalidTargetUrl', {
+            resolvedUrl: resolvedUrl,
+            currentUrl: String(drawer.data('omo-drawer-url') || '')
+        });
+        return false;
+    }
+
+    const currentOid = Number(decisionRoot.getAttribute('data-omo-decision-oid') || 0);
+    const currentCid = Number(omoNormalizeRouteCid(decisionRoot.getAttribute('data-omo-decision-cid') || 0) || 0);
+    const targetOid = Number(targetUrl.searchParams.get('oid') || 0);
+    const targetCid = Number(omoNormalizeRouteCid(targetUrl.searchParams.get('cid') || 0) || 0);
+    const canReuse = currentOid > 0
+        && targetOid > 0
+        && currentOid === targetOid
+        && currentCid === targetCid;
+
+    omoTraceDecisionLoad('reuseDecision:contextCheck', {
+        resolvedUrl: resolvedUrl,
+        currentUrl: String(drawer.data('omo-drawer-url') || ''),
+        currentOid: currentOid,
+        currentCid: currentCid,
+        targetOid: targetOid,
+        targetCid: targetCid,
+        canReuse: canReuse
+    });
+
+    return canReuse;
+}
+
+function omoCanReuseCachedPanelDrawer(drawer, resolvedUrl, currentUrl = '') {
+    if (!drawer || !drawer.length) {
+        return false;
+    }
+
+    const hasLoadedContent = drawer.find('.drawer-content').children().length > 0;
+    if (!hasLoadedContent) {
+        return false;
+    }
+
+    if (String(drawer.attr('id') || '') === 'drawer_decisions') {
+        return omoCanReuseCachedDecisionDrawer(drawer, resolvedUrl);
+    }
+
+    const targetUrl = omoParseReusableDrawerUrl(resolvedUrl);
+    const activeUrl = omoParseReusableDrawerUrl(currentUrl);
+    if (!targetUrl || !activeUrl) {
+        return false;
+    }
+
+    if ((targetUrl.pathname || '') !== (activeUrl.pathname || '')) {
+        return false;
+    }
+
+    const drawerContext = omoFindDrawerContextRoot(drawer);
+    if (!drawerContext || !drawerContext.root || !drawerContext.context) {
+        return false;
+    }
+
+    const currentOid = Number(drawerContext.context.oid || 0);
+    const currentCid = Number(omoNormalizeRouteCid(drawerContext.context.cid || 0) || 0);
+    const targetOid = Number(targetUrl.searchParams.get('oid') || 0);
+    const targetCid = Number(omoNormalizeRouteCid(targetUrl.searchParams.get('cid') || 0) || 0);
+
+    return currentOid > 0
+        && targetOid > 0
+        && currentOid === targetOid
+        && currentCid === targetCid;
 }
 
 function updateExternalPanelDrawerPosition(drawer = null) {
@@ -2347,7 +2691,7 @@ function handleRoute() {
 
     const menuConfig = routeToken ? getSidebarMenuConfig(routeToken, oid, cid) : null;
     const activeDrawerId = routeToken
-        ? (menuConfig && menuConfig.drawer ? menuConfig.drawer : `drawer_${routeToken}`)
+        ? omoNormalizeDrawerId(menuConfig && menuConfig.drawer ? menuConfig.drawer : `drawer_${routeToken}`)
         : null;
     const activeBaseUrl = routeToken
         ? (menuConfig && menuConfig.url ? menuConfig.url : `api/${routeToken}/index.php`)
@@ -2962,13 +3306,34 @@ function omoExecuteFetchedScripts(container) {
         return;
     }
 
-    Array.from(container.querySelectorAll('script')).forEach(function (script) {
+    const scripts = Array.from(container.querySelectorAll('script'));
+    const containsDecisionRoot = !!container.querySelector('#omo-decisions-root');
+
+    if (containsDecisionRoot) {
+        omoTraceDecisionLoad('executeScripts:start', {
+            scriptCount: scripts.length,
+            executableScriptCount: scripts.filter(function (script) {
+                return omoIsExecutableScriptTag(script);
+            }).length
+        });
+    }
+
+    scripts.forEach(function (script, index) {
         if (!omoIsExecutableScriptTag(script)) {
             return;
         }
 
         const executableScript = document.createElement('script');
         const sourceUrl = String(script.getAttribute('src') || '').trim();
+
+        if (containsDecisionRoot) {
+            omoTraceDecisionLoad('executeScripts:script', {
+                index: index,
+                sourceUrl: sourceUrl || 'inline',
+                inlineLength: sourceUrl === '' ? String(script.textContent || '').length : 0
+            });
+        }
+
         Array.from(script.attributes).forEach(function (attribute) {
             executableScript.setAttribute(attribute.name, attribute.value);
         });
