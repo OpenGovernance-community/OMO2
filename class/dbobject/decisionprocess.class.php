@@ -1259,6 +1259,15 @@ class DecisionProcess extends DbObject
         $participantCandidates = [];
         $participantCandidateIds = [];
         $hasUnavailableExistingParticipant = false;
+        $restoreParticipant = null;
+        $buildPublicAccessParticipantParameters = static function ($identityMode) {
+            return [
+                'sync_source' => 'public_opt_in',
+                'created_from' => 'public_request',
+                'created_at' => (new \DateTimeImmutable('now'))->format('c'),
+                'identity_mode' => $identityMode === 'user' ? 'user' : 'email',
+            ];
+        };
         $registerParticipantCandidate = static function ($participant) use (&$participantCandidates, &$participantCandidateIds) {
             if (!($participant instanceof \dbObject\DecisionParticipant)) {
                 return;
@@ -1310,6 +1319,9 @@ class DecisionProcess extends DbObject
                     \dbObject\DecisionParticipant::STATUS_REVOKED,
                 ], true)) {
                     $hasUnavailableExistingParticipant = true;
+                    if (!($restoreParticipant instanceof \dbObject\DecisionParticipant)) {
+                        $restoreParticipant = $userParticipant;
+                    }
                 } else {
                     $registerParticipantCandidate($userParticipant);
                 }
@@ -1324,6 +1336,9 @@ class DecisionProcess extends DbObject
                 \dbObject\DecisionParticipant::STATUS_REVOKED,
             ], true)) {
                 $hasUnavailableExistingParticipant = true;
+                if (!($restoreParticipant instanceof \dbObject\DecisionParticipant)) {
+                    $restoreParticipant = $emailParticipant;
+                }
             } else {
                 $registerParticipantCandidate($emailParticipant);
             }
@@ -1366,6 +1381,33 @@ class DecisionProcess extends DbObject
             ];
         }
 
+        if ($restoreParticipant instanceof \dbObject\DecisionParticipant) {
+            $restoreParticipant->set('IDdecision_process', (int)$this->getId());
+            if (is_array($organizationMember)) {
+                $restoreParticipant->set('IDuser', (int)$organizationMember['user_id']);
+                $restoreParticipant->set('email', null);
+                $restoreParticipant->set('display_name', trim((string)$organizationMember['display_name']) !== '' ? trim((string)$organizationMember['display_name']) : $email);
+                $restoreParticipant->set('parameters', $buildPublicAccessParticipantParameters('user'));
+            } else {
+                $restoreParticipant->set('IDuser', null);
+                $restoreParticipant->set('email', $email);
+                $restoreParticipant->set('display_name', $email);
+                $restoreParticipant->set('parameters', $buildPublicAccessParticipantParameters('email'));
+            }
+            $restoreParticipant->set('role', \dbObject\DecisionParticipant::ROLE_PARTICIPANT);
+            $restoreParticipant->set('status', \dbObject\DecisionParticipant::STATUS_INVITED);
+            $restoreParticipant->set('active', 1);
+
+            $restoreResult = $restoreParticipant->save();
+            if (is_array($restoreResult) && !empty($restoreResult['status'])) {
+                return [
+                    'status' => true,
+                    'created' => false,
+                    'participant' => $restoreParticipant,
+                ];
+            }
+        }
+
         $participant = new \dbObject\DecisionParticipant();
         $participant->set('IDdecision_process', (int)$this->getId());
         if (is_array($organizationMember)) {
@@ -1380,12 +1422,7 @@ class DecisionProcess extends DbObject
         $participant->set('role', \dbObject\DecisionParticipant::ROLE_PARTICIPANT);
         $participant->set('status', \dbObject\DecisionParticipant::STATUS_INVITED);
         $participant->set('active', 1);
-        $participant->set('parameters', [
-            'sync_source' => 'public_opt_in',
-            'created_from' => 'public_request',
-            'created_at' => (new \DateTimeImmutable('now'))->format('c'),
-            'identity_mode' => is_array($organizationMember) ? 'user' : 'email',
-        ]);
+        $participant->set('parameters', $buildPublicAccessParticipantParameters(is_array($organizationMember) ? 'user' : 'email'));
 
         $saveResult = $participant->save();
         if (!is_array($saveResult) || empty($saveResult['status'])) {
