@@ -1,0 +1,281 @@
+:root {
+    --color-bg: #f7f8fa;
+    --color-surface: #ffffff;
+    --color-surface-alt: #e7e9ec;
+    --color-surface-raised: #ffffff;
+    --color-text: #1f2937;
+    --color-text-light: #6b7280;
+    --color-text-inverse: #ffffff;
+    --color-primary: #004663;
+    --color-border: #e5e7eb;
+    --color-border-strong: #cbd5e1;
+    --color-success: #16a34a;
+    --color-warning: #f59e0b;
+    --color-danger: #dc2626;
+
+    --color-palette-red: #c62828;
+    --color-palette-orange: #ef6c00;
+    --color-palette-yellow: #f9a825;
+    --color-palette-gray: #9ca3af;
+    --color-palette-green-light: #9ccc65;
+    --color-palette-green-medium: #43a047;
+    --color-palette-green-dark: #1b5e20;
+
+    --sidebar-bg: #111827;
+    --sidebar-icon: #f8fafc;
+
+    --black-bg-color: #000000;
+    --dark-bg-color: var(--color-primary);
+    --midsup-bg-color: var(--color-border-strong);
+    --midlow-bg-color: var(--color-surface-alt);
+    --light-bg-color: #f3f4f6;
+    --verylight-bg-color: var(--color-surface-alt);
+    --white-bg-color: var(--color-surface);
+    --dark-txt-color: var(--color-text);
+    --light-txt-color: var(--color-text-inverse);
+    --greyColor: var(--color-border);
+
+    --button-bg: var(--color-primary);
+    --button-bg-hover: color-mix(in srgb, var(--color-primary) 18%, white);
+    --button-border: color-mix(in srgb, var(--color-primary) 52%, var(--color-border));
+    --button-text: var(--color-text-inverse);
+    --button-text-hover: var(--color-text);
+
+    --tooltip-bg: #111827;
+    --tooltip-text: #ffffff;
+    --skeleton-base: #eeeeee;
+    --skeleton-highlight: #dddddd;
+
+    --topbar-bg: rgba(255,255,255,0.92);
+    --topbar-border: rgba(229,231,235,0.9);
+    --topbar-brand-bg: var(--color-surface);
+    --topbar-action-bg: #f3f4f6;
+    --topbar-action-bg-hover: #e5e7eb;
+    --topbar-action-text: #111827;
+    --topbar-avatar-bg: #111827;
+    --topbar-avatar-text: #ffffff;
+    --topbar-menu-bg: rgba(17,24,39,0.96);
+    --topbar-menu-border: rgba(255,255,255,0.08);
+    --topbar-menu-item-bg: rgba(255,255,255,0.06);
+    --topbar-menu-item-bg-hover: rgba(255,255,255,0.18);
+    --topbar-menu-text: #f9fafb;
+    --topbar-menu-text-muted: rgba(255,255,255,0.78);
+    --topbar-input-bg: rgba(255,255,255,0.96);
+    --topbar-input-border: #d1d5db;
+    --topbar-input-text: #111827;
+    --topbar-panel-bg: var(--color-surface);
+    --topbar-panel-border: var(--color-border);
+    --topbar-panel-muted: var(--color-text-light);
+    --topbar-mode-inactive-bg: #7f1d1d;
+    --topbar-mode-inactive-bg-hover: #991b1b;
+    --topbar-mode-inactive-border: #fca5a5;
+    --topbar-mode-inactive-text: #fef2f2;
+    --topbar-mode-active-bg: #166534;
+    --topbar-mode-active-bg-hover: #15803d;
+    --topbar-mode-active-border: #86efac;
+    --topbar-mode-active-text: #f0fdf4;
+
+    --chart-bg: var(--color-surface-alt);
+    --chart-root-fill: var(--color-primary);
+    --chart-group-fill: rgba(255, 255, 255, 0.22);
+    --chart-role-fill: #fbbf24;
+    --chart-role-fill-alt: #fb923c;
+    --chart-label-dark: var(--color-text);
+    --chart-label-light: #ffffff;
+    --chart-stroke-strong: #ffffff;
+    --chart-stroke-soft: color-mix(in srgb, var(--color-border) 35%, white);
+
+    --auth-primary: var(--color-primary);
+    --auth-page-bg: linear-gradient(180deg, #eef3f7 0%, #f8fafc 100%);
+    --auth-page-text: #1f2937;
+    --auth-page-muted: #4b5563;
+    --auth-surface: rgba(255,255,255,0.92);
+    --auth-surface-solid: rgba(255,255,255,0.96);
+    --auth-border: #e5e7eb;
+    --auth-input-bg: #ffffff;
+    --auth-input-muted-bg: #f3f4f6;
+    --auth-panel-bg: #f9fafb;
+    --auth-panel-text: #374151;
+    --auth-success: #047857;
+    --auth-danger-strong: #b91c1c;
+
+    --omo-overlay-drawer-backdrop: rgba(15, 23, 32, 0.22);
+}
+
+:root[data-theme="dark"] {
+    --color-bg: #0f1720;
+    --color-surface: #16202b;
+    --color-surface-alt: #101923;
+    --color-surface-raised: #1b2632;
+    --color-text: #e5edf7;
+    --color-text-light: #9fb0c3;
+    --color-text-inverse: #0f1720;
+    --color-primary: #7c9cff;
+    --color-border: #283548;
+    --color-border-strong: #3b4e67;
+    --color-success: #4ade80;
+    --color-warning: #fbbf24;
+    --color-danger: #f87171;
+
+    --color-palette-red: #ef5350;
+    --color-palette-orange: #ff9800;
+    --color-palette-yellow: #ffd54f;
+    --color-palette-gray: #94a3b8;
+    --color-palette-green-light: #aed581;
+    --color-palette-green-medium: #66bb6a;
+    --color-palette-green-dark: #2e7d32;
+
+    --sidebar-bg: #111827;
+    --sidebar-icon: #f8fafc;
+
+    --light-bg-color: #253346;
+    --tooltip-bg: #eff6ff;
+    --tooltip-text: #0f1720;
+    --skeleton-base: #243244;
+    --skeleton-highlight: #32455c;
+
+    --button-bg: color-mix(in srgb, var(--color-primary) 24%, var(--color-surface));
+    --button-bg-hover: color-mix(in srgb, var(--color-primary) 36%, var(--color-surface));
+    --button-border: color-mix(in srgb, var(--color-primary) 44%, var(--color-border));
+    --button-text: var(--color-text);
+    --button-text-hover: var(--color-text);
+
+    --topbar-bg: rgba(11,18,32,0.92);
+    --topbar-border: rgba(159,176,195,0.18);
+    --topbar-brand-bg: #111827;
+    --topbar-action-bg: #1b2632;
+    --topbar-action-bg-hover: #253346;
+    --topbar-action-text: #e5edf7;
+    --topbar-avatar-bg: #7c9cff;
+    --topbar-avatar-text: #0f1720;
+    --topbar-menu-bg: rgba(15,23,32,0.98);
+    --topbar-menu-border: rgba(159,176,195,0.18);
+    --topbar-menu-item-bg: rgba(159,176,195,0.1);
+    --topbar-menu-item-bg-hover: rgba(124,156,255,0.18);
+    --topbar-menu-text: #f8fafc;
+    --topbar-menu-text-muted: rgba(229,237,247,0.76);
+    --topbar-input-bg: #16202b;
+    --topbar-input-border: #32455c;
+    --topbar-input-text: #e5edf7;
+    --topbar-panel-bg: var(--color-surface);
+    --topbar-panel-border: var(--color-border);
+    --topbar-panel-muted: var(--color-text-light);
+    --topbar-mode-inactive-border: #f87171;
+    --topbar-mode-active-border: #4ade80;
+
+    --chart-group-fill: rgba(0, 0, 0, 0.14);
+    --chart-role-fill: #85610e;
+    --chart-role-fill-alt: #834214;
+    --chart-label-light: #000000;
+    --chart-stroke-strong: rgba(0,0,0,0.9);
+
+    --auth-page-bg: linear-gradient(180deg, #0f1720 0%, #111b27 100%);
+    --auth-page-text: #e5edf7;
+    --auth-page-muted: #9fb0c3;
+    --auth-surface: rgba(22,32,43,0.92);
+    --auth-surface-solid: rgba(22,32,43,0.96);
+    --auth-border: #283548;
+    --auth-input-bg: #16202b;
+    --auth-input-muted-bg: #1c2836;
+    --auth-panel-bg: #182432;
+    --auth-panel-text: #d7e3f1;
+    --auth-success: #34d399;
+    --auth-danger-strong: #f87171;
+}
+
+:root[data-color-style="turquoise"] {
+    --color-bg: #f0fdfa;
+    --color-surface: #f8fffe;
+    --color-surface-alt: #d9f7f2;
+    --color-surface-raised: #ffffff;
+    --color-text-light: #4b6b68;
+    --color-primary: #0f766e;
+    --color-border: #b9e7df;
+    --color-border-strong: #8fd6cb;
+
+    --midsup-bg-color: var(--color-border-strong);
+    --midlow-bg-color: var(--color-surface-alt);
+    --light-bg-color: #e6faf6;
+    --verylight-bg-color: var(--color-surface-alt);
+    --greyColor: var(--color-border);
+
+    --tooltip-bg: #134e4a;
+    --skeleton-base: #d7f3ee;
+    --skeleton-highlight: #edfdfa;
+
+    --topbar-bg: rgba(248,255,254,0.94);
+    --topbar-border: rgba(143,214,203,0.72);
+    --topbar-action-bg: #dcf7f1;
+    --topbar-action-bg-hover: #c5efe6;
+    --topbar-avatar-bg: #0f766e;
+    --topbar-menu-item-bg: rgba(15,118,110,0.08);
+    --topbar-input-bg: #f8fffe;
+    --topbar-input-border: #9edccf;
+    --topbar-panel-bg: var(--color-surface);
+    --topbar-panel-border: var(--color-border);
+    --topbar-panel-muted: var(--color-text-light);
+    --topbar-menu-item-bg-hover: rgba(15,118,110,0.18);
+
+    --chart-bg: var(--color-surface-alt);
+    --chart-stroke-soft: color-mix(in srgb, var(--color-border) 52%, white);
+
+    --auth-page-bg: linear-gradient(180deg, #edfdfa 0%, #f4fffd 100%);
+    --auth-page-muted: #456764;
+    --auth-surface: rgba(248,255,254,0.92);
+    --auth-surface-solid: rgba(248,255,254,0.97);
+    --auth-border: #b9e7df;
+    --auth-input-bg: #ffffff;
+    --auth-input-muted-bg: #dcf7f1;
+    --auth-panel-bg: #e7fbf7;
+    --auth-panel-text: #355654;
+}
+
+:root[data-theme="dark"][data-color-style="turquoise"] {
+    --color-bg: #081715;
+    --color-surface: #0f2220;
+    --color-surface-alt: #0a1b19;
+    --color-surface-raised: #13302d;
+    --color-text: #def7f3;
+    --color-text-light: #8bc3bc;
+    --color-primary: #5eead4;
+    --color-border: #1f4f49;
+    --color-border-strong: #2a6a62;
+
+    --light-bg-color: #153532;
+    --greyColor: var(--color-border);
+
+    --tooltip-bg: #ccfbf1;
+    --tooltip-text: #07211f;
+    --skeleton-base: #173431;
+    --skeleton-highlight: #214946;
+
+    --topbar-bg: rgba(6,24,22,0.94);
+    --topbar-border: rgba(94,234,212,0.2);
+    --topbar-action-bg: #13302d;
+    --topbar-action-bg-hover: #18403c;
+    --topbar-action-text: #def7f3;
+    --topbar-avatar-bg: #5eead4;
+    --topbar-avatar-text: #082f2b;
+    --topbar-menu-item-bg: rgba(94,234,212,0.08);
+    --topbar-input-bg: #102725;
+    --topbar-input-border: #2b6d65;
+    --topbar-input-text: #def7f3;
+    --topbar-panel-bg: var(--color-surface);
+    --topbar-panel-border: var(--color-border);
+    --topbar-panel-muted: var(--color-text-light);
+    --topbar-menu-item-bg-hover: rgba(94,234,212,0.16);
+
+    --chart-bg: var(--color-surface-alt);
+    --chart-stroke-soft: color-mix(in srgb, var(--color-border) 58%, black);
+
+    --auth-page-bg: linear-gradient(180deg, #071917 0%, #0b2220 100%);
+    --auth-page-text: #def7f3;
+    --auth-page-muted: #8bc3bc;
+    --auth-surface: rgba(15,34,32,0.94);
+    --auth-surface-solid: rgba(15,34,32,0.98);
+    --auth-border: #1f4f49;
+    --auth-input-bg: #102725;
+    --auth-input-muted-bg: #16312e;
+    --auth-panel-bg: #112a27;
+    --auth-panel-text: #d2f4ee;
+}

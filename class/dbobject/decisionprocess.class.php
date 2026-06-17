@@ -542,6 +542,41 @@ class DecisionProcess extends DbObject
         return $items;
     }
 
+    public function getPublicSelfRegistrationParticipants($activeOnly = true)
+    {
+        $participants = [];
+        foreach ($this->getParticipants((bool)$activeOnly) as $participant) {
+            if (!($participant instanceof \dbObject\DecisionParticipant)) {
+                continue;
+            }
+
+            $parameters = $participant->get('parameters');
+            if (!is_array($parameters)) {
+                $parameters = json_decode(trim((string)$parameters), true);
+            }
+            $parameters = is_array($parameters) ? $parameters : [];
+            if (trim((string)($parameters['sync_source'] ?? '')) !== 'public_opt_in') {
+                continue;
+            }
+
+            $participantStatus = \dbObject\DecisionParticipant::normalizeStatus($participant->get('status'));
+            if (in_array($participantStatus, [
+                \dbObject\DecisionParticipant::STATUS_DECLINED,
+                \dbObject\DecisionParticipant::STATUS_REVOKED,
+            ], true)) {
+                continue;
+            }
+
+            if ($activeOnly && (int)$participant->get('active') !== 1) {
+                continue;
+            }
+
+            $participants[] = $participant;
+        }
+
+        return $participants;
+    }
+
     public function getResponses($status = '')
     {
         $primaryGroup = $this->getPrimaryGroup(false);

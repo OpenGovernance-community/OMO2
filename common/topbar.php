@@ -228,12 +228,18 @@ function commonRenderTopbar(array $options = [])
                 'languageLabel' => (string)($options['profile']['preferences']['languageLabel'] ?? 'Langue'),
                 'languageOptions' => $languageOptions,
                 'themeLabel' => (string)($options['profile']['preferences']['themeLabel'] ?? 'Theme'),
+                'colorStyleLabel' => (string)($options['profile']['preferences']['colorStyleLabel'] ?? 'Couleur'),
+                'colorStyleDefaultLabel' => (string)($options['profile']['preferences']['colorStyleDefaultLabel'] ?? 'Noir et blanc'),
+                'colorStyleTurquoiseLabel' => (string)($options['profile']['preferences']['colorStyleTurquoiseLabel'] ?? 'Turquoise'),
                 'currentLocale' => (string)($options['profile']['preferences']['currentLocale'] ?? $currentLocalePreference),
                 'resolvedLocale' => (string)($options['profile']['preferences']['resolvedLocale'] ?? $currentLocale),
                 'systemLabel' => (string)($options['profile']['preferences']['systemLabel'] ?? 'Systeme'),
                 'themeSystemLabel' => (string)($options['profile']['preferences']['themeSystemLabel'] ?? 'Systeme'),
                 'themeLightLabel' => (string)($options['profile']['preferences']['themeLightLabel'] ?? 'Clair'),
                 'themeDarkLabel' => (string)($options['profile']['preferences']['themeDarkLabel'] ?? 'Sombre'),
+                'themeLightIconUrl' => (string)($options['profile']['preferences']['themeLightIconUrl'] ?? '/common/assets/icon-theme-sun.png'),
+                'themeDarkIconUrl' => (string)($options['profile']['preferences']['themeDarkIconUrl'] ?? '/common/assets/icon-theme-moon.png'),
+                'colorStyleIconUrl' => (string)($options['profile']['preferences']['colorStyleIconUrl'] ?? '/common/assets/icon-theme-palette.png'),
             ],
             'details' => [
                 'nameLabel' => (string)($options['profile']['details']['nameLabel'] ?? 'Nom'),
@@ -287,6 +293,14 @@ function commonRenderTopbar(array $options = [])
         )
     );
     $profileAvatarStyle = 'background-color: ' . $profileAvatarPalette['background'] . '; color: ' . $profileAvatarPalette['foreground'] . ';';
+    $currentLocaleCode = trim((string)$config['profile']['preferences']['currentLocale']);
+    if ($currentLocaleCode === '' || $currentLocaleCode === 'system') {
+        $currentLocaleCode = trim((string)$config['profile']['preferences']['resolvedLocale']);
+    }
+    if ($currentLocaleCode === '') {
+        $currentLocaleCode = 'fr';
+    }
+    $currentLanguageTileLabel = strtoupper(substr($currentLocaleCode, 0, 2));
 
     if (!$assetsLoaded) {
         commonRenderTopbarJqueryAssets();
@@ -472,23 +486,84 @@ function commonRenderTopbar(array $options = [])
                         <div class="common-topbar-profile-actions generic-section">
                             <?php if (!empty($config['profile']['preferences']['enabled'])): ?>
                                 <div class="common-topbar-profile-preferences">
-                                    <label class="common-topbar-profile-preferences__field">
-                                        <span class="common-topbar-profile-preferences__label"><?= htmlspecialchars($config['profile']['preferences']['languageLabel']) ?></span>
-                                        <select class="common-topbar-profile-preferences__select" data-topbar-language-select>
-                                            <option value="system" <?= $config['profile']['preferences']['currentLocale'] === 'system' ? 'selected' : '' ?>><?= htmlspecialchars($config['profile']['preferences']['systemLabel']) ?> (<?= htmlspecialchars(strtoupper((string)$config['profile']['preferences']['resolvedLocale'])) ?>)</option>
-                                            <?php foreach ($config['profile']['preferences']['languageOptions'] as $languageOption): ?>
-                                            <option value="<?= htmlspecialchars((string)($languageOption['locale'] ?? '')) ?>" <?= $config['profile']['preferences']['currentLocale'] === (string)($languageOption['locale'] ?? '') ? 'selected' : '' ?>><?= htmlspecialchars((string)($languageOption['label'] ?? '')) ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </label>
-                                    <label class="common-topbar-profile-preferences__field">
-                                        <span class="common-topbar-profile-preferences__label"><?= htmlspecialchars($config['profile']['preferences']['themeLabel']) ?></span>
-                                        <select class="common-topbar-profile-preferences__select" data-omo-theme-select>
-                                            <option value="system"><?= htmlspecialchars($config['profile']['preferences']['themeSystemLabel']) ?></option>
-                                            <option value="light"><?= htmlspecialchars($config['profile']['preferences']['themeLightLabel']) ?></option>
-                                            <option value="dark"><?= htmlspecialchars($config['profile']['preferences']['themeDarkLabel']) ?></option>
-                                        </select>
-                                    </label>
+                                    <div class="common-topbar-profile-preferences__list">
+                                        <div class="common-topbar-profile-preferences__field" data-topbar-preference-menu>
+                                            <span class="common-topbar-profile-preferences__label"><?= htmlspecialchars($config['profile']['preferences']['languageLabel']) ?></span>
+                                            <button
+                                                type="button"
+                                                class="common-topbar-profile-preference__trigger"
+                                                data-topbar-preference-trigger="language"
+                                                aria-haspopup="true"
+                                                aria-expanded="false"
+                                                aria-label="<?= htmlspecialchars($config['profile']['preferences']['languageLabel']) ?>"
+                                            >
+                                                <span class="common-topbar-profile-preference__tile common-topbar-profile-preference__tile--language"><?= htmlspecialchars($currentLanguageTileLabel) ?></span>
+                                            </button>
+                                            <div class="common-topbar-profile-preference__menu" data-topbar-preference-popup="language" hidden>
+                                                <button
+                                                    type="button"
+                                                    class="common-topbar-profile-preference__option<?= $config['profile']['preferences']['currentLocale'] === 'system' ? ' is-active' : '' ?>"
+                                                    data-topbar-language-option="system"
+                                                ><?= htmlspecialchars($config['profile']['preferences']['systemLabel']) ?> (<?= htmlspecialchars(strtoupper((string)$config['profile']['preferences']['resolvedLocale'])) ?>)</button>
+                                                <?php foreach ($config['profile']['preferences']['languageOptions'] as $languageOption): ?>
+                                                    <?php $languageOptionLocale = (string)($languageOption['locale'] ?? ''); ?>
+                                                    <button
+                                                        type="button"
+                                                        class="common-topbar-profile-preference__option<?= $config['profile']['preferences']['currentLocale'] === $languageOptionLocale ? ' is-active' : '' ?>"
+                                                        data-topbar-language-option="<?= htmlspecialchars($languageOptionLocale) ?>"
+                                                    ><?= htmlspecialchars((string)($languageOption['label'] ?? '')) ?></button>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+
+                                        <div class="common-topbar-profile-preferences__field" data-topbar-preference-menu>
+                                            <span class="common-topbar-profile-preferences__label"><?= htmlspecialchars($config['profile']['preferences']['themeLabel']) ?></span>
+                                            <button
+                                                type="button"
+                                                class="common-topbar-profile-preference__trigger"
+                                                data-topbar-preference-trigger="theme"
+                                                aria-haspopup="true"
+                                                aria-expanded="false"
+                                                aria-label="<?= htmlspecialchars($config['profile']['preferences']['themeLabel']) ?>"
+                                            >
+                                                <span
+                                                    class="common-topbar-profile-preference__tile common-topbar-profile-preference__tile--icon common-topbar-profile-preference__tile--theme"
+                                                    style="--topbar-theme-light-icon:url('<?= htmlspecialchars($config['profile']['preferences']['themeLightIconUrl'], ENT_QUOTES, 'UTF-8') ?>'); --topbar-theme-dark-icon:url('<?= htmlspecialchars($config['profile']['preferences']['themeDarkIconUrl'], ENT_QUOTES, 'UTF-8') ?>');"
+                                                >
+                                                    <span class="common-topbar-profile-preference__icon common-topbar-profile-preference__icon--theme-light" aria-hidden="true"></span>
+                                                    <span class="common-topbar-profile-preference__icon common-topbar-profile-preference__icon--theme-dark" aria-hidden="true"></span>
+                                                </span>
+                                            </button>
+                                            <div class="common-topbar-profile-preference__menu" data-topbar-preference-popup="theme" hidden>
+                                                <button type="button" class="common-topbar-profile-preference__option" data-topbar-theme-option="system"><?= htmlspecialchars($config['profile']['preferences']['themeSystemLabel']) ?></button>
+                                                <button type="button" class="common-topbar-profile-preference__option" data-topbar-theme-option="light"><?= htmlspecialchars($config['profile']['preferences']['themeLightLabel']) ?></button>
+                                                <button type="button" class="common-topbar-profile-preference__option" data-topbar-theme-option="dark"><?= htmlspecialchars($config['profile']['preferences']['themeDarkLabel']) ?></button>
+                                            </div>
+                                        </div>
+
+                                        <div class="common-topbar-profile-preferences__field common-topbar-profile-preferences__field--align-end" data-topbar-preference-menu>
+                                            <span class="common-topbar-profile-preferences__label"><?= htmlspecialchars($config['profile']['preferences']['colorStyleLabel']) ?></span>
+                                            <button
+                                                type="button"
+                                                class="common-topbar-profile-preference__trigger"
+                                                data-topbar-preference-trigger="color-style"
+                                                aria-haspopup="true"
+                                                aria-expanded="false"
+                                                aria-label="<?= htmlspecialchars($config['profile']['preferences']['colorStyleLabel']) ?>"
+                                            >
+                                                <span
+                                                    class="common-topbar-profile-preference__tile common-topbar-profile-preference__tile--icon common-topbar-profile-preference__tile--color-style"
+                                                    style="--topbar-palette-icon:url('<?= htmlspecialchars($config['profile']['preferences']['colorStyleIconUrl'], ENT_QUOTES, 'UTF-8') ?>');"
+                                                >
+                                                    <span class="common-topbar-profile-preference__icon common-topbar-profile-preference__icon--palette" aria-hidden="true"></span>
+                                                </span>
+                                            </button>
+                                            <div class="common-topbar-profile-preference__menu" data-topbar-preference-popup="color-style" hidden>
+                                                <button type="button" class="common-topbar-profile-preference__option is-active" data-topbar-color-style-option="mono"><?= htmlspecialchars($config['profile']['preferences']['colorStyleDefaultLabel']) ?></button>
+                                                <button type="button" class="common-topbar-profile-preference__option" data-topbar-color-style-option="turquoise"><?= htmlspecialchars($config['profile']['preferences']['colorStyleTurquoiseLabel']) ?></button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             <?php endif; ?>
                             <button type="button" class="common-topbar__menu-item common-topbar-profile-actions__button" data-topbar-profile-edit><?= htmlspecialchars($config['profile']['editLabel']) ?></button>
