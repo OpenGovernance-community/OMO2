@@ -94,14 +94,6 @@ foreach ($directMembers as $member) {
         font-weight: 700;
     }
 
-    .omo-holon-member-popup__select,
-    .omo-holon-member-popup__email {
-        --generic-form-control-border: var(--topbar-panel-border, #dbe3ef);
-        --generic-form-control-background: var(--topbar-panel-bg, #ffffff);
-        --generic-form-control-background-focus: var(--topbar-panel-bg, #ffffff);
-        --generic-form-control-color: inherit;
-    }
-
     .omo-holon-member-popup__hint {
         color: var(--topbar-panel-muted, #64748b);
         font-size: 0.92rem;

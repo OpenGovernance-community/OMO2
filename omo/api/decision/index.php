@@ -2602,7 +2602,7 @@ function showStateContainer(html, variant) {
     }
 
     elements.state.className = 'omo-decisions__state ' + (variant === 'empty'
-        ? 'generic-hero-panel generic-hero-panel--accent'
+        ? 'generic-hero-panel accent'
         : 'generic-section');
     elements.state.innerHTML = String(html || '');
     setVisible(elements.state, true);

@@ -88,10 +88,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .omo-access-request-popup__textarea {
         min-height: 132px;
         resize: vertical;
-        --generic-form-control-border: var(--topbar-panel-border, #dbe3ef);
-        --generic-form-control-background: var(--topbar-panel-bg, #ffffff);
-        --generic-form-control-background-focus: var(--topbar-panel-bg, #ffffff);
-        --generic-form-control-color: inherit;
     }
 
     .omo-access-request-popup__feedback {

@@ -1,23 +1,8 @@
+@import url('/common/assets/theme.css');
+
 :root {
-    /* COLORS */
-    --color-bg: #f7f8fa;
-    --color-surface: #ffffff;
-    --color-surface-alt: #e7e9ec;
-    --color-surface-raised: #ffffff;
-
-    --color-text: #1f2937;
-    --color-text-light: #6b7280;
-    --color-text-inverse: #ffffff;
-
-    --color-primary: #004663;
-
-    --color-border: #e5e7eb;
-    --color-border-strong: #cbd5e1;
-
     /* SIDEBAR */
     --sidebar-width: 48px;
-    --sidebar-bg: #111827;
-    --sidebar-icon: #ffffff;
 
     /* TOPBAR */
     --topbar-height: 48px;
@@ -28,38 +13,9 @@
     --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
     --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
 
-    /* FEEDBACK */
-    --tooltip-bg: #111827;
-    --tooltip-text: #ffffff;
-    --skeleton-base: #eee;
-    --skeleton-highlight: #ddd;
-
-    /* TOPBAR */
-    --topbar-bg: rgba(255,255,255,0.92);
-    --topbar-border: rgba(229,231,235,0.9);
-    --topbar-brand-bg: #ffffff;
-    --topbar-action-bg: #f3f4f6;
-    --topbar-action-bg-hover: #e5e7eb;
-    --topbar-action-text: #111827;
-    --topbar-avatar-bg: #111827;
-    --topbar-avatar-text: #ffffff;
-    --topbar-menu-bg: rgba(17,24,39,0.96);
-    --topbar-menu-border: rgba(255,255,255,0.08);
-    --topbar-menu-item-bg: rgba(255,255,255,0.06);
-    --topbar-menu-item-bg-hover: rgba(255,255,255,0.18);
-    --topbar-menu-text: #f9fafb;
-    --topbar-menu-text-muted: rgba(255,255,255,0.78);
-    --topbar-input-bg: rgba(255,255,255,0.96);
-    --topbar-input-border: #d1d5db;
-    --topbar-input-text: #111827;
-    --topbar-panel-bg: #ffffff;
-    --topbar-panel-border: #e5e7eb;
-    --topbar-panel-muted: #6b7280;
-
     /* NESTED DRAWERS */
     --omo-overlay-drawer-panel-max-width: 860px;
     --omo-overlay-drawer-enter-offset: 22px;
-    --omo-overlay-drawer-backdrop: rgba(15, 23, 32, 0.22);
     --omo-overlay-drawer-z-index: 40;
 
     /* RADIUS */
@@ -68,129 +24,11 @@
 
     /* TRANSITIONS */
     --transition: 0.2s ease;
-
-     /* CHART */
-    --chart-bg: var(--color-surface-alt);
-    --chart-root-fill: var(--color-primary);
-    --chart-group-fill: rgba(255, 255, 255, 0.22);;
-    --chart-role-fill: #fbbf24;
-    --chart-role-fill-alt: #fb923c;
-    --chart-label-dark: var(--color-text);
-    --chart-label-light: #ffffff;
-    --chart-stroke-strong: #ffffff;
-    --chart-stroke-soft: color-mix(in srgb, var(--color-border) 35%, white);
 }
 
 :root[data-theme="dark"] {
-    --color-bg: #0f1720;
-    --color-surface: #16202b;
-    --color-surface-alt: #101923;
-    --color-surface-raised: #1b2632;
-
-    --color-text: #e5edf7;
-    --color-text-light: #9fb0c3;
-    --color-text-inverse: #0f1720;
-
-    --color-primary: #7c9cff;
-
-    --color-border: #283548;
-    --color-border-strong: #3b4e67;
-
-    --sidebar-bg: #0b1220;
-    --sidebar-icon: #f8fafc;
-
     --shadow-sm: 0 1px 2px rgba(0,0,0,0.25);
     --shadow-md: 0 12px 30px rgba(0,0,0,0.32);
-
-    --tooltip-bg: #eff6ff;
-    --tooltip-text: #0f1720;
-    --skeleton-base: #243244;
-    --skeleton-highlight: #32455c;
-
-    --topbar-bg: rgba(11,18,32,0.92);
-    --topbar-border: rgba(159,176,195,0.18);
-    --topbar-brand-bg: #111827;
-    --topbar-action-bg: #1b2632;
-    --topbar-action-bg-hover: #253346;
-    --topbar-action-text: #e5edf7;
-    --topbar-avatar-bg: #7c9cff;
-    --topbar-avatar-text: #0f1720;
-    --topbar-menu-bg: rgba(15,23,32,0.98);
-    --topbar-menu-border: rgba(159,176,195,0.18);
-    --topbar-menu-item-bg: rgba(159,176,195,0.1);
-    --topbar-menu-item-bg-hover: rgba(124,156,255,0.18);
-    --topbar-menu-text: #f8fafc;
-    --topbar-menu-text-muted: rgba(229,237,247,0.76);
-    --topbar-input-bg: #16202b;
-    --topbar-input-border: #32455c;
-    --topbar-input-text: #e5edf7;
-    --topbar-panel-bg: #16202b;
-    --topbar-panel-border: #283548;
-    --topbar-panel-muted: #9fb0c3;
-
-    --chart-group-fill: rgba(0, 0, 0, 0.14);
-    --chart-role-fill: #85610e;
-    --chart-role-fill-alt: #834214;
-    --chart-label-light: #000;
-    --chart-label-dark: #FFF;
-    --chart-stroke-strong: rgba(0,0,0,0.9);
-}
-
-@media (prefers-color-scheme: dark) {
-    :root[data-theme-preference="system"] {
-        --color-bg: #0f1720;
-        --color-surface: #16202b;
-        --color-surface-alt: #101923;
-        --color-surface-raised: #1b2632;
-
-        --color-text: #e5edf7;
-        --color-text-light: #9fb0c3;
-        --color-text-inverse: #0f1720;
-
-        --color-primary: #7c9cff;
-
-        --color-border: #283548;
-        --color-border-strong: #3b4e67;
-
-        --sidebar-bg: #0b1220;
-        --sidebar-icon: #f8fafc;
-
-        --shadow-sm: 0 1px 2px rgba(0,0,0,0.25);
-        --shadow-md: 0 12px 30px rgba(0,0,0,0.32);
-
-        --tooltip-bg: #eff6ff;
-        --tooltip-text: #0f1720;
-        --skeleton-base: #243244;
-        --skeleton-highlight: #32455c;
-
-        --topbar-bg: rgba(11,18,32,0.92);
-        --topbar-border: rgba(159,176,195,0.18);
-        --topbar-brand-bg: #111827;
-        --topbar-action-bg: #1b2632;
-        --topbar-action-bg-hover: #253346;
-        --topbar-action-text: #e5edf7;
-        --topbar-avatar-bg: #7c9cff;
-        --topbar-avatar-text: #0f1720;
-        --topbar-menu-bg: rgba(15,23,32,0.98);
-        --topbar-menu-border: rgba(159,176,195,0.18);
-        --topbar-menu-item-bg: rgba(159,176,195,0.1);
-        --topbar-menu-item-bg-hover: rgba(124,156,255,0.18);
-        --topbar-menu-text: #f8fafc;
-        --topbar-menu-text-muted: rgba(229,237,247,0.76);
-        --topbar-input-bg: #16202b;
-        --topbar-input-border: #32455c;
-        --topbar-input-text: #e5edf7;
-        --topbar-panel-bg: #16202b;
-        --topbar-panel-border: #283548;
-        --topbar-panel-muted: #9fb0c3;
-
-        --chart-group-fill: rgba(0, 0, 0, 0.14);
-        --chart-role-fill: #85610e;
-        --chart-role-fill-alt: #834214;
-        --chart-label-light: #000;
-        --chart-label-dark: #FFF;
-        --chart-stroke-strong: rgba(0,0,0,0.9);
-    }
 }
 
 /* RESET */

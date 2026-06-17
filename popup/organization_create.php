@@ -285,7 +285,7 @@ $nextcloudConfigured = $organization->hasNextcloudDocumentStorage();
 </style>
 
 <div class="organization-create-view" id="organizationCreateRoot" data-render-mode="<?= $isFetchRequest ? 'fetch' : 'document' ?>">
-    <section class="organization-create-hero generic-hero-panel generic-hero-panel--accent">
+    <section class="organization-create-hero generic-hero-panel accent">
         <div class="organization-create-kicker generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars($heroKicker, ENT_QUOTES, 'UTF-8') ?></div>
         <h1><?= htmlspecialchars($heroTitle, ENT_QUOTES, 'UTF-8') ?></h1>
         <p><?= htmlspecialchars($heroText, ENT_QUOTES, 'UTF-8') ?></p>
