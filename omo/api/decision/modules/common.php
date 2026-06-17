@@ -1478,6 +1478,8 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
         $data['publicUrl'] = $decision->getGenericPublicAccessUrl('view');
         $data['sendEnabled'] = count($decision->getInvitationEmailRecipients()) > 0
             && DecisionProcess::normalizeStatus($decision->get('status')) !== DecisionProcess::STATUS_DRAFT;
+        $hasPublicSelfRegistration = method_exists($decision, 'isPublicSelfRegistrationEnabled')
+            && $decision->isPublicSelfRegistrationEnabled();
 
         $invitations = [];
         foreach ($decision->getInvitations(true) as $invitation) {
@@ -1486,13 +1488,17 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
             }
         }
         $data['invitationCount'] = count($invitations);
-        $data['hasExplicitInvitations'] = $data['invitationCount'] > 0;
+        $data['hasExplicitInvitations'] = $data['invitationCount'] > 0 || $hasPublicSelfRegistration;
 
         if (count($invitations) === 0) {
             $defaultSummary = t('decisions.invitations.default_scope', [], $lang, $sourceLang);
             if ($currentHolon instanceof Holon) {
                 $defaultSummary = rtrim($defaultSummary, '.');
                 $defaultSummary .= ' ' . $currentHolon->getTemplateLabel(true) . ' ' . trim((string)$currentHolon->getDisplayName()) . '.';
+            }
+
+            if ($hasPublicSelfRegistration) {
+                $defaultSummary .= ' Participation publique ouverte.';
             }
 
             $data['summary'] = $defaultSummary;
@@ -1538,7 +1544,7 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
         $summaryParts[] = $includesCurrentHolon
             ? t('decisions.invitations.current_scope_included', [], $lang, $sourceLang)
             : t('decisions.invitations.current_scope_excluded', [], $lang, $sourceLang);
-        if (method_exists($decision, 'isPublicSelfRegistrationEnabled') && $decision->isPublicSelfRegistrationEnabled()) {
+        if ($hasPublicSelfRegistration) {
             $summaryParts[] = 'Participation publique ouverte';
         }
 
