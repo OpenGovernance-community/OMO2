@@ -342,6 +342,121 @@ textarea.generic-form-control {
     display: none !important;
 }
 
+.omo-decision-invitations-editor {
+    display: grid;
+    gap: 14px;
+}
+
+.omo-decision-invitations-editor__intro,
+.omo-decision-invitations-editor__hint {
+    margin: 0;
+    color: var(--color-text-light, #64748b);
+    line-height: 1.5;
+}
+
+.omo-decision-invitations-editor__tabs {
+    --generic-tabs-panel-padding-block: 14px;
+    --generic-tabs-panel-padding-inline: 14px;
+}
+
+.omo-decision-invitations-editor__tab-panel {
+    display: grid;
+    gap: 10px;
+}
+
+.omo-decision-invitations-editor__checklist {
+    display: grid;
+    gap: 8px;
+    max-height: 360px;
+    overflow: auto;
+    padding-right: 4px;
+}
+
+.omo-decision-invitations-editor__member-list {
+    display: grid;
+    gap: 8px;
+    max-height: 260px;
+    overflow: auto;
+    padding-right: 4px;
+}
+
+.omo-decision-invitations-editor__check {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    flex: 1 1 auto;
+}
+
+.omo-decision-invitations-editor__check-meta {
+    display: grid;
+    gap: 2px;
+}
+
+.omo-decision-invitations-editor__check-type,
+.omo-decision-invitations-editor__member-email {
+    color: var(--color-text-light, #64748b);
+    font-size: 0.9rem;
+}
+
+.omo-decision-invitations-editor__textarea {
+    min-height: 120px;
+}
+
+.omo-decision-invitations-editor__tree-node {
+    display: grid;
+    gap: 6px;
+}
+
+.omo-decision-invitations-editor__tree-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.omo-decision-invitations-editor__tree-toggle,
+.omo-decision-invitations-editor__tree-spacer {
+    width: 28px;
+    min-width: 28px;
+    height: 28px;
+    margin-top: 2px;
+}
+
+.omo-decision-invitations-editor__tree-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-text-light, #64748b) 12%, transparent);
+    color: inherit;
+    cursor: pointer;
+}
+
+.omo-decision-invitations-editor__tree-toggle span {
+    display: inline-block;
+    transition: transform 0.18s ease;
+}
+
+.omo-decision-invitations-editor__tree-toggle[aria-expanded="false"] span {
+    transform: rotate(-90deg);
+}
+
+.omo-decision-invitations-editor__tree-spacer {
+    display: inline-block;
+}
+
+.omo-decision-invitations-editor__tree-children {
+    display: grid;
+    gap: 8px;
+    margin-left: 18px;
+    padding-left: 14px;
+    border-left: 1px solid var(--color-border, #dbe3ef);
+}
+
+.omo-decision-invitations-editor__tree-children[hidden] {
+    display: none !important;
+}
+
 .generic-file-list {
     --generic-file-list-columns: minmax(0, 2.55fr) minmax(120px, 0.95fr) minmax(160px, 1.45fr) minmax(110px, 0.95fr);
     --generic-file-list-border: color-mix(in srgb, var(--color-border, #d1d5db) 82%, white 18%);

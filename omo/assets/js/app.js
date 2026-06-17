@@ -761,7 +761,7 @@ function omoBuildMainRightPanelUrl(oid, cid = null) {
         : `api/personal_space.php?oid=${resolvedOrganizationId}`;
 
     const resolvedHolonId = Number(cid);
-    if (Number.isInteger(resolvedHolonId) && resolvedHolonId > 0) {
+    if (!omoIsShareMode() && Number.isInteger(resolvedHolonId) && resolvedHolonId > 0) {
         url += `&cid=${resolvedHolonId}`;
     }
 

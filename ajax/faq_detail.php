@@ -36,6 +36,8 @@ if ($isEditMode) {
 	$editorFields = array(
 		'question',
 		'answer',
+		'image',
+		'video',
 		'detail',
 		'displayorder',
 		'isactive',
@@ -107,6 +109,7 @@ if (\dbObject\FAQ::hasViewcountColumn()) {
 		<div style="color: #334155; line-height: 1.7; margin-bottom: 18px;">
 			<?= nl2br(htmlspecialchars((string)$faq->get("answer"))) ?>
 		</div>
+		<?php faqPopupRenderMediaBlock($faq); ?>
 		<?php if ((string)$faq->get("detail") !== ''): ?>
 			<div style="padding: 16px; border-radius: 14px; background: #f8fafc; color: #1e293b; line-height: 1.7;">
 				<?= (string)$faq->get("detail") ?>

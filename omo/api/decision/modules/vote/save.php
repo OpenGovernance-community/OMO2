@@ -264,12 +264,30 @@ try {
         }
     }
 
+    $inlineInvitationResult = omoDecisionPersistInlineInvitationDraft($decision, $context, $_POST);
+    if (!is_array($inlineInvitationResult) || empty($inlineInvitationResult['status'])) {
+        throw new InvalidArgumentException(
+            trim((string)($inlineInvitationResult['message'] ?? 'Impossible d enregistrer les invitations pour le moment.'))
+        );
+    }
+
     $syncResult = $decision->syncParticipantsFromInvitations();
     if (!is_array($syncResult) || empty($syncResult['status'])) {
         throw new RuntimeException('participant_sync_failed');
     }
 
     $pdo->commit();
+} catch (InvalidArgumentException $exception) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+
+    omoDecisionModuleJsonResponse(422, [
+        'status' => false,
+        'message' => trim((string)$exception->getMessage()) !== ''
+            ? trim((string)$exception->getMessage())
+            : 'Impossible d enregistrer les invitations pour le moment.',
+    ]);
 } catch (Throwable $exception) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();

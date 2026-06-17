@@ -77,6 +77,10 @@ CREATE TABLE IF NOT EXISTS `search_job` (
     KEY `idx_search_job_creation` (`datecreation`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+ALTER TABLE `faq`
+  ADD COLUMN IF NOT EXISTS `image` varchar(1000) DEFAULT NULL AFTER `answer`,
+  ADD COLUMN IF NOT EXISTS `video` varchar(1000) DEFAULT NULL AFTER `image`;
+
 INSERT INTO `translation_languages` (`locale`, `name`, `native_name`, `sort_order`, `active`, `is_source`) VALUES
     ('fr', 'Francais', 'Francais', 10, 1, 1),
     ('en', 'Anglais', 'English', 20, 1, 0),

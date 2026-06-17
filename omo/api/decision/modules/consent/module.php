@@ -388,8 +388,6 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                     </template>
                 </div>
 
-                <?= omoDecisionRenderInvitationSection($decision, $context, $lang, $sourceLang, $escape, 'omo-decision-consent__invitation-summary') ?>
-
                 <div class="generic-soft-panel generic-soft-panel--stack">
                     <div class="omo-decision-consent__proposal-main">
                         <span class="generic-card-title"><?= $escape(t('decisions.consent.field.proposals', [], $lang, $sourceLang)) ?></span>
@@ -425,6 +423,8 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-consent-proposal-add <?= $canEditProposals ? '' : 'disabled' ?>><?= $escape(t('decisions.consent.field.proposals_add', [], $lang, $sourceLang)) ?></button>
                     </div>
                 </div>
+
+                <?= omoDecisionRenderInvitationSection($decision, $context, $lang, $sourceLang, $escape, 'omo-decision-consent__invitation-summary') ?>
 
                 <div class="omo-decision-consent__footer">
                     <button type="submit" class="generic-action-button generic-action-button--main" data-omo-decision-consent-submit><?= $escape($decision instanceof DecisionProcess ? t('decisions.consent.action.save', [], $lang, $sourceLang) : t('decisions.consent.action.create', [], $lang, $sourceLang)) ?></button>
@@ -624,6 +624,10 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                     const consultationSummary = form.querySelector('[data-omo-decision-consent-consultation-summary] span:last-child');
                     if (!payloadNode || !proposalList) {
                         return;
+                    }
+
+                    if (typeof window.omoDecisionInitInvitationEditors === 'function') {
+                        window.omoDecisionInitInvitationEditors(form);
                     }
 
                     let payload = {};
