@@ -22,8 +22,10 @@ class FAQ extends DbObject
 			[['IDorganization', 'IDholon'], 'fk'],
 			[['positive_score', 'negative_score', 'reliability'], 'float'],
 			[['question'], 'string'],
+			[['video'], 'string'],
 			[['answer'], 'text'],
 			[['detail'], 'html'],
+			[['image'], 'image'],
 			[['isactive'], 'boolean'],
 			[['created', 'updated', 'reliability_updated_at', 'score_decayed_at'], 'datetime'],
 			[['id'], 'safe'],
@@ -40,6 +42,8 @@ class FAQ extends DbObject
 			'question' => 'Question',
 			'detail' => 'Reponse complete',
 			'answer' => 'Reponse courte',
+			'image' => 'Image',
+			'video' => 'Video',
 			'displayorder' => 'Ordre',
 			'isactive' => 'Active',
 			'created' => 'Creee le',
@@ -58,6 +62,15 @@ class FAQ extends DbObject
 	{
 		return [
 			'question' => 255,
+			'video' => 1000,
+			'image' => [480, 270],
+		];
+	}
+
+	public static function attributePlaceholder()
+	{
+		return [
+			'video' => 'https://vimeo.com/...',
 		];
 	}
 
@@ -781,6 +794,69 @@ class FAQ extends DbObject
 	public function getShortAnswer($length = 120)
 	{
 		return mb_strimwidth(strip_tags((string)$this->get("answer")), 0, $length, "...");
+	}
+
+	public static function buildEmbeddedVideoUrl($url)
+	{
+		$url = trim((string)$url);
+
+		if ($url === '') {
+			return '';
+		}
+
+		if (preg_match('#player\.vimeo\.com/video/(\d+)(?:[?&]h=([a-zA-Z0-9]+))?#i', $url, $matches)) {
+			$videoId = trim((string)($matches[1] ?? ''));
+			$hash = trim((string)($matches[2] ?? ''));
+
+			if ($videoId === '') {
+				return '';
+			}
+
+			return $hash !== ''
+				? 'https://player.vimeo.com/video/' . $videoId . '?h=' . $hash
+				: 'https://player.vimeo.com/video/' . $videoId;
+		}
+
+		if (preg_match('#videos/(\d+)/([a-zA-Z0-9]+)#i', $url, $matches)) {
+			$videoId = trim((string)($matches[1] ?? ''));
+			$hash = trim((string)($matches[2] ?? ''));
+
+			if ($videoId === '' || $hash === '') {
+				return '';
+			}
+
+			return 'https://player.vimeo.com/video/' . $videoId . '?h=' . $hash;
+		}
+
+		if (preg_match('#vimeo\.com/(?:video/)?(\d+)(?:$|[?/])#i', $url, $matches)) {
+			$videoId = trim((string)($matches[1] ?? ''));
+			return $videoId !== ''
+				? 'https://player.vimeo.com/video/' . $videoId
+				: '';
+		}
+
+		return '';
+	}
+
+	public function getEmbeddedVideoUrl()
+	{
+		return self::buildEmbeddedVideoUrl($this->get('video'));
+	}
+
+	public function getMediaDisplayData()
+	{
+		$imageUrl = trim((string)$this->get('image'));
+		$videoUrl = trim((string)$this->get('video'));
+		$embeddedVideoUrl = $this->getEmbeddedVideoUrl();
+
+		return array(
+			'hasImage' => $imageUrl !== '',
+			'imageUrl' => $imageUrl,
+			'hasVideo' => $videoUrl !== '',
+			'videoUrl' => $videoUrl,
+			'embeddedVideoUrl' => $embeddedVideoUrl,
+			'hasMedia' => $imageUrl !== '' || $videoUrl !== '',
+		);
 	}
 }
 

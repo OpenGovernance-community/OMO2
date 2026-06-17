@@ -186,6 +186,27 @@ class DecisionParticipant extends DbObject
         return $item;
     }
 
+    protected function getRootParametersArray()
+    {
+        $parameters = $this->get('parameters');
+        if (is_array($parameters)) {
+            return $parameters;
+        }
+
+        $parameters = trim((string)$parameters);
+        if ($parameters === '') {
+            return [];
+        }
+
+        $decoded = json_decode($parameters, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    protected static function normalizePublicAccessCode($value)
+    {
+        return preg_replace('/[^0-9]/', '', trim((string)$value));
+    }
+
     protected static function generateAccessToken()
     {
         for ($attempt = 0; $attempt < 5; $attempt += 1) {
@@ -263,7 +284,159 @@ class DecisionParticipant extends DbObject
 
         $token = self::generateAccessToken();
         $this->set('access_token', $token);
+        if ((int)$this->getId() > 0) {
+            $saveResult = $this->save();
+            if (!is_array($saveResult) || empty($saveResult['status'])) {
+                $this->set('access_token', '');
+                return '';
+            }
+        }
+
         return $token;
+    }
+
+    public function issuePublicAccessCode($ttlSeconds = 900)
+    {
+        if ((int)$this->getId() <= 0) {
+            return [
+                'status' => false,
+                'message' => 'The decision participant must be saved before issuing a public access code.',
+            ];
+        }
+
+        $ttlSeconds = max(300, (int)$ttlSeconds);
+        $code = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $issuedAt = new \DateTimeImmutable('now');
+        $expiresAt = $issuedAt->modify('+' . $ttlSeconds . ' seconds');
+
+        $parameters = $this->getRootParametersArray();
+        $parameters['public_access_code'] = [
+            'hash' => password_hash(self::normalizePublicAccessCode($code), PASSWORD_DEFAULT),
+            'issued_at' => $issuedAt->format('c'),
+            'expires_at' => $expiresAt->format('c'),
+        ];
+
+        $this->set('parameters', $parameters);
+        $saveResult = $this->save();
+        if (!is_array($saveResult) || empty($saveResult['status'])) {
+            return [
+                'status' => false,
+                'message' => 'The public access code could not be saved.',
+            ];
+        }
+
+        return [
+            'status' => true,
+            'code' => $code,
+            'issued_at' => $issuedAt,
+            'expires_at' => $expiresAt,
+        ];
+    }
+
+    public function clearPublicAccessCode()
+    {
+        $parameters = $this->getRootParametersArray();
+        if (!isset($parameters['public_access_code'])) {
+            return true;
+        }
+
+        unset($parameters['public_access_code']);
+        $this->set('parameters', $parameters);
+        $saveResult = $this->save();
+        return is_array($saveResult) && !empty($saveResult['status']);
+    }
+
+    public function getPublicAccessCodeState()
+    {
+        $parameters = $this->getRootParametersArray();
+        $state = isset($parameters['public_access_code']) && is_array($parameters['public_access_code'])
+            ? $parameters['public_access_code']
+            : [];
+        $hash = trim((string)($state['hash'] ?? ''));
+        $expiresAtRaw = trim((string)($state['expires_at'] ?? ''));
+        $expiresAt = null;
+
+        if ($expiresAtRaw !== '') {
+            try {
+                $expiresAt = new \DateTimeImmutable($expiresAtRaw);
+            } catch (\Throwable $exception) {
+                $expiresAt = null;
+            }
+        }
+
+        $isIssued = ($hash !== '' && $expiresAtRaw !== '');
+        $isExpired = !$isIssued
+            || !($expiresAt instanceof \DateTimeInterface)
+            || $expiresAt < new \DateTimeImmutable('now');
+
+        return [
+            'hash' => $hash,
+            'expires_at_raw' => $expiresAtRaw,
+            'expires_at' => $expiresAt,
+            'is_issued' => $isIssued,
+            'is_expired' => $isExpired,
+            'is_usable' => $isIssued && !$isExpired,
+        ];
+    }
+
+    public function hasPublicAccessCode($onlyUsable = false)
+    {
+        $state = $this->getPublicAccessCodeState();
+        if (!$onlyUsable) {
+            return !empty($state['is_issued']);
+        }
+
+        return !empty($state['is_usable']);
+    }
+
+    public function verifyPublicAccessCode($value, $consume = true)
+    {
+        $state = $this->getPublicAccessCodeState();
+        $hash = trim((string)($state['hash'] ?? ''));
+        $expiresAtRaw = trim((string)($state['expires_at_raw'] ?? ''));
+        $normalizedCode = self::normalizePublicAccessCode($value);
+
+        if ($hash === '' || $expiresAtRaw === '') {
+            return [
+                'status' => false,
+                'reason' => 'missing_code',
+            ];
+        }
+
+        if ($normalizedCode === '') {
+            return [
+                'status' => false,
+                'reason' => 'empty_code',
+            ];
+        }
+
+        $expiresAt = $state['expires_at'] ?? null;
+
+        if (!($expiresAt instanceof \DateTimeInterface) || $expiresAt < new \DateTimeImmutable('now')) {
+            return [
+                'status' => false,
+                'reason' => 'expired_code',
+            ];
+        }
+
+        if (!password_verify($normalizedCode, $hash)) {
+            return [
+                'status' => false,
+                'reason' => 'invalid_code',
+            ];
+        }
+
+        if ($consume && !$this->clearPublicAccessCode()) {
+            return [
+                'status' => false,
+                'reason' => 'consume_failed',
+            ];
+        }
+
+        return [
+            'status' => true,
+            'reason' => 'verified',
+        ];
     }
 
     public function markInvitationSent($dateTime = null)
@@ -286,15 +459,35 @@ class DecisionParticipant extends DbObject
         return $this->save();
     }
 
-    public function getPublicAccessUrl()
+    public static function buildPublicAccessPathFromToken($token, $intent = '')
     {
-        $token = $this->ensureAccessToken();
-        return \commonBuildUrl('/common/decision_participation.php?token=' . rawurlencode($token), \commonGetRequestHost());
+        $token = trim((string)$token);
+        if ($token === '') {
+            return '/common/decision_participation.php';
+        }
+
+        $path = '/decision/access/' . rawurlencode($token);
+        $intent = trim((string)$intent);
+        if ($intent === 'participate') {
+            $path .= '/participate';
+        }
+
+        return $path;
     }
 
-    public function getPublicInvitationUrl()
+    public function getPublicAccessUrl($intent = '')
     {
-        return $this->getPublicAccessUrl();
+        $token = $this->ensureAccessToken();
+        if ($token === '') {
+            return '';
+        }
+
+        return \commonBuildUrl(self::buildPublicAccessPathFromToken($token, $intent), \commonGetRequestHost());
+    }
+
+    public function getPublicInvitationUrl($intent = '')
+    {
+        return $this->getPublicAccessUrl($intent);
     }
 }
 

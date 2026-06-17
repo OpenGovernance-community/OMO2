@@ -37,11 +37,8 @@ if (!function_exists('choiceBuildParticipantDrawerUrl')) {
             }
         }
 
-        return '/common/decision_participation.php?' . http_build_query([
-            'token' => $token,
-            'intent' => trim((string)$intent) !== '' ? trim((string)$intent) : 'view',
-            'embedded' => 1,
-        ]);
+        $path = DecisionParticipant::buildPublicAccessPathFromToken($token, $intent);
+        return $path . '?embedded=1';
     }
 }
 

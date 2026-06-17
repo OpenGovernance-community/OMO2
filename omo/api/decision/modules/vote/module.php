@@ -805,8 +805,6 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                         </template>
                     </div>
 
-                    <?= omoDecisionRenderInvitationSection($decision, $context, $lang, $sourceLang, $escape, 'omo-decision-vote__invitation-summary') ?>
-
                     <label class="omo-decision-vote__field">
                         <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.proposals', [], $lang, $sourceLang)) ?></span>
                         <div class="omo-decision-vote__proposal-list" data-omo-decision-vote-proposal-list>
@@ -885,6 +883,8 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                         </button>
                         <small class="omo-decision-vote__hint"><?= $escape(t('decisions.vote.field.proposals_hint', [], $lang, $sourceLang)) ?></small>
                     </label>
+
+                    <?= omoDecisionRenderInvitationSection($decision, $context, $lang, $sourceLang, $escape, 'omo-decision-vote__invitation-summary') ?>
 
                     <?php if ($isEditable): ?>
                     <div class="omo-decision-vote__footer">
@@ -1150,6 +1150,10 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
 
                         if (!payloadNode || !proposalList) {
                             return;
+                        }
+
+                        if (typeof window.omoDecisionInitInvitationEditors === 'function') {
+                            window.omoDecisionInitInvitationEditors(form);
                         }
 
                         let payload = {};

@@ -817,6 +817,88 @@ class DecisionProcess extends DbObject
         return is_array($saveResult) && !empty($saveResult['status']);
     }
 
+    public function getPublicAccessSettings()
+    {
+        $parameters = $this->getRootParametersArray();
+        $settings = $parameters['decision_public_access'] ?? [];
+        if (!is_array($settings)) {
+            $settings = [];
+        }
+
+        return [
+            'allow_self_registration' => !empty($settings['allow_self_registration']),
+        ];
+    }
+
+    public function isPublicSelfRegistrationEnabled()
+    {
+        $settings = $this->getPublicAccessSettings();
+        return !empty($settings['allow_self_registration']);
+    }
+
+    public function savePublicAccessSettings(array $settings)
+    {
+        $parameters = $this->getRootParametersArray();
+        $parameters['decision_public_access'] = [
+            'allow_self_registration' => !empty($settings['allow_self_registration']) ? 1 : 0,
+        ];
+
+        return $this->persistRootParametersArray($parameters);
+    }
+
+    public function setPublicSelfRegistrationEnabled($enabled)
+    {
+        return $this->savePublicAccessSettings([
+            'allow_self_registration' => !empty($enabled),
+        ]);
+    }
+
+    protected function findActiveOrganizationMemberByEmail($email)
+    {
+        $organizationId = (int)$this->get('IDorganization');
+        $email = trim(mb_strtolower((string)$email, 'UTF-8'));
+        if ($organizationId <= 0 || $email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return null;
+        }
+
+        $row = self::fetchRow(
+            "SELECT
+                uo.`IDuser` AS `user_id`,
+                COALESCE(NULLIF(uo.`email`, ''), u.`email`) AS `scoped_email`,
+                TRIM(CONCAT(COALESCE(u.`firstname`, ''), ' ', COALESCE(u.`lastname`, ''))) AS `display_name`,
+                u.`username` AS `username`
+             FROM `user_organization` uo
+             INNER JOIN `user` u ON u.`id` = uo.`IDuser`
+             WHERE uo.`IDorganization` = :organization_id
+               AND uo.`active` = 1
+               AND LOWER(COALESCE(NULLIF(uo.`email`, ''), u.`email`)) = :email
+             ORDER BY uo.`id` DESC
+             LIMIT 1",
+            [
+                'organization_id' => $organizationId,
+                'email' => $email,
+            ]
+        );
+
+        if (!is_array($row) || (int)($row['user_id'] ?? 0) <= 0) {
+            return null;
+        }
+
+        $displayName = trim((string)($row['display_name'] ?? ''));
+        if ($displayName === '') {
+            $displayName = trim((string)($row['username'] ?? ''));
+        }
+        if ($displayName === '') {
+            $displayName = trim((string)($row['scoped_email'] ?? ''));
+        }
+
+        return [
+            'user_id' => (int)$row['user_id'],
+            'email' => trim((string)($row['scoped_email'] ?? '')),
+            'display_name' => $displayName,
+        ];
+    }
+
     public function getOrganizationObject()
     {
         $organizationId = (int)$this->get('IDorganization');
@@ -864,25 +946,28 @@ class DecisionProcess extends DbObject
         return \commonBuildUrl($path, $targetHost);
     }
 
+    public static function buildGenericPublicAccessPath($organizationId, $decisionId, $holonId = 0, $intent = 'view')
+    {
+        $path = '/decision/public/' . (int)$organizationId . '/' . (int)$decisionId;
+        $holonId = (int)$holonId;
+        if ($holonId > 0) {
+            $path .= '/c/' . $holonId;
+        }
+
+        $intent = trim((string)$intent);
+        if ($intent === 'participate') {
+            $path .= '/participate';
+        }
+
+        return $path;
+    }
+
     public function getGenericPublicAccessUrl($intent = 'view')
     {
         $organization = $this->getOrganizationObject();
         $organizationId = (int)$this->get('IDorganization');
-        $query = [
-            'public' => '1',
-            'oid' => $organizationId,
-            'id' => (int)$this->getId(),
-        ];
-
         $holonId = (int)$this->get('IDholon');
-        if ($holonId > 0) {
-            $query['cid'] = $holonId;
-        }
-
-        $intent = trim((string)$intent);
-        if ($intent !== '') {
-            $query['intent'] = $intent;
-        }
+        $path = self::buildGenericPublicAccessPath($organizationId, (int)$this->getId(), $holonId, $intent);
 
         $targetHost = \commonGetRequestHost();
         if ($organization) {
@@ -894,7 +979,7 @@ class DecisionProcess extends DbObject
             }
         }
 
-        return \commonBuildUrl('/common/decision_participation.php?' . http_build_query($query), $targetHost);
+        return \commonBuildUrl($path, $targetHost);
     }
 
     public function getInvitationEmailState()
@@ -1153,6 +1238,175 @@ class DecisionProcess extends DbObject
         return null;
     }
 
+    public function resolvePublicRequestParticipantByEmail($email, $allowCreateIfMissing = true)
+    {
+        $email = trim(mb_strtolower((string)$email, 'UTF-8'));
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return [
+                'status' => false,
+                'reason' => 'invalid_email',
+            ];
+        }
+
+        $syncResult = $this->syncParticipantsFromInvitations();
+        if (!is_array($syncResult) || empty($syncResult['status'])) {
+            return [
+                'status' => false,
+                'reason' => 'sync_failed',
+            ];
+        }
+
+        $participantCandidates = [];
+        $participantCandidateIds = [];
+        $registerParticipantCandidate = static function ($participant) use (&$participantCandidates, &$participantCandidateIds) {
+            if (!($participant instanceof \dbObject\DecisionParticipant)) {
+                return;
+            }
+
+            $participantId = (int)$participant->getId();
+            if ($participantId <= 0 || isset($participantCandidateIds[$participantId])) {
+                return;
+            }
+
+            if ((int)$participant->get('active') !== 1) {
+                return;
+            }
+
+            $participantStatus = \dbObject\DecisionParticipant::normalizeStatus($participant->get('status'));
+            if (in_array($participantStatus, [
+                \dbObject\DecisionParticipant::STATUS_DECLINED,
+                \dbObject\DecisionParticipant::STATUS_REVOKED,
+            ], true)) {
+                return;
+            }
+
+            $participantCandidates[] = $participant;
+            $participantCandidateIds[$participantId] = true;
+        };
+
+        foreach ($this->getInvitationEmailRecipients(true) as $recipient) {
+            if (trim(mb_strtolower((string)($recipient['email'] ?? ''), 'UTF-8')) !== $email) {
+                continue;
+            }
+
+            foreach ((array)($recipient['participant_ids'] ?? []) as $participantId) {
+                $participant = new \dbObject\DecisionParticipant();
+                if (!$participant->load((int)$participantId) || (int)$participant->get('active') !== 1) {
+                    continue;
+                }
+
+                $registerParticipantCandidate($participant);
+            }
+        }
+
+        $organizationMember = $this->findActiveOrganizationMemberByEmail($email);
+        if (is_array($organizationMember)) {
+            $userParticipant = \dbObject\DecisionParticipant::findByDecisionAndUser((int)$this->getId(), (int)$organizationMember['user_id']);
+            if ($userParticipant instanceof \dbObject\DecisionParticipant) {
+                $participantStatus = \dbObject\DecisionParticipant::normalizeStatus($userParticipant->get('status'));
+                if ((int)$userParticipant->get('active') !== 1 || in_array($participantStatus, [
+                    \dbObject\DecisionParticipant::STATUS_DECLINED,
+                    \dbObject\DecisionParticipant::STATUS_REVOKED,
+                ], true)) {
+                    return [
+                        'status' => false,
+                        'reason' => 'participant_unavailable',
+                    ];
+                }
+
+                $registerParticipantCandidate($userParticipant);
+            }
+        }
+
+        $emailParticipant = \dbObject\DecisionParticipant::findByDecisionAndEmail((int)$this->getId(), $email);
+        if ($emailParticipant instanceof \dbObject\DecisionParticipant) {
+            $participantStatus = \dbObject\DecisionParticipant::normalizeStatus($emailParticipant->get('status'));
+            if ((int)$emailParticipant->get('active') !== 1 || in_array($participantStatus, [
+                \dbObject\DecisionParticipant::STATUS_DECLINED,
+                \dbObject\DecisionParticipant::STATUS_REVOKED,
+            ], true)) {
+                return [
+                    'status' => false,
+                    'reason' => 'participant_unavailable',
+                ];
+            }
+
+            $registerParticipantCandidate($emailParticipant);
+        }
+
+        if (count($participantCandidates) > 0) {
+            if (!$allowCreateIfMissing) {
+                foreach ($participantCandidates as $participantCandidate) {
+                    if ($participantCandidate->hasPublicAccessCode(true)) {
+                        return [
+                            'status' => true,
+                            'created' => false,
+                            'participant' => $participantCandidate,
+                        ];
+                    }
+                }
+
+                foreach ($participantCandidates as $participantCandidate) {
+                    if ($participantCandidate->hasPublicAccessCode(false)) {
+                        return [
+                            'status' => true,
+                            'created' => false,
+                            'participant' => $participantCandidate,
+                        ];
+                    }
+                }
+            }
+
+            return [
+                'status' => true,
+                'created' => false,
+                'participant' => $participantCandidates[0],
+            ];
+        }
+
+        if (!$allowCreateIfMissing || !$this->isPublicSelfRegistrationEnabled()) {
+            return [
+                'status' => false,
+                'reason' => 'not_allowed',
+            ];
+        }
+
+        $participant = new \dbObject\DecisionParticipant();
+        $participant->set('IDdecision_process', (int)$this->getId());
+        if (is_array($organizationMember)) {
+            $participant->set('IDuser', (int)$organizationMember['user_id']);
+            $participant->set('email', null);
+            $participant->set('display_name', trim((string)$organizationMember['display_name']) !== '' ? trim((string)$organizationMember['display_name']) : $email);
+        } else {
+            $participant->set('IDuser', null);
+            $participant->set('email', $email);
+            $participant->set('display_name', $email);
+        }
+        $participant->set('role', \dbObject\DecisionParticipant::ROLE_PARTICIPANT);
+        $participant->set('status', \dbObject\DecisionParticipant::STATUS_INVITED);
+        $participant->set('active', 1);
+        $participant->set('parameters', [
+            'sync_source' => 'public_opt_in',
+            'created_from' => 'public_request',
+            'created_at' => (new \DateTimeImmutable('now'))->format('c'),
+            'identity_mode' => is_array($organizationMember) ? 'user' : 'email',
+        ]);
+
+        $saveResult = $participant->save();
+        if (!is_array($saveResult) || empty($saveResult['status'])) {
+            return [
+                'status' => false,
+                'reason' => 'create_failed',
+            ];
+        }
+
+        return [
+            'status' => true,
+            'created' => true,
+            'participant' => $participant,
+        ];
+    }
+
     public function buildPublicAccessRequestEmailMessage()
     {
         $organization = $this->getOrganizationObject();
@@ -1366,6 +1620,16 @@ class DecisionProcess extends DbObject
 
         foreach ($desiredParticipants as $key => $participantData) {
             $participant = $existingByKey[$key] ?? new \dbObject\DecisionParticipant();
+            $existingParameters = $participant->get('parameters');
+            if (!is_array($existingParameters)) {
+                $existingParameters = json_decode(trim((string)$existingParameters), true);
+            }
+            $existingParameters = is_array($existingParameters) ? $existingParameters : [];
+            $mergedParameters = is_array($participantData['parameters']) ? $participantData['parameters'] : [];
+            if (isset($existingParameters['public_access_code']) && !isset($mergedParameters['public_access_code'])) {
+                $mergedParameters['public_access_code'] = $existingParameters['public_access_code'];
+            }
+
             $participant->set('IDdecision_process', $decisionId);
             $participant->set('IDuser', (int)$participantData['IDuser'] > 0 ? (int)$participantData['IDuser'] : null);
             $participant->set('email', trim((string)$participantData['email']) !== '' ? trim((string)$participantData['email']) : null);
@@ -1373,7 +1637,7 @@ class DecisionProcess extends DbObject
             $participant->set('role', (string)$participantData['role']);
             $participant->set('status', (string)$participantData['status']);
             $participant->set('active', (int)$participantData['active']);
-            $participant->set('parameters', $participantData['parameters']);
+            $participant->set('parameters', $mergedParameters);
 
             $saveResult = $participant->save();
             if (!is_array($saveResult) || empty($saveResult['status'])) {
@@ -1390,6 +1654,15 @@ class DecisionProcess extends DbObject
             }
 
             if ((int)$participant->get('IDuser') === $ownerUserId) {
+                continue;
+            }
+
+            $participantParameters = $participant->get('parameters');
+            if (!is_array($participantParameters)) {
+                $participantParameters = json_decode(trim((string)$participantParameters), true);
+            }
+            $participantParameters = is_array($participantParameters) ? $participantParameters : [];
+            if (trim((string)($participantParameters['sync_source'] ?? '')) === 'public_opt_in') {
                 continue;
             }
 

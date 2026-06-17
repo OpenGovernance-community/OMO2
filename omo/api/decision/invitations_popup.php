@@ -146,66 +146,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $selectedUserIds = array_values(array_unique(array_filter(array_map('intval', $_POST['user_ids'] ?? []), static function ($userId) {
         return $userId > 0;
     })));
-    $selectedEmails = omoDecisionInvitationsPopupParseEmails($_POST['emails'] ?? '');
-
-    $validHolonLabels = [];
-    foreach ($selectedHolonIds as $holonId) {
-        $holon = new Holon();
-        if (!$holon->load($holonId) || !$organization->containsHolon($holon) || !$holon->canViewDetail()) {
-            omoDecisionModuleJsonResponse(422, [
-                'status' => false,
-                'message' => 'Un holon selectionne est invalide.',
-            ]);
-        }
-
-        $validHolonLabels[$holonId] = trim((string)$holon->getDisplayName());
-    }
-
-    $validUserLabels = [];
-    foreach ($selectedUserIds as $userId) {
-        $membership = new UserOrganization();
-        if (!$membership->load([
-            ['IDorganization', $organizationId],
-            ['IDuser', $userId],
-        ]) || !(bool)$membership->get('active')) {
-            omoDecisionModuleJsonResponse(422, [
-                'status' => false,
-                'message' => 'Un membre selectionne est invalide.',
-            ]);
-        }
-
-        $validUserLabels[$userId] = trim((string)$membership->getUserDisplayName());
-    }
-
-    $existingInvitations = [];
-    foreach ($decision->getInvitations(false) as $invitation) {
-        if ($invitation instanceof DecisionInvitation) {
-            $existingInvitations[$invitation->getIdentityKey()] = $invitation;
-        }
-    }
-
-    $desiredInvitations = [];
-    foreach ($selectedHolonIds as $holonId) {
-        $desiredInvitations['holon:' . $holonId] = [
-            'invitation_type' => DecisionInvitation::TYPE_HOLON,
-            'IDholon' => $holonId,
-            'display_name' => $validHolonLabels[$holonId] ?? '',
-        ];
-    }
-    foreach ($selectedUserIds as $userId) {
-        $desiredInvitations['user:' . $userId] = [
-            'invitation_type' => DecisionInvitation::TYPE_USER,
-            'IDuser' => $userId,
-            'display_name' => $validUserLabels[$userId] ?? '',
-        ];
-    }
-    foreach ($selectedEmails as $email) {
-        $desiredInvitations['email:' . $email] = [
-            'invitation_type' => DecisionInvitation::TYPE_EMAIL,
-            'email' => $email,
-            'display_name' => $email,
-        ];
-    }
+    $selectedEmails = omoDecisionParseInvitationEmails($_POST['emails'] ?? '');
+    $allowPublicSelfRegistration = !empty($_POST['allow_public_self_registration']);
 
     $pdo = DbObject::getPdo();
     if (!$pdo) {
@@ -218,37 +160,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $pdo->beginTransaction();
 
-        foreach ($desiredInvitations as $identityKey => $invitationData) {
-            $invitation = $existingInvitations[$identityKey] ?? new DecisionInvitation();
-            $invitation->set('IDdecision_process', (int)$decision->getId());
-            $invitation->set('invitation_type', $invitationData['invitation_type']);
-            $invitation->set('IDholon', $invitationData['IDholon'] ?? null);
-            $invitation->set('IDuser', $invitationData['IDuser'] ?? null);
-            $invitation->set('email', $invitationData['email'] ?? null);
-            $invitation->set('display_name', $invitationData['display_name'] ?? null);
-            $invitation->set('status', DecisionInvitation::STATUS_INVITED);
-            $invitation->set('active', 1);
-            $invitation->set('parameters', [
-                'updated_from_popup' => 1,
-            ]);
-
-            $saveResult = $invitation->save();
-            if (!is_array($saveResult) || empty($saveResult['status'])) {
-                throw new RuntimeException('invitation_save_failed');
-            }
-        }
-
-        foreach ($existingInvitations as $identityKey => $invitation) {
-            if (isset($desiredInvitations[$identityKey])) {
-                continue;
-            }
-
-            $invitation->set('active', 0);
-            $invitation->set('status', DecisionInvitation::STATUS_REVOKED);
-            $saveResult = $invitation->save();
-            if (!is_array($saveResult) || empty($saveResult['status'])) {
-                throw new RuntimeException('invitation_revoke_failed');
-            }
+        $applyResult = omoDecisionApplyInvitationSelections(
+            $decision,
+            $organization,
+            $organizationId,
+            $selectedHolonIds,
+            $selectedUserIds,
+            $selectedEmails,
+            $allowPublicSelfRegistration
+        );
+        if (empty($applyResult['status'])) {
+            throw new InvalidArgumentException(
+                trim((string)($applyResult['message'] ?? 'Impossible d enregistrer les invitations pour le moment.'))
+            );
         }
 
         $syncResult = $decision->syncParticipantsFromInvitations();
@@ -257,6 +181,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $pdo->commit();
+    } catch (InvalidArgumentException $exception) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        omoDecisionModuleJsonResponse(422, [
+            'status' => false,
+            'message' => trim((string)$exception->getMessage()) !== ''
+                ? trim((string)$exception->getMessage())
+                : 'Impossible d enregistrer les invitations pour le moment.',
+        ]);
     } catch (Throwable $exception) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
@@ -300,6 +235,7 @@ foreach ($decision->getInvitations(true) as $invitation) {
 $selectedHolonIds = array_values(array_unique(array_filter($selectedHolonIds)));
 $selectedUserIds = array_values(array_unique(array_filter($selectedUserIds)));
 $selectedEmails = array_values(array_unique(array_filter($selectedEmails)));
+$allowPublicSelfRegistration = $decision->isPublicSelfRegistrationEnabled();
 
 $rootHolon = $organization instanceof Organization ? $organization->getEnabledStructuralRootHolon() : null;
 $holonTree = $rootHolon instanceof Holon
@@ -546,6 +482,17 @@ $memberships->loadActiveForOrganization($organizationId);
                 <p class="omo-decision-invitations-popup__hint">
                     Une adresse par ligne. Les invitations seront envoyees plus tard.
                 </p>
+                <div class="generic-soft-panel generic-soft-panel--stack">
+                    <label class="omo-decision-invitations-popup__check">
+                        <input type="checkbox" name="allow_public_self_registration" value="1"<?= $allowPublicSelfRegistration ? ' checked' : '' ?>>
+                        <span class="omo-decision-invitations-popup__check-meta">
+                            <strong>Participation sans invitation</strong>
+                            <span class="omo-decision-invitations-popup__member-email">
+                                Toute personne disposant du lien public peut demander un code par e-mail. Si son adresse n est pas encore associee a ce scrutin, un participant est cree automatiquement.
+                            </span>
+                        </span>
+                    </label>
+                </div>
             </div>
         </div>
     </div>

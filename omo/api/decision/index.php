@@ -212,11 +212,6 @@ $sourceLang = [
         'text' => 'Nouvelle prise de décision',
         'context' => 'Primary call to action opening the decision creation screen.',
     ],
-    'decisions.index.count' => [
-        'one' => '{count} prise de décision',
-        'other' => '{count} prises de décision',
-        'context' => 'Counter for decisions visible in the list after filtering.',
-    ],
     'decisions.index.context.organization_invalid' => [
         'text' => 'Organisation invalide.',
         'context' => 'Error message when the organization context is missing or invalid.',
@@ -1051,8 +1046,6 @@ $payload = [
         }, array_values($holonFilterOptions))
     ),
     'text' => [
-        'countOne' => t('decisions.index.count', ['count' => '1'], $lang, $sourceLang),
-        'countOtherTemplate' => t('decisions.index.count', ['count' => '__COUNT__'], $lang, $sourceLang),
         'loading' => t('decisions.index.loading', [], $lang, $sourceLang),
         'error' => t('decisions.index.error', [], $lang, $sourceLang),
         'emptyTitle' => t('decisions.index.empty.title', [], $lang, $sourceLang),
@@ -1744,6 +1737,28 @@ if (!root) {
     return;
 }
 
+if (typeof window.omoDecisionIndexTeardown === 'function') {
+    try {
+        window.omoDecisionIndexTeardown();
+    } catch (error) {
+        if (window.console && typeof window.console.warn === 'function') {
+            window.console.warn('[OMO][Decisions][panel] previous teardown failed', error);
+        }
+    }
+}
+
+const omoDecisionIndexGlobalCleanupCallbacks = [];
+function omoDecisionRegisterGlobalListener(target, eventName, listener, options) {
+    if (!target || typeof target.addEventListener !== 'function' || typeof listener !== 'function') {
+        return;
+    }
+
+    target.addEventListener(eventName, listener, options);
+    omoDecisionIndexGlobalCleanupCallbacks.push(function () {
+        target.removeEventListener(eventName, listener, options);
+    });
+}
+
 function omoDecisionParseIndexPayload(node) {
     if (!node) {
         return null;
@@ -1996,12 +2011,7 @@ function escapeHtml(value) {
 }
 
 function formatCountLabel(count) {
-    if (Number(count) === 1) {
-        return String(payload.text && payload.text.countOne ? payload.text.countOne : '1 prise de décision');
-    }
-
-    return String(payload.text && payload.text.countOtherTemplate ? payload.text.countOtherTemplate : '__COUNT__ prises de décision')
-        .replace('__COUNT__', String(Number(count) || 0));
+    return String(Number(count) || 0);
 }
 
 function restoreSelectValue(select, preferredValue) {
@@ -2356,8 +2366,7 @@ function openInitialDecisionFromPayload() {
 
     openDecisionEditor(
         actionUrl,
-        String(item.title || (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de decision')),
-        String(item.description || '')
+        String(item.title || (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de decision'))
     );
 
     return true;
@@ -2772,7 +2781,6 @@ function renderCompactRow(item) {
         row.type = 'button';
         row.setAttribute('data-open-url', primaryActionUrl);
         row.setAttribute('data-open-title', String(item && item.title ? item.title : ''));
-        row.setAttribute('data-open-description', String(item && item.description ? item.description : ''));
     }
 
     row.innerHTML = ''
@@ -3486,7 +3494,7 @@ if (elements.statusScrollNext) {
     });
 }
 
-ownerDocument.addEventListener('click', function (event) {
+omoDecisionRegisterGlobalListener(ownerDocument, 'click', function (event) {
     const toggle = event.target.closest('[data-omo-decision-compact-menu-toggle="1"]');
     if (toggle) {
         return;
@@ -3520,13 +3528,13 @@ ownerDocument.addEventListener('click', function (event) {
     }
 });
 
-ownerDocument.addEventListener('keydown', function (event) {
+omoDecisionRegisterGlobalListener(ownerDocument, 'keydown', function (event) {
     if (event.key === 'Escape' && !floatingCompactMenu.hidden) {
         closeCompactMenus();
     }
 });
 
-ownerDocument.addEventListener('scroll', function () {
+omoDecisionRegisterGlobalListener(ownerDocument, 'scroll', function () {
     if (!activeCompactMenuToggle || floatingCompactMenu.hidden) {
         return;
     }
@@ -3534,7 +3542,7 @@ ownerDocument.addEventListener('scroll', function () {
     positionCompactMenu(activeCompactMenuToggle);
 }, true);
 
-window.addEventListener('resize', function () {
+omoDecisionRegisterGlobalListener(window, 'resize', function () {
     if (!activeCompactMenuToggle || floatingCompactMenu.hidden) {
         return;
     }
@@ -3542,7 +3550,7 @@ window.addEventListener('resize', function () {
     positionCompactMenu(activeCompactMenuToggle);
 });
 
-window.addEventListener('resize', syncStatusTabsOverflow);
+omoDecisionRegisterGlobalListener(window, 'resize', syncStatusTabsOverflow);
 
 root.querySelectorAll('[data-omo-decisions-sort]').forEach(function (button) {
     button.addEventListener('click', function () {
@@ -3678,14 +3686,37 @@ root.addEventListener('click', function (event) {
     }
 
     const targetTitle = String(button.getAttribute('data-open-title') || '').trim();
-    const targetDescription = String(button.getAttribute('data-open-description') || '').trim();
 
     openDecisionEditor(
         targetUrl,
         targetTitle !== '' ? targetTitle : (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de décision'),
-        targetDescription
     );
     event.preventDefault();
 });
+
+const omoDecisionIndexTeardown = function () {
+    closeCompactMenus();
+
+    while (omoDecisionIndexGlobalCleanupCallbacks.length > 0) {
+        const cleanup = omoDecisionIndexGlobalCleanupCallbacks.pop();
+        if (typeof cleanup !== 'function') {
+            continue;
+        }
+
+        try {
+            cleanup();
+        } catch (error) {
+            if (window.console && typeof window.console.warn === 'function') {
+                window.console.warn('[OMO][Decisions][panel] cleanup failed', error);
+            }
+        }
+    }
+
+    if (window.omoDecisionIndexTeardown === omoDecisionIndexTeardown) {
+        window.omoDecisionIndexTeardown = null;
+    }
+};
+
+window.omoDecisionIndexTeardown = omoDecisionIndexTeardown;
 })();
 </script>

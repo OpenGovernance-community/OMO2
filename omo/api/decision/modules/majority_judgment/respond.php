@@ -75,6 +75,8 @@ if (DecisionProcess::normalizeEvaluationMethod($decisionGroup->get('evaluation_m
     ]);
 }
 
+$config = omoDecisionMajorityJudgmentBuildConfig($decisionGroup);
+$activeMentions = (array)($config['mentions'] ?? []);
 $scoreMap = [];
 $proposalMeta = [];
 $activeProposals = $decisionGroup->getProposals(true);
@@ -89,7 +91,15 @@ foreach ($activeProposals as $proposal) {
         ]);
     }
 
-    $scoreMap[$proposalId] = omoDecisionMajorityJudgmentNormalizeScore($scoreValue);
+    $normalizedScore = omoDecisionMajorityJudgmentNormalizeScore($scoreValue);
+    if (!array_key_exists($normalizedScore, $activeMentions)) {
+        omoDecisionModuleJsonResponse(400, [
+            'status' => false,
+            'message' => 'Une mention selectionnee n est pas active sur ce scrutin.',
+        ]);
+    }
+
+    $scoreMap[$proposalId] = $normalizedScore;
     $proposalMeta[$proposalId] = [
         'position' => (int)$proposal->get('position'),
         'title' => trim((string)$proposal->get('title')),
@@ -112,7 +122,7 @@ if (!$response) {
 }
 
 $response->set('status', DecisionResponse::STATUS_SUBMITTED);
-$response->set('parameters', omoDecisionMajorityJudgmentBuildResponseParameters($scoreMap, $proposalMeta));
+$response->set('parameters', omoDecisionMajorityJudgmentBuildResponseParameters($scoreMap, $proposalMeta, $config));
 
 $saveResult = $response->save();
 if (empty($saveResult['status'])) {

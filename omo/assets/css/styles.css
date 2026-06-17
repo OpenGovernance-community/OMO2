@@ -60,7 +60,7 @@
     --omo-overlay-drawer-panel-max-width: 860px;
     --omo-overlay-drawer-enter-offset: 22px;
     --omo-overlay-drawer-backdrop: rgba(15, 23, 32, 0.22);
-    --omo-overlay-drawer-z-index: 30;
+    --omo-overlay-drawer-z-index: 40;
 
     /* RADIUS */
     --radius-sm: 6px;
