@@ -358,6 +358,8 @@ $(document).ready(function () {
             width: newWidth + 'px',
             flexBasis: newWidth + 'px'
         });
+
+        syncOpenDrawers();
     });
 
     function stopResizing() {
@@ -1174,6 +1176,18 @@ function omoGetCompactSidebarWidth() {
     return Number.isFinite(parsedWidth) && parsedWidth > 0 ? parsedWidth : 48;
 }
 
+function omoGetDrawerResizerGap() {
+    const cssValue = getComputedStyle(document.documentElement).getPropertyValue('--omo-drawer-resizer-gap').trim();
+    const parsedGap = Number.parseFloat(cssValue);
+    const fallbackGap = ($('#resizer').outerWidth() || 0) + 4;
+
+    if (Number.isFinite(parsedGap) && parsedGap >= 0) {
+        return parsedGap;
+    }
+
+    return fallbackGap;
+}
+
 function updateDrawerPosition(drawer) {
     if (!drawer || !drawer.length) {
         return;
@@ -1188,11 +1202,12 @@ function updateDrawerPosition(drawer) {
         return;
     }
 
-    const leftWidth = $('#panel-left').outerWidth();
+    const leftWidth = $('#panel-left').outerWidth() || 0;
+    const drawerLeft = leftWidth + omoGetDrawerResizerGap();
 
     drawer.css({
-        left: leftWidth + 'px',
-        width: 'calc(100% - ' + leftWidth + 'px)'
+        left: drawerLeft + 'px',
+        width: 'calc(100% - ' + drawerLeft + 'px)'
     });
 }
 

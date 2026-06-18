@@ -751,7 +751,7 @@
 
         try {
             var storedPreference = window.localStorage.getItem('omo-color-style-preference');
-            if (storedPreference === 'mono' || storedPreference === 'turquoise') {
+            if (storedPreference === 'mono' || storedPreference === 'turquoise' || storedPreference === 'ocean-blue') {
                 return storedPreference;
             }
         } catch (error) {
@@ -830,8 +830,12 @@
     }
 
     function applyColorStylePreference(preference, persistPreference) {
-        var safePreference = preference === 'turquoise' ? 'turquoise' : 'mono';
+        var safePreference = 'mono';
         var appliedState = null;
+
+        if (preference === 'turquoise' || preference === 'ocean-blue') {
+            safePreference = preference;
+        }
 
         if (persistPreference) {
             try {

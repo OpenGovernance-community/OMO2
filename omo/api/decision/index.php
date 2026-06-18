@@ -201,7 +201,7 @@ function omoDecisionsIndexResolvePrimaryActionLabel($status, $canManage, array $
 
 $sourceLang = [
     'decisions.index.title' => [
-        'text' => 'Prises de décision',
+        'text' => 'Décisions',
         'context' => 'Main title of the decisions drawer entry screen.',
     ],
     'decisions.index.description' => [
@@ -453,7 +453,7 @@ $sourceLang = [
         'context' => 'Fallback label when a decision has no associated structure.',
     ],
     'decisions.index.loading' => [
-        'text' => 'Chargement des prises de décision…',
+        'text' => 'Chargement des décisions…',
         'context' => 'Temporary loading label displayed while the decision list initializes.',
     ],
     'decisions.index.error' => [
@@ -541,7 +541,7 @@ $sourceLang = [
         'context' => 'Fallback error message shown when a decision archive or delete action fails.',
     ],
     'decisions.index.action.open_editor_title' => [
-        'text' => 'Prises de décision',
+        'text' => 'Décisions',
         'context' => 'Drawer title used when opening the decision editor from the list.',
     ],
     'decisions.index.card.invited_email' => [
@@ -1123,8 +1123,8 @@ if (!is_string($payloadJson)) {
             </div>
             <div class="omo-panel-view__aside omo-decisions__header-actions">
                 <?php if ($canCreateDecision): ?>
-                <button type="button" class="generic-action-button generic-action-button--main" data-omo-decisions-new>
-                    <?= $escape(t('decisions.index.new', [], $lang, $sourceLang)) ?>
+                <button type="button" class="generic-action-button generic-action-button--main omo-mobile-corner-action" aria-label="<?= $escape(t('decisions.index.new', [], $lang, $sourceLang)) ?>" data-omo-decisions-new>
+                    <span class="omo-mobile-corner-action__text"><?= $escape(t('decisions.index.new', [], $lang, $sourceLang)) ?></span>
                 </button>
                 <?php endif; ?>
             </div>
@@ -1142,24 +1142,28 @@ if (!is_string($payloadJson)) {
                     <button
                         type="button"
                         class="omo-scope-toggle__button<?= $decisionScope === 'contextual' ? ' is-active' : '' ?>"
+                        aria-label="Contextuel"
                         data-omo-decision-scope-toggle="contextual"
+                        data-omo-scope-option="contextual"
                         aria-pressed="<?= $decisionScope === 'contextual' ? 'true' : 'false' ?>"
                         onclick="return window.omoToggleDecisionsScope ? window.omoToggleDecisionsScope(this, event) : false;"
-                    >Contextuel</button>
+                    ><span class="omo-scope-toggle__text">Contextuel</span></button>
                     <button
                         type="button"
                         class="omo-scope-toggle__button<?= $decisionScope === 'global' ? ' is-active' : '' ?>"
+                        aria-label="Global"
                         data-omo-decision-scope-toggle="global"
+                        data-omo-scope-option="global"
                         aria-pressed="<?= $decisionScope === 'global' ? 'true' : 'false' ?>"
                         onclick="return window.omoToggleDecisionsScope ? window.omoToggleDecisionsScope(this, event) : false;"
-                    >Global</button>
+                    ><span class="omo-scope-toggle__text">Global</span></button>
                 </div>
             </div>
             <?php endif; ?>
             <div class="omo-decisions__controls omo-panel-controls" data-omo-decisions-display-controls<?= count($decisionEntries) > 0 ? '' : ' hidden' ?>>
                 <div class="omo-segmented" role="group" aria-label="<?= $escape(t('decisions.index.controls.sort.aria', [], $lang, $sourceLang)) ?>">
-                    <button type="button" class="omo-segmented__button is-active" data-omo-decisions-sort="time" aria-pressed="true"><?= $escape(t('decisions.index.controls.sort.time', [], $lang, $sourceLang)) ?></button>
-                    <button type="button" class="omo-segmented__button" data-omo-decisions-sort="alpha" aria-pressed="false"><?= $escape(t('decisions.index.controls.sort.alpha', [], $lang, $sourceLang)) ?></button>
+                    <button type="button" class="omo-segmented__button is-active" aria-label="<?= $escape(t('decisions.index.controls.sort.time', [], $lang, $sourceLang)) ?>" data-omo-decisions-sort="time" data-omo-segmented-option="temporal" aria-pressed="true"><span class="omo-segmented__text"><?= $escape(t('decisions.index.controls.sort.time', [], $lang, $sourceLang)) ?></span></button>
+                    <button type="button" class="omo-segmented__button" aria-label="<?= $escape(t('decisions.index.controls.sort.alpha', [], $lang, $sourceLang)) ?>" data-omo-decisions-sort="alpha" data-omo-segmented-option="alphabetical" aria-pressed="false"><span class="omo-segmented__text"><?= $escape(t('decisions.index.controls.sort.alpha', [], $lang, $sourceLang)) ?></span></button>
                 </div>
                 <div class="omo-segmented" role="group" aria-label="<?= $escape(t('decisions.index.controls.density.aria', [], $lang, $sourceLang)) ?>">
                     <button type="button" class="omo-segmented__button is-active" data-omo-decisions-density="detail" aria-pressed="true"><?= $escape(t('decisions.index.controls.density.detail', [], $lang, $sourceLang)) ?></button>
@@ -1726,6 +1730,41 @@ if (!is_string($payloadJson)) {
 
     .omo-decisions__compact-title-block {
         gap: 5px;
+    }
+}
+
+@media (max-width: 640px) {
+    .omo-decisions__header-actions {
+        width: auto;
+        position: static;
+        z-index: auto;
+    }
+
+    .omo-decisions__header-actions .omo-mobile-corner-action {
+        width: 42px;
+        min-width: 42px;
+        max-width: 42px;
+        flex: 0 0 42px;
+        border-radius: 0 0 0 12px !important;
+    }
+
+    .omo-decisions__header-secondary {
+        align-items: flex-start;
+        justify-content: space-between;
+        flex-wrap: nowrap;
+        gap: 10px;
+    }
+
+    .omo-decisions__scope-slot {
+        flex: 0 0 auto;
+    }
+
+    .omo-decisions__controls {
+        width: auto;
+        flex: 0 0 auto;
+        justify-content: flex-end;
+        flex-wrap: nowrap;
+        gap: 8px;
     }
 }
 </style>
