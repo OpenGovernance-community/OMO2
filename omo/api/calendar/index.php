@@ -1139,10 +1139,11 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 </div>
                 <button
                     type="button"
-                    class="generic-action-button generic-action-button--main omo-calendar__new-button"
+                    class="generic-action-button generic-action-button--main omo-calendar__new-button omo-mobile-corner-action"
+                    aria-label="<?= omoApiEscape(omoCalendarT('calendar.action.add')) ?>"
                     data-omo-calendar-open-create
                 >
-                    <?= omoApiEscape(omoCalendarT('calendar.action.add')) ?>
+                    <span class="omo-mobile-corner-action__text"><?= omoApiEscape(omoCalendarT('calendar.action.add')) ?></span>
                 </button>
             </div>
         </div>
@@ -1158,15 +1159,19 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                         <button
                             type="button"
                             class="omo-scope-toggle__button<?= $calendarScope === 'contextual' ? ' is-active' : '' ?>"
+                            aria-label="<?= omoApiEscape(omoCalendarT('calendar.scope.contextual')) ?>"
                             data-omo-calendar-scope-toggle="contextual"
+                            data-omo-scope-option="contextual"
                             aria-pressed="<?= $calendarScope === 'contextual' ? 'true' : 'false' ?>"
-                        ><?= omoApiEscape(omoCalendarT('calendar.scope.contextual')) ?></button>
+                        ><span class="omo-scope-toggle__text"><?= omoApiEscape(omoCalendarT('calendar.scope.contextual')) ?></span></button>
                         <button
                             type="button"
                             class="omo-scope-toggle__button<?= $calendarScope === 'global' ? ' is-active' : '' ?>"
+                            aria-label="<?= omoApiEscape(omoCalendarT('calendar.scope.global')) ?>"
                             data-omo-calendar-scope-toggle="global"
+                            data-omo-scope-option="global"
                             aria-pressed="<?= $calendarScope === 'global' ? 'true' : 'false' ?>"
-                        ><?= omoApiEscape(omoCalendarT('calendar.scope.global')) ?></button>
+                        ><span class="omo-scope-toggle__text"><?= omoApiEscape(omoCalendarT('calendar.scope.global')) ?></span></button>
                     </div>
                 <?php endif; ?>
             </div>
@@ -1174,7 +1179,9 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                         <button
                             type="button"
                             class="omo-segmented__button<?= $viewMode === 'month' ? ' is-active' : '' ?>"
+                            aria-label="<?= omoApiEscape(omoCalendarT('calendar.view.month')) ?>"
                             data-omo-calendar-set-view="month"
+                            data-omo-segmented-option="calendar-month"
                             data-omo-calendar-view-url-contextual="<?= omoApiEscape($viewUrlsByScope['contextual']['month']) ?>"
                             data-omo-calendar-view-count-contextual="<?= omoApiEscape((string)$viewCountsByScope['contextual']['month']) ?>"
                             data-omo-calendar-view-summary-contextual="<?= omoApiEscape($viewSummariesByScope['contextual']['month']) ?>"
@@ -1184,11 +1191,13 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                                 data-omo-calendar-view-summary-global="<?= omoApiEscape($viewSummariesByScope['global']['month']) ?>"
                             <?php endif; ?>
                             aria-pressed="<?= $viewMode === 'month' ? 'true' : 'false' ?>"
-                        ><?= omoApiEscape(omoCalendarT('calendar.view.month')) ?></button>
+                        ><span class="omo-segmented__text"><?= omoApiEscape(omoCalendarT('calendar.view.month')) ?></span></button>
                         <button
                             type="button"
                             class="omo-segmented__button<?= $viewMode === 'week' ? ' is-active' : '' ?>"
+                            aria-label="<?= omoApiEscape(omoCalendarT('calendar.view.week')) ?>"
                             data-omo-calendar-set-view="week"
+                            data-omo-segmented-option="calendar-week"
                             data-omo-calendar-view-url-contextual="<?= omoApiEscape($viewUrlsByScope['contextual']['week']) ?>"
                             data-omo-calendar-view-count-contextual="<?= omoApiEscape((string)$viewCountsByScope['contextual']['week']) ?>"
                             data-omo-calendar-view-summary-contextual="<?= omoApiEscape($viewSummariesByScope['contextual']['week']) ?>"
@@ -1198,11 +1207,13 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                                 data-omo-calendar-view-summary-global="<?= omoApiEscape($viewSummariesByScope['global']['week']) ?>"
                             <?php endif; ?>
                             aria-pressed="<?= $viewMode === 'week' ? 'true' : 'false' ?>"
-                        ><?= omoApiEscape(omoCalendarT('calendar.view.week')) ?></button>
+                        ><span class="omo-segmented__text"><?= omoApiEscape(omoCalendarT('calendar.view.week')) ?></span></button>
                         <button
                             type="button"
                             class="omo-segmented__button<?= $viewMode === 'day' ? ' is-active' : '' ?>"
+                            aria-label="<?= omoApiEscape(omoCalendarT('calendar.view.day')) ?>"
                             data-omo-calendar-set-view="day"
+                            data-omo-segmented-option="calendar-day"
                             data-omo-calendar-view-url-contextual="<?= omoApiEscape($viewUrlsByScope['contextual']['day']) ?>"
                             data-omo-calendar-view-count-contextual="<?= omoApiEscape((string)$viewCountsByScope['contextual']['day']) ?>"
                             data-omo-calendar-view-summary-contextual="<?= omoApiEscape($viewSummariesByScope['contextual']['day']) ?>"
@@ -1212,11 +1223,13 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                                 data-omo-calendar-view-summary-global="<?= omoApiEscape($viewSummariesByScope['global']['day']) ?>"
                             <?php endif; ?>
                             aria-pressed="<?= $viewMode === 'day' ? 'true' : 'false' ?>"
-                        ><?= omoApiEscape(omoCalendarT('calendar.view.day')) ?></button>
+                        ><span class="omo-segmented__text"><?= omoApiEscape(omoCalendarT('calendar.view.day')) ?></span></button>
                         <button
                             type="button"
                             class="omo-segmented__button<?= $viewMode === 'list' ? ' is-active' : '' ?>"
+                            aria-label="<?= omoApiEscape(omoCalendarT('calendar.view.list')) ?>"
                             data-omo-calendar-set-view="list"
+                            data-omo-segmented-option="calendar-list"
                             data-omo-calendar-view-url-contextual="<?= omoApiEscape($viewUrlsByScope['contextual']['list']) ?>"
                             data-omo-calendar-view-count-contextual="<?= omoApiEscape((string)$viewCountsByScope['contextual']['list']) ?>"
                             data-omo-calendar-view-summary-contextual="<?= omoApiEscape($viewSummariesByScope['contextual']['list']) ?>"
@@ -1226,7 +1239,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                                 data-omo-calendar-view-summary-global="<?= omoApiEscape($viewSummariesByScope['global']['list']) ?>"
                             <?php endif; ?>
                             aria-pressed="<?= $viewMode === 'list' ? 'true' : 'false' ?>"
-                        ><?= omoApiEscape(omoCalendarT('calendar.view.list')) ?></button>
+                        ><span class="omo-segmented__text"><?= omoApiEscape(omoCalendarT('calendar.view.list')) ?></span></button>
             </div>
             </div>
     </div>
@@ -2959,7 +2972,20 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     }
 
     .omo-calendar__toolbar {
-        grid-template-columns: 1fr;
+        grid-template-columns: 16px minmax(0, 1fr) 16px;
+        gap: 6px;
+        align-items: stretch;
+    }
+
+    .omo-calendar__toolbar > .generic-action-button {
+        min-width: 16px;
+        width: 16px;
+        min-height: 100%;
+        padding: 0;
+        border-radius: 8px;
+        font-size: 14px;
+        line-height: 1;
+        overflow: hidden;
     }
 
     .omo-calendar__time-view[data-omo-calendar-time-view="week"] {
@@ -2984,5 +3010,25 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         font-size: 0.72rem;
     }
 
+}
+
+@media (max-width: 640px) {
+    .omo-calendar__header {
+        position: sticky;
+    }
+
+    .omo-calendar__new-button.omo-mobile-corner-action {
+        border-radius: 0 0 0 12px !important;
+    }
+
+    .omo-calendar__header-secondary {
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .omo-calendar__view-switch {
+        justify-self: end;
+    }
 }
 </style>

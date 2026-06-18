@@ -35,7 +35,7 @@ function sharedGetColorStylePreference(storageKey = SHARED_COLOR_STYLE_STORAGE_K
 	try {
 		const storedPreference = window.localStorage.getItem(storageKey);
 
-		if (storedPreference === 'mono' || storedPreference === 'turquoise') {
+		if (storedPreference === 'mono' || storedPreference === 'turquoise' || storedPreference === 'ocean-blue') {
 			return storedPreference;
 		}
 	} catch (error) {
@@ -53,7 +53,7 @@ function sharedApplyDocumentTheme(options = {}) {
 	const preference = settings.preference === 'light' || settings.preference === 'dark' || settings.preference === 'system'
 		? settings.preference
 		: sharedGetThemePreference(storageKey);
-	const colorStyle = settings.colorStyle === 'mono' || settings.colorStyle === 'turquoise'
+	const colorStyle = settings.colorStyle === 'mono' || settings.colorStyle === 'turquoise' || settings.colorStyle === 'ocean-blue'
 		? settings.colorStyle
 		: sharedGetColorStylePreference(colorStyleStorageKey);
 	const resolvedTheme = sharedResolveTheme(preference, mediaQuery);

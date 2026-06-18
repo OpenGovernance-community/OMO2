@@ -949,7 +949,7 @@ $decisionPublicOrganizerContactHtml = '';
 if (trim((string)($organizerData['email'] ?? '')) !== '') {
     ob_start();
     ?>
-        <section class="generic-soft-panel-square decision-public-context-contact">
+        <section class="generic-soft-panel-square decision-public-context-contact<?= $requiresPublicAccessEmail ? ' decision-public-context-contact--footer' : '' ?>">
             <span>Contacter l organisateur: </span>
             <a href="mailto:<?= omoApiEscape((string)$organizerData['email']) ?>"><?= omoApiEscape((string)$organizerData['email']) ?></a>
         </section>
@@ -1109,61 +1109,68 @@ $decisionPublicContextHtml = (string)ob_get_clean();
 ob_start();
 ?>
 
-        <section class="decision-public-content">
+        <section class="decision-public-content<?= $requiresPublicAccessEmail ? ' decision-public-content--centered' : '' ?>">
             <?php if ($requiresPublicAccessEmail): ?>
-            <section class="generic-section-title generic-section--stack decision-public-access-request">
-                <span class="generic-card-title generic-card-title--section">Recevoir mon acces personnel</span>
-                <p class="decision-public-access-request__text">
-                    <?= $allowPublicSelfRegistration
-                        ? 'Saisissez votre adresse e-mail pour recevoir un code personnel ainsi qu un lien direct personnel. Si cette adresse n est pas encore associee a ce scrutin, une participation sera creee automatiquement.'
-                        : 'Saisissez l adresse e-mail autorisee pour ce scrutin afin de recevoir un code personnel ainsi qu un lien direct de participation.' ?>
-                </p>
-                <form
-                    class="decision-public-access-request__form"
-                    id="decisionPublicAccessRequestForm"
-                    action="<?= omoApiEscape((string)($_SERVER['REQUEST_URI'] ?? '')) ?>"
-                    method="post"
-                >
-                    <input type="hidden" name="public_access_action" id="decisionPublicAccessRequestAction" value="request_code">
-                    <label class="generic-card-title generic-card-title--small" for="decisionPublicAccessRequestEmail">Adresse e-mail</label>
-                    <input
-                        id="decisionPublicAccessRequestEmail"
-                        name="email"
-                        type="email"
-                        class="generic-form-control"
-                        autocomplete="email"
-                        placeholder="nom@exemple.org"
-                        required
+            <div class="decision-public-access-request-shell">
+                <section class="generic-section generic-section--stack decision-public-access-request">
+                    <div class="decision-public-access-request__header">
+                        <span class="generic-card-title generic-card-title--eyebrow">Acces public</span>
+                        <span class="generic-card-title generic-card-title--section">Recevoir mon acces personnel</span>
+                        <p class="decision-public-access-request__text">
+                            <?= $allowPublicSelfRegistration
+                                ? 'Saisissez votre adresse e-mail pour recevoir un code personnel ainsi qu un lien direct personnel. Si cette adresse n est pas encore associee a ce scrutin, une participation sera creee automatiquement.'
+                                : 'Saisissez l adresse e-mail autorisee pour ce scrutin afin de recevoir un code personnel ainsi qu un lien direct de participation.' ?>
+                        </p>
+                    </div>
+                    <form
+                        class="decision-public-access-request__form"
+                        id="decisionPublicAccessRequestForm"
+                        action="<?= omoApiEscape((string)($_SERVER['REQUEST_URI'] ?? '')) ?>"
+                        method="post"
                     >
-                    <div id="decisionPublicAccessRequestCodeRow" hidden>
-                        <label class="generic-card-title generic-card-title--small" for="decisionPublicAccessRequestCode">Code recu par e-mail</label>
-                        <input
-                            id="decisionPublicAccessRequestCode"
-                            name="code"
-                            type="text"
-                            class="generic-form-control"
-                            inputmode="numeric"
-                            autocomplete="one-time-code"
-                            maxlength="6"
-                            placeholder="123456"
-                        >
-                    </div>
-                    <div id="decisionPublicAccessRequestFeedback" class="decision-public-access-request__feedback" aria-live="polite"></div>
-                    <div class="decision-public-access-request__actions" id="decisionPublicAccessRequestSendActions">
-                        <button type="submit" id="decisionPublicAccessRequestSendSubmit" class="generic-action-button generic-action-button--main">
-                            Envoyer mon acces
-                        </button>
-                    </div>
-                    <div class="decision-public-access-request__actions" id="decisionPublicAccessRequestVerifyActions" hidden>
-                        <button type="button" id="decisionPublicAccessRequestResend" class="generic-action-button generic-action-button--secondary">
-                            Renvoyer le code
-                        </button>
-                        <button type="submit" id="decisionPublicAccessRequestVerifySubmit" class="generic-action-button generic-action-button--main">
-                            Acceder au scrutin
-                        </button>
-                    </div>
-                </form>
-            </section>
+                        <input type="hidden" name="public_access_action" id="decisionPublicAccessRequestAction" value="request_code">
+                        <div class="decision-public-access-request__field">
+                            <label class="generic-card-title generic-card-title--small" for="decisionPublicAccessRequestEmail">Adresse e-mail</label>
+                            <input
+                                id="decisionPublicAccessRequestEmail"
+                                name="email"
+                                type="email"
+                                class="generic-form-control"
+                                autocomplete="email"
+                                placeholder="nom@exemple.org"
+                                required
+                            >
+                        </div>
+                        <div class="decision-public-access-request__field" id="decisionPublicAccessRequestCodeRow" hidden>
+                            <label class="generic-card-title generic-card-title--small" for="decisionPublicAccessRequestCode">Code recu par e-mail</label>
+                            <input
+                                id="decisionPublicAccessRequestCode"
+                                name="code"
+                                type="text"
+                                class="generic-form-control"
+                                inputmode="numeric"
+                                autocomplete="one-time-code"
+                                maxlength="6"
+                                placeholder="123456"
+                            >
+                        </div>
+                        <div id="decisionPublicAccessRequestFeedback" class="decision-public-access-request__feedback" aria-live="polite"></div>
+                        <div class="decision-public-access-request__actions" id="decisionPublicAccessRequestSendActions">
+                            <button type="submit" id="decisionPublicAccessRequestSendSubmit" class="generic-action-button generic-action-button--main">
+                                Envoyer mon acces
+                            </button>
+                        </div>
+                        <div class="decision-public-access-request__actions" id="decisionPublicAccessRequestVerifyActions" hidden>
+                            <button type="button" id="decisionPublicAccessRequestResend" class="generic-action-button generic-action-button--secondary">
+                                Renvoyer le code
+                            </button>
+                            <button type="submit" id="decisionPublicAccessRequestVerifySubmit" class="generic-action-button generic-action-button--main">
+                                Acceder au scrutin
+                            </button>
+                        </div>
+                    </form>
+                </section>
+            </div>
             <?php else: ?>
             <?= $decision instanceof DecisionProcess ? commonDecisionParticipationRenderGroupBlocks($decision, $context) : '' ?>
             <?php endif; ?>
@@ -1258,6 +1265,13 @@ if (empty($context['status'])) {
             overflow-y: auto;
         }
 
+        .decision-public-panel-scroll--access-request {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-height: 100%;
+        }
+
         .decision-public-main-summary {
             display: none;
         }
@@ -1305,6 +1319,13 @@ if (empty($context['status'])) {
             padding-left: 18px;
             color: var(--color-text-light, #475569);
             line-height: 1.7;
+        }
+
+        .decision-public-context-contact--footer {
+            margin-top: auto;
+            padding-top: 10px;
+            padding-bottom: 10px;
+            min-height: 0;
         }
 
         .decision-public-context-contact a {
@@ -1557,20 +1578,51 @@ if (empty($context['status'])) {
             gap: 16px;
         }
 
+        .decision-public-content--centered {
+            flex: 1 1 auto;
+            min-height: 0;
+            align-content: center;
+            padding: clamp(12px, 3vw, 28px);
+        }
+
+        .decision-public-access-request-shell {
+            width: min(100%, 680px);
+            margin-inline: auto;
+        }
+
         .decision-public-access-request {
+            --generic-section-padding-block: clamp(22px, 3vw, 30px);
+            --generic-section-padding-inline: clamp(18px, 3vw, 28px);
+            --generic-section-radius: 24px;
+            --generic-section-border: color-mix(in srgb, var(--decision-public-accent) 16%, var(--color-border, #d1d5db));
+            --generic-section-background:
+                radial-gradient(circle at top right, color-mix(in srgb, var(--decision-public-accent) 12%, transparent), transparent 42%),
+                linear-gradient(180deg, color-mix(in srgb, var(--color-surface, #ffffff) 94%, transparent), var(--color-surface, #ffffff));
+            --generic-section-shadow: 0 22px 44px rgba(15, 23, 42, 0.08);
             display: grid;
-            gap: 14px;
+            gap: 18px;
+        }
+
+        .decision-public-access-request__header {
+            display: grid;
+            gap: 10px;
+        }
+
+        .decision-public-access-request__field {
+            display: grid;
+            gap: 6px;
         }
 
         .decision-public-access-request__text {
             margin: 0;
             color: var(--color-text-light, #475569);
             line-height: 1.6;
+            max-width: 60ch;
         }
 
         .decision-public-access-request__form {
             display: grid;
-            gap: 12px;
+            gap: 14px;
         }
 
         .decision-public-access-request__form > div#decisionPublicAccessRequestCodeRow {
@@ -1587,6 +1639,10 @@ if (empty($context['status'])) {
             justify-content: flex-start;
             gap: 10px;
             flex-wrap: wrap;
+        }
+
+        .decision-public-access-request__actions .generic-action-button {
+            flex: 1 1 220px;
         }
 
         .decision-public-access-request__actions[hidden] {
@@ -1717,6 +1773,25 @@ if (empty($context['status'])) {
         }
 
         @media (max-width: 768px) {
+            .decision-public-content--centered {
+                padding: 0;
+            }
+
+            .decision-public-access-request-shell {
+                width: 100%;
+            }
+
+            .decision-public-access-request {
+                --generic-section-radius: 18px;
+                --generic-section-padding-block: 18px;
+                --generic-section-padding-inline: 16px;
+                --generic-section-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+            }
+
+            .decision-public-access-request__actions .generic-action-button {
+                flex-basis: 100%;
+            }
+
             .decision-public-main-summary {
                 display: grid;
                 gap: 8px;
@@ -1790,7 +1865,7 @@ if (empty($context['status'])) {
                 </aside>
                 <div class="resizer" id="resizer"></div>
                 <section class="panel panel-right decision-public-main-panel" id="panel-right">
-                    <div class="decision-public-panel-scroll decision-public-panel-scroll--main">
+                    <div class="decision-public-panel-scroll decision-public-panel-scroll--main<?= $requiresPublicAccessEmail ? ' decision-public-panel-scroll--access-request' : '' ?>">
                         <?= $decisionPublicMainHtml ?>
                     </div>
                 </section>

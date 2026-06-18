@@ -17,6 +17,7 @@
     --omo-overlay-drawer-panel-max-width: 860px;
     --omo-overlay-drawer-enter-offset: 22px;
     --omo-overlay-drawer-z-index: 40;
+    --omo-drawer-resizer-gap: 5px;
 
     /* RADIUS */
     --radius-sm: 6px;
@@ -62,8 +63,8 @@ body {
 /* MAIN */
 .main {
     flex: 1;
-    height: calc(100dvh - var(--mobile-nav-height));
-    max-height: calc(100dvh - var(--mobile-nav-height));
+    height: 100dvh;
+    max-height: 100dvh;
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -961,6 +962,14 @@ html[data-theme] .common-help-card p {
     box-shadow: 0 4px 10px rgba(15, 23, 42, 0.10);
 }
 
+.omo-segmented__text {
+    display: inline;
+}
+
+.omo-mobile-corner-action__text {
+    display: inline;
+}
+
 .is-loading .omo-segmented {
     opacity: 0.72;
 }
@@ -1091,12 +1100,242 @@ html[data-theme] .common-help-card p {
     color: var(--color-text);
 }
 
+.omo-scope-toggle__text {
+    display: inline;
+}
+
 .is-loading .omo-scope-toggle {
     opacity: 0.72;
 }
 
 .is-loading .omo-scope-toggle__button {
     cursor: wait;
+}
+
+@media (max-width: 640px) {
+    .omo-mobile-corner-action {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        min-height: 42px;
+        padding: 0;
+        border-radius: 0 0 0 12px !important;
+        border-top: 0;
+        border-right: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 5;
+        font-size: 0;
+        line-height: 0;
+        box-shadow: none;
+        overflow: hidden;
+    }
+
+    .omo-mobile-corner-action.generic-action-button,
+    .omo-mobile-corner-action.generic-action-button--main {
+        box-shadow: none;
+    }
+
+    .omo-mobile-corner-action.generic-action-button:not(:disabled):hover,
+    .omo-mobile-corner-action.generic-action-button--main:not(:disabled):hover {
+        transform: none;
+        box-shadow: none;
+    }
+
+    .omo-mobile-corner-action::before {
+        content: "";
+        display: block;
+        flex: 0 0 18px;
+        width: 18px;
+        height: 18px;
+        background-image: url("../images/action/add.png");
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: contain;
+    }
+
+    html[data-theme="dark"] .omo-mobile-corner-action::before {
+        filter: invert(1);
+    }
+
+    .omo-mobile-corner-action__text {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    .omo-segmented__button[data-omo-segmented-option] {
+        min-width: 42px;
+        min-height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 10px;
+    }
+
+    .omo-segmented__button[data-omo-segmented-option]::before {
+        content: "";
+        display: block;
+        width: 18px;
+        height: 18px;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: contain;
+        opacity: 0.62;
+    }
+
+    .omo-segmented__button[data-omo-segmented-option="temporal"]::before {
+        background-image: url("../images/sort/temporal.png");
+    }
+
+    .omo-segmented__button[data-omo-segmented-option="alphabetical"]::before {
+        background-image: url("../images/sort/alphabetical.png");
+    }
+
+    .omo-segmented__button[data-omo-segmented-option="calendar-month"]::before {
+        background-image: url("../images/calendar-view/month-31.png");
+    }
+
+    .omo-segmented__button[data-omo-segmented-option="calendar-week"]::before {
+        background-image: url("../images/calendar-view/week-7.png");
+    }
+
+    .omo-segmented__button[data-omo-segmented-option="calendar-day"]::before {
+        background-image: url("../images/calendar-view/day-1.png");
+    }
+
+    .omo-segmented__button[data-omo-segmented-option="calendar-list"]::before {
+        background-image: url("../images/view/list.png");
+    }
+
+    .omo-segmented__button[data-omo-documents-density],
+    .omo-segmented__button[data-omo-decisions-density] {
+        min-width: 42px;
+        min-height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 10px;
+        font-size: 0;
+        line-height: 0;
+    }
+
+    .omo-segmented__button[data-omo-documents-density]::before,
+    .omo-segmented__button[data-omo-decisions-density]::before {
+        content: "";
+        display: block;
+        width: 18px;
+        height: 18px;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: contain;
+        opacity: 0.62;
+    }
+
+    .omo-segmented__button[data-omo-documents-density="detail"]::before,
+    .omo-segmented__button[data-omo-decisions-density="detail"]::before {
+        background-image: url("../images/view/cards.png");
+    }
+
+    .omo-segmented__button[data-omo-documents-density="compact"]::before,
+    .omo-segmented__button[data-omo-decisions-density="compact"]::before {
+        background-image: url("../images/view/list.png");
+    }
+
+    .omo-segmented__button[data-omo-documents-density].is-active::before,
+    .omo-segmented__button[data-omo-documents-density][aria-pressed="true"]::before,
+    .omo-segmented__button[data-omo-decisions-density].is-active::before,
+    .omo-segmented__button[data-omo-decisions-density][aria-pressed="true"]::before {
+        opacity: 1;
+    }
+
+    html[data-theme="dark"] .omo-segmented__button[data-omo-documents-density]::before,
+    html[data-theme="dark"] .omo-segmented__button[data-omo-decisions-density]::before {
+        filter: invert(1);
+    }
+
+    .omo-segmented__button[data-omo-segmented-option].is-active::before,
+    .omo-segmented__button[data-omo-segmented-option][aria-pressed="true"]::before {
+        opacity: 1;
+    }
+
+    html[data-theme="dark"] .omo-segmented__button[data-omo-segmented-option]::before {
+        filter: invert(1);
+    }
+
+    .omo-segmented__button[data-omo-segmented-option] .omo-segmented__text {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    .omo-scope-toggle {
+        padding: 2px;
+    }
+
+    .omo-scope-toggle__button {
+        min-width: 42px;
+        min-height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 10px;
+    }
+
+    .omo-scope-toggle__button::before {
+        content: "";
+        display: block;
+        width: 18px;
+        height: 18px;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: contain;
+        opacity: 0.62;
+    }
+
+    .omo-scope-toggle__button[data-omo-scope-option="contextual"]::before {
+        background-image: url("../images/scope/contextual.png");
+    }
+
+    .omo-scope-toggle__button[data-omo-scope-option="global"]::before {
+        background-image: url("../images/scope/global.png");
+    }
+
+    .omo-scope-toggle__button.is-active::before {
+        opacity: 1;
+    }
+
+    html[data-theme="dark"] .omo-scope-toggle__button::before {
+        filter: invert(1);
+    }
+
+    .omo-scope-toggle__text {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
 }
 
 .omo-overlay-drawer {
