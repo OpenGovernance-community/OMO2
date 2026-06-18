@@ -559,6 +559,10 @@ html[data-color-style="turquoise"] .common-topbar-profile-preference__tile--colo
     background: linear-gradient(135deg, #99f6e4 0%, #0f766e 100%);
 }
 
+html[data-color-style="ocean-blue"] .common-topbar-profile-preference__tile--color-style {
+    background: linear-gradient(135deg, #77b6d2 0%, #032b3e 100%);
+}
+
 .common-topbar-profile-preference__icon {
     display: block;
     width: 100%;

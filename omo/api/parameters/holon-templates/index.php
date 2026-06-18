@@ -81,15 +81,19 @@ if ($organizationId <= 0) {
                             <button
                                 type="button"
                                 class="omo-scope-toggle__button<?= $templateScope === 'contextual' ? ' is-active' : '' ?>"
+                                aria-label="Contextuel"
                                 data-omo-template-scope-toggle="contextual"
+                                data-omo-scope-option="contextual"
                                 aria-pressed="<?= $templateScope === 'contextual' ? 'true' : 'false' ?>"
-                            >Contextuel</button>
+                            ><span class="omo-scope-toggle__text">Contextuel</span></button>
                             <button
                                 type="button"
                                 class="omo-scope-toggle__button<?= $templateScope === 'global' ? ' is-active' : '' ?>"
+                                aria-label="Global"
                                 data-omo-template-scope-toggle="global"
+                                data-omo-scope-option="global"
                                 aria-pressed="<?= $templateScope === 'global' ? 'true' : 'false' ?>"
-                            >Global</button>
+                            ><span class="omo-scope-toggle__text">Global</span></button>
                         </div>
                         <div class="omo-scope-toolbar__note">
                             <?php if ($templateScope === 'global'): ?>
