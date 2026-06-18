@@ -457,7 +457,6 @@
     grid-template-columns: auto minmax(0, 1fr) auto;
     gap: 14px;
     align-items: center;
-    padding: 16px;
     border: 1px solid var(--auth-border);
     border-radius: 18px;
     background: var(--auth-input-bg);
@@ -621,13 +620,13 @@ body.auth-state-page--scrollable {
     gap: 12px;
     padding: 0 14px 14px;
     min-height: 124px;
+    width:100%
 }
 
 .auth-org-card__header {
     display: flex;
     align-items: flex-end;
     gap: 10px;
-    margin-top: -24px;
     position: relative;
     z-index: 1;
 }
@@ -749,7 +748,6 @@ body.auth-state-page--scrollable {
 
     .auth-org-card__header {
         gap: 12px;
-        margin-top: -24px;
     }
 
     .auth-org-logo--directory,

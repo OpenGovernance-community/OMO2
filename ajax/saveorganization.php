@@ -3,6 +3,7 @@
 require_once("../config.php");
 require_once("../shared_functions.php");
 require_once("../common/auth.php");
+require_once("../common/patreon.php");
 
 header('Content-Type: application/json; charset=UTF-8');
 
@@ -41,6 +42,11 @@ if ($isEditMode) {
         ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
+}
+
+$canManageOrganizationRouting = patreonCanManageOrganizationRouting($currentUserId);
+if (!$canManageOrganizationRouting) {
+    unset($_POST['shortname'], $_POST['domain']);
 }
 
 $organization->loadFromArray($_POST);

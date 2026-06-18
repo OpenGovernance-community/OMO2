@@ -987,7 +987,6 @@ html[data-theme] .common-help-card p {
 .omo-panel-group {
     display: flex;
     flex-direction: column;
-    gap: 12px;
 }
 
 .omo-panel-group__title {

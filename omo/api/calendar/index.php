@@ -2755,7 +2755,6 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
 .omo-calendar__results.generic-file-list .generic-file-list__group-title {
     padding: 15px 12px;
-    font-size: 0.9rem;
 }
 
 .omo-calendar__group {
