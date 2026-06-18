@@ -62,8 +62,8 @@ body {
 /* MAIN */
 .main {
     flex: 1;
-    height: calc(100dvh - var(--mobile-nav-height));
-    max-height: calc(100dvh - var(--mobile-nav-height));
+    height: 100dvh;
+    max-height: 100dvh;
     display: flex;
     flex-direction: column;
     min-width: 0;
