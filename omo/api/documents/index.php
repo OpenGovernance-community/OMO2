@@ -2481,7 +2481,6 @@ if (!is_string($documentsPayload)) {
 
 .omo-documents__results.generic-file-list .generic-file-list__group-title {
     padding: 15px 12px;
-    font-size: 0.9rem;
 }
 
 .omo-documents__list {
@@ -2490,7 +2489,7 @@ if (!is_string($documentsPayload)) {
 }
 
 .omo-documents__list.omo-panel-view__body_content {
-    margin: 0px 10px;
+    margin: 10px;
     padding:0px;
 }
 
