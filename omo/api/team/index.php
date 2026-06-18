@@ -553,7 +553,7 @@ if ($leafletMapsEnabled) {
                     Aucun membre n'a encore de position geographique dans cette organisation.
                 </div>
             <?php else: ?>
-                <div class="omo-team__map-shell generic-soft-panel">
+                <div class="omo-team__map-shell">
                     <div class="omo-team__map-summary">
                         <?= omoApiEscape(count($mapMembers)) ?> membre<?= count($mapMembers) > 1 ? 's' : '' ?> geolocalise<?= count($mapMembers) > 1 ? 's' : '' ?>.
                     </div>
@@ -641,6 +641,7 @@ if ($leafletMapsEnabled) {
 .omo-team__map-shell {
     display: grid;
     gap: 12px;
+    margin:10px;
 }
 
 .omo-team__map-summary {
@@ -792,7 +793,8 @@ if ($leafletMapsEnabled) {
 .omo-team__grid {
     --omo-card-min: 220px;
     --omo-card-max: 240px;
-    gap: 12px;
+    gap: 10px;
+    margin:10px;
 }
 
 .omo-team-card {

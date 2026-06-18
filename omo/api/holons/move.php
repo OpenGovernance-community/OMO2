@@ -331,18 +331,7 @@ elements.cancel.addEventListener('click', closeMoveDrawer);
 }
 
 .omo-holon-move__select {
-    --generic-form-control-border: var(--topbar-panel-border, #dbe3ef);
-    --generic-form-control-background: var(--topbar-panel-bg, #ffffff);
-    --generic-form-control-background-focus: var(--topbar-panel-bg, #ffffff);
-    --generic-form-control-color: inherit;
     min-height: 240px;
-}
-
-.omo-holon-move__field input {
-    --generic-form-control-border: var(--topbar-panel-border, #dbe3ef);
-    --generic-form-control-background: var(--topbar-panel-bg, #ffffff);
-    --generic-form-control-background-focus: var(--topbar-panel-bg, #ffffff);
-    --generic-form-control-color: inherit;
 }
 
 .omo-holon-move__status {

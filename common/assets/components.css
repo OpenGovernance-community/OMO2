@@ -1,3 +1,5 @@
+@import url('/common/assets/theme.css');
+
 .generic-section,
 .omo-card {
     --generic-section-padding-block: 16px;
@@ -74,11 +76,15 @@
     box-shadow: var(--generic-hero-shadow);
 }
 
-.generic-hero-panel--accent {
+.generic-hero-panel.accent {
     --generic-hero-background:
         radial-gradient(circle at top right, color-mix(in srgb, var(--color-primary, #2563eb) 16%, transparent), transparent 48%),
         linear-gradient(135deg, color-mix(in srgb, var(--color-primary, #2563eb) 8%, var(--color-surface, #fff)), var(--color-surface, #fff));
     --generic-hero-border: color-mix(in srgb, var(--color-primary, #2563eb) 16%, var(--color-border, #d1d5db));
+}
+.generic-hero-panel.fill {
+    border-width: 0 0 1px 0;
+    border-radius: 0;
 }
 
 .generic-card-title {
@@ -129,12 +135,6 @@
 html[data-theme="dark"] .black-icon,
 :root[data-theme="dark"] .black-icon {
     filter: var(--black-icon-filter-dark, invert(1) brightness(1.2));
-}
-
-@media (prefers-color-scheme: dark) {
-    html[data-theme-preference="system"] .black-icon {
-        filter: var(--black-icon-filter-dark, invert(1) brightness(1.2));
-    }
 }
 
 .generic-action-button {
@@ -212,7 +212,7 @@ html[data-theme="dark"] .black-icon,
     --generic-form-control-border: var(--color-border, #d1d5db);
     --generic-form-control-border-focus: color-mix(in srgb, var(--color-primary, #2563eb) 52%, var(--generic-form-control-border));
     --generic-form-control-radius: 12px;
-    --generic-form-control-background: var(--color-surface-alt, #f8fafc);
+    --generic-form-control-background: var(--color-bg, #f8fafc);
     --generic-form-control-background-focus: var(--color-surface, #ffffff);
     --generic-form-control-color: var(--color-text, #1f2937);
     --generic-form-control-focus-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 14%, transparent);
@@ -477,12 +477,23 @@ textarea.generic-form-control {
 .generic-file-list--structured .generic-file-list__group {
     position: relative;
     display: grid;
-    gap: 12px;
+}
+
+.generic-file-list__group-title {
+    position: sticky;
+    top: 0;
+    z-index: var(--generic-file-list-group-title-z, 5);
+    margin: 0;
+    padding: 15px 12px;
+    font-size: 0.82rem;
+    background: var(--generic-file-list-surface, var(--color-surface, #ffffff));
+    box-shadow:
+        0 1px 0 color-mix(in srgb, var(--generic-file-list-border, var(--color-border, #e5e7eb)) 78%, transparent),
+        0 8px 14px -12px rgba(15, 23, 42, 0.38);
 }
 
 .generic-file-list--structured .generic-file-list__group-title {
-    margin: 0;
-    padding: 0;
+    padding: 15px 12px;
 }
 
 .generic-file-list--structured .generic-file-list__table {
@@ -860,7 +871,6 @@ textarea.generic-form-control {
     line-height: 1;
     cursor: pointer;
     transition: transform 0.2s ease;
-    margin:-6px;
 }
 
 .generic-accordion__content {

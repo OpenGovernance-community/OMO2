@@ -78,13 +78,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         font-weight: 700;
     }
 
-    .omo-organization-member-popup__email {
-        --generic-form-control-border: var(--topbar-panel-border, #dbe3ef);
-        --generic-form-control-background: var(--topbar-panel-bg, #ffffff);
-        --generic-form-control-background-focus: var(--topbar-panel-bg, #ffffff);
-        --generic-form-control-color: inherit;
-    }
-
     .omo-organization-member-popup__hint {
         color: var(--topbar-panel-muted, #64748b);
         font-size: 0.92rem;

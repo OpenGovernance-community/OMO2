@@ -1008,32 +1008,7 @@ if ($canManageAllFaqs) {
 
 	<div class="faq-popup__search" data-faq-search-view>
 		<div class="faq-popup__hero">
-			<div class="faq-popup__hero-head">
-				<div class="faq-popup__hero-main">
-					<div class="faq-popup__hero-icon" aria-hidden="true">?</div>
-					<div class="faq-popup__hero-copy">
-						<h2 class="faq-popup__hero-title">FAQ OMO</h2>
-						<div class="faq-popup__hero-subtitle"><?= htmlspecialchars($heroSubtitle, ENT_QUOTES, 'UTF-8') ?></div>
-					</div>
-				</div>
-				<div class="faq-popup__hero-tags">
-					<div class="faq-popup__hero-tag">
-						<strong>Mode</strong>
-						<span><?= $faqScope === 'global' ? 'Global' : 'Contextuel' ?></span>
-					</div>
-					<?php if ($contextHolonLabel !== ''): ?>
-						<div class="faq-popup__hero-tag">
-							<strong>Holon</strong>
-							<span><?= htmlspecialchars($contextHolonLabel, ENT_QUOTES, 'UTF-8') ?></span>
-						</div>
-					<?php elseif ($contextOrganizationLabel !== ''): ?>
-						<div class="faq-popup__hero-tag">
-							<strong>Organisation</strong>
-							<span><?= htmlspecialchars($contextOrganizationLabel, ENT_QUOTES, 'UTF-8') ?></span>
-						</div>
-					<?php endif; ?>
-				</div>
-			</div>
+
 			<?php if ($contextOrganizationId > 0 || count($allFAQ) > 0 || $canAddFaq): ?>
 				<div class="faq-popup__toolbar">
 					<div class="faq-popup__toolbar-main">
@@ -1045,6 +1020,7 @@ if ($canManageAllFaqs) {
 								data-faq-scope-switch="<?= htmlspecialchars($faqScope, ENT_QUOTES, 'UTF-8') ?>"
 							>
 								<button
+									 title="<?= htmlspecialchars($contextHolonLabel, ENT_QUOTES, 'UTF-8') ?>"
 									type="button"
 									class="faq-popup__scope-toggle-button<?= $faqScope === 'contextual' ? ' is-active' : '' ?>"
 									data-faq-scope-toggle="contextual"
@@ -1058,23 +1034,7 @@ if ($canManageAllFaqs) {
 								>Global</button>
 							</div>
 						<?php endif; ?>
-						<div class="faq-popup__toolbar-note" data-faq-helper<?= count($allFAQ) === 0 ? ' hidden' : '' ?>>
-							<?php if ($canManageAllFaqs): ?>
-								<strong>Mode super admin:</strong>
-								<?= $faqScope === 'global'
-									? 'toutes les FAQ de toutes les organisations sont listees ici.'
-									: 'seules les FAQ du contexte courant sont listees ici.' ?>
-							<?php elseif ($canManageOrganizationFaqs): ?>
-								<strong>Mode admin organisation:</strong>
-								<?= $faqScope === 'global'
-									? 'toutes les FAQ de l organisation courante sont listees ici.'
-									: 'seules les FAQ utiles au contexte courant sont listees ici.' ?>
-							<?php else: ?>
-								<?= $faqScope === 'global'
-									? 'Mode global: vous cherchez dans toute la FAQ de l organisation.'
-									: 'Mode contextuel: seules les questions liees au contexte courant sont chargees.' ?>
-							<?php endif; ?>
-						</div>
+						
 					</div>
 					<div class="faq-popup__toolbar-actions">
 						<?php if ($canAddFaq): ?>

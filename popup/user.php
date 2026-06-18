@@ -876,7 +876,7 @@ foreach ($competenceRows as $competenceRow) {
 
     <div class="omo-user-context__layout">
         <aside class="omo-user-context__sidebar">
-            <section class="omo-user-context__profile generic-hero-panel generic-hero-panel--accent">
+            <section class="omo-user-context__profile generic-hero-panel accent">
                 <div class="omo-user-context__photo-shell">
                     <?php if ($photoUrl !== ''): ?>
                         <img
