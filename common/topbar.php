@@ -231,6 +231,7 @@ function commonRenderTopbar(array $options = [])
                 'colorStyleLabel' => (string)($options['profile']['preferences']['colorStyleLabel'] ?? 'Couleur'),
                 'colorStyleDefaultLabel' => (string)($options['profile']['preferences']['colorStyleDefaultLabel'] ?? 'Noir et blanc'),
                 'colorStyleTurquoiseLabel' => (string)($options['profile']['preferences']['colorStyleTurquoiseLabel'] ?? 'Turquoise'),
+                'colorStyleOceanBlueLabel' => (string)($options['profile']['preferences']['colorStyleOceanBlueLabel'] ?? 'Ocean Blue'),
                 'currentLocale' => (string)($options['profile']['preferences']['currentLocale'] ?? $currentLocalePreference),
                 'resolvedLocale' => (string)($options['profile']['preferences']['resolvedLocale'] ?? $currentLocale),
                 'systemLabel' => (string)($options['profile']['preferences']['systemLabel'] ?? 'Systeme'),
@@ -561,6 +562,7 @@ function commonRenderTopbar(array $options = [])
                                             <div class="common-topbar-profile-preference__menu" data-topbar-preference-popup="color-style" hidden>
                                                 <button type="button" class="common-topbar-profile-preference__option is-active" data-topbar-color-style-option="mono"><?= htmlspecialchars($config['profile']['preferences']['colorStyleDefaultLabel']) ?></button>
                                                 <button type="button" class="common-topbar-profile-preference__option" data-topbar-color-style-option="turquoise"><?= htmlspecialchars($config['profile']['preferences']['colorStyleTurquoiseLabel']) ?></button>
+                                                <button type="button" class="common-topbar-profile-preference__option" data-topbar-color-style-option="ocean-blue"><?= htmlspecialchars($config['profile']['preferences']['colorStyleOceanBlueLabel']) ?></button>
                                             </div>
                                         </div>
                                     </div>

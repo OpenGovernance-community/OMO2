@@ -222,10 +222,11 @@ if (!is_string($documentsPayload)) {
                 <?php if ($canCreateDocument): ?>
                     <button
                         type="button"
-                        class="generic-action-button generic-action-button--main omo-documents__new-button"
+                        class="generic-action-button generic-action-button--main omo-documents__new-button omo-mobile-corner-action"
+                        aria-label="Nouveau"
                         data-omo-documents-new
                         data-omo-documents-new-url="<?= $escape($newDocumentUrl) ?>"
-                    >Nouveau</button>
+                    ><span class="omo-mobile-corner-action__text">Nouveau</span></button>
                 <?php endif; ?>
             </div>
         </div>
@@ -240,24 +241,28 @@ if (!is_string($documentsPayload)) {
                     <button
                         type="button"
                         class="omo-scope-toggle__button<?= $documentScope === 'contextual' ? ' is-active' : '' ?>"
+                        aria-label="Contextuel"
                         data-omo-document-scope-toggle="contextual"
+                        data-omo-scope-option="contextual"
                         aria-pressed="<?= $documentScope === 'contextual' ? 'true' : 'false' ?>"
                         onclick="return window.omoToggleDocumentsScope ? window.omoToggleDocumentsScope(this, event) : false;"
-                    >Contextuel</button>
+                    ><span class="omo-scope-toggle__text">Contextuel</span></button>
                     <button
                         type="button"
                         class="omo-scope-toggle__button<?= $documentScope === 'global' ? ' is-active' : '' ?>"
+                        aria-label="Global"
                         data-omo-document-scope-toggle="global"
+                        data-omo-scope-option="global"
                         aria-pressed="<?= $documentScope === 'global' ? 'true' : 'false' ?>"
                         onclick="return window.omoToggleDocumentsScope ? window.omoToggleDocumentsScope(this, event) : false;"
-                    >Global</button>
+                    ><span class="omo-scope-toggle__text">Global</span></button>
                 </div>
             <?php endif; ?>
             <?php if (count($documentEntries) > 0): ?>
                 <div class="omo-documents__controls omo-panel-controls">
                     <div class="omo-segmented" role="group" aria-label="Tri des documents">
-                        <button type="button" class="omo-segmented__button is-active" data-omo-documents-sort="date" aria-pressed="true">Date</button>
-                        <button type="button" class="omo-segmented__button" data-omo-documents-sort="alpha" aria-pressed="false">Alphabétique</button>
+                        <button type="button" class="omo-segmented__button is-active" aria-label="Date" data-omo-documents-sort="date" data-omo-segmented-option="temporal" aria-pressed="true"><span class="omo-segmented__text">Date</span></button>
+                        <button type="button" class="omo-segmented__button" aria-label="Alphabétique" data-omo-documents-sort="alpha" data-omo-segmented-option="alphabetical" aria-pressed="false"><span class="omo-segmented__text">Alphabétique</span></button>
                     </div>
                     <div class="omo-segmented" role="group" aria-label="Densité d'affichage des documents">
                         <button type="button" class="omo-segmented__button is-active" data-omo-documents-density="detail" aria-pressed="true">Détail</button>
@@ -3319,6 +3324,37 @@ if (!is_string($documentsPayload)) {
 
     .omo-documents__date {
         margin-left: 0;
+    }
+}
+
+@media (max-width: 640px) {
+    .omo-documents__header-main-actions {
+        width: auto;
+        position: static;
+        z-index: auto;
+    }
+
+    .omo-documents__header-main-actions .omo-mobile-corner-action {
+        width: 42px;
+        min-width: 42px;
+        max-width: 42px;
+        flex: 0 0 42px;
+        border-radius: 0 0 0 12px !important;
+    }
+
+    .omo-documents__header-actions {
+        align-items: flex-start;
+        justify-content: space-between;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: "scope controls";
+        gap: 10px;
+    }
+
+    .omo-documents__controls {
+        width: auto;
+        justify-content: flex-end;
+        flex-wrap: nowrap;
+        gap: 8px;
     }
 }
 </style>
