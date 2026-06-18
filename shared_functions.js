@@ -4,6 +4,7 @@
 //fonctions génériques de validation
 const SHARED_THEME_STORAGE_KEY = 'omo-theme-preference';
 const SHARED_THEME_MEDIA_QUERY = '(prefers-color-scheme: dark)';
+const SHARED_COLOR_STYLE_STORAGE_KEY = 'omo-color-style-preference';
 
 function sharedGetThemePreference(storageKey = SHARED_THEME_STORAGE_KEY) {
 	try {
@@ -30,23 +31,42 @@ function sharedResolveTheme(preference, mediaQuery = SHARED_THEME_MEDIA_QUERY) {
 	return window.matchMedia(mediaQuery).matches ? 'dark' : 'light';
 }
 
+function sharedGetColorStylePreference(storageKey = SHARED_COLOR_STYLE_STORAGE_KEY) {
+	try {
+		const storedPreference = window.localStorage.getItem(storageKey);
+
+		if (storedPreference === 'mono' || storedPreference === 'turquoise') {
+			return storedPreference;
+		}
+	} catch (error) {
+	}
+
+	return 'mono';
+}
+
 function sharedApplyDocumentTheme(options = {}) {
-	const settings = options || {};
+	const settings = options && typeof options === 'object' ? options : {};
 	const storageKey = settings.storageKey || SHARED_THEME_STORAGE_KEY;
+	const colorStyleStorageKey = settings.colorStyleStorageKey || SHARED_COLOR_STYLE_STORAGE_KEY;
 	const mediaQuery = settings.mediaQuery || SHARED_THEME_MEDIA_QUERY;
-	const root = settings.root || document.documentElement;
+	const root = settings.root || settings.documentElement || document.documentElement;
 	const preference = settings.preference === 'light' || settings.preference === 'dark' || settings.preference === 'system'
 		? settings.preference
 		: sharedGetThemePreference(storageKey);
+	const colorStyle = settings.colorStyle === 'mono' || settings.colorStyle === 'turquoise'
+		? settings.colorStyle
+		: sharedGetColorStylePreference(colorStyleStorageKey);
 	const resolvedTheme = sharedResolveTheme(preference, mediaQuery);
 
 	root.dataset.themePreference = preference;
 	root.dataset.theme = resolvedTheme;
+	root.dataset.colorStyle = colorStyle;
 	root.style.colorScheme = resolvedTheme;
 
 	return {
 		preference: preference,
-		theme: resolvedTheme
+		theme: resolvedTheme,
+		colorStyle: colorStyle
 	};
 }
 

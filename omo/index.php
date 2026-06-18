@@ -70,6 +70,10 @@ $sourceLang = [
         'text' => 'Creer une nouvelle organisation',
         'context' => 'Title shown on the create organization card.',
     ],
+    'app.directory.description.empty.patreon_connect' => [
+        'text' => "Votre compte est bien connecte, mais il n'est rattache a aucune organisation pour le moment. Connectez Patreon ci-dessous pour pouvoir en creer une nouvelle.",
+        'context' => 'Message shown on the organization directory when no organization is available and Patreon must be connected before creating one.',
+    ],
     'app.directory.cta.connect' => [
         'text' => 'Se connecter',
         'context' => 'Action label shown on an organization card to enter its workspace.',
@@ -158,6 +162,26 @@ $sourceLang = [
     'app.directory.page_title' => [
         'text' => 'Vos espaces OMO',
         'context' => 'Browser title shown on the organization directory page.',
+    ],
+    'app.directory.patreon_connect.action' => [
+        'text' => 'Se connecter avec Patreon',
+        'context' => 'Action label displayed on the Patreon connect card shown before organization creation is allowed.',
+    ],
+    'app.directory.patreon_connect.aria_label' => [
+        'text' => 'Connecter votre profil Patreon',
+        'context' => 'Aria label for the Patreon connect card button shown on the directory page.',
+    ],
+    'app.directory.patreon_connect.badge' => [
+        'text' => 'Patreon requis',
+        'context' => 'Badge shown on the Patreon connect card on the organization directory page.',
+    ],
+    'app.directory.patreon_connect.description' => [
+        'text' => 'Connectez Patreon pour debloquer la creation d une organisation',
+        'context' => 'Subtitle shown on the Patreon connect card on the organization directory page.',
+    ],
+    'app.directory.patreon_connect.title' => [
+        'text' => 'Connecter Patreon',
+        'context' => 'Title shown on the Patreon connect card on the organization directory page.',
     ],
     'app.directory.status.none' => [
         'text' => 'Aucune organisation pour le moment',
@@ -444,11 +468,52 @@ function omoRenderDirectoryCard(array $directoryCardData)
                         </div>
                     </div>
                     <div class="auth-org-card__footer">
-                        <span class="auth-org-badge<?= $pendingInvitation ? ' auth-org-badge--pending' : '' ?>"><?= htmlspecialchars($organizationCardBadge) ?></span>
                         <span class="auth-org-action"><?= htmlspecialchars($organizationCardAction) ?></span>
                     </div>
                 </div>
             </article>
+    <?php
+}
+
+function omoRenderDirectoryActionCard(array $actionCardData)
+{
+    $cardId = trim((string)($actionCardData['id'] ?? ''));
+    $cardAction = trim((string)($actionCardData['cardAction'] ?? ''));
+    $cardAriaLabel = trim((string)($actionCardData['ariaLabel'] ?? ''));
+    $cardTitle = trim((string)($actionCardData['title'] ?? ''));
+    $cardDescription = trim((string)($actionCardData['description'] ?? ''));
+    $cardActionLabel = trim((string)($actionCardData['actionLabel'] ?? ''));
+    $cardBadge = trim((string)($actionCardData['badge'] ?? ''));
+    $cardImageUrl = trim((string)($actionCardData['imageUrl'] ?? ''));
+    $cardAccentColor = trim((string)($actionCardData['accentColor'] ?? '')) ?: '#2563eb';
+    $cardInitial = trim((string)($actionCardData['initial'] ?? '+'));
+    ?>
+            <button
+                type="button"
+                class="auth-org-card auth-org-card--directory auth-org-card--directory-action"
+                <?php if ($cardId !== '') { ?>id="<?= htmlspecialchars($cardId, ENT_QUOTES, 'UTF-8') ?>"<?php } ?>
+                <?php if ($cardAction !== '') { ?>data-omo-directory-card-action="<?= htmlspecialchars($cardAction, ENT_QUOTES, 'UTF-8') ?>"<?php } ?>
+                aria-label="<?= htmlspecialchars($cardAriaLabel, ENT_QUOTES, 'UTF-8') ?>"
+                style="--auth-org-accent: <?= htmlspecialchars($cardAccentColor, ENT_QUOTES, 'UTF-8') ?>;"
+            >
+                <div
+                    class="auth-org-card__banner auth-org-card__banner--action"
+                    <?php if ($cardImageUrl !== '') { ?>style="<?= htmlspecialchars('background-image: url("' . $cardImageUrl . '");', ENT_QUOTES, 'UTF-8') ?>"<?php } ?>
+                ></div>
+                <div class="auth-org-card__body">
+                    <div class="auth-org-card__header">
+                        <div class="auth-org-logo-placeholder auth-org-logo-placeholder--directory auth-org-logo-placeholder--action" aria-hidden="true"><?= htmlspecialchars($cardInitial, ENT_QUOTES, 'UTF-8') ?></div>
+                        <div class="auth-org-info auth-org-info--directory">
+                            <strong class="auth-org-title auth-org-title--directory"><?= htmlspecialchars($cardTitle, ENT_QUOTES, 'UTF-8') ?></strong>
+                            <span class="auth-org-meta auth-org-meta--directory"><?= htmlspecialchars($cardDescription, ENT_QUOTES, 'UTF-8') ?></span>
+                        </div>
+                    </div>
+                    <div class="auth-org-card__footer">
+                        <span class="auth-org-badge auth-org-badge--action"><?= htmlspecialchars($cardBadge, ENT_QUOTES, 'UTF-8') ?></span>
+                        <span class="auth-org-action"><?= htmlspecialchars($cardActionLabel, ENT_QUOTES, 'UTF-8') ?></span>
+                    </div>
+                </div>
+            </button>
     <?php
 }
 
@@ -539,6 +604,13 @@ if (empty($organizationContext['isValid'])) {
 if ($isOrganizationHub && !$isDemoGuest) {
     $logoutUrl = '/common/logout.php?return_to=' . urlencode('/omo/');
     $organizationCreateUrl = '/popup/organization_create.php';
+    $patreonConfigured = patreonSupportUiIsEnabled();
+    $patreonConnection = false;
+    $patreonConnected = false;
+    if ($currentUserId > 0 && $patreonConfigured) {
+        $patreonConnection = \dbObject\UserPatreon::findByUserId($currentUserId);
+        $patreonConnected = $patreonConnection !== false && $patreonConnection->isConnected();
+    }
     $hubUser = new \dbObject\User();
     $accessibleOrganizations = $hubUser->load($currentUserId)
         ? $hubUser->getAccessibleOrganizations()
@@ -599,6 +671,35 @@ if ($isOrganizationHub && !$isDemoGuest) {
     $organizationStatusLabel = $organizationCount === 0
         ? t('app.directory.status.none')
         : t('app.directory.status.available', ['count' => $organizationCount]);
+    $showPatreonConnectCard = $patreonConfigured && !$patreonConnected;
+    $directoryDescriptionKey = $organizationCount > 0
+        ? 'app.directory.description.with_results'
+        : ($showPatreonConnectCard ? 'app.directory.description.empty.patreon_connect' : 'app.directory.description.empty');
+    $directoryActionCard = $showPatreonConnectCard
+        ? [
+            'id' => 'omoPatreonConnectCard',
+            'cardAction' => 'patreon-connect',
+            'ariaLabel' => t('app.directory.patreon_connect.aria_label'),
+            'title' => t('app.directory.patreon_connect.title'),
+            'description' => t('app.directory.patreon_connect.description'),
+            'actionLabel' => t('app.directory.patreon_connect.action'),
+            'badge' => t('app.directory.patreon_connect.badge'),
+            'imageUrl' => '/omo/assets/images/directory/patreon-connect.png',
+            'accentColor' => '#ff424d',
+            'initial' => 'P',
+        ]
+        : [
+            'id' => 'omoCreateOrganizationCard',
+            'cardAction' => 'create',
+            'ariaLabel' => t('app.directory.create.aria_label'),
+            'title' => t('app.directory.create.title'),
+            'description' => t('app.directory.create.description'),
+            'actionLabel' => t('app.directory.create.action'),
+            'badge' => t('app.directory.create.badge'),
+            'imageUrl' => '/omo/assets/images/directory/new-organization.png',
+            'accentColor' => '#2563eb',
+            'initial' => '+',
+        ];
     $directoryJsTranslations = [
         'actionError' => t('app.directory.js.action_error'),
         'defaultOrganizationName' => t('app.directory.js.default_organization_name'),
@@ -633,36 +734,12 @@ if ($isOrganizationHub && !$isDemoGuest) {
         </span>
         <div class="omo-directory-section">
         <h1><?= htmlspecialchars(t('app.directory.heading')) ?></h1>
-        <?php if ($organizationCount > 0) { ?>
-            <p><?= htmlspecialchars(t('app.directory.description.with_results')) ?></p>
-        <?php } else { ?>
-            <p><?= htmlspecialchars(t('app.directory.description.empty')) ?></p>
-        <?php } ?>
+            <p><?= htmlspecialchars(t($directoryDescriptionKey)) ?></p>
         <div class="auth-org-list auth-org-list--directory">
             <?php foreach ($organizationDirectoryCards as $directoryCardData) {
                 omoRenderDirectoryCard($directoryCardData);
             } ?>
-            <button
-                type="button"
-                class="auth-org-card auth-org-card--directory auth-org-card--create"
-                id="omoCreateOrganizationCard"
-                aria-label="<?= htmlspecialchars(t('app.directory.create.aria_label')) ?>"
-            >
-                <div class="auth-org-card__banner auth-org-card__banner--create"></div>
-                <div class="auth-org-card__body">
-                    <div class="auth-org-card__header">
-                        <div class="auth-org-logo-placeholder auth-org-logo-placeholder--directory auth-org-logo-placeholder--create" aria-hidden="true">+</div>
-                        <div class="auth-org-info auth-org-info--directory">
-                            <strong class="auth-org-title auth-org-title--directory"><?= htmlspecialchars(t('app.directory.create.title')) ?></strong>
-                            <span class="auth-org-meta auth-org-meta--directory"><?= htmlspecialchars(t('app.directory.create.description')) ?></span>
-                        </div>
-                    </div>
-                    <div class="auth-org-card__footer">
-                        <span class="auth-org-badge"><?= htmlspecialchars(t('app.directory.create.badge')) ?></span>
-                        <span class="auth-org-action"><?= htmlspecialchars(t('app.directory.create.action')) ?></span>
-                    </div>
-                </div>
-            </button>
+            <?php omoRenderDirectoryActionCard($directoryActionCard); ?>
         </div>
         </div>
         <?php if (count($templateDirectoryCards) > 0) { ?>
@@ -806,41 +883,43 @@ if ($isOrganizationHub && !$isDemoGuest) {
             background: color-mix(in srgb, #dc2626 18%, var(--color-surface, #ffffff));
         }
 
-        .auth-org-card--create {
-            border: 1px dashed color-mix(in srgb, var(--color-primary, #2563eb) 28%, var(--color-border, #d1d5db));
-            background:
-                linear-gradient(
-                    180deg,
-                    color-mix(in srgb, var(--color-surface, #ffffff) 96%, var(--color-primary, #2563eb) 4%),
-                    color-mix(in srgb, var(--color-surface-alt, #f8fbff) 92%, var(--color-primary, #2563eb) 8%)
-                );
+        .auth-org-card--directory-action {
             cursor: pointer;
+            padding: 0;
             text-align: left;
+            font: inherit;
         }
 
-        .auth-org-card__banner--create {
-            background:
-                radial-gradient(circle at top left, rgba(255,255,255,0.18), transparent 32%),
-                linear-gradient(135deg, #0f172a, #1e3a8a 58%, #2563eb);
+        .auth-org-card__banner--action {
+            display: block;
+            width: 100%;
+            flex: 0 0 auto;
+            min-height: 148px;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
         }
 
-        .auth-org-logo-placeholder--create {
-            background: color-mix(in srgb, var(--color-primary, #2563eb) 16%, var(--color-surface, #ffffff));
-            color: var(--color-primary, #2563eb);
+        .auth-org-logo-placeholder--action {
+            background: color-mix(in srgb, var(--auth-org-accent, var(--color-primary, #2563eb)) 16%, var(--color-surface, #ffffff));
+            color: color-mix(in srgb, var(--auth-org-accent, var(--color-primary, #2563eb)) 80%, var(--color-text, #0f172a));
+        }
+
+        .auth-org-badge--action {
+            background: color-mix(in srgb, var(--auth-org-accent, var(--color-primary, #2563eb)) 12%, var(--color-surface, #ffffff));
+            color: color-mix(in srgb, var(--auth-org-accent, var(--color-primary, #2563eb)) 80%, var(--color-text, #0f172a));
         }
 
     </style>
 
     <script>
         (function () {
-            var openButton = document.getElementById('omoCreateOrganizationCard');
+            var createButton = document.getElementById('omoCreateOrganizationCard');
+            var patreonConnectButton = document.getElementById('omoPatreonConnectCard');
             var organizationActionUrl = '/omo/api/organizations/card_action.php';
             var organizationCreateUrl = <?= json_encode($organizationCreateUrl, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
             var organizationCreateModalTitle = <?= json_encode(t('app.directory.create.modal_title'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
-
-            if (!openButton) {
-                return;
-            }
+            var patreonConnectUrl = '/common/patreon_connect.php';
 
             function interpolateTemplate(template, variables) {
                 return String(template || '').replace(/\{(\w+)\}/g, function (match, key) {
@@ -858,7 +937,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
                 });
             }
 
-            function openModal() {
+            function openCreateModal() {
                 if (typeof window.commonTopbarOpenModal === 'function') {
                     window.commonTopbarOpenModal(organizationCreateModalTitle, organizationCreateUrl, 'fetch');
                     return;
@@ -867,7 +946,43 @@ if ($isOrganizationHub && !$isDemoGuest) {
                 window.location.href = organizationCreateUrl;
             }
 
-            openButton.addEventListener('click', openModal);
+            function openPatreonConnect() {
+                var width = 720;
+                var height = 860;
+                var left = Math.max(0, (window.screen.width - width) / 2);
+                var top = Math.max(0, (window.screen.height - height) / 2);
+                var popup = window.open(
+                    patreonConnectUrl,
+                    'patreon_connect',
+                    'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top + ',resizable=yes,scrollbars=yes'
+                );
+
+                if (!popup) {
+                    window.location.href = patreonConnectUrl;
+                }
+            }
+
+            function handlePatreonMessage(event) {
+                if (event.origin !== window.location.origin) {
+                    return;
+                }
+
+                if (!event.data || event.data.type !== 'patreon-connected') {
+                    return;
+                }
+
+                window.location.reload();
+            }
+
+            if (createButton) {
+                createButton.addEventListener('click', openCreateModal);
+            }
+
+            if (patreonConnectButton) {
+                patreonConnectButton.addEventListener('click', openPatreonConnect);
+            }
+
+            window.addEventListener('message', handlePatreonMessage);
 
             document.addEventListener('click', function (event) {
                 var trigger = event.target.closest('[data-omo-org-menu-trigger]');

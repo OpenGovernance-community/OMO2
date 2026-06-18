@@ -237,7 +237,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
         ?>
         <section class="omo-decision-consent generic-section generic-section--stack">
             <?php if (!$publicLayout): ?>
-            <div class="generic-hero-panel generic-hero-panel--accent">
+            <div class="generic-hero-panel accent">
                 <div class="omo-decision-consent__head">
                     <h3 class="generic-card-title"><?= $escape(t($headerTitleKey, [], $lang, $sourceLang)) ?></h3>
                     <p class="omo-decision-consent__text"><?= $escape(t($headerDescriptionKey, [], $lang, $sourceLang)) ?></p>

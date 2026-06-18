@@ -115,6 +115,7 @@ $documentDescription = trim((string)($livePayload['description'] ?? ''));
     <title><?= htmlspecialchars($documentTitle !== '' ? $documentTitle : 'Document partage', ENT_QUOTES, 'UTF-8') ?></title>
     <script src="/shared_functions.js"></script>
     <script>sharedApplyDocumentTheme();</script>
+    <link rel="stylesheet" href="/common/assets/components.css">
     <link rel="stylesheet" href="/omo/assets/css/styles.css">
     <style>
     body {

@@ -971,7 +971,7 @@ if (!empty($context['status'])) {
 
 ob_start();
 ?>
-        <section class="generic-hero-panel generic-hero-panel--accent decision-public-hero">
+        <section class="generic-hero-panel fill accent decision-public-hero">
             <?php if (!$isResultsDisplay): ?>
             <div class="decision-public-eyebrow">
                 <strong><?= omoApiEscape($organizationName !== '' ? $organizationName : 'Organisation') ?></strong>
@@ -1253,13 +1253,8 @@ if (empty($context['status'])) {
             gap: 16px;
         }
 
-        .decision-public-panel-scroll--context {
-            padding: 20px;
-        }
-
         .decision-public-panel-scroll--main {
-            flex: 1 1 auto;
-            padding: 20px;
+            flex: 1 auto 1;
             overflow-y: auto;
         }
 
@@ -1722,11 +1717,6 @@ if (empty($context['status'])) {
         }
 
         @media (max-width: 768px) {
-            .decision-public-panel-scroll--context,
-            .decision-public-panel-scroll--main {
-                padding: 14px;
-            }
-
             .decision-public-main-summary {
                 display: grid;
                 gap: 8px;

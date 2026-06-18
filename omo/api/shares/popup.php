@@ -75,12 +75,6 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
         border: 1px solid var(--color-border, #e5e7eb);
     }
 
-    .omo-share-popup__hero {
-        --generic-hero-gap: 8px;
-        --generic-hero-padding: 18px;
-        --generic-hero-radius: 18px;
-    }
-
     .omo-share-popup__hero h2,
     .omo-share-popup__section-title {
         margin: 0;
@@ -122,7 +116,6 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
 
     .omo-share-popup__card {
         --generic-section-gap: 10px;
-        --generic-section-padding-block: 16px;
         --generic-section-padding-inline: 16px;
         --generic-section-radius: 16px;
         --generic-section-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.05));
@@ -212,7 +205,6 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
         --generic-form-control-padding-block: 10px;
         --generic-form-control-border: var(--color-border-strong, #cbd5e1);
         --generic-form-control-background: var(--color-surface, #ffffff);
-        --generic-form-control-background-focus: var(--color-surface, #ffffff);
     }
 
     .omo-share-popup__hint {
@@ -222,8 +214,6 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
     }
 
     .omo-share-popup__permissions {
-        --generic-soft-panel-border: var(--color-border, #e5e7eb);
-        --generic-soft-panel-background: var(--color-surface-alt, #f0f2f5);
         --generic-soft-panel-gap: 12px;
         --generic-soft-panel-padding-block: 16px;
         --generic-soft-panel-padding-inline: 16px;

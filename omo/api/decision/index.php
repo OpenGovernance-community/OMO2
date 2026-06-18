@@ -1309,7 +1309,7 @@ if (!is_string($payloadJson)) {
     background: color-mix(in srgb, var(--color-bg, #f8fafc) 94%, transparent);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    box-shadow: 0 1px 0 color-mix(in srgb, var(--color-border, #d1d5db) 80%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 80%, transparent);
 }
 
 .omo-decisions__status-bar {
@@ -1493,11 +1493,10 @@ if (!is_string($payloadJson)) {
 
 .omo-decisions__list.generic-file-list .generic-file-list__group-title {
     padding: 15px 12px;
-    font-size: 0.9rem;
 }
 
 .omo-decisions__list.generic-file-list .generic-file-list__table {
-    margin-inline: 10px;
+    margin: 10px;
 }
 
 .omo-decisions__group {
@@ -1507,6 +1506,7 @@ if (!is_string($payloadJson)) {
 .omo-decisions__card-list {
     display: grid;
     gap: 10px;
+    margin: 10px;
 }
 
 .omo-decisions__compact-row {
@@ -2602,7 +2602,7 @@ function showStateContainer(html, variant) {
     }
 
     elements.state.className = 'omo-decisions__state ' + (variant === 'empty'
-        ? 'generic-hero-panel generic-hero-panel--accent'
+        ? 'generic-hero-panel accent'
         : 'generic-section');
     elements.state.innerHTML = String(html || '');
     setVisible(elements.state, true);
@@ -2846,7 +2846,7 @@ function renderDetailedList(items, groupMode) {
         section.className = 'omo-decisions__group omo-panel-group';
 
         const title = document.createElement('h3');
-        title.className = 'omo-panel-group__title';
+        title.className = 'generic-card-title generic-card-title--small generic-file-list__group-title';
         title.textContent = String(group && group.label ? group.label : '');
 
         const list = document.createElement('div');
@@ -2908,7 +2908,7 @@ function renderCompactList(items, groupMode) {
         section.className = 'omo-decisions__group generic-file-list__group';
 
         const title = document.createElement('h3');
-        title.className = 'omo-panel-group__title generic-file-list__group-title';
+        title.className = 'generic-card-title generic-card-title--small generic-file-list__group-title';
         title.textContent = String(group && group.label ? group.label : '');
 
         const table = document.createElement('div');

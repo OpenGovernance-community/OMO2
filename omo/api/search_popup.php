@@ -79,7 +79,6 @@ if (!function_exists('omoSearchPopupRenderStyles')) {
         .omo-search-popup__result,
         .omo-search-popup__status-card {
             --generic-section-padding-block: 18px;
-            --generic-section-padding-inline: 18px;
         }
 
         .omo-search-popup__search-card {

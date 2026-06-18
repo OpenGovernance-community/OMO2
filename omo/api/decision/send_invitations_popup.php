@@ -160,10 +160,6 @@ $canSendAll = !$isDraft && $allRecipientCount > 0;
 
 .omo-decision-send-invitations-popup__textarea {
     min-height: 220px;
-    --generic-form-control-border: var(--topbar-panel-border, #dbe3ef);
-    --generic-form-control-background: var(--topbar-panel-bg, #ffffff);
-    --generic-form-control-background-focus: var(--topbar-panel-bg, #ffffff);
-    --generic-form-control-color: inherit;
 }
 
 .omo-decision-send-invitations-popup__actions {

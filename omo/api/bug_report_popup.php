@@ -39,8 +39,6 @@ if ($currentUserId > 0 && $featureEnabled) {
     .omo-bug-report-popup__panel,
     .omo-bug-report-popup__error {
         --generic-section-padding-block: 18px;
-        --generic-section-padding-inline: 18px;
-        --generic-section-radius: 18px;
     }
 
     .omo-bug-report-popup__hero {

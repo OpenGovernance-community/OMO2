@@ -677,7 +677,8 @@ CREATE TABLE `organization_parcours` (
   `IDorganization` int(11) NOT NULL,
   `IDparcours` int(11) NOT NULL,
   `position` int(11) DEFAULT NULL,
-  `everybody` tinyint(1) NOT NULL DEFAULT 1
+  `everybody` tinyint(1) NOT NULL DEFAULT 1,
+  `anonymous` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --

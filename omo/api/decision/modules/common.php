@@ -583,6 +583,27 @@ if (!function_exists('omoDecisionInvitationGetSourceLang')) {
                 'other' => '+{count} personnes supplementaires',
                 'context' => 'Summary fragment for additional invited users and emails.',
             ],
+            'decisions.invitations.public_opt_in_count' => [
+                'one' => '1 personne ajoutee via le lien public',
+                'other' => '{count} personnes ajoutees via le lien public',
+                'context' => 'Summary fragment for participants who requested access from the public link.',
+            ],
+            'decisions.invitations.public_opt_in_label' => [
+                'text' => 'Ajoutes via lien public',
+                'context' => 'Label shown before listing people who joined through the public link.',
+            ],
+            'decisions.invitations.public_opt_in_member_badge' => [
+                'text' => 'Ajoute via lien public',
+                'context' => 'Small note shown on an organization member row when the person already joined from the public link.',
+            ],
+            'decisions.invitations.public_opt_in_guest_label' => [
+                'text' => 'Personnes deja ajoutees via le lien public',
+                'context' => 'Label shown near guest emails for people who already joined from the public link.',
+            ],
+            'decisions.invitations.public_opt_in_guest_hint' => [
+                'text' => 'Ces personnes restent distinctes des invitations explicites, mais elles ont deja demande un acces.',
+                'context' => 'Hint shown near the list of people who already joined from the public link.',
+            ],
             'decisions.invitations.inline_intro' => [
                 'text' => 'Definissez ici les participants explicites du scrutin. Sans invitation explicite, seuls les membres du contexte courant restent autorises.',
                 'context' => 'Intro text shown in the inline invitation editor inside the main decision form.',
@@ -774,6 +795,65 @@ if (!function_exists('omoDecisionExtractInvitationSelections')) {
     }
 }
 
+if (!function_exists('omoDecisionExtractPublicOptInSelections')) {
+    function omoDecisionExtractPublicOptInSelections($decision)
+    {
+        $entries = [];
+        $userIds = [];
+        $emails = [];
+
+        if ($decision instanceof DecisionProcess && method_exists($decision, 'getPublicSelfRegistrationParticipants')) {
+            foreach ($decision->getPublicSelfRegistrationParticipants(true) as $participant) {
+                if (!($participant instanceof \dbObject\DecisionParticipant)) {
+                    continue;
+                }
+
+                $participantId = (int)$participant->getId();
+                if ($participantId <= 0) {
+                    continue;
+                }
+
+                $userId = (int)$participant->get('IDuser');
+                $recipient = method_exists($decision, 'getParticipantInvitationRecipientData')
+                    ? $decision->getParticipantInvitationRecipientData($participant)
+                    : null;
+                $email = trim(mb_strtolower((string)($recipient['email'] ?? $participant->get('email')), 'UTF-8'));
+                $label = trim((string)$participant->get('display_name'));
+                if ($label === '' && is_array($recipient)) {
+                    $label = trim((string)($recipient['display_name'] ?? ''));
+                }
+                if ($label === '' && $email !== '') {
+                    $label = $email;
+                }
+                if ($label === '') {
+                    $label = 'Participant #' . $participantId;
+                }
+
+                if ($userId > 0) {
+                    $userIds[$userId] = $userId;
+                }
+                if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $emails[$email] = $email;
+                }
+
+                $entries[$participantId] = [
+                    'participantId' => $participantId,
+                    'userId' => $userId,
+                    'email' => $email,
+                    'label' => $label,
+                ];
+            }
+        }
+
+        return [
+            'entries' => array_values($entries),
+            'user_ids' => array_values($userIds),
+            'emails' => array_values($emails),
+            'count' => count($entries),
+        ];
+    }
+}
+
 if (!function_exists('omoDecisionBuildInvitationEditorHolonTreeData')) {
     function omoDecisionBuildInvitationEditorHolonTreeData(Holon $holon, \dbObject\Organization $organization, array $selectedHolonIds, $currentHolonId)
     {
@@ -870,6 +950,7 @@ if (!function_exists('omoDecisionBuildInvitationEditorState')) {
         $targetHolonId = (int)($context['targetHolonId'] ?? 0);
         $organizationId = (int)($context['organizationId'] ?? 0);
         $selectionState = omoDecisionExtractInvitationSelections($decision);
+        $publicOptInState = omoDecisionExtractPublicOptInSelections($decision);
         $allowPublicSelfRegistration = $decision instanceof DecisionProcess
             && method_exists($decision, 'isPublicSelfRegistrationEnabled')
             ? $decision->isPublicSelfRegistrationEnabled()
@@ -894,6 +975,9 @@ if (!function_exists('omoDecisionBuildInvitationEditorState')) {
             'selectedUserIds' => $selectionState['user_ids'],
             'selectedEmails' => $selectionState['emails'],
             'hasExplicitInvitations' => $selectionState['count'] > 0,
+            'publicOptInEntries' => $publicOptInState['entries'],
+            'publicOptInUserIds' => $publicOptInState['user_ids'],
+            'publicOptInEmails' => $publicOptInState['emails'],
             'allowPublicSelfRegistration' => $allowPublicSelfRegistration,
             'holonTree' => $holonTree,
             'hasHolonStructure' => is_array($holonTree),
@@ -1120,6 +1204,8 @@ if (!function_exists('omoDecisionRenderInlineInvitationSection')) {
         $holonTree = $editorState['holonTree'];
         $selectedUserIds = $editorState['selectedUserIds'];
         $selectedEmails = $editorState['selectedEmails'];
+        $publicOptInEntries = $editorState['publicOptInEntries'];
+        $publicOptInUserIds = $editorState['publicOptInUserIds'];
         $allowPublicSelfRegistration = !empty($editorState['allowPublicSelfRegistration']);
 
         static $instanceCounter = 0;
@@ -1176,9 +1262,17 @@ if (!function_exists('omoDecisionRenderInlineInvitationSection')) {
                                 }
                                 $displayName = $membership->getUserDisplayName();
                                 $secondary = $membership->getScopedEmail() !== '' ? $membership->getScopedEmail() : $membership->getUserSecondaryLabel();
+                                $isExplicitUser = in_array($userId, $selectedUserIds, true);
+                                $isPublicOnlyUser = in_array($userId, $publicOptInUserIds, true) && !$isExplicitUser;
                                 ?>
                                 <label class="omo-decision-invitations-editor__check">
-                                    <input type="checkbox" name="invitation_user_ids[]" value="<?= $userId ?>"<?= in_array($userId, $selectedUserIds, true) ? ' checked' : '' ?>>
+                                    <input
+                                        type="checkbox"
+                                        name="invitation_user_ids[]"
+                                        value="<?= $userId ?>"
+                                        <?= ($isExplicitUser || $isPublicOnlyUser) ? ' checked' : '' ?>
+                                        <?= $isPublicOnlyUser ? ' disabled title="' . $escape(t('decisions.invitations.public_opt_in_member_badge', [], $lang, $sourceLang)) . '"' : '' ?>
+                                    >
                                     <span class="omo-decision-invitations-editor__check-meta">
                                         <strong><?= $escape($displayName) ?></strong>
                                         <?php if ($secondary !== ''): ?>
@@ -1204,6 +1298,19 @@ if (!function_exists('omoDecisionRenderInlineInvitationSection')) {
                             placeholder="<?= $escape(t('decisions.invitations.inline_guests_placeholder', [], $lang, $sourceLang)) ?>"
                         ><?= $escape(implode("\n", $selectedEmails)) ?></textarea>
                         <p class="omo-decision-invitations-editor__hint"><?= $escape(t('decisions.invitations.inline_guests_hint', [], $lang, $sourceLang)) ?></p>
+                        <?php if (count($publicOptInEntries) > 0): ?>
+                        <div class="generic-soft-panel generic-soft-panel--stack">
+                            <strong><?= $escape(t('decisions.invitations.public_opt_in_guest_label', [], $lang, $sourceLang)) ?></strong>
+                            <div class="omo-decision-invitations-editor__checklist">
+                                <?php foreach ($publicOptInEntries as $publicOptInEntry): ?>
+                                <span class="omo-decision-invitations-editor__member-email">
+                                    <?= $escape((string)$publicOptInEntry['label']) ?><?= trim((string)$publicOptInEntry['email']) !== '' && trim((string)$publicOptInEntry['email']) !== trim((string)$publicOptInEntry['label']) ? ' - ' . $escape((string)$publicOptInEntry['email']) : '' ?>
+                                </span>
+                                <?php endforeach; ?>
+                            </div>
+                            <p class="omo-decision-invitations-editor__hint"><?= $escape(t('decisions.invitations.public_opt_in_guest_hint', [], $lang, $sourceLang)) ?></p>
+                        </div>
+                        <?php endif; ?>
                         <div class="generic-soft-panel generic-soft-panel--stack">
                             <label class="omo-decision-invitations-editor__check">
                                 <input type="checkbox" name="allow_public_self_registration" value="1"<?= $allowPublicSelfRegistration ? ' checked' : '' ?>>
@@ -1455,6 +1562,7 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
             'sendEnabled' => false,
             'invitationCount' => 0,
             'hasExplicitInvitations' => false,
+            'publicOptInEntries' => [],
             'summary' => '',
         ];
 
@@ -1480,6 +1588,8 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
             && DecisionProcess::normalizeStatus($decision->get('status')) !== DecisionProcess::STATUS_DRAFT;
         $hasPublicSelfRegistration = method_exists($decision, 'isPublicSelfRegistrationEnabled')
             && $decision->isPublicSelfRegistrationEnabled();
+        $publicOptInState = omoDecisionExtractPublicOptInSelections($decision);
+        $data['publicOptInEntries'] = $publicOptInState['entries'];
 
         $invitations = [];
         foreach ($decision->getInvitations(true) as $invitation) {
@@ -1499,6 +1609,9 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
 
             if ($hasPublicSelfRegistration) {
                 $defaultSummary .= ' Participation publique ouverte.';
+            }
+            if ($publicOptInState['count'] > 0) {
+                $defaultSummary .= ' ' . t('decisions.invitations.public_opt_in_count', ['count' => (string)$publicOptInState['count']], $lang, $sourceLang) . '.';
             }
 
             $data['summary'] = $defaultSummary;
@@ -1546,6 +1659,9 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
             : t('decisions.invitations.current_scope_excluded', [], $lang, $sourceLang);
         if ($hasPublicSelfRegistration) {
             $summaryParts[] = 'Participation publique ouverte';
+        }
+        if ($publicOptInState['count'] > 0) {
+            $summaryParts[] = t('decisions.invitations.public_opt_in_count', ['count' => (string)$publicOptInState['count']], $lang, $sourceLang);
         }
 
         $data['summary'] = implode(' - ', array_filter($summaryParts, static function ($value) {
@@ -1612,6 +1728,25 @@ if (!function_exists('omoDecisionRenderInvitationSection')) {
             . '<p style="margin:0;color:var(--color-text-light,#475569);line-height:1.6;" data-omo-decision-invitations-summary>'
                 . $escape((string)$summaryData['summary'])
             . '</p>'
+            . (
+                count((array)($summaryData['publicOptInEntries'] ?? [])) > 0
+                    ? '<p style="margin:0;color:var(--color-text-light,#475569);line-height:1.6;"><strong>'
+                        . $escape(t('decisions.invitations.public_opt_in_label', [], $lang, $sourceLang))
+                        . ':</strong> '
+                        . $escape(implode(', ', array_map(static function (array $entry) {
+                            $label = trim((string)($entry['label'] ?? ''));
+                            $email = trim((string)($entry['email'] ?? ''));
+                            if ($label === '') {
+                                return $email;
+                            }
+                            if ($email !== '' && $email !== $label) {
+                                return $label . ' - ' . $email;
+                            }
+                            return $label;
+                        }, (array)$summaryData['publicOptInEntries'])))
+                    . '</p>'
+                    : ''
+            )
         . '</div>';
     }
 }
