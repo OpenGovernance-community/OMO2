@@ -3012,7 +3012,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
 }
 
-@media (max-width: 640px) {
+@media (max-width: 1024px) {
     .omo-calendar__header {
         position: sticky;
     }
@@ -3029,6 +3029,15 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
     .omo-calendar__view-switch {
         justify-self: end;
+    }
+}
+
+@media (max-height: 560px) {
+    .omo-calendar__month-sticky,
+    .omo-calendar__panel--timeline .omo-calendar__toolbar,
+    .omo-calendar__time-sticky {
+        position: static;
+        top: auto;
     }
 }
 </style>

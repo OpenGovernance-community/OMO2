@@ -3327,7 +3327,7 @@ if (!is_string($documentsPayload)) {
     }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 1024px) {
     .omo-documents__header-main-actions {
         width: auto;
         position: static;

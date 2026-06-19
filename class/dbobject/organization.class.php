@@ -18,6 +18,7 @@
 				[['name'], 'required'],								// Champs obligatoires
 				[['id'], 'integer'],								// Nombres entiers
 				[['name','shortname','domain'], 'string'],	// Chaines de caractere
+				[['latlong'], 'latlong'],
 				[['parameters'], 'parameters'],
 				[['shortname'], 'unique'],
 				[['logo','banner'], 'sizedimage'],	
@@ -34,6 +35,7 @@
 				'name' => 'Nom',
 				'shortname' => 'Nom court',
 				'domain' => 'Domaine',
+				'latlong' => 'Position geographique',
 				'logo' => 'Logo',
 				'banner' => 'Banniere',
 				'color' => 'Couleur',
@@ -45,6 +47,7 @@
 				'name' => 'Nom complet de l\'organisation',
 				'shortname' => 'Nom abrege utilise dans l\'interface et dans l\'URL de l\'organisation',
 				'domain' => 'Nom de domaine principal de l\'organisation',
+				'latlong' => 'Position geographique facultative de l organisation pour l affichage sur une carte.',
 				'logo' => 'Logo de l\'organisation',
 				'banner' => 'Image de banniere de l\'organisation',
 				'color' => 'Couleur principale au format hexadecimal ou texte court',
@@ -56,10 +59,83 @@
 				'name' => 100,
 				'shortname' => 50,
 				'domain' => 100,
+				'latlong' => 100,
 				'logo' => [[500, 500],[180,180]],
 				'banner' => [[960, 540],[480, 270]],
 				'color' => 10,
 			];
+		}
+
+		public static function publicReadableFields()
+		{
+			return array(
+				'id',
+				'name',
+				'shortname',
+				'domain',
+				'logo',
+				'banner',
+				'color',
+				'latlong',
+			);
+		}
+
+		public static function fetchPublicMapRows($limit = null): array
+		{
+			$publicFields = array_values(array_intersect(
+				static::publicReadableFields(),
+				array('id', 'name', 'shortname', 'domain', 'logo', 'banner', 'color', 'latlong')
+			));
+			if (count($publicFields) === 0) {
+				return array();
+			}
+
+			$query = "
+				SELECT " . implode(', ', $publicFields) . "
+				FROM organization
+				WHERE latlong IS NOT NULL
+				  AND latlong <> ''
+				ORDER BY name ASC";
+			if ($limit !== null && (int)$limit > 0) {
+				$query .= "
+				LIMIT " . (int)$limit;
+			}
+
+			$rows = self::fetchAll($query);
+			if ($rows === false) {
+				return array();
+			}
+
+			$result = array();
+			foreach ($rows as $row) {
+				$organizationId = (int)($row['id'] ?? 0);
+				if ($organizationId <= 0) {
+					continue;
+				}
+
+				$organization = new self();
+				$organization->loadFromArray($row);
+
+				$latlong = $organization->get('latlong');
+				$latitude = is_object($latlong) ? ($latlong->lat ?? null) : null;
+				$longitude = is_object($latlong) ? ($latlong->long ?? null) : null;
+				if (!is_numeric($latitude) || !is_numeric($longitude)) {
+					continue;
+				}
+
+				$result[] = array(
+					'id' => $organizationId,
+					'name' => trim((string)$organization->get('name')),
+					'logo' => trim((string)$organization->get('logo')),
+					'color' => trim((string)$organization->get('color')),
+					'latlong' => array(
+						'lat' => (float)$latitude,
+						'long' => (float)$longitude,
+					),
+				);
+			}
+
+			return $result;
 		}
 
 		public function getParametersArray(): array
