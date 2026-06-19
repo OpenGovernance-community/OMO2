@@ -619,16 +619,18 @@ CREATE TABLE `organization` (
   `domain` varchar(100) DEFAULT NULL,
   `logo` varchar(100) DEFAULT NULL,
   `banner` varchar(100) DEFAULT NULL,
-  `color` varchar(10) DEFAULT NULL
+  `color` varchar(10) DEFAULT NULL,
+  `latlong` varchar(100) DEFAULT NULL,
+  `parameters` mediumtext DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Déchargement des données de la table `organization`
 --
 
-INSERT INTO `organization` (`id`, `name`, `shortname`, `domain`, `logo`, `banner`, `color`) VALUES
-(1, 'Org1', 'org1', 'org1.opengov.tools', '/img/org1-logo.svg', '/img/org1-banner.svg', '#0F766E'),
-(2, 'Org2', 'org2', 'org2.opengov.tools', '/img/org2-logo.svg', '/img/org2-banner.svg', '#1D4ED8');
+INSERT INTO `organization` (`id`, `name`, `shortname`, `domain`, `logo`, `banner`, `color`, `latlong`, `parameters`) VALUES
+(1, 'Org1', 'org1', 'org1.opengov.tools', '/img/org1-logo.svg', '/img/org1-banner.svg', '#0F766E', '46.204391;6.143158', NULL),
+(2, 'Org2', 'org2', 'org2.opengov.tools', '/img/org2-logo.svg', '/img/org2-banner.svg', '#1D4ED8', '46.519653;6.632273', NULL);
 
 -- --------------------------------------------------------
 

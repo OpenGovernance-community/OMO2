@@ -88,6 +88,7 @@
 
 	abstract class DbObject
 	{
+		protected $_fieldVisibilityCanViewCache = null;
 		protected $_id; // Id de l'enregistrement
 		protected $_loaded=false; // Id de l'enregistrement
 		protected $_fields; // Espace de chargement de tous les champs
@@ -343,6 +344,11 @@
 			return [];
 		}
 
+		public static function publicReadableFields()
+		{
+			return [];
+		}
+
 	    public static function tableName() {
 			return strtolower(substr(static::class,strrpos(static::class,"\\")+1));
 		}
@@ -357,6 +363,10 @@
 		
 		function get($field) {
 			if ($this->getId()>0 && !$this->_loaded) $this->load($this->getId());
+
+			if (!$this->canReadField($field)) {
+				return "";
+			}
 
 			if (is_array($this->_fields) && array_key_exists($field,$this->_fields)) {
 				return $this->_fields[$field];
@@ -379,12 +389,49 @@
 			}
 		}
 		
+		public function canReadField($field)
+		{
+			$publicFields = static::publicReadableFields();
+			if (!is_array($publicFields) || count($publicFields) === 0) {
+				return true;
+			}
+
+			if ($this->_fieldVisibilityCanViewCache === 'checking') {
+				return true;
+			}
+
+			if ($this->_fieldVisibilityCanViewCache === null) {
+				$this->_fieldVisibilityCanViewCache = 'checking';
+				$this->_fieldVisibilityCanViewCache = $this->canViewDetail() ? true : false;
+			}
+
+			if ($this->_fieldVisibilityCanViewCache) {
+				return true;
+			}
+
+			$field = trim((string)$field);
+			if ($field === '' || $field === 'id') {
+				return true;
+			}
+
+			foreach ($publicFields as $publicField) {
+				if ($field === trim((string)$publicField)) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
 		function clear($field) {
 			unset($this->_fields[$field]);
 		}
 		
 		function set($field, $value) {
-			if ($field=="id") $this->_id=$value; // Spécifique pour réinitialiser des noeuds
+			if ($field=="id") {
+				$this->_id=$value; // Spécifique pour réinitialiser des noeuds
+				$this->_fieldVisibilityCanViewCache = null;
+			}
 			if ($this->getId()>0 && !$this->_loaded) $this->load($this->getId());
 
 			if (is_null($value) || (is_string($value) && trim($value)==""))
@@ -1297,6 +1344,7 @@
 		// $obj->load(['key','yopla'])  // Autre paramètre
 		function load($id, $forced=false) {
 			$this->_loaded=true; 
+			$this->_fieldVisibilityCanViewCache = null;
 			$tableName = $this->getQuotedTableName();
 			if ($tableName === false) {
 				return false;
@@ -1398,6 +1446,7 @@
 		// Retourne la liste des actualités affichées sur cette page
 		function setId($numeric) {
 			$this->_id=$numeric;
+			$this->_fieldVisibilityCanViewCache = null;
 		}
 		
 		// Fonctions d'affichage
