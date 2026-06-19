@@ -323,9 +323,13 @@ function displayField($object, $key, $default = null, $filter = null) {
             return $str;
             break;
         case "latlong" :
-            ob_start();
-            commonRenderLeafletAssets();
-            $leafletAssets = ob_get_clean();
+            $leafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafletMapsEnabled();
+            $leafletAssets = '';
+            if ($leafletMapsEnabled && function_exists('commonRenderLeafletAssets')) {
+                ob_start();
+                commonRenderLeafletAssets();
+                $leafletAssets = ob_get_clean();
+            }
 
             $latitude = 0.0;
             $longitude = 0.0;
@@ -346,8 +350,12 @@ function displayField($object, $key, $default = null, $filter = null) {
             $str .= "<input class='" . $class . "' name='" . $key . "[]' id='" . $key . "_lat' type='text' value='" . htmlspecialchars((string)($hasCoordinates ? $latitude : ''), ENT_QUOTES, 'UTF-8') . "' placeholder='Latitude'>";
             $str .= "<input class='" . $class . "' name='" . $key . "[]' id='" . $key . "_long' type='text' value='" . htmlspecialchars((string)($hasCoordinates ? $longitude : ''), ENT_QUOTES, 'UTF-8') . "' placeholder='Longitude'>";
             $str .= "</div>";
+            if (!$leafletMapsEnabled) {
+                $str .= "<div class='admin-edit__latlong-help'>Renseignez latitude et longitude manuellement si la carte n est pas disponible.</div>";
+                return $str;
+            }
             $str .= "<div id='map_" . $key . "' class='admin-edit__latlong-map'></div>";
-            $str .= "<div class='admin-edit__latlong-help'>Cliquez sur la carte pour choisir l'emplacement du membre.</div>";
+            $str .= "<div class='admin-edit__latlong-help'>Cliquez sur la carte pour choisir l emplacement.</div>";
             $str .= "<script>(function(){";
             $str .= "var runMapInit = function(){";
             $str .= "var mapElement = document.getElementById('map_" . $key . "');";
