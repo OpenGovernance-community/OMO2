@@ -3,6 +3,7 @@ require_once($_SERVER['DOCUMENT_ROOT'] . "/config.php");
 require_once($_SERVER['DOCUMENT_ROOT'] . "/shared_functions.php");
 require_once($_SERVER['DOCUMENT_ROOT'] . "/common/auth.php");
 require_once($_SERVER['DOCUMENT_ROOT'] . "/common/patreon.php");
+require_once($_SERVER['DOCUMENT_ROOT'] . "/common/leaflet_helper.php");
 
 $connected = checklogin();
 if (!$connected) {
@@ -34,8 +35,8 @@ $pageTitle = $isEditMode ? "Modifier une organisation" : "Creer une organisation
 $heroKicker = $isEditMode ? "Parametres de l'organisation" : "Nouvelle organisation";
 $heroTitle = $isEditMode ? "Modifier cet espace OMO" : "Creer un nouvel espace OMO";
 $heroText = $isEditMode
-    ? "Mettez a jour le nom, le nom court, le domaine, les illustrations et la couleur de cette organisation."
-    : "Renseignez les informations principales de l'organisation. Le formulaire reutilise le canvas d'administration standard pour le logo, la banniere et les autres champs editables.";
+    ? "Mettez a jour le nom, le nom court, le domaine, l emplacement geographique, les illustrations et la couleur de cette organisation."
+    : "Renseignez les informations principales de l'organisation. Le formulaire reutilise le canvas d'administration standard pour le logo, la banniere, l emplacement geographique et les autres champs editables.";
 $submitLabel = $isEditMode ? "Enregistrer les modifications" : "Creer l'organisation";
 $pendingLabel = $isEditMode ? "Enregistrement en cours..." : "Creation en cours...";
 $successLabel = $isEditMode ? "Organisation enregistree." : "Organisation creee.";
@@ -325,6 +326,7 @@ $organizationRoutingLockedMessage = "Le nom court et le domaine sont reserves au
                 "name",
                 "shortname",
                 "domain",
+                "latlong",
                 "color",
                 "{title:Identite visuelle}",
                 "logo",

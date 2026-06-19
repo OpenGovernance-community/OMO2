@@ -1733,7 +1733,7 @@ if (!is_string($payloadJson)) {
     }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 1024px) {
     .omo-decisions__header-actions {
         width: auto;
         position: static;

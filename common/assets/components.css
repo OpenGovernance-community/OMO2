@@ -840,6 +840,16 @@ textarea.generic-form-control {
     }
 }
 
+@media (max-height: 560px) {
+    .generic-file-list__group-title,
+    .generic-file-list--structured.generic-file-list--stacked-sticky .generic-file-list__group-title,
+    .generic-file-list--structured.generic-file-list--stacked-sticky .generic-file-list__header,
+    .generic-file-list--structured.generic-file-list--stacked-sticky .generic-file-list__folder-header {
+        position: static;
+        top: auto;
+    }
+}
+
 .omo-card {
     --generic-section-radius: var(--radius-md, 12px);
     --generic-section-shadow: var(--shadow-sm, none);

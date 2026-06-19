@@ -970,6 +970,16 @@ html[data-theme] .common-help-card p {
     color: var(--color-text-light);
 }
 
+@media (max-height: 560px) {
+    .common-topbar__sticky-actions {
+        position: static;
+        bottom: auto;
+        margin: 18px 0 0;
+        padding: 14px 0 0;
+        backdrop-filter: none;
+    }
+}
+
 @media (max-width: 860px) {
     .common-topbar {
         gap: 8px;

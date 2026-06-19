@@ -1112,7 +1112,7 @@ html[data-theme] .common-help-card p {
     cursor: wait;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 1024px) {
     .omo-mobile-corner-action {
         position: absolute;
         top: 0;
@@ -1335,6 +1335,14 @@ html[data-theme] .common-help-card p {
         clip: rect(0, 0, 0, 0);
         white-space: nowrap;
         border: 0;
+    }
+}
+
+@media (max-height: 560px) {
+    .omo-panel-view__header,
+    .omo-panel-group__title {
+        position: static;
+        top: auto;
     }
 }
 
