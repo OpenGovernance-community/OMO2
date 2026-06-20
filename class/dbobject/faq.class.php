@@ -486,28 +486,18 @@ class FAQ extends DbObject
 		return $processedCount;
 	}
 
-	public static function canCreateContextualForHolon($holon, $userId = 0, $organizationId = 0)
+	public static function canCreateContextualForHolon($holon, $userId = 0, $organizationId = 0, $useSessionCache = true)
 	{
 		if (!$holon instanceof \dbObject\Holon || (int)$holon->getId() <= 0) {
 			return false;
 		}
 
 		$userId = (int)$userId;
-		$organizationId = (int)$organizationId;
 		if ($userId <= 0) {
 			return false;
 		}
 
-		if ($holon->canEdit()) {
-			return true;
-		}
-
-		$memberUserIds = $holon->getAssociatedMemberUserIds(array(
-			'organizationId' => $organizationId,
-			'includeDescendants' => true,
-		));
-
-		return in_array($userId, array_map('intval', $memberUserIds), true);
+		return $holon->isAllowed('CAN_CREATE_FAQ', (bool)$useSessionCache, $userId);
 	}
 
 	public function incrementViewcount()

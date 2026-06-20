@@ -16,7 +16,7 @@ $currentUserId = (int)commonGetCurrentUserId();
 $escape = 'omoApiEscape';
 $document = new Document();
 $isEditing = false;
-$canCreate = $organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizationAccess($organizationId);
+$canCreate = false;
 $canUseForm = $canCreate;
 $formErrorMessage = '';
 $openAiAvailable = commonOpenAiGetApiKey() !== '';
@@ -76,6 +76,19 @@ if (!$isEditing && $parentDocumentId > 0) {
     } else {
         $parentDocumentId = 0;
     }
+}
+
+if (!$isEditing) {
+    $canCreate = $organizationId > 0
+        && $currentUserId > 0
+        && Document::canCreateInOrganizationContext(
+            $organizationId,
+            $contextHolonId > 0 ? $contextHolonId : null,
+            $currentUserId,
+            $parentDocumentId,
+            true
+        );
+    $canUseForm = $canCreate;
 }
 
 if ($contextHolonId <= 0) {
@@ -177,7 +190,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     <?php else: ?>
         <form class="omo-document-editor__form" action="/omo/api/documents/save.php" method="post" enctype="multipart/form-data" data-omo-document-create-form>
             <input type="hidden" name="oid" value="<?= $escape($organizationId) ?>">
-            <input type="hidden" name="cid" value="<?= $escape($holonId) ?>">
+            <input type="hidden" name="cid" value="<?= $escape($contextHolonId) ?>">
             <input type="hidden" name="parent_document_id" value="<?= (int)$parentDocumentId ?>">
             <?php if ($isEditing): ?>
                 <input type="hidden" name="id" value="<?= (int)$document->getId() ?>">

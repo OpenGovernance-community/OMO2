@@ -24,8 +24,9 @@ $viewerAccess = \dbObject\FAQ::resolveViewerAccess($faqContext ?: array());
 $canManageAllFaqs = !empty($viewerAccess['canManageAllFaqs']);
 $canManageOrganizationFaqs = !empty($viewerAccess['canManageOrganizationFaqs']);
 $canManageFaqCollection = $canManageAllFaqs || $canManageOrganizationFaqs;
+$usePermissionSessionCache = $_SERVER['REQUEST_METHOD'] !== 'POST';
 $canCreateContextualFaq = $contextHolon
-	? \dbObject\FAQ::canCreateContextualForHolon($contextHolon, $currentUserId, $contextOrganizationId)
+	? \dbObject\FAQ::canCreateContextualForHolon($contextHolon, $currentUserId, $contextOrganizationId, $usePermissionSessionCache)
 	: false;
 $canAddFaq = $canManageFaqCollection || $canCreateContextualFaq;
 
