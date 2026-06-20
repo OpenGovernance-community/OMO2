@@ -173,7 +173,7 @@ if (!function_exists('omoDecisionResolveOrganizationHolonContext')) {
 }
 
 if (!function_exists('omoDecisionCanCreateAtOrganizationLevel')) {
-    function omoDecisionCanCreateAtOrganizationLevel(Organization $organization, $userId = 0)
+    function omoDecisionCanCreateAtOrganizationLevel(Organization $organization, $userId = 0, $useSessionCache = true)
     {
         $organizationId = (int)$organization->getId();
         $userId = (int)$userId;
@@ -188,8 +188,16 @@ if (!function_exists('omoDecisionCanCreateAtOrganizationLevel')) {
                 : (int)($_SESSION['currentUser'] ?? 0);
         }
 
-        return $userId > 0
-            && function_exists('commonUserHasOrganizationMembership')
+        if ($userId <= 0) {
+            return false;
+        }
+
+        $rootHolon = $organization->getEnabledStructuralRootHolon();
+        if ($rootHolon instanceof Holon && (int)$rootHolon->getId() > 0) {
+            return $rootHolon->isAllowed('CAN_CREATE_DECISION', (bool)$useSessionCache, $userId);
+        }
+
+        return function_exists('commonUserHasOrganizationMembership')
             && commonUserHasOrganizationMembership($userId, $organizationId);
     }
 }
@@ -315,6 +323,7 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
             ? (int)commonGetCurrentUserId()
             : (int)($_SESSION['currentUser'] ?? 0);
         $currentUserEmail = '';
+        $usePermissionSessionCache = (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST');
 
         if (!empty($input['public'])) {
             return omoDecisionResolveGenericPublicContext($input);
@@ -455,8 +464,8 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
                 || $isOwnerParticipant
             );
         $canCreate = $effectiveHolon
-            ? $effectiveHolon->canEdit()
-            : omoDecisionCanCreateAtOrganizationLevel($organization, $currentUserId);
+            ? $effectiveHolon->isAllowed('CAN_CREATE_DECISION', $usePermissionSessionCache, $currentUserId)
+            : omoDecisionCanCreateAtOrganizationLevel($organization, $currentUserId, $usePermissionSessionCache);
         $canManage = $decision instanceof DecisionProcess ? $isOwner : $canCreate;
         $canView = $decision instanceof DecisionProcess
             ? ($canManage || $hasParticipation || DecisionProcess::normalizeStatus($decision->get('status')) !== DecisionProcess::STATUS_DRAFT)
@@ -498,7 +507,7 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
                 ];
             }
         } else {
-            if ($effectiveHolon && !$effectiveHolon->canEdit()) {
+            if ($effectiveHolon && !$canCreate) {
                 return [
                     'status' => false,
                     'code' => 403,
@@ -506,7 +515,7 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
                 ];
             }
 
-            if (!$effectiveHolon && !omoDecisionCanCreateAtOrganizationLevel($organization, $currentUserId)) {
+            if (!$effectiveHolon && !omoDecisionCanCreateAtOrganizationLevel($organization, $currentUserId, $usePermissionSessionCache)) {
                 return [
                     'status' => false,
                     'code' => 403,

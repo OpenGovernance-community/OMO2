@@ -316,7 +316,7 @@
 		return array(
 			array(
 				array('text' => 'Options', 'callback_data' => 'btn_options'),
-				array('text' => 'Delete', 'callback_data' => 'btn_delete'),
+				array('text' => 'Delete', 'callback_data' => 'btn_delete', 'style' => 'danger'),
 			),
 			array(
 				array('text' => 'Share', 'callback_data' => 'btn_share'),
@@ -328,11 +328,11 @@
 	function buildDeleteButtons(): array {
 		return array(
 			array(
-				array('text' => 'Le rÃ©sumÃ©', 'callback_data' => 'btn_del_resume'),
-				array('text' => 'Le fichier', 'callback_data' => 'btn_del_file'),
+				array('text' => 'Le rÃ©sumÃ©', 'callback_data' => 'btn_del_resume', 'style' => 'danger'),
+				array('text' => 'Le fichier', 'callback_data' => 'btn_del_file', 'style' => 'danger'),
 			),
 			array(
-				array('text' => 'Tout', 'callback_data' => 'btn_del_all'),
+				array('text' => 'Tout', 'callback_data' => 'btn_del_all', 'style' => 'danger'),
 				array('text' => 'Annuler', 'callback_data' => 'btn_del_cancel'),
 			),
 		);
@@ -395,6 +395,56 @@
 		return $typeLabel." : ".($name !== '' ? $name : 'Sans nom');
 	}
 
+	function getTelegramDocumentCreationPermissionSet(\dbObject\User $user, \dbObject\Organization $organization): array {
+		static $permissionSetCache = array();
+
+		$userId = (int)$user->getId();
+		$organizationId = (int)$organization->getId();
+		$cacheKey = $userId.'_'.$organizationId;
+
+		if (!isset($permissionSetCache[$cacheKey])) {
+			$permissionSetCache[$cacheKey] = \dbObject\HolonPermission::buildUserPermissionSetForOrganization(
+				$userId,
+				$organizationId,
+				array('CAN_CREATE_DOCUMENT')
+			);
+		}
+
+		return is_array($permissionSetCache[$cacheKey]) ? $permissionSetCache[$cacheKey] : array();
+	}
+
+	function telegramUserCanCreateDocumentInHolon(\dbObject\User $user, \dbObject\Organization $organization, \dbObject\Holon $holon): bool {
+		$userId = (int)$user->getId();
+		$organizationId = (int)$organization->getId();
+		$holonId = (int)$holon->getId();
+
+		if ($userId <= 0 || $organizationId <= 0 || $holonId <= 0) {
+			return false;
+		}
+
+		$permissionSet = getTelegramDocumentCreationPermissionSet($user, $organization);
+		if (empty($permissionSet['definedPermissionKeys']['CAN_CREATE_DOCUMENT'])) {
+			return \dbObject\Permission::existsKey('CAN_CREATE_DOCUMENT');
+		}
+
+		$scope = $permissionSet['permissions']['CAN_CREATE_DOCUMENT'] ?? null;
+		if (!is_array($scope)) {
+			return false;
+		}
+
+		if (!empty($scope['organization']) || !empty($scope['exact'][$holonId])) {
+			return true;
+		}
+
+		foreach (array_keys($scope['subtree'] ?? array()) as $rootHolonId) {
+			if ($holon->isDescendantOf((int)$rootHolonId, true)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	function getVisibleHolonChildren(\dbObject\Holon $holon): array {
 		$children = array();
 		foreach ($holon->getChildren() as $child) {
@@ -408,10 +458,50 @@
 		return $children;
 	}
 
-	function collectHolonDescendantOptions(\dbObject\Holon $holon, string $prefix = ''): array {
+	function holonHasDocumentCreationDestination(\dbObject\User $user, \dbObject\Organization $organization, \dbObject\Holon $holon, array &$availabilityCache = array()): bool {
+		$cacheKey = (int)$user->getId().'_'.(int)$organization->getId().'_'.(int)$holon->getId();
+		if (array_key_exists($cacheKey, $availabilityCache)) {
+			return (bool)$availabilityCache[$cacheKey];
+		}
+
+		if (telegramUserCanCreateDocumentInHolon($user, $organization, $holon)) {
+			$availabilityCache[$cacheKey] = true;
+			return true;
+		}
+
+		foreach (getVisibleHolonChildren($holon) as $child) {
+			if (holonHasDocumentCreationDestination($user, $organization, $child, $availabilityCache)) {
+				$availabilityCache[$cacheKey] = true;
+				return true;
+			}
+		}
+
+		$availabilityCache[$cacheKey] = false;
+		return false;
+	}
+
+	function getCreatableVisibleHolonChildren(\dbObject\User $user, \dbObject\Organization $organization, \dbObject\Holon $holon, array &$availabilityCache = array()): array {
+		$children = array();
+
+		foreach (getVisibleHolonChildren($holon) as $child) {
+			if (!holonHasDocumentCreationDestination($user, $organization, $child, $availabilityCache)) {
+				continue;
+			}
+
+			$children[] = $child;
+		}
+
+		return $children;
+	}
+
+	function collectHolonDescendantNavigationOptions(\dbObject\User $user, \dbObject\Organization $organization, \dbObject\Holon $holon, string $prefix = '', array &$availabilityCache = array()): array {
 		$options = array();
 
 		foreach (getVisibleHolonChildren($holon) as $child) {
+			if (!holonHasDocumentCreationDestination($user, $organization, $child, $availabilityCache)) {
+				continue;
+			}
+
 			$label = $prefix !== ''
 				? $prefix." > ".buildHolonChoiceLabel($child)
 				: buildHolonChoiceLabel($child);
@@ -419,9 +509,10 @@
 			$options[] = array(
 				'holon' => $child,
 				'label' => $label,
+				'action' => telegramUserCanCreateDocumentInHolon($user, $organization, $child) ? 'done' : 'nav',
 			);
 
-			$options = array_merge($options, collectHolonDescendantOptions($child, $label));
+			$options = array_merge($options, collectHolonDescendantNavigationOptions($user, $organization, $child, $label, $availabilityCache));
 		}
 
 		return $options;
@@ -454,8 +545,34 @@
 		}
 
 		if ($selectedOrganizationId <= 0) {
+			$availableOrganizations = array();
 			$buttons = array();
+
 			foreach ($organizations as $organization) {
+				$organizationRootHolon = $organization->getStructuralRootHolon();
+				if (
+					!($organizationRootHolon instanceof \dbObject\Holon)
+					|| (int)$organizationRootHolon->getId() <= 0
+					|| !holonHasDocumentCreationDestination($user, $organization, $organizationRootHolon)
+				) {
+					continue;
+				}
+
+				$availableOrganizations[] = $organization;
+			}
+
+			if (count($availableOrganizations) === 0) {
+				return array(
+					'text' => "Aucune organisation accessible avec droit de creation de document n'est disponible pour classer ce memo.",
+					'buttons' => array(
+						array(
+							array('text' => 'Fermer', 'callback_data' => 'btn_classify_cancel'),
+						),
+					),
+				);
+			}
+
+			foreach ($availableOrganizations as $organization) {
 				$buttons[] = array(
 					array(
 						'text' => trim((string)$organization->get('name')),
@@ -510,18 +627,23 @@
 
 		$currentPath = buildHolonPathLabel($organization, $selectedHolon);
 		$currentNode = $selectedHolon ?: $rootHolon;
-		$children = getVisibleHolonChildren($currentNode);
-		$descendantOptions = collectHolonDescendantOptions($currentNode);
+		$availabilityCache = array();
+		$canFinishHere = telegramUserCanCreateDocumentInHolon($user, $organization, $currentNode);
+		$children = getCreatableVisibleHolonChildren($user, $organization, $currentNode, $availabilityCache);
+		$descendantOptions = collectHolonDescendantNavigationOptions($user, $organization, $currentNode, '', $availabilityCache);
 		$useIncrementalMode = count($descendantOptions) > 4;
+		$hasDescendantDestination = count($descendantOptions) > 0;
 
-		$buttons = array(
-			array(
+		$buttons = array();
+		if ($canFinishHere) {
+			$buttons[] = array(
 				array(
 					'text' => 'Terminer ici',
 					'callback_data' => 'btn_classify_done_'.$organization->getId().'_'.($selectedHolon ? $selectedHolon->getId() : 0),
+					'style' => 'success',
 				),
-			),
-		);
+			);
+		}
 
 		if ($selectedHolon) {
 			$parentHolon = $selectedHolon->getParentHolon();
@@ -555,15 +677,18 @@
 					array(
 						'text' => buildHolonChoiceLabel($child),
 						'callback_data' => 'btn_classify_nav_'.$organization->getId().'_'.$child->getId(),
+						'style' => 'primary',
 					),
 				);
 			}
 		} else {
 			foreach ($descendantOptions as $option) {
+				$callbackAction = ($option['action'] ?? '') === 'nav' ? 'btn_classify_nav_' : 'btn_classify_done_';
 				$buttons[] = array(
 					array(
 						'text' => $option['label'],
-						'callback_data' => 'btn_classify_done_'.$organization->getId().'_'.$option['holon']->getId(),
+						'callback_data' => $callbackAction.$organization->getId().'_'.$option['holon']->getId(),
+						'style' => 'primary',
 					),
 				);
 			}
@@ -574,12 +699,20 @@
 		);
 
 		$text = "Classer ce mÃ©mo\n\nEmplacement sÃ©lectionnÃ© : ".$currentPath;
-		if (count($descendantOptions) > 0 && !$useIncrementalMode) {
-			$text .= "\n\nChoisissez directement une destination ci-dessous, ou utilisez \"Terminer ici\" pour valider cet emplacement.";
+		if (!$canFinishHere && !$hasDescendantDestination) {
+			$text .= "\n\nAucune destination avec droit de creation de document n'est disponible ici.";
+		} elseif ($hasDescendantDestination && !$useIncrementalMode) {
+			$text .= $canFinishHere
+				? "\n\nChoisissez directement un emplacement ou un sous-niveau ci-dessous, ou utilisez \"Terminer ici\" pour valider cet emplacement."
+				: "\n\nChoisissez directement un sous-niveau ou une destination autorisee ci-dessous.";
 		} elseif (count($children) > 0) {
-			$text .= "\n\nChoisissez un sous-niveau, ou utilisez \"Terminer ici\" pour valider cet emplacement.";
+			$text .= $canFinishHere
+				? "\n\nChoisissez un sous-niveau, ou utilisez \"Terminer ici\" pour valider cet emplacement."
+				: "\n\nChoisissez un sous-niveau autorise ci-dessous.";
 		} else {
-			$text .= "\n\nAucun sous-niveau supplÃ©mentaire n'est disponible ici. Vous pouvez terminer maintenant.";
+			$text .= $canFinishHere
+				? "\n\nAucun sous-niveau supplÃ©mentaire n'est disponible ici. Vous pouvez terminer maintenant."
+				: "\n\nAucun sous-niveau supplÃ©mentaire autorise n'est disponible ici.";
 		}
 
 		return array(
@@ -752,6 +885,22 @@
 
 			$organizationId = (int)$matches[1];
 			$holonId = (int)$matches[2];
+			if (!\dbObject\Document::canCreateInOrganizationContext($organizationId, $holonId > 0 ? $holonId : null, (int)$user->getId(), 0, false)) {
+				editMessageText(
+					$chatId,
+					(int)$message['message_id'],
+					"Vous n'avez pas le droit de classer ce document a cet emplacement.",
+					array(
+						array(
+							array('text' => 'Reclasser', 'callback_data' => 'btn_classify'),
+						),
+					),
+					$threadId
+				);
+				answerCallbackQuery($callbackId, "Action non autorisee.");
+				return;
+			}
+
 			$result = $document->assignOrganizationContext($organizationId, $holonId > 0 ? $holonId : null);
 
 			if (!empty($result['status'])) {
@@ -1127,4 +1276,3 @@
 
 	handleTextMessage($message, $user);
 ?>
-
