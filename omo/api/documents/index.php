@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 
+use dbObject\Document;
 use dbObject\Organization;
 
 $currentOrganizationId = isset($_GET['oid']) ? (int)$_GET['oid'] : (int)($_SESSION['currentOrganization'] ?? 0);
@@ -18,8 +19,13 @@ if ($currentOrganizationId > 0) {
 
 $canToggleDocumentScope = $organization->getId() > 0 && $organization->getEnabledStructuralRootHolon() !== null;
 $canCreateDocument = $organization->getId() > 0
-    && (int)commonGetCurrentUserId() > 0
-    && commonCurrentUserHasOrganizationAccess($currentOrganizationId);
+    && Document::canCreateInOrganizationContext(
+        $currentOrganizationId,
+        $currentHolonId > 0 ? $currentHolonId : null,
+        (int)commonGetCurrentUserId(),
+        0,
+        true
+    );
 $newDocumentUrl = '/omo/api/documents/create.php?oid=' . $currentOrganizationId . ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '');
 
 $documents = new \dbObject\ArrayDocument();

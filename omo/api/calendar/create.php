@@ -153,6 +153,8 @@ if (!$organization->load($organizationId) || !$organization->canViewDetail()) {
     exit;
 }
 
+$rootHolon = $organization->getEnabledStructuralRootHolon();
+
 $event = new Event();
 $isEditMode = false;
 
@@ -187,6 +189,37 @@ foreach (['circle', 'role'] as $typeKey) {
     foreach (($holonOptions[$typeKey] ?? []) as $option) {
         $allowedHolonIds[(int)($option['id'] ?? 0)] = $option;
     }
+}
+
+$currentContextHolon = null;
+if ($currentHolonId > 0 && isset($allowedHolonIds[$currentHolonId])) {
+    $candidateHolon = new Holon();
+    if ($candidateHolon->load($currentHolonId)) {
+        $currentContextHolon = $candidateHolon;
+    }
+}
+
+$usePermissionSessionCache = $_SERVER['REQUEST_METHOD'] !== 'POST';
+$createPermissionHolon = $currentContextHolon instanceof Holon ? $currentContextHolon : $rootHolon;
+$canCreateEvent = $currentUserId > 0
+    && (
+        $createPermissionHolon instanceof Holon
+            ? $createPermissionHolon->isAllowed('CAN_CREATE_EVENT', $usePermissionSessionCache, $currentUserId)
+            : commonCurrentUserHasOrganizationAccess($organizationId)
+    );
+
+if (!$isEditMode && !$canCreateEvent) {
+    http_response_code(403);
+    if (commonIsAjaxJsonRequest()) {
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode([
+            'status' => false,
+            'message' => 'Acces refuse.',
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    } else {
+        echo '<div class="omo-empty-state">Acces refuse.</div>';
+    }
+    exit;
 }
 
 $defaultHolonId = 0;
@@ -247,6 +280,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'message' => omoCalendarCreateT('calendar.create.error.holon'),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
+    }
+
+    if (!$isEditMode) {
+        $targetPermissionHolon = $rootHolon instanceof Holon ? $rootHolon : null;
+        if ($selectedHolonId > 0) {
+            $targetPermissionHolon = new Holon();
+            if (!$targetPermissionHolon->load($selectedHolonId)) {
+                echo json_encode([
+                    'status' => false,
+                    'message' => omoCalendarCreateT('calendar.create.error.holon'),
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                exit;
+            }
+        }
+
+        $canCreateSelectedEvent = $targetPermissionHolon instanceof Holon
+            ? $targetPermissionHolon->isAllowed('CAN_CREATE_EVENT', false, $currentUserId)
+            : commonCurrentUserHasOrganizationAccess($organizationId);
+        if (!$canCreateSelectedEvent) {
+            http_response_code(403);
+            echo json_encode([
+                'status' => false,
+                'message' => 'Acces refuse.',
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
     }
 
     if ($isAllDay) {

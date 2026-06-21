@@ -56,6 +56,16 @@ class Permission extends DbObject
 
     public static function getMemberManagementCatalog()
     {
+        $catalog = self::getBuiltInCatalog();
+
+        return [
+            'CAN_ADD_MEMBER' => $catalog['CAN_ADD_MEMBER'],
+            'CAN_ADD_ADMIN' => $catalog['CAN_ADD_ADMIN'],
+        ];
+    }
+
+    public static function getBuiltInCatalog()
+    {
         return [
             'CAN_ADD_MEMBER' => [
                 'title' => 'Ajouter un membre',
@@ -64,6 +74,22 @@ class Permission extends DbObject
             'CAN_ADD_ADMIN' => [
                 'title' => 'Definir un admin de contexte',
                 'description' => 'Autorise l attribution ou le retrait du statut admin dans le contexte cible.',
+            ],
+            'CAN_CREATE_DOCUMENT' => [
+                'title' => 'Creer des fichiers',
+                'description' => 'Autorise la creation de fichiers dans le contexte cible.',
+            ],
+            'CAN_CREATE_DECISION' => [
+                'title' => 'Creer des prises de decision',
+                'description' => 'Autorise la creation de prises de decision dans le contexte cible.',
+            ],
+            'CAN_CREATE_EVENT' => [
+                'title' => 'Creer des dates',
+                'description' => 'Autorise la creation de dates dans le contexte cible.',
+            ],
+            'CAN_CREATE_FAQ' => [
+                'title' => 'Creer des FAQ',
+                'description' => 'Autorise la creation de FAQ dans le contexte cible.',
             ],
         ];
     }

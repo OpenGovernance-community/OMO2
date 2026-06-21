@@ -170,6 +170,23 @@
 				&& $this->canEdit();
 		}
 
+		public function canViewInMemoContext(int $userId = 0, ?string $accessCode = null): bool
+		{
+			$userId = (int)$userId;
+			$accessCode = trim((string)$accessCode);
+
+			if ($userId > 0 && $userId === (int)$this->get('IDuser')) {
+				return true;
+			}
+
+			$codeView = trim((string)$this->get('codeview'));
+			if ($accessCode !== '' && $codeView !== '' && hash_equals($codeView, $accessCode)) {
+				return true;
+			}
+
+			return false;
+		}
+
 		public function isFolder(): bool
 		{
 			return (bool)$this->get('estDossier');
@@ -1268,6 +1285,80 @@
 			$this->set('IDholon', $resolvedHolonId);
 
 			return $this->save();
+		}
+
+		public static function resolveCreationPermissionHolon(int $organizationId, ?int $requestedHolonId = null, int $parentDocumentId = 0)
+		{
+			$organizationId = (int)$organizationId;
+			$requestedHolonId = $requestedHolonId !== null ? (int)$requestedHolonId : 0;
+			$parentDocumentId = (int)$parentDocumentId;
+
+			if ($organizationId <= 0) {
+				return null;
+			}
+
+			$organization = new \dbObject\Organization();
+			if (!$organization->load($organizationId)) {
+				return null;
+			}
+
+			$rootHolon = $organization->getEnabledStructuralRootHolon();
+			$resolvedHolonId = 0;
+
+			if ($parentDocumentId > 0) {
+				$document = new self();
+				$resolvedParent = $document->resolveParentDocumentForContext($organizationId, $parentDocumentId);
+				if (($resolvedParent['status'] ?? false) !== true) {
+					return null;
+				}
+
+				$resolvedHolonId = (int)($resolvedParent['holonId'] ?? 0);
+			} elseif ($requestedHolonId > 0) {
+				$resolvedHolonId = $requestedHolonId;
+			}
+
+			if ($resolvedHolonId <= 0) {
+				return $rootHolon instanceof \dbObject\Holon && (int)$rootHolon->getId() > 0
+					? $rootHolon
+					: null;
+			}
+
+			$holon = new \dbObject\Holon();
+			if (
+				!$holon->load($resolvedHolonId)
+				|| !(bool)$holon->get('active')
+				|| !(bool)$holon->get('visible')
+				|| !$organization->containsHolon($holon)
+			) {
+				return null;
+			}
+
+			return $holon;
+		}
+
+		public static function canCreateInOrganizationContext(int $organizationId, ?int $requestedHolonId, int $userId, int $parentDocumentId = 0, bool $useSessionCache = true): bool
+		{
+			$organizationId = (int)$organizationId;
+			$requestedHolonId = $requestedHolonId !== null ? (int)$requestedHolonId : 0;
+			$userId = (int)$userId;
+			$parentDocumentId = (int)$parentDocumentId;
+
+			if ($organizationId <= 0 || $userId <= 0) {
+				return false;
+			}
+
+			$permissionHolon = self::resolveCreationPermissionHolon($organizationId, $requestedHolonId, $parentDocumentId);
+			if ($permissionHolon instanceof \dbObject\Holon && (int)$permissionHolon->getId() > 0) {
+				return $permissionHolon->isAllowed('CAN_CREATE_DOCUMENT', $useSessionCache, $userId);
+			}
+
+			if ($requestedHolonId > 0 || $parentDocumentId > 0) {
+				return false;
+			}
+
+			return function_exists('commonCurrentUserHasOrganizationAccess')
+				? \commonCurrentUserHasOrganizationAccess($organizationId)
+				: false;
 		}
 
 		protected static function extractValidUploadedFile($uploadedFile): ?array

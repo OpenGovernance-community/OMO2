@@ -714,7 +714,9 @@ $decisionGroups = sharedGetRelativeDateGroups($today, [
 ]);
 
 $organizationCanEdit = omoDecisionCanCreateAtOrganizationLevel($organization, $currentUserId);
-$canCreateDecision = $currentContextHolon ? $currentContextHolon->canEdit() : $organizationCanEdit;
+$canCreateDecision = $currentContextHolon
+    ? $currentContextHolon->isAllowed('CAN_CREATE_DECISION')
+    : $organizationCanEdit;
 $decisionRows = DecisionProcess::fetchListRowsForOrganization($currentOrganizationId, $currentUserId, $currentUserEmail);
 $decisionEntries = [];
 $holonFilterOptions = [];
