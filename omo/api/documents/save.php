@@ -27,6 +27,24 @@ $visibilityType = trim((string)($_POST['visibility_type'] ?? 'organization'));
 $isFolder = !empty($_POST['is_folder']) || trim(mb_strtolower($documentType, 'UTF-8')) === \dbObject\Document::TYPE_FOLDER;
 $parentDocumentId = isset($_POST['parent_document_id']) ? (int)$_POST['parent_document_id'] : 0;
 
+if (
+    $documentId <= 0
+    && !\dbObject\Document::canCreateInOrganizationContext(
+        $organizationId,
+        $holonId > 0 ? $holonId : null,
+        $currentUserId,
+        $parentDocumentId,
+        false
+    )
+) {
+    http_response_code(403);
+    echo json_encode(array(
+        'status' => false,
+        'message' => 'Acces refuse.',
+    ));
+    exit;
+}
+
 if ($title === '') {
     http_response_code(422);
     echo json_encode(array(

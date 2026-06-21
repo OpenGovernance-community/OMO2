@@ -653,6 +653,14 @@ if (!$canToggleScope) {
     $calendarScope = 'contextual';
 }
 
+$createPermissionHolon = $currentHolon instanceof Holon ? $currentHolon : $rootHolon;
+$canCreateEvent = $currentUserId > 0
+    && (
+        $createPermissionHolon instanceof Holon
+            ? $createPermissionHolon->isAllowed('CAN_CREATE_EVENT')
+            : commonCurrentUserHasOrganizationAccess($organizationId)
+    );
+
 $monthEnd = $monthStart->modify('last day of this month')->setTime(23, 59, 59);
 $gridStart = $monthStart->modify('monday this week')->setTime(0, 0, 0);
 $gridEnd = $monthEnd->modify('sunday this week')->setTime(23, 59, 59);
@@ -1137,14 +1145,16 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                         <?= omoApiEscape(omoCalendarT('calendar.action.today')) ?>
                     </button>
                 </div>
-                <button
-                    type="button"
-                    class="generic-action-button generic-action-button--main omo-calendar__new-button omo-mobile-corner-action"
-                    aria-label="<?= omoApiEscape(omoCalendarT('calendar.action.add')) ?>"
-                    data-omo-calendar-open-create
-                >
-                    <span class="omo-mobile-corner-action__text"><?= omoApiEscape(omoCalendarT('calendar.action.add')) ?></span>
-                </button>
+                <?php if ($canCreateEvent): ?>
+                    <button
+                        type="button"
+                        class="generic-action-button generic-action-button--main omo-calendar__new-button omo-mobile-corner-action"
+                        aria-label="<?= omoApiEscape(omoCalendarT('calendar.action.add')) ?>"
+                        data-omo-calendar-open-create
+                    >
+                        <span class="omo-mobile-corner-action__text"><?= omoApiEscape(omoCalendarT('calendar.action.add')) ?></span>
+                    </button>
+                <?php endif; ?>
             </div>
         </div>
         <div class="omo-calendar__header-secondary">
