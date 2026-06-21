@@ -170,6 +170,23 @@
 				&& $this->canEdit();
 		}
 
+		public function canViewInMemoContext(int $userId = 0, ?string $accessCode = null): bool
+		{
+			$userId = (int)$userId;
+			$accessCode = trim((string)$accessCode);
+
+			if ($userId > 0 && $userId === (int)$this->get('IDuser')) {
+				return true;
+			}
+
+			$codeView = trim((string)$this->get('codeview'));
+			if ($accessCode !== '' && $codeView !== '' && hash_equals($codeView, $accessCode)) {
+				return true;
+			}
+
+			return false;
+		}
+
 		public function isFolder(): bool
 		{
 			return (bool)$this->get('estDossier');

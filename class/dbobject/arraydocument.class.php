@@ -220,6 +220,39 @@
 			$this->exchangeArray($items);
 		}
 
+		public function loadOwnedByUser($userId)
+		{
+			$userId = (int)$userId;
+
+			$this->exchangeArray([]);
+			$this->lastVisibilityStats = array(
+				'loaded' => 0,
+				'visible' => 0,
+				'hidden' => 0,
+			);
+
+			if ($userId <= 0) {
+				return;
+			}
+
+			$this->load(array(
+				'where' => array(
+					array('field' => 'IDuser', 'value' => $userId),
+				),
+				'orderBy' => array(
+					array('field' => 'datecreation', 'dir' => 'DESC'),
+					array('field' => 'id', 'dir' => 'DESC'),
+				),
+			));
+
+			$count = count($this);
+			$this->lastVisibilityStats = array(
+				'loaded' => $count,
+				'visible' => $count,
+				'hidden' => 0,
+			);
+		}
+
 		public function buildPersonalSpaceItems($organizationId = 0)
 		{
 			$organizationId = (int)$organizationId;
