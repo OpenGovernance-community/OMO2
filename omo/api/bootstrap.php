@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__, 2) . '/shared_functions.php';
 require_once dirname(__DIR__, 2) . '/common/auth.php';
+require_once dirname(__DIR__, 2) . '/common/omo_context_scope.php';
 require_once dirname(__DIR__, 2) . '/common/translation_bundles.php';
 require_once dirname(__DIR__) . '/translations.php';
 

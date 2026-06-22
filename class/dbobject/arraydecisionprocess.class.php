@@ -83,6 +83,7 @@ class ArrayDecisionProcess extends ArrayDbObject
         $hasParticipation = $participant instanceof \dbObject\DecisionParticipant;
         $isOwner = (int)$decision->get('IDuser') === $userId;
         $status = \dbObject\DecisionProcess::normalizeStatus($decision->get('status'));
+        $visibilityAccess = $decision->currentViewerCanAccessVisibility($organizationId);
 
         if ($participant instanceof \dbObject\DecisionParticipant) {
             $isOwner = $isOwner || \dbObject\DecisionParticipant::normalizeRole($participant->get('role')) === \dbObject\DecisionParticipant::ROLE_OWNER;
@@ -90,7 +91,9 @@ class ArrayDecisionProcess extends ArrayDbObject
 
         $canManage = $isOwner;
         $canParticipate = ($isOwner || $hasParticipation) && $decision->isParticipationOpen();
-        $canView = $canManage || $hasParticipation || $status !== \dbObject\DecisionProcess::STATUS_DRAFT;
+        $canView = $canManage
+            || $hasParticipation
+            || ($status !== \dbObject\DecisionProcess::STATUS_DRAFT && $visibilityAccess);
 
         if (!$canView && !$canParticipate) {
             return false;

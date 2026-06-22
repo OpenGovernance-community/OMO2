@@ -94,6 +94,10 @@ $baseSourceLang = [
         'text' => 'Cible',
         'context' => 'Summary label for the edited decision title.',
     ],
+    'decisions.edit.visibility.label' => [
+        'text' => 'Visibilite',
+        'context' => 'Label for the decision visibility field shared by all decision editors.',
+    ],
     'decisions.edit.summary.mode_create' => [
         'text' => 'Creation',
         'context' => 'Summary value when creating a decision.',
@@ -279,6 +283,39 @@ if (!function_exists('omoDecisionRenderEditorGroupSwitch')) {
             </div>
         </section>
         <?php
+    }
+}
+
+if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
+    function omoDecisionResolveVisibilityEditorState(?DecisionProcess $decision, array $context): array
+    {
+        $organizationId = $decision instanceof DecisionProcess
+            ? (int)$decision->get('IDorganization')
+            : (int)($context['organizationId'] ?? 0);
+        $holonId = $decision instanceof DecisionProcess
+            ? (int)$decision->get('IDholon')
+            : (int)($context['targetHolonId'] ?? 0);
+        $editorConfig = DecisionProcess::buildVisibilityEditorConfig($organizationId, $holonId);
+        $visibilityOptions = is_array($editorConfig['visibilityOptions'] ?? null)
+            ? $editorConfig['visibilityOptions']
+            : DecisionProcess::getVisibilityTypeOptions();
+        $disabledVisibilityTypes = is_array($editorConfig['disabledTypes'] ?? null)
+            ? $editorConfig['disabledTypes']
+            : array();
+        $selectedVisibilityType = $decision instanceof DecisionProcess
+            ? DecisionProcess::normalizeVisibilityType($decision->get('visibility_type'))
+            : DecisionProcess::getDefaultVisibilityType();
+
+        if (!empty($disabledVisibilityTypes[$selectedVisibilityType])) {
+            $selectedVisibilityType = DecisionProcess::getDefaultVisibilityType();
+        }
+
+        return array(
+            'selectedVisibilityType' => $selectedVisibilityType,
+            'visibilityOptions' => $visibilityOptions,
+            'disabledVisibilityTypes' => $disabledVisibilityTypes,
+            'visibilityHelpText' => trim((string)($editorConfig['helpText'] ?? '')),
+        );
     }
 }
 ?>

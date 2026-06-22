@@ -43,6 +43,31 @@
     color: var(--color-text, #1f2937);
 }
 
+.omo-decisions-card__title-line {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.omo-decisions-card__title-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    opacity: 0.82;
+}
+
+.omo-decisions-card__title-icon img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
 .omo-decisions-card__owner-avatar,
 .omo-decisions-card__owner-photo,
 .omo-decisions-card__owner-placeholder {

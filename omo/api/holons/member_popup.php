@@ -269,6 +269,14 @@ foreach ($directMembers as $member) {
                     feedback.textContent = result.data.message || 'Membre ajouté.';
                     feedback.classList.add('is-success');
 
+                    if (typeof refreshDrawer === 'function') {
+                        var drawerUrl = '/omo/api/team/index.php?oid=' + organizationId;
+                        if (holonId > 0 && holonId !== rootHolonId) {
+                            drawerUrl += '&cid=' + holonId;
+                        }
+                        refreshDrawer('drawer_team', drawerUrl);
+                    }
+
                     if (typeof loadContent === 'function') {
                         var leftUrl = 'api/getOrg.php?oid=' + organizationId;
                         if (holonId > 0 && holonId !== rootHolonId) {

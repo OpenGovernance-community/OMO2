@@ -467,8 +467,18 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
             ? $effectiveHolon->isAllowed('CAN_CREATE_DECISION', $usePermissionSessionCache, $currentUserId)
             : omoDecisionCanCreateAtOrganizationLevel($organization, $currentUserId, $usePermissionSessionCache);
         $canManage = $decision instanceof DecisionProcess ? $isOwner : $canCreate;
+        $visibilityAccess = $decision instanceof DecisionProcess
+            ? $decision->currentViewerCanAccessVisibility($organizationId)
+            : false;
         $canView = $decision instanceof DecisionProcess
-            ? ($canManage || $hasParticipation || DecisionProcess::normalizeStatus($decision->get('status')) !== DecisionProcess::STATUS_DRAFT)
+            ? (
+                $canManage
+                || $hasParticipation
+                || (
+                    DecisionProcess::normalizeStatus($decision->get('status')) !== DecisionProcess::STATUS_DRAFT
+                    && $visibilityAccess
+                )
+            )
             : $canCreate;
         $canParticipate = $decision instanceof DecisionProcess
             ? (($isOwner || $hasParticipation) && $decision->isParticipationOpen())

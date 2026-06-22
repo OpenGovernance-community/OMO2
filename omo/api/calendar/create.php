@@ -349,9 +349,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $initialDate = trim((string)($_GET['date'] ?? ''));
+$initialDateTime = trim((string)($_GET['datetime'] ?? ''));
+$initialStartDefault = null;
+
+if (!$isEditMode && $initialDateTime !== '') {
+    $initialStartDefault = omoCalendarParseLocalDateTime($initialDateTime);
+}
+
+$initialDateDefault = $initialDate !== ''
+    ? omoCalendarParseLocalDateTime($initialDate . 'T09:00')
+    : null;
+
 $startDefault = $isEditMode
     ? $event->get('start_at')
-    : (omoCalendarParseLocalDateTime($initialDate !== '' ? ($initialDate . 'T09:00') : '') ?: new \DateTime('today 09:00'));
+    : ($initialStartDefault ?: $initialDateDefault ?: new \DateTime('today 09:00'));
 $endDefault = $isEditMode
     ? $event->get('end_at')
     : (clone $startDefault)->modify('+1 hour');

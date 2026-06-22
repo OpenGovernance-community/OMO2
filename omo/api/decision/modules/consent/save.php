@@ -40,6 +40,7 @@ $processDescription = trim((string)($_POST['process_description'] ?? ''));
 $title = trim((string)($_POST['title'] ?? ''));
 $description = trim((string)($_POST['description'] ?? ''));
 $decisionType = DecisionProcess::normalizeDecisionType((string)($_POST['decision_type'] ?? DecisionProcess::TYPE_DECISION));
+$visibilityType = DecisionProcess::normalizeVisibilityType((string)($_POST['visibility_type'] ?? DecisionProcess::getDefaultVisibilityType()));
 $status = DecisionProcess::normalizeStatus((string)($_POST['status'] ?? DecisionProcess::STATUS_DRAFT));
 $consultationStartAt = trim((string)($_POST['consultation_start_at'] ?? ''));
 $consultationEndAt = trim((string)($_POST['consultation_end_at'] ?? ''));
@@ -94,6 +95,14 @@ if ($decision instanceof DecisionProcess) {
     $decision->set('evaluation_method', DecisionProcess::METHOD_CONSENT);
 }
 
+$resolvedVisibility = $decision->resolveVisibilityRuleInput($visibilityType);
+if (!$coreLocked && ($resolvedVisibility['status'] ?? false) !== true) {
+    omoDecisionModuleJsonResponse(400, [
+        'status' => false,
+        'message' => trim((string)($resolvedVisibility['text'] ?? 'Visibilite invalide pour cette prise de decision.')),
+    ]);
+}
+
 $currentConfig = $decision instanceof DecisionProcess
     ? omoDecisionConsentBuildConfig($selectedGroup instanceof DecisionGroup ? $selectedGroup : $decision->get('parameters'))
     : [
@@ -125,6 +134,7 @@ try {
     if (!$coreLocked) {
         $decision->set('title', $processTitle);
         $decision->set('description', $processDescription !== '' ? $processDescription : null);
+        $decision->set('visibility_type', (string)($resolvedVisibility['type'] ?? DecisionProcess::getDefaultVisibilityType()));
     }
 
     if (!$startDatesLocked) {
