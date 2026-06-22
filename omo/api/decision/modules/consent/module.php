@@ -160,6 +160,14 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
         $canEditProposals = $isEditable && (!$consultationStarted || (!$hasSubmittedResponses && $allowConsultationProposals));
         $canEditStartDates = $isEditable && !$startDatesLocked;
         $publicLayout = (($context['accessMode'] ?? '') === 'public') || !empty($context['previewLayout']);
+        $visibilityState = function_exists('omoDecisionResolveVisibilityEditorState')
+            ? omoDecisionResolveVisibilityEditorState($decision instanceof DecisionProcess ? $decision : null, $context)
+            : array(
+                'selectedVisibilityType' => DecisionProcess::getDefaultVisibilityType(),
+                'visibilityOptions' => DecisionProcess::getVisibilityTypeOptions(),
+                'disabledVisibilityTypes' => array(),
+                'visibilityHelpText' => '',
+            );
 
         $participant = $context['participant'] ?? null;
         $selectedResponse = null;
@@ -280,6 +288,22 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                 <label class="omo-decision-consent__field">
                     <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.consent.field.process_description', [], $lang, $sourceLang)) ?></span>
                     <textarea class="generic-form-control omo-decision-consent__textarea" name="process_description" placeholder="<?= $escape(t('decisions.consent.placeholder.process_description', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'readonly' ?>><?= $escape($decision instanceof DecisionProcess ? trim((string)$decision->get('description')) : '') ?></textarea>
+                </label>
+
+                <label class="omo-decision-consent__field">
+                    <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.visibility.label', [], $lang, $sourceLang)) ?></span>
+                    <select class="generic-form-control" name="visibility_type" <?= $canEditStructure ? '' : 'disabled' ?>>
+                        <?php foreach (($visibilityState['visibilityOptions'] ?? array()) as $optionValue => $optionLabel): ?>
+                        <option
+                            value="<?= $escape($optionValue) ?>"
+                            <?= $optionValue === ($visibilityState['selectedVisibilityType'] ?? DecisionProcess::getDefaultVisibilityType()) ? 'selected' : '' ?>
+                            <?= !empty(($visibilityState['disabledVisibilityTypes'] ?? array())[$optionValue]) ? ' disabled' : '' ?>
+                        ><?= $escape($optionLabel) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php if (trim((string)($visibilityState['visibilityHelpText'] ?? '')) !== ''): ?>
+                    <span class="omo-decision-consent__text"><?= $escape((string)$visibilityState['visibilityHelpText']) ?></span>
+                    <?php endif; ?>
                 </label>
 
                 <div class="omo-decision-consent__grid">
