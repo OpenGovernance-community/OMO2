@@ -82,12 +82,16 @@
         var metaItems = Array.isArray(decision.metaItems) ? decision.metaItems : [];
         var stats = Array.isArray(decision.stats) ? decision.stats : [];
         var dateItems = Array.isArray(decision.dateItems) ? decision.dateItems : [];
+        var titleIcon = decision.titleIcon && typeof decision.titleIcon === 'object' ? decision.titleIcon : {};
+        var titleIconUrl = String(titleIcon.url || '').trim();
+        var titleIconLabel = String(titleIcon.label || '').trim();
         var badgesHtml = '';
         var actionsHtml = '<div class="omo-decisions-card__actions">';
         var metaHtml = '';
         var statsHtml = '';
         var dateHtml = '';
         var ownerAvatarHtml = '';
+        var titleIconHtml = '';
 
         article.className = 'omo-decisions-card generic-section generic-accordion generic-accordion--card generic-accordion--collapsible is-collapsed';
         article.setAttribute('data-generic-accordion', '1');
@@ -108,6 +112,12 @@
             ownerAvatarHtml = '<img src="' + escapeHtml(ownerPhotoUrl) + '" alt="' + escapeHtml(ownerName !== '' ? ownerName : ownerInitials) + '" class="omo-decisions-card__owner-photo">';
         } else {
             ownerAvatarHtml = '<span class="omo-decisions-card__owner-placeholder">' + escapeHtml(ownerInitials) + '</span>';
+        }
+
+        if (titleIconUrl !== '') {
+            titleIconHtml = '<span class="omo-decisions-card__title-icon" role="img"'
+                + (titleIconLabel !== '' ? ' aria-label="' + escapeHtml(titleIconLabel) + '" title="' + escapeHtml(titleIconLabel) + '"' : '')
+                + '><img src="' + escapeHtml(titleIconUrl) + '" alt=""></span>';
         }
 
         actions.forEach(function (action) {
@@ -147,7 +157,7 @@
                 + '<span class="omo-decisions-card__owner-avatar">' + ownerAvatarHtml + '</span>'
                 + '<span class="omo-decisions-card__summary-copy">'
                     + '<span class="omo-decisions-card__summary-top">'
-                        + '<span class="omo-decisions-card__title">' + escapeHtml(title) + '</span>'
+                        + '<span class="omo-decisions-card__title-line"><span class="omo-decisions-card__title">' + escapeHtml(title) + '</span>' + titleIconHtml + '</span>'
                         + (statusLabel !== '' ? '<span class="omo-decisions-card__status">' + escapeHtml(statusLabel) + '</span>' : '')
                     + '</span>'
                     + '<span class="omo-decisions-card__summary-bottom">'

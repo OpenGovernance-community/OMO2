@@ -51,10 +51,18 @@ if (!function_exists('commonChoiceRenderDecisionCard')) {
         $metaItems = is_array($item['metaItems'] ?? null) ? $item['metaItems'] : [];
         $stats = is_array($item['stats'] ?? null) ? $item['stats'] : [];
         $dateItems = is_array($item['dateItems'] ?? null) ? $item['dateItems'] : [];
+        $titleIcon = is_array($item['titleIcon'] ?? null) ? $item['titleIcon'] : [];
+        $titleIconUrl = trim((string)($titleIcon['url'] ?? ''));
+        $titleIconLabel = trim((string)($titleIcon['label'] ?? ''));
 
         $ownerAvatarHtml = $ownerPhotoUrl !== ''
             ? '<img src="' . $escape($ownerPhotoUrl) . '" alt="' . $escape($ownerName !== '' ? $ownerName : $ownerInitials) . '" class="omo-decisions-card__owner-photo">'
             : '<span class="omo-decisions-card__owner-placeholder">' . $escape($ownerInitials) . '</span>';
+        $titleIconHtml = $titleIconUrl !== ''
+            ? '<span class="omo-decisions-card__title-icon" role="img"'
+                . ($titleIconLabel !== '' ? ' aria-label="' . $escape($titleIconLabel) . '" title="' . $escape($titleIconLabel) . '"' : '')
+                . '><img src="' . $escape($titleIconUrl) . '" alt=""></span>'
+            : '';
 
         $badgesHtml = '';
         if (!empty($badges)) {
@@ -153,7 +161,7 @@ if (!function_exists('commonChoiceRenderDecisionCard')) {
                     . '<span class="omo-decisions-card__owner-avatar">' . $ownerAvatarHtml . '</span>'
                     . '<span class="omo-decisions-card__summary-copy">'
                         . '<span class="omo-decisions-card__summary-top">'
-                            . '<span class="omo-decisions-card__title">' . $escape($title) . '</span>'
+                            . '<span class="omo-decisions-card__title-line"><span class="omo-decisions-card__title">' . $escape($title) . '</span>' . $titleIconHtml . '</span>'
                             . ($statusLabel !== '' ? '<span class="omo-decisions-card__status">' . $escape($statusLabel) . '</span>' : '')
                         . '</span>'
                         . '<span class="omo-decisions-card__summary-bottom">'

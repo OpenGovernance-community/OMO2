@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/omo_context_scope.php';
+
 if (!function_exists('faqPopupDescribeScope')) {
 	function faqPopupDescribeScope(\dbObject\FAQ $faq)
 	{
