@@ -462,6 +462,10 @@ function commonGetAuthSharedSourceLang(): array
             'text' => 'Envoyer le code',
             'context' => 'Primary action button label in the shared authentication user interface.'
         ],
+        'auth.button.sign_in_password' => [
+            'text' => 'Se connecter',
+            'context' => 'Primary action button label in the shared authentication user interface when password login mode is active.'
+        ],
         'auth.button.validate' => [
             'text' => 'Valider',
             'context' => 'Validation button label in the shared authentication user interface.'
@@ -486,9 +490,17 @@ function commonGetAuthSharedSourceLang(): array
             'text' => 'Un code de connexion vous sera envoye par e-mail. Il reste valable 5 minutes.',
             'context' => 'Introductory helper text in the shared authentication user interface.'
         ],
+        'auth.copy.login_password' => [
+            'text' => 'Utilisez votre mot de passe pour vous connecter directement sur cet appareil.',
+            'context' => 'Introductory helper text in the shared authentication user interface when password login mode is active.'
+        ],
         'auth.placeholder.full_email' => [
             'text' => 'nom@domaine.ch',
             'context' => 'Email input placeholder when a full email address is expected in the shared authentication user interface.'
+        ],
+        'auth.placeholder.password' => [
+            'text' => 'Votre mot de passe',
+            'context' => 'Password input placeholder in the shared authentication user interface.'
         ],
         'auth.placeholder.username' => [
             'text' => 'username',
@@ -501,6 +513,18 @@ function commonGetAuthSharedSourceLang(): array
         'auth.toggle.use_other_email' => [
             'text' => 'Utiliser une autre adresse e-mail',
             'context' => 'Toggle label to switch away from the organization email mode in the shared authentication user interface.'
+        ],
+        'auth.toggle.use_password_login' => [
+            'text' => 'Se connecter plutot avec un mot de passe',
+            'context' => 'Link label used to switch from magic code login to password login in the shared authentication user interface.'
+        ],
+        'auth.toggle.use_magic_login' => [
+            'text' => 'Se connecter plutot avec un code par e-mail',
+            'context' => 'Link label used to switch from password login back to magic code login in the shared authentication user interface.'
+        ],
+        'auth.link.reset_password' => [
+            'text' => 'Réinitialiser le mot de passe',
+            'context' => 'Link label used on the shared authentication page to request a password reset email.'
         ],
     ];
 }
@@ -587,6 +611,34 @@ function commonGetAuthPhpSourceLang(): array
         'auth.email.subject' => [
             'text' => 'Code de connexion',
             'context' => 'Email subject for the authentication code email.'
+        ],
+        'auth.email.reset.subject' => [
+            'text' => 'Réinitialisation du mot de passe',
+            'context' => 'Email subject for the password reset email.'
+        ],
+        'auth.email.reset.body.heading' => [
+            'text' => 'Choisissez un nouveau mot de passe',
+            'context' => 'Heading shown in the password reset email.'
+        ],
+        'auth.email.reset.body.copy' => [
+            'text' => 'Cliquez sur le bouton ci-dessous pour définir un nouveau mot de passe pour votre compte.',
+            'context' => 'Main explanatory text shown in the password reset email.'
+        ],
+        'auth.email.reset.body.button' => [
+            'text' => 'Réinitialiser le mot de passe',
+            'context' => 'Primary call to action button label in the password reset email.'
+        ],
+        'auth.email.reset.body.validity_notice' => [
+            'text' => 'Ce lien est valable 1 heure.',
+            'context' => 'Validity notice shown at the bottom of the password reset email.'
+        ],
+        'auth.email.reset.body.ignore_notice' => [
+            'text' => "Si vous n'etes pas a l'origine de cette demande, vous pouvez simplement ignorer cet e-mail.",
+            'context' => 'Notice shown in the password reset email when the recipient did not request the reset.'
+        ],
+        'auth.error.reset_send_failed' => [
+            'text' => "Impossible d'envoyer l'e-mail de réinitialisation.",
+            'context' => 'Error returned by the password reset request endpoint when the reset email could not be sent.'
         ],
         'auth.page.invalid_request' => [
             'text' => "Veuillez retourner dans l'application et saisir le code recu par e-mail.",
@@ -690,6 +742,18 @@ function commonGetAuthJsSourceLang(): array
             'text' => "Impossible d'envoyer la demande.",
             'context' => 'Error shown in the shared authentication JavaScript component when the AJAX request to start login fails.'
         ],
+        'auth.error.reset_send_failed' => [
+            'text' => "Impossible d'envoyer l'e-mail de réinitialisation.",
+            'context' => 'Error shown in the shared authentication JavaScript component when the password reset email could not be sent.'
+        ],
+        'auth.error.invalid_credentials' => [
+            'text' => 'Identifiants invalides.',
+            'context' => 'Error shown in the shared authentication JavaScript component when the provided email and password do not match an account.'
+        ],
+        'auth.error.missing_password' => [
+            'text' => 'Veuillez saisir votre mot de passe.',
+            'context' => 'Error shown in the shared authentication JavaScript component when the password field is empty in password login mode.'
+        ],
         'auth.error.restart_login' => [
             'text' => 'Merci de relancer la connexion.',
             'context' => 'Error shown in the shared authentication JavaScript component when the anti-spam flow must be restarted.'
@@ -725,6 +789,18 @@ function commonGetAuthJsSourceLang(): array
         'auth.status.code_sent' => [
             'text' => 'Le code de connexion a ete envoye par e-mail.',
             'context' => 'Success status shown in the shared authentication JavaScript component after the code email was sent.'
+        ],
+        'auth.status.password_signing_in' => [
+            'text' => 'Connexion en cours...',
+            'context' => 'Status message shown in the shared authentication JavaScript component while a password login request is being sent.'
+        ],
+        'auth.status.reset_email_sent' => [
+            'text' => "Si cette adresse existe, un lien de réinitialisation vient d'être envoyé.",
+            'context' => 'Success status shown in the shared authentication JavaScript component after a password reset request was accepted.'
+        ],
+        'auth.status.reset_sending' => [
+            'text' => "Préparation de l'e-mail de réinitialisation...",
+            'context' => 'Status message shown in the shared authentication JavaScript component while the password reset request is being sent.'
         ],
         'auth.status.enter_received_code' => [
             'text' => 'Saisissez le code recu par e-mail.',
@@ -1586,6 +1662,70 @@ function commonHashUserPassword($password)
     return password_hash((string)$password, PASSWORD_DEFAULT);
 }
 
+function commonGetPasswordPolicyMinLength()
+{
+    return 12;
+}
+
+function commonGetPasswordPolicyRequiredRuleKeys()
+{
+    return array('length', 'lower', 'upper', 'digit', 'special');
+}
+
+function commonEvaluatePasswordComplexity($password, $email = '', $minLength = null)
+{
+    $password = (string)$password;
+    $email = trim(strtolower((string)$email));
+    $emailLocalPart = '';
+    $minLength = is_numeric($minLength) && (int)$minLength > 0
+        ? (int)$minLength
+        : commonGetPasswordPolicyMinLength();
+
+    if ($email !== '' && strpos($email, '@') !== false) {
+        $emailParts = explode('@', $email, 2);
+        $emailLocalPart = trim((string)($emailParts[0] ?? ''));
+    }
+
+    $rules = [
+        'length' => strlen($password) >= $minLength,
+        'lower' => preg_match('/[a-z]/', $password) === 1,
+        'upper' => preg_match('/[A-Z]/', $password) === 1,
+        'digit' => preg_match('/\d/', $password) === 1,
+        'special' => preg_match('/[^a-zA-Z0-9]/', $password) === 1,
+        'email' => $emailLocalPart === '' || strlen($emailLocalPart) < 4 || stripos($password, $emailLocalPart) === false,
+    ];
+
+    $requiredRuleKeys = commonGetPasswordPolicyRequiredRuleKeys();
+    $valid = true;
+    foreach ($requiredRuleKeys as $requiredRuleKey) {
+        if (empty($rules[$requiredRuleKey])) {
+            $valid = false;
+            break;
+        }
+    }
+
+    return [
+        'rules' => $rules,
+        'valid' => $valid,
+        'minLength' => $minLength,
+        'requiredRuleKeys' => $requiredRuleKeys,
+    ];
+}
+
+function commonGetPasswordPolicyValidationMessage($minLength = null)
+{
+    $minLength = is_numeric($minLength) && (int)$minLength > 0
+        ? (int)$minLength
+        : commonGetPasswordPolicyMinLength();
+
+    return 'Le mot de passe doit faire au moins ' . $minLength . ' caracteres et contenir une minuscule, une majuscule, un chiffre et un caractere special.';
+}
+
+function commonUserHasPasswordHash($hash)
+{
+    return trim((string)$hash) !== '';
+}
+
 function commonVerifyUserPassword($password, $hash)
 {
     $password = (string)$password;
@@ -1596,6 +1736,72 @@ function commonVerifyUserPassword($password, $hash)
     }
 
     return password_verify($password, $hash);
+}
+
+function commonValidateUserPasswordUpdate($currentHash, $currentPassword, $newPassword, $newPasswordConfirm, $email = '')
+{
+    $currentHash = (string)$currentHash;
+    $currentPassword = (string)$currentPassword;
+    $newPassword = (string)$newPassword;
+    $newPasswordConfirm = (string)$newPasswordConfirm;
+    $email = (string)$email;
+    $hasExistingPassword = commonUserHasPasswordHash($currentHash);
+    $wantsPasswordChange = $currentPassword !== '' || $newPassword !== '' || $newPasswordConfirm !== '';
+
+    if (!$wantsPasswordChange) {
+        return array(
+            'status' => true,
+            'shouldUpdate' => false,
+            'message' => '',
+        );
+    }
+
+    if ($hasExistingPassword && $currentPassword === '') {
+        return array(
+            'status' => false,
+            'shouldUpdate' => false,
+            'message' => 'Veuillez saisir votre ancien mot de passe.',
+        );
+    }
+
+    if ($hasExistingPassword && !commonVerifyUserPassword($currentPassword, $currentHash)) {
+        return array(
+            'status' => false,
+            'shouldUpdate' => false,
+            'message' => 'Ancien mot de passe invalide.',
+        );
+    }
+
+    if ($newPassword === '' || $newPasswordConfirm === '') {
+        return array(
+            'status' => false,
+            'shouldUpdate' => false,
+            'message' => 'Veuillez saisir le nouveau mot de passe deux fois.',
+        );
+    }
+
+    $passwordComplexity = commonEvaluatePasswordComplexity($newPassword, $email);
+    if (empty($passwordComplexity['valid'])) {
+        return array(
+            'status' => false,
+            'shouldUpdate' => false,
+            'message' => commonGetPasswordPolicyValidationMessage($passwordComplexity['minLength'] ?? null),
+        );
+    }
+
+    if ($newPassword !== $newPasswordConfirm) {
+        return array(
+            'status' => false,
+            'shouldUpdate' => false,
+            'message' => 'Les deux nouveaux mots de passe ne correspondent pas.',
+        );
+    }
+
+    return array(
+        'status' => true,
+        'shouldUpdate' => true,
+        'message' => '',
+    );
 }
 
 function commonGenerateLoginCode($length = 6)
@@ -1793,6 +1999,118 @@ function commonSendLoginCode($userId, $email, array $organizationContext, $remem
     ];
 }
 
+function commonIssueUserPasswordResetCode(\dbObject\User $user)
+{
+    $resetCode = bin2hex(random_bytes(10));
+    $user->set('code', $resetCode);
+    $user->set('codeexpiration', (new \DateTime())->add(new \DateInterval('PT1H')));
+
+    if (!$user->save()) {
+        return '';
+    }
+
+    return $resetCode;
+}
+
+function commonBuildPasswordResetUrl($code)
+{
+    return commonBuildUrl('/common/password_reset.php?code=' . rawurlencode(trim((string)$code)));
+}
+
+function commonSendPasswordResetEmail(\dbObject\User $user, array $organizationContext)
+{
+    $email = trim((string)$user->get('email'));
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return [
+            'status' => false,
+            'error' => 'invalid_email',
+        ];
+    }
+
+    $resetCode = commonIssueUserPasswordResetCode($user);
+    if ($resetCode === '') {
+        return [
+            'status' => false,
+            'error' => 'save_failed',
+        ];
+    }
+
+    $sourceLang = commonGetAuthPhpSourceLang();
+    $lang = commonAuthLoadBundle('common_auth_page', $sourceLang);
+    $link = commonBuildPasswordResetUrl($resetCode);
+    $subject = commonAuthT('auth.email.reset.subject', [], $lang, $sourceLang);
+    $orgName = htmlspecialchars($organizationContext['name'] ?: ($_SERVER['HTTP_HOST'] ?? 'Organisation'));
+    $color = htmlspecialchars(commonGetOrganizationAccentColor($organizationContext, '#004663'));
+    $logo = commonBuildAbsoluteAssetUrl($organizationContext['logo'] ?? '');
+    $banner = commonBuildAbsoluteAssetUrl($organizationContext['banner'] ?? '');
+
+    $message = "
+<html>
+<body style='margin:0; font-family:Arial, sans-serif; background:#f5f5f5;'>
+<table width='100%' cellpadding='0' cellspacing='0'>
+<tr>
+<td align='center'>
+<table width='600' cellpadding='0' cellspacing='0' style='background:white; border-radius:8px; overflow:hidden;'>
+<tr>
+<td style='background:$color; text-align:center; padding:30px 20px; position:relative;'>
+    " . ($banner ? "<div style='background:url($banner) center/cover; opacity:0.3; position:absolute; inset:0;'></div>" : "") . "
+    <div style='position:relative;'>
+        " . ($logo ? "
+        <div style='width:80px;height:80px;border-radius:50%;background:white;margin:0 auto 10px;padding:5px;'>
+            <img src='$logo' style='width:100%;height:100%;object-fit:cover;border-radius:50%;'>
+        </div>
+        " : "") . "
+        <h2 style='color:white; margin:0;'>$orgName</h2>
+    </div>
+</td>
+</tr>
+<tr>
+<td style='padding:30px; text-align:center;'>
+    <h3 style='margin-top:0;'>" . htmlspecialchars(commonAuthT('auth.email.reset.body.heading', [], $lang, $sourceLang)) . "</h3>
+    <p style='color:#555; line-height:1.6;'>" . htmlspecialchars(commonAuthT('auth.email.reset.body.copy', [], $lang, $sourceLang)) . "</p>
+    <p style='margin:22px 0 0;'>
+        <a href='$link' style='display:inline-block;padding:12px 20px;background:$color;color:white;text-decoration:none;border-radius:999px;font-weight:bold;'>
+            " . htmlspecialchars(commonAuthT('auth.email.reset.body.button', [], $lang, $sourceLang)) . "
+        </a>
+    </p>
+    <p style='margin-top:12px; font-size:12px; word-break:break-all; color:#666;'><a href='$link' style='color:#2563eb; text-decoration:underline;'>$link</a></p>
+    <p style='margin-top:20px; font-size:12px; color:#888;'>" . htmlspecialchars(commonAuthT('auth.email.reset.body.validity_notice', [], $lang, $sourceLang)) . "</p>
+    <p style='margin-top:12px; font-size:12px; color:#999;'>" . htmlspecialchars(commonAuthT('auth.email.reset.body.ignore_notice', [], $lang, $sourceLang)) . "</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+</body>
+</html>
+";
+
+    $fromAddress = trim((string)($GLOBALS['mailUser'] ?? ''));
+    if ($fromAddress === '') {
+        $host = preg_replace('/:\d+$/', '', commonGetRootHost() ?: 'localhost');
+        $fromAddress = 'noreply@' . ($host !== '' ? $host : 'localhost');
+    }
+
+    $fromName = (string)($organizationContext['name'] ?: commonAuthT('auth.email.body.from_name_fallback', [], $lang, $sourceLang));
+
+    if (!myHTMLMail([$fromAddress, $fromName], $email, $subject, $message)) {
+        $response = [
+            'status' => false,
+            'error' => 'send_failed',
+        ];
+        if (function_exists('appShouldExposeDevDiagnostics') && appShouldExposeDevDiagnostics()) {
+            $response['mail_error'] = function_exists('appGetLastMailError') ? appGetLastMailError() : '';
+        }
+        return $response;
+    }
+
+    return [
+        'status' => true,
+        'link' => $link,
+    ];
+}
+
 function commonHandleMagicLoginSend($defaultReturnTo = '/')
 {
     header('Content-Type: application/json; charset=UTF-8');
@@ -1889,6 +2207,48 @@ function commonHandleMagicLoginSend($defaultReturnTo = '/')
         exit;
     }
     echo json_encode(['status' => 'code_sent', 'request_token' => $loginRequest['request_token']]);
+    exit;
+}
+
+function commonHandlePasswordResetRequest($defaultReturnTo = '/')
+{
+    header('Content-Type: application/json; charset=UTF-8');
+
+    $sourceLang = commonGetAuthPhpSourceLang();
+    $lang = commonAuthLoadBundle('common_auth_page', $sourceLang);
+    $organizationContext = commonResolveOrganizationContext(1);
+    $email = trim((string)($_POST['email'] ?? ''));
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode([
+            'error' => 'email',
+            'message' => commonAuthT('auth.error.invalid_email', [], $lang, $sourceLang),
+        ]);
+        exit;
+    }
+
+    $user = new \dbObject\User();
+    if ($user->load(['email', $email])) {
+        $resetResult = commonSendPasswordResetEmail($user, $organizationContext);
+        if (empty($resetResult['status'])) {
+            $payload = [
+                'error' => 'send_failed',
+                'message' => commonAuthT('auth.error.reset_send_failed', [], $lang, $sourceLang),
+            ];
+            if (!empty($resetResult['mail_error'])) {
+                $payload['mail_error'] = $resetResult['mail_error'];
+            }
+
+            echo json_encode($payload);
+            exit;
+        }
+    }
+
+    echo json_encode([
+        'status' => 'reset_email_sent',
+        'message' => commonAuthT('auth.status.reset_email_sent', [], $lang, $sourceLang),
+        'return_to' => commonNormalizeLocalPath($defaultReturnTo, '/'),
+    ]);
     exit;
 }
 
@@ -2064,6 +2424,106 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
     exit;
 }
 
+function commonHandlePasswordLogin($defaultReturnTo = '/')
+{
+    $sourceLang = commonGetAuthPhpSourceLang();
+    $lang = commonAuthLoadBundle('common_auth_page', $sourceLang);
+    $returnTo = commonNormalizeLocalPath($_POST['return_to'] ?? $defaultReturnTo, $defaultReturnTo);
+    $wantsJson = commonIsAjaxJsonRequest();
+
+    if ($wantsJson) {
+        header('Content-Type: application/json; charset=UTF-8');
+    }
+
+    $respondError = function ($error, $message = '') use ($wantsJson, $returnTo) {
+        $payload = array(
+            'error' => $error,
+        );
+        if ($message !== '') {
+            $payload['message'] = $message;
+        }
+
+        if ($wantsJson) {
+            echo json_encode($payload);
+            exit;
+        }
+
+        $target = commonBuildLoginFeedbackUrl($returnTo, array(
+            'login_error' => $error,
+            'login_message' => $message,
+            'login_status_type' => 'error',
+        ));
+        header('Location: ' . $target);
+        exit;
+    };
+
+    $email = trim((string)($_POST['email'] ?? ''));
+    $password = (string)($_POST['password'] ?? '');
+    $remember = isset($_POST['remember']) ? (int)$_POST['remember'] : 0;
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $respondError('email', commonAuthT('auth.error.invalid_email', [], $lang, $sourceLang));
+    }
+
+    if ($password === '') {
+        $respondError('missing_password', commonAuthT('auth.error.missing_password', [], $lang, $sourceLang));
+    }
+
+    $user = new \dbObject\User();
+    if (
+        !$user->load(array('email', $email))
+        || !commonVerifyUserPassword($password, (string)$user->get('password'))
+    ) {
+        $respondError('invalid_credentials', commonAuthT('auth.error.invalid_credentials', [], $lang, $sourceLang));
+    }
+
+    if ($remember > 0) {
+        $rememberToken = bin2hex(random_bytes(32));
+        $ip = commonGetRequestIp();
+        $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $browser = (strpos($ua, 'Chrome') !== false) ? 'Chrome' : ((strpos($ua, 'Firefox') !== false) ? 'Firefox' : ((strpos($ua, 'Safari') !== false) ? 'Safari' : 'Unknown'));
+        $os = (strpos($ua, 'Windows') !== false) ? 'Windows' : ((strpos($ua, 'Mac') !== false) ? 'MacOS' : ((strpos($ua, 'Linux') !== false) ? 'Linux' : ((strpos($ua, 'Android') !== false) ? 'Android' : ((strpos($ua, 'iPhone') !== false) ? 'iOS' : 'Unknown'))));
+
+        \dbObject\UserRemember::issue(
+            (int)$user->getId(),
+            $rememberToken,
+            $ip,
+            $ua,
+            $browser,
+            $os
+        );
+
+        commonSetCookieValue(
+            commonGetRememberCookieName(),
+            $rememberToken,
+            time() + commonGetRememberDurationSeconds(),
+            true
+        );
+        commonExpireLegacyRememberCookie();
+    }
+
+    commonUpdateLastConnection((int)$user->getId(), $returnTo, true);
+
+    session_regenerate_id(true);
+    $_SESSION['currentUser'] = (int)$user->getId();
+    $_SESSION['userRef'] = $user;
+    commonClearCurrentUserAdminMode();
+    unset($_SESSION['permissionCacheByOrganization']);
+    commonStorePendingLoginToken(null);
+    session_write_close();
+
+    if ($wantsJson) {
+        echo json_encode(array(
+            'status' => 'ok',
+            'redirect_to' => $returnTo,
+        ));
+        exit;
+    }
+
+    header('Location: ' . $returnTo);
+    exit;
+}
+
 function commonRenderMagicLoginPage(array $options = [])
 {
     $sourceLang = commonGetAuthPhpSourceLang();
@@ -2083,6 +2543,8 @@ function commonRenderMagicLoginPage(array $options = [])
 
     $config = [
         'loginSendPath' => $loginSendPath,
+        'loginPasswordPath' => '/common/login_password.php',
+        'loginResetRequestPath' => '/common/login_reset_request.php',
         'loginVerifyPath' => '/common/login_verify.php',
         'returnTo' => $returnTo,
         'orgDomain' => $organizationContext['domain'] ?? '',
@@ -2166,6 +2628,11 @@ function commonRenderMagicLoginPage(array $options = [])
                 <?php endif; ?>
             </div>
 
+            <div id="authPasswordBox" class="auth-password-box" style="display:none;">
+                <input type="password" id="authPasswordInput" autocomplete="current-password" placeholder="<?= htmlspecialchars(commonAuthT('auth.placeholder.password', [], $lang, $sourceLang)) ?>">
+                <a href="#" class="auth-link-btn auth-reset-link" id="authResetPasswordLink"><?= htmlspecialchars(commonAuthT('auth.link.reset_password', [], $lang, $sourceLang)) ?></a>
+            </div>
+
             <?php if (!empty($organizationContext['domain'])): ?>
                 <button type="button" class="auth-link-btn" id="authToggleMode"><?= htmlspecialchars(commonAuthT('auth.toggle.use_other_email', [], $lang, $sourceLang)) ?></button>
             <?php endif; ?>
@@ -2193,6 +2660,9 @@ function commonRenderMagicLoginPage(array $options = [])
 
             <button type="button" class="auth-link-btn auth-resend" id="authResendLink" style="display:none;"><?= htmlspecialchars(commonAuthT('auth.button.resend_code', [], $lang, $sourceLang)) ?></button>
             <button type="button" class="auth-submit" id="authLoginSubmit"><?= htmlspecialchars(commonAuthT('auth.button.send_code', [], $lang, $sourceLang)) ?></button>
+            <div class="auth-login-links">
+                <a href="#" class="auth-link-btn auth-login-switch" id="authLoginMethodSwitch"><?= htmlspecialchars(commonAuthT('auth.toggle.use_password_login', [], $lang, $sourceLang)) ?></a>
+            </div>
             <div id="authStatus" class="auth-status" aria-live="polite"></div>
         </div>
     </div>

@@ -2,20 +2,41 @@
 require_once __DIR__ . '/bootstrap.php';
 
 if (!function_exists('omoSearchPopupGetScopeLabels')) {
-    function omoSearchPopupGetScopeLabels()
+    function omoSearchPopupGetScopeLabels(\dbObject\Organization $organization = null)
     {
-        return array(
+        $scopeLabels = array(
             'structure' => 'Structure',
             'team' => 'Team',
+            'calendar' => 'Calendrier',
             'documents' => 'Documents',
+            'decision' => 'Decisions',
         );
+
+        if (!$organization instanceof \dbObject\Organization || (int)$organization->getId() <= 0) {
+            return $scopeLabels;
+        }
+
+        $scopeAppHashes = array(
+            'structure' => 'structure',
+            'team' => 'team',
+            'calendar' => 'calendar',
+            'documents' => 'documents',
+            'decision' => 'decision',
+        );
+
+        foreach ($scopeAppHashes as $scopeId => $hash) {
+            if (!$organization->isApplicationEnabled($hash)) {
+                unset($scopeLabels[$scopeId]);
+            }
+        }
+
+        return $scopeLabels;
     }
 }
 
 if (!function_exists('omoSearchPopupResolveScopes')) {
-    function omoSearchPopupResolveScopes($rawScopes)
+    function omoSearchPopupResolveScopes($rawScopes, array $scopeLabels)
     {
-        $scopeLabels = omoSearchPopupGetScopeLabels();
         if (!is_array($rawScopes)) {
             $rawScopes = array($rawScopes);
         }
@@ -33,7 +54,7 @@ if (!function_exists('omoSearchPopupResolveScopes')) {
         }
 
         if (count($selectedScopes) === 0) {
-            $selectedScopes['structure'] = 'structure';
+            $selectedScopes = $scopeLabels;
         }
 
         return $selectedScopes;
@@ -54,10 +75,65 @@ if (!function_exists('omoSearchPopupRenderStyles')) {
         }
 
         .omo-search-popup__hero,
+        .omo-search-popup__search-card,
         .omo-search-popup__result,
         .omo-search-popup__status-card {
             --generic-section-padding-block: 18px;
-            --generic-section-padding-inline: 18px;
+        }
+
+        .omo-search-popup__search-card {
+            --topbar-menu-item-bg: rgba(148, 163, 184, 0.12);
+            --topbar-menu-item-bg-hover: rgba(148, 163, 184, 0.18);
+            --topbar-menu-border: rgba(148, 163, 184, 0.22);
+            --topbar-menu-text: var(--color-text, #0f172a);
+            --topbar-menu-text-muted: var(--color-text-light, #475569);
+            --topbar-input-bg: rgba(255, 255, 255, 0.96);
+            --topbar-input-border: rgba(148, 163, 184, 0.28);
+            --topbar-input-text: var(--color-text, #0f172a);
+            display: grid;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.76);
+        }
+
+        .omo-search-popup__search-header {
+            display: grid;
+            gap: 4px;
+        }
+
+        .omo-search-popup__search-title {
+            margin: 0;
+        }
+
+        .omo-search-popup__search-form {
+            display: grid;
+            gap: 12px;
+        }
+
+        .omo-search-popup__search-form .common-topbar__search-panel-label {
+            color: var(--color-text-light, #475569);
+        }
+
+        .omo-search-popup__search-form .common-topbar__search-panel-row {
+            align-items: stretch;
+        }
+
+        .omo-search-popup__search-form .common-topbar__search-input {
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+
+        .omo-search-popup__search-form .common-topbar__search-button {
+            border: 0;
+            border-radius: 12px;
+            background: var(--color-primary, #2563eb);
+            color: #ffffff;
+            font-weight: 600;
+            padding: 0 16px;
+            white-space: nowrap;
+        }
+
+        .omo-search-popup__search-form .common-topbar__search-button:hover {
+            background: color-mix(in srgb, var(--color-primary, #2563eb) 88%, black);
         }
 
         .omo-search-popup__head {
@@ -177,14 +253,34 @@ if (!function_exists('omoSearchPopupRenderStyles')) {
         }
 
         @media (max-width: 720px) {
+            .omo-search-popup__search-form .common-topbar__search-panel-row,
             .omo-search-popup__head,
             .omo-search-popup__result-head {
                 flex-direction: column;
                 align-items: flex-start;
             }
+
+            .omo-search-popup__search-form .common-topbar__search-button {
+                width: 100%;
+                min-height: 42px;
+            }
         }
         </style>
         <?php
+    }
+}
+
+if (!function_exists('omoSearchPopupGetUiStrings')) {
+    function omoSearchPopupGetUiStrings()
+    {
+        return array(
+            'searchTitle' => 'Relancer la recherche',
+            'searchSummary' => 'Modifiez le texte ou les modules coches pour lancer une nouvelle recherche dans ce popup.',
+            'searchPlaceholder' => 'Rechercher un cercle, un role ou un outil',
+            'searchScopeLabel' => 'Chercher dans',
+            'searchScopeHint' => 'La recherche de la topbar n agit que sur les modules coches.',
+            'searchSubmit' => 'Lancer',
+        );
     }
 }
 
@@ -213,6 +309,56 @@ if (!function_exists('omoSearchPopupRenderStats')) {
             </div>
             <?php
         }
+    }
+}
+
+if (!function_exists('omoSearchPopupRenderSearchForm')) {
+    function omoSearchPopupRenderSearchForm($query, array $selectedScopes, array $scopeLabels, $escape)
+    {
+        $ui = omoSearchPopupGetUiStrings();
+        ?>
+        <div class="omo-search-popup__search-card generic-section">
+            <div class="omo-search-popup__search-header">
+                <h3 class="omo-search-popup__search-title generic-card-title"><?= $escape($ui['searchTitle']) ?></h3>
+                <p class="omo-search-popup__summary"><?= $escape($ui['searchSummary']) ?></p>
+            </div>
+
+            <form class="omo-search-popup__search-form common-topbar__search-panel" data-omo-search-popup-form>
+                <label class="common-topbar__search-panel-label" for="omoSearchPopupInput"><?= $escape($ui['searchPlaceholder']) ?></label>
+                <div class="common-topbar__search-panel-row">
+                    <input
+                        type="search"
+                        id="omoSearchPopupInput"
+                        class="common-topbar__search-input"
+                        data-omo-search-popup-input
+                        value="<?= $escape($query) ?>"
+                        placeholder="<?= $escape($ui['searchPlaceholder']) ?>"
+                        aria-label="<?= $escape($ui['searchPlaceholder']) ?>"
+                    >
+                    <button type="submit" class="common-topbar__search-button"><?= $escape($ui['searchSubmit']) ?></button>
+                </div>
+
+                <div class="common-topbar__search-scopes">
+                    <div class="common-topbar__search-panel-label"><?= $escape($ui['searchScopeLabel']) ?></div>
+                    <div class="common-topbar__search-scope-list">
+                        <?php foreach ($scopeLabels as $scopeId => $scopeLabel): ?>
+                            <label class="common-topbar__search-scope">
+                                <input
+                                    type="checkbox"
+                                    class="common-topbar__search-scope-input"
+                                    data-omo-search-popup-scope-input
+                                    value="<?= $escape($scopeId) ?>"
+                                    <?= isset($selectedScopes[$scopeId]) ? 'checked' : '' ?>
+                                >
+                                <span class="common-topbar__search-scope-label"><?= $escape($scopeLabel) ?></span>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="common-topbar__search-panel-hint"><?= $escape($ui['searchScopeHint']) ?></div>
+                </div>
+            </form>
+        </div>
+        <?php
     }
 }
 
@@ -279,9 +425,15 @@ if (!function_exists('omoSearchPopupRenderContent')) {
                             $buttonAttributes = ' data-omo-search-open-structure="' . (int)$action['holonId'] . '"';
                         } elseif ($module === 'team' && !empty($action['userId'])) {
                             $buttonAttributes = ' data-omo-search-open-user="' . (int)$action['userId'] . '"';
+                        } elseif ($module === 'calendar' && !empty($action['eventId'])) {
+                            $buttonAttributes = ' data-omo-search-open-calendar-event-id="' . (int)$action['eventId'] . '"'
+                                . ' data-omo-search-open-calendar-event-holon="' . (int)($action['holonId'] ?? 0) . '"';
                         } elseif ($module === 'documents' && !empty($action['documentUrl'])) {
                             $buttonAttributes = ' data-omo-search-open-document="' . htmlspecialchars((string)$action['documentUrl'], ENT_QUOTES, 'UTF-8') . '"'
                                 . ' data-omo-search-document-title="' . htmlspecialchars((string)($result['title'] ?? 'Document'), ENT_QUOTES, 'UTF-8') . '"';
+                        } elseif ($module === 'decision' && !empty($action['decisionId'])) {
+                            $buttonAttributes = ' data-omo-search-open-decision-id="' . (int)$action['decisionId'] . '"'
+                                . ' data-omo-search-open-decision-holon="' . (int)($action['holonId'] ?? 0) . '"';
                         }
                         ?>
                         <article class="omo-search-popup__result generic-section">
@@ -318,8 +470,6 @@ if (!function_exists('omoSearchPopupRenderContent')) {
 $organizationId = isset($_GET['oid']) ? (int)$_GET['oid'] : (int)($_SESSION['currentOrganization'] ?? 0);
 $currentHolonId = isset($_GET['cid']) ? (int)$_GET['cid'] : 0;
 $query = trim((string)($_GET['q'] ?? ''));
-$selectedScopes = omoSearchPopupResolveScopes($_GET['scopes'] ?? array());
-$scopeLabels = omoSearchPopupGetScopeLabels();
 $escape = 'omoApiEscape';
 $isPartial = !empty($_GET['partial']);
 
@@ -346,6 +496,8 @@ if (!$organization->load($organizationId) || !$organization->canViewDetail()) {
     exit;
 }
 
+$scopeLabels = omoSearchPopupGetScopeLabels($organization);
+$selectedScopes = omoSearchPopupResolveScopes($_GET['scopes'] ?? array(), $scopeLabels);
 $viewerContext = \dbObject\SearchJob::buildViewerContextFromGlobals($organizationId, $currentHolonId);
 
 if ($isPartial) {
@@ -363,7 +515,7 @@ if ($isPartial) {
     }
 
     $query = trim((string)$job->get('query'));
-    $selectedScopes = omoSearchPopupResolveScopes($job->getScopes());
+    $selectedScopes = omoSearchPopupResolveScopes($job->getScopes(), $scopeLabels);
 
     $jobPayload = array(
         'status' => (string)$job->get('status'),
@@ -381,7 +533,13 @@ if ($isPartial) {
 
 omoSearchPopupRenderStyles();
 ?>
-<div class="omo-search-popup" data-omo-search-popup-root="1">
+<div
+    class="omo-search-popup"
+    data-omo-search-popup-root="1"
+    data-omo-search-popup-oid="<?= (int)$organizationId ?>"
+    data-omo-search-popup-cid="<?= (int)$currentHolonId ?>"
+>
+    <?php omoSearchPopupRenderSearchForm($query, $selectedScopes, $scopeLabels, $escape); ?>
     <div data-omo-search-popup-content>
         <?php
         if ($query === '') {
@@ -391,7 +549,9 @@ omoSearchPopupRenderStyles();
                 'counts' => array(
                     'structure' => 0,
                     'team' => 0,
+                    'calendar' => 0,
                     'documents' => 0,
+                    'decision' => 0,
                 ),
             ), $escape);
         } else {
@@ -437,35 +597,6 @@ omoSearchPopupRenderStyles();
                     var timerId = 0;
                     var stopped = false;
 
-                    function bindResultActions() {
-                        if (root.dataset.omoSearchPopupBound === '1') {
-                            return;
-                        }
-
-                        root.dataset.omoSearchPopupBound = '1';
-                        root.addEventListener('click', function (event) {
-                            var structureButton = event.target.closest('[data-omo-search-open-structure]');
-                            if (structureButton && typeof window.omoOpenSearchStructureResult === 'function') {
-                                window.omoOpenSearchStructureResult(Number(structureButton.getAttribute('data-omo-search-open-structure') || '0'));
-                                return;
-                            }
-
-                            var userButton = event.target.closest('[data-omo-search-open-user]');
-                            if (userButton && typeof window.omoOpenSearchUserResult === 'function') {
-                                window.omoOpenSearchUserResult(Number(userButton.getAttribute('data-omo-search-open-user') || '0'));
-                                return;
-                            }
-
-                            var documentButton = event.target.closest('[data-omo-search-open-document]');
-                            if (documentButton && typeof window.omoOpenSearchDocumentResult === 'function') {
-                                window.omoOpenSearchDocumentResult(
-                                    documentButton.getAttribute('data-omo-search-open-document') || '',
-                                    documentButton.getAttribute('data-omo-search-document-title') || 'Document'
-                                );
-                            }
-                        });
-                    }
-
                     function cleanup() {
                         stopped = true;
                         if (timerId) {
@@ -506,7 +637,6 @@ omoSearchPopupRenderStyles();
                                 }
 
                                 content.innerHTML = html;
-                                bindResultActions();
 
                                 var stateNode = content.querySelector('[data-omo-search-job-status]');
                                 var status = stateNode ? String(stateNode.getAttribute('data-omo-search-job-status') || '') : '';
@@ -521,7 +651,6 @@ omoSearchPopupRenderStyles();
                             });
                     }
 
-                    bindResultActions();
                     window.__omoPopupCleanup = cleanup;
                     loadState();
                 })();
@@ -532,3 +661,129 @@ omoSearchPopupRenderStyles();
         ?>
     </div>
 </div>
+<script>
+(function () {
+    var root = document.querySelector('[data-omo-search-popup-root="1"]');
+    if (!root || root.dataset.omoSearchPopupUiBound === '1') {
+        return;
+    }
+
+    var searchForm = root.querySelector('[data-omo-search-popup-form]');
+    var searchInput = root.querySelector('[data-omo-search-popup-input]');
+    var organizationId = Number(root.getAttribute('data-omo-search-popup-oid') || '0');
+    var currentHolonId = Number(root.getAttribute('data-omo-search-popup-cid') || '0');
+    var previousCleanup = typeof window.__omoPopupCleanup === 'function'
+        ? window.__omoPopupCleanup
+        : null;
+
+    root.dataset.omoSearchPopupUiBound = '1';
+
+    function buildPopupUrl(query, scopes) {
+        var queryParts = [
+            'q=' + encodeURIComponent(String(query || '').trim())
+        ];
+
+        if (Number.isInteger(organizationId) && organizationId > 0) {
+            queryParts.push('oid=' + encodeURIComponent(organizationId));
+        }
+
+        if (Number.isInteger(currentHolonId) && currentHolonId > 0) {
+            queryParts.push('cid=' + encodeURIComponent(currentHolonId));
+        }
+
+        (Array.isArray(scopes) ? scopes : []).forEach(function (scopeId) {
+            var normalizedScopeId = String(scopeId || '').trim();
+            if (normalizedScopeId !== '') {
+                queryParts.push('scopes[]=' + encodeURIComponent(normalizedScopeId));
+            }
+        });
+
+        return '/omo/api/search_popup.php?' + queryParts.join('&');
+    }
+
+    function relaunchSearch(event) {
+        if (event && typeof event.preventDefault === 'function') {
+            event.preventDefault();
+        }
+
+        if (!searchForm || !searchInput || typeof window.commonTopbarOpenModal !== 'function') {
+            return;
+        }
+
+        var query = String(searchInput.value || '').trim();
+        var scopes = Array.prototype.map.call(
+            searchForm.querySelectorAll('[data-omo-search-popup-scope-input]:checked'),
+            function (input) {
+                return String(input.value || '').trim();
+            }
+        ).filter(function (scopeId) {
+            return scopeId !== '';
+        });
+
+        window.commonTopbarOpenModal(
+            'Recherche',
+            buildPopupUrl(query, scopes),
+            'fetch'
+        );
+    }
+
+    function handleResultClick(event) {
+        var structureButton = event.target.closest('[data-omo-search-open-structure]');
+        if (structureButton && typeof window.omoOpenSearchStructureResult === 'function') {
+            window.omoOpenSearchStructureResult(Number(structureButton.getAttribute('data-omo-search-open-structure') || '0'));
+            return;
+        }
+
+        var userButton = event.target.closest('[data-omo-search-open-user]');
+        if (userButton && typeof window.omoOpenSearchUserResult === 'function') {
+            window.omoOpenSearchUserResult(Number(userButton.getAttribute('data-omo-search-open-user') || '0'));
+            return;
+        }
+
+        var documentButton = event.target.closest('[data-omo-search-open-document]');
+        if (documentButton && typeof window.omoOpenSearchDocumentResult === 'function') {
+            window.omoOpenSearchDocumentResult(
+                documentButton.getAttribute('data-omo-search-open-document') || '',
+                documentButton.getAttribute('data-omo-search-document-title') || 'Document'
+            );
+            return;
+        }
+
+        var calendarEventButton = event.target.closest('[data-omo-search-open-calendar-event-id]');
+        if (calendarEventButton && typeof window.omoOpenSearchCalendarEventResult === 'function') {
+            window.omoOpenSearchCalendarEventResult(
+                Number(calendarEventButton.getAttribute('data-omo-search-open-calendar-event-id') || '0'),
+                Number(calendarEventButton.getAttribute('data-omo-search-open-calendar-event-holon') || '0')
+            );
+            return;
+        }
+
+        var decisionButton = event.target.closest('[data-omo-search-open-decision-id]');
+        if (decisionButton && typeof window.omoOpenSearchDecisionResult === 'function') {
+            window.omoOpenSearchDecisionResult(
+                Number(decisionButton.getAttribute('data-omo-search-open-decision-id') || '0'),
+                Number(decisionButton.getAttribute('data-omo-search-open-decision-holon') || '0')
+            );
+        }
+    }
+
+    if (searchForm) {
+        searchForm.addEventListener('submit', relaunchSearch);
+    }
+
+    root.addEventListener('click', handleResultClick);
+
+    window.__omoPopupCleanup = function () {
+        if (searchForm) {
+            searchForm.removeEventListener('submit', relaunchSearch);
+        }
+
+        root.removeEventListener('click', handleResultClick);
+        root.dataset.omoSearchPopupUiBound = '0';
+
+        if (previousCleanup) {
+            previousCleanup();
+        }
+    };
+})();
+</script>

@@ -45,8 +45,32 @@
 	}
 
 	$data = $_POST;
+	$passwordValidation = commonValidateUserPasswordUpdate(
+		(string)$object->get('password'),
+		(string)($data['current_password'] ?? ''),
+		(string)($data['new_password'] ?? ''),
+		(string)($data['new_password_confirm'] ?? ''),
+		(string)($data['email'] ?? $object->get('email'))
+	);
+	if (empty($passwordValidation['status'])) {
+		echo json_encode([
+			'status' => false,
+			'success' => false,
+			'message' => (string)($passwordValidation['message'] ?? "Impossible d'enregistrer ce mot de passe."),
+		], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		exit;
+	}
+
+	unset(
+		$data['current_password'],
+		$data['new_password'],
+		$data['new_password_confirm']
+	);
 	$data["id"] = $currentUserId;
 	$object->loadFromArray($data);
+	if (!empty($passwordValidation['shouldUpdate'])) {
+		$object->set('password', commonHashUserPassword((string)$_POST['new_password']));
+	}
 	$saveResult = $object->save();
 
 	if (!is_array($saveResult) || empty($saveResult['status'])) {
@@ -58,7 +82,9 @@
 		exit;
 	}
 
-	$msg = 'Enregistrement reussi';
+	$msg = !empty($passwordValidation['shouldUpdate'])
+		? 'Profil et mot de passe enregistres'
+		: 'Enregistrement reussi';
 	$formCode = "";
 	if (isset($_GET["origin"]) && $_GET["origin"] == "profil") {
 		$scope = (isset($_GET["scope"]) && $_GET["scope"] == "organization") ? "organization" : "general";

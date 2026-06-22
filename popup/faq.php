@@ -24,15 +24,27 @@ $viewerAccess = \dbObject\FAQ::resolveViewerAccess($faqContext ?: array());
 $canManageAllFaqs = !empty($viewerAccess['canManageAllFaqs']);
 $canManageOrganizationFaqs = !empty($viewerAccess['canManageOrganizationFaqs']);
 $canManageFaqCollection = $canManageAllFaqs || $canManageOrganizationFaqs;
+$usePermissionSessionCache = $_SERVER['REQUEST_METHOD'] !== 'POST';
 $canCreateContextualFaq = $contextHolon
-	? \dbObject\FAQ::canCreateContextualForHolon($contextHolon, $currentUserId, $contextOrganizationId)
+	? \dbObject\FAQ::canCreateContextualForHolon($contextHolon, $currentUserId, $contextOrganizationId, $usePermissionSessionCache)
 	: false;
 $canAddFaq = $canManageFaqCollection || $canCreateContextualFaq;
 
 $allFAQ = \dbObject\FAQ::loadPopupCollection($faqContext ?: array(), $faqScope);
+$faqReliabilityRange = faqPopupBuildReliabilityRange($allFAQ);
 $defaultVisibleFaqCount = $canManageFaqCollection ? (int)count($allFAQ) : 5;
 $initialRemainingFaqCount = max(0, count($allFAQ) - $defaultVisibleFaqCount);
 $initialLoadMoreCount = min($defaultVisibleFaqCount, $initialRemainingFaqCount);
+$contextOrganization = $faqContext['organization'] ?? null;
+$contextOrganizationLabel = $contextOrganization instanceof \dbObject\Organization
+	? trim((string)$contextOrganization->getLabel())
+	: '';
+$contextHolonLabel = $contextHolon instanceof \dbObject\Holon
+	? trim((string)$contextHolon->getDisplayName())
+	: '';
+$heroSubtitle = $faqScope === 'global'
+	? 'Aide partagee et reponses communes'
+	: 'Aide contextuelle et reponses partagees';
 
 $newFaq = new \dbObject\FAQ();
 $newFaq->set('IDorganization', $contextOrganizationId > 0 ? $contextOrganizationId : null);
@@ -63,6 +75,8 @@ $editorAllowGeneric = false;
 $editorFields = array(
 	'question',
 	'answer',
+	'image',
+	'video',
 	'detail',
 );
 
@@ -169,25 +183,165 @@ if ($canManageAllFaqs) {
 
 	.faq-popup__search {
 		display: grid;
-		gap: 14px;
+		gap: 18px;
 		height: 100%;
 		overflow: auto;
 		align-content: start;
-		padding-right: 4px;
+		padding-right: 6px;
 	}
 
 	.faq-popup--detail-open .faq-popup__search {
 		visibility: hidden;
 	}
 
+	.faq-popup__hero {
+		display: grid;
+		gap: 18px;
+		padding: 4px 4px 2px;
+	}
+
+	.faq-popup__hero-head {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 16px;
+		flex-wrap: wrap;
+	}
+
+	.faq-popup__hero-main {
+		display: flex;
+		align-items: flex-start;
+		gap: 16px;
+		flex: 1 1 460px;
+		min-width: 0;
+	}
+
+	.faq-popup__hero-icon {
+		width: 48px;
+		height: 48px;
+		border-radius: 16px;
+		background: var(--faq-accent-soft);
+		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--faq-accent) 18%, transparent);
+		color: var(--faq-accent-strong);
+		display: grid;
+		place-items: center;
+		font-size: 20px;
+		font-weight: 700;
+		flex: 0 0 auto;
+	}
+
+	.faq-popup__hero-copy {
+		display: grid;
+		gap: 6px;
+		min-width: 0;
+	}
+
+	.faq-popup__hero-title {
+		margin: 0;
+		font-size: clamp(30px, 3vw, 40px);
+		line-height: 1;
+		letter-spacing: -0.03em;
+		color: var(--faq-heading);
+	}
+
+	.faq-popup__hero-subtitle {
+		font-size: 16px;
+		line-height: 1.45;
+		color: var(--faq-text-muted);
+	}
+
+	.faq-popup__hero-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10px;
+	}
+
+	.faq-popup__hero-tag {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 8px 12px;
+		border-radius: 999px;
+		background: var(--faq-surface);
+		box-shadow: inset 0 0 0 1px var(--faq-border-soft);
+		color: var(--faq-text-muted);
+		font-size: 13px;
+		line-height: 1.2;
+	}
+
+	.faq-popup__hero-tag strong {
+		color: var(--faq-heading);
+		font-weight: 600;
+	}
+
+	.faq-popup__search-row {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+	}
+
+	.faq-popup__search-shell {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		flex: 1 1 auto;
+		padding: 0 18px;
+		border: 1px solid color-mix(in srgb, var(--faq-accent) 34%, var(--faq-border));
+		border-radius: 18px;
+		background: var(--faq-bg);
+		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--faq-accent) 10%, transparent);
+	}
+
+	.faq-popup__search-shell:focus-within {
+		border-color: var(--faq-accent);
+		box-shadow:
+			inset 0 0 0 1px color-mix(in srgb, var(--faq-accent) 26%, transparent),
+			0 0 0 4px color-mix(in srgb, var(--faq-accent) 10%, transparent);
+	}
+
+	.faq-popup__search-icon {
+		position: relative;
+		width: 18px;
+		height: 18px;
+		flex: 0 0 auto;
+		opacity: 0.86;
+	}
+
+	.faq-popup__search-icon::before {
+		content: "";
+		position: absolute;
+		left: 1px;
+		top: 1px;
+		width: 11px;
+		height: 11px;
+		border: 2px solid var(--faq-text-muted);
+		border-radius: 50%;
+	}
+
+	.faq-popup__search-icon::after {
+		content: "";
+		position: absolute;
+		right: 0;
+		bottom: 1px;
+		width: 7px;
+		height: 2px;
+		border-radius: 999px;
+		background: var(--faq-text-muted);
+		transform: rotate(45deg);
+		transform-origin: center;
+	}
+
 	.faq-popup__search-input {
 		width: 100%;
-		padding: 12px 14px;
-		border: 1px solid var(--faq-border);
-		border-radius: 12px;
-		background: var(--faq-bg);
+		padding: 16px 0;
+		border: 0;
+		background: transparent;
 		color: var(--faq-text);
 		font-size: 15px;
+	}
+
+	.faq-popup__search-input:focus {
+		outline: none;
 	}
 
 	.faq-popup__helper,
@@ -204,20 +358,16 @@ if ($canManageAllFaqs) {
 	}
 
 	.faq-popup__toolbar {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 12px;
-		flex-wrap: wrap;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		align-items: end;
+		gap: 16px 20px;
 	}
 
 	.faq-popup__toolbar-main {
-		display: flex;
-		align-items: center;
+		display: grid;
 		gap: 12px;
-		flex: 1 1 460px;
 		min-width: 0;
-		flex-wrap: wrap;
 	}
 
 	.faq-popup__toolbar-actions {
@@ -228,8 +378,11 @@ if ($canManageAllFaqs) {
 	}
 
 	.faq-popup__toolbar-note {
-		flex: 1 1 280px;
 		min-width: 0;
+		padding: 12px 14px;
+		border-radius: 14px;
+		background: var(--faq-surface);
+		box-shadow: inset 0 0 0 1px var(--faq-border-soft);
 		font-size: 13px;
 		line-height: 1.45;
 		color: var(--faq-text-muted);
@@ -301,7 +454,7 @@ if ($canManageAllFaqs) {
 
 	.faq-popup__list {
 		display: grid;
-		gap: 12px;
+		gap: 18px;
 	}
 
 	.faq-popup__footer {
@@ -323,42 +476,100 @@ if ($canManageAllFaqs) {
 
 	.faq-popup__item {
 		border: 1px solid var(--faq-border-soft);
-		border-radius: 16px;
-		background: var(--faq-bg);
+		border-radius: 22px;
+		background: color-mix(in srgb, var(--faq-bg) 90%, var(--faq-surface));
 		box-shadow: var(--faq-shadow);
 		overflow: hidden;
+		transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+	}
+
+	.faq-popup__item:hover {
+		border-color: color-mix(in srgb, var(--faq-accent) 18%, var(--faq-border-soft));
+		box-shadow: var(--faq-shadow-strong);
+	}
+
+	.faq-popup__item.is-open {
+		border-color: color-mix(in srgb, var(--faq-accent) 24%, var(--faq-border-soft));
+	}
+
+	.faq-popup__item-header {
+		width: 100%;
+		display: grid;
+		grid-template-columns: 56px minmax(0, 1fr) 44px;
+		align-items: start;
+		gap: 18px;
+		padding: 24px;
+		border: 0;
+		background: transparent;
+		cursor: pointer;
+	}
+
+	.faq-popup__item-icon {
+		width: 56px;
+		height: 56px;
+		border-radius: 18px;
+		background: var(--faq-accent-soft);
+		color: var(--faq-accent-strong);
+		display: grid;
+		place-items: center;
+		font-size: 20px;
+		font-weight: 700;
+		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--faq-accent) 18%, transparent);
+	}
+
+	.faq-popup__item-icon--generic {
+		background: var(--faq-generic-bg);
+		color: var(--faq-generic-text);
+		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--faq-text-muted) 12%, transparent);
+	}
+
+	.faq-popup__item-icon--organization {
+		background: var(--faq-organization-bg);
+		color: var(--faq-organization-text);
+		box-shadow: inset 0 0 0 1px color-mix(in srgb, #14b8a6 18%, transparent);
+	}
+
+	.faq-popup__item-heading {
+		display: grid;
+		gap: 10px;
+		min-width: 0;
+		text-align: left;
 	}
 
 	.faq-popup__question {
-		position: relative;
-		width: 100%;
-		padding: 16px 52px 8px 18px;
-		border: 0;
-		background: transparent;
-		text-align: left;
-		font-size: 16px;
+		display: block;
+		font-size: clamp(18px, 1.35vw, 30px);
+		line-height: 1.28;
 		font-weight: 700;
 		color: var(--faq-heading);
-		cursor: pointer;
-		display: block;
 	}
 
-	.faq-popup__question::after {
+	.faq-popup__item-toggle {
+		position: relative;
+		width: 44px;
+		height: 44px;
+		border-radius: 50%;
+		background: var(--faq-surface);
+		box-shadow: inset 0 0 0 1px var(--faq-border-soft);
+		flex: 0 0 auto;
+	}
+
+	.faq-popup__item-toggle::before {
 		content: "+";
 		position: absolute;
-		right: 18px;
-		top: 22px;
-		font-size: 22px;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		font-size: 24px;
 		line-height: 1;
 		color: var(--faq-accent);
 	}
 
-	.faq-popup__item.is-open .faq-popup__question::after {
+	.faq-popup__item.is-open .faq-popup__item-toggle::before {
 		content: "-";
 	}
 
 	.faq-popup__meta {
-		padding: 0 18px 12px;
 		display: flex;
 		gap: 8px;
 		flex-wrap: wrap;
@@ -388,7 +599,7 @@ if ($canManageAllFaqs) {
 
 	.faq-popup__answer {
 		display: none;
-		padding: 0 18px 18px;
+		padding: 0 24px 24px 98px;
 		color: var(--faq-text-muted);
 		line-height: 1.6;
 	}
@@ -397,12 +608,208 @@ if ($canManageAllFaqs) {
 		display: block;
 	}
 
-	.faq-popup__actions {
-		margin-top: 12px;
+	.faq-popup__answer-body {
+		display: grid;
+		gap: 14px;
+	}
+
+	.faq-popup__answer-caption {
+		font-size: 13px;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--faq-text-muted);
+	}
+
+	.faq-popup__answer-text {
+		font-size: 16px;
+		line-height: 1.8;
+		color: var(--faq-heading);
+	}
+
+	.faq-popup__answer-footer {
+		margin-top: 18px;
+		padding-top: 18px;
+		border-top: 1px solid var(--faq-border-soft);
 		display: flex;
-		justify-content: flex-end;
+		align-items: center;
+		gap: 16px;
+		flex-wrap: wrap;
+	}
+
+	.faq-popup__actions {
+		display: flex;
 		gap: 10px;
 		flex-wrap: wrap;
+		margin-top: 0;
+		flex: 0 0 auto;
+	}
+
+	.faq-popup__media {
+		display: grid;
+		gap: 16px;
+		margin-bottom: 18px;
+	}
+
+	.faq-popup__media-figure,
+	.faq-popup__media-video,
+	.faq-popup__media-fallback {
+		border-radius: 16px;
+		background: var(--faq-surface);
+		box-shadow: inset 0 0 0 1px var(--faq-border-soft);
+		overflow: hidden;
+	}
+
+	.faq-popup__media-image {
+		display: block;
+		width: 100%;
+		max-height: 440px;
+		object-fit: contain;
+		background: var(--faq-surface);
+	}
+
+	.faq-popup__media-video {
+		position: relative;
+		aspect-ratio: 16 / 9;
+	}
+
+	.faq-popup__media-video iframe {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		border: 0;
+	}
+
+	.faq-popup__media-fallback {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		padding: 16px;
+		flex-wrap: wrap;
+		color: var(--faq-text-muted);
+	}
+
+	.faq-popup__vote {
+		margin-top: 16px;
+		padding: 14px;
+		border: 1px solid var(--faq-border-soft);
+		border-radius: 14px;
+		background: var(--faq-surface);
+		display: grid;
+		gap: 12px;
+	}
+
+	.faq-popup__vote--compact {
+		margin-top: 0;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		flex: 1 1 460px;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 14px 18px;
+		min-width: 0;
+	}
+
+	.faq-popup__vote-summary {
+		display: flex;
+		gap: 10px;
+		flex-wrap: wrap;
+	}
+
+	.faq-popup__vote-stat {
+		display: inline-flex;
+		align-items: baseline;
+		gap: 6px;
+		padding: 6px 10px;
+		border-radius: 999px;
+		background: var(--faq-bg);
+		color: var(--faq-text-muted);
+		font-size: 13px;
+	}
+
+	.faq-popup__vote-stat strong {
+		color: var(--faq-heading);
+		font-size: 14px;
+	}
+
+	.faq-popup__vote--compact .faq-popup__vote-summary {
+		order: 2;
+		flex: 0 0 auto;
+	}
+
+	.faq-popup__vote--compact .faq-popup__vote-actions {
+		order: 1;
+		flex: 0 0 auto;
+	}
+
+	.faq-popup__vote--compact .faq-popup__vote-message {
+		order: 3;
+	}
+
+	.faq-popup__vote--compact .faq-popup__vote-stat {
+		padding: 0;
+		background: transparent;
+	}
+
+	.faq-popup__vote-stars {
+		letter-spacing: 0.08em;
+	}
+
+	.faq-popup__vote-label {
+		font-weight: 600;
+	}
+
+	.faq-popup__vote-actions {
+		display: flex;
+		gap: 10px;
+		flex-wrap: wrap;
+	}
+
+	.faq-popup__vote-button {
+		border: 0;
+		background: var(--faq-bg);
+		color: var(--faq-heading);
+		padding: 10px 14px;
+		border-radius: 999px;
+		cursor: pointer;
+		font-size: 14px;
+		box-shadow: inset 0 0 0 1px var(--faq-border-soft);
+	}
+
+	.faq-popup__vote-button:hover {
+		background: var(--faq-accent-soft);
+	}
+
+	.faq-popup__vote-button:disabled {
+		cursor: not-allowed;
+		opacity: 0.6;
+	}
+
+	.faq-popup__vote-message {
+		display: none;
+		color: var(--faq-text-muted);
+		font-size: 13px;
+		line-height: 1.5;
+	}
+
+	.faq-popup__vote-message.is-visible {
+		display: block;
+	}
+
+	.faq-popup__vote--compact .faq-popup__vote-message.is-visible {
+		margin-left: auto;
+		max-width: 320px;
+		text-align: right;
+	}
+
+	.faq-popup__vote-note {
+		color: var(--faq-text-muted);
+		font-size: 12px;
+		line-height: 1.45;
 	}
 
 	.faq-popup__detail-link,
@@ -432,6 +839,19 @@ if ($canManageAllFaqs) {
 
 	.faq-popup__add:hover {
 		background: color-mix(in srgb, var(--faq-heading) 86%, var(--faq-accent-strong));
+	}
+
+	.faq-popup__answer-footer .faq-popup__detail-link {
+		padding: 0;
+		background: transparent;
+		color: var(--faq-accent-strong);
+		font-size: 15px;
+		font-weight: 600;
+	}
+
+	.faq-popup__answer-footer .faq-popup__detail-link:hover {
+		background: transparent;
+		color: var(--faq-accent);
 	}
 
 	.faq-popup__editor-shell {
@@ -511,8 +931,12 @@ if ($canManageAllFaqs) {
 	}
 
 	@media (max-width: 720px) {
+		.faq-popup__hero-head {
+			align-items: stretch;
+		}
+
 		.faq-popup__toolbar {
-			align-items: flex-start;
+			grid-template-columns: 1fr;
 		}
 
 		.faq-popup__toolbar-main,
@@ -525,6 +949,58 @@ if ($canManageAllFaqs) {
 			justify-content: flex-end;
 		}
 
+		.faq-popup__search-shell {
+			padding: 0 14px;
+			border-radius: 16px;
+		}
+
+		.faq-popup__item-header {
+			grid-template-columns: 48px minmax(0, 1fr) 38px;
+			gap: 14px;
+			padding: 18px;
+		}
+
+		.faq-popup__item-icon {
+			width: 48px;
+			height: 48px;
+			border-radius: 16px;
+			font-size: 18px;
+		}
+
+		.faq-popup__item-toggle {
+			width: 38px;
+			height: 38px;
+		}
+
+		.faq-popup__question {
+			font-size: 18px;
+		}
+
+		.faq-popup__answer {
+			padding: 0 18px 18px;
+		}
+
+		.faq-popup__answer-text {
+			font-size: 15px;
+			line-height: 1.7;
+		}
+
+		.faq-popup__answer-footer {
+			align-items: flex-start;
+		}
+
+		.faq-popup__vote--compact,
+		.faq-popup__vote--compact .faq-popup__vote-summary,
+		.faq-popup__vote--compact .faq-popup__vote-actions {
+			width: 100%;
+		}
+
+		.faq-popup__vote--compact .faq-popup__vote-message.is-visible {
+			margin-left: 0;
+			max-width: none;
+			text-align: left;
+		}
+
 		.faq-popup__scope-grid {
 			grid-template-columns: 1fr;
 		}
@@ -532,64 +1008,57 @@ if ($canManageAllFaqs) {
 	</style>
 
 	<div class="faq-popup__search" data-faq-search-view>
-		<?php if ($contextOrganizationId > 0 || count($allFAQ) > 0 || $canAddFaq): ?>
-			<div class="faq-popup__toolbar">
-				<div class="faq-popup__toolbar-main">
-					<?php if ($contextOrganizationId > 0): ?>
-						<div
-							class="faq-popup__scope-toggle"
-							role="tablist"
-							aria-label="Portee de la FAQ"
-							data-faq-scope-switch="<?= htmlspecialchars($faqScope, ENT_QUOTES, 'UTF-8') ?>"
-						>
-							<button
-								type="button"
-								class="faq-popup__scope-toggle-button<?= $faqScope === 'contextual' ? ' is-active' : '' ?>"
-								data-faq-scope-toggle="contextual"
-								aria-pressed="<?= $faqScope === 'contextual' ? 'true' : 'false' ?>"
-							>Contextuel</button>
-							<button
-								type="button"
-								class="faq-popup__scope-toggle-button<?= $faqScope === 'global' ? ' is-active' : '' ?>"
-								data-faq-scope-toggle="global"
-								aria-pressed="<?= $faqScope === 'global' ? 'true' : 'false' ?>"
-							>Global</button>
-						</div>
-					<?php endif; ?>
-					<div class="faq-popup__toolbar-note" data-faq-helper<?= count($allFAQ) === 0 ? ' hidden' : '' ?>>
-						<?php if ($canManageAllFaqs): ?>
-							<strong>Mode super admin:</strong>
-							<?= $faqScope === 'global'
-								? 'toutes les FAQ de toutes les organisations sont listees ici.'
-								: 'seules les FAQ du contexte courant sont listees ici.' ?>
-						<?php elseif ($canManageOrganizationFaqs): ?>
-							<strong>Mode admin organisation:</strong>
-							<?= $faqScope === 'global'
-								? 'toutes les FAQ de l organisation courante sont listees ici.'
-								: 'seules les FAQ utiles au contexte courant sont listees ici.' ?>
-						<?php else: ?>
-							<?= $faqScope === 'global'
-								? 'Mode global: vous cherchez dans toute la FAQ de l organisation.'
-								: 'Mode contextuel: seules les questions liees au contexte courant sont chargees.' ?>
+		<div class="faq-popup__hero">
+
+			<?php if ($contextOrganizationId > 0 || count($allFAQ) > 0 || $canAddFaq): ?>
+				<div class="faq-popup__toolbar">
+					<div class="faq-popup__toolbar-main">
+						<?php if ($contextOrganizationId > 0): ?>
+							<div
+								class="faq-popup__scope-toggle"
+								role="tablist"
+								aria-label="Portee de la FAQ"
+								data-faq-scope-switch="<?= htmlspecialchars($faqScope, ENT_QUOTES, 'UTF-8') ?>"
+							>
+								<button
+									 title="<?= htmlspecialchars($contextHolonLabel, ENT_QUOTES, 'UTF-8') ?>"
+									type="button"
+									class="faq-popup__scope-toggle-button<?= $faqScope === 'contextual' ? ' is-active' : '' ?>"
+									data-faq-scope-toggle="contextual"
+									aria-pressed="<?= $faqScope === 'contextual' ? 'true' : 'false' ?>"
+								>Contextuel</button>
+								<button
+									type="button"
+									class="faq-popup__scope-toggle-button<?= $faqScope === 'global' ? ' is-active' : '' ?>"
+									data-faq-scope-toggle="global"
+									aria-pressed="<?= $faqScope === 'global' ? 'true' : 'false' ?>"
+								>Global</button>
+							</div>
+						<?php endif; ?>
+						
+					</div>
+					<div class="faq-popup__toolbar-actions">
+						<?php if ($canAddFaq): ?>
+							<button type="button" class="faq-popup__add" data-faq-add>Ajouter une question</button>
 						<?php endif; ?>
 					</div>
 				</div>
-				<div class="faq-popup__toolbar-actions">
-					<?php if ($canAddFaq): ?>
-						<button type="button" class="faq-popup__add" data-faq-add>Add</button>
-					<?php endif; ?>
+			<?php endif; ?>
+			<?php if (count($allFAQ) > 0): ?>
+				<div class="faq-popup__search-row">
+					<label class="faq-popup__search-shell">
+						<span class="faq-popup__search-icon" aria-hidden="true"></span>
+						<input
+							type="search"
+							class="faq-popup__search-input"
+							data-faq-search-input
+							placeholder="Rechercher une question, une reponse, un mot-cle..."
+							aria-label="Rechercher dans la FAQ"
+						>
+					</label>
 				</div>
-			</div>
-		<?php endif; ?>
-		<?php if (count($allFAQ) > 0): ?>
-			<input
-				type="search"
-				class="faq-popup__search-input"
-				data-faq-search-input
-				placeholder="Rechercher dans la FAQ..."
-				aria-label="Rechercher dans la FAQ"
-			>
-		<?php endif; ?>
+			<?php endif; ?>
+		</div>
 		<div class="faq-popup__no-result" data-faq-no-result hidden>
 			Aucune FAQ ne correspond a cette recherche.
 		</div>
@@ -602,38 +1071,53 @@ if ($canManageAllFaqs) {
 				<?php
 				$scopeInfo = faqPopupDescribeScope($faq);
 				$scopeTypeClass = 'faq-popup__meta-badge';
+				$scopeIconClass = 'faq-popup__item-icon';
 				if (($scopeInfo['type'] ?? '') === 'generic') {
 					$scopeTypeClass .= ' faq-popup__meta-badge--generic';
+					$scopeIconClass .= ' faq-popup__item-icon--generic';
 				} elseif (($scopeInfo['type'] ?? '') === 'organization') {
 					$scopeTypeClass .= ' faq-popup__meta-badge--organization';
+					$scopeIconClass .= ' faq-popup__item-icon--organization';
 				}
 				?>
 				<div
-					class="faq-popup__item"
+					class="faq-popup__item<?= $faqIndex === 0 ? ' is-open' : '' ?>"
 					data-faq-item
 					data-faq-id="<?= (int)$faq->get("id") ?>"
 					data-faq-default-order="<?= $faqIndex ?>"
 					data-faq-viewcount="<?= (int)$faq->get("viewcount") ?>"
 				>
-					<button type="button" class="faq-popup__question" data-faq-toggle><?= htmlspecialchars((string)$faq->get("question")) ?></button>
-					<div class="faq-popup__meta">
-						<span class="<?= $scopeTypeClass ?>"><?= htmlspecialchars((string)($scopeInfo['label'] ?? 'FAQ'), ENT_QUOTES, 'UTF-8') ?></span>
-						<?php if (!(int)$faq->get('isactive')): ?>
-							<span class="faq-popup__meta-badge faq-popup__meta-badge--generic">Inactive</span>
-						<?php endif; ?>
-						<?php if ($faq->canBeEditedInContext($faqContext ?: array())): ?>
-							<span class="faq-popup__meta-badge">Editable</span>
-						<?php endif; ?>
-					</div>
+					<button type="button" class="faq-popup__item-header" data-faq-toggle>
+						<span class="<?= $scopeIconClass ?>" aria-hidden="true">?</span>
+						<span class="faq-popup__item-heading">
+							<span class="faq-popup__question"><?= htmlspecialchars((string)$faq->get("question")) ?></span>
+							<span class="faq-popup__meta">
+								<span class="<?= $scopeTypeClass ?>"><?= htmlspecialchars((string)($scopeInfo['label'] ?? 'FAQ'), ENT_QUOTES, 'UTF-8') ?></span>
+								<?php if (!(int)$faq->get('isactive')): ?>
+									<span class="faq-popup__meta-badge faq-popup__meta-badge--generic">Inactive</span>
+								<?php endif; ?>
+								<?php if ($faq->canBeEditedInContext($faqContext ?: array())): ?>
+									<span class="faq-popup__meta-badge">Editable</span>
+								<?php endif; ?>
+							</span>
+						</span>
+						<span class="faq-popup__item-toggle" aria-hidden="true"></span>
+					</button>
 					<div class="faq-popup__answer" data-faq-answer>
-						<div data-faq-answer-text><?= nl2br(htmlspecialchars($faq->getShortAnswer(220))) ?></div>
-						<div class="faq-popup__actions">
-							<button
-								type="button"
-								class="faq-popup__detail-link"
-								data-faq-detail
-								data-faq-id="<?= (int)$faq->get("id") ?>"
-							>Voir le detail</button>
+						<div class="faq-popup__answer-body">
+							<div class="faq-popup__answer-caption">Reponse resumee</div>
+							<div class="faq-popup__answer-text" data-faq-answer-text><?= nl2br(htmlspecialchars($faq->getShortAnswer(220))) ?></div>
+						</div>
+						<div class="faq-popup__answer-footer">
+							<div class="faq-popup__actions">
+								<button
+									type="button"
+									class="faq-popup__detail-link"
+									data-faq-detail
+									data-faq-id="<?= (int)$faq->get("id") ?>"
+								>Voir le detail</button>
+							</div>
+							<?php faqPopupRenderVoteBlock($faq, array('compact' => true, 'reliabilityRange' => $faqReliabilityRange)); ?>
 						</div>
 					</div>
 				</div>
@@ -1232,6 +1716,232 @@ if ($canManageAllFaqs) {
 		}
 	}
 
+	function syncFaqRichTextFields(form) {
+		if (!form || typeof window.jQuery !== 'function') {
+			return;
+		}
+
+		window.jQuery(form).find('textarea.summernote').each(function () {
+			const field = window.jQuery(this);
+			if (typeof field.summernote === 'function') {
+				try {
+					field.val(field.summernote('code'));
+				} catch (error) {
+				}
+			}
+		});
+	}
+
+	function submitFaqForm(form) {
+		if (!form) {
+			return;
+		}
+
+		syncFaqRichTextFields(form);
+		form.classList.add('disabled');
+
+		fetch(form.getAttribute('action'), {
+			method: 'POST',
+			credentials: 'same-origin',
+			headers: {
+				'X-Requested-With': 'XMLHttpRequest'
+			},
+			body: new FormData(form)
+		})
+			.then(function (response) {
+				return response.text();
+			})
+			.then(function (data) {
+				handleSaveResponse(data);
+			})
+			.catch(function () {
+				window.alert("Impossible d'enregistrer cette FAQ.");
+			})
+			.finally(function () {
+				form.classList.remove('disabled');
+			});
+	}
+
+	function formatVoteScore(value) {
+		const numericValue = Number(value || 0);
+		if (!Number.isFinite(numericValue)) {
+			return '0';
+		}
+
+		if (Math.abs(numericValue - Math.round(numericValue)) < 0.00001) {
+			return String(Math.round(numericValue));
+		}
+
+		return numericValue.toFixed(2).replace(/\.?0+$/, '');
+	}
+
+	function estimateVoteSplit(positiveScore, negativeScore, totalVotes) {
+		const positive = Math.max(0, Number(positiveScore || 0));
+		const negative = Math.abs(Number(negativeScore || 0));
+		const total = Math.max(0, Number(totalVotes || 0));
+		const activeSignal = positive + negative;
+
+		if (!activeSignal || !total) {
+			return {
+				positive: 0,
+				negative: 0,
+				total: total
+			};
+		}
+
+		const estimatedPositive = Math.max(0, Math.min(total, Math.round(total * (positive / activeSignal))));
+		return {
+			positive: estimatedPositive,
+			negative: Math.max(0, total - estimatedPositive),
+			total: total
+		};
+	}
+
+	function renderStars(starCount) {
+		const normalizedCount = Math.max(0, Math.min(5, Number(starCount || 0)));
+		return '★'.repeat(normalizedCount) + '☆'.repeat(5 - normalizedCount);
+	}
+
+	function refreshCompactVoteStars() {
+		const compactShells = Array.from(root.querySelectorAll('[data-faq-vote-shell][data-faq-vote-mode="compact"]'));
+		if (compactShells.length === 0) {
+			return;
+		}
+
+		const reliabilities = compactShells
+			.map(function (shell) {
+				return Math.max(0, Number(shell.getAttribute('data-faq-reliability') || 0));
+			})
+			.filter(function (value) {
+				return Number.isFinite(value);
+			});
+
+		const minReliability = reliabilities.length > 0 ? Math.min.apply(null, reliabilities) : 0;
+		const maxReliability = reliabilities.length > 0 ? Math.max.apply(null, reliabilities) : 0;
+
+		compactShells.forEach(function (shell) {
+			const reliability = Math.max(0, Number(shell.getAttribute('data-faq-reliability') || 0));
+			let starCount = 0;
+
+			if (maxReliability <= minReliability) {
+				starCount = reliability > 0 ? 5 : 0;
+			} else {
+				starCount = Math.max(0, Math.min(5, Math.round(((reliability - minReliability) / (maxReliability - minReliability)) * 5)));
+			}
+
+			const starsNode = shell.querySelector('[data-faq-stars-text]');
+			if (starsNode) {
+				starsNode.textContent = renderStars(starCount);
+			}
+		});
+	}
+
+	function setVoteButtonsDisabled(faqId, disabled) {
+		root.querySelectorAll('[data-faq-vote-shell][data-faq-id="' + faqId + '"] [data-faq-vote]').forEach(function (button) {
+			button.disabled = !!disabled;
+		});
+	}
+
+	function applyVoteState(payload) {
+		const faqId = Number(payload && payload.faqId ? payload.faqId : 0);
+		if (!faqId) {
+			return;
+		}
+
+		root.querySelectorAll('[data-faq-vote-shell][data-faq-id="' + faqId + '"]').forEach(function (shell) {
+			const voteMode = shell.getAttribute('data-faq-vote-mode') || 'detail';
+			const positiveNode = shell.querySelector('[data-faq-score="positive_estimated"]');
+			const negativeNode = shell.querySelector('[data-faq-score="negative_estimated"]');
+			const totalNode = shell.querySelector('[data-faq-score="total"]');
+			const messageNode = shell.querySelector('[data-faq-vote-message]');
+			const voteSplit = estimateVoteSplit(payload.positiveScore, payload.negativeScore, payload.totalVotes);
+
+			if (payload.reliability !== undefined) {
+				shell.setAttribute('data-faq-reliability', String(Number(payload.reliability || 0)));
+			}
+			if (voteMode !== 'compact' && positiveNode) {
+				positiveNode.textContent = String(voteSplit.positive);
+			}
+			if (voteMode !== 'compact' && negativeNode) {
+				negativeNode.textContent = String(voteSplit.negative);
+			}
+			if (totalNode && payload.totalVotes !== undefined) {
+				totalNode.textContent = String(Number(payload.totalVotes || 0));
+			}
+
+			if (messageNode) {
+				const message = payload.message ? String(payload.message) : '';
+				messageNode.textContent = message;
+				messageNode.classList.toggle('is-visible', message !== '');
+			}
+		});
+
+		refreshCompactVoteStars();
+
+		if (payload.status === true || payload.alreadyVoted) {
+			setVoteButtonsDisabled(faqId, true);
+		}
+	}
+
+	function submitVote(faqId, vote) {
+		const normalizedFaqId = Number(faqId || 0);
+		const normalizedVote = String(vote || '').trim().toLowerCase();
+		if (!normalizedFaqId || (normalizedVote !== 'up' && normalizedVote !== 'down')) {
+			return;
+		}
+
+		setVoteButtonsDisabled(normalizedFaqId, true);
+
+		const requestBody = new URLSearchParams();
+		requestBody.set('faq_id', String(normalizedFaqId));
+		requestBody.set('vote', normalizedVote);
+		requestBody.set('oid', String(currentOid));
+		requestBody.set('cid', String(currentCid));
+		requestBody.set('faq_scope', currentScope);
+
+		fetch('/ajax/faq_vote.php', {
+			method: 'POST',
+			credentials: 'same-origin',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+				'X-Requested-With': 'XMLHttpRequest'
+			},
+			body: requestBody.toString()
+		})
+			.then(function (response) {
+				return response.text().then(function (text) {
+					let payload = null;
+
+					try {
+						payload = JSON.parse(text);
+					} catch (error) {
+						payload = null;
+					}
+
+					return {
+						ok: response.ok,
+						payload: payload
+					};
+				});
+			})
+			.then(function (result) {
+				if (result.payload) {
+					applyVoteState(result.payload);
+				}
+
+				if (result.payload && (result.payload.status === true || result.payload.alreadyVoted)) {
+					return;
+				}
+
+				setVoteButtonsDisabled(normalizedFaqId, false);
+				window.alert(result.payload && result.payload.message ? result.payload.message : 'Impossible d enregistrer ce vote.');
+			})
+			.catch(function () {
+				setVoteButtonsDisabled(normalizedFaqId, false);
+				window.alert('Impossible d enregistrer ce vote pour le moment.');
+			});
+	}
+
 	root.addEventListener('change', function (event) {
 		if (event.target.matches('[data-faq-scope-organization]')) {
 			syncScopeSelectors(event.target.closest('[data-faq-form-shell]') || event.target.closest('.faq-popup__detail') || root);
@@ -1296,9 +2006,15 @@ if ($canManageAllFaqs) {
 		if (saveButton) {
 			const scope = saveButton.closest('[data-faq-form-shell]') || editorView || detailView;
 			const form = scope ? scope.querySelector('#formulaire-edit') : null;
-			if (form && typeof window.jQuery === 'function' && typeof window.sendForm === 'function') {
-				window.sendForm(window.jQuery(form), handleSaveResponse);
+			if (form) {
+				submitFaqForm(form);
 			}
+			return;
+		}
+
+		const voteButton = event.target.closest('[data-faq-vote]');
+		if (voteButton) {
+			submitVote(voteButton.getAttribute('data-faq-id'), voteButton.getAttribute('data-faq-vote'));
 			return;
 		}
 
@@ -1330,6 +2046,7 @@ if ($canManageAllFaqs) {
 		showList({ updateHash: false });
 	}
 	syncScopeSelectors(editorView);
+	refreshCompactVoteStars();
 	filterList();
 })();
 </script>

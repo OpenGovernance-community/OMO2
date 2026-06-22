@@ -1,13 +1,30 @@
 <?php
+require_once __DIR__ . '/env.php';
 
 function serverEnvAdminGetEnvPath()
 {
-    return dirname(__DIR__) . '/.env';
+    if (function_exists('envIsLocalRuntimeHost') && envIsLocalRuntimeHost()) {
+        return envGetLocalOverrideEnvPath();
+    }
+
+    return envGetPrimaryEnvPath();
 }
 
 function serverEnvAdminGetExampleEnvPath()
 {
     return dirname(__DIR__) . '/.env.example';
+}
+
+function serverEnvAdminGetEnvTargetLabel()
+{
+    $projectRoot = rtrim(str_replace('\\', '/', dirname(__DIR__)), '/');
+    $envPath = str_replace('\\', '/', serverEnvAdminGetEnvPath());
+
+    if ($projectRoot !== '' && strpos($envPath, $projectRoot . '/') === 0) {
+        return substr($envPath, strlen($projectRoot) + 1);
+    }
+
+    return basename($envPath);
 }
 
 function serverEnvAdminGetEditableSections()
@@ -428,9 +445,10 @@ function serverEnvAdminValidateValues(array $values)
     }
 
     $envPath = serverEnvAdminGetEnvPath();
+    $targetLabel = serverEnvAdminGetEnvTargetLabel();
     $directory = dirname($envPath);
     if (!is_dir($directory) || !is_writable($directory)) {
-        $errors[] = 'Le dossier contenant le fichier .env n est pas accessible en ecriture.';
+        $errors[] = 'Le dossier contenant le fichier ' . $targetLabel . ' n est pas accessible en ecriture.';
     }
 
     return $errors;
@@ -454,9 +472,10 @@ function serverEnvAdminEncodeEnvValue($value)
 function serverEnvAdminWriteValues(array $values)
 {
     $envPath = serverEnvAdminGetEnvPath();
+    $targetLabel = serverEnvAdminGetEnvTargetLabel();
     $lines = is_file($envPath) ? file($envPath, FILE_IGNORE_NEW_LINES) : [];
     if ($lines === false) {
-        throw new RuntimeException('Impossible de lire le fichier .env.');
+        throw new RuntimeException('Impossible de lire le fichier ' . $targetLabel . '.');
     }
 
     $fieldMap = serverEnvAdminGetFieldMap();
@@ -518,7 +537,7 @@ function serverEnvAdminWriteValues(array $values)
 
     $content = rtrim(implode("\n", $lines)) . "\n";
     if (@file_put_contents($envPath, $content, LOCK_EX) === false) {
-        throw new RuntimeException('Impossible d ecrire le fichier .env.');
+        throw new RuntimeException('Impossible d ecrire le fichier ' . $targetLabel . '. Verifiez les permissions ou un montage Docker en lecture seule.');
     }
 }
 

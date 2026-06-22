@@ -53,17 +53,10 @@ if (!$organization->canViewDetail()) {
     exit;
 }
 
-$rootHolon = $organization->getStructuralRootHolon();
-if ($rootHolon === null) {
-    http_response_code(404);
-    ?>
-    <div class="omo-user-context omo-user-context--error">Aucun contexte organisationnel n'est disponible.</div>
-    <?php
-    exit;
-}
-
-$currentHolon = $rootHolon;
-if ($currentHolonId > 0 && (int)$rootHolon->getId() !== $currentHolonId) {
+$rootHolon = $organization->getEnabledStructuralRootHolon();
+$hasStructureContext = $rootHolon instanceof Holon;
+$currentHolon = $hasStructureContext ? $rootHolon : null;
+if ($hasStructureContext && $currentHolonId > 0 && (int)$rootHolon->getId() !== $currentHolonId) {
     $candidate = new Holon();
     if (!$candidate->load($currentHolonId) || !$candidate->isDescendantOf($rootHolon->getId())) {
         http_response_code(404);
@@ -119,20 +112,24 @@ $joinedAtLabel = omoUserContextFormatDate($joinedAt);
 $lastSeenLabel = omoUserContextFormatDate($lastSeenAt);
 $isPending = $membership ? !(bool)$membership->get('active') : false;
 $isAdmin = $membership ? $membership->isOrganizationAdmin() : false;
-$currentAssignments = $currentHolon->getVisibleRoleAssignmentsForUser($userId, [
-    'organizationId' => $organizationId,
-]);
-$organizationAssignments = $rootHolon->getVisibleRoleAssignmentsForUser($userId, [
-    'organizationId' => $organizationId,
-]);
+$currentAssignments = $hasStructureContext
+    ? $currentHolon->getVisibleRoleAssignmentsForUser($userId, [
+        'organizationId' => $organizationId,
+    ])
+    : [];
+$organizationAssignments = $hasStructureContext
+    ? $rootHolon->getVisibleRoleAssignmentsForUser($userId, [
+        'organizationId' => $organizationId,
+    ])
+    : [];
 $competenceRows = $user->getVisibleCompetenceRows($organizationId, $currentViewerUserId);
 $canValidateCompetences = $currentViewerUserId > 0
     && $currentViewerUserId !== $userId
     && commonCurrentUserHasOrganizationAccess($organizationId)
     && (!function_exists('commonGetCurrentShareToken') || commonGetCurrentShareToken() === '');
 $popupReloadUrl = '/popup/user.php?id=' . (int)$userId . '&oid=' . (int)$organizationId . ($currentHolonId > 0 ? '&cid=' . (int)$currentHolonId : '');
-$showCurrentScope = (int)$currentHolon->getId() !== (int)$rootHolon->getId();
-$currentScopeName = trim((string)$currentHolon->getDisplayName());
+$showCurrentScope = $hasStructureContext && (int)$currentHolon->getId() !== (int)$rootHolon->getId();
+$currentScopeName = $showCurrentScope ? trim((string)$currentHolon->getDisplayName()) : '';
 $secondaryLabel = $email !== '' ? $email : ($username !== '' ? '@' . $username : '');
 $initials = 'P';
 
@@ -879,7 +876,7 @@ foreach ($competenceRows as $competenceRow) {
 
     <div class="omo-user-context__layout">
         <aside class="omo-user-context__sidebar">
-            <section class="omo-user-context__profile generic-hero-panel generic-hero-panel--accent">
+            <section class="omo-user-context__profile generic-hero-panel accent">
                 <div class="omo-user-context__photo-shell">
                     <?php if ($photoUrl !== ''): ?>
                         <img
@@ -932,14 +929,16 @@ foreach ($competenceRows as $competenceRow) {
                         <div class="omo-user-context__stat-value"><?= $totalValidationCount ?></div>
                         <div class="omo-user-context__stat-label">Avis</div>
                     </div>
-                    <div class="omo-user-context__stat generic-soft-panel">
-                        <div class="omo-user-context__stat-value"><?= $currentRoleCount ?></div>
-                        <div class="omo-user-context__stat-label">Roles ici</div>
-                    </div>
-                    <div class="omo-user-context__stat generic-soft-panel">
-                        <div class="omo-user-context__stat-value"><?= $organizationRoleCount ?></div>
-                        <div class="omo-user-context__stat-label">Roles orga</div>
-                    </div>
+                    <?php if ($hasStructureContext): ?>
+                        <div class="omo-user-context__stat generic-soft-panel">
+                            <div class="omo-user-context__stat-value"><?= $currentRoleCount ?></div>
+                            <div class="omo-user-context__stat-label">Roles ici</div>
+                        </div>
+                        <div class="omo-user-context__stat generic-soft-panel">
+                            <div class="omo-user-context__stat-value"><?= $organizationRoleCount ?></div>
+                            <div class="omo-user-context__stat-label">Roles orga</div>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </section>
 
@@ -989,7 +988,7 @@ foreach ($competenceRows as $competenceRow) {
                         data-generic-tab
                         data-generic-tab-target="omo-user-context-panel-competences"
                     >Competences</button>
-                    <?php if ($showCurrentScope): ?>
+                    <?php if ($hasStructureContext && $showCurrentScope): ?>
                         <button
                             type="button"
                             class="generic-tabs__tab"
@@ -997,12 +996,14 @@ foreach ($competenceRows as $competenceRow) {
                             data-generic-tab-target="omo-user-context-panel-current-roles"
                         >Roles (contexte)</button>
                     <?php endif; ?>
-                    <button
-                        type="button"
-                        class="generic-tabs__tab"
-                        data-generic-tab
-                        data-generic-tab-target="omo-user-context-panel-organization-roles"
-                    >Tous les roles</button>
+                    <?php if ($hasStructureContext): ?>
+                        <button
+                            type="button"
+                            class="generic-tabs__tab"
+                            data-generic-tab
+                            data-generic-tab-target="omo-user-context-panel-organization-roles"
+                        >Tous les roles</button>
+                    <?php endif; ?>
                 </div>
                 <div class="generic-tabs__panels">
                     <div id="omo-user-context-panel-competences" class="generic-tabs__panel" data-generic-tab-panel>
@@ -1140,7 +1141,7 @@ foreach ($competenceRows as $competenceRow) {
                         </section>
                     </div>
 
-                    <?php if ($showCurrentScope): ?>
+                    <?php if ($hasStructureContext && $showCurrentScope): ?>
                         <div id="omo-user-context-panel-current-roles" class="generic-tabs__panel" data-generic-tab-panel hidden>
                             <section class="omo-user-context__section generic-section generic-section--stack">
                                 <div class="omo-user-context__pane-copy">
@@ -1181,44 +1182,46 @@ foreach ($competenceRows as $competenceRow) {
                         </div>
                     <?php endif; ?>
 
-                    <div id="omo-user-context-panel-organization-roles" class="generic-tabs__panel" data-generic-tab-panel hidden>
-                        <section class="omo-user-context__section generic-section generic-section--stack">
-                            <div class="omo-user-context__pane-copy">
-                                <div class="omo-user-context__section-kicker generic-card-title generic-card-title--eyebrow">Organisation</div>
-                                <div class="generic-card-title generic-card-title--medium">Ensemble des roles visibles dans l'organisation</div>
-                                <div class="omo-user-context__section-copy">Cette vue rassemble les affectations generales et les roles attaches a d'autres branches visibles.</div>
-                            </div>
+                    <?php if ($hasStructureContext): ?>
+                        <div id="omo-user-context-panel-organization-roles" class="generic-tabs__panel" data-generic-tab-panel hidden>
+                            <section class="omo-user-context__section generic-section generic-section--stack">
+                                <div class="omo-user-context__pane-copy">
+                                    <div class="omo-user-context__section-kicker generic-card-title generic-card-title--eyebrow">Organisation</div>
+                                    <div class="generic-card-title generic-card-title--medium">Ensemble des roles visibles dans l'organisation</div>
+                                    <div class="omo-user-context__section-copy">Cette vue rassemble les affectations generales et les roles attaches a d'autres branches visibles.</div>
+                                </div>
 
-                            <?php if ($organizationRoleCount === 0): ?>
-                                <div class="omo-user-context__empty">Aucun role visible dans l'organisation.</div>
-                            <?php else: ?>
-                                <ul class="omo-user-context__roles">
-                                    <?php foreach ($organizationAssignments as $assignment): ?>
-                                        <li>
-                                            <button
-                                                type="button"
-                                                class="omo-user-context__role omo-user-context__role-link generic-soft-panel"
-                                                data-user-role-cid="<?= (int)$assignment['holonId'] ?>"
-                                                aria-label="<?= omoApiEscape('Ouvrir le role ' . ($assignment['name'] ?: ('Role ' . (int)$assignment['holonId']))) ?>"
-                                            >
-                                                <div class="omo-user-context__role-head">
-                                                    <div>
-                                                        <div class="omo-user-context__role-name"><?= omoApiEscape($assignment['name'] ?: ('Role ' . (int)$assignment['holonId'])) ?></div>
-                                                        <?php if ((string)$assignment['pathLabel'] !== ''): ?>
-                                                            <div class="omo-user-context__role-path"><?= omoApiEscape($assignment['pathLabel']) ?></div>
+                                <?php if ($organizationRoleCount === 0): ?>
+                                    <div class="omo-user-context__empty">Aucun role visible dans l'organisation.</div>
+                                <?php else: ?>
+                                    <ul class="omo-user-context__roles">
+                                        <?php foreach ($organizationAssignments as $assignment): ?>
+                                            <li>
+                                                <button
+                                                    type="button"
+                                                    class="omo-user-context__role omo-user-context__role-link generic-soft-panel"
+                                                    data-user-role-cid="<?= (int)$assignment['holonId'] ?>"
+                                                    aria-label="<?= omoApiEscape('Ouvrir le role ' . ($assignment['name'] ?: ('Role ' . (int)$assignment['holonId']))) ?>"
+                                                >
+                                                    <div class="omo-user-context__role-head">
+                                                        <div>
+                                                            <div class="omo-user-context__role-name"><?= omoApiEscape($assignment['name'] ?: ('Role ' . (int)$assignment['holonId'])) ?></div>
+                                                            <?php if ((string)$assignment['pathLabel'] !== ''): ?>
+                                                                <div class="omo-user-context__role-path"><?= omoApiEscape($assignment['pathLabel']) ?></div>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                        <?php if (!empty($assignment['isPending'])): ?>
+                                                            <span class="omo-user-context__role-status">En attente</span>
                                                         <?php endif; ?>
                                                     </div>
-                                                    <?php if (!empty($assignment['isPending'])): ?>
-                                                        <span class="omo-user-context__role-status">En attente</span>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </button>
-                                        </li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            <?php endif; ?>
-                        </section>
-                    </div>
+                                                </button>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                <?php endif; ?>
+                            </section>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

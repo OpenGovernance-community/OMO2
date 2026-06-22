@@ -211,6 +211,39 @@ function profilFormatAmountCents($value)
         font-size: 0.92rem;
     }
 
+    .profile-panel__password-section {
+        margin-top: 18px;
+    }
+
+    .profile-panel__password-head {
+        display: grid;
+        gap: 6px;
+        margin-bottom: 14px;
+    }
+
+    .profile-panel__password-status,
+    .profile-panel__password-note {
+        color: var(--color-text-light, #64748b);
+        line-height: 1.45;
+    }
+
+    .profile-panel__password-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .profile-panel__password-field {
+        display: grid;
+        gap: 6px;
+    }
+
+    .profile-panel__password-field span {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--color-text, #334155);
+    }
+
     .profile-panel__competence-section {
         --generic-section-gap: 14px;
     }
@@ -353,6 +386,7 @@ function profilFormatAmountCents($value)
         margin: 0;
     }
 </style>
+<script src="/common/assets/password_policy.js"></script>
 
 <div class="profile-panel" id="profilePanelRoot">
     <div class="profile-panel__sections">

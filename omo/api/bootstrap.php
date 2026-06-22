@@ -31,6 +31,18 @@ if (!function_exists('omoApiSortKey')) {
     }
 }
 
+if (!function_exists('omoApiCanBypassOrganizationAccessCheck')) {
+    function omoApiCanBypassOrganizationAccessCheck()
+    {
+        $requestPath = trim((string)commonGetRequestPath());
+        if ($requestPath === '') {
+            return false;
+        }
+
+        return $requestPath === '/omo/api/organization/access_request_popup.php';
+    }
+}
+
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: 0');
@@ -38,6 +50,23 @@ header('Expires: 0');
 $shareLink = function_exists('commonGetCurrentShareLink')
     ? commonGetCurrentShareLink()
     : null;
+$publicDecisionTokenAccess = false;
+
+if (!$shareLink) {
+    require_once __DIR__ . '/decision/modules/public_access.php';
+
+    $publicToken = trim((string)($_REQUEST['token'] ?? ''));
+    if ($publicToken !== '' && omoDecisionCanUsePublicTokenForPath(commonGetRequestPath())) {
+        $publicParticipant = omoDecisionResolvePublicParticipantByToken($publicToken);
+        if ($publicParticipant) {
+            $publicDecision = $publicParticipant->getDecisionProcess();
+            if ($publicDecision) {
+                $_SESSION['currentOrganization'] = (int)$publicDecision->get('IDorganization');
+                $publicDecisionTokenAccess = true;
+            }
+        }
+    }
+}
 
 if ($shareLink) {
     $_SESSION['currentOrganization'] = (int)$shareLink->get('IDorganization');
@@ -47,13 +76,19 @@ if ($shareLink) {
 
 commonRestoreRememberedUser();
 
-if (!commonGetCurrentUserId() && !commonCanAccessWithoutLogin() && !$shareLink) {
+if (!commonGetCurrentUserId() && !commonCanAccessWithoutLogin() && !$shareLink && !$publicDecisionTokenAccess) {
     http_response_code(401);
     echo "Unauthorized";
     exit;
 }
 
-if (!commonCanAccessWithoutLogin() && !$shareLink && !commonCurrentUserHasOrganizationAccess()) {
+if (
+    !commonCanAccessWithoutLogin()
+    && !$shareLink
+    && !$publicDecisionTokenAccess
+    && !omoApiCanBypassOrganizationAccessCheck()
+    && !commonCurrentUserHasOrganizationAccess()
+) {
     http_response_code(403);
     echo "Forbidden";
     exit;

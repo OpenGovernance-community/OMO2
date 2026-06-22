@@ -945,14 +945,35 @@ if ($requestFragment === 'items') {
 				name: 'Nom',
 				color: 'Couleur',
 				icon: 'Icone',
-				banner: 'Banniere'
+				banner: 'Banniere',
+				visible: 'Visible',
+				mandatory: 'Obligatoire',
+				lockedName: 'Nom verrouille',
+				lockedIcon: 'Icone verrouillee',
+				lockedBanner: 'Banniere verrouillee',
+				unique: 'Unique',
+				link: 'Lien',
+				inheritsFromName: 'Modele parent'
+			};
+			var booleanFields = {
+				visible: true,
+				mandatory: true,
+				lockedName: true,
+				lockedIcon: true,
+				lockedBanner: true,
+				unique: true,
+				link: true
 			};
 			var section = createSection('Holon');
 			var hasChanges = false;
 
 			Object.keys(fieldLabels).forEach(function (field) {
-				var beforeValue = decodeHtmlToText(beforeHolon[field] || '');
-				var afterValue = decodeHtmlToText(afterHolon[field] || '');
+				var beforeValue = booleanFields[field]
+					? ((beforeHolon[field] ? 'Oui' : 'Non'))
+					: decodeHtmlToText(beforeHolon[field] || '');
+				var afterValue = booleanFields[field]
+					? ((afterHolon[field] ? 'Oui' : 'Non'))
+					: decodeHtmlToText(afterHolon[field] || '');
 				var useInlineWordDiff = field === 'name';
 				if (beforeValue === afterValue) {
 					return;
@@ -962,6 +983,69 @@ if ($requestFragment === 'items') {
 				renderScalarProperty(section, fieldLabels[field], beforeValue, afterValue, 'changed', {
 					useInlineWordDiff: useInlineWordDiff
 				});
+			});
+
+			if (hasChanges) {
+				root.appendChild(section);
+			}
+		}
+
+		function buildPermissionLabel(permissionSnapshot, permissionKey) {
+			var snapshot = safeObject(permissionSnapshot);
+			var label = normalizeText(snapshot.name || snapshot.shortname || snapshot.key || '');
+			if (label !== '') {
+				return label;
+			}
+
+			return normalizeText(permissionKey) !== '' ? permissionKey : 'Droit';
+		}
+
+		function renderPermissionDiffs(payload, root) {
+			var beforePermissions = safeObject(safeObject(payload.before).permissions);
+			var afterPermissions = safeObject(safeObject(payload.after).permissions);
+			var permissionKeys = Object.keys(beforePermissions).concat(Object.keys(afterPermissions));
+			var uniqueKeys = [];
+			var section = createSection('Droits');
+			var hasChanges = false;
+
+			permissionKeys.forEach(function (permissionKey) {
+				if (uniqueKeys.indexOf(permissionKey) === -1) {
+					uniqueKeys.push(permissionKey);
+				}
+			});
+
+			uniqueKeys.sort(function (left, right) {
+				return buildPermissionLabel(afterPermissions[left] || beforePermissions[left], left)
+					.localeCompare(buildPermissionLabel(afterPermissions[right] || beforePermissions[right], right));
+			});
+
+			uniqueKeys.forEach(function (permissionKey) {
+				var beforePermission = safeObject(beforePermissions[permissionKey]);
+				var afterPermission = safeObject(afterPermissions[permissionKey]);
+				var hasBefore = Object.keys(beforePermission).length > 0;
+				var hasAfter = Object.keys(afterPermission).length > 0;
+				var title = buildPermissionLabel(hasAfter ? afterPermission : beforePermission, permissionKey);
+				var beforeItems = safeArray(beforePermission.visibleItems);
+				var afterItems = safeArray(afterPermission.visibleItems);
+
+				if (!hasBefore && hasAfter) {
+					hasChanges = true;
+					renderListProperty(section, title, [], afterItems, 'added');
+					return;
+				}
+
+				if (hasBefore && !hasAfter) {
+					hasChanges = true;
+					renderListProperty(section, title, beforeItems, [], 'removed');
+					return;
+				}
+
+				if (!hasBefore || !hasAfter || JSON.stringify(beforeItems) === JSON.stringify(afterItems)) {
+					return;
+				}
+
+				hasChanges = true;
+				renderListProperty(section, title, beforeItems, afterItems, 'changed');
 			});
 
 			if (hasChanges) {
@@ -1091,6 +1175,31 @@ if ($requestFragment === 'items') {
 			}
 		}
 
+		function renderCreatedPermissions(payload, root) {
+			var afterPermissions = safeObject(safeObject(payload.after).permissions);
+			var permissionKeys = Object.keys(afterPermissions).sort(function (left, right) {
+				return buildPermissionLabel(afterPermissions[left], left)
+					.localeCompare(buildPermissionLabel(afterPermissions[right], right));
+			});
+			var section = createSection('Droits');
+			var hasContent = false;
+
+			permissionKeys.forEach(function (permissionKey) {
+				var permission = safeObject(afterPermissions[permissionKey]);
+				var items = safeArray(permission.visibleItems);
+				if (items.length === 0) {
+					return;
+				}
+
+				hasContent = true;
+				renderListProperty(section, buildPermissionLabel(permission, permissionKey), [], items, 'added');
+			});
+
+			if (hasContent) {
+				root.appendChild(section);
+			}
+		}
+
 		function renderDiff(details) {
 			var container = details.querySelector('[data-history-diff-container="1"]');
 			var payloadBase64 = normalizeText(details.getAttribute('data-history-payload'));
@@ -1116,9 +1225,11 @@ if ($requestFragment === 'items') {
 
 			if (payload.before && payload.after) {
 				renderHolonFieldDiffs(payload, container);
+				renderPermissionDiffs(payload, container);
 				renderPropertyDiffs(payload, container);
 			} else if (payload.after) {
 				renderCreatedState(payload, container);
+				renderCreatedPermissions(payload, container);
 			}
 
 			if (!container.children.length) {
