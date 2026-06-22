@@ -155,18 +155,25 @@
 			$organizationId = (int)$this->get('IDorganization');
 
 			return $currentUserId > 0
-				&& $organizationId > 0
 				&& $currentUserId === (int)$this->get('IDuser')
 				&& (
-					function_exists('commonUserHasOrganizationAccess')
-						? \commonUserHasOrganizationAccess($currentUserId, $organizationId)
-						: true
+					$organizationId <= 0
+					|| !function_exists('commonUserHasOrganizationAccess')
+					|| \commonUserHasOrganizationAccess($currentUserId, $organizationId)
 				);
 		}
 
 		public function canEditInOrganizationContext(int $organizationId): bool
 		{
-			return (int)$this->get('IDorganization') === (int)$organizationId
+			$documentOrganizationId = (int)$this->get('IDorganization');
+			$organizationId = (int)$organizationId;
+
+			if ($documentOrganizationId <= 0) {
+				return $organizationId <= 0
+					&& $this->canEdit();
+			}
+
+			return $documentOrganizationId === $organizationId
 				&& $this->canEdit();
 		}
 
@@ -821,7 +828,6 @@
 
 			if (
 				(int)$this->getId() <= 0
-				|| $organizationId <= 0
 				|| (int)$this->get('IDorganization') !== $organizationId
 				|| $userId <= 0
 				|| !$this->canEditInOrganizationContext($organizationId)
@@ -1600,6 +1606,7 @@
 		{
 			$organizationId = (int)$organizationId;
 			$userId = (int)$userId;
+			$isWithoutContext = $organizationId <= 0;
 
 			if ((int)$this->getId() <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
 				return array(
@@ -1679,7 +1686,7 @@
 					$pdo->beginTransaction();
 				}
 
-				if (!$organization->load($organizationId)) {
+				if (!$isWithoutContext && !$organization->load($organizationId)) {
 					if ($startedTransaction && $pdo->inTransaction()) {
 						$pdo->rollBack();
 					}
@@ -1690,7 +1697,26 @@
 					);
 				}
 
-				if ($documentType === self::TYPE_UPLOADED_FILE && !$organization->hasNextcloudDocumentStorage()) {
+				if (
+					$isWithoutContext
+					&& $documentType === self::TYPE_UPLOADED_FILE
+					&& ($uploadedFile !== null || $removeUploadedFile)
+				) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+
+					return array(
+						'status' => false,
+						'text' => 'Les fichiers sans contexte ne peuvent pas etre modifies depuis cet editeur.',
+					);
+				}
+
+				if (
+					!$isWithoutContext
+					&& $documentType === self::TYPE_UPLOADED_FILE
+					&& !$organization->hasNextcloudDocumentStorage()
+				) {
 					if ($startedTransaction && $pdo->inTransaction()) {
 						$pdo->rollBack();
 					}
@@ -1710,7 +1736,7 @@
 					return $saveResult;
 				}
 
-				if ($documentType === self::TYPE_UPLOADED_FILE) {
+				if (!$isWithoutContext && $documentType === self::TYPE_UPLOADED_FILE) {
 					$previousStoredPath = trim((string)$this->get('storedfilepath'));
 					if ($removeUploadedFile) {
 						$deleteResult = $this->deleteStoredFileFromOrganizationStorage($organization);
@@ -1751,13 +1777,15 @@
 					}
 				}
 
-				$visibilitySaveResult = $this->saveVisibilityRule($visibilityType);
-				if (!is_array($visibilitySaveResult) || ($visibilitySaveResult['status'] ?? false) !== true) {
-					if ($startedTransaction && $pdo->inTransaction()) {
-						$pdo->rollBack();
-					}
+				if (!$isWithoutContext) {
+					$visibilitySaveResult = $this->saveVisibilityRule($visibilityType);
+					if (!is_array($visibilitySaveResult) || ($visibilitySaveResult['status'] ?? false) !== true) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
 
-					return $visibilitySaveResult;
+						return $visibilitySaveResult;
+					}
 				}
 
 				if ($startedTransaction && $pdo->inTransaction()) {
