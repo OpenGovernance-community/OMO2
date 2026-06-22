@@ -6475,6 +6475,7 @@
 			$hasParticipation = false;
 			$isOwner = false;
 			$status = \dbObject\DecisionProcess::normalizeStatus($decision->get('status'));
+			$visibilityAccess = $decision->currentViewerCanAccessVisibility($organizationId);
 
 			if ((string)($viewerContext['type'] ?? '') === 'user') {
 				$userId = (int)($viewerContext['userId'] ?? 0);
@@ -6507,7 +6508,9 @@
 
 			$canManage = $isOwner;
 			$canParticipate = ($isOwner || $hasParticipation) && $decision->isParticipationOpen();
-			$canView = $canManage || $hasParticipation || $status !== \dbObject\DecisionProcess::STATUS_DRAFT;
+			$canView = $canManage
+				|| $hasParticipation
+				|| ($status !== \dbObject\DecisionProcess::STATUS_DRAFT && $visibilityAccess);
 
 			if (!$canView && !$canParticipate) {
 				return false;

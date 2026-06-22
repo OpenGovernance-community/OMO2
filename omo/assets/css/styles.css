@@ -1049,12 +1049,15 @@ html[data-theme] .common-help-card p {
 }
 
 .omo-scope-toggle {
+    --omo-scope-option-count: 2;
+    --omo-scope-active-index: 0;
+    --omo-scope-toggle-inset: 3px;
     position: relative;
     display: inline-grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--omo-scope-option-count), minmax(0, 1fr));
     align-items: center;
     gap: 0;
-    padding: 3px;
+    padding: var(--omo-scope-toggle-inset);
     border-radius: 999px;
     background: color-mix(in srgb, var(--color-surface-alt) 80%, var(--color-surface));
     width: fit-content;
@@ -1066,20 +1069,24 @@ html[data-theme] .common-help-card p {
 .omo-scope-toggle::before {
     content: "";
     position: absolute;
-    left: 3px;
-    top: 3px;
-    bottom: 3px;
-    width: calc(50% - 3px);
+    left: var(--omo-scope-toggle-inset);
+    top: var(--omo-scope-toggle-inset);
+    bottom: var(--omo-scope-toggle-inset);
+    width: calc((100% - (var(--omo-scope-toggle-inset) * 2)) / var(--omo-scope-option-count));
     border-radius: 999px;
     background: var(--color-surface);
     box-shadow: 0 4px 10px rgba(15, 23, 42, 0.10);
-    transform: translateX(0);
+    transform: translateX(calc(var(--omo-scope-active-index) * 100%));
     transition: transform 220ms ease, box-shadow 220ms ease;
     z-index: 0;
 }
 
-.omo-scope-toggle[data-omo-scope-switch="global"]::before {
-    transform: translateX(100%);
+.omo-scope-toggle[data-omo-scope-switch="descendants"] {
+    --omo-scope-active-index: 1;
+}
+
+.omo-scope-toggle[data-omo-scope-switch="global"] {
+    --omo-scope-active-index: 1;
 }
 
 .omo-scope-toggle__button {
@@ -1286,7 +1293,7 @@ html[data-theme] .common-help-card p {
     }
 
     .omo-scope-toggle {
-        padding: 2px;
+        --omo-scope-toggle-inset: 2px;
     }
 
     .omo-scope-toggle__button {
@@ -1310,11 +1317,15 @@ html[data-theme] .common-help-card p {
     }
 
     .omo-scope-toggle__button[data-omo-scope-option="contextual"]::before {
-        background-image: url("../images/scope/contextual.png");
+        background-image: url("../images/scope/contextual.png?v=20260622");
     }
 
     .omo-scope-toggle__button[data-omo-scope-option="global"]::before {
-        background-image: url("../images/scope/global.png");
+        background-image: url("../images/scope/global.png?v=20260622");
+    }
+
+    .omo-scope-toggle__button[data-omo-scope-option="descendants"]::before {
+        background-image: url("../images/scope/descendants.png?v=20260622");
     }
 
     .omo-scope-toggle__button.is-active::before {
@@ -1326,6 +1337,18 @@ html[data-theme] .common-help-card p {
     }
 
     .omo-scope-toggle__text {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    .omo-scope-toggle__button[data-omo-scope-option="descendants"] .omo-scope-toggle__text {
         position: absolute;
         width: 1px;
         height: 1px;

@@ -2,31 +2,99 @@
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\Document;
+use dbObject\Holon;
+use dbObject\ObjectVisibility;
 use dbObject\Organization;
+
+$sourceLang = [
+    'documents.scope.toggle_aria' => [
+        'text' => 'Portee des documents',
+        'context' => 'Accessible label for the document scope toggle.',
+    ],
+    'documents.scope.contextual' => [
+        'text' => 'Contextuel',
+        'context' => 'Label used to show only documents from the current holon.',
+    ],
+    'documents.scope.descendants' => [
+        'text' => 'Descendants',
+        'context' => 'Label used to show documents from the current holon and its descendants.',
+    ],
+    'documents.scope.global' => [
+        'text' => 'Global',
+        'context' => 'Label used to show documents from the whole organization.',
+    ],
+    'documents.empty.visible_global' => [
+        'text' => 'Aucun document visible dans cette organisation. {count} fichier(s) est cache.',
+        'context' => 'Empty state shown when hidden documents exist in global scope.',
+    ],
+    'documents.empty.visible_contextual' => [
+        'text' => 'Aucun document visible pour ce contexte. {count} fichier(s) est cache.',
+        'context' => 'Empty state shown when hidden documents exist in contextual scope.',
+    ],
+    'documents.empty.visible_descendants' => [
+        'text' => 'Aucun document visible pour ce contexte et ses descendants. {count} fichier(s) est cache.',
+        'context' => 'Empty state shown when hidden documents exist in descendant scope.',
+    ],
+    'documents.empty.available_global' => [
+        'text' => 'Aucun document disponible dans cette organisation.',
+        'context' => 'Empty state shown when no document exists in global scope.',
+    ],
+    'documents.empty.available_contextual' => [
+        'text' => 'Aucun document disponible pour ce contexte.',
+        'context' => 'Empty state shown when no document exists in contextual scope.',
+    ],
+    'documents.empty.available_descendants' => [
+        'text' => 'Aucun document disponible pour ce contexte et ses descendants.',
+        'context' => 'Empty state shown when no document exists in descendant scope.',
+    ],
+];
+
+$lang = omoLoadTranslationBundle('omo_documents_index', $sourceLang);
+
+function omoDocumentsScopeT($key, array $replace = [])
+{
+    global $lang, $sourceLang;
+    return t($key, $replace, $lang, $sourceLang);
+}
 
 $currentOrganizationId = isset($_GET['oid']) ? (int)$_GET['oid'] : (int)($_SESSION['currentOrganization'] ?? 0);
 $currentHolonId = isset($_GET['cid']) ? (int)$_GET['cid'] : 0;
 $initialOpenDocumentId = isset($_GET['open_document_id']) ? (int)$_GET['open_document_id'] : 0;
-$documentScope = strtolower(trim((string)($_GET['document_scope'] ?? 'contextual')));
-if ($documentScope !== 'global') {
-    $documentScope = 'contextual';
-}
+$requestedDocumentScope = $_GET['document_scope'] ?? 'contextual';
 
 $organization = new Organization();
 if ($currentOrganizationId > 0) {
     $organization->load($currentOrganizationId);
 }
 
-$canToggleDocumentScope = $organization->getId() > 0 && $organization->getEnabledStructuralRootHolon() !== null;
+$rootHolon = $organization->getId() > 0 ? $organization->getEnabledStructuralRootHolon() : null;
+$currentContextHolon = null;
+if ($currentHolonId > 0) {
+    $candidateHolon = new Holon();
+    if (
+        $candidateHolon->load($currentHolonId)
+        && $organization->containsHolon($candidateHolon)
+        && $candidateHolon->canViewDetail()
+    ) {
+        $currentContextHolon = $candidateHolon;
+    }
+}
+
+$effectiveCurrentHolonId = $currentContextHolon instanceof Holon ? (int)$currentContextHolon->getId() : 0;
+$canToggleDocumentScope = $organization->getId() > 0 && $rootHolon instanceof Holon;
+$availableDocumentScopes = omoApiGetAvailableContextScopes($canToggleDocumentScope, $currentContextHolon, $rootHolon);
+$documentScope = omoApiNormalizeContextScope($requestedDocumentScope, $availableDocumentScopes);
+$documentScopeActiveIndex = omoApiResolveContextScopeIndex($documentScope, $availableDocumentScopes);
+$descendantHolonIds = omoApiGetDescendantHolonIds($currentContextHolon);
 $canCreateDocument = $organization->getId() > 0
     && Document::canCreateInOrganizationContext(
         $currentOrganizationId,
-        $currentHolonId > 0 ? $currentHolonId : null,
+        $effectiveCurrentHolonId > 0 ? $effectiveCurrentHolonId : null,
         (int)commonGetCurrentUserId(),
         0,
         true
     );
-$newDocumentUrl = '/omo/api/documents/create.php?oid=' . $currentOrganizationId . ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '');
+$newDocumentUrl = '/omo/api/documents/create.php?oid=' . $currentOrganizationId . ($effectiveCurrentHolonId > 0 ? '&cid=' . $effectiveCurrentHolonId : '');
 
 $documents = new \dbObject\ArrayDocument();
 $documentVisibilityRuleMap = array();
@@ -36,8 +104,9 @@ $hiddenDocumentsCount = 0;
 if ($currentOrganizationId > 0) {
     $documentVisibilityRuleMap = $documents->loadVisibleForOrganizationContext(
         $currentOrganizationId,
-        $currentHolonId,
-        $documentScope
+        $effectiveCurrentHolonId,
+        $documentScope,
+        $descendantHolonIds
     );
     $visibilityStats = $documents->getLastVisibilityStats();
     $visibleDocumentsCount = max(0, (int)($visibilityStats['visible'] ?? 0));
@@ -101,6 +170,20 @@ $formatDate = static function ($value, bool $includeYear = false) use ($formatte
     return $value->format($includeYear ? 'd.m.Y' : 'd.m');
 };
 
+$documentVisibilityIconMap = array(
+    ObjectVisibility::TYPE_EVERYONE => '/omo/assets/images/documents/visibility/everyone.png',
+    ObjectVisibility::TYPE_ORGANIZATION => '/omo/assets/images/documents/visibility/organization.png',
+    ObjectVisibility::TYPE_CIRCLE => '/omo/assets/images/documents/visibility/circle.png',
+    ObjectVisibility::TYPE_ROLE => '/omo/assets/images/documents/visibility/role.png',
+    ObjectVisibility::TYPE_SELF => '/omo/assets/images/documents/visibility/me.png',
+);
+
+$resolveDocumentVisibilityIconUrl = static function (string $visibilityType) use ($documentVisibilityIconMap): string {
+    $normalizedVisibilityType = ObjectVisibility::normalizeVisibilityType($visibilityType);
+
+    return (string)($documentVisibilityIconMap[$normalizedVisibilityType] ?? $documentVisibilityIconMap[ObjectVisibility::TYPE_ORGANIZATION]);
+};
+
 $documentEntries = [];
 
 foreach ($documents as $document) {
@@ -135,10 +218,10 @@ foreach ($documents as $document) {
         'openInNewWindow' => $document->shouldOpenExternalLinkInNewWindow(),
         'canShare' => $canShareDocument,
         'parentDocumentId' => $parentDocumentId > 0 ? $parentDocumentId : 0,
-        'contextLabel' => $documentScope === 'global'
+        'contextLabel' => $documentScope !== 'contextual'
             ? trim((string)$document->getOrganizationContextLabel())
             : '',
-        'contextBreadcrumb' => $documentScope === 'global'
+        'contextBreadcrumb' => $documentScope !== 'contextual'
             ? array_values(array_map(
                 static function (array $item): array {
                     $organizationId = (int)($item['organizationId'] ?? 0);
@@ -157,10 +240,11 @@ foreach ($documents as $document) {
         'keywords' => trim((string)$document->get('keywords')),
         'canEdit' => $document->canEditInOrganizationContext($currentOrganizationId),
         'editUrl' => '/omo/api/documents/create.php?oid=' . $currentOrganizationId
-            . ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '')
+            . ($effectiveCurrentHolonId > 0 ? '&cid=' . $effectiveCurrentHolonId : '')
             . '&id=' . $documentId,
         'visibilityBadge' => (string)($visibility['badgeText'] ?? ''),
         'visibilityType' => (string)($visibility['type'] ?? ''),
+        'visibilityIconUrl' => $resolveDocumentVisibilityIconUrl((string)($visibility['type'] ?? '')),
         'dateLabel' => $formatDate($activityDate, in_array($groupKey, ['earlier', 'too_far'], true)),
         'fullDateLabel' => $formatDate($activityDate, true),
         'timestamp' => $activityDate instanceof DateTimeInterface ? (int)$activityDate->getTimestamp() : 0,
@@ -199,7 +283,7 @@ if (!is_string($documentsPayload)) {
     id="omo-documents-root"
     data-omo-document-scope="<?= $escape($documentScope) ?>"
     data-omo-document-oid="<?= (int)$currentOrganizationId ?>"
-    data-omo-document-cid="<?= (int)$currentHolonId ?>"
+    data-omo-document-cid="<?= (int)$effectiveCurrentHolonId ?>"
 >
     <div class="omo-documents__header omo-panel-view__header omo-panel-view__header--stacked">
         <div class="omo-panel-view__header-main">
@@ -241,27 +325,23 @@ if (!is_string($documentsPayload)) {
                 <div
                     class="omo-scope-toggle"
                     role="tablist"
-                    aria-label="Portee des documents"
+                    aria-label="<?= $escape(omoDocumentsScopeT('documents.scope.toggle_aria')) ?>"
                     data-omo-scope-switch="<?= $escape($documentScope) ?>"
+                    style="--omo-scope-option-count: <?= (int)count($availableDocumentScopes) ?>; --omo-scope-active-index: <?= (int)$documentScopeActiveIndex ?>;"
                 >
-                    <button
-                        type="button"
-                        class="omo-scope-toggle__button<?= $documentScope === 'contextual' ? ' is-active' : '' ?>"
-                        aria-label="Contextuel"
-                        data-omo-document-scope-toggle="contextual"
-                        data-omo-scope-option="contextual"
-                        aria-pressed="<?= $documentScope === 'contextual' ? 'true' : 'false' ?>"
-                        onclick="return window.omoToggleDocumentsScope ? window.omoToggleDocumentsScope(this, event) : false;"
-                    ><span class="omo-scope-toggle__text">Contextuel</span></button>
-                    <button
-                        type="button"
-                        class="omo-scope-toggle__button<?= $documentScope === 'global' ? ' is-active' : '' ?>"
-                        aria-label="Global"
-                        data-omo-document-scope-toggle="global"
-                        data-omo-scope-option="global"
-                        aria-pressed="<?= $documentScope === 'global' ? 'true' : 'false' ?>"
-                        onclick="return window.omoToggleDocumentsScope ? window.omoToggleDocumentsScope(this, event) : false;"
-                    ><span class="omo-scope-toggle__text">Global</span></button>
+                    <?php foreach ($availableDocumentScopes as $scopeIndex => $scopeKey): ?>
+                        <?php $scopeLabel = omoDocumentsScopeT('documents.scope.' . $scopeKey); ?>
+                        <button
+                            type="button"
+                            class="omo-scope-toggle__button<?= $documentScope === $scopeKey ? ' is-active' : '' ?>"
+                            aria-label="<?= $escape($scopeLabel) ?>"
+                            data-omo-document-scope-toggle="<?= $escape($scopeKey) ?>"
+                            data-omo-scope-option="<?= $escape($scopeKey) ?>"
+                            data-omo-scope-index="<?= (int)$scopeIndex ?>"
+                            aria-pressed="<?= $documentScope === $scopeKey ? 'true' : 'false' ?>"
+                            onclick="return window.omoToggleDocumentsScope ? window.omoToggleDocumentsScope(this, event) : false;"
+                        ><span class="omo-scope-toggle__text"><?= $escape($scopeLabel) ?></span></button>
+                    <?php endforeach; ?>
                 </div>
             <?php endif; ?>
             <?php if (count($documentEntries) > 0): ?>
@@ -283,14 +363,18 @@ if (!is_string($documentsPayload)) {
             <div class="omo-documents__empty omo-empty-state">
                 <?php if ($hiddenDocumentsCount > 0): ?>
                     <?php if ($documentScope === 'global'): ?>
-                        Aucun document visible dans cette organisation. <?= $escape($hiddenDocumentsCount) ?> <?= $hiddenDocumentsCount > 1 ? 'fichiers sont caches.' : 'fichier est cache.' ?>
+                        <?= $escape(omoDocumentsScopeT('documents.empty.visible_global', ['count' => (string)$hiddenDocumentsCount])) ?>
+                    <?php elseif ($documentScope === 'descendants'): ?>
+                        <?= $escape(omoDocumentsScopeT('documents.empty.visible_descendants', ['count' => (string)$hiddenDocumentsCount])) ?>
                     <?php else: ?>
-                        Aucun document visible pour ce contexte. <?= $escape($hiddenDocumentsCount) ?> <?= $hiddenDocumentsCount > 1 ? 'fichiers sont caches.' : 'fichier est cache.' ?>
+                        <?= $escape(omoDocumentsScopeT('documents.empty.visible_contextual', ['count' => (string)$hiddenDocumentsCount])) ?>
                     <?php endif; ?>
                 <?php elseif ($documentScope === 'global'): ?>
-                    Aucun document disponible dans cette organisation.
+                    <?= $escape(omoDocumentsScopeT('documents.empty.available_global')) ?>
+                <?php elseif ($documentScope === 'descendants'): ?>
+                    <?= $escape(omoDocumentsScopeT('documents.empty.available_descendants')) ?>
                 <?php else: ?>
-                    Aucun document disponible pour ce contexte.
+                    <?= $escape(omoDocumentsScopeT('documents.empty.available_contextual')) ?>
                 <?php endif; ?>
             </div>
         <?php else: ?>
@@ -334,7 +418,23 @@ if (!is_string($documentsPayload)) {
                                 >
                                     <div class="omo-documents__item-head">
                                         <span class="omo-documents__date"><?= $escape($entry['dateLabel']) ?></span>
-                                        <strong><?= $escape($entry['title']) ?></strong>
+                                        <span class="omo-documents__title-line">
+                                            <strong class="omo-documents__title"><?= $escape($entry['title']) ?></strong>
+                                            <?php if ($entry['visibilityBadge'] !== '' && $entry['visibilityIconUrl'] !== ''): ?>
+                                                <span
+                                                    class="omo-documents__visibility-icon"
+                                                    role="img"
+                                                    aria-label="<?= $escape($entry['visibilityBadge']) ?>"
+                                                    title="<?= $escape($entry['visibilityBadge']) ?>"
+                                                >
+                                                    <img
+                                                        src="<?= $escape($entry['visibilityIconUrl']) ?>"
+                                                        alt=""
+                                                        loading="lazy"
+                                                    >
+                                                </span>
+                                            <?php endif; ?>
+                                        </span>
                                     </div>
 
                                     <?php if (!empty($entry['contextBreadcrumb'])): ?>
@@ -354,12 +454,6 @@ if (!is_string($documentsPayload)) {
                                         </div>
                                     <?php elseif ($entry['contextLabel'] !== ''): ?>
                                         <div class="omo-documents__context"><?= $escape($entry['contextLabel']) ?></div>
-                                    <?php endif; ?>
-
-                                    <?php if ($entry['visibilityBadge'] !== ''): ?>
-                                        <div class="omo-documents__meta-row">
-                                            <span class="omo-pill"><?= $escape($entry['visibilityBadge']) ?></span>
-                                        </div>
                                     <?php endif; ?>
 
                                     <?php if ($entry['description'] !== ''): ?>
@@ -460,6 +554,13 @@ if (!is_string($documentsPayload)) {
                         : 'detail';
                 };
 
+                const omoDocumentsNormalizeScope = function (value) {
+                    const normalizedScope = String(value || '').trim().toLowerCase();
+                    return normalizedScope === 'global' || normalizedScope === 'descendants'
+                        ? normalizedScope
+                        : 'contextual';
+                };
+
                 const omoDocumentsReadSessionCookie = function (name) {
                     if (typeof window.omoReadCookie === 'function') {
                         return String(window.omoReadCookie(name) || '');
@@ -494,9 +595,7 @@ if (!is_string($documentsPayload)) {
                     const normalizedHolonId = Number(holonId || 0) > 0
                         ? String(Number(holonId || 0))
                         : '0';
-                    const normalizedScope = String(scope || '').trim().toLowerCase() === 'global'
-                        ? 'global'
-                        : 'contextual';
+                    const normalizedScope = omoDocumentsNormalizeScope(scope);
 
                     return 'omo_documents_folders_' + normalizedOrganizationId + '_' + normalizedHolonId + '_' + normalizedScope;
                 };
@@ -713,6 +812,29 @@ if (!is_string($documentsPayload)) {
                                 iconBox.appendChild(faviconBadge);
                             };
 
+                            const createVisibilityIcon = function (documentItem) {
+                                const visibilityLabel = String(documentItem && documentItem.visibilityBadge ? documentItem.visibilityBadge : '').trim();
+                                const visibilityIconUrl = String(documentItem && documentItem.visibilityIconUrl ? documentItem.visibilityIconUrl : '').trim();
+
+                                if (visibilityLabel === '' || visibilityIconUrl === '') {
+                                    return null;
+                                }
+
+                                const visibilityIcon = document.createElement('span');
+                                visibilityIcon.className = 'omo-documents__visibility-icon';
+                                visibilityIcon.setAttribute('role', 'img');
+                                visibilityIcon.setAttribute('aria-label', visibilityLabel);
+                                visibilityIcon.setAttribute('title', visibilityLabel);
+
+                                const visibilityImage = document.createElement('img');
+                                visibilityImage.src = visibilityIconUrl;
+                                visibilityImage.alt = '';
+                                visibilityImage.loading = 'lazy';
+
+                                visibilityIcon.appendChild(visibilityImage);
+                                return visibilityIcon;
+                            };
+
                             const childrenByParentId = new Map();
                             documents.forEach(function (documentItem) {
                                 const parentDocumentId = Number(documentItem && documentItem.parentDocumentId ? documentItem.parentDocumentId : 0);
@@ -809,9 +931,7 @@ if (!is_string($documentsPayload)) {
                                 if (state.density === 'compact') {
                                     const frame = document.createElement('div');
                                     frame.className = 'omo-documents__item-frame omo-documents__item-frame--compact-list generic-file-list__row';
-                                    const isGlobalScope = String(panel.getAttribute('data-omo-document-scope') || 'contextual')
-                                        .trim()
-                                        .toLowerCase() === 'global';
+                                    const showsContext = omoDocumentsNormalizeScope(panel.getAttribute('data-omo-document-scope') || 'contextual') !== 'contextual';
 
                                     const compactNameCell = document.createElement('div');
                                     compactNameCell.className = 'omo-documents__compact-cell omo-documents__compact-cell--name generic-file-list__cell generic-file-list__cell--name';
@@ -829,6 +949,10 @@ if (!is_string($documentsPayload)) {
                                     compactTitle.className = 'omo-documents__compact-title generic-file-list__title';
                                     compactTitle.textContent = documentItem.title || '';
                                     compactTitleStack.appendChild(compactTitle);
+                                    const compactVisibilityIcon = createVisibilityIcon(documentItem);
+                                    if (compactVisibilityIcon) {
+                                        compactTitleStack.appendChild(compactVisibilityIcon);
+                                    }
 
                                     if (documentItem.isFolder) {
                                         const count = Array.isArray(documentItem.children) ? documentItem.children.length : 0;
@@ -842,7 +966,7 @@ if (!is_string($documentsPayload)) {
 
                                     compactTitleBlock.appendChild(compactTitleStack);
 
-                                    if (isGlobalScope) {
+                                    if (showsContext) {
                                         let compactContextLine = null;
 
                                         if (Array.isArray(documentItem.contextBreadcrumb) && documentItem.contextBreadcrumb.length > 0) {
@@ -965,10 +1089,17 @@ if (!is_string($documentsPayload)) {
 
                                 const head = document.createElement('div');
                                 head.className = 'omo-documents__item-head';
+                                const titleLine = document.createElement('span');
+                                titleLine.className = 'omo-documents__title-line';
                                 const title = document.createElement('strong');
                                 title.className = 'omo-documents__title';
                                 title.textContent = documentItem.title || '';
-                                head.appendChild(title);
+                                titleLine.appendChild(title);
+                                const visibilityIcon = createVisibilityIcon(documentItem);
+                                if (visibilityIcon) {
+                                    titleLine.appendChild(visibilityIcon);
+                                }
+                                head.appendChild(titleLine);
 
                                 content.appendChild(eyebrow);
                                 content.appendChild(head);
@@ -1008,18 +1139,6 @@ if (!is_string($documentsPayload)) {
                                     context.className = 'omo-documents__context';
                                     context.textContent = documentItem.contextLabel;
                                     content.appendChild(context);
-                                }
-
-                                if (documentItem.visibilityBadge) {
-                                    const metaRow = document.createElement('div');
-                                    metaRow.className = 'omo-documents__meta-row';
-
-                                    const visibilityBadge = document.createElement('span');
-                                    visibilityBadge.className = 'omo-pill';
-                                    visibilityBadge.textContent = documentItem.visibilityBadge;
-
-                                    metaRow.appendChild(visibilityBadge);
-                                    content.appendChild(metaRow);
                                 }
 
                                 if (state.density !== 'compact' && documentItem.description) {
@@ -1689,17 +1808,19 @@ if (!is_string($documentsPayload)) {
                         }
 
                         let documentScopeRefreshToken = 0;
-
-                        const getCurrentScope = function () {
-                            return String(panel.getAttribute('data-omo-document-scope') || 'contextual').trim().toLowerCase() === 'global'
-                                ? 'global'
+                        const normalizeDocumentScope = function (scopeValue) {
+                            const normalizedScope = String(scopeValue || '').trim().toLowerCase();
+                            return normalizedScope === 'global' || normalizedScope === 'descendants'
+                                ? normalizedScope
                                 : 'contextual';
                         };
 
+                        const getCurrentScope = function () {
+                            return normalizeDocumentScope(panel.getAttribute('data-omo-document-scope') || 'contextual');
+                        };
+
                         const buildScopeUrl = function (scopeValue) {
-                            const resolvedScope = String(scopeValue || '').trim().toLowerCase() === 'global'
-                                ? 'global'
-                                : 'contextual';
+                            const resolvedScope = normalizeDocumentScope(scopeValue);
                             const organizationId = Number(panel.getAttribute('data-omo-document-oid') || 0);
                             const holonId = Number(panel.getAttribute('data-omo-document-cid') || 0);
                             const query = [];
@@ -1721,6 +1842,7 @@ if (!is_string($documentsPayload)) {
 
                         const setScopeLoadingState = function (isLoading, targetScope) {
                             panel.classList.toggle('is-loading', Boolean(isLoading));
+                            let activeScopeIndex = 0;
 
                             panel.querySelectorAll('[data-omo-document-scope-toggle]').forEach(function (button) {
                                 const buttonScope = String(button.getAttribute('data-omo-document-scope-toggle') || '').trim().toLowerCase();
@@ -1729,11 +1851,15 @@ if (!is_string($documentsPayload)) {
                                 button.disabled = Boolean(isLoading);
                                 button.classList.toggle('is-active', isActive);
                                 button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+                                if (isActive) {
+                                    activeScopeIndex = parseInt(button.getAttribute('data-omo-scope-index') || '0', 10) || 0;
+                                }
                             });
 
                             const toggle = panel.querySelector('[data-omo-scope-switch]');
                             if (toggle) {
                                 toggle.setAttribute('data-omo-scope-switch', targetScope);
+                                toggle.style.setProperty('--omo-scope-active-index', String(activeScopeIndex));
                             }
                         };
 
@@ -1743,9 +1869,7 @@ if (!is_string($documentsPayload)) {
                                 return;
                             }
 
-                            const targetScope = String(button.getAttribute('data-omo-document-scope-toggle') || '').trim().toLowerCase() === 'global'
-                                ? 'global'
-                                : 'contextual';
+                            const targetScope = normalizeDocumentScope(button.getAttribute('data-omo-document-scope-toggle') || '');
 
                             if (targetScope === getCurrentScope()) {
                                 return;
@@ -1757,19 +1881,29 @@ if (!is_string($documentsPayload)) {
                             }
 
                             const requestId = ++documentScopeRefreshToken;
+                            const triggerRefresh = function () {
+                                window.omoReplaceFetchedPanelRoot({
+                                    rootSelector: '#omo-documents-root',
+                                    currentRoot: panel,
+                                    url: buildScopeUrl(targetScope),
+                                    setLoadingState: function (isLoading) {
+                                        if (requestId !== documentScopeRefreshToken && !isLoading) {
+                                            return;
+                                        }
 
-                            window.omoReplaceFetchedPanelRoot({
-                                rootSelector: '#omo-documents-root',
-                                currentRoot: panel,
-                                url: buildScopeUrl(targetScope),
-                                setLoadingState: function (isLoading) {
-                                    if (requestId !== documentScopeRefreshToken && !isLoading) {
-                                        return;
+                                        setScopeLoadingState(isLoading, targetScope);
                                     }
+                                });
+                            };
 
-                                    setScopeLoadingState(isLoading, targetScope);
-                                }
-                            });
+                            // Move the scope cursor before the panel reload starts so the transition is visible.
+                            setScopeLoadingState(true, targetScope);
+
+                            if (typeof window.requestAnimationFrame === 'function') {
+                                window.requestAnimationFrame(triggerRefresh);
+                            } else {
+                                triggerRefresh();
+                            }
                         });
 
                         panel.dataset.omoDocumentsScopeReady = '1';
@@ -1802,12 +1936,14 @@ if (!is_string($documentsPayload)) {
                 return false;
             }
 
-            const currentScope = String(panel.getAttribute('data-omo-document-scope') || 'contextual').trim().toLowerCase() === 'global'
-                ? 'global'
-                : 'contextual';
-            const targetScope = String(button.getAttribute('data-omo-document-scope-toggle') || '').trim().toLowerCase() === 'global'
-                ? 'global'
-                : 'contextual';
+            const normalizeDocumentScope = function (scopeValue) {
+                const normalizedScope = String(scopeValue || '').trim().toLowerCase();
+                return normalizedScope === 'global' || normalizedScope === 'descendants'
+                    ? normalizedScope
+                    : 'contextual';
+            };
+            const currentScope = normalizeDocumentScope(panel.getAttribute('data-omo-document-scope') || 'contextual');
+            const targetScope = normalizeDocumentScope(button.getAttribute('data-omo-document-scope-toggle') || '');
 
             if (targetScope === currentScope) {
                 return false;
@@ -1862,11 +1998,15 @@ if (!is_string($documentsPayload)) {
                     return '/omo/api/documents/index.php';
                 }
 
+                const normalizeDocumentScope = function (scopeValue) {
+                    const normalizedScope = String(scopeValue || '').trim().toLowerCase();
+                    return normalizedScope === 'global' || normalizedScope === 'descendants'
+                        ? normalizedScope
+                        : 'contextual';
+                };
                 const organizationId = Number(root.getAttribute('data-omo-document-oid') || 0);
                 const holonId = Number(root.getAttribute('data-omo-document-cid') || 0);
-                const scope = String(root.getAttribute('data-omo-document-scope') || 'contextual').trim().toLowerCase() === 'global'
-                    ? 'global'
-                    : 'contextual';
+                const scope = normalizeDocumentScope(root.getAttribute('data-omo-document-scope') || 'contextual');
                 const query = [];
 
                 if (organizationId > 0) {
@@ -2744,6 +2884,13 @@ if (!is_string($documentsPayload)) {
     margin: 0;
 }
 
+.omo-documents__title-line {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+}
+
 .omo-documents__kind-detail {
     display: inline-flex;
     align-items: center;
@@ -2768,6 +2915,23 @@ if (!is_string($documentsPayload)) {
     line-height: 1.3;
     color: var(--color-text);
     word-break: break-word;
+}
+
+.omo-documents__visibility-icon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    opacity: 0.82;
+}
+
+.omo-documents__visibility-icon img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 .omo-documents__context {
@@ -3026,6 +3190,11 @@ if (!is_string($documentsPayload)) {
     line-height: 1.35;
     color: var(--color-text);
     word-break: break-word;
+}
+
+.omo-documents__item--compact .omo-documents__visibility-icon {
+    width: 16px;
+    height: 16px;
 }
 
 .omo-documents__compact-count {

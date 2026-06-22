@@ -55,10 +55,8 @@ if ($organizationId <= 0) {
         <div class="omo-panel-view__header-copy">
             <h2 class="omo-panel-view__title"><?= $isHolonDefinitionMode ? 'Proprietes de l organisation' : 'Modeles de holons' ?></h2>
             <p class="omo-panel-view__description">
-                
                     Modifiez ici les proprietes, illustrations et reglages locaux du holon d organisation,
                     meme lorsqu il ne s agit pas d un template.
-               
             </p>
         </div>
     </div>
@@ -3284,7 +3282,7 @@ if (Number(omoHolonTemplateState.selectedId || 0) > 0 && omoHolonTemplateFind(om
 
 .omo-template-property__main {
     display: grid;
-    grid-template-columns: minmax(320px, 1.6fr) minmax(240px, 0.8fr);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
     gap: 14px;
     align-items: start;
 }
@@ -3311,7 +3309,7 @@ if (Number(omoHolonTemplateState.selectedId || 0) > 0 && omoHolonTemplateFind(om
 
 .omo-template-property__list-options {
     display: grid;
-    grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
     gap: 14px;
     align-items: start;
 }

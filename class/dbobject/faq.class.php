@@ -350,16 +350,41 @@ class FAQ extends DbObject
 
 	public static function normalizePopupScope($scope = null, array $context = array())
 	{
+		$organizationId = (int)($context['organizationId'] ?? 0);
+		$currentHolon = isset($context['currentHolon']) && $context['currentHolon'] instanceof \dbObject\Holon
+			? $context['currentHolon']
+			: null;
+		$rootHolon = isset($context['rootHolon']) && $context['rootHolon'] instanceof \dbObject\Holon
+			? $context['rootHolon']
+			: null;
+
+		if (
+			function_exists('omoApiGetAvailableContextScopes')
+			&& function_exists('omoApiNormalizeContextScope')
+		) {
+			return \omoApiNormalizeContextScope(
+				$scope,
+				\omoApiGetAvailableContextScopes($organizationId > 0, $currentHolon, $rootHolon)
+			);
+		}
+
+		$allowedScopes = array('contextual');
+		if ($organizationId > 0) {
+			if (
+				$currentHolon instanceof \dbObject\Holon
+				&& (int)$currentHolon->getId() > 0
+				&& !($rootHolon instanceof \dbObject\Holon && (int)$rootHolon->getId() === (int)$currentHolon->getId())
+			) {
+				$allowedScopes[] = 'descendants';
+			}
+
+			$allowedScopes[] = 'global';
+		}
+
 		$scope = strtolower(trim((string)$scope));
-		if ($scope !== 'global' && $scope !== 'contextual') {
-			$scope = 'contextual';
-		}
-
-		if ($scope === 'global' && (int)($context['organizationId'] ?? 0) <= 0) {
-			return 'contextual';
-		}
-
-		return $scope;
+		return in_array($scope, $allowedScopes, true)
+			? $scope
+			: 'contextual';
 	}
 
 	public static function buildPopupLoadParams(array $context = array(), $scope = 'contextual')
@@ -744,14 +769,19 @@ class FAQ extends DbObject
 		} else {
 			if ($holon instanceof \dbObject\Holon) {
 				if ($currentHolon && (int)$currentHolon->getId() > 0) {
-					$matchesScope = $currentHolon->isDescendantOf($holon->getId(), true);
+					$currentHolonId = (int)$currentHolon->getId();
+					$faqHolonId = (int)$holon->getId();
+
+					if ($scope === 'descendants') {
+						$matchesScope = $holon->isDescendantOf($currentHolonId, true);
+					} else {
+						$matchesScope = $faqHolonId === $currentHolonId;
+					}
 				} else {
 					$matchesScope = false;
 				}
-			} elseif ($faqOrganizationId <= 0) {
-				$matchesScope = true;
 			} else {
-				$matchesScope = $faqOrganizationId === $contextOrganizationId;
+				$matchesScope = false;
 			}
 		}
 
