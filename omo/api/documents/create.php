@@ -30,8 +30,11 @@ if ($currentUserId > 0 && patreonSupportUiIsEnabled()) {
 $canUseAiTools = $openAiAvailable && $patreonConnected;
 
 if ($documentId > 0) {
-    $isEditing = $document->load($documentId)
-        && $document->canEditInOrganizationContext($organizationId);
+    $isEditing = $document->load($documentId);
+    if ($isEditing) {
+        $organizationId = (int)$document->get('IDorganization');
+        $isEditing = $document->canEditInOrganizationContext($organizationId);
+    }
     $canUseForm = $isEditing;
 
     if ($canUseForm) {
@@ -94,7 +97,9 @@ if (!$isEditing) {
 if ($contextHolonId <= 0) {
     $disabledVisibilityTypes[ObjectVisibility::TYPE_CIRCLE] = true;
     $disabledVisibilityTypes[ObjectVisibility::TYPE_ROLE] = true;
-    $visibilityHelpText = 'Ce document n est pas lie a un holon. Les portees cercle et role ne sont pas disponibles.';
+    $visibilityHelpText = $organizationId > 0
+        ? 'Ce document n est pas lie a un holon. Les portees cercle et role ne sont pas disponibles.'
+        : 'Ce document est hors contexte. Les portees d organisation, cercle et role ne sont pas disponibles.';
 } else {
     $contextHolon = new Holon();
     if ($contextHolon->load($contextHolonId)) {
@@ -129,6 +134,10 @@ if ($isEditing) {
     }
     $visibilityRule = $document->getPrimaryVisibilityRuleRow();
     $selectedVisibilityType = ObjectVisibility::normalizeVisibilityType($visibilityRule['visibility_type'] ?? ObjectVisibility::TYPE_ORGANIZATION);
+
+    if ($organizationId <= 0) {
+        $selectedVisibilityType = ObjectVisibility::TYPE_ORGANIZATION;
+    }
 }
 
 if (!empty($disabledVisibilityTypes[$selectedVisibilityType])) {

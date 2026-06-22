@@ -90,12 +90,11 @@ foreach ($documents as $document) {
         'groupLabel' => (string)($group['label'] ?? 'Trop loin'),
         'sortTitle' => memoApiSortKey($document->get('title')),
         'detailUrl' => '/memo/api/documents/detail.php?id=' . (int)$document->getId(),
-        'canEdit' => $organizationId > 0 && $document->canEditInOrganizationContext($organizationId),
-        'editUrl' => $organizationId > 0
-            ? '/omo/api/documents/create.php?oid=' . $organizationId
-                . ($holonId > 0 ? '&cid=' . $holonId : '')
-                . '&id=' . (int)$document->getId()
-            : '',
+        'canEdit' => $document->canEditInOrganizationContext($organizationId),
+        'editUrl' => '/omo/api/documents/create.php'
+            . '?id=' . (int)$document->getId()
+            . ($organizationId > 0 ? '&oid=' . $organizationId : '')
+            . ($holonId > 0 ? '&cid=' . $holonId : ''),
     );
 }
 
