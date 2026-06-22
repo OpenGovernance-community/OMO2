@@ -47,6 +47,8 @@ foreach ($documents as $document) {
         continue;
     }
 
+    $organizationId = (int)$document->get('IDorganization');
+    $holonId = (int)$document->get('IDholon');
     $documentActivityVisited = array();
     $createdAt = $document->get('datecreation');
     $updatedAt = $document->getActivityDate($documentActivityVisited);
@@ -88,6 +90,12 @@ foreach ($documents as $document) {
         'groupLabel' => (string)($group['label'] ?? 'Trop loin'),
         'sortTitle' => memoApiSortKey($document->get('title')),
         'detailUrl' => '/memo/api/documents/detail.php?id=' . (int)$document->getId(),
+        'canEdit' => $organizationId > 0 && $document->canEditInOrganizationContext($organizationId),
+        'editUrl' => $organizationId > 0
+            ? '/omo/api/documents/create.php?oid=' . $organizationId
+                . ($holonId > 0 ? '&cid=' . $holonId : '')
+                . '&id=' . (int)$document->getId()
+            : '',
     );
 }
 
@@ -189,6 +197,20 @@ if (!is_string($documentsPayload)) {
         </div>
     </div>
 
+    <div class="omo-overlay-drawer memo-documents__editor-drawer" data-memo-document-editor-drawer hidden>
+        <div class="omo-overlay-drawer__backdrop" data-memo-document-editor-close></div>
+        <div class="omo-overlay-drawer__panel">
+            <div class="omo-overlay-drawer__header">
+                <div class="omo-overlay-drawer__header-copy">
+                    <h3 class="omo-overlay-drawer__title" data-memo-document-editor-title>Editer le document</h3>
+                    <p class="omo-overlay-drawer__description" data-memo-document-editor-description>Modification du document dans EasyMEMO.</p>
+                </div>
+                <button type="button" class="omo-overlay-drawer__close" data-memo-document-editor-close>Fermer</button>
+            </div>
+            <div class="omo-overlay-drawer__body" data-memo-document-editor-body></div>
+        </div>
+    </div>
+
     <script type="application/json" data-memo-documents-data><?= $documentsPayload ?></script>
 </div>
 
@@ -206,7 +228,13 @@ if (!is_string($documentsPayload)) {
     const drawer = root.querySelector('[data-memo-document-drawer]');
     const drawerBody = root.querySelector('[data-memo-document-drawer-body]');
     const drawerTitle = root.querySelector('[data-memo-document-drawer-title]');
-    const closeButtons = root.querySelectorAll('[data-memo-document-drawer-close]');
+    const detailCloseButtons = root.querySelectorAll('[data-memo-document-drawer-close]');
+    const editorDrawer = root.querySelector('[data-memo-document-editor-drawer]');
+    const editorDrawerBody = root.querySelector('[data-memo-document-editor-body]');
+    const editorDrawerTitle = root.querySelector('[data-memo-document-editor-title]');
+    const editorDrawerDescription = root.querySelector('[data-memo-document-editor-description]');
+    const editorCloseButtons = root.querySelectorAll('[data-memo-document-editor-close]');
+    const ownerDocument = root.ownerDocument || document;
     const preferencesStorageKey = 'memoDocumentsDisplayPreferences';
     const fileIconUrl = '/omo/assets/images/documents/file.png';
     const folderIconUrl = '/omo/assets/images/documents/folder.png';
@@ -287,6 +315,14 @@ if (!is_string($documentsPayload)) {
     const state = readPreferences();
     const childrenByParentId = new Map();
     let detailRequestToken = 0;
+    const floatingMenu = ownerDocument.createElement('div');
+    let activeDocumentMenuToggle = null;
+
+    floatingMenu.className = 'omo-documents__menu-panel omo-documents__menu-panel--floating';
+    floatingMenu.setAttribute('data-memo-document-floating-menu', '1');
+    floatingMenu.setAttribute('role', 'menu');
+    floatingMenu.hidden = true;
+    ownerDocument.body.appendChild(floatingMenu);
 
     const collator = typeof Intl !== 'undefined' && typeof Intl.Collator === 'function'
         ? new Intl.Collator('fr', { sensitivity: 'base', numeric: true })
@@ -559,6 +595,26 @@ if (!is_string($documentsPayload)) {
         appendDocumentCardContent(card, documentItem);
         shell.appendChild(card);
 
+        if (documentItem && documentItem.canEdit && documentItem.editUrl) {
+            const menu = document.createElement('div');
+            menu.className = 'omo-documents__menu';
+            menu.setAttribute('data-memo-document-menu', '1');
+
+            const toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'omo-documents__menu-toggle';
+            toggle.textContent = '...';
+            toggle.setAttribute('data-memo-document-menu-toggle', '1');
+            toggle.setAttribute('data-memo-document-menu-document-id', String(documentItem.id || '0'));
+            toggle.setAttribute('data-memo-document-menu-title', String(documentItem.title || ''));
+            toggle.setAttribute('data-memo-document-menu-edit-url', String(documentItem.editUrl || ''));
+            toggle.setAttribute('aria-haspopup', 'menu');
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.setAttribute('aria-label', 'Actions pour ' + String(documentItem.title || 'ce document'));
+            menu.appendChild(toggle);
+            shell.appendChild(menu);
+        }
+
         if (Array.isArray(documentItem.children) && documentItem.children.length > 0) {
             shell.appendChild(renderTree(documentItem.children, 1));
         }
@@ -724,12 +780,197 @@ if (!is_string($documentsPayload)) {
         drawerBody.innerHTML = '<div class="loading"><div class="omo-empty-state">Chargement...</div></div>';
     };
 
+    const executeFetchedScripts = function (container) {
+        if (!container) {
+            return;
+        }
+
+        Array.from(container.querySelectorAll('script')).forEach(function (script) {
+            const executableScript = ownerDocument.createElement('script');
+            Array.from(script.attributes).forEach(function (attribute) {
+                executableScript.setAttribute(attribute.name, attribute.value);
+            });
+            executableScript.text = script.textContent || '';
+            ownerDocument.body.appendChild(executableScript);
+            ownerDocument.body.removeChild(executableScript);
+        });
+    };
+
     const renderDetailError = function () {
         if (!drawerBody) {
             return;
         }
 
         drawerBody.innerHTML = '<div class="loading"><div class="omo-empty-state">Impossible de charger ce document.</div></div>';
+    };
+
+    const closeEditorDrawer = function () {
+        if (!editorDrawer) {
+            return;
+        }
+
+        window.dispatchEvent(new CustomEvent('omo-document-editor-drawer-close'));
+        editorDrawer.classList.remove('is-open');
+
+        window.setTimeout(function () {
+            if (!editorDrawer.classList.contains('is-open')) {
+                editorDrawer.hidden = true;
+                if (editorDrawerBody) {
+                    editorDrawerBody.innerHTML = '';
+                }
+            }
+        }, 200);
+    };
+
+    const openEditorDrawer = function (url, title, description) {
+        const targetUrl = String(url || '').trim();
+
+        if (!editorDrawer || !editorDrawerBody || targetUrl === '') {
+            return;
+        }
+
+        if (editorDrawerTitle) {
+            editorDrawerTitle.textContent = String(title || 'Editer le document').trim() || 'Editer le document';
+        }
+
+        if (editorDrawerDescription) {
+            editorDrawerDescription.textContent = String(description || 'Modification du document dans EasyMEMO.').trim()
+                || 'Modification du document dans EasyMEMO.';
+        }
+
+        editorDrawerBody.innerHTML = window.getSkeleton
+            ? getSkeleton('panel')
+            : '<div class="loading">Chargement...</div>';
+
+        editorDrawer.hidden = false;
+        requestAnimationFrame(function () {
+            editorDrawer.classList.add('is-open');
+        });
+
+        fetch(targetUrl, {
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            cache: 'no-store'
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('document_editor_load_failed');
+                }
+
+                return response.text();
+            })
+            .then(function (html) {
+                const temp = document.createElement('div');
+                temp.innerHTML = html;
+                editorDrawerBody.innerHTML = html;
+                executeFetchedScripts(temp);
+            })
+            .catch(function () {
+                editorDrawerBody.innerHTML = '<div class="omo-empty-state">Impossible de charger l editeur du document.</div>';
+            });
+    };
+
+    const buildDocumentMenuItem = function (label, attributes) {
+        const button = ownerDocument.createElement('button');
+        button.type = 'button';
+        button.className = 'omo-documents__menu-item';
+        button.setAttribute('role', 'menuitem');
+        button.textContent = label;
+
+        Object.keys(attributes || {}).forEach(function (attributeName) {
+            button.setAttribute(attributeName, String(attributes[attributeName] || ''));
+        });
+
+        return button;
+    };
+
+    const closeDocumentMenus = function () {
+        root.querySelectorAll('[data-memo-document-menu="1"]').forEach(function (menu) {
+            menu.classList.remove('is-open');
+        });
+
+        root.querySelectorAll('[data-memo-document-menu-toggle="1"]').forEach(function (toggle) {
+            toggle.setAttribute('aria-expanded', 'false');
+        });
+
+        activeDocumentMenuToggle = null;
+        floatingMenu.hidden = true;
+        floatingMenu.style.visibility = '';
+        floatingMenu.replaceChildren();
+    };
+
+    const populateDocumentMenu = function (toggle) {
+        const editUrl = String(toggle && toggle.getAttribute('data-memo-document-menu-edit-url') || '').trim();
+        const documentTitle = String(toggle && toggle.getAttribute('data-memo-document-menu-title') || '').trim();
+        const fragment = ownerDocument.createDocumentFragment();
+
+        if (editUrl !== '') {
+            fragment.appendChild(buildDocumentMenuItem('Editer', {
+                'data-memo-document-edit': '1',
+                'data-memo-document-edit-url': editUrl,
+                'data-memo-document-edit-title': documentTitle
+            }));
+        }
+
+        floatingMenu.replaceChildren(fragment);
+    };
+
+    const positionDocumentMenu = function (toggle) {
+        if (!toggle || !toggle.isConnected) {
+            closeDocumentMenus();
+            return;
+        }
+
+        floatingMenu.hidden = false;
+        floatingMenu.style.visibility = 'hidden';
+        floatingMenu.style.top = '0px';
+        floatingMenu.style.left = '0px';
+
+        const toggleRect = toggle.getBoundingClientRect();
+        const menuRect = floatingMenu.getBoundingClientRect();
+        const viewportPadding = 12;
+        const gap = 8;
+        let top = toggleRect.bottom + gap;
+        let left = toggleRect.right - menuRect.width;
+
+        if (top + menuRect.height > window.innerHeight - viewportPadding) {
+            top = Math.max(viewportPadding, toggleRect.top - menuRect.height - gap);
+        }
+
+        if (left + menuRect.width > window.innerWidth - viewportPadding) {
+            left = Math.max(viewportPadding, window.innerWidth - menuRect.width - viewportPadding);
+        }
+
+        if (left < viewportPadding) {
+            left = viewportPadding;
+        }
+
+        floatingMenu.style.top = String(Math.round(top)) + 'px';
+        floatingMenu.style.left = String(Math.round(left)) + 'px';
+        floatingMenu.style.visibility = '';
+    };
+
+    const openDocumentMenu = function (toggle) {
+        const parentMenu = toggle ? toggle.closest('[data-memo-document-menu="1"]') : null;
+        const shouldOpen = !!toggle && (!activeDocumentMenuToggle || activeDocumentMenuToggle !== toggle || floatingMenu.hidden);
+
+        closeDocumentMenus();
+
+        if (!toggle || !parentMenu || !shouldOpen) {
+            return;
+        }
+
+        populateDocumentMenu(toggle);
+        if (!floatingMenu.childElementCount) {
+            return;
+        }
+
+        activeDocumentMenuToggle = toggle;
+        parentMenu.classList.add('is-open');
+        toggle.setAttribute('aria-expanded', 'true');
+        positionDocumentMenu(toggle);
     };
 
     const openDocumentDetail = function (documentItem, updateHistory) {
@@ -805,10 +1046,25 @@ if (!is_string($documentsPayload)) {
     });
 
     root.addEventListener('click', function (event) {
-        const closeTrigger = event.target.closest('[data-memo-document-drawer-close]');
-        if (closeTrigger) {
+        const menuToggle = event.target.closest('[data-memo-document-menu-toggle="1"]');
+        if (menuToggle) {
+            event.preventDefault();
+            event.stopPropagation();
+            openDocumentMenu(menuToggle);
+            return;
+        }
+
+        const detailCloseTrigger = event.target.closest('[data-memo-document-drawer-close]');
+        if (detailCloseTrigger) {
             event.preventDefault();
             closeDrawer();
+            return;
+        }
+
+        const editorCloseTrigger = event.target.closest('[data-memo-document-editor-close]');
+        if (editorCloseTrigger) {
+            event.preventDefault();
+            closeEditorDrawer();
             return;
         }
 
@@ -846,17 +1102,86 @@ if (!is_string($documentsPayload)) {
         }
     });
 
-    closeButtons.forEach(function (button) {
+    ownerDocument.addEventListener('click', function (event) {
+        const menuToggle = event.target.closest('[data-memo-document-menu-toggle="1"]');
+        if (menuToggle) {
+            return;
+        }
+
+        const editButton = event.target.closest('[data-memo-document-edit="1"]');
+        if (editButton && floatingMenu.contains(editButton)) {
+            event.preventDefault();
+            event.stopPropagation();
+            closeDocumentMenus();
+            openEditorDrawer(
+                String(editButton.getAttribute('data-memo-document-edit-url') || '').trim(),
+                'Editer le document',
+                'Modification du document dans EasyMEMO.'
+            );
+            return;
+        }
+
+        if (!event.target.closest('[data-memo-document-floating-menu="1"]')) {
+            closeDocumentMenus();
+        }
+    });
+
+    detailCloseButtons.forEach(function (button) {
         button.addEventListener('click', function () {
             closeDrawer();
         });
     });
 
+    editorCloseButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            closeEditorDrawer();
+        });
+    });
+
     document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && !floatingMenu.hidden) {
+            closeDocumentMenus();
+            return;
+        }
+
+        if (event.key === 'Escape' && editorDrawer && !editorDrawer.hidden) {
+            closeEditorDrawer();
+            return;
+        }
+
         if (event.key === 'Escape' && drawer && !drawer.hidden) {
             closeDrawer();
         }
     });
+
+    ownerDocument.addEventListener('scroll', function () {
+        if (!activeDocumentMenuToggle || floatingMenu.hidden) {
+            return;
+        }
+
+        positionDocumentMenu(activeDocumentMenuToggle);
+    }, true);
+
+    window.addEventListener('resize', function () {
+        if (!activeDocumentMenuToggle || floatingMenu.hidden) {
+            return;
+        }
+
+        positionDocumentMenu(activeDocumentMenuToggle);
+    });
+
+    window.omoOpenDocumentEditorDrawer = function (url, title, description) {
+        openEditorDrawer(url, title, description);
+    };
+
+    window.omoCloseDocumentEditorDrawer = function () {
+        closeEditorDrawer();
+    };
+
+    window.omoRefreshDocumentsPanel = function () {
+        window.location.reload();
+        return Promise.resolve(null);
+    };
 
     render();
 
@@ -937,6 +1262,7 @@ if (!is_string($documentsPayload)) {
 }
 
 .memo-documents__item-shell {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -955,6 +1281,15 @@ if (!is_string($documentsPayload)) {
 
 .memo-documents__item {
     padding: 18px 20px;
+}
+
+.memo-documents__editor-drawer .omo-overlay-drawer__body {
+    padding: 0;
+}
+
+.memo-documents__detail-drawer,
+.memo-documents__editor-drawer {
+    z-index: 6000;
 }
 
 .memo-documents__item-frame {
@@ -1028,6 +1363,63 @@ if (!is_string($documentsPayload)) {
     box-shadow: 0 18px 34px rgba(15, 23, 42, 0.08);
 }
 
+.omo-documents__menu {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 2;
+}
+
+.omo-documents__menu-toggle {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--color-surface) 92%, white);
+    color: var(--color-text);
+    cursor: pointer;
+}
+
+.omo-documents__menu.is-open .omo-documents__menu-toggle {
+    border-color: color-mix(in srgb, var(--color-primary) 36%, var(--color-border));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.omo-documents__menu-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    min-width: 140px;
+    max-width: calc(100vw - 24px);
+    padding: 6px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-surface);
+    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
+    z-index: 5000;
+}
+
+.omo-documents__menu-panel--floating[hidden] {
+    display: none;
+}
+
+.omo-documents__menu-item {
+    display: block;
+    width: 100%;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text);
+    text-align: left;
+    cursor: pointer;
+}
+
+.omo-documents__menu-item:hover {
+    background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+}
+
 .memo-documents__list--compact {
     gap: 0;
 }
@@ -1080,6 +1472,12 @@ if (!is_string($documentsPayload)) {
 
 .memo-documents--compact .memo-documents__item {
     padding: 14px 18px;
+}
+
+.memo-documents__item-shell--compact .omo-documents__menu {
+    top: 50%;
+    right: 14px;
+    transform: translateY(-50%);
 }
 
 .memo-documents__empty {
