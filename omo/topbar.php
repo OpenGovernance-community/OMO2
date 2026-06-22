@@ -178,6 +178,22 @@ function omoGetTopbarSourceLang(): array
             'text' => 'Systeme',
             'context' => 'System theme option label shown in the OMO topbar profile panel.',
         ],
+        'topbar.profile.preferences.color_style_label' => [
+            'text' => 'Couleur',
+            'context' => 'Label of the compact color style selector shown in the OMO topbar profile panel.',
+        ],
+        'topbar.profile.preferences.color_style_default' => [
+            'text' => 'Noir et blanc',
+            'context' => 'Default monochrome color style option label shown in the OMO topbar profile panel.',
+        ],
+        'topbar.profile.preferences.color_style_turquoise' => [
+            'text' => 'Turquoise',
+            'context' => 'Turquoise color style option label shown in the OMO topbar profile panel.',
+        ],
+        'topbar.profile.preferences.color_style_ocean_blue' => [
+            'text' => 'Ocean Blue',
+            'context' => 'Ocean Blue color style option label shown in the OMO topbar profile panel.',
+        ],
         'topbar.profile.summary_fallback' => [
             'text' => 'Resume du profil',
             'context' => 'Fallback summary text shown below the profile name in the OMO topbar when no email is available.',
@@ -355,6 +371,10 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
                 'languageLabel' => omoTopbarTranslate('topbar.profile.preferences.language_label'),
                 'systemLabel' => omoTopbarTranslate('topbar.profile.preferences.language_system'),
                 'themeLabel' => omoTopbarTranslate('topbar.profile.preferences.theme_label'),
+                'colorStyleLabel' => omoTopbarTranslate('topbar.profile.preferences.color_style_label'),
+                'colorStyleDefaultLabel' => omoTopbarTranslate('topbar.profile.preferences.color_style_default'),
+                'colorStyleTurquoiseLabel' => omoTopbarTranslate('topbar.profile.preferences.color_style_turquoise'),
+                'colorStyleOceanBlueLabel' => omoTopbarTranslate('topbar.profile.preferences.color_style_ocean_blue'),
                 'currentLocale' => translationBundleGetRequestLocalePreference('lang'),
                 'resolvedLocale' => omoGetTranslationLocale(),
                 'themeSystemLabel' => omoTopbarTranslate('topbar.profile.preferences.theme_system'),

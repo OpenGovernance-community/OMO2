@@ -15,7 +15,7 @@ services:
       - "443:443"
     volumes:
       - ./:/var/www/html
-      - ./docker/app/.env:/var/www/html/.env:ro
+      - ./docker/app/.env:/var/www/html/.env
 
   db:
     image: mariadb:11.4

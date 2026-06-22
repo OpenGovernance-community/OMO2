@@ -3,6 +3,7 @@
 require_once("../config.php");
 require_once("../shared_functions.php");
 require_once("../common/auth.php");
+require_once("../common/patreon.php");
 
 header('Content-Type: application/json; charset=UTF-8');
 
@@ -43,10 +44,17 @@ if ($isEditMode) {
     }
 }
 
+$canManageOrganizationRouting = patreonCanManageOrganizationRouting($currentUserId);
+if (!$canManageOrganizationRouting) {
+    unset($_POST['shortname'], $_POST['domain']);
+}
+
 $organization->loadFromArray($_POST);
 if ($isEditMode) {
     $organization->set("id", $organizationId);
 }
+
+$organization->updateNextcloudDocumentsConfig($_POST, $isEditMode);
 
 $name = trim((string)$organization->get("name"));
 if ($name === "") {

@@ -94,9 +94,9 @@ INSERT INTO `application` (`id`, `label`, `hash`, `directory`, `icon`, `drawer`,
 (5, 'Indicateurs', 'stats', 'stats', 'images/tools/stats.png', 'drawer_stats', 'api/stats/index.php', 'drawer', 50, 0, 1),
 (6, 'Documents', 'documents', 'documents', 'images/tools/documents-folder.png', 'drawer_documents', 'api/documents/index.php', 'drawer', 60, 1, 1),
 (7, 'Team', 'team', 'team', 'images/tools/team.png', 'drawer_team', 'api/team/index.php', 'drawer', 8, 1, 1),
-(8, 'Calendrier', 'calendar', 'calendar', 'images/tools/calendar.png', 'drawer_calendar', 'api/calendar/index.php', 'drawer', 9, 1, 1);
+(8, 'Calendrier', 'calendar', 'calendar', 'images/tools/calendar.png', 'drawer_calendar', 'api/calendar/index.php', 'drawer', 9, 1, 1),
+(9, 'Decisions', 'decision', 'decision', 'images/tools/decision.png', 'drawer_decisions', 'api/decision/index.php', 'drawer', 65, 1, 1);
 
--- --------------------------------------------------------
 
 --
 -- Structure de la table `document`
@@ -156,6 +156,12 @@ CREATE TABLE `faq` (
   `displayorder` int(11) DEFAULT 0,
   `isactive` tinyint(1) DEFAULT 1,
   `viewcount` int(11) DEFAULT 0,
+  `positive_score` float NOT NULL DEFAULT 0,
+  `negative_score` float NOT NULL DEFAULT 0,
+  `total_votes` int(11) NOT NULL DEFAULT 0,
+  `reliability` float NOT NULL DEFAULT 0,
+  `reliability_updated_at` datetime DEFAULT NULL,
+  `score_decayed_at` datetime DEFAULT NULL,
   `created` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -613,16 +619,18 @@ CREATE TABLE `organization` (
   `domain` varchar(100) DEFAULT NULL,
   `logo` varchar(100) DEFAULT NULL,
   `banner` varchar(100) DEFAULT NULL,
-  `color` varchar(10) DEFAULT NULL
+  `color` varchar(10) DEFAULT NULL,
+  `latlong` varchar(100) DEFAULT NULL,
+  `parameters` mediumtext DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Déchargement des données de la table `organization`
 --
 
-INSERT INTO `organization` (`id`, `name`, `shortname`, `domain`, `logo`, `banner`, `color`) VALUES
-(1, 'Org1', 'org1', 'org1.opengov.tools', '/img/org1-logo.svg', '/img/org1-banner.svg', '#0F766E'),
-(2, 'Org2', 'org2', 'org2.opengov.tools', '/img/org2-logo.svg', '/img/org2-banner.svg', '#1D4ED8');
+INSERT INTO `organization` (`id`, `name`, `shortname`, `domain`, `logo`, `banner`, `color`, `latlong`, `parameters`) VALUES
+(1, 'Org1', 'org1', 'org1.opengov.tools', '/img/org1-logo.svg', '/img/org1-banner.svg', '#0F766E', '46.204391;6.143158', NULL),
+(2, 'Org2', 'org2', 'org2.opengov.tools', '/img/org2-logo.svg', '/img/org2-banner.svg', '#1D4ED8', '46.519653;6.632273', NULL);
 
 -- --------------------------------------------------------
 
@@ -656,7 +664,9 @@ INSERT INTO `organization_application` (`id`, `IDorganization`, `IDapplication`,
 (11, 1, 6, 60, 1),
 (12, 2, 6, 60, 1),
 (16, 1, 7, 8, 1),
-(17, 1, 8, 9, 1);
+(17, 1, 8, 9, 1),
+(18, 1, 9, 65, 1),
+(19, 2, 9, 65, 1);
 
 -- --------------------------------------------------------
 
@@ -669,7 +679,8 @@ CREATE TABLE `organization_parcours` (
   `IDorganization` int(11) NOT NULL,
   `IDparcours` int(11) NOT NULL,
   `position` int(11) DEFAULT NULL,
-  `everybody` tinyint(1) NOT NULL DEFAULT 1
+  `everybody` tinyint(1) NOT NULL DEFAULT 1,
+  `anonymous` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -937,8 +948,12 @@ CREATE TABLE `user` (
   `id` int(11) NOT NULL,
   `email` varchar(150) DEFAULT NULL,
   `lastname` varchar(150) DEFAULT NULL,
+  `presentation` text DEFAULT NULL,
+  `latlong` varchar(100) DEFAULT NULL,
+  `birthdate` date DEFAULT NULL,
   `firstname` varchar(150) DEFAULT NULL,
   `username` varchar(100) DEFAULT NULL,
+  `image` varchar(100) DEFAULT NULL,
   `password` varchar(80) DEFAULT NULL,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
   `dateconnexion` datetime DEFAULT NULL,
@@ -1210,7 +1225,9 @@ ALTER TABLE `document`
 -- Index pour la table `faq`
 --
 ALTER TABLE `faq`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_faq_reliability` (`reliability`),
+  ADD KEY `idx_faq_reliability_updated_at` (`reliability_updated_at`);
 
 --
 -- Index pour la table `faq_choice`
@@ -1323,13 +1340,6 @@ ALTER TABLE `qr`
 ALTER TABLE `tips`
   ADD PRIMARY KEY (`id`);
 
---
--- Index pour la table `translation`
---
-ALTER TABLE `translation`
-  ADD PRIMARY KEY (`id`);
-
---
 -- Index pour la table `typeholon`
 --
 ALTER TABLE `typeholon`
@@ -1545,13 +1555,6 @@ ALTER TABLE `qr`
 ALTER TABLE `tips`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT pour la table `translation`
---
-ALTER TABLE `translation`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
 -- AUTO_INCREMENT pour la table `typeholon`
 --
 ALTER TABLE `typeholon`
@@ -1790,6 +1793,166 @@ ALTER TABLE `media`
 ALTER TABLE `alttext`
   ADD KEY `idx_alttext_document` (`IDdocument`),
   ADD CONSTRAINT `fk_alttext_document` FOREIGN KEY (`IDdocument`) REFERENCES `document` (`id`) ON DELETE CASCADE;
+
+CREATE TABLE IF NOT EXISTS `decision_process` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDorganization` int(11) DEFAULT NULL,
+  `IDholon` int(11) DEFAULT NULL,
+  `IDuser` int(11) DEFAULT NULL,
+  `title` varchar(190) NOT NULL,
+  `description` mediumtext DEFAULT NULL,
+  `decision_type` varchar(20) NOT NULL DEFAULT 'decision',
+  `status` varchar(20) NOT NULL DEFAULT 'draft',
+  `evaluation_method` varchar(40) NOT NULL DEFAULT 'simple_vote',
+  `parameters` mediumtext DEFAULT NULL,
+  `consultation_start_at` datetime DEFAULT NULL,
+  `consultation_end_at` datetime DEFAULT NULL,
+  `evaluation_start_at` datetime DEFAULT NULL,
+  `evaluation_end_at` datetime DEFAULT NULL,
+  `results_published_at` datetime DEFAULT NULL,
+  `archived_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_decision_process_org` (`IDorganization`),
+  KEY `idx_decision_process_holon` (`IDholon`),
+  KEY `idx_decision_process_status` (`status`),
+  KEY `idx_decision_process_method` (`evaluation_method`),
+  KEY `idx_decision_process_type` (`decision_type`),
+  CONSTRAINT `fk_decision_process_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_decision_process_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `decision_group` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDdecision_process` int(11) NOT NULL,
+  `decision_type` varchar(20) NOT NULL DEFAULT 'decision',
+  `evaluation_method` varchar(40) NOT NULL DEFAULT 'simple_vote',
+  `title` varchar(190) NOT NULL,
+  `description` mediumtext DEFAULT NULL,
+  `parameters` mediumtext DEFAULT NULL,
+  `position` int(11) NOT NULL DEFAULT 1,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_decision_group_process` (`IDdecision_process`),
+  KEY `idx_decision_group_position` (`IDdecision_process`, `position`),
+  KEY `idx_decision_group_active` (`active`),
+  KEY `idx_decision_group_type` (`decision_type`),
+  KEY `idx_decision_group_method` (`evaluation_method`),
+  CONSTRAINT `fk_decision_group_process` FOREIGN KEY (`IDdecision_process`) REFERENCES `decision_process` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `decision_proposal` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDdecision_process` int(11) NOT NULL,
+  `IDdecision_group` int(11) NOT NULL,
+  `title` varchar(190) NOT NULL,
+  `description` mediumtext DEFAULT NULL,
+  `info_url` varchar(500) DEFAULT NULL,
+  `position` int(11) NOT NULL DEFAULT 0,
+  `parameters` mediumtext DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_decision_proposal_process` (`IDdecision_process`),
+  KEY `idx_decision_proposal_group` (`IDdecision_group`),
+  KEY `idx_decision_proposal_position` (`IDdecision_process`, `position`),
+  KEY `idx_decision_proposal_group_position` (`IDdecision_group`, `position`),
+  KEY `idx_decision_proposal_active` (`active`),
+  CONSTRAINT `fk_decision_proposal_process` FOREIGN KEY (`IDdecision_process`) REFERENCES `decision_process` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_decision_proposal_group` FOREIGN KEY (`IDdecision_group`) REFERENCES `decision_group` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `decision_participant` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDdecision_process` int(11) NOT NULL,
+  `IDuser` int(11) DEFAULT NULL,
+  `email` varchar(250) DEFAULT NULL,
+  `display_name` varchar(190) DEFAULT NULL,
+  `role` varchar(30) NOT NULL DEFAULT 'participant',
+  `status` varchar(30) NOT NULL DEFAULT 'invited',
+  `access_token` varchar(64) DEFAULT NULL,
+  `parameters` mediumtext DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `invitation_sent_at` datetime DEFAULT NULL,
+  `invitation_opened_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_decision_participant_user` (`IDdecision_process`, `IDuser`),
+  UNIQUE KEY `uniq_decision_participant_email` (`IDdecision_process`, `email`),
+  UNIQUE KEY `uniq_decision_participant_access_token` (`access_token`),
+  KEY `idx_decision_participant_status` (`status`),
+  KEY `idx_decision_participant_role` (`role`),
+  KEY `idx_decision_participant_active` (`active`),
+  CONSTRAINT `fk_decision_participant_process` FOREIGN KEY (`IDdecision_process`) REFERENCES `decision_process` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `decision_invitation` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDdecision_process` int(11) NOT NULL,
+  `IDholon` int(11) DEFAULT NULL,
+  `IDuser` int(11) DEFAULT NULL,
+  `email` varchar(250) DEFAULT NULL,
+  `display_name` varchar(190) DEFAULT NULL,
+  `invitation_type` varchar(30) NOT NULL DEFAULT 'email',
+  `status` varchar(30) NOT NULL DEFAULT 'invited',
+  `parameters` mediumtext DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_decision_invitation_holon` (`IDdecision_process`,`IDholon`),
+  UNIQUE KEY `uniq_decision_invitation_user` (`IDdecision_process`,`IDuser`),
+  UNIQUE KEY `uniq_decision_invitation_email` (`IDdecision_process`,`email`),
+  KEY `idx_decision_invitation_type` (`invitation_type`),
+  KEY `idx_decision_invitation_status` (`status`),
+  KEY `idx_decision_invitation_active` (`active`),
+  CONSTRAINT `fk_decision_invitation_process` FOREIGN KEY (`IDdecision_process`) REFERENCES `decision_process` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_decision_invitation_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_decision_invitation_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `decision_response` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDdecision_process` int(11) NOT NULL,
+  `IDdecision_group` int(11) NOT NULL,
+  `IDdecision_participant` int(11) NOT NULL,
+  `status` varchar(30) NOT NULL DEFAULT 'draft',
+  `parameters` mediumtext DEFAULT NULL,
+  `submitted_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_decision_response_group_participant` (`IDdecision_group`, `IDdecision_participant`),
+  KEY `idx_decision_response_group` (`IDdecision_group`),
+  KEY `idx_decision_response_status` (`status`),
+  CONSTRAINT `fk_decision_response_process` FOREIGN KEY (`IDdecision_process`) REFERENCES `decision_process` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_decision_response_group` FOREIGN KEY (`IDdecision_group`) REFERENCES `decision_group` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_decision_response_participant` FOREIGN KEY (`IDdecision_participant`) REFERENCES `decision_participant` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `decision_result` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDdecision_process` int(11) NOT NULL,
+  `IDdecision_group` int(11) NOT NULL,
+  `status` varchar(30) NOT NULL DEFAULT 'pending',
+  `summary` mediumtext DEFAULT NULL,
+  `parameters` mediumtext DEFAULT NULL,
+  `computed_at` datetime DEFAULT NULL,
+  `published_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_decision_result_group` (`IDdecision_group`),
+  KEY `idx_decision_result_group` (`IDdecision_group`),
+  KEY `idx_decision_result_status` (`status`),
+  CONSTRAINT `fk_decision_result_process` FOREIGN KEY (`IDdecision_process`) REFERENCES `decision_process` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_decision_result_group` FOREIGN KEY (`IDdecision_group`) REFERENCES `decision_group` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 COMMIT;
 

@@ -2,6 +2,7 @@
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__, 3) . '/common/leaflet_helper.php';
 
+use dbObject\ArrayUserOrganization;
 use dbObject\Holon;
 use dbObject\Organization;
 use dbObject\User;
@@ -105,24 +106,11 @@ if (
     exit;
 }
 
-$currentHolon = $organization->getStructuralRootHolon();
-if ($currentHolon === null) {
-    http_response_code(404);
-    ?>
-    <div class="omo-team omo-panel-view">
-        <div class="omo-panel-view__body">
-            <div class="omo-panel-view__body_content">
-                <div class="omo-team__empty omo-empty-state">Aucun holon racine n'a été trouvé pour cette organisation.</div>
-            </div>
-        </div>
-    </div>
-    <?php
-    exit;
-}
+$rootHolon = $organization->getEnabledStructuralRootHolon();
+$hasStructureContext = $rootHolon instanceof Holon;
+$currentHolon = $rootHolon;
 
-$rootHolon = $currentHolon;
-
-if ($currentHolonId > 0 && (int)$currentHolon->getId() !== $currentHolonId) {
+if ($hasStructureContext && $currentHolonId > 0 && (int)$currentHolon->getId() !== $currentHolonId) {
     $candidate = new Holon();
     if (!$candidate->load($currentHolonId) || !$candidate->isDescendantOf($currentHolon->getId())) {
         http_response_code(404);
@@ -157,15 +145,44 @@ if ($currentHolonId > 0 && (int)$currentHolon->getId() !== $currentHolonId) {
     $currentHolon = $candidate;
 }
 
-$rawMemberCards = $currentHolon->getAssociatedMemberCards(array(
-    'organizationId' => $organizationId,
-));
+$rawMemberCards = array();
+$contextAdminUserIds = array();
+$isOrganizationContext = true;
+
+if ($hasStructureContext) {
+    $rawMemberCards = $currentHolon->getAssociatedMemberCards(array(
+        'organizationId' => $organizationId,
+    ));
+    $contextAdminUserIds = array_fill_keys($currentHolon->getDirectContextAdminUserIds($organizationId), true);
+    $isOrganizationContext = (int)$currentHolon->getId() === (int)$rootHolon->getId();
+} else {
+    $memberships = new ArrayUserOrganization();
+    $memberships->loadVisibleForOrganization($organizationId);
+
+    foreach ($memberships as $membership) {
+        if (!$membership instanceof UserOrganization) {
+            continue;
+        }
+
+        $userId = (int)$membership->get('IDuser');
+        if ($userId <= 0) {
+            continue;
+        }
+
+        if ($membership->isOrganizationAdmin() && (bool)$membership->get('active')) {
+            $contextAdminUserIds[$userId] = true;
+        }
+
+        $rawMemberCards[] = array(
+            'userId' => $userId,
+            'isPending' => !(bool)$membership->get('active'),
+        );
+    }
+}
 
 $memberCards = [];
 $adminCount = 0;
 $connectedCount = 0;
-$contextAdminUserIds = array_fill_keys($currentHolon->getDirectContextAdminUserIds($organizationId), true);
-$isOrganizationContext = (int)$currentHolon->getId() === (int)$rootHolon->getId();
 
 $formatter = class_exists('IntlDateFormatter')
     ? new IntlDateFormatter('fr_CH', IntlDateFormatter::MEDIUM, IntlDateFormatter::NONE)
@@ -223,7 +240,9 @@ foreach ($rawMemberCards as $rawCard) {
 
     $isPending = !empty($rawCard['isPending']) || ($hasMembership && !(bool)$membership->get('active'));
     $isOrganizationAdmin = $hasMembership ? $membership->isOrganizationAdmin() : false;
-    $isContextAdmin = isset($contextAdminUserIds[$userId]);
+    $isContextAdmin = $hasStructureContext
+        ? isset($contextAdminUserIds[$userId])
+        : $isOrganizationAdmin;
     $organizationLastSeen = $hasMembership ? $membership->get('dateconnexion') : null;
     $organizationJoinedAt = $hasMembership ? $membership->get('datecreation') : null;
     $globalLastSeen = $hasMembership
@@ -318,14 +337,18 @@ usort($memberCards, static function (array $left, array $right): int {
     );
 });
 
-$currentHolonTypeLabel = omoTeamHolonTypeLabel($currentHolon);
-$currentHolonName = trim((string)$currentHolon->getDisplayName());
-$currentHolonTemplateLabel = trim((string)$currentHolon->getTemplateLabel(true));
+$currentHolonTypeLabel = $hasStructureContext ? omoTeamHolonTypeLabel($currentHolon) : 'organisation';
+$currentHolonName = $hasStructureContext
+    ? trim((string)$currentHolon->getDisplayName())
+    : trim((string)$organization->get('name'));
+$currentHolonTemplateLabel = $hasStructureContext
+    ? trim((string)$currentHolon->getTemplateLabel(true))
+    : 'organisation';
 if ($currentHolonTemplateLabel === '') {
     $currentHolonTemplateLabel = $currentHolonTypeLabel;
 }
-$canRemoveCurrentHolonMembers = $currentHolon->canEdit();
-$canGrantCurrentHolonAdmin = $currentHolon->isAllowed('CAN_ADD_ADMIN');
+$canRemoveCurrentHolonMembers = $hasStructureContext ? $currentHolon->canEdit() : false;
+$canGrantCurrentHolonAdmin = $hasStructureContext ? $currentHolon->isAllowed('CAN_ADD_ADMIN') : false;
 $canManageCurrentHolonMembers = $canRemoveCurrentHolonMembers || $canGrantCurrentHolonAdmin;
 $leafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafletMapsEnabled();
 $mapMembers = array_values(array_filter($memberCards, static function (array $card): bool {
@@ -358,35 +381,52 @@ if ($leafletMapsEnabled) {
 ?>
 <?= $leafletAssetsHtml ?>
 <div class="omo-team omo-panel-view">
-    <div class="omo-team__hero omo-panel-view__header">
-        <div class="omo-panel-view__header-copy">
-            <h2 class="omo-panel-view__title">Team</h2>
-            <p class="omo-panel-view__description">Les personnes actuellement associées au <?= omoApiEscape($currentHolonTypeLabel) ?> <?= omoApiEscape($currentHolonName) ?>.</p>
-        </div>
-        <div class="omo-team__stats" aria-label="Résumé de l'équipe">
-            <div class="omo-team__stat">
-                <strong><?= omoApiEscape(count($memberCards)) ?></strong>
-                <span>Membre<?= count($memberCards) > 1 ? 's' : '' ?></span>
+    <div class="omo-team__hero omo-panel-view__header omo-panel-view__header--stacked">
+        <div class="omo-panel-view__header-main">
+            <div class="omo-panel-view__title-cluster">
+                <span class="omo-panel-view__app-icon omo-team__app-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <path d="M7.5 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"></path>
+                        <path d="M16.5 10a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"></path>
+                        <path d="M3.5 18.5a4.5 4.5 0 0 1 8 0"></path>
+                        <path d="M13 18.5a3.8 3.8 0 0 1 7 0"></path>
+                    </svg>
+                </span>
+                <div class="omo-panel-view__header-copy">
+                    <div class="omo-team__title-row">
+                        <h2 class="omo-panel-view__title">Team</h2>
+                        <span class="omo-panel-view__count"><?= omoApiEscape(count($memberCards)) ?></span>
+                    </div>
+                </div>
             </div>
-            <div class="omo-team__stat">
-                <strong><?= omoApiEscape($adminCount) ?></strong>
-                <span>Admin<?= $adminCount > 1 ? 's' : '' ?></span>
+            <div class="omo-team__stats" aria-label="Resume de l equipe">
+                <div class="omo-team__stat">
+                    <strong><?= omoApiEscape(count($memberCards)) ?></strong>
+                    <span>Membre<?= count($memberCards) > 1 ? 's' : '' ?></span>
+                </div>
+                <div class="omo-team__stat">
+                    <strong><?= omoApiEscape($adminCount) ?></strong>
+                    <span>Admin<?= $adminCount > 1 ? 's' : '' ?></span>
+                </div>
+                <div class="omo-team__stat">
+                    <strong><?= omoApiEscape($connectedCount) ?></strong>
+                    <span>Deja connecte<?= $connectedCount > 1 ? 's' : '' ?></span>
+                </div>
             </div>
-            <div class="omo-team__stat">
-                <strong><?= omoApiEscape($connectedCount) ?></strong>
-                <span>Déjà connecté<?= $connectedCount > 1 ? 's' : '' ?></span>
+            <div class="omo-team__stats-compact" aria-label="Resume compact de l equipe">
+                <?= omoApiEscape(count($memberCards)) ?> membre<?= count($memberCards) > 1 ? 's' : '' ?>
+                - <?= omoApiEscape($adminCount) ?> admin<?= $adminCount > 1 ? 's' : '' ?>
+                - <?= omoApiEscape($connectedCount) ?> connecte<?= $connectedCount > 1 ? 's' : '' ?>
             </div>
         </div>
-        <div class="omo-team__stats-compact" aria-label="Résumé compact de l'équipe">
-            <?= omoApiEscape(count($memberCards)) ?> membre<?= count($memberCards) > 1 ? 's' : '' ?>
-            · <?= omoApiEscape($adminCount) ?> admin<?= $adminCount > 1 ? 's' : '' ?>
-            · <?= omoApiEscape($connectedCount) ?> connecté<?= $connectedCount > 1 ? 's' : '' ?>
-        </div>
-        <div class="omo-team__view-switch" role="tablist" aria-label="Choix de la vue">
-            <button type="button" class="omo-team__view-button is-active" data-team-view-button="cards" aria-pressed="true">Cartes</button>
-            <?php if ($leafletMapsEnabled): ?>
-            <button type="button" class="omo-team__view-button" data-team-view-button="map" aria-pressed="false">Carte geo</button>
-            <?php endif; ?>
+        <div class="omo-panel-view__header-secondary omo-team__header-secondary">
+            <p class="omo-panel-view__description omo-team__header-description">Les personnes actuellement associees au <?= omoApiEscape($currentHolonTypeLabel) ?> <?= omoApiEscape($currentHolonName) ?>.</p>
+            <div class="omo-segmented omo-team__view-switch" role="tablist" aria-label="Choix de la vue">
+                <button type="button" class="omo-team__view-button omo-segmented__button is-active" data-team-view-button="cards" aria-pressed="true">Cartes</button>
+                <?php if ($leafletMapsEnabled): ?>
+                <button type="button" class="omo-team__view-button omo-segmented__button" data-team-view-button="map" aria-pressed="false">Carte geo</button>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
     <div class="omo-panel-view__body">
@@ -513,7 +553,7 @@ if ($leafletMapsEnabled) {
                     Aucun membre n'a encore de position geographique dans cette organisation.
                 </div>
             <?php else: ?>
-                <div class="omo-team__map-shell generic-soft-panel">
+                <div class="omo-team__map-shell">
                     <div class="omo-team__map-summary">
                         <?= omoApiEscape(count($mapMembers)) ?> membre<?= count($mapMembers) > 1 ? 's' : '' ?> geolocalise<?= count($mapMembers) > 1 ? 's' : '' ?>.
                     </div>
@@ -527,11 +567,31 @@ if ($leafletMapsEnabled) {
 </div>
 
 <style>
+.omo-team__app-icon {
+    --omo-panel-view-app-icon-accent: #0f766e;
+}
+
+.omo-team__title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.omo-team__header-secondary {
+    align-items: end;
+}
+
+.omo-team__header-description {
+    max-width: 56ch;
+}
+
 .omo-team__stats {
     display: grid;
     grid-template-columns: repeat(3, minmax(90px, 1fr));
     gap: 10px;
     min-width: min(100%, 320px);
+    justify-self: end;
 }
 
 .omo-team__stat {
@@ -563,31 +623,15 @@ if ($leafletMapsEnabled) {
     font-size: 0.88rem;
     line-height: 1.4;
     text-align: center;
+    justify-self: end;
 }
 
 .omo-team__view-switch {
-    display: inline-flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    width: 100%;
+    justify-self: end;
 }
 
 .omo-team__view-button {
-    min-height: 36px;
-    padding: 8px 14px;
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
-    background: var(--color-surface);
-    color: var(--color-text);
-    cursor: pointer;
-    font-size: 0.85rem;
-    font-weight: 700;
-}
-
-.omo-team__view-button.is-active {
-    background: color-mix(in srgb, var(--color-primary) 16%, var(--color-surface));
-    border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
-    color: var(--color-primary);
+    min-width: 0;
 }
 
 .omo-team__view-panel[hidden] {
@@ -597,6 +641,7 @@ if ($leafletMapsEnabled) {
 .omo-team__map-shell {
     display: grid;
     gap: 12px;
+    margin:10px;
 }
 
 .omo-team__map-summary {
@@ -748,7 +793,8 @@ if ($leafletMapsEnabled) {
 .omo-team__grid {
     --omo-card-min: 220px;
     --omo-card-max: 240px;
-    gap: 12px;
+    gap: 10px;
+    margin:10px;
 }
 
 .omo-team-card {
@@ -1032,11 +1078,14 @@ if ($leafletMapsEnabled) {
     }
 
     .omo-team__view-switch {
-        justify-content: stretch;
+        display: flex;
+        width: 100%;
+        justify-self: stretch;
     }
 
     .omo-team__view-button {
         flex: 1 1 calc(50% - 4px);
+        text-align: center;
     }
 
     .omo-team__grid {
@@ -1050,7 +1099,7 @@ if ($leafletMapsEnabled) {
 </style>
 
 <script>
-var omoTeamViewStorageKey = <?= json_encode('omo-team-view:' . (int)$organizationId . ':' . (int)$currentHolon->getId(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+var omoTeamViewStorageKey = <?= json_encode('omo-team-view:' . (int)$organizationId . ':' . ($hasStructureContext ? (int)$currentHolon->getId() : 0), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 var omoTeamMapEnabled = <?= $leafletMapsEnabled ? 'true' : 'false' ?>;
 var omoTeamMapMembers = <?= json_encode($mapMemberPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 var omoTeamLeafletMap = null;
@@ -1329,8 +1378,8 @@ $(document)
     const action = String(button.data('member-action') || '');
     const userId = Number(button.data('user-id') || card.data('user-id') || 0);
     const organizationId = <?= (int)$organizationId ?>;
-    const currentHolonId = <?= (int)$currentHolon->getId() ?>;
-    const rootHolonId = <?= (int)$rootHolon->getId() ?>;
+    const currentHolonId = <?= $hasStructureContext ? (int)$currentHolon->getId() : 0 ?>;
+    const rootHolonId = <?= $hasStructureContext ? (int)$rootHolon->getId() : 0 ?>;
     const contextLabel = <?= json_encode($currentHolonTemplateLabel, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const displayName = $.trim(card.find('.omo-team-card__identity h3').first().text()) || 'ce membre';
     let confirmationMessage = '';
@@ -1405,7 +1454,7 @@ $(document)
             loadContent('#panel-left', leftUrl);
         }
 
-        if (typeof window.omoReloadStructureAndFocus === 'function') {
+        if (rootHolonId > 0 && typeof window.omoReloadStructureAndFocus === 'function') {
             window.omoReloadStructureAndFocus(currentHolonId > 0 && currentHolonId !== rootHolonId ? currentHolonId : null, {
                 quickZoom: true
             });

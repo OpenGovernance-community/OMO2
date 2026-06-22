@@ -323,9 +323,13 @@ function displayField($object, $key, $default = null, $filter = null) {
             return $str;
             break;
         case "latlong" :
-            ob_start();
-            commonRenderLeafletAssets();
-            $leafletAssets = ob_get_clean();
+            $leafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafletMapsEnabled();
+            $leafletAssets = '';
+            if ($leafletMapsEnabled && function_exists('commonRenderLeafletAssets')) {
+                ob_start();
+                commonRenderLeafletAssets();
+                $leafletAssets = ob_get_clean();
+            }
 
             $latitude = 0.0;
             $longitude = 0.0;
@@ -346,8 +350,12 @@ function displayField($object, $key, $default = null, $filter = null) {
             $str .= "<input class='" . $class . "' name='" . $key . "[]' id='" . $key . "_lat' type='text' value='" . htmlspecialchars((string)($hasCoordinates ? $latitude : ''), ENT_QUOTES, 'UTF-8') . "' placeholder='Latitude'>";
             $str .= "<input class='" . $class . "' name='" . $key . "[]' id='" . $key . "_long' type='text' value='" . htmlspecialchars((string)($hasCoordinates ? $longitude : ''), ENT_QUOTES, 'UTF-8') . "' placeholder='Longitude'>";
             $str .= "</div>";
+            if (!$leafletMapsEnabled) {
+                $str .= "<div class='admin-edit__latlong-help'>Renseignez latitude et longitude manuellement si la carte n est pas disponible.</div>";
+                return $str;
+            }
             $str .= "<div id='map_" . $key . "' class='admin-edit__latlong-map'></div>";
-            $str .= "<div class='admin-edit__latlong-help'>Cliquez sur la carte pour choisir l'emplacement du membre.</div>";
+            $str .= "<div class='admin-edit__latlong-help'>Cliquez sur la carte pour choisir l emplacement.</div>";
             $str .= "<script>(function(){";
             $str .= "var runMapInit = function(){";
             $str .= "var mapElement = document.getElementById('map_" . $key . "');";
@@ -577,6 +585,37 @@ function displayField($object, $key, $default = null, $filter = null) {
                     var zoomSlider_<?=$key?> = $('#zoomSlider_<?=$key?>');
                     var zoomValue_<?=$key?> = 1;
                     var oldZoomValue_<?=$key?> = 1;
+                    var exportMime_<?=$key?> = 'image/jpeg';
+
+                    function resolveExportFormat_<?=$key?>(source) {
+                        var normalized = String(source || '').toLowerCase();
+
+                        if (normalized.indexOf('image/png') !== -1 || normalized.match(/\.png(?:$|\?)/)) {
+                            return {
+                                mime: 'image/png',
+                                extension: 'png'
+                            };
+                        }
+
+                        if (normalized.indexOf('image/webp') !== -1 || normalized.match(/\.webp(?:$|\?)/)) {
+                            return {
+                                mime: 'image/webp',
+                                extension: 'webp'
+                            };
+                        }
+
+                        return {
+                            mime: 'image/jpeg',
+                            extension: 'jpg'
+                        };
+                    }
+
+                    function setExportFormat_<?=$key?>(source) {
+                        var format = resolveExportFormat_<?=$key?>(source);
+                        exportMime_<?=$key?> = format.mime;
+                    }
+
+                    setExportFormat_<?=$key?>($('#<?=$key?>').val() || (img1 ? img1.currentSrc || img1.src : ''));
 
                     if (imgHeight_<?=$key?> == 0) {
                         imgContainer_<?=$key?>.css("display", "none");
@@ -617,7 +656,7 @@ function displayField($object, $key, $default = null, $filter = null) {
 
                             console.log("Blob prêt pour image :", blob);
 
-                        }, 'image/jpeg', 0.9);
+                        }, exportMime_<?=$key?>, exportMime_<?=$key?> === 'image/png' ? undefined : 0.9);
                     }
 
                     function updateImg_<?=$key?>() {
@@ -657,6 +696,7 @@ function displayField($object, $key, $default = null, $filter = null) {
                     $('#imageFileInput_<?=$key?>').on('change', function (event) {
                         console.log("#imageFileInput_<?=$key?>.change()");
                         var file = event.target.files[0];
+                        setExportFormat_<?=$key?>(file ? file.type : '');
                         var reader = new FileReader();
                         reader.onload = function (event) {
                             // Remove existing image
@@ -1307,6 +1347,9 @@ if (isset($params["fields"])) {
     }
 };
 echo "</table>";
+if (isset($params["afterTableHtml"]) && is_string($params["afterTableHtml"]) && trim($params["afterTableHtml"]) !== "") {
+    echo $params["afterTableHtml"];
+}
 echo "</div>";
 if (!$id && $this->getId() != "") {
     echo "<input type='hidden' id='id' name='id' value='" . $this->getId() . "'>";
@@ -1392,7 +1435,15 @@ echo "</div>";
 
                     if (blob) {
                         console.log("Ajout image :", key, blob);
-                        formData.append(key, blob, key + '.jpg');
+                        let extension = 'jpg';
+
+                        if (blob.type === 'image/png') {
+                            extension = 'png';
+                        } else if (blob.type === 'image/webp') {
+                            extension = 'webp';
+                        }
+
+                        formData.append(key, blob, key + '.' + extension);
                     }
                 }
             } else {

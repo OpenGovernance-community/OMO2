@@ -33,6 +33,10 @@ if (!$organization->load($organizationId)) {
 
 $contextHolonId = (int)($_GET['cid'] ?? $_POST['cid'] ?? 0);
 $holonId = (int)($_GET['hid'] ?? $_POST['hid'] ?? 0);
+$templateScope = strtolower(trim((string)($_GET['template_scope'] ?? $_POST['template_scope'] ?? 'contextual')));
+if ($templateScope !== 'global') {
+    $templateScope = 'contextual';
+}
 
 $rawPayload = $_POST['payload'] ?? file_get_contents('php://input');
 $payload = json_decode($rawPayload, true);
@@ -50,7 +54,7 @@ if (!is_array($payload)) {
 
 $result = $holonId > 0
     ? $organization->saveHolonDefinitionEditor($payload, (int)commonGetCurrentUserId(), $holonId)
-    : $organization->saveHolonTemplateDefinition($payload, (int)commonGetCurrentUserId(), $contextHolonId);
+    : $organization->saveHolonTemplateDefinition($payload, (int)commonGetCurrentUserId(), $contextHolonId, $templateScope);
 
 if (!($result['status'] ?? false)) {
     http_response_code(422);
@@ -75,7 +79,7 @@ echo json_encode(
         'template' => $result['template'] ?? null,
         'data' => $result['data'] ?? ($holonId > 0
             ? $organization->getHolonDefinitionEditorData($holonId)
-            : $organization->getHolonTemplateEditorData($contextHolonId)),
+            : $organization->getHolonTemplateEditorData($contextHolonId, $templateScope)),
     ),
     JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
 );

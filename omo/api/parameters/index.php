@@ -6,12 +6,14 @@ $currentUserId = commonGetCurrentUserId();
 $currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 $organization = null;
 $canEditOrganization = false;
+$hasStructureTemplates = false;
 $organizationName = '';
 $isSiteAdmin = commonCurrentUserIsSiteAdminModeEnabled();
 if ($currentOrganizationId > 0) {
     $organization = new \dbObject\Organization();
     if ($organization->load($currentOrganizationId)) {
         $canEditOrganization = $organization->canEdit();
+        $hasStructureTemplates = $organization->getEnabledStructuralRootHolon() !== null;
         $organizationName = trim((string)$organization->get('name'));
     }
 }
@@ -28,7 +30,7 @@ if ($organizationName === '') {
         </div>
     </div>
     <div class="omo-panel-view__body">
-        <div class='omo-panel-view__body_content'>
+        <div class="omo-panel-view__body_content">
         <?php if ($currentUserId <= 0): ?>
         <div class="omo-settings__empty omo-empty-state">
             Connectez-vous pour acceder a vos parametres utilisateur.
@@ -50,9 +52,10 @@ if ($organizationName === '') {
                 <?= $canEditOrganization ? '' : 'disabled' ?>
             >
                 <strong>Organisation</strong>
-                <span><?= htmlspecialchars($canEditOrganization ? "Modifier le nom, le nom court, les illustrations et la couleur de " . $organizationName . "." : "Vous devez etre admin de l'organisation pour modifier ces parametres.", ENT_QUOTES, 'UTF-8') ?></span>
+                <span><?= htmlspecialchars($canEditOrganization ? "Modifier le nom, le nom court, l emplacement geographique, les illustrations et la couleur de " . $organizationName . "." : "Vous devez etre admin de l'organisation pour modifier ces parametres.", ENT_QUOTES, 'UTF-8') ?></span>
             </button>
 
+            <?php if ($hasStructureTemplates): ?>
             <button
                 type="button"
                 class="omo-settings__card omo-card omo-card--interactive noMobile"
@@ -60,11 +63,11 @@ if ($organizationName === '') {
                 data-omo-settings-drawer-url="/omo/api/parameters/holon-templates/index.php"
                 data-omo-settings-drawer-mode="fetch"
                 data-omo-settings-contextual="1"
-                <?= $currentOrganizationId > 0 ? '' : 'disabled' ?>
             >
                 <strong>Modeles de holons</strong>
                 <span>Configurer les types de noeuds et leurs proprietes pour votre organisation.</span>
             </button>
+            <?php endif; ?>
 
             <?php if ($isSiteAdmin): ?>
             <button
@@ -82,9 +85,27 @@ if ($organizationName === '') {
         <?php endif; ?>
         </div>
     </div>
+    <div class="omo-overlay-drawer omo-settings__nested-drawer" data-omo-settings-nested-drawer hidden>
+        <div class="omo-overlay-drawer__backdrop" data-omo-settings-nested-close></div>
+        <div class="omo-overlay-drawer__panel">
+            <div class="omo-overlay-drawer__header">
+                <div class="omo-overlay-drawer__header-copy">
+                    <h3 class="omo-overlay-drawer__title" data-omo-settings-nested-title>Parametres</h3>
+                    <p class="omo-overlay-drawer__description" data-omo-settings-nested-description></p>
+                </div>
+                <button type="button" class="omo-overlay-drawer__close" data-omo-settings-nested-close>Fermer</button>
+            </div>
+            <div class="omo-overlay-drawer__body" data-omo-settings-nested-body></div>
+        </div>
+    </div>
 </div>
 
 <style>
+.omo-settings {
+    position: relative;
+    min-height: 100%;
+}
+
 .omo-settings__grid {
     align-items: start;
 }
@@ -107,65 +128,183 @@ if ($organizationName === '') {
 
 <script>
 (function () {
-document.querySelectorAll('[data-omo-settings-drawer-url]').forEach(function (button) {
-    if (button.dataset.omoSettingsReady === '1') {
+document.querySelectorAll('.omo-settings').forEach(function (root) {
+    if (!root || root.dataset.omoSettingsInitialized === '1') {
         return;
     }
 
-    button.dataset.omoSettingsReady = '1';
-    button.addEventListener('click', function () {
-        if (button.disabled) {
-            return;
+    root.dataset.omoSettingsInitialized = '1';
+
+    var nestedDrawer = root.querySelector('[data-omo-settings-nested-drawer]');
+    var nestedTitle = root.querySelector('[data-omo-settings-nested-title]');
+    var nestedDescription = root.querySelector('[data-omo-settings-nested-description]');
+    var nestedBody = root.querySelector('[data-omo-settings-nested-body]');
+    var nestedRequestToken = 0;
+
+    function resolveSettingsDrawerUrl(button) {
+        var drawerUrl = button.getAttribute('data-omo-settings-drawer-url');
+        if (!drawerUrl) {
+            return '';
         }
 
-        let drawerUrl = button.getAttribute('data-omo-settings-drawer-url');
         if (button.getAttribute('data-omo-settings-contextual') === '1' && typeof window.parseUrl === 'function') {
-            const route = window.parseUrl();
-            const cid = Number(route && route.cid ? route.cid : 0);
+            var route = window.parseUrl();
+            var cid = Number(route && route.cid ? route.cid : 0);
             if (cid > 0) {
                 drawerUrl += (drawerUrl.indexOf('?') === -1 ? '?' : '&') + 'cid=' + cid;
             }
         }
 
-        if (typeof window.commonTopbarOpenDrawer !== 'function') {
-            window.location.href = drawerUrl;
-            return;
-        }
-
-        window.commonTopbarOpenDrawer(
-            button.getAttribute('data-omo-settings-drawer-title') || 'Parametres',
-            drawerUrl,
-            button.getAttribute('data-omo-settings-drawer-mode') || 'iframe'
-        );
-    });
-});
-
-document.querySelectorAll('[data-omo-settings-modal-url]').forEach(function (button) {
-    if (button.dataset.omoSettingsModalReady === '1') {
-        return;
+        return drawerUrl;
     }
 
-    button.dataset.omoSettingsModalReady = '1';
-    button.addEventListener('click', function () {
-        if (button.disabled) {
+    function renderNestedDrawerLoading() {
+        if (!nestedBody) {
             return;
         }
 
-        var modalUrl = button.getAttribute('data-omo-settings-modal-url');
-        if (!modalUrl) {
+        if (typeof window.getSkeleton === 'function') {
+            nestedBody.innerHTML = window.getSkeleton('panel');
             return;
         }
 
-        if (typeof window.commonTopbarOpenModal !== 'function') {
-            window.location.href = modalUrl;
+        nestedBody.innerHTML = '<div class="loading">Chargement...</div>';
+    }
+
+    function renderNestedDrawerError() {
+        if (!nestedBody) {
             return;
         }
 
-        window.commonTopbarOpenModal(
-            button.getAttribute('data-omo-settings-modal-title') || 'Parametres',
-            modalUrl,
-            button.getAttribute('data-omo-settings-modal-mode') || 'iframe'
-        );
+        nestedBody.innerHTML = '<div class="omo-empty-state">Impossible de charger ce module.</div>';
+    }
+
+    function closeNestedDrawer() {
+        if (!nestedDrawer) {
+            return;
+        }
+
+        nestedDrawer.classList.remove('is-open');
+        window.setTimeout(function () {
+            if (!nestedDrawer.classList.contains('is-open')) {
+                nestedDrawer.hidden = true;
+                if (nestedBody) {
+                    nestedBody.innerHTML = '';
+                }
+            }
+        }, 200);
+    }
+
+    function openNestedDrawer(title, url, mode, description) {
+        if (!url) {
+            return;
+        }
+
+        if (!nestedDrawer || !nestedBody || mode !== 'fetch' || typeof window.jQuery !== 'function') {
+            if (typeof window.commonTopbarOpenDrawer === 'function') {
+                window.commonTopbarOpenDrawer(title || 'Parametres', url, mode || 'iframe');
+                return;
+            }
+
+            window.location.href = url;
+            return;
+        }
+
+        if (nestedTitle) {
+            nestedTitle.textContent = title || 'Parametres';
+        }
+        if (nestedDescription) {
+            nestedDescription.textContent = description || '';
+        }
+
+        renderNestedDrawerLoading();
+        nestedDrawer.hidden = false;
+        window.requestAnimationFrame(function () {
+            nestedDrawer.classList.add('is-open');
+        });
+
+        var requestToken = ++nestedRequestToken;
+        var resolvedUrl = typeof window.omoResolveAppUrl === 'function'
+            ? window.omoResolveAppUrl(url)
+            : url;
+
+        window.jQuery.ajax({
+            url: resolvedUrl,
+            method: 'GET',
+            cache: false,
+            success: function (data) {
+                if (requestToken !== nestedRequestToken || !nestedBody) {
+                    return;
+                }
+
+                window.jQuery(nestedBody).html(data);
+            },
+            error: function () {
+                if (requestToken !== nestedRequestToken) {
+                    return;
+                }
+
+                renderNestedDrawerError();
+            }
+        });
+    }
+
+    root.querySelectorAll('[data-omo-settings-nested-close]').forEach(function (button) {
+        button.addEventListener('click', closeNestedDrawer);
+    });
+
+    root.querySelectorAll('[data-omo-settings-drawer-url]').forEach(function (button) {
+        if (button.dataset.omoSettingsReady === '1') {
+            return;
+        }
+
+        button.dataset.omoSettingsReady = '1';
+        button.addEventListener('click', function () {
+            if (button.disabled) {
+                return;
+            }
+
+            var drawerUrl = resolveSettingsDrawerUrl(button);
+            if (!drawerUrl) {
+                return;
+            }
+
+            openNestedDrawer(
+                button.getAttribute('data-omo-settings-drawer-title') || 'Parametres',
+                drawerUrl,
+                button.getAttribute('data-omo-settings-drawer-mode') || 'iframe',
+                (button.querySelector('span') || {}).textContent || ''
+            );
+        });
+    });
+
+    root.querySelectorAll('[data-omo-settings-modal-url]').forEach(function (button) {
+        if (button.dataset.omoSettingsModalReady === '1') {
+            return;
+        }
+
+        button.dataset.omoSettingsModalReady = '1';
+        button.addEventListener('click', function () {
+            if (button.disabled) {
+                return;
+            }
+
+            var modalUrl = button.getAttribute('data-omo-settings-modal-url');
+            if (!modalUrl) {
+                return;
+            }
+
+            if (typeof window.commonTopbarOpenModal !== 'function') {
+                window.location.href = modalUrl;
+                return;
+            }
+
+            window.commonTopbarOpenModal(
+                button.getAttribute('data-omo-settings-modal-title') || 'Parametres',
+                modalUrl,
+                button.getAttribute('data-omo-settings-modal-mode') || 'iframe'
+            );
+        });
     });
 });
 })();

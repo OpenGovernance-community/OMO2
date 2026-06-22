@@ -36,6 +36,252 @@ if (!function_exists('faqPopupDescribeScope')) {
 	}
 }
 
+if (!function_exists('faqPopupRenderMediaBlock')) {
+	function faqPopupRenderMediaBlock(\dbObject\FAQ $faq)
+	{
+		$media = $faq->getMediaDisplayData();
+		if (empty($media['hasMedia'])) {
+			return;
+		}
+		?>
+		<div class="faq-popup__media">
+			<?php if (!empty($media['hasImage'])): ?>
+				<div class="faq-popup__media-figure">
+					<img
+						class="faq-popup__media-image"
+						src="<?= htmlspecialchars((string)$media['imageUrl'], ENT_QUOTES, 'UTF-8') ?>"
+						alt="<?= htmlspecialchars((string)$faq->get('question'), ENT_QUOTES, 'UTF-8') ?>"
+						loading="lazy"
+					>
+				</div>
+			<?php endif; ?>
+			<?php if (!empty($media['hasVideo'])): ?>
+				<div class="faq-popup__media-video-shell">
+					<?php if (trim((string)($media['embeddedVideoUrl'] ?? '')) !== ''): ?>
+						<div class="faq-popup__media-video">
+							<iframe
+								src="<?= htmlspecialchars((string)$media['embeddedVideoUrl'], ENT_QUOTES, 'UTF-8') ?>"
+								loading="lazy"
+								allow="autoplay; fullscreen; picture-in-picture"
+								allowfullscreen
+								referrerpolicy="strict-origin-when-cross-origin"
+								title="<?= htmlspecialchars((string)$faq->get('question'), ENT_QUOTES, 'UTF-8') ?>"
+							></iframe>
+						</div>
+					<?php else: ?>
+						<div class="faq-popup__media-fallback">
+							<span>Video non integrable automatiquement.</span>
+							<a
+								class="generic-action-button generic-action-button--secondary"
+								href="<?= htmlspecialchars((string)$media['videoUrl'], ENT_QUOTES, 'UTF-8') ?>"
+								target="_blank"
+								rel="noopener noreferrer"
+							>Ouvrir la video</a>
+						</div>
+					<?php endif; ?>
+				</div>
+			<?php endif; ?>
+		</div>
+		<?php
+	}
+}
+
+if (!function_exists('faqPopupGetVoteSessionDate')) {
+	function faqPopupGetVoteSessionDate($faqId)
+	{
+		$faqId = (int)$faqId;
+		if ($faqId <= 0 || session_status() !== PHP_SESSION_ACTIVE) {
+			return '';
+		}
+
+		$sessionValue = $_SESSION['faq_votes'][$faqId] ?? '';
+		return is_string($sessionValue) ? trim($sessionValue) : '';
+	}
+}
+
+if (!function_exists('faqPopupHasVotedToday')) {
+	function faqPopupHasVotedToday($faqId)
+	{
+		return faqPopupGetVoteSessionDate($faqId) === date('Y-m-d');
+	}
+}
+
+if (!function_exists('faqPopupFormatVoteScore')) {
+	function faqPopupFormatVoteScore($value)
+	{
+		$numericValue = (float)$value;
+		if (abs($numericValue - round($numericValue)) < 0.00001) {
+			return (string)(int)round($numericValue);
+		}
+
+		return rtrim(rtrim(number_format($numericValue, 2, '.', ''), '0'), '.');
+	}
+}
+
+if (!function_exists('faqPopupEstimateVoteSplit')) {
+	function faqPopupEstimateVoteSplit($positiveScore, $negativeScore, $totalVotes)
+	{
+		$positiveScore = max(0.0, (float)$positiveScore);
+		$negativeScore = abs((float)$negativeScore);
+		$totalVotes = max(0, (int)$totalVotes);
+		$activeSignal = $positiveScore + $negativeScore;
+
+		if ($totalVotes <= 0 || $activeSignal <= 0.0) {
+			return array(
+				'positive' => 0,
+				'negative' => 0,
+				'total' => $totalVotes,
+			);
+		}
+
+		$estimatedPositiveVotes = (int)round($totalVotes * ($positiveScore / $activeSignal));
+		$estimatedPositiveVotes = max(0, min($totalVotes, $estimatedPositiveVotes));
+		return array(
+			'positive' => $estimatedPositiveVotes,
+			'negative' => max(0, $totalVotes - $estimatedPositiveVotes),
+			'total' => $totalVotes,
+		);
+	}
+}
+
+if (!function_exists('faqPopupBuildReliabilityRange')) {
+	function faqPopupBuildReliabilityRange($faqCollection)
+	{
+		$minimumReliability = null;
+		$maximumReliability = null;
+
+		foreach ($faqCollection as $faq) {
+			if (!$faq instanceof \dbObject\FAQ) {
+				continue;
+			}
+
+			$reliability = max(0.0, (float)$faq->get('reliability'));
+			if ($minimumReliability === null || $reliability < $minimumReliability) {
+				$minimumReliability = $reliability;
+			}
+			if ($maximumReliability === null || $reliability > $maximumReliability) {
+				$maximumReliability = $reliability;
+			}
+		}
+
+		return array(
+			'min' => $minimumReliability === null ? 0.0 : (float)$minimumReliability,
+			'max' => $maximumReliability === null ? 0.0 : (float)$maximumReliability,
+		);
+	}
+}
+
+if (!function_exists('faqPopupCalculateRelativeStars')) {
+	function faqPopupCalculateRelativeStars($reliability, array $range = array())
+	{
+		$reliability = max(0.0, (float)$reliability);
+		$minimumReliability = isset($range['min']) ? (float)$range['min'] : 0.0;
+		$maximumReliability = isset($range['max']) ? (float)$range['max'] : 0.0;
+
+		if ($maximumReliability <= $minimumReliability) {
+			return $reliability > 0.0 ? 5 : 0;
+		}
+
+		$normalized = ($reliability - $minimumReliability) / ($maximumReliability - $minimumReliability);
+		return max(0, min(5, (int)round($normalized * 5)));
+	}
+}
+
+if (!function_exists('faqPopupRenderStars')) {
+	function faqPopupRenderStars($starCount)
+	{
+		$starCount = max(0, min(5, (int)$starCount));
+		return str_repeat('★', $starCount) . str_repeat('☆', 5 - $starCount);
+	}
+}
+
+if (!function_exists('faqPopupRenderVoteBlock')) {
+	function faqPopupRenderVoteBlock(\dbObject\FAQ $faq, array $options = array())
+	{
+		if (!\dbObject\FAQ::hasVoteColumns()) {
+			return;
+		}
+
+		$faqId = (int)$faq->getId();
+		if ($faqId <= 0) {
+			return;
+		}
+
+		$isCompact = !empty($options['compact']);
+		$hasVotedToday = faqPopupHasVotedToday($faqId);
+		$estimatedVoteSplit = faqPopupEstimateVoteSplit(
+			$faq->get('positive_score'),
+			$faq->get('negative_score'),
+			$faq->get('total_votes')
+		);
+		$reliabilityRange = isset($options['reliabilityRange']) && is_array($options['reliabilityRange'])
+			? $options['reliabilityRange']
+			: array('min' => 0.0, 'max' => 0.0);
+		$relativeStars = faqPopupCalculateRelativeStars($faq->get('reliability'), $reliabilityRange);
+		$voteMessage = trim((string)($options['message'] ?? ''));
+		if ($voteMessage === '' && $hasVotedToday) {
+			$voteMessage = 'Vous avez deja vote aujourd hui. Vous pourrez revoter demain.';
+		}
+		?>
+		<div
+			class="faq-popup__vote<?= $isCompact ? ' faq-popup__vote--compact' : '' ?>"
+			data-faq-vote-shell
+			data-faq-id="<?= $faqId ?>"
+			data-faq-vote-mode="<?= $isCompact ? 'compact' : 'detail' ?>"
+			data-faq-reliability="<?= htmlspecialchars((string)(float)$faq->get('reliability'), ENT_QUOTES, 'UTF-8') ?>"
+		>
+			<div class="faq-popup__vote-summary">
+				<?php if ($isCompact): ?>
+					<span class="faq-popup__vote-stat faq-popup__vote-stat--stars">
+						<span class="faq-popup__vote-label">Note</span>
+						<strong class="faq-popup__vote-stars" data-faq-stars-text><?= htmlspecialchars(faqPopupRenderStars($relativeStars), ENT_QUOTES, 'UTF-8') ?></strong>
+					</span>
+					<span class="faq-popup__vote-stat">
+						<span class="faq-popup__vote-label">Total</span>
+						<strong data-faq-score="total"><?= (int)$estimatedVoteSplit['total'] ?></strong>
+					</span>
+				<?php else: ?>
+					<span class="faq-popup__vote-stat">
+						<span class="faq-popup__vote-label">Positifs</span>
+						<strong data-faq-score="positive_estimated"><?= (int)$estimatedVoteSplit['positive'] ?></strong>
+					</span>
+					<span class="faq-popup__vote-stat">
+						<span class="faq-popup__vote-label">Negatifs</span>
+						<strong data-faq-score="negative_estimated"><?= (int)$estimatedVoteSplit['negative'] ?></strong>
+					</span>
+					<span class="faq-popup__vote-stat">
+						<span class="faq-popup__vote-label">Total</span>
+						<strong data-faq-score="total"><?= (int)$estimatedVoteSplit['total'] ?></strong>
+					</span>
+				<?php endif; ?>
+			</div>
+			<div class="faq-popup__vote-actions">
+				<button
+					type="button"
+					class="faq-popup__vote-button"
+					data-faq-vote="up"
+					data-faq-id="<?= $faqId ?>"
+					<?= $hasVotedToday ? ' disabled' : '' ?>
+				>👍 Utile</button>
+				<button
+					type="button"
+					class="faq-popup__vote-button"
+					data-faq-vote="down"
+					data-faq-id="<?= $faqId ?>"
+					<?= $hasVotedToday ? ' disabled' : '' ?>
+				>👎 Pas utile</button>
+			</div>
+			<?php if (!$isCompact): ?>
+				<div class="faq-popup__vote-note">Repartition indicative basee sur le signal actif.</div>
+			<?php endif; ?>
+			<div class="faq-popup__vote-message<?= $voteMessage !== '' ? ' is-visible' : '' ?>" data-faq-vote-message>
+				<?= htmlspecialchars($voteMessage, ENT_QUOTES, 'UTF-8') ?>
+			</div>
+		</div>
+		<?php
+	}
+}
+
 if (!function_exists('faqPopupLoadOrganizationOptions')) {
 	function faqPopupLoadOrganizationOptions(array $faqContext, ?\dbObject\FAQ $faq = null)
 	{

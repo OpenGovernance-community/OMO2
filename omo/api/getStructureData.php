@@ -54,7 +54,7 @@ if (!$canViewOrganization) {
     exit;
 }
 
-$root = $organization->getStructuralRootHolon();
+$root = $organization->getEnabledStructuralRootHolon();
 if ($root === null) {
     http_response_code(404);
     echo json_encode(

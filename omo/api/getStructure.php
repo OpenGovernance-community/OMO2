@@ -56,6 +56,22 @@ function omoGetStructurePanelSourceLang(): array
             'text' => 'Aucune structure disponible pour cette organisation.',
             'context' => 'Message shown when the current organization has no visible structure to display.',
         ],
+        'structure.message.disabled' => [
+            'text' => 'L app Structure est desactivee pour cette organisation.',
+            'context' => 'Message shown when the Structure app is disabled for the current organization.',
+        ],
+        'structure.placeholder.action' => [
+            'text' => 'Ouvrir l app Structure',
+            'context' => 'Call to action shown in the main structure panel when the organization has no structure yet.',
+        ],
+        'structure.placeholder.text' => [
+            'text' => 'Aucune structure n est encore definie pour cette organisation. Ouvrez l app Structure dans la leftbar pour creer une structure vide, importer un export ou partir d un modele.',
+            'context' => 'Informational text shown in the main structure panel when the organization has no structure yet.',
+        ],
+        'structure.placeholder.title' => [
+            'text' => 'Aucune structure',
+            'context' => 'Title shown in the main structure panel when the organization has no structure yet.',
+        ],
         'structure.share.modal_title' => [
             'text' => 'Partager la structure',
             'context' => 'Modal title used when opening the share dialog from the structure action menu.',
@@ -87,10 +103,73 @@ function omoGetStructurePanelSourceLang(): array
     ];
 }
 
+function omoRenderStructureEmptyPlaceholder(array $lang, array $sourceLang): void
+{
+    ?>
+<div class="omo-structure-empty-panel">
+    <div class="generic-section omo-structure-empty-panel__card">
+        <div class="generic-card-title omo-structure-empty-panel__title"><?= omoApiEscape(t('structure.placeholder.title', [], $lang, $sourceLang)) ?></div>
+        <p class="omo-structure-empty-panel__text"><?= omoApiEscape(t('structure.placeholder.text', [], $lang, $sourceLang)) ?></p>
+        <button type="button" class="generic-action-button generic-action-button--main" data-omo-open-structure-drawer="1"><?= omoApiEscape(t('structure.placeholder.action', [], $lang, $sourceLang)) ?></button>
+    </div>
+</div>
+
+<style>
+.omo-structure-empty-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
+    padding: 24px;
+}
+
+.omo-structure-empty-panel__card {
+    max-width: 560px;
+    width: 100%;
+}
+
+.omo-structure-empty-panel__title {
+    margin-bottom: 12px;
+}
+
+.omo-structure-empty-panel__text {
+    margin: 0 0 16px;
+    line-height: 1.5;
+    color: var(--color-text-light, #6b7280);
+}
+</style>
+
+<script>
+$(document)
+  .off('click.omoStructureEmptyDrawer', '[data-omo-open-structure-drawer="1"]')
+  .on('click.omoStructureEmptyDrawer', '[data-omo-open-structure-drawer="1"]', function () {
+    if (typeof window.omoOpenDrawerHashState !== 'function') {
+        return;
+    }
+
+    window.omoOpenDrawerHashState('structure');
+  });
+</script>
+    <?php
+}
+
+function omoRenderStructureDisabledPlaceholder(array $lang, array $sourceLang): void
+{
+    ?>
+<div class="omo-structure-empty-panel">
+    <div class="generic-section omo-structure-empty-panel__card">
+        <div class="generic-card-title omo-structure-empty-panel__title"><?= omoApiEscape(t('structure.actions.menu_aria', [], $lang, $sourceLang)) ?></div>
+        <p class="omo-structure-empty-panel__text"><?= omoApiEscape(t('structure.message.disabled', [], $lang, $sourceLang)) ?></p>
+    </div>
+</div>
+    <?php
+}
+
 $sourceLang = omoGetStructurePanelSourceLang();
 $lang = translationBundleInit('omo_get_structure_panel', omoGetTranslationLocale(), $sourceLang);
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
+$drawerMode = isset($_GET['drawer']) && (string)$_GET['drawer'] === '1';
 if ($organizationId > 0) {
     $organization = new \dbObject\Organization();
     if ($organization->load($organizationId) && !$organization->canViewDetail()) {
@@ -99,9 +178,19 @@ if ($organizationId > 0) {
         exit;
     }
 
-    if ($organization->load($organizationId) && $organization->getStructuralRootHolon() === null) {
-        require_once __DIR__ . '/organization_setup_panel.php';
-        omoRenderOrganizationSetupPanel($organization);
+    if ($organization->load($organizationId) && !$organization->isStructureApplicationEnabled()) {
+        http_response_code(404);
+        omoRenderStructureDisabledPlaceholder($lang, $sourceLang);
+        exit;
+    }
+
+    if ($organization->load($organizationId) && $organization->getEnabledStructuralRootHolon() === null) {
+        if ($drawerMode) {
+            require_once __DIR__ . '/organization_setup_panel.php';
+            omoRenderOrganizationSetupPanel($organization);
+        } else {
+            omoRenderStructureEmptyPlaceholder($lang, $sourceLang);
+        }
         exit;
     }
 }
@@ -673,6 +762,7 @@ input:checked + .slider::before {
     </div>
 
   <script>
+(function () {
 
 const structureTranslations = <?= json_encode($structureTranslations, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
@@ -1674,7 +1764,22 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
 });
 
     const structureDataUrl = <?= json_encode($structureDataUrl, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
-    const initialCid = <?= (int)$initialCid ?>;
+    const initialCid = (function () {
+      const requestedCid = <?= (int)$initialCid ?>;
+      if (requestedCid > 0) {
+        return requestedCid;
+      }
+
+      if (typeof parseUrl === "function") {
+        const route = parseUrl();
+        const routeCid = Number(route && route.cid ? route.cid : 0);
+        if (Number.isInteger(routeCid) && routeCid > 0) {
+          return routeCid;
+        }
+      }
+
+      return 0;
+    })();
     const canCreateShareLink = <?= $canCreateShareLink ? 'true' : 'false' ?>;
     const canExportStructure = <?= $canExportStructure ? 'true' : 'false' ?>;
     let root = null;
@@ -1977,6 +2082,12 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
       const settings = Object.assign({
         quickZoom: false
       }, options || {});
+      const previousZoomState = {
+        centerX: zoomInfo && Number.isFinite(zoomInfo.centerX) ? zoomInfo.centerX : null,
+        centerY: zoomInfo && Number.isFinite(zoomInfo.centerY) ? zoomInfo.centerY : null,
+        scale: zoomInfo && Number.isFinite(zoomInfo.scale) ? zoomInfo.scale : null,
+        view: Array.isArray(vOld) ? vOld.slice() : null
+      };
 
       structureReloadPromise = loadStructureData()
         .then(function() {
@@ -1988,7 +2099,10 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
             currentnode = root;
           }
 
-          drawAll();
+          drawAll({
+            skipInitialFocus: !settings.quickZoom,
+            zoomState: !settings.quickZoom ? previousZoomState : null
+          });
 
           if (settings.quickZoom) {
             const quickTargetNode = nodeId ? findPackedNodeById(nodeId) : root;
@@ -2663,10 +2777,17 @@ function getNodeFromEvent(event) {
 
 
 function buildCanvas() {
-  d3.select("#chart").html("");
-
   const chartEl = document.getElementById("chart");
+  if (!chartEl) {
+    return false;
+  }
+
   const rect = chartEl.getBoundingClientRect();
+  if (!rect || rect.width <= 0 || rect.height <= 0) {
+    return false;
+  }
+
+  d3.select(chartEl).html("");
   const dpr = window.devicePixelRatio || 1;
 
   chartwidth = Math.max(1, Math.floor(rect.width * dpr));
@@ -2700,6 +2821,7 @@ function buildCanvas() {
     .style("display", "none");
 
   hiddenContext = hiddenCanvas.node().getContext("2d", { willReadFrequently: true });
+  return true;
 }
 
 function showCanvasTooltip(node, event) {
@@ -2853,7 +2975,12 @@ function getChartColors() {
 
     let chartColors = getChartColors();
 
-    function drawAll() {
+    function drawAll(options) {
+      const settings = Object.assign({
+        skipInitialFocus: false,
+        zoomState: null
+      }, options || {});
+
       if (!root) {
         renderStructureMessage(structureTranslations.noStructure);
         return;
@@ -2862,7 +2989,9 @@ function getChartColors() {
       chartColors = getChartColors();
       removeColorNodes(root);
 
-      buildCanvas();
+      if (!buildCanvas()) {
+        return;
+      }
       applyStructureCanvasPickingIssue(null);
 
       const canvasPickingProbe = probeStructureCanvasPicking();
@@ -2921,6 +3050,27 @@ function getChartColors() {
 
       renderRoleList();
       bindEvents();
+
+      if (
+        settings.skipInitialFocus
+        && settings.zoomState
+        && Number.isFinite(settings.zoomState.centerX)
+        && Number.isFinite(settings.zoomState.centerY)
+        && Number.isFinite(settings.zoomState.scale)
+        && Array.isArray(settings.zoomState.view)
+        && settings.zoomState.view.length === 3
+      ) {
+        zoomInfo = {
+          centerX: settings.zoomState.centerX,
+          centerY: settings.zoomState.centerY,
+          scale: settings.zoomState.scale
+        };
+        vOld = settings.zoomState.view.slice();
+        drawCanvas(context, false);
+        drawCanvas(hiddenContext, true);
+        return;
+      }
+
       quickZoomToCanvas(currentnode);
     }
 
@@ -2933,12 +3083,19 @@ function scheduleDrawAll() {
 
   resizeRaf = requestAnimationFrame(function() {
     resizeRaf = null;
+    const chartEl = document.getElementById("chart");
+    if (!chartEl) {
+      return;
+    }
     drawAll();
   });
 }
 
 function startChart() {
   const chartEl = document.getElementById("chart");
+  if (!chartEl) {
+    return;
+  }
 
   if (chartResizeObserver) {
     chartResizeObserver.disconnect();
@@ -2972,9 +3129,28 @@ function startChart() {
 
       window.omoStructureRefreshHandler = function (event) {
         const cid = event && event.detail ? event.detail.cid : null;
+        const quickZoom = event && event.detail && Object.prototype.hasOwnProperty.call(event.detail, 'quickZoom')
+          ? Boolean(event.detail.quickZoom)
+          : true;
         reloadStructureAndFocus(cid, {
-          quickZoom: true
+          quickZoom: quickZoom
         });
+      };
+
+      window.omoStructureHandleDrawerOpen = function (options) {
+        const cid = options && Object.prototype.hasOwnProperty.call(options, 'cid')
+          ? options.cid
+          : null;
+
+        scheduleDrawAll();
+        window.setTimeout(function () {
+          if (!document.getElementById("chart")) {
+            return;
+          }
+          focusStructureNode(cid, {
+            quickZoom: true
+          });
+        }, 30);
       };
 
       if (window.omoStructureMemberHighlightHandler) {
@@ -2996,6 +3172,12 @@ function startChart() {
       window.addEventListener("omo-structure-focus", window.omoStructureFocusHandler);
       window.addEventListener("omo-structure-refresh", window.omoStructureRefreshHandler);
       window.addEventListener("omo-structure-member-highlight", window.omoStructureMemberHighlightHandler);
+
+      if (initialCid > 0) {
+        focusStructureNode(initialCid, {
+          quickZoom: true
+        });
+      }
     })
     .catch(function(error) {
       root = null;
@@ -3029,4 +3211,5 @@ window.addEventListener("omo-theme-change", function () {
   waitForD3(startChart);
 
 
+})();
   </script>

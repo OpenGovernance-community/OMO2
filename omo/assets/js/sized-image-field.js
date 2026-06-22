@@ -43,11 +43,42 @@
                 workingObjectUrl: '',
                 previewObjectUrl: '',
                 cropTimer: null,
-                currentValue: ''
+                currentValue: '',
+                preferredMimeType: 'image/jpeg',
+                preferredExtension: 'jpg'
             };
         }
 
         return stores[inputName];
+    }
+
+    function resolveExportFormat(source) {
+        const normalized = String(source || '').toLowerCase();
+
+        if (normalized.indexOf('image/png') !== -1 || /\.png(?:$|\?)/.test(normalized)) {
+            return {
+                mime: 'image/png',
+                extension: 'png'
+            };
+        }
+
+        if (normalized.indexOf('image/webp') !== -1 || /\.webp(?:$|\?)/.test(normalized)) {
+            return {
+                mime: 'image/webp',
+                extension: 'webp'
+            };
+        }
+
+        return {
+            mime: 'image/jpeg',
+            extension: 'jpg'
+        };
+    }
+
+    function syncStoreExportFormat(store, source) {
+        const format = resolveExportFormat(source);
+        store.preferredMimeType = format.mime;
+        store.preferredExtension = format.extension;
     }
 
     function revokeUrl(url) {
@@ -139,6 +170,12 @@
             clearStoreWorkingSource(store);
         } else if (!store.workingSrc) {
             store.workingSrc = inheritedValue;
+        }
+
+        if (currentValue && currentValue !== 'newimage') {
+            syncStoreExportFormat(store, currentValue);
+        } else if (inheritedValue) {
+            syncStoreExportFormat(store, inheritedValue);
         }
 
         const localSource = currentValue === 'newimage'
@@ -283,7 +320,7 @@
                 if (clearButton) {
                     clearButton.disabled = false;
                 }
-            }, 'image/jpeg', 0.92);
+            }, store.preferredMimeType || 'image/jpeg', (store.preferredMimeType || 'image/jpeg') === 'image/png' ? undefined : 0.92);
         }
 
         function scheduleCropCommit() {
@@ -409,6 +446,7 @@
                 setHiddenValue('');
                 clearStoreWorkingSource(store);
                 if (inheritedValue) {
+                    syncStoreExportFormat(store, inheritedValue);
                     store.workingSrc = inheritedValue;
                 }
                 updateMetaText();
@@ -426,6 +464,7 @@
 
                 clearStoreBlob(store);
                 clearStoreWorkingSource(store);
+                syncStoreExportFormat(store, file.type || '');
                 store.workingObjectUrl = URL.createObjectURL(file);
                 store.workingSrc = store.workingObjectUrl;
                 setHiddenValue('newimage');
@@ -511,7 +550,8 @@
                 }
 
                 const fieldName = state.uploadFieldName || state.inputName;
-                formData.append(fieldName, store.blob, fieldName + '.jpg');
+                const extension = store.preferredExtension || 'jpg';
+                formData.append(fieldName, store.blob, fieldName + '.' + extension);
             }
         };
     }

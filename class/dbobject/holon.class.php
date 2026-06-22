@@ -1054,6 +1054,7 @@
 						'displayName' => $membership->getUserDisplayName(),
 						'photoUrl' => $membership->getProfilePhotoUrl(),
 						'initials' => $membership->getUserInitials(),
+						'avatarSeed' => $membership->getAvatarSeedLabel(),
 						'holonIds' => array((int)$this->getId()),
 						'isPending' => $isPending,
 						'canViewDetail' => $permission['canViewDetail'],
@@ -1065,6 +1066,7 @@
 					$cardsByUserId[$userId]['displayName'] = $membership->getUserDisplayName();
 					$cardsByUserId[$userId]['photoUrl'] = $membership->getProfilePhotoUrl();
 					$cardsByUserId[$userId]['initials'] = $membership->getUserInitials();
+					$cardsByUserId[$userId]['avatarSeed'] = $membership->getAvatarSeedLabel();
 					$cardsByUserId[$userId]['isPending'] = false;
 					$cardsByUserId[$userId]['canViewDetail'] = $permission['canViewDetail'];
 				}
@@ -1393,6 +1395,7 @@
 						'displayName' => $link->getUserDisplayName((int)$options['organizationId']),
 						'photoUrl' => $link->getProfilePhotoUrl((int)$options['organizationId']),
 						'initials' => $link->getUserInitials((int)$options['organizationId']),
+						'avatarSeed' => $link->getAvatarSeedLabel((int)$options['organizationId']),
 						'holonIds' => array(),
 						'isPending' => false,
 						'canViewDetail' => $permission['canViewDetail'],
@@ -2086,10 +2089,24 @@
 				$pdo->beginTransaction();
 
 				$user = $this->resolveMemberUser($userId, $email);
+				$pendingInvitation = \dbObject\Invitation::findPendingForOrganizationUser($organizationId, (int)$user->getId());
 				$hasActiveOrganizationMembership = $this->hasActiveOrganizationMembership($user, $organizationId);
-				$requiresInvitation = !$hasActiveOrganizationMembership;
+				$requiresInvitation = !$hasActiveOrganizationMembership && !($pendingInvitation instanceof \dbObject\Invitation);
 
-				if ($requiresInvitation) {
+				if ($pendingInvitation instanceof \dbObject\Invitation) {
+					$approvalResult = $pendingInvitation->approveByAdmin([
+						'approvedByUserId' => $currentUserId,
+						'sendConfirmationEmail' => false,
+					]);
+					if (!($approvalResult['status'] ?? false)) {
+						throw new \RuntimeException((string)($approvalResult['message'] ?? "L'ajout en attente n'a pas pu etre finalise."));
+					}
+
+					$this->ensureOrganizationMembership($user, $organizationId, true);
+					if (!$this->isOrganizationHolon()) {
+						$this->ensureHolonMembership($user, true);
+					}
+				} elseif ($requiresInvitation) {
 					$this->ensureOrganizationMembership($user, $organizationId, false);
 					if (!$this->isOrganizationHolon()) {
 						$this->ensureHolonMembership($user, false);
