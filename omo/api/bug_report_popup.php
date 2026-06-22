@@ -313,17 +313,56 @@ if ($currentUserId > 0 && $featureEnabled) {
     }
 
     const patreonConnectButton = document.getElementById('omoBugReportPatreonConnect');
+    const bugReportPopupUrl = '/omo/api/bug_report_popup.php';
+    let patreonConnectWindow = null;
+    let patreonConnectCloseWatcher = null;
+
+    function clearPatreonConnectCloseWatcher() {
+        if (patreonConnectCloseWatcher) {
+            window.clearInterval(patreonConnectCloseWatcher);
+            patreonConnectCloseWatcher = null;
+        }
+    }
+
+    function refreshBugReportPopup() {
+        if (typeof window.commonTopbarRefreshModalContent === 'function') {
+            window.commonTopbarRefreshModalContent(
+                bugReportPopupUrl + '?refresh=' + encodeURIComponent(String(Date.now()))
+            );
+        }
+    }
+
+    function watchPatreonConnectWindow() {
+        clearPatreonConnectCloseWatcher();
+
+        if (!patreonConnectWindow) {
+            return;
+        }
+
+        patreonConnectCloseWatcher = window.setInterval(function () {
+            if (!patreonConnectWindow || patreonConnectWindow.closed !== true) {
+                return;
+            }
+
+            patreonConnectWindow = null;
+            clearPatreonConnectCloseWatcher();
+            refreshBugReportPopup();
+        }, 500);
+    }
+
     function openPatreonConnect() {
         const width = 720;
         const height = 860;
         const left = Math.max(0, (window.screen.width - width) / 2);
         const top = Math.max(0, (window.screen.height - height) / 2);
 
-        window.open(
+        patreonConnectWindow = window.open(
             '/common/patreon_connect.php',
             'patreon_connect',
             'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top + ',resizable=yes,scrollbars=yes'
         );
+
+        watchPatreonConnectWindow();
     }
 
     function handlePatreonMessage(event) {
@@ -335,9 +374,9 @@ if ($currentUserId > 0 && $featureEnabled) {
             return;
         }
 
-        if (typeof window.commonTopbarRefreshModalContent === 'function') {
-            window.commonTopbarRefreshModalContent('/omo/api/bug_report_popup.php');
-        }
+        patreonConnectWindow = null;
+        clearPatreonConnectCloseWatcher();
+        refreshBugReportPopup();
     }
 
     if (patreonConnectButton) {
@@ -543,6 +582,8 @@ if ($currentUserId > 0 && $featureEnabled) {
 
     window.__omoPopupCleanup = function () {
         window.removeEventListener('message', handlePatreonMessage);
+        clearPatreonConnectCloseWatcher();
+        patreonConnectWindow = null;
         if (patreonConnectButton) {
             patreonConnectButton.removeEventListener('click', openPatreonConnect);
         }
