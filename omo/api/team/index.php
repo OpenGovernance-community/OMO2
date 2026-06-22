@@ -145,16 +145,36 @@ if ($hasStructureContext && $currentHolonId > 0 && (int)$currentHolon->getId() !
     $currentHolon = $candidate;
 }
 
+$canToggleTeamScope = $hasStructureContext && $currentHolon instanceof Holon;
+$availableTeamScopes = omoApiGetAvailableContextScopes($canToggleTeamScope, $currentHolon, $rootHolon);
+$teamScope = omoApiNormalizeContextScope($_GET['team_scope'] ?? 'contextual', $availableTeamScopes);
+$teamScopeActiveIndex = omoApiResolveContextScopeIndex($teamScope, $availableTeamScopes);
+$teamScopeLabels = array(
+    'contextual' => 'Contextuel',
+    'descendants' => 'Descendants',
+    'global' => 'Global',
+);
+
 $rawMemberCards = array();
 $contextAdminUserIds = array();
-$isOrganizationContext = true;
+$directContextMemberUserIds = array();
 
 if ($hasStructureContext) {
-    $rawMemberCards = $currentHolon->getAssociatedMemberCards(array(
-        'organizationId' => $organizationId,
-    ));
+    $directContextMemberUserIds = array_fill_keys($currentHolon->getDirectMemberUserIds($organizationId), true);
+
+    if ($teamScope === 'global' && $rootHolon instanceof Holon) {
+        $rawMemberCards = $rootHolon->getAssociatedMemberCards(array(
+            'organizationId' => $organizationId,
+            'includeDescendants' => true,
+        ));
+    } else {
+        $rawMemberCards = $currentHolon->getAssociatedMemberCards(array(
+            'organizationId' => $organizationId,
+            'includeDescendants' => $teamScope === 'descendants',
+        ));
+    }
+
     $contextAdminUserIds = array_fill_keys($currentHolon->getDirectContextAdminUserIds($organizationId), true);
-    $isOrganizationContext = (int)$currentHolon->getId() === (int)$rootHolon->getId();
 } else {
     $memberships = new ArrayUserOrganization();
     $memberships->loadVisibleForOrganization($organizationId);
@@ -173,6 +193,8 @@ if ($hasStructureContext) {
             $contextAdminUserIds[$userId] = true;
         }
 
+        $directContextMemberUserIds[$userId] = true;
+
         $rawMemberCards[] = array(
             'userId' => $userId,
             'isPending' => !(bool)$membership->get('active'),
@@ -181,8 +203,6 @@ if ($hasStructureContext) {
 }
 
 $memberCards = [];
-$adminCount = 0;
-$connectedCount = 0;
 
 $formatter = class_exists('IntlDateFormatter')
     ? new IntlDateFormatter('fr_CH', IntlDateFormatter::MEDIUM, IntlDateFormatter::NONE)
@@ -253,14 +273,6 @@ foreach ($rawMemberCards as $rawCard) {
         : ($hasUser && $user->get('datecreation') instanceof DateTimeInterface ? $user->get('datecreation') : null);
     $effectiveLastSeen = $organizationLastSeen instanceof DateTimeInterface ? $organizationLastSeen : $globalLastSeen;
 
-    if ($isContextAdmin && !$isPending) {
-        $adminCount += 1;
-    }
-
-    if (!$isPending && $effectiveLastSeen instanceof DateTimeInterface) {
-        $connectedCount += 1;
-    }
-
     $effectiveJoinedAt = $organizationJoinedAt instanceof DateTimeInterface ? $organizationJoinedAt : $globalJoinedAt;
     $displayName = trim((string)($rawCard['displayName'] ?? ''));
     if ($displayName === '' && $hasMembership) {
@@ -285,6 +297,10 @@ foreach ($rawMemberCards as $rawCard) {
     if ($photoUrl === '' && $hasUser) {
         $photoUrl = $user->getScopedProfilePhotoUrl($organizationId);
     }
+
+    $firstName = $hasUser ? trim((string)$user->get('firstname')) : '';
+    $lastName = $hasUser ? trim((string)$user->get('lastname')) : '';
+    $phone = '';
 
     $initials = trim((string)($rawCard['initials'] ?? ''));
     if ($initials === '' && $hasMembership) {
@@ -311,6 +327,9 @@ foreach ($rawMemberCards as $rawCard) {
     $memberCards[] = array(
         'userId' => $userId,
         'displayName' => $displayName !== '' ? $displayName : ('Utilisateur ' . $userId),
+        'firstName' => $firstName,
+        'lastName' => $lastName,
+        'phone' => $phone,
         'email' => $email,
         'username' => $username,
         'secondary' => $secondary,
@@ -318,6 +337,7 @@ foreach ($rawMemberCards as $rawCard) {
         'initials' => $initials !== '' ? mb_strtoupper($initials, 'UTF-8') : 'P',
         'isOrganizationAdmin' => $isOrganizationAdmin,
         'isContextAdmin' => $isContextAdmin,
+        'isDirectContextMember' => isset($directContextMemberUserIds[$userId]),
         'isPending' => $isPending,
         'joinedAtLabel' => $effectiveJoinedAt instanceof DateTimeInterface ? $formatDate($effectiveJoinedAt) : '',
         'lastSeenLabel' => $formatLastSeenLabel($organizationLastSeen, $globalLastSeen),
@@ -338,15 +358,24 @@ usort($memberCards, static function (array $left, array $right): int {
 });
 
 $currentHolonTypeLabel = $hasStructureContext ? omoTeamHolonTypeLabel($currentHolon) : 'organisation';
-$currentHolonName = $hasStructureContext
-    ? trim((string)$currentHolon->getDisplayName())
-    : trim((string)$organization->get('name'));
 $currentHolonTemplateLabel = $hasStructureContext
     ? trim((string)$currentHolon->getTemplateLabel(true))
     : 'organisation';
 if ($currentHolonTemplateLabel === '') {
     $currentHolonTemplateLabel = $currentHolonTypeLabel;
 }
+$teamEmptyMessage = "Aucune personne n'est encore liee a ce " . $currentHolonTypeLabel . '.';
+$teamMapEmptyMessage = "Aucun membre n'a encore de position geographique dans ce contexte.";
+
+if ($teamScope === 'global') {
+    $teamEmptyMessage = "Aucune personne n'est encore liee a cette organisation.";
+    $teamMapEmptyMessage = "Aucun membre n'a encore de position geographique dans cette organisation.";
+} elseif ($teamScope === 'descendants') {
+    $teamEmptyMessage = "Aucune personne n'est encore liee a ce contexte et a ses descendants.";
+    $teamMapEmptyMessage = "Aucun membre n'a encore de position geographique dans ce contexte et ses descendants.";
+}
+
+$canAddCurrentHolonMembers = $hasStructureContext ? $currentHolon->isAllowed('CAN_ADD_MEMBER') : false;
 $canRemoveCurrentHolonMembers = $hasStructureContext ? $currentHolon->canEdit() : false;
 $canGrantCurrentHolonAdmin = $hasStructureContext ? $currentHolon->isAllowed('CAN_ADD_ADMIN') : false;
 $canManageCurrentHolonMembers = $canRemoveCurrentHolonMembers || $canGrantCurrentHolonAdmin;
@@ -380,7 +409,14 @@ if ($leafletMapsEnabled) {
 }
 ?>
 <?= $leafletAssetsHtml ?>
-<div class="omo-team omo-panel-view">
+<div
+    class="omo-team omo-panel-view"
+    id="omo-team-root"
+    data-team-oid="<?= (int)$organizationId ?>"
+    data-team-cid="<?= $hasStructureContext ? (int)$currentHolon->getId() : 0 ?>"
+    data-team-root-hid="<?= $hasStructureContext ? (int)$rootHolon->getId() : 0 ?>"
+    data-team-scope="<?= omoApiEscape($teamScope) ?>"
+>
     <div class="omo-team__hero omo-panel-view__header omo-panel-view__header--stacked">
         <div class="omo-panel-view__header-main">
             <div class="omo-panel-view__title-cluster">
@@ -399,33 +435,49 @@ if ($leafletMapsEnabled) {
                     </div>
                 </div>
             </div>
-            <div class="omo-team__stats" aria-label="Resume de l equipe">
-                <div class="omo-team__stat">
-                    <strong><?= omoApiEscape(count($memberCards)) ?></strong>
-                    <span>Membre<?= count($memberCards) > 1 ? 's' : '' ?></span>
+            <?php if ($canAddCurrentHolonMembers): ?>
+                <div class="omo-team__header-action">
+                    <button
+                        type="button"
+                        class="generic-action-button generic-action-button--main omo-team__add-member-button"
+                        data-team-open-member-popup="1"
+                        data-hid="<?= (int)$currentHolon->getId() ?>"
+                    >Ajouter un membre</button>
                 </div>
-                <div class="omo-team__stat">
-                    <strong><?= omoApiEscape($adminCount) ?></strong>
-                    <span>Admin<?= $adminCount > 1 ? 's' : '' ?></span>
-                </div>
-                <div class="omo-team__stat">
-                    <strong><?= omoApiEscape($connectedCount) ?></strong>
-                    <span>Deja connecte<?= $connectedCount > 1 ? 's' : '' ?></span>
-                </div>
-            </div>
-            <div class="omo-team__stats-compact" aria-label="Resume compact de l equipe">
-                <?= omoApiEscape(count($memberCards)) ?> membre<?= count($memberCards) > 1 ? 's' : '' ?>
-                - <?= omoApiEscape($adminCount) ?> admin<?= $adminCount > 1 ? 's' : '' ?>
-                - <?= omoApiEscape($connectedCount) ?> connecte<?= $connectedCount > 1 ? 's' : '' ?>
-            </div>
+            <?php endif; ?>
         </div>
         <div class="omo-panel-view__header-secondary omo-team__header-secondary">
-            <p class="omo-panel-view__description omo-team__header-description">Les personnes actuellement associees au <?= omoApiEscape($currentHolonTypeLabel) ?> <?= omoApiEscape($currentHolonName) ?>.</p>
-            <div class="omo-segmented omo-team__view-switch" role="tablist" aria-label="Choix de la vue">
-                <button type="button" class="omo-team__view-button omo-segmented__button is-active" data-team-view-button="cards" aria-pressed="true">Cartes</button>
-                <?php if ($leafletMapsEnabled): ?>
-                <button type="button" class="omo-team__view-button omo-segmented__button" data-team-view-button="map" aria-pressed="false">Carte geo</button>
+            <div class="omo-team__header-controls">
+                <?php if ($canToggleTeamScope): ?>
+                    <div
+                        class="omo-scope-toggle omo-team__scope-toggle"
+                        role="tablist"
+                        aria-label="Portee des membres"
+                        data-omo-scope-switch="<?= omoApiEscape($teamScope) ?>"
+                        style="--omo-scope-option-count: <?= (int)count($availableTeamScopes) ?>; --omo-scope-active-index: <?= (int)$teamScopeActiveIndex ?>;"
+                    >
+                        <?php foreach ($availableTeamScopes as $scopeIndex => $scopeKey): ?>
+                            <?php $scopeLabel = (string)($teamScopeLabels[$scopeKey] ?? $scopeKey); ?>
+                            <button
+                                type="button"
+                                class="omo-scope-toggle__button<?= $teamScope === $scopeKey ? ' is-active' : '' ?>"
+                                aria-label="<?= omoApiEscape($scopeLabel) ?>"
+                                data-team-scope-toggle="<?= omoApiEscape($scopeKey) ?>"
+                                data-omo-scope-option="<?= omoApiEscape($scopeKey) ?>"
+                                data-omo-scope-index="<?= (int)$scopeIndex ?>"
+                                aria-pressed="<?= $teamScope === $scopeKey ? 'true' : 'false' ?>"
+                                onclick="return window.omoToggleTeamScope ? window.omoToggleTeamScope(this, event) : false;"
+                            ><span class="omo-scope-toggle__text"><?= omoApiEscape($scopeLabel) ?></span></button>
+                        <?php endforeach; ?>
+                    </div>
                 <?php endif; ?>
+                <div class="omo-segmented omo-team__view-switch" role="tablist" aria-label="Choix de la vue">
+                    <button type="button" class="omo-team__view-button omo-segmented__button is-active" data-team-view-button="cards" aria-pressed="true">Cartes</button>
+                    <button type="button" class="omo-team__view-button omo-segmented__button" data-team-view-button="compact" aria-pressed="false">Compact</button>
+                    <?php if ($leafletMapsEnabled): ?>
+                    <button type="button" class="omo-team__view-button omo-segmented__button" data-team-view-button="map" aria-pressed="false">Carte geo</button>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
     </div>
@@ -434,7 +486,7 @@ if ($leafletMapsEnabled) {
         <section class="omo-team__view-panel" data-team-view-panel="cards">
         <?php if (count($memberCards) === 0): ?>
             <div class="omo-team__empty omo-empty-state">
-                Aucune personne n'est encore liée à ce <?= omoApiEscape($currentHolonTypeLabel) ?>.
+                <?= omoApiEscape($teamEmptyMessage) ?>
             </div>
         <?php else: ?>
             <div class="omo-team__grid omo-card-grid omo-card-grid--fixed">
@@ -454,7 +506,7 @@ if ($leafletMapsEnabled) {
                         <?php endif; ?>
                     >
                         <div class="omo-team-card__banner">
-                            <?php if ($canManageCurrentHolonMembers): ?>
+                            <?php if ($canManageCurrentHolonMembers && !empty($card['isDirectContextMember'])): ?>
                                 <div class="omo-team-card__menu" data-team-member-menu="1">
                                     <button
                                         type="button"
@@ -546,11 +598,135 @@ if ($leafletMapsEnabled) {
             </div>
         <?php endif; ?>
         </section>
+        <section class="omo-team__view-panel omo-team__view-panel--compact generic-file-list generic-file-list--structured" data-team-view-panel="compact" hidden>
+        <?php if (count($memberCards) === 0): ?>
+            <div class="omo-team__empty omo-empty-state">
+                <?= omoApiEscape($teamEmptyMessage) ?>
+            </div>
+        <?php else: ?>
+            <div class="omo-team__compact-list-shell">
+                <div class="omo-team__compact-list generic-file-list__table">
+                    <div class="omo-team__compact-list-header generic-file-list__header">
+                        <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--name">Nom</div>
+                        <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--firstname">Prenom</div>
+                        <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--phone">Telephone</div>
+                        <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--email">E-mail</div>
+                    </div>
+                    <?php foreach ($memberCards as $card): ?>
+                        <?php
+                        $compactLastName = trim((string)($card['lastName'] ?? ''));
+                        $compactFirstName = trim((string)($card['firstName'] ?? ''));
+                        $compactPhone = trim((string)($card['phone'] ?? ''));
+                        $compactUsername = trim((string)($card['username'] ?? ''));
+                        $compactDisplayName = trim((string)($card['displayName'] ?? ''));
+                        $compactEmailLocalPart = '';
+                        if (trim((string)($card['email'] ?? '')) !== '') {
+                            $compactEmailParts = explode('@', trim((string)$card['email']), 2);
+                            $compactEmailLocalPart = trim((string)($compactEmailParts[0] ?? ''));
+                        }
+                        $hasStructuredName = ($compactLastName !== '' || $compactFirstName !== '');
+                        $compactNameLabel = $compactLastName;
+                        $compactFirstNameLabel = $compactFirstName;
+                        $compactMetaUsername = $hasStructuredName && $compactUsername !== ''
+                            ? '@' . $compactUsername
+                            : '';
+                        $compactPrivilegeLabels = array();
+
+                        if (!$hasStructuredName) {
+                            if ($compactUsername !== '') {
+                                $compactNameLabel = $compactUsername;
+                            } elseif ($compactEmailLocalPart !== '') {
+                                $compactNameLabel = $compactEmailLocalPart;
+                            } elseif ($compactDisplayName !== '') {
+                                $compactNameLabel = $compactDisplayName;
+                            }
+
+                            $compactFirstNameLabel = '';
+                        }
+
+                        if ($card['isPending']) {
+                            $compactPrivilegeLabels[] = array(
+                                'label' => 'En attente',
+                                'className' => 'omo-team__compact-badge omo-team__compact-badge--pending',
+                            );
+                        } else {
+                            if ($card['isContextAdmin']) {
+                                $compactPrivilegeLabels[] = array(
+                                    'label' => 'Admin contexte',
+                                    'className' => 'omo-team__compact-badge',
+                                );
+                            }
+
+                            if ($card['isOrganizationAdmin']) {
+                                $compactPrivilegeLabels[] = array(
+                                    'label' => 'Admin organisation',
+                                    'className' => 'omo-team__compact-badge omo-team__compact-badge--organization',
+                                );
+                            }
+                        }
+                        ?>
+                        <article class="omo-team__compact-item-shell generic-file-list__item-shell">
+                            <div
+                                class="omo-team__compact-row generic-file-list__row<?= $card['canViewDetail'] ? ' omo-team__compact-row--interactive' : '' ?><?= $card['isPending'] ? ' omo-team__compact-row--pending' : '' ?>"
+                                <?php if ($card['canViewDetail']): ?>
+                                data-open-user-context="1"
+                                tabindex="0"
+                                role="button"
+                                aria-label="Ouvrir le profil contextuel de <?= omoApiEscape($card['displayName']) ?>"
+                                <?php endif; ?>
+                                data-user-id="<?= (int)$card['userId'] ?>"
+                            >
+                                <div class="omo-team__compact-cell omo-team__compact-cell--identity generic-file-list__cell generic-file-list__cell--name" data-label="Identite">
+                                    <div class="omo-team__compact-name-main generic-file-list__name-main">
+                                        <?php if ($card['photoUrl'] !== ''): ?>
+                                            <img
+                                                src="<?= omoApiEscape($card['photoUrl']) ?>"
+                                                alt="<?= omoApiEscape($card['displayName']) ?>"
+                                                class="omo-team__compact-photo"
+                                            >
+                                        <?php else: ?>
+                                            <div class="omo-team__compact-photo-placeholder">
+                                                <?= omoApiEscape($card['initials']) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <div class="omo-team__compact-title-block generic-file-list__title-block">
+                                            <div class="omo-team__compact-identity-grid">
+                                                <div class="omo-team__compact-title-row generic-file-list__title-row">
+                                                    <strong class="omo-team__compact-title generic-file-list__title"><?= omoApiEscape($compactNameLabel !== '' ? $compactNameLabel : '-') ?></strong>
+                                                </div>
+                                                <div class="omo-team__compact-firstname"><?= omoApiEscape($compactFirstNameLabel) ?></div>
+                                            </div>
+                                            <?php if ($compactMetaUsername !== '' || count($compactPrivilegeLabels) > 0): ?>
+                                                <div class="omo-team__compact-meta-row generic-file-list__meta-line">
+                                                    <?php if ($compactMetaUsername !== ''): ?>
+                                                        <span class="omo-team__compact-username"><?= omoApiEscape($compactMetaUsername) ?></span>
+                                                    <?php endif; ?>
+                                                    <?php foreach ($compactPrivilegeLabels as $privilege): ?>
+                                                        <span class="<?= omoApiEscape($privilege['className']) ?>"><?= omoApiEscape($privilege['label']) ?></span>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="omo-team__compact-cell generic-file-list__cell" data-label="Telephone">
+                                    <span class="<?= $compactPhone === '' ? 'omo-team__compact-placeholder' : '' ?>"><?= omoApiEscape($compactPhone !== '' ? $compactPhone : '-') ?></span>
+                                </div>
+                                <div class="omo-team__compact-cell generic-file-list__cell" data-label="E-mail">
+                                    <span class="<?= $card['email'] === '' ? 'omo-team__compact-placeholder' : '' ?>"><?= omoApiEscape($card['email'] !== '' ? $card['email'] : '-') ?></span>
+                                </div>
+                            </div>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        <?php endif; ?>
+        </section>
         <?php if ($leafletMapsEnabled): ?>
         <section class="omo-team__view-panel" data-team-view-panel="map" hidden>
             <?php if (count($mapMembers) === 0): ?>
                 <div class="omo-team__empty omo-empty-state">
-                    Aucun membre n'a encore de position geographique dans cette organisation.
+                    <?= omoApiEscape($teamMapEmptyMessage) ?>
                 </div>
             <?php else: ?>
                 <div class="omo-team__map-shell">
@@ -582,52 +758,33 @@ if ($leafletMapsEnabled) {
     align-items: end;
 }
 
-.omo-team__header-description {
-    max-width: 56ch;
-}
-
-.omo-team__stats {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(90px, 1fr));
-    gap: 10px;
-    min-width: min(100%, 320px);
-    justify-self: end;
-}
-
-.omo-team__stat {
-    display: grid;
-    gap: 4px;
-    padding: 12px 14px;
-    border-radius: var(--radius-md);
-    background: var(--color-surface-alt);
-    text-align: center;
-}
-
-.omo-team__stat strong {
-    font-size: 1.25rem;
-    line-height: 1;
-}
-
-.omo-team__stat span {
-    color: var(--color-text-light);
-    font-size: 0.9rem;
-}
-
-.omo-team__stats-compact {
-    display: none;
+.omo-team__header-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
     width: 100%;
-    padding: 10px 14px;
-    border-radius: var(--radius-md);
-    background: var(--color-surface-alt);
-    color: var(--color-text-light);
-    font-size: 0.88rem;
-    line-height: 1.4;
-    text-align: center;
+}
+
+.omo-team__header-action {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 0;
     justify-self: end;
+}
+
+.omo-team__add-member-button {
+    white-space: nowrap;
 }
 
 .omo-team__view-switch {
     justify-self: end;
+}
+
+.omo-team__scope-toggle {
+    flex: 0 0 auto;
 }
 
 .omo-team__view-button {
@@ -642,6 +799,136 @@ if ($leafletMapsEnabled) {
     display: grid;
     gap: 12px;
     margin:10px;
+}
+
+.omo-team__compact-list-shell {
+    --generic-file-list-columns: minmax(0, 1.5fr) minmax(0, 1.2fr) minmax(120px, 0.9fr) minmax(0, 1.7fr);
+    margin: 10px;
+}
+
+.omo-team__compact-list {
+    --generic-file-list-table-margin-inline: 0px;
+}
+
+.omo-team__compact-row {
+    min-width: 0;
+    background: transparent;
+    transition: background 180ms ease;
+}
+
+.omo-team__compact-row--interactive {
+    cursor: pointer;
+}
+
+.omo-team__compact-row--interactive:hover,
+.omo-team__compact-row--interactive:focus-visible {
+    background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface, #ffffff));
+    outline: none;
+}
+
+.omo-team__compact-row--pending {
+    opacity: 0.7;
+}
+
+.omo-team__compact-cell {
+    min-width: 0;
+    word-break: break-word;
+}
+
+.omo-team__compact-cell--identity {
+    grid-column: 1 / span 2;
+}
+
+.omo-team__compact-name-main {
+    min-width: 0;
+}
+
+.omo-team__compact-photo,
+.omo-team__compact-photo-placeholder {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    flex: 0 0 auto;
+}
+
+.omo-team__compact-photo {
+    object-fit: cover;
+}
+
+.omo-team__compact-photo-placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #14b8a6, #0f766e);
+    color: #ffffff;
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+.omo-team__compact-title-block {
+    min-width: 0;
+}
+
+.omo-team__compact-identity-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.2fr);
+    gap: 16px;
+    align-items: start;
+    min-width: 0;
+}
+
+.omo-team__compact-title-row {
+    min-width: 0;
+}
+
+.omo-team__compact-title {
+    min-width: 0;
+}
+
+.omo-team__compact-firstname {
+    min-width: 0;
+    font-size: 0.95rem;
+    line-height: 1.35;
+    color: var(--color-text, #1f2937);
+    word-break: break-word;
+}
+
+.omo-team__compact-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    word-break: break-word;
+}
+
+.omo-team__compact-username {
+    color: var(--color-text-light);
+}
+
+.omo-team__compact-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.14);
+    color: #b45309;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.omo-team__compact-badge--pending {
+    background: rgba(100, 116, 139, 0.14);
+    color: #475569;
+}
+
+.omo-team__compact-badge--organization {
+    background: rgba(20, 184, 166, 0.12);
+    color: #0f766e;
+}
+
+.omo-team__compact-placeholder {
+    color: var(--color-text-light);
 }
 
 .omo-team__map-summary {
@@ -1062,25 +1349,35 @@ if ($leafletMapsEnabled) {
 }
 
 @media (max-width: 820px) {
-    .omo-team__stats {
+    .omo-team__header-action {
         width: 100%;
-        min-width: 0;
+        justify-content: flex-start;
+    }
+
+    .omo-team__header-controls {
+        width: 100%;
+        justify-content: flex-start;
     }
 }
 
 @media (max-width: 560px) {
-    .omo-team__stats {
-        display: none;
+    .omo-team__header-action {
+        justify-content: stretch;
     }
 
-    .omo-team__stats-compact {
-        display: block;
+    .omo-team__add-member-button {
+        width: 100%;
     }
 
     .omo-team__view-switch {
         display: flex;
         width: 100%;
         justify-self: stretch;
+    }
+
+    .omo-team__scope-toggle {
+        width: 100%;
+        justify-content: stretch;
     }
 
     .omo-team__view-button {
@@ -1095,6 +1392,19 @@ if ($leafletMapsEnabled) {
     .omo-team__map {
         min-height: 320px;
     }
+
+    .omo-team__compact-list-shell {
+        margin: 0;
+    }
+
+    .omo-team__compact-cell--identity {
+        grid-column: auto;
+    }
+
+    .omo-team__compact-identity-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 6px;
+    }
 }
 </style>
 
@@ -1102,6 +1412,7 @@ if ($leafletMapsEnabled) {
 var omoTeamViewStorageKey = <?= json_encode('omo-team-view:' . (int)$organizationId . ':' . ($hasStructureContext ? (int)$currentHolon->getId() : 0), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 var omoTeamMapEnabled = <?= $leafletMapsEnabled ? 'true' : 'false' ?>;
 var omoTeamMapMembers = <?= json_encode($mapMemberPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+var omoTeamInitialScope = <?= json_encode($teamScope, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 var omoTeamLeafletMap = null;
 var omoTeamLeafletLayer = null;
 var omoTeamLeafletTileState = {layer: null, theme: null};
@@ -1115,8 +1426,121 @@ function omoTeamEscapeHtml(value) {
         .replace(/'/g, '&#039;');
 }
 
+function omoTeamNormalizeScope(scopeValue) {
+    const normalizedScope = String(scopeValue || '').trim().toLowerCase();
+    return normalizedScope === 'global' || normalizedScope === 'descendants'
+        ? normalizedScope
+        : 'contextual';
+}
+
+function omoTeamBuildScopeUrl(scopeValue) {
+    const root = document.getElementById('omo-team-root');
+    const organizationId = Number(root ? (root.getAttribute('data-team-oid') || 0) : 0);
+    const holonId = Number(root ? (root.getAttribute('data-team-cid') || 0) : 0);
+    const rootHolonId = Number(root ? (root.getAttribute('data-team-root-hid') || 0) : 0);
+    const resolvedScope = omoTeamNormalizeScope(scopeValue);
+    const query = [];
+
+    if (organizationId > 0) {
+        query.push('oid=' + encodeURIComponent(String(organizationId)));
+    }
+
+    if (holonId > 0 && holonId !== rootHolonId) {
+        query.push('cid=' + encodeURIComponent(String(holonId)));
+    }
+
+    if (resolvedScope !== 'contextual') {
+        query.push('team_scope=' + encodeURIComponent(resolvedScope));
+    }
+
+    return '/omo/api/team/index.php' + (query.length > 0 ? '?' + query.join('&') : '');
+}
+
+function omoTeamSetScopeLoadingState(targetScope, isLoading) {
+    const root = document.getElementById('omo-team-root');
+    if (!root) {
+        return;
+    }
+
+    const resolvedScope = omoTeamNormalizeScope(targetScope);
+    let activeScopeIndex = 0;
+
+    root.classList.toggle('is-loading', Boolean(isLoading));
+    root.setAttribute('data-team-scope', resolvedScope);
+
+    root.querySelectorAll('[data-team-scope-toggle]').forEach(function (scopeButton) {
+        const buttonScope = omoTeamNormalizeScope(scopeButton.getAttribute('data-team-scope-toggle') || '');
+        const isActive = buttonScope === resolvedScope;
+
+        scopeButton.disabled = Boolean(isLoading);
+        scopeButton.classList.toggle('is-active', isActive);
+        scopeButton.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        if (isActive) {
+            activeScopeIndex = parseInt(scopeButton.getAttribute('data-omo-scope-index') || '0', 10) || 0;
+        }
+    });
+
+    const scopeSwitch = root.querySelector('[data-omo-scope-switch]');
+    if (scopeSwitch) {
+        scopeSwitch.setAttribute('data-omo-scope-switch', resolvedScope);
+        scopeSwitch.style.setProperty('--omo-scope-active-index', String(activeScopeIndex));
+    }
+}
+
+window.omoToggleTeamScope = function (button, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    const root = document.getElementById('omo-team-root');
+    const currentScope = omoTeamNormalizeScope(root ? root.getAttribute('data-team-scope') : omoTeamInitialScope);
+    const targetScope = omoTeamNormalizeScope(button ? button.getAttribute('data-team-scope-toggle') : '');
+
+    if (targetScope === currentScope) {
+        return false;
+    }
+
+    const nextUrl = omoTeamBuildScopeUrl(targetScope);
+    omoTeamSetScopeLoadingState(targetScope, true);
+
+    if (root && typeof window.omoReplaceFetchedPanelRoot === 'function') {
+        if (typeof window.requestAnimationFrame === 'function') {
+            window.requestAnimationFrame(function () {
+                window.omoReplaceFetchedPanelRoot({
+                    rootSelector: '#omo-team-root',
+                    currentRoot: root,
+                    url: nextUrl,
+                    setLoadingState: function (isLoading) {
+                        omoTeamSetScopeLoadingState(targetScope, isLoading);
+                    }
+                }).catch(function () {
+                    window.location.href = nextUrl;
+                });
+            });
+        } else {
+            window.omoReplaceFetchedPanelRoot({
+                rootSelector: '#omo-team-root',
+                currentRoot: root,
+                url: nextUrl,
+                setLoadingState: function (isLoading) {
+                    omoTeamSetScopeLoadingState(targetScope, isLoading);
+                }
+            }).catch(function () {
+                window.location.href = nextUrl;
+            });
+        }
+        return false;
+    }
+
+    window.location.href = nextUrl;
+    return false;
+};
+
 function omoTeamApplyView(viewName) {
-    const normalizedView = viewName === 'map' && omoTeamMapEnabled ? 'map' : 'cards';
+    const normalizedView = viewName === 'map' && omoTeamMapEnabled
+        ? 'map'
+        : (viewName === 'compact' ? 'compact' : 'cards');
     $('[data-team-view-button]').each(function () {
         const isActive = $(this).data('team-view-button') === normalizedView;
         $(this).toggleClass('is-active', isActive).attr('aria-pressed', isActive ? 'true' : 'false');
@@ -1302,8 +1726,8 @@ $(document)
   });
 
 $(document)
-  .off('click.omoTeamUserContext', '.omo-team-card[data-open-user-context="1"]')
-  .on('click.omoTeamUserContext', '.omo-team-card[data-open-user-context="1"]', function (event) {
+  .off('click.omoTeamUserContext', '[data-open-user-context="1"]')
+  .on('click.omoTeamUserContext', '[data-open-user-context="1"]', function (event) {
     if ($(event.target).closest('[data-team-member-menu="1"]').length) {
         return;
     }
@@ -1318,8 +1742,8 @@ $(document)
   });
 
 $(document)
-  .off('keydown.omoTeamUserContext', '.omo-team-card[data-open-user-context="1"]')
-  .on('keydown.omoTeamUserContext', '.omo-team-card[data-open-user-context="1"]', function (event) {
+  .off('keydown.omoTeamUserContext', '[data-open-user-context="1"]')
+  .on('keydown.omoTeamUserContext', '[data-open-user-context="1"]', function (event) {
     if ($(event.target).closest('[data-team-member-menu="1"]').length) {
         return;
     }
@@ -1368,6 +1792,24 @@ $(document)
   });
 
 $(document)
+  .off('click.omoTeamOpenMemberPopup', '[data-team-open-member-popup="1"]')
+  .on('click.omoTeamOpenMemberPopup', '[data-team-open-member-popup="1"]', function (event) {
+    event.preventDefault();
+
+    const holonId = Number($(this).data('hid') || 0);
+
+    if (!holonId || typeof window.commonTopbarOpenModal !== 'function') {
+        return;
+    }
+
+    window.commonTopbarOpenModal(
+        'Ajouter un membre',
+        'api/holons/member_popup.php?hid=' + holonId,
+        'fetch'
+    );
+  });
+
+$(document)
   .off('click.omoTeamMemberAction', '[data-member-action]')
   .on('click.omoTeamMemberAction', '[data-member-action]', function (event) {
     event.preventDefault();
@@ -1380,6 +1822,8 @@ $(document)
     const organizationId = <?= (int)$organizationId ?>;
     const currentHolonId = <?= $hasStructureContext ? (int)$currentHolon->getId() : 0 ?>;
     const rootHolonId = <?= $hasStructureContext ? (int)$rootHolon->getId() : 0 ?>;
+    const teamRoot = document.getElementById('omo-team-root');
+    const currentTeamScope = omoTeamNormalizeScope(teamRoot ? teamRoot.getAttribute('data-team-scope') : omoTeamInitialScope);
     const contextLabel = <?= json_encode($currentHolonTemplateLabel, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const displayName = $.trim(card.find('.omo-team-card__identity h3').first().text()) || 'ce membre';
     let confirmationMessage = '';
@@ -1442,6 +1886,9 @@ $(document)
             let drawerUrl = '/omo/api/team/index.php?oid=' + organizationId;
             if (currentHolonId > 0 && currentHolonId !== rootHolonId) {
                 drawerUrl += '&cid=' + currentHolonId;
+            }
+            if (currentTeamScope !== 'contextual') {
+                drawerUrl += '&team_scope=' + encodeURIComponent(currentTeamScope);
             }
             refreshDrawer('drawer_team', drawerUrl);
         }

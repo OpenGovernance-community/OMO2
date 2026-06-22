@@ -4,6 +4,7 @@ require_once __DIR__ . '/modules/context.php';
 
 use dbObject\DecisionProcess;
 use dbObject\Holon;
+use dbObject\ObjectVisibility;
 use dbObject\Organization;
 use dbObject\User;
 
@@ -231,6 +232,18 @@ $sourceLang = [
     'decisions.index.context.holon_denied' => [
         'text' => 'Accès refusé à ce holon.',
         'context' => 'Error message when the user cannot access the requested holon context.',
+    ],
+    'decisions.index.scope.contextual' => [
+        'text' => 'Contextuel',
+        'context' => 'Label used to show only decisions from the current holon context.',
+    ],
+    'decisions.index.scope.descendants' => [
+        'text' => 'Descendants',
+        'context' => 'Label used to show decisions from the current holon and its descendants.',
+    ],
+    'decisions.index.scope.global' => [
+        'text' => 'Global',
+        'context' => 'Label used to show all visible decisions from the organization.',
     ],
     'decisions.index.filters.status.all' => [
         'text' => 'Toutes',
@@ -563,10 +576,7 @@ $escape = 'omoApiEscape';
 
 $currentOrganizationId = isset($_GET['oid']) ? (int)$_GET['oid'] : (int)($_SESSION['currentOrganization'] ?? 0);
 $currentHolonId = isset($_GET['cid']) ? (int)$_GET['cid'] : 0;
-$decisionScope = strtolower(trim((string)($_GET['decision_scope'] ?? 'contextual')));
-if ($decisionScope !== 'global') {
-    $decisionScope = 'contextual';
-}
+$requestedDecisionScope = $_GET['decision_scope'] ?? 'contextual';
 $initialOpenDecisionId = isset($_GET['open_decision_id']) ? (int)$_GET['open_decision_id'] : 0;
 
 $refreshUrl = trim((string)($_SERVER['REQUEST_URI'] ?? ''));
@@ -671,6 +681,10 @@ $allowedContextHolonIds = $currentContextHolon
     ? [(int)$currentContextHolon->getId() => true]
     : [];
 $canToggleDecisionScope = $organization->getEnabledStructuralRootHolon() !== null;
+$availableDecisionScopes = omoApiGetAvailableContextScopes($canToggleDecisionScope, $currentContextHolon, $organization->getEnabledStructuralRootHolon());
+$decisionScope = omoApiNormalizeContextScope($requestedDecisionScope, $availableDecisionScopes);
+$decisionScopeActiveIndex = omoApiResolveContextScopeIndex($decisionScope, $availableDecisionScopes);
+$allowedDescendantHolonIds = omoApiGetDescendantHolonIdMap($currentContextHolon);
 $normalizedCurrentHolonId = omoDecisionNormalizeContextHolonId($organization, $currentHolonId);
 
 $statusLabels = [
@@ -699,6 +713,18 @@ $dateFormatter = class_exists('IntlDateFormatter')
 $dateTimeFormatter = class_exists('IntlDateFormatter')
     ? new IntlDateFormatter('fr_CH', IntlDateFormatter::MEDIUM, IntlDateFormatter::SHORT)
     : null;
+$decisionVisibilityIconMap = [
+    ObjectVisibility::TYPE_EVERYONE => '/omo/assets/images/documents/visibility/everyone.png',
+    ObjectVisibility::TYPE_ORGANIZATION => '/omo/assets/images/documents/visibility/organization.png',
+    ObjectVisibility::TYPE_CIRCLE => '/omo/assets/images/documents/visibility/circle.png',
+    ObjectVisibility::TYPE_ROLE => '/omo/assets/images/documents/visibility/role.png',
+    ObjectVisibility::TYPE_SELF => '/omo/assets/images/documents/visibility/me.png',
+];
+$resolveDecisionVisibilityIconUrl = static function ($visibilityType) use ($decisionVisibilityIconMap): string {
+    $normalizedVisibilityType = DecisionProcess::normalizeVisibilityType($visibilityType);
+
+    return (string)($decisionVisibilityIconMap[$normalizedVisibilityType] ?? $decisionVisibilityIconMap[DecisionProcess::getDefaultVisibilityType()]);
+};
 $today = new DateTimeImmutable('today');
 $decisionGroups = sharedGetRelativeDateGroups($today, [
     'today' => t('decisions.index.group.today', [], $lang, $sourceLang),
@@ -741,13 +767,19 @@ foreach ($decisionRows as $row) {
     }
 
     $holonId = (int)$decision->get('IDholon');
-    if ($decisionScope !== 'global' && $currentContextHolon && $holonId > 0 && !isset($allowedContextHolonIds[$holonId])) {
+    if ($decisionScope === 'contextual' && $currentContextHolon && $holonId > 0 && !isset($allowedContextHolonIds[$holonId])) {
+        continue;
+    }
+
+    if ($decisionScope === 'descendants' && $currentContextHolon && $holonId > 0 && !isset($allowedDescendantHolonIds[$holonId])) {
         continue;
     }
 
     $status = DecisionProcess::normalizeStatus($decision->get('status'));
     $decisionType = DecisionProcess::normalizeDecisionType($decision->get('decision_type'));
     $method = DecisionProcess::normalizeEvaluationMethod($decision->get('evaluation_method'));
+    $visibility = $decision->getVisibilityDisplayData($currentOrganizationId);
+    $visibilityAccess = $decision->currentViewerCanAccessVisibility($currentOrganizationId);
 
     $isOwner = $currentUserId > 0 && (int)$decision->get('IDuser') === $currentUserId;
     $hasUserParticipation = (int)($row['has_user_participation'] ?? 0) > 0;
@@ -755,7 +787,11 @@ foreach ($decisionRows as $row) {
 
     $canManage = $isOwner;
 
-    $canView = $canManage || $isOwner || $hasUserParticipation || $hasEmailParticipation || $status !== DecisionProcess::STATUS_DRAFT;
+    $canView = $canManage
+        || $isOwner
+        || $hasUserParticipation
+        || $hasEmailParticipation
+        || ($status !== DecisionProcess::STATUS_DRAFT && $visibilityAccess);
     if (!$canView) {
         continue;
     }
@@ -946,6 +982,9 @@ foreach ($decisionRows as $row) {
         'decisionTypeLabel' => $typeLabels[$decisionType] ?? $decisionType,
         'evaluationMethod' => $method,
         'evaluationMethodLabel' => $methodLabels[$method] ?? $method,
+        'visibilityType' => (string)($visibility['type'] ?? DecisionProcess::getDefaultVisibilityType()),
+        'visibilityLabel' => (string)($visibility['badgeText'] ?? ''),
+        'visibilityIconUrl' => $resolveDecisionVisibilityIconUrl((string)($visibility['type'] ?? DecisionProcess::getDefaultVisibilityType())),
         'holonId' => $holonId,
         'holonLabel' => trim((string)($scopeMeta['value'] ?? '')) !== ''
             ? (string)$scopeMeta['value']
@@ -1140,25 +1179,21 @@ if (!is_string($payloadJson)) {
                     role="tablist"
                     aria-label="Portee des decisions"
                     data-omo-scope-switch="<?= $escape($decisionScope) ?>"
+                    style="--omo-scope-option-count: <?= (int)count($availableDecisionScopes) ?>; --omo-scope-active-index: <?= (int)$decisionScopeActiveIndex ?>;"
                 >
-                    <button
-                        type="button"
-                        class="omo-scope-toggle__button<?= $decisionScope === 'contextual' ? ' is-active' : '' ?>"
-                        aria-label="Contextuel"
-                        data-omo-decision-scope-toggle="contextual"
-                        data-omo-scope-option="contextual"
-                        aria-pressed="<?= $decisionScope === 'contextual' ? 'true' : 'false' ?>"
-                        onclick="return window.omoToggleDecisionsScope ? window.omoToggleDecisionsScope(this, event) : false;"
-                    ><span class="omo-scope-toggle__text">Contextuel</span></button>
-                    <button
-                        type="button"
-                        class="omo-scope-toggle__button<?= $decisionScope === 'global' ? ' is-active' : '' ?>"
-                        aria-label="Global"
-                        data-omo-decision-scope-toggle="global"
-                        data-omo-scope-option="global"
-                        aria-pressed="<?= $decisionScope === 'global' ? 'true' : 'false' ?>"
-                        onclick="return window.omoToggleDecisionsScope ? window.omoToggleDecisionsScope(this, event) : false;"
-                    ><span class="omo-scope-toggle__text">Global</span></button>
+                    <?php foreach ($availableDecisionScopes as $scopeIndex => $scopeKey): ?>
+                        <?php $scopeLabel = t('decisions.index.scope.' . $scopeKey, [], $lang, $sourceLang); ?>
+                        <button
+                            type="button"
+                            class="omo-scope-toggle__button<?= $decisionScope === $scopeKey ? ' is-active' : '' ?>"
+                            aria-label="<?= $escape($scopeLabel) ?>"
+                            data-omo-decision-scope-toggle="<?= $escape($scopeKey) ?>"
+                            data-omo-scope-option="<?= $escape($scopeKey) ?>"
+                            data-omo-scope-index="<?= (int)$scopeIndex ?>"
+                            aria-pressed="<?= $decisionScope === $scopeKey ? 'true' : 'false' ?>"
+                            onclick="return window.omoToggleDecisionsScope ? window.omoToggleDecisionsScope(this, event) : false;"
+                        ><span class="omo-scope-toggle__text"><?= $escape($scopeLabel) ?></span></button>
+                    <?php endforeach; ?>
                 </div>
             </div>
             <?php endif; ?>
@@ -1567,6 +1602,36 @@ if (!is_string($payloadJson)) {
     min-width: 0;
 }
 
+.omo-decisions__compact-title-line {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.omo-decisions__visibility-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    opacity: 0.82;
+}
+
+.omo-decisions__visibility-icon img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.omo-decisions__visibility-icon--compact {
+    width: 16px;
+    height: 16px;
+}
+
 .omo-decisions__compact-meta {
     display: flex;
     flex-wrap: wrap;
@@ -1953,8 +2018,9 @@ function omoDecisionsWritePreferences(preferences) {
 }
 
 function omoDecisionGetCurrentScope() {
-    return String(root.getAttribute('data-omo-decision-scope') || 'contextual').trim().toLowerCase() === 'global'
-        ? 'global'
+    const normalizedScope = String(root.getAttribute('data-omo-decision-scope') || 'contextual').trim().toLowerCase();
+    return normalizedScope === 'global' || normalizedScope === 'descendants'
+        ? normalizedScope
         : 'contextual';
 }
 
@@ -1980,15 +2046,26 @@ window.omoToggleDecisionsScope = function (button, event) {
         return false;
     }
 
-    const currentScope = String(panel.getAttribute('data-omo-decision-scope') || 'contextual').trim().toLowerCase() === 'global'
-        ? 'global'
-        : 'contextual';
-    const targetScope = String(button.getAttribute('data-omo-decision-scope-toggle') || '').trim().toLowerCase() === 'global'
-        ? 'global'
-        : 'contextual';
+    const normalizeDecisionScope = function (scopeValue) {
+        const normalizedScope = String(scopeValue || '').trim().toLowerCase();
+        return normalizedScope === 'global' || normalizedScope === 'descendants'
+            ? normalizedScope
+            : 'contextual';
+    };
+    const currentScope = normalizeDecisionScope(panel.getAttribute('data-omo-decision-scope') || 'contextual');
+    const targetScope = normalizeDecisionScope(button.getAttribute('data-omo-decision-scope-toggle') || '');
 
     if (targetScope === currentScope) {
         return false;
+    }
+
+    const scopeSwitch = panel.querySelector('[data-omo-scope-switch]');
+    if (scopeSwitch) {
+        scopeSwitch.setAttribute('data-omo-scope-switch', targetScope);
+        scopeSwitch.style.setProperty(
+            '--omo-scope-active-index',
+            String(parseInt(button.getAttribute('data-omo-scope-index') || '0', 10) || 0)
+        );
     }
 
     const organizationId = Number(panel.getAttribute('data-omo-decision-oid') || 0);
@@ -2676,6 +2753,20 @@ function buildCompactAvatar(owner) {
     return '<span class="omo-decisions__compact-avatar"><span class="omo-decisions__compact-avatar-placeholder">' + escapeHtml(ownerInitials) + '</span></span>';
 }
 
+function buildDecisionVisibilityIconHtml(item, className) {
+    const resolvedClassName = String(className || '').trim();
+    const iconUrl = String(item && item.visibilityIconUrl ? item.visibilityIconUrl : '').trim();
+    const iconLabel = String(item && item.visibilityLabel ? item.visibilityLabel : '').trim();
+
+    if (iconUrl === '') {
+        return '';
+    }
+
+    return '<span class="' + escapeHtml(resolvedClassName !== '' ? resolvedClassName : 'omo-decisions__visibility-icon') + '" role="img"'
+        + (iconLabel !== '' ? ' aria-label="' + escapeHtml(iconLabel) + '" title="' + escapeHtml(iconLabel) + '"' : '')
+        + '><img src="' + escapeHtml(iconUrl) + '" alt=""></span>';
+}
+
 function buildCompactMetaLine(item) {
     const metaParts = [];
     const ownerName = String(item && item.owner && item.owner.displayName ? item.owner.displayName : '').trim();
@@ -2830,7 +2921,7 @@ function renderCompactRow(item) {
                 + buildCompactAvatar(item && item.owner ? item.owner : {})
                 + '<div class="omo-decisions__compact-title-block generic-file-list__title-block">'
                     + '<div class="generic-file-list__title-row">'
-                        + '<strong class="generic-file-list__title">' + escapeHtml(item && item.title ? item.title : '') + '</strong>'
+                        + '<span class="omo-decisions__compact-title-line"><strong class="generic-file-list__title">' + escapeHtml(item && item.title ? item.title : '') + '</strong>' + buildDecisionVisibilityIconHtml(item, 'omo-decisions__visibility-icon omo-decisions__visibility-icon--compact') + '</span>'
                     + '</div>'
                     + '<div class="omo-decisions__compact-meta generic-file-list__meta-line">' + buildCompactMetaLine(item) + '</div>'
                 + '</div>'
@@ -3027,6 +3118,10 @@ function renderCard(item) {
             title: String(item.title || ''),
             description: String(item.description || '').trim(),
             statusLabel: String(item.statusLabel || ''),
+            titleIcon: {
+                url: String(item.visibilityIconUrl || ''),
+                label: String(item.visibilityLabel || '')
+            },
             owner: owner,
             badges: Array.isArray(item.badges) ? item.badges : [],
             actions: Array.isArray(item.actions) ? item.actions : [],
@@ -3091,7 +3186,7 @@ function renderCard(item) {
             + '<span class="omo-decisions-card__owner-avatar">' + ownerAvatarHtml + '</span>'
             + '<span class="omo-decisions-card__summary-copy">'
                 + '<span class="omo-decisions-card__summary-top">'
-                    + '<span class="omo-decisions-card__title">' + escapeHtml(item.title || '') + '</span>'
+                    + '<span class="omo-decisions-card__title-line"><span class="omo-decisions-card__title">' + escapeHtml(item.title || '') + '</span>' + buildDecisionVisibilityIconHtml(item, 'omo-decisions-card__title-icon') + '</span>'
                     + '<span class="omo-decisions-card__status">' + escapeHtml(item.statusLabel || '') + '</span>'
                 + '</span>'
                 + '<span class="omo-decisions-card__summary-bottom">'

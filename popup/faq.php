@@ -14,9 +14,17 @@ if ($faqContext === false) {
 }
 
 $contextHolon = $faqContext['currentHolon'] ?? null;
+$rootHolon = $faqContext['rootHolon'] ?? null;
 $contextHolonId = $contextHolon ? (int)$contextHolon->getId() : 0;
 $contextOrganizationId = (int)($faqContext['organizationId'] ?? 0);
+$faqAvailableScopes = omoApiGetAvailableContextScopes($contextOrganizationId > 0, $contextHolon, $rootHolon);
 $faqScope = \dbObject\FAQ::normalizePopupScope($_GET['faq_scope'] ?? null, $faqContext ?: array());
+$faqScopeActiveIndex = omoApiResolveContextScopeIndex($faqScope, $faqAvailableScopes);
+$faqScopeLabels = array(
+	'contextual' => 'Contextuel',
+	'descendants' => 'Descendants',
+	'global' => 'Global',
+);
 $currentUserId = function_exists('commonGetCurrentUserId')
 	? (int)commonGetCurrentUserId()
 	: (int)($_SESSION['currentUser'] ?? 0);
@@ -44,7 +52,9 @@ $contextHolonLabel = $contextHolon instanceof \dbObject\Holon
 	: '';
 $heroSubtitle = $faqScope === 'global'
 	? 'Aide partagee et reponses communes'
-	: 'Aide contextuelle et reponses partagees';
+	: ($faqScope === 'descendants'
+		? 'Aide du contexte et de ses descendants'
+		: 'Aide du contexte courant');
 
 $newFaq = new \dbObject\FAQ();
 $newFaq->set('IDorganization', $contextOrganizationId > 0 ? $contextOrganizationId : null);
@@ -393,9 +403,12 @@ if ($canManageAllFaqs) {
 	}
 
 	.faq-popup__scope-toggle {
+		--faq-scope-option-count: 2;
+		--faq-scope-active-index: 0;
+		--faq-scope-toggle-inset: 4px;
 		position: relative;
 		display: inline-grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		grid-template-columns: repeat(var(--faq-scope-option-count), minmax(0, 1fr));
 		align-items: center;
 		gap: 0;
 		padding: 4px;
@@ -410,20 +423,16 @@ if ($canManageAllFaqs) {
 	.faq-popup__scope-toggle::before {
 		content: "";
 		position: absolute;
-		left: 4px;
-		top: 4px;
-		bottom: 4px;
-		width: calc(50% - 4px);
+		left: var(--faq-scope-toggle-inset);
+		top: var(--faq-scope-toggle-inset);
+		bottom: var(--faq-scope-toggle-inset);
+		width: calc((100% - (var(--faq-scope-toggle-inset) * 2)) / var(--faq-scope-option-count));
 		border-radius: 999px;
 		background: var(--faq-bg);
 		box-shadow: 0 4px 10px rgba(15, 23, 42, 0.10);
-		transform: translateX(0);
+		transform: translateX(calc(var(--faq-scope-active-index) * 100%));
 		transition: transform 220ms ease, box-shadow 220ms ease;
 		z-index: 0;
-	}
-
-	.faq-popup__scope-toggle[data-faq-scope-switch="global"]::before {
-		transform: translateX(100%);
 	}
 
 	.faq-popup__scope-toggle-button {
@@ -437,11 +446,44 @@ if ($canManageAllFaqs) {
 		cursor: pointer;
 		font-size: 13px;
 		font-weight: 600;
+		min-width: 0;
+		white-space: nowrap;
 		transition: color 180ms ease;
+	}
+
+	.faq-popup__scope-toggle-button::before {
+		content: "";
+		display: none;
+		width: 18px;
+		height: 18px;
+		background-position: center;
+		background-repeat: no-repeat;
+		background-size: contain;
+		opacity: 0.68;
+	}
+
+	.faq-popup__scope-toggle-button[data-omo-scope-option="contextual"]::before {
+		background-image: url("/omo/assets/images/scope/contextual.png?v=20260622");
+	}
+
+	.faq-popup__scope-toggle-button[data-omo-scope-option="descendants"]::before {
+		background-image: url("/omo/assets/images/scope/descendants.png?v=20260622");
+	}
+
+	.faq-popup__scope-toggle-button[data-omo-scope-option="global"]::before {
+		background-image: url("/omo/assets/images/scope/global.png?v=20260622");
 	}
 
 	.faq-popup__scope-toggle-button.is-active {
 		color: var(--faq-heading);
+	}
+
+	.faq-popup__scope-toggle-button.is-active::before {
+		opacity: 1;
+	}
+
+	html[data-theme="dark"] .faq-popup__scope-toggle-button::before {
+		filter: invert(1);
 	}
 
 	.faq-popup.is-loading .faq-popup__scope-toggle {
@@ -949,6 +991,11 @@ if ($canManageAllFaqs) {
 			justify-content: flex-end;
 		}
 
+		.faq-popup__scope-toggle-button {
+			padding: 9px 12px;
+			font-size: 12px;
+		}
+
 		.faq-popup__search-shell {
 			padding: 0 14px;
 			border-radius: 16px;
@@ -1001,6 +1048,35 @@ if ($canManageAllFaqs) {
 			text-align: left;
 		}
 
+		.faq-popup__scope-toggle-button {
+			padding: 8px 10px;
+			font-size: 11px;
+		}
+
+		.faq-popup__scope-toggle-button {
+			min-width: 42px;
+			min-height: 36px;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.faq-popup__scope-toggle-button::before {
+			display: block;
+		}
+
+		.faq-popup__scope-toggle-button > span {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			padding: 0;
+			margin: -1px;
+			overflow: hidden;
+			clip: rect(0, 0, 0, 0);
+			white-space: nowrap;
+			border: 0;
+		}
+
 		.faq-popup__scope-grid {
 			grid-template-columns: 1fr;
 		}
@@ -1019,20 +1095,20 @@ if ($canManageAllFaqs) {
 								role="tablist"
 								aria-label="Portee de la FAQ"
 								data-faq-scope-switch="<?= htmlspecialchars($faqScope, ENT_QUOTES, 'UTF-8') ?>"
+								style="--faq-scope-option-count: <?= (int)count($faqAvailableScopes) ?>; --faq-scope-active-index: <?= (int)$faqScopeActiveIndex ?>;"
 							>
-								<button
-									 title="<?= htmlspecialchars($contextHolonLabel, ENT_QUOTES, 'UTF-8') ?>"
-									type="button"
-									class="faq-popup__scope-toggle-button<?= $faqScope === 'contextual' ? ' is-active' : '' ?>"
-									data-faq-scope-toggle="contextual"
-									aria-pressed="<?= $faqScope === 'contextual' ? 'true' : 'false' ?>"
-								>Contextuel</button>
-								<button
-									type="button"
-									class="faq-popup__scope-toggle-button<?= $faqScope === 'global' ? ' is-active' : '' ?>"
-									data-faq-scope-toggle="global"
-									aria-pressed="<?= $faqScope === 'global' ? 'true' : 'false' ?>"
-								>Global</button>
+								<?php foreach ($faqAvailableScopes as $scopeOption): ?>
+									<button
+										<?php if ($scopeOption === 'contextual' && $contextHolonLabel !== ''): ?>
+											title="<?= htmlspecialchars($contextHolonLabel, ENT_QUOTES, 'UTF-8') ?>"
+										<?php endif; ?>
+										type="button"
+										class="faq-popup__scope-toggle-button<?= $faqScope === $scopeOption ? ' is-active' : '' ?>"
+										data-faq-scope-toggle="<?= htmlspecialchars($scopeOption, ENT_QUOTES, 'UTF-8') ?>"
+										data-omo-scope-option="<?= htmlspecialchars($scopeOption, ENT_QUOTES, 'UTF-8') ?>"
+										aria-pressed="<?= $faqScope === $scopeOption ? 'true' : 'false' ?>"
+									><span><?= htmlspecialchars((string)($faqScopeLabels[$scopeOption] ?? $scopeOption), ENT_QUOTES, 'UTF-8') ?></span></button>
+								<?php endforeach; ?>
 							</div>
 						<?php endif; ?>
 						
@@ -1192,9 +1268,7 @@ if ($canManageAllFaqs) {
 	const defaultVisibleLimit = parsedDefaultVisibleLimit > 0 ? parsedDefaultVisibleLimit : Number.MAX_SAFE_INTEGER;
 	const currentOid = Number(root.getAttribute('data-faq-oid') || 0);
 	const currentCid = Number(root.getAttribute('data-faq-cid') || 0);
-	const currentScope = String(root.getAttribute('data-faq-scope') || 'contextual').trim().toLowerCase() === 'global'
-		? 'global'
-		: 'contextual';
+	const currentScope = normalizeFaqScope(root.getAttribute('data-faq-scope') || 'contextual');
 	const reloadUrl = root.getAttribute('data-faq-reload-url') || '/popup/faq.php';
 	let currentViewToken = null;
 	let refreshRequestId = 0;
@@ -1216,6 +1290,31 @@ if ($canManageAllFaqs) {
 
 	function escapeRegExp(value) {
 		return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	}
+
+	function normalizeFaqScope(value) {
+		const normalizedScope = String(value || '').trim().toLowerCase();
+		if (normalizedScope === 'global' || normalizedScope === 'descendants') {
+			return normalizedScope;
+		}
+
+		return 'contextual';
+	}
+
+	function resolveFaqScopeIndex(scopeSwitch, scope) {
+		if (!scopeSwitch) {
+			return 0;
+		}
+
+		const normalizedScope = normalizeFaqScope(scope);
+		const scopeButtons = Array.from(scopeSwitch.querySelectorAll('[data-faq-scope-toggle]'));
+		for (let index = 0; index < scopeButtons.length; index += 1) {
+			if (normalizeFaqScope(scopeButtons[index].getAttribute('data-faq-scope-toggle')) === normalizedScope) {
+				return index;
+			}
+		}
+
+		return 0;
 	}
 
 	function buildAccentInsensitivePattern(word) {
@@ -1262,7 +1361,7 @@ if ($canManageAllFaqs) {
 	}
 
 	function buildPopupUrlForScope(scope) {
-		const resolvedScope = String(scope || '').trim().toLowerCase() === 'global' ? 'global' : 'contextual';
+		const resolvedScope = normalizeFaqScope(scope);
 		const query = [];
 
 		if (currentOid > 0) {
@@ -1301,10 +1400,12 @@ if ($canManageAllFaqs) {
 
 		const scopeSwitch = activeRoot.querySelector('[data-faq-scope-switch]');
 		if (scopeSwitch && nextScope) {
+			const normalizedScope = normalizeFaqScope(nextScope);
 			scopeSwitch.setAttribute(
 				'data-faq-scope-switch',
-				String(nextScope).trim().toLowerCase() === 'global' ? 'global' : 'contextual'
+				normalizedScope
 			);
+			scopeSwitch.style.setProperty('--faq-scope-active-index', String(resolveFaqScopeIndex(scopeSwitch, normalizedScope)));
 		}
 
 		activeRoot.querySelectorAll('[data-faq-scope-toggle]').forEach(function (button) {
@@ -1314,7 +1415,7 @@ if ($canManageAllFaqs) {
 
 	function refreshPopupContent(url, options) {
 		const config = options || {};
-		const targetScope = String(config.scope || '').trim().toLowerCase() === 'global' ? 'global' : 'contextual';
+		const targetScope = normalizeFaqScope(config.scope || '');
 		const requestId = ++refreshRequestId;
 
 		setLoadingState(true, config.scope ? targetScope : null);
