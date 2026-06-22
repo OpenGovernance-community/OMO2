@@ -8,7 +8,7 @@ $holonId = isset($_POST['cid']) ? (int)$_POST['cid'] : 0;
 $documentId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
 $currentUserId = (int)commonGetCurrentUserId();
 
-if ($organizationId <= 0 || $currentUserId <= 0 || !commonCurrentUserHasOrganizationAccess($organizationId)) {
+if ($currentUserId <= 0) {
     http_response_code(403);
     echo json_encode(array(
         'status' => false,
@@ -70,7 +70,21 @@ $payload = array(
 );
 
 if ($documentId > 0) {
-    if (!$document->load($documentId) || !$document->canEditInOrganizationContext($organizationId)) {
+    if (!$document->load($documentId)) {
+        http_response_code(403);
+        echo json_encode(array(
+            'status' => false,
+            'message' => 'Acces refuse.',
+        ));
+        exit;
+    }
+
+    $organizationId = (int)$document->get('IDorganization');
+
+    if (
+        ($organizationId > 0 && !commonCurrentUserHasOrganizationAccess($organizationId))
+        || !$document->canEditInOrganizationContext($organizationId)
+    ) {
         http_response_code(403);
         echo json_encode(array(
             'status' => false,
@@ -85,6 +99,15 @@ if ($documentId > 0) {
         $payload
     );
 } else {
+    if ($organizationId <= 0 || !commonCurrentUserHasOrganizationAccess($organizationId)) {
+        http_response_code(403);
+        echo json_encode(array(
+            'status' => false,
+            'message' => 'Acces refuse.',
+        ));
+        exit;
+    }
+
     $result = $document->createInOrganizationContext(
         $organizationId,
         $holonId > 0 ? $holonId : null,
