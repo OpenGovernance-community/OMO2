@@ -169,6 +169,32 @@ function adminEditBuildTemporalInput($type, $name, $value, $class, $disabled = f
     return $html;
 }
 
+function adminEditResolveImageDisplaySize($object, $key) {
+    $displayWidth = 200;
+    $displayHeight = 200;
+    $lengths = method_exists($object, 'attributeLength') ? $object::attributeLength() : array();
+    $sizeConfig = $lengths[$key] ?? null;
+
+    if (is_array($sizeConfig)) {
+        if (isset($sizeConfig[0]) && is_array($sizeConfig[0])) {
+            $displayWidth = isset($sizeConfig[1][0]) ? (int)$sizeConfig[1][0] : (isset($sizeConfig[0][0]) ? (int)$sizeConfig[0][0] : $displayWidth);
+            $displayHeight = isset($sizeConfig[1][1]) ? (int)$sizeConfig[1][1] : (isset($sizeConfig[0][1]) ? (int)$sizeConfig[0][1] : $displayHeight);
+        } else {
+            $displayWidth = isset($sizeConfig[0]) ? (int)$sizeConfig[0] : $displayWidth;
+            $displayHeight = isset($sizeConfig[1]) ? (int)$sizeConfig[1] : $displayHeight;
+        }
+    }
+
+    if ($displayWidth <= 0) {
+        $displayWidth = 200;
+    }
+    if ($displayHeight <= 0) {
+        $displayHeight = 200;
+    }
+
+    return array($displayWidth, $displayHeight);
+}
+
 function getFieldType($object, $key) {
     if (is_object($object)) {
         // Find rows linked to the type
@@ -507,9 +533,10 @@ function displayField($object, $key, $default = null, $filter = null) {
                 "<input type='checkbox' name='" . $key . "' id='" . $key . "'" . ($object->get($key) > 0 ? "checked" : "") . " value='1'>";
             break;
         case "image" :
+            list($displayWidth, $displayHeight) = adminEditResolveImageDisplaySize($object, $key);
             $output = "<input name='" . $key . "' id='" . $key . "' type='hidden' value='" . str_replace("'", "&apos;", (string)($object->get($key) ?? "")) . "'>";
             $output .= "<input class='" . $class . "' name='" . $key . "_file' id='" . $key . "_file' type='file' onchange='previewFile(\"" . $key . "\",$(\"#img_" . $key . "\"))'><br>";
-            $output .= "<div id='img_" . $key . "' src='' style='width:" . (isset($object::attributeLength()[$key]) ? $object::attributeLength()[$key][0] : "200") . "px; height:" . (isset($object::attributeLength()[$key]) ? $object::attributeLength()[$key][1] : "200") . "px; border:1px solid black; background:url(" . $object->get($key) . "); background-size:cover; background-position:center center'>";
+            $output .= "<div id='img_" . $key . "' src='' style='width:" . $displayWidth . "px; height:" . $displayHeight . "px; border:1px solid black; background:url(" . $object->get($key) . "); background-size:cover; background-position:center center'>";
             $output .= "<div id='drag_img_" . $key . "' class='drag_img' data='#img_" . $key . "' style='width:100%; height:100%;'>";
             $output .= "</div>";
             $output .= "</div>";

@@ -142,10 +142,10 @@ INSERT INTO `document` (`id`, `title`, `description`, `content`, `keywords`, `ID
 -- --------------------------------------------------------
 
 --
--- Structure de la table `faq`
+-- Structure de la table `question`
 --
 
-CREATE TABLE `faq` (
+CREATE TABLE `question` (
   `id` int(10) UNSIGNED NOT NULL,
   `IDhowto` int(10) UNSIGNED DEFAULT NULL,
   `IDorganization` int(10) UNSIGNED DEFAULT NULL,
@@ -167,31 +167,31 @@ CREATE TABLE `faq` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Déchargement des données de la table `faq`
+-- Déchargement des données de la table `question`
 --
 
-INSERT INTO `faq` (`id`, `IDhowto`, `question`, `answer`, `detail`, `displayorder`, `isactive`, `created`, `updated`) VALUES
+INSERT INTO `question` (`id`, `IDhowto`, `question`, `answer`, `detail`, `displayorder`, `isactive`, `created`, `updated`) VALUES
 (1, NULL, 'Ma première question', 'Réponse de ma première question', 'Détail de la réponse de la première question', 0, 1, '2026-04-12 08:08:05', '2026-04-12 08:08:34'),
 (2, NULL, 'Ma deuxième question', 'Réponse de ma deuxième question', 'Détail de la réponse de la deuxième question', 0, 1, '2026-04-12 08:08:05', '2026-04-12 08:08:34');
 
 -- --------------------------------------------------------
 
 --
--- Structure de la table `faq_choice`
+-- Structure de la table `question_choice`
 --
 
-CREATE TABLE `faq_choice` (
+CREATE TABLE `question_choice` (
   `id` int(11) NOT NULL,
-  `IDfaq` int(11) DEFAULT NULL,
+  `IDquestion` int(11) DEFAULT NULL,
   `label` mediumtext DEFAULT NULL,
   `is_correct` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Déchargement des données de la table `faq_choice`
+-- Déchargement des données de la table `question_choice`
 --
 
-INSERT INTO `faq_choice` (`id`, `IDfaq`, `label`, `is_correct`) VALUES
+INSERT INTO `question_choice` (`id`, `IDquestion`, `label`, `is_correct`) VALUES
 (1, 1, 'Propisition 1 (la bonne)', 1),
 (2, 1, 'Proposition 2 (la mauvaise)', 0),
 (3, 2, 'Propisition 1 (la mauvaise)', 0),
@@ -588,21 +588,21 @@ INSERT INTO `mission_dependencies` (`id`, `IDmission_parent`, `IDmission_child`,
 -- --------------------------------------------------------
 
 --
--- Structure de la table `mission_faq`
+-- Structure de la table `mission_question`
 --
 
-CREATE TABLE `mission_faq` (
+CREATE TABLE `mission_question` (
   `id` int(11) NOT NULL,
   `IDmission` int(11) DEFAULT NULL,
-  `IDfaq` int(11) DEFAULT NULL,
+  `IDquestion` int(11) DEFAULT NULL,
   `position` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Déchargement des données de la table `mission_faq`
+-- Déchargement des données de la table `mission_question`
 --
 
-INSERT INTO `mission_faq` (`id`, `IDmission`, `IDfaq`, `position`) VALUES
+INSERT INTO `mission_question` (`id`, `IDmission`, `IDquestion`, `position`) VALUES
 (1, 102, 1, NULL),
 (2, 102, 2, NULL);
 
@@ -677,19 +677,20 @@ CREATE TABLE `organization_parcours` (
   `IDorganization` int(11) NOT NULL,
   `IDparcours` int(11) NOT NULL,
   `position` int(11) DEFAULT NULL,
-  `everybody` tinyint(1) NOT NULL DEFAULT 1
+  `everybody` tinyint(1) NOT NULL DEFAULT 1,
+  `anonymous` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Déchargement des données de la table `organization_parcours`
 --
 
-INSERT INTO `organization_parcours` (`id`, `IDorganization`, `IDparcours`, `position`, `everybody`) VALUES
-(1, 2, 1, NULL, 1),
-(2, 2, 2, NULL, 1),
-(3, 1, 1, 2, 1),
-(4, 1, 2, 1, 1),
-(5, 1, 3, 3, 1);
+INSERT INTO `organization_parcours` (`id`, `IDorganization`, `IDparcours`, `position`, `everybody`, `anonymous`) VALUES
+(1, 2, 1, NULL, 1, 0),
+(2, 2, 2, NULL, 1, 0),
+(3, 1, 1, 2, 1, 0),
+(4, 1, 2, 1, 1, 0),
+(5, 1, 3, 3, 1, 0);
 
 -- --------------------------------------------------------
 
@@ -732,7 +733,14 @@ CREATE TABLE `parcours` (
   `id` int(11) NOT NULL,
   `title` varchar(150) NOT NULL,
   `description` text DEFAULT NULL,
-  `image` varchar(100) DEFAULT NULL
+  `image` varchar(100) DEFAULT NULL,
+  `IDorganization` int(11) DEFAULT NULL,
+  `IDusercreation` int(11) DEFAULT NULL,
+  `IDusermodification` int(11) DEFAULT NULL,
+  `datecreation` datetime DEFAULT NULL,
+  `datemodification` datetime DEFAULT NULL,
+  `ispublic` tinyint(1) NOT NULL DEFAULT 0,
+  `isbasic` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -754,6 +762,7 @@ CREATE TABLE `parcours_mission` (
   `id` int(11) NOT NULL,
   `IDparcours` int(11) NOT NULL,
   `IDmission` int(11) NOT NULL,
+  `position` int(11) DEFAULT NULL,
   `required` tinyint(1) NOT NULL DEFAULT 1,
   `branch` varchar(50) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -1057,13 +1066,13 @@ CREATE TABLE `user_patreon` (
 -- --------------------------------------------------------
 
 --
--- Structure de la table `user_faq_response`
+-- Structure de la table `user_question_response`
 --
 
-CREATE TABLE `user_faq_response` (
+CREATE TABLE `user_question_response` (
   `id` int(11) NOT NULL,
   `IDuser` int(11) DEFAULT NULL,
-  `IDfaq` int(11) DEFAULT NULL,
+  `IDquestion` int(11) DEFAULT NULL,
   `IDchoice` int(11) DEFAULT NULL,
   `IDmission` int(11) DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp()
@@ -1215,17 +1224,17 @@ ALTER TABLE `document`
   ADD PRIMARY KEY (`id`);
 
 --
--- Index pour la table `faq`
+-- Index pour la table `question`
 --
-ALTER TABLE `faq`
+ALTER TABLE `question`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_faq_reliability` (`reliability`),
   ADD KEY `idx_faq_reliability_updated_at` (`reliability_updated_at`);
 
 --
--- Index pour la table `faq_choice`
+-- Index pour la table `question_choice`
 --
-ALTER TABLE `faq_choice`
+ALTER TABLE `question_choice`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -1259,9 +1268,9 @@ ALTER TABLE `mission_dependencies`
   ADD PRIMARY KEY (`id`);
 
 --
--- Index pour la table `mission_faq`
+-- Index pour la table `mission_question`
 --
-ALTER TABLE `mission_faq`
+ALTER TABLE `mission_question`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -1377,9 +1386,9 @@ ALTER TABLE `user_patreon`
   ADD KEY `idx_user_patreon_connected` (`is_connected`);
 
 --
--- Index pour la table `user_faq_response`
+-- Index pour la table `user_question_response`
 --
-ALTER TABLE `user_faq_response`
+ALTER TABLE `user_question_response`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -1435,15 +1444,15 @@ ALTER TABLE `document`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2015;
 
 --
--- AUTO_INCREMENT pour la table `faq`
+-- AUTO_INCREMENT pour la table `question`
 --
-ALTER TABLE `faq`
+ALTER TABLE `question`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
--- AUTO_INCREMENT pour la table `faq_choice`
+-- AUTO_INCREMENT pour la table `question_choice`
 --
-ALTER TABLE `faq_choice`
+ALTER TABLE `question_choice`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
@@ -1477,9 +1486,9 @@ ALTER TABLE `mission_dependencies`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
--- AUTO_INCREMENT pour la table `mission_faq`
+-- AUTO_INCREMENT pour la table `mission_question`
 --
-ALTER TABLE `mission_faq`
+ALTER TABLE `mission_question`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
@@ -1584,9 +1593,9 @@ ALTER TABLE `user_patreon`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT pour la table `user_faq_response`
+-- AUTO_INCREMENT pour la table `user_question_response`
 --
-ALTER TABLE `user_faq_response`
+ALTER TABLE `user_question_response`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --

@@ -41,6 +41,80 @@
 				]
 			);
 		}
+
+		public static function fetchDetailedForMission($missionId)
+		{
+			$rows = self::fetchAll(
+				"SELECT
+					mh.id,
+					mh.IDmission,
+					mh.IDhomework,
+					mh.position,
+					h.title,
+					h.detail
+				FROM mission_homework mh
+				INNER JOIN homework h
+					ON h.id = mh.IDhomework
+				WHERE mh.IDmission = :mission_id
+				ORDER BY COALESCE(mh.position, h.position, mh.id) ASC, mh.id ASC",
+				['mission_id' => (int)$missionId]
+			);
+
+			return is_array($rows) ? $rows : [];
+		}
+
+		public static function attachHomeworkToMission($missionId, $homeworkId, array $options = array())
+		{
+			$missionId = (int)$missionId;
+			$homeworkId = (int)$homeworkId;
+			if ($missionId <= 0 || $homeworkId <= 0) {
+				return array(
+					'status' => false,
+					'message' => 'Mission ou devoir invalide.',
+				);
+			}
+
+			$item = new self();
+			$created = !$item->load([
+				['IDmission', $missionId],
+				['IDhomework', $homeworkId],
+			]);
+
+			if ($created) {
+				$item->set('IDmission', $missionId);
+				$item->set('IDhomework', $homeworkId);
+			}
+
+			$position = array_key_exists('position', $options) ? (int)$options['position'] : 0;
+			if ($created && $position <= 0) {
+				$position = (int)self::fetchValue(
+					"SELECT COALESCE(MAX(position), 0) + 1
+					FROM mission_homework
+					WHERE IDmission = :mission_id",
+					['mission_id' => $missionId]
+				);
+			}
+
+			if ($created || array_key_exists('position', $options)) {
+				$item->set('position', $position > 0 ? $position : null);
+			}
+
+			$saveResult = $item->save();
+			if (!is_array($saveResult) || empty($saveResult['status'])) {
+				return array(
+					'status' => false,
+					'message' => is_array($saveResult) && !empty($saveResult['text'])
+						? (string)$saveResult['text']
+						: 'Impossible d ajouter ce devoir a la mission.',
+				);
+			}
+
+			return array(
+				'status' => true,
+				'created' => $created,
+				'id' => (int)$item->getId(),
+			);
+		}
 	}
 
 ?>

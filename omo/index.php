@@ -1142,7 +1142,7 @@ if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
                     'description' => 'Des formations ciblées pour monter en compétences dans l’utilisation du logiciel.',
                     'title' => 'Tutoriels',
                     'mode' => 'drawer',
-                    'url' => commonBuildUrl('/lms/index.php?embed=1', commonGetRootHost()),
+                    'url' => commonBuildUrl('/omo/api/lms/?embed=1', commonGetRootHost()),
                 ],
             ],
         ]);

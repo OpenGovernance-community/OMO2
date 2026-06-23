@@ -4,6 +4,46 @@ Ce fichier sert a garder une trace courte des evolutions fonctionnelles et techn
 
 ## 2026-06 Structure OMO
 
+Le lien `Aide > Tutoriels` de la topbar OMO ouvre maintenant le LMS de l organisation courante au lieu de retomber sur l organisation `1`. Le LMS conserve aussi mieux cet `oid` dans ses URLs principales, y compris pour l ouverture d un parcours, la deconnexion et certains retours vers la connexion.
+
+Le seed Docker principal ajoute maintenant aussi la colonne `organization_parcours.anonymous`, et une migration dediee la cree pour les bases existantes qui ne l avaient pas encore. Cela evite les erreurs SQL dans le LMS quand une base locale a du retard de schema.
+
+Les parcours LMS ont maintenant des metadonnees de partage et de tracabilite: organisation proprietaire, createur, dernier modificateur, dates de creation et de modification, ainsi que les booleens `ispublic` et `isbasic`. Les parcours `basic` sont automatiquement rattaches a une nouvelle organisation lors de sa creation.
+
+Une copie de travail du module LMS existe maintenant aussi sous `/omo/api/lms/`. Elle reprend les fichiers du module autonome avec un bootstrap et des chemins internes adaptes a OMO pour permettre les prochains developpements sans toucher directement la version externe.
+
+Cette copie interne du LMS s appuie desormais sur la session deja ouverte dans `/omo/` et n affiche plus son ancien drawer de connexion local. Les principales actions et redirections du module actif pointent maintenant vers `/omo/api/lms/` plutot que vers le LMS autonome, y compris l entree `Aide > Tutoriels` de la topbar OMO.
+
+La liste des parcours de cette copie interne propose maintenant aussi une carte `Nouveau parcours`. Elle ouvre un drawer interne avec un formulaire `adminEdit` pour creer un parcours et le rattacher directement a l organisation courante.
+
+Le rendu partage `views/adminEdit.php` gere maintenant aussi les champs `image` quand `attributeLength()` fournit un entier simple au lieu d un tableau de dimensions. Cela evite les warnings PHP sur certains formulaires comme la creation de parcours.
+
+Le drawer interne du LMS charge maintenant explicitement `jQuery` si besoin avant d executer les scripts injectes, et attend aussi les scripts externes dans le bon ordre. Cela stabilise notamment les formulaires `adminEdit` ouverts dans ce drawer.
+
+Le formulaire interne de creation de parcours ne depend plus du vieux pre-check AJAX de `adminEdit` vers `/ajax/check.php`. Son bouton `Creer le parcours` declenche maintenant directement la vraie soumission AJAX du formulaire dans le drawer.
+
+Le bouton externe `Creer le parcours` est maintenant relie nativement au formulaire `formulaire-edit` via les attributs HTML `type="submit"` et `form="formulaire-edit"`. Cela evite de dependendre d un binding JS local pour lancer la soumission depuis le drawer.
+
+La creation de parcours dans le drawer interne est maintenant pilotee depuis la page LMS qui ouvre ce drawer: la soumission est captee, le JSON de retour est analyse, puis le drawer se ferme et la liste se recharge en cas de succes. Le stockage partage des champs `image` reutilise aussi desormais un nom de fichier unique calcule une seule fois, pour eviter certains liens casses apres upload.
+
+Les cartes de parcours du LMS interne affichent maintenant aussi un menu `...` en haut a droite avec une premiere action `Editer`. Cette action ouvre le meme drawer que la creation, mais en mode mise a jour sur le parcours selectionne.
+
+L edition d un parcours permet maintenant aussi de gerer sa liste de missions: affichage ordonne, ajout d une mission existante via popup, et reordonnancement par drag-drop avec persistance dans `parcours_mission.position`. Le code LMS degrade aussi proprement quand certaines tables annexes comme `mission_question` ou `mission_homework` ne sont pas encore presentes dans une base locale, afin d eviter les erreurs SQL bloquantes dans le drawer.
+
+Le seed Docker principal a aussi ete aligne sur les migrations LMS de questions: il cree maintenant directement `question`, `question_choice`, `mission_question` et `user_question_response` avec les bons noms de colonnes, au lieu de repartir sur l ancien schema `faq` / `mission_faq` apres reinitialisation.
+
+Dans l edition d un parcours OMO, la popup `Ajouter une mission` propose maintenant deux chemins: rattacher une mission existante, ou basculer vers un mini editeur de creation de mission dans la meme popup. Une mission creee depuis cet editeur est enregistree puis ajoutee automatiquement au parcours en cours.
+
+La popup d ajout de mission dans l editeur de parcours a aussi ete fiabilisee pour les longues listes: la bibliotheque de missions scrolle maintenant dans sa propre zone, et le filtre rapide cote navigateur normalise aussi les accents pour retrouver plus facilement une mission existante.
+
+Chaque mission rattachee a un parcours propose maintenant aussi un menu `...` avec une action `Editer`. Cette action ouvre un editeur dedie dans le drawer pour modifier les donnees de la mission, ajouter des devoirs, et ajouter des questions de validation avec leurs choix de reponse.
+
+Les devoirs et questions de cet editeur mission peuvent maintenant etre modifies eux aussi depuis la liste existante. Les memes formulaires caches servent a la creation et a la mise a jour, avec pre-remplissage des donnees et conservation des choix de reponse pour les questions.
+
+L ouverture d une mission LMS a aussi ete fiabilisee: l initialisation du quiz et des homeworks se fait maintenant depuis le script de `getMissionDetail.php` une fois le contenu reellement injecte dans le drawer, ce qui evite les ouvertures ou les questions n apparaissaient qu au deuxieme essai.
+
+Le drawer d edition d un parcours permet maintenant aussi de gerer ses missions. Une section dediee affiche les missions rattachees, autorise leur reordonnancement en drag-drop via un champ `parcours_mission.position`, et propose un bouton `Ajouter` qui ouvre une popup de selection parmi les missions existantes non encore liees.
+
 Les actions `Ajouter` et `Modifier` du panneau gauche de structure n'ouvrent plus un module OMO classique qui remplace le drawer courant. Elles passent maintenant par un drawer global externe, affiche au-dessus de la zone de travail OMO.
 
 Ce drawer externe peut se superposer a l'application actuellement ouverte, mais aussi a l'espace personnel de droite quand aucune application n'est active. La sauvegarde referme ensuite ce drawer temporaire et relance un rafraichissement du contexte sous-jacent, y compris pour la structure et les editions compactes de modeles.

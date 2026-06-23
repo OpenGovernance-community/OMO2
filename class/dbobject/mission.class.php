@@ -46,7 +46,28 @@
 			return "position";
 		}
 
+		public static function getNextPosition()
+		{
+			return (int)self::fetchValue(
+				"SELECT COALESCE(MAX(position), 0) + 1 FROM mission"
+			);
+		}
+
+		protected static function hasMissionQuestionTable()
+		{
+			return self::tableExists('mission_question');
+		}
+
+		protected static function hasMissionHomeworkTable()
+		{
+			return self::tableExists('mission_homework');
+		}
+
 		public function getQuizCount() {
+			if (!self::hasMissionQuestionTable()) {
+				return 0;
+			}
+
 			$query = "SELECT COUNT(*) FROM mission_question WHERE IDmission = :mission_id";
 			return (int)self::fetchValue($query, ['mission_id' => (int)$this->getId()]);
 		}
@@ -57,6 +78,10 @@
 
 		public static function countHomeworksForMission($missionId)
 		{
+			if (!self::hasMissionHomeworkTable()) {
+				return 0;
+			}
+
 			return (int)self::fetchValue(
 				"SELECT COUNT(*) FROM mission_homework WHERE IDmission = :mission_id",
 				['mission_id' => (int)$missionId]
@@ -65,6 +90,10 @@
 
 		public static function fetchHomeworkIdsForMission($missionId)
 		{
+			if (!self::hasMissionHomeworkTable()) {
+				return [];
+			}
+
 			$rows = self::fetchAll(
 				"SELECT IDhomework FROM mission_homework WHERE IDmission = :mission_id",
 				['mission_id' => (int)$missionId]
@@ -114,6 +143,10 @@
 			$missionId = (int)$missionId;
 			$userId = (int)$userId;
 			$parcoursId = (int)$parcoursId;
+
+			if (!self::hasMissionHomeworkTable()) {
+				return [];
+			}
 
 			if ($userId > 0 && $parcoursId > 0) {
 				$query = "
@@ -366,7 +399,7 @@
 						  AND lm_done.done IS NOT NULL
 					)
 					AND $dependencyAvailabilitySql
-				ORDER BY pm.branch ASC, m.position ASC
+				ORDER BY COALESCE(pm.position, m.position, m.id) ASC, pm.id ASC
 			";
 
 			return self::fetchAll($query, $params);
@@ -393,7 +426,7 @@
 				WHERE 1=1
 					$doneSql
 					AND $dependencyAvailabilitySql
-				ORDER BY pm.branch ASC, m.position ASC
+				ORDER BY COALESCE(pm.position, m.position, m.id) ASC, pm.id ASC
 			";
 
 			return self::fetchAll($query, $params);
@@ -422,7 +455,7 @@
 						  AND lm.done IS NOT NULL
 					)
 					AND NOT $dependencyAvailabilitySql
-				ORDER BY pm.branch ASC, m.position ASC
+				ORDER BY COALESCE(pm.position, m.position, m.id) ASC, pm.id ASC
 			";
 
 			return self::fetchAll($query, $params);
@@ -449,7 +482,7 @@
 				WHERE 1=1
 					$doneSql
 					AND NOT $dependencyAvailabilitySql
-				ORDER BY pm.branch ASC, m.position ASC
+				ORDER BY COALESCE(pm.position, m.position, m.id) ASC, pm.id ASC
 			";
 
 			return self::fetchAll($query, $params);
@@ -493,10 +526,32 @@
 					ON pm.IDmission = m.id
 					AND pm.IDparcours = :parcours_id
 				WHERE m.id IN (" . implode(', ', $donePlaceholders) . ")
-				ORDER BY pm.branch ASC, m.position ASC
+				ORDER BY COALESCE(pm.position, m.position, m.id) ASC, pm.id ASC
 			";
 
 			return self::fetchAll($query, $params);
+		}
+
+		public static function fetchAvailableForParcoursEditor($parcoursId)
+		{
+			$rows = self::fetchAll(
+				"SELECT
+					m.id,
+					m.title,
+					m.resume,
+					m.position
+				FROM mission m
+				WHERE NOT EXISTS (
+					SELECT 1
+					FROM parcours_mission pm
+					WHERE pm.IDparcours = :parcours_id
+					  AND pm.IDmission = m.id
+				)
+				ORDER BY COALESCE(m.position, m.id) ASC, m.id ASC",
+				['parcours_id' => (int)$parcoursId]
+			);
+
+			return is_array($rows) ? $rows : [];
 		}
 	}
 
