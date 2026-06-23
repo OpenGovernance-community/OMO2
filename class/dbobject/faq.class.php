@@ -139,6 +139,8 @@ class FAQ extends DbObject
 			return self::$_hasViewcountColumn;
 		}
 
+		$databaseName = (string)($GLOBALS["dbName"] ?? "");
+
 		$columnCount = self::fetchValue(
 			"select count(*) from information_schema.columns where table_schema = :schema and table_name = :table and column_name = :column",
 			[
