@@ -111,11 +111,18 @@ function lmsLoadExternalScriptOnce(src) {
 
     lmsDrawerExternalScriptPromises[src] = new Promise((resolve, reject) => {
         if (existingScript) {
+            if (existingScript.getAttribute('data-lms-loaded') === '1') {
+                resolve();
+                return;
+            }
+
+            existingScript.setAttribute('data-lms-loaded', '1');
             existingScript.addEventListener('load', () => {
                 existingScript.setAttribute('data-lms-loaded', '1');
                 resolve();
             }, { once: true });
             existingScript.addEventListener('error', () => reject(new Error('drawer_script_load_failed')), { once: true });
+            window.setTimeout(resolve, 0);
             return;
         }
 
@@ -208,7 +215,7 @@ function openDrawer(content, options) {
     document.getElementById('overlay').style.display = 'block';
     drawer.classList.add('open');
 
-    lmsExecuteDrawerScripts(container).catch(() => {
+    return lmsExecuteDrawerScripts(container).catch(() => {
         window.alert('Impossible de charger les scripts du drawer.');
     });
 }
@@ -223,8 +230,7 @@ function openDrawerFromUrl(url, options) {
             return response.text();
         })
         .then(html => {
-            openDrawer(html, options);
-            return html;
+            return openDrawer(html, options).then(() => html);
         });
 }
 </script>

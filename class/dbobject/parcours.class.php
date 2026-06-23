@@ -17,7 +17,7 @@
 				[['title'], 'string'],
 				[['description'], 'text'],
 				[['datecreation', 'datemodification'], 'datetime'],
-				[['image'], 'image'],
+				[['image'], 'sizedimage'],
 				[['id'], 'safe'],
 			];
 		}

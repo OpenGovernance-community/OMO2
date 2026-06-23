@@ -126,6 +126,82 @@
 				'id' => (int)$item->getId(),
 			);
 		}
+
+		public static function reorderForMission($missionId, array $questionIds)
+		{
+			$missionId = (int)$missionId;
+			if ($missionId <= 0) {
+				return array(
+					'status' => false,
+					'message' => 'Mission invalide.',
+				);
+			}
+
+			$normalizedQuestionIds = [];
+			foreach ($questionIds as $questionId) {
+				$questionId = (int)$questionId;
+				if ($questionId > 0) {
+					$normalizedQuestionIds[$questionId] = $questionId;
+				}
+			}
+			$normalizedQuestionIds = array_values($normalizedQuestionIds);
+
+			$currentRows = self::fetchAll(
+				"SELECT IDquestion
+				FROM mission_question
+				WHERE IDmission = :mission_id",
+				['mission_id' => $missionId]
+			);
+			if (!is_array($currentRows)) {
+				return array(
+					'status' => false,
+					'message' => 'Impossible de charger les questions de la mission.',
+				);
+			}
+
+			$currentQuestionIds = [];
+			foreach ($currentRows as $row) {
+				$questionId = (int)($row['IDquestion'] ?? 0);
+				if ($questionId > 0) {
+					$currentQuestionIds[$questionId] = $questionId;
+				}
+			}
+			$currentQuestionIds = array_values($currentQuestionIds);
+			sort($currentQuestionIds);
+
+			$comparisonQuestionIds = $normalizedQuestionIds;
+			sort($comparisonQuestionIds);
+			if ($comparisonQuestionIds !== $currentQuestionIds) {
+				return array(
+					'status' => false,
+					'message' => 'La liste des questions a reordonner est incomplete.',
+				);
+			}
+
+			foreach ($normalizedQuestionIds as $index => $questionId) {
+				$result = self::execute(
+					"UPDATE mission_question
+					SET position = :position
+					WHERE IDmission = :mission_id
+					  AND IDquestion = :question_id",
+					[
+						'position' => $index + 1,
+						'mission_id' => $missionId,
+						'question_id' => $questionId,
+					]
+				);
+				if (!$result) {
+					return array(
+						'status' => false,
+						'message' => 'Impossible de reordonner les questions de la mission.',
+					);
+				}
+			}
+
+			return array(
+				'status' => true,
+			);
+		}
 	}
 
 ?>

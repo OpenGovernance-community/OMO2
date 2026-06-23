@@ -13,7 +13,7 @@ if (!function_exists('lmsRenderMissionHomeworkManager')) {
             <div class="lms-mission-related__header">
                 <div>
                     <h3>Devoirs</h3>
-                    <p>Ajoutez ici les taches a effectuer avant de pouvoir valider la mission.</p>
+                    <p>Ajoutez ici les taches a effectuer avant de pouvoir valider la mission. Glissez-deposez les cartes pour definir leur ordre.</p>
                 </div>
                 <button type="button" data-lms-open-homework-creator="1">Ajouter un devoir</button>
             </div>
@@ -21,7 +21,7 @@ if (!function_exists('lmsRenderMissionHomeworkManager')) {
             <?php if (count($homeworks) === 0): ?>
                 <div class="lms-mission-related__empty">Aucun devoir n est encore rattache a cette mission.</div>
             <?php else: ?>
-                <div class="lms-mission-related__list">
+                <div class="lms-mission-related__list" data-lms-homework-list="1">
                     <?php foreach ($homeworks as $homework): ?>
                         <article
                             class="lms-mission-related__item"
@@ -30,8 +30,11 @@ if (!function_exists('lmsRenderMissionHomeworkManager')) {
                             data-homework-title="<?php echo htmlspecialchars((string)($homework['title'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                             data-homework-detail="<?php echo htmlspecialchars((string)($homework['detail'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                         >
-                            <div class="lms-mission-related__item-actions">
-                                <button type="button" data-lms-edit-homework="1">Editer</button>
+                            <div class="lms-mission-related__item-head">
+                                <button type="button" class="lms-mission-related__drag-handle" data-lms-homework-drag-handle="1" aria-label="Deplacer le devoir" title="Deplacer le devoir">::</button>
+                                <div class="lms-mission-related__item-actions">
+                                    <button type="button" data-lms-edit-homework="1">Editer</button>
+                                </div>
                             </div>
                             <strong><?php echo htmlspecialchars((string)($homework['title'] ?? '')); ?></strong>
                             <?php if (trim((string)($homework['detail'] ?? '')) !== ''): ?>
@@ -108,7 +111,7 @@ if (!function_exists('lmsRenderMissionHomeworkManager')) {
             <div class="lms-mission-related__header">
                 <div>
                     <h3>Questions</h3>
-                    <p>Ajoutez ici les questions de validation avec leurs choix de reponse.</p>
+                    <p>Ajoutez ici les questions de validation avec leurs choix de reponse. Glissez-deposez les cartes pour definir leur ordre.</p>
                 </div>
                 <button type="button" data-lms-open-question-creator="1">Ajouter une question</button>
             </div>
@@ -116,7 +119,7 @@ if (!function_exists('lmsRenderMissionHomeworkManager')) {
             <?php if (count($questions) === 0): ?>
                 <div class="lms-mission-related__empty">Aucune question n est encore rattachee a cette mission.</div>
             <?php else: ?>
-                <div class="lms-mission-related__list">
+                <div class="lms-mission-related__list" data-lms-question-list="1">
                     <?php foreach ($questions as $question): ?>
                         <?php
                         $choices = \dbObject\QuestionChoice::fetchForQuestion((int)($question['IDquestion'] ?? 0));
@@ -134,8 +137,11 @@ if (!function_exists('lmsRenderMissionHomeworkManager')) {
                             data-question-detail="<?php echo htmlspecialchars((string)($question['detail'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                             data-question-choices="<?php echo htmlspecialchars($choicesJson, ENT_QUOTES, 'UTF-8'); ?>"
                         >
-                            <div class="lms-mission-related__item-actions">
-                                <button type="button" data-lms-edit-question="1">Editer</button>
+                            <div class="lms-mission-related__item-head">
+                                <button type="button" class="lms-mission-related__drag-handle" data-lms-question-drag-handle="1" aria-label="Deplacer la question" title="Deplacer la question">::</button>
+                                <div class="lms-mission-related__item-actions">
+                                    <button type="button" data-lms-edit-question="1">Editer</button>
+                                </div>
                             </div>
                             <strong><?php echo htmlspecialchars((string)($question['question'] ?? '')); ?></strong>
                             <?php if (trim((string)($question['answer'] ?? '')) !== ''): ?>
