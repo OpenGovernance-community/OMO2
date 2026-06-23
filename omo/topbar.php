@@ -229,9 +229,19 @@ function omoTopbarTranslate(string $key, array $variables = []): string
     return t($key, $variables, $bundle, $sourceLang);
 }
 
-function omoGetTopbarHelpItems(string $variant = 'app'): array
+function omoGetTopbarHelpItems(string $variant = 'app', int $organizationId = 0): array
 {
-    $tutorialsUrl = commonBuildUrl('/lms/index.php?embed=1', commonGetRootHost());
+    $tutorialsQuery = [
+        'embed' => 1,
+    ];
+    if ($organizationId > 0) {
+        $tutorialsQuery['oid'] = $organizationId;
+    }
+
+    $tutorialsUrl = commonBuildUrl(
+        '/omo/api/lms/?' . http_build_query($tutorialsQuery, '', '&', PHP_QUERY_RFC3986),
+        commonGetRootHost()
+    );
 
     $faqItem = [
         'key' => 'faq',
@@ -312,6 +322,9 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
     $variant = (string)($options['variant'] ?? 'app');
     $isDemoGuest = !empty($options['isDemoGuest']);
     $hasOrganizationContext = !empty($organizationContext['isValid']) && !empty($organizationContext['id']);
+    $helpOrganizationId = $hasOrganizationContext
+        ? (int)$organizationContext['id']
+        : (int)($_SESSION['currentOrganization'] ?? 0);
     $translationOptions = !empty($options['translations']) && is_array($options['translations'])
         ? $options['translations']
         : [];
@@ -322,7 +335,7 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
         'organization' => $organizationContext,
         'logoutReturnTo' => (string)($options['logoutReturnTo'] ?? '/omo/'),
         'helpLabel' => omoTopbarTranslate('topbar.help.button'),
-        'helpItems' => omoGetTopbarHelpItems($variant),
+        'helpItems' => omoGetTopbarHelpItems($variant, $helpOrganizationId),
         'helpLinks' => omoGetTopbarHelpLinks(),
         'profile' => [
             'enabled' => !$isDemoGuest,

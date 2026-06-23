@@ -17,7 +17,7 @@ commonRenderTopbar([
     'appKey' => 'lms',
     'appLabel' => 'LMS',
     'organization' => isset($org) ? $org : null,
-    'logoutReturnTo' => '/lms/',
+    'logoutReturnTo' => lmsBuildLocalPath('/lms/'),
     'search' => [
         'enabled' => true,
         'placeholder' => 'Rechercher un parcours ou une mission',

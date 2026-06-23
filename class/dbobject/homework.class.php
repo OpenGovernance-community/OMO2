@@ -43,6 +43,13 @@
 		{
 			return "position, id";
 		}
+
+		public static function getNextPosition()
+		{
+			return (int)self::fetchValue(
+				"SELECT COALESCE(MAX(position), 0) + 1 FROM homework"
+			);
+		}
 	}
 
 ?>

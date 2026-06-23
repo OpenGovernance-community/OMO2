@@ -73,6 +73,11 @@ if (empty($saveResult["status"]) || (int)$organization->getId() <= 0) {
 }
 
 if (!$isEditMode) {
+    $basicParcoursResult = $organization->instantiateBasicParcours();
+    if (is_array($basicParcoursResult) && empty($basicParcoursResult['status'])) {
+        error_log('organization basic parcours init failed for org ' . (int)$organization->getId());
+    }
+
     $link = new \dbObject\UserOrganization();
     if (!$link->load(array(
         array('IDuser', $currentUserId),

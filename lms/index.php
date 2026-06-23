@@ -16,6 +16,7 @@ $hiddenParcoursCount = 0;
 $organizationColor = commonGetOrganizationExplicitColor($org);
 
 if ($user_id <= 0 && !$isGuestAllowed) {
+    $loginReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] : []);
     $parcours = \dbObject\Parcours::fetchEverybodyForOrganizationWithProgress($org['id'], 0);
     $showPublicCatalog = count($parcours) > 0;
     $hiddenParcoursCount = \dbObject\Parcours::countRestrictedForPublicCatalog($org['id']);
@@ -28,7 +29,7 @@ if ($user_id <= 0 && !$isGuestAllowed && !$showPublicCatalog) {
         'title' => $org['name'] . ' - LMS',
         'appName' => 'LMS',
         'intro' => 'Connectez-vous pour acceder a vos parcours de formation.',
-        'returnTo' => '/lms/' . ($isEmbedded ? '?embed=1' : ''),
+        'returnTo' => $loginReturnTo,
     ]);
 }
 ?>
@@ -221,7 +222,7 @@ if ($user_id <= 0 && !$isGuestAllowed && !$showPublicCatalog) {
 <body class="<?php echo $isEmbedded ? 'lms-embed-mode' : ''; ?>">
 <?php
 $showLoginDrawerButton = $user_id <= 0 && !$isGuestAllowed && $showPublicCatalog;
-$loginDrawerReturnTo = '/lms/' . ($isEmbedded ? '?embed=1' : '');
+$loginDrawerReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] : []);
 if (!$isEmbedded) {
     include 'inc/menu.php';
 }
@@ -305,6 +306,7 @@ const lmsIndexViewer = {
     isGuestAllowed: <?php echo $isGuestAllowed ? 'true' : 'false'; ?>,
     isEmbedded: <?php echo $isEmbedded ? 'true' : 'false'; ?>
 };
+const lmsParcoursBasePath = <?php echo json_encode(lmsBuildLocalPath('/lms/parcours.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 
 function getAnonymousProgressKey(parcoursId) {
     return `lms_progress_${lmsIndexViewer.organizationId}_${parcoursId}`;
@@ -369,11 +371,12 @@ document.querySelectorAll('.progress-circle').forEach(el => {
 });
 
 function goToParcours(id) {
-    const params = new URLSearchParams({ idp: String(id) });
+    const targetUrl = new URL(lmsParcoursBasePath, window.location.origin);
+    targetUrl.searchParams.set('idp', String(id));
     if (lmsIndexViewer.isEmbedded) {
-        params.set('embed', '1');
+        targetUrl.searchParams.set('embed', '1');
     }
-    window.location.href = "/lms/parcours.php?" + params.toString();
+    window.location.href = targetUrl.pathname + targetUrl.search + targetUrl.hash;
 }
 </script>
 <?php include 'inc/drawer.php'; ?>

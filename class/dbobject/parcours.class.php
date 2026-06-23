@@ -12,9 +12,11 @@
 		{
 			return [
 				[['title'], 'required'],
-				[['id'], 'integer'],
+				[['id', 'IDorganization', 'IDusercreation', 'IDusermodification'], 'integer'],
+				[['ispublic', 'isbasic'], 'boolean'],
 				[['title'], 'string'],
 				[['description'], 'text'],
+				[['datecreation', 'datemodification'], 'datetime'],
 				[['image'], 'image'],
 				[['id'], 'safe'],
 			];
@@ -27,6 +29,26 @@
 				'title' => 'Titre',
 				'description' => 'Description',
 				'image' => 'Image',
+				'IDorganization' => 'Organisation proprietaire',
+				'IDusercreation' => 'Createur',
+				'IDusermodification' => 'Dernier modificateur',
+				'datecreation' => 'Date de creation',
+				'datemodification' => 'Date de modification',
+				'ispublic' => 'Public',
+				'isbasic' => 'Basic',
+			];
+		}
+
+		public static function attributeDescriptions()
+		{
+			return [
+				'IDorganization' => 'Organisation proprietaire du parcours',
+				'IDusercreation' => 'Utilisateur qui a cree le parcours',
+				'IDusermodification' => 'Utilisateur qui a modifie le parcours en dernier',
+				'datecreation' => 'Date de creation du parcours',
+				'datemodification' => 'Date de derniere modification du parcours',
+				'ispublic' => 'Rend le parcours visible dans un catalogue partage et ajoutable dans une organisation',
+				'isbasic' => 'Instancie automatiquement ce parcours pour chaque nouvelle organisation',
 			];
 		}
 
@@ -39,6 +61,118 @@
 
 		public static function getOrder() {
 			return "title";
+		}
+
+		protected static function resolveCurrentUserId()
+		{
+			return function_exists('commonGetCurrentUserId')
+				? (int)\commonGetCurrentUserId()
+				: (int)($_SESSION['currentUser'] ?? 0);
+		}
+
+		protected static function resolveCurrentOrganizationId()
+		{
+			return (int)($_SESSION['currentOrganization'] ?? 0);
+		}
+
+		public function save()
+		{
+			$isNew = (int)$this->getId() <= 0;
+			$now = new \DateTimeImmutable();
+			$currentUserId = self::resolveCurrentUserId();
+			$currentOrganizationId = self::resolveCurrentOrganizationId();
+
+			if ($isNew) {
+				if ((int)$this->get('IDorganization') <= 0 && $currentOrganizationId > 0) {
+					$this->set('IDorganization', $currentOrganizationId);
+				}
+
+				if ((int)$this->get('IDusercreation') <= 0 && $currentUserId > 0) {
+					$this->set('IDusercreation', $currentUserId);
+				}
+
+				if (!$this->get('datecreation')) {
+					$this->set('datecreation', $now);
+				}
+			}
+
+			if ($currentUserId > 0) {
+				$this->set('IDusermodification', $currentUserId);
+			}
+
+			if (!$this->get('datecreation')) {
+				$this->set('datecreation', $now);
+			}
+
+			$this->set('datemodification', $now);
+
+			return parent::save();
+		}
+
+		public static function loadBasicRows()
+		{
+			return self::fetchAll(
+				"SELECT id
+				FROM parcours
+				WHERE isbasic = 1
+				ORDER BY datecreation ASC, id ASC"
+			);
+		}
+
+		public static function instantiateBasicForOrganization($organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0) {
+				return array(
+					'status' => false,
+					'message' => 'Organisation invalide.',
+					'createdCount' => 0,
+				);
+			}
+
+			$rows = self::loadBasicRows();
+			if ($rows === false) {
+				return array(
+					'status' => false,
+					'message' => 'Impossible de charger les parcours basic.',
+					'createdCount' => 0,
+				);
+			}
+
+			$createdCount = 0;
+			foreach ($rows as $row) {
+				$parcoursId = (int)($row['id'] ?? 0);
+				if ($parcoursId <= 0) {
+					continue;
+				}
+
+				$attachResult = \dbObject\OrganizationParcours::attachParcoursToOrganization(
+					$organizationId,
+					$parcoursId,
+					array(
+						'everybody' => true,
+						'anonymous' => false,
+					)
+				);
+				if (!is_array($attachResult) || empty($attachResult['status'])) {
+					return array(
+						'status' => false,
+						'message' => is_array($attachResult) && !empty($attachResult['message'])
+							? (string)$attachResult['message']
+							: 'Impossible d instancier un parcours basic.',
+						'createdCount' => $createdCount,
+					);
+				}
+
+				if (!empty($attachResult['created'])) {
+					$createdCount++;
+				}
+			}
+
+			return array(
+				'status' => true,
+				'createdCount' => $createdCount,
+			);
 		}
 
 		public static function fetchForOrganizationWithProgress($organizationId, $userId, $viewerHasOrganizationAccess = false) {

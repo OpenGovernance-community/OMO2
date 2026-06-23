@@ -46,6 +46,69 @@
 			return $item;
 		}
 
+		public static function attachParcoursToOrganization($organizationId, $parcoursId, array $options = array())
+		{
+			$organizationId = (int)$organizationId;
+			$parcoursId = (int)$parcoursId;
+			if ($organizationId <= 0 || $parcoursId <= 0) {
+				return array(
+					'status' => false,
+					'message' => 'Organisation ou parcours invalide.',
+				);
+			}
+
+			$item = new self();
+			$created = !$item->load([
+				['IDorganization', $organizationId],
+				['IDparcours', $parcoursId],
+			]);
+
+			if ($created) {
+				$item->set('IDorganization', $organizationId);
+				$item->set('IDparcours', $parcoursId);
+			}
+
+			$position = array_key_exists('position', $options) ? (int)$options['position'] : 0;
+			if ($created && $position <= 0) {
+				$position = (int)\dbObject\DbObject::fetchValue(
+					"SELECT COALESCE(MAX(position), 0) + 1
+					FROM organization_parcours
+					WHERE IDorganization = :organization_id",
+					array(
+						'organization_id' => $organizationId,
+					)
+				);
+			}
+
+			if ($created || array_key_exists('position', $options)) {
+				$item->set('position', $position > 0 ? $position : null);
+			}
+
+			if ($created || array_key_exists('everybody', $options)) {
+				$item->set('everybody', array_key_exists('everybody', $options) ? (bool)$options['everybody'] : true);
+			}
+
+			if ($created || array_key_exists('anonymous', $options)) {
+				$item->set('anonymous', array_key_exists('anonymous', $options) ? (bool)$options['anonymous'] : false);
+			}
+
+			$saveResult = $item->save();
+			if (!is_array($saveResult) || empty($saveResult['status'])) {
+				return array(
+					'status' => false,
+					'message' => is_array($saveResult) && !empty($saveResult['text'])
+						? (string)$saveResult['text']
+						: 'Impossible d attacher ce parcours a l organisation.',
+				);
+			}
+
+			return array(
+				'status' => true,
+				'created' => $created,
+				'id' => (int)$item->getId(),
+			);
+		}
+
 		public static function resolveAccessContext($organizationId, $parcoursId, $userId = 0)
 		{
 			$organizationId = (int)$organizationId;
