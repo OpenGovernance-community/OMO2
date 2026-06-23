@@ -8,6 +8,12 @@ require_once __DIR__ . '/inc/parcours_editor.php';
 $currentUserId = (int)commonGetCurrentUserId();
 $organizationId = (int)($org['id'] ?? 0);
 $hasOrganizationAccess = commonUserHasOrganizationAccess($currentUserId, $organizationId);
+$canManagePublicParcours = function_exists('commonCurrentUserIsAdminModeEnabled')
+    ? commonCurrentUserIsAdminModeEnabled($organizationId)
+    : false;
+$canManageBasicParcours = function_exists('commonCurrentUserIsSiteAdminModeEnabled')
+    ? commonCurrentUserIsSiteAdminModeEnabled()
+    : false;
 $parcoursId = (int)($_GET['pid'] ?? 0);
 
 if ($currentUserId <= 0 || !$hasOrganizationAccess || $organizationId <= 0) {
@@ -27,6 +33,12 @@ if ($parcoursId > 0) {
         exit;
     }
 
+    if ((int)$parcours->get('IDorganization') !== $organizationId) {
+        http_response_code(403);
+        echo '<div class="lms-create-parcours-view"><p>Seuls les parcours proprietaires de cette organisation peuvent etre modifies.</p></div>';
+        exit;
+    }
+
     $isEditMode = true;
 } else {
     $parcours->set('IDorganization', $organizationId);
@@ -37,19 +49,34 @@ $drawerIntro = $isEditMode
     ? 'Mettez a jour le titre, la description et l image de ce parcours.'
     : 'Renseignez le titre, la description et l image du parcours. Il sera ensuite ajoute a l organisation courante.';
 $submitLabel = $isEditMode ? 'Enregistrer' : 'Creer le parcours';
+$editorFields = array(
+    '{title:Informations principales}',
+    'title',
+    'description',
+);
+
+if ($canManagePublicParcours || $canManageBasicParcours) {
+    $editorFields[] = '{title:Diffusion}';
+
+    if ($canManagePublicParcours) {
+        $editorFields[] = 'ispublic';
+    }
+
+    if ($canManageBasicParcours) {
+        $editorFields[] = 'isbasic';
+    }
+}
+
+$editorFields[] = '{title:Visuel}';
+$editorFields[] = 'image';
+
 $params = array(
     'buttons' => false,
     'action' => omoLmsBuildPath('/save_parcours.php', array(
         'oid' => $organizationId,
         'pid' => $parcoursId > 0 ? $parcoursId : null,
     )),
-    'fields' => array(
-        '{title:Informations principales}',
-        'title',
-        'description',
-        '{title:Visuel}',
-        'image',
-    ),
+    'fields' => $editorFields,
 );
 ?>
 <style>

@@ -197,6 +197,7 @@
 					p.title,
 					p.description,
 					p.image,
+					p.IDorganization AS owner_organization_id,
 					op.position,
 					op.everybody,
 					" . $anonymousSelect . ",
@@ -217,7 +218,7 @@
 					AND lm.IDparcours = p.id
 					AND lm.IDuser = :user_id
 				WHERE " . implode(" AND ", $where) . "
-				GROUP BY p.id, p.title, p.description, p.image, op.position, op.everybody" . $anonymousGroupBy . "
+				GROUP BY p.id, p.title, p.description, p.image, p.IDorganization, op.position, op.everybody" . $anonymousGroupBy . "
 				ORDER BY op.position ASC, p.title ASC
 			";
 
@@ -241,6 +242,7 @@
 					p.title,
 					p.description,
 					p.image,
+					p.IDorganization AS owner_organization_id,
 					op.position,
 					op.everybody,
 					" . $anonymousSelect . ",
@@ -262,7 +264,7 @@
 					AND lm.IDuser = :user_id
 				WHERE op.IDorganization = :organization_id
 				  AND op.everybody = 1
-				GROUP BY p.id, p.title, p.description, p.image, op.position, op.everybody" . $anonymousGroupBy . "
+				GROUP BY p.id, p.title, p.description, p.image, p.IDorganization, op.position, op.everybody" . $anonymousGroupBy . "
 				ORDER BY op.position ASC, p.title ASC
 			";
 
@@ -272,6 +274,85 @@
 			]);
 
 			return is_array($rows) ? $rows : [];
+		}
+
+		public static function fetchImportableForOrganization($organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0) {
+				return [];
+			}
+
+			$rows = self::fetchAll(
+				"SELECT
+					p.id,
+					p.title,
+					p.description,
+					p.image,
+					p.ispublic,
+					p.isbasic,
+					p.IDorganization,
+					owner.name AS owner_name,
+					COUNT(DISTINCT pm.IDmission) AS total_missions
+				FROM parcours p
+				LEFT JOIN organization owner
+					ON owner.id = p.IDorganization
+				LEFT JOIN parcours_mission pm
+					ON pm.IDparcours = p.id
+				WHERE (p.ispublic = 1 OR p.isbasic = 1)
+				  AND NOT EXISTS (
+					SELECT 1
+					FROM organization_parcours op
+					WHERE op.IDorganization = :organization_id
+					  AND op.IDparcours = p.id
+				  )
+				GROUP BY
+					p.id,
+					p.title,
+					p.description,
+					p.image,
+					p.ispublic,
+					p.isbasic,
+					p.IDorganization,
+					owner.name
+				ORDER BY p.isbasic DESC, p.ispublic DESC, p.title ASC, p.id ASC",
+				[
+					'organization_id' => $organizationId,
+				]
+			);
+
+			return is_array($rows) ? $rows : [];
+		}
+
+		public static function loadImportableForOrganization($organizationId, $parcoursId)
+		{
+			$organizationId = (int)$organizationId;
+			$parcoursId = (int)$parcoursId;
+			if ($organizationId <= 0 || $parcoursId <= 0) {
+				return false;
+			}
+
+			return self::fetchRow(
+				"SELECT
+					p.id,
+					p.title,
+					p.ispublic,
+					p.isbasic
+				FROM parcours p
+				WHERE p.id = :parcours_id
+				  AND (p.ispublic = 1 OR p.isbasic = 1)
+				  AND NOT EXISTS (
+					SELECT 1
+					FROM organization_parcours op
+					WHERE op.IDorganization = :organization_id
+					  AND op.IDparcours = p.id
+				  )
+				LIMIT 1",
+				[
+					'organization_id' => $organizationId,
+					'parcours_id' => $parcoursId,
+				]
+			);
 		}
 
 		public static function countRestrictedForPublicCatalog($organizationId)
