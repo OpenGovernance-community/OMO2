@@ -170,9 +170,35 @@
     }
 
     function closeMenus() {
+        closePreferenceMenus();
         document.querySelectorAll('.common-topbar__menu.is-open').forEach(function (menu) {
             menu.classList.remove('is-open');
         });
+    }
+
+    function closePreferenceMenus(exceptContainer) {
+        Array.prototype.forEach.call(
+            document.querySelectorAll('[data-topbar-preference-menu]'),
+            function (container) {
+                var popup;
+                var trigger;
+
+                if (!container || container === exceptContainer) {
+                    return;
+                }
+
+                popup = container.querySelector('[data-topbar-preference-popup]');
+                trigger = container.querySelector('[data-topbar-preference-trigger]');
+
+                container.classList.remove('is-open');
+                if (popup) {
+                    popup.hidden = true;
+                }
+                if (trigger) {
+                    trigger.setAttribute('aria-expanded', 'false');
+                }
+            }
+        );
     }
 
     function focusSearchInput(input) {
@@ -718,6 +744,35 @@
         return 'system';
     }
 
+    function getColorStylePreference() {
+        if (typeof window.sharedGetColorStylePreference === 'function') {
+            return window.sharedGetColorStylePreference();
+        }
+
+        try {
+            var storedPreference = window.localStorage.getItem('omo-color-style-preference');
+            if (storedPreference === 'mono' || storedPreference === 'turquoise' || storedPreference === 'ocean-blue') {
+                return storedPreference;
+            }
+        } catch (error) {
+        }
+
+        return 'mono';
+    }
+
+    function syncPreferenceOptions(selector, value) {
+        Array.prototype.forEach.call(
+            document.querySelectorAll(selector),
+            function (option) {
+                var optionValue = option.getAttribute(selector === '[data-topbar-theme-option]'
+                    ? 'data-topbar-theme-option'
+                    : 'data-topbar-color-style-option');
+
+                option.classList.toggle('is-active', optionValue === value);
+            }
+        );
+    }
+
     function applyThemePreference(preference, persistPreference) {
         var safePreference = (preference === 'light' || preference === 'dark' || preference === 'system')
             ? preference
@@ -756,6 +811,8 @@
             }
         );
 
+        syncPreferenceOptions('[data-topbar-theme-option]', safePreference);
+
         window.dispatchEvent(new CustomEvent('omo-theme-change', {
             detail: {
                 preference: safePreference,
@@ -770,6 +827,56 @@
         }
 
         applyThemePreference(select.value, true);
+    }
+
+    function applyColorStylePreference(preference, persistPreference) {
+        var safePreference = 'mono';
+        var appliedState = null;
+
+        if (preference === 'turquoise' || preference === 'ocean-blue') {
+            safePreference = preference;
+        }
+
+        if (persistPreference) {
+            try {
+                window.localStorage.setItem('omo-color-style-preference', safePreference);
+            } catch (error) {
+            }
+        }
+
+        if (typeof window.sharedApplyDocumentTheme === 'function') {
+            appliedState = window.sharedApplyDocumentTheme({
+                preference: getThemePreference(),
+                colorStyle: safePreference
+            });
+        } else {
+            document.documentElement.dataset.colorStyle = safePreference;
+        }
+
+        syncPreferenceOptions('[data-topbar-color-style-option]', safePreference);
+
+        window.dispatchEvent(new CustomEvent('omo-color-style-change', {
+            detail: {
+                colorStyle: safePreference,
+                theme: appliedState && appliedState.theme ? appliedState.theme : document.documentElement.dataset.theme
+            }
+        }));
+    }
+
+    function togglePreferenceMenu(trigger) {
+        var container = trigger && trigger.closest ? trigger.closest('[data-topbar-preference-menu]') : null;
+        var popup = container ? container.querySelector('[data-topbar-preference-popup]') : null;
+        var shouldOpen;
+
+        if (!container || !popup) {
+            return;
+        }
+
+        shouldOpen = !container.classList.contains('is-open');
+        closePreferenceMenus(container);
+        container.classList.toggle('is-open', shouldOpen);
+        popup.hidden = !shouldOpen;
+        trigger.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
     }
 
     function bindPreferenceSelects(root) {
@@ -803,9 +910,45 @@
                 });
             }
         );
+
+        syncPreferenceOptions('[data-topbar-theme-option]', getThemePreference());
+        syncPreferenceOptions('[data-topbar-color-style-option]', getColorStylePreference());
     }
 
     document.addEventListener('click', function (event) {
+        var preferenceTrigger = event.target.closest('[data-topbar-preference-trigger]');
+        if (preferenceTrigger) {
+            event.preventDefault();
+            togglePreferenceMenu(preferenceTrigger);
+            return;
+        }
+
+        var languageOption = event.target.closest('[data-topbar-language-option]');
+        if (languageOption) {
+            event.preventDefault();
+            handleLanguageChange({
+                value: languageOption.getAttribute('data-topbar-language-option')
+            });
+            closePreferenceMenus();
+            return;
+        }
+
+        var themeOption = event.target.closest('[data-topbar-theme-option]');
+        if (themeOption) {
+            event.preventDefault();
+            applyThemePreference(themeOption.getAttribute('data-topbar-theme-option'), true);
+            closePreferenceMenus();
+            return;
+        }
+
+        var colorStyleOption = event.target.closest('[data-topbar-color-style-option]');
+        if (colorStyleOption) {
+            event.preventDefault();
+            applyColorStylePreference(colorStyleOption.getAttribute('data-topbar-color-style-option'), true);
+            closePreferenceMenus();
+            return;
+        }
+
         var trigger = event.target.closest('[data-topbar-menu-trigger]');
         if (trigger) {
             var name = trigger.getAttribute('data-topbar-menu-trigger');
@@ -886,9 +1029,16 @@
             return;
         }
 
+        if (event.target.closest('[data-topbar-preference-menu]')) {
+            return;
+        }
+
         if (!event.target.closest('.common-topbar__menu-wrap')) {
             closeMenus();
+            return;
         }
+
+        closePreferenceMenus();
     });
 
     document.addEventListener('submit', function (event) {
@@ -931,6 +1081,15 @@
 
         renderRemoteContent(body, url);
     };
+
+    if (typeof window.sharedApplyDocumentTheme === 'function') {
+        window.sharedApplyDocumentTheme({
+            preference: getThemePreference(),
+            colorStyle: getColorStylePreference()
+        });
+    } else {
+        document.documentElement.dataset.colorStyle = getColorStylePreference();
+    }
 
     bindPreferenceSelects(document);
 })();

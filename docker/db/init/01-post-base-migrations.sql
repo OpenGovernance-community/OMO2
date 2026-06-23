@@ -3,6 +3,10 @@
 
 SET NAMES utf8mb4;
 
+ALTER TABLE `organization`
+  ADD COLUMN IF NOT EXISTS `latlong` varchar(100) DEFAULT NULL AFTER `color`,
+  ADD COLUMN IF NOT EXISTS `parameters` mediumtext DEFAULT NULL AFTER `latlong`;
+
 -- Translation bundle storage
 CREATE TABLE IF NOT EXISTS `translation_bundles` (
     `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -76,6 +80,10 @@ CREATE TABLE IF NOT EXISTS `search_job` (
     KEY `idx_search_job_org_status` (`IDorganization`, `status`),
     KEY `idx_search_job_creation` (`datecreation`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `faq`
+  ADD COLUMN IF NOT EXISTS `image` varchar(1000) DEFAULT NULL AFTER `answer`,
+  ADD COLUMN IF NOT EXISTS `video` varchar(1000) DEFAULT NULL AFTER `image`;
 
 INSERT INTO `translation_languages` (`locale`, `name`, `native_name`, `sort_order`, `active`, `is_source`) VALUES
     ('fr', 'Francais', 'Francais', 10, 1, 1),
@@ -163,7 +171,11 @@ CREATE TABLE IF NOT EXISTS `holon_permission` (
 INSERT INTO `permission` (`permission_key`, `title`, `description`, `created_at`, `updated_at`)
 VALUES
     ('CAN_ADD_MEMBER', 'Ajouter un membre', 'Autorise l ajout d un membre dans le contexte cible.', NOW(), NOW()),
-    ('CAN_ADD_ADMIN', 'Definir un admin de contexte', 'Autorise l attribution ou le retrait du statut admin dans le contexte cible.', NOW(), NOW())
+    ('CAN_ADD_ADMIN', 'Definir un admin de contexte', 'Autorise l attribution ou le retrait du statut admin dans le contexte cible.', NOW(), NOW()),
+    ('CAN_CREATE_DOCUMENT', 'Creer des fichiers', 'Autorise la creation de fichiers dans le contexte cible.', NOW(), NOW()),
+    ('CAN_CREATE_DECISION', 'Creer des prises de decision', 'Autorise la creation de prises de decision dans le contexte cible.', NOW(), NOW()),
+    ('CAN_CREATE_EVENT', 'Creer des dates', 'Autorise la creation de dates dans le contexte cible.', NOW(), NOW()),
+    ('CAN_CREATE_FAQ', 'Creer des FAQ', 'Autorise la creation de FAQ dans le contexte cible.', NOW(), NOW())
 ON DUPLICATE KEY UPDATE
     `title` = VALUES(`title`),
     `description` = VALUES(`description`),
@@ -195,6 +207,10 @@ ON DUPLICATE KEY UPDATE
 
 -- Defensive guard for fresh Docker databases
 ALTER TABLE `user`
+  ADD COLUMN IF NOT EXISTS `presentation` text DEFAULT NULL AFTER `lastname`,
+  ADD COLUMN IF NOT EXISTS `birthdate` date DEFAULT NULL AFTER `presentation`,
+  ADD COLUMN IF NOT EXISTS `latlong` varchar(100) DEFAULT NULL AFTER `presentation`,
+  ADD COLUMN IF NOT EXISTS `image` varchar(100) DEFAULT NULL AFTER `username`,
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 -- Local Docker dev account bootstrap

@@ -15,13 +15,20 @@ RewriteCond %{HTTPS} off
 RewriteCond %{HTTP_HOST} !(^|\.)(localhost|127\.0\.0\.1)(:\d+)?$ [NC]
 RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI}
 
-RewriteRule ^memo$ /memo.php [L]
-RewriteRule ^memo/([0-9]+)/?$ /memo.php?id=$1 [QSA,L]
-RewriteRule ^memo/([0-9]+)/([0-9a-f]+)/?$ /memo.php?id=$1&pwd=$2 [QSA,L]
+RewriteRule ^memo/?$ /memo/index.php [QSA,L]
+RewriteRule ^memo/([0-9]+)/?$ /memo/index.php?open_document_id=$1 [QSA,L]
+RewriteRule ^memo/([0-9]+)/([0-9a-f]+)/?$ /memo/view.php?id=$1&access_code=$2 [QSA,L]
 
 RewriteRule ^circle/public/([0-9A-Za-z]+)/?$ /circle/index.php?view=$1 [QSA,L]
 
 RewriteRule ^pv/([0-9]+)/?$ /pv/index.php?id=$1 [QSA,L]
+
+RewriteRule ^decision/access/([0-9A-Za-z_-]+)/?$ /common/decision_participation.php?token=$1 [QSA,L]
+RewriteRule ^decision/access/([0-9A-Za-z_-]+)/(view|participate)/?$ /common/decision_participation.php?token=$1&intent=$2 [QSA,L]
+RewriteRule ^decision/public/([0-9]+)/([0-9]+)/?$ /common/decision_participation.php?public=1&oid=$1&id=$2 [QSA,L]
+RewriteRule ^decision/public/([0-9]+)/([0-9]+)/(view|participate)/?$ /common/decision_participation.php?public=1&oid=$1&id=$2&intent=$3 [QSA,L]
+RewriteRule ^decision/public/([0-9]+)/([0-9]+)/c/([0-9]+)/?$ /common/decision_participation.php?public=1&oid=$1&id=$2&cid=$3 [QSA,L]
+RewriteRule ^decision/public/([0-9]+)/([0-9]+)/c/([0-9]+)/(view|participate)/?$ /common/decision_participation.php?public=1&oid=$1&id=$2&cid=$3&intent=$4 [QSA,L]
 
 RewriteRule ^qr$ /qr.php [L]
 RewriteRule ^qr/([0-9A-Za-z]+)/?$ /qr.php?id=$1 [QSA,L]

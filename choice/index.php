@@ -37,11 +37,8 @@ if (!function_exists('choiceBuildParticipantDrawerUrl')) {
             }
         }
 
-        return '/common/decision_participation.php?' . http_build_query([
-            'token' => $token,
-            'intent' => trim((string)$intent) !== '' ? trim((string)$intent) : 'view',
-            'embedded' => 1,
-        ]);
+        $path = DecisionParticipant::buildPublicAccessPathFromToken($token, $intent);
+        return $path . '?embedded=1';
     }
 }
 
@@ -706,7 +703,7 @@ $currentUserLabel = trim((string)$currentUser->getScopedDisplayName());
 <body class="choice-page">
     <?php commonRenderTopbar($topbarOptions); ?>
     <main class="choice-shell">
-        <section class="generic-hero-panel generic-hero-panel--accent choice-hero">
+        <section class="generic-hero-panel accent choice-hero">
             <span class="choice-hero__kicker">Choice</span>
             <h1><?= $escape(t('choice.page.heading', [], $lang, $sourceLang)) ?></h1>
             <p><?= $escape(t('choice.page.intro', [], $lang, $sourceLang)) ?></p>

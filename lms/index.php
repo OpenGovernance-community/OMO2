@@ -18,10 +18,16 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 if ($user_id <= 0 && !$isGuestAllowed) {
     $loginReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] : []);
     $parcours = \dbObject\Parcours::fetchEverybodyForOrganizationWithProgress($org['id'], 0);
+    if (!is_array($parcours)) {
+        $parcours = [];
+    }
     $showPublicCatalog = count($parcours) > 0;
     $hiddenParcoursCount = \dbObject\Parcours::countRestrictedForPublicCatalog($org['id']);
 } else {
     $parcours = \dbObject\Parcours::fetchForOrganizationWithProgress($org['id'], $user_id, $hasOrganizationAccess);
+    if (!is_array($parcours)) {
+        $parcours = [];
+    }
 }
 
 if ($user_id <= 0 && !$isGuestAllowed && !$showPublicCatalog) {

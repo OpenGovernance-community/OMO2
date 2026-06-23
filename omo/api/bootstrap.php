@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__, 2) . '/shared_functions.php';
 require_once dirname(__DIR__, 2) . '/common/auth.php';
+require_once dirname(__DIR__, 2) . '/common/omo_context_scope.php';
 require_once dirname(__DIR__, 2) . '/common/translation_bundles.php';
 require_once dirname(__DIR__) . '/translations.php';
 
@@ -28,6 +29,18 @@ if (!function_exists('omoApiSortKey')) {
     function omoApiSortKey($value)
     {
         return omoApiNormalizeLabel($value);
+    }
+}
+
+if (!function_exists('omoApiCanBypassOrganizationAccessCheck')) {
+    function omoApiCanBypassOrganizationAccessCheck()
+    {
+        $requestPath = trim((string)commonGetRequestPath());
+        if ($requestPath === '') {
+            return false;
+        }
+
+        return $requestPath === '/omo/api/organization/access_request_popup.php';
     }
 }
 
@@ -70,7 +83,13 @@ if (!commonGetCurrentUserId() && !commonCanAccessWithoutLogin() && !$shareLink &
     exit;
 }
 
-if (!commonCanAccessWithoutLogin() && !$shareLink && !$publicDecisionTokenAccess && !commonCurrentUserHasOrganizationAccess()) {
+if (
+    !commonCanAccessWithoutLogin()
+    && !$shareLink
+    && !$publicDecisionTokenAccess
+    && !omoApiCanBypassOrganizationAccessCheck()
+    && !commonCurrentUserHasOrganizationAccess()
+) {
     http_response_code(403);
     echo "Forbidden";
     exit;

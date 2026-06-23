@@ -52,38 +52,16 @@ if (!function_exists('omoDecisionCanUsePublicTokenForPath')) {
 if (!function_exists('omoDecisionBuildPublicParticipationUrl')) {
     function omoDecisionBuildPublicParticipationUrl($token, $intent = '')
     {
-        $query = [
-            'token' => trim((string)$token),
-        ];
-
-        $intent = trim((string)$intent);
-        if ($intent !== '') {
-            $query['intent'] = $intent;
-        }
-
-        return commonBuildUrl('/common/decision_participation.php?' . http_build_query($query), commonGetRequestHost());
+        $path = DecisionParticipant::buildPublicAccessPathFromToken($token, $intent);
+        return commonBuildUrl($path, commonGetRequestHost());
     }
 }
 
 if (!function_exists('omoDecisionBuildGenericPublicParticipationUrl')) {
     function omoDecisionBuildGenericPublicParticipationUrl($organizationId, $holonId = 0, $decisionId = 0, $intent = 'view')
     {
-        $query = [
-            'public' => '1',
-            'oid' => (int)$organizationId,
-            'id' => (int)$decisionId,
-        ];
-
-        if ((int)$holonId > 0) {
-            $query['cid'] = (int)$holonId;
-        }
-
-        $intent = trim((string)$intent);
-        if ($intent !== '') {
-            $query['intent'] = $intent;
-        }
-
-        return commonBuildUrl('/common/decision_participation.php?' . http_build_query($query), commonGetRequestHost());
+        $path = DecisionProcess::buildGenericPublicAccessPath((int)$organizationId, (int)$decisionId, (int)$holonId, $intent);
+        return commonBuildUrl($path, commonGetRequestHost());
     }
 }
 

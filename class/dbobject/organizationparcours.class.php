@@ -3,6 +3,8 @@
 
 	class OrganizationParcours extends DbObject
 	{
+		protected static $hasAnonymousColumnCache = null;
+
 		public static function tableName()
 		{
 			return 'organization_parcours';
@@ -31,6 +33,24 @@
 
 		public static function getOrder() {
 			return "position, id";
+		}
+
+		public static function hasAnonymousColumn()
+		{
+			if (self::$hasAnonymousColumnCache !== null) {
+				return self::$hasAnonymousColumnCache;
+			}
+
+			$query = "
+				SELECT COUNT(*)
+				FROM information_schema.COLUMNS
+				WHERE TABLE_SCHEMA = DATABASE()
+				  AND TABLE_NAME = 'organization_parcours'
+				  AND COLUMN_NAME = 'anonymous'
+			";
+
+			self::$hasAnonymousColumnCache = (int)self::fetchValue($query) > 0;
+			return self::$hasAnonymousColumnCache;
 		}
 
 		public static function loadForOrganizationParcours($organizationId, $parcoursId)

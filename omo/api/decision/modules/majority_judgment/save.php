@@ -40,6 +40,7 @@ $processDescription = trim((string)($_POST['process_description'] ?? ''));
 $title = trim((string)($_POST['title'] ?? ''));
 $description = trim((string)($_POST['description'] ?? ''));
 $decisionType = DecisionProcess::normalizeDecisionType((string)($_POST['decision_type'] ?? DecisionProcess::TYPE_DECISION));
+$visibilityType = DecisionProcess::normalizeVisibilityType((string)($_POST['visibility_type'] ?? DecisionProcess::getDefaultVisibilityType()));
 $status = DecisionProcess::normalizeStatus((string)($_POST['status'] ?? DecisionProcess::STATUS_DRAFT));
 $consultationStartAt = trim((string)($_POST['consultation_start_at'] ?? ''));
 $consultationEndAt = trim((string)($_POST['consultation_end_at'] ?? ''));
@@ -47,6 +48,10 @@ $evaluationStartAt = trim((string)($_POST['evaluation_start_at'] ?? ''));
 $evaluationEndAt = trim((string)($_POST['evaluation_end_at'] ?? ''));
 $isAnonymous = !empty($_POST['is_anonymous']);
 $allowConsultationProposals = !empty($_POST['allow_consultation_proposals']);
+$submittedMentionOptions = omoDecisionMajorityJudgmentBuildMentionOptionsFromInput(
+    $_POST['mention_labels'] ?? [],
+    $_POST['mention_active'] ?? []
+);
 $proposalItems = omoDecisionBuildProposalItemsFromInput(
     $_POST['proposals'] ?? [],
     $_POST['proposal_descriptions'] ?? [],
@@ -94,12 +99,37 @@ if ($decision instanceof DecisionProcess) {
     $decision->set('evaluation_method', DecisionProcess::METHOD_MAJORITY_JUDGMENT);
 }
 
+$resolvedVisibility = $decision->resolveVisibilityRuleInput($visibilityType);
+if (!$coreLocked && ($resolvedVisibility['status'] ?? false) !== true) {
+    omoDecisionModuleJsonResponse(400, [
+        'status' => false,
+        'message' => trim((string)($resolvedVisibility['text'] ?? 'Visibilite invalide pour cette prise de decision.')),
+    ]);
+}
+
 $currentConfig = $decision instanceof DecisionProcess
     ? omoDecisionMajorityJudgmentBuildConfig($selectedGroup instanceof DecisionGroup ? $selectedGroup : $decision->get('parameters'))
     : [
         'is_anonymous' => $isAnonymous,
         'allow_consultation_proposals' => $allowConsultationProposals,
+        'mention_options' => $submittedMentionOptions,
     ];
+$canEditSettings = !$coreLocked;
+$configToSave = [
+    'is_anonymous' => $canEditSettings ? $isAnonymous : !empty($currentConfig['is_anonymous']),
+    'allow_consultation_proposals' => $canEditSettings ? $allowConsultationProposals : !empty($currentConfig['allow_consultation_proposals']),
+    'mention_options' => $canEditSettings
+        ? $submittedMentionOptions
+        : (array)($currentConfig['mention_options'] ?? omoDecisionMajorityJudgmentGetDefaultMentionOptions()),
+];
+$normalizedConfigToSave = omoDecisionMajorityJudgmentBuildConfig($configToSave);
+$countedScaleSize = count((array)($normalizedConfigToSave['counted_scores'] ?? []));
+if ($canEditSettings && $countedScaleSize < 2) {
+    omoDecisionModuleJsonResponse(400, [
+        'status' => false,
+        'message' => 'Le jugement majoritaire a besoin d au moins deux mentions actives hors centre.',
+    ]);
+}
 $canEditProposals = !$coreLocked || (!$startDatesLocked && !empty($currentConfig['allow_consultation_proposals']));
 
 if ($canEditProposals && count($proposalItems) < 2) {
@@ -125,6 +155,7 @@ try {
     if (!$coreLocked) {
         $decision->set('title', $processTitle);
         $decision->set('description', $processDescription !== '' ? $processDescription : null);
+        $decision->set('visibility_type', (string)($resolvedVisibility['type'] ?? DecisionProcess::getDefaultVisibilityType()));
     }
 
     if (!$startDatesLocked) {
@@ -148,10 +179,7 @@ try {
 
     $parameters = omoDecisionMajorityJudgmentMergeConfigIntoParameters(
         $decisionGroup instanceof DecisionGroup ? $decisionGroup->get('parameters') : $decision->get('parameters'),
-        [
-            'is_anonymous' => $isAnonymous,
-            'allow_consultation_proposals' => $allowConsultationProposals,
-        ],
+        $normalizedConfigToSave,
         [
             'proposal_count' => $proposalCount,
             'created_from_module' => 'majority_judgment',
@@ -247,12 +275,30 @@ try {
         }
     }
 
+    $inlineInvitationResult = omoDecisionPersistInlineInvitationDraft($decision, $context, $_POST);
+    if (!is_array($inlineInvitationResult) || empty($inlineInvitationResult['status'])) {
+        throw new InvalidArgumentException(
+            trim((string)($inlineInvitationResult['message'] ?? 'Impossible d enregistrer les invitations pour le moment.'))
+        );
+    }
+
     $syncResult = $decision->syncParticipantsFromInvitations();
     if (!is_array($syncResult) || empty($syncResult['status'])) {
         throw new RuntimeException('participant_sync_failed');
     }
 
     $pdo->commit();
+} catch (InvalidArgumentException $exception) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+
+    omoDecisionModuleJsonResponse(422, [
+        'status' => false,
+        'message' => trim((string)$exception->getMessage()) !== ''
+            ? trim((string)$exception->getMessage())
+            : 'Impossible d enregistrer les invitations pour le moment.',
+    ]);
 } catch (Throwable $exception) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();

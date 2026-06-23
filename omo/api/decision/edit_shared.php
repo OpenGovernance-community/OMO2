@@ -94,6 +94,10 @@ $baseSourceLang = [
         'text' => 'Cible',
         'context' => 'Summary label for the edited decision title.',
     ],
+    'decisions.edit.visibility.label' => [
+        'text' => 'Visibilite',
+        'context' => 'Label for the decision visibility field shared by all decision editors.',
+    ],
     'decisions.edit.summary.mode_create' => [
         'text' => 'Creation',
         'context' => 'Summary value when creating a decision.',
@@ -281,44 +285,44 @@ if (!function_exists('omoDecisionRenderEditorGroupSwitch')) {
         <?php
     }
 }
+
+if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
+    function omoDecisionResolveVisibilityEditorState(?DecisionProcess $decision, array $context): array
+    {
+        $organizationId = $decision instanceof DecisionProcess
+            ? (int)$decision->get('IDorganization')
+            : (int)($context['organizationId'] ?? 0);
+        $holonId = $decision instanceof DecisionProcess
+            ? (int)$decision->get('IDholon')
+            : (int)($context['targetHolonId'] ?? 0);
+        $editorConfig = DecisionProcess::buildVisibilityEditorConfig($organizationId, $holonId);
+        $visibilityOptions = is_array($editorConfig['visibilityOptions'] ?? null)
+            ? $editorConfig['visibilityOptions']
+            : DecisionProcess::getVisibilityTypeOptions();
+        $disabledVisibilityTypes = is_array($editorConfig['disabledTypes'] ?? null)
+            ? $editorConfig['disabledTypes']
+            : array();
+        $selectedVisibilityType = $decision instanceof DecisionProcess
+            ? DecisionProcess::normalizeVisibilityType($decision->get('visibility_type'))
+            : DecisionProcess::getDefaultVisibilityType();
+
+        if (!empty($disabledVisibilityTypes[$selectedVisibilityType])) {
+            $selectedVisibilityType = DecisionProcess::getDefaultVisibilityType();
+        }
+
+        return array(
+            'selectedVisibilityType' => $selectedVisibilityType,
+            'visibilityOptions' => $visibilityOptions,
+            'disabledVisibilityTypes' => $disabledVisibilityTypes,
+            'visibilityHelpText' => trim((string)($editorConfig['helpText'] ?? '')),
+        );
+    }
+}
 ?>
 <div class="omo-decision-edit omo-panel-view">
     <div class="omo-panel-view__body">
         <div class="omo-panel-view__body_content omo-decision-edit__stack">
-            <?php if ($showContextSummary): ?>
-            <section class="generic-hero-panel generic-hero-panel--accent omo-decision-edit__summary">
-                <div class="omo-decision-edit__summary-grid">
-                    <div class="generic-soft-panel generic-soft-panel--stack">
-                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.summary.organization', [], $lang, $baseSourceLang)) ?></span>
-                        <strong><?= $escape(trim((string)$organization->get('name'))) ?></strong>
-                    </div>
-
-                    <div class="generic-soft-panel generic-soft-panel--stack">
-                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.summary.context', [], $lang, $baseSourceLang)) ?></span>
-                        <strong><?= $escape($contextLabel) ?></strong>
-                    </div>
-
-                    <div class="generic-soft-panel generic-soft-panel--stack">
-                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.summary.mode', [], $lang, $baseSourceLang)) ?></span>
-                        <strong><?= $escape($modeLabel) ?></strong>
-                    </div>
-
-                    <?php if ($selectedLabel !== ''): ?>
-                    <div class="generic-soft-panel generic-soft-panel--stack">
-                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.summary.method', [], $lang, $baseSourceLang)) ?></span>
-                        <strong><?= $escape($selectedLabel) ?></strong>
-                    </div>
-                    <?php endif; ?>
-
-                    <?php if ($isEditing): ?>
-                    <div class="generic-soft-panel generic-soft-panel--stack">
-                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.summary.target', [], $lang, $baseSourceLang)) ?></span>
-                        <strong><?= $escape(trim((string)$decision->get('title'))) ?></strong>
-                    </div>
-                    <?php endif; ?>
-                </div>
-            </section>
-            <?php endif; ?>
+            
 
             <?php if (false && $isEditing && $intent === 'manage'): ?>
             <section class="generic-soft-panel generic-soft-panel--stack omo-decision-edit__group-switch">

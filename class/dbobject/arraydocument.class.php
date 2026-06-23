@@ -117,14 +117,17 @@
 			return $ruleMap;
 		}
 
-		public function loadVisibleForOrganizationContext($organizationId, $holonId = 0, $documentScope = 'contextual')
+		public function loadVisibleForOrganizationContext($organizationId, $holonId = 0, $documentScope = 'contextual', array $descendantHolonIds = array())
 		{
 			$organizationId = (int)$organizationId;
 			$holonId = (int)$holonId;
 			$documentScope = trim(mb_strtolower((string)$documentScope, 'UTF-8'));
-			if ($documentScope !== 'global') {
+			if (!in_array($documentScope, array('contextual', 'descendants', 'global'), true)) {
 				$documentScope = 'contextual';
 			}
+			$descendantHolonIds = array_values(array_unique(array_filter(array_map('intval', $descendantHolonIds), static function ($candidateHolonId) {
+				return $candidateHolonId > 0;
+			})));
 
 			$this->exchangeArray([]);
 			$this->lastVisibilityStats = array(
@@ -147,7 +150,13 @@
 				),
 			);
 
-			if ($documentScope !== 'global') {
+			if ($documentScope === 'descendants') {
+				if (count($descendantHolonIds) === 0) {
+					return array();
+				}
+
+				$loadParams['where'][] = array('field' => 'IDholon', 'op' => 'in', 'value' => $descendantHolonIds);
+			} elseif ($documentScope !== 'global') {
 				if ($holonId > 0) {
 					$loadParams['where'][] = array('field' => 'IDholon', 'value' => $holonId);
 				} else {
@@ -218,6 +227,39 @@
 
 			$items = array_slice($items, 0, $limit);
 			$this->exchangeArray($items);
+		}
+
+		public function loadOwnedByUser($userId)
+		{
+			$userId = (int)$userId;
+
+			$this->exchangeArray([]);
+			$this->lastVisibilityStats = array(
+				'loaded' => 0,
+				'visible' => 0,
+				'hidden' => 0,
+			);
+
+			if ($userId <= 0) {
+				return;
+			}
+
+			$this->load(array(
+				'where' => array(
+					array('field' => 'IDuser', 'value' => $userId),
+				),
+				'orderBy' => array(
+					array('field' => 'datecreation', 'dir' => 'DESC'),
+					array('field' => 'id', 'dir' => 'DESC'),
+				),
+			));
+
+			$count = count($this);
+			$this->lastVisibilityStats = array(
+				'loaded' => $count,
+				'visible' => $count,
+				'hidden' => 0,
+			);
 		}
 
 		public function buildPersonalSpaceItems($organizationId = 0)

@@ -59,8 +59,6 @@ $serverEnvSecretStates = $isUnlocked ? serverEnvAdminBuildSecretStateMap($server
     .omo-server-env-popup__error,
     .omo-server-env-popup__feedback {
         --generic-section-padding-block: 18px;
-        --generic-section-padding-inline: 18px;
-        --generic-section-radius: 18px;
     }
 
     .omo-server-env-popup__hero {

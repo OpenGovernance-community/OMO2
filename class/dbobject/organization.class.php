@@ -18,6 +18,7 @@
 				[['name'], 'required'],								// Champs obligatoires
 				[['id'], 'integer'],								// Nombres entiers
 				[['name','shortname','domain'], 'string'],	// Chaines de caractere
+				[['latlong'], 'latlong'],
 				[['parameters'], 'parameters'],
 				[['shortname'], 'unique'],
 				[['logo','banner'], 'sizedimage'],	
@@ -34,6 +35,7 @@
 				'name' => 'Nom',
 				'shortname' => 'Nom court',
 				'domain' => 'Domaine',
+				'latlong' => 'Position geographique',
 				'logo' => 'Logo',
 				'banner' => 'Banniere',
 				'color' => 'Couleur',
@@ -45,6 +47,7 @@
 				'name' => 'Nom complet de l\'organisation',
 				'shortname' => 'Nom abrege utilise dans l\'interface et dans l\'URL de l\'organisation',
 				'domain' => 'Nom de domaine principal de l\'organisation',
+				'latlong' => 'Position geographique facultative de l organisation pour l affichage sur une carte.',
 				'logo' => 'Logo de l\'organisation',
 				'banner' => 'Image de banniere de l\'organisation',
 				'color' => 'Couleur principale au format hexadecimal ou texte court',
@@ -56,10 +59,83 @@
 				'name' => 100,
 				'shortname' => 50,
 				'domain' => 100,
+				'latlong' => 100,
 				'logo' => [[500, 500],[180,180]],
 				'banner' => [[960, 540],[480, 270]],
 				'color' => 10,
 			];
+		}
+
+		public static function publicReadableFields()
+		{
+			return array(
+				'id',
+				'name',
+				'shortname',
+				'domain',
+				'logo',
+				'banner',
+				'color',
+				'latlong',
+			);
+		}
+
+		public static function fetchPublicMapRows($limit = null): array
+		{
+			$publicFields = array_values(array_intersect(
+				static::publicReadableFields(),
+				array('id', 'name', 'shortname', 'domain', 'logo', 'banner', 'color', 'latlong')
+			));
+			if (count($publicFields) === 0) {
+				return array();
+			}
+
+			$query = "
+				SELECT " . implode(', ', $publicFields) . "
+				FROM organization
+				WHERE latlong IS NOT NULL
+				  AND latlong <> ''
+				ORDER BY name ASC";
+			if ($limit !== null && (int)$limit > 0) {
+				$query .= "
+				LIMIT " . (int)$limit;
+			}
+
+			$rows = self::fetchAll($query);
+			if ($rows === false) {
+				return array();
+			}
+
+			$result = array();
+			foreach ($rows as $row) {
+				$organizationId = (int)($row['id'] ?? 0);
+				if ($organizationId <= 0) {
+					continue;
+				}
+
+				$organization = new self();
+				$organization->loadFromArray($row);
+
+				$latlong = $organization->get('latlong');
+				$latitude = is_object($latlong) ? ($latlong->lat ?? null) : null;
+				$longitude = is_object($latlong) ? ($latlong->long ?? null) : null;
+				if (!is_numeric($latitude) || !is_numeric($longitude)) {
+					continue;
+				}
+
+				$result[] = array(
+					'id' => $organizationId,
+					'name' => trim((string)$organization->get('name')),
+					'logo' => trim((string)$organization->get('logo')),
+					'color' => trim((string)$organization->get('color')),
+					'latlong' => array(
+						'lat' => (float)$latitude,
+						'long' => (float)$longitude,
+					),
+				);
+			}
+
+			return $result;
 		}
 
 		public function getParametersArray(): array
@@ -953,10 +1029,19 @@
 				$pdo->beginTransaction();
 
 				$user = $this->resolveMemberUser($userId, $email);
+				$pendingInvitation = \dbObject\Invitation::findPendingForOrganizationUser($organizationId, (int)$user->getId());
 				$hasActiveMembership = $this->hasActiveMembershipForUser($user, $organizationId);
-				$requiresInvitation = !$hasActiveMembership;
+				$requiresInvitation = !$hasActiveMembership && !($pendingInvitation instanceof \dbObject\Invitation);
 
-				if ($requiresInvitation) {
+				if ($pendingInvitation instanceof \dbObject\Invitation) {
+					$approvalResult = $pendingInvitation->approveByAdmin([
+						'approvedByUserId' => (int)$this->resolveCurrentUserId(),
+						'sendConfirmationEmail' => false,
+					]);
+					if (!($approvalResult['status'] ?? false)) {
+						throw new \RuntimeException((string)($approvalResult['message'] ?? "L'ajout en attente n'a pas pu etre finalise."));
+					}
+				} elseif ($requiresInvitation) {
 					$this->ensureOrganizationMembershipState($user, $organizationId, false);
 					$invitationIssue = \dbObject\Invitation::issue(
 						$organizationId,
@@ -991,6 +1076,110 @@
 						),
 					'userId' => (int)$user->getId(),
 					'pending' => $requiresInvitation,
+				);
+			} catch (\Throwable $exception) {
+				if ($pdo->inTransaction()) {
+					$pdo->rollBack();
+				}
+
+				return array(
+					'status' => false,
+					'message' => $exception->getMessage(),
+				);
+			}
+		}
+
+		public function requestAccess($userId, $message = '')
+		{
+			$organizationId = (int)$this->getId();
+			$userId = (int)$userId;
+			$message = trim((string)$message);
+
+			if ($organizationId <= 0 || $userId <= 0) {
+				return array(
+					'status' => false,
+					'message' => "L'organisation demandee est invalide.",
+				);
+			}
+
+			if ($this->resolveCurrentUserId() !== $userId) {
+				return array(
+					'status' => false,
+					'message' => 'Vous ne pouvez demander cet acces que pour votre propre compte.',
+				);
+			}
+
+			$user = new \dbObject\User();
+			if (!$user->load($userId)) {
+				return array(
+					'status' => false,
+					'message' => 'Votre profil utilisateur est introuvable.',
+				);
+			}
+
+			if ($this->hasActiveMembershipForUser($user, $organizationId)) {
+				return array(
+					'status' => false,
+					'message' => 'Votre compte a deja acces a cette organisation.',
+				);
+			}
+
+			$email = trim(mb_strtolower((string)$user->getScopedEmail($organizationId), 'UTF-8'));
+			if ($email === '') {
+				$email = trim(mb_strtolower((string)$user->get('email'), 'UTF-8'));
+			}
+
+			if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+				return array(
+					'status' => false,
+					'message' => "Votre compte doit disposer d'une adresse e-mail valide pour envoyer cette demande.",
+				);
+			}
+
+			$pdo = \dbObject\DbObject::getPdo();
+			if (!$pdo) {
+				return array(
+					'status' => false,
+					'message' => 'Connexion base de donnees indisponible.',
+				);
+			}
+
+			try {
+				$pdo->beginTransaction();
+
+				$this->ensureOrganizationMembershipState($user, $organizationId, false);
+				$invitationIssue = \dbObject\Invitation::issue(
+					$organizationId,
+					$userId,
+					$userId,
+					$email,
+					[
+						'requestOrigin' => \dbObject\Invitation::REQUEST_ORIGIN_MEMBER,
+						'requestMessage' => $message,
+					]
+				);
+
+				if (!empty($invitationIssue['created']) && isset($invitationIssue['invitation'])) {
+					$invitationIssue['invitation']->sendEmail();
+				}
+
+				$pdo->commit();
+
+				$existingInvitation = $invitationIssue['invitation'] ?? null;
+				if ($existingInvitation instanceof \dbObject\Invitation && !$existingInvitation->isMemberInitiatedRequest()) {
+					return array(
+						'status' => true,
+						'created' => false,
+						'message' => 'Une invitation est deja en attente pour cette organisation.',
+					);
+				}
+
+				return array(
+					'status' => true,
+					'created' => !empty($invitationIssue['created']),
+					'message' => !empty($invitationIssue['created'])
+						? 'Votre demande a ete envoyee aux administrateurs.'
+						: 'Une demande est deja en attente pour cette organisation.',
 				);
 			} catch (\Throwable $exception) {
 				if ($pdo->inTransaction()) {
@@ -3807,11 +3996,78 @@
 				: $inheritedValue;
 		}
 
-		protected function buildHolonHistorySnapshot(\dbObject\Holon $holon)
+		protected function buildHolonHistoryPermissionSnapshot(\dbObject\Holon $holon)
 		{
+			$holonId = (int)$holon->getId();
+			if ($holonId <= 0) {
+				return array();
+			}
+
+			$rangeLabels = \dbObject\HolonPermission::getRangeLabels();
+			$assignments = \dbObject\HolonPermission::getAssignmentKeyMapForHolon($holonId);
+			$permissions = array();
+
+			foreach ($assignments as $permissionKey => $ranges) {
+				$permissionKey = trim((string)$permissionKey);
+				if ($permissionKey === '') {
+					continue;
+				}
+
+				$permission = \dbObject\Permission::findByKey($permissionKey);
+				$title = $permission ? trim((string)$permission->get('title')) : $permissionKey;
+				$description = $permission ? trim((string)$permission->get('description')) : '';
+				$permissionId = $permission ? (int)$permission->getId() : 0;
+				$visibleItems = array();
+
+				foreach ((array)$ranges as $range) {
+					$range = trim((string)$range);
+					if ($range === '') {
+						continue;
+					}
+
+					$visibleItems[] = array(
+						'id' => $range,
+						'label' => (string)($rangeLabels[$range] ?? $range),
+					);
+				}
+
+				usort($visibleItems, function ($left, $right) {
+					return strcmp(
+						mb_strtolower(trim((string)($left['label'] ?? '')), 'UTF-8'),
+						mb_strtolower(trim((string)($right['label'] ?? '')), 'UTF-8')
+					);
+				});
+
+				$permissions[$permissionKey] = array(
+					'id' => $permissionId,
+					'key' => $permissionKey,
+					'name' => $title !== '' ? $title : $permissionKey,
+					'shortname' => $permissionKey,
+					'description' => $description,
+					'visibleItems' => array_values($visibleItems),
+					'visibleValue' => implode('; ', array_map(function ($item) {
+						return trim((string)($item['label'] ?? ''));
+					}, $visibleItems)),
+				);
+			}
+
+			ksort($permissions);
+			return $permissions;
+		}
+
+		protected function buildHolonHistorySnapshot(\dbObject\Holon $holon, array $options = array())
+		{
+			$options = array_merge(array(
+				'propertyMode' => 'editor',
+				'includePermissions' => false,
+			), $options);
+
+			$propertyDefinitions = $options['propertyMode'] === 'template'
+				? $holon->getTemplatePropertyDefinitions()
+				: $holon->getHolonEditorPropertyDefinitions();
 			$properties = array();
 
-			foreach ($holon->getHolonEditorPropertyDefinitions() as $definition) {
+			foreach ($propertyDefinitions as $definition) {
 				$propertyId = (int)($definition['id'] ?? 0);
 				if ($propertyId <= 0) {
 					continue;
@@ -3830,9 +4086,18 @@
 					'inheritedValue' => (string)($definition['inheritedValue'] ?? ''),
 					'visibleValue' => (string)$visibleValue,
 					'visibleItems' => $formatId === \dbObject\PropertyFormat::FORMAT_LIST
-						? $this->parseHolonHistoryListValue($visibleValue)
-						: array(),
+					? $this->parseHolonHistoryListValue($visibleValue)
+					: array(),
 				);
+			}
+
+			$parentTemplateName = '';
+			$parentTemplateId = (int)$holon->get('IDholon_template');
+			if ($parentTemplateId > 0) {
+				$parentTemplate = new \dbObject\Holon();
+				if ($parentTemplate->load($parentTemplateId)) {
+					$parentTemplateName = trim((string)$parentTemplate->getDisplayName());
+				}
 			}
 
 			return array(
@@ -3840,14 +4105,44 @@
 					'id' => (int)$holon->getId(),
 					'name' => trim((string)$holon->getDisplayName()),
 					'typeId' => (int)$holon->get('IDtypeholon'),
+					'typeLabel' => trim((string)$holon->getTypeLabel()),
 					'parentId' => (int)$holon->get('IDholon_parent'),
 					'templateId' => (int)$holon->get('IDholon_template'),
+					'inheritsFromName' => $parentTemplateName,
 					'color' => trim((string)$holon->get('color')),
 					'icon' => trim((string)$holon->get('icon')),
 					'banner' => trim((string)$holon->get('banner')),
+					'visible' => (bool)$holon->get('visible'),
+					'mandatory' => (bool)$holon->get('mandatory'),
+					'lockedName' => (bool)$holon->get('lockedname'),
+					'lockedIcon' => (bool)$holon->get('lockedicon'),
+					'lockedBanner' => (bool)$holon->get('lockedbanner'),
+					'unique' => (bool)$holon->get('unique'),
+					'link' => (bool)$holon->get('link'),
 				),
 				'properties' => $properties,
+				'permissions' => !empty($options['includePermissions'])
+					? $this->buildHolonHistoryPermissionSnapshot($holon)
+					: array(),
 			);
+		}
+
+		protected function buildHolonHistoryPermissionPreview(array $permissionSnapshot)
+		{
+			$labels = array();
+			foreach (($permissionSnapshot['visibleItems'] ?? array()) as $item) {
+				$label = trim((string)($item['label'] ?? ''));
+				if ($label !== '') {
+					$labels[] = $label;
+				}
+			}
+
+			if (count($labels) === 0) {
+				return '';
+			}
+
+			return implode('; ', array_slice($labels, 0, 3))
+				. (count($labels) > 3 ? '; +' . (count($labels) - 3) . ' autre(s)' : '');
 		}
 
 		protected function buildHolonHistoryListItemKey($item)
@@ -4437,6 +4732,17 @@
 			return \dbObject\History::buildReferenceToken('holon', $holonId, $holonLabel);
 		}
 
+		protected function buildHolonHistoryPermissionLabel(array $permissionSnapshot, $permissionKey = '')
+		{
+			$permissionKey = trim((string)$permissionKey);
+			$label = trim((string)($permissionSnapshot['name'] ?? $permissionSnapshot['shortname'] ?? ''));
+			if ($label !== '') {
+				return $label;
+			}
+
+			return $permissionKey !== '' ? $permissionKey : 'Droit';
+		}
+
 		protected function buildHolonHistoryDiff(array $beforeSnapshot, array $afterSnapshot)
 		{
 			$messages = array();
@@ -4470,6 +4776,48 @@
 					'field' => $field,
 					'before' => (string)($beforeHolon[$field] ?? ''),
 					'after' => (string)($afterHolon[$field] ?? ''),
+				);
+			}
+
+			$templateBooleanFields = array(
+				'visible' => 'visible',
+				'mandatory' => 'obligatoire',
+				'lockedName' => 'nom verrouille',
+				'lockedIcon' => 'icone verrouillee',
+				'lockedBanner' => 'banniere verrouillee',
+				'unique' => 'unique',
+				'link' => 'lien',
+			);
+			foreach ($templateBooleanFields as $field => $label) {
+				if ((bool)($beforeHolon[$field] ?? false) === (bool)($afterHolon[$field] ?? false)) {
+					continue;
+				}
+
+				$messages[] = 'le parametre "' . $label . '" a ete '
+					. ((bool)($afterHolon[$field] ?? false) ? 'active' : 'desactive');
+				$changes[] = array(
+					'type' => 'field_changed',
+					'field' => $field,
+					'before' => (bool)($beforeHolon[$field] ?? false),
+					'after' => (bool)($afterHolon[$field] ?? false),
+				);
+			}
+
+			if ((string)($beforeHolon['inheritsFromName'] ?? '') !== (string)($afterHolon['inheritsFromName'] ?? '')) {
+				$afterTemplateName = trim((string)($afterHolon['inheritsFromName'] ?? ''));
+				if ((string)($beforeHolon['inheritsFromName'] ?? '') === '' && $afterTemplateName !== '') {
+					$messages[] = 'le modele parent a ete defini sur "' . $this->limitHolonHistoryText($afterTemplateName) . '"';
+				} elseif ((string)($beforeHolon['inheritsFromName'] ?? '') !== '' && $afterTemplateName === '') {
+					$messages[] = 'le modele parent a ete retire';
+				} else {
+					$messages[] = 'le modele parent a ete modifie en "' . $this->limitHolonHistoryText($afterTemplateName) . '"';
+				}
+
+				$changes[] = array(
+					'type' => 'field_changed',
+					'field' => 'inheritsFromName',
+					'before' => (string)($beforeHolon['inheritsFromName'] ?? ''),
+					'after' => (string)($afterHolon['inheritsFromName'] ?? ''),
 				);
 			}
 
@@ -4656,6 +5004,82 @@
 					'propertyId' => (int)$propertyId,
 					'before' => $beforeProperty,
 					'after' => $afterProperty,
+				);
+			}
+
+			$beforePermissions = is_array($beforeSnapshot['permissions'] ?? null) ? $beforeSnapshot['permissions'] : array();
+			$afterPermissions = is_array($afterSnapshot['permissions'] ?? null) ? $afterSnapshot['permissions'] : array();
+			$permissionKeys = array_unique(array_merge(array_keys($beforePermissions), array_keys($afterPermissions)));
+			sort($permissionKeys);
+
+			foreach ($permissionKeys as $permissionKey) {
+				$beforePermission = $beforePermissions[$permissionKey] ?? null;
+				$afterPermission = $afterPermissions[$permissionKey] ?? null;
+				$permissionSnapshot = is_array($afterPermission) ? $afterPermission : $beforePermission;
+				$permissionLabel = $this->buildHolonHistoryPermissionLabel(is_array($permissionSnapshot) ? $permissionSnapshot : array(), $permissionKey);
+
+				if (!is_array($beforePermission) && is_array($afterPermission)) {
+					$messages[] = 'le droit "' . $permissionLabel . '" a ete ajoute'
+						. (($preview = $this->buildHolonHistoryPermissionPreview($afterPermission)) !== '' ? ' : ' . $preview : '');
+					$changes[] = array(
+						'type' => 'permission_added',
+						'permissionKey' => $permissionKey,
+						'after' => $afterPermission,
+					);
+					continue;
+				}
+
+				if (is_array($beforePermission) && !is_array($afterPermission)) {
+					$messages[] = 'le droit "' . $permissionLabel . '" a ete retire';
+					$changes[] = array(
+						'type' => 'permission_removed',
+						'permissionKey' => $permissionKey,
+						'before' => $beforePermission,
+					);
+					continue;
+				}
+
+				if (!is_array($beforePermission) || !is_array($afterPermission)) {
+					continue;
+				}
+
+				$beforeItems = array_values($beforePermission['visibleItems'] ?? array());
+				$afterItems = array_values($afterPermission['visibleItems'] ?? array());
+				if (json_encode($beforeItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) === json_encode($afterItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) {
+					continue;
+				}
+
+				$addedItems = array_values(array_udiff($afterItems, $beforeItems, function ($left, $right) {
+					return strcmp((string)($left['id'] ?? ''), (string)($right['id'] ?? ''));
+				}));
+				$removedItems = array_values(array_udiff($beforeItems, $afterItems, function ($left, $right) {
+					return strcmp((string)($left['id'] ?? ''), (string)($right['id'] ?? ''));
+				}));
+
+				$message = 'les portees du droit "' . $permissionLabel . '" ont ete modifiees';
+				$messageParts = array();
+				if (count($addedItems) > 0) {
+					$messageParts[] = '+ ' . implode(', ', array_map(function ($item) {
+						return trim((string)($item['label'] ?? ''));
+					}, $addedItems));
+				}
+				if (count($removedItems) > 0) {
+					$messageParts[] = '- ' . implode(', ', array_map(function ($item) {
+						return trim((string)($item['label'] ?? ''));
+					}, $removedItems));
+				}
+				if (count($messageParts) > 0) {
+					$message .= ' : ' . implode(' ; ', $messageParts);
+				}
+
+				$messages[] = $message;
+				$changes[] = array(
+					'type' => 'permission_changed',
+					'permissionKey' => $permissionKey,
+					'before' => $beforePermission,
+					'after' => $afterPermission,
+					'added' => $addedItems,
+					'removed' => $removedItems,
 				);
 			}
 
@@ -5231,6 +5655,7 @@
 			$rootHolon = $this->getStructuralRootHolon();
 			$contextHolon = $this->getTemplateContextHolon($contextHolonId);
 			$scope = $this->normalizeTemplateEditorScope($scope);
+			$historyBeforeSnapshot = null;
 			if (!$rootHolon) {
 				return array(
 					'status' => false,
@@ -5306,6 +5731,13 @@
 					'status' => false,
 					'message' => "Ce modele n'est pas defini dans le holon courant.",
 				);
+			}
+
+			if ($template->getId() > 0) {
+				$historyBeforeSnapshot = $this->buildHolonHistorySnapshot($template, array(
+					'propertyMode' => 'template',
+					'includePermissions' => true,
+				));
 			}
 
 			$inheritsFromId = (int)($payload['inheritsFromId'] ?? 0);
@@ -5405,6 +5837,17 @@
 					'status' => false,
 					'message' => "Les droits du modele n'ont pas pu etre enregistres.",
 				);
+			}
+
+			$template->load((int)$template->getId(), true);
+			$historyAfterSnapshot = $this->buildHolonHistorySnapshot($template, array(
+				'propertyMode' => 'template',
+				'includePermissions' => true,
+			));
+			if (is_array($historyBeforeSnapshot)) {
+				$this->recordHolonUpdateHistory($template, $userId, $historyBeforeSnapshot, $historyAfterSnapshot);
+			} else {
+				$this->recordHolonCreatedHistory($template, $userId, $historyAfterSnapshot);
 			}
 
 			return array(
@@ -6037,6 +6480,7 @@
 			$hasParticipation = false;
 			$isOwner = false;
 			$status = \dbObject\DecisionProcess::normalizeStatus($decision->get('status'));
+			$visibilityAccess = $decision->currentViewerCanAccessVisibility($organizationId);
 
 			if ((string)($viewerContext['type'] ?? '') === 'user') {
 				$userId = (int)($viewerContext['userId'] ?? 0);
@@ -6069,7 +6513,9 @@
 
 			$canManage = $isOwner;
 			$canParticipate = ($isOwner || $hasParticipation) && $decision->isParticipationOpen();
-			$canView = $canManage || $hasParticipation || $status !== \dbObject\DecisionProcess::STATUS_DRAFT;
+			$canView = $canManage
+				|| $hasParticipation
+				|| ($status !== \dbObject\DecisionProcess::STATUS_DRAFT && $visibilityAccess);
 
 			if (!$canView && !$canParticipate) {
 				return false;

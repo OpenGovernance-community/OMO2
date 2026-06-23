@@ -176,12 +176,20 @@
 		}
 
 		public static function fetchForOrganizationWithProgress($organizationId, $userId, $viewerHasOrganizationAccess = false) {
+			$hasAnonymousColumn = OrganizationParcours::hasAnonymousColumn();
 			$where = ["op.IDorganization = :organization_id"];
 			if (!$viewerHasOrganizationAccess) {
-				$where[] = (int)$userId > 0
-					? "(op.everybody = 1 OR op.anonymous = 1)"
-					: "op.anonymous = 1";
+				if ($hasAnonymousColumn) {
+					$where[] = (int)$userId > 0
+						? "(op.everybody = 1 OR op.anonymous = 1)"
+						: "op.anonymous = 1";
+				} else {
+					$where[] = "op.everybody = 1";
+				}
 			}
+
+			$anonymousSelect = $hasAnonymousColumn ? "op.anonymous" : "0 AS anonymous";
+			$anonymousGroupBy = $hasAnonymousColumn ? ", op.anonymous" : "";
 
 			$query = "
 				SELECT 
@@ -191,7 +199,7 @@
 					p.image,
 					op.position,
 					op.everybody,
-					op.anonymous,
+					" . $anonymousSelect . ",
 					COUNT(DISTINCT pm.IDmission) AS total_missions,
 					COALESCE(SUM(
 						CASE 
@@ -209,18 +217,24 @@
 					AND lm.IDparcours = p.id
 					AND lm.IDuser = :user_id
 				WHERE " . implode(" AND ", $where) . "
-				GROUP BY p.id, p.title, p.description, p.image, op.position, op.everybody, op.anonymous
+				GROUP BY p.id, p.title, p.description, p.image, op.position, op.everybody" . $anonymousGroupBy . "
 				ORDER BY op.position ASC, p.title ASC
 			";
 
-			return self::fetchAll($query, [
+			$rows = self::fetchAll($query, [
 				'user_id' => (int)$userId,
 				'organization_id' => (int)$organizationId,
 			]);
+
+			return is_array($rows) ? $rows : [];
 		}
 
 		public static function fetchEverybodyForOrganizationWithProgress($organizationId, $userId = 0)
 		{
+			$hasAnonymousColumn = OrganizationParcours::hasAnonymousColumn();
+			$anonymousSelect = $hasAnonymousColumn ? "op.anonymous" : "0 AS anonymous";
+			$anonymousGroupBy = $hasAnonymousColumn ? ", op.anonymous" : "";
+
 			$query = "
 				SELECT
 					p.id,
@@ -229,7 +243,7 @@
 					p.image,
 					op.position,
 					op.everybody,
-					op.anonymous,
+					" . $anonymousSelect . ",
 					COUNT(DISTINCT pm.IDmission) AS total_missions,
 					COALESCE(SUM(
 						CASE
@@ -248,14 +262,16 @@
 					AND lm.IDuser = :user_id
 				WHERE op.IDorganization = :organization_id
 				  AND op.everybody = 1
-				GROUP BY p.id, p.title, p.description, p.image, op.position, op.everybody, op.anonymous
+				GROUP BY p.id, p.title, p.description, p.image, op.position, op.everybody" . $anonymousGroupBy . "
 				ORDER BY op.position ASC, p.title ASC
 			";
 
-			return self::fetchAll($query, [
+			$rows = self::fetchAll($query, [
 				'user_id' => (int)$userId,
 				'organization_id' => (int)$organizationId,
 			]);
+
+			return is_array($rows) ? $rows : [];
 		}
 
 		public static function countRestrictedForPublicCatalog($organizationId)

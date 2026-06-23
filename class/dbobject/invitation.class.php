@@ -3,6 +3,9 @@
 
 	class Invitation extends DbObject
 	{
+		const REQUEST_ORIGIN_ADMIN = 'admin';
+		const REQUEST_ORIGIN_MEMBER = 'member';
+
 		public static function tableName()
 		{
 			return 'invitation';
@@ -13,7 +16,7 @@
 			return [
 				[['id'], 'integer'],
 				[['IDorganization', 'IDuser', 'IDuser_sender'], 'fk'],
-				[['email', 'token', 'status'], 'string'],
+				[['email', 'token', 'status', 'request_origin'], 'string'],
 				[['parameters'], 'parameters'],
 				[['datecreation', 'dateexpiration', 'dateresponse'], 'datetime'],
 				[['active'], 'boolean'],
@@ -26,15 +29,16 @@
 			return [
 				'id' => 'ID',
 				'IDorganization' => 'Organisation',
-				'IDuser' => 'Utilisateur invité',
-				'IDuser_sender' => 'Invité par',
+				'IDuser' => 'Utilisateur invite',
+				'IDuser_sender' => 'Initiateur',
 				'email' => 'E-mail',
 				'token' => 'Jeton',
+				'request_origin' => 'Origine de la demande',
 				'status' => 'Statut',
-				'parameters' => 'Paramètres',
-				'datecreation' => 'Création',
+				'parameters' => 'Parametres',
+				'datecreation' => 'Creation',
 				'dateexpiration' => 'Expiration',
-				'dateresponse' => 'Réponse',
+				'dateresponse' => 'Reponse',
 				'active' => 'Actif',
 			];
 		}
@@ -44,6 +48,7 @@
 			return [
 				'email' => 250,
 				'token' => 64,
+				'request_origin' => 20,
 				'status' => 20,
 			];
 		}
@@ -51,6 +56,16 @@
 		public static function getOrder()
 		{
 			return 'datecreation DESC, id DESC';
+		}
+
+		public static function normalizeRequestOrigin($value)
+		{
+			$value = trim(mb_strtolower((string)$value, 'UTF-8'));
+			if ($value === self::REQUEST_ORIGIN_MEMBER) {
+				return self::REQUEST_ORIGIN_MEMBER;
+			}
+
+			return self::REQUEST_ORIGIN_ADMIN;
 		}
 
 		public static function findPendingForOrganizationUser($organizationId, $userId)
@@ -100,12 +115,14 @@
 				  AND inv.status = 'pending'
 				  AND inv.active = 1
 				  AND (inv.dateexpiration IS NULL OR inv.dateexpiration > NOW())
+				  AND (inv.request_origin IS NULL OR inv.request_origin != :request_origin_member)
 				  AND uo.id IS NULL
 				ORDER BY inv.datecreation DESC, inv.id DESC
 			";
 
 			$rows = self::fetchAll($query, [
 				'user_id' => $userId,
+				'request_origin_member' => self::REQUEST_ORIGIN_MEMBER,
 			]);
 			if ($rows === false) {
 				return [];
@@ -183,22 +200,34 @@
 				}
 			}
 
-			throw new \RuntimeException("Le jeton d'invitation n'a pas pu être généré.");
+			throw new \RuntimeException("Le jeton d'invitation n'a pas pu etre genere.");
 		}
 
-		public static function issue($organizationId, $userId, $senderUserId = 0, $email = '')
+		public static function issue($organizationId, $userId, $senderUserId = 0, $email = '', array $options = [])
 		{
 			$organizationId = (int)$organizationId;
 			$userId = (int)$userId;
 			$senderUserId = (int)$senderUserId;
 			$email = trim(mb_strtolower((string)$email, 'UTF-8'));
+			$requestOrigin = self::normalizeRequestOrigin($options['requestOrigin'] ?? self::REQUEST_ORIGIN_ADMIN);
+			$requestMessage = trim((string)($options['requestMessage'] ?? ''));
 
 			if ($organizationId <= 0 || $userId <= 0) {
-				throw new \RuntimeException("L'invitation demandée est invalide.");
+				throw new \RuntimeException("L'invitation demandee est invalide.");
 			}
 
 			$existing = self::findPendingForOrganizationUser($organizationId, $userId);
 			if ($existing) {
+				if ($requestOrigin === self::REQUEST_ORIGIN_MEMBER && $existing->isMemberInitiatedRequest() && $requestMessage !== '') {
+					$parameters = $existing->get('parameters');
+					if (!is_array($parameters)) {
+						$parameters = [];
+					}
+					$parameters['request_message'] = $requestMessage;
+					$existing->set('parameters', $parameters);
+					$existing->save();
+				}
+
 				return [
 					'invitation' => $existing,
 					'created' => false,
@@ -211,13 +240,23 @@
 			$item->set('IDuser_sender', $senderUserId > 0 ? $senderUserId : null);
 			$item->set('email', $email !== '' ? $email : null);
 			$item->set('token', self::generateToken());
+			$item->set('request_origin', $requestOrigin);
 			$item->set('status', 'pending');
 			$item->set('dateexpiration', new \DateTime('+14 days'));
 			$item->set('active', true);
 
+			$parameters = $item->get('parameters');
+			if (!is_array($parameters)) {
+				$parameters = [];
+			}
+			if ($requestMessage !== '') {
+				$parameters['request_message'] = $requestMessage;
+			}
+			$item->set('parameters', $parameters);
+
 			$saveResult = $item->save();
 			if (!is_array($saveResult) || empty($saveResult['status']) || (int)$item->getId() <= 0) {
-				throw new \RuntimeException("L'invitation n'a pas pu être créée.");
+				throw new \RuntimeException("L'invitation n'a pas pu etre creee.");
 			}
 
 			return [
@@ -235,6 +274,43 @@
 		{
 			$expiration = $this->get('dateexpiration');
 			return $expiration instanceof \DateTimeInterface && $expiration <= new \DateTime();
+		}
+
+		public function getRequestOrigin()
+		{
+			return self::normalizeRequestOrigin($this->get('request_origin'));
+		}
+
+		public function isMemberInitiatedRequest()
+		{
+			return $this->getRequestOrigin() === self::REQUEST_ORIGIN_MEMBER;
+		}
+
+		public function isAdminInitiatedInvitation()
+		{
+			return !$this->isMemberInitiatedRequest();
+		}
+
+		public function getRequestMessage()
+		{
+			$message = $this->getParameter('request_message');
+			if ($message !== null && trim((string)$message) !== '') {
+				return trim((string)$message);
+			}
+
+			$parameters = $this->get('parameters');
+			if (is_string($parameters) && trim($parameters) !== '') {
+				$decoded = json_decode($parameters, true);
+				if (is_array($decoded)) {
+					return trim((string)($decoded['request_message'] ?? ''));
+				}
+			}
+
+			if (is_array($parameters)) {
+				return trim((string)($parameters['request_message'] ?? ''));
+			}
+
+			return '';
 		}
 
 		protected function getOrganizationObject()
@@ -284,6 +360,11 @@
 		public function getInvitationUrl()
 		{
 			return $this->getOrganizationBaseUrl('/common/invitation.php?token=' . rawurlencode((string)$this->get('token')));
+		}
+
+		public function getApprovalUrl()
+		{
+			return $this->getInvitationUrl();
 		}
 
 		public function getPendingHolons()
@@ -383,13 +464,47 @@
 			return $links;
 		}
 
-		public function sendEmail()
+		protected function getOrganizationAdminRecipients()
 		{
+			$organizationId = (int)$this->get('IDorganization');
+			if ($organizationId <= 0) {
+				return [];
+			}
+
+			$memberships = new \dbObject\ArrayUserOrganization();
+			$memberships->loadActiveForOrganization($organizationId);
+
+			$recipients = [];
+			$seenEmails = [];
+			foreach ($memberships as $membership) {
+				if (!($membership instanceof \dbObject\UserOrganization) || !$membership->isOrganizationAdmin()) {
+					continue;
+				}
+
+				$email = trim(mb_strtolower((string)$membership->getScopedEmail(), 'UTF-8'));
+				if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || isset($seenEmails[$email])) {
+					continue;
+				}
+
+				$seenEmails[$email] = true;
+				$recipients[] = [
+					'email' => $email,
+					'name' => trim((string)$membership->getUserDisplayName()),
+				];
+			}
+
+			return $recipients;
+		}
+
+		protected function sendAdminInvitationEmail()
+		{
+			require_once dirname(__DIR__, 2) . '/common/email_layout.php';
+
 			$organization = $this->getOrganizationObject();
 			$user = $this->getInvitedUserObject();
 
 			if (!$organization || !$user) {
-				throw new \RuntimeException("L'invitation ne peut pas être envoyée.");
+				throw new \RuntimeException("L'invitation ne peut pas etre envoyee.");
 			}
 
 			$email = trim((string)$this->get('email'));
@@ -401,70 +516,40 @@
 				throw new \RuntimeException("L'adresse e-mail d'invitation est invalide.");
 			}
 
-			$subject = "Invitation à rejoindre " . trim((string)$organization->get('name'));
-			$link = $this->getInvitationUrl();
+			$organizationName = trim((string)$organization->get('name'));
+			if ($organizationName === '') {
+				$organizationName = 'cette organisation';
+			}
+
 			$holons = $this->getPendingHolons();
-			$holonList = '';
-
+			$detailsHtml = '';
 			if (count($holons) > 0) {
-				$holonList .= '<ul style="text-align:left;display:inline-block;margin:12px 0 0;padding-left:18px;">';
+				$detailsHtml .= '<div style="font-weight:700; margin:0 0 10px;">Acces en attente</div>';
+				$detailsHtml .= '<ul style="margin:0; padding-left:18px; color:#334155;">';
 				foreach ($holons as $holon) {
-					$holonList .= '<li><strong>' . htmlspecialchars((string)$holon['name'], ENT_QUOTES, 'UTF-8') . '</strong> <span style="color:#64748b;">(' . htmlspecialchars((string)$holon['typeLabel'], ENT_QUOTES, 'UTF-8') . ')</span></li>';
+					$detailsHtml .= '<li style="margin:0 0 8px;">'
+						. '<strong>' . \commonMailEscape((string)$holon['name']) . '</strong>'
+						. ' <span style="color:#64748b;">(' . \commonMailEscape((string)$holon['typeLabel']) . ')</span>'
+						. '</li>';
 				}
-				$holonList .= '</ul>';
+				$detailsHtml .= '</ul>';
 			}
 
-			$organizationName = htmlspecialchars((string)$organization->get('name'), ENT_QUOTES, 'UTF-8');
-			$organizationColorValue = trim((string)$organization->get('color'));
-			if ($organizationColorValue === '' || stripos($organizationColorValue, 'var(') !== false) {
-				$organizationColorValue = '#004663';
-			}
-			$organizationColor = htmlspecialchars($organizationColorValue, ENT_QUOTES, 'UTF-8');
-			$logo = commonBuildAbsoluteAssetUrl((string)$organization->get('logo'));
-			$banner = commonBuildAbsoluteAssetUrl((string)$organization->get('banner'));
-
-			$message = "
-<html>
-<body style='margin:0; font-family:Arial, sans-serif; background:#f5f5f5;'>
-<table width='100%' cellpadding='0' cellspacing='0'>
-<tr>
-<td align='center'>
-<table width='600' cellpadding='0' cellspacing='0' style='background:white; border-radius:8px; overflow:hidden;'>
-<tr>
-<td style='background:" . $organizationColor . "; text-align:center; padding:30px 20px; position:relative;'>
-    " . ($banner !== '' ? "<div style='background:url(" . htmlspecialchars($banner, ENT_QUOTES, 'UTF-8') . ") center/cover; opacity:0.25; position:absolute; inset:0;'></div>" : "") . "
-    <div style='position:relative;'>
-        " . ($logo !== '' ? "
-        <div style='width:80px;height:80px;border-radius:50%;background:white;margin:0 auto 10px;padding:5px;'>
-            <img src='" . htmlspecialchars($logo, ENT_QUOTES, 'UTF-8') . "' style='width:100%;height:100%;object-fit:cover;border-radius:50%;'>
-        </div>
-        " : "") . "
-        <h2 style='color:white; margin:0;'>" . $organizationName . "</h2>
-    </div>
-</td>
-</tr>
-<tr>
-<td style='padding:30px; text-align:center;'>
-    <h3 style='margin-top:0;'>Vous êtes invité·e à rejoindre cette organisation</h3>
-    <p style='color:#555;'>Votre invitation vous donnera accès à l'organisation et aux holons suivants :</p>
-    " . $holonList . "
-    <p style='margin:22px 0 0; color:#555;'>Ouvrez ce lien pour accepter ou refuser l'invitation :</p>
-    <p style='margin:14px 0 0;'>
-        <a href='" . htmlspecialchars($link, ENT_QUOTES, 'UTF-8') . "' style='display:inline-block;padding:12px 20px;background:" . $organizationColor . ";color:white;text-decoration:none;border-radius:999px;font-weight:bold;'>
-            Consulter l'invitation
-        </a>
-    </p>
-    <p style='margin-top:12px; font-size:12px; word-break:break-all; color:#666;'><a href='" . htmlspecialchars($link, ENT_QUOTES, 'UTF-8') . "' style='color:#2563eb; text-decoration:underline;'>" . htmlspecialchars($link, ENT_QUOTES, 'UTF-8') . "</a></p>
-    <p style='margin-top:20px; font-size:12px; color:#888;'>Ce lien reste valable jusqu'au " . htmlspecialchars(($this->get('dateexpiration') instanceof \DateTimeInterface ? $this->get('dateexpiration')->format('d.m.Y H:i') : 'prochaines semaines'), ENT_QUOTES, 'UTF-8') . ".</p>
-</td>
-</tr>
-</table>
-</td>
-</tr>
-</table>
-</body>
-</html>
-";
+			$message = \commonRenderMailLayout([
+				'brand_name' => $organizationName,
+				'brand_color' => trim((string)$organization->get('color')),
+				'logo_url' => commonBuildAbsoluteAssetUrl((string)$organization->get('logo')),
+				'banner_url' => commonBuildAbsoluteAssetUrl((string)$organization->get('banner')),
+				'heading' => 'Invitation a rejoindre ' . $organizationName,
+				'intro_html' => '<p style="margin:0 0 14px; color:#475569; line-height:1.7;">Vous etes invite a rejoindre cette organisation.</p>',
+				'body_html' => '<p style="margin:0; color:#475569; line-height:1.7;">Ouvrez ce lien pour accepter ou refuser l invitation.</p>',
+				'details_html' => $detailsHtml,
+				'button_label' => 'Consulter l invitation',
+				'button_url' => $this->getInvitationUrl(),
+				'footer_html' => '<p style="margin:0;">Ce lien reste valable jusqu au '
+					. \commonMailEscape(($this->get('dateexpiration') instanceof \DateTimeInterface ? $this->get('dateexpiration')->format('d.m.Y H:i') : 'prochaines semaines'))
+					. '.</p>',
+			]);
 
 			$fromAddress = trim((string)($GLOBALS['mailUser'] ?? ''));
 			if ($fromAddress === '') {
@@ -472,11 +557,157 @@
 				$fromAddress = 'noreply@' . ($host !== '' ? $host : 'localhost');
 			}
 
-			if (!myHTMLMail([$fromAddress, (string)$organization->get('name')], $email, $subject, $message)) {
-				throw new \RuntimeException("L'invitation n'a pas pu être envoyée.");
+			if (!myHTMLMail([$fromAddress, (string)$organization->get('name')], $email, 'Invitation a rejoindre ' . $organizationName, $message)) {
+				throw new \RuntimeException("L'invitation n'a pas pu etre envoyee.");
 			}
 
 			return true;
+		}
+
+		protected function sendMembershipRequestEmail()
+		{
+			require_once dirname(__DIR__, 2) . '/common/email_layout.php';
+
+			$organization = $this->getOrganizationObject();
+			$user = $this->getInvitedUserObject();
+			$recipients = $this->getOrganizationAdminRecipients();
+
+			if (!$organization || !$user || count($recipients) === 0) {
+				throw new \RuntimeException("Aucun administrateur ne peut recevoir cette demande pour le moment.");
+			}
+
+			$requesterLabel = trim((string)$user->getScopedDisplayName((int)$organization->getId()));
+			if ($requesterLabel === '') {
+				$requesterLabel = trim((string)$user->get('email'));
+			}
+			if ($requesterLabel === '') {
+				$requesterLabel = 'Utilisateur ' . (int)$user->getId();
+			}
+
+			$requesterEmail = trim((string)$this->get('email'));
+			if ($requesterEmail === '') {
+				$requesterEmail = trim((string)$user->get('email'));
+			}
+
+			$organizationName = trim((string)$organization->get('name'));
+			if ($organizationName === '') {
+				$organizationName = 'cette organisation';
+			}
+
+			$detailsHtml = '<div style="display:grid; gap:10px;">'
+				. '<div><strong>Personne</strong><br>' . \commonMailEscape($requesterLabel) . '</div>';
+			if ($requesterEmail !== '') {
+				$detailsHtml .= '<div><strong>E-mail</strong><br>' . \commonMailEscape($requesterEmail) . '</div>';
+			}
+
+			$requestMessage = $this->getRequestMessage();
+			if ($requestMessage !== '') {
+				$detailsHtml .= '<div><strong>Message</strong><br>' . \commonMailTextToHtml($requestMessage) . '</div>';
+			}
+			$detailsHtml .= '</div>';
+
+			$message = \commonRenderMailLayout([
+				'brand_name' => $organizationName,
+				'brand_color' => trim((string)$organization->get('color')),
+				'logo_url' => commonBuildAbsoluteAssetUrl((string)$organization->get('logo')),
+				'banner_url' => commonBuildAbsoluteAssetUrl((string)$organization->get('banner')),
+				'heading' => 'Nouvelle demande d acces',
+				'intro_html' => '<p style="margin:0 0 14px; color:#475569; line-height:1.7;">'
+					. \commonMailEscape($requesterLabel)
+					. ' souhaite rejoindre '
+					. \commonMailEscape($organizationName)
+					. '.</p>',
+				'body_html' => '<p style="margin:0; color:#475569; line-height:1.7;">Un clic sur le bouton ci-dessous validera directement son inscription.</p>',
+				'details_html' => $detailsHtml,
+				'button_label' => 'Valider l inscription',
+				'button_url' => $this->getApprovalUrl(),
+				'footer_html' => '<p style="margin:0;">Ce lien reste valable jusqu au '
+					. \commonMailEscape(($this->get('dateexpiration') instanceof \DateTimeInterface ? $this->get('dateexpiration')->format('d.m.Y H:i') : 'prochaines semaines'))
+					. '.</p>',
+			]);
+
+			$fromAddress = trim((string)($GLOBALS['mailUser'] ?? ''));
+			if ($fromAddress === '') {
+				$host = preg_replace('/:\d+$/', '', commonGetRootHost() ?: 'localhost');
+				$fromAddress = 'noreply@' . ($host !== '' ? $host : 'localhost');
+			}
+
+			$recipientEmails = array_map(static function (array $recipient) {
+				return (string)$recipient['email'];
+			}, $recipients);
+
+			if (!myHTMLMail([$fromAddress, (string)$organization->get('name')], $recipientEmails, 'Demande d acces a ' . $organizationName, $message)) {
+				throw new \RuntimeException("La demande n'a pas pu etre envoyee aux administrateurs.");
+			}
+
+			return true;
+		}
+
+		protected function sendMemberRequestAcceptedEmail()
+		{
+			require_once dirname(__DIR__, 2) . '/common/email_layout.php';
+
+			$organization = $this->getOrganizationObject();
+			$user = $this->getInvitedUserObject();
+
+			if (!$organization || !$user) {
+				throw new \RuntimeException("La confirmation ne peut pas etre envoyee.");
+			}
+
+			$email = trim((string)$this->get('email'));
+			if ($email === '') {
+				$email = trim((string)$user->get('email'));
+			}
+
+			if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+				throw new \RuntimeException("L'adresse e-mail de confirmation est invalide.");
+			}
+
+			$organizationName = trim((string)$organization->get('name'));
+			if ($organizationName === '') {
+				$organizationName = 'cette organisation';
+			}
+
+			$targetUrl = commonBuildOrganizationHomeUrl(
+				(int)$organization->getId(),
+				(string)$organization->get('shortname'),
+				commonGetRequestHost()
+			);
+
+			$message = \commonRenderMailLayout([
+				'brand_name' => $organizationName,
+				'brand_color' => trim((string)$organization->get('color')),
+				'logo_url' => commonBuildAbsoluteAssetUrl((string)$organization->get('logo')),
+				'banner_url' => commonBuildAbsoluteAssetUrl((string)$organization->get('banner')),
+				'heading' => 'Votre inscription est validee',
+				'intro_html' => '<p style="margin:0 0 14px; color:#475569; line-height:1.7;">Votre demande pour rejoindre '
+					. \commonMailEscape($organizationName)
+					. ' a ete acceptee.</p>',
+				'body_html' => '<p style="margin:0; color:#475569; line-height:1.7;">Vous pouvez maintenant acceder a cet espace et a ses outils.</p>',
+				'button_label' => 'Entrer dans l organisation',
+				'button_url' => $targetUrl,
+			]);
+
+			$fromAddress = trim((string)($GLOBALS['mailUser'] ?? ''));
+			if ($fromAddress === '') {
+				$host = preg_replace('/:\d+$/', '', commonGetRootHost() ?: 'localhost');
+				$fromAddress = 'noreply@' . ($host !== '' ? $host : 'localhost');
+			}
+
+			if (!myHTMLMail([$fromAddress, (string)$organization->get('name')], $email, 'Inscription validee dans ' . $organizationName, $message)) {
+				throw new \RuntimeException("L'e-mail de confirmation n'a pas pu etre envoye.");
+			}
+
+			return true;
+		}
+
+		public function sendEmail()
+		{
+			if ($this->isMemberInitiatedRequest()) {
+				return $this->sendMembershipRequestEmail();
+			}
+
+			return $this->sendAdminInvitationEmail();
 		}
 
 		protected function updateSiblingPendingInvitations($status)
@@ -500,7 +731,7 @@
 			);
 		}
 
-		public function accept()
+		protected function acceptInternal($sendConfirmationEmail = false, $approvedByUserId = 0)
 		{
 			if (!$this->isPending() || $this->isExpired()) {
 				return [
@@ -517,21 +748,27 @@
 			if (!$pdo) {
 				return [
 					'status' => false,
-					'message' => 'La connexion à la base de données est indisponible.',
+					'message' => 'La connexion a la base de donnees est indisponible.',
 				];
 			}
 
 			try {
-				$pdo->beginTransaction();
+				$ownsTransaction = !$pdo->inTransaction();
+				if ($ownsTransaction) {
+					$pdo->beginTransaction();
+				}
 
 				$user = new \dbObject\User();
 				if (!$user->load($userId)) {
-					throw new \RuntimeException("Le profil invité est introuvable.");
+					throw new \RuntimeException("Le profil invite est introuvable.");
 				}
 
 				if (!(bool)$user->get('active')) {
 					$user->set('active', true);
-					$user->save();
+					$saveUser = $user->save();
+					if (!is_array($saveUser) || empty($saveUser['status'])) {
+						throw new \RuntimeException("Le profil utilisateur n'a pas pu etre active.");
+					}
 				}
 
 				$membership = new \dbObject\UserOrganization();
@@ -550,7 +787,7 @@
 				$membership->set('active', true);
 				$saveMembership = $membership->save();
 				if (!is_array($saveMembership) || empty($saveMembership['status'])) {
-					throw new \RuntimeException("L'adhésion à l'organisation n'a pas pu être confirmée.");
+					throw new \RuntimeException("L'adhesion a l'organisation n'a pas pu etre confirmee.");
 				}
 
 				self::execute(
@@ -567,8 +804,25 @@
 				if ($rootHolonId > 0) {
 					foreach ($this->getScopedUserHolonLinks(false) as $link) {
 						$link->set('active', true);
-						$link->save();
+						$saveLink = $link->save();
+						if (!is_array($saveLink) || empty($saveLink['status'])) {
+							throw new \RuntimeException("Un lien de contexte n'a pas pu etre active.");
+						}
 					}
+				}
+
+				$parameters = $this->get('parameters');
+				if (!is_array($parameters)) {
+					$parameters = [];
+				}
+				if ($approvedByUserId > 0) {
+					$parameters['approved_by_user_id'] = $approvedByUserId;
+					$parameters['approved_at'] = (new \DateTime())->format('c');
+				}
+				$this->set('parameters', $parameters);
+
+				if ($sendConfirmationEmail) {
+					$this->sendMemberRequestAcceptedEmail();
 				}
 
 				$this->set('status', 'accepted');
@@ -576,21 +830,23 @@
 				$this->set('active', false);
 				$saveInvitation = $this->save();
 				if (!is_array($saveInvitation) || empty($saveInvitation['status'])) {
-					throw new \RuntimeException("L'invitation n'a pas pu être mise à jour.");
+					throw new \RuntimeException("L'invitation n'a pas pu etre mise a jour.");
 				}
 
 				$this->updateSiblingPendingInvitations('accepted');
 
-				$pdo->commit();
+				if ($ownsTransaction && $pdo->inTransaction()) {
+					$pdo->commit();
+				}
 
 				return [
 					'status' => true,
-					'message' => 'Invitation acceptée.',
+					'message' => $this->isMemberInitiatedRequest() ? 'Demande validee.' : 'Invitation acceptee.',
 					'userId' => $userId,
 					'organizationId' => $organizationId,
 				];
 			} catch (\Throwable $exception) {
-				if ($pdo->inTransaction()) {
+				if (isset($ownsTransaction) && $ownsTransaction && $pdo->inTransaction()) {
 					$pdo->rollBack();
 				}
 
@@ -599,6 +855,19 @@
 					'message' => $exception->getMessage(),
 				];
 			}
+		}
+
+		public function accept()
+		{
+			return $this->acceptInternal(false, 0);
+		}
+
+		public function approveByAdmin(array $options = [])
+		{
+			$approvedByUserId = (int)($options['approvedByUserId'] ?? 0);
+			$sendConfirmationEmail = !empty($options['sendConfirmationEmail']);
+
+			return $this->acceptInternal($sendConfirmationEmail, $approvedByUserId);
 		}
 
 		public function decline()
@@ -618,7 +887,7 @@
 			if (!$pdo) {
 				return [
 					'status' => false,
-					'message' => 'La connexion à la base de données est indisponible.',
+					'message' => 'La connexion a la base de donnees est indisponible.',
 				];
 			}
 
@@ -663,7 +932,7 @@
 				$this->set('active', false);
 				$saveInvitation = $this->save();
 				if (!is_array($saveInvitation) || empty($saveInvitation['status'])) {
-					throw new \RuntimeException("L'invitation n'a pas pu être mise à jour.");
+					throw new \RuntimeException("L'invitation n'a pas pu etre mise a jour.");
 				}
 
 				$this->updateSiblingPendingInvitations('declined');
@@ -672,7 +941,7 @@
 
 				return [
 					'status' => true,
-					'message' => 'Invitation refusée.',
+					'message' => 'Invitation refusee.',
 					'userId' => $userId,
 					'organizationId' => $organizationId,
 				];

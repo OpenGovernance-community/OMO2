@@ -52,7 +52,7 @@ if ($organizationName === '') {
                 <?= $canEditOrganization ? '' : 'disabled' ?>
             >
                 <strong>Organisation</strong>
-                <span><?= htmlspecialchars($canEditOrganization ? "Modifier le nom, le nom court, les illustrations et la couleur de " . $organizationName . "." : "Vous devez etre admin de l'organisation pour modifier ces parametres.", ENT_QUOTES, 'UTF-8') ?></span>
+                <span><?= htmlspecialchars($canEditOrganization ? "Modifier le nom, le nom court, l emplacement geographique, les illustrations et la couleur de " . $organizationName . "." : "Vous devez etre admin de l'organisation pour modifier ces parametres.", ENT_QUOTES, 'UTF-8') ?></span>
             </button>
 
             <?php if ($hasStructureTemplates): ?>

@@ -1282,9 +1282,7 @@ root.addEventListener('click', function (event) {
 .omo-holon-create__footer,
 .omo-holon-create__property,
 .omo-holon-create__empty {
-    --generic-section-border: var(--color-border);
     --generic-section-radius: 16px;
-    --generic-section-background: var(--color-surface);
     --generic-section-shadow: var(--shadow-sm);
 }
 
@@ -1295,7 +1293,6 @@ root.addEventListener('click', function (event) {
 .omo-holon-create__section,
 .omo-holon-create__footer,
 .omo-holon-create__empty {
-    --generic-section-padding-block: 16px;
     --generic-section-padding-inline: 16px;
 }
 
@@ -1430,11 +1427,9 @@ root.addEventListener('click', function (event) {
 }
 
 .omo-holon-create__media-card {
-    --generic-soft-panel-gap: 10px;
     --generic-soft-panel-padding-block: 14px;
     --generic-soft-panel-padding-inline: 14px;
     --generic-soft-panel-radius: 16px;
-    --generic-soft-panel-border: var(--color-border);
     --generic-soft-panel-background: var(--color-surface);
 }
 
@@ -1442,24 +1437,6 @@ root.addEventListener('click', function (event) {
     font-size: 0.85rem;
     font-weight: 700;
     color: var(--color-text);
-}
-
-.omo-holon-create__field .generic-form-control {
-    --generic-form-control-border: var(--color-border);
-    --generic-form-control-background: var(--color-surface-alt);
-    --generic-form-control-background-focus: var(--color-surface);
-    --generic-form-control-color: var(--color-text);
-}
-
-.omo-holon-create__field textarea.generic-form-control {
-    --generic-form-control-textarea-min-height: 110px;
-}
-
-.omo-holon-create__property-value {
-    --generic-form-control-border: var(--color-border);
-    --generic-form-control-background: var(--color-surface-alt);
-    --generic-form-control-background-focus: var(--color-surface);
-    --generic-form-control-color: var(--color-text);
 }
 
 textarea.omo-holon-create__property-value {

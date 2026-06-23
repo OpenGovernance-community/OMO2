@@ -1,6 +1,8 @@
 <?php
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/omo_public_pages.php';
+require_once __DIR__ . '/topbar.php';
 require_once __DIR__ . '/translation_bundles.php';
 require_once dirname(__DIR__) . '/omo/translations.php';
 require_once dirname(__DIR__) . '/omo/api/decision/modules/context.php';
@@ -460,6 +462,35 @@ function commonDecisionParticipationBuildOptionLines($decision, array $context)
     return $lines;
 }
 
+function commonDecisionParticipationRenderMajorityJudgmentLegend(DecisionGroup $group)
+{
+    if (!function_exists('omoDecisionMajorityJudgmentGetLegendItems')) {
+        return '';
+    }
+
+    $legendItems = omoDecisionMajorityJudgmentGetLegendItems($group);
+    if (count($legendItems) === 0) {
+        return '';
+    }
+
+    ob_start();
+    ?>
+    <div class="decision-public-group__legend" style="--decision-public-group-legend-count: <?= omoApiEscape((string)count($legendItems)) ?>;">
+        <?php foreach ($legendItems as $legendItem): ?>
+        <span
+            class="decision-public-group__legend-item"
+            style="--decision-public-group-legend-color: <?= omoApiEscape((string)$legendItem['color']) ?>; --decision-public-group-legend-text: <?= omoApiEscape((string)$legendItem['text_color']) ?>;"
+            title="<?= omoApiEscape((string)$legendItem['label']) ?>"
+        >
+            <span class="decision-public-group__legend-label"><?= omoApiEscape((string)$legendItem['label']) ?></span>
+        </span>
+        <?php endforeach; ?>
+    </div>
+    <?php
+
+    return (string)ob_get_clean();
+}
+
 function commonDecisionParticipationRenderGroupBlocks(DecisionProcess $decision, array $context)
 {
     $groups = commonDecisionParticipationGetRenderableGroups($decision);
@@ -484,9 +515,15 @@ function commonDecisionParticipationRenderGroupBlocks(DecisionProcess $decision,
             $groupContext['decisionGroup'] = $group;
             $groupContext['decisionGroupId'] = (int)$group->getId();
             $groupContext['method'] = $method;
+            if ($definition && !empty($definition['shared_file']) && is_file((string)$definition['shared_file'])) {
+                require_once (string)$definition['shared_file'];
+            }
+            $majorityLegend = $method === DecisionProcess::METHOD_MAJORITY_JUDGMENT
+                ? commonDecisionParticipationRenderMajorityJudgmentLegend($group)
+                : '';
             ?>
-            <section class="generic-section generic-section--stack decision-public-group">
-                <div class="generic-soft-panel generic-soft-panel--stack decision-public-group__header">
+            <section class="generic-noborder-section generic-section--stack decision-public-group">
+                <div class="generic-soft-panel-square generic-soft-panel--stack decision-public-group__header decision-public-group__header--sticky">
                     <div class="decision-public-group__header-top">
                         <span class="decision-public-group__badge">
                             Bloc <?= omoApiEscape((string)($groupIndex + 1)) ?> · <?= omoApiEscape(commonDecisionParticipationGetMethodLabel($method)) ?> · <?= omoApiEscape(commonDecisionParticipationGetDecisionTypeLabel($group->get('decision_type'))) ?>
@@ -496,13 +533,13 @@ function commonDecisionParticipationRenderGroupBlocks(DecisionProcess $decision,
                     <?php if ($groupDescription !== ''): ?>
                     <p class="decision-public-group__description"><?= nl2br(omoApiEscape($groupDescription)) ?></p>
                     <?php endif; ?>
+                    <?php if ($majorityLegend !== ''): ?>
+                    <?= $majorityLegend ?>
+                    <?php endif; ?>
                 </div>
 
                 <?php if ($definition && !empty($definition['render_function'])): ?>
                     <?php
-                    if (!empty($definition['shared_file']) && is_file((string)$definition['shared_file'])) {
-                        require_once (string)$definition['shared_file'];
-                    }
                     if (!empty($definition['editor_file']) && is_file((string)$definition['editor_file'])) {
                         require_once (string)$definition['editor_file'];
                     }
@@ -538,6 +575,43 @@ function commonDecisionParticipationRenderGroupBlocks(DecisionProcess $decision,
     <?php
 
     return (string)ob_get_clean();
+}
+
+function commonDecisionParticipationGetPublicAccessRequestDeniedMessage($reason, $allowPublicSelfRegistration = false)
+{
+    switch (trim((string)$reason)) {
+        case 'invalid_email':
+            return 'Merci de saisir une adresse e-mail valide.';
+        case 'sync_failed':
+            return 'Impossible de verifier les participants autorises pour le moment.';
+        case 'participant_unavailable':
+            return 'Cette adresse e-mail est deja liee a un participant qui ne peut plus utiliser ce scrutin.';
+        case 'create_failed':
+            return 'Impossible de creer cette participation pour le moment.';
+        case 'not_allowed':
+        default:
+            return $allowPublicSelfRegistration
+                ? 'Cette adresse e-mail ne peut pas etre utilisee pour ce scrutin pour le moment.'
+                : 'Cette adresse e-mail ne fait pas partie des personnes autorisees a ce scrutin.';
+    }
+}
+
+function commonDecisionParticipationGetPublicAccessCodeErrorMessage($reason)
+{
+    switch (trim((string)$reason)) {
+        case 'empty_code':
+            return 'Merci de saisir le code recu par e-mail.';
+        case 'missing_code':
+            return 'Aucun code valide n a ete trouve pour cette adresse. Demandez-en un nouveau.';
+        case 'expired_code':
+            return 'Ce code a expire. Demandez-en un nouveau depuis cette page.';
+        case 'invalid_code':
+            return 'Le code saisi est incorrect.';
+        case 'consume_failed':
+            return 'Le code est correct, mais l acces n a pas pu etre finalise. Reessayez dans un instant.';
+        default:
+            return 'Impossible de verifier ce code pour le moment.';
+    }
 }
 
 function commonDecisionParticipationBuildTimelineData(array $items, ?DecisionProcess $decision = null)
@@ -750,6 +824,9 @@ $participant = !empty($context['participant']) && $context['participant'] instan
     : null;
 $organization = !empty($context['organization']) ? $context['organization'] : null;
 $requiresPublicAccessEmail = (($context['accessMode'] ?? '') === 'public_request');
+$allowPublicSelfRegistration = $decision instanceof DecisionProcess
+    ? $decision->isPublicSelfRegistrationEnabled()
+    : false;
 
 if ($requiresPublicAccessEmail && (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST')) {
     header('Content-Type: application/json; charset=UTF-8');
@@ -761,6 +838,7 @@ if ($requiresPublicAccessEmail && (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'PO
         ]);
     }
 
+    $requestAction = trim((string)($_POST['public_access_action'] ?? 'request_code'));
     $requestedEmail = trim((string)($_POST['email'] ?? ''));
     if ($requestedEmail === '' || !filter_var($requestedEmail, FILTER_VALIDATE_EMAIL)) {
         omoDecisionModuleJsonResponse(422, [
@@ -769,25 +847,66 @@ if ($requiresPublicAccessEmail && (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'PO
         ]);
     }
 
-    $participantForEmail = $decision->findAccessibleParticipantByEmail($requestedEmail);
-    if (!($participantForEmail instanceof DecisionParticipant)) {
-        omoDecisionModuleJsonResponse(403, [
-            'status' => false,
-            'message' => 'Cette adresse e-mail ne fait pas partie des personnes invitees a ce scrutin.',
+    if ($requestAction === 'verify_code') {
+        $resolveResult = $decision->resolvePublicRequestParticipantByEmail($requestedEmail, false);
+        if (empty($resolveResult['status']) || !($resolveResult['participant'] instanceof DecisionParticipant)) {
+            omoDecisionModuleJsonResponse(403, [
+                'status' => false,
+                'message' => commonDecisionParticipationGetPublicAccessRequestDeniedMessage(
+                    $resolveResult['reason'] ?? 'not_allowed',
+                    $allowPublicSelfRegistration
+                ),
+            ]);
+        }
+
+        $verificationResult = $resolveResult['participant']->verifyPublicAccessCode($_POST['code'] ?? '', true);
+        if (empty($verificationResult['status'])) {
+            omoDecisionModuleJsonResponse(422, [
+                'status' => false,
+                'message' => commonDecisionParticipationGetPublicAccessCodeErrorMessage($verificationResult['reason'] ?? ''),
+            ]);
+        }
+
+        $redirectIntent = $decision->isParticipationOpen() ? 'participate' : 'view';
+        $redirectUrl = trim((string)$resolveResult['participant']->getPublicAccessUrl($redirectIntent));
+        if ($redirectUrl === '') {
+            omoDecisionModuleJsonResponse(500, [
+                'status' => false,
+                'message' => 'Le lien personnel n a pas pu etre finalise. Reessayez dans un instant.',
+            ]);
+        }
+
+        omoDecisionModuleJsonResponse(200, [
+            'status' => true,
+            'message' => 'Code valide. Redirection en cours...',
+            'redirectUrl' => $redirectUrl,
         ]);
     }
 
-    $sendResult = omoDecisionSendParticipantAccessEmail($decision, $participantForEmail);
+    $resolveResult = $decision->resolvePublicRequestParticipantByEmail($requestedEmail, true);
+    if (empty($resolveResult['status']) || !($resolveResult['participant'] instanceof DecisionParticipant)) {
+        omoDecisionModuleJsonResponse(403, [
+            'status' => false,
+            'message' => commonDecisionParticipationGetPublicAccessRequestDeniedMessage(
+                $resolveResult['reason'] ?? 'not_allowed',
+                $allowPublicSelfRegistration
+            ),
+        ]);
+    }
+
+    $publicRequestUrl = $decision->getGenericPublicAccessUrl('participate');
+    $sendResult = omoDecisionSendParticipantAccessCodeEmail($decision, $resolveResult['participant'], $publicRequestUrl);
     if (empty($sendResult['status'])) {
         omoDecisionModuleJsonResponse(500, [
             'status' => false,
-            'message' => trim((string)($sendResult['message'] ?? 'Impossible d envoyer le lien d acces pour le moment.')),
+            'message' => trim((string)($sendResult['message'] ?? 'Impossible d envoyer le code d acces pour le moment.')),
         ]);
     }
 
     omoDecisionModuleJsonResponse(200, [
         'status' => true,
-        'message' => 'Un lien personnel vient d etre envoye a ' . trim((string)($sendResult['email'] ?? $requestedEmail)) . '.',
+        'message' => 'Un code personnel et un lien direct viennent d etre envoyes a ' . trim((string)($sendResult['email'] ?? $requestedEmail)) . '.',
+        'nextAction' => 'verify_code',
     ]);
 }
 
@@ -805,6 +924,9 @@ $organizationName = $organization ? trim((string)$organization->get('name')) : '
 $decisionTitle = $decision ? trim((string)$decision->get('title')) : 'Prise de decision';
 $participantLabel = $participant ? trim((string)$participant->getIdentityLabel()) : '';
 $accentColor = $organization ? trim((string)$organization->get('color')) : '';
+$organizationContext = commonBuildOmoPublicOrganizationContext($organization);
+$publicHelpItems = commonBuildOmoPublicHelpItems('decision', $organizationName);
+$publicPageBrandHref = (string)($_SERVER['REQUEST_URI'] ?? '/');
 $decisionGroups = $decision ? commonDecisionParticipationGetRenderableGroups($decision) : [];
 $timelineItems = $decision ? commonDecisionParticipationBuildTimelineItems($decision) : [];
 $timelineData = commonDecisionParticipationBuildTimelineData($timelineItems, $decision);
@@ -819,16 +941,243 @@ $organizerData = commonDecisionParticipationBuildOrganizerData($decision, $organ
 $methodSummary = commonDecisionParticipationBuildMethodSummary($decision);
 $invitationSummary = commonDecisionParticipationBuildInvitationSummary($decision, $organization, $context);
 $optionLines = commonDecisionParticipationBuildOptionLines($decision, $context);
+$decisionDescription = $decision instanceof DecisionProcess ? trim((string)$decision->get('description')) : '';
+$decisionStatus = $decision instanceof DecisionProcess ? DecisionProcess::normalizeStatus($decision->get('status')) : '';
+$isResultsDisplay = $decision instanceof DecisionProcess
+    && DecisionProcess::getStatusRank($decisionStatus) >= DecisionProcess::getStatusRank(DecisionProcess::STATUS_RESULTS);
+$decisionPublicOrganizerContactHtml = '';
+if (trim((string)($organizerData['email'] ?? '')) !== '') {
+    ob_start();
+    ?>
+        <section class="generic-soft-panel-square decision-public-context-contact<?= $requiresPublicAccessEmail ? ' decision-public-context-contact--footer' : '' ?>">
+            <span>Contacter l organisateur: </span>
+            <a href="mailto:<?= omoApiEscape((string)$organizerData['email']) ?>"><?= omoApiEscape((string)$organizerData['email']) ?></a>
+        </section>
+    <?php
+    $decisionPublicOrganizerContactHtml = (string)ob_get_clean();
+}
 $statusCopy = 'Ce lien ne permet pas d acceder a cette prise de decision.';
 if (!empty($context['status'])) {
     if ($requiresPublicAccessEmail) {
-        $statusCopy = 'Entrez votre adresse e-mail pour recevoir votre lien personnel de participation.';
+        $statusCopy = $allowPublicSelfRegistration
+            ? 'Entrez votre adresse e-mail pour recevoir un code personnel de participation.'
+            : 'Entrez votre adresse e-mail autorisee pour recevoir un code personnel de participation.';
     } else {
         $statusCopy = !empty($context['canParticipate'])
             ? 'Vous pouvez participer a ce scrutin depuis cette page publique.'
             : 'Vous pouvez consulter ce scrutin depuis cette page publique.';
     }
 }
+
+ob_start();
+?>
+        <section class="generic-hero-panel fill accent decision-public-hero">
+            <?php if (!$isResultsDisplay): ?>
+            <div class="decision-public-eyebrow">
+                <strong><?= omoApiEscape($organizationName !== '' ? $organizationName : 'Organisation') ?></strong>
+                <?php if ($participantLabel !== ''): ?>
+                <span>&middot;</span>
+                <span><?= omoApiEscape($participantLabel) ?></span>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+            <h1><?= omoApiEscape($decisionTitle !== '' ? $decisionTitle : 'Prise de decision') ?></h1>
+            <?php if (!$isResultsDisplay): ?>
+            <p class="decision-public-status"><?= omoApiEscape($statusCopy) ?></p>
+            <?php endif; ?>
+        </section>
+
+        <section class="generic-title-section generic-section--stack generic-accordion--card generic-accordion--collapsible is-collapsed decision-public-timeline-accordion" data-decision-public-timeline>
+            <button
+                type="button"
+                class="decision-public-timeline-summary-button generic-accordion__header"
+                data-decision-public-timeline-toggle
+                aria-expanded="false"
+            >
+                <span class="decision-public-timeline-summary-copy">
+                    <span class="decision-public-timeline-summary-title"><?= omoApiEscape((string)($timelineSummary['title'] ?? 'Etapes du scrutin')) ?></span>
+                    <span class="decision-public-timeline-summary-hint"><?= omoApiEscape((string)($timelineSummary['hint'] ?? 'Afficher la representation graphique')) ?></span>
+                </span>
+                <span class="generic-accordion__toggle" aria-hidden="true">&#9662;</span>
+            </button>
+            <div class="generic-accordion__content">
+                <div class="generic-accordion__content-inner">
+                    <?php if (count($timelineData['items']) > 0): ?>
+                    <div class="decision-public-timeline">
+                        <div class="decision-public-timeline-axis">
+                            <?php foreach ($timelineSegments as $timelineSegment): ?>
+                            <div
+                                class="decision-public-timeline-segment decision-public-timeline-segment--<?= omoApiEscape((string)$timelineSegment['class']) ?><?= !empty($timelineSegment['open_end']) ? ' is-open-ended' : '' ?>"
+                                title="<?= omoApiEscape((string)$timelineSegment['label']) ?>"
+                                style="left: <?= omoApiEscape(number_format((float)$timelineSegment['left'], 4, '.', '')) ?>%; width: <?= omoApiEscape(number_format((float)$timelineSegment['width'], 4, '.', '')) ?>%;"
+                            ></div>
+                            <?php if (!empty($timelineSegment['open_end']) && !empty($timelineSegment['dot_positions']) && is_array($timelineSegment['dot_positions'])): ?>
+                            <?php foreach ($timelineSegment['dot_positions'] as $dotPosition): ?>
+                            <span
+                                class="decision-public-timeline-open-dot decision-public-timeline-open-dot--<?= omoApiEscape((string)$timelineSegment['class']) ?>"
+                                aria-hidden="true"
+                                style="left: <?= omoApiEscape(number_format((float)$dotPosition, 4, '.', '')) ?>%;"
+                            ></span>
+                            <?php endforeach; ?>
+                            <?php endif; ?>
+                            <?php if ((float)$timelineSegment['width'] >= 8.0): ?>
+                            <div
+                                class="decision-public-timeline-segment-label"
+                                style="left: <?= omoApiEscape(number_format((float)$timelineSegment['center'], 4, '.', '')) ?>%;"
+                            >
+                                <?= omoApiEscape((string)$timelineSegment['label']) ?>
+                            </div>
+                            <?php endif; ?>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php foreach ($timelineData['items'] as $timelineItem): ?>
+                        <?php
+                        $stateClass = 'is-' . trim((string)($timelineItem['state'] ?? 'upcoming'));
+                        $timelineDate = !empty($timelineItem['show_date'])
+                            ? commonDecisionParticipationFormatDateTime($timelineItem['date'] ?? null)
+                            : commonDecisionParticipationFormatDateTime($timelineItem['date'] ?? null);
+                        ?>
+                        <div
+                            class="decision-public-timeline-item <?= omoApiEscape($stateClass) ?>"
+                            data-lane="<?= omoApiEscape((string)($timelineItem['lane'] ?? 'top')) ?>"
+                            data-align="<?= omoApiEscape((string)($timelineItem['card_align'] ?? 'center')) ?>"
+                            style="left: <?= omoApiEscape(number_format((float)$timelineItem['position_percent'], 4, '.', '')) ?>%;"
+                        >
+                            <div class="decision-public-timeline-card">
+                                <div class="decision-public-timeline-label"><?= omoApiEscape((string)$timelineItem['label']) ?></div>
+                                <?php if ($timelineDate !== ''): ?>
+                                <div class="decision-public-timeline-date"><?= omoApiEscape($timelineDate) ?></div>
+                                <?php endif; ?>
+                            </div>
+                            <div class="decision-public-timeline-connector"></div>
+                            <div class="decision-public-timeline-marker"></div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
+
+                    <div class="decision-public-context">
+                        <div class="decision-public-context-grid">
+                            <?php if (trim((string)($organizerData['label'] ?? '')) !== ''): ?>
+                            <div class="generic-soft-panel generic-soft-panel--stack">
+                                <span class="generic-card-title generic-card-title--small">Organisateur</span>
+                                <strong><?= omoApiEscape((string)$organizerData['label']) ?></strong>
+                                <?php if (trim((string)($organizerData['scope'] ?? '')) !== ''): ?>
+                                <span class="decision-public-context-scope"><?= omoApiEscape((string)$organizerData['scope']) ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <?php endif; ?>
+
+                            <?php if (trim((string)($methodSummary['value'] ?? '')) !== ''): ?>
+                            <div class="generic-soft-panel generic-soft-panel--stack">
+                                <span class="generic-card-title generic-card-title--small"><?= omoApiEscape((string)($methodSummary['label'] ?? 'Methode')) ?></span>
+                                <strong><?= omoApiEscape((string)($methodSummary['value'] ?? '')) ?></strong>
+                            </div>
+                            <?php endif; ?>
+
+                            <?php if ($invitationSummary !== ''): ?>
+                            <div class="generic-soft-panel generic-soft-panel--stack">
+                                <span class="generic-card-title generic-card-title--small">Invites</span>
+                                <strong><?= omoApiEscape($invitationSummary) ?></strong>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+
+                        <?php if (count($optionLines) > 0): ?>
+                        <div class="generic-soft-panel generic-soft-panel--stack">
+                            <span class="generic-card-title generic-card-title--small">Options</span>
+                            <ul class="decision-public-context-list">
+                                <?php foreach ($optionLines as $optionLine): ?>
+                                <li><?= omoApiEscape((string)$optionLine) ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <?php if ($decisionDescription !== ''): ?>
+        <section class="generic-title-section generic-section--stack decision-public-title-block">
+            <p><?= nl2br(omoApiEscape($decisionDescription)) ?></p>
+        </section>
+        <?php endif; ?>
+<?php
+$decisionPublicContextHtml = (string)ob_get_clean();
+
+ob_start();
+?>
+
+        <section class="decision-public-content<?= $requiresPublicAccessEmail ? ' decision-public-content--centered' : '' ?>">
+            <?php if ($requiresPublicAccessEmail): ?>
+            <div class="decision-public-access-request-shell">
+                <section class="generic-section generic-section--stack decision-public-access-request">
+                    <div class="decision-public-access-request__header">
+                        <span class="generic-card-title generic-card-title--eyebrow">Acces public</span>
+                        <span class="generic-card-title generic-card-title--section">Recevoir mon acces personnel</span>
+                        <p class="decision-public-access-request__text">
+                            <?= $allowPublicSelfRegistration
+                                ? 'Saisissez votre adresse e-mail pour recevoir un code personnel ainsi qu un lien direct personnel. Si cette adresse n est pas encore associee a ce scrutin, une participation sera creee automatiquement.'
+                                : 'Saisissez l adresse e-mail autorisee pour ce scrutin afin de recevoir un code personnel ainsi qu un lien direct de participation.' ?>
+                        </p>
+                    </div>
+                    <form
+                        class="decision-public-access-request__form"
+                        id="decisionPublicAccessRequestForm"
+                        action="<?= omoApiEscape((string)($_SERVER['REQUEST_URI'] ?? '')) ?>"
+                        method="post"
+                    >
+                        <input type="hidden" name="public_access_action" id="decisionPublicAccessRequestAction" value="request_code">
+                        <div class="decision-public-access-request__field">
+                            <label class="generic-card-title generic-card-title--small" for="decisionPublicAccessRequestEmail">Adresse e-mail</label>
+                            <input
+                                id="decisionPublicAccessRequestEmail"
+                                name="email"
+                                type="email"
+                                class="generic-form-control"
+                                autocomplete="email"
+                                placeholder="nom@exemple.org"
+                                required
+                            >
+                        </div>
+                        <div class="decision-public-access-request__field" id="decisionPublicAccessRequestCodeRow" hidden>
+                            <label class="generic-card-title generic-card-title--small" for="decisionPublicAccessRequestCode">Code recu par e-mail</label>
+                            <input
+                                id="decisionPublicAccessRequestCode"
+                                name="code"
+                                type="text"
+                                class="generic-form-control"
+                                inputmode="numeric"
+                                autocomplete="one-time-code"
+                                maxlength="6"
+                                placeholder="123456"
+                            >
+                        </div>
+                        <div id="decisionPublicAccessRequestFeedback" class="decision-public-access-request__feedback" aria-live="polite"></div>
+                        <div class="decision-public-access-request__actions" id="decisionPublicAccessRequestSendActions">
+                            <button type="submit" id="decisionPublicAccessRequestSendSubmit" class="generic-action-button generic-action-button--main">
+                                Envoyer mon acces
+                            </button>
+                        </div>
+                        <div class="decision-public-access-request__actions" id="decisionPublicAccessRequestVerifyActions" hidden>
+                            <button type="button" id="decisionPublicAccessRequestResend" class="generic-action-button generic-action-button--secondary">
+                                Renvoyer le code
+                            </button>
+                            <button type="submit" id="decisionPublicAccessRequestVerifySubmit" class="generic-action-button generic-action-button--main">
+                                Acceder au scrutin
+                            </button>
+                        </div>
+                    </form>
+                </section>
+            </div>
+            <?php else: ?>
+            <?= $decision instanceof DecisionProcess ? commonDecisionParticipationRenderGroupBlocks($decision, $context) : '' ?>
+            <?php endif; ?>
+        </section>
+        <?= $decisionPublicOrganizerContactHtml ?>
+<?php
+$decisionPublicMainHtml = (string)ob_get_clean();
 
 if (empty($context['status'])) {
     http_response_code((int)($context['code'] ?? 403));
@@ -841,11 +1190,16 @@ if (empty($context['status'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= omoApiEscape($decisionTitle !== '' ? $decisionTitle : 'Prise de decision') ?></title>
+    <script src="/shared_functions.js"></script>
+    <script>if (typeof sharedApplyDocumentTheme === 'function') { sharedApplyDocumentTheme(); }</script>
     <link rel="stylesheet" href="/shared_css.css">
+    <link rel="stylesheet" href="/common/assets/omo_public_pages.css">
+    <link rel="stylesheet" href="/omo/assets/css/styles.css">
 <?php endif; ?>
     <style>
         :root {
             --decision-public-accent: <?= omoApiEscape($accentColor !== '' ? $accentColor : '#2563eb') ?>;
+            --omo-public-accent: var(--decision-public-accent);
             --color-primary: var(--decision-public-accent);
             --decision-public-success: var(--color-success, #16a34a);
             --decision-public-warning: var(--color-warning, #f59e0b);
@@ -853,13 +1207,7 @@ if (empty($context['status'])) {
         }
 
         body.decision-public-page {
-            margin: 0;
-            min-height: 100vh;
-            background:
-                radial-gradient(circle at top right, color-mix(in srgb, var(--decision-public-accent) 14%, transparent), transparent 28%),
-                linear-gradient(180deg, var(--color-surface-alt, #f8fafc) 0%, color-mix(in srgb, var(--color-surface-alt, #eef2f7) 72%, var(--color-surface, #ffffff)) 100%);
             color: var(--color-text, #0f172a);
-            font-family: Arial, Helvetica, sans-serif;
         }
 
         .decision-public-page--embedded {
@@ -867,16 +1215,65 @@ if (empty($context['status'])) {
         }
 
         .decision-public-shell {
-            width: min(1100px, calc(100% - 32px));
-            margin: 0 auto;
-            padding: 28px 0 40px;
+            --decision-public-sticky-top: 0px;
+            --decision-public-sticky-gap: 0px;
             display: grid;
-            gap: 18px;
+            gap: 16px;
         }
 
         .decision-public-shell--embedded {
             width: min(100%, 1100px);
             padding: 0;
+        }
+
+        .decision-public-banner {
+            margin: 0;
+            border: 0;
+            border-radius: 0;
+        }
+
+        .decision-public-app {
+            width: 100%;
+        }
+
+        .decision-public-main {
+            width: 100%;
+        }
+
+        .decision-public-workspace {
+            width: 100%;
+        }
+
+        .decision-public-context-panel {
+            background: var(--color-surface, #ffffff);
+        }
+
+        .decision-public-main-panel {
+            background: var(--color-surface, #ffffff);
+        }
+
+        .decision-public-panel-scroll {
+            width: 100%;
+            min-width: 0;
+            min-height: 0;
+            display: grid;
+            gap: 16px;
+        }
+
+        .decision-public-panel-scroll--main {
+            flex: 1 auto 1;
+            overflow-y: auto;
+        }
+
+        .decision-public-panel-scroll--access-request {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-height: 100%;
+        }
+
+        .decision-public-main-summary {
+            display: none;
         }
 
         .decision-public-title-block {
@@ -885,14 +1282,18 @@ if (empty($context['status'])) {
         }
 
         .decision-public-hero {
+            display: grid;
+            gap: 10px;
+        }
+
+        .decision-public-page--embedded .decision-public-hero {
             display: none;
         }
 
-        .decision-public-title-block h1 {
+        .decision-public-hero h1 {
             margin: 0;
-            font-size: clamp(28px, 5vw, 44px);
-            line-height: 1.05;
-            color: var(--color-text, #0f172a);
+            font-size: clamp(32px, 5vw, 46px);
+            line-height: 1.04;
         }
 
         .decision-public-title-block p {
@@ -920,9 +1321,11 @@ if (empty($context['status'])) {
             line-height: 1.7;
         }
 
-        .decision-public-context-contact {
-            display: grid;
-            gap: 8px;
+        .decision-public-context-contact--footer {
+            margin-top: auto;
+            padding-top: 10px;
+            padding-bottom: 10px;
+            min-height: 0;
         }
 
         .decision-public-context-contact a {
@@ -1175,25 +1578,75 @@ if (empty($context['status'])) {
             gap: 16px;
         }
 
+        .decision-public-content--centered {
+            flex: 1 1 auto;
+            min-height: 0;
+            align-content: center;
+            padding: clamp(12px, 3vw, 28px);
+        }
+
+        .decision-public-access-request-shell {
+            width: min(100%, 680px);
+            margin-inline: auto;
+        }
+
         .decision-public-access-request {
+            --generic-section-padding-block: clamp(22px, 3vw, 30px);
+            --generic-section-padding-inline: clamp(18px, 3vw, 28px);
+            --generic-section-radius: 24px;
+            --generic-section-border: color-mix(in srgb, var(--decision-public-accent) 16%, var(--color-border, #d1d5db));
+            --generic-section-background:
+                radial-gradient(circle at top right, color-mix(in srgb, var(--decision-public-accent) 12%, transparent), transparent 42%),
+                linear-gradient(180deg, color-mix(in srgb, var(--color-surface, #ffffff) 94%, transparent), var(--color-surface, #ffffff));
+            --generic-section-shadow: 0 22px 44px rgba(15, 23, 42, 0.08);
             display: grid;
-            gap: 14px;
+            gap: 18px;
+        }
+
+        .decision-public-access-request__header {
+            display: grid;
+            gap: 10px;
+        }
+
+        .decision-public-access-request__field {
+            display: grid;
+            gap: 6px;
         }
 
         .decision-public-access-request__text {
             margin: 0;
             color: var(--color-text-light, #475569);
             line-height: 1.6;
+            max-width: 60ch;
         }
 
         .decision-public-access-request__form {
             display: grid;
-            gap: 12px;
+            gap: 14px;
+        }
+
+        .decision-public-access-request__form > div#decisionPublicAccessRequestCodeRow {
+            display: grid;
+            gap: 6px;
+        }
+
+        .decision-public-access-request__form > div#decisionPublicAccessRequestCodeRow[hidden] {
+            display: none !important;
         }
 
         .decision-public-access-request__actions {
             display: flex;
             justify-content: flex-start;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .decision-public-access-request__actions .generic-action-button {
+            flex: 1 1 220px;
+        }
+
+        .decision-public-access-request__actions[hidden] {
+            display: none !important;
         }
 
         .decision-public-access-request__feedback {
@@ -1225,6 +1678,49 @@ if (empty($context['status'])) {
 
         .decision-public-group__header {
             gap: 10px;
+        }
+
+        .decision-public-group__legend {
+            display: grid;
+            grid-template-columns: repeat(var(--decision-public-group-legend-count, 1), minmax(0, 1fr));
+            gap: 0;
+            overflow: hidden;
+            border-radius: 999px;
+            border: 1px solid color-mix(in srgb, var(--color-text-light, #64748b) 16%, var(--color-surface, #ffffff));
+            background: color-mix(in srgb, var(--color-text-light, #64748b) 8%, var(--color-surface, #ffffff));
+            box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-surface, #ffffff) 72%, transparent);
+        }
+
+        .decision-public-group__legend-item {
+            min-width: 0;
+            min-height: 34px;
+            padding: 7px 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            background: var(--decision-public-group-legend-color, var(--color-primary, #2563eb));
+            color: var(--decision-public-group-legend-text, #ffffff);
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .decision-public-group__legend-item + .decision-public-group__legend-item {
+            box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.28);
+        }
+
+        .decision-public-group__legend-label {
+            display: block;
+            max-width: 100%;
+            overflow-wrap: anywhere;
+        }
+
+        .decision-public-group__header--sticky {
+            position: sticky;
+            top: calc(var(--decision-public-sticky-top) + var(--decision-public-sticky-gap));
+            z-index: 9;
+            box-shadow: 0 1px 0 color-mix(in srgb, var(--color-border, #d1d5db) 80%, transparent);
         }
 
         .decision-public-group__header-top {
@@ -1270,10 +1766,41 @@ if (empty($context['status'])) {
             line-height: 1.5;
         }
 
-        @media (max-width: 720px) {
-            .decision-public-shell {
-                width: min(100% - 20px, 1100px);
-                padding-top: 18px;
+        @media (min-width: 769px) {
+            .decision-public-context-panel .decision-public-context-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .decision-public-content--centered {
+                padding: 0;
+            }
+
+            .decision-public-access-request-shell {
+                width: 100%;
+            }
+
+            .decision-public-access-request {
+                --generic-section-radius: 18px;
+                --generic-section-padding-block: 18px;
+                --generic-section-padding-inline: 16px;
+                --generic-section-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+            }
+
+            .decision-public-access-request__actions .generic-action-button {
+                flex-basis: 100%;
+            }
+
+            .decision-public-main-summary {
+                display: grid;
+                gap: 8px;
+            }
+
+            .decision-public-group__legend-item {
+                min-height: 30px;
+                padding: 6px 4px;
+                font-size: 10px;
             }
 
             .decision-public-timeline {
@@ -1293,187 +1820,198 @@ if (empty($context['status'])) {
                 font-size: 14px;
             }
         }
+
+        .decision-public-page.is-resizing,
+        .decision-public-page.is-resizing * {
+            cursor: col-resize !important;
+            user-select: none !important;
+        }
     </style>
 <?php if (!$isEmbedded): ?>
 </head>
-<body class="decision-public-page">
+<body class="omo-public-body decision-public-page view-right">
 <?php endif; ?>
-    <div class="decision-public-page<?= $isEmbedded ? ' decision-public-page--embedded' : '' ?>">
-    <main class="decision-public-shell<?= $isEmbedded ? ' decision-public-shell--embedded' : '' ?>">
-        <section class="generic-hero-panel generic-hero-panel--accent decision-public-hero">
-            <div class="decision-public-eyebrow">
-                <strong><?= omoApiEscape($organizationName !== '' ? $organizationName : 'Organisation') ?></strong>
+<?php if (!$isEmbedded): ?>
+    <div class="app decision-public-app">
+        <div class="main decision-public-main">
+            <?php
+            commonRenderTopbar([
+                'appKey' => 'omo-decision-public',
+                'appLabel' => 'OMO',
+                'organization' => $organizationContext,
+                'brandHref' => $publicPageBrandHref,
+                'brandLabel' => $organizationName,
+                'profile' => [
+                    'enabled' => false,
+                ],
+                'search' => [
+                    'enabled' => false,
+                ],
+                'helpItems' => $publicHelpItems,
+                'helpLabel' => 'Aide',
+            ]);
+            ?>
+            <div class="omo-public-banner decision-public-banner">
+                Scrutin public organise pour <strong><?= omoApiEscape($organizationName !== '' ? $organizationName : 'Organisation') ?></strong>
                 <?php if ($participantLabel !== ''): ?>
-                <span>•</span>
-                <span><?= omoApiEscape($participantLabel) ?></span>
+                &middot; acces personnel de <?= omoApiEscape($participantLabel) ?>
                 <?php endif; ?>
             </div>
-            <h1><?= omoApiEscape($decisionTitle !== '' ? $decisionTitle : 'Prise de decision') ?></h1>
-            <p class="decision-public-status"><?= omoApiEscape($statusCopy) ?></p>
-        </section>
-
-        <section class="generic-section generic-section--stack generic-accordion--card generic-accordion--collapsible is-collapsed decision-public-timeline-accordion" data-decision-public-timeline>
-            <button
-                type="button"
-                class="decision-public-timeline-summary-button generic-accordion__header"
-                data-decision-public-timeline-toggle
-                aria-expanded="false"
-            >
-                <span class="decision-public-timeline-summary-copy">
-                    <span class="decision-public-timeline-summary-title"><?= omoApiEscape((string)($timelineSummary['title'] ?? 'Etapes du scrutin')) ?></span>
-                    <span class="decision-public-timeline-summary-hint"><?= omoApiEscape((string)($timelineSummary['hint'] ?? 'Afficher la representation graphique')) ?></span>
-                </span>
-                <span class="generic-accordion__toggle" aria-hidden="true">▼</span>
-            </button>
-            <div class="generic-accordion__content">
-                <div class="generic-accordion__content-inner">
-                    <?php if (count($timelineData['items']) > 0): ?>
-                    <div class="decision-public-timeline">
-                        <div class="decision-public-timeline-axis">
-                            <?php foreach ($timelineSegments as $timelineSegment): ?>
-                            <div
-                                class="decision-public-timeline-segment decision-public-timeline-segment--<?= omoApiEscape((string)$timelineSegment['class']) ?><?= !empty($timelineSegment['open_end']) ? ' is-open-ended' : '' ?>"
-                                title="<?= omoApiEscape((string)$timelineSegment['label']) ?>"
-                                style="left: <?= omoApiEscape(number_format((float)$timelineSegment['left'], 4, '.', '')) ?>%; width: <?= omoApiEscape(number_format((float)$timelineSegment['width'], 4, '.', '')) ?>%;"
-                            ></div>
-                            <?php if (!empty($timelineSegment['open_end']) && !empty($timelineSegment['dot_positions']) && is_array($timelineSegment['dot_positions'])): ?>
-                            <?php foreach ($timelineSegment['dot_positions'] as $dotPosition): ?>
-                            <span
-                                class="decision-public-timeline-open-dot decision-public-timeline-open-dot--<?= omoApiEscape((string)$timelineSegment['class']) ?>"
-                                aria-hidden="true"
-                                style="left: <?= omoApiEscape(number_format((float)$dotPosition, 4, '.', '')) ?>%;"
-                            ></span>
-                            <?php endforeach; ?>
-                            <?php endif; ?>
-                            <?php if ((float)$timelineSegment['width'] >= 8.0): ?>
-                            <div
-                                class="decision-public-timeline-segment-label"
-                                style="left: <?= omoApiEscape(number_format((float)$timelineSegment['center'], 4, '.', '')) ?>%;"
-                            >
-                                <?= omoApiEscape((string)$timelineSegment['label']) ?>
-                            </div>
-                            <?php endif; ?>
-                            <?php endforeach; ?>
-                        </div>
-                        <?php foreach ($timelineData['items'] as $timelineItem): ?>
-                        <?php
-                        $stateClass = 'is-' . trim((string)($timelineItem['state'] ?? 'upcoming'));
-                        $timelineDate = !empty($timelineItem['show_date'])
-                            ? commonDecisionParticipationFormatDateTime($timelineItem['date'] ?? null)
-                            : commonDecisionParticipationFormatDateTime($timelineItem['date'] ?? null);
-                        ?>
-                        <div
-                            class="decision-public-timeline-item <?= omoApiEscape($stateClass) ?>"
-                            data-lane="<?= omoApiEscape((string)($timelineItem['lane'] ?? 'top')) ?>"
-                            data-align="<?= omoApiEscape((string)($timelineItem['card_align'] ?? 'center')) ?>"
-                            style="left: <?= omoApiEscape(number_format((float)$timelineItem['position_percent'], 4, '.', '')) ?>%;"
-                        >
-                            <div class="decision-public-timeline-card">
-                                <div class="decision-public-timeline-label"><?= omoApiEscape((string)$timelineItem['label']) ?></div>
-                                <?php if ($timelineDate !== ''): ?>
-                                <div class="decision-public-timeline-date"><?= omoApiEscape($timelineDate) ?></div>
-                                <?php endif; ?>
-                            </div>
-                            <div class="decision-public-timeline-connector"></div>
-                            <div class="decision-public-timeline-marker"></div>
-                        </div>
-                        <?php endforeach; ?>
+            <div class="content decision-public-workspace">
+                <aside class="panel panel-left decision-public-context-panel" id="panel-left">
+                    <div class="decision-public-panel-scroll decision-public-panel-scroll--context">
+                        <?= $decisionPublicContextHtml ?>
                     </div>
-                    <?php endif; ?>
-
-                    <div class="decision-public-context">
-                        <div class="decision-public-context-grid">
-                            <?php if (trim((string)($organizerData['label'] ?? '')) !== ''): ?>
-                            <div class="generic-soft-panel generic-soft-panel--stack">
-                                <span class="generic-card-title generic-card-title--small">Organisateur</span>
-                                <strong><?= omoApiEscape((string)$organizerData['label']) ?></strong>
-                                <?php if (trim((string)($organizerData['scope'] ?? '')) !== ''): ?>
-                                <span class="decision-public-context-scope"><?= omoApiEscape((string)$organizerData['scope']) ?></span>
-                                <?php endif; ?>
-                            </div>
-                            <?php endif; ?>
-
-                            <?php if (trim((string)($methodSummary['value'] ?? '')) !== ''): ?>
-                            <div class="generic-soft-panel generic-soft-panel--stack">
-                                <span class="generic-card-title generic-card-title--small"><?= omoApiEscape((string)($methodSummary['label'] ?? 'Methode')) ?></span>
-                                <strong><?= omoApiEscape((string)($methodSummary['value'] ?? '')) ?></strong>
-                            </div>
-                            <?php endif; ?>
-
-                            <?php if ($invitationSummary !== ''): ?>
-                            <div class="generic-soft-panel generic-soft-panel--stack">
-                                <span class="generic-card-title generic-card-title--small">Invites</span>
-                                <strong><?= omoApiEscape($invitationSummary) ?></strong>
-                            </div>
-                            <?php endif; ?>
-                        </div>
-
-                        <?php if (count($optionLines) > 0): ?>
-                        <div class="generic-soft-panel generic-soft-panel--stack">
-                            <span class="generic-card-title generic-card-title--small">Options</span>
-                            <ul class="decision-public-context-list">
-                                <?php foreach ($optionLines as $optionLine): ?>
-                                <li><?= omoApiEscape((string)$optionLine) ?></li>
-                                <?php endforeach; ?>
-                            </ul>
-                        </div>
-                        <?php endif; ?>
+                </aside>
+                <div class="resizer" id="resizer"></div>
+                <section class="panel panel-right decision-public-main-panel" id="panel-right">
+                    <div class="decision-public-panel-scroll decision-public-panel-scroll--main<?= $requiresPublicAccessEmail ? ' decision-public-panel-scroll--access-request' : '' ?>">
+                        <?= $decisionPublicMainHtml ?>
                     </div>
-                </div>
+                </section>
             </div>
-        </section>
-
-        <section class="generic-section generic-section--stack decision-public-title-block">
-            <h1><?= omoApiEscape($decisionTitle !== '' ? $decisionTitle : 'Prise de decision') ?></h1>
-            <?php if (trim((string)($decision ? $decision->get('description') : '')) !== ''): ?>
-            <p><?= nl2br(omoApiEscape(trim((string)$decision->get('description')))) ?></p>
-            <?php endif; ?>
-        </section>
-
-        <section class="decision-public-content">
-            <?php if ($requiresPublicAccessEmail): ?>
-            <section class="generic-section generic-section--stack decision-public-access-request">
-                <span class="generic-card-title generic-card-title--section">Recevoir mon lien d acces</span>
-                <p class="decision-public-access-request__text">
-                    Saisissez l adresse e-mail avec laquelle vous avez ete invite afin de recevoir votre lien personnel vers cette page.
-                </p>
-                <form
-                    class="decision-public-access-request__form"
-                    id="decisionPublicAccessRequestForm"
-                    action="<?= omoApiEscape((string)($_SERVER['REQUEST_URI'] ?? '')) ?>"
-                    method="post"
-                >
-                    <label class="generic-card-title generic-card-title--small" for="decisionPublicAccessRequestEmail">Adresse e-mail</label>
-                    <input
-                        id="decisionPublicAccessRequestEmail"
-                        name="email"
-                        type="email"
-                        class="generic-form-control"
-                        autocomplete="email"
-                        placeholder="nom@exemple.org"
-                        required
-                    >
-                    <div id="decisionPublicAccessRequestFeedback" class="decision-public-access-request__feedback" aria-live="polite"></div>
-                    <div class="decision-public-access-request__actions">
-                        <button type="submit" id="decisionPublicAccessRequestSubmit" class="generic-action-button generic-action-button--main">
-                            Envoyer mon lien
-                        </button>
-                    </div>
-                </form>
-            </section>
-            <?php else: ?>
-            <?= $decision instanceof DecisionProcess ? commonDecisionParticipationRenderGroupBlocks($decision, $context) : '' ?>
-            <?php endif; ?>
-        </section>
-        <?php if (trim((string)($organizerData['email'] ?? '')) !== ''): ?>
-        <section class="generic-section generic-section--stack decision-public-context-contact">
-            <span class="generic-card-title generic-card-title--section">Contacter l organisateur</span>
-            <a href="mailto:<?= omoApiEscape((string)$organizerData['email']) ?>"><?= omoApiEscape((string)$organizerData['email']) ?></a>
-        </section>
-        <?php endif; ?>
-    </main>
+            <nav class="mobile-nav" id="omo-mobile-nav" aria-label="Navigation du scrutin">
+                <button type="button" data-view="left">Infos</button>
+                <button type="button" data-view="right">Scrutin</button>
+            </nav>
+        </div>
     </div>
+<?php else: ?>
+    <div class="omo-public-page decision-public-page decision-public-page--embedded">
+        <main class="decision-public-shell decision-public-shell--embedded">
+            <?= $decisionPublicContextHtml ?>
+            <?= $decisionPublicMainHtml ?>
+        </main>
+    </div>
+<?php endif; ?>
     <script>
+        (function () {
+            var body = document.body;
+            var leftPanel = document.getElementById('panel-left');
+            var content = document.querySelector('.decision-public-workspace');
+            var resizer = document.getElementById('resizer');
+            var mobileNav = document.getElementById('omo-mobile-nav');
+            var storageKey = 'decisionPublicLeftPanelWidth';
+            var isResizing = false;
+
+            function setView(view) {
+                if (!body) {
+                    return;
+                }
+
+                var resolvedView = view === 'left' ? 'left' : 'right';
+                body.classList.remove('view-left', 'view-right');
+                body.classList.add('view-' + resolvedView);
+            }
+
+            function getViewportWidth() {
+                return window.innerWidth || document.documentElement.clientWidth || 0;
+            }
+
+            function clampWidth(width) {
+                if (!content) {
+                    return width;
+                }
+
+                var maxWidth = Math.floor(content.clientWidth * 0.7);
+                if (maxWidth < 250) {
+                    maxWidth = 250;
+                }
+
+                return Math.max(250, Math.min(width, maxWidth));
+            }
+
+            function applyWidth(width) {
+                if (!leftPanel || !content || getViewportWidth() <= 768) {
+                    return;
+                }
+
+                var clampedWidth = clampWidth(width);
+                leftPanel.style.width = String(clampedWidth) + 'px';
+                leftPanel.style.flexBasis = String(clampedWidth) + 'px';
+            }
+
+            function clearWidth() {
+                if (!leftPanel) {
+                    return;
+                }
+
+                leftPanel.style.width = '';
+                leftPanel.style.flexBasis = '';
+            }
+
+            function stopResizing() {
+                if (!isResizing) {
+                    return;
+                }
+
+                isResizing = false;
+                body.classList.remove('is-resizing');
+
+                if (!leftPanel || !window.localStorage || getViewportWidth() <= 768) {
+                    return;
+                }
+
+                window.localStorage.setItem(storageKey, String(Math.round(leftPanel.getBoundingClientRect().width)));
+            }
+
+            if (mobileNav) {
+                mobileNav.addEventListener('click', function (event) {
+                    var button = event.target.closest('button[data-view]');
+                    if (!button) {
+                        return;
+                    }
+
+                    setView(button.getAttribute('data-view') || 'right');
+                });
+            }
+
+            if (leftPanel && content && resizer) {
+                if (window.localStorage) {
+                    var savedWidth = parseInt(window.localStorage.getItem(storageKey) || '', 10);
+                    if (!Number.isNaN(savedWidth)) {
+                        applyWidth(savedWidth);
+                    }
+                }
+
+                resizer.addEventListener('mousedown', function (event) {
+                    if (event.button !== 0 || getViewportWidth() <= 768) {
+                        return;
+                    }
+
+                    isResizing = true;
+                    body.classList.add('is-resizing');
+                    event.preventDefault();
+                });
+
+                document.addEventListener('mousemove', function (event) {
+                    if (!isResizing || !content) {
+                        return;
+                    }
+
+                    var contentRect = content.getBoundingClientRect();
+                    var nextWidth = event.clientX - contentRect.left;
+                    applyWidth(nextWidth);
+                });
+
+                document.addEventListener('mouseup', stopResizing);
+                window.addEventListener('blur', stopResizing);
+                window.addEventListener('resize', function () {
+                    if (getViewportWidth() <= 768) {
+                        clearWidth();
+                        return;
+                    }
+
+                    if (window.localStorage) {
+                        var storedWidth = parseInt(window.localStorage.getItem(storageKey) || '', 10);
+                        if (!Number.isNaN(storedWidth)) {
+                            applyWidth(storedWidth);
+                        }
+                    }
+                });
+            }
+        })();
+
         (function () {
             if (typeof window.omoRefreshDecisionView !== 'function') {
                 window.omoRefreshDecisionView = function (url) {
@@ -1485,6 +2023,27 @@ if (empty($context['status'])) {
             }
 
             var accordions = document.querySelectorAll('[data-decision-public-timeline]');
+            var desktopMedia = typeof window.matchMedia === 'function'
+                ? window.matchMedia('(min-width: 769px)')
+                : null;
+
+            function syncAccordionState() {
+                for (var syncIndex = 0; syncIndex < accordions.length; syncIndex += 1) {
+                    var syncAccordion = accordions[syncIndex];
+                    var syncToggle = syncAccordion.querySelector('[data-decision-public-timeline-toggle]');
+                    if (!syncToggle) {
+                        continue;
+                    }
+
+                    if (syncAccordion.dataset.decisionPublicTimelineTouched === '1') {
+                        continue;
+                    }
+
+                    syncAccordion.classList.add('is-collapsed');
+                    syncToggle.setAttribute('aria-expanded', 'false');
+                }
+            }
+
             for (var index = 0; index < accordions.length; index += 1) {
                 var accordion = accordions[index];
                 var toggle = accordion.querySelector('[data-decision-public-timeline-toggle]');
@@ -1498,9 +2057,19 @@ if (empty($context['status'])) {
                         return;
                     }
 
+                    parentAccordion.dataset.decisionPublicTimelineTouched = '1';
                     var isCollapsed = parentAccordion.classList.toggle('is-collapsed');
                     this.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
                 });
+            }
+
+            syncAccordionState();
+            if (desktopMedia) {
+                if (typeof desktopMedia.addEventListener === 'function') {
+                    desktopMedia.addEventListener('change', syncAccordionState);
+                } else if (typeof desktopMedia.addListener === 'function') {
+                    desktopMedia.addListener(syncAccordionState);
+                }
             }
         })();
 
@@ -1726,50 +2295,140 @@ if (empty($context['status'])) {
             }
 
             var accessRequestForm = document.getElementById('decisionPublicAccessRequestForm');
+            var accessRequestAction = document.getElementById('decisionPublicAccessRequestAction');
+            var accessRequestEmail = document.getElementById('decisionPublicAccessRequestEmail');
+            var accessRequestCodeRow = document.getElementById('decisionPublicAccessRequestCodeRow');
+            var accessRequestCode = document.getElementById('decisionPublicAccessRequestCode');
+            var accessRequestSendActions = document.getElementById('decisionPublicAccessRequestSendActions');
+            var accessRequestVerifyActions = document.getElementById('decisionPublicAccessRequestVerifyActions');
             var accessRequestFeedback = document.getElementById('decisionPublicAccessRequestFeedback');
-            var accessRequestSubmit = document.getElementById('decisionPublicAccessRequestSubmit');
-            if (accessRequestForm && accessRequestFeedback && accessRequestSubmit) {
+            var accessRequestSendSubmit = document.getElementById('decisionPublicAccessRequestSendSubmit');
+            var accessRequestVerifySubmit = document.getElementById('decisionPublicAccessRequestVerifySubmit');
+            var accessRequestResend = document.getElementById('decisionPublicAccessRequestResend');
+
+            function setAccessRequestMode(mode) {
+                var verifyMode = mode === 'verify_code';
+                if (accessRequestAction) {
+                    accessRequestAction.value = verifyMode ? 'verify_code' : 'request_code';
+                }
+                if (accessRequestCodeRow) {
+                    accessRequestCodeRow.hidden = !verifyMode;
+                }
+                if (accessRequestCode) {
+                    accessRequestCode.required = verifyMode;
+                    if (!verifyMode) {
+                        accessRequestCode.value = '';
+                    }
+                }
+                if (accessRequestSendActions) {
+                    accessRequestSendActions.hidden = verifyMode;
+                }
+                if (accessRequestVerifyActions) {
+                    accessRequestVerifyActions.hidden = !verifyMode;
+                }
+            }
+
+            function setAccessRequestSubmitting(isSubmitting) {
+                if (accessRequestSendSubmit) {
+                    accessRequestSendSubmit.disabled = !!isSubmitting;
+                }
+                if (accessRequestVerifySubmit) {
+                    accessRequestVerifySubmit.disabled = !!isSubmitting;
+                }
+                if (accessRequestResend) {
+                    accessRequestResend.disabled = !!isSubmitting;
+                }
+            }
+
+            function submitAccessRequest(action) {
+                if (!accessRequestForm || !accessRequestFeedback) {
+                    return;
+                }
+
+                if (accessRequestAction) {
+                    accessRequestAction.value = action === 'verify_code' ? 'verify_code' : 'request_code';
+                }
+
+                accessRequestFeedback.textContent = '';
+                accessRequestFeedback.classList.remove('is-success');
+                setAccessRequestSubmitting(true);
+
+                fetch(accessRequestForm.getAttribute('action') || window.location.href, {
+                    method: 'POST',
+                    body: new FormData(accessRequestForm),
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(function (response) {
+                        return response.json().then(function (data) {
+                            return {
+                                ok: response.ok,
+                                data: data
+                            };
+                        });
+                    })
+                    .then(function (result) {
+                        if (!result.ok || !result.data || !result.data.status) {
+                            accessRequestFeedback.textContent = result.data && result.data.message
+                                ? result.data.message
+                                : 'Impossible de traiter cette demande pour le moment.';
+                            setAccessRequestSubmitting(false);
+                            return;
+                        }
+
+                        accessRequestFeedback.textContent = result.data.message || 'Code envoye.';
+                        accessRequestFeedback.classList.add('is-success');
+
+                        if (result.data && result.data.redirectUrl) {
+                            window.location.href = String(result.data.redirectUrl);
+                            return;
+                        }
+
+                        if (result.data && result.data.nextAction === 'verify_code') {
+                            setAccessRequestMode('verify_code');
+                            if (accessRequestCode) {
+                                accessRequestCode.focus();
+                                accessRequestCode.select();
+                            }
+                        } else {
+                            accessRequestForm.reset();
+                            setAccessRequestMode('request_code');
+                        }
+
+                        setAccessRequestSubmitting(false);
+                    })
+                    .catch(function () {
+                        accessRequestFeedback.textContent = 'Impossible de traiter cette demande pour le moment.';
+                        setAccessRequestSubmitting(false);
+                    });
+            }
+
+            if (accessRequestForm && accessRequestFeedback && accessRequestSendSubmit && accessRequestVerifySubmit) {
+                setAccessRequestMode('request_code');
                 accessRequestForm.addEventListener('submit', function (event) {
                     event.preventDefault();
-                    accessRequestFeedback.textContent = '';
-                    accessRequestFeedback.classList.remove('is-success');
-                    accessRequestSubmit.disabled = true;
-
-                    fetch(accessRequestForm.getAttribute('action') || window.location.href, {
-                        method: 'POST',
-                        body: new FormData(accessRequestForm),
-                        credentials: 'same-origin',
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    })
-                        .then(function (response) {
-                            return response.json().then(function (data) {
-                                return {
-                                    ok: response.ok,
-                                    data: data
-                                };
-                            });
-                        })
-                        .then(function (result) {
-                            if (!result.ok || !result.data || !result.data.status) {
-                                accessRequestFeedback.textContent = result.data && result.data.message
-                                    ? result.data.message
-                                    : 'Impossible d envoyer le lien pour le moment.';
-                                accessRequestSubmit.disabled = false;
-                                return;
-                            }
-
-                            accessRequestFeedback.textContent = result.data.message || 'Lien envoye.';
-                            accessRequestFeedback.classList.add('is-success');
-                            accessRequestForm.reset();
-                            accessRequestSubmit.disabled = false;
-                        })
-                        .catch(function () {
-                            accessRequestFeedback.textContent = 'Impossible d envoyer le lien pour le moment.';
-                            accessRequestSubmit.disabled = false;
-                        });
+                    submitAccessRequest(accessRequestAction ? accessRequestAction.value : 'request_code');
                 });
+
+                accessRequestSendSubmit.addEventListener('click', function () {
+                    if (accessRequestAction) {
+                        accessRequestAction.value = 'request_code';
+                    }
+                });
+
+                accessRequestVerifySubmit.addEventListener('click', function () {
+                    if (accessRequestAction) {
+                        accessRequestAction.value = 'verify_code';
+                    }
+                });
+
+                if (accessRequestResend) {
+                    accessRequestResend.addEventListener('click', function () {
+                        submitAccessRequest('request_code');
+                    });
+                }
             }
         })();
     </script>

@@ -174,7 +174,7 @@ if (!checklogin()) {
 </head>
 <body>
     <main class="styleguide-shell">
-        <section class="styleguide-header generic-hero-panel generic-hero-panel--accent">
+        <section class="styleguide-header generic-hero-panel accent">
             <div class="generic-card-title generic-card-title--eyebrow">Reference partagee</div>
             <h1 class="generic-card-title generic-card-title--large">Styleguide des composants generiques</h1>
             <p class="styleguide-lead">
@@ -230,7 +230,7 @@ generic-card-title--large</pre>
                     <div class="generic-card-title generic-card-title--small">Soft panel</div>
                     <div class="styleguide-note">Sous-bloc interieur ou zone de details.</div>
                 </div>
-                <div class="generic-hero-panel generic-hero-panel--accent styleguide-surface">
+                <div class="generic-hero-panel accent styleguide-surface">
                     <div class="styleguide-stack">
                         <div class="generic-card-title generic-card-title--eyebrow">Hero accent</div>
                         <div class="generic-card-title generic-card-title--big">Panneau de mise en avant</div>
