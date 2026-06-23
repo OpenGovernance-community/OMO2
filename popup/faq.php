@@ -32,11 +32,12 @@ $viewerAccess = \dbObject\FAQ::resolveViewerAccess($faqContext ?: array());
 $canManageAllFaqs = !empty($viewerAccess['canManageAllFaqs']);
 $canManageOrganizationFaqs = !empty($viewerAccess['canManageOrganizationFaqs']);
 $canManageFaqCollection = $canManageAllFaqs || $canManageOrganizationFaqs;
+$faqStorageAvailable = \dbObject\FAQ::hasFaqTable();
 $usePermissionSessionCache = $_SERVER['REQUEST_METHOD'] !== 'POST';
 $canCreateContextualFaq = $contextHolon
 	? \dbObject\FAQ::canCreateContextualForHolon($contextHolon, $currentUserId, $contextOrganizationId, $usePermissionSessionCache)
 	: false;
-$canAddFaq = $canManageFaqCollection || $canCreateContextualFaq;
+$canAddFaq = $faqStorageAvailable && ($canManageFaqCollection || $canCreateContextualFaq);
 
 $allFAQ = \dbObject\FAQ::loadPopupCollection($faqContext ?: array(), $faqScope);
 $faqReliabilityRange = faqPopupBuildReliabilityRange($allFAQ);
@@ -1135,6 +1136,9 @@ if ($canManageAllFaqs) {
 				</div>
 			<?php endif; ?>
 		</div>
+		<?php if (!$faqStorageAvailable): ?>
+			<div class="faq-popup__helper"><strong>Module FAQ indisponible.</strong> La table `faq` n existe pas encore dans cette base. Lancez les migrations SQL pour activer cette fonctionnalite.</div>
+		<?php endif; ?>
 		<div class="faq-popup__no-result" data-faq-no-result hidden>
 			Aucune FAQ ne correspond a cette recherche.
 		</div>

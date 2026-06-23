@@ -153,6 +153,7 @@ foreach ($parcours as $parcoursItem) {
             border-width: 2px;
             border-color: color-mix(in srgb, var(--primary) 38%, var(--border-color));
             overflow: hidden;
+            cursor: default;
             background:
                 radial-gradient(circle at top right, color-mix(in srgb, var(--primary) 16%, transparent), transparent 38%),
                 linear-gradient(180deg, color-mix(in srgb, var(--primary) 7%, var(--bg-card)), var(--bg-card));
@@ -223,9 +224,30 @@ foreach ($parcours as $parcoursItem) {
         .card-create-footer {
             margin-top: 24px;
             display: flex;
-            align-items: center;
+            align-items: flex-end;
             justify-content: space-between;
             gap: 12px;
+        }
+
+        .card-create-actions {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .card-create-actions button {
+            margin-top: 0;
+        }
+
+        .card-create-import {
+            background: transparent;
+            color: var(--primary);
+            border-color: color-mix(in srgb, var(--primary) 34%, var(--border-color));
+        }
+
+        .card-create-import:hover {
+            background: color-mix(in srgb, var(--primary) 10%, var(--bg-card));
         }
 
         .card-create-kicker {
@@ -401,6 +423,21 @@ foreach ($parcours as $parcoursItem) {
             color: var(--text-light);
             line-height: 1.5;
         }
+
+        @media (max-width: 720px) {
+            .card-create-footer {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .card-create-actions {
+                width: 100%;
+            }
+
+            .card-create-actions button {
+                flex: 1 1 100%;
+            }
+        }
     </style>
 </head>
 <body class="<?php echo $isEmbedded ? 'lms-embed-mode' : ''; ?>">
@@ -444,16 +481,18 @@ if (!$isEmbedded) {
     $total = (int)$p['total_missions'];
     $done = (int)$p['done_missions'];
     $percent = $total > 0 ? round(($done / $total) * 100) : 0;
+    $canEditThisParcours = $canCreateParcours && (int)($p['owner_organization_id'] ?? 0) === (int)$org['id'];
 ?>
 <div
     class="card"
     data-parcours-card="1"
     data-parcours-id="<?php echo (int)$p['id']; ?>"
+    data-can-edit="<?php echo $canEditThisParcours ? '1' : '0'; ?>"
     data-total-missions="<?php echo $total; ?>"
     data-local-progress="<?php echo $user_id > 0 ? '0' : '1'; ?>"
     onclick="goToParcours(<?php echo (int)$p['id']; ?>)"
 >
-    <?php if ($canCreateParcours): ?>
+    <?php if ($canEditThisParcours): ?>
         <div class="card-menu-wrap" onclick="event.stopPropagation()">
             <button
                 type="button"
@@ -487,10 +526,6 @@ if (!$isEmbedded) {
 <div
     class="card card--create"
     data-parcours-create-card="1"
-    role="button"
-    tabindex="0"
-    onclick="openCreateParcoursDrawer()"
-    onkeydown="handleCreateParcoursCardKeydown(event)"
 >
     <div class="card-content">
         <div class="card-create-visual">
@@ -498,13 +533,16 @@ if (!$isEmbedded) {
             <div class="card-create-plus" aria-hidden="true">+</div>
         </div>
         <div class="card-create-body">
-            <div class="card-create-kicker">Creation</div>
-            <h3>Nouveau parcours</h3>
-            <div class="card-create-copy">Ajoutez un nouveau parcours a cette organisation avec son titre, sa description et son image.</div>
+            <div class="card-create-kicker">Parcours</div>
+            <h3>Ajouter un parcours</h3>
+            <div class="card-create-copy">Creer un nouveau parcours ou importer un parcours deja partage comme public ou basic.</div>
 
             <div class="card-create-footer">
-                <span class="card-create-copy">Ouvre un formulaire dans le drawer</span>
-                <button class="open-btn" type="button">Creer</button>
+                <span class="card-create-copy">Les deux actions s ouvrent directement dans le drawer.</span>
+                <div class="card-create-actions">
+                    <button class="card-create-import" type="button" onclick="openImportParcoursDrawer(event)">Importer</button>
+                    <button class="open-btn" type="button" onclick="openCreateParcoursDrawer(event)">Nouveau</button>
+                </div>
             </div>
         </div>
     </div>
@@ -526,16 +564,18 @@ if (!$isEmbedded) {
         $total = (int)$p['total_missions'];
         $done = (int)$p['done_missions'];
         $percent = $total > 0 ? round(($done / $total) * 100) : 0;
+        $canEditThisParcours = $canCreateParcours && (int)($p['owner_organization_id'] ?? 0) === (int)$org['id'];
     ?>
     <div
         class="card"
         data-parcours-card="1"
         data-parcours-id="<?php echo (int)$p['id']; ?>"
+        data-can-edit="<?php echo $canEditThisParcours ? '1' : '0'; ?>"
         data-total-missions="<?php echo $total; ?>"
         data-local-progress="<?php echo $user_id > 0 ? '0' : '1'; ?>"
         onclick="goToParcours(<?php echo (int)$p['id']; ?>)"
     >
-        <?php if ($canCreateParcours): ?>
+        <?php if ($canEditThisParcours): ?>
             <div class="card-menu-wrap" onclick="event.stopPropagation()">
                 <button
                     type="button"
@@ -579,6 +619,8 @@ const lmsIndexViewer = {
 };
 const lmsParcoursBasePath = <?php echo json_encode(omoLmsBuildPath('/parcours.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsParcoursCreatePath = <?php echo json_encode(omoLmsBuildPath('/parcours_create.php', array('oid' => (int)$org['id'])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsParcoursImportPath = <?php echo json_encode(omoLmsBuildPath('/parcours_import.php', array('oid' => (int)$org['id'])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsParcoursImportSavePath = <?php echo json_encode(omoLmsBuildPath('/import_parcours.php', array('oid' => (int)$org['id'])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsParcoursEditBasePath = <?php echo json_encode(omoLmsBuildPath('/parcours_create.php', array('oid' => (int)$org['id'])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsMissionEditBasePath = <?php echo json_encode(omoLmsBuildPath('/mission_edit.php', array('oid' => (int)$org['id'])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsParcoursMissionPanelBasePath = <?php echo json_encode(omoLmsBuildPath('/parcours_missions_panel.php', array('oid' => (int)$org['id'])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
@@ -733,6 +775,7 @@ function buildMissionEditUrl(parcoursId, missionId) {
 function initLmsDrawerContent() {
     initMissionEditorDrawer();
     initParcoursEditorDrawer();
+    initParcoursImportDrawer();
 }
 
 function lmsInitAdminEditHtmlFields(scopeElement) {
@@ -848,6 +891,88 @@ function initParcoursEditorDrawer() {
     form.addEventListener('submit', submitParcoursEditorForm, true);
 
     initParcoursMissionManager();
+}
+
+function initParcoursImportDrawer() {
+    const drawerContent = document.getElementById('drawer-content');
+    const importer = drawerContent ? drawerContent.querySelector('[data-lms-parcours-importer="1"]') : null;
+    if (!importer || importer.dataset.lmsParcoursImportBound === '1') {
+        return;
+    }
+
+    importer.dataset.lmsParcoursImportBound = '1';
+    const searchField = importer.querySelector('[data-lms-import-parcours-search="1"]');
+    const items = Array.from(importer.querySelectorAll('[data-lms-import-parcours-item="1"]'));
+    const emptySearch = importer.querySelector('[data-lms-import-parcours-empty-search="1"]');
+
+    const applySearch = () => {
+        if (!searchField) {
+            return;
+        }
+
+        const rawNeedle = String(searchField.value || '').trim();
+        const needle = rawNeedle.toLocaleLowerCase();
+        let visibleCount = 0;
+
+        items.forEach((item) => {
+            const haystack = String(item.getAttribute('data-search-text') || '').toLocaleLowerCase();
+            const isVisible = needle === '' || haystack.indexOf(needle) !== -1;
+            item.hidden = !isVisible;
+            if (isVisible) {
+                visibleCount++;
+            }
+        });
+
+        if (emptySearch) {
+            emptySearch.hidden = visibleCount > 0 || needle === '';
+        }
+    };
+
+    if (searchField) {
+        searchField.addEventListener('input', applySearch);
+        applySearch();
+    }
+
+    importer.querySelectorAll('[data-lms-import-parcours-id]').forEach((button) => {
+        button.addEventListener('click', async function () {
+            const parcoursId = Number(button.getAttribute('data-lms-import-parcours-id') || 0);
+            if (parcoursId <= 0) {
+                return;
+            }
+
+            button.disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.set('parcours_id', String(parcoursId));
+
+                const response = await fetch(lmsParcoursImportSavePath, {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin'
+                });
+
+                const responseText = await response.text();
+                let payload = null;
+
+                try {
+                    payload = JSON.parse(responseText);
+                } catch (error) {
+                    payload = null;
+                }
+
+                if (!response.ok || !payload || payload.success !== true) {
+                    throw new Error(payload && payload.message ? payload.message : 'Impossible d importer ce parcours.');
+                }
+
+                closeDrawer();
+                window.location.reload();
+            } catch (error) {
+                window.alert(error && error.message ? error.message : 'Impossible d importer ce parcours.');
+                button.disabled = false;
+            }
+        });
+    });
 }
 
 function initMissionEditorDrawer() {
@@ -1690,7 +1815,12 @@ function initMissionRelatedManagers() {
     }
 }
 
-function openCreateParcoursDrawer() {
+function openCreateParcoursDrawer(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
     if (!lmsIndexViewer.canCreateParcours) {
         return;
     }
@@ -1702,6 +1832,26 @@ function openCreateParcoursDrawer() {
         })
         .catch(() => {
             window.alert('Impossible de charger le formulaire de parcours.');
+        });
+}
+
+function openImportParcoursDrawer(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    if (!lmsIndexViewer.canCreateParcours) {
+        return;
+    }
+
+    closeAllParcoursCardMenus();
+    openDrawerFromUrl(lmsParcoursImportPath, { simpleMode: true })
+        .then(() => {
+            initLmsDrawerContent();
+        })
+        .catch(() => {
+            window.alert('Impossible de charger le catalogue de parcours.');
         });
 }
 
@@ -1727,6 +1877,12 @@ function openParcoursEditorDrawer(parcoursId) {
 function openEditParcoursDrawer(event, parcoursId) {
     event.preventDefault();
     event.stopPropagation();
+
+    const card = document.querySelector(`[data-parcours-card="1"][data-parcours-id="${parcoursId}"]`);
+    if (card && String(card.getAttribute('data-can-edit') || '0') !== '1') {
+        return;
+    }
+
     openParcoursEditorDrawer(parcoursId);
 }
 
@@ -1748,15 +1904,6 @@ function openMissionEditorDrawer(event, parcoursId, missionId) {
         .catch(() => {
             window.alert('Impossible de charger cette mission.');
         });
-}
-
-function handleCreateParcoursCardKeydown(event) {
-    if (event.key !== 'Enter' && event.key !== ' ') {
-        return;
-    }
-
-    event.preventDefault();
-    openCreateParcoursDrawer();
 }
 
 document.addEventListener('click', function () {
