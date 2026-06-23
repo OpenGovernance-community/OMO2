@@ -12,6 +12,21 @@ $canCreateParcours = $user_id > 0 && $hasOrganizationAccess;
 $organizationColor = commonGetOrganizationExplicitColor($org);
 $parcours = \dbObject\Parcours::fetchForOrganizationWithProgress($org['id'], $user_id, $hasOrganizationAccess);
 $parcours = is_array($parcours) ? $parcours : [];
+$pendingParcours = [];
+$completedParcours = [];
+
+foreach ($parcours as $parcoursItem) {
+    $totalMissions = (int)($parcoursItem['total_missions'] ?? 0);
+    $doneMissions = (int)($parcoursItem['done_missions'] ?? 0);
+    $percent = $totalMissions > 0 ? (int)round(($doneMissions / $totalMissions) * 100) : 0;
+
+    if ($totalMissions > 0 && $percent >= 100) {
+        $completedParcours[] = $parcoursItem;
+        continue;
+    }
+
+    $pendingParcours[] = $parcoursItem;
+}
 ?>
 <!DOCTYPE html>
 <html>
@@ -48,6 +63,44 @@ $parcours = is_array($parcours) ? $parcours : [];
             grid-template-columns: repeat(auto-fit, minmax(250px, 350px));
             justify-content: center;
             gap: 20px;
+        }
+
+        .lms-parcours-sections {
+            display: grid;
+            gap: 34px;
+        }
+
+        .lms-parcours-section {
+            display: grid;
+            gap: 18px;
+        }
+
+        .lms-parcours-section[hidden] {
+            display: none !important;
+        }
+
+        .lms-parcours-separator {
+            max-width: 960px;
+            width: 100%;
+            margin: 0 auto;
+            padding-top: 28px;
+            border-top: 1px solid color-mix(in srgb, var(--primary) 20%, var(--border-color));
+        }
+
+        .lms-parcours-section__intro {
+            max-width: 960px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .lms-parcours-section__intro h2 {
+            margin: 0 0 8px;
+        }
+
+        .lms-parcours-section__intro p {
+            margin: 0;
+            color: var(--text-light);
+            line-height: 1.5;
         }
 
         .card {
@@ -384,43 +437,20 @@ if (!$isEmbedded) {
 
 <h1>Parcours de formation</h1>
 
-<div class="container">
-<?php if ($canCreateParcours): ?>
-<div
-    class="card card--create"
-    role="button"
-    tabindex="0"
-    onclick="openCreateParcoursDrawer()"
-    onkeydown="handleCreateParcoursCardKeydown(event)"
->
-    <div class="card-content">
-        <div class="card-create-visual">
-            <img src="<?php echo htmlspecialchars(omoLmsBuildPath('/img/create-parcours-card.png')); ?>" alt="">
-            <div class="card-create-plus" aria-hidden="true">+</div>
-        </div>
-        <div class="card-create-body">
-            <div class="card-create-kicker">Creation</div>
-            <h3>Nouveau parcours</h3>
-            <div class="card-create-copy">Ajoutez un nouveau parcours a cette organisation avec son titre, sa description et son image.</div>
-
-            <div class="card-create-footer">
-                <span class="card-create-copy">Ouvre un formulaire dans le drawer</span>
-                <button class="open-btn" type="button">Creer</button>
-            </div>
-        </div>
-    </div>
-</div>
-<?php endif; ?>
-<?php foreach ($parcours as $p):
+<div class="lms-parcours-sections">
+<section class="lms-parcours-section" id="lms-parcours-section-pending">
+<div class="container" id="lms-parcours-pending-grid">
+<?php foreach ($pendingParcours as $p):
     $total = (int)$p['total_missions'];
     $done = (int)$p['done_missions'];
     $percent = $total > 0 ? round(($done / $total) * 100) : 0;
 ?>
 <div
     class="card"
+    data-parcours-card="1"
     data-parcours-id="<?php echo (int)$p['id']; ?>"
     data-total-missions="<?php echo $total; ?>"
-    data-local-progress="0"
+    data-local-progress="<?php echo $user_id > 0 ? '0' : '1'; ?>"
     onclick="goToParcours(<?php echo (int)$p['id']; ?>)"
 >
     <?php if ($canCreateParcours): ?>
@@ -453,6 +483,90 @@ if (!$isEmbedded) {
     </div>
 </div>
 <?php endforeach; ?>
+<?php if ($canCreateParcours): ?>
+<div
+    class="card card--create"
+    data-parcours-create-card="1"
+    role="button"
+    tabindex="0"
+    onclick="openCreateParcoursDrawer()"
+    onkeydown="handleCreateParcoursCardKeydown(event)"
+>
+    <div class="card-content">
+        <div class="card-create-visual">
+            <img src="<?php echo htmlspecialchars(omoLmsBuildPath('/img/create-parcours-card.png')); ?>" alt="">
+            <div class="card-create-plus" aria-hidden="true">+</div>
+        </div>
+        <div class="card-create-body">
+            <div class="card-create-kicker">Creation</div>
+            <h3>Nouveau parcours</h3>
+            <div class="card-create-copy">Ajoutez un nouveau parcours a cette organisation avec son titre, sa description et son image.</div>
+
+            <div class="card-create-footer">
+                <span class="card-create-copy">Ouvre un formulaire dans le drawer</span>
+                <button class="open-btn" type="button">Creer</button>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+</div>
+</section>
+
+<section class="lms-parcours-section" id="lms-parcours-section-completed" <?php echo count($completedParcours) === 0 ? 'hidden' : ''; ?>>
+    <div class="lms-parcours-separator">
+        <div class="lms-parcours-section__intro">
+            <h2>Parcours termines</h2>
+            <p>Retrouvez ici les parcours deja completes a 100%.</p>
+        </div>
+    </div>
+
+    <div class="container" id="lms-parcours-completed-grid">
+    <?php foreach ($completedParcours as $p):
+        $total = (int)$p['total_missions'];
+        $done = (int)$p['done_missions'];
+        $percent = $total > 0 ? round(($done / $total) * 100) : 0;
+    ?>
+    <div
+        class="card"
+        data-parcours-card="1"
+        data-parcours-id="<?php echo (int)$p['id']; ?>"
+        data-total-missions="<?php echo $total; ?>"
+        data-local-progress="<?php echo $user_id > 0 ? '0' : '1'; ?>"
+        onclick="goToParcours(<?php echo (int)$p['id']; ?>)"
+    >
+        <?php if ($canCreateParcours): ?>
+            <div class="card-menu-wrap" onclick="event.stopPropagation()">
+                <button
+                    type="button"
+                    class="card-menu-trigger"
+                    aria-label="Actions"
+                    onclick="toggleParcoursCardMenu(event, <?php echo (int)$p['id']; ?>)"
+                >...</button>
+                <div class="card-menu" id="parcours-card-menu-<?php echo (int)$p['id']; ?>">
+                    <button type="button" class="card-menu-item" onclick="openEditParcoursDrawer(event, <?php echo (int)$p['id']; ?>)">Editer</button>
+                </div>
+            </div>
+        <?php endif; ?>
+        <?php if (!empty($p['image'])): ?>
+            <div class="card-image">
+                <img src="<?php echo htmlspecialchars($p['image']); ?>" alt="">
+            </div>
+        <?php endif; ?>
+
+        <div class="card-content">
+            <h3><?php echo htmlspecialchars($p['title']); ?></h3>
+            <div><?php echo htmlspecialchars($p['description']); ?></div>
+
+            <div class="card-footer">
+                <div class="progress-circle" data-percent="<?php echo (int)$percent; ?>"></div>
+                <button class="open-btn">Ouvrir</button>
+            </div>
+        </div>
+    </div>
+    <?php endforeach; ?>
+    </div>
+</section>
 </div>
 </div>
 
@@ -471,6 +585,8 @@ const lmsParcoursMissionPanelBasePath = <?php echo json_encode(omoLmsBuildPath('
 const lmsParcoursMissionAddPath = <?php echo json_encode(omoLmsBuildPath('/parcours_mission_add.php', array('oid' => (int)$org['id'])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsParcoursMissionCreatePath = <?php echo json_encode(omoLmsBuildPath('/parcours_mission_create.php', array('oid' => (int)$org['id'])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsParcoursMissionReorderPath = <?php echo json_encode(omoLmsBuildPath('/parcours_mission_reorder.php', array('oid' => (int)$org['id'])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsMissionHomeworkReorderPath = <?php echo json_encode(omoLmsBuildPath('/mission_homework_reorder.php', array('oid' => (int)$org['id'])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsMissionQuestionReorderPath = <?php echo json_encode(omoLmsBuildPath('/mission_question_reorder.php', array('oid' => (int)$org['id'])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 
 function getAnonymousProgressKey(parcoursId) {
     return `lms_progress_${lmsIndexViewer.organizationId}_${parcoursId}`;
@@ -534,6 +650,30 @@ document.querySelectorAll('.progress-circle').forEach(el => {
     progressCircle.style.strokeDashoffset = circumference * (1 - percent / 100);
 });
 
+function updateParcoursSectionsByProgress() {
+    const pendingGrid = document.getElementById('lms-parcours-pending-grid');
+    const completedGrid = document.getElementById('lms-parcours-completed-grid');
+    const completedSection = document.getElementById('lms-parcours-section-completed');
+    if (!pendingGrid || !completedGrid || !completedSection) {
+        return;
+    }
+
+    const parcoursCards = Array.from(document.querySelectorAll('[data-parcours-card="1"]'));
+    parcoursCards.forEach((card) => {
+        const progressElement = card.querySelector('.progress-circle');
+        const percent = resolveCardPercent(card, progressElement ? Number(progressElement.getAttribute('data-percent') || 0) : 0);
+        const targetGrid = percent >= 100 ? completedGrid : pendingGrid;
+
+        if (card.parentElement !== targetGrid) {
+            targetGrid.appendChild(card);
+        }
+    });
+
+    completedSection.hidden = completedGrid.querySelector('[data-parcours-card="1"]') === null;
+}
+
+updateParcoursSectionsByProgress();
+
 function goToParcours(id) {
     const targetUrl = new URL(lmsParcoursBasePath, window.location.origin);
     targetUrl.searchParams.set('idp', String(id));
@@ -595,6 +735,27 @@ function initLmsDrawerContent() {
     initParcoursEditorDrawer();
 }
 
+function lmsInitAdminEditHtmlFields(scopeElement) {
+    if (typeof window.adminEditInitHtmlFields === 'function') {
+        try {
+            return window.adminEditInitHtmlFields(scopeElement || document);
+        } catch (error) {
+            return Promise.resolve();
+        }
+    }
+
+    return Promise.resolve();
+}
+
+function lmsSyncAdminEditHtmlFields(scopeElement) {
+    if (typeof window.adminEditSyncHtmlFields === 'function') {
+        try {
+            window.adminEditSyncHtmlFields(scopeElement || document);
+        } catch (error) {
+        }
+    }
+}
+
 function initParcoursEditorDrawer() {
     const drawerContent = document.getElementById('drawer-content');
     const form = drawerContent ? drawerContent.querySelector('#formulaire-edit') : null;
@@ -606,6 +767,7 @@ function initParcoursEditorDrawer() {
 
     let isSubmitting = false;
     form.dataset.lmsParcoursEditorBound = '1';
+    lmsInitAdminEditHtmlFields(form);
 
     const submitParcoursEditorForm = async (event) => {
         if (event) {
@@ -628,6 +790,7 @@ function initParcoursEditorDrawer() {
         submitButton.disabled = true;
 
         try {
+            lmsSyncAdminEditHtmlFields(form);
             const formData = new FormData(form);
 
             if (window.croppedImages && typeof window.croppedImages === 'object') {
@@ -701,6 +864,7 @@ function initMissionEditorDrawer() {
     const missionId = Number(editor.getAttribute('data-mission-id') || 0);
     let isSubmitting = false;
     form.dataset.lmsMissionEditorBound = '1';
+    lmsInitAdminEditHtmlFields(form);
 
     const submitMissionEditorForm = async function (event) {
         if (event) {
@@ -731,6 +895,7 @@ function initMissionEditorDrawer() {
         submitButton.disabled = true;
 
         try {
+            lmsSyncAdminEditHtmlFields(form);
             const formData = new FormData(form);
             const response = await fetch(form.action, {
                 method: 'POST',
@@ -1246,6 +1411,56 @@ function reloadMissionEditorDrawer(parcoursId, missionId) {
         });
 }
 
+function bindMissionRelatedSortableList(options) {
+    if (!options || typeof window.commonCreateVerticalSortableList !== 'function') {
+        return;
+    }
+
+    const list = options.list;
+    if (!list || list.dataset.lmsSortableBound === '1') {
+        return;
+    }
+
+    list.dataset.lmsSortableBound = '1';
+    window.commonCreateVerticalSortableList({
+        list: list,
+        itemSelector: options.itemSelector,
+        handleSelector: options.handleSelector,
+        draggingClass: 'is-dragging',
+        dropTargetClass: 'is-drop-target',
+        onDrop: async function () {
+            const itemIds = Array.from(list.querySelectorAll(options.itemSelector))
+                .map((item) => Number(item.getAttribute(options.idAttribute) || 0))
+                .filter((id) => Number.isInteger(id) && id > 0);
+
+            try {
+                const formData = new FormData();
+                formData.append('pid', String(options.parcoursId || 0));
+                formData.append('mid', String(options.missionId || 0));
+                itemIds.forEach((itemId) => {
+                    formData.append(options.arrayFieldName, String(itemId));
+                });
+
+                const response = await fetch(options.url, {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin'
+                });
+
+                const payload = await response.json();
+                if (!response.ok || !payload || payload.success !== true) {
+                    throw new Error(payload && payload.message ? payload.message : options.errorMessage);
+                }
+
+                await reloadMissionEditorDrawer(options.parcoursId, options.missionId);
+            } catch (error) {
+                window.alert(error && error.message ? error.message : options.errorMessage);
+                await reloadMissionEditorDrawer(options.parcoursId, options.missionId);
+            }
+        }
+    });
+}
+
 function initMissionRelatedManagers() {
     const drawerContent = document.getElementById('drawer-content');
     const editor = drawerContent ? drawerContent.querySelector('[data-lms-mission-editor]') : null;
@@ -1298,6 +1513,32 @@ function initMissionRelatedManagers() {
             const item = button.closest('[data-lms-question-item]');
             openMissionQuestionFormForEdit(questionForm, questionSubmitButton, item);
         });
+    });
+
+    const homeworkList = editor.querySelector('[data-lms-homework-list]');
+    bindMissionRelatedSortableList({
+        list: homeworkList,
+        itemSelector: '[data-lms-homework-item]',
+        handleSelector: '[data-lms-homework-drag-handle]',
+        idAttribute: 'data-homework-id',
+        arrayFieldName: 'homework_ids[]',
+        url: lmsMissionHomeworkReorderPath,
+        errorMessage: 'Impossible de reordonner les devoirs.',
+        parcoursId: parcoursId,
+        missionId: missionId
+    });
+
+    const questionList = editor.querySelector('[data-lms-question-list]');
+    bindMissionRelatedSortableList({
+        list: questionList,
+        itemSelector: '[data-lms-question-item]',
+        handleSelector: '[data-lms-question-drag-handle]',
+        idAttribute: 'data-question-id',
+        arrayFieldName: 'question_ids[]',
+        url: lmsMissionQuestionReorderPath,
+        errorMessage: 'Impossible de reordonner les questions.',
+        parcoursId: parcoursId,
+        missionId: missionId
     });
 
     if (homeworkForm) {

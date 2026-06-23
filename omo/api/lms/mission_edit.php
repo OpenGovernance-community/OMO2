@@ -121,10 +121,26 @@ $params = array(
     position: relative;
 }
 
+.lms-mission-related__item.is-dragging {
+    opacity: 0.7;
+}
+
+.lms-mission-related__item.is-drop-target {
+    border-color: color-mix(in srgb, var(--primary) 45%, var(--border-color));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.lms-mission-related__item-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
 .lms-mission-related__item strong {
     display: block;
     margin-bottom: 6px;
-    padding-right: 72px;
 }
 
 .lms-mission-related__item p,
@@ -149,15 +165,23 @@ $params = array(
     background: color-mix(in srgb, var(--primary) 8%, var(--bg-card));
 }
 
-.lms-mission-related__item-actions {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-}
-
 .lms-mission-related__item-actions button {
     min-width: 0;
     padding: 8px 12px;
+}
+
+.lms-mission-related__drag-handle {
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px dashed color-mix(in srgb, var(--primary) 25%, var(--border-color));
+    background: color-mix(in srgb, var(--primary) 8%, var(--bg-card));
+    color: var(--text-light);
+    cursor: grab;
+    letter-spacing: 1px;
+}
+
+.lms-mission-related__drag-handle:active {
+    cursor: grabbing;
 }
 
 .lms-mission-creator-form[hidden] {
@@ -232,6 +256,10 @@ $params = array(
     .lms-mission-creator-form__actions,
     .lms-question-choice-row {
         flex-direction: column;
+    }
+
+    .lms-mission-related__item-head {
+        align-items: stretch;
     }
 
     .lms-mission-creator-form__grid,

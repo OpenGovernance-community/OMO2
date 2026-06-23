@@ -115,6 +115,82 @@
 				'id' => (int)$item->getId(),
 			);
 		}
+
+		public static function reorderForMission($missionId, array $homeworkIds)
+		{
+			$missionId = (int)$missionId;
+			if ($missionId <= 0) {
+				return array(
+					'status' => false,
+					'message' => 'Mission invalide.',
+				);
+			}
+
+			$normalizedHomeworkIds = [];
+			foreach ($homeworkIds as $homeworkId) {
+				$homeworkId = (int)$homeworkId;
+				if ($homeworkId > 0) {
+					$normalizedHomeworkIds[$homeworkId] = $homeworkId;
+				}
+			}
+			$normalizedHomeworkIds = array_values($normalizedHomeworkIds);
+
+			$currentRows = self::fetchAll(
+				"SELECT IDhomework
+				FROM mission_homework
+				WHERE IDmission = :mission_id",
+				['mission_id' => $missionId]
+			);
+			if (!is_array($currentRows)) {
+				return array(
+					'status' => false,
+					'message' => 'Impossible de charger les devoirs de la mission.',
+				);
+			}
+
+			$currentHomeworkIds = [];
+			foreach ($currentRows as $row) {
+				$homeworkId = (int)($row['IDhomework'] ?? 0);
+				if ($homeworkId > 0) {
+					$currentHomeworkIds[$homeworkId] = $homeworkId;
+				}
+			}
+			$currentHomeworkIds = array_values($currentHomeworkIds);
+			sort($currentHomeworkIds);
+
+			$comparisonHomeworkIds = $normalizedHomeworkIds;
+			sort($comparisonHomeworkIds);
+			if ($comparisonHomeworkIds !== $currentHomeworkIds) {
+				return array(
+					'status' => false,
+					'message' => 'La liste des devoirs a reordonner est incomplete.',
+				);
+			}
+
+			foreach ($normalizedHomeworkIds as $index => $homeworkId) {
+				$result = self::execute(
+					"UPDATE mission_homework
+					SET position = :position
+					WHERE IDmission = :mission_id
+					  AND IDhomework = :homework_id",
+					[
+						'position' => $index + 1,
+						'mission_id' => $missionId,
+						'homework_id' => $homeworkId,
+					]
+				);
+				if (!$result) {
+					return array(
+						'status' => false,
+						'message' => 'Impossible de reordonner les devoirs de la mission.',
+					);
+				}
+			}
+
+			return array(
+				'status' => true,
+			);
+		}
 	}
 
 ?>
