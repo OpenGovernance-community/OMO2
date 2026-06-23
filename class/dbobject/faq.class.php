@@ -401,9 +401,12 @@ class FAQ extends DbObject
 			return false;
 		}
 
+		$context['organizationId'] = (int)$organization->getId();
+		$context['organization'] = $organization;
+
 		$rootHolon = $organization->getStructuralRootHolon();
 		if (!$rootHolon) {
-			return false;
+			return $context;
 		}
 
 		$currentHolon = $rootHolon;
@@ -420,9 +423,7 @@ class FAQ extends DbObject
 			$currentHolon = $candidate;
 		}
 
-		$context['organizationId'] = (int)$organization->getId();
 		$context['currentHolonId'] = (int)$currentHolon->getId();
-		$context['organization'] = $organization;
 		$context['rootHolon'] = $rootHolon;
 		$context['currentHolon'] = $currentHolon;
 
@@ -878,7 +879,7 @@ class FAQ extends DbObject
 					$matchesScope = false;
 				}
 			} else {
-				$matchesScope = false;
+				$matchesScope = $faqOrganizationId > 0 && $faqOrganizationId === $contextOrganizationId;
 			}
 		}
 
