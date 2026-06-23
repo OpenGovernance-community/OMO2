@@ -20,12 +20,16 @@ if (empty($accessContext['exists'])) {
 }
 
 if (empty($accessContext['canView'])) {
+	$loginReturnTo = lmsBuildLocalPath('/lms/parcours.php', array(
+		'idp' => $parcours_id,
+		'embed' => $isEmbedded ? 1 : null,
+	));
 	if ($user_id <= 0) {
 		commonRenderMagicLoginPage([
 			'title' => $org['name'] . ' - LMS',
 			'appName' => 'LMS',
 			'intro' => 'Connectez-vous pour acceder a ce parcours.',
-			'returnTo' => '/lms/parcours.php?idp=' . $parcours_id . ($isEmbedded ? '&embed=1' : ''),
+			'returnTo' => $loginReturnTo,
 		]);
 	}
 
@@ -49,7 +53,10 @@ if ($parcoursRef->load($parcours_id)) {
 
 $isAnonymousViewer = lmsIsAnonymousViewer($accessContext);
 $showLoginDrawerButton = $user_id <= 0 && !commonCanAccessWithoutLogin($org);
-$loginDrawerReturnTo = '/lms/parcours.php?idp=' . $parcours_id . ($isEmbedded ? '&embed=1' : '');
+$loginDrawerReturnTo = lmsBuildLocalPath('/lms/parcours.php', array(
+	'idp' => $parcours_id,
+	'embed' => $isEmbedded ? 1 : null,
+));
 $organizationColor = commonGetOrganizationExplicitColor($org);
 ?>
 
