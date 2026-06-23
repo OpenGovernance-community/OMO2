@@ -355,7 +355,9 @@
         closeDrawer();
 
         titleNode.textContent = title || getConfigTextValue('drawer.defaultTitle', 'Panneau lateral');
+        body.classList.remove('common-topbar-drawer__body--iframe');
         if (mode === 'iframe') {
+            body.classList.add('common-topbar-drawer__body--iframe');
             body.innerHTML = '<iframe class="common-topbar-drawer__iframe" src="' + content + '"></iframe>';
         } else if (mode === 'fetch') {
             renderRemoteContent(body, content);

@@ -719,7 +719,7 @@ if ($m) {
 						closeDrawer();
 					}
 					if (typeof window.lmsOpenLoginDrawer === 'function') {
-						window.lmsOpenLoginDrawer('/lms/parcours.php?idp=' + Number(parcoursId || 0));
+						window.lmsOpenLoginDrawer(<?php echo json_encode(lmsBuildLocalPath('/lms/parcours.php', ['idp' => $parcours_id]), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>);
 					}
 				};
 			}
@@ -957,6 +957,7 @@ if ($m) {
 
 		submitAnswer();
 	};
+	initMissionUI();
 	window.initMissionUI = initMissionUI;
 })();
 </script>

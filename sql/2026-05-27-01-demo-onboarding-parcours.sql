@@ -108,12 +108,26 @@ INSERT INTO `parcours` (
   `id`,
   `title`,
   `description`,
-  `image`
+  `image`,
+  `IDorganization`,
+  `IDusercreation`,
+  `IDusermodification`,
+  `datecreation`,
+  `datemodification`,
+  `ispublic`,
+  `isbasic`
 ) VALUES (
   7101,
   'Premiere prise en main du logiciel',
   'Parcours de demo pour guider un nouvel utilisateur depuis la creation du compte jusqu a la mise en place des premiers droits d administration.',
-  '/img/uploads/parcours/premiere-prise-en-main.png'
+  '/img/uploads/parcours/premiere-prise-en-main.png',
+  1,
+  1,
+  1,
+  '2026-05-27 09:00:00',
+  '2026-05-27 09:00:00',
+  1,
+  1
 );
 
 INSERT INTO `mission` (

@@ -96,6 +96,7 @@
 		
 		public static $_dbh;
 		protected static $_lastDbError = null;
+		protected static $_tableExistsCache = array();
 		static $myvariablearray = array();	// Liste de valeurs statiques créées à la demande
 		static $preload = array();	// Liste des valeurs déjà chargées
 		
@@ -132,6 +133,32 @@
 		static public function getPdo() {
 			$dbh = self::getDbh();
 			return $dbh ? $dbh->getPdo() : null;
+		}
+
+		protected static function tableExists($tableName) {
+			$tableName = trim((string)$tableName);
+			if ($tableName === '') {
+				return false;
+			}
+
+			$cacheKey = (string)($GLOBALS["dbName"] ?? "") . "|" . strtolower($tableName);
+			if (array_key_exists($cacheKey, self::$_tableExistsCache)) {
+				return self::$_tableExistsCache[$cacheKey];
+			}
+
+			$result = self::fetchValue(
+				"SELECT 1
+				FROM INFORMATION_SCHEMA.TABLES
+				WHERE TABLE_SCHEMA = DATABASE()
+				  AND TABLE_NAME = :table_name
+				LIMIT 1",
+				array(
+					'table_name' => $tableName,
+				)
+			);
+
+			self::$_tableExistsCache[$cacheKey] = ((int)$result === 1);
+			return self::$_tableExistsCache[$cacheKey];
 		}
 
 		protected static function clearLastDbError() {
@@ -656,8 +683,9 @@
 						
 						// Rend le nom URL compatible
 						$name=urlencode(str_replace(" ","",$_FILES[$field."_file"]["name"]));
-						move_uploaded_file($_FILES[$field."_file"]["tmp_name"], $_SERVER["DOCUMENT_ROOT"].$target_dir."/".time()."_".$name);
-						$this->_fields[$field]=$target_dir."/".time()."_".$name;
+						$storedFileName = time()."_".$name;
+						move_uploaded_file($_FILES[$field."_file"]["tmp_name"], $_SERVER["DOCUMENT_ROOT"].$target_dir."/".$storedFileName);
+						$this->_fields[$field]=$target_dir."/".$storedFileName;
 						unset($_FILES[$field."_file"]); // Ca a été traité, plus besoin de le garder
 					} else {  
 						$this->_fields[$field]=$value;

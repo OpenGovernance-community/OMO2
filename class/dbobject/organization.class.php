@@ -604,6 +604,11 @@
 			return parent::save();
 		}
 
+		public function instantiateBasicParcours()
+		{
+			return \dbObject\Parcours::instantiateBasicForOrganization((int)$this->getId());
+		}
+
 		public function canView()
 		{
 			return $this->canViewDetail();

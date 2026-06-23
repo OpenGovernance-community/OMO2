@@ -46,6 +46,13 @@
 			return "displayorder, id";
 		}
 
+		public static function getNextDisplayOrder()
+		{
+			return (int)self::fetchValue(
+				"SELECT COALESCE(MAX(displayorder), 0) + 1 FROM question"
+			);
+		}
+
 		public function getChoices() {
 			$choices = new \dbObject\ArrayQuestionChoice();
 			$choices->load([
@@ -70,6 +77,10 @@
 		}
 
 		public static function fetchQuestionsForMission($missionId) {
+			if (!self::tableExists('mission_question')) {
+				return [];
+			}
+
 			$query = "
 				SELECT f.id, f.question
 				FROM mission_question mq

@@ -169,6 +169,32 @@ function adminEditBuildTemporalInput($type, $name, $value, $class, $disabled = f
     return $html;
 }
 
+function adminEditResolveImageDisplaySize($object, $key) {
+    $displayWidth = 200;
+    $displayHeight = 200;
+    $lengths = method_exists($object, 'attributeLength') ? $object::attributeLength() : array();
+    $sizeConfig = $lengths[$key] ?? null;
+
+    if (is_array($sizeConfig)) {
+        if (isset($sizeConfig[0]) && is_array($sizeConfig[0])) {
+            $displayWidth = isset($sizeConfig[1][0]) ? (int)$sizeConfig[1][0] : (isset($sizeConfig[0][0]) ? (int)$sizeConfig[0][0] : $displayWidth);
+            $displayHeight = isset($sizeConfig[1][1]) ? (int)$sizeConfig[1][1] : (isset($sizeConfig[0][1]) ? (int)$sizeConfig[0][1] : $displayHeight);
+        } else {
+            $displayWidth = isset($sizeConfig[0]) ? (int)$sizeConfig[0] : $displayWidth;
+            $displayHeight = isset($sizeConfig[1]) ? (int)$sizeConfig[1] : $displayHeight;
+        }
+    }
+
+    if ($displayWidth <= 0) {
+        $displayWidth = 200;
+    }
+    if ($displayHeight <= 0) {
+        $displayHeight = 200;
+    }
+
+    return array($displayWidth, $displayHeight);
+}
+
 function getFieldType($object, $key) {
     if (is_object($object)) {
         // Find rows linked to the type
@@ -508,16 +534,17 @@ function displayField($object, $key, $default = null, $filter = null) {
         case "html" :
             $str = $object->get($key);
 
-            return "<textarea  class='" . $class . "summernote' name='" . $key . "' id='" . $key . "' style='width:100%'>" . $str . "</textarea>";
+            return "<textarea  class='" . adminEditMergeClass($class, "summernote") . "' name='" . $key . "' id='" . $key . "' style='width:100%'>" . $str . "</textarea>";
             break;
         case "boolean" :
             return "<input type='hidden' id='" . $key . "' name='" . $key . "' value='0'>" .
                 "<input type='checkbox' name='" . $key . "' id='" . $key . "'" . ($object->get($key) > 0 ? "checked" : "") . " value='1'>";
             break;
         case "image" :
+            list($displayWidth, $displayHeight) = adminEditResolveImageDisplaySize($object, $key);
             $output = "<input name='" . $key . "' id='" . $key . "' type='hidden' value='" . str_replace("'", "&apos;", (string)($object->get($key) ?? "")) . "'>";
             $output .= "<input class='" . $class . "' name='" . $key . "_file' id='" . $key . "_file' type='file' onchange='previewFile(\"" . $key . "\",$(\"#img_" . $key . "\"))'><br>";
-            $output .= "<div id='img_" . $key . "' src='' style='width:" . (isset($object::attributeLength()[$key]) ? $object::attributeLength()[$key][0] : "200") . "px; height:" . (isset($object::attributeLength()[$key]) ? $object::attributeLength()[$key][1] : "200") . "px; border:1px solid black; background:url(" . $object->get($key) . "); background-size:cover; background-position:center center'>";
+            $output .= "<div id='img_" . $key . "' src='' style='width:" . $displayWidth . "px; height:" . $displayHeight . "px; border:1px solid black; background:url(" . $object->get($key) . "); background-size:cover; background-position:center center'>";
             $output .= "<div id='drag_img_" . $key . "' class='drag_img' data='#img_" . $key . "' style='width:100%; height:100%;'>";
             $output .= "</div>";
             $output .= "</div>";
@@ -1038,7 +1065,7 @@ $colonnes = $this->attributeLabels();
         box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-edit-primary) 18%, transparent);
     }
 
-    #formulaire-edit button,
+    #formulaire-edit button:not(.note-btn),
     #formulaire-edit input[type='button'],
     #formulaire-edit input[type='submit'] {
         min-height: 44px;
@@ -1053,14 +1080,14 @@ $colonnes = $this->attributeLabels();
         transition: transform 0.18s ease, filter 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
     }
 
-    #formulaire-edit button:hover,
+    #formulaire-edit button:not(.note-btn):hover,
     #formulaire-edit input[type='button']:hover,
     #formulaire-edit input[type='submit']:hover {
         filter: brightness(1.03);
         transform: translateY(-1px);
     }
 
-    #formulaire-edit button:disabled,
+    #formulaire-edit button:not(.note-btn):disabled,
     #formulaire-edit input[type='button']:disabled,
     #formulaire-edit input[type='submit']:disabled {
         opacity: 0.6;
@@ -1361,7 +1388,168 @@ echo "</div>";
 <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
 <script src="https://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
 <script>
+    window.adminEditSummernoteInitPromise = window.adminEditSummernoteInitPromise || null;
+
+    function adminEditLoadStyleOnce(href, dataAttribute) {
+        return new Promise(function (resolve, reject) {
+            if (!href) {
+                resolve();
+                return;
+            }
+
+            var existingLink = document.querySelector('link[' + dataAttribute + '="' + href + '"]');
+            if (existingLink) {
+                resolve();
+                return;
+            }
+
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = href;
+            link.setAttribute(dataAttribute, href);
+            link.onload = function () {
+                resolve();
+            };
+            link.onerror = function () {
+                reject(new Error('summernote_css_load_failed'));
+            };
+            document.head.appendChild(link);
+        });
+    }
+
+    function adminEditLoadScriptOnce(src, dataAttribute) {
+        return new Promise(function (resolve, reject) {
+            if (!src) {
+                resolve();
+                return;
+            }
+
+            var existingScript = document.querySelector('script[' + dataAttribute + '="' + src + '"]');
+            if (existingScript) {
+                if (existingScript.getAttribute('data-admin-edit-loaded') === '1') {
+                    resolve();
+                    return;
+                }
+
+                existingScript.addEventListener('load', function () {
+                    existingScript.setAttribute('data-admin-edit-loaded', '1');
+                    resolve();
+                }, { once: true });
+                existingScript.addEventListener('error', function () {
+                    reject(new Error('summernote_js_load_failed'));
+                }, { once: true });
+                return;
+            }
+
+            var script = document.createElement('script');
+            script.src = src;
+            script.async = false;
+            script.setAttribute(dataAttribute, src);
+            script.onload = function () {
+                script.setAttribute('data-admin-edit-loaded', '1');
+                resolve();
+            };
+            script.onerror = function () {
+                reject(new Error('summernote_js_load_failed'));
+            };
+            document.head.appendChild(script);
+        });
+    }
+
+    function adminEditEnsureSummernoteAssets() {
+        if (window.jQuery && window.jQuery.fn && typeof window.jQuery.fn.summernote === 'function') {
+            return Promise.resolve(window.jQuery);
+        }
+
+        if (window.adminEditSummernoteInitPromise) {
+            return window.adminEditSummernoteInitPromise;
+        }
+
+        var summernoteVersion = '0.8.18';
+        var summernoteCssUrl = 'https://cdnjs.cloudflare.com/ajax/libs/summernote/' + summernoteVersion + '/summernote-lite.min.css';
+        var summernoteJsUrl = 'https://cdnjs.cloudflare.com/ajax/libs/summernote/' + summernoteVersion + '/summernote-lite.min.js';
+        var summernoteLangUrl = 'https://cdnjs.cloudflare.com/ajax/libs/summernote/' + summernoteVersion + '/lang/summernote-fr-FR.min.js';
+
+        window.adminEditSummernoteInitPromise = adminEditLoadStyleOnce(summernoteCssUrl, 'data-admin-edit-summernote-css')
+            .then(function () {
+                return adminEditLoadScriptOnce(summernoteJsUrl, 'data-admin-edit-summernote-js');
+            })
+            .then(function () {
+                return adminEditLoadScriptOnce(summernoteLangUrl, 'data-admin-edit-summernote-lang');
+            })
+            .then(function () {
+                if (!window.jQuery || !window.jQuery.fn || typeof window.jQuery.fn.summernote !== 'function') {
+                    throw new Error('summernote_not_available');
+                }
+
+                return window.jQuery;
+            });
+
+        return window.adminEditSummernoteInitPromise;
+    }
+
+    function adminEditSyncHtmlFields(scope) {
+        if (!window.jQuery || !window.jQuery.fn) {
+            return;
+        }
+
+        var root = scope || document;
+        window.jQuery(root).find('textarea.summernote').each(function () {
+            var field = window.jQuery(this);
+            if (field.data('adminEditSummernoteBound') === true && typeof field.summernote === 'function') {
+                try {
+                    field.val(field.summernote('code'));
+                } catch (error) {
+                }
+            }
+        });
+    }
+
+    function adminEditInitHtmlFields(scope) {
+        var root = scope || document;
+        var textareas = root.querySelectorAll ? root.querySelectorAll('textarea.summernote') : [];
+        if (!textareas || textareas.length === 0) {
+            return Promise.resolve();
+        }
+
+        return adminEditEnsureSummernoteAssets()
+            .then(function ($) {
+                Array.prototype.forEach.call(textareas, function (textarea) {
+                    var field = $(textarea);
+                    if (field.data('adminEditSummernoteBound') === true) {
+                        return;
+                    }
+
+                    field.data('adminEditSummernoteBound', true);
+                    field.summernote({
+                        lang: 'fr-FR',
+                        height: 240,
+                        disableResizeEditor: true,
+                        toolbar: [
+                            ['style', ['style']],
+                            ['font', ['bold', 'italic', 'underline', 'clear']],
+                            ['para', ['ul', 'ol', 'paragraph']],
+                            ['insert', ['link', 'table', 'hr']],
+                            ['view', ['codeview']]
+                        ],
+                        callbacks: {
+                            onChange: function (contents) {
+                                field.val(contents);
+                            }
+                        }
+                    });
+
+                    field.val(field.summernote('code'));
+                });
+            })
+            .catch(function () {
+                console.warn('Impossible de charger l editeur HTML adminEdit.');
+            });
+    }
+
     $(function () {
+        adminEditInitHtmlFields(document);
+
         $(".required").each(function () {
             $(this).closest("tr").find("th").append("<span class='required-star'>*</span>");
         });
@@ -1390,6 +1578,7 @@ echo "</div>";
         });
 
         $("#btn_submit").click(function () {
+            adminEditSyncHtmlFields(document);
 
             let serform = $("#formulaire-edit").serialize()
             if (serform.length > 20000000) {
@@ -1424,6 +1613,7 @@ echo "</div>";
 
             var form = this;
             var url = $(form).attr('action');
+            adminEditSyncHtmlFields(form);
             var formData = new FormData(form);
 
             console.log("=== SUBMIT START ===");

@@ -248,7 +248,6 @@ function viewMission(missionId) {
         .then(res => res.text())
         .then(html => {
             openDrawer(html);
-            initMissionUI();
         });
 }
 </script>

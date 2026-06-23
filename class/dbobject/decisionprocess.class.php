@@ -22,13 +22,33 @@ class DecisionProcess extends DbObject
         return 'decision_process';
     }
 
+    public static function getVisibilityObjectType(): string
+    {
+        return self::tableName();
+    }
+
+    public static function getDefaultVisibilityType(): string
+    {
+        return \dbObject\ObjectVisibility::getDefaultVisibilityType();
+    }
+
+    public static function getVisibilityTypeOptions(): array
+    {
+        return \dbObject\ObjectVisibility::getVisibilityTypeOptions();
+    }
+
+    public static function normalizeVisibilityType($visibilityType): string
+    {
+        return \dbObject\ObjectVisibility::normalizeVisibilityType($visibilityType);
+    }
+
     public static function rules()
     {
         return [
-            [['title', 'decision_type', 'status', 'evaluation_method'], 'required'],
+            [['title', 'decision_type', 'status', 'evaluation_method', 'visibility_type'], 'required'],
             [['id'], 'integer'],
             [['IDorganization', 'IDholon', 'IDuser'], 'fk'],
-            [['title', 'decision_type', 'status', 'evaluation_method'], 'string'],
+            [['title', 'decision_type', 'status', 'evaluation_method', 'visibility_type'], 'string'],
             [['description'], 'text'],
             [['parameters'], 'parameters'],
             [[
@@ -57,6 +77,7 @@ class DecisionProcess extends DbObject
             'decision_type' => 'Type',
             'status' => 'Statut',
             'evaluation_method' => 'Methode',
+            'visibility_type' => 'Portee de visibilite',
             'parameters' => 'Parametres',
             'consultation_start_at' => 'Debut consultation',
             'consultation_end_at' => 'Fin consultation',
@@ -75,6 +96,7 @@ class DecisionProcess extends DbObject
             'decision_type' => 'Distingue une prise de decision engageante d une consultation.',
             'status' => 'Cycle de vie commun independant de la methode d evaluation.',
             'evaluation_method' => 'Cle technique de la methode modulaire utilisee.',
+            'visibility_type' => 'Controle qui peut voir la decision hors participants et proprietaires.',
             'parameters' => 'Configuration method-specific et options complementaires.',
             'IDholon' => 'Contexte holon optionnel si la prise de decision est rattachee a un groupe.',
         ];
@@ -87,6 +109,7 @@ class DecisionProcess extends DbObject
             'decision_type' => 20,
             'status' => 20,
             'evaluation_method' => 40,
+            'visibility_type' => 30,
         ];
     }
 
@@ -216,6 +239,7 @@ class DecisionProcess extends DbObject
         $this->set('decision_type', self::normalizeDecisionType($this->get('decision_type')));
         $this->set('status', self::normalizeStatus($this->get('status')));
         $this->set('evaluation_method', self::normalizeEvaluationMethod($this->get('evaluation_method')));
+        $this->set('visibility_type', self::normalizeVisibilityType($this->get('visibility_type')));
 
         $saveResult = parent::save();
         if (empty($saveResult['status']) || (int)$this->getId() <= 0) {
@@ -359,6 +383,219 @@ class DecisionProcess extends DbObject
         $catalog = self::getEvaluationMethodCatalog();
         $method = self::normalizeEvaluationMethod($this->get('evaluation_method'));
         return isset($catalog[$method]) ? $catalog[$method] : $catalog[self::METHOD_SIMPLE_VOTE];
+    }
+
+    public static function buildVisibilityEditorConfig($organizationId, $holonId = 0): array
+    {
+        $organizationId = (int)$organizationId;
+        $holonId = (int)$holonId;
+        $disabledTypes = array();
+        $helpText = 'Les portees cercle et role suivent automatiquement le holon de la decision.';
+
+        if ($organizationId <= 0) {
+            return array(
+                'visibilityOptions' => self::getVisibilityTypeOptions(),
+                'disabledTypes' => array(
+                    \dbObject\ObjectVisibility::TYPE_ORGANIZATION => true,
+                    \dbObject\ObjectVisibility::TYPE_CIRCLE => true,
+                    \dbObject\ObjectVisibility::TYPE_ROLE => true,
+                ),
+                'helpText' => 'Contexte d organisation manquant. Les portees d organisation, cercle et role ne sont pas disponibles.',
+            );
+        }
+
+        if ($holonId <= 0) {
+            $disabledTypes[\dbObject\ObjectVisibility::TYPE_CIRCLE] = true;
+            $disabledTypes[\dbObject\ObjectVisibility::TYPE_ROLE] = true;
+            $helpText = 'Cette decision n est pas liee a un holon. Les portees cercle et role ne sont pas disponibles.';
+        } else {
+            $holon = new \dbObject\Holon();
+            if (
+                !$holon->load($holonId)
+                || !(bool)$holon->get('active')
+                || !(bool)$holon->get('visible')
+            ) {
+                $disabledTypes[\dbObject\ObjectVisibility::TYPE_CIRCLE] = true;
+                $disabledTypes[\dbObject\ObjectVisibility::TYPE_ROLE] = true;
+                $helpText = 'Le holon de cette decision est introuvable. Les portees cercle et role ne sont pas disponibles.';
+            } else {
+                if ((int)$holon->get('IDtypeholon') !== 1) {
+                    $disabledTypes[\dbObject\ObjectVisibility::TYPE_ROLE] = true;
+                }
+
+                if (
+                    (int)$holon->get('IDtypeholon') !== 2
+                    && (int)$holon->getContainingCircleId(false) <= 0
+                ) {
+                    $disabledTypes[\dbObject\ObjectVisibility::TYPE_CIRCLE] = true;
+                }
+            }
+        }
+
+        return array(
+            'visibilityOptions' => self::getVisibilityTypeOptions(),
+            'disabledTypes' => $disabledTypes,
+            'helpText' => $helpText,
+        );
+    }
+
+    protected function resolveVisibilityTargetHolonId($visibilityType): array
+    {
+        $visibilityType = self::normalizeVisibilityType($visibilityType);
+        if (!\dbObject\ObjectVisibility::requiresHolonTarget($visibilityType)) {
+            return array(
+                'status' => true,
+                'holonId' => null,
+            );
+        }
+
+        $decisionHolonId = (int)$this->get('IDholon');
+        if ($decisionHolonId <= 0) {
+            return array(
+                'status' => false,
+                'text' => $visibilityType === \dbObject\ObjectVisibility::TYPE_ROLE
+                    ? 'La visibilite role demande une decision liee a un role.'
+                    : 'La visibilite cercle demande une decision liee a un cercle ou a un role.',
+            );
+        }
+
+        $holon = new \dbObject\Holon();
+        if (
+            !$holon->load($decisionHolonId)
+            || !(bool)$holon->get('active')
+            || !(bool)$holon->get('visible')
+        ) {
+            return array(
+                'status' => false,
+                'text' => 'Holon de la decision introuvable.',
+            );
+        }
+
+        if ($visibilityType === \dbObject\ObjectVisibility::TYPE_ROLE) {
+            if ((int)$holon->get('IDtypeholon') !== 1) {
+                return array(
+                    'status' => false,
+                    'text' => 'La visibilite role demande une decision liee a un role.',
+                );
+            }
+
+            return array(
+                'status' => true,
+                'holonId' => (int)$holon->getId(),
+            );
+        }
+
+        if ((int)$holon->get('IDtypeholon') === 2) {
+            return array(
+                'status' => true,
+                'holonId' => (int)$holon->getId(),
+            );
+        }
+
+        $circleId = (int)$holon->getContainingCircleId(false);
+        if ($circleId <= 0) {
+            return array(
+                'status' => false,
+                'text' => 'La visibilite cercle demande une decision placee dans un cercle ou dans un role de cercle.',
+            );
+        }
+
+        return array(
+            'status' => true,
+            'holonId' => $circleId,
+        );
+    }
+
+    public function resolveVisibilityRuleInput($visibilityType): array
+    {
+        $organizationId = (int)$this->get('IDorganization');
+        $visibilityType = self::normalizeVisibilityType($visibilityType);
+        $editorConfig = self::buildVisibilityEditorConfig($organizationId, (int)$this->get('IDholon'));
+        $disabledTypes = is_array($editorConfig['disabledTypes'] ?? null)
+            ? $editorConfig['disabledTypes']
+            : array();
+
+        if (!empty($disabledTypes[$visibilityType])) {
+            return array(
+                'status' => false,
+                'text' => trim((string)($editorConfig['helpText'] ?? 'Visibilite indisponible dans ce contexte.')),
+            );
+        }
+
+        $targetHolonId = null;
+        if (\dbObject\ObjectVisibility::requiresHolonTarget($visibilityType)) {
+            $resolvedTarget = $this->resolveVisibilityTargetHolonId($visibilityType);
+            if (($resolvedTarget['status'] ?? false) !== true) {
+                return $resolvedTarget;
+            }
+
+            $targetHolonId = isset($resolvedTarget['holonId']) ? (int)$resolvedTarget['holonId'] : null;
+        }
+
+        return \dbObject\ObjectVisibility::resolveRuleInput($organizationId, $visibilityType, $targetHolonId);
+    }
+
+    public function getPrimaryVisibilityRuleRow()
+    {
+        $organizationId = (int)$this->get('IDorganization');
+        $decisionId = (int)$this->getId();
+
+        if ($decisionId > 0 && self::tableExists(\dbObject\ObjectVisibility::tableName())) {
+            $ruleRow = \dbObject\ObjectVisibility::loadActiveRuleRow(
+                self::getVisibilityObjectType(),
+                $decisionId,
+                $organizationId
+            );
+            if (is_array($ruleRow)) {
+                return $ruleRow;
+            }
+        }
+
+        $ruleRow = \dbObject\ObjectVisibility::buildFallbackRuleData($organizationId);
+        $ruleRow['object_type'] = self::getVisibilityObjectType();
+        $ruleRow['object_id'] = $decisionId;
+        $ruleRow['visibility_type'] = self::normalizeVisibilityType($this->get('visibility_type'));
+
+        if (\dbObject\ObjectVisibility::requiresHolonTarget($ruleRow['visibility_type'])) {
+            $resolvedTarget = $this->resolveVisibilityTargetHolonId($ruleRow['visibility_type']);
+            if (($resolvedTarget['status'] ?? false) === true) {
+                $ruleRow['IDholon'] = isset($resolvedTarget['holonId']) ? (int)$resolvedTarget['holonId'] : null;
+            }
+        }
+
+        return $ruleRow;
+    }
+
+    public function currentViewerCanAccessVisibility($organizationId = 0, $ruleRow = null): bool
+    {
+        $organizationId = (int)$organizationId > 0
+            ? (int)$organizationId
+            : (int)$this->get('IDorganization');
+        if ($organizationId <= 0) {
+            return false;
+        }
+
+        $viewerContext = \dbObject\ObjectVisibility::buildCurrentViewerContext($organizationId);
+        return \dbObject\ObjectVisibility::viewerCanAccessRule(
+            is_array($ruleRow) ? $ruleRow : $this->getPrimaryVisibilityRuleRow(),
+            $viewerContext,
+            array(
+                'organizationId' => $organizationId,
+                'ownerUserId' => (int)$this->get('IDuser'),
+            )
+        );
+    }
+
+    public function getVisibilityDisplayData($organizationId = 0, $ruleRow = null): array
+    {
+        $organizationId = (int)$organizationId > 0
+            ? (int)$organizationId
+            : (int)$this->get('IDorganization');
+
+        return \dbObject\ObjectVisibility::buildDisplayData(
+            is_array($ruleRow) ? $ruleRow : $this->getPrimaryVisibilityRuleRow(),
+            $organizationId
+        );
     }
 
     public function getDecisionGroups($activeOnly = false)
