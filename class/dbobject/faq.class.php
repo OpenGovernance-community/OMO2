@@ -4,6 +4,9 @@ namespace dbObject;
 
 class FAQ extends DbObject
 {
+	protected static $_hasFaqTable = null;
+	protected static $_hasDisplayorderColumn = null;
+	protected static $_hasUpdatedColumn = null;
 	protected static $_hasViewcountColumn = null;
 	protected static $_hasVoteColumns = null;
 	protected static $_hasScoreAnalyticsColumns = null;
@@ -76,7 +79,21 @@ class FAQ extends DbObject
 
 	public static function getOrder()
 	{
-		return "displayorder ASC, updated DESC";
+		$orderParts = array();
+
+		if (self::hasDisplayorderColumn()) {
+			$orderParts[] = "displayorder ASC";
+		}
+
+		if (self::hasUpdatedColumn()) {
+			$orderParts[] = "updated DESC";
+		}
+
+		if (count($orderParts) === 0) {
+			$orderParts[] = "id DESC";
+		}
+
+		return implode(", ", $orderParts);
 	}
 
 	public static function getScoreHalfLifeDays()
@@ -117,11 +134,12 @@ class FAQ extends DbObject
 			return self::$_hasViewcountColumn;
 		}
 
-		$databaseName = (string)($GLOBALS["dbName"] ?? "");
-		if ($databaseName === "") {
+		if (!self::hasFaqTable()) {
 			self::$_hasViewcountColumn = false;
 			return self::$_hasViewcountColumn;
 		}
+
+		$databaseName = (string)($GLOBALS["dbName"] ?? "");
 
 		$columnCount = self::fetchValue(
 			"select count(*) from information_schema.columns where table_schema = :schema and table_name = :table and column_name = :column",
@@ -136,17 +154,82 @@ class FAQ extends DbObject
 		return self::$_hasViewcountColumn;
 	}
 
+	public static function hasFaqTable()
+	{
+		if (self::$_hasFaqTable !== null) {
+			return self::$_hasFaqTable;
+		}
+
+		$databaseName = (string)($GLOBALS["dbName"] ?? "");
+		if ($databaseName === "") {
+			self::$_hasFaqTable = false;
+			return self::$_hasFaqTable;
+		}
+
+		$tableCount = self::fetchValue(
+			"select count(*) from information_schema.tables where table_schema = :schema and table_name = :table",
+			[
+				"schema" => $databaseName,
+				"table" => self::tableName(),
+			]
+		);
+
+		self::$_hasFaqTable = ((int)$tableCount > 0);
+		return self::$_hasFaqTable;
+	}
+
+	protected static function hasColumn($columnName)
+	{
+		if (!self::hasFaqTable()) {
+			return false;
+		}
+
+		$databaseName = (string)($GLOBALS["dbName"] ?? "");
+
+		$columnCount = self::fetchValue(
+			"select count(*) from information_schema.columns where table_schema = :schema and table_name = :table and column_name = :column",
+			[
+				"schema" => $databaseName,
+				"table" => self::tableName(),
+				"column" => (string)$columnName,
+			]
+		);
+
+		return ((int)$columnCount > 0);
+	}
+
+	public static function hasDisplayorderColumn()
+	{
+		if (self::$_hasDisplayorderColumn !== null) {
+			return self::$_hasDisplayorderColumn;
+		}
+
+		self::$_hasDisplayorderColumn = self::hasColumn('displayorder');
+		return self::$_hasDisplayorderColumn;
+	}
+
+	public static function hasUpdatedColumn()
+	{
+		if (self::$_hasUpdatedColumn !== null) {
+			return self::$_hasUpdatedColumn;
+		}
+
+		self::$_hasUpdatedColumn = self::hasColumn('updated');
+		return self::$_hasUpdatedColumn;
+	}
+
 	public static function hasVoteColumns()
 	{
 		if (self::$_hasVoteColumns !== null) {
 			return self::$_hasVoteColumns;
 		}
 
-		$databaseName = (string)($GLOBALS["dbName"] ?? "");
-		if ($databaseName === "") {
+		if (!self::hasFaqTable()) {
 			self::$_hasVoteColumns = false;
 			return self::$_hasVoteColumns;
 		}
+
+		$databaseName = (string)($GLOBALS["dbName"] ?? "");
 
 		$columnCount = self::fetchValue(
 			"select count(*) from information_schema.columns where table_schema = :schema and table_name = :table and column_name in ('positive_score', 'negative_score', 'total_votes')",
@@ -166,11 +249,12 @@ class FAQ extends DbObject
 			return self::$_hasScoreAnalyticsColumns;
 		}
 
-		$databaseName = (string)($GLOBALS["dbName"] ?? "");
-		if ($databaseName === "") {
+		if (!self::hasFaqTable()) {
 			self::$_hasScoreAnalyticsColumns = false;
 			return self::$_hasScoreAnalyticsColumns;
 		}
+
+		$databaseName = (string)($GLOBALS["dbName"] ?? "");
 
 		$columnCount = self::fetchValue(
 			"select count(*) from information_schema.columns where table_schema = :schema and table_name = :table and column_name in ('reliability', 'reliability_updated_at', 'score_decayed_at')",
@@ -186,9 +270,11 @@ class FAQ extends DbObject
 
 	public static function getPopupOrderBy()
 	{
-		$orderBy = [
-			['field' => 'displayorder', 'dir' => 'ASC'],
-		];
+		$orderBy = [];
+
+		if (self::hasDisplayorderColumn()) {
+			$orderBy[] = ['field' => 'displayorder', 'dir' => 'ASC'];
+		}
 
 		if (self::hasScoreAnalyticsColumns()) {
 			$orderBy[] = ['field' => 'reliability', 'dir' => 'DESC'];
@@ -198,7 +284,14 @@ class FAQ extends DbObject
 			$orderBy[] = ['field' => 'viewcount', 'dir' => 'DESC'];
 		}
 
-		$orderBy[] = ['field' => 'updated', 'dir' => 'DESC'];
+		if (self::hasUpdatedColumn()) {
+			$orderBy[] = ['field' => 'updated', 'dir' => 'DESC'];
+		}
+
+		if (count($orderBy) === 0) {
+			$orderBy[] = ['field' => 'id', 'dir' => 'DESC'];
+		}
+
 		return $orderBy;
 	}
 
@@ -308,9 +401,12 @@ class FAQ extends DbObject
 			return false;
 		}
 
+		$context['organizationId'] = (int)$organization->getId();
+		$context['organization'] = $organization;
+
 		$rootHolon = $organization->getStructuralRootHolon();
 		if (!$rootHolon) {
-			return false;
+			return $context;
 		}
 
 		$currentHolon = $rootHolon;
@@ -327,9 +423,7 @@ class FAQ extends DbObject
 			$currentHolon = $candidate;
 		}
 
-		$context['organizationId'] = (int)$organization->getId();
 		$context['currentHolonId'] = (int)$currentHolon->getId();
-		$context['organization'] = $organization;
 		$context['rootHolon'] = $rootHolon;
 		$context['currentHolon'] = $currentHolon;
 
@@ -445,6 +539,10 @@ class FAQ extends DbObject
 
 	public static function loadPopupCollection(array $context = array(), $scope = 'contextual')
 	{
+		if (!self::hasFaqTable()) {
+			return new \dbObject\ArrayFAQ();
+		}
+
 		$scope = self::normalizePopupScope($scope, $context);
 		$allFaq = new \dbObject\ArrayFAQ();
 		$allFaq->load(self::buildPopupLoadParams($context, $scope));
@@ -461,7 +559,7 @@ class FAQ extends DbObject
 
 	public static function loadReliabilityRefreshBatch($limit = null)
 	{
-		if (!self::hasScoreAnalyticsColumns()) {
+		if (!self::hasFaqTable() || !self::hasScoreAnalyticsColumns()) {
 			return array();
 		}
 
@@ -781,7 +879,7 @@ class FAQ extends DbObject
 					$matchesScope = false;
 				}
 			} else {
-				$matchesScope = false;
+				$matchesScope = $faqOrganizationId > 0 && $faqOrganizationId === $contextOrganizationId;
 			}
 		}
 

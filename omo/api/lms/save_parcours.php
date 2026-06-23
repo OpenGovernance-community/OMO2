@@ -9,6 +9,12 @@ header('Content-Type: application/json; charset=utf-8');
 $currentUserId = (int)commonGetCurrentUserId();
 $organizationId = (int)($org['id'] ?? 0);
 $hasOrganizationAccess = commonUserHasOrganizationAccess($currentUserId, $organizationId);
+$canManagePublicParcours = function_exists('commonCurrentUserIsAdminModeEnabled')
+    ? commonCurrentUserIsAdminModeEnabled($organizationId)
+    : false;
+$canManageBasicParcours = function_exists('commonCurrentUserIsSiteAdminModeEnabled')
+    ? commonCurrentUserIsSiteAdminModeEnabled()
+    : false;
 $parcoursId = (int)($_POST['id'] ?? ($_GET['pid'] ?? 0));
 
 if ($currentUserId <= 0 || !$hasOrganizationAccess || $organizationId <= 0) {
@@ -23,6 +29,8 @@ if ($currentUserId <= 0 || !$hasOrganizationAccess || $organizationId <= 0) {
 
 $parcours = new \dbObject\Parcours();
 $isEditMode = $parcoursId > 0;
+$originalIsPublic = false;
+$originalIsBasic = false;
 
 if ($isEditMode) {
     $link = \dbObject\OrganizationParcours::loadForOrganizationParcours($organizationId, $parcoursId);
@@ -35,6 +43,19 @@ if ($isEditMode) {
         ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
+
+    if ((int)$parcours->get('IDorganization') !== $organizationId) {
+        http_response_code(403);
+        echo json_encode(array(
+            'status' => false,
+            'success' => false,
+            'message' => 'Seuls les parcours proprietaires de cette organisation peuvent etre modifies.',
+        ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    $originalIsPublic = (bool)$parcours->get('ispublic');
+    $originalIsBasic = (bool)$parcours->get('isbasic');
 }
 
 $data = $_POST;
@@ -42,8 +63,14 @@ $parcours->loadFromArray($data);
 
 if (!$isEditMode) {
     $parcours->set('IDorganization', $organizationId);
-    $parcours->set('ispublic', false);
-    $parcours->set('isbasic', false);
+}
+
+if (!$canManagePublicParcours) {
+    $parcours->set('ispublic', $isEditMode ? $originalIsPublic : false);
+}
+
+if (!$canManageBasicParcours) {
+    $parcours->set('isbasic', $isEditMode ? $originalIsBasic : false);
 }
 
 if (trim((string)$parcours->get('title')) === '') {
