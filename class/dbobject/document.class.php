@@ -155,19 +155,43 @@
 			$organizationId = (int)$this->get('IDorganization');
 
 			return $currentUserId > 0
-				&& $organizationId > 0
 				&& $currentUserId === (int)$this->get('IDuser')
 				&& (
-					function_exists('commonUserHasOrganizationAccess')
-						? \commonUserHasOrganizationAccess($currentUserId, $organizationId)
-						: true
+					$organizationId <= 0
+					|| !function_exists('commonUserHasOrganizationAccess')
+					|| \commonUserHasOrganizationAccess($currentUserId, $organizationId)
 				);
 		}
 
 		public function canEditInOrganizationContext(int $organizationId): bool
 		{
-			return (int)$this->get('IDorganization') === (int)$organizationId
+			$documentOrganizationId = (int)$this->get('IDorganization');
+			$organizationId = (int)$organizationId;
+
+			if ($documentOrganizationId <= 0) {
+				return $organizationId <= 0
+					&& $this->canEdit();
+			}
+
+			return $documentOrganizationId === $organizationId
 				&& $this->canEdit();
+		}
+
+		public function canViewInMemoContext(int $userId = 0, ?string $accessCode = null): bool
+		{
+			$userId = (int)$userId;
+			$accessCode = trim((string)$accessCode);
+
+			if ($userId > 0 && $userId === (int)$this->get('IDuser')) {
+				return true;
+			}
+
+			$codeView = trim((string)$this->get('codeview'));
+			if ($accessCode !== '' && $codeView !== '' && hash_equals($codeView, $accessCode)) {
+				return true;
+			}
+
+			return false;
 		}
 
 		public function isFolder(): bool
@@ -804,7 +828,6 @@
 
 			if (
 				(int)$this->getId() <= 0
-				|| $organizationId <= 0
 				|| (int)$this->get('IDorganization') !== $organizationId
 				|| $userId <= 0
 				|| !$this->canEditInOrganizationContext($organizationId)
@@ -1270,6 +1293,80 @@
 			return $this->save();
 		}
 
+		public static function resolveCreationPermissionHolon(int $organizationId, ?int $requestedHolonId = null, int $parentDocumentId = 0)
+		{
+			$organizationId = (int)$organizationId;
+			$requestedHolonId = $requestedHolonId !== null ? (int)$requestedHolonId : 0;
+			$parentDocumentId = (int)$parentDocumentId;
+
+			if ($organizationId <= 0) {
+				return null;
+			}
+
+			$organization = new \dbObject\Organization();
+			if (!$organization->load($organizationId)) {
+				return null;
+			}
+
+			$rootHolon = $organization->getEnabledStructuralRootHolon();
+			$resolvedHolonId = 0;
+
+			if ($parentDocumentId > 0) {
+				$document = new self();
+				$resolvedParent = $document->resolveParentDocumentForContext($organizationId, $parentDocumentId);
+				if (($resolvedParent['status'] ?? false) !== true) {
+					return null;
+				}
+
+				$resolvedHolonId = (int)($resolvedParent['holonId'] ?? 0);
+			} elseif ($requestedHolonId > 0) {
+				$resolvedHolonId = $requestedHolonId;
+			}
+
+			if ($resolvedHolonId <= 0) {
+				return $rootHolon instanceof \dbObject\Holon && (int)$rootHolon->getId() > 0
+					? $rootHolon
+					: null;
+			}
+
+			$holon = new \dbObject\Holon();
+			if (
+				!$holon->load($resolvedHolonId)
+				|| !(bool)$holon->get('active')
+				|| !(bool)$holon->get('visible')
+				|| !$organization->containsHolon($holon)
+			) {
+				return null;
+			}
+
+			return $holon;
+		}
+
+		public static function canCreateInOrganizationContext(int $organizationId, ?int $requestedHolonId, int $userId, int $parentDocumentId = 0, bool $useSessionCache = true): bool
+		{
+			$organizationId = (int)$organizationId;
+			$requestedHolonId = $requestedHolonId !== null ? (int)$requestedHolonId : 0;
+			$userId = (int)$userId;
+			$parentDocumentId = (int)$parentDocumentId;
+
+			if ($organizationId <= 0 || $userId <= 0) {
+				return false;
+			}
+
+			$permissionHolon = self::resolveCreationPermissionHolon($organizationId, $requestedHolonId, $parentDocumentId);
+			if ($permissionHolon instanceof \dbObject\Holon && (int)$permissionHolon->getId() > 0) {
+				return $permissionHolon->isAllowed('CAN_CREATE_DOCUMENT', $useSessionCache, $userId);
+			}
+
+			if ($requestedHolonId > 0 || $parentDocumentId > 0) {
+				return false;
+			}
+
+			return function_exists('commonCurrentUserHasOrganizationAccess')
+				? \commonCurrentUserHasOrganizationAccess($organizationId)
+				: false;
+		}
+
 		protected static function extractValidUploadedFile($uploadedFile): ?array
 		{
 			if (!is_array($uploadedFile)) {
@@ -1509,6 +1606,7 @@
 		{
 			$organizationId = (int)$organizationId;
 			$userId = (int)$userId;
+			$isWithoutContext = $organizationId <= 0;
 
 			if ((int)$this->getId() <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
 				return array(
@@ -1588,7 +1686,7 @@
 					$pdo->beginTransaction();
 				}
 
-				if (!$organization->load($organizationId)) {
+				if (!$isWithoutContext && !$organization->load($organizationId)) {
 					if ($startedTransaction && $pdo->inTransaction()) {
 						$pdo->rollBack();
 					}
@@ -1599,7 +1697,26 @@
 					);
 				}
 
-				if ($documentType === self::TYPE_UPLOADED_FILE && !$organization->hasNextcloudDocumentStorage()) {
+				if (
+					$isWithoutContext
+					&& $documentType === self::TYPE_UPLOADED_FILE
+					&& ($uploadedFile !== null || $removeUploadedFile)
+				) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+
+					return array(
+						'status' => false,
+						'text' => 'Les fichiers sans contexte ne peuvent pas etre modifies depuis cet editeur.',
+					);
+				}
+
+				if (
+					!$isWithoutContext
+					&& $documentType === self::TYPE_UPLOADED_FILE
+					&& !$organization->hasNextcloudDocumentStorage()
+				) {
 					if ($startedTransaction && $pdo->inTransaction()) {
 						$pdo->rollBack();
 					}
@@ -1619,7 +1736,7 @@
 					return $saveResult;
 				}
 
-				if ($documentType === self::TYPE_UPLOADED_FILE) {
+				if (!$isWithoutContext && $documentType === self::TYPE_UPLOADED_FILE) {
 					$previousStoredPath = trim((string)$this->get('storedfilepath'));
 					if ($removeUploadedFile) {
 						$deleteResult = $this->deleteStoredFileFromOrganizationStorage($organization);
@@ -1660,13 +1777,15 @@
 					}
 				}
 
-				$visibilitySaveResult = $this->saveVisibilityRule($visibilityType);
-				if (!is_array($visibilitySaveResult) || ($visibilitySaveResult['status'] ?? false) !== true) {
-					if ($startedTransaction && $pdo->inTransaction()) {
-						$pdo->rollBack();
-					}
+				if (!$isWithoutContext) {
+					$visibilitySaveResult = $this->saveVisibilityRule($visibilityType);
+					if (!is_array($visibilitySaveResult) || ($visibilitySaveResult['status'] ?? false) !== true) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
 
-					return $visibilitySaveResult;
+						return $visibilitySaveResult;
+					}
 				}
 
 				if ($startedTransaction && $pdo->inTransaction()) {

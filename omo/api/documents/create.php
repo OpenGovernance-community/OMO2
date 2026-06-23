@@ -16,7 +16,7 @@ $currentUserId = (int)commonGetCurrentUserId();
 $escape = 'omoApiEscape';
 $document = new Document();
 $isEditing = false;
-$canCreate = $organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizationAccess($organizationId);
+$canCreate = false;
 $canUseForm = $canCreate;
 $formErrorMessage = '';
 $openAiAvailable = commonOpenAiGetApiKey() !== '';
@@ -30,8 +30,11 @@ if ($currentUserId > 0 && patreonSupportUiIsEnabled()) {
 $canUseAiTools = $openAiAvailable && $patreonConnected;
 
 if ($documentId > 0) {
-    $isEditing = $document->load($documentId)
-        && $document->canEditInOrganizationContext($organizationId);
+    $isEditing = $document->load($documentId);
+    if ($isEditing) {
+        $organizationId = (int)$document->get('IDorganization');
+        $isEditing = $document->canEditInOrganizationContext($organizationId);
+    }
     $canUseForm = $isEditing;
 
     if ($canUseForm) {
@@ -78,10 +81,25 @@ if (!$isEditing && $parentDocumentId > 0) {
     }
 }
 
+if (!$isEditing) {
+    $canCreate = $organizationId > 0
+        && $currentUserId > 0
+        && Document::canCreateInOrganizationContext(
+            $organizationId,
+            $contextHolonId > 0 ? $contextHolonId : null,
+            $currentUserId,
+            $parentDocumentId,
+            true
+        );
+    $canUseForm = $canCreate;
+}
+
 if ($contextHolonId <= 0) {
     $disabledVisibilityTypes[ObjectVisibility::TYPE_CIRCLE] = true;
     $disabledVisibilityTypes[ObjectVisibility::TYPE_ROLE] = true;
-    $visibilityHelpText = 'Ce document n est pas lie a un holon. Les portees cercle et role ne sont pas disponibles.';
+    $visibilityHelpText = $organizationId > 0
+        ? 'Ce document n est pas lie a un holon. Les portees cercle et role ne sont pas disponibles.'
+        : 'Ce document est hors contexte. Les portees d organisation, cercle et role ne sont pas disponibles.';
 } else {
     $contextHolon = new Holon();
     if ($contextHolon->load($contextHolonId)) {
@@ -116,6 +134,10 @@ if ($isEditing) {
     }
     $visibilityRule = $document->getPrimaryVisibilityRuleRow();
     $selectedVisibilityType = ObjectVisibility::normalizeVisibilityType($visibilityRule['visibility_type'] ?? ObjectVisibility::TYPE_ORGANIZATION);
+
+    if ($organizationId <= 0) {
+        $selectedVisibilityType = ObjectVisibility::TYPE_ORGANIZATION;
+    }
 }
 
 if (!empty($disabledVisibilityTypes[$selectedVisibilityType])) {
@@ -177,7 +199,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     <?php else: ?>
         <form class="omo-document-editor__form" action="/omo/api/documents/save.php" method="post" enctype="multipart/form-data" data-omo-document-create-form>
             <input type="hidden" name="oid" value="<?= $escape($organizationId) ?>">
-            <input type="hidden" name="cid" value="<?= $escape($holonId) ?>">
+            <input type="hidden" name="cid" value="<?= $escape($contextHolonId) ?>">
             <input type="hidden" name="parent_document_id" value="<?= (int)$parentDocumentId ?>">
             <?php if ($isEditing): ?>
                 <input type="hidden" name="id" value="<?= (int)$document->getId() ?>">

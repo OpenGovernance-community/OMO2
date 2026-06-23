@@ -17,6 +17,7 @@
 - Prefer `generic-section`, `generic-soft-panel`, `generic-hero-panel`, `generic-card-title`, `generic-action-button`, `generic-form-control`, and `generic-accordion` over duplicating the same structure with local selectors.
 - When a page directly combines shared design tokens like border, radius, surface, spacing, and text styles in a repeated pattern, stop and consider creating or extending a generic reusable object instead of duplicating the CSS.
 - Before creating a new shared helper or asset, first try to reuse an existing predefined object, component, or shared style primitive. Avoid duplication before deciding on file placement.
+- Prefer the simplest implementation that keeps the code safe and clear. Do not multiply helper functions, layers, or abstractions for a one-off need; extract them mainly when the same logic is reused in several places or when it meaningfully improves safety.
 - When several connected apps share the same UI rendering pattern and no existing shared primitive fits, place the shared CSS, browser scripts, and PHP rendering helpers under `/common/<module>/` instead of duplicating them inside each app.
 - For decision-related shared UI between apps, prefer `/common/choice/` for shared CSS, JS, and rendering helpers so `/omo/` and `/choice/` can evolve or be removed independently.
 - Keep data access helpers out of those shared UI folders: SQL and shared data logic must stay centralized in the related `dbObject` classes.

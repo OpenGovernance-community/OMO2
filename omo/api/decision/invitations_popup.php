@@ -11,6 +11,155 @@ use dbObject\Holon;
 use dbObject\Organization;
 use dbObject\UserOrganization;
 
+function omoDecisionInvitationsPopupSourceLang()
+{
+    return [
+        'decisions.invitations_popup.denied' => [
+            'text' => 'Vous ne pouvez pas gerer les invitations de ce scrutin.',
+            'context' => 'Message shown when the current user cannot manage invitations for the decision.',
+        ],
+        'decisions.invitations_popup.db_error' => [
+            'text' => 'Connexion a la base impossible.',
+            'context' => 'Error returned when the invitation popup cannot access the database.',
+        ],
+        'decisions.invitations_popup.save_error' => [
+            'text' => 'Impossible d enregistrer les invitations pour le moment.',
+            'context' => 'Generic error returned when invitation changes cannot be saved.',
+        ],
+        'decisions.invitations_popup.updated' => [
+            'text' => 'Invitations mises a jour.',
+            'context' => 'Success message returned after saving invitation changes.',
+        ],
+        'decisions.invitations_popup.drawer_title' => [
+            'text' => 'Prises de decision',
+            'context' => 'Drawer title used when reopening the decision editor after saving invitation changes.',
+        ],
+        'decisions.invitations_popup.current' => [
+            'text' => '(courant)',
+            'context' => 'Suffix shown next to the current holon in the invitation tree.',
+        ],
+        'decisions.invitations_popup.context.current' => [
+            'text' => 'du contexte courant',
+            'context' => 'Suffix used in the intro when a current holon context exists.',
+        ],
+        'decisions.invitations_popup.context.organization' => [
+            'text' => 'de l organisation',
+            'context' => 'Suffix used in the intro when the organization is the active context.',
+        ],
+        'decisions.invitations_popup.intro' => [
+            'text' => 'Definissez ici les participants explicites du scrutin. Si vous laissez tout vide, seuls les membres {context_label} restent autorises.',
+            'context' => 'Introductory text displayed at the top of the invitation popup.',
+        ],
+        'decisions.invitations_popup.no_structure' => [
+            'text' => 'Cette organisation n a pas encore de structure. Vous pouvez inviter directement des membres de l organisation ou des adresses e-mail externes.',
+            'context' => 'Hint shown when the organization has no holon structure.',
+        ],
+        'decisions.invitations_popup.tabs_aria' => [
+            'text' => 'Categories d invitations',
+            'context' => 'Accessible label for the invitation popup tabs.',
+        ],
+        'decisions.invitations_popup.tab.holons' => [
+            'text' => 'Holons',
+            'context' => 'Tab label for invited holons.',
+        ],
+        'decisions.invitations_popup.tab.members' => [
+            'text' => 'Membres',
+            'context' => 'Tab label for invited organization members.',
+        ],
+        'decisions.invitations_popup.tab.guests' => [
+            'text' => 'Invites',
+            'context' => 'Tab label for invited guest emails.',
+        ],
+        'decisions.invitations_popup.tab.public' => [
+            'text' => 'Public',
+            'context' => 'Tab label for public participation settings and public-link additions.',
+        ],
+        'decisions.invitations_popup.holons_title' => [
+            'text' => 'Holons invites',
+            'context' => 'Section title for invited holons in the invitation popup.',
+        ],
+        'decisions.invitations_popup.holons_hint' => [
+            'text' => 'Le holon courant apparait ici comme n importe quel autre. S il n est pas coche, ses membres ne seront pas inclus des qu une invitation explicite existe.',
+            'context' => 'Hint shown under the invited holons section.',
+        ],
+        'decisions.invitations_popup.members_title' => [
+            'text' => 'Membres supplementaires de l organisation',
+            'context' => 'Section title for invited organization members.',
+        ],
+        'decisions.invitations_popup.members_hint_structure' => [
+            'text' => 'Cochez les membres a inviter individuellement, en plus des holons selectionnes.',
+            'context' => 'Hint shown below invited members when a holon structure exists.',
+        ],
+        'decisions.invitations_popup.members_hint_flat' => [
+            'text' => 'Cochez les membres a inviter individuellement. Sans structure, ils representent le contexte organisationnel.',
+            'context' => 'Hint shown below invited members when there is no holon structure.',
+        ],
+        'decisions.invitations_popup.guests_title' => [
+            'text' => 'Adresses e-mail externes',
+            'context' => 'Section title for invited external email addresses.',
+        ],
+        'decisions.invitations_popup.guests_placeholder' => [
+            'text' => 'prenom.nom@exemple.ch',
+            'context' => 'Placeholder used in the external guest emails textarea.',
+        ],
+        'decisions.invitations_popup.guests_hint' => [
+            'text' => 'Une adresse par ligne. Les invitations seront envoyees plus tard.',
+            'context' => 'Hint shown below the external guest emails textarea.',
+        ],
+        'decisions.invitations_popup.public_title' => [
+            'text' => 'Participation sans invitation',
+            'context' => 'Title of the checkbox enabling public self-registration.',
+        ],
+        'decisions.invitations_popup.public_hint' => [
+            'text' => 'Toute personne disposant du lien public peut demander un code par e-mail. Si son adresse n est pas encore associee a ce scrutin, un participant est cree automatiquement.',
+            'context' => 'Hint shown under the public self-registration checkbox.',
+        ],
+        'decisions.invitations_popup.public_people_title' => [
+            'text' => 'Personnes deja ajoutees via le lien public',
+            'context' => 'Title of the list showing people already added from the public link.',
+        ],
+        'decisions.invitations_popup.public_people_empty' => [
+            'text' => 'Personne ne s est encore ajoute via le lien public.',
+            'context' => 'Empty-state text for the public-link participant list.',
+        ],
+        'decisions.invitations_popup.public_people_hint' => [
+            'text' => 'Ces personnes restent distinctes des invitations explicites, mais elles ont deja demande un acces.',
+            'context' => 'Hint shown below the public-link participant list.',
+        ],
+        'decisions.invitations_popup.public_member_badge' => [
+            'text' => 'Ajoute via lien public',
+            'context' => 'Tooltip shown on a disabled checked member checkbox when the person joined via the public link.',
+        ],
+        'decisions.invitations_popup.public_member_type' => [
+            'text' => 'Membre de l organisation',
+            'context' => 'Secondary label shown for a public-link participant tied to an existing organization member.',
+        ],
+        'decisions.invitations_popup.public_guest_type' => [
+            'text' => 'Adresse externe',
+            'context' => 'Secondary label shown for a public-link participant tied only to an external email.',
+        ],
+        'decisions.invitations_popup.submit' => [
+            'text' => 'Enregistrer les invitations',
+            'context' => 'Submit button label in the invitation popup.',
+        ],
+        'decisions.invitations_popup.js_error' => [
+            'text' => 'Une erreur est survenue.',
+            'context' => 'Fallback error message shown by the popup JavaScript when the server does not return a message.',
+        ],
+        'decisions.invitations_popup.js_request_error' => [
+            'text' => 'Impossible d enregistrer ces invitations pour le moment.',
+            'context' => 'Network error message shown by the popup JavaScript when the request fails.',
+        ],
+    ];
+}
+
+function omoDecisionInvitationsPopupT($key, array $variables = [])
+{
+    global $lang, $sourceLang;
+
+    return t($key, $variables, $lang, $sourceLang);
+}
+
 function omoDecisionInvitationsPopupParseEmails($value)
 {
     $rawItems = is_array($value)
@@ -76,7 +225,7 @@ function omoDecisionInvitationsBuildHolonTreeData(Holon $holon, Organization $or
     ];
 }
 
-function omoDecisionInvitationsRenderHolonTreeNode(array $node)
+function omoDecisionInvitationsRenderHolonTreeNode(array $node, $currentLabel)
 {
     $hasChildren = !empty($node['hasChildren']);
     $isExpanded = !empty($node['isExpanded']);
@@ -99,7 +248,7 @@ function omoDecisionInvitationsRenderHolonTreeNode(array $node)
             <label class="omo-decision-invitations-popup__check">
                 <input type="checkbox" name="holon_ids[]" value="<?= (int)$node['id'] ?>"<?= !empty($node['isSelected']) ? ' checked' : '' ?>>
                 <span class="omo-decision-invitations-popup__check-meta">
-                    <strong><?= omoApiEscape((string)$node['label']) ?><?= !empty($node['isCurrent']) ? ' (courant)' : '' ?></strong>
+                    <strong><?= omoApiEscape((string)$node['label']) ?><?= !empty($node['isCurrent']) ? ' ' . omoApiEscape((string)$currentLabel) : '' ?></strong>
                     <span class="omo-decision-invitations-popup__check-type"><?= omoApiEscape((string)$node['typeLabel']) ?></span>
                 </span>
             </label>
@@ -108,7 +257,7 @@ function omoDecisionInvitationsRenderHolonTreeNode(array $node)
         <?php if ($hasChildren): ?>
         <div class="omo-decision-invitations-popup__tree-children" data-omo-decision-holon-children<?= $isExpanded ? '' : ' hidden' ?>>
             <?php foreach ($node['children'] as $childNode): ?>
-                <?php omoDecisionInvitationsRenderHolonTreeNode($childNode); ?>
+                <?php omoDecisionInvitationsRenderHolonTreeNode($childNode, $currentLabel); ?>
             <?php endforeach; ?>
         </div>
         <?php endif; ?>
@@ -120,12 +269,14 @@ $input = $_SERVER['REQUEST_METHOD'] === 'POST'
     ? array_merge($_GET, $_POST)
     : $_GET;
 $context = omoDecisionResolveEditorContext($input);
+$sourceLang = omoDecisionInvitationsPopupSourceLang();
+$lang = omoLoadTranslationBundle('omo_decision_invitations_popup', $sourceLang);
 
 if (empty($context['status']) || empty($context['decision']) || !($context['decision'] instanceof DecisionProcess) || empty($context['canManage'])) {
     $statusCode = (int)($context['code'] ?? 403);
     http_response_code($statusCode);
     ?>
-    <div class="omo-decision-invitations-popup__empty">Vous ne pouvez pas gerer les invitations de ce scrutin.</div>
+    <div class="omo-decision-invitations-popup__empty"><?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.denied')) ?></div>
     <?php
     exit;
 }
@@ -146,109 +297,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $selectedUserIds = array_values(array_unique(array_filter(array_map('intval', $_POST['user_ids'] ?? []), static function ($userId) {
         return $userId > 0;
     })));
-    $selectedEmails = omoDecisionInvitationsPopupParseEmails($_POST['emails'] ?? '');
-
-    $validHolonLabels = [];
-    foreach ($selectedHolonIds as $holonId) {
-        $holon = new Holon();
-        if (!$holon->load($holonId) || !$organization->containsHolon($holon) || !$holon->canViewDetail()) {
-            omoDecisionModuleJsonResponse(422, [
-                'status' => false,
-                'message' => 'Un holon selectionne est invalide.',
-            ]);
-        }
-
-        $validHolonLabels[$holonId] = trim((string)$holon->getDisplayName());
-    }
-
-    $validUserLabels = [];
-    foreach ($selectedUserIds as $userId) {
-        $membership = new UserOrganization();
-        if (!$membership->load([
-            ['IDorganization', $organizationId],
-            ['IDuser', $userId],
-        ]) || !(bool)$membership->get('active')) {
-            omoDecisionModuleJsonResponse(422, [
-                'status' => false,
-                'message' => 'Un membre selectionne est invalide.',
-            ]);
-        }
-
-        $validUserLabels[$userId] = trim((string)$membership->getUserDisplayName());
-    }
-
-    $existingInvitations = [];
-    foreach ($decision->getInvitations(false) as $invitation) {
-        if ($invitation instanceof DecisionInvitation) {
-            $existingInvitations[$invitation->getIdentityKey()] = $invitation;
-        }
-    }
-
-    $desiredInvitations = [];
-    foreach ($selectedHolonIds as $holonId) {
-        $desiredInvitations['holon:' . $holonId] = [
-            'invitation_type' => DecisionInvitation::TYPE_HOLON,
-            'IDholon' => $holonId,
-            'display_name' => $validHolonLabels[$holonId] ?? '',
-        ];
-    }
-    foreach ($selectedUserIds as $userId) {
-        $desiredInvitations['user:' . $userId] = [
-            'invitation_type' => DecisionInvitation::TYPE_USER,
-            'IDuser' => $userId,
-            'display_name' => $validUserLabels[$userId] ?? '',
-        ];
-    }
-    foreach ($selectedEmails as $email) {
-        $desiredInvitations['email:' . $email] = [
-            'invitation_type' => DecisionInvitation::TYPE_EMAIL,
-            'email' => $email,
-            'display_name' => $email,
-        ];
-    }
+    $selectedEmails = omoDecisionParseInvitationEmails($_POST['emails'] ?? '');
+    $allowPublicSelfRegistration = !empty($_POST['allow_public_self_registration']);
 
     $pdo = DbObject::getPdo();
     if (!$pdo) {
         omoDecisionModuleJsonResponse(500, [
             'status' => false,
-            'message' => 'Connexion a la base impossible.',
+            'message' => omoDecisionInvitationsPopupT('decisions.invitations_popup.db_error'),
         ]);
     }
 
     try {
         $pdo->beginTransaction();
 
-        foreach ($desiredInvitations as $identityKey => $invitationData) {
-            $invitation = $existingInvitations[$identityKey] ?? new DecisionInvitation();
-            $invitation->set('IDdecision_process', (int)$decision->getId());
-            $invitation->set('invitation_type', $invitationData['invitation_type']);
-            $invitation->set('IDholon', $invitationData['IDholon'] ?? null);
-            $invitation->set('IDuser', $invitationData['IDuser'] ?? null);
-            $invitation->set('email', $invitationData['email'] ?? null);
-            $invitation->set('display_name', $invitationData['display_name'] ?? null);
-            $invitation->set('status', DecisionInvitation::STATUS_INVITED);
-            $invitation->set('active', 1);
-            $invitation->set('parameters', [
-                'updated_from_popup' => 1,
-            ]);
-
-            $saveResult = $invitation->save();
-            if (!is_array($saveResult) || empty($saveResult['status'])) {
-                throw new RuntimeException('invitation_save_failed');
-            }
-        }
-
-        foreach ($existingInvitations as $identityKey => $invitation) {
-            if (isset($desiredInvitations[$identityKey])) {
-                continue;
-            }
-
-            $invitation->set('active', 0);
-            $invitation->set('status', DecisionInvitation::STATUS_REVOKED);
-            $saveResult = $invitation->save();
-            if (!is_array($saveResult) || empty($saveResult['status'])) {
-                throw new RuntimeException('invitation_revoke_failed');
-            }
+        $applyResult = omoDecisionApplyInvitationSelections(
+            $decision,
+            $organization,
+            $organizationId,
+            $selectedHolonIds,
+            $selectedUserIds,
+            $selectedEmails,
+            $allowPublicSelfRegistration
+        );
+        if (empty($applyResult['status'])) {
+            throw new InvalidArgumentException(
+                trim((string)($applyResult['message'] ?? omoDecisionInvitationsPopupT('decisions.invitations_popup.save_error')))
+            );
         }
 
         $syncResult = $decision->syncParticipantsFromInvitations();
@@ -257,6 +332,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $pdo->commit();
+    } catch (InvalidArgumentException $exception) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        omoDecisionModuleJsonResponse(422, [
+            'status' => false,
+            'message' => trim((string)$exception->getMessage()) !== ''
+                ? trim((string)$exception->getMessage())
+                : omoDecisionInvitationsPopupT('decisions.invitations_popup.save_error'),
+        ]);
     } catch (Throwable $exception) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
@@ -264,15 +350,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         omoDecisionModuleJsonResponse(500, [
             'status' => false,
-            'message' => 'Impossible d enregistrer les invitations pour le moment.',
+            'message' => omoDecisionInvitationsPopupT('decisions.invitations_popup.save_error'),
         ]);
     }
 
     omoDecisionModuleJsonResponse(200, [
         'status' => true,
-        'message' => 'Invitations mises a jour.',
+        'message' => omoDecisionInvitationsPopupT('decisions.invitations_popup.updated'),
         'redirectUrl' => omoDecisionBuildEditorUrl($organizationId, $targetHolonId, (int)$decision->getId(), $method, 'manage'),
-        'drawerTitle' => 'Prises de decision',
+        'drawerTitle' => omoDecisionInvitationsPopupT('decisions.invitations_popup.drawer_title'),
     ]);
 }
 
@@ -300,13 +386,21 @@ foreach ($decision->getInvitations(true) as $invitation) {
 $selectedHolonIds = array_values(array_unique(array_filter($selectedHolonIds)));
 $selectedUserIds = array_values(array_unique(array_filter($selectedUserIds)));
 $selectedEmails = array_values(array_unique(array_filter($selectedEmails)));
+$allowPublicSelfRegistration = $decision->isPublicSelfRegistrationEnabled();
+$publicOptInState = function_exists('omoDecisionExtractPublicOptInSelections')
+    ? omoDecisionExtractPublicOptInSelections($decision)
+    : ['entries' => [], 'user_ids' => [], 'emails' => [], 'count' => 0];
+$publicOptInEntries = (array)($publicOptInState['entries'] ?? []);
+$publicOptInUserIds = array_values(array_unique(array_map('intval', (array)($publicOptInState['user_ids'] ?? []))));
 
 $rootHolon = $organization instanceof Organization ? $organization->getEnabledStructuralRootHolon() : null;
 $holonTree = $rootHolon instanceof Holon
     ? omoDecisionInvitationsBuildHolonTreeData($rootHolon, $organization, $selectedHolonIds, $targetHolonId)
     : null;
 $hasHolonStructure = is_array($holonTree);
-$currentContextLabel = $effectiveHolon instanceof Holon ? 'du contexte courant' : 'de l organisation';
+$currentContextLabel = $effectiveHolon instanceof Holon
+    ? omoDecisionInvitationsPopupT('decisions.invitations_popup.context.current')
+    : omoDecisionInvitationsPopupT('decisions.invitations_popup.context.organization');
 
 $memberships = new ArrayUserOrganization();
 $memberships->loadActiveForOrganization($organizationId);
@@ -434,14 +528,6 @@ $memberships->loadActiveForOrganization($organizationId);
     font-size: 0.9rem;
 }
 
-.omo-decision-invitations-popup__select,
-.omo-decision-invitations-popup__textarea {
-    --generic-form-control-border: var(--topbar-panel-border, #dbe3ef);
-    --generic-form-control-background: var(--topbar-panel-bg, #ffffff);
-    --generic-form-control-background-focus: var(--topbar-panel-bg, #ffffff);
-    --generic-form-control-color: inherit;
-}
-
 .omo-decision-invitations-popup__textarea {
     min-height: 120px;
 }
@@ -461,6 +547,12 @@ $memberships->loadActiveForOrganization($organizationId);
 .omo-decision-invitations-popup__feedback.is-success {
     color: #15803d;
 }
+
+.omo-decision-invitations-popup__public-empty {
+    margin: 0;
+    color: var(--topbar-panel-muted, #64748b);
+    line-height: 1.5;
+}
 </style>
 
 <form
@@ -470,43 +562,45 @@ $memberships->loadActiveForOrganization($organizationId);
     method="post"
 >
     <p class="omo-decision-invitations-popup__intro">
-        Definissez ici les participants explicites du scrutin. Si vous laissez tout vide, seuls les membres <?= omoApiEscape($currentContextLabel) ?> restent autorises.
+        <?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.intro', ['context_label' => $currentContextLabel])) ?>
     </p>
 
     <?php if (!$hasHolonStructure): ?>
     <p class="omo-decision-invitations-popup__hint">
-        Cette organisation n a pas encore de structure. Vous pouvez inviter directement des membres de l organisation ou des adresses e-mail externes.
+        <?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.no_structure')) ?>
     </p>
     <?php endif; ?>
 
     <div class="generic-tabs omo-decision-invitations-popup__tabs" data-generic-tabs>
-        <div class="generic-tabs__list" aria-label="Categories d invitations">
+        <div class="generic-tabs__list" aria-label="<?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.tabs_aria')) ?>">
             <?php if ($hasHolonStructure): ?>
-            <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="omoDecisionInvitationsTabHolons">Holons</button>
-            <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omoDecisionInvitationsTabMembers">Membres</button>
-            <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omoDecisionInvitationsTabGuests">Invites</button>
+            <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="omoDecisionInvitationsTabHolons"><?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.tab.holons')) ?></button>
+            <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omoDecisionInvitationsTabMembers"><?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.tab.members')) ?></button>
+            <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omoDecisionInvitationsTabGuests"><?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.tab.guests')) ?></button>
+            <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omoDecisionInvitationsTabPublic"><?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.tab.public')) ?></button>
             <?php else: ?>
-            <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="omoDecisionInvitationsTabMembers">Membres</button>
-            <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omoDecisionInvitationsTabGuests">Invites</button>
+            <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="omoDecisionInvitationsTabMembers"><?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.tab.members')) ?></button>
+            <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omoDecisionInvitationsTabGuests"><?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.tab.guests')) ?></button>
+            <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omoDecisionInvitationsTabPublic"><?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.tab.public')) ?></button>
             <?php endif; ?>
         </div>
         <div class="generic-tabs__panels">
             <?php if ($hasHolonStructure): ?>
             <div id="omoDecisionInvitationsTabHolons" class="generic-tabs__panel omo-decision-invitations-popup__tab-panel" data-generic-tab-panel>
-                <strong>Holons invites</strong>
+                <strong><?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.holons_title')) ?></strong>
                 <p class="omo-decision-invitations-popup__hint">
-                    Le holon courant apparait ici comme n importe quel autre. S il n est pas coche, ses membres ne seront pas inclus des qu une invitation explicite existe.
+                    <?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.holons_hint')) ?>
                 </p>
                 <div class="omo-decision-invitations-popup__checklist">
                     <?php if (is_array($holonTree)): ?>
-                        <?php omoDecisionInvitationsRenderHolonTreeNode($holonTree); ?>
+                        <?php omoDecisionInvitationsRenderHolonTreeNode($holonTree, omoDecisionInvitationsPopupT('decisions.invitations_popup.current')); ?>
                     <?php endif; ?>
                 </div>
             </div>
             <?php endif; ?>
 
             <div id="omoDecisionInvitationsTabMembers" class="generic-tabs__panel omo-decision-invitations-popup__tab-panel" data-generic-tab-panel<?= $hasHolonStructure ? ' hidden' : '' ?>>
-                <strong>Membres supplementaires de l organisation</strong>
+                <strong><?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.members_title')) ?></strong>
                 <div class="omo-decision-invitations-popup__member-list">
                     <?php foreach ($memberships as $membership): ?>
                         <?php
@@ -516,9 +610,17 @@ $memberships->loadActiveForOrganization($organizationId);
                         }
                         $displayName = $membership->getUserDisplayName();
                         $secondary = $membership->getScopedEmail() !== '' ? $membership->getScopedEmail() : $membership->getUserSecondaryLabel();
+                        $isExplicitUser = in_array($userId, $selectedUserIds, true);
+                        $isPublicOnlyUser = in_array($userId, $publicOptInUserIds, true) && !$isExplicitUser;
                         ?>
                         <label class="omo-decision-invitations-popup__check">
-                            <input type="checkbox" name="user_ids[]" value="<?= $userId ?>"<?= in_array($userId, $selectedUserIds, true) ? ' checked' : '' ?>>
+                            <input
+                                type="checkbox"
+                                name="user_ids[]"
+                                value="<?= $userId ?>"
+                                <?= ($isExplicitUser || $isPublicOnlyUser) ? ' checked' : '' ?>
+                                <?= $isPublicOnlyUser ? ' disabled title="' . omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.public_member_badge')) . '"' : '' ?>
+                            >
                             <span class="omo-decision-invitations-popup__check-meta">
                                 <strong><?= omoApiEscape($displayName) ?></strong>
                                 <?php if ($secondary !== ''): ?>
@@ -529,22 +631,63 @@ $memberships->loadActiveForOrganization($organizationId);
                     <?php endforeach; ?>
                 </div>
                 <p class="omo-decision-invitations-popup__hint">
-                    <?= $hasHolonStructure
-                        ? 'Cochez les membres a inviter individuellement, en plus des holons selectionnes.'
-                        : 'Cochez les membres a inviter individuellement. Sans structure, ils representent le contexte organisationnel.' ?>
+                    <?= omoApiEscape($hasHolonStructure
+                        ? omoDecisionInvitationsPopupT('decisions.invitations_popup.members_hint_structure')
+                        : omoDecisionInvitationsPopupT('decisions.invitations_popup.members_hint_flat')) ?>
                 </p>
             </div>
 
             <div id="omoDecisionInvitationsTabGuests" class="generic-tabs__panel omo-decision-invitations-popup__tab-panel" data-generic-tab-panel hidden>
-                <label for="omoDecisionInvitationsEmails"><strong>Adresses e-mail externes</strong></label>
+                <label for="omoDecisionInvitationsEmails"><strong><?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.guests_title')) ?></strong></label>
                 <textarea
                     id="omoDecisionInvitationsEmails"
                     name="emails"
                     class="omo-decision-invitations-popup__textarea generic-form-control"
-                    placeholder="prenom.nom@exemple.ch"
+                    placeholder="<?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.guests_placeholder')) ?>"
                 ><?= omoApiEscape(implode("\n", $selectedEmails)) ?></textarea>
                 <p class="omo-decision-invitations-popup__hint">
-                    Une adresse par ligne. Les invitations seront envoyees plus tard.
+                    <?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.guests_hint')) ?>
+                </p>
+            </div>
+
+            <div id="omoDecisionInvitationsTabPublic" class="generic-tabs__panel omo-decision-invitations-popup__tab-panel" data-generic-tab-panel hidden>
+                <div class="generic-soft-panel generic-soft-panel--stack">
+                    <label class="omo-decision-invitations-popup__check">
+                        <input type="checkbox" name="allow_public_self_registration" value="1"<?= $allowPublicSelfRegistration ? ' checked' : '' ?>>
+                        <span class="omo-decision-invitations-popup__check-meta">
+                            <strong><?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.public_title')) ?></strong>
+                            <span class="omo-decision-invitations-popup__member-email">
+                                <?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.public_hint')) ?>
+                            </span>
+                        </span>
+                    </label>
+                </div>
+
+                <strong><?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.public_people_title')) ?></strong>
+                <?php if (count($publicOptInEntries) > 0): ?>
+                <div class="omo-decision-invitations-popup__checklist">
+                    <?php foreach ($publicOptInEntries as $publicOptInEntry): ?>
+                    <div class="generic-soft-panel generic-soft-panel--stack">
+                        <strong><?= omoApiEscape((string)$publicOptInEntry['label']) ?></strong>
+                        <?php if (trim((string)$publicOptInEntry['email']) !== '' && trim((string)$publicOptInEntry['email']) !== trim((string)$publicOptInEntry['label'])): ?>
+                        <span class="omo-decision-invitations-popup__member-email"><?= omoApiEscape((string)$publicOptInEntry['email']) ?></span>
+                        <?php endif; ?>
+                        <span class="omo-decision-invitations-popup__member-email">
+                            <?= omoApiEscape((int)($publicOptInEntry['userId'] ?? 0) > 0
+                                ? omoDecisionInvitationsPopupT('decisions.invitations_popup.public_member_type')
+                                : omoDecisionInvitationsPopupT('decisions.invitations_popup.public_guest_type')) ?>
+                        </span>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                <?php else: ?>
+                <p class="omo-decision-invitations-popup__public-empty">
+                    <?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.public_people_empty')) ?>
+                </p>
+                <?php endif; ?>
+
+                <p class="omo-decision-invitations-popup__hint">
+                    <?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.public_people_hint')) ?>
                 </p>
             </div>
         </div>
@@ -554,7 +697,7 @@ $memberships->loadActiveForOrganization($organizationId);
 
     <div class="omo-decision-invitations-popup__actions">
         <button type="submit" id="omoDecisionInvitationsPopupSubmit" class="generic-action-button generic-action-button--main">
-            Enregistrer les invitations
+            <?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.submit')) ?>
         </button>
     </div>
 </form>
@@ -618,12 +761,12 @@ $memberships->loadActiveForOrganization($organizationId);
             })
             .then(function (result) {
                 if (!result.ok || !result.data || !result.data.status) {
-                    feedback.textContent = result.data && result.data.message ? result.data.message : 'Une erreur est survenue.';
+                    feedback.textContent = result.data && result.data.message ? result.data.message : <?= json_encode(omoDecisionInvitationsPopupT('decisions.invitations_popup.js_error')) ?>;
                     submitButton.disabled = false;
                     return;
                 }
 
-                feedback.textContent = result.data.message || 'Invitations mises a jour.';
+                feedback.textContent = result.data.message || <?= json_encode(omoDecisionInvitationsPopupT('decisions.invitations_popup.updated')) ?>;
                 feedback.classList.add('is-success');
 
                 if (typeof window.commonTopbarCloseModal === 'function') {
@@ -631,16 +774,16 @@ $memberships->loadActiveForOrganization($organizationId);
                 }
 
                 if (result.data.redirectUrl && typeof window.omoDecisionOpenNestedDrawer === 'function') {
-                    window.omoDecisionOpenNestedDrawer(result.data.drawerTitle || 'Prises de decision', result.data.redirectUrl, '');
+                    window.omoDecisionOpenNestedDrawer(result.data.drawerTitle || <?= json_encode(omoDecisionInvitationsPopupT('decisions.invitations_popup.drawer_title')) ?>, result.data.redirectUrl, '');
                     return;
                 }
 
                 if (result.data.redirectUrl && typeof window.commonTopbarOpenDrawer === 'function') {
-                    window.commonTopbarOpenDrawer(result.data.drawerTitle || 'Prises de decision', result.data.redirectUrl, 'fetch');
+                    window.commonTopbarOpenDrawer(result.data.drawerTitle || <?= json_encode(omoDecisionInvitationsPopupT('decisions.invitations_popup.drawer_title')) ?>, result.data.redirectUrl, 'fetch');
                 }
             })
             .catch(function () {
-                feedback.textContent = 'Impossible d enregistrer ces invitations pour le moment.';
+                feedback.textContent = <?= json_encode(omoDecisionInvitationsPopupT('decisions.invitations_popup.js_request_error')) ?>;
                 submitButton.disabled = false;
             });
     });

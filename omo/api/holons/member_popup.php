@@ -94,14 +94,6 @@ foreach ($directMembers as $member) {
         font-weight: 700;
     }
 
-    .omo-holon-member-popup__select,
-    .omo-holon-member-popup__email {
-        --generic-form-control-border: var(--topbar-panel-border, #dbe3ef);
-        --generic-form-control-background: var(--topbar-panel-bg, #ffffff);
-        --generic-form-control-background-focus: var(--topbar-panel-bg, #ffffff);
-        --generic-form-control-color: inherit;
-    }
-
     .omo-holon-member-popup__hint {
         color: var(--topbar-panel-muted, #64748b);
         font-size: 0.92rem;
@@ -276,6 +268,14 @@ foreach ($directMembers as $member) {
 
                     feedback.textContent = result.data.message || 'Membre ajouté.';
                     feedback.classList.add('is-success');
+
+                    if (typeof refreshDrawer === 'function') {
+                        var drawerUrl = '/omo/api/team/index.php?oid=' + organizationId;
+                        if (holonId > 0 && holonId !== rootHolonId) {
+                            drawerUrl += '&cid=' + holonId;
+                        }
+                        refreshDrawer('drawer_team', drawerUrl);
+                    }
 
                     if (typeof loadContent === 'function') {
                         var leftUrl = 'api/getOrg.php?oid=' + organizationId;

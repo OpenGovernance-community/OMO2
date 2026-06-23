@@ -124,7 +124,6 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
 
 .omo-setup-panel__hero {
     --generic-hero-padding: 22px;
-    --generic-hero-radius: 18px;
     --generic-hero-background:
         radial-gradient(circle at top right, color-mix(in srgb, var(--color-primary, #2563eb) 18%, transparent), transparent 45%),
         linear-gradient(135deg, color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #fff)), var(--color-surface, #fff));
@@ -154,8 +153,6 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
 
 .omo-setup-panel__section {
     --generic-section-padding-block: 18px;
-    --generic-section-padding-inline: 18px;
-    --generic-section-border: var(--color-border, #d1d5db);
     --generic-section-radius: 16px;
     --generic-section-shadow: var(--shadow-sm, 0 2px 6px rgba(15, 23, 42, 0.05));
 }

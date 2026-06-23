@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
+require_once dirname(__DIR__) . '/common/omo_public_pages.php';
 require_once dirname(__DIR__) . '/common/topbar.php';
 
 $token = commonGetCurrentShareToken();
@@ -140,16 +141,10 @@ if ($requestedCid > 0) {
     }
 }
 
-$organizationContext = array(
-    'id' => (int)$organization->getId(),
-    'name' => (string)$organization->get('name'),
-    'shortname' => (string)$organization->get('shortname'),
-    'domain' => (string)$organization->get('domain'),
-    'logo' => (string)$organization->get('logo'),
-    'banner' => (string)$organization->get('banner'),
-    'color' => trim((string)$organization->get('color')),
-    'host' => commonGetRequestHost(),
-);
+$organizationContext = commonBuildOmoPublicOrganizationContext($organization);
+$accentColor = trim((string)$organization->get('color'));
+$helpItems = commonBuildOmoPublicHelpItems('share', (string)$organization->get('name'));
+$brandHref = $shareLink->buildShareUrl($initialCid);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -159,9 +154,14 @@ $organizationContext = array(
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="/shared_functions.js"></script>
     <script>sharedApplyDocumentTheme();</script>
+    <link rel="stylesheet" href="/common/assets/omo_public_pages.css">
     <link rel="stylesheet" href="/omo/assets/css/styles.css">
     <base href="/omo/">
     <style>
+    :root {
+        --omo-public-accent: <?= htmlspecialchars($accentColor !== '' ? $accentColor : '#2563eb', ENT_QUOTES, 'UTF-8') ?>;
+    }
+
     body.omo-share-body {
         overflow: hidden;
     }
@@ -175,11 +175,9 @@ $organizationContext = array(
     }
 
     .omo-share-banner {
-        padding: 10px 16px;
-        border-bottom: 1px solid var(--color-border, #e2e8f0);
-        background: color-mix(in srgb, var(--color-primary, #2563eb) 12%, var(--color-surface, #ffffff));
-        color: var(--color-text, #1f2937);
-        font-size: 13px;
+        margin: 0;
+        border: 0;
+        border-radius: 0;
     }
 
     .omo-share-placeholder {
@@ -209,9 +207,16 @@ $organizationContext = array(
         margin: 0;
         line-height: 1.6;
     }
+
+    @media (max-width: 768px) {
+        .omo-share-page .main {
+            height: 100dvh;
+            max-height: 100dvh;
+        }
+    }
     </style>
 </head>
-<body class="view-left omo-share-body">
+<body class="view-left omo-share-body omo-public-body">
 <div class="app omo-share-page">
     <div class="main">
         <?php
@@ -219,6 +224,7 @@ $organizationContext = array(
             'appKey' => 'omo-share',
             'appLabel' => 'OMO',
             'organization' => $organizationContext,
+            'brandHref' => $brandHref,
             'brandLabel' => (string)$organization->get('name'),
             'profile' => array(
                 'enabled' => false,
@@ -226,11 +232,11 @@ $organizationContext = array(
             'search' => array(
                 'enabled' => false,
             ),
-            'helpItems' => array(),
-            'helpLabel' => 'Infos',
+            'helpItems' => $helpItems,
+            'helpLabel' => 'Aide',
         ));
         ?>
-        <div class="omo-share-banner">
+        <div class="omo-public-banner omo-share-banner">
             Lien partage public pour <?= htmlspecialchars($scopeHolon->getDisplayName(), ENT_QUOTES, 'UTF-8') ?>
         </div>
         <div class="content">
@@ -238,6 +244,10 @@ $organizationContext = array(
             <div class="resizer" id="resizer"></div>
             <div class="panel panel-right" id="panel-right"></div>
         </div>
+        <nav class="mobile-nav" id="omo-mobile-nav" aria-label="Navigation du partage">
+            <button type="button" data-view="left">Infos</button>
+            <button type="button" data-view="right">Structure</button>
+        </nav>
     </div>
 </div>
 

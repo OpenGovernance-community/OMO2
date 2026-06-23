@@ -106,30 +106,7 @@
 
 		protected static function computeUserInitials($displayName)
 		{
-			$displayName = trim((string)$displayName);
-			if ($displayName === '') {
-				return 'P';
-			}
-
-			$words = preg_split('/\s+/u', $displayName) ?: [];
-			$initials = '';
-			foreach ($words as $word) {
-				$word = trim((string)$word);
-				if ($word === '') {
-					continue;
-				}
-
-				$initials .= mb_substr($word, 0, 1, 'UTF-8');
-				if (mb_strlen($initials, 'UTF-8') >= 2) {
-					break;
-				}
-			}
-
-			if ($initials === '') {
-				$initials = mb_substr($displayName, 0, 1, 'UTF-8');
-			}
-
-			return mb_strtoupper($initials, 'UTF-8');
+			return User::buildInitials($displayName);
 		}
 
 		protected static function buildValidatorDisplayName(array $row)

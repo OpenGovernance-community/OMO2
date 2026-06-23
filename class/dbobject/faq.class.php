@@ -22,8 +22,10 @@ class FAQ extends DbObject
 			[['IDorganization', 'IDholon'], 'fk'],
 			[['positive_score', 'negative_score', 'reliability'], 'float'],
 			[['question'], 'string'],
+			[['video'], 'string'],
 			[['answer'], 'text'],
 			[['detail'], 'html'],
+			[['image'], 'image'],
 			[['isactive'], 'boolean'],
 			[['created', 'updated', 'reliability_updated_at', 'score_decayed_at'], 'datetime'],
 			[['id'], 'safe'],
@@ -40,6 +42,8 @@ class FAQ extends DbObject
 			'question' => 'Question',
 			'detail' => 'Reponse complete',
 			'answer' => 'Reponse courte',
+			'image' => 'Image',
+			'video' => 'Video',
 			'displayorder' => 'Ordre',
 			'isactive' => 'Active',
 			'created' => 'Creee le',
@@ -58,6 +62,15 @@ class FAQ extends DbObject
 	{
 		return [
 			'question' => 255,
+			'video' => 1000,
+			'image' => [480, 270],
+		];
+	}
+
+	public static function attributePlaceholder()
+	{
+		return [
+			'video' => 'https://vimeo.com/...',
 		];
 	}
 
@@ -337,16 +350,41 @@ class FAQ extends DbObject
 
 	public static function normalizePopupScope($scope = null, array $context = array())
 	{
+		$organizationId = (int)($context['organizationId'] ?? 0);
+		$currentHolon = isset($context['currentHolon']) && $context['currentHolon'] instanceof \dbObject\Holon
+			? $context['currentHolon']
+			: null;
+		$rootHolon = isset($context['rootHolon']) && $context['rootHolon'] instanceof \dbObject\Holon
+			? $context['rootHolon']
+			: null;
+
+		if (
+			function_exists('omoApiGetAvailableContextScopes')
+			&& function_exists('omoApiNormalizeContextScope')
+		) {
+			return \omoApiNormalizeContextScope(
+				$scope,
+				\omoApiGetAvailableContextScopes($organizationId > 0, $currentHolon, $rootHolon)
+			);
+		}
+
+		$allowedScopes = array('contextual');
+		if ($organizationId > 0) {
+			if (
+				$currentHolon instanceof \dbObject\Holon
+				&& (int)$currentHolon->getId() > 0
+				&& !($rootHolon instanceof \dbObject\Holon && (int)$rootHolon->getId() === (int)$currentHolon->getId())
+			) {
+				$allowedScopes[] = 'descendants';
+			}
+
+			$allowedScopes[] = 'global';
+		}
+
 		$scope = strtolower(trim((string)$scope));
-		if ($scope !== 'global' && $scope !== 'contextual') {
-			$scope = 'contextual';
-		}
-
-		if ($scope === 'global' && (int)($context['organizationId'] ?? 0) <= 0) {
-			return 'contextual';
-		}
-
-		return $scope;
+		return in_array($scope, $allowedScopes, true)
+			? $scope
+			: 'contextual';
 	}
 
 	public static function buildPopupLoadParams(array $context = array(), $scope = 'contextual')
@@ -473,28 +511,18 @@ class FAQ extends DbObject
 		return $processedCount;
 	}
 
-	public static function canCreateContextualForHolon($holon, $userId = 0, $organizationId = 0)
+	public static function canCreateContextualForHolon($holon, $userId = 0, $organizationId = 0, $useSessionCache = true)
 	{
 		if (!$holon instanceof \dbObject\Holon || (int)$holon->getId() <= 0) {
 			return false;
 		}
 
 		$userId = (int)$userId;
-		$organizationId = (int)$organizationId;
 		if ($userId <= 0) {
 			return false;
 		}
 
-		if ($holon->canEdit()) {
-			return true;
-		}
-
-		$memberUserIds = $holon->getAssociatedMemberUserIds(array(
-			'organizationId' => $organizationId,
-			'includeDescendants' => true,
-		));
-
-		return in_array($userId, array_map('intval', $memberUserIds), true);
+		return $holon->isAllowed('CAN_CREATE_FAQ', (bool)$useSessionCache, $userId);
 	}
 
 	public function incrementViewcount()
@@ -741,14 +769,19 @@ class FAQ extends DbObject
 		} else {
 			if ($holon instanceof \dbObject\Holon) {
 				if ($currentHolon && (int)$currentHolon->getId() > 0) {
-					$matchesScope = $currentHolon->isDescendantOf($holon->getId(), true);
+					$currentHolonId = (int)$currentHolon->getId();
+					$faqHolonId = (int)$holon->getId();
+
+					if ($scope === 'descendants') {
+						$matchesScope = $holon->isDescendantOf($currentHolonId, true);
+					} else {
+						$matchesScope = $faqHolonId === $currentHolonId;
+					}
 				} else {
 					$matchesScope = false;
 				}
-			} elseif ($faqOrganizationId <= 0) {
-				$matchesScope = true;
 			} else {
-				$matchesScope = $faqOrganizationId === $contextOrganizationId;
+				$matchesScope = false;
 			}
 		}
 
@@ -781,6 +814,69 @@ class FAQ extends DbObject
 	public function getShortAnswer($length = 120)
 	{
 		return mb_strimwidth(strip_tags((string)$this->get("answer")), 0, $length, "...");
+	}
+
+	public static function buildEmbeddedVideoUrl($url)
+	{
+		$url = trim((string)$url);
+
+		if ($url === '') {
+			return '';
+		}
+
+		if (preg_match('#player\.vimeo\.com/video/(\d+)(?:[?&]h=([a-zA-Z0-9]+))?#i', $url, $matches)) {
+			$videoId = trim((string)($matches[1] ?? ''));
+			$hash = trim((string)($matches[2] ?? ''));
+
+			if ($videoId === '') {
+				return '';
+			}
+
+			return $hash !== ''
+				? 'https://player.vimeo.com/video/' . $videoId . '?h=' . $hash
+				: 'https://player.vimeo.com/video/' . $videoId;
+		}
+
+		if (preg_match('#videos/(\d+)/([a-zA-Z0-9]+)#i', $url, $matches)) {
+			$videoId = trim((string)($matches[1] ?? ''));
+			$hash = trim((string)($matches[2] ?? ''));
+
+			if ($videoId === '' || $hash === '') {
+				return '';
+			}
+
+			return 'https://player.vimeo.com/video/' . $videoId . '?h=' . $hash;
+		}
+
+		if (preg_match('#vimeo\.com/(?:video/)?(\d+)(?:$|[?/])#i', $url, $matches)) {
+			$videoId = trim((string)($matches[1] ?? ''));
+			return $videoId !== ''
+				? 'https://player.vimeo.com/video/' . $videoId
+				: '';
+		}
+
+		return '';
+	}
+
+	public function getEmbeddedVideoUrl()
+	{
+		return self::buildEmbeddedVideoUrl($this->get('video'));
+	}
+
+	public function getMediaDisplayData()
+	{
+		$imageUrl = trim((string)$this->get('image'));
+		$videoUrl = trim((string)$this->get('video'));
+		$embeddedVideoUrl = $this->getEmbeddedVideoUrl();
+
+		return array(
+			'hasImage' => $imageUrl !== '',
+			'imageUrl' => $imageUrl,
+			'hasVideo' => $videoUrl !== '',
+			'videoUrl' => $videoUrl,
+			'embeddedVideoUrl' => $embeddedVideoUrl,
+			'hasMedia' => $imageUrl !== '' || $videoUrl !== '',
+		);
 	}
 }
 

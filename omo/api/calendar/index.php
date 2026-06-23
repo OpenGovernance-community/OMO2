@@ -19,6 +19,10 @@ $sourceLang = [
         'text' => 'Contextuel',
         'context' => 'Label used to show only events from the current context.',
     ],
+    'calendar.scope.descendants' => [
+        'text' => 'Descendants',
+        'context' => 'Label used to show events from the current holon and its descendants.',
+    ],
     'calendar.scope.global' => [
         'text' => 'Global',
         'context' => 'Label used to show all events from the organization.',
@@ -207,10 +211,9 @@ function omoCalendarParseView($rawValue)
     return in_array($view, ['month', 'week', 'day', 'list'], true) ? $view : 'month';
 }
 
-function omoCalendarParseScope($rawValue)
+function omoCalendarParseScope($rawValue, array $allowedScopes = ['contextual', 'descendants', 'global'])
 {
-    $scope = strtolower(trim((string)$rawValue));
-    return $scope === 'global' ? 'global' : 'contextual';
+    return omoApiNormalizeContextScope($rawValue, $allowedScopes);
 }
 
 function omoCalendarParseDate($rawValue)
@@ -540,7 +543,8 @@ $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0))
 $currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
 $openEventId = isset($_GET['open_event_id']) && is_numeric($_GET['open_event_id']) ? (int)$_GET['open_event_id'] : 0;
 $viewMode = omoCalendarParseView($_GET['view'] ?? '');
-$calendarScope = omoCalendarParseScope($_GET['scope'] ?? '');
+$requestedScopeRaw = trim((string)($_GET['scope'] ?? ''));
+$calendarScope = 'contextual';
 $requestedMonth = omoCalendarParseMonth($_GET['month'] ?? '');
 $requestedDate = omoCalendarParseDate($_GET['date'] ?? '');
 $anchorDate = $requestedDate ?: ($requestedMonth ?: new \DateTimeImmutable('today 00:00:00'));
@@ -576,7 +580,6 @@ $rootHolon = $organization->getEnabledStructuralRootHolon();
 $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
 $openedEvent = null;
 $openedEventHolonId = 0;
-$requestedScopeRaw = trim((string)($_GET['scope'] ?? ''));
 $requestedViewRaw = trim((string)($_GET['view'] ?? ''));
 
 if ($openEventId > 0) {
@@ -616,13 +619,6 @@ if ($openEventId > 0) {
                 $viewMode = 'day';
             }
 
-            if (
-                $requestedScopeRaw === ''
-                && $openedEventHolonId > 0
-                && ($currentHolonId <= 0 || $currentHolonId !== $openedEventHolonId)
-            ) {
-                $calendarScope = 'global';
-            }
         }
     }
 }
@@ -649,9 +645,34 @@ if ($currentHolonId > 0) {
 }
 
 $canToggleScope = $organization->getId() > 0 && $rootHolon instanceof Holon;
-if (!$canToggleScope) {
-    $calendarScope = 'contextual';
+$calendarScopes = omoApiGetAvailableContextScopes($canToggleScope, $currentHolon, $rootHolon);
+$calendarScope = omoCalendarParseScope($requestedScopeRaw, $calendarScopes);
+$calendarScopeActiveIndex = omoApiResolveContextScopeIndex($calendarScope, $calendarScopes);
+$descendantHolonIdMap = omoApiGetDescendantHolonIdMap($currentHolon);
+
+if (
+    $requestedScopeRaw === ''
+    && $openedEventHolonId > 0
+    && ($currentHolonId <= 0 || $currentHolonId !== $openedEventHolonId)
+) {
+    if (
+        $currentHolon instanceof Holon
+        && ($openedEventHolonId === (int)$currentHolon->getId() || isset($descendantHolonIdMap[$openedEventHolonId]))
+        && in_array('descendants', $calendarScopes, true)
+    ) {
+        $calendarScope = 'descendants';
+    } elseif (in_array('global', $calendarScopes, true)) {
+        $calendarScope = 'global';
+    }
 }
+
+$createPermissionHolon = $currentHolon instanceof Holon ? $currentHolon : $rootHolon;
+$canCreateEvent = $currentUserId > 0
+    && (
+        $createPermissionHolon instanceof Holon
+            ? $createPermissionHolon->isAllowed('CAN_CREATE_EVENT')
+            : commonCurrentUserHasOrganizationAccess($organizationId)
+    );
 
 $monthEnd = $monthStart->modify('last day of this month')->setTime(23, 59, 59);
 $gridStart = $monthStart->modify('monday this week')->setTime(0, 0, 0);
@@ -668,7 +689,6 @@ $events->loadForCalendarContext($organizationId, 0, false);
 $openEventTargetId = $openedEvent instanceof Event ? (int)$openedEvent->getId() : 0;
 
 $holonLabelsById = [];
-$calendarScopes = $canToggleScope ? ['contextual', 'global'] : ['contextual'];
 $dayBucketsByScope = [];
 $viewCountsByScope = [];
 $upcomingSectionsByScope = [];
@@ -753,9 +773,11 @@ foreach ($events as $event) {
     $eventHolonLabel = $resolveHolonLabel($eventHolonId);
     $isAllDay = (bool)$event->get('is_all_day');
     $isInCurrentContext = !$canToggleScope || $eventHolonId === 0 || $eventHolonId === $currentHolonId;
+    $isInDescendantContext = $isInCurrentContext || ($eventHolonId > 0 && isset($descendantHolonIdMap[$eventHolonId]));
 
     foreach ($calendarScopes as $scopeKey) {
-        $includeEvent = $scopeKey === 'global' || $isInCurrentContext;
+        $includeEvent = $scopeKey === 'global'
+            || ($scopeKey === 'descendants' ? $isInDescendantContext : $isInCurrentContext);
         if (!$includeEvent) {
             continue;
         }
@@ -1080,6 +1102,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     data-omo-calendar-current-url="<?= omoApiEscape($currentUrl) ?>"
     data-omo-calendar-create-url="<?= omoApiEscape($createUrl) ?>"
     data-omo-calendar-detail-url="<?= omoApiEscape($detailUrl) ?>"
+    data-omo-calendar-can-create="<?= $canCreateEvent ? '1' : '0' ?>"
     data-omo-calendar-month="<?= omoApiEscape($monthStart->format('Y-m')) ?>"
     data-omo-calendar-view="<?= omoApiEscape($viewMode) ?>"
     data-omo-calendar-scope="<?= omoApiEscape($calendarScope) ?>"
@@ -1107,10 +1130,9 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                         type="button"
                         class="generic-action-button generic-action-button--secondary<?= $viewMode === 'month' ? '' : ' is-hidden' ?>"
                         data-omo-calendar-today-button="month"
-                        data-omo-calendar-nav-url-contextual="<?= omoApiEscape(omoCalendarBuildUrl($organizationId, $currentHolon ? (int)$currentHolon->getId() : 0, $todayMonth, 'month', $todayDate, 'contextual')) ?>"
-                        <?php if ($canToggleScope): ?>
-                            data-omo-calendar-nav-url-global="<?= omoApiEscape(omoCalendarBuildUrl($organizationId, $currentHolon ? (int)$currentHolon->getId() : 0, $todayMonth, 'month', $todayDate, 'global')) ?>"
-                        <?php endif; ?>
+                        <?php foreach ($calendarScopes as $scopeKey): ?>
+                            data-omo-calendar-nav-url-<?= omoApiEscape($scopeKey) ?>="<?= omoApiEscape(omoCalendarBuildUrl($organizationId, $currentHolon ? (int)$currentHolon->getId() : 0, $todayMonth, 'month', $todayDate, $scopeKey)) ?>"
+                        <?php endforeach; ?>
                     >
                         <?= omoApiEscape(omoCalendarT('calendar.action.today')) ?>
                     </button>
@@ -1118,10 +1140,9 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                         type="button"
                         class="generic-action-button generic-action-button--secondary<?= $viewMode === 'week' ? '' : ' is-hidden' ?>"
                         data-omo-calendar-today-button="week"
-                        data-omo-calendar-nav-url-contextual="<?= omoApiEscape($timelineViewsByScopeConfig['contextual']['week']['todayUrl']) ?>"
-                        <?php if ($canToggleScope): ?>
-                            data-omo-calendar-nav-url-global="<?= omoApiEscape($timelineViewsByScopeConfig['global']['week']['todayUrl']) ?>"
-                        <?php endif; ?>
+                        <?php foreach ($calendarScopes as $scopeKey): ?>
+                            data-omo-calendar-nav-url-<?= omoApiEscape($scopeKey) ?>="<?= omoApiEscape($timelineViewsByScopeConfig[$scopeKey]['week']['todayUrl']) ?>"
+                        <?php endforeach; ?>
                     >
                         <?= omoApiEscape(omoCalendarT('calendar.action.today')) ?>
                     </button>
@@ -1129,44 +1150,46 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                         type="button"
                         class="generic-action-button generic-action-button--secondary<?= $viewMode === 'day' ? '' : ' is-hidden' ?>"
                         data-omo-calendar-today-button="day"
-                        data-omo-calendar-nav-url-contextual="<?= omoApiEscape($timelineViewsByScopeConfig['contextual']['day']['todayUrl']) ?>"
-                        <?php if ($canToggleScope): ?>
-                            data-omo-calendar-nav-url-global="<?= omoApiEscape($timelineViewsByScopeConfig['global']['day']['todayUrl']) ?>"
-                        <?php endif; ?>
+                        <?php foreach ($calendarScopes as $scopeKey): ?>
+                            data-omo-calendar-nav-url-<?= omoApiEscape($scopeKey) ?>="<?= omoApiEscape($timelineViewsByScopeConfig[$scopeKey]['day']['todayUrl']) ?>"
+                        <?php endforeach; ?>
                     >
                         <?= omoApiEscape(omoCalendarT('calendar.action.today')) ?>
                     </button>
                 </div>
-                <button
-                    type="button"
-                    class="generic-action-button generic-action-button--main omo-calendar__new-button"
-                    data-omo-calendar-open-create
-                >
-                    <?= omoApiEscape(omoCalendarT('calendar.action.add')) ?>
-                </button>
+                <?php if ($canCreateEvent): ?>
+                    <button
+                        type="button"
+                        class="generic-action-button generic-action-button--main omo-calendar__new-button omo-mobile-corner-action"
+                        aria-label="<?= omoApiEscape(omoCalendarT('calendar.action.add')) ?>"
+                        data-omo-calendar-open-create
+                    >
+                        <span class="omo-mobile-corner-action__text"><?= omoApiEscape(omoCalendarT('calendar.action.add')) ?></span>
+                    </button>
+                <?php endif; ?>
             </div>
         </div>
         <div class="omo-calendar__header-secondary">
             <div class="omo-calendar__scope-slot">
                 <?php if ($canToggleScope): ?>
-                    <div
-                        class="omo-scope-toggle"
-                        role="tablist"
-                        aria-label="Portee des evenements"
-                        data-omo-scope-switch="<?= omoApiEscape($calendarScope) ?>"
-                    >
-                        <button
-                            type="button"
-                            class="omo-scope-toggle__button<?= $calendarScope === 'contextual' ? ' is-active' : '' ?>"
-                            data-omo-calendar-scope-toggle="contextual"
-                            aria-pressed="<?= $calendarScope === 'contextual' ? 'true' : 'false' ?>"
-                        ><?= omoApiEscape(omoCalendarT('calendar.scope.contextual')) ?></button>
-                        <button
-                            type="button"
-                            class="omo-scope-toggle__button<?= $calendarScope === 'global' ? ' is-active' : '' ?>"
-                            data-omo-calendar-scope-toggle="global"
-                            aria-pressed="<?= $calendarScope === 'global' ? 'true' : 'false' ?>"
-                        ><?= omoApiEscape(omoCalendarT('calendar.scope.global')) ?></button>
+                <div
+                    class="omo-scope-toggle"
+                    role="tablist"
+                    aria-label="Portee des evenements"
+                    data-omo-scope-switch="<?= omoApiEscape($calendarScope) ?>"
+                    style="--omo-scope-option-count: <?= (int)count($calendarScopes) ?>; --omo-scope-active-index: <?= (int)$calendarScopeActiveIndex ?>;"
+                >
+                        <?php foreach ($calendarScopes as $scopeIndex => $scopeKey): ?>
+                            <button
+                                type="button"
+                                class="omo-scope-toggle__button<?= $calendarScope === $scopeKey ? ' is-active' : '' ?>"
+                                aria-label="<?= omoApiEscape(omoCalendarT('calendar.scope.' . $scopeKey)) ?>"
+                                data-omo-calendar-scope-toggle="<?= omoApiEscape($scopeKey) ?>"
+                                data-omo-scope-option="<?= omoApiEscape($scopeKey) ?>"
+                                data-omo-scope-index="<?= (int)$scopeIndex ?>"
+                                aria-pressed="<?= $calendarScope === $scopeKey ? 'true' : 'false' ?>"
+                            ><span class="omo-scope-toggle__text"><?= omoApiEscape(omoCalendarT('calendar.scope.' . $scopeKey)) ?></span></button>
+                        <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
             </div>
@@ -1174,59 +1197,55 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                         <button
                             type="button"
                             class="omo-segmented__button<?= $viewMode === 'month' ? ' is-active' : '' ?>"
+                            aria-label="<?= omoApiEscape(omoCalendarT('calendar.view.month')) ?>"
                             data-omo-calendar-set-view="month"
-                            data-omo-calendar-view-url-contextual="<?= omoApiEscape($viewUrlsByScope['contextual']['month']) ?>"
-                            data-omo-calendar-view-count-contextual="<?= omoApiEscape((string)$viewCountsByScope['contextual']['month']) ?>"
-                            data-omo-calendar-view-summary-contextual="<?= omoApiEscape($viewSummariesByScope['contextual']['month']) ?>"
-                            <?php if ($canToggleScope): ?>
-                                data-omo-calendar-view-url-global="<?= omoApiEscape($viewUrlsByScope['global']['month']) ?>"
-                                data-omo-calendar-view-count-global="<?= omoApiEscape((string)$viewCountsByScope['global']['month']) ?>"
-                                data-omo-calendar-view-summary-global="<?= omoApiEscape($viewSummariesByScope['global']['month']) ?>"
-                            <?php endif; ?>
+                            data-omo-segmented-option="calendar-month"
+                            <?php foreach ($calendarScopes as $scopeKey): ?>
+                                data-omo-calendar-view-url-<?= omoApiEscape($scopeKey) ?>="<?= omoApiEscape($viewUrlsByScope[$scopeKey]['month']) ?>"
+                                data-omo-calendar-view-count-<?= omoApiEscape($scopeKey) ?>="<?= omoApiEscape((string)$viewCountsByScope[$scopeKey]['month']) ?>"
+                                data-omo-calendar-view-summary-<?= omoApiEscape($scopeKey) ?>="<?= omoApiEscape($viewSummariesByScope[$scopeKey]['month']) ?>"
+                            <?php endforeach; ?>
                             aria-pressed="<?= $viewMode === 'month' ? 'true' : 'false' ?>"
-                        ><?= omoApiEscape(omoCalendarT('calendar.view.month')) ?></button>
+                        ><span class="omo-segmented__text"><?= omoApiEscape(omoCalendarT('calendar.view.month')) ?></span></button>
                         <button
                             type="button"
                             class="omo-segmented__button<?= $viewMode === 'week' ? ' is-active' : '' ?>"
+                            aria-label="<?= omoApiEscape(omoCalendarT('calendar.view.week')) ?>"
                             data-omo-calendar-set-view="week"
-                            data-omo-calendar-view-url-contextual="<?= omoApiEscape($viewUrlsByScope['contextual']['week']) ?>"
-                            data-omo-calendar-view-count-contextual="<?= omoApiEscape((string)$viewCountsByScope['contextual']['week']) ?>"
-                            data-omo-calendar-view-summary-contextual="<?= omoApiEscape($viewSummariesByScope['contextual']['week']) ?>"
-                            <?php if ($canToggleScope): ?>
-                                data-omo-calendar-view-url-global="<?= omoApiEscape($viewUrlsByScope['global']['week']) ?>"
-                                data-omo-calendar-view-count-global="<?= omoApiEscape((string)$viewCountsByScope['global']['week']) ?>"
-                                data-omo-calendar-view-summary-global="<?= omoApiEscape($viewSummariesByScope['global']['week']) ?>"
-                            <?php endif; ?>
+                            data-omo-segmented-option="calendar-week"
+                            <?php foreach ($calendarScopes as $scopeKey): ?>
+                                data-omo-calendar-view-url-<?= omoApiEscape($scopeKey) ?>="<?= omoApiEscape($viewUrlsByScope[$scopeKey]['week']) ?>"
+                                data-omo-calendar-view-count-<?= omoApiEscape($scopeKey) ?>="<?= omoApiEscape((string)$viewCountsByScope[$scopeKey]['week']) ?>"
+                                data-omo-calendar-view-summary-<?= omoApiEscape($scopeKey) ?>="<?= omoApiEscape($viewSummariesByScope[$scopeKey]['week']) ?>"
+                            <?php endforeach; ?>
                             aria-pressed="<?= $viewMode === 'week' ? 'true' : 'false' ?>"
-                        ><?= omoApiEscape(omoCalendarT('calendar.view.week')) ?></button>
+                        ><span class="omo-segmented__text"><?= omoApiEscape(omoCalendarT('calendar.view.week')) ?></span></button>
                         <button
                             type="button"
                             class="omo-segmented__button<?= $viewMode === 'day' ? ' is-active' : '' ?>"
+                            aria-label="<?= omoApiEscape(omoCalendarT('calendar.view.day')) ?>"
                             data-omo-calendar-set-view="day"
-                            data-omo-calendar-view-url-contextual="<?= omoApiEscape($viewUrlsByScope['contextual']['day']) ?>"
-                            data-omo-calendar-view-count-contextual="<?= omoApiEscape((string)$viewCountsByScope['contextual']['day']) ?>"
-                            data-omo-calendar-view-summary-contextual="<?= omoApiEscape($viewSummariesByScope['contextual']['day']) ?>"
-                            <?php if ($canToggleScope): ?>
-                                data-omo-calendar-view-url-global="<?= omoApiEscape($viewUrlsByScope['global']['day']) ?>"
-                                data-omo-calendar-view-count-global="<?= omoApiEscape((string)$viewCountsByScope['global']['day']) ?>"
-                                data-omo-calendar-view-summary-global="<?= omoApiEscape($viewSummariesByScope['global']['day']) ?>"
-                            <?php endif; ?>
+                            data-omo-segmented-option="calendar-day"
+                            <?php foreach ($calendarScopes as $scopeKey): ?>
+                                data-omo-calendar-view-url-<?= omoApiEscape($scopeKey) ?>="<?= omoApiEscape($viewUrlsByScope[$scopeKey]['day']) ?>"
+                                data-omo-calendar-view-count-<?= omoApiEscape($scopeKey) ?>="<?= omoApiEscape((string)$viewCountsByScope[$scopeKey]['day']) ?>"
+                                data-omo-calendar-view-summary-<?= omoApiEscape($scopeKey) ?>="<?= omoApiEscape($viewSummariesByScope[$scopeKey]['day']) ?>"
+                            <?php endforeach; ?>
                             aria-pressed="<?= $viewMode === 'day' ? 'true' : 'false' ?>"
-                        ><?= omoApiEscape(omoCalendarT('calendar.view.day')) ?></button>
+                        ><span class="omo-segmented__text"><?= omoApiEscape(omoCalendarT('calendar.view.day')) ?></span></button>
                         <button
                             type="button"
                             class="omo-segmented__button<?= $viewMode === 'list' ? ' is-active' : '' ?>"
+                            aria-label="<?= omoApiEscape(omoCalendarT('calendar.view.list')) ?>"
                             data-omo-calendar-set-view="list"
-                            data-omo-calendar-view-url-contextual="<?= omoApiEscape($viewUrlsByScope['contextual']['list']) ?>"
-                            data-omo-calendar-view-count-contextual="<?= omoApiEscape((string)$viewCountsByScope['contextual']['list']) ?>"
-                            data-omo-calendar-view-summary-contextual="<?= omoApiEscape($viewSummariesByScope['contextual']['list']) ?>"
-                            <?php if ($canToggleScope): ?>
-                                data-omo-calendar-view-url-global="<?= omoApiEscape($viewUrlsByScope['global']['list']) ?>"
-                                data-omo-calendar-view-count-global="<?= omoApiEscape((string)$viewCountsByScope['global']['list']) ?>"
-                                data-omo-calendar-view-summary-global="<?= omoApiEscape($viewSummariesByScope['global']['list']) ?>"
-                            <?php endif; ?>
+                            data-omo-segmented-option="calendar-list"
+                            <?php foreach ($calendarScopes as $scopeKey): ?>
+                                data-omo-calendar-view-url-<?= omoApiEscape($scopeKey) ?>="<?= omoApiEscape($viewUrlsByScope[$scopeKey]['list']) ?>"
+                                data-omo-calendar-view-count-<?= omoApiEscape($scopeKey) ?>="<?= omoApiEscape((string)$viewCountsByScope[$scopeKey]['list']) ?>"
+                                data-omo-calendar-view-summary-<?= omoApiEscape($scopeKey) ?>="<?= omoApiEscape($viewSummariesByScope[$scopeKey]['list']) ?>"
+                            <?php endforeach; ?>
                             aria-pressed="<?= $viewMode === 'list' ? 'true' : 'false' ?>"
-                        ><?= omoApiEscape(omoCalendarT('calendar.view.list')) ?></button>
+                        ><span class="omo-segmented__text"><?= omoApiEscape(omoCalendarT('calendar.view.list')) ?></span></button>
             </div>
             </div>
     </div>
@@ -1336,7 +1355,10 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                             <div class="omo-calendar__time-head">
                                 <div class="omo-calendar__time-axis-spacer"></div>
                                 <?php foreach ($timelineView['days'] as $timelineDay): ?>
-                                    <div class="omo-calendar__time-day-header<?= !empty($timelineDay['isToday']) ? ' is-today' : '' ?>">
+                                    <div
+                                        class="omo-calendar__time-day-header<?= !empty($timelineDay['isToday']) ? ' is-today' : '' ?>"
+                                        data-omo-calendar-day="<?= omoApiEscape($timelineDay['date']->format('Y-m-d')) ?>"
+                                    >
                                         <strong><?= omoApiEscape((string)$timelineDay['label']) ?></strong>
                                         <span><?= omoApiEscape((string)(count($timelineDay['allDay']) + count($timelineDay['timed']))) ?> evenement(s)</span>
                                     </div>
@@ -1346,7 +1368,10 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                             <div class="omo-calendar__time-all-day">
                                 <div class="omo-calendar__time-axis-label"><?= omoApiEscape(omoCalendarT('calendar.axis.all_day')) ?></div>
                                 <?php foreach ($timelineView['days'] as $timelineDay): ?>
-                                    <div class="omo-calendar__time-all-day-cell<?= !empty($timelineDay['isToday']) ? ' is-today' : '' ?>">
+                                    <div
+                                        class="omo-calendar__time-all-day-cell<?= !empty($timelineDay['isToday']) ? ' is-today' : '' ?>"
+                                        data-omo-calendar-day="<?= omoApiEscape($timelineDay['date']->format('Y-m-d')) ?>"
+                                    >
                                         <?php if (count($timelineDay['allDay']) > 0): ?>
                                             <?php foreach ($timelineDay['allDay'] as $item): ?>
                                                 <div
@@ -1373,7 +1398,10 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                             </div>
 
                             <?php foreach ($timelineView['days'] as $timelineDay): ?>
-                                <div class="omo-calendar__time-column<?= !empty($timelineDay['isToday']) ? ' is-today' : '' ?>">
+                                <div
+                                    class="omo-calendar__time-column<?= !empty($timelineDay['isToday']) ? ' is-today' : '' ?>"
+                                    data-omo-calendar-time-column-day="<?= omoApiEscape($timelineDay['date']->format('Y-m-d')) ?>"
+                                >
                                     <div class="omo-calendar__time-column-grid"></div>
                                     <?php foreach ($timelineDay['timed'] as $item): ?>
                                         <?php
@@ -1498,9 +1526,14 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         var drawerBody = root.querySelector('[data-omo-calendar-editor-body]');
         var currentUrl = root.getAttribute('data-omo-calendar-current-url') || '';
         var currentView = root.getAttribute('data-omo-calendar-view') || 'month';
-        var currentScope = (root.getAttribute('data-omo-calendar-scope') || 'contextual') === 'global'
-            ? 'global'
-            : 'contextual';
+        function normalizeScopeName(scopeName) {
+            return scopeName === 'global' || scopeName === 'descendants'
+                ? scopeName
+                : 'contextual';
+        }
+
+        var currentScope = normalizeScopeName(root.getAttribute('data-omo-calendar-scope') || 'contextual');
+        var canCreateEvent = root.getAttribute('data-omo-calendar-can-create') === '1';
         var calendarPreferencesStorageKey = 'omoCalendarDisplayPreferences';
         var createUrl = root.getAttribute('data-omo-calendar-create-url') || '';
         var detailUrl = root.getAttribute('data-omo-calendar-detail-url') || '';
@@ -1577,9 +1610,17 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             return url;
         }
 
-        function buildCreateUrl(dateValue) {
+        function buildCreateUrl(dateValue, dateTimeValue) {
             var url = createUrl;
-            if (!url || !dateValue) {
+            if (!url) {
+                return url;
+            }
+
+            if (dateTimeValue) {
+                return url + (url.indexOf('?') === -1 ? '?' : '&') + 'datetime=' + encodeURIComponent(dateTimeValue);
+            }
+
+            if (!dateValue) {
                 return url;
             }
 
@@ -1606,7 +1647,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
         function resolveViewMeta(viewName, scopeName) {
             var viewButton = root.querySelector('[data-omo-calendar-set-view="' + viewName + '"]');
-            var resolvedScope = scopeName === 'global' ? 'global' : 'contextual';
+            var resolvedScope = normalizeScopeName(scopeName);
 
             if (!viewButton) {
                 return {
@@ -1644,6 +1685,35 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             var minutes = String(date.getMinutes()).padStart(2, '0');
 
             return year + '-' + month + '-' + day + 'T' + hours + ':' + minutes;
+        }
+
+        function clampNumber(value, min, max) {
+            return Math.min(Math.max(value, min), max);
+        }
+
+        function buildDateTimeFromColumnPosition(dayValue, clientY, columnNode) {
+            if (!dayValue || !columnNode) {
+                return '';
+            }
+
+            var dayDate = parseLocalDateTime(dayValue + 'T00:00');
+            if (!dayDate) {
+                return '';
+            }
+
+            var columnRect = columnNode.getBoundingClientRect();
+            if (!columnRect || columnRect.height <= 0) {
+                return '';
+            }
+
+            var offsetY = clampNumber(clientY - columnRect.top, 0, columnRect.height);
+            var minuteRatio = offsetY / columnRect.height;
+            var rawMinutes = Math.round(minuteRatio * 24 * 60);
+            var roundedMinutes = Math.round(rawMinutes / 15) * 15;
+            roundedMinutes = clampNumber(roundedMinutes, 0, (24 * 60) - 15);
+
+            dayDate.setHours(Math.floor(roundedMinutes / 60), roundedMinutes % 60, 0, 0);
+            return formatLocalDateTimeValue(dayDate);
         }
 
         function rememberScheduleState(form) {
@@ -1800,7 +1870,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         }
 
         function syncScopeButtons(nextScope) {
-            var resolvedScope = nextScope === 'global' ? 'global' : 'contextual';
+            var resolvedScope = normalizeScopeName(nextScope);
             var scopeSwitch = root.querySelector('[data-omo-scope-switch]');
             if (scopeSwitch) {
                 scopeSwitch.setAttribute('data-omo-scope-switch', resolvedScope);
@@ -1810,6 +1880,12 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 var isActive = (button.getAttribute('data-omo-calendar-scope-toggle') || '') === resolvedScope;
                 button.classList.toggle('is-active', isActive);
                 button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+                if (isActive && scopeSwitch) {
+                    scopeSwitch.style.setProperty(
+                        '--omo-scope-active-index',
+                        String(parseInt(button.getAttribute('data-omo-scope-index') || '0', 10) || 0)
+                    );
+                }
             });
         }
 
@@ -1929,9 +2005,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
             root.querySelectorAll('[data-omo-calendar-view-panel]').forEach(function (panel) {
                 var panelView = panel.getAttribute('data-omo-calendar-view-panel') || '';
-                var panelScope = (panel.getAttribute('data-omo-calendar-view-scope') || 'contextual') === 'global'
-                    ? 'global'
-                    : 'contextual';
+                var panelScope = normalizeScopeName(panel.getAttribute('data-omo-calendar-view-scope') || 'contextual');
                 var isActive = panelView === nextView && panelScope === currentScope;
                 panel.classList.toggle('is-active', isActive);
                 panel.toggleAttribute('hidden', !isActive);
@@ -1972,9 +2046,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
         root.querySelectorAll('[data-omo-calendar-scope-toggle]').forEach(function (button) {
             button.addEventListener('click', function () {
-                var nextScope = (button.getAttribute('data-omo-calendar-scope-toggle') || '') === 'global'
-                    ? 'global'
-                    : 'contextual';
+                var nextScope = normalizeScopeName(button.getAttribute('data-omo-calendar-scope-toggle') || '');
                 if (nextScope === currentScope) {
                     return;
                 }
@@ -2003,12 +2075,26 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             });
         }
 
-        root.querySelectorAll('[data-omo-calendar-day]').forEach(function (cell) {
-            cell.addEventListener('dblclick', function () {
-                var day = cell.getAttribute('data-omo-calendar-day') || '';
-                openDrawerWithUrl(buildCreateUrl(day));
+        if (canCreateEvent) {
+            root.querySelectorAll('[data-omo-calendar-day]').forEach(function (cell) {
+                cell.addEventListener('dblclick', function () {
+                    var day = cell.getAttribute('data-omo-calendar-day') || '';
+                    openDrawerWithUrl(buildCreateUrl(day));
+                });
             });
-        });
+
+            root.querySelectorAll('[data-omo-calendar-time-column-day]').forEach(function (columnNode) {
+                columnNode.addEventListener('dblclick', function (event) {
+                    if (event.target && event.target.closest('[data-omo-calendar-event-id]')) {
+                        return;
+                    }
+
+                    var day = columnNode.getAttribute('data-omo-calendar-time-column-day') || '';
+                    var dateTimeValue = buildDateTimeFromColumnPosition(day, event.clientY, columnNode);
+                    openDrawerWithUrl(buildCreateUrl(day, dateTimeValue));
+                });
+            });
+        }
 
         root.querySelectorAll('[data-omo-calendar-event-id]').forEach(function (eventNode) {
             eventNode.addEventListener('dblclick', function (event) {
@@ -2755,7 +2841,6 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
 .omo-calendar__results.generic-file-list .generic-file-list__group-title {
     padding: 15px 12px;
-    font-size: 0.9rem;
 }
 
 .omo-calendar__group {
@@ -2960,7 +3045,20 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     }
 
     .omo-calendar__toolbar {
-        grid-template-columns: 1fr;
+        grid-template-columns: 16px minmax(0, 1fr) 16px;
+        gap: 6px;
+        align-items: stretch;
+    }
+
+    .omo-calendar__toolbar > .generic-action-button {
+        min-width: 16px;
+        width: 16px;
+        min-height: 100%;
+        padding: 0;
+        border-radius: 8px;
+        font-size: 14px;
+        line-height: 1;
+        overflow: hidden;
     }
 
     .omo-calendar__time-view[data-omo-calendar-time-view="week"] {
@@ -2985,5 +3083,34 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         font-size: 0.72rem;
     }
 
+}
+
+@media (max-width: 1024px) {
+    .omo-calendar__header {
+        position: sticky;
+    }
+
+    .omo-calendar__new-button.omo-mobile-corner-action {
+        border-radius: 0 0 0 12px !important;
+    }
+
+    .omo-calendar__header-secondary {
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .omo-calendar__view-switch {
+        justify-self: end;
+    }
+}
+
+@media (max-height: 560px) {
+    .omo-calendar__month-sticky,
+    .omo-calendar__panel--timeline .omo-calendar__toolbar,
+    .omo-calendar__time-sticky {
+        position: static;
+        top: auto;
+    }
 }
 </style>

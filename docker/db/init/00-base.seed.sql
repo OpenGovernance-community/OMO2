@@ -142,10 +142,10 @@ INSERT INTO `document` (`id`, `title`, `description`, `content`, `keywords`, `ID
 -- --------------------------------------------------------
 
 --
--- Structure de la table `question`
+-- Structure de la table `faq`
 --
 
-CREATE TABLE `question` (
+CREATE TABLE `faq` (
   `id` int(10) UNSIGNED NOT NULL,
   `IDhowto` int(10) UNSIGNED DEFAULT NULL,
   `IDorganization` int(10) UNSIGNED DEFAULT NULL,
@@ -167,31 +167,57 @@ CREATE TABLE `question` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Déchargement des données de la table `question`
+-- Déchargement des données de la table `faq`
 --
 
-INSERT INTO `question` (`id`, `IDhowto`, `question`, `answer`, `detail`, `displayorder`, `isactive`, `created`, `updated`) VALUES
+INSERT INTO `faq` (`id`, `IDhowto`, `question`, `answer`, `detail`, `displayorder`, `isactive`, `created`, `updated`) VALUES
 (1, NULL, 'Ma première question', 'Réponse de ma première question', 'Détail de la réponse de la première question', 0, 1, '2026-04-12 08:08:05', '2026-04-12 08:08:34'),
 (2, NULL, 'Ma deuxième question', 'Réponse de ma deuxième question', 'Détail de la réponse de la deuxième question', 0, 1, '2026-04-12 08:08:05', '2026-04-12 08:08:34');
 
 -- --------------------------------------------------------
 
+UPDATE `faq`
+SET `isactive` = 0
+WHERE `id` IN (1, 2);
+
+INSERT INTO `faq` (`id`, `IDhowto`, `question`, `answer`, `detail`, `displayorder`, `isactive`, `created`, `updated`) VALUES
+(3201, NULL, 'Comment ouvrir les outils d aide dans OMO ?', 'Ouvrez le bouton Aide dans la topbar pour retrouver la FAQ, les tutoriels et la visite guidee.', '<p>La zone Aide centralise les ressources utiles quand vous avez un doute ou que vous decouvrez un ecran.</p><p>La FAQ donne des reponses rapides, les tutoriels vont plus loin et la visite guidee explique les boutons visibles sur la page en cours.</p>', 10, 1, '2026-06-22 09:00:00', '2026-06-22 09:00:00'),
+(3202, NULL, 'Comment utiliser la recherche de la topbar ?', 'Tapez quelques mots cles dans la recherche puis ouvrez le resultat qui correspond a votre besoin.', '<p>La recherche de la topbar sert a retrouver rapidement un cercle, un role, un outil ou un acces utile.</p><p>Si plusieurs modules sont proposes, commencez par ceux qui correspondent a votre besoin puis affinez avec des mots simples et precis.</p>', 20, 1, '2026-06-22 09:05:00', '2026-06-22 09:05:00'),
+(3203, NULL, 'Comment changer ma langue ou mon theme ?', 'Ouvrez le menu Profil dans la topbar pour regler la langue et le theme d affichage.', '<p>Le menu Profil permet de retrouver les reglages personnels les plus utiles sans quitter votre espace de travail.</p><p>Vous pouvez y adapter la langue de l interface et choisir le theme qui vous convient le mieux pour votre usage quotidien.</p>', 30, 1, '2026-06-22 09:10:00', '2026-06-22 09:10:00'),
+(3204, NULL, 'A quoi sert le switch Contextuel / Global ?', 'Il permet de limiter la vue au contexte courant ou d elargir la liste a toute l organisation.', '<p>Le mode contextuel est pratique quand vous travaillez dans un cercle ou un role precis et que vous voulez rester centre sur ce perimetre.</p><p>Le mode global sert plutot a retrouver un element dans toute l organisation, meme en dehors du contexte actuellement ouvert.</p>', 40, 1, '2026-06-22 09:15:00', '2026-06-22 09:15:00'),
+(3205, NULL, 'Comment passer du tri Date au tri Alphabetique ?', 'Utilisez le controle de tri dans l entete du drawer pour choisir l ordre qui vous aide le plus.', '<p>Le tri par date est utile pour revoir ce qui vient d etre cree ou modifie recemment.</p><p>Le tri alphabetique est souvent plus confortable quand vous cherchez un nom connu dans une longue liste.</p>', 50, 1, '2026-06-22 09:20:00', '2026-06-22 09:20:00'),
+(3206, NULL, 'A quoi sert le mode Detail / Compact ?', 'Le mode Detail montre plus d informations par carte, tandis que Compact affiche plus d elements a l ecran.', '<p>Choisissez Detail quand vous voulez lire les resumes, les metadonnees ou mieux comparer plusieurs cartes.</p><p>Choisissez Compact quand vous voulez parcourir beaucoup d elements rapidement, en particulier sur mobile ou dans une colonne etroite.</p>', 60, 1, '2026-06-22 09:25:00', '2026-06-22 09:25:00'),
+(3207, NULL, 'Comment creer un document dans OMO ?', 'Ouvrez l app Documents puis utilisez le bouton Ajouter si votre role vous y autorise.', '<p>Sur grand ecran, le bouton de creation apparait dans l entete du module. Sur mobile, il peut etre reduit a une icone en haut a droite.</p><p>Si vous ne voyez pas ce bouton, cela signifie en general que votre contexte actuel ou vos droits ne permettent pas cette creation.</p>', 70, 1, '2026-06-22 09:30:00', '2026-06-22 09:30:00'),
+(3208, NULL, 'Comment modifier un document existant ?', 'Ouvrez le document puis lancez l action Editer depuis le drawer ou le menu prevu.', '<p>L edition passe par le formulaire du document et enregistre les changements dans le contexte de ce document.</p><p>Si un document appartient deja a une organisation ou a un holon, les droits de ce contexte continuent a s appliquer au moment de la sauvegarde.</p>', 80, 1, '2026-06-22 09:35:00', '2026-06-22 09:35:00'),
+(3209, NULL, 'A quoi sert l app Memo ?', 'Memo rassemble vos documents personnels et vos notes dans une vue simple a parcourir.', '<p>La liste Memo peut regrouper les documents dont vous etes l auteur, y compris quand ils proviennent de plusieurs holons.</p><p>Le detail se consulte ensuite dans un drawer interne, ce qui permet de rester dans le meme espace sans ouvrir une nouvelle page.</p>', 90, 1, '2026-06-22 09:40:00', '2026-06-22 09:40:00'),
+(3210, NULL, 'Comment reediter un memo depuis l app Memo ?', 'Ouvrez le menu ... sur un memo puis choisissez Editer.', '<p>L action Editer ouvre le formulaire du memo dans un drawer, avec un parcours proche de celui du module Documents.</p><p>Les memos sans contexte d organisation peuvent etre reedites par leur auteur, alors que les documents deja classes gardent les droits de leur contexte habituel.</p>', 100, 1, '2026-06-22 09:45:00', '2026-06-22 09:45:00'),
+(3211, NULL, 'Comment terminer ou classer un memo depuis Telegram ?', 'Utilisez les boutons proposes par le bot pour choisir une destination autorisee ou terminer dans le contexte courant.', '<p>Le bot ne propose que les destinations de classement qui restent autorisees pour votre contexte et vos droits.</p><p>Si le bouton Terminer ici ou certaines destinations ne sont pas visibles, cela signifie simplement que cette action nest pas disponible pour vous a cet endroit.</p>', 110, 1, '2026-06-22 09:50:00', '2026-06-22 09:50:00'),
+(3212, NULL, 'Comment creer une prise de decision ?', 'Ouvrez l app Decisions puis utilisez le bouton de creation disponible dans l entete si vous avez le droit necessaire.', '<p>La creation se fait dans le contexte courant, par exemple pour une organisation, un cercle ou un autre niveau de structure.</p><p>Prenez le temps de definir un titre clair, une description utile et les dates importantes avant de lancer la participation.</p>', 120, 1, '2026-06-22 09:55:00', '2026-06-22 09:55:00'),
+(3213, NULL, 'Comment participer a une decision avec un lien public ou un acces personnel ?', 'Ouvrez la page de participation recue par lien ou demandez votre acces personnel depuis l ecran public du scrutin.', '<p>Certaines decisions peuvent accepter la participation sans invitation classique, directement depuis un lien public partage par l organisateur.</p><p>Si ce nest pas le cas, utilisez la page Recevoir mon acces personnel pour demander un lien individuel avant de voter.</p>', 130, 1, '2026-06-22 10:00:00', '2026-06-22 10:00:00'),
+(3214, NULL, 'Comment noter des propositions en jugement majoritaire ?', 'Attribuez une mention a chaque proposition selon l echelle affichee, de la plus favorable a la moins favorable.', '<p>Le jugement majoritaire ne consiste pas a choisir une seule proposition. Vous evaluez chaque option avec la meme echelle.</p><p>Le resultat final compare ensuite la repartition des mentions pour aider a faire ressortir la proposition la plus solide.</p>', 140, 1, '2026-06-22 10:05:00', '2026-06-22 10:05:00'),
+(3215, NULL, 'Comment ajouter un evenement dans le calendrier ?', 'Ouvrez le calendrier puis utilisez le bouton Ajouter si votre contexte vous autorise a creer des dates.', '<p>Comme pour les autres modules, le bouton peut etre plein texte sur grand ecran ou reduit a une icone sur mobile.</p><p>Si vous ne pouvez pas creer de date a cet endroit, changez de contexte ou demandez a une personne administratrice de verifier vos droits.</p>', 150, 1, '2026-06-22 10:10:00', '2026-06-22 10:10:00'),
+(3216, NULL, 'Comment changer de vue dans le calendrier ?', 'Utilisez le selecteur Mois, Semaine, Jour ou Liste pour choisir la lecture la plus pratique.', '<p>Chaque vue repond a un besoin different: Mois pour la planification generale, Semaine ou Jour pour le detail, Liste pour un balayage rapide.</p><p>Sur mobile, ces vues peuvent apparaitre sous forme d icones plus compactes afin de laisser davantage de place au contenu.</p>', 160, 1, '2026-06-22 10:15:00', '2026-06-22 10:15:00'),
+(3217, NULL, 'Pourquoi je ne vois pas toujours le bouton Ajouter ?', 'Le bouton apparait seulement si vous avez la permission de creation dans le contexte ouvert.', '<p>Ce principe vaut notamment pour les documents, les prises de decision, les dates et la creation de FAQ.</p><p>Si vous pensez que ce bouton devrait etre disponible, verifiez le contexte courant ou demandez une verification des permissions sur le holon concerne.</p>', 170, 1, '2026-06-22 10:20:00', '2026-06-22 10:20:00'),
+(3218, NULL, 'Comment ajouter une question dans la FAQ ?', 'Ouvrez la FAQ du contexte voulu puis utilisez le bouton Ajouter une question si cette action est disponible.', '<p>Selon votre ecran, la nouvelle question peut etre creee au niveau du contexte courant, du niveau organisation ou dans un scope plus global.</p><p>Si aucun bouton de creation ne saffiche, cela signifie que la permission de creation de FAQ nest pas accordee dans ce contexte.</p>', 180, 1, '2026-06-22 10:25:00', '2026-06-22 10:25:00'),
+(3219, NULL, 'A quoi servent les votes sur les reponses de la FAQ ?', 'Les boutons de vote permettent de signaler si une reponse est utile afin de mieux mettre en avant les bonnes explications.', '<p>Quand une reponse vous aide vraiment, un vote positif aide a la faire remonter dans la FAQ.</p><p>Ces retours servent a rendre les questions les plus utiles plus visibles pour les autres membres de l organisation.</p>', 190, 1, '2026-06-22 10:30:00', '2026-06-22 10:30:00'),
+(3220, NULL, 'Comment faire apparaitre mon organisation sur la carte publique ?', 'Renseignez un emplacement dans les parametres de l organisation et verifiez que les informations utiles sont lisibles sans connexion.', '<p>La carte publique utilise un emplacement facultatif, generalement saisi en latitude et longitude dans les parametres de l organisation.</p><p>Seules les informations explicitement exposees comme publiques sont reprises sur cette carte, ce qui permet de garder le controle sur ce qui est visible sans connexion.</p>', 200, 1, '2026-06-22 10:35:00', '2026-06-22 10:35:00');
+
 --
--- Structure de la table `question_choice`
+-- Structure de la table `faq_choice`
 --
 
-CREATE TABLE `question_choice` (
+CREATE TABLE `faq_choice` (
   `id` int(11) NOT NULL,
-  `IDquestion` int(11) DEFAULT NULL,
+  `IDfaq` int(11) DEFAULT NULL,
   `label` mediumtext DEFAULT NULL,
   `is_correct` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Déchargement des données de la table `question_choice`
+-- Déchargement des données de la table `faq_choice`
 --
 
-INSERT INTO `question_choice` (`id`, `IDquestion`, `label`, `is_correct`) VALUES
+INSERT INTO `faq_choice` (`id`, `IDfaq`, `label`, `is_correct`) VALUES
 (1, 1, 'Propisition 1 (la bonne)', 1),
 (2, 1, 'Proposition 2 (la mauvaise)', 0),
 (3, 2, 'Propisition 1 (la mauvaise)', 0),
@@ -588,21 +614,21 @@ INSERT INTO `mission_dependencies` (`id`, `IDmission_parent`, `IDmission_child`,
 -- --------------------------------------------------------
 
 --
--- Structure de la table `mission_question`
+-- Structure de la table `mission_faq`
 --
 
-CREATE TABLE `mission_question` (
+CREATE TABLE `mission_faq` (
   `id` int(11) NOT NULL,
   `IDmission` int(11) DEFAULT NULL,
-  `IDquestion` int(11) DEFAULT NULL,
+  `IDfaq` int(11) DEFAULT NULL,
   `position` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Déchargement des données de la table `mission_question`
+-- Déchargement des données de la table `mission_faq`
 --
 
-INSERT INTO `mission_question` (`id`, `IDmission`, `IDquestion`, `position`) VALUES
+INSERT INTO `mission_faq` (`id`, `IDmission`, `IDfaq`, `position`) VALUES
 (1, 102, 1, NULL),
 (2, 102, 2, NULL);
 
@@ -619,16 +645,18 @@ CREATE TABLE `organization` (
   `domain` varchar(100) DEFAULT NULL,
   `logo` varchar(100) DEFAULT NULL,
   `banner` varchar(100) DEFAULT NULL,
-  `color` varchar(10) DEFAULT NULL
+  `color` varchar(10) DEFAULT NULL,
+  `latlong` varchar(100) DEFAULT NULL,
+  `parameters` mediumtext DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Déchargement des données de la table `organization`
 --
 
-INSERT INTO `organization` (`id`, `name`, `shortname`, `domain`, `logo`, `banner`, `color`) VALUES
-(1, 'Org1', 'org1', 'org1.opengov.tools', '/img/org1-logo.svg', '/img/org1-banner.svg', '#0F766E'),
-(2, 'Org2', 'org2', 'org2.opengov.tools', '/img/org2-logo.svg', '/img/org2-banner.svg', '#1D4ED8');
+INSERT INTO `organization` (`id`, `name`, `shortname`, `domain`, `logo`, `banner`, `color`, `latlong`, `parameters`) VALUES
+(1, 'Org1', 'org1', 'org1.opengov.tools', '/img/org1-logo.svg', '/img/org1-banner.svg', '#0F766E', '46.204391;6.143158', NULL),
+(2, 'Org2', 'org2', 'org2.opengov.tools', '/img/org2-logo.svg', '/img/org2-banner.svg', '#1D4ED8', '46.519653;6.632273', NULL);
 
 -- --------------------------------------------------------
 
@@ -685,12 +713,12 @@ CREATE TABLE `organization_parcours` (
 -- Déchargement des données de la table `organization_parcours`
 --
 
-INSERT INTO `organization_parcours` (`id`, `IDorganization`, `IDparcours`, `position`, `everybody`, `anonymous`) VALUES
-(1, 2, 1, NULL, 1, 0),
-(2, 2, 2, NULL, 1, 0),
-(3, 1, 1, 2, 1, 0),
-(4, 1, 2, 1, 1, 0),
-(5, 1, 3, 3, 1, 0);
+INSERT INTO `organization_parcours` (`id`, `IDorganization`, `IDparcours`, `position`, `everybody`) VALUES
+(1, 2, 1, NULL, 1),
+(2, 2, 2, NULL, 1),
+(3, 1, 1, 2, 1),
+(4, 1, 2, 1, 1),
+(5, 1, 3, 3, 1);
 
 -- --------------------------------------------------------
 
@@ -733,14 +761,7 @@ CREATE TABLE `parcours` (
   `id` int(11) NOT NULL,
   `title` varchar(150) NOT NULL,
   `description` text DEFAULT NULL,
-  `image` varchar(100) DEFAULT NULL,
-  `IDorganization` int(11) DEFAULT NULL,
-  `IDusercreation` int(11) DEFAULT NULL,
-  `IDusermodification` int(11) DEFAULT NULL,
-  `datecreation` datetime DEFAULT NULL,
-  `datemodification` datetime DEFAULT NULL,
-  `ispublic` tinyint(1) NOT NULL DEFAULT 0,
-  `isbasic` tinyint(1) NOT NULL DEFAULT 0
+  `image` varchar(100) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -762,7 +783,6 @@ CREATE TABLE `parcours_mission` (
   `id` int(11) NOT NULL,
   `IDparcours` int(11) NOT NULL,
   `IDmission` int(11) NOT NULL,
-  `position` int(11) DEFAULT NULL,
   `required` tinyint(1) NOT NULL DEFAULT 1,
   `branch` varchar(50) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -954,8 +974,12 @@ CREATE TABLE `user` (
   `id` int(11) NOT NULL,
   `email` varchar(150) DEFAULT NULL,
   `lastname` varchar(150) DEFAULT NULL,
+  `presentation` text DEFAULT NULL,
+  `latlong` varchar(100) DEFAULT NULL,
+  `birthdate` date DEFAULT NULL,
   `firstname` varchar(150) DEFAULT NULL,
   `username` varchar(100) DEFAULT NULL,
+  `image` varchar(100) DEFAULT NULL,
   `password` varchar(80) DEFAULT NULL,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
   `dateconnexion` datetime DEFAULT NULL,
@@ -1066,13 +1090,13 @@ CREATE TABLE `user_patreon` (
 -- --------------------------------------------------------
 
 --
--- Structure de la table `user_question_response`
+-- Structure de la table `user_faq_response`
 --
 
-CREATE TABLE `user_question_response` (
+CREATE TABLE `user_faq_response` (
   `id` int(11) NOT NULL,
   `IDuser` int(11) DEFAULT NULL,
-  `IDquestion` int(11) DEFAULT NULL,
+  `IDfaq` int(11) DEFAULT NULL,
   `IDchoice` int(11) DEFAULT NULL,
   `IDmission` int(11) DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp()
@@ -1224,17 +1248,17 @@ ALTER TABLE `document`
   ADD PRIMARY KEY (`id`);
 
 --
--- Index pour la table `question`
+-- Index pour la table `faq`
 --
-ALTER TABLE `question`
+ALTER TABLE `faq`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_faq_reliability` (`reliability`),
   ADD KEY `idx_faq_reliability_updated_at` (`reliability_updated_at`);
 
 --
--- Index pour la table `question_choice`
+-- Index pour la table `faq_choice`
 --
-ALTER TABLE `question_choice`
+ALTER TABLE `faq_choice`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -1268,9 +1292,9 @@ ALTER TABLE `mission_dependencies`
   ADD PRIMARY KEY (`id`);
 
 --
--- Index pour la table `mission_question`
+-- Index pour la table `mission_faq`
 --
-ALTER TABLE `mission_question`
+ALTER TABLE `mission_faq`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -1386,9 +1410,9 @@ ALTER TABLE `user_patreon`
   ADD KEY `idx_user_patreon_connected` (`is_connected`);
 
 --
--- Index pour la table `user_question_response`
+-- Index pour la table `user_faq_response`
 --
-ALTER TABLE `user_question_response`
+ALTER TABLE `user_faq_response`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -1444,15 +1468,15 @@ ALTER TABLE `document`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2015;
 
 --
--- AUTO_INCREMENT pour la table `question`
+-- AUTO_INCREMENT pour la table `faq`
 --
-ALTER TABLE `question`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+ALTER TABLE `faq`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3221;
 
 --
--- AUTO_INCREMENT pour la table `question_choice`
+-- AUTO_INCREMENT pour la table `faq_choice`
 --
-ALTER TABLE `question_choice`
+ALTER TABLE `faq_choice`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
@@ -1486,9 +1510,9 @@ ALTER TABLE `mission_dependencies`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
--- AUTO_INCREMENT pour la table `mission_question`
+-- AUTO_INCREMENT pour la table `mission_faq`
 --
-ALTER TABLE `mission_question`
+ALTER TABLE `mission_faq`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
@@ -1593,9 +1617,9 @@ ALTER TABLE `user_patreon`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT pour la table `user_question_response`
+-- AUTO_INCREMENT pour la table `user_faq_response`
 --
-ALTER TABLE `user_question_response`
+ALTER TABLE `user_faq_response`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -1806,6 +1830,7 @@ CREATE TABLE IF NOT EXISTS `decision_process` (
   `decision_type` varchar(20) NOT NULL DEFAULT 'decision',
   `status` varchar(20) NOT NULL DEFAULT 'draft',
   `evaluation_method` varchar(40) NOT NULL DEFAULT 'simple_vote',
+  `visibility_type` varchar(30) NOT NULL DEFAULT 'organization',
   `parameters` mediumtext DEFAULT NULL,
   `consultation_start_at` datetime DEFAULT NULL,
   `consultation_end_at` datetime DEFAULT NULL,

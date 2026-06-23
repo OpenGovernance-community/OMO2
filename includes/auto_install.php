@@ -1546,7 +1546,7 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors,
     <?php endif; ?>
 
     <main class="auto-install-page">
-        <section class="auto-install-hero generic-hero-panel generic-hero-panel--accent">
+        <section class="auto-install-hero generic-hero-panel accent">
             <p class="auto-install-eyebrow">Premier demarrage</p>
             <h1 class="auto-install-title">Configuration initiale du site</h1>
             <p class="auto-install-intro">

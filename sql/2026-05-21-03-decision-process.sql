@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS `decision_process` (
     `decision_type` varchar(20) NOT NULL DEFAULT 'decision',
     `status` varchar(20) NOT NULL DEFAULT 'draft',
     `evaluation_method` varchar(40) NOT NULL DEFAULT 'simple_vote',
+    `visibility_type` varchar(30) NOT NULL DEFAULT 'organization',
     `parameters` mediumtext DEFAULT NULL,
     `consultation_start_at` datetime DEFAULT NULL,
     `consultation_end_at` datetime DEFAULT NULL,
