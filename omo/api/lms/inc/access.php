@@ -53,6 +53,13 @@ function lmsGetParcoursAccessContext($organizationId, $parcoursId, $userId = nul
 		$userId = (int)commonGetCurrentUserId();
 	}
 
+	if (function_exists('lmsIsBasicCatalogMode') && lmsIsBasicCatalogMode()) {
+		return \dbObject\Parcours::resolveBasicCatalogAccessContext(
+			(int)$parcoursId,
+			(int)$userId
+		);
+	}
+
 	return \dbObject\OrganizationParcours::resolveAccessContext(
 		(int)$organizationId,
 		(int)$parcoursId,

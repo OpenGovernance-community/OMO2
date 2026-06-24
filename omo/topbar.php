@@ -252,6 +252,8 @@ function omoGetTopbarHelpItems(string $variant = 'app', int $organizationId = 0)
     ];
     if ($organizationId > 0) {
         $tutorialsQuery['oid'] = $organizationId;
+    } else {
+        $tutorialsQuery['catalog'] = 'basic';
     }
 
     $tutorialsUrl = commonBuildUrl(
@@ -337,10 +339,18 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
 {
     $variant = (string)($options['variant'] ?? 'app');
     $isDemoGuest = !empty($options['isDemoGuest']);
+    $currentUserId = function_exists('commonGetCurrentUserId')
+        ? (int)commonGetCurrentUserId()
+        : (int)($_SESSION['currentUser'] ?? 0);
     $hasOrganizationContext = !empty($organizationContext['isValid']) && !empty($organizationContext['id']);
-    $helpOrganizationId = $hasOrganizationContext
-        ? (int)$organizationContext['id']
-        : (int)($_SESSION['currentOrganization'] ?? 0);
+    $helpUsesOrganizationContext = $variant === 'app';
+    $helpOrganizationId = $currentUserId > 0 && $helpUsesOrganizationContext
+        ? (
+            $hasOrganizationContext
+                ? (int)$organizationContext['id']
+                : (int)($_SESSION['currentOrganization'] ?? 0)
+        )
+        : 0;
     $translationOptions = !empty($options['translations']) && is_array($options['translations'])
         ? $options['translations']
         : [];

@@ -286,7 +286,7 @@
 
         function commitCrop() {
             if (!canEdit || !naturalWidth || !naturalHeight || !store.workingSrc) {
-                return;
+                return Promise.resolve(false);
             }
 
             const canvas = document.createElement('canvas');
@@ -306,21 +306,26 @@
                 displayHeight * ratio
             );
 
-            canvas.toBlob(function (blob) {
-                if (!blob) {
-                    return;
-                }
+            return new Promise(function (resolve) {
+                canvas.toBlob(function (blob) {
+                    if (!blob) {
+                        resolve(false);
+                        return;
+                    }
 
-                clearStoreBlob(store);
-                store.blob = blob;
-                store.previewObjectUrl = URL.createObjectURL(blob);
-                store.previewUrl = store.previewObjectUrl;
-                setHiddenValue('newimage');
-                updateMetaText();
-                if (clearButton) {
-                    clearButton.disabled = false;
-                }
-            }, store.preferredMimeType || 'image/jpeg', (store.preferredMimeType || 'image/jpeg') === 'image/png' ? undefined : 0.92);
+                    clearStoreBlob(store);
+                    store.blob = blob;
+                    store.previewObjectUrl = URL.createObjectURL(blob);
+                    store.previewUrl = store.previewObjectUrl;
+                    setHiddenValue('newimage');
+                    updateMetaText();
+                    if (clearButton) {
+                        clearButton.disabled = false;
+                    }
+
+                    resolve(true);
+                }, store.preferredMimeType || 'image/jpeg', (store.preferredMimeType || 'image/jpeg') === 'image/png' ? undefined : 0.92);
+            });
         }
 
         function scheduleCropCommit() {
@@ -543,6 +548,58 @@
         return {
             getValue: function () {
                 return String(hiddenInput.value || '');
+            },
+            flushPending: function () {
+                if (String(hiddenInput.value || '') !== 'newimage') {
+                    return Promise.resolve();
+                }
+
+                if (store.cropTimer) {
+                    window.clearTimeout(store.cropTimer);
+                    store.cropTimer = null;
+                }
+
+                if (store.blob) {
+                    return Promise.resolve();
+                }
+
+                if (naturalWidth && naturalHeight && store.workingSrc) {
+                    return commitCrop().then(function () {});
+                }
+
+                if (!store.workingSrc) {
+                    return Promise.resolve();
+                }
+
+                return new Promise(function (resolve) {
+                    let settled = false;
+
+                    function finalize() {
+                        if (settled) {
+                            return;
+                        }
+
+                        settled = true;
+                        resolve();
+                    }
+
+                    function handleLoaded() {
+                        commitCrop().then(function () {
+                            finalize();
+                        }).catch(function () {
+                            finalize();
+                        });
+                    }
+
+                    if (image.complete && image.naturalWidth && image.naturalHeight) {
+                        handleLoaded();
+                        return;
+                    }
+
+                    image.addEventListener('load', handleLoaded, { once: true });
+                    image.addEventListener('error', finalize, { once: true });
+                    window.setTimeout(finalize, 1500);
+                });
             },
             appendToFormData: function (formData) {
                 if (!formData || !store.blob) {

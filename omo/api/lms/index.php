@@ -6,11 +6,14 @@ include 'inc/org.php';
 require_once __DIR__ . '/inc/access.php';
 
 $isEmbedded = !empty($_GET['embed']);
+$isBasicCatalogMode = lmsIsBasicCatalogMode();
 $user_id = (int)($_SESSION['currentUser'] ?? 0);
 $hasOrganizationAccess = commonUserHasOrganizationAccess($user_id, (int)$org['id']);
-$canCreateParcours = $user_id > 0 && $hasOrganizationAccess;
+$canCreateParcours = !$isBasicCatalogMode && $user_id > 0 && $hasOrganizationAccess;
 $organizationColor = commonGetOrganizationExplicitColor($org);
-$parcours = \dbObject\Parcours::fetchForOrganizationWithProgress($org['id'], $user_id, $hasOrganizationAccess);
+$parcours = $isBasicCatalogMode
+    ? \dbObject\Parcours::fetchBasicCatalogWithProgress($user_id)
+    : \dbObject\Parcours::fetchForOrganizationWithProgress($org['id'], $user_id, $hasOrganizationAccess);
 $parcours = is_array($parcours) ? $parcours : [];
 $pendingParcours = [];
 $completedParcours = [];
@@ -32,7 +35,7 @@ foreach ($parcours as $parcoursItem) {
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo htmlspecialchars($org['name']); ?></title>
+    <title><?php echo htmlspecialchars($isBasicCatalogMode ? 'Tutoriels OMO' : $org['name']); ?></title>
     <link rel="stylesheet" href="/shared_css.css">
     <link rel="stylesheet" href="<?php echo htmlspecialchars(omoLmsBuildPath('/css/std.css')); ?>">
     <?php if ($isEmbedded && $canCreateParcours): ?>
@@ -449,11 +452,11 @@ if (!$isEmbedded) {
 <div class="content<?php echo $isEmbedded ? ' lms-index-content--embed' : ''; ?>">
 <?php if ($isEmbedded): ?>
 <div class="lms-index-embed-header">
-    <h1><?php echo htmlspecialchars($org['name']); ?></h1>
-    <p>Parcours de formation</p>
+    <h1><?php echo htmlspecialchars($isBasicCatalogMode ? 'Tutoriels OMO' : $org['name']); ?></h1>
+    <p><?php echo htmlspecialchars($isBasicCatalogMode ? 'Parcours de prise en main' : 'Parcours de formation'); ?></p>
 </div>
 <?php endif; ?>
-<?php if (!$isEmbedded): ?>
+<?php if (!$isEmbedded && !$isBasicCatalogMode): ?>
 <div class="org-banner" style="background-color: <?php echo htmlspecialchars($org['color']); ?>">
 
     <?php if (!empty($org['banner'])): ?>
@@ -472,7 +475,7 @@ if (!$isEmbedded) {
 </div>
 <?php endif; ?>
 
-<h1>Parcours de formation</h1>
+<h1><?php echo htmlspecialchars($isBasicCatalogMode ? 'Tutoriels de prise en main' : 'Parcours de formation'); ?></h1>
 
 <div class="lms-parcours-sections">
 <section class="lms-parcours-section" id="lms-parcours-section-pending">
@@ -617,18 +620,18 @@ const lmsIndexViewer = {
     isEmbedded: <?php echo $isEmbedded ? 'true' : 'false'; ?>,
     canCreateParcours: <?php echo $canCreateParcours ? 'true' : 'false'; ?>
 };
-const lmsParcoursBasePath = <?php echo json_encode(omoLmsBuildPath('/parcours.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
-const lmsParcoursCreatePath = <?php echo json_encode(omoLmsBuildPath('/parcours_create.php', array('oid' => (int)$org['id'])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
-const lmsParcoursImportPath = <?php echo json_encode(omoLmsBuildPath('/parcours_import.php', array('oid' => (int)$org['id'])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
-const lmsParcoursImportSavePath = <?php echo json_encode(omoLmsBuildPath('/import_parcours.php', array('oid' => (int)$org['id'])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
-const lmsParcoursEditBasePath = <?php echo json_encode(omoLmsBuildPath('/parcours_create.php', array('oid' => (int)$org['id'])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
-const lmsMissionEditBasePath = <?php echo json_encode(omoLmsBuildPath('/mission_edit.php', array('oid' => (int)$org['id'])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
-const lmsParcoursMissionPanelBasePath = <?php echo json_encode(omoLmsBuildPath('/parcours_missions_panel.php', array('oid' => (int)$org['id'])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
-const lmsParcoursMissionAddPath = <?php echo json_encode(omoLmsBuildPath('/parcours_mission_add.php', array('oid' => (int)$org['id'])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
-const lmsParcoursMissionCreatePath = <?php echo json_encode(omoLmsBuildPath('/parcours_mission_create.php', array('oid' => (int)$org['id'])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
-const lmsParcoursMissionReorderPath = <?php echo json_encode(omoLmsBuildPath('/parcours_mission_reorder.php', array('oid' => (int)$org['id'])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
-const lmsMissionHomeworkReorderPath = <?php echo json_encode(omoLmsBuildPath('/mission_homework_reorder.php', array('oid' => (int)$org['id'])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
-const lmsMissionQuestionReorderPath = <?php echo json_encode(omoLmsBuildPath('/mission_question_reorder.php', array('oid' => (int)$org['id'])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsParcoursBasePath = <?php echo json_encode(lmsBuildLocalPath('/parcours.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsParcoursCreatePath = <?php echo json_encode(lmsBuildLocalPath('/parcours_create.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsParcoursImportPath = <?php echo json_encode(lmsBuildLocalPath('/parcours_import.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsParcoursImportSavePath = <?php echo json_encode(lmsBuildLocalPath('/import_parcours.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsParcoursEditBasePath = <?php echo json_encode(lmsBuildLocalPath('/parcours_create.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsMissionEditBasePath = <?php echo json_encode(lmsBuildLocalPath('/mission_edit.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsParcoursMissionPanelBasePath = <?php echo json_encode(lmsBuildLocalPath('/parcours_missions_panel.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsParcoursMissionAddPath = <?php echo json_encode(lmsBuildLocalPath('/parcours_mission_add.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsParcoursMissionCreatePath = <?php echo json_encode(lmsBuildLocalPath('/parcours_mission_create.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsParcoursMissionReorderPath = <?php echo json_encode(lmsBuildLocalPath('/parcours_mission_reorder.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsMissionHomeworkReorderPath = <?php echo json_encode(lmsBuildLocalPath('/mission_homework_reorder.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsMissionQuestionReorderPath = <?php echo json_encode(lmsBuildLocalPath('/mission_question_reorder.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 
 function getAnonymousProgressKey(parcoursId) {
     return `lms_progress_${lmsIndexViewer.organizationId}_${parcoursId}`;

@@ -1,15 +1,48 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 
-$defaultOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
-if ($defaultOrganizationId <= 0) {
-    $defaultOrganizationId = 1;
+function lmsIsBasicCatalogMode(): bool
+{
+    return trim((string)($_REQUEST['catalog'] ?? '')) === 'basic';
 }
 
-$org = commonResolveOrganizationContext($defaultOrganizationId);
+function lmsGetScopeQueryParams(): array
+{
+    return lmsIsBasicCatalogMode()
+        ? ['catalog' => 'basic']
+        : [];
+}
+
+if (lmsIsBasicCatalogMode()) {
+    $org = [
+        'isValid' => true,
+        'id' => 0,
+        'name' => 'OMO',
+        'shortname' => 'omo',
+        'domain' => '',
+        'logo' => '/img/logo-OGC.png',
+        'banner' => '',
+        'color' => '',
+        'host' => commonGetRequestHost(),
+        'error' => null,
+        'isDemo' => false,
+        'routeMode' => 'path',
+    ];
+} else {
+    $defaultOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
+    if ($defaultOrganizationId <= 0) {
+        $defaultOrganizationId = 1;
+    }
+
+    $org = commonResolveOrganizationContext($defaultOrganizationId);
+}
 
 function lmsGetNavigationOrganizationId(): int
 {
+    if (lmsIsBasicCatalogMode()) {
+        return 0;
+    }
+
     $requestedOrganizationId = commonGetRequestedOrganizationId();
     if ($requestedOrganizationId > 0) {
         return $requestedOrganizationId;
@@ -23,6 +56,12 @@ function lmsBuildLocalPath(string $path, array $params = []): string
 {
     $normalizedPath = omoLmsBuildPath($path);
     $organizationId = lmsGetNavigationOrganizationId();
+
+    foreach (lmsGetScopeQueryParams() as $key => $value) {
+        if (!array_key_exists($key, $params)) {
+            $params[$key] = $value;
+        }
+    }
 
     if ($organizationId > 0 && !array_key_exists('oid', $params)) {
         $params['oid'] = $organizationId;

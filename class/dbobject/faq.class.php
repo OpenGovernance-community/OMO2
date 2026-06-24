@@ -442,7 +442,7 @@ class FAQ extends DbObject
 		return self::resolvePopupContext($organizationId, $currentHolonId);
 	}
 
-	public static function normalizePopupScope($scope = null, array $context = array())
+	public static function getAvailablePopupScopes(array $context = array())
 	{
 		$organizationId = (int)($context['organizationId'] ?? 0);
 		$currentHolon = isset($context['currentHolon']) && $context['currentHolon'] instanceof \dbObject\Holon
@@ -452,33 +452,48 @@ class FAQ extends DbObject
 			? $context['rootHolon']
 			: null;
 
+		if ($organizationId <= 0) {
+			return array('global');
+		}
+
 		if (
 			function_exists('omoApiGetAvailableContextScopes')
-			&& function_exists('omoApiNormalizeContextScope')
 		) {
-			return \omoApiNormalizeContextScope(
-				$scope,
-				\omoApiGetAvailableContextScopes($organizationId > 0, $currentHolon, $rootHolon)
-			);
+			return \omoApiGetAvailableContextScopes(true, $currentHolon, $rootHolon);
 		}
 
 		$allowedScopes = array('contextual');
-		if ($organizationId > 0) {
-			if (
-				$currentHolon instanceof \dbObject\Holon
-				&& (int)$currentHolon->getId() > 0
-				&& !($rootHolon instanceof \dbObject\Holon && (int)$rootHolon->getId() === (int)$currentHolon->getId())
-			) {
-				$allowedScopes[] = 'descendants';
-			}
+		if (
+			$currentHolon instanceof \dbObject\Holon
+			&& (int)$currentHolon->getId() > 0
+			&& !($rootHolon instanceof \dbObject\Holon && (int)$rootHolon->getId() === (int)$currentHolon->getId())
+		) {
+			$allowedScopes[] = 'descendants';
+		}
 
-			$allowedScopes[] = 'global';
+		$allowedScopes[] = 'global';
+		return $allowedScopes;
+	}
+
+	public static function normalizePopupScope($scope = null, array $context = array())
+	{
+		$allowedScopes = self::getAvailablePopupScopes($context);
+
+		if (function_exists('omoApiNormalizeContextScope')) {
+			return \omoApiNormalizeContextScope(
+				$scope,
+				$allowedScopes
+			);
 		}
 
 		$scope = strtolower(trim((string)$scope));
-		return in_array($scope, $allowedScopes, true)
-			? $scope
-			: 'contextual';
+		if (in_array($scope, $allowedScopes, true)) {
+			return $scope;
+		}
+
+		return in_array('contextual', $allowedScopes, true)
+			? 'contextual'
+			: (string)$allowedScopes[0];
 	}
 
 	public static function buildPopupLoadParams(array $context = array(), $scope = 'contextual')
