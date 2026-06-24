@@ -40,7 +40,7 @@ if ($organizationId <= 0) {
     $isHolonDefinitionMode = (($editorData['editorMode'] ?? 'template') === 'holon-definition');
     if ($isHolonDefinitionMode) {
         $templateScope = 'contextual';
-        $selectedTemplateId = 0;
+        $selectedTemplateId = (int)($editorData['targetHolonId'] ?? $targetHolonId);
     }
 }
 ?>
@@ -513,6 +513,50 @@ const omoHolonTemplateMediaFields = {
     icon: null,
     banner: null
 };
+
+function omoHolonTemplateWaitForGlobalLibrary(globalKey, timeoutMs) {
+    const key = String(globalKey || '').trim();
+    const maxWait = Number(timeoutMs || 4000);
+    if (key !== '' && window[key]) {
+        return Promise.resolve(true);
+    }
+
+    return new Promise(function (resolve) {
+        const startedAt = Date.now();
+
+        function checkAvailability() {
+            if (key !== '' && window[key]) {
+                resolve(true);
+                return;
+            }
+
+            if (Date.now() - startedAt >= maxWait) {
+                resolve(false);
+                return;
+            }
+
+            window.setTimeout(checkAvailability, 30);
+        }
+
+        checkAvailability();
+    });
+}
+
+function omoHolonTemplateBootstrapInitialRender() {
+    omoHolonTemplateRenderTree();
+    if (Number(omoHolonTemplateState.selectedId || 0) > 0 && omoHolonTemplateFind(omoHolonTemplateState.selectedId)) {
+        omoHolonTemplateSelect(omoHolonTemplateState.selectedId);
+    } else if (
+        omoHolonTemplateIsHolonDefinitionMode()
+        && Array.isArray(omoHolonTemplateState.data.templates)
+        && omoHolonTemplateState.data.templates.length > 0
+        && Number(omoHolonTemplateState.data.templates[0].id || 0) > 0
+    ) {
+        omoHolonTemplateSelect(Number(omoHolonTemplateState.data.templates[0].id || 0));
+    } else {
+        omoHolonTemplateFillForm(omoHolonTemplateBuildDraft(0));
+    }
+}
 
 function omoHolonTemplateGetScope() {
     return String(omoHolonTemplatePageRoot.getAttribute('data-omo-template-scope') || 'contextual').trim().toLowerCase() === 'global'
@@ -2321,75 +2365,86 @@ function omoHolonTemplateSave(event) {
 
     omoHolonTemplateClearStatus();
 
-    const payload = {
-        id: Number(omoHolonTemplateElements.form.dataset.templateId || 0),
-        typeId: omoHolonTemplateGetEffectiveTypeId(omoHolonTemplateElements.type.value || 0, omoHolonTemplateGetEffectiveInheritanceIdFromParent(omoHolonTemplateElements.parent.value || 0)),
-        name: omoHolonTemplateElements.name.value.trim(),
-        color: Boolean(omoHolonTemplateElements.colorEnabled && omoHolonTemplateElements.colorEnabled.checked)
-            ? String(omoHolonTemplateElements.color && omoHolonTemplateElements.color.value ? omoHolonTemplateElements.color.value : '')
-            : '',
-        icon: omoHolonTemplateMediaFields.icon ? omoHolonTemplateMediaFields.icon.getValue() : '',
-        banner: omoHolonTemplateMediaFields.banner ? omoHolonTemplateMediaFields.banner.getValue() : '',
-        visible: Boolean(omoHolonTemplateElements.visible && omoHolonTemplateElements.visible.checked),
-        mandatory: Boolean(omoHolonTemplateElements.mandatory && omoHolonTemplateElements.mandatory.checked),
-        lockedName: Boolean(omoHolonTemplateElements.lockedName && omoHolonTemplateElements.lockedName.checked),
-        lockedIcon: omoHolonTemplateElements.lockedIcon
-            ? (omoHolonTemplateElements.lockedIcon.disabled
-                ? String(omoHolonTemplateElements.lockedIcon.dataset.localValue || '0') === '1'
-                : Boolean(omoHolonTemplateElements.lockedIcon.checked))
-            : false,
-        lockedBanner: omoHolonTemplateElements.lockedBanner
-            ? (omoHolonTemplateElements.lockedBanner.disabled
-                ? String(omoHolonTemplateElements.lockedBanner.dataset.localValue || '0') === '1'
-                : Boolean(omoHolonTemplateElements.lockedBanner.checked))
-            : false,
-        unique: Boolean(omoHolonTemplateElements.unique && omoHolonTemplateElements.unique.checked),
-        link: Boolean(omoHolonTemplateElements.link && omoHolonTemplateElements.link.checked),
-        inheritsFromId: omoHolonTemplateGetEffectiveInheritanceIdFromParent(omoHolonTemplateElements.parent.value || 0),
-        permissions: omoHolonTemplateReadPermissions(),
-        properties: omoHolonTemplateReadProperties()
-    };
-
-    if (omoHolonTemplateIsHolonDefinitionMode()) {
-        payload.shareAsTemplate = Boolean(omoHolonTemplateElements.sharePublic && omoHolonTemplateElements.sharePublic.checked);
-        payload.publicTemplateName = payload.shareAsTemplate && omoHolonTemplateElements.publicName
-            ? String(omoHolonTemplateElements.publicName.value || '').trim()
-            : '';
-
-        if (!payload.shareAsTemplate) {
-            payload.icon = '';
-            payload.banner = '';
-        }
+    const pendingMediaFlushes = [];
+    if (omoHolonTemplateMediaFields.icon && typeof omoHolonTemplateMediaFields.icon.flushPending === 'function') {
+        pendingMediaFlushes.push(omoHolonTemplateMediaFields.icon.flushPending());
+    }
+    if (omoHolonTemplateMediaFields.banner && typeof omoHolonTemplateMediaFields.banner.flushPending === 'function') {
+        pendingMediaFlushes.push(omoHolonTemplateMediaFields.banner.flushPending());
     }
 
-    const saveUrl = '/omo/api/parameters/holon-templates/save.php'
-        + (function () {
-            const query = [];
-            if (Number(omoHolonTemplateState.data.contextHolonId || 0) > 0) {
-                query.push('cid=' + Number(omoHolonTemplateState.data.contextHolonId || 0));
-            }
-            if (omoHolonTemplateIsHolonDefinitionMode() && Number(omoHolonTemplateState.data.targetHolonId || 0) > 0) {
-                query.push('hid=' + Number(omoHolonTemplateState.data.targetHolonId || 0));
-            }
-            if (!omoHolonTemplateIsHolonDefinitionMode() && omoHolonTemplateGetScope() !== 'contextual') {
-                query.push('template_scope=' + encodeURIComponent(omoHolonTemplateGetScope()));
-            }
-            return query.length ? ('?' + query.join('&')) : '';
-        })();
+    Promise.all(pendingMediaFlushes)
+        .then(function () {
+            const payload = {
+                id: Number(omoHolonTemplateElements.form.dataset.templateId || 0),
+                typeId: omoHolonTemplateGetEffectiveTypeId(omoHolonTemplateElements.type.value || 0, omoHolonTemplateGetEffectiveInheritanceIdFromParent(omoHolonTemplateElements.parent.value || 0)),
+                name: omoHolonTemplateElements.name.value.trim(),
+                color: Boolean(omoHolonTemplateElements.colorEnabled && omoHolonTemplateElements.colorEnabled.checked)
+                    ? String(omoHolonTemplateElements.color && omoHolonTemplateElements.color.value ? omoHolonTemplateElements.color.value : '')
+                    : '',
+                icon: omoHolonTemplateMediaFields.icon ? omoHolonTemplateMediaFields.icon.getValue() : '',
+                banner: omoHolonTemplateMediaFields.banner ? omoHolonTemplateMediaFields.banner.getValue() : '',
+                visible: Boolean(omoHolonTemplateElements.visible && omoHolonTemplateElements.visible.checked),
+                mandatory: Boolean(omoHolonTemplateElements.mandatory && omoHolonTemplateElements.mandatory.checked),
+                lockedName: Boolean(omoHolonTemplateElements.lockedName && omoHolonTemplateElements.lockedName.checked),
+                lockedIcon: omoHolonTemplateElements.lockedIcon
+                    ? (omoHolonTemplateElements.lockedIcon.disabled
+                        ? String(omoHolonTemplateElements.lockedIcon.dataset.localValue || '0') === '1'
+                        : Boolean(omoHolonTemplateElements.lockedIcon.checked))
+                    : false,
+                lockedBanner: omoHolonTemplateElements.lockedBanner
+                    ? (omoHolonTemplateElements.lockedBanner.disabled
+                        ? String(omoHolonTemplateElements.lockedBanner.dataset.localValue || '0') === '1'
+                        : Boolean(omoHolonTemplateElements.lockedBanner.checked))
+                    : false,
+                unique: Boolean(omoHolonTemplateElements.unique && omoHolonTemplateElements.unique.checked),
+                link: Boolean(omoHolonTemplateElements.link && omoHolonTemplateElements.link.checked),
+                inheritsFromId: omoHolonTemplateGetEffectiveInheritanceIdFromParent(omoHolonTemplateElements.parent.value || 0),
+                permissions: omoHolonTemplateReadPermissions(),
+                properties: omoHolonTemplateReadProperties()
+            };
 
-    const formData = new FormData();
-    formData.append('payload', JSON.stringify(payload));
-    if (omoHolonTemplateMediaFields.icon) {
-        omoHolonTemplateMediaFields.icon.appendToFormData(formData);
-    }
-    if (omoHolonTemplateMediaFields.banner) {
-        omoHolonTemplateMediaFields.banner.appendToFormData(formData);
-    }
+            if (omoHolonTemplateIsHolonDefinitionMode()) {
+                payload.shareAsTemplate = Boolean(omoHolonTemplateElements.sharePublic && omoHolonTemplateElements.sharePublic.checked);
+                payload.publicTemplateName = payload.shareAsTemplate && omoHolonTemplateElements.publicName
+                    ? String(omoHolonTemplateElements.publicName.value || '').trim()
+                    : '';
 
-    fetch(saveUrl, {
-        method: 'POST',
-        body: formData
-    })
+                if (!payload.shareAsTemplate) {
+                    payload.icon = '';
+                    payload.banner = '';
+                }
+            }
+
+            const saveUrl = '/omo/api/parameters/holon-templates/save.php'
+                + (function () {
+                    const query = [];
+                    if (Number(omoHolonTemplateState.data.contextHolonId || 0) > 0) {
+                        query.push('cid=' + Number(omoHolonTemplateState.data.contextHolonId || 0));
+                    }
+                    if (omoHolonTemplateIsHolonDefinitionMode() && Number(omoHolonTemplateState.data.targetHolonId || 0) > 0) {
+                        query.push('hid=' + Number(omoHolonTemplateState.data.targetHolonId || 0));
+                    }
+                    if (!omoHolonTemplateIsHolonDefinitionMode() && omoHolonTemplateGetScope() !== 'contextual') {
+                        query.push('template_scope=' + encodeURIComponent(omoHolonTemplateGetScope()));
+                    }
+                    return query.length ? ('?' + query.join('&')) : '';
+                })();
+
+            const formData = new FormData();
+            formData.append('payload', JSON.stringify(payload));
+            if (omoHolonTemplateMediaFields.icon) {
+                omoHolonTemplateMediaFields.icon.appendToFormData(formData);
+            }
+            if (omoHolonTemplateMediaFields.banner) {
+                omoHolonTemplateMediaFields.banner.appendToFormData(formData);
+            }
+
+            return fetch(saveUrl, {
+                method: 'POST',
+                body: formData
+            });
+        })
         .then(function (response) {
             return response.json().then(function (data) {
                 return {
@@ -2742,12 +2797,12 @@ if (omoHolonTemplateElements.root) {
     });
 }
 
-omoHolonTemplateRenderTree();
-if (Number(omoHolonTemplateState.selectedId || 0) > 0 && omoHolonTemplateFind(omoHolonTemplateState.selectedId)) {
-    omoHolonTemplateSelect(omoHolonTemplateState.selectedId);
-} else {
-    omoHolonTemplateFillForm(omoHolonTemplateBuildDraft(0));
-}
+Promise.all([
+    omoHolonTemplateWaitForGlobalLibrary('omoSizedImageField', 5000),
+    omoHolonTemplateWaitForGlobalLibrary('omoSimpleHtmlField', 5000)
+]).finally(function () {
+    omoHolonTemplateBootstrapInitialRender();
+});
 })();
 </script>
 <?php endif; ?>

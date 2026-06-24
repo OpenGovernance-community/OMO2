@@ -276,6 +276,89 @@
 			return is_array($rows) ? $rows : [];
 		}
 
+		public static function fetchBasicCatalogWithProgress($userId = 0)
+		{
+			$userId = (int)$userId;
+			$where = ["p.isbasic = 1"];
+
+			$query = "
+				SELECT
+					p.id,
+					p.title,
+					p.description,
+					p.image,
+					p.IDorganization AS owner_organization_id,
+					COUNT(DISTINCT pm.IDmission) AS total_missions,
+					COALESCE(SUM(
+						CASE
+							WHEN lm.done IS NOT NULL THEN 1
+							ELSE 0
+						END
+					), 0) AS done_missions
+				FROM parcours p
+				LEFT JOIN parcours_mission pm
+					ON pm.IDparcours = p.id
+				LEFT JOIN user_mission lm
+					ON lm.IDmission = pm.IDmission
+					AND lm.IDparcours = p.id
+					AND lm.IDuser = :user_id
+				WHERE " . implode(" AND ", $where) . "
+				GROUP BY p.id, p.title, p.description, p.image, p.IDorganization
+				ORDER BY p.title ASC, p.id ASC
+			";
+
+			$rows = self::fetchAll($query, [
+				'user_id' => $userId,
+			]);
+
+			return is_array($rows) ? $rows : [];
+		}
+
+		public static function resolveBasicCatalogAccessContext($parcoursId, $userId = 0)
+		{
+			$parcoursId = (int)$parcoursId;
+			$userId = (int)$userId;
+			if ($parcoursId <= 0) {
+				return [
+					'exists' => false,
+					'canView' => false,
+					'userId' => $userId,
+					'isLoggedIn' => $userId > 0,
+					'hasOrganizationAccess' => false,
+					'everybody' => false,
+					'anonymous' => false,
+					'isBasicCatalog' => true,
+				];
+			}
+
+			$row = self::fetchRow(
+				"SELECT id, isbasic
+				FROM parcours
+				WHERE id = :parcours_id
+				LIMIT 1",
+				[
+					'parcours_id' => $parcoursId,
+				]
+			);
+
+			$exists = is_array($row) && (int)($row['id'] ?? 0) > 0;
+			$isBasic = $exists && !empty($row['isbasic']);
+			$canView = $isBasic;
+
+			return [
+				'exists' => $exists,
+				'canView' => $canView,
+				'canTrackProgress' => $canView,
+				'canTrackProgressLocally' => $userId <= 0 && $canView,
+				'userId' => $userId,
+				'isLoggedIn' => $userId > 0,
+				'hasOrganizationAccess' => false,
+				'everybody' => $isBasic,
+				'anonymous' => $userId <= 0 && $isBasic,
+				'isBasicCatalog' => true,
+			];
+		}
+
 		public static function fetchImportableForOrganization($organizationId)
 		{
 			$organizationId = (int)$organizationId;

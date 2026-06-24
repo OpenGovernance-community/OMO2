@@ -2,6 +2,14 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-06-24
+
+Avant connexion, la popup FAQ bascule maintenant automatiquement sur la portee `Global` quand aucun contexte organisation/holon n est disponible, ce qui re-affiche bien les FAQ generiques non rattachees a une organisation ou a un holon.
+
+Depuis la topbar OMO sans contexte d organisation, le lien `Tutoriels` ouvre maintenant un catalogue public de parcours `isbasic`. Les cartes LMS et le viewer associe conservent ce mode `basic` sur leurs appels AJAX pour permettre aussi l ouverture des tutos hors orga.
+
+Dans ce catalogue public LMS, la liste des missions anonymes recalcule maintenant correctement les dependances sans erreur SQL, y compris quand aucune mission n a encore ete terminee puis apres les premieres progressions locales.
+
 ## 2026-06-23
 
 Le stockage LMS des `Questions` est maintenant explicitement separe du stockage `FAQ`: les migrations et le seed Docker creent des tables dediees `question`, `question_choice`, `mission_question` et `user_question_response` sans jamais renommer ni recycler les tables `faq*`.
@@ -15,6 +23,12 @@ La popup FAQ ne plante plus si la base cible n a pas encore de table `faq`: elle
 La classe `FAQ` degrade maintenant proprement son tri sur les bases plus anciennes: si les colonnes `displayorder` ou `updated` manquent encore, les listes FAQ utilisent un ordre compatible au lieu de provoquer une erreur SQL.
 
 Dans le LMS OMO, un parcours importe depuis une autre organisation n expose plus l action `Editer` et toute tentative directe d ouverture ou de sauvegarde est maintenant refusee cote serveur: seule l organisation proprietaire peut modifier son parcours.
+
+Les editeurs OMO qui utilisent les widgets `sized-image-field` et `simple-html-field` attendent maintenant explicitement que leurs scripts AJAX soient prets avant le premier rendu. Les loaders d image de logo et de banniere apparaissent donc correctement des la premiere ouverture du panneau.
+
+Dans l editeur OMO des holons de type organisation, la reouverture d un holon existant recharge maintenant correctement son nom, ses proprietes locales et son statut de partage comme modele, au lieu d afficher un formulaire vide de type `Nouveau`.
+
+Les champs image recadrables de l editeur OMO attendent maintenant la fin effective du recadrage avant l envoi du formulaire. Les illustrations de holons et de modeles d organisation ne se perdent plus quand on valide juste apres avoir choisi ou ajuste une image.
 
 Dans la grille LMS OMO, la carte d ajout de parcours propose maintenant deux entrees distinctes `Nouveau` et `Importer`, avec un drawer de catalogue pour rattacher rapidement a l organisation courante un parcours deja marque `public` ou `basic`.
 
