@@ -19,7 +19,7 @@
 			}
 
 			$query = "
-				SELECT a.id
+				SELECT a.id, a.url, a.directory
 				FROM application a
 				LEFT JOIN organization_application oa
 					ON oa.IDapplication = a.id
@@ -40,6 +40,13 @@
 			}
 
 			foreach ($rows as $row) {
+				$probeApplication = new Application();
+				$probeApplication->set('url', $row['url'] ?? null);
+				$probeApplication->set('directory', $row['directory'] ?? null);
+				if (!$probeApplication->hasResolvedEntryPoint()) {
+					continue;
+				}
+
 				$application = new Application();
 				$application->setId((int)$row['id']);
 				$this[] = $application;
@@ -57,7 +64,7 @@
 			}
 
 			$query = "
-				SELECT a.id
+				SELECT a.id, a.url, a.directory
 				FROM organization_application oa
 				INNER JOIN application a ON a.id = oa.IDapplication
 				WHERE oa.IDorganization = :organization_id
@@ -78,6 +85,13 @@
 			}
 
 			foreach ($rows as $row) {
+				$probeApplication = new Application();
+				$probeApplication->set('url', $row['url'] ?? null);
+				$probeApplication->set('directory', $row['directory'] ?? null);
+				if (!$probeApplication->hasResolvedEntryPoint()) {
+					continue;
+				}
+
 				$application = new Application();
 				$application->setId((int)$row['id']);
 				$this[] = $application;

@@ -196,6 +196,141 @@
 		return trim((string)($GLOBALS['lastMailError'] ?? ''));
 	}
 
+	function appMailNormalizeAddress($email) {
+		$email = trim((string)$email);
+		if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+			return '';
+		}
+
+		return function_exists('mb_strtolower')
+			? mb_strtolower($email, 'UTF-8')
+			: strtolower($email);
+	}
+
+	function appMailExtractAddresses($value, $allowTuple = false) {
+		$addresses = [];
+
+		if (is_array($value)) {
+			$isTuple = $allowTuple
+				&& isset($value[0], $value[1])
+				&& !is_array($value[0])
+				&& !is_array($value[1])
+				&& appMailNormalizeAddress($value[0]) !== ''
+				&& appMailNormalizeAddress($value[1]) === '';
+			if ($isTuple) {
+				$normalized = appMailNormalizeAddress($value[0]);
+				if ($normalized !== '') {
+					$addresses[$normalized] = $normalized;
+				}
+
+				return array_values($addresses);
+			}
+
+			foreach ($value as $item) {
+				foreach (appMailExtractAddresses($item, $allowTuple) as $address) {
+					$addresses[$address] = $address;
+				}
+			}
+
+			return array_values($addresses);
+		}
+
+		$normalized = appMailNormalizeAddress($value);
+		if ($normalized !== '') {
+			$addresses[$normalized] = $normalized;
+		}
+
+		return array_values($addresses);
+	}
+
+	function appMailPatreonSupportIsAvailable() {
+		if (function_exists('patreonSupportUiIsEnabled')) {
+			return patreonSupportUiIsEnabled();
+		}
+
+		if (trim((string)($GLOBALS['patreonClientId'] ?? '')) === '') {
+			return false;
+		}
+
+		if (trim((string)($GLOBALS['patreonClientSecret'] ?? '')) === '') {
+			return false;
+		}
+
+		$redirectUri = trim((string)($GLOBALS['patreonRedirectUri'] ?? ''));
+		if ($redirectUri === '' || preg_match('#^https?://#i', $redirectUri) !== 1) {
+			return false;
+		}
+
+		if (!function_exists('curl_init')) {
+			return false;
+		}
+
+		if (!class_exists('\\dbObject\\UserPatreon')) {
+			return false;
+		}
+
+		return \dbObject\UserPatreon::isStorageAvailable();
+	}
+
+	function appMailShouldAppendPatreonFooter($from, $to, $body) {
+		$body = (string)$body;
+		if ($body === '' || stripos($body, 'patreon.com/cw/OpenGovernance') !== false) {
+			return false;
+		}
+
+		if (!appMailPatreonSupportIsAvailable()) {
+			return false;
+		}
+
+		if (!class_exists('\\dbObject\\UserPatreon')) {
+			return false;
+		}
+
+		if (isset($_SESSION['currentUser']) && \dbObject\UserPatreon::hasConnectedUserId((int)$_SESSION['currentUser'])) {
+			return false;
+		}
+
+		$addresses = array_merge(appMailExtractAddresses($from, true), appMailExtractAddresses($to));
+		if (\dbObject\UserPatreon::hasConnectedEmails($addresses)) {
+			return false;
+		}
+
+		return true;
+	}
+
+	function appMailAppendPatreonFooter($body, $isHtml) {
+		$body = (string)$body;
+		$patreonUrl = 'https://www.patreon.com/cw/OpenGovernance';
+
+		if ($isHtml) {
+			$footerHtml = '<div style="margin-top:28px; padding-top:18px; border-top:1px solid #e2e8f0;">'
+				. '<p style="margin:0 0 8px; color:#64748b; font-size:13px; line-height:1.6;">'
+				. 'Vous pouvez aussi soutenir le developpement du projet sur Patreon.'
+				. '</p>'
+				. '<p style="margin:0;">'
+				. '<a href="' . htmlspecialchars($patreonUrl, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener noreferrer" style="color:#d1365f; font-weight:600; text-decoration:none;">'
+				. 'Soutenir le projet sur Patreon'
+				. '</a>'
+				. '</p>'
+				. '</div>';
+
+			if (preg_match('/<\/body\s*>/i', $body)) {
+				return preg_replace('/<\/body\s*>/i', $footerHtml . '</body>', $body, 1);
+			}
+
+			if (preg_match('/<\/html\s*>/i', $body)) {
+				return preg_replace('/<\/html\s*>/i', $footerHtml . '</html>', $body, 1);
+			}
+
+			return $body . "\n" . $footerHtml;
+		}
+
+		return rtrim($body)
+			. "\n\n---\n"
+			. "Vous pouvez aussi soutenir le developpement du projet sur Patreon :\n"
+			. $patreonUrl;
+	}
+
 	function appBuildAbsoluteUrl($path = '') {
 		$path = (string)$path;
 		$baseUrl = appGetCurrentSiteBaseUrl();
@@ -516,8 +651,13 @@
 
 		// Sujet et corps du message
 		$mail->Subject = $subject;
+		$isHtmlBody = strip_tags($body)!=$body;
+		if (appMailShouldAppendPatreonFooter($from, $to, $body)) {
+			$body = appMailAppendPatreonFooter($body, $isHtmlBody);
+			$isHtmlBody = strip_tags($body)!=$body;
+		}
 		$mail->Body = $body;
-		if (strip_tags($body)!=$body)
+		if ($isHtmlBody)
 			$mail->IsHTML(true);  
 		
 		// Envoi de l'e-mail

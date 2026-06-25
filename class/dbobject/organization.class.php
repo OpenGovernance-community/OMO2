@@ -6005,6 +6005,8 @@
 			$rows = self::fetchAll(
 				"SELECT
 					a.id,
+					a.directory,
+					a.url,
 					a.active AS app_active,
 					a.navigationmode,
 					a.requires_login,
@@ -6028,12 +6030,16 @@
 			}
 
 			$row = $rows[0];
+			$probeApplication = new \dbObject\Application();
+			$probeApplication->set('url', $row['url'] ?? null);
+			$probeApplication->set('directory', $row['directory'] ?? null);
 			$cache[$cacheKey] = (
 				(int)($row['app_active'] ?? 0) === 1
 				&& trim((string)($row['navigationmode'] ?? '')) !== 'panel'
 				&& ((int)($row['requires_login'] ?? 0) === 0 || $userId > 0)
 				&& array_key_exists('organization_active', $row)
 				&& (int)$row['organization_active'] === 1
+				&& $probeApplication->hasResolvedEntryPoint()
 			);
 			return $cache[$cacheKey];
 		}

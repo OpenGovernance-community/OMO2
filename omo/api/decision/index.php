@@ -2440,8 +2440,24 @@ function omoDecisionCloseNestedEditorDrawer(options) {
         return;
     }
 
-    const wasOpen = !elements.editorDrawer.hidden || elements.editorDrawer.classList.contains('is-open');
     const settings = options && typeof options === 'object' ? options : {};
+    const currentHashState = typeof window.omoParsePopupHashState === 'function'
+        ? window.omoParsePopupHashState()
+        : null;
+    const currentRouteToken = currentHashState && currentHashState.routeToken
+        ? String(currentHashState.routeToken)
+        : '';
+
+    if (
+        settings.force !== true
+        && /^decision-(?:d)?\d+$/i.test(currentRouteToken)
+        && typeof window.omoOpenDrawerHashState === 'function'
+    ) {
+        window.omoOpenDrawerHashState('decision');
+        return;
+    }
+
+    const wasOpen = !elements.editorDrawer.hidden || elements.editorDrawer.classList.contains('is-open');
     elements.editorDrawer.classList.remove('is-open');
     window.setTimeout(function () {
         if (!elements.editorDrawer.classList.contains('is-open')) {
@@ -2562,6 +2578,30 @@ function findDecisionItemById(decisionId) {
     return null;
 }
 
+function getCurrentDecisionRouteToken() {
+    if (typeof window.omoParsePopupHashState !== 'function') {
+        return '';
+    }
+
+    const hashState = window.omoParsePopupHashState();
+    return hashState && hashState.routeToken
+        ? String(hashState.routeToken)
+        : '';
+}
+
+function buildDecisionRouteToken(decisionId) {
+    const resolvedDecisionId = Number(decisionId || 0);
+    if (!Number.isInteger(resolvedDecisionId) || resolvedDecisionId <= 0) {
+        return null;
+    }
+
+    if (typeof window.omoBuildDecisionRouteToken === 'function') {
+        return window.omoBuildDecisionRouteToken(resolvedDecisionId);
+    }
+
+    return 'decision-d' + String(resolvedDecisionId);
+}
+
 function resolveDecisionAutoOpenAction(item) {
     const actions = Array.isArray(item && item.actions) ? item.actions : [];
     let fallbackAction = null;
@@ -2585,19 +2625,15 @@ function resolveDecisionAutoOpenAction(item) {
     return fallbackAction;
 }
 
-function openInitialDecisionFromPayload() {
-    const decisionId = Number(payload.openDecisionId || 0);
-    if (!Number.isInteger(decisionId) || decisionId <= 0) {
-        return false;
-    }
-
-    payload.openDecisionId = 0;
-
+function openDecisionItemById(decisionId, options) {
     const item = findDecisionItemById(decisionId);
     if (!item) {
         return false;
     }
 
+    const settings = options && typeof options === 'object'
+        ? options
+        : {};
     const action = resolveDecisionAutoOpenAction(item);
     const actionUrl = String(action && action.url ? action.url : '').trim();
     if (actionUrl === '') {
@@ -2606,10 +2642,47 @@ function openInitialDecisionFromPayload() {
 
     openDecisionEditor(
         actionUrl,
-        String(item.title || (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de decision'))
+        String(settings.title || item.title || (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de decision')),
+        String(settings.description || '')
     );
 
     return true;
+}
+
+function openDecisionFromInteraction(decisionId, targetUrl, title, description) {
+    const resolvedDecisionId = Number(decisionId || 0);
+    const resolvedUrl = String(targetUrl || '').trim();
+    const routeToken = buildDecisionRouteToken(resolvedDecisionId);
+    const currentRouteToken = getCurrentDecisionRouteToken();
+
+    if (routeToken && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== currentRouteToken) {
+        window.omoOpenDrawerHashState(routeToken);
+        return true;
+    }
+
+    if (resolvedDecisionId > 0 && openDecisionItemById(resolvedDecisionId, {
+        title: title,
+        description: description
+    })) {
+        return true;
+    }
+
+    if (resolvedUrl !== '') {
+        openDecisionEditor(resolvedUrl, title, description);
+        return true;
+    }
+
+    return false;
+}
+
+function openInitialDecisionFromPayload() {
+    const decisionId = Number(payload.openDecisionId || 0);
+    if (!Number.isInteger(decisionId) || decisionId <= 0) {
+        return false;
+    }
+
+    payload.openDecisionId = 0;
+    return openDecisionItemById(decisionId);
 }
 
 function populateSelect(select, options) {
@@ -2973,6 +3046,7 @@ function buildDecisionActionMenuToggle(item, actions, className) {
     toggle.setAttribute('data-omo-decision-compact-menu-actions', JSON.stringify(resolvedActions));
     toggle.setAttribute('data-omo-decision-compact-menu-title', String(item && item.title ? item.title : ''));
     toggle.setAttribute('data-omo-decision-compact-menu-description', String(item && item.description ? item.description : ''));
+    toggle.setAttribute('data-omo-decision-id', String(Number(item && item.id ? item.id : 0) || 0));
     toggle.setAttribute('aria-haspopup', 'menu');
     toggle.setAttribute('aria-expanded', 'false');
     toggle.setAttribute('aria-label', String(payload.text && payload.text.moreActionAriaLabel ? payload.text.moreActionAriaLabel : 'Plus d actions pour cette prise de decision'));
@@ -3039,6 +3113,7 @@ function appendDetailedActionMenuButton(card, item) {
 function renderCompactRow(item) {
     const article = document.createElement('article');
     article.className = 'omo-decisions__item-shell generic-file-list__item-shell';
+    article.setAttribute('data-omo-decision-id', String(Number(item && item.id ? item.id : 0) || 0));
 
     const primaryAction = resolveDecisionAutoOpenAction(item);
     const primaryActionUrl = String(primaryAction && primaryAction.url ? primaryAction.url : '').trim();
@@ -3277,6 +3352,10 @@ function renderCard(item) {
             openTitleAttribute: 'data-open-title'
         });
 
+        card.setAttribute('data-omo-decision-id', String(Number(item && item.id ? item.id : 0) || 0));
+        card.querySelectorAll('[data-open-url]').forEach(function (button) {
+            button.setAttribute('data-omo-decision-id', String(Number(item && item.id ? item.id : 0) || 0));
+        });
         appendDetailedActionMenuButton(card, item);
         return card;
     }
@@ -3284,6 +3363,7 @@ function renderCard(item) {
     const article = document.createElement('article');
     article.className = 'omo-decisions-card generic-section generic-accordion generic-accordion--card generic-accordion--collapsible is-collapsed';
     article.setAttribute('data-generic-accordion', '1');
+    article.setAttribute('data-omo-decision-id', String(Number(item && item.id ? item.id : 0) || 0));
 
     const description = String(item.description || '').trim();
     const badges = Array.isArray(item.badges) ? item.badges : [];
@@ -3321,7 +3401,7 @@ function renderCard(item) {
     let actionsHtml = '<div class="omo-decisions-card__actions">';
     actions.forEach(function (action) {
         const actionVariant = String(action && action.variant ? action.variant : 'secondary');
-        actionsHtml += '<button type="button" class="generic-action-button generic-action-button--' + escapeHtml(actionVariant) + ' omo-decisions-card__action" data-open-url="' + escapeHtml(action && action.url ? action.url : '') + '">' + escapeHtml(action && action.label ? action.label : '') + '</button>';
+        actionsHtml += '<button type="button" class="generic-action-button generic-action-button--' + escapeHtml(actionVariant) + ' omo-decisions-card__action" data-omo-decision-id="' + escapeHtml(String(Number(item && item.id ? item.id : 0) || 0)) + '" data-open-url="' + escapeHtml(action && action.url ? action.url : '') + '">' + escapeHtml(action && action.label ? action.label : '') + '</button>';
     });
     actionsHtml += '</div>';
 
@@ -3924,9 +4004,11 @@ omoDecisionRegisterGlobalListener(ownerDocument, 'click', function (event) {
 
         const targetUrl = String(actionButton.getAttribute('data-open-url') || '').trim();
         if (targetUrl !== '') {
-            openDecisionEditor(
+            openDecisionFromInteraction(
+                activeCompactMenuToggle ? Number(activeCompactMenuToggle.getAttribute('data-omo-decision-id') || 0) : 0,
                 targetUrl,
-                String(actionButton.getAttribute('data-open-title') || '').trim() || (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de decision')
+                String(actionButton.getAttribute('data-open-title') || '').trim() || (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de decision'),
+                String(actionButton.getAttribute('data-open-description') || '').trim()
             );
         }
 
@@ -4032,6 +4114,36 @@ window.omoDecisionCloseNestedDrawer = function () {
     omoDecisionCloseNestedEditorDrawer();
 };
 
+if (!root.__omoDecisionsRouteHandler) {
+    root.__omoDecisionsRouteHandler = function (routeEvent) {
+        if (!document.body.contains(root)) {
+            return;
+        }
+
+        const detail = routeEvent && routeEvent.detail
+            ? routeEvent.detail
+            : {};
+        const targetDecisionId = Number(detail.decisionId || 0);
+
+        if (targetDecisionId > 0) {
+            if (!openDecisionItemById(targetDecisionId)) {
+                omoDecisionCloseNestedEditorDrawer({
+                    force: true,
+                    refreshIndex: false
+                });
+            }
+            return;
+        }
+
+        omoDecisionCloseNestedEditorDrawer({
+            force: true,
+            refreshIndex: false
+        });
+    };
+
+    window.addEventListener('omo-decisions-route-change', root.__omoDecisionsRouteHandler);
+}
+
 if (elements.statusTabs) {
     elements.statusTabs.addEventListener('click', function (event) {
         const button = event.target.closest('[data-status]');
@@ -4104,6 +4216,19 @@ root.addEventListener('click', function (event) {
     }
 
     const targetTitle = String(button.getAttribute('data-open-title') || '').trim();
+    const decisionContainer = button.closest('[data-omo-decision-id]');
+    const decisionId = decisionContainer
+        ? Number(decisionContainer.getAttribute('data-omo-decision-id') || 0)
+        : Number(button.getAttribute('data-omo-decision-id') || 0);
+
+    openDecisionFromInteraction(
+        decisionId,
+        targetUrl,
+        targetTitle !== '' ? targetTitle : (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de dÃ©cision'),
+        String(button.getAttribute('data-open-description') || '').trim()
+    );
+    event.preventDefault();
+    return;
 
     openDecisionEditor(
         targetUrl,
@@ -4114,6 +4239,11 @@ root.addEventListener('click', function (event) {
 
 const omoDecisionIndexTeardown = function () {
     closeCompactMenus();
+
+    if (root.__omoDecisionsRouteHandler) {
+        window.removeEventListener('omo-decisions-route-change', root.__omoDecisionsRouteHandler);
+        root.__omoDecisionsRouteHandler = null;
+    }
 
     while (omoDecisionIndexGlobalCleanupCallbacks.length > 0) {
         const cleanup = omoDecisionIndexGlobalCleanupCallbacks.pop();

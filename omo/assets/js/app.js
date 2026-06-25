@@ -1345,7 +1345,7 @@ function omoParseDecisionRouteToken(routeToken = null) {
         return null;
     }
 
-    const decisionMatch = normalizedRouteToken.match(/^decision-(\d+)$/i);
+    const decisionMatch = normalizedRouteToken.match(/^decision-(?:d)?(\d+)$/i);
     if (!decisionMatch) {
         return null;
     }
@@ -1366,7 +1366,7 @@ function omoParseCalendarEventRouteToken(routeToken = null) {
         return null;
     }
 
-    const eventMatch = normalizedRouteToken.match(/^calendar-event-(\d+)$/i);
+    const eventMatch = normalizedRouteToken.match(/^(?:calendar-e|calendar-event-)(\d+)$/i);
     if (!eventMatch) {
         return null;
     }
@@ -1387,7 +1387,7 @@ function omoParseDocumentRouteToken(routeToken = null) {
         return null;
     }
 
-    const documentMatch = normalizedRouteToken.match(/^documents-(\d+)$/i);
+    const documentMatch = normalizedRouteToken.match(/^(?:documents|document)-(?:d)?(\d+)$/i);
     if (!documentMatch) {
         return null;
     }
@@ -1408,7 +1408,7 @@ function omoBuildDecisionRouteToken(decisionId) {
         return null;
     }
 
-    return `decision-${resolvedDecisionId}`;
+    return `decision-d${resolvedDecisionId}`;
 }
 
 function omoBuildCalendarEventRouteToken(eventId) {
@@ -1417,7 +1417,7 @@ function omoBuildCalendarEventRouteToken(eventId) {
         return null;
     }
 
-    return `calendar-event-${resolvedEventId}`;
+    return `calendar-e${resolvedEventId}`;
 }
 
 function omoBuildDocumentRouteToken(documentId) {
@@ -1426,7 +1426,7 @@ function omoBuildDocumentRouteToken(documentId) {
         return null;
     }
 
-    return `documents-${resolvedDocumentId}`;
+    return `documents-d${resolvedDocumentId}`;
 }
 
 function omoGetMenuHashForRouteToken(routeToken = null) {
@@ -1536,7 +1536,7 @@ function omoResolveSpecialDrawerRoute(routeToken, oid = null, cid = null) {
     if (decisionRoute) {
         return {
             drawer: 'drawer_decisions',
-            url: `api/decision/index.php?open_decision_id=${encodeURIComponent(decisionRoute.decisionId)}`,
+            url: `api/decision/index.php?open_decision_id=${encodeURIComponent(decisionRoute.decisionId)}&decision_scope=global`,
             navigationMode: 'drawer'
         };
     }
@@ -2746,15 +2746,46 @@ function handleRoute() {
     const previousMenuHash = previousState.routeToken ? omoGetMenuHashForRouteToken(previousState.routeToken) : null;
     const isStructureRoute = activeMenuHash === 'structure';
     const drawerHandledByContextChange = organizationChanged || (cidChanged && !isStructureRoute);
+    const decisionRoute = omoParseDecisionRouteToken(routeToken);
+    const previousDecisionRoute = omoParseDecisionRouteToken(previousState.routeToken);
+    const calendarEventRoute = omoParseCalendarEventRouteToken(routeToken);
+    const previousCalendarEventRoute = omoParseCalendarEventRouteToken(previousState.routeToken);
     const documentRoute = omoParseDocumentRouteToken(routeToken);
     const previousDocumentRoute = omoParseDocumentRouteToken(previousState.routeToken);
-    const isInDocumentDrawerOnlyRouteChange = !drawerHandledByContextChange
+    const isInSpecialDrawerOnlyRouteChange = !drawerHandledByContextChange
         && routeChanged
         && !popupChanged
-        && activeMenuHash === 'documents'
-        && previousMenuHash === 'documents';
+        && activeMenuHash !== null
+        && activeMenuHash === previousMenuHash
+        && (
+            activeMenuHash === 'decision'
+            || activeMenuHash === 'calendar'
+            || activeMenuHash === 'documents'
+        );
 
-    if (isInDocumentDrawerOnlyRouteChange) {
+    if (isInSpecialDrawerOnlyRouteChange && activeMenuHash === 'decision') {
+        window.dispatchEvent(new CustomEvent('omo-decisions-route-change', {
+            detail: {
+                decisionId: decisionRoute ? Number(decisionRoute.decisionId) : 0,
+                previousDecisionId: previousDecisionRoute ? Number(previousDecisionRoute.decisionId) : 0,
+                routeToken: routeToken,
+                previousRouteToken: previousState.routeToken || null
+            }
+        }));
+    }
+
+    if (isInSpecialDrawerOnlyRouteChange && activeMenuHash === 'calendar') {
+        window.dispatchEvent(new CustomEvent('omo-calendar-route-change', {
+            detail: {
+                eventId: calendarEventRoute ? Number(calendarEventRoute.eventId) : 0,
+                previousEventId: previousCalendarEventRoute ? Number(previousCalendarEventRoute.eventId) : 0,
+                routeToken: routeToken,
+                previousRouteToken: previousState.routeToken || null
+            }
+        }));
+    }
+
+    if (isInSpecialDrawerOnlyRouteChange && activeMenuHash === 'documents') {
         window.dispatchEvent(new CustomEvent('omo-documents-route-change', {
             detail: {
                 documentId: documentRoute ? Number(documentRoute.documentId) : 0,
@@ -2778,7 +2809,7 @@ function handleRoute() {
     }
 
     // 🧩 2. Gérer les drawers (modules)
-    if (!drawerHandledByContextChange && hashChanged && routeChanged && !isInDocumentDrawerOnlyRouteChange) {
+    if (!drawerHandledByContextChange && hashChanged && routeChanged && !isInSpecialDrawerOnlyRouteChange) {
 
         if (routeToken && activeDrawerId && activeDrawerUrl) {
             openDrawer(activeDrawerId, activeDrawerUrl);
@@ -3432,6 +3463,7 @@ window.omoRefreshMainRightPanel = omoRefreshMainRightPanel;
 window.omoMaybeOpenPatreonWelcomeModal = omoMaybeOpenPatreonWelcomeModal;
 window.omoOpenMemberActionsPopup = omoOpenMemberActionsPopup;
 window.omoNormalizeRouteCid = omoNormalizeRouteCid;
+window.omoBuildDecisionRouteToken = omoBuildDecisionRouteToken;
 window.omoBuildCalendarEventRouteToken = omoBuildCalendarEventRouteToken;
 window.omoOpenSearchCalendarEventResult = omoOpenSearchCalendarEventResult;
 window.omoOpenSearchDecisionResult = omoOpenSearchDecisionResult;
