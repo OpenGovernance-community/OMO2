@@ -39,11 +39,16 @@ if (!function_exists('omoDecisionConsentBuildConfig')) {
             ? omoDecisionModuleDecodeParameters($decisionOrParameters->get('parameters'))
             : omoDecisionModuleDecodeParameters($decisionOrParameters);
         $methodParameters = omoDecisionModuleGetMethodParameters($parameters, omoDecisionConsentGetMethodKey());
+        $voteWeightConfig = omoDecisionBlockSettingsBuildVoteWeightConfig($methodParameters);
 
         return [
             'is_anonymous' => !empty($methodParameters['is_anonymous']),
             'allow_consultation_proposals' => !empty($methodParameters['allow_consultation_proposals']),
             'choices' => omoDecisionConsentGetChoices(),
+            'vote_weight_enabled' => !empty($voteWeightConfig['enabled']),
+            'vote_weight_question' => (string)$voteWeightConfig['question'],
+            'vote_weight_options' => (array)$voteWeightConfig['options'],
+            'vote_weight_options_text' => (string)$voteWeightConfig['options_text'],
         ];
     }
 }
@@ -56,6 +61,11 @@ if (!function_exists('omoDecisionConsentMergeConfigIntoParameters')) {
 
         $methodParameters['is_anonymous'] = !empty($config['is_anonymous']) ? 1 : 0;
         $methodParameters['allow_consultation_proposals'] = !empty($config['allow_consultation_proposals']) ? 1 : 0;
+        $methodParameters = omoDecisionBlockSettingsMergeVoteWeightConfig($methodParameters, [
+            'vote_weight_enabled' => !empty($config['vote_weight_enabled']),
+            'vote_weight_question' => $config['vote_weight_question'] ?? '',
+            'vote_weight_options' => $config['vote_weight_options'] ?? [],
+        ]);
 
         foreach ($extra as $extraKey => $extraValue) {
             $methodParameters[$extraKey] = $extraValue;

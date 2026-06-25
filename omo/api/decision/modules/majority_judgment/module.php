@@ -45,11 +45,14 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleGetSourceLang')) {
             'decisions.majority_judgment.field.settings' => ['text' => 'Parametres du scrutin', 'context' => 'Section title for judgment-specific settings.'],
             'decisions.majority_judgment.field.scale' => ['text' => 'Echelle de mentions', 'context' => 'Label for the scale summary.'],
             'decisions.majority_judgment.field.scale_summary' => ['text' => 'Echelle configurable jusqu a 7 mentions', 'context' => 'Summary label for the configurable majority judgment scale.'],
+            'decisions.majority_judgment.field.scale_default_summary' => ['text' => 'Valeurs par defaut', 'context' => 'Summary shown in the settings recap when majority judgment mention customization is disabled.'],
             'decisions.majority_judgment.field.scale_slot' => ['text' => 'Mention {index}', 'context' => 'Label for one configurable slot of the majority judgment scale.'],
+            'decisions.majority_judgment.field.scale_slot_prefix' => ['text' => 'Mention', 'context' => 'Visible prefix shown before the colored dot for one configurable majority judgment mention slot.'],
             'decisions.majority_judgment.field.scale_label' => ['text' => 'Libelle', 'context' => 'Label for one majority judgment mention label input.'],
             'decisions.majority_judgment.field.scale_active' => ['text' => 'Active', 'context' => 'Label for one majority judgment mention activation toggle.'],
             'decisions.majority_judgment.field.scale_empty' => ['text' => 'Aucune mention active', 'context' => 'Fallback text when no mention is active in the configured scale.'],
             'decisions.majority_judgment.field.scale_center_hint' => ['text' => 'La mention centrale reste hors calcul si elle est active.', 'context' => 'Hint explaining that the central mention stays excluded from the majority computation when enabled.'],
+            'decisions.majority_judgment.field.scale_customize' => ['text' => 'Redefinir les mentions', 'context' => 'Toggle label used to reveal mention customization controls in majority judgment settings.'],
             'decisions.majority_judgment.field.anonymous' => ['text' => 'Vote anonyme', 'context' => 'Label for the anonymity setting.'],
             'decisions.majority_judgment.field.allow_consultation_proposals' => ['text' => 'Autoriser les propositions pendant la consultation', 'context' => 'Label for allowing proposals during consultation.'],
             'decisions.majority_judgment.field.your_scores' => ['text' => 'Vos mentions', 'context' => 'Legend for the participant scoring fieldset.'],
@@ -58,8 +61,12 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleGetSourceLang')) {
             'decisions.majority_judgment.field.majority_mention' => ['text' => 'Mention majoritaire', 'context' => 'Label for the majority mention of one proposal.'],
             'decisions.majority_judgment.field.proposal_votes' => ['text' => 'Mentions recues', 'context' => 'Label for the number of received mentions.'],
             'decisions.majority_judgment.field.counted_mentions' => ['text' => 'Mentions prises en compte', 'context' => 'Label for the number of mentions counted in the majority judgment ranking.'],
+            'decisions.majority_judgment.field.counted_weight' => ['text' => 'Poids cumule pris en compte', 'context' => 'Label for the weighted sum of counted mentions when vote weighting is enabled.'],
             'decisions.majority_judgment.field.no_opinion_count' => ['text' => 'Sans avis', 'context' => 'Label for the number of no-opinion answers excluded from the majority judgment calculation.'],
+            'decisions.majority_judgment.field.no_opinion_weight' => ['text' => 'Poids cumule sans avis', 'context' => 'Label for the weighted sum of no-opinion answers when vote weighting is enabled.'],
             'decisions.majority_judgment.field.distribution' => ['text' => 'Repartition des mentions', 'context' => 'Label for the graphical distribution of mentions.'],
+            'decisions.majority_judgment.results_compare.toggle' => ['text' => 'Afficher le resultat non pondere', 'context' => 'Checkbox label used to reveal the unweighted result comparison.'],
+            'decisions.majority_judgment.results_compare.unweighted' => ['text' => 'Resultat non pondere', 'context' => 'Title shown above the unweighted majority judgment comparison block.'],
             'decisions.majority_judgment.results_sort.aria' => ['text' => 'Ordre d affichage des resultats du jugement majoritaire', 'context' => 'Aria label for the majority judgment results sort switch.'],
             'decisions.majority_judgment.results_sort.rank' => ['text' => 'Classement', 'context' => 'Button label used to sort majority judgment results by majority ranking.'],
             'decisions.majority_judgment.results_sort.initial' => ['text' => 'Ordre initial', 'context' => 'Button label used to sort majority judgment results by saved proposal order.'],
@@ -168,8 +175,27 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
         $mentions = $config['mentions'];
         $allMentions = $config['all_mentions'];
         $mentionOptions = $config['mention_options'];
+        $mentionCustomizationEnabled = !empty($config['mention_customization_enabled']);
         $scaleSummary = (string)($config['scale_summary'] ?? t('decisions.majority_judgment.field.scale_empty', [], $lang, $sourceLang));
+        $settingsScaleSummary = $mentionCustomizationEnabled
+            ? $scaleSummary
+            : t('decisions.majority_judgment.field.scale_default_summary', [], $lang, $sourceLang);
         $noOpinionLabel = (string)($config['no_opinion_label'] ?? '');
+        $voteWeightEnabled = !empty($config['vote_weight_enabled']);
+        $voteWeightQuestion = trim((string)($config['vote_weight_question'] ?? ''));
+        $voteWeightOptions = is_array($config['vote_weight_options'] ?? null) ? array_values((array)$config['vote_weight_options']) : [];
+        $voteWeightOptionsText = (string)($config['vote_weight_options_text'] ?? '');
+        $voteWeightSummaryData = omoDecisionBlockSettingsBuildVoteWeightSummaryData([
+            'enabled' => $voteWeightEnabled,
+            'options' => $voteWeightOptions,
+        ]);
+        $voteWeightSummaryText = omoDecisionBlockSettingsBuildVoteWeightSummaryText(
+            $voteWeightSummaryData,
+            t('decisions.edit.block_settings.vote_weighting_summary_yes', [], $lang, $sourceLang),
+            t('decisions.edit.block_settings.vote_weighting_summary_no', [], $lang, $sourceLang)
+        );
+        $voteWeightOptionsJson = omoDecisionModuleEncodeJsonPayload($voteWeightOptions, '[]');
+        $defaultVoteWeightOptionsJson = omoDecisionModuleEncodeJsonPayload(omoDecisionBlockSettingsGetDefaultVoteWeightOptions(), '[]');
 
         $consultationStarted = $decision instanceof DecisionProcess ? $decision->hasConsultationStarted() : false;
         $hasSubmittedResponses = $decision instanceof DecisionProcess ? $decision->hasSubmittedResponses() : false;
@@ -194,9 +220,12 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
         $participant = $context['participant'] ?? null;
         $selectedResponse = null;
         $selectedScores = [];
+        $selectedVoteWeight = '1';
         if ($decision instanceof DecisionProcess && $participant && (int)$participant->getId() > 0) {
             $selectedResponse = DecisionResponse::findByDecisionAndParticipant((int)$decision->getId(), (int)$participant->getId(), $decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->getId() : 0);
             $selectedScores = omoDecisionMajorityJudgmentExtractScores($selectedResponse);
+            $selectedVoteWeightSelection = omoDecisionMajorityJudgmentExtractVoteWeightSelection($selectedResponse, $config);
+            $selectedVoteWeight = (string)($selectedVoteWeightSelection['weight'] ?? '1');
         }
 
         $submittedResponses = [];
@@ -207,7 +236,10 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                 $submittedVoteCount++;
             }
         }
-        $proposalStats = omoDecisionMajorityJudgmentBuildStats($proposalObjects, $submittedResponses, $config);
+        $proposalStats = omoDecisionMajorityJudgmentBuildStats($proposalObjects, $submittedResponses, $config, $voteWeightEnabled);
+        $proposalStatsUnweighted = $voteWeightEnabled
+            ? omoDecisionMajorityJudgmentBuildStats($proposalObjects, $submittedResponses, $config, false)
+            : $proposalStats;
         $proposalOriginalOrder = [];
         foreach ($proposalObjects as $proposalIndex => $proposal) {
             $proposalId = ($proposal instanceof \dbObject\DecisionProposal) ? (int)$proposal->getId() : 0;
@@ -269,6 +301,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                 'yesLabel' => t('decisions.majority_judgment.option.common.yes', [], $lang, $sourceLang),
                 'noLabel' => t('decisions.majority_judgment.option.common.no', [], $lang, $sourceLang),
                 'scaleSummaryEmpty' => t('decisions.majority_judgment.field.scale_empty', [], $lang, $sourceLang),
+                'scaleSummaryDefault' => t('decisions.majority_judgment.field.scale_default_summary', [], $lang, $sourceLang),
             ],
         ];
 
@@ -299,6 +332,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
             : '';
         ?>
         <section class="generic-section generic-section--stack omo-decision-majority-judgment">
+            <?= omoDecisionRenderVoteWeightEditorAssets() ?>
             <?php if (!$publicLayout): ?>
             <div class="omo-decision-majority-judgment__head">
                 <div class="omo-decision-majority-judgment__copy">
@@ -440,8 +474,18 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                     </div>
 
                     <div class="generic-soft-panel generic-soft-panel--stack omo-decision-majority-judgment__settings-summary">
+                        <?= omoDecisionRenderVoteWeightEditorAssets() ?>
                         <input type="hidden" name="is_anonymous" value="<?= $isAnonymous ? '1' : '' ?>" data-omo-decision-mj-hidden-anonymous>
                         <input type="hidden" name="allow_consultation_proposals" value="<?= $allowConsultationProposals ? '1' : '' ?>" data-omo-decision-mj-hidden-consultation-proposals>
+                        <input type="hidden" name="vote_weight_enabled" value="<?= $voteWeightEnabled ? '1' : '' ?>" data-omo-decision-mj-hidden-vote-weight-enabled>
+                        <input type="hidden" name="vote_weight_question" value="<?= $escape($voteWeightQuestion) ?>" data-omo-decision-mj-hidden-vote-weight-question>
+                        <input
+                            type="hidden"
+                            name="vote_weight_options_json"
+                            value="<?= $escape($voteWeightOptionsJson) ?>"
+                            data-omo-decision-mj-hidden-vote-weight-options
+                            data-default-options-json="<?= $escape($defaultVoteWeightOptionsJson) ?>"
+                        >
                         <?php foreach ($mentionOptions as $mentionScore => $mentionOption): ?>
                         <input
                             type="hidden"
@@ -455,15 +499,17 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                             name="mention_active[<?= $escape((string)$mentionScore) ?>]"
                             value="<?= !empty($mentionOption['active']) ? '1' : '' ?>"
                             data-omo-decision-mj-hidden-mention-active="<?= $escape((string)$mentionScore) ?>"
+                            data-default-active="<?= !empty($mentionOption['default_active']) ? '1' : '' ?>"
                         >
                         <?php endforeach; ?>
+                        <input type="hidden" name="mention_customization_enabled" value="<?= $mentionCustomizationEnabled ? '1' : '' ?>" data-omo-decision-mj-hidden-mention-customization-enabled>
                         <div class="omo-decision-majority-judgment__settings-head">
                             <div class="omo-decision-majority-judgment__field">
                                 <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.settings', [], $lang, $sourceLang)) ?></span>
                                 <div class="omo-decision-majority-judgment__readonly-stats">
                                     <span class="omo-decision-majority-judgment__readonly-stat">
                                         <strong><?= $escape(t('decisions.majority_judgment.field.scale', [], $lang, $sourceLang)) ?></strong>
-                                        <span data-omo-decision-mj-scale-summary><?= $escape($scaleSummary) ?></span>
+                                        <span data-omo-decision-mj-scale-summary><?= $escape($settingsScaleSummary) ?></span>
                                     </span>
                                     <span class="omo-decision-majority-judgment__readonly-stat">
                                         <strong><?= $escape(t('decisions.majority_judgment.field.anonymous', [], $lang, $sourceLang)) ?></strong>
@@ -473,6 +519,14 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                         <strong><?= $escape(t('decisions.majority_judgment.field.allow_consultation_proposals', [], $lang, $sourceLang)) ?></strong>
                                         <span data-omo-decision-mj-consultation-summary data-yes-label="<?= $escape(t('decisions.majority_judgment.option.common.yes', [], $lang, $sourceLang)) ?>" data-no-label="<?= $escape(t('decisions.majority_judgment.option.common.no', [], $lang, $sourceLang)) ?>"><?= $escape($allowConsultationProposals ? t('decisions.majority_judgment.option.common.yes', [], $lang, $sourceLang) : t('decisions.majority_judgment.option.common.no', [], $lang, $sourceLang)) ?></span>
                                     </span>
+                                    <span class="omo-decision-majority-judgment__readonly-stat">
+                                        <strong><?= $escape(t('decisions.edit.block_settings.vote_weighting', [], $lang, $sourceLang)) ?></strong>
+                                        <span
+                                            data-omo-decision-mj-vote-weight-summary
+                                            data-yes-label="<?= $escape(t('decisions.edit.block_settings.vote_weighting_summary_yes', [], $lang, $sourceLang)) ?>"
+                                            data-no-label="<?= $escape(t('decisions.edit.block_settings.vote_weighting_summary_no', [], $lang, $sourceLang)) ?>"
+                                        ><?= $escape($voteWeightSummaryText) ?></span>
+                                    </span>
                                 </div>
                             </div>
                             <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-mj-settings-open data-omo-decision-mj-settings-title="<?= $escape(t('decisions.majority_judgment.field.settings', [], $lang, $sourceLang)) ?>"><?= $escape(t('decisions.majority_judgment.action.configure', [], $lang, $sourceLang)) ?></button>
@@ -480,12 +534,23 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         <template data-omo-decision-mj-settings-template>
                             <div class="omo-decision-majority-judgment-popup__grid">
                                 <div class="generic-soft-panel generic-soft-panel--stack">
-                                    <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.scale', [], $lang, $sourceLang)) ?></span>
+                                    <label class="omo-decision-majority-judgment-popup__field">
+                                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.scale', [], $lang, $sourceLang)) ?></span>
+                                        <span class="omo-decision-majority-judgment__toggle">
+                                            <input type="checkbox" data-omo-decision-mj-popup-mention-customization <?= $mentionCustomizationEnabled ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
+                                            <span><?= $escape(t('decisions.majority_judgment.field.scale_customize', [], $lang, $sourceLang)) ?></span>
+                                        </span>
+                                    </label>
+                                    <div class="omo-decision-majority-judgment-popup__mention-settings" data-omo-decision-mj-popup-mention-settings<?= $mentionCustomizationEnabled ? '' : ' hidden' ?>>
                                     <div class="omo-decision-majority-judgment-popup__mention-list">
                                         <?php foreach ($mentionOptions as $mentionScore => $mentionOption): ?>
                                         <div class="omo-decision-majority-judgment-popup__mention-row">
                                             <label class="omo-decision-majority-judgment-popup__field">
-                                                <span class="generic-card-title generic-card-title--small"><?= $escape(str_replace('{index}', (string)($mentionScore + 1), t('decisions.majority_judgment.field.scale_slot', ['index' => (string)($mentionScore + 1)], $lang, $sourceLang))) ?></span>
+                                                <span class="generic-card-title generic-card-title--small omo-decision-majority-judgment-popup__mention-title">
+                                                    <span><?= $escape(t('decisions.majority_judgment.field.scale_slot_prefix', [], $lang, $sourceLang)) ?></span>
+                                                    <span class="omo-decision-majority-judgment-popup__mention-dot omo-decision-majority-judgment-popup__mention-dot--<?= $escape((string)$mentionScore) ?>" aria-hidden="true"></span>
+                                                    <span class="omo-decision-majority-judgment__sr-only"><?= $escape(str_replace('{index}', (string)($mentionScore + 1), t('decisions.majority_judgment.field.scale_slot', ['index' => (string)($mentionScore + 1)], $lang, $sourceLang))) ?></span>
+                                                </span>
                                                 <input
                                                     type="text"
                                                     class="generic-form-control"
@@ -500,7 +565,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                             <label class="omo-decision-majority-judgment-popup__field omo-decision-majority-judgment-popup__field--toggle">
                                                 <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.scale_active', [], $lang, $sourceLang)) ?></span>
                                                 <span class="omo-decision-majority-judgment__toggle">
-                                                    <input type="checkbox" data-omo-decision-mj-popup-mention-active="<?= $escape((string)$mentionScore) ?>" <?= !empty($mentionOption['active']) ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
+                                                    <input type="checkbox" data-omo-decision-mj-popup-mention-active="<?= $escape((string)$mentionScore) ?>" data-default-active="<?= !empty($mentionOption['default_active']) ? '1' : '' ?>" <?= !empty($mentionOption['active']) ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
                                                     <span><?= $escape(t('decisions.majority_judgment.field.scale_active', [], $lang, $sourceLang)) ?></span>
                                                 </span>
                                             </label>
@@ -508,6 +573,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                         <?php endforeach; ?>
                                     </div>
                                     <p class="omo-decision-majority-judgment__text"><?= $escape(t('decisions.majority_judgment.field.scale_center_hint', [], $lang, $sourceLang)) ?></p>
+                                    </div>
                                 </div>
                                 <label class="omo-decision-majority-judgment-popup__field">
                                     <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.anonymous', [], $lang, $sourceLang)) ?></span>
@@ -523,6 +589,12 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                         <span><?= $escape(t('decisions.majority_judgment.option.common.yes', [], $lang, $sourceLang)) ?></span>
                                     </span>
                                 </label>
+                                <?= omoDecisionRenderVoteWeightEditor($lang, $sourceLang, $escape, [
+                                    'canEdit' => $canEditStructure,
+                                    'enabled' => $voteWeightEnabled,
+                                    'question' => $voteWeightQuestion,
+                                    'options' => $voteWeightOptions,
+                                ]) ?>
                                 <div class="omo-decision-majority-judgment-popup__actions">
                                     <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-mj-popup-cancel><?= $escape(t('decisions.majority_judgment.action.close', [], $lang, $sourceLang)) ?></button>
                                     <button type="button" class="generic-action-button generic-action-button--main" data-omo-decision-mj-popup-apply <?= $canEditStructure ? '' : 'disabled' ?>><?= $escape(t('decisions.majority_judgment.action.apply', [], $lang, $sourceLang)) ?></button>
@@ -580,6 +652,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.majority_judgment.field.scale', [], $lang, $sourceLang), $scaleSummary, $escape, 'omo-decision-majority-judgment__meta-card') ?>
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.majority_judgment.field.anonymous', [], $lang, $sourceLang), $isAnonymous ? t('decisions.majority_judgment.option.common.yes', [], $lang, $sourceLang) : t('decisions.majority_judgment.option.common.no', [], $lang, $sourceLang), $escape, 'omo-decision-majority-judgment__meta-card') ?>
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.majority_judgment.field.allow_consultation_proposals', [], $lang, $sourceLang), $allowConsultationProposals ? t('decisions.majority_judgment.option.common.yes', [], $lang, $sourceLang) : t('decisions.majority_judgment.option.common.no', [], $lang, $sourceLang), $escape, 'omo-decision-majority-judgment__meta-card') ?>
+                    <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.edit.block_settings.vote_weighting', [], $lang, $sourceLang), $voteWeightSummaryText, $escape, 'omo-decision-majority-judgment__meta-card') ?>
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.majority_judgment.field.consultation_start', [], $lang, $sourceLang), $decision instanceof DecisionProcess ? omoDecisionMajorityJudgmentFormatDateTimeLocal($decision->get('consultation_start_at')) : '', $escape, 'omo-decision-majority-judgment__meta-card') ?>
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.majority_judgment.field.evaluation_end', [], $lang, $sourceLang), $decision instanceof DecisionProcess ? omoDecisionMajorityJudgmentFormatDateTimeLocal($decision->get('evaluation_end_at')) : '', $escape, 'omo-decision-majority-judgment__meta-card') ?>
                     <?php if ($resultsMode): ?>
@@ -641,6 +714,12 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         </div>
                         <?php endif; ?>
 
+                    <?= omoDecisionRenderVoteWeightResponseSelector($lang, $sourceLang, $escape, [
+                        'enabled' => $voteWeightEnabled,
+                        'question' => $voteWeightQuestion,
+                        'options' => $voteWeightOptions,
+                        'selected_weight' => $selectedVoteWeight,
+                    ]) ?>
                     <?php if ($consultationProposalPanel !== ''): ?>
                     <?= $consultationProposalPanel ?>
                     <?php endif; ?>
@@ -671,14 +750,26 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                             </div>
                         </div>
                         <?php endif; ?>
+                        <?php if ($voteWeightEnabled): ?>
+                        <label class="omo-decision-majority-judgment__results-compare">
+                            <input type="checkbox" data-omo-decision-mj-results-compare-toggle>
+                            <span><?= $escape(t('decisions.majority_judgment.results_compare.toggle', [], $lang, $sourceLang)) ?></span>
+                        </label>
+                        <?php endif; ?>
                         <div class="omo-decision-majority-judgment__result-list" data-omo-decision-mj-results-list>
                         <?php foreach ($resultProposalObjects as $resultRankIndex => $proposal): ?>
                         <?php
                         $proposalId = (int)$proposal->getId();
                         $proposalPosition = (int)($proposalOriginalOrder[$proposalId] ?? ($resultRankIndex + 1));
                         $stat = $proposalStats[$proposalId] ?? ['distribution' => omoDecisionMajorityJudgmentGetEmptyDistribution(), 'count' => 0, 'counted_count' => 0, 'no_opinion_count' => 0, 'majority_score' => null, 'majority_label' => ''];
+                        $statUnweighted = $proposalStatsUnweighted[$proposalId] ?? ['distribution' => omoDecisionMajorityJudgmentGetEmptyDistribution(), 'count' => 0, 'counted_count' => 0, 'no_opinion_count' => 0, 'majority_score' => null, 'majority_label' => ''];
+                        $statScale = max(1, (int)($stat['scale'] ?? 1));
                         $countedMentions = (int)($stat['counted_count'] ?? 0);
+                        $countedMentionsWeightLabel = omoDecisionBlockSettingsVoteWeightUnitsToValue($countedMentions, $statScale);
                         $noOpinionCount = (int)($stat['no_opinion_count'] ?? 0);
+                        $noOpinionCountWeightLabel = omoDecisionBlockSettingsVoteWeightUnitsToValue($noOpinionCount, $statScale);
+                        $countedMentionsUnweighted = (int)($statUnweighted['counted_count'] ?? 0);
+                        $noOpinionCountUnweighted = (int)($statUnweighted['no_opinion_count'] ?? 0);
                         ?>
                         <div
                             class="omo-decision-majority-judgment__result-card<?= array_key_exists($proposalId, $selectedScores) ? ' is-selected' : '' ?>"
@@ -706,13 +797,25 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                             <?php if ($resultsMode): ?>
                             <div class="omo-decision-majority-judgment__result-meta">
                                 <span class="omo-decision-majority-judgment__result-meta-label"><?= $escape(t('decisions.majority_judgment.field.counted_mentions', [], $lang, $sourceLang)) ?></span>
-                                <strong><?= $escape((string)$countedMentions) ?></strong>
+                                <strong><?= $escape((string)($voteWeightEnabled ? $countedMentionsUnweighted : $countedMentionsWeightLabel)) ?></strong>
                             </div>
+                            <?php if ($voteWeightEnabled): ?>
+                            <div class="omo-decision-majority-judgment__result-meta">
+                                <span class="omo-decision-majority-judgment__result-meta-label"><?= $escape(t('decisions.majority_judgment.field.counted_weight', [], $lang, $sourceLang)) ?></span>
+                                <strong><?= $escape((string)$countedMentionsWeightLabel) ?></strong>
+                            </div>
+                            <?php endif; ?>
                             <?php if (!empty($config['has_no_opinion'])): ?>
                             <div class="omo-decision-majority-judgment__result-meta">
                                 <span class="omo-decision-majority-judgment__result-meta-label"><?= $escape($noOpinionLabel !== '' ? $noOpinionLabel : t('decisions.majority_judgment.field.no_opinion_count', [], $lang, $sourceLang)) ?></span>
-                                <strong><?= $escape((string)$noOpinionCount) ?></strong>
+                                <strong><?= $escape((string)($voteWeightEnabled ? $noOpinionCountUnweighted : $noOpinionCountWeightLabel)) ?></strong>
                             </div>
+                            <?php if ($voteWeightEnabled): ?>
+                            <div class="omo-decision-majority-judgment__result-meta">
+                                <span class="omo-decision-majority-judgment__result-meta-label"><?= $escape(t('decisions.majority_judgment.field.no_opinion_weight', [], $lang, $sourceLang)) ?></span>
+                                <strong><?= $escape((string)$noOpinionCountWeightLabel) ?></strong>
+                            </div>
+                            <?php endif; ?>
                             <?php endif; ?>
                             <?php if ($countedMentions > 0): ?>
                             <div class="omo-decision-majority-judgment__distribution" aria-label="<?= $escape(t('decisions.majority_judgment.field.distribution', [], $lang, $sourceLang)) ?>">
@@ -722,6 +825,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                     continue;
                                 }
                                 $segmentCount = (int)($stat['distribution'][$score] ?? 0);
+                                $segmentCountLabel = omoDecisionBlockSettingsVoteWeightUnitsToValue($segmentCount, $statScale);
                                 $segmentPercent = $countedMentions > 0 ? ($segmentCount / $countedMentions) * 100 : 0;
                                 $segmentPercentLabel = number_format($segmentPercent, 1, ',', ' ');
                                 $segmentWidth = $segmentPercent > 0 ? number_format($segmentPercent, 4, '.', '') : '0';
@@ -729,7 +833,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                     'decisions.majority_judgment.tooltip.segment',
                                     [
                                         'mention' => (string)$mentionLabel,
-                                        'count' => (string)$segmentCount,
+                                        'count' => (string)$segmentCountLabel,
                                         'percent' => $segmentPercentLabel,
                                     ],
                                     $lang,
@@ -751,6 +855,62 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                             <div class="omo-decision-majority-judgment__distribution-scale" aria-hidden="true">
                                 <span><?= $escape((string)$mentions[0]) ?></span>
                                 <span><?= $escape((string)$mentions[6]) ?></span>
+                            </div>
+                            <?php endif; ?>
+                            <?php if ($voteWeightEnabled): ?>
+                            <div class="omo-decision-majority-judgment__comparison" data-omo-decision-mj-results-compare-block hidden>
+                                <span class="omo-decision-majority-judgment__comparison-title"><?= $escape(t('decisions.majority_judgment.results_compare.unweighted', [], $lang, $sourceLang)) ?></span>
+                                <?php if ($countedMentionsUnweighted > 0 && $statUnweighted['majority_score'] !== null): ?>
+                                <span class="omo-decision-majority-judgment__majority-badge omo-decision-majority-judgment__majority-badge--<?= $escape((string)$statUnweighted['majority_score']) ?>">
+                                    <?= $escape(t('decisions.majority_judgment.field.majority_mention', [], $lang, $sourceLang)) ?>: <?= $escape((string)$statUnweighted['majority_label']) ?>
+                                </span>
+                                <?php endif; ?>
+                                <div class="omo-decision-majority-judgment__result-meta">
+                                    <span class="omo-decision-majority-judgment__result-meta-label"><?= $escape(t('decisions.majority_judgment.field.counted_mentions', [], $lang, $sourceLang)) ?></span>
+                                    <strong><?= $escape((string)$countedMentionsUnweighted) ?></strong>
+                                </div>
+                                <?php if (!empty($config['has_no_opinion'])): ?>
+                                <div class="omo-decision-majority-judgment__result-meta">
+                                    <span class="omo-decision-majority-judgment__result-meta-label"><?= $escape($noOpinionLabel !== '' ? $noOpinionLabel : t('decisions.majority_judgment.field.no_opinion_count', [], $lang, $sourceLang)) ?></span>
+                                    <strong><?= $escape((string)$noOpinionCountUnweighted) ?></strong>
+                                </div>
+                                <?php endif; ?>
+                                <?php if ($countedMentionsUnweighted > 0): ?>
+                                <div class="omo-decision-majority-judgment__distribution" aria-label="<?= $escape(t('decisions.majority_judgment.field.distribution', [], $lang, $sourceLang)) ?>">
+                                    <?php foreach ($mentions as $score => $mentionLabel): ?>
+                                    <?php
+                                    if ((int)$score === omoDecisionMajorityJudgmentGetNoOpinionScore()) {
+                                        continue;
+                                    }
+                                    $segmentCount = (int)($statUnweighted['distribution'][$score] ?? 0);
+                                    $segmentPercent = $countedMentionsUnweighted > 0 ? ($segmentCount / $countedMentionsUnweighted) * 100 : 0;
+                                    $segmentPercentLabel = number_format($segmentPercent, 1, ',', ' ');
+                                    $segmentWidth = $segmentPercent > 0 ? number_format($segmentPercent, 4, '.', '') : '0';
+                                    $segmentTooltip = t(
+                                        'decisions.majority_judgment.tooltip.segment',
+                                        [
+                                            'mention' => (string)$mentionLabel,
+                                            'count' => (string)$segmentCount,
+                                            'percent' => $segmentPercentLabel,
+                                        ],
+                                        $lang,
+                                        $sourceLang
+                                    );
+                                    ?>
+                                    <span
+                                        class="omo-decision-majority-judgment__distribution-segment omo-decision-majority-judgment__distribution-segment--<?= $escape((string)$score) ?> omo-decision-majority-judgment__distribution-segment--secondary"
+                                        style="width: <?= $escape($segmentWidth) ?>%;"
+                                        title="<?= $escape($segmentTooltip) ?>"
+                                        aria-label="<?= $escape($segmentTooltip) ?>"
+                                    ></span>
+                                    <?php endforeach; ?>
+                                    <span class="omo-decision-majority-judgment__distribution-marker" aria-hidden="true"></span>
+                                </div>
+                                <div class="omo-decision-majority-judgment__distribution-scale" aria-hidden="true">
+                                    <span><?= $escape((string)$mentions[0]) ?></span>
+                                    <span><?= $escape((string)$mentions[6]) ?></span>
+                                </div>
+                                <?php endif; ?>
                             </div>
                             <?php endif; ?>
                             <?php endif; ?>
@@ -799,9 +959,14 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         const settingsTemplate = form.querySelector('[data-omo-decision-mj-settings-template]');
                         const hiddenAnonymousInput = form.querySelector('[data-omo-decision-mj-hidden-anonymous]');
                         const hiddenConsultationInput = form.querySelector('[data-omo-decision-mj-hidden-consultation-proposals]');
+                        const hiddenVoteWeightEnabledInput = form.querySelector('[data-omo-decision-mj-hidden-vote-weight-enabled]');
+                        const hiddenVoteWeightQuestionInput = form.querySelector('[data-omo-decision-mj-hidden-vote-weight-question]');
+                        const hiddenVoteWeightOptionsInput = form.querySelector('[data-omo-decision-mj-hidden-vote-weight-options]');
                         const scaleSummaryNode = form.querySelector('[data-omo-decision-mj-scale-summary]');
                         const anonymousSummary = form.querySelector('[data-omo-decision-mj-anonymous-summary]');
                         const consultationSummary = form.querySelector('[data-omo-decision-mj-consultation-summary]');
+                        const voteWeightSummary = form.querySelector('[data-omo-decision-mj-vote-weight-summary]');
+                        const hiddenMentionCustomizationInput = form.querySelector('[data-omo-decision-mj-hidden-mention-customization-enabled]');
                         const hiddenMentionLabelInputs = {};
                         const hiddenMentionActiveInputs = {};
 
@@ -854,7 +1019,114 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                             return nextValue !== '' ? nextValue : defaultLabel;
                         };
 
+                        const normalizeVoteWeightNumber = function (rawValue) {
+                            const normalized = String(rawValue || '').trim().replace(',', '.');
+                            if (normalized === '') {
+                                return '';
+                            }
+
+                            const value = Number(normalized);
+                            if (!Number.isFinite(value) || value <= 0) {
+                                return '';
+                            }
+
+                            return String(value).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+                        };
+
+                        const parseVoteWeightOptions = function (rawValue, fallbackToDefault) {
+                            let options = [];
+
+                            if (Array.isArray(rawValue)) {
+                                options = rawValue;
+                            } else {
+                                const source = String(rawValue || '').trim();
+                                if (source !== '') {
+                                    try {
+                                        const decoded = JSON.parse(source);
+                                        if (Array.isArray(decoded)) {
+                                            options = decoded;
+                                        }
+                                    } catch (error) {
+                                        options = source.split(/\r\n|\r|\n/).map(function (line) {
+                                            const parts = String(line || '').split('|');
+                                            return {
+                                                weight: parts.length > 0 ? parts[0] : '',
+                                                label: parts.length > 1 ? parts.slice(1).join('|') : '',
+                                            };
+                                        });
+                                    }
+                                }
+                            }
+
+                            const normalizedOptions = [];
+                            options.forEach(function (option) {
+                                if (!option || typeof option !== 'object') {
+                                    return;
+                                }
+
+                                const weight = normalizeVoteWeightNumber(option.weight || option.value || '');
+                                const label = String(option.label || '').trim();
+                                if (weight === '' || label === '') {
+                                    return;
+                                }
+
+                                normalizedOptions.push({
+                                    weight: weight,
+                                    label: label,
+                                });
+                            });
+
+                            if (normalizedOptions.length === 0 && fallbackToDefault && hiddenVoteWeightOptionsInput) {
+                                return parseVoteWeightOptions(
+                                    hiddenVoteWeightOptionsInput.getAttribute('data-default-options-json') || '[]',
+                                    false
+                                );
+                            }
+
+                            return normalizedOptions;
+                        };
+
+                        const buildVoteWeightOptionsText = function (options) {
+                            return options.map(function (option) {
+                                return String(option.weight || '') + ' | ' + String(option.label || '');
+                            }).join('\n');
+                        };
+
+                        const buildVoteWeightSummaryText = function () {
+                            if (!voteWeightSummary) {
+                                return '';
+                            }
+
+                            const yesLabel = String(voteWeightSummary.getAttribute('data-yes-label') || 'Oui');
+                            const noLabel = String(voteWeightSummary.getAttribute('data-no-label') || 'Non');
+                            if (!hiddenVoteWeightEnabledInput || !hiddenVoteWeightEnabledInput.value) {
+                                return noLabel;
+                            }
+
+                            const options = parseVoteWeightOptions(
+                                hiddenVoteWeightOptionsInput ? hiddenVoteWeightOptionsInput.value : '[]',
+                                true
+                            );
+                            if (options.length === 0) {
+                                return yesLabel;
+                            }
+
+                            const weights = options.map(function (option) {
+                                return Number(String(option.weight || '').replace(',', '.'));
+                            }).filter(function (value) {
+                                return Number.isFinite(value) && value > 0;
+                            });
+                            if (weights.length === 0) {
+                                return yesLabel;
+                            }
+
+                            return yesLabel + ' (' + String(options.length) + ' options de ' + normalizeVoteWeightNumber(String(Math.min.apply(Math, weights))) + ' a ' + normalizeVoteWeightNumber(String(Math.max.apply(Math, weights))) + ')';
+                        };
+
                         const buildScaleSummary = function () {
+                            if (hiddenMentionCustomizationInput && !hiddenMentionCustomizationInput.value) {
+                                return String(payload.texts && payload.texts.scaleSummaryDefault ? payload.texts.scaleSummaryDefault : 'Valeurs par defaut');
+                            }
                             const labels = [];
                             mentionScores.forEach(function (score) {
                                 const labelInput = hiddenMentionLabelInputs[score];
@@ -883,6 +1155,9 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                             }
                             if (consultationSummary) {
                                 consultationSummary.textContent = hiddenConsultationInput && hiddenConsultationInput.value ? yesLabel : noLabel;
+                            }
+                            if (voteWeightSummary) {
+                                voteWeightSummary.textContent = buildVoteWeightSummaryText();
                             }
                         };
 
@@ -940,8 +1215,14 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
 
                             const popupAnonymous = modalBody.querySelector('[data-omo-decision-mj-popup-anonymous]');
                             const popupConsultation = modalBody.querySelector('[data-omo-decision-mj-popup-consultation-proposals]');
+                            const popupVoteWeightRoot = modalBody.querySelector('[data-omo-decision-vote-weight-editor]');
+                            const popupMentionCustomization = modalBody.querySelector('[data-omo-decision-mj-popup-mention-customization]');
+                            const popupMentionSettings = modalBody.querySelector('[data-omo-decision-mj-popup-mention-settings]');
                             const popupCancel = modalBody.querySelector('[data-omo-decision-mj-popup-cancel]');
                             const popupApply = modalBody.querySelector('[data-omo-decision-mj-popup-apply]');
+                            const popupVoteWeightEditor = popupVoteWeightRoot && typeof window.omoDecisionInitVoteWeightEditor === 'function'
+                                ? window.omoDecisionInitVoteWeightEditor(popupVoteWeightRoot)
+                                : null;
                             const popupMentionLabelInputs = {};
                             const popupMentionActiveInputs = {};
 
@@ -958,12 +1239,36 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                 }
                             });
 
-                            if (!popupAnonymous || !popupConsultation || !popupApply) {
+                            if (!popupAnonymous || !popupConsultation || !popupVoteWeightEditor || !popupApply) {
                                 return;
                             }
 
+                            const popupCanEdit = !popupApply.disabled;
+                            const syncMentionCustomization = function () {
+                                const isEnabled = !!(popupMentionCustomization && popupMentionCustomization.checked);
+                                if (popupMentionSettings) {
+                                    popupMentionSettings.hidden = !isEnabled;
+                                    popupMentionSettings.setAttribute('aria-hidden', isEnabled ? 'false' : 'true');
+                                }
+                                mentionScores.forEach(function (score) {
+                                    const popupLabelInput = popupMentionLabelInputs[score];
+                                    const popupActiveInput = popupMentionActiveInputs[score];
+                                    if (popupLabelInput) {
+                                        popupLabelInput.disabled = !popupCanEdit || !isEnabled;
+                                    }
+                                    if (popupActiveInput) {
+                                        popupActiveInput.disabled = !popupCanEdit || !isEnabled;
+                                    }
+                                });
+                            };
+
                             popupAnonymous.checked = !!(hiddenAnonymousInput && hiddenAnonymousInput.value);
                             popupConsultation.checked = !!(hiddenConsultationInput && hiddenConsultationInput.value);
+                            popupVoteWeightEditor.setState({
+                                enabled: !!(hiddenVoteWeightEnabledInput && hiddenVoteWeightEnabledInput.value),
+                                question: hiddenVoteWeightQuestionInput ? String(hiddenVoteWeightQuestionInput.value || '') : '',
+                                options: parseVoteWeightOptions(hiddenVoteWeightOptionsInput ? hiddenVoteWeightOptionsInput.value : '[]', false),
+                            });
                             mentionScores.forEach(function (score) {
                                 const hiddenLabelInput = hiddenMentionLabelInputs[score];
                                 const hiddenActiveInput = hiddenMentionActiveInputs[score];
@@ -977,6 +1282,11 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                     popupActiveInput.checked = !!hiddenActiveInput.value;
                                 }
                             });
+                            if (popupMentionCustomization) {
+                                popupMentionCustomization.checked = !!(hiddenMentionCustomizationInput && hiddenMentionCustomizationInput.value);
+                                popupMentionCustomization.addEventListener('change', syncMentionCustomization);
+                            }
+                            syncMentionCustomization();
 
                             if (popupCancel) {
                                 popupCancel.addEventListener('click', function () {
@@ -993,18 +1303,37 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                 if (hiddenConsultationInput) {
                                     hiddenConsultationInput.value = popupConsultation.checked ? '1' : '';
                                 }
+                                const popupVoteWeightState = popupVoteWeightEditor.getState();
+                                if (hiddenVoteWeightEnabledInput) {
+                                    hiddenVoteWeightEnabledInput.value = popupVoteWeightState.enabled ? '1' : '';
+                                }
+                                if (hiddenVoteWeightQuestionInput) {
+                                    hiddenVoteWeightQuestionInput.value = String(popupVoteWeightState.question || '').trim();
+                                }
+                                if (hiddenVoteWeightOptionsInput) {
+                                    hiddenVoteWeightOptionsInput.value = JSON.stringify(Array.isArray(popupVoteWeightState.options) ? popupVoteWeightState.options : []);
+                                }
+                                if (hiddenMentionCustomizationInput) {
+                                    hiddenMentionCustomizationInput.value = popupMentionCustomization && popupMentionCustomization.checked ? '1' : '';
+                                }
                                 mentionScores.forEach(function (score) {
                                     const hiddenLabelInput = hiddenMentionLabelInputs[score];
                                     const hiddenActiveInput = hiddenMentionActiveInputs[score];
                                     const popupLabelInput = popupMentionLabelInputs[score];
                                     const popupActiveInput = popupMentionActiveInputs[score];
+                                    const customizeMentions = !!(popupMentionCustomization && popupMentionCustomization.checked);
 
                                     if (hiddenLabelInput && popupLabelInput) {
-                                        hiddenLabelInput.value = normalizeMentionLabel(popupLabelInput, popupLabelInput.value);
+                                        hiddenLabelInput.value = customizeMentions
+                                            ? normalizeMentionLabel(popupLabelInput, popupLabelInput.value)
+                                            : String(hiddenLabelInput.getAttribute('data-default-label') || '');
                                         popupLabelInput.value = hiddenLabelInput.value;
                                     }
                                     if (hiddenActiveInput && popupActiveInput) {
-                                        hiddenActiveInput.value = popupActiveInput.checked ? '1' : '';
+                                        hiddenActiveInput.value = customizeMentions
+                                            ? (popupActiveInput.checked ? '1' : '')
+                                            : String(hiddenActiveInput.getAttribute('data-default-active') || '');
+                                        popupActiveInput.checked = hiddenActiveInput.value === '1';
                                     }
                                 });
                                 syncSettingsSummary();
@@ -1310,6 +1639,11 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                             return;
                         }
 
+                        const voteWeightSelector = form.querySelector('[data-omo-decision-vote-weight-selector]');
+                        if (voteWeightSelector && typeof window.omoDecisionInitVoteWeightSelector === 'function') {
+                            window.omoDecisionInitVoteWeightSelector(voteWeightSelector);
+                        }
+
                         let payload = {};
                         try {
                             payload = JSON.parse(payloadNode.textContent || '{}');
@@ -1441,7 +1775,9 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
 
                     const list = panel.querySelector('[data-omo-decision-mj-results-list]');
                     const buttons = panel.querySelectorAll('[data-omo-decision-mj-results-sort]');
-                    if (!list || !buttons.length) {
+                    const compareToggle = panel.querySelector('[data-omo-decision-mj-results-compare-toggle]');
+                    const compareBlocks = panel.querySelectorAll('[data-omo-decision-mj-results-compare-block]');
+                    if (!list) {
                         panel.dataset.omoDecisionMjResultsReady = '1';
                         return;
                     }
@@ -1516,13 +1852,29 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         sortItems(normalizedSortMode);
                     };
 
+                    const syncComparison = function () {
+                        const showComparison = !!(compareToggle && compareToggle.checked);
+                        compareBlocks.forEach(function (block) {
+                            block.hidden = !showComparison;
+                            block.setAttribute('aria-hidden', showComparison ? 'false' : 'true');
+                            block.style.display = showComparison ? '' : 'none';
+                        });
+                    };
+
                     buttons.forEach(function (button) {
                         button.addEventListener('click', function () {
                             applySortMode(button.getAttribute('data-omo-decision-mj-results-sort'));
                         });
                     });
 
-                    applySortMode('rank');
+                    if (compareToggle) {
+                        compareToggle.addEventListener('change', syncComparison);
+                    }
+
+                    if (buttons.length) {
+                        applySortMode('rank');
+                    }
+                    syncComparison();
                     panel.dataset.omoDecisionMjResultsReady = '1';
                 });
             };
@@ -1595,6 +1947,14 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
 
         .omo-decision-majority-judgment__results-controls {
             justify-content: flex-end;
+        }
+
+        .omo-decision-majority-judgment__results-compare {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--color-text-light, #475569);
+            font-size: 0.92rem;
         }
 
         .omo-decision-majority-judgment__proposal-card {
@@ -1691,6 +2051,30 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
             gap: 12px;
             align-items: end;
         }
+
+        .omo-decision-majority-judgment-popup__mention-title {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .omo-decision-majority-judgment-popup__mention-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 999px;
+            display: inline-block;
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.35),
+                0 0 0 1px rgba(15, 23, 42, 0.12);
+        }
+
+        .omo-decision-majority-judgment-popup__mention-dot--0 { background: var(--color-palette-red, #c62828); }
+        .omo-decision-majority-judgment-popup__mention-dot--1 { background: var(--color-palette-orange, #ef6c00); }
+        .omo-decision-majority-judgment-popup__mention-dot--2 { background: var(--color-palette-yellow, #f9a825); }
+        .omo-decision-majority-judgment-popup__mention-dot--3 { background: var(--color-palette-gray, #9ca3af); }
+        .omo-decision-majority-judgment-popup__mention-dot--4 { background: var(--color-palette-green-light, #9ccc65); }
+        .omo-decision-majority-judgment-popup__mention-dot--5 { background: var(--color-palette-green-medium, #43a047); }
+        .omo-decision-majority-judgment-popup__mention-dot--6 { background: var(--color-palette-green-dark, #1b5e20); }
 
         .omo-decision-majority-judgment-popup__field--toggle {
             min-width: 120px;
@@ -1872,6 +2256,25 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
         .omo-decision-majority-judgment__majority-badge--5 { background: color-mix(in srgb, var(--color-palette-green-medium, #43a047) 18%, var(--color-surface, #ffffff)); }
         .omo-decision-majority-judgment__majority-badge--6 { background: color-mix(in srgb, var(--color-palette-green-dark, #1b5e20) 20%, var(--color-surface, #ffffff)); color: var(--color-text, #0f172a); }
 
+        .omo-decision-majority-judgment__comparison {
+            display: grid;
+            gap: 8px;
+            padding-top: 6px;
+            border-top: 1px dashed color-mix(in srgb, var(--color-border, #d1d5db) 82%, transparent);
+        }
+
+        .omo-decision-majority-judgment__comparison[hidden] {
+            display: none !important;
+        }
+
+        .omo-decision-majority-judgment__comparison-title {
+            color: var(--color-text-light, #475569);
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+
         .omo-decision-majority-judgment__distribution {
             --omo-decision-mj-distribution-padding: 4px;
             display: flex;
@@ -1895,6 +2298,10 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
         .omo-decision-majority-judgment__distribution-segment:hover {
             transform: scaleY(1.08);
             filter: brightness(0.96);
+        }
+
+        .omo-decision-majority-judgment__distribution-segment--secondary {
+            filter: saturate(0.6) brightness(1.08);
         }
 
         .omo-decision-majority-judgment__distribution-marker {
