@@ -1546,6 +1546,30 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         }
         var initialOpenEventDrawerOpened = false;
 
+        function getCurrentRouteToken() {
+            if (typeof window.omoParsePopupHashState !== 'function') {
+                return '';
+            }
+
+            var hashState = window.omoParsePopupHashState();
+            return hashState && hashState.routeToken
+                ? String(hashState.routeToken)
+                : '';
+        }
+
+        function buildEventRouteToken(eventId) {
+            var resolvedEventId = Number(eventId || 0);
+            if (!Number.isInteger(resolvedEventId) || resolvedEventId <= 0) {
+                return null;
+            }
+
+            if (typeof window.omoBuildCalendarEventRouteToken === 'function') {
+                return window.omoBuildCalendarEventRouteToken(resolvedEventId);
+            }
+
+            return 'calendar-e' + String(resolvedEventId);
+        }
+
         function normalizeViewPreference(viewName) {
             var normalizedView = String(viewName || '').trim().toLowerCase();
             return normalizedView === 'week' || normalizedView === 'day' || normalizedView === 'list'
@@ -1786,7 +1810,20 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             drawerBody.innerHTML = '<div class="generic-section"><?= omoApiEscape(omoCalendarT('calendar.error.load_form')) ?></div>';
         }
 
-        function closeDrawer() {
+        function closeDrawer(options) {
+            var settings = options && typeof options === 'object'
+                ? options
+                : {};
+
+            if (
+                settings.force !== true
+                && /^calendar-(?:e\d+|event-\d+)$/i.test(getCurrentRouteToken())
+                && typeof window.omoOpenDrawerHashState === 'function'
+            ) {
+                window.omoOpenDrawerHashState('calendar');
+                return;
+            }
+
             if (!drawer) {
                 return;
             }
@@ -1987,6 +2024,16 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             }, 40);
         }
 
+        function openEventFromRoute(eventId) {
+            var resolvedEventId = Number(eventId || 0);
+            if (!Number.isInteger(resolvedEventId) || resolvedEventId <= 0) {
+                return false;
+            }
+
+            openDrawerWithUrl(buildDetailUrl(resolvedEventId));
+            return true;
+        }
+
         function setActiveView(nextView, nextUrl, nextCount, nextSummary) {
             if (!nextView) {
                 return;
@@ -2106,6 +2153,14 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     return;
                 }
 
+                var routeToken = buildEventRouteToken(eventId);
+                var currentRouteToken = getCurrentRouteToken();
+
+                if (routeToken && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== currentRouteToken) {
+                    window.omoOpenDrawerHashState(routeToken);
+                    return;
+                }
+
                 openDrawerWithUrl(buildDetailUrl(eventId));
             });
         });
@@ -2206,6 +2261,29 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
         syncScopeButtons(currentScope);
         syncTodayButtons(currentView);
+
+        if (!root.__omoCalendarRouteHandler) {
+            root.__omoCalendarRouteHandler = function (routeEvent) {
+                if (!document.body.contains(root)) {
+                    return;
+                }
+
+                var detail = routeEvent && routeEvent.detail
+                    ? routeEvent.detail
+                    : {};
+                var targetEventId = Number(detail.eventId || 0);
+
+                if (targetEventId > 0) {
+                    openEventFromRoute(targetEventId);
+                    return;
+                }
+
+                closeDrawer({ force: true });
+            };
+
+            window.addEventListener('omo-calendar-route-change', root.__omoCalendarRouteHandler);
+        }
+
         window.requestAnimationFrame(function () {
             scrollTimelineToBusinessStart(currentView);
             if (initialOpenEventId > 0) {

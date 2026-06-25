@@ -4,6 +4,14 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-06-25
 
+Tous les e-mails systeme peuvent maintenant ajouter automatiquement un footer `Soutenir le projet sur Patreon` sur les instances ou Patreon est configure, mais ce rappel est omis des qu un compte Patreon connecte est implique comme expediteur logique ou destinataire du message.
+
+Dans OMO, la leftbar et la popup `Gerer les applications` masquent maintenant automatiquement les apps dont la page cible n existe pas sur l instance courante, ce qui evite d afficher en prod des modules encore actifs seulement en test.
+
+Dans OMO, les ouvertures de detail dans `Documents`, `Calendrier` et `Decisions` repoussent maintenant aussi un hash dedie par objet, avec support du format court `#documents-d12`, `#calendar-e12` et `#decision-d12`: un lien direct peut rouvrir l objet si l acces est autorise, et `back` ou `Fermer` reviennent a la liste de l app au lieu de laisser un drawer detail orphelin.
+
+Dans l app `Equipe` de OMO, la liste contextuelle des membres d un cercle se base maintenant sur le meme helper que `getOrg.php`: elle re-affiche donc aussi les personnes remontees via les roles du cercle et via les liens de cercles specifiques, au lieu de se limiter aux seuls liens directs du cercle.
+
 Dans la liste OMO des prises de decision, le menu `...` des cartes reste maintenant present apres avoir ouvert puis referme un scrutin: le rerendu via le composant partage rebranche aussi correctement les actions detaillees apres refresh.
 
 Les exports OMO de prises de decision sans `gid` explicite n emportent maintenant plus seulement le bloc principal: les formats `CSV`, `JSON` et `XML` regroupent correctement tous les blocs actifs d un meme scrutin quand ils utilisent la meme methode.
@@ -30,7 +38,7 @@ Dans cette edition des mentions du `Jugement majoritaire`, les libelles techniqu
 
 Dans les scrutins OMO deja prets mais pas encore termines, le menu `...` propose maintenant `Imprimer les codes QR`, avec une page imprimable qui genere un QR individuel par participant a partir du meme lien direct que celui envoye par e-mail.
 
-Cette planche QR de scrutin met maintenant aussi le titre du scrutin, l organisation, l auteur et les dates utiles directement sur chaque carte, tout en forçant une vraie grille compacte d impression pour tenir au moins quatre QR sur une page A4.
+Cette planche QR de scrutin met maintenant aussi le titre du scrutin, l organisation, l auteur et les dates utiles directement sur chaque carte, tout en forcant une vraie grille compacte d impression pour tenir au moins quatre QR sur une page A4.
 
 Les fiches QR de scrutin adoptent maintenant une composition verticale type `A6`: QR en haut, informations participant en dessous, puis un bloc unique `Organisateur` qui regroupe organisation, contexte et auteur, sans afficher le statut temporaire du scrutin.
 

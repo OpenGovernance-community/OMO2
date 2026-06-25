@@ -1685,6 +1685,11 @@ if (!is_string($documentsPayload)) {
                                     return;
                                 }
 
+                                if (typeof window.omoOpenDocumentDetailFromTrigger === 'function') {
+                                    window.omoOpenDocumentDetailFromTrigger(trigger, event);
+                                    return;
+                                }
+
                                 event.preventDefault();
 
                                 const documentId = Number(trigger.getAttribute('data-omo-document-id'));
@@ -1724,6 +1729,11 @@ if (!is_string($documentsPayload)) {
                                     && !event.target.closest('[data-omo-document-context-jump]')
                                 ) {
                                     event.preventDefault();
+                                    if (typeof window.omoOpenDocumentDetailFromTrigger === 'function') {
+                                        window.omoOpenDocumentDetailFromTrigger(card);
+                                        return;
+                                    }
+
                                     const documentItem = findDocumentItemById(Number(card.getAttribute('data-omo-document-id') || 0));
                                     if (documentItem) {
                                         openDocumentDetail(documentItem);
@@ -2181,7 +2191,7 @@ if (!is_string($documentsPayload)) {
                     ? window.omoParsePopupHashState()
                     : null;
                 const routeToken = hashState && hashState.routeToken ? String(hashState.routeToken) : '';
-                if (/^documents-\d+$/i.test(routeToken) && typeof window.omoOpenDrawerHashState === 'function') {
+                if (/^(?:documents|document)-(?:d)?\d+$/i.test(routeToken) && typeof window.omoOpenDrawerHashState === 'function') {
                     window.omoOpenDrawerHashState('documents');
                     return;
                 }
