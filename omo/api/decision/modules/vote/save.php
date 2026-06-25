@@ -50,6 +50,11 @@ $choiceMode = omoDecisionVoteNormalizeChoiceMode($_POST['choice_mode'] ?? 'singl
 $maxChoices = omoDecisionVoteNormalizeMaxChoices($_POST['max_choices'] ?? 1, $choiceMode);
 $isAnonymous = !empty($_POST['is_anonymous']);
 $allowConsultationProposals = !empty($_POST['allow_consultation_proposals']);
+$voteWeightConfig = omoDecisionBlockSettingsBuildVoteWeightConfig([
+    'enabled' => !empty($_POST['vote_weight_enabled']),
+    'question' => $_POST['vote_weight_question'] ?? '',
+    'options' => $_POST['vote_weight_options_json'] ?? [],
+]);
 $proposalItems = omoDecisionBuildProposalItemsFromInput(
     $_POST['proposals'] ?? [],
     $_POST['proposal_descriptions'] ?? [],
@@ -112,6 +117,9 @@ $currentVoteConfig = $decision instanceof DecisionProcess
         'max_choices' => $maxChoices,
         'is_anonymous' => $isAnonymous,
         'allow_consultation_proposals' => $allowConsultationProposals,
+        'vote_weight_enabled' => !empty($voteWeightConfig['enabled']),
+        'vote_weight_question' => (string)$voteWeightConfig['question'],
+        'vote_weight_options' => (array)$voteWeightConfig['options'],
     ];
 $canEditProposals = !$coreLocked || (!$startDatesLocked && !empty($currentVoteConfig['allow_consultation_proposals']));
 
@@ -174,6 +182,9 @@ try {
             'max_choices' => $choiceMode === 'multiple' ? $maxChoices : 1,
             'is_anonymous' => $isAnonymous,
             'allow_consultation_proposals' => $allowConsultationProposals,
+            'vote_weight_enabled' => !empty($voteWeightConfig['enabled']),
+            'vote_weight_question' => (string)$voteWeightConfig['question'],
+            'vote_weight_options' => (array)$voteWeightConfig['options'],
         ], $extraParameters);
     } else {
         $parameters = omoDecisionModuleDecodeParameters($decisionGroup instanceof DecisionGroup ? $decisionGroup->get('parameters') : $decision->get('parameters'));

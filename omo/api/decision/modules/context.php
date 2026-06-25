@@ -54,6 +54,52 @@ if (!function_exists('omoDecisionBuildActionUrl')) {
     }
 }
 
+if (!function_exists('omoDecisionBuildExportUrl')) {
+    function omoDecisionBuildExportUrl($organizationId, $holonId = 0, $decisionId = 0, $method = '', $decisionGroupId = 0, $format = '')
+    {
+        $query = [
+            'oid' => (int)$organizationId,
+            'id' => (int)$decisionId,
+        ];
+
+        if ((int)$holonId > 0) {
+            $query['cid'] = (int)$holonId;
+        }
+
+        if ((int)$decisionGroupId > 0) {
+            $query['gid'] = (int)$decisionGroupId;
+        }
+
+        $method = trim((string)$method);
+        if ($method !== '') {
+            $query['method'] = $method;
+        }
+
+        $format = trim((string)$format);
+        if ($format !== '') {
+            $query['format'] = $format;
+        }
+
+        return '/omo/api/decision/export.php?' . http_build_query($query);
+    }
+}
+
+if (!function_exists('omoDecisionBuildParticipantQrSheetUrl')) {
+    function omoDecisionBuildParticipantQrSheetUrl($organizationId, $holonId = 0, $decisionId = 0)
+    {
+        $query = [
+            'oid' => (int)$organizationId,
+            'id' => (int)$decisionId,
+        ];
+
+        if ((int)$holonId > 0) {
+            $query['cid'] = (int)$holonId;
+        }
+
+        return '/omo/api/decision/participant_qr_codes.php?' . http_build_query($query);
+    }
+}
+
 if (!function_exists('omoDecisionBuildContextualEditorUrl')) {
     function omoDecisionBuildContextualEditorUrl(array $context, $intent = '')
     {

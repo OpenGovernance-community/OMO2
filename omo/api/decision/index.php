@@ -529,6 +529,14 @@ $sourceLang = [
         'text' => 'Archiver',
         'context' => 'Manager action used to archive a decision that already has votes.',
     ],
+    'decisions.index.action.export' => [
+        'text' => 'Export',
+        'context' => 'Menu action used to open the export picker for one decision.',
+    ],
+    'decisions.index.action.participant_qr_codes' => [
+        'text' => 'Imprimer les codes QR',
+        'context' => 'Menu action used to open a printable sheet of participant QR codes for one decision.',
+    ],
     'decisions.index.action.delete' => [
         'text' => 'Supprimer',
         'context' => 'Manager action used to delete a decision that has no submitted votes yet.',
@@ -552,6 +560,54 @@ $sourceLang = [
     'decisions.index.action.error_update' => [
         'text' => 'Impossible de mettre a jour cette prise de decision pour le moment.',
         'context' => 'Fallback error message shown when a decision archive or delete action fails.',
+    ],
+    'decisions.index.export.modal_title' => [
+        'text' => 'Exporter ce scrutin',
+        'context' => 'Modal title shown when choosing one export format from the decision list.',
+    ],
+    'decisions.index.export.modal_intro' => [
+        'text' => 'Choisissez le format d export adapte a ce mode de prise de decision.',
+        'context' => 'Intro text shown inside the export picker modal.',
+    ],
+    'decisions.index.export.format.csv' => [
+        'text' => 'CSV',
+        'context' => 'Label for the CSV export format.',
+    ],
+    'decisions.index.export.format.csv_description' => [
+        'text' => 'Tableau enrichi avec type, bloc, question, details et resultats.',
+        'context' => 'Description of the CSV export format.',
+    ],
+    'decisions.index.export.format.json' => [
+        'text' => 'JSON',
+        'context' => 'Label for the JSON export format.',
+    ],
+    'decisions.index.export.format.json_description' => [
+        'text' => 'Blueprint du scrutin et resultats structures, sans dump complet.',
+        'context' => 'Description of the JSON export format.',
+    ],
+    'decisions.index.export.format.xml' => [
+        'text' => 'XML',
+        'context' => 'Label for the XML export format.',
+    ],
+    'decisions.index.export.format.xml_description' => [
+        'text' => 'Meme contenu structure que le JSON, dans un format XML.',
+        'context' => 'Description of the XML export format.',
+    ],
+    'decisions.index.export.format.pdf' => [
+        'text' => 'PDF',
+        'context' => 'Label for the PDF export format.',
+    ],
+    'decisions.index.export.format.pdf_description' => [
+        'text' => 'Version de presentation preparee pour plus tard.',
+        'context' => 'Description of the PDF export format.',
+    ],
+    'decisions.index.export.format.coming_soon' => [
+        'text' => 'Bientot disponible',
+        'context' => 'Label shown for unavailable export formats.',
+    ],
+    'decisions.index.export.open' => [
+        'text' => 'Telecharger',
+        'context' => 'Button label used to trigger the selected export.',
     ],
     'decisions.index.action.open_editor_title' => [
         'text' => 'Décisions',
@@ -917,6 +973,64 @@ foreach ($decisionRows as $row) {
     }
 
     $menuActions = [];
+    if ($canManage) {
+        $menuActions[] = [
+            'label' => t('decisions.index.action.export', [], $lang, $sourceLang),
+            'behavior' => 'export',
+            'exportUrl' => omoDecisionBuildExportUrl(
+                $currentOrganizationId,
+                $normalizedCurrentHolonId > 0 ? $normalizedCurrentHolonId : $holonId,
+                $decisionId,
+                $method
+            ),
+            'exportFormats' => [
+                [
+                    'key' => 'csv',
+                    'label' => t('decisions.index.export.format.csv', [], $lang, $sourceLang),
+                    'description' => t('decisions.index.export.format.csv_description', [], $lang, $sourceLang),
+                    'available' => true,
+                ],
+                [
+                    'key' => 'json',
+                    'label' => t('decisions.index.export.format.json', [], $lang, $sourceLang),
+                    'description' => t('decisions.index.export.format.json_description', [], $lang, $sourceLang),
+                    'available' => true,
+                ],
+                [
+                    'key' => 'xml',
+                    'label' => t('decisions.index.export.format.xml', [], $lang, $sourceLang),
+                    'description' => t('decisions.index.export.format.xml_description', [], $lang, $sourceLang),
+                    'available' => true,
+                ],
+                [
+                    'key' => 'pdf',
+                    'label' => t('decisions.index.export.format.pdf', [], $lang, $sourceLang),
+                    'description' => t('decisions.index.export.format.pdf_description', [], $lang, $sourceLang),
+                    'available' => false,
+                ],
+            ],
+        ];
+
+        $canOpenParticipantQrSheet = !in_array($status, [
+                DecisionProcess::STATUS_DRAFT,
+                DecisionProcess::STATUS_RESULTS,
+                DecisionProcess::STATUS_ARCHIVED,
+            ], true);
+
+        if ($canOpenParticipantQrSheet) {
+            $menuActions[] = [
+                'label' => t('decisions.index.action.participant_qr_codes', [], $lang, $sourceLang),
+                'behavior' => 'window',
+                'url' => omoDecisionBuildParticipantQrSheetUrl(
+                    $currentOrganizationId,
+                    $normalizedCurrentHolonId > 0 ? $normalizedCurrentHolonId : $holonId,
+                    $decisionId
+                ),
+                'title' => trim((string)$decision->get('title')),
+            ];
+        }
+    }
+
     if ($canManage && $actionUrl !== '') {
         $canDeleteDecision = !$hasSubmittedResponses
             && $status !== DecisionProcess::STATUS_RESULTS
@@ -1106,6 +1220,14 @@ $payload = [
         'moreActionLabel' => t('decisions.index.action.more', [], $lang, $sourceLang),
         'moreActionAriaLabel' => t('decisions.index.action.more_aria', [], $lang, $sourceLang),
         'actionErrorUpdate' => t('decisions.index.action.error_update', [], $lang, $sourceLang),
+        'exportActionLabel' => t('decisions.index.action.export', [], $lang, $sourceLang),
+        'exportModalTitle' => t('decisions.index.export.modal_title', [], $lang, $sourceLang),
+        'exportModalIntro' => t('decisions.index.export.modal_intro', [], $lang, $sourceLang),
+        'exportFormatCsvLabel' => t('decisions.index.export.format.csv', [], $lang, $sourceLang),
+        'exportFormatJsonLabel' => t('decisions.index.export.format.json', [], $lang, $sourceLang),
+        'exportFormatPdfLabel' => t('decisions.index.export.format.pdf', [], $lang, $sourceLang),
+        'exportComingSoonLabel' => t('decisions.index.export.format.coming_soon', [], $lang, $sourceLang),
+        'exportOpenLabel' => t('decisions.index.export.open', [], $lang, $sourceLang),
         'drawerTitle' => t('decisions.index.action.open_editor_title', [], $lang, $sourceLang),
         'filtersToggleShow' => t('decisions.index.filters.toggle.show', [], $lang, $sourceLang),
         'filtersToggleHide' => t('decisions.index.filters.toggle.hide', [], $lang, $sourceLang),
@@ -2813,8 +2935,17 @@ function isDecisionMenuActionUsable(action) {
         return false;
     }
 
-    if (String(action.behavior || '').trim() === 'mutation') {
+    const behavior = String(action.behavior || '').trim();
+    if (behavior === 'mutation') {
         return String(action.requestUrl || '').trim() !== '';
+    }
+
+    if (behavior === 'export') {
+        return String(action.exportUrl || '').trim() !== '';
+    }
+
+    if (behavior === 'window') {
+        return String(action.url || '').trim() !== '';
     }
 
     return String(action.url || '').trim() !== '';
@@ -2891,6 +3022,18 @@ function buildDetailedActionMenuButton(item) {
 
     menu.appendChild(toggle);
     return menu;
+}
+
+function appendDetailedActionMenuButton(card, item) {
+    if (!(card instanceof Element)) {
+        return;
+    }
+
+    const detailMenuButton = buildDetailedActionMenuButton(item);
+    const actionsContainer = card.querySelector('.omo-decisions-card__actions');
+    if (detailMenuButton && actionsContainer) {
+        actionsContainer.appendChild(detailMenuButton);
+    }
 }
 
 function renderCompactRow(item) {
@@ -3134,6 +3277,7 @@ function renderCard(item) {
             openTitleAttribute: 'data-open-title'
         });
 
+        appendDetailedActionMenuButton(card, item);
         return card;
     }
 
@@ -3212,11 +3356,7 @@ function renderCard(item) {
             + '</div>'
         + '</div>';
 
-    const detailMenuButton = buildDetailedActionMenuButton(item);
-    const actionsContainer = article.querySelector('.omo-decisions-card__actions');
-    if (detailMenuButton && actionsContainer) {
-        actionsContainer.appendChild(detailMenuButton);
-    }
+    appendDetailedActionMenuButton(article, item);
 
     return article;
 }
@@ -3373,11 +3513,19 @@ function buildCompactMenuItem(action, title, description) {
     }
     button.setAttribute('data-omo-decision-compact-menu-action', '1');
     button.setAttribute('role', 'menuitem');
-    button.setAttribute('data-omo-decision-menu-behavior', behavior === 'mutation' ? 'mutation' : 'open');
+    button.setAttribute(
+        'data-omo-decision-menu-behavior',
+        behavior === 'mutation' || behavior === 'export' || behavior === 'window' ? behavior : 'open'
+    );
     if (behavior === 'mutation') {
         button.setAttribute('data-omo-decision-menu-request-url', String(action && action.requestUrl ? action.requestUrl : ''));
         button.setAttribute('data-omo-decision-menu-request-payload', JSON.stringify(requestPayload));
         button.setAttribute('data-omo-decision-menu-confirm', String(action && action.confirmMessage ? action.confirmMessage : ''));
+    } else if (behavior === 'export') {
+        button.setAttribute('data-omo-decision-menu-export-url', String(action && action.exportUrl ? action.exportUrl : ''));
+        button.setAttribute('data-omo-decision-menu-export-formats', JSON.stringify(Array.isArray(action && action.exportFormats) ? action.exportFormats : []));
+        button.setAttribute('data-open-title', String(action && action.title ? action.title : title || ''));
+        button.setAttribute('data-open-description', String(description || ''));
     } else {
         button.setAttribute('data-open-url', String(action && action.url ? action.url : ''));
         button.setAttribute('data-open-title', String(action && action.title ? action.title : title || ''));
@@ -3497,6 +3645,114 @@ function parseDecisionMenuRequestPayload(button) {
     } catch (error) {
         return {};
     }
+}
+
+function parseDecisionMenuExportFormats(button) {
+    if (!(button instanceof Element)) {
+        return [];
+    }
+
+    try {
+        const parsed = JSON.parse(String(button.getAttribute('data-omo-decision-menu-export-formats') || '[]'));
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+        return [];
+    }
+}
+
+function buildDecisionExportModalHtml(title, exportUrl, formats) {
+    const safeTitle = String(title || '').trim();
+    const safeExportUrl = String(exportUrl || '').trim();
+    const safeFormats = Array.isArray(formats) ? formats : [];
+    let html = '<div class="generic-section generic-section--stack">';
+
+    if (payload.text && payload.text.exportModalIntro) {
+        html += '<p>' + escapeHtml(payload.text.exportModalIntro) + '</p>';
+    }
+
+    safeFormats.forEach(function (format) {
+        const key = String(format && format.key ? format.key : '').trim();
+        const label = String(format && format.label ? format.label : key.toUpperCase()).trim();
+        const description = String(format && format.description ? format.description : '').trim();
+        const available = Boolean(format && format.available);
+
+        html += '<section class="generic-soft-panel generic-soft-panel--stack">';
+        html += '<h3 class="generic-card-title generic-card-title--small">' + escapeHtml(label) + '</h3>';
+        if (description !== '') {
+            html += '<p>' + escapeHtml(description) + '</p>';
+        }
+
+        if (available && safeExportUrl !== '' && key !== '') {
+            html += '<button type="button" class="generic-action-button generic-action-button--main"'
+                + ' data-omo-decision-export-format-button="1"'
+                + ' data-omo-decision-export-url="' + escapeHtml(safeExportUrl) + '"'
+                + ' data-omo-decision-export-format="' + escapeHtml(key) + '"'
+                + ' data-omo-decision-export-title="' + escapeHtml(safeTitle) + '"'
+                + '>'
+                + escapeHtml(payload.text && payload.text.exportOpenLabel ? payload.text.exportOpenLabel : 'Telecharger')
+                + '</button>';
+        } else {
+            html += '<button type="button" class="generic-action-button generic-action-button--secondary" disabled>'
+                + escapeHtml(payload.text && payload.text.exportComingSoonLabel ? payload.text.exportComingSoonLabel : 'Bientot disponible')
+                + '</button>';
+        }
+
+        html += '</section>';
+    });
+
+    html += '</div>';
+    return html;
+}
+
+function openDecisionExportModal(button) {
+    if (!(button instanceof Element) || typeof window.commonTopbarOpenModal !== 'function') {
+        return;
+    }
+
+    const exportUrl = String(button.getAttribute('data-omo-decision-menu-export-url') || '').trim();
+    if (exportUrl === '') {
+        return;
+    }
+
+    const title = String(button.getAttribute('data-open-title') || '').trim()
+        || (payload.text && payload.text.exportModalTitle ? payload.text.exportModalTitle : 'Exporter ce scrutin');
+    const formats = parseDecisionMenuExportFormats(button);
+
+    window.commonTopbarOpenModal(
+        payload.text && payload.text.exportModalTitle ? payload.text.exportModalTitle : 'Exporter ce scrutin',
+        buildDecisionExportModalHtml(title, exportUrl, formats),
+        'html'
+    );
+}
+
+function startDecisionExportDownload(button) {
+    if (!(button instanceof Element)) {
+        return;
+    }
+
+    const exportUrl = String(button.getAttribute('data-omo-decision-export-url') || '').trim();
+    const format = String(button.getAttribute('data-omo-decision-export-format') || '').trim();
+    if (exportUrl === '' || format === '') {
+        return;
+    }
+
+    let resolvedUrl = typeof window.omoResolveAppUrl === 'function'
+        ? window.omoResolveAppUrl(exportUrl)
+        : exportUrl;
+
+    try {
+        const url = new URL(resolvedUrl, window.location.origin);
+        url.searchParams.set('format', format);
+        resolvedUrl = url.toString();
+    } catch (error) {
+        resolvedUrl += (resolvedUrl.indexOf('?') === -1 ? '?' : '&') + 'format=' + encodeURIComponent(format);
+    }
+
+    if (typeof window.commonTopbarCloseModal === 'function') {
+        window.commonTopbarCloseModal();
+    }
+
+    window.open(resolvedUrl, '_blank', 'noopener');
 }
 
 function submitDecisionMenuAction(button) {
@@ -3647,6 +3903,25 @@ omoDecisionRegisterGlobalListener(ownerDocument, 'click', function (event) {
             return;
         }
 
+        if (behavior === 'export') {
+            openDecisionExportModal(actionButton);
+            closeCompactMenus();
+            return;
+        }
+
+        if (behavior === 'window') {
+            const targetUrl = String(actionButton.getAttribute('data-open-url') || '').trim();
+            if (targetUrl !== '') {
+                const resolvedUrl = typeof window.omoResolveAppUrl === 'function'
+                    ? window.omoResolveAppUrl(targetUrl)
+                    : targetUrl;
+                window.open(resolvedUrl, '_blank', 'noopener');
+            }
+
+            closeCompactMenus();
+            return;
+        }
+
         const targetUrl = String(actionButton.getAttribute('data-open-url') || '').trim();
         if (targetUrl !== '') {
             openDecisionEditor(
@@ -3656,6 +3931,13 @@ omoDecisionRegisterGlobalListener(ownerDocument, 'click', function (event) {
         }
 
         closeCompactMenus();
+        return;
+    }
+
+    const exportButton = event.target.closest('[data-omo-decision-export-format-button="1"]');
+    if (exportButton) {
+        event.preventDefault();
+        startDecisionExportDownload(exportButton);
         return;
     }
 

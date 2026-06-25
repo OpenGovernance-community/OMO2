@@ -48,6 +48,11 @@ $evaluationStartAt = trim((string)($_POST['evaluation_start_at'] ?? ''));
 $evaluationEndAt = trim((string)($_POST['evaluation_end_at'] ?? ''));
 $isAnonymous = !empty($_POST['is_anonymous']);
 $allowConsultationProposals = !empty($_POST['allow_consultation_proposals']);
+$voteWeightConfig = omoDecisionBlockSettingsBuildVoteWeightConfig([
+    'enabled' => !empty($_POST['vote_weight_enabled']),
+    'question' => $_POST['vote_weight_question'] ?? '',
+    'options' => $_POST['vote_weight_options_json'] ?? [],
+]);
 $proposalItems = omoDecisionBuildProposalItemsFromInput(
     $_POST['proposals'] ?? [],
     $_POST['proposal_descriptions'] ?? [],
@@ -108,6 +113,9 @@ $currentConfig = $decision instanceof DecisionProcess
     : [
         'is_anonymous' => $isAnonymous,
         'allow_consultation_proposals' => $allowConsultationProposals,
+        'vote_weight_enabled' => !empty($voteWeightConfig['enabled']),
+        'vote_weight_question' => (string)$voteWeightConfig['question'],
+        'vote_weight_options' => (array)$voteWeightConfig['options'],
     ];
 $canEditProposals = !$coreLocked || (!$startDatesLocked && !empty($currentConfig['allow_consultation_proposals']));
 
@@ -161,6 +169,9 @@ try {
         [
             'is_anonymous' => $isAnonymous,
             'allow_consultation_proposals' => $allowConsultationProposals,
+            'vote_weight_enabled' => !empty($voteWeightConfig['enabled']),
+            'vote_weight_question' => (string)$voteWeightConfig['question'],
+            'vote_weight_options' => (array)$voteWeightConfig['options'],
         ],
         [
             'proposal_count' => $proposalCount,

@@ -60,7 +60,6 @@
 	#popup option {padding:5px;}
 	#popup button {margin-top:6px;}
 	#popup_close button {margin-top:0px; border-radius:0px 0px 0px 10px;}
-	button img {height:20px; background:#FFFFFF;border-radius:50%; padding:3px;vertical-align:text-bottom; margin-right:10px;}
 	#popup_content {height:100%;}
 	
 	.liketext {border:0px !important;}

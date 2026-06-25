@@ -2,6 +2,48 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-06-25
+
+Dans la liste OMO des prises de decision, le menu `...` des cartes reste maintenant present apres avoir ouvert puis referme un scrutin: le rerendu via le composant partage rebranche aussi correctement les actions detaillees apres refresh.
+
+Les exports OMO de prises de decision sans `gid` explicite n emportent maintenant plus seulement le bloc principal: les formats `CSV`, `JSON` et `XML` regroupent correctement tous les blocs actifs d un meme scrutin quand ils utilisent la meme methode.
+
+Dans les parametres de bloc des scrutins OMO `Vote`, `Jugement majoritaire` et `Consentement`, une ponderation optionnelle des votes peut maintenant etre definie de facon generique avec une question et un petit editeur a lignes `coefficient + libelle`, incluant une base `1x` verrouillee, puis resumee dans le recapitulatif du bloc.
+
+Dans les parcours de participation `Vote simple` et `Jugement majoritaire`, les participants peuvent maintenant choisir leur coefficient de ponderation via un selecteur segmente. Les resultats s affichent par defaut en version ponderee, avec une case a cocher par bloc pour reveler en dessous la comparaison non ponderee.
+
+Un script SQL de demo local permet maintenant d injecter deux scrutins termines dedies aux tests de ponderation, l un en `Vote simple` et l autre en `Jugement majoritaire`, avec des participants de poids differents pour verifier visuellement les ecarts entre resultats ponderes et non ponderes.
+
+Dans les resultats OMO de `Jugement majoritaire`, la comparaison `non ponderee` recompte maintenant bien une reponse pour une reponse, sans reutiliser par erreur l echelle interne de ponderation. Le script SQL de demo associe montre aussi une palette de mentions plus variee pour mieux lire les barres.
+
+Dans les resultats OMO `Vote simple`, la vue principale applique maintenant bien les poids quand la ponderation est active. Dans `Jugement majoritaire`, les cartes separent aussi desormais le nombre brut de mentions et leur poids cumule, pour eviter de confondre `6 votes` avec un total pondere comme `2.5`.
+
+Les blocs de comparaison `resultat non pondere` dans `Vote simple` et `Jugement majoritaire` restent maintenant vraiment masques tant que leur case n est pas cochee, y compris apres rerendu dynamique.
+
+Dans l editeur de ponderation des votes, la ligne fixe `1x` reste verrouillee mais le badge visuel `Base 1x` a ete retire pour alleger l interface.
+
+Dans ce meme editeur, le premier champ numerique verrouille de la ligne `1x` affiche maintenant `Reference` au lieu de `Coefficient`, pour mieux distinguer la base neutre des autres valeurs.
+
+Les reglages de ponderation des votes se replient maintenant comme un petit accordion: seule la case d activation reste visible tant que la ponderation est desactivee. Dans le `Jugement majoritaire`, une case `Redefinir les mentions` masque ou revele de la meme facon l edition avancee de l echelle.
+
+Dans cette edition des mentions du `Jugement majoritaire`, les libelles techniques `Mention 1`, `Mention 2`, etc. sont maintenant remplaces visuellement par `Mention` suivi d un petit rond colore reprenant la palette de la mention.
+
+Dans les scrutins OMO deja prets mais pas encore termines, le menu `...` propose maintenant `Imprimer les codes QR`, avec une page imprimable qui genere un QR individuel par participant a partir du meme lien direct que celui envoye par e-mail.
+
+Cette planche QR de scrutin met maintenant aussi le titre du scrutin, l organisation, l auteur et les dates utiles directement sur chaque carte, tout en forçant une vraie grille compacte d impression pour tenir au moins quatre QR sur une page A4.
+
+Les fiches QR de scrutin adoptent maintenant une composition verticale type `A6`: QR en haut, informations participant en dessous, puis un bloc unique `Organisateur` qui regroupe organisation, contexte et auteur, sans afficher le statut temporaire du scrutin.
+
+Quand un scrutin QR utilise le holon racine de type `organisation`, le bloc `Organisateur` masque maintenant aussi ce contexte s il reprend deja le meme libelle que l organisation, pour eviter tout doublon visuel.
+
+## 2026-06-24
+
+Avant connexion, la popup FAQ bascule maintenant automatiquement sur la portee `Global` quand aucun contexte organisation/holon n est disponible, ce qui re-affiche bien les FAQ generiques non rattachees a une organisation ou a un holon.
+
+Depuis la topbar OMO sans contexte d organisation, le lien `Tutoriels` ouvre maintenant un catalogue public de parcours `isbasic`. Les cartes LMS et le viewer associe conservent ce mode `basic` sur leurs appels AJAX pour permettre aussi l ouverture des tutos hors orga.
+
+Dans ce catalogue public LMS, la liste des missions anonymes recalcule maintenant correctement les dependances sans erreur SQL, y compris quand aucune mission n a encore ete terminee puis apres les premieres progressions locales.
+
 ## 2026-06-23
 
 Le stockage LMS des `Questions` est maintenant explicitement separe du stockage `FAQ`: les migrations et le seed Docker creent des tables dediees `question`, `question_choice`, `mission_question` et `user_question_response` sans jamais renommer ni recycler les tables `faq*`.
@@ -15,6 +57,12 @@ La popup FAQ ne plante plus si la base cible n a pas encore de table `faq`: elle
 La classe `FAQ` degrade maintenant proprement son tri sur les bases plus anciennes: si les colonnes `displayorder` ou `updated` manquent encore, les listes FAQ utilisent un ordre compatible au lieu de provoquer une erreur SQL.
 
 Dans le LMS OMO, un parcours importe depuis une autre organisation n expose plus l action `Editer` et toute tentative directe d ouverture ou de sauvegarde est maintenant refusee cote serveur: seule l organisation proprietaire peut modifier son parcours.
+
+Les editeurs OMO qui utilisent les widgets `sized-image-field` et `simple-html-field` attendent maintenant explicitement que leurs scripts AJAX soient prets avant le premier rendu. Les loaders d image de logo et de banniere apparaissent donc correctement des la premiere ouverture du panneau.
+
+Dans l editeur OMO des holons de type organisation, la reouverture d un holon existant recharge maintenant correctement son nom, ses proprietes locales et son statut de partage comme modele, au lieu d afficher un formulaire vide de type `Nouveau`.
+
+Les champs image recadrables de l editeur OMO attendent maintenant la fin effective du recadrage avant l envoi du formulaire. Les illustrations de holons et de modeles d organisation ne se perdent plus quand on valide juste apres avoir choisi ou ajuste une image.
 
 Dans la grille LMS OMO, la carte d ajout de parcours propose maintenant deux entrees distinctes `Nouveau` et `Importer`, avec un drawer de catalogue pour rattacher rapidement a l organisation courante un parcours deja marque `public` ou `basic`.
 
@@ -141,6 +189,10 @@ Les palettes de couleur sont maintenant mieux separees, avec un fichier CSS dedi
 Le module `Decisions` a ete fortement enrichi. La navigation est plus souple, les listes sont plus lisibles, les vues memorisent mieux les preferences de consultation, et les resultats de vote sont plus clairs. Le `Jugement majoritaire` est aussi devenu plus parametrable, avec une echelle plus flexible et une presentation plus homogene.
 
 Les entetes de regroupement par date y sont aussi desormais plus coherents entre les differents modes d affichage, avec un rendu partage base sur le composant generique.
+
+Le menu `...` des scrutins proposes aux gestionnaires offre maintenant un export par mode de prise de decision. Une popup permet de choisir entre `CSV`, `JSON` et `XML`, avec une entree `PDF` deja visible mais laissee inactive pour la suite. Chaque mode (`vote`, `majority_judgment`, `consent`) genere son propre contenu d export dans son dossier de module, avec un `CSV` enrichi pour la reimportation minimale, et des `JSON/XML` resserres autour d un blueprint du scrutin et de ses resultats.
+
+La creation d une nouvelle prise de decision peut maintenant repartir d un fichier d export `CSV`, `JSON` ou `XML`. L import reconstruit la structure globale du processus et de ses blocs en dispatchant chaque bloc vers le module cible (`vote`, `majority_judgment`, `consent`), sans jamais reimporter les participants, invitations, reponses ou resultats.
 
 ## Invitations Et Participation
 
