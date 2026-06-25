@@ -320,6 +320,14 @@ foreach ($parcours as $parcoursItem) {
             background: color-mix(in srgb, var(--primary) 10%, var(--bg-card));
         }
 
+        .card-menu-item--danger {
+            color: #b42318;
+        }
+
+        .card-menu-item--danger:hover {
+            background: #fef3f2;
+        }
+
         .banner-bg {
             position: absolute;
             inset: 0;
@@ -484,18 +492,24 @@ if (!$isEmbedded) {
     $total = (int)$p['total_missions'];
     $done = (int)$p['done_missions'];
     $percent = $total > 0 ? round(($done / $total) * 100) : 0;
-    $canEditThisParcours = $canCreateParcours && (int)($p['owner_organization_id'] ?? 0) === (int)$org['id'];
+    $isOwnerParcours = (int)($p['owner_organization_id'] ?? 0) === (int)$org['id'];
+    $canManageThisParcours = $canCreateParcours;
+    $canEditThisParcours = $canManageThisParcours && $isOwnerParcours;
+    $detachActionLabel = $isOwnerParcours ? 'Supprimer' : 'Detacher';
 ?>
 <div
     class="card"
     data-parcours-card="1"
     data-parcours-id="<?php echo (int)$p['id']; ?>"
+    data-parcours-title="<?php echo htmlspecialchars((string)$p['title'], ENT_QUOTES, 'UTF-8'); ?>"
+    data-is-owner="<?php echo $isOwnerParcours ? '1' : '0'; ?>"
     data-can-edit="<?php echo $canEditThisParcours ? '1' : '0'; ?>"
+    data-can-manage="<?php echo $canManageThisParcours ? '1' : '0'; ?>"
     data-total-missions="<?php echo $total; ?>"
     data-local-progress="<?php echo $user_id > 0 ? '0' : '1'; ?>"
     onclick="goToParcours(<?php echo (int)$p['id']; ?>)"
 >
-    <?php if ($canEditThisParcours): ?>
+    <?php if ($canManageThisParcours): ?>
         <div class="card-menu-wrap" onclick="event.stopPropagation()">
             <button
                 type="button"
@@ -504,7 +518,10 @@ if (!$isEmbedded) {
                 onclick="toggleParcoursCardMenu(event, <?php echo (int)$p['id']; ?>)"
             >...</button>
             <div class="card-menu" id="parcours-card-menu-<?php echo (int)$p['id']; ?>">
-                <button type="button" class="card-menu-item" onclick="openEditParcoursDrawer(event, <?php echo (int)$p['id']; ?>)">Editer</button>
+                <?php if ($canEditThisParcours): ?>
+                    <button type="button" class="card-menu-item" onclick="openEditParcoursDrawer(event, <?php echo (int)$p['id']; ?>)">Editer</button>
+                <?php endif; ?>
+                <button type="button" class="card-menu-item card-menu-item--danger" onclick="deleteParcoursFromCard(event, <?php echo (int)$p['id']; ?>)"><?php echo $detachActionLabel; ?></button>
             </div>
         </div>
     <?php endif; ?>
@@ -567,18 +584,24 @@ if (!$isEmbedded) {
         $total = (int)$p['total_missions'];
         $done = (int)$p['done_missions'];
         $percent = $total > 0 ? round(($done / $total) * 100) : 0;
-        $canEditThisParcours = $canCreateParcours && (int)($p['owner_organization_id'] ?? 0) === (int)$org['id'];
+        $isOwnerParcours = (int)($p['owner_organization_id'] ?? 0) === (int)$org['id'];
+        $canManageThisParcours = $canCreateParcours;
+        $canEditThisParcours = $canManageThisParcours && $isOwnerParcours;
+        $detachActionLabel = $isOwnerParcours ? 'Supprimer' : 'Detacher';
     ?>
     <div
         class="card"
         data-parcours-card="1"
         data-parcours-id="<?php echo (int)$p['id']; ?>"
+        data-parcours-title="<?php echo htmlspecialchars((string)$p['title'], ENT_QUOTES, 'UTF-8'); ?>"
+        data-is-owner="<?php echo $isOwnerParcours ? '1' : '0'; ?>"
         data-can-edit="<?php echo $canEditThisParcours ? '1' : '0'; ?>"
+        data-can-manage="<?php echo $canManageThisParcours ? '1' : '0'; ?>"
         data-total-missions="<?php echo $total; ?>"
         data-local-progress="<?php echo $user_id > 0 ? '0' : '1'; ?>"
         onclick="goToParcours(<?php echo (int)$p['id']; ?>)"
     >
-        <?php if ($canEditThisParcours): ?>
+        <?php if ($canManageThisParcours): ?>
             <div class="card-menu-wrap" onclick="event.stopPropagation()">
                 <button
                     type="button"
@@ -587,7 +610,10 @@ if (!$isEmbedded) {
                     onclick="toggleParcoursCardMenu(event, <?php echo (int)$p['id']; ?>)"
                 >...</button>
                 <div class="card-menu" id="parcours-card-menu-<?php echo (int)$p['id']; ?>">
-                    <button type="button" class="card-menu-item" onclick="openEditParcoursDrawer(event, <?php echo (int)$p['id']; ?>)">Editer</button>
+                    <?php if ($canEditThisParcours): ?>
+                        <button type="button" class="card-menu-item" onclick="openEditParcoursDrawer(event, <?php echo (int)$p['id']; ?>)">Editer</button>
+                    <?php endif; ?>
+                    <button type="button" class="card-menu-item card-menu-item--danger" onclick="deleteParcoursFromCard(event, <?php echo (int)$p['id']; ?>)"><?php echo $detachActionLabel; ?></button>
                 </div>
             </div>
         <?php endif; ?>
@@ -625,6 +651,8 @@ const lmsParcoursCreatePath = <?php echo json_encode(lmsBuildLocalPath('/parcour
 const lmsParcoursImportPath = <?php echo json_encode(lmsBuildLocalPath('/parcours_import.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsParcoursImportSavePath = <?php echo json_encode(lmsBuildLocalPath('/import_parcours.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsParcoursEditBasePath = <?php echo json_encode(lmsBuildLocalPath('/parcours_create.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsParcoursDeletePreviewPath = <?php echo json_encode(lmsBuildLocalPath('/delete_parcours_preview.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsParcoursDeletePath = <?php echo json_encode(lmsBuildLocalPath('/delete_parcours.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsMissionEditBasePath = <?php echo json_encode(lmsBuildLocalPath('/mission_edit.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsParcoursMissionPanelBasePath = <?php echo json_encode(lmsBuildLocalPath('/parcours_missions_panel.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsParcoursMissionAddPath = <?php echo json_encode(lmsBuildLocalPath('/parcours_mission_add.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
@@ -1882,11 +1910,74 @@ function openEditParcoursDrawer(event, parcoursId) {
     event.stopPropagation();
 
     const card = document.querySelector(`[data-parcours-card="1"][data-parcours-id="${parcoursId}"]`);
-    if (card && String(card.getAttribute('data-can-edit') || '0') !== '1') {
+    if (card && String(card.getAttribute('data-can-manage') || '0') !== '1') {
         return;
     }
 
     openParcoursEditorDrawer(parcoursId);
+}
+
+async function deleteParcoursFromCard(event, parcoursId) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!lmsIndexViewer.canCreateParcours || parcoursId <= 0) {
+        return;
+    }
+
+    const card = document.querySelector(`[data-parcours-card="1"][data-parcours-id="${parcoursId}"]`);
+    if (card && String(card.getAttribute('data-can-edit') || '0') !== '1') {
+        return;
+    }
+
+    closeAllParcoursCardMenus();
+
+    const parcoursTitle = card ? String(card.getAttribute('data-parcours-title') || '').trim() : '';
+    try {
+        const previewFormData = new FormData();
+        previewFormData.set('id', String(parcoursId));
+
+        const previewResponse = await fetch(lmsParcoursDeletePreviewPath, {
+            method: 'POST',
+            body: previewFormData,
+            credentials: 'same-origin'
+        });
+        const previewPayload = await previewResponse.json();
+        if (!previewResponse.ok || !previewPayload || !previewPayload.status) {
+            throw new Error(previewPayload && previewPayload.message ? previewPayload.message : 'Impossible de preparer la suppression de ce parcours.');
+        }
+
+        let confirmationMessage = String(previewPayload.confirmMessage || '').trim();
+        if (parcoursTitle !== '') {
+            confirmationMessage = `Parcours: "${parcoursTitle}"\n\n${confirmationMessage}`;
+        }
+        if (confirmationMessage === '') {
+            confirmationMessage = parcoursTitle !== ''
+                ? `Supprimer le parcours "${parcoursTitle}" ?`
+                : 'Supprimer ce parcours ?';
+        }
+
+        if (!window.confirm(confirmationMessage)) {
+            return;
+        }
+
+        const formData = new FormData();
+        formData.set('id', String(parcoursId));
+        const response = await fetch(lmsParcoursDeletePath, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload || !payload.status) {
+            throw new Error(payload && payload.message ? payload.message : 'Impossible de supprimer ce parcours.');
+        }
+
+        window.alert(payload.message || 'Parcours supprime.');
+        window.location.reload();
+    } catch (error) {
+        window.alert(error && error.message ? error.message : 'Impossible de supprimer ce parcours.');
+    }
 }
 
 function openMissionEditorDrawer(event, parcoursId, missionId) {

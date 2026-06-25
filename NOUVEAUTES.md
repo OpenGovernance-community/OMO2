@@ -214,6 +214,10 @@ La gestion des acces a ete amelioree a plusieurs niveaux: demandes d acces a une
 
 La recherche de topbar couvre mieux plusieurs applications et repose sur une base plus solide. La FAQ prend mieux en charge les votes, la mise en valeur des questions utiles, et un triple filtre `contextuel` / `descendants` / `global` aligne sur les autres visibilites OMO. Les icones de scope ont aussi ete remplacees dans les toggles partages et etendues au mode `descendants`. Les FAQ restent maintenant consultables meme quand une organisation n'a pas de holarchie, en retombant proprement sur les FAQ portees par l'organisation. L'app `Team` reprend maintenant le meme selecteur pour naviguer entre membres du holon courant, du sous-arbre, ou de toute l'organisation, avec une transition de curseur plus fluide comme dans `Calendrier` et `Decisions`, ainsi qu'une vue compacte pour balayer rapidement `nom / prenom / telephone / e-mail`. Plusieurs elements partages ont aussi ete harmonises pour limiter les incoherences entre modules.
 
+## LMS Et Parcours
+
+Dans le LMS integre a OMO, les cartes de parcours proposent maintenant une action de suppression ou de detachement selon le contexte. Une previsualisation annonce d'abord si l'action va seulement detacher le parcours ou le supprimer definitivement. Un parcours importe depuis une autre organisation ne peut jamais etre supprime par l'organisation courante: il est seulement detache. La suppression retire d'abord le rattachement a l'organisation courante, puis efface vraiment le parcours et ses missions, questions et devoirs devenus orphelins; si le parcours est encore utilise ailleurs, il est seulement detache sans casser les autres organisations qui l'ont importe.
+
 ## Calendrier, CardDAV Et CalDAV
 
 Le calendrier OMO devient plus exploitable au quotidien avec plusieurs vues, une edition plus simple et un comportement plus stable. En complement, des points d entree CardDAV et CalDAV ont ete poses pour preparer les usages de synchronisation avec des outils externes.
