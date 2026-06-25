@@ -509,7 +509,6 @@ function omoRenderDirectoryActionCard(array $actionCardData)
                         </div>
                     </div>
                     <div class="auth-org-card__footer">
-                        <span class="auth-org-badge auth-org-badge--action"><?= htmlspecialchars($cardBadge, ENT_QUOTES, 'UTF-8') ?></span>
                         <span class="auth-org-action"><?= htmlspecialchars($cardActionLabel, ENT_QUOTES, 'UTF-8') ?></span>
                     </div>
                 </div>

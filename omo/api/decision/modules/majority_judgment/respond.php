@@ -122,7 +122,7 @@ if (!$response) {
 }
 
 $response->set('status', DecisionResponse::STATUS_SUBMITTED);
-$response->set('parameters', omoDecisionMajorityJudgmentBuildResponseParameters($scoreMap, $proposalMeta, $config));
+$response->set('parameters', omoDecisionMajorityJudgmentBuildResponseParameters($scoreMap, $proposalMeta, $config, $_POST['vote_weight'] ?? null));
 
 $saveResult = $response->save();
 if (empty($saveResult['status'])) {

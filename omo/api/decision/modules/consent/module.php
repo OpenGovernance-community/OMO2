@@ -148,6 +148,21 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
         $isAnonymous = !empty($config['is_anonymous']);
         $allowConsultationProposals = !empty($config['allow_consultation_proposals']);
         $choices = $config['choices'];
+        $voteWeightEnabled = !empty($config['vote_weight_enabled']);
+        $voteWeightQuestion = trim((string)($config['vote_weight_question'] ?? ''));
+        $voteWeightOptions = is_array($config['vote_weight_options'] ?? null) ? array_values((array)$config['vote_weight_options']) : [];
+        $voteWeightOptionsText = (string)($config['vote_weight_options_text'] ?? '');
+        $voteWeightSummaryData = omoDecisionBlockSettingsBuildVoteWeightSummaryData([
+            'enabled' => $voteWeightEnabled,
+            'options' => $voteWeightOptions,
+        ]);
+        $voteWeightSummaryText = omoDecisionBlockSettingsBuildVoteWeightSummaryText(
+            $voteWeightSummaryData,
+            t('decisions.edit.block_settings.vote_weighting_summary_yes', [], $lang, $sourceLang),
+            t('decisions.edit.block_settings.vote_weighting_summary_no', [], $lang, $sourceLang)
+        );
+        $voteWeightOptionsJson = omoDecisionModuleEncodeJsonPayload($voteWeightOptions, '[]');
+        $defaultVoteWeightOptionsJson = omoDecisionModuleEncodeJsonPayload(omoDecisionBlockSettingsGetDefaultVoteWeightOptions(), '[]');
 
         $consultationStarted = $decision instanceof DecisionProcess ? $decision->hasConsultationStarted() : false;
         $hasSubmittedResponses = $decision instanceof DecisionProcess ? $decision->hasSubmittedResponses() : false;
@@ -367,6 +382,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                 </div>
 
                 <div class="generic-soft-panel generic-soft-panel--stack">
+                    <?= omoDecisionRenderVoteWeightEditorAssets() ?>
                     <div class="omo-decision-consent__settings-head">
                         <span class="generic-card-title"><?= $escape(t('decisions.consent.field.settings', [], $lang, $sourceLang)) ?></span>
                         <button
@@ -389,10 +405,26 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                             <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.consent.field.allow_consultation_proposals', [], $lang, $sourceLang)) ?></span>
                             <span><?= $escape($allowConsultationProposals ? t('decisions.consent.option.common.yes', [], $lang, $sourceLang) : t('decisions.consent.option.common.no', [], $lang, $sourceLang)) ?></span>
                         </div>
+                        <div class="omo-decision-consent__meta-card generic-soft-panel generic-soft-panel--stack" data-omo-decision-consent-vote-weight-summary>
+                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.block_settings.vote_weighting', [], $lang, $sourceLang)) ?></span>
+                            <span
+                                data-yes-label="<?= $escape(t('decisions.edit.block_settings.vote_weighting_summary_yes', [], $lang, $sourceLang)) ?>"
+                                data-no-label="<?= $escape(t('decisions.edit.block_settings.vote_weighting_summary_no', [], $lang, $sourceLang)) ?>"
+                            ><?= $escape($voteWeightSummaryText) ?></span>
+                        </div>
                     </div>
 
                     <input type="hidden" name="is_anonymous" value="<?= $isAnonymous ? '1' : '' ?>" data-omo-decision-consent-hidden-anonymous>
                     <input type="hidden" name="allow_consultation_proposals" value="<?= $allowConsultationProposals ? '1' : '' ?>" data-omo-decision-consent-hidden-consultation-proposals>
+                    <input type="hidden" name="vote_weight_enabled" value="<?= $voteWeightEnabled ? '1' : '' ?>" data-omo-decision-consent-hidden-vote-weight-enabled>
+                    <input type="hidden" name="vote_weight_question" value="<?= $escape($voteWeightQuestion) ?>" data-omo-decision-consent-hidden-vote-weight-question>
+                    <input
+                        type="hidden"
+                        name="vote_weight_options_json"
+                        value="<?= $escape($voteWeightOptionsJson) ?>"
+                        data-omo-decision-consent-hidden-vote-weight-options
+                        data-default-options-json="<?= $escape($defaultVoteWeightOptionsJson) ?>"
+                    >
 
                     <template data-omo-decision-consent-settings-template>
                         <div class="omo-decision-consent__modal">
@@ -404,6 +436,12 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                                 <input type="checkbox" data-omo-decision-consent-popup-consultation-proposals>
                                 <span><?= $escape(t('decisions.consent.field.allow_consultation_proposals', [], $lang, $sourceLang)) ?></span>
                             </label>
+                            <?= omoDecisionRenderVoteWeightEditor($lang, $sourceLang, $escape, [
+                                'canEdit' => $canEditStructure,
+                                'enabled' => $voteWeightEnabled,
+                                'question' => $voteWeightQuestion,
+                                'options' => $voteWeightOptions,
+                            ]) ?>
                             <div class="omo-decision-consent__modal-actions">
                                 <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-consent-popup-cancel><?= $escape(t('decisions.consent.action.close', [], $lang, $sourceLang)) ?></button>
                                 <button type="button" class="generic-action-button generic-action-button--main" data-omo-decision-consent-popup-apply><?= $escape(t('decisions.consent.action.apply', [], $lang, $sourceLang)) ?></button>
@@ -463,6 +501,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.consent.field.scale', [], $lang, $sourceLang), t('decisions.consent.field.scale_summary', [], $lang, $sourceLang), $escape, 'omo-decision-consent__meta-card') ?>
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.consent.field.anonymous', [], $lang, $sourceLang), $isAnonymous ? t('decisions.consent.option.common.yes', [], $lang, $sourceLang) : t('decisions.consent.option.common.no', [], $lang, $sourceLang), $escape, 'omo-decision-consent__meta-card') ?>
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.consent.field.allow_consultation_proposals', [], $lang, $sourceLang), $allowConsultationProposals ? t('decisions.consent.option.common.yes', [], $lang, $sourceLang) : t('decisions.consent.option.common.no', [], $lang, $sourceLang), $escape, 'omo-decision-consent__meta-card') ?>
+                    <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.edit.block_settings.vote_weighting', [], $lang, $sourceLang), $voteWeightSummaryText, $escape, 'omo-decision-consent__meta-card') ?>
                     <?php if ($resultsMode): ?>
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.consent.field.total_votes', [], $lang, $sourceLang), (string)$submittedVoteCount, $escape, 'omo-decision-consent__meta-card') ?>
                     <?php endif; ?>
@@ -644,8 +683,12 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                     const settingsTemplate = form.querySelector('[data-omo-decision-consent-settings-template]');
                     const hiddenAnonymousInput = form.querySelector('[data-omo-decision-consent-hidden-anonymous]');
                     const hiddenConsultationInput = form.querySelector('[data-omo-decision-consent-hidden-consultation-proposals]');
+                    const hiddenVoteWeightEnabledInput = form.querySelector('[data-omo-decision-consent-hidden-vote-weight-enabled]');
+                    const hiddenVoteWeightQuestionInput = form.querySelector('[data-omo-decision-consent-hidden-vote-weight-question]');
+                    const hiddenVoteWeightOptionsInput = form.querySelector('[data-omo-decision-consent-hidden-vote-weight-options]');
                     const anonymousSummary = form.querySelector('[data-omo-decision-consent-anonymous-summary] span:last-child');
                     const consultationSummary = form.querySelector('[data-omo-decision-consent-consultation-summary] span:last-child');
+                    const voteWeightSummary = form.querySelector('[data-omo-decision-consent-vote-weight-summary] span:last-child');
                     if (!payloadNode || !proposalList) {
                         return;
                     }
@@ -670,6 +713,110 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         feedbackNode.classList.toggle('is-success', !isError && message !== '');
                     };
 
+                    const normalizeVoteWeightNumber = function (rawValue) {
+                        const normalized = String(rawValue || '').trim().replace(',', '.');
+                        if (normalized === '') {
+                            return '';
+                        }
+
+                        const value = Number(normalized);
+                        if (!Number.isFinite(value) || value <= 0) {
+                            return '';
+                        }
+
+                        return String(value).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+                    };
+
+                    const parseVoteWeightOptions = function (rawValue, fallbackToDefault) {
+                        let options = [];
+
+                        if (Array.isArray(rawValue)) {
+                            options = rawValue;
+                        } else {
+                            const source = String(rawValue || '').trim();
+                            if (source !== '') {
+                                try {
+                                    const decoded = JSON.parse(source);
+                                    if (Array.isArray(decoded)) {
+                                        options = decoded;
+                                    }
+                                } catch (error) {
+                                    options = source.split(/\r\n|\r|\n/).map(function (line) {
+                                        const parts = String(line || '').split('|');
+                                        return {
+                                            weight: parts.length > 0 ? parts[0] : '',
+                                            label: parts.length > 1 ? parts.slice(1).join('|') : '',
+                                        };
+                                    });
+                                }
+                            }
+                        }
+
+                        const normalizedOptions = [];
+                        options.forEach(function (option) {
+                            if (!option || typeof option !== 'object') {
+                                return;
+                            }
+
+                            const weight = normalizeVoteWeightNumber(option.weight || option.value || '');
+                            const label = String(option.label || '').trim();
+                            if (weight === '' || label === '') {
+                                return;
+                            }
+
+                            normalizedOptions.push({
+                                weight: weight,
+                                label: label,
+                            });
+                        });
+
+                        if (normalizedOptions.length === 0 && fallbackToDefault && hiddenVoteWeightOptionsInput) {
+                            return parseVoteWeightOptions(
+                                hiddenVoteWeightOptionsInput.getAttribute('data-default-options-json') || '[]',
+                                false
+                            );
+                        }
+
+                        return normalizedOptions;
+                    };
+
+                    const buildVoteWeightOptionsText = function (options) {
+                        return options.map(function (option) {
+                            return String(option.weight || '') + ' | ' + String(option.label || '');
+                        }).join('\n');
+                    };
+
+                    const buildVoteWeightSummaryText = function () {
+                        if (!voteWeightSummary) {
+                            return '';
+                        }
+
+                        const yesLabel = String(voteWeightSummary.getAttribute('data-yes-label') || 'Oui');
+                        const noLabel = String(voteWeightSummary.getAttribute('data-no-label') || 'Non');
+                        if (!hiddenVoteWeightEnabledInput || !hiddenVoteWeightEnabledInput.value) {
+                            return noLabel;
+                        }
+
+                        const options = parseVoteWeightOptions(
+                            hiddenVoteWeightOptionsInput ? hiddenVoteWeightOptionsInput.value : '[]',
+                            true
+                        );
+                        if (options.length === 0) {
+                            return yesLabel;
+                        }
+
+                        const weights = options.map(function (option) {
+                            return Number(String(option.weight || '').replace(',', '.'));
+                        }).filter(function (value) {
+                            return Number.isFinite(value) && value > 0;
+                        });
+                        if (weights.length === 0) {
+                            return yesLabel;
+                        }
+
+                        return yesLabel + ' (' + String(options.length) + ' options de ' + normalizeVoteWeightNumber(String(Math.min.apply(Math, weights))) + ' a ' + normalizeVoteWeightNumber(String(Math.max.apply(Math, weights))) + ')';
+                    };
+
                     const syncSettingsSummary = function () {
                         const yesLabel = String(payload.texts && payload.texts.yesLabel ? payload.texts.yesLabel : 'Oui');
                         const noLabel = String(payload.texts && payload.texts.noLabel ? payload.texts.noLabel : 'Non');
@@ -678,6 +825,9 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         }
                         if (consultationSummary) {
                             consultationSummary.textContent = hiddenConsultationInput && hiddenConsultationInput.value ? yesLabel : noLabel;
+                        }
+                        if (voteWeightSummary) {
+                            voteWeightSummary.textContent = buildVoteWeightSummaryText();
                         }
                     };
 
@@ -943,14 +1093,23 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
 
                         const popupAnonymous = modalBody.querySelector('[data-omo-decision-consent-popup-anonymous]');
                         const popupConsultation = modalBody.querySelector('[data-omo-decision-consent-popup-consultation-proposals]');
+                        const popupVoteWeightRoot = modalBody.querySelector('[data-omo-decision-vote-weight-editor]');
                         const popupCancel = modalBody.querySelector('[data-omo-decision-consent-popup-cancel]');
                         const popupApply = modalBody.querySelector('[data-omo-decision-consent-popup-apply]');
-                        if (!popupAnonymous || !popupConsultation || !popupApply) {
+                        const popupVoteWeightEditor = popupVoteWeightRoot && typeof window.omoDecisionInitVoteWeightEditor === 'function'
+                            ? window.omoDecisionInitVoteWeightEditor(popupVoteWeightRoot)
+                            : null;
+                        if (!popupAnonymous || !popupConsultation || !popupVoteWeightEditor || !popupApply) {
                             return;
                         }
 
                         popupAnonymous.checked = !!(hiddenAnonymousInput && hiddenAnonymousInput.value);
                         popupConsultation.checked = !!(hiddenConsultationInput && hiddenConsultationInput.value);
+                        popupVoteWeightEditor.setState({
+                            enabled: !!(hiddenVoteWeightEnabledInput && hiddenVoteWeightEnabledInput.value),
+                            question: hiddenVoteWeightQuestionInput ? String(hiddenVoteWeightQuestionInput.value || '') : '',
+                            options: parseVoteWeightOptions(hiddenVoteWeightOptionsInput ? hiddenVoteWeightOptionsInput.value : '[]', false),
+                        });
 
                         if (popupCancel) {
                             popupCancel.addEventListener('click', function () {
@@ -966,6 +1125,16 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                             }
                             if (hiddenConsultationInput) {
                                 hiddenConsultationInput.value = popupConsultation.checked ? '1' : '';
+                            }
+                            const popupVoteWeightState = popupVoteWeightEditor.getState();
+                            if (hiddenVoteWeightEnabledInput) {
+                                hiddenVoteWeightEnabledInput.value = popupVoteWeightState.enabled ? '1' : '';
+                            }
+                            if (hiddenVoteWeightQuestionInput) {
+                                hiddenVoteWeightQuestionInput.value = String(popupVoteWeightState.question || '').trim();
+                            }
+                            if (hiddenVoteWeightOptionsInput) {
+                                hiddenVoteWeightOptionsInput.value = JSON.stringify(Array.isArray(popupVoteWeightState.options) ? popupVoteWeightState.options : []);
                             }
                             syncSettingsSummary();
                             if (typeof window.commonTopbarCloseModal === 'function') {

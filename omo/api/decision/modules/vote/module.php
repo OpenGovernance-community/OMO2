@@ -194,6 +194,14 @@ if (!function_exists('omoDecisionVoteModuleGetSourceLang')) {
                 'text' => 'Repartition graphique des votes',
                 'context' => 'Label for the vote result percentage bar.',
             ],
+            'decisions.vote.results_compare.toggle' => [
+                'text' => 'Afficher le resultat non pondere',
+                'context' => 'Checkbox label used to reveal the unweighted result comparison.',
+            ],
+            'decisions.vote.results_compare.unweighted' => [
+                'text' => 'Resultat non pondere',
+                'context' => 'Title shown above the unweighted comparison block.',
+            ],
             'decisions.vote.results_sort.aria' => [
                 'text' => 'Ordre d affichage des resultats',
                 'context' => 'Aria label for the simple vote results sort switch.',
@@ -406,6 +414,21 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
         $maxChoices = (int)$voteConfig['max_choices'];
         $isAnonymous = !empty($voteConfig['is_anonymous']);
         $allowConsultationProposals = !empty($voteConfig['allow_consultation_proposals']);
+        $voteWeightEnabled = !empty($voteConfig['vote_weight_enabled']);
+        $voteWeightQuestion = trim((string)($voteConfig['vote_weight_question'] ?? ''));
+        $voteWeightOptions = is_array($voteConfig['vote_weight_options'] ?? null) ? array_values((array)$voteConfig['vote_weight_options']) : [];
+        $voteWeightOptionsText = (string)($voteConfig['vote_weight_options_text'] ?? '');
+        $voteWeightSummaryData = omoDecisionBlockSettingsBuildVoteWeightSummaryData([
+            'enabled' => $voteWeightEnabled,
+            'options' => $voteWeightOptions,
+        ]);
+        $voteWeightSummaryText = omoDecisionBlockSettingsBuildVoteWeightSummaryText(
+            $voteWeightSummaryData,
+            t('decisions.edit.block_settings.vote_weighting_summary_yes', [], $lang, $sourceLang),
+            t('decisions.edit.block_settings.vote_weighting_summary_no', [], $lang, $sourceLang)
+        );
+        $voteWeightOptionsJson = omoDecisionModuleEncodeJsonPayload($voteWeightOptions, '[]');
+        $defaultVoteWeightOptionsJson = omoDecisionModuleEncodeJsonPayload(omoDecisionBlockSettingsGetDefaultVoteWeightOptions(), '[]');
 
         $consultationStarted = $decision instanceof DecisionProcess ? $decision->hasConsultationStarted() : false;
         $hasSubmittedResponses = $decision instanceof DecisionProcess ? $decision->hasSubmittedResponses() : false;
@@ -430,29 +453,30 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
         $selectedResponse = null;
         $selectedProposalIds = [];
         $selectedProposalId = 0;
+        $selectedVoteWeight = '1';
         $submittedVoteCount = 0;
+        $weightedSubmittedVoteUnits = 0;
+        $voteWeightScale = omoDecisionBlockSettingsGetVoteWeightScale(['options' => $voteWeightOptions]);
         $proposalVoteCounts = [];
+        $proposalWeightedVoteUnits = [];
         $participant = $context['participant'] ?? null;
         if ($decision instanceof DecisionProcess && $participant && (int)$participant->getId() > 0) {
             $selectedResponse = DecisionResponse::findByDecisionAndParticipant((int)$decision->getId(), (int)$participant->getId(), $decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->getId() : 0);
             $selectedProposalIds = omoDecisionVoteExtractSelectedProposalIds($selectedResponse);
             $selectedProposalId = count($selectedProposalIds) > 0 ? (int)$selectedProposalIds[0] : 0;
+            $selectedVoteWeightSelection = omoDecisionVoteExtractVoteWeightSelection($selectedResponse, $voteConfig);
+            $selectedVoteWeight = (string)($selectedVoteWeightSelection['weight'] ?? '1');
         }
         if ($decision instanceof DecisionProcess) {
-            foreach (($decisionGroup instanceof DecisionGroup ? $decisionGroup->getResponses(DecisionResponse::STATUS_SUBMITTED) : $decision->getResponses(DecisionResponse::STATUS_SUBMITTED)) as $submittedResponse) {
-                $submittedProposalIds = omoDecisionVoteExtractSelectedProposalIds($submittedResponse);
-                if (count($submittedProposalIds) === 0) {
-                    continue;
-                }
-
-                $submittedVoteCount++;
-                foreach ($submittedProposalIds as $submittedProposalId) {
-                    if (!isset($proposalVoteCounts[$submittedProposalId])) {
-                        $proposalVoteCounts[$submittedProposalId] = 0;
-                    }
-                    $proposalVoteCounts[$submittedProposalId]++;
-                }
-            }
+            $voteTallies = omoDecisionVoteBuildTallies(
+                $decisionGroup instanceof DecisionGroup ? $decisionGroup->getResponses(DecisionResponse::STATUS_SUBMITTED) : $decision->getResponses(DecisionResponse::STATUS_SUBMITTED),
+                $voteConfig
+            );
+            $submittedVoteCount = (int)($voteTallies['unweighted_total_count'] ?? 0);
+            $weightedSubmittedVoteUnits = (int)($voteTallies['weighted_total_units'] ?? 0);
+            $voteWeightScale = max(1, (int)($voteTallies['scale'] ?? $voteWeightScale));
+            $proposalVoteCounts = (array)($voteTallies['proposal_unweighted_counts'] ?? []);
+            $proposalWeightedVoteUnits = (array)($voteTallies['proposal_weighted_units'] ?? []);
         }
 
         $resultProposalObjects = $proposalObjects;
@@ -465,11 +489,15 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                     : ($proposalIndex + 1);
             }
 
-            usort($resultProposalObjects, function ($left, $right) use ($proposalVoteCounts, $proposalOriginalOrder) {
+            usort($resultProposalObjects, function ($left, $right) use ($proposalVoteCounts, $proposalWeightedVoteUnits, $proposalOriginalOrder, $voteWeightEnabled) {
                 $leftId = $left instanceof \dbObject\DecisionProposal ? (int)$left->getId() : 0;
                 $rightId = $right instanceof \dbObject\DecisionProposal ? (int)$right->getId() : 0;
-                $leftVotes = (int)($proposalVoteCounts[$leftId] ?? 0);
-                $rightVotes = (int)($proposalVoteCounts[$rightId] ?? 0);
+                $leftVotes = $voteWeightEnabled
+                    ? (int)($proposalWeightedVoteUnits[$leftId] ?? 0)
+                    : (int)($proposalVoteCounts[$leftId] ?? 0);
+                $rightVotes = $voteWeightEnabled
+                    ? (int)($proposalWeightedVoteUnits[$rightId] ?? 0)
+                    : (int)($proposalVoteCounts[$rightId] ?? 0);
 
                 if ($leftVotes !== $rightVotes) {
                     return $rightVotes <=> $leftVotes;
@@ -547,6 +575,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
             : '';
         ?>
         <section class="generic-section generic-section--stack omo-decision-vote">
+            <?= omoDecisionRenderVoteWeightEditorAssets() ?>
             <?php if (!$publicLayout): ?>
             <div class="omo-decision-vote__head">
                 <div class="omo-decision-vote__copy">
@@ -751,10 +780,20 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                     </div>
 
                     <div class="generic-soft-panel generic-soft-panel--stack omo-decision-vote__settings-summary">
+                        <?= omoDecisionRenderVoteWeightEditorAssets() ?>
                         <input type="hidden" name="choice_mode" value="<?= $escape($choiceMode) ?>" data-omo-decision-vote-hidden-choice-mode>
                         <input type="hidden" name="max_choices" value="<?= $escape((string)$maxChoices) ?>" data-omo-decision-vote-hidden-max-choices>
                         <input type="hidden" name="is_anonymous" value="<?= $isAnonymous ? '1' : '' ?>" data-omo-decision-vote-hidden-anonymous>
                         <input type="hidden" name="allow_consultation_proposals" value="<?= $allowConsultationProposals ? '1' : '' ?>" data-omo-decision-vote-hidden-consultation-proposals>
+                        <input type="hidden" name="vote_weight_enabled" value="<?= $voteWeightEnabled ? '1' : '' ?>" data-omo-decision-vote-hidden-vote-weight-enabled>
+                        <input type="hidden" name="vote_weight_question" value="<?= $escape($voteWeightQuestion) ?>" data-omo-decision-vote-hidden-vote-weight-question>
+                        <input
+                            type="hidden"
+                            name="vote_weight_options_json"
+                            value="<?= $escape($voteWeightOptionsJson) ?>"
+                            data-omo-decision-vote-hidden-vote-weight-options
+                            data-default-options-json="<?= $escape($defaultVoteWeightOptionsJson) ?>"
+                        >
                         <div class="omo-decision-vote__settings-head">
                             <div class="omo-decision-vote__field">
                                 <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.settings', [], $lang, $sourceLang)) ?></span>
@@ -777,6 +816,14 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                             data-yes-label="<?= $escape(t('decisions.vote.option.common.yes', [], $lang, $sourceLang)) ?>"
                                             data-no-label="<?= $escape(t('decisions.vote.option.common.no', [], $lang, $sourceLang)) ?>"
                                         ><?= $escape($isAnonymous ? t('decisions.vote.option.common.yes', [], $lang, $sourceLang) : t('decisions.vote.option.common.no', [], $lang, $sourceLang)) ?></span>
+                                    </span>
+                                    <span class="omo-decision-vote__readonly-stat">
+                                        <strong><?= $escape(t('decisions.edit.block_settings.vote_weighting', [], $lang, $sourceLang)) ?></strong>
+                                        <span
+                                            data-omo-decision-vote-vote-weight-summary
+                                            data-yes-label="<?= $escape(t('decisions.edit.block_settings.vote_weighting_summary_yes', [], $lang, $sourceLang)) ?>"
+                                            data-no-label="<?= $escape(t('decisions.edit.block_settings.vote_weighting_summary_no', [], $lang, $sourceLang)) ?>"
+                                        ><?= $escape($voteWeightSummaryText) ?></span>
                                     </span>
                                 </div>
                             </div>
@@ -820,6 +867,13 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                             <span><?= $escape(t('decisions.vote.option.common.yes', [], $lang, $sourceLang)) ?></span>
                                         </span>
                                     </label>
+
+                                    <?= omoDecisionRenderVoteWeightEditor($lang, $sourceLang, $escape, [
+                                        'canEdit' => $canEditStructure,
+                                        'enabled' => $voteWeightEnabled,
+                                        'question' => $voteWeightQuestion,
+                                        'options' => $voteWeightOptions,
+                                    ]) ?>
                                 </div>
                                 <div class="omo-decision-vote-popup__actions">
                                     <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-vote-popup-cancel>Fermer</button>
@@ -937,6 +991,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                     <?php endif; ?>
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.vote.field.anonymous', [], $lang, $sourceLang), $isAnonymous ? t('decisions.vote.option.common.yes', [], $lang, $sourceLang) : t('decisions.vote.option.common.no', [], $lang, $sourceLang), $escape, 'omo-decision-vote__meta-card') ?>
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.vote.field.allow_consultation_proposals', [], $lang, $sourceLang), $allowConsultationProposals ? t('decisions.vote.option.common.yes', [], $lang, $sourceLang) : t('decisions.vote.option.common.no', [], $lang, $sourceLang), $escape, 'omo-decision-vote__meta-card') ?>
+                    <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.edit.block_settings.vote_weighting', [], $lang, $sourceLang), $voteWeightSummaryText, $escape, 'omo-decision-vote__meta-card') ?>
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.vote.field.consultation_start', [], $lang, $sourceLang), $decision instanceof DecisionProcess ? omoDecisionVoteFormatDateTimeLocal($decision->get('consultation_start_at')) : '', $escape, 'omo-decision-vote__meta-card') ?>
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.vote.field.evaluation_end', [], $lang, $sourceLang), $decision instanceof DecisionProcess ? omoDecisionVoteFormatDateTimeLocal($decision->get('evaluation_end_at')) : '', $escape, 'omo-decision-vote__meta-card') ?>
                     <?php if ($resultsMode): ?>
@@ -996,6 +1051,12 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                             <?php endforeach; ?>
                         <?php endif; ?>
                     </fieldset>
+                    <?= omoDecisionRenderVoteWeightResponseSelector($lang, $sourceLang, $escape, [
+                        'enabled' => $voteWeightEnabled,
+                        'question' => $voteWeightQuestion,
+                        'options' => $voteWeightOptions,
+                        'selected_weight' => $selectedVoteWeight,
+                    ]) ?>
                     <?php if ($consultationProposalPanel !== ''): ?>
                     <?= $consultationProposalPanel ?>
                     <?php endif; ?>
@@ -1083,6 +1144,12 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                             </div>
                         </div>
                         <?php endif; ?>
+                        <?php if ($voteWeightEnabled): ?>
+                        <label class="omo-decision-vote__results-compare">
+                            <input type="checkbox" data-omo-decision-vote-results-compare-toggle>
+                            <span><?= $escape(t('decisions.vote.results_compare.toggle', [], $lang, $sourceLang)) ?></span>
+                        </label>
+                        <?php endif; ?>
                     <div class="omo-decision-vote__readonly-list" data-omo-decision-vote-results-list>
                         <?php foreach ($resultProposalObjects as $proposal): ?>
                         <?php
@@ -1092,6 +1159,15 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                         $proposalVoteShare = $submittedVoteCount > 0
                             ? round(($proposalVoteCount / $submittedVoteCount) * 100, 1)
                             : 0;
+                        $proposalWeightedVoteUnit = (int)($proposalWeightedVoteUnits[$proposalId] ?? 0);
+                        $proposalWeightedVoteValue = omoDecisionBlockSettingsVoteWeightUnitsToValue($proposalWeightedVoteUnit, $voteWeightScale);
+                        $proposalWeightedVoteShare = $weightedSubmittedVoteUnits > 0
+                            ? round(($proposalWeightedVoteUnit / $weightedSubmittedVoteUnits) * 100, 1)
+                            : 0;
+                        $primaryVoteValue = $voteWeightEnabled ? $proposalWeightedVoteValue : (string)$proposalVoteCount;
+                        $primaryVoteShare = $voteWeightEnabled ? $proposalWeightedVoteShare : $proposalVoteShare;
+                        $primaryVoteShareRatio = max(0, min(1, $primaryVoteShare / 100));
+                        $primaryVoteShareLabel = number_format($primaryVoteShare, $primaryVoteShare === floor($primaryVoteShare) ? 0 : 1, '.', '');
                         $proposalVoteShareRatio = max(0, min(1, $proposalVoteShare / 100));
                         $proposalVoteShareLabel = number_format($proposalVoteShare, $proposalVoteShare === floor($proposalVoteShare) ? 0 : 1, '.', '');
                         ?>
@@ -1100,7 +1176,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                             data-omo-decision-vote-result-item
                             data-omo-decision-vote-result-position="<?= $escape((string)$proposalPosition) ?>"
                             data-omo-decision-vote-result-title="<?= $escape(trim((string)$proposal->get('title'))) ?>"
-                            data-omo-decision-vote-result-votes="<?= $escape((string)$proposalVoteCount) ?>"
+                            data-omo-decision-vote-result-votes="<?= $escape($voteWeightEnabled ? (string)$proposalWeightedVoteUnit : (string)$proposalVoteCount) ?>"
                         >
                             <div>
                                 <strong><?= $escape(trim((string)$proposal->get('title'))) ?></strong>
@@ -1110,18 +1186,18 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                             <div class="omo-decision-vote__readonly-stats">
                                 <span class="omo-decision-vote__readonly-stat">
                                     <strong><?= $escape(t('decisions.vote.field.proposal_votes', [], $lang, $sourceLang)) ?></strong>
-                                    <span><?= $escape((string)$proposalVoteCount) ?></span>
+                                    <span><?= $escape((string)$primaryVoteValue) ?></span>
                                 </span>
                                 <span class="omo-decision-vote__readonly-stat">
                                     <strong><?= $escape(t('decisions.vote.field.proposal_share', [], $lang, $sourceLang)) ?></strong>
-                                    <span><?= $escape($proposalVoteShareLabel) ?>%</span>
+                                    <span><?= $escape($primaryVoteShareLabel) ?>%</span>
                                 </span>
                             </div>
                             <div class="omo-decision-vote__distribution" aria-label="<?= $escape(t('decisions.vote.field.distribution', [], $lang, $sourceLang)) ?>">
                                 <span class="omo-decision-vote__distribution-track">
                                     <span
                                         class="omo-decision-vote__distribution-fill"
-                                        style="width: <?= $escape(number_format((float)$proposalVoteShare, 4, '.', '')) ?>%; --omo-decision-vote-share-ratio: <?= $escape(number_format((float)$proposalVoteShareRatio, 6, '.', '')) ?>;"
+                                        style="width: <?= $escape(number_format((float)$primaryVoteShare, 4, '.', '')) ?>%; --omo-decision-vote-share-ratio: <?= $escape(number_format((float)$primaryVoteShareRatio, 6, '.', '')) ?>;"
                                     ></span>
                                 </span>
                             </div>
@@ -1129,6 +1205,33 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                 <span>0%</span>
                                 <span>100%</span>
                             </div>
+                            <?php if ($voteWeightEnabled): ?>
+                            <div class="omo-decision-vote__comparison" data-omo-decision-vote-results-compare-block hidden>
+                                <span class="omo-decision-vote__comparison-title"><?= $escape(t('decisions.vote.results_compare.unweighted', [], $lang, $sourceLang)) ?></span>
+                                <div class="omo-decision-vote__readonly-stats">
+                                    <span class="omo-decision-vote__readonly-stat">
+                                        <strong><?= $escape(t('decisions.vote.field.proposal_votes', [], $lang, $sourceLang)) ?></strong>
+                                        <span><?= $escape((string)$proposalVoteCount) ?></span>
+                                    </span>
+                                    <span class="omo-decision-vote__readonly-stat">
+                                        <strong><?= $escape(t('decisions.vote.field.proposal_share', [], $lang, $sourceLang)) ?></strong>
+                                        <span><?= $escape($proposalVoteShareLabel) ?>%</span>
+                                    </span>
+                                </div>
+                                <div class="omo-decision-vote__distribution" aria-label="<?= $escape(t('decisions.vote.field.distribution', [], $lang, $sourceLang)) ?>">
+                                    <span class="omo-decision-vote__distribution-track">
+                                        <span
+                                            class="omo-decision-vote__distribution-fill omo-decision-vote__distribution-fill--secondary"
+                                            style="width: <?= $escape(number_format((float)$proposalVoteShare, 4, '.', '')) ?>%; --omo-decision-vote-share-ratio: <?= $escape(number_format((float)$proposalVoteShareRatio, 6, '.', '')) ?>;"
+                                        ></span>
+                                    </span>
+                                </div>
+                                <div class="omo-decision-vote__distribution-scale" aria-hidden="true">
+                                    <span>0%</span>
+                                    <span>100%</span>
+                                </div>
+                            </div>
+                            <?php endif; ?>
                             <?php endif; ?>
                         </div>
                         <?php endforeach; ?>
@@ -1167,10 +1270,14 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                         const hiddenMaxChoicesInput = form.querySelector('[data-omo-decision-vote-hidden-max-choices]');
                         const hiddenAnonymousInput = form.querySelector('[data-omo-decision-vote-hidden-anonymous]');
                         const hiddenConsultationProposalsInput = form.querySelector('[data-omo-decision-vote-hidden-consultation-proposals]');
+                        const hiddenVoteWeightEnabledInput = form.querySelector('[data-omo-decision-vote-hidden-vote-weight-enabled]');
+                        const hiddenVoteWeightQuestionInput = form.querySelector('[data-omo-decision-vote-hidden-vote-weight-question]');
+                        const hiddenVoteWeightOptionsInput = form.querySelector('[data-omo-decision-vote-hidden-vote-weight-options]');
                         const choiceSummary = form.querySelector('[data-omo-decision-vote-choice-summary]');
                         const anonymousSummary = form.querySelector('[data-omo-decision-vote-anonymous-summary]');
                         const maxChoicesSummary = form.querySelector('[data-omo-decision-vote-max-choices-summary]');
                         const maxChoicesSummaryValue = form.querySelector('[data-omo-decision-vote-max-choices-summary-value]');
+                        const voteWeightSummary = form.querySelector('[data-omo-decision-vote-vote-weight-summary]');
 
                         if (!payloadNode || !proposalList) {
                             return;
@@ -1199,6 +1306,110 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
 
                         const clearFeedback = function () {
                             setFeedback('', false);
+                        };
+
+                        const normalizeVoteWeightNumber = function (rawValue) {
+                            const normalized = String(rawValue || '').trim().replace(',', '.');
+                            if (normalized === '') {
+                                return '';
+                            }
+
+                            const value = Number(normalized);
+                            if (!Number.isFinite(value) || value <= 0) {
+                                return '';
+                            }
+
+                            return String(value).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+                        };
+
+                        const parseVoteWeightOptions = function (rawValue, fallbackToDefault) {
+                            let options = [];
+
+                            if (Array.isArray(rawValue)) {
+                                options = rawValue;
+                            } else {
+                                const source = String(rawValue || '').trim();
+                                if (source !== '') {
+                                    try {
+                                        const decoded = JSON.parse(source);
+                                        if (Array.isArray(decoded)) {
+                                            options = decoded;
+                                        }
+                                    } catch (error) {
+                                        options = source.split(/\r\n|\r|\n/).map(function (line) {
+                                            const parts = String(line || '').split('|');
+                                            return {
+                                                weight: parts.length > 0 ? parts[0] : '',
+                                                label: parts.length > 1 ? parts.slice(1).join('|') : '',
+                                            };
+                                        });
+                                    }
+                                }
+                            }
+
+                            const normalizedOptions = [];
+                            options.forEach(function (option) {
+                                if (!option || typeof option !== 'object') {
+                                    return;
+                                }
+
+                                const weight = normalizeVoteWeightNumber(option.weight || option.value || '');
+                                const label = String(option.label || '').trim();
+                                if (weight === '' || label === '') {
+                                    return;
+                                }
+
+                                normalizedOptions.push({
+                                    weight: weight,
+                                    label: label,
+                                });
+                            });
+
+                            if (normalizedOptions.length === 0 && fallbackToDefault && hiddenVoteWeightOptionsInput) {
+                                return parseVoteWeightOptions(
+                                    hiddenVoteWeightOptionsInput.getAttribute('data-default-options-json') || '[]',
+                                    false
+                                );
+                            }
+
+                            return normalizedOptions;
+                        };
+
+                        const buildVoteWeightOptionsText = function (options) {
+                            return options.map(function (option) {
+                                return String(option.weight || '') + ' | ' + String(option.label || '');
+                            }).join('\n');
+                        };
+
+                        const buildVoteWeightSummaryText = function () {
+                            if (!voteWeightSummary) {
+                                return '';
+                            }
+
+                            const yesLabel = String(voteWeightSummary.getAttribute('data-yes-label') || 'Oui');
+                            const noLabel = String(voteWeightSummary.getAttribute('data-no-label') || 'Non');
+                            if (!hiddenVoteWeightEnabledInput || !hiddenVoteWeightEnabledInput.value) {
+                                return noLabel;
+                            }
+
+                            const options = parseVoteWeightOptions(
+                                hiddenVoteWeightOptionsInput ? hiddenVoteWeightOptionsInput.value : '[]',
+                                true
+                            );
+                            if (options.length === 0) {
+                                return yesLabel;
+                            }
+
+                            const weights = options.map(function (option) {
+                                return Number(String(option.weight || '').replace(',', '.'));
+                            }).filter(function (value) {
+                                return Number.isFinite(value) && value > 0;
+                            });
+                            if (weights.length === 0) {
+                                return yesLabel;
+                            }
+
+                            return yesLabel + ' (' + String(options.length) + ' options de ' + normalizeVoteWeightNumber(String(Math.min.apply(Math, weights))) + ' a ' + normalizeVoteWeightNumber(String(Math.max.apply(Math, weights))) + ')';
                         };
 
                         const openInvitationModal = function () {
@@ -1267,6 +1478,9 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                     ? yesLabel
                                     : noLabel;
                             }
+                            if (voteWeightSummary) {
+                                voteWeightSummary.textContent = buildVoteWeightSummaryText();
+                            }
                         };
 
                         const openSettingsModal = function () {
@@ -1288,10 +1502,14 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                             const popupMaxChoices = modalBody.querySelector('[data-omo-decision-vote-popup-max-choices]');
                             const popupAnonymous = modalBody.querySelector('[data-omo-decision-vote-popup-anonymous]');
                             const popupConsultationProposals = modalBody.querySelector('[data-omo-decision-vote-popup-consultation-proposals]');
+                            const popupVoteWeightRoot = modalBody.querySelector('[data-omo-decision-vote-weight-editor]');
                             const popupCancel = modalBody.querySelector('[data-omo-decision-vote-popup-cancel]');
                             const popupApply = modalBody.querySelector('[data-omo-decision-vote-popup-apply]');
+                            const popupVoteWeightEditor = popupVoteWeightRoot && typeof window.omoDecisionInitVoteWeightEditor === 'function'
+                                ? window.omoDecisionInitVoteWeightEditor(popupVoteWeightRoot)
+                                : null;
 
-                            if (!popupChoiceMode || !popupMaxChoices || !popupAnonymous || !popupConsultationProposals || !popupApply) {
+                            if (!popupChoiceMode || !popupMaxChoices || !popupAnonymous || !popupConsultationProposals || !popupVoteWeightEditor || !popupApply) {
                                 return;
                             }
 
@@ -1299,6 +1517,11 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                             popupMaxChoices.value = String(hiddenMaxChoicesInput && hiddenMaxChoicesInput.value ? hiddenMaxChoicesInput.value : '1');
                             popupAnonymous.checked = !!(hiddenAnonymousInput && hiddenAnonymousInput.value);
                             popupConsultationProposals.checked = !!(hiddenConsultationProposalsInput && hiddenConsultationProposalsInput.value);
+                            popupVoteWeightEditor.setState({
+                                enabled: !!(hiddenVoteWeightEnabledInput && hiddenVoteWeightEnabledInput.value),
+                                question: hiddenVoteWeightQuestionInput ? String(hiddenVoteWeightQuestionInput.value || '') : '',
+                                options: parseVoteWeightOptions(hiddenVoteWeightOptionsInput ? hiddenVoteWeightOptionsInput.value : '[]', false),
+                            });
 
                             const syncPopup = function () {
                                 const isMultiple = String(popupChoiceMode.value || 'single') === 'multiple';
@@ -1337,6 +1560,16 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                 }
                                 if (hiddenConsultationProposalsInput) {
                                     hiddenConsultationProposalsInput.value = popupConsultationProposals.checked ? '1' : '';
+                                }
+                                const popupVoteWeightState = popupVoteWeightEditor.getState();
+                                if (hiddenVoteWeightEnabledInput) {
+                                    hiddenVoteWeightEnabledInput.value = popupVoteWeightState.enabled ? '1' : '';
+                                }
+                                if (hiddenVoteWeightQuestionInput) {
+                                    hiddenVoteWeightQuestionInput.value = String(popupVoteWeightState.question || '').trim();
+                                }
+                                if (hiddenVoteWeightOptionsInput) {
+                                    hiddenVoteWeightOptionsInput.value = JSON.stringify(Array.isArray(popupVoteWeightState.options) ? popupVoteWeightState.options : []);
                                 }
 
                                 syncSettingsSummary();
@@ -1672,6 +1905,11 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                             return;
                         }
 
+                        const voteWeightSelector = form.querySelector('[data-omo-decision-vote-weight-selector]');
+                        if (voteWeightSelector && typeof window.omoDecisionInitVoteWeightSelector === 'function') {
+                            window.omoDecisionInitVoteWeightSelector(voteWeightSelector);
+                        }
+
                         let payload = {};
                         try {
                             payload = JSON.parse(payloadNode.textContent || '{}');
@@ -1769,7 +2007,9 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
 
                         const list = panel.querySelector('[data-omo-decision-vote-results-list]');
                         const buttons = panel.querySelectorAll('[data-omo-decision-vote-results-sort]');
-                        if (!list || !buttons.length) {
+                        const compareToggle = panel.querySelector('[data-omo-decision-vote-results-compare-toggle]');
+                        const compareBlocks = panel.querySelectorAll('[data-omo-decision-vote-results-compare-block]');
+                        if (!list) {
                             panel.dataset.omoDecisionVoteResultsReady = '1';
                             return;
                         }
@@ -1837,6 +2077,15 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                             });
                         };
 
+                        const syncComparison = function () {
+                            const showComparison = !!(compareToggle && compareToggle.checked);
+                            compareBlocks.forEach(function (block) {
+                                block.hidden = !showComparison;
+                                block.setAttribute('aria-hidden', showComparison ? 'false' : 'true');
+                                block.style.display = showComparison ? '' : 'none';
+                            });
+                        };
+
                         const applySortMode = function (sortMode) {
                             const normalizedSortMode = normalizeSortMode(sortMode);
                             buttons.forEach(function (button) {
@@ -1854,7 +2103,14 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                             });
                         });
 
-                        applySortMode('rank');
+                        if (compareToggle) {
+                            compareToggle.addEventListener('change', syncComparison);
+                        }
+
+                        if (buttons.length) {
+                            applySortMode('rank');
+                        }
+                        syncComparison();
                         panel.dataset.omoDecisionVoteResultsReady = '1';
                     });
                 };
@@ -1956,6 +2212,14 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
 
         .omo-decision-vote__results-controls {
             justify-content: flex-end;
+        }
+
+        .omo-decision-vote__results-compare {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--color-text-light, #475569);
+            font-size: 0.92rem;
         }
 
         .omo-decision-vote__proposal-card,
@@ -2167,6 +2431,29 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
             gap: 12px;
             color: var(--color-text-light, #475569);
             font-size: 12px;
+        }
+
+        .omo-decision-vote__comparison {
+            display: grid;
+            gap: 8px;
+            padding-top: 4px;
+            border-top: 1px dashed color-mix(in srgb, var(--color-border, #d1d5db) 82%, transparent);
+        }
+
+        .omo-decision-vote__comparison[hidden] {
+            display: none !important;
+        }
+
+        .omo-decision-vote__comparison-title {
+            color: var(--color-text-light, #475569);
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+
+        .omo-decision-vote__distribution-fill--secondary {
+            background: color-mix(in srgb, var(--color-primary, #2563eb) 42%, var(--color-surface-alt, #cbd5e1));
         }
 
         @media (max-width: 720px) {

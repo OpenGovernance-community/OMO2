@@ -162,6 +162,94 @@ $baseSourceLang = [
         'text' => 'Ajouter un groupe',
         'context' => 'Button label to create a new decision group.',
     ],
+    'decisions.edit.import.title' => [
+        'text' => 'Importer un scrutin',
+        'context' => 'Title of the import panel on the decision creation screen.',
+    ],
+    'decisions.edit.import.text' => [
+        'text' => 'Chargez un fichier CSV, JSON ou XML exporte depuis les decisions pour recreer la structure du scrutin sans les reponses.',
+        'context' => 'Help text of the import panel on the decision creation screen.',
+    ],
+    'decisions.edit.import.file_label' => [
+        'text' => 'Fichier d import',
+        'context' => 'Label of the import file input on the decision creation screen.',
+    ],
+    'decisions.edit.import.button' => [
+        'text' => 'Importer ce fichier',
+        'context' => 'Submit button label for the decision import form.',
+    ],
+    'decisions.edit.import.loading' => [
+        'text' => 'Import en cours...',
+        'context' => 'Temporary label shown while the decision import is running.',
+    ],
+    'decisions.edit.import.error' => [
+        'text' => 'Impossible d importer ce fichier pour le moment.',
+        'context' => 'Fallback error message for the decision import form.',
+    ],
+    'decisions.edit.import.no_file' => [
+        'text' => 'Choisissez un fichier CSV, JSON ou XML a importer.',
+        'context' => 'Validation message when no import file was selected.',
+    ],
+    'decisions.edit.block_settings.vote_weighting' => [
+        'text' => 'Ponderation des votes',
+        'context' => 'Shared label for the optional vote weighting setting on one decision block.',
+    ],
+    'decisions.edit.block_settings.vote_weighting_enable' => [
+        'text' => 'Activer la ponderation des votes',
+        'context' => 'Shared label for enabling vote weighting on one decision block.',
+    ],
+    'decisions.edit.block_settings.vote_weighting_question' => [
+        'text' => 'Question de ponderation',
+        'context' => 'Shared label for the question shown to participants before selecting a vote weight.',
+    ],
+    'decisions.edit.block_settings.vote_weighting_options' => [
+        'text' => 'Options de ponderation',
+        'context' => 'Shared label for the weighting options editor on one decision block.',
+    ],
+    'decisions.edit.block_settings.vote_weighting_weight' => [
+        'text' => 'Coefficient',
+        'context' => 'Shared label for a vote weighting coefficient field.',
+    ],
+    'decisions.edit.block_settings.vote_weighting_weight_base' => [
+        'text' => 'Reference',
+        'context' => 'Shared label for the fixed 1x vote weighting coefficient field.',
+    ],
+    'decisions.edit.block_settings.vote_weighting_label' => [
+        'text' => 'Libelle',
+        'context' => 'Shared label for a vote weighting option label field.',
+    ],
+    'decisions.edit.block_settings.vote_weighting_add' => [
+        'text' => 'Ajouter une ligne',
+        'context' => 'Shared button label used to add a vote weighting row.',
+    ],
+    'decisions.edit.block_settings.vote_weighting_remove' => [
+        'text' => 'Retirer',
+        'context' => 'Shared button label used to remove a vote weighting row.',
+    ],
+    'decisions.edit.block_settings.vote_weighting_fixed_hint' => [
+        'text' => 'La ligne 1x reste toujours presente comme reference neutre.',
+        'context' => 'Shared hint explaining that the 1x weighting row is always present.',
+    ],
+    'decisions.edit.block_settings.vote_weighting_options_help' => [
+        'text' => 'Une option par ligne au format poids | libelle.',
+        'context' => 'Shared help text for the weighting options multiline editor.',
+    ],
+    'decisions.edit.block_settings.vote_weighting_summary_yes' => [
+        'text' => 'Oui',
+        'context' => 'Shared yes label for vote weighting summaries.',
+    ],
+    'decisions.edit.block_settings.vote_weighting_summary_no' => [
+        'text' => 'Non',
+        'context' => 'Shared no label for vote weighting summaries.',
+    ],
+    'decisions.edit.block_settings.vote_weighting_placeholder_question' => [
+        'text' => 'A quel point assister a cette rencontre ?',
+        'context' => 'Shared placeholder for the vote weighting question field.',
+    ],
+    'decisions.edit.block_settings.vote_weighting_placeholder_options' => [
+        'text' => "0.75 | Pas important\n1 | Souhaitable\n1.5 | Important\n2 | Vital",
+        'context' => 'Shared placeholder for the weighting options multiline editor.',
+    ],
 ];
 
 $selectedGroup = (!empty($context['decisionGroup']) && $context['decisionGroup'] instanceof DecisionGroup)
@@ -375,6 +463,39 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                     </div>
                 </div>
 
+                <?php if (!$isEditing): ?>
+                <form
+                    class="generic-soft-panel generic-soft-panel--stack omo-decision-edit__import-panel"
+                    action="/omo/api/decision/import.php"
+                    method="post"
+                    enctype="multipart/form-data"
+                    data-omo-decision-import-form
+                >
+                    <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
+                    <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
+                    <input type="hidden" name="intent" value="manage">
+
+                    <div class="omo-decision-edit__section-head">
+                        <div>
+                            <h4 class="generic-card-title generic-card-title--section"><?= $escape(t('decisions.edit.import.title', [], $lang, $baseSourceLang)) ?></h4>
+                            <p class="omo-decision-edit__lead"><?= $escape(t('decisions.edit.import.text', [], $lang, $baseSourceLang)) ?></p>
+                        </div>
+                    </div>
+
+                    <label class="omo-decision-edit__import-field">
+                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.import.file_label', [], $lang, $baseSourceLang)) ?></span>
+                        <input type="file" class="generic-form-control" name="import_file" accept=".csv,.json,.xml" required>
+                    </label>
+
+                    <div class="omo-decision-edit__import-actions">
+                        <button type="submit" class="generic-action-button generic-action-button--secondary" data-omo-decision-import-submit>
+                            <?= $escape(t('decisions.edit.import.button', [], $lang, $baseSourceLang)) ?>
+                        </button>
+                        <div class="omo-decision-edit__feedback" data-omo-decision-import-feedback aria-live="polite"></div>
+                    </div>
+                </form>
+                <?php endif; ?>
+
                 <div class="omo-decision-edit__module-grid">
                     <?php foreach ($registry as $methodKey => $definition): ?>
                         <?php
@@ -475,6 +596,86 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
             );
         });
     });
+
+    document.querySelectorAll('[data-omo-decision-import-form]').forEach(function (form) {
+        if (form.dataset.omoDecisionImportReady === '1') {
+            return;
+        }
+
+        form.dataset.omoDecisionImportReady = '1';
+
+        var submitButton = form.querySelector('[data-omo-decision-import-submit]');
+        var feedback = form.querySelector('[data-omo-decision-import-feedback]');
+        var fileInput = form.querySelector('input[type="file"][name="import_file"]');
+        var defaultLabel = submitButton ? submitButton.textContent : '';
+
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            if (!fileInput || !fileInput.files || !fileInput.files.length) {
+                if (feedback) {
+                    feedback.textContent = <?= json_encode(t('decisions.edit.import.no_file', [], $lang, $baseSourceLang), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+                }
+                return;
+            }
+
+            var formData = new FormData(form);
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.textContent = <?= json_encode(t('decisions.edit.import.loading', [], $lang, $baseSourceLang), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+            }
+            if (feedback) {
+                feedback.textContent = '';
+            }
+
+            fetch(form.getAttribute('action') || '/omo/api/decision/import.php', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(function (response) {
+                    return response.json().catch(function () {
+                        return null;
+                    }).then(function (data) {
+                        return {
+                            ok: response.ok,
+                            data: data
+                        };
+                    });
+                })
+                .then(function (result) {
+                    if (!result.ok || !result.data || !result.data.status) {
+                        throw new Error(
+                            result.data && result.data.message
+                                ? String(result.data.message)
+                                : <?= json_encode(t('decisions.edit.import.error', [], $lang, $baseSourceLang), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+                        );
+                    }
+
+                    openEditorUrl(
+                        String(result.data.redirectUrl || ''),
+                        String(result.data.drawerTitle || 'Prises de decision')
+                    );
+                })
+                .catch(function (error) {
+                    if (feedback) {
+                        feedback.textContent = error && error.message
+                            ? error.message
+                            : <?= json_encode(t('decisions.edit.import.error', [], $lang, $baseSourceLang), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+                    }
+                })
+                .finally(function () {
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.textContent = defaultLabel;
+                    }
+                });
+        });
+    });
 })();
 </script>
 
@@ -495,6 +696,13 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
 .omo-decision-edit__module-copy {
     display: grid;
     gap: 8px;
+}
+
+.omo-decision-edit__import-panel,
+.omo-decision-edit__import-field,
+.omo-decision-edit__import-actions {
+    display: grid;
+    gap: 10px;
 }
 
 .omo-decision-edit__module-card {
@@ -534,6 +742,12 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
     margin: 0;
     color: var(--color-text-light, #475569);
     line-height: 1.6;
+}
+
+.omo-decision-edit__feedback {
+    min-height: 20px;
+    color: var(--color-text-light, #475569);
+    line-height: 1.5;
 }
 
 .omo-decision-edit__muted {

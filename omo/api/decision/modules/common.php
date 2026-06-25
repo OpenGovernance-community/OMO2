@@ -5,6 +5,7 @@ use dbObject\DecisionGroup;
 use dbObject\DecisionParticipant;
 use dbObject\DecisionProcess;
 use dbObject\DecisionProposal;
+use dbObject\DecisionResponse;
 use dbObject\Holon;
 use dbObject\User;
 
@@ -45,6 +46,694 @@ if (!function_exists('omoDecisionModuleGetMethodParameters')) {
 
         $methodParameters = $parameters[$methodKey] ?? [];
         return is_array($methodParameters) ? $methodParameters : [];
+    }
+}
+
+if (!function_exists('omoDecisionBlockSettingsGetDefaultVoteWeightOptions')) {
+    function omoDecisionBlockSettingsGetDefaultVoteWeightOptions()
+    {
+        return [
+            ['weight' => '0.75', 'label' => 'Pas important'],
+            ['weight' => '1', 'label' => 'Souhaitable'],
+            ['weight' => '1.5', 'label' => 'Important'],
+            ['weight' => '2', 'label' => 'Vital'],
+        ];
+    }
+}
+
+if (!function_exists('omoDecisionBlockSettingsNormalizeVoteWeightNumber')) {
+    function omoDecisionBlockSettingsNormalizeVoteWeightNumber($value)
+    {
+        $normalized = str_replace(',', '.', trim((string)$value));
+        if ($normalized === '' || !is_numeric($normalized)) {
+            return '';
+        }
+
+        $number = (float)$normalized;
+        if ($number <= 0) {
+            return '';
+        }
+
+        $formatted = rtrim(rtrim(number_format($number, 4, '.', ''), '0'), '.');
+        return $formatted !== '' ? $formatted : '1';
+    }
+}
+
+if (!function_exists('omoDecisionBlockSettingsNormalizeVoteWeightOptions')) {
+    function omoDecisionBlockSettingsNormalizeVoteWeightOptions($rawOptions, $fallbackToDefault = false)
+    {
+        if (is_string($rawOptions)) {
+            $decoded = json_decode($rawOptions, true);
+            if (is_array($decoded)) {
+                $rawOptions = $decoded;
+            } else {
+                $rows = preg_split('/\r\n|\r|\n/', $rawOptions);
+                $rawOptions = [];
+                foreach ((array)$rows as $row) {
+                    $row = trim((string)$row);
+                    if ($row === '') {
+                        continue;
+                    }
+
+                    $parts = preg_split('/\s*\|\s*/', $row, 2);
+                    $rawOptions[] = [
+                        'weight' => $parts[0] ?? '',
+                        'label' => $parts[1] ?? '',
+                    ];
+                }
+            }
+        }
+
+        $normalized = [];
+        foreach ((array)$rawOptions as $option) {
+            if (!is_array($option)) {
+                continue;
+            }
+
+            $weight = omoDecisionBlockSettingsNormalizeVoteWeightNumber($option['weight'] ?? ($option['value'] ?? ''));
+            $label = trim((string)($option['label'] ?? ''));
+            if ($weight === '' || $label === '') {
+                continue;
+            }
+
+            $normalized[] = [
+                'weight' => $weight,
+                'label' => $label,
+            ];
+        }
+
+        if (count($normalized) === 0 && $fallbackToDefault) {
+            return omoDecisionBlockSettingsGetDefaultVoteWeightOptions();
+        }
+
+        return $normalized;
+    }
+}
+
+if (!function_exists('omoDecisionBlockSettingsBuildVoteWeightOptionsText')) {
+    function omoDecisionBlockSettingsBuildVoteWeightOptionsText(array $options)
+    {
+        $lines = [];
+        foreach ($options as $option) {
+            if (!is_array($option)) {
+                continue;
+            }
+
+            $weight = trim((string)($option['weight'] ?? ''));
+            $label = trim((string)($option['label'] ?? ''));
+            if ($weight === '' || $label === '') {
+                continue;
+            }
+
+            $lines[] = $weight . ' | ' . $label;
+        }
+
+        return implode("\n", $lines);
+    }
+}
+
+if (!function_exists('omoDecisionBlockSettingsBuildVoteWeightConfig')) {
+    function omoDecisionBlockSettingsBuildVoteWeightConfig($rawConfig)
+    {
+        $voteWeighting = is_array($rawConfig) && is_array($rawConfig['vote_weighting'] ?? null)
+            ? (array)$rawConfig['vote_weighting']
+            : (is_array($rawConfig) ? $rawConfig : []);
+
+        $enabled = !empty($voteWeighting['enabled']) || !empty($voteWeighting['vote_weight_enabled']);
+        $question = trim((string)($voteWeighting['question'] ?? ($voteWeighting['vote_weight_question'] ?? '')));
+        $options = omoDecisionBlockSettingsNormalizeVoteWeightOptions(
+            $voteWeighting['options'] ?? ($voteWeighting['vote_weight_options'] ?? []),
+            $enabled
+        );
+
+        return [
+            'enabled' => $enabled,
+            'question' => $question,
+            'options' => $options,
+            'options_text' => omoDecisionBlockSettingsBuildVoteWeightOptionsText($options),
+        ];
+    }
+}
+
+if (!function_exists('omoDecisionBlockSettingsBuildVoteWeightSummaryData')) {
+    function omoDecisionBlockSettingsBuildVoteWeightSummaryData(array $config)
+    {
+        $enabled = !empty($config['enabled']);
+        $options = omoDecisionBlockSettingsNormalizeVoteWeightOptions($config['options'] ?? [], $enabled);
+        $weights = [];
+        foreach ($options as $option) {
+            $weight = omoDecisionBlockSettingsNormalizeVoteWeightNumber($option['weight'] ?? '');
+            if ($weight === '') {
+                continue;
+            }
+            $weights[] = (float)$weight;
+        }
+
+        return [
+            'enabled' => $enabled,
+            'count' => count($weights),
+            'min' => count($weights) > 0 ? omoDecisionBlockSettingsNormalizeVoteWeightNumber((string)min($weights)) : '',
+            'max' => count($weights) > 0 ? omoDecisionBlockSettingsNormalizeVoteWeightNumber((string)max($weights)) : '',
+        ];
+    }
+}
+
+if (!function_exists('omoDecisionBlockSettingsBuildVoteWeightSummaryText')) {
+    function omoDecisionBlockSettingsBuildVoteWeightSummaryText(array $summaryData, $yesLabel = 'Oui', $noLabel = 'Non')
+    {
+        if (empty($summaryData['enabled'])) {
+            return $noLabel;
+        }
+
+        $count = (int)($summaryData['count'] ?? 0);
+        $min = trim((string)($summaryData['min'] ?? ''));
+        $max = trim((string)($summaryData['max'] ?? ''));
+        if ($count <= 0 || $min === '' || $max === '') {
+            return $yesLabel;
+        }
+
+        return $yesLabel . ' (' . $count . ' options de ' . $min . ' a ' . $max . ')';
+    }
+}
+
+if (!function_exists('omoDecisionBlockSettingsCountVoteWeightDecimals')) {
+    function omoDecisionBlockSettingsCountVoteWeightDecimals($value)
+    {
+        $normalized = omoDecisionBlockSettingsNormalizeVoteWeightNumber($value);
+        if ($normalized === '') {
+            return 0;
+        }
+
+        $separatorPosition = strpos($normalized, '.');
+        if ($separatorPosition === false) {
+            return 0;
+        }
+
+        return max(0, strlen($normalized) - $separatorPosition - 1);
+    }
+}
+
+if (!function_exists('omoDecisionBlockSettingsGetVoteWeightScale')) {
+    function omoDecisionBlockSettingsGetVoteWeightScale($configOrOptions = null)
+    {
+        $options = [];
+        if (is_array($configOrOptions) && array_key_exists('options', $configOrOptions)) {
+            $options = omoDecisionBlockSettingsNormalizeVoteWeightOptions($configOrOptions['options'] ?? [], false);
+        } elseif (is_array($configOrOptions) && array_key_exists('vote_weight_options', $configOrOptions)) {
+            $options = omoDecisionBlockSettingsNormalizeVoteWeightOptions($configOrOptions['vote_weight_options'] ?? [], false);
+        } elseif (is_array($configOrOptions)) {
+            $looksLikeOptions = true;
+            foreach ($configOrOptions as $option) {
+                if (!is_array($option)) {
+                    $looksLikeOptions = false;
+                    break;
+                }
+            }
+            if ($looksLikeOptions) {
+                $options = omoDecisionBlockSettingsNormalizeVoteWeightOptions($configOrOptions, false);
+            } else {
+                $weightConfig = omoDecisionBlockSettingsBuildVoteWeightConfig($configOrOptions);
+                $options = (array)($weightConfig['options'] ?? []);
+            }
+        } else {
+            $weightConfig = omoDecisionBlockSettingsBuildVoteWeightConfig($configOrOptions);
+            $options = (array)($weightConfig['options'] ?? []);
+        }
+
+        $maxDecimals = 0;
+        foreach ($options as $option) {
+            $maxDecimals = max($maxDecimals, omoDecisionBlockSettingsCountVoteWeightDecimals($option['weight'] ?? ''));
+        }
+
+        if ($maxDecimals <= 0) {
+            return 1;
+        }
+
+        return (int)pow(10, min($maxDecimals, 4));
+    }
+}
+
+if (!function_exists('omoDecisionBlockSettingsVoteWeightToUnits')) {
+    function omoDecisionBlockSettingsVoteWeightToUnits($value, $scale)
+    {
+        $normalized = omoDecisionBlockSettingsNormalizeVoteWeightNumber($value);
+        if ($normalized === '') {
+            return 0;
+        }
+
+        $scale = max(1, (int)$scale);
+        return (int)round(((float)$normalized) * $scale);
+    }
+}
+
+if (!function_exists('omoDecisionBlockSettingsVoteWeightUnitsToValue')) {
+    function omoDecisionBlockSettingsVoteWeightUnitsToValue($units, $scale)
+    {
+        $scale = max(1, (int)$scale);
+        $units = (int)$units;
+        if ($units === 0) {
+            return '0';
+        }
+        return omoDecisionBlockSettingsNormalizeVoteWeightNumber((string)($units / $scale));
+    }
+}
+
+if (!function_exists('omoDecisionBlockSettingsResolveVoteWeightSelection')) {
+    function omoDecisionBlockSettingsResolveVoteWeightSelection($rawWeight, $configOrParameters = null)
+    {
+        $config = omoDecisionBlockSettingsBuildVoteWeightConfig($configOrParameters);
+        $options = omoDecisionBlockSettingsNormalizeVoteWeightOptions($config['options'] ?? [], !empty($config['enabled']));
+        $optionMap = [];
+        foreach ($options as $option) {
+            $weight = omoDecisionBlockSettingsNormalizeVoteWeightNumber($option['weight'] ?? '');
+            if ($weight === '') {
+                continue;
+            }
+            $optionMap[$weight] = [
+                'weight' => $weight,
+                'label' => trim((string)($option['label'] ?? '')),
+            ];
+        }
+
+        $selectedWeight = omoDecisionBlockSettingsNormalizeVoteWeightNumber($rawWeight);
+        if ($selectedWeight !== '' && isset($optionMap[$selectedWeight])) {
+            $selection = $optionMap[$selectedWeight];
+        } elseif (isset($optionMap['1'])) {
+            $selection = $optionMap['1'];
+        } elseif (count($optionMap) > 0) {
+            $selection = reset($optionMap);
+        } else {
+            $selection = [
+                'weight' => '1',
+                'label' => '',
+            ];
+        }
+
+        $scale = omoDecisionBlockSettingsGetVoteWeightScale(['options' => $options]);
+
+        return [
+            'enabled' => !empty($config['enabled']),
+            'weight' => (string)($selection['weight'] ?? '1'),
+            'label' => (string)($selection['label'] ?? ''),
+            'scale' => $scale,
+            'units' => omoDecisionBlockSettingsVoteWeightToUnits($selection['weight'] ?? '1', $scale),
+            'options' => array_values($options),
+        ];
+    }
+}
+
+if (!function_exists('omoDecisionBlockSettingsBuildResponseVoteWeightPayload')) {
+    function omoDecisionBlockSettingsBuildResponseVoteWeightPayload($rawWeight, $configOrParameters = null)
+    {
+        $selection = omoDecisionBlockSettingsResolveVoteWeightSelection($rawWeight, $configOrParameters);
+
+        return [
+            'vote_weight' => (string)$selection['weight'],
+            'vote_weight_label' => (string)$selection['label'],
+        ];
+    }
+}
+
+if (!function_exists('omoDecisionBlockSettingsExtractResponseVoteWeightSelection')) {
+    function omoDecisionBlockSettingsExtractResponseVoteWeightSelection($response, $methodKey, $configOrParameters = null)
+    {
+        if (!$response instanceof DecisionResponse) {
+            return omoDecisionBlockSettingsResolveVoteWeightSelection(null, $configOrParameters);
+        }
+
+        $parameters = omoDecisionModuleDecodeParameters($response->get('parameters'));
+        $methodParameters = omoDecisionModuleGetMethodParameters($parameters, $methodKey);
+        $rawWeight = $methodParameters['vote_weight'] ?? ($methodParameters['selected_vote_weight'] ?? ($methodParameters['vote_weight_value'] ?? null));
+
+        return omoDecisionBlockSettingsResolveVoteWeightSelection($rawWeight, $configOrParameters);
+    }
+}
+
+if (!function_exists('omoDecisionBlockSettingsMergeVoteWeightConfig')) {
+    function omoDecisionBlockSettingsMergeVoteWeightConfig(array $methodParameters, array $config)
+    {
+        $voteWeightConfig = omoDecisionBlockSettingsBuildVoteWeightConfig([
+            'enabled' => !empty($config['vote_weight_enabled']) || !empty($config['enabled']),
+            'question' => $config['vote_weight_question'] ?? ($config['question'] ?? ''),
+            'options' => $config['vote_weight_options'] ?? ($config['options'] ?? []),
+        ]);
+
+        $methodParameters['vote_weighting'] = [
+            'enabled' => !empty($voteWeightConfig['enabled']) ? 1 : 0,
+            'question' => (string)$voteWeightConfig['question'],
+            'options' => array_values((array)$voteWeightConfig['options']),
+        ];
+
+        return $methodParameters;
+    }
+}
+
+if (!function_exists('omoDecisionRenderVoteWeightEditorAssets')) {
+    function omoDecisionRenderVoteWeightEditorAssets()
+    {
+        static $alreadyRendered = false;
+        if ($alreadyRendered) {
+            return '';
+        }
+
+        $alreadyRendered = true;
+
+        return '<style>'
+            . '.omo-decision-vote-weight-editor{display:grid;gap:12px;}'
+            . '.omo-decision-vote-weight-editor__content{display:grid;gap:12px;}'
+            . '.omo-decision-vote-weight-editor__content[hidden]{display:none !important;}'
+            . '.omo-decision-vote-weight-editor__list{display:grid;gap:10px;}'
+            . '.omo-decision-vote-weight-editor__row{display:grid;grid-template-columns:minmax(88px,120px) minmax(0,1fr) auto;gap:10px;align-items:end;padding:12px;border:1px solid var(--color-border,#d1d5db);border-radius:12px;background:var(--color-surface,#fff);}'
+            . '.omo-decision-vote-weight-editor__row--locked{background:var(--color-surface-alt,#f8fafc);border-style:dashed;}'
+            . '.omo-decision-vote-weight-editor__field{display:grid;gap:6px;min-width:0;}'
+            . '.omo-decision-vote-weight-editor__actions{display:flex;align-items:flex-end;justify-content:flex-end;min-height:100%;}'
+            . '.omo-decision-vote-weight-editor__toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}'
+            . '.omo-decision-vote-weight-editor__toggle{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}'
+            . '.omo-decision-vote-weight-editor__empty{margin:0;color:var(--color-text-soft,#6b7280);font-size:.92rem;}'
+            . '.omo-decision-vote-weight-editor__hint{margin:0;color:var(--color-text-soft,#6b7280);font-size:.9rem;}'
+            . '.omo-decision-vote-weight-selector{display:grid;gap:12px;}'
+            . '.omo-decision-vote-weight-selector__buttons{display:flex;gap:8px;flex-wrap:wrap;}'
+            . '.omo-decision-vote-weight-selector__button{display:grid;gap:2px;min-width:120px;text-align:center;}'
+            . '.omo-decision-vote-weight-selector__weight{font-size:.78rem;opacity:.78;}'
+            . '@media (max-width:700px){.omo-decision-vote-weight-editor__row{grid-template-columns:1fr;}.omo-decision-vote-weight-editor__actions{justify-content:flex-start;}}'
+        . '</style>'
+        . '<script>(function(){'
+            . 'if(typeof window.omoDecisionInitVoteWeightEditor==="function"){return;}'
+            . 'var normalizeNumber=function(rawValue){'
+                . 'var normalized=String(rawValue||"").trim().replace(",",".");'
+                . 'var value;'
+                . 'if(normalized===""){return"";}'
+                . 'value=Number(normalized);'
+                . 'if(!Number.isFinite(value)||value<=0){return"";}'
+                . 'return String(value).replace(/\\.0+$/,"").replace(/(\\.\\d*?)0+$/,"$1");'
+            . '};'
+            . 'var parseOptions=function(rawValue,fallbackOptions){'
+                . 'var options=[];'
+                . 'var normalizedOptions=[];'
+                . 'if(Array.isArray(rawValue)){options=rawValue;}else{'
+                    . 'var source=String(rawValue||"").trim();'
+                    . 'if(source!==""){'
+                        . 'try{var decoded=JSON.parse(source);if(Array.isArray(decoded)){options=decoded;}}catch(error){'
+                            . 'options=source.split(/\\r\\n|\\r|\\n/).map(function(line){'
+                                . 'var parts=String(line||"").split("|");'
+                                . 'return{weight:parts.length>0?parts[0]:"",label:parts.length>1?parts.slice(1).join("|"):""};'
+                            . '});'
+                        . '}'
+                    . '}'
+                . '}'
+                . 'options.forEach(function(option){'
+                    . 'if(!option||typeof option!=="object"){return;}'
+                    . 'var weight=normalizeNumber(option.weight||option.value||"");'
+                    . 'var label=String(option.label||"").trim();'
+                    . 'if(weight===""||label===""){return;}'
+                    . 'normalizedOptions.push({weight:weight,label:label});'
+                . '});'
+                . 'if(normalizedOptions.length===0&&fallbackOptions){return parseOptions(fallbackOptions,false);}'
+                . 'return normalizedOptions;'
+            . '};'
+            . 'var buildSummaryText=function(enabled,options,yesLabel,noLabel){'
+                . 'var weights=[];'
+                . 'if(!enabled){return String(noLabel||"Non");}'
+                . 'options=(Array.isArray(options)?options:[]).filter(function(option){return option&&option.weight&&option.label;});'
+                . 'if(options.length===0){return String(yesLabel||"Oui");}'
+                . 'weights=options.map(function(option){return Number(String(option.weight||"").replace(",", "."));}).filter(function(value){return Number.isFinite(value)&&value>0;});'
+                . 'if(weights.length===0){return String(yesLabel||"Oui");}'
+                . 'return String(yesLabel||"Oui")+" ("+String(options.length)+" options de "+normalizeNumber(String(Math.min.apply(Math,weights)))+" a "+normalizeNumber(String(Math.max.apply(Math,weights)))+")";'
+            . '};'
+            . 'window.omoDecisionInitVoteWeightSelector=function(root){'
+                . 'if(!(root instanceof Element)){return null;}'
+                . 'if(root._omoDecisionVoteWeightSelector){return root._omoDecisionVoteWeightSelector;}'
+                . 'var input=root.querySelector("[data-omo-decision-vote-weight-selector-input]");'
+                . 'var buttons=root.querySelectorAll("[data-omo-decision-vote-weight-selector-button]");'
+                . 'var normalizeValue=function(value){return normalizeNumber(value)||"1";};'
+                . 'var applyValue=function(rawValue){'
+                    . 'var selectedValue=normalizeValue(rawValue);'
+                    . 'if(input instanceof HTMLInputElement){input.value=selectedValue;}'
+                    . 'Array.prototype.forEach.call(buttons,function(button){'
+                        . 'var buttonValue=normalizeValue(button.getAttribute("data-omo-decision-vote-weight-selector-button")||"1");'
+                        . 'var isActive=buttonValue===selectedValue;'
+                        . 'button.classList.toggle("is-active",isActive);'
+                        . 'button.setAttribute("aria-pressed",isActive?"true":"false");'
+                    . '});'
+                . '};'
+                . 'Array.prototype.forEach.call(buttons,function(button){'
+                    . 'if(button.dataset.omoDecisionVoteWeightSelectorBound==="1"){return;}'
+                    . 'button.dataset.omoDecisionVoteWeightSelectorBound="1";'
+                    . 'button.addEventListener("click",function(event){event.preventDefault();applyValue(button.getAttribute("data-omo-decision-vote-weight-selector-button")||"1");});'
+                . '});'
+                . 'applyValue(input instanceof HTMLInputElement?input.value:(root.getAttribute("data-selected-weight")||"1"));'
+                . 'root._omoDecisionVoteWeightSelector={setValue:applyValue,getValue:function(){return input instanceof HTMLInputElement?normalizeValue(input.value):normalizeValue(root.getAttribute("data-selected-weight")||"1");}};'
+                . 'return root._omoDecisionVoteWeightSelector;'
+            . '};'
+            . 'window.omoDecisionInitVoteWeightEditor=function(root){'
+                . 'if(!(root instanceof Element)){return null;}'
+                . 'var existing=root._omoDecisionVoteWeightEditor;'
+                . 'if(existing){return existing;}'
+                . 'var enabledInput=root.querySelector("[data-omo-decision-vote-weight-enabled]");'
+                . 'var questionInput=root.querySelector("[data-omo-decision-vote-weight-question]");'
+                . 'var list=root.querySelector("[data-omo-decision-vote-weight-list]");'
+                . 'var addButton=root.querySelector("[data-omo-decision-vote-weight-add]");'
+                . 'var emptyNode=root.querySelector("[data-omo-decision-vote-weight-empty]");'
+                . 'var content=root.querySelector("[data-omo-decision-vote-weight-content]");'
+                . 'var rowTemplate=root.querySelector("[data-omo-decision-vote-weight-row-template]");'
+                . 'var canEdit=root.getAttribute("data-can-edit")==="1";'
+                . 'var defaultOptions=root.getAttribute("data-default-options-json")||"[]";'
+                . 'var baseLabel=root.getAttribute("data-base-label")||"Souhaitable";'
+                . 'var baseWeightTitle=root.getAttribute("data-base-weight-title")||"Reference";'
+                . 'var weightTitle=root.getAttribute("data-weight-title")||"Coefficient";'
+                . 'var controller;'
+                . 'var buildBaseOption=function(options){'
+                    . 'var normalized=parseOptions(options||[],false);'
+                    . 'var lockedOption=null;'
+                    . 'var rows=[];'
+                    . 'normalized.forEach(function(option){'
+                        . 'if(!lockedOption&&String(option.weight||"")==="1"){lockedOption={weight:"1",label:String(option.label||"").trim()||baseLabel};return;}'
+                        . 'rows.push({weight:String(option.weight||""),label:String(option.label||"").trim()});'
+                    . '});'
+                    . 'if(!lockedOption){lockedOption={weight:"1",label:baseLabel};}'
+                    . 'rows.unshift(lockedOption);'
+                    . 'return rows;'
+                . '};'
+                . 'var syncEmptyState=function(){'
+                    . 'if(!(emptyNode instanceof Element)||!(list instanceof Element)){return;}'
+                    . 'emptyNode.hidden=list.children.length>1;'
+                . '};'
+                . 'var syncExpandedState=function(){'
+                    . 'var isEnabled=enabledInput instanceof HTMLInputElement&&enabledInput.checked;'
+                    . 'if(content instanceof Element){content.hidden=!isEnabled;content.setAttribute("aria-hidden",isEnabled?"false":"true");}'
+                    . 'if(questionInput instanceof HTMLInputElement){questionInput.disabled=!canEdit||!isEnabled;}'
+                    . 'if(addButton instanceof HTMLButtonElement){addButton.disabled=!canEdit||!isEnabled;}'
+                    . 'if(list instanceof Element){Array.prototype.forEach.call(list.querySelectorAll("[data-omo-decision-vote-weight-row-weight],[data-omo-decision-vote-weight-row-label],[data-omo-decision-vote-weight-row-remove]"),function(node){'
+                        . 'var row,isLocked;'
+                        . 'if(!(node instanceof HTMLInputElement)&&!(node instanceof HTMLButtonElement)){return;}'
+                        . 'row=node.closest("[data-omo-decision-vote-weight-row]");'
+                        . 'isLocked=!!(row&&row.classList.contains("omo-decision-vote-weight-editor__row--locked"));'
+                        . 'if(node instanceof HTMLInputElement){node.disabled=!canEdit||!isEnabled;if(isLocked&&node.hasAttribute("data-omo-decision-vote-weight-row-weight")){node.readOnly=true;}}'
+                        . 'if(node instanceof HTMLButtonElement){node.hidden=isLocked||!canEdit||!isEnabled;node.disabled=isLocked||!canEdit||!isEnabled;}'
+                    . '});}'
+                . '};'
+                . 'var createRow=function(option,isLocked){'
+                    . 'var fragment,row,weightInput,labelInput,removeButton,weightTitleNode;'
+                    . 'if(!(rowTemplate instanceof HTMLTemplateElement)||!(list instanceof Element)){return;}'
+                    . 'fragment=rowTemplate.content.cloneNode(true);'
+                    . 'row=fragment.querySelector("[data-omo-decision-vote-weight-row]");'
+                    . 'weightInput=fragment.querySelector("[data-omo-decision-vote-weight-row-weight]");'
+                    . 'labelInput=fragment.querySelector("[data-omo-decision-vote-weight-row-label]");'
+                    . 'removeButton=fragment.querySelector("[data-omo-decision-vote-weight-row-remove]");'
+                    . 'weightTitleNode=fragment.querySelector("[data-omo-decision-vote-weight-row-weight-title]");'
+                    . 'if(!(row instanceof Element)||!(weightInput instanceof HTMLInputElement)||!(labelInput instanceof HTMLInputElement)){return;}'
+                    . 'row.classList.toggle("omo-decision-vote-weight-editor__row--locked",!!isLocked);'
+                    . 'if(weightTitleNode instanceof Element){weightTitleNode.textContent=isLocked?baseWeightTitle:weightTitle;}'
+                    . 'weightInput.value=isLocked?"1":String(option.weight||"");'
+                    . 'weightInput.readOnly=!!isLocked;'
+                    . 'weightInput.disabled=!canEdit;'
+                    . 'labelInput.value=String(option.label||"");'
+                    . 'labelInput.disabled=!canEdit;'
+                    . 'if(removeButton instanceof HTMLButtonElement){'
+                        . 'removeButton.hidden=!!isLocked||!canEdit;'
+                        . 'removeButton.disabled=!!isLocked||!canEdit;'
+                        . 'removeButton.addEventListener("click",function(event){event.preventDefault();if(row.parentNode){row.parentNode.removeChild(row);}syncEmptyState();});'
+                    . '}'
+                    . 'list.appendChild(fragment);'
+                    . 'syncExpandedState();'
+                . '};'
+                . 'var render=function(options){'
+                    . 'if(!(list instanceof Element)){return;}'
+                    . 'list.innerHTML="";'
+                    . 'buildBaseOption(options).forEach(function(option,index){createRow(option,index===0);});'
+                    . 'syncEmptyState();'
+                . '};'
+                . 'controller={'
+                    . 'setState:function(state){'
+                        . 'state=state&&typeof state==="object"?state:{};'
+                        . 'if(enabledInput instanceof HTMLInputElement){enabledInput.checked=!!state.enabled;enabledInput.disabled=!canEdit;}'
+                        . 'if(questionInput instanceof HTMLInputElement){questionInput.value=String(state.question||"");questionInput.disabled=!canEdit;}'
+                        . 'render(Array.isArray(state.options)?state.options:parseOptions(root.getAttribute("data-options-json")||"[]",false));'
+                        . 'syncExpandedState();'
+                    . '},'
+                    . 'getState:function(){'
+                        . 'var options=[];'
+                        . 'if(list instanceof Element){Array.prototype.forEach.call(list.querySelectorAll("[data-omo-decision-vote-weight-row]"),function(row,index){'
+                            . 'var weightInput=row.querySelector("[data-omo-decision-vote-weight-row-weight]");'
+                            . 'var labelInput=row.querySelector("[data-omo-decision-vote-weight-row-label]");'
+                            . 'var weight=normalizeNumber(weightInput&&weightInput.value?weightInput.value:(index===0?"1":""));'
+                            . 'var label=String(labelInput&&labelInput.value?labelInput.value:"").trim();'
+                            . 'if(index===0&&weight===""){weight="1";}'
+                            . 'if(index===0&&label===""){label=baseLabel;}'
+                            . 'if(weight===""||label===""){return;}'
+                            . 'options.push({weight:weight,label:label});'
+                        . '});}'
+                        . 'return{enabled:enabledInput instanceof HTMLInputElement&&enabledInput.checked,question:questionInput instanceof HTMLInputElement?String(questionInput.value||"").trim():"",options:options};'
+                    . '}'
+                . '};'
+                . 'if(enabledInput instanceof HTMLInputElement){enabledInput.addEventListener("change",syncExpandedState);}'
+                . 'if(addButton instanceof HTMLButtonElement){addButton.disabled=!canEdit;addButton.addEventListener("click",function(event){event.preventDefault();createRow({weight:"",label:""},false);syncEmptyState();var lastRow=list.lastElementChild;var input=lastRow?lastRow.querySelector("[data-omo-decision-vote-weight-row-weight]"):null;if(input&&typeof input.focus==="function"){input.focus();}});}'
+                . 'controller.setState({enabled:root.getAttribute("data-enabled")==="1",question:root.getAttribute("data-question")||"",options:parseOptions(root.getAttribute("data-options-json")||"[]",false)});'
+                . 'root._omoDecisionVoteWeightEditor=controller;'
+                . 'return controller;'
+            . '};'
+            . 'window.omoDecisionVoteWeightEditor={normalizeNumber:normalizeNumber,parseOptions:parseOptions,buildSummaryText:buildSummaryText};'
+        . '})();</script>';
+    }
+}
+
+if (!function_exists('omoDecisionRenderVoteWeightEditor')) {
+    function omoDecisionRenderVoteWeightEditor($lang, array $sourceLang, $escape, array $config = [])
+    {
+        $canEdit = !empty($config['canEdit']);
+        $enabled = !empty($config['enabled']);
+        $question = trim((string)($config['question'] ?? ''));
+        $options = omoDecisionBlockSettingsNormalizeVoteWeightOptions($config['options'] ?? [], false);
+        $defaultOptions = omoDecisionBlockSettingsGetDefaultVoteWeightOptions();
+        $baseLabel = 'Souhaitable';
+        foreach ($defaultOptions as $defaultOption) {
+            if ((string)($defaultOption['weight'] ?? '') === '1') {
+                $baseLabel = trim((string)($defaultOption['label'] ?? '')) !== '' ? trim((string)$defaultOption['label']) : $baseLabel;
+                break;
+            }
+        }
+
+        ob_start();
+        ?>
+        <div
+            class="omo-decision-vote-weight-editor generic-soft-panel generic-soft-panel--stack"
+            data-omo-decision-vote-weight-editor
+            data-can-edit="<?= $canEdit ? '1' : '0' ?>"
+            data-enabled="<?= $enabled ? '1' : '0' ?>"
+            data-question="<?= $escape($question) ?>"
+            data-options-json="<?= $escape(omoDecisionModuleEncodeJsonPayload($options, '[]')) ?>"
+            data-default-options-json="<?= $escape(omoDecisionModuleEncodeJsonPayload($defaultOptions, '[]')) ?>"
+            data-base-label="<?= $escape($baseLabel) ?>"
+            data-base-weight-title="<?= $escape(t('decisions.edit.block_settings.vote_weighting_weight_base', [], $lang, $sourceLang)) ?>"
+            data-weight-title="<?= $escape(t('decisions.edit.block_settings.vote_weighting_weight', [], $lang, $sourceLang)) ?>"
+        >
+            <label class="omo-decision-vote-weight-editor__field">
+                <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.block_settings.vote_weighting', [], $lang, $sourceLang)) ?></span>
+                <span class="omo-decision-vote-weight-editor__toggle">
+                    <input type="checkbox" value="1" data-omo-decision-vote-weight-enabled <?= $canEdit ? '' : 'disabled' ?>>
+                    <span><?= $escape(t('decisions.edit.block_settings.vote_weighting_enable', [], $lang, $sourceLang)) ?></span>
+                </span>
+            </label>
+            <div class="omo-decision-vote-weight-editor__content" data-omo-decision-vote-weight-content hidden>
+                <label class="omo-decision-vote-weight-editor__field">
+                    <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.block_settings.vote_weighting_question', [], $lang, $sourceLang)) ?></span>
+                    <input
+                        type="text"
+                        class="generic-form-control"
+                        maxlength="190"
+                        placeholder="<?= $escape(t('decisions.edit.block_settings.vote_weighting_placeholder_question', [], $lang, $sourceLang)) ?>"
+                        data-omo-decision-vote-weight-question
+                        <?= $canEdit ? '' : 'disabled' ?>
+                    >
+                </label>
+                <div class="omo-decision-vote-weight-editor__toolbar">
+                    <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.block_settings.vote_weighting_options', [], $lang, $sourceLang)) ?></span>
+                    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-vote-weight-add <?= $canEdit ? '' : 'disabled' ?>><?= $escape(t('decisions.edit.block_settings.vote_weighting_add', [], $lang, $sourceLang)) ?></button>
+                </div>
+                <div class="omo-decision-vote-weight-editor__list" data-omo-decision-vote-weight-list></div>
+                <p class="omo-decision-vote-weight-editor__empty" data-omo-decision-vote-weight-empty hidden><?= $escape(t('decisions.edit.block_settings.vote_weighting_fixed_hint', [], $lang, $sourceLang)) ?></p>
+                <p class="omo-decision-vote-weight-editor__hint"><?= $escape(t('decisions.edit.block_settings.vote_weighting_fixed_hint', [], $lang, $sourceLang)) ?></p>
+            </div>
+            <template data-omo-decision-vote-weight-row-template>
+                <div class="omo-decision-vote-weight-editor__row" data-omo-decision-vote-weight-row>
+                    <label class="omo-decision-vote-weight-editor__field">
+                        <span class="generic-card-title generic-card-title--small" data-omo-decision-vote-weight-row-weight-title><?= $escape(t('decisions.edit.block_settings.vote_weighting_weight', [], $lang, $sourceLang)) ?></span>
+                        <input type="number" min="0.01" step="0.01" class="generic-form-control" data-omo-decision-vote-weight-row-weight>
+                    </label>
+                    <label class="omo-decision-vote-weight-editor__field">
+                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.block_settings.vote_weighting_label', [], $lang, $sourceLang)) ?></span>
+                        <input type="text" maxlength="90" class="generic-form-control" data-omo-decision-vote-weight-row-label>
+                    </label>
+                    <div class="omo-decision-vote-weight-editor__actions">
+                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-vote-weight-row-remove><?= $escape(t('decisions.edit.block_settings.vote_weighting_remove', [], $lang, $sourceLang)) ?></button>
+                    </div>
+                </div>
+            </template>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+}
+
+if (!function_exists('omoDecisionRenderVoteWeightResponseSelector')) {
+    function omoDecisionRenderVoteWeightResponseSelector($lang, array $sourceLang, $escape, array $config = [])
+    {
+        $selection = omoDecisionBlockSettingsResolveVoteWeightSelection(
+            $config['selected_weight'] ?? null,
+            [
+                'enabled' => !empty($config['enabled']),
+                'question' => $config['question'] ?? '',
+                'options' => $config['options'] ?? [],
+            ]
+        );
+
+        if (empty($selection['enabled'])) {
+            return '';
+        }
+
+        $question = trim((string)($config['question'] ?? ''));
+        if ($question === '') {
+            $question = t('decisions.edit.block_settings.vote_weighting_question', [], $lang, $sourceLang);
+        }
+
+        $options = array_values((array)($selection['options'] ?? []));
+        if (count($options) === 0) {
+            return '';
+        }
+
+        ob_start();
+        ?>
+        <div
+            class="omo-decision-vote-weight-selector generic-soft-panel generic-soft-panel--stack"
+            data-omo-decision-vote-weight-selector
+            data-selected-weight="<?= $escape((string)$selection['weight']) ?>"
+        >
+            <span class="generic-card-title generic-card-title--small"><?= $escape($question) ?></span>
+            <input type="hidden" name="vote_weight" value="<?= $escape((string)$selection['weight']) ?>" data-omo-decision-vote-weight-selector-input>
+            <div class="omo-decision-vote-weight-selector__buttons omo-segmented" role="group" aria-label="<?= $escape($question) ?>">
+                <?php foreach ($options as $option): ?>
+                <?php
+                $weight = omoDecisionBlockSettingsNormalizeVoteWeightNumber($option['weight'] ?? '1');
+                $label = trim((string)($option['label'] ?? ''));
+                if ($weight === '' || $label === '') {
+                    continue;
+                }
+                $isSelected = $weight === (string)$selection['weight'];
+                ?>
+                <button
+                    type="button"
+                    class="omo-segmented__button omo-decision-vote-weight-selector__button<?= $isSelected ? ' is-active' : '' ?>"
+                    data-omo-decision-vote-weight-selector-button="<?= $escape($weight) ?>"
+                    aria-pressed="<?= $isSelected ? 'true' : 'false' ?>"
+                >
+                    <span><?= $escape($label) ?></span>
+                    <span class="omo-decision-vote-weight-selector__weight"><?= $escape($weight) ?>x</span>
+                </button>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php
+        return ob_get_clean();
     }
 }
 

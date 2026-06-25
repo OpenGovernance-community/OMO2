@@ -48,6 +48,12 @@ $evaluationStartAt = trim((string)($_POST['evaluation_start_at'] ?? ''));
 $evaluationEndAt = trim((string)($_POST['evaluation_end_at'] ?? ''));
 $isAnonymous = !empty($_POST['is_anonymous']);
 $allowConsultationProposals = !empty($_POST['allow_consultation_proposals']);
+$mentionCustomizationEnabled = !empty($_POST['mention_customization_enabled']);
+$voteWeightConfig = omoDecisionBlockSettingsBuildVoteWeightConfig([
+    'enabled' => !empty($_POST['vote_weight_enabled']),
+    'question' => $_POST['vote_weight_question'] ?? '',
+    'options' => $_POST['vote_weight_options_json'] ?? [],
+]);
 $submittedMentionOptions = omoDecisionMajorityJudgmentBuildMentionOptionsFromInput(
     $_POST['mention_labels'] ?? [],
     $_POST['mention_active'] ?? []
@@ -112,15 +118,25 @@ $currentConfig = $decision instanceof DecisionProcess
     : [
         'is_anonymous' => $isAnonymous,
         'allow_consultation_proposals' => $allowConsultationProposals,
+        'mention_customization_enabled' => $mentionCustomizationEnabled,
         'mention_options' => $submittedMentionOptions,
+        'vote_weight_enabled' => !empty($voteWeightConfig['enabled']),
+        'vote_weight_question' => (string)$voteWeightConfig['question'],
+        'vote_weight_options' => (array)$voteWeightConfig['options'],
     ];
 $canEditSettings = !$coreLocked;
 $configToSave = [
     'is_anonymous' => $canEditSettings ? $isAnonymous : !empty($currentConfig['is_anonymous']),
     'allow_consultation_proposals' => $canEditSettings ? $allowConsultationProposals : !empty($currentConfig['allow_consultation_proposals']),
+    'mention_customization_enabled' => $canEditSettings
+        ? $mentionCustomizationEnabled
+        : !empty($currentConfig['mention_customization_enabled']),
     'mention_options' => $canEditSettings
         ? $submittedMentionOptions
         : (array)($currentConfig['mention_options'] ?? omoDecisionMajorityJudgmentGetDefaultMentionOptions()),
+    'vote_weight_enabled' => $canEditSettings ? !empty($voteWeightConfig['enabled']) : !empty($currentConfig['vote_weight_enabled']),
+    'vote_weight_question' => $canEditSettings ? (string)$voteWeightConfig['question'] : (string)($currentConfig['vote_weight_question'] ?? ''),
+    'vote_weight_options' => $canEditSettings ? (array)$voteWeightConfig['options'] : (array)($currentConfig['vote_weight_options'] ?? []),
 ];
 $normalizedConfigToSave = omoDecisionMajorityJudgmentBuildConfig($configToSave);
 $countedScaleSize = count((array)($normalizedConfigToSave['counted_scores'] ?? []));
