@@ -451,6 +451,477 @@
 				'organization_id' => (int)$organizationId,
 			]);
 		}
+
+		protected static function fetchSingleColumnIds($query, array $params, $columnName)
+		{
+			$rows = self::fetchAll($query, $params);
+			if (!is_array($rows)) {
+				return [];
+			}
+
+			$ids = [];
+			foreach ($rows as $row) {
+				$value = (int)($row[$columnName] ?? 0);
+				if ($value > 0) {
+					$ids[$value] = $value;
+				}
+			}
+
+			return array_values($ids);
+		}
+
+		protected static function deleteQuestionIfUnused($questionId)
+		{
+			$questionId = (int)$questionId;
+			if ($questionId <= 0) {
+				return false;
+			}
+
+			if (
+				self::tableExists('mission_question')
+				&& (int)self::fetchValue(
+					"SELECT COUNT(*) FROM mission_question WHERE IDquestion = :question_id",
+					['question_id' => $questionId]
+				) > 0
+			) {
+				return false;
+			}
+
+			if (self::tableExists('user_question_response')) {
+				$result = self::execute(
+					"DELETE FROM user_question_response WHERE IDquestion = :question_id",
+					['question_id' => $questionId]
+				);
+				if ($result === false) {
+					throw new \RuntimeException('question_response_delete_failed');
+				}
+			}
+
+			if (self::tableExists('question_choice')) {
+				$result = self::execute(
+					"DELETE FROM question_choice WHERE IDquestion = :question_id",
+					['question_id' => $questionId]
+				);
+				if ($result === false) {
+					throw new \RuntimeException('question_choice_delete_failed');
+				}
+			}
+
+			$question = new \dbObject\Question();
+			if ($question->load($questionId) && !$question->delete()) {
+				throw new \RuntimeException('question_delete_failed');
+			}
+
+			return true;
+		}
+
+		protected static function deleteHomeworkIfUnused($homeworkId)
+		{
+			$homeworkId = (int)$homeworkId;
+			if ($homeworkId <= 0) {
+				return false;
+			}
+
+			if (
+				self::tableExists('mission_homework')
+				&& (int)self::fetchValue(
+					"SELECT COUNT(*) FROM mission_homework WHERE IDhomework = :homework_id",
+					['homework_id' => $homeworkId]
+				) > 0
+			) {
+				return false;
+			}
+
+			if (self::tableExists('user_homework')) {
+				$result = self::execute(
+					"DELETE FROM user_homework WHERE IDhomework = :homework_id",
+					['homework_id' => $homeworkId]
+				);
+				if ($result === false) {
+					throw new \RuntimeException('user_homework_by_homework_delete_failed');
+				}
+			}
+
+			$homework = new \dbObject\Homework();
+			if ($homework->load($homeworkId) && !$homework->delete()) {
+				throw new \RuntimeException('homework_delete_failed');
+			}
+
+			return true;
+		}
+
+		protected static function deleteMissionIfUnused($missionId)
+		{
+			$missionId = (int)$missionId;
+			if ($missionId <= 0) {
+				return [
+					'deleted' => false,
+					'deletedQuestions' => 0,
+					'deletedHomeworks' => 0,
+				];
+			}
+
+			if (
+				self::tableExists('parcours_mission')
+				&& (int)self::fetchValue(
+					"SELECT COUNT(*) FROM parcours_mission WHERE IDmission = :mission_id",
+					['mission_id' => $missionId]
+				) > 0
+			) {
+				return [
+					'deleted' => false,
+					'deletedQuestions' => 0,
+					'deletedHomeworks' => 0,
+				];
+			}
+
+			$questionIds = self::tableExists('mission_question')
+				? self::fetchSingleColumnIds(
+					"SELECT IDquestion FROM mission_question WHERE IDmission = :mission_id",
+					['mission_id' => $missionId],
+					'IDquestion'
+				)
+				: [];
+			$homeworkIds = self::tableExists('mission_homework')
+				? self::fetchSingleColumnIds(
+					"SELECT IDhomework FROM mission_homework WHERE IDmission = :mission_id",
+					['mission_id' => $missionId],
+					'IDhomework'
+				)
+				: [];
+
+			if (self::tableExists('user_question_response')) {
+				$result = self::execute(
+					"DELETE FROM user_question_response WHERE IDmission = :mission_id",
+					['mission_id' => $missionId]
+				);
+				if ($result === false) {
+					throw new \RuntimeException('user_question_response_delete_failed');
+				}
+			}
+
+			if (self::tableExists('user_homework')) {
+				$result = self::execute(
+					"DELETE FROM user_homework WHERE IDmission = :mission_id",
+					['mission_id' => $missionId]
+				);
+				if ($result === false) {
+					throw new \RuntimeException('user_homework_by_mission_delete_failed');
+				}
+			}
+
+			if (self::tableExists('user_mission')) {
+				$result = self::execute(
+					"DELETE FROM user_mission WHERE IDmission = :mission_id",
+					['mission_id' => $missionId]
+				);
+				if ($result === false) {
+					throw new \RuntimeException('user_mission_by_mission_delete_failed');
+				}
+			}
+
+			if (self::tableExists('mission_dependencies')) {
+				$result = self::execute(
+					"DELETE FROM mission_dependencies
+					WHERE IDmission_parent = :mission_id
+					   OR IDmission_child = :mission_id",
+					['mission_id' => $missionId]
+				);
+				if ($result === false) {
+					throw new \RuntimeException('mission_dependencies_delete_failed');
+				}
+			}
+
+			if (self::tableExists('mission_question')) {
+				$result = self::execute(
+					"DELETE FROM mission_question WHERE IDmission = :mission_id",
+					['mission_id' => $missionId]
+				);
+				if ($result === false) {
+					throw new \RuntimeException('mission_question_delete_failed');
+				}
+			}
+
+			if (self::tableExists('mission_homework')) {
+				$result = self::execute(
+					"DELETE FROM mission_homework WHERE IDmission = :mission_id",
+					['mission_id' => $missionId]
+				);
+				if ($result === false) {
+					throw new \RuntimeException('mission_homework_delete_failed');
+				}
+			}
+
+			$mission = new \dbObject\Mission();
+			if ($mission->load($missionId) && !$mission->delete()) {
+				throw new \RuntimeException('mission_delete_failed');
+			}
+
+			$deletedQuestions = 0;
+			foreach ($questionIds as $questionId) {
+				if (self::deleteQuestionIfUnused($questionId)) {
+					$deletedQuestions++;
+				}
+			}
+
+			$deletedHomeworks = 0;
+			foreach ($homeworkIds as $homeworkId) {
+				if (self::deleteHomeworkIfUnused($homeworkId)) {
+					$deletedHomeworks++;
+				}
+			}
+
+			return [
+				'deleted' => true,
+				'deletedQuestions' => $deletedQuestions,
+				'deletedHomeworks' => $deletedHomeworks,
+			];
+		}
+
+		public function previewDeleteForOrganization($organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			$parcoursId = (int)$this->getId();
+			$ownerOrganizationId = (int)$this->get('IDorganization');
+
+			if ($organizationId <= 0 || $parcoursId <= 0) {
+				return [
+					'status' => false,
+					'action' => 'none',
+					'message' => 'Parcours ou organisation invalide.',
+				];
+			}
+
+			$link = \dbObject\OrganizationParcours::loadForOrganizationParcours($organizationId, $parcoursId);
+			if (!$link instanceof \dbObject\OrganizationParcours) {
+				return [
+					'status' => false,
+					'action' => 'none',
+					'message' => 'Ce parcours n est pas rattache a l organisation courante.',
+				];
+			}
+
+			if ($ownerOrganizationId <= 0 || $ownerOrganizationId !== $organizationId) {
+				return [
+					'status' => true,
+					'action' => 'detach',
+					'message' => 'Ce parcours appartient a une autre organisation. Il sera seulement detache de votre organisation.',
+					'confirmMessage' => 'Ce parcours appartient a une autre organisation.' . "\n\n" . 'Vous ne pouvez pas le supprimer definitivement.' . "\n\n" . 'Il sera seulement detache de votre organisation.' . "\n\n" . 'Voulez vous continuer ?',
+					'totalOrganizationCount' => 0,
+					'otherOrganizationCount' => 0,
+					'isOwner' => false,
+				];
+			}
+
+			$totalOrganizationCount = (int)self::fetchValue(
+				"SELECT COUNT(*)
+				FROM organization_parcours
+				WHERE IDparcours = :parcours_id",
+				['parcours_id' => $parcoursId]
+			);
+			$otherOrganizationCount = max(0, $totalOrganizationCount - 1);
+
+			if ($otherOrganizationCount > 0) {
+				return [
+					'status' => true,
+					'action' => 'detach',
+					'message' => $otherOrganizationCount === 1
+						? 'Ce parcours est utilise par 1 autre organisation. Il sera seulement detache de votre organisation.'
+						: 'Ce parcours est utilise par ' . $otherOrganizationCount . ' autres organisations. Il sera seulement detache de votre organisation.',
+					'confirmMessage' => $otherOrganizationCount === 1
+						? 'Ce parcours est utilise par 1 autre organisation.' . "\n\n" . 'Il sera seulement detache de votre organisation.' . "\n\n" . 'Voulez vous continuer ?'
+						: 'Ce parcours est utilise par ' . $otherOrganizationCount . ' autres organisations.' . "\n\n" . 'Il sera seulement detache de votre organisation.' . "\n\n" . 'Voulez vous continuer ?',
+					'totalOrganizationCount' => $totalOrganizationCount,
+					'otherOrganizationCount' => $otherOrganizationCount,
+					'isOwner' => true,
+				];
+			}
+
+			return [
+				'status' => true,
+				'action' => 'delete',
+				'message' => 'Ce parcours n est utilise que dans votre organisation. Il sera supprime definitivement avec ses elements non reutilises.',
+				'confirmMessage' => 'Ce parcours n est utilise que dans votre organisation.' . "\n\n" . 'Il sera supprime definitivement, avec ses missions, questions et devoirs devenus orphelins.' . "\n\n" . 'Etes vous sur de vouloir continuer ?',
+				'totalOrganizationCount' => $totalOrganizationCount,
+				'otherOrganizationCount' => 0,
+				'isOwner' => true,
+			];
+		}
+
+		public function deleteForOrganization($organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			$parcoursId = (int)$this->getId();
+			$preview = $this->previewDeleteForOrganization($organizationId);
+			if (!is_array($preview) || empty($preview['status'])) {
+				return is_array($preview)
+					? $preview
+					: [
+						'status' => false,
+						'action' => 'none',
+						'message' => 'Impossible de preparer la suppression de ce parcours.',
+					];
+			}
+
+			$pdo = self::getPdo();
+			if (!$pdo instanceof \PDO) {
+				return [
+					'status' => false,
+					'action' => 'none',
+					'message' => 'Connexion a la base indisponible.',
+				];
+			}
+
+			$startedTransaction = !$pdo->inTransaction();
+
+			try {
+				if ($startedTransaction) {
+					$pdo->beginTransaction();
+				}
+
+				$missionIds = self::tableExists('parcours_mission')
+					? self::fetchSingleColumnIds(
+						"SELECT IDmission FROM parcours_mission WHERE IDparcours = :parcours_id",
+						['parcours_id' => $parcoursId],
+						'IDmission'
+					)
+					: [];
+
+				$deleteLinkResult = self::execute(
+					"DELETE FROM organization_parcours
+					WHERE IDorganization = :organization_id
+					  AND IDparcours = :parcours_id",
+					[
+						'organization_id' => $organizationId,
+						'parcours_id' => $parcoursId,
+					]
+				);
+				if ($deleteLinkResult === false) {
+					throw new \RuntimeException('organization_parcours_delete_failed');
+				}
+
+				if (($preview['action'] ?? 'none') === 'detach' && empty($preview['isOwner'])) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->commit();
+					}
+
+					return [
+						'status' => true,
+						'action' => 'detach',
+						'message' => 'Le parcours a ete detache de votre organisation.',
+						'remainingOrganizationCount' => 0,
+						'deletedMissionCount' => 0,
+						'deletedQuestionCount' => 0,
+						'deletedHomeworkCount' => 0,
+					];
+				}
+
+				$remainingOrganizationCount = (int)self::fetchValue(
+					"SELECT COUNT(*)
+					FROM organization_parcours
+					WHERE IDparcours = :parcours_id",
+					['parcours_id' => $parcoursId]
+				);
+
+				if ($remainingOrganizationCount > 0) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->commit();
+					}
+
+					return [
+						'status' => true,
+						'action' => 'detach',
+						'message' => $remainingOrganizationCount === 1
+							? 'Le parcours a ete detache de votre organisation. Il reste utilise dans 1 autre organisation.'
+							: 'Le parcours a ete detache de votre organisation. Il reste utilise dans ' . $remainingOrganizationCount . ' autres organisations.',
+						'remainingOrganizationCount' => $remainingOrganizationCount,
+						'deletedMissionCount' => 0,
+						'deletedQuestionCount' => 0,
+						'deletedHomeworkCount' => 0,
+					];
+				}
+
+				if (self::tableExists('user_homework')) {
+					$result = self::execute(
+						"DELETE FROM user_homework WHERE IDparcours = :parcours_id",
+						['parcours_id' => $parcoursId]
+					);
+					if ($result === false) {
+						throw new \RuntimeException('user_homework_by_parcours_delete_failed');
+					}
+				}
+
+				if (self::tableExists('user_mission')) {
+					$result = self::execute(
+						"DELETE FROM user_mission WHERE IDparcours = :parcours_id",
+						['parcours_id' => $parcoursId]
+					);
+					if ($result === false) {
+						throw new \RuntimeException('user_mission_by_parcours_delete_failed');
+					}
+				}
+
+				if (self::tableExists('mission_dependencies')) {
+					$result = self::execute(
+						"DELETE FROM mission_dependencies WHERE IDparcours = :parcours_id",
+						['parcours_id' => $parcoursId]
+					);
+					if ($result === false) {
+						throw new \RuntimeException('mission_dependencies_by_parcours_delete_failed');
+					}
+				}
+
+				if (self::tableExists('parcours_mission')) {
+					$result = self::execute(
+						"DELETE FROM parcours_mission WHERE IDparcours = :parcours_id",
+						['parcours_id' => $parcoursId]
+					);
+					if ($result === false) {
+						throw new \RuntimeException('parcours_mission_delete_failed');
+					}
+				}
+
+				if (!parent::delete()) {
+					throw new \RuntimeException('parcours_delete_failed');
+				}
+
+				$deletedMissionCount = 0;
+				$deletedQuestionCount = 0;
+				$deletedHomeworkCount = 0;
+				foreach ($missionIds as $missionId) {
+					$missionDeleteResult = self::deleteMissionIfUnused($missionId);
+					if (!empty($missionDeleteResult['deleted'])) {
+						$deletedMissionCount++;
+						$deletedQuestionCount += (int)($missionDeleteResult['deletedQuestions'] ?? 0);
+						$deletedHomeworkCount += (int)($missionDeleteResult['deletedHomeworks'] ?? 0);
+					}
+				}
+
+				if ($startedTransaction && $pdo->inTransaction()) {
+					$pdo->commit();
+				}
+
+				return [
+					'status' => true,
+					'action' => 'delete',
+					'message' => 'Le parcours et ses elements non reutilises ont ete supprimes.',
+					'remainingOrganizationCount' => 0,
+					'deletedMissionCount' => $deletedMissionCount,
+					'deletedQuestionCount' => $deletedQuestionCount,
+					'deletedHomeworkCount' => $deletedHomeworkCount,
+				];
+			} catch (\Throwable $exception) {
+				if ($pdo->inTransaction()) {
+					$pdo->rollBack();
+				}
+
+				return [
+					'status' => false,
+					'action' => 'none',
+					'message' => 'Impossible de supprimer ce parcours pour le moment.',
+				];
+			}
+		}
 	}
 
 ?>
