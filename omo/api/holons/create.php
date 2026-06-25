@@ -180,6 +180,34 @@ const mediaFields = {
     banner: null
 };
 
+function waitForGlobalLibrary(globalKey, timeoutMs) {
+    const key = String(globalKey || '').trim();
+    const maxWait = Number(timeoutMs || 4000);
+    if (key !== '' && window[key]) {
+        return Promise.resolve(true);
+    }
+
+    return new Promise(function (resolve) {
+        const startedAt = Date.now();
+
+        function checkAvailability() {
+            if (key !== '' && window[key]) {
+                resolve(true);
+                return;
+            }
+
+            if (Date.now() - startedAt >= maxWait) {
+                resolve(false);
+                return;
+            }
+
+            window.setTimeout(checkAvailability, 30);
+        }
+
+        checkAvailability();
+    });
+}
+
 // Échappe texte HTML
 function escapeHtml(value) {
     return String(value || '')
@@ -1006,41 +1034,52 @@ function saveHolon(event) {
 
     clearStatus();
 
-    const payload = {
-        templateId: Number(elements.template.value || 0),
-        name: String(elements.name.value || '').trim(),
-        color: Boolean(elements.colorEnabled && elements.colorEnabled.checked)
-            ? String(elements.color && elements.color.value ? elements.color.value : '')
-            : '',
-        icon: mediaFields.icon ? mediaFields.icon.getValue() : '',
-        banner: mediaFields.banner ? mediaFields.banner.getValue() : '',
-        properties: readProperties()
-    };
-
-    if (isTemplateEditing()) {
-        payload.visible = Boolean(elements.visible && elements.visible.checked);
-        payload.mandatory = Boolean(elements.mandatory && elements.mandatory.checked);
-        payload.link = Boolean(elements.link && elements.link.checked);
+    const pendingMediaFlushes = [];
+    if (mediaFields.icon && typeof mediaFields.icon.flushPending === 'function') {
+        pendingMediaFlushes.push(mediaFields.icon.flushPending());
+    }
+    if (mediaFields.banner && typeof mediaFields.banner.flushPending === 'function') {
+        pendingMediaFlushes.push(mediaFields.banner.flushPending());
     }
 
-    let saveUrl = '/omo/api/holons/save.php?cid=' + Number(state.data.contextHolonId || 0);
-    if (getMode() === 'edit' && Number(state.data.holonId || 0) > 0) {
-        saveUrl += '&hid=' + Number(state.data.holonId || 0);
-    }
+    Promise.all(pendingMediaFlushes)
+        .then(function () {
+            const payload = {
+                templateId: Number(elements.template.value || 0),
+                name: String(elements.name.value || '').trim(),
+                color: Boolean(elements.colorEnabled && elements.colorEnabled.checked)
+                    ? String(elements.color && elements.color.value ? elements.color.value : '')
+                    : '',
+                icon: mediaFields.icon ? mediaFields.icon.getValue() : '',
+                banner: mediaFields.banner ? mediaFields.banner.getValue() : '',
+                properties: readProperties()
+            };
 
-    const formData = new FormData();
-    formData.append('payload', JSON.stringify(payload));
-    if (mediaFields.icon) {
-        mediaFields.icon.appendToFormData(formData);
-    }
-    if (mediaFields.banner) {
-        mediaFields.banner.appendToFormData(formData);
-    }
+            if (isTemplateEditing()) {
+                payload.visible = Boolean(elements.visible && elements.visible.checked);
+                payload.mandatory = Boolean(elements.mandatory && elements.mandatory.checked);
+                payload.link = Boolean(elements.link && elements.link.checked);
+            }
 
-    fetch(saveUrl, {
-        method: 'POST',
-        body: formData
-    })
+            let saveUrl = '/omo/api/holons/save.php?cid=' + Number(state.data.contextHolonId || 0);
+            if (getMode() === 'edit' && Number(state.data.holonId || 0) > 0) {
+                saveUrl += '&hid=' + Number(state.data.holonId || 0);
+            }
+
+            const formData = new FormData();
+            formData.append('payload', JSON.stringify(payload));
+            if (mediaFields.icon) {
+                mediaFields.icon.appendToFormData(formData);
+            }
+            if (mediaFields.banner) {
+                mediaFields.banner.appendToFormData(formData);
+            }
+
+            return fetch(saveUrl, {
+                method: 'POST',
+                body: formData
+            });
+        })
         .then(function (response) {
             return response.json().then(function (data) {
                 return {
@@ -1190,7 +1229,12 @@ function saveHolon(event) {
         });
 }
 
-fillFormFromState();
+Promise.all([
+    waitForGlobalLibrary('omoSizedImageField', 5000),
+    waitForGlobalLibrary('omoSimpleHtmlField', 5000)
+]).finally(function () {
+    fillFormFromState();
+});
 
 elements.template.addEventListener('change', function () {
     renderEditorMeta(getCurrentTemplate(), readProperties());

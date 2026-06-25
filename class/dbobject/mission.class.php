@@ -307,36 +307,40 @@
 			";
 		}
 
-		protected static function buildMissionIdsDependencyAvailabilitySql(array &$params, array $donePlaceholders, $parcoursId)
+		protected static function buildMissionIdsDependencyAvailabilitySql(array &$params, array $doneMissionIds, $parcoursId)
 		{
-			$depParcoursIdA = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
-			$depParcoursIdB = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
-			$depParcoursIdC = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
-			$depParcoursIdD = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
-			$depParcoursIdE = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
-			$depParcoursIdF = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
-			$completedDependencySql = count($donePlaceholders) > 0
-				? "SELECT 1
+			$doneMissionIds = self::normalizeMissionIds($doneMissionIds);
+			$depParcoursIdNoDependency = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+			$depParcoursIdHasRequired = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+			$depParcoursIdNoRequired = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+
+			if (count($doneMissionIds) > 0) {
+				$donePlaceholdersCompleted = self::buildMissionIdPlaceholders($doneMissionIds, 'done_dep_completed_', $params);
+				$donePlaceholdersUnmetRequired = self::buildMissionIdPlaceholders($doneMissionIds, 'done_dep_unmet_', $params);
+				$depParcoursIdCompleted = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+				$depParcoursIdUnmetRequired = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+				$completedDependencySql = "SELECT 1
 					FROM mission_dependencies md
 					WHERE md.IDmission_child = m.id
-					  AND md.IDparcours = $depParcoursIdA
-					  AND md.IDmission_parent IN (" . implode(', ', $donePlaceholders) . ")"
-				: "SELECT 1
+					  AND md.IDparcours = $depParcoursIdCompleted
+					  AND md.IDmission_parent IN (" . implode(', ', $donePlaceholdersCompleted) . ")";
+				$unmetRequiredDependencySql = "SELECT 1
+					FROM mission_dependencies md
+					WHERE md.IDmission_child = m.id
+					  AND md.IDparcours = $depParcoursIdUnmetRequired
+					  AND md.required = 1
+					  AND md.IDmission_parent NOT IN (" . implode(', ', $donePlaceholdersUnmetRequired) . ")";
+			} else {
+				$depParcoursIdUnmetRequired = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+				$completedDependencySql = "SELECT 1
 					FROM mission_dependencies md
 					WHERE 1 = 0";
-
-			$unmetRequiredDependencySql = count($donePlaceholders) > 0
-				? "SELECT 1
+				$unmetRequiredDependencySql = "SELECT 1
 					FROM mission_dependencies md
 					WHERE md.IDmission_child = m.id
-					  AND md.IDparcours = $depParcoursIdB
-					  AND md.required = 1
-					  AND md.IDmission_parent NOT IN (" . implode(', ', $donePlaceholders) . ")"
-				: "SELECT 1
-					FROM mission_dependencies md
-					WHERE md.IDmission_child = m.id
-					  AND md.IDparcours = $depParcoursIdC
+					  AND md.IDparcours = $depParcoursIdUnmetRequired
 					  AND md.required = 1";
+			}
 
 			return "
 				(
@@ -344,7 +348,7 @@
 						SELECT 1
 						FROM mission_dependencies md
 						WHERE md.IDmission_child = m.id
-						  AND md.IDparcours = $depParcoursIdD
+						  AND md.IDparcours = $depParcoursIdNoDependency
 					)
 					OR
 					(
@@ -352,7 +356,7 @@
 							SELECT 1
 							FROM mission_dependencies md
 							WHERE md.IDmission_child = m.id
-							  AND md.IDparcours = $depParcoursIdE
+							  AND md.IDparcours = $depParcoursIdHasRequired
 							  AND md.required = 1
 						)
 						AND NOT EXISTS (
@@ -365,7 +369,7 @@
 							SELECT 1
 							FROM mission_dependencies md
 							WHERE md.IDmission_child = m.id
-							  AND md.IDparcours = $depParcoursIdF
+							  AND md.IDparcours = $depParcoursIdNoRequired
 							  AND md.required = 1
 						)
 						AND EXISTS (
@@ -411,8 +415,7 @@
 				'pm_parcours_id' => (int)$parcoursId,
 			];
 			$donePlaceholdersExclude = self::buildMissionIdPlaceholders($doneMissionIds, 'done_exclude_', $params);
-			$donePlaceholdersDeps = self::buildMissionIdPlaceholders($doneMissionIds, 'done_dep_', $params);
-			$dependencyAvailabilitySql = self::buildMissionIdsDependencyAvailabilitySql($params, $donePlaceholdersDeps, $parcoursId);
+			$dependencyAvailabilitySql = self::buildMissionIdsDependencyAvailabilitySql($params, $doneMissionIds, $parcoursId);
 			$doneSql = count($donePlaceholdersExclude) > 0
 				? "AND m.id NOT IN (" . implode(', ', $donePlaceholdersExclude) . ")"
 				: '';
@@ -467,8 +470,7 @@
 				'pm_parcours_id' => (int)$parcoursId,
 			];
 			$donePlaceholdersExclude = self::buildMissionIdPlaceholders($doneMissionIds, 'done_exclude_', $params);
-			$donePlaceholdersDeps = self::buildMissionIdPlaceholders($doneMissionIds, 'done_dep_', $params);
-			$dependencyAvailabilitySql = self::buildMissionIdsDependencyAvailabilitySql($params, $donePlaceholdersDeps, $parcoursId);
+			$dependencyAvailabilitySql = self::buildMissionIdsDependencyAvailabilitySql($params, $doneMissionIds, $parcoursId);
 			$doneSql = count($donePlaceholdersExclude) > 0
 				? "AND m.id NOT IN (" . implode(', ', $donePlaceholdersExclude) . ")"
 				: '';

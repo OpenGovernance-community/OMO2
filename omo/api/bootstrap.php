@@ -44,6 +44,42 @@ if (!function_exists('omoApiCanBypassOrganizationAccessCheck')) {
     }
 }
 
+if (!function_exists('omoApiCanUsePublicBasicLmsAccess')) {
+    function omoApiCanUsePublicBasicLmsAccess()
+    {
+        if (trim((string)($_REQUEST['catalog'] ?? '')) !== 'basic') {
+            return false;
+        }
+
+        $requestPath = trim((string)commonGetRequestPath());
+        if ($requestPath === '') {
+            return false;
+        }
+
+        $normalizedRequestPath = rtrim($requestPath, '/');
+        if ($normalizedRequestPath === '') {
+            $normalizedRequestPath = '/';
+        }
+
+        $allowedPaths = [
+            '/omo/api/lms',
+            '/omo/api/lms/',
+            '/omo/api/lms/index.php',
+            '/omo/api/lms/parcours.php',
+            '/omo/api/lms/getmissions.php',
+            '/omo/api/lms/getmissions_done.php',
+            '/omo/api/lms/getmissions_next.php',
+            '/omo/api/lms/getMissionDetail.php',
+            '/omo/api/lms/action.php',
+            '/omo/api/lms/homework_action.php',
+            '/omo/api/lms/getMissionQuestions.php',
+        ];
+
+        return in_array($requestPath, $allowedPaths, true)
+            || in_array($normalizedRequestPath, $allowedPaths, true);
+    }
+}
+
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: 0');
@@ -77,7 +113,7 @@ if ($shareLink) {
 
 commonRestoreRememberedUser();
 
-if (!commonGetCurrentUserId() && !commonCanAccessWithoutLogin() && !$shareLink && !$publicDecisionTokenAccess) {
+if (!commonGetCurrentUserId() && !commonCanAccessWithoutLogin() && !$shareLink && !$publicDecisionTokenAccess && !omoApiCanUsePublicBasicLmsAccess()) {
     http_response_code(401);
     echo "Unauthorized";
     exit;
@@ -87,6 +123,7 @@ if (
     !commonCanAccessWithoutLogin()
     && !$shareLink
     && !$publicDecisionTokenAccess
+    && !omoApiCanUsePublicBasicLmsAccess()
     && !omoApiCanBypassOrganizationAccessCheck()
     && !commonCurrentUserHasOrganizationAccess()
 ) {

@@ -144,7 +144,9 @@ $response->set('parameters', omoDecisionVoteBuildResponseParameters(
     $choiceMode,
     $orderedProposalIds,
     $selectedPositions,
-    $selectedTitles
+    $selectedTitles,
+    $_POST['vote_weight'] ?? null,
+    $voteConfig
 ));
 
 $saveResult = $response->save();

@@ -79,6 +79,7 @@ if (!function_exists('omoDecisionMajorityJudgmentNormalizeMentionOptions')) {
                 'active' => $active,
                 'is_no_opinion' => $score === omoDecisionMajorityJudgmentGetNoOpinionScore(),
                 'default_label' => $defaultLabel,
+                'default_active' => (int)$defaultOption['active'] === 1,
             ];
         }
 
@@ -95,13 +96,14 @@ if (!function_exists('omoDecisionMajorityJudgmentBuildMentionOptionsFromInput'))
         foreach ($defaultOptions as $score => $defaultOption) {
             $rawLabel = is_array($labelInput) ? trim((string)($labelInput[$score] ?? '')) : '';
             $defaultLabel = (string)$defaultOption['label'];
-            $normalizedOptions[$score] = [
-                'score' => $score,
-                'label' => $rawLabel !== '' ? $rawLabel : $defaultLabel,
-                'active' => is_array($activeInput) ? !empty($activeInput[$score]) : ((int)$defaultOption['active'] === 1),
-                'is_no_opinion' => $score === omoDecisionMajorityJudgmentGetNoOpinionScore(),
-                'default_label' => $defaultLabel,
-            ];
+        $normalizedOptions[$score] = [
+            'score' => $score,
+            'label' => $rawLabel !== '' ? $rawLabel : $defaultLabel,
+            'active' => is_array($activeInput) ? !empty($activeInput[$score]) : ((int)$defaultOption['active'] === 1),
+            'is_no_opinion' => $score === omoDecisionMajorityJudgmentGetNoOpinionScore(),
+            'default_label' => $defaultLabel,
+            'default_active' => (int)$defaultOption['active'] === 1,
+        ];
         }
 
         return $normalizedOptions;
@@ -218,9 +220,18 @@ if (!function_exists('omoDecisionMajorityJudgmentBuildConfig')) {
             $methodParameters = omoDecisionModuleGetMethodParameters($parameters, omoDecisionMajorityJudgmentGetMethodKey());
         }
 
+        $defaultMentionOptions = omoDecisionMajorityJudgmentNormalizeMentionOptions(
+            omoDecisionMajorityJudgmentGetDefaultMentionOptions()
+        );
         $mentionOptions = omoDecisionMajorityJudgmentNormalizeMentionOptions(
             $methodParameters['mention_options'] ?? ($methodParameters['mentions'] ?? [])
         );
+        $mentionCustomizationEnabled = array_key_exists('mention_customization_enabled', $methodParameters)
+            ? !empty($methodParameters['mention_customization_enabled'])
+            : (json_encode($mentionOptions) !== json_encode($defaultMentionOptions));
+        if (!$mentionCustomizationEnabled) {
+            $mentionOptions = $defaultMentionOptions;
+        }
         $mentions = [];
         $allMentions = [];
         $activeScores = [];
@@ -245,6 +256,8 @@ if (!function_exists('omoDecisionMajorityJudgmentBuildConfig')) {
             $countedScores[] = $score;
         }
 
+        $voteWeightConfig = omoDecisionBlockSettingsBuildVoteWeightConfig($methodParameters);
+
         return [
             'is_anonymous' => !empty($methodParameters['is_anonymous']),
             'allow_consultation_proposals' => !empty($methodParameters['allow_consultation_proposals']),
@@ -252,12 +265,17 @@ if (!function_exists('omoDecisionMajorityJudgmentBuildConfig')) {
             'mentions' => $mentions,
             'all_mentions' => $allMentions,
             'mention_options' => $mentionOptions,
+            'mention_customization_enabled' => $mentionCustomizationEnabled,
             'active_scores' => $activeScores,
             'counted_scores' => $countedScores,
             'has_no_opinion' => $hasNoOpinion,
             'no_opinion_score' => $noOpinionScore,
             'no_opinion_label' => $hasNoOpinion ? (string)($allMentions[$noOpinionScore] ?? '') : '',
             'scale_summary' => omoDecisionMajorityJudgmentBuildScaleSummaryFromOptions($mentionOptions),
+            'vote_weight_enabled' => !empty($voteWeightConfig['enabled']),
+            'vote_weight_question' => (string)$voteWeightConfig['question'],
+            'vote_weight_options' => (array)$voteWeightConfig['options'],
+            'vote_weight_options_text' => (string)$voteWeightConfig['options_text'],
         ];
     }
 }
@@ -386,15 +404,25 @@ if (!function_exists('omoDecisionMajorityJudgmentMergeConfigIntoParameters')) {
 
         $methodParameters['is_anonymous'] = !empty($normalizedConfig['is_anonymous']) ? 1 : 0;
         $methodParameters['allow_consultation_proposals'] = !empty($normalizedConfig['allow_consultation_proposals']) ? 1 : 0;
+        $methodParameters['mention_customization_enabled'] = !empty($normalizedConfig['mention_customization_enabled']) ? 1 : 0;
         $methodParameters['scale_size'] = (int)count((array)($normalizedConfig['active_scores'] ?? []));
         $methodParameters['mention_options'] = [];
 
-        foreach ((array)($normalizedConfig['mention_options'] ?? []) as $score => $option) {
+        $mentionOptionsToSave = !empty($normalizedConfig['mention_customization_enabled'])
+            ? (array)($normalizedConfig['mention_options'] ?? [])
+            : omoDecisionMajorityJudgmentNormalizeMentionOptions(omoDecisionMajorityJudgmentGetDefaultMentionOptions());
+        foreach ($mentionOptionsToSave as $score => $option) {
             $methodParameters['mention_options'][(string)$score] = [
                 'label' => (string)($option['label'] ?? ''),
                 'active' => !empty($option['active']) ? 1 : 0,
             ];
         }
+
+        $methodParameters = omoDecisionBlockSettingsMergeVoteWeightConfig($methodParameters, [
+            'vote_weight_enabled' => !empty($normalizedConfig['vote_weight_enabled']),
+            'vote_weight_question' => $normalizedConfig['vote_weight_question'] ?? '',
+            'vote_weight_options' => $normalizedConfig['vote_weight_options'] ?? [],
+        ]);
 
         foreach ($extra as $extraKey => $extraValue) {
             $methodParameters[$extraKey] = $extraValue;
@@ -430,13 +458,21 @@ if (!function_exists('omoDecisionMajorityJudgmentExtractScores')) {
     }
 }
 
+if (!function_exists('omoDecisionMajorityJudgmentExtractVoteWeightSelection')) {
+    function omoDecisionMajorityJudgmentExtractVoteWeightSelection($response, $configOrParameters = null)
+    {
+        return omoDecisionBlockSettingsExtractResponseVoteWeightSelection($response, omoDecisionMajorityJudgmentGetMethodKey(), $configOrParameters);
+    }
+}
+
 if (!function_exists('omoDecisionMajorityJudgmentBuildResponseParameters')) {
-    function omoDecisionMajorityJudgmentBuildResponseParameters(array $scoreMap, array $proposalMeta = [], $configOrParameters = null)
+    function omoDecisionMajorityJudgmentBuildResponseParameters(array $scoreMap, array $proposalMeta = [], $configOrParameters = null, $selectedWeight = null)
     {
         $config = omoDecisionMajorityJudgmentBuildConfig($configOrParameters);
         $mentions = (array)($config['all_mentions'] ?? omoDecisionMajorityJudgmentGetMentions(null, true));
         $normalizedScores = [];
         $scoreDetails = [];
+        $weightPayload = omoDecisionBlockSettingsBuildResponseVoteWeightPayload($selectedWeight, $config);
 
         foreach ($scoreMap as $proposalId => $score) {
             $proposalId = (int)$proposalId;
@@ -459,16 +495,21 @@ if (!function_exists('omoDecisionMajorityJudgmentBuildResponseParameters')) {
             omoDecisionMajorityJudgmentGetMethodKey() => [
                 'scores' => $normalizedScores,
                 'details' => $scoreDetails,
+                'vote_weight' => (string)$weightPayload['vote_weight'],
+                'vote_weight_label' => (string)$weightPayload['vote_weight_label'],
             ],
         ];
     }
 }
 
 if (!function_exists('omoDecisionMajorityJudgmentBuildStats')) {
-    function omoDecisionMajorityJudgmentBuildStats(array $proposalObjects, $responses, $configOrParameters = null)
+    function omoDecisionMajorityJudgmentBuildStats(array $proposalObjects, $responses, $configOrParameters = null, $weighted = null)
     {
         $config = omoDecisionMajorityJudgmentBuildConfig($configOrParameters);
         $mentions = (array)($config['all_mentions'] ?? []);
+        $useWeighted = $weighted === null ? !empty($config['vote_weight_enabled']) : (bool)$weighted;
+        $scale = omoDecisionBlockSettingsGetVoteWeightScale(['options' => $config['vote_weight_options'] ?? []]);
+        $effectiveScale = $useWeighted ? $scale : 1;
         $stats = [];
 
         foreach ($proposalObjects as $proposal) {
@@ -480,17 +521,25 @@ if (!function_exists('omoDecisionMajorityJudgmentBuildStats')) {
                 'no_opinion_count' => 0,
                 'majority_score' => null,
                 'majority_label' => '',
+                'scale' => $effectiveScale,
             ];
         }
 
         foreach ($responses as $response) {
             $scores = omoDecisionMajorityJudgmentExtractScores($response);
+            $weightSelection = $useWeighted
+                ? omoDecisionMajorityJudgmentExtractVoteWeightSelection($response, $config)
+                : ['units' => 1];
+            $weightUnits = max(0, (int)($weightSelection['units'] ?? $effectiveScale));
+            if ($weightUnits <= 0) {
+                $weightUnits = $effectiveScale;
+            }
             foreach ($scores as $proposalId => $score) {
                 if (!isset($stats[$proposalId])) {
                     continue;
                 }
-                $stats[$proposalId]['distribution'][$score]++;
-                $stats[$proposalId]['count']++;
+                $stats[$proposalId]['distribution'][$score] += $weightUnits;
+                $stats[$proposalId]['count'] += $weightUnits;
             }
         }
 

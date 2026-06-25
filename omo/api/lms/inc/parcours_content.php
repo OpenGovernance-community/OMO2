@@ -37,6 +37,21 @@ const lmsViewer = {
 
 let branchState = {};
 
+function buildLmsUrlWithParams(baseUrl, params) {
+    const targetUrl = new URL(String(baseUrl || ''), window.location.origin);
+
+    Object.keys(params || {}).forEach(function (key) {
+        const value = params[key];
+        if (value === null || value === undefined || value === '') {
+            return;
+        }
+
+        targetUrl.searchParams.set(key, String(value));
+    });
+
+    return targetUrl.pathname + targetUrl.search + targetUrl.hash;
+}
+
 function getAnonymousProgressKey() {
     return `lms_progress_${lmsViewer.organizationId}_${parcoursId}`;
 }
@@ -178,12 +193,16 @@ function setView(view) {
 }
 
 function loadMissions() {
-    let url = <?php echo json_encode(omoLmsBuildPath('/getmissions.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+    let url = <?php echo json_encode(lmsBuildLocalPath('/getmissions.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 
-    if (currentView === 'done') url = <?php echo json_encode(omoLmsBuildPath('/getmissions_done.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
-    if (currentView === 'next') url = <?php echo json_encode(omoLmsBuildPath('/getmissions_next.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+    if (currentView === 'done') url = <?php echo json_encode(lmsBuildLocalPath('/getmissions_done.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+    if (currentView === 'next') url = <?php echo json_encode(lmsBuildLocalPath('/getmissions_next.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 
-    fetch(`${url}?parcours_id=${parcoursId}${buildDoneIdsParam()}`)
+    const requestUrl = buildLmsUrlWithParams(url, {
+        parcours_id: parcoursId
+    }) + buildDoneIdsParam().replace(/^&/, '&');
+
+    fetch(requestUrl)
         .then(res => res.json())
         .then(data => {
             document.getElementById('missions').innerHTML = data.html || '';
@@ -201,7 +220,7 @@ function markDone(missionId) {
         ? getAnonymousDoneHomeworkIds(missionId)
         : [];
 
-    fetch('action.php', {
+    fetch(<?php echo json_encode(lmsBuildLocalPath('/action.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `mission_id=${missionId}&parcours_id=${parcoursId}&done_homework_ids=${encodeURIComponent(doneHomeworkIds.join(','))}`
@@ -244,7 +263,13 @@ let currentMissionId = null;
 function viewMission(missionId) {
     currentMissionId = missionId;
 
-    fetch(<?php echo json_encode(omoLmsBuildPath('/getMissionDetail.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?> + `?mission_id=${missionId}&parcours_id=${parcoursId}`)
+    fetch(buildLmsUrlWithParams(
+        <?php echo json_encode(lmsBuildLocalPath('/getMissionDetail.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>,
+        {
+            mission_id: missionId,
+            parcours_id: parcoursId
+        }
+    ))
         .then(res => res.text())
         .then(html => {
             openDrawer(html);
