@@ -179,6 +179,81 @@
 			return $items;
 		}
 
+		public static function hasConnectedUserId($userId)
+		{
+			$userId = (int)$userId;
+			if ($userId <= 0 || !self::isStorageAvailable()) {
+				return false;
+			}
+
+			$count = (int)self::fetchValue(
+				"SELECT COUNT(*)
+				 FROM `user_patreon`
+				 WHERE `IDuser` = :user_id
+				   AND `is_connected` = 1
+				   AND COALESCE(`refresh_token`, '') <> ''",
+				[
+					'user_id' => $userId,
+				]
+			);
+
+			return $count > 0;
+		}
+
+		public static function hasConnectedEmails(array $emails)
+		{
+			if (!self::isStorageAvailable()) {
+				return false;
+			}
+
+			$normalizedEmails = [];
+			foreach ($emails as $email) {
+				$email = trim((string)$email);
+				if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+					continue;
+				}
+
+				$normalizedEmail = function_exists('mb_strtolower')
+					? mb_strtolower($email, 'UTF-8')
+					: strtolower($email);
+				$normalizedEmails[$normalizedEmail] = $normalizedEmail;
+			}
+
+			if ($normalizedEmails === []) {
+				return false;
+			}
+
+			$params = [];
+			$userConditions = [];
+			$patreonConditions = [];
+			$index = 0;
+
+			foreach (array_values($normalizedEmails) as $normalizedEmail) {
+				$userPlaceholder = 'user_email_' . $index;
+				$patreonPlaceholder = 'patreon_email_' . $index;
+				$userConditions[] = 'LOWER(u.`email`) = :' . $userPlaceholder;
+				$patreonConditions[] = 'LOWER(up.`email`) = :' . $patreonPlaceholder;
+				$params[$userPlaceholder] = $normalizedEmail;
+				$params[$patreonPlaceholder] = $normalizedEmail;
+				$index++;
+			}
+
+			$count = (int)self::fetchValue(
+				"SELECT COUNT(*)
+				 FROM `user_patreon` up
+				 LEFT JOIN `user` u ON u.`id` = up.`IDuser`
+				 WHERE up.`is_connected` = 1
+				   AND COALESCE(up.`refresh_token`, '') <> ''
+				   AND (
+				   		" . implode(' OR ', $userConditions) . "
+				   		OR " . implode(' OR ', $patreonConditions) . "
+				   )",
+				$params
+			);
+
+			return $count > 0;
+		}
+
 		public static function getHomepageContributorCards($limit = 5)
 		{
 			$limit = max(1, (int)$limit);

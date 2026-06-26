@@ -717,6 +717,44 @@ $resolveHolonLabel = static function ($eventHolonId) use (&$holonLabelsById) {
     return (string)$holonLabelsById[$eventHolonId];
 };
 
+$eventAudienceMatchByHolonId = [];
+$eventPersonallyRelevantForViewer = static function (Event $event) use ($organizationId, $currentUserId, &$eventAudienceMatchByHolonId) {
+    if ($currentUserId <= 0) {
+        return true;
+    }
+
+    if ((int)$event->get('IDorganization') !== $organizationId) {
+        return false;
+    }
+
+    $eventHolonId = (int)$event->get('IDholon');
+    if ($eventHolonId <= 0) {
+        return true;
+    }
+
+    if (!array_key_exists($eventHolonId, $eventAudienceMatchByHolonId)) {
+        $eventAudienceMatchByHolonId[$eventHolonId] = false;
+
+        $eventHolon = new Holon();
+        if (
+            $eventHolon->load($eventHolonId)
+            && (bool)$eventHolon->get('active')
+            && (bool)$eventHolon->get('visible')
+        ) {
+            $eventAudienceMatchByHolonId[$eventHolonId] = in_array(
+                $currentUserId,
+                $eventHolon->getAssociatedMemberUserIds([
+                    'organizationId' => $organizationId,
+                    'skipPermissionFilter' => true,
+                ]),
+                true
+            );
+        }
+    }
+
+    return $eventAudienceMatchByHolonId[$eventHolonId];
+};
+
 $buildTimelineDays = static function (\DateTimeImmutable $rangeStart, int $dayCount) use ($todayDayKey) {
     $days = [];
     $cursor = $rangeStart;
@@ -774,6 +812,7 @@ foreach ($events as $event) {
     $isAllDay = (bool)$event->get('is_all_day');
     $isInCurrentContext = !$canToggleScope || $eventHolonId === 0 || $eventHolonId === $currentHolonId;
     $isInDescendantContext = $isInCurrentContext || ($eventHolonId > 0 && isset($descendantHolonIdMap[$eventHolonId]));
+    $isPersonallyRelevant = $eventPersonallyRelevantForViewer($event);
 
     foreach ($calendarScopes as $scopeKey) {
         $includeEvent = $scopeKey === 'global'
@@ -782,7 +821,7 @@ foreach ($events as $event) {
             continue;
         }
 
-        $isFadedInScope = $scopeKey === 'global' && !$isInCurrentContext;
+        $isFadedInScope = !$isPersonallyRelevant;
 
         if ($startAt <= $monthEnd && $endAt >= $monthStart) {
             $viewCountsByScope[$scopeKey]['month'] += 1;
@@ -1546,6 +1585,30 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         }
         var initialOpenEventDrawerOpened = false;
 
+        function getCurrentRouteToken() {
+            if (typeof window.omoParsePopupHashState !== 'function') {
+                return '';
+            }
+
+            var hashState = window.omoParsePopupHashState();
+            return hashState && hashState.routeToken
+                ? String(hashState.routeToken)
+                : '';
+        }
+
+        function buildEventRouteToken(eventId) {
+            var resolvedEventId = Number(eventId || 0);
+            if (!Number.isInteger(resolvedEventId) || resolvedEventId <= 0) {
+                return null;
+            }
+
+            if (typeof window.omoBuildCalendarEventRouteToken === 'function') {
+                return window.omoBuildCalendarEventRouteToken(resolvedEventId);
+            }
+
+            return 'calendar-e' + String(resolvedEventId);
+        }
+
         function normalizeViewPreference(viewName) {
             var normalizedView = String(viewName || '').trim().toLowerCase();
             return normalizedView === 'week' || normalizedView === 'day' || normalizedView === 'list'
@@ -1786,7 +1849,20 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             drawerBody.innerHTML = '<div class="generic-section"><?= omoApiEscape(omoCalendarT('calendar.error.load_form')) ?></div>';
         }
 
-        function closeDrawer() {
+        function closeDrawer(options) {
+            var settings = options && typeof options === 'object'
+                ? options
+                : {};
+
+            if (
+                settings.force !== true
+                && /^calendar-(?:e\d+|event-\d+)$/i.test(getCurrentRouteToken())
+                && typeof window.omoOpenDrawerHashState === 'function'
+            ) {
+                window.omoOpenDrawerHashState('calendar');
+                return;
+            }
+
             if (!drawer) {
                 return;
             }
@@ -1987,6 +2063,16 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             }, 40);
         }
 
+        function openEventFromRoute(eventId) {
+            var resolvedEventId = Number(eventId || 0);
+            if (!Number.isInteger(resolvedEventId) || resolvedEventId <= 0) {
+                return false;
+            }
+
+            openDrawerWithUrl(buildDetailUrl(resolvedEventId));
+            return true;
+        }
+
         function setActiveView(nextView, nextUrl, nextCount, nextSummary) {
             if (!nextView) {
                 return;
@@ -2106,6 +2192,14 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     return;
                 }
 
+                var routeToken = buildEventRouteToken(eventId);
+                var currentRouteToken = getCurrentRouteToken();
+
+                if (routeToken && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== currentRouteToken) {
+                    window.omoOpenDrawerHashState(routeToken);
+                    return;
+                }
+
                 openDrawerWithUrl(buildDetailUrl(eventId));
             });
         });
@@ -2174,6 +2268,10 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                         throw payload || new Error('save_failed');
                     }
 
+                    if (typeof window.omoInvalidateMainRightPanel === 'function') {
+                        window.omoInvalidateMainRightPanel();
+                    }
+
                     closeDrawer();
                     refreshCalendar(currentUrl);
                 }).catch(function (error) {
@@ -2206,6 +2304,29 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
         syncScopeButtons(currentScope);
         syncTodayButtons(currentView);
+
+        if (!root.__omoCalendarRouteHandler) {
+            root.__omoCalendarRouteHandler = function (routeEvent) {
+                if (!document.body.contains(root)) {
+                    return;
+                }
+
+                var detail = routeEvent && routeEvent.detail
+                    ? routeEvent.detail
+                    : {};
+                var targetEventId = Number(detail.eventId || 0);
+
+                if (targetEventId > 0) {
+                    openEventFromRoute(targetEventId);
+                    return;
+                }
+
+                closeDrawer({ force: true });
+            };
+
+            window.addEventListener('omo-calendar-route-change', root.__omoCalendarRouteHandler);
+        }
+
         window.requestAnimationFrame(function () {
             scrollTimelineToBusinessStart(currentView);
             if (initialOpenEventId > 0) {

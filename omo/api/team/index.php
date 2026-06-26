@@ -167,10 +167,14 @@ if ($hasStructureContext) {
             'organizationId' => $organizationId,
             'includeDescendants' => true,
         ));
+    } elseif ($teamScope === 'contextual') {
+        $rawMemberCards = $currentHolon->getAssociatedMemberCards(array(
+            'organizationId' => $organizationId,
+        ));
     } else {
         $rawMemberCards = $currentHolon->getAssociatedMemberCards(array(
             'organizationId' => $organizationId,
-            'includeDescendants' => $teamScope === 'descendants',
+            'includeDescendants' => true,
         ));
     }
 

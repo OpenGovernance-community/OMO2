@@ -1926,7 +1926,7 @@ async function deleteParcoursFromCard(event, parcoursId) {
     }
 
     const card = document.querySelector(`[data-parcours-card="1"][data-parcours-id="${parcoursId}"]`);
-    if (card && String(card.getAttribute('data-can-edit') || '0') !== '1') {
+    if (card && String(card.getAttribute('data-can-manage') || '0') !== '1') {
         return;
     }
 
