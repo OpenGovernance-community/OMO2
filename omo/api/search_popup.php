@@ -2,7 +2,7 @@
 require_once __DIR__ . '/bootstrap.php';
 
 if (!function_exists('omoSearchPopupGetScopeLabels')) {
-    function omoSearchPopupGetScopeLabels(\dbObject\Organization $organization = null)
+    function omoSearchPopupGetScopeLabels(?\dbObject\Organization $organization = null)
     {
         $scopeLabels = array(
             'structure' => 'Structure',

@@ -634,6 +634,10 @@ $currentOrganizationId = isset($_GET['oid']) ? (int)$_GET['oid'] : (int)($_SESSI
 $currentHolonId = isset($_GET['cid']) ? (int)$_GET['cid'] : 0;
 $requestedDecisionScope = $_GET['decision_scope'] ?? 'contextual';
 $initialOpenDecisionId = isset($_GET['open_decision_id']) ? (int)$_GET['open_decision_id'] : 0;
+$initialOpenDecisionMode = trim((string)($_GET['open_decision_mode'] ?? ''));
+$initialOpenDecisionMode = in_array($initialOpenDecisionMode, ['view', 'manage', 'participate'], true)
+    ? $initialOpenDecisionMode
+    : 'default';
 
 $refreshUrl = trim((string)($_SERVER['REQUEST_URI'] ?? ''));
 if ($refreshUrl !== '') {
@@ -733,15 +737,19 @@ if (empty($holonContext['status'])) {
 }
 
 $currentContextHolon = $holonContext['holon'] ?? null;
+$rootHolon = $organization->getEnabledStructuralRootHolon();
 $allowedContextHolonIds = $currentContextHolon
     ? [(int)$currentContextHolon->getId() => true]
     : [];
-$canToggleDecisionScope = $organization->getEnabledStructuralRootHolon() !== null;
-$availableDecisionScopes = omoApiGetAvailableContextScopes($canToggleDecisionScope, $currentContextHolon, $organization->getEnabledStructuralRootHolon());
+$canToggleDecisionScope = $rootHolon !== null;
+$availableDecisionScopes = omoApiGetAvailableContextScopes($canToggleDecisionScope, $currentContextHolon, $rootHolon);
 $decisionScope = omoApiNormalizeContextScope($requestedDecisionScope, $availableDecisionScopes);
 $decisionScopeActiveIndex = omoApiResolveContextScopeIndex($decisionScope, $availableDecisionScopes);
 $allowedDescendantHolonIds = omoApiGetDescendantHolonIdMap($currentContextHolon);
 $normalizedCurrentHolonId = omoDecisionNormalizeContextHolonId($organization, $currentHolonId);
+$isNonRootHolonContext = $currentContextHolon instanceof Holon
+    && $rootHolon instanceof Holon
+    && (int)$currentContextHolon->getId() !== (int)$rootHolon->getId();
 
 $statusLabels = [
     DecisionProcess::STATUS_DRAFT => t('decisions.index.filters.status.draft', [], $lang, $sourceLang),
@@ -823,6 +831,10 @@ foreach ($decisionRows as $row) {
     }
 
     $holonId = (int)$decision->get('IDholon');
+    if ($isNonRootHolonContext && ($decisionScope === 'contextual' || $decisionScope === 'descendants') && $holonId <= 0) {
+        continue;
+    }
+
     if ($decisionScope === 'contextual' && $currentContextHolon && $holonId > 0 && !isset($allowedContextHolonIds[$holonId])) {
         continue;
     }
@@ -932,12 +944,14 @@ foreach ($decisionRows as $row) {
         $actions[] = [
             'label' => t('decisions.index.action.view_results', [], $lang, $sourceLang),
             'url' => $viewUrl,
+            'mode' => 'view',
             'variant' => 'main',
         ];
     } elseif ($consultationStarted) {
         $actions[] = [
             'label' => t('decisions.index.action.view', [], $lang, $sourceLang),
             'url' => $viewUrl,
+            'mode' => 'view',
             'variant' => 'secondary',
         ];
 
@@ -945,6 +959,7 @@ foreach ($decisionRows as $row) {
             $actions[] = [
                 'label' => t('decisions.index.action.manage', [], $lang, $sourceLang),
                 'url' => $manageUrl,
+                'mode' => 'manage',
                 'variant' => 'secondary',
             ];
         }
@@ -953,6 +968,7 @@ foreach ($decisionRows as $row) {
             $actions[] = [
                 'label' => t('decisions.index.action.participate', [], $lang, $sourceLang),
                 'url' => $participateUrl,
+                'mode' => 'participate',
                 'variant' => 'main',
             ];
         }
@@ -961,12 +977,14 @@ foreach ($decisionRows as $row) {
             $actions[] = [
                 'label' => omoDecisionsIndexResolvePrimaryActionLabel($status, $canManage, $lang, $sourceLang),
                 'url' => $manageUrl,
+                'mode' => 'manage',
                 'variant' => 'main',
             ];
         } else {
             $actions[] = [
                 'label' => t('decisions.index.action.view', [], $lang, $sourceLang),
                 'url' => $viewUrl,
+                'mode' => 'view',
                 'variant' => 'secondary',
             ];
         }
@@ -1072,11 +1090,8 @@ foreach ($decisionRows as $row) {
     $isActiveDefault = $status !== DecisionProcess::STATUS_ARCHIVED
         && (
             $isOwner
-            || in_array($status, [
-                DecisionProcess::STATUS_CONSULTATION,
-                DecisionProcess::STATUS_EVALUATION,
-                DecisionProcess::STATUS_RESULTS,
-            ], true)
+            || $hasUserParticipation
+            || $hasEmailParticipation
         );
     if ($isActiveDefault) {
         $statusCounts['active']++;
@@ -1169,6 +1184,7 @@ $statusFilterCatalog = [
 $payload = [
     'items' => array_values($decisionEntries),
     'openDecisionId' => $initialOpenDecisionId > 0 ? $initialOpenDecisionId : 0,
+    'openDecisionMode' => $initialOpenDecisionMode,
     'groups' => array_map(static function (array $group): array {
         return [
             'key' => (string)($group['key'] ?? ''),
@@ -1253,7 +1269,7 @@ $payloadJson = json_encode(
     JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
 );
 if (!is_string($payloadJson)) {
-    $payloadJson = '{"items":[],"openDecisionId":0,"groups":[],"statusFilters":[],"statusCounts":{},"typeOptions":[],"methodOptions":[],"holonOptions":[],"text":{},"newUrl":"","refreshUrl":""}';
+    $payloadJson = '{"items":[],"openDecisionId":0,"openDecisionMode":"default","groups":[],"statusFilters":[],"statusCounts":{},"typeOptions":[],"methodOptions":[],"holonOptions":[],"text":{},"newUrl":"","refreshUrl":""}';
 }
 ?>
 <div
@@ -2450,7 +2466,7 @@ function omoDecisionCloseNestedEditorDrawer(options) {
 
     if (
         settings.force !== true
-        && /^decision-(?:d)?\d+$/i.test(currentRouteToken)
+        && /^decision-(?:(?:d)?\d+|[vgp]\d+)$/i.test(currentRouteToken)
         && typeof window.omoOpenDrawerHashState === 'function'
     ) {
         window.omoOpenDrawerHashState('decision');
@@ -2589,17 +2605,37 @@ function getCurrentDecisionRouteToken() {
         : '';
 }
 
-function buildDecisionRouteToken(decisionId) {
+function buildDecisionRouteToken(decisionId, modeValue) {
     const resolvedDecisionId = Number(decisionId || 0);
     if (!Number.isInteger(resolvedDecisionId) || resolvedDecisionId <= 0) {
         return null;
     }
 
     if (typeof window.omoBuildDecisionRouteToken === 'function') {
-        return window.omoBuildDecisionRouteToken(resolvedDecisionId);
+        return window.omoBuildDecisionRouteToken(resolvedDecisionId, normalizeDecisionOpenMode(modeValue));
+    }
+
+    const normalizedMode = normalizeDecisionOpenMode(modeValue);
+    if (normalizedMode === 'view') {
+        return 'decision-v' + String(resolvedDecisionId);
+    }
+
+    if (normalizedMode === 'manage') {
+        return 'decision-g' + String(resolvedDecisionId);
+    }
+
+    if (normalizedMode === 'participate') {
+        return 'decision-p' + String(resolvedDecisionId);
     }
 
     return 'decision-d' + String(resolvedDecisionId);
+}
+
+function normalizeDecisionOpenMode(modeValue) {
+    const normalizedMode = String(modeValue || '').trim().toLowerCase();
+    return normalizedMode === 'view' || normalizedMode === 'manage' || normalizedMode === 'participate'
+        ? normalizedMode
+        : 'default';
 }
 
 function resolveDecisionAutoOpenAction(item) {
@@ -2625,6 +2661,28 @@ function resolveDecisionAutoOpenAction(item) {
     return fallbackAction;
 }
 
+function resolveDecisionActionForMode(item, modeValue) {
+    const normalizedMode = normalizeDecisionOpenMode(modeValue);
+    if (normalizedMode === 'default') {
+        return resolveDecisionAutoOpenAction(item);
+    }
+
+    const actions = Array.isArray(item && item.actions) ? item.actions : [];
+    for (let index = 0; index < actions.length; index += 1) {
+        const action = actions[index];
+        if (String(action && action.mode ? action.mode : '').trim().toLowerCase() !== normalizedMode) {
+            continue;
+        }
+
+        const actionUrl = String(action && action.url ? action.url : '').trim();
+        if (actionUrl !== '') {
+            return action;
+        }
+    }
+
+    return null;
+}
+
 function openDecisionItemById(decisionId, options) {
     const item = findDecisionItemById(decisionId);
     if (!item) {
@@ -2634,7 +2692,7 @@ function openDecisionItemById(decisionId, options) {
     const settings = options && typeof options === 'object'
         ? options
         : {};
-    const action = resolveDecisionAutoOpenAction(item);
+    const action = resolveDecisionActionForMode(item, settings.mode);
     const actionUrl = String(action && action.url ? action.url : '').trim();
     if (actionUrl === '') {
         return false;
@@ -2649,10 +2707,11 @@ function openDecisionItemById(decisionId, options) {
     return true;
 }
 
-function openDecisionFromInteraction(decisionId, targetUrl, title, description) {
+function openDecisionFromInteraction(decisionId, targetUrl, title, description, modeValue) {
     const resolvedDecisionId = Number(decisionId || 0);
     const resolvedUrl = String(targetUrl || '').trim();
-    const routeToken = buildDecisionRouteToken(resolvedDecisionId);
+    const normalizedMode = normalizeDecisionOpenMode(modeValue);
+    const routeToken = buildDecisionRouteToken(resolvedDecisionId, normalizedMode);
     const currentRouteToken = getCurrentDecisionRouteToken();
 
     if (routeToken && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== currentRouteToken) {
@@ -2662,7 +2721,8 @@ function openDecisionFromInteraction(decisionId, targetUrl, title, description) 
 
     if (resolvedDecisionId > 0 && openDecisionItemById(resolvedDecisionId, {
         title: title,
-        description: description
+        description: description,
+        mode: normalizedMode
     })) {
         return true;
     }
@@ -2682,7 +2742,9 @@ function openInitialDecisionFromPayload() {
     }
 
     payload.openDecisionId = 0;
-    return openDecisionItemById(decisionId);
+    return openDecisionItemById(decisionId, {
+        mode: normalizeDecisionOpenMode(payload.openDecisionMode || 'default')
+    });
 }
 
 function populateSelect(select, options) {
@@ -3131,6 +3193,7 @@ function renderCompactRow(item) {
         row.type = 'button';
         row.setAttribute('data-open-url', primaryActionUrl);
         row.setAttribute('data-open-title', String(item && item.title ? item.title : ''));
+        row.setAttribute('data-open-mode', String(primaryAction && primaryAction.mode ? primaryAction.mode : 'default'));
     }
 
     row.innerHTML = ''
@@ -3353,8 +3416,10 @@ function renderCard(item) {
         });
 
         card.setAttribute('data-omo-decision-id', String(Number(item && item.id ? item.id : 0) || 0));
-        card.querySelectorAll('[data-open-url]').forEach(function (button) {
+        card.querySelectorAll('[data-open-url]').forEach(function (button, buttonIndex) {
+            const action = Array.isArray(item && item.actions) ? item.actions[buttonIndex] : null;
             button.setAttribute('data-omo-decision-id', String(Number(item && item.id ? item.id : 0) || 0));
+            button.setAttribute('data-open-mode', String(action && action.mode ? action.mode : 'default'));
         });
         appendDetailedActionMenuButton(card, item);
         return card;
@@ -3401,7 +3466,7 @@ function renderCard(item) {
     let actionsHtml = '<div class="omo-decisions-card__actions">';
     actions.forEach(function (action) {
         const actionVariant = String(action && action.variant ? action.variant : 'secondary');
-        actionsHtml += '<button type="button" class="generic-action-button generic-action-button--' + escapeHtml(actionVariant) + ' omo-decisions-card__action" data-omo-decision-id="' + escapeHtml(String(Number(item && item.id ? item.id : 0) || 0)) + '" data-open-url="' + escapeHtml(action && action.url ? action.url : '') + '">' + escapeHtml(action && action.label ? action.label : '') + '</button>';
+        actionsHtml += '<button type="button" class="generic-action-button generic-action-button--' + escapeHtml(actionVariant) + ' omo-decisions-card__action" data-omo-decision-id="' + escapeHtml(String(Number(item && item.id ? item.id : 0) || 0)) + '" data-open-url="' + escapeHtml(action && action.url ? action.url : '') + '" data-open-mode="' + escapeHtml(String(action && action.mode ? action.mode : 'default')) + '">' + escapeHtml(action && action.label ? action.label : '') + '</button>';
     });
     actionsHtml += '</div>';
 
@@ -3610,6 +3675,7 @@ function buildCompactMenuItem(action, title, description) {
         button.setAttribute('data-open-url', String(action && action.url ? action.url : ''));
         button.setAttribute('data-open-title', String(action && action.title ? action.title : title || ''));
         button.setAttribute('data-open-description', String(description || ''));
+        button.setAttribute('data-open-mode', String(action && action.mode ? action.mode : 'default'));
     }
     button.textContent = String(action && action.label ? action.label : '');
     return button;
@@ -4008,7 +4074,8 @@ omoDecisionRegisterGlobalListener(ownerDocument, 'click', function (event) {
                 activeCompactMenuToggle ? Number(activeCompactMenuToggle.getAttribute('data-omo-decision-id') || 0) : 0,
                 targetUrl,
                 String(actionButton.getAttribute('data-open-title') || '').trim() || (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de decision'),
-                String(actionButton.getAttribute('data-open-description') || '').trim()
+                String(actionButton.getAttribute('data-open-description') || '').trim(),
+                String(actionButton.getAttribute('data-open-mode') || '').trim()
             );
         }
 
@@ -4124,9 +4191,10 @@ if (!root.__omoDecisionsRouteHandler) {
             ? routeEvent.detail
             : {};
         const targetDecisionId = Number(detail.decisionId || 0);
+        const targetMode = normalizeDecisionOpenMode(detail.mode || 'default');
 
         if (targetDecisionId > 0) {
-            if (!openDecisionItemById(targetDecisionId)) {
+            if (!openDecisionItemById(targetDecisionId, { mode: targetMode })) {
                 omoDecisionCloseNestedEditorDrawer({
                     force: true,
                     refreshIndex: false
@@ -4220,12 +4288,14 @@ root.addEventListener('click', function (event) {
     const decisionId = decisionContainer
         ? Number(decisionContainer.getAttribute('data-omo-decision-id') || 0)
         : Number(button.getAttribute('data-omo-decision-id') || 0);
+    const targetMode = String(button.getAttribute('data-open-mode') || '').trim();
 
     openDecisionFromInteraction(
         decisionId,
         targetUrl,
         targetTitle !== '' ? targetTitle : (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de dÃ©cision'),
-        String(button.getAttribute('data-open-description') || '').trim()
+        String(button.getAttribute('data-open-description') || '').trim(),
+        targetMode
     );
     event.preventDefault();
     return;

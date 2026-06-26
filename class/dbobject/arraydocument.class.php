@@ -168,35 +168,24 @@
 			return $this->filterVisibleForCurrentViewer($organizationId);
 		}
 
-		public function loadRecentForOrganizationContext($organizationId, $holonId = 0, $limit = 5)
+		public function loadRecentForOrganizationContext($organizationId, $holonId = 0, $limit = 5, $documentScope = 'contextual', array $descendantHolonIds = array())
 		{
 			$organizationId = (int)$organizationId;
 			$holonId = (int)$holonId;
 			$limit = max(1, (int)$limit);
 
 			$this->exchangeArray([]);
+			$this->lastVisibilityStats = array(
+				'loaded' => 0,
+				'visible' => 0,
+				'hidden' => 0,
+			);
 
 			if ($organizationId <= 0) {
 				return;
 			}
 
-			$loadParams = array(
-				'where' => array(
-					array('field' => 'IDorganization', 'value' => $organizationId),
-				),
-				'orderBy' => array(
-					array('field' => 'datemodification', 'dir' => 'DESC'),
-					array('field' => 'datecreation', 'dir' => 'DESC'),
-					array('field' => 'id', 'dir' => 'DESC'),
-				),
-			);
-
-			if ($holonId > 0) {
-				$loadParams['where'][] = array('field' => 'IDholon', 'value' => $holonId);
-			}
-
-			$this->load($loadParams);
-			$this->filterVisibleForCurrentViewer($organizationId);
+			$this->loadVisibleForOrganizationContext($organizationId, $holonId, $documentScope, $descendantHolonIds);
 
 			$items = array_values(array_filter($this->getArrayCopy(), function ($document) {
 				return $document instanceof \dbObject\Document

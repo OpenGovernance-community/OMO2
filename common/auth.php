@@ -1496,6 +1496,41 @@ function commonClearCurrentUserPermissionCache()
     unset($_SESSION['permissionCacheByOrganization']);
 }
 
+function commonBuildCurrentUserPermissionCacheMetadata($organizationId)
+{
+    $organizationId = (int)$organizationId;
+
+    return [
+        'cachedAtHistoryId' => $organizationId > 0
+            ? (int)\dbObject\History::getLatestOrganizationEntryId($organizationId)
+            : 0,
+    ];
+}
+
+function commonIsCurrentUserPermissionCacheEntryFresh(array $permissionCacheEntry, $organizationId, $currentUserId)
+{
+    $organizationId = (int)$organizationId;
+    $currentUserId = (int)$currentUserId;
+    if ($organizationId <= 0 || $currentUserId <= 0) {
+        return false;
+    }
+
+    if ((int)($permissionCacheEntry['cacheVersion'] ?? 0) !== \dbObject\HolonPermission::PERMISSION_CACHE_VERSION) {
+        return false;
+    }
+
+    if ((int)($permissionCacheEntry['userId'] ?? 0) !== $currentUserId) {
+        return false;
+    }
+
+    $cachedAtHistoryId = (int)($permissionCacheEntry['cachedAtHistoryId'] ?? -1);
+    if ($cachedAtHistoryId < 0) {
+        return false;
+    }
+
+    return $cachedAtHistoryId >= (int)\dbObject\History::getLatestOrganizationEntryId($organizationId);
+}
+
 function commonGetCurrentUserOrganizationPermissionSet($organizationId = null, $forceRefresh = false)
 {
     $organizationId = $organizationId !== null
@@ -1515,8 +1550,11 @@ function commonGetCurrentUserOrganizationPermissionSet($organizationId = null, $
     if (
         !$forceRefresh
         && isset($_SESSION['permissionCacheByOrganization'][$organizationId])
-        && (int)($_SESSION['permissionCacheByOrganization'][$organizationId]['cacheVersion'] ?? 0) === \dbObject\HolonPermission::PERMISSION_CACHE_VERSION
-        && (int)($_SESSION['permissionCacheByOrganization'][$organizationId]['userId'] ?? 0) === $currentUserId
+        && commonIsCurrentUserPermissionCacheEntryFresh(
+            (array)$_SESSION['permissionCacheByOrganization'][$organizationId],
+            $organizationId,
+            $currentUserId
+        )
     ) {
         return $_SESSION['permissionCacheByOrganization'][$organizationId];
     }
@@ -1526,6 +1564,7 @@ function commonGetCurrentUserOrganizationPermissionSet($organizationId = null, $
         $_SESSION['permissionCacheByOrganization'] = [];
     }
 
+    $permissionSet = array_merge($permissionSet, commonBuildCurrentUserPermissionCacheMetadata($organizationId));
     $_SESSION['permissionCacheByOrganization'][$organizationId] = $permissionSet;
     return $permissionSet;
 }

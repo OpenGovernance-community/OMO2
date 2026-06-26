@@ -596,6 +596,24 @@
 
 			return $page['items'] ?? array();
 		}
+
+		public static function getLatestOrganizationEntryId($organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0) {
+				return 0;
+			}
+
+			return (int)self::fetchValue(
+				"SELECT MAX(id)
+				FROM history
+				WHERE active = 1
+				  AND IDorganization = :organization_id",
+				array(
+					'organization_id' => $organizationId,
+				)
+			);
+		}
 	}
 
 ?>

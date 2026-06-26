@@ -60,6 +60,10 @@ function omoDocumentsScopeT($key, array $replace = [])
 $currentOrganizationId = isset($_GET['oid']) ? (int)$_GET['oid'] : (int)($_SESSION['currentOrganization'] ?? 0);
 $currentHolonId = isset($_GET['cid']) ? (int)$_GET['cid'] : 0;
 $initialOpenDocumentId = isset($_GET['open_document_id']) ? (int)$_GET['open_document_id'] : 0;
+$initialOpenDocumentMode = trim((string)($_GET['open_document_mode'] ?? ''));
+$initialOpenDocumentMode = $initialOpenDocumentMode === 'edit'
+    ? 'edit'
+    : 'detail';
 $requestedDocumentScope = $_GET['document_scope'] ?? 'contextual';
 
 $organization = new Organization();
@@ -190,6 +194,12 @@ foreach ($documents as $document) {
     $createdAt = $document->get('datecreation');
     $documentActivityVisited = [];
     $updatedAt = $document->getActivityDate($documentActivityVisited);
+    $resolvedCreatedAt = $createdAt instanceof DateTimeInterface
+        ? $createdAt
+        : ($updatedAt instanceof DateTimeInterface ? $updatedAt : null);
+    $resolvedUpdatedAt = $updatedAt instanceof DateTimeInterface
+        ? $updatedAt
+        : $resolvedCreatedAt;
     $documentId = (int)$document->getId();
     $documentHolonId = (int)$document->get('IDholon');
     $parentDocumentId = (int)$document->get('IDdocument_parent');
@@ -200,12 +210,12 @@ foreach ($documents as $document) {
     $isFolder = $document->isFolder();
     $isExternalLink = $document->isExternalLink();
     $canShareDocument = !$isFolder && $document->supportsHtmlContent();
-    $activityDate = $isFolder && $updatedAt instanceof DateTimeInterface
-        ? $updatedAt
-        : $createdAt;
-    $groupIndex = sharedGetRelativeDateGroupIndexForDate($activityDate, $groups, $today);
-    $group = $groups[$groupIndex] ?? ['key' => 'too_far', 'label' => 'Trop loin'];
-    $groupKey = (string)($group['key'] ?? 'too_far');
+    $createdGroupIndex = sharedGetRelativeDateGroupIndexForDate($resolvedCreatedAt, $groups, $today);
+    $createdGroup = $groups[$createdGroupIndex] ?? ['key' => 'too_far', 'label' => 'Trop loin'];
+    $createdGroupKey = (string)($createdGroup['key'] ?? 'too_far');
+    $updatedGroupIndex = sharedGetRelativeDateGroupIndexForDate($resolvedUpdatedAt, $groups, $today);
+    $updatedGroup = $groups[$updatedGroupIndex] ?? ['key' => 'too_far', 'label' => 'Trop loin'];
+    $updatedGroupKey = (string)($updatedGroup['key'] ?? 'too_far');
 
     $documentEntries[] = [
         'id' => $documentId,
@@ -245,11 +255,21 @@ foreach ($documents as $document) {
         'visibilityBadge' => (string)($visibility['badgeText'] ?? ''),
         'visibilityType' => (string)($visibility['type'] ?? ''),
         'visibilityIconUrl' => $resolveDocumentVisibilityIconUrl((string)($visibility['type'] ?? '')),
-        'dateLabel' => $formatDate($activityDate, in_array($groupKey, ['earlier', 'too_far'], true)),
-        'fullDateLabel' => $formatDate($activityDate, true),
-        'timestamp' => $activityDate instanceof DateTimeInterface ? (int)$activityDate->getTimestamp() : 0,
-        'groupKey' => $groupKey,
-        'groupLabel' => (string)($group['label'] ?? 'Trop loin'),
+        'dateLabel' => $formatDate($resolvedUpdatedAt, in_array($updatedGroupKey, ['earlier', 'too_far'], true)),
+        'fullDateLabel' => $formatDate($resolvedCreatedAt, true),
+        'timestamp' => $resolvedUpdatedAt instanceof DateTimeInterface ? (int)$resolvedUpdatedAt->getTimestamp() : 0,
+        'groupKey' => $updatedGroupKey,
+        'groupLabel' => (string)($updatedGroup['label'] ?? 'Trop loin'),
+        'createdDateLabel' => $formatDate($resolvedCreatedAt, in_array($createdGroupKey, ['earlier', 'too_far'], true)),
+        'createdFullDateLabel' => $formatDate($resolvedCreatedAt, true),
+        'createdTimestamp' => $resolvedCreatedAt instanceof DateTimeInterface ? (int)$resolvedCreatedAt->getTimestamp() : 0,
+        'createdGroupKey' => $createdGroupKey,
+        'createdGroupLabel' => (string)($createdGroup['label'] ?? 'Trop loin'),
+        'updatedDateLabel' => $formatDate($resolvedUpdatedAt, in_array($updatedGroupKey, ['earlier', 'too_far'], true)),
+        'updatedFullDateLabel' => $formatDate($resolvedUpdatedAt, true),
+        'updatedTimestamp' => $resolvedUpdatedAt instanceof DateTimeInterface ? (int)$resolvedUpdatedAt->getTimestamp() : 0,
+        'updatedGroupKey' => $updatedGroupKey,
+        'updatedGroupLabel' => (string)($updatedGroup['label'] ?? 'Trop loin'),
         'sortTitle' => $normalizeSortValue($document->get('title')),
         'contextUrl' => '/omo/api/documents/detail.php?id=' . $documentId
             . '&oid=' . $currentOrganizationId
@@ -261,6 +281,7 @@ $documentsPayload = json_encode(
     [
         'documents' => $documentEntries,
         'openDocumentId' => $initialOpenDocumentId > 0 ? $initialOpenDocumentId : 0,
+        'openDocumentMode' => $initialOpenDocumentMode,
         'groups' => array_map(
             static function (array $group): array {
                 return [
@@ -275,7 +296,7 @@ $documentsPayload = json_encode(
 );
 
 if (!is_string($documentsPayload)) {
-    $documentsPayload = '{"documents":[],"openDocumentId":0,"groups":[]}';
+    $documentsPayload = '{"documents":[],"openDocumentId":0,"openDocumentMode":"detail","groups":[]}';
 }
 ?>
 <div
@@ -543,9 +564,17 @@ if (!is_string($documentsPayload)) {
                 };
 
                 const omoDocumentsNormalizeSortPreference = function (value) {
-                    return String(value || '').trim().toLowerCase() === 'alpha'
-                        ? 'alpha'
-                        : 'date';
+                    const normalizedValue = String(value || '').trim().toLowerCase();
+
+                    if (normalizedValue === 'alpha') {
+                        return 'alpha';
+                    }
+
+                    if (normalizedValue === 'created' || normalizedValue === 'creation') {
+                        return 'created';
+                    }
+
+                    return 'updated';
                 };
 
                 const omoDocumentsNormalizeDensityPreference = function (value) {
@@ -628,7 +657,7 @@ if (!is_string($documentsPayload)) {
 
                     if (rawValue === '') {
                         return {
-                            sort: 'date',
+                            sort: 'updated',
                             density: 'detail'
                         };
                     }
@@ -642,7 +671,7 @@ if (!is_string($documentsPayload)) {
                         };
                     } catch (error) {
                         return {
-                            sort: 'date',
+                            sort: 'updated',
                             density: 'detail'
                         };
                     }
@@ -723,6 +752,15 @@ if (!is_string($documentsPayload)) {
                                     : null
                             };
                             let detailRequestToken = 0;
+                            const sortControl = panel.querySelector('.omo-documents__controls .omo-segmented[role="group"]');
+
+                            if (sortControl) {
+                                sortControl.innerHTML = [
+                                    '<button type="button" class="omo-segmented__button" aria-label="Date de modification" data-omo-documents-sort="updated" data-omo-segmented-option="updated" aria-pressed="false"><span class="omo-segmented__text">Modification</span></button>',
+                                    '<button type="button" class="omo-segmented__button" aria-label="Date de creation" data-omo-documents-sort="created" data-omo-segmented-option="created" aria-pressed="false"><span class="omo-segmented__text">Creation</span></button>',
+                                    '<button type="button" class="omo-segmented__button" aria-label="Alphabetique" data-omo-documents-sort="alpha" data-omo-segmented-option="alphabetical" aria-pressed="false"><span class="omo-segmented__text">Alphabetique</span></button>'
+                                ].join('');
+                            }
 
                             const collator = typeof Intl !== 'undefined' && typeof Intl.Collator === 'function'
                                 ? new Intl.Collator('fr', { sensitivity: 'base', numeric: true })
@@ -739,9 +777,49 @@ if (!is_string($documentsPayload)) {
                                 return normalizedLeft.localeCompare(normalizedRight);
                             };
 
-                            const sortByDate = function (items) {
+                            const getTemporalSortMode = function (sortMode) {
+                                return sortMode === 'created'
+                                    ? 'created'
+                                    : 'updated';
+                            };
+
+                            const getDocumentTimestamp = function (documentItem, sortMode) {
+                                if (getTemporalSortMode(sortMode) === 'created') {
+                                    return Number(documentItem && documentItem.createdTimestamp ? documentItem.createdTimestamp : 0);
+                                }
+
+                                return Number(documentItem && documentItem.updatedTimestamp ? documentItem.updatedTimestamp : 0);
+                            };
+
+                            const getDocumentDateLabel = function (documentItem, sortMode, includeFullDate) {
+                                const temporalSortMode = getTemporalSortMode(sortMode);
+
+                                if (temporalSortMode === 'created') {
+                                    return includeFullDate
+                                        ? String(documentItem && documentItem.createdFullDateLabel ? documentItem.createdFullDateLabel : '')
+                                        : String(documentItem && documentItem.createdDateLabel ? documentItem.createdDateLabel : '');
+                                }
+
+                                return includeFullDate
+                                    ? String(documentItem && documentItem.updatedFullDateLabel ? documentItem.updatedFullDateLabel : '')
+                                    : String(documentItem && documentItem.updatedDateLabel ? documentItem.updatedDateLabel : '');
+                            };
+
+                            const getDocumentGroupKey = function (documentItem, sortMode) {
+                                return getTemporalSortMode(sortMode) === 'created'
+                                    ? String(documentItem && documentItem.createdGroupKey ? documentItem.createdGroupKey : 'too_far')
+                                    : String(documentItem && documentItem.updatedGroupKey ? documentItem.updatedGroupKey : 'too_far');
+                            };
+
+                            const getDateColumnLabel = function (sortMode) {
+                                return getTemporalSortMode(sortMode) === 'created'
+                                    ? 'Cree le'
+                                    : 'Modifie le';
+                            };
+
+                            const sortByTemporal = function (items, sortMode) {
                                 return items.slice().sort(function (left, right) {
-                                    const timestampDiff = Number(right.timestamp || 0) - Number(left.timestamp || 0);
+                                    const timestampDiff = getDocumentTimestamp(right, sortMode) - getDocumentTimestamp(left, sortMode);
 
                                     if (timestampDiff !== 0) {
                                         return timestampDiff;
@@ -759,7 +837,7 @@ if (!is_string($documentsPayload)) {
                                         return titleDiff;
                                     }
 
-                                    return Number(right.timestamp || 0) - Number(left.timestamp || 0);
+                                    return getDocumentTimestamp(right, 'updated') - getDocumentTimestamp(left, 'updated');
                                 });
                             };
 
@@ -856,7 +934,7 @@ if (!is_string($documentsPayload)) {
                                 const sourceItems = childrenByParentId.get(normalizedParentDocumentId) || [];
                                 const sortedItems = sortMode === 'alpha'
                                     ? sortByAlpha(sourceItems)
-                                    : sortByDate(sourceItems);
+                                    : sortByTemporal(sourceItems, sortMode);
 
                                 return sortedItems.map(function (documentItem) {
                                     const clonedItem = Object.assign({}, documentItem);
@@ -1053,10 +1131,10 @@ if (!is_string($documentsPayload)) {
 
                                     const compactDateCell = document.createElement('div');
                                     compactDateCell.className = 'omo-documents__compact-cell omo-documents__compact-cell--date generic-file-list__cell generic-file-list__cell--date';
-                                    compactDateCell.setAttribute('data-label', 'Modifie le');
+                                    compactDateCell.setAttribute('data-label', getDateColumnLabel(state.sort));
                                     compactDateCell.textContent = state.sort === 'alpha'
-                                        ? (documentItem.fullDateLabel || documentItem.dateLabel || '')
-                                        : (documentItem.dateLabel || '');
+                                        ? getDocumentDateLabel(documentItem, 'updated', true)
+                                        : getDocumentDateLabel(documentItem, state.sort, false);
 
                                     frame.appendChild(compactNameCell);
                                     frame.appendChild(compactTypeCell);
@@ -1072,8 +1150,8 @@ if (!is_string($documentsPayload)) {
                                 const date = document.createElement('span');
                                 date.className = 'omo-documents__date';
                                 date.textContent = state.sort === 'alpha'
-                                    ? (documentItem.fullDateLabel || documentItem.dateLabel || '')
-                                    : (documentItem.dateLabel || '');
+                                    ? getDocumentDateLabel(documentItem, 'updated', true)
+                                    : getDocumentDateLabel(documentItem, state.sort, false);
 
                                 if (documentItem.isFolder) {
                                     const count = Array.isArray(documentItem.children) ? documentItem.children.length : 0;
@@ -1192,7 +1270,7 @@ if (!is_string($documentsPayload)) {
                                 return menu;
                             };
 
-                            const createCompactListHeader = function () {
+                            const createCompactListHeader = function (sortMode) {
                                 const header = document.createElement('div');
                                 header.className = 'omo-documents__list-header generic-file-list__header';
 
@@ -1200,7 +1278,7 @@ if (!is_string($documentsPayload)) {
                                     { label: 'Nom', className: 'omo-documents__list-header-cell--name' },
                                     { label: 'Type', className: 'omo-documents__list-header-cell--type' },
                                     { label: 'Tags', className: 'omo-documents__list-header-cell--tags' },
-                                    { label: 'Modifie le', className: 'omo-documents__list-header-cell--date' }
+                                    { label: getDateColumnLabel(sortMode), className: 'omo-documents__list-header-cell--date' }
                                 ].forEach(function (column) {
                                     const cell = document.createElement('div');
                                     cell.className = 'omo-documents__list-header-cell generic-file-list__header-cell ' + column.className;
@@ -1456,12 +1534,12 @@ if (!is_string($documentsPayload)) {
                                 });
                             };
 
-                            const renderByDate = function () {
+                            const renderByTemporal = function (sortMode) {
                                 const fragment = document.createDocumentFragment();
                                 const groupedDocuments = new Map();
 
-                                getSortedTree('date', 0).forEach(function (documentItem) {
-                                    const groupKey = documentItem.groupKey || 'too_far';
+                                getSortedTree(sortMode, 0).forEach(function (documentItem) {
+                                    const groupKey = getDocumentGroupKey(documentItem, sortMode);
 
                                     if (!groupedDocuments.has(groupKey)) {
                                         groupedDocuments.set(groupKey, []);
@@ -1489,7 +1567,7 @@ if (!is_string($documentsPayload)) {
 
                                     if (state.density === 'compact') {
                                         list.classList.add('omo-documents__list--compact', 'generic-file-list__table');
-                                        list.appendChild(createCompactListHeader());
+                                        list.appendChild(createCompactListHeader(sortMode));
                                     }
 
                                     items.forEach(function (documentItem) {
@@ -1514,7 +1592,7 @@ if (!is_string($documentsPayload)) {
 
                                 if (state.density === 'compact') {
                                     list.classList.add('omo-documents__list--compact', 'generic-file-list__table');
-                                    list.appendChild(createCompactListHeader());
+                                    list.appendChild(createCompactListHeader('updated'));
                                 }
 
                                 getSortedTree('alpha', 0).forEach(function (documentItem) {
@@ -1544,7 +1622,7 @@ if (!is_string($documentsPayload)) {
                                 panel.classList.toggle('omo-documents--compact', state.density === 'compact');
                                 panel.classList.toggle(
                                     'omo-documents--compact-date-sort',
-                                    state.density === 'compact' && state.sort === 'date'
+                                    state.density === 'compact' && state.sort !== 'alpha'
                                 );
                                 results.classList.toggle('generic-file-list--structured', state.density === 'compact');
                                 results.classList.toggle('generic-file-list--stacked-sticky', state.density === 'compact');
@@ -1552,7 +1630,7 @@ if (!is_string($documentsPayload)) {
                                 if (state.sort === 'alpha') {
                                     renderByAlpha();
                                 } else {
-                                    renderByDate();
+                                    renderByTemporal(state.sort);
                                 }
 
                                 syncButtons('[data-omo-documents-sort]', state.sort, 'data-omo-documents-sort');
@@ -1579,10 +1657,24 @@ if (!is_string($documentsPayload)) {
                                     return false;
                                 }
 
+                                const openMode = normalizeDocumentOpenMode(payload.openDocumentMode || 'detail');
                                 payload.openDocumentId = 0;
+                                payload.openDocumentMode = 'detail';
 
                                 const documentItem = findDocumentItemById(documentId);
-                                if (!documentItem || typeof window.omoOpenDocumentDetailByPayload !== 'function') {
+                                if (!documentItem) {
+                                    return false;
+                                }
+
+                                if (openMode === 'edit' && typeof window.omoOpenDocumentEditorByPayload === 'function') {
+                                    return window.omoOpenDocumentEditorByPayload(documentItem, panel) === true;
+                                }
+
+                                if (openMode === 'edit') {
+                                    return false;
+                                }
+
+                                if (typeof window.omoOpenDocumentDetailByPayload !== 'function') {
                                     return false;
                                 }
 
@@ -1753,15 +1845,35 @@ if (!is_string($documentsPayload)) {
                                 panel.__omoDocumentsRouteHandler = function (routeEvent) {
                                     const detail = routeEvent && routeEvent.detail ? routeEvent.detail : {};
                                     const targetDocumentId = Number(detail.documentId || 0);
+                                    const targetMode = normalizeDocumentOpenMode(detail.mode || 'detail');
+                                    const rawForcedScope = String(detail.forcedScope || '').trim().toLowerCase();
+                                    const forcedScope = rawForcedScope !== ''
+                                        ? normalizeDocumentScope(rawForcedScope)
+                                        : '';
 
                                     if (targetDocumentId > 0) {
                                         const documentItem = findDocumentItemById(targetDocumentId);
-                                        if (documentItem && typeof window.omoOpenDocumentDetailByPayload === 'function') {
+                                        if (documentItem && targetMode === 'edit' && typeof window.omoOpenDocumentEditorByPayload === 'function') {
+                                            window.omoCloseDocumentDetailDrawer({ force: true });
+                                            if (window.omoOpenDocumentEditorByPayload(documentItem, panel)) {
+                                                return;
+                                            }
+                                        }
+
+                                        if (targetMode !== 'edit' && documentItem && typeof window.omoOpenDocumentDetailByPayload === 'function') {
+                                            window.omoCloseDocumentEditorDrawer({ force: true });
                                             window.omoOpenDocumentDetailByPayload(documentItem, panel);
                                         }
                                         return;
                                     }
 
+                                    if (forcedScope !== '' && typeof window.omoSetDocumentsScope === 'function') {
+                                        window.omoSetDocumentsScope(forcedScope, {
+                                            panel: panel
+                                        });
+                                    }
+
+                                    window.omoCloseDocumentEditorDrawer({ force: true });
                                     closeDetailDrawer();
                                 };
 
@@ -1809,6 +1921,125 @@ if (!is_string($documentsPayload)) {
 
         <script>
         (function () {
+            const normalizeDocumentScope = function (scopeValue) {
+                const normalizedScope = String(scopeValue || '').trim().toLowerCase();
+                return normalizedScope === 'global' || normalizedScope === 'descendants'
+                    ? normalizedScope
+                    : 'contextual';
+            };
+
+            const resolveDocumentsScopePanel = function (panelCandidate) {
+                if (panelCandidate instanceof Element) {
+                    return panelCandidate.closest('.omo-documents') || panelCandidate;
+                }
+
+                return document.getElementById('omo-documents-root');
+            };
+
+            const getCurrentDocumentsScope = function (panel) {
+                return normalizeDocumentScope(panel && panel.getAttribute('data-omo-document-scope') || 'contextual');
+            };
+
+            const buildDocumentsScopeUrl = function (panel, scopeValue) {
+                const resolvedScope = normalizeDocumentScope(scopeValue);
+                const organizationId = Number(panel && panel.getAttribute('data-omo-document-oid') || 0);
+                const holonId = Number(panel && panel.getAttribute('data-omo-document-cid') || 0);
+                const query = [];
+
+                if (organizationId > 0) {
+                    query.push('oid=' + encodeURIComponent(String(organizationId)));
+                }
+
+                if (holonId > 0) {
+                    query.push('cid=' + encodeURIComponent(String(holonId)));
+                }
+
+                if (resolvedScope !== 'contextual') {
+                    query.push('document_scope=' + encodeURIComponent(resolvedScope));
+                }
+
+                return '/omo/api/documents/index.php' + (query.length > 0 ? '?' + query.join('&') : '');
+            };
+
+            const setDocumentsScopeLoadingState = function (panel, isLoading, targetScope) {
+                if (!(panel instanceof Element)) {
+                    return;
+                }
+
+                panel.classList.toggle('is-loading', Boolean(isLoading));
+                let activeScopeIndex = 0;
+
+                panel.querySelectorAll('[data-omo-document-scope-toggle]').forEach(function (button) {
+                    const buttonScope = String(button.getAttribute('data-omo-document-scope-toggle') || '').trim().toLowerCase();
+                    const isActive = buttonScope === targetScope;
+
+                    button.disabled = Boolean(isLoading);
+                    button.classList.toggle('is-active', isActive);
+                    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+                    if (isActive) {
+                        activeScopeIndex = parseInt(button.getAttribute('data-omo-scope-index') || '0', 10) || 0;
+                    }
+                });
+
+                const toggle = panel.querySelector('[data-omo-scope-switch]');
+                if (toggle) {
+                    toggle.setAttribute('data-omo-scope-switch', targetScope);
+                    toggle.style.setProperty('--omo-scope-active-index', String(activeScopeIndex));
+                }
+            };
+
+            window.omoSetDocumentsScope = function (scopeValue, options = {}) {
+                const panel = resolveDocumentsScopePanel(options.panel);
+                if (!(panel instanceof Element)) {
+                    return false;
+                }
+
+                const targetScope = normalizeDocumentScope(scopeValue);
+                if (targetScope === getCurrentDocumentsScope(panel)) {
+                    setDocumentsScopeLoadingState(panel, false, targetScope);
+                    return true;
+                }
+
+                if (typeof window.omoReplaceFetchedPanelRoot !== 'function') {
+                    window.location.href = buildDocumentsScopeUrl(panel, targetScope);
+                    return true;
+                }
+
+                const requestId = (parseInt(panel.dataset.omoDocumentsScopeRequestId || '0', 10) || 0) + 1;
+                panel.dataset.omoDocumentsScopeRequestId = String(requestId);
+
+                const triggerRefresh = function () {
+                    window.omoReplaceFetchedPanelRoot({
+                        rootSelector: '#omo-documents-root',
+                        currentRoot: panel,
+                        url: buildDocumentsScopeUrl(panel, targetScope),
+                        setLoadingState: function (isLoading) {
+                            if ((panel.dataset.omoDocumentsScopeRequestId || '') !== String(requestId) && !isLoading) {
+                                return;
+                            }
+
+                            setDocumentsScopeLoadingState(panel, isLoading, targetScope);
+                        }
+                    }).catch(function () {
+                        if ((panel.dataset.omoDocumentsScopeRequestId || '') !== String(requestId)) {
+                            return;
+                        }
+
+                        setDocumentsScopeLoadingState(panel, false, getCurrentDocumentsScope(panel));
+                    });
+                };
+
+                setDocumentsScopeLoadingState(panel, true, targetScope);
+
+                if (typeof window.requestAnimationFrame === 'function') {
+                    window.requestAnimationFrame(triggerRefresh);
+                } else {
+                    triggerRefresh();
+                }
+
+                return true;
+            };
+
             window.omoInitDocumentsScopePanels = function (root) {
                     const scope = root instanceof Element ? root : document;
 
@@ -1816,62 +2047,6 @@ if (!is_string($documentsPayload)) {
                         if (panel.dataset.omoDocumentsScopeReady === '1') {
                             return;
                         }
-
-                        let documentScopeRefreshToken = 0;
-                        const normalizeDocumentScope = function (scopeValue) {
-                            const normalizedScope = String(scopeValue || '').trim().toLowerCase();
-                            return normalizedScope === 'global' || normalizedScope === 'descendants'
-                                ? normalizedScope
-                                : 'contextual';
-                        };
-
-                        const getCurrentScope = function () {
-                            return normalizeDocumentScope(panel.getAttribute('data-omo-document-scope') || 'contextual');
-                        };
-
-                        const buildScopeUrl = function (scopeValue) {
-                            const resolvedScope = normalizeDocumentScope(scopeValue);
-                            const organizationId = Number(panel.getAttribute('data-omo-document-oid') || 0);
-                            const holonId = Number(panel.getAttribute('data-omo-document-cid') || 0);
-                            const query = [];
-
-                            if (organizationId > 0) {
-                                query.push('oid=' + encodeURIComponent(String(organizationId)));
-                            }
-
-                            if (holonId > 0) {
-                                query.push('cid=' + encodeURIComponent(String(holonId)));
-                            }
-
-                            if (resolvedScope !== 'contextual') {
-                                query.push('document_scope=' + encodeURIComponent(resolvedScope));
-                            }
-
-                            return '/omo/api/documents/index.php' + (query.length > 0 ? '?' + query.join('&') : '');
-                        };
-
-                        const setScopeLoadingState = function (isLoading, targetScope) {
-                            panel.classList.toggle('is-loading', Boolean(isLoading));
-                            let activeScopeIndex = 0;
-
-                            panel.querySelectorAll('[data-omo-document-scope-toggle]').forEach(function (button) {
-                                const buttonScope = String(button.getAttribute('data-omo-document-scope-toggle') || '').trim().toLowerCase();
-                                const isActive = buttonScope === targetScope;
-
-                                button.disabled = Boolean(isLoading);
-                                button.classList.toggle('is-active', isActive);
-                                button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-                                if (isActive) {
-                                    activeScopeIndex = parseInt(button.getAttribute('data-omo-scope-index') || '0', 10) || 0;
-                                }
-                            });
-
-                            const toggle = panel.querySelector('[data-omo-scope-switch]');
-                            if (toggle) {
-                                toggle.setAttribute('data-omo-scope-switch', targetScope);
-                                toggle.style.setProperty('--omo-scope-active-index', String(activeScopeIndex));
-                            }
-                        };
 
                         panel.addEventListener('click', function (event) {
                             const button = event.target.closest('[data-omo-document-scope-toggle]');
@@ -1881,39 +2056,13 @@ if (!is_string($documentsPayload)) {
 
                             const targetScope = normalizeDocumentScope(button.getAttribute('data-omo-document-scope-toggle') || '');
 
-                            if (targetScope === getCurrentScope()) {
+                            if (targetScope === getCurrentDocumentsScope(panel)) {
                                 return;
                             }
 
-                            if (typeof window.omoReplaceFetchedPanelRoot !== 'function') {
-                                window.location.href = buildScopeUrl(targetScope);
-                                return;
-                            }
-
-                            const requestId = ++documentScopeRefreshToken;
-                            const triggerRefresh = function () {
-                                window.omoReplaceFetchedPanelRoot({
-                                    rootSelector: '#omo-documents-root',
-                                    currentRoot: panel,
-                                    url: buildScopeUrl(targetScope),
-                                    setLoadingState: function (isLoading) {
-                                        if (requestId !== documentScopeRefreshToken && !isLoading) {
-                                            return;
-                                        }
-
-                                        setScopeLoadingState(isLoading, targetScope);
-                                    }
-                                });
-                            };
-
-                            // Move the scope cursor before the panel reload starts so the transition is visible.
-                            setScopeLoadingState(true, targetScope);
-
-                            if (typeof window.requestAnimationFrame === 'function') {
-                                window.requestAnimationFrame(triggerRefresh);
-                            } else {
-                                triggerRefresh();
-                            }
+                            window.omoSetDocumentsScope(targetScope, {
+                                panel: panel
+                            });
                         });
 
                         panel.dataset.omoDocumentsScopeReady = '1';
@@ -2107,6 +2256,27 @@ if (!is_string($documentsPayload)) {
                     });
             }
 
+            function normalizeDocumentOpenMode(value) {
+                return String(value || '').trim().toLowerCase() === 'edit'
+                    ? 'edit'
+                    : 'detail';
+            }
+
+            function buildDocumentRouteToken(documentId, mode) {
+                const resolvedDocumentId = Number(documentId || 0);
+                if (!Number.isInteger(resolvedDocumentId) || resolvedDocumentId <= 0) {
+                    return null;
+                }
+
+                if (typeof window.omoBuildDocumentRouteToken === 'function') {
+                    return window.omoBuildDocumentRouteToken(resolvedDocumentId, normalizeDocumentOpenMode(mode));
+                }
+
+                return normalizeDocumentOpenMode(mode) === 'edit'
+                    ? ('documents-de' + String(resolvedDocumentId))
+                    : ('documents-d' + String(resolvedDocumentId));
+            }
+
             function openDocumentMovePopup(documentId) {
                 const resolvedDocumentId = Number(documentId || 0);
 
@@ -2144,7 +2314,19 @@ if (!is_string($documentsPayload)) {
                 }
             }
 
-            window.omoCloseDocumentEditorDrawer = function () {
+            window.omoCloseDocumentEditorDrawer = function (options) {
+                const settings = options && typeof options === 'object'
+                    ? options
+                    : {};
+                const hashState = typeof window.omoParsePopupHashState === 'function'
+                    ? window.omoParsePopupHashState()
+                    : null;
+                const routeToken = hashState && hashState.routeToken ? String(hashState.routeToken) : '';
+                if (settings.force !== true && /^(?:documents|document)-de\d+$/i.test(routeToken) && typeof window.omoOpenDrawerHashState === 'function') {
+                    window.omoOpenDrawerHashState('documents');
+                    return;
+                }
+
                 const root = getDocumentsRoot();
                 const drawer = root ? root.querySelector('[data-omo-document-editor-drawer]') : null;
                 const body = drawer ? drawer.querySelector('[data-omo-document-editor-body]') : null;
@@ -2186,12 +2368,15 @@ if (!is_string($documentsPayload)) {
                 openEditorDrawer(url, title, description);
             };
 
-            window.omoCloseDocumentDetailDrawer = function () {
+            window.omoCloseDocumentDetailDrawer = function (options) {
+                const settings = options && typeof options === 'object'
+                    ? options
+                    : {};
                 const hashState = typeof window.omoParsePopupHashState === 'function'
                     ? window.omoParsePopupHashState()
                     : null;
                 const routeToken = hashState && hashState.routeToken ? String(hashState.routeToken) : '';
-                if (/^(?:documents|document)-(?:d)?\d+$/i.test(routeToken) && typeof window.omoOpenDrawerHashState === 'function') {
+                if (settings.force !== true && /^(?:documents|document)-(?:d)?\d+$/i.test(routeToken) && typeof window.omoOpenDrawerHashState === 'function') {
                     window.omoOpenDrawerHashState('documents');
                     return;
                 }
@@ -2283,15 +2468,26 @@ if (!is_string($documentsPayload)) {
                 return true;
             };
 
+            window.omoOpenDocumentEditorByPayload = function (documentItem) {
+                if (!documentItem || !documentItem.canEdit || !documentItem.editUrl) {
+                    return false;
+                }
+
+                openEditorDrawer(
+                    String(documentItem.editUrl || '').trim(),
+                    'Editer le document',
+                    'Modification du document dans le contexte courant.'
+                );
+                return true;
+            };
+
             window.omoOpenDocumentDetailFromTrigger = function (trigger, event) {
                 if (!(trigger instanceof Element)) {
                     return true;
                 }
 
                 const documentId = Number(trigger.getAttribute('data-omo-document-id') || 0);
-                const routeToken = typeof window.omoBuildDocumentRouteToken === 'function'
-                    ? window.omoBuildDocumentRouteToken(documentId)
-                    : (Number.isInteger(documentId) && documentId > 0 ? ('documents-' + documentId) : null);
+                const routeToken = buildDocumentRouteToken(documentId, 'detail');
                 const hashState = typeof window.omoParsePopupHashState === 'function'
                     ? window.omoParsePopupHashState()
                     : null;
@@ -2323,6 +2519,30 @@ if (!is_string($documentsPayload)) {
                 }
 
                 return false;
+            };
+
+            window.omoOpenDocumentEditorFromDocumentId = function (documentId) {
+                const resolvedDocumentId = Number(documentId || 0);
+                if (!Number.isInteger(resolvedDocumentId) || resolvedDocumentId <= 0) {
+                    return false;
+                }
+
+                const routeToken = buildDocumentRouteToken(resolvedDocumentId, 'edit');
+                const hashState = typeof window.omoParsePopupHashState === 'function'
+                    ? window.omoParsePopupHashState()
+                    : null;
+                const currentRouteToken = hashState && hashState.routeToken ? String(hashState.routeToken) : '';
+
+                if (routeToken && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== currentRouteToken) {
+                    window.omoOpenDrawerHashState(routeToken);
+                    return true;
+                }
+
+                const documentItem = documents.find(function (item) {
+                    return Number(item && item.id ? item.id : 0) === resolvedDocumentId;
+                }) || null;
+
+                return !!(documentItem && window.omoOpenDocumentEditorByPayload(documentItem));
             };
 
             const root = getDocumentsRoot();
@@ -2380,6 +2600,7 @@ if (!is_string($documentsPayload)) {
                 if (editUrl !== '') {
                     fragment.appendChild(buildDocumentMenuItem('Editer', {
                         'data-omo-document-edit': '1',
+                        'data-omo-document-edit-id': String(documentId),
                         'data-omo-document-edit-url': editUrl,
                         'data-omo-document-edit-title': documentTitle
                     }));
@@ -2482,6 +2703,10 @@ if (!is_string($documentsPayload)) {
                     event.stopPropagation();
 
                     closeDocumentMenus();
+                    if (window.omoOpenDocumentEditorFromDocumentId(Number(editButton.getAttribute('data-omo-document-edit-id') || 0))) {
+                        return;
+                    }
+
                     openEditorDrawer(
                         String(editButton.getAttribute('data-omo-document-edit-url') || '').trim(),
                         'Editer le document',
