@@ -463,38 +463,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                     </div>
                 </div>
 
-                <?php if (!$isEditing): ?>
-                <form
-                    class="generic-soft-panel generic-soft-panel--stack omo-decision-edit__import-panel"
-                    action="/omo/api/decision/import.php"
-                    method="post"
-                    enctype="multipart/form-data"
-                    data-omo-decision-import-form
-                >
-                    <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
-                    <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
-                    <input type="hidden" name="intent" value="manage">
-
-                    <div class="omo-decision-edit__section-head">
-                        <div>
-                            <h4 class="generic-card-title generic-card-title--section"><?= $escape(t('decisions.edit.import.title', [], $lang, $baseSourceLang)) ?></h4>
-                            <p class="omo-decision-edit__lead"><?= $escape(t('decisions.edit.import.text', [], $lang, $baseSourceLang)) ?></p>
-                        </div>
-                    </div>
-
-                    <label class="omo-decision-edit__import-field">
-                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.import.file_label', [], $lang, $baseSourceLang)) ?></span>
-                        <input type="file" class="generic-form-control" name="import_file" accept=".csv,.json,.xml" required>
-                    </label>
-
-                    <div class="omo-decision-edit__import-actions">
-                        <button type="submit" class="generic-action-button generic-action-button--secondary" data-omo-decision-import-submit>
-                            <?= $escape(t('decisions.edit.import.button', [], $lang, $baseSourceLang)) ?>
-                        </button>
-                        <div class="omo-decision-edit__feedback" data-omo-decision-import-feedback aria-live="polite"></div>
-                    </div>
-                </form>
-                <?php endif; ?>
+                
 
                 <div class="omo-decision-edit__module-grid">
                     <?php foreach ($registry as $methodKey => $definition): ?>
@@ -534,6 +503,40 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                         </article>
                     <?php endforeach; ?>
                 </div>
+
+                <?php if (!$isEditing): ?>
+                <form
+                    class="generic-soft-panel generic-soft-panel--stack omo-decision-edit__import-panel"
+                    action="/omo/api/decision/import.php"
+                    method="post"
+                    enctype="multipart/form-data"
+                    data-omo-decision-import-form
+                >
+                    <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
+                    <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
+                    <input type="hidden" name="intent" value="manage">
+
+                    <div class="omo-decision-edit__section-head">
+                        <div>
+                            <h4 class="generic-card-title generic-card-title--section"><?= $escape(t('decisions.edit.import.title', [], $lang, $baseSourceLang)) ?></h4>
+                            <p class="omo-decision-edit__lead"><?= $escape(t('decisions.edit.import.text', [], $lang, $baseSourceLang)) ?></p>
+                        </div>
+                    </div>
+
+                    <label class="omo-decision-edit__import-field">
+                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.import.file_label', [], $lang, $baseSourceLang)) ?></span>
+                        <input type="file" class="generic-form-control" name="import_file" accept=".csv,.json,.xml" required>
+                    </label>
+
+                    <div class="omo-decision-edit__import-actions">
+                        <button type="submit" class="generic-action-button generic-action-button--secondary" data-omo-decision-import-submit>
+                            <?= $escape(t('decisions.edit.import.button', [], $lang, $baseSourceLang)) ?>
+                        </button>
+                        <div class="omo-decision-edit__feedback" data-omo-decision-import-feedback aria-live="polite"></div>
+                    </div>
+                </form>
+                <?php endif; ?>
+                
             </section>
             <?php elseif ($selectedDefinition && !empty($selectedDefinition['available']) && !empty($selectedDefinition['render_function']) && function_exists((string)$selectedDefinition['render_function'])): ?>
                 <?php

@@ -355,6 +355,80 @@ class ArrayEvent extends ArrayDbObject
             $this[] = $item;
         }
     }
+
+    protected function eventMatchesPersonalSpaceViewer(\dbObject\Event $event, $organizationId, $userId)
+    {
+        $organizationId = (int)$organizationId;
+        $userId = (int)$userId;
+
+        if (
+            $organizationId <= 0
+            || $userId <= 0
+            || (int)$event->getId() <= 0
+            || (int)$event->get('IDorganization') !== $organizationId
+            || (int)$event->get('active') !== 1
+            || \dbObject\Event::normalizeStatus($event->get('status')) === \dbObject\Event::STATUS_CANCELLED
+        ) {
+            return false;
+        }
+
+        $eventHolonId = (int)$event->get('IDholon');
+        if ($eventHolonId <= 0) {
+            return true;
+        }
+
+        $eventHolon = new \dbObject\Holon();
+        if (
+            !$eventHolon->load($eventHolonId)
+            || !(bool)$eventHolon->get('active')
+            || !(bool)$eventHolon->get('visible')
+        ) {
+            return false;
+        }
+
+        return in_array(
+            $userId,
+            $eventHolon->getAssociatedMemberUserIds([
+                'organizationId' => $organizationId,
+                'skipPermissionFilter' => true,
+            ]),
+            true
+        );
+    }
+
+    public function loadUpcomingForPersonalSpace($organizationId, $userId, $limit = 5, $referenceStart = null)
+    {
+        $organizationId = (int)$organizationId;
+        $userId = (int)$userId;
+        $limit = max(1, (int)$limit);
+        $this->exchangeArray([]);
+
+        if ($organizationId <= 0 || $userId <= 0) {
+            return;
+        }
+
+        if (!($referenceStart instanceof \DateTimeInterface)) {
+            $referenceStart = new \DateTimeImmutable('now');
+        }
+
+        $upcomingEvents = new self();
+        $upcomingEvents->loadUpcomingForCalendarList($organizationId, $referenceStart, 0, false);
+
+        foreach ($upcomingEvents as $event) {
+            if (!($event instanceof \dbObject\Event)) {
+                continue;
+            }
+
+            if (!$this->eventMatchesPersonalSpaceViewer($event, $organizationId, $userId)) {
+                continue;
+            }
+
+            $this[] = $event;
+            if (count($this) >= $limit) {
+                break;
+            }
+        }
+    }
 }
 
 ?>

@@ -26,6 +26,7 @@ function omoRenderHolonHistoryItems(array $historyItems)
 		}
 		$authorLabel = trim((string)($item['authorDisplayName'] ?? ''));
 		$actionLabel = trim((string)($item['actionLabel'] ?? ''));
+		$contentHtml = trim((string)($item['contentHtml'] ?? ''));
 		$parameters = is_array($item['parameters'] ?? null) ? $item['parameters'] : null;
 		$hasDiffData = is_array($parameters)
 			&& (
@@ -50,7 +51,7 @@ function omoRenderHolonHistoryItems(array $historyItems)
 					<span class="omo-holon-history-popup__action"><?= omoApiEscape($actionLabel) ?></span>
 				<?php endif; ?>
 			</div>
-			<p class="omo-holon-history-popup__content"><?= nl2br(omoApiEscape((string)($item['contentDisplay'] ?? ''))) ?></p>
+			<p class="omo-holon-history-popup__content"><?= $contentHtml !== '' ? nl2br($contentHtml) : nl2br(omoApiEscape((string)($item['contentDisplay'] ?? ''))) ?></p>
 			<?php if ($hasDiffData && $payloadBase64 !== ''): ?>
 				<details class="omo-holon-history-popup__details" data-history-diff="1" data-history-payload="<?= omoApiEscape($payloadBase64) ?>">
 					<summary>Voir les changements</summary>
@@ -184,6 +185,17 @@ if ($requestFragment === 'items') {
 		line-height: 1.55;
 		white-space: pre-wrap;
 		word-break: break-word;
+	}
+
+	.omo-holon-history-popup__content .omo-history-reference {
+		color: var(--color-text, #1f2937);
+		font-weight: 600;
+	}
+
+	.omo-holon-history-popup__content .omo-history-reference--holon.omo-history-reference--link {
+		color: var(--color-primary, #2563eb);
+		text-decoration: underline;
+		text-underline-offset: 2px;
 	}
 
 	.omo-holon-history-popup__details {
