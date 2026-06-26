@@ -4,6 +4,20 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-06-26
 
+Dans l app `Calendrier` de OMO, l effet visuel estompe ne sert plus a opposer `holon courant` et `autre holon`: il distingue maintenant les reunions ou la personne courante est reellement concernee via son appartenance de contexte de celles qui restent seulement informatives.
+
+Dans le resume personnel OMO, le bloc `Calendrier` s intitule maintenant `Mes prochaines reunions`, pour mieux refleter qu il liste avant tout les dates a venir de la personne courante.
+
+La popup de recherche OMO declare maintenant explicitement son parametre `Organization` nullable dans `search_popup.php`, ce qui supprime l avertissement deprecation remonte par les versions recentes de PHP.
+
+Les hash OMO des objets embarquent maintenant aussi leur mode d ouverture quand c est necessaire: `Documents` distingue la lecture `#documents-d12` de l edition `#documents-de12`, et `Decisions` distingue `voir`, `gerer` et `participer` avec des routes dediees. Un lien direct ou un retour navigateur reouvre donc bien la meme vue, sans retomber sur un drawer par defaut.
+
+Le cache session des droits par organisation ne reste plus fige jusqu a reouverture: avant de reutiliser `permissionCacheByOrganization`, OMO compare maintenant son marqueur au dernier `history.id` actif de l organisation courante. Les droits ne sont recalcules que si une nouvelle entree d historique est apparue pour cette organisation, y compris apres une action d un autre utilisateur.
+
+Dans la parametrisation OMO du `Vote simple`, le recap des reglages reprend maintenant une presentation plus proche du `Jugement majoritaire`: les options s affichent en lignes pleine largeur, le rappel `Autoriser les propositions pendant la consultation` y apparait aussi, et le bloc de ponderation occupe bien toute la largeur dans la popup de configuration.
+
+Dans ce meme recap du `Vote simple`, le `mode de choix` est maintenant plus compact: au lieu d une ligne separee pour le maximum, il affiche directement `Une seule reponse` ou `Plusieurs reponses (max N)`.
+
 Dans le resume personnel a droite de OMO, l app `Calendrier` remonte maintenant aussi les prochaines dates liees a la personne courante: dates d organisation, dates du holon d organisation, et dates des cercles ou roles ou cette personne est active, avec ouverture directe vers l evenement cible.
 
 Le recap personnel de droite est maintenant invalide puis recharge correctement apres l enregistrement d un evenement dans l app `Calendrier`, ce qui evite de conserver un ancien cache apres creation ou modification.
@@ -25,6 +39,24 @@ Dans cet historique, les references de holons templates invisibles restent affic
 Quand une reference d historique n est pas cliquable, elle n emprunte plus non plus le style visuel d un lien: elle reste simplement en gras.
 
 Les references de holons dans l historique savent maintenant comparer le nom stocke a l epoque avec le nom actuel: elles peuvent afficher `anciennement ...` en cas de renommage, ou `supprime depuis` quand le holon n existe plus. Dans ce dernier cas, aucun lien n est propose.
+
+Dans le resume `Decisions` de l espace personnel OMO, les lignes a `0` ne sont plus affichees. Le tri entre `consultations en cours` et `decisions a prendre` suit maintenant le statut reel du processus: `consultation` reste dans les consultations, et seule la phase `evaluation` remonte dans les decisions a prendre.
+
+Les boutons `Ouvrir` des blocs de resume OMO peuvent maintenant forcer un scope de drawer a l ouverture. Depuis un cercle, groupe ou role, les blocs `Decisions`, `Documents`, `Calendrier` et `Team` ouvrent directement leur panneau en scope `descendants`, pour retrouver les elements listes dans le resume sans tomber sur une vue contextuelle vide.
+
+Le bloc `Documents` du resume personnel reutilise maintenant la meme logique de chargement que l app `Documents` pour le scope `descendants`. Dans un holon non racine, il remonte donc aussi les documents visibles du holon courant et de ses descendants, y compris ceux partages a l organisation ou en public.
+
+Dans l app `Documents` de OMO, le selecteur de tri distingue maintenant `Modification`, `Creation` et `Alphabetique`. On peut donc alterner entre un ordre chronologique par derniere activite et un ordre chronologique par date de creation, au lieu d un seul mode `Date`.
+
+Quand le drawer `Documents` est deja ouvert dans OMO, un clic `Ouvrir` depuis le resume personnel avec un scope force ne recharge plus tout le drawer. L app bascule maintenant directement sa vue locale vers le scope demande, par exemple `descendants`, y compris en revenant d un hash detail vers `#documents`.
+
+Dans le resume personnel OMO, le bloc `Documents - dernieres modifications` devient plus compact: chaque ligne affiche la date courte et le titre sur une meme ligne, avec une icone de visibilite a la place du libelle complet.
+
+Dans l app `Decisions` de OMO, le filtre `Actif` ne remonte plus toutes les decisions simplement visibles. Il liste maintenant seulement les prises de decision non archivees ou la personne courante est reellement impliquee, comme auteur ou invite.
+
+Depuis la racine organisationnelle de OMO, les boutons `Ouvrir` du resume personnel ne forcent plus un scope `descendants` inexistant. Ils basculent maintenant en `global`, qui y est equivalent, pour ouvrir correctement `Decisions`, `Documents`, `Calendrier` et `Team`.
+
+Dans `Decisions`, un sous-holon n affiche plus les decisions purement rattachees a l organisation quand on est en scope `contextuel` ou `descendants`. Ces decisions sans holon restent reservees a la vue organisationnelle ou au scope `global`.
 
 ## 2026-06-25
 

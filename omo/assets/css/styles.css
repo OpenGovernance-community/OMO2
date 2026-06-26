@@ -248,10 +248,39 @@ body {
     color: var(--color-text, #0f172a);
 }
 
+.omo-personal-space__item-inline {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.omo-personal-space__item-meta--date {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
 .omo-personal-space__item-meta,
 .omo-personal-space__item-copy {
     color: var(--color-text-soft, #475569);
     line-height: 1.5;
+}
+
+.omo-personal-space__visibility-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+}
+
+.omo-personal-space__visibility-icon img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 .omo-personal-space__item-copy .omo-history-reference {

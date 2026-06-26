@@ -717,6 +717,44 @@ $resolveHolonLabel = static function ($eventHolonId) use (&$holonLabelsById) {
     return (string)$holonLabelsById[$eventHolonId];
 };
 
+$eventAudienceMatchByHolonId = [];
+$eventPersonallyRelevantForViewer = static function (Event $event) use ($organizationId, $currentUserId, &$eventAudienceMatchByHolonId) {
+    if ($currentUserId <= 0) {
+        return true;
+    }
+
+    if ((int)$event->get('IDorganization') !== $organizationId) {
+        return false;
+    }
+
+    $eventHolonId = (int)$event->get('IDholon');
+    if ($eventHolonId <= 0) {
+        return true;
+    }
+
+    if (!array_key_exists($eventHolonId, $eventAudienceMatchByHolonId)) {
+        $eventAudienceMatchByHolonId[$eventHolonId] = false;
+
+        $eventHolon = new Holon();
+        if (
+            $eventHolon->load($eventHolonId)
+            && (bool)$eventHolon->get('active')
+            && (bool)$eventHolon->get('visible')
+        ) {
+            $eventAudienceMatchByHolonId[$eventHolonId] = in_array(
+                $currentUserId,
+                $eventHolon->getAssociatedMemberUserIds([
+                    'organizationId' => $organizationId,
+                    'skipPermissionFilter' => true,
+                ]),
+                true
+            );
+        }
+    }
+
+    return $eventAudienceMatchByHolonId[$eventHolonId];
+};
+
 $buildTimelineDays = static function (\DateTimeImmutable $rangeStart, int $dayCount) use ($todayDayKey) {
     $days = [];
     $cursor = $rangeStart;
@@ -774,6 +812,7 @@ foreach ($events as $event) {
     $isAllDay = (bool)$event->get('is_all_day');
     $isInCurrentContext = !$canToggleScope || $eventHolonId === 0 || $eventHolonId === $currentHolonId;
     $isInDescendantContext = $isInCurrentContext || ($eventHolonId > 0 && isset($descendantHolonIdMap[$eventHolonId]));
+    $isPersonallyRelevant = $eventPersonallyRelevantForViewer($event);
 
     foreach ($calendarScopes as $scopeKey) {
         $includeEvent = $scopeKey === 'global'
@@ -782,7 +821,7 @@ foreach ($events as $event) {
             continue;
         }
 
-        $isFadedInScope = $scopeKey === 'global' && !$isInCurrentContext;
+        $isFadedInScope = !$isPersonallyRelevant;
 
         if ($startAt <= $monthEnd && $endAt >= $monthStart) {
             $viewCountsByScope[$scopeKey]['month'] += 1;

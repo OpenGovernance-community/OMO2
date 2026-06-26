@@ -212,20 +212,19 @@ class ArrayDecisionProcess extends ArrayDbObject
                 continue;
             }
 
-            if (in_array($status, array(
-                \dbObject\DecisionProcess::STATUS_CONSULTATION,
-                \dbObject\DecisionProcess::STATUS_EVALUATION,
-            ), true)) {
+            if ($status === \dbObject\DecisionProcess::STATUS_CONSULTATION) {
                 $isPersonallyRelevant = $access['canManage']
                     || ($access['participant'] instanceof \dbObject\DecisionParticipant)
                     || $access['canParticipate'];
 
-                if ($decisionType === \dbObject\DecisionProcess::TYPE_CONSULTATION && $isPersonallyRelevant) {
+                if ($isPersonallyRelevant) {
                     $summary['counts']['consultation'] += 1;
                     $this->appendSummaryItem($summary['items'], 'consultation', $item, $previewLimit);
-                    continue;
                 }
+                continue;
+            }
 
+            if ($status === \dbObject\DecisionProcess::STATUS_EVALUATION) {
                 if ($access['canParticipate'] || $access['canManage']) {
                     $participant = $access['participant'] ?? null;
                     $response = $participant
@@ -241,8 +240,8 @@ class ArrayDecisionProcess extends ArrayDbObject
 
                     $item['hasResponded'] = $hasResponded;
                     $this->appendSummaryItem($summary['items'], 'action', $item, $previewLimit);
-                    continue;
                 }
+                continue;
             }
 
             if (in_array($status, array(
