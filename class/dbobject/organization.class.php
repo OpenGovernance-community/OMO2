@@ -4727,7 +4727,13 @@
 		protected function buildHolonHistoryHolonToken(array $holonSnapshot)
 		{
 			$holonId = (int)($holonSnapshot['id'] ?? 0);
-			$holonLabel = trim((string)($holonSnapshot['name'] ?? ('Holon ' . $holonId)));
+			$holonName = trim((string)($holonSnapshot['name'] ?? ''));
+			$holonTypeId = (int)($holonSnapshot['typeId'] ?? 0);
+			$holonTypeLabel = trim((string)($holonSnapshot['typeLabel'] ?? ''));
+			$holonLabel = \dbObject\History::formatHolonReferenceLabel($holonName, $holonTypeId, $holonTypeLabel);
+			if ($holonLabel === '') {
+				$holonLabel = 'Holon ' . $holonId;
+			}
 
 			return \dbObject\History::buildReferenceToken('holon', $holonId, $holonLabel);
 		}

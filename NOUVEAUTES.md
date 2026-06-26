@@ -2,6 +2,30 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-06-26
+
+Dans le resume personnel a droite de OMO, l app `Calendrier` remonte maintenant aussi les prochaines dates liees a la personne courante: dates d organisation, dates du holon d organisation, et dates des cercles ou roles ou cette personne est active, avec ouverture directe vers l evenement cible.
+
+Le recap personnel de droite est maintenant invalide puis recharge correctement apres l enregistrement d un evenement dans l app `Calendrier`, ce qui evite de conserver un ancien cache apres creation ou modification.
+
+Le filtre de ces dates reutilise maintenant directement la logique d appartenance des holons OMO, y compris pour les membres herites ou calcules dans les cercles, au lieu de reposer sur une deduction SQL plus limitee.
+
+Dans ce meme recap, le bloc `Calendrier` suit maintenant aussi le contexte courant de l holarchie: au niveau organisation il reste global, mais dans un cercle, groupe ou role il se limite aux dates du holon courant et de ses descendants visibles.
+
+La resolution du holon courant dans ce recap reutilise maintenant la meme verification que l app `Calendrier` via la racine structurelle, ce qui evite de perdre le contexte sur des holons derives qui ne portent pas directement `IDorganization`.
+
+Dans le bloc `Team` du recap personnel, les celebrations sont maintenant limitees a trois cas ordonnes de facon previsible: nouveaux collaborateurs pendant 7 jours apres l arrivee, anniversaires professionnels pendant les 7 jours avant la date, et anniversaires personnels pendant les 7 jours avant la date.
+
+Ce bloc `Team` suit maintenant aussi le contexte courant: dans un cercle, groupe ou role, il limite les anniversaires aux personnes visibles de ce contexte, au lieu de remonter tous les membres de l organisation.
+
+L historique structurel OMO affiche maintenant les references de holons avec leur nom courant et leur type, par exemple `Tresorier (role)`, meme si le holon a ete renomme depuis l enregistrement. Les references de holons restent stockees sous forme de token type/id/libelle et deviennent cliquables dans le recap personnel et dans la popup d historique.
+
+Dans cet historique, les references de holons templates invisibles restent affichees mais ne sont plus rendues cliquables, pour eviter des liens vers des elements non navigables.
+
+Quand une reference d historique n est pas cliquable, elle n emprunte plus non plus le style visuel d un lien: elle reste simplement en gras.
+
+Les references de holons dans l historique savent maintenant comparer le nom stocke a l epoque avec le nom actuel: elles peuvent afficher `anciennement ...` en cas de renommage, ou `supprime depuis` quand le holon n existe plus. Dans ce dernier cas, aucun lien n est propose.
+
 ## 2026-06-25
 
 Tous les e-mails systeme peuvent maintenant ajouter automatiquement un footer `Soutenir le projet sur Patreon` sur les instances ou Patreon est configure, mais ce rappel est omis des qu un compte Patreon connecte est implique comme expediteur logique ou destinataire du message.

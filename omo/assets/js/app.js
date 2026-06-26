@@ -750,6 +750,10 @@ function omoResetMainRightPanel() {
     $('#panel-right').empty();
 }
 
+function omoInvalidateMainRightPanel() {
+    $('#panel-right').data('omo-main-right-loaded-url', '');
+}
+
 let omoMainRightPanelDesiredUrl = '';
 
 function omoBuildMainRightPanelUrl(oid, cid = null) {
@@ -2554,6 +2558,18 @@ $(document).on('click', '[data-omo-personal-space-document-url]', function (e) {
     window.omoOpenSearchDocumentResult(documentUrl, documentTitle);
 });
 
+$(document).on('click', '[data-omo-personal-space-calendar-event-id]', function (e) {
+    e.preventDefault();
+
+    const eventId = Number($(this).attr('data-omo-personal-space-calendar-event-id') || 0);
+    const holonId = Number($(this).attr('data-omo-personal-space-calendar-holon-id') || 0);
+    if (!Number.isInteger(eventId) || eventId <= 0 || typeof window.omoOpenSearchCalendarEventResult !== 'function') {
+        return;
+    }
+
+    window.omoOpenSearchCalendarEventResult(eventId, holonId);
+});
+
 $(document).on('click', '[data-omo-personal-space-user-id]', function (e) {
     e.preventDefault();
 
@@ -2564,6 +2580,19 @@ $(document).on('click', '[data-omo-personal-space-user-id]', function (e) {
 
     window.omoOpenUserContextPopup(userId);
 });
+
+$(document)
+  .off('click.omoHistoryOpenHolonReference', '[data-omo-history-holon-id]')
+  .on('click.omoHistoryOpenHolonReference', '[data-omo-history-holon-id]', function (e) {
+      e.preventDefault();
+
+      const holonId = Number($(this).attr('data-omo-history-holon-id') || 0);
+      if (!Number.isInteger(holonId) || holonId <= 0 || typeof window.omoOpenSearchStructureResult !== 'function') {
+          return;
+      }
+
+      window.omoOpenSearchStructureResult(holonId);
+  });
 
 $(document).on('click', '[data-omo-cid]', function (e) {
 
@@ -3459,6 +3488,7 @@ function omoReplaceFetchedPanelRoot(options = {}) {
 
 window.omoRefreshSidebar = omoRefreshSidebar;
 window.omoResetMainRightPanel = omoResetMainRightPanel;
+window.omoInvalidateMainRightPanel = omoInvalidateMainRightPanel;
 window.omoRefreshMainRightPanel = omoRefreshMainRightPanel;
 window.omoMaybeOpenPatreonWelcomeModal = omoMaybeOpenPatreonWelcomeModal;
 window.omoOpenMemberActionsPopup = omoOpenMemberActionsPopup;
