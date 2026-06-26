@@ -227,13 +227,24 @@
 				$this[] = $item;
 			}
     }
-		public function buildUpcomingCelebrations($organizationId, $limit = 6, $referenceDate = null, array $labels = array())
+		public function buildUpcomingCelebrations($organizationId, $limit = 6, $referenceDate = null, array $labels = array(), ?array $allowedUserIds = null)
 		{
 			require_once dirname(__DIR__, 2) . '/common/user_profile_ui.php';
 
 			$organizationId = (int)$organizationId;
 			$limit = max(1, (int)$limit);
 			$items = array();
+			$allowedUserIdMap = null;
+
+			if (is_array($allowedUserIds)) {
+				$allowedUserIdMap = array_fill_keys(array_values(array_unique(array_filter(array_map('intval', $allowedUserIds), static function ($userId) {
+					return $userId > 0;
+				}))), true);
+
+				if (count($allowedUserIdMap) === 0) {
+					return array();
+				}
+			}
 
 			$this->loadActiveForOrganization($organizationId);
 
@@ -247,6 +258,10 @@
 					continue;
 				}
 
+				if (is_array($allowedUserIdMap) && !isset($allowedUserIdMap[$userId])) {
+					continue;
+				}
+
 				$user = new \dbObject\User();
 				if (!$user->load($userId) || !$user->canView()) {
 					continue;
@@ -257,7 +272,11 @@
 					$displayName = 'Utilisateur ' . $userId;
 				}
 
-				$birthSummary = \commonUserProfileBuildBirthdaySummary($user->get('birthdate'), $referenceDate);
+				$birthSummary = \commonUserProfileBuildRecurringDateSummary($user->get('birthdate'), array(
+					'today' => "Anniversaire aujourd'hui",
+					'soonPrefix' => 'Anniversaire dans',
+					'detailPrefix' => 'Le',
+				), $referenceDate, null, 7);
 				if (is_array($birthSummary)) {
 					$items[] = array(
 						'userId' => $userId,
@@ -265,16 +284,39 @@
 						'tagType' => 'personal',
 						'headline' => (string)($birthSummary['headline'] ?? ''),
 						'detail' => (string)($birthSummary['detail'] ?? ''),
-						'daysUntil' => (int)($birthSummary['daysUntil'] ?? 9999),
+						'sortGroup' => (int)(($birthSummary['daysUntil'] ?? 9999) === 0 ? 0 : 1),
+						'sortDistance' => (int)($birthSummary['daysUntil'] ?? 9999),
+						'sortTimestamp' => ($birthSummary['nextBirthday'] ?? null) instanceof \DateTimeInterface
+							? (int)$birthSummary['nextBirthday']->getTimestamp()
+							: 0,
 					);
+				}
+
+				$recentJoinSummary = \commonUserProfileBuildRecentDateSummary($membership->get('datecreation'), array(
+					'label' => (string)($labels['proNew'] ?? 'Nouveau'),
+					'detailPrefix' => (string)($labels['proNewDetailPrefix'] ?? 'Arrive le'),
+				), $referenceDate, null, 7);
+				if (is_array($recentJoinSummary)) {
+					$items[] = array(
+						'userId' => $userId,
+						'displayName' => $displayName,
+						'tagType' => 'pro',
+						'headline' => (string)($recentJoinSummary['headline'] ?? ''),
+						'detail' => (string)($recentJoinSummary['detail'] ?? ''),
+						'sortGroup' => (int)(($recentJoinSummary['daysSince'] ?? 9999) === 0 ? 0 : 2),
+						'sortDistance' => (int)($recentJoinSummary['daysSince'] ?? 9999),
+						'sortTimestamp' => ($recentJoinSummary['eventDate'] ?? null) instanceof \DateTimeInterface
+							? (int)$recentJoinSummary['eventDate']->getTimestamp()
+							: 0,
+					);
+					continue;
 				}
 
 				$joinSummary = \commonUserProfileBuildRecurringDateSummary($membership->get('datecreation'), array(
 					'today' => (string)($labels['proToday'] ?? "Anniversaire pro aujourd'hui"),
 					'soonPrefix' => (string)($labels['proSoonPrefix'] ?? 'Anniversaire pro dans'),
-					'monthPrefix' => (string)($labels['proMonthPrefix'] ?? 'Anniversaire pro en'),
 					'detailPrefix' => 'Le',
-				), $referenceDate);
+				), $referenceDate, null, 7);
 				if (is_array($joinSummary)) {
 					$items[] = array(
 						'userId' => $userId,
@@ -282,16 +324,36 @@
 						'tagType' => 'pro',
 						'headline' => (string)($joinSummary['headline'] ?? ''),
 						'detail' => (string)($joinSummary['detail'] ?? ''),
-						'daysUntil' => (int)($joinSummary['daysUntil'] ?? 9999),
+						'sortGroup' => (int)(($joinSummary['daysUntil'] ?? 9999) === 0 ? 0 : 1),
+						'sortDistance' => (int)($joinSummary['daysUntil'] ?? 9999),
+						'sortTimestamp' => ($joinSummary['nextBirthday'] ?? null) instanceof \DateTimeInterface
+							? (int)$joinSummary['nextBirthday']->getTimestamp()
+							: 0,
 					);
 				}
 			}
 
 			usort($items, static function (array $left, array $right) {
-				$leftDays = (int)($left['daysUntil'] ?? 9999);
-				$rightDays = (int)($right['daysUntil'] ?? 9999);
-				if ($leftDays !== $rightDays) {
-					return $leftDays <=> $rightDays;
+				$leftGroup = (int)($left['sortGroup'] ?? 9);
+				$rightGroup = (int)($right['sortGroup'] ?? 9);
+				if ($leftGroup !== $rightGroup) {
+					return $leftGroup <=> $rightGroup;
+				}
+
+				$leftDistance = (int)($left['sortDistance'] ?? 9999);
+				$rightDistance = (int)($right['sortDistance'] ?? 9999);
+				if ($leftDistance !== $rightDistance) {
+					return $leftDistance <=> $rightDistance;
+				}
+
+				$leftTimestamp = (int)($left['sortTimestamp'] ?? 0);
+				$rightTimestamp = (int)($right['sortTimestamp'] ?? 0);
+				if ($leftTimestamp !== $rightTimestamp) {
+					if ($leftGroup === 2) {
+						return $rightTimestamp <=> $leftTimestamp;
+					}
+
+					return $leftTimestamp <=> $rightTimestamp;
 				}
 
 				return strcmp((string)($left['displayName'] ?? ''), (string)($right['displayName'] ?? ''));

@@ -58,7 +58,7 @@ if (!function_exists('commonUserProfileFormatBirthDate')) {
 }
 
 if (!function_exists('commonUserProfileBuildRecurringDateSummary')) {
-    function commonUserProfileBuildRecurringDateSummary($dateValue, array $labels = [], ?DateTimeInterface $referenceDate = null, ?DateTimeZone $timezone = null)
+    function commonUserProfileBuildRecurringDateSummary($dateValue, array $labels = [], ?DateTimeInterface $referenceDate = null, ?DateTimeZone $timezone = null, ?int $windowDays = null)
     {
         if (!$dateValue instanceof DateTimeInterface) {
             return null;
@@ -85,6 +85,10 @@ if (!function_exists('commonUserProfileBuildRecurringDateSummary')) {
         }
 
         $daysUntil = (int)$today->diff($nextOccurrence)->format('%a');
+        if ($windowDays !== null && $daysUntil > max(0, (int)$windowDays)) {
+            return null;
+        }
+
         $todayLabel = (string)($labels['today'] ?? "Evenement aujourd'hui");
         $soonPrefix = (string)($labels['soonPrefix'] ?? 'Evenement dans');
         $monthPrefix = (string)($labels['monthPrefix'] ?? 'Evenement en');
@@ -106,6 +110,48 @@ if (!function_exists('commonUserProfileBuildRecurringDateSummary')) {
             'daysUntil' => $daysUntil,
             'nextBirthday' => $nextOccurrence,
             'monthName' => $monthName,
+        ];
+    }
+}
+
+if (!function_exists('commonUserProfileBuildRecentDateSummary')) {
+    function commonUserProfileBuildRecentDateSummary($dateValue, array $labels = [], ?DateTimeInterface $referenceDate = null, ?DateTimeZone $timezone = null, int $windowDays = 7)
+    {
+        if (!$dateValue instanceof DateTimeInterface) {
+            return null;
+        }
+
+        if ($timezone === null) {
+            $timezone = new DateTimeZone(date_default_timezone_get() ?: 'UTC');
+        }
+
+        if ($referenceDate instanceof DateTimeInterface) {
+            $today = DateTimeImmutable::createFromInterface($referenceDate)->setTimezone($timezone)->setTime(0, 0, 0);
+        } else {
+            $today = new DateTimeImmutable('today', $timezone);
+        }
+
+        $eventDate = DateTimeImmutable::createFromInterface($dateValue)->setTimezone($timezone)->setTime(0, 0, 0);
+        if ($eventDate > $today) {
+            return null;
+        }
+
+        $daysSince = (int)$eventDate->diff($today)->format('%a');
+        if ($daysSince > max(0, $windowDays)) {
+            return null;
+        }
+
+        $label = (string)($labels['label'] ?? 'Nouveau');
+        $detailPrefix = array_key_exists('detailPrefix', $labels)
+            ? (string)$labels['detailPrefix']
+            : 'Arrive le';
+        $shortDateLabel = commonUserProfileFormatBirthDate($eventDate, false);
+
+        return [
+            'headline' => $label,
+            'detail' => $shortDateLabel !== '' ? trim($detailPrefix . ' ' . $shortDateLabel) : '',
+            'daysSince' => $daysSince,
+            'eventDate' => $eventDate,
         ];
     }
 }

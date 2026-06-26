@@ -254,6 +254,17 @@ body {
     line-height: 1.5;
 }
 
+.omo-personal-space__item-copy .omo-history-reference {
+    color: inherit;
+    font-weight: 600;
+}
+
+.omo-personal-space__item-copy .omo-history-reference--holon.omo-history-reference--link {
+    color: var(--color-primary, #2563eb);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
 .omo-personal-space__tag {
     display: inline-flex;
     align-items: center;

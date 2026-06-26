@@ -2229,6 +2229,10 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                         throw payload || new Error('save_failed');
                     }
 
+                    if (typeof window.omoInvalidateMainRightPanel === 'function') {
+                        window.omoInvalidateMainRightPanel();
+                    }
+
                     closeDrawer();
                     refreshCalendar(currentUrl);
                 }).catch(function (error) {
