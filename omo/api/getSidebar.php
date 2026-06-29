@@ -3,15 +3,15 @@ require_once __DIR__ . '/bootstrap.php';
 
 $sourceLang = [
     'sidebar.applications.manage_label' => [
-        'text' => 'Gerer',
+        'text' => 'Gérer',
         'context' => 'Label of the sidebar item used to open the application management picker.'
     ],
     'sidebar.applications.manage_title' => [
-        'text' => 'Gerer les applications',
+        'text' => 'Gérer les applications',
         'context' => 'Tooltip of the sidebar item used to open the application management picker.'
     ],
     'sidebar.parameters.label' => [
-        'text' => 'Parametres',
+        'text' => 'Paramètres',
         'context' => 'Label of the parameters entry in the sidebar.'
     ],
 ];

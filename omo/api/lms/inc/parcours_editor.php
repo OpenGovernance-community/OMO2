@@ -248,6 +248,12 @@ if (!function_exists('lmsRenderParcoursMissionManager')) {
                                         data-lms-edit-mission="1"
                                         data-mission-id="<?php echo (int)($mission['IDmission'] ?? 0); ?>"
                                     >Editer</button>
+                                    <button
+                                        type="button"
+                                        class="lms-parcours-mission-item__menu-item"
+                                        data-lms-remove-mission="1"
+                                        data-mission-id="<?php echo (int)($mission['IDmission'] ?? 0); ?>"
+                                    >Retirer du parcours</button>
                                 </div>
                             </div>
                             <div class="lms-parcours-mission-item__handle" data-lms-mission-drag-handle="1" title="Deplacer">::</div>
@@ -379,6 +385,12 @@ if (!function_exists('lmsRenderParcoursMissionManager')) {
                                         data-lms-edit-pack-child="1"
                                         data-child-parcours-id="<?php echo (int)($child['IDparcours_child'] ?? 0); ?>"
                                     >Editer le parcours</button>
+                                    <button
+                                        type="button"
+                                        class="lms-parcours-mission-item__menu-item"
+                                        data-lms-remove-pack-child="1"
+                                        data-child-parcours-id="<?php echo (int)($child['IDparcours_child'] ?? 0); ?>"
+                                    >Retirer du pack</button>
                                 </div>
                             </div>
                             <div class="lms-parcours-mission-item__handle" data-lms-pack-drag-handle="1" title="Deplacer">::</div>

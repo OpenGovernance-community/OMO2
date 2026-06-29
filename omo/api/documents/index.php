@@ -8,7 +8,7 @@ use dbObject\Organization;
 
 $sourceLang = [
     'documents.scope.toggle_aria' => [
-        'text' => 'Portee des documents',
+        'text' => 'Portée des documents',
         'context' => 'Accessible label for the document scope toggle.',
     ],
     'documents.scope.contextual' => [
@@ -24,15 +24,15 @@ $sourceLang = [
         'context' => 'Label used to show documents from the whole organization.',
     ],
     'documents.empty.visible_global' => [
-        'text' => 'Aucun document visible dans cette organisation. {count} fichier(s) est cache.',
+        'text' => 'Aucun document visible dans cette organisation. {count} fichier(s) est caché.',
         'context' => 'Empty state shown when hidden documents exist in global scope.',
     ],
     'documents.empty.visible_contextual' => [
-        'text' => 'Aucun document visible pour ce contexte. {count} fichier(s) est cache.',
+        'text' => 'Aucun document visible pour ce contexte. {count} fichier(s) est caché.',
         'context' => 'Empty state shown when hidden documents exist in contextual scope.',
     ],
     'documents.empty.visible_descendants' => [
-        'text' => 'Aucun document visible pour ce contexte et ses descendants. {count} fichier(s) est cache.',
+        'text' => 'Aucun document visible pour ce contexte et ses descendants. {count} fichier(s) est caché.',
         'context' => 'Empty state shown when hidden documents exist in descendant scope.',
     ],
     'documents.empty.available_global' => [

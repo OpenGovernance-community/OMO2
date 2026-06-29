@@ -8,11 +8,11 @@ use dbObject\Organization;
 
 $sourceLang = [
     'calendar.create.title' => [
-        'text' => 'Nouvel evenement',
+        'text' => 'Nouvel événement',
         'context' => 'Title shown at the top of the event creation form.',
     ],
     'calendar.edit.title' => [
-        'text' => 'Modifier l evenement',
+        'text' => "Modifier l'événement",
         'context' => 'Title shown at the top of the event edition form.',
     ],
     'calendar.create.description' => [
@@ -20,7 +20,7 @@ $sourceLang = [
         'context' => 'Intro text shown in the event creation form.',
     ],
     'calendar.edit.description' => [
-        'text' => 'Mettez a jour la date, l horaire et le contexte de rattachement.',
+        'text' => "Mettez à jour la date, l'horaire et le contexte de rattachement.",
         'context' => 'Intro text shown in the event edition form.',
     ],
     'calendar.create.field.title' => [
@@ -32,7 +32,7 @@ $sourceLang = [
         'context' => 'Label of the event description field.',
     ],
     'calendar.create.field.start' => [
-        'text' => 'Debut',
+        'text' => 'Début',
         'context' => 'Label of the event start date time field.',
     ],
     'calendar.create.field.end' => [
@@ -40,11 +40,11 @@ $sourceLang = [
         'context' => 'Label of the event end date time field.',
     ],
     'calendar.create.field.holon' => [
-        'text' => 'Cercle ou role',
+        'text' => 'Cercle ou rôle',
         'context' => 'Label of the optional holon association field.',
     ],
     'calendar.create.field.all_day' => [
-        'text' => 'Journee entiere',
+        'text' => 'Journée entière',
         'context' => 'Label of the all day checkbox in the event creation form.',
     ],
     'calendar.create.field.none' => [
@@ -52,7 +52,7 @@ $sourceLang = [
         'context' => 'Empty option shown in the holon select field.',
     ],
     'calendar.create.submit' => [
-        'text' => 'Creer l evenement',
+        'text' => "Créer l'événement",
         'context' => 'Submit button label of the event creation form.',
     ],
     'calendar.edit.submit' => [
@@ -60,11 +60,11 @@ $sourceLang = [
         'context' => 'Submit button label of the event edition form.',
     ],
     'calendar.create.success' => [
-        'text' => 'Evenement cree.',
+        'text' => 'Événement créé.',
         'context' => 'Success message returned after an event is created.',
     ],
     'calendar.edit.success' => [
-        'text' => 'Evenement mis a jour.',
+        'text' => 'Événement mis à jour.',
         'context' => 'Success message returned after an event is updated.',
     ],
     'calendar.create.error.title' => [
@@ -72,7 +72,7 @@ $sourceLang = [
         'context' => 'Validation error returned when the title is missing.',
     ],
     'calendar.create.error.start' => [
-        'text' => 'La date de debut est invalide.',
+        'text' => 'La date de début est invalide.',
         'context' => 'Validation error returned when the start date is invalid.',
     ],
     'calendar.create.error.end' => [
@@ -84,7 +84,7 @@ $sourceLang = [
         'context' => 'Validation error returned when the selected holon is not allowed.',
     ],
     'calendar.create.error.save' => [
-        'text' => 'Impossible d enregistrer cet evenement.',
+        'text' => "Impossible d'enregistrer cet événement.",
         'context' => 'Generic error returned when the event could not be saved.',
     ],
 ];

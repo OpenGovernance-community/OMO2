@@ -33,7 +33,7 @@ if ($parcoursId > 0) {
     $managementContext = lmsResolveParcoursManagementContext($organizationId, $parcoursId, $currentUserId, false);
     $link = $managementContext['link'] ?? null;
     $loadedParcours = $managementContext['parcours'] ?? null;
-    if ($link === null || !($loadedParcours instanceof \dbObject\Parcours)) {
+    if (!($loadedParcours instanceof \dbObject\Parcours) || ($link === null && empty($managementContext['isExposedViaPack']))) {
         http_response_code(404);
         echo '<div class="lms-create-parcours-view"><p>Parcours introuvable.</p></div>';
         exit;
@@ -214,6 +214,10 @@ $params = array(
     position: relative;
 }
 
+.lms-parcours-mission-item.is-menu-open {
+    z-index: 20;
+}
+
 .lms-parcours-mission-item.is-drop-target {
     border-color: color-mix(in srgb, var(--primary) 55%, var(--border-color));
 }
@@ -239,7 +243,7 @@ $params = array(
     position: absolute;
     top: 10px;
     right: 10px;
-    z-index: 2;
+    z-index: 25;
 }
 
 .lms-parcours-mission-item__menu-trigger {
@@ -267,6 +271,7 @@ $params = array(
     background: var(--bg-card);
     box-shadow: 0 16px 40px rgba(15,23,42,0.16);
     display: none;
+    z-index: 30;
 }
 
 .lms-parcours-mission-item__menu.is-open {
