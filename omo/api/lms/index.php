@@ -753,6 +753,8 @@ const lmsParcoursMissionCreatePath = <?php echo json_encode(lmsBuildLocalPath('/
 const lmsParcoursMissionReorderPath = <?php echo json_encode(lmsBuildLocalPath('/parcours_mission_reorder.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsParcoursPackAddPath = <?php echo json_encode(lmsBuildLocalPath('/parcours_pack_add.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsParcoursPackReorderPath = <?php echo json_encode(lmsBuildLocalPath('/parcours_pack_reorder.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsParcoursPrerequisiteAddPath = <?php echo json_encode(lmsBuildLocalPath('/parcours_prerequisite_add.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsParcoursPrerequisiteRemovePath = <?php echo json_encode(lmsBuildLocalPath('/parcours_prerequisite_remove.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsMissionHomeworkReorderPath = <?php echo json_encode(lmsBuildLocalPath('/mission_homework_reorder.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsMissionQuestionReorderPath = <?php echo json_encode(lmsBuildLocalPath('/mission_question_reorder.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 
@@ -778,6 +780,29 @@ function getAnonymousDoneMissionIds(parcoursId) {
     } catch (error) {
         return [];
     }
+}
+
+function getAnonymousCompletedParcoursIds() {
+    const completedIds = [];
+
+    document.querySelectorAll('[data-parcours-card="1"]').forEach((card) => {
+        if (card.getAttribute('data-is-pack') === '1') {
+            return;
+        }
+
+        const parcoursId = Number(card.getAttribute('data-parcours-id') || 0);
+        const total = Number(card.getAttribute('data-total-missions') || 0);
+        if (parcoursId <= 0 || total <= 0) {
+            return;
+        }
+
+        const done = getAnonymousDoneMissionIds(parcoursId).length;
+        if (done >= total) {
+            completedIds.push(parcoursId);
+        }
+    });
+
+    return Array.from(new Set(completedIds));
 }
 
 function resolveCardPercent(card, fallbackPercent) {
@@ -852,6 +877,12 @@ function goToParcours(id) {
     if (lmsIndexViewer.isEmbedded) {
         targetUrl.searchParams.set('embed', '1');
     }
+    if (Number(lmsIndexViewer.userId || 0) <= 0) {
+        const completedParcoursIds = getAnonymousCompletedParcoursIds();
+        if (completedParcoursIds.length > 0) {
+            targetUrl.searchParams.set('done_parcours_ids', completedParcoursIds.join(','));
+        }
+    }
     window.location.href = targetUrl.pathname + targetUrl.search + targetUrl.hash;
 }
 
@@ -906,6 +937,7 @@ function initLmsDrawerContent() {
     initMissionEditorDrawer();
     initParcoursEditorDrawer();
     initParcoursImportDrawer();
+    initParcoursPrerequisiteManager();
     initParcoursMissionManager();
     initParcoursPackManager();
 }
@@ -1022,6 +1054,7 @@ function initParcoursEditorDrawer() {
     submitButton.addEventListener('click', submitParcoursEditorForm);
     form.addEventListener('submit', submitParcoursEditorForm, true);
 
+    initParcoursPrerequisiteManager();
     initParcoursMissionManager();
 }
 
@@ -1213,6 +1246,7 @@ async function refreshParcoursMissionManager(parcoursId) {
 
     const html = await response.text();
     currentManager.outerHTML = html;
+    initParcoursPrerequisiteManager();
     initParcoursMissionManager();
     initParcoursPackManager();
 }
@@ -1480,6 +1514,182 @@ function togglePackItemMenu(event, childParcoursId) {
     const willOpen = !menu.classList.contains('is-open');
     closeAllMissionItemMenus();
     menu.classList.toggle('is-open', willOpen);
+}
+
+function togglePrerequisiteItemMenu(event, requiredParcoursId) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const menu = document.getElementById(`lms-prerequisite-item-menu-${requiredParcoursId}`);
+    if (!menu) {
+        return;
+    }
+
+    const willOpen = !menu.classList.contains('is-open');
+    closeAllMissionItemMenus();
+    menu.classList.toggle('is-open', willOpen);
+}
+
+function initParcoursPrerequisiteManager() {
+    const drawerContent = document.getElementById('drawer-content');
+    const manager = drawerContent ? drawerContent.querySelector('[data-lms-parcours-prerequisite-manager]') : null;
+
+    if (!manager || manager.dataset.lmsPrerequisiteManagerBound === '1') {
+        return;
+    }
+
+    manager.dataset.lmsPrerequisiteManagerBound = '1';
+    const parcoursId = Number(manager.getAttribute('data-parcours-id') || 0);
+    const picker = manager.querySelector('[data-lms-prerequisite-picker]');
+    const searchInput = manager.querySelector('[data-lms-prerequisite-picker-search]');
+    const searchEmptyState = manager.querySelector('[data-lms-prerequisite-picker-empty-search]');
+
+    function normalizePrerequisitePickerSearch(value) {
+        let normalized = String(value || '').trim().toLowerCase();
+        if (typeof normalized.normalize === 'function') {
+            normalized = normalized.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        }
+        return normalized;
+    }
+
+    function closePicker() {
+        if (picker) {
+            picker.hidden = true;
+        }
+    }
+
+    function openPicker() {
+        if (picker) {
+            picker.hidden = false;
+        }
+    }
+
+    manager.querySelectorAll('[data-lms-open-prerequisite-picker]').forEach((button) => {
+        button.addEventListener('click', openPicker);
+    });
+
+    manager.querySelectorAll('[data-lms-close-prerequisite-picker]').forEach((button) => {
+        button.addEventListener('click', closePicker);
+    });
+
+    manager.querySelectorAll('[data-lms-toggle-prerequisite-menu]').forEach((button) => {
+        button.addEventListener('click', function (event) {
+            const requiredParcoursId = Number(button.getAttribute('data-required-parcours-id') || 0);
+            if (requiredParcoursId <= 0) {
+                return;
+            }
+            togglePrerequisiteItemMenu(event, requiredParcoursId);
+        });
+    });
+
+    manager.querySelectorAll('[data-lms-edit-prerequisite-parcours]').forEach((button) => {
+        button.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const requiredParcoursId = Number(button.getAttribute('data-required-parcours-id') || 0);
+            if (requiredParcoursId <= 0) {
+                return;
+            }
+
+            closeAllMissionItemMenus();
+            openParcoursEditorDrawer(requiredParcoursId);
+        });
+    });
+
+    manager.querySelectorAll('[data-lms-remove-prerequisite]').forEach((button) => {
+        button.addEventListener('click', async function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const requiredParcoursId = Number(button.getAttribute('data-required-parcours-id') || 0);
+            if (parcoursId <= 0 || requiredParcoursId <= 0) {
+                return;
+            }
+
+            closeAllMissionItemMenus();
+            button.disabled = true;
+            try {
+                const formData = new FormData();
+                formData.append('pid', String(parcoursId));
+                formData.append('required_parcours_id', String(requiredParcoursId));
+
+                const response = await fetch(lmsParcoursPrerequisiteRemovePath, {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin'
+                });
+
+                const payload = await response.json();
+                if (!response.ok || !payload || payload.success !== true) {
+                    throw new Error(payload && payload.message ? payload.message : 'Impossible de retirer ce prerequis.');
+                }
+
+                await refreshParcoursMissionManager(parcoursId);
+            } catch (error) {
+                window.alert(error && error.message ? error.message : 'Impossible de retirer ce prerequis.');
+            } finally {
+                button.disabled = false;
+            }
+        });
+    });
+
+    if (searchInput) {
+        const applyPrerequisitePickerSearch = function () {
+            const normalizedQuery = normalizePrerequisitePickerSearch(searchInput.value || '');
+            let visibleCount = 0;
+
+            manager.querySelectorAll('[data-lms-prerequisite-picker-item]').forEach((item) => {
+                const haystack = normalizePrerequisitePickerSearch(item.getAttribute('data-search-text') || '');
+                const isVisible = normalizedQuery === '' || haystack.indexOf(normalizedQuery) !== -1;
+                item.hidden = !isVisible;
+                if (isVisible) {
+                    visibleCount += 1;
+                }
+            });
+
+            if (searchEmptyState) {
+                searchEmptyState.hidden = !(normalizedQuery !== '' && visibleCount === 0);
+            }
+        };
+
+        searchInput.addEventListener('input', applyPrerequisitePickerSearch);
+        searchInput.addEventListener('search', applyPrerequisitePickerSearch);
+        applyPrerequisitePickerSearch();
+    }
+
+    manager.querySelectorAll('[data-lms-add-prerequisite-id]').forEach((button) => {
+        button.addEventListener('click', async function () {
+            const requiredParcoursId = Number(button.getAttribute('data-lms-add-prerequisite-id') || 0);
+            if (parcoursId <= 0 || requiredParcoursId <= 0) {
+                return;
+            }
+
+            button.disabled = true;
+            try {
+                const formData = new FormData();
+                formData.append('pid', String(parcoursId));
+                formData.append('required_parcours_id', String(requiredParcoursId));
+
+                const response = await fetch(lmsParcoursPrerequisiteAddPath, {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin'
+                });
+
+                const payload = await response.json();
+                if (!response.ok || !payload || payload.success !== true) {
+                    throw new Error(payload && payload.message ? payload.message : 'Impossible d ajouter ce prerequis.');
+                }
+
+                await refreshParcoursMissionManager(parcoursId);
+            } catch (error) {
+                window.alert(error && error.message ? error.message : 'Impossible d ajouter ce prerequis.');
+            } finally {
+                button.disabled = false;
+            }
+        });
+    });
 }
 
 function initParcoursPackManager() {
