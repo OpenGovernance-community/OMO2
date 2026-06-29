@@ -5,6 +5,7 @@
 	{
 		protected static $hasApplicationColumnCache = null;
 		protected static $hasIsPackColumnCache = null;
+		protected static $hasPrerequisiteTableCache = null;
 
 		public static function tableName()
 		{
@@ -107,6 +108,16 @@
 			return self::$hasIsPackColumnCache;
 		}
 
+		public static function hasPrerequisiteTable()
+		{
+			if (self::$hasPrerequisiteTableCache !== null) {
+				return self::$hasPrerequisiteTableCache;
+			}
+
+			self::$hasPrerequisiteTableCache = self::tableExists('parcours_prerequisite');
+			return self::$hasPrerequisiteTableCache;
+		}
+
 		public function isVisibleInOrganization($organizationId)
 		{
 			$organizationId = (int)$organizationId;
@@ -125,6 +136,137 @@
 		public function isPack()
 		{
 			return self::hasIsPackColumn() && (bool)$this->get('ispack');
+		}
+
+		public static function fetchPrerequisiteIdsForParcours($parcoursId)
+		{
+			$parcoursId = (int)$parcoursId;
+			if ($parcoursId <= 0 || !self::hasPrerequisiteTable()) {
+				return [];
+			}
+
+			$rows = self::fetchAll(
+				"SELECT IDparcours_required
+				FROM parcours_prerequisite
+				WHERE IDparcours = :parcours_id",
+				['parcours_id' => $parcoursId]
+			);
+			if (!is_array($rows)) {
+				return [];
+			}
+
+			$ids = [];
+			foreach ($rows as $row) {
+				$requiredParcoursId = (int)($row['IDparcours_required'] ?? 0);
+				if ($requiredParcoursId > 0) {
+					$ids[$requiredParcoursId] = $requiredParcoursId;
+				}
+			}
+
+			return array_values($ids);
+		}
+
+		public static function fetchDetailedPrerequisitesForParcours($parcoursId)
+		{
+			if (!self::hasPrerequisiteTable()) {
+				return [];
+			}
+
+			return \dbObject\ParcoursPrerequisite::fetchDetailedForParcours((int)$parcoursId);
+		}
+
+		public static function userHasCompletedParcours($userId, $parcoursId)
+		{
+			$userId = (int)$userId;
+			$parcoursId = (int)$parcoursId;
+			if ($userId <= 0 || $parcoursId <= 0) {
+				return false;
+			}
+
+			$row = self::fetchRow(
+				"SELECT
+					COUNT(DISTINCT pm.IDmission) AS total_missions,
+					COUNT(DISTINCT CASE WHEN um.done IS NOT NULL THEN pm.IDmission END) AS done_missions
+				FROM parcours_mission pm
+				LEFT JOIN user_mission um
+					ON um.IDmission = pm.IDmission
+					AND um.IDparcours = pm.IDparcours
+					AND um.IDuser = :user_id
+				WHERE pm.IDparcours = :parcours_id",
+				[
+					'user_id' => $userId,
+					'parcours_id' => $parcoursId,
+				]
+			);
+			if (!is_array($row)) {
+				return false;
+			}
+
+			$totalMissions = (int)($row['total_missions'] ?? 0);
+			$doneMissions = (int)($row['done_missions'] ?? 0);
+			return $totalMissions > 0 && $doneMissions >= $totalMissions;
+		}
+
+		public static function arePrerequisitesSatisfiedForUser($parcoursId, $userId)
+		{
+			$parcoursId = (int)$parcoursId;
+			$userId = (int)$userId;
+			$prerequisiteIds = self::fetchPrerequisiteIdsForParcours($parcoursId);
+			if (count($prerequisiteIds) === 0) {
+				return true;
+			}
+
+			if ($userId <= 0) {
+				return false;
+			}
+
+			foreach ($prerequisiteIds as $requiredParcoursId) {
+				if (!self::userHasCompletedParcours($userId, (int)$requiredParcoursId)) {
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		protected static function buildPrerequisiteVisibilityWhereSql($parcoursAlias, $userId)
+		{
+			$parcoursAlias = trim((string)$parcoursAlias) !== '' ? trim((string)$parcoursAlias) : 'p';
+			$userId = (int)$userId;
+			if (!self::hasPrerequisiteTable()) {
+				return '1=1';
+			}
+
+			if ($userId <= 0) {
+				return "NOT EXISTS (
+					SELECT 1
+					FROM parcours_prerequisite pr
+					WHERE pr.IDparcours = " . $parcoursAlias . ".id
+				)";
+			}
+
+			return "NOT EXISTS (
+				SELECT 1
+				FROM parcours_prerequisite pr
+				WHERE pr.IDparcours = " . $parcoursAlias . ".id
+				  AND (
+					(SELECT COUNT(DISTINCT pm_total.IDmission)
+					 FROM parcours_mission pm_total
+					 WHERE pm_total.IDparcours = pr.IDparcours_required) <= 0
+					OR
+					(SELECT COUNT(DISTINCT CASE WHEN um_done.done IS NOT NULL THEN pm_done.IDmission END)
+					 FROM parcours_mission pm_done
+					 LEFT JOIN user_mission um_done
+						ON um_done.IDmission = pm_done.IDmission
+						AND um_done.IDparcours = pr.IDparcours_required
+						AND um_done.IDuser = " . $userId . "
+					 WHERE pm_done.IDparcours = pr.IDparcours_required)
+					<
+					(SELECT COUNT(DISTINCT pm_total_compare.IDmission)
+					 FROM parcours_mission pm_total_compare
+					 WHERE pm_total_compare.IDparcours = pr.IDparcours_required)
+				  )
+			)";
 		}
 
 		public static function resolveOwnerOrganizationIdByParcoursId($parcoursId)
@@ -312,7 +454,7 @@
 					  AND a_app.active = 1
 				))";
 			}
-
+			$where[] = self::buildPrerequisiteVisibilityWhereSql('p', $userId);
 			$anonymousSelect = $hasAnonymousColumn ? "op.anonymous" : "0 AS anonymous";
 			$anonymousGroupBy = $hasAnonymousColumn ? ", op.anonymous" : "";
 			$applicationSelect = self::hasApplicationColumn() ? "p.IDapplication AS linked_application_id" : "NULL AS linked_application_id";
@@ -418,6 +560,7 @@
 						)"
 						: "1=1") . "
 				  )
+				  AND " . self::buildPrerequisiteVisibilityWhereSql('p', $userId) . "
 				GROUP BY p.id, p.title, p.description, p.image, p.IDorganization" . $applicationGroupBy . $isPackGroupBy . ", op.position, op.everybody" . $anonymousGroupBy . "
 				ORDER BY op.position ASC, p.title ASC
 			";
@@ -486,6 +629,7 @@
 						)"
 						: "1=1") . "
 				  )
+				  AND " . self::buildPrerequisiteVisibilityWhereSql('p', $userId) . "
 				GROUP BY p.id, p.title, p.description, p.image, p.IDorganization" . $applicationGroupBy . $isPackGroupBy . ", op.position, op.everybody" . $anonymousGroupBy . "
 				ORDER BY op.position ASC, p.title ASC
 			";
@@ -502,7 +646,10 @@
 		public static function fetchBasicCatalogWithProgress($userId = 0)
 		{
 			$userId = (int)$userId;
-			$where = ["p.isbasic = 1"];
+			$where = [
+				"p.isbasic = 1",
+				self::buildPrerequisiteVisibilityWhereSql('p', $userId),
+			];
 
 			$query = "
 				SELECT
@@ -793,6 +940,50 @@
 			return is_array($rows) ? $rows : [];
 		}
 
+		public static function fetchAvailablePrerequisiteTargetsForOrganization($organizationId, $parcoursId = 0)
+		{
+			$organizationId = (int)$organizationId;
+			$parcoursId = (int)$parcoursId;
+			if ($organizationId <= 0) {
+				return [];
+			}
+
+			$alreadyLinkedSql = self::hasPrerequisiteTable()
+				? "AND NOT EXISTS (
+					SELECT 1
+					FROM parcours_prerequisite pp
+					WHERE pp.IDparcours = :linked_parcours_id
+					  AND pp.IDparcours_required = p.id
+				  )"
+				: "";
+			$params = [
+				'organization_id' => $organizationId,
+				'parcours_id' => $parcoursId,
+			];
+			if (self::hasPrerequisiteTable()) {
+				$params['linked_parcours_id'] = $parcoursId;
+			}
+
+			$rows = self::fetchAll(
+				"SELECT
+					p.id,
+					p.title,
+					p.description,
+					p.image
+				FROM organization_parcours op
+				INNER JOIN parcours p
+					ON p.id = op.IDparcours
+				WHERE op.IDorganization = :organization_id
+				  AND " . (self::hasIsPackColumn() ? "COALESCE(p.ispack, 0) = 0" : "1=1") . "
+				  AND p.id <> :parcours_id
+				  " . $alreadyLinkedSql . "
+				ORDER BY p.title ASC, p.id ASC",
+				$params
+			);
+
+			return is_array($rows) ? $rows : [];
+		}
+
 		public static function fetchPackChildrenForOrganizationWithProgress($organizationId, $packParcoursId, $userId, $viewerHasOrganizationAccess = false)
 		{
 			$organizationId = (int)$organizationId;
@@ -828,7 +1019,7 @@
 					  AND a_app.active = 1
 				))";
 			}
-
+			$where[] = self::buildPrerequisiteVisibilityWhereSql('child', $userId);
 			$rows = self::fetchAll(
 				"SELECT
 					child.id,
@@ -1399,6 +1590,21 @@
 					);
 					if ($result === false) {
 						throw new \RuntimeException('parcours_parcours_delete_failed');
+					}
+				}
+
+				if (self::hasPrerequisiteTable()) {
+					$result = self::execute(
+						"DELETE FROM parcours_prerequisite
+						WHERE IDparcours = :parcours_id_target
+						   OR IDparcours_required = :parcours_id_required",
+						[
+							'parcours_id_target' => $parcoursId,
+							'parcours_id_required' => $parcoursId,
+						]
+					);
+					if ($result === false) {
+						throw new \RuntimeException('parcours_prerequisite_delete_failed');
 					}
 				}
 
