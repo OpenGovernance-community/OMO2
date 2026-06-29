@@ -7,14 +7,24 @@ if (!function_exists('faqPopupDescribeScope')) {
 	{
 		$organization = $faq->getResolvedOrganization();
 		$holon = $faq->getContextHolon();
+		$parcours = $faq->getContextParcours();
 		$scopeType = 'generic';
 		$scopeLabel = 'FAQ generique';
 		$organizationLabel = $organization ? trim((string)$organization->getLabel()) : '';
 		$holonLabel = $holon ? trim((string)$holon->getDisplayName()) : '';
+		$parcoursLabel = $parcours ? trim((string)$parcours->get('title')) : '';
 
 		if ($organization) {
 			$scopeType = 'organization';
 			$scopeLabel = 'Organisation: ' . $organizationLabel;
+		}
+
+		if ($parcours) {
+			$scopeType = 'parcours';
+			$scopeLabel = 'Parcours: ' . $parcoursLabel;
+			if ($organization && $organizationLabel !== '') {
+				$scopeLabel .= ' (' . $organizationLabel . ')';
+			}
 		}
 
 		if ($holon) {
@@ -34,6 +44,7 @@ if (!function_exists('faqPopupDescribeScope')) {
 			'label' => $scopeLabel,
 			'organization' => $organization,
 			'holon' => $holon,
+			'parcours' => $parcours,
 		);
 	}
 }
@@ -450,6 +461,66 @@ if (!function_exists('faqPopupLoadHolonOptions')) {
 	}
 }
 
+if (!function_exists('faqPopupLoadParcoursOptions')) {
+	function faqPopupLoadParcoursOptions(array $faqContext, array $organizations)
+	{
+		$viewerAccess = \dbObject\FAQ::resolveViewerAccess($faqContext);
+		$options = array();
+
+		if (!empty($viewerAccess['canManageAllFaqs'])) {
+			foreach ($organizations as $organization) {
+				if (!$organization instanceof \dbObject\Organization) {
+					continue;
+				}
+
+				$organizationId = (int)$organization->getId();
+				if ($organizationId <= 0) {
+					continue;
+				}
+
+				foreach (\dbObject\Parcours::fetchOwnedFaqTargetsForOrganization($organizationId) as $parcoursOption) {
+					$parcoursId = (int)($parcoursOption['id'] ?? 0);
+					$parcoursTitle = trim((string)($parcoursOption['title'] ?? ''));
+					if ($parcoursId <= 0 || $parcoursTitle === '') {
+						continue;
+					}
+
+					$options[] = array(
+						'id' => $parcoursId,
+						'organizationId' => $organizationId,
+						'title' => $parcoursTitle,
+						'organizationLabel' => trim((string)$organization->getLabel()),
+					);
+				}
+			}
+
+			return $options;
+		}
+
+		$organizationId = (int)($faqContext['organizationId'] ?? 0);
+		if ($organizationId <= 0) {
+			return $options;
+		}
+
+		foreach (\dbObject\Parcours::fetchOwnedFaqTargetsForOrganization($organizationId) as $parcoursOption) {
+			$parcoursId = (int)($parcoursOption['id'] ?? 0);
+			$parcoursTitle = trim((string)($parcoursOption['title'] ?? ''));
+			if ($parcoursId <= 0 || $parcoursTitle === '') {
+				continue;
+			}
+
+			$options[] = array(
+				'id' => $parcoursId,
+				'organizationId' => $organizationId,
+				'title' => $parcoursTitle,
+				'organizationLabel' => '',
+			);
+		}
+
+		return $options;
+	}
+}
+
 if (!function_exists('faqPopupRenderScopeFields')) {
 	function faqPopupRenderScopeFields(\dbObject\FAQ $faq, array $faqContext, array $options = array())
 	{
@@ -460,13 +531,26 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 		$allowGeneric = !empty($options['allowGeneric']);
 		$selectedOrganizationId = (int)$faq->getResolvedOrganizationId();
 		$selectedHolonId = (int)$faq->get('IDholon');
+		$selectedParcoursId = \dbObject\FAQ::hasParcoursColumn() ? (int)$faq->get('IDparcours') : 0;
+		$contextOrganizationId = (int)($faqContext['organizationId'] ?? 0);
+		$contextOrganization = ($faqContext['organization'] ?? null) instanceof \dbObject\Organization
+			? $faqContext['organization']
+			: null;
+		$selectedAttachmentType = 'organization';
+
+		if ($selectedParcoursId > 0) {
+			$selectedAttachmentType = 'parcours';
+		} elseif ($faq->isGeneric() && $allowGeneric) {
+			$selectedAttachmentType = 'generic';
+		}
 
 		if ($selectedOrganizationId <= 0 && !$canManageAllFaqs) {
-			$selectedOrganizationId = (int)($faqContext['organizationId'] ?? 0);
+			$selectedOrganizationId = $contextOrganizationId;
 		}
 
 		$organizations = faqPopupLoadOrganizationOptions($faqContext, $faq);
 		$holons = faqPopupLoadHolonOptions($faqContext, $organizations);
+		$parcoursOptions = faqPopupLoadParcoursOptions($faqContext, $organizations);
 		$hasScopeControls = $canManageAllFaqs || $canManageOrganizationFaqs || !$isContextualOnly;
 
 		if (!$hasScopeControls) {
@@ -474,65 +558,106 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 		}
 		?>
 		<div class="faq-popup__scope-grid" data-faq-scope-fields>
-			<div class="faq-popup__scope-field">
-				<label class="faq-popup__scope-label" for="faqScopeOrganization">Organisation</label>
+			<input type="hidden" name="IDorganization" value="<?= $selectedOrganizationId > 0 ? $selectedOrganizationId : $contextOrganizationId ?>">
+			<input type="hidden" name="IDholon" value="<?= $selectedHolonId > 0 ? $selectedHolonId : '' ?>">
+			<input type="hidden" name="IDparcours" value="<?= $selectedParcoursId > 0 ? $selectedParcoursId : '' ?>">
+			<?php if ($isContextualOnly): ?>
+				<div class="faq-popup__scope-field">
+					<label class="faq-popup__scope-label">Attachement</label>
+					<div class="faq-popup__scope-fixed">
+						<?= htmlspecialchars($selectedHolonId > 0 ? 'Holon courant' : 'Organisation courante', ENT_QUOTES, 'UTF-8') ?>
+					</div>
+				</div>
+			<?php else: ?>
 				<?php if ($canManageAllFaqs): ?>
+					<div class="faq-popup__scope-field faq-popup__scope-field--full" data-faq-scope-organization-shell>
+						<label class="faq-popup__scope-label" for="faqScopeOrganization">Organisation</label>
+						<select
+							class="faq-popup__scope-control"
+							id="faqScopeOrganization"
+							data-faq-scope-organization
+						>
+							<option value="">Choisir une organisation</option>
+							<?php foreach ($organizations as $organization): ?>
+								<?php if (!$organization instanceof \dbObject\Organization) {
+									continue;
+								} ?>
+								<option value="<?= (int)$organization->getId() ?>"<?= $selectedOrganizationId === (int)$organization->getId() ? ' selected' : '' ?>>
+									<?= htmlspecialchars(trim((string)$organization->getLabel()), ENT_QUOTES, 'UTF-8') ?>
+								</option>
+							<?php endforeach; ?>
+						</select>
+					</div>
+				<?php endif; ?>
+				<div class="faq-popup__scope-field">
+					<label class="faq-popup__scope-label" for="faqScopeType">Attachement</label>
 					<select
 						class="faq-popup__scope-control"
-						name="IDorganization"
-						id="faqScopeOrganization"
-						data-faq-scope-organization
+						id="faqScopeType"
+						data-faq-scope-kind
 					>
-						<option value="">FAQ generique</option>
-						<?php foreach ($organizations as $organization): ?>
-							<?php if (!$organization instanceof \dbObject\Organization) {
+						<option value="organization"<?= $selectedAttachmentType === 'organization' ? ' selected' : '' ?>>Organisation courante</option>
+						<option value="parcours"<?= $selectedAttachmentType === 'parcours' ? ' selected' : '' ?>>Parcours</option>
+						<?php if ($allowGeneric): ?>
+							<option value="generic"<?= $selectedAttachmentType === 'generic' ? ' selected' : '' ?>>FAQ generique</option>
+						<?php endif; ?>
+					</select>
+				</div>
+				<div class="faq-popup__scope-field" data-faq-scope-holon-shell>
+					<label class="faq-popup__scope-label" for="faqScopeHolon">Holon</label>
+					<select
+						class="faq-popup__scope-control"
+						id="faqScopeHolon"
+						data-faq-scope-holon
+					>
+						<option value="">Toute l organisation</option>
+						<?php foreach ($holons as $holonOption): ?>
+							<?php
+							$holonOptionId = (int)($holonOption['id'] ?? 0);
+							$holonLabel = trim((string)($holonOption['label'] ?? ''));
+							if ($holonOptionId <= 0 || $holonLabel === '') {
 								continue;
-							} ?>
-							<option value="<?= (int)$organization->getId() ?>"<?= $selectedOrganizationId === (int)$organization->getId() ? ' selected' : '' ?>>
-								<?= htmlspecialchars(trim((string)$organization->getLabel()), ENT_QUOTES, 'UTF-8') ?>
+							}
+							?>
+							<option
+								value="<?= $holonOptionId ?>"
+								data-organization-id="<?= (int)($holonOption['organizationId'] ?? 0) ?>"
+								<?= $selectedHolonId === $holonOptionId ? ' selected' : '' ?>
+							>
+								<?= htmlspecialchars($holonLabel, ENT_QUOTES, 'UTF-8') ?>
 							</option>
 						<?php endforeach; ?>
 					</select>
-				<?php else: ?>
-					<input type="hidden" name="IDorganization" value="<?= $selectedOrganizationId > 0 ? (int)$selectedOrganizationId : (int)($faqContext['organizationId'] ?? 0) ?>">
-					<div class="faq-popup__scope-fixed">
-						<?= htmlspecialchars(trim((string)(($faqContext['organization'] ?? null) instanceof \dbObject\Organization ? $faqContext['organization']->getLabel() : 'Organisation courante')), ENT_QUOTES, 'UTF-8') ?>
-					</div>
-				<?php endif; ?>
-			</div>
-			<div class="faq-popup__scope-field">
-				<label class="faq-popup__scope-label" for="faqScopeHolon">Holon</label>
-				<select
-					class="faq-popup__scope-control"
-					name="IDholon"
-					id="faqScopeHolon"
-					data-faq-scope-holon
-					<?= $isContextualOnly ? ' disabled' : '' ?>
-				>
-					<option value=""><?= $allowGeneric || $canManageOrganizationFaqs || $canManageAllFaqs ? 'Aucun holon' : 'Holon courant' ?></option>
-					<?php foreach ($holons as $holonOption): ?>
-						<?php
-						$holonOptionId = (int)($holonOption['id'] ?? 0);
-						$holonOrganizationId = (int)($holonOption['organizationId'] ?? 0);
-						$holonLabel = trim((string)($holonOption['label'] ?? ''));
-						$organizationLabel = trim((string)($holonOption['organizationLabel'] ?? ''));
-						if ($holonOptionId <= 0 || $holonLabel === '') {
-							continue;
-						}
-						?>
-						<option
-							value="<?= $holonOptionId ?>"
-							data-organization-id="<?= $holonOrganizationId ?>"
-							<?= $selectedHolonId === $holonOptionId ? ' selected' : '' ?>
-						>
-							<?= htmlspecialchars($holonLabel . ($organizationLabel !== '' && $canManageAllFaqs ? ' (' . $organizationLabel . ')' : ''), ENT_QUOTES, 'UTF-8') ?>
-						</option>
-					<?php endforeach; ?>
-				</select>
-				<?php if ($isContextualOnly): ?>
-					<input type="hidden" name="IDholon" value="<?= (int)$selectedHolonId ?>">
-				<?php endif; ?>
-			</div>
+				</div>
+				<div class="faq-popup__scope-field" data-faq-scope-parcours-shell>
+					<label class="faq-popup__scope-label" for="faqScopeParcours">Parcours</label>
+					<select
+						class="faq-popup__scope-control"
+						id="faqScopeParcours"
+						data-faq-scope-parcours
+					>
+						<option value="">Choisir un parcours</option>
+						<?php foreach ($parcoursOptions as $parcoursOption): ?>
+							<?php
+							$parcoursOptionId = (int)($parcoursOption['id'] ?? 0);
+							$parcoursOptionTitle = trim((string)($parcoursOption['title'] ?? ''));
+							$parcoursOrganizationId = (int)($parcoursOption['organizationId'] ?? 0);
+							$parcoursOrganizationLabel = trim((string)($parcoursOption['organizationLabel'] ?? ''));
+							if ($parcoursOptionId <= 0 || $parcoursOptionTitle === '') {
+								continue;
+							}
+							?>
+							<option
+								value="<?= $parcoursOptionId ?>"
+								data-organization-id="<?= $parcoursOrganizationId ?>"
+								<?= $selectedParcoursId === $parcoursOptionId ? ' selected' : '' ?>
+							>
+								<?= htmlspecialchars($parcoursOptionTitle . ($parcoursOrganizationLabel !== '' ? ' (' . $parcoursOrganizationLabel . ')' : ''), ENT_QUOTES, 'UTF-8') ?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+				</div>
+			<?php endif; ?>
 		</div>
 		<?php
 	}
@@ -551,7 +676,20 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 		$holonId = isset($postData['IDholon']) && is_numeric($postData['IDholon'])
 			? (int)$postData['IDholon']
 			: 0;
+		$parcoursId = isset($postData['IDparcours']) && is_numeric($postData['IDparcours'])
+			? (int)$postData['IDparcours']
+			: 0;
+		$attachmentType = trim((string)($postData['faq_scope_kind'] ?? ''));
 		$holon = null;
+		$parcours = null;
+
+		if ($attachmentType === '') {
+			if ($parcoursId > 0) {
+				$attachmentType = 'parcours';
+			} elseif ($holonId > 0 || $organizationId > 0) {
+				$attachmentType = 'organization';
+			}
+		}
 
 		if ($holonId > 0) {
 			$holon = new \dbObject\Holon();
@@ -563,28 +701,72 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 			}
 		}
 
+		if ($parcoursId > 0) {
+			$parcours = new \dbObject\Parcours();
+			if (!$parcours->load($parcoursId)) {
+				return array(
+					'status' => false,
+					'message' => 'Parcours invalide.',
+				);
+			}
+		}
+
+		if ($attachmentType === 'parcours' && $holonId > 0) {
+			return array(
+				'status' => false,
+				'message' => 'Une FAQ rattachee a un parcours ne peut pas etre rattachee a un holon.',
+			);
+		}
+
+		if ($attachmentType === 'organization') {
+			$parcoursId = 0;
+			$parcours = null;
+		} elseif ($attachmentType === 'parcours') {
+			$holonId = 0;
+			$holon = null;
+		}
+
 		if ($canManageAllFaqs) {
-			if ($organizationId > 0) {
-				$organization = new \dbObject\Organization();
-				if (!$organization->load($organizationId)) {
-					return array(
-						'status' => false,
-						'message' => 'Organisation invalide.',
-					);
-				}
+			if ($attachmentType === 'generic') {
+				return array(
+					'status' => true,
+					'organizationId' => null,
+					'holonId' => null,
+					'parcoursId' => null,
+					'holon' => null,
+					'parcours' => null,
+				);
 			}
 
-			if ($holon) {
-				$holonOrganizationId = (int)$holon->get('IDorganization');
-				if ($organizationId > 0 && $holonOrganizationId > 0 && $organizationId !== $holonOrganizationId) {
+			if ($organizationId <= 0) {
+				return array(
+					'status' => false,
+					'message' => 'Organisation invalide.',
+				);
+			}
+
+			$organization = new \dbObject\Organization();
+			if (!$organization->load($organizationId)) {
+				return array(
+					'status' => false,
+					'message' => 'Organisation invalide.',
+				);
+			}
+
+			if ($holon && (int)$holon->get('IDorganization') !== $organizationId) {
+				return array(
+					'status' => false,
+					'message' => 'Le holon selectionne n appartient pas a l organisation selectionnee.',
+				);
+			}
+
+			if ($parcours) {
+				$availableParcoursIds = \dbObject\Parcours::fetchOwnedFaqTargetIdsForOrganization($organizationId);
+				if (!in_array((int)$parcours->getId(), $availableParcoursIds, true)) {
 					return array(
 						'status' => false,
-						'message' => 'Le holon selectionne ne correspond pas a l organisation choisie.',
+						'message' => 'Le parcours selectionne n appartient pas a l organisation selectionnee.',
 					);
-				}
-
-				if ($holonOrganizationId > 0) {
-					$organizationId = $holonOrganizationId;
 				}
 			}
 
@@ -592,7 +774,9 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 				'status' => true,
 				'organizationId' => $organizationId > 0 ? $organizationId : null,
 				'holonId' => $holon ? (int)$holon->getId() : null,
+				'parcoursId' => $parcours ? (int)$parcours->getId() : null,
 				'holon' => $holon,
+				'parcours' => $parcours,
 			);
 		}
 
@@ -605,6 +789,13 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 				);
 			}
 
+			if ($attachmentType === 'generic') {
+				return array(
+					'status' => false,
+					'message' => 'Seul un super admin peut creer une FAQ generique.',
+				);
+			}
+
 			if ($holon && (int)$holon->get('IDorganization') !== $contextOrganizationId) {
 				return array(
 					'status' => false,
@@ -612,11 +803,23 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 				);
 			}
 
+			if ($parcours) {
+				$availableParcoursIds = \dbObject\Parcours::fetchOwnedFaqTargetIdsForOrganization($contextOrganizationId);
+				if (!in_array((int)$parcours->getId(), $availableParcoursIds, true)) {
+					return array(
+						'status' => false,
+						'message' => 'Le parcours selectionne n appartient pas a l organisation courante.',
+					);
+				}
+			}
+
 			return array(
 				'status' => true,
 				'organizationId' => $contextOrganizationId,
 				'holonId' => $holon ? (int)$holon->getId() : null,
+				'parcoursId' => $parcours ? (int)$parcours->getId() : null,
 				'holon' => $holon,
+				'parcours' => $parcours,
 			);
 		}
 
@@ -633,7 +836,9 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 				'status' => true,
 				'organizationId' => $contextOrganizationId > 0 ? $contextOrganizationId : null,
 				'holonId' => (int)$currentHolon->getId(),
+				'parcoursId' => null,
 				'holon' => $currentHolon,
+				'parcours' => null,
 			);
 		}
 

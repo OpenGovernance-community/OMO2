@@ -204,6 +204,24 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 			transition: width 0.3s ease;
 		}
 
+		.lms-pack-children {
+			display: grid;
+			gap: 18px;
+		}
+
+		.lms-pack-children__intro p,
+		.lms-pack-children__empty {
+			color: var(--text-light);
+			line-height: 1.5;
+		}
+
+		.lms-pack-children__empty {
+			padding: 16px 18px;
+			border: 1px solid var(--border-color);
+			border-radius: var(--border-radius);
+			background: var(--bg-card);
+		}
+
 		.view-switch {
 			display: flex;
 			gap: 10px;

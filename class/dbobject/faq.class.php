@@ -10,7 +10,9 @@ class FAQ extends DbObject
 	protected static $_hasViewcountColumn = null;
 	protected static $_hasVoteColumns = null;
 	protected static $_hasScoreAnalyticsColumns = null;
+	protected static $_hasParcoursColumn = null;
 	protected static $_organizationIdByHolonId = array();
+	protected static $_availableParcoursIdsByOrganization = array();
 
 	public static function tableName()
 	{
@@ -21,8 +23,8 @@ class FAQ extends DbObject
 	{
 		return [
 			[['question', 'answer'], 'required'],
-			[['id', 'IDhowto', 'IDorganization', 'displayorder', 'viewcount', 'total_votes'], 'integer'],
-			[['IDorganization', 'IDholon'], 'fk'],
+			[['id', 'IDhowto', 'IDorganization', 'IDparcours', 'displayorder', 'viewcount', 'total_votes'], 'integer'],
+			[['IDorganization', 'IDholon', 'IDparcours'], 'fk'],
 			[['positive_score', 'negative_score', 'reliability'], 'float'],
 			[['question'], 'string'],
 			[['video'], 'string'],
@@ -42,6 +44,7 @@ class FAQ extends DbObject
 			'IDhowto' => 'Howto',
 			'IDorganization' => 'Organisation',
 			'IDholon' => 'Holon',
+			'IDparcours' => 'Parcours',
 			'question' => 'Question',
 			'detail' => 'Reponse complete',
 			'answer' => 'Reponse courte',
@@ -266,6 +269,16 @@ class FAQ extends DbObject
 
 		self::$_hasScoreAnalyticsColumns = ((int)$columnCount >= 3);
 		return self::$_hasScoreAnalyticsColumns;
+	}
+
+	public static function hasParcoursColumn()
+	{
+		if (self::$_hasParcoursColumn !== null) {
+			return self::$_hasParcoursColumn;
+		}
+
+		self::$_hasParcoursColumn = self::hasColumn('IDparcours');
+		return self::$_hasParcoursColumn;
 	}
 
 	public static function getPopupOrderBy()
@@ -572,6 +585,25 @@ class FAQ extends DbObject
 		return $filteredFaq;
 	}
 
+	protected static function getAvailableParcoursIdMapForOrganization($organizationId)
+	{
+		$organizationId = (int)$organizationId;
+		if ($organizationId <= 0) {
+			return array();
+		}
+
+		if (array_key_exists($organizationId, self::$_availableParcoursIdsByOrganization)) {
+			return self::$_availableParcoursIdsByOrganization[$organizationId];
+		}
+
+		$availableParcoursIds = \dbObject\Parcours::fetchAvailableFaqTargetIdsForOrganization($organizationId);
+		self::$_availableParcoursIdsByOrganization[$organizationId] = count($availableParcoursIds) > 0
+			? array_fill_keys(array_map('intval', $availableParcoursIds), true)
+			: array();
+
+		return self::$_availableParcoursIdsByOrganization[$organizationId];
+	}
+
 	public static function loadReliabilityRefreshBatch($limit = null)
 	{
 		if (!self::hasFaqTable() || !self::hasScoreAnalyticsColumns()) {
@@ -790,6 +822,21 @@ class FAQ extends DbObject
 		return $holon->load($holonId) ? $holon : null;
 	}
 
+	public function getContextParcours()
+	{
+		if (!self::hasParcoursColumn()) {
+			return null;
+		}
+
+		$parcoursId = (int)$this->get('IDparcours');
+		if ($parcoursId <= 0) {
+			return null;
+		}
+
+		$parcours = new \dbObject\Parcours();
+		return $parcours->load($parcoursId) ? $parcours : null;
+	}
+
 	protected static function resolveOrganizationIdForHolon($holonId)
 	{
 		$holonId = (int)$holonId;
@@ -834,7 +881,9 @@ class FAQ extends DbObject
 
 	public function isGeneric()
 	{
-		return (int)$this->getResolvedOrganizationId() <= 0 && (int)$this->get('IDholon') <= 0;
+		return (int)$this->getResolvedOrganizationId() <= 0
+			&& (int)$this->get('IDholon') <= 0
+			&& (int)$this->get('IDparcours') <= 0;
 	}
 
 	public function canBeEditedInContext(array $context = array())
@@ -863,39 +912,49 @@ class FAQ extends DbObject
 	{
 		$scope = self::normalizePopupScope($scope, $context);
 		$viewerAccess = self::resolveViewerAccess($context);
+		if ($scope === 'global' && !empty($viewerAccess['canManageAllFaqs'])) {
+			return true;
+		}
+
 		$faqOrganizationId = $this->getResolvedOrganizationId();
 		$holon = $this->getContextHolon();
+		$parcoursId = self::hasParcoursColumn() ? (int)$this->get('IDparcours') : 0;
 		$contextOrganizationId = (int)($context['organizationId'] ?? 0);
 		$currentHolon = isset($context['currentHolon']) && $context['currentHolon'] instanceof \dbObject\Holon
 			? $context['currentHolon']
 			: null;
 		$matchesScope = false;
 
-		if ($scope === 'global') {
-			if (!empty($viewerAccess['canManageAllFaqs'])) {
-				$matchesScope = true;
-			} elseif ($faqOrganizationId <= 0) {
-				$matchesScope = true;
-			} else {
-				$matchesScope = $faqOrganizationId === $contextOrganizationId;
-			}
-		} else {
-			if ($holon instanceof \dbObject\Holon) {
-				if ($currentHolon && (int)$currentHolon->getId() > 0) {
-					$currentHolonId = (int)$currentHolon->getId();
-					$faqHolonId = (int)$holon->getId();
-
-					if ($scope === 'descendants') {
-						$matchesScope = $holon->isDescendantOf($currentHolonId, true);
-					} else {
-						$matchesScope = $faqHolonId === $currentHolonId;
+		if ($this->isGeneric()) {
+			$matchesScope = true;
+		} elseif ($parcoursId > 0) {
+			if ($contextOrganizationId > 0) {
+				$availableParcoursIdMap = self::getAvailableParcoursIdMapForOrganization($contextOrganizationId);
+				$matchesScope = !empty($availableParcoursIdMap[$parcoursId]);
+				if ($matchesScope) {
+					$parcours = $this->getContextParcours();
+					if ($parcours instanceof \dbObject\Parcours && !$parcours->isVisibleInOrganization($contextOrganizationId)) {
+						$matchesScope = false;
 					}
+				}
+			}
+		} elseif ($holon instanceof \dbObject\Holon) {
+			if ($scope === 'global') {
+				$matchesScope = $faqOrganizationId > 0 && $faqOrganizationId === $contextOrganizationId;
+			} elseif ($currentHolon && (int)$currentHolon->getId() > 0) {
+				$currentHolonId = (int)$currentHolon->getId();
+				$faqHolonId = (int)$holon->getId();
+
+				if ($scope === 'descendants') {
+					$matchesScope = $holon->isDescendantOf($currentHolonId, true);
 				} else {
-					$matchesScope = false;
+					$matchesScope = $faqHolonId === $currentHolonId;
 				}
 			} else {
-				$matchesScope = $faqOrganizationId > 0 && $faqOrganizationId === $contextOrganizationId;
+				$matchesScope = false;
 			}
+		} else {
+			$matchesScope = $faqOrganizationId > 0 && $faqOrganizationId === $contextOrganizationId;
 		}
 
 		if (!$matchesScope) {

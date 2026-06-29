@@ -1602,6 +1602,10 @@ function commonCurrentUserHasPermission($permissionKey, $contextHolon = null, $o
         return false;
     }
 
+    if (!empty($scope['organization'])) {
+        return true;
+    }
+
     if ($contextHolon === null) {
         return false;
     }
@@ -1642,10 +1646,6 @@ function commonCurrentUserHasPermission($permissionKey, $contextHolon = null, $o
 
     if ($contextOrganizationId !== $organizationId) {
         return false;
-    }
-
-    if (!empty($scope['organization'])) {
-        return true;
     }
 
     if (!empty($scope['exact'][$contextHolonId])) {

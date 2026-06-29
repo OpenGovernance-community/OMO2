@@ -9,7 +9,8 @@ $isEmbedded = !empty($_GET['embed']);
 $isBasicCatalogMode = lmsIsBasicCatalogMode();
 $user_id = (int)($_SESSION['currentUser'] ?? 0);
 $hasOrganizationAccess = commonUserHasOrganizationAccess($user_id, (int)$org['id']);
-$canCreateParcours = !$isBasicCatalogMode && $user_id > 0 && $hasOrganizationAccess;
+$canCreateParcours = !$isBasicCatalogMode && lmsCurrentUserCanCreateParcours((int)$org['id'], $user_id);
+$canEditParcours = !$isBasicCatalogMode && lmsCurrentUserCanEditParcours((int)$org['id'], $user_id);
 $organizationColor = commonGetOrganizationExplicitColor($org);
 $parcours = $isBasicCatalogMode
     ? \dbObject\Parcours::fetchBasicCatalogWithProgress($user_id)
@@ -17,8 +18,18 @@ $parcours = $isBasicCatalogMode
 $parcours = is_array($parcours) ? $parcours : [];
 $pendingParcours = [];
 $completedParcours = [];
+$packParcours = [];
 
 foreach ($parcours as $parcoursItem) {
+    if (!empty($parcoursItem['ispack'])) {
+        $isOwnerPack = (int)($parcoursItem['owner_organization_id'] ?? 0) === (int)$org['id'];
+        if (!$canEditParcours && !$isOwnerPack) {
+            continue;
+        }
+        $packParcours[] = $parcoursItem;
+        continue;
+    }
+
     $totalMissions = (int)($parcoursItem['total_missions'] ?? 0);
     $doneMissions = (int)($parcoursItem['done_missions'] ?? 0);
     $percent = $totalMissions > 0 ? (int)round(($doneMissions / $totalMissions) * 100) : 0;
@@ -494,12 +505,14 @@ if (!$isEmbedded) {
     $percent = $total > 0 ? round(($done / $total) * 100) : 0;
     $isOwnerParcours = (int)($p['owner_organization_id'] ?? 0) === (int)$org['id'];
     $canManageThisParcours = $canCreateParcours;
-    $canEditThisParcours = $canManageThisParcours && $isOwnerParcours;
+    $canEditThisParcours = $canEditParcours && $isOwnerParcours;
+    $showMenuThisParcours = $canManageThisParcours || $canEditThisParcours;
     $detachActionLabel = $isOwnerParcours ? 'Supprimer' : 'Detacher';
 ?>
 <div
     class="card"
     data-parcours-card="1"
+    data-is-pack="0"
     data-parcours-id="<?php echo (int)$p['id']; ?>"
     data-parcours-title="<?php echo htmlspecialchars((string)$p['title'], ENT_QUOTES, 'UTF-8'); ?>"
     data-is-owner="<?php echo $isOwnerParcours ? '1' : '0'; ?>"
@@ -509,7 +522,7 @@ if (!$isEmbedded) {
     data-local-progress="<?php echo $user_id > 0 ? '0' : '1'; ?>"
     onclick="goToParcours(<?php echo (int)$p['id']; ?>)"
 >
-    <?php if ($canManageThisParcours): ?>
+    <?php if ($showMenuThisParcours): ?>
         <div class="card-menu-wrap" onclick="event.stopPropagation()">
             <button
                 type="button"
@@ -521,7 +534,9 @@ if (!$isEmbedded) {
                 <?php if ($canEditThisParcours): ?>
                     <button type="button" class="card-menu-item" onclick="openEditParcoursDrawer(event, <?php echo (int)$p['id']; ?>)">Editer</button>
                 <?php endif; ?>
+                <?php if ($canManageThisParcours): ?>
                 <button type="button" class="card-menu-item card-menu-item--danger" onclick="deleteParcoursFromCard(event, <?php echo (int)$p['id']; ?>)"><?php echo $detachActionLabel; ?></button>
+                <?php endif; ?>
             </div>
         </div>
     <?php endif; ?>
@@ -586,12 +601,14 @@ if (!$isEmbedded) {
         $percent = $total > 0 ? round(($done / $total) * 100) : 0;
         $isOwnerParcours = (int)($p['owner_organization_id'] ?? 0) === (int)$org['id'];
         $canManageThisParcours = $canCreateParcours;
-        $canEditThisParcours = $canManageThisParcours && $isOwnerParcours;
+        $canEditThisParcours = $canEditParcours && $isOwnerParcours;
+        $showMenuThisParcours = $canManageThisParcours || $canEditThisParcours;
         $detachActionLabel = $isOwnerParcours ? 'Supprimer' : 'Detacher';
     ?>
     <div
         class="card"
         data-parcours-card="1"
+        data-is-pack="0"
         data-parcours-id="<?php echo (int)$p['id']; ?>"
         data-parcours-title="<?php echo htmlspecialchars((string)$p['title'], ENT_QUOTES, 'UTF-8'); ?>"
         data-is-owner="<?php echo $isOwnerParcours ? '1' : '0'; ?>"
@@ -601,7 +618,7 @@ if (!$isEmbedded) {
         data-local-progress="<?php echo $user_id > 0 ? '0' : '1'; ?>"
         onclick="goToParcours(<?php echo (int)$p['id']; ?>)"
     >
-        <?php if ($canManageThisParcours): ?>
+        <?php if ($showMenuThisParcours): ?>
             <div class="card-menu-wrap" onclick="event.stopPropagation()">
                 <button
                     type="button"
@@ -613,7 +630,9 @@ if (!$isEmbedded) {
                     <?php if ($canEditThisParcours): ?>
                         <button type="button" class="card-menu-item" onclick="openEditParcoursDrawer(event, <?php echo (int)$p['id']; ?>)">Editer</button>
                     <?php endif; ?>
+                    <?php if ($canManageThisParcours): ?>
                     <button type="button" class="card-menu-item card-menu-item--danger" onclick="deleteParcoursFromCard(event, <?php echo (int)$p['id']; ?>)"><?php echo $detachActionLabel; ?></button>
+                    <?php endif; ?>
                 </div>
             </div>
         <?php endif; ?>
@@ -636,6 +655,79 @@ if (!$isEmbedded) {
     <?php endforeach; ?>
     </div>
 </section>
+
+<?php if (count($packParcours) > 0): ?>
+<section class="lms-parcours-section" id="lms-parcours-section-packs">
+    <div class="lms-parcours-separator">
+        <div class="lms-parcours-section__intro">
+            <h2>Packs de parcours</h2>
+            <p>Ces packs regroupent plusieurs parcours. Les parcours lies a des applications desactivees y restent automatiquement masques.</p>
+        </div>
+    </div>
+
+    <div class="container" id="lms-parcours-pack-grid">
+    <?php foreach ($packParcours as $p):
+        $total = (int)$p['total_missions'];
+        $done = (int)$p['done_missions'];
+        $percent = $total > 0 ? round(($done / $total) * 100) : 0;
+        $isOwnerParcours = (int)($p['owner_organization_id'] ?? 0) === (int)$org['id'];
+        $canManageThisParcours = $canCreateParcours;
+        $canEditThisParcours = $canEditParcours && $isOwnerParcours;
+        $showMenuThisParcours = $canManageThisParcours || $canEditThisParcours;
+        $detachActionLabel = $isOwnerParcours ? 'Supprimer' : 'Detacher';
+    ?>
+    <div
+        class="card"
+        data-parcours-card="1"
+        data-is-pack="1"
+        data-parcours-id="<?php echo (int)$p['id']; ?>"
+        data-parcours-title="<?php echo htmlspecialchars((string)$p['title'], ENT_QUOTES, 'UTF-8'); ?>"
+        data-is-owner="<?php echo $isOwnerParcours ? '1' : '0'; ?>"
+        data-can-edit="<?php echo $canEditThisParcours ? '1' : '0'; ?>"
+        data-can-manage="<?php echo $canManageThisParcours ? '1' : '0'; ?>"
+        data-total-missions="<?php echo $total; ?>"
+        data-local-progress="<?php echo $user_id > 0 ? '0' : '1'; ?>"
+        onclick="goToParcours(<?php echo (int)$p['id']; ?>)"
+    >
+        <?php if ($showMenuThisParcours): ?>
+            <div class="card-menu-wrap" onclick="event.stopPropagation()">
+                <button
+                    type="button"
+                    class="card-menu-trigger"
+                    aria-label="Actions"
+                    onclick="toggleParcoursCardMenu(event, <?php echo (int)$p['id']; ?>)"
+                >...</button>
+                <div class="card-menu" id="parcours-card-menu-<?php echo (int)$p['id']; ?>">
+                    <?php if ($canEditThisParcours): ?>
+                        <button type="button" class="card-menu-item" onclick="openEditParcoursDrawer(event, <?php echo (int)$p['id']; ?>)">Editer</button>
+                    <?php endif; ?>
+                    <?php if ($canManageThisParcours): ?>
+                    <button type="button" class="card-menu-item card-menu-item--danger" onclick="deleteParcoursFromCard(event, <?php echo (int)$p['id']; ?>)"><?php echo $detachActionLabel; ?></button>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php endif; ?>
+        <?php if (!empty($p['image'])): ?>
+            <div class="card-image">
+                <img src="<?php echo htmlspecialchars($p['image']); ?>" alt="">
+            </div>
+        <?php endif; ?>
+
+        <div class="card-content">
+            <div class="card-create-kicker">Pack</div>
+            <h3><?php echo htmlspecialchars($p['title']); ?></h3>
+            <div><?php echo htmlspecialchars($p['description']); ?></div>
+
+            <div class="card-footer">
+                <div class="progress-circle" data-percent="<?php echo (int)$percent; ?>"></div>
+                <button class="open-btn">Ouvrir</button>
+            </div>
+        </div>
+    </div>
+    <?php endforeach; ?>
+    </div>
+</section>
+<?php endif; ?>
 </div>
 </div>
 
@@ -644,7 +736,8 @@ const lmsIndexViewer = {
     userId: <?php echo (int)$user_id; ?>,
     organizationId: <?php echo (int)$org['id']; ?>,
     isEmbedded: <?php echo $isEmbedded ? 'true' : 'false'; ?>,
-    canCreateParcours: <?php echo $canCreateParcours ? 'true' : 'false'; ?>
+    canCreateParcours: <?php echo $canCreateParcours ? 'true' : 'false'; ?>,
+    canEditParcours: <?php echo $canEditParcours ? 'true' : 'false'; ?>
 };
 const lmsParcoursBasePath = <?php echo json_encode(lmsBuildLocalPath('/parcours.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsParcoursCreatePath = <?php echo json_encode(lmsBuildLocalPath('/parcours_create.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
@@ -658,6 +751,8 @@ const lmsParcoursMissionPanelBasePath = <?php echo json_encode(lmsBuildLocalPath
 const lmsParcoursMissionAddPath = <?php echo json_encode(lmsBuildLocalPath('/parcours_mission_add.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsParcoursMissionCreatePath = <?php echo json_encode(lmsBuildLocalPath('/parcours_mission_create.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsParcoursMissionReorderPath = <?php echo json_encode(lmsBuildLocalPath('/parcours_mission_reorder.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsParcoursPackAddPath = <?php echo json_encode(lmsBuildLocalPath('/parcours_pack_add.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsParcoursPackReorderPath = <?php echo json_encode(lmsBuildLocalPath('/parcours_pack_reorder.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsMissionHomeworkReorderPath = <?php echo json_encode(lmsBuildLocalPath('/mission_homework_reorder.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsMissionQuestionReorderPath = <?php echo json_encode(lmsBuildLocalPath('/mission_question_reorder.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 
@@ -733,6 +828,10 @@ function updateParcoursSectionsByProgress() {
 
     const parcoursCards = Array.from(document.querySelectorAll('[data-parcours-card="1"]'));
     parcoursCards.forEach((card) => {
+        if (card.getAttribute('data-is-pack') === '1') {
+            return;
+        }
+
         const progressElement = card.querySelector('.progress-circle');
         const percent = resolveCardPercent(card, progressElement ? Number(progressElement.getAttribute('data-percent') || 0) : 0);
         const targetGrid = percent >= 100 ? completedGrid : pendingGrid;
@@ -807,6 +906,8 @@ function initLmsDrawerContent() {
     initMissionEditorDrawer();
     initParcoursEditorDrawer();
     initParcoursImportDrawer();
+    initParcoursMissionManager();
+    initParcoursPackManager();
 }
 
 function lmsInitAdminEditHtmlFields(scopeElement) {
@@ -1099,7 +1200,7 @@ function buildParcoursMissionPanelUrl(parcoursId) {
 
 async function refreshParcoursMissionManager(parcoursId) {
     const drawerContent = document.getElementById('drawer-content');
-    const currentManager = drawerContent ? drawerContent.querySelector('[data-lms-parcours-mission-manager]') : null;
+    const currentManager = drawerContent ? drawerContent.querySelector('[data-lms-parcours-content-manager]') : null;
 
     if (!drawerContent || !currentManager || parcoursId <= 0) {
         return;
@@ -1113,6 +1214,7 @@ async function refreshParcoursMissionManager(parcoursId) {
     const html = await response.text();
     currentManager.outerHTML = html;
     initParcoursMissionManager();
+    initParcoursPackManager();
 }
 
 function initParcoursMissionManager() {
@@ -1359,6 +1461,185 @@ function initParcoursMissionManager() {
                     await refreshParcoursMissionManager(parcoursId);
                 } catch (error) {
                     window.alert(error && error.message ? error.message : 'Impossible de reordonner les missions.');
+                    await refreshParcoursMissionManager(parcoursId);
+                }
+            }
+        });
+    }
+}
+
+function togglePackItemMenu(event, childParcoursId) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const menu = document.getElementById(`lms-pack-item-menu-${childParcoursId}`);
+    if (!menu) {
+        return;
+    }
+
+    const willOpen = !menu.classList.contains('is-open');
+    closeAllMissionItemMenus();
+    menu.classList.toggle('is-open', willOpen);
+}
+
+function initParcoursPackManager() {
+    const drawerContent = document.getElementById('drawer-content');
+    const manager = drawerContent ? drawerContent.querySelector('[data-lms-parcours-pack-manager]') : null;
+
+    if (!manager || manager.dataset.lmsPackManagerBound === '1') {
+        return;
+    }
+
+    manager.dataset.lmsPackManagerBound = '1';
+    const parcoursId = Number(manager.getAttribute('data-parcours-id') || 0);
+    const list = manager.querySelector('[data-lms-pack-parcours-list]');
+    const picker = manager.querySelector('[data-lms-pack-picker]');
+    const searchInput = manager.querySelector('[data-lms-pack-picker-search]');
+    const searchEmptyState = manager.querySelector('[data-lms-pack-picker-empty-search]');
+
+    function normalizePackPickerSearch(value) {
+        let normalized = String(value || '').trim().toLowerCase();
+        if (typeof normalized.normalize === 'function') {
+            normalized = normalized.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        }
+        return normalized;
+    }
+
+    function closePicker() {
+        if (picker) {
+            picker.hidden = true;
+        }
+    }
+
+    function openPicker() {
+        if (picker) {
+            picker.hidden = false;
+        }
+    }
+
+    manager.querySelectorAll('[data-lms-open-pack-picker]').forEach((button) => {
+        button.addEventListener('click', openPicker);
+    });
+
+    manager.querySelectorAll('[data-lms-close-pack-picker]').forEach((button) => {
+        button.addEventListener('click', closePicker);
+    });
+
+    manager.querySelectorAll('[data-lms-toggle-pack-item-menu]').forEach((button) => {
+        button.addEventListener('click', function (event) {
+            const childParcoursId = Number(button.getAttribute('data-child-parcours-id') || 0);
+            if (childParcoursId <= 0) {
+                return;
+            }
+            togglePackItemMenu(event, childParcoursId);
+        });
+    });
+
+    manager.querySelectorAll('[data-lms-edit-pack-child]').forEach((button) => {
+        button.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const childParcoursId = Number(button.getAttribute('data-child-parcours-id') || 0);
+            if (childParcoursId <= 0) {
+                return;
+            }
+
+            closeAllMissionItemMenus();
+            openParcoursEditorDrawer(childParcoursId);
+        });
+    });
+
+    if (searchInput) {
+        const applyPackPickerSearch = function () {
+            const normalizedQuery = normalizePackPickerSearch(searchInput.value || '');
+            let visibleCount = 0;
+
+            manager.querySelectorAll('[data-lms-pack-picker-item]').forEach((item) => {
+                const haystack = normalizePackPickerSearch(item.getAttribute('data-search-text') || '');
+                const isVisible = normalizedQuery === '' || haystack.indexOf(normalizedQuery) !== -1;
+                item.hidden = !isVisible;
+                if (isVisible) {
+                    visibleCount += 1;
+                }
+            });
+
+            if (searchEmptyState) {
+                searchEmptyState.hidden = !(normalizedQuery !== '' && visibleCount === 0);
+            }
+        };
+
+        searchInput.addEventListener('input', applyPackPickerSearch);
+        searchInput.addEventListener('search', applyPackPickerSearch);
+        applyPackPickerSearch();
+    }
+
+    manager.querySelectorAll('[data-lms-add-pack-child-id]').forEach((button) => {
+        button.addEventListener('click', async function () {
+            const childParcoursId = Number(button.getAttribute('data-lms-add-pack-child-id') || 0);
+            if (parcoursId <= 0 || childParcoursId <= 0) {
+                return;
+            }
+
+            button.disabled = true;
+            try {
+                const formData = new FormData();
+                formData.append('pid', String(parcoursId));
+                formData.append('child_parcours_id', String(childParcoursId));
+
+                const response = await fetch(lmsParcoursPackAddPath, {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin'
+                });
+
+                const payload = await response.json();
+                if (!response.ok || !payload || payload.success !== true) {
+                    throw new Error(payload && payload.message ? payload.message : 'Impossible d ajouter ce parcours au pack.');
+                }
+
+                await refreshParcoursMissionManager(parcoursId);
+            } catch (error) {
+                window.alert(error && error.message ? error.message : 'Impossible d ajouter ce parcours au pack.');
+            } finally {
+                button.disabled = false;
+            }
+        });
+    });
+
+    if (list && typeof window.commonCreateVerticalSortableList === 'function') {
+        window.commonCreateVerticalSortableList({
+            list: list,
+            itemSelector: '[data-child-parcours-id]',
+            handleSelector: '[data-lms-pack-drag-handle]',
+            draggingClass: 'is-dragging',
+            dropTargetClass: 'is-drop-target',
+            onDrop: async function () {
+                const childParcoursIds = Array.from(list.querySelectorAll('[data-child-parcours-id]'))
+                    .map((item) => Number(item.getAttribute('data-child-parcours-id') || 0))
+                    .filter((id) => Number.isInteger(id) && id > 0);
+
+                try {
+                    const formData = new FormData();
+                    formData.append('pid', String(parcoursId));
+                    childParcoursIds.forEach((childParcoursId) => {
+                        formData.append('child_parcours_ids[]', String(childParcoursId));
+                    });
+
+                    const response = await fetch(lmsParcoursPackReorderPath, {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'same-origin'
+                    });
+
+                    const payload = await response.json();
+                    if (!response.ok || !payload || payload.success !== true) {
+                        throw new Error(payload && payload.message ? payload.message : 'Impossible de reordonner les parcours du pack.');
+                    }
+
+                    await refreshParcoursMissionManager(parcoursId);
+                } catch (error) {
+                    window.alert(error && error.message ? error.message : 'Impossible de reordonner les parcours du pack.');
                     await refreshParcoursMissionManager(parcoursId);
                 }
             }

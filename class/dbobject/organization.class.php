@@ -3828,6 +3828,8 @@
 				'canCreate' => false,
 				'canEdit' => false,
 				'types' => array(),
+				'permissionCatalog' => \dbObject\Permission::getEditorCatalog(),
+				'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
 				'templateCatalog' => array(),
 				'holonCatalog' => array(),
 				'holon' => null,
@@ -3918,6 +3920,7 @@
 					'nameLocked' => $isTemplateEditing ? (bool)$editingHolon->get('lockedname') : $editingHolon->isNameLockedByTemplate(),
 					'unique' => (bool)$editingHolon->get('unique'),
 					'link' => (bool)$editingHolon->get('link'),
+					'permissionAssignments' => \dbObject\HolonPermission::getAssignmentKeyMapForHolon((int)$editingHolon->getId()),
 					'properties' => $isTemplateEditing
 						? $editingHolon->getTemplatePropertyDefinitions()
 						: $editingHolon->getHolonEditorPropertyDefinitions(),
@@ -5183,7 +5186,9 @@
 
 				$contextHolon = $holon->getParentHolon();
 				if (!$isTemplateEditing) {
-					$historyBeforeSnapshot = $this->buildHolonHistorySnapshot($holon);
+					$historyBeforeSnapshot = $this->buildHolonHistorySnapshot($holon, array(
+						'includePermissions' => true,
+					));
 				}
 			} else {
 				$contextHolon = $this->getTemplateContextHolon($contextHolonId);
@@ -5448,6 +5453,15 @@
 				$holon->syncTemplateProperties($templateDefinitions, (int)$rootHolon->getId());
 			} else {
 				$holon->syncEditorPropertyValues($submittedValuesByPropertyId, $templateDefinitions);
+				if (!\dbObject\HolonPermission::syncAssignmentsForHolon(
+					(int)$holon->getId(),
+					is_array($payload['permissions'] ?? null) ? $payload['permissions'] : array()
+				)) {
+					return array(
+						'status' => false,
+						'message' => "Les droits du holon n'ont pas pu etre enregistres.",
+					);
+				}
 
 				if (!$isEditing && (int)$holon->get('IDtypeholon') === 2) {
 					$excludedTemplateIds = array();
@@ -5459,7 +5473,9 @@
 				}
 
 				$holon->load((int)$holon->getId(), true);
-				$historyAfterSnapshot = $this->buildHolonHistorySnapshot($holon);
+				$historyAfterSnapshot = $this->buildHolonHistorySnapshot($holon, array(
+					'includePermissions' => true,
+				));
 				if ($isEditing && is_array($historyBeforeSnapshot)) {
 					$this->recordHolonUpdateHistory($holon, $userId, $historyBeforeSnapshot, $historyAfterSnapshot);
 				} elseif (!$isEditing) {

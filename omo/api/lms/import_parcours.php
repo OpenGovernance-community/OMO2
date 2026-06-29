@@ -3,20 +3,23 @@ require_once __DIR__ . '/bootstrap.php';
 
 commonRestoreRememberedUser();
 include __DIR__ . '/inc/org.php';
+require_once __DIR__ . '/inc/access.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
 $currentUserId = (int)commonGetCurrentUserId();
 $organizationId = (int)($org['id'] ?? 0);
-$hasOrganizationAccess = commonUserHasOrganizationAccess($currentUserId, $organizationId);
+$managementContext = lmsResolveParcoursManagementContext($organizationId, 0, $currentUserId, false);
+$hasOrganizationAccess = !empty($managementContext['hasOrganizationAccess']);
+$canCreateParcours = !empty($managementContext['canCreate']);
 $parcoursId = (int)($_POST['parcours_id'] ?? 0);
 
-if ($currentUserId <= 0 || !$hasOrganizationAccess || $organizationId <= 0) {
+if ($currentUserId <= 0 || !$hasOrganizationAccess || !$canCreateParcours || $organizationId <= 0) {
     http_response_code(403);
     echo json_encode(array(
         'status' => false,
         'success' => false,
-        'message' => 'Acces refuse.',
+        'message' => 'Vous n avez pas le droit d importer un parcours dans ce contexte.',
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }

@@ -3,6 +3,9 @@
 
 	class Parcours extends DbObject
 	{
+		protected static $hasApplicationColumnCache = null;
+		protected static $hasIsPackColumnCache = null;
+
 		public static function tableName()
 		{
 			return 'parcours';
@@ -12,8 +15,9 @@
 		{
 			return [
 				[['title'], 'required'],
-				[['id', 'IDorganization', 'IDusercreation', 'IDusermodification'], 'integer'],
-				[['ispublic', 'isbasic'], 'boolean'],
+				[['IDapplication'], 'fk'],
+				[['id'], 'integer'],
+				[['ispublic', 'isbasic', 'ispack'], 'boolean'],
 				[['title'], 'string'],
 				[['description'], 'text'],
 				[['datecreation', 'datemodification'], 'datetime'],
@@ -30,12 +34,14 @@
 				'description' => 'Description',
 				'image' => 'Image',
 				'IDorganization' => 'Organisation proprietaire',
+				'IDapplication' => 'Application liee',
 				'IDusercreation' => 'Createur',
 				'IDusermodification' => 'Dernier modificateur',
 				'datecreation' => 'Date de creation',
 				'datemodification' => 'Date de modification',
 				'ispublic' => 'Public',
 				'isbasic' => 'Basic',
+				'ispack' => 'Pack',
 			];
 		}
 
@@ -43,12 +49,14 @@
 		{
 			return [
 				'IDorganization' => 'Organisation proprietaire du parcours',
+				'IDapplication' => 'Application dont depend ce parcours. Si elle est desactivee dans une organisation, ce parcours et ses FAQ liees sont masques.',
 				'IDusercreation' => 'Utilisateur qui a cree le parcours',
 				'IDusermodification' => 'Utilisateur qui a modifie le parcours en dernier',
 				'datecreation' => 'Date de creation du parcours',
 				'datemodification' => 'Date de derniere modification du parcours',
 				'ispublic' => 'Rend le parcours visible dans un catalogue partage et ajoutable dans une organisation',
 				'isbasic' => 'Instancie automatiquement ce parcours pour chaque nouvelle organisation',
+				'ispack' => 'Transforme ce parcours en pack. Un pack contient d autres parcours, pas des missions.',
 			];
 		}
 
@@ -61,6 +69,103 @@
 
 		public static function getOrder() {
 			return "title";
+		}
+
+		public static function hasApplicationColumn()
+		{
+			if (self::$hasApplicationColumnCache !== null) {
+				return self::$hasApplicationColumnCache;
+			}
+
+			$columnCount = (int)self::fetchValue(
+				"SELECT COUNT(*)
+				FROM information_schema.COLUMNS
+				WHERE TABLE_SCHEMA = DATABASE()
+				  AND TABLE_NAME = 'parcours'
+				  AND COLUMN_NAME = 'IDapplication'"
+			);
+
+			self::$hasApplicationColumnCache = $columnCount > 0;
+			return self::$hasApplicationColumnCache;
+		}
+
+		public static function hasIsPackColumn()
+		{
+			if (self::$hasIsPackColumnCache !== null) {
+				return self::$hasIsPackColumnCache;
+			}
+
+			$columnCount = (int)self::fetchValue(
+				"SELECT COUNT(*)
+				FROM information_schema.COLUMNS
+				WHERE TABLE_SCHEMA = DATABASE()
+				  AND TABLE_NAME = 'parcours'
+				  AND COLUMN_NAME = 'ispack'"
+			);
+
+			self::$hasIsPackColumnCache = $columnCount > 0;
+			return self::$hasIsPackColumnCache;
+		}
+
+		public function isVisibleInOrganization($organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0 || !self::hasApplicationColumn()) {
+				return true;
+			}
+
+			$applicationId = (int)$this->get('IDapplication');
+			if ($applicationId <= 0) {
+				return true;
+			}
+
+			return \dbObject\Application::isEnabledForOrganization($applicationId, $organizationId);
+		}
+
+		public function isPack()
+		{
+			return self::hasIsPackColumn() && (bool)$this->get('ispack');
+		}
+
+		public static function resolveOwnerOrganizationIdByParcoursId($parcoursId)
+		{
+			$parcoursId = (int)$parcoursId;
+			if ($parcoursId <= 0) {
+				return 0;
+			}
+
+			$ownerOrganizationId = (int)self::fetchValue(
+				"SELECT COALESCE(
+					(SELECT p.IDorganization FROM parcours p WHERE p.id = :parcours_id LIMIT 1),
+					(SELECT MIN(op.IDorganization) FROM organization_parcours op WHERE op.IDparcours = :parcours_id_fallback)
+				)",
+				[
+					'parcours_id' => $parcoursId,
+					'parcours_id_fallback' => $parcoursId,
+				]
+			);
+
+			return max(0, $ownerOrganizationId);
+		}
+
+		public function getOwnerOrganizationId()
+		{
+			$ownerOrganizationId = (int)$this->get('IDorganization');
+			if ($ownerOrganizationId > 0) {
+				return $ownerOrganizationId;
+			}
+
+			$ownerOrganizationId = self::resolveOwnerOrganizationIdByParcoursId((int)$this->getId());
+			if ($ownerOrganizationId > 0) {
+				$this->set('IDorganization', $ownerOrganizationId);
+			}
+
+			return $ownerOrganizationId;
+		}
+
+		public function isOwnedByOrganization($organizationId)
+		{
+			return $this->getOwnerOrganizationId() === (int)$organizationId;
 		}
 
 		protected static function resolveCurrentUserId()
@@ -117,6 +222,14 @@
 				WHERE isbasic = 1
 				ORDER BY datecreation ASC, id ASC"
 			);
+		}
+
+		protected static function buildIsPackSelectSql($alias = 'p')
+		{
+			$alias = trim((string)$alias) !== '' ? trim((string)$alias) : 'p';
+			return self::hasIsPackColumn()
+				? "COALESCE(" . $alias . ".ispack, 0) AS ispack"
+				: "0 AS ispack";
 		}
 
 		public static function instantiateBasicForOrganization($organizationId)
@@ -187,9 +300,26 @@
 					$where[] = "op.everybody = 1";
 				}
 			}
+			if (self::hasApplicationColumn()) {
+				$where[] = "(p.IDapplication IS NULL OR p.IDapplication <= 0 OR EXISTS (
+					SELECT 1
+					FROM organization_application oa_app
+					INNER JOIN application a_app
+						ON a_app.id = oa_app.IDapplication
+					WHERE oa_app.IDorganization = :application_visibility_organization_id
+					  AND oa_app.IDapplication = p.IDapplication
+					  AND oa_app.active = 1
+					  AND a_app.active = 1
+				))";
+			}
 
 			$anonymousSelect = $hasAnonymousColumn ? "op.anonymous" : "0 AS anonymous";
 			$anonymousGroupBy = $hasAnonymousColumn ? ", op.anonymous" : "";
+			$applicationSelect = self::hasApplicationColumn() ? "p.IDapplication AS linked_application_id" : "NULL AS linked_application_id";
+			$applicationGroupBy = self::hasApplicationColumn() ? ", p.IDapplication" : "";
+			$isPackSelect = self::buildIsPackSelectSql('p');
+			$isPackGroupBy = self::hasIsPackColumn() ? ", p.ispack" : "";
+			$ownerOrganizationSelect = "COALESCE(p.IDorganization, (SELECT MIN(op_owner.IDorganization) FROM organization_parcours op_owner WHERE op_owner.IDparcours = p.id)) AS owner_organization_id";
 
 			$query = "
 				SELECT 
@@ -197,7 +327,9 @@
 					p.title,
 					p.description,
 					p.image,
-					p.IDorganization AS owner_organization_id,
+					" . $ownerOrganizationSelect . ",
+					" . $applicationSelect . ",
+					" . $isPackSelect . ",
 					op.position,
 					op.everybody,
 					" . $anonymousSelect . ",
@@ -218,13 +350,14 @@
 					AND lm.IDparcours = p.id
 					AND lm.IDuser = :user_id
 				WHERE " . implode(" AND ", $where) . "
-				GROUP BY p.id, p.title, p.description, p.image, p.IDorganization, op.position, op.everybody" . $anonymousGroupBy . "
+				GROUP BY p.id, p.title, p.description, p.image, p.IDorganization" . $applicationGroupBy . $isPackGroupBy . ", op.position, op.everybody" . $anonymousGroupBy . "
 				ORDER BY op.position ASC, p.title ASC
 			";
 
 			$rows = self::fetchAll($query, [
 				'user_id' => (int)$userId,
 				'organization_id' => (int)$organizationId,
+				'application_visibility_organization_id' => (int)$organizationId,
 			]);
 
 			return is_array($rows) ? $rows : [];
@@ -235,6 +368,11 @@
 			$hasAnonymousColumn = OrganizationParcours::hasAnonymousColumn();
 			$anonymousSelect = $hasAnonymousColumn ? "op.anonymous" : "0 AS anonymous";
 			$anonymousGroupBy = $hasAnonymousColumn ? ", op.anonymous" : "";
+			$applicationSelect = self::hasApplicationColumn() ? "p.IDapplication AS linked_application_id" : "NULL AS linked_application_id";
+			$applicationGroupBy = self::hasApplicationColumn() ? ", p.IDapplication" : "";
+			$isPackSelect = self::buildIsPackSelectSql('p');
+			$isPackGroupBy = self::hasIsPackColumn() ? ", p.ispack" : "";
+			$ownerOrganizationSelect = "COALESCE(p.IDorganization, (SELECT MIN(op_owner.IDorganization) FROM organization_parcours op_owner WHERE op_owner.IDparcours = p.id)) AS owner_organization_id";
 
 			$query = "
 				SELECT
@@ -242,7 +380,9 @@
 					p.title,
 					p.description,
 					p.image,
-					p.IDorganization AS owner_organization_id,
+					" . $ownerOrganizationSelect . ",
+					" . $applicationSelect . ",
+					" . $isPackSelect . ",
 					op.position,
 					op.everybody,
 					" . $anonymousSelect . ",
@@ -264,13 +404,96 @@
 					AND lm.IDuser = :user_id
 				WHERE op.IDorganization = :organization_id
 				  AND op.everybody = 1
-				GROUP BY p.id, p.title, p.description, p.image, p.IDorganization, op.position, op.everybody" . $anonymousGroupBy . "
+				  AND (
+					" . (self::hasApplicationColumn()
+						? "p.IDapplication IS NULL OR p.IDapplication <= 0 OR EXISTS (
+							SELECT 1
+							FROM organization_application oa_app
+							INNER JOIN application a_app
+								ON a_app.id = oa_app.IDapplication
+							WHERE oa_app.IDorganization = :application_visibility_organization_id
+							  AND oa_app.IDapplication = p.IDapplication
+							  AND oa_app.active = 1
+							  AND a_app.active = 1
+						)"
+						: "1=1") . "
+				  )
+				GROUP BY p.id, p.title, p.description, p.image, p.IDorganization" . $applicationGroupBy . $isPackGroupBy . ", op.position, op.everybody" . $anonymousGroupBy . "
 				ORDER BY op.position ASC, p.title ASC
 			";
 
 			$rows = self::fetchAll($query, [
 				'user_id' => (int)$userId,
 				'organization_id' => (int)$organizationId,
+				'application_visibility_organization_id' => (int)$organizationId,
+			]);
+
+			return is_array($rows) ? $rows : [];
+		}
+
+		public static function fetchPublicForOrganizationWithProgress($organizationId, $userId = 0)
+		{
+			$hasAnonymousColumn = OrganizationParcours::hasAnonymousColumn();
+			$anonymousSelect = $hasAnonymousColumn ? "op.anonymous" : "0 AS anonymous";
+			$anonymousGroupBy = $hasAnonymousColumn ? ", op.anonymous" : "";
+			$applicationSelect = self::hasApplicationColumn() ? "p.IDapplication AS linked_application_id" : "NULL AS linked_application_id";
+			$applicationGroupBy = self::hasApplicationColumn() ? ", p.IDapplication" : "";
+			$isPackSelect = self::buildIsPackSelectSql('p');
+			$isPackGroupBy = self::hasIsPackColumn() ? ", p.ispack" : "";
+			$ownerOrganizationSelect = "COALESCE(p.IDorganization, (SELECT MIN(op_owner.IDorganization) FROM organization_parcours op_owner WHERE op_owner.IDparcours = p.id)) AS owner_organization_id";
+
+			$query = "
+				SELECT
+					p.id,
+					p.title,
+					p.description,
+					p.image,
+					" . $ownerOrganizationSelect . ",
+					" . $applicationSelect . ",
+					" . $isPackSelect . ",
+					op.position,
+					op.everybody,
+					" . $anonymousSelect . ",
+					COUNT(DISTINCT pm.IDmission) AS total_missions,
+					COALESCE(SUM(
+						CASE
+							WHEN lm.done IS NOT NULL THEN 1
+							ELSE 0
+						END
+					), 0) AS done_missions
+				FROM organization_parcours op
+				INNER JOIN parcours p
+					ON p.id = op.IDparcours
+				LEFT JOIN parcours_mission pm
+					ON pm.IDparcours = p.id
+				LEFT JOIN user_mission lm
+					ON lm.IDmission = pm.IDmission
+					AND lm.IDparcours = p.id
+					AND lm.IDuser = :user_id
+				WHERE op.IDorganization = :organization_id
+				  AND " . ($hasAnonymousColumn ? "(op.everybody = 1 OR op.anonymous = 1)" : "op.everybody = 1") . "
+				  AND (
+					" . (self::hasApplicationColumn()
+						? "p.IDapplication IS NULL OR p.IDapplication <= 0 OR EXISTS (
+							SELECT 1
+							FROM organization_application oa_app
+							INNER JOIN application a_app
+								ON a_app.id = oa_app.IDapplication
+							WHERE oa_app.IDorganization = :application_visibility_organization_id
+							  AND oa_app.IDapplication = p.IDapplication
+							  AND oa_app.active = 1
+							  AND a_app.active = 1
+						)"
+						: "1=1") . "
+				  )
+				GROUP BY p.id, p.title, p.description, p.image, p.IDorganization" . $applicationGroupBy . $isPackGroupBy . ", op.position, op.everybody" . $anonymousGroupBy . "
+				ORDER BY op.position ASC, p.title ASC
+			";
+
+			$rows = self::fetchAll($query, [
+				'user_id' => (int)$userId,
+				'organization_id' => (int)$organizationId,
+				'application_visibility_organization_id' => (int)$organizationId,
 			]);
 
 			return is_array($rows) ? $rows : [];
@@ -287,7 +510,8 @@
 					p.title,
 					p.description,
 					p.image,
-					p.IDorganization AS owner_organization_id,
+					COALESCE(p.IDorganization, (SELECT MIN(op_owner.IDorganization) FROM organization_parcours op_owner WHERE op_owner.IDparcours = p.id)) AS owner_organization_id,
+					" . self::buildIsPackSelectSql('p') . ",
 					COUNT(DISTINCT pm.IDmission) AS total_missions,
 					COALESCE(SUM(
 						CASE
@@ -303,7 +527,7 @@
 					AND lm.IDparcours = p.id
 					AND lm.IDuser = :user_id
 				WHERE " . implode(" AND ", $where) . "
-				GROUP BY p.id, p.title, p.description, p.image, p.IDorganization
+				GROUP BY p.id, p.title, p.description, p.image, p.IDorganization" . (self::hasIsPackColumn() ? ", p.ispack" : "") . "
 				ORDER BY p.title ASC, p.id ASC
 			";
 
@@ -374,6 +598,7 @@
 					p.image,
 					p.ispublic,
 					p.isbasic,
+					" . self::buildIsPackSelectSql('p') . ",
 					p.IDorganization,
 					owner.name AS owner_name,
 					COUNT(DISTINCT pm.IDmission) AS total_missions
@@ -396,6 +621,7 @@
 					p.image,
 					p.ispublic,
 					p.isbasic,
+					" . (self::hasIsPackColumn() ? "p.ispack," : "") . "
 					p.IDorganization,
 					owner.name
 				ORDER BY p.isbasic DESC, p.ispublic DESC, p.title ASC, p.id ASC",
@@ -420,7 +646,8 @@
 					p.id,
 					p.title,
 					p.ispublic,
-					p.isbasic
+					p.isbasic,
+					" . self::buildIsPackSelectSql('p') . "
 				FROM parcours p
 				WHERE p.id = :parcours_id
 				  AND (p.ispublic = 1 OR p.isbasic = 1)
@@ -450,6 +677,285 @@
 			return (int)self::fetchValue($query, [
 				'organization_id' => (int)$organizationId,
 			]);
+		}
+
+		public static function fetchAvailableFaqTargetsForOrganization($organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0) {
+				return [];
+			}
+
+			$rows = self::fetchAll(
+				"SELECT
+					p.id,
+					p.title
+				FROM organization_parcours op
+				INNER JOIN parcours p
+					ON p.id = op.IDparcours
+				WHERE op.IDorganization = :organization_id
+				  AND " . (self::hasIsPackColumn() ? "COALESCE(p.ispack, 0) = 0" : "1=1") . "
+				ORDER BY p.title ASC, p.id ASC",
+				[
+					'organization_id' => $organizationId,
+				]
+			);
+
+			return is_array($rows) ? $rows : [];
+		}
+
+		public static function fetchAvailableFaqTargetIdsForOrganization($organizationId)
+		{
+			$rows = self::fetchAvailableFaqTargetsForOrganization($organizationId);
+			$ids = [];
+
+			foreach ($rows as $row) {
+				$parcoursId = (int)($row['id'] ?? 0);
+				if ($parcoursId > 0) {
+					$ids[] = $parcoursId;
+				}
+			}
+
+			return array_values(array_unique($ids));
+		}
+
+		public static function fetchOwnedFaqTargetsForOrganization($organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0) {
+				return [];
+			}
+
+			$rows = self::fetchAll(
+				"SELECT
+					p.id,
+					p.title
+				FROM parcours p
+				WHERE COALESCE(p.IDorganization, (SELECT MIN(op_owner.IDorganization) FROM organization_parcours op_owner WHERE op_owner.IDparcours = p.id)) = :organization_id
+				  AND " . (self::hasIsPackColumn() ? "COALESCE(p.ispack, 0) = 0" : "1=1") . "
+				ORDER BY p.title ASC, p.id ASC",
+				[
+					'organization_id' => $organizationId,
+				]
+			);
+
+			return is_array($rows) ? $rows : [];
+		}
+
+		public static function fetchOwnedFaqTargetIdsForOrganization($organizationId)
+		{
+			$rows = self::fetchOwnedFaqTargetsForOrganization($organizationId);
+			$ids = [];
+
+			foreach ($rows as $row) {
+				$parcoursId = (int)($row['id'] ?? 0);
+				if ($parcoursId > 0) {
+					$ids[] = $parcoursId;
+				}
+			}
+
+			return array_values(array_unique($ids));
+		}
+
+		public static function fetchAvailablePackTargetsForOrganization($organizationId, $parentParcoursId = 0)
+		{
+			$organizationId = (int)$organizationId;
+			$parentParcoursId = (int)$parentParcoursId;
+			if ($organizationId <= 0) {
+				return [];
+			}
+
+			$rows = self::fetchAll(
+				"SELECT
+					p.id,
+					p.title,
+					p.description,
+					p.image,
+					p.IDapplication
+				FROM parcours p
+				WHERE COALESCE(p.IDorganization, (SELECT MIN(op_owner.IDorganization) FROM organization_parcours op_owner WHERE op_owner.IDparcours = p.id), 0) = :organization_id
+				  AND " . (self::hasIsPackColumn() ? "COALESCE(p.ispack, 0) = 0" : "1=1") . "
+				  AND p.id <> :parent_parcours_id
+				  AND NOT EXISTS (
+					SELECT 1
+					FROM parcours_parcours pp
+					WHERE pp.IDparcours_parent = :linked_parent_parcours_id
+					  AND pp.IDparcours_child = p.id
+				  )
+				ORDER BY p.title ASC, p.id ASC",
+				[
+					'organization_id' => $organizationId,
+					'parent_parcours_id' => $parentParcoursId,
+					'linked_parent_parcours_id' => $parentParcoursId,
+				]
+			);
+
+			return is_array($rows) ? $rows : [];
+		}
+
+		public static function fetchPackChildrenForOrganizationWithProgress($organizationId, $packParcoursId, $userId, $viewerHasOrganizationAccess = false)
+		{
+			$organizationId = (int)$organizationId;
+			$packParcoursId = (int)$packParcoursId;
+			$userId = (int)$userId;
+			if ($organizationId <= 0 || $packParcoursId <= 0) {
+				return [];
+			}
+
+			$hasAnonymousColumn = \dbObject\OrganizationParcours::hasAnonymousColumn();
+			$where = [
+				"pp.IDparcours_parent = :pack_parcours_id",
+				"op.IDorganization = :organization_id",
+			];
+			if (!$viewerHasOrganizationAccess) {
+				if ($hasAnonymousColumn) {
+					$where[] = $userId > 0
+						? "(op.everybody = 1 OR op.anonymous = 1)"
+						: "op.anonymous = 1";
+				} else {
+					$where[] = "op.everybody = 1";
+				}
+			}
+			if (self::hasApplicationColumn()) {
+				$where[] = "(child.IDapplication IS NULL OR child.IDapplication <= 0 OR EXISTS (
+					SELECT 1
+					FROM organization_application oa_app
+					INNER JOIN application a_app
+						ON a_app.id = oa_app.IDapplication
+					WHERE oa_app.IDorganization = :application_visibility_organization_id
+					  AND oa_app.IDapplication = child.IDapplication
+					  AND oa_app.active = 1
+					  AND a_app.active = 1
+				))";
+			}
+
+			$rows = self::fetchAll(
+				"SELECT
+					child.id,
+					child.title,
+					child.description,
+					child.image,
+					COALESCE(child.IDorganization, (SELECT MIN(op_owner.IDorganization) FROM organization_parcours op_owner WHERE op_owner.IDparcours = child.id)) AS owner_organization_id,
+					" . (self::hasApplicationColumn() ? "child.IDapplication AS linked_application_id" : "NULL AS linked_application_id") . ",
+					" . self::buildIsPackSelectSql('child') . ",
+					pp.position,
+					COUNT(DISTINCT pm.IDmission) AS total_missions,
+					COALESCE(SUM(
+						CASE
+							WHEN lm.done IS NOT NULL THEN 1
+							ELSE 0
+						END
+					), 0) AS done_missions
+				FROM parcours_parcours pp
+				INNER JOIN parcours child
+					ON child.id = pp.IDparcours_child
+				INNER JOIN organization_parcours op
+					ON op.IDparcours = child.id
+				LEFT JOIN parcours_mission pm
+					ON pm.IDparcours = child.id
+				LEFT JOIN user_mission lm
+					ON lm.IDmission = pm.IDmission
+					AND lm.IDparcours = child.id
+					AND lm.IDuser = :user_id
+				WHERE " . implode(' AND ', $where) . "
+				GROUP BY child.id, child.title, child.description, child.image, child.IDorganization" . (self::hasApplicationColumn() ? ", child.IDapplication" : "") . (self::hasIsPackColumn() ? ", child.ispack" : "") . ", pp.position
+				ORDER BY COALESCE(pp.position, child.title) ASC, child.title ASC, child.id ASC",
+				[
+					'pack_parcours_id' => $packParcoursId,
+					'user_id' => $userId,
+					'organization_id' => $organizationId,
+					'application_visibility_organization_id' => $organizationId,
+				]
+			);
+
+			return is_array($rows) ? $rows : [];
+		}
+
+		public static function attachOwnedPackChildrenToOrganization($organizationId, $packParcoursId)
+		{
+			$organizationId = (int)$organizationId;
+			$packParcoursId = (int)$packParcoursId;
+			if ($organizationId <= 0 || $packParcoursId <= 0 || !self::tableExists('parcours_parcours')) {
+				return [
+					'status' => true,
+					'attachedCount' => 0,
+				];
+			}
+
+			$pack = new self();
+			if (!$pack->load($packParcoursId) || !$pack->isPack()) {
+				return [
+					'status' => true,
+					'attachedCount' => 0,
+				];
+			}
+
+			$ownerOrganizationId = $pack->getOwnerOrganizationId();
+			if ($ownerOrganizationId <= 0) {
+				return [
+					'status' => false,
+					'message' => 'Organisation proprietaire du pack introuvable.',
+					'attachedCount' => 0,
+				];
+			}
+
+			$rows = self::fetchAll(
+				"SELECT child.id
+				FROM parcours_parcours pp
+				INNER JOIN parcours child
+					ON child.id = pp.IDparcours_child
+				WHERE pp.IDparcours_parent = :pack_parcours_id
+				  AND COALESCE(child.IDorganization, :owner_organization_id_fallback) = :owner_organization_id
+				  AND " . (self::hasIsPackColumn() ? "COALESCE(child.ispack, 0) = 0" : "1=1") . "
+				ORDER BY COALESCE(pp.position, child.id) ASC, child.id ASC",
+				[
+					'pack_parcours_id' => $packParcoursId,
+					'owner_organization_id' => $ownerOrganizationId,
+					'owner_organization_id_fallback' => $ownerOrganizationId,
+				]
+			);
+			if (!is_array($rows)) {
+				return [
+					'status' => false,
+					'message' => 'Impossible de charger les parcours du pack.',
+					'attachedCount' => 0,
+				];
+			}
+
+			$attachedCount = 0;
+			foreach ($rows as $row) {
+				$childParcoursId = (int)($row['id'] ?? 0);
+				if ($childParcoursId <= 0) {
+					continue;
+				}
+
+				$attachResult = \dbObject\OrganizationParcours::attachParcoursToOrganization(
+					$organizationId,
+					$childParcoursId,
+					[
+						'everybody' => true,
+						'anonymous' => false,
+					]
+				);
+				if (!is_array($attachResult) || empty($attachResult['status'])) {
+					return [
+						'status' => false,
+						'message' => is_array($attachResult) && !empty($attachResult['message'])
+							? (string)$attachResult['message']
+							: 'Impossible d attacher les parcours du pack.',
+						'attachedCount' => $attachedCount,
+					];
+				}
+
+				if (!empty($attachResult['created'])) {
+					$attachedCount++;
+				}
+			}
+
+			return [
+				'status' => true,
+				'attachedCount' => $attachedCount,
+			];
 		}
 
 		protected static function fetchSingleColumnIds($query, array $params, $columnName)
@@ -682,7 +1188,7 @@
 		{
 			$organizationId = (int)$organizationId;
 			$parcoursId = (int)$this->getId();
-			$ownerOrganizationId = (int)$this->get('IDorganization');
+			$ownerOrganizationId = $this->getOwnerOrganizationId();
 
 			if ($organizationId <= 0 || $parcoursId <= 0) {
 				return [
@@ -878,6 +1384,21 @@
 					);
 					if ($result === false) {
 						throw new \RuntimeException('parcours_mission_delete_failed');
+					}
+				}
+
+				if (self::tableExists('parcours_parcours')) {
+					$result = self::execute(
+						"DELETE FROM parcours_parcours
+						WHERE IDparcours_parent = :parcours_id_parent
+						   OR IDparcours_child = :parcours_id_child",
+						[
+							'parcours_id_parent' => $parcoursId,
+							'parcours_id_child' => $parcoursId,
+						]
+					);
+					if ($result === false) {
+						throw new \RuntimeException('parcours_parcours_delete_failed');
 					}
 				}
 
