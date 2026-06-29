@@ -3,12 +3,15 @@ require_once __DIR__ . '/bootstrap.php';
 
 commonRestoreRememberedUser();
 include __DIR__ . '/inc/org.php';
+require_once __DIR__ . '/inc/access.php';
 
 $currentUserId = (int)commonGetCurrentUserId();
 $organizationId = (int)($org['id'] ?? 0);
-$hasOrganizationAccess = commonUserHasOrganizationAccess($currentUserId, $organizationId);
+$managementContext = lmsResolveParcoursManagementContext($organizationId, 0, $currentUserId);
+$hasOrganizationAccess = !empty($managementContext['hasOrganizationAccess']);
+$canCreateParcours = !empty($managementContext['canCreate']);
 
-if ($currentUserId <= 0 || !$hasOrganizationAccess || $organizationId <= 0) {
+if ($currentUserId <= 0 || !$hasOrganizationAccess || !$canCreateParcours || $organizationId <= 0) {
     http_response_code(403);
     echo '<div class="lms-import-parcours-view"><p>Acces refuse.</p></div>';
     exit;

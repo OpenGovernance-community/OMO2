@@ -1,6 +1,21 @@
 <?php
 
 if (!function_exists('lmsRenderParcoursMissionManager')) {
+    function lmsRenderParcoursContentManager($organizationId, $parcoursId)
+    {
+        $parcoursId = (int)$parcoursId;
+        $parcours = new \dbObject\Parcours();
+        if (!$parcours->load($parcoursId)) {
+            return '<div class="lms-parcours-missions__empty">Parcours introuvable.</div>';
+        }
+
+        if ($parcours->isPack()) {
+            return lmsRenderParcoursPackManager($organizationId, $parcoursId);
+        }
+
+        return lmsRenderParcoursMissionManager($organizationId, $parcoursId);
+    }
+
     function lmsRenderParcoursMissionCreateForm($parcoursId)
     {
         $parcoursId = (int)$parcoursId;
@@ -65,7 +80,9 @@ if (!function_exists('lmsRenderParcoursMissionManager')) {
         ?>
         <section
             class="lms-parcours-missions"
+            data-lms-parcours-content-manager="1"
             data-lms-parcours-mission-manager="1"
+            data-lms-manager-type="mission"
             data-parcours-id="<?php echo (int)$parcoursId; ?>"
             data-organization-id="<?php echo (int)$organizationId; ?>"
         >
@@ -175,6 +192,132 @@ if (!function_exists('lmsRenderParcoursMissionManager')) {
                     </div>
 
                     <?php echo lmsRenderParcoursMissionCreateForm($parcoursId); ?>
+                </div>
+            </div>
+        </section>
+        <?php
+
+        return ob_get_clean();
+    }
+
+    function lmsRenderParcoursPackManager($organizationId, $parcoursId)
+    {
+        $organizationId = (int)$organizationId;
+        $parcoursId = (int)$parcoursId;
+        $children = \dbObject\ParcoursParcours::fetchDetailedForParent($parcoursId);
+        $availableParcours = \dbObject\Parcours::fetchAvailablePackTargetsForOrganization($organizationId, $parcoursId);
+
+        ob_start();
+        ?>
+        <section
+            class="lms-parcours-missions"
+            data-lms-parcours-content-manager="1"
+            data-lms-parcours-pack-manager="1"
+            data-lms-manager-type="pack"
+            data-parcours-id="<?php echo (int)$parcoursId; ?>"
+            data-organization-id="<?php echo (int)$organizationId; ?>"
+        >
+            <div class="lms-parcours-missions__header">
+                <div>
+                    <h3>Parcours du pack</h3>
+                    <p>Glissez les parcours pour changer leur ordre, puis ajoutez des parcours simples dont votre organisation est proprietaire.</p>
+                </div>
+                <button type="button" class="lms-parcours-missions__add-button" data-lms-open-pack-picker="1">Ajouter</button>
+            </div>
+
+            <?php if (count($children) === 0): ?>
+                <div class="lms-parcours-missions__empty">Aucun parcours n est encore rattache a ce pack.</div>
+            <?php else: ?>
+                <div class="lms-parcours-missions__list" data-lms-pack-parcours-list="1">
+                    <?php foreach ($children as $child): ?>
+                        <article
+                            class="lms-parcours-mission-item"
+                            draggable="true"
+                            data-sortable-id="<?php echo (int)($child['IDparcours_child'] ?? 0); ?>"
+                            data-child-parcours-id="<?php echo (int)($child['IDparcours_child'] ?? 0); ?>"
+                        >
+                            <div class="lms-parcours-mission-item__menu-wrap">
+                                <button
+                                    type="button"
+                                    class="lms-parcours-mission-item__menu-trigger"
+                                    data-lms-toggle-pack-item-menu="1"
+                                    data-child-parcours-id="<?php echo (int)($child['IDparcours_child'] ?? 0); ?>"
+                                    aria-label="Actions"
+                                >...</button>
+                                <div class="lms-parcours-mission-item__menu" id="lms-pack-item-menu-<?php echo (int)($child['IDparcours_child'] ?? 0); ?>">
+                                    <button
+                                        type="button"
+                                        class="lms-parcours-mission-item__menu-item"
+                                        data-lms-edit-pack-child="1"
+                                        data-child-parcours-id="<?php echo (int)($child['IDparcours_child'] ?? 0); ?>"
+                                    >Editer le parcours</button>
+                                </div>
+                            </div>
+                            <div class="lms-parcours-mission-item__handle" data-lms-pack-drag-handle="1" title="Deplacer">::</div>
+                            <div class="lms-parcours-mission-item__body">
+                                <strong><?php echo htmlspecialchars((string)($child['title'] ?? '')); ?></strong>
+                                <?php if (trim((string)($child['description'] ?? '')) !== ''): ?>
+                                    <p><?php echo htmlspecialchars((string)$child['description']); ?></p>
+                                <?php endif; ?>
+                                <div class="lms-parcours-mission-item__meta">
+                                    <?php if (!empty($child['IDapplication'])): ?>
+                                        <span>Application liee</span>
+                                    <?php else: ?>
+                                        <span>Toujours visible</span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
+            <div class="lms-parcours-mission-picker" data-lms-pack-picker="1" hidden>
+                <div class="lms-parcours-mission-picker__backdrop" data-lms-close-pack-picker="1"></div>
+                <div class="lms-parcours-mission-picker__panel">
+                    <div class="lms-parcours-mission-picker__header">
+                        <div>
+                            <h4>Ajouter un parcours au pack</h4>
+                            <p>Choisissez un parcours simple appartenant a votre organisation.</p>
+                        </div>
+                        <div class="lms-parcours-mission-picker__header-actions">
+                            <button type="button" class="lms-parcours-mission-picker__close" data-lms-close-pack-picker="1">Fermer</button>
+                        </div>
+                    </div>
+
+                    <label class="lms-parcours-mission-picker__search">
+                        <span>Rechercher</span>
+                        <input type="search" data-lms-pack-picker-search="1" placeholder="Titre ou description">
+                    </label>
+
+                    <div class="lms-parcours-mission-picker__list" data-lms-pack-picker-list="1">
+                        <?php if (count($availableParcours) === 0): ?>
+                            <div class="lms-parcours-mission-picker__empty">Tous les parcours simples disponibles sont deja dans ce pack.</div>
+                        <?php else: ?>
+                            <?php foreach ($availableParcours as $availableParcoursItem): ?>
+                                <?php
+                                $searchText = function_exists('mb_strtolower')
+                                    ? mb_strtolower(trim((string)($availableParcoursItem['title'] ?? '') . ' ' . (string)($availableParcoursItem['description'] ?? '')), 'UTF-8')
+                                    : strtolower(trim((string)($availableParcoursItem['title'] ?? '') . ' ' . (string)($availableParcoursItem['description'] ?? '')));
+                                ?>
+                                <article
+                                    class="lms-parcours-mission-picker__item"
+                                    data-lms-pack-picker-item="1"
+                                    data-child-parcours-id="<?php echo (int)($availableParcoursItem['id'] ?? 0); ?>"
+                                    data-search-text="<?php echo htmlspecialchars($searchText, ENT_QUOTES, 'UTF-8'); ?>"
+                                >
+                                    <div class="lms-parcours-mission-picker__copy">
+                                        <strong><?php echo htmlspecialchars((string)($availableParcoursItem['title'] ?? '')); ?></strong>
+                                        <?php if (trim((string)($availableParcoursItem['description'] ?? '')) !== ''): ?>
+                                            <p><?php echo htmlspecialchars((string)$availableParcoursItem['description']); ?></p>
+                                        <?php endif; ?>
+                                    </div>
+                                    <button type="button" data-lms-add-pack-child-id="<?php echo (int)($availableParcoursItem['id'] ?? 0); ?>">Ajouter</button>
+                                </article>
+                            <?php endforeach; ?>
+                            <div class="lms-parcours-mission-picker__empty" data-lms-pack-picker-empty-search="1" hidden>Aucun parcours ne correspond a cette recherche.</div>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
         </section>

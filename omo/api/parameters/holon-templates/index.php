@@ -29,6 +29,7 @@ if ($organizationId <= 0) {
 } elseif ($organization->getEnabledStructuralRootHolon() === null) {
     $errorMessage = "Les modeles de holons sont disponibles uniquement lorsqu une structure existe et que l app Structure est active.";
 } else {
+    $rootHolon = $organization->getEnabledStructuralRootHolon();
     if ($targetHolonId > 0) {
         $editorData = $organization->getHolonDefinitionEditorData($targetHolonId);
     }
@@ -41,6 +42,15 @@ if ($organizationId <= 0) {
     if ($isHolonDefinitionMode) {
         $templateScope = 'contextual';
         $selectedTemplateId = (int)($editorData['targetHolonId'] ?? $targetHolonId);
+    } elseif ($selectedTemplateId <= 0 && $targetHolonId > 0 && $rootHolon) {
+        $targetTemplateHolon = new \dbObject\Holon();
+        if (
+            $targetTemplateHolon->load($targetHolonId)
+            && $organization->containsHolon($targetTemplateHolon)
+            && $targetTemplateHolon->isTemplateNode((int)$rootHolon->getId())
+        ) {
+            $selectedTemplateId = (int)$targetTemplateHolon->getId();
+        }
     }
 }
 ?>
@@ -1033,6 +1043,9 @@ function omoHolonTemplateRenderPermissions(permissionAssignments) {
     let html = '<div class="omo-template-permissions__table">';
 
     permissionCatalog.forEach(function (permission) {
+        const permissionRangeOptions = Array.isArray(permission.rangeOptions) && permission.rangeOptions.length
+            ? permission.rangeOptions
+            : rangeOptions;
         const selectedRanges = omoHolonTemplateNormalizePermissionRanges(assignments[permission.key]);
 
         html += ''
@@ -1052,7 +1065,7 @@ function omoHolonTemplateRenderPermissions(permissionAssignments) {
             + '      <select class="omo-template-permissions__select" data-permission-select>'
             + '          <option value="">Ajouter une portee...</option>';
 
-        rangeOptions.forEach(function (range) {
+        permissionRangeOptions.forEach(function (range) {
             html += '<option value="' + omoHolonTemplateEscapeHtml(range.key) + '">' + omoHolonTemplateEscapeHtml(range.label || range.key) + '</option>';
         });
 
@@ -1068,9 +1081,15 @@ function omoHolonTemplateRenderPermissions(permissionAssignments) {
 
     Array.from(omoHolonTemplateElements.permissions.querySelectorAll('[data-permission-key]')).forEach(function (row) {
         const permissionKey = String(row.getAttribute('data-permission-key') || '').trim();
+        const permission = permissionCatalog.find(function (item) {
+            return String(item && item.key ? item.key : '') === permissionKey;
+        }) || null;
+        const permissionRangeOptions = permission && Array.isArray(permission.rangeOptions) && permission.rangeOptions.length
+            ? permission.rangeOptions
+            : rangeOptions;
         const selectedRanges = omoHolonTemplateNormalizePermissionRanges(assignments[permissionKey]);
-        omoHolonTemplateBindPermissionRow(row, rangeOptions);
-        omoHolonTemplateSetPermissionRowRanges(row, selectedRanges, rangeOptions);
+        omoHolonTemplateBindPermissionRow(row, permissionRangeOptions);
+        omoHolonTemplateSetPermissionRowRanges(row, selectedRanges, permissionRangeOptions);
     });
 }
 

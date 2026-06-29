@@ -45,6 +45,12 @@ $parcours = [
 ];
 
 if ($parcoursRef->load($parcours_id)) {
+	if ($parcoursRef->isPack()) {
+		http_response_code(404);
+		echo 'Parcours introuvable';
+		exit;
+	}
+
 	$parcours = [
 		'title' => (string)$parcoursRef->get('title'),
 		'description' => (string)$parcoursRef->get('description'),
@@ -52,7 +58,7 @@ if ($parcoursRef->load($parcours_id)) {
 }
 
 $isAnonymousViewer = lmsIsAnonymousViewer($accessContext);
-$showLoginDrawerButton = $user_id <= 0 && !commonCanAccessWithoutLogin($org);
+$showLoginDrawerButton = $user_id <= 0;
 $loginDrawerReturnTo = lmsBuildLocalPath('/lms/parcours.php', array(
 	'idp' => $parcours_id,
 	'embed' => $isEmbedded ? 1 : null,
@@ -222,6 +228,24 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 			width: 0%;
 			background: var(--primary);
 			transition: width 0.3s ease;
+		}
+
+		.lms-pack-children {
+			display: grid;
+			gap: 18px;
+		}
+
+		.lms-pack-children__intro p,
+		.lms-pack-children__empty {
+			color: var(--text-light);
+			line-height: 1.5;
+		}
+
+		.lms-pack-children__empty {
+			padding: 16px 18px;
+			border: 1px solid var(--border-color);
+			border-radius: var(--border-radius);
+			background: var(--bg-card);
 		}
 
 		.view-switch {

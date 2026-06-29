@@ -3,6 +3,8 @@
 
 	class Application extends DbObject
 	{
+		protected static $enabledByOrganizationCache = array();
+
 	    public static function tableName()
 		{
 			return 'application';
@@ -170,6 +172,60 @@
 		public function requiresLogin()
 		{
 			return (bool)$this->get('requires_login');
+		}
+
+		public static function isEnabledForOrganization($applicationId, $organizationId)
+		{
+			$applicationId = (int)$applicationId;
+			$organizationId = (int)$organizationId;
+			$cacheKey = $applicationId . ':' . $organizationId;
+
+			if (array_key_exists($cacheKey, self::$enabledByOrganizationCache)) {
+				return self::$enabledByOrganizationCache[$cacheKey];
+			}
+
+			if ($applicationId <= 0 || $organizationId <= 0) {
+				self::$enabledByOrganizationCache[$cacheKey] = false;
+				return false;
+			}
+
+			$row = self::fetchRow(
+				"SELECT
+					a.id,
+					a.url,
+					a.directory,
+					a.navigationmode,
+					a.active AS app_active,
+					oa.active AS organization_active
+				FROM application a
+				LEFT JOIN organization_application oa
+					ON oa.IDapplication = a.id
+					AND oa.IDorganization = :organization_id
+				WHERE a.id = :application_id
+				LIMIT 1",
+				array(
+					'application_id' => $applicationId,
+					'organization_id' => $organizationId,
+				)
+			);
+
+			if (!is_array($row) || count($row) === 0) {
+				self::$enabledByOrganizationCache[$cacheKey] = false;
+				return false;
+			}
+
+			$probeApplication = new self();
+			$probeApplication->set('url', $row['url'] ?? null);
+			$probeApplication->set('directory', $row['directory'] ?? null);
+
+			self::$enabledByOrganizationCache[$cacheKey] = (
+				(int)($row['app_active'] ?? 0) === 1
+				&& (int)($row['organization_active'] ?? 0) === 1
+				&& trim((string)($row['navigationmode'] ?? '')) !== 'panel'
+				&& $probeApplication->hasResolvedEntryPoint()
+			);
+
+			return self::$enabledByOrganizationCache[$cacheKey];
 		}
 	}
 

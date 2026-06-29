@@ -3,12 +3,15 @@ require_once __DIR__ . '/bootstrap.php';
 
 commonRestoreRememberedUser();
 include __DIR__ . '/inc/org.php';
+require_once __DIR__ . '/inc/access.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
 $currentUserId = (int)commonGetCurrentUserId();
 $organizationId = (int)($org['id'] ?? 0);
-$hasOrganizationAccess = commonUserHasOrganizationAccess($currentUserId, $organizationId);
+$managementContext = lmsResolveParcoursManagementContext($organizationId, 0, $currentUserId);
+$hasOrganizationAccess = !empty($managementContext['hasOrganizationAccess']);
+$canCreateParcours = !empty($managementContext['canCreate']);
 $canManagePublicParcours = function_exists('commonCurrentUserIsAdminModeEnabled')
     ? commonCurrentUserIsAdminModeEnabled($organizationId)
     : false;
@@ -33,8 +36,10 @@ $originalIsPublic = false;
 $originalIsBasic = false;
 
 if ($isEditMode) {
-    $link = \dbObject\OrganizationParcours::loadForOrganizationParcours($organizationId, $parcoursId);
-    if ($link === null || !$parcours->load($parcoursId)) {
+    $managementContext = lmsResolveParcoursManagementContext($organizationId, $parcoursId, $currentUserId, false);
+    $link = $managementContext['link'] ?? null;
+    $loadedParcours = $managementContext['parcours'] ?? null;
+    if ($link === null || !($loadedParcours instanceof \dbObject\Parcours)) {
         http_response_code(404);
         echo json_encode(array(
             'status' => false,
@@ -44,22 +49,39 @@ if ($isEditMode) {
         exit;
     }
 
-    if ((int)$parcours->get('IDorganization') !== $organizationId) {
+    if (empty($managementContext['canEditContent'])) {
         http_response_code(403);
         echo json_encode(array(
             'status' => false,
             'success' => false,
-            'message' => 'Seuls les parcours proprietaires de cette organisation peuvent etre modifies.',
+            'message' => 'Vous n avez pas le droit de modifier ce parcours.',
         ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
 
+    $parcours = $loadedParcours;
     $originalIsPublic = (bool)$parcours->get('ispublic');
     $originalIsBasic = (bool)$parcours->get('isbasic');
+} elseif (!$canCreateParcours) {
+    http_response_code(403);
+    echo json_encode(array(
+        'status' => false,
+        'success' => false,
+        'message' => 'Vous n avez pas le droit de creer un parcours dans ce contexte.',
+    ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
 }
 
 $data = $_POST;
 $parcours->loadFromArray($data);
+
+if (!\dbObject\Parcours::hasApplicationColumn()) {
+    $parcours->set('IDapplication', null);
+}
+
+if (!\dbObject\Parcours::hasIsPackColumn()) {
+    $parcours->set('ispack', false);
+}
 
 if (!$isEditMode) {
     $parcours->set('IDorganization', $organizationId);
