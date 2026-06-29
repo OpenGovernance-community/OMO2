@@ -122,6 +122,16 @@
 				);
 			}
 
+			$childAttachResult = \dbObject\Parcours::attachOwnedPackChildrenToOrganization($organizationId, $parcoursId);
+			if (!is_array($childAttachResult) || empty($childAttachResult['status'])) {
+				return array(
+					'status' => false,
+					'message' => is_array($childAttachResult) && !empty($childAttachResult['message'])
+						? (string)$childAttachResult['message']
+						: 'Impossible d attacher les parcours du pack a l organisation.',
+				);
+			}
+
 			return array(
 				'status' => true,
 				'created' => $created,
@@ -151,17 +161,20 @@
 			$hasOrganizationAccess = (bool)\commonUserHasOrganizationAccess($userId, $organizationId);
 			$everybody = (bool)$link->get('everybody');
 			$anonymous = (bool)$link->get('anonymous');
+			$parcours = new \dbObject\Parcours();
+			$parcoursVisible = (!$parcours->load($parcoursId) || $parcours->isVisibleInOrganization($organizationId));
 
 			return [
 				'exists' => true,
-				'canView' => $hasOrganizationAccess || $everybody || $anonymous,
-				'canTrackProgress' => $hasOrganizationAccess || $userId > 0 || $anonymous,
-				'canTrackProgressLocally' => $userId <= 0 && ($hasOrganizationAccess || $anonymous),
+				'canView' => $parcoursVisible && ($hasOrganizationAccess || $everybody || $anonymous),
+				'canTrackProgress' => $parcoursVisible && ($hasOrganizationAccess || $userId > 0 || $anonymous),
+				'canTrackProgressLocally' => $parcoursVisible && $userId <= 0 && ($hasOrganizationAccess || $anonymous),
 				'userId' => $userId,
 				'isLoggedIn' => $userId > 0,
 				'hasOrganizationAccess' => $hasOrganizationAccess,
 				'everybody' => $everybody,
 				'anonymous' => $anonymous,
+				'parcoursVisible' => $parcoursVisible,
 				'link' => $link,
 			];
 		}

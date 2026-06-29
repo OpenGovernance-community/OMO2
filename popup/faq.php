@@ -60,6 +60,7 @@ $heroSubtitle = $faqScope === 'global'
 $newFaq = new \dbObject\FAQ();
 $newFaq->set('IDorganization', $contextOrganizationId > 0 ? $contextOrganizationId : null);
 $newFaq->set('IDholon', $contextHolonId > 0 ? $contextHolonId : null);
+$newFaq->set('IDparcours', null);
 $newFaq->set('isactive', true);
 
 $popupReloadUrl = '/popup/faq.php';
@@ -93,14 +94,14 @@ $editorFields = array(
 
 if ($canManageAllFaqs) {
 	$editorTitle = 'Nouvelle FAQ';
-	$editorStatus = 'Vous pouvez la rattacher a une organisation, a un holon, ou la laisser generique.';
+	$editorStatus = 'Vous pouvez la rattacher a l organisation courante, a un parcours LMS, ou la laisser generique.';
 	$editorAllowScopeEditing = true;
 	$editorAllowGeneric = true;
 	$editorFields[] = 'displayorder';
 	$editorFields[] = 'isactive';
 } elseif ($canManageOrganizationFaqs) {
 	$editorTitle = 'Nouvelle FAQ organisation';
-	$editorStatus = 'Cette FAQ sera rattachee a l organisation courante. Vous pouvez choisir un holon ou la laisser au niveau organisation.';
+	$editorStatus = 'Cette FAQ peut etre rattachee a l organisation courante, a un holon, ou a un parcours LMS disponible.';
 	$editorAllowScopeEditing = true;
 	$editorFields[] = 'displayorder';
 	$editorFields[] = 'isactive';
@@ -950,6 +951,14 @@ if ($canManageAllFaqs) {
 		gap: 6px;
 	}
 
+	.faq-popup__scope-field--full {
+		grid-column: 1 / -1;
+	}
+
+	.faq-popup__scope-field[hidden] {
+		display: none !important;
+	}
+
 	.faq-popup__scope-label {
 		font-size: 13px;
 		font-weight: 600;
@@ -1750,40 +1759,109 @@ if ($canManageAllFaqs) {
 			form.insertBefore(scopeFields, form.firstChild || null);
 		}
 
+		const typeSelect = container.querySelector('[data-faq-scope-kind]');
 		const organizationSelect = container.querySelector('[data-faq-scope-organization]');
 		const holonSelect = container.querySelector('[data-faq-scope-holon]');
-		if (!holonSelect) {
+		const parcoursSelect = container.querySelector('[data-faq-scope-parcours]');
+		const holonShell = container.querySelector('[data-faq-scope-holon-shell]');
+		const parcoursShell = container.querySelector('[data-faq-scope-parcours-shell]');
+		const organizationShell = container.querySelector('[data-faq-scope-organization-shell]');
+		const organizationInput = container.querySelector('input[name="IDorganization"]');
+		const holonInput = container.querySelector('input[name="IDholon"]');
+		const parcoursInput = container.querySelector('input[name="IDparcours"]');
+		let scopeKindInput = container.querySelector('input[name="faq_scope_kind"]');
+
+		if (!scopeKindInput && form) {
+			scopeKindInput = document.createElement('input');
+			scopeKindInput.type = 'hidden';
+			scopeKindInput.name = 'faq_scope_kind';
+			form.appendChild(scopeKindInput);
+		}
+
+		if (!holonSelect && !parcoursSelect && !typeSelect) {
 			return;
 		}
 
-		const selectedOrganizationId = organizationSelect
+		const scopeKind = typeSelect ? String(typeSelect.value || 'organization') : 'organization';
+		const organizationId = organizationSelect
 			? Number(organizationSelect.value || 0)
-			: currentOid;
-		const options = Array.from(holonSelect.options || []);
-		let hasVisibleSelection = false;
+			: (currentOid > 0 ? currentOid : Number((organizationInput && organizationInput.value) || 0));
 
-		options.forEach(function (option, index) {
-			if (index === 0) {
-				option.hidden = false;
-				return;
-			}
-
-			const optionOrganizationId = Number(option.getAttribute('data-organization-id') || 0);
-			const shouldShow = selectedOrganizationId <= 0 || optionOrganizationId === selectedOrganizationId;
-			option.hidden = !shouldShow;
-			if (!shouldShow && option.selected) {
-				holonSelect.selectedIndex = 0;
-			}
-			if (shouldShow && option.selected) {
-				hasVisibleSelection = true;
-			}
-		});
-
-		if (!hasVisibleSelection && holonSelect.selectedIndex > 0) {
-			holonSelect.selectedIndex = 0;
+		if (scopeKindInput) {
+			scopeKindInput.value = scopeKind;
 		}
 
-		holonSelect.disabled = organizationSelect && selectedOrganizationId <= 0 && !holonSelect.hasAttribute('data-faq-force-enabled');
+		if (organizationShell) {
+			organizationShell.hidden = scopeKind === 'generic';
+		}
+		if (holonShell) {
+			holonShell.hidden = scopeKind !== 'organization';
+		}
+		if (parcoursShell) {
+			parcoursShell.hidden = scopeKind !== 'parcours';
+		}
+
+		if (organizationInput) {
+			organizationInput.value = scopeKind === 'generic' ? '' : String(organizationId > 0 ? organizationId : '');
+		}
+
+		if (holonSelect) {
+			let hasVisibleHolonSelection = false;
+			Array.from(holonSelect.options || []).forEach(function (option, index) {
+				if (index === 0) {
+					option.hidden = false;
+					return;
+				}
+
+				const optionOrganizationId = Number(option.getAttribute('data-organization-id') || 0);
+				const shouldShow = organizationId > 0 && optionOrganizationId === organizationId;
+				option.hidden = !shouldShow;
+				if (!shouldShow && option.selected) {
+					holonSelect.selectedIndex = 0;
+				}
+				if (shouldShow && option.selected) {
+					hasVisibleHolonSelection = true;
+				}
+			});
+
+			if (!hasVisibleHolonSelection && holonSelect.selectedIndex > 0) {
+				holonSelect.selectedIndex = 0;
+			}
+
+			holonSelect.disabled = scopeKind !== 'organization';
+		}
+		if (parcoursSelect) {
+			let hasVisibleParcoursSelection = false;
+			Array.from(parcoursSelect.options || []).forEach(function (option, index) {
+				if (index === 0) {
+					option.hidden = false;
+					return;
+				}
+
+				const optionOrganizationId = Number(option.getAttribute('data-organization-id') || 0);
+				const shouldShow = organizationId > 0 && optionOrganizationId === organizationId;
+				option.hidden = !shouldShow;
+				if (!shouldShow && option.selected) {
+					parcoursSelect.selectedIndex = 0;
+				}
+				if (shouldShow && option.selected) {
+					hasVisibleParcoursSelection = true;
+				}
+			});
+
+			if (!hasVisibleParcoursSelection && parcoursSelect.selectedIndex > 0) {
+				parcoursSelect.selectedIndex = 0;
+			}
+
+			parcoursSelect.disabled = scopeKind !== 'parcours';
+		}
+
+		if (holonInput) {
+			holonInput.value = scopeKind === 'organization' ? String(holonSelect && holonSelect.value ? holonSelect.value : '') : '';
+		}
+		if (parcoursInput) {
+			parcoursInput.value = scopeKind === 'parcours' ? String(parcoursSelect && parcoursSelect.value ? parcoursSelect.value : '') : '';
+		}
 	}
 
 	function handleSaveResponse(data) {
@@ -2048,7 +2126,7 @@ if ($canManageAllFaqs) {
 	}
 
 	root.addEventListener('change', function (event) {
-		if (event.target.matches('[data-faq-scope-organization]')) {
+		if (event.target.matches('[data-faq-scope-kind], [data-faq-scope-organization], [data-faq-scope-holon], [data-faq-scope-parcours]')) {
 			syncScopeSelectors(event.target.closest('[data-faq-form-shell]') || event.target.closest('.faq-popup__detail') || root);
 		}
 	});

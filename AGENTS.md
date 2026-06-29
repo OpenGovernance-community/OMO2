@@ -8,6 +8,7 @@
 - Keep French accents in user-visible strings when the product copy is meant to display them.
 - Do not replace intended visible accents with ASCII unless explicitly requested.
 - Prefer the existing dbObject autoload over direct `require_once` of dbObject class files. Only add a direct class include when a file is intentionally isolated from the shared bootstrap that normally initializes autoloading.
+- In `dbObject::rules()`, never declare a foreign key field in an `integer` rule. Foreign keys must live only in their `fk` rule, otherwise `adminEdit` can render them as plain text inputs instead of automatic selects.
 - Name SQL migrations with an explicit sortable sequence when several files share the same date, using `YYYY-MM-DD-NN-description.sql`, so dependency order is guaranteed by filename sorting.
 - For PHP-rendered UI translations, keep the module or page source strings close to the file that renders them, define a local `$sourceLang` array with `text` or `one`/`other` plus `context`, load a single bundle once near the top of the file, and render visible text through `t(...)` or a shared wrapper instead of hardcoding strings in markup.
 - For shared JavaScript used by multiple pages, do not duplicate translated strings in every page. Prefer a dedicated PHP JSON endpoint under a shared location such as `/common/jstranslation/`, keep the JS source strings in one shared PHP file, load one bundle server-side, and let the JS fetch that payload at startup with a small local fallback only when needed.

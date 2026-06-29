@@ -61,6 +61,7 @@ unset($data['id']);
 $faq->loadFromArray($data);
 $faq->set('IDorganization', $scope['organizationId'] ?? null);
 $faq->set('IDholon', $scope['holonId'] ?? null);
+$faq->set('IDparcours', $scope['parcoursId'] ?? null);
 
 if (trim((string)$faq->get('question')) === '' || trim((string)$faq->get('answer')) === '') {
 	echo json_encode([

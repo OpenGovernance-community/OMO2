@@ -3,15 +3,17 @@ require_once __DIR__ . '/bootstrap.php';
 
 commonRestoreRememberedUser();
 include __DIR__ . '/inc/org.php';
+require_once __DIR__ . '/inc/access.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
 $currentUserId = (int)commonGetCurrentUserId();
 $organizationId = (int)($org['id'] ?? 0);
-$hasOrganizationAccess = commonUserHasOrganizationAccess($currentUserId, $organizationId);
 $parcoursId = (int)($_POST['pid'] ?? 0);
 $missionId = (int)($_POST['mid'] ?? 0);
 $homeworkId = (int)($_POST['id'] ?? 0);
+$managementContext = lmsResolveParcoursManagementContext($organizationId, $parcoursId, $currentUserId, false);
+$hasOrganizationAccess = !empty($managementContext['hasOrganizationAccess']);
 
 if ($currentUserId <= 0 || !$hasOrganizationAccess || $organizationId <= 0) {
     http_response_code(403);
@@ -23,9 +25,8 @@ if ($currentUserId <= 0 || !$hasOrganizationAccess || $organizationId <= 0) {
     exit;
 }
 
-$parcoursLink = \dbObject\OrganizationParcours::loadForOrganizationParcours($organizationId, $parcoursId);
 $parcoursMission = new \dbObject\ParcoursMission();
-if ($parcoursLink === null || !$parcoursMission->load([
+if (($managementContext['link'] ?? null) === null || !$parcoursMission->load([
     ['IDparcours', $parcoursId],
     ['IDmission', $missionId],
 ])) {
@@ -34,6 +35,16 @@ if ($parcoursLink === null || !$parcoursMission->load([
         'status' => false,
         'success' => false,
         'message' => 'Mission introuvable.',
+    ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+if (empty($managementContext['canEditContent'])) {
+    http_response_code(403);
+    echo json_encode(array(
+        'status' => false,
+        'success' => false,
+        'message' => 'Vous n avez pas le droit de modifier ce parcours.',
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
