@@ -42,6 +42,16 @@ function lmsGetAnonymousDoneMissionIds()
 	return lmsParseDoneMissionIds($_POST['done_ids'] ?? ($_GET['done_ids'] ?? ''));
 }
 
+function lmsParseDoneParcoursIds($rawValue)
+{
+	return lmsParsePositiveIds($rawValue);
+}
+
+function lmsGetAnonymousCompletedParcoursIds()
+{
+	return lmsParseDoneParcoursIds($_POST['done_parcours_ids'] ?? ($_GET['done_parcours_ids'] ?? ''));
+}
+
 function lmsParseDoneHomeworkIds($rawValue)
 {
 	return lmsParsePositiveIds($rawValue);
@@ -53,18 +63,37 @@ function lmsGetParcoursAccessContext($organizationId, $parcoursId, $userId = nul
 		$userId = (int)commonGetCurrentUserId();
 	}
 
+	$parcoursId = (int)$parcoursId;
+	$userId = (int)$userId;
+
 	if (function_exists('lmsIsBasicCatalogMode') && lmsIsBasicCatalogMode()) {
-		return \dbObject\Parcours::resolveBasicCatalogAccessContext(
-			(int)$parcoursId,
-			(int)$userId
+		$accessContext = \dbObject\Parcours::resolveBasicCatalogAccessContext(
+			$parcoursId,
+			$userId
+		);
+	} else {
+		$accessContext = \dbObject\OrganizationParcours::resolveAccessContext(
+			(int)$organizationId,
+			$parcoursId,
+			$userId
 		);
 	}
 
-	return \dbObject\OrganizationParcours::resolveAccessContext(
-		(int)$organizationId,
-		(int)$parcoursId,
-		(int)$userId
-	);
+	if (!empty($accessContext['canView'])) {
+		$prerequisiteIds = \dbObject\Parcours::fetchPrerequisiteIdsForParcours($parcoursId);
+		if (count($prerequisiteIds) > 0) {
+			$prerequisitesSatisfied = $userId > 0
+				? \dbObject\Parcours::arePrerequisitesSatisfiedForUser($parcoursId, $userId)
+				: count(array_diff($prerequisiteIds, lmsGetAnonymousCompletedParcoursIds())) === 0;
+
+			if (!$prerequisitesSatisfied) {
+				$accessContext['canView'] = false;
+				$accessContext['blockedByPrerequisites'] = true;
+			}
+		}
+	}
+
+	return $accessContext;
 }
 
 function lmsIsAnonymousViewer(array $accessContext)

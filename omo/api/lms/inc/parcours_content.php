@@ -77,7 +77,15 @@ function goToPackChildParcours(parcoursId) {
         <?php echo json_encode(lmsBuildLocalPath('/parcours.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>,
         {
             idp: parcoursId,
-            embed: <?php echo $isEmbedded ? "'1'" : "''"; ?>
+            embed: <?php echo $isEmbedded ? "'1'" : "''"; ?>,
+            done_parcours_ids: (function () {
+                if (typeof getAnonymousCompletedParcoursIds !== 'function') {
+                    return '';
+                }
+
+                const completedParcoursIds = getAnonymousCompletedParcoursIds();
+                return completedParcoursIds.length > 0 ? completedParcoursIds.join(',') : '';
+            })()
         }
     );
 
