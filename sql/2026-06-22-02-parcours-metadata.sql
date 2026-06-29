@@ -4,12 +4,14 @@ SET NAMES utf8mb4;
 
 ALTER TABLE `parcours`
   ADD COLUMN IF NOT EXISTS `IDorganization` int(11) DEFAULT NULL AFTER `image`,
-  ADD COLUMN IF NOT EXISTS `IDusercreation` int(11) DEFAULT NULL AFTER `IDorganization`,
+  ADD COLUMN IF NOT EXISTS `IDapplication` int(11) DEFAULT NULL AFTER `IDorganization`,
+  ADD COLUMN IF NOT EXISTS `IDusercreation` int(11) DEFAULT NULL AFTER `IDapplication`,
   ADD COLUMN IF NOT EXISTS `IDusermodification` int(11) DEFAULT NULL AFTER `IDusercreation`,
   ADD COLUMN IF NOT EXISTS `datecreation` datetime DEFAULT NULL AFTER `IDusermodification`,
   ADD COLUMN IF NOT EXISTS `datemodification` datetime DEFAULT NULL AFTER `datecreation`,
   ADD COLUMN IF NOT EXISTS `ispublic` tinyint(1) NOT NULL DEFAULT 0 AFTER `datemodification`,
-  ADD COLUMN IF NOT EXISTS `isbasic` tinyint(1) NOT NULL DEFAULT 0 AFTER `ispublic`;
+  ADD COLUMN IF NOT EXISTS `isbasic` tinyint(1) NOT NULL DEFAULT 0 AFTER `ispublic`,
+  ADD COLUMN IF NOT EXISTS `ispack` tinyint(1) NOT NULL DEFAULT 0 AFTER `isbasic`;
 
 UPDATE `parcours` p
 LEFT JOIN (

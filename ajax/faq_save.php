@@ -64,6 +64,7 @@ unset($data['id']);
 $faq->loadFromArray($data);
 $faq->set('IDorganization', $scope['organizationId'] ?? null);
 $faq->set('IDholon', $scope['holonId'] ?? null);
+$faq->set('IDparcours', $scope['parcoursId'] ?? null);
 if (!$canManageFaqCollection) {
 	$faq->set('isactive', true);
 }

@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS `faq` (
   `IDhowto` int(10) UNSIGNED DEFAULT NULL,
   `IDorganization` int(10) UNSIGNED DEFAULT NULL,
   `IDholon` int(10) UNSIGNED DEFAULT NULL,
+  `IDparcours` int(10) UNSIGNED DEFAULT NULL,
   `question` varchar(255) NOT NULL,
   `answer` text NOT NULL,
   `image` varchar(1000) DEFAULT NULL,
@@ -31,6 +32,7 @@ CREATE TABLE IF NOT EXISTS `faq` (
 ALTER TABLE `faq`
   ADD COLUMN IF NOT EXISTS `IDorganization` int(10) UNSIGNED DEFAULT NULL AFTER `IDhowto`,
   ADD COLUMN IF NOT EXISTS `IDholon` int(10) UNSIGNED DEFAULT NULL AFTER `IDorganization`,
+  ADD COLUMN IF NOT EXISTS `IDparcours` int(10) UNSIGNED DEFAULT NULL AFTER `IDholon`,
   ADD COLUMN IF NOT EXISTS `image` varchar(1000) DEFAULT NULL AFTER `answer`,
   ADD COLUMN IF NOT EXISTS `video` varchar(1000) DEFAULT NULL AFTER `image`,
   ADD COLUMN IF NOT EXISTS `displayorder` int(11) DEFAULT 0 AFTER `detail`,

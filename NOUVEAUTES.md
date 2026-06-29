@@ -2,7 +2,37 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-06-29
+
+Les droits de holon ne sont plus reserves aux seuls holons templates. L editeur classique des holons affiche maintenant un resume compact des droits deja attaches, avec un bouton `Editer` qui deploie le meme type de selection de portees pour attribuer ou retirer des permissions directement sur n importe quel holon modifiable.
+
+Depuis le panneau `getOrg`, l action `Modifier` sur un template visible reouvre maintenant bien le template courant dans l editeur compact, au lieu de tomber sur un nouveau modele vide.
+
 ## 2026-06-26
+
+Dans le LMS integre de OMO, deux nouveaux droits de holon `CAN_CREATE_PARCOURS` et `CAN_EDIT_PARCOURS` pilotent maintenant la creation, l import, la suppression-detachement et l edition des parcours selon le contexte courant. Sans `edit`, les parcours importes de type pack sont masques et seuls les packs proprietaires restent visibles.
+
+Le catalogue de droits sait maintenant distinguer les permissions `contextuelles` de celles purement `organisation`. Dans l editeur de holon, un droit non contextuel ne propose plus que `Toute l organisation`, et son calcul ne depend plus de l heritage par holon.
+
+Dans l entree directe `/lms/`, les packs de parcours ne sont maintenant plus affiches du tout, ni dans le catalogue ni via une ouverture directe. Ils restent reserves a l interface LMS integree de OMO.
+
+Le point d entree direct `/lms/` reprend maintenant beaucoup plus fidèlement la presentation de `/omo/api/lms/`: sections separees, packs de parcours, progression locale des visiteurs, et ouverture des packs vers leurs sous-parcours visibles. Il reste accessible hors OMO tout en affichant seulement les elements publics aux visiteurs ou aux non-membres, et tous les parcours aux membres de l organisation.
+
+La topbar du `/lms/` direct propose maintenant aussi une connexion meme en visite publique, sans forcer un ecran de login tant qu au moins un contenu public peut etre affiche.
+
+Le LMS sait maintenant creer des `packs` de parcours via le nouveau flag `ispack`. Un pack ne contient pas de missions mais d autres parcours simples appartenant a la meme organisation, et son editeur remplace donc la gestion des missions par une gestion de sous-parcours reordonnables.
+
+Quand une organisation ajoute un pack a son LMS, les parcours qu il contient sont maintenant attaches automatiquement a cette organisation, meme s ils ne sont pas publics individuellement. Les parcours masques par une application desactivee restent invisibles, tandis que le pack lui-meme peut rester importable et servir de point d installation unique.
+
+Dans la liste LMS, les parcours simples restent affiches en premier, puis les packs apparaissent dans une section separee plus bas. Ouvrir un pack affiche directement les parcours visibles qu il contient au lieu d une liste de missions.
+
+L editeur LMS des parcours sait maintenant retrouver correctement l organisation proprietaire meme sur d anciens parcours dont `parcours.IDorganization` etait reste vide. Ces parcours redeviennent donc modifiables par leur organisation proprietaire, au lieu d etre bloques a tort comme imports externes.
+
+La popup FAQ OMO sait maintenant rattacher une entree soit a l organisation courante via un holon, soit a un parcours LMS disponible dans cette organisation, avec une option `FAQ generique` reservee au mode super admin. L aide d une organisation peut ainsi melanger FAQ generiques, FAQ de holons et FAQ de parcours publics ou partages.
+
+Les FAQ rattachees a un parcours LMS restent maintenant editables seulement par l organisation proprietaire du parcours, mais elles sont bien visibles dans toutes les organisations qui ont lie ce parcours dans leur LMS.
+
+Les parcours LMS peuvent maintenant etre lies a une application OMO. Quand cette application est desactivee dans une organisation, le parcours et les FAQ rattachees a ce parcours disparaissent automatiquement dans cette organisation, y compris via un lien direct.
 
 Dans l app `Calendrier` de OMO, l effet visuel estompe ne sert plus a opposer `holon courant` et `autre holon`: il distingue maintenant les reunions ou la personne courante est reellement concernee via son appartenance de contexte de celles qui restent seulement informatives.
 

@@ -1,3 +1,14 @@
+<?php
+$isPackParcours = $parcoursRef instanceof \dbObject\Parcours && $parcoursRef->isPack();
+$packChildren = $isPackParcours
+    ? \dbObject\Parcours::fetchPackChildrenForOrganizationWithProgress(
+        (int)$org['id'],
+        (int)$parcours_id,
+        (int)$user_id,
+        (bool)commonUserHasOrganizationAccess((int)$user_id, (int)$org['id'])
+    )
+    : [];
+?>
 <div class="content lms-parcours-content<?php echo $isEmbedded ? ' lms-parcours-content--embed' : ''; ?>">
 <?php if ($isEmbedded): ?>
     <div class="lms-parcours-embed-header">
@@ -8,6 +19,40 @@
     </div>
 <?php endif; ?>
 
+<?php if ($isPackParcours): ?>
+<div class="lms-pack-children">
+    <div class="lms-pack-children__intro">
+        <h2>Parcours du pack</h2>
+        <p>Seuls les parcours compatibles avec les applications actives dans cette organisation sont affiches.</p>
+    </div>
+
+    <?php if (count($packChildren) === 0): ?>
+        <div class="lms-pack-children__empty">Aucun parcours visible n est actuellement disponible dans ce pack.</div>
+    <?php else: ?>
+        <div class="missions lms-pack-children__grid">
+            <?php foreach ($packChildren as $childParcours): ?>
+                <?php
+                $total = (int)($childParcours['total_missions'] ?? 0);
+                $done = (int)($childParcours['done_missions'] ?? 0);
+                $percent = $total > 0 ? (int)round(($done / $total) * 100) : 0;
+                ?>
+                <div class="card" onclick="goToPackChildParcours(<?php echo (int)($childParcours['id'] ?? 0); ?>)">
+                    <div class="card-content">
+                        <h3><?php echo htmlspecialchars((string)($childParcours['title'] ?? '')); ?></h3>
+                        <?php if (trim((string)($childParcours['description'] ?? '')) !== ''): ?>
+                            <p><?php echo htmlspecialchars((string)$childParcours['description']); ?></p>
+                        <?php endif; ?>
+                        <div class="card-footer">
+                            <span class="card-meta"><?php echo $percent; ?>% termine</span>
+                            <button type="button" class="open-btn" onclick="event.stopPropagation(); goToPackChildParcours(<?php echo (int)($childParcours['id'] ?? 0); ?>)">Ouvrir</button>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+</div>
+<?php else: ?>
 <div class="view-switch">
     <button onclick="setView('todo')" id="btnTodo" class="active">Mes missions</button>
     <button onclick="setView('done')" id="btnDone">Terminees</button>
@@ -17,6 +62,7 @@
     <div class="progress-bar" id="progressBar"></div>
 </div>
 <div id="missions" class="missions"></div>
+<?php endif; ?>
 
 </div>
 
@@ -26,6 +72,19 @@ include __DIR__ . '/drawer.php';
 ?>
 
 <script>
+function goToPackChildParcours(parcoursId) {
+    const targetUrl = buildLmsUrlWithParams(
+        <?php echo json_encode(lmsBuildLocalPath('/parcours.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>,
+        {
+            idp: parcoursId,
+            embed: <?php echo $isEmbedded ? "'1'" : "''"; ?>
+        }
+    );
+
+    window.location.href = targetUrl;
+}
+
+<?php if (!$isPackParcours): ?>
 let currentView = 'todo';
 const parcoursId = <?php echo (int)$parcours_id; ?>;
 const lmsViewer = {
@@ -255,8 +314,10 @@ function restoreBranches() {
 }
 
 loadMissions();
+<?php endif; ?>
 </script>
 
+<?php if (!$isPackParcours): ?>
 <script>
 let currentMissionId = null;
 
@@ -276,3 +337,4 @@ function viewMission(missionId) {
         });
 }
 </script>
+<?php endif; ?>

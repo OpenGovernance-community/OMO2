@@ -3,11 +3,15 @@ require_once __DIR__ . '/bootstrap.php';
 
 commonRestoreRememberedUser();
 include __DIR__ . '/inc/org.php';
+require_once __DIR__ . '/inc/access.php';
 require_once __DIR__ . '/inc/parcours_editor.php';
 
 $currentUserId = (int)commonGetCurrentUserId();
 $organizationId = (int)($org['id'] ?? 0);
-$hasOrganizationAccess = commonUserHasOrganizationAccess($currentUserId, $organizationId);
+$managementContext = lmsResolveParcoursManagementContext($organizationId, 0, $currentUserId);
+$hasOrganizationAccess = !empty($managementContext['hasOrganizationAccess']);
+$canCreateParcours = !empty($managementContext['canCreate']);
+$canEditParcours = !empty($managementContext['canEdit']);
 $canManagePublicParcours = function_exists('commonCurrentUserIsAdminModeEnabled')
     ? commonCurrentUserIsAdminModeEnabled($organizationId)
     : false;
@@ -26,21 +30,30 @@ $parcours = new \dbObject\Parcours();
 $isEditMode = false;
 
 if ($parcoursId > 0) {
-    $link = \dbObject\OrganizationParcours::loadForOrganizationParcours($organizationId, $parcoursId);
-    if ($link === null || !$parcours->load($parcoursId)) {
+    $managementContext = lmsResolveParcoursManagementContext($organizationId, $parcoursId, $currentUserId, false);
+    $link = $managementContext['link'] ?? null;
+    $loadedParcours = $managementContext['parcours'] ?? null;
+    if ($link === null || !($loadedParcours instanceof \dbObject\Parcours)) {
         http_response_code(404);
         echo '<div class="lms-create-parcours-view"><p>Parcours introuvable.</p></div>';
         exit;
     }
 
-    if ((int)$parcours->get('IDorganization') !== $organizationId) {
+    if (empty($managementContext['canEditContent'])) {
         http_response_code(403);
-        echo '<div class="lms-create-parcours-view"><p>Seuls les parcours proprietaires de cette organisation peuvent etre modifies.</p></div>';
+        echo '<div class="lms-create-parcours-view"><p>Vous n avez pas le droit de modifier ce parcours.</p></div>';
         exit;
     }
 
+    $parcours = $loadedParcours;
     $isEditMode = true;
 } else {
+    if (!$canCreateParcours) {
+        http_response_code(403);
+        echo '<div class="lms-create-parcours-view"><p>Vous n avez pas le droit de creer un parcours dans ce contexte.</p></div>';
+        exit;
+    }
+
     $parcours->set('IDorganization', $organizationId);
 }
 
@@ -54,6 +67,14 @@ $editorFields = array(
     'title',
     'description',
 );
+
+if (\dbObject\Parcours::hasApplicationColumn()) {
+    $editorFields[] = '{title:Contexte applicatif}';
+    $editorFields[] = 'IDapplication';
+}
+
+$editorFields[] = '{title:Structure}';
+$editorFields[] = 'ispack';
 
 if ($canManagePublicParcours || $canManageBasicParcours) {
     $editorFields[] = '{title:Diffusion}';
@@ -516,10 +537,10 @@ $params = array(
     </section>
 
     <?php if ($isEditMode): ?>
-        <?php echo lmsRenderParcoursMissionManager($organizationId, $parcoursId); ?>
+        <?php echo lmsRenderParcoursContentManager($organizationId, $parcoursId); ?>
     <?php else: ?>
         <section class="lms-create-parcours-note">
-            Vous pourrez ajouter et reordonner les missions de ce parcours juste apres sa creation.
+            Vous pourrez ajouter et reordonner les missions ou les parcours du pack juste apres la creation.
         </section>
     <?php endif; ?>
 </div>

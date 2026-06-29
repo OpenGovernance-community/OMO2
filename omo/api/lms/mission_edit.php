@@ -3,13 +3,15 @@ require_once __DIR__ . '/bootstrap.php';
 
 commonRestoreRememberedUser();
 include __DIR__ . '/inc/org.php';
+require_once __DIR__ . '/inc/access.php';
 require_once __DIR__ . '/inc/mission_editor.php';
 
 $currentUserId = (int)commonGetCurrentUserId();
 $organizationId = (int)($org['id'] ?? 0);
-$hasOrganizationAccess = commonUserHasOrganizationAccess($currentUserId, $organizationId);
 $parcoursId = (int)($_GET['pid'] ?? 0);
 $missionId = (int)($_GET['mid'] ?? 0);
+$managementContext = lmsResolveParcoursManagementContext($organizationId, $parcoursId, $currentUserId, false);
+$hasOrganizationAccess = !empty($managementContext['hasOrganizationAccess']);
 
 if ($currentUserId <= 0 || !$hasOrganizationAccess || $organizationId <= 0) {
     http_response_code(403);
@@ -17,11 +19,16 @@ if ($currentUserId <= 0 || !$hasOrganizationAccess || $organizationId <= 0) {
     exit;
 }
 
-$parcoursLink = \dbObject\OrganizationParcours::loadForOrganizationParcours($organizationId, $parcoursId);
+if (empty($managementContext['canEditContent'])) {
+    http_response_code(403);
+    echo '<div class="lms-mission-editor-view"><p>Vous n avez pas le droit de modifier ce parcours.</p></div>';
+    exit;
+}
+
 $parcoursMission = new \dbObject\ParcoursMission();
 $mission = new \dbObject\Mission();
 
-if ($parcoursLink === null || !$parcoursMission->load([
+if (($managementContext['link'] ?? null) === null || !$parcoursMission->load([
     ['IDparcours', $parcoursId],
     ['IDmission', $missionId],
 ]) || !$mission->load($missionId)) {
