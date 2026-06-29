@@ -4,6 +4,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-06-29
 
+Les blocs `sourceLang` definis en tete des pages OMO, Choice, Calendrier, Documents, Decisions et popup profil ont ete relus pour remettre les accents, corriger plusieurs formulations francaises et supprimer quelques textes encore mal encodes.
+
 Les droits de holon ne sont plus reserves aux seuls holons templates. L editeur classique des holons affiche maintenant un resume compact des droits deja attaches, avec un bouton `Editer` qui deploie le meme type de selection de portees pour attribuer ou retirer des permissions directement sur n importe quel holon modifiable.
 
 Depuis le panneau `getOrg`, l action `Modifier` sur un template visible reouvre maintenant bien le template courant dans l editeur compact, au lieu de tomber sur un nouveau modele vide.
@@ -316,6 +318,18 @@ Dans le LMS integre a OMO, les cartes de parcours proposent maintenant une actio
 
 Les prerequis LMS bloquent desormais l'ouverture du contenu sans vider la liste des parcours. Cela evite qu'un prerequis mal renseigne ou encore incomplet masque toute la vue, tout en gardant le controle d'acces au moment d'ouvrir le parcours.
 
+Les parcours actuellement apportes par un pack rattache a l'organisation ne proposent plus d'action de detachement ou de suppression sur leur propre carte. L'interface et le backend demandent maintenant de detacher d'abord le pack parent pour eviter les incoherences.
+
+Les editeurs de parcours voient maintenant aussi les parcours temporairement masques par des prerequis ou par une application desactivee. Ces cartes restent visibles en grise avec un indicateur de masquage, tandis que les utilisateurs standard continuent a ne voir que les parcours effectivement accessibles.
+
+Les packs de parcours basculent maintenant vers un modele dynamique cote LMS: les parcours enfants ne sont plus materialises comme des rattachements directs a l'installation, mais resolus a la volee a partir des packs attaches. Les modifications d'un pack se repercutent ainsi automatiquement dans les organisations qui l'utilisent.
+
+Dans le LMS, le mode admin d'organisation donne maintenant aussi les droits de creation et d'edition des parcours, meme si aucune structure de holons n'est encore en place pour porter explicitement ces permissions.
+
+L'editeur de packs permet maintenant aussi de retirer un parcours deja ajoute depuis le menu `...`, et l'ordre defini dans le pack est mieux repris dans les affichages dynamiques du LMS.
+
+L'editeur de parcours permet maintenant aussi de retirer une mission deja rattachee depuis le menu `...`, sans passer uniquement par le reordonnancement ou l'ajout.
+
 ## Calendrier, CardDAV Et CalDAV
 
 Le calendrier OMO devient plus exploitable au quotidien avec plusieurs vues, une edition plus simple et un comportement plus stable. En complement, des points d entree CardDAV et CalDAV ont ete poses pour preparer les usages de synchronisation avec des outils externes.
@@ -323,3 +337,6 @@ Le calendrier OMO devient plus exploitable au quotidien avec plusieurs vues, une
 ## Stabilite Generale
 
 Une partie importante du travail a aussi porte sur la fiabilite: meilleurs comportements apres recharge, correction de blocages silencieux, meilleure compatibilite des pages selon le contexte, et remise en coherence de certaines bases locales ou de demonstration pour eviter des erreurs au redemarrage.
+- Le retrait d un parcours depuis un pack nettoie maintenant aussi les anciens liens directs herites dans les autres organisations, pour eviter qu un enfant supprime du pack reste visible apres import.
+- Le catalogue d import LMS masque maintenant les parcours et packs dont l organisation proprietaire s est detachee, afin de ne plus proposer des contenus non maintenus.
+- Le catalogue d import LMS distingue maintenant visuellement les packs des parcours simples et affiche pour les packs leur nombre de parcours au lieu du nombre de missions.

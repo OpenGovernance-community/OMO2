@@ -24,11 +24,13 @@ if ($currentUserId <= 0 || !$hasOrganizationAccess || $organizationId <= 0 || $p
     exit;
 }
 
-$link = $managementContext['link'] ?? null;
 $pack = $managementContext['parcours'] ?? null;
-$childParcours = new \dbObject\Parcours();
-
-if ($link === null || !($pack instanceof \dbObject\Parcours) || !$pack->isOwnedByOrganization($organizationId) || !$pack->isPack()) {
+if (
+    ($managementContext['link'] ?? null) === null
+    || !($pack instanceof \dbObject\Parcours)
+    || !$pack->isOwnedByOrganization($organizationId)
+    || !$pack->isPack()
+) {
     http_response_code(404);
     echo json_encode([
         'status' => false,
@@ -48,24 +50,14 @@ if (empty($managementContext['canEditContent'])) {
     exit;
 }
 
-if (!$childParcours->load($childParcoursId) || !$childParcours->isOwnedByOrganization($organizationId) || $childParcours->isPack()) {
-    http_response_code(404);
-    echo json_encode([
-        'status' => false,
-        'success' => false,
-        'message' => 'Parcours enfant introuvable ou non autorise.',
-    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    exit;
-}
-
-$result = \dbObject\ParcoursParcours::attachChildToParent($parcoursId, $childParcoursId);
+$result = \dbObject\ParcoursParcours::detachChildFromParent($parcoursId, $childParcoursId);
 if (!is_array($result) || empty($result['status'])) {
     echo json_encode([
         'status' => false,
         'success' => false,
         'message' => is_array($result) && !empty($result['message'])
             ? (string)$result['message']
-            : 'Impossible d ajouter ce parcours au pack.',
+            : 'Impossible de retirer ce parcours du pack.',
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -73,5 +65,5 @@ if (!is_array($result) || empty($result['status'])) {
 echo json_encode([
     'status' => true,
     'success' => true,
-    'message' => !empty($result['created']) ? 'Parcours ajoute au pack.' : 'Parcours deja present dans ce pack.',
+    'message' => 'Parcours retire du pack.',
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

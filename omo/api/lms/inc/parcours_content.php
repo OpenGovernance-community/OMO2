@@ -1,11 +1,13 @@
 <?php
 $isPackParcours = $parcoursRef instanceof \dbObject\Parcours && $parcoursRef->isPack();
+$canEditPackParcours = lmsCurrentUserCanEditParcours((int)$org['id'], (int)$user_id);
 $packChildren = $isPackParcours
     ? \dbObject\Parcours::fetchPackChildrenForOrganizationWithProgress(
         (int)$org['id'],
         (int)$parcours_id,
         (int)$user_id,
-        (bool)commonUserHasOrganizationAccess((int)$user_id, (int)$org['id'])
+        (bool)commonUserHasOrganizationAccess((int)$user_id, (int)$org['id']),
+        $canEditPackParcours
     )
     : [];
 ?>
@@ -35,16 +37,20 @@ $packChildren = $isPackParcours
                 $total = (int)($childParcours['total_missions'] ?? 0);
                 $done = (int)($childParcours['done_missions'] ?? 0);
                 $percent = $total > 0 ? (int)round(($done / $total) * 100) : 0;
+                $isVisibleParcours = !empty($childParcours['isvisible']);
                 ?>
-                <div class="card" onclick="goToPackChildParcours(<?php echo (int)($childParcours['id'] ?? 0); ?>)">
+                <div class="card<?php echo !$isVisibleParcours ? ' card--visibility-hidden' : ''; ?>" onclick="<?php echo $isVisibleParcours ? 'goToPackChildParcours(' . (int)($childParcours['id'] ?? 0) . ')' : ''; ?>">
                     <div class="card-content">
                         <h3><?php echo htmlspecialchars((string)($childParcours['title'] ?? '')); ?></h3>
                         <?php if (trim((string)($childParcours['description'] ?? '')) !== ''): ?>
                             <p><?php echo htmlspecialchars((string)$childParcours['description']); ?></p>
                         <?php endif; ?>
+                        <?php if (!$isVisibleParcours): ?>
+                            <div class="card-meta">Actuellement masque pour les membres standard.</div>
+                        <?php endif; ?>
                         <div class="card-footer">
                             <span class="card-meta"><?php echo $percent; ?>% termine</span>
-                            <button type="button" class="open-btn" onclick="event.stopPropagation(); goToPackChildParcours(<?php echo (int)($childParcours['id'] ?? 0); ?>)">Ouvrir</button>
+                            <button type="button" class="open-btn" <?php echo $isVisibleParcours ? 'onclick="event.stopPropagation(); goToPackChildParcours(' . (int)($childParcours['id'] ?? 0) . ')"' : 'disabled'; ?>><?php echo $isVisibleParcours ? 'Ouvrir' : 'Masque'; ?></button>
                         </div>
                     </div>
                 </div>
