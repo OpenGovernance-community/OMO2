@@ -39,7 +39,7 @@ if ($isEditMode) {
     $managementContext = lmsResolveParcoursManagementContext($organizationId, $parcoursId, $currentUserId, false);
     $link = $managementContext['link'] ?? null;
     $loadedParcours = $managementContext['parcours'] ?? null;
-    if ($link === null || !($loadedParcours instanceof \dbObject\Parcours)) {
+    if (!($loadedParcours instanceof \dbObject\Parcours) || ($link === null && empty($managementContext['isExposedViaPack']))) {
         http_response_code(404);
         echo json_encode(array(
             'status' => false,

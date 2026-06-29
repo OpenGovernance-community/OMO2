@@ -11,7 +11,7 @@ faq_maybe_run_fake_cron();
 
 $sourceLang = [
     'app.access_denied.message' => [
-        'text' => "Votre compte est bien connecte, mais il n'a pas encore acces a l'organisation {organizationName}.",
+        'text' => "Votre compte est bien connecté, mais il n'a pas encore accès à l'organisation {organizationName}.",
         'context' => 'Message shown on the forbidden access page when the user is logged in but has no access to the organization.',
     ],
     'app.access_denied.organization_fallback' => [
@@ -19,31 +19,31 @@ $sourceLang = [
         'context' => 'Fallback organization name used on the forbidden access page when the organization name is missing.',
     ],
     'app.access_denied.page_description' => [
-        'text' => "Pour le moment, l'acces a cet espace est reserve aux personnes presentes dans la liste des membres autorises.",
+        'text' => "Pour le moment, l'accès à cet espace est réservé aux personnes présentes dans la liste des membres autorisés.",
         'context' => 'Additional explanation shown on the forbidden access page.',
     ],
     'app.access_denied.page_heading' => [
-        'text' => 'Acces interdit',
+        'text' => 'Accès interdit',
         'context' => 'Main heading shown on the forbidden access page.',
     ],
     'app.access_denied.page_title' => [
-        'text' => 'Acces interdit - OMO',
+        'text' => 'Accès interdit - OMO',
         'context' => 'Browser title shown on the forbidden access page.',
     ],
     'app.access_denied.request_action' => [
-        'text' => "Demander l'acces",
+        'text' => "Demander l'accès",
         'context' => 'Button label shown on the forbidden access page to let the current user request access to the organization.',
     ],
     'app.access_denied.request_modal_title' => [
-        'text' => "Demander l'acces a l'organisation",
+        'text' => "Demander l'accès à l'organisation",
         'context' => 'Modal title shown for the organization access request popup.',
     ],
     'app.access_denied.request_pending' => [
-        'text' => 'Demande deja envoyee',
+        'text' => 'Demande déjà envoyée',
         'context' => 'Disabled button label shown when a membership request is already pending for the current user.',
     ],
     'app.access_denied.request_pending_notice' => [
-        'text' => 'Une demande est deja en attente aupres des administrateurs de cette organisation.',
+        'text' => 'Une demande est déjà en attente auprès des administrateurs de cette organisation.',
         'context' => 'Notice shown on the forbidden access page when the current user already requested access.',
     ],
     'app.directory.create.action' => [
@@ -51,7 +51,7 @@ $sourceLang = [
         'context' => 'Action label displayed on the create organization card.',
     ],
     'app.directory.create.aria_label' => [
-        'text' => 'Creer une nouvelle organisation',
+        'text' => 'Créer une nouvelle organisation',
         'context' => 'Aria label for the create organization card button.',
     ],
     'app.directory.create.badge' => [
@@ -59,19 +59,19 @@ $sourceLang = [
         'context' => 'Badge shown on the create organization card.',
     ],
     'app.directory.create.description' => [
-        'text' => 'Nom, domaine, logo, banniere, couleur',
+        'text' => 'Nom, domaine, logo, bannière, couleur',
         'context' => 'Subtitle shown on the create organization card.',
     ],
     'app.directory.create.modal_title' => [
-        'text' => 'Creer une nouvelle organisation',
+        'text' => 'Créer une nouvelle organisation',
         'context' => 'Title shown in the create organization modal and iframe title.',
     ],
     'app.directory.create.title' => [
-        'text' => 'Creer une nouvelle organisation',
+        'text' => 'Créer une nouvelle organisation',
         'context' => 'Title shown on the create organization card.',
     ],
     'app.directory.description.empty.patreon_connect' => [
-        'text' => "Votre compte est bien connecte, mais il n'est rattache a aucune organisation pour le moment. Connectez Patreon ci-dessous pour pouvoir en creer une nouvelle.",
+        'text' => "Votre compte est bien connecté, mais il n'est rattaché à aucune organisation pour le moment. Connectez Patreon ci-dessous pour pouvoir en créer une nouvelle.",
         'context' => 'Message shown on the organization directory when no organization is available and Patreon must be connected before creating one.',
     ],
     'app.directory.cta.connect' => [
@@ -104,7 +104,7 @@ $sourceLang = [
         'context' => 'Summary shown on a pending invitation organization card with the number of holons included in the invitation.',
     ],
     'app.directory.invitation.pending_organization' => [
-        'text' => 'Acces a confirmer',
+        'text' => 'Accès à confirmer',
         'context' => 'Summary shown on a pending invitation organization card when there is no holon detail to display.',
     ],
     'app.directory.fallback_organization_name' => [
@@ -116,11 +116,11 @@ $sourceLang = [
         'context' => 'Main heading shown on the organization directory page.',
     ],
     'app.directory.template.badge' => [
-        'text' => "Template partage",
+        'text' => "Template partagé",
         'context' => 'Badge shown on a shared organization template card.',
     ],
     'app.directory.templates.heading' => [
-        'text' => "Vos template d'organisation",
+        'text' => "Vos templates d'organisation",
         'context' => 'Heading shown above the shared organization template cards on the directory page.',
     ],
     'app.directory.js.action_error' => [
@@ -132,11 +132,11 @@ $sourceLang = [
         'context' => 'Fallback organization name used in JavaScript confirmation dialogs when the name is missing.',
     ],
     'app.directory.js.delete_confirm' => [
-        'text' => "Supprimer {organizationName} ?\n\nLa structure, les membres, les cercles, les roles, les partages et les documents relies seront supprimes.",
+        'text' => "Supprimer {organizationName} ?\n\nLa structure, les membres, les cercles, les rôles, les partages et les documents liés seront supprimés.",
         'context' => 'Confirmation dialog shown before deleting an organization from the directory page.',
     ],
     'app.directory.js.leave_confirm' => [
-        'text' => "Quitter {organizationName} ?\n\nVos liens avec l'organisation, ses cercles et ses roles seront retires.",
+        'text' => "Quitter {organizationName} ?\n\nVos liens avec l'organisation, ses cercles et ses rôles seront retirés.",
         'context' => 'Confirmation dialog shown before leaving an organization from the directory page.',
     ],
     'app.directory.menu.actions_aria_label' => [
@@ -176,7 +176,7 @@ $sourceLang = [
         'context' => 'Badge shown on the Patreon connect card on the organization directory page.',
     ],
     'app.directory.patreon_connect.description' => [
-        'text' => 'Connectez Patreon pour debloquer la creation d une organisation',
+        'text' => "Connectez Patreon pour débloquer la création d'une organisation",
         'context' => 'Subtitle shown on the Patreon connect card on the organization directory page.',
     ],
     'app.directory.patreon_connect.title' => [
@@ -213,7 +213,7 @@ $sourceLang = [
         'context' => 'Mobile navigation label for the tools panel.',
     ],
     'app.mobile.right_panel' => [
-        'text' => 'Resume',
+        'text' => 'Résumé',
         'context' => 'Mobile navigation label for the right panel.',
     ],
     'app.not_found.message' => [
@@ -245,7 +245,7 @@ $sourceLang = [
         'context' => 'Generic action label used to return to the OMO home page.',
     ],
     'common.logout' => [
-        'text' => 'Se deconnecter',
+        'text' => 'Se déconnecter',
         'context' => 'Generic action label used to log out from OMO.',
     ],
 ];

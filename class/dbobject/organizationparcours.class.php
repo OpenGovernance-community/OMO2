@@ -122,16 +122,6 @@
 				);
 			}
 
-			$childAttachResult = \dbObject\Parcours::attachOwnedPackChildrenToOrganization($organizationId, $parcoursId);
-			if (!is_array($childAttachResult) || empty($childAttachResult['status'])) {
-				return array(
-					'status' => false,
-					'message' => is_array($childAttachResult) && !empty($childAttachResult['message'])
-						? (string)$childAttachResult['message']
-						: 'Impossible d attacher les parcours du pack a l organisation.',
-				);
-			}
-
 			return array(
 				'status' => true,
 				'created' => $created,
@@ -145,22 +135,34 @@
 			$parcoursId = (int)$parcoursId;
 			$userId = (int)$userId;
 
+			$hasOrganizationAccess = (bool)\commonUserHasOrganizationAccess($userId, $organizationId);
 			$link = self::loadForOrganizationParcours($organizationId, $parcoursId);
-			if ($link === null) {
-				return [
-					'exists' => false,
-					'canView' => false,
-					'userId' => $userId,
-					'isLoggedIn' => $userId > 0,
-					'hasOrganizationAccess' => false,
-					'everybody' => false,
-					'anonymous' => false,
-				];
+			$exposedViaPack = false;
+			$everybody = false;
+			$anonymous = false;
+
+			if ($link instanceof self) {
+				$everybody = (bool)$link->get('everybody');
+				$anonymous = (bool)$link->get('anonymous');
+			} else {
+				$packExposureRow = \dbObject\Parcours::fetchPackExposureRowForOrganization($organizationId, $parcoursId);
+				if (!is_array($packExposureRow)) {
+					return [
+						'exists' => false,
+						'canView' => false,
+						'userId' => $userId,
+						'isLoggedIn' => $userId > 0,
+						'hasOrganizationAccess' => false,
+						'everybody' => false,
+						'anonymous' => false,
+					];
+				}
+
+				$exposedViaPack = true;
+				$everybody = !empty($packExposureRow['everybody']);
+				$anonymous = !empty($packExposureRow['anonymous']);
 			}
 
-			$hasOrganizationAccess = (bool)\commonUserHasOrganizationAccess($userId, $organizationId);
-			$everybody = (bool)$link->get('everybody');
-			$anonymous = (bool)$link->get('anonymous');
 			$parcours = new \dbObject\Parcours();
 			$parcoursVisible = (!$parcours->load($parcoursId) || $parcours->isVisibleInOrganization($organizationId));
 
@@ -176,6 +178,7 @@
 				'anonymous' => $anonymous,
 				'parcoursVisible' => $parcoursVisible,
 				'link' => $link,
+				'exposedViaPack' => $exposedViaPack,
 			];
 		}
 	}

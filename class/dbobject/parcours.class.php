@@ -6,6 +6,7 @@
 		protected static $hasApplicationColumnCache = null;
 		protected static $hasIsPackColumnCache = null;
 		protected static $hasPrerequisiteTableCache = null;
+		protected static $attachedPackParentCache = [];
 
 		public static function tableName()
 		{
@@ -229,6 +230,104 @@
 			return true;
 		}
 
+		protected static function rowHasVisibleApplication(array $row, $organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			$applicationId = (int)($row['linked_application_id'] ?? 0);
+			if ($applicationId <= 0) {
+				return true;
+			}
+
+			return self::hasApplicationColumn()
+				? \dbObject\Application::isEnabledForOrganization($applicationId, $organizationId)
+				: true;
+		}
+
+		protected static function rowHasVisiblePrerequisites(array $row, $userId)
+		{
+			$parcoursId = (int)($row['id'] ?? 0);
+			$userId = (int)$userId;
+			if ($parcoursId <= 0) {
+				return false;
+			}
+
+			$prerequisiteIds = self::fetchPrerequisiteIdsForParcours($parcoursId);
+			if (count($prerequisiteIds) === 0) {
+				return true;
+			}
+
+			if ($userId <= 0) {
+				return false;
+			}
+
+			return self::arePrerequisitesSatisfiedForUser($parcoursId, $userId);
+		}
+
+		protected static function appendVisibilityFlagsToRows(array $rows, $organizationId, $userId)
+		{
+			$organizationId = (int)$organizationId;
+			$userId = (int)$userId;
+			$enrichedRows = [];
+
+			foreach ($rows as $row) {
+				if (!is_array($row)) {
+					continue;
+				}
+
+				$applicationVisible = self::rowHasVisibleApplication($row, $organizationId);
+				$prerequisiteVisible = self::rowHasVisiblePrerequisites($row, $userId);
+				$row['isapplicationvisible'] = $applicationVisible ? 1 : 0;
+				$row['isprerequisitevisible'] = $prerequisiteVisible ? 1 : 0;
+				$row['isvisible'] = ($applicationVisible && $prerequisiteVisible) ? 1 : 0;
+				$enrichedRows[] = $row;
+			}
+
+			return $enrichedRows;
+		}
+
+		protected static function filterHiddenRows(array $rows, $includeHidden)
+		{
+			if ($includeHidden) {
+				return $rows;
+			}
+
+			return array_values(array_filter($rows, function ($row) {
+				return is_array($row) && !empty($row['isvisible']);
+			}));
+		}
+
+		public static function hasAttachedPackParentInOrganization($organizationId, $parcoursId)
+		{
+			$organizationId = (int)$organizationId;
+			$parcoursId = (int)$parcoursId;
+			$cacheKey = $organizationId . ':' . $parcoursId;
+
+			if (array_key_exists($cacheKey, self::$attachedPackParentCache)) {
+				return self::$attachedPackParentCache[$cacheKey];
+			}
+
+			if ($organizationId <= 0 || $parcoursId <= 0 || !self::tableExists('parcours_parcours')) {
+				self::$attachedPackParentCache[$cacheKey] = false;
+				return false;
+			}
+
+			$hasAttachedPackParent = (int)self::fetchValue(
+				"SELECT COUNT(*)
+				FROM organization_parcours op_pack
+				INNER JOIN parcours_parcours pp
+					ON pp.IDparcours_parent = op_pack.IDparcours
+				WHERE op_pack.IDorganization = :organization_id
+				  AND pp.IDparcours_child = :parcours_id",
+				[
+					'organization_id' => $organizationId,
+					'parcours_id' => $parcoursId,
+				]
+			) > 0;
+
+			self::$attachedPackParentCache[$cacheKey] = $hasAttachedPackParent;
+			return $hasAttachedPackParent;
+		}
+
 		protected static function buildPrerequisiteVisibilityWhereSql($parcoursAlias, $userId)
 		{
 			$parcoursAlias = trim((string)$parcoursAlias) !== '' ? trim((string)$parcoursAlias) : 'p';
@@ -430,7 +529,173 @@
 			);
 		}
 
-		public static function fetchForOrganizationWithProgress($organizationId, $userId, $viewerHasOrganizationAccess = false) {
+		public static function fetchPackExposureRowForOrganization($organizationId, $parcoursId)
+		{
+			$organizationId = (int)$organizationId;
+			$parcoursId = (int)$parcoursId;
+			if ($organizationId <= 0 || $parcoursId <= 0 || !self::tableExists('parcours_parcours')) {
+				return null;
+			}
+
+			$row = self::fetchRow(
+				"SELECT
+					MAX(op_pack.everybody) AS everybody,
+					" . (\dbObject\OrganizationParcours::hasAnonymousColumn() ? "MAX(op_pack.anonymous)" : "0") . " AS anonymous
+				FROM organization_parcours op_pack
+				INNER JOIN parcours parent
+					ON parent.id = op_pack.IDparcours
+				INNER JOIN parcours_parcours pp
+					ON pp.IDparcours_parent = op_pack.IDparcours
+				WHERE op_pack.IDorganization = :organization_id
+				  AND pp.IDparcours_child = :parcours_id
+				  AND " . (self::hasIsPackColumn() ? "COALESCE(parent.ispack, 0) = 1" : "1=1") . "
+				GROUP BY pp.IDparcours_child
+				LIMIT 1",
+				[
+					'organization_id' => $organizationId,
+					'parcours_id' => $parcoursId,
+				]
+			);
+
+			return is_array($row) ? $row : null;
+		}
+
+		protected static function mergeVisibleParcoursRows(array $directRows, array $packRows)
+		{
+			$merged = [];
+
+			foreach ($directRows as $row) {
+				$parcoursId = (int)($row['id'] ?? 0);
+				if ($parcoursId <= 0) {
+					continue;
+				}
+
+				$merged[$parcoursId] = $row;
+			}
+
+			foreach ($packRows as $row) {
+				$parcoursId = (int)($row['id'] ?? 0);
+				if ($parcoursId <= 0 || array_key_exists($parcoursId, $merged)) {
+					continue;
+				}
+
+				$merged[$parcoursId] = $row;
+			}
+
+			return array_values($merged);
+		}
+
+		protected static function fetchDynamicPackChildrenForOrganizationWithProgress($organizationId, $userId, $visibilityMode = 'org', $viewerHasOrganizationAccess = false, $includeHidden = false)
+		{
+			$organizationId = (int)$organizationId;
+			$userId = (int)$userId;
+			if ($organizationId <= 0 || !self::tableExists('parcours_parcours')) {
+				return [];
+			}
+
+			$hasAnonymousColumn = \dbObject\OrganizationParcours::hasAnonymousColumn();
+			$where = [
+				"op_pack.IDorganization = :organization_id",
+				(self::hasIsPackColumn() ? "COALESCE(parent.ispack, 0) = 1" : "1=1"),
+				(self::hasIsPackColumn() ? "COALESCE(child.ispack, 0) = 0" : "1=1"),
+				"NOT EXISTS (
+					SELECT 1
+					FROM organization_parcours op_direct
+					WHERE op_direct.IDorganization = :organization_id_direct
+					  AND op_direct.IDparcours = child.id
+				)",
+			];
+
+			if ($visibilityMode === 'everybody') {
+				$where[] = "op_pack.everybody = 1";
+			} elseif ($visibilityMode === 'public') {
+				$where[] = $hasAnonymousColumn ? "(op_pack.everybody = 1 OR op_pack.anonymous = 1)" : "op_pack.everybody = 1";
+			} elseif (!$viewerHasOrganizationAccess) {
+				if ($hasAnonymousColumn) {
+					$where[] = $userId > 0
+						? "(op_pack.everybody = 1 OR op_pack.anonymous = 1)"
+						: "op_pack.anonymous = 1";
+				} else {
+					$where[] = "op_pack.everybody = 1";
+				}
+			}
+
+			if (!$includeHidden && self::hasApplicationColumn()) {
+				$where[] = "(child.IDapplication IS NULL OR child.IDapplication <= 0 OR EXISTS (
+					SELECT 1
+					FROM organization_application oa_app
+					INNER JOIN application a_app
+						ON a_app.id = oa_app.IDapplication
+					WHERE oa_app.IDorganization = :application_visibility_organization_id
+					  AND oa_app.IDapplication = child.IDapplication
+					  AND oa_app.active = 1
+					  AND a_app.active = 1
+				))";
+			}
+
+			if (!$includeHidden) {
+				$where[] = self::buildPrerequisiteVisibilityWhereSql('child', $userId);
+			}
+
+			$rows = self::fetchAll(
+				"SELECT
+					child.id,
+					child.title,
+					child.description,
+					child.image,
+					COALESCE(child.IDorganization, (SELECT MIN(op_owner.IDorganization) FROM organization_parcours op_owner WHERE op_owner.IDparcours = child.id)) AS owner_organization_id,
+					" . (self::hasApplicationColumn() ? "child.IDapplication AS linked_application_id" : "NULL AS linked_application_id") . ",
+					" . self::buildIsPackSelectSql('child') . ",
+					MIN(COALESCE(op_pack.position, 0)) AS position,
+					MIN(COALESCE(pp.position, 0)) AS pack_child_position,
+					MAX(op_pack.everybody) AS everybody,
+					" . ($hasAnonymousColumn ? "MAX(op_pack.anonymous)" : "0 AS anonymous") . ",
+					COUNT(DISTINCT pm.IDmission) AS total_missions,
+					COALESCE(SUM(
+						CASE
+							WHEN lm.done IS NOT NULL THEN 1
+							ELSE 0
+						END
+					), 0) AS done_missions
+				FROM organization_parcours op_pack
+				INNER JOIN parcours parent
+					ON parent.id = op_pack.IDparcours
+				INNER JOIN parcours_parcours pp
+					ON pp.IDparcours_parent = op_pack.IDparcours
+				INNER JOIN parcours child
+					ON child.id = pp.IDparcours_child
+				LEFT JOIN parcours_mission pm
+					ON pm.IDparcours = child.id
+				LEFT JOIN user_mission lm
+					ON lm.IDmission = pm.IDmission
+					AND lm.IDparcours = child.id
+					AND lm.IDuser = :user_id
+				WHERE " . implode(" AND ", $where) . "
+				GROUP BY child.id, child.title, child.description, child.image, child.IDorganization" . (self::hasApplicationColumn() ? ", child.IDapplication" : "") . (self::hasIsPackColumn() ? ", child.ispack" : "") . "
+				ORDER BY MIN(COALESCE(op_pack.position, 0)) ASC, MIN(COALESCE(pp.position, 0)) ASC, child.title ASC, child.id ASC",
+				(function () use ($organizationId, $userId, $includeHidden) {
+					$params = [
+						'organization_id' => $organizationId,
+						'organization_id_direct' => $organizationId,
+						'user_id' => $userId,
+					];
+					if (!$includeHidden && self::hasApplicationColumn()) {
+						$params['application_visibility_organization_id'] = $organizationId;
+					}
+
+					return $params;
+				})()
+			);
+
+			if (!is_array($rows)) {
+				return [];
+			}
+
+			$rows = self::appendVisibilityFlagsToRows($rows, $organizationId, $userId);
+			return self::filterHiddenRows($rows, $includeHidden);
+		}
+
+		public static function fetchForOrganizationWithProgress($organizationId, $userId, $viewerHasOrganizationAccess = false, $includeHidden = false) {
 			$hasAnonymousColumn = OrganizationParcours::hasAnonymousColumn();
 			$where = ["op.IDorganization = :organization_id"];
 			if (!$viewerHasOrganizationAccess) {
@@ -442,7 +707,7 @@
 					$where[] = "op.everybody = 1";
 				}
 			}
-			if (self::hasApplicationColumn()) {
+			if (!$includeHidden && self::hasApplicationColumn()) {
 				$where[] = "(p.IDapplication IS NULL OR p.IDapplication <= 0 OR EXISTS (
 					SELECT 1
 					FROM organization_application oa_app
@@ -454,7 +719,9 @@
 					  AND a_app.active = 1
 				))";
 			}
-			$where[] = self::buildPrerequisiteVisibilityWhereSql('p', $userId);
+			if (!$includeHidden) {
+				$where[] = self::buildPrerequisiteVisibilityWhereSql('p', $userId);
+			}
 			$anonymousSelect = $hasAnonymousColumn ? "op.anonymous" : "0 AS anonymous";
 			$anonymousGroupBy = $hasAnonymousColumn ? ", op.anonymous" : "";
 			$applicationSelect = self::hasApplicationColumn() ? "p.IDapplication AS linked_application_id" : "NULL AS linked_application_id";
@@ -496,13 +763,24 @@
 				ORDER BY op.position ASC, p.title ASC
 			";
 
-			$rows = self::fetchAll($query, [
+			$params = [
 				'user_id' => (int)$userId,
 				'organization_id' => (int)$organizationId,
-				'application_visibility_organization_id' => (int)$organizationId,
-			]);
+			];
+			if (!$includeHidden && self::hasApplicationColumn()) {
+				$params['application_visibility_organization_id'] = (int)$organizationId;
+			}
 
-			return is_array($rows) ? $rows : [];
+			$rows = self::fetchAll($query, $params);
+
+			if (!is_array($rows)) {
+				return [];
+			}
+
+			$rows = self::appendVisibilityFlagsToRows($rows, $organizationId, $userId);
+			$rows = self::filterHiddenRows($rows, $includeHidden);
+			$packRows = self::fetchDynamicPackChildrenForOrganizationWithProgress($organizationId, $userId, 'org', $viewerHasOrganizationAccess, $includeHidden);
+			return self::mergeVisibleParcoursRows($rows, $packRows);
 		}
 
 		public static function fetchEverybodyForOrganizationWithProgress($organizationId, $userId = 0)
@@ -571,7 +849,14 @@
 				'application_visibility_organization_id' => (int)$organizationId,
 			]);
 
-			return is_array($rows) ? $rows : [];
+			if (!is_array($rows)) {
+				return [];
+			}
+
+			$rows = self::appendVisibilityFlagsToRows($rows, $organizationId, $userId);
+			$rows = self::filterHiddenRows($rows, false);
+			$packRows = self::fetchDynamicPackChildrenForOrganizationWithProgress($organizationId, $userId, 'everybody', false, false);
+			return self::mergeVisibleParcoursRows($rows, $packRows);
 		}
 
 		public static function fetchPublicForOrganizationWithProgress($organizationId, $userId = 0)
@@ -640,7 +925,14 @@
 				'application_visibility_organization_id' => (int)$organizationId,
 			]);
 
-			return is_array($rows) ? $rows : [];
+			if (!is_array($rows)) {
+				return [];
+			}
+
+			$rows = self::appendVisibilityFlagsToRows($rows, $organizationId, $userId);
+			$rows = self::filterHiddenRows($rows, false);
+			$packRows = self::fetchDynamicPackChildrenForOrganizationWithProgress($organizationId, $userId, 'public', false, false);
+			return self::mergeVisibleParcoursRows($rows, $packRows);
 		}
 
 		public static function fetchBasicCatalogWithProgress($userId = 0)
@@ -748,13 +1040,27 @@
 					" . self::buildIsPackSelectSql('p') . ",
 					p.IDorganization,
 					owner.name AS owner_name,
-					COUNT(DISTINCT pm.IDmission) AS total_missions
+					COUNT(DISTINCT pm.IDmission) AS total_missions,
+					COUNT(DISTINCT pp_child.IDparcours_child) AS total_parcours
 				FROM parcours p
 				LEFT JOIN organization owner
 					ON owner.id = p.IDorganization
 				LEFT JOIN parcours_mission pm
 					ON pm.IDparcours = p.id
+				LEFT JOIN parcours_parcours pp_child
+					ON pp_child.IDparcours_parent = p.id
 				WHERE (p.ispublic = 1 OR p.isbasic = 1)
+				  AND EXISTS (
+					SELECT 1
+					FROM organization_parcours op_owner_link
+					WHERE op_owner_link.IDparcours = p.id
+					  AND op_owner_link.IDorganization = COALESCE(
+						p.IDorganization,
+						(SELECT MIN(op_owner_fallback.IDorganization)
+						 FROM organization_parcours op_owner_fallback
+						 WHERE op_owner_fallback.IDparcours = p.id)
+					  )
+				  )
 				  AND NOT EXISTS (
 					SELECT 1
 					FROM organization_parcours op
@@ -798,6 +1104,17 @@
 				FROM parcours p
 				WHERE p.id = :parcours_id
 				  AND (p.ispublic = 1 OR p.isbasic = 1)
+				  AND EXISTS (
+					SELECT 1
+					FROM organization_parcours op_owner_link
+					WHERE op_owner_link.IDparcours = p.id
+					  AND op_owner_link.IDorganization = COALESCE(
+						p.IDorganization,
+						(SELECT MIN(op_owner_fallback.IDorganization)
+						 FROM organization_parcours op_owner_fallback
+						 WHERE op_owner_fallback.IDparcours = p.id)
+					  )
+				  )
 				  AND NOT EXISTS (
 					SELECT 1
 					FROM organization_parcours op
@@ -984,7 +1301,7 @@
 			return is_array($rows) ? $rows : [];
 		}
 
-		public static function fetchPackChildrenForOrganizationWithProgress($organizationId, $packParcoursId, $userId, $viewerHasOrganizationAccess = false)
+		public static function fetchPackChildrenForOrganizationWithProgress($organizationId, $packParcoursId, $userId, $viewerHasOrganizationAccess = false, $includeHidden = false)
 		{
 			$organizationId = (int)$organizationId;
 			$packParcoursId = (int)$packParcoursId;
@@ -996,18 +1313,18 @@
 			$hasAnonymousColumn = \dbObject\OrganizationParcours::hasAnonymousColumn();
 			$where = [
 				"pp.IDparcours_parent = :pack_parcours_id",
-				"op.IDorganization = :organization_id",
+				"op_pack.IDorganization = :organization_id",
 			];
 			if (!$viewerHasOrganizationAccess) {
 				if ($hasAnonymousColumn) {
 					$where[] = $userId > 0
-						? "(op.everybody = 1 OR op.anonymous = 1)"
-						: "op.anonymous = 1";
+						? "(op_pack.everybody = 1 OR op_pack.anonymous = 1)"
+						: "op_pack.anonymous = 1";
 				} else {
-					$where[] = "op.everybody = 1";
+					$where[] = "op_pack.everybody = 1";
 				}
 			}
-			if (self::hasApplicationColumn()) {
+			if (!$includeHidden && self::hasApplicationColumn()) {
 				$where[] = "(child.IDapplication IS NULL OR child.IDapplication <= 0 OR EXISTS (
 					SELECT 1
 					FROM organization_application oa_app
@@ -1019,7 +1336,9 @@
 					  AND a_app.active = 1
 				))";
 			}
-			$where[] = self::buildPrerequisiteVisibilityWhereSql('child', $userId);
+			if (!$includeHidden) {
+				$where[] = self::buildPrerequisiteVisibilityWhereSql('child', $userId);
+			}
 			$rows = self::fetchAll(
 				"SELECT
 					child.id,
@@ -1038,10 +1357,10 @@
 						END
 					), 0) AS done_missions
 				FROM parcours_parcours pp
+				INNER JOIN organization_parcours op_pack
+					ON op_pack.IDparcours = pp.IDparcours_parent
 				INNER JOIN parcours child
 					ON child.id = pp.IDparcours_child
-				INNER JOIN organization_parcours op
-					ON op.IDparcours = child.id
 				LEFT JOIN parcours_mission pm
 					ON pm.IDparcours = child.id
 				LEFT JOIN user_mission lm
@@ -1051,101 +1370,219 @@
 				WHERE " . implode(' AND ', $where) . "
 				GROUP BY child.id, child.title, child.description, child.image, child.IDorganization" . (self::hasApplicationColumn() ? ", child.IDapplication" : "") . (self::hasIsPackColumn() ? ", child.ispack" : "") . ", pp.position
 				ORDER BY COALESCE(pp.position, child.title) ASC, child.title ASC, child.id ASC",
-				[
-					'pack_parcours_id' => $packParcoursId,
-					'user_id' => $userId,
-					'organization_id' => $organizationId,
-					'application_visibility_organization_id' => $organizationId,
-				]
+				(function () use ($packParcoursId, $userId, $organizationId, $includeHidden) {
+					$params = [
+						'pack_parcours_id' => $packParcoursId,
+						'user_id' => $userId,
+						'organization_id' => $organizationId,
+					];
+					if (!$includeHidden && self::hasApplicationColumn()) {
+						$params['application_visibility_organization_id'] = $organizationId;
+					}
+
+					return $params;
+				})()
 			);
 
-			return is_array($rows) ? $rows : [];
+			if (!is_array($rows)) {
+				return [];
+			}
+
+			$rows = self::appendVisibilityFlagsToRows($rows, $organizationId, $userId);
+			return self::filterHiddenRows($rows, $includeHidden);
 		}
 
 		public static function attachOwnedPackChildrenToOrganization($organizationId, $packParcoursId)
+		{
+			return [
+				'status' => true,
+				'attachedCount' => 0,
+			];
+		}
+
+		public static function cleanupLegacyDetachedChildLinksAcrossOrganizations($packParcoursId, $childParcoursId)
+		{
+			$packParcoursId = (int)$packParcoursId;
+			$childParcoursId = (int)$childParcoursId;
+			if ($packParcoursId <= 0 || $childParcoursId <= 0) {
+				return [
+					'status' => false,
+					'message' => 'Pack ou parcours invalide.',
+					'detachedCount' => 0,
+				];
+			}
+
+			$ownerOrganizationId = self::resolveOwnerOrganizationIdByParcoursId($childParcoursId);
+			$organizationRows = self::fetchAll(
+				"SELECT DISTINCT IDorganization
+				FROM organization_parcours
+				WHERE IDparcours = :pack_parcours_id",
+				[
+					'pack_parcours_id' => $packParcoursId,
+				]
+			);
+			if (!is_array($organizationRows)) {
+				return [
+					'status' => false,
+					'message' => 'Impossible de charger les organisations liees au pack.',
+					'detachedCount' => 0,
+				];
+			}
+
+			$detachedCount = 0;
+			foreach ($organizationRows as $organizationRow) {
+				$organizationId = (int)($organizationRow['IDorganization'] ?? 0);
+				if ($organizationId <= 0 || $organizationId === $ownerOrganizationId) {
+					continue;
+				}
+
+				$hasDirectChildLink = (int)self::fetchValue(
+					"SELECT COUNT(*)
+					FROM organization_parcours
+					WHERE IDorganization = :organization_id
+					  AND IDparcours = :child_parcours_id",
+					[
+						'organization_id' => $organizationId,
+						'child_parcours_id' => $childParcoursId,
+					]
+				) > 0;
+				if (!$hasDirectChildLink) {
+					continue;
+				}
+
+				$stillProvidedByAnotherPack = (int)self::fetchValue(
+					"SELECT COUNT(*)
+					FROM organization_parcours op_pack
+					INNER JOIN parcours_parcours pp
+						ON pp.IDparcours_parent = op_pack.IDparcours
+					INNER JOIN parcours parent
+						ON parent.id = op_pack.IDparcours
+					WHERE op_pack.IDorganization = :organization_id
+					  AND pp.IDparcours_child = :child_parcours_id
+					  AND op_pack.IDparcours <> :pack_parcours_id
+					  AND " . (self::hasIsPackColumn() ? "COALESCE(parent.ispack, 0) = 1" : "1=1"),
+					[
+						'organization_id' => $organizationId,
+						'child_parcours_id' => $childParcoursId,
+						'pack_parcours_id' => $packParcoursId,
+					]
+				) > 0;
+				if ($stillProvidedByAnotherPack) {
+					continue;
+				}
+
+				$deleteResult = self::execute(
+					"DELETE FROM organization_parcours
+					WHERE IDorganization = :organization_id
+					  AND IDparcours = :child_parcours_id",
+					[
+						'organization_id' => $organizationId,
+						'child_parcours_id' => $childParcoursId,
+					]
+				);
+				if ($deleteResult === false) {
+					return [
+						'status' => false,
+						'message' => 'Impossible de nettoyer un ancien lien direct de parcours.',
+						'detachedCount' => $detachedCount,
+					];
+				}
+
+				$detachedCount++;
+			}
+
+			return [
+				'status' => true,
+				'detachedCount' => $detachedCount,
+			];
+		}
+
+		protected static function detachPackChildrenFromOrganization($organizationId, $packParcoursId)
 		{
 			$organizationId = (int)$organizationId;
 			$packParcoursId = (int)$packParcoursId;
 			if ($organizationId <= 0 || $packParcoursId <= 0 || !self::tableExists('parcours_parcours')) {
 				return [
 					'status' => true,
-					'attachedCount' => 0,
+					'detachedCount' => 0,
 				];
 			}
 
-			$pack = new self();
-			if (!$pack->load($packParcoursId) || !$pack->isPack()) {
-				return [
-					'status' => true,
-					'attachedCount' => 0,
-				];
-			}
-
-			$ownerOrganizationId = $pack->getOwnerOrganizationId();
-			if ($ownerOrganizationId <= 0) {
-				return [
-					'status' => false,
-					'message' => 'Organisation proprietaire du pack introuvable.',
-					'attachedCount' => 0,
-				];
-			}
-
-			$rows = self::fetchAll(
-				"SELECT child.id
+			$fallbackRows = self::fetchAll(
+				"SELECT
+					child.id,
+					COALESCE(child.IDorganization, (SELECT MIN(op_owner.IDorganization) FROM organization_parcours op_owner WHERE op_owner.IDparcours = child.id), 0) AS owner_organization_id
 				FROM parcours_parcours pp
 				INNER JOIN parcours child
 					ON child.id = pp.IDparcours_child
 				WHERE pp.IDparcours_parent = :pack_parcours_id
-				  AND COALESCE(child.IDorganization, :owner_organization_id_fallback) = :owner_organization_id
-				  AND " . (self::hasIsPackColumn() ? "COALESCE(child.ispack, 0) = 0" : "1=1") . "
-				ORDER BY COALESCE(pp.position, child.id) ASC, child.id ASC",
+				  AND EXISTS (
+					SELECT 1
+					FROM organization_parcours op_child
+					WHERE op_child.IDorganization = :organization_id
+					  AND op_child.IDparcours = child.id
+				  )
+				  AND " . (self::hasIsPackColumn() ? "COALESCE(child.ispack, 0) = 0" : "1=1"),
 				[
 					'pack_parcours_id' => $packParcoursId,
-					'owner_organization_id' => $ownerOrganizationId,
-					'owner_organization_id_fallback' => $ownerOrganizationId,
+					'organization_id' => $organizationId,
 				]
 			);
-			if (!is_array($rows)) {
+			if (!is_array($fallbackRows)) {
 				return [
 					'status' => false,
-					'message' => 'Impossible de charger les parcours du pack.',
-					'attachedCount' => 0,
+					'message' => 'Impossible de charger les parcours herites du pack.',
 				];
 			}
 
-			$attachedCount = 0;
-			foreach ($rows as $row) {
+			$detachedCount = 0;
+			foreach ($fallbackRows as $row) {
 				$childParcoursId = (int)($row['id'] ?? 0);
-				if ($childParcoursId <= 0) {
+				$ownerOrganizationId = (int)($row['owner_organization_id'] ?? 0);
+				if ($childParcoursId <= 0 || $ownerOrganizationId === $organizationId) {
 					continue;
 				}
 
-				$attachResult = \dbObject\OrganizationParcours::attachParcoursToOrganization(
-					$organizationId,
-					$childParcoursId,
+				$usedByAnotherAttachedPack = (int)self::fetchValue(
+					"SELECT COUNT(*)
+					FROM organization_parcours op_pack
+					INNER JOIN parcours_parcours pp
+						ON pp.IDparcours_parent = op_pack.IDparcours
+					WHERE op_pack.IDorganization = :organization_id
+					  AND op_pack.IDparcours <> :pack_parcours_id
+					  AND pp.IDparcours_child = :child_parcours_id",
 					[
-						'everybody' => true,
-						'anonymous' => false,
+						'organization_id' => $organizationId,
+						'pack_parcours_id' => $packParcoursId,
+						'child_parcours_id' => $childParcoursId,
+					]
+				) > 0;
+				if ($usedByAnotherAttachedPack) {
+					continue;
+				}
+
+				$deleteResult = self::execute(
+					"DELETE FROM organization_parcours
+					WHERE IDorganization = :organization_id
+					  AND IDparcours = :parcours_id",
+					[
+						'organization_id' => $organizationId,
+						'parcours_id' => $childParcoursId,
 					]
 				);
-				if (!is_array($attachResult) || empty($attachResult['status'])) {
+				if ($deleteResult === false) {
 					return [
 						'status' => false,
-						'message' => is_array($attachResult) && !empty($attachResult['message'])
-							? (string)$attachResult['message']
-							: 'Impossible d attacher les parcours du pack.',
-						'attachedCount' => $attachedCount,
+						'message' => 'Impossible de detacher un parcours du pack.',
 					];
 				}
 
-				if (!empty($attachResult['created'])) {
-					$attachedCount++;
-				}
+				$detachedCount++;
 			}
 
 			return [
 				'status' => true,
-				'attachedCount' => $attachedCount,
+				'detachedCount' => $detachedCount,
 			];
 		}
 
@@ -1398,6 +1835,14 @@
 				];
 			}
 
+			if (self::hasAttachedPackParentInOrganization($organizationId, $parcoursId)) {
+				return [
+					'status' => false,
+					'action' => 'none',
+					'message' => 'Ce parcours est actuellement fourni par un pack rattache a votre organisation. Detachez d abord le pack parent.',
+				];
+			}
+
 			if ($ownerOrganizationId <= 0 || $ownerOrganizationId !== $organizationId) {
 				return [
 					'status' => true,
@@ -1474,6 +1919,13 @@
 			try {
 				if ($startedTransaction) {
 					$pdo->beginTransaction();
+				}
+
+				if ($this->isPack()) {
+					$packDetachResult = self::detachPackChildrenFromOrganization($organizationId, $parcoursId);
+					if (!is_array($packDetachResult) || empty($packDetachResult['status'])) {
+						throw new \RuntimeException('pack_children_detach_failed');
+					}
 				}
 
 				$missionIds = self::tableExists('parcours_mission')
@@ -1590,6 +2042,21 @@
 					);
 					if ($result === false) {
 						throw new \RuntimeException('parcours_parcours_delete_failed');
+					}
+				}
+
+				if (self::tableExists('organization_parcours_pack_source')) {
+					$result = self::execute(
+						"DELETE FROM organization_parcours_pack_source
+						WHERE IDparcours_parent = :parcours_id_parent
+						   OR IDparcours_child = :parcours_id_child",
+						[
+							'parcours_id_parent' => $parcoursId,
+							'parcours_id_child' => $parcoursId,
+						]
+					);
+					if ($result === false) {
+						throw new \RuntimeException('organization_parcours_pack_source_delete_failed');
 					}
 				}
 

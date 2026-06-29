@@ -207,6 +207,49 @@
 				'status' => true,
 			];
 		}
+
+		public static function detachChildFromParent($parentParcoursId, $childParcoursId)
+		{
+			$parentParcoursId = (int)$parentParcoursId;
+			$childParcoursId = (int)$childParcoursId;
+			if ($parentParcoursId <= 0 || $childParcoursId <= 0) {
+				return [
+					'status' => false,
+					'message' => 'Pack ou parcours invalide.',
+				];
+			}
+
+			$result = self::execute(
+				"DELETE FROM parcours_parcours
+				WHERE IDparcours_parent = :parent_parcours_id
+				  AND IDparcours_child = :child_parcours_id",
+				[
+					'parent_parcours_id' => $parentParcoursId,
+					'child_parcours_id' => $childParcoursId,
+				]
+			);
+			if ($result === false) {
+				return [
+					'status' => false,
+					'message' => 'Impossible de retirer ce parcours du pack.',
+				];
+			}
+
+			$cleanupResult = \dbObject\Parcours::cleanupLegacyDetachedChildLinksAcrossOrganizations($parentParcoursId, $childParcoursId);
+			if (!is_array($cleanupResult) || empty($cleanupResult['status'])) {
+				return [
+					'status' => false,
+					'message' => is_array($cleanupResult) && !empty($cleanupResult['message'])
+						? (string)$cleanupResult['message']
+						: 'Impossible de nettoyer les anciens liens de ce parcours.',
+				];
+			}
+
+			return [
+				'status' => true,
+				'cleanedLegacyLinks' => (int)($cleanupResult['detachedCount'] ?? 0),
+			];
+		}
 	}
 
 ?>

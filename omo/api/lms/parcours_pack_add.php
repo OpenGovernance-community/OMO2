@@ -70,26 +70,6 @@ if (!is_array($result) || empty($result['status'])) {
     exit;
 }
 
-$attachResult = \dbObject\OrganizationParcours::attachParcoursToOrganization(
-    $organizationId,
-    $childParcoursId,
-    [
-        'everybody' => true,
-        'anonymous' => false,
-    ]
-);
-
-if (!is_array($attachResult) || empty($attachResult['status'])) {
-    echo json_encode([
-        'status' => false,
-        'success' => false,
-        'message' => is_array($attachResult) && !empty($attachResult['message'])
-            ? (string)$attachResult['message']
-            : 'Le parcours a ete ajoute au pack mais pas rattache a l organisation.',
-    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    exit;
-}
-
 echo json_encode([
     'status' => true,
     'success' => true,

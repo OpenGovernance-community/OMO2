@@ -98,7 +98,7 @@ $sourceLang = [
         'context' => 'Page title for the printable participant QR code sheet.',
     ],
     'decisions.qr_sheet.subtitle' => [
-        'text' => 'Imprimez cette page puis decoupez les cartes pour distribuer un acces direct a chaque participant.',
+        'text' => 'Imprimez cette page puis découpez les cartes pour distribuer un accès direct à chaque participant.',
         'context' => 'Intro text displayed above the printable participant QR code list.',
     ],
     'decisions.qr_sheet.print' => [
@@ -146,7 +146,7 @@ $sourceLang = [
         'context' => 'Label shown before the participant email on one printable card.',
     ],
     'decisions.qr_sheet.empty' => [
-        'text' => 'Aucun participant avec acces individuel n est disponible pour ce questionnaire.',
+        'text' => "Aucun participant avec accès individuel n'est disponible pour ce questionnaire.",
         'context' => 'Empty state shown when no printable participant QR code can be generated.',
     ],
     'decisions.edit.context.organization_invalid' => [
@@ -158,11 +158,11 @@ $sourceLang = [
         'context' => 'Error when the organization cannot be loaded.',
     ],
     'decisions.edit.context.organization_denied' => [
-        'text' => 'Acces refuse a cette organisation.',
+        'text' => 'Accès refusé à cette organisation.',
         'context' => 'Error when the user cannot view the organization.',
     ],
     'decisions.edit.context.organization_manage_denied' => [
-        'text' => 'Vous n avez pas les droits necessaires pour creer une prise de decision dans cette organisation.',
+        'text' => "Vous n'avez pas les droits nécessaires pour créer une prise de décision dans cette organisation.",
         'context' => 'Error when the user cannot manage an organization-level decision.',
     ],
     'decisions.edit.context.holon_not_found' => [
@@ -170,23 +170,23 @@ $sourceLang = [
         'context' => 'Error when the requested holon is invalid.',
     ],
     'decisions.edit.context.holon_denied' => [
-        'text' => 'Acces refuse a ce holon.',
+        'text' => 'Accès refusé à ce holon.',
         'context' => 'Error when the user cannot view the requested holon.',
     ],
     'decisions.edit.context.holon_manage_denied' => [
-        'text' => 'Vous n avez pas les droits necessaires pour creer une prise de decision dans ce holon.',
+        'text' => "Vous n'avez pas les droits nécessaires pour créer une prise de décision dans ce holon.",
         'context' => 'Error when the user cannot manage a holon-level decision.',
     ],
     'decisions.edit.context.decision_not_found' => [
-        'text' => 'Prise de decision introuvable.',
+        'text' => 'Prise de décision introuvable.',
         'context' => 'Error when the requested decision cannot be loaded.',
     ],
     'decisions.edit.context.decision_mismatch' => [
-        'text' => 'Cette prise de decision n appartient pas a l organisation courante.',
+        'text' => "Cette prise de décision n'appartient pas à l'organisation courante.",
         'context' => 'Error when the decision does not belong to the current organization.',
     ],
     'decisions.edit.context.decision_denied' => [
-        'text' => 'Vous n avez pas les droits necessaires pour modifier cette prise de decision.',
+        'text' => "Vous n'avez pas les droits nécessaires pour modifier cette prise de décision.",
         'context' => 'Error when the user cannot manage the requested decision.',
     ],
 ];

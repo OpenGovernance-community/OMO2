@@ -223,6 +223,38 @@
 				'status' => true,
 			);
 		}
+
+		public static function detachMissionFromParcours($parcoursId, $missionId)
+		{
+			$parcoursId = (int)$parcoursId;
+			$missionId = (int)$missionId;
+			if ($parcoursId <= 0 || $missionId <= 0) {
+				return array(
+					'status' => false,
+					'message' => 'Parcours ou mission invalide.',
+				);
+			}
+
+			$result = self::execute(
+				"DELETE FROM parcours_mission
+				WHERE IDparcours = :parcours_id
+				  AND IDmission = :mission_id",
+				[
+					'parcours_id' => $parcoursId,
+					'mission_id' => $missionId,
+				]
+			);
+			if ($result === false) {
+				return array(
+					'status' => false,
+					'message' => 'Impossible de retirer cette mission du parcours.',
+				);
+			}
+
+			return array(
+				'status' => true,
+			);
+		}
 	}
 
 ?>
