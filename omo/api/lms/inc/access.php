@@ -188,6 +188,10 @@ function lmsCurrentUserCanCreateParcours($organizationId, $userId = null, $useSe
 		return false;
 	}
 
+	if (function_exists('commonCurrentUserIsAdminModeEnabled') && commonCurrentUserIsAdminModeEnabled($organizationId)) {
+		return true;
+	}
+
 	$permissionContext = lmsResolvePermissionHolonContext($organizationId, $userId);
 	$permissionHolon = $permissionContext['permissionHolon'] ?? null;
 	if (!($permissionHolon instanceof \dbObject\Holon)) {
@@ -203,6 +207,10 @@ function lmsCurrentUserCanEditParcours($organizationId, $userId = null, $useSess
 	$userId = lmsResolveCurrentUserId($userId);
 	if ($organizationId <= 0 || $userId <= 0 || !commonUserHasOrganizationAccess($userId, $organizationId)) {
 		return false;
+	}
+
+	if (function_exists('commonCurrentUserIsAdminModeEnabled') && commonCurrentUserIsAdminModeEnabled($organizationId)) {
+		return true;
 	}
 
 	$permissionContext = lmsResolvePermissionHolonContext($organizationId, $userId);
@@ -227,6 +235,7 @@ function lmsResolveParcoursManagementContext($organizationId, $parcoursId = 0, $
 	$link = null;
 	$parcours = null;
 	$isOwned = false;
+	$isExposedViaPack = false;
 
 	if ($organizationId > 0 && $parcoursId > 0) {
 		$link = \dbObject\OrganizationParcours::loadForOrganizationParcours($organizationId, $parcoursId);
@@ -235,6 +244,7 @@ function lmsResolveParcoursManagementContext($organizationId, $parcoursId = 0, $
 			$parcours = null;
 		} else {
 			$isOwned = $parcours->isOwnedByOrganization($organizationId);
+			$isExposedViaPack = \dbObject\Parcours::hasAttachedPackParentInOrganization($organizationId, $parcoursId);
 		}
 	}
 
@@ -247,6 +257,7 @@ function lmsResolveParcoursManagementContext($organizationId, $parcoursId = 0, $
 		'link' => $link,
 		'parcours' => $parcours,
 		'isOwned' => $isOwned,
-		'canEditContent' => $canEdit && $link !== null && $parcours instanceof \dbObject\Parcours && $isOwned,
+		'isExposedViaPack' => $isExposedViaPack,
+		'canEditContent' => $canEdit && $parcours instanceof \dbObject\Parcours && $isOwned && ($link !== null || $isExposedViaPack),
 	);
 }

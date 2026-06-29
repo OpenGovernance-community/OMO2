@@ -88,6 +88,12 @@ $importableParcours = \dbObject\Parcours::fetchImportableForOrganization($organi
     background: var(--bg-main);
 }
 
+.lms-import-parcours-item--pack {
+    border-color: color-mix(in srgb, var(--primary) 26%, var(--border-color));
+    background:
+        linear-gradient(135deg, color-mix(in srgb, var(--primary) 7%, var(--bg-main)), var(--bg-main));
+}
+
 .lms-import-parcours-item[hidden],
 .lms-import-parcours-empty[hidden] {
     display: none !important;
@@ -100,6 +106,24 @@ $importableParcours = \dbObject\Parcours::fetchImportableForOrganization($organi
 
 .lms-import-parcours-item__copy strong {
     display: block;
+}
+
+.lms-import-parcours-item__type {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: fit-content;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--primary) 8%, var(--bg-card));
+    color: var(--text-light);
+    font-size: 0.82rem;
+    letter-spacing: 0.02em;
+}
+
+.lms-import-parcours-item--pack .lms-import-parcours-item__type {
+    background: color-mix(in srgb, var(--primary) 15%, var(--bg-card));
+    color: var(--primary);
 }
 
 .lms-import-parcours-item__meta {
@@ -177,6 +201,7 @@ $importableParcours = \dbObject\Parcours::fetchImportableForOrganization($organi
             <?php else: ?>
                 <?php foreach ($importableParcours as $item): ?>
                     <?php
+                    $isPack = !empty($item['ispack']);
                     $searchText = trim(
                         (string)($item['title'] ?? '') . ' ' .
                         (string)($item['description'] ?? '') . ' ' .
@@ -187,12 +212,13 @@ $importableParcours = \dbObject\Parcours::fetchImportableForOrganization($organi
                         : strtolower($searchText);
                     ?>
                     <article
-                        class="lms-import-parcours-item"
+                        class="lms-import-parcours-item<?php echo $isPack ? ' lms-import-parcours-item--pack' : ''; ?>"
                         data-lms-import-parcours-item="1"
                         data-search-text="<?php echo htmlspecialchars($searchText, ENT_QUOTES, 'UTF-8'); ?>"
                     >
                         <div class="lms-import-parcours-item__copy">
                             <div>
+                                <span class="lms-import-parcours-item__type"><?php echo $isPack ? 'Pack' : 'Parcours'; ?></span>
                                 <strong><?php echo htmlspecialchars((string)($item['title'] ?? '')); ?></strong>
                                 <?php if (trim((string)($item['description'] ?? '')) !== ''): ?>
                                     <p><?php echo htmlspecialchars((string)$item['description']); ?></p>
@@ -209,7 +235,7 @@ $importableParcours = \dbObject\Parcours::fetchImportableForOrganization($organi
                                 <?php if (trim((string)($item['owner_name'] ?? '')) !== ''): ?>
                                     <span>Orga: <?php echo htmlspecialchars((string)$item['owner_name']); ?></span>
                                 <?php endif; ?>
-                                <span><?php echo (int)($item['total_missions'] ?? 0); ?> missions</span>
+                                <span><?php echo $isPack ? (int)($item['total_parcours'] ?? 0) . ' parcours' : (int)($item['total_missions'] ?? 0) . ' missions'; ?></span>
                             </div>
                         </div>
 

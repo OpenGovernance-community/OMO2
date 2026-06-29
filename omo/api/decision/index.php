@@ -346,7 +346,7 @@ $sourceLang = [
         'context' => 'Button label used to hide advanced filters below the status tabs.',
     ],
     'decisions.index.controls.sort.aria' => [
-        'text' => 'Tri des prises de decision',
+        'text' => 'Tri des prises de décision',
         'context' => 'Accessible label for the sort segmented control.',
     ],
     'decisions.index.controls.sort.time' => [
@@ -354,15 +354,15 @@ $sourceLang = [
         'context' => 'Label for time-based sorting in the decisions list.',
     ],
     'decisions.index.controls.sort.alpha' => [
-        'text' => 'Alphabetique',
+        'text' => 'Alphabétique',
         'context' => 'Label for alphabetical sorting in the decisions list.',
     ],
     'decisions.index.controls.density.aria' => [
-        'text' => 'Densite d affichage des prises de decision',
+        'text' => "Densité d'affichage des prises de décision",
         'context' => 'Accessible label for the display density segmented control.',
     ],
     'decisions.index.controls.density.detail' => [
-        'text' => 'Detail',
+        'text' => 'Détail',
         'context' => 'Label for the detailed decisions list density.',
     ],
     'decisions.index.controls.density.compact' => [
@@ -370,7 +370,7 @@ $sourceLang = [
         'context' => 'Label for the compact decisions list density.',
     ],
     'decisions.index.compact.header.name' => [
-        'text' => 'Decision',
+        'text' => 'Décision',
         'context' => 'Column header for the compact decisions list main column.',
     ],
     'decisions.index.compact.header.status' => [
@@ -382,11 +382,11 @@ $sourceLang = [
         'context' => 'Column header for the compact decisions list scope column.',
     ],
     'decisions.index.compact.header.activity' => [
-        'text' => 'Activite',
+        'text' => 'Activité',
         'context' => 'Column header for the compact decisions list activity column.',
     ],
     'decisions.index.group.today' => [
-        'text' => 'Aujourd hui',
+        'text' => "Aujourd'hui",
         'context' => 'Relative date group title for decisions updated today.',
     ],
     'decisions.index.group.yesterday' => [
@@ -398,7 +398,7 @@ $sourceLang = [
         'context' => 'Relative date group title for decisions updated this week.',
     ],
     'decisions.index.group.last_week' => [
-        'text' => 'La semaine passee',
+        'text' => 'La semaine passée',
         'context' => 'Relative date group title for decisions updated last week.',
     ],
     'decisions.index.group.this_month' => [
@@ -406,19 +406,19 @@ $sourceLang = [
         'context' => 'Relative date group title for decisions updated this month.',
     ],
     'decisions.index.group.last_month' => [
-        'text' => 'Le mois passe',
+        'text' => 'Le mois passé',
         'context' => 'Relative date group title for decisions updated last month.',
     ],
     'decisions.index.group.this_year' => [
-        'text' => 'Cette annee',
+        'text' => 'Cette année',
         'context' => 'Relative date group title for decisions updated this year.',
     ],
     'decisions.index.group.last_year' => [
-        'text' => 'L annee passee',
+        'text' => "L'année passée",
         'context' => 'Relative date group title for decisions updated last year.',
     ],
     'decisions.index.group.earlier' => [
-        'text' => 'Precedemment',
+        'text' => 'Précédemment',
         'context' => 'Relative date group title for older decisions.',
     ],
     'decisions.index.group.too_far' => [
@@ -462,7 +462,7 @@ $sourceLang = [
         'context' => 'Card metadata label for last activity.',
     ],
     'decisions.index.no_holon' => [
-        'text' => 'Sans structure liee',
+        'text' => 'Sans structure liée',
         'context' => 'Fallback label when a decision has no associated structure.',
     ],
     'decisions.index.loading' => [
@@ -546,19 +546,19 @@ $sourceLang = [
         'context' => 'Label of the secondary menu button shown on detailed decision cards.',
     ],
     'decisions.index.action.more_aria' => [
-        'text' => 'Plus d actions pour cette prise de decision',
+        'text' => "Plus d'actions pour cette prise de décision",
         'context' => 'Accessible label for the secondary action menu button shown on detailed cards.',
     ],
     'decisions.index.action.confirm_archive' => [
-        'text' => 'Archiver cette prise de decision ?',
+        'text' => 'Archiver cette prise de décision ?',
         'context' => 'Confirmation message before archiving a decision from the list.',
     ],
     'decisions.index.action.confirm_delete' => [
-        'text' => 'Supprimer definitivement cette prise de decision et ses elements lies ?',
+        'text' => 'Supprimer définitivement cette prise de décision et ses éléments liés ?',
         'context' => 'Confirmation message before deleting a decision from the list.',
     ],
     'decisions.index.action.error_update' => [
-        'text' => 'Impossible de mettre a jour cette prise de decision pour le moment.',
+        'text' => 'Impossible de mettre à jour cette prise de décision pour le moment.',
         'context' => 'Fallback error message shown when a decision archive or delete action fails.',
     ],
     'decisions.index.export.modal_title' => [
@@ -566,7 +566,7 @@ $sourceLang = [
         'context' => 'Modal title shown when choosing one export format from the decision list.',
     ],
     'decisions.index.export.modal_intro' => [
-        'text' => 'Choisissez le format d export adapte a ce mode de prise de decision.',
+        'text' => "Choisissez le format d'export adapté à ce mode de prise de décision.",
         'context' => 'Intro text shown inside the export picker modal.',
     ],
     'decisions.index.export.format.csv' => [
@@ -574,7 +574,7 @@ $sourceLang = [
         'context' => 'Label for the CSV export format.',
     ],
     'decisions.index.export.format.csv_description' => [
-        'text' => 'Tableau enrichi avec type, bloc, question, details et resultats.',
+        'text' => 'Tableau enrichi avec type, bloc, question, détails et résultats.',
         'context' => 'Description of the CSV export format.',
     ],
     'decisions.index.export.format.json' => [
@@ -582,7 +582,7 @@ $sourceLang = [
         'context' => 'Label for the JSON export format.',
     ],
     'decisions.index.export.format.json_description' => [
-        'text' => 'Blueprint du scrutin et resultats structures, sans dump complet.',
+        'text' => 'Blueprint du scrutin et résultats structurés, sans dump complet.',
         'context' => 'Description of the JSON export format.',
     ],
     'decisions.index.export.format.xml' => [
@@ -590,7 +590,7 @@ $sourceLang = [
         'context' => 'Label for the XML export format.',
     ],
     'decisions.index.export.format.xml_description' => [
-        'text' => 'Meme contenu structure que le JSON, dans un format XML.',
+        'text' => 'Même contenu structuré que le JSON, dans un format XML.',
         'context' => 'Description of the XML export format.',
     ],
     'decisions.index.export.format.pdf' => [
@@ -598,15 +598,15 @@ $sourceLang = [
         'context' => 'Label for the PDF export format.',
     ],
     'decisions.index.export.format.pdf_description' => [
-        'text' => 'Version de presentation preparee pour plus tard.',
+        'text' => 'Version de présentation préparée pour plus tard.',
         'context' => 'Description of the PDF export format.',
     ],
     'decisions.index.export.format.coming_soon' => [
-        'text' => 'Bientot disponible',
+        'text' => 'Bientôt disponible',
         'context' => 'Label shown for unavailable export formats.',
     ],
     'decisions.index.export.open' => [
-        'text' => 'Telecharger',
+        'text' => 'Télécharger',
         'context' => 'Button label used to trigger the selected export.',
     ],
     'decisions.index.action.open_editor_title' => [
@@ -4293,7 +4293,7 @@ root.addEventListener('click', function (event) {
     openDecisionFromInteraction(
         decisionId,
         targetUrl,
-        targetTitle !== '' ? targetTitle : (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de dÃ©cision'),
+        targetTitle !== '' ? targetTitle : (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de décision'),
         String(button.getAttribute('data-open-description') || '').trim(),
         targetMode
     );

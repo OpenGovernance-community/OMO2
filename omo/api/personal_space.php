@@ -17,15 +17,15 @@ $sourceLang = [
         'context' => 'Main title of the personal space panel shown on the right side of the OMO workspace.',
     ],
     'personal_space.intro' => [
-        'text' => 'Un resume rapide des sujets qui vous concernent dans cet espace.',
+        'text' => 'Un résumé rapide des sujets qui vous concernent dans cet espace.',
         'context' => 'Intro text displayed below the personal space title.',
     ],
     'personal_space.empty' => [
-        'text' => 'Aucun resume personnel disponible avec les applications actives pour le moment.',
+        'text' => 'Aucun résumé personnel disponible avec les applications actives pour le moment.',
         'context' => 'Fallback empty state when no supported applications are enabled in the sidebar.',
     ],
     'personal_space.login_required' => [
-        'text' => 'Connectez-vous pour afficher votre resume personnel.',
+        'text' => 'Connectez-vous pour afficher votre résumé personnel.',
         'context' => 'Message shown when the personal space is requested without a logged in user.',
     ],
     'personal_space.open_app' => [
@@ -33,15 +33,15 @@ $sourceLang = [
         'context' => 'Button label used to open the full application from the personal space card.',
     ],
     'personal_space.section.decisions' => [
-        'text' => 'Decisions',
+        'text' => 'Décisions',
         'context' => 'Title of the decision summary card in the personal space panel.',
     ],
     'personal_space.section.documents_recent' => [
-        'text' => 'Documents - dernieres modifications',
+        'text' => 'Documents - dernières modifications',
         'context' => 'Title of the recent document activity card in the personal space panel.',
     ],
     'personal_space.section.calendar' => [
-        'text' => 'Mes prochaines reunions',
+        'text' => 'Mes prochaines réunions',
         'context' => 'Title of the upcoming meetings summary card in the personal space panel.',
     ],
     'personal_space.section.team' => [
@@ -53,11 +53,11 @@ $sourceLang = [
         'context' => 'Title of the structure summary card in the personal space panel.',
     ],
     'personal_space.documents.empty' => [
-        'text' => 'Aucun document recent dans ce contexte.',
+        'text' => 'Aucun document récent dans ce contexte.',
         'context' => 'Empty state shown when no recent documents are available in the current context.',
     ],
     'personal_space.calendar.empty' => [
-        'text' => 'Aucune date a venir pour vos contextes.',
+        'text' => 'Aucune date à venir pour vos contextes.',
         'context' => 'Empty state shown when no upcoming organization or member-holon event is available for the current user.',
     ],
     'personal_space.calendar.context.organization' => [
@@ -65,20 +65,20 @@ $sourceLang = [
         'context' => 'Short fallback context label used for organization-wide events in the personal space panel.',
     ],
     'personal_space.team.empty' => [
-        'text' => 'Aucun anniversaire proche a afficher.',
+        'text' => 'Aucun anniversaire proche à afficher.',
         'context' => 'Empty state shown when no upcoming personal or professional anniversaries are found.',
     ],
     'personal_space.structure.empty' => [
-        'text' => 'Aucune modification recente a afficher.',
+        'text' => 'Aucune modification récente à afficher.',
         'context' => 'Empty state shown when no recent structure history items are available.',
     ],
     'personal_space.decisions.empty' => [
-        'text' => 'Aucune decision a suivre pour le moment.',
+        'text' => 'Aucune décision à suivre pour le moment.',
         'context' => 'Empty state shown when the user has no tracked decisions in the current organization.',
     ],
     'personal_space.decisions.finalize' => [
-        'one' => '{count} decision en preparation a finaliser',
-        'other' => '{count} decisions en preparation a finaliser',
+        'one' => '{count} décision en préparation à finaliser',
+        'other' => '{count} décisions en préparation à finaliser',
         'context' => 'Decision summary line for draft or scheduled decisions managed by the user.',
     ],
     'personal_space.decisions.consultation' => [
@@ -87,18 +87,18 @@ $sourceLang = [
         'context' => 'Decision summary line for consultation processes currently active.',
     ],
     'personal_space.decisions.action' => [
-        'one' => '{count} decision a prendre',
-        'other' => '{count} decisions a prendre',
+        'one' => '{count} décision à prendre',
+        'other' => '{count} décisions à prendre',
         'context' => 'Decision summary line for active decisions the user can answer.',
     ],
     'personal_space.decisions.responded' => [
-        'one' => 'dont {count} deja repondue',
-        'other' => 'dont {count} deja repondues',
+        'one' => 'dont {count} déjà répondue',
+        'other' => 'dont {count} déjà répondues',
         'context' => 'Extra detail appended to the action summary line for already submitted responses.',
     ],
     'personal_space.decisions.results' => [
-        'one' => '{count} decision terminee avec resultat a consulter',
-        'other' => '{count} decisions terminees avec resultats a consulter',
+        'one' => '{count} décision terminée avec résultat à consulter',
+        'other' => '{count} décisions terminées avec résultats à consulter',
         'context' => 'Decision summary line for finished decisions with available results.',
     ],
     'personal_space.team.tag.personal' => [
@@ -118,7 +118,7 @@ $sourceLang = [
         'context' => 'Headline shown for a new collaborator during the week after their arrival.',
     ],
     'personal_space.team.pro.new_detail_prefix' => [
-        'text' => 'Arrive le',
+        'text' => 'Arrivé le',
         'context' => 'Detail prefix shown with the arrival date for a new collaborator.',
     ],
     'personal_space.team.pro.soon_prefix' => [

@@ -12,7 +12,7 @@ $sourceLang = [
         'context' => 'Main title of the calendar application.',
     ],
     'calendar.page.description' => [
-        'text' => 'Visualisez les evenements de votre organisation et ajoutez-en de nouveaux.',
+        'text' => 'Visualisez les événements de votre organisation et ajoutez-en de nouveaux.',
         'context' => 'Introductory text shown in the calendar application.',
     ],
     'calendar.scope.contextual' => [
@@ -28,11 +28,11 @@ $sourceLang = [
         'context' => 'Label used to show all events from the organization.',
     ],
     'calendar.action.add' => [
-        'text' => 'Ajouter un evenement',
+        'text' => 'Ajouter un événement',
         'context' => 'Primary button used to open the event creation drawer.',
     ],
     'calendar.action.today' => [
-        'text' => 'Aujourd hui',
+        'text' => "Aujourd'hui",
         'context' => 'Button used to return to the current month in the calendar application.',
     ],
     'calendar.view.month' => [
@@ -52,51 +52,51 @@ $sourceLang = [
         'context' => 'Label used for the upcoming list view switch.',
     ],
     'calendar.axis.all_day' => [
-        'text' => 'Journee',
+        'text' => 'Journée',
         'context' => 'Label used for the all-day row in week and day views.',
     ],
     'calendar.drawer.title' => [
-        'text' => 'Evenement',
+        'text' => 'Événement',
         'context' => 'Title of the internal drawer used to inspect or edit an event from the calendar application.',
     ],
     'calendar.drawer.description' => [
-        'text' => 'Consultez les details puis modifiez si besoin.',
+        'text' => 'Consultez les détails puis modifiez si besoin.',
         'context' => 'Description shown in the internal event drawer.',
     ],
     'calendar.empty.month' => [
-        'text' => 'Aucun evenement sur cette periode.',
+        'text' => 'Aucun événement sur cette période.',
         'context' => 'Empty state shown when the current month contains no event.',
     ],
     'calendar.empty.week' => [
-        'text' => 'Aucun evenement sur cette semaine.',
+        'text' => 'Aucun événement sur cette semaine.',
         'context' => 'Empty state shown when the current week contains no event.',
     ],
     'calendar.empty.day' => [
-        'text' => 'Aucun evenement sur cette journee.',
+        'text' => 'Aucun événement sur cette journée.',
         'context' => 'Empty state shown when the current day contains no event.',
     ],
     'calendar.empty.list' => [
-        'text' => 'Aucun evenement a venir.',
+        'text' => 'Aucun événement à venir.',
         'context' => 'Empty state shown when no upcoming event is available.',
     ],
     'calendar.summary.month' => [
-        'text' => '{count} evenement(s) ce mois',
+        'text' => '{count} événement(s) ce mois',
         'context' => 'Summary badge for the monthly calendar view.',
     ],
     'calendar.summary.week' => [
-        'text' => '{count} evenement(s) cette semaine',
+        'text' => '{count} événement(s) cette semaine',
         'context' => 'Summary badge for the weekly calendar view.',
     ],
     'calendar.summary.day' => [
-        'text' => '{count} evenement(s) ce jour',
+        'text' => '{count} événement(s) ce jour',
         'context' => 'Summary badge for the daily calendar view.',
     ],
     'calendar.summary.list' => [
-        'text' => '{count} evenement(s) a venir',
+        'text' => '{count} événement(s) à venir',
         'context' => 'Summary badge for the upcoming list view.',
     ],
     'calendar.list.column.event' => [
-        'text' => 'Evenement',
+        'text' => 'Événement',
         'context' => 'Header label for the event title column in the upcoming list view.',
     ],
     'calendar.list.column.schedule' => [
@@ -129,7 +129,7 @@ $sourceLang = [
         'context' => 'Error shown inside the drawer when the event detail or form could not be loaded.',
     ],
     'calendar.section.today' => [
-        'text' => 'Aujourd hui',
+        'text' => "Aujourd'hui",
         'context' => 'Upcoming events section for events happening today.',
     ],
     'calendar.section.tomorrow' => [

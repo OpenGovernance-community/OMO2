@@ -102,6 +102,15 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 			box-shadow: 0 18px 34px rgba(15,23,42,0.12);
 		}
 
+		.card--visibility-hidden {
+			opacity: 0.55;
+		}
+
+		.card--visibility-hidden:hover {
+			transform: none;
+			box-shadow: var(--shadow);
+		}
+
 		.card-content {
 			padding: 15px;
 			display: flex;

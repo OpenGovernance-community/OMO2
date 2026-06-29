@@ -169,15 +169,15 @@ $sourceLang = [
         'context' => 'HTML title of the standalone decision module.',
     ],
     'choice.page.heading' => [
-        'text' => 'Mes prises de decision',
+        'text' => 'Mes prises de décision',
         'context' => 'Main heading of the standalone decision module.',
     ],
     'choice.page.intro' => [
-        'text' => 'Retrouvez ici tous les scrutins que vous avez crees ou pour lesquels vous etes invite.',
+        'text' => 'Retrouvez ici tous les scrutins que vous avez créés ou pour lesquels vous êtes invité.',
         'context' => 'Intro text on the standalone decision module page.',
     ],
     'choice.page.connected_as' => [
-        'text' => 'Connecte en tant que',
+        'text' => 'Connecté en tant que',
         'context' => 'Label showing the currently authenticated user.',
     ],
     'choice.empty.title' => [
@@ -185,15 +185,15 @@ $sourceLang = [
         'context' => 'Empty state title when the user has no linked decisions.',
     ],
     'choice.empty.text' => [
-        'text' => 'Les prises de decision que vous creez ou auxquelles vous etes invite apparaitront ici.',
+        'text' => 'Les prises de décision que vous créez ou auxquelles vous êtes invité apparaîtront ici.',
         'context' => 'Empty state helper text when the user has no linked decisions.',
     ],
     'choice.card.owner' => [
-        'text' => 'Cree par vous',
+        'text' => 'Créée par vous',
         'context' => 'Badge shown when the current user created the decision.',
     ],
     'choice.card.invited' => [
-        'text' => 'Invite',
+        'text' => 'Invité',
         'context' => 'Badge shown when the current user is invited to the decision.',
     ],
     'choice.card.organization' => [
@@ -205,7 +205,7 @@ $sourceLang = [
         'context' => 'Meta label for the linked holon or organization scope.',
     ],
     'choice.card.method' => [
-        'text' => 'Methode',
+        'text' => 'Méthode',
         'context' => 'Meta label for the decision method.',
     ],
     'choice.card.status' => [
@@ -217,7 +217,7 @@ $sourceLang = [
         'context' => 'Meta label for the decision organizer.',
     ],
     'choice.card.updated' => [
-        'text' => 'Mise a jour',
+        'text' => 'Mise à jour',
         'context' => 'Meta label for the last update date.',
     ],
     'choice.card.proposals' => [
@@ -229,15 +229,15 @@ $sourceLang = [
         'context' => 'Stat label for participant count on a decision card.',
     ],
     'choice.card.responses' => [
-        'text' => 'Reponses',
+        'text' => 'Réponses',
         'context' => 'Stat label for submitted response count on a decision card.',
     ],
     'choice.card.fallback_title' => [
-        'text' => 'Prise de decision',
+        'text' => 'Prise de décision',
         'context' => 'Fallback title when a decision has no explicit title.',
     ],
     'choice.action.preview' => [
-        'text' => 'Previsualiser',
+        'text' => 'Prévisualiser',
         'context' => 'Button opening the preview drawer for a decision.',
     ],
     'choice.action.participate' => [
@@ -245,15 +245,15 @@ $sourceLang = [
         'context' => 'Button opening the participation drawer for a decision.',
     ],
     'choice.action.results' => [
-        'text' => 'Voir les resultats',
+        'text' => 'Voir les résultats',
         'context' => 'Button opening the results drawer for a finished decision.',
     ],
     'choice.action.manage' => [
-        'text' => 'Gerer',
+        'text' => 'Gérer',
         'context' => 'Button opening the management drawer for a decision.',
     ],
     'choice.drawer.default_title' => [
-        'text' => 'Prises de decision',
+        'text' => 'Prises de décision',
         'context' => 'Default drawer title in the standalone decision module.',
     ],
     'choice.drawer.close' => [
@@ -269,11 +269,11 @@ $sourceLang = [
         'context' => 'Error text shown when remote content could not be loaded.',
     ],
     'choice.status.draft' => [
-        'text' => 'En preparation',
+        'text' => 'En préparation',
         'context' => 'Status label for a draft decision.',
     ],
     'choice.status.scheduled' => [
-        'text' => 'Planifiee',
+        'text' => 'Planifiée',
         'context' => 'Status label for a scheduled decision.',
     ],
     'choice.status.consultation' => [
@@ -285,11 +285,11 @@ $sourceLang = [
         'context' => 'Status label for an evaluation phase.',
     ],
     'choice.status.results' => [
-        'text' => 'Resultats',
+        'text' => 'Résultats',
         'context' => 'Status label for a results phase.',
     ],
     'choice.status.archived' => [
-        'text' => 'Archivee',
+        'text' => 'Archivée',
         'context' => 'Status label for an archived decision.',
     ],
     'choice.method.simple_vote' => [
