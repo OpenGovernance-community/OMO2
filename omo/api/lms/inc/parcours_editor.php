@@ -9,11 +9,139 @@ if (!function_exists('lmsRenderParcoursMissionManager')) {
             return '<div class="lms-parcours-missions__empty">Parcours introuvable.</div>';
         }
 
+        $prerequisiteManager = lmsRenderParcoursPrerequisiteManager($organizationId, $parcoursId);
+        $contentManager = '';
         if ($parcours->isPack()) {
-            return lmsRenderParcoursPackManager($organizationId, $parcoursId);
+            $contentManager = lmsRenderParcoursPackManager($organizationId, $parcoursId);
+        } else {
+            $contentManager = lmsRenderParcoursMissionManager($organizationId, $parcoursId);
         }
 
-        return lmsRenderParcoursMissionManager($organizationId, $parcoursId);
+        return '<div data-lms-parcours-content-manager="1">' . $prerequisiteManager . $contentManager . '</div>';
+    }
+
+    function lmsRenderParcoursPrerequisiteManager($organizationId, $parcoursId)
+    {
+        $organizationId = (int)$organizationId;
+        $parcoursId = (int)$parcoursId;
+        $prerequisites = \dbObject\Parcours::fetchDetailedPrerequisitesForParcours($parcoursId);
+        $availableParcours = \dbObject\Parcours::fetchAvailablePrerequisiteTargetsForOrganization($organizationId, $parcoursId);
+
+        ob_start();
+        ?>
+        <section
+            class="lms-parcours-missions"
+            data-lms-parcours-prerequisite-manager="1"
+            data-parcours-id="<?php echo (int)$parcoursId; ?>"
+            data-organization-id="<?php echo (int)$organizationId; ?>"
+        >
+            <div class="lms-parcours-missions__header">
+                <div>
+                    <h3>Prerequis</h3>
+                    <p>Ces parcours simples doivent etre termines a 100% avant de rendre celui-ci visible.</p>
+                </div>
+                <button type="button" class="lms-parcours-missions__add-button" data-lms-open-prerequisite-picker="1">Ajouter un prerequis</button>
+            </div>
+
+            <?php if (count($prerequisites) === 0): ?>
+                <div class="lms-parcours-missions__empty">Aucun prerequis n est encore defini pour ce parcours.</div>
+            <?php else: ?>
+                <div class="lms-parcours-missions__list" data-lms-prerequisite-list="1">
+                    <?php foreach ($prerequisites as $prerequisite): ?>
+                        <article
+                            class="lms-parcours-mission-item"
+                            data-required-parcours-id="<?php echo (int)($prerequisite['IDparcours_required'] ?? 0); ?>"
+                        >
+                            <div class="lms-parcours-mission-item__menu-wrap">
+                                <button
+                                    type="button"
+                                    class="lms-parcours-mission-item__menu-trigger"
+                                    data-lms-toggle-prerequisite-menu="1"
+                                    data-required-parcours-id="<?php echo (int)($prerequisite['IDparcours_required'] ?? 0); ?>"
+                                    aria-label="Actions"
+                                >...</button>
+                                <div class="lms-parcours-mission-item__menu" id="lms-prerequisite-item-menu-<?php echo (int)($prerequisite['IDparcours_required'] ?? 0); ?>">
+                                    <button
+                                        type="button"
+                                        class="lms-parcours-mission-item__menu-item"
+                                        data-lms-edit-prerequisite-parcours="1"
+                                        data-required-parcours-id="<?php echo (int)($prerequisite['IDparcours_required'] ?? 0); ?>"
+                                    >Editer le parcours</button>
+                                    <button
+                                        type="button"
+                                        class="lms-parcours-mission-item__menu-item"
+                                        data-lms-remove-prerequisite="1"
+                                        data-required-parcours-id="<?php echo (int)($prerequisite['IDparcours_required'] ?? 0); ?>"
+                                    >Retirer le prerequis</button>
+                                </div>
+                            </div>
+                            <div class="lms-parcours-mission-item__handle" aria-hidden="true">!</div>
+                            <div class="lms-parcours-mission-item__body">
+                                <strong><?php echo htmlspecialchars((string)($prerequisite['title'] ?? '')); ?></strong>
+                                <?php if (trim((string)($prerequisite['description'] ?? '')) !== ''): ?>
+                                    <p><?php echo htmlspecialchars((string)$prerequisite['description']); ?></p>
+                                <?php endif; ?>
+                                <div class="lms-parcours-mission-item__meta">
+                                    <span>100% requis</span>
+                                </div>
+                            </div>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
+            <div class="lms-parcours-mission-picker" data-lms-prerequisite-picker="1" hidden>
+                <div class="lms-parcours-mission-picker__backdrop" data-lms-close-prerequisite-picker="1"></div>
+                <div class="lms-parcours-mission-picker__panel">
+                    <div class="lms-parcours-mission-picker__header">
+                        <div>
+                            <h4>Ajouter un prerequis</h4>
+                            <p>Choisissez un autre parcours simple appartenant a votre organisation.</p>
+                        </div>
+                        <div class="lms-parcours-mission-picker__header-actions">
+                            <button type="button" class="lms-parcours-mission-picker__close" data-lms-close-prerequisite-picker="1">Fermer</button>
+                        </div>
+                    </div>
+
+                    <label class="lms-parcours-mission-picker__search">
+                        <span>Rechercher</span>
+                        <input type="search" data-lms-prerequisite-picker-search="1" placeholder="Titre ou description">
+                    </label>
+
+                    <div class="lms-parcours-mission-picker__list" data-lms-prerequisite-picker-list="1">
+                        <?php if (count($availableParcours) === 0): ?>
+                            <div class="lms-parcours-mission-picker__empty">Tous les parcours eligibles sont deja utilises comme prerequis.</div>
+                        <?php else: ?>
+                            <?php foreach ($availableParcours as $availableParcoursItem): ?>
+                                <?php
+                                $searchText = function_exists('mb_strtolower')
+                                    ? mb_strtolower(trim((string)($availableParcoursItem['title'] ?? '') . ' ' . (string)($availableParcoursItem['description'] ?? '')), 'UTF-8')
+                                    : strtolower(trim((string)($availableParcoursItem['title'] ?? '') . ' ' . (string)($availableParcoursItem['description'] ?? '')));
+                                ?>
+                                <article
+                                    class="lms-parcours-mission-picker__item"
+                                    data-lms-prerequisite-picker-item="1"
+                                    data-required-parcours-id="<?php echo (int)($availableParcoursItem['id'] ?? 0); ?>"
+                                    data-search-text="<?php echo htmlspecialchars($searchText, ENT_QUOTES, 'UTF-8'); ?>"
+                                >
+                                    <div class="lms-parcours-mission-picker__copy">
+                                        <strong><?php echo htmlspecialchars((string)($availableParcoursItem['title'] ?? '')); ?></strong>
+                                        <?php if (trim((string)($availableParcoursItem['description'] ?? '')) !== ''): ?>
+                                            <p><?php echo htmlspecialchars((string)$availableParcoursItem['description']); ?></p>
+                                        <?php endif; ?>
+                                    </div>
+                                    <button type="button" data-lms-add-prerequisite-id="<?php echo (int)($availableParcoursItem['id'] ?? 0); ?>">Ajouter</button>
+                                </article>
+                            <?php endforeach; ?>
+                            <div class="lms-parcours-mission-picker__empty" data-lms-prerequisite-picker-empty-search="1" hidden>Aucun parcours ne correspond a cette recherche.</div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <?php
+
+        return ob_get_clean();
     }
 
     function lmsRenderParcoursMissionCreateForm($parcoursId)

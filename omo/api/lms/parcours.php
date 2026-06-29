@@ -19,7 +19,9 @@ if (empty($accessContext['exists'])) {
 
 if (empty($accessContext['canView'])) {
 	http_response_code(403);
-	echo 'Acces refuse';
+	echo !empty($accessContext['blockedByPrerequisites'])
+		? 'Prerequis non remplis'
+		: 'Acces refuse';
 	exit;
 }
 

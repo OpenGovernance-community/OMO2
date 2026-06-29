@@ -8,6 +8,8 @@ Les droits de holon ne sont plus reserves aux seuls holons templates. L editeur 
 
 Depuis le panneau `getOrg`, l action `Modifier` sur un template visible reouvre maintenant bien le template courant dans l editeur compact, au lieu de tomber sur un nouveau modele vide.
 
+Les parcours LMS peuvent maintenant definir des prerequis vers d autres parcours simples de la meme organisation. Tant que ces prerequis ne sont pas termines a 100%, le parcours cible reste masque dans le catalogue et bloque en acces direct.
+
 ## 2026-06-26
 
 Dans le LMS integre de OMO, deux nouveaux droits de holon `CAN_CREATE_PARCOURS` et `CAN_EDIT_PARCOURS` pilotent maintenant la creation, l import, la suppression-detachement et l edition des parcours selon le contexte courant. Sans `edit`, les parcours importes de type pack sont masques et seuls les packs proprietaires restent visibles.
@@ -311,6 +313,8 @@ La recherche de topbar couvre mieux plusieurs applications et repose sur une bas
 ## LMS Et Parcours
 
 Dans le LMS integre a OMO, les cartes de parcours proposent maintenant une action de suppression ou de detachement selon le contexte. Une previsualisation annonce d'abord si l'action va seulement detacher le parcours ou le supprimer definitivement. Un parcours importe depuis une autre organisation ne peut jamais etre supprime par l'organisation courante: il est seulement detache. La suppression retire d'abord le rattachement a l'organisation courante, puis efface vraiment le parcours et ses missions, questions et devoirs devenus orphelins; si le parcours est encore utilise ailleurs, il est seulement detache sans casser les autres organisations qui l'ont importe.
+
+Les prerequis LMS bloquent desormais l'ouverture du contenu sans vider la liste des parcours. Cela evite qu'un prerequis mal renseigne ou encore incomplet masque toute la vue, tout en gardant le controle d'acces au moment d'ouvrir le parcours.
 
 ## Calendrier, CardDAV Et CalDAV
 
