@@ -65,7 +65,7 @@
 		public static function attributeLength() {
 			return [
 				'title' => 150,
-				'image' => 100,
+				'image' => [[750,300],[250,100]]
 			];
 		}
 

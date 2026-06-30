@@ -785,6 +785,8 @@ const lmsParcoursPackRemovePath = <?php echo json_encode(lmsBuildLocalPath('/par
 const lmsParcoursPackReorderPath = <?php echo json_encode(lmsBuildLocalPath('/parcours_pack_reorder.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsParcoursPrerequisiteAddPath = <?php echo json_encode(lmsBuildLocalPath('/parcours_prerequisite_add.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsParcoursPrerequisiteRemovePath = <?php echo json_encode(lmsBuildLocalPath('/parcours_prerequisite_remove.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsMissionDependencyAddPath = <?php echo json_encode(lmsBuildLocalPath('/mission_dependency_add.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsMissionDependencyRemovePath = <?php echo json_encode(lmsBuildLocalPath('/mission_dependency_remove.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsMissionHomeworkReorderPath = <?php echo json_encode(lmsBuildLocalPath('/mission_homework_reorder.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsMissionQuestionReorderPath = <?php echo json_encode(lmsBuildLocalPath('/mission_question_reorder.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 
@@ -977,6 +979,15 @@ function initLmsDrawerContent() {
     initParcoursPrerequisiteManager();
     initParcoursMissionManager();
     initParcoursPackManager();
+}
+
+async function refreshMissionEditor(parcoursId, missionId) {
+    if (parcoursId <= 0 || missionId <= 0) {
+        return;
+    }
+
+    await openDrawerFromUrl(buildMissionEditUrl(parcoursId, missionId), { simpleMode: true });
+    initLmsDrawerContent();
 }
 
 function lmsInitAdminEditHtmlFields(scopeElement) {
@@ -1259,6 +1270,7 @@ function initMissionEditorDrawer() {
         });
     });
 
+    initMissionDependencyManager();
     initMissionRelatedManagers();
 }
 
@@ -1615,6 +1627,194 @@ function togglePrerequisiteItemMenu(event, requiredParcoursId) {
     if (item) {
         item.classList.toggle('is-menu-open', willOpen);
     }
+}
+
+function toggleMissionDependencyItemMenu(event, requiredMissionId) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const menu = document.getElementById(`lms-mission-dependency-item-menu-${requiredMissionId}`);
+    if (!menu) {
+        return;
+    }
+
+    const willOpen = !menu.classList.contains('is-open');
+    closeAllMissionItemMenus();
+    menu.classList.toggle('is-open', willOpen);
+    const item = menu.closest('.lms-parcours-mission-item');
+    if (item) {
+        item.classList.toggle('is-menu-open', willOpen);
+    }
+}
+
+function initMissionDependencyManager() {
+    const drawerContent = document.getElementById('drawer-content');
+    const manager = drawerContent ? drawerContent.querySelector('[data-lms-mission-dependency-manager]') : null;
+
+    if (!manager || manager.dataset.lmsMissionDependencyManagerBound === '1') {
+        return;
+    }
+
+    manager.dataset.lmsMissionDependencyManagerBound = '1';
+    const parcoursId = Number(manager.getAttribute('data-parcours-id') || 0);
+    const missionId = Number(manager.getAttribute('data-mission-id') || 0);
+    const picker = manager.querySelector('[data-lms-mission-dependency-picker]');
+    const searchInput = manager.querySelector('[data-lms-mission-dependency-picker-search]');
+    const searchEmptyState = manager.querySelector('[data-lms-mission-dependency-picker-empty-search]');
+
+    function normalizeMissionDependencyPickerSearch(value) {
+        let normalized = String(value || '').trim().toLowerCase();
+        if (typeof normalized.normalize === 'function') {
+            normalized = normalized.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        }
+        return normalized;
+    }
+
+    function closePicker() {
+        if (picker) {
+            picker.hidden = true;
+        }
+    }
+
+    function openPicker() {
+        if (picker) {
+            picker.hidden = false;
+        }
+    }
+
+    manager.querySelectorAll('[data-lms-open-mission-dependency-picker]').forEach((button) => {
+        button.addEventListener('click', openPicker);
+    });
+
+    manager.querySelectorAll('[data-lms-close-mission-dependency-picker]').forEach((button) => {
+        button.addEventListener('click', closePicker);
+    });
+
+    manager.querySelectorAll('[data-lms-toggle-mission-dependency-menu]').forEach((button) => {
+        button.addEventListener('click', function (event) {
+            const requiredMissionId = Number(button.getAttribute('data-required-mission-id') || 0);
+            if (requiredMissionId <= 0) {
+                return;
+            }
+            toggleMissionDependencyItemMenu(event, requiredMissionId);
+        });
+    });
+
+    manager.querySelectorAll('[data-lms-edit-required-mission]').forEach((button) => {
+        button.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const requiredMissionId = Number(button.getAttribute('data-required-mission-id') || 0);
+            if (parcoursId <= 0 || requiredMissionId <= 0) {
+                return;
+            }
+
+            closeAllMissionItemMenus();
+            openMissionEditorDrawer(null, parcoursId, requiredMissionId);
+        });
+    });
+
+    manager.querySelectorAll('[data-lms-remove-mission-dependency]').forEach((button) => {
+        button.addEventListener('click', async function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const requiredMissionId = Number(button.getAttribute('data-required-mission-id') || 0);
+            if (parcoursId <= 0 || missionId <= 0 || requiredMissionId <= 0) {
+                return;
+            }
+
+            if (!window.confirm('Retirer ce prerequis de mission ?')) {
+                return;
+            }
+
+            closeAllMissionItemMenus();
+            button.disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('pid', String(parcoursId));
+                formData.append('mission_id', String(missionId));
+                formData.append('required_mission_id', String(requiredMissionId));
+
+                const response = await fetch(lmsMissionDependencyRemovePath, {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin'
+                });
+
+                const payload = await response.json();
+                if (!response.ok || !payload || payload.success !== true) {
+                    throw new Error(payload && payload.message ? payload.message : 'Impossible de retirer ce prerequis.');
+                }
+
+                await refreshMissionEditor(parcoursId, missionId);
+            } catch (error) {
+                window.alert(error && error.message ? error.message : 'Impossible de retirer ce prerequis.');
+            } finally {
+                button.disabled = false;
+            }
+        });
+    });
+
+    if (searchInput) {
+        const applySearch = function () {
+            const normalizedQuery = normalizeMissionDependencyPickerSearch(searchInput.value || '');
+            let visibleCount = 0;
+
+            manager.querySelectorAll('[data-lms-mission-dependency-picker-item]').forEach((item) => {
+                const haystack = normalizeMissionDependencyPickerSearch(item.getAttribute('data-search-text') || '');
+                const isVisible = normalizedQuery === '' || haystack.indexOf(normalizedQuery) !== -1;
+                item.hidden = !isVisible;
+                if (isVisible) {
+                    visibleCount += 1;
+                }
+            });
+
+            if (searchEmptyState) {
+                searchEmptyState.hidden = !(normalizedQuery !== '' && visibleCount === 0);
+            }
+        };
+
+        searchInput.addEventListener('input', applySearch);
+        searchInput.addEventListener('search', applySearch);
+        applySearch();
+    }
+
+    manager.querySelectorAll('[data-lms-add-mission-dependency-id]').forEach((button) => {
+        button.addEventListener('click', async function () {
+            const requiredMissionId = Number(button.getAttribute('data-lms-add-mission-dependency-id') || 0);
+            if (parcoursId <= 0 || missionId <= 0 || requiredMissionId <= 0) {
+                return;
+            }
+
+            button.disabled = true;
+            try {
+                const formData = new FormData();
+                formData.append('pid', String(parcoursId));
+                formData.append('mission_id', String(missionId));
+                formData.append('required_mission_id', String(requiredMissionId));
+
+                const response = await fetch(lmsMissionDependencyAddPath, {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin'
+                });
+
+                const payload = await response.json();
+                if (!response.ok || !payload || payload.success !== true) {
+                    throw new Error(payload && payload.message ? payload.message : 'Impossible d ajouter ce prerequis.');
+                }
+
+                await refreshMissionEditor(parcoursId, missionId);
+            } catch (error) {
+                window.alert(error && error.message ? error.message : 'Impossible d ajouter ce prerequis.');
+            } finally {
+                button.disabled = false;
+            }
+        });
+    });
 }
 
 function initParcoursPrerequisiteManager() {
