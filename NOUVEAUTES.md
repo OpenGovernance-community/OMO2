@@ -4,9 +4,11 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-06-29
 
+Le bootstrap PWA de OMO ne force plus une mise a jour du service worker a chaque rechargement, et ignore maintenant une seconde initialisation du meme script sur la page. Cela evite les boucles de rechargement observees en debug navigateur quand l option DevTools `Update on reload` est active.
+
 Dans l interface de decision par consentement, les boutons de position sont maintenant presentes dans l ordre `Objection`, `Pas d objection`, `Pour`, avec une palette rouge, jaune-orange et verte, ainsi que les pictos `Faux`, `Amour` et `Vrai` pour rendre le choix plus lisible au premier coup d oeil.
 
-Les vues de participation n affichent plus des traductions stockees devenues incoherentes avec le texte source actuel. Quand un bundle est obsolete, l interface retombe d abord sur le texte source en attendant son rafraichissement, ce qui evite de garder des libelles anglais ou perimes sur des pages deja repassees en francais.
+La zone de parametrage du module de consentement reprend maintenant la meme presentation compacte que les modules `vote` et `jugement majoritaire`, avec un resume inline des reglages et un bouton d ouverture harmonise.
 
 Les blocs `sourceLang` definis en tete des pages OMO, Choice, Calendrier, Documents, Decisions et popup profil ont ete relus pour remettre les accents, corriger plusieurs formulations francaises et supprimer quelques textes encore mal encodes.
 

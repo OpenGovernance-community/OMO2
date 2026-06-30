@@ -395,39 +395,8 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                     </label>
                 </div>
 
-                <div class="generic-soft-panel generic-soft-panel--stack">
+                <div class="generic-soft-panel generic-soft-panel--stack omo-decision-consent__settings-summary">
                     <?= omoDecisionRenderVoteWeightEditorAssets() ?>
-                    <div class="omo-decision-consent__settings-head">
-                        <span class="generic-card-title"><?= $escape(t('decisions.consent.field.settings', [], $lang, $sourceLang)) ?></span>
-                        <button
-                            type="button"
-                            class="generic-action-button generic-action-button--secondary"
-                            data-omo-decision-consent-settings-open
-                            data-omo-decision-consent-settings-title="<?= $escape(t('decisions.consent.field.settings', [], $lang, $sourceLang)) ?>"
-                        >
-                            <?= $escape(t('decisions.consent.action.configure', [], $lang, $sourceLang)) ?>
-                        </button>
-                    </div>
-
-                    <div class="omo-decision-consent__summary-grid">
-                        <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.consent.field.scale', [], $lang, $sourceLang), t('decisions.consent.field.scale_summary', [], $lang, $sourceLang), $escape, 'omo-decision-consent__meta-card') ?>
-                        <div class="omo-decision-consent__meta-card generic-soft-panel generic-soft-panel--stack" data-omo-decision-consent-anonymous-summary>
-                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.consent.field.anonymous', [], $lang, $sourceLang)) ?></span>
-                            <span><?= $escape($isAnonymous ? t('decisions.consent.option.common.yes', [], $lang, $sourceLang) : t('decisions.consent.option.common.no', [], $lang, $sourceLang)) ?></span>
-                        </div>
-                        <div class="omo-decision-consent__meta-card generic-soft-panel generic-soft-panel--stack" data-omo-decision-consent-consultation-summary>
-                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.consent.field.allow_consultation_proposals', [], $lang, $sourceLang)) ?></span>
-                            <span><?= $escape($allowConsultationProposals ? t('decisions.consent.option.common.yes', [], $lang, $sourceLang) : t('decisions.consent.option.common.no', [], $lang, $sourceLang)) ?></span>
-                        </div>
-                        <div class="omo-decision-consent__meta-card generic-soft-panel generic-soft-panel--stack" data-omo-decision-consent-vote-weight-summary>
-                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.block_settings.vote_weighting', [], $lang, $sourceLang)) ?></span>
-                            <span
-                                data-yes-label="<?= $escape(t('decisions.edit.block_settings.vote_weighting_summary_yes', [], $lang, $sourceLang)) ?>"
-                                data-no-label="<?= $escape(t('decisions.edit.block_settings.vote_weighting_summary_no', [], $lang, $sourceLang)) ?>"
-                            ><?= $escape($voteWeightSummaryText) ?></span>
-                        </div>
-                    </div>
-
                     <input type="hidden" name="is_anonymous" value="<?= $isAnonymous ? '1' : '' ?>" data-omo-decision-consent-hidden-anonymous>
                     <input type="hidden" name="allow_consultation_proposals" value="<?= $allowConsultationProposals ? '1' : '' ?>" data-omo-decision-consent-hidden-consultation-proposals>
                     <input type="hidden" name="vote_weight_enabled" value="<?= $voteWeightEnabled ? '1' : '' ?>" data-omo-decision-consent-hidden-vote-weight-enabled>
@@ -439,6 +408,49 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         data-omo-decision-consent-hidden-vote-weight-options
                         data-default-options-json="<?= $escape($defaultVoteWeightOptionsJson) ?>"
                     >
+                    <div class="omo-decision-consent__settings-head">
+                        <div class="omo-decision-consent__field">
+                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.consent.field.settings', [], $lang, $sourceLang)) ?></span>
+                            <div class="omo-decision-consent__readonly-stats omo-decision-consent__readonly-stats--settings">
+                                <span class="omo-decision-consent__readonly-stat">
+                                    <strong><?= $escape(t('decisions.consent.field.scale', [], $lang, $sourceLang)) ?></strong>
+                                    <span data-omo-decision-consent-scale-summary><?= $escape(t('decisions.consent.field.scale_summary', [], $lang, $sourceLang)) ?></span>
+                                </span>
+                                <span class="omo-decision-consent__readonly-stat">
+                                    <strong><?= $escape(t('decisions.consent.field.anonymous', [], $lang, $sourceLang)) ?></strong>
+                                    <span
+                                        data-omo-decision-consent-anonymous-summary
+                                        data-yes-label="<?= $escape(t('decisions.consent.option.common.yes', [], $lang, $sourceLang)) ?>"
+                                        data-no-label="<?= $escape(t('decisions.consent.option.common.no', [], $lang, $sourceLang)) ?>"
+                                    ><?= $escape($isAnonymous ? t('decisions.consent.option.common.yes', [], $lang, $sourceLang) : t('decisions.consent.option.common.no', [], $lang, $sourceLang)) ?></span>
+                                </span>
+                                <span class="omo-decision-consent__readonly-stat">
+                                    <strong><?= $escape(t('decisions.consent.field.allow_consultation_proposals', [], $lang, $sourceLang)) ?></strong>
+                                    <span
+                                        data-omo-decision-consent-consultation-summary
+                                        data-yes-label="<?= $escape(t('decisions.consent.option.common.yes', [], $lang, $sourceLang)) ?>"
+                                        data-no-label="<?= $escape(t('decisions.consent.option.common.no', [], $lang, $sourceLang)) ?>"
+                                    ><?= $escape($allowConsultationProposals ? t('decisions.consent.option.common.yes', [], $lang, $sourceLang) : t('decisions.consent.option.common.no', [], $lang, $sourceLang)) ?></span>
+                                </span>
+                                <span class="omo-decision-consent__readonly-stat">
+                                    <strong><?= $escape(t('decisions.edit.block_settings.vote_weighting', [], $lang, $sourceLang)) ?></strong>
+                                    <span
+                                        data-omo-decision-consent-vote-weight-summary
+                                        data-yes-label="<?= $escape(t('decisions.edit.block_settings.vote_weighting_summary_yes', [], $lang, $sourceLang)) ?>"
+                                        data-no-label="<?= $escape(t('decisions.edit.block_settings.vote_weighting_summary_no', [], $lang, $sourceLang)) ?>"
+                                    ><?= $escape($voteWeightSummaryText) ?></span>
+                                </span>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            class="generic-action-button generic-action-button--secondary"
+                            data-omo-decision-consent-settings-open
+                            data-omo-decision-consent-settings-title="<?= $escape(t('decisions.consent.field.settings', [], $lang, $sourceLang)) ?>"
+                        >
+                            <?= $escape(t('decisions.consent.field.settings', [], $lang, $sourceLang)) ?>
+                        </button>
+                    </div>
 
                     <template data-omo-decision-consent-settings-template>
                         <div class="omo-decision-consent__modal">
@@ -728,9 +740,9 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                     const hiddenVoteWeightEnabledInput = form.querySelector('[data-omo-decision-consent-hidden-vote-weight-enabled]');
                     const hiddenVoteWeightQuestionInput = form.querySelector('[data-omo-decision-consent-hidden-vote-weight-question]');
                     const hiddenVoteWeightOptionsInput = form.querySelector('[data-omo-decision-consent-hidden-vote-weight-options]');
-                    const anonymousSummary = form.querySelector('[data-omo-decision-consent-anonymous-summary] span:last-child');
-                    const consultationSummary = form.querySelector('[data-omo-decision-consent-consultation-summary] span:last-child');
-                    const voteWeightSummary = form.querySelector('[data-omo-decision-consent-vote-weight-summary] span:last-child');
+                    const anonymousSummary = form.querySelector('[data-omo-decision-consent-anonymous-summary]');
+                    const consultationSummary = form.querySelector('[data-omo-decision-consent-consultation-summary]');
+                    const voteWeightSummary = form.querySelector('[data-omo-decision-consent-vote-weight-summary]');
                     if (!payloadNode || !proposalList) {
                         return;
                     }
@@ -1453,6 +1465,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
         </script>
 
         <style>
+        .omo-decision-consent__form {display:grid; gap:10px;}
         .omo-decision-consent {
             display: grid;
             gap: 16px;
@@ -1460,11 +1473,13 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
 
         .omo-decision-consent__head,
         .omo-decision-consent__field,
+        .omo-decision-consent__settings-summary,
         .omo-decision-consent__settings-head,
         .omo-decision-consent__proposal-main,
         .omo-decision-consent__footer,
         .omo-decision-consent__result-head,
-        .omo-decision-consent__choice-head {
+        .omo-decision-consent__choice-head,
+        .omo-decision-consent__readonly-stats {
             display: grid;
             gap: 8px;
         }
@@ -1484,6 +1499,30 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
 
         .omo-decision-consent__textarea {
             min-height: 110px;
+        }
+
+        .omo-decision-consent__settings-head {
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: start;
+            gap: 12px;
+        }
+
+        .omo-decision-consent__readonly-stats--settings {
+            gap: 10px;
+        }
+
+        .omo-decision-consent__readonly-stat {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: baseline;
+            color: var(--color-text-light, #475569);
+            font-size: 0.95rem;
+        }
+
+        .omo-decision-consent__readonly-stat strong {
+            color: var(--color-text, #1f2937);
+            font-size: 0.92rem;
         }
 
         .omo-decision-consent__proposal-list,
