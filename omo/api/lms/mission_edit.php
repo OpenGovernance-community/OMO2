@@ -98,6 +98,114 @@ $params = array(
     gap: 16px;
 }
 
+.lms-parcours-mission-item {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+    padding: 14px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: var(--bg-main);
+    position: relative;
+}
+
+.lms-parcours-mission-item.is-menu-open {
+    z-index: 20;
+}
+
+.lms-parcours-mission-item__handle {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--primary) 10%, var(--bg-card));
+    color: var(--primary);
+    user-select: none;
+}
+
+.lms-parcours-mission-item__menu-wrap {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 25;
+}
+
+.lms-parcours-mission-item__menu-trigger {
+    width: 34px;
+    height: 34px;
+    border: 0;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.94);
+    color: var(--text-main);
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(15,23,42,0.1);
+}
+
+.lms-parcours-mission-item__menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 180px;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: var(--bg-card);
+    box-shadow: 0 16px 40px rgba(15,23,42,0.16);
+    display: none;
+    z-index: 30;
+}
+
+.lms-parcours-mission-item__menu.is-open {
+    display: block;
+}
+
+.lms-parcours-mission-item__menu-item {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: var(--text-main);
+    text-align: left;
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.lms-parcours-mission-item__menu-item:hover {
+    background: color-mix(in srgb, var(--primary) 10%, var(--bg-card));
+}
+
+.lms-parcours-mission-item__body strong {
+    display: block;
+    margin-bottom: 6px;
+    padding-right: 42px;
+}
+
+.lms-parcours-mission-item__body p {
+    margin: 0 0 8px;
+    color: var(--text-light);
+    line-height: 1.5;
+}
+
+.lms-parcours-mission-item__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    color: var(--text-light);
+    font-size: 0.92rem;
+}
+
+.lms-parcours-mission-item__meta span {
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--primary) 8%, var(--bg-card));
+}
+
 .lms-mission-related__header {
     display: flex;
     align-items: flex-start;
@@ -257,6 +365,106 @@ $params = array(
     margin-top: 10px;
 }
 
+.lms-parcours-mission-picker[hidden] {
+    display: none !important;
+}
+
+.lms-parcours-mission-picker {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+}
+
+.lms-parcours-mission-picker__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.36);
+}
+
+.lms-parcours-mission-picker__panel {
+    position: relative;
+    z-index: 1;
+    width: min(760px, calc(100vw - 32px));
+    max-height: min(78vh, 760px);
+    margin: 7vh auto 0;
+    padding: 18px;
+    border-radius: 20px;
+    background: var(--bg-card);
+    box-shadow: 0 28px 80px rgba(15,23,42,0.28);
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 14px;
+    overflow: hidden;
+}
+
+.lms-parcours-mission-picker__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.lms-parcours-mission-picker__header h4 {
+    margin: 0 0 6px;
+}
+
+.lms-parcours-mission-picker__header p {
+    margin: 0;
+    color: var(--text-light);
+    line-height: 1.5;
+}
+
+.lms-parcours-mission-picker__header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.lms-parcours-mission-picker__search {
+    display: grid;
+    gap: 6px;
+}
+
+.lms-parcours-mission-picker__list {
+    display: grid;
+    gap: 12px;
+    overflow: auto;
+    padding-right: 4px;
+}
+
+.lms-parcours-mission-picker__item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: start;
+    padding: 14px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: var(--bg-main);
+}
+
+.lms-parcours-mission-picker__copy {
+    display: grid;
+    gap: 8px;
+}
+
+.lms-parcours-mission-picker__copy strong {
+    display: block;
+}
+
+.lms-parcours-mission-picker__copy p,
+.lms-parcours-mission-picker__empty {
+    margin: 0;
+    color: var(--text-light);
+    line-height: 1.5;
+}
+
+.lms-parcours-mission-picker__empty {
+    padding: 16px 18px;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--primary) 7%, var(--bg-main));
+}
+
 @media (max-width: 720px) {
     .lms-mission-editor-actions,
     .lms-mission-related__header,
@@ -270,7 +478,8 @@ $params = array(
     }
 
     .lms-mission-creator-form__grid,
-    .lms-question-choice-row {
+    .lms-question-choice-row,
+    .lms-parcours-mission-picker__item {
         grid-template-columns: 1fr;
     }
 }
@@ -291,6 +500,7 @@ $params = array(
         </div>
     </section>
 
+    <?php echo lmsRenderMissionDependencyManager($parcoursId, $missionId); ?>
     <?php echo lmsRenderMissionHomeworkManager($parcoursId, $missionId); ?>
     <?php echo lmsRenderMissionQuestionManager($parcoursId, $missionId); ?>
 </div>
