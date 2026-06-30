@@ -555,6 +555,43 @@
 
 			return is_array($rows) ? $rows : [];
 		}
+
+		public static function fetchAvailableDependencyTargetsForMission($parcoursId, $missionId)
+		{
+			$parcoursId = (int)$parcoursId;
+			$missionId = (int)$missionId;
+			if ($parcoursId <= 0 || $missionId <= 0) {
+				return [];
+			}
+
+			$rows = self::fetchAll(
+				"SELECT
+					m.id,
+					m.title,
+					m.resume
+				FROM parcours_mission pm
+				INNER JOIN mission m
+					ON m.id = pm.IDmission
+				WHERE pm.IDparcours = :parcours_id
+				  AND m.id <> :mission_id
+				  AND NOT EXISTS (
+					SELECT 1
+					FROM mission_dependencies md
+					WHERE md.IDparcours = :linked_parcours_id
+					  AND md.IDmission_child = :linked_mission_id
+					  AND md.IDmission_parent = m.id
+				  )
+				ORDER BY COALESCE(pm.position, m.position, pm.id) ASC, pm.id ASC",
+				[
+					'parcours_id' => $parcoursId,
+					'mission_id' => $missionId,
+					'linked_parcours_id' => $parcoursId,
+					'linked_mission_id' => $missionId,
+				]
+			);
+
+			return is_array($rows) ? $rows : [];
+		}
 	}
 
 ?>

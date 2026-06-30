@@ -148,6 +148,20 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
         $isAnonymous = !empty($config['is_anonymous']);
         $allowConsultationProposals = !empty($config['allow_consultation_proposals']);
         $choices = $config['choices'];
+        $choiceUiMap = omoDecisionConsentGetChoiceUiMap();
+        $renderChoices = [];
+        foreach (omoDecisionConsentGetChoiceRenderOrder() as $choiceKey) {
+            if (!array_key_exists($choiceKey, $choices)) {
+                continue;
+            }
+            $renderChoices[$choiceKey] = $choices[$choiceKey];
+        }
+        foreach ($choices as $choiceKey => $choiceLabel) {
+            if (array_key_exists($choiceKey, $renderChoices)) {
+                continue;
+            }
+            $renderChoices[$choiceKey] = $choiceLabel;
+        }
         $voteWeightEnabled = !empty($config['vote_weight_enabled']);
         $voteWeightQuestion = trim((string)($config['vote_weight_question'] ?? ''));
         $voteWeightOptions = is_array($config['vote_weight_options'] ?? null) ? array_values((array)$config['vote_weight_options']) : [];
@@ -541,11 +555,20 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                                     <?= omoDecisionRenderProposalSupplementHtml($proposal->get('description'), $proposal->get('info_url'), $escape, 'omo-decision-consent__text', 'omo-decision-consent__link') ?>
                                 </div>
                                 <div class="omo-decision-consent__choice-scale">
-                                    <?php foreach ($choices as $choiceKey => $choiceLabel): ?>
-                                    <div class="omo-decision-consent__choice-option<?= (($selectedChoices[$proposalId] ?? '') === $choiceKey) ? ' is-selected' : '' ?>">
+                                    <?php foreach ($renderChoices as $choiceKey => $choiceLabel): ?>
+                                    <?php
+                                    $choiceUi = $choiceUiMap[$choiceKey] ?? [];
+                                    $choiceTheme = trim((string)($choiceUi['theme'] ?? $choiceKey));
+                                    $choiceIconUrl = trim((string)($choiceUi['icon_url'] ?? ''));
+                                    $choiceIconStyle = $choiceIconUrl !== '' ? '--omo-consent-choice-icon: url(\'' . $choiceIconUrl . '\');' : '';
+                                    ?>
+                                    <div class="omo-decision-consent__choice-option omo-decision-consent__choice-option--<?= $escape($choiceTheme) ?><?= (($selectedChoices[$proposalId] ?? '') === $choiceKey) ? ' is-selected' : '' ?>">
                                         <input class="omo-decision-consent__choice-input" type="radio" name="choices[<?= $escape($proposalId) ?>]" value="<?= $escape($choiceKey) ?>" <?= (($selectedChoices[$proposalId] ?? '') === $choiceKey) ? 'checked' : '' ?> required>
                                         <button type="button" class="omo-decision-consent__choice-chip" data-omo-decision-consent-choice-trigger aria-pressed="<?= (($selectedChoices[$proposalId] ?? '') === $choiceKey) ? 'true' : 'false' ?>">
-                                            <span><?= $escape($choiceLabel) ?></span>
+                                            <?php if ($choiceIconStyle !== ''): ?>
+                                            <span class="omo-decision-consent__choice-icon" style="<?= $escape($choiceIconStyle) ?>" aria-hidden="true"></span>
+                                            <?php endif; ?>
+                                            <span class="omo-decision-consent__choice-label"><?= $escape($choiceLabel) ?></span>
                                         </button>
                                     </div>
                                     <?php endforeach; ?>
@@ -590,15 +613,30 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         $summaryLabel = $stat['has_objection']
                             ? t('decisions.consent.summary.with_objection', ['count' => (string)$stat['objection_count']], $lang, $sourceLang)
                             : t('decisions.consent.summary.no_objection', [], $lang, $sourceLang);
+                        $summaryChoiceKey = $resultsMode ? ($stat['has_objection'] ? 'objection' : 'no_objection') : $selectedChoice;
+                        $summaryChoiceUi = $choiceUiMap[$summaryChoiceKey] ?? [];
+                        $summaryChoiceTheme = trim((string)($summaryChoiceUi['theme'] ?? $summaryChoiceKey));
+                        $summaryChoiceIconUrl = trim((string)($summaryChoiceUi['icon_url'] ?? ''));
+                        $summaryChoiceIconStyle = $summaryChoiceIconUrl !== '' ? '--omo-consent-choice-icon: url(\'' . $summaryChoiceIconUrl . '\');' : '';
                         ?>
                         <div class="omo-decision-consent__result-card<?= $selectedChoice !== '' ? ' is-selected' : '' ?>">
                             <div class="omo-decision-consent__result-head">
                                 <strong><?= $escape(trim((string)$proposal->get('title'))) ?></strong>
                                 <?= omoDecisionRenderProposalSupplementHtml($proposal->get('description'), $proposal->get('info_url'), $escape, 'omo-decision-consent__text', 'omo-decision-consent__link') ?>
                                 <?php if ($resultsMode): ?>
-                                <span class="omo-decision-consent__summary-badge"><?= $escape($summaryLabel) ?></span>
+                                <span class="omo-decision-consent__summary-badge omo-decision-consent__summary-badge--<?= $escape($summaryChoiceTheme) ?>">
+                                    <?php if ($summaryChoiceIconStyle !== ''): ?>
+                                    <span class="omo-decision-consent__choice-icon omo-decision-consent__choice-icon--small" style="<?= $escape($summaryChoiceIconStyle) ?>" aria-hidden="true"></span>
+                                    <?php endif; ?>
+                                    <span><?= $escape($summaryLabel) ?></span>
+                                </span>
                                 <?php elseif ($selectedChoice !== ''): ?>
-                                <span class="omo-decision-consent__summary-badge"><?= $escape((string)$choices[$selectedChoice]) ?></span>
+                                <span class="omo-decision-consent__summary-badge omo-decision-consent__summary-badge--<?= $escape($summaryChoiceTheme) ?>">
+                                    <?php if ($summaryChoiceIconStyle !== ''): ?>
+                                    <span class="omo-decision-consent__choice-icon omo-decision-consent__choice-icon--small" style="<?= $escape($summaryChoiceIconStyle) ?>" aria-hidden="true"></span>
+                                    <?php endif; ?>
+                                    <span><?= $escape((string)$choices[$selectedChoice]) ?></span>
+                                </span>
                                 <?php endif; ?>
                             </div>
 
@@ -608,7 +646,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                                 <strong><?= $escape((string)$stat['count']) ?></strong>
                             </div>
                             <div class="omo-decision-consent__distribution" aria-label="<?= $escape(t('decisions.consent.field.distribution', [], $lang, $sourceLang)) ?>">
-                                <?php foreach ($choices as $choiceKey => $choiceLabel): ?>
+                                <?php foreach ($renderChoices as $choiceKey => $choiceLabel): ?>
                                 <?php
                                 $segmentCount = (int)($stat['distribution'][$choiceKey] ?? 0);
                                 $segmentPercent = $stat['count'] > 0 ? ($segmentCount / (int)$stat['count']) * 100 : 0;
@@ -634,8 +672,12 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                                 <?php endforeach; ?>
                             </div>
                             <div class="omo-decision-consent__distribution-scale" aria-hidden="true">
-                                <?php foreach ($choices as $choiceLabel): ?>
-                                <span><?= $escape((string)$choiceLabel) ?></span>
+                                <?php foreach ($renderChoices as $choiceKey => $choiceLabel): ?>
+                                <?php
+                                $choiceUi = $choiceUiMap[$choiceKey] ?? [];
+                                $choiceTheme = trim((string)($choiceUi['theme'] ?? $choiceKey));
+                                ?>
+                                <span class="omo-decision-consent__distribution-label omo-decision-consent__distribution-label--<?= $escape($choiceTheme) ?>"><?= $escape((string)$choiceLabel) ?></span>
                                 <?php endforeach; ?>
                             </div>
                             <?php endif; ?>
@@ -1533,6 +1575,15 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
             color: #027a48;
         }
 
+        .omo-decision-consent__fieldset {
+            display: grid;
+            gap: 10px;
+            margin: 0;
+            padding: 0;
+            border: 0;
+            min-inline-size: 0;
+        }
+
         .omo-decision-consent__choice-scale {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -1542,6 +1593,12 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
         .omo-decision-consent__choice-option {
             display: block;
             position: relative;
+            --omo-consent-choice-bg: #ffffff;
+            --omo-consent-choice-bg-selected: #f8fafc;
+            --omo-consent-choice-border: color-mix(in srgb, var(--color-text-light, #64748b) 18%, white);
+            --omo-consent-choice-border-selected: color-mix(in srgb, var(--color-primary, #2563eb) 40%, white);
+            --omo-consent-choice-text: var(--color-text, #1f2937);
+            --omo-consent-choice-shadow: none;
         }
 
         .omo-decision-consent__choice-input {
@@ -1553,23 +1610,86 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
         }
 
         .omo-decision-consent__choice-chip {
-            display: grid;
+            display: flex;
             align-items: center;
+            gap: 10px;
             width: 100%;
             min-height: 58px;
             padding: 10px 12px;
             border-radius: 14px;
-            border: 1px solid color-mix(in srgb, var(--color-text-light, #64748b) 18%, white);
-            background: white;
+            border: 1px solid var(--omo-consent-choice-border);
+            background: var(--omo-consent-choice-bg);
             text-align: left;
             cursor: pointer;
             font: inherit;
-            color: inherit;
+            color: var(--omo-consent-choice-text);
+            transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+        }
+
+        .omo-decision-consent__choice-chip:hover,
+        .omo-decision-consent__choice-chip:focus-visible {
+            border-color: var(--omo-consent-choice-border-selected);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--omo-consent-choice-border-selected) 18%, transparent);
+        }
+
+        .omo-decision-consent__choice-label {
+            flex: 1 1 auto;
+        }
+
+        .omo-decision-consent__choice-icon {
+            display: inline-block;
+            width: 22px;
+            height: 22px;
+            flex: 0 0 22px;
+            background-color: currentColor;
+            mask-image: var(--omo-consent-choice-icon);
+            mask-repeat: no-repeat;
+            mask-position: center;
+            mask-size: contain;
+            -webkit-mask-image: var(--omo-consent-choice-icon);
+            -webkit-mask-repeat: no-repeat;
+            -webkit-mask-position: center;
+            -webkit-mask-size: contain;
+        }
+
+        .omo-decision-consent__choice-icon--small {
+            width: 16px;
+            height: 16px;
+            flex-basis: 16px;
         }
 
         .omo-decision-consent__choice-option.is-selected .omo-decision-consent__choice-chip {
-            border-color: color-mix(in srgb, var(--color-primary, #2563eb) 40%, white);
-            background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, white);
+            border-color: var(--omo-consent-choice-border-selected);
+            background: var(--omo-consent-choice-bg-selected);
+            box-shadow: var(--omo-consent-choice-shadow);
+            transform: translateY(-1px);
+        }
+
+        .omo-decision-consent__choice-option--objection {
+            --omo-consent-choice-bg: #fff2f1;
+            --omo-consent-choice-bg-selected: #ffdedd;
+            --omo-consent-choice-border: #f5b4af;
+            --omo-consent-choice-border-selected: #d84f45;
+            --omo-consent-choice-text: #8a1c14;
+            --omo-consent-choice-shadow: 0 10px 24px rgba(216, 79, 69, 0.16);
+        }
+
+        .omo-decision-consent__choice-option--no_objection {
+            --omo-consent-choice-bg: #fff8e8;
+            --omo-consent-choice-bg-selected: #ffe9b3;
+            --omo-consent-choice-border: #f2cf75;
+            --omo-consent-choice-border-selected: #d19710;
+            --omo-consent-choice-text: #8a5a00;
+            --omo-consent-choice-shadow: 0 10px 24px rgba(209, 151, 16, 0.18);
+        }
+
+        .omo-decision-consent__choice-option--favor {
+            --omo-consent-choice-bg: #effaf1;
+            --omo-consent-choice-bg-selected: #d8f2dd;
+            --omo-consent-choice-border: #a6ddb0;
+            --omo-consent-choice-border-selected: #2f8f46;
+            --omo-consent-choice-text: #166534;
+            --omo-consent-choice-shadow: 0 10px 24px rgba(47, 143, 70, 0.17);
         }
 
         .omo-decision-consent__result-card,
@@ -1596,6 +1716,21 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
             background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, white);
             color: var(--color-text-dark, #0f172a);
             font-size: 13px;
+        }
+
+        .omo-decision-consent__summary-badge--objection {
+            background: #fff0ef;
+            color: #8a1c14;
+        }
+
+        .omo-decision-consent__summary-badge--no_objection {
+            background: #fff6df;
+            color: #8a5a00;
+        }
+
+        .omo-decision-consent__summary-badge--favor {
+            background: #edf9ef;
+            color: #166534;
         }
 
         .omo-decision-consent__result-meta {
@@ -1639,7 +1774,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
         }
 
         .omo-decision-consent__distribution-segment--no_objection {
-            background: #9ca3af;
+            background: #d69e15;
         }
 
         .omo-decision-consent__distribution-segment--objection {
@@ -1652,6 +1787,18 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
             gap: 12px;
             color: var(--color-text-light, #475569);
             font-size: 12px;
+        }
+
+        .omo-decision-consent__distribution-label--objection {
+            color: #8a1c14;
+        }
+
+        .omo-decision-consent__distribution-label--no_objection {
+            color: #8a5a00;
+        }
+
+        .omo-decision-consent__distribution-label--favor {
+            color: #166534;
         }
 
         .omo-decision-consent__modal {

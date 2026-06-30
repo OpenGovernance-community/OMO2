@@ -4,6 +4,10 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-06-29
 
+Dans l interface de decision par consentement, les boutons de position sont maintenant presentes dans l ordre `Objection`, `Pas d objection`, `Pour`, avec une palette rouge, jaune-orange et verte, ainsi que les pictos `Faux`, `Amour` et `Vrai` pour rendre le choix plus lisible au premier coup d oeil.
+
+Les vues de participation n affichent plus des traductions stockees devenues incoherentes avec le texte source actuel. Quand un bundle est obsolete, l interface retombe d abord sur le texte source en attendant son rafraichissement, ce qui evite de garder des libelles anglais ou perimes sur des pages deja repassees en francais.
+
 Les blocs `sourceLang` definis en tete des pages OMO, Choice, Calendrier, Documents, Decisions et popup profil ont ete relus pour remettre les accents, corriger plusieurs formulations francaises et supprimer quelques textes encore mal encodes.
 
 Les droits de holon ne sont plus reserves aux seuls holons templates. L editeur classique des holons affiche maintenant un resume compact des droits deja attaches, avec un bouton `Editer` qui deploie le meme type de selection de portees pour attribuer ou retirer des permissions directement sur n importe quel holon modifiable.
@@ -340,3 +344,7 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - Le retrait d un parcours depuis un pack nettoie maintenant aussi les anciens liens directs herites dans les autres organisations, pour eviter qu un enfant supprime du pack reste visible apres import.
 - Le catalogue d import LMS masque maintenant les parcours et packs dont l organisation proprietaire s est detachee, afin de ne plus proposer des contenus non maintenus.
 - Le catalogue d import LMS distingue maintenant visuellement les packs des parcours simples et affiche pour les packs leur nombre de parcours au lieu du nombre de missions.
+- L editeur de mission permet maintenant de definir des prerequis entre missions d un meme parcours, avec ajout et retrait depuis l interface LMS.
+- Le bloc des prerequis dans l editeur de mission reprend maintenant la presentation visuelle de l editeur de parcours, avec cartes et picker harmonises.
+- L ouverture d un pack dans le LMS affiche maintenant ses parcours avec les memes cartes visuelles que la page d accueil, incluant image et progression.
+- La vue detail d un pack reutilise maintenant le meme ratio d image et le meme cercle de progression chiffre que les cartes du catalogue LMS.

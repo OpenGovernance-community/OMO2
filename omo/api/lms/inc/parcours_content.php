@@ -11,6 +11,74 @@ $packChildren = $isPackParcours
     )
     : [];
 ?>
+<?php if ($isPackParcours): ?>
+<style>
+.lms-pack-children__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 350px));
+    justify-content: center;
+    gap: 20px;
+    align-items: stretch;
+}
+
+.lms-pack-children__grid .card {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    flex: none;
+}
+
+.lms-pack-children__grid .card-image {
+    aspect-ratio: 5 / 2 !important;
+    overflow: hidden;
+}
+
+.lms-pack-children__grid .card-image img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.lms-pack-children__grid .progress-circle {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    display: inline-block;
+    margin: 5px;
+}
+
+.lms-pack-children__grid .progress-circle svg {
+    transform: rotate(-90deg);
+}
+
+.lms-pack-children__grid .progress-circle circle {
+    fill: none;
+    stroke-width: 5;
+}
+
+.lms-pack-children__grid .progress-circle .bg {
+    stroke: var(--progress-bg);
+}
+
+.lms-pack-children__grid .progress-circle .progress {
+    stroke: var(--primary);
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.6s ease;
+}
+
+.lms-pack-children__grid .progress-circle .label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-main);
+    white-space: nowrap;
+}
+</style>
+<?php endif; ?>
 <div class="content lms-parcours-content<?php echo $isEmbedded ? ' lms-parcours-content--embed' : ''; ?>">
 <?php if ($isEmbedded): ?>
     <div class="lms-parcours-embed-header">
@@ -40,16 +108,20 @@ $packChildren = $isPackParcours
                 $isVisibleParcours = !empty($childParcours['isvisible']);
                 ?>
                 <div class="card<?php echo !$isVisibleParcours ? ' card--visibility-hidden' : ''; ?>" onclick="<?php echo $isVisibleParcours ? 'goToPackChildParcours(' . (int)($childParcours['id'] ?? 0) . ')' : ''; ?>">
+                    <?php if (!empty($childParcours['image'])): ?>
+                        <div class="card-image">
+                            <img src="<?php echo htmlspecialchars((string)$childParcours['image']); ?>" alt="">
+                        </div>
+                    <?php endif; ?>
+
                     <div class="card-content">
                         <h3><?php echo htmlspecialchars((string)($childParcours['title'] ?? '')); ?></h3>
-                        <?php if (trim((string)($childParcours['description'] ?? '')) !== ''): ?>
-                            <p><?php echo htmlspecialchars((string)$childParcours['description']); ?></p>
-                        <?php endif; ?>
+                        <div><?php echo htmlspecialchars((string)($childParcours['description'] ?? '')); ?></div>
                         <?php if (!$isVisibleParcours): ?>
-                            <div class="card-meta">Actuellement masque pour les membres standard.</div>
+                            <div class="card-visibility-note">Actuellement masque pour les membres standard.</div>
                         <?php endif; ?>
                         <div class="card-footer">
-                            <span class="card-meta"><?php echo $percent; ?>% termine</span>
+                            <div class="progress-circle" data-percent="<?php echo (int)$percent; ?>"></div>
                             <button type="button" class="open-btn" <?php echo $isVisibleParcours ? 'onclick="event.stopPropagation(); goToPackChildParcours(' . (int)($childParcours['id'] ?? 0) . ')"' : 'disabled'; ?>><?php echo $isVisibleParcours ? 'Ouvrir' : 'Masque'; ?></button>
                         </div>
                     </div>
@@ -78,6 +150,30 @@ include __DIR__ . '/drawer.php';
 ?>
 
 <script>
+function initPackProgressCircles() {
+    document.querySelectorAll('.lms-pack-children__grid .progress-circle').forEach((el) => {
+        const percent = Math.max(0, Math.min(100, Number(el.getAttribute('data-percent') || 0)));
+        const radius = 24;
+        const circumference = 2 * Math.PI * radius;
+
+        el.innerHTML = `
+            <svg width="60" height="60" viewBox="0 0 60 60" aria-hidden="true">
+                <circle class="bg" cx="30" cy="30" r="${radius}"></circle>
+                <circle class="progress" cx="30" cy="30" r="${radius}"></circle>
+            </svg>
+            <div class="label">${percent}%</div>
+        `;
+
+        const progressCircle = el.querySelector('.progress');
+        if (!progressCircle) {
+            return;
+        }
+
+        progressCircle.style.strokeDasharray = String(circumference);
+        progressCircle.style.strokeDashoffset = String(circumference * (1 - percent / 100));
+    });
+}
+
 function goToPackChildParcours(parcoursId) {
     const targetUrl = buildLmsUrlWithParams(
         <?php echo json_encode(lmsBuildLocalPath('/parcours.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>,
@@ -97,6 +193,10 @@ function goToPackChildParcours(parcoursId) {
 
     window.location.href = targetUrl;
 }
+
+<?php if ($isPackParcours): ?>
+initPackProgressCircles();
+<?php endif; ?>
 
 <?php if (!$isPackParcours): ?>
 let currentView = 'todo';
