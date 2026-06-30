@@ -23,6 +23,40 @@ if (!function_exists('omoDecisionConsentGetChoices')) {
     }
 }
 
+if (!function_exists('omoDecisionConsentGetChoiceRenderOrder')) {
+    function omoDecisionConsentGetChoiceRenderOrder()
+    {
+        return [
+            'objection',
+            'no_objection',
+            'favor',
+        ];
+    }
+}
+
+if (!function_exists('omoDecisionConsentGetChoiceUiMap')) {
+    function omoDecisionConsentGetChoiceUiMap()
+    {
+        return [
+            'objection' => [
+                'label' => 'Objection',
+                'icon_url' => '/common/choice/assets/consent-objection.png',
+                'theme' => 'objection',
+            ],
+            'no_objection' => [
+                'label' => 'Pas d objection',
+                'icon_url' => '/common/choice/assets/consent-no-objection.png',
+                'theme' => 'no_objection',
+            ],
+            'favor' => [
+                'label' => 'Pour',
+                'icon_url' => '/common/choice/assets/consent-favor.png',
+                'theme' => 'favor',
+            ],
+        ];
+    }
+}
+
 if (!function_exists('omoDecisionConsentNormalizeChoice')) {
     function omoDecisionConsentNormalizeChoice($value)
     {

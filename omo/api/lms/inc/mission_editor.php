@@ -1,6 +1,122 @@
 <?php
 
 if (!function_exists('lmsRenderMissionHomeworkManager')) {
+    function lmsRenderMissionDependencyManager($parcoursId, $missionId)
+    {
+        $parcoursId = (int)$parcoursId;
+        $missionId = (int)$missionId;
+        $dependencies = \dbObject\MissionDependencies::fetchDetailedForMission($parcoursId, $missionId);
+        $availableMissions = \dbObject\Mission::fetchAvailableDependencyTargetsForMission($parcoursId, $missionId);
+
+        ob_start();
+        ?>
+        <section class="lms-mission-related" data-lms-mission-dependency-manager="1" data-mission-id="<?php echo $missionId; ?>" data-parcours-id="<?php echo $parcoursId; ?>">
+            <div class="lms-mission-related__header">
+                <div>
+                    <h3>Prerequis de mission</h3>
+                    <p>Selectionnez ici les missions qui doivent etre terminees avant de rendre celle-ci disponible.</p>
+                </div>
+                <button type="button" data-lms-open-mission-dependency-picker="1">Ajouter un prerequis</button>
+            </div>
+
+            <?php if (count($dependencies) === 0): ?>
+                <div class="lms-mission-related__empty">Aucun prerequis n est encore defini pour cette mission.</div>
+            <?php else: ?>
+                <div class="lms-mission-related__list" data-lms-mission-dependency-list="1">
+                    <?php foreach ($dependencies as $dependency): ?>
+                        <article class="lms-parcours-mission-item" data-required-mission-id="<?php echo (int)($dependency['IDmission_parent'] ?? 0); ?>">
+                            <div class="lms-parcours-mission-item__menu-wrap">
+                                <button
+                                    type="button"
+                                    class="lms-parcours-mission-item__menu-trigger"
+                                    data-lms-toggle-mission-dependency-menu="1"
+                                    data-required-mission-id="<?php echo (int)($dependency['IDmission_parent'] ?? 0); ?>"
+                                    aria-label="Actions"
+                                >...</button>
+                                <div class="lms-parcours-mission-item__menu" id="lms-mission-dependency-item-menu-<?php echo (int)($dependency['IDmission_parent'] ?? 0); ?>">
+                                    <button
+                                        type="button"
+                                        class="lms-parcours-mission-item__menu-item"
+                                        data-lms-edit-required-mission="1"
+                                        data-required-mission-id="<?php echo (int)($dependency['IDmission_parent'] ?? 0); ?>"
+                                    >Editer la mission</button>
+                                    <button
+                                        type="button"
+                                        class="lms-parcours-mission-item__menu-item"
+                                        data-lms-remove-mission-dependency="1"
+                                        data-required-mission-id="<?php echo (int)($dependency['IDmission_parent'] ?? 0); ?>"
+                                    >Retirer le prerequis</button>
+                                </div>
+                            </div>
+                            <div class="lms-parcours-mission-item__handle" aria-hidden="true">!</div>
+                            <div class="lms-parcours-mission-item__body">
+                                <strong><?php echo htmlspecialchars((string)($dependency['title'] ?? '')); ?></strong>
+                                <?php if (trim((string)($dependency['resume'] ?? '')) !== ''): ?>
+                                    <p><?php echo htmlspecialchars((string)$dependency['resume']); ?></p>
+                                <?php endif; ?>
+                                <div class="lms-parcours-mission-item__meta">
+                                    <span>Mission requise</span>
+                                </div>
+                            </div>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
+            <div class="lms-parcours-mission-picker" data-lms-mission-dependency-picker="1" hidden>
+                <div class="lms-parcours-mission-picker__backdrop" data-lms-close-mission-dependency-picker="1"></div>
+                <div class="lms-parcours-mission-picker__panel">
+                    <div class="lms-parcours-mission-picker__header">
+                        <div>
+                            <h4>Ajouter un prerequis de mission</h4>
+                            <p>Choisissez une autre mission de ce parcours.</p>
+                        </div>
+                        <div class="lms-parcours-mission-picker__header-actions">
+                            <button type="button" class="lms-parcours-mission-picker__close" data-lms-close-mission-dependency-picker="1">Fermer</button>
+                        </div>
+                    </div>
+
+                    <label class="lms-parcours-mission-picker__search">
+                        <span>Rechercher</span>
+                        <input type="search" data-lms-mission-dependency-picker-search="1" placeholder="Titre ou resume">
+                    </label>
+
+                    <div class="lms-parcours-mission-picker__list" data-lms-mission-dependency-picker-list="1">
+                        <?php if (count($availableMissions) === 0): ?>
+                            <div class="lms-parcours-mission-picker__empty">Toutes les missions eligibles sont deja utilisees comme prerequis.</div>
+                        <?php else: ?>
+                            <?php foreach ($availableMissions as $availableMission): ?>
+                                <?php
+                                $searchText = function_exists('mb_strtolower')
+                                    ? mb_strtolower(trim((string)($availableMission['title'] ?? '') . ' ' . (string)($availableMission['resume'] ?? '')), 'UTF-8')
+                                    : strtolower(trim((string)($availableMission['title'] ?? '') . ' ' . (string)($availableMission['resume'] ?? '')));
+                                ?>
+                                <article
+                                    class="lms-parcours-mission-picker__item"
+                                    data-lms-mission-dependency-picker-item="1"
+                                    data-required-mission-id="<?php echo (int)($availableMission['id'] ?? 0); ?>"
+                                    data-search-text="<?php echo htmlspecialchars($searchText, ENT_QUOTES, 'UTF-8'); ?>"
+                                >
+                                    <div class="lms-parcours-mission-picker__copy">
+                                        <strong><?php echo htmlspecialchars((string)($availableMission['title'] ?? '')); ?></strong>
+                                        <?php if (trim((string)($availableMission['resume'] ?? '')) !== ''): ?>
+                                            <p><?php echo htmlspecialchars((string)$availableMission['resume']); ?></p>
+                                        <?php endif; ?>
+                                    </div>
+                                    <button type="button" data-lms-add-mission-dependency-id="<?php echo (int)($availableMission['id'] ?? 0); ?>">Ajouter</button>
+                                </article>
+                            <?php endforeach; ?>
+                            <div class="lms-parcours-mission-picker__empty" data-lms-mission-dependency-picker-empty-search="1" hidden>Aucune mission ne correspond a cette recherche.</div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <?php
+
+        return ob_get_clean();
+    }
+
     function lmsRenderMissionHomeworkManager($parcoursId, $missionId)
     {
         $parcoursId = (int)$parcoursId;
