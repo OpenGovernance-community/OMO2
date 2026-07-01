@@ -5,6 +5,45 @@ commonRestoreRememberedUser();
 include __DIR__ . '/inc/org.php';
 require_once __DIR__ . '/inc/access.php';
 
+$sourceLang = [
+    'lms.mission_detail.error.access_denied' => ['text' => 'Acces refuse', 'context' => 'Error shown when the viewer cannot access the mission detail.'],
+    'lms.mission_detail.error.not_found' => ['text' => 'Mission introuvable', 'context' => 'Error shown when the mission cannot be found.'],
+    'lms.mission_detail.video.play' => ['text' => 'Lire', 'context' => 'Custom control label used to play the mission video.'],
+    'lms.mission_detail.video.sound' => ['text' => 'Son', 'context' => 'Custom control label used to control mission video sound.'],
+    'lms.mission_detail.video.unavailable' => ['text' => 'La video de cette mission n est pas disponible pour le moment.', 'context' => 'Fallback message shown when the mission video cannot be embedded.'],
+    'lms.mission_detail.homeworks.title' => ['text' => 'Devoirs', 'context' => 'Section title listing mission homeworks.'],
+    'lms.mission_detail.homeworks.status_done' => ['text' => 'Valide', 'context' => 'Status label shown when a homework is completed.'],
+    'lms.mission_detail.homeworks.status_todo' => ['text' => 'A faire', 'context' => 'Status label shown when a homework remains to do.'],
+    'lms.mission_detail.homeworks.expand' => ['text' => 'Detail de la tache', 'context' => 'Button label used to open a homework detail.'],
+    'lms.mission_detail.homeworks.collapse' => ['text' => 'Masquer le detail', 'context' => 'Button label used to collapse a homework detail.'],
+    'lms.mission_detail.homeworks.empty_detail' => ['text' => 'Aucun detail supplementaire.', 'context' => 'Fallback text shown when a homework has no extra detail.'],
+    'lms.mission_detail.homeworks.help' => ['text' => 'Terminez tous les homeworks avant de poursuivre cette mission.', 'context' => 'Help text shown below the homework list.'],
+    'lms.mission_detail.homeworks.mark_done' => ['text' => 'Valider la tâche', 'context' => 'Accessible label used to mark a homework as done.'],
+    'lms.mission_detail.homeworks.mark_undone' => ['text' => 'Retirer la validation', 'context' => 'Accessible label used to unmark a completed homework.'],
+    'lms.mission_detail.validation.unavailable' => ['text' => 'La validation de cette mission n est pas disponible dans ce contexte.', 'context' => 'Message shown when mission validation cannot be used.'],
+    'lms.mission_detail.validation.start_quiz' => ['text' => 'Commencer le quiz', 'context' => 'Button label used to start the quiz.'],
+    'lms.mission_detail.validation.mark_read' => ['text' => 'Marquer comme lu', 'context' => 'Button label used to complete a mission without quiz.'],
+    'lms.mission_detail.validation.remaining' => ['text' => 'Terminez encore {count} homework{suffix} pour continuer.', 'context' => 'Info message shown when some homeworks remain before validation.'],
+    'lms.mission_detail.validation.quiz_info' => ['text' => 'Cette mission sera validee par {count} question{suffix}', 'context' => 'Info message shown before starting the quiz.'],
+    'lms.mission_detail.quiz.counter' => ['text' => 'Question {current}/{total}', 'context' => 'Counter shown above the current quiz question.'],
+    'lms.mission_detail.quiz.multiple' => ['text' => 'Plusieurs reponses possibles', 'context' => 'Hint shown when a quiz question allows multiple answers.'],
+    'lms.mission_detail.quiz.finish' => ['text' => 'Terminer', 'context' => 'Button label used on the last quiz question.'],
+    'lms.mission_detail.quiz.submit' => ['text' => 'Valider la reponse', 'context' => 'Button label used to submit a quiz answer.'],
+    'lms.mission_detail.quiz.select_answer' => ['text' => 'Veuillez selectionner une reponse', 'context' => 'Alert shown when no answer is selected.'],
+    'lms.mission_detail.quiz.wrong_answer' => ['text' => 'Mauvaise reponse', 'context' => 'Alert shown when the submitted answer is wrong.'],
+    'lms.mission_detail.alert.load_quiz' => ['text' => 'Impossible de charger le quiz.', 'context' => 'Alert shown when the quiz cannot be loaded.'],
+    'lms.mission_detail.alert.save_homework' => ['text' => 'Impossible d enregistrer ce homework pour le moment.', 'context' => 'Alert shown when homework completion cannot be saved.'],
+    'lms.mission_detail.alert.validate_mission' => ['text' => 'Impossible de valider cette mission pour le moment.', 'context' => 'Alert shown when the mission cannot be validated.'],
+];
+
+$lang = omoLoadTranslationBundle('omo_lms_mission_detail', $sourceLang);
+
+function lmsMissionDetailT($key, array $replace = [])
+{
+    global $lang, $sourceLang;
+    return t($key, $replace, $lang, $sourceLang);
+}
+
 $mission_id = (int)($_GET['mission_id'] ?? 0);
 $parcours_id = (int)($_GET['parcours_id'] ?? 0);
 $accessContext = lmsGetParcoursAccessContext((int)$org['id'], $parcours_id);
@@ -13,7 +52,7 @@ $isAnonymousViewer = lmsIsAnonymousViewer($accessContext);
 
 if (empty($accessContext['exists']) || empty($accessContext['canView'])) {
 	http_response_code(empty($accessContext['isLoggedIn']) ? 401 : 403);
-	echo "Acces refuse";
+	echo lmsMissionDetailT('lms.mission_detail.error.access_denied');
 	exit;
 }
 
@@ -23,7 +62,7 @@ if (!$parcoursMission->load([
 	['IDmission', $mission_id],
 ])) {
 	http_response_code(404);
-	echo "Mission introuvable";
+	echo lmsMissionDetailT('lms.mission_detail.error.not_found');
 	exit;
 }
 
@@ -522,13 +561,13 @@ if ($m) {
 		<div class="branding-overlay"></div>
 
 		<div class="custom-controls">
-			<button id="playBtn">Lire</button>
+			<button id="playBtn"><?= htmlspecialchars(lmsMissionDetailT('lms.mission_detail.video.play')); ?></button>
 			<div class="progressvideo">
 				<div class="progressvideo-bar"></div>
 			</div>
 			<span id="time">0:00</span>
 			<div class="volume-controls">
-				<button id="volumeBtn" type="button">Son</button>
+				<button id="volumeBtn" type="button"><?= htmlspecialchars(lmsMissionDetailT('lms.mission_detail.video.sound')); ?></button>
 				<input id="volumeSlider" type="range" min="0" max="100" step="1" value="100" aria-label="Volume">
 			</div>
 		</div>
@@ -537,7 +576,7 @@ if ($m) {
 <?php
 	} elseif ($m['video']) {
 ?>
-	<p>La video de cette mission n'est pas disponible pour le moment.</p>
+	<p><?= htmlspecialchars(lmsMissionDetailT('lms.mission_detail.video.unavailable')); ?></p>
 <?php
 	}
 	echo $m['html'];
@@ -545,11 +584,46 @@ if ($m) {
 	echo "</div>";
 	echo "<div data-quiz-count='$quizCount' data-homework-count='" . count($homeworks) . "' id='quiz-info'></div>";
 } else {
-	echo "Mission introuvable";
+	echo lmsMissionDetailT('lms.mission_detail.error.not_found');
 }
 ?>
 <script>
 (() => {
+	const lmsMissionText = <?php echo json_encode([
+		'homeworksTitle' => lmsMissionDetailT('lms.mission_detail.homeworks.title'),
+		'homeworkDone' => lmsMissionDetailT('lms.mission_detail.homeworks.status_done'),
+		'homeworkTodo' => lmsMissionDetailT('lms.mission_detail.homeworks.status_todo'),
+		'homeworkExpand' => lmsMissionDetailT('lms.mission_detail.homeworks.expand'),
+		'homeworkCollapse' => lmsMissionDetailT('lms.mission_detail.homeworks.collapse'),
+		'homeworkEmptyDetail' => lmsMissionDetailT('lms.mission_detail.homeworks.empty_detail'),
+		'homeworkHelp' => lmsMissionDetailT('lms.mission_detail.homeworks.help'),
+		'homeworkMarkDone' => lmsMissionDetailT('lms.mission_detail.homeworks.mark_done'),
+		'homeworkMarkUndone' => lmsMissionDetailT('lms.mission_detail.homeworks.mark_undone'),
+		'validationUnavailable' => lmsMissionDetailT('lms.mission_detail.validation.unavailable'),
+		'startQuiz' => lmsMissionDetailT('lms.mission_detail.validation.start_quiz'),
+		'markRead' => lmsMissionDetailT('lms.mission_detail.validation.mark_read'),
+		'remaining' => lmsMissionDetailT('lms.mission_detail.validation.remaining'),
+		'quizInfo' => lmsMissionDetailT('lms.mission_detail.validation.quiz_info'),
+		'quizCounter' => lmsMissionDetailT('lms.mission_detail.quiz.counter'),
+		'quizMultiple' => lmsMissionDetailT('lms.mission_detail.quiz.multiple'),
+		'quizFinish' => lmsMissionDetailT('lms.mission_detail.quiz.finish'),
+		'quizSubmit' => lmsMissionDetailT('lms.mission_detail.quiz.submit'),
+		'quizSelectAnswer' => lmsMissionDetailT('lms.mission_detail.quiz.select_answer'),
+		'quizWrongAnswer' => lmsMissionDetailT('lms.mission_detail.quiz.wrong_answer'),
+		'alertLoadQuiz' => lmsMissionDetailT('lms.mission_detail.alert.load_quiz'),
+		'alertSaveHomework' => lmsMissionDetailT('lms.mission_detail.alert.save_homework'),
+		'alertValidateMission' => lmsMissionDetailT('lms.mission_detail.alert.validate_mission'),
+		'notFound' => lmsMissionDetailT('lms.mission_detail.error.not_found'),
+	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+
+	function formatMissionText(template, replace) {
+		let output = String(template || '');
+		Object.keys(replace || {}).forEach((key) => {
+			output = output.replace(new RegExp('\\{' + key + '\\}', 'g'), String(replace[key]));
+		});
+		return output;
+	}
+
 	if (typeof initVideoPlayer === 'function') {
 		initVideoPlayer();
 	}
@@ -628,7 +702,7 @@ if ($m) {
 
 		let html = `
 			<section class="lms-homework-section">
-				<h3>Homeworks</h3>
+				<h3>${escapeHtml(lmsMissionText.homeworksTitle || '')}</h3>
 				<div class="lms-homework-list">
 		`;
 
@@ -642,18 +716,18 @@ if ($m) {
 				<div class="lms-homework-item${isDone ? ' is-done' : ''}" data-homework-id="${homeworkId}">
 					<div class="lms-homework-row">
 						<div class="lms-homework-summary">
-							${lmsMissionViewerCanTrack ? `<button type="button" class="lms-homework-check${isDone ? ' is-done' : ''}" data-homework-check="${homeworkId}" aria-label="${isDone ? 'Retirer la validation' : 'Valider la tache'}" title="${isDone ? 'Retirer la validation' : 'Valider la tache'}" ${quizMode ? 'disabled' : ''}></button>` : ''}
+							${lmsMissionViewerCanTrack ? `<button type="button" class="lms-homework-check${isDone ? ' is-done' : ''}" data-homework-check="${homeworkId}" aria-label="${escapeHtml(isDone ? (lmsMissionText.homeworkMarkUndone || '') : (lmsMissionText.homeworkMarkDone || ''))}" title="${escapeHtml(isDone ? (lmsMissionText.homeworkMarkUndone || '') : (lmsMissionText.homeworkMarkDone || ''))}" ${quizMode ? 'disabled' : ''}></button>` : ''}
 							<div class="lms-homework-text">
 								<div class="lms-homework-title">${escapeHtml(homework.title || '')}</div>
-								<div class="lms-homework-meta">${isDone ? 'Valide' : 'A faire'}</div>
+								<div class="lms-homework-meta">${isDone ? escapeHtml(lmsMissionText.homeworkDone || '') : escapeHtml(lmsMissionText.homeworkTodo || '')}</div>
 							</div>
 						</div>
 						<div class="lms-homework-actions">
-							<button type="button" class="lms-homework-expand" data-homework-expand="${homeworkId}" aria-expanded="${detailOpen ? 'true' : 'false'}">${detailOpen ? 'Masquer le detail' : 'Detail de la tache'}</button>
+							<button type="button" class="lms-homework-expand" data-homework-expand="${homeworkId}" aria-expanded="${detailOpen ? 'true' : 'false'}">${detailOpen ? escapeHtml(lmsMissionText.homeworkCollapse || '') : escapeHtml(lmsMissionText.homeworkExpand || '')}</button>
 						</div>
 					</div>
 					<div class="lms-homework-detail" ${detailOpen ? '' : 'hidden'}>
-						${detailHtml !== '' ? detailHtml : 'Aucun detail supplementaire.'}
+						${detailHtml !== '' ? detailHtml : escapeHtml(lmsMissionText.homeworkEmptyDetail || '')}
 					</div>
 				</div>
 			`;
@@ -661,7 +735,7 @@ if ($m) {
 
 		html += `
 				</div>
-				<p class="lms-homework-help">Terminez tous les homeworks avant de poursuivre cette mission.</p>
+				<p class="lms-homework-help">${escapeHtml(lmsMissionText.homeworkHelp || '')}</p>
 			</section>
 		`;
 
@@ -719,7 +793,7 @@ if ($m) {
 		if (!lmsMissionViewerCanTrack) {
 			quizZone.innerHTML = `
 				<div class="lms-login-invite">
-					<p>La validation de cette mission n est pas disponible dans ce contexte.</p>
+					<p>${escapeHtml(lmsMissionText.validationUnavailable || '')}</p>
 				</div>
 			`;
 			doneBtn.style.display = 'none';
@@ -736,12 +810,12 @@ if ($m) {
 		const remainingHomeworks = Math.max(0, lmsMissionHomeworks.length - getDoneHomeworkCount());
 
 		doneBtn.disabled = !allHomeworksDone;
-		doneBtn.textContent = quizCount > 0 ? "Commencer le quiz" : "Marquer comme lu";
+		doneBtn.textContent = quizCount > 0 ? String(lmsMissionText.startQuiz || '') : String(lmsMissionText.markRead || '');
 
 		if (!allHomeworksDone) {
 			quizZone.innerHTML = `
 				<div class="quiz-info">
-					Terminez encore ${remainingHomeworks} homework${remainingHomeworks > 1 ? 's' : ''} pour continuer.
+					${escapeHtml(formatMissionText(lmsMissionText.remaining || '', { count: remainingHomeworks, suffix: remainingHomeworks > 1 ? 's' : '' }))}
 				</div>
 			`;
 			return;
@@ -750,7 +824,7 @@ if ($m) {
 		if (quizCount > 0) {
 			quizZone.innerHTML = `
 				<div class="quiz-info">
-					Cette mission sera validee par ${quizCount} question${quizCount > 1 ? 's' : ''}
+					${escapeHtml(formatMissionText(lmsMissionText.quizInfo || '', { count: quizCount, suffix: quizCount > 1 ? 's' : '' }))}
 				</div>
 			`;
 			return;
@@ -792,7 +866,7 @@ if ($m) {
 			updateMissionValidationState();
 		})
 		.catch(() => {
-			alert("Impossible d'enregistrer ce homework pour le moment.");
+			alert(String(lmsMissionText.alertSaveHomework || ''));
 		});
 	}
 
@@ -823,7 +897,7 @@ if ($m) {
 			.catch(() => {
 				quizMode = false;
 				updateMissionValidationState();
-				alert("Impossible de charger le quiz.");
+				alert(String(lmsMissionText.alertLoadQuiz || ''));
 			});
 	}
 
@@ -832,12 +906,12 @@ if ($m) {
 
 		let html = `
 			<div class="quiz">
-				<strong>Question ${currentIndex + 1}/${currentQuestions.length}</strong>
+				<strong>${escapeHtml(formatMissionText(lmsMissionText.quizCounter || '', { current: currentIndex + 1, total: currentQuestions.length }))}</strong>
 				<p>${q.question}</p>
 		`;
 
 		if (q.multiple) {
-			html += `<small>Plusieurs reponses possibles</small>`;
+			html += `<small>${escapeHtml(lmsMissionText.quizMultiple || '')}</small>`;
 		}
 
 		q.choices.forEach(c => {
@@ -865,9 +939,9 @@ if ($m) {
 		}, 0);
 
 		if (currentIndex === currentQuestions.length - 1) {
-			doneBtn.textContent = "Terminer";
+			doneBtn.textContent = String(lmsMissionText.quizFinish || '');
 		} else {
-			doneBtn.textContent = "Valider la reponse";
+			doneBtn.textContent = String(lmsMissionText.quizSubmit || '');
 		}
 	}
 
@@ -876,7 +950,7 @@ if ($m) {
 		let selected = Array.from(inputs).map(i => i.value);
 
 		if (selected.length === 0) {
-			alert("Veuillez selectionner une reponse");
+			alert(String(lmsMissionText.quizSelectAnswer || ''));
 			return;
 		}
 
@@ -896,7 +970,7 @@ if ($m) {
 					showQuestion();
 				}
 			} else {
-				alert("Mauvaise reponse");
+				alert(String(lmsMissionText.quizWrongAnswer || ''));
 			}
 		});
 	}
@@ -905,7 +979,7 @@ if ($m) {
 		const missionId = currentMission || lmsMissionId || currentMissionId;
 
 		if (!missionId) {
-			alert("Mission introuvable");
+			alert(String(lmsMissionText.notFound || ''));
 			return;
 		}
 
@@ -932,7 +1006,7 @@ if ($m) {
 		.catch(() => {
 			quizMode = false;
 			updateMissionValidationState();
-			alert("Impossible de valider cette mission pour le moment.");
+			alert(String(lmsMissionText.alertValidateMission || ''));
 		});
 	}
 

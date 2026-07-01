@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/translation.php';
 require_once dirname(__DIR__, 3) . '/includes/server_env_admin.php';
 
 $currentUserId = (int)commonGetCurrentUserId();
@@ -14,8 +15,8 @@ if ($currentUserId <= 0) {
     ?>
     <div class="omo-server-env-popup">
         <div class="generic-section generic-section--stack omo-server-env-popup__error">
-            <h3 class="generic-card-title generic-card-title--medium">Connexion requise</h3>
-            <p>Connectez-vous pour acceder a ce panneau.</p>
+            <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.auth.required_title'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <p><?= htmlspecialchars(omoServerEnvT('parameters.server_env.auth.required_message'), ENT_QUOTES, 'UTF-8') ?></p>
         </div>
     </div>
     <?php
@@ -27,8 +28,8 @@ if (!$isSiteAdmin) {
     ?>
     <div class="omo-server-env-popup">
         <div class="generic-section generic-section--stack omo-server-env-popup__error">
-            <h3 class="generic-card-title generic-card-title--medium">Acces refuse</h3>
-            <p>Ce panneau est reserve a l admin du serveur.</p>
+            <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.auth.forbidden_title'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <p><?= htmlspecialchars(omoServerEnvT('parameters.server_env.auth.forbidden_message'), ENT_QUOTES, 'UTF-8') ?></p>
         </div>
     </div>
     <?php
@@ -39,6 +40,15 @@ $serverEnvSections = $isUnlocked ? serverEnvAdminGetEditableSections() : array()
 $serverEnvActualValues = $isUnlocked ? serverEnvAdminBuildCurrentValues() : array();
 $serverEnvDisplayValues = $isUnlocked ? serverEnvAdminBuildDisplayValues($serverEnvActualValues) : array();
 $serverEnvSecretStates = $isUnlocked ? serverEnvAdminBuildSecretStateMap($serverEnvActualValues) : array();
+$serverEnvClientTexts = [
+    'invalidResponse' => omoServerEnvT('parameters.server_env.feedback.invalid_response'),
+    'unlockFailed' => omoServerEnvT('parameters.server_env.feedback.unlock_failed'),
+    'unlockSuccess' => omoServerEnvT('parameters.server_env.feedback.unlock_success'),
+    'operationDone' => omoServerEnvT('parameters.server_env.feedback.operation_done'),
+    'saveFailed' => omoServerEnvT('parameters.server_env.feedback.save_failed', ['target' => $serverEnvTargetLabel]),
+    'secretConfigured' => omoServerEnvT('parameters.server_env.secret.configured'),
+    'secretEmpty' => omoServerEnvT('parameters.server_env.secret.empty'),
+];
 ?>
 <div
     class="omo-server-env-popup"
@@ -190,28 +200,28 @@ $serverEnvSecretStates = $isUnlocked ? serverEnvAdminBuildSecretStateMap($server
     </style>
 
     <div class="omo-server-env-popup__hero generic-hero-panel">
-        <div class="generic-card-title generic-card-title--eyebrow">Configuration sensible</div>
-        <h2 class="generic-card-title generic-card-title--large">Admin du serveur</h2>
-        <p>Ce panneau permet de completer les variables globales du fichier d environnement hors base de donnees, comme Telegram, Patreon, OpenAI, SMTP ou GitHub.</p>
+        <div class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.hero.eyebrow'), ENT_QUOTES, 'UTF-8') ?></div>
+        <h2 class="generic-card-title generic-card-title--large"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.hero.title'), ENT_QUOTES, 'UTF-8') ?></h2>
+        <p><?= htmlspecialchars(omoServerEnvT('parameters.server_env.hero.description'), ENT_QUOTES, 'UTF-8') ?></p>
         <div class="omo-server-env-popup__meta">
-            <span class="omo-server-env-popup__badge">Fichier cible: <?= htmlspecialchars($serverEnvTargetLabel, ENT_QUOTES, 'UTF-8') ?></span>
-            <span class="omo-server-env-popup__badge">Verification valable <?= $unlockTtlMinutes ?> min</span>
+            <span class="omo-server-env-popup__badge"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.hero.target', ['target' => $serverEnvTargetLabel]), ENT_QUOTES, 'UTF-8') ?></span>
+            <span class="omo-server-env-popup__badge"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.hero.unlock_ttl', ['minutes' => $unlockTtlMinutes]), ENT_QUOTES, 'UTF-8') ?></span>
         </div>
     </div>
 
     <?php if (!$hasLocalPassword): ?>
         <div class="omo-server-env-popup__error generic-section generic-section--stack">
-            <h3 class="generic-card-title generic-card-title--medium">Mot de passe indisponible</h3>
-            <p>Ce compte n a pas de mot de passe local verifiable. L edition de <?= htmlspecialchars($serverEnvTargetLabel, ENT_QUOTES, 'UTF-8') ?> via ce panneau est donc bloquee pour le moment.</p>
+            <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.password.unavailable_title'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <p><?= htmlspecialchars(omoServerEnvT('parameters.server_env.password.unavailable_message', ['target' => $serverEnvTargetLabel]), ENT_QUOTES, 'UTF-8') ?></p>
         </div>
     <?php elseif (!$isUnlocked): ?>
         <div class="omo-server-env-popup__panel generic-section generic-section--stack">
-            <h3 class="generic-card-title generic-card-title--medium">Verifier votre identite</h3>
-            <p class="omo-server-env-popup__intro">Avant d afficher le formulaire, saisissez le mot de passe du compte connecte. Cela deverrouille temporairement l edition de ce panneau.</p>
+            <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.unlock.title'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <p class="omo-server-env-popup__intro"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.unlock.description'), ENT_QUOTES, 'UTF-8') ?></p>
 
             <form id="omoServerEnvUnlockForm" class="omo-server-env-popup__unlock-form">
                 <div class="omo-server-env-popup__field">
-                    <label for="omoServerEnvUnlockPassword">Mot de passe actuel</label>
+                    <label for="omoServerEnvUnlockPassword"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.unlock.password_label'), ENT_QUOTES, 'UTF-8') ?></label>
                     <input
                         type="password"
                         id="omoServerEnvUnlockPassword"
@@ -225,15 +235,15 @@ $serverEnvSecretStates = $isUnlocked ? serverEnvAdminBuildSecretStateMap($server
                 <div id="omoServerEnvUnlockFeedback" class="omo-server-env-popup__feedback" aria-live="polite"></div>
 
                 <div class="omo-server-env-popup__actions">
-                    <button type="button" class="generic-action-button generic-action-button--secondary" id="omoServerEnvClose">Fermer</button>
-                    <button type="submit" class="generic-action-button generic-action-button--main" id="omoServerEnvUnlockSubmit">Ouvrir le formulaire</button>
+                    <button type="button" class="generic-action-button generic-action-button--secondary" id="omoServerEnvClose"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.action.close'), ENT_QUOTES, 'UTF-8') ?></button>
+                    <button type="submit" class="generic-action-button generic-action-button--main" id="omoServerEnvUnlockSubmit"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.unlock.submit'), ENT_QUOTES, 'UTF-8') ?></button>
                 </div>
             </form>
         </div>
     <?php else: ?>
         <div class="omo-server-env-popup__panel generic-section generic-section--stack">
-            <h3 class="generic-card-title generic-card-title--medium">Modifier <?= htmlspecialchars($serverEnvTargetLabel, ENT_QUOTES, 'UTF-8') ?></h3>
-            <p class="omo-server-env-popup__hint">Les champs secrets restent masques. Si vous laissez un champ secret vide, la valeur actuelle est conservee.</p>
+            <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.edit.title', ['target' => $serverEnvTargetLabel]), ENT_QUOTES, 'UTF-8') ?></h3>
+            <p class="omo-server-env-popup__hint"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.edit.secret_hint'), ENT_QUOTES, 'UTF-8') ?></p>
 
             <form id="omoServerEnvForm" class="omo-server-env-popup__form">
                 <?php foreach ($serverEnvSections as $section): ?>
@@ -258,7 +268,7 @@ $serverEnvSecretStates = $isUnlocked ? serverEnvAdminBuildSecretStateMap($server
                                     <span
                                         class="omo-server-env-popup__secret-state<?= !empty($serverEnvSecretStates[$key]) ? ' is-configured' : '' ?>"
                                         data-server-env-field-status="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"
-                                    ><?= !empty($serverEnvSecretStates[$key]) ? 'Deja configure' : 'Non renseigne' ?></span>
+                                    ><?= htmlspecialchars(!empty($serverEnvSecretStates[$key]) ? omoServerEnvT('parameters.server_env.secret.configured') : omoServerEnvT('parameters.server_env.secret.empty'), ENT_QUOTES, 'UTF-8') ?></span>
                                     <?php endif; ?>
                                 </span>
 
@@ -298,8 +308,8 @@ $serverEnvSecretStates = $isUnlocked ? serverEnvAdminBuildSecretStateMap($server
                 <div id="omoServerEnvFeedback" class="omo-server-env-popup__feedback" aria-live="polite"></div>
 
                 <div class="omo-server-env-popup__actions">
-                    <button type="button" class="generic-action-button generic-action-button--secondary" id="omoServerEnvClose">Fermer</button>
-                    <button type="submit" class="generic-action-button generic-action-button--main" id="omoServerEnvSubmit">Enregistrer <?= htmlspecialchars($serverEnvTargetLabel, ENT_QUOTES, 'UTF-8') ?></button>
+                    <button type="button" class="generic-action-button generic-action-button--secondary" id="omoServerEnvClose"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.action.close'), ENT_QUOTES, 'UTF-8') ?></button>
+                    <button type="submit" class="generic-action-button generic-action-button--main" id="omoServerEnvSubmit"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.action.save', ['target' => $serverEnvTargetLabel]), ENT_QUOTES, 'UTF-8') ?></button>
                 </div>
             </form>
         </div>
@@ -314,6 +324,7 @@ $serverEnvSecretStates = $isUnlocked ? serverEnvAdminBuildSecretStateMap($server
     }
 
     var envTargetLabel = <?= json_encode($serverEnvTargetLabel, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+    var texts = <?= json_encode($serverEnvClientTexts, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
     var popupUrl = root.getAttribute('data-popup-url') || '/omo/api/parameters/server_env_popup.php';
     var unlockUrl = root.getAttribute('data-unlock-url') || '/omo/api/parameters/server_env_unlock.php';
     var saveUrl = root.getAttribute('data-save-url') || '/omo/api/parameters/server_env_save.php';
@@ -393,15 +404,15 @@ $serverEnvSecretStates = $isUnlocked ? serverEnvAdminBuildSecretStateMap($server
             })
             .then(function (response) {
                 return response.json().catch(function () {
-                    return {
-                        status: false,
-                        message: 'Reponse invalide.'
-                    };
-                });
+                        return {
+                            status: false,
+                            message: texts.invalidResponse || ''
+                        };
+                    });
             })
             .then(function (payload) {
                 if (!payload || !payload.status) {
-                    setFeedback(unlockFeedback, payload && payload.message ? payload.message : 'Verification impossible.', 'error');
+                    setFeedback(unlockFeedback, payload && payload.message ? payload.message : (texts.unlockFailed || ''), 'error');
                     if (unlockInput) {
                         unlockInput.value = '';
                         unlockInput.focus();
@@ -409,11 +420,11 @@ $serverEnvSecretStates = $isUnlocked ? serverEnvAdminBuildSecretStateMap($server
                     return;
                 }
 
-                setFeedback(unlockFeedback, payload.message || 'Verification effectuee.', 'success');
+                setFeedback(unlockFeedback, payload.message || (texts.unlockSuccess || ''), 'success');
                 window.setTimeout(refreshPopup, 150);
             })
             .catch(function () {
-                setFeedback(unlockFeedback, 'Verification impossible.', 'error');
+                setFeedback(unlockFeedback, texts.unlockFailed || '', 'error');
             })
             .finally(function () {
                 if (unlockSubmit) {
@@ -458,7 +469,7 @@ $serverEnvSecretStates = $isUnlocked ? serverEnvAdminBuildSecretStateMap($server
             return response.json().catch(function () {
                 return {
                     status: false,
-                    message: 'Reponse invalide.'
+                    message: texts.invalidResponse || ''
                 };
             });
         })
@@ -470,7 +481,7 @@ $serverEnvSecretStates = $isUnlocked ? serverEnvAdminBuildSecretStateMap($server
 
             setFeedback(
                 feedback,
-                payload && payload.message ? payload.message : 'Operation terminee.',
+                payload && payload.message ? payload.message : (texts.operationDone || ''),
                 payload && payload.status ? 'success' : 'error'
             );
 
@@ -486,7 +497,7 @@ $serverEnvSecretStates = $isUnlocked ? serverEnvAdminBuildSecretStateMap($server
                     }
 
                     var configured = !!payload.configuredSecrets[key];
-                    statusNode.textContent = configured ? 'Deja configure' : 'Non renseigne';
+                    statusNode.textContent = configured ? (texts.secretConfigured || '') : (texts.secretEmpty || '');
                     statusNode.classList.toggle('is-configured', configured);
                 });
             }
@@ -496,7 +507,7 @@ $serverEnvSecretStates = $isUnlocked ? serverEnvAdminBuildSecretStateMap($server
             });
         })
         .catch(function () {
-            setFeedback(feedback, 'Impossible d enregistrer le fichier ' + envTargetLabel + '.', 'error');
+            setFeedback(feedback, texts.saveFailed || ('Impossible d enregistrer le fichier ' + envTargetLabel + '.'), 'error');
         })
         .finally(function () {
             if (submitButton) {

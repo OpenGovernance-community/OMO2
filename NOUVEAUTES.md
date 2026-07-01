@@ -2,6 +2,34 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-01
+
+Le centre de parametres OMO ouvert depuis la barre de gauche, ainsi que les ecrans `Admin du serveur` et `Modeles de holons`, reutilisent maintenant des bundles de traduction dedies avec helpers partages pour leurs titres, actions, etats vides, messages JS et retours JSON principaux.
+
+Dans OMO, les ecrans principaux encore en dur du LMS et de l app `Documents` sont maintenant branches au mecanisme de traduction via des blocs `sourceLang` locaux et des helpers `t(...)` dedies par vue ou sous-panneau.
+
+Les drawers et panneaux `Documents` couvrent maintenant aussi la traduction de l index, du detail, du deplacement, du partage et de l editeur de creation pour les principaux libelles, boutons, etats de chargement et messages visibles.
+
+Dans le LMS OMO, les ecrans `creer / editer un parcours`, `editer une mission`, les gestionnaires de prerequis, missions, questions, devoirs et l affichage des packs utilisent maintenant le meme schema de bundle de traduction que les autres apps recentes.
+
+Les endpoints secondaires `Documents` relies a la reecriture, la transcription, le resume et le deplacement, ainsi que les vues LMS `index` et `getMissionDetail`, ont ete completes pour reutiliser eux aussi des bundles de traduction locaux sur leurs messages, drawers et actions visibles.
+
+Le mecanisme commun de traduction tient maintenant compte du parametre d URL `lang` avant de retomber sur le cookie ou la langue navigateur. Cela permet de recreer correctement les bundles manquants d une page lors d un test direct en `?lang=en` ou autre locale supportee.
+
+La langue choisie depuis la topbar est maintenant aussi memorisee sur le compte utilisateur connecte via `user.parameters`, puis relue cote serveur avant le cookie navigateur. Les vues OMO, dont l index LMS, utilisent ainsi la langue du membre connecte meme sans parametre `lang`.
+
+## 2026-06-30
+
+La topBar OMO propose maintenant un bouton `Tension` avec un pictogramme eclair, a cote du bouton bug. Il ouvre une popup de saisie rapide pour enregistrer une tension de gouvernance partagee avec titre court, description libre et contexte holon modifiable.
+
+Une nouvelle table `tension` et son `dbObject` associe ont ete ajoutes pour stocker ces besoins ouverts avec auteur, organisation, holon, dates et statut actif, de facon compatible avec le flux de migration SQL du projet.
+
+La construction de l arborescence de holons pour les selects contextuels s appuie maintenant sur un cache de session par organisation, invalide automatiquement des qu une nouvelle entree apparait dans l historique de l organisation. Cette premiere mecanique est posee dans le helper commun des tensions pour pouvoir etre generalisee ensuite.
+
+Dans la popup de creation de tension, le select de contexte n affiche maintenant que les holons utiles au membre courant: ses propres holons restent selectionnables, leurs ancetres restent visibles mais grises, et les autres branches sont masquees.
+
+Dans l editeur LMS des missions, le champ `Nom du groupe` devient un `select editable`: il reste libre a la saisie, mais un bouton propose maintenant les noms de groupes deja utilises dans le parcours courant pour eviter les fautes de frappe. Le composant est partage dans la bibliotheque commune et documente dans la page de styleguide pour pouvoir etre reutilise ailleurs.
+
 ## 2026-06-29
 
 Le bootstrap PWA de OMO ne force plus une mise a jour du service worker a chaque rechargement, et ignore maintenant une seconde initialisation du meme script sur la page. Cela evite les boucles de rechargement observees en debug navigateur quand l option DevTools `Update on reload` est active.
@@ -350,3 +378,4 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - Le bloc des prerequis dans l editeur de mission reprend maintenant la presentation visuelle de l editeur de parcours, avec cartes et picker harmonises.
 - L ouverture d un pack dans le LMS affiche maintenant ses parcours avec les memes cartes visuelles que la page d accueil, incluant image et progression.
 - La vue detail d un pack reutilise maintenant le meme ratio d image et le meme cercle de progression chiffre que les cartes du catalogue LMS.
+- L editeur de mission permet maintenant de modifier aussi le nom du groupe stocke sur le lien parcours mission.

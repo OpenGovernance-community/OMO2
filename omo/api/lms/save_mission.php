@@ -51,6 +51,7 @@ if (empty($managementContext['canEditContent'])) {
 }
 
 $mission->loadFromArray($_POST);
+$parcoursMission->set('branch', trim((string)($_POST['branch'] ?? '')) !== '' ? (string)$_POST['branch'] : null);
 
 if (trim((string)$mission->get('title')) === '') {
     echo json_encode(array(
@@ -78,6 +79,18 @@ if (!is_array($saveResult) || empty($saveResult['status'])) {
         'message' => is_array($saveResult) && !empty($saveResult['text'])
             ? (string)$saveResult['text']
             : 'Impossible de mettre a jour cette mission.',
+    ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+$linkSaveResult = $parcoursMission->save();
+if (!is_array($linkSaveResult) || empty($linkSaveResult['status'])) {
+    echo json_encode(array(
+        'status' => false,
+        'success' => false,
+        'message' => is_array($linkSaveResult) && !empty($linkSaveResult['text'])
+            ? (string)$linkSaveResult['text']
+            : 'Impossible de mettre a jour le groupe de cette mission.',
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }

@@ -18,6 +18,18 @@ function omoGetTopbarSourceLang(): array
             'text' => '<p>Formulaire indisponible.</p>',
             'context' => 'Fallback HTML shown when the bug report form cannot be loaded from the OMO topbar.',
         ],
+        'topbar.tension.button' => [
+            'text' => 'Tension',
+            'context' => 'Topbar tension button label in OMO pages.',
+        ],
+        'topbar.tension.title' => [
+            'text' => 'Declarer une tension',
+            'context' => 'Topbar tension modal title in OMO pages.',
+        ],
+        'topbar.tension.unavailable_html' => [
+            'text' => '<p>Formulaire indisponible.</p>',
+            'context' => 'Fallback HTML shown when the tension form cannot be loaded from the OMO topbar.',
+        ],
         'topbar.close' => [
             'text' => 'Fermer',
             'context' => 'Generic close button label for the OMO topbar modal and drawer.',
@@ -429,6 +441,15 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
             'url' => '/omo/api/bug_report_popup.php',
             'mode' => 'fetch',
         ],
+        'tension' => [
+            'enabled' => !$isDemoGuest && $variant === 'app' && $currentUserId > 0 && $hasOrganizationContext,
+            'buttonLabel' => omoTopbarTranslate('topbar.tension.button'),
+            'title' => omoTopbarTranslate('topbar.tension.title'),
+            'url' => '/omo/api/tension_popup.php',
+            'mode' => 'fetch',
+            'iconUrl' => '/common/assets/icon-topbar-tension.png',
+            'appendCurrentRouteContext' => true,
+        ],
         'logoutLabel' => omoTopbarTranslate('topbar.logout'),
         'modal' => [
             'defaultTitle' => omoTopbarTranslate('topbar.modal.default_title'),
@@ -445,6 +466,7 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
             'helpUnavailableHtml' => omoTopbarTranslate('topbar.help.unavailable_html'),
             'helpPendingHtml' => omoTopbarTranslate('topbar.help.pending_html'),
             'bugReportUnavailableHtml' => omoTopbarTranslate('topbar.bug.unavailable_html'),
+            'tensionUnavailableHtml' => omoTopbarTranslate('topbar.tension.unavailable_html'),
         ],
     ];
 
@@ -462,6 +484,10 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
 
     if (!empty($options['bugReport']) && is_array($options['bugReport'])) {
         $config['bugReport'] = array_replace($config['bugReport'], $options['bugReport']);
+    }
+
+    if (!empty($options['tension']) && is_array($options['tension'])) {
+        $config['tension'] = array_replace($config['tension'], $options['tension']);
     }
 
     if (!empty($options['profile']) && is_array($options['profile'])) {

@@ -266,6 +266,141 @@
         collectFileLists(root).forEach(initFileList);
     }
 
+    function collectEditableSelects(root) {
+        var scope = root || document;
+        var editableSelects = toArray(scope.querySelectorAll('[data-generic-editable-select]'));
+
+        if (scope.nodeType === 1 && scope.hasAttribute('data-generic-editable-select')) {
+            editableSelects.unshift(scope);
+        }
+
+        return editableSelects;
+    }
+
+    function getEditableSelectParts(component) {
+        if (!component) {
+            return null;
+        }
+
+        return {
+            component: component,
+            input: component.querySelector('[data-generic-editable-select-input]'),
+            toggle: component.querySelector('[data-generic-editable-select-toggle]'),
+            panel: component.querySelector('[data-generic-editable-select-panel]'),
+            options: toArray(component.querySelectorAll('[data-generic-editable-select-option]')),
+            empty: component.querySelector('[data-generic-editable-select-empty]')
+        };
+    }
+
+    function filterEditableSelectOptions(component) {
+        var parts = getEditableSelectParts(component);
+        var query;
+        var hasVisibleOptions = false;
+
+        if (!parts || !parts.input) {
+            return;
+        }
+
+        query = String(parts.input.value || '').toLowerCase().trim();
+
+        parts.options.forEach(function (option) {
+            var optionValue = String(option.getAttribute('data-generic-editable-select-option') || option.textContent || '').toLowerCase();
+            var isVisible = query === '' || optionValue.indexOf(query) !== -1;
+
+            option.hidden = !isVisible;
+            if (isVisible) {
+                hasVisibleOptions = true;
+            }
+        });
+
+        if (parts.empty) {
+            parts.empty.hidden = hasVisibleOptions;
+        }
+    }
+
+    function closeEditableSelect(component) {
+        var parts = getEditableSelectParts(component);
+
+        if (!parts || !parts.panel || !parts.toggle) {
+            return;
+        }
+
+        parts.panel.hidden = true;
+        parts.toggle.setAttribute('aria-expanded', 'false');
+        parts.component.classList.remove('is-open');
+    }
+
+    function closeAllEditableSelects(exceptComponent) {
+        collectEditableSelects(document).forEach(function (component) {
+            if (component !== exceptComponent) {
+                closeEditableSelect(component);
+            }
+        });
+    }
+
+    function openEditableSelect(component) {
+        var parts = getEditableSelectParts(component);
+
+        if (!parts || !parts.panel || !parts.toggle) {
+            return;
+        }
+
+        filterEditableSelectOptions(component);
+        closeAllEditableSelects(component);
+        parts.panel.hidden = false;
+        parts.toggle.setAttribute('aria-expanded', 'true');
+        parts.component.classList.add('is-open');
+    }
+
+    function toggleEditableSelect(component) {
+        var parts = getEditableSelectParts(component);
+
+        if (!parts || !parts.panel) {
+            return;
+        }
+
+        if (parts.panel.hidden) {
+            openEditableSelect(component);
+            return;
+        }
+
+        closeEditableSelect(component);
+    }
+
+    function initEditableSelect(component) {
+        var parts = getEditableSelectParts(component);
+        var panelId;
+
+        if (!parts || !parts.input || !parts.toggle || !parts.panel) {
+            return;
+        }
+
+        if (!component.id) {
+            component.id = 'generic-editable-select-' + Math.random().toString(36).slice(2, 10);
+        }
+
+        panelId = ensureId(parts.panel, component.id + '-panel');
+        parts.input.setAttribute('autocomplete', parts.input.getAttribute('autocomplete') || 'off');
+        parts.toggle.setAttribute('aria-controls', panelId);
+        parts.toggle.setAttribute('aria-expanded', parts.panel.hidden ? 'false' : 'true');
+        parts.toggle.setAttribute('aria-haspopup', 'listbox');
+        parts.panel.setAttribute('role', 'listbox');
+        parts.options.forEach(function (option, index) {
+            ensureId(option, component.id + '-option-' + index);
+            option.setAttribute('role', 'option');
+            if (option.tagName === 'BUTTON') {
+                option.type = 'button';
+            }
+        });
+
+        filterEditableSelectOptions(component);
+        component.dataset.genericEditableSelectReady = '1';
+    }
+
+    function initEditableSelects(root) {
+        collectEditableSelects(root).forEach(initEditableSelect);
+    }
+
     function createVerticalSortableList(options) {
         var settings = options || {};
         var list = settings.list || null;
@@ -505,6 +640,7 @@
         var scope = root || document;
 
         initFileLists(scope);
+        initEditableSelects(scope);
         toArray(scope.querySelectorAll('[data-generic-tabs]')).forEach(initTabs);
         toArray(scope.querySelectorAll('[data-generic-accordion]')).forEach(initAccordion);
     }
@@ -610,6 +746,9 @@
 
     function setLanguagePreference(locale, reloadPage) {
         var normalized = normalizeLocalePreference(locale);
+        var persistUrl = '/common/language_preference.php';
+        var persistBody;
+        var persistRequest;
 
         if (!normalized) {
             return false;
@@ -631,8 +770,32 @@
             ].join('; ');
         }
 
+        persistBody = 'locale=' + encodeURIComponent(normalized);
+        persistRequest = null;
+
+        if (typeof window.fetch === 'function') {
+            persistRequest = window.fetch(persistUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: persistBody,
+                keepalive: reloadPage === true
+            }).catch(function () {
+                return null;
+            });
+        }
+
         if (reloadPage) {
-            window.location.reload();
+            if (persistRequest && typeof persistRequest.finally === 'function') {
+                persistRequest.finally(function () {
+                    window.location.reload();
+                });
+            } else {
+                window.location.reload();
+            }
         }
 
         return true;
@@ -700,11 +863,95 @@
         activateTab(container, state.tabs[nextIndex], true);
     }
 
+    function handleEditableSelectClick(event) {
+        var option = findClosestByAttribute(event.target, 'data-generic-editable-select-option', document);
+        var toggle = findClosestByAttribute(event.target, 'data-generic-editable-select-toggle', document);
+        var component = findClosestByAttribute(event.target, 'data-generic-editable-select', document);
+        var parts;
+        var value;
+
+        if (option) {
+            component = findClosestByAttribute(option, 'data-generic-editable-select', document);
+            parts = getEditableSelectParts(component);
+            if (!parts || !parts.input) {
+                return;
+            }
+
+            value = option.getAttribute('data-generic-editable-select-option') || option.textContent || '';
+            parts.input.value = value;
+            parts.input.dispatchEvent(new Event('input', { bubbles: true }));
+            parts.input.dispatchEvent(new Event('change', { bubbles: true }));
+            closeEditableSelect(component);
+            parts.input.focus();
+            return;
+        }
+
+        if (toggle) {
+            component = findClosestByAttribute(toggle, 'data-generic-editable-select', document);
+            if (!component) {
+                return;
+            }
+
+            initEditableSelect(component);
+            toggleEditableSelect(component);
+            return;
+        }
+
+        if (!component) {
+            closeAllEditableSelects(null);
+        }
+    }
+
+    function handleEditableSelectInput(event) {
+        var input = findClosestByAttribute(event.target, 'data-generic-editable-select-input', document);
+        var component;
+
+        if (!input) {
+            return;
+        }
+
+        component = findClosestByAttribute(input, 'data-generic-editable-select', document);
+        if (!component) {
+            return;
+        }
+
+        initEditableSelect(component);
+        openEditableSelect(component);
+    }
+
+    function handleEditableSelectKeydown(event) {
+        var component = findClosestByAttribute(event.target, 'data-generic-editable-select', document);
+        var parts;
+
+        if (!component) {
+            return;
+        }
+
+        parts = getEditableSelectParts(component);
+        if (!parts || !parts.panel) {
+            return;
+        }
+
+        if (event.key === 'Escape') {
+            closeEditableSelect(component);
+            return;
+        }
+
+        if (event.key === 'ArrowDown' && parts.panel.hidden) {
+            openEditableSelect(component);
+            event.preventDefault();
+        }
+    }
+
+    document.addEventListener('click', handleEditableSelectClick);
+    document.addEventListener('input', handleEditableSelectInput);
+    document.addEventListener('keydown', handleEditableSelectKeydown);
     document.addEventListener('click', handleGenericTabClick);
     document.addEventListener('keydown', handleGenericTabKeydown);
 
     window.initGenericTabs = initTabs;
     window.initGenericComponents = initGenericComponents;
+    window.initGenericEditableSelects = initEditableSelects;
     window.initGenericFileLists = initFileLists;
     window.syncGenericFileLists = function (root) {
         collectFileLists(root).forEach(syncFileList);

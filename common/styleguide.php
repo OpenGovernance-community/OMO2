@@ -271,16 +271,41 @@ generic-action-button generic-action-button--danger</pre>
                         <span class="styleguide-label">Textarea</span>
                         <textarea class="generic-form-control" rows="4">Texte multi-lignes de demonstration.</textarea>
                     </label>
+                    <label class="styleguide-field">
+                        <span class="styleguide-label">Select editable</span>
+                        <div class="generic-editable-select" data-generic-editable-select>
+                            <div class="generic-editable-select__control">
+                                <input
+                                    type="text"
+                                    class="generic-form-control generic-editable-select__input"
+                                    value="Introduction"
+                                    placeholder="Saisir ou choisir"
+                                    data-generic-editable-select-input
+                                >
+                                <button type="button" class="generic-editable-select__toggle" data-generic-editable-select-toggle aria-label="Afficher les options"></button>
+                            </div>
+                            <div class="generic-editable-select__panel" data-generic-editable-select-panel hidden>
+                                <button type="button" class="generic-editable-select__option" data-generic-editable-select-option="Accueil">Accueil</button>
+                                <button type="button" class="generic-editable-select__option" data-generic-editable-select-option="Introduction">Introduction</button>
+                                <button type="button" class="generic-editable-select__option" data-generic-editable-select-option="Prise en main">Prise en main</button>
+                                <div class="generic-editable-select__empty" data-generic-editable-select-empty hidden>Aucune valeur existante.</div>
+                            </div>
+                        </div>
+                    </label>
                 </form>
                 <pre class="styleguide-code">input.generic-form-control
 select.generic-form-control
 textarea.generic-form-control
+div.generic-editable-select[data-generic-editable-select]
 
 Overrides possibles via variables:
 --generic-form-control-border
 --generic-form-control-background
 --generic-form-control-background-focus
---generic-form-control-textarea-min-height</pre>
+--generic-form-control-textarea-min-height
+
+JS disponible apres injection dynamique:
+window.initGenericEditableSelects(container);</pre>
             </div>
         </section>
 

@@ -4,6 +4,30 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 use dbObject\Document;
 use dbObject\Organization;
 
+$sourceLang = [
+    'documents.move.error.invalid' => ['text' => 'Le document a deplacer est invalide.', 'context' => 'Error shown when the source document id is invalid.'],
+    'documents.move.error.not_found' => ['text' => 'Le document demande est introuvable.', 'context' => 'Error shown when the source document cannot be loaded.'],
+    'documents.move.error.organization_not_found' => ['text' => 'Organisation introuvable.', 'context' => 'Error shown when the document organization cannot be loaded.'],
+    'documents.move.error.forbidden' => ['text' => 'Vous n avez pas les droits pour deplacer ce document.', 'context' => 'Error shown when the user cannot move the document.'],
+    'documents.move.error.no_destination' => ['text' => 'Aucune destination compatible n a ete trouvee pour ce document.', 'context' => 'Error shown when no destination is available.'],
+    'documents.move.field.destination' => ['text' => 'Ou ca va', 'context' => 'Label shown above the destination picker.'],
+    'documents.move.field.search_placeholder' => ['text' => 'Rechercher une destination', 'context' => 'Search placeholder used in the move dialog.'],
+    'documents.move.action.cancel' => ['text' => 'Annuler', 'context' => 'Button used to cancel document moving.'],
+    'documents.move.action.submit' => ['text' => 'Deplacer', 'context' => 'Button used to submit document moving.'],
+    'documents.move.status.invalid_destination' => ['text' => 'Choisissez une destination valide.', 'context' => 'Hint or error shown when no valid destination is selected.'],
+    'documents.move.status.select_other' => ['text' => 'Selectionnez une autre destination pour activer le deplacement.', 'context' => 'Hint shown when the current destination is selected.'],
+    'documents.move.status.no_match' => ['text' => 'Aucune destination correspondante', 'context' => 'Option shown when the destination search yields no result.'],
+    'documents.move.status.submit_other' => ['text' => 'Selectionnez une autre destination avant de deplacer ce document.', 'context' => 'Error shown when trying to submit with the current destination.'],
+];
+
+$lang = omoLoadTranslationBundle('omo_documents_move', $sourceLang);
+
+function omoDocumentsMoveT($key, array $replace = [])
+{
+    global $lang, $sourceLang;
+    return t($key, $replace, $lang, $sourceLang);
+}
+
 $documentId = (int)($_GET['id'] ?? 0);
 $document = new Document();
 $organization = new Organization();
@@ -11,24 +35,24 @@ $moveData = null;
 $errorMessage = '';
 
 if ($documentId <= 0) {
-    $errorMessage = 'Le document a deplacer est invalide.';
+    $errorMessage = omoDocumentsMoveT('documents.move.error.invalid');
 } elseif (
     !$document->load($documentId)
     || (int)$document->get('IDorganization') <= 0
 ) {
-    $errorMessage = 'Le document demande est introuvable.';
+    $errorMessage = omoDocumentsMoveT('documents.move.error.not_found');
 } else {
     $organizationId = (int)$document->get('IDorganization');
 
     if (!$organization->load($organizationId)) {
-        $errorMessage = 'Organisation introuvable.';
+        $errorMessage = omoDocumentsMoveT('documents.move.error.organization_not_found');
     } else {
         $moveData = $organization->getDocumentMoveEditorData($documentId);
 
         if (($moveData['documentId'] ?? 0) !== $documentId || !is_array($moveData['document'] ?? null)) {
-            $errorMessage = 'Le document demande est introuvable.';
+            $errorMessage = omoDocumentsMoveT('documents.move.error.not_found');
         } elseif (empty($moveData['canMove'])) {
-            $errorMessage = "Vous n'avez pas les droits pour deplacer ce document.";
+            $errorMessage = omoDocumentsMoveT('documents.move.error.forbidden');
         } else {
             $alternativeCount = 0;
             foreach (($moveData['destinations'] ?? array()) as $destination) {
@@ -38,7 +62,7 @@ if ($documentId <= 0) {
             }
 
             if ($alternativeCount <= 0) {
-                $errorMessage = 'Aucune destination compatible n a ete trouvee pour ce document.';
+                $errorMessage = omoDocumentsMoveT('documents.move.error.no_destination');
             }
         }
     }
@@ -54,8 +78,8 @@ if ($documentId <= 0) {
         </div>
 
         <label class="omo-document-move__field">
-            <span>Ou ca va</span>
-            <input type="search" id="omo-document-move-search" class="generic-form-control" placeholder="Rechercher une destination">
+            <span><?= omoApiEscape(omoDocumentsMoveT('documents.move.field.destination')) ?></span>
+            <input type="search" id="omo-document-move-search" class="generic-form-control" placeholder="<?= omoApiEscape(omoDocumentsMoveT('documents.move.field.search_placeholder')) ?>">
         </label>
 
         <label class="omo-document-move__field">
@@ -66,8 +90,8 @@ if ($documentId <= 0) {
         <div id="omo-document-move-status" class="omo-document-move__status" hidden></div>
 
         <div class="omo-document-move__actions">
-            <button type="button" class="omo-document-move__button generic-action-button generic-action-button--secondary" id="omo-document-move-cancel">Annuler</button>
-            <button type="submit" class="omo-document-move__button generic-action-button generic-action-button--main" id="omo-document-move-submit">Deplacer</button>
+            <button type="button" class="omo-document-move__button generic-action-button generic-action-button--secondary" id="omo-document-move-cancel"><?= omoApiEscape(omoDocumentsMoveT('documents.move.action.cancel')) ?></button>
+            <button type="submit" class="omo-document-move__button generic-action-button generic-action-button--main" id="omo-document-move-submit"><?= omoApiEscape(omoDocumentsMoveT('documents.move.action.submit')) ?></button>
         </div>
     </form>
 <?php endif; ?>
@@ -77,6 +101,12 @@ if ($documentId <= 0) {
 (() => {
 const state = {
     data: <?= json_encode($moveData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+    text: <?= json_encode([
+        'invalidDestination' => omoDocumentsMoveT('documents.move.status.invalid_destination'),
+        'selectOther' => omoDocumentsMoveT('documents.move.status.select_other'),
+        'noMatch' => omoDocumentsMoveT('documents.move.status.no_match'),
+        'submitOther' => omoDocumentsMoveT('documents.move.status.submit_other'),
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
     statusTimer: null
 };
 
@@ -181,9 +211,9 @@ function updateSubmitState() {
 
     if (elements.hint) {
         if (!selectedDestination) {
-            elements.hint.textContent = 'Choisissez une destination valide.';
+            elements.hint.textContent = state.text.invalidDestination || '';
         } else if (selectedKey === currentKey) {
-            elements.hint.textContent = 'Selectionnez une autre destination pour activer le deplacement.';
+            elements.hint.textContent = state.text.selectOther || '';
         } else {
             elements.hint.textContent = '';
         }
@@ -199,7 +229,7 @@ function renderDestinations() {
     if (!destinations.length) {
         const option = document.createElement('option');
         option.value = '';
-        option.textContent = 'Aucune destination correspondante';
+        option.textContent = state.text.noMatch || '';
         option.disabled = true;
         option.selected = true;
         elements.destination.appendChild(option);
@@ -235,12 +265,12 @@ function submitMove(event) {
     const currentKey = getCurrentDestinationKey();
 
     if (!targetDestination) {
-        showStatus('Choisissez une destination valide.', 'error');
+        showStatus(state.text.invalidDestination || '', 'error');
         return;
     }
 
     if (String(targetDestination.key || '') === currentKey) {
-        showStatus('Selectionnez une autre destination avant de deplacer ce document.', 'error');
+        showStatus(state.text.submitOther || '', 'error');
         return;
     }
 

@@ -47,6 +47,134 @@ $sourceLang = [
         'text' => 'Aucun document disponible pour ce contexte et ses descendants.',
         'context' => 'Empty state shown when no document exists in descendant scope.',
     ],
+    'documents.page.title' => [
+        'text' => 'Documents',
+        'context' => 'Main title of the documents application.',
+    ],
+    'documents.action.new' => [
+        'text' => 'Nouveau',
+        'context' => 'Primary action used to create a new document.',
+    ],
+    'documents.controls.sort.aria' => [
+        'text' => 'Tri des documents',
+        'context' => 'Accessible label for the documents sort control.',
+    ],
+    'documents.controls.sort.date' => [
+        'text' => 'Date',
+        'context' => 'Short sort label shown before the sort control is rebuilt in JavaScript.',
+    ],
+    'documents.controls.sort.alpha' => [
+        'text' => 'Alphabetique',
+        'context' => 'Short alphabetical sort label shown before the sort control is rebuilt in JavaScript.',
+    ],
+    'documents.controls.density.aria' => [
+        'text' => 'Densite d affichage des documents',
+        'context' => 'Accessible label for the documents density control.',
+    ],
+    'documents.controls.density.detail' => [
+        'text' => 'Detail',
+        'context' => 'Label used for detailed document density.',
+    ],
+    'documents.controls.density.compact' => [
+        'text' => 'Compact',
+        'context' => 'Label used for compact document density.',
+    ],
+    'documents.drawer.detail_title' => [
+        'text' => 'Détail du document',
+        'context' => 'Title shown in the document detail drawer.',
+    ],
+    'documents.drawer.detail_description' => [
+        'text' => 'Lecture du document dans OMO.',
+        'context' => 'Description shown in the document detail drawer.',
+    ],
+    'documents.drawer.editor_title' => [
+        'text' => 'Nouveau document',
+        'context' => 'Title shown in the document editor drawer.',
+    ],
+    'documents.drawer.editor_description' => [
+        'text' => 'Creation d un document dans le contexte courant.',
+        'context' => 'Description shown in the document editor drawer.',
+    ],
+    'documents.drawer.close' => [
+        'text' => 'Fermer',
+        'context' => 'Button label used to close document drawers.',
+    ],
+    'documents.action.loading' => [
+        'text' => 'Chargement...',
+        'context' => 'Loading state shown while a document drawer is loading.',
+    ],
+    'documents.error.load_document' => [
+        'text' => 'Impossible de charger ce document.',
+        'context' => 'Error shown when a document drawer cannot load its detail view.',
+    ],
+    'documents.error.load_editor' => [
+        'text' => 'Impossible de charger l editeur du document.',
+        'context' => 'Error shown when the document editor drawer cannot load.',
+    ],
+    'documents.sort.updated_aria' => [
+        'text' => 'Date de modification',
+        'context' => 'Accessible label for the updated date sort button.',
+    ],
+    'documents.sort.updated' => [
+        'text' => 'Modification',
+        'context' => 'Label for the updated date sort button.',
+    ],
+    'documents.sort.created_aria' => [
+        'text' => 'Date de creation',
+        'context' => 'Accessible label for the creation date sort button.',
+    ],
+    'documents.sort.created' => [
+        'text' => 'Creation',
+        'context' => 'Label for the creation date sort button.',
+    ],
+    'documents.sort.alpha_aria' => [
+        'text' => 'Alphabetique',
+        'context' => 'Accessible label for the alphabetical sort button.',
+    ],
+    'documents.date_column.created' => [
+        'text' => 'Cree le',
+        'context' => 'Compact column label used when sorting by creation date.',
+    ],
+    'documents.date_column.updated' => [
+        'text' => 'Modifie le',
+        'context' => 'Compact column label used when sorting by updated date.',
+    ],
+    'documents.group.today' => [
+        'text' => "Aujourd'hui",
+        'context' => 'Relative date group title for documents updated today.',
+    ],
+    'documents.group.yesterday' => [
+        'text' => 'Hier',
+        'context' => 'Relative date group title for documents updated yesterday.',
+    ],
+    'documents.group.this_week' => [
+        'text' => 'Cette semaine',
+        'context' => 'Relative date group title for documents updated earlier this week.',
+    ],
+    'documents.group.last_week' => [
+        'text' => 'Semaine dernière',
+        'context' => 'Relative date group title for documents updated last week.',
+    ],
+    'documents.group.this_month' => [
+        'text' => 'Ce mois',
+        'context' => 'Relative date group title for documents updated earlier this month.',
+    ],
+    'documents.group.last_month' => [
+        'text' => 'Mois dernier',
+        'context' => 'Relative date group title for documents updated last month.',
+    ],
+    'documents.group.this_year' => [
+        'text' => 'Cette année',
+        'context' => 'Relative date group title for documents updated earlier this year.',
+    ],
+    'documents.group.earlier' => [
+        'text' => 'Plus ancien',
+        'context' => 'Relative date group title for older documents.',
+    ],
+    'documents.group.too_far' => [
+        'text' => 'Trop loin',
+        'context' => 'Fallback relative date group title for documents with missing or invalid dates.',
+    ],
 ];
 
 $lang = omoLoadTranslationBundle('omo_documents_index', $sourceLang);
@@ -119,7 +247,17 @@ if ($currentOrganizationId > 0) {
 }
 
 $today = new DateTimeImmutable('today');
-$groups = sharedGetRelativeDateGroups($today);
+$groups = sharedGetRelativeDateGroups($today, [
+    'today' => omoDocumentsScopeT('documents.group.today'),
+    'yesterday' => omoDocumentsScopeT('documents.group.yesterday'),
+    'this_week' => omoDocumentsScopeT('documents.group.this_week'),
+    'last_week' => omoDocumentsScopeT('documents.group.last_week'),
+    'this_month' => omoDocumentsScopeT('documents.group.this_month'),
+    'last_month' => omoDocumentsScopeT('documents.group.last_month'),
+    'this_year' => omoDocumentsScopeT('documents.group.this_year'),
+    'earlier' => omoDocumentsScopeT('documents.group.earlier'),
+    'too_far' => omoDocumentsScopeT('documents.group.too_far'),
+]);
 $groupLayers = array();
 $groupCount = count($groups);
 
@@ -211,10 +349,10 @@ foreach ($documents as $document) {
     $isExternalLink = $document->isExternalLink();
     $canShareDocument = !$isFolder && $document->supportsHtmlContent();
     $createdGroupIndex = sharedGetRelativeDateGroupIndexForDate($resolvedCreatedAt, $groups, $today);
-    $createdGroup = $groups[$createdGroupIndex] ?? ['key' => 'too_far', 'label' => 'Trop loin'];
+    $createdGroup = $groups[$createdGroupIndex] ?? ['key' => 'too_far', 'label' => omoDocumentsScopeT('documents.group.too_far')];
     $createdGroupKey = (string)($createdGroup['key'] ?? 'too_far');
     $updatedGroupIndex = sharedGetRelativeDateGroupIndexForDate($resolvedUpdatedAt, $groups, $today);
-    $updatedGroup = $groups[$updatedGroupIndex] ?? ['key' => 'too_far', 'label' => 'Trop loin'];
+    $updatedGroup = $groups[$updatedGroupIndex] ?? ['key' => 'too_far', 'label' => omoDocumentsScopeT('documents.group.too_far')];
     $updatedGroupKey = (string)($updatedGroup['key'] ?? 'too_far');
 
     $documentEntries[] = [
@@ -259,17 +397,17 @@ foreach ($documents as $document) {
         'fullDateLabel' => $formatDate($resolvedCreatedAt, true),
         'timestamp' => $resolvedUpdatedAt instanceof DateTimeInterface ? (int)$resolvedUpdatedAt->getTimestamp() : 0,
         'groupKey' => $updatedGroupKey,
-        'groupLabel' => (string)($updatedGroup['label'] ?? 'Trop loin'),
+        'groupLabel' => (string)($updatedGroup['label'] ?? omoDocumentsScopeT('documents.group.too_far')),
         'createdDateLabel' => $formatDate($resolvedCreatedAt, in_array($createdGroupKey, ['earlier', 'too_far'], true)),
         'createdFullDateLabel' => $formatDate($resolvedCreatedAt, true),
         'createdTimestamp' => $resolvedCreatedAt instanceof DateTimeInterface ? (int)$resolvedCreatedAt->getTimestamp() : 0,
         'createdGroupKey' => $createdGroupKey,
-        'createdGroupLabel' => (string)($createdGroup['label'] ?? 'Trop loin'),
+        'createdGroupLabel' => (string)($createdGroup['label'] ?? omoDocumentsScopeT('documents.group.too_far')),
         'updatedDateLabel' => $formatDate($resolvedUpdatedAt, in_array($updatedGroupKey, ['earlier', 'too_far'], true)),
         'updatedFullDateLabel' => $formatDate($resolvedUpdatedAt, true),
         'updatedTimestamp' => $resolvedUpdatedAt instanceof DateTimeInterface ? (int)$resolvedUpdatedAt->getTimestamp() : 0,
         'updatedGroupKey' => $updatedGroupKey,
-        'updatedGroupLabel' => (string)($updatedGroup['label'] ?? 'Trop loin'),
+        'updatedGroupLabel' => (string)($updatedGroup['label'] ?? omoDocumentsScopeT('documents.group.too_far')),
         'sortTitle' => $normalizeSortValue($document->get('title')),
         'contextUrl' => '/omo/api/documents/detail.php?id=' . $documentId
             . '&oid=' . $currentOrganizationId
@@ -319,7 +457,7 @@ if (!is_string($documentsPayload)) {
                 </span>
                 <div class="omo-panel-view__header-copy">
                     <div class="omo-documents__title-row">
-                        <h2 class="omo-panel-view__title">Documents</h2>
+                        <h2 class="omo-panel-view__title"><?= $escape(omoDocumentsScopeT('documents.page.title')) ?></h2>
                         <span class="omo-documents__count omo-panel-view__count">
                             <?= $escape($visibleDocumentsCount) ?>
                             <?php if ($totalDocumentsCount > $visibleDocumentsCount): ?>
@@ -334,10 +472,10 @@ if (!is_string($documentsPayload)) {
                     <button
                         type="button"
                         class="generic-action-button generic-action-button--main omo-documents__new-button omo-mobile-corner-action"
-                        aria-label="Nouveau"
+                        aria-label="<?= $escape(omoDocumentsScopeT('documents.action.new')) ?>"
                         data-omo-documents-new
                         data-omo-documents-new-url="<?= $escape($newDocumentUrl) ?>"
-                    ><span class="omo-mobile-corner-action__text">Nouveau</span></button>
+                    ><span class="omo-mobile-corner-action__text"><?= $escape(omoDocumentsScopeT('documents.action.new')) ?></span></button>
                 <?php endif; ?>
             </div>
         </div>
@@ -367,13 +505,13 @@ if (!is_string($documentsPayload)) {
             <?php endif; ?>
             <?php if (count($documentEntries) > 0): ?>
                 <div class="omo-documents__controls omo-panel-controls">
-                    <div class="omo-segmented" role="group" aria-label="Tri des documents">
-                        <button type="button" class="omo-segmented__button is-active" aria-label="Date" data-omo-documents-sort="date" data-omo-segmented-option="temporal" aria-pressed="true"><span class="omo-segmented__text">Date</span></button>
-                        <button type="button" class="omo-segmented__button" aria-label="Alphabétique" data-omo-documents-sort="alpha" data-omo-segmented-option="alphabetical" aria-pressed="false"><span class="omo-segmented__text">Alphabétique</span></button>
+                    <div class="omo-segmented" role="group" aria-label="<?= $escape(omoDocumentsScopeT('documents.controls.sort.aria')) ?>">
+                        <button type="button" class="omo-segmented__button is-active" aria-label="<?= $escape(omoDocumentsScopeT('documents.controls.sort.date')) ?>" data-omo-documents-sort="date" data-omo-segmented-option="temporal" aria-pressed="true"><span class="omo-segmented__text"><?= $escape(omoDocumentsScopeT('documents.controls.sort.date')) ?></span></button>
+                        <button type="button" class="omo-segmented__button" aria-label="<?= $escape(omoDocumentsScopeT('documents.controls.sort.alpha')) ?>" data-omo-documents-sort="alpha" data-omo-segmented-option="alphabetical" aria-pressed="false"><span class="omo-segmented__text"><?= $escape(omoDocumentsScopeT('documents.controls.sort.alpha')) ?></span></button>
                     </div>
-                    <div class="omo-segmented" role="group" aria-label="Densité d'affichage des documents">
-                        <button type="button" class="omo-segmented__button is-active" data-omo-documents-density="detail" aria-pressed="true">Détail</button>
-                        <button type="button" class="omo-segmented__button" data-omo-documents-density="compact" aria-pressed="false">Compact</button>
+                    <div class="omo-segmented" role="group" aria-label="<?= $escape(omoDocumentsScopeT('documents.controls.density.aria')) ?>">
+                        <button type="button" class="omo-segmented__button is-active" data-omo-documents-density="detail" aria-pressed="true"><?= $escape(omoDocumentsScopeT('documents.controls.density.detail')) ?></button>
+                        <button type="button" class="omo-segmented__button" data-omo-documents-density="compact" aria-pressed="false"><?= $escape(omoDocumentsScopeT('documents.controls.density.compact')) ?></button>
                     </div>
                 </div>
             <?php endif; ?>
@@ -513,10 +651,10 @@ if (!is_string($documentsPayload)) {
                 <div class="omo-overlay-drawer__panel">
                     <div class="omo-overlay-drawer__header">
                         <div class="omo-overlay-drawer__header-copy">
-                            <h3 class="omo-overlay-drawer__title" data-omo-document-detail-title>Détail du document</h3>
-                            <p class="omo-overlay-drawer__description" data-omo-document-detail-description>Lecture du document dans OMO.</p>
+                            <h3 class="omo-overlay-drawer__title" data-omo-document-detail-title><?= $escape(omoDocumentsScopeT('documents.drawer.detail_title')) ?></h3>
+                            <p class="omo-overlay-drawer__description" data-omo-document-detail-description><?= $escape(omoDocumentsScopeT('documents.drawer.detail_description')) ?></p>
                         </div>
-                        <button type="button" class="omo-overlay-drawer__close" data-omo-document-detail-close>Fermer</button>
+                        <button type="button" class="omo-overlay-drawer__close" data-omo-document-detail-close><?= $escape(omoDocumentsScopeT('documents.drawer.close')) ?></button>
                     </div>
                     <div class="omo-overlay-drawer__body" data-omo-document-detail-body></div>
                 </div>
@@ -756,9 +894,9 @@ if (!is_string($documentsPayload)) {
 
                             if (sortControl) {
                                 sortControl.innerHTML = [
-                                    '<button type="button" class="omo-segmented__button" aria-label="Date de modification" data-omo-documents-sort="updated" data-omo-segmented-option="updated" aria-pressed="false"><span class="omo-segmented__text">Modification</span></button>',
-                                    '<button type="button" class="omo-segmented__button" aria-label="Date de creation" data-omo-documents-sort="created" data-omo-segmented-option="created" aria-pressed="false"><span class="omo-segmented__text">Creation</span></button>',
-                                    '<button type="button" class="omo-segmented__button" aria-label="Alphabetique" data-omo-documents-sort="alpha" data-omo-segmented-option="alphabetical" aria-pressed="false"><span class="omo-segmented__text">Alphabetique</span></button>'
+                                    '<button type="button" class="omo-segmented__button" aria-label="<?= $escape(omoDocumentsScopeT('documents.sort.updated_aria')) ?>" data-omo-documents-sort="updated" data-omo-segmented-option="updated" aria-pressed="false"><span class="omo-segmented__text"><?= $escape(omoDocumentsScopeT('documents.sort.updated')) ?></span></button>',
+                                    '<button type="button" class="omo-segmented__button" aria-label="<?= $escape(omoDocumentsScopeT('documents.sort.created_aria')) ?>" data-omo-documents-sort="created" data-omo-segmented-option="created" aria-pressed="false"><span class="omo-segmented__text"><?= $escape(omoDocumentsScopeT('documents.sort.created')) ?></span></button>',
+                                    '<button type="button" class="omo-segmented__button" aria-label="<?= $escape(omoDocumentsScopeT('documents.sort.alpha_aria')) ?>" data-omo-documents-sort="alpha" data-omo-segmented-option="alphabetical" aria-pressed="false"><span class="omo-segmented__text"><?= $escape(omoDocumentsScopeT('documents.controls.sort.alpha')) ?></span></button>'
                                 ].join('');
                             }
 
@@ -813,8 +951,8 @@ if (!is_string($documentsPayload)) {
 
                             const getDateColumnLabel = function (sortMode) {
                                 return getTemporalSortMode(sortMode) === 'created'
-                                    ? 'Cree le'
-                                    : 'Modifie le';
+                                    ? <?= json_encode(omoDocumentsScopeT('documents.date_column.created'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+                                    : <?= json_encode(omoDocumentsScopeT('documents.date_column.updated'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                             };
 
                             const sortByTemporal = function (items, sortMode) {
@@ -1422,7 +1560,7 @@ if (!is_string($documentsPayload)) {
                                     : 'Détail du document';
                                 detailDescription.textContent = documentItem && documentItem.fullDateLabel
                                     ? 'Document créé le ' + documentItem.fullDateLabel + '.'
-                                    : 'Lecture du document dans OMO.';
+                                    : <?= json_encode(omoDocumentsScopeT('documents.drawer.detail_description'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                             };
 
                             const openDetailDrawer = function () {
@@ -1460,7 +1598,7 @@ if (!is_string($documentsPayload)) {
 
                                 detailBody.innerHTML = window.getSkeleton
                                     ? getSkeleton('panel')
-                                    : '<div class="loading">Chargement…</div>';
+                                    : '<div class="loading"><?= $escape(omoDocumentsScopeT('documents.action.loading')) ?></div>';
                             };
 
                             const renderDetailError = function () {
@@ -1468,7 +1606,7 @@ if (!is_string($documentsPayload)) {
                                     return;
                                 }
 
-                                detailBody.innerHTML = '<div class="loading"><div class="omo-empty-state">Impossible de charger ce document.</div></div>';
+                                detailBody.innerHTML = '<div class="loading"><div class="omo-empty-state"><?= $escape(omoDocumentsScopeT('documents.error.load_document')) ?></div></div>';
                             };
 
                             const openExternalDocumentWindow = function (documentItem) {
@@ -1910,10 +2048,10 @@ if (!is_string($documentsPayload)) {
             <div class="omo-overlay-drawer__panel">
                 <div class="omo-overlay-drawer__header">
                     <div class="omo-overlay-drawer__header-copy">
-                        <h3 class="omo-overlay-drawer__title" data-omo-document-editor-title>Nouveau document</h3>
-                        <p class="omo-overlay-drawer__description" data-omo-document-editor-description>Creation d un document dans le contexte courant.</p>
+                        <h3 class="omo-overlay-drawer__title" data-omo-document-editor-title><?= $escape(omoDocumentsScopeT('documents.drawer.editor_title')) ?></h3>
+                        <p class="omo-overlay-drawer__description" data-omo-document-editor-description><?= $escape(omoDocumentsScopeT('documents.drawer.editor_description')) ?></p>
                     </div>
-                    <button type="button" class="omo-overlay-drawer__close" data-omo-document-editor-close>Fermer</button>
+                    <button type="button" class="omo-overlay-drawer__close" data-omo-document-editor-close><?= $escape(omoDocumentsScopeT('documents.drawer.close')) ?></button>
                 </div>
                 <div class="omo-overlay-drawer__body" data-omo-document-editor-body></div>
             </div>
@@ -2214,17 +2352,17 @@ if (!is_string($documentsPayload)) {
                 }
 
                 if (titleNode) {
-                    titleNode.textContent = String(title || 'Nouveau document').trim() || 'Nouveau document';
+                    titleNode.textContent = String(title || <?= json_encode(omoDocumentsScopeT('documents.drawer.editor_title'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>).trim() || <?= json_encode(omoDocumentsScopeT('documents.drawer.editor_title'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                 }
 
                 if (descriptionNode) {
-                    descriptionNode.textContent = String(description || 'Creation d un document dans le contexte courant.').trim()
-                        || 'Creation d un document dans le contexte courant.';
+                    descriptionNode.textContent = String(description || <?= json_encode(omoDocumentsScopeT('documents.drawer.editor_description'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>).trim()
+                        || <?= json_encode(omoDocumentsScopeT('documents.drawer.editor_description'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                 }
 
                 body.innerHTML = window.getSkeleton
                     ? getSkeleton('panel')
-                    : '<div class="loading">Chargement...</div>';
+                    : '<div class="loading"><?= $escape(omoDocumentsScopeT('documents.action.loading')) ?></div>';
 
                 drawer.hidden = false;
                 requestAnimationFrame(function () {
@@ -2252,7 +2390,7 @@ if (!is_string($documentsPayload)) {
                         executeFetchedScripts(temp);
                     })
                     .catch(function () {
-                        body.innerHTML = '<div class="omo-empty-state">Impossible de charger l editeur du document.</div>';
+                        body.innerHTML = '<div class="omo-empty-state"><?= $escape(omoDocumentsScopeT('documents.error.load_editor')) ?></div>';
                     });
             }
 
@@ -2429,12 +2567,12 @@ if (!is_string($documentsPayload)) {
                 if (descriptionNode) {
                     descriptionNode.textContent = fullDate !== ''
                         ? 'Document cree le ' + fullDate + '.'
-                        : 'Lecture du document dans OMO.';
+                        : <?= json_encode(omoDocumentsScopeT('documents.drawer.detail_description'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                 }
 
                 body.innerHTML = window.getSkeleton
                     ? getSkeleton('panel')
-                    : '<div class="loading">Chargement...</div>';
+                    : '<div class="loading"><?= $escape(omoDocumentsScopeT('documents.action.loading')) ?></div>';
 
                 drawer.hidden = false;
                 requestAnimationFrame(function () {
@@ -2462,7 +2600,7 @@ if (!is_string($documentsPayload)) {
                         executeFetchedScripts(temp);
                     })
                     .catch(function () {
-                        body.innerHTML = '<div class="omo-empty-state">Impossible de charger ce document.</div>';
+                        body.innerHTML = '<div class="omo-empty-state"><?= $escape(omoDocumentsScopeT('documents.error.load_document')) ?></div>';
                     });
 
                 return true;
@@ -2475,8 +2613,8 @@ if (!is_string($documentsPayload)) {
 
                 openEditorDrawer(
                     String(documentItem.editUrl || '').trim(),
-                    'Editer le document',
-                    'Modification du document dans le contexte courant.'
+                    <?= json_encode('Éditer le document', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                    <?= json_encode('Modification du document dans le contexte courant.', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
                 );
                 return true;
             };
@@ -2709,8 +2847,8 @@ if (!is_string($documentsPayload)) {
 
                     openEditorDrawer(
                         String(editButton.getAttribute('data-omo-document-edit-url') || '').trim(),
-                        'Editer le document',
-                        'Modification du document dans le contexte courant.'
+                        <?= json_encode('Éditer le document', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                        <?= json_encode('Modification du document dans le contexte courant.', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
                     );
                     return;
                 }
@@ -2778,7 +2916,11 @@ if (!is_string($documentsPayload)) {
             if (newButton) {
                 newButton.addEventListener('click', function () {
                     const targetUrl = String(newButton.getAttribute('data-omo-documents-new-url') || '').trim();
-                    openEditorDrawer(targetUrl, 'Nouveau document', 'Creation d un document dans le contexte courant.');
+                    openEditorDrawer(
+                        targetUrl,
+                        <?= json_encode(omoDocumentsScopeT('documents.drawer.editor_title'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                        <?= json_encode(omoDocumentsScopeT('documents.drawer.editor_description'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+                    );
                 });
             }
         })();

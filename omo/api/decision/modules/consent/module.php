@@ -273,7 +273,8 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
             : '';
         ?>
         <section class="omo-decision-consent generic-section generic-section--stack">
-            <?php if (!$publicLayout): ?>
+<!--
+        <?php if (!$publicLayout): ?>
             <div class="generic-hero-panel accent">
                 <div class="omo-decision-consent__head">
                     <h3 class="generic-card-title"><?= $escape(t($headerTitleKey, [], $lang, $sourceLang)) ?></h3>
@@ -281,6 +282,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                 </div>
             </div>
             <?php endif; ?>
+-->
 
             <?php if ($resultsMode && !$publicLayout): ?>
             <div class="generic-soft-panel generic-soft-panel--stack">
