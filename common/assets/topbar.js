@@ -648,6 +648,87 @@
         );
     }
 
+    function appendCurrentRouteContextToUrl(url) {
+        var rawUrl = String(url || '').trim();
+        var base;
+        var currentUrl;
+        var path;
+        var currentMatch;
+        var legacyMatch;
+        var resolvedCid = 0;
+
+        if (rawUrl === '') {
+            return '';
+        }
+
+        try {
+            base = new URL(rawUrl, window.location.origin);
+        } catch (error) {
+            return rawUrl;
+        }
+
+        if (window.omoConfig && Number(window.omoConfig.oid || 0) > 0 && !base.searchParams.has('oid')) {
+            base.searchParams.set('oid', String(Number(window.omoConfig.oid || 0)));
+        }
+
+        try {
+            currentUrl = new URL(window.location.href);
+            resolvedCid = Number(currentUrl.searchParams.get('cid') || 0);
+            if (resolvedCid <= 0) {
+                path = currentUrl.pathname || '';
+                currentMatch = path.match(/\/omo(?:\/c\/(\d+))?$/);
+                legacyMatch = path.match(/\/omo\/o\/(\d+)(?:\/c\/(\d+))?$/);
+
+                if (currentMatch && currentMatch[1]) {
+                    resolvedCid = Number(currentMatch[1] || 0);
+                } else if (legacyMatch && legacyMatch[2]) {
+                    resolvedCid = Number(legacyMatch[2] || 0);
+                }
+            }
+        } catch (error) {
+        }
+
+        if (typeof window.omoNormalizeRouteCid === 'function') {
+            resolvedCid = Number(window.omoNormalizeRouteCid(resolvedCid) || 0);
+        }
+
+        if (resolvedCid > 0 && !base.searchParams.has('cid')) {
+            base.searchParams.set('cid', String(resolvedCid));
+        }
+
+        return base.pathname + base.search + base.hash;
+    }
+
+    function handleTensionReport() {
+        var config = getConfig();
+        var tension = config.tension || {};
+        var targetUrl = tension.url || '';
+        closeMenus();
+
+        if (callNamedFunction(tension.callback, tension, config)) {
+            return;
+        }
+
+        if (tension.appendCurrentRouteContext) {
+            targetUrl = appendCurrentRouteContextToUrl(targetUrl);
+        }
+
+        if (targetUrl) {
+            openModal(
+                tension.title || getConfigTextValue('tension.title', 'Declarer une tension'),
+                targetUrl,
+                tension.mode === 'fetch' ? 'fetch' : (tension.mode === 'html' ? 'html' : 'iframe')
+            );
+            return;
+        }
+
+        openModal(
+            getConfigTextValue('tension.title', 'Declarer une tension'),
+            getConfigTextValue('translations.tensionUnavailableHtml', '<p>Formulaire indisponible.</p>'),
+            'html'
+        );
+    }
+
     function handleLogout() {
         var config = getConfig();
         var target = (config.logoutReturnTo || window.location.pathname || '/');
@@ -1009,6 +1090,11 @@
 
         if (event.target.closest('[data-topbar-bug-report]')) {
             handleBugReport();
+            return;
+        }
+
+        if (event.target.closest('[data-topbar-tension-report]')) {
+            handleTensionReport();
             return;
         }
 

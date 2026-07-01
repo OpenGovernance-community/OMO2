@@ -1,13 +1,100 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
 
+$sourceLang = [
+    'organization_applications.error.no_access' => [
+        'text' => 'Vous devez être connecté à une organisation pour gérer les applications.',
+        'context' => 'Error shown when the current user cannot edit organization applications.',
+    ],
+    'organization_applications.error.save_failed' => [
+        'text' => 'Impossible d’enregistrer la sélection et l’ordre des applications.',
+        'context' => 'Error returned when the organization application selection cannot be saved.',
+    ],
+    'organization_applications.status.added_one' => [
+        'text' => '1 application ajoutée.',
+        'context' => 'Summary shown after enabling a single application in the left sidebar editor.',
+    ],
+    'organization_applications.status.added_other' => [
+        'text' => '{count} applications ajoutées.',
+        'context' => 'Summary shown after enabling multiple applications in the left sidebar editor.',
+    ],
+    'organization_applications.status.removed_one' => [
+        'text' => '1 application retirée.',
+        'context' => 'Summary shown after disabling a single application in the left sidebar editor.',
+    ],
+    'organization_applications.status.removed_other' => [
+        'text' => '{count} applications retirées.',
+        'context' => 'Summary shown after disabling multiple applications in the left sidebar editor.',
+    ],
+    'organization_applications.status.reordered_one' => [
+        'text' => 'Ordre mis à jour.',
+        'context' => 'Summary shown when a single ordering change happened in the left sidebar editor.',
+    ],
+    'organization_applications.status.reordered_other' => [
+        'text' => 'Ordre des applications mis à jour.',
+        'context' => 'Summary shown when ordering changes happened in the left sidebar editor.',
+    ],
+    'organization_applications.status.saved' => [
+        'text' => 'Configuration enregistrée. {details}',
+        'context' => 'Success message returned after saving organization applications with change details.',
+    ],
+    'organization_applications.status.no_changes' => [
+        'text' => 'Aucun changement.',
+        'context' => 'Success message returned when saving organization applications without any change.',
+    ],
+    'organization_applications.empty' => [
+        'text' => 'Aucune application n’est disponible pour le moment.',
+        'context' => 'Empty state shown when no application can be configured in the left sidebar editor.',
+    ],
+    'organization_applications.intro' => [
+        'text' => 'Cochez les applications à afficher dans la barre de gauche, puis glissez-déposez les lignes pour définir leur ordre dans cette organisation.',
+        'context' => 'Intro text shown in the left sidebar application editor popup.',
+    ],
+    'organization_applications.action.reorder' => [
+        'text' => 'Réordonner',
+        'context' => 'Button title used for the drag handle in the left sidebar application editor.',
+    ],
+    'organization_applications.state.visible' => [
+        'text' => 'Visible',
+        'context' => 'State label shown for active applications in the left sidebar editor.',
+    ],
+    'organization_applications.state.hidden' => [
+        'text' => 'Masquée',
+        'context' => 'State label shown for inactive applications in the left sidebar editor.',
+    ],
+    'organization_applications.action.save' => [
+        'text' => 'Enregistrer la configuration',
+        'context' => 'Primary action shown in the left sidebar application editor.',
+    ],
+    'organization_applications.error.generic' => [
+        'text' => 'Une erreur est survenue.',
+        'context' => 'Generic error shown in the left sidebar editor when the server reply is invalid.',
+    ],
+    'organization_applications.status.saved_simple' => [
+        'text' => 'Configuration enregistrée.',
+        'context' => 'Simple success message shown in the left sidebar editor.',
+    ],
+    'organization_applications.error.save_later' => [
+        'text' => 'Impossible d’enregistrer les applications pour le moment.',
+        'context' => 'Error shown in the left sidebar editor when the save request fails.',
+    ],
+];
+
+$lang = omoLoadTranslationBundle('omo_organization_applications_popup', $sourceLang);
+
+function omoOrganizationApplicationsT($key, array $replace = [])
+{
+    global $lang, $sourceLang;
+    return t($key, $replace, $lang, $sourceLang);
+}
+
 $currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 $currentUserId = (int)commonGetCurrentUserId();
 
 if ($currentOrganizationId <= 0 || $currentUserId <= 0) {
     http_response_code(403);
     ?>
-    <div class="omo-app-picker__empty">Vous devez etre connecte a une organisation pour gerer les applications.</div>
+    <div class="omo-app-picker__empty"><?= htmlspecialchars(omoOrganizationApplicationsT('organization_applications.error.no_access'), ENT_QUOTES, 'UTF-8') ?></div>
     <?php
     exit;
 }
@@ -117,7 +204,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!is_array($saveResult) || empty($saveResult['status'])) {
             echo json_encode(array(
                 'status' => false,
-                'message' => 'Impossible d enregistrer la selection et l ordre des applications.',
+                'message' => omoOrganizationApplicationsT('organization_applications.error.save_failed'),
             ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -125,20 +212,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $messageParts = array();
     if ($addedCount > 0) {
-        $messageParts[] = $addedCount === 1 ? '1 application ajoutee.' : $addedCount . ' applications ajoutees.';
+        $messageParts[] = $addedCount === 1
+            ? omoOrganizationApplicationsT('organization_applications.status.added_one')
+            : omoOrganizationApplicationsT('organization_applications.status.added_other', ['count' => $addedCount]);
     }
     if ($removedCount > 0) {
-        $messageParts[] = $removedCount === 1 ? '1 application retiree.' : $removedCount . ' applications retirees.';
+        $messageParts[] = $removedCount === 1
+            ? omoOrganizationApplicationsT('organization_applications.status.removed_one')
+            : omoOrganizationApplicationsT('organization_applications.status.removed_other', ['count' => $removedCount]);
     }
     if ($reorderedCount > 0) {
-        $messageParts[] = $reorderedCount === 1 ? 'Ordre mis a jour.' : 'Ordre des applications mis a jour.';
+        $messageParts[] = $reorderedCount === 1
+            ? omoOrganizationApplicationsT('organization_applications.status.reordered_one')
+            : omoOrganizationApplicationsT('organization_applications.status.reordered_other');
     }
 
     echo json_encode(array(
         'status' => true,
         'message' => count($messageParts) > 0
-            ? 'Configuration enregistree. ' . implode(' ', $messageParts)
-            : 'Aucun changement.',
+            ? omoOrganizationApplicationsT('organization_applications.status.saved', ['details' => implode(' ', $messageParts)])
+            : omoOrganizationApplicationsT('organization_applications.status.no_changes'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -345,12 +438,12 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
 
 <?php if (count($orderedApplications) === 0): ?>
     <div class="omo-app-picker__empty">
-        Aucune application n est disponible pour le moment.
+        <?= htmlspecialchars(omoOrganizationApplicationsT('organization_applications.empty'), ENT_QUOTES, 'UTF-8') ?>
     </div>
 <?php else: ?>
     <form id="omoApplicationPickerForm" class="omo-app-picker" action="api/organization_applications_popup.php" method="post">
         <p class="omo-app-picker__intro">
-            Cochez les applications a afficher dans la barre de gauche, puis glissez-deposez les lignes pour definir leur ordre dans cette organisation.
+            <?= htmlspecialchars(omoOrganizationApplicationsT('organization_applications.intro'), ENT_QUOTES, 'UTF-8') ?>
         </p>
 
         <div id="omoApplicationPickerList" class="omo-app-picker__list">
@@ -373,8 +466,8 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
                         type="button"
                         class="omo-app-picker__drag"
                         data-omo-app-picker-drag="1"
-                        title="Reordonner"
-                        aria-label="Reordonner <?= htmlspecialchars($applicationLabel, ENT_QUOTES, 'UTF-8') ?>"
+                        title="<?= htmlspecialchars(omoOrganizationApplicationsT('organization_applications.action.reorder'), ENT_QUOTES, 'UTF-8') ?>"
+                        aria-label="<?= htmlspecialchars(omoOrganizationApplicationsT('organization_applications.action.reorder') . ' ' . $applicationLabel, ENT_QUOTES, 'UTF-8') ?>"
                     >&#8942;&#8942;</button>
 
                     <label class="omo-app-picker__card-main">
@@ -398,7 +491,7 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
                             <span class="omo-app-picker__content-head">
                                 <span class="omo-app-picker__title"><?= htmlspecialchars($applicationLabel, ENT_QUOTES, 'UTF-8') ?></span>
                                 <span class="omo-app-picker__state<?= $isActive ? ' omo-app-picker__state--active' : '' ?>" data-omo-app-picker-state>
-                                    <?= $isActive ? 'Visible' : 'Masquee' ?>
+                                    <?= htmlspecialchars($isActive ? omoOrganizationApplicationsT('organization_applications.state.visible') : omoOrganizationApplicationsT('organization_applications.state.hidden'), ENT_QUOTES, 'UTF-8') ?>
                                 </span>
                             </span>
                             <span class="omo-app-picker__meta">
@@ -414,13 +507,20 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
 
         <div class="omo-app-picker__actions">
             <button type="submit" id="omoApplicationPickerSubmit" class="omo-app-picker__button generic-action-button generic-action-button--main">
-                Enregistrer la configuration
+                <?= htmlspecialchars(omoOrganizationApplicationsT('organization_applications.action.save'), ENT_QUOTES, 'UTF-8') ?>
             </button>
         </div>
     </form>
 
     <script>
         (function () {
+            var appPickerText = <?= json_encode([
+                'visible' => omoOrganizationApplicationsT('organization_applications.state.visible'),
+                'hidden' => omoOrganizationApplicationsT('organization_applications.state.hidden'),
+                'genericError' => omoOrganizationApplicationsT('organization_applications.error.generic'),
+                'savedSimple' => omoOrganizationApplicationsT('organization_applications.status.saved_simple'),
+                'saveLater' => omoOrganizationApplicationsT('organization_applications.error.save_later'),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
             var form = document.getElementById('omoApplicationPickerForm');
             var list = document.getElementById('omoApplicationPickerList');
             var feedback = document.getElementById('omoApplicationPickerFeedback');
@@ -444,7 +544,7 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
                 }
 
                 if (state) {
-                    state.textContent = checkbox.checked ? 'Visible' : 'Masquee';
+                    state.textContent = checkbox.checked ? appPickerText.visible : appPickerText.hidden;
                     state.classList.toggle('omo-app-picker__state--active', checkbox.checked);
                 }
             };
@@ -508,12 +608,12 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
                     })
                     .then(function (data) {
                         if (!data || !data.status) {
-                            feedback.textContent = data && data.message ? data.message : 'Une erreur est survenue.';
+                            feedback.textContent = data && data.message ? data.message : appPickerText.genericError;
                             submitButton.disabled = false;
                             return;
                         }
 
-                        feedback.textContent = data.message || 'Configuration enregistree.';
+                        feedback.textContent = data.message || appPickerText.savedSimple;
                         feedback.classList.add('is-success');
 
                         if (typeof window.omoRefreshSidebar === 'function') {
@@ -533,7 +633,7 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
                         }
                     })
                     .catch(function () {
-                        feedback.textContent = 'Impossible d enregistrer les applications pour le moment.';
+                        feedback.textContent = appPickerText.saveLater;
                         submitButton.disabled = false;
                     });
             });

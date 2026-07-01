@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
+require_once dirname(__DIR__) . '/translation.php';
 
 use dbObject\Organization;
 
@@ -11,7 +12,7 @@ if ($organizationId <= 0) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => "Aucune organisation n'est selectionnee.",
+            'message' => omoHolonTemplateT('parameters.holon_templates.error.no_organization'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -24,7 +25,7 @@ if (!$organization->load($organizationId)) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => "L'organisation demandee est introuvable.",
+            'message' => omoHolonTemplateT('parameters.holon_templates.error.organization_not_found'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -45,7 +46,7 @@ if (!is_array($payload)) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => 'La requete envoyee est invalide.',
+            'message' => omoHolonTemplateT('parameters.holon_templates.error.invalid_request'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -61,7 +62,9 @@ if (!($result['status'] ?? false)) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => (string)($result['message'] ?? ($holonId > 0 ? "L'organisation n'a pas pu etre enregistree." : "Le modele n'a pas pu etre enregistre.")),
+            'message' => (string)($result['message'] ?? ($holonId > 0
+                ? omoHolonTemplateT('parameters.holon_templates.error.save_organization')
+                : omoHolonTemplateT('parameters.holon_templates.error.save_model'))),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -75,7 +78,9 @@ if (function_exists('commonClearCurrentUserPermissionCache')) {
 echo json_encode(
     array(
         'status' => 'ok',
-        'message' => (string)($result['message'] ?? ($holonId > 0 ? 'Organisation enregistree.' : 'Modele enregistre.')),
+        'message' => (string)($result['message'] ?? ($holonId > 0
+            ? omoHolonTemplateT('parameters.holon_templates.status.saved_organization')
+            : omoHolonTemplateT('parameters.holon_templates.status.saved_model'))),
         'template' => $result['template'] ?? null,
         'data' => $result['data'] ?? ($holonId > 0
             ? $organization->getHolonDefinitionEditorData($holonId)

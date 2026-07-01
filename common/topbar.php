@@ -195,6 +195,16 @@ function commonRenderTopbar(array $options = [])
             'url' => (string)($options['bugReport']['url'] ?? ''),
             'callback' => (string)($options['bugReport']['callback'] ?? ''),
         ],
+        'tension' => [
+            'enabled' => !empty($options['tension']['enabled']),
+            'buttonLabel' => (string)($options['tension']['buttonLabel'] ?? 'Tension'),
+            'title' => (string)($options['tension']['title'] ?? 'Declarer une tension'),
+            'mode' => (string)($options['tension']['mode'] ?? 'fetch'),
+            'url' => (string)($options['tension']['url'] ?? ''),
+            'callback' => (string)($options['tension']['callback'] ?? ''),
+            'iconUrl' => (string)($options['tension']['iconUrl'] ?? '/common/assets/icon-topbar-tension.png'),
+            'appendCurrentRouteContext' => !empty($options['tension']['appendCurrentRouteContext']),
+        ],
         'profile' => [
             'enabled' => array_key_exists('enabled', $options['profile'] ?? []) ? !empty($options['profile']['enabled']) : true,
             'editLabel' => (string)($options['profile']['editLabel'] ?? 'Editer le profil'),
@@ -269,6 +279,7 @@ function commonRenderTopbar(array $options = [])
             'helpUnavailableHtml' => (string)($translationOptions['helpUnavailableHtml'] ?? '<p>Contenu indisponible.</p>'),
             'helpPendingHtml' => (string)($translationOptions['helpPendingHtml'] ?? '<p>Contenu a venir.</p>'),
             'bugReportUnavailableHtml' => (string)($translationOptions['bugReportUnavailableHtml'] ?? '<p>Formulaire indisponible.</p>'),
+            'tensionUnavailableHtml' => (string)($translationOptions['tensionUnavailableHtml'] ?? '<p>Formulaire indisponible.</p>'),
         ],
     ];
 
@@ -336,6 +347,17 @@ function commonRenderTopbar(array $options = [])
                     <img src="/img/punaise.png" alt="" class="common-topbar__icon-image black-icon">
                 </span>
                 <span class="common-topbar__action-label"><?= htmlspecialchars($config['bugReport']['buttonLabel']) ?></span>
+            </button>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($config['tension']['enabled'])): ?>
+        <div class="common-topbar__menu-wrap">
+            <button type="button" class="common-topbar__action common-topbar__action--square" data-topbar-tension-report>
+                <span class="common-topbar__action-icon" aria-hidden="true">
+                    <img src="<?= htmlspecialchars($config['tension']['iconUrl']) ?>" alt="" class="common-topbar__icon-image black-icon">
+                </span>
+                <span class="common-topbar__action-label"><?= htmlspecialchars($config['tension']['buttonLabel']) ?></span>
             </button>
         </div>
         <?php endif; ?>
