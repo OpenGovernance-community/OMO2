@@ -1,4 +1,24 @@
 <?php
+$sourceLang = [
+    'lms.parcours_content.pack.title' => ['text' => 'Parcours du pack', 'context' => 'Section title shown when viewing a pack parcours.'],
+    'lms.parcours_content.pack.intro' => ['text' => 'Seuls les parcours compatibles avec les applications actives dans cette organisation sont affiches.', 'context' => 'Intro text shown above the list of child parcours in a pack.'],
+    'lms.parcours_content.pack.empty' => ['text' => 'Aucun parcours visible n est actuellement disponible dans ce pack.', 'context' => 'Empty state shown when a pack exposes no visible child parcours.'],
+    'lms.parcours_content.pack.hidden_note' => ['text' => 'Actuellement masque pour les membres standard.', 'context' => 'Note shown on hidden child parcours cards.'],
+    'lms.parcours_content.pack.open' => ['text' => 'Ouvrir', 'context' => 'Button used to open a visible child parcours.'],
+    'lms.parcours_content.pack.hidden' => ['text' => 'Masque', 'context' => 'Disabled button label shown for hidden child parcours.'],
+    'lms.parcours_content.views.todo' => ['text' => 'Mes missions', 'context' => 'Button used to show pending missions in a parcours.'],
+    'lms.parcours_content.views.done' => ['text' => 'Terminees', 'context' => 'Button used to show completed missions in a parcours.'],
+    'lms.parcours_content.views.next' => ['text' => 'A venir', 'context' => 'Button used to show upcoming missions in a parcours.'],
+];
+
+$lang = omoLoadTranslationBundle('omo_lms_parcours_content', $sourceLang);
+
+function lmsParcoursContentT($key, array $replace = [])
+{
+    global $lang, $sourceLang;
+    return t($key, $replace, $lang, $sourceLang);
+}
+
 $isPackParcours = $parcoursRef instanceof \dbObject\Parcours && $parcoursRef->isPack();
 $canEditPackParcours = lmsCurrentUserCanEditParcours((int)$org['id'], (int)$user_id);
 $packChildren = $isPackParcours
@@ -92,12 +112,12 @@ $packChildren = $isPackParcours
 <?php if ($isPackParcours): ?>
 <div class="lms-pack-children">
     <div class="lms-pack-children__intro">
-        <h2>Parcours du pack</h2>
-        <p>Seuls les parcours compatibles avec les applications actives dans cette organisation sont affiches.</p>
+        <h2><?php echo htmlspecialchars(lmsParcoursContentT('lms.parcours_content.pack.title')); ?></h2>
+        <p><?php echo htmlspecialchars(lmsParcoursContentT('lms.parcours_content.pack.intro')); ?></p>
     </div>
 
     <?php if (count($packChildren) === 0): ?>
-        <div class="lms-pack-children__empty">Aucun parcours visible n est actuellement disponible dans ce pack.</div>
+        <div class="lms-pack-children__empty"><?php echo htmlspecialchars(lmsParcoursContentT('lms.parcours_content.pack.empty')); ?></div>
     <?php else: ?>
         <div class="missions lms-pack-children__grid">
             <?php foreach ($packChildren as $childParcours): ?>
@@ -118,11 +138,11 @@ $packChildren = $isPackParcours
                         <h3><?php echo htmlspecialchars((string)($childParcours['title'] ?? '')); ?></h3>
                         <div><?php echo htmlspecialchars((string)($childParcours['description'] ?? '')); ?></div>
                         <?php if (!$isVisibleParcours): ?>
-                            <div class="card-visibility-note">Actuellement masque pour les membres standard.</div>
+                            <div class="card-visibility-note"><?php echo htmlspecialchars(lmsParcoursContentT('lms.parcours_content.pack.hidden_note')); ?></div>
                         <?php endif; ?>
                         <div class="card-footer">
                             <div class="progress-circle" data-percent="<?php echo (int)$percent; ?>"></div>
-                            <button type="button" class="open-btn" <?php echo $isVisibleParcours ? 'onclick="event.stopPropagation(); goToPackChildParcours(' . (int)($childParcours['id'] ?? 0) . ')"' : 'disabled'; ?>><?php echo $isVisibleParcours ? 'Ouvrir' : 'Masque'; ?></button>
+                            <button type="button" class="open-btn" <?php echo $isVisibleParcours ? 'onclick="event.stopPropagation(); goToPackChildParcours(' . (int)($childParcours['id'] ?? 0) . ')"' : 'disabled'; ?>><?php echo htmlspecialchars($isVisibleParcours ? lmsParcoursContentT('lms.parcours_content.pack.open') : lmsParcoursContentT('lms.parcours_content.pack.hidden')); ?></button>
                         </div>
                     </div>
                 </div>
@@ -132,9 +152,9 @@ $packChildren = $isPackParcours
 </div>
 <?php else: ?>
 <div class="view-switch">
-    <button onclick="setView('todo')" id="btnTodo" class="active">Mes missions</button>
-    <button onclick="setView('done')" id="btnDone">Terminees</button>
-    <button onclick="setView('next')" id="btnNext">A venir</button>
+    <button onclick="setView('todo')" id="btnTodo" class="active"><?php echo htmlspecialchars(lmsParcoursContentT('lms.parcours_content.views.todo')); ?></button>
+    <button onclick="setView('done')" id="btnDone"><?php echo htmlspecialchars(lmsParcoursContentT('lms.parcours_content.views.done')); ?></button>
+    <button onclick="setView('next')" id="btnNext"><?php echo htmlspecialchars(lmsParcoursContentT('lms.parcours_content.views.next')); ?></button>
 </div>
 <div class="progress-container">
     <div class="progress-bar" id="progressBar"></div>

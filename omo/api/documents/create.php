@@ -8,6 +8,52 @@ use dbObject\Holon;
 use dbObject\ObjectVisibility;
 use dbObject\Organization;
 
+$sourceLang = [
+    'documents.create.error.edit' => ['text' => 'Impossible de modifier ce document.', 'context' => 'Error shown when the document editor cannot be opened in edit mode.'],
+    'documents.create.error.create' => ['text' => 'Impossible de creer un document dans ce contexte.', 'context' => 'Error shown when the document editor cannot be opened in creation mode.'],
+    'documents.create.visibility.help_context_holon' => ['text' => 'Les portees cercle et role suivent automatiquement le holon du document.', 'context' => 'Visibility help text shown when the document has a contextual holon.'],
+    'documents.create.visibility.help_no_holon' => ['text' => 'Ce document n est pas lie a un holon. Les portees cercle et role ne sont pas disponibles.', 'context' => 'Visibility help text shown when the document has no holon but still belongs to an organization.'],
+    'documents.create.visibility.help_outside_context' => ['text' => 'Ce document est hors contexte. Les portees d organisation, cercle et role ne sont pas disponibles.', 'context' => 'Visibility help text shown when the document has no organization context.'],
+    'documents.create.context.organization' => ['text' => 'Organisation', 'context' => 'Fallback context label used for embeddable documents without a holon.'],
+    'documents.create.field.type' => ['text' => 'Type', 'context' => 'Label of the document type field.'],
+    'documents.create.type.html' => ['text' => 'Document HTML', 'context' => 'Option label for HTML documents.'],
+    'documents.create.type.external' => ['text' => 'Lien externe', 'context' => 'Option label for external links.'],
+    'documents.create.type.uploaded' => ['text' => 'Fichier uploade', 'context' => 'Option label for uploaded files.'],
+    'documents.create.type.folder' => ['text' => 'Dossier', 'context' => 'Option label for folders.'],
+    'documents.create.field.title' => ['text' => 'Titre', 'context' => 'Label of the document title field.'],
+    'documents.create.field.title_placeholder' => ['text' => 'Nom du document', 'context' => 'Placeholder shown in the document title field.'],
+    'documents.create.field.parent_folder' => ['text' => 'Dossier parent', 'context' => 'Label shown for the parent folder when present.'],
+    'documents.create.field.description' => ['text' => 'Resume', 'context' => 'Label of the document summary field.'],
+    'documents.create.field.description_placeholder' => ['text' => 'Presentation rapide du document', 'context' => 'Placeholder shown in the document summary field.'],
+    'documents.create.field.visibility' => ['text' => 'Visibilite', 'context' => 'Label of the document visibility field.'],
+    'documents.create.field.html' => ['text' => 'Contenu HTML', 'context' => 'Label of the HTML content area.'],
+    'documents.create.field.external_url' => ['text' => 'URL externe', 'context' => 'Label of the external URL field.'],
+    'documents.create.field.external_url_placeholder' => ['text' => 'https://example.com/', 'context' => 'Placeholder shown in the external URL field.'],
+    'documents.create.field.external_url_hint' => ['text' => 'Utilisez une adresse complete en http:// ou https://.', 'context' => 'Hint shown below the external URL field.'],
+    'documents.create.field.open_new_window' => ['text' => 'Ouvrir dans une autre fenetre', 'context' => 'Checkbox label used for external links.'],
+    'documents.create.field.upload' => ['text' => 'Fichier', 'context' => 'Label of the uploaded file field.'],
+    'documents.create.upload.hint_nextcloud' => ['text' => 'Le fichier sera envoye vers le stockage Nextcloud configure pour cette organisation.', 'context' => 'Hint shown when Nextcloud storage is available.'],
+    'documents.create.upload.hint_missing' => ['text' => 'Aucun stockage Nextcloud n est configure pour cette organisation.', 'context' => 'Hint shown when no Nextcloud storage is configured.'],
+    'documents.create.upload.current' => ['text' => 'Fichier actuel', 'context' => 'Title shown above the current uploaded file metadata.'],
+    'documents.create.upload.remove' => ['text' => 'Supprimer le fichier distant', 'context' => 'Checkbox label used to remove the uploaded file.'],
+    'documents.create.action.cancel' => ['text' => 'Annuler', 'context' => 'Secondary action used to close the document editor.'],
+    'documents.create.action.save' => ['text' => 'Enregistrer', 'context' => 'Primary action used to save an existing document.'],
+    'documents.create.action.create' => ['text' => 'Creer le document', 'context' => 'Primary action used to create a document.'],
+    'documents.create.embed.none' => ['text' => 'Aucun document selectionne.', 'context' => 'Placeholder shown in the document embed picker preview.'],
+    'documents.create.embed.search_placeholder' => ['text' => 'Titre, resume ou contexte', 'context' => 'Search placeholder used in the document embed picker.'],
+    'documents.create.embed.modal_title' => ['text' => 'Inserer un document', 'context' => 'Title of the document embed picker modal.'],
+    'documents.create.embed.update' => ['text' => 'Mettre a jour', 'context' => 'Button used to update an embedded document reference.'],
+    'documents.create.embed.insert' => ['text' => 'Inserer le document', 'context' => 'Button used to insert a new embedded document reference.'],
+];
+
+$lang = omoLoadTranslationBundle('omo_documents_create', $sourceLang);
+
+function omoDocumentsCreateT($key, array $replace = [])
+{
+    global $lang, $sourceLang;
+    return t($key, $replace, $lang, $sourceLang);
+}
+
 $organizationId = isset($_GET['oid']) ? (int)$_GET['oid'] : (int)($_SESSION['currentOrganization'] ?? 0);
 $holonId = isset($_GET['cid']) ? (int)$_GET['cid'] : 0;
 $documentId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -59,7 +105,7 @@ $documentStoredFileSize = 0;
 $isFolder = false;
 $selectedVisibilityType = ObjectVisibility::TYPE_ORGANIZATION;
 $disabledVisibilityTypes = array();
-$visibilityHelpText = 'Les portees cercle et role suivent automatiquement le holon du document.';
+$visibilityHelpText = omoDocumentsCreateT('documents.create.visibility.help_context_holon');
 $contextHolonId = $isEditing ? (int)$document->get('IDholon') : $holonId;
 $parentFolderTitle = '';
 $embeddableDocumentsPayload = array();
@@ -99,7 +145,10 @@ if ($contextHolonId <= 0) {
     $disabledVisibilityTypes[ObjectVisibility::TYPE_ROLE] = true;
     $visibilityHelpText = $organizationId > 0
         ? 'Ce document n est pas lie a un holon. Les portees cercle et role ne sont pas disponibles.'
-        : 'Ce document est hors contexte. Les portees d organisation, cercle et role ne sont pas disponibles.';
+        : omoDocumentsCreateT('documents.create.visibility.help_outside_context');
+    if ($organizationId > 0) {
+        $visibilityHelpText = omoDocumentsCreateT('documents.create.visibility.help_no_holon');
+    }
 } else {
     $contextHolon = new Holon();
     if ($contextHolon->load($contextHolonId)) {
@@ -160,7 +209,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         }
 
         $itemHolonId = (int)$visibleDocument->get('IDholon');
-        $contextLabel = 'Organisation';
+        $contextLabel = omoDocumentsCreateT('documents.create.context.organization');
         if ($itemHolonId > 0) {
             if (!array_key_exists($itemHolonId, $holonTitleCache)) {
                 $holonItem = new Holon();
@@ -195,7 +244,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 ?>
 <div class="omo-document-editor">
     <?php if (!$canUseForm): ?>
-        <div class="omo-empty-state"><?= $escape($formErrorMessage !== '' ? $formErrorMessage : ($isEditing ? 'Impossible de modifier ce document.' : 'Impossible de creer un document dans ce contexte.')) ?></div>
+        <div class="omo-empty-state"><?= $escape($formErrorMessage !== '' ? $formErrorMessage : ($isEditing ? omoDocumentsCreateT('documents.create.error.edit') : omoDocumentsCreateT('documents.create.error.create'))) ?></div>
     <?php else: ?>
         <form class="omo-document-editor__form" action="/omo/api/documents/save.php" method="post" enctype="multipart/form-data" data-omo-document-create-form>
             <input type="hidden" name="oid" value="<?= $escape($organizationId) ?>">
@@ -207,19 +256,19 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
             <div class="omo-document-editor__grid">
                 <label class="omo-document-editor__field">
-                    <span class="omo-document-editor__label">Type</span>
+                    <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.type')) ?></span>
                     <select
                         name="document_type"
                         class="generic-form-control"
                         data-omo-document-type
                         <?= $isEditing ? 'disabled' : '' ?>
                     >
-                        <option value="<?= $escape(Document::TYPE_HTML) ?>" <?= $documentType === Document::TYPE_HTML ? ' selected' : '' ?>>Document HTML</option>
-                        <option value="<?= $escape(Document::TYPE_EXTERNAL_LINK) ?>" <?= $documentType === Document::TYPE_EXTERNAL_LINK ? ' selected' : '' ?>>Lien externe</option>
+                        <option value="<?= $escape(Document::TYPE_HTML) ?>" <?= $documentType === Document::TYPE_HTML ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.html')) ?></option>
+                        <option value="<?= $escape(Document::TYPE_EXTERNAL_LINK) ?>" <?= $documentType === Document::TYPE_EXTERNAL_LINK ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.external')) ?></option>
                         <?php if ($nextcloudDocumentsAvailable || $documentType === Document::TYPE_UPLOADED_FILE): ?>
-                            <option value="<?= $escape(Document::TYPE_UPLOADED_FILE) ?>" <?= $documentType === Document::TYPE_UPLOADED_FILE ? ' selected' : '' ?>>Fichier uploade</option>
+                            <option value="<?= $escape(Document::TYPE_UPLOADED_FILE) ?>" <?= $documentType === Document::TYPE_UPLOADED_FILE ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.uploaded')) ?></option>
                         <?php endif; ?>
-                        <option value="<?= $escape(Document::TYPE_FOLDER) ?>" <?= $documentType === Document::TYPE_FOLDER ? ' selected' : '' ?>>Dossier</option>
+                        <option value="<?= $escape(Document::TYPE_FOLDER) ?>" <?= $documentType === Document::TYPE_FOLDER ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.folder')) ?></option>
                     </select>
                     <?php if ($isEditing): ?>
                         <input type="hidden" name="document_type" value="<?= $escape($documentType) ?>">
@@ -227,7 +276,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                 </label>
 
                 <label class="omo-document-editor__field">
-                    <span class="omo-document-editor__label">Titre</span>
+                    <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.title')) ?></span>
                     <input
                         type="text"
                         name="title"
@@ -235,30 +284,30 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                         maxlength="100"
                         required
                         autocomplete="off"
-                        placeholder="Nom du document"
+                        placeholder="<?= $escape(omoDocumentsCreateT('documents.create.field.title_placeholder')) ?>"
                         value="<?= $escape($documentTitle) ?>"
                     >
                 </label>
 
                 <?php if ($parentFolderTitle !== ''): ?>
                     <div class="omo-document-editor__field">
-                        <span class="omo-document-editor__label">Dossier parent</span>
+                        <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.parent_folder')) ?></span>
                         <div class="omo-document-editor__hint"><?= $escape($parentFolderTitle) ?></div>
                     </div>
                 <?php endif; ?>
 
                 <label class="omo-document-editor__field">
-                    <span class="omo-document-editor__label">Resume</span>
+                    <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.description')) ?></span>
                     <textarea
                         name="description"
                         class="generic-form-control"
                         rows="3"
-                        placeholder="Presentation rapide du document"
+                        placeholder="<?= $escape(omoDocumentsCreateT('documents.create.field.description_placeholder')) ?>"
                     ><?= $escape($documentDescription) ?></textarea>
                 </label>
 
                 <label class="omo-document-editor__field">
-                    <span class="omo-document-editor__label">Visibilite</span>
+                    <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.visibility')) ?></span>
                     <select
                         name="visibility_type"
                         class="generic-form-control"
@@ -276,7 +325,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
                 <div class="omo-document-editor__content-section" data-omo-document-content-section<?= $documentType !== Document::TYPE_HTML ? ' hidden' : '' ?>>
                     <div class="omo-document-editor__field" data-omo-document-content-field>
-                        <span class="omo-document-editor__label">Contenu HTML</span>
+                        <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.html')) ?></span>
                         <div class="omo-document-editor__html" data-omo-document-editor-html></div>
                         <div class="omo-document-editor__dictation-status" data-omo-document-dictation-status hidden></div>
                     </div>
@@ -284,18 +333,18 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
                 <div class="omo-document-editor__external-section" data-omo-document-external-section<?= $documentType !== Document::TYPE_EXTERNAL_LINK ? ' hidden' : '' ?>>
                     <label class="omo-document-editor__field">
-                        <span class="omo-document-editor__label">URL externe</span>
+                        <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.external_url')) ?></span>
                         <input
                             type="url"
                             name="external_url"
                             class="generic-form-control"
                             maxlength="2000"
                             autocomplete="off"
-                            placeholder="https://example.com/"
+                            placeholder="<?= $escape(omoDocumentsCreateT('documents.create.field.external_url_placeholder')) ?>"
                             data-omo-document-external-url
                             value="<?= $escape($documentExternalUrl) ?>"
                         >
-                        <span class="omo-document-editor__hint">Utilisez une adresse complete en http:// ou https://.</span>
+                        <span class="omo-document-editor__hint"><?= $escape(omoDocumentsCreateT('documents.create.field.external_url_hint')) ?></span>
                     </label>
 
                     <label class="omo-document-editor__checkbox">
@@ -305,13 +354,13 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                             value="1"
                             <?= $documentOpenInNewWindow ? ' checked' : '' ?>
                         >
-                        <span>Ouvrir dans une autre fenetre</span>
+                        <span><?= $escape(omoDocumentsCreateT('documents.create.field.open_new_window')) ?></span>
                     </label>
                 </div>
 
                 <div class="omo-document-editor__upload-section" data-omo-document-upload-section<?= $documentType !== Document::TYPE_UPLOADED_FILE ? ' hidden' : '' ?>>
                     <label class="omo-document-editor__field">
-                        <span class="omo-document-editor__label">Fichier</span>
+                        <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.upload')) ?></span>
                         <input
                             type="file"
                             name="uploaded_file"
@@ -320,16 +369,16 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                         >
                         <span class="omo-document-editor__hint">
                             <?php if ($nextcloudDocumentsAvailable): ?>
-                                Le fichier sera envoye vers le stockage Nextcloud configure pour cette organisation.
+                                <?= $escape(omoDocumentsCreateT('documents.create.upload.hint_nextcloud')) ?>
                             <?php else: ?>
-                                Aucun stockage Nextcloud n est configure pour cette organisation.
+                                <?= $escape(omoDocumentsCreateT('documents.create.upload.hint_missing')) ?>
                             <?php endif; ?>
                         </span>
                     </label>
 
                     <?php if ($documentType === Document::TYPE_UPLOADED_FILE && $documentStoredFilename !== ''): ?>
                         <div class="omo-document-editor__upload-current">
-                            <div class="omo-document-editor__upload-current-title">Fichier actuel</div>
+                            <div class="omo-document-editor__upload-current-title"><?= $escape(omoDocumentsCreateT('documents.create.upload.current')) ?></div>
                             <div class="omo-document-editor__upload-current-name"><?= $escape($documentStoredFilename) ?></div>
                             <div class="omo-document-editor__upload-current-meta">
                                 <?= $escape($documentStoredFileMime) ?>
@@ -341,7 +390,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
                         <label class="omo-document-editor__checkbox">
                             <input type="checkbox" name="remove_uploaded_file" value="1">
-                            <span>Supprimer le fichier distant</span>
+                            <span><?= $escape(omoDocumentsCreateT('documents.create.upload.remove')) ?></span>
                         </label>
                     <?php endif; ?>
                 </div>
@@ -350,8 +399,8 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             <div class="omo-document-editor__status" data-omo-document-editor-status hidden></div>
 
             <div class="omo-document-editor__actions">
-                <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-document-editor-cancel>Annuler</button>
-                <button type="submit" class="generic-action-button generic-action-button--main" data-omo-document-editor-submit><?= $isEditing ? 'Enregistrer' : 'Creer le document' ?></button>
+                <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-document-editor-cancel><?= $escape(omoDocumentsCreateT('documents.create.action.cancel')) ?></button>
+                <button type="submit" class="generic-action-button generic-action-button--main" data-omo-document-editor-submit><?= $escape($isEditing ? omoDocumentsCreateT('documents.create.action.save') : omoDocumentsCreateT('documents.create.action.create')) ?></button>
             </div>
         </form>
     <?php endif; ?>
@@ -554,6 +603,14 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     const aiToolsEnabled = <?= $canUseAiTools ? 'true' : 'false' ?>;
     const initialHtmlValue = <?= json_encode($documentContent, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     const embeddableDocuments = <?= json_encode($embeddableDocumentsPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    const uiText = <?= json_encode([
+        'embedNone' => omoDocumentsCreateT('documents.create.embed.none'),
+        'embedSearchPlaceholder' => omoDocumentsCreateT('documents.create.embed.search_placeholder'),
+        'embedModalTitle' => omoDocumentsCreateT('documents.create.embed.modal_title'),
+        'actionCancel' => omoDocumentsCreateT('documents.create.action.cancel'),
+        'embedUpdate' => omoDocumentsCreateT('documents.create.embed.update'),
+        'embedInsert' => omoDocumentsCreateT('documents.create.embed.insert'),
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const editingDocumentId = <?= $isEditing ? (int)$document->getId() : 0 ?>;
     const editLockEndpointUrl = '/omo/api/documents/edit_lock.php';
     const editLockHeartbeatIntervalMs = <?= (int)(\dbObject\Document::getDraftHeartbeatIntervalSeconds() * 1000) ?>;
@@ -723,7 +780,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
         if (!selectedItem) {
             if (titleNode) {
-                titleNode.textContent = 'Aucun document selectionne.';
+                titleNode.textContent = uiText.embedNone || '';
             }
             if (contextNode) {
                 contextNode.textContent = '';
@@ -848,14 +905,14 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             + '<div class="omo-document-embed-picker">'
             + '  <label class="omo-document-embed-picker__field">'
             + '    <span class="omo-document-embed-picker__label">Recherche</span>'
-            + '    <input type="search" class="generic-form-control" data-omo-document-embed-search placeholder="Titre, resume ou contexte">'
+            + '    <input type="search" class="generic-form-control" data-omo-document-embed-search placeholder="' + escapeHtml(uiText.embedSearchPlaceholder || '') + '">'
             + '  </label>'
             + '  <label class="omo-document-embed-picker__field">'
             + '    <span class="omo-document-embed-picker__label">Documents visibles</span>'
             + '    <select class="generic-form-control omo-document-embed-picker__select" data-omo-document-embed-select size="10"></select>'
             + '  </label>'
             + '  <div class="omo-document-embed-picker__preview">'
-            + '    <div class="omo-document-embed-picker__preview-title" data-omo-document-embed-preview-title>Aucun document selectionne.</div>'
+            + '    <div class="omo-document-embed-picker__preview-title" data-omo-document-embed-preview-title>' + escapeHtml(uiText.embedNone || '') + '</div>'
             + '    <div class="omo-document-embed-picker__preview-context" data-omo-document-embed-preview-context hidden></div>'
             + '    <div class="omo-document-embed-picker__preview-description" data-omo-document-embed-preview-description hidden></div>'
             + '  </div>'
@@ -863,12 +920,12 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             + (targetNode
                 ? '    <button type="button" class="generic-action-button generic-action-button--danger" data-omo-document-embed-delete>Supprimer</button>'
                 : '')
-            + '    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-document-embed-cancel>Annuler</button>'
-            + '    <button type="button" class="generic-action-button generic-action-button--main" data-omo-document-embed-apply disabled>' + (targetNode ? 'Mettre a jour' : 'Inserer le document') + '</button>'
+            + '    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-document-embed-cancel>' + escapeHtml(uiText.actionCancel || '') + '</button>'
+            + '    <button type="button" class="generic-action-button generic-action-button--main" data-omo-document-embed-apply disabled>' + escapeHtml(targetNode ? (uiText.embedUpdate || '') : (uiText.embedInsert || '')) + '</button>'
             + '  </div>'
             + '</div>';
 
-        window.commonTopbarOpenModal('Inserer un document', modalHtml, 'html');
+        window.commonTopbarOpenModal(uiText.embedModalTitle || '', modalHtml, 'html');
 
         const modalBody = document.getElementById('commonTopbarModalBody');
         if (!modalBody) {

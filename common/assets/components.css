@@ -241,6 +241,139 @@ textarea.generic-form-control {
     resize: vertical;
 }
 
+.generic-editable-select {
+    --generic-editable-select-toggle-width: 44px;
+    position: relative;
+    display: grid;
+    gap: 8px;
+}
+
+.generic-editable-select__control {
+    position: relative;
+}
+
+.generic-editable-select__input {
+    padding-right: calc(var(--generic-editable-select-toggle-width) + 12px);
+}
+
+.generic-editable-select__toggle,
+#formulaire-edit .generic-editable-select__toggle {
+    position: absolute;
+    top: 40%;
+    right: 8px;
+    transform: translateY(-50%);
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    min-height: 26px !important;
+    width: 26px !important;
+    height: 26px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 999px !important;
+    background: transparent !important;
+    color: color-mix(in srgb, var(--color-text-light, #64748b) 78%, var(--color-text, #1f2937)) !important;
+    font: inherit;
+    font-size: 0;
+    font-weight: 700;
+    line-height: 0;
+    cursor: pointer;
+    opacity: 0.85;
+    box-shadow: none !important;
+    appearance: none;
+    filter: none !important;
+    transition:
+        background-color 0.15s ease,
+        color 0.15s ease,
+        opacity 0.15s ease;
+}
+
+.generic-editable-select__toggle::before,
+#formulaire-edit .generic-editable-select__toggle::before {
+    content: "";
+    display: block;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: translateY(-3px) rotate(45deg);
+    transform-origin: center;
+}
+
+.generic-editable-select__toggle:hover,
+#formulaire-edit .generic-editable-select__toggle:hover {
+    background: color-mix(in srgb, var(--color-text, #1f2937) 6%, transparent) !important;
+    color: var(--color-text, #1f2937) !important;
+    opacity: 1;
+    transform: translateY(-50%) !important;
+}
+
+.generic-editable-select__toggle:focus-visible,
+#formulaire-edit .generic-editable-select__toggle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 14%, transparent);
+}
+
+.generic-editable-select.is-open .generic-editable-select__toggle,
+#formulaire-edit .generic-editable-select.is-open .generic-editable-select__toggle {
+    transform: translateY(-50%) rotate(180deg);
+}
+
+.generic-editable-select.is-open .generic-editable-select__toggle:hover,
+#formulaire-edit .generic-editable-select.is-open .generic-editable-select__toggle:hover {
+    transform: translateY(-50%) rotate(180deg) !important;
+}
+
+.generic-editable-select__panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    z-index: 40;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
+    max-height: 240px;
+    overflow: auto;
+    padding: 8px;
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: 14px;
+    background: var(--color-surface, #ffffff);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+}
+
+.generic-editable-select__panel[hidden] {
+    display: none !important;
+}
+
+.generic-editable-select__option {
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 0;
+    padding: 7px 12px;
+    border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 88%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 88%, transparent);
+    color: var(--color-text, #1f2937);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.generic-editable-select__option:hover,
+.generic-editable-select__option:focus-visible {
+    outline: none;
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #ffffff));
+}
+
+.generic-editable-select__empty {
+    width: 100%;
+    padding: 10px 12px;
+    color: var(--color-text-light, #64748b);
+    font-size: 0.95rem;
+}
+
 .generic-tabs {
     --generic-tabs-list-padding-inline: 12px;
     --generic-tabs-list-border: var(--color-border, #d1d5db);

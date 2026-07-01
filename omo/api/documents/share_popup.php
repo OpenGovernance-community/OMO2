@@ -4,6 +4,52 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 use dbObject\Document;
 use dbObject\DocumentShareLink;
 
+$sourceLang = [
+    'documents.share.error.unavailable' => ['text' => 'Impossible de partager ce document.', 'context' => 'Error shown when the document cannot be shared.'],
+    'documents.share.hero.title' => ['text' => 'Partager ce document', 'context' => 'Main title of the document share popup.'],
+    'documents.share.list.title' => ['text' => 'Liens existants', 'context' => 'Section title listing existing share links.'],
+    'documents.share.list.intro' => ['text' => 'Tu peux copier, modifier, supprimer ou ajouter un nouveau lien de partage pour ce document.', 'context' => 'Intro text shown above the list of existing share links.'],
+    'documents.share.meta.created' => ['text' => 'Cree le {date}', 'context' => 'Metadata line showing when a share link was created.'],
+    'documents.share.meta.expires' => ['text' => 'Expire le {date}', 'context' => 'Metadata line showing when a share link expires.'],
+    'documents.share.meta.no_expiration' => ['text' => 'Sans expiration', 'context' => 'Metadata line shown when a share link has no expiration date.'],
+    'documents.share.badge.expired' => ['text' => 'Expire', 'context' => 'Badge shown on an expired share link.'],
+    'documents.share.badge.password' => ['text' => 'Mot de passe', 'context' => 'Badge shown when a share link requires a password.'],
+    'documents.share.badge.live' => ['text' => 'Temps reel', 'context' => 'Badge shown when a share link allows live follow.'],
+    'documents.share.action.copy' => ['text' => 'Copier', 'context' => 'Button used to copy a share link.'],
+    'documents.share.action.edit' => ['text' => 'Editer', 'context' => 'Button used to edit a share link.'],
+    'documents.share.action.delete' => ['text' => 'Supprimer', 'context' => 'Button used to delete a share link.'],
+    'documents.share.action.new' => ['text' => 'Nouveau lien', 'context' => 'Button used to create a new share link.'],
+    'documents.share.form.title_new' => ['text' => 'Nouveau lien de partage', 'context' => 'Form title when creating an additional share link.'],
+    'documents.share.form.title_first' => ['text' => 'Creer un lien de partage', 'context' => 'Form title when creating the first share link.'],
+    'documents.share.form.intro_new' => ['text' => 'Configure un nouveau lien ou modifie un lien existant.', 'context' => 'Form intro when existing share links already exist.'],
+    'documents.share.form.intro_first' => ['text' => 'Aucun lien n existe encore pour ce document. Creons le premier.', 'context' => 'Form intro when no share link exists yet.'],
+    'documents.share.form.label' => ['text' => 'Libelle interne', 'context' => 'Label of the internal share label field.'],
+    'documents.share.form.label_hint' => ['text' => 'Ce libelle sert a retrouver le lien.', 'context' => 'Hint shown below the internal share label field.'],
+    'documents.share.form.expiration' => ['text' => 'Expiration', 'context' => 'Label of the share link expiration field.'],
+    'documents.share.form.expiration_hint' => ['text' => 'Laisse vide pour un lien sans date de fin.', 'context' => 'Hint shown below the expiration field.'],
+    'documents.share.form.password' => ['text' => 'Mot de passe optionnel', 'context' => 'Label of the optional password field.'],
+    'documents.share.form.password_hint' => ['text' => 'Si un mot de passe est defini, il sera demande a l ouverture du lien.', 'context' => 'Hint shown below the password field in create mode.'],
+    'documents.share.form.password_hint_edit' => ['text' => 'Laisse vide pour conserver le mot de passe actuel, ou saisis-en un nouveau.', 'context' => 'Hint shown below the password field in edit mode.'],
+    'documents.share.form.clear_password_title' => ['text' => 'Supprimer le mot de passe actuel', 'context' => 'Title shown for the clear password checkbox.'],
+    'documents.share.form.clear_password_hint' => ['text' => 'Laisse le champ vide et coche ceci pour retirer la protection existante.', 'context' => 'Hint shown for the clear password checkbox.'],
+    'documents.share.form.live_title' => ['text' => 'Suivre en temps reel', 'context' => 'Title shown for the live follow checkbox.'],
+    'documents.share.form.live_hint' => ['text' => 'Le lien affichera aussi le brouillon temporaire pendant qu un utilisateur edite le document.', 'context' => 'Hint shown for the live follow checkbox.'],
+    'documents.share.form.back' => ['text' => 'Retour a la liste', 'context' => 'Button used to return from the form to the existing links list.'],
+    'documents.share.form.submit_create' => ['text' => 'Creer le lien', 'context' => 'Submit button used to create a share link.'],
+    'documents.share.form.submit_save' => ['text' => 'Enregistrer', 'context' => 'Submit button used to save an existing share link.'],
+    'documents.share.form.title_edit' => ['text' => 'Modifier le lien de partage', 'context' => 'Form title when editing a share link.'],
+    'documents.share.form.intro_edit' => ['text' => 'Mets a jour l expiration, le mot de passe ou le suivi temps reel.', 'context' => 'Form intro when editing a share link.'],
+    'documents.share.confirm_delete' => ['text' => 'Supprimer le lien "{label}" ?', 'context' => 'Confirmation message shown before deleting a share link.'],
+];
+
+$lang = omoLoadTranslationBundle('omo_documents_share_popup', $sourceLang);
+
+function omoDocumentsSharePopupT($key, array $replace = [])
+{
+    global $lang, $sourceLang;
+    return t($key, $replace, $lang, $sourceLang);
+}
+
 if (!function_exists('omoDocumentShareFormatDateTime')) {
     function omoDocumentShareFormatDateTime($value)
     {
@@ -50,7 +96,7 @@ if (
     || !$document->canEditInOrganizationContext((int)$document->get('IDorganization'))
 ) {
     ?>
-    <div class="omo-share-popup omo-share-popup--error">Impossible de partager ce document.</div>
+    <div class="omo-share-popup omo-share-popup--error"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.error.unavailable'), ENT_QUOTES, 'UTF-8') ?></div>
     <?php
     exit;
 }
@@ -176,7 +222,7 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
     </style>
 
     <div class="omo-share-popup__hero generic-hero-panel">
-        <h2 class="generic-card-title generic-card-title--large">Partager ce document</h2>
+        <h2 class="generic-card-title generic-card-title--large"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.hero.title'), ENT_QUOTES, 'UTF-8') ?></h2>
         <p>Le lien ouvrira directement le contenu de <strong><?= htmlspecialchars($defaultLabel, ENT_QUOTES, 'UTF-8') ?></strong>.</p>
     </div>
 
@@ -184,8 +230,8 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
 
     <div class="omo-share-popup__list" id="omoDocumentSharePopupListSection"<?= $hasExistingLinks ? '' : ' hidden' ?>>
         <div class="omo-share-popup__section">
-            <h3 class="omo-share-popup__section-title generic-card-title generic-card-title--large">Liens existants</h3>
-            <p class="omo-share-popup__section-text">Tu peux copier, modifier, supprimer ou ajouter un nouveau lien de partage pour ce document.</p>
+            <h3 class="omo-share-popup__section-title generic-card-title generic-card-title--large"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.list.title'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <p class="omo-share-popup__section-text"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.list.intro'), ENT_QUOTES, 'UTF-8') ?></p>
         </div>
 
         <div class="omo-share-popup__cards">
@@ -212,45 +258,45 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
                         <div>
                             <h4 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars($shareLabel, ENT_QUOTES, 'UTF-8') ?></h4>
                             <div class="omo-share-popup__meta">
-                                <span>Cree le <?= htmlspecialchars(omoDocumentShareFormatDateTime($shareLink->get('datecreation')), ENT_QUOTES, 'UTF-8') ?></span>
+                                <span><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.meta.created', ['date' => omoDocumentShareFormatDateTime($shareLink->get('datecreation'))]), ENT_QUOTES, 'UTF-8') ?></span>
                                 <?php if ($expiresAt): ?>
-                                    <span>Expire le <?= htmlspecialchars(omoDocumentShareFormatDateTime($expiresAt), ENT_QUOTES, 'UTF-8') ?></span>
+                                    <span><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.meta.expires', ['date' => omoDocumentShareFormatDateTime($expiresAt)]), ENT_QUOTES, 'UTF-8') ?></span>
                                 <?php else: ?>
-                                    <span>Sans expiration</span>
+                                    <span><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.meta.no_expiration'), ENT_QUOTES, 'UTF-8') ?></span>
                                 <?php endif; ?>
                             </div>
                         </div>
                         <div class="omo-share-popup__badges">
                             <?php if ($shareLink->isExpired()): ?>
-                                <span class="omo-share-popup__badge omo-share-popup__badge--expired">Expire</span>
+                                <span class="omo-share-popup__badge omo-share-popup__badge--expired"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.badge.expired'), ENT_QUOTES, 'UTF-8') ?></span>
                             <?php endif; ?>
                             <?php if ($shareLink->requiresPassword()): ?>
-                                <span class="omo-share-popup__badge">Mot de passe</span>
+                                <span class="omo-share-popup__badge"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.badge.password'), ENT_QUOTES, 'UTF-8') ?></span>
                             <?php endif; ?>
                             <?php if ($shareLink->allowsLiveFollow()): ?>
-                                <span class="omo-share-popup__badge">Temps reel</span>
+                                <span class="omo-share-popup__badge"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.badge.live'), ENT_QUOTES, 'UTF-8') ?></span>
                             <?php endif; ?>
                         </div>
                     </div>
 
                     <div class="omo-share-popup__card-actions">
-                        <button type="button" class="generic-action-button generic-action-button--secondary" data-share-copy="1">Copier</button>
-                        <button type="button" class="generic-action-button generic-action-button--secondary" data-share-edit="1">Editer</button>
-                        <button type="button" class="generic-action-button generic-action-button--danger" data-share-delete="1">Supprimer</button>
+                        <button type="button" class="generic-action-button generic-action-button--secondary" data-share-copy="1"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.action.copy'), ENT_QUOTES, 'UTF-8') ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--secondary" data-share-edit="1"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.action.edit'), ENT_QUOTES, 'UTF-8') ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--danger" data-share-delete="1"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.action.delete'), ENT_QUOTES, 'UTF-8') ?></button>
                     </div>
                 </div>
             <?php endforeach; ?>
         </div>
 
         <div class="omo-share-popup__actions">
-            <button type="button" class="generic-action-button generic-action-button--main" id="omoDocumentSharePopupNewButton">Nouveau lien</button>
+            <button type="button" class="generic-action-button generic-action-button--main" id="omoDocumentSharePopupNewButton"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.action.new'), ENT_QUOTES, 'UTF-8') ?></button>
         </div>
     </div>
 
     <div class="omo-share-popup__form-panel" id="omoDocumentSharePopupFormSection"<?= $hasExistingLinks ? ' hidden' : '' ?>>
         <div class="omo-share-popup__section">
-            <h3 class="omo-share-popup__section-title generic-card-title generic-card-title--large" id="omoDocumentSharePopupFormTitle"><?= $hasExistingLinks ? 'Nouveau lien de partage' : 'Creer un lien de partage' ?></h3>
-            <p class="omo-share-popup__section-text" id="omoDocumentSharePopupFormIntro"><?= $hasExistingLinks ? 'Configure un nouveau lien ou modifie un lien existant.' : 'Aucun lien n existe encore pour ce document. Creons le premier.' ?></p>
+            <h3 class="omo-share-popup__section-title generic-card-title generic-card-title--large" id="omoDocumentSharePopupFormTitle"><?= htmlspecialchars($hasExistingLinks ? omoDocumentsSharePopupT('documents.share.form.title_new') : omoDocumentsSharePopupT('documents.share.form.title_first'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <p class="omo-share-popup__section-text" id="omoDocumentSharePopupFormIntro"><?= htmlspecialchars($hasExistingLinks ? omoDocumentsSharePopupT('documents.share.form.intro_new') : omoDocumentsSharePopupT('documents.share.form.intro_first'), ENT_QUOTES, 'UTF-8') ?></p>
         </div>
 
         <form class="omo-share-popup__form" id="omoDocumentSharePopupForm">
@@ -259,28 +305,28 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
 
             <div class="omo-share-popup__grid">
                 <div class="omo-share-popup__field">
-                    <label class="omo-share-popup__label" for="omoDocumentSharePopupLabel">Libelle interne</label>
+                    <label class="omo-share-popup__label" for="omoDocumentSharePopupLabel"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.label'), ENT_QUOTES, 'UTF-8') ?></label>
                     <input class="generic-form-control" type="text" id="omoDocumentSharePopupLabel" name="label" maxlength="150" value="<?= htmlspecialchars($defaultLabel, ENT_QUOTES, 'UTF-8') ?>">
-                    <div class="omo-share-popup__hint">Ce libelle sert a retrouver le lien.</div>
+                    <div class="omo-share-popup__hint"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.label_hint'), ENT_QUOTES, 'UTF-8') ?></div>
                 </div>
 
                 <div class="omo-share-popup__field">
-                    <label class="omo-share-popup__label" for="omoDocumentSharePopupExpiration">Expiration</label>
+                    <label class="omo-share-popup__label" for="omoDocumentSharePopupExpiration"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.expiration'), ENT_QUOTES, 'UTF-8') ?></label>
                     <input class="generic-form-control" type="datetime-local" id="omoDocumentSharePopupExpiration" name="dateexpiration">
-                    <div class="omo-share-popup__hint">Laisse vide pour un lien sans date de fin.</div>
+                    <div class="omo-share-popup__hint"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.expiration_hint'), ENT_QUOTES, 'UTF-8') ?></div>
                 </div>
 
                 <div class="omo-share-popup__field omo-share-popup__field--full">
-                    <label class="omo-share-popup__label" for="omoDocumentSharePopupPassword">Mot de passe optionnel</label>
+                    <label class="omo-share-popup__label" for="omoDocumentSharePopupPassword"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.password'), ENT_QUOTES, 'UTF-8') ?></label>
                     <input class="generic-form-control" type="password" id="omoDocumentSharePopupPassword" name="password" autocomplete="new-password">
-                    <div class="omo-share-popup__hint" id="omoDocumentSharePopupPasswordHint">Si un mot de passe est defini, il sera demande a l ouverture du lien.</div>
+                    <div class="omo-share-popup__hint" id="omoDocumentSharePopupPasswordHint"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.password_hint'), ENT_QUOTES, 'UTF-8') ?></div>
                 </div>
 
                 <label class="omo-share-popup__check omo-share-popup__field--full" id="omoDocumentSharePopupClearPasswordWrap" hidden>
                     <input type="checkbox" name="clear_password" id="omoDocumentSharePopupClearPassword">
                     <span>
-                        <strong>Supprimer le mot de passe actuel</strong>
-                        <span>Laisse le champ vide et coche ceci pour retirer la protection existante.</span>
+                        <strong><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.clear_password_title'), ENT_QUOTES, 'UTF-8') ?></strong>
+                        <span><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.clear_password_hint'), ENT_QUOTES, 'UTF-8') ?></span>
                     </span>
                 </label>
             </div>
@@ -289,17 +335,17 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
                 <label class="omo-share-popup__check">
                     <input type="checkbox" name="allow_live_follow" id="omoDocumentSharePopupAllowLiveFollow">
                     <span>
-                        <strong>Suivre en temps reel</strong>
-                        <span>Le lien affichera aussi le brouillon temporaire pendant qu un utilisateur edite le document.</span>
+                        <strong><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.live_title'), ENT_QUOTES, 'UTF-8') ?></strong>
+                        <span><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.live_hint'), ENT_QUOTES, 'UTF-8') ?></span>
                     </span>
                 </label>
             </div>
 
             <div class="omo-share-popup__actions">
                 <?php if ($hasExistingLinks): ?>
-                    <button type="button" class="generic-action-button generic-action-button--secondary" id="omoDocumentSharePopupCancelButton">Retour a la liste</button>
+                    <button type="button" class="generic-action-button generic-action-button--secondary" id="omoDocumentSharePopupCancelButton"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.back'), ENT_QUOTES, 'UTF-8') ?></button>
                 <?php endif; ?>
-                <button type="submit" class="generic-action-button generic-action-button--main" id="omoDocumentSharePopupSubmit">Creer le lien</button>
+                <button type="submit" class="generic-action-button generic-action-button--main" id="omoDocumentSharePopupSubmit"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.submit_create'), ENT_QUOTES, 'UTF-8') ?></button>
             </div>
         </form>
     </div>
@@ -308,6 +354,19 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
 <script>
 (function () {
     const defaultLabel = <?= json_encode($defaultLabel, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const text = <?= json_encode([
+        'passwordHint' => omoDocumentsSharePopupT('documents.share.form.password_hint'),
+        'passwordHintEdit' => omoDocumentsSharePopupT('documents.share.form.password_hint_edit'),
+        'submitCreate' => omoDocumentsSharePopupT('documents.share.form.submit_create'),
+        'submitSave' => omoDocumentsSharePopupT('documents.share.form.submit_save'),
+        'titleNew' => omoDocumentsSharePopupT('documents.share.form.title_new'),
+        'titleFirst' => omoDocumentsSharePopupT('documents.share.form.title_first'),
+        'introNew' => omoDocumentsSharePopupT('documents.share.form.intro_new'),
+        'introFirst' => omoDocumentsSharePopupT('documents.share.form.intro_first'),
+        'titleEdit' => omoDocumentsSharePopupT('documents.share.form.title_edit'),
+        'introEdit' => omoDocumentsSharePopupT('documents.share.form.intro_edit'),
+        'confirmDelete' => omoDocumentsSharePopupT('documents.share.confirm_delete'),
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
     window.omoDocumentSharePopupInit = function (popupRoot) {
         const root = popupRoot || document.getElementById('omoDocumentSharePopupRoot');
@@ -350,12 +409,12 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
             allowLiveFollow.checked = false;
             clearPasswordInput.checked = false;
             clearPasswordWrap.hidden = true;
-            passwordHint.textContent = 'Si un mot de passe est defini, il sera demande a l ouverture du lien.';
-            submitButton.textContent = 'Creer le lien';
-            title.textContent = hasExistingLinks ? 'Nouveau lien de partage' : 'Creer un lien de partage';
+            passwordHint.textContent = text.passwordHint || '';
+            submitButton.textContent = text.submitCreate || '';
+            title.textContent = hasExistingLinks ? (text.titleNew || '') : (text.titleFirst || '');
             intro.textContent = hasExistingLinks
-                ? 'Configure un nouveau lien ou modifie un lien existant.'
-                : 'Aucun lien n existe encore pour ce document. Creons le premier.';
+                ? (text.introNew || '')
+                : (text.introFirst || '');
         };
 
         const openFormForCreate = function () {
@@ -380,10 +439,10 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
             expirationInput.value = card.dataset.dateexpiration || '';
             allowLiveFollow.checked = card.dataset.allowLiveFollow === '1';
             clearPasswordWrap.hidden = card.dataset.hasPassword !== '1';
-            passwordHint.textContent = 'Laisse vide pour conserver le mot de passe actuel, ou saisis-en un nouveau.';
-            submitButton.textContent = 'Enregistrer';
-            title.textContent = 'Modifier le lien de partage';
-            intro.textContent = 'Mets a jour l expiration, le mot de passe ou le suivi temps reel.';
+            passwordHint.textContent = text.passwordHintEdit || '';
+            submitButton.textContent = text.submitSave || '';
+            title.textContent = text.titleEdit || '';
+            intro.textContent = text.introEdit || '';
 
             if (listSection) {
                 listSection.hidden = true;
