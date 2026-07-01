@@ -87,6 +87,33 @@
 			return is_array($rows) ? $rows : [];
 		}
 
+		public static function fetchDistinctBranchesForParcours($parcoursId)
+		{
+			$rows = self::fetchAll(
+				"SELECT DISTINCT TRIM(branch) AS branch
+				FROM parcours_mission
+				WHERE IDparcours = :parcours_id
+				  AND branch IS NOT NULL
+				  AND TRIM(branch) <> ''
+				ORDER BY branch ASC",
+				['parcours_id' => (int)$parcoursId]
+			);
+
+			if (!is_array($rows)) {
+				return [];
+			}
+
+			$branches = [];
+			foreach ($rows as $row) {
+				$branch = trim((string)($row['branch'] ?? ''));
+				if ($branch !== '') {
+					$branches[] = $branch;
+				}
+			}
+
+			return $branches;
+		}
+
 		public static function attachMissionToParcours($parcoursId, $missionId, array $options = array())
 		{
 			$parcoursId = (int)$parcoursId;

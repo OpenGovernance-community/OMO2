@@ -1,6 +1,26 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 
+$sourceLang = [
+    'documents.detail.error.invalid' => ['text' => 'Document invalide.', 'context' => 'Error shown when the document id is invalid.'],
+    'documents.detail.error.not_found' => ['text' => 'Document introuvable ou inaccessible.', 'context' => 'Error shown when the document cannot be loaded or viewed.'],
+    'documents.detail.meta.updated' => ['text' => 'Mise à jour : {date}', 'context' => 'Metadata pill showing the last update date of the document.'],
+    'documents.detail.meta.author' => ['text' => 'Par {name}', 'context' => 'Metadata pill showing the author of the document.'],
+    'documents.detail.meta.updated_by' => ['text' => 'Modifie par {name}', 'context' => 'Metadata pill showing who updated the document.'],
+    'documents.detail.alt_texts.title' => ['text' => 'Versions texte', 'context' => 'Section title listing alternate text versions.'],
+    'documents.detail.alt_texts.fallback' => ['text' => 'Version texte', 'context' => 'Fallback title for an alternate text variant.'],
+    'documents.detail.media.title' => ['text' => 'Médias associés', 'context' => 'Section title listing associated media.'],
+    'documents.detail.media.open' => ['text' => 'Ouvrir le média', 'context' => 'Link label used to open a media item.'],
+];
+
+$lang = omoLoadTranslationBundle('omo_documents_detail', $sourceLang);
+
+function omoDocumentsDetailT($key, array $replace = [])
+{
+    global $lang, $sourceLang;
+    return t($key, $replace, $lang, $sourceLang);
+}
+
 $documentId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $organizationId = isset($_GET['oid']) ? (int)$_GET['oid'] : (int)($_SESSION['currentOrganization'] ?? 0);
 $holonId = isset($_GET['cid']) ? (int)$_GET['cid'] : 0;
@@ -31,7 +51,7 @@ if ($documentId <= 0) {
     http_response_code(400);
     ?>
     <div class="omo-document-detail omo-document-detail--error">
-        <div class="omo-empty-state">Document invalide.</div>
+        <div class="omo-empty-state"><?= $escape(omoDocumentsDetailT('documents.detail.error.invalid')) ?></div>
     </div>
     <?php
     exit;
@@ -46,7 +66,7 @@ if (
     http_response_code(404);
     ?>
     <div class="omo-document-detail omo-document-detail--error">
-        <div class="omo-empty-state">Document introuvable ou inaccessible.</div>
+        <div class="omo-empty-state"><?= $escape(omoDocumentsDetailT('documents.detail.error.not_found')) ?></div>
     </div>
     <?php
     exit;
@@ -74,15 +94,15 @@ $renderedContent = $document->getRenderedContentForCurrentViewer();
                 <?php endif; ?>
 
                 <?php if ($updatedAt instanceof DateTimeInterface && (!$createdAt instanceof DateTimeInterface || $updatedAt != $createdAt)): ?>
-                    <span class="omo-pill">Mise à jour : <?= $escape($formatDateTime($updatedAt)) ?></span>
+                    <span class="omo-pill"><?= $escape(omoDocumentsDetailT('documents.detail.meta.updated', ['date' => $formatDateTime($updatedAt)])) ?></span>
                 <?php endif; ?>
 
                 <?php if ($author !== ''): ?>
-                    <span class="omo-pill">Par <?= $escape($author) ?></span>
+                    <span class="omo-pill"><?= $escape(omoDocumentsDetailT('documents.detail.meta.author', ['name' => $author])) ?></span>
                 <?php endif; ?>
 
                 <?php if ($updatedBy !== '' && $updatedBy !== $author): ?>
-                    <span class="omo-pill">Modifie par <?= $escape($updatedBy) ?></span>
+                    <span class="omo-pill"><?= $escape(omoDocumentsDetailT('documents.detail.meta.updated_by', ['name' => $updatedBy])) ?></span>
                 <?php endif; ?>
 
                 <?php if (trim((string)($visibility['badgeText'] ?? '')) !== ''): ?>
@@ -115,7 +135,7 @@ $renderedContent = $document->getRenderedContentForCurrentViewer();
 
         <?php if (count($altTexts) > 0): ?>
             <section class="omo-document-detail__section">
-                <h3 class="omo-document-detail__section-title">Versions texte</h3>
+                <h3 class="omo-document-detail__section-title"><?= $escape(omoDocumentsDetailT('documents.detail.alt_texts.title')) ?></h3>
                 <div class="omo-document-detail__stack">
                     <?php foreach ($altTexts as $altText): ?>
                         <?php
@@ -126,7 +146,7 @@ $renderedContent = $document->getRenderedContentForCurrentViewer();
                         ?>
                         <article class="omo-document-detail__variant omo-card">
                             <div class="omo-document-detail__variant-head">
-                                <strong><?= $escape($promptTitle !== '' ? $promptTitle : 'Version texte') ?></strong>
+                                <strong><?= $escape($promptTitle !== '' ? $promptTitle : omoDocumentsDetailT('documents.detail.alt_texts.fallback')) ?></strong>
                             </div>
                             <div class="omo-document-detail__variant-body">
                                 <?= nl2br($escape((string)$altText->get('text'))) ?>
@@ -139,7 +159,7 @@ $renderedContent = $document->getRenderedContentForCurrentViewer();
 
         <?php if (count($medias) > 0): ?>
             <section class="omo-document-detail__section">
-                <h3 class="omo-document-detail__section-title">Médias associés</h3>
+                <h3 class="omo-document-detail__section-title"><?= $escape(omoDocumentsDetailT('documents.detail.media.title')) ?></h3>
                 <div class="omo-document-detail__stack">
                     <?php foreach ($medias as $media): ?>
                         <article class="omo-document-detail__media omo-card">
@@ -165,7 +185,7 @@ $renderedContent = $document->getRenderedContentForCurrentViewer();
                                 </a>
                             <?php else: ?>
                                 <a href="/shared/getfile.php?id=<?= $escape($media->getId()) ?>" target="_blank" rel="noopener" class="omo-document-detail__download">
-                                    Ouvrir le média
+                                    <?= $escape(omoDocumentsDetailT('documents.detail.media.open')) ?>
                                 </a>
                             <?php endif; ?>
                         </article>

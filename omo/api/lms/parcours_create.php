@@ -6,6 +6,65 @@ include __DIR__ . '/inc/org.php';
 require_once __DIR__ . '/inc/access.php';
 require_once __DIR__ . '/inc/parcours_editor.php';
 
+$sourceLang = [
+    'lms.parcours_create.error.access_denied' => [
+        'text' => 'Acces refuse.',
+        'context' => 'Error shown when the user cannot access the parcours editor.',
+    ],
+    'lms.parcours_create.error.not_found' => [
+        'text' => 'Parcours introuvable.',
+        'context' => 'Error shown when the requested parcours cannot be found.',
+    ],
+    'lms.parcours_create.error.cannot_edit' => [
+        'text' => 'Vous n avez pas le droit de modifier ce parcours.',
+        'context' => 'Error shown when the user cannot edit the requested parcours.',
+    ],
+    'lms.parcours_create.error.cannot_create' => [
+        'text' => 'Vous n avez pas le droit de creer un parcours dans ce contexte.',
+        'context' => 'Error shown when the user cannot create a parcours in the current context.',
+    ],
+    'lms.parcours_create.drawer.edit_title' => [
+        'text' => 'Editer le parcours',
+        'context' => 'Drawer title when editing an existing parcours.',
+    ],
+    'lms.parcours_create.drawer.create_title' => [
+        'text' => 'Creer un parcours',
+        'context' => 'Drawer title when creating a new parcours.',
+    ],
+    'lms.parcours_create.drawer.edit_intro' => [
+        'text' => 'Mettez a jour le titre, la description et l image de ce parcours.',
+        'context' => 'Intro text shown when editing a parcours.',
+    ],
+    'lms.parcours_create.drawer.create_intro' => [
+        'text' => 'Renseignez le titre, la description et l image du parcours. Il sera ensuite ajoute a l organisation courante.',
+        'context' => 'Intro text shown when creating a parcours.',
+    ],
+    'lms.parcours_create.action.save' => [
+        'text' => 'Enregistrer',
+        'context' => 'Primary action used to save an existing parcours.',
+    ],
+    'lms.parcours_create.action.create' => [
+        'text' => 'Creer le parcours',
+        'context' => 'Primary action used to create a new parcours.',
+    ],
+    'lms.parcours_create.action.cancel' => [
+        'text' => 'Annuler',
+        'context' => 'Secondary action used to close the parcours editor drawer.',
+    ],
+    'lms.parcours_create.note.after_create' => [
+        'text' => 'Vous pourrez ajouter et reordonner les missions ou les parcours du pack juste apres la creation.',
+        'context' => 'Hint shown below the parcours form before the parcours exists.',
+    ],
+];
+
+$lang = omoLoadTranslationBundle('omo_lms_parcours_create', $sourceLang);
+
+function lmsParcoursCreateT($key, array $replace = [])
+{
+    global $lang, $sourceLang;
+    return t($key, $replace, $lang, $sourceLang);
+}
+
 $currentUserId = (int)commonGetCurrentUserId();
 $organizationId = (int)($org['id'] ?? 0);
 $managementContext = lmsResolveParcoursManagementContext($organizationId, 0, $currentUserId);
@@ -22,7 +81,7 @@ $parcoursId = (int)($_GET['pid'] ?? 0);
 
 if ($currentUserId <= 0 || !$hasOrganizationAccess || $organizationId <= 0) {
     http_response_code(403);
-    echo '<div class="lms-create-parcours-view"><p>Acces refuse.</p></div>';
+    echo '<div class="lms-create-parcours-view"><p>' . htmlspecialchars(lmsParcoursCreateT('lms.parcours_create.error.access_denied')) . '</p></div>';
     exit;
 }
 
@@ -35,13 +94,13 @@ if ($parcoursId > 0) {
     $loadedParcours = $managementContext['parcours'] ?? null;
     if (!($loadedParcours instanceof \dbObject\Parcours) || ($link === null && empty($managementContext['isExposedViaPack']))) {
         http_response_code(404);
-        echo '<div class="lms-create-parcours-view"><p>Parcours introuvable.</p></div>';
+        echo '<div class="lms-create-parcours-view"><p>' . htmlspecialchars(lmsParcoursCreateT('lms.parcours_create.error.not_found')) . '</p></div>';
         exit;
     }
 
     if (empty($managementContext['canEditContent'])) {
         http_response_code(403);
-        echo '<div class="lms-create-parcours-view"><p>Vous n avez pas le droit de modifier ce parcours.</p></div>';
+        echo '<div class="lms-create-parcours-view"><p>' . htmlspecialchars(lmsParcoursCreateT('lms.parcours_create.error.cannot_edit')) . '</p></div>';
         exit;
     }
 
@@ -50,18 +109,22 @@ if ($parcoursId > 0) {
 } else {
     if (!$canCreateParcours) {
         http_response_code(403);
-        echo '<div class="lms-create-parcours-view"><p>Vous n avez pas le droit de creer un parcours dans ce contexte.</p></div>';
+        echo '<div class="lms-create-parcours-view"><p>' . htmlspecialchars(lmsParcoursCreateT('lms.parcours_create.error.cannot_create')) . '</p></div>';
         exit;
     }
 
     $parcours->set('IDorganization', $organizationId);
 }
 
-$drawerTitle = $isEditMode ? 'Editer le parcours' : 'Creer un parcours';
+$drawerTitle = $isEditMode
+    ? lmsParcoursCreateT('lms.parcours_create.drawer.edit_title')
+    : lmsParcoursCreateT('lms.parcours_create.drawer.create_title');
 $drawerIntro = $isEditMode
-    ? 'Mettez a jour le titre, la description et l image de ce parcours.'
-    : 'Renseignez le titre, la description et l image du parcours. Il sera ensuite ajoute a l organisation courante.';
-$submitLabel = $isEditMode ? 'Enregistrer' : 'Creer le parcours';
+    ? lmsParcoursCreateT('lms.parcours_create.drawer.edit_intro')
+    : lmsParcoursCreateT('lms.parcours_create.drawer.create_intro');
+$submitLabel = $isEditMode
+    ? lmsParcoursCreateT('lms.parcours_create.action.save')
+    : lmsParcoursCreateT('lms.parcours_create.action.create');
 $editorFields = array(
     '{title:Informations principales}',
     'title',
@@ -536,7 +599,7 @@ $params = array(
         <?php $parcours->display('adminEdit.php', $params); ?>
 
         <div class="lms-create-parcours-actions">
-            <button type="button" class="lms-create-parcours-cancel" onclick="closeDrawer()">Annuler</button>
+            <button type="button" class="lms-create-parcours-cancel" onclick="closeDrawer()"><?php echo htmlspecialchars(lmsParcoursCreateT('lms.parcours_create.action.cancel')); ?></button>
             <button type="button" class="lms-create-parcours-save" id="lms-create-parcours-submit"><?php echo htmlspecialchars($submitLabel); ?></button>
         </div>
     </section>
@@ -545,7 +608,7 @@ $params = array(
         <?php echo lmsRenderParcoursContentManager($organizationId, $parcoursId); ?>
     <?php else: ?>
         <section class="lms-create-parcours-note">
-            Vous pourrez ajouter et reordonner les missions ou les parcours du pack juste apres la creation.
+            <?php echo htmlspecialchars(lmsParcoursCreateT('lms.parcours_create.note.after_create')); ?>
         </section>
     <?php endif; ?>
 </div>

@@ -5,6 +5,37 @@ use dbObject\Document;
 
 header('Content-Type: application/json; charset=UTF-8');
 
+$sourceLang = [
+    'documents.move.error.access_denied' => [
+        'text' => 'Accès refusé.',
+        'context' => 'Error returned when the current user cannot access the move endpoint.',
+    ],
+    'documents.move.error.invalid_request' => [
+        'text' => 'Le déplacement demandé est invalide.',
+        'context' => 'Error returned when the move request does not contain a valid target.',
+    ],
+    'documents.move.error.not_found' => [
+        'text' => 'Le document demandé est introuvable.',
+        'context' => 'Error returned when the source document cannot be found.',
+    ],
+    'documents.move.error.failed' => [
+        'text' => 'Impossible de déplacer le document.',
+        'context' => 'Fallback error returned when the move operation fails.',
+    ],
+    'documents.move.success' => [
+        'text' => 'Document déplacé.',
+        'context' => 'Fallback success message returned when the document is moved successfully.',
+    ],
+];
+
+$lang = omoLoadTranslationBundle('omo_documents_move_action', $sourceLang);
+
+function omoDocumentsMoveActionT($key, array $replace = [])
+{
+    global $lang, $sourceLang;
+    return t($key, $replace, $lang, $sourceLang);
+}
+
 $payload = json_decode(file_get_contents('php://input'), true);
 if (!is_array($payload)) {
     $payload = array();
@@ -31,7 +62,7 @@ if ($currentUserId <= 0) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => 'Acces refuse.',
+            'message' => omoDocumentsMoveActionT('documents.move.error.access_denied'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -43,7 +74,7 @@ if ($documentId <= 0 || (!$targetHolonIdProvided && !$targetParentDocumentIdProv
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => 'Le deplacement demande est invalide.',
+            'message' => omoDocumentsMoveActionT('documents.move.error.invalid_request'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -58,7 +89,7 @@ if (
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => 'Le deplacement demande est invalide.',
+            'message' => omoDocumentsMoveActionT('documents.move.error.invalid_request'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -70,7 +101,7 @@ if (!$document->load($documentId) || (int)$document->get('IDorganization') <= 0)
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => 'Le document demande est introuvable.',
+            'message' => omoDocumentsMoveActionT('documents.move.error.not_found'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -83,7 +114,7 @@ if (!commonCurrentUserHasOrganizationAccess($organizationId)) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => 'Acces refuse.',
+            'message' => omoDocumentsMoveActionT('documents.move.error.access_denied'),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -102,7 +133,7 @@ if (!($result['status'] ?? false)) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => (string)($result['text'] ?? 'Impossible de deplacer le document.'),
+            'message' => (string)($result['text'] ?? omoDocumentsMoveActionT('documents.move.error.failed')),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -112,7 +143,7 @@ if (!($result['status'] ?? false)) {
 echo json_encode(
     array(
         'status' => 'ok',
-        'message' => (string)($result['text'] ?? 'Document deplace.'),
+        'message' => (string)($result['text'] ?? omoDocumentsMoveActionT('documents.move.success')),
         'document' => $result['document'] ?? null,
         'previousHolonId' => $result['previousHolonId'] ?? null,
         'previousParentDocumentId' => $result['previousParentDocumentId'] ?? null,

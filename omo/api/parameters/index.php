@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/translation.php';
 require_once dirname(__DIR__, 3) . '/includes/server_env_admin.php';
 
 $currentUserId = commonGetCurrentUserId();
@@ -19,53 +20,65 @@ if ($currentOrganizationId > 0) {
 }
 
 if ($organizationName === '') {
-    $organizationName = 'cette organisation';
+    $organizationName = omoParametersIndexT('parameters.index.card.organization.fallback_name');
 }
+
+$parametersIndexClientTexts = [
+    'title' => omoParametersIndexT('parameters.index.title'),
+    'loading' => omoParametersIndexT('parameters.index.drawer.loading'),
+    'loadError' => omoParametersIndexT('parameters.index.drawer.error'),
+];
 ?>
 <div class="omo-settings omo-panel-view">
     <div class="omo-settings__header omo-panel-view__header">
         <div class="omo-panel-view__header-copy">
-            <h2 class="omo-panel-view__title">Parametres</h2>
-            <p class="omo-panel-view__description">Retrouvez ici vos reglages personnels ainsi que les ecrans de configuration disponibles pour l'organisation.</p>
+            <h2 class="omo-panel-view__title"><?= htmlspecialchars(omoParametersIndexT('parameters.index.title'), ENT_QUOTES, 'UTF-8') ?></h2>
+            <p class="omo-panel-view__description"><?= htmlspecialchars(omoParametersIndexT('parameters.index.description'), ENT_QUOTES, 'UTF-8') ?></p>
         </div>
     </div>
     <div class="omo-panel-view__body">
         <div class="omo-panel-view__body_content">
         <?php if ($currentUserId <= 0): ?>
         <div class="omo-settings__empty omo-empty-state">
-            Connectez-vous pour acceder a vos parametres utilisateur.
+            <?= htmlspecialchars(omoParametersIndexT('parameters.index.empty.login'), ENT_QUOTES, 'UTF-8') ?>
         </div>
         <?php else: ?>
         <div class="omo-settings__grid omo-card-grid omo-card-grid--fluid">
 
             <button type="button" class="omo-settings__card omo-card omo-card--interactive" data-topbar-profile-edit>
-                <strong>Profil</strong>
-                <span>Ouvrir l'edition de votre profil.</span>
+                <strong><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.profile.title'), ENT_QUOTES, 'UTF-8') ?></strong>
+                <span><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.profile.description'), ENT_QUOTES, 'UTF-8') ?></span>
             </button>
 
             <button
                 type="button"
                 class="omo-settings__card omo-card omo-card--interactive"
-                data-omo-settings-modal-title="Organisation"
+                data-omo-settings-modal-title="<?= htmlspecialchars(omoParametersIndexT('parameters.index.card.organization.title'), ENT_QUOTES, 'UTF-8') ?>"
                 data-omo-settings-modal-url="/popup/organization_create.php?oid=<?= (int)$currentOrganizationId ?>"
                 data-omo-settings-modal-mode="fetch"
                 <?= $canEditOrganization ? '' : 'disabled' ?>
             >
-                <strong>Organisation</strong>
-                <span><?= htmlspecialchars($canEditOrganization ? "Modifier le nom, le nom court, l emplacement geographique, les illustrations et la couleur de " . $organizationName . "." : "Vous devez etre admin de l'organisation pour modifier ces parametres.", ENT_QUOTES, 'UTF-8') ?></span>
+                <strong><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.organization.title'), ENT_QUOTES, 'UTF-8') ?></strong>
+                <span><?= htmlspecialchars(
+                    $canEditOrganization
+                        ? omoParametersIndexT('parameters.index.card.organization.description', ['organizationName' => $organizationName])
+                        : omoParametersIndexT('parameters.index.card.organization.forbidden'),
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?></span>
             </button>
 
             <?php if ($hasStructureTemplates): ?>
             <button
                 type="button"
                 class="omo-settings__card omo-card omo-card--interactive noMobile"
-                data-omo-settings-drawer-title="Modeles de holons"
+                data-omo-settings-drawer-title="<?= htmlspecialchars(omoParametersIndexT('parameters.index.card.holon_templates.title'), ENT_QUOTES, 'UTF-8') ?>"
                 data-omo-settings-drawer-url="/omo/api/parameters/holon-templates/index.php"
                 data-omo-settings-drawer-mode="fetch"
                 data-omo-settings-contextual="1"
             >
-                <strong>Modeles de holons</strong>
-                <span>Configurer les types de noeuds et leurs proprietes pour votre organisation.</span>
+                <strong><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.holon_templates.title'), ENT_QUOTES, 'UTF-8') ?></strong>
+                <span><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.holon_templates.description'), ENT_QUOTES, 'UTF-8') ?></span>
             </button>
             <?php endif; ?>
 
@@ -73,12 +86,12 @@ if ($organizationName === '') {
             <button
                 type="button"
                 class="omo-settings__card omo-card omo-card--interactive"
-                data-omo-settings-modal-title="Admin du serveur"
+                data-omo-settings-modal-title="<?= htmlspecialchars(omoParametersIndexT('parameters.index.card.server_admin.title'), ENT_QUOTES, 'UTF-8') ?>"
                 data-omo-settings-modal-url="/omo/api/parameters/server_env_popup.php"
                 data-omo-settings-modal-mode="fetch"
             >
-                <strong>Admin du serveur</strong>
-                <span>Ouvrir les reglages globaux sensibles du fichier .env, hors configuration de la base de donnees.</span>
+                <strong><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.server_admin.title'), ENT_QUOTES, 'UTF-8') ?></strong>
+                <span><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.server_admin.description'), ENT_QUOTES, 'UTF-8') ?></span>
             </button>
             <?php endif; ?>
         </div>
@@ -90,10 +103,10 @@ if ($organizationName === '') {
         <div class="omo-overlay-drawer__panel">
             <div class="omo-overlay-drawer__header">
                 <div class="omo-overlay-drawer__header-copy">
-                    <h3 class="omo-overlay-drawer__title" data-omo-settings-nested-title>Parametres</h3>
+                    <h3 class="omo-overlay-drawer__title" data-omo-settings-nested-title><?= htmlspecialchars(omoParametersIndexT('parameters.index.title'), ENT_QUOTES, 'UTF-8') ?></h3>
                     <p class="omo-overlay-drawer__description" data-omo-settings-nested-description></p>
                 </div>
-                <button type="button" class="omo-overlay-drawer__close" data-omo-settings-nested-close>Fermer</button>
+                <button type="button" class="omo-overlay-drawer__close" data-omo-settings-nested-close><?= htmlspecialchars(omoParametersIndexT('parameters.index.action.close'), ENT_QUOTES, 'UTF-8') ?></button>
             </div>
             <div class="omo-overlay-drawer__body" data-omo-settings-nested-body></div>
         </div>
@@ -128,6 +141,7 @@ if ($organizationName === '') {
 
 <script>
 (function () {
+var settingsTexts = <?= json_encode($parametersIndexClientTexts, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
 document.querySelectorAll('.omo-settings').forEach(function (root) {
     if (!root || root.dataset.omoSettingsInitialized === '1') {
         return;
@@ -168,7 +182,7 @@ document.querySelectorAll('.omo-settings').forEach(function (root) {
             return;
         }
 
-        nestedBody.innerHTML = '<div class="loading">Chargement...</div>';
+        nestedBody.innerHTML = '<div class="loading">' + String(settingsTexts.loading || '') + '</div>';
     }
 
     function renderNestedDrawerError() {
@@ -176,7 +190,7 @@ document.querySelectorAll('.omo-settings').forEach(function (root) {
             return;
         }
 
-        nestedBody.innerHTML = '<div class="omo-empty-state">Impossible de charger ce module.</div>';
+        nestedBody.innerHTML = '<div class="omo-empty-state">' + String(settingsTexts.loadError || '') + '</div>';
     }
 
     function closeNestedDrawer() {
@@ -202,7 +216,7 @@ document.querySelectorAll('.omo-settings').forEach(function (root) {
 
         if (!nestedDrawer || !nestedBody || mode !== 'fetch' || typeof window.jQuery !== 'function') {
             if (typeof window.commonTopbarOpenDrawer === 'function') {
-                window.commonTopbarOpenDrawer(title || 'Parametres', url, mode || 'iframe');
+                window.commonTopbarOpenDrawer(title || settingsTexts.title || '', url, mode || 'iframe');
                 return;
             }
 
@@ -211,7 +225,7 @@ document.querySelectorAll('.omo-settings').forEach(function (root) {
         }
 
         if (nestedTitle) {
-            nestedTitle.textContent = title || 'Parametres';
+            nestedTitle.textContent = title || settingsTexts.title || '';
         }
         if (nestedDescription) {
             nestedDescription.textContent = description || '';
@@ -270,7 +284,7 @@ document.querySelectorAll('.omo-settings').forEach(function (root) {
             }
 
             openNestedDrawer(
-                button.getAttribute('data-omo-settings-drawer-title') || 'Parametres',
+                button.getAttribute('data-omo-settings-drawer-title') || settingsTexts.title || '',
                 drawerUrl,
                 button.getAttribute('data-omo-settings-drawer-mode') || 'iframe',
                 (button.querySelector('span') || {}).textContent || ''
@@ -300,7 +314,7 @@ document.querySelectorAll('.omo-settings').forEach(function (root) {
             }
 
             window.commonTopbarOpenModal(
-                button.getAttribute('data-omo-settings-modal-title') || 'Parametres',
+                button.getAttribute('data-omo-settings-modal-title') || settingsTexts.title || '',
                 modalUrl,
                 button.getAttribute('data-omo-settings-modal-mode') || 'iframe'
             );
