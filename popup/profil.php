@@ -84,11 +84,20 @@ function profilFormatAmountCents($value)
         background: var(--color-bg, var(--auth-page-bg, #f8fafc));
         color: var(--color-text, #0f172a);
         font-family: system-ui, sans-serif;
+    }
+
+    .profile-panel__sections {
         display: grid;
         gap: 18px;
     }
 
-    .profile-panel > .generic-section > h3 {
+    .profile-panel__section {
+        --generic-section-padding-block: 18px;
+        --generic-section-padding-inline: 18px;
+        --generic-section-border: var(--color-border, #dbe4ee);
+    }
+
+    .profile-panel__section h3 {
         margin: 0 0 14px;
     }
 
@@ -117,12 +126,18 @@ function profilFormatAmountCents($value)
         margin-top: 16px;
     }
 
-    .profile-panel__button-secondary {
+    .profile-panel button[type='button'],
+    .profile-panel button[type='submit'] {
+        font: inherit;
+    }
+
+    .profile-panel button[type='button'].profile-panel__button-secondary,
+    .profile-panel button[type='submit'].profile-panel__button-secondary {
         background: color-mix(in srgb, var(--color-text, #0f172a) 92%, var(--color-surface, #ffffff));
         color: var(--color-text-inverse, #ffffff);
     }
 
-    .profile-panel__button-muted {
+    .profile-panel button[type='button'].profile-panel__button-muted {
         background: var(--color-surface-alt, #e2e8f0);
         color: var(--color-text, #0f172a);
     }
@@ -130,6 +145,15 @@ function profilFormatAmountCents($value)
     .profile-panel button[disabled] {
         cursor: not-allowed;
         opacity: .75;
+    }
+
+    .profile-panel__note {
+        margin-top: 14px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: color-mix(in srgb, #f59e0b 10%, var(--color-surface, #ffffff));
+        border: 1px solid color-mix(in srgb, #f59e0b 22%, var(--color-border, #fed7aa));
+        color: #9a3412;
     }
 
     .profile-panel .dbobjecttable {
@@ -165,11 +189,6 @@ function profilFormatAmountCents($value)
         min-height: 72px;
     }
 
-    .profile-panel__scope-fragment {
-        display: grid;
-        gap: 10px;
-    }
-
     .profile-panel__photo {
         width: 72px;
         height: 72px;
@@ -178,6 +197,7 @@ function profilFormatAmountCents($value)
         border: 1px solid var(--color-border-strong, #cbd5e1);
     }
 
+    .profile-panel__field small,
     .profile-panel__scope-help,
     .profile-panel__feedback {
         color: var(--color-text-light, #64748b);
@@ -197,26 +217,13 @@ function profilFormatAmountCents($value)
         color: #b91c1c;
     }
 
+    .profile-panel__photo-empty {
+        color: var(--color-text-light, #64748b);
+        font-size: 0.92rem;
+    }
+
     .profile-panel__password-section {
         margin-top: 18px;
-    }
-
-    .profile-panel__password-toggle {
-        display: grid;
-        gap: 8px;
-        margin-top: 18px;
-    }
-
-    .profile-panel__password-toggle-label {
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        font-weight: 700;
-        color: var(--color-text, #334155);
-    }
-
-    .profile-panel__password-toggle-label input {
-        margin: 0;
     }
 
     .profile-panel__password-head {
@@ -229,10 +236,6 @@ function profilFormatAmountCents($value)
     .profile-panel__password-note {
         color: var(--color-text-light, #64748b);
         line-height: 1.45;
-    }
-
-    .profile-panel__password-section[hidden] {
-        display: none !important;
     }
 
     .profile-panel__password-grid {
@@ -329,9 +332,17 @@ function profilFormatAmountCents($value)
         color: var(--color-text, #334155);
     }
 
-    .profile-panel__competence-field .generic-form-control {
-        --generic-form-control-background: var(--color-surface, #ffffff);
-        --generic-form-control-border: var(--color-border, #dbe4ee);
+    .profile-panel__competence-field input,
+    .profile-panel__competence-field select {
+        width: 100%;
+        min-height: 44px;
+        padding: 10px 12px;
+        border: 1px solid var(--color-border, #dbe4ee);
+        border-radius: 12px;
+        background: var(--color-surface, #fff);
+        color: inherit;
+        font: inherit;
+        box-sizing: border-box;
     }
 
     .profile-panel__competence-meta,
@@ -425,7 +436,12 @@ function profilFormatAmountCents($value)
 <script src="/common/assets/password_policy.js"></script>
 
 <div class="profile-panel" id="profilePanelRoot">
-    <div class="generic-tabs profile-panel__tabs" data-generic-tabs>
+    <div class="profile-panel__sections">
+        <section class="profile-panel__section generic-section">
+            <h3 class="generic-card-title generic-card-title--section"><?= htmlspecialchars(profilPopupT('profile.popup.section.edit.title')) ?></h3>
+
+
+            <div class="generic-tabs profile-panel__tabs" data-generic-tabs>
                 <div class="generic-tabs__list" aria-label="<?= htmlspecialchars(profilPopupT('profile.popup.tabs.aria')) ?>">
                     <button
                         type="button"
@@ -565,9 +581,10 @@ function profilFormatAmountCents($value)
                     </div>
                 </div>
             </div>
+        </section>
 
-    <?php if ($patreonUiEnabled): ?>
-        <section class="generic-section">
+        <?php if ($patreonUiEnabled): ?>
+        <section class="profile-panel__section generic-section">
             <h3 class="generic-card-title generic-card-title--section"><?= htmlspecialchars(profilPopupT('profile.popup.section.patreon.title')) ?></h3>
             <div class="profile-panel__summary">
                 <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
@@ -622,7 +639,8 @@ function profilFormatAmountCents($value)
                 <?php endif; ?>
             </div>
         </section>
-    <?php endif; ?>
+        <?php endif; ?>
+    </div>
 </div>
 
 <script>
