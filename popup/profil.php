@@ -44,7 +44,7 @@ $requestedScope = isset($_GET['scope']) && $_GET['scope'] === 'organization' ? '
 $requestedTab = isset($_GET['tab']) ? (string)$_GET['tab'] : '';
 $initialTab = 'general';
 
-if (in_array($requestedTab, array('current', 'general', 'organization', 'competences'), true)) {
+if (in_array($requestedTab, array('current', 'general', 'organization', 'competences', 'patreon'), true)) {
     $initialTab = $requestedTab;
 } elseif (isset($_GET['scope'])) {
     $initialTab = $requestedScope === 'organization' ? 'organization' : 'general';
@@ -61,6 +61,10 @@ $patreonConnected = false;
 if ($patreonUiEnabled) {
     $patreonConnection = \dbObject\UserPatreon::findByUserId((int)$user->getId());
     $patreonConnected = $patreonConnection !== false && $patreonConnection->isConnected();
+}
+
+if ($initialTab === 'patreon' && !$patreonUiEnabled) {
+    $initialTab = 'general';
 }
 
 function profilFormatDateTime($value)
@@ -494,6 +498,14 @@ function profilFormatAmountCents($value)
                         data-generic-tab-target="profile-panel-tab-competences"
                         data-profile-fragment-panel="profile-panel-tab-competences"
                     ><?= htmlspecialchars(profilPopupT('profile.popup.tabs.competences')) ?></button>
+                    <?php if ($patreonUiEnabled): ?>
+                    <button
+                        type="button"
+                        class="generic-tabs__tab<?= $initialTab === 'patreon' ? ' is-active' : '' ?>"
+                        data-generic-tab
+                        data-generic-tab-target="profile-panel-tab-patreon"
+                    ><?= htmlspecialchars(profilPopupT('profile.popup.tabs.patreon')) ?></button>
+                    <?php endif; ?>
                 </div>
 
                 <div class="generic-tabs__panels">
@@ -601,67 +613,71 @@ function profilFormatAmountCents($value)
                             <?php endif; ?>
                         </div>
                     </div>
+                    <?php if ($patreonUiEnabled): ?>
+                    <div
+                        id="profile-panel-tab-patreon"
+                        class="generic-tabs__panel profile-panel__tab-panel"
+                        data-generic-tab-panel
+                        <?= $initialTab !== 'patreon' ? ' hidden' : '' ?>
+                    >
+                        <h3 class="generic-card-title generic-card-title--section"><?= htmlspecialchars(profilPopupT('profile.popup.section.patreon.title')) ?></h3>
+                        <div class="profile-panel__summary">
+                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.connection.label')) ?></strong>
+                                <?= htmlspecialchars($patreonConnected
+                                    ? profilPopupT('profile.popup.patreon.connection.connected')
+                                    : profilPopupT('profile.popup.patreon.connection.disconnected')) ?>
+                            </div>
+                            <?php if ($patreonConnection !== false): ?>
+                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.name.label')) ?></strong>
+                                <?= htmlspecialchars((string)($patreonConnection->get('full_name') ?: profilPopupT('profile.popup.value.not_provided'))) ?>
+                            </div>
+                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.status.label')) ?></strong>
+                                <?= htmlspecialchars((string)($patreonConnection->get('patron_status') ?: profilPopupT('profile.popup.value.not_provided'))) ?>
+                            </div>
+                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.payment.label')) ?></strong>
+                                <?= htmlspecialchars((string)($patreonConnection->get('last_charge_status') ?: profilPopupT('profile.popup.value.not_provided'))) ?>
+                            </div>
+                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.tiers.label')) ?></strong>
+                                <?= nl2br(htmlspecialchars(trim((string)$patreonConnection->get('tier_titles')) !== '' ? (string)$patreonConnection->get('tier_titles') : profilPopupT('profile.popup.patreon.tiers.none'))) ?>
+                            </div>
+                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.amount.label')) ?></strong>
+                                <?= htmlspecialchars(profilFormatAmountCents((int)$patreonConnection->get('currently_entitled_amount_cents'))) ?>
+                            </div>
+                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.sync_at.label')) ?></strong>
+                                <?= htmlspecialchars(profilFormatDateTime($patreonConnection->get('last_sync_at'))) ?>
+                            </div>
+                            <?php if (trim((string)$patreonConnection->get('last_sync_error')) !== ''): ?>
+                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.sync_error.label')) ?></strong>
+                                <?= nl2br(htmlspecialchars((string)$patreonConnection->get('last_sync_error'))) ?>
+                            </div>
+                            <?php endif; ?>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="profile-panel__actions">
+                            <button
+                                type="button"
+                                id="patreon_connect"
+                                class="generic-action-button generic-action-button--main"
+                            ><?= htmlspecialchars($patreonConnected ? profilPopupT('profile.popup.patreon.reconnect') : profilPopupT('profile.popup.patreon.connect')) ?></button>
+                            <?php if ($patreonConnected): ?>
+                            <button type="button" id="patreon_sync" class="profile-panel__button-secondary generic-action-button"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.sync')) ?></button>
+                            <button type="button" id="patreon_disconnect" class="profile-panel__button-muted generic-action-button generic-action-button--secondary"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.disconnect')) ?></button>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </section>
-
-        <?php if ($patreonUiEnabled): ?>
-        <section class="profile-panel__section generic-section">
-            <h3 class="generic-card-title generic-card-title--section"><?= htmlspecialchars(profilPopupT('profile.popup.section.patreon.title')) ?></h3>
-            <div class="profile-panel__summary">
-                <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                    <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.connection.label')) ?></strong>
-                    <?= htmlspecialchars($patreonConnected
-                        ? profilPopupT('profile.popup.patreon.connection.connected')
-                        : profilPopupT('profile.popup.patreon.connection.disconnected')) ?>
-                </div>
-                <?php if ($patreonConnection !== false): ?>
-                <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                    <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.name.label')) ?></strong>
-                    <?= htmlspecialchars((string)($patreonConnection->get('full_name') ?: profilPopupT('profile.popup.value.not_provided'))) ?>
-                </div>
-                <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                    <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.status.label')) ?></strong>
-                    <?= htmlspecialchars((string)($patreonConnection->get('patron_status') ?: profilPopupT('profile.popup.value.not_provided'))) ?>
-                </div>
-                <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                    <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.payment.label')) ?></strong>
-                    <?= htmlspecialchars((string)($patreonConnection->get('last_charge_status') ?: profilPopupT('profile.popup.value.not_provided'))) ?>
-                </div>
-                <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                    <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.tiers.label')) ?></strong>
-                    <?= nl2br(htmlspecialchars(trim((string)$patreonConnection->get('tier_titles')) !== '' ? (string)$patreonConnection->get('tier_titles') : profilPopupT('profile.popup.patreon.tiers.none'))) ?>
-                </div>
-                <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                    <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.amount.label')) ?></strong>
-                    <?= htmlspecialchars(profilFormatAmountCents((int)$patreonConnection->get('currently_entitled_amount_cents'))) ?>
-                </div>
-                <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                    <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.sync_at.label')) ?></strong>
-                    <?= htmlspecialchars(profilFormatDateTime($patreonConnection->get('last_sync_at'))) ?>
-                </div>
-                <?php if (trim((string)$patreonConnection->get('last_sync_error')) !== ''): ?>
-                <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                    <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.sync_error.label')) ?></strong>
-                    <?= nl2br(htmlspecialchars((string)$patreonConnection->get('last_sync_error'))) ?>
-                </div>
-                <?php endif; ?>
-                <?php endif; ?>
-            </div>
-
-            <div class="profile-panel__actions">
-                <button
-                    type="button"
-                    id="patreon_connect"
-                    class="generic-action-button generic-action-button--main"
-                ><?= htmlspecialchars($patreonConnected ? profilPopupT('profile.popup.patreon.reconnect') : profilPopupT('profile.popup.patreon.connect')) ?></button>
-                <?php if ($patreonConnected): ?>
-                <button type="button" id="patreon_sync" class="profile-panel__button-secondary generic-action-button"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.sync')) ?></button>
-                <button type="button" id="patreon_disconnect" class="profile-panel__button-muted generic-action-button generic-action-button--secondary"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.disconnect')) ?></button>
-                <?php endif; ?>
-            </div>
-        </section>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -732,7 +748,7 @@ function profilFormatAmountCents($value)
     }
 
     function buildProfileModalUrl(tabName, scopeName) {
-        var normalizedTab = tabName === "organization" || tabName === "general" || tabName === "competences" ? tabName : "current";
+        var normalizedTab = tabName === "organization" || tabName === "general" || tabName === "competences" || tabName === "patreon" ? tabName : "current";
         var normalizedScope = scopeName === "organization" ? "organization" : "general";
         return "/popup/profil.php?tab=" + encodeURIComponent(normalizedTab) + "&scope=" + encodeURIComponent(normalizedScope);
     }
@@ -751,6 +767,9 @@ function profilFormatAmountCents($value)
         }
         if (activeTab.getAttribute("data-generic-tab-target") === "profile-panel-tab-competences") {
             return "competences";
+        }
+        if (activeTab.getAttribute("data-generic-tab-target") === "profile-panel-tab-patreon") {
+            return "patreon";
         }
 
         return "current";

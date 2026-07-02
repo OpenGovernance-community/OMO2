@@ -6,6 +6,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 Dans la popup de profil personnel, le bloc de changement de mot de passe est maintenant replie par defaut derriere une case `Modifier le mot de passe`. Le formulaire ne s affiche qu au besoin, ce qui allegre l editeur au quotidien.
 
+Quand Patreon est active sur le serveur, ses informations de connexion et ses actions de synchronisation sont maintenant affichees dans un onglet dedie de l editeur de profil, au meme niveau que les autres sections.
+
 ## 2026-07-01
 
 Le hub `Parametres` de OMO affiche maintenant des cartes mieux alignees pour `Profil`, `Organisation` et `Modeles de holons`, avec meme hauteur, entete plus lisible et petit visuel dedie pour mieux reperer chaque entree.
