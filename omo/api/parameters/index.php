@@ -28,6 +28,9 @@ $parametersIndexClientTexts = [
     'loading' => omoParametersIndexT('parameters.index.drawer.loading'),
     'loadError' => omoParametersIndexT('parameters.index.drawer.error'),
 ];
+$profileCardIconUrl = '/img/omo-parameters/profile.png';
+$organizationCardIconUrl = '/img/omo-parameters/organization.png';
+$holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
 ?>
 <div class="omo-settings omo-panel-view">
     <div class="omo-settings__header omo-panel-view__header">
@@ -46,8 +49,19 @@ $parametersIndexClientTexts = [
         <div class="omo-settings__grid omo-card-grid omo-card-grid--fluid">
 
             <button type="button" class="omo-settings__card omo-card omo-card--interactive" data-topbar-profile-edit>
-                <strong><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.profile.title'), ENT_QUOTES, 'UTF-8') ?></strong>
-                <span><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.profile.description'), ENT_QUOTES, 'UTF-8') ?></span>
+                <span class="omo-settings__card-head">
+                    <span class="omo-settings__card-icon-shell">
+                        <img class="omo-settings__card-icon black-icon" src="<?= htmlspecialchars($profileCardIconUrl, ENT_QUOTES, 'UTF-8') ?>" alt="" loading="lazy">
+                    </span>
+                    <span class="omo-settings__card-title-wrap">
+                        <span class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.profile.eyebrow'), ENT_QUOTES, 'UTF-8') ?></span>
+                        <strong class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.profile.title'), ENT_QUOTES, 'UTF-8') ?></strong>
+                    </span>
+                </span>
+                <span class="omo-settings__card-description"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.profile.description'), ENT_QUOTES, 'UTF-8') ?></span>
+                <span class="omo-settings__card-footer" aria-hidden="true">
+                    <span class="omo-settings__card-cta generic-action-button generic-action-button--main">editer</span>
+                </span>
             </button>
 
             <button
@@ -58,14 +72,25 @@ $parametersIndexClientTexts = [
                 data-omo-settings-modal-mode="fetch"
                 <?= $canEditOrganization ? '' : 'disabled' ?>
             >
-                <strong><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.organization.title'), ENT_QUOTES, 'UTF-8') ?></strong>
-                <span><?= htmlspecialchars(
+                <span class="omo-settings__card-head">
+                    <span class="omo-settings__card-icon-shell">
+                        <img class="omo-settings__card-icon black-icon" src="<?= htmlspecialchars($organizationCardIconUrl, ENT_QUOTES, 'UTF-8') ?>" alt="" loading="lazy">
+                    </span>
+                    <span class="omo-settings__card-title-wrap">
+                        <span class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.organization.eyebrow'), ENT_QUOTES, 'UTF-8') ?></span>
+                        <strong class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.organization.title'), ENT_QUOTES, 'UTF-8') ?></strong>
+                    </span>
+                </span>
+                <span class="omo-settings__card-description"><?= htmlspecialchars(
                     $canEditOrganization
                         ? omoParametersIndexT('parameters.index.card.organization.description', ['organizationName' => $organizationName])
                         : omoParametersIndexT('parameters.index.card.organization.forbidden'),
                     ENT_QUOTES,
                     'UTF-8'
                 ) ?></span>
+                <span class="omo-settings__card-footer" aria-hidden="true">
+                    <span class="omo-settings__card-cta generic-action-button generic-action-button--main">editer</span>
+                </span>
             </button>
 
             <?php if ($hasStructureTemplates): ?>
@@ -77,8 +102,19 @@ $parametersIndexClientTexts = [
                 data-omo-settings-drawer-mode="fetch"
                 data-omo-settings-contextual="1"
             >
-                <strong><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.holon_templates.title'), ENT_QUOTES, 'UTF-8') ?></strong>
-                <span><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.holon_templates.description'), ENT_QUOTES, 'UTF-8') ?></span>
+                <span class="omo-settings__card-head">
+                    <span class="omo-settings__card-icon-shell">
+                        <img class="omo-settings__card-icon black-icon" src="<?= htmlspecialchars($holonTemplateCardIconUrl, ENT_QUOTES, 'UTF-8') ?>" alt="" loading="lazy">
+                    </span>
+                    <span class="omo-settings__card-title-wrap">
+                        <span class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.holon_templates.eyebrow'), ENT_QUOTES, 'UTF-8') ?></span>
+                        <strong class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.holon_templates.title'), ENT_QUOTES, 'UTF-8') ?></strong>
+                    </span>
+                </span>
+                <span class="omo-settings__card-description"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.holon_templates.description'), ENT_QUOTES, 'UTF-8') ?></span>
+                <span class="omo-settings__card-footer" aria-hidden="true">
+                    <span class="omo-settings__card-cta generic-action-button generic-action-button--main">editer</span>
+                </span>
             </button>
             <?php endif; ?>
 
@@ -90,8 +126,19 @@ $parametersIndexClientTexts = [
                 data-omo-settings-modal-url="/omo/api/parameters/server_env_popup.php"
                 data-omo-settings-modal-mode="fetch"
             >
-                <strong><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.server_admin.title'), ENT_QUOTES, 'UTF-8') ?></strong>
-                <span><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.server_admin.description'), ENT_QUOTES, 'UTF-8') ?></span>
+                <span class="omo-settings__card-head">
+                    <span class="omo-settings__card-icon-shell omo-settings__card-icon-shell--fallback">
+                        <span class="omo-settings__card-fallback-icon">ENV</span>
+                    </span>
+                    <span class="omo-settings__card-title-wrap">
+                        <span class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.server_admin.eyebrow'), ENT_QUOTES, 'UTF-8') ?></span>
+                        <strong class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.server_admin.title'), ENT_QUOTES, 'UTF-8') ?></strong>
+                    </span>
+                </span>
+                <span class="omo-settings__card-description"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.server_admin.description'), ENT_QUOTES, 'UTF-8') ?></span>
+                <span class="omo-settings__card-footer" aria-hidden="true">
+                    <span class="omo-settings__card-cta generic-action-button generic-action-button--main">editer</span>
+                </span>
             </button>
             <?php endif; ?>
         </div>
@@ -120,22 +167,129 @@ $parametersIndexClientTexts = [
 }
 
 .omo-settings__grid {
-    align-items: start;
+    align-items: stretch;
+    grid-auto-rows: 1fr;
+    margin: 10px;
 }
 
 .omo-settings__card {
     display: grid;
-    gap: 8px;
+    grid-template-rows: auto 1fr auto;
+    gap: 16px;
+    min-height: 220px;
+    height: 100%;
+    padding: 20px;
     text-align: left;
     cursor: pointer;
+    border-radius: 22px;
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 12%, var(--color-border, #d1d5db));
+    background:
+        radial-gradient(circle at top right, color-mix(in srgb, var(--color-primary, #2563eb) 10%, transparent), transparent 38%),
+        linear-gradient(180deg, color-mix(in srgb, var(--color-surface, #ffffff) 94%, white), color-mix(in srgb, var(--color-surface-alt, #f8fafc) 92%, white));
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
+    transition:
+        transform 0.18s ease,
+        box-shadow 0.18s ease,
+        border-color 0.18s ease,
+        background-color 0.18s ease;
 }
 
-.omo-settings__card strong {
-    font-size: 16px;
+.omo-settings__card:not(:disabled):hover,
+.omo-settings__card:not(:disabled):focus-visible {
+    transform: translateY(-3px);
+    box-shadow: 0 24px 44px rgba(15, 23, 42, 0.12);
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 28%, var(--color-border, #d1d5db));
 }
 
-.omo-settings__card span {
+.omo-settings__card:focus-visible {
+    outline: 0;
+}
+
+.omo-settings__card:disabled {
+    cursor: not-allowed;
+    opacity: 0.78;
+    box-shadow: none;
+}
+
+.omo-settings__card-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.omo-settings__card-icon-shell {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    min-width: 64px;
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #ffffff));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary, #2563eb) 12%, var(--color-border, #d1d5db));
+}
+
+.omo-settings__card-icon-shell--fallback {
+    background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary, #2563eb) 18%, var(--color-surface, #ffffff)), color-mix(in srgb, var(--color-surface-alt, #f8fafc) 82%, white));
+}
+
+.omo-settings__card-icon {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+}
+
+.omo-settings__card-fallback-icon {
+    color: var(--color-primary, #2563eb);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+}
+
+.omo-settings__card-title-wrap {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+}
+
+.omo-settings__card-title-wrap strong {
+    margin: 0;
+}
+
+.omo-settings__card-description {
+    margin: 0;
     color: var(--color-text-light);
+    line-height: 1.55;
+}
+
+.omo-settings__card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: auto;
+}
+
+.omo-settings__card-cta {
+    min-height: 36px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    pointer-events: none;
+}
+
+@media (max-width: 768px) {
+    .omo-settings__grid {
+        margin: 0;
+    }
+
+    .omo-settings__card {
+        min-height: 0;
+        padding: 18px;
+    }
 }
 </style>
 
@@ -287,7 +441,7 @@ document.querySelectorAll('.omo-settings').forEach(function (root) {
                 button.getAttribute('data-omo-settings-drawer-title') || settingsTexts.title || '',
                 drawerUrl,
                 button.getAttribute('data-omo-settings-drawer-mode') || 'iframe',
-                (button.querySelector('span') || {}).textContent || ''
+                (button.querySelector('.omo-settings__card-description') || {}).textContent || ''
             );
         });
     });

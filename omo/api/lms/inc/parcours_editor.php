@@ -247,7 +247,7 @@ if (!function_exists('lmsRenderParcoursMissionManager')) {
 
                     <label class="lms-parcours-mission-creator__field lms-parcours-mission-creator__field--full">
                         <span><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.mission_create.field_video')); ?></span>
-                        <input type="text" name="video" maxlength="150" placeholder="https://...">
+                        <input type="text" name="video" maxlength="1000" placeholder="https://...">
                     </label>
 
                     <label class="lms-parcours-mission-creator__field lms-parcours-mission-creator__field--full">

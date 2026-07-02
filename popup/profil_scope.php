@@ -15,7 +15,13 @@ $currentUserId = function_exists('commonGetCurrentUserId')
     ? (int)commonGetCurrentUserId()
     : (int)($_SESSION["currentUser"] ?? 0);
 $currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
-$requestedScope = isset($_GET['scope']) && $_GET['scope'] === 'organization' ? 'organization' : 'general';
+$requestedScope = 'general';
+if (isset($_GET['scope']) && $_GET['scope'] === 'organization') {
+    $requestedScope = 'organization';
+} elseif (isset($_GET['scope']) && $_GET['scope'] === 'all') {
+    $requestedScope = 'all';
+}
+$requestedSection = isset($_GET['section']) ? (string)$_GET['section'] : 'all';
 
 $user = new \dbObject\User();
 $user->load($currentUserId);
@@ -25,28 +31,25 @@ if (!($user->get("id") > 0)) {
 
 $scope = 'general';
 $organizationMembership = null;
+$hasOrganizationScope = false;
 
-if ($requestedScope === 'organization' && $currentOrganizationId > 0) {
+if ($currentOrganizationId > 0) {
     $organization = new \dbObject\Organization();
     if ($organization->load($currentOrganizationId)) {
-        $organizationMembership = $user->getOrganizationMembership($currentOrganizationId);
-        if (!$organizationMembership) {
-            $organizationMembership = new \dbObject\UserOrganization();
-            $organizationMembership->set('IDuser', (int)$user->getId());
-            $organizationMembership->set('IDorganization', $currentOrganizationId);
-            $organizationMembership->set('active', true);
+        $hasOrganizationScope = true;
+        if ($requestedScope === 'organization') {
+            $organizationMembership = $user->getOrganizationMembership($currentOrganizationId);
+            if (!$organizationMembership) {
+                $organizationMembership = new \dbObject\UserOrganization();
+                $organizationMembership->set('IDuser', (int)$user->getId());
+                $organizationMembership->set('IDorganization', $currentOrganizationId);
+                $organizationMembership->set('active', true);
+            }
+            $scope = 'organization';
         }
-        $scope = 'organization';
     }
 }
 
-$competenceRows = $user->getCompetenceRowsForScope($scope, $currentOrganizationId, $currentUserId);
-$competenceSectionTitle = $scope === 'organization'
-    ? profilPopupT('profile.popup.competence.section.organization_title')
-    : profilPopupT('profile.popup.competence.section.general_title');
-$competenceSectionHelp = $scope === 'organization'
-    ? profilPopupT('profile.popup.competence.section.organization_help')
-    : profilPopupT('profile.popup.competence.section.general_help');
 $canLimitCompetenceToOrganization = $currentOrganizationId > 0;
 $leafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafletMapsEnabled();
 $userHasPassword = trim((string)$user->get('password')) !== '';
@@ -61,6 +64,8 @@ function profilBuildPasswordSectionHtml($userHasPassword)
     $passwordPolicyMatchInvalid = htmlspecialchars(profilPopupT('profile.popup.password.policy.match.invalid'), ENT_QUOTES, 'UTF-8');
     $sectionTitle = htmlspecialchars(profilPopupT('profile.popup.password.section.title'), ENT_QUOTES, 'UTF-8');
     $sectionHelp = htmlspecialchars(profilPopupT('profile.popup.password.section.help'), ENT_QUOTES, 'UTF-8');
+    $toggleLabel = htmlspecialchars(profilPopupT('profile.popup.password.toggle.label'), ENT_QUOTES, 'UTF-8');
+    $toggleHelp = htmlspecialchars(profilPopupT('profile.popup.password.toggle.help'), ENT_QUOTES, 'UTF-8');
     $statusText = htmlspecialchars(
         $userHasPassword
             ? profilPopupT('profile.popup.password.status.defined')
@@ -88,7 +93,14 @@ function profilBuildPasswordSectionHtml($userHasPassword)
     }
 
     return '
-        <section class="profile-panel__password-section generic-soft-panel generic-soft-panel--stack">
+        <div class="profile-panel__password-toggle generic-soft-panel generic-soft-panel--stack">
+            <label class="profile-panel__password-toggle-label">
+                <input type="checkbox" id="profile_password_toggle" data-profile-password-toggle="1">
+                <span>' . $toggleLabel . '</span>
+            </label>
+            <div class="profile-panel__scope-help">' . $toggleHelp . '</div>
+        </div>
+        <section class="profile-panel__password-section generic-soft-panel generic-soft-panel--stack" data-profile-password-section="1" hidden>
             <div class="profile-panel__password-head">
                 <h4 class="generic-card-title generic-card-title--section">' . $sectionTitle . '</h4>
                 <p class="profile-panel__scope-help">' . $sectionHelp . '</p>
@@ -151,8 +163,18 @@ function profilBuildPasswordSectionHtml($userHasPassword)
         </section>
     ';
 }
-?>
-<div class="profile-panel__scope-fragment" data-profile-loaded-scope="<?= htmlspecialchars($scope, ENT_QUOTES, 'UTF-8') ?>">
+
+function profilRenderProfileFragment($scope, \dbObject\User $user, $organizationMembership, $userHasPassword, $leafletMapsEnabled)
+{
+    $fragmentUrl = '/popup/profil_scope.php?section=profile&scope=' . rawurlencode($scope);
+    ob_start();
+    ?>
+<div
+    class="profile-panel__scope-fragment"
+    data-profile-fragment-kind="profile"
+    data-profile-loaded-scope="<?= htmlspecialchars($scope, ENT_QUOTES, 'UTF-8') ?>"
+    data-profile-fragment-url="<?= htmlspecialchars($fragmentUrl, ENT_QUOTES, 'UTF-8') ?>"
+>
     <?php if ($scope === 'organization' && $organizationMembership): ?>
     <p class="profile-panel__scope-help">
         <?= htmlspecialchars(profilPopupT('profile.popup.scope.organization_intro')) ?>
@@ -172,7 +194,11 @@ function profilBuildPasswordSectionHtml($userHasPassword)
     $organizationMembership->display("adminEdit.php", $params);
     ?>
     <div class="profile-panel__actions">
-        <button type="button" id="updateprofil-organization" class="generic-action-button generic-action-button--main"><?= htmlspecialchars(profilPopupT('profile.popup.scope.organization_submit')) ?></button>
+        <button
+            type="button"
+            class="generic-action-button generic-action-button--main"
+            data-profile-submit-button="1"
+        ><?= htmlspecialchars(profilPopupT('profile.popup.scope.organization_submit')) ?></button>
     </div>
     <?php else: ?>
     <?php
@@ -198,154 +224,24 @@ function profilBuildPasswordSectionHtml($userHasPassword)
     $user->display("adminEdit.php", $params);
     ?>
     <div class="profile-panel__actions">
-        <button type="button" id="updateprofil-general" class="generic-action-button generic-action-button--main"><?= htmlspecialchars(profilPopupT('profile.popup.scope.general_submit')) ?></button>
+        <button
+            type="button"
+            class="generic-action-button generic-action-button--main"
+            data-profile-submit-button="1"
+        ><?= htmlspecialchars(profilPopupT('profile.popup.scope.general_submit')) ?></button>
     </div>
     <?php endif; ?>
 
-    <section class="profile-panel__competence-section generic-section generic-section--stack">
-        <div class="profile-panel__competence-head">
-            <h4 class="generic-card-title generic-card-title--section"><?= htmlspecialchars($competenceSectionTitle, ENT_QUOTES, 'UTF-8') ?></h4>
-            <p class="profile-panel__scope-help"><?= htmlspecialchars($competenceSectionHelp, ENT_QUOTES, 'UTF-8') ?></p>
-        </div>
-
-        <div class="profile-panel__competence-list">
-            <?php if (count($competenceRows) === 0): ?>
-                <div class="profile-panel__competence-empty"><?= htmlspecialchars(profilPopupT('profile.popup.competence.empty')) ?></div>
-            <?php else: ?>
-                <?php foreach ($competenceRows as $competenceRow): ?>
-                    <form class="profile-panel__competence-card generic-soft-panel" data-profile-competence-form="1">
-                        <input type="hidden" name="scope" value="<?= htmlspecialchars($scope, ENT_QUOTES, 'UTF-8') ?>">
-                        <input type="hidden" name="id" value="<?= (int)$competenceRow['id'] ?>">
-
-                        <div class="profile-panel__competence-grid">
-                            <label class="profile-panel__competence-field">
-                                <span><?= htmlspecialchars(profilPopupT('profile.popup.competence.field.name')) ?></span>
-                                <input type="text" class="generic-form-control" name="name" value="<?= htmlspecialchars((string)$competenceRow['name'], ENT_QUOTES, 'UTF-8') ?>" maxlength="190" required>
-                            </label>
-
-                            <label class="profile-panel__competence-field">
-                                <span><?= htmlspecialchars(profilPopupT('profile.popup.competence.field.description')) ?></span>
-                                <input type="text" class="generic-form-control" name="description" value="<?= htmlspecialchars((string)($competenceRow['description'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" maxlength="500" placeholder="<?= htmlspecialchars(profilPopupT('profile.popup.competence.field.description_placeholder'), ENT_QUOTES, 'UTF-8') ?>">
-                            </label>
-
-                            <label class="profile-panel__competence-field">
-                                <span><?= htmlspecialchars(profilPopupT('profile.popup.competence.field.category')) ?></span>
-                                <select name="category" class="generic-form-control">
-                                    <?php omoRenderCompetenceTypeOptions((string)$competenceRow['category']); ?>
-                                </select>
-                            </label>
-
-                            <label class="profile-panel__competence-field">
-                                <span><?= htmlspecialchars(profilPopupT('profile.popup.competence.field.level')) ?></span>
-                                <select name="level" class="generic-form-control" required>
-                                    <?php omoRenderCompetenceLevelOptions((int)$competenceRow['level']); ?>
-                                </select>
-                            </label>
-                        </div>
-
-                        <div class="profile-panel__competence-meta">
-                            <span class="profile-panel__competence-badge"><?= htmlspecialchars((string)$competenceRow['levelLabel'], ENT_QUOTES, 'UTF-8') ?></span>
-                            <span class="profile-panel__competence-badge profile-panel__competence-badge--muted"><?= htmlspecialchars((string)$competenceRow['categoryLabel'], ENT_QUOTES, 'UTF-8') ?></span>
-                            <?php if ((string)($competenceRow['scope'] ?? 'general') === 'organization'): ?>
-                                <span class="profile-panel__competence-badge profile-panel__competence-badge--muted"><?= htmlspecialchars((string)$competenceRow['scopeLabel'], ENT_QUOTES, 'UTF-8') ?></span>
-                            <?php endif; ?>
-                            <?php if ((int)$competenceRow['validationCount'] > 0): ?>
-                                <span class="profile-panel__competence-badge profile-panel__competence-badge--muted"><?= htmlspecialchars(profilPopupT('profile.popup.competence.validation_count', ['count' => (int)$competenceRow['validationCount']])) ?></span>
-                            <?php endif; ?>
-                        </div>
-
-                        <?php if ($canLimitCompetenceToOrganization): ?>
-                            <div class="profile-panel__competence-scope-row">
-                                <?php omoRenderCompetenceScopeToggle((string)($competenceRow['scope'] ?? 'general') === 'organization'); ?>
-                            </div>
-                        <?php endif; ?>
-
-                        <?php if (!empty($competenceRow['validators'])): ?>
-                            <div class="profile-panel__competence-validators">
-                                <div class="profile-panel__competence-validators-label"><?= htmlspecialchars(profilPopupT('profile.popup.competence.validators_label')) ?></div>
-                                <div class="profile-panel__competence-avatar-stack">
-                                    <?php foreach ($competenceRow['validators'] as $validator): ?>
-                                        <?php omoRenderCompetenceAvatar([
-                                            'photoUrl' => (string)($validator['photoUrl'] ?? ''),
-                                            'displayName' => (string)($validator['displayName'] ?? ''),
-                                            'initials' => (string)($validator['initials'] ?? 'P'),
-                                            'levelLabel' => (string)($validator['levelLabel'] ?? ''),
-                                        ], 'profile-panel__competence-avatar'); ?>
-                                    <?php endforeach; ?>
-                                </div>
-                            </div>
-                        <?php endif; ?>
-
-                        <div class="profile-panel__competence-actions">
-                            <button type="submit" class="generic-action-button generic-action-button--main"><?= htmlspecialchars(profilPopupT('profile.popup.competence.save')) ?></button>
-                            <button type="button" class="generic-action-button generic-action-button--secondary" data-profile-competence-delete="1"><?= htmlspecialchars(profilPopupT('profile.popup.competence.delete')) ?></button>
-                        </div>
-                    </form>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </div>
-
-        <form class="profile-panel__competence-card profile-panel__competence-card--new generic-soft-panel" data-profile-competence-form="1">
-            <input type="hidden" name="scope" value="<?= htmlspecialchars($scope, ENT_QUOTES, 'UTF-8') ?>">
-            <input type="hidden" name="id" value="">
-
-            <div class="profile-panel__competence-grid">
-                <label class="profile-panel__competence-field">
-                    <span><?= htmlspecialchars(profilPopupT('profile.popup.competence.field.new_name')) ?></span>
-                    <input type="text" class="generic-form-control" name="name" value="" maxlength="190" required>
-                </label>
-
-                <label class="profile-panel__competence-field">
-                    <span><?= htmlspecialchars(profilPopupT('profile.popup.competence.field.description')) ?></span>
-                    <input type="text" class="generic-form-control" name="description" value="" maxlength="500" placeholder="<?= htmlspecialchars(profilPopupT('profile.popup.competence.field.description_placeholder'), ENT_QUOTES, 'UTF-8') ?>">
-                </label>
-
-                <label class="profile-panel__competence-field">
-                    <span><?= htmlspecialchars(profilPopupT('profile.popup.competence.field.category')) ?></span>
-                    <select name="category" class="generic-form-control">
-                        <?php omoRenderCompetenceTypeOptions('technical'); ?>
-                    </select>
-                </label>
-
-                <label class="profile-panel__competence-field">
-                    <span><?= htmlspecialchars(profilPopupT('profile.popup.competence.field.level')) ?></span>
-                    <select name="level" class="generic-form-control" required>
-                        <?php omoRenderCompetenceLevelOptions(0, true); ?>
-                    </select>
-                </label>
-            </div>
-
-            <?php if ($canLimitCompetenceToOrganization): ?>
-                <div class="profile-panel__competence-scope-row">
-                    <?php omoRenderCompetenceScopeToggle($scope === 'organization'); ?>
-                </div>
-            <?php endif; ?>
-
-            <div class="profile-panel__competence-actions">
-                <button type="submit" class="generic-action-button generic-action-button--main"><?= htmlspecialchars(profilPopupT('profile.popup.competence.add')) ?></button>
-            </div>
-        </form>
-
-        <div class="profile-panel__competence-feedback" data-profile-competence-feedback="1"></div>
-    </section>
-
     <script>
     (function () {
-        var fragment = document.querySelector('.profile-panel__scope-fragment[data-profile-loaded-scope="<?= htmlspecialchars($scope, ENT_QUOTES, 'UTF-8') ?>"]');
+        var currentScript = document.currentScript;
+        var fragment = currentScript ? currentScript.closest('.profile-panel__scope-fragment') : null;
+        var passwordFieldActionBlockedMessage = <?= json_encode(profilPopupT('profile.popup.password.js.paste_blocked'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        var jqueryRequiredMessage = <?= json_encode(profilPopupT('profile.popup.scope.jquery_required'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+
         if (!fragment) {
             return;
         }
-
-        var feedback = fragment.querySelector('[data-profile-competence-feedback="1"]');
-        var passwordFieldActionBlockedMessage = <?= json_encode(profilPopupT('profile.popup.password.js.paste_blocked'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var reloadErrorMessage = <?= json_encode(profilPopupT('profile.popup.competence.js.reload_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var invalidResponseMessage = <?= json_encode(profilPopupT('profile.popup.js.invalid_response'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var saveErrorMessage = <?= json_encode(profilPopupT('profile.popup.competence.js.save_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var saveSuccessMessage = <?= json_encode(profilPopupT('profile.popup.competence.js.save_success'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var deleteConfirmMessage = <?= json_encode(profilPopupT('profile.popup.competence.js.delete_confirm'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var deleteErrorMessage = <?= json_encode(profilPopupT('profile.popup.competence.js.delete_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var deleteSuccessMessage = <?= json_encode(profilPopupT('profile.popup.competence.js.delete_success'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var jqueryRequiredMessage = <?= json_encode(profilPopupT('profile.popup.scope.jquery_required'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
         function decorateAdminEditForm() {
             var form = fragment.querySelector('#formulaire-edit');
@@ -373,6 +269,253 @@ function profilBuildPasswordSectionHtml($userHasPassword)
             });
         }
 
+        function initPasswordToggle() {
+            var toggle = fragment.querySelector('[data-profile-password-toggle="1"]');
+            var section = fragment.querySelector('[data-profile-password-section="1"]');
+            if (!toggle || !section) {
+                return;
+            }
+
+            function applyPasswordVisibility() {
+                var isVisible = !!toggle.checked;
+                section.hidden = !isVisible;
+
+                if (isVisible) {
+                    return;
+                }
+
+                Array.prototype.forEach.call(section.querySelectorAll('[data-profile-password-field="1"]'), function (field) {
+                    field.value = '';
+                });
+            }
+
+            toggle.addEventListener('change', applyPasswordVisibility);
+            applyPasswordVisibility();
+        }
+
+        decorateAdminEditForm();
+        initPasswordToggle();
+        if (typeof window.commonInitPasswordPolicy === 'function') {
+            window.commonInitPasswordPolicy(fragment);
+        }
+
+        Array.prototype.forEach.call(fragment.querySelectorAll('[data-profile-submit-button="1"]'), function (button) {
+            button.addEventListener('click', function () {
+                var form = fragment.querySelector('#formulaire-edit');
+                if (window.jQuery && form) {
+                    window.jQuery(form).trigger('submit');
+                    return;
+                }
+
+                alert(jqueryRequiredMessage);
+            });
+        });
+    })();
+    </script>
+</div>
+    <?php
+
+    return ob_get_clean();
+}
+
+function profilRenderCompetenceEditorSection($scope, \dbObject\User $user, $currentOrganizationId, $currentUserId, $canLimitCompetenceToOrganization)
+{
+    $competenceRows = $user->getCompetenceRowsForScope($scope, $currentOrganizationId, $currentUserId);
+    $competenceSectionTitle = $scope === 'organization'
+        ? profilPopupT('profile.popup.competence.section.organization_title')
+        : profilPopupT('profile.popup.competence.section.general_title');
+    $competenceSectionHelp = $scope === 'organization'
+        ? profilPopupT('profile.popup.competence.section.organization_help')
+        : profilPopupT('profile.popup.competence.section.general_help');
+    ?>
+    <section class="profile-panel__competence-section generic-section generic-section--stack" data-profile-competence-scope="<?= htmlspecialchars($scope, ENT_QUOTES, 'UTF-8') ?>">
+        <div class="profile-panel__competence-head">
+            <h4 class="generic-card-title generic-card-title--section"><?= htmlspecialchars($competenceSectionTitle, ENT_QUOTES, 'UTF-8') ?></h4>
+            <p class="profile-panel__scope-help"><?= htmlspecialchars($competenceSectionHelp, ENT_QUOTES, 'UTF-8') ?></p>
+        </div>
+
+        <div class="profile-panel__competence-list">
+            <?php if (count($competenceRows) === 0): ?>
+                <div class="profile-panel__competence-empty"><?= htmlspecialchars(profilPopupT('profile.popup.competence.empty')) ?></div>
+            <?php else: ?>
+                <?php foreach ($competenceRows as $competenceRow): ?>
+                    <?php
+                    $editorPayload = array(
+                        'id' => (int)$competenceRow['id'],
+                        'scope' => (string)($competenceRow['scope'] ?? $scope),
+                        'name' => (string)$competenceRow['name'],
+                        'description' => (string)($competenceRow['description'] ?? ''),
+                        'category' => (string)$competenceRow['category'],
+                        'level' => (int)$competenceRow['level'],
+                        'limitToOrganization' => (string)($competenceRow['scope'] ?? 'general') === 'organization',
+                    );
+                    ?>
+                    <article class="profile-panel__competence-card profile-panel__competence-row generic-soft-panel">
+                        <div class="profile-panel__competence-row-main">
+                            <div class="profile-panel__competence-row-title"><?= htmlspecialchars((string)$competenceRow['name'], ENT_QUOTES, 'UTF-8') ?></div>
+                            <?php if (trim((string)($competenceRow['description'] ?? '')) !== ''): ?>
+                                <div class="profile-panel__competence-row-description"><?= htmlspecialchars((string)$competenceRow['description'], ENT_QUOTES, 'UTF-8') ?></div>
+                            <?php endif; ?>
+
+                            <div class="profile-panel__competence-meta">
+                                <span class="profile-panel__competence-badge"><?= htmlspecialchars((string)$competenceRow['levelLabel'], ENT_QUOTES, 'UTF-8') ?></span>
+                                <span class="profile-panel__competence-badge profile-panel__competence-badge--muted"><?= htmlspecialchars((string)$competenceRow['categoryLabel'], ENT_QUOTES, 'UTF-8') ?></span>
+                                <?php if ((string)($competenceRow['scope'] ?? 'general') === 'organization'): ?>
+                                    <span class="profile-panel__competence-badge profile-panel__competence-badge--muted"><?= htmlspecialchars((string)$competenceRow['scopeLabel'], ENT_QUOTES, 'UTF-8') ?></span>
+                                <?php endif; ?>
+                                <?php if ((int)$competenceRow['validationCount'] > 0): ?>
+                                    <span class="profile-panel__competence-badge profile-panel__competence-badge--muted"><?= htmlspecialchars(profilPopupT('profile.popup.competence.validation_count', ['count' => (int)$competenceRow['validationCount']])) ?></span>
+                                <?php endif; ?>
+                            </div>
+
+                            <?php if (!empty($competenceRow['validators'])): ?>
+                                <div class="profile-panel__competence-validators">
+                                    <div class="profile-panel__competence-validators-label"><?= htmlspecialchars(profilPopupT('profile.popup.competence.validators_label')) ?></div>
+                                    <div class="profile-panel__competence-avatar-stack">
+                                        <?php foreach ($competenceRow['validators'] as $validator): ?>
+                                            <?php omoRenderCompetenceAvatar([
+                                                'photoUrl' => (string)($validator['photoUrl'] ?? ''),
+                                                'displayName' => (string)($validator['displayName'] ?? ''),
+                                                'initials' => (string)($validator['initials'] ?? 'P'),
+                                                'levelLabel' => (string)($validator['levelLabel'] ?? ''),
+                                            ], 'profile-panel__competence-avatar'); ?>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="profile-panel__competence-row-actions">
+                            <button
+                                type="button"
+                                class="generic-action-button generic-action-button--secondary"
+                                data-profile-competence-edit="1"
+                                data-profile-competence-payload="<?= htmlspecialchars(json_encode($editorPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8') ?>"
+                            ><?= htmlspecialchars(profilPopupT('profile.popup.competence.edit')) ?></button>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+
+    </section>
+    <?php
+}
+
+function profilRenderCompetenceCreateForm($defaultScope, $canLimitCompetenceToOrganization)
+{
+    ?>
+    <form class="profile-panel__competence-card profile-panel__competence-card--new generic-soft-panel profile-panel__competence-editor" data-profile-competence-form="1" hidden>
+        <input type="hidden" name="scope" value="<?= htmlspecialchars($defaultScope, ENT_QUOTES, 'UTF-8') ?>">
+        <input type="hidden" name="id" value="">
+
+        <div class="profile-panel__competence-editor-header">
+            <h4 class="generic-card-title generic-card-title--section" data-profile-competence-editor-title><?= htmlspecialchars(profilPopupT('profile.popup.competence.editor.create_title')) ?></h4>
+        </div>
+
+        <div class="profile-panel__competence-grid">
+            <label class="profile-panel__competence-field">
+                <span><?= htmlspecialchars(profilPopupT('profile.popup.competence.field.new_name')) ?></span>
+                <input type="text" class="generic-form-control" name="name" value="" maxlength="190" required>
+            </label>
+
+            <label class="profile-panel__competence-field">
+                <span><?= htmlspecialchars(profilPopupT('profile.popup.competence.field.description')) ?></span>
+                <input type="text" class="generic-form-control" name="description" value="" maxlength="500" placeholder="<?= htmlspecialchars(profilPopupT('profile.popup.competence.field.description_placeholder'), ENT_QUOTES, 'UTF-8') ?>">
+            </label>
+
+            <label class="profile-panel__competence-field">
+                <span><?= htmlspecialchars(profilPopupT('profile.popup.competence.field.category')) ?></span>
+                <select name="category" class="generic-form-control">
+                    <?php omoRenderCompetenceTypeOptions('technical'); ?>
+                </select>
+            </label>
+
+            <label class="profile-panel__competence-field">
+                <span><?= htmlspecialchars(profilPopupT('profile.popup.competence.field.level')) ?></span>
+                <select name="level" class="generic-form-control" required>
+                    <?php omoRenderCompetenceLevelOptions(0, true); ?>
+                </select>
+            </label>
+        </div>
+
+        <?php if ($canLimitCompetenceToOrganization): ?>
+            <div class="profile-panel__competence-scope-row">
+                <?php omoRenderCompetenceScopeToggle($defaultScope === 'organization'); ?>
+            </div>
+        <?php endif; ?>
+
+        <div class="profile-panel__competence-actions">
+            <button type="submit" class="generic-action-button generic-action-button--main" data-profile-competence-submit-label="1"><?= htmlspecialchars(profilPopupT('profile.popup.competence.add')) ?></button>
+            <button type="button" class="generic-action-button generic-action-button--secondary" data-profile-competence-delete="1" hidden><?= htmlspecialchars(profilPopupT('profile.popup.competence.delete')) ?></button>
+            <button type="button" class="generic-action-button generic-action-button--secondary" data-profile-competence-cancel="1"><?= htmlspecialchars(profilPopupT('profile.popup.competence.cancel')) ?></button>
+        </div>
+    </form>
+    <?php
+}
+
+function profilRenderCompetenceFragment(array $scopes, \dbObject\User $user, $currentOrganizationId, $currentUserId, $canLimitCompetenceToOrganization)
+{
+    $scopeValue = count($scopes) > 1 ? 'all' : $scopes[0];
+    $fragmentUrl = '/popup/profil_scope.php?section=competence&scope=' . rawurlencode($scopeValue);
+    ob_start();
+    ?>
+<div
+    class="profile-panel__scope-fragment"
+    data-profile-fragment-kind="competence"
+    data-profile-loaded-scope="<?= htmlspecialchars($scopeValue, ENT_QUOTES, 'UTF-8') ?>"
+    data-profile-fragment-url="<?= htmlspecialchars($fragmentUrl, ENT_QUOTES, 'UTF-8') ?>"
+>
+    <?php foreach ($scopes as $editorScope): ?>
+        <?php profilRenderCompetenceEditorSection($editorScope, $user, $currentOrganizationId, $currentUserId, $canLimitCompetenceToOrganization); ?>
+    <?php endforeach; ?>
+
+    <?php
+    $defaultCreateScope = count($scopes) === 1 && $scopes[0] === 'organization'
+        ? 'organization'
+        : 'general';
+    ?>
+
+    <div class="profile-panel__competence-actions">
+        <button
+            type="button"
+            class="generic-action-button generic-action-button--main"
+            data-profile-competence-create="1"
+            data-profile-competence-default-scope="<?= htmlspecialchars($defaultCreateScope, ENT_QUOTES, 'UTF-8') ?>"
+        ><?= htmlspecialchars(profilPopupT('profile.popup.competence.create_button')) ?></button>
+    </div>
+
+    <?php profilRenderCompetenceCreateForm($defaultCreateScope, $canLimitCompetenceToOrganization); ?>
+
+    <div class="profile-panel__competence-feedback" data-profile-competence-feedback="1"></div>
+
+    <script>
+    (function () {
+        var currentScript = document.currentScript;
+        var fragment = currentScript ? currentScript.closest('.profile-panel__scope-fragment') : null;
+        var feedback = fragment ? fragment.querySelector('[data-profile-competence-feedback="1"]') : null;
+        var reloadErrorMessage = <?= json_encode(profilPopupT('profile.popup.competence.js.reload_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        var invalidResponseMessage = <?= json_encode(profilPopupT('profile.popup.js.invalid_response'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        var saveErrorMessage = <?= json_encode(profilPopupT('profile.popup.competence.js.save_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        var saveSuccessMessage = <?= json_encode(profilPopupT('profile.popup.competence.js.save_success'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        var deleteConfirmMessage = <?= json_encode(profilPopupT('profile.popup.competence.js.delete_confirm'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        var deleteErrorMessage = <?= json_encode(profilPopupT('profile.popup.competence.js.delete_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        var deleteSuccessMessage = <?= json_encode(profilPopupT('profile.popup.competence.js.delete_success'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        var createTitle = <?= json_encode(profilPopupT('profile.popup.competence.editor.create_title'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        var editTitle = <?= json_encode(profilPopupT('profile.popup.competence.editor.edit_title'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        var addLabel = <?= json_encode(profilPopupT('profile.popup.competence.add'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        var saveLabel = <?= json_encode(profilPopupT('profile.popup.competence.save'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        var editorForm = fragment.querySelector('[data-profile-competence-form="1"]');
+        var editorTitle = editorForm ? editorForm.querySelector('[data-profile-competence-editor-title]') : null;
+        var submitButton = editorForm ? editorForm.querySelector('[data-profile-competence-submit-label="1"]') : null;
+        var deleteButton = editorForm ? editorForm.querySelector('[data-profile-competence-delete="1"]') : null;
+        var cancelButton = editorForm ? editorForm.querySelector('[data-profile-competence-cancel="1"]') : null;
+        var createButton = fragment.querySelector('[data-profile-competence-create="1"]');
+
+        if (!fragment) {
+            return;
+        }
+
         function setFeedback(message, type) {
             if (!feedback) {
                 return;
@@ -385,6 +528,19 @@ function profilBuildPasswordSectionHtml($userHasPassword)
             } else if (type === 'error') {
                 feedback.classList.add('is-error');
             }
+        }
+
+        function parseResponse(response) {
+            return response.text().then(function (text) {
+                try {
+                    return JSON.parse(text);
+                } catch (error) {
+                    return {
+                        status: false,
+                        message: invalidResponseMessage
+                    };
+                }
+            });
         }
 
         function executeEmbeddedScripts(container) {
@@ -403,14 +559,13 @@ function profilBuildPasswordSectionHtml($userHasPassword)
             });
         }
 
-        function reloadScope() {
-            var scopeName = fragment.getAttribute('data-profile-loaded-scope') || 'general';
-            var container = document.getElementById('profileScopeContent');
-            if (!container) {
+        function reloadFragment() {
+            var fragmentUrl = fragment.getAttribute('data-profile-fragment-url') || '';
+            if (fragmentUrl === '') {
                 return;
             }
 
-            fetch('/popup/profil_scope.php?scope=' + encodeURIComponent(scopeName), {
+            fetch(fragmentUrl, {
                 credentials: 'same-origin',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest'
@@ -424,59 +579,127 @@ function profilBuildPasswordSectionHtml($userHasPassword)
                     return response.text();
                 })
                 .then(function (html) {
-                    container.innerHTML = html;
-                    executeEmbeddedScripts(container);
+                    var wrapper = document.createElement('div');
+                    wrapper.innerHTML = html;
+                    var replacement = wrapper.firstElementChild;
+
+                    if (!replacement || !fragment.parentNode) {
+                        throw new Error('fragment');
+                    }
+
+                    fragment.parentNode.replaceChild(replacement, fragment);
+                    executeEmbeddedScripts(replacement);
                 })
                 .catch(function () {
                     setFeedback(reloadErrorMessage, 'error');
                 });
         }
 
-        function parseResponse(response) {
-            return response.text().then(function (text) {
-                try {
-                    return JSON.parse(text);
-                } catch (error) {
-                    return {
-                        status: false,
-                        message: invalidResponseMessage
-                    };
-                }
-            });
+        function setFieldValue(fieldName, value) {
+            var field = editorForm ? editorForm.querySelector('[name="' + fieldName + '"]') : null;
+            if (field) {
+                field.value = value;
+            }
         }
 
-        decorateAdminEditForm();
-        if (typeof window.commonInitPasswordPolicy === 'function') {
-            window.commonInitPasswordPolicy(fragment);
+        function setCheckboxValue(fieldName, checked) {
+            var field = editorForm ? editorForm.querySelector('[name="' + fieldName + '"]') : null;
+            if (field) {
+                field.checked = !!checked;
+            }
         }
 
-        ['updateprofil-general', 'updateprofil-organization'].forEach(function (buttonId) {
-            var button = document.getElementById(buttonId);
-            if (!button) {
+        function openEditor(payload) {
+            var isEdit = !!(payload && payload.id);
+
+            if (!editorForm) {
                 return;
             }
 
+            setFieldValue('id', isEdit ? String(payload.id) : '');
+            setFieldValue('scope', payload && payload.scope ? String(payload.scope) : (createButton ? (createButton.getAttribute('data-profile-competence-default-scope') || 'general') : 'general'));
+            setFieldValue('name', payload && payload.name ? String(payload.name) : '');
+            setFieldValue('description', payload && payload.description ? String(payload.description) : '');
+            setFieldValue('category', payload && payload.category ? String(payload.category) : 'technical');
+            setFieldValue('level', payload && payload.level ? String(payload.level) : '');
+            setCheckboxValue('limit_to_organization', !!(payload && payload.limitToOrganization));
+
+            if (editorTitle) {
+                editorTitle.textContent = isEdit ? editTitle : createTitle;
+            }
+            if (submitButton) {
+                submitButton.textContent = isEdit ? saveLabel : addLabel;
+            }
+            if (deleteButton) {
+                deleteButton.hidden = !isEdit;
+            }
+
+            editorForm.hidden = false;
+            editorForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function closeEditor() {
+            if (!editorForm) {
+                return;
+            }
+
+            editorForm.reset();
+            setFieldValue('id', '');
+            setFieldValue('scope', createButton ? (createButton.getAttribute('data-profile-competence-default-scope') || 'general') : 'general');
+            setCheckboxValue('limit_to_organization', createButton && createButton.getAttribute('data-profile-competence-default-scope') === 'organization');
+            if (editorTitle) {
+                editorTitle.textContent = createTitle;
+            }
+            if (submitButton) {
+                submitButton.textContent = addLabel;
+            }
+            if (deleteButton) {
+                deleteButton.hidden = true;
+            }
+            editorForm.hidden = true;
+        }
+
+        if (createButton) {
+            createButton.addEventListener('click', function () {
+                openEditor({
+                    scope: createButton.getAttribute('data-profile-competence-default-scope') || 'general',
+                    limitToOrganization: (createButton.getAttribute('data-profile-competence-default-scope') || 'general') === 'organization'
+                });
+            });
+        }
+
+        Array.prototype.forEach.call(fragment.querySelectorAll('[data-profile-competence-edit="1"]'), function (button) {
             button.addEventListener('click', function () {
-                if (window.jQuery && window.jQuery('#formulaire-edit').length) {
-                    window.jQuery('#formulaire-edit').trigger('submit');
-                    return;
+                var payloadText = button.getAttribute('data-profile-competence-payload') || '';
+                var payload = null;
+
+                try {
+                    payload = JSON.parse(payloadText);
+                } catch (error) {
+                    payload = null;
                 }
 
-                alert(jqueryRequiredMessage);
+                openEditor(payload || {});
             });
         });
 
-        fragment.querySelectorAll('[data-profile-competence-form="1"]').forEach(function (form) {
-            form.addEventListener('submit', function (event) {
+        if (cancelButton) {
+            cancelButton.addEventListener('click', function () {
+                closeEditor();
+            });
+        }
+
+        if (editorForm) {
+            editorForm.addEventListener('submit', function (event) {
                 event.preventDefault();
 
-                if (typeof window.omoBeginPendingAction === 'function' && !window.omoBeginPendingAction(form)) {
+                if (typeof window.omoBeginPendingAction === 'function' && !window.omoBeginPendingAction(editorForm)) {
                     return;
                 }
 
                 setFeedback('', '');
 
-                var formData = new FormData(form);
+                var formData = new FormData(editorForm);
 
                 fetch('/ajax/user_competence_save.php', {
                     method: 'POST',
@@ -494,25 +717,22 @@ function profilBuildPasswordSectionHtml($userHasPassword)
                         }
 
                         setFeedback(result.message || saveSuccessMessage, 'success');
-                        reloadScope();
+                        reloadFragment();
                     })
                     .catch(function () {
                         setFeedback(saveErrorMessage, 'error');
                     })
                     .finally(function () {
                         if (typeof window.omoEndPendingAction === 'function') {
-                            window.omoEndPendingAction(form);
+                            window.omoEndPendingAction(editorForm);
                         }
                     });
             });
+        }
 
-            var deleteButton = form.querySelector('[data-profile-competence-delete="1"]');
-            if (!deleteButton) {
-                return;
-            }
-
+        if (deleteButton) {
             deleteButton.addEventListener('click', function () {
-                var identifier = form.querySelector('input[name="id"]');
+                var identifier = editorForm ? editorForm.querySelector('input[name="id"]') : null;
                 if (!identifier || !identifier.value) {
                     return;
                 }
@@ -521,11 +741,11 @@ function profilBuildPasswordSectionHtml($userHasPassword)
                     return;
                 }
 
-                setFeedback('', '');
-
-                if (typeof window.omoBeginPendingAction === 'function' && !window.omoBeginPendingAction(form)) {
+                if (typeof window.omoBeginPendingAction === 'function' && !window.omoBeginPendingAction(editorForm)) {
                     return;
                 }
+
+                setFeedback('', '');
 
                 var formData = new FormData();
                 formData.append('id', identifier.value);
@@ -546,18 +766,46 @@ function profilBuildPasswordSectionHtml($userHasPassword)
                         }
 
                         setFeedback(result.message || deleteSuccessMessage, 'success');
-                        reloadScope();
+                        reloadFragment();
                     })
                     .catch(function () {
                         setFeedback(deleteErrorMessage, 'error');
                     })
                     .finally(function () {
                         if (typeof window.omoEndPendingAction === 'function') {
-                            window.omoEndPendingAction(form);
+                            window.omoEndPendingAction(editorForm);
                         }
                     });
             });
-        });
+        }
+
+        if (editorForm) {
+            closeEditor();
+        }
     })();
     </script>
 </div>
+    <?php
+
+    return ob_get_clean();
+}
+
+if ($requestedSection === 'profile') {
+    echo profilRenderProfileFragment($scope, $user, $organizationMembership, $userHasPassword, $leafletMapsEnabled);
+    return;
+}
+
+if ($requestedSection === 'competence') {
+    $scopes = array('general');
+    if ($requestedScope === 'organization' && $hasOrganizationScope) {
+        $scopes = array('organization');
+    } elseif ($requestedScope === 'all' && $hasOrganizationScope) {
+        $scopes = array('general', 'organization');
+    }
+
+    echo profilRenderCompetenceFragment($scopes, $user, $currentOrganizationId, $currentUserId, $canLimitCompetenceToOrganization);
+    return;
+}
+
+echo profilRenderProfileFragment($scope, $user, $organizationMembership, $userHasPassword, $leafletMapsEnabled);
+echo profilRenderCompetenceFragment(array($scope), $user, $currentOrganizationId, $currentUserId, $canLimitCompetenceToOrganization);

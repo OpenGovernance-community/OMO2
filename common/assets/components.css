@@ -461,7 +461,7 @@ textarea.generic-form-control {
 .generic-tabs__panels {
     border: 1px solid var(--generic-tabs-panel-border);
     border-top: 0;
-    border-radius: 0 var(--generic-tabs-panel-radius) var(--generic-tabs-panel-radius) var(--generic-tabs-panel-radius);
+    border-radius: 0 0 var(--generic-tabs-panel-radius) var(--generic-tabs-panel-radius);
     background: var(--generic-tabs-panel-background);
     box-shadow: var(--generic-tabs-panel-shadow);
 }
