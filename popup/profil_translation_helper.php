@@ -46,6 +46,10 @@ function profilPopupGetSourceLang(): array
             'text' => 'Competences',
             'context' => 'Tab label used for the competence editor tab.',
         ],
+        'profile.popup.tabs.patreon' => [
+            'text' => 'Patreon',
+            'context' => 'Tab label used for the Patreon information tab in the profile popup.',
+        ],
         'profile.popup.section.patreon.title' => [
             'text' => 'Patreon',
             'context' => 'Section title shown for the Patreon connection block in the profile popup.',
