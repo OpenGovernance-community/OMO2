@@ -72,11 +72,15 @@ $quizCount = 0;
 $homeworks = [];
 
 if ($mission->load($mission_id)) {
+	$videoData = $mission->getEmbeddedVideoData();
 	$m = [
 		'title' => (string)$mission->get('title'),
 		'resume' => (string)$mission->get('resume'),
 		'html' => (string)$mission->get('html'),
 		'video' => (string)$mission->get('video'),
+		'video_provider' => (string)($videoData['provider'] ?? ''),
+		'video_embed_url' => (string)($videoData['embedUrl'] ?? ''),
+		'video_control_mode' => (string)($videoData['controlMode'] ?? 'none'),
 	];
 	$quizCount = $mission->getQuizCount();
 	$homeworks = \dbObject\Mission::fetchHomeworksForMission(
@@ -84,29 +88,6 @@ if ($mission->load($mission_id)) {
 		!empty($accessContext['isLoggedIn']) ? (int)$accessContext['userId'] : 0,
 		$parcours_id
 	);
-}
-
-function vimeoEmbedUrl($url) {
-	$url = trim((string)$url);
-
-	if ($url === '') {
-		return null;
-	}
-
-	if (preg_match('#videos/(\d+)/([a-zA-Z0-9]+)#', $url, $matches)) {
-		$videoId = $matches[1];
-		$hash = $matches[2];
-
-		return "https://player.vimeo.com/video/$videoId?h=$hash";
-	}
-
-	if (preg_match('#vimeo\.com/(?:video/)?(\d+)(?:$|[?/])#', $url, $matches)) {
-		$videoId = $matches[1];
-
-		return "https://player.vimeo.com/video/$videoId";
-	}
-
-	return null;
 }
 
 $homeworksJson = json_encode($homeworks, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
@@ -117,7 +98,9 @@ if ($homeworksJson === false) {
 echo "<div>";
 
 if ($m) {
-	$embedVideoUrl = vimeoEmbedUrl($m['video']);
+	$embedVideoUrl = $m['video_embed_url'];
+	$videoProvider = $m['video_provider'];
+	$videoControlMode = $m['video_control_mode'];
 
 	echo "<h2>" . htmlspecialchars($m['title']) . "</h2>";
 	echo "<p><em>" . htmlspecialchars($m['resume']) . "</em></p>";
@@ -375,6 +358,10 @@ if ($m) {
 	</style>
 <?php
 	if ($embedVideoUrl) {
+		$iframeSrc = $embedVideoUrl;
+		if ($videoProvider === 'vimeo' && $videoControlMode === 'custom') {
+			$iframeSrc .= (strpos($iframeSrc, '?') === false ? '?' : '&') . 'controls=0';
+		}
 ?>
 	<style>
 		body {
@@ -550,17 +537,19 @@ if ($m) {
 	<div class="video-portal">
 		<div class="video-inner">
 			<iframe
-				id="vimeoPlayer"
-				src="<?php echo htmlspecialchars($embedVideoUrl . (strpos($embedVideoUrl, '?') === false ? '?' : '&') . 'controls=0', ENT_QUOTES, 'UTF-8'); ?>"
+				id="missionVideoPlayer"
+				data-video-provider="<?php echo htmlspecialchars($videoProvider, ENT_QUOTES, 'UTF-8'); ?>"
+				data-video-control-mode="<?php echo htmlspecialchars($videoControlMode, ENT_QUOTES, 'UTF-8'); ?>"
+				src="<?php echo htmlspecialchars($iframeSrc, ENT_QUOTES, 'UTF-8'); ?>"
 				frameborder="0"
-				allow="autoplay; fullscreen; picture-in-picture"
+				allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
 				allowfullscreen>
 			</iframe>
 		</div>
 
 		<div class="branding-overlay"></div>
 
-		<div class="custom-controls">
+		<div class="custom-controls"<?php echo $videoControlMode === 'custom' ? '' : ' style="display:none"'; ?>>
 			<button id="playBtn"><?= htmlspecialchars(lmsMissionDetailT('lms.mission_detail.video.play')); ?></button>
 			<div class="progressvideo">
 				<div class="progressvideo-bar"></div>

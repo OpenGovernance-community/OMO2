@@ -11,6 +11,7 @@
 <?php
 //error_reporting(E_ALL | E_ALL);
 require_once dirname(__DIR__) . '/common/leaflet_helper.php';
+require_once dirname(__DIR__) . '/common/admin_edit_translation.php';
 ?>
 <style>
     .navTab a {
@@ -195,6 +196,38 @@ function adminEditResolveImageDisplaySize($object, $key) {
     return array($displayWidth, $displayHeight);
 }
 
+function adminEditLegacyEscape($value) {
+    return str_replace("'", "&apos;", (string)$value);
+}
+
+function adminEditPlaceholderText($object, $key, ?array $translationBundle = null, ?array $translationSourceLang = null) {
+    $placeholder = adminEditGetFieldPlaceholder($object, (string)$key, $translationBundle ?? adminEditLoadBundle($object), $translationSourceLang ?? adminEditBuildSourceLang($object));
+
+    return $placeholder !== '' ? $placeholder : '';
+}
+
+function adminEditLengthText($object, $count, ?array $translationBundle = null, ?array $translationSourceLang = null) {
+    return adminEditTranslate(
+        'admin_edit.length.max',
+        ['count' => (int)$count],
+        $object,
+        $translationBundle,
+        $translationSourceLang
+    );
+}
+
+function adminEditFieldHeading($object, $field, ?array $translationBundle = null, ?array $translationSourceLang = null) {
+    $label = adminEditGetFieldLabel($object, (string)$field, $translationBundle ?? adminEditLoadBundle($object), $translationSourceLang ?? adminEditBuildSourceLang($object));
+    $description = adminEditGetFieldDescription($object, (string)$field, $translationBundle ?? adminEditLoadBundle($object), $translationSourceLang ?? adminEditBuildSourceLang($object));
+    $html = htmlspecialchars($label, ENT_QUOTES, 'UTF-8');
+
+    if ($description !== '') {
+        $html .= "<sup class='field_help' title=\"" . htmlspecialchars($description, ENT_QUOTES, 'UTF-8') . "\">?</sup>";
+    }
+
+    return $html;
+}
+
 function getFieldType($object, $key) {
     if (is_object($object)) {
         // Find rows linked to the type
@@ -244,14 +277,16 @@ function getFieldType($object, $key) {
     }
 }
 
-function displayField($object, $key, $default = null, $filter = null) {
+function displayField($object, $key, $default = null, $filter = null, ?array $translationBundle = null, ?array $translationSourceLang = null) {
 
     $type = $object->getFieldType($key);
     $class = adminEditMergeClass(($object->isRequired($key) ? "required" : ""), "admin-edit__control");
     switch ($type) {
         case "fk" :
             // Return this field's text value
-            $txt = "<select class='" . $class . "' name='" . $key . "' id='" . $key . "' ><option value=''>Choisissez...</option>";
+            $txt = "<select class='" . $class . "' name='" . $key . "' id='" . $key . "' ><option value=''>"
+                . htmlspecialchars(adminEditTranslate('admin_edit.choice.select', [], $object, $translationBundle, $translationSourceLang), ENT_QUOTES, 'UTF-8')
+                . "</option>";
 
             // Load values and render them
             foreach ($object->getValues($key, $filter) as $value) {
@@ -373,15 +408,15 @@ function displayField($object, $key, $default = null, $filter = null) {
 
             $str = $leafletAssets;
             $str .= "<div class='admin-edit__latlong-grid'>";
-            $str .= "<input class='" . $class . "' name='" . $key . "[]' id='" . $key . "_lat' type='text' value='" . htmlspecialchars((string)($hasCoordinates ? $latitude : ''), ENT_QUOTES, 'UTF-8') . "' placeholder='Latitude'>";
-            $str .= "<input class='" . $class . "' name='" . $key . "[]' id='" . $key . "_long' type='text' value='" . htmlspecialchars((string)($hasCoordinates ? $longitude : ''), ENT_QUOTES, 'UTF-8') . "' placeholder='Longitude'>";
+            $str .= "<input class='" . $class . "' name='" . $key . "[]' id='" . $key . "_lat' type='text' value='" . htmlspecialchars((string)($hasCoordinates ? $latitude : ''), ENT_QUOTES, 'UTF-8') . "' placeholder='" . htmlspecialchars(adminEditTranslate('admin_edit.latlong.placeholder.latitude', [], $object, $translationBundle, $translationSourceLang), ENT_QUOTES, 'UTF-8') . "'>";
+            $str .= "<input class='" . $class . "' name='" . $key . "[]' id='" . $key . "_long' type='text' value='" . htmlspecialchars((string)($hasCoordinates ? $longitude : ''), ENT_QUOTES, 'UTF-8') . "' placeholder='" . htmlspecialchars(adminEditTranslate('admin_edit.latlong.placeholder.longitude', [], $object, $translationBundle, $translationSourceLang), ENT_QUOTES, 'UTF-8') . "'>";
             $str .= "</div>";
             if (!$leafletMapsEnabled) {
-                $str .= "<div class='admin-edit__latlong-help'>Renseignez latitude et longitude manuellement si la carte n est pas disponible.</div>";
+                $str .= "<div class='admin-edit__latlong-help'>" . htmlspecialchars(adminEditTranslate('admin_edit.latlong.help.manual', [], $object, $translationBundle, $translationSourceLang), ENT_QUOTES, 'UTF-8') . "</div>";
                 return $str;
             }
             $str .= "<div id='map_" . $key . "' class='admin-edit__latlong-map'></div>";
-            $str .= "<div class='admin-edit__latlong-help'>Cliquez sur la carte pour choisir l emplacement.</div>";
+            $str .= "<div class='admin-edit__latlong-help'>" . htmlspecialchars(adminEditTranslate('admin_edit.latlong.help.map', [], $object, $translationBundle, $translationSourceLang), ENT_QUOTES, 'UTF-8') . "</div>";
             $str .= "<script>(function(){";
             $str .= "var runMapInit = function(){";
             $str .= "var mapElement = document.getElementById('map_" . $key . "');";
@@ -452,8 +487,9 @@ function displayField($object, $key, $default = null, $filter = null) {
             }
             // Otherwise return a plain field
             $str = "<input class='" . $class . "' name='" . $key . "' id='" . $key . "' type='text' value='" . $object->get($key) . "'";
-            if (isset($object::attributePlaceholder()[$key])) {
-                $str .= " placeholder='" . str_replace("'", "&apos;", $object::attributePlaceholder()[$key]) . "' ";
+            $translatedPlaceholder = adminEditPlaceholderText($object, $key, $translationBundle, $translationSourceLang);
+            if ($translatedPlaceholder !== '') {
+                $str .= " placeholder='" . adminEditLegacyEscape($translatedPlaceholder) . "' ";
             }
             $str .= ">";
 
@@ -468,14 +504,15 @@ function displayField($object, $key, $default = null, $filter = null) {
             $str .= "<input type='hidden' name='" . $key . "' id='" . $key . "' value='" . str_replace("'", "&apos;", $colorValue) . "'>";
             $str .= "<input type='color' class='admin-edit__color-picker' id='" . $key . "_picker' value='" . $colorPickerValue . "' data-target='" . $key . "' data-text-target='" . $key . "_text'>";
             $str .= "<input class='" . $colorTextClass . "' name='" . $key . "_text' id='" . $key . "_text' type='text' value='" . str_replace("'", "&apos;", $colorValue) . "' data-target='" . $key . "' data-picker-target='" . $key . "_picker'";
-            if (isset($object::attributePlaceholder()[$key])) {
-                $str .= " placeholder='" . str_replace("'", "&apos;", $object::attributePlaceholder()[$key]) . "' ";
+            $translatedPlaceholder = adminEditPlaceholderText($object, $key, $translationBundle, $translationSourceLang);
+            if ($translatedPlaceholder !== '') {
+                $str .= " placeholder='" . adminEditLegacyEscape($translatedPlaceholder) . "' ";
             } else {
                 $str .= " placeholder='#004663' ";
             }
             if (isset($object::attributeLength()[$key])) {
                 $str .= "maxlength='" . $object::attributeLength()[$key] . "'  onkeyup='countChar($(this), " . $object::attributeLength()[$key] . ")' onkeypress='countChar($(this), " . $object::attributeLength()[$key] . ")' >";
-                $str .= "<div class='char_count'>max " . $object::attributeLength()[$key] . " caracteres</div>";
+                $str .= "<div class='char_count'>" . htmlspecialchars(adminEditLengthText($object, $object::attributeLength()[$key], $translationBundle, $translationSourceLang), ENT_QUOTES, 'UTF-8') . "</div>";
             } else {
                 $str .= ">";
             }
@@ -486,11 +523,12 @@ function displayField($object, $key, $default = null, $filter = null) {
         case "color":
             $colorValue = ($object->get($key) != "" ? $object->get($key) : $default);
             $str = "<input  type='color' class='" . $class . "' name='" . $key . "' id='" . $key . "' style='width:50px' type='text' value='" . str_replace("'", "&apos;", (string)($colorValue ?? "")) . "'";
-            if (isset($object::attributePlaceholder()[$key])) {
-                $str .= " placeholder='" . str_replace("'", "&apos;", $object::attributePlaceholder()[$key]) . "' ";
+            $translatedPlaceholder = adminEditPlaceholderText($object, $key, $translationBundle, $translationSourceLang);
+            if ($translatedPlaceholder !== '') {
+                $str .= " placeholder='" . adminEditLegacyEscape($translatedPlaceholder) . "' ";
             }
             if (isset($object::attributeLength()[$key])) {
-                $str .= "maxlength='" . $object::attributeLength()[$key] . "'  onkeyup='countChar($(this), " . $object::attributeLength()[$key] . ")' onkeypress='countChar($(this), " . $object::attributeLength()[$key] . ")' ><div class='char_count'> max " . $object::attributeLength()[$key] . " caractères</div>";
+                $str .= "maxlength='" . $object::attributeLength()[$key] . "'  onkeyup='countChar($(this), " . $object::attributeLength()[$key] . ")' onkeypress='countChar($(this), " . $object::attributeLength()[$key] . ")' ><div class='char_count'>" . htmlspecialchars(adminEditLengthText($object, $object::attributeLength()[$key], $translationBundle, $translationSourceLang), ENT_QUOTES, 'UTF-8') . "</div>";
             } else {
                 $str .= ">";
             }
@@ -510,11 +548,12 @@ function displayField($object, $key, $default = null, $filter = null) {
             }
             $fieldValue = ($object->get($key) != "" ? $object->get($key) : $default);
             $str = "<input  class='" . $class . "' name='" . $key . "' id='" . $key . "' style='width:100%' type='text' value='" . str_replace("'", "&apos;", (string)($fieldValue ?? "")) . "'";
-            if (isset($object::attributePlaceholder()[$key])) {
-                $str .= " placeholder='" . str_replace("'", "&apos;", $object::attributePlaceholder()[$key]) . "' ";
+            $translatedPlaceholder = adminEditPlaceholderText($object, $key, $translationBundle, $translationSourceLang);
+            if ($translatedPlaceholder !== '') {
+                $str .= " placeholder='" . adminEditLegacyEscape($translatedPlaceholder) . "' ";
             }
             if (isset($object::attributeLength()[$key])) {
-                $str .= "maxlength='" . $object::attributeLength()[$key] . "'  onkeyup='countChar($(this), " . $object::attributeLength()[$key] . ")' onkeypress='countChar($(this), " . $object::attributeLength()[$key] . ")' ><div class='char_count'> max " . $object::attributeLength()[$key] . " caractères</div>";
+                $str .= "maxlength='" . $object::attributeLength()[$key] . "'  onkeyup='countChar($(this), " . $object::attributeLength()[$key] . ")' onkeypress='countChar($(this), " . $object::attributeLength()[$key] . ")' ><div class='char_count'>" . htmlspecialchars(adminEditLengthText($object, $object::attributeLength()[$key], $translationBundle, $translationSourceLang), ENT_QUOTES, 'UTF-8') . "</div>";
             } else {
                 $str .= ">";
             }
@@ -525,7 +564,7 @@ function displayField($object, $key, $default = null, $filter = null) {
             $str = $object->get($key);
             $tmp = "<textarea class='" . $class . "' name='" . $key . "' id='" . $key . "' style='width:100%'";
             if (isset($object::attributeLength()[$key])) {
-                $tmp .= "maxlength='" . $object::attributeLength()[$key] . "' onkeyup='countChar($(this), " . $object::attributeLength()[$key] . ")' onkeypress='countChar($(this), " . $object::attributeLength()[$key] . ")' >" . $str . "</textarea><div class='char_count'> max " . $object::attributeLength()[$key] . " caractères</div>";
+                $tmp .= "maxlength='" . $object::attributeLength()[$key] . "' onkeyup='countChar($(this), " . $object::attributeLength()[$key] . ")' onkeypress='countChar($(this), " . $object::attributeLength()[$key] . ")' >" . $str . "</textarea><div class='char_count'>" . htmlspecialchars(adminEditLengthText($object, $object::attributeLength()[$key], $translationBundle, $translationSourceLang), ENT_QUOTES, 'UTF-8') . "</div>";
             } else {
                 $tmp .= ">" . $str . "</textarea>";
             }
@@ -583,7 +622,7 @@ function displayField($object, $key, $default = null, $filter = null) {
             $output = "<input type='hidden' id='" . $key . "' name='" . $key . "' value='" . $object->get($key) . "'>";
 
             $output .= "<div><input type='file' id='imageFileInput_" . $key . "' accept='image/*' style='display:none'>";
-            $output .= "<input type='button' value='Choose image on disk...' onclick='$(\"#imageFileInput_" . $key . "\").click();' />";
+            $output .= "<input type='button' value='" . htmlspecialchars(adminEditTranslate('admin_edit.image.choose_disk', [], $object, $translationBundle, $translationSourceLang), ENT_QUOTES, 'UTF-8') . "' onclick='$(\"#imageFileInput_" . $key . "\").click();' />";
             $output .= "</div>";
 
             $output .= "<div id='imgContainer_" . $key . "' style='position: relative; display: inline-block; border: 1px solid black; cursor: move; overflow: hidden; width:" . $displayWidth . "px; height:" . $displayHeight . "px;'>";
@@ -818,8 +857,12 @@ function displayField($object, $key, $default = null, $filter = null) {
 
 // Load object metadata
 $colonnes = $this->attributeLabels();
+$adminEditTranslationSourceLang = adminEditBuildSourceLang($this);
+$adminEditTranslationBundle = adminEditLoadBundle($this);
+$adminEditCharCountTemplate = adminEditTranslate('admin_edit.length.progress', ['current' => '__CURRENT__', 'limit' => '__LIMIT__'], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang);
 ?>
 <script>
+    var adminEditCharCountTemplate = <?= json_encode($adminEditCharCountTemplate, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     // generic validation helpers
     function countChar(objet, limit) {
         if (objet.val().length > limit) {
@@ -1228,7 +1271,9 @@ $colonnes = $this->attributeLabels();
 <?php
 
 // Header
-$adminEditToolbarTitle = ($this->getId() != "" ? "Edition" : "Creation");
+$adminEditToolbarTitle = $this->getId() != ""
+    ? adminEditTranslate('admin_edit.toolbar.edit', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang)
+    : adminEditTranslate('admin_edit.toolbar.create', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang);
 echo "<div class='admin-edit'>";
 echo "<form id='formulaire-edit' method='POST' enctype='multipart/form-data'";
 if (isset($params["action"]) && $params["action"]) {
@@ -1239,10 +1284,10 @@ echo "<input type='hidden' name='MAX_FILE_SIZE' value='300000000' />";
 
 // Navigation buttons
 if ($params["buttons"]) {
-    echo "<div class='admin-edit__toolbar'><div class='admin-edit__toolbar-inner'><div class='admin-edit__toolbar-copy'><h2 class='admin-edit__toolbar-title'>" . $adminEditToolbarTitle . "</h2><p class='admin-edit__toolbar-text'>Renseignez les champs puis enregistrez.</p></div><div class='admin-edit__actions'><input type='button' class='admin-edit__action--secondary' value='Annuler' onclick='history.go(-1)'> <input id='btn_submit' type='button' value='Sauver'>";
+    echo "<div class='admin-edit__toolbar'><div class='admin-edit__toolbar-inner'><div class='admin-edit__toolbar-copy'><h2 class='admin-edit__toolbar-title'>" . htmlspecialchars($adminEditToolbarTitle, ENT_QUOTES, 'UTF-8') . "</h2><p class='admin-edit__toolbar-text'>" . htmlspecialchars(adminEditTranslate('admin_edit.toolbar.text', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "</p></div><div class='admin-edit__actions'><input type='button' class='admin-edit__action--secondary' value='" . htmlspecialchars(adminEditTranslate('admin_edit.action.cancel', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "' onclick='history.go(-1)'> <input id='btn_submit' type='button' value='" . htmlspecialchars(adminEditTranslate('admin_edit.action.save', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "'>";
 
     if ($params["displayDraft"]) {
-        echo "<input id='btn_save' class='admin-edit__draft-button' type='button' value='Enregistrer comme brouillon'>";
+        echo "<input id='btn_save' class='admin-edit__draft-button' type='button' value='" . htmlspecialchars(adminEditTranslate('admin_edit.action.save_draft', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "'>";
     }
     echo "</div></div></div>";
 }
@@ -1276,11 +1321,11 @@ if (isset($params["fields"])) {
                     $id = true;
                 }
                 echo "<tr" . ($hidden ? " style='display:none'" : "") . " id='" . $colonne[0] . "'>";
-                echo "<th style='white-space:nowrap'>" . $colonnes[$colonne[0]] . (isset($this->attributeDescriptions()[$colonne[0]]) ? "<sup class='field_help' title=\"" . $this->attributeDescriptions()[$colonne[0]] . "\">?</sup>" : "") . "</th>";
+                echo "<th style='white-space:nowrap'>" . adminEditFieldHeading($this, $colonne[0], $adminEditTranslationBundle, $adminEditTranslationSourceLang) . "</th>";
                 echo "<td>";
                 echo "<table><tr>";
                 foreach ($colonne as $col) {
-                    echo "<td>" . displayField($this, $col, $default, $params["filter"][$col] ?? null) . "</td>";
+                    echo "<td>" . displayField($this, $col, $default, $params["filter"][$col] ?? null, $adminEditTranslationBundle, $adminEditTranslationSourceLang) . "</td>";
                 }
                 echo "</tr></table>";
                 echo "</td>";
@@ -1320,11 +1365,11 @@ if (isset($params["fields"])) {
                                 echo $display[0];
                             }
                         } else {
-                            echo $colonnes[$colonne] . (isset($this->attributeDescriptions()[$colonne]) ? "<sup class='field_help' title=\"" . $this->attributeDescriptions()[$colonne] . "\">?</sup>" : "");
+                            echo adminEditFieldHeading($this, $colonne, $adminEditTranslationBundle, $adminEditTranslationSourceLang);
                         }
                     } else // Otherwise show default text
                     {
-                        echo $colonnes[$colonne] . (isset($this->attributeDescriptions()[$colonne]) ? "<sup class='field_help' title=\"" . $this->attributeDescriptions()[$colonne] . "\">?</sup>" : "");
+                        echo adminEditFieldHeading($this, $colonne, $adminEditTranslationBundle, $adminEditTranslationSourceLang);
                     }
                     echo "</th>";
                     echo "<td>";
@@ -1345,9 +1390,9 @@ if (isset($params["fields"])) {
                         $id = true;
                     }
                     echo "<tr" . ($hidden ? " style='display:none'" : "") . " id='row_" . $colonne . "'>";
-                    echo "<th>" . $colonnes[$colonne] . (isset($this->attributeDescriptions()[$colonne]) ? "<sup class='field_help' title=\"" . $this->attributeDescriptions()[$colonne] . "\">?</sup>" : "") . "</th>";
+                    echo "<th>" . adminEditFieldHeading($this, $colonne, $adminEditTranslationBundle, $adminEditTranslationSourceLang) . "</th>";
 
-                    echo "<td>" . displayField($this, $colonne, $default, $params["filter"][$colonne] ?? null) . "</td>";
+                    echo "<td>" . displayField($this, $colonne, $default, $params["filter"][$colonne] ?? null, $adminEditTranslationBundle, $adminEditTranslationSourceLang) . "</td>";
 
                     echo "</tr>";
                 }
@@ -1362,12 +1407,12 @@ if (isset($params["fields"])) {
                 $id = true;
             }
             echo "<tr id='row_" . $key . "'>";
-            echo "<th>" . $colonne . (isset($this->attributeDescriptions()[$key]) ? "<sup class='field_help' title=\"" . $this->attributeDescriptions()[$key] . "\">?</sup>" : "") . "</th><td>";
+            echo "<th>" . adminEditFieldHeading($this, $key, $adminEditTranslationBundle, $adminEditTranslationSourceLang) . "</th><td>";
             // Default vs specific elements?
             if (isset($params["widget"]) && isset($params["widget"][$key])) {
                 echo $params["widget"][$key]($this, $key);
             } else {
-                echo displayField($this, $key, null, $params["filter"][$key] ?? null);
+                echo displayField($this, $key, null, $params["filter"][$key] ?? null, $adminEditTranslationBundle, $adminEditTranslationSourceLang);
             }
             echo "</td></tr>";
         }

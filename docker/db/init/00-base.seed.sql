@@ -554,7 +554,7 @@ CREATE TABLE `mission` (
   `id` int(11) NOT NULL,
   `title` varchar(150) NOT NULL,
   `resume` text NOT NULL,
-  `video` varchar(150) DEFAULT NULL,
+  `video` varchar(1000) DEFAULT NULL,
   `html` text DEFAULT NULL,
   `position` int(11) DEFAULT NULL,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
@@ -1177,7 +1177,10 @@ CREATE TABLE `user_organization` (
   `IDuser` int(11) NOT NULL,
   `IDorganization` int(11) NOT NULL,
   `username` varchar(250) DEFAULT NULL,
+  `image` varchar(100) DEFAULT NULL,
   `email` varchar(250) DEFAULT NULL,
+  `presentation` text DEFAULT NULL,
+  `latlong` varchar(100) DEFAULT NULL,
   `parameters` mediumtext DEFAULT NULL,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
   `dateconnexion` datetime DEFAULT NULL,
@@ -1188,9 +1191,9 @@ CREATE TABLE `user_organization` (
 -- Déchargement des données de la table `user_organization`
 --
 
-INSERT INTO `user_organization` (`id`, `IDuser`, `IDorganization`, `username`, `email`, `parameters`, `datecreation`, `dateconnexion`, `active`) VALUES
-(1, 1, 1, 'UN1', 'user1@org1.com', NULL, '2026-04-21 12:20:00', NULL, 1),
-(2, 1, 2, NULL, NULL, NULL, '2026-04-21 12:25:00', NULL, 1);
+INSERT INTO `user_organization` (`id`, `IDuser`, `IDorganization`, `username`, `image`, `email`, `presentation`, `latlong`, `parameters`, `datecreation`, `dateconnexion`, `active`) VALUES
+(1, 1, 1, 'UN1', NULL, 'user1@org1.com', NULL, NULL, NULL, '2026-04-21 12:20:00', NULL, 1),
+(2, 1, 2, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-21 12:25:00', NULL, 1);
 
 -- --------------------------------------------------------
 
