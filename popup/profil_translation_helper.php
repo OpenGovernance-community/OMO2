@@ -26,6 +26,26 @@ function profilPopupGetSourceLang(): array
             'text' => 'Modifier votre profil',
             'context' => 'Section title shown above the editable profile forms.',
         ],
+        'profile.popup.tabs.aria' => [
+            'text' => 'Sections du profil personnel',
+            'context' => 'Aria label used for the profile editor tabs.',
+        ],
+        'profile.popup.tabs.current' => [
+            'text' => 'Prévisualisation',
+            'context' => 'Tab label used for the active profile preview.',
+        ],
+        'profile.popup.tabs.organization' => [
+            'text' => 'Profil specifique',
+            'context' => 'Tab label used for the organization-specific profile form.',
+        ],
+        'profile.popup.tabs.general' => [
+            'text' => 'Profil general',
+            'context' => 'Tab label used for the general profile form.',
+        ],
+        'profile.popup.tabs.competences' => [
+            'text' => 'Competences',
+            'context' => 'Tab label used for the competence editor tab.',
+        ],
         'profile.popup.section.patreon.title' => [
             'text' => 'Patreon',
             'context' => 'Section title shown for the Patreon connection block in the profile popup.',
@@ -53,6 +73,10 @@ function profilPopupGetSourceLang(): array
         'profile.popup.active.username.label' => [
             'text' => 'Identifiant affiché',
             'context' => 'Label shown for the active profile username summary item.',
+        ],
+        'profile.popup.active.fullname.label' => [
+            'text' => 'Nom complet',
+            'context' => 'Label shown for the active full name summary item.',
         ],
         'profile.popup.active.presentation.label' => [
             'text' => 'Présentation active',
@@ -185,6 +209,14 @@ function profilPopupGetSourceLang(): array
         'profile.popup.password.section.help' => [
             'text' => "Ajoutez un mot de passe pour utiliser la connexion classique et CardDAV. Lors d'une modification, l'ancien mot de passe est requis.",
             'context' => 'Help text shown above the password fields in the general profile editor.',
+        ],
+        'profile.popup.password.toggle.label' => [
+            'text' => 'Modifier le mot de passe',
+            'context' => 'Checkbox label used to reveal the password update form in the profile popup.',
+        ],
+        'profile.popup.password.toggle.help' => [
+            'text' => 'Cochez cette case uniquement si vous souhaitez definir ou changer le mot de passe de ce compte.',
+            'context' => 'Help text shown next to the password reveal checkbox in the profile popup.',
         ],
         'profile.popup.password.status.missing' => [
             'text' => 'Aucun mot de passe défini pour ce compte.',
@@ -342,6 +374,26 @@ function profilPopupGetSourceLang(): array
         'profile.popup.competence.add' => [
             'text' => 'Ajouter',
             'context' => 'Button label used to create a new competence.',
+        ],
+        'profile.popup.competence.edit' => [
+            'text' => 'Editer',
+            'context' => 'Button label used to open the shared competence editor for an existing competence.',
+        ],
+        'profile.popup.competence.cancel' => [
+            'text' => 'Annuler',
+            'context' => 'Button label used to close the shared competence editor without saving.',
+        ],
+        'profile.popup.competence.create_button' => [
+            'text' => 'Ajouter une competence',
+            'context' => 'Button label used to open the shared competence editor in creation mode.',
+        ],
+        'profile.popup.competence.editor.create_title' => [
+            'text' => 'Nouvelle competence',
+            'context' => 'Title shown above the shared competence editor in creation mode.',
+        ],
+        'profile.popup.competence.editor.edit_title' => [
+            'text' => 'Modifier la competence',
+            'context' => 'Title shown above the shared competence editor in edit mode.',
         ],
         'profile.popup.competence.js.reload_error' => [
             'text' => 'Impossible de recharger les compétences.',

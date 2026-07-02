@@ -38,8 +38,18 @@
 		public static function attributeLength() {
 			return [
 				'title' => 150,
-				'video' => 150,
+				'video' => 1000,
 			];
+		}
+
+		public function getEmbeddedVideoData()
+		{
+			return \dbObject\VideoEmbedHelper::getEmbedData($this->get('video'));
+		}
+
+		public function getEmbeddedVideoUrl()
+		{
+			return (string)($this->getEmbeddedVideoData()['embedUrl'] ?? '');
 		}
 
 		public static function getOrder() {

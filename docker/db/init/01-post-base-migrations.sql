@@ -298,6 +298,11 @@ ALTER TABLE `user`
   ADD COLUMN IF NOT EXISTS `image` varchar(100) DEFAULT NULL AFTER `username`,
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
+ALTER TABLE `user_organization`
+  ADD COLUMN IF NOT EXISTS `image` varchar(100) DEFAULT NULL AFTER `username`,
+  ADD COLUMN IF NOT EXISTS `presentation` text DEFAULT NULL AFTER `email`,
+  ADD COLUMN IF NOT EXISTS `latlong` varchar(100) DEFAULT NULL AFTER `presentation`;
+
 -- Local Docker dev account bootstrap
 -- User 1 password plaintext: LocalAdmin123!
 UPDATE `user`
