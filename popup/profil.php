@@ -226,6 +226,28 @@ function profilFormatAmountCents($value)
         margin-top: 18px;
     }
 
+    .profile-panel__password-section[hidden] {
+        display: none !important;
+    }
+
+    .profile-panel__password-toggle {
+        display: grid;
+        gap: 8px;
+        margin-top: 18px;
+    }
+
+    .profile-panel__password-toggle-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        color: var(--color-text, #334155);
+    }
+
+    .profile-panel__password-toggle-label input {
+        margin: 0;
+    }
+
     .profile-panel__password-head {
         display: grid;
         gap: 6px;
