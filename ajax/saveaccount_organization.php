@@ -58,7 +58,9 @@
 		echo json_encode([
 			'status' => false,
 			'success' => false,
-			'message' => "Impossible d'enregistrer le profil d'organisation.",
+			'message' => is_array($saveResult) && !empty($saveResult['text'])
+				? (string)$saveResult['text']
+				: "Impossible d'enregistrer le profil d'organisation.",
 		], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 		exit;
 	}

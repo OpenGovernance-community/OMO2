@@ -990,44 +990,7 @@ class FAQ extends DbObject
 
 	public static function buildEmbeddedVideoUrl($url)
 	{
-		$url = trim((string)$url);
-
-		if ($url === '') {
-			return '';
-		}
-
-		if (preg_match('#player\.vimeo\.com/video/(\d+)(?:[?&]h=([a-zA-Z0-9]+))?#i', $url, $matches)) {
-			$videoId = trim((string)($matches[1] ?? ''));
-			$hash = trim((string)($matches[2] ?? ''));
-
-			if ($videoId === '') {
-				return '';
-			}
-
-			return $hash !== ''
-				? 'https://player.vimeo.com/video/' . $videoId . '?h=' . $hash
-				: 'https://player.vimeo.com/video/' . $videoId;
-		}
-
-		if (preg_match('#videos/(\d+)/([a-zA-Z0-9]+)#i', $url, $matches)) {
-			$videoId = trim((string)($matches[1] ?? ''));
-			$hash = trim((string)($matches[2] ?? ''));
-
-			if ($videoId === '' || $hash === '') {
-				return '';
-			}
-
-			return 'https://player.vimeo.com/video/' . $videoId . '?h=' . $hash;
-		}
-
-		if (preg_match('#vimeo\.com/(?:video/)?(\d+)(?:$|[?/])#i', $url, $matches)) {
-			$videoId = trim((string)($matches[1] ?? ''));
-			return $videoId !== ''
-				? 'https://player.vimeo.com/video/' . $videoId
-				: '';
-		}
-
-		return '';
+		return \dbObject\VideoEmbedHelper::buildEmbedUrl($url);
 	}
 
 	public function getEmbeddedVideoUrl()

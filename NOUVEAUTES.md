@@ -2,7 +2,21 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-02
+
+Dans la popup de profil personnel, le bloc de changement de mot de passe est maintenant replie par defaut derriere une case `Modifier le mot de passe`. Le formulaire ne s affiche qu au besoin, ce qui allegre l editeur au quotidien.
+
 ## 2026-07-01
+
+Le hub `Parametres` de OMO affiche maintenant des cartes mieux alignees pour `Profil`, `Organisation` et `Modeles de holons`, avec meme hauteur, entete plus lisible et petit visuel dedie pour mieux reperer chaque entree.
+
+La popup de profil personnel a ete redecoupee en vrais onglets reutilisant le composant generique commun, avec un panneau `Profil actuel`, un formulaire `Profil specifique`, un formulaire `Profil general`, puis un onglet dedie a l edition des competences. Cet onglet affiche maintenant une liste compacte avec bouton `Editer` sur chaque competence et un unique editeur partage ouvert au besoin pour modifier ou ajouter une competence.
+
+Le profil d organisation personnel est maintenant protege par un garde-fou SQL supplementaire pour la colonne `user_organization.image`, avec mise a jour du bootstrap Docker et un message d erreur AJAX un peu plus explicite si un enregistrement echoue encore.
+
+Les dumps Docker de base `user_organization` ont aussi ete remis a niveau pour inclure directement `username`, `image`, `email`, `presentation` et `latlong`, afin qu un refresh complet reconstruise une base compatible sans dependre d un rattrapage ulterieur.
+
+`adminEdit.php` sait maintenant generer un bundle de traduction a partir des labels, descriptions et placeholders declares dans les `dbObject`, puis les traduire au rendu sans deplacer la logique de langue dans les classes metier elles-memes.
 
 Le centre de parametres OMO ouvert depuis la barre de gauche, ainsi que les ecrans `Admin du serveur` et `Modeles de holons`, reutilisent maintenant des bundles de traduction dedies avec helpers partages pour leurs titres, actions, etats vides, messages JS et retours JSON principaux.
 
@@ -379,3 +393,4 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - L ouverture d un pack dans le LMS affiche maintenant ses parcours avec les memes cartes visuelles que la page d accueil, incluant image et progression.
 - La vue detail d un pack reutilise maintenant le meme ratio d image et le meme cercle de progression chiffre que les cartes du catalogue LMS.
 - L editeur de mission permet maintenant de modifier aussi le nom du groupe stocke sur le lien parcours mission.
+- 2026-07-02 : LMS missions acceptent maintenant Vimeo, YouTube et les URLs/player iframe Infomaniak VOD, y compris les liens `share` et les iframes `embed`, via un helper commun de conversion en embed. Le champ `mission.video` passe a 1000 caracteres pour accepter aussi des URLs longues ou un code iframe colle.
