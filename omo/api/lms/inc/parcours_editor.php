@@ -326,7 +326,7 @@ if (!function_exists('lmsRenderParcoursMissionManager')) {
                                     ><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.missions.remove')); ?></button>
                                 </div>
                             </div>
-                            <div class="lms-parcours-mission-item__handle" data-lms-mission-drag-handle="1" title="<?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.common.move')); ?>">::</div>
+                            <div class="lms-parcours-mission-item__handle generic-drag-handle generic-drag-handle--stretch" data-lms-mission-drag-handle="1" title="<?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.common.move')); ?>">::</div>
                             <div class="lms-parcours-mission-item__body">
                                 <strong><?php echo htmlspecialchars((string)($mission['title'] ?? '')); ?></strong>
                                 <?php if (trim((string)($mission['resume'] ?? '')) !== ''): ?>
@@ -463,7 +463,7 @@ if (!function_exists('lmsRenderParcoursMissionManager')) {
                                     ><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.pack.remove')); ?></button>
                                 </div>
                             </div>
-                            <div class="lms-parcours-mission-item__handle" data-lms-pack-drag-handle="1" title="<?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.common.move')); ?>">::</div>
+                            <div class="lms-parcours-mission-item__handle generic-drag-handle generic-drag-handle--stretch" data-lms-pack-drag-handle="1" title="<?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.common.move')); ?>">::</div>
                             <div class="lms-parcours-mission-item__body">
                                 <strong><?php echo htmlspecialchars((string)($child['title'] ?? '')); ?></strong>
                                 <?php if (trim((string)($child['description'] ?? '')) !== ''): ?>

@@ -86,26 +86,45 @@
 			return self::countHomeworksForMission($this->getId());
 		}
 
-		public static function countHomeworksForMission($missionId)
+		protected static function buildHomeworkVisibilitySql($viewerIsOrganizationAdmin = null)
+		{
+			if ($viewerIsOrganizationAdmin === null || $viewerIsOrganizationAdmin) {
+				return '';
+			}
+
+			return " AND COALESCE(h.onlyAdmin, 0) = 0";
+		}
+
+		public static function countHomeworksForMission($missionId, $viewerIsOrganizationAdmin = null)
 		{
 			if (!self::hasMissionHomeworkTable()) {
 				return 0;
 			}
 
 			return (int)self::fetchValue(
-				"SELECT COUNT(*) FROM mission_homework WHERE IDmission = :mission_id",
+				"SELECT COUNT(*)
+				FROM mission_homework mh
+				INNER JOIN homework h
+					ON h.id = mh.IDhomework
+				WHERE mh.IDmission = :mission_id"
+				. self::buildHomeworkVisibilitySql($viewerIsOrganizationAdmin),
 				['mission_id' => (int)$missionId]
 			);
 		}
 
-		public static function fetchHomeworkIdsForMission($missionId)
+		public static function fetchHomeworkIdsForMission($missionId, $viewerIsOrganizationAdmin = null)
 		{
 			if (!self::hasMissionHomeworkTable()) {
 				return [];
 			}
 
 			$rows = self::fetchAll(
-				"SELECT IDhomework FROM mission_homework WHERE IDmission = :mission_id",
+				"SELECT mh.IDhomework
+				FROM mission_homework mh
+				INNER JOIN homework h
+					ON h.id = mh.IDhomework
+				WHERE mh.IDmission = :mission_id"
+				. self::buildHomeworkVisibilitySql($viewerIsOrganizationAdmin),
 				['mission_id' => (int)$missionId]
 			);
 
@@ -124,9 +143,9 @@
 			return array_values($ids);
 		}
 
-		public static function areHomeworkIdsComplete($missionId, array $doneHomeworkIds)
+		public static function areHomeworkIdsComplete($missionId, array $doneHomeworkIds, $viewerIsOrganizationAdmin = null)
 		{
-			$requiredIds = self::fetchHomeworkIdsForMission($missionId);
+			$requiredIds = self::fetchHomeworkIdsForMission($missionId, $viewerIsOrganizationAdmin);
 			if (count($requiredIds) === 0) {
 				return true;
 			}
@@ -148,11 +167,12 @@
 			return true;
 		}
 
-		public static function fetchHomeworksForMission($missionId, $userId = 0, $parcoursId = 0)
+		public static function fetchHomeworksForMission($missionId, $userId = 0, $parcoursId = 0, $viewerIsOrganizationAdmin = null)
 		{
 			$missionId = (int)$missionId;
 			$userId = (int)$userId;
 			$parcoursId = (int)$parcoursId;
+			$visibilitySql = self::buildHomeworkVisibilitySql($viewerIsOrganizationAdmin);
 
 			if (!self::hasMissionHomeworkTable()) {
 				return [];
@@ -174,7 +194,7 @@
 						AND uh.IDhomework = mh.IDhomework
 						AND uh.IDuser = :user_id
 						AND uh.IDparcours = :parcours_id
-					WHERE mh.IDmission = :mission_id
+					WHERE mh.IDmission = :mission_id" . $visibilitySql . "
 					ORDER BY COALESCE(mh.position, h.position, h.id) ASC, h.id ASC
 				";
 
@@ -194,7 +214,7 @@
 					FROM mission_homework mh
 					INNER JOIN homework h
 						ON h.id = mh.IDhomework
-					WHERE mh.IDmission = :mission_id
+					WHERE mh.IDmission = :mission_id" . $visibilitySql . "
 					ORDER BY COALESCE(mh.position, h.position, h.id) ASC, h.id ASC
 				";
 

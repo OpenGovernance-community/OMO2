@@ -797,12 +797,13 @@ html[data-theme="dark"] .common-topbar-profile-preference__icon--theme-dark {
 }
 
 .common-topbar-drawer__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 16px 18px;
-    border-bottom: 1px solid var(--topbar-panel-border, #e5e7eb);
+    --generic-drawer-header-border: var(--topbar-panel-border, #e5e7eb);
+    --generic-drawer-header-background:
+        linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--topbar-panel-bg, #ffffff) 96%, transparent) 0%,
+            color-mix(in srgb, var(--topbar-menu-item-bg, rgba(255,255,255,0.06)) 22%, var(--topbar-panel-bg, #ffffff)) 100%
+        );
 }
 
 .common-topbar-drawer__header h3 {

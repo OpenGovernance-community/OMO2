@@ -185,12 +185,14 @@ if (!is_string($documentsPayload)) {
     <div class="omo-overlay-drawer memo-documents__detail-drawer" data-memo-document-drawer hidden>
         <div class="omo-overlay-drawer__backdrop" data-memo-document-drawer-close></div>
         <div class="omo-overlay-drawer__panel">
-            <div class="omo-overlay-drawer__header">
-                <div class="omo-overlay-drawer__header-copy">
+            <div class="omo-overlay-drawer__header generic-drawer-header">
+                <div class="omo-overlay-drawer__header-copy generic-drawer-header__copy">
                     <h3 class="omo-overlay-drawer__title" data-memo-document-drawer-title>Détail du document</h3>
                     <p class="omo-overlay-drawer__description">Lecture du document dans EasyMEMO.</p>
                 </div>
-                <button type="button" class="omo-overlay-drawer__close" data-memo-document-drawer-close>Fermer</button>
+                <div class="generic-drawer-header__actions">
+                    <button type="button" class="omo-overlay-drawer__close" data-memo-document-drawer-close>Fermer</button>
+                </div>
             </div>
             <div class="omo-overlay-drawer__body" data-memo-document-drawer-body></div>
         </div>
@@ -199,12 +201,14 @@ if (!is_string($documentsPayload)) {
     <div class="omo-overlay-drawer memo-documents__editor-drawer" data-memo-document-editor-drawer hidden>
         <div class="omo-overlay-drawer__backdrop" data-memo-document-editor-close></div>
         <div class="omo-overlay-drawer__panel">
-            <div class="omo-overlay-drawer__header">
-                <div class="omo-overlay-drawer__header-copy">
+            <div class="omo-overlay-drawer__header generic-drawer-header">
+                <div class="omo-overlay-drawer__header-copy generic-drawer-header__copy">
                     <h3 class="omo-overlay-drawer__title" data-memo-document-editor-title>Editer le document</h3>
                     <p class="omo-overlay-drawer__description" data-memo-document-editor-description>Modification du document dans EasyMEMO.</p>
                 </div>
-                <button type="button" class="omo-overlay-drawer__close" data-memo-document-editor-close>Fermer</button>
+                <div class="generic-drawer-header__actions">
+                    <button type="button" class="omo-overlay-drawer__close" data-memo-document-editor-close>Fermer</button>
+                </div>
             </div>
             <div class="omo-overlay-drawer__body" data-memo-document-editor-body></div>
         </div>

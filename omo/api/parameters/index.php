@@ -148,12 +148,14 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
     <div class="omo-overlay-drawer omo-settings__nested-drawer" data-omo-settings-nested-drawer hidden>
         <div class="omo-overlay-drawer__backdrop" data-omo-settings-nested-close></div>
         <div class="omo-overlay-drawer__panel">
-            <div class="omo-overlay-drawer__header">
-                <div class="omo-overlay-drawer__header-copy">
+            <div class="omo-overlay-drawer__header generic-drawer-header">
+                <div class="omo-overlay-drawer__header-copy generic-drawer-header__copy">
                     <h3 class="omo-overlay-drawer__title" data-omo-settings-nested-title><?= htmlspecialchars(omoParametersIndexT('parameters.index.title'), ENT_QUOTES, 'UTF-8') ?></h3>
                     <p class="omo-overlay-drawer__description" data-omo-settings-nested-description></p>
                 </div>
-                <button type="button" class="omo-overlay-drawer__close" data-omo-settings-nested-close><?= htmlspecialchars(omoParametersIndexT('parameters.index.action.close'), ENT_QUOTES, 'UTF-8') ?></button>
+                <div class="generic-drawer-header__actions">
+                    <button type="button" class="omo-overlay-drawer__close" data-omo-settings-nested-close><?= htmlspecialchars(omoParametersIndexT('parameters.index.action.close'), ENT_QUOTES, 'UTF-8') ?></button>
+                </div>
             </div>
             <div class="omo-overlay-drawer__body" data-omo-settings-nested-body></div>
         </div>

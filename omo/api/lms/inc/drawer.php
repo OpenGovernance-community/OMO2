@@ -8,6 +8,11 @@
     z-index: 1000;
 }
 
+html.lms-drawer-open,
+body.lms-drawer-open {
+    overflow: hidden;
+}
+
 /* Drawer */
 #drawer {
     position: fixed;
@@ -32,7 +37,7 @@
 #drawer-content {
     flex: 1;
     overflow-y: auto;
-    padding: 20px;
+    padding: 0;
 }
 
 #drawer-footer {
@@ -179,6 +184,8 @@ function closeDrawer() {
 
     drawer.classList.remove('open');
     overlay.style.display = 'none';
+    document.documentElement.classList.remove('lms-drawer-open');
+    document.body.classList.remove('lms-drawer-open');
 
     window.setTimeout(() => {
         if (drawer.classList.contains('open')) {
@@ -200,6 +207,9 @@ function openDrawer(content, options) {
     const footer = document.getElementById('drawer-footer');
     const resolvedOptions = options && typeof options === 'object' ? options : {};
     const simpleMode = !!resolvedOptions.simpleMode;
+    const targetScrollTop = typeof resolvedOptions.scrollTop === 'number' && Number.isFinite(resolvedOptions.scrollTop)
+        ? Math.max(0, resolvedOptions.scrollTop)
+        : 0;
 
     if (typeof window.lmsDestroyCurrentVideoPlayer === 'function') {
         window.lmsDestroyCurrentVideoPlayer({ unload: true }).catch(() => {});
@@ -214,8 +224,21 @@ function openDrawer(content, options) {
 
     document.getElementById('overlay').style.display = 'block';
     drawer.classList.add('open');
+    document.documentElement.classList.add('lms-drawer-open');
+    document.body.classList.add('lms-drawer-open');
 
-    return lmsExecuteDrawerScripts(container).catch(() => {
+    const applyScrollPosition = () => {
+        container.scrollTop = targetScrollTop;
+        window.requestAnimationFrame(() => {
+            container.scrollTop = targetScrollTop;
+        });
+    };
+
+    applyScrollPosition();
+
+    return lmsExecuteDrawerScripts(container).then(() => {
+        applyScrollPosition();
+    }).catch(() => {
         window.alert('Impossible de charger les scripts du drawer.');
     });
 }

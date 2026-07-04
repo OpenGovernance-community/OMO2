@@ -4,6 +4,30 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-07-02
 
+Dans le drawer LMS, chaque vue reinitialise maintenant proprement son scroll interne, et le retour depuis l editeur d une mission vers l editeur de parcours restaure la position precedente au lieu de reutiliser ou perdre le scroll de l autre vue.
+
+Le LMS charge maintenant aussi les feuilles de theme communes, ce qui permet aux pages catalogue et parcours de respecter la preference visuelle deja choisie par l utilisateur, y compris hors du shell OMO principal.
+
+Dans l editeur de parcours du LMS, le bandeau sticky du drawer est maintenant vraiment colle en haut de la zone scrollable, sans jour visible au-dessus pendant le scroll.
+
+Les drawers OMO, Memo et le drawer principal de la topbar reutilisent maintenant un bandeau commun `generic-drawer-header`, ce qui harmonise partout l entete pleine largeur avec degrade leger et permet aussi un mode sticky partage pour les editeurs qui en ont besoin.
+
+Dans l editeur de parcours du LMS, l entete du drawer reprend maintenant le look standard OMO en bandeau pleine largeur non arrondi, colle en haut de la zone et garde les actions `Annuler` et `Enregistrer` toujours visibles pendant le scroll.
+
+Dans le LMS, l ouverture du drawer d edition verrouille maintenant le scroll de la page en arriere-plan, ce qui supprime le double ascenseur visible a droite et laisse uniquement le scroll interne de l editeur.
+
+Dans le LMS, l affichage des cartes de parcours masquees en grise pour les admins d organisation depend maintenant du vrai mode admin explicitement active depuis le menu profil, et non plus du simple statut admin permanent. Les anciens flags de session legacy ne sont plus repris automatiquement comme si ce mode avait ete active.
+
+Dans le LMS, le champ `detail` des devoirs passe maintenant en vrai HTML via `adminEdit`, avec un editeur volontairement simple limite au formatage de base et aux listes. Le detail des devoirs est aussi rendu comme HTML dans la vue mission, pour afficher correctement ces contenus enrichis.
+
+`adminEdit.php` reutilise maintenant plus directement les primitives visuelles partagees du site pour ses champs, panneaux et boutons, afin d aligner le rendu des formulaires d edition sur le reste de l interface.
+
+Dans l editeur de mission OMO du LMS, le formulaire specifique des devoirs a aussi ete aligne sur ce rendu partage et branche au meme editeur HTML simple, car cette zone n utilisait pas `adminEdit.php` mais un formulaire custom.
+
+Les devoirs LMS peuvent maintenant etre marques `admins uniquement` via un flag `onlyAdmin`. Ce nouveau champ est stocke en base, editable dans le formulaire de devoir, et les vues ainsi que la validation des missions ignorent automatiquement ces devoirs pour les membres non admins de l organisation.
+
+Une nouvelle primitive partagee `generic-drag-handle` est disponible dans `components.css` pour les poignees de reordonnancement. Les questions LMS, les devoirs et les missions de l editeur de parcours reutilisent maintenant cette meme base, documentee aussi dans le styleguide.
+
 Dans la popup de profil personnel, le bloc de changement de mot de passe est maintenant replie par defaut derriere une case `Modifier le mot de passe`. Le formulaire ne s affiche qu au besoin, ce qui allegre l editeur au quotidien.
 
 Quand Patreon est active sur le serveur, ses informations de connexion et ses actions de synchronisation sont maintenant affichees dans un onglet dedie de l editeur de profil, au meme niveau que les autres sections.

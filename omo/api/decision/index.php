@@ -1420,12 +1420,14 @@ if (!is_string($payloadJson)) {
             <div class="omo-overlay-drawer omo-decisions__editor-drawer" data-omo-decision-editor-drawer hidden>
                 <div class="omo-overlay-drawer__backdrop" data-omo-decision-editor-close></div>
                 <div class="omo-overlay-drawer__panel">
-                    <div class="omo-overlay-drawer__header">
-                        <div class="omo-overlay-drawer__header-copy">
+                    <div class="omo-overlay-drawer__header generic-drawer-header">
+                        <div class="omo-overlay-drawer__header-copy generic-drawer-header__copy">
                             <h3 class="omo-overlay-drawer__title" data-omo-decision-editor-title><?= $escape(t('decisions.index.action.open_editor_title', [], $lang, $sourceLang)) ?></h3>
                             <p class="omo-overlay-drawer__description" data-omo-decision-editor-description><?= $escape(t('decisions.index.description', [], $lang, $sourceLang)) ?></p>
                         </div>
-                        <button type="button" class="omo-overlay-drawer__close" data-omo-decision-editor-close>Fermer</button>
+                        <div class="generic-drawer-header__actions">
+                            <button type="button" class="omo-overlay-drawer__close" data-omo-decision-editor-close>Fermer</button>
+                        </div>
                     </div>
                     <div class="omo-overlay-drawer__body omo-decisions__editor-body" data-omo-decision-editor-body></div>
                 </div>

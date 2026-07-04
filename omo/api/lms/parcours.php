@@ -47,6 +47,7 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 <head>
 	<title><?php echo htmlspecialchars($parcours['title']); ?></title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="/common/assets/theme.css">
 	<link rel="stylesheet" href="/shared_css.css">
 	<link rel="stylesheet" href="<?php echo htmlspecialchars(omoLmsBuildPath('/css/std.css')); ?>">
 	<script src="/shared_functions.js"></script>

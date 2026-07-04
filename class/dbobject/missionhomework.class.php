@@ -51,7 +51,8 @@
 					mh.IDhomework,
 					mh.position,
 					h.title,
-					h.detail
+					h.detail,
+					COALESCE(h.onlyAdmin, 0) AS onlyAdmin
 				FROM mission_homework mh
 				INNER JOIN homework h
 					ON h.id = mh.IDhomework

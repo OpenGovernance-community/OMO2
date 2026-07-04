@@ -13,6 +13,7 @@
 require_once dirname(__DIR__) . '/common/leaflet_helper.php';
 require_once dirname(__DIR__) . '/common/admin_edit_translation.php';
 ?>
+<link rel="stylesheet" href="/common/assets/components.css">
 <style>
     .navTab a {
         border: 1px solid var(--admin-edit-border-strong, #cbd5e1);
@@ -280,7 +281,7 @@ function getFieldType($object, $key) {
 function displayField($object, $key, $default = null, $filter = null, ?array $translationBundle = null, ?array $translationSourceLang = null) {
 
     $type = $object->getFieldType($key);
-    $class = adminEditMergeClass(($object->isRequired($key) ? "required" : ""), "admin-edit__control");
+    $class = adminEditMergeClass(($object->isRequired($key) ? "required" : ""), "admin-edit__control generic-form-control");
     switch ($type) {
         case "fk" :
             // Return this field's text value
@@ -345,7 +346,7 @@ function displayField($object, $key, $default = null, $filter = null, ?array $tr
                 . "</div>";
             break;
         case "timezone" :
-            $str = "<select name='" . $key . "' id='" . $key . "'>";
+            $str = "<select class='" . $class . "' name='" . $key . "' id='" . $key . "'>";
 
             $timezones = timezone_identifiers_list();
             foreach ($timezones as $timezone) {
@@ -572,8 +573,13 @@ function displayField($object, $key, $default = null, $filter = null, ?array $tr
             return $tmp;
         case "html" :
             $str = $object->get($key);
+            $editorProfiles = method_exists($object, 'attributeHtmlEditorProfiles') ? $object::attributeHtmlEditorProfiles() : array();
+            $editorProfile = isset($editorProfiles[$key]) ? trim((string)$editorProfiles[$key]) : '';
+            $profileAttribute = $editorProfile !== ''
+                ? " data-editor-profile='" . htmlspecialchars($editorProfile, ENT_QUOTES, 'UTF-8') . "'"
+                : '';
 
-            return "<textarea  class='" . adminEditMergeClass($class, "summernote") . "' name='" . $key . "' id='" . $key . "' style='width:100%'>" . $str . "</textarea>";
+            return "<textarea  class='" . adminEditMergeClass($class, "summernote") . "' name='" . $key . "' id='" . $key . "' style='width:100%'" . $profileAttribute . ">" . $str . "</textarea>";
             break;
         case "boolean" :
             return "<input type='hidden' id='" . $key . "' name='" . $key . "' value='0'>" .
@@ -931,10 +937,11 @@ $adminEditCharCountTemplate = adminEditTranslate('admin_edit.length.progress', [
     }
 
     .admin-edit__panel {
-        padding: 24px;
-        border: 1px solid var(--admin-edit-border);
-        border-radius: 22px;
-        background: var(--admin-edit-surface);
+        --generic-soft-panel-padding-block: 24px;
+        --generic-soft-panel-padding-inline: 24px;
+        --generic-soft-panel-radius: 22px;
+        --generic-soft-panel-border: var(--admin-edit-border);
+        --generic-soft-panel-background: var(--admin-edit-surface);
         box-shadow: var(--admin-edit-shadow);
     }
 
@@ -1014,12 +1021,12 @@ $adminEditCharCountTemplate = adminEditTranslate('admin_edit.length.progress', [
     #formulaire-edit select,
     #formulaire-edit textarea {
         width: 100%;
-        min-height: 46px;
-        padding: 12px 14px;
-        border: 1px solid var(--admin-edit-border);
-        border-radius: 14px;
-        background: var(--admin-edit-surface);
-        color: var(--admin-edit-text);
+        min-height: 44px;
+        padding: 11px 12px;
+        border: 1px solid var(--color-border, #d1d5db);
+        border-radius: 12px;
+        background: var(--color-bg, #f8fafc);
+        color: var(--color-text, #1f2937);
         font: inherit;
         line-height: 1.45;
         transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
@@ -1060,22 +1067,22 @@ $adminEditCharCountTemplate = adminEditTranslate('admin_edit.length.progress', [
     #formulaire-edit input[type='file'] {
         width: 100%;
         padding: 10px 12px;
-        border: 1px dashed var(--admin-edit-border-strong);
-        border-radius: 14px;
-        background: color-mix(in srgb, var(--admin-edit-surface-alt) 68%, var(--admin-edit-surface));
-        color: var(--admin-edit-muted);
+        border: 1px dashed var(--color-border, #d1d5db);
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 88%, white 12%);
+        color: var(--color-text-light, #64748b);
         box-sizing: border-box;
     }
 
     #formulaire-edit input[type='file']::file-selector-button {
         margin-right: 12px;
         padding: 10px 14px;
-        border: 0;
+        border: 1px solid var(--color-border, #d1d5db);
         border-radius: 10px;
-        background: color-mix(in srgb, var(--admin-edit-primary) 12%, var(--admin-edit-surface));
-        color: var(--admin-edit-primary);
+        background: var(--color-surface, #ffffff);
+        color: var(--color-text, #1f2937);
         font: inherit;
-        font-weight: 600;
+        font-weight: 700;
         cursor: pointer;
     }
 
@@ -1104,29 +1111,31 @@ $adminEditCharCountTemplate = adminEditTranslate('admin_edit.length.progress', [
     #formulaire-edit select:focus,
     #formulaire-edit textarea:focus {
         outline: none;
-        border-color: var(--admin-edit-primary);
-        box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-edit-primary) 18%, transparent);
+        border-color: color-mix(in srgb, var(--color-primary, #2563eb) 52%, var(--color-border, #d1d5db));
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 14%, transparent);
+        background: var(--color-surface, #ffffff);
     }
 
     #formulaire-edit button:not(.note-btn),
     #formulaire-edit input[type='button'],
     #formulaire-edit input[type='submit'] {
-        min-height: 44px;
-        padding: 0 18px;
+        min-height: 42px;
+        padding: 10px 16px;
         border: 1px solid transparent;
-        border-radius: 999px;
-        background: var(--admin-edit-primary);
-        color: #ffffff;
+        border-radius: 12px;
+        background: var(--color-primary, #2563eb);
+        color: var(--color-text-inverse, #ffffff);
         font: inherit;
         font-weight: 700;
+        line-height: 1.35;
         cursor: pointer;
-        transition: transform 0.18s ease, filter 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+        box-shadow: var(--shadow-md, 0 12px 24px rgba(0, 0, 0, 0.12));
+        transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
     }
 
     #formulaire-edit button:not(.note-btn):hover,
     #formulaire-edit input[type='button']:hover,
     #formulaire-edit input[type='submit']:hover {
-        filter: brightness(1.03);
         transform: translateY(-1px);
     }
 
@@ -1140,9 +1149,10 @@ $adminEditCharCountTemplate = adminEditTranslate('admin_edit.length.progress', [
 
     #formulaire-edit .admin-edit__action--secondary,
     #formulaire-edit .admin-edit__draft-button {
-        background: var(--admin-edit-surface);
-        color: var(--admin-edit-text);
-        border-color: var(--admin-edit-border);
+        background: var(--color-surface-alt, #f0f2f5);
+        color: var(--color-text, #1f2937);
+        border-color: var(--color-border, #d1d5db);
+        box-shadow: none;
     }
 
     #formulaire-edit h1,
@@ -1165,7 +1175,7 @@ $adminEditCharCountTemplate = adminEditTranslate('admin_edit.length.progress', [
 
     .char_count {
         margin-top: 8px;
-        color: var(--admin-edit-muted);
+        color: var(--color-text-light, #64748b);
         font-size: 0.85rem;
     }
 
@@ -1284,14 +1294,14 @@ echo "<input type='hidden' name='MAX_FILE_SIZE' value='300000000' />";
 
 // Navigation buttons
 if ($params["buttons"]) {
-    echo "<div class='admin-edit__toolbar'><div class='admin-edit__toolbar-inner'><div class='admin-edit__toolbar-copy'><h2 class='admin-edit__toolbar-title'>" . htmlspecialchars($adminEditToolbarTitle, ENT_QUOTES, 'UTF-8') . "</h2><p class='admin-edit__toolbar-text'>" . htmlspecialchars(adminEditTranslate('admin_edit.toolbar.text', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "</p></div><div class='admin-edit__actions'><input type='button' class='admin-edit__action--secondary' value='" . htmlspecialchars(adminEditTranslate('admin_edit.action.cancel', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "' onclick='history.go(-1)'> <input id='btn_submit' type='button' value='" . htmlspecialchars(adminEditTranslate('admin_edit.action.save', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "'>";
+    echo "<div class='admin-edit__toolbar'><div class='admin-edit__toolbar-inner'><div class='admin-edit__toolbar-copy'><h2 class='admin-edit__toolbar-title'>" . htmlspecialchars($adminEditToolbarTitle, ENT_QUOTES, 'UTF-8') . "</h2><p class='admin-edit__toolbar-text'>" . htmlspecialchars(adminEditTranslate('admin_edit.toolbar.text', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "</p></div><div class='admin-edit__actions'><input type='button' class='generic-action-button generic-action-button--secondary admin-edit__action--secondary' value='" . htmlspecialchars(adminEditTranslate('admin_edit.action.cancel', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "' onclick='history.go(-1)'> <input id='btn_submit' class='generic-action-button generic-action-button--main' type='button' value='" . htmlspecialchars(adminEditTranslate('admin_edit.action.save', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "'>";
 
     if ($params["displayDraft"]) {
-        echo "<input id='btn_save' class='admin-edit__draft-button' type='button' value='" . htmlspecialchars(adminEditTranslate('admin_edit.action.save_draft', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "'>";
+        echo "<input id='btn_save' class='generic-action-button generic-action-button--secondary admin-edit__draft-button' type='button' value='" . htmlspecialchars(adminEditTranslate('admin_edit.action.save_draft', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "'>";
     }
     echo "</div></div></div>";
 }
-echo "<div class='admin-edit__panel'>";
+echo "<div class='admin-edit__panel generic-soft-panel'>";
 echo "<table class='dbobjecttable'>";
 $id = false;
 $allowProtectedFields = !empty($params["allowProtectedFields"]);
@@ -1557,6 +1567,37 @@ echo "</div>";
             return Promise.resolve();
         }
 
+        function adminEditGetHtmlEditorOptions(field) {
+            var profile = (field.data('editorProfile') || '').toString();
+            var options = {
+                lang: 'fr-FR',
+                height: 240,
+                disableResizeEditor: true,
+                toolbar: [
+                    ['style', ['style']],
+                    ['font', ['bold', 'italic', 'underline', 'clear']],
+                    ['para', ['ul', 'ol', 'paragraph']],
+                    ['insert', ['link', 'table', 'hr']],
+                    ['view', ['codeview']]
+                ]
+            };
+
+            if (profile === 'simple') {
+                options.toolbar = [
+                    ['font', ['bold', 'italic', 'underline', 'clear']],
+                    ['para', ['ul', 'ol', 'paragraph']]
+                ];
+            }
+
+            options.callbacks = {
+                onChange: function (contents) {
+                    field.val(contents);
+                }
+            };
+
+            return options;
+        }
+
         return adminEditEnsureSummernoteAssets()
             .then(function ($) {
                 Array.prototype.forEach.call(textareas, function (textarea) {
@@ -1566,23 +1607,7 @@ echo "</div>";
                     }
 
                     field.data('adminEditSummernoteBound', true);
-                    field.summernote({
-                        lang: 'fr-FR',
-                        height: 240,
-                        disableResizeEditor: true,
-                        toolbar: [
-                            ['style', ['style']],
-                            ['font', ['bold', 'italic', 'underline', 'clear']],
-                            ['para', ['ul', 'ol', 'paragraph']],
-                            ['insert', ['link', 'table', 'hr']],
-                            ['view', ['codeview']]
-                        ],
-                        callbacks: {
-                            onChange: function (contents) {
-                                field.val(contents);
-                            }
-                        }
-                    });
+                    field.summernote(adminEditGetHtmlEditorOptions(field));
 
                     field.val(field.summernote('code'));
                 });
