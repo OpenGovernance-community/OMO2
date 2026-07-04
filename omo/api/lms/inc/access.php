@@ -222,6 +222,26 @@ function lmsCurrentUserCanEditParcours($organizationId, $userId = null, $useSess
 	return $permissionHolon->isAllowed('CAN_EDIT_PARCOURS', (bool)$useSessionCache, $userId);
 }
 
+function lmsCurrentUserIsOrganizationAdmin($organizationId, $userId = null)
+{
+	$organizationId = (int)$organizationId;
+	$userId = lmsResolveCurrentUserId($userId);
+
+	if ($organizationId <= 0 || $userId <= 0 || !commonUserHasOrganizationAccess($userId, $organizationId)) {
+		return false;
+	}
+
+	$membership = new \dbObject\UserOrganization();
+	if (!$membership->load([
+		['IDuser', $userId],
+		['IDorganization', $organizationId],
+	])) {
+		return false;
+	}
+
+	return $membership->isOrganizationAdmin();
+}
+
 function lmsResolveParcoursManagementContext($organizationId, $parcoursId = 0, $userId = null, $useSessionCache = true)
 {
 	$organizationId = (int)$organizationId;
@@ -230,6 +250,7 @@ function lmsResolveParcoursManagementContext($organizationId, $parcoursId = 0, $
 	$hasOrganizationAccess = $organizationId > 0 && $userId > 0
 		? commonUserHasOrganizationAccess($userId, $organizationId)
 		: false;
+	$isOrganizationAdmin = $hasOrganizationAccess ? lmsCurrentUserIsOrganizationAdmin($organizationId, $userId) : false;
 	$canCreate = $hasOrganizationAccess && lmsCurrentUserCanCreateParcours($organizationId, $userId, $useSessionCache);
 	$canEdit = $hasOrganizationAccess && lmsCurrentUserCanEditParcours($organizationId, $userId, $useSessionCache);
 	$link = null;
@@ -252,6 +273,7 @@ function lmsResolveParcoursManagementContext($organizationId, $parcoursId = 0, $
 		'userId' => $userId,
 		'organizationId' => $organizationId,
 		'hasOrganizationAccess' => $hasOrganizationAccess,
+		'isOrganizationAdmin' => $isOrganizationAdmin,
 		'canCreate' => $canCreate,
 		'canEdit' => $canEdit,
 		'link' => $link,

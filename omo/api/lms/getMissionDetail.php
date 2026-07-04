@@ -49,6 +49,7 @@ $parcours_id = (int)($_GET['parcours_id'] ?? 0);
 $accessContext = lmsGetParcoursAccessContext((int)$org['id'], $parcours_id);
 $canTrackProgress = lmsCanTrackProgress($accessContext);
 $isAnonymousViewer = lmsIsAnonymousViewer($accessContext);
+$isOrganizationAdmin = !empty($accessContext['isOrganizationAdmin']);
 
 if (empty($accessContext['exists']) || empty($accessContext['canView'])) {
 	http_response_code(empty($accessContext['isLoggedIn']) ? 401 : 403);
@@ -86,7 +87,8 @@ if ($mission->load($mission_id)) {
 	$homeworks = \dbObject\Mission::fetchHomeworksForMission(
 		$mission_id,
 		!empty($accessContext['isLoggedIn']) ? (int)$accessContext['userId'] : 0,
-		$parcours_id
+		$parcours_id,
+		$isOrganizationAdmin
 	);
 }
 
@@ -270,6 +272,19 @@ if ($m) {
 		  color: var(--text-main, #3b4d5d);
 		  line-height: 1.5;
 		  border-top: 1px solid color-mix(in srgb, var(--border-color, #d8e0e8) 60%, transparent);
+	  }
+
+	  .lms-homework-detail > :first-child {
+		  margin-top: 12px;
+	  }
+
+	  .lms-homework-detail > :last-child {
+		  margin-bottom: 0;
+	  }
+
+	  .lms-homework-detail ul,
+	  .lms-homework-detail ol {
+		  margin: 10px 0 10px 20px;
 	  }
 
 	  .lms-homework-detail[hidden] {
@@ -699,7 +714,7 @@ if ($m) {
 			const homeworkId = Number(homework.id || 0);
 			const detailOpen = !!homeworkExpandedState[homeworkId];
 			const isDone = isHomeworkDone(homework);
-			const detailHtml = escapeHtml(homework.detail || '').replace(/\n/g, '<br>');
+			const detailHtml = String(homework.detail || '');
 
 			html += `
 				<div class="lms-homework-item${isDone ? ' is-done' : ''}" data-homework-id="${homeworkId}">

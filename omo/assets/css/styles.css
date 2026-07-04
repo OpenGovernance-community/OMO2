@@ -1,4 +1,4 @@
-@import url('/common/assets/theme.css');
+@import url('/common/assets/components.css');
 
 :root {
     /* SIDEBAR */
@@ -1469,15 +1469,7 @@ html[data-theme] .common-help-card p {
 }
 
 .omo-overlay-drawer__header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 18px 20px;
-    border-bottom: 1px solid var(--color-border);
-    background: color-mix(in srgb, var(--color-surface) 92%, transparent);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    flex: 0 0 auto;
 }
 
 .omo-overlay-drawer__header-copy {

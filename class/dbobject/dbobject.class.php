@@ -371,6 +371,11 @@
 			return [];
 		}
 
+		public static function attributeHtmlEditorProfiles()
+		{
+			return [];
+		}
+
 		public static function publicReadableFields()
 		{
 			return [];

@@ -649,12 +649,14 @@ if (!is_string($documentsPayload)) {
             <div class="omo-overlay-drawer omo-documents__detail-drawer" data-omo-document-detail-drawer hidden>
                 <div class="omo-overlay-drawer__backdrop" data-omo-document-detail-close></div>
                 <div class="omo-overlay-drawer__panel">
-                    <div class="omo-overlay-drawer__header">
-                        <div class="omo-overlay-drawer__header-copy">
+                    <div class="omo-overlay-drawer__header generic-drawer-header">
+                        <div class="omo-overlay-drawer__header-copy generic-drawer-header__copy">
                             <h3 class="omo-overlay-drawer__title" data-omo-document-detail-title><?= $escape(omoDocumentsScopeT('documents.drawer.detail_title')) ?></h3>
                             <p class="omo-overlay-drawer__description" data-omo-document-detail-description><?= $escape(omoDocumentsScopeT('documents.drawer.detail_description')) ?></p>
                         </div>
-                        <button type="button" class="omo-overlay-drawer__close" data-omo-document-detail-close><?= $escape(omoDocumentsScopeT('documents.drawer.close')) ?></button>
+                        <div class="generic-drawer-header__actions">
+                            <button type="button" class="omo-overlay-drawer__close" data-omo-document-detail-close><?= $escape(omoDocumentsScopeT('documents.drawer.close')) ?></button>
+                        </div>
                     </div>
                     <div class="omo-overlay-drawer__body" data-omo-document-detail-body></div>
                 </div>
@@ -2046,12 +2048,14 @@ if (!is_string($documentsPayload)) {
         <div class="omo-overlay-drawer omo-documents__editor-drawer" data-omo-document-editor-drawer hidden>
             <div class="omo-overlay-drawer__backdrop" data-omo-document-editor-close></div>
             <div class="omo-overlay-drawer__panel">
-                <div class="omo-overlay-drawer__header">
-                    <div class="omo-overlay-drawer__header-copy">
+                <div class="omo-overlay-drawer__header generic-drawer-header">
+                    <div class="omo-overlay-drawer__header-copy generic-drawer-header__copy">
                         <h3 class="omo-overlay-drawer__title" data-omo-document-editor-title><?= $escape(omoDocumentsScopeT('documents.drawer.editor_title')) ?></h3>
                         <p class="omo-overlay-drawer__description" data-omo-document-editor-description><?= $escape(omoDocumentsScopeT('documents.drawer.editor_description')) ?></p>
                     </div>
-                    <button type="button" class="omo-overlay-drawer__close" data-omo-document-editor-close><?= $escape(omoDocumentsScopeT('documents.drawer.close')) ?></button>
+                    <div class="generic-drawer-header__actions">
+                        <button type="button" class="omo-overlay-drawer__close" data-omo-document-editor-close><?= $escape(omoDocumentsScopeT('documents.drawer.close')) ?></button>
+                    </div>
                 </div>
                 <div class="omo-overlay-drawer__body" data-omo-document-editor-body></div>
             </div>

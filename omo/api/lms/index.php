@@ -104,6 +104,7 @@ foreach ($parcours as $parcoursItem) {
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($isBasicCatalogMode ? lmsIndexT('lms.index.title.catalog_brand') : $org['name']); ?></title>
+    <link rel="stylesheet" href="/common/assets/theme.css">
     <link rel="stylesheet" href="/shared_css.css">
     <link rel="stylesheet" href="<?php echo htmlspecialchars(omoLmsBuildPath('/css/std.css')); ?>">
     <?php if ($isEmbedded && $canCreateParcours): ?>
@@ -882,6 +883,7 @@ const lmsMissionDependencyAddPath = <?php echo json_encode(lmsBuildLocalPath('/m
 const lmsMissionDependencyRemovePath = <?php echo json_encode(lmsBuildLocalPath('/mission_dependency_remove.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsMissionHomeworkReorderPath = <?php echo json_encode(lmsBuildLocalPath('/mission_homework_reorder.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
 const lmsMissionQuestionReorderPath = <?php echo json_encode(lmsBuildLocalPath('/mission_question_reorder.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+const lmsParcoursEditorScrollMemory = {};
 
 function getAnonymousProgressKey(parcoursId) {
     return `lms_progress_${lmsIndexViewer.organizationId}_${parcoursId}`;
@@ -1065,6 +1067,26 @@ function buildMissionEditUrl(parcoursId, missionId) {
     return targetUrl.pathname + targetUrl.search + targetUrl.hash;
 }
 
+function lmsRememberParcoursEditorScroll(parcoursId) {
+    const drawerContent = document.getElementById('drawer-content');
+    if (!drawerContent || parcoursId <= 0) {
+        return;
+    }
+
+    lmsParcoursEditorScrollMemory[String(parcoursId)] = drawerContent.scrollTop;
+}
+
+function lmsGetRememberedParcoursEditorScroll(parcoursId) {
+    if (parcoursId <= 0) {
+        return 0;
+    }
+
+    const rememberedScroll = lmsParcoursEditorScrollMemory[String(parcoursId)];
+    return typeof rememberedScroll === 'number' && Number.isFinite(rememberedScroll)
+        ? Math.max(0, rememberedScroll)
+        : 0;
+}
+
 function initLmsDrawerContent() {
     initMissionEditorDrawer();
     initParcoursEditorDrawer();
@@ -1079,7 +1101,12 @@ async function refreshMissionEditor(parcoursId, missionId) {
         return;
     }
 
-    await openDrawerFromUrl(buildMissionEditUrl(parcoursId, missionId), { simpleMode: true });
+    const drawerContent = document.getElementById('drawer-content');
+    const currentScrollTop = drawerContent ? drawerContent.scrollTop : 0;
+    await openDrawerFromUrl(buildMissionEditUrl(parcoursId, missionId), {
+        simpleMode: true,
+        scrollTop: currentScrollTop
+    });
     initLmsDrawerContent();
 }
 
@@ -1104,6 +1131,27 @@ function lmsSyncAdminEditHtmlFields(scopeElement) {
     }
 }
 
+function lmsSetHtmlFieldValue(field, value) {
+    if (!field) {
+        return;
+    }
+
+    const nextValue = String(value || '');
+    if (window.jQuery) {
+        const $field = window.jQuery(field);
+        if ($field.data('adminEditSummernoteBound') === true && typeof $field.summernote === 'function') {
+            try {
+                $field.summernote('code', nextValue);
+                $field.val(nextValue);
+                return;
+            } catch (error) {
+            }
+        }
+    }
+
+    field.value = nextValue;
+}
+
 function initParcoursEditorDrawer() {
     const drawerContent = document.getElementById('drawer-content');
     const form = drawerContent ? drawerContent.querySelector('#formulaire-edit') : null;
@@ -1114,8 +1162,76 @@ function initParcoursEditorDrawer() {
     }
 
     let isSubmitting = false;
+    let isDirty = false;
+    let initialState = '';
     form.dataset.lmsParcoursEditorBound = '1';
-    lmsInitAdminEditHtmlFields(form);
+
+    const setSubmitState = () => {
+        submitButton.disabled = isSubmitting || !isDirty;
+    };
+
+    const captureParcoursEditorState = () => {
+        lmsSyncAdminEditHtmlFields(form);
+
+        const serializedEntries = [];
+        const formData = new FormData(form);
+        formData.forEach((value, key) => {
+            if (value instanceof File) {
+                if (value && value.name) {
+                    serializedEntries.push([key, `file:${value.name}:${value.size}:${value.type}`]);
+                }
+                return;
+            }
+
+            serializedEntries.push([key, String(value)]);
+        });
+
+        if (window.croppedImages && typeof window.croppedImages === 'object') {
+            Object.keys(window.croppedImages).sort().forEach((key) => {
+                const blob = window.croppedImages[key];
+                if (!blob) {
+                    return;
+                }
+
+                serializedEntries.push([`__cropped__${key}`, `${blob.type}:${blob.size}`]);
+            });
+        }
+
+        serializedEntries.sort((entryA, entryB) => {
+            const left = `${entryA[0]}::${entryA[1]}`;
+            const right = `${entryB[0]}::${entryB[1]}`;
+            return left.localeCompare(right);
+        });
+
+        return JSON.stringify(serializedEntries);
+    };
+
+    const refreshDirtyState = () => {
+        isDirty = captureParcoursEditorState() !== initialState;
+        setSubmitState();
+    };
+
+    submitButton.disabled = true;
+    Promise.resolve(lmsInitAdminEditHtmlFields(form)).then(() => {
+        initialState = captureParcoursEditorState();
+        isDirty = false;
+        setSubmitState();
+
+        if (window.jQuery) {
+            window.jQuery(form).find('textarea.summernote').each(function () {
+                window.jQuery(this)
+                    .off('.lmsParcoursDirty')
+                    .on('summernote.change.lmsParcoursDirty summernote.keyup.lmsParcoursDirty', refreshDirtyState);
+            });
+        }
+    }).catch(() => {
+        initialState = captureParcoursEditorState();
+        isDirty = false;
+        setSubmitState();
+    });
+
+    form.addEventListener('input', refreshDirtyState, true);
+    form.addEventListener('change', refreshDirtyState, true);
 
     const submitParcoursEditorForm = async (event) => {
         if (event) {
@@ -1123,7 +1239,7 @@ function initParcoursEditorDrawer() {
             event.stopImmediatePropagation();
         }
 
-        if (isSubmitting) {
+        if (isSubmitting || !isDirty) {
             return;
         }
 
@@ -1182,13 +1298,16 @@ function initParcoursEditorDrawer() {
                 throw new Error(payload && payload.message ? payload.message : 'Impossible d enregistrer ce parcours.');
             }
 
+            initialState = captureParcoursEditorState();
+            isDirty = false;
+            setSubmitState();
             closeDrawer();
             window.location.reload();
         } catch (error) {
             window.alert(error && error.message ? error.message : 'Impossible d enregistrer ce parcours.');
         } finally {
             isSubmitting = false;
-            submitButton.disabled = false;
+            setSubmitState();
         }
     };
 
@@ -1359,7 +1478,7 @@ function initMissionEditorDrawer() {
 
     editor.querySelectorAll('[data-lms-back-to-parcours-editor]').forEach((button) => {
         button.addEventListener('click', function () {
-            openParcoursEditorDrawer(parcoursId);
+            openParcoursEditorDrawer(parcoursId, { restoreScroll: true });
         });
     });
 
@@ -2314,6 +2433,13 @@ function resetMissionHomeworkForm(homeworkForm, submitButton) {
         idField.value = '';
     }
 
+    const detailField = homeworkForm.querySelector('[name="detail"]');
+    const onlyAdminField = homeworkForm.querySelector('input[type="checkbox"][name="onlyAdmin"]');
+    lmsSetHtmlFieldValue(detailField, '');
+    if (onlyAdminField) {
+        onlyAdminField.checked = false;
+    }
+
     homeworkForm.hidden = true;
     setMissionFormButtonLabel(submitButton, lmsIndexText.createHomework);
 }
@@ -2331,6 +2457,8 @@ function openMissionHomeworkFormForCreate(homeworkForm, submitButton) {
 
     homeworkForm.hidden = false;
     setMissionFormButtonLabel(submitButton, lmsIndexText.createHomework);
+    lmsSetHtmlFieldValue(homeworkForm.querySelector('[name="detail"]'), '');
+    lmsInitAdminEditHtmlFields(homeworkForm);
 }
 
 function openMissionHomeworkFormForEdit(homeworkForm, submitButton, item) {
@@ -2341,6 +2469,7 @@ function openMissionHomeworkFormForEdit(homeworkForm, submitButton, item) {
     const idField = homeworkForm.querySelector('[name="id"]');
     const titleField = homeworkForm.querySelector('[name="title"]');
     const detailField = homeworkForm.querySelector('[name="detail"]');
+    const onlyAdminField = homeworkForm.querySelector('input[type="checkbox"][name="onlyAdmin"]');
 
     if (idField) {
         idField.value = String(item.getAttribute('data-homework-id') || '');
@@ -2348,12 +2477,24 @@ function openMissionHomeworkFormForEdit(homeworkForm, submitButton, item) {
     if (titleField) {
         titleField.value = String(item.getAttribute('data-homework-title') || '');
     }
-    if (detailField) {
-        detailField.value = String(item.getAttribute('data-homework-detail') || '');
+    lmsSetHtmlFieldValue(detailField, String(item.getAttribute('data-homework-detail') || ''));
+    if (onlyAdminField) {
+        onlyAdminField.checked = String(item.getAttribute('data-homework-only-admin') || '0') === '1';
     }
 
     homeworkForm.hidden = false;
     setMissionFormButtonLabel(submitButton, 'Mettre a jour le devoir');
+    lmsInitAdminEditHtmlFields(homeworkForm);
+    if (titleField) {
+        window.setTimeout(function () {
+            try {
+                titleField.focus({ preventScroll: true });
+            } catch (error) {
+                titleField.focus();
+            }
+            titleField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 0);
+    }
 }
 
 function resetMissionQuestionForm(questionForm, submitButton) {
@@ -2613,6 +2754,7 @@ function initMissionRelatedManagers() {
     if (homeworkForm) {
         let isSubmittingHomework = false;
         const submitButton = homeworkSubmitButton;
+        lmsInitAdminEditHtmlFields(homeworkForm);
 
         homeworkForm.addEventListener('submit', async function (event) {
             event.preventDefault();
@@ -2635,6 +2777,7 @@ function initMissionRelatedManagers() {
             }
 
             try {
+                lmsSyncAdminEditHtmlFields(homeworkForm);
                 const formData = new FormData(homeworkForm);
                 formData.set('pid', String(parcoursId));
                 formData.set('mid', String(missionId));
@@ -2799,17 +2942,21 @@ function openImportParcoursDrawer(event) {
         });
 }
 
-function openParcoursEditorDrawer(parcoursId) {
+function openParcoursEditorDrawer(parcoursId, options) {
     if (!lmsIndexViewer.canCreateParcours && !lmsIndexViewer.canEditParcours) {
         return Promise.resolve();
     }
 
     closeAllParcoursCardMenus();
+    const resolvedOptions = options && typeof options === 'object' ? options : {};
 
     const targetUrl = new URL(lmsParcoursEditBasePath, window.location.origin);
     targetUrl.searchParams.set('pid', String(parcoursId));
 
-    return openDrawerFromUrl(targetUrl.pathname + targetUrl.search + targetUrl.hash, { simpleMode: true })
+    return openDrawerFromUrl(targetUrl.pathname + targetUrl.search + targetUrl.hash, {
+        simpleMode: true,
+        scrollTop: resolvedOptions.restoreScroll ? lmsGetRememberedParcoursEditorScroll(parcoursId) : 0
+    })
         .then(() => {
             initLmsDrawerContent();
         })
@@ -2904,7 +3051,8 @@ function openMissionEditorDrawer(event, parcoursId, missionId) {
     }
 
     closeAllMissionItemMenus();
-    openDrawerFromUrl(buildMissionEditUrl(parcoursId, missionId), { simpleMode: true })
+    lmsRememberParcoursEditorScroll(parcoursId);
+    openDrawerFromUrl(buildMissionEditUrl(parcoursId, missionId), { simpleMode: true, scrollTop: 0 })
         .then(() => {
             initLmsDrawerContent();
         })

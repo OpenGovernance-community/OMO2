@@ -637,12 +637,16 @@ function commonRenderTopbar(array $options = [])
 <div class="common-topbar-drawer" id="commonTopbarDrawer" hidden>
     <div class="common-topbar-drawer__backdrop" data-topbar-drawer-close></div>
     <div class="common-topbar-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="commonTopbarDrawerTitle">
-        <div class="common-topbar-drawer__header">
-            <h3 id="commonTopbarDrawerTitle"><?= htmlspecialchars($config['drawer']['defaultTitle']) ?></h3>
-            <button type="button" class="common-topbar-drawer__close" data-topbar-drawer-close aria-label="<?= htmlspecialchars($config['drawer']['closeLabel']) ?>">
-                <span aria-hidden="true">&times;</span>
-                <span class="common-topbar__visually-hidden"><?= htmlspecialchars($config['drawer']['closeLabel']) ?></span>
-            </button>
+        <div class="common-topbar-drawer__header generic-drawer-header">
+            <div class="generic-drawer-header__copy">
+                <h3 id="commonTopbarDrawerTitle"><?= htmlspecialchars($config['drawer']['defaultTitle']) ?></h3>
+            </div>
+            <div class="generic-drawer-header__actions">
+                <button type="button" class="common-topbar-drawer__close" data-topbar-drawer-close aria-label="<?= htmlspecialchars($config['drawer']['closeLabel']) ?>">
+                    <span aria-hidden="true">&times;</span>
+                    <span class="common-topbar__visually-hidden"><?= htmlspecialchars($config['drawer']['closeLabel']) ?></span>
+                </button>
+            </div>
         </div>
         <div class="common-topbar-drawer__body" id="commonTopbarDrawerBody"></div>
     </div>

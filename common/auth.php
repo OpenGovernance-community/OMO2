@@ -1001,7 +1001,7 @@ function commonRestoreRememberedUser()
 {
     if (commonIsDemoHost()) {
         unset($_SESSION['currentUser']);
-        commonClearCurrentUserAdminMode();
+        commonClearCurrentUserAllAdminModes();
         unset($_SESSION['permissionCacheByOrganization']);
         unset($_SESSION['userRef']);
         unset($_SESSION['challenge']);
@@ -1034,7 +1034,7 @@ function commonRestoreRememberedUser()
     }
 
     unset($_SESSION['permissionCacheByOrganization']);
-    commonClearCurrentUserAdminMode();
+    commonClearCurrentUserAllAdminModes();
     $_SESSION['currentUser'] = (int)$remember->get('IDuser');
     commonUpdateLastConnection((int)$_SESSION['currentUser']);
     commonRefreshRememberedUser($remember);
@@ -1113,6 +1113,12 @@ function commonClearCurrentUserSiteAdminMode()
     unset($_SESSION['isAdminModeEnabled']);
 }
 
+function commonClearCurrentUserAllAdminModes()
+{
+    commonClearCurrentUserAdminMode();
+    commonClearCurrentUserSiteAdminMode();
+}
+
 function commonCurrentUserCanUseAdminMode($organizationId = null)
 {
     $organizationId = $organizationId !== null
@@ -1148,29 +1154,30 @@ function commonCurrentUserIsAdminModeEnabled($organizationId = null)
         return false;
     }
 
-    if (!isset($_SESSION['isAdminByOrganization']) || !is_array($_SESSION['isAdminByOrganization'])) {
-        if (!empty($_SESSION['isAdmin'])) {
-            $_SESSION['isAdminByOrganization'] = [
-                $organizationId => true,
-            ];
-            unset($_SESSION['isAdmin']);
-        } else {
-            return false;
-        }
+    return isset($_SESSION['isAdminByOrganization'])
+        && is_array($_SESSION['isAdminByOrganization'])
+        && !empty($_SESSION['isAdminByOrganization'][$organizationId]);
+}
+
+function commonCurrentUserIsAdminModeExplicitlyEnabled($organizationId = null)
+{
+    $organizationId = $organizationId !== null
+        ? (int)$organizationId
+        : (int)($_SESSION['currentOrganization'] ?? 0);
+
+    if (!commonCurrentUserCanUseAdminMode($organizationId) || $organizationId <= 0) {
+        return false;
     }
 
-    return !empty($_SESSION['isAdminByOrganization'][$organizationId]);
+    return isset($_SESSION['isAdminByOrganization'])
+        && is_array($_SESSION['isAdminByOrganization'])
+        && !empty($_SESSION['isAdminByOrganization'][$organizationId]);
 }
 
 function commonCurrentUserIsSiteAdminModeEnabled()
 {
     if (!commonCurrentUserCanUseSiteAdminMode()) {
         return false;
-    }
-
-    if (!array_key_exists('isSiteAdminModeEnabled', $_SESSION)) {
-        $_SESSION['isSiteAdminModeEnabled'] = !empty($_SESSION['isAdminModeEnabled']);
-        unset($_SESSION['isAdminModeEnabled']);
     }
 
     return !empty($_SESSION['isSiteAdminModeEnabled']);
@@ -1671,7 +1678,7 @@ function commonLogoutUser()
         : 'currentCode';
 
     unset($_SESSION['currentUser']);
-    commonClearCurrentUserAdminMode();
+    commonClearCurrentUserAllAdminModes();
     unset($_SESSION['permissionCacheByOrganization']);
     unset($_SESSION['userRef']);
     unset($_SESSION['challenge']);
@@ -2449,7 +2456,7 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
 
     session_regenerate_id(true);
     $_SESSION['currentUser'] = (int)$loginToken->get('IDuser');
-    commonClearCurrentUserAdminMode();
+    commonClearCurrentUserAllAdminModes();
     unset($_SESSION['permissionCacheByOrganization']);
     session_write_close();
 
@@ -2546,7 +2553,7 @@ function commonHandlePasswordLogin($defaultReturnTo = '/')
     session_regenerate_id(true);
     $_SESSION['currentUser'] = (int)$user->getId();
     $_SESSION['userRef'] = $user;
-    commonClearCurrentUserAdminMode();
+    commonClearCurrentUserAllAdminModes();
     unset($_SESSION['permissionCacheByOrganization']);
     commonStorePendingLoginToken(null);
     session_write_close();

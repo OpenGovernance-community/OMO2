@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $validInvitation instanceof \dbObje
 			if ($user->load((int)$result['userId']) && $organization->load((int)$result['organizationId'])) {
 				session_regenerate_id(true);
 				$_SESSION['currentUser'] = (int)$user->getId();
-				commonClearCurrentUserAdminMode();
+				commonClearCurrentUserAllAdminModes();
 				$_SESSION['permissionCacheByOrganization'] = array();
 				$_SESSION['userRef'] = $user;
 				$_SESSION['currentOrganization'] = (int)$organization->getId();
