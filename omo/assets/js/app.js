@@ -2262,6 +2262,303 @@ function omoNormalizeHashToken(token) {
     return normalizedToken === '' ? null : normalizedToken;
 }
 
+const OMO_SEARCH_POPUP_STORAGE_KEY = 'omo.search.popup';
+const OMO_SEARCH_POPUP_MAX_JOBS = 24;
+const OMO_SEARCH_POPUP_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+let omoSearchPopupMemoryState = {
+    pending: null,
+    jobs: {}
+};
+
+function omoGetSearchPopupStorage() {
+    try {
+        return window.sessionStorage || null;
+    } catch (error) {
+        return null;
+    }
+}
+
+function omoNormalizeSearchPopupContext(context = null) {
+    const rawContext = context && typeof context === 'object'
+        ? context
+        : {};
+    const parsedOid = Number(rawContext.oid || rawContext.organizationId || 0);
+    const parsedCid = Number(omoNormalizeRouteCid(rawContext.cid || rawContext.currentHolonId || 0) || 0);
+
+    return {
+        oid: Number.isInteger(parsedOid) && parsedOid > 0 ? parsedOid : null,
+        cid: Number.isInteger(parsedCid) && parsedCid > 0 ? parsedCid : null
+    };
+}
+
+function omoNormalizeSearchPopupScopes(scopes = []) {
+    const rawScopes = Array.isArray(scopes)
+        ? scopes
+        : [scopes];
+    const seenScopes = new Set();
+    const normalizedScopes = [];
+
+    rawScopes.forEach(function (scope) {
+        const normalizedScope = String(scope || '').trim();
+        if (normalizedScope === '' || seenScopes.has(normalizedScope)) {
+            return;
+        }
+
+        seenScopes.add(normalizedScope);
+        normalizedScopes.push(normalizedScope);
+    });
+
+    return normalizedScopes;
+}
+
+function omoNormalizeSearchPopupEntry(entry = null) {
+    const rawEntry = entry && typeof entry === 'object'
+        ? entry
+        : {};
+    const normalizedContext = omoNormalizeSearchPopupContext(rawEntry);
+    const query = String(rawEntry.query || '').trim();
+    const scopes = omoNormalizeSearchPopupScopes(rawEntry.scopes || []);
+    const parsedJobId = Number(rawEntry.jobId || 0);
+    const jobToken = String(rawEntry.jobToken || '').trim();
+    const parsedSavedAt = Number(rawEntry.savedAt || Date.now());
+    const savedAt = Number.isFinite(parsedSavedAt) && parsedSavedAt > 0
+        ? parsedSavedAt
+        : Date.now();
+
+    if (!normalizedContext.oid || (query === '' && (!Number.isInteger(parsedJobId) || parsedJobId <= 0))) {
+        return null;
+    }
+
+    return {
+        query: query,
+        scopes: scopes,
+        oid: normalizedContext.oid,
+        cid: normalizedContext.cid,
+        jobId: Number.isInteger(parsedJobId) && parsedJobId > 0 ? parsedJobId : null,
+        jobToken: jobToken !== '' ? jobToken : null,
+        savedAt: savedAt
+    };
+}
+
+function omoNormalizeSearchPopupStorageState(state = null) {
+    const rawState = state && typeof state === 'object'
+        ? state
+        : {};
+    const now = Date.now();
+    const jobEntries = [];
+    const rawJobs = rawState.jobs && typeof rawState.jobs === 'object'
+        ? rawState.jobs
+        : {};
+
+    Object.keys(rawJobs).forEach(function (jobKey) {
+        const entry = omoNormalizeSearchPopupEntry(rawJobs[jobKey]);
+        if (!entry || !entry.jobId || !entry.jobToken) {
+            return;
+        }
+
+        if ((now - entry.savedAt) > OMO_SEARCH_POPUP_MAX_AGE_MS) {
+            return;
+        }
+
+        jobEntries.push(entry);
+    });
+
+    jobEntries.sort(function (leftEntry, rightEntry) {
+        return rightEntry.savedAt - leftEntry.savedAt;
+    });
+
+    const jobs = {};
+    jobEntries.slice(0, OMO_SEARCH_POPUP_MAX_JOBS).forEach(function (entry) {
+        jobs[String(entry.jobId)] = entry;
+    });
+
+    let pending = omoNormalizeSearchPopupEntry(rawState.pending);
+    if (pending && (now - pending.savedAt) > OMO_SEARCH_POPUP_MAX_AGE_MS) {
+        pending = null;
+    }
+
+    if (pending && pending.jobId && pending.jobToken && !jobs[String(pending.jobId)]) {
+        jobs[String(pending.jobId)] = pending;
+    }
+
+    return {
+        pending: pending,
+        jobs: jobs
+    };
+}
+
+function omoReadSearchPopupStorageState() {
+    const storage = omoGetSearchPopupStorage();
+    if (!storage) {
+        return omoNormalizeSearchPopupStorageState(omoSearchPopupMemoryState);
+    }
+
+    try {
+        const rawValue = storage.getItem(OMO_SEARCH_POPUP_STORAGE_KEY);
+        if (!rawValue) {
+            return omoNormalizeSearchPopupStorageState(omoSearchPopupMemoryState);
+        }
+
+        const normalizedState = omoNormalizeSearchPopupStorageState(JSON.parse(rawValue));
+        omoSearchPopupMemoryState = normalizedState;
+        return normalizedState;
+    } catch (error) {
+        return omoNormalizeSearchPopupStorageState(omoSearchPopupMemoryState);
+    }
+}
+
+function omoWriteSearchPopupStorageState(state = null) {
+    const storage = omoGetSearchPopupStorage();
+    const normalizedState = omoNormalizeSearchPopupStorageState(state);
+    if (!storage) {
+        omoSearchPopupMemoryState = normalizedState;
+        return true;
+    }
+
+    try {
+        storage.setItem(OMO_SEARCH_POPUP_STORAGE_KEY, JSON.stringify(normalizedState));
+        omoSearchPopupMemoryState = normalizedState;
+        return true;
+    } catch (error) {
+        omoSearchPopupMemoryState = normalizedState;
+        return true;
+    }
+}
+
+function omoSearchPopupContextsMatch(entry, context = null) {
+    const normalizedEntry = omoNormalizeSearchPopupEntry(entry);
+    const normalizedContext = omoNormalizeSearchPopupContext(
+        context && typeof context === 'object'
+            ? context
+            : (typeof parseUrl === 'function' ? parseUrl() : null)
+    );
+
+    if (!normalizedEntry || !normalizedContext.oid) {
+        return false;
+    }
+
+    return normalizedEntry.oid === normalizedContext.oid
+        && (normalizedEntry.cid || null) === (normalizedContext.cid || null);
+}
+
+function omoSetSearchPopupPendingState(query, scopes = [], context = null) {
+    const normalizedContext = omoNormalizeSearchPopupContext(
+        context && typeof context === 'object'
+            ? context
+            : (typeof parseUrl === 'function' ? parseUrl() : null)
+    );
+    const normalizedQuery = String(query || '').trim();
+    const normalizedScopes = omoNormalizeSearchPopupScopes(scopes);
+
+    if (!normalizedContext.oid || normalizedQuery === '') {
+        return false;
+    }
+
+    const state = omoReadSearchPopupStorageState();
+    state.pending = {
+        query: normalizedQuery,
+        scopes: normalizedScopes,
+        oid: normalizedContext.oid,
+        cid: normalizedContext.cid,
+        jobId: null,
+        jobToken: null,
+        savedAt: Date.now()
+    };
+
+    return omoWriteSearchPopupStorageState(state);
+}
+
+function omoGetSearchPopupPendingState(context = null) {
+    const state = omoReadSearchPopupStorageState();
+    return omoSearchPopupContextsMatch(state.pending, context)
+        ? state.pending
+        : null;
+}
+
+function omoGetSearchPopupJobState(jobId, context = null) {
+    const normalizedJobId = Number(jobId || 0);
+    if (!Number.isInteger(normalizedJobId) || normalizedJobId <= 0) {
+        return null;
+    }
+
+    const state = omoReadSearchPopupStorageState();
+    const jobState = state.jobs[String(normalizedJobId)] || null;
+
+    return omoSearchPopupContextsMatch(jobState, context)
+        ? jobState
+        : null;
+}
+
+function omoReplaceSearchPopupHashWithJobId(jobId) {
+    const normalizedJobId = Number(jobId || 0);
+    if (!Number.isInteger(normalizedJobId) || normalizedJobId <= 0 || typeof parseUrl !== 'function') {
+        return false;
+    }
+
+    const route = parseUrl();
+    const hashState = omoParseHashState(route.hash || null);
+    if (hashState.popupKey !== 'search') {
+        return false;
+    }
+
+    const nextHash = omoBuildHashFromState(
+        hashState.routeToken,
+        omoBuildPopupToken('search', normalizedJobId)
+    );
+
+    if ((nextHash || null) === (route.hash || null)) {
+        return true;
+    }
+
+    history.replaceState({}, '', buildOmoUrl(route.oid, route.cid, nextHash));
+
+    if (currentState && typeof currentState === 'object') {
+        currentState = {
+            oid: currentState.oid,
+            cid: currentState.cid,
+            hash: nextHash,
+            routeToken: hashState.routeToken,
+            popupToken: omoBuildPopupToken('search', normalizedJobId)
+        };
+    }
+
+    return true;
+}
+
+function omoRegisterSearchPopupJobState(options = {}) {
+    const rawOptions = options && typeof options === 'object'
+        ? options
+        : {};
+    const normalizedEntry = omoNormalizeSearchPopupEntry({
+        query: rawOptions.query,
+        scopes: rawOptions.scopes,
+        oid: rawOptions.oid || rawOptions.organizationId,
+        cid: rawOptions.cid || rawOptions.currentHolonId,
+        jobId: rawOptions.jobId,
+        jobToken: rawOptions.jobToken,
+        savedAt: Date.now()
+    });
+
+    if (!normalizedEntry || !normalizedEntry.jobId || !normalizedEntry.jobToken) {
+        return false;
+    }
+
+    const state = omoReadSearchPopupStorageState();
+    state.jobs[String(normalizedEntry.jobId)] = normalizedEntry;
+
+    if (rawOptions.setPending !== false) {
+        state.pending = normalizedEntry;
+    }
+
+    omoWriteSearchPopupStorageState(state);
+
+    if (rawOptions.syncHash !== false) {
+        omoReplaceSearchPopupHashWithJobId(normalizedEntry.jobId);
+    }
+
+    return true;
+}
+
 function omoParsePopupToken(token = null) {
     const rawToken = omoNormalizeHashToken(token);
 
@@ -2491,6 +2788,10 @@ function omoFormatPopupTitle(popupKey) {
         return 'Supprimer';
     }
 
+    if (popupKey === 'search') {
+        return 'Recherche';
+    }
+
     return (popupKey.split('/').pop() || popupKey)
         .replace(/[-_]+/g, ' ')
         .replace(/\b\w/g, function (character) {
@@ -2542,6 +2843,48 @@ function omoResolveTutorialPopupRoute(popupKey, popupId, currentRoute) {
     };
 }
 
+function omoResolveSearchPopupRoute(popupId, currentRoute) {
+    const normalizedContext = omoNormalizeSearchPopupContext(currentRoute);
+    const parsedPopupId = Number(popupId || 0);
+    const queryParts = [];
+    const pendingState = omoGetSearchPopupPendingState(normalizedContext);
+    const jobState = Number.isInteger(parsedPopupId) && parsedPopupId > 0
+        ? omoGetSearchPopupJobState(parsedPopupId, normalizedContext)
+        : null;
+    let resolvedState = jobState;
+
+    if (normalizedContext.oid) {
+        queryParts.push(`oid=${encodeURIComponent(normalizedContext.oid)}`);
+    }
+
+    if (normalizedContext.cid) {
+        queryParts.push(`cid=${encodeURIComponent(normalizedContext.cid)}`);
+    }
+
+    if (!resolvedState && pendingState) {
+        resolvedState = pendingState;
+    }
+
+    if (resolvedState && resolvedState.jobId && resolvedState.jobToken && (!parsedPopupId || resolvedState.jobId === parsedPopupId)) {
+        queryParts.push(`restore_job_id=${encodeURIComponent(resolvedState.jobId)}`);
+        queryParts.push(`restore_job_token=${encodeURIComponent(resolvedState.jobToken)}`);
+    } else if (resolvedState && resolvedState.query !== '') {
+        queryParts.push(`q=${encodeURIComponent(resolvedState.query)}`);
+        resolvedState.scopes.forEach(function (scopeId) {
+            queryParts.push(`scopes[]=${encodeURIComponent(scopeId)}`);
+        });
+    }
+
+    return {
+        key: 'search',
+        id: Number.isInteger(parsedPopupId) && parsedPopupId > 0 ? parsedPopupId : null,
+        token: omoBuildPopupToken('search', parsedPopupId),
+        title: 'Recherche',
+        url: omoResolveAppUrl(`/omo/api/search_popup.php${queryParts.length > 0 ? `?${queryParts.join('&')}` : ''}`),
+        mode: 'fetch'
+    };
+}
+
 function omoResolvePopupRoute(popupKey, popupId = null) {
     const normalizedPopupKey = omoNormalizeHashToken(popupKey);
     const parsedPopupId = Number(popupId);
@@ -2555,6 +2898,10 @@ function omoResolvePopupRoute(popupKey, popupId = null) {
 
     if (normalizedPopupKey === 'tutorials' || normalizedPopupKey.indexOf('tutorials/') === 0) {
         return omoResolveTutorialPopupRoute(normalizedPopupKey, parsedPopupId, currentRoute);
+    }
+
+    if (normalizedPopupKey === 'search') {
+        return omoResolveSearchPopupRoute(parsedPopupId, currentRoute);
     }
 
     let url = `/popup/${normalizedPopupKey}.php`;
@@ -2711,6 +3058,48 @@ function omoOpenTutorialsHelp() {
     return omoOpenTutorialHashState();
 }
 
+function omoOpenSearchPopupHashState(query, scopes = [], options = {}) {
+    const normalizedQuery = String(query || '').trim();
+    const normalizedScopes = omoNormalizeSearchPopupScopes(scopes);
+    const rawOptions = options && typeof options === 'object'
+        ? options
+        : {};
+    const route = typeof parseUrl === 'function'
+        ? parseUrl()
+        : { oid: null, cid: null, hash: null };
+    const context = omoNormalizeSearchPopupContext(route);
+    const normalizedJobId = Number(rawOptions.jobId || 0);
+    const popupId = Number.isInteger(normalizedJobId) && normalizedJobId > 0
+        ? normalizedJobId
+        : null;
+
+    if (!context.oid || normalizedQuery === '') {
+        return false;
+    }
+
+    omoSetSearchPopupPendingState(normalizedQuery, normalizedScopes, context);
+
+    const hashState = omoParseHashState(route.hash || null);
+    const nextHash = omoBuildHashFromState(
+        hashState.routeToken,
+        omoBuildPopupToken('search', popupId)
+    );
+
+    if ((nextHash || null) === (route.hash || null)) {
+        omoOpenPopupModalFromRoute('search', popupId);
+        return true;
+    }
+
+    omoSetPopupHashState({
+        open: true,
+        key: 'search',
+        id: popupId,
+        replace: rawOptions.replace === true
+    });
+
+    return true;
+}
+
 function omoOpenMemberActionsPopup(userId) {
     const resolvedUserId = Number(userId);
 
@@ -2750,9 +3139,7 @@ function omoOpenSearchTutorialResult(parcoursId, missionId = null) {
         return false;
     }
 
-    if (typeof window.commonTopbarCloseModal === 'function') {
-        window.commonTopbarCloseModal();
-    }
+    omoClosePopupModalFromRoute();
 
     return omoOpenTutorialHashState(
         resolvedParcoursId,
@@ -3566,32 +3953,7 @@ function omoHandleTopbarSearch(query, config, searchState) {
         return true;
     }
 
-    const currentRoute = parseUrl();
-    const queryParts = [
-        'q=' + encodeURIComponent(trimmedQuery)
-    ];
-
-    if (Number.isInteger(Number(currentRoute.oid)) && Number(currentRoute.oid) > 0) {
-        queryParts.push('oid=' + encodeURIComponent(Number(currentRoute.oid)));
-    }
-
-    if (Number.isInteger(Number(currentRoute.cid)) && Number(currentRoute.cid) > 0) {
-        queryParts.push('cid=' + encodeURIComponent(Number(currentRoute.cid)));
-    }
-
-    selectedScopeIds.forEach(function (scopeId) {
-        queryParts.push('scopes[]=' + encodeURIComponent(scopeId));
-    });
-
-    if (typeof window.commonTopbarOpenModal === 'function') {
-        window.commonTopbarOpenModal(
-            'Recherche',
-            omoResolveAppUrl('api/search_popup.php?' + queryParts.join('&')),
-            'fetch'
-        );
-    }
-
-    return true;
+    return omoOpenSearchPopupHashState(trimmedQuery, selectedScopeIds);
 }
 
 function omoOpenSearchStructureResult(holonId) {
@@ -3600,9 +3962,7 @@ function omoOpenSearchStructureResult(holonId) {
         return false;
     }
 
-    if (typeof window.commonTopbarCloseModal === 'function') {
-        window.commonTopbarCloseModal();
-    }
+    omoClosePopupModalFromRoute();
 
     const route = parseUrl();
     navigate(route.oid, resolvedHolonId, null);
@@ -3620,18 +3980,51 @@ function omoOpenSearchUserResult(userId) {
         return false;
     }
 
-    if (typeof window.commonTopbarCloseModal === 'function') {
-        window.commonTopbarCloseModal();
-    }
+    omoClosePopupModalFromRoute();
 
     return omoOpenUserContextPopup(resolvedUserId);
 }
 
 function omoOpenSearchDocumentResult(documentUrl, title) {
     const resolvedUrl = String(documentUrl || '').trim();
-    if (resolvedUrl === '' || typeof window.commonTopbarOpenModal !== 'function') {
+    if (resolvedUrl === '') {
         return false;
     }
+
+    let parsedUrl = null;
+    try {
+        parsedUrl = new URL(omoResolveAppUrl(resolvedUrl), window.location.origin);
+    } catch (error) {
+        parsedUrl = null;
+    }
+
+    const documentId = parsedUrl ? Number(parsedUrl.searchParams.get('id') || 0) : 0;
+    const routeToken = Number.isInteger(documentId) && documentId > 0
+        ? omoBuildDocumentRouteToken(documentId, 'detail')
+        : null;
+    const route = parseUrl();
+    const currentOid = Number(route.oid);
+    const parsedOid = parsedUrl ? Number(parsedUrl.searchParams.get('oid') || 0) : 0;
+    const parsedCid = parsedUrl ? Number(parsedUrl.searchParams.get('cid') || 0) : 0;
+    const targetOid = Number.isInteger(parsedOid) && parsedOid > 0
+        ? parsedOid
+        : (Number.isInteger(currentOid) && currentOid > 0 ? currentOid : null);
+    const targetCid = Number.isInteger(parsedCid) && parsedCid > 0
+        ? parsedCid
+        : null;
+
+    if (routeToken && Number.isInteger(targetOid) && targetOid > 0) {
+        omoClosePopupModalFromRoute();
+
+        navigate(targetOid, targetCid, routeToken);
+        return true;
+    }
+
+    if (typeof window.commonTopbarOpenModal !== 'function') {
+        return false;
+    }
+
+    omoClosePopupModalFromRoute();
 
     window.commonTopbarOpenModal(
         String(title || 'Document'),
@@ -3648,9 +4041,7 @@ function omoOpenSearchDecisionResult(decisionId, holonId) {
         return false;
     }
 
-    if (typeof window.commonTopbarCloseModal === 'function') {
-        window.commonTopbarCloseModal();
-    }
+    omoClosePopupModalFromRoute();
 
     const route = parseUrl();
     if (!Number.isInteger(Number(route.oid)) || Number(route.oid) <= 0) {
@@ -3672,9 +4063,7 @@ function omoOpenSearchCalendarEventResult(eventId, holonId) {
         return false;
     }
 
-    if (typeof window.commonTopbarCloseModal === 'function') {
-        window.commonTopbarCloseModal();
-    }
+    omoClosePopupModalFromRoute();
 
     const route = parseUrl();
     if (!Number.isInteger(Number(route.oid)) || Number(route.oid) <= 0) {
@@ -3814,9 +4203,11 @@ window.omoOpenSearchDecisionResult = omoOpenSearchDecisionResult;
 window.omoBuildDocumentRouteToken = omoBuildDocumentRouteToken;
 window.omoOpenSearchDocumentResult = omoOpenSearchDocumentResult;
 window.omoOpenSearchTutorialResult = omoOpenSearchTutorialResult;
+window.omoOpenSearchPopupHashState = omoOpenSearchPopupHashState;
 window.omoOpenTutorialsHelp = omoOpenTutorialsHelp;
 window.omoOpenSearchStructureResult = omoOpenSearchStructureResult;
 window.omoOpenSearchUserResult = omoOpenSearchUserResult;
+window.omoRegisterSearchPopupJobState = omoRegisterSearchPopupJobState;
 window.omoOpenUserContextPopup = omoOpenUserContextPopup;
 window.omoReplaceFetchedPanelRoot = omoReplaceFetchedPanelRoot;
 window.omoResolveAppUrl = omoResolveAppUrl;

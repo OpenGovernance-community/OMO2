@@ -10,6 +10,10 @@ Dans l editeur de document OMO, les champs `Type` et `Visibilite` partagent main
 
 Ce meme editeur expose maintenant aussi un vrai champ de tags a capsules, relie au stockage existant des `keywords` en chaine separee par virgules. La saisie transforme un tag en capsule sur `TAB` ou `,`, et la sauvegarde conserve le format courant du type `atelier,benevoles,association`.
 
+La recherche OMO de documents ne traite plus non plus ces `keywords` comme un simple bloc de texte. Les tags separes par virgules sont maintenant scores comme de vrais tags individuels, avec un poids nettement plus fort quand la recherche correspond exactement a un tag ou a son debut.
+
+Depuis la popup de recherche OMO, l ouverture d un resultat `Document` ne passe plus par une modale de detail isolee quand la route peut etre resolue. Le clic reconstruit maintenant la navigation OMO normale vers le hash du document pour l ouvrir dans son drawer `Documents`.
+
 La recherche de la topbar OMO propose maintenant aussi les scopes `FAQ` et `Tutoriels`. Les resultats FAQ interrogent les contenus question/reponse/detail selon le contexte courant, et les resultats tutoriels couvrent a la fois les parcours LMS visibles et le texte des missions associees.
 
 L ouverture des resultats d aide passe maintenant aussi par le hash OMO pour les FAQ et les tutoriels. Une FAQ trouvee peut ouvrir directement son detail, et un tutoriel peut ouvrir le LMS embarque sur le bon parcours, voire directement sur la mission cible quand la recherche remonte une mission.
@@ -17,6 +21,8 @@ L ouverture des resultats d aide passe maintenant aussi par le hash OMO pour les
 Le resume des resultats de recherche OMO en tete de popup devient aussi interactif. Un clic sur une tuile comme `FAQ` ou `Tutoriels` filtre maintenant en pur JS les cartes deja chargees pour ne montrer que ce module, et un second clic sur la tuile deja active restaure toute la liste sans relancer la recherche.
 
 La popup de recherche OMO utilise maintenant un bandeau de recherche compact borde a borde en haut, aligne sur le style des entetes de drawer partages, sans textes d introduction ni fond parasite autour du conteneur principal.
+
+La popup de recherche OMO passe maintenant aussi par le hash applicatif avec memorisation d etat par onglet. Quand un resultat ouvre un drawer ou une autre popup, le retour navigateur peut rouvrir la recherche precedente avec son `SearchJob` et ses resultats deja retrouves, sans relancer manuellement la requete.
 
 Les popups topbar qui dependaient du padding global de la modale reprennent maintenant leur propre structure interne. Les formulaires et panneaux principaux utilisent des shells locaux avec padding neutre, et plusieurs popups comme recherche, partages, tensions, bug report, applications et invitations exposent maintenant un vrai bandeau borde a borde base sur `generic-drawer-header`.
 
