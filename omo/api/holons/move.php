@@ -40,6 +40,13 @@ if ($organizationId <= 0) {
     <div class="omo-holon-move__empty"><?= omoApiEscape($errorMessage) ?></div>
 <?php else: ?>
     <form id="omo-holon-move-form" class="omo-holon-move">
+        <div class="omo-holon-move__header generic-drawer-header generic-drawer-header--sticky">
+            <div class="generic-drawer-header__copy omo-holon-move__header-copy">
+                <div class="generic-card-title generic-card-title--eyebrow">Holon</div>
+                <h3 class="generic-card-title generic-card-title--medium">Deplacer un holon</h3>
+            </div>
+        </div>
+        <div class="omo-holon-move__shell">
         <div class="omo-holon-move__intro">
             <strong><?= omoApiEscape((string)($moveData['holon']['name'] ?? '')) ?></strong>
             <span>&rarr;</span>
@@ -60,6 +67,7 @@ if ($organizationId <= 0) {
         <div class="omo-holon-move__actions">
             <button type="button" class="omo-holon-move__button generic-action-button generic-action-button--secondary" id="omo-holon-move-cancel">Annuler</button>
             <button type="submit" class="omo-holon-move__button generic-action-button generic-action-button--main" id="omo-holon-move-submit">Deplacer</button>
+        </div>
         </div>
     </form>
 <?php endif; ?>
@@ -307,8 +315,28 @@ elements.cancel.addEventListener('click', closeMoveDrawer);
 .omo-holon-move__empty {
     display: grid;
     gap: 16px;
-    padding: 8px 4px 4px;
     color: var(--color-text, #1f2937);
+}
+
+.omo-holon-move {
+    gap: 0;
+}
+
+.omo-holon-move__header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.omo-holon-move__header-copy {
+    display: grid;
+    gap: 4px;
+}
+
+.omo-holon-move__shell {
+    display: grid;
+    gap: 16px;
+    padding: 16px 18px 18px;
 }
 
 .omo-holon-move__intro,
@@ -316,6 +344,10 @@ elements.cancel.addEventListener('click', closeMoveDrawer);
 .omo-holon-move__empty {
     color: var(--topbar-panel-muted, #64748b);
     line-height: 1.45;
+}
+
+.omo-holon-move__empty {
+    padding: 18px;
 }
 
 .omo-holon-move__intro {

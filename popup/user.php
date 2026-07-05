@@ -325,8 +325,20 @@ foreach ($competenceRows as $competenceRow) {
     <style>
     .omo-user-context {
         display: grid;
-        gap: 18px;
+        gap: 0;
         color: var(--color-text, #1f2937);
+    }
+
+    .omo-user-context__header {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+    }
+
+    .omo-user-context__shell {
+        display: grid;
+        gap: 18px;
+        padding: 16px 18px 18px;
     }
 
     .omo-user-context--error {
@@ -335,12 +347,6 @@ foreach ($competenceRows as $competenceRow) {
         background: var(--color-surface-alt, #f0f2f5);
         color: var(--color-text-light, #6b7280);
         border: 1px solid var(--color-border, #e5e7eb);
-    }
-
-    .omo-user-context__layout {
-        display: grid;
-        gap: 18px;
-        align-items: start;
     }
 
     .omo-user-context__main {
@@ -1124,8 +1130,8 @@ foreach ($competenceRows as $competenceRow) {
     }
     </style>
 
-    <div class="omo-user-context__layout">
-        <section class="omo-user-context__profile generic-hero-panel accent">
+    <div class="omo-user-context__header generic-drawer-header generic-drawer-header--sticky">
+        <section class="omo-user-context__profile">
             <div class="omo-user-context__photo-shell">
                 <?php if ($photoUrl !== ''): ?>
                     <img
@@ -1155,7 +1161,9 @@ foreach ($competenceRows as $competenceRow) {
                 </div>
             </div>
         </section>
+    </div>
 
+    <div class="omo-user-context__shell">
         <div class="omo-user-context__main">
             <div class="generic-tabs omo-user-context__tabs" data-generic-tabs>
                 <div class="generic-tabs__list">

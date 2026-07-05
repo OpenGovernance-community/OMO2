@@ -146,9 +146,25 @@ $canSendAll = !$isDraft && $allRecipientCount > 0;
 <style>
 .omo-decision-send-invitations-popup {
     display: grid;
-    gap: 16px;
-    padding: 8px 4px 4px;
+    gap: 0;
     color: var(--color-text, #1f2937);
+}
+
+.omo-decision-send-invitations-popup__header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.omo-decision-send-invitations-popup__header-copy {
+    display: grid;
+    gap: 4px;
+}
+
+.omo-decision-send-invitations-popup__shell {
+    display: grid;
+    gap: 16px;
+    padding: 16px 18px 18px;
 }
 
 .omo-decision-send-invitations-popup__intro,
@@ -242,6 +258,13 @@ $canSendAll = !$isDraft && $allRecipientCount > 0;
     method="post"
 >
     <input type="hidden" id="omoDecisionSendInvitationsScope" name="send_scope" value="pending">
+    <div class="omo-decision-send-invitations-popup__header generic-drawer-header generic-drawer-header--sticky">
+        <div class="generic-drawer-header__copy omo-decision-send-invitations-popup__header-copy">
+            <div class="generic-card-title generic-card-title--eyebrow">Prises de decision</div>
+            <h3 class="generic-card-title generic-card-title--medium">Envoyer les invitations</h3>
+        </div>
+    </div>
+    <div class="omo-decision-send-invitations-popup__shell">
 
     <p class="omo-decision-send-invitations-popup__intro">
         <?php if ($recipientCount > 0): ?>
@@ -314,6 +337,7 @@ $canSendAll = !$isDraft && $allRecipientCount > 0;
                 </button>
             </div>
         </div>
+    </div>
     </div>
 </form>
 

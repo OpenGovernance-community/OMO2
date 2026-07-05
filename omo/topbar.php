@@ -219,7 +219,7 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Topbar search menu button label in OMO pages.',
         ],
         'topbar.search.placeholder' => [
-            'text' => 'Rechercher un cercle, un role ou un outil',
+            'text' => 'Rechercher un cercle, un role, un outil, une FAQ ou un tutoriel',
             'context' => 'Placeholder and label for the OMO topbar search field.',
         ],
         'topbar.search.scope' => [

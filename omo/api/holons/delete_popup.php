@@ -66,6 +66,13 @@ $typeLabel = strtolower((string)$holon->getTemplateLabel(true));
         action="api/holons/delete_popup.php?hid=<?= (int)$holon->getId() ?>"
         method="post"
     >
+        <div class="omo-holon-delete__header generic-drawer-header generic-drawer-header--sticky">
+            <div class="generic-drawer-header__copy omo-holon-delete__header-copy">
+                <div class="generic-card-title generic-card-title--eyebrow">Suppression</div>
+                <h3 class="generic-card-title generic-card-title--medium">Supprimer un holon</h3>
+            </div>
+        </div>
+        <div class="omo-holon-delete__shell">
         <div class="omo-holon-delete__intro">
             <div class="omo-holon-delete__eyebrow">Suppression</div>
             <div class="omo-holon-delete__title">
@@ -92,6 +99,7 @@ $typeLabel = strtolower((string)$holon->getTemplateLabel(true));
             <button type="submit" id="omoHolonDeletePopupSubmit" class="omo-holon-delete__button generic-action-button generic-action-button--danger">
                 Supprimer
             </button>
+        </div>
         </div>
     </form>
 
@@ -200,8 +208,28 @@ $typeLabel = strtolower((string)$holon->getTemplateLabel(true));
         .omo-holon-delete__empty {
             display: grid;
             gap: 16px;
-            padding: 8px 4px 4px;
             color: var(--color-text, #1f2937);
+        }
+
+        .omo-holon-delete {
+            gap: 0;
+        }
+
+        .omo-holon-delete__header {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        .omo-holon-delete__header-copy {
+            display: grid;
+            gap: 4px;
+        }
+
+        .omo-holon-delete__shell {
+            display: grid;
+            gap: 16px;
+            padding: 16px 18px 18px;
         }
 
         .omo-holon-delete__eyebrow,
@@ -209,6 +237,10 @@ $typeLabel = strtolower((string)$holon->getTemplateLabel(true));
         .omo-holon-delete__empty {
             color: var(--topbar-panel-muted, #64748b);
             line-height: 1.45;
+        }
+
+        .omo-holon-delete__empty {
+            padding: 18px;
         }
 
         .omo-holon-delete__eyebrow {

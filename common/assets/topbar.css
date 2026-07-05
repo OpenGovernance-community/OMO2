@@ -758,7 +758,7 @@ html[data-theme="dark"] .common-topbar-profile-preference__icon--theme-dark {
 }
 
 .common-topbar-modal__body {
-    padding: 18px;
+    padding: 0px;
     overflow: auto;
 }
 

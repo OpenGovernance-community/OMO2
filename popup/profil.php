@@ -84,10 +84,46 @@ function profilFormatAmountCents($value)
 ?>
 <style>
     .profile-panel {
-        padding: 18px;
-        background: var(--color-bg, var(--auth-page-bg, #f8fafc));
+        display: grid;
+        gap: 0;
         color: var(--color-text, #0f172a);
         font-family: system-ui, sans-serif;
+    }
+
+    .profile-panel__header {
+        position: sticky;
+        top: 0;
+        z-index: 900;
+    }
+
+    .profile-panel__header-copy {
+        display: grid;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .profile-panel__header-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .profile-panel__shell {
+        display: grid;
+        gap: 18px;
+        padding: 16px 18px 18px;
+    }
+
+    .profile-panel .leaflet-container {
+        z-index: 0;
+    }
+
+    .profile-panel .leaflet-pane,
+    .profile-panel .leaflet-top,
+    .profile-panel .leaflet-bottom,
+    .profile-panel .leaflet-control {
+        z-index: 100;
     }
 
     .profile-panel__sections {
@@ -199,6 +235,11 @@ function profilFormatAmountCents($value)
         border-radius: 999px;
         background: var(--color-surface-alt, #dbe4ee) center center / cover no-repeat;
         border: 1px solid var(--color-border-strong, #cbd5e1);
+    }
+
+    .profile-panel__header .profile-panel__photo {
+        width: 64px;
+        height: 64px;
     }
 
     .profile-panel__field small,
@@ -463,11 +504,24 @@ function profilFormatAmountCents($value)
 <script src="/common/assets/password_policy.js"></script>
 
 <div class="profile-panel" id="profilePanelRoot">
-    <div class="profile-panel__sections">
-        <section class="profile-panel__section generic-section">
-            <h3 class="generic-card-title generic-card-title--section"><?= htmlspecialchars(profilPopupT('profile.popup.section.edit.title')) ?></h3>
-
-
+    <div class="profile-panel__header generic-drawer-header generic-drawer-header--sticky">
+        <div class="generic-drawer-header__copy profile-panel__header-copy">
+            <div class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(profilPopupT('profile.popup.section.edit.title')) ?></div>
+            <h2 class="generic-card-title generic-card-title--large"><?= htmlspecialchars($activeFullName !== '' ? $activeFullName : ($activeUsername !== '' ? $activeUsername : profilPopupT('profile.popup.section.edit.title'))) ?></h2>
+            <div class="profile-panel__header-meta">
+                <?php if ($activeEmail !== ''): ?>
+                    <span class="profile-panel__competence-badge profile-panel__competence-badge--muted"><?= htmlspecialchars($activeEmail) ?></span>
+                <?php endif; ?>
+                <?php if ($hasOrganizationScope && $organization instanceof \dbObject\Organization): ?>
+                    <span class="profile-panel__competence-badge profile-panel__competence-badge--muted"><?= htmlspecialchars((string)$organization->getLabel()) ?></span>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php if ($activePhotoUrl !== ''): ?>
+            <div class="profile-panel__photo" style="background-image:url('<?= htmlspecialchars($activePhotoUrl, ENT_QUOTES, 'UTF-8') ?>');" aria-hidden="true"></div>
+        <?php endif; ?>
+    </div>
+    <div class="profile-panel__shell">
             <div class="generic-tabs profile-panel__tabs" data-generic-tabs>
                 <div class="generic-tabs__list" aria-label="<?= htmlspecialchars(profilPopupT('profile.popup.tabs.aria')) ?>">
                     <button
@@ -606,7 +660,7 @@ function profilFormatAmountCents($value)
                     <?php endif; ?>
                 </div>
             </div>
-        </section>
+  
     </div>
 </div>
 
