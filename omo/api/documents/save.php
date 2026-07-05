@@ -19,6 +19,7 @@ if ($currentUserId <= 0) {
 
 $title = trim((string)($_POST['title'] ?? ''));
 $description = trim((string)($_POST['description'] ?? ''));
+$keywords = trim((string)($_POST['keywords'] ?? ''));
 $content = (string)($_POST['content'] ?? '');
 $documentType = trim((string)($_POST['document_type'] ?? ''));
 $externalUrl = trim((string)($_POST['external_url'] ?? ''));
@@ -58,6 +59,7 @@ $document = new \dbObject\Document();
 $payload = array(
     'title' => $title,
     'description' => $description,
+    'keywords' => $keywords,
     'content' => $content,
     'document_type' => $documentType,
     'external_url' => $externalUrl,
@@ -83,7 +85,7 @@ if ($documentId > 0) {
 
     if (
         ($organizationId > 0 && !commonCurrentUserHasOrganizationAccess($organizationId))
-        || !$document->canEditInOrganizationContext($organizationId)
+        || !$document->canEditInOrganizationContext($organizationId, $currentUserId, false)
     ) {
         http_response_code(403);
         echo json_encode(array(

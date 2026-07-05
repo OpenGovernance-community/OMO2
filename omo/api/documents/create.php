@@ -25,6 +25,10 @@ $sourceLang = [
     'documents.create.field.parent_folder' => ['text' => 'Dossier parent', 'context' => 'Label shown for the parent folder when present.'],
     'documents.create.field.description' => ['text' => 'Resume', 'context' => 'Label of the document summary field.'],
     'documents.create.field.description_placeholder' => ['text' => 'Presentation rapide du document', 'context' => 'Placeholder shown in the document summary field.'],
+    'documents.create.field.tags' => ['text' => 'Tags', 'context' => 'Label of the tag editor field.'],
+    'documents.create.field.tags_placeholder' => ['text' => 'Ajouter un tag', 'context' => 'Placeholder shown in the tag input field.'],
+    'documents.create.field.tags_hint' => ['text' => 'Ecrivez un tag puis utilisez TAB ou une virgule pour le transformer en capsule.', 'context' => 'Hint shown below the tag editor field.'],
+    'documents.create.field.tags_remove' => ['text' => 'Retirer le tag', 'context' => 'Accessible label prefix used to remove a tag from the editor.'],
     'documents.create.field.visibility' => ['text' => 'Visibilite', 'context' => 'Label of the document visibility field.'],
     'documents.create.field.html' => ['text' => 'Contenu HTML', 'context' => 'Label of the HTML content area.'],
     'documents.create.field.external_url' => ['text' => 'URL externe', 'context' => 'Label of the external URL field.'],
@@ -79,7 +83,7 @@ if ($documentId > 0) {
     $isEditing = $document->load($documentId);
     if ($isEditing) {
         $organizationId = (int)$document->get('IDorganization');
-        $isEditing = $document->canEditInOrganizationContext($organizationId);
+        $isEditing = $document->canEditInOrganizationContext($organizationId, $currentUserId, false);
     }
     $canUseForm = $isEditing;
 
@@ -95,6 +99,7 @@ if ($documentId > 0) {
 $visibilityOptions = ObjectVisibility::getVisibilityTypeOptions();
 $documentTitle = '';
 $documentDescription = '';
+$documentKeywords = '';
 $documentContent = '';
 $documentType = Document::TYPE_HTML;
 $documentExternalUrl = '';
@@ -166,6 +171,7 @@ if ($contextHolonId <= 0) {
 if ($isEditing) {
     $documentTitle = trim((string)$document->get('title'));
     $documentDescription = trim((string)$document->get('description'));
+    $documentKeywords = trim((string)$document->get('keywords'));
     $documentContent = $document->getEffectiveEditingContentForUser($currentUserId);
     $documentType = $document->getDocumentType();
     $documentExternalUrl = $document->getExternalUrl();
@@ -255,25 +261,44 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             <?php endif; ?>
 
             <div class="omo-document-editor__grid">
-                <label class="omo-document-editor__field">
-                    <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.type')) ?></span>
-                    <select
-                        name="document_type"
-                        class="generic-form-control"
-                        data-omo-document-type
-                        <?= $isEditing ? 'disabled' : '' ?>
-                    >
-                        <option value="<?= $escape(Document::TYPE_HTML) ?>" <?= $documentType === Document::TYPE_HTML ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.html')) ?></option>
-                        <option value="<?= $escape(Document::TYPE_EXTERNAL_LINK) ?>" <?= $documentType === Document::TYPE_EXTERNAL_LINK ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.external')) ?></option>
-                        <?php if ($nextcloudDocumentsAvailable || $documentType === Document::TYPE_UPLOADED_FILE): ?>
-                            <option value="<?= $escape(Document::TYPE_UPLOADED_FILE) ?>" <?= $documentType === Document::TYPE_UPLOADED_FILE ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.uploaded')) ?></option>
+                <div class="omo-document-editor__meta-row">
+                    <label class="omo-document-editor__field">
+                        <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.type')) ?></span>
+                        <select
+                            name="document_type"
+                            class="generic-form-control"
+                            data-omo-document-type
+                            <?= $isEditing ? 'disabled' : '' ?>
+                        >
+                            <option value="<?= $escape(Document::TYPE_HTML) ?>" <?= $documentType === Document::TYPE_HTML ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.html')) ?></option>
+                            <option value="<?= $escape(Document::TYPE_EXTERNAL_LINK) ?>" <?= $documentType === Document::TYPE_EXTERNAL_LINK ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.external')) ?></option>
+                            <?php if ($nextcloudDocumentsAvailable || $documentType === Document::TYPE_UPLOADED_FILE): ?>
+                                <option value="<?= $escape(Document::TYPE_UPLOADED_FILE) ?>" <?= $documentType === Document::TYPE_UPLOADED_FILE ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.uploaded')) ?></option>
+                            <?php endif; ?>
+                            <option value="<?= $escape(Document::TYPE_FOLDER) ?>" <?= $documentType === Document::TYPE_FOLDER ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.folder')) ?></option>
+                        </select>
+                        <?php if ($isEditing): ?>
+                            <input type="hidden" name="document_type" value="<?= $escape($documentType) ?>">
                         <?php endif; ?>
-                        <option value="<?= $escape(Document::TYPE_FOLDER) ?>" <?= $documentType === Document::TYPE_FOLDER ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.folder')) ?></option>
-                    </select>
-                    <?php if ($isEditing): ?>
-                        <input type="hidden" name="document_type" value="<?= $escape($documentType) ?>">
-                    <?php endif; ?>
-                </label>
+                    </label>
+
+                    <label class="omo-document-editor__field">
+                        <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.visibility')) ?></span>
+                        <select
+                            name="visibility_type"
+                            class="generic-form-control"
+                        >
+                            <?php foreach ($visibilityOptions as $optionValue => $optionLabel): ?>
+                                <option
+                                    value="<?= $escape($optionValue) ?>"
+                                    <?= $optionValue === $selectedVisibilityType ? ' selected' : '' ?>
+                                    <?= !empty($disabledVisibilityTypes[$optionValue]) ? ' disabled' : '' ?>
+                                ><?= $escape($optionLabel) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <span class="omo-document-editor__hint"><?= $escape($visibilityHelpText) ?></span>
+                    </label>
+                </div>
 
                 <label class="omo-document-editor__field">
                     <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.title')) ?></span>
@@ -306,22 +331,22 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                     ><?= $escape($documentDescription) ?></textarea>
                 </label>
 
-                <label class="omo-document-editor__field">
-                    <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.visibility')) ?></span>
-                    <select
-                        name="visibility_type"
-                        class="generic-form-control"
-                    >
-                        <?php foreach ($visibilityOptions as $optionValue => $optionLabel): ?>
-                            <option
-                                value="<?= $escape($optionValue) ?>"
-                                <?= $optionValue === $selectedVisibilityType ? ' selected' : '' ?>
-                                <?= !empty($disabledVisibilityTypes[$optionValue]) ? ' disabled' : '' ?>
-                            ><?= $escape($optionLabel) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                    <span class="omo-document-editor__hint"><?= $escape($visibilityHelpText) ?></span>
-                </label>
+                <div class="omo-document-editor__field">
+                    <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.tags')) ?></span>
+                    <input type="hidden" name="keywords" value="<?= $escape($documentKeywords) ?>" data-omo-document-tags-hidden>
+                    <div class="omo-document-editor__tag-editor generic-form-control" data-omo-document-tags-editor>
+                        <div class="omo-document-editor__tag-list" data-omo-document-tags-list></div>
+                        <input
+                            type="text"
+                            class="omo-document-editor__tag-input"
+                            placeholder="<?= $escape(omoDocumentsCreateT('documents.create.field.tags_placeholder')) ?>"
+                            autocomplete="off"
+                            spellcheck="false"
+                            data-omo-document-tags-input
+                        >
+                    </div>
+                    <span class="omo-document-editor__hint"><?= $escape(omoDocumentsCreateT('documents.create.field.tags_hint')) ?></span>
+                </div>
 
                 <div class="omo-document-editor__content-section" data-omo-document-content-section<?= $documentType !== Document::TYPE_HTML ? ' hidden' : '' ?>>
                     <div class="omo-document-editor__field" data-omo-document-content-field>
@@ -421,9 +446,88 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     gap: 16px;
 }
 
+.omo-document-editor__meta-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    align-items: start;
+}
+
 .omo-document-editor__field {
     display: grid;
     gap: 8px;
+}
+
+.omo-document-editor__tag-editor {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    cursor: text;
+}
+
+.omo-document-editor__tag-editor:focus-within {
+    border-color: var(--generic-form-control-border-focus);
+    box-shadow: var(--generic-form-control-focus-shadow);
+    background: var(--generic-form-control-background-focus);
+}
+
+.omo-document-editor__tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.omo-document-editor__tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 26px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 82%, white 18%);
+    color: color-mix(in srgb, var(--color-primary, #2563eb) 78%, #334155 22%);
+    font-size: 0.8rem;
+    line-height: 1;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border, #d1d5db) 82%, white 18%);
+}
+
+.omo-document-editor__tag-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.omo-document-editor__tag-remove:hover,
+.omo-document-editor__tag-remove:focus-visible {
+    background: color-mix(in srgb, currentColor 12%, transparent);
+    outline: none;
+}
+
+.omo-document-editor__tag-input {
+    flex: 1 1 140px;
+    min-width: 140px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-text);
+    font: inherit;
+    outline: none;
+    box-shadow: none;
+}
+
+.omo-document-editor__tag-input::placeholder {
+    color: var(--color-text-light);
 }
 
 .omo-document-editor__label {
@@ -574,6 +678,10 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         padding: 14px;
     }
 
+    .omo-document-editor__meta-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
     .omo-document-editor__actions {
         flex-direction: column-reverse;
     }
@@ -594,6 +702,10 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     const dictationStatusNode = form.querySelector('[data-omo-document-dictation-status]');
     const cancelButton = form.querySelector('[data-omo-document-editor-cancel]');
     const typeSelect = form.querySelector('[data-omo-document-type]');
+    const tagsEditor = form.querySelector('[data-omo-document-tags-editor]');
+    const tagsList = form.querySelector('[data-omo-document-tags-list]');
+    const tagsInput = form.querySelector('[data-omo-document-tags-input]');
+    const tagsHiddenInput = form.querySelector('[data-omo-document-tags-hidden]');
     const contentSection = form.querySelector('[data-omo-document-content-section]');
     const externalSection = form.querySelector('[data-omo-document-external-section]');
     const uploadSection = form.querySelector('[data-omo-document-upload-section]');
@@ -610,11 +722,13 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         'actionCancel' => omoDocumentsCreateT('documents.create.action.cancel'),
         'embedUpdate' => omoDocumentsCreateT('documents.create.embed.update'),
         'embedInsert' => omoDocumentsCreateT('documents.create.embed.insert'),
+        'tagRemove' => omoDocumentsCreateT('documents.create.field.tags_remove'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const editingDocumentId = <?= $isEditing ? (int)$document->getId() : 0 ?>;
     const editLockEndpointUrl = '/omo/api/documents/edit_lock.php';
     const editLockHeartbeatIntervalMs = <?= (int)(\dbObject\Document::getDraftHeartbeatIntervalSeconds() * 1000) ?>;
     const draftSyncDebounceMs = 1000;
+    let keywordTags = [];
     let htmlField = null;
     let htmlValueCache = String(initialHtmlValue || '');
     let mediaStream = null;
@@ -712,6 +826,129 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
+    }
+
+    function normalizeKeywordTag(value) {
+        return String(value || '')
+            .replace(/[\r\n\t]+/g, ' ')
+            .replace(/^#+/g, '')
+            .replace(/\s+/g, ' ')
+            .replace(/^,+|,+$/g, '')
+            .trim();
+    }
+
+    function syncKeywordTagsField() {
+        if (!tagsHiddenInput) {
+            return;
+        }
+
+        tagsHiddenInput.value = keywordTags.join(',');
+    }
+
+    function renderKeywordTags() {
+        if (!tagsList) {
+            return;
+        }
+
+        tagsList.replaceChildren();
+
+        keywordTags.forEach(function (tagLabel, tagIndex) {
+            const chip = document.createElement('span');
+            chip.className = 'omo-document-editor__tag';
+
+            const label = document.createElement('span');
+            label.textContent = tagLabel;
+            chip.appendChild(label);
+
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'omo-document-editor__tag-remove';
+            removeButton.innerHTML = '&times;';
+            removeButton.setAttribute('aria-label', String(uiText.tagRemove || 'Retirer le tag') + ' ' + tagLabel);
+            removeButton.setAttribute('title', String(uiText.tagRemove || 'Retirer le tag') + ' ' + tagLabel);
+            removeButton.addEventListener('click', function () {
+                keywordTags.splice(tagIndex, 1);
+                syncKeywordTagsField();
+                renderKeywordTags();
+                if (tagsInput) {
+                    tagsInput.focus();
+                }
+            });
+            chip.appendChild(removeButton);
+
+            tagsList.appendChild(chip);
+        });
+    }
+
+    function addKeywordTag(rawValue) {
+        const normalizedTag = normalizeKeywordTag(rawValue);
+        if (normalizedTag === '') {
+            return false;
+        }
+
+        const normalizedLookup = normalizedTag.toLocaleLowerCase();
+        const alreadyExists = keywordTags.some(function (existingTag) {
+            return String(existingTag || '').toLocaleLowerCase() === normalizedLookup;
+        });
+
+        if (alreadyExists) {
+            return false;
+        }
+
+        keywordTags.push(normalizedTag);
+        syncKeywordTagsField();
+        renderKeywordTags();
+        return true;
+    }
+
+    function commitKeywordInput() {
+        if (!tagsInput) {
+            return false;
+        }
+
+        const didAddTag = addKeywordTag(tagsInput.value);
+        tagsInput.value = '';
+        return didAddTag;
+    }
+
+    function flushKeywordInputDelimiters(commitTrailingValue) {
+        if (!tagsInput) {
+            return false;
+        }
+
+        const rawValue = String(tagsInput.value || '').replace(/[\r\n]+/g, ',');
+        if (rawValue.indexOf(',') < 0) {
+            if (!commitTrailingValue) {
+                return false;
+            }
+
+            return commitKeywordInput();
+        }
+
+        const parts = rawValue.split(',');
+        const trailingValue = commitTrailingValue ? '' : parts.pop();
+        let didChange = false;
+
+        parts.forEach(function (part) {
+            didChange = addKeywordTag(part) || didChange;
+        });
+
+        tagsInput.value = normalizeKeywordTag(trailingValue);
+        return didChange;
+    }
+
+    function initializeKeywordTags() {
+        if (!tagsInput || !tagsHiddenInput) {
+            return;
+        }
+
+        keywordTags = [];
+        String(tagsHiddenInput.value || '').split(',').forEach(function (part) {
+            addKeywordTag(part);
+        });
+        tagsInput.value = '';
+        syncKeywordTagsField();
+        renderKeywordTags();
     }
 
     function buildDocumentEmbedHtml(documentItem) {
@@ -1978,6 +2215,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     }
 
     ensureHtmlFieldMounted();
+    initializeKeywordTags();
 
     syncDictationToolbarButtons();
 
@@ -2024,6 +2262,64 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         typeSelect.addEventListener('change', syncTypeUi);
     }
 
+    if (tagsEditor && tagsInput) {
+        tagsEditor.addEventListener('click', function (event) {
+            if (event.target instanceof Element && event.target.closest('.omo-document-editor__tag-remove')) {
+                return;
+            }
+
+            tagsInput.focus();
+        });
+
+        tagsInput.addEventListener('keydown', function (event) {
+            const key = String(event.key || '');
+            const hasTypedValue = normalizeKeywordTag(tagsInput.value) !== '';
+
+            if (key === 'Enter') {
+                event.preventDefault();
+                if (hasTypedValue) {
+                    commitKeywordInput();
+                }
+                return;
+            }
+
+            if (key === ',') {
+                event.preventDefault();
+                if (hasTypedValue) {
+                    commitKeywordInput();
+                }
+                return;
+            }
+
+            if (key === 'Tab' && hasTypedValue) {
+                event.preventDefault();
+                commitKeywordInput();
+                return;
+            }
+
+            if (key === 'Backspace' && !hasTypedValue && keywordTags.length > 0) {
+                event.preventDefault();
+                keywordTags.splice(keywordTags.length - 1, 1);
+                syncKeywordTagsField();
+                renderKeywordTags();
+            }
+        });
+
+        tagsInput.addEventListener('input', function () {
+            flushKeywordInputDelimiters(false);
+        });
+
+        tagsInput.addEventListener('blur', function () {
+            commitKeywordInput();
+        });
+
+        tagsInput.addEventListener('paste', function () {
+            window.setTimeout(function () {
+                flushKeywordInputDelimiters(true);
+            }, 0);
+        });
+    }
+
     form.addEventListener('submit', function (event) {
         event.preventDefault();
         setStatus('');
@@ -2032,6 +2328,8 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             setStatus('Ce document n est plus verrouille pour votre edition. Rechargez le formulaire.');
             return;
         }
+
+        commitKeywordInput();
 
         const formData = new FormData(form);
         formData.set('content', !isHtmlTypeSelected()

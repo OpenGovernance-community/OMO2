@@ -8,6 +8,11 @@
     z-index: 1000;
 }
 
+html.lms-drawer-open,
+body.lms-drawer-open {
+    overflow: hidden;
+}
+
 /* Drawer */
 #drawer {
     position: fixed;
@@ -70,6 +75,8 @@ function closeDrawer() {
 
     drawer.classList.remove('open');
     overlay.style.display = 'none';
+    document.documentElement.classList.remove('lms-drawer-open');
+    document.body.classList.remove('lms-drawer-open');
 
     window.setTimeout(() => {
         if (drawer.classList.contains('open')) {
@@ -98,5 +105,7 @@ function openDrawer(content) {
     });
     document.getElementById('overlay').style.display = 'block';
     document.getElementById('drawer').classList.add('open');
+    document.documentElement.classList.add('lms-drawer-open');
+    document.body.classList.add('lms-drawer-open');
 }
 </script>

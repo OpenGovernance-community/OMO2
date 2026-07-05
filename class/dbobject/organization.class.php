@@ -3920,6 +3920,7 @@
 					'nameLocked' => $isTemplateEditing ? (bool)$editingHolon->get('lockedname') : $editingHolon->isNameLockedByTemplate(),
 					'unique' => (bool)$editingHolon->get('unique'),
 					'link' => (bool)$editingHolon->get('link'),
+					'inheritedPermissions' => $this->buildHolonInheritedPermissionSnapshot($editingHolon),
 					'permissionAssignments' => \dbObject\HolonPermission::getAssignmentKeyMapForHolon((int)$editingHolon->getId()),
 					'properties' => $isTemplateEditing
 						? $editingHolon->getTemplatePropertyDefinitions()
@@ -3999,15 +4000,9 @@
 				: $inheritedValue;
 		}
 
-		protected function buildHolonHistoryPermissionSnapshot(\dbObject\Holon $holon)
+		protected function buildPermissionSnapshotFromAssignmentMap(array $assignments)
 		{
-			$holonId = (int)$holon->getId();
-			if ($holonId <= 0) {
-				return array();
-			}
-
 			$rangeLabels = \dbObject\HolonPermission::getRangeLabels();
-			$assignments = \dbObject\HolonPermission::getAssignmentKeyMapForHolon($holonId);
 			$permissions = array();
 
 			foreach ($assignments as $permissionKey => $ranges) {
@@ -4056,6 +4051,66 @@
 
 			ksort($permissions);
 			return $permissions;
+		}
+
+		protected function buildHolonInheritedPermissionSnapshot(\dbObject\Holon $holon)
+		{
+			$collectedAssignments = array();
+			$visitedTemplateIds = array();
+			$currentTemplateId = (int)$holon->get('IDholon_template');
+			$guard = 0;
+
+			while ($currentTemplateId > 0 && $guard < 30) {
+				if (isset($visitedTemplateIds[$currentTemplateId])) {
+					break;
+				}
+
+				$visitedTemplateIds[$currentTemplateId] = true;
+				$template = new \dbObject\Holon();
+				if (!$template->load($currentTemplateId)) {
+					break;
+				}
+
+				foreach (\dbObject\HolonPermission::getAssignmentKeyMapForHolon($currentTemplateId) as $permissionKey => $ranges) {
+					$permissionKey = trim((string)$permissionKey);
+					if ($permissionKey === '') {
+						continue;
+					}
+
+					if (!isset($collectedAssignments[$permissionKey])) {
+						$collectedAssignments[$permissionKey] = array();
+					}
+
+					foreach ((array)$ranges as $range) {
+						$range = trim((string)$range);
+						if ($range === '') {
+							continue;
+						}
+
+						$collectedAssignments[$permissionKey][$range] = $range;
+					}
+				}
+
+				$currentTemplateId = (int)$template->get('IDholon_template');
+				$guard++;
+			}
+
+			foreach ($collectedAssignments as $permissionKey => $ranges) {
+				$collectedAssignments[$permissionKey] = array_values($ranges);
+			}
+
+			return $this->buildPermissionSnapshotFromAssignmentMap($collectedAssignments);
+		}
+
+		protected function buildHolonHistoryPermissionSnapshot(\dbObject\Holon $holon)
+		{
+			$holonId = (int)$holon->getId();
+			if ($holonId <= 0) {
+				return array();
+			}
+
+			$assignments = \dbObject\HolonPermission::getAssignmentKeyMapForHolon($holonId);
+			return $this->buildPermissionSnapshotFromAssignmentMap($assignments);
 		}
 
 		protected function buildHolonHistorySnapshot(\dbObject\Holon $holon, array $options = array())
@@ -6177,6 +6232,41 @@
 			return implode(' + ', $chunks);
 		}
 
+		protected static function buildTopbarSearchTagScoreSql($expression, array $terms, array &$params, $prefix, array $weights = array())
+		{
+			if (count($terms) === 0) {
+				return '0';
+			}
+
+			$resolvedWeights = array_merge(array(
+				'exact' => 100,
+				'prefix' => 72,
+				'like' => 24,
+			), $weights);
+			$normalizedExpression = "CONCAT(',', TRIM(BOTH ',' FROM REPLACE(REPLACE(" . $expression . ", ', ', ','), ' ,', ',')), ',')";
+			$chunks = array();
+
+			foreach (array_values($terms) as $index => $term) {
+				$normalizedTerm = self::normalizeTopbarSearchText($term);
+				if ($normalizedTerm === '') {
+					continue;
+				}
+
+				$paramBase = $prefix . '_' . $index;
+				$params[$paramBase . '_exact'] = '%,' . $normalizedTerm . ',%';
+				$params[$paramBase . '_prefix'] = '%,' . $normalizedTerm . '%';
+				$params[$paramBase . '_like'] = '%' . $normalizedTerm . '%';
+
+				$chunks[] = '(CASE'
+					. ' WHEN ' . $normalizedExpression . ' LIKE :' . $paramBase . '_exact THEN ' . (int)$resolvedWeights['exact']
+					. ' WHEN ' . $normalizedExpression . ' LIKE :' . $paramBase . '_prefix THEN ' . (int)$resolvedWeights['prefix']
+					. ' WHEN ' . $normalizedExpression . ' LIKE :' . $paramBase . '_like THEN ' . (int)$resolvedWeights['like']
+					. ' ELSE 0 END)';
+			}
+
+			return count($chunks) > 0 ? implode(' + ', $chunks) : '0';
+		}
+
 		protected static function buildTopbarSearchAnyMatchSql(array $expressions, array $terms, array &$params, $prefix)
 		{
 			if (count($expressions) === 0 || count($terms) === 0) {
@@ -6286,6 +6376,7 @@
 					return array(
 						'type' => 'user',
 						'organizationId' => (int)($viewerContext['organizationId'] ?? ($options['organizationId'] ?? ($_SESSION['currentOrganization'] ?? 0))),
+						'currentHolonId' => (int)($viewerContext['currentHolonId'] ?? 0),
 						'userId' => $currentUserId,
 					);
 				}
@@ -6293,12 +6384,14 @@
 				return array(
 					'type' => 'public',
 					'organizationId' => (int)($viewerContext['organizationId'] ?? ($options['organizationId'] ?? ($_SESSION['currentOrganization'] ?? 0))),
+					'currentHolonId' => (int)($viewerContext['currentHolonId'] ?? 0),
 				);
 			}
 
 			$normalized = array(
 				'type' => $type,
 				'organizationId' => (int)($viewerContext['organizationId'] ?? ($options['organizationId'] ?? 0)),
+				'currentHolonId' => (int)($viewerContext['currentHolonId'] ?? 0),
 			);
 
 			if ($type === 'user') {
@@ -6591,6 +6684,138 @@
 				&& \dbObject\Event::normalizeStatus($event->get('status')) !== \dbObject\Event::STATUS_CANCELLED;
 		}
 
+		protected static function topbarSearchResolveAccessibleTutorialRows(array &$viewerContext, $organizationId)
+		{
+			if (array_key_exists('topbarTutorialRows', $viewerContext)) {
+				return is_array($viewerContext['topbarTutorialRows'])
+					? $viewerContext['topbarTutorialRows']
+					: array();
+			}
+
+			$organizationId = (int)$organizationId;
+			if (
+				$organizationId <= 0
+				|| !self::topbarSearchViewerHasOrganizationAccess($viewerContext, $organizationId)
+			) {
+				$viewerContext['topbarTutorialRows'] = array();
+				return array();
+			}
+
+			$type = (string)($viewerContext['type'] ?? '');
+			$userId = $type === 'user'
+				? (int)($viewerContext['userId'] ?? 0)
+				: 0;
+
+			if ($type === 'user') {
+				$rows = \dbObject\Parcours::fetchForOrganizationWithProgress($organizationId, $userId, true, false);
+			} else {
+				$rows = \dbObject\Parcours::fetchPublicForOrganizationWithProgress($organizationId, $userId);
+			}
+
+			$visibleRows = array();
+			foreach ((array)$rows as $row) {
+				$parcoursId = (int)($row['id'] ?? 0);
+				if ($parcoursId <= 0) {
+					continue;
+				}
+
+				$visibleRows[$parcoursId] = $row;
+			}
+
+			$viewerContext['topbarTutorialRows'] = $visibleRows;
+			return $visibleRows;
+		}
+
+		protected static function topbarSearchViewerCanViewParcours($parcoursId, array &$viewerContext, $organizationId)
+		{
+			$parcoursId = (int)$parcoursId;
+			if ($parcoursId <= 0) {
+				return false;
+			}
+
+			$visibleRows = self::topbarSearchResolveAccessibleTutorialRows($viewerContext, $organizationId);
+			return !empty($visibleRows[$parcoursId]);
+		}
+
+		protected static function topbarSearchResolveCurrentHolon(\dbObject\Organization $organization, array &$viewerContext)
+		{
+			if (array_key_exists('topbarCurrentHolon', $viewerContext)) {
+				return $viewerContext['topbarCurrentHolon'] instanceof \dbObject\Holon
+					? $viewerContext['topbarCurrentHolon']
+					: null;
+			}
+
+			$currentHolon = null;
+			$rootHolon = $organization->getStructuralRootHolon();
+			if ($rootHolon instanceof \dbObject\Holon && (int)$rootHolon->getId() > 0) {
+				$currentHolon = $rootHolon;
+				$currentHolonId = (int)($viewerContext['currentHolonId'] ?? 0);
+
+				if ($currentHolonId > 0 && $currentHolonId !== (int)$rootHolon->getId()) {
+					$candidateHolon = new \dbObject\Holon();
+					if (
+						$candidateHolon->load($currentHolonId)
+						&& $candidateHolon->isDescendantOf((int)$rootHolon->getId(), true)
+					) {
+						$currentHolon = $candidateHolon;
+					}
+				}
+
+				if (!self::topbarSearchViewerCanViewHolon($currentHolon, $viewerContext)) {
+					$currentHolon = null;
+				}
+			}
+
+			$viewerContext['topbarCurrentHolon'] = $currentHolon;
+			return $currentHolon;
+		}
+
+		protected static function topbarSearchViewerCanViewFaq(\dbObject\FAQ $faq, \dbObject\Organization $organization, array &$viewerContext, $scope = 'contextual')
+		{
+			$organizationId = (int)$organization->getId();
+			if (
+				$organizationId <= 0
+				|| (int)$faq->getId() <= 0
+				|| !self::topbarSearchViewerHasOrganizationAccess($viewerContext, $organizationId)
+				|| (int)$faq->get('isactive') !== 1
+			) {
+				return false;
+			}
+
+			if ($faq->isGeneric()) {
+				return true;
+			}
+
+			$parcoursId = \dbObject\FAQ::hasParcoursColumn()
+				? (int)$faq->get('IDparcours')
+				: 0;
+			if ($parcoursId > 0) {
+				return self::topbarSearchViewerCanViewParcours($parcoursId, $viewerContext, $organizationId);
+			}
+
+			$currentHolon = self::topbarSearchResolveCurrentHolon($organization, $viewerContext);
+			$currentHolonId = $currentHolon instanceof \dbObject\Holon
+				? (int)$currentHolon->getId()
+				: 0;
+			$faqHolon = $faq->getContextHolon();
+			if ($faqHolon instanceof \dbObject\Holon) {
+				if (
+					$currentHolonId <= 0
+					|| !self::topbarSearchViewerCanViewHolon($faqHolon, $viewerContext)
+				) {
+					return false;
+				}
+
+				if ($scope === 'descendants') {
+					return $faqHolon->isDescendantOf($currentHolonId, true);
+				}
+
+				return (int)$faqHolon->getId() === $currentHolonId;
+			}
+
+			return $faq->getResolvedOrganizationId() === $organizationId;
+		}
+
 		protected static function cleanTopbarSearchTextValue($value, $limit = 0)
 		{
 			$value = html_entity_decode(strip_tags((string)$value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
@@ -6678,6 +6903,342 @@
 				default:
 					return 'Holon';
 			}
+		}
+
+		protected function searchTopbarFaqResults($query, array $terms, $limit = 12, array $viewerContext = array())
+		{
+			if (
+				(int)$this->getId() <= 0
+				|| count($terms) === 0
+				|| !\dbObject\FAQ::hasFaqTable()
+			) {
+				return array();
+			}
+
+			$faqCollection = new \dbObject\ArrayFAQ();
+			$faqCollection->load(array(
+				'orderBy' => \dbObject\FAQ::getPopupOrderBy(),
+			));
+
+			$results = array();
+
+			foreach ($faqCollection as $faq) {
+				if (
+					!($faq instanceof \dbObject\FAQ)
+					|| !self::topbarSearchViewerCanViewFaq($faq, $this, $viewerContext, 'contextual')
+				) {
+					continue;
+				}
+
+				$question = trim((string)$faq->get('question'));
+				$answer = self::cleanTopbarSearchTextValue((string)$faq->get('answer'));
+				$detail = self::cleanTopbarSearchTextValue((string)$faq->get('detail'));
+				$questionScore = self::getTopbarSearchTextScore($question, $terms, array(
+					'exact' => 110,
+					'prefix' => 70,
+					'like' => 36,
+				));
+				$answerScore = self::getTopbarSearchTextScore($answer, $terms, array(
+					'exact' => 34,
+					'prefix' => 20,
+					'like' => 12,
+				));
+				$detailScore = self::getTopbarSearchTextScore($detail, $terms, array(
+					'exact' => 24,
+					'prefix' => 14,
+					'like' => 8,
+				));
+
+				$subtitleParts = array();
+				$contextCandidates = array();
+				$parcours = $faq->getContextParcours();
+				$holon = $faq->getContextHolon();
+
+				if ($parcours instanceof \dbObject\Parcours) {
+					$parcoursTitle = trim((string)$parcours->get('title'));
+					if ($parcoursTitle !== '') {
+						$subtitleParts[] = 'Tutoriel';
+						$subtitleParts[] = $parcoursTitle;
+						$contextCandidates[] = $parcoursTitle;
+					}
+				} elseif ($holon instanceof \dbObject\Holon) {
+					$holonLabel = trim((string)$holon->getDisplayName());
+					if ($holonLabel !== '') {
+						$subtitleParts[] = self::getTopbarSearchHolonTypeLabel((int)$holon->get('IDtypeholon'));
+						$subtitleParts[] = $holonLabel;
+						$contextCandidates[] = $holonLabel;
+					}
+				} elseif ($faq->getResolvedOrganizationId() === (int)$this->getId()) {
+					$organizationLabel = trim((string)$this->get('name'));
+					if ($organizationLabel !== '') {
+						$subtitleParts[] = $organizationLabel;
+						$contextCandidates[] = $organizationLabel;
+					}
+				} else {
+					$subtitleParts[] = 'Generique';
+				}
+
+				$contextScore = 0;
+				foreach ($contextCandidates as $contextCandidate) {
+					$contextScore += self::getTopbarSearchTextScore($contextCandidate, $terms, array(
+						'exact' => 14,
+						'prefix' => 8,
+						'like' => 4,
+					));
+				}
+
+				$totalScore = $questionScore + $answerScore + $detailScore + $contextScore;
+				if ($totalScore <= 0) {
+					continue;
+				}
+
+				$snippetCandidates = array(
+					$answer,
+					$detail,
+					$question,
+				);
+				$snippetSource = '';
+				$snippetScore = -1;
+				foreach ($snippetCandidates as $candidate) {
+					$candidate = trim((string)$candidate);
+					if ($candidate === '') {
+						continue;
+					}
+
+					$candidateScore = self::getTopbarSearchTextScore($candidate, $terms);
+					if ($candidateScore <= $snippetScore) {
+						continue;
+					}
+
+					$snippetScore = $candidateScore;
+					$snippetSource = $candidate;
+				}
+
+				$results[] = array(
+					'module' => 'faq',
+					'moduleLabel' => 'FAQ',
+					'title' => $question !== '' ? $question : ('FAQ #' . (int)$faq->getId()),
+					'subtitle' => implode(' | ', array_values(array_filter($subtitleParts, function ($part) {
+						return trim((string)$part) !== '';
+					}))),
+					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
+					'relevance' => $totalScore,
+					'action' => array(
+						'type' => 'faq',
+						'faqId' => (int)$faq->getId(),
+					),
+				);
+			}
+
+			usort($results, function ($left, $right) {
+				$leftScore = (int)($left['relevance'] ?? 0);
+				$rightScore = (int)($right['relevance'] ?? 0);
+				if ($leftScore !== $rightScore) {
+					return $rightScore <=> $leftScore;
+				}
+
+				$leftId = (int)($left['action']['faqId'] ?? 0);
+				$rightId = (int)($right['action']['faqId'] ?? 0);
+				return $rightId <=> $leftId;
+			});
+
+			return array_slice($results, 0, max(1, (int)$limit));
+		}
+
+		protected function searchTopbarTutorialResults($query, array $terms, $limit = 12, array $viewerContext = array())
+		{
+			$organizationId = (int)$this->getId();
+			if (
+				$organizationId <= 0
+				|| count($terms) === 0
+				|| !self::topbarSearchViewerHasOrganizationAccess($viewerContext, $organizationId)
+			) {
+				return array();
+			}
+
+			$visibleParcoursRows = self::topbarSearchResolveAccessibleTutorialRows($viewerContext, $organizationId);
+			if (count($visibleParcoursRows) === 0) {
+				return array();
+			}
+
+			$results = array();
+
+			foreach ($visibleParcoursRows as $parcoursId => $parcoursRow) {
+				$title = trim((string)($parcoursRow['title'] ?? ''));
+				$description = self::cleanTopbarSearchTextValue((string)($parcoursRow['description'] ?? ''));
+				$titleScore = self::getTopbarSearchTextScore($title, $terms, array(
+					'exact' => 104,
+					'prefix' => 64,
+					'like' => 34,
+				));
+				$descriptionScore = self::getTopbarSearchTextScore($description, $terms, array(
+					'exact' => 34,
+					'prefix' => 20,
+					'like' => 12,
+				));
+				$totalScore = $titleScore + $descriptionScore;
+				if ($totalScore <= 0) {
+					continue;
+				}
+
+				$isPack = !empty($parcoursRow['ispack']);
+				$results[] = array(
+					'module' => 'tutorials',
+					'moduleLabel' => 'Tutoriels',
+					'title' => $title !== '' ? $title : ('Parcours #' . (int)$parcoursId),
+					'subtitle' => $isPack ? 'Pack' : 'Parcours',
+					'excerpt' => self::buildTopbarSearchSnippet($description !== '' ? $description : $title, $query, 100, 220),
+					'relevance' => $totalScore,
+					'_sortKind' => 1,
+					'action' => array(
+						'type' => 'tutorial',
+						'parcoursId' => (int)$parcoursId,
+						'missionId' => 0,
+					),
+				);
+			}
+
+			$missionParcoursIds = array();
+			foreach ($visibleParcoursRows as $parcoursId => $parcoursRow) {
+				if (!empty($parcoursRow['ispack'])) {
+					continue;
+				}
+
+				$missionParcoursIds[] = (int)$parcoursId;
+			}
+
+			if (count($missionParcoursIds) > 0) {
+				$missionParams = array();
+				$missionPlaceholders = self::buildIntPlaceholders($missionParcoursIds, 'tutorial_parcours', $missionParams);
+				$missionRows = self::fetchAll(
+					"SELECT
+						m.id,
+						m.title,
+						m.resume,
+						m.html,
+						pm.IDparcours,
+						pm.branch
+					FROM mission m
+					INNER JOIN parcours_mission pm
+						ON pm.IDmission = m.id
+					WHERE pm.IDparcours IN (" . implode(', ', $missionPlaceholders) . ")
+					ORDER BY pm.IDparcours ASC, COALESCE(pm.position, m.position, m.id) ASC, pm.id ASC",
+					$missionParams
+				);
+
+				foreach ((array)$missionRows as $missionRow) {
+					$parcoursId = (int)($missionRow['IDparcours'] ?? 0);
+					$parcoursRow = $visibleParcoursRows[$parcoursId] ?? null;
+					if (!is_array($parcoursRow)) {
+						continue;
+					}
+
+					$missionTitle = trim((string)($missionRow['title'] ?? ''));
+					$missionResume = self::cleanTopbarSearchTextValue((string)($missionRow['resume'] ?? ''));
+					$missionHtml = self::cleanTopbarSearchTextValue((string)($missionRow['html'] ?? ''));
+					$parcoursTitle = trim((string)($parcoursRow['title'] ?? ''));
+					$branchLabel = trim((string)($missionRow['branch'] ?? ''));
+					$missionScore =
+						self::getTopbarSearchTextScore($missionTitle, $terms, array(
+							'exact' => 98,
+							'prefix' => 62,
+							'like' => 32,
+						))
+						+ self::getTopbarSearchTextScore($missionResume, $terms, array(
+							'exact' => 34,
+							'prefix' => 20,
+							'like' => 12,
+						))
+						+ self::getTopbarSearchTextScore($missionHtml, $terms, array(
+							'exact' => 22,
+							'prefix' => 14,
+							'like' => 8,
+						))
+						+ self::getTopbarSearchTextScore($parcoursTitle, $terms, array(
+							'exact' => 16,
+							'prefix' => 10,
+							'like' => 6,
+						))
+						+ self::getTopbarSearchTextScore($branchLabel, $terms, array(
+							'exact' => 10,
+							'prefix' => 6,
+							'like' => 4,
+						));
+
+					if ($missionScore <= 0) {
+						continue;
+					}
+
+					$subtitleParts = array('Mission');
+					if ($parcoursTitle !== '') {
+						$subtitleParts[] = $parcoursTitle;
+					}
+					if ($branchLabel !== '') {
+						$subtitleParts[] = $branchLabel;
+					}
+
+					$snippetCandidates = array(
+						$missionResume,
+						$missionHtml,
+						$parcoursTitle,
+					);
+					$snippetSource = '';
+					$snippetScore = -1;
+					foreach ($snippetCandidates as $candidate) {
+						$candidate = trim((string)$candidate);
+						if ($candidate === '') {
+							continue;
+						}
+
+						$candidateScore = self::getTopbarSearchTextScore($candidate, $terms);
+						if ($candidateScore <= $snippetScore) {
+							continue;
+						}
+
+						$snippetScore = $candidateScore;
+						$snippetSource = $candidate;
+					}
+
+					$results[] = array(
+						'module' => 'tutorials',
+						'moduleLabel' => 'Tutoriels',
+						'title' => $missionTitle !== '' ? $missionTitle : ('Mission #' . (int)($missionRow['id'] ?? 0)),
+						'subtitle' => implode(' | ', $subtitleParts),
+						'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
+						'relevance' => $missionScore,
+						'_sortKind' => 2,
+						'action' => array(
+							'type' => 'tutorial',
+							'parcoursId' => $parcoursId,
+							'missionId' => (int)($missionRow['id'] ?? 0),
+						),
+					);
+				}
+			}
+
+			usort($results, function ($left, $right) {
+				$leftScore = (int)($left['relevance'] ?? 0);
+				$rightScore = (int)($right['relevance'] ?? 0);
+				if ($leftScore !== $rightScore) {
+					return $rightScore <=> $leftScore;
+				}
+
+				$leftKind = (int)($left['_sortKind'] ?? 99);
+				$rightKind = (int)($right['_sortKind'] ?? 99);
+				if ($leftKind !== $rightKind) {
+					return $leftKind <=> $rightKind;
+				}
+
+				return strcmp((string)($left['title'] ?? ''), (string)($right['title'] ?? ''));
+			});
+
+			$results = array_slice($results, 0, max(1, (int)$limit));
+			foreach ($results as &$result) {
+				unset($result['_sortKind']);
+			}
+			unset($result);
+
+			return $results;
 		}
 
 		protected function searchTopbarStructureResults($query, array $terms, $limit = 12, array $viewerContext = array())
@@ -7024,10 +7585,10 @@
 				'prefix' => 18,
 				'like' => 10,
 			));
-			$keywordsScoreSql = self::buildTopbarSearchScoreSql($keywordsExpr, $terms, $params, 'document_keywords', array(
-				'exact' => 40,
-				'prefix' => 26,
-				'like' => 15,
+			$keywordsScoreSql = self::buildTopbarSearchTagScoreSql($keywordsExpr, $terms, $params, 'document_keywords', array(
+				'exact' => 100,
+				'prefix' => 72,
+				'like' => 24,
 			));
 			$contentScoreSql = self::buildTopbarSearchScoreSql($contentExpr, $terms, $params, 'document_content', array(
 				'exact' => 18,
@@ -7526,6 +8087,8 @@
 					$enabledScopes[$scopeId] = $scopeId;
 				}
 			}
+			$enabledScopes['faq'] = 'faq';
+			$enabledScopes['tutorials'] = 'tutorials';
 			$normalizedScopes = array();
 
 			foreach ($scopes as $scope) {
@@ -7563,6 +8126,8 @@
 				'calendar' => 0,
 				'documents' => 0,
 				'decision' => 0,
+				'faq' => 0,
+				'tutorials' => 0,
 			);
 			$results = array();
 
@@ -7600,6 +8165,18 @@
 					$counts['decision'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
+
+				if (isset($normalizedScopes['faq'])) {
+					$scopeResults = $this->searchTopbarFaqResults($query, $terms, $perScopeLimit, $viewerContext);
+					$counts['faq'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
+
+				if (isset($normalizedScopes['tutorials'])) {
+					$scopeResults = $this->searchTopbarTutorialResults($query, $terms, $perScopeLimit, $viewerContext);
+					$counts['tutorials'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
 			}
 
 			$moduleOrder = array(
@@ -7608,6 +8185,8 @@
 				'calendar' => 3,
 				'decision' => 4,
 				'documents' => 5,
+				'faq' => 6,
+				'tutorials' => 7,
 			);
 
 			usort($results, function ($left, $right) use ($moduleOrder) {

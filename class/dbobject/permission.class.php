@@ -107,6 +107,11 @@ class Permission extends DbObject
                 'description' => 'Autorise la creation de FAQ dans le contexte cible.',
                 'iscontextual' => true,
             ],
+            'CAN_ADD_APP' => [
+                'title' => 'Gerer les applications',
+                'description' => 'Autorise la gestion des applications actives et de leur ordre dans l organisation.',
+                'iscontextual' => false,
+            ],
             'CAN_CREATE_PARCOURS' => [
                 'title' => 'Creer des parcours',
                 'description' => 'Autorise la creation, l import, la suppression et le detachement de parcours dans le contexte cible.',

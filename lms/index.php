@@ -10,13 +10,14 @@ require_once __DIR__ . '/inc/access.php';
 $isEmbedded = !empty($_GET['embed']);
 $user_id = (int)($_SESSION['currentUser'] ?? 0);
 $hasOrganizationAccess = commonUserHasOrganizationAccess($user_id, (int)$org['id']);
+$showAdminPreviewCards = lmsCurrentUserHasExplicitOrganizationAdminMode((int)$org['id']);
 $isGuestAllowed = commonCanAccessWithoutLogin($org);
 $organizationColor = commonGetOrganizationExplicitColor($org);
 $showPublicCatalog = false;
 $hiddenParcoursCount = 0;
 
 if ($hasOrganizationAccess) {
-    $parcours = \dbObject\Parcours::fetchForOrganizationWithProgress($org['id'], $user_id, true);
+    $parcours = \dbObject\Parcours::fetchForOrganizationWithProgress($org['id'], $user_id, true, $showAdminPreviewCards);
     $hiddenParcoursCount = 0;
 } else {
     $parcours = \dbObject\Parcours::fetchPublicForOrganizationWithProgress($org['id'], $user_id);
@@ -77,6 +78,7 @@ $loginDrawerReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] :
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($org['name']); ?></title>
+    <link rel="stylesheet" href="/common/assets/theme.css">
     <link rel="stylesheet" href="/shared_css.css">
     <link rel="stylesheet" href="/lms/css/std.css">
     <script src="/shared_functions.js"></script>
@@ -158,6 +160,19 @@ $loginDrawerReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] :
         .card:hover {
             transform: translateY(-3px);
             box-shadow: 0 18px 34px rgba(15,23,42,0.12);
+        }
+
+        .card.is-preview-only,
+        .card.is-preview-only:hover {
+            opacity: 0.58;
+            cursor: default;
+            transform: none;
+            box-shadow: var(--shadow);
+        }
+
+        .card.is-preview-only .open-btn {
+            background: var(--disabled);
+            cursor: not-allowed;
         }
 
         .card-image {
@@ -329,19 +344,28 @@ $loginDrawerReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] :
 </div>
 <?php endif; ?>
 
+<?php if ($showAdminPreviewCards): ?>
+<div class="lms-access-note">
+    <strong>Mode admin d organisation actif.</strong>
+    Les cartes grisees restent masquees pour les membres de l organisation dans leur vue normale.
+</div>
+<?php endif; ?>
+
 <div class="lms-parcours-sections">
     <section class="lms-parcours-section" id="lms-parcours-section-pending">
         <div class="container" id="lms-parcours-pending-grid">
             <?php foreach ($pendingParcours as $p): ?>
             <?php $total = (int)($p['total_missions'] ?? 0); $done = (int)($p['done_missions'] ?? 0); $percent = $total > 0 ? round(($done / $total) * 100) : 0; ?>
+            <?php $isPreviewOnly = $showAdminPreviewCards && lmsParcoursIsPreviewOnly($p); ?>
             <div
-                class="card"
+                class="card<?php echo $isPreviewOnly ? ' is-preview-only' : ''; ?>"
                 data-parcours-card="1"
                 data-is-pack="0"
                 data-parcours-id="<?php echo (int)$p['id']; ?>"
                 data-total-missions="<?php echo $total; ?>"
                 data-local-progress="<?php echo ($user_id <= 0 && !empty($p['anonymous'])) ? '1' : '0'; ?>"
-                onclick="goToParcours(<?php echo (int)$p['id']; ?>)"
+                data-preview-only="<?php echo $isPreviewOnly ? '1' : '0'; ?>"
+                onclick="<?php echo $isPreviewOnly ? 'return false;' : 'goToParcours(' . (int)$p['id'] . ')'; ?>"
             >
                 <?php if (!empty($p['image'])): ?>
                 <div class="card-image">
@@ -353,7 +377,9 @@ $loginDrawerReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] :
                     <div><?php echo htmlspecialchars((string)$p['description']); ?></div>
                     <div class="card-footer">
                         <div class="progress-circle" data-percent="<?php echo (int)$percent; ?>"></div>
-                        <button class="open-btn">Ouvrir</button>
+                        <button class="open-btn" type="button" <?php echo $isPreviewOnly ? 'disabled' : ''; ?>>
+                            <?php echo $isPreviewOnly ? htmlspecialchars(lmsParcoursPreviewLabel($p)) : 'Ouvrir'; ?>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -371,14 +397,16 @@ $loginDrawerReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] :
         <div class="container" id="lms-parcours-completed-grid">
             <?php foreach ($completedParcours as $p): ?>
             <?php $total = (int)($p['total_missions'] ?? 0); $done = (int)($p['done_missions'] ?? 0); $percent = $total > 0 ? round(($done / $total) * 100) : 0; ?>
+            <?php $isPreviewOnly = $showAdminPreviewCards && lmsParcoursIsPreviewOnly($p); ?>
             <div
-                class="card"
+                class="card<?php echo $isPreviewOnly ? ' is-preview-only' : ''; ?>"
                 data-parcours-card="1"
                 data-is-pack="0"
                 data-parcours-id="<?php echo (int)$p['id']; ?>"
                 data-total-missions="<?php echo $total; ?>"
                 data-local-progress="<?php echo ($user_id <= 0 && !empty($p['anonymous'])) ? '1' : '0'; ?>"
-                onclick="goToParcours(<?php echo (int)$p['id']; ?>)"
+                data-preview-only="<?php echo $isPreviewOnly ? '1' : '0'; ?>"
+                onclick="<?php echo $isPreviewOnly ? 'return false;' : 'goToParcours(' . (int)$p['id'] . ')'; ?>"
             >
                 <?php if (!empty($p['image'])): ?>
                 <div class="card-image">
@@ -390,7 +418,9 @@ $loginDrawerReturnTo = lmsBuildLocalPath('/lms/', $isEmbedded ? ['embed' => 1] :
                     <div><?php echo htmlspecialchars((string)$p['description']); ?></div>
                     <div class="card-footer">
                         <div class="progress-circle" data-percent="<?php echo (int)$percent; ?>"></div>
-                        <button class="open-btn">Ouvrir</button>
+                        <button class="open-btn" type="button" <?php echo $isPreviewOnly ? 'disabled' : ''; ?>>
+                            <?php echo $isPreviewOnly ? htmlspecialchars(lmsParcoursPreviewLabel($p)) : 'Ouvrir'; ?>
+                        </button>
                     </div>
                 </div>
             </div>

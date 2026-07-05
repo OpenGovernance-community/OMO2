@@ -60,15 +60,31 @@ $serverEnvClientTexts = [
     <style>
     .omo-server-env-popup {
         display: grid;
-        gap: 16px;
+        gap: 0;
         color: var(--color-text, #1f2937);
     }
 
-    .omo-server-env-popup__hero,
     .omo-server-env-popup__panel,
     .omo-server-env-popup__error,
     .omo-server-env-popup__feedback {
         --generic-section-padding-block: 18px;
+    }
+
+    .omo-server-env-popup__header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .omo-server-env-popup__header-copy {
+        display: grid;
+        gap: 10px;
+    }
+
+    .omo-server-env-popup__shell {
+        display: grid;
+        gap: 16px;
+        padding: 16px 18px 18px;
     }
 
     .omo-server-env-popup__hero {
@@ -199,15 +215,18 @@ $serverEnvClientTexts = [
     }
     </style>
 
-    <div class="omo-server-env-popup__hero generic-hero-panel">
-        <div class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.hero.eyebrow'), ENT_QUOTES, 'UTF-8') ?></div>
-        <h2 class="generic-card-title generic-card-title--large"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.hero.title'), ENT_QUOTES, 'UTF-8') ?></h2>
-        <p><?= htmlspecialchars(omoServerEnvT('parameters.server_env.hero.description'), ENT_QUOTES, 'UTF-8') ?></p>
-        <div class="omo-server-env-popup__meta">
-            <span class="omo-server-env-popup__badge"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.hero.target', ['target' => $serverEnvTargetLabel]), ENT_QUOTES, 'UTF-8') ?></span>
-            <span class="omo-server-env-popup__badge"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.hero.unlock_ttl', ['minutes' => $unlockTtlMinutes]), ENT_QUOTES, 'UTF-8') ?></span>
+    <div class="omo-server-env-popup__header generic-drawer-header generic-drawer-header--sticky">
+        <div class="generic-drawer-header__copy omo-server-env-popup__header-copy omo-server-env-popup__hero">
+            <div class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.hero.eyebrow'), ENT_QUOTES, 'UTF-8') ?></div>
+            <h2 class="generic-card-title generic-card-title--large"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.hero.title'), ENT_QUOTES, 'UTF-8') ?></h2>
+            <p><?= htmlspecialchars(omoServerEnvT('parameters.server_env.hero.description'), ENT_QUOTES, 'UTF-8') ?></p>
+            <div class="omo-server-env-popup__meta">
+                <span class="omo-server-env-popup__badge"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.hero.target', ['target' => $serverEnvTargetLabel]), ENT_QUOTES, 'UTF-8') ?></span>
+                <span class="omo-server-env-popup__badge"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.hero.unlock_ttl', ['minutes' => $unlockTtlMinutes]), ENT_QUOTES, 'UTF-8') ?></span>
+            </div>
         </div>
     </div>
+    <div class="omo-server-env-popup__shell">
 
     <?php if (!$hasLocalPassword): ?>
         <div class="omo-server-env-popup__error generic-section generic-section--stack">
@@ -314,6 +333,7 @@ $serverEnvClientTexts = [
             </form>
         </div>
     <?php endif; ?>
+    </div>
 </div>
 
 <script>

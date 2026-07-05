@@ -70,3 +70,52 @@ function lmsCanTrackProgress(array $accessContext)
 {
 	return !empty($accessContext['canTrackProgress']);
 }
+
+function lmsCurrentUserHasExplicitOrganizationAdminMode($organizationId)
+{
+	$organizationId = (int)$organizationId;
+	if ($organizationId <= 0) {
+		return false;
+	}
+
+	return function_exists('commonCurrentUserIsAdminModeExplicitlyEnabled')
+		&& commonCurrentUserIsAdminModeExplicitlyEnabled($organizationId);
+}
+
+function lmsCurrentUserIsOrganizationAdmin($organizationId, $userId = null)
+{
+	$organizationId = (int)$organizationId;
+	$userId = $userId !== null ? (int)$userId : (int)commonGetCurrentUserId();
+
+	if ($organizationId <= 0 || $userId <= 0 || !commonUserHasOrganizationAccess($userId, $organizationId)) {
+		return false;
+	}
+
+	$membership = new \dbObject\UserOrganization();
+	if (!$membership->load([
+		['IDuser', $userId],
+		['IDorganization', $organizationId],
+	])) {
+		return false;
+	}
+
+	return $membership->isOrganizationAdmin();
+}
+
+function lmsParcoursIsPreviewOnly(array $parcoursRow)
+{
+	return empty($parcoursRow['isvisible']);
+}
+
+function lmsParcoursPreviewLabel(array $parcoursRow)
+{
+	if (empty($parcoursRow['isapplicationvisible'])) {
+		return 'Masque par application inactive';
+	}
+
+	if (empty($parcoursRow['isprerequisitevisible'])) {
+		return 'Prerequis non atteints';
+	}
+
+	return 'Masque dans ce contexte';
+}

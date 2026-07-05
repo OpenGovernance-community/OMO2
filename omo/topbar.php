@@ -219,7 +219,7 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Topbar search menu button label in OMO pages.',
         ],
         'topbar.search.placeholder' => [
-            'text' => 'Rechercher un cercle, un role ou un outil',
+            'text' => 'Rechercher un cercle, un role, un outil, une FAQ ou un tutoriel',
             'context' => 'Placeholder and label for the OMO topbar search field.',
         ],
         'topbar.search.scope' => [
@@ -270,7 +270,7 @@ function omoGetTopbarHelpItems(string $variant = 'app', int $organizationId = 0)
 
     $tutorialsUrl = commonBuildUrl(
         '/omo/api/lms/?' . http_build_query($tutorialsQuery, '', '&', PHP_QUERY_RFC3986),
-        commonGetRootHost()
+        commonGetRequestHost()
     );
 
     $faqItem = [

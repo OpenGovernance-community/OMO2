@@ -63,8 +63,26 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
     <style>
     .omo-share-popup {
         display: grid;
-        gap: 18px;
+        gap: 0;
         color: var(--color-text, #1f2937);
+    }
+
+    .omo-share-popup__header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .omo-share-popup__header-copy {
+        display: grid;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .omo-share-popup__shell {
+        display: grid;
+        gap: 18px;
+        padding: 16px 18px 18px;
     }
 
     .omo-share-popup--error {
@@ -238,10 +256,14 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
     }
     </style>
 
-    <div class="omo-share-popup__hero generic-hero-panel">
-        <h2 class="generic-card-title generic-card-title--large">Partager ce contexte</h2>
-        <p>Le lien demarrera sur <strong><?= htmlspecialchars($defaultLabel, ENT_QUOTES, 'UTF-8') ?></strong> et pourra etre transmis a des personnes externes.</p>
+    <div class="omo-share-popup__header generic-drawer-header generic-drawer-header--sticky">
+        <div class="generic-drawer-header__copy omo-share-popup__header-copy">
+            <div class="generic-card-title generic-card-title--eyebrow">Partage</div>
+            <h2 class="generic-card-title generic-card-title--large">Partager ce contexte</h2>
+            <p>Le lien demarrera sur <strong><?= htmlspecialchars($defaultLabel, ENT_QUOTES, 'UTF-8') ?></strong> et pourra etre transmis a des personnes externes.</p>
+        </div>
     </div>
+    <div class="omo-share-popup__shell">
 
     <div id="omoSharePopupFeedback" class="omo-share-popup__feedback"></div>
 
@@ -390,6 +412,7 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
                 <button type="submit" class="omo-share-popup__button generic-action-button generic-action-button--main" id="omoSharePopupSubmit">Creer le lien</button>
             </div>
         </form>
+    </div>
     </div>
 </div>
 

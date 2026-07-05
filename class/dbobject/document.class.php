@@ -163,18 +163,40 @@
 				);
 		}
 
-		public function canEditInOrganizationContext(int $organizationId): bool
+		public function canEditInOrganizationContext(int $organizationId, ?int $userId = null, bool $useSessionCache = true): bool
 		{
 			$documentOrganizationId = (int)$this->get('IDorganization');
 			$organizationId = (int)$organizationId;
+			$userId = $userId !== null
+				? (int)$userId
+				: (
+					function_exists('commonGetCurrentUserId')
+						? (int)\commonGetCurrentUserId()
+						: (int)($_SESSION['currentUser'] ?? 0)
+				);
 
-			if ($documentOrganizationId <= 0) {
-				return $organizationId <= 0
-					&& $this->canEdit();
+			if ($userId <= 0 || $userId !== (int)$this->get('IDuser')) {
+				return false;
 			}
 
-			return $documentOrganizationId === $organizationId
-				&& $this->canEdit();
+			if ($documentOrganizationId <= 0) {
+				return $organizationId <= 0;
+			}
+
+			if (
+				function_exists('commonUserHasOrganizationAccess')
+				&& !\commonUserHasOrganizationAccess($userId, $documentOrganizationId)
+			) {
+				return false;
+			}
+
+			return self::canCreateInOrganizationContext(
+				$documentOrganizationId,
+				(int)$this->get('IDholon') > 0 ? (int)$this->get('IDholon') : null,
+				$userId,
+				(int)$this->get('IDdocument_parent'),
+				$useSessionCache
+			);
 		}
 
 		public function canViewInMemoContext(int $userId = 0, ?string $accessCode = null): bool
@@ -830,7 +852,7 @@
 				(int)$this->getId() <= 0
 				|| (int)$this->get('IDorganization') !== $organizationId
 				|| $userId <= 0
-				|| !$this->canEditInOrganizationContext($organizationId)
+				|| !$this->canEditInOrganizationContext($organizationId, $userId, false)
 			) {
 				return array(
 					'status' => false,
@@ -1362,8 +1384,8 @@
 				return false;
 			}
 
-			return function_exists('commonCurrentUserHasOrganizationAccess')
-				? \commonCurrentUserHasOrganizationAccess($organizationId)
+			return function_exists('commonUserHasOrganizationAccess')
+				? \commonUserHasOrganizationAccess($userId, $organizationId)
 				: false;
 		}
 
@@ -1615,7 +1637,7 @@
 				);
 			}
 
-			if ($userId <= 0 || $userId !== (int)$this->get('IDuser') || !$this->canEditInOrganizationContext($organizationId)) {
+			if ($userId <= 0 || $userId !== (int)$this->get('IDuser') || !$this->canEditInOrganizationContext($organizationId, $userId, false)) {
 				return array(
 					'status' => false,
 					'text' => 'Acces refuse.',
@@ -1915,7 +1937,7 @@
 				);
 			}
 
-			if ($userId <= 0 || $userId !== (int)$this->get('IDuser') || !$this->canEditInOrganizationContext($organizationId)) {
+			if ($userId <= 0 || $userId !== (int)$this->get('IDuser') || !$this->canEditInOrganizationContext($organizationId, $userId, false)) {
 				return array(
 					'status' => false,
 					'text' => 'Acces refuse.',

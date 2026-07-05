@@ -1,11 +1,13 @@
 <?php
 $isPackParcours = $parcoursRef instanceof \dbObject\Parcours && $parcoursRef->isPack();
+$showAdminPreviewCards = lmsCurrentUserHasExplicitOrganizationAdminMode((int)$org['id']);
 $packChildren = $isPackParcours
     ? \dbObject\Parcours::fetchPackChildrenForOrganizationWithProgress(
         (int)$org['id'],
         (int)$parcours_id,
         (int)$user_id,
-        (bool)commonUserHasOrganizationAccess((int)$user_id, (int)$org['id'])
+        (bool)commonUserHasOrganizationAccess((int)$user_id, (int)$org['id']),
+        $showAdminPreviewCards
     )
     : [];
 ?>
@@ -23,7 +25,13 @@ $packChildren = $isPackParcours
 <div class="lms-pack-children">
     <div class="lms-pack-children__intro">
         <h2>Parcours du pack</h2>
-        <p>Seuls les parcours compatibles avec les applications actives dans cette organisation sont affiches.</p>
+        <p>
+            <?php if ($showAdminPreviewCards): ?>
+                Les cartes grisees correspondent aux parcours encore masques dans la vue normale des membres.
+            <?php else: ?>
+                Seuls les parcours compatibles avec les applications actives dans cette organisation sont affiches.
+            <?php endif; ?>
+        </p>
     </div>
 
     <?php if (count($packChildren) === 0): ?>
@@ -35,16 +43,19 @@ $packChildren = $isPackParcours
                 $total = (int)($childParcours['total_missions'] ?? 0);
                 $done = (int)($childParcours['done_missions'] ?? 0);
                 $percent = $total > 0 ? (int)round(($done / $total) * 100) : 0;
+                $isPreviewOnly = $showAdminPreviewCards && lmsParcoursIsPreviewOnly($childParcours);
                 ?>
-                <div class="card" onclick="goToPackChildParcours(<?php echo (int)($childParcours['id'] ?? 0); ?>)">
+                <div class="card<?php echo $isPreviewOnly ? ' is-preview-only' : ''; ?>" onclick="<?php echo $isPreviewOnly ? 'return false;' : 'goToPackChildParcours(' . (int)($childParcours['id'] ?? 0) . ')'; ?>">
                     <div class="card-content">
                         <h3><?php echo htmlspecialchars((string)($childParcours['title'] ?? '')); ?></h3>
                         <?php if (trim((string)($childParcours['description'] ?? '')) !== ''): ?>
                             <p><?php echo htmlspecialchars((string)$childParcours['description']); ?></p>
                         <?php endif; ?>
                         <div class="card-footer">
-                            <span class="card-meta"><?php echo $percent; ?>% termine</span>
-                            <button type="button" class="open-btn" onclick="event.stopPropagation(); goToPackChildParcours(<?php echo (int)($childParcours['id'] ?? 0); ?>)">Ouvrir</button>
+                            <span class="card-meta"><?php echo $isPreviewOnly ? htmlspecialchars(lmsParcoursPreviewLabel($childParcours)) : $percent . '% termine'; ?></span>
+                            <button type="button" class="open-btn" onclick="<?php echo $isPreviewOnly ? 'return false;' : 'event.stopPropagation(); goToPackChildParcours(' . (int)($childParcours['id'] ?? 0) . ')'; ?>" <?php echo $isPreviewOnly ? 'disabled' : ''; ?>>
+                                <?php echo $isPreviewOnly ? 'Masque' : 'Ouvrir'; ?>
+                            </button>
                         </div>
                     </div>
                 </div>

@@ -85,26 +85,45 @@ $organizationRoutingLockedMessage = "Le nom court et le domaine sont reserves au
         color: var(--color-text, var(--auth-page-text, #0f172a));
     }
 
-    .organization-create-hero {
-        gap: 10px;
-    }
-
     .organization-create-kicker {
         margin-bottom: 0;
     }
 
-    .organization-create-hero h1 {
+    .organization-create-header {
+        --generic-drawer-header-z: 900;
+        position: relative;
+        z-index: 900;
+    }
+
+    .organization-create-header__title {
         margin: 0;
-        font-size: clamp(28px, 4vw, 34px);
-        line-height: 1.08;
+        font-size: clamp(1.5rem, 2.4vw, 1.9rem);
+        line-height: 1.12;
         color: var(--color-text, #0f172a);
     }
 
-    .organization-create-hero p {
+    .organization-create-header__description {
         margin: 0;
-        max-width: 720px;
-        line-height: 1.55;
+        max-width: 760px;
+        line-height: 1.5;
         color: var(--color-text-light, #475569);
+    }
+
+    .organization-create-shell {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+
+    .organization-create-view .leaflet-container {
+        z-index: 0;
+    }
+
+    .organization-create-view .leaflet-pane,
+    .organization-create-view .leaflet-top,
+    .organization-create-view .leaflet-bottom,
+    .organization-create-view .leaflet-control {
+        z-index: 100;
     }
 
     .organization-create-card {
@@ -280,6 +299,12 @@ $organizationRoutingLockedMessage = "Le nom court et le domaine sont reserves au
 
     #commonTopbarModalBody .organization-create-view {
         max-width: none;
+        gap: 0;
+    }
+
+    #commonTopbarModalBody .organization-create-shell {
+        padding: 16px 18px 18px;
+        box-sizing: border-box;
     }
 
     @media (max-width: 860px) {
@@ -311,11 +336,14 @@ $organizationRoutingLockedMessage = "Le nom court et le domaine sont reserves au
 </style>
 
 <div class="organization-create-view" id="organizationCreateRoot" data-render-mode="<?= $isFetchRequest ? 'fetch' : 'document' ?>">
-    <section class="organization-create-hero generic-hero-panel accent">
-        <div class="organization-create-kicker generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars($heroKicker, ENT_QUOTES, 'UTF-8') ?></div>
-        <h1><?= htmlspecialchars($heroTitle, ENT_QUOTES, 'UTF-8') ?></h1>
-        <p><?= htmlspecialchars($heroText, ENT_QUOTES, 'UTF-8') ?></p>
+    <section class="organization-create-header generic-drawer-header<?= $isFetchRequest ? ' generic-drawer-header--sticky' : '' ?>">
+        <div class="generic-drawer-header__copy">
+            <div class="organization-create-kicker generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars($heroKicker, ENT_QUOTES, 'UTF-8') ?></div>
+            <h2 class="organization-create-header__title"><?= htmlspecialchars($heroTitle, ENT_QUOTES, 'UTF-8') ?></h2>
+            <p class="organization-create-header__description"><?= htmlspecialchars($heroText, ENT_QUOTES, 'UTF-8') ?></p>
+        </div>
     </section>
+    <div class="organization-create-shell">
 
     <section class="organization-create-card generic-section generic-section--stack">
 <?php
@@ -419,6 +447,7 @@ $organizationRoutingLockedMessage = "Le nom court et le domaine sont reserves au
 
         <div class="organization-create-feedback" id="organization_create_feedback"></div>
     </section>
+    </div>
 </div>
 
 <script>
