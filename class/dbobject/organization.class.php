@@ -6232,6 +6232,41 @@
 			return implode(' + ', $chunks);
 		}
 
+		protected static function buildTopbarSearchTagScoreSql($expression, array $terms, array &$params, $prefix, array $weights = array())
+		{
+			if (count($terms) === 0) {
+				return '0';
+			}
+
+			$resolvedWeights = array_merge(array(
+				'exact' => 100,
+				'prefix' => 72,
+				'like' => 24,
+			), $weights);
+			$normalizedExpression = "CONCAT(',', TRIM(BOTH ',' FROM REPLACE(REPLACE(" . $expression . ", ', ', ','), ' ,', ',')), ',')";
+			$chunks = array();
+
+			foreach (array_values($terms) as $index => $term) {
+				$normalizedTerm = self::normalizeTopbarSearchText($term);
+				if ($normalizedTerm === '') {
+					continue;
+				}
+
+				$paramBase = $prefix . '_' . $index;
+				$params[$paramBase . '_exact'] = '%,' . $normalizedTerm . ',%';
+				$params[$paramBase . '_prefix'] = '%,' . $normalizedTerm . '%';
+				$params[$paramBase . '_like'] = '%' . $normalizedTerm . '%';
+
+				$chunks[] = '(CASE'
+					. ' WHEN ' . $normalizedExpression . ' LIKE :' . $paramBase . '_exact THEN ' . (int)$resolvedWeights['exact']
+					. ' WHEN ' . $normalizedExpression . ' LIKE :' . $paramBase . '_prefix THEN ' . (int)$resolvedWeights['prefix']
+					. ' WHEN ' . $normalizedExpression . ' LIKE :' . $paramBase . '_like THEN ' . (int)$resolvedWeights['like']
+					. ' ELSE 0 END)';
+			}
+
+			return count($chunks) > 0 ? implode(' + ', $chunks) : '0';
+		}
+
 		protected static function buildTopbarSearchAnyMatchSql(array $expressions, array $terms, array &$params, $prefix)
 		{
 			if (count($expressions) === 0 || count($terms) === 0) {
@@ -7550,10 +7585,10 @@
 				'prefix' => 18,
 				'like' => 10,
 			));
-			$keywordsScoreSql = self::buildTopbarSearchScoreSql($keywordsExpr, $terms, $params, 'document_keywords', array(
-				'exact' => 40,
-				'prefix' => 26,
-				'like' => 15,
+			$keywordsScoreSql = self::buildTopbarSearchTagScoreSql($keywordsExpr, $terms, $params, 'document_keywords', array(
+				'exact' => 100,
+				'prefix' => 72,
+				'like' => 24,
 			));
 			$contentScoreSql = self::buildTopbarSearchScoreSql($contentExpr, $terms, $params, 'document_content', array(
 				'exact' => 18,

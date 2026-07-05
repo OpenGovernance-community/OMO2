@@ -498,6 +498,102 @@ if (!function_exists('omoSearchPopupRenderContent')) {
     }
 }
 
+if (!function_exists('omoSearchPopupBuildJobPayload')) {
+    function omoSearchPopupBuildJobPayload(\dbObject\SearchJob $job)
+    {
+        $jobPayload = array(
+            'status' => (string)$job->get('status'),
+            'error' => (string)$job->get('errormessage'),
+        );
+
+        if ((string)$job->get('status') === 'completed') {
+            $jobPayload = array_merge($job->getResultPayload(), array(
+                'status' => 'completed',
+            ));
+        }
+
+        return $jobPayload;
+    }
+}
+
+if (!function_exists('omoSearchPopupRenderPollingScript')) {
+    function omoSearchPopupRenderPollingScript($statusUrl)
+    {
+        ?>
+        <script>
+        (function () {
+            var root = document.querySelector('[data-omo-search-popup-root="1"]');
+            if (!root) {
+                return;
+            }
+
+            var content = root.querySelector('[data-omo-search-popup-content]');
+            var statusUrl = <?= json_encode((string)$statusUrl, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+            var timerId = 0;
+            var stopped = false;
+
+            function cleanup() {
+                stopped = true;
+                if (timerId) {
+                    window.clearTimeout(timerId);
+                    timerId = 0;
+                }
+            }
+
+            function scheduleNext(delay) {
+                if (stopped) {
+                    return;
+                }
+
+                timerId = window.setTimeout(loadState, delay);
+            }
+
+            function loadState() {
+                if (stopped || !content) {
+                    return;
+                }
+
+                fetch(statusUrl, {
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(function (response) {
+                        if (!response.ok) {
+                            throw new Error('Erreur de chargement');
+                        }
+
+                        return response.text();
+                    })
+                    .then(function (html) {
+                        if (stopped || !content) {
+                            return;
+                        }
+
+                        content.innerHTML = html;
+
+                        var stateNode = content.querySelector('[data-omo-search-job-status]');
+                        var status = stateNode ? String(stateNode.getAttribute('data-omo-search-job-status') || '') : '';
+                        if (status !== 'completed' && status !== 'failed') {
+                            scheduleNext(900);
+                        }
+                    })
+                    .catch(function () {
+                        if (!stopped && content) {
+                            content.innerHTML = '<div class="omo-search-popup__status-card generic-section is-error" data-omo-search-job-status="failed"><strong class="omo-search-popup__status-title">Recherche indisponible</strong><p class="omo-search-popup__status-text">Le suivi du job de recherche a echoue.</p></div>';
+                        }
+                    });
+            }
+
+            window.__omoPopupCleanup = cleanup;
+            loadState();
+        })();
+        </script>
+        <?php
+    }
+}
+
 $organizationId = isset($_GET['oid']) ? (int)$_GET['oid'] : (int)($_SESSION['currentOrganization'] ?? 0);
 $currentHolonId = isset($_GET['cid']) ? (int)$_GET['cid'] : 0;
 $query = trim((string)($_GET['q'] ?? ''));
@@ -530,6 +626,35 @@ if (!$organization->load($organizationId) || !$organization->canViewDetail()) {
 $scopeLabels = omoSearchPopupGetScopeLabels($organization);
 $selectedScopes = omoSearchPopupResolveScopes($_GET['scopes'] ?? array(), $scopeLabels);
 $viewerContext = \dbObject\SearchJob::buildViewerContextFromGlobals($organizationId, $currentHolonId);
+$restoreJobId = isset($_GET['restore_job_id']) ? (int)$_GET['restore_job_id'] : 0;
+$restoreJobToken = trim((string)($_GET['restore_job_token'] ?? ''));
+$restoredJob = false;
+$restoredPayload = null;
+$clientJobState = null;
+
+if (!$isPartial && $restoreJobId > 0 && $restoreJobToken !== '') {
+    $restoredJob = \dbObject\SearchJob::findByIdAndToken($restoreJobId, $restoreJobToken);
+    if ($restoredJob && $restoredJob->matchesViewerContext($viewerContext)) {
+        $query = trim((string)$restoredJob->get('query'));
+        $selectedScopes = omoSearchPopupResolveScopes($restoredJob->getScopes(), $scopeLabels);
+        $restoredPayload = omoSearchPopupBuildJobPayload($restoredJob);
+        $clientJobState = array(
+            'jobId' => (int)$restoredJob->getId(),
+            'jobToken' => (string)$restoredJob->get('requesttoken'),
+            'query' => $query,
+            'scopes' => array_values($selectedScopes),
+            'organizationId' => (int)$organizationId,
+            'currentHolonId' => (int)$currentHolonId,
+            'syncHash' => false,
+        );
+    } else {
+        $restoredJob = false;
+        $restoredPayload = array(
+            'status' => 'failed',
+            'error' => 'Cette recherche n est plus accessible dans le contexte courant.',
+        );
+    }
+}
 
 if ($isPartial) {
     $jobId = isset($_GET['job_id']) ? (int)$_GET['job_id'] : 0;
@@ -547,16 +672,7 @@ if ($isPartial) {
 
     $query = trim((string)$job->get('query'));
     $selectedScopes = omoSearchPopupResolveScopes($job->getScopes(), $scopeLabels);
-
-    $jobPayload = array(
-        'status' => (string)$job->get('status'),
-        'error' => (string)$job->get('errormessage'),
-    );
-    if ((string)$job->get('status') === 'completed') {
-        $jobPayload = array_merge($job->getResultPayload(), array(
-            'status' => 'completed',
-        ));
-    }
+    $jobPayload = omoSearchPopupBuildJobPayload($job);
 
     omoSearchPopupRenderContent($query, $selectedScopes, $scopeLabels, $jobPayload, $escape);
     exit;
@@ -573,7 +689,25 @@ omoSearchPopupRenderStyles();
     <?php omoSearchPopupRenderSearchForm($query, $selectedScopes, $scopeLabels, $escape); ?>
     <div data-omo-search-popup-content>
         <?php
-        if ($query === '') {
+        if ($restoredPayload !== null) {
+            omoSearchPopupRenderContent($query, $selectedScopes, $scopeLabels, $restoredPayload, $escape);
+            if ($restoredJob instanceof \dbObject\SearchJob) {
+                $restoredStatus = (string)$restoredJob->get('status');
+                if ($restoredStatus !== 'completed' && $restoredStatus !== 'failed') {
+                    $statusUrl = '/omo/api/search_popup.php'
+                        . '?partial=1'
+                        . '&oid=' . rawurlencode((string)$organizationId)
+                        . '&cid=' . rawurlencode((string)$currentHolonId)
+                        . '&q=' . rawurlencode($query)
+                        . '&job_id=' . rawurlencode((string)$restoredJob->getId())
+                        . '&job_token=' . rawurlencode((string)$restoredJob->get('requesttoken'));
+                    foreach (array_values($selectedScopes) as $scope) {
+                        $statusUrl .= '&scopes[]=' . rawurlencode((string)$scope);
+                    }
+                    omoSearchPopupRenderPollingScript($statusUrl);
+                }
+            }
+        } elseif ($query === '') {
             omoSearchPopupRenderContent($query, $selectedScopes, $scopeLabels, array(
                 'status' => 'completed',
                 'results' => array(),
@@ -606,6 +740,15 @@ omoSearchPopupRenderStyles();
                 omoSearchPopupRenderContent($query, $selectedScopes, $scopeLabels, array(
                     'status' => $jobDispatched ? 'queued' : (string)$job->get('status'),
                 ), $escape);
+                $clientJobState = array(
+                    'jobId' => (int)$job->getId(),
+                    'jobToken' => (string)$job->get('requesttoken'),
+                    'query' => $query,
+                    'scopes' => array_values($selectedScopes),
+                    'organizationId' => (int)$organizationId,
+                    'currentHolonId' => (int)$currentHolonId,
+                    'syncHash' => true,
+                );
 
                 $statusUrl = '/omo/api/search_popup.php'
                     . '?partial=1'
@@ -617,83 +760,25 @@ omoSearchPopupRenderStyles();
                 foreach (array_values($selectedScopes) as $scope) {
                     $statusUrl .= '&scopes[]=' . rawurlencode((string)$scope);
                 }
-                ?>
-                <script>
-                (function () {
-                    var root = document.querySelector('[data-omo-search-popup-root="1"]');
-                    if (!root) {
-                        return;
-                    }
-
-                    var content = root.querySelector('[data-omo-search-popup-content]');
-                    var statusUrl = <?= json_encode($statusUrl, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
-                    var timerId = 0;
-                    var stopped = false;
-
-                    function cleanup() {
-                        stopped = true;
-                        if (timerId) {
-                            window.clearTimeout(timerId);
-                            timerId = 0;
-                        }
-                    }
-
-                    function scheduleNext(delay) {
-                        if (stopped) {
-                            return;
-                        }
-
-                        timerId = window.setTimeout(loadState, delay);
-                    }
-
-                    function loadState() {
-                        if (stopped || !content) {
-                            return;
-                        }
-
-                        fetch(statusUrl, {
-                            credentials: 'same-origin',
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest'
-                            }
-                        })
-                            .then(function (response) {
-                                if (!response.ok) {
-                                    throw new Error('Erreur de chargement');
-                                }
-
-                                return response.text();
-                            })
-                            .then(function (html) {
-                                if (stopped || !content) {
-                                    return;
-                                }
-
-                                content.innerHTML = html;
-
-                                var stateNode = content.querySelector('[data-omo-search-job-status]');
-                                var status = stateNode ? String(stateNode.getAttribute('data-omo-search-job-status') || '') : '';
-                                if (status !== 'completed' && status !== 'failed') {
-                                    scheduleNext(900);
-                                }
-                            })
-                            .catch(function () {
-                                if (!stopped && content) {
-                                    content.innerHTML = '<div class="omo-search-popup__status-card generic-section is-error" data-omo-search-job-status="failed"><strong class="omo-search-popup__status-title">Recherche indisponible</strong><p class="omo-search-popup__status-text">Le suivi du job de recherche a echoue.</p></div>';
-                                }
-                            });
-                    }
-
-                    window.__omoPopupCleanup = cleanup;
-                    loadState();
-                })();
-                </script>
-                <?php
+                omoSearchPopupRenderPollingScript($statusUrl);
             }
         }
         ?>
     </div>
 </div>
+<?php if (is_array($clientJobState)): ?>
+<script>
+(function () {
+    if (typeof window.omoRegisterSearchPopupJobState !== 'function') {
+        return;
+    }
+
+    window.omoRegisterSearchPopupJobState(
+        <?= json_encode($clientJobState, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>
+    );
+})();
+</script>
+<?php endif; ?>
 <script>
 (function () {
     var root = document.querySelector('[data-omo-search-popup-root="1"]');
@@ -754,12 +839,20 @@ omoSearchPopupRenderStyles();
             event.preventDefault();
         }
 
-        if (!searchForm || !searchInput || typeof window.commonTopbarOpenModal !== 'function') {
+        if (!searchForm || !searchInput) {
             return;
         }
 
         var query = String(searchInput.value || '').trim();
         var scopes = getSelectedScopes();
+
+        if (typeof window.omoOpenSearchPopupHashState === 'function' && window.omoOpenSearchPopupHashState(query, scopes)) {
+            return;
+        }
+
+        if (typeof window.commonTopbarOpenModal !== 'function') {
+            return;
+        }
 
         window.commonTopbarOpenModal(
             'Recherche',
