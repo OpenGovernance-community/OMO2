@@ -3920,6 +3920,7 @@
 					'nameLocked' => $isTemplateEditing ? (bool)$editingHolon->get('lockedname') : $editingHolon->isNameLockedByTemplate(),
 					'unique' => (bool)$editingHolon->get('unique'),
 					'link' => (bool)$editingHolon->get('link'),
+					'inheritedPermissions' => $this->buildHolonInheritedPermissionSnapshot($editingHolon),
 					'permissionAssignments' => \dbObject\HolonPermission::getAssignmentKeyMapForHolon((int)$editingHolon->getId()),
 					'properties' => $isTemplateEditing
 						? $editingHolon->getTemplatePropertyDefinitions()
@@ -3999,15 +4000,9 @@
 				: $inheritedValue;
 		}
 
-		protected function buildHolonHistoryPermissionSnapshot(\dbObject\Holon $holon)
+		protected function buildPermissionSnapshotFromAssignmentMap(array $assignments)
 		{
-			$holonId = (int)$holon->getId();
-			if ($holonId <= 0) {
-				return array();
-			}
-
 			$rangeLabels = \dbObject\HolonPermission::getRangeLabels();
-			$assignments = \dbObject\HolonPermission::getAssignmentKeyMapForHolon($holonId);
 			$permissions = array();
 
 			foreach ($assignments as $permissionKey => $ranges) {
@@ -4056,6 +4051,66 @@
 
 			ksort($permissions);
 			return $permissions;
+		}
+
+		protected function buildHolonInheritedPermissionSnapshot(\dbObject\Holon $holon)
+		{
+			$collectedAssignments = array();
+			$visitedTemplateIds = array();
+			$currentTemplateId = (int)$holon->get('IDholon_template');
+			$guard = 0;
+
+			while ($currentTemplateId > 0 && $guard < 30) {
+				if (isset($visitedTemplateIds[$currentTemplateId])) {
+					break;
+				}
+
+				$visitedTemplateIds[$currentTemplateId] = true;
+				$template = new \dbObject\Holon();
+				if (!$template->load($currentTemplateId)) {
+					break;
+				}
+
+				foreach (\dbObject\HolonPermission::getAssignmentKeyMapForHolon($currentTemplateId) as $permissionKey => $ranges) {
+					$permissionKey = trim((string)$permissionKey);
+					if ($permissionKey === '') {
+						continue;
+					}
+
+					if (!isset($collectedAssignments[$permissionKey])) {
+						$collectedAssignments[$permissionKey] = array();
+					}
+
+					foreach ((array)$ranges as $range) {
+						$range = trim((string)$range);
+						if ($range === '') {
+							continue;
+						}
+
+						$collectedAssignments[$permissionKey][$range] = $range;
+					}
+				}
+
+				$currentTemplateId = (int)$template->get('IDholon_template');
+				$guard++;
+			}
+
+			foreach ($collectedAssignments as $permissionKey => $ranges) {
+				$collectedAssignments[$permissionKey] = array_values($ranges);
+			}
+
+			return $this->buildPermissionSnapshotFromAssignmentMap($collectedAssignments);
+		}
+
+		protected function buildHolonHistoryPermissionSnapshot(\dbObject\Holon $holon)
+		{
+			$holonId = (int)$holon->getId();
+			if ($holonId <= 0) {
+				return array();
+			}
+
+			$assignments = \dbObject\HolonPermission::getAssignmentKeyMapForHolon($holonId);
+			return $this->buildPermissionSnapshotFromAssignmentMap($assignments);
 		}
 
 		protected function buildHolonHistorySnapshot(\dbObject\Holon $holon, array $options = array())

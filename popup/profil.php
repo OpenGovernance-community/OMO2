@@ -458,6 +458,7 @@ function profilFormatAmountCents($value)
     .profile-panel__competence-scope-toggle input {
         margin: 0;
     }
+
 </style>
 <script src="/common/assets/password_policy.js"></script>
 
@@ -490,6 +491,7 @@ function profilFormatAmountCents($value)
                         class="generic-tabs__tab<?= $initialTab === 'current' ? ' is-active' : '' ?>"
                         data-generic-tab
                         data-generic-tab-target="profile-panel-tab-current"
+                        data-profile-fragment-panel="profile-panel-tab-current"
                     ><?= htmlspecialchars(profilPopupT('profile.popup.tabs.current')) ?></button>
                     <button
                         type="button"
@@ -504,6 +506,7 @@ function profilFormatAmountCents($value)
                         class="generic-tabs__tab<?= $initialTab === 'patreon' ? ' is-active' : '' ?>"
                         data-generic-tab
                         data-generic-tab-target="profile-panel-tab-patreon"
+                        data-profile-fragment-panel="profile-panel-tab-patreon"
                     ><?= htmlspecialchars(profilPopupT('profile.popup.tabs.patreon')) ?></button>
                     <?php endif; ?>
                 </div>
@@ -515,45 +518,14 @@ function profilFormatAmountCents($value)
                         data-generic-tab-panel
                         <?= $initialTab !== 'current' ? ' hidden' : '' ?>
                     >
-                        <div class="profile-panel__summary">
-                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.context.label')) ?></strong>
-                                <?= htmlspecialchars($hasOrganizationScope && $organization
-                                    ? profilPopupT('profile.popup.active.context.organization', ['organizationName' => (string)$organization->get('name')])
-                                    : profilPopupT('profile.popup.active.context.general')) ?>
-                            </div>
-                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.photo.label')) ?></strong>
-                                <div class="profile-panel__photo"<?= $activePhotoUrl !== '' ? ' style="background-image:url(' . htmlspecialchars($activePhotoUrl, ENT_QUOTES, 'UTF-8') . ')"' : '' ?>></div>
-                            </div>
-                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.email.label')) ?></strong>
-                                <?= htmlspecialchars($activeEmail !== '' ? $activeEmail : profilPopupT('profile.popup.value.not_provided')) ?>
-                            </div>
-                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.username.label')) ?></strong>
-                                <?= htmlspecialchars($activeUsername !== '' ? $activeUsername : profilPopupT('profile.popup.value.not_provided')) ?>
-                            </div>
-                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.fullname.label')) ?></strong>
-                                <?= htmlspecialchars($activeFullName !== '' ? $activeFullName : profilPopupT('profile.popup.value.not_provided')) ?>
-                            </div>
-                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.presentation.label')) ?></strong>
-                                <?= nl2br(htmlspecialchars($activePresentation !== '' ? $activePresentation : profilPopupT('profile.popup.value.no_presentation'), ENT_QUOTES, 'UTF-8')) ?>
-                            </div>
-                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.birthdate.label')) ?></strong>
-                                <?= htmlspecialchars($birthdateLabel !== '' ? $birthdateLabel : profilPopupT('profile.popup.value.not_provided')) ?>
-                            </div>
-                            <?php if (is_array($birthdaySummary)): ?>
-                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.birthday.label')) ?></strong>
-                                <div><?= htmlspecialchars((string)$birthdaySummary['headline'], ENT_QUOTES, 'UTF-8') ?></div>
-                                <?php if ((string)($birthdaySummary['detail'] ?? '') !== ''): ?>
-                                    <small><?= htmlspecialchars((string)$birthdaySummary['detail'], ENT_QUOTES, 'UTF-8') ?></small>
-                                <?php endif; ?>
-                            </div>
+                        <div
+                            class="profile-panel__fragment-host"
+                            data-profile-fragment-host="1"
+                            data-profile-fragment-kind="current"
+                            data-profile-fragment-url="/popup/profil_scope.php?section=current&amp;scope=<?= $hasOrganizationScope ? 'organization' : 'general' ?>"
+                        >
+                            <?php if ($initialTab === 'current'): ?>
+                            <div class="profile-panel__feedback"><?= htmlspecialchars(profilPopupT('profile.popup.scope.loading')) ?></div>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -620,57 +592,14 @@ function profilFormatAmountCents($value)
                         data-generic-tab-panel
                         <?= $initialTab !== 'patreon' ? ' hidden' : '' ?>
                     >
-                        <h3 class="generic-card-title generic-card-title--section"><?= htmlspecialchars(profilPopupT('profile.popup.section.patreon.title')) ?></h3>
-                        <div class="profile-panel__summary">
-                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.connection.label')) ?></strong>
-                                <?= htmlspecialchars($patreonConnected
-                                    ? profilPopupT('profile.popup.patreon.connection.connected')
-                                    : profilPopupT('profile.popup.patreon.connection.disconnected')) ?>
-                            </div>
-                            <?php if ($patreonConnection !== false): ?>
-                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.name.label')) ?></strong>
-                                <?= htmlspecialchars((string)($patreonConnection->get('full_name') ?: profilPopupT('profile.popup.value.not_provided'))) ?>
-                            </div>
-                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.status.label')) ?></strong>
-                                <?= htmlspecialchars((string)($patreonConnection->get('patron_status') ?: profilPopupT('profile.popup.value.not_provided'))) ?>
-                            </div>
-                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.payment.label')) ?></strong>
-                                <?= htmlspecialchars((string)($patreonConnection->get('last_charge_status') ?: profilPopupT('profile.popup.value.not_provided'))) ?>
-                            </div>
-                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.tiers.label')) ?></strong>
-                                <?= nl2br(htmlspecialchars(trim((string)$patreonConnection->get('tier_titles')) !== '' ? (string)$patreonConnection->get('tier_titles') : profilPopupT('profile.popup.patreon.tiers.none'))) ?>
-                            </div>
-                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.amount.label')) ?></strong>
-                                <?= htmlspecialchars(profilFormatAmountCents((int)$patreonConnection->get('currently_entitled_amount_cents'))) ?>
-                            </div>
-                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.sync_at.label')) ?></strong>
-                                <?= htmlspecialchars(profilFormatDateTime($patreonConnection->get('last_sync_at'))) ?>
-                            </div>
-                            <?php if (trim((string)$patreonConnection->get('last_sync_error')) !== ''): ?>
-                            <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
-                                <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.sync_error.label')) ?></strong>
-                                <?= nl2br(htmlspecialchars((string)$patreonConnection->get('last_sync_error'))) ?>
-                            </div>
-                            <?php endif; ?>
-                            <?php endif; ?>
-                        </div>
-
-                        <div class="profile-panel__actions">
-                            <button
-                                type="button"
-                                id="patreon_connect"
-                                class="generic-action-button generic-action-button--main"
-                            ><?= htmlspecialchars($patreonConnected ? profilPopupT('profile.popup.patreon.reconnect') : profilPopupT('profile.popup.patreon.connect')) ?></button>
-                            <?php if ($patreonConnected): ?>
-                            <button type="button" id="patreon_sync" class="profile-panel__button-secondary generic-action-button"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.sync')) ?></button>
-                            <button type="button" id="patreon_disconnect" class="profile-panel__button-muted generic-action-button generic-action-button--secondary"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.disconnect')) ?></button>
+                        <div
+                            class="profile-panel__fragment-host"
+                            data-profile-fragment-host="1"
+                            data-profile-fragment-kind="patreon"
+                            data-profile-fragment-url="/popup/profil_scope.php?section=patreon&amp;scope=general"
+                        >
+                            <?php if ($initialTab === 'patreon'): ?>
+                            <div class="profile-panel__feedback"><?= htmlspecialchars(profilPopupT('profile.popup.scope.loading')) ?></div>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -863,46 +792,51 @@ function profilFormatAmountCents($value)
         loadFragmentHost(initialHost, false);
     }
 
-    var connectButton = document.getElementById("patreon_connect");
-    if (connectButton) {
-        connectButton.addEventListener("click", function () {
-            var width = 720;
-            var height = 860;
-            var left = Math.max(0, (window.screen.width - width) / 2);
-            var top = Math.max(0, (window.screen.height - height) / 2);
-            window.open(
-                "/common/patreon_connect.php",
-                "patreon_connect",
-                "width=" + width + ",height=" + height + ",left=" + left + ",top=" + top + ",resizable=yes,scrollbars=yes"
-            );
-        });
-    }
+    if (root) {
+        root.addEventListener("click", function (event) {
+            var connectButton = event.target.closest("#patreon_connect");
+            var disconnectButton = event.target.closest("#patreon_disconnect");
+            var syncButton = event.target.closest("#patreon_sync");
+            var width;
+            var height;
+            var left;
+            var top;
 
-    var disconnectButton = document.getElementById("patreon_disconnect");
-    if (disconnectButton) {
-        disconnectButton.addEventListener("click", function () {
-            if (!confirm(disconnectConfirmMessage)) {
+            if (connectButton) {
+                width = 720;
+                height = 860;
+                left = Math.max(0, (window.screen.width - width) / 2);
+                top = Math.max(0, (window.screen.height - height) / 2);
+                window.open(
+                    "/common/patreon_connect.php",
+                    "patreon_connect",
+                    "width=" + width + ",height=" + height + ",left=" + left + ",top=" + top + ",resizable=yes,scrollbars=yes"
+                );
                 return;
             }
 
-            disconnectButton.disabled = true;
-            postUrl("/ajax/patreon_disconnect.php")
-                .then(handleLegacyAjaxResponse)
-                .finally(function () {
-                    disconnectButton.disabled = false;
-                });
-        });
-    }
+            if (disconnectButton) {
+                if (!confirm(disconnectConfirmMessage)) {
+                    return;
+                }
 
-    var syncButton = document.getElementById("patreon_sync");
-    if (syncButton) {
-        syncButton.addEventListener("click", function () {
-            syncButton.disabled = true;
-            postUrl("/ajax/patreon_sync.php")
-                .then(handleLegacyAjaxResponse)
-                .finally(function () {
-                    syncButton.disabled = false;
-                });
+                disconnectButton.disabled = true;
+                postUrl("/ajax/patreon_disconnect.php")
+                    .then(handleLegacyAjaxResponse)
+                    .finally(function () {
+                        disconnectButton.disabled = false;
+                    });
+                return;
+            }
+
+            if (syncButton) {
+                syncButton.disabled = true;
+                postUrl("/ajax/patreon_sync.php")
+                    .then(handleLegacyAjaxResponse)
+                    .finally(function () {
+                        syncButton.disabled = false;
+                    });
+            }
         });
     }
 

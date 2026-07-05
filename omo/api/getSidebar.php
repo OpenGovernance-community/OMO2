@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/organization_applications_access.php';
 
 $sourceLang = [
     'sidebar.applications.manage_label' => [
@@ -20,7 +21,7 @@ $lang = omoLoadTranslationBundle('omo_get_sidebar_panel', $sourceLang);
 
 $currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 $currentUserId = commonGetCurrentUserId();
-$canManageApplications = $currentOrganizationId > 0 && $currentUserId > 0;
+$canManageApplications = omoCurrentUserCanManageOrganizationApplications($currentOrganizationId, $currentUserId);
 
 $applications = new \dbObject\ArrayApplication();
 if ($currentOrganizationId > 0) {

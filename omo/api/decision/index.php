@@ -1650,6 +1650,7 @@ if (!is_string($payloadJson)) {
 .omo-decisions__state {
     color: var(--color-text-light, #475569);
     line-height: 1.6;
+    margin:20px;
 }
 
 .omo-decisions__list {

@@ -106,7 +106,14 @@ if ($organizationId <= 0) {
                             </div>
 
                             <div class="omo-holon-create__permission-summary generic-soft-panel" id="omo-holon-create-permissions-summary">
-                                Droits associes au holon: aucun
+                                <div class="omo-holon-create__permission-summary-line">
+                                    <div class="omo-holon-create__permission-summary-label">Droits herites</div>
+                                    <div class="omo-holon-create__permission-summary-empty">aucun</div>
+                                </div>
+                                <div class="omo-holon-create__permission-summary-line">
+                                    <div class="omo-holon-create__permission-summary-label">Droits associes au holon</div>
+                                    <div class="omo-holon-create__permission-summary-empty">aucun</div>
+                                </div>
                             </div>
                             <div class="omo-holon-create__permissions" id="omo-holon-create-permissions-editor" hidden></div>
                         </section>
@@ -278,6 +285,13 @@ function getPermissionRangeOptions() {
     return Array.isArray(state.data.permissionRanges) ? state.data.permissionRanges : [];
 }
 
+function getInheritedPermissions() {
+    const editingHolon = getEditingHolon();
+    return editingHolon && editingHolon.inheritedPermissions && typeof editingHolon.inheritedPermissions === 'object'
+        ? editingHolon.inheritedPermissions
+        : {};
+}
+
 function normalizePermissionRanges(value) {
     const ranges = Array.isArray(value) ? value : (String(value || '').trim() !== '' ? [value] : []);
     const normalized = [];
@@ -349,6 +363,77 @@ function buildPermissionSummary(assignments) {
     return 'Droits associes au holon: ' + titles.join(', ');
 }
 
+function getPermissionTitle(permissionKey) {
+    const permissionCatalog = getPermissionCatalog();
+    const permission = permissionCatalog.find(function (item) {
+        return String(item && item.key ? item.key : '') === String(permissionKey || '');
+    });
+
+    return permission ? String(permission.title || permission.key || '').trim() : String(permissionKey || '').trim();
+}
+
+function renderPermissionSummaryCapsules(items, emptyText) {
+    if (!Array.isArray(items) || !items.length) {
+        return '<div class="omo-holon-create__permission-summary-empty">' + escapeHtml(emptyText || 'aucun') + '</div>';
+    }
+
+    return '<div class="omo-holon-create__permission-summary-capsules">'
+        + items.map(function (item) {
+            return ''
+                + '<div class="omo-holon-create__permission-pill">'
+                + '  <div class="omo-holon-create__permission-pill-title">' + escapeHtml(String(item.title || '')) + '</div>'
+                + '  <div class="omo-holon-create__permission-pill-scope">' + escapeHtml(String(item.scope || '')) + '</div>'
+                + '</div>';
+        }).join('')
+        + '</div>';
+}
+
+function buildLocalPermissionSummaryItems(assignments) {
+    const defaultRangeOptions = getPermissionRangeOptions();
+
+    return Object.keys(assignments || {}).map(function (permissionKey) {
+        const ranges = normalizePermissionRanges(assignments[permissionKey]);
+        if (!ranges.length) {
+            return null;
+        }
+
+        const permissionCatalog = getPermissionCatalog();
+        const permission = permissionCatalog.find(function (item) {
+            return String(item && item.key ? item.key : '') === String(permissionKey || '');
+        });
+        const rangeOptions = permission && Array.isArray(permission.rangeOptions) && permission.rangeOptions.length
+            ? permission.rangeOptions
+            : defaultRangeOptions;
+
+        return {
+            title: getPermissionTitle(permissionKey),
+            scope: ranges.map(function (rangeKey) {
+                return getPermissionRangeLabel(rangeKey, rangeOptions);
+            }).filter(Boolean).join(' · ')
+        };
+    }).filter(Boolean).sort(function (left, right) {
+        return String(left.title || '').localeCompare(String(right.title || ''), 'fr', { sensitivity: 'base' });
+    });
+}
+
+function buildInheritedPermissionSummary(inheritedPermissions) {
+    return Object.keys(inheritedPermissions || {}).map(function (permissionKey) {
+        const permission = inheritedPermissions && inheritedPermissions[permissionKey] ? inheritedPermissions[permissionKey] : null;
+        const visibleItems = permission && Array.isArray(permission.visibleItems) ? permission.visibleItems : [];
+
+        return {
+            title: permission ? String(permission.name || permission.shortname || permissionKey || '').trim() : String(permissionKey || '').trim(),
+            scope: visibleItems.map(function (item) {
+                return String(item && item.label ? item.label : '').trim();
+            }).filter(Boolean).join(' · ')
+        };
+    }).filter(function (item) {
+        return String(item.title || '').trim() !== '';
+    }).sort(function (left, right) {
+        return String(left.title || '').localeCompare(String(right.title || ''), 'fr', { sensitivity: 'base' });
+    });
+}
+
 function syncPermissionSummary() {
     if (!elements.permissionSummary) {
         return;
@@ -356,11 +441,29 @@ function syncPermissionSummary() {
 
     const permissionCatalog = getPermissionCatalog();
     if (!permissionCatalog.length) {
-        elements.permissionSummary.textContent = 'Droits associes au holon: aucun droit disponible';
+        elements.permissionSummary.innerHTML = ''
+            + '<div class="omo-holon-create__permission-summary-line">'
+            + '  <div class="omo-holon-create__permission-summary-label">Droits herites</div>'
+            + '  <div class="omo-holon-create__permission-summary-empty">aucun droit disponible</div>'
+            + '</div>'
+            + '<div class="omo-holon-create__permission-summary-line">'
+            + '  <div class="omo-holon-create__permission-summary-label">Droits associes au holon</div>'
+            + '  <div class="omo-holon-create__permission-summary-empty">aucun droit disponible</div>'
+            + '</div>';
         return;
     }
 
-    elements.permissionSummary.textContent = buildPermissionSummary(readPermissions());
+    const inheritedItems = buildInheritedPermissionSummary(getInheritedPermissions());
+    const localItems = buildLocalPermissionSummaryItems(readPermissions());
+    elements.permissionSummary.innerHTML = ''
+        + '<div class="omo-holon-create__permission-summary-line">'
+        + '  <div class="omo-holon-create__permission-summary-label">Droits herites</div>'
+        +      renderPermissionSummaryCapsules(inheritedItems, 'aucun')
+        + '</div>'
+        + '<div class="omo-holon-create__permission-summary-line">'
+        + '  <div class="omo-holon-create__permission-summary-label">Droits associes au holon</div>'
+        +      renderPermissionSummaryCapsules(localItems, 'aucun')
+        + '</div>';
 }
 
 function setPermissionEditorExpanded(isExpanded) {
@@ -1755,6 +1858,56 @@ root.addEventListener('click', function (event) {
     --generic-soft-panel-padding-inline: 14px;
     --generic-soft-panel-radius: 14px;
     color: var(--color-text);
+}
+
+.omo-holon-create__permission-summary-line + .omo-holon-create__permission-summary-line {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid color-mix(in srgb, var(--color-border) 78%, transparent);
+}
+
+.omo-holon-create__permission-summary-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--color-text);
+    margin-bottom: 8px;
+}
+
+.omo-holon-create__permission-summary-capsules {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.omo-holon-create__permission-summary-empty {
+    color: var(--color-text-light);
+    line-height: 1.45;
+}
+
+.omo-holon-create__permission-pill {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-border));
+    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+    min-width: 120px;
+    max-width: 100%;
+}
+
+.omo-holon-create__permission-pill-title {
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: var(--color-text);
+    line-height: 1.25;
+}
+
+.omo-holon-create__permission-pill-scope {
+    font-size: 0.68rem;
+    color: var(--color-text-light);
+    line-height: 1.2;
 }
 
 .omo-holon-create__permission-table {

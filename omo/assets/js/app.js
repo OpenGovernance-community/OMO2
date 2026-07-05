@@ -82,6 +82,12 @@ function omoApplyTheme(preference, persistPreference = false) {
             theme: resolvedTheme
         }
     }));
+
+    if (typeof window.sharedBroadcastThemeToChildFrames === 'function') {
+        window.sharedBroadcastThemeToChildFrames({
+            preference: safePreference
+        });
+    }
 }
 
 function omoEscapeHtml(value) {
