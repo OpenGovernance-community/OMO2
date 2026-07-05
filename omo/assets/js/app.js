@@ -2425,13 +2425,50 @@ function omoEnsurePopupBootstrapState(oid, cid, routeToken, popupKey, popupId) {
     history.pushState({}, '', buildOmoUrl(oid, cid, listHash));
 }
 
+function omoGetTopbarHelpItems() {
+    const config = window.commonTopbarConfig && typeof window.commonTopbarConfig === 'object'
+        ? window.commonTopbarConfig
+        : null;
+    const helpItems = config && Array.isArray(config.helpItems)
+        ? config.helpItems
+        : [];
+
+    return helpItems.filter(function (item) {
+        return item && typeof item === 'object';
+    });
+}
+
+function omoGetTopbarHelpItem(helpKey) {
+    const normalizedKey = String(helpKey || '').trim().toLowerCase();
+    if (!normalizedKey) {
+        return null;
+    }
+
+    const helpItems = omoGetTopbarHelpItems();
+    for (let index = 0; index < helpItems.length; index += 1) {
+        const item = helpItems[index];
+        const itemKey = String(item.key || '').trim().toLowerCase();
+        if (itemKey === normalizedKey) {
+            return item;
+        }
+    }
+
+    return null;
+}
+
 function omoFormatPopupTitle(popupKey) {
     if (!popupKey) {
         return 'Aide';
     }
 
-    if (popupKey === 'faq') {
-        return 'FAQ OMO';
+    if (popupKey === 'faq' || popupKey.indexOf('faq/') === 0) {
+        const faqHelpItem = omoGetTopbarHelpItem('faq');
+        return String((faqHelpItem && (faqHelpItem.title || faqHelpItem.label)) || 'FAQ OMO').trim() || 'FAQ OMO';
+    }
+
+    if (popupKey === 'tutorials' || popupKey.indexOf('tutorials/') === 0) {
+        const tutorialsHelpItem = omoGetTopbarHelpItem('tutorials');
+        return String((tutorialsHelpItem && (tutorialsHelpItem.title || tutorialsHelpItem.label)) || 'Tutoriels').trim() || 'Tutoriels';
     }
 
     if (popupKey === 'user') {
@@ -2461,6 +2498,50 @@ function omoFormatPopupTitle(popupKey) {
         });
 }
 
+function omoResolveTutorialPopupRoute(popupKey, popupId, currentRoute) {
+    const normalizedPopupKey = omoNormalizeHashToken(popupKey);
+    const routeOrganizationId = Number(currentRoute && currentRoute.oid ? currentRoute.oid : 0);
+    const routeParts = String(normalizedPopupKey || '').split('/');
+    let targetPath = '/omo/api/lms/';
+    let resolvedParcoursId = 0;
+    const queryParts = ['embed=1'];
+
+    if (!normalizedPopupKey || String(routeParts[0] || '').toLowerCase() !== 'tutorials') {
+        return null;
+    }
+
+    if (routeOrganizationId > 0) {
+        queryParts.push(`oid=${encodeURIComponent(routeOrganizationId)}`);
+    } else {
+        queryParts.push('catalog=basic');
+    }
+
+    if (String(routeParts[1] || '').toLowerCase() === 'parcours') {
+        resolvedParcoursId = Number(routeParts[2] || 0);
+        if (!Number.isInteger(resolvedParcoursId) || resolvedParcoursId <= 0) {
+            return null;
+        }
+
+        targetPath = '/omo/api/lms/parcours.php';
+        queryParts.push(`idp=${encodeURIComponent(resolvedParcoursId)}`);
+    }
+
+    if (Number.isInteger(Number(popupId)) && Number(popupId) > 0) {
+        queryParts.push(`mid=${encodeURIComponent(Number(popupId))}`);
+    }
+
+    const resolvedUrl = `${targetPath}?${queryParts.join('&')}`;
+
+    return {
+        key: normalizedPopupKey,
+        id: Number.isInteger(Number(popupId)) && Number(popupId) > 0 ? Number(popupId) : null,
+        token: omoBuildPopupToken(normalizedPopupKey, popupId),
+        title: omoFormatPopupTitle('tutorials'),
+        url: omoResolveAppUrl(resolvedUrl),
+        mode: 'iframe'
+    };
+}
+
 function omoResolvePopupRoute(popupKey, popupId = null) {
     const normalizedPopupKey = omoNormalizeHashToken(popupKey);
     const parsedPopupId = Number(popupId);
@@ -2470,6 +2551,10 @@ function omoResolvePopupRoute(popupKey, popupId = null) {
 
     if (!normalizedPopupKey) {
         return null;
+    }
+
+    if (normalizedPopupKey === 'tutorials' || normalizedPopupKey.indexOf('tutorials/') === 0) {
+        return omoResolveTutorialPopupRoute(normalizedPopupKey, parsedPopupId, currentRoute);
     }
 
     let url = `/popup/${normalizedPopupKey}.php`;
@@ -2539,7 +2624,7 @@ function omoOpenPopupModalFromRoute(popupKey, popupId = null) {
 
     if (!modal || modal.hidden || !hasPopupContent) {
         omoPopupModalSyncing = true;
-        window.commonTopbarOpenModal(popupRoute.title, popupRoute.url, 'fetch');
+        window.commonTopbarOpenModal(popupRoute.title, popupRoute.url, popupRoute.mode || 'fetch');
         if (body) {
             body.setAttribute('data-omo-popup-key', popupRoute.key);
             body.setAttribute('data-omo-popup-url', popupRoute.url);
@@ -2567,7 +2652,7 @@ function omoOpenPopupModalFromRoute(popupKey, popupId = null) {
 
     if (bodyPopupUrl !== popupRoute.url) {
         omoPopupModalSyncing = true;
-        window.commonTopbarOpenModal(popupRoute.title, popupRoute.url, 'fetch');
+        window.commonTopbarOpenModal(popupRoute.title, popupRoute.url, popupRoute.mode || 'fetch');
         if (body) {
             body.setAttribute('data-omo-popup-key', popupRoute.key);
             body.setAttribute('data-omo-popup-url', popupRoute.url);
@@ -2605,6 +2690,27 @@ function omoOpenFaqHelp() {
     return true;
 }
 
+function omoOpenTutorialHashState(parcoursId = null, missionId = null, options = {}) {
+    const resolvedParcoursId = Number(parcoursId);
+    const resolvedMissionId = Number(missionId);
+    const popupKey = Number.isInteger(resolvedParcoursId) && resolvedParcoursId > 0
+        ? `tutorials/parcours/${resolvedParcoursId}`
+        : 'tutorials';
+
+    omoSetPopupHashState({
+        open: true,
+        key: popupKey,
+        id: Number.isInteger(resolvedMissionId) && resolvedMissionId > 0 ? resolvedMissionId : null,
+        replace: options.replace === true
+    });
+
+    return true;
+}
+
+function omoOpenTutorialsHelp() {
+    return omoOpenTutorialHashState();
+}
+
 function omoOpenMemberActionsPopup(userId) {
     const resolvedUserId = Number(userId);
 
@@ -2635,6 +2741,23 @@ function omoOpenUserContextPopup(userId, options = {}) {
     });
 
     return true;
+}
+
+function omoOpenSearchTutorialResult(parcoursId, missionId = null) {
+    const resolvedParcoursId = Number(parcoursId);
+    const resolvedMissionId = Number(missionId);
+    if (!Number.isInteger(resolvedParcoursId) || resolvedParcoursId <= 0) {
+        return false;
+    }
+
+    if (typeof window.commonTopbarCloseModal === 'function') {
+        window.commonTopbarCloseModal();
+    }
+
+    return omoOpenTutorialHashState(
+        resolvedParcoursId,
+        Number.isInteger(resolvedMissionId) && resolvedMissionId > 0 ? resolvedMissionId : null
+    );
 }
 
 $(document).on('click', '[data-hash]', function (e) {
@@ -3331,6 +3454,30 @@ function omoGetTopbarSearchStructureScope() {
     };
 }
 
+function omoGetTopbarSearchHelpScope(helpKey, popupKeyMatcher) {
+    const helpItem = omoGetTopbarHelpItem(helpKey);
+    if (!helpItem) {
+        return null;
+    }
+
+    const currentRoute = parseUrl();
+    const currentHashState = omoParseHashState(currentRoute.hash || null);
+    const popupKey = String(currentHashState.popupKey || '').trim().toLowerCase();
+    let isChecked = false;
+
+    if (typeof popupKeyMatcher === 'function') {
+        isChecked = popupKeyMatcher(popupKey);
+    } else {
+        isChecked = popupKey === String(helpKey || '').trim().toLowerCase();
+    }
+
+    return {
+        id: String(helpKey || '').trim().toLowerCase(),
+        label: String(helpItem.label || helpItem.title || helpKey).trim(),
+        checked: isChecked
+    };
+}
+
 function omoGetTopbarSearchScopes() {
     const currentRoute = parseUrl();
     const currentHashState = omoParseHashState(currentRoute.hash || null);
@@ -3367,6 +3514,18 @@ function omoGetTopbarSearchScopes() {
             checked: currentRouteToken === routeToken
         });
     });
+
+    const faqScope = omoGetTopbarSearchHelpScope('faq');
+    if (faqScope) {
+        scopes.push(faqScope);
+    }
+
+    const tutorialsScope = omoGetTopbarSearchHelpScope('tutorials', function (popupKey) {
+        return popupKey === 'tutorials' || popupKey.indexOf('tutorials/') === 0;
+    });
+    if (tutorialsScope) {
+        scopes.push(tutorialsScope);
+    }
 
     if (!scopes.some(function (scope) { return scope.checked; }) && scopes.length > 0) {
         scopes[0].checked = true;
@@ -3654,6 +3813,8 @@ window.omoOpenSearchCalendarEventResult = omoOpenSearchCalendarEventResult;
 window.omoOpenSearchDecisionResult = omoOpenSearchDecisionResult;
 window.omoBuildDocumentRouteToken = omoBuildDocumentRouteToken;
 window.omoOpenSearchDocumentResult = omoOpenSearchDocumentResult;
+window.omoOpenSearchTutorialResult = omoOpenSearchTutorialResult;
+window.omoOpenTutorialsHelp = omoOpenTutorialsHelp;
 window.omoOpenSearchStructureResult = omoOpenSearchStructureResult;
 window.omoOpenSearchUserResult = omoOpenSearchUserResult;
 window.omoOpenUserContextPopup = omoOpenUserContextPopup;

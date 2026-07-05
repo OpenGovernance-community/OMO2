@@ -2902,6 +2902,10 @@ Promise.all([
 <?php endif; ?>
 
 <style>
+.omo-template-editor > .omo-panel-view__body {
+    padding: 16px 18px 18px;
+}
+
 .omo-template-editor__layout {
     display: grid;
     grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
@@ -3629,11 +3633,12 @@ Promise.all([
     gap: 12px;
     align-items: center;
     position: sticky;
-    bottom: 0;
+    bottom: -18px;
     z-index: 10;
-    padding: 16px;
-    margin-top: 8px;
+    padding: 16px 18px 18px;
+    margin: 8px -18px -18px;
     border-top: 1px solid color-mix(in srgb, var(--color-border) 86%, transparent);
+    border-radius: 0 0 16px 16px;
     background: color-mix(in srgb, var(--color-surface) 92%, var(--color-surface-alt));
     box-shadow: 0 -8px 24px color-mix(in srgb, var(--color-shadow) 8%, transparent);
     backdrop-filter: blur(6px);

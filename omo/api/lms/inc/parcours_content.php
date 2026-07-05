@@ -454,6 +454,7 @@ loadMissions();
 <?php if (!$isPackParcours): ?>
 <script>
 let currentMissionId = null;
+const initialMissionId = <?php echo (int)($initialMissionId ?? 0); ?>;
 
 function viewMission(missionId) {
     currentMissionId = missionId;
@@ -469,6 +470,12 @@ function viewMission(missionId) {
         .then(html => {
             openDrawer(html);
         });
+}
+
+if (initialMissionId > 0) {
+    window.setTimeout(function () {
+        viewMission(initialMissionId);
+    }, 80);
 }
 </script>
 <?php endif; ?>

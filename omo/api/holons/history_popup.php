@@ -118,9 +118,25 @@ if ($requestFragment === 'items') {
 <style>
 	.omo-holon-history-popup {
 		display: grid;
-		gap: 14px;
-		padding: 8px 4px 4px;
+		gap: 0;
 		color: var(--color-text, #1f2937);
+	}
+
+	.omo-holon-history-popup__header {
+		position: sticky;
+		top: 0;
+		z-index: 3;
+	}
+
+	.omo-holon-history-popup__header-copy {
+		display: grid;
+		gap: 4px;
+	}
+
+	.omo-holon-history-popup__shell {
+		display: grid;
+		gap: 14px;
+		padding: 16px 18px 18px;
 	}
 
 	.omo-holon-history-popup__intro {
@@ -365,7 +381,7 @@ if ($requestFragment === 'items') {
 	}
 
 	.omo-holon-history-popup__empty {
-		padding: 18px 6px;
+		padding: 18px;
 		line-height: 1.5;
 		color: var(--topbar-panel-muted, #64748b);
 	}
@@ -379,6 +395,13 @@ if ($requestFragment === 'items') {
 	data-next-offset="<?= (int)$nextOffset ?>"
 	data-has-more="<?= $hasMore ? '1' : '0' ?>"
 >
+	<div class="omo-holon-history-popup__header generic-drawer-header generic-drawer-header--sticky">
+		<div class="generic-drawer-header__copy omo-holon-history-popup__header-copy">
+			<div class="generic-card-title generic-card-title--eyebrow"><?= $isOrganizationHolon ? 'Organisation' : omoApiEscape((string)$holon->getTemplateLabel(true)) ?></div>
+			<h3 class="generic-card-title generic-card-title--medium">Historique</h3>
+		</div>
+	</div>
+	<div class="omo-holon-history-popup__shell">
 	<p class="omo-holon-history-popup__intro">
 		Historique lie au holon <strong><?= omoApiEscape($holon->getDisplayName()) ?></strong>.
 		<?= $isOrganizationHolon
@@ -395,6 +418,7 @@ if ($requestFragment === 'items') {
 	<div class="omo-holon-history-popup__list" data-history-list="1"><?= omoRenderHolonHistoryItems($historyItems) ?></div>
 	<div class="omo-holon-history-popup__feed-status<?= $hasMore ? '' : '' ?>" data-history-feed-status="1"<?= (!$hasMore && count($historyItems) === 0) ? ' hidden' : '' ?>>
 		<?= $hasMore ? 'Faites defiler pour charger la suite.' : 'Fin de l\'historique.' ?>
+	</div>
 	</div>
 </div>
 

@@ -31,21 +31,35 @@ if ($currentUserId > 0 && $featureEnabled) {
     <style>
     .omo-bug-report-popup {
         display: grid;
-        gap: 16px;
+        gap: 0;
         color: var(--color-text, #1f2937);
     }
 
-    .omo-bug-report-popup__hero,
     .omo-bug-report-popup__panel,
     .omo-bug-report-popup__error {
         --generic-section-padding-block: 18px;
     }
 
-    .omo-bug-report-popup__hero {
+    .omo-bug-report-popup__header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .omo-bug-report-popup__header-copy {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        min-width: 0;
+    }
+
+    .omo-bug-report-popup__shell {
+        display: grid;
         gap: 16px;
-        align-items: center;
+        padding: 16px 18px 18px;
+    }
+
+    .omo-bug-report-popup__hero {
+        min-width: 0;
     }
 
     .omo-bug-report-popup__hero p,
@@ -61,12 +75,6 @@ if ($currentUserId > 0 && $featureEnabled) {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
-    }
-
-    .omo-bug-report-popup__hero-copy {
-        display: grid;
-        gap: 10px;
-        min-width: 0;
     }
 
     .omo-bug-report-popup__hero-figure {
@@ -198,8 +206,8 @@ if ($currentUserId > 0 && $featureEnabled) {
     }
     </style>
 
-    <div class="omo-bug-report-popup__hero generic-hero-panel">
-        <div class="omo-bug-report-popup__hero-copy">
+    <div class="omo-bug-report-popup__header generic-drawer-header generic-drawer-header--sticky">
+        <div class="generic-drawer-header__copy omo-bug-report-popup__header-copy omo-bug-report-popup__hero">
             <div class="generic-card-title generic-card-title--eyebrow">Signalement rapide</div>
             <h2 class="generic-card-title generic-card-title--large">Signaler un bug</h2>
             <p>Ce formulaire cree une issue GitHub avec ta description et le contexte technique de la page en cours.</p>
@@ -219,6 +227,7 @@ if ($currentUserId > 0 && $featureEnabled) {
             <img src="/img/punaise.png" alt="">
         </div>
     </div>
+    <div class="omo-bug-report-popup__shell">
 
     <?php if ($currentUserId <= 0): ?>
         <div class="omo-bug-report-popup__error generic-section generic-section--stack">
@@ -303,6 +312,7 @@ if ($currentUserId > 0 && $featureEnabled) {
             </form>
         </div>
     <?php endif; ?>
+    </div>
 </div>
 
 <script>

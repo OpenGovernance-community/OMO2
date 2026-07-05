@@ -603,6 +603,8 @@ if (empty($organizationContext['isValid'])) {
 if ($isOrganizationHub && !$isDemoGuest) {
     $logoutUrl = '/common/logout.php?return_to=' . urlencode('/omo/');
     $organizationCreateUrl = '/popup/organization_create.php';
+    $organizationCreateTopbarRoute = '/omo/?modal=organization-create';
+    $shouldAutoOpenOrganizationCreateModal = isset($_GET['modal']) && $_GET['modal'] === 'organization-create';
     $patreonConfigured = patreonSupportUiIsEnabled();
     $patreonConnection = false;
     $patreonConnected = false;
@@ -917,7 +919,9 @@ if ($isOrganizationHub && !$isDemoGuest) {
             var patreonConnectButton = document.getElementById('omoPatreonConnectCard');
             var organizationActionUrl = '/omo/api/organizations/card_action.php';
             var organizationCreateUrl = <?= json_encode($organizationCreateUrl, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+            var organizationCreateTopbarRoute = <?= json_encode($organizationCreateTopbarRoute, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
             var organizationCreateModalTitle = <?= json_encode(t('app.directory.create.modal_title'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+            var shouldAutoOpenOrganizationCreateModal = <?= $shouldAutoOpenOrganizationCreateModal ? 'true' : 'false' ?>;
             var patreonConnectUrl = '/common/patreon_connect.php';
 
             function interpolateTemplate(template, variables) {
@@ -942,7 +946,30 @@ if ($isOrganizationHub && !$isDemoGuest) {
                     return;
                 }
 
+                if (organizationCreateTopbarRoute && window.location.href.indexOf('modal=organization-create') === -1) {
+                    window.location.href = organizationCreateTopbarRoute;
+                    return;
+                }
+
                 window.location.href = organizationCreateUrl;
+            }
+
+            function consumeOrganizationCreateTopbarRoute() {
+                if (!shouldAutoOpenOrganizationCreateModal || typeof window.history.replaceState !== 'function') {
+                    return;
+                }
+
+                try {
+                    var currentUrl = new URL(window.location.href);
+                    if (currentUrl.searchParams.get('modal') !== 'organization-create') {
+                        return;
+                    }
+
+                    currentUrl.searchParams.delete('modal');
+                    window.history.replaceState({}, document.title, currentUrl.pathname + currentUrl.search + currentUrl.hash);
+                } catch (error) {
+                    // Keep the page usable even if URL cleanup fails.
+                }
             }
 
             function openPatreonConnect() {
@@ -979,6 +1006,13 @@ if ($isOrganizationHub && !$isDemoGuest) {
 
             if (patreonConnectButton) {
                 patreonConnectButton.addEventListener('click', openPatreonConnect);
+            }
+
+            if (shouldAutoOpenOrganizationCreateModal && typeof window.commonTopbarOpenModal === 'function') {
+                window.setTimeout(function () {
+                    openCreateModal();
+                    consumeOrganizationCreateTopbarRoute();
+                }, 0);
             }
 
             window.addEventListener('message', handlePatreonMessage);

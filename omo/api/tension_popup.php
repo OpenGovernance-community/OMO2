@@ -52,21 +52,35 @@ if ($organizationId > 0 && $organization->load($organizationId)) {
     <style>
     .omo-tension-popup {
         display: grid;
-        gap: 16px;
+        gap: 0;
         color: var(--color-text, #1f2937);
     }
 
-    .omo-tension-popup__hero,
     .omo-tension-popup__panel,
     .omo-tension-popup__error {
         --generic-section-padding-block: 18px;
     }
 
-    .omo-tension-popup__hero {
+    .omo-tension-popup__header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .omo-tension-popup__header-copy {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        min-width: 0;
+    }
+
+    .omo-tension-popup__shell {
+        display: grid;
         gap: 16px;
-        align-items: center;
+        padding: 16px 18px 18px;
+    }
+
+    .omo-tension-popup__hero {
+        min-width: 0;
     }
 
     .omo-tension-popup__hero-copy,
@@ -183,8 +197,8 @@ if ($organizationId > 0 && $organization->load($organizationId)) {
             <p>Impossible de retrouver l organisation courante pour enregistrer la tension.</p>
         </div>
     <?php else: ?>
-        <div class="omo-tension-popup__hero generic-hero-panel">
-            <div class="omo-tension-popup__hero-copy">
+        <div class="omo-tension-popup__header generic-drawer-header generic-drawer-header--sticky">
+            <div class="generic-drawer-header__copy omo-tension-popup__header-copy omo-tension-popup__hero omo-tension-popup__hero-copy">
                 <div class="generic-card-title generic-card-title--eyebrow">Gouvernance partagee</div>
                 <h2 class="generic-card-title generic-card-title--large">Nouvelle tension</h2>
                 <p>Une tension capte un besoin, un inconfort ou une question ouverte dont l issue n est pas encore connue.</p>
@@ -199,7 +213,7 @@ if ($organizationId > 0 && $organization->load($organizationId)) {
                 <img src="/common/assets/icon-topbar-tension.png" alt="">
             </div>
         </div>
-
+        <div class="omo-tension-popup__shell">
         <div class="omo-tension-popup__panel generic-section generic-section--stack">
             <h3 class="generic-card-title generic-card-title--medium">Saisir la tension</h3>
             <p class="omo-tension-popup__hint">Le titre doit rester tres court, maximum 3 mots. La description reste en texte simple.</p>
@@ -279,6 +293,7 @@ if ($organizationId > 0 && $organization->load($organizationId)) {
                     <button type="submit" class="generic-action-button generic-action-button--main" id="omoTensionSubmit">Enregistrer</button>
                 </div>
             </form>
+        </div>
         </div>
     <?php endif; ?>
 </div>

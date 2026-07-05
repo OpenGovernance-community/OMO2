@@ -58,9 +58,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <style>
     .omo-organization-member-popup {
         display: grid;
-        gap: 16px;
-        padding: 8px 4px 4px;
+        gap: 0;
         color: var(--color-text, #1f2937);
+    }
+
+    .omo-organization-member-popup__header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .omo-organization-member-popup__header-copy {
+        display: grid;
+        gap: 4px;
+    }
+
+    .omo-organization-member-popup__shell {
+        display: grid;
+        gap: 16px;
+        padding: 16px 18px 18px;
     }
 
     .omo-organization-member-popup__intro {
@@ -101,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     .omo-organization-member-popup__empty {
-        padding: 18px 6px;
+        padding: 18px;
         color: var(--topbar-panel-muted, #64748b);
         line-height: 1.5;
     }
@@ -113,33 +129,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     action="/omo/api/organization/member_popup.php?oid=<?= (int)$organizationId ?>"
     method="post"
 >
-    <p class="omo-organization-member-popup__intro">
-        Invitez une personne dans <strong><?= omoApiEscape(trim((string)$organization->get('name')) !== '' ? trim((string)$organization->get('name')) : 'cette organisation') ?></strong>
-        en saisissant son adresse e-mail.
-    </p>
-
-    <div class="omo-organization-member-popup__group">
-        <label class="omo-organization-member-popup__label" for="omoOrganizationMemberEmail">Adresse e-mail</label>
-        <input
-            type="email"
-            id="omoOrganizationMemberEmail"
-            name="email"
-            class="omo-organization-member-popup__email generic-form-control"
-            placeholder="prenom.nom@exemple.ch"
-            inputmode="email"
-            autocomplete="email"
-        >
-        <div class="omo-organization-member-popup__hint">
-            Si cette adresse existe deja, le profil existant sera rattache a l organisation. Sinon, une invitation sera preparee pour cette adresse.
+    <div class="omo-organization-member-popup__header generic-drawer-header generic-drawer-header--sticky">
+        <div class="generic-drawer-header__copy omo-organization-member-popup__header-copy">
+            <div class="generic-card-title generic-card-title--eyebrow">Organisation</div>
+            <h3 class="generic-card-title generic-card-title--medium">Ajouter un membre</h3>
         </div>
     </div>
 
-    <div id="omoOrganizationMemberPopupFeedback" class="omo-organization-member-popup__feedback"></div>
+    <div class="omo-organization-member-popup__shell">
+        <p class="omo-organization-member-popup__intro">
+            Invitez une personne dans <strong><?= omoApiEscape(trim((string)$organization->get('name')) !== '' ? trim((string)$organization->get('name')) : 'cette organisation') ?></strong>
+            en saisissant son adresse e-mail.
+        </p>
 
-    <div class="omo-organization-member-popup__actions">
-        <button type="submit" id="omoOrganizationMemberPopupSubmit" class="generic-action-button generic-action-button--main">
-            Inviter
-        </button>
+        <div class="omo-organization-member-popup__group">
+            <label class="omo-organization-member-popup__label" for="omoOrganizationMemberEmail">Adresse e-mail</label>
+            <input
+                type="email"
+                id="omoOrganizationMemberEmail"
+                name="email"
+                class="omo-organization-member-popup__email generic-form-control"
+                placeholder="prenom.nom@exemple.ch"
+                inputmode="email"
+                autocomplete="email"
+            >
+            <div class="omo-organization-member-popup__hint">
+                Si cette adresse existe deja, le profil existant sera rattache a l organisation. Sinon, une invitation sera preparee pour cette adresse.
+            </div>
+        </div>
+
+        <div id="omoOrganizationMemberPopupFeedback" class="omo-organization-member-popup__feedback"></div>
+
+        <div class="omo-organization-member-popup__actions">
+            <button type="submit" id="omoOrganizationMemberPopupSubmit" class="generic-action-button generic-action-button--main">
+                Inviter
+            </button>
+        </div>
     </div>
 </form>
 

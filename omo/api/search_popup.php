@@ -10,6 +10,8 @@ if (!function_exists('omoSearchPopupGetScopeLabels')) {
             'calendar' => 'Calendrier',
             'documents' => 'Documents',
             'decision' => 'Decisions',
+            'faq' => 'FAQ',
+            'tutorials' => 'Tutoriels',
         );
 
         if (!$organization instanceof \dbObject\Organization || (int)$organization->getId() <= 0) {
@@ -67,15 +69,10 @@ if (!function_exists('omoSearchPopupRenderStyles')) {
         ?>
         <style>
         .omo-search-popup {
-            display: grid;
-            gap: 16px;
-            padding: 18px;
-            background: var(--color-bg, #f8fafc);
             color: var(--color-text, #0f172a);
         }
 
         .omo-search-popup__hero,
-        .omo-search-popup__search-card,
         .omo-search-popup__result,
         .omo-search-popup__status-card {
             --generic-section-padding-block: 18px;
@@ -90,27 +87,17 @@ if (!function_exists('omoSearchPopupRenderStyles')) {
             --topbar-input-bg: rgba(255, 255, 255, 0.96);
             --topbar-input-border: rgba(148, 163, 184, 0.28);
             --topbar-input-text: var(--color-text, #0f172a);
-            display: grid;
-            gap: 12px;
-            background: rgba(255, 255, 255, 0.76);
-        }
-
-        .omo-search-popup__search-header {
-            display: grid;
-            gap: 4px;
-        }
-
-        .omo-search-popup__search-title {
+            position: sticky;
+            top: 0;
+            z-index: 2;
             margin: 0;
+            border-radius: 0;
         }
 
         .omo-search-popup__search-form {
             display: grid;
-            gap: 12px;
-        }
-
-        .omo-search-popup__search-form .common-topbar__search-panel-label {
-            color: var(--color-text-light, #475569);
+            gap: 10px;
+            width: 100%;
         }
 
         .omo-search-popup__search-form .common-topbar__search-panel-row {
@@ -134,6 +121,25 @@ if (!function_exists('omoSearchPopupRenderStyles')) {
 
         .omo-search-popup__search-form .common-topbar__search-button:hover {
             background: color-mix(in srgb, var(--color-primary, #2563eb) 88%, black);
+        }
+
+        .omo-search-popup__search-form .common-topbar__search-scopes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .omo-search-popup__search-form .common-topbar__search-scope-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .omo-search-popup__content-state {
+            display: grid;
+            gap: 16px;
+            padding: 16px 18px 18px;
         }
 
         .omo-search-popup__head {
@@ -180,6 +186,27 @@ if (!function_exists('omoSearchPopupRenderStyles')) {
             border-radius: 14px;
             background: rgba(255, 255, 255, 0.72);
             border: 1px solid rgba(148, 163, 184, 0.18);
+            appearance: none;
+            font: inherit;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+        }
+
+        .omo-search-popup__stat:hover {
+            background: rgba(255, 255, 255, 0.92);
+            border-color: rgba(37, 99, 235, 0.24);
+            transform: translateY(-1px);
+        }
+
+        .omo-search-popup__stat:focus-visible {
+            outline: 2px solid rgba(37, 99, 235, 0.32);
+            outline-offset: 2px;
+        }
+
+        .omo-search-popup__stat.is-active {
+            background: rgba(37, 99, 235, 0.12);
+            border-color: rgba(37, 99, 235, 0.28);
         }
 
         .omo-search-popup__stat strong,
@@ -200,6 +227,11 @@ if (!function_exists('omoSearchPopupRenderStyles')) {
         .omo-search-popup__list {
             display: grid;
             gap: 12px;
+        }
+
+        .omo-search-popup__result.is-filtered-out,
+        .omo-search-popup__empty[hidden] {
+            display: none !important;
         }
 
         .omo-search-popup__result-head {
@@ -274,11 +306,7 @@ if (!function_exists('omoSearchPopupGetUiStrings')) {
     function omoSearchPopupGetUiStrings()
     {
         return array(
-            'searchTitle' => 'Relancer la recherche',
-            'searchSummary' => 'Modifiez le texte ou les modules coches pour lancer une nouvelle recherche dans ce popup.',
-            'searchPlaceholder' => 'Rechercher un cercle, un role ou un outil',
-            'searchScopeLabel' => 'Chercher dans',
-            'searchScopeHint' => 'La recherche de la topbar n agit que sur les modules coches.',
+            'searchAriaLabel' => 'Recherche',
             'searchSubmit' => 'Lancer',
         );
     }
@@ -303,10 +331,16 @@ if (!function_exists('omoSearchPopupRenderStats')) {
                 continue;
             }
             ?>
-            <div class="omo-search-popup__stat">
+            <button
+                type="button"
+                class="omo-search-popup__stat"
+                data-omo-search-popup-stat-filter="<?= $escape($scopeId) ?>"
+                data-omo-search-popup-stat-active="0"
+                aria-pressed="false"
+            >
                 <strong><?= (int)($counts[$scopeId] ?? 0) ?></strong>
                 <span><?= $escape($scopeLabel) ?></span>
-            </div>
+            </button>
             <?php
         }
     }
@@ -317,14 +351,8 @@ if (!function_exists('omoSearchPopupRenderSearchForm')) {
     {
         $ui = omoSearchPopupGetUiStrings();
         ?>
-        <div class="omo-search-popup__search-card generic-section">
-            <div class="omo-search-popup__search-header">
-                <h3 class="omo-search-popup__search-title generic-card-title"><?= $escape($ui['searchTitle']) ?></h3>
-                <p class="omo-search-popup__summary"><?= $escape($ui['searchSummary']) ?></p>
-            </div>
-
+        <div class="omo-search-popup__search-card generic-drawer-header generic-drawer-header--sticky">
             <form class="omo-search-popup__search-form common-topbar__search-panel" data-omo-search-popup-form>
-                <label class="common-topbar__search-panel-label" for="omoSearchPopupInput"><?= $escape($ui['searchPlaceholder']) ?></label>
                 <div class="common-topbar__search-panel-row">
                     <input
                         type="search"
@@ -332,14 +360,12 @@ if (!function_exists('omoSearchPopupRenderSearchForm')) {
                         class="common-topbar__search-input"
                         data-omo-search-popup-input
                         value="<?= $escape($query) ?>"
-                        placeholder="<?= $escape($ui['searchPlaceholder']) ?>"
-                        aria-label="<?= $escape($ui['searchPlaceholder']) ?>"
+                        aria-label="<?= $escape($ui['searchAriaLabel']) ?>"
                     >
                     <button type="submit" class="common-topbar__search-button"><?= $escape($ui['searchSubmit']) ?></button>
                 </div>
 
                 <div class="common-topbar__search-scopes">
-                    <div class="common-topbar__search-panel-label"><?= $escape($ui['searchScopeLabel']) ?></div>
                     <div class="common-topbar__search-scope-list">
                         <?php foreach ($scopeLabels as $scopeId => $scopeLabel): ?>
                             <label class="common-topbar__search-scope">
@@ -354,7 +380,6 @@ if (!function_exists('omoSearchPopupRenderSearchForm')) {
                             </label>
                         <?php endforeach; ?>
                     </div>
-                    <div class="common-topbar__search-panel-hint"><?= $escape($ui['searchScopeHint']) ?></div>
                 </div>
             </form>
         </div>
@@ -415,7 +440,7 @@ if (!function_exists('omoSearchPopupRenderContent')) {
             <?php elseif (count($results) === 0): ?>
                 <div class="omo-search-popup__empty">Aucun resultat trouve pour cette selection de modules.</div>
             <?php else: ?>
-                <div class="omo-search-popup__list">
+                <div class="omo-search-popup__list" data-omo-search-popup-results-list>
                     <?php foreach ($results as $index => $result): ?>
                         <?php
                         $module = (string)($result['module'] ?? '');
@@ -434,9 +459,14 @@ if (!function_exists('omoSearchPopupRenderContent')) {
                         } elseif ($module === 'decision' && !empty($action['decisionId'])) {
                             $buttonAttributes = ' data-omo-search-open-decision-id="' . (int)$action['decisionId'] . '"'
                                 . ' data-omo-search-open-decision-holon="' . (int)($action['holonId'] ?? 0) . '"';
+                        } elseif ($module === 'faq' && !empty($action['faqId'])) {
+                            $buttonAttributes = ' data-omo-search-open-faq="' . (int)$action['faqId'] . '"';
+                        } elseif ($module === 'tutorials' && !empty($action['parcoursId'])) {
+                            $buttonAttributes = ' data-omo-search-open-tutorial-parcours="' . (int)$action['parcoursId'] . '"'
+                                . ' data-omo-search-open-tutorial-mission="' . (int)($action['missionId'] ?? 0) . '"';
                         }
                         ?>
-                        <article class="omo-search-popup__result generic-section">
+                        <article class="omo-search-popup__result generic-section" data-omo-search-popup-result-module="<?= $escape($module) ?>">
                             <div class="omo-search-popup__result-head">
                                 <div class="omo-search-popup__result-meta">
                                     <span class="omo-search-popup__badge"><?= $escape((string)($result['moduleLabel'] ?? $module)) ?></span>
@@ -461,6 +491,7 @@ if (!function_exists('omoSearchPopupRenderContent')) {
                         </article>
                     <?php endforeach; ?>
                 </div>
+                <div class="omo-search-popup__empty" data-omo-search-popup-filter-empty hidden>Aucun resultat visible pour ce filtre.</div>
             <?php endif; ?>
         </div>
         <?php
@@ -552,6 +583,8 @@ omoSearchPopupRenderStyles();
                     'calendar' => 0,
                     'documents' => 0,
                     'decision' => 0,
+                    'faq' => 0,
+                    'tutorials' => 0,
                 ),
             ), $escape);
         } else {
@@ -701,6 +734,21 @@ omoSearchPopupRenderStyles();
         return '/omo/api/search_popup.php?' + queryParts.join('&');
     }
 
+    function getSelectedScopes() {
+        if (!searchForm) {
+            return [];
+        }
+
+        return Array.prototype.map.call(
+            searchForm.querySelectorAll('[data-omo-search-popup-scope-input]:checked'),
+            function (input) {
+                return String(input.value || '').trim();
+            }
+        ).filter(function (scopeId) {
+            return scopeId !== '';
+        });
+    }
+
     function relaunchSearch(event) {
         if (event && typeof event.preventDefault === 'function') {
             event.preventDefault();
@@ -711,14 +759,7 @@ omoSearchPopupRenderStyles();
         }
 
         var query = String(searchInput.value || '').trim();
-        var scopes = Array.prototype.map.call(
-            searchForm.querySelectorAll('[data-omo-search-popup-scope-input]:checked'),
-            function (input) {
-                return String(input.value || '').trim();
-            }
-        ).filter(function (scopeId) {
-            return scopeId !== '';
-        });
+        var scopes = getSelectedScopes();
 
         window.commonTopbarOpenModal(
             'Recherche',
@@ -727,7 +768,68 @@ omoSearchPopupRenderStyles();
         );
     }
 
+    function applyClientSideModuleFilter(scopeId) {
+        var normalizedScopeId = String(scopeId || '').trim();
+        var activeScopeId = String(root.getAttribute('data-omo-search-popup-active-filter') || '').trim();
+        var nextScopeId = normalizedScopeId !== '' && normalizedScopeId !== activeScopeId ? normalizedScopeId : '';
+        var results = root.querySelectorAll('[data-omo-search-popup-result-module]');
+        var statButtons = root.querySelectorAll('[data-omo-search-popup-stat-filter]');
+        var filterEmpty = root.querySelector('[data-omo-search-popup-filter-empty]');
+        var visibleCount = 0;
+
+        Array.prototype.forEach.call(results, function (resultNode) {
+            var resultScopeId = String(resultNode.getAttribute('data-omo-search-popup-result-module') || '').trim();
+            var isVisible = nextScopeId === '' || resultScopeId === nextScopeId;
+            resultNode.classList.toggle('is-filtered-out', !isVisible);
+            resultNode.hidden = !isVisible;
+            if (isVisible) {
+                visibleCount += 1;
+            }
+        });
+
+        Array.prototype.forEach.call(statButtons, function (button) {
+            var buttonScopeId = String(button.getAttribute('data-omo-search-popup-stat-filter') || '').trim();
+            var isActive = nextScopeId !== '' && buttonScopeId === nextScopeId;
+            button.classList.toggle('is-active', isActive);
+            button.setAttribute('data-omo-search-popup-stat-active', isActive ? '1' : '0');
+            button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
+
+        if (filterEmpty) {
+            filterEmpty.hidden = visibleCount !== 0 || nextScopeId === '';
+        }
+
+        if (nextScopeId === '') {
+            root.removeAttribute('data-omo-search-popup-active-filter');
+        } else {
+            root.setAttribute('data-omo-search-popup-active-filter', nextScopeId);
+        }
+    }
+
+    function handleStatFilterClick(event) {
+        var statButton = event.target.closest('[data-omo-search-popup-stat-filter]');
+        if (!statButton) {
+            return false;
+        }
+
+        if (event && typeof event.preventDefault === 'function') {
+            event.preventDefault();
+        }
+
+        var scopeId = String(statButton.getAttribute('data-omo-search-popup-stat-filter') || '').trim();
+        if (scopeId === '') {
+            return true;
+        }
+
+        applyClientSideModuleFilter(scopeId);
+        return true;
+    }
+
     function handleResultClick(event) {
+        if (handleStatFilterClick(event)) {
+            return;
+        }
+
         var structureButton = event.target.closest('[data-omo-search-open-structure]');
         if (structureButton && typeof window.omoOpenSearchStructureResult === 'function') {
             window.omoOpenSearchStructureResult(Number(structureButton.getAttribute('data-omo-search-open-structure') || '0'));
@@ -763,6 +865,21 @@ omoSearchPopupRenderStyles();
             window.omoOpenSearchDecisionResult(
                 Number(decisionButton.getAttribute('data-omo-search-open-decision-id') || '0'),
                 Number(decisionButton.getAttribute('data-omo-search-open-decision-holon') || '0')
+            );
+            return;
+        }
+
+        var faqButton = event.target.closest('[data-omo-search-open-faq]');
+        if (faqButton && typeof window.omoOpenFaqHashState === 'function') {
+            window.omoOpenFaqHashState(Number(faqButton.getAttribute('data-omo-search-open-faq') || '0'));
+            return;
+        }
+
+        var tutorialButton = event.target.closest('[data-omo-search-open-tutorial-parcours]');
+        if (tutorialButton && typeof window.omoOpenSearchTutorialResult === 'function') {
+            window.omoOpenSearchTutorialResult(
+                Number(tutorialButton.getAttribute('data-omo-search-open-tutorial-parcours') || '0'),
+                Number(tutorialButton.getAttribute('data-omo-search-open-tutorial-mission') || '0')
             );
         }
     }

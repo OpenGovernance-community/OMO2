@@ -6,6 +6,7 @@ include 'inc/org.php';
 require_once __DIR__ . '/inc/access.php';
 
 $parcours_id = (int)($_GET['idp'] ?? 0);
+$initialMissionId = (int)($_GET['mid'] ?? 0);
 $isEmbedded = !empty($_GET['embed']);
 $user_id = (int)commonGetCurrentUserId();
 $accessContext = lmsGetParcoursAccessContext((int)$org['id'], $parcours_id, $user_id);

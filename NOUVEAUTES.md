@@ -4,6 +4,24 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-07-05
 
+Dans la vue compacte des `Documents` OMO, la colonne `Type` disparait maintenant au profit d une colonne `Nom` plus confortable, la colonne de date est resserree pour mieux coller a son contenu, le bouton `...` de fin de ligne reserve moins de largeur, et les actions du menu flottant (`Editer`, `Deplacer`, `Partager`) passent maintenant par un dispatch de clic unifie. L edition de document routee par hash s aligne aussi davantage sur le schema deja utilise dans `Decisions` et `Calendrier`, avec une ouverture partagee par identifiant et un fallback direct vers l URL d edition du contexte courant. Les helpers JS reutilises par les clics de detail et d edition ont aussi ete recadres dans le bon scope pour eviter les `ReferenceError` lors de la navigation, les liens documentaires ouverts directement dans une fenetre externe ne changent plus le hash OMO, les actions `Editer` ou `Deplacer` ne restent visibles que si la personne a bien `CAN_CREATE_DOCUMENT` sur l emplacement reel du document, y compris dans les vues globales ou descendantes, tandis que `Partager` reste disponible pour les documents HTML deja visibles.
+
+Dans l editeur de document OMO, les champs `Type` et `Visibilite` partagent maintenant une meme ligne en deux colonnes sur ecran large, tout en revenant en pile sur mobile.
+
+Ce meme editeur expose maintenant aussi un vrai champ de tags a capsules, relie au stockage existant des `keywords` en chaine separee par virgules. La saisie transforme un tag en capsule sur `TAB` ou `,`, et la sauvegarde conserve le format courant du type `atelier,benevoles,association`.
+
+La recherche de la topbar OMO propose maintenant aussi les scopes `FAQ` et `Tutoriels`. Les resultats FAQ interrogent les contenus question/reponse/detail selon le contexte courant, et les resultats tutoriels couvrent a la fois les parcours LMS visibles et le texte des missions associees.
+
+L ouverture des resultats d aide passe maintenant aussi par le hash OMO pour les FAQ et les tutoriels. Une FAQ trouvee peut ouvrir directement son detail, et un tutoriel peut ouvrir le LMS embarque sur le bon parcours, voire directement sur la mission cible quand la recherche remonte une mission.
+
+Le resume des resultats de recherche OMO en tete de popup devient aussi interactif. Un clic sur une tuile comme `FAQ` ou `Tutoriels` filtre maintenant en pur JS les cartes deja chargees pour ne montrer que ce module, et un second clic sur la tuile deja active restaure toute la liste sans relancer la recherche.
+
+La popup de recherche OMO utilise maintenant un bandeau de recherche compact borde a borde en haut, aligne sur le style des entetes de drawer partages, sans textes d introduction ni fond parasite autour du conteneur principal.
+
+Les popups topbar qui dependaient du padding global de la modale reprennent maintenant leur propre structure interne. Les formulaires et panneaux principaux utilisent des shells locaux avec padding neutre, et plusieurs popups comme recherche, partages, tensions, bug report, applications et invitations exposent maintenant un vrai bandeau borde a borde base sur `generic-drawer-header`.
+
+Les popups de profil membre `popup/user.php` et d edition de profil `popup/profil.php` s alignent elles aussi sur ce schema, avec un header borde a borde en tete puis un shell interne pour les onglets et contenus.
+
 La popup de profil personnel charge maintenant ses onglets principaux a la demande. Les contenus `Previsualisation`, `Profil general`, `Profil specifique`, `Competences` et `Patreon` ne sont calcules et injectes qu au moment ou l onglet correspondant est ouvert.
 
 La fiche membre contextuelle charge maintenant aussi son onglet `Droits` a la demande. Cet onglet liste, pour l utilisateur consulte dans l organisation de contexte, les droits effectifs calcules avec leur portee et le holon source quand cette origine peut etre determinee.
@@ -431,6 +449,22 @@ Dans le LMS, le mode admin d'organisation donne maintenant aussi les droits de c
 L'editeur de packs permet maintenant aussi de retirer un parcours deja ajoute depuis le menu `...`, et l'ordre defini dans le pack est mieux repris dans les affichages dynamiques du LMS.
 
 L'editeur de parcours permet maintenant aussi de retirer une mission deja rattachee depuis le menu `...`, sans passer uniquement par le reordonnancement ou l'ajout.
+
+Les popups OMO continuent d etre reajustees apres la suppression du padding global du body modal, avec un espacement local rajoute dans l editeur de templates de holons pour garder un contenu moins colle aux bords.
+
+La popup de creation et d edition d organisation reprend elle aussi un padding local quand elle est ouverte dans la modale topbar, pour conserver ses cartes et actions avec un peu d air autour.
+
+La meme popup `organization_create` expose maintenant aussi un vrai header de drawer borde a borde dans la topbar, avec le formulaire repousse dans un shell interne comme les autres popups harmonisees.
+
+Depuis le hub OMO, l ouverture de creation d organisation repasse maintenant aussi par une route OMO dediee qui reouvre la modale topbar au chargement si besoin, au lieu de basculer directement sur la page popup en fallback.
+
+Le header de `organization_create` remonte maintenant au-dessus des couches de carte geographique type Strada ou Leaflet, pour eviter qu une carte embarquee passe visuellement devant le bandeau.
+
+Les controles Leaflet de cette meme popup, comme le zoom `+/-` et le footer d attribution, sont aussi explicitement rabaisses pour rester sous le header au scroll.
+
+La popup de profil applique maintenant la meme protection sur ses cartes embarquees: le header sticky remonte au-dessus, et les couches Leaflet comme zoom et attribution restent sous le bandeau.
+
+Dans l editeur de templates de holons, la barre sticky de sauvegarde vient maintenant jusqu au bord bas du panneau de formulaire, au lieu de rester visuellement prisonniere de la zone de marge interne.
 
 ## Calendrier, CardDAV Et CalDAV
 

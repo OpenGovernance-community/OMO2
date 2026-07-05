@@ -93,7 +93,10 @@ if (
     || !$document->load($documentId)
     || $document->isFolder()
     || !$document->supportsHtmlContent()
-    || !$document->canEditInOrganizationContext((int)$document->get('IDorganization'))
+    || !$document->canViewInOrganizationContext(
+        (int)$document->get('IDorganization'),
+        (int)$document->get('IDholon') > 0 ? (int)$document->get('IDholon') : null
+    )
 ) {
     ?>
     <div class="omo-share-popup omo-share-popup--error"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.error.unavailable'), ENT_QUOTES, 'UTF-8') ?></div>
@@ -118,11 +121,29 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
     data-has-links="<?= $hasExistingLinks ? '1' : '0' ?>"
 >
     <style>
-    .omo-share-popup {
-        display: grid;
-        gap: 18px;
-        color: var(--color-text, #1f2937);
-    }
+.omo-share-popup {
+    display: grid;
+    gap: 0;
+    color: var(--color-text, #1f2937);
+}
+
+.omo-share-popup__header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.omo-share-popup__header-copy {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+}
+
+.omo-share-popup__shell {
+    display: grid;
+    gap: 18px;
+    padding: 16px 18px 18px;
+}
     .omo-share-popup--error {
         padding: 18px;
         border-radius: 16px;
@@ -221,10 +242,14 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
     }
     </style>
 
-    <div class="omo-share-popup__hero generic-hero-panel">
-        <h2 class="generic-card-title generic-card-title--large"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.hero.title'), ENT_QUOTES, 'UTF-8') ?></h2>
-        <p>Le lien ouvrira directement le contenu de <strong><?= htmlspecialchars($defaultLabel, ENT_QUOTES, 'UTF-8') ?></strong>.</p>
+    <div class="omo-share-popup__header generic-drawer-header generic-drawer-header--sticky">
+        <div class="generic-drawer-header__copy omo-share-popup__header-copy">
+            <div class="generic-card-title generic-card-title--eyebrow">Partage</div>
+            <h2 class="generic-card-title generic-card-title--large"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.hero.title'), ENT_QUOTES, 'UTF-8') ?></h2>
+            <p>Le lien ouvrira directement le contenu de <strong><?= htmlspecialchars($defaultLabel, ENT_QUOTES, 'UTF-8') ?></strong>.</p>
+        </div>
     </div>
+    <div class="omo-share-popup__shell">
 
     <div id="omoDocumentSharePopupFeedback" class="omo-share-popup__feedback"></div>
 
@@ -348,6 +373,7 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
                 <button type="submit" class="generic-action-button generic-action-button--main" id="omoDocumentSharePopupSubmit"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.submit_create'), ENT_QUOTES, 'UTF-8') ?></button>
             </div>
         </form>
+    </div>
     </div>
 </div>
 

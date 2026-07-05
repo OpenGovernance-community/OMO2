@@ -72,6 +72,13 @@ if ($documentId <= 0) {
     <div class="omo-document-move__empty"><?= omoApiEscape($errorMessage) ?></div>
 <?php else: ?>
     <form id="omo-document-move-form" class="omo-document-move">
+        <div class="omo-document-move__header generic-drawer-header generic-drawer-header--sticky">
+            <div class="generic-drawer-header__copy omo-document-move__header-copy">
+                <div class="generic-card-title generic-card-title--eyebrow">Document</div>
+                <h3 class="generic-card-title generic-card-title--medium">Deplacer un document</h3>
+            </div>
+        </div>
+        <div class="omo-document-move__shell">
         <div class="omo-document-move__intro">
             <strong><?= omoApiEscape((string)($moveData['document']['title'] ?? '')) ?></strong>
             <span>&rarr;</span>
@@ -92,6 +99,7 @@ if ($documentId <= 0) {
         <div class="omo-document-move__actions">
             <button type="button" class="omo-document-move__button generic-action-button generic-action-button--secondary" id="omo-document-move-cancel"><?= omoApiEscape(omoDocumentsMoveT('documents.move.action.cancel')) ?></button>
             <button type="submit" class="omo-document-move__button generic-action-button generic-action-button--main" id="omo-document-move-submit"><?= omoApiEscape(omoDocumentsMoveT('documents.move.action.submit')) ?></button>
+        </div>
         </div>
     </form>
 <?php endif; ?>
@@ -335,8 +343,28 @@ elements.cancel.addEventListener('click', closeMovePopup);
 .omo-document-move__empty {
     display: grid;
     gap: 16px;
-    padding: 8px 4px 4px;
     color: var(--color-text, #1f2937);
+}
+
+.omo-document-move {
+    gap: 0;
+}
+
+.omo-document-move__header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.omo-document-move__header-copy {
+    display: grid;
+    gap: 4px;
+}
+
+.omo-document-move__shell {
+    display: grid;
+    gap: 16px;
+    padding: 16px 18px 18px;
 }
 
 .omo-document-move__intro,
@@ -344,6 +372,10 @@ elements.cancel.addEventListener('click', closeMovePopup);
 .omo-document-move__empty {
     color: var(--topbar-panel-muted, #64748b);
     line-height: 1.45;
+}
+
+.omo-document-move__empty {
+    padding: 18px;
 }
 
 .omo-document-move__intro {
