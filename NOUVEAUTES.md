@@ -2,7 +2,35 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-05
+
+La popup de profil personnel charge maintenant ses onglets principaux a la demande. Les contenus `Previsualisation`, `Profil general`, `Profil specifique`, `Competences` et `Patreon` ne sont calcules et injectes qu au moment ou l onglet correspondant est ouvert.
+
+La fiche membre contextuelle charge maintenant aussi son onglet `Droits` a la demande. Cet onglet liste, pour l utilisateur consulte dans l organisation de contexte, les droits effectifs calcules avec leur portee et le holon source quand cette origine peut etre determinee.
+
+La fiche membre contextuelle a aussi ete recomposee avec un bandeau pleine largeur en tete pour la photo, le nom et l e-mail, puis un systeme d onglets en dessous dont `Infos` arrive en premiere position pour regrouper presentation, dates, identifiant et apercu.
+
+## 2026-07-04
+
+Dans OMO, la gestion des applications de la barre de gauche repose maintenant aussi sur un nouveau droit de holon `CAN_ADD_APP`. Le bouton `+` apparait desormais soit quand le mode admin d organisation est actif, soit quand ce droit est accorde a la personne via ses holons.
+
+Le calcul des droits de holon ne traite plus un droit simplement "existant" comme s il etait accorde. Les droits globaux d organisation comme `CAN_ADD_APP`, `CAN_CREATE_PARCOURS` et `CAN_EDIT_PARCOURS` ne sont maintenant accordes qu aux personnes effectivement liees aux holons porteurs de ces droits, avec invalidation du cache de permissions de session.
+
+La construction de l arbre des droits ne remonte plus automatiquement les droits poses sur les holons ancetres d un holon utilisateur. Un membre recupere maintenant les droits de ses holons lies et de leurs templates, mais plus ceux des parents structurels si aucun lien direct ne l y rattache.
+
+Le calcul des droits ne confond plus non plus appartenance a l organisation et appartenance au holon racine de cette organisation. Un droit confie a un holon avec une portee `Toute l organisation` reste maintenant reserve aux membres de ce holon porteur, meme si son effet s applique ensuite partout dans l organisation.
+
+Une page temporaire `omo/api/debug_permissions.php` permet maintenant d inspecter, pour l organisation de contexte, les holons effectifs de l utilisateur connecte, les holons sources pris en compte pour ses droits, l arbre des droits definis et le resultat final calcule.
+
+Dans l editeur de holon, le resume des droits affiche maintenant separement les droits herites depuis la chaine de templates, puis les droits directement associes au holon courant.
+
+Les menus de la topbar commune passent maintenant au-dessus des drawers OMO, y compris pendant l edition d un holon, tout en gardant les modales et drawers propres a la topbar encore au-dessus de ces menus.
+
 ## 2026-07-02
+
+Le lien `Tutoriels` de la topbar OMO ouvre maintenant le LMS embarque sur le host courant plutot que force sur le host racine. Quand OMO tourne sur un sous-domaine d organisation, l iframe LMS peut ainsi relire directement les preferences locales de theme et de palette du navigateur.
+
+Les pages LMS ouvertes en iframe recopient maintenant explicitement le theme et la variante de couleur de la page parente OMO, puis se resynchronisent quand l utilisateur change de mode clair/sombre ou de palette pendant la session.
 
 Dans le drawer LMS, chaque vue reinitialise maintenant proprement son scroll interne, et le retour depuis l editeur d une mission vers l editeur de parcours restaure la position precedente au lieu de reutiliser ou perdre le scroll de l autre vue.
 

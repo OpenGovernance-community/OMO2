@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/organization_applications_access.php';
 
 $sourceLang = [
     'organization_applications.error.no_access' => [
@@ -91,7 +92,7 @@ function omoOrganizationApplicationsT($key, array $replace = [])
 $currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 $currentUserId = (int)commonGetCurrentUserId();
 
-if ($currentOrganizationId <= 0 || $currentUserId <= 0) {
+if (!omoCurrentUserCanManageOrganizationApplications($currentOrganizationId, $currentUserId)) {
     http_response_code(403);
     ?>
     <div class="omo-app-picker__empty"><?= htmlspecialchars(omoOrganizationApplicationsT('organization_applications.error.no_access'), ENT_QUOTES, 'UTF-8') ?></div>

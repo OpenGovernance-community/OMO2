@@ -270,7 +270,7 @@ function omoGetTopbarHelpItems(string $variant = 'app', int $organizationId = 0)
 
     $tutorialsUrl = commonBuildUrl(
         '/omo/api/lms/?' . http_build_query($tutorialsQuery, '', '&', PHP_QUERY_RFC3986),
-        commonGetRootHost()
+        commonGetRequestHost()
     );
 
     $faqItem = [
