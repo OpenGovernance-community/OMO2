@@ -71,6 +71,7 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 <head>
 	<title><?php echo htmlspecialchars($parcours['title']); ?></title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="/common/assets/theme.css">
 	<link rel="stylesheet" href="/shared_css.css">
 	<link rel="stylesheet" href="/lms/css/std.css">
 	<script src="/shared_functions.js"></script>
@@ -124,6 +125,19 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 		.card:hover {
 			transform: translateY(-3px);
 			box-shadow: 0 18px 34px rgba(15,23,42,0.12);
+		}
+
+		.card.is-preview-only,
+		.card.is-preview-only:hover {
+			opacity: 0.58;
+			cursor: default;
+			transform: none;
+			box-shadow: var(--shadow);
+		}
+
+		.card.is-preview-only .open-btn {
+			background: var(--disabled);
+			cursor: not-allowed;
 		}
 
 		.card-content {

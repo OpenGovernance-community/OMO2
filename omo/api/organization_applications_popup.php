@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/organization_applications_access.php';
 
 $sourceLang = [
     'organization_applications.error.no_access' => [
@@ -91,7 +92,7 @@ function omoOrganizationApplicationsT($key, array $replace = [])
 $currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 $currentUserId = (int)commonGetCurrentUserId();
 
-if ($currentOrganizationId <= 0 || $currentUserId <= 0) {
+if (!omoCurrentUserCanManageOrganizationApplications($currentOrganizationId, $currentUserId)) {
     http_response_code(403);
     ?>
     <div class="omo-app-picker__empty"><?= htmlspecialchars(omoOrganizationApplicationsT('organization_applications.error.no_access'), ENT_QUOTES, 'UTF-8') ?></div>
@@ -253,9 +254,25 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
     .omo-app-picker {
         display: flex;
         flex-direction: column;
-        gap: 16px;
-        padding: 8px 4px 4px 4px;
+        gap: 0;
         color: var(--color-text, #1f2937);
+    }
+
+    .omo-app-picker__header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .omo-app-picker__header-copy {
+        display: grid;
+        gap: 4px;
+    }
+
+    .omo-app-picker__shell {
+        display: grid;
+        gap: 16px;
+        padding: 16px 18px 18px;
     }
 
     .omo-app-picker__intro {
@@ -430,7 +447,7 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
     }
 
     .omo-app-picker__empty {
-        padding: 18px 6px;
+        padding: 18px;
         color: var(--topbar-panel-muted, #64748b);
         line-height: 1.5;
     }
@@ -442,6 +459,13 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
     </div>
 <?php else: ?>
     <form id="omoApplicationPickerForm" class="omo-app-picker" action="api/organization_applications_popup.php" method="post">
+        <div class="omo-app-picker__header generic-drawer-header generic-drawer-header--sticky">
+            <div class="generic-drawer-header__copy omo-app-picker__header-copy">
+                <div class="generic-card-title generic-card-title--eyebrow">Organisation</div>
+                <h3 class="generic-card-title generic-card-title--medium">Configurer les applications</h3>
+            </div>
+        </div>
+        <div class="omo-app-picker__shell">
         <p class="omo-app-picker__intro">
             <?= htmlspecialchars(omoOrganizationApplicationsT('organization_applications.intro'), ENT_QUOTES, 'UTF-8') ?>
         </p>
@@ -509,6 +533,7 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
             <button type="submit" id="omoApplicationPickerSubmit" class="omo-app-picker__button generic-action-button generic-action-button--main">
                 <?= htmlspecialchars(omoOrganizationApplicationsT('organization_applications.action.save'), ENT_QUOTES, 'UTF-8') ?>
             </button>
+        </div>
         </div>
     </form>
 

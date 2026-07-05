@@ -10,6 +10,7 @@ $homework_id = (int)($_POST['homework_id'] ?? 0);
 $parcours_id = (int)($_POST['parcours_id'] ?? 0);
 $done = (int)($_POST['done'] ?? 0) > 0;
 $accessContext = lmsGetParcoursAccessContext((int)$org['id'], $parcours_id);
+$isOrganizationAdmin = !empty($accessContext['isOrganizationAdmin']);
 
 if (empty($accessContext['exists'])) {
 	http_response_code(404);
@@ -45,7 +46,8 @@ if (!$parcoursMission->load([
 	exit;
 }
 
-if (!\dbObject\MissionHomework::existsForMission($mission_id, $homework_id)) {
+if (!\dbObject\MissionHomework::existsForMission($mission_id, $homework_id)
+	|| !in_array($homework_id, \dbObject\Mission::fetchHomeworkIdsForMission($mission_id, $isOrganizationAdmin), true)) {
 	http_response_code(400);
 	echo "Homework not found in mission";
 	exit;

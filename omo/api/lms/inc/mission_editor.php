@@ -32,7 +32,10 @@ if (!function_exists('lmsRenderMissionHomeworkManager')) {
             'lms.mission_editor.homeworks.move_aria' => ['text' => 'Deplacer le devoir', 'context' => 'Accessible label used on homework drag handles.'],
             'lms.mission_editor.homeworks.field_title' => ['text' => 'Titre', 'context' => 'Label of the homework title field.'],
             'lms.mission_editor.homeworks.field_detail' => ['text' => 'Detail', 'context' => 'Label of the homework detail field.'],
+            'lms.mission_editor.homeworks.field_only_admin' => ['text' => 'Demander ce devoir uniquement aux admins de l organisation', 'context' => 'Label of the admin-only homework checkbox.'],
+            'lms.mission_editor.homeworks.badge_only_admin' => ['text' => 'Admins uniquement', 'context' => 'Badge shown on homework cards restricted to organization admins.'],
             'lms.mission_editor.homeworks.submit' => ['text' => 'Creer le devoir', 'context' => 'Submit button used to create or save a homework.'],
+            'lms.mission_editor.homeworks.update' => ['text' => 'Mettre a jour le devoir', 'context' => 'Submit button used when editing a homework.'],
             'lms.mission_editor.questions.title' => ['text' => 'Questions', 'context' => 'Section title for mission validation questions.'],
             'lms.mission_editor.questions.intro' => ['text' => 'Ajoutez ici les questions de validation avec leurs choix de reponse. Glissez-deposez les cartes pour definir leur ordre.', 'context' => 'Intro text for the mission questions section.'],
             'lms.mission_editor.questions.add' => ['text' => 'Ajouter une question', 'context' => 'Button used to open the question creator.'],
@@ -201,22 +204,32 @@ if (!function_exists('lmsRenderMissionHomeworkManager')) {
                 <div class="lms-mission-related__list" data-lms-homework-list="1">
                     <?php foreach ($homeworks as $homework): ?>
                         <article
-                            class="lms-mission-related__item"
+                            class="lms-mission-related__item lms-mission-related__item--structured lms-mission-related__item--homework"
                             data-lms-homework-item="1"
                             data-homework-id="<?php echo (int)($homework['IDhomework'] ?? 0); ?>"
                             data-homework-title="<?php echo htmlspecialchars((string)($homework['title'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                             data-homework-detail="<?php echo htmlspecialchars((string)($homework['detail'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                            data-homework-only-admin="<?php echo !empty($homework['onlyAdmin']) ? '1' : '0'; ?>"
                         >
-                            <div class="lms-mission-related__item-head">
-                                <button type="button" class="lms-mission-related__drag-handle" data-lms-homework-drag-handle="1" aria-label="<?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.move_aria')); ?>" title="<?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.move_aria')); ?>">::</button>
-                                <div class="lms-mission-related__item-actions">
-                                    <button type="button" data-lms-edit-homework="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.common.edit')); ?></button>
+                            <div class="lms-mission-related__item-head lms-mission-related__item-head--structured">
+                                <button type="button" class="lms-mission-related__drag-handle generic-drag-handle generic-drag-handle--stretch" data-lms-homework-drag-handle="1" aria-label="<?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.move_aria')); ?>" title="<?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.move_aria')); ?>">::</button>
+                                <div class="lms-mission-related__item-main">
+                                    <div class="lms-mission-related__item-topbar">
+                                        <strong><?php echo htmlspecialchars((string)($homework['title'] ?? '')); ?></strong>
+                                        <div class="lms-mission-related__item-actions">
+                                            <button type="button" data-lms-edit-homework="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.common.edit')); ?></button>
+                                        </div>
+                                    </div>
+                                    <?php if (trim((string)($homework['detail'] ?? '')) !== ''): ?>
+                                        <div class="lms-mission-related__item-html"><?php echo (string)$homework['detail']; ?></div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($homework['onlyAdmin'])): ?>
+                                        <div class="lms-mission-related__meta">
+                                            <span><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.badge_only_admin')); ?></span>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
-                            <strong><?php echo htmlspecialchars((string)($homework['title'] ?? '')); ?></strong>
-                            <?php if (trim((string)($homework['detail'] ?? '')) !== ''): ?>
-                                <p><?php echo nl2br(htmlspecialchars((string)$homework['detail'])); ?></p>
-                            <?php endif; ?>
                         </article>
                     <?php endforeach; ?>
                 </div>
@@ -233,18 +246,24 @@ if (!function_exists('lmsRenderMissionHomeworkManager')) {
                 <div class="lms-mission-creator-form__grid">
                     <label class="lms-mission-creator-form__field">
                         <span><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.field_title')); ?></span>
-                        <input type="text" name="title" maxlength="150" required>
+                        <input type="text" name="title" maxlength="150" class="generic-form-control" required>
                     </label>
 
                     <label class="lms-mission-creator-form__field lms-mission-creator-form__field--full">
                         <span><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.field_detail')); ?></span>
-                        <textarea name="detail" rows="4"></textarea>
+                        <textarea name="detail" rows="4" class="generic-form-control summernote" data-editor-profile="simple"></textarea>
+                    </label>
+
+                    <label class="lms-mission-creator-form__check lms-mission-creator-form__field--full">
+                        <input type="hidden" name="onlyAdmin" value="0">
+                        <input type="checkbox" name="onlyAdmin" value="1">
+                        <span><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.field_only_admin')); ?></span>
                     </label>
                 </div>
 
                 <div class="lms-mission-creator-form__actions">
-                    <button type="button" data-lms-close-homework-creator="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.common.cancel')); ?></button>
-                    <button type="submit" data-lms-homework-create-submit="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.submit')); ?></button>
+                    <button type="button" class="generic-action-button generic-action-button--secondary" data-lms-close-homework-creator="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.common.cancel')); ?></button>
+                    <button type="submit" class="generic-action-button generic-action-button--main" data-lms-homework-create-submit="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.submit')); ?></button>
                 </div>
             </form>
         </section>
@@ -306,7 +325,7 @@ if (!function_exists('lmsRenderMissionHomeworkManager')) {
                         }
                         ?>
                         <article
-                            class="lms-mission-related__item"
+                            class="lms-mission-related__item lms-mission-related__item--structured lms-mission-related__item--question"
                             data-lms-question-item="1"
                             data-question-id="<?php echo (int)($question['IDquestion'] ?? 0); ?>"
                             data-question-text="<?php echo htmlspecialchars((string)($question['question'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
@@ -314,19 +333,23 @@ if (!function_exists('lmsRenderMissionHomeworkManager')) {
                             data-question-detail="<?php echo htmlspecialchars((string)($question['detail'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                             data-question-choices="<?php echo htmlspecialchars($choicesJson, ENT_QUOTES, 'UTF-8'); ?>"
                         >
-                            <div class="lms-mission-related__item-head">
-                                <button type="button" class="lms-mission-related__drag-handle" data-lms-question-drag-handle="1" aria-label="<?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.move_aria')); ?>" title="<?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.move_aria')); ?>">::</button>
-                                <div class="lms-mission-related__item-actions">
-                                    <button type="button" data-lms-edit-question="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.common.edit')); ?></button>
+                            <div class="lms-mission-related__item-head lms-mission-related__item-head--structured">
+                                <button type="button" class="lms-mission-related__drag-handle generic-drag-handle generic-drag-handle--stretch" data-lms-question-drag-handle="1" aria-label="<?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.move_aria')); ?>" title="<?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.move_aria')); ?>">::</button>
+                                <div class="lms-mission-related__item-main">
+                                    <div class="lms-mission-related__item-topbar">
+                                        <strong><?php echo htmlspecialchars((string)($question['question'] ?? '')); ?></strong>
+                                        <div class="lms-mission-related__item-actions">
+                                            <button type="button" data-lms-edit-question="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.common.edit')); ?></button>
+                                        </div>
+                                    </div>
+                                    <?php if (trim((string)($question['answer'] ?? '')) !== ''): ?>
+                                        <p><?php echo nl2br(htmlspecialchars((string)$question['answer'])); ?></p>
+                                    <?php endif; ?>
+                                    <div class="lms-mission-related__meta">
+                                        <span><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.choice_count', ['count' => (string)((int)($question['choice_count'] ?? 0))])); ?></span>
+                                        <span><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.correct_count', ['count' => (string)((int)($question['correct_choice_count'] ?? 0))])); ?></span>
+                                    </div>
                                 </div>
-                            </div>
-                            <strong><?php echo htmlspecialchars((string)($question['question'] ?? '')); ?></strong>
-                            <?php if (trim((string)($question['answer'] ?? '')) !== ''): ?>
-                                <p><?php echo nl2br(htmlspecialchars((string)$question['answer'])); ?></p>
-                            <?php endif; ?>
-                            <div class="lms-mission-related__meta">
-                                <span><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.choice_count', ['count' => (string)((int)($question['choice_count'] ?? 0))])); ?></span>
-                                <span><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.correct_count', ['count' => (string)((int)($question['correct_choice_count'] ?? 0))])); ?></span>
                             </div>
                         </article>
                     <?php endforeach; ?>

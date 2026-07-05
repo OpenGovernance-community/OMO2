@@ -95,14 +95,26 @@
 			);
 		}
 
-		public static function hasCompletedAllForUserMission($userId, $missionId, $parcoursId)
+		public static function hasCompletedAllForUserMission($userId, $missionId, $parcoursId, $viewerIsOrganizationAdmin = null)
 		{
-			$requiredCount = Mission::countHomeworksForMission($missionId);
-			if ($requiredCount <= 0) {
+			$requiredIds = Mission::fetchHomeworkIdsForMission($missionId, $viewerIsOrganizationAdmin);
+			if (count($requiredIds) === 0) {
 				return true;
 			}
 
-			return self::countDoneForUserMission($userId, $missionId, $parcoursId) >= $requiredCount;
+			$doneIds = self::fetchDoneHomeworkIdsForUserMission($userId, $missionId, $parcoursId);
+			$doneLookup = [];
+			foreach ($doneIds as $doneId) {
+				$doneLookup[(int)$doneId] = true;
+			}
+
+			foreach ($requiredIds as $requiredId) {
+				if (empty($doneLookup[(int)$requiredId])) {
+					return false;
+				}
+			}
+
+			return true;
 		}
 	}
 

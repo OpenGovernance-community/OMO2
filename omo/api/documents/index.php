@@ -339,6 +339,7 @@ foreach ($documents as $document) {
         ? $updatedAt
         : $resolvedCreatedAt;
     $documentId = (int)$document->getId();
+    $documentOrganizationId = (int)$document->get('IDorganization');
     $documentHolonId = (int)$document->get('IDholon');
     $parentDocumentId = (int)$document->get('IDdocument_parent');
     $visibility = $document->getVisibilityDisplayData(
@@ -386,10 +387,10 @@ foreach ($documents as $document) {
             : array(),
         'description' => trim((string)$document->get('description')),
         'keywords' => trim((string)$document->get('keywords')),
-        'canEdit' => $document->canEditInOrganizationContext($currentOrganizationId),
-        'editUrl' => '/omo/api/documents/create.php?oid=' . $currentOrganizationId
-            . ($effectiveCurrentHolonId > 0 ? '&cid=' . $effectiveCurrentHolonId : '')
-            . '&id=' . $documentId,
+        'canEdit' => $document->canEditInOrganizationContext($documentOrganizationId),
+        'editUrl' => '/omo/api/documents/create.php?id=' . $documentId
+            . ($documentOrganizationId > 0 ? '&oid=' . $documentOrganizationId : '')
+            . ($documentHolonId > 0 ? '&cid=' . $documentHolonId : ''),
         'visibilityBadge' => (string)($visibility['badgeText'] ?? ''),
         'visibilityType' => (string)($visibility['type'] ?? ''),
         'visibilityIconUrl' => $resolveDocumentVisibilityIconUrl((string)($visibility['type'] ?? '')),
@@ -623,7 +624,7 @@ if (!is_string($documentsPayload)) {
                                         <div class="omo-documents__keywords"><?= $escape($entry['keywords']) ?></div>
                                     <?php endif; ?>
                                 </div>
-                                <?php if (!empty($entry['canEdit'])): ?>
+                                <?php if (!empty($entry['canEdit']) || !empty($entry['canShare'])): ?>
                                     <div class="omo-documents__menu" data-omo-document-menu="1">
                                         <button
                                             type="button"
@@ -632,6 +633,7 @@ if (!is_string($documentsPayload)) {
                                             data-omo-document-menu-document-id="<?= (int)$entry['id'] ?>"
                                             data-omo-document-menu-title="<?= $escape($entry['title']) ?>"
                                             data-omo-document-menu-edit-url="<?= $escape($entry['editUrl']) ?>"
+                                            data-omo-document-menu-can-edit="<?= !empty($entry['canEdit']) ? '1' : '0' ?>"
                                             data-omo-document-menu-is-folder="<?= !empty($entry['isFolder']) ? '1' : '0' ?>"
                                             data-omo-document-menu-can-share="<?= !empty($entry['canShare']) ? '1' : '0' ?>"
                                             aria-haspopup="menu"
@@ -649,12 +651,14 @@ if (!is_string($documentsPayload)) {
             <div class="omo-overlay-drawer omo-documents__detail-drawer" data-omo-document-detail-drawer hidden>
                 <div class="omo-overlay-drawer__backdrop" data-omo-document-detail-close></div>
                 <div class="omo-overlay-drawer__panel">
-                    <div class="omo-overlay-drawer__header">
-                        <div class="omo-overlay-drawer__header-copy">
+                    <div class="omo-overlay-drawer__header generic-drawer-header">
+                        <div class="omo-overlay-drawer__header-copy generic-drawer-header__copy">
                             <h3 class="omo-overlay-drawer__title" data-omo-document-detail-title><?= $escape(omoDocumentsScopeT('documents.drawer.detail_title')) ?></h3>
                             <p class="omo-overlay-drawer__description" data-omo-document-detail-description><?= $escape(omoDocumentsScopeT('documents.drawer.detail_description')) ?></p>
                         </div>
-                        <button type="button" class="omo-overlay-drawer__close" data-omo-document-detail-close><?= $escape(omoDocumentsScopeT('documents.drawer.close')) ?></button>
+                        <div class="generic-drawer-header__actions">
+                            <button type="button" class="omo-overlay-drawer__close" data-omo-document-detail-close><?= $escape(omoDocumentsScopeT('documents.drawer.close')) ?></button>
+                        </div>
                     </div>
                     <div class="omo-overlay-drawer__body" data-omo-document-detail-body></div>
                 </div>
@@ -1230,23 +1234,6 @@ if (!is_string($documentsPayload)) {
                                     compactNameMain.appendChild(compactTitleBlock);
                                     compactNameCell.appendChild(compactNameMain);
 
-                                    const compactTypeCell = document.createElement('div');
-                                    compactTypeCell.className = 'omo-documents__compact-cell omo-documents__compact-cell--type generic-file-list__cell';
-                                    compactTypeCell.setAttribute('data-label', 'Type');
-
-                                    const compactTypeInline = document.createElement('span');
-                                    compactTypeInline.className = 'omo-documents__compact-type-inline generic-file-list__type';
-                                    const compactTypeIcon = document.createElement('img');
-                                    compactTypeIcon.className = 'omo-documents__compact-type-icon black-icon';
-                                    compactTypeIcon.src = omoDocumentsGetIconUrl(documentItem);
-                                    compactTypeIcon.alt = '';
-                                    compactTypeIcon.loading = 'lazy';
-                                    const compactTypeText = document.createElement('span');
-                                    compactTypeText.textContent = documentItem.isFolder ? 'Dossier' : 'Document';
-                                    compactTypeInline.appendChild(compactTypeIcon);
-                                    compactTypeInline.appendChild(compactTypeText);
-                                    compactTypeCell.appendChild(compactTypeInline);
-
                                     const compactTagsCell = document.createElement('div');
                                     compactTagsCell.className = 'omo-documents__compact-cell omo-documents__compact-cell--tags generic-file-list__cell';
                                     compactTagsCell.setAttribute('data-label', 'Tags');
@@ -1275,7 +1262,6 @@ if (!is_string($documentsPayload)) {
                                         : getDocumentDateLabel(documentItem, state.sort, false);
 
                                     frame.appendChild(compactNameCell);
-                                    frame.appendChild(compactTypeCell);
                                     frame.appendChild(compactTagsCell);
                                     frame.appendChild(compactDateCell);
                                     container.appendChild(frame);
@@ -1382,7 +1368,10 @@ if (!is_string($documentsPayload)) {
                             };
 
                             const createMenu = function (documentItem) {
-                                if (!documentItem.canEdit || !documentItem.editUrl) {
+                                if (
+                                    (!documentItem.canEdit || !documentItem.editUrl)
+                                    && !documentItem.canShare
+                                ) {
                                     return null;
                                 }
 
@@ -1397,6 +1386,7 @@ if (!is_string($documentsPayload)) {
                                 toggle.setAttribute('data-omo-document-menu-document-id', String(documentItem.id || '0'));
                                 toggle.setAttribute('data-omo-document-menu-title', String(documentItem.title || ''));
                                 toggle.setAttribute('data-omo-document-menu-edit-url', String(documentItem.editUrl || ''));
+                                toggle.setAttribute('data-omo-document-menu-can-edit', documentItem.canEdit ? '1' : '0');
                                 toggle.setAttribute('data-omo-document-menu-is-folder', documentItem.isFolder ? '1' : '0');
                                 toggle.setAttribute('data-omo-document-menu-can-share', documentItem.canShare ? '1' : '0');
                                 toggle.setAttribute('aria-haspopup', 'menu');
@@ -1414,7 +1404,6 @@ if (!is_string($documentsPayload)) {
 
                                 [
                                     { label: 'Nom', className: 'omo-documents__list-header-cell--name' },
-                                    { label: 'Type', className: 'omo-documents__list-header-cell--type' },
                                     { label: 'Tags', className: 'omo-documents__list-header-cell--tags' },
                                     { label: getDateColumnLabel(sortMode), className: 'omo-documents__list-header-cell--date' }
                                 ].forEach(function (column) {
@@ -1789,6 +1778,72 @@ if (!is_string($documentsPayload)) {
                                 }) || null;
                             };
 
+                            const normalizeDocumentOpenMode = function (value) {
+                                return String(value || '').trim().toLowerCase() === 'edit'
+                                    ? 'edit'
+                                    : 'detail';
+                            };
+
+                            const buildPanelDocumentOpenUrl = function (documentId, mode, scopeOverride) {
+                                const resolvedDocumentId = Number(documentId || 0);
+                                if (!Number.isInteger(resolvedDocumentId) || resolvedDocumentId <= 0) {
+                                    return '';
+                                }
+
+                                const normalizedMode = normalizeDocumentOpenMode(mode || 'detail');
+                                const organizationId = Number(panel.getAttribute('data-omo-document-oid') || 0);
+                                const holonId = Number(panel.getAttribute('data-omo-document-cid') || 0);
+                                const requestedScope = String(scopeOverride || '').trim().toLowerCase();
+                                const normalizedScope = requestedScope !== ''
+                                    ? normalizeDocumentScope(requestedScope)
+                                    : normalizeDocumentScope(panel.getAttribute('data-omo-document-scope') || 'contextual');
+                                const query = [];
+
+                                if (organizationId > 0) {
+                                    query.push('oid=' + encodeURIComponent(String(organizationId)));
+                                }
+
+                                if (holonId > 0) {
+                                    query.push('cid=' + encodeURIComponent(String(holonId)));
+                                }
+
+                                query.push('open_document_id=' + encodeURIComponent(String(resolvedDocumentId)));
+
+                                if (normalizedMode === 'edit') {
+                                    query.push('open_document_mode=edit');
+                                }
+
+                                if (normalizedScope !== 'contextual') {
+                                    query.push('document_scope=' + encodeURIComponent(normalizedScope));
+                                }
+
+                                return '/omo/api/documents/index.php' + (query.length > 0 ? '?' + query.join('&') : '');
+                            };
+
+                            const refreshPanelForDocumentRoute = function (documentId, mode, scopeOverride) {
+                                if (typeof window.omoReplaceFetchedPanelRoot !== 'function') {
+                                    return false;
+                                }
+
+                                const targetUrl = buildPanelDocumentOpenUrl(documentId, mode, scopeOverride);
+                                if (targetUrl === '') {
+                                    return false;
+                                }
+
+                                window.omoReplaceFetchedPanelRoot({
+                                    rootSelector: '#omo-documents-root',
+                                    currentRoot: panel,
+                                    url: targetUrl,
+                                    setLoadingState: function (isLoading) {
+                                        panel.classList.toggle('is-loading', !!isLoading);
+                                    }
+                                }).catch(function () {
+                                    panel.classList.remove('is-loading');
+                                });
+
+                                return true;
+                            };
+
                             const openInitialDocumentFromPayload = function () {
                                 const documentId = Number(payload.openDocumentId || 0);
                                 if (!Number.isInteger(documentId) || documentId <= 0) {
@@ -1991,9 +2046,13 @@ if (!is_string($documentsPayload)) {
 
                                     if (targetDocumentId > 0) {
                                         const documentItem = findDocumentItemById(targetDocumentId);
-                                        if (documentItem && targetMode === 'edit' && typeof window.omoOpenDocumentEditorByPayload === 'function') {
+
+                                        if (targetMode === 'edit') {
                                             window.omoCloseDocumentDetailDrawer({ force: true });
-                                            if (window.omoOpenDocumentEditorByPayload(documentItem, panel)) {
+                                            if (typeof window.omoOpenDocumentEditorFromDocumentId === 'function' && window.omoOpenDocumentEditorFromDocumentId(targetDocumentId)) {
+                                                return;
+                                            }
+                                            if (refreshPanelForDocumentRoute(targetDocumentId, targetMode, forcedScope)) {
                                                 return;
                                             }
                                         }
@@ -2001,6 +2060,12 @@ if (!is_string($documentsPayload)) {
                                         if (targetMode !== 'edit' && documentItem && typeof window.omoOpenDocumentDetailByPayload === 'function') {
                                             window.omoCloseDocumentEditorDrawer({ force: true });
                                             window.omoOpenDocumentDetailByPayload(documentItem, panel);
+                                            return;
+                                        }
+
+                                        if (targetMode !== 'edit') {
+                                            window.omoCloseDocumentEditorDrawer({ force: true });
+                                            refreshPanelForDocumentRoute(targetDocumentId, targetMode, forcedScope);
                                         }
                                         return;
                                     }
@@ -2046,12 +2111,14 @@ if (!is_string($documentsPayload)) {
         <div class="omo-overlay-drawer omo-documents__editor-drawer" data-omo-document-editor-drawer hidden>
             <div class="omo-overlay-drawer__backdrop" data-omo-document-editor-close></div>
             <div class="omo-overlay-drawer__panel">
-                <div class="omo-overlay-drawer__header">
-                    <div class="omo-overlay-drawer__header-copy">
+                <div class="omo-overlay-drawer__header generic-drawer-header">
+                    <div class="omo-overlay-drawer__header-copy generic-drawer-header__copy">
                         <h3 class="omo-overlay-drawer__title" data-omo-document-editor-title><?= $escape(omoDocumentsScopeT('documents.drawer.editor_title')) ?></h3>
                         <p class="omo-overlay-drawer__description" data-omo-document-editor-description><?= $escape(omoDocumentsScopeT('documents.drawer.editor_description')) ?></p>
                     </div>
-                    <button type="button" class="omo-overlay-drawer__close" data-omo-document-editor-close><?= $escape(omoDocumentsScopeT('documents.drawer.close')) ?></button>
+                    <div class="generic-drawer-header__actions">
+                        <button type="button" class="omo-overlay-drawer__close" data-omo-document-editor-close><?= $escape(omoDocumentsScopeT('documents.drawer.close')) ?></button>
+                    </div>
                 </div>
                 <div class="omo-overlay-drawer__body" data-omo-document-editor-body></div>
             </div>
@@ -2323,6 +2390,35 @@ if (!is_string($documentsPayload)) {
                 return '/omo/api/documents/index.php' + (query.length > 0 ? '?' + query.join('&') : '');
             }
 
+            function getDocumentsPayloadItems(rootOverride) {
+                const root = rootOverride instanceof Element
+                    ? rootOverride
+                    : getDocumentsRoot();
+                const dataNode = root ? root.querySelector('[data-omo-documents-data]') : null;
+
+                if (!dataNode) {
+                    return [];
+                }
+
+                try {
+                    const payload = JSON.parse(dataNode.textContent || '{}');
+                    return Array.isArray(payload.documents) ? payload.documents : [];
+                } catch (error) {
+                    return [];
+                }
+            }
+
+            function findDocumentPayloadItemById(documentId, rootOverride) {
+                const resolvedDocumentId = Number(documentId || 0);
+                if (!Number.isInteger(resolvedDocumentId) || resolvedDocumentId <= 0) {
+                    return null;
+                }
+
+                return getDocumentsPayloadItems(rootOverride).find(function (item) {
+                    return Number(item && item.id ? item.id : 0) === resolvedDocumentId;
+                }) || null;
+            }
+
             function executeFetchedScripts(container) {
                 if (!container) {
                     return;
@@ -2392,6 +2488,52 @@ if (!is_string($documentsPayload)) {
                     .catch(function () {
                         body.innerHTML = '<div class="omo-empty-state"><?= $escape(omoDocumentsScopeT('documents.error.load_editor')) ?></div>';
                     });
+            }
+
+            function buildDocumentEditorUrl(documentId, rootOverride) {
+                const resolvedDocumentId = Number(documentId || 0);
+                if (!Number.isInteger(resolvedDocumentId) || resolvedDocumentId <= 0) {
+                    return '';
+                }
+
+                const root = rootOverride instanceof Element
+                    ? rootOverride
+                    : getDocumentsRoot();
+                const organizationId = Number(root && root.getAttribute('data-omo-document-oid') || 0);
+                const holonId = Number(root && root.getAttribute('data-omo-document-cid') || 0);
+
+                if (!Number.isInteger(organizationId) || organizationId <= 0) {
+                    return '';
+                }
+
+                let url = '/omo/api/documents/create.php?oid=' + encodeURIComponent(String(organizationId));
+                if (Number.isInteger(holonId) && holonId > 0) {
+                    url += '&cid=' + encodeURIComponent(String(holonId));
+                }
+
+                url += '&id=' + encodeURIComponent(String(resolvedDocumentId));
+                return url;
+            }
+
+            function openExternalDocumentWindow(documentItem) {
+                const externalUrl = documentItem && documentItem.externalUrl
+                    ? String(documentItem.externalUrl).trim()
+                    : '';
+
+                if (externalUrl === '') {
+                    return false;
+                }
+
+                const link = document.createElement('a');
+                link.href = externalUrl;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+
+                return true;
             }
 
             function normalizeDocumentOpenMode(value) {
@@ -2625,11 +2767,13 @@ if (!is_string($documentsPayload)) {
                 }
 
                 const documentId = Number(trigger.getAttribute('data-omo-document-id') || 0);
-                const routeToken = buildDocumentRouteToken(documentId, 'detail');
-                const hashState = typeof window.omoParsePopupHashState === 'function'
-                    ? window.omoParsePopupHashState()
-                    : null;
-                const currentRouteToken = hashState && hashState.routeToken ? String(hashState.routeToken) : '';
+                const documentPayload = {
+                    contextUrl: String(trigger.getAttribute('data-omo-document-context-url') || '').trim(),
+                    externalUrl: String(trigger.getAttribute('data-omo-document-external-url') || '').trim(),
+                    openInNewWindow: String(trigger.getAttribute('data-omo-document-open-in-new-window') || '').trim() === '1',
+                    title: String(trigger.getAttribute('data-omo-document-title') || '').trim(),
+                    fullDateLabel: String(trigger.getAttribute('data-omo-document-full-date') || '').trim()
+                };
 
                 if (event) {
                     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
@@ -2638,19 +2782,23 @@ if (!is_string($documentsPayload)) {
                     event.preventDefault();
                 }
 
+                if (documentPayload.openInNewWindow && documentPayload.externalUrl !== '') {
+                    return openExternalDocumentWindow(documentPayload) ? false : true;
+                }
+
+                const routeToken = buildDocumentRouteToken(documentId, 'detail');
+                const hashState = typeof window.omoParsePopupHashState === 'function'
+                    ? window.omoParsePopupHashState()
+                    : null;
+                const currentRouteToken = hashState && hashState.routeToken ? String(hashState.routeToken) : '';
+
                 if (routeToken && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== currentRouteToken) {
                     window.omoOpenDrawerHashState(routeToken);
                     return false;
                 }
 
                 const root = trigger.closest('#omo-documents-root') || getDocumentsRoot();
-                const opened = window.omoOpenDocumentDetailByPayload({
-                    contextUrl: String(trigger.getAttribute('data-omo-document-context-url') || '').trim(),
-                    externalUrl: String(trigger.getAttribute('data-omo-document-external-url') || '').trim(),
-                    openInNewWindow: String(trigger.getAttribute('data-omo-document-open-in-new-window') || '').trim() === '1',
-                    title: String(trigger.getAttribute('data-omo-document-title') || '').trim(),
-                    fullDateLabel: String(trigger.getAttribute('data-omo-document-full-date') || '').trim()
-                }, root);
+                const opened = window.omoOpenDocumentDetailByPayload(documentPayload, root);
 
                 if (!opened) {
                     return true;
@@ -2676,11 +2824,23 @@ if (!is_string($documentsPayload)) {
                     return true;
                 }
 
-                const documentItem = documents.find(function (item) {
-                    return Number(item && item.id ? item.id : 0) === resolvedDocumentId;
-                }) || null;
+                const root = getDocumentsRoot();
+                const documentItem = findDocumentPayloadItemById(resolvedDocumentId, root);
+                if (documentItem && window.omoOpenDocumentEditorByPayload(documentItem)) {
+                    return true;
+                }
 
-                return !!(documentItem && window.omoOpenDocumentEditorByPayload(documentItem));
+                const editUrl = buildDocumentEditorUrl(resolvedDocumentId, root);
+                if (editUrl === '') {
+                    return false;
+                }
+
+                openEditorDrawer(
+                    editUrl,
+                    <?= json_encode('Ã‰diter le document', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                    <?= json_encode('Modification du document dans le contexte courant.', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+                );
+                return true;
             };
 
             const root = getDocumentsRoot();
@@ -2717,26 +2877,30 @@ if (!is_string($documentsPayload)) {
                 const documentId = Number(toggle && toggle.getAttribute('data-omo-document-menu-document-id') || 0);
                 const documentTitle = String(toggle && toggle.getAttribute('data-omo-document-menu-title') || '').trim();
                 const editUrl = String(toggle && toggle.getAttribute('data-omo-document-menu-edit-url') || '').trim();
+                const canEdit = String(toggle && toggle.getAttribute('data-omo-document-menu-can-edit') || '') === '1';
                 const isFolder = String(toggle && toggle.getAttribute('data-omo-document-menu-is-folder') || '') === '1';
                 const canShare = String(toggle && toggle.getAttribute('data-omo-document-menu-can-share') || '') === '1';
                 const fragment = ownerDocument.createDocumentFragment();
 
-                if (Number.isInteger(documentId) && documentId > 0) {
+                if (canEdit && Number.isInteger(documentId) && documentId > 0) {
                     fragment.appendChild(buildDocumentMenuItem('Deplacer', {
+                        'data-omo-document-menu-action': 'move',
                         'data-omo-document-move': '1',
                         'data-omo-document-move-id': String(documentId)
                     }));
-
-                    if (!isFolder && canShare) {
-                        fragment.appendChild(buildDocumentMenuItem('Partager', {
-                            'data-omo-document-share': '1',
-                            'data-omo-document-share-id': String(documentId)
-                        }));
-                    }
                 }
 
-                if (editUrl !== '') {
+                if (Number.isInteger(documentId) && documentId > 0 && !isFolder && canShare) {
+                    fragment.appendChild(buildDocumentMenuItem('Partager', {
+                        'data-omo-document-menu-action': 'share',
+                        'data-omo-document-share': '1',
+                        'data-omo-document-share-id': String(documentId)
+                    }));
+                }
+
+                if (canEdit && editUrl !== '') {
                     fragment.appendChild(buildDocumentMenuItem('Editer', {
+                        'data-omo-document-menu-action': 'edit',
                         'data-omo-document-edit': '1',
                         'data-omo-document-edit-id': String(documentId),
                         'data-omo-document-edit-url': editUrl,
@@ -2780,6 +2944,51 @@ if (!is_string($documentsPayload)) {
                 floatingMenu.style.top = String(Math.round(top)) + 'px';
                 floatingMenu.style.left = String(Math.round(left)) + 'px';
                 floatingMenu.style.visibility = '';
+            }
+
+            function runDocumentMenuAction(actionButton) {
+                const action = String(actionButton && actionButton.getAttribute('data-omo-document-menu-action') || '').trim().toLowerCase();
+                if (action === '') {
+                    return false;
+                }
+
+                closeDocumentMenus();
+
+                if (action === 'move') {
+                    openDocumentMovePopup(actionButton.getAttribute('data-omo-document-move-id'));
+                    return true;
+                }
+
+                if (action === 'share') {
+                    openDocumentSharePopup(actionButton.getAttribute('data-omo-document-share-id'));
+                    return true;
+                }
+
+                if (action !== 'edit') {
+                    return false;
+                }
+
+                const documentId = Number(actionButton.getAttribute('data-omo-document-edit-id') || 0);
+                if (window.omoOpenDocumentEditorFromDocumentId(documentId)) {
+                    return true;
+                }
+
+                const documentItem = findDocumentPayloadItemById(documentId);
+                if (documentItem && window.omoOpenDocumentEditorByPayload(documentItem)) {
+                    return true;
+                }
+
+                const editUrl = String(actionButton.getAttribute('data-omo-document-edit-url') || '').trim();
+                if (editUrl === '') {
+                    return false;
+                }
+
+                openEditorDrawer(
+                    editUrl,
+                    <?= json_encode('Ã‰diter le document', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                    <?= json_encode('Modification du document dans le contexte courant.', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+                );
+                return true;
             }
 
             function closeDocumentMenus() {
@@ -2832,6 +3041,14 @@ if (!is_string($documentsPayload)) {
             ownerDocument.addEventListener('click', function (event) {
                 const toggle = event.target.closest('[data-omo-document-menu-toggle="1"]');
                 if (toggle) {
+                    return;
+                }
+
+                const actionButton = event.target.closest('[data-omo-document-menu-action]');
+                if (actionButton && floatingMenu.contains(actionButton)) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    runDocumentMenuAction(actionButton);
                     return;
                 }
 
@@ -2997,14 +3214,14 @@ if (!is_string($documentsPayload)) {
 }
 
 .omo-documents__results.generic-file-list {
-    --generic-file-list-columns: minmax(0, 2.55fr) minmax(120px, 0.95fr) minmax(160px, 1.45fr) minmax(84px, 0.72fr);
+    --generic-file-list-columns: minmax(260px, 2.35fr) minmax(120px, 1.15fr) minmax(92px, max-content);
     --generic-file-list-title-gap: 18px;
     --generic-file-list-table-margin-inline: 12px;
     --generic-file-list-padding-inline-start: 16px;
     --generic-file-list-padding-inline-end: 18px;
     --generic-file-list-header-padding-block: 14px;
     --generic-file-list-row-padding-block: 12px;
-    --generic-file-list-menu-space: 88px;
+    --generic-file-list-menu-space: 64px;
 }
 
 .omo-documents__results.generic-file-list .generic-file-list__group-title {
@@ -3053,6 +3270,11 @@ if (!is_string($documentsPayload)) {
 
 .omo-documents__list-header-cell {
     min-width: 0;
+}
+
+.omo-documents__list-header-cell--date {
+    text-align: right;
+    white-space: nowrap;
 }
 
 .omo-documents__list--alphabetical {
@@ -3537,6 +3759,7 @@ if (!is_string($documentsPayload)) {
     color: var(--color-text-light);
     justify-content: flex-end;
     text-align: right;
+    white-space: nowrap;
 }
 
 .omo-documents__compact-name-main {
@@ -3618,21 +3841,6 @@ if (!is_string($documentsPayload)) {
     white-space: nowrap;
 }
 
-.omo-documents__compact-type-inline {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--color-text);
-}
-
-.omo-documents__compact-type-icon {
-    width: 16px;
-    height: 16px;
-    display: block;
-    object-fit: contain;
-    opacity: 0.82;
-}
-
 .omo-documents__compact-tags {
     display: flex;
     flex-wrap: wrap;
@@ -3704,8 +3912,16 @@ if (!is_string($documentsPayload)) {
 
 .omo-documents__item-shell--compact .omo-documents__menu {
     top: 50%;
-    right: 14px;
+    right: 10px;
     transform: translateY(-50%);
+}
+
+.omo-documents__item-shell--compact .omo-documents__menu-toggle {
+    min-width: 30px;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border-radius: 9px;
 }
 
 .omo-documents__item--compact .omo-documents__context,

@@ -169,6 +169,30 @@
             });
     }
 
+    function syncIframeTheme(frame) {
+        if (!frame || typeof window.sharedBroadcastThemeToChildFrames !== 'function') {
+            return;
+        }
+
+        window.sharedBroadcastThemeToChildFrames({
+            preference: getThemePreference(),
+            colorStyle: getColorStylePreference()
+        });
+    }
+
+    function bindIframeThemeSync(frame) {
+        if (!frame) {
+            return;
+        }
+
+        frame.addEventListener('load', function () {
+            syncIframeTheme(frame);
+            window.setTimeout(function () {
+                syncIframeTheme(frame);
+            }, 60);
+        }, { once: true });
+    }
+
     function closeMenus() {
         closePreferenceMenus();
         document.querySelectorAll('.common-topbar__menu.is-open').forEach(function (menu) {
@@ -359,6 +383,7 @@
         if (mode === 'iframe') {
             body.classList.add('common-topbar-drawer__body--iframe');
             body.innerHTML = '<iframe class="common-topbar-drawer__iframe" src="' + content + '"></iframe>';
+            bindIframeThemeSync(body.querySelector('iframe'));
         } else if (mode === 'fetch') {
             renderRemoteContent(body, content);
         } else {
@@ -385,6 +410,7 @@
         titleNode.textContent = title || getConfigTextValue('modal.defaultTitle', 'Panneau');
         if (mode === 'iframe') {
             body.innerHTML = '<iframe class="common-topbar-modal__iframe" src="' + content + '"></iframe>';
+            bindIframeThemeSync(body.querySelector('iframe'));
         } else if (mode === 'fetch') {
             renderRemoteContent(body, content);
         } else {
@@ -902,6 +928,13 @@
                 theme: resolvedTheme
             }
         }));
+
+        if (typeof window.sharedBroadcastThemeToChildFrames === 'function') {
+            window.sharedBroadcastThemeToChildFrames({
+                preference: safePreference,
+                colorStyle: getColorStylePreference()
+            });
+        }
     }
 
     function handleThemeChange(select) {
@@ -944,6 +977,13 @@
                 theme: appliedState && appliedState.theme ? appliedState.theme : document.documentElement.dataset.theme
             }
         }));
+
+        if (typeof window.sharedBroadcastThemeToChildFrames === 'function') {
+            window.sharedBroadcastThemeToChildFrames({
+                preference: getThemePreference(),
+                colorStyle: safePreference
+            });
+        }
     }
 
     function togglePreferenceMenu(trigger) {

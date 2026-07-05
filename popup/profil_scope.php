@@ -2,6 +2,7 @@
 require_once("../config.php");
 require_once("../shared_functions.php");
 require_once("../common/auth.php");
+require_once("../common/patreon.php");
 require_once("../common/user_competence_ui.php");
 require_once("../common/leaflet_helper.php");
 require_once(__DIR__ . "/profil_translation_helper.php");
@@ -53,6 +54,21 @@ if ($currentOrganizationId > 0) {
 $canLimitCompetenceToOrganization = $currentOrganizationId > 0;
 $leafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafletMapsEnabled();
 $userHasPassword = trim((string)$user->get('password')) !== '';
+
+function profilScopeFormatDateTime($value)
+{
+    if ($value instanceof DateTimeInterface) {
+        return $value->format('d.m.Y H:i');
+    }
+
+    return profilPopupT('profile.popup.value.not_provided');
+}
+
+function profilScopeFormatAmountCents($value)
+{
+    $amount = ((int)$value) / 100;
+    return number_format($amount, 2, '.', "'");
+}
 
 function profilBuildPasswordSectionHtml($userHasPassword)
 {
@@ -790,6 +806,143 @@ function profilRenderCompetenceFragment(array $scopes, \dbObject\User $user, $cu
     return ob_get_clean();
 }
 
+function profilRenderCurrentSummaryFragment(
+    \dbObject\User $user,
+    $currentOrganizationId,
+    $hasOrganizationScope,
+    $organization
+) {
+    $activeEmail = $user->getScopedEmail($currentOrganizationId);
+    $activeUsername = $user->getScopedUsername($currentOrganizationId);
+    $activePhotoUrl = $user->getScopedProfilePhotoUrl($currentOrganizationId);
+    $activePresentation = $user->getScopedPresentation($currentOrganizationId);
+    $activeFullName = trim((string)$user->get('firstname') . ' ' . (string)$user->get('lastname'));
+    $birthdate = $user->get('birthdate');
+    $birthdaySummary = commonUserProfileBuildBirthdaySummary($birthdate);
+    $birthdateLabel = commonUserProfileFormatBirthDate($birthdate);
+
+    ob_start();
+    ?>
+<div class="profile-panel__scope-fragment" data-profile-fragment-kind="current">
+    <div class="profile-panel__summary">
+        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.context.label')) ?></strong>
+            <?= htmlspecialchars($hasOrganizationScope && $organization
+                ? profilPopupT('profile.popup.active.context.organization', ['organizationName' => (string)$organization->get('name')])
+                : profilPopupT('profile.popup.active.context.general')) ?>
+        </div>
+        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.photo.label')) ?></strong>
+            <div class="profile-panel__photo"<?= $activePhotoUrl !== '' ? ' style="background-image:url(' . htmlspecialchars($activePhotoUrl, ENT_QUOTES, 'UTF-8') . ')"' : '' ?>></div>
+        </div>
+        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.email.label')) ?></strong>
+            <?= htmlspecialchars($activeEmail !== '' ? $activeEmail : profilPopupT('profile.popup.value.not_provided')) ?>
+        </div>
+        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.username.label')) ?></strong>
+            <?= htmlspecialchars($activeUsername !== '' ? $activeUsername : profilPopupT('profile.popup.value.not_provided')) ?>
+        </div>
+        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.fullname.label')) ?></strong>
+            <?= htmlspecialchars($activeFullName !== '' ? $activeFullName : profilPopupT('profile.popup.value.not_provided')) ?>
+        </div>
+        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.presentation.label')) ?></strong>
+            <?= nl2br(htmlspecialchars($activePresentation !== '' ? $activePresentation : profilPopupT('profile.popup.value.no_presentation'), ENT_QUOTES, 'UTF-8')) ?>
+        </div>
+        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.birthdate.label')) ?></strong>
+            <?= htmlspecialchars($birthdateLabel !== '' ? $birthdateLabel : profilPopupT('profile.popup.value.not_provided')) ?>
+        </div>
+        <?php if (is_array($birthdaySummary)): ?>
+        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.birthday.label')) ?></strong>
+            <div><?= htmlspecialchars((string)$birthdaySummary['headline'], ENT_QUOTES, 'UTF-8') ?></div>
+            <?php if ((string)($birthdaySummary['detail'] ?? '') !== ''): ?>
+                <small><?= htmlspecialchars((string)$birthdaySummary['detail'], ENT_QUOTES, 'UTF-8') ?></small>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+    </div>
+</div>
+    <?php
+
+    return ob_get_clean();
+}
+
+function profilRenderPatreonFragment(\dbObject\User $user)
+{
+    if (!patreonSupportUiIsEnabled()) {
+        return '<div class="profile-panel__scope-fragment" data-profile-fragment-kind="patreon"><div class="profile-panel__feedback">Patreon indisponible.</div></div>';
+    }
+
+    $patreonConnection = \dbObject\UserPatreon::findByUserId((int)$user->getId());
+    $patreonConnected = $patreonConnection !== false && $patreonConnection->isConnected();
+
+    ob_start();
+    ?>
+<div class="profile-panel__scope-fragment" data-profile-fragment-kind="patreon">
+    <h3 class="generic-card-title generic-card-title--section"><?= htmlspecialchars(profilPopupT('profile.popup.section.patreon.title')) ?></h3>
+    <div class="profile-panel__summary">
+        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.connection.label')) ?></strong>
+            <?= htmlspecialchars($patreonConnected
+                ? profilPopupT('profile.popup.patreon.connection.connected')
+                : profilPopupT('profile.popup.patreon.connection.disconnected')) ?>
+        </div>
+        <?php if ($patreonConnection !== false): ?>
+        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.name.label')) ?></strong>
+            <?= htmlspecialchars((string)($patreonConnection->get('full_name') ?: profilPopupT('profile.popup.value.not_provided'))) ?>
+        </div>
+        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.status.label')) ?></strong>
+            <?= htmlspecialchars((string)($patreonConnection->get('patron_status') ?: profilPopupT('profile.popup.value.not_provided'))) ?>
+        </div>
+        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.payment.label')) ?></strong>
+            <?= htmlspecialchars((string)($patreonConnection->get('last_charge_status') ?: profilPopupT('profile.popup.value.not_provided'))) ?>
+        </div>
+        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.tiers.label')) ?></strong>
+            <?= nl2br(htmlspecialchars(trim((string)$patreonConnection->get('tier_titles')) !== '' ? (string)$patreonConnection->get('tier_titles') : profilPopupT('profile.popup.patreon.tiers.none'))) ?>
+        </div>
+        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.amount.label')) ?></strong>
+            <?= htmlspecialchars(profilScopeFormatAmountCents((int)$patreonConnection->get('currently_entitled_amount_cents'))) ?>
+        </div>
+        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.sync_at.label')) ?></strong>
+            <?= htmlspecialchars(profilScopeFormatDateTime($patreonConnection->get('last_sync_at'))) ?>
+        </div>
+        <?php if (trim((string)$patreonConnection->get('last_sync_error')) !== ''): ?>
+        <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+            <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.sync_error.label')) ?></strong>
+            <?= nl2br(htmlspecialchars((string)$patreonConnection->get('last_sync_error'))) ?>
+        </div>
+        <?php endif; ?>
+        <?php endif; ?>
+    </div>
+
+    <div class="profile-panel__actions">
+        <button
+            type="button"
+            id="patreon_connect"
+            class="generic-action-button generic-action-button--main"
+        ><?= htmlspecialchars($patreonConnected ? profilPopupT('profile.popup.patreon.reconnect') : profilPopupT('profile.popup.patreon.connect')) ?></button>
+        <?php if ($patreonConnected): ?>
+        <button type="button" id="patreon_sync" class="profile-panel__button-secondary generic-action-button"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.sync')) ?></button>
+        <button type="button" id="patreon_disconnect" class="profile-panel__button-muted generic-action-button generic-action-button--secondary"><?= htmlspecialchars(profilPopupT('profile.popup.patreon.disconnect')) ?></button>
+        <?php endif; ?>
+    </div>
+</div>
+    <?php
+
+    return ob_get_clean();
+}
+
+
 if ($requestedSection === 'profile') {
     echo profilRenderProfileFragment($scope, $user, $organizationMembership, $userHasPassword, $leafletMapsEnabled);
     return;
@@ -804,6 +957,16 @@ if ($requestedSection === 'competence') {
     }
 
     echo profilRenderCompetenceFragment($scopes, $user, $currentOrganizationId, $currentUserId, $canLimitCompetenceToOrganization);
+    return;
+}
+
+if ($requestedSection === 'current') {
+    echo profilRenderCurrentSummaryFragment($user, $currentOrganizationId, $hasOrganizationScope, isset($organization) ? $organization : null);
+    return;
+}
+
+if ($requestedSection === 'patreon') {
+    echo profilRenderPatreonFragment($user);
     return;
 }
 

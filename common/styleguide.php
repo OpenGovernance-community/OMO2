@@ -187,6 +187,7 @@ if (!checklogin()) {
                 <span class="styleguide-pill">generic-hero-panel</span>
                 <span class="styleguide-pill">generic-card-title</span>
                 <span class="styleguide-pill">generic-action-button</span>
+                <span class="styleguide-pill">generic-drag-handle</span>
                 <span class="styleguide-pill">generic-form-control</span>
                 <span class="styleguide-pill">generic-tabs</span>
                 <span class="styleguide-pill">generic-accordion</span>
@@ -250,6 +251,23 @@ generic-card-title--large</pre>
             <pre class="styleguide-code">generic-action-button generic-action-button--main
 generic-action-button generic-action-button--secondary
 generic-action-button generic-action-button--danger</pre>
+        </section>
+
+        <section class="generic-section generic-section--stack">
+            <div class="generic-card-title generic-card-title--eyebrow">Poignees</div>
+            <div class="styleguide-grid">
+                <div class="generic-soft-panel generic-soft-panel--stack">
+                    <div class="styleguide-row">
+                        <button type="button" class="generic-drag-handle" aria-label="Deplacer">::</button>
+                        <button type="button" class="generic-drag-handle generic-drag-handle--stretch" aria-label="Deplacer">::</button>
+                        <span class="generic-drag-handle generic-drag-handle--static">::</span>
+                    </div>
+                    <div class="styleguide-note">Utiliser cette primitive pour les listes reordonnables au lieu de recreer une poignee locale.</div>
+                </div>
+                <pre class="styleguide-code">button.generic-drag-handle
+button.generic-drag-handle.generic-drag-handle--stretch
+span.generic-drag-handle.generic-drag-handle--static</pre>
+            </div>
         </section>
 
         <section class="generic-section generic-section--stack">

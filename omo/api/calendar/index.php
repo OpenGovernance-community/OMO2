@@ -1542,12 +1542,14 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     <div class="omo-overlay-drawer omo-calendar__editor-drawer" data-omo-calendar-editor-drawer hidden>
         <div class="omo-overlay-drawer__backdrop" data-omo-calendar-editor-close></div>
         <div class="omo-overlay-drawer__panel">
-            <div class="omo-overlay-drawer__header">
-                <div class="omo-overlay-drawer__header-copy">
+            <div class="omo-overlay-drawer__header generic-drawer-header">
+                <div class="omo-overlay-drawer__header-copy generic-drawer-header__copy">
                     <h3 class="omo-overlay-drawer__title" data-omo-calendar-editor-title><?= omoApiEscape(omoCalendarT('calendar.drawer.title')) ?></h3>
                     <p class="omo-overlay-drawer__description" data-omo-calendar-editor-description><?= omoApiEscape(omoCalendarT('calendar.drawer.description')) ?></p>
                 </div>
-                <button type="button" class="omo-overlay-drawer__close" data-omo-calendar-editor-close>Fermer</button>
+                <div class="generic-drawer-header__actions">
+                    <button type="button" class="omo-overlay-drawer__close" data-omo-calendar-editor-close>Fermer</button>
+                </div>
             </div>
             <div class="omo-overlay-drawer__body" data-omo-calendar-editor-body></div>
         </div>

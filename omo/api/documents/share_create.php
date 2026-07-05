@@ -22,7 +22,10 @@ if (
     || !$document->load($documentId)
     || $document->isFolder()
     || !$document->supportsHtmlContent()
-    || !$document->canEditInOrganizationContext((int)$document->get('IDorganization'))
+    || !$document->canViewInOrganizationContext(
+        (int)$document->get('IDorganization'),
+        (int)$document->get('IDholon') > 0 ? (int)$document->get('IDholon') : null
+    )
 ) {
     http_response_code(403);
     echo json_encode(array(

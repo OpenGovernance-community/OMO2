@@ -62,9 +62,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <style>
     .omo-access-request-popup {
         display: grid;
-        gap: 16px;
-        padding: 8px 4px 4px;
+        gap: 0;
         color: var(--color-text, #1f2937);
+    }
+
+    .omo-access-request-popup__header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .omo-access-request-popup__header-copy {
+        display: grid;
+        gap: 4px;
+    }
+
+    .omo-access-request-popup__shell {
+        display: grid;
+        gap: 16px;
+        padding: 16px 18px 18px;
     }
 
     .omo-access-request-popup__intro,
@@ -113,38 +129,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     action="/omo/api/organization/access_request_popup.php?oid=<?= (int)$organizationId ?>"
     method="post"
 >
-    <p class="omo-access-request-popup__intro">
-        Envoyez un court message aux administrateurs de
-        <strong><?= omoApiEscape(trim((string)$organization->get('name')) !== '' ? trim((string)$organization->get('name')) : 'cette organisation') ?></strong>
-        pour expliquer pourquoi vous souhaitez rejoindre cet espace.
-    </p>
-
-    <?php if ($hasPendingMemberRequest): ?>
-        <p class="omo-access-request-popup__status">
-            Une demande est deja en attente pour cette organisation. Vous pouvez toutefois mettre a jour votre message ci-dessous et renvoyer la demande.
-        </p>
-    <?php endif; ?>
-
-    <div class="omo-access-request-popup__group">
-        <label class="omo-access-request-popup__label" for="omoAccessRequestMessage">Votre message</label>
-        <textarea
-            id="omoAccessRequestMessage"
-            name="message"
-            class="omo-access-request-popup__textarea generic-form-control"
-            maxlength="2000"
-            placeholder="Bonjour, je souhaite rejoindre cette organisation pour..."
-        ><?= $hasPendingMemberRequest ? omoApiEscape($pendingInvitation->getRequestMessage()) : '' ?></textarea>
-        <div class="omo-access-request-popup__hint">
-            Le message est optionnel, mais il aide les administrateurs a comprendre votre demande.
+    <div class="omo-access-request-popup__header generic-drawer-header generic-drawer-header--sticky">
+        <div class="generic-drawer-header__copy omo-access-request-popup__header-copy">
+            <div class="generic-card-title generic-card-title--eyebrow">Organisation</div>
+            <h3 class="generic-card-title generic-card-title--medium">Demande d acces</h3>
         </div>
     </div>
 
-    <div id="omoAccessRequestPopupFeedback" class="omo-access-request-popup__feedback"></div>
+    <div class="omo-access-request-popup__shell">
+        <p class="omo-access-request-popup__intro">
+            Envoyez un court message aux administrateurs de
+            <strong><?= omoApiEscape(trim((string)$organization->get('name')) !== '' ? trim((string)$organization->get('name')) : 'cette organisation') ?></strong>
+            pour expliquer pourquoi vous souhaitez rejoindre cet espace.
+        </p>
 
-    <div class="omo-access-request-popup__actions">
-        <button type="submit" id="omoAccessRequestPopupSubmit" class="generic-action-button generic-action-button--main">
-            Envoyer la demande
-        </button>
+        <?php if ($hasPendingMemberRequest): ?>
+            <p class="omo-access-request-popup__status">
+                Une demande est deja en attente pour cette organisation. Vous pouvez toutefois mettre a jour votre message ci-dessous et renvoyer la demande.
+            </p>
+        <?php endif; ?>
+
+        <div class="omo-access-request-popup__group">
+            <label class="omo-access-request-popup__label" for="omoAccessRequestMessage">Votre message</label>
+            <textarea
+                id="omoAccessRequestMessage"
+                name="message"
+                class="omo-access-request-popup__textarea generic-form-control"
+                maxlength="2000"
+                placeholder="Bonjour, je souhaite rejoindre cette organisation pour..."
+            ><?= $hasPendingMemberRequest ? omoApiEscape($pendingInvitation->getRequestMessage()) : '' ?></textarea>
+            <div class="omo-access-request-popup__hint">
+                Le message est optionnel, mais il aide les administrateurs a comprendre votre demande.
+            </div>
+        </div>
+
+        <div id="omoAccessRequestPopupFeedback" class="omo-access-request-popup__feedback"></div>
+
+        <div class="omo-access-request-popup__actions">
+            <button type="submit" id="omoAccessRequestPopupSubmit" class="generic-action-button generic-action-button--main">
+                Envoyer la demande
+            </button>
+        </div>
     </div>
 </form>
 
