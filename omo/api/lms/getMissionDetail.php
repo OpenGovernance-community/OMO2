@@ -53,7 +53,7 @@ $isOrganizationAdmin = !empty($accessContext['isOrganizationAdmin']);
 
 if (empty($accessContext['exists']) || empty($accessContext['canView'])) {
 	http_response_code(empty($accessContext['isLoggedIn']) ? 401 : 403);
-	echo lmsMissionDetailT('lms.mission_detail.error.access_denied');
+	echo '<div class="generic-section generic-section--plain">' . lmsMissionDetailT('lms.mission_detail.error.access_denied') . '</div>';
 	exit;
 }
 
@@ -63,7 +63,7 @@ if (!$parcoursMission->load([
 	['IDmission', $mission_id],
 ])) {
 	http_response_code(404);
-	echo lmsMissionDetailT('lms.mission_detail.error.not_found');
+	echo '<div class="generic-section generic-section--plain">' . lmsMissionDetailT('lms.mission_detail.error.not_found') . '</div>';
 	exit;
 }
 
@@ -97,7 +97,7 @@ if ($homeworksJson === false) {
 	$homeworksJson = '[]';
 }
 
-echo "<div>";
+echo "<div class=\"generic-section generic-section--plain\">";
 
 if ($m) {
 	$embedVideoUrl = $m['video_embed_url'];

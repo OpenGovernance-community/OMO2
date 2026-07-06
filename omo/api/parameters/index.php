@@ -10,12 +10,26 @@ $canEditOrganization = false;
 $hasStructureTemplates = false;
 $organizationName = '';
 $isSiteAdmin = commonCurrentUserIsSiteAdminModeEnabled();
+$canManageApplicationSettings = false;
+$applicationSettingsCards = [];
 if ($currentOrganizationId > 0) {
     $organization = new \dbObject\Organization();
     if ($organization->load($currentOrganizationId)) {
         $canEditOrganization = $organization->canEdit();
         $hasStructureTemplates = $organization->getEnabledStructuralRootHolon() !== null;
         $organizationName = trim((string)$organization->get('name'));
+        $canManageApplicationSettings = $currentUserId > 0
+            && commonUserHasAdminOverride((int)$currentUserId, $currentOrganizationId);
+
+        $installedApplications = new \dbObject\ArrayApplication();
+        $installedApplications->loadEnabledForOrganization($currentOrganizationId, (int)$currentUserId);
+        foreach ($installedApplications as $installedApplication) {
+            if (!$installedApplication->hasOrganizationParametersEntryPoint()) {
+                continue;
+            }
+
+            $applicationSettingsCards[] = $installedApplication;
+        }
     }
 }
 
@@ -92,6 +106,48 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
                     <span class="omo-settings__card-cta generic-action-button generic-action-button--main">editer</span>
                 </span>
             </button>
+
+            <?php foreach ($applicationSettingsCards as $applicationSettingsCard): ?>
+            <?php
+                $applicationLabel = trim((string)$applicationSettingsCard->get('label'));
+                if ($applicationLabel === '') {
+                    $applicationLabel = 'Application';
+                }
+            ?>
+            <button
+                type="button"
+                class="omo-settings__card omo-card omo-card--interactive"
+                data-omo-settings-drawer-title="<?= htmlspecialchars($applicationLabel, ENT_QUOTES, 'UTF-8') ?>"
+                data-omo-settings-drawer-url="<?= htmlspecialchars((string)$applicationSettingsCard->getOrganizationParametersUrl(), ENT_QUOTES, 'UTF-8') ?>"
+                data-omo-settings-drawer-mode="fetch"
+                <?= $canManageApplicationSettings ? '' : 'disabled' ?>
+            >
+                <span class="omo-settings__card-head">
+                    <span class="omo-settings__card-icon-shell">
+                        <img class="omo-settings__card-icon black-icon" src="<?= htmlspecialchars((string)$applicationSettingsCard->get('icon'), ENT_QUOTES, 'UTF-8') ?>" alt="" loading="lazy">
+                    </span>
+                    <span class="omo-settings__card-title-wrap">
+                        <span class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.application.eyebrow'), ENT_QUOTES, 'UTF-8') ?></span>
+                        <strong class="generic-card-title generic-card-title--big"><?= htmlspecialchars($applicationLabel, ENT_QUOTES, 'UTF-8') ?></strong>
+                    </span>
+                </span>
+                <span class="omo-settings__card-description"><?= htmlspecialchars(
+                    $canManageApplicationSettings
+                        ? omoParametersIndexT('parameters.index.card.application.description', [
+                            'applicationName' => $applicationLabel,
+                            'organizationName' => $organizationName,
+                        ])
+                        : omoParametersIndexT('parameters.index.card.application.forbidden', [
+                            'applicationName' => $applicationLabel,
+                        ]),
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?></span>
+                <span class="omo-settings__card-footer" aria-hidden="true">
+                    <span class="omo-settings__card-cta generic-action-button generic-action-button--main">editer</span>
+                </span>
+            </button>
+            <?php endforeach; ?>
 
             <?php if ($hasStructureTemplates): ?>
             <button

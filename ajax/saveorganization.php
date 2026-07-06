@@ -54,8 +54,6 @@ if ($isEditMode) {
     $organization->set("id", $organizationId);
 }
 
-$organization->updateNextcloudDocumentsConfig($_POST, $isEditMode);
-
 $name = trim((string)$organization->get("name"));
 if ($name === "") {
     echo json_encode(array(
@@ -76,6 +74,11 @@ if (empty($saveResult["status"]) || (int)$organization->getId() <= 0) {
                 : "L'organisation n'a pas pu etre creee."),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
+}
+
+$applicationInitResult = $organization->ensureDefaultApplicationLinks();
+if (!is_array($applicationInitResult) || empty($applicationInitResult['status'])) {
+    error_log('organization application init failed for org ' . (int)$organization->getId());
 }
 
 if (!$isEditMode) {
