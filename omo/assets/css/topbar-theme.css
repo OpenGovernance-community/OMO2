@@ -14,7 +14,6 @@ html[data-theme] .common-topbar__menu-wrap + .common-topbar__menu-wrap {
 }
 
 html[data-theme] .common-topbar__action,
-html[data-theme] .common-topbar__search-button,
 html[data-theme] .common-topbar__menu-item,
 html[data-theme] .common-topbar-modal__close,
 html[data-theme] .common-topbar-drawer__close {
@@ -28,7 +27,6 @@ html[data-theme] .common-topbar__action--square {
 }
 
 html[data-theme] .common-topbar__action:hover,
-html[data-theme] .common-topbar__search-button:hover,
 html[data-theme] .common-topbar-modal__close:hover,
 html[data-theme] .common-topbar-drawer__close:hover {
     background: var(--topbar-action-bg-hover);

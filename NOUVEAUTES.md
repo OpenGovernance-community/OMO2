@@ -2,6 +2,14 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-06
+
+Le detail de mission du LMS embarque retrouve maintenant un vrai retrait interne dans le drawer OMO. Le contenu repasse par une variante partagee de `generic-section` sans bord ni arrondi, ce qui remet de l air autour de la mission sans casser les headers pleine largeur.
+
+Le bouton `Lancer` du moteur de recherche dans la topbar et dans la popup OMO reutilise maintenant la primitive partagee `generic-action-button--main`, et le champ associe passe aussi par `generic-form-control`. La recherche s aligne ainsi sur le look des boutons generiques du site au lieu de conserver une variante locale.
+
+La popup de resultats de recherche OMO aligne maintenant aussi ses cartes d etat, ses badges de resume, ses compteurs de modules et son champ de saisie sur les variables de theme partagees. En mode sombre, le resume, le bloc `Recherche en attente` et l input n imposent donc plus de fonds clairs ou gris.
+
 ## 2026-07-05
 
 Le chargement des proprietes de holon heritees releve maintenant explicitement la limite de `GROUP_CONCAT` avant de reconstruire les valeurs ancetres. Les longues listes JSON, comme certaines `Missions attendues`, ne sont ainsi plus coupees au milieu dans `getOrg` ou dans l editeur compact. Une migration SQL explicite aligne aussi `holonproperty.value` en `mediumtext` pour rattraper les environnements restes sur un schema plus ancien.
@@ -490,3 +498,5 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - La vue detail d un pack reutilise maintenant le meme ratio d image et le meme cercle de progression chiffre que les cartes du catalogue LMS.
 - L editeur de mission permet maintenant de modifier aussi le nom du groupe stocke sur le lien parcours mission.
 - 2026-07-02 : LMS missions acceptent maintenant Vimeo, YouTube et les URLs/player iframe Infomaniak VOD, y compris les liens `share` et les iframes `embed`, via un helper commun de conversion en embed. Le champ `mission.video` passe a 1000 caracteres pour accepter aussi des URLs longues ou un code iframe colle.
+- 2026-07-06 : Les parametres specifiques aux applications OMO peuvent maintenant etre stockes dans `organization_application.parameters`. Le hub `Parametres` detecte les ecrans `/omo/api/<app>/params/index.php`, et l application Documents gere desormais sa configuration Nextcloud dans son propre panneau reserve au mode admin d organisation.
+- 2026-07-06 : La resolution de la configuration Nextcloud de Documents accepte maintenant aussi une URL WebDAV complete collee dans les parametres applicatifs et relit plus robustement le JSON stocke sur `organization_application.parameters`, afin d eviter des `404` lies a une URL dupliquee ou a un format de config intermediaire.

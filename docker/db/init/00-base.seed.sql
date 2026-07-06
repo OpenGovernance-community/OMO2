@@ -669,30 +669,31 @@ CREATE TABLE `organization_application` (
   `IDorganization` int(11) NOT NULL,
   `IDapplication` int(11) NOT NULL,
   `position` int(11) DEFAULT NULL,
-  `active` tinyint(1) NOT NULL DEFAULT 1
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `parameters` mediumtext DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Déchargement des données de la table `organization_application`
 --
 
-INSERT INTO `organization_application` (`id`, `IDorganization`, `IDapplication`, `position`, `active`) VALUES
-(1, 1, 1, 10, 1),
-(2, 2, 1, 10, 1),
-(3, 1, 2, 20, 1),
-(4, 2, 2, 20, 1),
-(5, 1, 3, 30, 1),
-(6, 2, 3, 30, 1),
-(7, 1, 4, 40, 1),
-(8, 2, 4, 40, 1),
-(9, 1, 5, 50, 1),
-(10, 2, 5, 50, 1),
-(11, 1, 6, 60, 1),
-(12, 2, 6, 60, 1),
-(16, 1, 7, 8, 1),
-(17, 1, 8, 9, 1),
-(18, 1, 9, 65, 1),
-(19, 2, 9, 65, 1);
+INSERT INTO `organization_application` (`id`, `IDorganization`, `IDapplication`, `position`, `active`, `parameters`) VALUES
+(1, 1, 1, 10, 1, NULL),
+(2, 2, 1, 10, 1, NULL),
+(3, 1, 2, 20, 1, NULL),
+(4, 2, 2, 20, 1, NULL),
+(5, 1, 3, 30, 1, NULL),
+(6, 2, 3, 30, 1, NULL),
+(7, 1, 4, 40, 1, NULL),
+(8, 2, 4, 40, 1, NULL),
+(9, 1, 5, 50, 1, NULL),
+(10, 2, 5, 50, 1, NULL),
+(11, 1, 6, 60, 1, NULL),
+(12, 2, 6, 60, 1, NULL),
+(16, 1, 7, 8, 1, NULL),
+(17, 1, 8, 9, 1, NULL),
+(18, 1, 9, 65, 1, NULL),
+(19, 2, 9, 65, 1, NULL);
 
 -- --------------------------------------------------------
 

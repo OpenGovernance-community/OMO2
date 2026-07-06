@@ -127,6 +127,38 @@
 			return $basePath . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relativePath);
 		}
 
+		public function getParametersFilesystemTarget()
+		{
+			$directory = trim((string)$this->get('directory'), "/ \t\n\r\0\x0B");
+			if ($directory === '') {
+				return '';
+			}
+
+			$basePath = dirname(__DIR__, 2);
+			return $basePath
+				. DIRECTORY_SEPARATOR . 'omo'
+				. DIRECTORY_SEPARATOR . 'api'
+				. DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $directory)
+				. DIRECTORY_SEPARATOR . 'params'
+				. DIRECTORY_SEPARATOR . 'index.php';
+		}
+
+		public function hasOrganizationParametersEntryPoint()
+		{
+			$target = $this->getParametersFilesystemTarget();
+			return $target !== '' && is_file($target);
+		}
+
+		public function getOrganizationParametersUrl()
+		{
+			$directory = trim((string)$this->get('directory'), "/ \t\n\r\0\x0B");
+			if ($directory === '') {
+				return '';
+			}
+
+			return '/omo/api/' . $directory . '/params/index.php';
+		}
+
 		public function hasResolvedEntryPoint()
 		{
 			static $cache = array();
