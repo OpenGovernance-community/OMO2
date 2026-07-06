@@ -149,70 +149,60 @@
 			$this->set('parameters', $parameters);
 		}
 
+		public function getApplicationLinkByDirectory(string $directory, bool $activeOnly = false): ?\dbObject\OrganizationApplication
+		{
+			$organizationId = (int)$this->getId();
+			if ($organizationId <= 0) {
+				return null;
+			}
+
+			return \dbObject\OrganizationApplication::loadByOrganizationAndDirectory($organizationId, $directory, $activeOnly);
+		}
+
+		public function ensureApplicationLinkByDirectory(string $directory): ?\dbObject\OrganizationApplication
+		{
+			$organizationId = (int)$this->getId();
+			if ($organizationId <= 0) {
+				return null;
+			}
+
+			return \dbObject\OrganizationApplication::ensureByOrganizationAndDirectory($organizationId, $directory);
+		}
+
+		public function getApplicationParametersByDirectory(string $directory, bool $activeOnly = false): array
+		{
+			$link = $this->getApplicationLinkByDirectory($directory, $activeOnly);
+			return $link ? $link->getParametersArray() : array();
+		}
+
 		public function getNextcloudDocumentsConfig(): array
 		{
-			$parameters = $this->getParametersArray();
-			$config = isset($parameters['nextcloudDocuments']) && is_array($parameters['nextcloudDocuments'])
-				? $parameters['nextcloudDocuments']
-				: array();
+			require_once dirname(__DIR__, 2) . '/omo/api/documents/params/shared.php';
 
-			$baseUrl = trim((string)($config['baseUrl'] ?? ''));
-			$username = trim((string)($config['username'] ?? ''));
-			$appPassword = trim((string)($config['appPassword'] ?? ''));
-			$folder = trim((string)($config['folder'] ?? ''));
-			$folder = trim(str_replace('\\', '/', $folder), '/');
+			if (\function_exists('omoDocumentsParamsGetNextcloudConfig')) {
+				return \omoDocumentsParamsGetNextcloudConfig($this);
+			}
 
 			return array(
-				'baseUrl' => rtrim($baseUrl, '/'),
-				'username' => $username,
-				'appPassword' => $appPassword,
-				'folder' => $folder,
+				'baseUrl' => '',
+				'username' => '',
+				'appPassword' => '',
+				'folder' => '',
 			);
 		}
 
 		public function hasNextcloudDocumentStorage(): bool
 		{
+			require_once dirname(__DIR__, 2) . '/omo/api/documents/params/shared.php';
+
+			if (\function_exists('omoDocumentsParamsHasNextcloudConfig')) {
+				return \omoDocumentsParamsHasNextcloudConfig($this->getNextcloudDocumentsConfig());
+			}
+
 			$config = $this->getNextcloudDocumentsConfig();
 			return $config['baseUrl'] !== ''
 				&& $config['username'] !== ''
 				&& $config['appPassword'] !== '';
-		}
-
-		public function updateNextcloudDocumentsConfig(array $values, bool $preserveExistingPassword = true): void
-		{
-			$parameters = $this->getParametersArray();
-			$currentConfig = $this->getNextcloudDocumentsConfig();
-			$clearConfig = !empty($values['nextcloud_clear_config']);
-
-			if ($clearConfig) {
-				unset($parameters['nextcloudDocuments']);
-				$this->setParametersArray($parameters);
-				return;
-			}
-
-			$baseUrl = trim((string)($values['nextcloud_base_url'] ?? ''));
-			$username = trim((string)($values['nextcloud_username'] ?? ''));
-			$appPassword = trim((string)($values['nextcloud_app_password'] ?? ''));
-			$folder = trim((string)($values['nextcloud_folder'] ?? ''));
-			$folder = trim(str_replace('\\', '/', $folder), '/');
-
-			if ($preserveExistingPassword && $appPassword === '' && $currentConfig['appPassword'] !== '') {
-				$appPassword = $currentConfig['appPassword'];
-			}
-
-			if ($baseUrl === '' && $username === '' && $appPassword === '' && $folder === '') {
-				unset($parameters['nextcloudDocuments']);
-				$this->setParametersArray($parameters);
-				return;
-			}
-
-			$parameters['nextcloudDocuments'] = array(
-				'baseUrl' => rtrim($baseUrl, '/'),
-				'username' => $username,
-				'appPassword' => $appPassword,
-				'folder' => $folder,
-			);
-			$this->setParametersArray($parameters);
 		}
 
 		protected function buildNextcloudDocumentsDavUrl(string $relativePath = ''): string
@@ -322,7 +312,17 @@
 				'headers' => $headerMap,
 				'body' => $responseBody,
 				'url' => $url,
-				'text' => ($httpCode >= 200 && $httpCode < 300) ? 'OK' : ('Requete Nextcloud refusee (' . $httpCode . ').'),
+				'text' => ($httpCode >= 200 && $httpCode < 300)
+					? 'OK'
+					: (
+						'Requete Nextcloud refusee (' . $httpCode . ')'
+						. (
+							trim((string)parse_url($url, PHP_URL_PATH)) !== ''
+								? ' pour ' . trim((string)parse_url($url, PHP_URL_PATH))
+								: ''
+						)
+						. '.'
+					),
 			);
 		}
 
@@ -727,6 +727,37 @@
 			}
 
 			return $count;
+		}
+
+		public function ensureDefaultApplicationLinks(): array
+		{
+			$organizationId = (int)$this->getId();
+			if ($organizationId <= 0) {
+				return array(
+					'status' => false,
+					'message' => 'Organisation invalide.',
+				);
+			}
+
+			$result = self::execute(
+				"INSERT IGNORE INTO organization_application (IDorganization, IDapplication, position, active)
+				SELECT :organization_id, a.id, a.position, 1
+				FROM application a",
+				array(
+					'organization_id' => $organizationId,
+				)
+			);
+
+			if (!$result) {
+				return array(
+					'status' => false,
+					'message' => 'Impossible d initialiser les applications de l organisation.',
+				);
+			}
+
+			return array(
+				'status' => true,
+			);
 		}
 
 		protected static function buildIntPlaceholders(array $ids, $prefix, array &$params)
