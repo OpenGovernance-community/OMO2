@@ -377,12 +377,12 @@ function commonRenderTopbar(array $options = [])
                         <input
                             type="search"
                             id="commonTopbarSearchInput"
-                            class="common-topbar__search-input"
+                            class="common-topbar__search-input generic-form-control"
                             data-topbar-search-input
                             placeholder="<?= htmlspecialchars($config['search']['placeholder']) ?>"
                             aria-label="<?= htmlspecialchars($config['search']['placeholder']) ?>"
                         >
-                        <button type="submit" class="common-topbar__search-button"><?= htmlspecialchars($config['search']['submitLabel']) ?></button>
+                        <button type="submit" class="common-topbar__search-button generic-action-button generic-action-button--main"><?= htmlspecialchars($config['search']['submitLabel']) ?></button>
                     </div>
                     <?php if ($config['search']['scopeProvider'] !== ''): ?>
                     <div class="common-topbar__search-scopes" data-topbar-search-scopes hidden>

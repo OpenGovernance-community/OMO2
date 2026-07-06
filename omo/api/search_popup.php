@@ -70,6 +70,19 @@ if (!function_exists('omoSearchPopupRenderStyles')) {
         <style>
         .omo-search-popup {
             color: var(--color-text, #0f172a);
+            --omo-search-popup-muted-text: color-mix(in srgb, var(--color-text, #0f172a) 62%, var(--color-text-light, #475569));
+            --omo-search-popup-summary-text: color-mix(in srgb, var(--color-text, #0f172a) 82%, var(--color-text-light, #475569));
+            --omo-search-popup-chip-background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface-alt, #f8fafc));
+            --omo-search-popup-chip-border: color-mix(in srgb, var(--color-primary, #2563eb) 18%, var(--color-border, #d1d5db));
+            --omo-search-popup-card-background: color-mix(in srgb, var(--color-surface-raised, #ffffff) 90%, var(--color-surface-alt, #f8fafc));
+            --omo-search-popup-card-background-hover: color-mix(in srgb, var(--color-surface-raised, #ffffff) 96%, var(--color-surface-alt, #f8fafc));
+            --omo-search-popup-card-border: color-mix(in srgb, var(--color-border, #d1d5db) 88%, transparent);
+            --omo-search-popup-empty-background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 94%, var(--color-surface, #ffffff));
+            --omo-search-popup-empty-border: color-mix(in srgb, var(--color-border, #d1d5db) 78%, transparent);
+            --omo-search-popup-error-background: color-mix(in srgb, var(--color-danger, #dc2626) 10%, var(--color-surface, #ffffff));
+            --omo-search-popup-error-border: color-mix(in srgb, var(--color-danger, #dc2626) 28%, var(--color-border, #d1d5db));
+            --omo-search-popup-spinner-track: color-mix(in srgb, var(--color-border, #d1d5db) 78%, transparent);
+            --omo-search-popup-spinner-head: var(--color-primary, #2563eb);
         }
 
         .omo-search-popup__hero,
@@ -79,13 +92,13 @@ if (!function_exists('omoSearchPopupRenderStyles')) {
         }
 
         .omo-search-popup__search-card {
-            --topbar-menu-item-bg: rgba(148, 163, 184, 0.12);
-            --topbar-menu-item-bg-hover: rgba(148, 163, 184, 0.18);
-            --topbar-menu-border: rgba(148, 163, 184, 0.22);
+            --topbar-menu-item-bg: color-mix(in srgb, var(--color-primary, #2563eb) 8%, var(--color-surface-alt, #f8fafc));
+            --topbar-menu-item-bg-hover: color-mix(in srgb, var(--color-primary, #2563eb) 14%, var(--color-surface-alt, #f8fafc));
+            --topbar-menu-border: color-mix(in srgb, var(--color-border, #d1d5db) 88%, transparent);
             --topbar-menu-text: var(--color-text, #0f172a);
-            --topbar-menu-text-muted: var(--color-text-light, #475569);
-            --topbar-input-bg: rgba(255, 255, 255, 0.96);
-            --topbar-input-border: rgba(148, 163, 184, 0.28);
+            --topbar-menu-text-muted: var(--omo-search-popup-muted-text);
+            --topbar-input-bg: color-mix(in srgb, var(--color-surface-raised, #ffffff) 94%, var(--color-surface-alt, #f8fafc));
+            --topbar-input-border: color-mix(in srgb, var(--color-border, #d1d5db) 88%, transparent);
             --topbar-input-text: var(--color-text, #0f172a);
             position: sticky;
             top: 0;
@@ -110,17 +123,9 @@ if (!function_exists('omoSearchPopupRenderStyles')) {
         }
 
         .omo-search-popup__search-form .common-topbar__search-button {
-            border: 0;
-            border-radius: 12px;
-            background: var(--color-primary, #2563eb);
-            color: #ffffff;
-            font-weight: 600;
-            padding: 0 16px;
+            flex: 0 0 auto;
+            padding-inline: 16px;
             white-space: nowrap;
-        }
-
-        .omo-search-popup__search-form .common-topbar__search-button:hover {
-            background: color-mix(in srgb, var(--color-primary, #2563eb) 88%, black);
         }
 
         .omo-search-popup__search-form .common-topbar__search-scopes {
@@ -151,8 +156,12 @@ if (!function_exists('omoSearchPopupRenderStyles')) {
 
         .omo-search-popup__summary {
             margin: 6px 0 0;
-            color: var(--color-text-light, #475569);
+            color: var(--omo-search-popup-summary-text);
             line-height: 1.5;
+        }
+
+        .omo-search-popup__summary strong {
+            color: var(--color-text, #0f172a);
         }
 
         .omo-search-popup__scopes,
@@ -171,8 +180,9 @@ if (!function_exists('omoSearchPopupRenderStyles')) {
             align-items: center;
             padding: 6px 10px;
             border-radius: 999px;
-            background: rgba(148, 163, 184, 0.14);
-            color: var(--color-text-light, #475569);
+            border: 1px solid var(--omo-search-popup-chip-border);
+            background: var(--omo-search-popup-chip-background);
+            color: var(--omo-search-popup-muted-text);
             font-size: 0.85rem;
         }
 
@@ -184,29 +194,31 @@ if (!function_exists('omoSearchPopupRenderStyles')) {
             min-width: 92px;
             padding: 10px 12px;
             border-radius: 14px;
-            background: rgba(255, 255, 255, 0.72);
-            border: 1px solid rgba(148, 163, 184, 0.18);
+            background: var(--omo-search-popup-card-background);
+            border: 1px solid var(--omo-search-popup-card-border);
             appearance: none;
+            color: var(--color-text, #0f172a);
             font: inherit;
             text-align: left;
             cursor: pointer;
-            transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+            transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
         }
 
         .omo-search-popup__stat:hover {
-            background: rgba(255, 255, 255, 0.92);
-            border-color: rgba(37, 99, 235, 0.24);
+            background: var(--omo-search-popup-card-background-hover);
+            border-color: color-mix(in srgb, var(--color-primary, #2563eb) 30%, var(--omo-search-popup-card-border));
+            box-shadow: 0 12px 24px -20px rgba(15, 23, 42, 0.65);
             transform: translateY(-1px);
         }
 
         .omo-search-popup__stat:focus-visible {
-            outline: 2px solid rgba(37, 99, 235, 0.32);
+            outline: 2px solid color-mix(in srgb, var(--color-primary, #2563eb) 38%, transparent);
             outline-offset: 2px;
         }
 
         .omo-search-popup__stat.is-active {
-            background: rgba(37, 99, 235, 0.12);
-            border-color: rgba(37, 99, 235, 0.28);
+            background: color-mix(in srgb, var(--color-primary, #2563eb) 14%, var(--color-surface, #ffffff));
+            border-color: color-mix(in srgb, var(--color-primary, #2563eb) 34%, var(--color-border, #d1d5db));
         }
 
         .omo-search-popup__stat strong,
@@ -221,7 +233,7 @@ if (!function_exists('omoSearchPopupRenderStyles')) {
         .omo-search-popup__excerpt,
         .omo-search-popup__rank,
         .omo-search-popup__status-text {
-            color: var(--color-text-light, #475569);
+            color: var(--omo-search-popup-muted-text);
         }
 
         .omo-search-popup__list {
@@ -261,21 +273,27 @@ if (!function_exists('omoSearchPopupRenderStyles')) {
         .omo-search-popup__status-card {
             padding: 18px;
             border-radius: 16px;
-            background: rgba(255, 255, 255, 0.7);
-            color: var(--color-text-light, #475569);
+            border: 1px solid var(--omo-search-popup-card-border);
+            background: var(--omo-search-popup-card-background);
+            color: var(--omo-search-popup-muted-text);
+        }
+
+        .omo-search-popup__empty {
+            border-color: var(--omo-search-popup-empty-border);
+            background: var(--omo-search-popup-empty-background);
         }
 
         .omo-search-popup__status-card.is-error {
-            border: 1px solid rgba(220, 38, 38, 0.18);
-            background: rgba(254, 242, 242, 0.88);
+            border-color: var(--omo-search-popup-error-border);
+            background: var(--omo-search-popup-error-background);
         }
 
         .omo-search-popup__spinner {
             width: 18px;
             height: 18px;
             border-radius: 999px;
-            border: 2px solid rgba(148, 163, 184, 0.25);
-            border-top-color: rgba(15, 23, 42, 0.72);
+            border: 2px solid var(--omo-search-popup-spinner-track);
+            border-top-color: var(--omo-search-popup-spinner-head);
             animation: omo-search-popup-spin 0.9s linear infinite;
         }
 
@@ -357,12 +375,12 @@ if (!function_exists('omoSearchPopupRenderSearchForm')) {
                     <input
                         type="search"
                         id="omoSearchPopupInput"
-                        class="common-topbar__search-input"
+                        class="common-topbar__search-input generic-form-control"
                         data-omo-search-popup-input
                         value="<?= $escape($query) ?>"
                         aria-label="<?= $escape($ui['searchAriaLabel']) ?>"
                     >
-                    <button type="submit" class="common-topbar__search-button"><?= $escape($ui['searchSubmit']) ?></button>
+                    <button type="submit" class="common-topbar__search-button generic-action-button generic-action-button--main"><?= $escape($ui['searchSubmit']) ?></button>
                 </div>
 
                 <div class="common-topbar__search-scopes">

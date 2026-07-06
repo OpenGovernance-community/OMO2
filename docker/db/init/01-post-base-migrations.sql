@@ -283,12 +283,27 @@ ON DUPLICATE KEY UPDATE
   `requires_login` = VALUES(`requires_login`),
   `active` = VALUES(`active`);
 
+ALTER TABLE `organization_application`
+  ADD COLUMN IF NOT EXISTS `parameters` mediumtext DEFAULT NULL AFTER `active`;
+
 INSERT INTO `organization_application` (`IDorganization`, `IDapplication`, `position`, `active`)
-SELECT o.id, 1, 10, 1
+SELECT o.id, a.id, a.position, 1
 FROM `organization` o
+INNER JOIN `application` a ON 1 = 1
 ON DUPLICATE KEY UPDATE
   `position` = VALUES(`position`),
   `active` = VALUES(`active`);
+
+UPDATE `organization_application` oa
+INNER JOIN `application` a
+  ON a.id = oa.IDapplication
+INNER JOIN `organization` o
+  ON o.id = oa.IDorganization
+SET oa.`parameters` = CONCAT('{"nextcloud":', JSON_EXTRACT(o.`parameters`, '$.nextcloudDocuments'), '}')
+WHERE a.`directory` = 'documents'
+  AND (oa.`parameters` IS NULL OR oa.`parameters` = '')
+  AND JSON_VALID(o.`parameters`)
+  AND JSON_EXTRACT(o.`parameters`, '$.nextcloudDocuments') IS NOT NULL;
 
 -- Defensive guard for fresh Docker databases
 ALTER TABLE `user`
