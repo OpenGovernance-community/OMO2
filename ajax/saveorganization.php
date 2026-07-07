@@ -3,6 +3,7 @@
 require_once("../config.php");
 require_once("../shared_functions.php");
 require_once("../common/auth.php");
+require_once("../common/patreon.php");
 
 header('Content-Type: application/json; charset=UTF-8');
 
@@ -43,6 +44,11 @@ if ($isEditMode) {
     }
 }
 
+$canManageOrganizationRouting = patreonCanManageOrganizationRouting($currentUserId);
+if (!$canManageOrganizationRouting) {
+    unset($_POST['shortname'], $_POST['domain']);
+}
+
 $organization->loadFromArray($_POST);
 if ($isEditMode) {
     $organization->set("id", $organizationId);
@@ -70,7 +76,17 @@ if (empty($saveResult["status"]) || (int)$organization->getId() <= 0) {
     exit;
 }
 
+$applicationInitResult = $organization->ensureDefaultApplicationLinks();
+if (!is_array($applicationInitResult) || empty($applicationInitResult['status'])) {
+    error_log('organization application init failed for org ' . (int)$organization->getId());
+}
+
 if (!$isEditMode) {
+    $basicParcoursResult = $organization->instantiateBasicParcours();
+    if (is_array($basicParcoursResult) && empty($basicParcoursResult['status'])) {
+        error_log('organization basic parcours init failed for org ' . (int)$organization->getId());
+    }
+
     $link = new \dbObject\UserOrganization();
     if (!$link->load(array(
         array('IDuser', $currentUserId),

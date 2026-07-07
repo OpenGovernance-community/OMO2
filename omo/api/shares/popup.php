@@ -63,8 +63,26 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
     <style>
     .omo-share-popup {
         display: grid;
-        gap: 18px;
+        gap: 0;
         color: var(--color-text, #1f2937);
+    }
+
+    .omo-share-popup__header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .omo-share-popup__header-copy {
+        display: grid;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .omo-share-popup__shell {
+        display: grid;
+        gap: 18px;
+        padding: 16px 18px 18px;
     }
 
     .omo-share-popup--error {
@@ -73,12 +91,6 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
         background: var(--color-surface-alt, #f0f2f5);
         color: var(--color-text-light, #6b7280);
         border: 1px solid var(--color-border, #e5e7eb);
-    }
-
-    .omo-share-popup__hero {
-        --generic-hero-gap: 8px;
-        --generic-hero-padding: 18px;
-        --generic-hero-radius: 18px;
     }
 
     .omo-share-popup__hero h2,
@@ -122,7 +134,6 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
 
     .omo-share-popup__card {
         --generic-section-gap: 10px;
-        --generic-section-padding-block: 16px;
         --generic-section-padding-inline: 16px;
         --generic-section-radius: 16px;
         --generic-section-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.05));
@@ -212,7 +223,6 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
         --generic-form-control-padding-block: 10px;
         --generic-form-control-border: var(--color-border-strong, #cbd5e1);
         --generic-form-control-background: var(--color-surface, #ffffff);
-        --generic-form-control-background-focus: var(--color-surface, #ffffff);
     }
 
     .omo-share-popup__hint {
@@ -222,8 +232,6 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
     }
 
     .omo-share-popup__permissions {
-        --generic-soft-panel-border: var(--color-border, #e5e7eb);
-        --generic-soft-panel-background: var(--color-surface-alt, #f0f2f5);
         --generic-soft-panel-gap: 12px;
         --generic-soft-panel-padding-block: 16px;
         --generic-soft-panel-padding-inline: 16px;
@@ -248,10 +256,14 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
     }
     </style>
 
-    <div class="omo-share-popup__hero generic-hero-panel">
-        <h2 class="generic-card-title generic-card-title--large">Partager ce contexte</h2>
-        <p>Le lien demarrera sur <strong><?= htmlspecialchars($defaultLabel, ENT_QUOTES, 'UTF-8') ?></strong> et pourra etre transmis a des personnes externes.</p>
+    <div class="omo-share-popup__header generic-drawer-header generic-drawer-header--sticky">
+        <div class="generic-drawer-header__copy omo-share-popup__header-copy">
+            <div class="generic-card-title generic-card-title--eyebrow">Partage</div>
+            <h2 class="generic-card-title generic-card-title--large">Partager ce contexte</h2>
+            <p>Le lien demarrera sur <strong><?= htmlspecialchars($defaultLabel, ENT_QUOTES, 'UTF-8') ?></strong> et pourra etre transmis a des personnes externes.</p>
+        </div>
     </div>
+    <div class="omo-share-popup__shell">
 
     <div id="omoSharePopupFeedback" class="omo-share-popup__feedback"></div>
 
@@ -400,6 +412,7 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
                 <button type="submit" class="omo-share-popup__button generic-action-button generic-action-button--main" id="omoSharePopupSubmit">Creer le lien</button>
             </div>
         </form>
+    </div>
     </div>
 </div>
 

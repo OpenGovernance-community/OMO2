@@ -56,6 +56,22 @@ function omoGetStructurePanelSourceLang(): array
             'text' => 'Aucune structure disponible pour cette organisation.',
             'context' => 'Message shown when the current organization has no visible structure to display.',
         ],
+        'structure.message.disabled' => [
+            'text' => 'L app Structure est desactivee pour cette organisation.',
+            'context' => 'Message shown when the Structure app is disabled for the current organization.',
+        ],
+        'structure.placeholder.action' => [
+            'text' => 'Ouvrir l app Structure',
+            'context' => 'Call to action shown in the main structure panel when the organization has no structure yet.',
+        ],
+        'structure.placeholder.text' => [
+            'text' => 'Aucune structure n est encore definie pour cette organisation. Ouvrez l app Structure dans la leftbar pour creer une structure vide, importer un export ou partir d un modele.',
+            'context' => 'Informational text shown in the main structure panel when the organization has no structure yet.',
+        ],
+        'structure.placeholder.title' => [
+            'text' => 'Aucune structure',
+            'context' => 'Title shown in the main structure panel when the organization has no structure yet.',
+        ],
         'structure.share.modal_title' => [
             'text' => 'Partager la structure',
             'context' => 'Modal title used when opening the share dialog from the structure action menu.',
@@ -87,10 +103,73 @@ function omoGetStructurePanelSourceLang(): array
     ];
 }
 
+function omoRenderStructureEmptyPlaceholder(array $lang, array $sourceLang): void
+{
+    ?>
+<div class="omo-structure-empty-panel">
+    <div class="generic-section omo-structure-empty-panel__card">
+        <div class="generic-card-title omo-structure-empty-panel__title"><?= omoApiEscape(t('structure.placeholder.title', [], $lang, $sourceLang)) ?></div>
+        <p class="omo-structure-empty-panel__text"><?= omoApiEscape(t('structure.placeholder.text', [], $lang, $sourceLang)) ?></p>
+        <button type="button" class="generic-action-button generic-action-button--main" data-omo-open-structure-drawer="1"><?= omoApiEscape(t('structure.placeholder.action', [], $lang, $sourceLang)) ?></button>
+    </div>
+</div>
+
+<style>
+.omo-structure-empty-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
+    padding: 24px;
+}
+
+.omo-structure-empty-panel__card {
+    max-width: 560px;
+    width: 100%;
+}
+
+.omo-structure-empty-panel__title {
+    margin-bottom: 12px;
+}
+
+.omo-structure-empty-panel__text {
+    margin: 0 0 16px;
+    line-height: 1.5;
+    color: var(--color-text-light, #6b7280);
+}
+</style>
+
+<script>
+$(document)
+  .off('click.omoStructureEmptyDrawer', '[data-omo-open-structure-drawer="1"]')
+  .on('click.omoStructureEmptyDrawer', '[data-omo-open-structure-drawer="1"]', function () {
+    if (typeof window.omoOpenDrawerHashState !== 'function') {
+        return;
+    }
+
+    window.omoOpenDrawerHashState('structure');
+  });
+</script>
+    <?php
+}
+
+function omoRenderStructureDisabledPlaceholder(array $lang, array $sourceLang): void
+{
+    ?>
+<div class="omo-structure-empty-panel">
+    <div class="generic-section omo-structure-empty-panel__card">
+        <div class="generic-card-title omo-structure-empty-panel__title"><?= omoApiEscape(t('structure.actions.menu_aria', [], $lang, $sourceLang)) ?></div>
+        <p class="omo-structure-empty-panel__text"><?= omoApiEscape(t('structure.message.disabled', [], $lang, $sourceLang)) ?></p>
+    </div>
+</div>
+    <?php
+}
+
 $sourceLang = omoGetStructurePanelSourceLang();
 $lang = translationBundleInit('omo_get_structure_panel', omoGetTranslationLocale(), $sourceLang);
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
+$drawerMode = isset($_GET['drawer']) && (string)$_GET['drawer'] === '1';
 if ($organizationId > 0) {
     $organization = new \dbObject\Organization();
     if ($organization->load($organizationId) && !$organization->canViewDetail()) {
@@ -99,9 +178,19 @@ if ($organizationId > 0) {
         exit;
     }
 
-    if ($organization->load($organizationId) && $organization->getStructuralRootHolon() === null) {
-        require_once __DIR__ . '/organization_setup_panel.php';
-        omoRenderOrganizationSetupPanel($organization);
+    if ($organization->load($organizationId) && !$organization->isStructureApplicationEnabled()) {
+        http_response_code(404);
+        omoRenderStructureDisabledPlaceholder($lang, $sourceLang);
+        exit;
+    }
+
+    if ($organization->load($organizationId) && $organization->getEnabledStructuralRootHolon() === null) {
+        if ($drawerMode) {
+            require_once __DIR__ . '/organization_setup_panel.php';
+            omoRenderOrganizationSetupPanel($organization);
+        } else {
+            omoRenderStructureEmptyPlaceholder($lang, $sourceLang);
+        }
         exit;
     }
 }
@@ -673,6 +762,7 @@ input:checked + .slider::before {
     </div>
 
   <script>
+(function () {
 
 const structureTranslations = <?= json_encode($structureTranslations, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
@@ -1150,6 +1240,10 @@ function getPropertyDisplayLabel(entry) {
   return String(entry && (entry.name || entry.shortname || entry.key) || "").trim();
 }
 
+function getNodeListLabel(node) {
+  return String(node && (node.fullName || node.name) || "").trim();
+}
+
 function getNodePropertyEntries(node) {
   const data = node && node.data && typeof node.data === "object" ? node.data : null;
 
@@ -1343,7 +1437,9 @@ function filterListNode(node, normalizedQuery) {
     };
   }
 
-  const matchesLabel = normalizeSearchText(node.name || "").includes(normalizedQuery);
+  const listLabel = getNodeListLabel(node);
+  const matchesLabel = normalizeSearchText(listLabel).includes(normalizedQuery)
+    || (listLabel !== String(node.name || "").trim() && normalizeSearchText(node.name || "").includes(normalizedQuery));
   const matchesContent = normalizeSearchText(getNodeContentSearchText(node)).includes(normalizedQuery);
 
   if (!matchesLabel && !matchesContent && filteredChildren.length === 0) {
@@ -1362,6 +1458,7 @@ function filterListNode(node, normalizedQuery) {
 function renderNodeList(entry, searchQuery) {
   const node = entry.node;
   const children = Array.isArray(entry.children) ? entry.children : [];
+  const listLabel = getNodeListLabel(node);
   const color = getListColor(node);
   const nodeId = String(node.ID || "");
   const escapedNodeId = escapeHtml(nodeId);
@@ -1402,7 +1499,7 @@ function renderNodeList(entry, searchQuery) {
             <button type="button" class="role-item" data-omo-cid="${escapedNodeId}" data-omo-root="${node.type == "4" ? "1" : "0"}">
               <span class="role-dot" style="${dotStyle}"></span>
               <span class="role-text">
-                <span class="role-label">${highlightLabel(node.name || "", searchQuery)}</span>
+                <span class="role-label">${highlightLabel(listLabel, searchQuery)}</span>
                 ${entry.matchExcerpt ? `<span class="role-excerpt">${entry.matchExcerpt}</span>` : ``}
               </span>
             </button>
@@ -1674,7 +1771,22 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
 });
 
     const structureDataUrl = <?= json_encode($structureDataUrl, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
-    const initialCid = <?= (int)$initialCid ?>;
+    const initialCid = (function () {
+      const requestedCid = <?= (int)$initialCid ?>;
+      if (requestedCid > 0) {
+        return requestedCid;
+      }
+
+      if (typeof parseUrl === "function") {
+        const route = parseUrl();
+        const routeCid = Number(route && route.cid ? route.cid : 0);
+        if (Number.isInteger(routeCid) && routeCid > 0) {
+          return routeCid;
+        }
+      }
+
+      return 0;
+    })();
     const canCreateShareLink = <?= $canCreateShareLink ? 'true' : 'false' ?>;
     const canExportStructure = <?= $canExportStructure ? 'true' : 'false' ?>;
     let root = null;
@@ -1977,6 +2089,12 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
       const settings = Object.assign({
         quickZoom: false
       }, options || {});
+      const previousZoomState = {
+        centerX: zoomInfo && Number.isFinite(zoomInfo.centerX) ? zoomInfo.centerX : null,
+        centerY: zoomInfo && Number.isFinite(zoomInfo.centerY) ? zoomInfo.centerY : null,
+        scale: zoomInfo && Number.isFinite(zoomInfo.scale) ? zoomInfo.scale : null,
+        view: Array.isArray(vOld) ? vOld.slice() : null
+      };
 
       structureReloadPromise = loadStructureData()
         .then(function() {
@@ -1988,7 +2106,10 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
             currentnode = root;
           }
 
-          drawAll();
+          drawAll({
+            skipInitialFocus: !settings.quickZoom,
+            zoomState: !settings.quickZoom ? previousZoomState : null
+          });
 
           if (settings.quickZoom) {
             const quickTargetNode = nodeId ? findPackedNodeById(nodeId) : root;
@@ -2018,10 +2139,6 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
 
       return structureReloadPromise;
     }
-
-    window.omoReloadStructureAndFocus = function(nodeId, options) {
-      return reloadStructureAndFocus(nodeId, options);
-    };
 
     function focusStructureNode(nodeId, options) {
       if (!root || !Array.isArray(nodes)) {
@@ -2663,10 +2780,17 @@ function getNodeFromEvent(event) {
 
 
 function buildCanvas() {
-  d3.select("#chart").html("");
-
   const chartEl = document.getElementById("chart");
+  if (!chartEl) {
+    return false;
+  }
+
   const rect = chartEl.getBoundingClientRect();
+  if (!rect || rect.width <= 0 || rect.height <= 0) {
+    return false;
+  }
+
+  d3.select(chartEl).html("");
   const dpr = window.devicePixelRatio || 1;
 
   chartwidth = Math.max(1, Math.floor(rect.width * dpr));
@@ -2700,6 +2824,7 @@ function buildCanvas() {
     .style("display", "none");
 
   hiddenContext = hiddenCanvas.node().getContext("2d", { willReadFrequently: true });
+  return true;
 }
 
 function showCanvasTooltip(node, event) {
@@ -2853,7 +2978,12 @@ function getChartColors() {
 
     let chartColors = getChartColors();
 
-    function drawAll() {
+    function drawAll(options) {
+      const settings = Object.assign({
+        skipInitialFocus: false,
+        zoomState: null
+      }, options || {});
+
       if (!root) {
         renderStructureMessage(structureTranslations.noStructure);
         return;
@@ -2862,7 +2992,9 @@ function getChartColors() {
       chartColors = getChartColors();
       removeColorNodes(root);
 
-      buildCanvas();
+      if (!buildCanvas()) {
+        return;
+      }
       applyStructureCanvasPickingIssue(null);
 
       const canvasPickingProbe = probeStructureCanvasPicking();
@@ -2921,24 +3053,92 @@ function getChartColors() {
 
       renderRoleList();
       bindEvents();
+
+      if (
+        settings.skipInitialFocus
+        && settings.zoomState
+        && Number.isFinite(settings.zoomState.centerX)
+        && Number.isFinite(settings.zoomState.centerY)
+        && Number.isFinite(settings.zoomState.scale)
+        && Array.isArray(settings.zoomState.view)
+        && settings.zoomState.view.length === 3
+      ) {
+        zoomInfo = {
+          centerX: settings.zoomState.centerX,
+          centerY: settings.zoomState.centerY,
+          scale: settings.zoomState.scale
+        };
+        vOld = settings.zoomState.view.slice();
+        drawCanvas(context, false);
+        drawCanvas(hiddenContext, true);
+        return;
+      }
+
       quickZoomToCanvas(currentnode);
     }
 
 
  let chartResizeObserver = null;
 let resizeRaf = null;
+let structureDrawerCleanupCallbacks = [];
+let unregisterStructureDrawerViewTarget = null;
+
+function registerStructureDrawerWindowListener(type, handler) {
+  window.addEventListener(type, handler);
+  structureDrawerCleanupCallbacks.push(function () {
+    window.removeEventListener(type, handler);
+  });
+}
+
+function destroyStructureDrawerView() {
+  if (typeof unregisterStructureDrawerViewTarget === "function") {
+    unregisterStructureDrawerViewTarget();
+    unregisterStructureDrawerViewTarget = null;
+  }
+
+  if (chartResizeObserver) {
+    chartResizeObserver.disconnect();
+    chartResizeObserver = null;
+  }
+
+  if (resizeRaf) {
+    cancelAnimationFrame(resizeRaf);
+    resizeRaf = null;
+  }
+
+  structureDrawerCleanupCallbacks.forEach(function (cleanup) {
+    try {
+      cleanup();
+    } catch (error) {
+    }
+  });
+  structureDrawerCleanupCallbacks = [];
+}
 
 function scheduleDrawAll() {
   if (resizeRaf) return;
 
   resizeRaf = requestAnimationFrame(function() {
     resizeRaf = null;
+    const chartEl = document.getElementById("chart");
+    if (!chartEl) {
+      return;
+    }
     drawAll();
   });
 }
 
 function startChart() {
+  if (typeof window.omoDestroyStructureDrawerView === "function") {
+    window.omoDestroyStructureDrawerView();
+  }
+
+  window.omoDestroyStructureDrawerView = destroyStructureDrawerView;
+
   const chartEl = document.getElementById("chart");
+  if (!chartEl) {
+    return;
+  }
 
   if (chartResizeObserver) {
     chartResizeObserver.disconnect();
@@ -2950,19 +3150,18 @@ function startChart() {
 
   chartResizeObserver.observe(chartEl);
 
+  if (typeof window.omoRegisterStructureViewTarget === "function") {
+    unregisterStructureDrawerViewTarget = window.omoRegisterStructureViewTarget("drawer-structure", {
+      reloadAndFocus: reloadStructureAndFocus,
+      getCurrentHolonId: omoGetCurrentStructureHolonId
+    });
+  }
+
   loadStructureData()
     .then(function() {
       drawAll();
 
-      if (window.omoStructureFocusHandler) {
-        window.removeEventListener("omo-structure-focus", window.omoStructureFocusHandler);
-      }
-
-      if (window.omoStructureRefreshHandler) {
-        window.removeEventListener("omo-structure-refresh", window.omoStructureRefreshHandler);
-      }
-
-      window.omoStructureFocusHandler = function (event) {
+      const structureFocusHandler = function (event) {
         const cid = event && event.detail ? event.detail.cid : null;
         const quickZoom = Boolean(event && event.detail && event.detail.quickZoom);
         focusStructureNode(cid, {
@@ -2970,18 +3169,33 @@ function startChart() {
         });
       };
 
-      window.omoStructureRefreshHandler = function (event) {
+      const structureRefreshHandler = function (event) {
         const cid = event && event.detail ? event.detail.cid : null;
+        const quickZoom = event && event.detail && Object.prototype.hasOwnProperty.call(event.detail, 'quickZoom')
+          ? Boolean(event.detail.quickZoom)
+          : true;
         reloadStructureAndFocus(cid, {
-          quickZoom: true
+          quickZoom: quickZoom
         });
       };
 
-      if (window.omoStructureMemberHighlightHandler) {
-        window.removeEventListener("omo-structure-member-highlight", window.omoStructureMemberHighlightHandler);
-      }
+      const structureDrawerOpenHandler = function (event) {
+        const cid = event && event.detail && Object.prototype.hasOwnProperty.call(event.detail, 'cid')
+          ? event.detail.cid
+          : null;
 
-      window.omoStructureMemberHighlightHandler = function (event) {
+        scheduleDrawAll();
+        window.setTimeout(function () {
+          if (!document.getElementById("chart")) {
+            return;
+          }
+          focusStructureNode(cid, {
+            quickZoom: true
+          });
+        }, 30);
+      };
+
+      const structureMemberHighlightHandler = function (event) {
         const userId = event && event.detail ? Number(event.detail.userId || 0) : 0;
         highlightedMemberUserId = userId > 0 ? userId : null;
 
@@ -2993,9 +3207,16 @@ function startChart() {
         drawCanvas(hiddenContext, true);
       };
 
-      window.addEventListener("omo-structure-focus", window.omoStructureFocusHandler);
-      window.addEventListener("omo-structure-refresh", window.omoStructureRefreshHandler);
-      window.addEventListener("omo-structure-member-highlight", window.omoStructureMemberHighlightHandler);
+      registerStructureDrawerWindowListener("omo-structure-focus", structureFocusHandler);
+      registerStructureDrawerWindowListener("omo-structure-refresh", structureRefreshHandler);
+      registerStructureDrawerWindowListener("omo-structure-drawer-open", structureDrawerOpenHandler);
+      registerStructureDrawerWindowListener("omo-structure-member-highlight", structureMemberHighlightHandler);
+
+      if (initialCid > 0) {
+        focusStructureNode(initialCid, {
+          quickZoom: true
+        });
+      }
     })
     .catch(function(error) {
       root = null;
@@ -3029,4 +3250,5 @@ window.addEventListener("omo-theme-change", function () {
   waitForD3(startChart);
 
 
+})();
   </script>

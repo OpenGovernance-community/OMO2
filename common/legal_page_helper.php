@@ -1,5 +1,60 @@
 <?php
 
+function commonLegalEnsureTranslationHelpers(): void
+{
+    if (!function_exists('loadTranslationBundle')) {
+        require_once __DIR__ . '/translation_bundles.php';
+    }
+}
+
+function commonGetLegalSharedSourceLang(): array
+{
+    return [
+        'legal.shared.badge.temporary' => [
+            'text' => 'Version provisoire',
+            'context' => 'Badge displayed on temporary legal documents such as terms and privacy pages.',
+        ],
+        'legal.shared.intro.activation_notice' => [
+            'text' => 'Elle est publiee afin de permettre l’activation technique de certaines integrations et sera completee, relue et validée ultérieurement.',
+            'context' => 'Shared explanatory paragraph on temporary legal pages.',
+        ],
+    ];
+}
+
+function commonLegalResolveLocale(): string
+{
+    commonLegalEnsureTranslationHelpers();
+
+    return (string)translationBundleResolveRequestLocale('lang');
+}
+
+function commonLegalLoadBundle(string $bundleKey, array $sourceLang, ?string $locale = null): array
+{
+    static $cache = [];
+
+    commonLegalEnsureTranslationHelpers();
+
+    $resolvedLocale = $locale !== null && $locale !== ''
+        ? (string)$locale
+        : commonLegalResolveLocale();
+    $cacheKey = $bundleKey . ':' . $resolvedLocale . ':' . md5(serialize($sourceLang));
+
+    if (!isset($cache[$cacheKey])) {
+        $cache[$cacheKey] = function_exists('loadTranslationBundle')
+            ? loadTranslationBundle($bundleKey, $resolvedLocale, $sourceLang)
+            : $sourceLang;
+    }
+
+    return $cache[$cacheKey];
+}
+
+function commonLegalT(string $key, array $variables = [], ?array $bundle = null, ?array $sourceLang = null): string
+{
+    commonLegalEnsureTranslationHelpers();
+
+    return translationBundleTranslate($key, $variables, $bundle, $sourceLang);
+}
+
 function commonLegalPageIsEmbedded(): bool
 {
     if (!empty($_GET['embed'])) {
@@ -28,6 +83,7 @@ function commonRenderLegalPage(array $config): void
     $pageBackground = trim((string)($config['pageBackground'] ?? '#f8fafc'));
     $noteBackground = trim((string)($config['noteBackground'] ?? '#f8fbff'));
     $borderColor = trim((string)($config['borderColor'] ?? '#dbe4ee'));
+    $locale = trim((string)($config['locale'] ?? 'fr'));
 
     $style = <<<CSS
 <style>
@@ -198,14 +254,21 @@ CSS;
     }
     ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="<?= htmlspecialchars($locale) ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($pageTitle) ?></title>
+    <link href="/shared_css.css" rel="stylesheet">
     <?= $style . PHP_EOL ?>
+    <script src="/shared_functions.js"></script>
+    <script>
+    if (typeof window.sharedApplyDocumentTheme === 'function') {
+        window.sharedApplyDocumentTheme(document);
+    }
+    </script>
 </head>
-<body class="common-legal-page-body">
+<body class="common-legal-page-body" data-legal-locale="<?= htmlspecialchars($locale) ?>">
     <div class="common-legal-page-shell">
         <div class="common-legal-page-card">
             <?php $renderContent(); ?>

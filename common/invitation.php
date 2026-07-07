@@ -24,14 +24,30 @@ $statusMessage = '';
 $statusType = 'info';
 $acceptedRedirectUrl = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $validInvitation instanceof \dbObject\Invitation && $validInvitation->isMemberInitiatedRequest()) {
+	$result = $validInvitation->approveByAdmin([
+		'sendConfirmationEmail' => true,
+		'approvedByUserId' => (int)commonGetCurrentUserId(),
+	]);
+
+	if (!($result['status'] ?? false)) {
+		$statusMessage = (string)($result['message'] ?? "La demande n'a pas pu etre validee.");
+		$statusType = 'error';
+	} else {
+		$statusMessage = 'Demande validee. La personne a recu un e-mail de confirmation.';
+		$statusType = 'success';
+	}
+
+	$invitation = \dbObject\Invitation::findByToken($token);
+	$validInvitation = false;
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	if (!$validInvitation) {
 		$statusMessage = "Cette invitation n'est plus valide.";
 		$statusType = 'error';
 	} elseif ($decision === 'accept') {
 		$result = $validInvitation->accept();
 		if (!($result['status'] ?? false)) {
-			$statusMessage = (string)($result['message'] ?? "L'invitation n'a pas pu être acceptée.");
+			$statusMessage = (string)($result['message'] ?? "L'invitation n'a pas pu etre acceptee.");
 			$statusType = 'error';
 		} else {
 			$user = new \dbObject\User();
@@ -39,14 +55,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			if ($user->load((int)$result['userId']) && $organization->load((int)$result['organizationId'])) {
 				session_regenerate_id(true);
 				$_SESSION['currentUser'] = (int)$user->getId();
-				commonClearCurrentUserAdminMode();
+				commonClearCurrentUserAllAdminModes();
 				$_SESSION['permissionCacheByOrganization'] = array();
 				$_SESSION['userRef'] = $user;
 				$_SESSION['currentOrganization'] = (int)$organization->getId();
 				$acceptedRedirectUrl = commonInvitationBuildRedirectUrl($organization);
 			}
 
-			$statusMessage = 'Invitation acceptée. Vous pouvez maintenant accéder à votre organisation.';
+			$statusMessage = "Invitation acceptee. Vous pouvez maintenant acceder a votre organisation.";
 			$statusType = 'success';
 			$invitation = \dbObject\Invitation::findByToken($token);
 			$validInvitation = false;
@@ -54,14 +70,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	} elseif ($decision === 'decline') {
 		$result = $validInvitation->decline();
 		if (!($result['status'] ?? false)) {
-			$statusMessage = (string)($result['message'] ?? "L'invitation n'a pas pu être refusée.");
+			$statusMessage = (string)($result['message'] ?? "L'invitation n'a pas pu etre refusee.");
 			$statusType = 'error';
 		} else {
-			$statusMessage = 'Invitation refusée.';
+			$statusMessage = 'Invitation refusee.';
 			$statusType = 'success';
 			$invitation = \dbObject\Invitation::findByToken($token);
 			$validInvitation = false;
 		}
+	}
+}
+
+if ($statusMessage === '' && $token !== '' && !$validInvitation && $invitation instanceof \dbObject\Invitation) {
+	$invitationStatus = trim((string)$invitation->get('status'));
+	if ($invitationStatus === 'canceled') {
+		$statusMessage = $invitation->isMemberInitiatedRequest()
+			? 'Desole, cette demande a ete annulee.'
+			: 'Desole, cette invitation a ete annulee.';
+		$statusType = 'error';
+	} elseif ($invitationStatus === 'declined') {
+		$statusMessage = $invitation->isMemberInitiatedRequest()
+			? 'Cette demande a ete refusee.'
+			: 'Cette invitation a ete refusee.';
+		$statusType = 'error';
 	}
 }
 
@@ -97,13 +128,16 @@ $invitedEmail = $invitation ? trim((string)$invitation->get('email')) : '';
 if ($invitedEmail === '' && $invitedUser) {
 	$invitedEmail = trim((string)$invitedUser->get('email'));
 }
+
+$isMemberRequest = $invitation instanceof \dbObject\Invitation && $invitation->isMemberInitiatedRequest();
+$requestMessage = $isMemberRequest ? $invitation->getRequestMessage() : '';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Invitation</title>
+	<title><?= commonInvitationEscape($isMemberRequest ? 'Demande d acces' : 'Invitation') ?></title>
 	<link rel="stylesheet" href="/common/assets/auth.css">
 	<style>
 		:root {
@@ -273,19 +307,29 @@ if ($invitedEmail === '' && $invitedUser) {
 
 				<?php if (!$invitation): ?>
 				<div class="invitation-section">
-					<h2>Invitation introuvable</h2>
-					<p class="invitation-copy">Le lien demandé ne correspond à aucune invitation connue.</p>
+					<h2><?= commonInvitationEscape($isMemberRequest ? 'Demande introuvable' : 'Invitation introuvable') ?></h2>
+					<p class="invitation-copy">Le lien demande ne correspond a aucun enregistrement connu.</p>
 				</div>
 				<?php else: ?>
 				<div class="invitation-section">
-					<h2>Adresse concernée</h2>
-					<p class="invitation-copy"><?= commonInvitationEscape($invitedEmail !== '' ? $invitedEmail : 'Profil invité') ?></p>
+					<h2>Adresse concernee</h2>
+					<p class="invitation-copy"><?= commonInvitationEscape($invitedEmail !== '' ? $invitedEmail : 'Profil invite') ?></p>
 				</div>
 
+				<?php if ($isMemberRequest): ?>
 				<div class="invitation-section">
-					<h2>Holons concernés</h2>
+					<h2>Demande d'acces</h2>
+					<?php if ($requestMessage !== ''): ?>
+						<p class="invitation-copy"><?= nl2br(commonInvitationEscape($requestMessage)) ?></p>
+					<?php else: ?>
+						<p class="invitation-copy">Aucun message complementaire n'a ete ajoute a cette demande.</p>
+					<?php endif; ?>
+				</div>
+				<?php else: ?>
+				<div class="invitation-section">
+					<h2>Holons concernes</h2>
 					<?php if (count($pendingHolons) === 0): ?>
-						<p class="invitation-copy">Aucun holon en attente n'a été retrouvé pour cette invitation.</p>
+						<p class="invitation-copy">Aucun holon en attente n'a ete retrouve pour cette invitation.</p>
 					<?php else: ?>
 						<ul class="invitation-list">
 							<?php foreach ($pendingHolons as $holon): ?>
@@ -297,11 +341,12 @@ if ($invitedEmail === '' && $invitedUser) {
 						</ul>
 					<?php endif; ?>
 				</div>
+				<?php endif; ?>
 
-				<?php if ($validInvitation): ?>
+				<?php if (!$isMemberRequest && $validInvitation): ?>
 				<div class="invitation-section">
-					<h2>Votre réponse</h2>
-					<p class="invitation-copy">En acceptant, votre adhésion sera confirmée pour tous les holons listés ci-dessus en une seule fois.</p>
+					<h2>Votre reponse</h2>
+					<p class="invitation-copy">En acceptant, votre adhesion sera confirmee pour tous les holons listes ci-dessus en une seule fois.</p>
 					<div class="invitation-actions">
 						<form method="post" style="margin:0;">
 							<input type="hidden" name="token" value="<?= commonInvitationEscape($token) ?>">
@@ -315,7 +360,7 @@ if ($invitedEmail === '' && $invitedUser) {
 						</form>
 					</div>
 				</div>
-				<?php elseif ($acceptedRedirectUrl !== ''): ?>
+				<?php elseif (!$isMemberRequest && $acceptedRedirectUrl !== ''): ?>
 				<div class="invitation-actions">
 					<a class="invitation-actions__continue" href="<?= commonInvitationEscape($acceptedRedirectUrl) ?>">Entrer dans l'organisation</a>
 				</div>
@@ -323,10 +368,13 @@ if ($invitedEmail === '' && $invitedUser) {
 				<div class="invitation-section">
 					<h2>Statut</h2>
 					<p class="invitation-copy">
-						<?php if ($invitation->isExpired()): ?>
-							Cette invitation a expiré.
+						<?php $invitationStatus = trim((string)$invitation->get('status')); ?>
+						<?php if ($invitationStatus === 'canceled'): ?>
+							<?= commonInvitationEscape($isMemberRequest ? 'Cette demande a ete annulee.' : 'Cette invitation a ete annulee.') ?>
+						<?php elseif ($invitation->isExpired()): ?>
+							<?= commonInvitationEscape($isMemberRequest ? 'Cette demande a expire.' : 'Cette invitation a expire.') ?>
 						<?php else: ?>
-							Cette invitation a déjà reçu une réponse.
+							<?= commonInvitationEscape($isMemberRequest ? 'Cette demande a deja ete traitee.' : 'Cette invitation a deja recu une reponse.') ?>
 						<?php endif; ?>
 					</p>
 				</div>

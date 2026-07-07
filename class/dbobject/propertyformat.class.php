@@ -105,7 +105,7 @@
 			}
 
 			if (!class_exists('\DOMDocument')) {
-				$fallback = strip_tags($html, '<p><br><strong><b><em><i><u><ul><ol><li><a>');
+				$fallback = strip_tags($html, '<p><br><strong><b><em><i><u><ul><ol><li><a><h1><h2><h3><blockquote><table><thead><tbody><tr><th><td>');
 				return self::isEmptyValue(self::FORMAT_TEXT, $fallback) ? '' : trim($fallback);
 			}
 
@@ -157,9 +157,43 @@
 				return $document->createDocumentFragment();
 			}
 
+			if (self::isAllowedDocumentEmbedNode($node)) {
+				$element = $document->createElement('span');
+				$element->setAttribute('class', 'omo-document-embed');
+				$element->setAttribute('contenteditable', 'false');
+				$element->setAttribute('data-omo-embed-type', 'document');
+				$element->setAttribute('data-omo-document-id', (string)self::getDocumentEmbedNodeId($node));
+
+				$title = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-document-title'));
+				if ($title !== '') {
+					$element->setAttribute('data-omo-document-title', $title);
+				}
+
+				$description = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-document-description'));
+				if ($description !== '') {
+					$element->setAttribute('data-omo-document-description', $description);
+				}
+
+				foreach (iterator_to_array($node->childNodes) as $childNode) {
+					self::appendSanitizedHtmlChild($element, self::sanitizeHtmlNode($childNode, $document));
+				}
+
+				return $element;
+			}
+
 			$tagName = $sourceTagName === 'DIV' ? 'p' : strtolower($sourceTagName);
 			$allowedTags = array(
 				'p',
+				'h1',
+				'h2',
+				'h3',
+				'blockquote',
+				'table',
+				'thead',
+				'tbody',
+				'tr',
+				'th',
+				'td',
 				'br',
 				'strong',
 				'b',
@@ -200,6 +234,20 @@
 					$element->setAttribute('target', '_blank');
 					$element->setAttribute('rel', 'noopener noreferrer');
 				}
+			} elseif (in_array($tagName, array('th', 'td'), true)) {
+				$element = $document->createElement($tagName);
+
+				$colspanAttribute = $node->attributes ? $node->attributes->getNamedItem('colspan') : null;
+				$colspanValue = $colspanAttribute ? max(1, (int)$colspanAttribute->nodeValue) : 0;
+				if ($colspanValue > 1) {
+					$element->setAttribute('colspan', (string)$colspanValue);
+				}
+
+				$rowspanAttribute = $node->attributes ? $node->attributes->getNamedItem('rowspan') : null;
+				$rowspanValue = $rowspanAttribute ? max(1, (int)$rowspanAttribute->nodeValue) : 0;
+				if ($rowspanValue > 1) {
+					$element->setAttribute('rowspan', (string)$rowspanValue);
+				}
 			} else {
 				$element = $document->createElement($tagName);
 			}
@@ -209,6 +257,33 @@
 			}
 
 			return $element;
+		}
+
+		protected static function getDomNodeAttributeValue(\DOMNode $node, string $attributeName): string
+		{
+			if (!$node instanceof \DOMElement || !$node->hasAttribute($attributeName)) {
+				return '';
+			}
+
+			return (string)$node->getAttribute($attributeName);
+		}
+
+		protected static function getDocumentEmbedNodeId(\DOMNode $node): int
+		{
+			return (int)trim((string)self::getDomNodeAttributeValue($node, 'data-omo-document-id'));
+		}
+
+		protected static function isAllowedDocumentEmbedNode(\DOMNode $node): bool
+		{
+			if (!($node instanceof \DOMElement)) {
+				return false;
+			}
+
+			if (trim((string)$node->getAttribute('data-omo-embed-type')) !== 'document') {
+				return false;
+			}
+
+			return self::getDocumentEmbedNodeId($node) > 0;
 		}
 
 		protected static function appendSanitizedHtmlChild(\DOMNode $parentNode, \DOMNode $childNode)

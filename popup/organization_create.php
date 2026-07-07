@@ -2,6 +2,8 @@
 require_once($_SERVER['DOCUMENT_ROOT'] . "/config.php");
 require_once($_SERVER['DOCUMENT_ROOT'] . "/shared_functions.php");
 require_once($_SERVER['DOCUMENT_ROOT'] . "/common/auth.php");
+require_once($_SERVER['DOCUMENT_ROOT'] . "/common/patreon.php");
+require_once($_SERVER['DOCUMENT_ROOT'] . "/common/leaflet_helper.php");
 
 $connected = checklogin();
 if (!$connected) {
@@ -33,8 +35,8 @@ $pageTitle = $isEditMode ? "Modifier une organisation" : "Creer une organisation
 $heroKicker = $isEditMode ? "Parametres de l'organisation" : "Nouvelle organisation";
 $heroTitle = $isEditMode ? "Modifier cet espace OMO" : "Creer un nouvel espace OMO";
 $heroText = $isEditMode
-    ? "Mettez a jour le nom, le nom court, le domaine, les illustrations et la couleur de cette organisation."
-    : "Renseignez les informations principales de l'organisation. Le formulaire reutilise le canvas d'administration standard pour le logo, la banniere et les autres champs editables.";
+    ? "Mettez a jour le nom, le nom court, le domaine, l emplacement geographique, les illustrations et la couleur de cette organisation."
+    : "Renseignez les informations principales de l'organisation. Le formulaire reutilise le canvas d'administration standard pour le logo, la banniere, l emplacement geographique et les autres champs editables.";
 $submitLabel = $isEditMode ? "Enregistrer les modifications" : "Creer l'organisation";
 $pendingLabel = $isEditMode ? "Enregistrement en cours..." : "Creation en cours...";
 $successLabel = $isEditMode ? "Organisation enregistree." : "Organisation creee.";
@@ -44,6 +46,8 @@ $shortnamePreviewHost = commonGetRootHost();
 $shortnamePreviewPath = '/omo/';
 $organizationSubdomainRoutingEnabled = commonUseOrganizationSubdomains();
 $isFetchRequest = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
+$canManageOrganizationRouting = patreonCanManageOrganizationRouting($currentUserId);
+$organizationRoutingLockedMessage = "Le nom court et le domaine sont reserves aux associations et aux organisations.";
 ?>
 <?php if (!$isFetchRequest) { ?>
 <!DOCTYPE html>
@@ -79,26 +83,45 @@ $isFetchRequest = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) 
         color: var(--color-text, var(--auth-page-text, #0f172a));
     }
 
-    .organization-create-hero {
-        gap: 10px;
-    }
-
     .organization-create-kicker {
         margin-bottom: 0;
     }
 
-    .organization-create-hero h1 {
+    .organization-create-header {
+        --generic-drawer-header-z: 900;
+        position: relative;
+        z-index: 900;
+    }
+
+    .organization-create-header__title {
         margin: 0;
-        font-size: clamp(28px, 4vw, 34px);
-        line-height: 1.08;
+        font-size: clamp(1.5rem, 2.4vw, 1.9rem);
+        line-height: 1.12;
         color: var(--color-text, #0f172a);
     }
 
-    .organization-create-hero p {
+    .organization-create-header__description {
         margin: 0;
-        max-width: 720px;
-        line-height: 1.55;
+        max-width: 760px;
+        line-height: 1.5;
         color: var(--color-text-light, #475569);
+    }
+
+    .organization-create-shell {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+
+    .organization-create-view .leaflet-container {
+        z-index: 0;
+    }
+
+    .organization-create-view .leaflet-pane,
+    .organization-create-view .leaflet-top,
+    .organization-create-view .leaflet-bottom,
+    .organization-create-view .leaflet-control {
+        z-index: 100;
     }
 
     .organization-create-card {
@@ -196,8 +219,36 @@ $isFetchRequest = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) 
         font-size: 12px;
     }
 
+    .organization-create-routing-lock {
+        margin-top: 8px;
+        font-size: 13px;
+        line-height: 1.45;
+        color: var(--color-text-light, #64748b);
+    }
+
+    .organization-create-routing-lock strong {
+        color: var(--color-text, #0f172a);
+    }
+
+    .organization-create-card tr.organization-create-row--locked td,
+    .organization-create-card tr.organization-create-row--locked th {
+        opacity: 0.72;
+    }
+
+    .organization-create-card tr.organization-create-row--locked input[disabled] {
+        cursor: not-allowed;
+        background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 92%, #cbd5e1);
+        color: var(--color-text-light, #64748b);
+    }
+
     #commonTopbarModalBody .organization-create-view {
         max-width: none;
+        gap: 0;
+    }
+
+    #commonTopbarModalBody .organization-create-shell {
+        padding: 16px 18px 18px;
+        box-sizing: border-box;
     }
 
     @media (max-width: 860px) {
@@ -221,15 +272,19 @@ $isFetchRequest = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) 
         .organization-create-actions .generic-action-button {
             flex: 1 1 220px;
         }
+
     }
 </style>
 
 <div class="organization-create-view" id="organizationCreateRoot" data-render-mode="<?= $isFetchRequest ? 'fetch' : 'document' ?>">
-    <section class="organization-create-hero generic-hero-panel generic-hero-panel--accent">
-        <div class="organization-create-kicker generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars($heroKicker, ENT_QUOTES, 'UTF-8') ?></div>
-        <h1><?= htmlspecialchars($heroTitle, ENT_QUOTES, 'UTF-8') ?></h1>
-        <p><?= htmlspecialchars($heroText, ENT_QUOTES, 'UTF-8') ?></p>
+    <section class="organization-create-header generic-drawer-header<?= $isFetchRequest ? ' generic-drawer-header--sticky' : '' ?>">
+        <div class="generic-drawer-header__copy">
+            <div class="organization-create-kicker generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars($heroKicker, ENT_QUOTES, 'UTF-8') ?></div>
+            <h2 class="organization-create-header__title"><?= htmlspecialchars($heroTitle, ENT_QUOTES, 'UTF-8') ?></h2>
+            <p class="organization-create-header__description"><?= htmlspecialchars($heroText, ENT_QUOTES, 'UTF-8') ?></p>
+        </div>
     </section>
+    <div class="organization-create-shell">
 
     <section class="organization-create-card generic-section generic-section--stack">
 <?php
@@ -240,6 +295,7 @@ $isFetchRequest = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) 
                 "name",
                 "shortname",
                 "domain",
+                "latlong",
                 "color",
                 "{title:Identite visuelle}",
                 "logo",
@@ -256,6 +312,7 @@ $isFetchRequest = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) 
 
         <div class="organization-create-feedback" id="organization_create_feedback"></div>
     </section>
+    </div>
 </div>
 
 <script>
@@ -267,11 +324,14 @@ $isFetchRequest = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) 
         var shortnamePreviewHost = <?= json_encode($shortnamePreviewHost, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         var shortnamePreviewPath = <?= json_encode($shortnamePreviewPath, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         var organizationSubdomainRoutingEnabled = <?= $organizationSubdomainRoutingEnabled ? 'true' : 'false' ?>;
+        var canManageOrganizationRouting = <?= $canManageOrganizationRouting ? 'true' : 'false' ?>;
+        var organizationRoutingLockedMessage = <?= json_encode($organizationRoutingLockedMessage, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         var submitButton = document.getElementById('organization_create_submit');
         var cancelButton = document.getElementById('organization_create_cancel');
         var form = document.getElementById('formulaire-edit');
         var feedback = document.getElementById('organization_create_feedback');
         var shortnameInput = document.getElementById('shortname') || document.querySelector('input[name="shortname"]');
+        var domainInput = document.getElementById('domain') || document.querySelector('input[name="domain"]');
 
         if (!root || !submitButton || !cancelButton || !feedback) {
             return;
@@ -296,11 +356,63 @@ $isFetchRequest = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) 
             );
         }
 
+        function ensureRoutingLockHint(input, hintId) {
+            if (!input) {
+                return null;
+            }
+
+            var existingHint = document.getElementById(hintId);
+            if (existingHint) {
+                return existingHint;
+            }
+
+            var row = input.closest('tr');
+            var cell = row ? row.querySelector('td') : null;
+            var hint = document.createElement('div');
+            hint.id = hintId;
+            hint.className = 'organization-create-routing-lock';
+            hint.innerHTML = '<strong>Acces reserve.</strong> ' + organizationRoutingLockedMessage;
+
+            if (cell) {
+                cell.appendChild(hint);
+            } else {
+                input.insertAdjacentElement('afterend', hint);
+            }
+
+            return hint;
+        }
+
+        function lockRoutingField(input, hintId) {
+            if (!input) {
+                return;
+            }
+
+            input.disabled = true;
+            input.setAttribute('aria-disabled', 'true');
+
+            var row = input.closest('tr');
+            if (row) {
+                row.classList.add('organization-create-row--locked');
+            }
+
+            ensureRoutingLockHint(input, hintId);
+        }
+
+        function applyRoutingRestrictions() {
+            if (canManageOrganizationRouting) {
+                return;
+            }
+
+            lockRoutingField(shortnameInput, 'organization_create_shortname_lock');
+            lockRoutingField(domainInput, 'organization_create_domain_lock');
+        }
+
         if (form) {
             form.setAttribute('action', isEditMode ? ('/ajax/saveorganization.php?oid=' + encodeURIComponent(String(organizationId))) : '/ajax/saveorganization.php');
             form.setAttribute('method', 'post');
             form.setAttribute('enctype', 'multipart/form-data');
             decorateAdminEditForm();
+            applyRoutingRestrictions();
         }
 
         function buildShortnamePreviewUrl(value) {
@@ -349,6 +461,13 @@ $isFetchRequest = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) 
             if (!hint) {
                 return;
             }
+
+            if (!canManageOrganizationRouting) {
+                hint.style.display = 'none';
+                return;
+            }
+
+            hint.style.display = '';
 
             var previewUrl = buildShortnamePreviewUrl(shortnameInput ? shortnameInput.value : '');
             if (previewUrl) {
@@ -485,7 +604,15 @@ $isFetchRequest = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) 
                     var blob = window.croppedImages[key];
 
                     if (blob) {
-                        formData.append(key, blob, key + '.jpg');
+                        var extension = 'jpg';
+
+                        if (blob.type === 'image/png') {
+                            extension = 'png';
+                        } else if (blob.type === 'image/webp') {
+                            extension = 'webp';
+                        }
+
+                        formData.append(key, blob, key + '.' + extension);
                     }
                 });
             }

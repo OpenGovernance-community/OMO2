@@ -26,6 +26,7 @@ function omoRenderHolonHistoryItems(array $historyItems)
 		}
 		$authorLabel = trim((string)($item['authorDisplayName'] ?? ''));
 		$actionLabel = trim((string)($item['actionLabel'] ?? ''));
+		$contentHtml = trim((string)($item['contentHtml'] ?? ''));
 		$parameters = is_array($item['parameters'] ?? null) ? $item['parameters'] : null;
 		$hasDiffData = is_array($parameters)
 			&& (
@@ -50,7 +51,7 @@ function omoRenderHolonHistoryItems(array $historyItems)
 					<span class="omo-holon-history-popup__action"><?= omoApiEscape($actionLabel) ?></span>
 				<?php endif; ?>
 			</div>
-			<p class="omo-holon-history-popup__content"><?= nl2br(omoApiEscape((string)($item['contentDisplay'] ?? ''))) ?></p>
+			<p class="omo-holon-history-popup__content"><?= $contentHtml !== '' ? nl2br($contentHtml) : nl2br(omoApiEscape((string)($item['contentDisplay'] ?? ''))) ?></p>
 			<?php if ($hasDiffData && $payloadBase64 !== ''): ?>
 				<details class="omo-holon-history-popup__details" data-history-diff="1" data-history-payload="<?= omoApiEscape($payloadBase64) ?>">
 					<summary>Voir les changements</summary>
@@ -117,9 +118,25 @@ if ($requestFragment === 'items') {
 <style>
 	.omo-holon-history-popup {
 		display: grid;
-		gap: 14px;
-		padding: 8px 4px 4px;
+		gap: 0;
 		color: var(--color-text, #1f2937);
+	}
+
+	.omo-holon-history-popup__header {
+		position: sticky;
+		top: 0;
+		z-index: 3;
+	}
+
+	.omo-holon-history-popup__header-copy {
+		display: grid;
+		gap: 4px;
+	}
+
+	.omo-holon-history-popup__shell {
+		display: grid;
+		gap: 14px;
+		padding: 16px 18px 18px;
 	}
 
 	.omo-holon-history-popup__intro {
@@ -184,6 +201,17 @@ if ($requestFragment === 'items') {
 		line-height: 1.55;
 		white-space: pre-wrap;
 		word-break: break-word;
+	}
+
+	.omo-holon-history-popup__content .omo-history-reference {
+		color: var(--color-text, #1f2937);
+		font-weight: 600;
+	}
+
+	.omo-holon-history-popup__content .omo-history-reference--holon.omo-history-reference--link {
+		color: var(--color-primary, #2563eb);
+		text-decoration: underline;
+		text-underline-offset: 2px;
 	}
 
 	.omo-holon-history-popup__details {
@@ -353,7 +381,7 @@ if ($requestFragment === 'items') {
 	}
 
 	.omo-holon-history-popup__empty {
-		padding: 18px 6px;
+		padding: 18px;
 		line-height: 1.5;
 		color: var(--topbar-panel-muted, #64748b);
 	}
@@ -367,6 +395,13 @@ if ($requestFragment === 'items') {
 	data-next-offset="<?= (int)$nextOffset ?>"
 	data-has-more="<?= $hasMore ? '1' : '0' ?>"
 >
+	<div class="omo-holon-history-popup__header generic-drawer-header generic-drawer-header--sticky">
+		<div class="generic-drawer-header__copy omo-holon-history-popup__header-copy">
+			<div class="generic-card-title generic-card-title--eyebrow"><?= $isOrganizationHolon ? 'Organisation' : omoApiEscape((string)$holon->getTemplateLabel(true)) ?></div>
+			<h3 class="generic-card-title generic-card-title--medium">Historique</h3>
+		</div>
+	</div>
+	<div class="omo-holon-history-popup__shell">
 	<p class="omo-holon-history-popup__intro">
 		Historique lie au holon <strong><?= omoApiEscape($holon->getDisplayName()) ?></strong>.
 		<?= $isOrganizationHolon
@@ -383,6 +418,7 @@ if ($requestFragment === 'items') {
 	<div class="omo-holon-history-popup__list" data-history-list="1"><?= omoRenderHolonHistoryItems($historyItems) ?></div>
 	<div class="omo-holon-history-popup__feed-status<?= $hasMore ? '' : '' ?>" data-history-feed-status="1"<?= (!$hasMore && count($historyItems) === 0) ? ' hidden' : '' ?>>
 		<?= $hasMore ? 'Faites defiler pour charger la suite.' : 'Fin de l\'historique.' ?>
+	</div>
 	</div>
 </div>
 
@@ -945,14 +981,35 @@ if ($requestFragment === 'items') {
 				name: 'Nom',
 				color: 'Couleur',
 				icon: 'Icone',
-				banner: 'Banniere'
+				banner: 'Banniere',
+				visible: 'Visible',
+				mandatory: 'Obligatoire',
+				lockedName: 'Nom verrouille',
+				lockedIcon: 'Icone verrouillee',
+				lockedBanner: 'Banniere verrouillee',
+				unique: 'Unique',
+				link: 'Lien',
+				inheritsFromName: 'Modele parent'
+			};
+			var booleanFields = {
+				visible: true,
+				mandatory: true,
+				lockedName: true,
+				lockedIcon: true,
+				lockedBanner: true,
+				unique: true,
+				link: true
 			};
 			var section = createSection('Holon');
 			var hasChanges = false;
 
 			Object.keys(fieldLabels).forEach(function (field) {
-				var beforeValue = decodeHtmlToText(beforeHolon[field] || '');
-				var afterValue = decodeHtmlToText(afterHolon[field] || '');
+				var beforeValue = booleanFields[field]
+					? ((beforeHolon[field] ? 'Oui' : 'Non'))
+					: decodeHtmlToText(beforeHolon[field] || '');
+				var afterValue = booleanFields[field]
+					? ((afterHolon[field] ? 'Oui' : 'Non'))
+					: decodeHtmlToText(afterHolon[field] || '');
 				var useInlineWordDiff = field === 'name';
 				if (beforeValue === afterValue) {
 					return;
@@ -962,6 +1019,69 @@ if ($requestFragment === 'items') {
 				renderScalarProperty(section, fieldLabels[field], beforeValue, afterValue, 'changed', {
 					useInlineWordDiff: useInlineWordDiff
 				});
+			});
+
+			if (hasChanges) {
+				root.appendChild(section);
+			}
+		}
+
+		function buildPermissionLabel(permissionSnapshot, permissionKey) {
+			var snapshot = safeObject(permissionSnapshot);
+			var label = normalizeText(snapshot.name || snapshot.shortname || snapshot.key || '');
+			if (label !== '') {
+				return label;
+			}
+
+			return normalizeText(permissionKey) !== '' ? permissionKey : 'Droit';
+		}
+
+		function renderPermissionDiffs(payload, root) {
+			var beforePermissions = safeObject(safeObject(payload.before).permissions);
+			var afterPermissions = safeObject(safeObject(payload.after).permissions);
+			var permissionKeys = Object.keys(beforePermissions).concat(Object.keys(afterPermissions));
+			var uniqueKeys = [];
+			var section = createSection('Droits');
+			var hasChanges = false;
+
+			permissionKeys.forEach(function (permissionKey) {
+				if (uniqueKeys.indexOf(permissionKey) === -1) {
+					uniqueKeys.push(permissionKey);
+				}
+			});
+
+			uniqueKeys.sort(function (left, right) {
+				return buildPermissionLabel(afterPermissions[left] || beforePermissions[left], left)
+					.localeCompare(buildPermissionLabel(afterPermissions[right] || beforePermissions[right], right));
+			});
+
+			uniqueKeys.forEach(function (permissionKey) {
+				var beforePermission = safeObject(beforePermissions[permissionKey]);
+				var afterPermission = safeObject(afterPermissions[permissionKey]);
+				var hasBefore = Object.keys(beforePermission).length > 0;
+				var hasAfter = Object.keys(afterPermission).length > 0;
+				var title = buildPermissionLabel(hasAfter ? afterPermission : beforePermission, permissionKey);
+				var beforeItems = safeArray(beforePermission.visibleItems);
+				var afterItems = safeArray(afterPermission.visibleItems);
+
+				if (!hasBefore && hasAfter) {
+					hasChanges = true;
+					renderListProperty(section, title, [], afterItems, 'added');
+					return;
+				}
+
+				if (hasBefore && !hasAfter) {
+					hasChanges = true;
+					renderListProperty(section, title, beforeItems, [], 'removed');
+					return;
+				}
+
+				if (!hasBefore || !hasAfter || JSON.stringify(beforeItems) === JSON.stringify(afterItems)) {
+					return;
+				}
+
+				hasChanges = true;
+				renderListProperty(section, title, beforeItems, afterItems, 'changed');
 			});
 
 			if (hasChanges) {
@@ -1091,6 +1211,31 @@ if ($requestFragment === 'items') {
 			}
 		}
 
+		function renderCreatedPermissions(payload, root) {
+			var afterPermissions = safeObject(safeObject(payload.after).permissions);
+			var permissionKeys = Object.keys(afterPermissions).sort(function (left, right) {
+				return buildPermissionLabel(afterPermissions[left], left)
+					.localeCompare(buildPermissionLabel(afterPermissions[right], right));
+			});
+			var section = createSection('Droits');
+			var hasContent = false;
+
+			permissionKeys.forEach(function (permissionKey) {
+				var permission = safeObject(afterPermissions[permissionKey]);
+				var items = safeArray(permission.visibleItems);
+				if (items.length === 0) {
+					return;
+				}
+
+				hasContent = true;
+				renderListProperty(section, buildPermissionLabel(permission, permissionKey), [], items, 'added');
+			});
+
+			if (hasContent) {
+				root.appendChild(section);
+			}
+		}
+
 		function renderDiff(details) {
 			var container = details.querySelector('[data-history-diff-container="1"]');
 			var payloadBase64 = normalizeText(details.getAttribute('data-history-payload'));
@@ -1116,9 +1261,11 @@ if ($requestFragment === 'items') {
 
 			if (payload.before && payload.after) {
 				renderHolonFieldDiffs(payload, container);
+				renderPermissionDiffs(payload, container);
 				renderPropertyDiffs(payload, container);
 			} else if (payload.after) {
 				renderCreatedState(payload, container);
+				renderCreatedPermissions(payload, container);
 			}
 
 			if (!container.children.length) {

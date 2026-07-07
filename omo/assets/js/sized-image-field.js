@@ -43,11 +43,42 @@
                 workingObjectUrl: '',
                 previewObjectUrl: '',
                 cropTimer: null,
-                currentValue: ''
+                currentValue: '',
+                preferredMimeType: 'image/jpeg',
+                preferredExtension: 'jpg'
             };
         }
 
         return stores[inputName];
+    }
+
+    function resolveExportFormat(source) {
+        const normalized = String(source || '').toLowerCase();
+
+        if (normalized.indexOf('image/png') !== -1 || /\.png(?:$|\?)/.test(normalized)) {
+            return {
+                mime: 'image/png',
+                extension: 'png'
+            };
+        }
+
+        if (normalized.indexOf('image/webp') !== -1 || /\.webp(?:$|\?)/.test(normalized)) {
+            return {
+                mime: 'image/webp',
+                extension: 'webp'
+            };
+        }
+
+        return {
+            mime: 'image/jpeg',
+            extension: 'jpg'
+        };
+    }
+
+    function syncStoreExportFormat(store, source) {
+        const format = resolveExportFormat(source);
+        store.preferredMimeType = format.mime;
+        store.preferredExtension = format.extension;
     }
 
     function revokeUrl(url) {
@@ -139,6 +170,12 @@
             clearStoreWorkingSource(store);
         } else if (!store.workingSrc) {
             store.workingSrc = inheritedValue;
+        }
+
+        if (currentValue && currentValue !== 'newimage') {
+            syncStoreExportFormat(store, currentValue);
+        } else if (inheritedValue) {
+            syncStoreExportFormat(store, inheritedValue);
         }
 
         const localSource = currentValue === 'newimage'
@@ -249,7 +286,7 @@
 
         function commitCrop() {
             if (!canEdit || !naturalWidth || !naturalHeight || !store.workingSrc) {
-                return;
+                return Promise.resolve(false);
             }
 
             const canvas = document.createElement('canvas');
@@ -269,21 +306,26 @@
                 displayHeight * ratio
             );
 
-            canvas.toBlob(function (blob) {
-                if (!blob) {
-                    return;
-                }
+            return new Promise(function (resolve) {
+                canvas.toBlob(function (blob) {
+                    if (!blob) {
+                        resolve(false);
+                        return;
+                    }
 
-                clearStoreBlob(store);
-                store.blob = blob;
-                store.previewObjectUrl = URL.createObjectURL(blob);
-                store.previewUrl = store.previewObjectUrl;
-                setHiddenValue('newimage');
-                updateMetaText();
-                if (clearButton) {
-                    clearButton.disabled = false;
-                }
-            }, 'image/jpeg', 0.92);
+                    clearStoreBlob(store);
+                    store.blob = blob;
+                    store.previewObjectUrl = URL.createObjectURL(blob);
+                    store.previewUrl = store.previewObjectUrl;
+                    setHiddenValue('newimage');
+                    updateMetaText();
+                    if (clearButton) {
+                        clearButton.disabled = false;
+                    }
+
+                    resolve(true);
+                }, store.preferredMimeType || 'image/jpeg', (store.preferredMimeType || 'image/jpeg') === 'image/png' ? undefined : 0.92);
+            });
         }
 
         function scheduleCropCommit() {
@@ -409,6 +451,7 @@
                 setHiddenValue('');
                 clearStoreWorkingSource(store);
                 if (inheritedValue) {
+                    syncStoreExportFormat(store, inheritedValue);
                     store.workingSrc = inheritedValue;
                 }
                 updateMetaText();
@@ -426,6 +469,7 @@
 
                 clearStoreBlob(store);
                 clearStoreWorkingSource(store);
+                syncStoreExportFormat(store, file.type || '');
                 store.workingObjectUrl = URL.createObjectURL(file);
                 store.workingSrc = store.workingObjectUrl;
                 setHiddenValue('newimage');
@@ -505,13 +549,66 @@
             getValue: function () {
                 return String(hiddenInput.value || '');
             },
+            flushPending: function () {
+                if (String(hiddenInput.value || '') !== 'newimage') {
+                    return Promise.resolve();
+                }
+
+                if (store.cropTimer) {
+                    window.clearTimeout(store.cropTimer);
+                    store.cropTimer = null;
+                }
+
+                if (store.blob) {
+                    return Promise.resolve();
+                }
+
+                if (naturalWidth && naturalHeight && store.workingSrc) {
+                    return commitCrop().then(function () {});
+                }
+
+                if (!store.workingSrc) {
+                    return Promise.resolve();
+                }
+
+                return new Promise(function (resolve) {
+                    let settled = false;
+
+                    function finalize() {
+                        if (settled) {
+                            return;
+                        }
+
+                        settled = true;
+                        resolve();
+                    }
+
+                    function handleLoaded() {
+                        commitCrop().then(function () {
+                            finalize();
+                        }).catch(function () {
+                            finalize();
+                        });
+                    }
+
+                    if (image.complete && image.naturalWidth && image.naturalHeight) {
+                        handleLoaded();
+                        return;
+                    }
+
+                    image.addEventListener('load', handleLoaded, { once: true });
+                    image.addEventListener('error', finalize, { once: true });
+                    window.setTimeout(finalize, 1500);
+                });
+            },
             appendToFormData: function (formData) {
                 if (!formData || !store.blob) {
                     return;
                 }
 
                 const fieldName = state.uploadFieldName || state.inputName;
-                formData.append(fieldName, store.blob, fieldName + '.jpg');
+                const extension = store.preferredExtension || 'jpg';
+                formData.append(fieldName, store.blob, fieldName + '.' + extension);
             }
         };
     }

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/translation.php';
 require_once dirname(__DIR__, 3) . '/includes/server_env_admin.php';
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -8,7 +9,7 @@ if ((int)commonGetCurrentUserId() <= 0) {
     http_response_code(401);
     echo json_encode([
         'status' => false,
-        'message' => 'Connexion requise.',
+        'message' => omoServerEnvT('parameters.server_env.error.required'),
     ]);
     exit;
 }
@@ -17,7 +18,7 @@ if (!commonCurrentUserIsSiteAdminModeEnabled()) {
     http_response_code(403);
     echo json_encode([
         'status' => false,
-        'message' => 'Acces reserve a l admin du serveur.',
+        'message' => omoServerEnvT('parameters.server_env.error.forbidden'),
     ]);
     exit;
 }
@@ -26,7 +27,7 @@ if (!serverEnvAdminIsUnlocked()) {
     http_response_code(423);
     echo json_encode([
         'status' => false,
-        'message' => 'Confirmation du mot de passe requise.',
+        'message' => omoServerEnvT('parameters.server_env.error.unlock_required'),
         'requiresUnlock' => true,
     ]);
     exit;
@@ -52,7 +53,7 @@ try {
 
     echo json_encode([
         'status' => true,
-        'message' => 'Le fichier .env a ete mis a jour.',
+        'message' => omoServerEnvT('parameters.server_env.status.saved', ['target' => serverEnvAdminGetEnvTargetLabel()]),
         'configuredSecrets' => serverEnvAdminBuildSecretStateMap($mergedValues),
     ]);
     exit;

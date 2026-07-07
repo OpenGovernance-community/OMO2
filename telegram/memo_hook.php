@@ -4,7 +4,7 @@
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared/openai.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared/telegram.php");
 
-	$minTimeMessage = 10; // DurÃ©e minimum en seconde du message pour justifier une transformation
+	$minTimeMessage = 10; // Duree minimum en seconde du message pour justifier une transformation
 
 	function saveLocalSession($data, $name) {
 		if (!is_dir("data")) {
@@ -316,7 +316,7 @@
 		return array(
 			array(
 				array('text' => 'Options', 'callback_data' => 'btn_options'),
-				array('text' => 'Delete', 'callback_data' => 'btn_delete'),
+				array('text' => 'Delete', 'callback_data' => 'btn_delete', 'style' => 'danger'),
 			),
 			array(
 				array('text' => 'Share', 'callback_data' => 'btn_share'),
@@ -328,11 +328,11 @@
 	function buildDeleteButtons(): array {
 		return array(
 			array(
-				array('text' => 'Le rÃ©sumÃ©', 'callback_data' => 'btn_del_resume'),
-				array('text' => 'Le fichier', 'callback_data' => 'btn_del_file'),
+				array('text' => 'Le résumé', 'callback_data' => 'btn_del_resume', 'style' => 'danger'),
+				array('text' => 'Le fichier', 'callback_data' => 'btn_del_file', 'style' => 'danger'),
 			),
 			array(
-				array('text' => 'Tout', 'callback_data' => 'btn_del_all'),
+				array('text' => 'Tout', 'callback_data' => 'btn_del_all', 'style' => 'danger'),
 				array('text' => 'Annuler', 'callback_data' => 'btn_del_cancel'),
 			),
 		);
@@ -395,6 +395,56 @@
 		return $typeLabel." : ".($name !== '' ? $name : 'Sans nom');
 	}
 
+	function getTelegramDocumentCreationPermissionSet(\dbObject\User $user, \dbObject\Organization $organization): array {
+		static $permissionSetCache = array();
+
+		$userId = (int)$user->getId();
+		$organizationId = (int)$organization->getId();
+		$cacheKey = $userId.'_'.$organizationId;
+
+		if (!isset($permissionSetCache[$cacheKey])) {
+			$permissionSetCache[$cacheKey] = \dbObject\HolonPermission::buildUserPermissionSetForOrganization(
+				$userId,
+				$organizationId,
+				array('CAN_CREATE_DOCUMENT')
+			);
+		}
+
+		return is_array($permissionSetCache[$cacheKey]) ? $permissionSetCache[$cacheKey] : array();
+	}
+
+	function telegramUserCanCreateDocumentInHolon(\dbObject\User $user, \dbObject\Organization $organization, \dbObject\Holon $holon): bool {
+		$userId = (int)$user->getId();
+		$organizationId = (int)$organization->getId();
+		$holonId = (int)$holon->getId();
+
+		if ($userId <= 0 || $organizationId <= 0 || $holonId <= 0) {
+			return false;
+		}
+
+		$permissionSet = getTelegramDocumentCreationPermissionSet($user, $organization);
+		if (empty($permissionSet['definedPermissionKeys']['CAN_CREATE_DOCUMENT'])) {
+			return \dbObject\Permission::existsKey('CAN_CREATE_DOCUMENT');
+		}
+
+		$scope = $permissionSet['permissions']['CAN_CREATE_DOCUMENT'] ?? null;
+		if (!is_array($scope)) {
+			return false;
+		}
+
+		if (!empty($scope['organization']) || !empty($scope['exact'][$holonId])) {
+			return true;
+		}
+
+		foreach (array_keys($scope['subtree'] ?? array()) as $rootHolonId) {
+			if ($holon->isDescendantOf((int)$rootHolonId, true)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	function getVisibleHolonChildren(\dbObject\Holon $holon): array {
 		$children = array();
 		foreach ($holon->getChildren() as $child) {
@@ -408,10 +458,50 @@
 		return $children;
 	}
 
-	function collectHolonDescendantOptions(\dbObject\Holon $holon, string $prefix = ''): array {
+	function holonHasDocumentCreationDestination(\dbObject\User $user, \dbObject\Organization $organization, \dbObject\Holon $holon, array &$availabilityCache = array()): bool {
+		$cacheKey = (int)$user->getId().'_'.(int)$organization->getId().'_'.(int)$holon->getId();
+		if (array_key_exists($cacheKey, $availabilityCache)) {
+			return (bool)$availabilityCache[$cacheKey];
+		}
+
+		if (telegramUserCanCreateDocumentInHolon($user, $organization, $holon)) {
+			$availabilityCache[$cacheKey] = true;
+			return true;
+		}
+
+		foreach (getVisibleHolonChildren($holon) as $child) {
+			if (holonHasDocumentCreationDestination($user, $organization, $child, $availabilityCache)) {
+				$availabilityCache[$cacheKey] = true;
+				return true;
+			}
+		}
+
+		$availabilityCache[$cacheKey] = false;
+		return false;
+	}
+
+	function getCreatableVisibleHolonChildren(\dbObject\User $user, \dbObject\Organization $organization, \dbObject\Holon $holon, array &$availabilityCache = array()): array {
+		$children = array();
+
+		foreach (getVisibleHolonChildren($holon) as $child) {
+			if (!holonHasDocumentCreationDestination($user, $organization, $child, $availabilityCache)) {
+				continue;
+			}
+
+			$children[] = $child;
+		}
+
+		return $children;
+	}
+
+	function collectHolonDescendantNavigationOptions(\dbObject\User $user, \dbObject\Organization $organization, \dbObject\Holon $holon, string $prefix = '', array &$availabilityCache = array()): array {
 		$options = array();
 
 		foreach (getVisibleHolonChildren($holon) as $child) {
+			if (!holonHasDocumentCreationDestination($user, $organization, $child, $availabilityCache)) {
+				continue;
+			}
+
 			$label = $prefix !== ''
 				? $prefix." > ".buildHolonChoiceLabel($child)
 				: buildHolonChoiceLabel($child);
@@ -419,9 +509,10 @@
 			$options[] = array(
 				'holon' => $child,
 				'label' => $label,
+				'action' => telegramUserCanCreateDocumentInHolon($user, $organization, $child) ? 'done' : 'nav',
 			);
 
-			$options = array_merge($options, collectHolonDescendantOptions($child, $label));
+			$options = array_merge($options, collectHolonDescendantNavigationOptions($user, $organization, $child, $label, $availabilityCache));
 		}
 
 		return $options;
@@ -430,7 +521,7 @@
 	function buildClassificationPrompt(\dbObject\User $user, int $selectedOrganizationId = 0, int $selectedHolonId = 0): array {
 		if ($user->getId() <= 0) {
 			return array(
-				'text' => "Votre compte Telegram n'est pas reliÃ© Ã  un utilisateur SystemDD.",
+				'text' => "Votre compte Telegram n'est pas relié à un utilisateur SystemDD.",
 				'buttons' => array(
 					array(
 						array('text' => 'Fermer', 'callback_data' => 'btn_classify_cancel'),
@@ -454,8 +545,34 @@
 		}
 
 		if ($selectedOrganizationId <= 0) {
+			$availableOrganizations = array();
 			$buttons = array();
+
 			foreach ($organizations as $organization) {
+				$organizationRootHolon = $organization->getStructuralRootHolon();
+				if (
+					!($organizationRootHolon instanceof \dbObject\Holon)
+					|| (int)$organizationRootHolon->getId() <= 0
+					|| !holonHasDocumentCreationDestination($user, $organization, $organizationRootHolon)
+				) {
+					continue;
+				}
+
+				$availableOrganizations[] = $organization;
+			}
+
+			if (count($availableOrganizations) === 0) {
+				return array(
+					'text' => "Aucune organisation accessible avec droit de creation de document n'est disponible pour classer ce memo.",
+					'buttons' => array(
+						array(
+							array('text' => 'Fermer', 'callback_data' => 'btn_classify_cancel'),
+						),
+					),
+				);
+			}
+
+			foreach ($availableOrganizations as $organization) {
 				$buttons[] = array(
 					array(
 						'text' => trim((string)$organization->get('name')),
@@ -469,7 +586,7 @@
 			);
 
 			return array(
-				'text' => "Classer ce mÃ©mo\n\nChoisissez d'abord une organisation.",
+				'text' => "Classer ce mémo\n\nChoisissez d'abord une organisation.",
 				'buttons' => $buttons,
 			);
 		}
@@ -485,7 +602,7 @@
 				'text' => "Impossible de trouver la structure de cette organisation.",
 				'buttons' => array(
 					array(
-						array('text' => 'Changer dâ€™organisation', 'callback_data' => 'btn_classify_root'),
+						array('text' => "Changer d'organisation", 'callback_data' => 'btn_classify_root'),
 					),
 					array(
 						array('text' => 'Annuler', 'callback_data' => 'btn_classify_cancel'),
@@ -510,18 +627,23 @@
 
 		$currentPath = buildHolonPathLabel($organization, $selectedHolon);
 		$currentNode = $selectedHolon ?: $rootHolon;
-		$children = getVisibleHolonChildren($currentNode);
-		$descendantOptions = collectHolonDescendantOptions($currentNode);
+		$availabilityCache = array();
+		$canFinishHere = telegramUserCanCreateDocumentInHolon($user, $organization, $currentNode);
+		$children = getCreatableVisibleHolonChildren($user, $organization, $currentNode, $availabilityCache);
+		$descendantOptions = collectHolonDescendantNavigationOptions($user, $organization, $currentNode, '', $availabilityCache);
 		$useIncrementalMode = count($descendantOptions) > 4;
+		$hasDescendantDestination = count($descendantOptions) > 0;
 
-		$buttons = array(
-			array(
+		$buttons = array();
+		if ($canFinishHere) {
+			$buttons[] = array(
 				array(
 					'text' => 'Terminer ici',
 					'callback_data' => 'btn_classify_done_'.$organization->getId().'_'.($selectedHolon ? $selectedHolon->getId() : 0),
+					'style' => 'success',
 				),
-			),
-		);
+			);
+		}
 
 		if ($selectedHolon) {
 			$parentHolon = $selectedHolon->getParentHolon();
@@ -536,14 +658,14 @@
 					'callback_data' => 'btn_classify_nav_'.$organization->getId().'_'.$backTargetHolonId,
 				),
 				array(
-					'text' => 'Changer dâ€™organisation',
+					'text' => "Changer d'organisation",
 					'callback_data' => 'btn_classify_root',
 				),
 			);
 		} else {
 			$buttons[] = array(
 				array(
-					'text' => 'Changer dâ€™organisation',
+					'text' => "Changer d'organisation",
 					'callback_data' => 'btn_classify_root',
 				),
 			);
@@ -555,15 +677,18 @@
 					array(
 						'text' => buildHolonChoiceLabel($child),
 						'callback_data' => 'btn_classify_nav_'.$organization->getId().'_'.$child->getId(),
+						'style' => 'primary',
 					),
 				);
 			}
 		} else {
 			foreach ($descendantOptions as $option) {
+				$callbackAction = ($option['action'] ?? '') === 'nav' ? 'btn_classify_nav_' : 'btn_classify_done_';
 				$buttons[] = array(
 					array(
 						'text' => $option['label'],
-						'callback_data' => 'btn_classify_done_'.$organization->getId().'_'.$option['holon']->getId(),
+						'callback_data' => $callbackAction.$organization->getId().'_'.$option['holon']->getId(),
+						'style' => 'primary',
 					),
 				);
 			}
@@ -573,13 +698,21 @@
 			array('text' => 'Annuler', 'callback_data' => 'btn_classify_cancel'),
 		);
 
-		$text = "Classer ce mÃ©mo\n\nEmplacement sÃ©lectionnÃ© : ".$currentPath;
-		if (count($descendantOptions) > 0 && !$useIncrementalMode) {
-			$text .= "\n\nChoisissez directement une destination ci-dessous, ou utilisez \"Terminer ici\" pour valider cet emplacement.";
+		$text = "Classer ce mémo\n\nEmplacement sélectionné : ".$currentPath;
+		if (!$canFinishHere && !$hasDescendantDestination) {
+			$text .= "\n\nAucune destination avec droit de creation de document n'est disponible ici.";
+		} elseif ($hasDescendantDestination && !$useIncrementalMode) {
+			$text .= $canFinishHere
+				? "\n\nChoisissez directement un emplacement ou un sous-niveau ci-dessous, ou utilisez \"Terminer ici\" pour valider cet emplacement."
+				: "\n\nChoisissez directement un sous-niveau ou une destination autorisee ci-dessous.";
 		} elseif (count($children) > 0) {
-			$text .= "\n\nChoisissez un sous-niveau, ou utilisez \"Terminer ici\" pour valider cet emplacement.";
+			$text .= $canFinishHere
+				? "\n\nChoisissez un sous-niveau, ou utilisez \"Terminer ici\" pour valider cet emplacement."
+				: "\n\nChoisissez un sous-niveau autorise ci-dessous.";
 		} else {
-			$text .= "\n\nAucun sous-niveau supplÃ©mentaire n'est disponible ici. Vous pouvez terminer maintenant.";
+			$text .= $canFinishHere
+				? "\n\nAucun sous-niveau supplémentaire n'est disponible ici. Vous pouvez terminer maintenant."
+				: "\n\nAucun sous-niveau supplémentaire autorise n'est disponible ici.";
 		}
 
 		return array(
@@ -647,7 +780,7 @@
 
 				sendMessage($chatId, formatDocumentLink($document), null, $threadId);
 			} else {
-				sendMessage($chatId, "Le fichier n'a pas Ã©tÃ© trouvÃ©.", null, $threadId);
+				sendMessage($chatId, "Le fichier n'a pas été trouvé.", null, $threadId);
 			}
 
 			answerCallbackQuery($callbackId);
@@ -661,7 +794,7 @@
 		}
 
 		if ($callbackData === 'btn_del_cancel') {
-			editMessageText($chatId, (int)$message['message_id'], "Suppression annulÃ©e.", null, $threadId);
+			editMessageText($chatId, (int)$message['message_id'], "Suppression annulée.", null, $threadId);
 			answerCallbackQuery($callbackId);
 			return;
 		}
@@ -677,7 +810,7 @@
 				deleteMessage($chatId, (int)$message['message_id'], $threadId);
 			}
 
-			answerCallbackQuery($callbackId, "RÃ©sumÃ© effacÃ©.");
+			answerCallbackQuery($callbackId, "Résumé effacé.");
 			return;
 		}
 
@@ -692,7 +825,7 @@
 					deleteMessage($chatId, (int)$sessionData->lastID, $threadId);
 					clearLastMessageSessionFields($sessionData);
 				} else {
-					editMessageText($chatId, (int)$sessionData->lastID, "Le document liÃ© a Ã©tÃ© supprimÃ©.", null, $threadId);
+					editMessageText($chatId, (int)$sessionData->lastID, "Le document lié a été supprimé.", null, $threadId);
 				}
 			}
 
@@ -702,7 +835,7 @@
 				deleteMessage($chatId, (int)$message['message_id'], $threadId);
 			}
 
-			answerCallbackQuery($callbackId, $callbackData === 'btn_del_all' ? "Tout a Ã©tÃ© supprimÃ©." : "Fichier supprimÃ©.");
+			answerCallbackQuery($callbackId, $callbackData === 'btn_del_all' ? "Tout a été supprimé." : "Fichier supprimé.");
 			return;
 		}
 
@@ -745,21 +878,18 @@
 
 		if (preg_match('/^btn_classify_done_(\d+)_(\d+)$/', $callbackData, $matches)) {
 			if (!$document || $document->getId() <= 0) {
-				editMessageText($chatId, (int)$message['message_id'], "Le document n'a pas Ã©tÃ© trouvÃ©.", null, $threadId);
+				editMessageText($chatId, (int)$message['message_id'], "Le document n'a pas été trouvé.", null, $threadId);
 				answerCallbackQuery($callbackId);
 				return;
 			}
 
 			$organizationId = (int)$matches[1];
 			$holonId = (int)$matches[2];
-			$result = $document->assignOrganizationContext($organizationId, $holonId > 0 ? $holonId : null);
-
-			if (!empty($result['status'])) {
-				$document->load($document->getId(), true);
+			if (!\dbObject\Document::canCreateInOrganizationContext($organizationId, $holonId > 0 ? $holonId : null, (int)$user->getId(), 0, false)) {
 				editMessageText(
 					$chatId,
 					(int)$message['message_id'],
-					"Le document a Ã©tÃ© classÃ© dans : ".$document->getOrganizationContextLabel(),
+					"Vous n'avez pas le droit de classer ce document a cet emplacement.",
 					array(
 						array(
 							array('text' => 'Reclasser', 'callback_data' => 'btn_classify'),
@@ -767,7 +897,26 @@
 					),
 					$threadId
 				);
-				answerCallbackQuery($callbackId, "Classement enregistrÃ©.");
+				answerCallbackQuery($callbackId, "Action non autorisee.");
+				return;
+			}
+
+			$result = $document->assignOrganizationContext($organizationId, $holonId > 0 ? $holonId : null);
+
+			if (!empty($result['status'])) {
+				$document->load($document->getId(), true);
+				editMessageText(
+					$chatId,
+					(int)$message['message_id'],
+					"Le document a été classé dans : ".$document->getOrganizationContextLabel(),
+					array(
+						array(
+							array('text' => 'Reclasser', 'callback_data' => 'btn_classify'),
+						),
+					),
+					$threadId
+				);
+				answerCallbackQuery($callbackId, "Classement enregistré.");
 			} else {
 				editMessageText(
 					$chatId,
@@ -775,7 +924,7 @@
 					"Impossible de classer ce document : ".($result['text'] ?? 'erreur inconnue'),
 					array(
 						array(
-							array('text' => 'RÃ©essayer', 'callback_data' => 'btn_classify'),
+							array('text' => 'Réessayer', 'callback_data' => 'btn_classify'),
 						),
 					),
 					$threadId
@@ -835,7 +984,7 @@
 			return;
 		}
 
-		$waitMessageId = sendMessage($chatId, "Un petit moment, je retranscris tout Ã§a...", null, $threadId);
+		$waitMessageId = sendMessage($chatId, "Un petit moment, je retranscris tout ça...", null, $threadId);
 
 		set_time_limit(240);
 		ignore_user_abort(true);
@@ -851,7 +1000,7 @@
 			if ($waitMessageId) {
 				deleteMessage($chatId, $waitMessageId, $threadId);
 			}
-			sendMessage($chatId, "DÃ©solÃ©, je n'ai pas rÃ©ussi Ã  rÃ©cupÃ©rer le fichier audio.", null, $threadId);
+			sendMessage($chatId, "Désolé, je n'ai pas réussi à récupérer le fichier audio.", null, $threadId);
 			return;
 		}
 
@@ -861,7 +1010,7 @@
 			if ($waitMessageId) {
 				deleteMessage($chatId, $waitMessageId, $threadId);
 			}
-			sendMessage($chatId, "DÃ©solÃ©, le tÃ©lÃ©chargement du fichier audio a Ã©chouÃ©.", null, $threadId);
+			sendMessage($chatId, "Désolé, le téléchargement du fichier audio a échoué.", null, $threadId);
 			return;
 		}
 
@@ -895,7 +1044,7 @@
 			if ($waitMessageId) {
 				deleteMessage($chatId, $waitMessageId, $threadId);
 			}
-			sendMessage($chatId, "DÃ©solÃ©, la transcription audio a Ã©chouÃ©.", null, $threadId);
+			sendMessage($chatId, "Désolé, la transcription audio a échoué.", null, $threadId);
 			return;
 		}
 
@@ -904,12 +1053,12 @@
 			if ($waitMessageId) {
 				deleteMessage($chatId, $waitMessageId, $threadId);
 			}
-			sendMessage($chatId, "DÃ©solÃ©, la transcription reÃ§ue est vide ou invalide.", null, $threadId);
+			sendMessage($chatId, "Désolé, la transcription reçue est vide ou invalide.", null, $threadId);
 			return;
 		}
 
-		$prompt = "une mise en page lisible, exhaustive, optimisÃ©e pour la lecture et structurÃ©e du texte (si nÃ©cessaire avec des titres ou des listes Ã  puce)";
-		$readable = say("Peux-tu gÃ©nÃ©rer un JSON pour le texte suivant, comprenant 4 entrÃ©e: une entrÃ©e 'titre' avec un titre pour ce document, une entrÃ©e 'resume' avec un rÃ©sumÃ© du texte en maximum 150 caractÃ¨res, une entrÃ©e 'contenu' avec ".$prompt.", et finalement une entrÃ©e 'hashtag' contenant un tableau avec 3 Ã  5 mots clÃ©s pertinents pour ce texte? Voici le texte : \n".$response->text);
+		$prompt = "une mise en page lisible, exhaustive, optimisée pour la lecture et structurée du texte (si nécessaire avec des titres ou des listes à puce)";
+		$readable = say("Peux-tu générer un JSON pour le texte suivant, comprenant 4 entrée: une entrée 'titre' avec un titre pour ce document, une entrée 'resume' avec un résumé du texte en maximum 150 caractères, une entrée 'contenu' avec ".$prompt.", et finalement une entrée 'hashtag' contenant un tableau avec 3 à 5 mots clés pertinents pour ce texte? Voici le texte : \n".$response->text);
 
 		$dataerr = json_decode("{}");
 		$dataerr->GPTreturn = $readable;
@@ -920,7 +1069,7 @@
 			if ($waitMessageId) {
 				deleteMessage($chatId, $waitMessageId, $threadId);
 			}
-			sendMessage($chatId, "DÃ©solÃ©, problÃ¨me de conversion du JSON...", null, $threadId);
+			sendMessage($chatId, "Désolé, problème de conversion du JSON...", null, $threadId);
 			return;
 		}
 
@@ -937,7 +1086,7 @@
 			if ($waitMessageId) {
 				deleteMessage($chatId, $waitMessageId, $threadId);
 			}
-			sendMessage($chatId, "DÃ©solÃ©, le JSON gÃ©nÃ©rÃ© n'est pas exploitable.", null, $threadId);
+			sendMessage($chatId, "Désolé, le JSON généré n'est pas exploitable.", null, $threadId);
 			return;
 		}
 
@@ -966,7 +1115,7 @@
 
 			try {
 				$doc = new \dbObject\Document();
-				$doc->set("title", $title !== '' ? $title : "MÃ©mo vocal");
+				$doc->set("title", $title !== '' ? $title : "Mémo vocal");
 				$doc->set("description", $resume);
 				$doc->set("content", $content);
 				$doc->set("keywords", $hash);
@@ -999,7 +1148,7 @@
 				$media->save();
 			} catch (\Exception $e) {
 				$doc = null;
-				sendMessage($chatId, "DÃ©solÃ©, problÃ¨me de gÃ©nÃ©ration du fichier...", null, $threadId);
+				sendMessage($chatId, "Désolé, problème de génération du fichier...", null, $threadId);
 			}
 		}
 
@@ -1077,7 +1226,7 @@
 			$data = loadLocalSession($actorId);
 			$data->active = false;
 			saveLocalSession($data, $actorId);
-			sendMessage($chatId, "J'arrÃªte les traductions pour ".$actorId, null, $threadId);
+			sendMessage($chatId, "J'arrête les traductions pour ".$actorId, null, $threadId);
 			return;
 		}
 
@@ -1094,7 +1243,7 @@
 		}
 
 		if (preg_match('/^@pottylicensebot/', $text)) {
-			sendMessage($chatId, "Je ne rÃ©ponds pas aux messages directs, utilisez les commandes.", null, $threadId);
+			sendMessage($chatId, "Je ne réponds pas aux messages directs, utilisez les commandes.", null, $threadId);
 		}
 	}
 
@@ -1127,4 +1276,3 @@
 
 	handleTextMessage($message, $user);
 ?>
-

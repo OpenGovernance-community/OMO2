@@ -18,7 +18,7 @@ if (
 }
 ?>
 <div class="omo-import-popup" data-omo-org-import-popup="1" data-organization-id="<?= (int)$organizationId ?>">
-    <div class="omo-import-popup__hero generic-hero-panel generic-hero-panel--accent">
+    <div class="omo-import-popup__hero generic-hero-panel accent">
         <div class="omo-import-popup__kicker generic-card-title generic-card-title--eyebrow">Import JSON</div>
         <h3 class="omo-import-popup__title generic-card-title generic-card-title--large">Importer une organisation</h3>
         <p class="omo-import-popup__text">Selectionnez un fichier JSON exporte depuis le menu structure. L'import reconstruit les holons, roles, proprietes et les references internes du sous-arbre.</p>
@@ -60,7 +60,6 @@ if (
 }
 
 .omo-import-popup__hero {
-    --generic-hero-padding: 18px;
     --generic-hero-radius: 16px;
 }
 
@@ -96,10 +95,6 @@ if (
 
 .omo-import-popup__input {
     --generic-form-control-padding-block: 10px;
-    --generic-form-control-border: var(--color-border, #d1d5db);
-    --generic-form-control-background: var(--color-surface-alt, #f8fafc);
-    --generic-form-control-background-focus: var(--color-surface, #ffffff);
-    --generic-form-control-color: inherit;
 }
 
 .omo-import-popup__hint {

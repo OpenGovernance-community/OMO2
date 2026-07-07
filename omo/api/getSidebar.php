@@ -1,22 +1,19 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/organization_applications_access.php';
 
 $sourceLang = [
     'sidebar.applications.manage_label' => [
-        'text' => 'Gerer',
+        'text' => 'Gérer',
         'context' => 'Label of the sidebar item used to open the application management picker.'
     ],
     'sidebar.applications.manage_title' => [
-        'text' => 'Gerer les applications',
+        'text' => 'Gérer les applications',
         'context' => 'Tooltip of the sidebar item used to open the application management picker.'
     ],
     'sidebar.parameters.label' => [
-        'text' => 'Parametres',
+        'text' => 'Paramètres',
         'context' => 'Label of the parameters entry in the sidebar.'
-    ],
-    'sidebar.structure.label' => [
-        'text' => 'Structure',
-        'context' => 'Label of the main structure entry in the sidebar.'
     ],
 ];
 
@@ -24,7 +21,7 @@ $lang = omoLoadTranslationBundle('omo_get_sidebar_panel', $sourceLang);
 
 $currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 $currentUserId = commonGetCurrentUserId();
-$canManageApplications = $currentOrganizationId > 0 && $currentUserId > 0;
+$canManageApplications = omoCurrentUserCanManageOrganizationApplications($currentOrganizationId, $currentUserId);
 
 $applications = new \dbObject\ArrayApplication();
 if ($currentOrganizationId > 0) {
@@ -60,7 +57,7 @@ $renderMenuItem = static function (array $item) use ($escape) {
 <div <?= implode(PHP_EOL . '     ', $attributeParts) ?>>
 
     <span class="icon">
-        <img src="<?= $escape($item['icon'] ?? '') ?>" class="icon-img">
+        <img src="<?= $escape($item['icon'] ?? '') ?>" class="icon-img black-icon">
     </span>
     <span class="label"><?= $escape($item['label'] ?? '') ?></span>
 </div>
@@ -69,15 +66,6 @@ $renderMenuItem = static function (array $item) use ($escape) {
 ?>
 
 <div class="menu-primary">
-
-<div class="menu-item active" data-hash="" data-navigation-mode="panel">
-
-    <span class="icon">
-        <img src="images/tools/connection.png" class="icon-img">
-    </span>
-    <span class="label"><?= $escape(t('sidebar.structure.label', [], $lang, $sourceLang)) ?></span>
-</div>
-
 <?php foreach ($applications as $application): ?>
     <?php
     $renderMenuItem([
@@ -97,7 +85,7 @@ $renderMenuItem = static function (array $item) use ($escape) {
         data-omo-open-app-picker="1"
         title="<?= $escape(t('sidebar.applications.manage_title', [], $lang, $sourceLang)) ?>"
     >
-        <span class="icon"><img src="images/tools/plus.png" class="icon-img" style='width:20px;height:20px; margin:2px'></span>
+        <span class="icon"><img src="images/tools/plus.png" class="icon-img black-icon" style='width:20px;height:20px; margin:2px'></span>
         <span class="label"><?= $escape(t('sidebar.applications.manage_label', [], $lang, $sourceLang)) ?></span>
     </div>
 <?php endif; ?>

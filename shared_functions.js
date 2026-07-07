@@ -4,6 +4,8 @@
 //fonctions génériques de validation
 const SHARED_THEME_STORAGE_KEY = 'omo-theme-preference';
 const SHARED_THEME_MEDIA_QUERY = '(prefers-color-scheme: dark)';
+const SHARED_COLOR_STYLE_STORAGE_KEY = 'omo-color-style-preference';
+let sharedThemeMessageListenerBound = false;
 
 function sharedGetThemePreference(storageKey = SHARED_THEME_STORAGE_KEY) {
 	try {
@@ -30,23 +32,147 @@ function sharedResolveTheme(preference, mediaQuery = SHARED_THEME_MEDIA_QUERY) {
 	return window.matchMedia(mediaQuery).matches ? 'dark' : 'light';
 }
 
+function sharedGetColorStylePreference(storageKey = SHARED_COLOR_STYLE_STORAGE_KEY) {
+	try {
+		const storedPreference = window.localStorage.getItem(storageKey);
+
+		if (storedPreference === 'mono' || storedPreference === 'turquoise' || storedPreference === 'ocean-blue') {
+			return storedPreference;
+		}
+	} catch (error) {
+	}
+
+	return 'mono';
+}
+
+function sharedGetParentFrameThemeState() {
+	if (typeof window === 'undefined' || window.parent === window) {
+		return null;
+	}
+
+	try {
+		const parentRoot = window.parent && window.parent.document
+			? window.parent.document.documentElement
+			: null;
+
+		if (!parentRoot || !parentRoot.dataset) {
+			return null;
+		}
+
+		const preference = parentRoot.dataset.themePreference;
+		const theme = parentRoot.dataset.theme;
+		const colorStyle = parentRoot.dataset.colorStyle;
+
+		if (!preference && !theme && !colorStyle) {
+			return null;
+		}
+
+		return {
+			preference: preference === 'light' || preference === 'dark' || preference === 'system'
+				? preference
+				: null,
+			theme: theme === 'light' || theme === 'dark'
+				? theme
+				: null,
+			colorStyle: colorStyle === 'mono' || colorStyle === 'turquoise' || colorStyle === 'ocean-blue'
+				? colorStyle
+				: null
+		};
+	} catch (error) {
+		return null;
+	}
+}
+
+function sharedEnsureThemeMessageListener() {
+	if (sharedThemeMessageListenerBound || typeof window === 'undefined') {
+		return;
+	}
+
+	sharedThemeMessageListenerBound = true;
+	window.addEventListener('message', function (event) {
+		const data = event && event.data && typeof event.data === 'object'
+			? event.data
+			: null;
+
+		if (!data || data.type !== 'omo-theme-sync') {
+			return;
+		}
+
+		sharedApplyDocumentTheme({
+			preference: data.preference,
+			colorStyle: data.colorStyle
+		});
+	});
+}
+
+function sharedBroadcastThemeToChildFrames(detail = {}) {
+	if (typeof document === 'undefined' || typeof window === 'undefined') {
+		return;
+	}
+
+	const payload = {
+		type: 'omo-theme-sync',
+		preference: detail.preference === 'light' || detail.preference === 'dark' || detail.preference === 'system'
+			? detail.preference
+			: sharedGetThemePreference(),
+		colorStyle: detail.colorStyle === 'mono' || detail.colorStyle === 'turquoise' || detail.colorStyle === 'ocean-blue'
+			? detail.colorStyle
+			: sharedGetColorStylePreference()
+	};
+
+	document.querySelectorAll('iframe').forEach(function (frame) {
+		if (!frame || !frame.contentWindow) {
+			return;
+		}
+
+		try {
+			frame.contentWindow.postMessage(payload, window.location.origin);
+		} catch (error) {
+		}
+	});
+}
+
 function sharedApplyDocumentTheme(options = {}) {
-	const settings = options || {};
+	const settings = options && typeof options === 'object' ? options : {};
 	const storageKey = settings.storageKey || SHARED_THEME_STORAGE_KEY;
+	const colorStyleStorageKey = settings.colorStyleStorageKey || SHARED_COLOR_STYLE_STORAGE_KEY;
 	const mediaQuery = settings.mediaQuery || SHARED_THEME_MEDIA_QUERY;
-	const root = settings.root || document.documentElement;
+	const root = settings.root || settings.documentElement || document.documentElement;
+	const parentThemeState = sharedGetParentFrameThemeState();
 	const preference = settings.preference === 'light' || settings.preference === 'dark' || settings.preference === 'system'
 		? settings.preference
-		: sharedGetThemePreference(storageKey);
-	const resolvedTheme = sharedResolveTheme(preference, mediaQuery);
+		: (parentThemeState && parentThemeState.preference
+			? parentThemeState.preference
+			: sharedGetThemePreference(storageKey));
+	const colorStyle = settings.colorStyle === 'mono' || settings.colorStyle === 'turquoise' || settings.colorStyle === 'ocean-blue'
+		? settings.colorStyle
+		: (parentThemeState && parentThemeState.colorStyle
+			? parentThemeState.colorStyle
+			: sharedGetColorStylePreference(colorStyleStorageKey));
+	const resolvedTheme = parentThemeState && parentThemeState.theme && settings.preference !== 'light' && settings.preference !== 'dark'
+		? parentThemeState.theme
+		: sharedResolveTheme(preference, mediaQuery);
+
+	sharedEnsureThemeMessageListener();
 
 	root.dataset.themePreference = preference;
 	root.dataset.theme = resolvedTheme;
+	root.dataset.colorStyle = colorStyle;
 	root.style.colorScheme = resolvedTheme;
+
+	if (typeof window !== 'undefined' && typeof window.setTimeout === 'function') {
+		window.setTimeout(function () {
+			sharedBroadcastThemeToChildFrames({
+				preference: preference,
+				colorStyle: colorStyle
+			});
+		}, 0);
+	}
 
 	return {
 		preference: preference,
-		theme: resolvedTheme
+		theme: resolvedTheme,
+		colorStyle: colorStyle
 	};
 }
 

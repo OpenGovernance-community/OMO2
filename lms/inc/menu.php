@@ -12,13 +12,12 @@ sharedApplyDocumentTheme({
     preference: <?php echo $currentUserId > 0 ? 'undefined' : "'system'"; ?>
 });
 </script>
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <?php
 commonRenderTopbar([
     'appKey' => 'lms',
     'appLabel' => 'LMS',
     'organization' => isset($org) ? $org : null,
-    'logoutReturnTo' => '/lms/',
+    'logoutReturnTo' => lmsBuildLocalPath('/lms/'),
     'search' => [
         'enabled' => true,
         'placeholder' => 'Rechercher un parcours ou une mission',

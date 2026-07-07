@@ -11,7 +11,9 @@
 <?php
 //error_reporting(E_ALL | E_ALL);
 require_once dirname(__DIR__) . '/common/leaflet_helper.php';
+require_once dirname(__DIR__) . '/common/admin_edit_translation.php';
 ?>
+<link rel="stylesheet" href="/common/assets/components.css">
 <style>
     .navTab a {
         border: 1px solid var(--admin-edit-border-strong, #cbd5e1);
@@ -169,6 +171,64 @@ function adminEditBuildTemporalInput($type, $name, $value, $class, $disabled = f
     return $html;
 }
 
+function adminEditResolveImageDisplaySize($object, $key) {
+    $displayWidth = 200;
+    $displayHeight = 200;
+    $lengths = method_exists($object, 'attributeLength') ? $object::attributeLength() : array();
+    $sizeConfig = $lengths[$key] ?? null;
+
+    if (is_array($sizeConfig)) {
+        if (isset($sizeConfig[0]) && is_array($sizeConfig[0])) {
+            $displayWidth = isset($sizeConfig[1][0]) ? (int)$sizeConfig[1][0] : (isset($sizeConfig[0][0]) ? (int)$sizeConfig[0][0] : $displayWidth);
+            $displayHeight = isset($sizeConfig[1][1]) ? (int)$sizeConfig[1][1] : (isset($sizeConfig[0][1]) ? (int)$sizeConfig[0][1] : $displayHeight);
+        } else {
+            $displayWidth = isset($sizeConfig[0]) ? (int)$sizeConfig[0] : $displayWidth;
+            $displayHeight = isset($sizeConfig[1]) ? (int)$sizeConfig[1] : $displayHeight;
+        }
+    }
+
+    if ($displayWidth <= 0) {
+        $displayWidth = 200;
+    }
+    if ($displayHeight <= 0) {
+        $displayHeight = 200;
+    }
+
+    return array($displayWidth, $displayHeight);
+}
+
+function adminEditLegacyEscape($value) {
+    return str_replace("'", "&apos;", (string)$value);
+}
+
+function adminEditPlaceholderText($object, $key, ?array $translationBundle = null, ?array $translationSourceLang = null) {
+    $placeholder = adminEditGetFieldPlaceholder($object, (string)$key, $translationBundle ?? adminEditLoadBundle($object), $translationSourceLang ?? adminEditBuildSourceLang($object));
+
+    return $placeholder !== '' ? $placeholder : '';
+}
+
+function adminEditLengthText($object, $count, ?array $translationBundle = null, ?array $translationSourceLang = null) {
+    return adminEditTranslate(
+        'admin_edit.length.max',
+        ['count' => (int)$count],
+        $object,
+        $translationBundle,
+        $translationSourceLang
+    );
+}
+
+function adminEditFieldHeading($object, $field, ?array $translationBundle = null, ?array $translationSourceLang = null) {
+    $label = adminEditGetFieldLabel($object, (string)$field, $translationBundle ?? adminEditLoadBundle($object), $translationSourceLang ?? adminEditBuildSourceLang($object));
+    $description = adminEditGetFieldDescription($object, (string)$field, $translationBundle ?? adminEditLoadBundle($object), $translationSourceLang ?? adminEditBuildSourceLang($object));
+    $html = htmlspecialchars($label, ENT_QUOTES, 'UTF-8');
+
+    if ($description !== '') {
+        $html .= "<sup class='field_help' title=\"" . htmlspecialchars($description, ENT_QUOTES, 'UTF-8') . "\">?</sup>";
+    }
+
+    return $html;
+}
+
 function getFieldType($object, $key) {
     if (is_object($object)) {
         // Find rows linked to the type
@@ -218,14 +278,16 @@ function getFieldType($object, $key) {
     }
 }
 
-function displayField($object, $key, $default = null, $filter = null) {
+function displayField($object, $key, $default = null, $filter = null, ?array $translationBundle = null, ?array $translationSourceLang = null) {
 
     $type = $object->getFieldType($key);
-    $class = adminEditMergeClass(($object->isRequired($key) ? "required" : ""), "admin-edit__control");
+    $class = adminEditMergeClass(($object->isRequired($key) ? "required" : ""), "admin-edit__control generic-form-control");
     switch ($type) {
         case "fk" :
             // Return this field's text value
-            $txt = "<select class='" . $class . "' name='" . $key . "' id='" . $key . "' ><option value=''>Choisissez...</option>";
+            $txt = "<select class='" . $class . "' name='" . $key . "' id='" . $key . "' ><option value=''>"
+                . htmlspecialchars(adminEditTranslate('admin_edit.choice.select', [], $object, $translationBundle, $translationSourceLang), ENT_QUOTES, 'UTF-8')
+                . "</option>";
 
             // Load values and render them
             foreach ($object->getValues($key, $filter) as $value) {
@@ -284,7 +346,7 @@ function displayField($object, $key, $default = null, $filter = null) {
                 . "</div>";
             break;
         case "timezone" :
-            $str = "<select name='" . $key . "' id='" . $key . "'>";
+            $str = "<select class='" . $class . "' name='" . $key . "' id='" . $key . "'>";
 
             $timezones = timezone_identifiers_list();
             foreach ($timezones as $timezone) {
@@ -323,9 +385,13 @@ function displayField($object, $key, $default = null, $filter = null) {
             return $str;
             break;
         case "latlong" :
-            ob_start();
-            commonRenderLeafletAssets();
-            $leafletAssets = ob_get_clean();
+            $leafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafletMapsEnabled();
+            $leafletAssets = '';
+            if ($leafletMapsEnabled && function_exists('commonRenderLeafletAssets')) {
+                ob_start();
+                commonRenderLeafletAssets();
+                $leafletAssets = ob_get_clean();
+            }
 
             $latitude = 0.0;
             $longitude = 0.0;
@@ -343,11 +409,15 @@ function displayField($object, $key, $default = null, $filter = null) {
 
             $str = $leafletAssets;
             $str .= "<div class='admin-edit__latlong-grid'>";
-            $str .= "<input class='" . $class . "' name='" . $key . "[]' id='" . $key . "_lat' type='text' value='" . htmlspecialchars((string)($hasCoordinates ? $latitude : ''), ENT_QUOTES, 'UTF-8') . "' placeholder='Latitude'>";
-            $str .= "<input class='" . $class . "' name='" . $key . "[]' id='" . $key . "_long' type='text' value='" . htmlspecialchars((string)($hasCoordinates ? $longitude : ''), ENT_QUOTES, 'UTF-8') . "' placeholder='Longitude'>";
+            $str .= "<input class='" . $class . "' name='" . $key . "[]' id='" . $key . "_lat' type='text' value='" . htmlspecialchars((string)($hasCoordinates ? $latitude : ''), ENT_QUOTES, 'UTF-8') . "' placeholder='" . htmlspecialchars(adminEditTranslate('admin_edit.latlong.placeholder.latitude', [], $object, $translationBundle, $translationSourceLang), ENT_QUOTES, 'UTF-8') . "'>";
+            $str .= "<input class='" . $class . "' name='" . $key . "[]' id='" . $key . "_long' type='text' value='" . htmlspecialchars((string)($hasCoordinates ? $longitude : ''), ENT_QUOTES, 'UTF-8') . "' placeholder='" . htmlspecialchars(adminEditTranslate('admin_edit.latlong.placeholder.longitude', [], $object, $translationBundle, $translationSourceLang), ENT_QUOTES, 'UTF-8') . "'>";
             $str .= "</div>";
+            if (!$leafletMapsEnabled) {
+                $str .= "<div class='admin-edit__latlong-help'>" . htmlspecialchars(adminEditTranslate('admin_edit.latlong.help.manual', [], $object, $translationBundle, $translationSourceLang), ENT_QUOTES, 'UTF-8') . "</div>";
+                return $str;
+            }
             $str .= "<div id='map_" . $key . "' class='admin-edit__latlong-map'></div>";
-            $str .= "<div class='admin-edit__latlong-help'>Cliquez sur la carte pour choisir l'emplacement du membre.</div>";
+            $str .= "<div class='admin-edit__latlong-help'>" . htmlspecialchars(adminEditTranslate('admin_edit.latlong.help.map', [], $object, $translationBundle, $translationSourceLang), ENT_QUOTES, 'UTF-8') . "</div>";
             $str .= "<script>(function(){";
             $str .= "var runMapInit = function(){";
             $str .= "var mapElement = document.getElementById('map_" . $key . "');";
@@ -418,8 +488,9 @@ function displayField($object, $key, $default = null, $filter = null) {
             }
             // Otherwise return a plain field
             $str = "<input class='" . $class . "' name='" . $key . "' id='" . $key . "' type='text' value='" . $object->get($key) . "'";
-            if (isset($object::attributePlaceholder()[$key])) {
-                $str .= " placeholder='" . str_replace("'", "&apos;", $object::attributePlaceholder()[$key]) . "' ";
+            $translatedPlaceholder = adminEditPlaceholderText($object, $key, $translationBundle, $translationSourceLang);
+            if ($translatedPlaceholder !== '') {
+                $str .= " placeholder='" . adminEditLegacyEscape($translatedPlaceholder) . "' ";
             }
             $str .= ">";
 
@@ -434,14 +505,15 @@ function displayField($object, $key, $default = null, $filter = null) {
             $str .= "<input type='hidden' name='" . $key . "' id='" . $key . "' value='" . str_replace("'", "&apos;", $colorValue) . "'>";
             $str .= "<input type='color' class='admin-edit__color-picker' id='" . $key . "_picker' value='" . $colorPickerValue . "' data-target='" . $key . "' data-text-target='" . $key . "_text'>";
             $str .= "<input class='" . $colorTextClass . "' name='" . $key . "_text' id='" . $key . "_text' type='text' value='" . str_replace("'", "&apos;", $colorValue) . "' data-target='" . $key . "' data-picker-target='" . $key . "_picker'";
-            if (isset($object::attributePlaceholder()[$key])) {
-                $str .= " placeholder='" . str_replace("'", "&apos;", $object::attributePlaceholder()[$key]) . "' ";
+            $translatedPlaceholder = adminEditPlaceholderText($object, $key, $translationBundle, $translationSourceLang);
+            if ($translatedPlaceholder !== '') {
+                $str .= " placeholder='" . adminEditLegacyEscape($translatedPlaceholder) . "' ";
             } else {
                 $str .= " placeholder='#004663' ";
             }
             if (isset($object::attributeLength()[$key])) {
                 $str .= "maxlength='" . $object::attributeLength()[$key] . "'  onkeyup='countChar($(this), " . $object::attributeLength()[$key] . ")' onkeypress='countChar($(this), " . $object::attributeLength()[$key] . ")' >";
-                $str .= "<div class='char_count'>max " . $object::attributeLength()[$key] . " caracteres</div>";
+                $str .= "<div class='char_count'>" . htmlspecialchars(adminEditLengthText($object, $object::attributeLength()[$key], $translationBundle, $translationSourceLang), ENT_QUOTES, 'UTF-8') . "</div>";
             } else {
                 $str .= ">";
             }
@@ -452,11 +524,12 @@ function displayField($object, $key, $default = null, $filter = null) {
         case "color":
             $colorValue = ($object->get($key) != "" ? $object->get($key) : $default);
             $str = "<input  type='color' class='" . $class . "' name='" . $key . "' id='" . $key . "' style='width:50px' type='text' value='" . str_replace("'", "&apos;", (string)($colorValue ?? "")) . "'";
-            if (isset($object::attributePlaceholder()[$key])) {
-                $str .= " placeholder='" . str_replace("'", "&apos;", $object::attributePlaceholder()[$key]) . "' ";
+            $translatedPlaceholder = adminEditPlaceholderText($object, $key, $translationBundle, $translationSourceLang);
+            if ($translatedPlaceholder !== '') {
+                $str .= " placeholder='" . adminEditLegacyEscape($translatedPlaceholder) . "' ";
             }
             if (isset($object::attributeLength()[$key])) {
-                $str .= "maxlength='" . $object::attributeLength()[$key] . "'  onkeyup='countChar($(this), " . $object::attributeLength()[$key] . ")' onkeypress='countChar($(this), " . $object::attributeLength()[$key] . ")' ><div class='char_count'> max " . $object::attributeLength()[$key] . " caractères</div>";
+                $str .= "maxlength='" . $object::attributeLength()[$key] . "'  onkeyup='countChar($(this), " . $object::attributeLength()[$key] . ")' onkeypress='countChar($(this), " . $object::attributeLength()[$key] . ")' ><div class='char_count'>" . htmlspecialchars(adminEditLengthText($object, $object::attributeLength()[$key], $translationBundle, $translationSourceLang), ENT_QUOTES, 'UTF-8') . "</div>";
             } else {
                 $str .= ">";
             }
@@ -476,11 +549,12 @@ function displayField($object, $key, $default = null, $filter = null) {
             }
             $fieldValue = ($object->get($key) != "" ? $object->get($key) : $default);
             $str = "<input  class='" . $class . "' name='" . $key . "' id='" . $key . "' style='width:100%' type='text' value='" . str_replace("'", "&apos;", (string)($fieldValue ?? "")) . "'";
-            if (isset($object::attributePlaceholder()[$key])) {
-                $str .= " placeholder='" . str_replace("'", "&apos;", $object::attributePlaceholder()[$key]) . "' ";
+            $translatedPlaceholder = adminEditPlaceholderText($object, $key, $translationBundle, $translationSourceLang);
+            if ($translatedPlaceholder !== '') {
+                $str .= " placeholder='" . adminEditLegacyEscape($translatedPlaceholder) . "' ";
             }
             if (isset($object::attributeLength()[$key])) {
-                $str .= "maxlength='" . $object::attributeLength()[$key] . "'  onkeyup='countChar($(this), " . $object::attributeLength()[$key] . ")' onkeypress='countChar($(this), " . $object::attributeLength()[$key] . ")' ><div class='char_count'> max " . $object::attributeLength()[$key] . " caractères</div>";
+                $str .= "maxlength='" . $object::attributeLength()[$key] . "'  onkeyup='countChar($(this), " . $object::attributeLength()[$key] . ")' onkeypress='countChar($(this), " . $object::attributeLength()[$key] . ")' ><div class='char_count'>" . htmlspecialchars(adminEditLengthText($object, $object::attributeLength()[$key], $translationBundle, $translationSourceLang), ENT_QUOTES, 'UTF-8') . "</div>";
             } else {
                 $str .= ">";
             }
@@ -491,7 +565,7 @@ function displayField($object, $key, $default = null, $filter = null) {
             $str = $object->get($key);
             $tmp = "<textarea class='" . $class . "' name='" . $key . "' id='" . $key . "' style='width:100%'";
             if (isset($object::attributeLength()[$key])) {
-                $tmp .= "maxlength='" . $object::attributeLength()[$key] . "' onkeyup='countChar($(this), " . $object::attributeLength()[$key] . ")' onkeypress='countChar($(this), " . $object::attributeLength()[$key] . ")' >" . $str . "</textarea><div class='char_count'> max " . $object::attributeLength()[$key] . " caractères</div>";
+                $tmp .= "maxlength='" . $object::attributeLength()[$key] . "' onkeyup='countChar($(this), " . $object::attributeLength()[$key] . ")' onkeypress='countChar($(this), " . $object::attributeLength()[$key] . ")' >" . $str . "</textarea><div class='char_count'>" . htmlspecialchars(adminEditLengthText($object, $object::attributeLength()[$key], $translationBundle, $translationSourceLang), ENT_QUOTES, 'UTF-8') . "</div>";
             } else {
                 $tmp .= ">" . $str . "</textarea>";
             }
@@ -499,17 +573,23 @@ function displayField($object, $key, $default = null, $filter = null) {
             return $tmp;
         case "html" :
             $str = $object->get($key);
+            $editorProfiles = method_exists($object, 'attributeHtmlEditorProfiles') ? $object::attributeHtmlEditorProfiles() : array();
+            $editorProfile = isset($editorProfiles[$key]) ? trim((string)$editorProfiles[$key]) : '';
+            $profileAttribute = $editorProfile !== ''
+                ? " data-editor-profile='" . htmlspecialchars($editorProfile, ENT_QUOTES, 'UTF-8') . "'"
+                : '';
 
-            return "<textarea  class='" . $class . "summernote' name='" . $key . "' id='" . $key . "' style='width:100%'>" . $str . "</textarea>";
+            return "<textarea  class='" . adminEditMergeClass($class, "summernote") . "' name='" . $key . "' id='" . $key . "' style='width:100%'" . $profileAttribute . ">" . $str . "</textarea>";
             break;
         case "boolean" :
             return "<input type='hidden' id='" . $key . "' name='" . $key . "' value='0'>" .
                 "<input type='checkbox' name='" . $key . "' id='" . $key . "'" . ($object->get($key) > 0 ? "checked" : "") . " value='1'>";
             break;
         case "image" :
+            list($displayWidth, $displayHeight) = adminEditResolveImageDisplaySize($object, $key);
             $output = "<input name='" . $key . "' id='" . $key . "' type='hidden' value='" . str_replace("'", "&apos;", (string)($object->get($key) ?? "")) . "'>";
             $output .= "<input class='" . $class . "' name='" . $key . "_file' id='" . $key . "_file' type='file' onchange='previewFile(\"" . $key . "\",$(\"#img_" . $key . "\"))'><br>";
-            $output .= "<div id='img_" . $key . "' src='' style='width:" . (isset($object::attributeLength()[$key]) ? $object::attributeLength()[$key][0] : "200") . "px; height:" . (isset($object::attributeLength()[$key]) ? $object::attributeLength()[$key][1] : "200") . "px; border:1px solid black; background:url(" . $object->get($key) . "); background-size:cover; background-position:center center'>";
+            $output .= "<div id='img_" . $key . "' src='' style='width:" . $displayWidth . "px; height:" . $displayHeight . "px; border:1px solid black; background:url(" . $object->get($key) . "); background-size:cover; background-position:center center'>";
             $output .= "<div id='drag_img_" . $key . "' class='drag_img' data='#img_" . $key . "' style='width:100%; height:100%;'>";
             $output .= "</div>";
             $output .= "</div>";
@@ -548,7 +628,7 @@ function displayField($object, $key, $default = null, $filter = null) {
             $output = "<input type='hidden' id='" . $key . "' name='" . $key . "' value='" . $object->get($key) . "'>";
 
             $output .= "<div><input type='file' id='imageFileInput_" . $key . "' accept='image/*' style='display:none'>";
-            $output .= "<input type='button' value='Choose image on disk...' onclick='$(\"#imageFileInput_" . $key . "\").click();' />";
+            $output .= "<input type='button' value='" . htmlspecialchars(adminEditTranslate('admin_edit.image.choose_disk', [], $object, $translationBundle, $translationSourceLang), ENT_QUOTES, 'UTF-8') . "' onclick='$(\"#imageFileInput_" . $key . "\").click();' />";
             $output .= "</div>";
 
             $output .= "<div id='imgContainer_" . $key . "' style='position: relative; display: inline-block; border: 1px solid black; cursor: move; overflow: hidden; width:" . $displayWidth . "px; height:" . $displayHeight . "px;'>";
@@ -577,6 +657,37 @@ function displayField($object, $key, $default = null, $filter = null) {
                     var zoomSlider_<?=$key?> = $('#zoomSlider_<?=$key?>');
                     var zoomValue_<?=$key?> = 1;
                     var oldZoomValue_<?=$key?> = 1;
+                    var exportMime_<?=$key?> = 'image/jpeg';
+
+                    function resolveExportFormat_<?=$key?>(source) {
+                        var normalized = String(source || '').toLowerCase();
+
+                        if (normalized.indexOf('image/png') !== -1 || normalized.match(/\.png(?:$|\?)/)) {
+                            return {
+                                mime: 'image/png',
+                                extension: 'png'
+                            };
+                        }
+
+                        if (normalized.indexOf('image/webp') !== -1 || normalized.match(/\.webp(?:$|\?)/)) {
+                            return {
+                                mime: 'image/webp',
+                                extension: 'webp'
+                            };
+                        }
+
+                        return {
+                            mime: 'image/jpeg',
+                            extension: 'jpg'
+                        };
+                    }
+
+                    function setExportFormat_<?=$key?>(source) {
+                        var format = resolveExportFormat_<?=$key?>(source);
+                        exportMime_<?=$key?> = format.mime;
+                    }
+
+                    setExportFormat_<?=$key?>($('#<?=$key?>').val() || (img1 ? img1.currentSrc || img1.src : ''));
 
                     if (imgHeight_<?=$key?> == 0) {
                         imgContainer_<?=$key?>.css("display", "none");
@@ -617,7 +728,7 @@ function displayField($object, $key, $default = null, $filter = null) {
 
                             console.log("Blob prêt pour image :", blob);
 
-                        }, 'image/jpeg', 0.9);
+                        }, exportMime_<?=$key?>, exportMime_<?=$key?> === 'image/png' ? undefined : 0.9);
                     }
 
                     function updateImg_<?=$key?>() {
@@ -657,6 +768,7 @@ function displayField($object, $key, $default = null, $filter = null) {
                     $('#imageFileInput_<?=$key?>').on('change', function (event) {
                         console.log("#imageFileInput_<?=$key?>.change()");
                         var file = event.target.files[0];
+                        setExportFormat_<?=$key?>(file ? file.type : '');
                         var reader = new FileReader();
                         reader.onload = function (event) {
                             // Remove existing image
@@ -751,8 +863,12 @@ function displayField($object, $key, $default = null, $filter = null) {
 
 // Load object metadata
 $colonnes = $this->attributeLabels();
+$adminEditTranslationSourceLang = adminEditBuildSourceLang($this);
+$adminEditTranslationBundle = adminEditLoadBundle($this);
+$adminEditCharCountTemplate = adminEditTranslate('admin_edit.length.progress', ['current' => '__CURRENT__', 'limit' => '__LIMIT__'], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang);
 ?>
 <script>
+    var adminEditCharCountTemplate = <?= json_encode($adminEditCharCountTemplate, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     // generic validation helpers
     function countChar(objet, limit) {
         if (objet.val().length > limit) {
@@ -821,10 +937,11 @@ $colonnes = $this->attributeLabels();
     }
 
     .admin-edit__panel {
-        padding: 24px;
-        border: 1px solid var(--admin-edit-border);
-        border-radius: 22px;
-        background: var(--admin-edit-surface);
+        --generic-soft-panel-padding-block: 24px;
+        --generic-soft-panel-padding-inline: 24px;
+        --generic-soft-panel-radius: 22px;
+        --generic-soft-panel-border: var(--admin-edit-border);
+        --generic-soft-panel-background: var(--admin-edit-surface);
         box-shadow: var(--admin-edit-shadow);
     }
 
@@ -904,12 +1021,12 @@ $colonnes = $this->attributeLabels();
     #formulaire-edit select,
     #formulaire-edit textarea {
         width: 100%;
-        min-height: 46px;
-        padding: 12px 14px;
-        border: 1px solid var(--admin-edit-border);
-        border-radius: 14px;
-        background: var(--admin-edit-surface);
-        color: var(--admin-edit-text);
+        min-height: 44px;
+        padding: 11px 12px;
+        border: 1px solid var(--color-border, #d1d5db);
+        border-radius: 12px;
+        background: var(--color-bg, #f8fafc);
+        color: var(--color-text, #1f2937);
         font: inherit;
         line-height: 1.45;
         transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
@@ -950,22 +1067,22 @@ $colonnes = $this->attributeLabels();
     #formulaire-edit input[type='file'] {
         width: 100%;
         padding: 10px 12px;
-        border: 1px dashed var(--admin-edit-border-strong);
-        border-radius: 14px;
-        background: color-mix(in srgb, var(--admin-edit-surface-alt) 68%, var(--admin-edit-surface));
-        color: var(--admin-edit-muted);
+        border: 1px dashed var(--color-border, #d1d5db);
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 88%, white 12%);
+        color: var(--color-text-light, #64748b);
         box-sizing: border-box;
     }
 
     #formulaire-edit input[type='file']::file-selector-button {
         margin-right: 12px;
         padding: 10px 14px;
-        border: 0;
+        border: 1px solid var(--color-border, #d1d5db);
         border-radius: 10px;
-        background: color-mix(in srgb, var(--admin-edit-primary) 12%, var(--admin-edit-surface));
-        color: var(--admin-edit-primary);
+        background: var(--color-surface, #ffffff);
+        color: var(--color-text, #1f2937);
         font: inherit;
-        font-weight: 600;
+        font-weight: 700;
         cursor: pointer;
     }
 
@@ -994,33 +1111,35 @@ $colonnes = $this->attributeLabels();
     #formulaire-edit select:focus,
     #formulaire-edit textarea:focus {
         outline: none;
-        border-color: var(--admin-edit-primary);
-        box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-edit-primary) 18%, transparent);
+        border-color: color-mix(in srgb, var(--color-primary, #2563eb) 52%, var(--color-border, #d1d5db));
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 14%, transparent);
+        background: var(--color-surface, #ffffff);
     }
 
-    #formulaire-edit button,
+    #formulaire-edit button:not(.note-btn),
     #formulaire-edit input[type='button'],
     #formulaire-edit input[type='submit'] {
-        min-height: 44px;
-        padding: 0 18px;
+        min-height: 42px;
+        padding: 10px 16px;
         border: 1px solid transparent;
-        border-radius: 999px;
-        background: var(--admin-edit-primary);
-        color: #ffffff;
+        border-radius: 12px;
+        background: var(--color-primary, #2563eb);
+        color: var(--color-text-inverse, #ffffff);
         font: inherit;
         font-weight: 700;
+        line-height: 1.35;
         cursor: pointer;
-        transition: transform 0.18s ease, filter 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+        box-shadow: var(--shadow-md, 0 12px 24px rgba(0, 0, 0, 0.12));
+        transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
     }
 
-    #formulaire-edit button:hover,
+    #formulaire-edit button:not(.note-btn):hover,
     #formulaire-edit input[type='button']:hover,
     #formulaire-edit input[type='submit']:hover {
-        filter: brightness(1.03);
         transform: translateY(-1px);
     }
 
-    #formulaire-edit button:disabled,
+    #formulaire-edit button:not(.note-btn):disabled,
     #formulaire-edit input[type='button']:disabled,
     #formulaire-edit input[type='submit']:disabled {
         opacity: 0.6;
@@ -1030,9 +1149,10 @@ $colonnes = $this->attributeLabels();
 
     #formulaire-edit .admin-edit__action--secondary,
     #formulaire-edit .admin-edit__draft-button {
-        background: var(--admin-edit-surface);
-        color: var(--admin-edit-text);
-        border-color: var(--admin-edit-border);
+        background: var(--color-surface-alt, #f0f2f5);
+        color: var(--color-text, #1f2937);
+        border-color: var(--color-border, #d1d5db);
+        box-shadow: none;
     }
 
     #formulaire-edit h1,
@@ -1055,7 +1175,7 @@ $colonnes = $this->attributeLabels();
 
     .char_count {
         margin-top: 8px;
-        color: var(--admin-edit-muted);
+        color: var(--color-text-light, #64748b);
         font-size: 0.85rem;
     }
 
@@ -1161,7 +1281,9 @@ $colonnes = $this->attributeLabels();
 <?php
 
 // Header
-$adminEditToolbarTitle = ($this->getId() != "" ? "Edition" : "Creation");
+$adminEditToolbarTitle = $this->getId() != ""
+    ? adminEditTranslate('admin_edit.toolbar.edit', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang)
+    : adminEditTranslate('admin_edit.toolbar.create', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang);
 echo "<div class='admin-edit'>";
 echo "<form id='formulaire-edit' method='POST' enctype='multipart/form-data'";
 if (isset($params["action"]) && $params["action"]) {
@@ -1172,14 +1294,14 @@ echo "<input type='hidden' name='MAX_FILE_SIZE' value='300000000' />";
 
 // Navigation buttons
 if ($params["buttons"]) {
-    echo "<div class='admin-edit__toolbar'><div class='admin-edit__toolbar-inner'><div class='admin-edit__toolbar-copy'><h2 class='admin-edit__toolbar-title'>" . $adminEditToolbarTitle . "</h2><p class='admin-edit__toolbar-text'>Renseignez les champs puis enregistrez.</p></div><div class='admin-edit__actions'><input type='button' class='admin-edit__action--secondary' value='Annuler' onclick='history.go(-1)'> <input id='btn_submit' type='button' value='Sauver'>";
+    echo "<div class='admin-edit__toolbar'><div class='admin-edit__toolbar-inner'><div class='admin-edit__toolbar-copy'><h2 class='admin-edit__toolbar-title'>" . htmlspecialchars($adminEditToolbarTitle, ENT_QUOTES, 'UTF-8') . "</h2><p class='admin-edit__toolbar-text'>" . htmlspecialchars(adminEditTranslate('admin_edit.toolbar.text', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "</p></div><div class='admin-edit__actions'><input type='button' class='generic-action-button generic-action-button--secondary admin-edit__action--secondary' value='" . htmlspecialchars(adminEditTranslate('admin_edit.action.cancel', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "' onclick='history.go(-1)'> <input id='btn_submit' class='generic-action-button generic-action-button--main' type='button' value='" . htmlspecialchars(adminEditTranslate('admin_edit.action.save', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "'>";
 
     if ($params["displayDraft"]) {
-        echo "<input id='btn_save' class='admin-edit__draft-button' type='button' value='Enregistrer comme brouillon'>";
+        echo "<input id='btn_save' class='generic-action-button generic-action-button--secondary admin-edit__draft-button' type='button' value='" . htmlspecialchars(adminEditTranslate('admin_edit.action.save_draft', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "'>";
     }
     echo "</div></div></div>";
 }
-echo "<div class='admin-edit__panel'>";
+echo "<div class='admin-edit__panel generic-soft-panel'>";
 echo "<table class='dbobjecttable'>";
 $id = false;
 $allowProtectedFields = !empty($params["allowProtectedFields"]);
@@ -1209,11 +1331,11 @@ if (isset($params["fields"])) {
                     $id = true;
                 }
                 echo "<tr" . ($hidden ? " style='display:none'" : "") . " id='" . $colonne[0] . "'>";
-                echo "<th style='white-space:nowrap'>" . $colonnes[$colonne[0]] . (isset($this->attributeDescriptions()[$colonne[0]]) ? "<sup class='field_help' title=\"" . $this->attributeDescriptions()[$colonne[0]] . "\">?</sup>" : "") . "</th>";
+                echo "<th style='white-space:nowrap'>" . adminEditFieldHeading($this, $colonne[0], $adminEditTranslationBundle, $adminEditTranslationSourceLang) . "</th>";
                 echo "<td>";
                 echo "<table><tr>";
                 foreach ($colonne as $col) {
-                    echo "<td>" . displayField($this, $col, $default, $params["filter"][$col] ?? null) . "</td>";
+                    echo "<td>" . displayField($this, $col, $default, $params["filter"][$col] ?? null, $adminEditTranslationBundle, $adminEditTranslationSourceLang) . "</td>";
                 }
                 echo "</tr></table>";
                 echo "</td>";
@@ -1253,11 +1375,11 @@ if (isset($params["fields"])) {
                                 echo $display[0];
                             }
                         } else {
-                            echo $colonnes[$colonne] . (isset($this->attributeDescriptions()[$colonne]) ? "<sup class='field_help' title=\"" . $this->attributeDescriptions()[$colonne] . "\">?</sup>" : "");
+                            echo adminEditFieldHeading($this, $colonne, $adminEditTranslationBundle, $adminEditTranslationSourceLang);
                         }
                     } else // Otherwise show default text
                     {
-                        echo $colonnes[$colonne] . (isset($this->attributeDescriptions()[$colonne]) ? "<sup class='field_help' title=\"" . $this->attributeDescriptions()[$colonne] . "\">?</sup>" : "");
+                        echo adminEditFieldHeading($this, $colonne, $adminEditTranslationBundle, $adminEditTranslationSourceLang);
                     }
                     echo "</th>";
                     echo "<td>";
@@ -1278,9 +1400,9 @@ if (isset($params["fields"])) {
                         $id = true;
                     }
                     echo "<tr" . ($hidden ? " style='display:none'" : "") . " id='row_" . $colonne . "'>";
-                    echo "<th>" . $colonnes[$colonne] . (isset($this->attributeDescriptions()[$colonne]) ? "<sup class='field_help' title=\"" . $this->attributeDescriptions()[$colonne] . "\">?</sup>" : "") . "</th>";
+                    echo "<th>" . adminEditFieldHeading($this, $colonne, $adminEditTranslationBundle, $adminEditTranslationSourceLang) . "</th>";
 
-                    echo "<td>" . displayField($this, $colonne, $default, $params["filter"][$colonne] ?? null) . "</td>";
+                    echo "<td>" . displayField($this, $colonne, $default, $params["filter"][$colonne] ?? null, $adminEditTranslationBundle, $adminEditTranslationSourceLang) . "</td>";
 
                     echo "</tr>";
                 }
@@ -1295,18 +1417,21 @@ if (isset($params["fields"])) {
                 $id = true;
             }
             echo "<tr id='row_" . $key . "'>";
-            echo "<th>" . $colonne . (isset($this->attributeDescriptions()[$key]) ? "<sup class='field_help' title=\"" . $this->attributeDescriptions()[$key] . "\">?</sup>" : "") . "</th><td>";
+            echo "<th>" . adminEditFieldHeading($this, $key, $adminEditTranslationBundle, $adminEditTranslationSourceLang) . "</th><td>";
             // Default vs specific elements?
             if (isset($params["widget"]) && isset($params["widget"][$key])) {
                 echo $params["widget"][$key]($this, $key);
             } else {
-                echo displayField($this, $key, null, $params["filter"][$key] ?? null);
+                echo displayField($this, $key, null, $params["filter"][$key] ?? null, $adminEditTranslationBundle, $adminEditTranslationSourceLang);
             }
             echo "</td></tr>";
         }
     }
 };
 echo "</table>";
+if (isset($params["afterTableHtml"]) && is_string($params["afterTableHtml"]) && trim($params["afterTableHtml"]) !== "") {
+    echo $params["afterTableHtml"];
+}
 echo "</div>";
 if (!$id && $this->getId() != "") {
     echo "<input type='hidden' id='id' name='id' value='" . $this->getId() . "'>";
@@ -1318,7 +1443,183 @@ echo "</div>";
 <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
 <script src="https://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
 <script>
+    window.adminEditSummernoteInitPromise = window.adminEditSummernoteInitPromise || null;
+
+    function adminEditLoadStyleOnce(href, dataAttribute) {
+        return new Promise(function (resolve, reject) {
+            if (!href) {
+                resolve();
+                return;
+            }
+
+            var existingLink = document.querySelector('link[' + dataAttribute + '="' + href + '"]');
+            if (existingLink) {
+                resolve();
+                return;
+            }
+
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = href;
+            link.setAttribute(dataAttribute, href);
+            link.onload = function () {
+                resolve();
+            };
+            link.onerror = function () {
+                reject(new Error('summernote_css_load_failed'));
+            };
+            document.head.appendChild(link);
+        });
+    }
+
+    function adminEditLoadScriptOnce(src, dataAttribute) {
+        return new Promise(function (resolve, reject) {
+            if (!src) {
+                resolve();
+                return;
+            }
+
+            var existingScript = document.querySelector('script[' + dataAttribute + '="' + src + '"]');
+            if (existingScript) {
+                if (existingScript.getAttribute('data-admin-edit-loaded') === '1') {
+                    resolve();
+                    return;
+                }
+
+                existingScript.addEventListener('load', function () {
+                    existingScript.setAttribute('data-admin-edit-loaded', '1');
+                    resolve();
+                }, { once: true });
+                existingScript.addEventListener('error', function () {
+                    reject(new Error('summernote_js_load_failed'));
+                }, { once: true });
+                return;
+            }
+
+            var script = document.createElement('script');
+            script.src = src;
+            script.async = false;
+            script.setAttribute(dataAttribute, src);
+            script.onload = function () {
+                script.setAttribute('data-admin-edit-loaded', '1');
+                resolve();
+            };
+            script.onerror = function () {
+                reject(new Error('summernote_js_load_failed'));
+            };
+            document.head.appendChild(script);
+        });
+    }
+
+    function adminEditEnsureSummernoteAssets() {
+        if (window.jQuery && window.jQuery.fn && typeof window.jQuery.fn.summernote === 'function') {
+            return Promise.resolve(window.jQuery);
+        }
+
+        if (window.adminEditSummernoteInitPromise) {
+            return window.adminEditSummernoteInitPromise;
+        }
+
+        var summernoteVersion = '0.8.18';
+        var summernoteCssUrl = 'https://cdnjs.cloudflare.com/ajax/libs/summernote/' + summernoteVersion + '/summernote-lite.min.css';
+        var summernoteJsUrl = 'https://cdnjs.cloudflare.com/ajax/libs/summernote/' + summernoteVersion + '/summernote-lite.min.js';
+        var summernoteLangUrl = 'https://cdnjs.cloudflare.com/ajax/libs/summernote/' + summernoteVersion + '/lang/summernote-fr-FR.min.js';
+
+        window.adminEditSummernoteInitPromise = adminEditLoadStyleOnce(summernoteCssUrl, 'data-admin-edit-summernote-css')
+            .then(function () {
+                return adminEditLoadScriptOnce(summernoteJsUrl, 'data-admin-edit-summernote-js');
+            })
+            .then(function () {
+                return adminEditLoadScriptOnce(summernoteLangUrl, 'data-admin-edit-summernote-lang');
+            })
+            .then(function () {
+                if (!window.jQuery || !window.jQuery.fn || typeof window.jQuery.fn.summernote !== 'function') {
+                    throw new Error('summernote_not_available');
+                }
+
+                return window.jQuery;
+            });
+
+        return window.adminEditSummernoteInitPromise;
+    }
+
+    function adminEditSyncHtmlFields(scope) {
+        if (!window.jQuery || !window.jQuery.fn) {
+            return;
+        }
+
+        var root = scope || document;
+        window.jQuery(root).find('textarea.summernote').each(function () {
+            var field = window.jQuery(this);
+            if (field.data('adminEditSummernoteBound') === true && typeof field.summernote === 'function') {
+                try {
+                    field.val(field.summernote('code'));
+                } catch (error) {
+                }
+            }
+        });
+    }
+
+    function adminEditInitHtmlFields(scope) {
+        var root = scope || document;
+        var textareas = root.querySelectorAll ? root.querySelectorAll('textarea.summernote') : [];
+        if (!textareas || textareas.length === 0) {
+            return Promise.resolve();
+        }
+
+        function adminEditGetHtmlEditorOptions(field) {
+            var profile = (field.data('editorProfile') || '').toString();
+            var options = {
+                lang: 'fr-FR',
+                height: 240,
+                disableResizeEditor: true,
+                toolbar: [
+                    ['style', ['style']],
+                    ['font', ['bold', 'italic', 'underline', 'clear']],
+                    ['para', ['ul', 'ol', 'paragraph']],
+                    ['insert', ['link', 'table', 'hr']],
+                    ['view', ['codeview']]
+                ]
+            };
+
+            if (profile === 'simple') {
+                options.toolbar = [
+                    ['font', ['bold', 'italic', 'underline', 'clear']],
+                    ['para', ['ul', 'ol', 'paragraph']]
+                ];
+            }
+
+            options.callbacks = {
+                onChange: function (contents) {
+                    field.val(contents);
+                }
+            };
+
+            return options;
+        }
+
+        return adminEditEnsureSummernoteAssets()
+            .then(function ($) {
+                Array.prototype.forEach.call(textareas, function (textarea) {
+                    var field = $(textarea);
+                    if (field.data('adminEditSummernoteBound') === true) {
+                        return;
+                    }
+
+                    field.data('adminEditSummernoteBound', true);
+                    field.summernote(adminEditGetHtmlEditorOptions(field));
+
+                    field.val(field.summernote('code'));
+                });
+            })
+            .catch(function () {
+                console.warn('Impossible de charger l editeur HTML adminEdit.');
+            });
+    }
+
     $(function () {
+        adminEditInitHtmlFields(document);
+
         $(".required").each(function () {
             $(this).closest("tr").find("th").append("<span class='required-star'>*</span>");
         });
@@ -1347,6 +1648,7 @@ echo "</div>";
         });
 
         $("#btn_submit").click(function () {
+            adminEditSyncHtmlFields(document);
 
             let serform = $("#formulaire-edit").serialize()
             if (serform.length > 20000000) {
@@ -1381,6 +1683,7 @@ echo "</div>";
 
             var form = this;
             var url = $(form).attr('action');
+            adminEditSyncHtmlFields(form);
             var formData = new FormData(form);
 
             console.log("=== SUBMIT START ===");
@@ -1392,7 +1695,15 @@ echo "</div>";
 
                     if (blob) {
                         console.log("Ajout image :", key, blob);
-                        formData.append(key, blob, key + '.jpg');
+                        let extension = 'jpg';
+
+                        if (blob.type === 'image/png') {
+                            extension = 'png';
+                        } else if (blob.type === 'image/webp') {
+                            extension = 'webp';
+                        }
+
+                        formData.append(key, blob, key + '.' + extension);
                     }
                 }
             } else {

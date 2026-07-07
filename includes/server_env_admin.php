@@ -1,13 +1,46 @@
 <?php
+require_once __DIR__ . '/env.php';
+
+function serverEnvAdminT($key, $fallback, array $replace = [])
+{
+    if (function_exists('omoServerEnvT')) {
+        return omoServerEnvT($key, $replace);
+    }
+
+    return strtr((string)$fallback, array_map(function ($value) {
+        return (string)$value;
+    }, array_combine(
+        array_map(function ($name) {
+            return '{' . $name . '}';
+        }, array_keys($replace)),
+        array_values($replace)
+    ) ?: []));
+}
 
 function serverEnvAdminGetEnvPath()
 {
-    return dirname(__DIR__) . '/.env';
+    if (function_exists('envIsLocalRuntimeHost') && envIsLocalRuntimeHost()) {
+        return envGetLocalOverrideEnvPath();
+    }
+
+    return envGetPrimaryEnvPath();
 }
 
 function serverEnvAdminGetExampleEnvPath()
 {
     return dirname(__DIR__) . '/.env.example';
+}
+
+function serverEnvAdminGetEnvTargetLabel()
+{
+    $projectRoot = rtrim(str_replace('\\', '/', dirname(__DIR__)), '/');
+    $envPath = str_replace('\\', '/', serverEnvAdminGetEnvPath());
+
+    if ($projectRoot !== '' && strpos($envPath, $projectRoot . '/') === 0) {
+        return substr($envPath, strlen($projectRoot) + 1);
+    }
+
+    return basename($envPath);
 }
 
 function serverEnvAdminGetEditableSections()
@@ -20,22 +53,22 @@ function serverEnvAdminGetEditableSections()
 
     $sections = [
         'general' => [
-            'title' => 'Parametres generaux',
-            'intro' => 'Reglages globaux du site visibles sur plusieurs pages.',
+            'title' => serverEnvAdminT('parameters.server_env.section.general.title', 'Parametres generaux'),
+            'intro' => serverEnvAdminT('parameters.server_env.section.general.intro', 'Reglages globaux du site visibles sur plusieurs pages.'),
             'fields' => [
                 [
                     'key' => 'SITE_TITLE',
-                    'label' => 'Titre du site',
+                    'label' => serverEnvAdminT('parameters.server_env.field.SITE_TITLE.label', 'Titre du site'),
                     'type' => 'text',
                 ],
                 [
                     'key' => 'HOME_TITLE',
-                    'label' => 'Titre de la page d accueil',
+                    'label' => serverEnvAdminT('parameters.server_env.field.HOME_TITLE.label', 'Titre de la page d accueil'),
                     'type' => 'text',
                 ],
                 [
                     'key' => 'APP_LANG',
-                    'label' => 'Langue par defaut',
+                    'label' => serverEnvAdminT('parameters.server_env.field.APP_LANG.label', 'Langue par defaut'),
                     'type' => 'select',
                     'options' => [
                         'FR' => 'FR',
@@ -44,170 +77,189 @@ function serverEnvAdminGetEditableSections()
                 ],
                 [
                     'key' => 'ORGANIZATION_SUBDOMAIN_ROUTING',
-                    'label' => 'Sous-domaines par organisation',
+                    'label' => serverEnvAdminT('parameters.server_env.field.ORGANIZATION_SUBDOMAIN_ROUTING.label', 'Sous-domaines par organisation'),
                     'type' => 'select',
                     'options' => [
-                        'true' => 'Oui',
-                        'false' => 'Non',
+                        'true' => serverEnvAdminT('parameters.server_env.option.boolean.true', 'Oui'),
+                        'false' => serverEnvAdminT('parameters.server_env.option.boolean.false', 'Non'),
                     ],
-                    'help' => 'Active les URL du type orgname.domaine.com. Cela demande une configuration speciale de l hebergement, avec DNS wildcard et serveur web capable d accepter les sous-domaines.',
+                    'help' => serverEnvAdminT('parameters.server_env.field.ORGANIZATION_SUBDOMAIN_ROUTING.help', 'Active les URL du type orgname.domaine.com. Cela demande une configuration speciale de l hebergement, avec DNS wildcard et serveur web capable d accepter les sous-domaines.'),
+                ],
+                [
+                    'key' => 'COOKIE_SCOPE_MODE',
+                    'label' => serverEnvAdminT('parameters.server_env.field.COOKIE_SCOPE_MODE.label', 'Portee des cookies'),
+                    'type' => 'select',
+                    'options' => [
+                        'auto' => 'Auto',
+                        'host' => 'Host',
+                        'environment' => 'Environment',
+                        'parent' => 'Parent',
+                    ],
+                    'help' => serverEnvAdminT('parameters.server_env.field.COOKIE_SCOPE_MODE.help', 'Auto isole par defaut dev, beta et deploy en host-only. Environment partage dans *.dev.domaine.tld. Parent partage dans *.domaine.tld. Host force un cookie limite au host courant.'),
+                ],
+                [
+                    'key' => 'COOKIE_ROOT_HOST',
+                    'label' => serverEnvAdminT('parameters.server_env.field.COOKIE_ROOT_HOST.label', 'Racine cookies'),
+                    'type' => 'text',
+                    'placeholder' => 'dev.opengov.tools',
+                    'help' => serverEnvAdminT('parameters.server_env.field.COOKIE_ROOT_HOST.help', 'Optionnel. Si renseigne, force le partage des cookies a cette racine exacte, par exemple dev.opengov.tools pour partager entre dev.opengov.tools et *.dev.opengov.tools sans toucher a la prod.'),
                 ],
             ],
         ],
         'mail' => [
-            'title' => 'E-mail',
-            'intro' => 'Configuration SMTP generale du serveur.',
+            'title' => serverEnvAdminT('parameters.server_env.section.mail.title', 'E-mail'),
+            'intro' => serverEnvAdminT('parameters.server_env.section.mail.intro', 'Configuration SMTP generale du serveur.'),
             'fields' => [
                 [
                     'key' => 'MAIL_HOST',
-                    'label' => 'Serveur SMTP',
+                    'label' => serverEnvAdminT('parameters.server_env.field.MAIL_HOST.label', 'Serveur SMTP'),
                     'type' => 'text',
                 ],
                 [
                     'key' => 'MAIL_PORT',
-                    'label' => 'Port SMTP',
+                    'label' => serverEnvAdminT('parameters.server_env.field.MAIL_PORT.label', 'Port SMTP'),
                     'type' => 'number',
                 ],
                 [
                     'key' => 'MAIL_SECURE',
-                    'label' => 'Securite SMTP',
+                    'label' => serverEnvAdminT('parameters.server_env.field.MAIL_SECURE.label', 'Securite SMTP'),
                     'type' => 'text',
-                    'placeholder' => 'SSL, tls ou vide',
+                    'placeholder' => serverEnvAdminT('parameters.server_env.field.MAIL_SECURE.placeholder', 'SSL, tls ou vide'),
                 ],
                 [
                     'key' => 'MAIL_AUTH',
-                    'label' => 'Authentification SMTP',
+                    'label' => serverEnvAdminT('parameters.server_env.field.MAIL_AUTH.label', 'Authentification SMTP'),
                     'type' => 'select',
                     'options' => [
-                        'true' => 'Oui',
-                        'false' => 'Non',
+                        'true' => serverEnvAdminT('parameters.server_env.option.boolean.true', 'Oui'),
+                        'false' => serverEnvAdminT('parameters.server_env.option.boolean.false', 'Non'),
                     ],
                 ],
                 [
                     'key' => 'MAIL_CHARSET',
-                    'label' => 'Jeu de caracteres e-mail',
+                    'label' => serverEnvAdminT('parameters.server_env.field.MAIL_CHARSET.label', 'Jeu de caracteres e-mail'),
                     'type' => 'text',
                 ],
                 [
                     'key' => 'MAIL_USER',
-                    'label' => 'Utilisateur SMTP',
+                    'label' => serverEnvAdminT('parameters.server_env.field.MAIL_USER.label', 'Utilisateur SMTP'),
                     'type' => 'text',
                 ],
                 [
                     'key' => 'MAIL_PASS',
-                    'label' => 'Mot de passe SMTP',
+                    'label' => serverEnvAdminT('parameters.server_env.field.MAIL_PASS.label', 'Mot de passe SMTP'),
                     'type' => 'password',
                     'secret' => true,
-                    'help' => 'Laissez vide pour conserver la valeur actuelle.',
+                    'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
                 ],
             ],
         ],
         'ai' => [
-            'title' => 'IA',
-            'intro' => 'Cles et modeles utilises par les fonctions OpenAI.',
+            'title' => serverEnvAdminT('parameters.server_env.section.ai.title', 'IA'),
+            'intro' => serverEnvAdminT('parameters.server_env.section.ai.intro', 'Cles et modeles utilises par les fonctions OpenAI.'),
             'fields' => [
                 [
                     'key' => 'OPENAI_API_KEY',
-                    'label' => 'Cle OpenAI',
+                    'label' => serverEnvAdminT('parameters.server_env.field.OPENAI_API_KEY.label', 'Cle OpenAI'),
                     'type' => 'password',
                     'secret' => true,
-                    'help' => 'Laissez vide pour conserver la valeur actuelle.',
+                    'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
                 ],
                 [
                     'key' => 'OPENAI_UPLOAD_API_KEY',
-                    'label' => 'Cle OpenAI upload',
+                    'label' => serverEnvAdminT('parameters.server_env.field.OPENAI_UPLOAD_API_KEY.label', 'Cle OpenAI upload'),
                     'type' => 'password',
                     'secret' => true,
-                    'help' => 'Laissez vide pour conserver la valeur actuelle.',
+                    'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
                 ],
                 [
                     'key' => 'OPENAI_MODEL',
-                    'label' => 'Modele OpenAI',
+                    'label' => serverEnvAdminT('parameters.server_env.field.OPENAI_MODEL.label', 'Modele OpenAI'),
                     'type' => 'text',
                 ],
                 [
                     'key' => 'OPENAI_TRANSLATION_MODEL',
-                    'label' => 'Modele de traduction OpenAI',
+                    'label' => serverEnvAdminT('parameters.server_env.field.OPENAI_TRANSLATION_MODEL.label', 'Modele de traduction OpenAI'),
                     'type' => 'text',
                 ],
                 [
                     'key' => 'STADIA_MAPS_API_KEY',
-                    'label' => 'Cle Stadia Maps',
+                    'label' => serverEnvAdminT('parameters.server_env.field.STADIA_MAPS_API_KEY.label', 'Cle Stadia Maps'),
                     'type' => 'password',
                     'secret' => true,
-                    'help' => 'Laissez vide pour conserver la valeur actuelle.',
+                    'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
                 ],
             ],
         ],
         'integrations' => [
-            'title' => 'Integrations',
-            'intro' => 'Services externes optionnels du serveur.',
+            'title' => serverEnvAdminT('parameters.server_env.section.integrations.title', 'Integrations'),
+            'intro' => serverEnvAdminT('parameters.server_env.section.integrations.intro', 'Services externes optionnels du serveur.'),
             'fields' => [
                 [
                     'key' => 'PAYPAL_CLIENT_ID',
-                    'label' => 'Client ID PayPal',
+                    'label' => serverEnvAdminT('parameters.server_env.field.PAYPAL_CLIENT_ID.label', 'Client ID PayPal'),
                     'type' => 'text',
                 ],
                 [
                     'key' => 'TELEGRAM_BOT_TOKEN',
-                    'label' => 'Token Telegram',
+                    'label' => serverEnvAdminT('parameters.server_env.field.TELEGRAM_BOT_TOKEN.label', 'Token Telegram'),
                     'type' => 'password',
                     'secret' => true,
-                    'help' => 'Laissez vide pour conserver la valeur actuelle.',
+                    'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
                 ],
                 [
                     'key' => 'PATREON_CLIENT_ID',
-                    'label' => 'Client ID Patreon',
+                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CLIENT_ID.label', 'Client ID Patreon'),
                     'type' => 'text',
                 ],
                 [
                     'key' => 'PATREON_CLIENT_SECRET',
-                    'label' => 'Client secret Patreon',
+                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CLIENT_SECRET.label', 'Client secret Patreon'),
                     'type' => 'password',
                     'secret' => true,
-                    'help' => 'Laissez vide pour conserver la valeur actuelle.',
+                    'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
                 ],
                 [
                     'key' => 'PATREON_REDIRECT_URI',
-                    'label' => 'Redirect URI Patreon',
+                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_REDIRECT_URI.label', 'Redirect URI Patreon'),
                     'type' => 'text',
                 ],
                 [
                     'key' => 'PATREON_CREATOR_CAMPAIGN_ID',
-                    'label' => 'Campaign ID Patreon',
+                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CREATOR_CAMPAIGN_ID.label', 'Campaign ID Patreon'),
                     'type' => 'text',
                 ],
                 [
                     'key' => 'PATREON_USER_AGENT',
-                    'label' => 'User-Agent Patreon',
+                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_USER_AGENT.label', 'User-Agent Patreon'),
                     'type' => 'text',
                 ],
                 [
                     'key' => 'GITHUB_BUGREPORT_TOKEN',
-                    'label' => 'Token GitHub bug report',
+                    'label' => serverEnvAdminT('parameters.server_env.field.GITHUB_BUGREPORT_TOKEN.label', 'Token GitHub bug report'),
                     'type' => 'password',
                     'secret' => true,
-                    'help' => 'Laissez vide pour conserver la valeur actuelle.',
+                    'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
                 ],
                 [
                     'key' => 'GITHUB_BUGREPORT_REPO_OWNER',
-                    'label' => 'Repository owner GitHub',
+                    'label' => serverEnvAdminT('parameters.server_env.field.GITHUB_BUGREPORT_REPO_OWNER.label', 'Repository owner GitHub'),
                     'type' => 'text',
                 ],
                 [
                     'key' => 'GITHUB_BUGREPORT_REPO_NAME',
-                    'label' => 'Repository name GitHub',
+                    'label' => serverEnvAdminT('parameters.server_env.field.GITHUB_BUGREPORT_REPO_NAME.label', 'Repository name GitHub'),
                     'type' => 'text',
                 ],
                 [
                     'key' => 'GITHUB_BUGREPORT_LABELS',
-                    'label' => 'Labels GitHub',
+                    'label' => serverEnvAdminT('parameters.server_env.field.GITHUB_BUGREPORT_LABELS.label', 'Labels GitHub'),
                     'type' => 'text',
                     'placeholder' => 'bug,triage',
                 ],
                 [
                     'key' => 'GITHUB_BUGREPORT_USER_AGENT',
-                    'label' => 'User-Agent GitHub',
+                    'label' => serverEnvAdminT('parameters.server_env.field.GITHUB_BUGREPORT_USER_AGENT.label', 'User-Agent GitHub'),
                     'type' => 'text',
                 ],
             ],
@@ -395,7 +447,11 @@ function serverEnvAdminValidateValues(array $values)
         }
 
         if (!array_key_exists($value, $fieldMap[$key]['options'])) {
-            $errors[] = 'La valeur choisie pour ' . $fieldMap[$key]['label'] . ' est invalide.';
+            $errors[] = serverEnvAdminT(
+                'parameters.server_env.error.invalid_field_value',
+                'La valeur choisie pour {label} est invalide.',
+                ['label' => $fieldMap[$key]['label']]
+            );
         }
     }
 
@@ -409,9 +465,10 @@ function serverEnvAdminValidateValues(array $values)
     }
 
     $envPath = serverEnvAdminGetEnvPath();
+    $targetLabel = serverEnvAdminGetEnvTargetLabel();
     $directory = dirname($envPath);
     if (!is_dir($directory) || !is_writable($directory)) {
-        $errors[] = 'Le dossier contenant le fichier .env n est pas accessible en ecriture.';
+        $errors[] = 'Le dossier contenant le fichier ' . $targetLabel . ' n est pas accessible en ecriture.';
     }
 
     return $errors;
@@ -435,9 +492,14 @@ function serverEnvAdminEncodeEnvValue($value)
 function serverEnvAdminWriteValues(array $values)
 {
     $envPath = serverEnvAdminGetEnvPath();
+    $targetLabel = serverEnvAdminGetEnvTargetLabel();
     $lines = is_file($envPath) ? file($envPath, FILE_IGNORE_NEW_LINES) : [];
     if ($lines === false) {
-        throw new RuntimeException('Impossible de lire le fichier .env.');
+        throw new RuntimeException(serverEnvAdminT(
+            'parameters.server_env.error.read_failed',
+            'Impossible de lire le fichier {target}.',
+            ['target' => $targetLabel]
+        ));
     }
 
     $fieldMap = serverEnvAdminGetFieldMap();
@@ -499,7 +561,11 @@ function serverEnvAdminWriteValues(array $values)
 
     $content = rtrim(implode("\n", $lines)) . "\n";
     if (@file_put_contents($envPath, $content, LOCK_EX) === false) {
-        throw new RuntimeException('Impossible d ecrire le fichier .env.');
+        throw new RuntimeException(serverEnvAdminT(
+            'parameters.server_env.error.write_failed',
+            'Impossible d ecrire le fichier {target}. Verifiez les permissions ou un montage Docker en lecture seule.',
+            ['target' => $targetLabel]
+        ));
     }
 }
 

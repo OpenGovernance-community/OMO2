@@ -74,9 +74,25 @@ foreach ($directMembers as $member) {
 <style>
     .omo-holon-member-popup {
         display: grid;
-        gap: 16px;
-        padding: 8px 4px 4px;
+        gap: 0;
         color: var(--color-text, #1f2937);
+    }
+
+    .omo-holon-member-popup__header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .omo-holon-member-popup__header-copy {
+        display: grid;
+        gap: 4px;
+    }
+
+    .omo-holon-member-popup__shell {
+        display: grid;
+        gap: 16px;
+        padding: 16px 18px 18px;
     }
 
     .omo-holon-member-popup__intro {
@@ -92,14 +108,6 @@ foreach ($directMembers as $member) {
 
     .omo-holon-member-popup__label {
         font-weight: 700;
-    }
-
-    .omo-holon-member-popup__select,
-    .omo-holon-member-popup__email {
-        --generic-form-control-border: var(--topbar-panel-border, #dbe3ef);
-        --generic-form-control-background: var(--topbar-panel-bg, #ffffff);
-        --generic-form-control-background-focus: var(--topbar-panel-bg, #ffffff);
-        --generic-form-control-color: inherit;
     }
 
     .omo-holon-member-popup__hint {
@@ -143,7 +151,7 @@ foreach ($directMembers as $member) {
     }
 
     .omo-holon-member-popup__empty {
-        padding: 18px 6px;
+        padding: 18px;
         color: var(--topbar-panel-muted, #64748b);
         line-height: 1.5;
     }
@@ -155,6 +163,13 @@ foreach ($directMembers as $member) {
     action="api/holons/member_popup.php?hid=<?= (int)$holon->getId() ?>"
     method="post"
 >
+    <div class="omo-holon-member-popup__header generic-drawer-header generic-drawer-header--sticky">
+        <div class="generic-drawer-header__copy omo-holon-member-popup__header-copy">
+            <div class="generic-card-title generic-card-title--eyebrow"><?= omoApiEscape((string)$holon->getTemplateLabel(true)) ?></div>
+            <h3 class="generic-card-title generic-card-title--medium">Ajouter un membre</h3>
+        </div>
+    </div>
+    <div class="omo-holon-member-popup__shell">
     <p class="omo-holon-member-popup__intro">
         Ajoutez une personne au holon <strong><?= omoApiEscape($holon->getDisplayName()) ?></strong>,
         soit en choisissant un membre déjà présent dans l'organisation, soit en saisissant une nouvelle adresse e-mail.
@@ -208,6 +223,7 @@ foreach ($directMembers as $member) {
         <button type="submit" id="omoHolonMemberPopupSubmit" class="omo-holon-member-popup__button generic-action-button generic-action-button--main">
             Ajouter au holon
         </button>
+    </div>
     </div>
 </form>
 
@@ -277,12 +293,20 @@ foreach ($directMembers as $member) {
                     feedback.textContent = result.data.message || 'Membre ajouté.';
                     feedback.classList.add('is-success');
 
+                    if (typeof refreshDrawer === 'function') {
+                        var drawerUrl = '/omo/api/team/index.php?oid=' + organizationId;
+                        if (holonId > 0 && holonId !== rootHolonId) {
+                            drawerUrl += '&cid=' + holonId;
+                        }
+                        refreshDrawer('drawer_team', drawerUrl);
+                    }
+
                     if (typeof loadContent === 'function') {
                         var leftUrl = 'api/getOrg.php?oid=' + organizationId;
                         if (holonId > 0 && holonId !== rootHolonId) {
                             leftUrl += '&cid=' + holonId;
                         }
-                        loadContent('#panel-left', leftUrl);
+                        loadContent(typeof omoGetLeftPanelContentSelector === 'function' ? omoGetLeftPanelContentSelector() : '#panel-left', leftUrl);
                     }
 
                     if (typeof window.omoReloadStructureAndFocus === 'function') {

@@ -10,6 +10,9 @@ require_once __DIR__ . '/inc/access.php';
 $mission_id = (int)($_POST['mission_id'] ?? 0);
 $parcours_id = (int)($_POST['parcours_id'] ?? 0);
 $accessContext = lmsGetParcoursAccessContext((int)$org['id'], $parcours_id);
+$isOrganizationAdmin = !empty($accessContext['isLoggedIn'])
+	? lmsCurrentUserIsOrganizationAdmin((int)$org['id'], (int)($accessContext['userId'] ?? 0))
+	: false;
 
 if (empty($accessContext['exists'])) {
 	http_response_code(404);
@@ -45,15 +48,15 @@ if (!$parcoursMission->load([
 	exit;
 }
 
-if (\dbObject\Mission::countHomeworksForMission($mission_id) > 0) {
+if (\dbObject\Mission::countHomeworksForMission($mission_id, $isOrganizationAdmin) > 0) {
 	if (lmsIsAnonymousViewer($accessContext)) {
 		$doneHomeworkIds = lmsParseDoneHomeworkIds($_POST['done_homework_ids'] ?? '');
-		if (!\dbObject\Mission::areHomeworkIdsComplete($mission_id, $doneHomeworkIds)) {
+		if (!\dbObject\Mission::areHomeworkIdsComplete($mission_id, $doneHomeworkIds, $isOrganizationAdmin)) {
 			http_response_code(409);
 			echo "Homework required";
 			exit;
 		}
-	} elseif (!\dbObject\UserHomework::hasCompletedAllForUserMission((int)$accessContext['userId'], $mission_id, $parcours_id)) {
+	} elseif (!\dbObject\UserHomework::hasCompletedAllForUserMission((int)$accessContext['userId'], $mission_id, $parcours_id, $isOrganizationAdmin)) {
 		http_response_code(409);
 		echo "Homework required";
 		exit;

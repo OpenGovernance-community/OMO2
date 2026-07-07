@@ -1,13 +1,101 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/organization_applications_access.php';
+
+$sourceLang = [
+    'organization_applications.error.no_access' => [
+        'text' => 'Vous devez être connecté à une organisation pour gérer les applications.',
+        'context' => 'Error shown when the current user cannot edit organization applications.',
+    ],
+    'organization_applications.error.save_failed' => [
+        'text' => 'Impossible d’enregistrer la sélection et l’ordre des applications.',
+        'context' => 'Error returned when the organization application selection cannot be saved.',
+    ],
+    'organization_applications.status.added_one' => [
+        'text' => '1 application ajoutée.',
+        'context' => 'Summary shown after enabling a single application in the left sidebar editor.',
+    ],
+    'organization_applications.status.added_other' => [
+        'text' => '{count} applications ajoutées.',
+        'context' => 'Summary shown after enabling multiple applications in the left sidebar editor.',
+    ],
+    'organization_applications.status.removed_one' => [
+        'text' => '1 application retirée.',
+        'context' => 'Summary shown after disabling a single application in the left sidebar editor.',
+    ],
+    'organization_applications.status.removed_other' => [
+        'text' => '{count} applications retirées.',
+        'context' => 'Summary shown after disabling multiple applications in the left sidebar editor.',
+    ],
+    'organization_applications.status.reordered_one' => [
+        'text' => 'Ordre mis à jour.',
+        'context' => 'Summary shown when a single ordering change happened in the left sidebar editor.',
+    ],
+    'organization_applications.status.reordered_other' => [
+        'text' => 'Ordre des applications mis à jour.',
+        'context' => 'Summary shown when ordering changes happened in the left sidebar editor.',
+    ],
+    'organization_applications.status.saved' => [
+        'text' => 'Configuration enregistrée. {details}',
+        'context' => 'Success message returned after saving organization applications with change details.',
+    ],
+    'organization_applications.status.no_changes' => [
+        'text' => 'Aucun changement.',
+        'context' => 'Success message returned when saving organization applications without any change.',
+    ],
+    'organization_applications.empty' => [
+        'text' => 'Aucune application n’est disponible pour le moment.',
+        'context' => 'Empty state shown when no application can be configured in the left sidebar editor.',
+    ],
+    'organization_applications.intro' => [
+        'text' => 'Cochez les applications à afficher dans la barre de gauche, puis glissez-déposez les lignes pour définir leur ordre dans cette organisation.',
+        'context' => 'Intro text shown in the left sidebar application editor popup.',
+    ],
+    'organization_applications.action.reorder' => [
+        'text' => 'Réordonner',
+        'context' => 'Button title used for the drag handle in the left sidebar application editor.',
+    ],
+    'organization_applications.state.visible' => [
+        'text' => 'Visible',
+        'context' => 'State label shown for active applications in the left sidebar editor.',
+    ],
+    'organization_applications.state.hidden' => [
+        'text' => 'Masquée',
+        'context' => 'State label shown for inactive applications in the left sidebar editor.',
+    ],
+    'organization_applications.action.save' => [
+        'text' => 'Enregistrer la configuration',
+        'context' => 'Primary action shown in the left sidebar application editor.',
+    ],
+    'organization_applications.error.generic' => [
+        'text' => 'Une erreur est survenue.',
+        'context' => 'Generic error shown in the left sidebar editor when the server reply is invalid.',
+    ],
+    'organization_applications.status.saved_simple' => [
+        'text' => 'Configuration enregistrée.',
+        'context' => 'Simple success message shown in the left sidebar editor.',
+    ],
+    'organization_applications.error.save_later' => [
+        'text' => 'Impossible d’enregistrer les applications pour le moment.',
+        'context' => 'Error shown in the left sidebar editor when the save request fails.',
+    ],
+];
+
+$lang = omoLoadTranslationBundle('omo_organization_applications_popup', $sourceLang);
+
+function omoOrganizationApplicationsT($key, array $replace = [])
+{
+    global $lang, $sourceLang;
+    return t($key, $replace, $lang, $sourceLang);
+}
 
 $currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 $currentUserId = (int)commonGetCurrentUserId();
 
-if ($currentOrganizationId <= 0 || $currentUserId <= 0) {
+if (!omoCurrentUserCanManageOrganizationApplications($currentOrganizationId, $currentUserId)) {
     http_response_code(403);
     ?>
-    <div class="omo-app-picker__empty">Vous devez etre connecte a une organisation pour gerer les applications.</div>
+    <div class="omo-app-picker__empty"><?= htmlspecialchars(omoOrganizationApplicationsT('organization_applications.error.no_access'), ENT_QUOTES, 'UTF-8') ?></div>
     <?php
     exit;
 }
@@ -117,7 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!is_array($saveResult) || empty($saveResult['status'])) {
             echo json_encode(array(
                 'status' => false,
-                'message' => 'Impossible d enregistrer la selection et l ordre des applications.',
+                'message' => omoOrganizationApplicationsT('organization_applications.error.save_failed'),
             ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -125,20 +213,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $messageParts = array();
     if ($addedCount > 0) {
-        $messageParts[] = $addedCount === 1 ? '1 application ajoutee.' : $addedCount . ' applications ajoutees.';
+        $messageParts[] = $addedCount === 1
+            ? omoOrganizationApplicationsT('organization_applications.status.added_one')
+            : omoOrganizationApplicationsT('organization_applications.status.added_other', ['count' => $addedCount]);
     }
     if ($removedCount > 0) {
-        $messageParts[] = $removedCount === 1 ? '1 application retiree.' : $removedCount . ' applications retirees.';
+        $messageParts[] = $removedCount === 1
+            ? omoOrganizationApplicationsT('organization_applications.status.removed_one')
+            : omoOrganizationApplicationsT('organization_applications.status.removed_other', ['count' => $removedCount]);
     }
     if ($reorderedCount > 0) {
-        $messageParts[] = $reorderedCount === 1 ? 'Ordre mis a jour.' : 'Ordre des applications mis a jour.';
+        $messageParts[] = $reorderedCount === 1
+            ? omoOrganizationApplicationsT('organization_applications.status.reordered_one')
+            : omoOrganizationApplicationsT('organization_applications.status.reordered_other');
     }
 
     echo json_encode(array(
         'status' => true,
         'message' => count($messageParts) > 0
-            ? 'Configuration enregistree. ' . implode(' ', $messageParts)
-            : 'Aucun changement.',
+            ? omoOrganizationApplicationsT('organization_applications.status.saved', ['details' => implode(' ', $messageParts)])
+            : omoOrganizationApplicationsT('organization_applications.status.no_changes'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -160,9 +254,25 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
     .omo-app-picker {
         display: flex;
         flex-direction: column;
-        gap: 16px;
-        padding: 8px 4px 4px 4px;
+        gap: 0;
         color: var(--color-text, #1f2937);
+    }
+
+    .omo-app-picker__header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .omo-app-picker__header-copy {
+        display: grid;
+        gap: 4px;
+    }
+
+    .omo-app-picker__shell {
+        display: grid;
+        gap: 16px;
+        padding: 16px 18px 18px;
     }
 
     .omo-app-picker__intro {
@@ -337,7 +447,7 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
     }
 
     .omo-app-picker__empty {
-        padding: 18px 6px;
+        padding: 18px;
         color: var(--topbar-panel-muted, #64748b);
         line-height: 1.5;
     }
@@ -345,12 +455,19 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
 
 <?php if (count($orderedApplications) === 0): ?>
     <div class="omo-app-picker__empty">
-        Aucune application n est disponible pour le moment.
+        <?= htmlspecialchars(omoOrganizationApplicationsT('organization_applications.empty'), ENT_QUOTES, 'UTF-8') ?>
     </div>
 <?php else: ?>
     <form id="omoApplicationPickerForm" class="omo-app-picker" action="api/organization_applications_popup.php" method="post">
+        <div class="omo-app-picker__header generic-drawer-header generic-drawer-header--sticky">
+            <div class="generic-drawer-header__copy omo-app-picker__header-copy">
+                <div class="generic-card-title generic-card-title--eyebrow">Organisation</div>
+                <h3 class="generic-card-title generic-card-title--medium">Configurer les applications</h3>
+            </div>
+        </div>
+        <div class="omo-app-picker__shell">
         <p class="omo-app-picker__intro">
-            Cochez les applications a afficher dans la barre de gauche, puis glissez-deposez les lignes pour definir leur ordre dans cette organisation.
+            <?= htmlspecialchars(omoOrganizationApplicationsT('organization_applications.intro'), ENT_QUOTES, 'UTF-8') ?>
         </p>
 
         <div id="omoApplicationPickerList" class="omo-app-picker__list">
@@ -373,8 +490,8 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
                         type="button"
                         class="omo-app-picker__drag"
                         data-omo-app-picker-drag="1"
-                        title="Reordonner"
-                        aria-label="Reordonner <?= htmlspecialchars($applicationLabel, ENT_QUOTES, 'UTF-8') ?>"
+                        title="<?= htmlspecialchars(omoOrganizationApplicationsT('organization_applications.action.reorder'), ENT_QUOTES, 'UTF-8') ?>"
+                        aria-label="<?= htmlspecialchars(omoOrganizationApplicationsT('organization_applications.action.reorder') . ' ' . $applicationLabel, ENT_QUOTES, 'UTF-8') ?>"
                     >&#8942;&#8942;</button>
 
                     <label class="omo-app-picker__card-main">
@@ -398,7 +515,7 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
                             <span class="omo-app-picker__content-head">
                                 <span class="omo-app-picker__title"><?= htmlspecialchars($applicationLabel, ENT_QUOTES, 'UTF-8') ?></span>
                                 <span class="omo-app-picker__state<?= $isActive ? ' omo-app-picker__state--active' : '' ?>" data-omo-app-picker-state>
-                                    <?= $isActive ? 'Visible' : 'Masquee' ?>
+                                    <?= htmlspecialchars($isActive ? omoOrganizationApplicationsT('organization_applications.state.visible') : omoOrganizationApplicationsT('organization_applications.state.hidden'), ENT_QUOTES, 'UTF-8') ?>
                                 </span>
                             </span>
                             <span class="omo-app-picker__meta">
@@ -414,13 +531,21 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
 
         <div class="omo-app-picker__actions">
             <button type="submit" id="omoApplicationPickerSubmit" class="omo-app-picker__button generic-action-button generic-action-button--main">
-                Enregistrer la configuration
+                <?= htmlspecialchars(omoOrganizationApplicationsT('organization_applications.action.save'), ENT_QUOTES, 'UTF-8') ?>
             </button>
+        </div>
         </div>
     </form>
 
     <script>
         (function () {
+            var appPickerText = <?= json_encode([
+                'visible' => omoOrganizationApplicationsT('organization_applications.state.visible'),
+                'hidden' => omoOrganizationApplicationsT('organization_applications.state.hidden'),
+                'genericError' => omoOrganizationApplicationsT('organization_applications.error.generic'),
+                'savedSimple' => omoOrganizationApplicationsT('organization_applications.status.saved_simple'),
+                'saveLater' => omoOrganizationApplicationsT('organization_applications.error.save_later'),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
             var form = document.getElementById('omoApplicationPickerForm');
             var list = document.getElementById('omoApplicationPickerList');
             var feedback = document.getElementById('omoApplicationPickerFeedback');
@@ -429,9 +554,6 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
             if (!form || !list || !feedback || !submitButton) {
                 return;
             }
-
-            var draggedCard = null;
-            var placeholderCard = null;
 
             var clearFeedback = function () {
                 feedback.textContent = '';
@@ -447,50 +569,9 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
                 }
 
                 if (state) {
-                    state.textContent = checkbox.checked ? 'Visible' : 'Masquee';
+                    state.textContent = checkbox.checked ? appPickerText.visible : appPickerText.hidden;
                     state.classList.toggle('omo-app-picker__state--active', checkbox.checked);
                 }
-            };
-
-            var clearDropTargets = function () {
-                Array.prototype.forEach.call(list.querySelectorAll('.omo-app-picker__card.is-drop-target'), function (card) {
-                    card.classList.remove('is-drop-target');
-                });
-            };
-
-            var removePlaceholder = function () {
-                if (placeholderCard && placeholderCard.parentNode) {
-                    placeholderCard.parentNode.removeChild(placeholderCard);
-                }
-
-                placeholderCard = null;
-            };
-
-            var getInsertionTarget = function (clientY) {
-                var cards = Array.prototype.slice.call(list.querySelectorAll('[data-omo-app-picker-card]')).filter(function (card) {
-                    return card !== draggedCard;
-                });
-
-                if (cards.length === 0) {
-                    return null;
-                }
-
-                for (var index = 0; index < cards.length; index++) {
-                    var card = cards[index];
-                    var bounds = card.getBoundingClientRect();
-                    var centerY = bounds.top + (bounds.height / 2);
-                    if (clientY < centerY) {
-                        return {
-                            card: card,
-                            placeAfter: false
-                        };
-                    }
-                }
-
-                return {
-                    card: cards[cards.length - 1],
-                    placeAfter: true
-                };
             };
 
             Array.prototype.forEach.call(form.querySelectorAll('.omo-app-picker__checkbox'), function (checkbox) {
@@ -501,106 +582,27 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
                 });
             });
 
-            Array.prototype.forEach.call(list.querySelectorAll('[data-omo-app-picker-card]'), function (card) {
-                var dragHandle = card.querySelector('[data-omo-app-picker-drag]');
-
-                if (dragHandle) {
-                    dragHandle.addEventListener('mousedown', function () {
-                        card.setAttribute('data-omo-drag-ready', '1');
-                    });
-
-                    dragHandle.addEventListener('mouseup', function () {
-                        card.removeAttribute('data-omo-drag-ready');
-                    });
-
-                    dragHandle.addEventListener('mouseleave', function () {
-                        card.removeAttribute('data-omo-drag-ready');
-                    });
-                }
-
-                card.addEventListener('dragstart', function (event) {
-                    if (card.getAttribute('data-omo-drag-ready') !== '1') {
-                        event.preventDefault();
-                        return;
+            if (typeof window.commonCreateVerticalSortableList === 'function') {
+                window.commonCreateVerticalSortableList({
+                    list: list,
+                    itemSelector: '[data-omo-app-picker-card]',
+                    handleSelector: '[data-omo-app-picker-drag]',
+                    draggingClass: 'is-dragging',
+                    dropTargetClass: 'is-drop-target',
+                    placeholderClass: 'omo-app-picker__placeholder',
+                    createPlaceholder: function (card) {
+                        var placeholderCard = document.createElement('div');
+                        placeholderCard.style.height = card.getBoundingClientRect().height + 'px';
+                        return placeholderCard;
+                    },
+                    onDragStart: function () {
+                        clearFeedback();
+                    },
+                    onDrop: function () {
+                        clearFeedback();
                     }
-
-                    draggedCard = card;
-                    card.classList.add('is-dragging');
-                    clearFeedback();
-
-                    placeholderCard = document.createElement('div');
-                    placeholderCard.className = 'omo-app-picker__placeholder';
-                    placeholderCard.style.height = card.getBoundingClientRect().height + 'px';
-                    list.insertBefore(placeholderCard, card.nextSibling);
-
-                    if (event.dataTransfer) {
-                        event.dataTransfer.effectAllowed = 'move';
-                        event.dataTransfer.setData('text/plain', card.getAttribute('data-omo-app-id') || '');
-                    }
-
-                    window.setTimeout(function () {
-                        if (draggedCard === card) {
-                            card.style.display = 'none';
-                        }
-                    }, 0);
                 });
-
-                card.addEventListener('dragend', function () {
-                    card.classList.remove('is-dragging');
-                    card.removeAttribute('data-omo-drag-ready');
-                    card.style.display = '';
-
-                    if (placeholderCard && placeholderCard.parentNode) {
-                        placeholderCard.parentNode.insertBefore(card, placeholderCard);
-                    }
-
-                    removePlaceholder();
-                    draggedCard = null;
-                    clearDropTargets();
-                });
-            });
-
-            list.addEventListener('dragover', function (event) {
-                if (!draggedCard) {
-                    return;
-                }
-
-                event.preventDefault();
-                clearDropTargets();
-
-                if (!placeholderCard) {
-                    return;
-                }
-
-                var target = getInsertionTarget(event.clientY);
-                if (!target || !target.card) {
-                    list.appendChild(placeholderCard);
-                    return;
-                }
-
-                target.card.classList.add('is-drop-target');
-
-                if (target.placeAfter) {
-                    list.insertBefore(placeholderCard, target.card.nextSibling);
-                    return;
-                }
-
-                list.insertBefore(placeholderCard, target.card);
-            });
-
-            list.addEventListener('drop', function (event) {
-                if (!draggedCard) {
-                    return;
-                }
-
-                event.preventDefault();
-                clearDropTargets();
-                clearFeedback();
-
-                if (placeholderCard && placeholderCard.parentNode) {
-                    placeholderCard.parentNode.insertBefore(draggedCard, placeholderCard);
-                }
-            });
+            }
 
             form.addEventListener('submit', function (event) {
                 event.preventDefault();
@@ -631,16 +633,19 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
                     })
                     .then(function (data) {
                         if (!data || !data.status) {
-                            feedback.textContent = data && data.message ? data.message : 'Une erreur est survenue.';
+                            feedback.textContent = data && data.message ? data.message : appPickerText.genericError;
                             submitButton.disabled = false;
                             return;
                         }
 
-                        feedback.textContent = data.message || 'Configuration enregistree.';
+                        feedback.textContent = data.message || appPickerText.savedSimple;
                         feedback.classList.add('is-success');
 
                         if (typeof window.omoRefreshSidebar === 'function') {
                             window.omoRefreshSidebar(function () {
+                                if (typeof window.omoRefreshMainRightPanel === 'function') {
+                                    window.omoRefreshMainRightPanel();
+                                }
                                 if (typeof window.commonTopbarCloseModal === 'function') {
                                     window.commonTopbarCloseModal();
                                 }
@@ -653,7 +658,7 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
                         }
                     })
                     .catch(function () {
-                        feedback.textContent = 'Impossible d enregistrer les applications pour le moment.';
+                        feedback.textContent = appPickerText.saveLater;
                         submitButton.disabled = false;
                     });
             });

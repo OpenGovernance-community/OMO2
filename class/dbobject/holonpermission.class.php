@@ -3,7 +3,7 @@ namespace dbObject;
 
 class HolonPermission extends DbObject
 {
-    const PERMISSION_CACHE_VERSION = 11;
+    const PERMISSION_CACHE_VERSION = 15;
     const RANGE_SELF = 'self';
     const RANGE_PARENT_CIRCLE = 'parent_circle';
     const RANGE_PARENT_CIRCLE_ELEMENTS = 'parent_circle_elements';
@@ -82,6 +82,38 @@ class HolonPermission extends DbObject
         }
 
         return $catalog;
+    }
+
+    public static function getEditorRangeCatalogForPermission($permissionKey = '', $isContextual = null)
+    {
+        $isContextual = $isContextual === null ? true : (bool)$isContextual;
+        $rangeLabels = $isContextual
+            ? self::getRangeLabels()
+            : [self::RANGE_ORGANIZATION => self::getRangeLabels()[self::RANGE_ORGANIZATION]];
+
+        $catalog = [];
+        foreach ($rangeLabels as $key => $label) {
+            $catalog[] = [
+                'key' => (string)$key,
+                'label' => (string)$label,
+            ];
+        }
+
+        return $catalog;
+    }
+
+    protected static function normalizeAssignmentRangesForPermission($permissionKey, $ranges)
+    {
+        $isContextual = \dbObject\Permission::isPermissionContextual($permissionKey, true);
+        if (!$isContextual) {
+            if (!is_array($ranges)) {
+                $ranges = trim((string)$ranges) !== '' ? [$ranges] : [];
+            }
+
+            return count($ranges) > 0 ? [self::RANGE_ORGANIZATION] : [];
+        }
+
+        return self::normalizeAssignmentRanges($ranges);
     }
 
     public static function isValidRange($range)
@@ -192,7 +224,7 @@ class HolonPermission extends DbObject
                 continue;
             }
 
-            $normalizedRanges = self::normalizeAssignmentRanges($ranges);
+            $normalizedRanges = self::normalizeAssignmentRangesForPermission($permissionKey, $ranges);
             if (count($normalizedRanges) === 0) {
                 continue;
             }
@@ -461,35 +493,7 @@ class HolonPermission extends DbObject
         }
 
         $rows = \dbObject\UserHolon::fetchEffectiveRowsForUserAndHolonIds($userId, $organizationHolonIds);
-        $rows = is_array($rows) ? $rows : [];
-
-        $organizationId = (int)$organizationId;
-        $organizationRootHolonId = (int)$organizationRootHolonId;
-        if (
-            $organizationId > 0
-            && $organizationRootHolonId > 0
-            && in_array($organizationRootHolonId, $organizationHolonIds, true)
-            && self::hasActiveUserOrganizationMembership($userId, $organizationId)
-        ) {
-            $hasRootAssignment = false;
-            foreach ($rows as $row) {
-                if ((int)($row['IDholon'] ?? 0) === $organizationRootHolonId) {
-                    $hasRootAssignment = true;
-                    break;
-                }
-            }
-
-            if (!$hasRootAssignment) {
-                $rows[] = [
-                    'IDholon' => $organizationRootHolonId,
-                    'holon_active' => 1,
-                    'holon_effective_active' => 1,
-                    'virtual_organization_membership' => true,
-                ];
-            }
-        }
-
-        return $rows;
+        return is_array($rows) ? $rows : [];
     }
 
     protected static function loadPermissionAssignmentsForOrganization(array $organizationHolonIds, array $permissionKeys = [])
@@ -574,9 +578,9 @@ class HolonPermission extends DbObject
     protected static function collectPermissionSourceHolonIds($assignedHolonId, array $holonsById)
     {
         $collected = [];
-
-        foreach (self::collectAncestorChainHolonIds($assignedHolonId, $holonsById) as $holonId) {
-            $collected[(int)$holonId] = (int)$holonId;
+        $assignedHolonId = (int)$assignedHolonId;
+        if ($assignedHolonId > 0) {
+            $collected[$assignedHolonId] = $assignedHolonId;
         }
 
         foreach (self::collectTemplateChainHolonIds($assignedHolonId, $holonsById) as $holonId) {
@@ -789,6 +793,160 @@ class HolonPermission extends DbObject
         return $debug;
     }
 
+    public static function buildEffectivePermissionDetailsForOrganization($userId, $organizationId, array $permissionKeys = [])
+    {
+        $userId = (int)$userId;
+        $organizationId = (int)$organizationId;
+        $details = [
+            'cacheVersion' => self::PERMISSION_CACHE_VERSION,
+            'userId' => $userId,
+            'organizationId' => $organizationId,
+            'adminOverrideActive' => false,
+            'rows' => [],
+        ];
+
+        if ($userId <= 0 || $organizationId <= 0) {
+            return $details;
+        }
+
+        if (function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($userId, $organizationId)) {
+            $details['adminOverrideActive'] = true;
+            foreach (\dbObject\Permission::getEditorCatalog() as $permissionEntry) {
+                $permissionKey = trim((string)($permissionEntry['key'] ?? ''));
+                if ($permissionKey === '') {
+                    continue;
+                }
+
+                if (count($permissionKeys) > 0 && !in_array($permissionKey, $permissionKeys, true)) {
+                    continue;
+                }
+
+                $dedupeKey = implode('|', [$permissionKey, 'organization', '0', '0', '0', self::RANGE_ORGANIZATION]);
+                $details['rows'][$dedupeKey] = [
+                    'permissionKey' => $permissionKey,
+                    'isContextual' => (bool)($permissionEntry['isContextual'] ?? true),
+                    'scopeType' => 'organization',
+                    'scopeHolonId' => 0,
+                    'assignedHolonId' => 0,
+                    'sourceHolonId' => 0,
+                    'range' => self::RANGE_ORGANIZATION,
+                ];
+            }
+
+            $details['rows'] = array_values($details['rows']);
+            return $details;
+        }
+
+        $organizationRootHolonId = self::resolveOrganizationRootHolonId($organizationId);
+        if ($organizationRootHolonId <= 0) {
+            return $details;
+        }
+
+        $holonsById = self::loadOrganizationHolonRows($organizationRootHolonId);
+        if (count($holonsById) === 0) {
+            return $details;
+        }
+
+        $organizationHolonIds = array_keys($holonsById);
+        $permissionAssignments = self::loadPermissionAssignmentsForOrganization($organizationHolonIds, $permissionKeys);
+        if (count($permissionAssignments) === 0) {
+            return $details;
+        }
+
+        $permissionContextualMap = \dbObject\Permission::getContextualMap(array_values(array_unique(array_map(static function ($assignmentRow) {
+            return trim((string)($assignmentRow['permission_key'] ?? ''));
+        }, $permissionAssignments))));
+        $assignmentsByHolonId = [];
+        foreach ($permissionAssignments as $assignmentRow) {
+            $permissionHolonId = (int)($assignmentRow['IDholon'] ?? 0);
+            $permissionKey = trim((string)($assignmentRow['permission_key'] ?? ''));
+            if ($permissionHolonId <= 0 || $permissionKey === '') {
+                continue;
+            }
+
+            if (!isset($assignmentsByHolonId[$permissionHolonId])) {
+                $assignmentsByHolonId[$permissionHolonId] = [];
+            }
+
+            $assignmentsByHolonId[$permissionHolonId][] = [
+                'permission_key' => $permissionKey,
+                'range' => self::normalizeRange($assignmentRow['range'] ?? ''),
+                'is_contextual' => (bool)($permissionContextualMap[$permissionKey] ?? true),
+            ];
+        }
+
+        if (count($assignmentsByHolonId) === 0) {
+            return $details;
+        }
+
+        $activeUserHolonRows = self::loadActiveUserHolonRowsForOrganization($userId, $organizationHolonIds, $organizationId, $organizationRootHolonId);
+        foreach ($activeUserHolonRows as $membershipRow) {
+            $assignedHolonId = (int)($membershipRow['IDholon'] ?? 0);
+            if ($assignedHolonId <= 0 || !isset($holonsById[$assignedHolonId])) {
+                continue;
+            }
+
+            $permissionSourceHolonIds = self::collectPermissionSourceHolonIds($assignedHolonId, $holonsById);
+            foreach ($permissionSourceHolonIds as $permissionSourceHolonId) {
+                if (empty($assignmentsByHolonId[$permissionSourceHolonId])) {
+                    continue;
+                }
+
+                foreach ($assignmentsByHolonId[$permissionSourceHolonId] as $assignment) {
+                    $permissionKey = trim((string)($assignment['permission_key'] ?? ''));
+                    if ($permissionKey === '') {
+                        continue;
+                    }
+
+                    if (!empty($permissionKeys) && !in_array($permissionKey, $permissionKeys, true)) {
+                        continue;
+                    }
+
+                    if (!empty($assignment['is_contextual'])) {
+                        $resolvedScope = self::resolveRangeScopeForAssignedHolon(
+                            $assignedHolonId,
+                            $assignment['range'] ?? self::RANGE_SELF,
+                            $holonsById,
+                            $organizationRootHolonId
+                        );
+                    } else {
+                        $resolvedScope = [
+                            'type' => 'organization',
+                            'holonId' => 0,
+                        ];
+                    }
+
+                    $scopeType = (string)($resolvedScope['type'] ?? 'none');
+                    $scopeHolonId = (int)($resolvedScope['holonId'] ?? 0);
+                    if ($scopeType === 'none') {
+                        continue;
+                    }
+
+                    $dedupeKey = implode('|', [
+                        $permissionKey,
+                        $scopeType,
+                        (string)$scopeHolonId,
+                        (string)$assignedHolonId,
+                        (string)$permissionSourceHolonId,
+                        (string)($assignment['range'] ?? self::RANGE_SELF),
+                    ]);
+                    $details['rows'][$dedupeKey] = [
+                        'permissionKey' => $permissionKey,
+                        'isContextual' => !empty($assignment['is_contextual']),
+                        'scopeType' => $scopeType,
+                        'scopeHolonId' => $scopeHolonId,
+                        'assignedHolonId' => $assignedHolonId,
+                        'sourceHolonId' => (int)$permissionSourceHolonId,
+                        'range' => (string)($assignment['range'] ?? self::RANGE_SELF),
+                    ];
+                }
+            }
+        }
+
+        $details['rows'] = array_values($details['rows']);
+        return $details;
+    }
+
     public static function buildUserPermissionSetForOrganization($userId, $organizationId, array $permissionKeys = [])
     {
         $userId = (int)$userId;
@@ -840,6 +998,9 @@ class HolonPermission extends DbObject
 
         $assignmentsByHolonId = [];
         $definedPermissionKeys = [];
+        $permissionContextualMap = \dbObject\Permission::getContextualMap(array_values(array_unique(array_map(static function ($assignmentRow) {
+            return trim((string)($assignmentRow['permission_key'] ?? ''));
+        }, $permissionAssignments))));
         foreach ($permissionAssignments as $assignmentRow) {
             $permissionHolonId = (int)($assignmentRow['IDholon'] ?? 0);
             $permissionKey = trim((string)($assignmentRow['permission_key'] ?? ''));
@@ -856,6 +1017,7 @@ class HolonPermission extends DbObject
             $assignmentsByHolonId[$permissionHolonId][] = [
                 'permission_key' => $permissionKey,
                 'range' => self::normalizeRange($assignmentRow['range'] ?? ''),
+                'is_contextual' => (bool)($permissionContextualMap[$permissionKey] ?? true),
             ];
         }
 
@@ -879,6 +1041,24 @@ class HolonPermission extends DbObject
                 }
 
                 foreach ($assignmentsByHolonId[$permissionSourceHolonId] as $assignment) {
+                    $permissionKey = trim((string)($assignment['permission_key'] ?? ''));
+                    if ($permissionKey === '') {
+                        continue;
+                    }
+
+                    if (empty($assignment['is_contextual'])) {
+                        if (!isset($permissionSet['permissions'][$permissionKey])) {
+                            $permissionSet['permissions'][$permissionKey] = [
+                                'exact' => [],
+                                'subtree' => [],
+                                'organization' => false,
+                            ];
+                        }
+
+                        $permissionSet['permissions'][$permissionKey]['organization'] = true;
+                        continue;
+                    }
+
                     $resolvedScope = self::resolveRangeScopeForAssignedHolon(
                         $assignedHolonId,
                         $assignment['range'] ?? self::RANGE_SELF,
@@ -887,7 +1067,7 @@ class HolonPermission extends DbObject
                     );
                     self::applyResolvedScopeToPermissionSet(
                         $permissionSet,
-                        $assignment['permission_key'] ?? '',
+                        $permissionKey,
                         $resolvedScope
                     );
                 }
@@ -904,13 +1084,13 @@ class HolonPermission extends DbObject
         $permissionKey = trim((string)$permissionKey);
         $contextHolonId = (int)$contextHolonId;
 
-        if ($userId <= 0 || $organizationId <= 0 || $permissionKey === '' || $contextHolonId <= 0) {
+        if ($userId <= 0 || $organizationId <= 0 || $permissionKey === '') {
             return false;
         }
 
         $permissionSet = self::buildUserPermissionSetForOrganization($userId, $organizationId, [$permissionKey]);
         if (empty($permissionSet['definedPermissionKeys'][$permissionKey])) {
-            return \dbObject\Permission::existsKey($permissionKey);
+            return false;
         }
 
         $scope = $permissionSet['permissions'][$permissionKey] ?? null;
@@ -920,6 +1100,10 @@ class HolonPermission extends DbObject
 
         if (!empty($scope['organization'])) {
             return true;
+        }
+
+        if ($contextHolonId <= 0) {
+            return false;
         }
 
         if (!empty($scope['exact'][$contextHolonId])) {
@@ -963,10 +1147,16 @@ class HolonPermission extends DbObject
     {
         $holonId = (int)$holonId;
         $permissionId = (int)$permissionId;
-        $range = self::normalizeRange($range);
 
         if ($holonId <= 0 || $permissionId <= 0) {
             return false;
+        }
+
+        $permission = new \dbObject\Permission();
+        if ($permission->load($permissionId) && !$permission->isContextual()) {
+            $range = self::RANGE_ORGANIZATION;
+        } else {
+            $range = self::normalizeRange($range);
         }
 
         $existing = self::findByHolonAndPermission($holonId, $permissionId, $range);

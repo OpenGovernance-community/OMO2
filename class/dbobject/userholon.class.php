@@ -112,6 +112,27 @@
 			return 'Profil';
 		}
 
+		public function getAvatarSeedLabel($organizationId = 0)
+		{
+			$membership = $this->loadScopedMembership($organizationId);
+			if ($membership) {
+				return \commonBuildAvatarSeedLabel(
+					$membership->getUserDisplayName(),
+					$membership->getScopedEmail()
+				);
+			}
+
+			$user = $this->loadLinkedUser();
+			if (!$user) {
+				return \commonBuildAvatarSeedLabel($this->getUserDisplayName($organizationId), '');
+			}
+
+			return \commonBuildAvatarSeedLabel(
+				$this->getUserDisplayName($organizationId),
+				trim((string)$user->get('email'))
+			);
+		}
+
 		public function getUserInitials($organizationId = 0)
 		{
 			$membership = $this->loadScopedMembership($organizationId);

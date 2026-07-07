@@ -18,6 +18,18 @@ function omoGetTopbarSourceLang(): array
             'text' => '<p>Formulaire indisponible.</p>',
             'context' => 'Fallback HTML shown when the bug report form cannot be loaded from the OMO topbar.',
         ],
+        'topbar.tension.button' => [
+            'text' => 'Tension',
+            'context' => 'Topbar tension button label in OMO pages.',
+        ],
+        'topbar.tension.title' => [
+            'text' => 'Declarer une tension',
+            'context' => 'Topbar tension modal title in OMO pages.',
+        ],
+        'topbar.tension.unavailable_html' => [
+            'text' => '<p>Formulaire indisponible.</p>',
+            'context' => 'Fallback HTML shown when the tension form cannot be loaded from the OMO topbar.',
+        ],
         'topbar.close' => [
             'text' => 'Fermer',
             'context' => 'Generic close button label for the OMO topbar modal and drawer.',
@@ -178,6 +190,22 @@ function omoGetTopbarSourceLang(): array
             'text' => 'Systeme',
             'context' => 'System theme option label shown in the OMO topbar profile panel.',
         ],
+        'topbar.profile.preferences.color_style_label' => [
+            'text' => 'Couleur',
+            'context' => 'Label of the compact color style selector shown in the OMO topbar profile panel.',
+        ],
+        'topbar.profile.preferences.color_style_default' => [
+            'text' => 'Noir et blanc',
+            'context' => 'Default monochrome color style option label shown in the OMO topbar profile panel.',
+        ],
+        'topbar.profile.preferences.color_style_turquoise' => [
+            'text' => 'Turquoise',
+            'context' => 'Turquoise color style option label shown in the OMO topbar profile panel.',
+        ],
+        'topbar.profile.preferences.color_style_ocean_blue' => [
+            'text' => 'Ocean Blue',
+            'context' => 'Ocean Blue color style option label shown in the OMO topbar profile panel.',
+        ],
         'topbar.profile.summary_fallback' => [
             'text' => 'Resume du profil',
             'context' => 'Fallback summary text shown below the profile name in the OMO topbar when no email is available.',
@@ -191,7 +219,7 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Topbar search menu button label in OMO pages.',
         ],
         'topbar.search.placeholder' => [
-            'text' => 'Rechercher un cercle, un role ou un outil',
+            'text' => 'Rechercher un cercle, un role, un outil, une FAQ ou un tutoriel',
             'context' => 'Placeholder and label for the OMO topbar search field.',
         ],
         'topbar.search.scope' => [
@@ -229,9 +257,21 @@ function omoTopbarTranslate(string $key, array $variables = []): string
     return t($key, $variables, $bundle, $sourceLang);
 }
 
-function omoGetTopbarHelpItems(string $variant = 'app'): array
+function omoGetTopbarHelpItems(string $variant = 'app', int $organizationId = 0): array
 {
-    $tutorialsUrl = commonBuildUrl('/lms/index.php?embed=1', commonGetRootHost());
+    $tutorialsQuery = [
+        'embed' => 1,
+    ];
+    if ($organizationId > 0) {
+        $tutorialsQuery['oid'] = $organizationId;
+    } else {
+        $tutorialsQuery['catalog'] = 'basic';
+    }
+
+    $tutorialsUrl = commonBuildUrl(
+        '/omo/api/lms/?' . http_build_query($tutorialsQuery, '', '&', PHP_QUERY_RFC3986),
+        commonGetRequestHost()
+    );
 
     $faqItem = [
         'key' => 'faq',
@@ -278,15 +318,15 @@ function omoGetTopbarHelpLinks(): array
     $helpLinks = [
         [
             'label' => omoTopbarTranslate('topbar.help.terms.label'),
-            'href' => commonBuildUrl('/common/conditions-generales.php', commonGetRootHost()),
-            'url' => commonBuildUrl('/common/conditions-generales.php', commonGetRootHost()),
+            'href' => commonBuildUrl('/common/conditions-generales.php'),
+            'url' => commonBuildUrl('/common/conditions-generales.php'),
             'mode' => 'fetch',
             'title' => omoTopbarTranslate('topbar.help.terms.label'),
         ],
         [
             'label' => omoTopbarTranslate('topbar.help.privacy.label'),
-            'href' => commonBuildUrl('/common/politique-confidentialite.php', commonGetRootHost()),
-            'url' => commonBuildUrl('/common/politique-confidentialite.php', commonGetRootHost()),
+            'href' => commonBuildUrl('/common/politique-confidentialite.php'),
+            'url' => commonBuildUrl('/common/politique-confidentialite.php'),
             'mode' => 'fetch',
             'title' => omoTopbarTranslate('topbar.help.privacy.label'),
         ],
@@ -311,7 +351,18 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
 {
     $variant = (string)($options['variant'] ?? 'app');
     $isDemoGuest = !empty($options['isDemoGuest']);
+    $currentUserId = function_exists('commonGetCurrentUserId')
+        ? (int)commonGetCurrentUserId()
+        : (int)($_SESSION['currentUser'] ?? 0);
     $hasOrganizationContext = !empty($organizationContext['isValid']) && !empty($organizationContext['id']);
+    $helpUsesOrganizationContext = $variant === 'app';
+    $helpOrganizationId = $currentUserId > 0 && $helpUsesOrganizationContext
+        ? (
+            $hasOrganizationContext
+                ? (int)$organizationContext['id']
+                : (int)($_SESSION['currentOrganization'] ?? 0)
+        )
+        : 0;
     $translationOptions = !empty($options['translations']) && is_array($options['translations'])
         ? $options['translations']
         : [];
@@ -322,7 +373,7 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
         'organization' => $organizationContext,
         'logoutReturnTo' => (string)($options['logoutReturnTo'] ?? '/omo/'),
         'helpLabel' => omoTopbarTranslate('topbar.help.button'),
-        'helpItems' => omoGetTopbarHelpItems($variant),
+        'helpItems' => omoGetTopbarHelpItems($variant, $helpOrganizationId),
         'helpLinks' => omoGetTopbarHelpLinks(),
         'profile' => [
             'enabled' => !$isDemoGuest,
@@ -355,6 +406,10 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
                 'languageLabel' => omoTopbarTranslate('topbar.profile.preferences.language_label'),
                 'systemLabel' => omoTopbarTranslate('topbar.profile.preferences.language_system'),
                 'themeLabel' => omoTopbarTranslate('topbar.profile.preferences.theme_label'),
+                'colorStyleLabel' => omoTopbarTranslate('topbar.profile.preferences.color_style_label'),
+                'colorStyleDefaultLabel' => omoTopbarTranslate('topbar.profile.preferences.color_style_default'),
+                'colorStyleTurquoiseLabel' => omoTopbarTranslate('topbar.profile.preferences.color_style_turquoise'),
+                'colorStyleOceanBlueLabel' => omoTopbarTranslate('topbar.profile.preferences.color_style_ocean_blue'),
                 'currentLocale' => translationBundleGetRequestLocalePreference('lang'),
                 'resolvedLocale' => omoGetTranslationLocale(),
                 'themeSystemLabel' => omoTopbarTranslate('topbar.profile.preferences.theme_system'),
@@ -386,6 +441,15 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
             'url' => '/omo/api/bug_report_popup.php',
             'mode' => 'fetch',
         ],
+        'tension' => [
+            'enabled' => !$isDemoGuest && $variant === 'app' && $currentUserId > 0 && $hasOrganizationContext,
+            'buttonLabel' => omoTopbarTranslate('topbar.tension.button'),
+            'title' => omoTopbarTranslate('topbar.tension.title'),
+            'url' => '/omo/api/tension_popup.php',
+            'mode' => 'fetch',
+            'iconUrl' => '/common/assets/icon-topbar-tension.png',
+            'appendCurrentRouteContext' => true,
+        ],
         'logoutLabel' => omoTopbarTranslate('topbar.logout'),
         'modal' => [
             'defaultTitle' => omoTopbarTranslate('topbar.modal.default_title'),
@@ -402,6 +466,7 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
             'helpUnavailableHtml' => omoTopbarTranslate('topbar.help.unavailable_html'),
             'helpPendingHtml' => omoTopbarTranslate('topbar.help.pending_html'),
             'bugReportUnavailableHtml' => omoTopbarTranslate('topbar.bug.unavailable_html'),
+            'tensionUnavailableHtml' => omoTopbarTranslate('topbar.tension.unavailable_html'),
         ],
     ];
 
@@ -419,6 +484,10 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
 
     if (!empty($options['bugReport']) && is_array($options['bugReport'])) {
         $config['bugReport'] = array_replace($config['bugReport'], $options['bugReport']);
+    }
+
+    if (!empty($options['tension']) && is_array($options['tension'])) {
+        $config['tension'] = array_replace($config['tension'], $options['tension']);
     }
 
     if (!empty($options['profile']) && is_array($options['profile'])) {

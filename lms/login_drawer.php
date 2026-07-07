@@ -6,7 +6,8 @@ require_once BASE_PATH . '/common/auth.php';
 commonRestoreRememberedUser();
 include __DIR__ . '/inc/org.php';
 
-$returnTo = commonNormalizeLocalPath($_GET['return_to'] ?? '/lms/', '/lms/');
+$defaultReturnTo = lmsBuildLocalPath('/lms/');
+$returnTo = commonNormalizeLocalPath($_GET['return_to'] ?? $defaultReturnTo, $defaultReturnTo);
 $organizationColor = commonGetOrganizationExplicitColor($org);
 $authSourceLang = commonGetAuthPhpSourceLang();
 $authLang = commonAuthLoadBundle('common_auth_page', $authSourceLang);

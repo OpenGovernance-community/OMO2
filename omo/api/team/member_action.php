@@ -2,6 +2,7 @@
 require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\Holon;
+use dbObject\Invitation;
 use dbObject\Organization;
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -69,6 +70,67 @@ switch ($action) {
             exit;
         }
         $result = $holon->setMemberContextAdmin($userId, false, $organizationId);
+        break;
+
+    case 'cancel_invitation':
+        if (!$holon->canEdit()) {
+            http_response_code(403);
+            echo json_encode(array(
+                'status' => false,
+                'message' => "Vous n'avez pas le droit de modifier ce contexte.",
+            ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        $pendingInvitation = Invitation::findPendingForOrganizationUser($organizationId, $userId);
+        if (!($pendingInvitation instanceof Invitation) || !$pendingInvitation->isAdminInitiatedInvitation()) {
+            http_response_code(404);
+            echo json_encode(array(
+                'status' => false,
+                'message' => "Aucune invitation en attente n'a ete trouvee pour cette personne.",
+            ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        $result = $pendingInvitation->cancelByAdmin(array(
+            'canceledByUserId' => (int)commonGetCurrentUserId(),
+        ));
+        break;
+
+    case 'resend_invitation':
+        if (!$holon->isAllowed('CAN_ADD_MEMBER', false)) {
+            http_response_code(403);
+            echo json_encode(array(
+                'status' => false,
+                'message' => "Vous n'avez pas le droit d'ajouter un membre dans ce contexte.",
+            ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        $pendingInvitation = Invitation::findPendingForOrganizationUser($organizationId, $userId);
+        if (!($pendingInvitation instanceof Invitation) || !$pendingInvitation->isAdminInitiatedInvitation()) {
+            http_response_code(404);
+            echo json_encode(array(
+                'status' => false,
+                'message' => "Aucune invitation admin en attente n'a ete trouvee pour cette personne.",
+            ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        try {
+            $pendingInvitation->sendEmail();
+            $result = array(
+                'status' => true,
+                'message' => 'Invitation renvoyee.',
+            );
+        } catch (\Throwable $exception) {
+            $result = array(
+                'status' => false,
+                'message' => trim((string)$exception->getMessage()) !== ''
+                    ? (string)$exception->getMessage()
+                    : "L'invitation n'a pas pu etre renvoyee.",
+            );
+        }
         break;
 
     default:
