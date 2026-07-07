@@ -1912,7 +1912,7 @@ $(document)
             if (currentHolonId > 0 && currentHolonId !== rootHolonId) {
                 leftUrl += '&cid=' + currentHolonId;
             }
-            loadContent('#panel-left', leftUrl);
+            loadContent(typeof omoGetLeftPanelContentSelector === 'function' ? omoGetLeftPanelContentSelector() : '#panel-left', leftUrl);
         }
 
         if (rootHolonId > 0 && typeof window.omoReloadStructureAndFocus === 'function') {

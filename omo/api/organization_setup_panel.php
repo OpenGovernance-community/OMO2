@@ -378,7 +378,7 @@ function omoReloadOrganizationPanels(oid) {
         return;
     }
 
-    loadContent('#panel-left', 'api/getOrg.php?oid=' + targetOid);
+    loadContent(typeof omoGetLeftPanelContentSelector === 'function' ? omoGetLeftPanelContentSelector() : '#panel-left', 'api/getOrg.php?oid=' + targetOid);
 
     if (typeof window.omoResetMainRightPanel === 'function') {
         window.omoResetMainRightPanel();
@@ -828,7 +828,7 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
             return;
         }
 
-        loadContent('#panel-left', 'api/getOrg.php?oid=' + targetOid);
+        loadContent(typeof omoGetLeftPanelContentSelector === 'function' ? omoGetLeftPanelContentSelector() : '#panel-left', 'api/getOrg.php?oid=' + targetOid);
     }
 
     window.omoRefreshOrganizationInfoPanel = omoRefreshOrganizationInfoPanel;

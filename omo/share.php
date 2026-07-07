@@ -58,6 +58,7 @@ if (!$organization->load((int)$shareLink->get('IDorganization'))) {
 
 $organizationRootHolon = $organization->getStructuralRootHolon();
 $organizationRootHolonId = $organizationRootHolon ? (int)$organizationRootHolon->getId() : 0;
+$isStructureApplicationEnabled = $organization->isStructureApplicationEnabled();
 
 $scopeHolon = $shareLink->getScopeHolon();
 if (!$scopeHolon) {
@@ -240,7 +241,21 @@ $brandHref = $shareLink->buildShareUrl($initialCid);
             Lien partage public pour <?= htmlspecialchars($scopeHolon->getDisplayName(), ENT_QUOTES, 'UTF-8') ?>
         </div>
         <div class="content">
-            <div class="panel panel-left" id="panel-left"></div>
+            <div class="panel panel-left" id="panel-left">
+                <div class="omo-left-panel-shell" id="omoLeftPanelShell">
+                    <div class="omo-left-panel-shell__context" id="panel-left-context"></div>
+                    <div
+                        class="omo-left-panel-shell__resizer"
+                        id="panel-left-structure-resizer"
+                        role="separator"
+                        aria-orientation="horizontal"
+                        aria-label="Redimensionner la mini structure"
+                    ></div>
+                    <div class="omo-left-panel-shell__structure" id="panel-left-structure">
+                        <div class="omo-left-panel-shell__structure-host" id="omo-left-structure-map"></div>
+                    </div>
+                </div>
+            </div>
             <div class="resizer" id="resizer"></div>
             <div class="panel panel-right" id="panel-right"></div>
         </div>
@@ -261,6 +276,7 @@ window.omoConfig = <?= json_encode(array(
     'host' => commonGetRequestHost(),
     'routeMode' => 'share',
     'rootHolonId' => $organizationRootHolonId,
+    'structureEnabled' => $isStructureApplicationEnabled,
     'orgLookupError' => null,
     'isDemo' => false,
     'currentUserName' => 'Invite',
@@ -278,6 +294,7 @@ window.omoConfig = <?= json_encode(array(
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>
 <script src="/omo/assets/js/app.js"></script>
+<script src="/omo/assets/js/structure-mini-map.js"></script>
 <script>
 $(document).ready(function () {
     if (window.omoConfig && !window.omoConfig.shareAllowsStructure) {
@@ -290,7 +307,11 @@ $(document).ready(function () {
             '</div>'
         ].join('');
 
-        $('#panel-left').html(message);
+        if (typeof omoSetLeftPanelHtml === 'function') {
+            omoSetLeftPanelHtml(message);
+        } else {
+            $('#panel-left').html(message);
+        }
         $('#panel-right').html(message);
 
         if (window.omoConfig.shareAllowsPeople && typeof openDrawer === 'function') {
