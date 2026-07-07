@@ -18,6 +18,9 @@
     --omo-overlay-drawer-enter-offset: 22px;
     --omo-overlay-drawer-z-index: 40;
     --omo-drawer-resizer-gap: 5px;
+    --omo-left-structure-height: 220px;
+    --omo-left-structure-min-height: 120px;
+    --omo-left-structure-resizer-size: 10px;
 
     /* RADIUS */
     --radius-sm: 6px;
@@ -110,13 +113,136 @@ body {
 
 /* LEFT PANEL */
 .panel-left {
+    display: flex;
+    flex-direction: column;
     flex: 0 0 auto;
     width: 33%;
     min-width: 250px;
     border-right: 1px solid var(--color-border);
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden;
     -ms-overflow-style: auto;
+}
+
+.omo-left-panel-shell {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.omo-left-panel-shell__context {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 140px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    background: var(--color-surface);
+}
+
+.omo-left-panel-shell__resizer {
+    flex: 0 0 var(--omo-left-structure-resizer-size);
+    min-height: var(--omo-left-structure-resizer-size);
+    cursor: row-resize;
+    position: relative;
+    background:
+        linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--color-border, #e5e7eb) 28%, transparent),
+            color-mix(in srgb, var(--color-border, #e5e7eb) 72%, transparent),
+            color-mix(in srgb, var(--color-border, #e5e7eb) 28%, transparent)
+        );
+}
+
+.omo-left-panel-shell__resizer::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 4px;
+    border-radius: 999px;
+    transform: translate(-50%, -50%);
+    background: color-mix(in srgb, var(--color-text-light, #64748b) 55%, transparent);
+}
+
+.omo-left-panel-shell__structure {
+    position: relative;
+    flex: 0 0 var(--omo-left-structure-height);
+    min-height: var(--omo-left-structure-min-height);
+    border-top: 1px solid color-mix(in srgb, var(--color-border, #e5e7eb) 88%, transparent);
+    background:
+        linear-gradient(180deg, color-mix(in srgb, var(--color-surface-alt, #f8fafc) 92%, white), var(--color-surface));
+    overflow: hidden;
+}
+
+.omo-left-panel-shell__structure-host {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+}
+
+.omo-left-structure-map {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+}
+
+.omo-left-structure-map__canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.omo-left-structure-map__tooltip {
+    position: absolute;
+    left: 12px;
+    right: auto;
+    bottom: 12px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+    max-width: calc(100% - 24px);
+    padding: 8px 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-surface, #ffffff) 88%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-border, #e5e7eb) 88%, transparent);
+    box-shadow: var(--shadow-sm);
+    color: var(--color-text, #0f172a);
+    font-size: 12px;
+    line-height: 1.35;
+    pointer-events: none;
+    backdrop-filter: blur(10px);
+}
+
+.omo-left-structure-map__tooltip.is-muted {
+    color: var(--color-text-light, #64748b);
+}
+
+.omo-left-structure-map__state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding: 14px;
+    text-align: center;
+    color: var(--color-text-light, #64748b);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.omo-left-panel-shell--structure-hidden .omo-left-panel-shell__structure,
+.omo-left-panel-shell--structure-hidden .omo-left-panel-shell__resizer {
+    display: none;
 }
 
 /* RIGHT PANEL */
@@ -311,14 +437,39 @@ body {
 
 /* RESIZER */
 .resizer {
-    width: 5px;
+    width: 10px;
+    min-width: 10px;
     cursor: col-resize;
-    background: transparent;
     position: relative;
+    background:
+        linear-gradient(
+            90deg,
+            color-mix(in srgb, var(--color-border, #e5e7eb) 28%, transparent),
+            color-mix(in srgb, var(--color-border, #e5e7eb) 72%, transparent),
+            color-mix(in srgb, var(--color-border, #e5e7eb) 28%, transparent)
+        );
+}
+
+.resizer::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: calc(50% - 2px);
+    width: 4px;
+    height: 44px;
+    border-radius: 999px;
+    transform: translate(-50%, -50%);
+    background: color-mix(in srgb, var(--color-text-light, #64748b) 55%, transparent);
 }
 
 .resizer:hover {
-    background: var(--color-border);
+    background:
+        linear-gradient(
+            90deg,
+            color-mix(in srgb, var(--color-border, #e5e7eb) 22%, transparent),
+            color-mix(in srgb, var(--color-border, #e5e7eb) 88%, transparent),
+            color-mix(in srgb, var(--color-border, #e5e7eb) 22%, transparent)
+        );
 }
 
 
@@ -1661,7 +1812,8 @@ button.omo-card {
     }
 
     /* désactiver visuellement le resizer */
-    .resizer {
+    .resizer,
+    .omo-left-panel-shell__resizer {
         display: none;
     }
 
@@ -1771,6 +1923,14 @@ body.view-right .mobile-nav button[data-view="right"]::after {
     /* positions */
     .panel-left {
         transform: translateX(0);
+    }
+
+    .omo-left-panel-shell__context {
+        min-height: 0;
+    }
+
+    .omo-left-panel-shell__structure {
+        display: none;
     }
 
     .panel-right {

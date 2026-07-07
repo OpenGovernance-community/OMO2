@@ -488,6 +488,7 @@
 				'holon_created' => 'Creation',
 				'holon_updated' => 'Modification',
 				'holon_member_added' => 'Ajout de membre',
+				'holon_member_removed' => 'Retrait de membre',
 			);
 
 			if (isset($labels[$action])) {

@@ -282,7 +282,7 @@ function submitMove(event) {
                     leftUrl += '&cid=' + targetCid;
                 }
 
-                loadContent('#panel-left', leftUrl);
+                loadContent(typeof omoGetLeftPanelContentSelector === 'function' ? omoGetLeftPanelContentSelector() : '#panel-left', leftUrl);
             }
 
             if (typeof window.omoReloadStructureAndFocus === 'function') {

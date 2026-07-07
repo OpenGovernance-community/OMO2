@@ -1516,7 +1516,7 @@ function saveHolon(event) {
                     leftUrl += '&cid=' + targetHolonId;
                 }
 
-                loadContent('#panel-left', leftUrl);
+                loadContent(typeof omoGetLeftPanelContentSelector === 'function' ? omoGetLeftPanelContentSelector() : '#panel-left', leftUrl);
 
                 window.dispatchEvent(new CustomEvent('omo-structure-refresh', {
                     detail: {
@@ -1582,7 +1582,7 @@ function saveHolon(event) {
                     leftUrl += '&cid=' + targetHolonId;
                 }
 
-                loadContent('#panel-left', leftUrl);
+                loadContent(typeof omoGetLeftPanelContentSelector === 'function' ? omoGetLeftPanelContentSelector() : '#panel-left', leftUrl);
 
                 window.dispatchEvent(new CustomEvent('omo-structure-refresh', {
                     detail: {

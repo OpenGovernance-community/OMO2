@@ -3364,7 +3364,7 @@
 			}
 		}
 
-		protected function buildDocumentDestinationCatalog(\dbObject\Holon $candidate, array &$catalog, array $path = array())
+		protected function buildDocumentDestinationCatalog(\dbObject\Holon $candidate, array &$catalog, array $path = array(), int $currentUserId = 0)
 		{
 			if (!(bool)$candidate->get('active') || !(bool)$candidate->get('visible')) {
 				return;
@@ -3377,7 +3377,17 @@
 			if ($typeId !== 4 && $displayName !== '') {
 				$currentPath[] = $displayName;
 
-				if (in_array($typeId, array(1, 2, 3), true)) {
+				if (
+					$currentUserId > 0
+					&& in_array($typeId, array(1, 2, 3), true)
+					&& \dbObject\Document::canCreateInOrganizationContext(
+						(int)$this->getId(),
+						(int)$candidate->getId(),
+						$currentUserId,
+						0,
+						true
+					)
+				) {
 					$catalog[] = array(
 						'key' => 'holon-' . (int)$candidate->getId(),
 						'holonId' => (int)$candidate->getId(),
@@ -3390,7 +3400,7 @@
 			}
 
 			foreach ($candidate->getChildren() as $child) {
-				$this->buildDocumentDestinationCatalog($child, $catalog, $currentPath);
+				$this->buildDocumentDestinationCatalog($child, $catalog, $currentPath, $currentUserId);
 			}
 		}
 
@@ -3495,6 +3505,9 @@
 		public function getDocumentMoveEditorData($documentId = 0)
 		{
 			$rootHolon = $this->getEnabledStructuralRootHolon();
+			$currentUserId = function_exists('commonGetCurrentUserId')
+				? (int)\commonGetCurrentUserId()
+				: (int)($_SESSION['currentUser'] ?? 0);
 			$documentId = (int)$documentId;
 			$document = new \dbObject\Document();
 			$organizationLabel = trim((string)$this->get('name'));
@@ -3550,21 +3563,33 @@
 				return $data;
 			}
 
-			$data['destinations'][] = array(
-				'key' => 'organization',
-				'holonId' => 0,
-				'name' => $organizationLabel !== '' ? $organizationLabel : 'Organisation',
-				'typeId' => 0,
-				'typeLabel' => 'Organisation',
-				'pathLabel' => $organizationLabel !== '' ? $organizationLabel : 'Organisation',
-				'isCurrentDestination' => $currentHolonId <= 0,
-			);
+			if (
+				$currentUserId > 0
+				&& \dbObject\Document::canCreateInOrganizationContext(
+					(int)$this->getId(),
+					null,
+					$currentUserId,
+					0,
+					true
+				)
+			) {
+				$data['destinations'][] = array(
+					'key' => 'organization',
+					'holonId' => 0,
+					'name' => $organizationLabel !== '' ? $organizationLabel : 'Organisation',
+					'typeId' => 0,
+					'typeLabel' => 'Organisation',
+					'pathLabel' => $organizationLabel !== '' ? $organizationLabel : 'Organisation',
+					'isCurrentDestination' => $currentHolonId <= 0,
+				);
+			}
 
 			if ($rootHolon) {
 				$this->buildDocumentDestinationCatalog(
 					$rootHolon,
 					$data['destinations'],
-					$organizationLabel !== '' ? array($organizationLabel) : array('Organisation')
+					$organizationLabel !== '' ? array($organizationLabel) : array('Organisation'),
+					$currentUserId
 				);
 			}
 
@@ -3580,6 +3605,19 @@
 
 				$folderId = (int)$folderDocument->getId();
 				if ($folderId <= 0 || $folderId === (int)$document->getId()) {
+					continue;
+				}
+
+				if (
+					$currentUserId <= 0
+					|| !\dbObject\Document::canCreateInOrganizationContext(
+						(int)$this->getId(),
+						(int)$folderDocument->get('IDholon') > 0 ? (int)$folderDocument->get('IDholon') : null,
+						$currentUserId,
+						$folderId,
+						true
+					)
+				) {
 					continue;
 				}
 

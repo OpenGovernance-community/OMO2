@@ -1995,6 +1995,21 @@
 				: 0;
 
 			if (
+				!self::canCreateInOrganizationContext(
+					$organizationId,
+					$resolvedTargetHolonId > 0 ? $resolvedTargetHolonId : null,
+					$userId,
+					$resolvedTargetParentDocumentId,
+					false
+				)
+			) {
+				return array(
+					'status' => false,
+					'text' => 'Acces refuse pour cette destination.',
+				);
+			}
+
+			if (
 				$currentHolonId === $resolvedTargetHolonId
 				&& $currentParentDocumentId === $resolvedTargetParentDocumentId
 			) {
@@ -2012,6 +2027,10 @@
 				}
 			}
 
+			$previousVisibilityRule = $this->getPrimaryVisibilityRuleRow();
+			$previousVisibilityType = \dbObject\ObjectVisibility::normalizeVisibilityType(
+				$previousVisibilityRule['visibility_type'] ?? \dbObject\ObjectVisibility::TYPE_ORGANIZATION
+			);
 			$pdo = self::getPdo();
 			$startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
 			$now = new \DateTimeImmutable();
@@ -2081,7 +2100,7 @@
 				}
 
 				$message = 'Document deplace.';
-				if ($finalVisibilityType !== $visibilityType) {
+				if ($finalVisibilityType !== $previousVisibilityType) {
 					$message = 'Document deplace. La visibilite a ete adaptee.';
 				}
 

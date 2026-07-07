@@ -528,12 +528,21 @@
             return;
         }
 
-        document.cookie = [
-            'lang=' + encodeURIComponent(String(languageSelect.value || '').toLowerCase()),
-            'path=/',
-            'max-age=' + String(365 * 24 * 60 * 60),
-            'SameSite=Lax'
-        ].join('; ');
+        if (String(languageSelect.value || '').toLowerCase() === 'system') {
+            document.cookie = [
+                'lang=',
+                'path=/',
+                'expires=Thu, 01 Jan 1970 00:00:00 GMT',
+                'SameSite=Lax'
+            ].join('; ');
+        } else {
+            document.cookie = [
+                'lang=' + encodeURIComponent(String(languageSelect.value || '').toLowerCase()),
+                'path=/',
+                'max-age=' + String(365 * 24 * 60 * 60),
+                'SameSite=Lax'
+            ].join('; ');
+        }
         window.location.reload();
     }
 
