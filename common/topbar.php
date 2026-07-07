@@ -312,7 +312,12 @@ function commonRenderTopbar(array $options = [])
     if ($currentLocaleCode === '') {
         $currentLocaleCode = 'fr';
     }
-    $currentLanguageTileLabel = strtoupper(substr($currentLocaleCode, 0, 2));
+    $currentLanguageTileLabel = function_exists('translationBundleGetSimpleLocaleLabel')
+        ? translationBundleGetSimpleLocaleLabel($currentLocaleCode, 'fr')
+        : strtoupper(substr($currentLocaleCode, 0, 2));
+    $resolvedLocaleLabel = function_exists('translationBundleGetSimpleLocaleLabel')
+        ? translationBundleGetSimpleLocaleLabel((string)$config['profile']['preferences']['resolvedLocale'], 'fr')
+        : strtoupper(substr((string)$config['profile']['preferences']['resolvedLocale'], 0, 2));
 
     if (!$assetsLoaded) {
         commonRenderTopbarJqueryAssets();
@@ -527,7 +532,7 @@ function commonRenderTopbar(array $options = [])
                                                     type="button"
                                                     class="common-topbar-profile-preference__option<?= $config['profile']['preferences']['currentLocale'] === 'system' ? ' is-active' : '' ?>"
                                                     data-topbar-language-option="system"
-                                                ><?= htmlspecialchars($config['profile']['preferences']['systemLabel']) ?> (<?= htmlspecialchars(strtoupper((string)$config['profile']['preferences']['resolvedLocale'])) ?>)</button>
+                                                ><?= htmlspecialchars($config['profile']['preferences']['systemLabel']) ?> (<?= htmlspecialchars($resolvedLocaleLabel) ?>)</button>
                                                 <?php foreach ($config['profile']['preferences']['languageOptions'] as $languageOption): ?>
                                                     <?php $languageOptionLocale = (string)($languageOption['locale'] ?? ''); ?>
                                                     <button

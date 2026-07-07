@@ -1757,7 +1757,6 @@
 						throw new \RuntimeException("Le statut admin n'a pas pu être enregistré.");
 					}
 				}
-
 				$pdo->commit();
 				return array(
 					'status' => true,
@@ -1811,7 +1810,13 @@
 			try {
 				$pdo->beginTransaction();
 
+				$memberUser = new \dbObject\User();
+				if (!$memberUser->load($userId)) {
+					$memberUser->setId($userId);
+				}
+
 				$updatedLinkCount = 0;
+				$removedHolonIds = array();
 				$scopeHolonIds = array();
 				$visitedHolonIds = array();
 				$this->collectMemberScopeHolonIds((bool)$options['includeDescendants'], $scopeHolonIds, $visitedHolonIds);
@@ -1852,6 +1857,10 @@
 							}
 
 							$updatedLinkCount += 1;
+							$removedHolonId = (int)$link->get('IDholon');
+							if ($removedHolonId > 0) {
+								$removedHolonIds[$removedHolonId] = $removedHolonId;
+							}
 						}
 					}
 				}
@@ -1876,6 +1885,8 @@
 				if ($updatedLinkCount === 0 && !$membershipUpdated) {
 					throw new \RuntimeException("Aucun lien membre actif n'a été trouvé dans ce contexte.");
 				}
+
+				$this->recordMemberRemovedHistory($memberUser, $organizationId, array_values($removedHolonIds), $membershipUpdated);
 
 				$pdo->commit();
 				return array(
@@ -1999,6 +2010,84 @@
 			return $typeLabel . ' ' . $name;
 		}
 
+		protected function buildMemberHistoryAuthorData($organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			$authorUserId = (int)\commonGetCurrentUserId();
+			$authorLabel = 'Utilisateur';
+
+			if ($authorUserId > 0) {
+				$author = new \dbObject\User();
+				if ($author->load($authorUserId)) {
+					$authorLabel = trim((string)$author->getScopedDisplayName($organizationId));
+				}
+			}
+
+			if ($authorLabel === '') {
+				$authorLabel = 'Utilisateur ' . $authorUserId;
+			}
+
+			return array(
+				'userId' => $authorUserId,
+				'label' => $authorLabel,
+			);
+		}
+
+		protected function buildMemberHistoryUserLabel(\dbObject\User $memberUser, $organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			$memberLabel = trim((string)$memberUser->getScopedDisplayName($organizationId));
+			if ($memberLabel === '') {
+				$memberLabel = trim((string)$memberUser->get('email'));
+			}
+			if ($memberLabel === '') {
+				$memberLabel = 'Utilisateur ' . (int)$memberUser->getId();
+			}
+
+			return $memberLabel;
+		}
+
+		protected function buildHistoryHolonReferenceToken($holonId)
+		{
+			$holonId = (int)$holonId;
+			if ($holonId <= 0) {
+				return '';
+			}
+
+			if ($holonId === (int)$this->getId()) {
+				return \dbObject\History::buildReferenceToken('holon', $holonId, $this->getHistoryReferenceLabel());
+			}
+
+			$holon = new \dbObject\Holon();
+			$holonLabel = 'Holon ' . $holonId;
+			if ($holon->load($holonId)) {
+				$holonLabel = $holon->getHistoryReferenceLabel();
+			}
+
+			return \dbObject\History::buildReferenceToken('holon', $holonId, $holonLabel);
+		}
+
+		protected function buildHistoryHolonReferenceList(array $holonIds)
+		{
+			$tokens = array();
+			$seenHolonIds = array();
+
+			foreach ($holonIds as $holonId) {
+				$holonId = (int)$holonId;
+				if ($holonId <= 0 || isset($seenHolonIds[$holonId])) {
+					continue;
+				}
+
+				$seenHolonIds[$holonId] = true;
+				$token = $this->buildHistoryHolonReferenceToken($holonId);
+				if ($token !== '') {
+					$tokens[] = $token;
+				}
+			}
+
+			return $tokens;
+		}
+
 		protected function recordMemberAddedHistory(\dbObject\User $memberUser, $organizationId)
 		{
 			$organizationId = (int)$organizationId;
@@ -2046,6 +2135,59 @@
 
 			if (!is_array($saveResult) || empty($saveResult['status'])) {
 				throw new \RuntimeException("L'historique de l'ajout n'a pas pu être enregistré.");
+			}
+		}
+
+		protected function recordMemberRemovedHistory(\dbObject\User $memberUser, $organizationId, array $removedHolonIds = array(), $membershipUpdated = false)
+		{
+			$organizationId = (int)$organizationId;
+			$authorData = $this->buildMemberHistoryAuthorData($organizationId);
+			$authorUserId = (int)($authorData['userId'] ?? 0);
+			$authorLabel = (string)($authorData['label'] ?? 'Utilisateur');
+			$memberLabel = $this->buildMemberHistoryUserLabel($memberUser, $organizationId);
+			$holonTokens = $this->buildHistoryHolonReferenceList($removedHolonIds);
+
+			if (count($holonTokens) === 0) {
+				$holonTokens[] = \dbObject\History::buildReferenceToken('holon', (int)$this->getId(), $this->getHistoryReferenceLabel());
+			}
+
+			if (count($holonTokens) === 1) {
+				$content = \dbObject\History::buildReferenceToken('user', (int)$memberUser->getId(), $memberLabel)
+					. ' a ete retire du '
+					. $holonTokens[0]
+					. ' par '
+					. \dbObject\History::buildReferenceToken('user', $authorUserId, $authorLabel)
+					. '.';
+			} else {
+				$content = \dbObject\History::buildReferenceToken('user', (int)$memberUser->getId(), $memberLabel)
+					. ' a ete retire des holons suivants par '
+					. \dbObject\History::buildReferenceToken('user', $authorUserId, $authorLabel)
+					. ' : '
+					. implode(', ', $holonTokens)
+					. '.';
+			}
+
+			if (!empty($membershipUpdated) && $this->isOrganizationHolon()) {
+				$content .= ' Son adhesion a aussi ete retiree de l organisation.';
+			}
+
+			$saveResult = \dbObject\History::createEntry(
+				$organizationId,
+				$authorUserId,
+				'holon_member_removed',
+				$content,
+				array(
+					'IDtargetuser' => (int)$memberUser->getId(),
+					'IDholon' => (int)$this->getId(),
+					'authorUserId' => $authorUserId,
+					'removedHolonIds' => array_values(array_map('intval', $removedHolonIds)),
+					'membershipUpdated' => !empty($membershipUpdated),
+				),
+				(int)$this->getContainingCircleId(false)
+			);
+
+			if (!is_array($saveResult) || empty($saveResult['status'])) {
+				throw new \RuntimeException("L'historique du retrait n'a pas pu etre enregistre.");
 			}
 		}
 

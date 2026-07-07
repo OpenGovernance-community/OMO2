@@ -2577,6 +2577,7 @@ function commonRenderMagicLoginPage(array $options = [])
     $languageOptions = translationBundleGetLanguageOptions();
     $currentLocalePreference = translationBundleGetRequestLocalePreference('lang');
     $resolvedLocale = commonAuthGetTranslationLocale();
+    $resolvedLocaleLabel = translationBundleGetSimpleLocaleLabel($resolvedLocale, 'fr');
     $organizationContext = $options['organization'] ?? commonResolveOrganizationContext(1);
     $title = $options['title'] ?? commonAuthT('auth.page.login.title_default', [], $lang, $sourceLang);
     $appName = $options['appName'] ?? commonAuthT('auth.page.login.app_default', [], $lang, $sourceLang);
@@ -2660,7 +2661,7 @@ function commonRenderMagicLoginPage(array $options = [])
             <label class="auth-language-picker" for="authLanguageSelect">
                 <span><?= htmlspecialchars(commonAuthT('auth.page.language_label', [], $lang, $sourceLang)) ?></span>
                 <select id="authLanguageSelect" data-auth-language-select>
-                    <option value="system" <?= $currentLocalePreference === 'system' ? 'selected' : '' ?>><?= htmlspecialchars(commonAuthT('auth.page.language_system_label', [], $lang, $sourceLang)) ?> (<?= htmlspecialchars(strtoupper($resolvedLocale)) ?>)</option>
+                    <option value="system" <?= $currentLocalePreference === 'system' ? 'selected' : '' ?>><?= htmlspecialchars(commonAuthT('auth.page.language_system_label', [], $lang, $sourceLang)) ?> (<?= htmlspecialchars($resolvedLocaleLabel) ?>)</option>
                     <?php foreach ($languageOptions as $languageOption): ?>
                     <option value="<?= htmlspecialchars((string)$languageOption['locale']) ?>" <?= $currentLocalePreference === (string)$languageOption['locale'] ? 'selected' : '' ?>><?= htmlspecialchars((string)$languageOption['label']) ?></option>
                     <?php endforeach; ?>

@@ -178,6 +178,27 @@ function translationBundleGetSupportedLocales()
     return array_column(translationBundleGetAvailableLanguages(), 'locale');
 }
 
+function translationBundleGetSimpleLocaleLabel($locale, $fallback = 'fr')
+{
+    $normalizedLocale = translationBundleNormalizeLocale($locale);
+    if ($normalizedLocale === '') {
+        $normalizedLocale = translationBundleNormalizeLocale($fallback);
+    }
+
+    if ($normalizedLocale === '') {
+        return 'FR';
+    }
+
+    $primarySubtag = explode('-', $normalizedLocale)[0] ?? '';
+    $primarySubtag = strtolower(trim((string)$primarySubtag));
+
+    if ($primarySubtag === '') {
+        $primarySubtag = 'fr';
+    }
+
+    return strtoupper(substr($primarySubtag, 0, 2));
+}
+
 function translationBundleResolveSupportedLocale($locale, array $supportedLocales = [])
 {
     $supportedLocales = $supportedLocales ?: translationBundleGetSupportedLocales();

@@ -5,6 +5,7 @@ require_once dirname(__DIR__) . '/common/user_profile_ui.php';
 require_once dirname(__DIR__) . '/common/user_permission_ui.php';
 
 use dbObject\Holon;
+use dbObject\Invitation;
 use dbObject\Organization;
 use dbObject\User;
 
@@ -168,6 +169,324 @@ function omoUserContextRenderRightsFragment($targetUserId, $organizationId)
     return ob_get_clean();
 }
 
+function omoUserContextRenderPendingInvitationFragment(array $context)
+{
+    $organizationId = (int)($context['organizationId'] ?? 0);
+    $userId = (int)($context['userId'] ?? 0);
+    $currentHolonId = (int)($context['currentHolonId'] ?? 0);
+    $displayName = trim((string)($context['displayName'] ?? ''));
+    $secondaryLabel = trim((string)($context['secondaryLabel'] ?? ''));
+    $contextLabel = trim((string)($context['contextLabel'] ?? ''));
+    $contextName = trim((string)($context['contextName'] ?? ''));
+    $organizationName = trim((string)($context['organizationName'] ?? ''));
+    $statusCopy = trim((string)($context['statusCopy'] ?? ''));
+    $detailCopy = trim((string)($context['detailCopy'] ?? ''));
+    $manageCopy = trim((string)($context['manageCopy'] ?? ''));
+    $manageRestrictedCopy = trim((string)($context['manageRestrictedCopy'] ?? ''));
+    $invitationTypeLabel = trim((string)($context['invitationTypeLabel'] ?? ''));
+    $pendingHolons = is_array($context['pendingHolons'] ?? null) ? $context['pendingHolons'] : [];
+    $hasPendingInvitation = !empty($context['hasPendingInvitation']);
+    $canManageInvitation = !empty($context['canManageInvitation']);
+    $canResendInvitation = !empty($context['canResendInvitation']);
+    $displayTitle = $displayName !== '' ? $displayName : 'Invitation en attente';
+    $contextSummary = $contextLabel !== '' ? $contextLabel : 'contexte';
+    if ($contextName !== '') {
+        $contextSummary .= ' - ' . $contextName;
+    }
+    if ($organizationName !== '') {
+        $contextSummary .= ' - ' . $organizationName;
+    }
+
+    ob_start();
+    ?>
+    <div
+        class="omo-user-pending-invitation"
+        id="omoUserPendingInvitation"
+        data-oid="<?= (int)$organizationId ?>"
+        data-hid="<?= (int)$currentHolonId ?>"
+        data-user-id="<?= (int)$userId ?>"
+    >
+        <style>
+        .omo-user-pending-invitation {
+            display: grid;
+            gap: 16px;
+            padding: 18px;
+            box-sizing: border-box;
+            color: var(--color-text, #1f2937);
+        }
+
+        .omo-user-pending-invitation__hero {
+            --generic-hero-gap: 10px;
+            --generic-hero-padding: 20px;
+            --generic-hero-radius: 22px;
+        }
+
+        .omo-user-pending-invitation__hero h2 {
+            margin: 0;
+        }
+
+        .omo-user-pending-invitation__secondary,
+        .omo-user-pending-invitation__copy,
+        .omo-user-pending-invitation__detail,
+        .omo-user-pending-invitation__meta-value,
+        .omo-user-pending-invitation__empty,
+        .omo-user-pending-invitation__feedback {
+            color: var(--color-text-light, #6b7280);
+        }
+
+        .omo-user-pending-invitation__secondary,
+        .omo-user-pending-invitation__copy,
+        .omo-user-pending-invitation__detail,
+        .omo-user-pending-invitation__feedback {
+            line-height: 1.5;
+        }
+
+        .omo-user-pending-invitation__badge-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .omo-user-pending-invitation__badge {
+            display: inline-flex;
+            align-items: center;
+            min-height: 28px;
+            padding: 0 10px;
+            border-radius: 999px;
+            background: rgba(100, 116, 139, 0.14);
+            color: var(--color-text-light, #6b7280);
+            border: 1px solid var(--color-border, #e5e7eb);
+            font-size: 0.76rem;
+            font-weight: 700;
+        }
+
+        .omo-user-pending-invitation__section {
+            --generic-section-gap: 12px;
+            --generic-section-padding-block: 18px;
+            --generic-section-padding-inline: 18px;
+            --generic-section-radius: 20px;
+        }
+
+        .omo-user-pending-invitation__section h3 {
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .omo-user-pending-invitation__meta {
+            display: grid;
+            gap: 10px;
+        }
+
+        .omo-user-pending-invitation__meta-row {
+            display: grid;
+            gap: 4px;
+        }
+
+        .omo-user-pending-invitation__meta-label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--color-text, #1f2937);
+        }
+
+        .omo-user-pending-invitation__holon-list {
+            margin: 0;
+            padding-left: 18px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .omo-user-pending-invitation__holon-list li {
+            line-height: 1.45;
+        }
+
+        .omo-user-pending-invitation__holon-type {
+            color: var(--color-text-light, #6b7280);
+        }
+
+        .omo-user-pending-invitation__actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .omo-user-pending-invitation__action {
+            text-decoration: none;
+        }
+
+        .omo-user-pending-invitation__feedback {
+            min-height: 24px;
+            font-size: 0.92rem;
+        }
+
+        .omo-user-pending-invitation__feedback.is-success {
+            color: #166534;
+        }
+
+        .omo-user-pending-invitation__feedback.is-error {
+            color: #b91c1c;
+        }
+        </style>
+
+        <div class="omo-user-pending-invitation__hero generic-hero-panel">
+            <div class="generic-card-title generic-card-title--eyebrow">Invitation en attente</div>
+            <h2 class="generic-card-title generic-card-title--large"><?= omoApiEscape($displayTitle) ?></h2>
+            <?php if ($secondaryLabel !== ''): ?>
+                <div class="omo-user-pending-invitation__secondary"><?= omoApiEscape($secondaryLabel) ?></div>
+            <?php endif; ?>
+            <?php if ($contextSummary !== ''): ?>
+                <div class="omo-user-pending-invitation__secondary">Contexte: <?= omoApiEscape($contextSummary) ?></div>
+            <?php endif; ?>
+            <?php if ($statusCopy !== ''): ?>
+                <p class="omo-user-pending-invitation__copy"><?= omoApiEscape($statusCopy) ?></p>
+            <?php endif; ?>
+            <div class="omo-user-pending-invitation__badge-row">
+                <span class="omo-user-pending-invitation__badge">En attente</span>
+            </div>
+        </div>
+
+        <section class="omo-user-pending-invitation__section generic-section generic-section--stack">
+            <h3 class="generic-card-title generic-card-title--medium">Etat du profil</h3>
+            <p class="omo-user-pending-invitation__detail"><?= omoApiEscape($detailCopy !== '' ? $detailCopy : 'Le profil detaille n est pas encore accessible.') ?></p>
+        </section>
+
+        <section class="omo-user-pending-invitation__section generic-section generic-section--stack">
+            <h3 class="generic-card-title generic-card-title--medium">Invitation en cours</h3>
+            <div class="omo-user-pending-invitation__meta">
+                <?php if ($secondaryLabel !== ''): ?>
+                    <div class="omo-user-pending-invitation__meta-row">
+                        <div class="omo-user-pending-invitation__meta-label">E-mail</div>
+                        <div class="omo-user-pending-invitation__meta-value"><?= omoApiEscape($secondaryLabel) ?></div>
+                    </div>
+                <?php endif; ?>
+                <?php if ($invitationTypeLabel !== ''): ?>
+                    <div class="omo-user-pending-invitation__meta-row">
+                        <div class="omo-user-pending-invitation__meta-label">Type</div>
+                        <div class="omo-user-pending-invitation__meta-value"><?= omoApiEscape($invitationTypeLabel) ?></div>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <?php if (count($pendingHolons) > 0): ?>
+                <ul class="omo-user-pending-invitation__holon-list">
+                    <?php foreach ($pendingHolons as $pendingHolon): ?>
+                        <?php
+                        $pendingHolonName = trim((string)($pendingHolon['name'] ?? ''));
+                        $pendingHolonType = trim((string)($pendingHolon['typeLabel'] ?? ''));
+                        ?>
+                        <li>
+                            <strong><?= omoApiEscape($pendingHolonName !== '' ? $pendingHolonName : 'Acces en attente') ?></strong>
+                            <?php if ($pendingHolonType !== ''): ?>
+                                <span class="omo-user-pending-invitation__holon-type">(<?= omoApiEscape($pendingHolonType) ?>)</span>
+                            <?php endif; ?>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php elseif ($hasPendingInvitation): ?>
+                <div class="omo-user-pending-invitation__empty">Cette invitation attend encore une reponse, mais aucun holon detaille n a pu etre liste.</div>
+            <?php else: ?>
+                <div class="omo-user-pending-invitation__empty">Aucune invitation active n a ete retrouvee pour ce membre. La vue affichera le profil normal des que la situation sera regularisee.</div>
+            <?php endif; ?>
+        </section>
+
+        <section class="omo-user-pending-invitation__section generic-section generic-section--stack">
+            <h3 class="generic-card-title generic-card-title--medium">Actions</h3>
+            <?php if (!$canManageInvitation): ?>
+                <p class="omo-user-pending-invitation__detail"><?= omoApiEscape($manageRestrictedCopy !== '' ? $manageRestrictedCopy : 'Vous pouvez voir que cette invitation est en attente, mais seuls les responsables du contexte peuvent la gerer.') ?></p>
+            <?php elseif (!$hasPendingInvitation): ?>
+                <p class="omo-user-pending-invitation__detail">Il n y a plus d invitation active a ouvrir ou a renvoyer pour ce membre.</p>
+            <?php else: ?>
+                <p class="omo-user-pending-invitation__detail"><?= omoApiEscape($manageCopy !== '' ? $manageCopy : 'Vous pouvez renvoyer le message d invitation a cette adresse e-mail.') ?></p>
+                <div class="omo-user-pending-invitation__actions">
+                    <?php if ($canResendInvitation): ?>
+                        <button
+                            type="button"
+                            class="omo-user-pending-invitation__action generic-action-button generic-action-button--main"
+                            data-pending-invitation-resend="1"
+                        >Renvoyer l e-mail</button>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
+            <div class="omo-user-pending-invitation__feedback" id="omoUserPendingInvitationFeedback"></div>
+        </section>
+    </div>
+
+    <script>
+    (function () {
+        var root = document.getElementById('omoUserPendingInvitation');
+        var feedback = document.getElementById('omoUserPendingInvitationFeedback');
+        var resendButton = root ? root.querySelector('[data-pending-invitation-resend="1"]') : null;
+
+        if (!root || !feedback || !resendButton) {
+            return;
+        }
+
+        var organizationId = Number(root.getAttribute('data-oid') || 0);
+        var currentHolonId = Number(root.getAttribute('data-hid') || 0);
+        var userId = Number(root.getAttribute('data-user-id') || 0);
+
+        function setFeedback(message, isError) {
+            feedback.textContent = message || '';
+            feedback.classList.toggle('is-error', !!isError && !!message);
+            feedback.classList.toggle('is-success', !isError && !!message);
+        }
+
+        resendButton.addEventListener('click', function () {
+            if (!organizationId || !currentHolonId || !userId) {
+                return;
+            }
+
+            resendButton.disabled = true;
+            setFeedback('', false);
+
+            var formData = new FormData();
+            formData.append('hid', String(currentHolonId));
+            formData.append('oid', String(organizationId));
+            formData.append('user_id', String(userId));
+            formData.append('action', 'resend_invitation');
+
+            fetch('/omo/api/team/member_action.php', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(function (response) {
+                    return response.json().catch(function () {
+                        return null;
+                    }).then(function (data) {
+                        return {
+                            ok: response.ok,
+                            data: data
+                        };
+                    });
+                })
+                .then(function (result) {
+                    resendButton.disabled = false;
+
+                    if (!result.ok || !result.data || !result.data.status) {
+                        setFeedback(result.data && result.data.message ? result.data.message : 'Impossible de renvoyer cette invitation pour le moment.', true);
+                        return;
+                    }
+
+                    setFeedback(result.data.message || 'Invitation renvoyee.', false);
+                })
+                .catch(function () {
+                    resendButton.disabled = false;
+                    setFeedback('Impossible de renvoyer cette invitation pour le moment.', true);
+                });
+        });
+    })();
+    </script>
+    <?php
+
+    return ob_get_clean();
+}
+
 $organizationId = (int)($_GET['oid'] ?? ($_SESSION['currentOrganization'] ?? 0));
 $userId = (int)($_GET['id'] ?? 0);
 $currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
@@ -223,8 +542,76 @@ if ($hasStructureContext && $currentHolonId > 0 && (int)$rootHolon->getId() !== 
     $currentHolon = $candidate;
 }
 
+$pendingInvitation = Invitation::findPendingForOrganizationUser($organizationId, $userId);
 $user = new User();
-if (!$user->load($userId)) {
+$userLoaded = $user->load($userId);
+
+if ($pendingInvitation instanceof Invitation && $pendingInvitation->isAdminInitiatedInvitation()) {
+    $pendingInvitationEmail = trim((string)$pendingInvitation->get('email'));
+    if ($pendingInvitationEmail === '' && $userLoaded) {
+        $pendingInvitationEmail = trim((string)$user->getScopedEmail($organizationId));
+    }
+
+    $pendingInvitationDisplayName = $userLoaded
+        ? trim((string)$user->getScopedDisplayName($organizationId))
+        : '';
+    if ($pendingInvitationDisplayName === '') {
+        $pendingInvitationDisplayName = $pendingInvitationEmail !== ''
+            ? $pendingInvitationEmail
+            : ('Utilisateur ' . $userId);
+    }
+
+    $pendingInvitationHolons = $pendingInvitation->getPendingHolons();
+    $canManagePendingInvitation = $currentHolon->isAllowed('CAN_ADD_MEMBER');
+    echo omoUserContextRenderPendingInvitationFragment([
+        'organizationId' => $organizationId,
+        'userId' => $userId,
+        'currentHolonId' => (int)$currentHolon->getId(),
+        'organizationName' => trim((string)$organization->get('name')),
+        'displayName' => $pendingInvitationDisplayName,
+        'secondaryLabel' => $pendingInvitationEmail,
+        'contextLabel' => trim((string)$currentHolon->getTemplateLabel(true)),
+        'contextName' => trim((string)$currentHolon->getDisplayName()),
+        'statusCopy' => 'Ce profil reste masque tant que la personne n a pas accepte son invitation.',
+        'detailCopy' => 'Meme en mode admin d organisation, les informations du profil ne sont pas affichees avant acceptation afin d eviter tout acces sans consentement.',
+        'manageCopy' => 'Vous pouvez uniquement renvoyer le message d invitation a cette adresse e-mail.',
+        'manageRestrictedCopy' => 'Le profil reste masque jusqu a l acceptation de l invitation. Seules les personnes qui ont le droit CAN_ADD_MEMBER sur ce holon peuvent renvoyer le message.',
+        'invitationTypeLabel' => 'Invitation admin',
+        'pendingHolons' => $pendingInvitationHolons,
+        'hasPendingInvitation' => true,
+        'canManageInvitation' => $canManagePendingInvitation,
+        'canResendInvitation' => $canManagePendingInvitation,
+    ]);
+    exit;
+}
+
+if (!$userLoaded) {
+    if ($pendingInvitation instanceof Invitation) {
+        $pendingInvitationEmail = trim((string)$pendingInvitation->get('email'));
+        $pendingInvitationHolons = $pendingInvitation->getPendingHolons();
+        $canManagePendingInvitation = $currentHolon->isAllowed('CAN_ADD_MEMBER');
+        echo omoUserContextRenderPendingInvitationFragment([
+            'organizationId' => $organizationId,
+            'userId' => $userId,
+            'currentHolonId' => (int)$currentHolon->getId(),
+            'organizationName' => trim((string)$organization->get('name')),
+            'displayName' => $pendingInvitationEmail !== '' ? $pendingInvitationEmail : ('Utilisateur ' . $userId),
+            'secondaryLabel' => $pendingInvitationEmail,
+            'contextLabel' => trim((string)$currentHolon->getTemplateLabel(true)),
+            'contextName' => trim((string)$currentHolon->getDisplayName()),
+            'statusCopy' => 'Ce membre a bien une invitation en attente, mais son profil complet n est pas encore disponible.',
+            'detailCopy' => 'Pour le moment, seuls les elements lies a l invitation peuvent etre affiches. Les informations detaillees du profil seront visibles apres acceptation.',
+            'manageCopy' => 'Vous pouvez renvoyer le message d invitation a cette adresse e-mail.',
+            'manageRestrictedCopy' => 'Vous pouvez voir que cette invitation existe, mais seul un role avec le droit CAN_ADD_MEMBER sur ce holon peut renvoyer le message.',
+            'invitationTypeLabel' => $pendingInvitation->isAdminInitiatedInvitation() ? 'Invitation admin' : 'Demande d acces',
+            'pendingHolons' => $pendingInvitationHolons,
+            'hasPendingInvitation' => true,
+            'canManageInvitation' => $canManagePendingInvitation,
+            'canResendInvitation' => $canManagePendingInvitation && $pendingInvitation->isAdminInitiatedInvitation(),
+        ]);
+        exit;
+    }
+
     http_response_code(404);
     ?>
     <div class="omo-user-context omo-user-context--error">Utilisateur introuvable.</div>
@@ -233,6 +620,39 @@ if (!$user->load($userId)) {
 }
 
 if (!$user->canViewDetail()) {
+    if ($pendingInvitation instanceof Invitation) {
+        $pendingInvitationEmail = trim((string)$pendingInvitation->get('email'));
+        if ($pendingInvitationEmail === '') {
+            $pendingInvitationEmail = trim((string)$user->getScopedEmail($organizationId));
+        }
+        $pendingInvitationDisplayName = trim((string)$user->getScopedDisplayName($organizationId));
+        if ($pendingInvitationDisplayName === '') {
+            $pendingInvitationDisplayName = $pendingInvitationEmail !== '' ? $pendingInvitationEmail : ('Utilisateur ' . $userId);
+        }
+        $pendingInvitationHolons = $pendingInvitation->getPendingHolons();
+        $canManagePendingInvitation = $currentHolon->isAllowed('CAN_ADD_MEMBER');
+        echo omoUserContextRenderPendingInvitationFragment([
+            'organizationId' => $organizationId,
+            'userId' => $userId,
+            'currentHolonId' => (int)$currentHolon->getId(),
+            'organizationName' => trim((string)$organization->get('name')),
+            'displayName' => $pendingInvitationDisplayName,
+            'secondaryLabel' => $pendingInvitationEmail,
+            'contextLabel' => trim((string)$currentHolon->getTemplateLabel(true)),
+            'contextName' => trim((string)$currentHolon->getDisplayName()),
+            'statusCopy' => 'Ce profil n est pas encore accessible car la personne n a pas encore accepte son invitation.',
+            'detailCopy' => 'Dans cet etat, le logiciel ne dispose pas encore d un profil consultable. Seules les informations minimales de l invitation peuvent etre affichees.',
+            'manageCopy' => 'Vous pouvez renvoyer le message sans ouvrir le profil complet.',
+            'manageRestrictedCopy' => 'Le profil detaille reste masque tant que l invitation n a pas ete acceptee. Le renvoi est reserve aux roles qui ont CAN_ADD_MEMBER sur ce holon.',
+            'invitationTypeLabel' => $pendingInvitation->isAdminInitiatedInvitation() ? 'Invitation admin' : 'Demande d acces',
+            'pendingHolons' => $pendingInvitationHolons,
+            'hasPendingInvitation' => true,
+            'canManageInvitation' => $canManagePendingInvitation,
+            'canResendInvitation' => $canManagePendingInvitation && $pendingInvitation->isAdminInitiatedInvitation(),
+        ]);
+        exit;
+    }
+
     http_response_code(403);
     ?>
     <div class="omo-user-context omo-user-context--error">Acces refuse a cet utilisateur.</div>
