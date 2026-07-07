@@ -4,9 +4,19 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-07-07
 
+Dans le menu `Deplacer` des documents OMO, la liste des destinations tient maintenant compte du droit reel `CAN_CREATE_DOCUMENT`. Les holons et dossiers proposes sont filtres selon les permissions effectives de la personne connectee, et l action serveur refuse aussi un deplacement manuel vers une destination non autorisee.
+
+Le deplacement d un document n emet plus de warning PHP en production quand le message de retour verifie si la visibilite a ete adaptee. Le code compare maintenant le type de visibilite final au type initial reel du document, au lieu de lire une variable inexistante.
+
+Quand la preference de langue utilisateur reste sur `system`, les selecteurs partages affichent maintenant partout un code court coherent comme `FR`, `EN` ou `DE` au lieu de variantes melangees, et les bundles OMO seeds pour le topbar, l ecran d accueil et le panneau `Structure` ont ete completes pour eviter les retours ponctuels en francais au milieu d une interface anglaise ou allemande.
+
 Dans OMO, le volet gauche peut maintenant se decouper entre le contexte `getOrg` en haut et une mini vue Structure vivante en bas. Cette carte compacte reste visible hors drawer, suit la navigation courante, accepte les clics pour changer de holon, se redimensionne avec un separateur horizontal memorise localement, et les refresh structure existants se propagent maintenant aussi a cette vue persistante. Son rendu reprend aussi mieux le comportement de la vue principale, avec zoom de focus lors de la navigation, tri D3 aligne pour rapprocher le placement des noeuds, contour actif recale sur le disque reel, et repli automatique quand l application `Structure` est desactivee pour l organisation.
 
 Dans la structure OMO, les holons peuvent maintenant stocker un `nom complet` facultatif, distinct du nom court. La vue graphique, les chemins et les selects de contexte gardent le nom court, tandis que la vue liste de `Structure` et la fiche `getOrg` affichent le nom complet quand il est renseigne, avec migration SQL et schema Docker alignes.
+
+Dans OMO, cliquer sur une vignette membre encore invitee n ouvre plus un simple refus de profil. La fiche membre detecte maintenant l invitation en attente, explique clairement pourquoi le profil detaille reste indisponible, liste les acces en attente, et permet aux responsables du contexte de renvoyer l e-mail sans exposer le lien d invitation ni le profil complet avant acceptation, y compris en mode admin d organisation.
+
+Quand une personne est retiree d un holon dans OMO, une entree d historique est maintenant enregistree comme pour l ajout. Si le retrait coupe aussi des rattachements en cascade, l historique liste tous les holons effectivement desactives afin que chaque contexte retire garde une trace lisible de l operation.
 
 Dans les editeurs de proprietes de holon et de holon template, le collage dans une liste de texte decoupe maintenant automatiquement les elements multi-lignes. Un collage venant d un texte brut ou d un HTML avec des blocs comme `p`, `div` ou `li` cree des lignes distinctes au lieu de tout concatener dans le meme champ, et les prefixes de liste les plus courants comme `-`, `*`, `•`, `1.` ou `a)` sont retires au passage.
 
