@@ -306,7 +306,7 @@ foreach ($directMembers as $member) {
                         if (holonId > 0 && holonId !== rootHolonId) {
                             leftUrl += '&cid=' + holonId;
                         }
-                        loadContent('#panel-left', leftUrl);
+                        loadContent(typeof omoGetLeftPanelContentSelector === 'function' ? omoGetLeftPanelContentSelector() : '#panel-left', leftUrl);
                     }
 
                     if (typeof window.omoReloadStructureAndFocus === 'function') {
