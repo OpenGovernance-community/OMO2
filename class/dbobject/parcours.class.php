@@ -243,7 +243,20 @@
 				: true;
 		}
 
-		protected static function rowHasVisiblePrerequisites(array $row, $userId)
+		protected static function normalizePositiveIds(array $ids)
+		{
+			$normalizedIds = [];
+			foreach ($ids as $id) {
+				$id = (int)$id;
+				if ($id > 0) {
+					$normalizedIds[$id] = $id;
+				}
+			}
+
+			return array_values($normalizedIds);
+		}
+
+		protected static function rowHasVisiblePrerequisites(array $row, $userId, array $completedParcoursIds = [])
 		{
 			$parcoursId = (int)($row['id'] ?? 0);
 			$userId = (int)$userId;
@@ -257,16 +270,18 @@
 			}
 
 			if ($userId <= 0) {
-				return false;
+				$completedParcoursIds = self::normalizePositiveIds($completedParcoursIds);
+				return count(array_diff($prerequisiteIds, $completedParcoursIds)) === 0;
 			}
 
 			return self::arePrerequisitesSatisfiedForUser($parcoursId, $userId);
 		}
 
-		protected static function appendVisibilityFlagsToRows(array $rows, $organizationId, $userId)
+		protected static function appendVisibilityFlagsToRows(array $rows, $organizationId, $userId, array $completedParcoursIds = [])
 		{
 			$organizationId = (int)$organizationId;
 			$userId = (int)$userId;
+			$completedParcoursIds = self::normalizePositiveIds($completedParcoursIds);
 			$enrichedRows = [];
 
 			foreach ($rows as $row) {
@@ -275,7 +290,7 @@
 				}
 
 				$applicationVisible = self::rowHasVisibleApplication($row, $organizationId);
-				$prerequisiteVisible = self::rowHasVisiblePrerequisites($row, $userId);
+				$prerequisiteVisible = self::rowHasVisiblePrerequisites($row, $userId, $completedParcoursIds);
 				$row['isapplicationvisible'] = $applicationVisible ? 1 : 0;
 				$row['isprerequisitevisible'] = $prerequisiteVisible ? 1 : 0;
 				$row['isvisible'] = ($applicationVisible && $prerequisiteVisible) ? 1 : 0;
@@ -328,7 +343,7 @@
 			return $hasAttachedPackParent;
 		}
 
-		protected static function buildPrerequisiteVisibilityWhereSql($parcoursAlias, $userId)
+		protected static function buildPrerequisiteVisibilityWhereSql($parcoursAlias, $userId, array $completedParcoursIds = [])
 		{
 			$parcoursAlias = trim((string)$parcoursAlias) !== '' ? trim((string)$parcoursAlias) : 'p';
 			$userId = (int)$userId;
@@ -337,6 +352,16 @@
 			}
 
 			if ($userId <= 0) {
+				$completedParcoursIds = self::normalizePositiveIds($completedParcoursIds);
+				if (count($completedParcoursIds) > 0) {
+					return "NOT EXISTS (
+						SELECT 1
+						FROM parcours_prerequisite pr
+						WHERE pr.IDparcours = " . $parcoursAlias . ".id
+						  AND pr.IDparcours_required NOT IN (" . implode(',', $completedParcoursIds) . ")
+					)";
+				}
+
 				return "NOT EXISTS (
 					SELECT 1
 					FROM parcours_prerequisite pr
@@ -935,13 +960,17 @@
 			return self::mergeVisibleParcoursRows($rows, $packRows);
 		}
 
-		public static function fetchBasicCatalogWithProgress($userId = 0)
+		public static function fetchBasicCatalogWithProgress($userId = 0, array $completedParcoursIds = [])
 		{
 			$userId = (int)$userId;
+			$completedParcoursIds = self::normalizePositiveIds($completedParcoursIds);
 			$where = [
-				"p.isbasic = 1",
-				self::buildPrerequisiteVisibilityWhereSql('p', $userId),
+				"(p.ispublic = 1 OR p.isbasic = 1)",
+				self::buildPrerequisiteVisibilityWhereSql('p', $userId, $completedParcoursIds),
 			];
+			if (self::hasApplicationColumn()) {
+				$where[] = "(p.IDapplication IS NULL OR p.IDapplication <= 0)";
+			}
 
 			$query = "
 				SELECT
@@ -950,6 +979,7 @@
 					p.description,
 					p.image,
 					COALESCE(p.IDorganization, (SELECT MIN(op_owner.IDorganization) FROM organization_parcours op_owner WHERE op_owner.IDparcours = p.id)) AS owner_organization_id,
+					" . (self::hasApplicationColumn() ? "p.IDapplication AS linked_application_id" : "NULL AS linked_application_id") . ",
 					" . self::buildIsPackSelectSql('p') . ",
 					COUNT(DISTINCT pm.IDmission) AS total_missions,
 					COALESCE(SUM(
@@ -966,7 +996,7 @@
 					AND lm.IDparcours = p.id
 					AND lm.IDuser = :user_id
 				WHERE " . implode(" AND ", $where) . "
-				GROUP BY p.id, p.title, p.description, p.image, p.IDorganization" . (self::hasIsPackColumn() ? ", p.ispack" : "") . "
+				GROUP BY p.id, p.title, p.description, p.image, p.IDorganization" . (self::hasApplicationColumn() ? ", p.IDapplication" : "") . (self::hasIsPackColumn() ? ", p.ispack" : "") . "
 				ORDER BY p.title ASC, p.id ASC
 			";
 
@@ -974,7 +1004,12 @@
 				'user_id' => $userId,
 			]);
 
-			return is_array($rows) ? $rows : [];
+			if (!is_array($rows)) {
+				return [];
+			}
+
+			$rows = self::appendVisibilityFlagsToRows($rows, 0, $userId, $completedParcoursIds);
+			return self::filterHiddenRows($rows, false);
 		}
 
 		public static function resolveBasicCatalogAccessContext($parcoursId, $userId = 0)
@@ -995,7 +1030,11 @@
 			}
 
 			$row = self::fetchRow(
-				"SELECT id, isbasic
+				"SELECT
+					id,
+					ispublic,
+					isbasic,
+					" . (self::hasApplicationColumn() ? "IDapplication" : "NULL AS IDapplication") . "
 				FROM parcours
 				WHERE id = :parcours_id
 				LIMIT 1",
@@ -1005,8 +1044,10 @@
 			);
 
 			$exists = is_array($row) && (int)($row['id'] ?? 0) > 0;
+			$isPublic = $exists && !empty($row['ispublic']);
 			$isBasic = $exists && !empty($row['isbasic']);
-			$canView = $isBasic;
+			$hasLinkedApplication = self::hasApplicationColumn() && (int)($row['IDapplication'] ?? 0) > 0;
+			$canView = ($isPublic || $isBasic) && !$hasLinkedApplication;
 
 			return [
 				'exists' => $exists,
@@ -1016,8 +1057,8 @@
 				'userId' => $userId,
 				'isLoggedIn' => $userId > 0,
 				'hasOrganizationAccess' => false,
-				'everybody' => $isBasic,
-				'anonymous' => $userId <= 0 && $isBasic,
+				'everybody' => $isPublic || $isBasic,
+				'anonymous' => $userId <= 0 && ($isPublic || $isBasic),
 				'isBasicCatalog' => true,
 			];
 		}

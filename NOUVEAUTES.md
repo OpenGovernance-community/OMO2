@@ -2,6 +2,10 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-07
+
+Dans le LMS OMO embarque, le catalogue public hors organisation affiche maintenant uniquement les parcours vraiment accessibles. Les cartes `public` et `basic` visibles ne ressortent plus grisees par erreur, les parcours lies a une application restent masques tant qu aucune organisation n est selectionnee, et les prerequis anonymes deja completes via le suivi local peuvent aussi etre pris en compte dans le filtrage du catalogue.
+
 ## 2026-07-06
 
 Le detail de mission du LMS embarque retrouve maintenant un vrai retrait interne dans le drawer OMO. Le contenu repasse par une variante partagee de `generic-section` sans bord ni arrondi, ce qui remet de l air autour de la mission sans casser les headers pleine largeur.
