@@ -319,13 +319,44 @@ $(document).ready(function () {
     omoInitThemePreference();
 });
 
-$(document).ready(function () {
+function omoGetLeftPanelContentSelector() {
+    return document.getElementById('panel-left-context')
+        ? '#panel-left-context'
+        : '#panel-left';
+}
 
-    let isResizing = false;
+function omoGetLeftPanelContentElement() {
+    return $(omoGetLeftPanelContentSelector());
+}
+
+function omoSetLeftPanelHtml(html) {
+    omoGetLeftPanelContentElement().html(html);
+}
+
+$(document).ready(function () {
 
     const leftPanel = $('#panel-left');
     const container = $('.content');
     const resizer = $('#resizer');
+    const leftShell = $('#omoLeftPanelShell');
+    const structurePanel = $('#panel-left-structure');
+    const structureResizer = $('#panel-left-structure-resizer');
+    let isResizing = false;
+    let isStructureResizing = false;
+    function applyLeftPanelStructureHeight(heightValue) {
+        const numericHeight = Number(heightValue);
+
+        if (!leftShell.length || !structurePanel.length || !Number.isFinite(numericHeight) || numericHeight <= 0) {
+            return;
+        }
+
+        const shellHeight = leftShell.height() || leftPanel.height() || 0;
+        const minHeight = 120;
+        const maxHeight = shellHeight > 0 ? Math.max(minHeight, Math.floor(shellHeight * 0.72)) : numericHeight;
+        const nextHeight = Math.max(minHeight, Math.min(maxHeight, Math.round(numericHeight)));
+
+        leftShell.css('--omo-left-structure-height', nextHeight + 'px');
+    }
 
     // Charger largeur sauvegardée
     let savedWidth = localStorage.getItem('panelLeftWidth');
@@ -334,6 +365,11 @@ $(document).ready(function () {
             width: savedWidth + 'px',
             flexBasis: savedWidth + 'px'
         });
+    }
+
+    const savedStructureHeight = localStorage.getItem('omoLeftStructureHeight');
+    if (savedStructureHeight) {
+        applyLeftPanelStructureHeight(savedStructureHeight);
     }
 
     resizer.on('mousedown', function (e) {
@@ -347,45 +383,88 @@ $(document).ready(function () {
         e.preventDefault();
     });
 
+    structureResizer.on('mousedown', function (e) {
+        if (e.button !== 0 || !leftShell.length || !structurePanel.length) {
+            return;
+        }
+
+        isStructureResizing = true;
+        $('body').addClass('resizing');
+        e.preventDefault();
+    });
+
     $(document).on('mousemove', function (e) {
-        if (!isResizing) return;
+        if (isResizing) {
+            let containerOffset = container.offset().left;
+            let newWidth = e.pageX - containerOffset;
 
-        let containerOffset = container.offset().left;
-        let newWidth = e.pageX - containerOffset;
+            // limites
+            const minWidth = 250;
+            const maxWidth = container.width() * 0.7;
 
-        // limites
-        const minWidth = 250;
-        const maxWidth = container.width() * 0.7;
+            if (newWidth < minWidth) newWidth = minWidth;
+            if (newWidth > maxWidth) newWidth = maxWidth;
 
-        if (newWidth < minWidth) newWidth = minWidth;
-        if (newWidth > maxWidth) newWidth = maxWidth;
+            leftPanel.css({
+                width: newWidth + 'px',
+                flexBasis: newWidth + 'px'
+            });
 
-        leftPanel.css({
-            width: newWidth + 'px',
-            flexBasis: newWidth + 'px'
-        });
+            syncOpenDrawers();
+        }
 
-        syncOpenDrawers();
+        if (isStructureResizing) {
+            const shellOffset = leftShell.offset();
+            const shellHeight = leftShell.height() || 0;
+
+            if (!shellOffset || shellHeight <= 0) {
+                return;
+            }
+
+            const pointerOffset = e.pageY - shellOffset.top;
+            const newHeight = shellHeight - pointerOffset;
+
+            applyLeftPanelStructureHeight(newHeight);
+            window.dispatchEvent(new CustomEvent('omo-left-structure-resize'));
+        }
     });
 
     function stopResizing() {
-        if (!isResizing) return;
+        if (isResizing) {
+            isResizing = false;
 
-        isResizing = false;
+            // sauvegarde
+            let finalWidth = leftPanel.width();
+            localStorage.setItem('panelLeftWidth', finalWidth);
+            syncOpenDrawers();
+        }
+
+        if (isStructureResizing) {
+            isStructureResizing = false;
+
+            const finalHeight = structurePanel.outerHeight();
+            if (finalHeight) {
+                localStorage.setItem('omoLeftStructureHeight', finalHeight);
+            }
+
+            window.dispatchEvent(new CustomEvent('omo-left-structure-resize'));
+        }
 
         $('body').removeClass('resizing');
-
-        // sauvegarde
-        let finalWidth = leftPanel.width();
-        localStorage.setItem('panelLeftWidth', finalWidth);
-        syncOpenDrawers();
     }
 
     $(document).on('mouseup', stopResizing);
 
     // 🔥 FIX IMPORTANT : si la souris sort de la fenêtre
     $(window).on('blur', stopResizing);
-    $(window).on('resize', syncOpenDrawers);
+    $(window).on('resize', function () {
+        if (structurePanel.length) {
+            applyLeftPanelStructureHeight(structurePanel.outerHeight());
+            window.dispatchEvent(new CustomEvent('omo-left-structure-resize'));
+        }
+
+        syncOpenDrawers();
+    });
 
 });
 
@@ -1711,6 +1790,35 @@ function getSidebarMenuConfig(hash = null, oid = null, cid = null, options = {})
     };
 }
 
+function omoDetectStructureAvailabilityFromSidebar() {
+    return document.querySelector('#menu_sidebar .menu-item[data-hash="structure"]') !== null;
+}
+
+function omoBroadcastStructureAvailability(enabled, options = {}) {
+    const normalizedEnabled = enabled !== false;
+
+    if (!window.omoConfig || typeof window.omoConfig !== 'object') {
+        window.omoConfig = {};
+    }
+
+    window.omoConfig.structureEnabled = normalizedEnabled;
+
+    window.dispatchEvent(new CustomEvent('omo-structure-availability-change', {
+        detail: Object.assign({
+            enabled: normalizedEnabled
+        }, options || {})
+    }));
+
+    return normalizedEnabled;
+}
+
+function omoSyncStructureAvailabilityFromSidebar(options = {}) {
+    return omoBroadcastStructureAvailability(
+        omoDetectStructureAvailabilityFromSidebar(),
+        options
+    );
+}
+
 function omoRefreshSidebar(onLoaded = null) {
     loadContent('#menu_sidebar', 'api/getSidebar.php', 'sidebar', function () {
         const route = parseUrl();
@@ -1726,6 +1834,10 @@ function omoRefreshSidebar(onLoaded = null) {
         } else {
             updateActiveMenu(route.hash || null);
         }
+
+        omoSyncStructureAvailabilityFromSidebar({
+            source: 'sidebar'
+        });
 
         if (typeof onLoaded === 'function') {
             onLoaded();
@@ -3338,6 +3450,8 @@ let currentState = {
     popupToken: null
 };
 
+const omoStructureViewTargets = Object.create(null);
+
 function omoFocusStructureNode(cid = null, options = {}) {
     window.dispatchEvent(new CustomEvent('omo-structure-focus', {
         detail: {
@@ -3346,6 +3460,96 @@ function omoFocusStructureNode(cid = null, options = {}) {
         }
     }));
 }
+
+window.omoRegisterStructureViewTarget = function (key, handlers) {
+    const normalizedKey = String(key || '').trim();
+    if (!normalizedKey) {
+        return function () {};
+    }
+
+    omoStructureViewTargets[normalizedKey] = handlers && typeof handlers === 'object'
+        ? handlers
+        : {};
+
+    return function () {
+        delete omoStructureViewTargets[normalizedKey];
+    };
+};
+
+window.omoReloadStructureAndFocus = function (nodeId, options = {}) {
+    const cid = nodeId === null || nodeId === undefined || nodeId === '' ? null : Number(nodeId);
+    const quickZoom = Boolean(options && options.quickZoom);
+    const tasks = Object.keys(omoStructureViewTargets).map(function (key) {
+        const target = omoStructureViewTargets[key];
+
+        if (!target || typeof target.reloadAndFocus !== 'function') {
+            return Promise.resolve(null);
+        }
+
+        try {
+            return Promise.resolve(target.reloadAndFocus(Number.isNaN(cid) ? null : cid, options));
+        } catch (error) {
+            return Promise.reject(error);
+        }
+    });
+
+    if (!tasks.length) {
+        window.dispatchEvent(new CustomEvent('omo-structure-refresh', {
+            detail: {
+                cid: Number.isNaN(cid) ? null : cid,
+                quickZoom: quickZoom
+            }
+        }));
+
+        return Promise.resolve();
+    }
+
+    return Promise.all(tasks.map(function (task) {
+        return task.catch(function () {
+            return null;
+        });
+    })).then(function () {
+        return null;
+    });
+};
+
+window.omoGetCurrentStructureHolonId = function () {
+    const targetKeys = Object.keys(omoStructureViewTargets);
+
+    for (let index = 0; index < targetKeys.length; index += 1) {
+        const target = omoStructureViewTargets[targetKeys[index]];
+        if (!target || typeof target.getCurrentHolonId !== 'function') {
+            continue;
+        }
+
+        const holonId = Number(target.getCurrentHolonId());
+        if (Number.isInteger(holonId) && holonId > 0) {
+            return holonId;
+        }
+    }
+
+    const route = typeof parseUrl === 'function' ? parseUrl() : null;
+    const routeCid = route && route.cid !== null && route.cid !== undefined && route.cid !== ''
+        ? Number(route.cid)
+        : 0;
+
+    if (Number.isInteger(routeCid) && routeCid > 0) {
+        return routeCid;
+    }
+
+    const rootHolonId = Number(window.omoConfig && window.omoConfig.rootHolonId ? window.omoConfig.rootHolonId : 0);
+    return Number.isInteger(rootHolonId) && rootHolonId > 0 ? rootHolonId : 0;
+};
+
+window.omoStructureHandleDrawerOpen = function (options = {}) {
+    const cid = Object.prototype.hasOwnProperty.call(options, 'cid') ? Number(options.cid) : null;
+
+    window.dispatchEvent(new CustomEvent('omo-structure-drawer-open', {
+        detail: {
+            cid: Number.isNaN(cid) ? null : cid
+        }
+    }));
+};
 
 function handleRoute() {
 
@@ -3361,7 +3565,7 @@ function handleRoute() {
 
         const errorMessage = '<div class="error">Organisation introuvable pour ce sous-domaine.</div>';
 
-        $('#panel-left').html(errorMessage);
+        omoSetLeftPanelHtml(errorMessage);
         $('#panel-right').html(errorMessage);
         closeAllDrawers();
         omoClosePopupModalFromRoute();
@@ -3407,7 +3611,7 @@ function handleRoute() {
         let leftUrl = `api/getOrg.php?oid=${oid}`;
         if (cid) leftUrl += `&cid=${cid}`;
 
-        loadContent('#panel-left', leftUrl);
+        loadContent(omoGetLeftPanelContentSelector(), leftUrl);
 
         omoRefreshMainRightPanel(oid, cid, {
             routeWillOpenDrawer: routeWillOpenDrawer
@@ -3416,7 +3620,7 @@ function handleRoute() {
         let leftUrl = `api/getOrg.php?oid=${oid}`;
         if (cid) leftUrl += `&cid=${cid}`;
 
-        loadContent('#panel-left', leftUrl);
+        loadContent(omoGetLeftPanelContentSelector(), leftUrl);
         if (!omoIsShareMode()) {
             omoRefreshMainRightPanel(oid, cid, {
                 routeWillOpenDrawer: routeWillOpenDrawer
@@ -3517,6 +3721,17 @@ function handleRoute() {
     } else if (popupChanged || hashChanged) {
         omoClosePopupModalFromRoute();
     }
+
+    window.dispatchEvent(new CustomEvent('omo-structure-route-sync', {
+        detail: {
+            oid: Number(oid),
+            cid: cid === null || cid === undefined || cid === '' ? null : Number(cid),
+            hash: hash || null,
+            routeToken: routeToken || null,
+            organizationChanged: organizationChanged,
+            cidChanged: cidChanged
+        }
+    }));
 
     if (routeToken) {
         omoClearPendingDrawerRouteOptions(routeToken);
@@ -4213,6 +4428,8 @@ window.omoReplaceFetchedPanelRoot = omoReplaceFetchedPanelRoot;
 window.omoResolveAppUrl = omoResolveAppUrl;
 window.omoIsShareMode = omoIsShareMode;
 window.omoBuildHashFromState = omoBuildHashFromState;
+window.omoBroadcastStructureAvailability = omoBroadcastStructureAvailability;
+window.omoSyncStructureAvailabilityFromSidebar = omoSyncStructureAvailabilityFromSidebar;
 window.omoGetExternalPanelDrawerContext = omoGetExternalPanelDrawerContext;
 window.omoRefreshExternalPanelDrawerHost = omoRefreshExternalPanelDrawerHost;
 window.omoCloseExternalPanelDrawer = omoCloseExternalPanelDrawer;

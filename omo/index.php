@@ -1246,8 +1246,10 @@ $currentUserProfile = [
     'photoUrl' => '',
 ];
 $organizationRootHolonId = 0;
+$isStructureApplicationEnabled = false;
 $organizationForConfig = new \dbObject\Organization();
 if ($organizationForConfig->load((int)$organizationContext['id'])) {
+    $isStructureApplicationEnabled = $organizationForConfig->isStructureApplicationEnabled();
     $organizationRootHolon = $organizationForConfig->getStructuralRootHolon();
     if ($organizationRootHolon) {
         $organizationRootHolonId = (int)$organizationRootHolon->getId();
@@ -1358,7 +1360,21 @@ if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
 
             <!-- Left panel (1/3) -->
             <div class="panel panel-left" id="panel-left">
+                <div class="omo-left-panel-shell" id="omoLeftPanelShell">
+                    <div class="omo-left-panel-shell__context" id="panel-left-context">
                 <!-- Détails cercle / rôle -->
+                    </div>
+                    <div
+                        class="omo-left-panel-shell__resizer"
+                        id="panel-left-structure-resizer"
+                        role="separator"
+                        aria-orientation="horizontal"
+                        aria-label="Redimensionner la mini structure"
+                    ></div>
+                    <div class="omo-left-panel-shell__structure" id="panel-left-structure">
+                        <div class="omo-left-panel-shell__structure-host" id="omo-left-structure-map"></div>
+                    </div>
+                </div>
             </div>
 
             <!-- Resizer -->
@@ -1394,6 +1410,7 @@ window.omoConfig = <?=
             'host' => $organizationContext['host'],
             'routeMode' => $organizationContext['routeMode'] ?? 'host',
             'rootHolonId' => $organizationRootHolonId,
+            'structureEnabled' => $isStructureApplicationEnabled,
             'orgLookupError' => $organizationContext['error'],
             'isDemo' => $isDemoGuest,
             'currentUserId' => $currentUserId,
@@ -1422,6 +1439,7 @@ window.omoConfig = <?=
 <script src="/omo/assets/js/site-update.js"></script>
 <?php } ?>
 <script src="assets/js/app.js"></script>
+<script src="assets/js/structure-mini-map.js"></script>
 
 <script>
 $(document).ready(function () {

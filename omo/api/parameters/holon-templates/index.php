@@ -2588,7 +2588,7 @@ function omoHolonTemplateSave(event) {
                     && currentRouteCid !== targetHolonId;
 
                 if (!shouldNavigate && targetHolonId > 0 && typeof loadContent === 'function') {
-                    loadContent('#panel-left', 'api/getOrg.php?oid=' + Number(route.oid || omoHolonTemplateState.data.organizationId || 0) + '&cid=' + targetHolonId);
+                    loadContent(typeof omoGetLeftPanelContentSelector === 'function' ? omoGetLeftPanelContentSelector() : '#panel-left', 'api/getOrg.php?oid=' + Number(route.oid || omoHolonTemplateState.data.organizationId || 0) + '&cid=' + targetHolonId);
                 }
 
                 window.dispatchEvent(new CustomEvent('omo-structure-refresh', {
