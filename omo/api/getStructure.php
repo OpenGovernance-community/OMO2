@@ -2140,10 +2140,6 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
       return structureReloadPromise;
     }
 
-    window.omoReloadStructureAndFocus = function(nodeId, options) {
-      return reloadStructureAndFocus(nodeId, options);
-    };
-
     function focusStructureNode(nodeId, options) {
       if (!root || !Array.isArray(nodes)) {
         return;
@@ -3084,6 +3080,40 @@ function getChartColors() {
 
  let chartResizeObserver = null;
 let resizeRaf = null;
+let structureDrawerCleanupCallbacks = [];
+let unregisterStructureDrawerViewTarget = null;
+
+function registerStructureDrawerWindowListener(type, handler) {
+  window.addEventListener(type, handler);
+  structureDrawerCleanupCallbacks.push(function () {
+    window.removeEventListener(type, handler);
+  });
+}
+
+function destroyStructureDrawerView() {
+  if (typeof unregisterStructureDrawerViewTarget === "function") {
+    unregisterStructureDrawerViewTarget();
+    unregisterStructureDrawerViewTarget = null;
+  }
+
+  if (chartResizeObserver) {
+    chartResizeObserver.disconnect();
+    chartResizeObserver = null;
+  }
+
+  if (resizeRaf) {
+    cancelAnimationFrame(resizeRaf);
+    resizeRaf = null;
+  }
+
+  structureDrawerCleanupCallbacks.forEach(function (cleanup) {
+    try {
+      cleanup();
+    } catch (error) {
+    }
+  });
+  structureDrawerCleanupCallbacks = [];
+}
 
 function scheduleDrawAll() {
   if (resizeRaf) return;
@@ -3099,6 +3129,12 @@ function scheduleDrawAll() {
 }
 
 function startChart() {
+  if (typeof window.omoDestroyStructureDrawerView === "function") {
+    window.omoDestroyStructureDrawerView();
+  }
+
+  window.omoDestroyStructureDrawerView = destroyStructureDrawerView;
+
   const chartEl = document.getElementById("chart");
   if (!chartEl) {
     return;
@@ -3114,19 +3150,18 @@ function startChart() {
 
   chartResizeObserver.observe(chartEl);
 
+  if (typeof window.omoRegisterStructureViewTarget === "function") {
+    unregisterStructureDrawerViewTarget = window.omoRegisterStructureViewTarget("drawer-structure", {
+      reloadAndFocus: reloadStructureAndFocus,
+      getCurrentHolonId: omoGetCurrentStructureHolonId
+    });
+  }
+
   loadStructureData()
     .then(function() {
       drawAll();
 
-      if (window.omoStructureFocusHandler) {
-        window.removeEventListener("omo-structure-focus", window.omoStructureFocusHandler);
-      }
-
-      if (window.omoStructureRefreshHandler) {
-        window.removeEventListener("omo-structure-refresh", window.omoStructureRefreshHandler);
-      }
-
-      window.omoStructureFocusHandler = function (event) {
+      const structureFocusHandler = function (event) {
         const cid = event && event.detail ? event.detail.cid : null;
         const quickZoom = Boolean(event && event.detail && event.detail.quickZoom);
         focusStructureNode(cid, {
@@ -3134,7 +3169,7 @@ function startChart() {
         });
       };
 
-      window.omoStructureRefreshHandler = function (event) {
+      const structureRefreshHandler = function (event) {
         const cid = event && event.detail ? event.detail.cid : null;
         const quickZoom = event && event.detail && Object.prototype.hasOwnProperty.call(event.detail, 'quickZoom')
           ? Boolean(event.detail.quickZoom)
@@ -3144,9 +3179,9 @@ function startChart() {
         });
       };
 
-      window.omoStructureHandleDrawerOpen = function (options) {
-        const cid = options && Object.prototype.hasOwnProperty.call(options, 'cid')
-          ? options.cid
+      const structureDrawerOpenHandler = function (event) {
+        const cid = event && event.detail && Object.prototype.hasOwnProperty.call(event.detail, 'cid')
+          ? event.detail.cid
           : null;
 
         scheduleDrawAll();
@@ -3160,11 +3195,7 @@ function startChart() {
         }, 30);
       };
 
-      if (window.omoStructureMemberHighlightHandler) {
-        window.removeEventListener("omo-structure-member-highlight", window.omoStructureMemberHighlightHandler);
-      }
-
-      window.omoStructureMemberHighlightHandler = function (event) {
+      const structureMemberHighlightHandler = function (event) {
         const userId = event && event.detail ? Number(event.detail.userId || 0) : 0;
         highlightedMemberUserId = userId > 0 ? userId : null;
 
@@ -3176,9 +3207,10 @@ function startChart() {
         drawCanvas(hiddenContext, true);
       };
 
-      window.addEventListener("omo-structure-focus", window.omoStructureFocusHandler);
-      window.addEventListener("omo-structure-refresh", window.omoStructureRefreshHandler);
-      window.addEventListener("omo-structure-member-highlight", window.omoStructureMemberHighlightHandler);
+      registerStructureDrawerWindowListener("omo-structure-focus", structureFocusHandler);
+      registerStructureDrawerWindowListener("omo-structure-refresh", structureRefreshHandler);
+      registerStructureDrawerWindowListener("omo-structure-drawer-open", structureDrawerOpenHandler);
+      registerStructureDrawerWindowListener("omo-structure-member-highlight", structureMemberHighlightHandler);
 
       if (initialCid > 0) {
         focusStructureNode(initialCid, {
