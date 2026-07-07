@@ -234,6 +234,7 @@ CREATE TABLE `holon` (
   `id` int(11) NOT NULL,
   `IDorganization` int(11) DEFAULT NULL,
   `name` varchar(255) DEFAULT NULL,
+  `nomcomplet` varchar(255) DEFAULT NULL,
   `color` varchar(10) DEFAULT NULL COMMENT 'Couleur du noeud, qui peut être héritée du template.',
   `icon` varchar(255) DEFAULT NULL COMMENT 'Illustration carre du holon ou du template.',
   `banner` varchar(255) DEFAULT NULL COMMENT 'Illustration large du holon ou du template.',

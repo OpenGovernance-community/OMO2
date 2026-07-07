@@ -70,6 +70,12 @@ if ($organizationId <= 0) {
                                     <small id="omo-holon-create-name-help"></small>
                                 </label>
 
+                                <label class="omo-holon-create__field omo-holon-create__field--full">
+                                    <span>Nom complet</span>
+                                    <input type="text" id="omo-holon-create-full-name" class="generic-form-control" maxlength="255">
+                                    <small>Optionnel. Utilise dans la vue liste et dans la fiche contexte.</small>
+                                </label>
+
                             </div>
 
                             <div class="omo-holon-create__template-meta" id="omo-holon-create-template-meta"></div>
@@ -176,6 +182,7 @@ if ($organizationId <= 0) {
 <?php if ($editorData !== null && $errorMessage === ''): ?>
 <script src="/omo/assets/js/sized-image-field.js"></script>
 <script src="/omo/assets/js/simple-html-field.js"></script>
+<script src="/common/assets/multiline-list-paste.js"></script>
 <script>
 (() => {
 const state = {
@@ -193,6 +200,7 @@ const elements = {
     form: root.querySelector('#omo-holon-create-form'),
     template: root.querySelector('#omo-holon-create-template'),
     name: root.querySelector('#omo-holon-create-name'),
+    fullName: root.querySelector('#omo-holon-create-full-name'),
     colorEnabled: root.querySelector('#omo-holon-create-color-enabled'),
     colorBody: root.querySelector('#omo-holon-create-color-body'),
     color: root.querySelector('#omo-holon-create-color'),
@@ -843,6 +851,16 @@ function renderSimpleListInput(listItemType, values) {
 }
 
 // Rend champ propriété
+if (window.genericMultilineListPaste && typeof window.genericMultilineListPaste.attach === 'function') {
+    window.genericMultilineListPaste.attach(root, {
+        inputSelector: '.omo-holon-create__property-value-item',
+        rowSelector: '.omo-holon-create__list-row',
+        listSelector: '.omo-holon-create__list',
+        itemsSelector: '.omo-holon-create__list-items',
+        renderRow: renderSimpleListRow
+    });
+}
+
 function renderPropertyInput(property) {
     const formatId = Number(property.formatId || 0);
     const localValue = property.value !== undefined && property.value !== null
@@ -1293,6 +1311,9 @@ function fillFormFromState() {
 
     if (editingHolon) {
         elements.name.value = String(editingHolon.name || '');
+        if (elements.fullName) {
+            elements.fullName.value = String(editingHolon.fullName || '');
+        }
         syncTemplateSelection(Number(editingHolon.templateId || 0), editingHolon.properties || []);
         renderPermissions(editingHolon.permissionAssignments || {});
         if (isTemplateEditing()) {
@@ -1310,6 +1331,9 @@ function fillFormFromState() {
     }
 
     elements.name.value = '';
+    if (elements.fullName) {
+        elements.fullName.value = '';
+    }
     elements.name.disabled = false;
     renderPermissions({});
     if (elements.visible) {
@@ -1418,6 +1442,7 @@ function saveHolon(event) {
             const payload = {
                 templateId: Number(elements.template.value || 0),
                 name: String(elements.name.value || '').trim(),
+                fullName: String(elements.fullName && elements.fullName.value ? elements.fullName.value : '').trim(),
                 color: Boolean(elements.colorEnabled && elements.colorEnabled.checked)
                     ? String(elements.color && elements.color.value ? elements.color.value : '')
                     : '',
