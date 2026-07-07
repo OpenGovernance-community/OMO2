@@ -65,12 +65,13 @@ function lmsIndexT($key, array $replace = [])
 $isEmbedded = !empty($_GET['embed']);
 $isBasicCatalogMode = lmsIsBasicCatalogMode();
 $user_id = (int)($_SESSION['currentUser'] ?? 0);
+$anonymousCompletedParcoursIds = $user_id > 0 ? [] : lmsGetAnonymousCompletedParcoursIds();
 $hasOrganizationAccess = commonUserHasOrganizationAccess($user_id, (int)$org['id']);
 $canCreateParcours = !$isBasicCatalogMode && lmsCurrentUserCanCreateParcours((int)$org['id'], $user_id);
 $canEditParcours = !$isBasicCatalogMode && lmsCurrentUserCanEditParcours((int)$org['id'], $user_id);
 $organizationColor = commonGetOrganizationExplicitColor($org);
 $parcours = $isBasicCatalogMode
-    ? \dbObject\Parcours::fetchBasicCatalogWithProgress($user_id)
+    ? \dbObject\Parcours::fetchBasicCatalogWithProgress($user_id, $anonymousCompletedParcoursIds)
     : \dbObject\Parcours::fetchForOrganizationWithProgress($org['id'], $user_id, $hasOrganizationAccess, $canEditParcours);
 $parcours = is_array($parcours) ? $parcours : [];
 $pendingParcours = [];
@@ -578,7 +579,7 @@ if (!$isEmbedded) {
     $done = (int)$p['done_missions'];
     $percent = $total > 0 ? round(($done / $total) * 100) : 0;
     $isOwnerParcours = (int)($p['owner_organization_id'] ?? 0) === (int)$org['id'];
-    $isVisibleParcours = !empty($p['isvisible']);
+    $isVisibleParcours = !array_key_exists('isvisible', $p) || !empty($p['isvisible']);
     $canManageThisParcours = $canCreateParcours && !\dbObject\Parcours::hasAttachedPackParentInOrganization((int)$org['id'], (int)($p['id'] ?? 0));
     $canEditThisParcours = $canEditParcours && $isOwnerParcours;
     $showMenuThisParcours = $canManageThisParcours || $canEditThisParcours;
@@ -678,7 +679,7 @@ if (!$isEmbedded) {
         $done = (int)$p['done_missions'];
         $percent = $total > 0 ? round(($done / $total) * 100) : 0;
         $isOwnerParcours = (int)($p['owner_organization_id'] ?? 0) === (int)$org['id'];
-        $isVisibleParcours = !empty($p['isvisible']);
+        $isVisibleParcours = !array_key_exists('isvisible', $p) || !empty($p['isvisible']);
         $canManageThisParcours = $canCreateParcours && !\dbObject\Parcours::hasAttachedPackParentInOrganization((int)$org['id'], (int)($p['id'] ?? 0));
         $canEditThisParcours = $canEditParcours && $isOwnerParcours;
         $showMenuThisParcours = $canManageThisParcours || $canEditThisParcours;
@@ -753,7 +754,7 @@ if (!$isEmbedded) {
         $done = (int)$p['done_missions'];
         $percent = $total > 0 ? round(($done / $total) * 100) : 0;
         $isOwnerParcours = (int)($p['owner_organization_id'] ?? 0) === (int)$org['id'];
-        $isVisibleParcours = !empty($p['isvisible']);
+        $isVisibleParcours = !array_key_exists('isvisible', $p) || !empty($p['isvisible']);
         $canManageThisParcours = $canCreateParcours;
         $canEditThisParcours = $canEditParcours && $isOwnerParcours;
         $showMenuThisParcours = $canManageThisParcours || $canEditThisParcours;
