@@ -534,6 +534,7 @@ $omoHolonTemplateTexts = [
 <?php if ($editorData !== null): ?>
 <script src="/omo/assets/js/sized-image-field.js"></script>
 <script src="/omo/assets/js/simple-html-field.js"></script>
+<script src="/common/assets/multiline-list-paste.js"></script>
 <script>
 (() => {
 const omoHolonTemplatePageRoot = document.getElementById('omo-holon-template-page');
@@ -1686,6 +1687,18 @@ function omoHolonTemplateRenderSimpleListInput(listItemType, values, disabled) {
         + '  </div>'
         + '  <button type="button" class="omo-button omo-button--secondary omo-template-list-input__add" data-list-add="1"' + disabledAttribute + '>+</button>'
         + '</div>';
+}
+
+if (window.genericMultilineListPaste && typeof window.genericMultilineListPaste.attach === 'function') {
+    window.genericMultilineListPaste.attach(omoHolonTemplatePageRoot, {
+        inputSelector: '.omo-template-property__value-item',
+        rowSelector: '.omo-template-list-input__row',
+        listSelector: '.omo-template-list-input',
+        itemsSelector: '.omo-template-list-input__items',
+        renderRow: function (listItemType, value) {
+            return omoHolonTemplateRenderSimpleListRow(listItemType, value, false);
+        }
+    });
 }
 
 function omoHolonTemplateNormalizeProperty(property) {

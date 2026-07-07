@@ -1240,6 +1240,10 @@ function getPropertyDisplayLabel(entry) {
   return String(entry && (entry.name || entry.shortname || entry.key) || "").trim();
 }
 
+function getNodeListLabel(node) {
+  return String(node && (node.fullName || node.name) || "").trim();
+}
+
 function getNodePropertyEntries(node) {
   const data = node && node.data && typeof node.data === "object" ? node.data : null;
 
@@ -1433,7 +1437,9 @@ function filterListNode(node, normalizedQuery) {
     };
   }
 
-  const matchesLabel = normalizeSearchText(node.name || "").includes(normalizedQuery);
+  const listLabel = getNodeListLabel(node);
+  const matchesLabel = normalizeSearchText(listLabel).includes(normalizedQuery)
+    || (listLabel !== String(node.name || "").trim() && normalizeSearchText(node.name || "").includes(normalizedQuery));
   const matchesContent = normalizeSearchText(getNodeContentSearchText(node)).includes(normalizedQuery);
 
   if (!matchesLabel && !matchesContent && filteredChildren.length === 0) {
@@ -1452,6 +1458,7 @@ function filterListNode(node, normalizedQuery) {
 function renderNodeList(entry, searchQuery) {
   const node = entry.node;
   const children = Array.isArray(entry.children) ? entry.children : [];
+  const listLabel = getNodeListLabel(node);
   const color = getListColor(node);
   const nodeId = String(node.ID || "");
   const escapedNodeId = escapeHtml(nodeId);
@@ -1492,7 +1499,7 @@ function renderNodeList(entry, searchQuery) {
             <button type="button" class="role-item" data-omo-cid="${escapedNodeId}" data-omo-root="${node.type == "4" ? "1" : "0"}">
               <span class="role-dot" style="${dotStyle}"></span>
               <span class="role-text">
-                <span class="role-label">${highlightLabel(node.name || "", searchQuery)}</span>
+                <span class="role-label">${highlightLabel(listLabel, searchQuery)}</span>
                 ${entry.matchExcerpt ? `<span class="role-excerpt">${entry.matchExcerpt}</span>` : ``}
               </span>
             </button>

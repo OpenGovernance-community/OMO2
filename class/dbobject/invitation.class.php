@@ -870,7 +870,7 @@
 			return $this->acceptInternal($sendConfirmationEmail, $approvedByUserId);
 		}
 
-		public function decline()
+		protected function closePendingInvitation($status, $responseMessage, array $options = [])
 		{
 			if (!$this->isPending() || $this->isExpired()) {
 				return [
@@ -879,12 +879,15 @@
 				];
 			}
 
+			$status = trim((string)$status);
+			$responseMessage = trim((string)$responseMessage);
+			$closedByUserId = (int)($options['closedByUserId'] ?? 0);
 			$organizationId = (int)$this->get('IDorganization');
 			$userId = (int)$this->get('IDuser');
 			$rootHolonId = (int)$this->getOrganizationRootHolonId();
 			$pdo = \dbObject\DbObject::getPdo();
 
-			if (!$pdo) {
+			if ($pdo === false) {
 				return [
 					'status' => false,
 					'message' => 'La connexion a la base de donnees est indisponible.',
@@ -927,7 +930,17 @@
 					]
 				);
 
-				$this->set('status', 'declined');
+				$parameters = $this->get('parameters');
+				if (!is_array($parameters)) {
+					$parameters = [];
+				}
+				if ($closedByUserId > 0) {
+					$parameters['closed_by_user_id'] = $closedByUserId;
+					$parameters['closed_at'] = (new \DateTime())->format('c');
+				}
+				$this->set('parameters', $parameters);
+
+				$this->set('status', $status);
 				$this->set('dateresponse', new \DateTime());
 				$this->set('active', false);
 				$saveInvitation = $this->save();
@@ -935,13 +948,13 @@
 					throw new \RuntimeException("L'invitation n'a pas pu etre mise a jour.");
 				}
 
-				$this->updateSiblingPendingInvitations('declined');
+				$this->updateSiblingPendingInvitations($status);
 
 				$pdo->commit();
 
 				return [
 					'status' => true,
-					'message' => 'Invitation refusee.',
+					'message' => $responseMessage,
 					'userId' => $userId,
 					'organizationId' => $organizationId,
 				];
@@ -955,6 +968,18 @@
 					'message' => $exception->getMessage(),
 				];
 			}
+		}
+
+		public function decline()
+		{
+			return $this->closePendingInvitation('declined', 'Invitation refusee.');
+		}
+
+		public function cancelByAdmin(array $options = [])
+		{
+			return $this->closePendingInvitation('canceled', 'Invitation annulee.', [
+				'closedByUserId' => (int)($options['canceledByUserId'] ?? 0),
+			]);
 		}
 	}
 
