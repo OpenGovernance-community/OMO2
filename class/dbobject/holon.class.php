@@ -15,7 +15,7 @@
 			return [
 				[['id'], 'required'],				// Champs obligatoires
 				[['id'], 'integer'],					
-				[['name','templatename','accesskey'], 'string'],			// Texte libre
+				[['name','nomcomplet','templatename','accesskey'], 'string'],			// Texte libre
 				[['icon','banner'], 'sizedimage'],			// Images illustratives
 				[['datecreation','datemodification'], 'datetime'],	// Date avec precision des heures
 				[['IDuser','IDtypeholon','IDholon_parent','IDholon_template','IDorganization','IDholon_org'], 'fk'],				// Cle etrangeres
@@ -31,6 +31,7 @@
 			return [
 				'id' => 'ID',
 				'name' => 'Nom',
+				'nomcomplet' => 'Nom complet',
 				'IDholon_org' => 'Organisation',
 				'IDuser' => 'Createur et administrateur',
 				'datecreation' => 'Date de creation',
@@ -55,9 +56,18 @@
 			];
 		}
 
+		public static function attributeDescriptions()
+		{
+			return [
+				'name' => 'Nom court utilise dans la representation graphique, les chemins et les choix de contexte.',
+				'nomcomplet' => 'Nom complet facultatif utilise dans les vues textuelles.',
+			];
+		}
+
 		public static function attributeLength()
 		{
 			return [
+				'nomcomplet' => 255,
 				'icon' => [[500, 500], [180, 180]],
 				'banner' => [[960, 540], [480, 270]],
 			];
@@ -502,6 +512,11 @@
 				$typeField => (string)$type,
 			);
 
+			$fullName = trim((string)$this->get('nomcomplet'));
+			if ($fullName !== '') {
+				$node['fullName'] = $fullName;
+			}
+
 			$color = $this->getEffectiveColor();
 			if ($color !== '') {
 				$node['mycolor'] = $color;
@@ -837,6 +852,10 @@
 				'name' => (string)$this->get('name'),
 			);
 
+			if (trim((string)$this->get('nomcomplet')) !== '') {
+				$record['fullName'] = (string)$this->get('nomcomplet');
+			}
+
 			if (!empty($options['role']) && (string)$options['role'] !== 'structure') {
 				$record['role'] = (string)$options['role'];
 			}
@@ -931,6 +950,16 @@
 			}
 
 			return 'Holon ' . (int)$this->getId();
+		}
+
+		public function getFullDisplayName()
+		{
+			$fullName = trim((string)$this->get('nomcomplet'));
+			if ($fullName !== '') {
+				return $fullName;
+			}
+
+			return $this->getDisplayName();
 		}
 
 		protected static function buildMemberSortKey($value)
@@ -2089,11 +2118,17 @@
 				$pdo->beginTransaction();
 
 				$user = $this->resolveMemberUser($userId, $email);
+				$invitationIssue = array();
 				$pendingInvitation = \dbObject\Invitation::findPendingForOrganizationUser($organizationId, (int)$user->getId());
 				$hasActiveOrganizationMembership = $this->hasActiveOrganizationMembership($user, $organizationId);
 				$requiresInvitation = !$hasActiveOrganizationMembership && !($pendingInvitation instanceof \dbObject\Invitation);
+				$canApprovePendingRequest = $pendingInvitation instanceof \dbObject\Invitation && $pendingInvitation->isMemberInitiatedRequest();
+				$keepsPendingInvitation = $pendingInvitation instanceof \dbObject\Invitation
+					&& !$hasActiveOrganizationMembership
+					&& !$canApprovePendingRequest;
+				$isPendingAdd = $requiresInvitation || $keepsPendingInvitation;
 
-				if ($pendingInvitation instanceof \dbObject\Invitation) {
+				if ($canApprovePendingRequest) {
 					$approvalResult = $pendingInvitation->approveByAdmin([
 						'approvedByUserId' => $currentUserId,
 						'sendConfirmationEmail' => false,
@@ -2105,6 +2140,11 @@
 					$this->ensureOrganizationMembership($user, $organizationId, true);
 					if (!$this->isOrganizationHolon()) {
 						$this->ensureHolonMembership($user, true);
+					}
+				} elseif ($keepsPendingInvitation) {
+					$this->ensureOrganizationMembership($user, $organizationId, false);
+					if (!$this->isOrganizationHolon()) {
+						$this->ensureHolonMembership($user, false);
 					}
 				} elseif ($requiresInvitation) {
 					$this->ensureOrganizationMembership($user, $organizationId, false);
@@ -2135,7 +2175,7 @@
 
 				return array(
 					'status' => true,
-					'message' => $requiresInvitation
+					'message' => $isPendingAdd
 						? (
 							!empty($invitationIssue['created'])
 								? 'Invitation envoyée : ' . trim((string)$user->get('email'))
@@ -2147,7 +2187,7 @@
 								: 'Membre ajouté.'
 						),
 					'userId' => (int)$user->getId(),
-					'pending' => $requiresInvitation,
+					'pending' => $isPendingAdd,
 				);
 			} catch (\Throwable $exception) {
 				if ($pdo->inTransaction()) {

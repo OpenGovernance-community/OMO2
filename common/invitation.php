@@ -81,6 +81,21 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $validInvitation instanceof \dbObje
 	}
 }
 
+if ($statusMessage === '' && $token !== '' && !$validInvitation && $invitation instanceof \dbObject\Invitation) {
+	$invitationStatus = trim((string)$invitation->get('status'));
+	if ($invitationStatus === 'canceled') {
+		$statusMessage = $invitation->isMemberInitiatedRequest()
+			? 'Desole, cette demande a ete annulee.'
+			: 'Desole, cette invitation a ete annulee.';
+		$statusType = 'error';
+	} elseif ($invitationStatus === 'declined') {
+		$statusMessage = $invitation->isMemberInitiatedRequest()
+			? 'Cette demande a ete refusee.'
+			: 'Cette invitation a ete refusee.';
+		$statusType = 'error';
+	}
+}
+
 $organization = null;
 $pendingHolons = [];
 $invitedUser = null;
@@ -353,7 +368,10 @@ $requestMessage = $isMemberRequest ? $invitation->getRequestMessage() : '';
 				<div class="invitation-section">
 					<h2>Statut</h2>
 					<p class="invitation-copy">
-						<?php if ($invitation->isExpired()): ?>
+						<?php $invitationStatus = trim((string)$invitation->get('status')); ?>
+						<?php if ($invitationStatus === 'canceled'): ?>
+							<?= commonInvitationEscape($isMemberRequest ? 'Cette demande a ete annulee.' : 'Cette invitation a ete annulee.') ?>
+						<?php elseif ($invitation->isExpired()): ?>
 							<?= commonInvitationEscape($isMemberRequest ? 'Cette demande a expire.' : 'Cette invitation a expire.') ?>
 						<?php else: ?>
 							<?= commonInvitationEscape($isMemberRequest ? 'Cette demande a deja ete traitee.' : 'Cette invitation a deja recu une reponse.') ?>

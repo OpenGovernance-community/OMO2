@@ -187,7 +187,7 @@ function omoFormatListItemValue($item, array $entry)
         if (!isset($holonLabelCache[$holonId])) {
             $holon = new Holon();
             $holonLabelCache[$holonId] = ($holon->load($holonId) && $holon->canView())
-                ? $holon->getDisplayName()
+                ? $holon->getFullDisplayName()
                 : '';
         }
 
@@ -514,7 +514,7 @@ function omoBuildChildNavigation(Holon $holon)
     foreach ($children as $child) {
         $entry = array(
             'id' => (int)$child->getId(),
-            'name' => trim((string)$child->get('name')),
+            'name' => trim((string)$child->getFullDisplayName()),
             'type' => (int)$child->get('IDtypeholon'),
         );
 
@@ -699,12 +699,12 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
             <span class="crumb<?= $isActive ? ' active' : '' ?>"
                   data-cid="<?= (int)$crumb->getId() ?>"
                   data-is-root="<?= $index === 0 ? '1' : '0' ?>">
-                <?= omoApiEscape($crumb->get('name')) ?>
+                <?= omoApiEscape($crumb->getFullDisplayName()) ?>
             </span>
             <?php endif; ?>
         <?php endforeach; ?>
     </div>
-            <h2 class="circle-title generic-card-title generic-card-title--section"><?= omoApiEscape($currentHolon->get('name')) ?></h2>
+            <h2 class="circle-title generic-card-title generic-card-title--section"><?= omoApiEscape($currentHolon->getFullDisplayName()) ?></h2>
         </div>
         <div class="circle-meta">
             <?php if ($hasHolonActions): ?>
@@ -758,7 +758,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
                                 class="circle-menu__item circle-menu__item--danger"
                                 data-delete-holon="1"
                                 data-hid="<?= (int)$currentHolon->getId() ?>"
-                                data-name="<?= omoApiEscape($currentHolon->get('name')) ?>"
+                                data-name="<?= omoApiEscape($currentHolon->getFullDisplayName()) ?>"
                                 data-type-label="<?= omoApiEscape($holonTypeLabel) ?>"
                                 data-descendant-count="<?= (int)$deleteDescendantCount ?>"
                                 data-parent-id="<?= (int)$deleteParentId ?>"

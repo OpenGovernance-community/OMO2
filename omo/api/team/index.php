@@ -521,7 +521,15 @@ if ($leafletMapsEnabled) {
                                         aria-label="Actions pour <?= omoApiEscape($card['displayName']) ?>"
                                     >...</button>
                                     <div class="omo-team-card__menu-panel" data-team-member-menu-panel="1" hidden>
-                                        <?php if ($canRemoveCurrentHolonMembers): ?>
+                                        <?php if ($canRemoveCurrentHolonMembers && $card['isPending']): ?>
+                                            <button
+                                                type="button"
+                                                class="omo-team-card__menu-item omo-team-card__menu-item--danger"
+                                                data-member-action="cancel_invitation"
+                                                data-user-id="<?= (int)$card['userId'] ?>"
+                                            >Annuler l'invitation</button>
+                                        <?php endif; ?>
+                                        <?php if ($canRemoveCurrentHolonMembers && !$card['isPending']): ?>
                                             <button
                                                 type="button"
                                                 class="omo-team-card__menu-item omo-team-card__menu-item--danger"
@@ -1836,7 +1844,9 @@ $(document)
         return;
     }
 
-    if (action === 'remove') {
+    if (action === 'cancel_invitation') {
+        confirmationMessage = 'Annuler l invitation envoyee a ' + displayName + ' ?';
+    } else if (action === 'remove') {
         confirmationMessage = 'Retirer ' + displayName + ' du contexte ' + contextLabel + ' ?';
     } else if (action === 'grant_admin') {
         confirmationMessage = 'Définir ' + displayName + ' comme admin du contexte ' + contextLabel + ' ?';
