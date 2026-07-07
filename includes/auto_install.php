@@ -153,6 +153,27 @@ function autoInstallGetFieldDefinitions()
                     ],
                     'help' => 'Active les URL du type orgname.domaine.com. Cela demande une configuration speciale de l hebergement, avec DNS wildcard et serveur web capable d accepter les sous-domaines.',
                 ],
+                [
+                    'key' => 'COOKIE_SCOPE_MODE',
+                    'label' => 'Portee des cookies',
+                    'type' => 'select',
+                    'required' => false,
+                    'options' => [
+                        'auto' => 'Auto',
+                        'host' => 'Host',
+                        'environment' => 'Environment',
+                        'parent' => 'Parent',
+                    ],
+                    'help' => 'Auto isole par defaut dev, beta et deploy en host-only. Environment partage dans *.dev.domaine.tld. Parent partage dans *.domaine.tld. Host force un cookie limite au host courant.',
+                ],
+                [
+                    'key' => 'COOKIE_ROOT_HOST',
+                    'label' => 'Racine cookies',
+                    'type' => 'text',
+                    'required' => false,
+                    'placeholder' => 'dev.opengov.tools',
+                    'help' => 'Optionnel. Si renseigne, force le partage des cookies a cette racine exacte, par exemple dev.opengov.tools pour partager entre dev.opengov.tools et *.dev.opengov.tools sans toucher a la prod.',
+                ],
             ],
         ],
         'database' => [
@@ -261,7 +282,7 @@ function autoInstallGetFieldDefinitions()
                     'label' => 'Securite SMTP',
                     'type' => 'text',
                     'required' => false,
-                    'placeholder' => 'SSL, tls ou vide',
+                    'placeholder' => 'STARTTLS/TLS, SSL ou vide',
                 ],
                 [
                     'key' => 'MAIL_AUTH',
@@ -626,28 +647,7 @@ function autoInstallGetSeedPath()
 
 function autoInstallEvaluateAdminPassword($password, $email = '')
 {
-    $password = (string)$password;
-    $email = trim(strtolower((string)$email));
-    $emailLocalPart = '';
-
-    if ($email !== '' && strpos($email, '@') !== false) {
-        $emailParts = explode('@', $email, 2);
-        $emailLocalPart = trim((string)($emailParts[0] ?? ''));
-    }
-
-    $rules = [
-        'length' => strlen($password) >= 12,
-        'lower' => preg_match('/[a-z]/', $password) === 1,
-        'upper' => preg_match('/[A-Z]/', $password) === 1,
-        'digit' => preg_match('/\d/', $password) === 1,
-        'special' => preg_match('/[^a-zA-Z0-9]/', $password) === 1,
-        'email' => $emailLocalPart === '' || strlen($emailLocalPart) < 4 || stripos($password, $emailLocalPart) === false,
-    ];
-
-    return [
-        'rules' => $rules,
-        'valid' => $rules['length'] && $rules['lower'] && $rules['upper'] && $rules['digit'] && $rules['special'],
-    ];
+    return commonEvaluatePasswordComplexity($password, $email, commonGetPasswordPolicyMinLength());
 }
 
 function autoInstallGetMailVerificationSessionKey()
@@ -1546,7 +1546,7 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors,
     <?php endif; ?>
 
     <main class="auto-install-page">
-        <section class="auto-install-hero generic-hero-panel generic-hero-panel--accent">
+        <section class="auto-install-hero generic-hero-panel accent">
             <p class="auto-install-eyebrow">Premier demarrage</p>
             <h1 class="auto-install-title">Configuration initiale du site</h1>
             <p class="auto-install-intro">

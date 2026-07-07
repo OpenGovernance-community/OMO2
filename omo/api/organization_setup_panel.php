@@ -124,7 +124,6 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
 
 .omo-setup-panel__hero {
     --generic-hero-padding: 22px;
-    --generic-hero-radius: 18px;
     --generic-hero-background:
         radial-gradient(circle at top right, color-mix(in srgb, var(--color-primary, #2563eb) 18%, transparent), transparent 45%),
         linear-gradient(135deg, color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #fff)), var(--color-surface, #fff));
@@ -154,8 +153,6 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
 
 .omo-setup-panel__section {
     --generic-section-padding-block: 18px;
-    --generic-section-padding-inline: 18px;
-    --generic-section-border: var(--color-border, #d1d5db);
     --generic-section-radius: 16px;
     --generic-section-shadow: var(--shadow-sm, 0 2px 6px rgba(15, 23, 42, 0.05));
 }
@@ -381,8 +378,28 @@ function omoReloadOrganizationPanels(oid) {
         return;
     }
 
-    loadContent('#panel-left', 'api/getOrg.php?oid=' + targetOid);
-    loadContent('#panel-right', 'api/getStructure.php?oid=' + targetOid);
+    loadContent(typeof omoGetLeftPanelContentSelector === 'function' ? omoGetLeftPanelContentSelector() : '#panel-left', 'api/getOrg.php?oid=' + targetOid);
+
+    if (typeof window.omoResetMainRightPanel === 'function') {
+        window.omoResetMainRightPanel();
+    } else {
+        $('#panel-right').empty();
+    }
+
+    const route = omoGetOrganizationSetupRoute();
+    let drawerUrl = 'api/getStructure.php?drawer=1&oid=' + targetOid;
+
+    if (route && route.cid) {
+        drawerUrl += '&cid=' + encodeURIComponent(route.cid);
+    }
+
+    if (typeof refreshDrawer === 'function' && refreshDrawer('drawer_structure', drawerUrl)) {
+        return;
+    }
+
+    if (typeof openDrawer === 'function') {
+        openDrawer('drawer_structure', drawerUrl);
+    }
 }
 
 window.omoReloadOrganizationPanels = omoReloadOrganizationPanels;
@@ -466,14 +483,77 @@ $(document)
 }
 
 if (!function_exists('omoRenderOrganizationInfoPanel')) {
+    function omoBuildOrganizationMemberCards(\dbObject\Organization $organization)
+    {
+        $organizationId = (int)$organization->getId();
+        $memberships = new \dbObject\ArrayUserOrganization();
+        $memberships->loadVisibleForOrganization($organizationId);
+
+        $memberCards = [];
+        foreach ($memberships as $membership) {
+            if (!$membership instanceof \dbObject\UserOrganization) {
+                continue;
+            }
+
+            $userId = (int)$membership->get('IDuser');
+            if ($userId <= 0) {
+                continue;
+            }
+
+            $displayName = trim((string)$membership->getUserDisplayName());
+            $secondary = trim((string)$membership->getScopedEmail());
+            if ($secondary === '') {
+                $secondary = trim((string)$membership->getUserSecondaryLabel());
+            }
+
+            $initials = trim((string)$membership->getUserInitials());
+            if ($initials === '') {
+                $initials = 'P';
+            }
+
+            $memberCards[] = [
+                'userId' => $userId,
+                'displayName' => $displayName !== '' ? $displayName : ('Utilisateur ' . $userId),
+                'secondary' => $secondary,
+                'photoUrl' => trim((string)$membership->getProfilePhotoUrl()),
+                'initials' => $initials,
+                'isPending' => !(bool)$membership->get('active'),
+                'isOrganizationAdmin' => $membership->isOrganizationAdmin(),
+            ];
+        }
+
+        usort($memberCards, static function (array $left, array $right): int {
+            if (($left['isOrganizationAdmin'] ?? false) !== ($right['isOrganizationAdmin'] ?? false)) {
+                return !empty($left['isOrganizationAdmin']) ? -1 : 1;
+            }
+
+            if (($left['isPending'] ?? false) !== ($right['isPending'] ?? false)) {
+                return empty($left['isPending']) ? -1 : 1;
+            }
+
+            return strcmp(
+                omoApiSortKey((string)($left['displayName'] ?? '')),
+                omoApiSortKey((string)($right['displayName'] ?? ''))
+            );
+        });
+
+        return $memberCards;
+    }
+
     function omoRenderOrganizationInfoPanel(\dbObject\Organization $organization)
     {
+        static $stylesRendered = false;
+        $organizationId = (int)$organization->getId();
         $organizationName = trim((string)$organization->get('name'));
         $organizationShortname = trim((string)$organization->get('shortname'));
         $organizationDomain = trim((string)$organization->get('domain'));
         $organizationColor = trim((string)$organization->get('color'));
         $organizationLogo = trim((string)$organization->get('logo'));
         $organizationBanner = trim((string)$organization->get('banner'));
+        $memberCards = omoBuildOrganizationMemberCards($organization);
+        $visibleMemberCards = array_slice($memberCards, 0, 8);
+        $hiddenMemberCount = max(0, count($memberCards) - count($visibleMemberCards));
+        $canAddMembers = $organization->canEdit();
 
         if ($organizationName === '') {
             $organizationName = 'Organisation';
@@ -487,7 +567,179 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
             ? 'background: linear-gradient(180deg, rgba(15,23,42,0.06), rgba(15,23,42,0.24)), url(' . omoApiEscape($organizationBanner) . ') center/cover;'
             : 'background: ' . omoApiEscape($organizationColor) . ';';
         ?>
-<div class="omo-org-info-panel">
+<?php if (!$stylesRendered): $stylesRendered = true; ?>
+<style>
+.omo-org-info-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 18px;
+    color: var(--color-text, #1f2937);
+}
+
+.omo-org-info-panel__hero {
+    position: relative;
+    min-height: 180px;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid var(--color-border, #d1d5db);
+    background: var(--color-surface-alt, #dbeafe);
+}
+
+.omo-org-info-panel__hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.04), rgba(15, 23, 42, 0.5));
+}
+
+.omo-org-info-panel__hero-content {
+    position: absolute;
+    inset: auto 18px 18px 18px;
+    z-index: 1;
+    color: #fff;
+}
+
+.omo-org-info-panel__kicker {
+    opacity: 0.8;
+}
+
+.omo-org-info-panel__title {
+    margin: 8px 0 0;
+    font-size: 28px;
+    line-height: 1.1;
+}
+
+.omo-org-info-panel__card {
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: var(--shadow-sm, 0 2px 6px rgba(15, 23, 42, 0.05));
+}
+
+.omo-org-info-panel__copy {
+    margin: 0;
+    line-height: 1.5;
+    color: var(--color-text-light, #6b7280);
+}
+
+.omo-org-info-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+.omo-org-info-list__item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px;
+    border-radius: 12px;
+    background: var(--color-surface-alt, #f8fafc);
+}
+
+.omo-org-info-list__label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-light, #6b7280);
+}
+
+.omo-org-info-list__value {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.omo-org-members {
+    display: grid;
+    gap: 8px;
+}
+
+.omo-org-members__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.omo-org-members__list {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.omo-org-members__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid var(--color-border, #d1d5db);
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 12%, var(--color-surface-alt, #f8fafc));
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.08));
+    padding: 0;
+}
+
+.omo-org-members__avatar--button {
+    cursor: pointer;
+}
+
+.omo-org-members__avatar--button:hover,
+.omo-org-members__avatar--button:focus-visible {
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 35%, var(--color-border, #d1d5db));
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 16%, var(--color-surface-alt, #f8fafc));
+}
+
+.omo-org-members__avatar--pending {
+    opacity: 0.6;
+    border-style: dashed;
+}
+
+.omo-org-members__avatar img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+}
+
+.omo-org-members__initials {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-primary, #2563eb);
+}
+
+.omo-org-members__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    min-height: 36px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, 0.08);
+    color: var(--color-primary, #2563eb);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.omo-org-members__badge--pending {
+    background: rgba(148, 163, 184, 0.14);
+    color: var(--color-text-light, #6b7280);
+}
+
+.omo-org-members__empty {
+    color: var(--color-text-light, #6b7280);
+    line-height: 1.5;
+}
+</style>
+<?php endif; ?>
+<div class="omo-org-info-panel" data-omo-org-info-panel="1" data-organization-id="<?= (int)$organizationId ?>">
     <div class="omo-org-info-panel__hero" style="<?= $heroStyle ?>">
         <div class="omo-org-info-panel__hero-content">
             <div class="omo-org-info-panel__kicker generic-card-title generic-card-title--eyebrow">Organisation</div>
@@ -496,7 +748,59 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
     </div>
 
     <div class="omo-org-info-panel__card">
-        <p class="omo-org-info-panel__copy">Cette organisation n'a pas encore de structure. Utilisez le panneau de droite pour créer une organisation vide ou partir d'un modèle.</p>
+        <div class="omo-org-members">
+            <div class="omo-org-members__head">
+                <div class="generic-card-title generic-card-title--small">Membres</div>
+                <?php if ($canAddMembers): ?>
+                    <button
+                        type="button"
+                        class="generic-action-button generic-action-button--secondary"
+                        data-omo-org-open-member-popup="1"
+                        data-oid="<?= (int)$organizationId ?>"
+                    >Inviter un membre</button>
+                <?php endif; ?>
+            </div>
+
+            <?php if (count($memberCards) > 0): ?>
+                <div class="omo-org-members__list">
+                    <?php foreach ($visibleMemberCards as $member): ?>
+                        <?php
+                        $memberTooltipParts = [(string)$member['displayName']];
+                        if (trim((string)($member['secondary'] ?? '')) !== '') {
+                            $memberTooltipParts[] = (string)$member['secondary'];
+                        }
+                        if (!empty($member['isPending'])) {
+                            $memberTooltipParts[] = 'invitation en attente';
+                        }
+                        if (!empty($member['isOrganizationAdmin'])) {
+                            $memberTooltipParts[] = 'admin';
+                        }
+                        $memberTooltip = implode(' - ', array_filter($memberTooltipParts));
+                        ?>
+                        <button
+                            type="button"
+                            class="omo-org-members__avatar omo-org-members__avatar--button<?= !empty($member['isPending']) ? ' omo-org-members__avatar--pending' : '' ?>"
+                            data-omo-org-open-user-popup="1"
+                            data-oid="<?= (int)$organizationId ?>"
+                            data-user-id="<?= (int)$member['userId'] ?>"
+                            title="<?= omoApiEscape($memberTooltip) ?>"
+                            aria-label="<?= omoApiEscape($memberTooltip) ?>"
+                        >
+                                <?php if (trim((string)($member['photoUrl'] ?? '')) !== ''): ?>
+                                    <img src="<?= omoApiEscape((string)$member['photoUrl']) ?>" alt="">
+                                <?php else: ?>
+                                    <span class="omo-org-members__initials"><?= omoApiEscape((string)$member['initials']) ?></span>
+                                <?php endif; ?>
+                        </button>
+                    <?php endforeach; ?>
+                    <?php if ($hiddenMemberCount > 0): ?>
+                        <span class="omo-org-members__badge">+<?= (int)$hiddenMemberCount ?></span>
+                    <?php endif; ?>
+                </div>
+            <?php else: ?>
+                <div class="omo-org-members__empty">Aucun membre n est encore rattache a cette organisation.</div>
+            <?php endif; ?>
+        </div>
     </div>
 
     <div class="omo-org-info-panel__card">
@@ -516,6 +820,53 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
         </div>
     </div>
 </div>
+<script>
+(function () {
+    function omoRefreshOrganizationInfoPanel(oid) {
+        const targetOid = Number(oid || 0);
+        if (!targetOid || typeof loadContent !== 'function') {
+            return;
+        }
+
+        loadContent(typeof omoGetLeftPanelContentSelector === 'function' ? omoGetLeftPanelContentSelector() : '#panel-left', 'api/getOrg.php?oid=' + targetOid);
+    }
+
+    window.omoRefreshOrganizationInfoPanel = omoRefreshOrganizationInfoPanel;
+
+    $(document)
+      .off('click.omoOrgInfoMemberPopup', '[data-omo-org-info-panel="1"] [data-omo-org-open-member-popup="1"]')
+      .on('click.omoOrgInfoMemberPopup', '[data-omo-org-info-panel="1"] [data-omo-org-open-member-popup="1"]', function () {
+        const organizationId = Number($(this).data('oid') || 0);
+
+        if (!organizationId || typeof window.commonTopbarOpenModal !== 'function') {
+            return;
+        }
+
+        window.commonTopbarOpenModal(
+            'Ajouter un membre',
+            '/omo/api/organization/member_popup.php?oid=' + encodeURIComponent(organizationId),
+            'fetch'
+        );
+      });
+
+    $(document)
+      .off('click.omoOrgInfoUserPopup', '[data-omo-org-info-panel="1"] [data-omo-org-open-user-popup="1"]')
+      .on('click.omoOrgInfoUserPopup', '[data-omo-org-info-panel="1"] [data-omo-org-open-user-popup="1"]', function () {
+        const organizationId = Number($(this).data('oid') || 0);
+        const userId = Number($(this).data('user-id') || 0);
+
+        if (!organizationId || !userId || typeof window.commonTopbarOpenModal !== 'function') {
+            return;
+        }
+
+        window.commonTopbarOpenModal(
+            'Profil',
+            '/popup/user.php?id=' + encodeURIComponent(userId) + '&oid=' + encodeURIComponent(organizationId),
+            'fetch'
+        );
+      });
+})();
+</script>
         <?php
     }
 }

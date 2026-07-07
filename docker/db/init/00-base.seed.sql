@@ -94,9 +94,9 @@ INSERT INTO `application` (`id`, `label`, `hash`, `directory`, `icon`, `drawer`,
 (5, 'Indicateurs', 'stats', 'stats', 'images/tools/stats.png', 'drawer_stats', 'api/stats/index.php', 'drawer', 50, 0, 1),
 (6, 'Documents', 'documents', 'documents', 'images/tools/documents-folder.png', 'drawer_documents', 'api/documents/index.php', 'drawer', 60, 1, 1),
 (7, 'Team', 'team', 'team', 'images/tools/team.png', 'drawer_team', 'api/team/index.php', 'drawer', 8, 1, 1),
-(8, 'Calendrier', 'calendar', 'calendar', 'images/tools/calendar.png', 'drawer_calendar', 'api/calendar/index.php', 'drawer', 9, 1, 1);
+(8, 'Calendrier', 'calendar', 'calendar', 'images/tools/calendar.png', 'drawer_calendar', 'api/calendar/index.php', 'drawer', 9, 1, 1),
+(9, 'Decisions', 'decision', 'decision', 'images/tools/decision.png', 'drawer_decisions', 'api/decision/index.php', 'drawer', 65, 1, 1);
 
--- --------------------------------------------------------
 
 --
 -- Structure de la table `document`
@@ -148,6 +148,7 @@ INSERT INTO `document` (`id`, `title`, `description`, `content`, `keywords`, `ID
 CREATE TABLE `faq` (
   `id` int(10) UNSIGNED NOT NULL,
   `IDhowto` int(10) UNSIGNED DEFAULT NULL,
+  `IDorganization` int(10) UNSIGNED DEFAULT NULL,
   `IDholon` int(10) UNSIGNED DEFAULT NULL,
   `question` varchar(255) NOT NULL,
   `answer` text NOT NULL,
@@ -155,6 +156,12 @@ CREATE TABLE `faq` (
   `displayorder` int(11) DEFAULT 0,
   `isactive` tinyint(1) DEFAULT 1,
   `viewcount` int(11) DEFAULT 0,
+  `positive_score` float NOT NULL DEFAULT 0,
+  `negative_score` float NOT NULL DEFAULT 0,
+  `total_votes` int(11) NOT NULL DEFAULT 0,
+  `reliability` float NOT NULL DEFAULT 0,
+  `reliability_updated_at` datetime DEFAULT NULL,
+  `score_decayed_at` datetime DEFAULT NULL,
   `created` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -168,6 +175,32 @@ INSERT INTO `faq` (`id`, `IDhowto`, `question`, `answer`, `detail`, `displayorde
 (2, NULL, 'Ma deuxième question', 'Réponse de ma deuxième question', 'Détail de la réponse de la deuxième question', 0, 1, '2026-04-12 08:08:05', '2026-04-12 08:08:34');
 
 -- --------------------------------------------------------
+
+UPDATE `faq`
+SET `isactive` = 0
+WHERE `id` IN (1, 2);
+
+INSERT INTO `faq` (`id`, `IDhowto`, `question`, `answer`, `detail`, `displayorder`, `isactive`, `created`, `updated`) VALUES
+(3201, NULL, 'Comment ouvrir les outils d aide dans OMO ?', 'Ouvrez le bouton Aide dans la topbar pour retrouver la FAQ, les tutoriels et la visite guidee.', '<p>La zone Aide centralise les ressources utiles quand vous avez un doute ou que vous decouvrez un ecran.</p><p>La FAQ donne des reponses rapides, les tutoriels vont plus loin et la visite guidee explique les boutons visibles sur la page en cours.</p>', 10, 1, '2026-06-22 09:00:00', '2026-06-22 09:00:00'),
+(3202, NULL, 'Comment utiliser la recherche de la topbar ?', 'Tapez quelques mots cles dans la recherche puis ouvrez le resultat qui correspond a votre besoin.', '<p>La recherche de la topbar sert a retrouver rapidement un cercle, un role, un outil ou un acces utile.</p><p>Si plusieurs modules sont proposes, commencez par ceux qui correspondent a votre besoin puis affinez avec des mots simples et precis.</p>', 20, 1, '2026-06-22 09:05:00', '2026-06-22 09:05:00'),
+(3203, NULL, 'Comment changer ma langue ou mon theme ?', 'Ouvrez le menu Profil dans la topbar pour regler la langue et le theme d affichage.', '<p>Le menu Profil permet de retrouver les reglages personnels les plus utiles sans quitter votre espace de travail.</p><p>Vous pouvez y adapter la langue de l interface et choisir le theme qui vous convient le mieux pour votre usage quotidien.</p>', 30, 1, '2026-06-22 09:10:00', '2026-06-22 09:10:00'),
+(3204, NULL, 'A quoi sert le switch Contextuel / Global ?', 'Il permet de limiter la vue au contexte courant ou d elargir la liste a toute l organisation.', '<p>Le mode contextuel est pratique quand vous travaillez dans un cercle ou un role precis et que vous voulez rester centre sur ce perimetre.</p><p>Le mode global sert plutot a retrouver un element dans toute l organisation, meme en dehors du contexte actuellement ouvert.</p>', 40, 1, '2026-06-22 09:15:00', '2026-06-22 09:15:00'),
+(3205, NULL, 'Comment passer du tri Date au tri Alphabetique ?', 'Utilisez le controle de tri dans l entete du drawer pour choisir l ordre qui vous aide le plus.', '<p>Le tri par date est utile pour revoir ce qui vient d etre cree ou modifie recemment.</p><p>Le tri alphabetique est souvent plus confortable quand vous cherchez un nom connu dans une longue liste.</p>', 50, 1, '2026-06-22 09:20:00', '2026-06-22 09:20:00'),
+(3206, NULL, 'A quoi sert le mode Detail / Compact ?', 'Le mode Detail montre plus d informations par carte, tandis que Compact affiche plus d elements a l ecran.', '<p>Choisissez Detail quand vous voulez lire les resumes, les metadonnees ou mieux comparer plusieurs cartes.</p><p>Choisissez Compact quand vous voulez parcourir beaucoup d elements rapidement, en particulier sur mobile ou dans une colonne etroite.</p>', 60, 1, '2026-06-22 09:25:00', '2026-06-22 09:25:00'),
+(3207, NULL, 'Comment creer un document dans OMO ?', 'Ouvrez l app Documents puis utilisez le bouton Ajouter si votre role vous y autorise.', '<p>Sur grand ecran, le bouton de creation apparait dans l entete du module. Sur mobile, il peut etre reduit a une icone en haut a droite.</p><p>Si vous ne voyez pas ce bouton, cela signifie en general que votre contexte actuel ou vos droits ne permettent pas cette creation.</p>', 70, 1, '2026-06-22 09:30:00', '2026-06-22 09:30:00'),
+(3208, NULL, 'Comment modifier un document existant ?', 'Ouvrez le document puis lancez l action Editer depuis le drawer ou le menu prevu.', '<p>L edition passe par le formulaire du document et enregistre les changements dans le contexte de ce document.</p><p>Si un document appartient deja a une organisation ou a un holon, les droits de ce contexte continuent a s appliquer au moment de la sauvegarde.</p>', 80, 1, '2026-06-22 09:35:00', '2026-06-22 09:35:00'),
+(3209, NULL, 'A quoi sert l app Memo ?', 'Memo rassemble vos documents personnels et vos notes dans une vue simple a parcourir.', '<p>La liste Memo peut regrouper les documents dont vous etes l auteur, y compris quand ils proviennent de plusieurs holons.</p><p>Le detail se consulte ensuite dans un drawer interne, ce qui permet de rester dans le meme espace sans ouvrir une nouvelle page.</p>', 90, 1, '2026-06-22 09:40:00', '2026-06-22 09:40:00'),
+(3210, NULL, 'Comment reediter un memo depuis l app Memo ?', 'Ouvrez le menu ... sur un memo puis choisissez Editer.', '<p>L action Editer ouvre le formulaire du memo dans un drawer, avec un parcours proche de celui du module Documents.</p><p>Les memos sans contexte d organisation peuvent etre reedites par leur auteur, alors que les documents deja classes gardent les droits de leur contexte habituel.</p>', 100, 1, '2026-06-22 09:45:00', '2026-06-22 09:45:00'),
+(3211, NULL, 'Comment terminer ou classer un memo depuis Telegram ?', 'Utilisez les boutons proposes par le bot pour choisir une destination autorisee ou terminer dans le contexte courant.', '<p>Le bot ne propose que les destinations de classement qui restent autorisees pour votre contexte et vos droits.</p><p>Si le bouton Terminer ici ou certaines destinations ne sont pas visibles, cela signifie simplement que cette action nest pas disponible pour vous a cet endroit.</p>', 110, 1, '2026-06-22 09:50:00', '2026-06-22 09:50:00'),
+(3212, NULL, 'Comment creer une prise de decision ?', 'Ouvrez l app Decisions puis utilisez le bouton de creation disponible dans l entete si vous avez le droit necessaire.', '<p>La creation se fait dans le contexte courant, par exemple pour une organisation, un cercle ou un autre niveau de structure.</p><p>Prenez le temps de definir un titre clair, une description utile et les dates importantes avant de lancer la participation.</p>', 120, 1, '2026-06-22 09:55:00', '2026-06-22 09:55:00'),
+(3213, NULL, 'Comment participer a une decision avec un lien public ou un acces personnel ?', 'Ouvrez la page de participation recue par lien ou demandez votre acces personnel depuis l ecran public du scrutin.', '<p>Certaines decisions peuvent accepter la participation sans invitation classique, directement depuis un lien public partage par l organisateur.</p><p>Si ce nest pas le cas, utilisez la page Recevoir mon acces personnel pour demander un lien individuel avant de voter.</p>', 130, 1, '2026-06-22 10:00:00', '2026-06-22 10:00:00'),
+(3214, NULL, 'Comment noter des propositions en jugement majoritaire ?', 'Attribuez une mention a chaque proposition selon l echelle affichee, de la plus favorable a la moins favorable.', '<p>Le jugement majoritaire ne consiste pas a choisir une seule proposition. Vous evaluez chaque option avec la meme echelle.</p><p>Le resultat final compare ensuite la repartition des mentions pour aider a faire ressortir la proposition la plus solide.</p>', 140, 1, '2026-06-22 10:05:00', '2026-06-22 10:05:00'),
+(3215, NULL, 'Comment ajouter un evenement dans le calendrier ?', 'Ouvrez le calendrier puis utilisez le bouton Ajouter si votre contexte vous autorise a creer des dates.', '<p>Comme pour les autres modules, le bouton peut etre plein texte sur grand ecran ou reduit a une icone sur mobile.</p><p>Si vous ne pouvez pas creer de date a cet endroit, changez de contexte ou demandez a une personne administratrice de verifier vos droits.</p>', 150, 1, '2026-06-22 10:10:00', '2026-06-22 10:10:00'),
+(3216, NULL, 'Comment changer de vue dans le calendrier ?', 'Utilisez le selecteur Mois, Semaine, Jour ou Liste pour choisir la lecture la plus pratique.', '<p>Chaque vue repond a un besoin different: Mois pour la planification generale, Semaine ou Jour pour le detail, Liste pour un balayage rapide.</p><p>Sur mobile, ces vues peuvent apparaitre sous forme d icones plus compactes afin de laisser davantage de place au contenu.</p>', 160, 1, '2026-06-22 10:15:00', '2026-06-22 10:15:00'),
+(3217, NULL, 'Pourquoi je ne vois pas toujours le bouton Ajouter ?', 'Le bouton apparait seulement si vous avez la permission de creation dans le contexte ouvert.', '<p>Ce principe vaut notamment pour les documents, les prises de decision, les dates et la creation de FAQ.</p><p>Si vous pensez que ce bouton devrait etre disponible, verifiez le contexte courant ou demandez une verification des permissions sur le holon concerne.</p>', 170, 1, '2026-06-22 10:20:00', '2026-06-22 10:20:00'),
+(3218, NULL, 'Comment ajouter une question dans la FAQ ?', 'Ouvrez la FAQ du contexte voulu puis utilisez le bouton Ajouter une question si cette action est disponible.', '<p>Selon votre ecran, la nouvelle question peut etre creee au niveau du contexte courant, du niveau organisation ou dans un scope plus global.</p><p>Si aucun bouton de creation ne saffiche, cela signifie que la permission de creation de FAQ nest pas accordee dans ce contexte.</p>', 180, 1, '2026-06-22 10:25:00', '2026-06-22 10:25:00'),
+(3219, NULL, 'A quoi servent les votes sur les reponses de la FAQ ?', 'Les boutons de vote permettent de signaler si une reponse est utile afin de mieux mettre en avant les bonnes explications.', '<p>Quand une reponse vous aide vraiment, un vote positif aide a la faire remonter dans la FAQ.</p><p>Ces retours servent a rendre les questions les plus utiles plus visibles pour les autres membres de l organisation.</p>', 190, 1, '2026-06-22 10:30:00', '2026-06-22 10:30:00'),
+(3220, NULL, 'Comment faire apparaitre mon organisation sur la carte publique ?', 'Renseignez un emplacement dans les parametres de l organisation et verifiez que les informations utiles sont lisibles sans connexion.', '<p>La carte publique utilise un emplacement facultatif, generalement saisi en latitude et longitude dans les parametres de l organisation.</p><p>Seules les informations explicitement exposees comme publiques sont reprises sur cette carte, ce qui permet de garder le controle sur ce qui est visible sans connexion.</p>', 200, 1, '2026-06-22 10:35:00', '2026-06-22 10:35:00');
 
 --
 -- Structure de la table `faq_choice`
@@ -201,6 +234,7 @@ CREATE TABLE `holon` (
   `id` int(11) NOT NULL,
   `IDorganization` int(11) DEFAULT NULL,
   `name` varchar(255) DEFAULT NULL,
+  `nomcomplet` varchar(255) DEFAULT NULL,
   `color` varchar(10) DEFAULT NULL COMMENT 'Couleur du noeud, qui peut être héritée du template.',
   `icon` varchar(255) DEFAULT NULL COMMENT 'Illustration carre du holon ou du template.',
   `banner` varchar(255) DEFAULT NULL COMMENT 'Illustration large du holon ou du template.',
@@ -521,7 +555,7 @@ CREATE TABLE `mission` (
   `id` int(11) NOT NULL,
   `title` varchar(150) NOT NULL,
   `resume` text NOT NULL,
-  `video` varchar(150) DEFAULT NULL,
+  `video` varchar(1000) DEFAULT NULL,
   `html` text DEFAULT NULL,
   `position` int(11) DEFAULT NULL,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
@@ -612,16 +646,18 @@ CREATE TABLE `organization` (
   `domain` varchar(100) DEFAULT NULL,
   `logo` varchar(100) DEFAULT NULL,
   `banner` varchar(100) DEFAULT NULL,
-  `color` varchar(10) DEFAULT NULL
+  `color` varchar(10) DEFAULT NULL,
+  `latlong` varchar(100) DEFAULT NULL,
+  `parameters` mediumtext DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Déchargement des données de la table `organization`
 --
 
-INSERT INTO `organization` (`id`, `name`, `shortname`, `domain`, `logo`, `banner`, `color`) VALUES
-(1, 'Org1', 'org1', 'org1.opengov.tools', '/img/org1-logo.svg', '/img/org1-banner.svg', '#0F766E'),
-(2, 'Org2', 'org2', 'org2.opengov.tools', '/img/org2-logo.svg', '/img/org2-banner.svg', '#1D4ED8');
+INSERT INTO `organization` (`id`, `name`, `shortname`, `domain`, `logo`, `banner`, `color`, `latlong`, `parameters`) VALUES
+(1, 'Org1', 'org1', 'org1.opengov.tools', '/img/org1-logo.svg', '/img/org1-banner.svg', '#0F766E', '46.204391;6.143158', NULL),
+(2, 'Org2', 'org2', 'org2.opengov.tools', '/img/org2-logo.svg', '/img/org2-banner.svg', '#1D4ED8', '46.519653;6.632273', NULL);
 
 -- --------------------------------------------------------
 
@@ -634,28 +670,31 @@ CREATE TABLE `organization_application` (
   `IDorganization` int(11) NOT NULL,
   `IDapplication` int(11) NOT NULL,
   `position` int(11) DEFAULT NULL,
-  `active` tinyint(1) NOT NULL DEFAULT 1
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `parameters` mediumtext DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Déchargement des données de la table `organization_application`
 --
 
-INSERT INTO `organization_application` (`id`, `IDorganization`, `IDapplication`, `position`, `active`) VALUES
-(1, 1, 1, 10, 1),
-(2, 2, 1, 10, 1),
-(3, 1, 2, 20, 1),
-(4, 2, 2, 20, 1),
-(5, 1, 3, 30, 1),
-(6, 2, 3, 30, 1),
-(7, 1, 4, 40, 1),
-(8, 2, 4, 40, 1),
-(9, 1, 5, 50, 1),
-(10, 2, 5, 50, 1),
-(11, 1, 6, 60, 1),
-(12, 2, 6, 60, 1),
-(16, 1, 7, 8, 1),
-(17, 1, 8, 9, 1);
+INSERT INTO `organization_application` (`id`, `IDorganization`, `IDapplication`, `position`, `active`, `parameters`) VALUES
+(1, 1, 1, 10, 1, NULL),
+(2, 2, 1, 10, 1, NULL),
+(3, 1, 2, 20, 1, NULL),
+(4, 2, 2, 20, 1, NULL),
+(5, 1, 3, 30, 1, NULL),
+(6, 2, 3, 30, 1, NULL),
+(7, 1, 4, 40, 1, NULL),
+(8, 2, 4, 40, 1, NULL),
+(9, 1, 5, 50, 1, NULL),
+(10, 2, 5, 50, 1, NULL),
+(11, 1, 6, 60, 1, NULL),
+(12, 2, 6, 60, 1, NULL),
+(16, 1, 7, 8, 1, NULL),
+(17, 1, 8, 9, 1, NULL),
+(18, 1, 9, 65, 1, NULL),
+(19, 2, 9, 65, 1, NULL);
 
 -- --------------------------------------------------------
 
@@ -668,7 +707,8 @@ CREATE TABLE `organization_parcours` (
   `IDorganization` int(11) NOT NULL,
   `IDparcours` int(11) NOT NULL,
   `position` int(11) DEFAULT NULL,
-  `everybody` tinyint(1) NOT NULL DEFAULT 1
+  `everybody` tinyint(1) NOT NULL DEFAULT 1,
+  `anonymous` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -936,8 +976,12 @@ CREATE TABLE `user` (
   `id` int(11) NOT NULL,
   `email` varchar(150) DEFAULT NULL,
   `lastname` varchar(150) DEFAULT NULL,
+  `presentation` text DEFAULT NULL,
+  `latlong` varchar(100) DEFAULT NULL,
+  `birthdate` date DEFAULT NULL,
   `firstname` varchar(150) DEFAULT NULL,
   `username` varchar(100) DEFAULT NULL,
+  `image` varchar(100) DEFAULT NULL,
   `password` varchar(80) DEFAULT NULL,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
   `dateconnexion` datetime DEFAULT NULL,
@@ -1135,7 +1179,10 @@ CREATE TABLE `user_organization` (
   `IDuser` int(11) NOT NULL,
   `IDorganization` int(11) NOT NULL,
   `username` varchar(250) DEFAULT NULL,
+  `image` varchar(100) DEFAULT NULL,
   `email` varchar(250) DEFAULT NULL,
+  `presentation` text DEFAULT NULL,
+  `latlong` varchar(100) DEFAULT NULL,
   `parameters` mediumtext DEFAULT NULL,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
   `dateconnexion` datetime DEFAULT NULL,
@@ -1146,9 +1193,9 @@ CREATE TABLE `user_organization` (
 -- Déchargement des données de la table `user_organization`
 --
 
-INSERT INTO `user_organization` (`id`, `IDuser`, `IDorganization`, `username`, `email`, `parameters`, `datecreation`, `dateconnexion`, `active`) VALUES
-(1, 1, 1, 'UN1', 'user1@org1.com', NULL, '2026-04-21 12:20:00', NULL, 1),
-(2, 1, 2, NULL, NULL, NULL, '2026-04-21 12:25:00', NULL, 1);
+INSERT INTO `user_organization` (`id`, `IDuser`, `IDorganization`, `username`, `image`, `email`, `presentation`, `latlong`, `parameters`, `datecreation`, `dateconnexion`, `active`) VALUES
+(1, 1, 1, 'UN1', NULL, 'user1@org1.com', NULL, NULL, NULL, '2026-04-21 12:20:00', NULL, 1),
+(2, 1, 2, NULL, NULL, NULL, NULL, NULL, NULL, '2026-04-21 12:25:00', NULL, 1);
 
 -- --------------------------------------------------------
 
@@ -1209,7 +1256,9 @@ ALTER TABLE `document`
 -- Index pour la table `faq`
 --
 ALTER TABLE `faq`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_faq_reliability` (`reliability`),
+  ADD KEY `idx_faq_reliability_updated_at` (`reliability_updated_at`);
 
 --
 -- Index pour la table `faq_choice`
@@ -1322,13 +1371,6 @@ ALTER TABLE `qr`
 ALTER TABLE `tips`
   ADD PRIMARY KEY (`id`);
 
---
--- Index pour la table `translation`
---
-ALTER TABLE `translation`
-  ADD PRIMARY KEY (`id`);
-
---
 -- Index pour la table `typeholon`
 --
 ALTER TABLE `typeholon`
@@ -1434,7 +1476,7 @@ ALTER TABLE `document`
 -- AUTO_INCREMENT pour la table `faq`
 --
 ALTER TABLE `faq`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3221;
 
 --
 -- AUTO_INCREMENT pour la table `faq_choice`
@@ -1544,13 +1586,6 @@ ALTER TABLE `qr`
 ALTER TABLE `tips`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
---
--- AUTO_INCREMENT pour la table `translation`
---
-ALTER TABLE `translation`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
 -- AUTO_INCREMENT pour la table `typeholon`
 --
 ALTER TABLE `typeholon`
@@ -1789,6 +1824,167 @@ ALTER TABLE `media`
 ALTER TABLE `alttext`
   ADD KEY `idx_alttext_document` (`IDdocument`),
   ADD CONSTRAINT `fk_alttext_document` FOREIGN KEY (`IDdocument`) REFERENCES `document` (`id`) ON DELETE CASCADE;
+
+CREATE TABLE IF NOT EXISTS `decision_process` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDorganization` int(11) DEFAULT NULL,
+  `IDholon` int(11) DEFAULT NULL,
+  `IDuser` int(11) DEFAULT NULL,
+  `title` varchar(190) NOT NULL,
+  `description` mediumtext DEFAULT NULL,
+  `decision_type` varchar(20) NOT NULL DEFAULT 'decision',
+  `status` varchar(20) NOT NULL DEFAULT 'draft',
+  `evaluation_method` varchar(40) NOT NULL DEFAULT 'simple_vote',
+  `visibility_type` varchar(30) NOT NULL DEFAULT 'organization',
+  `parameters` mediumtext DEFAULT NULL,
+  `consultation_start_at` datetime DEFAULT NULL,
+  `consultation_end_at` datetime DEFAULT NULL,
+  `evaluation_start_at` datetime DEFAULT NULL,
+  `evaluation_end_at` datetime DEFAULT NULL,
+  `results_published_at` datetime DEFAULT NULL,
+  `archived_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_decision_process_org` (`IDorganization`),
+  KEY `idx_decision_process_holon` (`IDholon`),
+  KEY `idx_decision_process_status` (`status`),
+  KEY `idx_decision_process_method` (`evaluation_method`),
+  KEY `idx_decision_process_type` (`decision_type`),
+  CONSTRAINT `fk_decision_process_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_decision_process_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `decision_group` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDdecision_process` int(11) NOT NULL,
+  `decision_type` varchar(20) NOT NULL DEFAULT 'decision',
+  `evaluation_method` varchar(40) NOT NULL DEFAULT 'simple_vote',
+  `title` varchar(190) NOT NULL,
+  `description` mediumtext DEFAULT NULL,
+  `parameters` mediumtext DEFAULT NULL,
+  `position` int(11) NOT NULL DEFAULT 1,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_decision_group_process` (`IDdecision_process`),
+  KEY `idx_decision_group_position` (`IDdecision_process`, `position`),
+  KEY `idx_decision_group_active` (`active`),
+  KEY `idx_decision_group_type` (`decision_type`),
+  KEY `idx_decision_group_method` (`evaluation_method`),
+  CONSTRAINT `fk_decision_group_process` FOREIGN KEY (`IDdecision_process`) REFERENCES `decision_process` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `decision_proposal` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDdecision_process` int(11) NOT NULL,
+  `IDdecision_group` int(11) NOT NULL,
+  `title` varchar(190) NOT NULL,
+  `description` mediumtext DEFAULT NULL,
+  `info_url` varchar(500) DEFAULT NULL,
+  `position` int(11) NOT NULL DEFAULT 0,
+  `parameters` mediumtext DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_decision_proposal_process` (`IDdecision_process`),
+  KEY `idx_decision_proposal_group` (`IDdecision_group`),
+  KEY `idx_decision_proposal_position` (`IDdecision_process`, `position`),
+  KEY `idx_decision_proposal_group_position` (`IDdecision_group`, `position`),
+  KEY `idx_decision_proposal_active` (`active`),
+  CONSTRAINT `fk_decision_proposal_process` FOREIGN KEY (`IDdecision_process`) REFERENCES `decision_process` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_decision_proposal_group` FOREIGN KEY (`IDdecision_group`) REFERENCES `decision_group` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `decision_participant` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDdecision_process` int(11) NOT NULL,
+  `IDuser` int(11) DEFAULT NULL,
+  `email` varchar(250) DEFAULT NULL,
+  `display_name` varchar(190) DEFAULT NULL,
+  `role` varchar(30) NOT NULL DEFAULT 'participant',
+  `status` varchar(30) NOT NULL DEFAULT 'invited',
+  `access_token` varchar(64) DEFAULT NULL,
+  `parameters` mediumtext DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `invitation_sent_at` datetime DEFAULT NULL,
+  `invitation_opened_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_decision_participant_user` (`IDdecision_process`, `IDuser`),
+  UNIQUE KEY `uniq_decision_participant_email` (`IDdecision_process`, `email`),
+  UNIQUE KEY `uniq_decision_participant_access_token` (`access_token`),
+  KEY `idx_decision_participant_status` (`status`),
+  KEY `idx_decision_participant_role` (`role`),
+  KEY `idx_decision_participant_active` (`active`),
+  CONSTRAINT `fk_decision_participant_process` FOREIGN KEY (`IDdecision_process`) REFERENCES `decision_process` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `decision_invitation` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDdecision_process` int(11) NOT NULL,
+  `IDholon` int(11) DEFAULT NULL,
+  `IDuser` int(11) DEFAULT NULL,
+  `email` varchar(250) DEFAULT NULL,
+  `display_name` varchar(190) DEFAULT NULL,
+  `invitation_type` varchar(30) NOT NULL DEFAULT 'email',
+  `status` varchar(30) NOT NULL DEFAULT 'invited',
+  `parameters` mediumtext DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_decision_invitation_holon` (`IDdecision_process`,`IDholon`),
+  UNIQUE KEY `uniq_decision_invitation_user` (`IDdecision_process`,`IDuser`),
+  UNIQUE KEY `uniq_decision_invitation_email` (`IDdecision_process`,`email`),
+  KEY `idx_decision_invitation_type` (`invitation_type`),
+  KEY `idx_decision_invitation_status` (`status`),
+  KEY `idx_decision_invitation_active` (`active`),
+  CONSTRAINT `fk_decision_invitation_process` FOREIGN KEY (`IDdecision_process`) REFERENCES `decision_process` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_decision_invitation_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_decision_invitation_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `decision_response` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDdecision_process` int(11) NOT NULL,
+  `IDdecision_group` int(11) NOT NULL,
+  `IDdecision_participant` int(11) NOT NULL,
+  `status` varchar(30) NOT NULL DEFAULT 'draft',
+  `parameters` mediumtext DEFAULT NULL,
+  `submitted_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_decision_response_group_participant` (`IDdecision_group`, `IDdecision_participant`),
+  KEY `idx_decision_response_group` (`IDdecision_group`),
+  KEY `idx_decision_response_status` (`status`),
+  CONSTRAINT `fk_decision_response_process` FOREIGN KEY (`IDdecision_process`) REFERENCES `decision_process` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_decision_response_group` FOREIGN KEY (`IDdecision_group`) REFERENCES `decision_group` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_decision_response_participant` FOREIGN KEY (`IDdecision_participant`) REFERENCES `decision_participant` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `decision_result` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDdecision_process` int(11) NOT NULL,
+  `IDdecision_group` int(11) NOT NULL,
+  `status` varchar(30) NOT NULL DEFAULT 'pending',
+  `summary` mediumtext DEFAULT NULL,
+  `parameters` mediumtext DEFAULT NULL,
+  `computed_at` datetime DEFAULT NULL,
+  `published_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_decision_result_group` (`IDdecision_group`),
+  KEY `idx_decision_result_group` (`IDdecision_group`),
+  KEY `idx_decision_result_status` (`status`),
+  CONSTRAINT `fk_decision_result_process` FOREIGN KEY (`IDdecision_process`) REFERENCES `decision_process` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_decision_result_group` FOREIGN KEY (`IDdecision_group`) REFERENCES `decision_group` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 COMMIT;
 

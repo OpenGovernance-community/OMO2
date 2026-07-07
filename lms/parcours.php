@@ -20,12 +20,16 @@ if (empty($accessContext['exists'])) {
 }
 
 if (empty($accessContext['canView'])) {
+	$loginReturnTo = lmsBuildLocalPath('/lms/parcours.php', array(
+		'idp' => $parcours_id,
+		'embed' => $isEmbedded ? 1 : null,
+	));
 	if ($user_id <= 0) {
 		commonRenderMagicLoginPage([
 			'title' => $org['name'] . ' - LMS',
 			'appName' => 'LMS',
 			'intro' => 'Connectez-vous pour acceder a ce parcours.',
-			'returnTo' => '/lms/parcours.php?idp=' . $parcours_id . ($isEmbedded ? '&embed=1' : ''),
+			'returnTo' => $loginReturnTo,
 		]);
 	}
 
@@ -41,6 +45,12 @@ $parcours = [
 ];
 
 if ($parcoursRef->load($parcours_id)) {
+	if ($parcoursRef->isPack()) {
+		http_response_code(404);
+		echo 'Parcours introuvable';
+		exit;
+	}
+
 	$parcours = [
 		'title' => (string)$parcoursRef->get('title'),
 		'description' => (string)$parcoursRef->get('description'),
@@ -48,8 +58,11 @@ if ($parcoursRef->load($parcours_id)) {
 }
 
 $isAnonymousViewer = lmsIsAnonymousViewer($accessContext);
-$showLoginDrawerButton = $user_id <= 0 && !commonCanAccessWithoutLogin($org);
-$loginDrawerReturnTo = '/lms/parcours.php?idp=' . $parcours_id . ($isEmbedded ? '&embed=1' : '');
+$showLoginDrawerButton = $user_id <= 0;
+$loginDrawerReturnTo = lmsBuildLocalPath('/lms/parcours.php', array(
+	'idp' => $parcours_id,
+	'embed' => $isEmbedded ? 1 : null,
+));
 $organizationColor = commonGetOrganizationExplicitColor($org);
 ?>
 
@@ -58,6 +71,7 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 <head>
 	<title><?php echo htmlspecialchars($parcours['title']); ?></title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="/common/assets/theme.css">
 	<link rel="stylesheet" href="/shared_css.css">
 	<link rel="stylesheet" href="/lms/css/std.css">
 	<script src="/shared_functions.js"></script>
@@ -111,6 +125,19 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 		.card:hover {
 			transform: translateY(-3px);
 			box-shadow: 0 18px 34px rgba(15,23,42,0.12);
+		}
+
+		.card.is-preview-only,
+		.card.is-preview-only:hover {
+			opacity: 0.58;
+			cursor: default;
+			transform: none;
+			box-shadow: var(--shadow);
+		}
+
+		.card.is-preview-only .open-btn {
+			background: var(--disabled);
+			cursor: not-allowed;
 		}
 
 		.card-content {
@@ -215,6 +242,24 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 			width: 0%;
 			background: var(--primary);
 			transition: width 0.3s ease;
+		}
+
+		.lms-pack-children {
+			display: grid;
+			gap: 18px;
+		}
+
+		.lms-pack-children__intro p,
+		.lms-pack-children__empty {
+			color: var(--text-light);
+			line-height: 1.5;
+		}
+
+		.lms-pack-children__empty {
+			padding: 16px 18px;
+			border: 1px solid var(--border-color);
+			border-radius: var(--border-radius);
+			background: var(--bg-card);
 		}
 
 		.view-switch {

@@ -2,8 +2,10 @@
 require_once dirname(__DIR__) . '/omo/api/bootstrap.php';
 require_once dirname(__DIR__) . '/common/user_competence_ui.php';
 require_once dirname(__DIR__) . '/common/user_profile_ui.php';
+require_once dirname(__DIR__) . '/common/user_permission_ui.php';
 
 use dbObject\Holon;
+use dbObject\Invitation;
 use dbObject\Organization;
 use dbObject\User;
 
@@ -22,6 +24,467 @@ function omoUserContextFormatDate($value)
     }
 
     return $value->format('d.m.Y');
+}
+
+function omoUserContextRenderRightsFragment($targetUserId, $organizationId)
+{
+    $details = \dbObject\HolonPermission::buildEffectivePermissionDetailsForOrganization((int)$targetUserId, (int)$organizationId);
+    $permissionCatalog = commonUserPermissionBuildCatalogMap();
+    $holonIds = [];
+
+    foreach ((array)($details['rows'] ?? []) as $row) {
+        $holonIds[] = (int)($row['scopeHolonId'] ?? 0);
+        $holonIds[] = (int)($row['assignedHolonId'] ?? 0);
+        $holonIds[] = (int)($row['sourceHolonId'] ?? 0);
+    }
+
+    $holonMeta = commonUserPermissionBuildHolonMetaMap($holonIds);
+    $labelsById = (array)($holonMeta['labelsById'] ?? []);
+    $typeLabelsById = (array)($holonMeta['typeLabelsById'] ?? []);
+    $formatHolonLabel = static function ($holonId) use ($labelsById, $typeLabelsById) {
+        return commonUserPermissionFormatHolonLabel((int)$holonId, $labelsById, $typeLabelsById);
+    };
+
+    $groupedRights = [];
+    foreach ((array)($details['rows'] ?? []) as $row) {
+        $permissionKey = trim((string)($row['permissionKey'] ?? ''));
+        $scopeType = trim((string)($row['scopeType'] ?? ''));
+        $scopeHolonId = (int)($row['scopeHolonId'] ?? 0);
+        if ($permissionKey === '' || $scopeType === '') {
+            continue;
+        }
+
+        if (!isset($groupedRights[$permissionKey])) {
+            $groupedRights[$permissionKey] = [
+                'permissionKey' => $permissionKey,
+                'scopes' => [],
+            ];
+        }
+
+        $scopeKey = implode('|', [$scopeType, (string)$scopeHolonId]);
+        if (!isset($groupedRights[$permissionKey]['scopes'][$scopeKey])) {
+            $groupedRights[$permissionKey]['scopes'][$scopeKey] = [
+                'scopeType' => $scopeType,
+                'scopeHolonId' => $scopeHolonId,
+                'sources' => [],
+            ];
+        }
+
+        $sourceKey = implode('|', [
+            (string)((int)($row['assignedHolonId'] ?? 0)),
+            (string)((int)($row['sourceHolonId'] ?? 0)),
+            (string)($row['range'] ?? ''),
+        ]);
+        $groupedRights[$permissionKey]['scopes'][$scopeKey]['sources'][$sourceKey] = [
+            'assignedHolonId' => (int)($row['assignedHolonId'] ?? 0),
+            'sourceHolonId' => (int)($row['sourceHolonId'] ?? 0),
+            'range' => (string)($row['range'] ?? ''),
+        ];
+    }
+
+    uasort($groupedRights, static function ($left, $right) use ($permissionCatalog) {
+        $leftKey = (string)($left['permissionKey'] ?? '');
+        $rightKey = (string)($right['permissionKey'] ?? '');
+        $leftTitle = trim((string)($permissionCatalog[$leftKey]['title'] ?? $leftKey));
+        $rightTitle = trim((string)($permissionCatalog[$rightKey]['title'] ?? $rightKey));
+        return strnatcasecmp($leftTitle, $rightTitle);
+    });
+
+    foreach ($groupedRights as &$permissionGroup) {
+        uasort($permissionGroup['scopes'], static function ($left, $right) use ($formatHolonLabel) {
+            $leftLabel = commonUserPermissionDescribeScope(
+                (string)($left['scopeType'] ?? ''),
+                (int)($left['scopeHolonId'] ?? 0),
+                $formatHolonLabel
+            );
+            $rightLabel = commonUserPermissionDescribeScope(
+                (string)($right['scopeType'] ?? ''),
+                (int)($right['scopeHolonId'] ?? 0),
+                $formatHolonLabel
+            );
+            return strnatcasecmp($leftLabel, $rightLabel);
+        });
+    }
+    unset($permissionGroup);
+
+    ob_start();
+    ?>
+    <section class="omo-user-context__section generic-section generic-section--stack">
+        <div class="omo-user-context__pane-copy">
+            <div class="omo-user-context__section-kicker generic-card-title generic-card-title--eyebrow">Droits</div>
+            <div class="generic-card-title generic-card-title--medium">Droits effectifs dans l'organisation</div>
+            <div class="omo-user-context__section-copy">Chaque droit est affiche avec sa portee calculee et le holon source quand il peut etre retrouve.</div>
+        </div>
+
+        <?php if (count($groupedRights) === 0): ?>
+            <div class="omo-user-context__empty">Aucun droit effectif visible pour ce membre.</div>
+        <?php else: ?>
+            <div class="omo-user-context__rights-list">
+                <?php foreach ($groupedRights as $group): ?>
+                    <?php
+                    $permissionKey = (string)$group['permissionKey'];
+                    $permissionTitle = trim((string)($permissionCatalog[$permissionKey]['title'] ?? ''));
+                    if ($permissionTitle === '') {
+                        $permissionTitle = $permissionKey;
+                    }
+                    ?>
+                    <article class="omo-user-context__rights-card generic-soft-panel">
+                        <div class="omo-user-context__rights-pill">
+                            <div class="omo-user-context__rights-pill-title"><?= omoApiEscape($permissionTitle) ?></div>
+                        </div>
+                        <div class="omo-user-context__rights-scope-list">
+                            <?php foreach ((array)$group['scopes'] as $scope): ?>
+                                <?php
+                                $scopeLabel = commonUserPermissionDescribeScope(
+                                    (string)$scope['scopeType'],
+                                    (int)$scope['scopeHolonId'],
+                                    $formatHolonLabel
+                                );
+                                ?>
+                                <div class="omo-user-context__rights-scope-item">
+                                    <div class="omo-user-context__rights-pill-scope"><?= omoApiEscape($scopeLabel) ?></div>
+                                    <div class="omo-user-context__rights-source-list">
+                                        <?php foreach ((array)$scope['sources'] as $source): ?>
+                                            <?php
+                                            $sourceHolonId = (int)($source['sourceHolonId'] ?? 0);
+                                            $assignedHolonId = (int)($source['assignedHolonId'] ?? 0);
+                                            $sourceLabel = $sourceHolonId > 0 ? $formatHolonLabel($sourceHolonId) : 'Source inconnue';
+                                            if ($assignedHolonId > 0 && $assignedHolonId !== $sourceHolonId) {
+                                                $sourceLabel .= ' - via ' . $formatHolonLabel($assignedHolonId);
+                                            }
+                                            ?>
+                                            <span class="omo-user-context__rights-source-chip"><?= omoApiEscape($sourceLabel) ?></span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </section>
+    <?php
+
+    return ob_get_clean();
+}
+
+function omoUserContextRenderPendingInvitationFragment(array $context)
+{
+    $organizationId = (int)($context['organizationId'] ?? 0);
+    $userId = (int)($context['userId'] ?? 0);
+    $currentHolonId = (int)($context['currentHolonId'] ?? 0);
+    $displayName = trim((string)($context['displayName'] ?? ''));
+    $secondaryLabel = trim((string)($context['secondaryLabel'] ?? ''));
+    $contextLabel = trim((string)($context['contextLabel'] ?? ''));
+    $contextName = trim((string)($context['contextName'] ?? ''));
+    $organizationName = trim((string)($context['organizationName'] ?? ''));
+    $statusCopy = trim((string)($context['statusCopy'] ?? ''));
+    $detailCopy = trim((string)($context['detailCopy'] ?? ''));
+    $manageCopy = trim((string)($context['manageCopy'] ?? ''));
+    $manageRestrictedCopy = trim((string)($context['manageRestrictedCopy'] ?? ''));
+    $invitationTypeLabel = trim((string)($context['invitationTypeLabel'] ?? ''));
+    $pendingHolons = is_array($context['pendingHolons'] ?? null) ? $context['pendingHolons'] : [];
+    $hasPendingInvitation = !empty($context['hasPendingInvitation']);
+    $canManageInvitation = !empty($context['canManageInvitation']);
+    $canResendInvitation = !empty($context['canResendInvitation']);
+    $displayTitle = $displayName !== '' ? $displayName : 'Invitation en attente';
+    $contextSummary = $contextLabel !== '' ? $contextLabel : 'contexte';
+    if ($contextName !== '') {
+        $contextSummary .= ' - ' . $contextName;
+    }
+    if ($organizationName !== '') {
+        $contextSummary .= ' - ' . $organizationName;
+    }
+
+    ob_start();
+    ?>
+    <div
+        class="omo-user-pending-invitation"
+        id="omoUserPendingInvitation"
+        data-oid="<?= (int)$organizationId ?>"
+        data-hid="<?= (int)$currentHolonId ?>"
+        data-user-id="<?= (int)$userId ?>"
+    >
+        <style>
+        .omo-user-pending-invitation {
+            display: grid;
+            gap: 16px;
+            padding: 18px;
+            box-sizing: border-box;
+            color: var(--color-text, #1f2937);
+        }
+
+        .omo-user-pending-invitation__hero {
+            --generic-hero-gap: 10px;
+            --generic-hero-padding: 20px;
+            --generic-hero-radius: 22px;
+        }
+
+        .omo-user-pending-invitation__hero h2 {
+            margin: 0;
+        }
+
+        .omo-user-pending-invitation__secondary,
+        .omo-user-pending-invitation__copy,
+        .omo-user-pending-invitation__detail,
+        .omo-user-pending-invitation__meta-value,
+        .omo-user-pending-invitation__empty,
+        .omo-user-pending-invitation__feedback {
+            color: var(--color-text-light, #6b7280);
+        }
+
+        .omo-user-pending-invitation__secondary,
+        .omo-user-pending-invitation__copy,
+        .omo-user-pending-invitation__detail,
+        .omo-user-pending-invitation__feedback {
+            line-height: 1.5;
+        }
+
+        .omo-user-pending-invitation__badge-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .omo-user-pending-invitation__badge {
+            display: inline-flex;
+            align-items: center;
+            min-height: 28px;
+            padding: 0 10px;
+            border-radius: 999px;
+            background: rgba(100, 116, 139, 0.14);
+            color: var(--color-text-light, #6b7280);
+            border: 1px solid var(--color-border, #e5e7eb);
+            font-size: 0.76rem;
+            font-weight: 700;
+        }
+
+        .omo-user-pending-invitation__section {
+            --generic-section-gap: 12px;
+            --generic-section-padding-block: 18px;
+            --generic-section-padding-inline: 18px;
+            --generic-section-radius: 20px;
+        }
+
+        .omo-user-pending-invitation__section h3 {
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .omo-user-pending-invitation__meta {
+            display: grid;
+            gap: 10px;
+        }
+
+        .omo-user-pending-invitation__meta-row {
+            display: grid;
+            gap: 4px;
+        }
+
+        .omo-user-pending-invitation__meta-label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--color-text, #1f2937);
+        }
+
+        .omo-user-pending-invitation__holon-list {
+            margin: 0;
+            padding-left: 18px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .omo-user-pending-invitation__holon-list li {
+            line-height: 1.45;
+        }
+
+        .omo-user-pending-invitation__holon-type {
+            color: var(--color-text-light, #6b7280);
+        }
+
+        .omo-user-pending-invitation__actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .omo-user-pending-invitation__action {
+            text-decoration: none;
+        }
+
+        .omo-user-pending-invitation__feedback {
+            min-height: 24px;
+            font-size: 0.92rem;
+        }
+
+        .omo-user-pending-invitation__feedback.is-success {
+            color: #166534;
+        }
+
+        .omo-user-pending-invitation__feedback.is-error {
+            color: #b91c1c;
+        }
+        </style>
+
+        <div class="omo-user-pending-invitation__hero generic-hero-panel">
+            <div class="generic-card-title generic-card-title--eyebrow">Invitation en attente</div>
+            <h2 class="generic-card-title generic-card-title--large"><?= omoApiEscape($displayTitle) ?></h2>
+            <?php if ($secondaryLabel !== ''): ?>
+                <div class="omo-user-pending-invitation__secondary"><?= omoApiEscape($secondaryLabel) ?></div>
+            <?php endif; ?>
+            <?php if ($contextSummary !== ''): ?>
+                <div class="omo-user-pending-invitation__secondary">Contexte: <?= omoApiEscape($contextSummary) ?></div>
+            <?php endif; ?>
+            <?php if ($statusCopy !== ''): ?>
+                <p class="omo-user-pending-invitation__copy"><?= omoApiEscape($statusCopy) ?></p>
+            <?php endif; ?>
+            <div class="omo-user-pending-invitation__badge-row">
+                <span class="omo-user-pending-invitation__badge">En attente</span>
+            </div>
+        </div>
+
+        <section class="omo-user-pending-invitation__section generic-section generic-section--stack">
+            <h3 class="generic-card-title generic-card-title--medium">Etat du profil</h3>
+            <p class="omo-user-pending-invitation__detail"><?= omoApiEscape($detailCopy !== '' ? $detailCopy : 'Le profil detaille n est pas encore accessible.') ?></p>
+        </section>
+
+        <section class="omo-user-pending-invitation__section generic-section generic-section--stack">
+            <h3 class="generic-card-title generic-card-title--medium">Invitation en cours</h3>
+            <div class="omo-user-pending-invitation__meta">
+                <?php if ($secondaryLabel !== ''): ?>
+                    <div class="omo-user-pending-invitation__meta-row">
+                        <div class="omo-user-pending-invitation__meta-label">E-mail</div>
+                        <div class="omo-user-pending-invitation__meta-value"><?= omoApiEscape($secondaryLabel) ?></div>
+                    </div>
+                <?php endif; ?>
+                <?php if ($invitationTypeLabel !== ''): ?>
+                    <div class="omo-user-pending-invitation__meta-row">
+                        <div class="omo-user-pending-invitation__meta-label">Type</div>
+                        <div class="omo-user-pending-invitation__meta-value"><?= omoApiEscape($invitationTypeLabel) ?></div>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <?php if (count($pendingHolons) > 0): ?>
+                <ul class="omo-user-pending-invitation__holon-list">
+                    <?php foreach ($pendingHolons as $pendingHolon): ?>
+                        <?php
+                        $pendingHolonName = trim((string)($pendingHolon['name'] ?? ''));
+                        $pendingHolonType = trim((string)($pendingHolon['typeLabel'] ?? ''));
+                        ?>
+                        <li>
+                            <strong><?= omoApiEscape($pendingHolonName !== '' ? $pendingHolonName : 'Acces en attente') ?></strong>
+                            <?php if ($pendingHolonType !== ''): ?>
+                                <span class="omo-user-pending-invitation__holon-type">(<?= omoApiEscape($pendingHolonType) ?>)</span>
+                            <?php endif; ?>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php elseif ($hasPendingInvitation): ?>
+                <div class="omo-user-pending-invitation__empty">Cette invitation attend encore une reponse, mais aucun holon detaille n a pu etre liste.</div>
+            <?php else: ?>
+                <div class="omo-user-pending-invitation__empty">Aucune invitation active n a ete retrouvee pour ce membre. La vue affichera le profil normal des que la situation sera regularisee.</div>
+            <?php endif; ?>
+        </section>
+
+        <section class="omo-user-pending-invitation__section generic-section generic-section--stack">
+            <h3 class="generic-card-title generic-card-title--medium">Actions</h3>
+            <?php if (!$canManageInvitation): ?>
+                <p class="omo-user-pending-invitation__detail"><?= omoApiEscape($manageRestrictedCopy !== '' ? $manageRestrictedCopy : 'Vous pouvez voir que cette invitation est en attente, mais seuls les responsables du contexte peuvent la gerer.') ?></p>
+            <?php elseif (!$hasPendingInvitation): ?>
+                <p class="omo-user-pending-invitation__detail">Il n y a plus d invitation active a ouvrir ou a renvoyer pour ce membre.</p>
+            <?php else: ?>
+                <p class="omo-user-pending-invitation__detail"><?= omoApiEscape($manageCopy !== '' ? $manageCopy : 'Vous pouvez renvoyer le message d invitation a cette adresse e-mail.') ?></p>
+                <div class="omo-user-pending-invitation__actions">
+                    <?php if ($canResendInvitation): ?>
+                        <button
+                            type="button"
+                            class="omo-user-pending-invitation__action generic-action-button generic-action-button--main"
+                            data-pending-invitation-resend="1"
+                        >Renvoyer l e-mail</button>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
+            <div class="omo-user-pending-invitation__feedback" id="omoUserPendingInvitationFeedback"></div>
+        </section>
+    </div>
+
+    <script>
+    (function () {
+        var root = document.getElementById('omoUserPendingInvitation');
+        var feedback = document.getElementById('omoUserPendingInvitationFeedback');
+        var resendButton = root ? root.querySelector('[data-pending-invitation-resend="1"]') : null;
+
+        if (!root || !feedback || !resendButton) {
+            return;
+        }
+
+        var organizationId = Number(root.getAttribute('data-oid') || 0);
+        var currentHolonId = Number(root.getAttribute('data-hid') || 0);
+        var userId = Number(root.getAttribute('data-user-id') || 0);
+
+        function setFeedback(message, isError) {
+            feedback.textContent = message || '';
+            feedback.classList.toggle('is-error', !!isError && !!message);
+            feedback.classList.toggle('is-success', !isError && !!message);
+        }
+
+        resendButton.addEventListener('click', function () {
+            if (!organizationId || !currentHolonId || !userId) {
+                return;
+            }
+
+            resendButton.disabled = true;
+            setFeedback('', false);
+
+            var formData = new FormData();
+            formData.append('hid', String(currentHolonId));
+            formData.append('oid', String(organizationId));
+            formData.append('user_id', String(userId));
+            formData.append('action', 'resend_invitation');
+
+            fetch('/omo/api/team/member_action.php', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(function (response) {
+                    return response.json().catch(function () {
+                        return null;
+                    }).then(function (data) {
+                        return {
+                            ok: response.ok,
+                            data: data
+                        };
+                    });
+                })
+                .then(function (result) {
+                    resendButton.disabled = false;
+
+                    if (!result.ok || !result.data || !result.data.status) {
+                        setFeedback(result.data && result.data.message ? result.data.message : 'Impossible de renvoyer cette invitation pour le moment.', true);
+                        return;
+                    }
+
+                    setFeedback(result.data.message || 'Invitation renvoyee.', false);
+                })
+                .catch(function () {
+                    resendButton.disabled = false;
+                    setFeedback('Impossible de renvoyer cette invitation pour le moment.', true);
+                });
+        });
+    })();
+    </script>
+    <?php
+
+    return ob_get_clean();
 }
 
 $organizationId = (int)($_GET['oid'] ?? ($_SESSION['currentOrganization'] ?? 0));
@@ -53,17 +516,10 @@ if (!$organization->canViewDetail()) {
     exit;
 }
 
-$rootHolon = $organization->getStructuralRootHolon();
-if ($rootHolon === null) {
-    http_response_code(404);
-    ?>
-    <div class="omo-user-context omo-user-context--error">Aucun contexte organisationnel n'est disponible.</div>
-    <?php
-    exit;
-}
-
-$currentHolon = $rootHolon;
-if ($currentHolonId > 0 && (int)$rootHolon->getId() !== $currentHolonId) {
+$rootHolon = $organization->getEnabledStructuralRootHolon();
+$hasStructureContext = $rootHolon instanceof Holon;
+$currentHolon = $hasStructureContext ? $rootHolon : null;
+if ($hasStructureContext && $currentHolonId > 0 && (int)$rootHolon->getId() !== $currentHolonId) {
     $candidate = new Holon();
     if (!$candidate->load($currentHolonId) || !$candidate->isDescendantOf($rootHolon->getId())) {
         http_response_code(404);
@@ -86,8 +542,76 @@ if ($currentHolonId > 0 && (int)$rootHolon->getId() !== $currentHolonId) {
     $currentHolon = $candidate;
 }
 
+$pendingInvitation = Invitation::findPendingForOrganizationUser($organizationId, $userId);
 $user = new User();
-if (!$user->load($userId)) {
+$userLoaded = $user->load($userId);
+
+if ($pendingInvitation instanceof Invitation && $pendingInvitation->isAdminInitiatedInvitation()) {
+    $pendingInvitationEmail = trim((string)$pendingInvitation->get('email'));
+    if ($pendingInvitationEmail === '' && $userLoaded) {
+        $pendingInvitationEmail = trim((string)$user->getScopedEmail($organizationId));
+    }
+
+    $pendingInvitationDisplayName = $userLoaded
+        ? trim((string)$user->getScopedDisplayName($organizationId))
+        : '';
+    if ($pendingInvitationDisplayName === '') {
+        $pendingInvitationDisplayName = $pendingInvitationEmail !== ''
+            ? $pendingInvitationEmail
+            : ('Utilisateur ' . $userId);
+    }
+
+    $pendingInvitationHolons = $pendingInvitation->getPendingHolons();
+    $canManagePendingInvitation = $currentHolon->isAllowed('CAN_ADD_MEMBER');
+    echo omoUserContextRenderPendingInvitationFragment([
+        'organizationId' => $organizationId,
+        'userId' => $userId,
+        'currentHolonId' => (int)$currentHolon->getId(),
+        'organizationName' => trim((string)$organization->get('name')),
+        'displayName' => $pendingInvitationDisplayName,
+        'secondaryLabel' => $pendingInvitationEmail,
+        'contextLabel' => trim((string)$currentHolon->getTemplateLabel(true)),
+        'contextName' => trim((string)$currentHolon->getDisplayName()),
+        'statusCopy' => 'Ce profil reste masque tant que la personne n a pas accepte son invitation.',
+        'detailCopy' => 'Meme en mode admin d organisation, les informations du profil ne sont pas affichees avant acceptation afin d eviter tout acces sans consentement.',
+        'manageCopy' => 'Vous pouvez uniquement renvoyer le message d invitation a cette adresse e-mail.',
+        'manageRestrictedCopy' => 'Le profil reste masque jusqu a l acceptation de l invitation. Seules les personnes qui ont le droit CAN_ADD_MEMBER sur ce holon peuvent renvoyer le message.',
+        'invitationTypeLabel' => 'Invitation admin',
+        'pendingHolons' => $pendingInvitationHolons,
+        'hasPendingInvitation' => true,
+        'canManageInvitation' => $canManagePendingInvitation,
+        'canResendInvitation' => $canManagePendingInvitation,
+    ]);
+    exit;
+}
+
+if (!$userLoaded) {
+    if ($pendingInvitation instanceof Invitation) {
+        $pendingInvitationEmail = trim((string)$pendingInvitation->get('email'));
+        $pendingInvitationHolons = $pendingInvitation->getPendingHolons();
+        $canManagePendingInvitation = $currentHolon->isAllowed('CAN_ADD_MEMBER');
+        echo omoUserContextRenderPendingInvitationFragment([
+            'organizationId' => $organizationId,
+            'userId' => $userId,
+            'currentHolonId' => (int)$currentHolon->getId(),
+            'organizationName' => trim((string)$organization->get('name')),
+            'displayName' => $pendingInvitationEmail !== '' ? $pendingInvitationEmail : ('Utilisateur ' . $userId),
+            'secondaryLabel' => $pendingInvitationEmail,
+            'contextLabel' => trim((string)$currentHolon->getTemplateLabel(true)),
+            'contextName' => trim((string)$currentHolon->getDisplayName()),
+            'statusCopy' => 'Ce membre a bien une invitation en attente, mais son profil complet n est pas encore disponible.',
+            'detailCopy' => 'Pour le moment, seuls les elements lies a l invitation peuvent etre affiches. Les informations detaillees du profil seront visibles apres acceptation.',
+            'manageCopy' => 'Vous pouvez renvoyer le message d invitation a cette adresse e-mail.',
+            'manageRestrictedCopy' => 'Vous pouvez voir que cette invitation existe, mais seul un role avec le droit CAN_ADD_MEMBER sur ce holon peut renvoyer le message.',
+            'invitationTypeLabel' => $pendingInvitation->isAdminInitiatedInvitation() ? 'Invitation admin' : 'Demande d acces',
+            'pendingHolons' => $pendingInvitationHolons,
+            'hasPendingInvitation' => true,
+            'canManageInvitation' => $canManagePendingInvitation,
+            'canResendInvitation' => $canManagePendingInvitation && $pendingInvitation->isAdminInitiatedInvitation(),
+        ]);
+        exit;
+    }
+
     http_response_code(404);
     ?>
     <div class="omo-user-context omo-user-context--error">Utilisateur introuvable.</div>
@@ -96,10 +620,49 @@ if (!$user->load($userId)) {
 }
 
 if (!$user->canViewDetail()) {
+    if ($pendingInvitation instanceof Invitation) {
+        $pendingInvitationEmail = trim((string)$pendingInvitation->get('email'));
+        if ($pendingInvitationEmail === '') {
+            $pendingInvitationEmail = trim((string)$user->getScopedEmail($organizationId));
+        }
+        $pendingInvitationDisplayName = trim((string)$user->getScopedDisplayName($organizationId));
+        if ($pendingInvitationDisplayName === '') {
+            $pendingInvitationDisplayName = $pendingInvitationEmail !== '' ? $pendingInvitationEmail : ('Utilisateur ' . $userId);
+        }
+        $pendingInvitationHolons = $pendingInvitation->getPendingHolons();
+        $canManagePendingInvitation = $currentHolon->isAllowed('CAN_ADD_MEMBER');
+        echo omoUserContextRenderPendingInvitationFragment([
+            'organizationId' => $organizationId,
+            'userId' => $userId,
+            'currentHolonId' => (int)$currentHolon->getId(),
+            'organizationName' => trim((string)$organization->get('name')),
+            'displayName' => $pendingInvitationDisplayName,
+            'secondaryLabel' => $pendingInvitationEmail,
+            'contextLabel' => trim((string)$currentHolon->getTemplateLabel(true)),
+            'contextName' => trim((string)$currentHolon->getDisplayName()),
+            'statusCopy' => 'Ce profil n est pas encore accessible car la personne n a pas encore accepte son invitation.',
+            'detailCopy' => 'Dans cet etat, le logiciel ne dispose pas encore d un profil consultable. Seules les informations minimales de l invitation peuvent etre affichees.',
+            'manageCopy' => 'Vous pouvez renvoyer le message sans ouvrir le profil complet.',
+            'manageRestrictedCopy' => 'Le profil detaille reste masque tant que l invitation n a pas ete acceptee. Le renvoi est reserve aux roles qui ont CAN_ADD_MEMBER sur ce holon.',
+            'invitationTypeLabel' => $pendingInvitation->isAdminInitiatedInvitation() ? 'Invitation admin' : 'Demande d acces',
+            'pendingHolons' => $pendingInvitationHolons,
+            'hasPendingInvitation' => true,
+            'canManageInvitation' => $canManagePendingInvitation,
+            'canResendInvitation' => $canManagePendingInvitation && $pendingInvitation->isAdminInitiatedInvitation(),
+        ]);
+        exit;
+    }
+
     http_response_code(403);
     ?>
     <div class="omo-user-context omo-user-context--error">Acces refuse a cet utilisateur.</div>
     <?php
+    exit;
+}
+
+$requestedSection = trim((string)($_GET['section'] ?? ''));
+if ($requestedSection === 'rights') {
+    echo omoUserContextRenderRightsFragment($userId, $organizationId);
     exit;
 }
 
@@ -119,20 +682,25 @@ $joinedAtLabel = omoUserContextFormatDate($joinedAt);
 $lastSeenLabel = omoUserContextFormatDate($lastSeenAt);
 $isPending = $membership ? !(bool)$membership->get('active') : false;
 $isAdmin = $membership ? $membership->isOrganizationAdmin() : false;
-$currentAssignments = $currentHolon->getVisibleRoleAssignmentsForUser($userId, [
-    'organizationId' => $organizationId,
-]);
-$organizationAssignments = $rootHolon->getVisibleRoleAssignmentsForUser($userId, [
-    'organizationId' => $organizationId,
-]);
+$currentAssignments = $hasStructureContext
+    ? $currentHolon->getVisibleRoleAssignmentsForUser($userId, [
+        'organizationId' => $organizationId,
+    ])
+    : [];
+$organizationAssignments = $hasStructureContext
+    ? $rootHolon->getVisibleRoleAssignmentsForUser($userId, [
+        'organizationId' => $organizationId,
+    ])
+    : [];
 $competenceRows = $user->getVisibleCompetenceRows($organizationId, $currentViewerUserId);
 $canValidateCompetences = $currentViewerUserId > 0
     && $currentViewerUserId !== $userId
     && commonCurrentUserHasOrganizationAccess($organizationId)
     && (!function_exists('commonGetCurrentShareToken') || commonGetCurrentShareToken() === '');
 $popupReloadUrl = '/popup/user.php?id=' . (int)$userId . '&oid=' . (int)$organizationId . ($currentHolonId > 0 ? '&cid=' . (int)$currentHolonId : '');
-$showCurrentScope = (int)$currentHolon->getId() !== (int)$rootHolon->getId();
-$currentScopeName = trim((string)$currentHolon->getDisplayName());
+$rightsFragmentUrl = '/popup/user.php?section=rights&id=' . (int)$userId . '&oid=' . (int)$organizationId;
+$showCurrentScope = $hasStructureContext && (int)$currentHolon->getId() !== (int)$rootHolon->getId();
+$currentScopeName = $showCurrentScope ? trim((string)$currentHolon->getDisplayName()) : '';
 $secondaryLabel = $email !== '' ? $email : ($username !== '' ? '@' . $username : '');
 $initials = 'P';
 
@@ -177,8 +745,20 @@ foreach ($competenceRows as $competenceRow) {
     <style>
     .omo-user-context {
         display: grid;
-        gap: 18px;
+        gap: 0;
         color: var(--color-text, #1f2937);
+    }
+
+    .omo-user-context__header {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+    }
+
+    .omo-user-context__shell {
+        display: grid;
+        gap: 18px;
+        padding: 16px 18px 18px;
     }
 
     .omo-user-context--error {
@@ -189,13 +769,6 @@ foreach ($competenceRows as $competenceRow) {
         border: 1px solid var(--color-border, #e5e7eb);
     }
 
-    .omo-user-context__layout {
-        display: grid;
-        gap: 18px;
-        align-items: start;
-    }
-
-    .omo-user-context__sidebar,
     .omo-user-context__main {
         min-width: 0;
         display: grid;
@@ -207,7 +780,11 @@ foreach ($competenceRows as $competenceRow) {
         --generic-hero-padding: 22px;
         --generic-hero-radius: 24px;
         --generic-hero-shadow: var(--shadow-md, 0 12px 24px rgba(0,0,0,0.12));
-        justify-items: start;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+        gap: 18px;
+        width: 100%;
     }
 
     .omo-user-context__photo-shell {
@@ -249,7 +826,7 @@ foreach ($competenceRows as $competenceRow) {
 
     .omo-user-context__identity {
         display: grid;
-        gap: 8px;
+        gap: 6px;
         min-width: 0;
     }
 
@@ -279,7 +856,7 @@ foreach ($competenceRows as $competenceRow) {
     }
 
     .omo-user-context__presentation {
-        margin: 2px 0 0;
+        margin: 0;
         line-height: 1.55;
         white-space: pre-line;
     }
@@ -381,6 +958,11 @@ foreach ($competenceRows as $competenceRow) {
     .omo-user-context__meta-card,
     .omo-user-context__section {
         --generic-section-gap: 14px;
+    }
+
+    .omo-user-context__info-grid {
+        display: grid;
+        gap: 18px;
     }
 
     .omo-user-context__meta-list {
@@ -794,9 +1376,99 @@ foreach ($competenceRows as $competenceRow) {
         color: #b91c1c;
     }
 
+    .omo-user-context__rights-list {
+        display: grid;
+        gap: 12px;
+    }
+
+    .omo-user-context__rights-card {
+        display: grid;
+        gap: 12px;
+    }
+
+    .omo-user-context__rights-scope-list {
+        display: grid;
+        gap: 10px;
+    }
+
+    .omo-user-context__rights-scope-item {
+        display: grid;
+        gap: 6px;
+        padding-top: 2px;
+    }
+
+    .omo-user-context__rights-pill {
+        display: inline-flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: min(100%, 360px);
+        padding: 10px 12px;
+        border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 16%, var(--color-border, #dbe4ee));
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--color-primary, #2563eb) 6%, var(--color-surface, #ffffff));
+    }
+
+    .omo-user-context__rights-pill-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--color-text, #0f172a);
+    }
+
+    .omo-user-context__rights-pill-scope {
+        font-size: 11px;
+        line-height: 1.35;
+        color: var(--color-text-light, #64748b);
+    }
+
+    .omo-user-context__rights-sources {
+        display: grid;
+        gap: 8px;
+    }
+
+    .omo-user-context__rights-sources-label {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--color-text-light, #64748b);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .omo-user-context__rights-source-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .omo-user-context__rights-source-chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 0 10px;
+        border-radius: 999px;
+        background: var(--color-surface-alt, #e2e8f0);
+        color: var(--color-text, #334155);
+        font-size: 12px;
+        line-height: 1.35;
+    }
+
+    .omo-user-context__fragment-host {
+        min-height: 72px;
+        display: grid;
+        gap: 14px;
+    }
+
+    .omo-user-context__fragment-feedback {
+        color: var(--color-text-light, #64748b);
+        line-height: 1.45;
+    }
+
+    .omo-user-context__fragment-feedback.is-error {
+        color: #b91c1c;
+    }
+
     @media (min-width: 920px) {
-        .omo-user-context__layout {
-            grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+        .omo-user-context__info-grid {
+            grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
         }
 
         .omo-user-context__competence-labels {
@@ -810,6 +1482,7 @@ foreach ($competenceRows as $competenceRow) {
 
     @media (max-width: 919px) {
         .omo-user-context__profile {
+            grid-template-columns: minmax(0, 1fr);
             justify-items: center;
             text-align: center;
         }
@@ -877,109 +1550,40 @@ foreach ($competenceRows as $competenceRow) {
     }
     </style>
 
-    <div class="omo-user-context__layout">
-        <aside class="omo-user-context__sidebar">
-            <section class="omo-user-context__profile generic-hero-panel generic-hero-panel--accent">
-                <div class="omo-user-context__photo-shell">
-                    <?php if ($photoUrl !== ''): ?>
-                        <img
-                            src="<?= omoApiEscape($photoUrl) ?>"
-                            alt="<?= omoApiEscape($displayName !== '' ? $displayName : ('Utilisateur ' . $userId)) ?>"
-                            class="omo-user-context__photo"
-                        >
-                    <?php else: ?>
-                        <div class="omo-user-context__photo-placeholder" aria-hidden="true"><?= omoApiEscape($initials) ?></div>
-                    <?php endif; ?>
-                </div>
+    <div class="omo-user-context__header generic-drawer-header generic-drawer-header--sticky">
+        <section class="omo-user-context__profile">
+            <div class="omo-user-context__photo-shell">
+                <?php if ($photoUrl !== ''): ?>
+                    <img
+                        src="<?= omoApiEscape($photoUrl) ?>"
+                        alt="<?= omoApiEscape($displayName !== '' ? $displayName : ('Utilisateur ' . $userId)) ?>"
+                        class="omo-user-context__photo"
+                    >
+                <?php else: ?>
+                    <div class="omo-user-context__photo-placeholder" aria-hidden="true"><?= omoApiEscape($initials) ?></div>
+                <?php endif; ?>
+            </div>
 
-                <div class="omo-user-context__identity">
-                    <div class="generic-card-title generic-card-title--eyebrow">Profil membre</div>
-                    <h2 class="generic-card-title generic-card-title--large"><?= omoApiEscape($displayName !== '' ? $displayName : ('Utilisateur ' . $userId)) ?></h2>
-                    <?php if ($secondaryLabel !== ''): ?>
-                        <div class="omo-user-context__secondary"><?= omoApiEscape($secondaryLabel) ?></div>
-                    <?php endif; ?>
-                    <?php if ($presentation !== ''): ?>
-                        <div class="omo-user-context__presentation"><?= nl2br(omoApiEscape($presentation)) ?></div>
-                    <?php endif; ?>
-                    <div class="omo-user-context__badges">
-                        <?php if ($isAdmin): ?>
-                            <span class="omo-user-context__badge omo-user-context__badge--admin">Admin de l'organisation</span>
-                        <?php endif; ?>
-                        <?php if ($isPending): ?>
-                            <span class="omo-user-context__badge omo-user-context__badge--pending">Invitation en attente</span>
-                        <?php endif; ?>
-                        <span class="omo-user-context__badge"><?= $competenceCount ?> competence<?= $competenceCount > 1 ? 's' : '' ?></span>
-                    </div>
-                    <?php if ($birthdaySummary): ?>
-                        <div class="omo-user-context__birthday-card generic-soft-panel">
-                            <div class="omo-user-context__birthday-title"><?= omoApiEscape((string)$birthdaySummary['headline']) ?></div>
-                            <?php if ((string)$birthdaySummary['detail'] !== ''): ?>
-                                <div class="omo-user-context__birthday-detail"><?= omoApiEscape((string)$birthdaySummary['detail']) ?></div>
-                            <?php endif; ?>
-                        </div>
-                    <?php endif; ?>
+            <div class="omo-user-context__identity">
+                <div class="generic-card-title generic-card-title--eyebrow">Profil membre</div>
+                <h2 class="generic-card-title generic-card-title--large"><?= omoApiEscape($displayName !== '' ? $displayName : ('Utilisateur ' . $userId)) ?></h2>
+                <div class="omo-user-context__secondary<?= $email === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
+                    <?= omoApiEscape($email !== '' ? $email : 'Non renseigne') ?>
                 </div>
-            </section>
-
-            <section class="omo-user-context__stats generic-section generic-section--stack">
-                <div class="generic-card-title generic-card-title--eyebrow">Apercu</div>
-                <div class="omo-user-context__stats-grid">
-                    <div class="omo-user-context__stat generic-soft-panel">
-                        <div class="omo-user-context__stat-value"><?= $competenceCount ?></div>
-                        <div class="omo-user-context__stat-label">Competences</div>
-                    </div>
-                    <div class="omo-user-context__stat generic-soft-panel">
-                        <div class="omo-user-context__stat-value"><?= $totalValidationCount ?></div>
-                        <div class="omo-user-context__stat-label">Avis</div>
-                    </div>
-                    <div class="omo-user-context__stat generic-soft-panel">
-                        <div class="omo-user-context__stat-value"><?= $currentRoleCount ?></div>
-                        <div class="omo-user-context__stat-label">Roles ici</div>
-                    </div>
-                    <div class="omo-user-context__stat generic-soft-panel">
-                        <div class="omo-user-context__stat-value"><?= $organizationRoleCount ?></div>
-                        <div class="omo-user-context__stat-label">Roles orga</div>
-                    </div>
+                <div class="omo-user-context__badges">
+                    <?php if ($isAdmin): ?>
+                        <span class="omo-user-context__badge omo-user-context__badge--admin">Admin de l'organisation</span>
+                    <?php endif; ?>
+                    <?php if ($isPending): ?>
+                        <span class="omo-user-context__badge omo-user-context__badge--pending">Invitation en attente</span>
+                    <?php endif; ?>
+                    <span class="omo-user-context__badge"><?= $competenceCount ?> competence<?= $competenceCount > 1 ? 's' : '' ?></span>
                 </div>
-            </section>
+            </div>
+        </section>
+    </div>
 
-            <section class="omo-user-context__meta-card generic-section generic-section--stack">
-                <div class="generic-card-title generic-card-title--eyebrow">Informations</div>
-                <div class="omo-user-context__meta-list">
-                    <div class="omo-user-context__meta-item">
-                        <div class="omo-user-context__meta-label generic-card-title generic-card-title--small">E-mail</div>
-                        <div class="omo-user-context__meta-value<?= $email === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
-                            <?= omoApiEscape($email !== '' ? $email : 'Non renseigne') ?>
-                        </div>
-                    </div>
-                    <div class="omo-user-context__meta-item">
-                        <div class="omo-user-context__meta-label generic-card-title generic-card-title--small">Identifiant</div>
-                        <div class="omo-user-context__meta-value<?= $username === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
-                            <?= omoApiEscape($username !== '' ? $username : 'Non renseigne') ?>
-                        </div>
-                    </div>
-                    <div class="omo-user-context__meta-item">
-                        <div class="omo-user-context__meta-label generic-card-title generic-card-title--small">Ajout a l'organisation</div>
-                        <div class="omo-user-context__meta-value<?= $joinedAtLabel === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
-                            <?= omoApiEscape($joinedAtLabel !== '' ? $joinedAtLabel : 'Inconnu') ?>
-                        </div>
-                    </div>
-                    <div class="omo-user-context__meta-item">
-                        <div class="omo-user-context__meta-label generic-card-title generic-card-title--small">Derniere connexion</div>
-                        <div class="omo-user-context__meta-value<?= $lastSeenLabel === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
-                            <?= omoApiEscape($lastSeenLabel !== '' ? $lastSeenLabel : 'Jamais') ?>
-                        </div>
-                    </div>
-                    <div class="omo-user-context__meta-item">
-                        <div class="omo-user-context__meta-label generic-card-title generic-card-title--small">Date de naissance</div>
-                        <div class="omo-user-context__meta-value<?= $birthdateLabel === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
-                            <?= omoApiEscape($birthdateLabel !== '' ? $birthdateLabel : 'Non renseignee') ?>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </aside>
-
+    <div class="omo-user-context__shell">
         <div class="omo-user-context__main">
             <div class="generic-tabs omo-user-context__tabs" data-generic-tabs>
                 <div class="generic-tabs__list">
@@ -987,9 +1591,15 @@ foreach ($competenceRows as $competenceRow) {
                         type="button"
                         class="generic-tabs__tab is-active"
                         data-generic-tab
+                        data-generic-tab-target="omo-user-context-panel-infos"
+                    >Infos</button>
+                    <button
+                        type="button"
+                        class="generic-tabs__tab"
+                        data-generic-tab
                         data-generic-tab-target="omo-user-context-panel-competences"
                     >Competences</button>
-                    <?php if ($showCurrentScope): ?>
+                    <?php if ($hasStructureContext && $showCurrentScope): ?>
                         <button
                             type="button"
                             class="generic-tabs__tab"
@@ -997,15 +1607,114 @@ foreach ($competenceRows as $competenceRow) {
                             data-generic-tab-target="omo-user-context-panel-current-roles"
                         >Roles (contexte)</button>
                     <?php endif; ?>
+                    <?php if ($hasStructureContext): ?>
+                        <button
+                            type="button"
+                            class="generic-tabs__tab"
+                            data-generic-tab
+                            data-generic-tab-target="omo-user-context-panel-organization-roles"
+                        >Tous les roles</button>
+                    <?php endif; ?>
                     <button
                         type="button"
                         class="generic-tabs__tab"
                         data-generic-tab
-                        data-generic-tab-target="omo-user-context-panel-organization-roles"
-                    >Tous les roles</button>
+                        data-generic-tab-target="omo-user-context-panel-rights"
+                        data-user-fragment-panel="omo-user-context-panel-rights"
+                    >Droits</button>
                 </div>
                 <div class="generic-tabs__panels">
-                    <div id="omo-user-context-panel-competences" class="generic-tabs__panel" data-generic-tab-panel>
+                    <div id="omo-user-context-panel-infos" class="generic-tabs__panel" data-generic-tab-panel>
+                        <section class="omo-user-context__section generic-section generic-section--stack">
+                            <div class="omo-user-context__pane-copy">
+                                <div class="omo-user-context__section-kicker generic-card-title generic-card-title--eyebrow">Informations</div>
+                                <div class="generic-card-title generic-card-title--medium">Vue d'ensemble du membre</div>
+                                <div class="omo-user-context__section-copy">Coordonnees, dates utiles et quelques indicateurs generaux pour ce profil.</div>
+                            </div>
+
+                            <?php if ($presentation !== ''): ?>
+                                <div class="omo-user-context__summary generic-soft-panel">
+                                    <div class="omo-user-context__summary-copy">
+                                        <strong class="generic-card-title generic-card-title--small">Presentation</strong>
+                                        <p class="omo-user-context__presentation"><?= nl2br(omoApiEscape($presentation)) ?></p>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+
+                            <?php if ($birthdaySummary): ?>
+                                <div class="omo-user-context__birthday-card generic-soft-panel">
+                                    <div class="omo-user-context__birthday-title"><?= omoApiEscape((string)$birthdaySummary['headline']) ?></div>
+                                    <?php if ((string)$birthdaySummary['detail'] !== ''): ?>
+                                        <div class="omo-user-context__birthday-detail"><?= omoApiEscape((string)$birthdaySummary['detail']) ?></div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
+
+                            <div class="omo-user-context__info-grid">
+                                <section class="omo-user-context__stats generic-section generic-section--stack">
+                                    <div class="generic-card-title generic-card-title--eyebrow">Apercu</div>
+                                    <div class="omo-user-context__stats-grid">
+                                        <div class="omo-user-context__stat generic-soft-panel">
+                                            <div class="omo-user-context__stat-value"><?= $competenceCount ?></div>
+                                            <div class="omo-user-context__stat-label">Competences</div>
+                                        </div>
+                                        <div class="omo-user-context__stat generic-soft-panel">
+                                            <div class="omo-user-context__stat-value"><?= $totalValidationCount ?></div>
+                                            <div class="omo-user-context__stat-label">Avis</div>
+                                        </div>
+                                        <?php if ($hasStructureContext): ?>
+                                            <div class="omo-user-context__stat generic-soft-panel">
+                                                <div class="omo-user-context__stat-value"><?= $currentRoleCount ?></div>
+                                                <div class="omo-user-context__stat-label">Roles ici</div>
+                                            </div>
+                                            <div class="omo-user-context__stat generic-soft-panel">
+                                                <div class="omo-user-context__stat-value"><?= $organizationRoleCount ?></div>
+                                                <div class="omo-user-context__stat-label">Roles orga</div>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                </section>
+
+                                <section class="omo-user-context__meta-card generic-section generic-section--stack">
+                                    <div class="generic-card-title generic-card-title--eyebrow">Details</div>
+                                    <div class="omo-user-context__meta-list">
+                                        <div class="omo-user-context__meta-item">
+                                            <div class="omo-user-context__meta-label generic-card-title generic-card-title--small">E-mail</div>
+                                            <div class="omo-user-context__meta-value<?= $email === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
+                                                <?= omoApiEscape($email !== '' ? $email : 'Non renseigne') ?>
+                                            </div>
+                                        </div>
+                                        <div class="omo-user-context__meta-item">
+                                            <div class="omo-user-context__meta-label generic-card-title generic-card-title--small">Identifiant</div>
+                                            <div class="omo-user-context__meta-value<?= $username === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
+                                                <?= omoApiEscape($username !== '' ? $username : 'Non renseigne') ?>
+                                            </div>
+                                        </div>
+                                        <div class="omo-user-context__meta-item">
+                                            <div class="omo-user-context__meta-label generic-card-title generic-card-title--small">Ajout a l'organisation</div>
+                                            <div class="omo-user-context__meta-value<?= $joinedAtLabel === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
+                                                <?= omoApiEscape($joinedAtLabel !== '' ? $joinedAtLabel : 'Inconnu') ?>
+                                            </div>
+                                        </div>
+                                        <div class="omo-user-context__meta-item">
+                                            <div class="omo-user-context__meta-label generic-card-title generic-card-title--small">Derniere connexion</div>
+                                            <div class="omo-user-context__meta-value<?= $lastSeenLabel === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
+                                                <?= omoApiEscape($lastSeenLabel !== '' ? $lastSeenLabel : 'Jamais') ?>
+                                            </div>
+                                        </div>
+                                        <div class="omo-user-context__meta-item">
+                                            <div class="omo-user-context__meta-label generic-card-title generic-card-title--small">Date de naissance</div>
+                                            <div class="omo-user-context__meta-value<?= $birthdateLabel === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
+                                                <?= omoApiEscape($birthdateLabel !== '' ? $birthdateLabel : 'Non renseignee') ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div id="omo-user-context-panel-competences" class="generic-tabs__panel" data-generic-tab-panel hidden>
                         <section class="omo-user-context__section generic-section generic-section--stack">
                             <div class="omo-user-context__pane-head">
                                 <div class="omo-user-context__pane-copy">
@@ -1140,7 +1849,7 @@ foreach ($competenceRows as $competenceRow) {
                         </section>
                     </div>
 
-                    <?php if ($showCurrentScope): ?>
+                    <?php if ($hasStructureContext && $showCurrentScope): ?>
                         <div id="omo-user-context-panel-current-roles" class="generic-tabs__panel" data-generic-tab-panel hidden>
                             <section class="omo-user-context__section generic-section generic-section--stack">
                                 <div class="omo-user-context__pane-copy">
@@ -1181,43 +1890,53 @@ foreach ($competenceRows as $competenceRow) {
                         </div>
                     <?php endif; ?>
 
-                    <div id="omo-user-context-panel-organization-roles" class="generic-tabs__panel" data-generic-tab-panel hidden>
-                        <section class="omo-user-context__section generic-section generic-section--stack">
-                            <div class="omo-user-context__pane-copy">
-                                <div class="omo-user-context__section-kicker generic-card-title generic-card-title--eyebrow">Organisation</div>
-                                <div class="generic-card-title generic-card-title--medium">Ensemble des roles visibles dans l'organisation</div>
-                                <div class="omo-user-context__section-copy">Cette vue rassemble les affectations generales et les roles attaches a d'autres branches visibles.</div>
-                            </div>
+                    <?php if ($hasStructureContext): ?>
+                        <div id="omo-user-context-panel-organization-roles" class="generic-tabs__panel" data-generic-tab-panel hidden>
+                            <section class="omo-user-context__section generic-section generic-section--stack">
+                                <div class="omo-user-context__pane-copy">
+                                    <div class="omo-user-context__section-kicker generic-card-title generic-card-title--eyebrow">Organisation</div>
+                                    <div class="generic-card-title generic-card-title--medium">Ensemble des roles visibles dans l'organisation</div>
+                                    <div class="omo-user-context__section-copy">Cette vue rassemble les affectations generales et les roles attaches a d'autres branches visibles.</div>
+                                </div>
 
-                            <?php if ($organizationRoleCount === 0): ?>
-                                <div class="omo-user-context__empty">Aucun role visible dans l'organisation.</div>
-                            <?php else: ?>
-                                <ul class="omo-user-context__roles">
-                                    <?php foreach ($organizationAssignments as $assignment): ?>
-                                        <li>
-                                            <button
-                                                type="button"
-                                                class="omo-user-context__role omo-user-context__role-link generic-soft-panel"
-                                                data-user-role-cid="<?= (int)$assignment['holonId'] ?>"
-                                                aria-label="<?= omoApiEscape('Ouvrir le role ' . ($assignment['name'] ?: ('Role ' . (int)$assignment['holonId']))) ?>"
-                                            >
-                                                <div class="omo-user-context__role-head">
-                                                    <div>
-                                                        <div class="omo-user-context__role-name"><?= omoApiEscape($assignment['name'] ?: ('Role ' . (int)$assignment['holonId'])) ?></div>
-                                                        <?php if ((string)$assignment['pathLabel'] !== ''): ?>
-                                                            <div class="omo-user-context__role-path"><?= omoApiEscape($assignment['pathLabel']) ?></div>
+                                <?php if ($organizationRoleCount === 0): ?>
+                                    <div class="omo-user-context__empty">Aucun role visible dans l'organisation.</div>
+                                <?php else: ?>
+                                    <ul class="omo-user-context__roles">
+                                        <?php foreach ($organizationAssignments as $assignment): ?>
+                                            <li>
+                                                <button
+                                                    type="button"
+                                                    class="omo-user-context__role omo-user-context__role-link generic-soft-panel"
+                                                    data-user-role-cid="<?= (int)$assignment['holonId'] ?>"
+                                                    aria-label="<?= omoApiEscape('Ouvrir le role ' . ($assignment['name'] ?: ('Role ' . (int)$assignment['holonId']))) ?>"
+                                                >
+                                                    <div class="omo-user-context__role-head">
+                                                        <div>
+                                                            <div class="omo-user-context__role-name"><?= omoApiEscape($assignment['name'] ?: ('Role ' . (int)$assignment['holonId'])) ?></div>
+                                                            <?php if ((string)$assignment['pathLabel'] !== ''): ?>
+                                                                <div class="omo-user-context__role-path"><?= omoApiEscape($assignment['pathLabel']) ?></div>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                        <?php if (!empty($assignment['isPending'])): ?>
+                                                            <span class="omo-user-context__role-status">En attente</span>
                                                         <?php endif; ?>
                                                     </div>
-                                                    <?php if (!empty($assignment['isPending'])): ?>
-                                                        <span class="omo-user-context__role-status">En attente</span>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </button>
-                                        </li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            <?php endif; ?>
-                        </section>
+                                                </button>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                <?php endif; ?>
+                            </section>
+                        </div>
+                    <?php endif; ?>
+
+                    <div id="omo-user-context-panel-rights" class="generic-tabs__panel" data-generic-tab-panel hidden>
+                        <div
+                            class="omo-user-context__fragment-host"
+                            data-user-fragment-host="1"
+                            data-user-fragment-url="<?= omoApiEscape($rightsFragmentUrl) ?>"
+                        ></div>
                     </div>
                 </div>
             </div>
@@ -1228,6 +1947,8 @@ foreach ($competenceRows as $competenceRow) {
 (function () {
     var root = document.querySelector('.omo-user-context');
     var modalBody = document.getElementById('commonTopbarModalBody');
+    var fragmentLoadingMessage = 'Chargement...';
+    var fragmentErrorMessage = 'Impossible de charger cet onglet pour le moment.';
 
     if (!root) {
         return;
@@ -1236,6 +1957,54 @@ foreach ($competenceRows as $competenceRow) {
     if (modalBody) {
         modalBody.setAttribute('data-omo-popup-live-sync', '1');
     }
+
+    function loadFragmentHost(host) {
+        var fragmentUrl;
+
+        if (!host) {
+            return;
+        }
+
+        fragmentUrl = String(host.getAttribute('data-user-fragment-url') || '').trim();
+        if (fragmentUrl === '') {
+            return;
+        }
+
+        if (host.getAttribute('data-user-fragment-loaded') === '1') {
+            return;
+        }
+
+        host.innerHTML = '<div class="omo-user-context__fragment-feedback">' + fragmentLoadingMessage + '</div>';
+        fetch(fragmentUrl, {
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('load');
+                }
+
+                return response.text();
+            })
+            .then(function (html) {
+                host.innerHTML = html;
+                host.setAttribute('data-user-fragment-loaded', '1');
+            })
+            .catch(function () {
+                host.innerHTML = '<div class="omo-user-context__fragment-feedback is-error">' + fragmentErrorMessage + '</div>';
+            });
+    }
+
+    root.querySelectorAll('[data-user-fragment-panel]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            var panelId = String(button.getAttribute('data-user-fragment-panel') || '').trim();
+            var panel = panelId !== '' ? document.getElementById(panelId) : null;
+            var host = panel ? panel.querySelector('[data-user-fragment-host="1"]') : null;
+            loadFragmentHost(host);
+        });
+    });
 
     root.querySelectorAll('[data-user-role-cid]').forEach(function (button) {
         button.addEventListener('click', function (event) {

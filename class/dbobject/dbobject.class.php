@@ -1,6 +1,8 @@
 <?php
 	namespace dbObject;
 
+	require_once dirname(__DIR__, 2) . '/common/avatar.php';
+
 	class PdoResultCompat
 	{
 		private $_rows = array();
@@ -86,6 +88,7 @@
 
 	abstract class DbObject
 	{
+		protected $_fieldVisibilityCanViewCache = null;
 		protected $_id; // Id de l'enregistrement
 		protected $_loaded=false; // Id de l'enregistrement
 		protected $_fields; // Espace de chargement de tous les champs
@@ -93,6 +96,7 @@
 		
 		public static $_dbh;
 		protected static $_lastDbError = null;
+		protected static $_tableExistsCache = array();
 		static $myvariablearray = array();	// Liste de valeurs statiques créées à la demande
 		static $preload = array();	// Liste des valeurs déjà chargées
 		
@@ -129,6 +133,32 @@
 		static public function getPdo() {
 			$dbh = self::getDbh();
 			return $dbh ? $dbh->getPdo() : null;
+		}
+
+		protected static function tableExists($tableName) {
+			$tableName = trim((string)$tableName);
+			if ($tableName === '') {
+				return false;
+			}
+
+			$cacheKey = (string)($GLOBALS["dbName"] ?? "") . "|" . strtolower($tableName);
+			if (array_key_exists($cacheKey, self::$_tableExistsCache)) {
+				return self::$_tableExistsCache[$cacheKey];
+			}
+
+			$result = self::fetchValue(
+				"SELECT 1
+				FROM INFORMATION_SCHEMA.TABLES
+				WHERE TABLE_SCHEMA = DATABASE()
+				  AND TABLE_NAME = :table_name
+				LIMIT 1",
+				array(
+					'table_name' => $tableName,
+				)
+			);
+
+			self::$_tableExistsCache[$cacheKey] = ((int)$result === 1);
+			return self::$_tableExistsCache[$cacheKey];
 		}
 
 		protected static function clearLastDbError() {
@@ -341,6 +371,16 @@
 			return [];
 		}
 
+		public static function attributeHtmlEditorProfiles()
+		{
+			return [];
+		}
+
+		public static function publicReadableFields()
+		{
+			return [];
+		}
+
 	    public static function tableName() {
 			return strtolower(substr(static::class,strrpos(static::class,"\\")+1));
 		}
@@ -355,6 +395,10 @@
 		
 		function get($field) {
 			if ($this->getId()>0 && !$this->_loaded) $this->load($this->getId());
+
+			if (!$this->canReadField($field)) {
+				return "";
+			}
 
 			if (is_array($this->_fields) && array_key_exists($field,$this->_fields)) {
 				return $this->_fields[$field];
@@ -377,12 +421,49 @@
 			}
 		}
 		
+		public function canReadField($field)
+		{
+			$publicFields = static::publicReadableFields();
+			if (!is_array($publicFields) || count($publicFields) === 0) {
+				return true;
+			}
+
+			if ($this->_fieldVisibilityCanViewCache === 'checking') {
+				return true;
+			}
+
+			if ($this->_fieldVisibilityCanViewCache === null) {
+				$this->_fieldVisibilityCanViewCache = 'checking';
+				$this->_fieldVisibilityCanViewCache = $this->canViewDetail() ? true : false;
+			}
+
+			if ($this->_fieldVisibilityCanViewCache) {
+				return true;
+			}
+
+			$field = trim((string)$field);
+			if ($field === '' || $field === 'id') {
+				return true;
+			}
+
+			foreach ($publicFields as $publicField) {
+				if ($field === trim((string)$publicField)) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
 		function clear($field) {
 			unset($this->_fields[$field]);
 		}
 		
 		function set($field, $value) {
-			if ($field=="id") $this->_id=$value; // Spécifique pour réinitialiser des noeuds
+			if ($field=="id") {
+				$this->_id=$value; // Spécifique pour réinitialiser des noeuds
+				$this->_fieldVisibilityCanViewCache = null;
+			}
 			if ($this->getId()>0 && !$this->_loaded) $this->load($this->getId());
 
 			if (is_null($value) || (is_string($value) && trim($value)==""))
@@ -607,8 +688,9 @@
 						
 						// Rend le nom URL compatible
 						$name=urlencode(str_replace(" ","",$_FILES[$field."_file"]["name"]));
-						move_uploaded_file($_FILES[$field."_file"]["tmp_name"], $_SERVER["DOCUMENT_ROOT"].$target_dir."/".time()."_".$name);
-						$this->_fields[$field]=$target_dir."/".time()."_".$name;
+						$storedFileName = time()."_".$name;
+						move_uploaded_file($_FILES[$field."_file"]["tmp_name"], $_SERVER["DOCUMENT_ROOT"].$target_dir."/".$storedFileName);
+						$this->_fields[$field]=$target_dir."/".$storedFileName;
 						unset($_FILES[$field."_file"]); // Ca a été traité, plus besoin de le garder
 					} else {  
 						$this->_fields[$field]=$value;
@@ -1295,6 +1377,7 @@
 		// $obj->load(['key','yopla'])  // Autre paramètre
 		function load($id, $forced=false) {
 			$this->_loaded=true; 
+			$this->_fieldVisibilityCanViewCache = null;
 			$tableName = $this->getQuotedTableName();
 			if ($tableName === false) {
 				return false;
@@ -1396,6 +1479,7 @@
 		// Retourne la liste des actualités affichées sur cette page
 		function setId($numeric) {
 			$this->_id=$numeric;
+			$this->_fieldVisibilityCanViewCache = null;
 		}
 		
 		// Fonctions d'affichage

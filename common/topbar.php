@@ -1,9 +1,13 @@
 <?php
 
+require_once __DIR__ . '/avatar.php';
+
 function commonResolveTopbarProfileData($organizationContext = null, array $profileOptions = [])
 {
     $defaults = [
+        'userId' => 0,
         'displayName' => '',
+        'initials' => '',
         'email' => '',
         'username' => '',
         'photoUrl' => '',
@@ -17,49 +21,73 @@ function commonResolveTopbarProfileData($organizationContext = null, array $prof
 
     $profileData = array_merge($defaults, $providedData);
 
-    if (
+    $hasEnoughProvidedData =
         $profileData['displayName'] !== ''
         && ($profileData['email'] !== '' || $profileData['username'] !== '' || $profileData['photoUrl'] !== '')
-    ) {
-        return $profileData;
+    ;
+
+    if (!$hasEnoughProvidedData && function_exists('commonGetCurrentUserId')) {
+        $currentUserId = (int)commonGetCurrentUserId();
+        if ($currentUserId > 0) {
+            $organizationId = 0;
+            if (is_array($organizationContext) && !empty($organizationContext['id'])) {
+                $organizationId = (int)$organizationContext['id'];
+            }
+
+            $user = new \dbObject\User();
+            if ($user->load($currentUserId)) {
+                if ((int)$profileData['userId'] <= 0) {
+                    $profileData['userId'] = (int)$user->getId();
+                }
+
+                if ($profileData['displayName'] === '') {
+                    $profileData['displayName'] = (string)$user->getScopedDisplayName($organizationId);
+                }
+
+                if ($profileData['email'] === '') {
+                    $profileData['email'] = (string)$user->getScopedEmail($organizationId);
+                }
+
+                if ($profileData['username'] === '') {
+                    $profileData['username'] = (string)$user->getScopedUsername($organizationId);
+                }
+
+                if ($profileData['photoUrl'] === '') {
+                    $profileData['photoUrl'] = (string)$user->getScopedProfilePhotoUrl($organizationId);
+                }
+
+                if ($profileData['initials'] === '') {
+                    $profileData['initials'] = (string)$user->getScopedInitials($organizationId);
+                }
+            }
+        }
     }
 
-    if (!function_exists('commonGetCurrentUserId')) {
-        return $profileData;
-    }
+    if ($profileData['initials'] === '') {
+        $seedLabel = trim((string)$profileData['displayName']);
+        if ($seedLabel === '') {
+            $seedLabel = trim((string)$profileData['username']);
+        }
+        if ($seedLabel === '') {
+            $seedLabel = trim((string)$profileData['email']);
+        }
 
-    $currentUserId = (int)commonGetCurrentUserId();
-    if ($currentUserId <= 0) {
-        return $profileData;
-    }
-
-    $organizationId = 0;
-    if (is_array($organizationContext) && !empty($organizationContext['id'])) {
-        $organizationId = (int)$organizationContext['id'];
-    }
-
-    $user = new \dbObject\User();
-    if (!$user->load($currentUserId)) {
-        return $profileData;
-    }
-
-    if ($profileData['displayName'] === '') {
-        $profileData['displayName'] = (string)$user->getScopedDisplayName($organizationId);
-    }
-
-    if ($profileData['email'] === '') {
-        $profileData['email'] = (string)$user->getScopedEmail($organizationId);
-    }
-
-    if ($profileData['username'] === '') {
-        $profileData['username'] = (string)$user->getScopedUsername($organizationId);
-    }
-
-    if ($profileData['photoUrl'] === '') {
-        $profileData['photoUrl'] = (string)$user->getScopedProfilePhotoUrl($organizationId);
+        $profileData['initials'] = \dbObject\User::buildInitials($seedLabel);
     }
 
     return $profileData;
+}
+
+function commonRenderTopbarJqueryAssets()
+{
+    static $jqueryLoaded = false;
+
+    if ($jqueryLoaded) {
+        return;
+    }
+
+    echo '<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>' . PHP_EOL;
+    $jqueryLoaded = true;
 }
 
 function commonRenderTopbar(array $options = [])
@@ -110,6 +138,34 @@ function commonRenderTopbar(array $options = [])
     $currentLocalePreference = function_exists('translationBundleGetRequestLocalePreference')
         ? translationBundleGetRequestLocalePreference('lang')
         : $currentLocale;
+    $helpItems = array_values($options['helpItems'] ?? []);
+    $faqHelpIndex = null;
+    foreach ($helpItems as $index => $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $faqSignals = [
+            (string)($item['label'] ?? ''),
+            (string)($item['title'] ?? ''),
+            (string)($item['url'] ?? ''),
+            (string)($item['callback'] ?? ''),
+        ];
+
+        foreach ($faqSignals as $signal) {
+            if (stripos($signal, 'faq') !== false) {
+                $faqHelpIndex = $index;
+                break 2;
+            }
+        }
+    }
+
+    if ($faqHelpIndex !== null) {
+        $faqHelpItem = $helpItems[$faqHelpIndex];
+        array_splice($helpItems, $faqHelpIndex, 1);
+        $faqTargetIndex = min(2, count($helpItems));
+        array_splice($helpItems, $faqTargetIndex, 0, [$faqHelpItem]);
+    }
 
     $config = [
         'appKey' => (string)($options['appKey'] ?? 'app'),
@@ -138,6 +194,16 @@ function commonRenderTopbar(array $options = [])
             'mode' => (string)($options['bugReport']['mode'] ?? 'fetch'),
             'url' => (string)($options['bugReport']['url'] ?? ''),
             'callback' => (string)($options['bugReport']['callback'] ?? ''),
+        ],
+        'tension' => [
+            'enabled' => !empty($options['tension']['enabled']),
+            'buttonLabel' => (string)($options['tension']['buttonLabel'] ?? 'Tension'),
+            'title' => (string)($options['tension']['title'] ?? 'Declarer une tension'),
+            'mode' => (string)($options['tension']['mode'] ?? 'fetch'),
+            'url' => (string)($options['tension']['url'] ?? ''),
+            'callback' => (string)($options['tension']['callback'] ?? ''),
+            'iconUrl' => (string)($options['tension']['iconUrl'] ?? '/common/assets/icon-topbar-tension.png'),
+            'appendCurrentRouteContext' => !empty($options['tension']['appendCurrentRouteContext']),
         ],
         'profile' => [
             'enabled' => array_key_exists('enabled', $options['profile'] ?? []) ? !empty($options['profile']['enabled']) : true,
@@ -172,12 +238,19 @@ function commonRenderTopbar(array $options = [])
                 'languageLabel' => (string)($options['profile']['preferences']['languageLabel'] ?? 'Langue'),
                 'languageOptions' => $languageOptions,
                 'themeLabel' => (string)($options['profile']['preferences']['themeLabel'] ?? 'Theme'),
+                'colorStyleLabel' => (string)($options['profile']['preferences']['colorStyleLabel'] ?? 'Couleur'),
+                'colorStyleDefaultLabel' => (string)($options['profile']['preferences']['colorStyleDefaultLabel'] ?? 'Noir et blanc'),
+                'colorStyleTurquoiseLabel' => (string)($options['profile']['preferences']['colorStyleTurquoiseLabel'] ?? 'Turquoise'),
+                'colorStyleOceanBlueLabel' => (string)($options['profile']['preferences']['colorStyleOceanBlueLabel'] ?? 'Ocean Blue'),
                 'currentLocale' => (string)($options['profile']['preferences']['currentLocale'] ?? $currentLocalePreference),
                 'resolvedLocale' => (string)($options['profile']['preferences']['resolvedLocale'] ?? $currentLocale),
                 'systemLabel' => (string)($options['profile']['preferences']['systemLabel'] ?? 'Systeme'),
                 'themeSystemLabel' => (string)($options['profile']['preferences']['themeSystemLabel'] ?? 'Systeme'),
                 'themeLightLabel' => (string)($options['profile']['preferences']['themeLightLabel'] ?? 'Clair'),
                 'themeDarkLabel' => (string)($options['profile']['preferences']['themeDarkLabel'] ?? 'Sombre'),
+                'themeLightIconUrl' => (string)($options['profile']['preferences']['themeLightIconUrl'] ?? '/common/assets/icon-theme-sun.png'),
+                'themeDarkIconUrl' => (string)($options['profile']['preferences']['themeDarkIconUrl'] ?? '/common/assets/icon-theme-moon.png'),
+                'colorStyleIconUrl' => (string)($options['profile']['preferences']['colorStyleIconUrl'] ?? '/common/assets/icon-theme-palette.png'),
             ],
             'details' => [
                 'nameLabel' => (string)($options['profile']['details']['nameLabel'] ?? 'Nom'),
@@ -188,7 +261,7 @@ function commonRenderTopbar(array $options = [])
             'data' => commonResolveTopbarProfileData($organizationContext, $options['profile'] ?? []),
         ],
         'helpLabel' => (string)($options['helpLabel'] ?? 'Aide'),
-        'helpItems' => array_values($options['helpItems'] ?? []),
+        'helpItems' => $helpItems,
         'helpLinks' => array_values($options['helpLinks'] ?? []),
         'logoutLabel' => (string)($options['logoutLabel'] ?? 'Se deconnecter'),
         'modal' => [
@@ -206,6 +279,7 @@ function commonRenderTopbar(array $options = [])
             'helpUnavailableHtml' => (string)($translationOptions['helpUnavailableHtml'] ?? '<p>Contenu indisponible.</p>'),
             'helpPendingHtml' => (string)($translationOptions['helpPendingHtml'] ?? '<p>Contenu a venir.</p>'),
             'bugReportUnavailableHtml' => (string)($translationOptions['bugReportUnavailableHtml'] ?? '<p>Formulaire indisponible.</p>'),
+            'tensionUnavailableHtml' => (string)($translationOptions['tensionUnavailableHtml'] ?? '<p>Formulaire indisponible.</p>'),
         ],
     ];
 
@@ -217,11 +291,36 @@ function commonRenderTopbar(array $options = [])
         $profileDisplayName = (string)$config['profile']['buttonLabel'];
     }
 
-    $profileInitial = function_exists('mb_substr')
-        ? mb_strtoupper(mb_substr($profileDisplayName, 0, 1))
-        : strtoupper(substr($profileDisplayName, 0, 1));
+    $profileInitials = trim((string)($config['profile']['data']['initials'] ?? ''));
+    if ($profileInitials === '') {
+        $profileInitials = \dbObject\User::buildInitials($profileDisplayName);
+    }
+
+    $profileAvatarPalette = commonBuildAvatarPalette(
+        $profileInitials,
+        (int)($config['profile']['data']['userId'] ?? 0),
+        commonBuildAvatarSeedLabel(
+            (string)($config['profile']['data']['displayName'] ?? ''),
+            (string)($config['profile']['data']['email'] ?? '')
+        )
+    );
+    $profileAvatarStyle = 'background-color: ' . $profileAvatarPalette['background'] . '; color: ' . $profileAvatarPalette['foreground'] . ';';
+    $currentLocaleCode = trim((string)$config['profile']['preferences']['currentLocale']);
+    if ($currentLocaleCode === '' || $currentLocaleCode === 'system') {
+        $currentLocaleCode = trim((string)$config['profile']['preferences']['resolvedLocale']);
+    }
+    if ($currentLocaleCode === '') {
+        $currentLocaleCode = 'fr';
+    }
+    $currentLanguageTileLabel = function_exists('translationBundleGetSimpleLocaleLabel')
+        ? translationBundleGetSimpleLocaleLabel($currentLocaleCode, 'fr')
+        : strtoupper(substr($currentLocaleCode, 0, 2));
+    $resolvedLocaleLabel = function_exists('translationBundleGetSimpleLocaleLabel')
+        ? translationBundleGetSimpleLocaleLabel((string)$config['profile']['preferences']['resolvedLocale'], 'fr')
+        : strtoupper(substr((string)$config['profile']['preferences']['resolvedLocale'], 0, 2));
 
     if (!$assetsLoaded) {
+        commonRenderTopbarJqueryAssets();
         echo '<link rel="stylesheet" href="/common/assets/components.css">' . PHP_EOL;
         echo '<script src="/common/assets/components.js" defer></script>' . PHP_EOL;
         echo '<link rel="stylesheet" href="/common/assets/topbar.css">' . PHP_EOL;
@@ -250,9 +349,20 @@ function commonRenderTopbar(array $options = [])
         <div class="common-topbar__menu-wrap">
             <button type="button" class="common-topbar__action common-topbar__action--square" data-topbar-bug-report>
                 <span class="common-topbar__action-icon" aria-hidden="true">
-                    <img src="/img/punaise.png" alt="" class="common-topbar__icon-image">
+                    <img src="/img/punaise.png" alt="" class="common-topbar__icon-image black-icon">
                 </span>
                 <span class="common-topbar__action-label"><?= htmlspecialchars($config['bugReport']['buttonLabel']) ?></span>
+            </button>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($config['tension']['enabled'])): ?>
+        <div class="common-topbar__menu-wrap">
+            <button type="button" class="common-topbar__action common-topbar__action--square" data-topbar-tension-report>
+                <span class="common-topbar__action-icon" aria-hidden="true">
+                    <img src="<?= htmlspecialchars($config['tension']['iconUrl']) ?>" alt="" class="common-topbar__icon-image black-icon">
+                </span>
+                <span class="common-topbar__action-label"><?= htmlspecialchars($config['tension']['buttonLabel']) ?></span>
             </button>
         </div>
         <?php endif; ?>
@@ -261,7 +371,7 @@ function commonRenderTopbar(array $options = [])
         <div class="common-topbar__menu-wrap common-topbar__menu-wrap--panel">
             <button type="button" class="common-topbar__action common-topbar__action--square" data-topbar-menu-trigger="search">
                 <span class="common-topbar__action-icon" aria-hidden="true">
-                    <img src="/common/assets/icon-topbar-search.png" alt="" class="common-topbar__icon-image">
+                    <img src="/common/assets/icon-topbar-search.png" alt="" class="common-topbar__icon-image black-icon">
                 </span>
                 <span class="common-topbar__action-label"><?= htmlspecialchars($config['search']['buttonLabel']) ?></span>
             </button>
@@ -272,12 +382,12 @@ function commonRenderTopbar(array $options = [])
                         <input
                             type="search"
                             id="commonTopbarSearchInput"
-                            class="common-topbar__search-input"
+                            class="common-topbar__search-input generic-form-control"
                             data-topbar-search-input
                             placeholder="<?= htmlspecialchars($config['search']['placeholder']) ?>"
                             aria-label="<?= htmlspecialchars($config['search']['placeholder']) ?>"
                         >
-                        <button type="submit" class="common-topbar__search-button"><?= htmlspecialchars($config['search']['submitLabel']) ?></button>
+                        <button type="submit" class="common-topbar__search-button generic-action-button generic-action-button--main"><?= htmlspecialchars($config['search']['submitLabel']) ?></button>
                     </div>
                     <?php if ($config['search']['scopeProvider'] !== ''): ?>
                     <div class="common-topbar__search-scopes" data-topbar-search-scopes hidden>
@@ -298,7 +408,7 @@ function commonRenderTopbar(array $options = [])
         <div class="common-topbar__menu-wrap">
             <button type="button" class="common-topbar__action common-topbar__action--square" data-topbar-menu-trigger="help">
                 <span class="common-topbar__action-icon" aria-hidden="true">
-                    <img src="/common/assets/icon-topbar-help.png" alt="" class="common-topbar__icon-image">
+                    <img src="/common/assets/icon-topbar-help.png" alt="" class="common-topbar__icon-image black-icon">
                 </span>
                 <span class="common-topbar__action-label"><?= htmlspecialchars($config['helpLabel']) ?></span>
             </button>
@@ -350,7 +460,17 @@ function commonRenderTopbar(array $options = [])
         <?php if (!empty($config['profile']['enabled'])): ?>
         <div class="common-topbar__menu-wrap">
             <button type="button" class="common-topbar__action common-topbar__action--square common-topbar__profile" data-topbar-menu-trigger="profile">
-                <span class="common-topbar__avatar"><?= htmlspecialchars($profileInitial) ?></span>
+                <span class="common-topbar__avatar"<?= empty($config['profile']['data']['photoUrl']) ? ' style="' . htmlspecialchars($profileAvatarStyle, ENT_QUOTES, 'UTF-8') . '"' : '' ?>>
+                    <?php if (!empty($config['profile']['data']['photoUrl'])): ?>
+                        <img
+                            src="<?= htmlspecialchars((string)$config['profile']['data']['photoUrl']) ?>"
+                            alt="<?= htmlspecialchars($profileDisplayName) ?>"
+                            class="common-topbar__avatar-image"
+                        >
+                    <?php else: ?>
+                        <span class="common-topbar__avatar-initial" aria-hidden="true"><?= htmlspecialchars($profileInitials) ?></span>
+                    <?php endif; ?>
+                </span>
                 <span class="common-topbar__action-label"><?= htmlspecialchars($config['profile']['buttonLabel']) ?></span>
             </button>
             <div class="common-topbar__menu common-topbar__menu--right" data-topbar-menu="profile">
@@ -364,7 +484,7 @@ function commonRenderTopbar(array $options = [])
                                     class="common-topbar-profile-card__photo"
                                 >
                             <?php else: ?>
-                                <div class="common-topbar-profile-card__placeholder" aria-hidden="true"><?= htmlspecialchars($profileInitial) ?></div>
+                                <div class="common-topbar-profile-card__placeholder" style="<?= htmlspecialchars($profileAvatarStyle, ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"><?= htmlspecialchars($profileInitials) ?></div>
                             <?php endif; ?>
                             <div class="common-topbar-profile-card__identity">
                                 <strong><?= htmlspecialchars($profileDisplayName) ?></strong>
@@ -394,23 +514,85 @@ function commonRenderTopbar(array $options = [])
                         <div class="common-topbar-profile-actions generic-section">
                             <?php if (!empty($config['profile']['preferences']['enabled'])): ?>
                                 <div class="common-topbar-profile-preferences">
-                                    <label class="common-topbar-profile-preferences__field">
-                                        <span class="common-topbar-profile-preferences__label"><?= htmlspecialchars($config['profile']['preferences']['languageLabel']) ?></span>
-                                        <select class="common-topbar-profile-preferences__select" data-topbar-language-select>
-                                            <option value="system" <?= $config['profile']['preferences']['currentLocale'] === 'system' ? 'selected' : '' ?>><?= htmlspecialchars($config['profile']['preferences']['systemLabel']) ?> (<?= htmlspecialchars(strtoupper((string)$config['profile']['preferences']['resolvedLocale'])) ?>)</option>
-                                            <?php foreach ($config['profile']['preferences']['languageOptions'] as $languageOption): ?>
-                                            <option value="<?= htmlspecialchars((string)($languageOption['locale'] ?? '')) ?>" <?= $config['profile']['preferences']['currentLocale'] === (string)($languageOption['locale'] ?? '') ? 'selected' : '' ?>><?= htmlspecialchars((string)($languageOption['label'] ?? '')) ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </label>
-                                    <label class="common-topbar-profile-preferences__field">
-                                        <span class="common-topbar-profile-preferences__label"><?= htmlspecialchars($config['profile']['preferences']['themeLabel']) ?></span>
-                                        <select class="common-topbar-profile-preferences__select" data-omo-theme-select>
-                                            <option value="system"><?= htmlspecialchars($config['profile']['preferences']['themeSystemLabel']) ?></option>
-                                            <option value="light"><?= htmlspecialchars($config['profile']['preferences']['themeLightLabel']) ?></option>
-                                            <option value="dark"><?= htmlspecialchars($config['profile']['preferences']['themeDarkLabel']) ?></option>
-                                        </select>
-                                    </label>
+                                    <div class="common-topbar-profile-preferences__list">
+                                        <div class="common-topbar-profile-preferences__field" data-topbar-preference-menu>
+                                            <span class="common-topbar-profile-preferences__label"><?= htmlspecialchars($config['profile']['preferences']['languageLabel']) ?></span>
+                                            <button
+                                                type="button"
+                                                class="common-topbar-profile-preference__trigger"
+                                                data-topbar-preference-trigger="language"
+                                                aria-haspopup="true"
+                                                aria-expanded="false"
+                                                aria-label="<?= htmlspecialchars($config['profile']['preferences']['languageLabel']) ?>"
+                                            >
+                                                <span class="common-topbar-profile-preference__tile common-topbar-profile-preference__tile--language"><?= htmlspecialchars($currentLanguageTileLabel) ?></span>
+                                            </button>
+                                            <div class="common-topbar-profile-preference__menu" data-topbar-preference-popup="language" hidden>
+                                                <button
+                                                    type="button"
+                                                    class="common-topbar-profile-preference__option<?= $config['profile']['preferences']['currentLocale'] === 'system' ? ' is-active' : '' ?>"
+                                                    data-topbar-language-option="system"
+                                                ><?= htmlspecialchars($config['profile']['preferences']['systemLabel']) ?> (<?= htmlspecialchars($resolvedLocaleLabel) ?>)</button>
+                                                <?php foreach ($config['profile']['preferences']['languageOptions'] as $languageOption): ?>
+                                                    <?php $languageOptionLocale = (string)($languageOption['locale'] ?? ''); ?>
+                                                    <button
+                                                        type="button"
+                                                        class="common-topbar-profile-preference__option<?= $config['profile']['preferences']['currentLocale'] === $languageOptionLocale ? ' is-active' : '' ?>"
+                                                        data-topbar-language-option="<?= htmlspecialchars($languageOptionLocale) ?>"
+                                                    ><?= htmlspecialchars((string)($languageOption['label'] ?? '')) ?></button>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+
+                                        <div class="common-topbar-profile-preferences__field" data-topbar-preference-menu>
+                                            <span class="common-topbar-profile-preferences__label"><?= htmlspecialchars($config['profile']['preferences']['themeLabel']) ?></span>
+                                            <button
+                                                type="button"
+                                                class="common-topbar-profile-preference__trigger"
+                                                data-topbar-preference-trigger="theme"
+                                                aria-haspopup="true"
+                                                aria-expanded="false"
+                                                aria-label="<?= htmlspecialchars($config['profile']['preferences']['themeLabel']) ?>"
+                                            >
+                                                <span
+                                                    class="common-topbar-profile-preference__tile common-topbar-profile-preference__tile--icon common-topbar-profile-preference__tile--theme"
+                                                    style="--topbar-theme-light-icon:url('<?= htmlspecialchars($config['profile']['preferences']['themeLightIconUrl'], ENT_QUOTES, 'UTF-8') ?>'); --topbar-theme-dark-icon:url('<?= htmlspecialchars($config['profile']['preferences']['themeDarkIconUrl'], ENT_QUOTES, 'UTF-8') ?>');"
+                                                >
+                                                    <span class="common-topbar-profile-preference__icon common-topbar-profile-preference__icon--theme-light" aria-hidden="true"></span>
+                                                    <span class="common-topbar-profile-preference__icon common-topbar-profile-preference__icon--theme-dark" aria-hidden="true"></span>
+                                                </span>
+                                            </button>
+                                            <div class="common-topbar-profile-preference__menu" data-topbar-preference-popup="theme" hidden>
+                                                <button type="button" class="common-topbar-profile-preference__option" data-topbar-theme-option="system"><?= htmlspecialchars($config['profile']['preferences']['themeSystemLabel']) ?></button>
+                                                <button type="button" class="common-topbar-profile-preference__option" data-topbar-theme-option="light"><?= htmlspecialchars($config['profile']['preferences']['themeLightLabel']) ?></button>
+                                                <button type="button" class="common-topbar-profile-preference__option" data-topbar-theme-option="dark"><?= htmlspecialchars($config['profile']['preferences']['themeDarkLabel']) ?></button>
+                                            </div>
+                                        </div>
+
+                                        <div class="common-topbar-profile-preferences__field common-topbar-profile-preferences__field--align-end" data-topbar-preference-menu>
+                                            <span class="common-topbar-profile-preferences__label"><?= htmlspecialchars($config['profile']['preferences']['colorStyleLabel']) ?></span>
+                                            <button
+                                                type="button"
+                                                class="common-topbar-profile-preference__trigger"
+                                                data-topbar-preference-trigger="color-style"
+                                                aria-haspopup="true"
+                                                aria-expanded="false"
+                                                aria-label="<?= htmlspecialchars($config['profile']['preferences']['colorStyleLabel']) ?>"
+                                            >
+                                                <span
+                                                    class="common-topbar-profile-preference__tile common-topbar-profile-preference__tile--icon common-topbar-profile-preference__tile--color-style"
+                                                    style="--topbar-palette-icon:url('<?= htmlspecialchars($config['profile']['preferences']['colorStyleIconUrl'], ENT_QUOTES, 'UTF-8') ?>');"
+                                                >
+                                                    <span class="common-topbar-profile-preference__icon common-topbar-profile-preference__icon--palette" aria-hidden="true"></span>
+                                                </span>
+                                            </button>
+                                            <div class="common-topbar-profile-preference__menu" data-topbar-preference-popup="color-style" hidden>
+                                                <button type="button" class="common-topbar-profile-preference__option is-active" data-topbar-color-style-option="mono"><?= htmlspecialchars($config['profile']['preferences']['colorStyleDefaultLabel']) ?></button>
+                                                <button type="button" class="common-topbar-profile-preference__option" data-topbar-color-style-option="turquoise"><?= htmlspecialchars($config['profile']['preferences']['colorStyleTurquoiseLabel']) ?></button>
+                                                <button type="button" class="common-topbar-profile-preference__option" data-topbar-color-style-option="ocean-blue"><?= htmlspecialchars($config['profile']['preferences']['colorStyleOceanBlueLabel']) ?></button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             <?php endif; ?>
                             <button type="button" class="common-topbar__menu-item common-topbar-profile-actions__button" data-topbar-profile-edit><?= htmlspecialchars($config['profile']['editLabel']) ?></button>
@@ -460,12 +642,16 @@ function commonRenderTopbar(array $options = [])
 <div class="common-topbar-drawer" id="commonTopbarDrawer" hidden>
     <div class="common-topbar-drawer__backdrop" data-topbar-drawer-close></div>
     <div class="common-topbar-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="commonTopbarDrawerTitle">
-        <div class="common-topbar-drawer__header">
-            <h3 id="commonTopbarDrawerTitle"><?= htmlspecialchars($config['drawer']['defaultTitle']) ?></h3>
-            <button type="button" class="common-topbar-drawer__close" data-topbar-drawer-close aria-label="<?= htmlspecialchars($config['drawer']['closeLabel']) ?>">
-                <span aria-hidden="true">&times;</span>
-                <span class="common-topbar__visually-hidden"><?= htmlspecialchars($config['drawer']['closeLabel']) ?></span>
-            </button>
+        <div class="common-topbar-drawer__header generic-drawer-header">
+            <div class="generic-drawer-header__copy">
+                <h3 id="commonTopbarDrawerTitle"><?= htmlspecialchars($config['drawer']['defaultTitle']) ?></h3>
+            </div>
+            <div class="generic-drawer-header__actions">
+                <button type="button" class="common-topbar-drawer__close" data-topbar-drawer-close aria-label="<?= htmlspecialchars($config['drawer']['closeLabel']) ?>">
+                    <span aria-hidden="true">&times;</span>
+                    <span class="common-topbar__visually-hidden"><?= htmlspecialchars($config['drawer']['closeLabel']) ?></span>
+                </button>
+            </div>
         </div>
         <div class="common-topbar-drawer__body" id="commonTopbarDrawerBody"></div>
     </div>

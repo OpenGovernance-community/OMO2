@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/translation.php';
 require_once dirname(__DIR__, 3) . '/includes/site_update_admin.php';
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -8,7 +9,7 @@ if ((int)commonGetCurrentUserId() <= 0) {
     http_response_code(401);
     echo json_encode([
         'status' => false,
-        'message' => 'Connexion requise.',
+        'message' => omoSiteUpdateT('parameters.site_update.error.required'),
     ]);
     exit;
 }
@@ -17,7 +18,7 @@ if (!commonCurrentUserIsSiteAdminModeEnabled()) {
     http_response_code(403);
     echo json_encode([
         'status' => false,
-        'message' => 'Acces reserve a l admin du site.',
+        'message' => omoSiteUpdateT('parameters.site_update.error.forbidden'),
     ]);
     exit;
 }
@@ -26,7 +27,7 @@ if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
     http_response_code(405);
     echo json_encode([
         'status' => false,
-        'message' => 'Methode non autorisee.',
+        'message' => omoSiteUpdateT('parameters.site_update.error.method_not_allowed'),
     ]);
     exit;
 }

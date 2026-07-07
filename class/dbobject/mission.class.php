@@ -38,15 +38,46 @@
 		public static function attributeLength() {
 			return [
 				'title' => 150,
-				'video' => 150,
+				'video' => 1000,
 			];
+		}
+
+		public function getEmbeddedVideoData()
+		{
+			return \dbObject\VideoEmbedHelper::getEmbedData($this->get('video'));
+		}
+
+		public function getEmbeddedVideoUrl()
+		{
+			return (string)($this->getEmbeddedVideoData()['embedUrl'] ?? '');
 		}
 
 		public static function getOrder() {
 			return "position";
 		}
 
+		public static function getNextPosition()
+		{
+			return (int)self::fetchValue(
+				"SELECT COALESCE(MAX(position), 0) + 1 FROM mission"
+			);
+		}
+
+		protected static function hasMissionQuestionTable()
+		{
+			return self::tableExists('mission_question');
+		}
+
+		protected static function hasMissionHomeworkTable()
+		{
+			return self::tableExists('mission_homework');
+		}
+
 		public function getQuizCount() {
+			if (!self::hasMissionQuestionTable()) {
+				return 0;
+			}
+
 			$query = "SELECT COUNT(*) FROM mission_question WHERE IDmission = :mission_id";
 			return (int)self::fetchValue($query, ['mission_id' => (int)$this->getId()]);
 		}
@@ -55,18 +86,45 @@
 			return self::countHomeworksForMission($this->getId());
 		}
 
-		public static function countHomeworksForMission($missionId)
+		protected static function buildHomeworkVisibilitySql($viewerIsOrganizationAdmin = null)
 		{
+			if ($viewerIsOrganizationAdmin === null || $viewerIsOrganizationAdmin) {
+				return '';
+			}
+
+			return " AND COALESCE(h.onlyAdmin, 0) = 0";
+		}
+
+		public static function countHomeworksForMission($missionId, $viewerIsOrganizationAdmin = null)
+		{
+			if (!self::hasMissionHomeworkTable()) {
+				return 0;
+			}
+
 			return (int)self::fetchValue(
-				"SELECT COUNT(*) FROM mission_homework WHERE IDmission = :mission_id",
+				"SELECT COUNT(*)
+				FROM mission_homework mh
+				INNER JOIN homework h
+					ON h.id = mh.IDhomework
+				WHERE mh.IDmission = :mission_id"
+				. self::buildHomeworkVisibilitySql($viewerIsOrganizationAdmin),
 				['mission_id' => (int)$missionId]
 			);
 		}
 
-		public static function fetchHomeworkIdsForMission($missionId)
+		public static function fetchHomeworkIdsForMission($missionId, $viewerIsOrganizationAdmin = null)
 		{
+			if (!self::hasMissionHomeworkTable()) {
+				return [];
+			}
+
 			$rows = self::fetchAll(
-				"SELECT IDhomework FROM mission_homework WHERE IDmission = :mission_id",
+				"SELECT mh.IDhomework
+				FROM mission_homework mh
+				INNER JOIN homework h
+					ON h.id = mh.IDhomework
+				WHERE mh.IDmission = :mission_id"
+				. self::buildHomeworkVisibilitySql($viewerIsOrganizationAdmin),
 				['mission_id' => (int)$missionId]
 			);
 
@@ -85,9 +143,9 @@
 			return array_values($ids);
 		}
 
-		public static function areHomeworkIdsComplete($missionId, array $doneHomeworkIds)
+		public static function areHomeworkIdsComplete($missionId, array $doneHomeworkIds, $viewerIsOrganizationAdmin = null)
 		{
-			$requiredIds = self::fetchHomeworkIdsForMission($missionId);
+			$requiredIds = self::fetchHomeworkIdsForMission($missionId, $viewerIsOrganizationAdmin);
 			if (count($requiredIds) === 0) {
 				return true;
 			}
@@ -109,11 +167,16 @@
 			return true;
 		}
 
-		public static function fetchHomeworksForMission($missionId, $userId = 0, $parcoursId = 0)
+		public static function fetchHomeworksForMission($missionId, $userId = 0, $parcoursId = 0, $viewerIsOrganizationAdmin = null)
 		{
 			$missionId = (int)$missionId;
 			$userId = (int)$userId;
 			$parcoursId = (int)$parcoursId;
+			$visibilitySql = self::buildHomeworkVisibilitySql($viewerIsOrganizationAdmin);
+
+			if (!self::hasMissionHomeworkTable()) {
+				return [];
+			}
 
 			if ($userId > 0 && $parcoursId > 0) {
 				$query = "
@@ -131,7 +194,7 @@
 						AND uh.IDhomework = mh.IDhomework
 						AND uh.IDuser = :user_id
 						AND uh.IDparcours = :parcours_id
-					WHERE mh.IDmission = :mission_id
+					WHERE mh.IDmission = :mission_id" . $visibilitySql . "
 					ORDER BY COALESCE(mh.position, h.position, h.id) ASC, h.id ASC
 				";
 
@@ -151,7 +214,7 @@
 					FROM mission_homework mh
 					INNER JOIN homework h
 						ON h.id = mh.IDhomework
-					WHERE mh.IDmission = :mission_id
+					WHERE mh.IDmission = :mission_id" . $visibilitySql . "
 					ORDER BY COALESCE(mh.position, h.position, h.id) ASC, h.id ASC
 				";
 
@@ -274,36 +337,40 @@
 			";
 		}
 
-		protected static function buildMissionIdsDependencyAvailabilitySql(array &$params, array $donePlaceholders, $parcoursId)
+		protected static function buildMissionIdsDependencyAvailabilitySql(array &$params, array $doneMissionIds, $parcoursId)
 		{
-			$depParcoursIdA = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
-			$depParcoursIdB = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
-			$depParcoursIdC = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
-			$depParcoursIdD = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
-			$depParcoursIdE = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
-			$depParcoursIdF = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
-			$completedDependencySql = count($donePlaceholders) > 0
-				? "SELECT 1
+			$doneMissionIds = self::normalizeMissionIds($doneMissionIds);
+			$depParcoursIdNoDependency = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+			$depParcoursIdHasRequired = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+			$depParcoursIdNoRequired = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+
+			if (count($doneMissionIds) > 0) {
+				$donePlaceholdersCompleted = self::buildMissionIdPlaceholders($doneMissionIds, 'done_dep_completed_', $params);
+				$donePlaceholdersUnmetRequired = self::buildMissionIdPlaceholders($doneMissionIds, 'done_dep_unmet_', $params);
+				$depParcoursIdCompleted = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+				$depParcoursIdUnmetRequired = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+				$completedDependencySql = "SELECT 1
 					FROM mission_dependencies md
 					WHERE md.IDmission_child = m.id
-					  AND md.IDparcours = $depParcoursIdA
-					  AND md.IDmission_parent IN (" . implode(', ', $donePlaceholders) . ")"
-				: "SELECT 1
+					  AND md.IDparcours = $depParcoursIdCompleted
+					  AND md.IDmission_parent IN (" . implode(', ', $donePlaceholdersCompleted) . ")";
+				$unmetRequiredDependencySql = "SELECT 1
+					FROM mission_dependencies md
+					WHERE md.IDmission_child = m.id
+					  AND md.IDparcours = $depParcoursIdUnmetRequired
+					  AND md.required = 1
+					  AND md.IDmission_parent NOT IN (" . implode(', ', $donePlaceholdersUnmetRequired) . ")";
+			} else {
+				$depParcoursIdUnmetRequired = self::bindSqlValue($params, 'dep_parcours_', (int)$parcoursId);
+				$completedDependencySql = "SELECT 1
 					FROM mission_dependencies md
 					WHERE 1 = 0";
-
-			$unmetRequiredDependencySql = count($donePlaceholders) > 0
-				? "SELECT 1
+				$unmetRequiredDependencySql = "SELECT 1
 					FROM mission_dependencies md
 					WHERE md.IDmission_child = m.id
-					  AND md.IDparcours = $depParcoursIdB
-					  AND md.required = 1
-					  AND md.IDmission_parent NOT IN (" . implode(', ', $donePlaceholders) . ")"
-				: "SELECT 1
-					FROM mission_dependencies md
-					WHERE md.IDmission_child = m.id
-					  AND md.IDparcours = $depParcoursIdC
+					  AND md.IDparcours = $depParcoursIdUnmetRequired
 					  AND md.required = 1";
+			}
 
 			return "
 				(
@@ -311,7 +378,7 @@
 						SELECT 1
 						FROM mission_dependencies md
 						WHERE md.IDmission_child = m.id
-						  AND md.IDparcours = $depParcoursIdD
+						  AND md.IDparcours = $depParcoursIdNoDependency
 					)
 					OR
 					(
@@ -319,7 +386,7 @@
 							SELECT 1
 							FROM mission_dependencies md
 							WHERE md.IDmission_child = m.id
-							  AND md.IDparcours = $depParcoursIdE
+							  AND md.IDparcours = $depParcoursIdHasRequired
 							  AND md.required = 1
 						)
 						AND NOT EXISTS (
@@ -332,7 +399,7 @@
 							SELECT 1
 							FROM mission_dependencies md
 							WHERE md.IDmission_child = m.id
-							  AND md.IDparcours = $depParcoursIdF
+							  AND md.IDparcours = $depParcoursIdNoRequired
 							  AND md.required = 1
 						)
 						AND EXISTS (
@@ -366,7 +433,7 @@
 						  AND lm_done.done IS NOT NULL
 					)
 					AND $dependencyAvailabilitySql
-				ORDER BY pm.branch ASC, m.position ASC
+				ORDER BY COALESCE(pm.position, m.position, m.id) ASC, pm.id ASC
 			";
 
 			return self::fetchAll($query, $params);
@@ -378,8 +445,7 @@
 				'pm_parcours_id' => (int)$parcoursId,
 			];
 			$donePlaceholdersExclude = self::buildMissionIdPlaceholders($doneMissionIds, 'done_exclude_', $params);
-			$donePlaceholdersDeps = self::buildMissionIdPlaceholders($doneMissionIds, 'done_dep_', $params);
-			$dependencyAvailabilitySql = self::buildMissionIdsDependencyAvailabilitySql($params, $donePlaceholdersDeps, $parcoursId);
+			$dependencyAvailabilitySql = self::buildMissionIdsDependencyAvailabilitySql($params, $doneMissionIds, $parcoursId);
 			$doneSql = count($donePlaceholdersExclude) > 0
 				? "AND m.id NOT IN (" . implode(', ', $donePlaceholdersExclude) . ")"
 				: '';
@@ -393,7 +459,7 @@
 				WHERE 1=1
 					$doneSql
 					AND $dependencyAvailabilitySql
-				ORDER BY pm.branch ASC, m.position ASC
+				ORDER BY COALESCE(pm.position, m.position, m.id) ASC, pm.id ASC
 			";
 
 			return self::fetchAll($query, $params);
@@ -422,7 +488,7 @@
 						  AND lm.done IS NOT NULL
 					)
 					AND NOT $dependencyAvailabilitySql
-				ORDER BY pm.branch ASC, m.position ASC
+				ORDER BY COALESCE(pm.position, m.position, m.id) ASC, pm.id ASC
 			";
 
 			return self::fetchAll($query, $params);
@@ -434,8 +500,7 @@
 				'pm_parcours_id' => (int)$parcoursId,
 			];
 			$donePlaceholdersExclude = self::buildMissionIdPlaceholders($doneMissionIds, 'done_exclude_', $params);
-			$donePlaceholdersDeps = self::buildMissionIdPlaceholders($doneMissionIds, 'done_dep_', $params);
-			$dependencyAvailabilitySql = self::buildMissionIdsDependencyAvailabilitySql($params, $donePlaceholdersDeps, $parcoursId);
+			$dependencyAvailabilitySql = self::buildMissionIdsDependencyAvailabilitySql($params, $doneMissionIds, $parcoursId);
 			$doneSql = count($donePlaceholdersExclude) > 0
 				? "AND m.id NOT IN (" . implode(', ', $donePlaceholdersExclude) . ")"
 				: '';
@@ -449,7 +514,7 @@
 				WHERE 1=1
 					$doneSql
 					AND NOT $dependencyAvailabilitySql
-				ORDER BY pm.branch ASC, m.position ASC
+				ORDER BY COALESCE(pm.position, m.position, m.id) ASC, pm.id ASC
 			";
 
 			return self::fetchAll($query, $params);
@@ -493,10 +558,69 @@
 					ON pm.IDmission = m.id
 					AND pm.IDparcours = :parcours_id
 				WHERE m.id IN (" . implode(', ', $donePlaceholders) . ")
-				ORDER BY pm.branch ASC, m.position ASC
+				ORDER BY COALESCE(pm.position, m.position, m.id) ASC, pm.id ASC
 			";
 
 			return self::fetchAll($query, $params);
+		}
+
+		public static function fetchAvailableForParcoursEditor($parcoursId)
+		{
+			$rows = self::fetchAll(
+				"SELECT
+					m.id,
+					m.title,
+					m.resume,
+					m.position
+				FROM mission m
+				WHERE NOT EXISTS (
+					SELECT 1
+					FROM parcours_mission pm
+					WHERE pm.IDparcours = :parcours_id
+					  AND pm.IDmission = m.id
+				)
+				ORDER BY COALESCE(m.position, m.id) ASC, m.id ASC",
+				['parcours_id' => (int)$parcoursId]
+			);
+
+			return is_array($rows) ? $rows : [];
+		}
+
+		public static function fetchAvailableDependencyTargetsForMission($parcoursId, $missionId)
+		{
+			$parcoursId = (int)$parcoursId;
+			$missionId = (int)$missionId;
+			if ($parcoursId <= 0 || $missionId <= 0) {
+				return [];
+			}
+
+			$rows = self::fetchAll(
+				"SELECT
+					m.id,
+					m.title,
+					m.resume
+				FROM parcours_mission pm
+				INNER JOIN mission m
+					ON m.id = pm.IDmission
+				WHERE pm.IDparcours = :parcours_id
+				  AND m.id <> :mission_id
+				  AND NOT EXISTS (
+					SELECT 1
+					FROM mission_dependencies md
+					WHERE md.IDparcours = :linked_parcours_id
+					  AND md.IDmission_child = :linked_mission_id
+					  AND md.IDmission_parent = m.id
+				  )
+				ORDER BY COALESCE(pm.position, m.position, pm.id) ASC, pm.id ASC",
+				[
+					'parcours_id' => $parcoursId,
+					'mission_id' => $missionId,
+					'linked_parcours_id' => $parcoursId,
+					'linked_mission_id' => $missionId,
+				]
+			);
+
+			return is_array($rows) ? $rows : [];
 		}
 	}
 

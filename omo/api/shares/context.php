@@ -35,7 +35,7 @@ function omoShareResolveManageContext(array $input)
         );
     }
 
-    $currentHolon = $organization->getStructuralRootHolon();
+    $currentHolon = $organization->getEnabledStructuralRootHolon();
     if (!$currentHolon) {
         return array(
             'status' => false,

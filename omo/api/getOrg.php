@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
+require_once dirname(__DIR__, 2) . '/common/avatar.php';
 use dbObject\ArrayOrganization;
 use dbObject\Holon;
 use dbObject\HolonPermission;
@@ -186,7 +187,7 @@ function omoFormatListItemValue($item, array $entry)
         if (!isset($holonLabelCache[$holonId])) {
             $holon = new Holon();
             $holonLabelCache[$holonId] = ($holon->load($holonId) && $holon->canView())
-                ? $holon->getDisplayName()
+                ? $holon->getFullDisplayName()
                 : '';
         }
 
@@ -513,7 +514,7 @@ function omoBuildChildNavigation(Holon $holon)
     foreach ($children as $child) {
         $entry = array(
             'id' => (int)$child->getId(),
-            'name' => trim((string)$child->get('name')),
+            'name' => trim((string)$child->getFullDisplayName()),
             'type' => (int)$child->get('IDtypeholon'),
         );
 
@@ -569,14 +570,14 @@ if (!$canViewOrganization) {
     exit;
 }
 
-$root = $organization->getStructuralRootHolon();
+$root = $organization->getEnabledStructuralRootHolon();
 if ($root === null) {
     require_once __DIR__ . '/organization_setup_panel.php';
     omoRenderOrganizationInfoPanel($organization);
     exit;
 }
 
-$root = $organization->getStructuralRootHolon();
+$root = $organization->getEnabledStructuralRootHolon();
 if ($root === null) {
     http_response_code(404);
     ?>
@@ -682,25 +683,28 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 
 <div class="circle-panel">
     <div class="circle-top">
-    <div class="breadcrumb">
+    
+
+    <div class="circle-header">
+        <div>
+            <div class="circle-kicker generic-card-title generic-card-title--eyebrow"><?= omoApiEscape($holonTypeLabel) ?></div>
+ <div class="breadcrumb">
         <?php foreach ($breadcrumb as $index => $crumb): ?>
             <?php if ($index > 0): ?>
                 <span class="separator">&rsaquo;</span>
             <?php endif; ?>
 
             <?php $isActive = ((int)$crumb->getId() === (int)$currentHolon->getId()); ?>
+            <?php if (!$isActive): ?>
             <span class="crumb<?= $isActive ? ' active' : '' ?>"
                   data-cid="<?= (int)$crumb->getId() ?>"
                   data-is-root="<?= $index === 0 ? '1' : '0' ?>">
-                <?= omoApiEscape($crumb->get('name')) ?>
+                <?= omoApiEscape($crumb->getFullDisplayName()) ?>
             </span>
+            <?php endif; ?>
         <?php endforeach; ?>
     </div>
-
-    <div class="circle-header">
-        <div>
-            <div class="circle-kicker generic-card-title generic-card-title--eyebrow"><?= omoApiEscape($holonTypeLabel) ?></div>
-            <h2 class="circle-title generic-card-title generic-card-title--section"><?= omoApiEscape($currentHolon->get('name')) ?></h2>
+            <h2 class="circle-title generic-card-title generic-card-title--section"><?= omoApiEscape($currentHolon->getFullDisplayName()) ?></h2>
         </div>
         <div class="circle-meta">
             <?php if ($hasHolonActions): ?>
@@ -754,7 +758,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
                                 class="circle-menu__item circle-menu__item--danger"
                                 data-delete-holon="1"
                                 data-hid="<?= (int)$currentHolon->getId() ?>"
-                                data-name="<?= omoApiEscape($currentHolon->get('name')) ?>"
+                                data-name="<?= omoApiEscape($currentHolon->getFullDisplayName()) ?>"
                                 data-type-label="<?= omoApiEscape($holonTypeLabel) ?>"
                                 data-descendant-count="<?= (int)$deleteDescendantCount ?>"
                                 data-parent-id="<?= (int)$deleteParentId ?>"
@@ -776,10 +780,29 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
                         <?php $memberTooltip = !empty($member['isPending'])
                             ? t('leftbar.members.pending_tooltip', ['memberName' => $member['displayName']])
                             : (string)$member['displayName']; ?>
+                        <?php
+                        $memberPhotoUrl = trim((string)($member['photoUrl'] ?? ''));
+                        $memberInitials = trim((string)($member['initials'] ?? ''));
+                        if ($memberInitials === '') {
+                            $memberInitials = \dbObject\User::buildInitials((string)($member['displayName'] ?? ''));
+                        }
+                        $memberAvatarPalette = commonBuildAvatarPalette(
+                            $memberInitials,
+                            (int)($member['userId'] ?? 0),
+                            trim((string)($member['avatarSeed'] ?? '')) !== ''
+                                ? trim((string)$member['avatarSeed'])
+                                : \commonBuildAvatarSeedLabel(
+                                    (string)($member['displayName'] ?? ''),
+                                    ''
+                                )
+                        );
+                        $memberAvatarStyle = '--circle-member-avatar-bg: ' . $memberAvatarPalette['background'] . '; --circle-member-avatar-text: ' . $memberAvatarPalette['foreground'] . ';';
+                        ?>
                         <span
                             class="circle-member<?= !empty($member['isPending']) ? ' circle-member--pending' : '' ?>"
                             data-tooltip="<?= omoApiEscape($memberTooltip) ?>"
                             data-member-user-id="<?= (int)($member['userId'] ?? 0) ?>"
+                            <?= $memberPhotoUrl === '' ? 'style="' . omoApiEscape($memberAvatarStyle) . '"' : '' ?>
                             <?php if ((int)($member['userId'] ?? 0) > 0 && !empty($member['canViewDetail'])): ?>
                                 data-open-user-context="1"
                                 role="button"
@@ -787,14 +810,14 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
                             <?php endif; ?>
                             aria-label="<?= omoApiEscape($memberTooltip) ?>"
                         >
-                            <?php if (trim((string)$member['photoUrl']) !== ''): ?>
+                            <?php if ($memberPhotoUrl !== ''): ?>
                                 <img
-                                    src="<?= omoApiEscape($member['photoUrl']) ?>"
+                                    src="<?= omoApiEscape($memberPhotoUrl) ?>"
                                     alt="<?= omoApiEscape($member['displayName']) ?>"
                                     class="circle-member__photo"
                                 >
                             <?php else: ?>
-                                <span class="circle-member__initials"><?= omoApiEscape($member['initials']) ?></span>
+                                <span class="circle-member__initials"><?= omoApiEscape($memberInitials) ?></span>
                             <?php endif; ?>
                         </span>
                     <?php endforeach; ?>
@@ -818,14 +841,14 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     </div>
 
     <?php if (count($sections) === 0): ?>
-        <div class="circle-section generic-accordion generic-accordion--card">
+        <div class="circle-section generic-section generic-accordion generic-accordion--card">
             <div class="circle-section__title generic-card-title generic-card-title--small"><?= omoApiEscape(t('leftbar.empty.section_title')) ?></div>
             <p class="section-text"><?= omoApiEscape(t('leftbar.empty.message')) ?></p>
         </div>
     <?php endif; ?>
 
     <?php foreach ($sections as $section): ?>
-        <div class="circle-section generic-accordion generic-accordion--card generic-accordion--collapsible">
+        <div class="circle-section generic-section generic-accordion generic-accordion--card generic-accordion--collapsible">
             <div class="generic-accordion__header">
                 <span class="generic-accordion__title generic-card-title generic-card-title--small"><?= omoApiEscape($section['title']) ?></span>
                 <span class="generic-accordion__toggle">&#9662;</span>
@@ -837,7 +860,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
         </div>
     <?php endforeach; ?>
     <?php if (count($childNavigation['containers']) > 0 || count($childNavigation['roles']) > 0): ?>
-        <div class="circle-section circle-section--navigation generic-accordion generic-accordion--card generic-accordion--collapsible" data-section-key="dependencies">
+        <div class="circle-section circle-section--navigation generic-section generic-accordion generic-accordion--card generic-accordion--collapsible" data-section-key="dependencies">
             <div class="generic-accordion__header">
                 <span class="generic-accordion__title generic-card-title generic-card-title--small"><?= omoApiEscape(t('leftbar.children.section_title')) ?></span>
                 <span class="generic-accordion__toggle">&#9662;</span>
@@ -875,7 +898,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     <?php endif; ?>
 
     <?php if (count($debugPermissionEntries) > 0 && 1==0): ?>
-        <div class="circle-section generic-accordion generic-accordion--card">
+        <div class="circle-section generic-section generic-accordion generic-accordion--card">
             <div class="circle-section__title generic-card-title generic-card-title--small">Permissions</div>
             <p class="section-text">Codes disponibles sur ce holon. Ceux que vous avez sont en gras.</p>
             <div class="section-text">
@@ -984,7 +1007,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     border-radius: 999px;
     overflow: hidden;
     border: 1px solid var(--color-border);
-    background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface-alt, #f0f2f5));
+    background: var(--circle-member-avatar-bg, color-mix(in srgb, var(--color-primary) 12%, var(--color-surface-alt, #f0f2f5)));
     box-shadow: var(--shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.08));
 }
 
@@ -1029,7 +1052,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     height: 100%;
     font-size: 12px;
     font-weight: 700;
-    color: var(--color-text);
+    color: var(--circle-member-avatar-text, var(--color-text));
 }
 
 .circle-member--pending .circle-member__initials {
@@ -1440,11 +1463,19 @@ $(document)
   .on('click.omoOrgCreateHolon', '#panel-left [data-open-create-holon="1"]', function () {
     const cid = Number($(this).data('cid'));
 
-    if (!cid || typeof window.omoOpenDrawerHashState !== 'function') {
+    if (!cid) {
         return;
     }
 
-    window.omoOpenDrawerHashState('holon-create-' + cid);
+    if (typeof window.omoOpenExternalRouteDrawer === 'function' && window.omoOpenExternalRouteDrawer('holon-create-' + cid, {
+        title: 'Ajouter'
+    })) {
+        return;
+    }
+
+    if (typeof window.omoOpenDrawerHashState === 'function') {
+        window.omoOpenDrawerHashState('holon-create-' + cid);
+    }
   });
 
 $(document)
@@ -1456,16 +1487,24 @@ $(document)
     const isDefinitionEdit = String(button.data('definition-edit')) === '1';
     const templateContextId = Number(button.data('template-context-id') || 0);
 
-    if (!hid || typeof window.omoOpenDrawerHashState !== 'function') {
+    if (!hid) {
         return;
     }
 
+    let routeToken = 'holon-edit-' + hid;
     if ((isTemplateEdit || isDefinitionEdit) && templateContextId > 0) {
-        window.omoOpenDrawerHashState('holon-template-edit-' + templateContextId + '-' + hid);
+        routeToken = 'holon-template-edit-' + templateContextId + '-' + hid;
+    }
+
+    if (typeof window.omoOpenExternalRouteDrawer === 'function' && window.omoOpenExternalRouteDrawer(routeToken, {
+        title: 'Modifier'
+    })) {
         return;
     }
 
-    window.omoOpenDrawerHashState('holon-edit-' + hid);
+    if (typeof window.omoOpenDrawerHashState === 'function') {
+        window.omoOpenDrawerHashState(routeToken);
+    }
   });
 
 $(document)

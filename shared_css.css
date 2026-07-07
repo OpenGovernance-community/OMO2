@@ -1,53 +1,26 @@
-	@import url('/common/assets/components.css');
+    @import url('/common/assets/components.css');
 
-	:root {
-    --black-bg-color: #000000;
-    --dark-bg-color: #114543;
-    --midsup-bg-color: #21827f;
-    --midlow-bg-color: #3da8a9;
-    --light-bg-color: #97cccc;
-    --verylight-bg-color: #D5EAEA;
-    --white-bg-color: #FFFFFF;
-    --dark-txt-color: #000000;
-    --light-txt-color: #FFFFFF;
-	    --greyColor : #DDD;
-    --color-bg: var(--white-bg-color);
-    --color-surface: var(--white-bg-color);
-    --color-surface-alt: var(--verylight-bg-color);
-    --color-text: var(--dark-txt-color);
-    --color-text-light: color-mix(in srgb, var(--dark-txt-color) 62%, var(--white-bg-color));
-    --color-border: var(--greyColor);
-    --color-primary: var(--dark-bg-color);
-    --color-text-inverse: var(--light-txt-color);
-	}	
+    :root {
+    --radius-md: 12px;
+    --radius-lg: 18px;
+    --shadow-sm: 0 8px 18px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 12px 24px rgba(0, 0, 0, 0.12);
+    }
 
     :root[data-theme="dark"] {
-        --color-bg: #0f1720;
-        --color-surface: #16202b;
-        --color-surface-alt: #101923;
-        --color-text: #e5edf7;
-        --color-text-light: #9fb0c3;
-        --color-border: #283548;
-        --color-primary: #7c9cff;
-        --color-text-inverse: #0f1720;
+        --shadow-sm: 0 10px 20px rgba(0, 0, 0, 0.22);
+        --shadow-md: 0 14px 28px rgba(0, 0, 0, 0.28);
     }
 
-    @media (prefers-color-scheme: dark) {
-        :root[data-theme-preference="system"] {
-            --color-bg: #0f1720;
-            --color-surface: #16202b;
-            --color-surface-alt: #101923;
-            --color-text: #e5edf7;
-            --color-text-light: #9fb0c3;
-            --color-border: #283548;
-            --color-primary: #7c9cff;
-            --color-text-inverse: #0f1720;
-        }
+
+    * {box-sizing: border-box;}
+    html, body {margin:0; padding:0;}
+    body {
+        min-height:100%;
+        width:100%;
+        background:var(--color-bg);
+        color:var(--color-text);
     }
-		
-		
-	* {box-sizing: border-box;}
-	body {height:100%; width:100%; margin:0px; padding:0px;}
 	.interface-top {height:40px;}
 	.interface-bottom {height:50px;}
 	
@@ -56,26 +29,26 @@
 	h3 {font-size:110%}
 	
 	
-	button {
-		color: var(--light-txt-color);
-		background: var(--midlow-bg-color);
-		border-color: var(--midsup-bg-color);
+	button:not([class]) {
+		color: var(--button-text);
+		background: var(--button-bg);
+		border-color: var(--button-border);
 	}
-	button:hover {
-		color: var(--dark-txt-color);
-		background: var(--light-bg-color);
-		border-color: var(--midlow-bg-color);
+	button:not([class]):hover {
+		color: var(--button-text-hover);
+		background: var(--button-bg-hover);
+		border-color: var(--button-bg);
 	}
 	.imgbutton {width:30px;margin:10px;opacity:0.5; cursor:pointer}
 	.imgbutton:hover {opacity:0.8}
 
-	::placeholder {
-		color: rgba(0,0,0,0.7);
-		opacity:0.7;
-	}
+    ::placeholder {
+        color: color-mix(in srgb, var(--color-text, #000000) 68%, transparent);
+        opacity:0.7;
+    }
 	.popover {pointer-events:none}
-	.btn{color: #000; background:var(--light-bg-color)}
-	.btn:hover{color: #000; background:var(--verylight-bg-color)}
+	.btn{color: var(--color-text); background:var(--light-bg-color)}
+	.btn:hover{color: var(--color-text); background:var(--verylight-bg-color)}
 	#popup_close button { background-color: var(--midlow-bg-color); border-color: var(--midsup-bg-color);;}
 	#popup_close button:hover { background-color: var(--light-bg-color); }
 
@@ -87,7 +60,6 @@
 	#popup option {padding:5px;}
 	#popup button {margin-top:6px;}
 	#popup_close button {margin-top:0px; border-radius:0px 0px 0px 10px;}
-	button img {height:20px; background:#FFFFFF;border-radius:50%; padding:3px;vertical-align:text-bottom; margin-right:10px;}
 	#popup_content {height:100%;}
 	
 	.liketext {border:0px !important;}

@@ -178,6 +178,27 @@ function translationBundleGetSupportedLocales()
     return array_column(translationBundleGetAvailableLanguages(), 'locale');
 }
 
+function translationBundleGetSimpleLocaleLabel($locale, $fallback = 'fr')
+{
+    $normalizedLocale = translationBundleNormalizeLocale($locale);
+    if ($normalizedLocale === '') {
+        $normalizedLocale = translationBundleNormalizeLocale($fallback);
+    }
+
+    if ($normalizedLocale === '') {
+        return 'FR';
+    }
+
+    $primarySubtag = explode('-', $normalizedLocale)[0] ?? '';
+    $primarySubtag = strtolower(trim((string)$primarySubtag));
+
+    if ($primarySubtag === '') {
+        $primarySubtag = 'fr';
+    }
+
+    return strtoupper(substr($primarySubtag, 0, 2));
+}
+
 function translationBundleResolveSupportedLocale($locale, array $supportedLocales = [])
 {
     $supportedLocales = $supportedLocales ?: translationBundleGetSupportedLocales();
@@ -210,9 +231,51 @@ function translationBundleResolveBrowserLocale(array $supportedLocales = [], $fa
     return $fallbackLocale !== '' ? $fallbackLocale : (string)reset($supportedLocales);
 }
 
+function translationBundleResolveCurrentUserLocalePreference(array $supportedLocales = [])
+{
+    static $cache = [];
+
+    $supportedLocales = $supportedLocales ?: translationBundleGetSupportedLocales();
+    $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+    $cacheKey = $currentUserId . '|' . implode(',', $supportedLocales);
+
+    if (array_key_exists($cacheKey, $cache)) {
+        return $cache[$cacheKey];
+    }
+
+    if ($currentUserId <= 0 || !class_exists('\dbObject\user')) {
+        $cache[$cacheKey] = '';
+        return '';
+    }
+
+    $user = new \dbObject\user();
+    if (!$user->load($currentUserId)) {
+        $cache[$cacheKey] = '';
+        return '';
+    }
+
+    $preferredLocale = translationBundleResolveSupportedLocale(
+        $user->getParameter('lang') ?? $user->getParameter('locale') ?? '',
+        $supportedLocales
+    );
+
+    $cache[$cacheKey] = $preferredLocale;
+    return $preferredLocale;
+}
+
 function translationBundleResolveRequestLocale($cookieName = 'lang', array $supportedLocales = [], $fallback = 'fr')
 {
     $supportedLocales = $supportedLocales ?: translationBundleGetSupportedLocales();
+    $requestLocale = translationBundleResolveSupportedLocale($_GET[$cookieName] ?? ($_POST[$cookieName] ?? ''), $supportedLocales);
+    if ($requestLocale !== '') {
+        return $requestLocale;
+    }
+
+    $currentUserLocale = translationBundleResolveCurrentUserLocalePreference($supportedLocales);
+    if ($currentUserLocale !== '') {
+        return $currentUserLocale;
+    }
+
     $cookieLocale = translationBundleResolveSupportedLocale($_COOKIE[$cookieName] ?? '', $supportedLocales);
 
     if ($cookieLocale !== '') {
@@ -225,6 +288,16 @@ function translationBundleResolveRequestLocale($cookieName = 'lang', array $supp
 function translationBundleGetRequestLocalePreference($cookieName = 'lang', array $supportedLocales = [])
 {
     $supportedLocales = $supportedLocales ?: translationBundleGetSupportedLocales();
+    $requestLocale = translationBundleResolveSupportedLocale($_GET[$cookieName] ?? ($_POST[$cookieName] ?? ''), $supportedLocales);
+    if ($requestLocale !== '') {
+        return $requestLocale;
+    }
+
+    $currentUserLocale = translationBundleResolveCurrentUserLocalePreference($supportedLocales);
+    if ($currentUserLocale !== '') {
+        return $currentUserLocale;
+    }
+
     $cookieLocale = translationBundleResolveSupportedLocale($_COOKIE[$cookieName] ?? '', $supportedLocales);
 
     return $cookieLocale !== '' ? $cookieLocale : 'system';

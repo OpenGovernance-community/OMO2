@@ -3,8 +3,12 @@
     const input = document.getElementById('authEmailInput');
     const domain = document.getElementById('authEmailDomain');
     const toggle = document.getElementById('authToggleMode');
+    const passwordBox = document.getElementById('authPasswordBox');
+    const passwordInput = document.getElementById('authPasswordInput');
     const remember = document.getElementById('authRememberMe');
     const submit = document.getElementById('authLoginSubmit');
+    const loginMethodSwitch = document.getElementById('authLoginMethodSwitch');
+    const resetLink = document.getElementById('authResetPasswordLink');
     const challengeBox = document.getElementById('authChallengeBox');
     const challengeQuestion = document.getElementById('authChallengeQuestion');
     const challengeAnswer = document.getElementById('authChallengeAnswer');
@@ -29,6 +33,7 @@
         'auth.button.resend_code': 'Envoyer un nouveau code',
         'auth.button.send_code': 'Envoyer le code',
         'auth.button.send_other_challenge': 'Envoyer un autre calcul',
+        'auth.button.sign_in_password': 'Se connecter',
         'auth.button.validate': 'Valider',
         'auth.button.validate_and_send_code': 'Valider et envoyer le code',
         'auth.button.validate_code': 'Valider le code',
@@ -36,16 +41,20 @@
         'auth.code.instructions': 'Entrez le code recu par e-mail sur cet appareil.',
         'auth.code.placeholder': 'ABC123',
         'auth.copy.login_code': 'Un code de connexion vous sera envoye par e-mail. Il reste valable 5 minutes.',
+        'auth.copy.login_password': 'Utilisez votre mot de passe pour vous connecter directement sur cet appareil.',
         'auth.error.ask_new_code_first': "Demandez d'abord un nouveau code.",
         'auth.error.challenge_expired': 'Le defi a expire. Relancez la connexion.',
         'auth.error.enter_full_code': 'Veuillez saisir le code complet a 6 caracteres.',
         'auth.error.expired': 'Le code a expire. Demandez un nouveau code.',
         'auth.error.invalid_code': 'Code invalide. Demandez un nouveau code.',
+        'auth.error.invalid_credentials': 'Identifiants invalides.',
         'auth.error.invalid_email': 'Veuillez saisir une adresse e-mail valide.',
         'auth.error.ip_changed': 'Votre reseau a change. Pour votre securite, demandez un nouveau code.',
         'auth.error.locked': 'Trop d essais. Demandez un nouveau code.',
         'auth.error.missing_code': 'Veuillez saisir le code recu par e-mail.',
+        'auth.error.missing_password': 'Veuillez saisir votre mot de passe.',
         'auth.error.request_failed': "Impossible d'envoyer la demande.",
+        'auth.error.reset_send_failed': "Impossible d'envoyer l'e-mail de réinitialisation.",
         'auth.error.restart_login': 'Merci de relancer la connexion.',
         'auth.error.send_failed': "Impossible d'envoyer le code par e-mail.",
         'auth.error.unexpected': 'Une erreur est survenue.',
@@ -53,20 +62,29 @@
         'auth.error.wrong_answer': 'Reponse incorrecte. Merci de reessayer.',
         'auth.error.wrong_code': 'Code incorrect. Il reste {count} essai(s).',
         'auth.placeholder.full_email': 'nom@domaine.ch',
+        'auth.placeholder.password': 'Votre mot de passe',
         'auth.placeholder.username': 'username',
+        'auth.link.reset_password': 'Réinitialiser le mot de passe',
         'auth.status.answer_verification': 'Veuillez repondre a la question de verification.',
         'auth.status.code_pending': "Le code a peut-etre deja ete envoye. Si vous l'avez recu, saisissez-le ci-dessous.",
         'auth.status.code_sent': 'Le code de connexion a ete envoye par e-mail.',
+        'auth.status.password_signing_in': 'Connexion en cours...',
+        'auth.status.reset_email_sent': "Si cette adresse existe, un lien de réinitialisation vient d'être envoyé.",
+        'auth.status.reset_sending': "Préparation de l'e-mail de réinitialisation...",
         'auth.status.enter_received_code': 'Saisissez le code recu par e-mail.',
         'auth.status.sending': 'Envoi en cours...',
         'auth.status.verifying_code': 'Verification du code...',
+        'auth.toggle.use_magic_login': 'Se connecter plutot avec un code par e-mail',
         'auth.toggle.use_org_email': "Utiliser l'adresse de l'organisation",
-        'auth.toggle.use_other_email': 'Utiliser une autre adresse e-mail'
+        'auth.toggle.use_other_email': 'Utiliser une autre adresse e-mail',
+        'auth.toggle.use_password_login': 'Se connecter plutot avec un mot de passe'
     };
 
     let useOrgDomain = !!config.hasOrgDomain;
+    let loginMethod = 'code';
     let pendingToken = '';
     let loginRequestInFlight = false;
+    let challengeVisible = false;
     const storageKey = 'commonLoginPendingToken';
     const translationsPath = config.authTranslationsPath || '/common/jstranslation/auth_js.php';
 
@@ -150,6 +168,15 @@
         status.className = 'auth-status' + (type ? ' ' + type : '');
     }
 
+    function setLinkDisabled(link, disabled) {
+        if (!link) {
+            return;
+        }
+
+        link.classList.toggle('is-disabled', !!disabled);
+        link.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+    }
+
     function refreshMode() {
         if (!domain) {
             useOrgDomain = false;
@@ -206,7 +233,7 @@
 
     function showCodeBox() {
         if (codeBox) {
-            codeBox.style.display = 'flex';
+            codeBox.style.display = loginMethod === 'code' ? 'flex' : 'none';
         }
         if (codeInput) {
             codeInput.focus();
@@ -215,7 +242,11 @@
 
     function updateChallengeControls(hasChallenge) {
         if (submit) {
-            submit.textContent = hasChallenge ? t('auth.button.send_other_challenge') : t('auth.button.send_code');
+            if (loginMethod === 'password') {
+                submit.textContent = t('auth.button.sign_in_password');
+            } else {
+                submit.textContent = hasChallenge ? t('auth.button.send_other_challenge') : t('auth.button.send_code');
+            }
         }
         if (challengeSubmit) {
             challengeSubmit.textContent = hasChallenge ? t('auth.button.validate_and_send_code') : t('auth.button.validate');
@@ -224,10 +255,10 @@
 
     function updateSendControls(hasPendingToken) {
         if (submit) {
-            submit.style.display = hasPendingToken ? 'none' : 'block';
+            submit.style.display = (hasPendingToken && loginMethod !== 'password') ? 'none' : 'block';
         }
         if (resendLink) {
-            resendLink.style.display = hasPendingToken ? 'inline-flex' : 'none';
+            resendLink.style.display = (hasPendingToken && loginMethod !== 'password') ? 'inline-flex' : 'none';
         }
     }
 
@@ -235,6 +266,7 @@
         if (challengeBox) {
             challengeBox.style.display = 'none';
         }
+        challengeVisible = false;
         updateChallengeControls(false);
     }
 
@@ -248,11 +280,62 @@
         if (resendLink) {
             resendLink.disabled = !!disabled;
         }
+        if (passwordInput) {
+            passwordInput.disabled = !!disabled;
+        }
+        setLinkDisabled(loginMethodSwitch, !!disabled);
+        setLinkDisabled(resetLink, !!disabled);
+    }
+
+    function refreshLoginMethodUI() {
+        const isPasswordMode = loginMethod === 'password';
+
+        if (passwordBox) {
+            passwordBox.style.display = isPasswordMode ? 'flex' : 'none';
+        }
+
+        if (challengeBox) {
+            challengeBox.style.display = !isPasswordMode && challengeVisible ? 'flex' : 'none';
+        }
+
+        if (codeBox) {
+            codeBox.style.display = !isPasswordMode && pendingToken ? 'flex' : 'none';
+        }
+
+        if (loginMethodSwitch) {
+            loginMethodSwitch.textContent = isPasswordMode
+                ? t('auth.toggle.use_magic_login')
+                : t('auth.toggle.use_password_login');
+        }
+
+        if (copy) {
+            copy.textContent = isPasswordMode ? t('auth.copy.login_password') : t('auth.copy.login_code');
+        }
+
+        if (passwordInput) {
+            passwordInput.placeholder = t('auth.placeholder.password');
+        }
+
+        updateSendControls(!!pendingToken);
+        updateChallengeControls(challengeVisible);
+    }
+
+    function setLoginMethod(method) {
+        loginMethod = method === 'password' ? 'password' : 'code';
+        refreshLoginMethodUI();
+
+        if (loginMethod === 'password' && passwordInput) {
+            passwordInput.focus();
+        } else if (loginMethod === 'code' && pendingToken && codeInput) {
+            codeInput.focus();
+        } else if (input) {
+            input.focus();
+        }
     }
 
     function refreshStaticTexts() {
         if (copy) {
-            copy.textContent = t('auth.copy.login_code');
+            copy.textContent = loginMethod === 'password' ? t('auth.copy.login_password') : t('auth.copy.login_code');
         }
         if (codeIntro) {
             codeIntro.textContent = t('auth.code.instructions');
@@ -269,9 +352,12 @@
         if (resendLink) {
             resendLink.textContent = t('auth.button.resend_code');
         }
+        if (resetLink) {
+            resetLink.textContent = t('auth.link.reset_password');
+        }
 
         refreshMode();
-        updateChallengeControls(!!(challengeBox && challengeBox.style.display !== 'none'));
+        refreshLoginMethodUI();
     }
 
     function refreshCurrentStatus() {
@@ -312,6 +398,126 @@
             });
     }
 
+    function submitPasswordLogin() {
+        const email = buildEmail();
+        const password = passwordInput ? String(passwordInput.value || '') : '';
+
+        if (!email || email.indexOf('@') === -1) {
+            setStatus(t('auth.error.invalid_email'), 'error');
+            return;
+        }
+
+        if (!password) {
+            setStatus(t('auth.error.missing_password'), 'error');
+            return;
+        }
+
+        loginRequestInFlight = true;
+        setLoginControlsDisabled(true);
+        setStatus(t('auth.status.password_signing_in'));
+
+        const body = new URLSearchParams();
+        body.set('email', email);
+        body.set('password', password);
+        body.set('remember', remember && remember.checked ? '1' : '0');
+        body.set('return_to', config.returnTo || '/');
+
+        fetch(config.loginPasswordPath || '/common/login_password.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin',
+            body: body.toString()
+        })
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (data) {
+                loginRequestInFlight = false;
+                setLoginControlsDisabled(false);
+
+                if (data.status === 'ok') {
+                    storePendingToken('');
+                    window.location.href = data.redirect_to || (config.returnTo || '/');
+                    return;
+                }
+
+                if (data.error === 'email') {
+                    setStatus(t('auth.error.invalid_email'), 'error');
+                } else if (data.error === 'missing_password') {
+                    setStatus(t('auth.error.missing_password'), 'error');
+                } else if (data.error === 'invalid_credentials') {
+                    setStatus(t('auth.error.invalid_credentials'), 'error');
+                } else {
+                    setStatus(data.message || t('auth.error.unexpected'), 'error');
+                }
+            })
+            .catch(function () {
+                loginRequestInFlight = false;
+                setLoginControlsDisabled(false);
+                setStatus(t('auth.error.request_failed'), 'error');
+            });
+    }
+
+    function submitPasswordReset() {
+        const email = buildEmail();
+
+        if (!email || email.indexOf('@') === -1) {
+            setStatus(t('auth.error.invalid_email'), 'error');
+            return;
+        }
+
+        loginRequestInFlight = true;
+        setLoginControlsDisabled(true);
+        setStatus(t('auth.status.reset_sending'));
+
+        const body = new URLSearchParams();
+        body.set('email', email);
+
+        fetch(config.loginResetRequestPath || '/common/login_reset_request.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin',
+            body: body.toString()
+        })
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (data) {
+                loginRequestInFlight = false;
+                setLoginControlsDisabled(false);
+
+                if (data.status === 'reset_email_sent') {
+                    setStatus(data.message || t('auth.status.reset_email_sent'), 'success');
+                    return;
+                }
+
+                if (data.error === 'email') {
+                    setStatus(t('auth.error.invalid_email'), 'error');
+                    return;
+                }
+
+                if (data.error === 'send_failed') {
+                    setStatus(data.message || t('auth.error.reset_send_failed'), 'error');
+                    return;
+                }
+
+                setStatus(data.message || t('auth.error.unexpected'), 'error');
+            })
+            .catch(function () {
+                loginRequestInFlight = false;
+                setLoginControlsDisabled(false);
+                setStatus(t('auth.error.request_failed'), 'error');
+            });
+    }
+
     function handleLanguageChange() {
         if (!languageSelect) {
             return;
@@ -322,12 +528,21 @@
             return;
         }
 
-        document.cookie = [
-            'lang=' + encodeURIComponent(String(languageSelect.value || '').toLowerCase()),
-            'path=/',
-            'max-age=' + String(365 * 24 * 60 * 60),
-            'SameSite=Lax'
-        ].join('; ');
+        if (String(languageSelect.value || '').toLowerCase() === 'system') {
+            document.cookie = [
+                'lang=',
+                'path=/',
+                'expires=Thu, 01 Jan 1970 00:00:00 GMT',
+                'SameSite=Lax'
+            ].join('; ');
+        } else {
+            document.cookie = [
+                'lang=' + encodeURIComponent(String(languageSelect.value || '').toLowerCase()),
+                'path=/',
+                'max-age=' + String(365 * 24 * 60 * 60),
+                'SameSite=Lax'
+            ].join('; ');
+        }
         window.location.reload();
     }
 
@@ -367,8 +582,9 @@
                 setLoginControlsDisabled(false);
 
                 if (data.challenge) {
+                    challengeVisible = true;
                     if (challengeBox) {
-                        challengeBox.style.display = 'flex';
+                        challengeBox.style.display = loginMethod === 'code' ? 'flex' : 'none';
                     }
                     if (challengeQuestion) {
                         challengeQuestion.textContent = data.challenge;
@@ -533,6 +749,11 @@
     }
 
     submit.addEventListener('click', function () {
+        if (loginMethod === 'password') {
+            submitPasswordLogin();
+            return;
+        }
+
         submitLogin(null);
     });
 
@@ -565,8 +786,43 @@
         input.addEventListener('keydown', function (event) {
             if (event.key === 'Enter') {
                 event.preventDefault();
+                if (loginMethod === 'password') {
+                    submitPasswordLogin();
+                    return;
+                }
+
                 submitLogin(null);
             }
+        });
+    }
+
+    if (passwordInput) {
+        passwordInput.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                submitPasswordLogin();
+            }
+        });
+    }
+
+    if (loginMethodSwitch) {
+        loginMethodSwitch.addEventListener('click', function (event) {
+            event.preventDefault();
+            if (loginMethodSwitch.getAttribute('aria-disabled') === 'true') {
+                return;
+            }
+            setLoginMethod(loginMethod === 'password' ? 'code' : 'password');
+            setStatus('', '');
+        });
+    }
+
+    if (resetLink) {
+        resetLink.addEventListener('click', function (event) {
+            event.preventDefault();
+            if (resetLink.getAttribute('aria-disabled') === 'true') {
+                return;
+            }
+            submitPasswordReset();
         });
     }
 
@@ -597,6 +853,7 @@
         updateChallengeControls(false);
     }
 
+    setLoginMethod('code');
     refreshStaticTexts();
     loadTranslations();
 })();
