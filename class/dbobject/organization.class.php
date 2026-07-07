@@ -1060,11 +1060,17 @@
 				$pdo->beginTransaction();
 
 				$user = $this->resolveMemberUser($userId, $email);
+				$invitationIssue = array();
 				$pendingInvitation = \dbObject\Invitation::findPendingForOrganizationUser($organizationId, (int)$user->getId());
 				$hasActiveMembership = $this->hasActiveMembershipForUser($user, $organizationId);
 				$requiresInvitation = !$hasActiveMembership && !($pendingInvitation instanceof \dbObject\Invitation);
+				$canApprovePendingRequest = $pendingInvitation instanceof \dbObject\Invitation && $pendingInvitation->isMemberInitiatedRequest();
+				$keepsPendingInvitation = $pendingInvitation instanceof \dbObject\Invitation
+					&& !$hasActiveMembership
+					&& !$canApprovePendingRequest;
+				$isPendingAdd = $requiresInvitation || $keepsPendingInvitation;
 
-				if ($pendingInvitation instanceof \dbObject\Invitation) {
+				if ($canApprovePendingRequest) {
 					$approvalResult = $pendingInvitation->approveByAdmin([
 						'approvedByUserId' => (int)$this->resolveCurrentUserId(),
 						'sendConfirmationEmail' => false,
@@ -1072,6 +1078,8 @@
 					if (!($approvalResult['status'] ?? false)) {
 						throw new \RuntimeException((string)($approvalResult['message'] ?? "L'ajout en attente n'a pas pu etre finalise."));
 					}
+				} elseif ($keepsPendingInvitation) {
+					$this->ensureOrganizationMembershipState($user, $organizationId, false);
 				} elseif ($requiresInvitation) {
 					$this->ensureOrganizationMembershipState($user, $organizationId, false);
 					$invitationIssue = \dbObject\Invitation::issue(
@@ -1094,7 +1102,7 @@
 
 				return array(
 					'status' => true,
-					'message' => $requiresInvitation
+					'message' => $isPendingAdd
 						? (
 							!empty($invitationIssue['created'])
 								? 'Invitation envoyee : ' . trim((string)$user->get('email'))
@@ -1106,7 +1114,7 @@
 								: 'Membre ajoute.'
 						),
 					'userId' => (int)$user->getId(),
-					'pending' => $requiresInvitation,
+					'pending' => $isPendingAdd,
 				);
 			} catch (\Throwable $exception) {
 				if ($pdo->inTransaction()) {
@@ -2013,6 +2021,7 @@
 		protected function applyImportedCompactRecordToHolon(\dbObject\Holon $targetHolon, array $record, $userId = 0, $preserveName = false, $isOrganizationRoot = false)
 		{
 			$name = trim((string)($record['name'] ?? ''));
+			$fullName = trim((string)($record['fullName'] ?? ''));
 			if ($name === '') {
 				$name = 'Holon';
 			}
@@ -2021,6 +2030,7 @@
 				$targetHolon->set('name', $name);
 			}
 
+			$targetHolon->set('nomcomplet', $fullName !== '' ? $fullName : null);
 			$templateName = trim((string)($record['templateName'] ?? ''));
 			$targetHolon->set('templatename', $templateName !== '' ? $templateName : null);
 			$targetHolon->set('IDtypeholon', $isOrganizationRoot ? 4 : max(1, (int)($record['typeId'] ?? 1)));
@@ -2321,6 +2331,7 @@
 			foreach ($this->getStructuralInitializationChildren($sourceParent) as $sourceChild) {
 				$targetChild = new \dbObject\Holon();
 				$targetChild->set('name', $sourceChild->get('name'));
+				$targetChild->set('nomcomplet', trim((string)$sourceChild->get('nomcomplet')) !== '' ? $sourceChild->get('nomcomplet') : null);
 				$targetChild->set('templatename', $sourceChild->get('templatename'));
 				$targetChild->set('IDtypeholon', (int)$sourceChild->get('IDtypeholon'));
 				$targetChild->set('IDholon_parent', (int)$targetParentId);
@@ -3941,6 +3952,7 @@
 				$data['holon'] = array_merge(array(
 					'id' => (int)$editingHolon->getId(),
 					'name' => $editingHolon->getDisplayName(),
+					'fullName' => trim((string)$editingHolon->get('nomcomplet')),
 					'color' => (string)$editingHolon->get('color'),
 					'templateId' => (int)$editingHolon->get('IDholon_template'),
 					'typeId' => (int)$editingHolon->get('IDtypeholon'),
@@ -4193,6 +4205,7 @@
 				'holon' => array(
 					'id' => (int)$holon->getId(),
 					'name' => trim((string)$holon->getDisplayName()),
+					'fullName' => trim((string)$holon->get('nomcomplet')),
 					'typeId' => (int)$holon->get('IDtypeholon'),
 					'typeLabel' => trim((string)$holon->getTypeLabel()),
 					'parentId' => (int)$holon->get('IDholon_parent'),
@@ -4855,6 +4868,18 @@
 				);
 			}
 
+			if ((string)($beforeHolon['fullName'] ?? '') !== (string)($afterHolon['fullName'] ?? '')) {
+				$messages[] = (string)($afterHolon['fullName'] ?? '') !== ''
+					? 'le nom complet a ete modifie en "' . $this->limitHolonHistoryText((string)($afterHolon['fullName'] ?? '')) . '"'
+					: 'le nom complet a ete vide';
+				$changes[] = array(
+					'type' => 'field_changed',
+					'field' => 'fullName',
+					'before' => (string)($beforeHolon['fullName'] ?? ''),
+					'after' => (string)($afterHolon['fullName'] ?? ''),
+				);
+			}
+
 			$mediaFields = array(
 				'color' => 'la couleur a ete modifiee',
 				'icon' => "l'icone a ete modifiee",
@@ -5306,6 +5331,7 @@
 			}
 
 			$name = trim((string)($payload['name'] ?? ''));
+			$fullName = trim((string)($payload['fullName'] ?? ''));
 			$iconValue = is_scalar($payload['icon'] ?? null) ? trim((string)$payload['icon']) : '';
 			$bannerValue = is_scalar($payload['banner'] ?? null) ? trim((string)$payload['banner']) : '';
 
@@ -5497,6 +5523,7 @@
 			}
 
 			$holon->set('name', $name);
+			$holon->set('nomcomplet', $fullName !== '' ? $fullName : null);
 			$holon->set('templatename', $isTemplateEditing ? $name : null);
 			$holon->set('IDtypeholon', $typeId);
 			$holon->set('IDholon_parent', (int)$contextHolon->getId());

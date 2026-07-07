@@ -2,6 +2,18 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-07
+
+Dans la structure OMO, les holons peuvent maintenant stocker un `nom complet` facultatif, distinct du nom court. La vue graphique, les chemins et les selects de contexte gardent le nom court, tandis que la vue liste de `Structure` et la fiche `getOrg` affichent le nom complet quand il est renseigne, avec migration SQL et schema Docker alignes.
+
+Dans les editeurs de proprietes de holon et de holon template, le collage dans une liste de texte decoupe maintenant automatiquement les elements multi-lignes. Un collage venant d un texte brut ou d un HTML avec des blocs comme `p`, `div` ou `li` cree des lignes distinctes au lieu de tout concatener dans le meme champ, et les prefixes de liste les plus courants comme `-`, `*`, `•`, `1.` ou `a)` sont retires au passage.
+
+Dans TEAM, les cartes membres en attente proposent maintenant une action `Annuler l invitation` dans le menu `...`. L annulation supprime les rattachements inactifs prepares pour cette invitation et conserve le lien recu dans un etat explicite, avec un message du type `Desole, cette invitation a ete annulee.` si quelqu un essaie encore de l ouvrir ensuite.
+
+Dans OMO, ajouter une personne deja invitee a un holon ou la re-rattacher a l organisation ne valide plus implicitement son adhesion. Les rattachements supplementaires restent maintenant inactifs tant que l invitation admin d origine n a pas ete acceptee, ce qui conserve bien l etat `pending` tout en preparant les acces de holon a activer plus tard.
+
+Dans le LMS OMO embarque, le catalogue public hors organisation affiche maintenant uniquement les parcours vraiment accessibles. Les cartes `public` et `basic` visibles ne ressortent plus grisees par erreur, les parcours lies a une application restent masques tant qu aucune organisation n est selectionnee, et les prerequis anonymes deja completes via le suivi local peuvent aussi etre pris en compte dans le filtrage du catalogue.
+
 ## 2026-07-06
 
 Le detail de mission du LMS embarque retrouve maintenant un vrai retrait interne dans le drawer OMO. Le contenu repasse par une variante partagee de `generic-section` sans bord ni arrondi, ce qui remet de l air autour de la mission sans casser les headers pleine largeur.
