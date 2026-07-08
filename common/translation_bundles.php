@@ -178,6 +178,23 @@ function translationBundleGetSupportedLocales()
     return array_column(translationBundleGetAvailableLanguages(), 'locale');
 }
 
+function translationBundleGetSourceLocale($fallback = 'fr')
+{
+    foreach (translationBundleGetAvailableLanguages() as $row) {
+        if (empty($row['is_source'])) {
+            continue;
+        }
+
+        $locale = translationBundleNormalizeLocale($row['locale'] ?? '');
+        if ($locale !== '') {
+            return $locale;
+        }
+    }
+
+    $fallbackLocale = translationBundleNormalizeLocale($fallback);
+    return $fallbackLocale !== '' ? $fallbackLocale : 'fr';
+}
+
 function translationBundleGetSimpleLocaleLabel($locale, $fallback = 'fr')
 {
     $normalizedLocale = translationBundleNormalizeLocale($locale);
@@ -271,15 +288,15 @@ function translationBundleResolveRequestLocale($cookieName = 'lang', array $supp
         return $requestLocale;
     }
 
-    $currentUserLocale = translationBundleResolveCurrentUserLocalePreference($supportedLocales);
-    if ($currentUserLocale !== '') {
-        return $currentUserLocale;
-    }
-
     $cookieLocale = translationBundleResolveSupportedLocale($_COOKIE[$cookieName] ?? '', $supportedLocales);
 
     if ($cookieLocale !== '') {
         return $cookieLocale;
+    }
+
+    $currentUserLocale = translationBundleResolveCurrentUserLocalePreference($supportedLocales);
+    if ($currentUserLocale !== '') {
+        return $currentUserLocale;
     }
 
     return translationBundleResolveBrowserLocale($supportedLocales, $fallback);
@@ -293,14 +310,17 @@ function translationBundleGetRequestLocalePreference($cookieName = 'lang', array
         return $requestLocale;
     }
 
+    $cookieLocale = translationBundleResolveSupportedLocale($_COOKIE[$cookieName] ?? '', $supportedLocales);
+    if ($cookieLocale !== '') {
+        return $cookieLocale;
+    }
+
     $currentUserLocale = translationBundleResolveCurrentUserLocalePreference($supportedLocales);
     if ($currentUserLocale !== '') {
         return $currentUserLocale;
     }
 
-    $cookieLocale = translationBundleResolveSupportedLocale($_COOKIE[$cookieName] ?? '', $supportedLocales);
-
-    return $cookieLocale !== '' ? $cookieLocale : 'system';
+    return 'system';
 }
 
 function translationBundleIsValidLocale($locale)
@@ -456,6 +476,22 @@ function translationBundleResolveStorageLocale($locale, $matchedLocale = '')
     }
 
     return translationBundleNormalizeLocale($locale);
+}
+
+function translationBundleLocaleUsesSourceContent($locale, $sourceLocale = '')
+{
+    $normalizedSourceLocale = translationBundleNormalizeLocale($sourceLocale !== '' ? $sourceLocale : translationBundleGetSourceLocale());
+    if ($normalizedSourceLocale === '') {
+        return false;
+    }
+
+    foreach (translationBundleBuildLocaleCandidates($locale) as $candidateLocale) {
+        if ($candidateLocale === $normalizedSourceLocale) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function translationBundleIsExecAvailable()
@@ -655,6 +691,10 @@ function translationBundleQueueRefresh(string $bundleKey, string $locale, array 
         return false;
     }
 
+    if (translationBundleLocaleUsesSourceContent($storageLocale)) {
+        return true;
+    }
+
     $sourceHash = translationBundleSourceHash($sourceLang);
     $sourceJson = translationBundleEncodePayload($sourceLang);
     if ($sourceJson === '') {
@@ -843,6 +883,10 @@ function loadTranslationBundle(string $bundleKey, string $locale, array $sourceL
     $locale = translationBundleNormalizeLocale($locale);
 
     if ($bundleKey === '' || !translationBundleIsValidLocale($locale)) {
+        return $sourceLang;
+    }
+
+    if (translationBundleLocaleUsesSourceContent($locale)) {
         return $sourceLang;
     }
 

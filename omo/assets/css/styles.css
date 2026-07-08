@@ -311,14 +311,16 @@ body {
 
 .omo-personal-space__section-action {
     border: 0;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface-alt));
+    border-radius: 13px;
+    background: 
+color-mix(in srgb, var(--color-primary) 14%, var(--color-surface-alt));
     color: var(--color-text, #0f172a);
     font: inherit;
     font-weight: 600;
     padding: 8px 14px;
     cursor: pointer;
     transition: transform 0.18s ease, background 0.18s ease;
+    margin: -5px -9px 10px 0px;
 }
 
 .omo-personal-space__section-action:hover,
