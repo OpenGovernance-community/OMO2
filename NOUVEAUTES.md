@@ -4,7 +4,11 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-07-08
 
+Le repertoire local `tmp/` n est plus synchronise avec GitHub. Il est maintenant ignore par le depot, et les fichiers temporaires qui y etaient deja suivis ont ete retires de l index sans etre supprimes localement.
+
 Le choix explicite de langue dans le profil reprend maintenant bien la main sur l affichage. Si un compte gardait encore une ancienne preference en base, le cookie mis a jour par le selecteur etait auparavant ignore au profit de cette valeur stale, ce qui pouvait laisser l interface en anglais meme apres avoir choisi `Francais`.
+
+Une regression de resolution d URL a aussi ete corrigee pour les acces sous `.../omo/`. Les chargements relatifs comme `api/getOrg.php` ou `api/getStructure.php` etaient resolves a tort depuis la racine du domaine, ce qui envoyait certaines requetes vers `/api/...` au lieu de `/omo/api/...` et provoquait des `404`.
 
 Le chargeur de traductions traite maintenant la langue source comme un affichage direct, sans creer de bundle `fr` vide marque `outdated`. Pour les autres langues, le comportement reste non bloquant: la page affiche tout de suite les textes deja disponibles, lance le refresh en arriere-plan si le bundle est manquant ou obsolete, puis la traduction complete est utilisee au chargement suivant.
 
