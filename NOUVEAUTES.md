@@ -2,6 +2,22 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-08
+
+Le choix explicite de langue dans le profil reprend maintenant bien la main sur l affichage. Si un compte gardait encore une ancienne preference en base, le cookie mis a jour par le selecteur etait auparavant ignore au profit de cette valeur stale, ce qui pouvait laisser l interface en anglais meme apres avoir choisi `Francais`.
+
+Le chargeur de traductions traite maintenant la langue source comme un affichage direct, sans creer de bundle `fr` vide marque `outdated`. Pour les autres langues, le comportement reste non bloquant: la page affiche tout de suite les textes deja disponibles, lance le refresh en arriere-plan si le bundle est manquant ou obsolete, puis la traduction complete est utilisee au chargement suivant.
+
+Les textes source francais des bundles ont ete relus et corriges sur les parcours Documents et sur l authentification partagee. Les accents, apostrophes, libelles de boutons et quelques formulations trop bancales ou trop brutes ont ete remis dans un francais plus propre, avec aussi un meilleur singulier/pluriel sur certains messages.
+
+Le module Team a recu la meme passe de relecture sur ses textes source francais. Les vues cartes, compacte et carte geo, la popup d actions membre et les messages de retour API affichent maintenant des accents corrects et des libelles plus naturels, y compris pour les textes autour de la geolocalisation.
+
+Le libelle `Systeme (...)` des selecteurs de langue n affiche plus la langue forcee par une preference utilisateur. Il montre maintenant uniquement la langue detectee par le navigateur ou le poste, meme si l interface affiche temporairement une autre langue choisie explicitement.
+
+Le moteur de bundles relance a nouveau une traduction asynchrone quand une langue explicite comme `en` ou `de` est choisie mais que le bundle correspondant a ete vide ou supprime. Un ancien job `completed` pour le meme hash ne bloque plus la recreation effective du contenu traduit.
+
+Les appels d apps OMO transportent maintenant explicitement la locale resolue de la page via `lang`, y compris pour les drawers et modales charges en `fetch` ou en `iframe`. Cela evite qu un module recharge son contenu avec un fallback serveur different de la langue deja affichee. Le module Team a aussi ete rebranche sur son propre bundle de traduction pour que son drawer puisse a nouveau demander des jobs asynchrones dans les langues non source.
+
 ## 2026-07-07
 
 Dans le menu `Deplacer` des documents OMO, la liste des destinations tient maintenant compte du droit reel `CAN_CREATE_DOCUMENT`. Les holons et dossiers proposes sont filtres selon les permissions effectives de la personne connectee, et l action serveur refuse aussi un deplacement manuel vers une destination non autorisee.

@@ -24,15 +24,18 @@ $sourceLang = [
         'context' => 'Label used to show documents from the whole organization.',
     ],
     'documents.empty.visible_global' => [
-        'text' => 'Aucun document visible dans cette organisation. {count} fichier(s) est caché.',
+        'one' => 'Aucun document visible dans cette organisation. {count} fichier est caché.',
+        'other' => 'Aucun document visible dans cette organisation. {count} fichiers sont cachés.',
         'context' => 'Empty state shown when hidden documents exist in global scope.',
     ],
     'documents.empty.visible_contextual' => [
-        'text' => 'Aucun document visible pour ce contexte. {count} fichier(s) est caché.',
+        'one' => 'Aucun document visible pour ce contexte. {count} fichier est caché.',
+        'other' => 'Aucun document visible pour ce contexte. {count} fichiers sont cachés.',
         'context' => 'Empty state shown when hidden documents exist in contextual scope.',
     ],
     'documents.empty.visible_descendants' => [
-        'text' => 'Aucun document visible pour ce contexte et ses descendants. {count} fichier(s) est caché.',
+        'one' => 'Aucun document visible pour ce contexte et ses descendants. {count} fichier est caché.',
+        'other' => 'Aucun document visible pour ce contexte et ses descendants. {count} fichiers sont cachés.',
         'context' => 'Empty state shown when hidden documents exist in descendant scope.',
     ],
     'documents.empty.available_global' => [
@@ -64,15 +67,15 @@ $sourceLang = [
         'context' => 'Short sort label shown before the sort control is rebuilt in JavaScript.',
     ],
     'documents.controls.sort.alpha' => [
-        'text' => 'Alphabetique',
+        'text' => 'Alphabétique',
         'context' => 'Short alphabetical sort label shown before the sort control is rebuilt in JavaScript.',
     ],
     'documents.controls.density.aria' => [
-        'text' => 'Densite d affichage des documents',
+        'text' => 'Densité d’affichage des documents',
         'context' => 'Accessible label for the documents density control.',
     ],
     'documents.controls.density.detail' => [
-        'text' => 'Detail',
+        'text' => 'Détail',
         'context' => 'Label used for detailed document density.',
     ],
     'documents.controls.density.compact' => [
@@ -92,7 +95,7 @@ $sourceLang = [
         'context' => 'Title shown in the document editor drawer.',
     ],
     'documents.drawer.editor_description' => [
-        'text' => 'Creation d un document dans le contexte courant.',
+        'text' => 'Création d’un document dans le contexte courant.',
         'context' => 'Description shown in the document editor drawer.',
     ],
     'documents.drawer.close' => [
@@ -108,7 +111,7 @@ $sourceLang = [
         'context' => 'Error shown when a document drawer cannot load its detail view.',
     ],
     'documents.error.load_editor' => [
-        'text' => 'Impossible de charger l editeur du document.',
+        'text' => 'Impossible de charger l’éditeur du document.',
         'context' => 'Error shown when the document editor drawer cannot load.',
     ],
     'documents.sort.updated_aria' => [
@@ -120,23 +123,23 @@ $sourceLang = [
         'context' => 'Label for the updated date sort button.',
     ],
     'documents.sort.created_aria' => [
-        'text' => 'Date de creation',
+        'text' => 'Date de création',
         'context' => 'Accessible label for the creation date sort button.',
     ],
     'documents.sort.created' => [
-        'text' => 'Creation',
+        'text' => 'Création',
         'context' => 'Label for the creation date sort button.',
     ],
     'documents.sort.alpha_aria' => [
-        'text' => 'Alphabetique',
+        'text' => 'Alphabétique',
         'context' => 'Accessible label for the alphabetical sort button.',
     ],
     'documents.date_column.created' => [
-        'text' => 'Cree le',
+        'text' => 'Créé le',
         'context' => 'Compact column label used when sorting by creation date.',
     ],
     'documents.date_column.updated' => [
-        'text' => 'Modifie le',
+        'text' => 'Modifié le',
         'context' => 'Compact column label used when sorting by updated date.',
     ],
     'documents.group.today' => [
@@ -172,7 +175,7 @@ $sourceLang = [
         'context' => 'Relative date group title for older documents.',
     ],
     'documents.group.too_far' => [
-        'text' => 'Trop loin',
+        'text' => 'Date inconnue',
         'context' => 'Fallback relative date group title for documents with missing or invalid dates.',
     ],
 ];
@@ -2571,7 +2574,7 @@ if (!is_string($documentsPayload)) {
 
                 if (typeof window.commonTopbarOpenModal === 'function') {
                     window.commonTopbarOpenModal(
-                        'Deplacer',
+                        'Déplacer',
                         '/omo/api/documents/move.php?id=' + encodeURIComponent(String(resolvedDocumentId)),
                         'fetch'
                     );
@@ -2703,12 +2706,12 @@ if (!is_string($documentsPayload)) {
                 }
 
                 if (titleNode) {
-                    titleNode.textContent = title !== '' ? title : 'Detail du document';
+                    titleNode.textContent = title !== '' ? title : 'Détail du document';
                 }
 
                 if (descriptionNode) {
                     descriptionNode.textContent = fullDate !== ''
-                        ? 'Document cree le ' + fullDate + '.'
+                        ? 'Document créé le ' + fullDate + '.'
                         : <?= json_encode(omoDocumentsScopeT('documents.drawer.detail_description'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                 }
 
@@ -2883,7 +2886,7 @@ if (!is_string($documentsPayload)) {
                 const fragment = ownerDocument.createDocumentFragment();
 
                 if (canEdit && Number.isInteger(documentId) && documentId > 0) {
-                    fragment.appendChild(buildDocumentMenuItem('Deplacer', {
+                    fragment.appendChild(buildDocumentMenuItem('Déplacer', {
                         'data-omo-document-menu-action': 'move',
                         'data-omo-document-move': '1',
                         'data-omo-document-move-id': String(documentId)

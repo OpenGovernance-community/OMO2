@@ -66,7 +66,7 @@ if (empty($_FILES['audio']) || !is_array($_FILES['audio'])) {
 }
 
 $title = trim((string)($_POST['title'] ?? ''));
-$prompt = 'Transcription en francais d une dictee pour un document. Rends la ponctuation naturelle et garde les retours a la ligne evidents.';
+$prompt = 'Transcription en français d’une dictée pour un document. Rends la ponctuation naturelle et garde les retours à la ligne évidents.';
 if ($title !== '') {
     $prompt .= ' Le titre du document est : ' . $title . '.';
 }
