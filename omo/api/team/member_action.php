@@ -53,7 +53,7 @@ switch ($action) {
             http_response_code(403);
             echo json_encode(array(
                 'status' => false,
-                'message' => "Vous n'avez pas le droit de gerer le statut admin dans ce contexte.",
+                'message' => "Vous n'avez pas le droit de gérer le statut admin dans ce contexte.",
             ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -65,7 +65,7 @@ switch ($action) {
             http_response_code(403);
             echo json_encode(array(
                 'status' => false,
-                'message' => "Vous n'avez pas le droit de gerer le statut admin dans ce contexte.",
+                'message' => "Vous n'avez pas le droit de gérer le statut admin dans ce contexte.",
             ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -87,7 +87,7 @@ switch ($action) {
             http_response_code(404);
             echo json_encode(array(
                 'status' => false,
-                'message' => "Aucune invitation en attente n'a ete trouvee pour cette personne.",
+                'message' => "Aucune invitation en attente n'a été trouvée pour cette personne.",
             ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -112,7 +112,7 @@ switch ($action) {
             http_response_code(404);
             echo json_encode(array(
                 'status' => false,
-                'message' => "Aucune invitation admin en attente n'a ete trouvee pour cette personne.",
+                'message' => "Aucune invitation admin en attente n'a été trouvée pour cette personne.",
             ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -121,14 +121,14 @@ switch ($action) {
             $pendingInvitation->sendEmail();
             $result = array(
                 'status' => true,
-                'message' => 'Invitation renvoyee.',
+                'message' => 'Invitation renvoyée.',
             );
         } catch (\Throwable $exception) {
             $result = array(
                 'status' => false,
                 'message' => trim((string)$exception->getMessage()) !== ''
                     ? (string)$exception->getMessage()
-                    : "L'invitation n'a pas pu etre renvoyee.",
+                    : "L'invitation n'a pas pu être renvoyée.",
             );
         }
         break;

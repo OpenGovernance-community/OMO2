@@ -475,11 +475,11 @@ function commonGetAuthSharedSourceLang(): array
             'context' => 'Code verification button label in the shared authentication user interface.'
         ],
         'auth.challenge.answer_placeholder' => [
-            'text' => 'Votre reponse',
+            'text' => 'Votre réponse',
             'context' => 'Placeholder in the anti-spam challenge answer field of the shared authentication user interface.'
         ],
         'auth.code.instructions' => [
-            'text' => 'Entrez le code recu par e-mail sur cet appareil.',
+            'text' => 'Entrez le code reçu par e-mail sur cet appareil.',
             'context' => 'Instruction shown above the email code field in the shared authentication user interface.'
         ],
         'auth.code.placeholder' => [
@@ -487,7 +487,7 @@ function commonGetAuthSharedSourceLang(): array
             'context' => 'Placeholder shown in the email code input field in the shared authentication user interface.'
         ],
         'auth.copy.login_code' => [
-            'text' => 'Un code de connexion vous sera envoye par e-mail. Il reste valable 5 minutes.',
+            'text' => 'Un code de connexion vous sera envoyé par e-mail. Il reste valable 5 minutes.',
             'context' => 'Introductory helper text in the shared authentication user interface.'
         ],
         'auth.copy.login_password' => [
@@ -515,11 +515,11 @@ function commonGetAuthSharedSourceLang(): array
             'context' => 'Toggle label to switch away from the organization email mode in the shared authentication user interface.'
         ],
         'auth.toggle.use_password_login' => [
-            'text' => 'Se connecter plutot avec un mot de passe',
+            'text' => 'Se connecter plutôt avec un mot de passe',
             'context' => 'Link label used to switch from magic code login to password login in the shared authentication user interface.'
         ],
         'auth.toggle.use_magic_login' => [
-            'text' => 'Se connecter plutot avec un code par e-mail',
+            'text' => 'Se connecter plutôt avec un code par e-mail',
             'context' => 'Link label used to switch from password login back to magic code login in the shared authentication user interface.'
         ],
         'auth.link.reset_password' => [
@@ -581,7 +581,7 @@ function commonGetAuthPhpSourceLang(): array
             'context' => 'Fallback form submit button label on the authentication verification page.'
         ],
         'auth.email.body.connection_heading' => [
-            'text' => 'Connexion a votre espace',
+            'text' => 'Connexion à votre espace',
             'context' => 'Heading shown in the authentication email containing the login code.'
         ],
         'auth.email.body.from_name_fallback' => [
@@ -597,15 +597,15 @@ function commonGetAuthPhpSourceLang(): array
             'context' => 'Instruction shown above the login code in the authentication email.'
         ],
         'auth.email.body.network_notice' => [
-            'text' => 'Si votre reseau change, demandez simplement un nouveau code.',
+            'text' => 'Si votre réseau change, demandez simplement un nouveau code.',
             'context' => 'Security notice shown at the bottom of the authentication email.'
         ],
         'auth.email.body.open_link' => [
-            'text' => 'Ou cliquez simplement sur ce lien depuis le meme appareil :',
+            'text' => 'Ou cliquez simplement sur ce lien depuis le même appareil :',
             'context' => 'Instruction shown above the direct login link in the authentication email.'
         ],
         'auth.email.body.validity_notice' => [
-            'text' => 'Ce code est valable 5 minutes et doit etre saisi depuis le meme reseau.',
+            'text' => 'Ce code est valable 5 minutes et doit être saisi depuis le même réseau.',
             'context' => 'Validity and security notice shown at the bottom of the authentication email.'
         ],
         'auth.email.subject' => [
@@ -633,7 +633,7 @@ function commonGetAuthPhpSourceLang(): array
             'context' => 'Validity notice shown at the bottom of the password reset email.'
         ],
         'auth.email.reset.body.ignore_notice' => [
-            'text' => "Si vous n'etes pas a l'origine de cette demande, vous pouvez simplement ignorer cet e-mail.",
+            'text' => "Si vous n’êtes pas à l’origine de cette demande, vous pouvez simplement ignorer cet e-mail.",
             'context' => 'Notice shown in the password reset email when the recipient did not request the reset.'
         ],
         'auth.error.reset_send_failed' => [
@@ -641,7 +641,7 @@ function commonGetAuthPhpSourceLang(): array
             'context' => 'Error returned by the password reset request endpoint when the reset email could not be sent.'
         ],
         'auth.page.invalid_request' => [
-            'text' => "Veuillez retourner dans l'application et saisir le code recu par e-mail.",
+            'text' => "Veuillez retourner dans l'application et saisir le code reçu par e-mail.",
             'context' => 'Message shown when the authentication verification page is opened without a valid token and code.'
         ],
         'auth.page.language_label' => [
@@ -649,7 +649,7 @@ function commonGetAuthPhpSourceLang(): array
             'context' => 'Label of the language selector shown on the shared authentication login page.'
         ],
         'auth.page.language_system_label' => [
-            'text' => 'Systeme',
+            'text' => 'Système',
             'context' => 'System language option label shown in the shared authentication login page selector.'
         ],
         'auth.page.login.app_default' => [
@@ -669,11 +669,11 @@ function commonGetAuthPhpSourceLang(): array
             'context' => 'Alternative text for the organization logo in the shared authentication page.'
         ],
         'auth.page.verify.auto_unavailable' => [
-            'text' => 'Verification impossible automatiquement. Utilisez le bouton ci-dessous.',
+            'text' => 'Vérification impossible automatiquement. Utilisez le bouton ci-dessous.',
             'context' => 'Message shown when the automatic verification submission is unavailable on the authentication verification page.'
         ],
         'auth.page.verify.description' => [
-            'text' => 'Nous verifions votre code sur cet appareil.',
+            'text' => 'Nous vérifions votre code sur cet appareil.',
             'context' => 'Description shown on the authentication verification page before automatic form submission.'
         ],
         'auth.page.verify.heading' => [
@@ -681,7 +681,7 @@ function commonGetAuthPhpSourceLang(): array
             'context' => 'Heading shown on the authentication verification page.'
         ],
         'auth.page.verify.status' => [
-            'text' => 'Verification...',
+            'text' => 'Vérification...',
             'context' => 'Status text shown on the authentication verification page while the code is being checked.'
         ],
         'auth.page.verify.title' => [
@@ -707,15 +707,15 @@ function commonGetAuthJsSourceLang(): array
             'context' => 'Error shown in the shared authentication JavaScript component when the user tries to verify a code without a pending login token.'
         ],
         'auth.error.challenge_expired' => [
-            'text' => 'Le defi a expire. Relancez la connexion.',
+            'text' => 'Le défi a expiré. Relancez la connexion.',
             'context' => 'Error shown in the shared authentication JavaScript component when the anti-spam challenge expired.'
         ],
         'auth.error.enter_full_code' => [
-            'text' => 'Veuillez saisir le code complet a 6 caracteres.',
+            'text' => 'Veuillez saisir le code complet à 6 caractères.',
             'context' => 'Error shown in the shared authentication JavaScript component when the user entered an incomplete code.'
         ],
         'auth.error.expired' => [
-            'text' => 'Le code a expire. Demandez un nouveau code.',
+            'text' => 'Le code a expiré. Demandez un nouveau code.',
             'context' => 'Error shown in the shared authentication JavaScript component when the email code expired.'
         ],
         'auth.error.invalid_code' => [
@@ -727,15 +727,15 @@ function commonGetAuthJsSourceLang(): array
             'context' => 'Error shown in the shared authentication JavaScript component when the provided email is invalid.'
         ],
         'auth.error.ip_changed' => [
-            'text' => 'Votre reseau a change. Pour votre securite, demandez un nouveau code.',
+            'text' => 'Votre réseau a changé. Pour votre sécurité, demandez un nouveau code.',
             'context' => 'Error shown in the shared authentication JavaScript component when the request IP changed between code request and verification.'
         ],
         'auth.error.locked' => [
-            'text' => 'Trop d essais. Demandez un nouveau code.',
+            'text' => 'Trop d’essais. Demandez un nouveau code.',
             'context' => 'Error shown in the shared authentication JavaScript component after too many invalid code attempts.'
         ],
         'auth.error.missing_code' => [
-            'text' => 'Veuillez saisir le code recu par e-mail.',
+            'text' => 'Veuillez saisir le code reçu par e-mail.',
             'context' => 'Error shown in the shared authentication JavaScript component when no verification code was provided.'
         ],
         'auth.error.request_failed' => [
@@ -767,27 +767,28 @@ function commonGetAuthJsSourceLang(): array
             'context' => 'Generic error shown in the shared authentication JavaScript component for unexpected responses.'
         ],
         'auth.error.verify_failed' => [
-            'text' => 'Impossible de verifier le code.',
+            'text' => 'Impossible de vérifier le code.',
             'context' => 'Error shown in the shared authentication JavaScript component when the AJAX request to verify the code fails.'
         ],
         'auth.error.wrong_answer' => [
-            'text' => 'Reponse incorrecte. Merci de reessayer.',
+            'text' => 'Réponse incorrecte. Merci de réessayer.',
             'context' => 'Error shown in the shared authentication JavaScript component when the anti-spam challenge answer is wrong.'
         ],
         'auth.error.wrong_code' => [
-            'text' => 'Code incorrect. Il reste {count} essai(s).',
+            'one' => 'Code incorrect. Il reste {count} essai.',
+            'other' => 'Code incorrect. Il reste {count} essais.',
             'context' => 'Error shown in the shared authentication JavaScript component when the verification code is wrong and the remaining attempts count is displayed.'
         ],
         'auth.status.answer_verification' => [
-            'text' => 'Veuillez repondre a la question de verification.',
+            'text' => 'Veuillez répondre à la question de vérification.',
             'context' => 'Status message shown in the shared authentication JavaScript component when a challenge question is displayed.'
         ],
         'auth.status.code_pending' => [
-            'text' => "Le code a peut-etre deja ete envoye. Si vous l'avez recu, saisissez-le ci-dessous.",
+            'text' => "Le code a peut-être déjà été envoyé. Si vous l’avez reçu, saisissez-le ci-dessous.",
             'context' => 'Success status shown in the shared authentication JavaScript component when code delivery is uncertain but a token was created.'
         ],
         'auth.status.code_sent' => [
-            'text' => 'Le code de connexion a ete envoye par e-mail.',
+            'text' => 'Le code de connexion a été envoyé par e-mail.',
             'context' => 'Success status shown in the shared authentication JavaScript component after the code email was sent.'
         ],
         'auth.status.password_signing_in' => [
@@ -803,7 +804,7 @@ function commonGetAuthJsSourceLang(): array
             'context' => 'Status message shown in the shared authentication JavaScript component while the password reset request is being sent.'
         ],
         'auth.status.enter_received_code' => [
-            'text' => 'Saisissez le code recu par e-mail.',
+            'text' => 'Saisissez le code reçu par e-mail.',
             'context' => 'Status message shown in the shared authentication JavaScript component when a pending token already exists.'
         ],
         'auth.status.sending' => [
@@ -811,7 +812,7 @@ function commonGetAuthJsSourceLang(): array
             'context' => 'Status message shown in the shared authentication JavaScript component while the code request is being sent.'
         ],
         'auth.status.verifying_code' => [
-            'text' => 'Verification du code...',
+            'text' => 'Vérification du code...',
             'context' => 'Status message shown in the shared authentication JavaScript component while the verification code is being checked.'
         ],
         'auth.toggle.use_org_email' => [

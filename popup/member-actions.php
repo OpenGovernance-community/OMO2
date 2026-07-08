@@ -45,7 +45,7 @@ if (!$organization->load($organizationId)) {
 if (!$organization->canViewDetail()) {
     http_response_code(403);
     ?>
-    <div class="omo-member-actions omo-member-actions--error">Acces refuse a cette organisation.</div>
+    <div class="omo-member-actions omo-member-actions--error">Accès refusé à cette organisation.</div>
     <?php
     exit;
 }
@@ -73,7 +73,7 @@ if ($currentHolonId > 0 && (int)$rootHolon->getId() !== $currentHolonId) {
     if (!$candidate->canViewDetail()) {
         http_response_code(403);
         ?>
-        <div class="omo-member-actions omo-member-actions--error">Acces refuse a ce contexte.</div>
+        <div class="omo-member-actions omo-member-actions--error">Accès refusé à ce contexte.</div>
         <?php
         exit;
     }
@@ -93,7 +93,7 @@ if (!$user->load($userId)) {
 if (!$user->canViewDetail()) {
     http_response_code(403);
     ?>
-    <div class="omo-member-actions omo-member-actions--error">Acces refuse a cet utilisateur.</div>
+    <div class="omo-member-actions omo-member-actions--error">Accès refusé à cet utilisateur.</div>
     <?php
     exit;
 }
