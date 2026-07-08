@@ -10,44 +10,44 @@ use dbObject\Organization;
 
 $sourceLang = [
     'documents.create.error.edit' => ['text' => 'Impossible de modifier ce document.', 'context' => 'Error shown when the document editor cannot be opened in edit mode.'],
-    'documents.create.error.create' => ['text' => 'Impossible de creer un document dans ce contexte.', 'context' => 'Error shown when the document editor cannot be opened in creation mode.'],
-    'documents.create.visibility.help_context_holon' => ['text' => 'Les portees cercle et role suivent automatiquement le holon du document.', 'context' => 'Visibility help text shown when the document has a contextual holon.'],
-    'documents.create.visibility.help_no_holon' => ['text' => 'Ce document n est pas lie a un holon. Les portees cercle et role ne sont pas disponibles.', 'context' => 'Visibility help text shown when the document has no holon but still belongs to an organization.'],
-    'documents.create.visibility.help_outside_context' => ['text' => 'Ce document est hors contexte. Les portees d organisation, cercle et role ne sont pas disponibles.', 'context' => 'Visibility help text shown when the document has no organization context.'],
+    'documents.create.error.create' => ['text' => 'Impossible de créer un document dans ce contexte.', 'context' => 'Error shown when the document editor cannot be opened in creation mode.'],
+    'documents.create.visibility.help_context_holon' => ['text' => 'Les portées cercle et rôle suivent automatiquement le holon du document.', 'context' => 'Visibility help text shown when the document has a contextual holon.'],
+    'documents.create.visibility.help_no_holon' => ['text' => 'Ce document n’est pas lié à un holon. Les portées cercle et rôle ne sont pas disponibles.', 'context' => 'Visibility help text shown when the document has no holon but still belongs to an organization.'],
+    'documents.create.visibility.help_outside_context' => ['text' => 'Ce document est hors contexte. Les portées d’organisation, cercle et rôle ne sont pas disponibles.', 'context' => 'Visibility help text shown when the document has no organization context.'],
     'documents.create.context.organization' => ['text' => 'Organisation', 'context' => 'Fallback context label used for embeddable documents without a holon.'],
     'documents.create.field.type' => ['text' => 'Type', 'context' => 'Label of the document type field.'],
     'documents.create.type.html' => ['text' => 'Document HTML', 'context' => 'Option label for HTML documents.'],
     'documents.create.type.external' => ['text' => 'Lien externe', 'context' => 'Option label for external links.'],
-    'documents.create.type.uploaded' => ['text' => 'Fichier uploade', 'context' => 'Option label for uploaded files.'],
+    'documents.create.type.uploaded' => ['text' => 'Fichier téléversé', 'context' => 'Option label for uploaded files.'],
     'documents.create.type.folder' => ['text' => 'Dossier', 'context' => 'Option label for folders.'],
     'documents.create.field.title' => ['text' => 'Titre', 'context' => 'Label of the document title field.'],
     'documents.create.field.title_placeholder' => ['text' => 'Nom du document', 'context' => 'Placeholder shown in the document title field.'],
     'documents.create.field.parent_folder' => ['text' => 'Dossier parent', 'context' => 'Label shown for the parent folder when present.'],
-    'documents.create.field.description' => ['text' => 'Resume', 'context' => 'Label of the document summary field.'],
-    'documents.create.field.description_placeholder' => ['text' => 'Presentation rapide du document', 'context' => 'Placeholder shown in the document summary field.'],
+    'documents.create.field.description' => ['text' => 'Résumé', 'context' => 'Label of the document summary field.'],
+    'documents.create.field.description_placeholder' => ['text' => 'Présentation rapide du document', 'context' => 'Placeholder shown in the document summary field.'],
     'documents.create.field.tags' => ['text' => 'Tags', 'context' => 'Label of the tag editor field.'],
     'documents.create.field.tags_placeholder' => ['text' => 'Ajouter un tag', 'context' => 'Placeholder shown in the tag input field.'],
-    'documents.create.field.tags_hint' => ['text' => 'Ecrivez un tag puis utilisez TAB ou une virgule pour le transformer en capsule.', 'context' => 'Hint shown below the tag editor field.'],
+    'documents.create.field.tags_hint' => ['text' => 'Écrivez un tag puis utilisez TAB ou une virgule pour le transformer en capsule.', 'context' => 'Hint shown below the tag editor field.'],
     'documents.create.field.tags_remove' => ['text' => 'Retirer le tag', 'context' => 'Accessible label prefix used to remove a tag from the editor.'],
-    'documents.create.field.visibility' => ['text' => 'Visibilite', 'context' => 'Label of the document visibility field.'],
+    'documents.create.field.visibility' => ['text' => 'Visibilité', 'context' => 'Label of the document visibility field.'],
     'documents.create.field.html' => ['text' => 'Contenu HTML', 'context' => 'Label of the HTML content area.'],
     'documents.create.field.external_url' => ['text' => 'URL externe', 'context' => 'Label of the external URL field.'],
     'documents.create.field.external_url_placeholder' => ['text' => 'https://example.com/', 'context' => 'Placeholder shown in the external URL field.'],
-    'documents.create.field.external_url_hint' => ['text' => 'Utilisez une adresse complete en http:// ou https://.', 'context' => 'Hint shown below the external URL field.'],
-    'documents.create.field.open_new_window' => ['text' => 'Ouvrir dans une autre fenetre', 'context' => 'Checkbox label used for external links.'],
+    'documents.create.field.external_url_hint' => ['text' => 'Utilisez une adresse complète en http:// ou https://.', 'context' => 'Hint shown below the external URL field.'],
+    'documents.create.field.open_new_window' => ['text' => 'Ouvrir dans une nouvelle fenêtre', 'context' => 'Checkbox label used for external links.'],
     'documents.create.field.upload' => ['text' => 'Fichier', 'context' => 'Label of the uploaded file field.'],
-    'documents.create.upload.hint_nextcloud' => ['text' => 'Le fichier sera envoye vers le stockage Nextcloud configure pour cette organisation.', 'context' => 'Hint shown when Nextcloud storage is available.'],
-    'documents.create.upload.hint_missing' => ['text' => 'Aucun stockage Nextcloud n est configure pour cette organisation.', 'context' => 'Hint shown when no Nextcloud storage is configured.'],
+    'documents.create.upload.hint_nextcloud' => ['text' => 'Le fichier sera envoyé vers le stockage Nextcloud configuré pour cette organisation.', 'context' => 'Hint shown when Nextcloud storage is available.'],
+    'documents.create.upload.hint_missing' => ['text' => 'Aucun stockage Nextcloud n’est configuré pour cette organisation.', 'context' => 'Hint shown when no Nextcloud storage is configured.'],
     'documents.create.upload.current' => ['text' => 'Fichier actuel', 'context' => 'Title shown above the current uploaded file metadata.'],
     'documents.create.upload.remove' => ['text' => 'Supprimer le fichier distant', 'context' => 'Checkbox label used to remove the uploaded file.'],
     'documents.create.action.cancel' => ['text' => 'Annuler', 'context' => 'Secondary action used to close the document editor.'],
     'documents.create.action.save' => ['text' => 'Enregistrer', 'context' => 'Primary action used to save an existing document.'],
-    'documents.create.action.create' => ['text' => 'Creer le document', 'context' => 'Primary action used to create a document.'],
-    'documents.create.embed.none' => ['text' => 'Aucun document selectionne.', 'context' => 'Placeholder shown in the document embed picker preview.'],
-    'documents.create.embed.search_placeholder' => ['text' => 'Titre, resume ou contexte', 'context' => 'Search placeholder used in the document embed picker.'],
-    'documents.create.embed.modal_title' => ['text' => 'Inserer un document', 'context' => 'Title of the document embed picker modal.'],
-    'documents.create.embed.update' => ['text' => 'Mettre a jour', 'context' => 'Button used to update an embedded document reference.'],
-    'documents.create.embed.insert' => ['text' => 'Inserer le document', 'context' => 'Button used to insert a new embedded document reference.'],
+    'documents.create.action.create' => ['text' => 'Créer le document', 'context' => 'Primary action used to create a document.'],
+    'documents.create.embed.none' => ['text' => 'Aucun document sélectionné.', 'context' => 'Placeholder shown in the document embed picker preview.'],
+    'documents.create.embed.search_placeholder' => ['text' => 'Titre, résumé ou contexte', 'context' => 'Search placeholder used in the document embed picker.'],
+    'documents.create.embed.modal_title' => ['text' => 'Insérer un document', 'context' => 'Title of the document embed picker modal.'],
+    'documents.create.embed.update' => ['text' => 'Mettre à jour', 'context' => 'Button used to update an embedded document reference.'],
+    'documents.create.embed.insert' => ['text' => 'Insérer le document', 'context' => 'Button used to insert a new embedded document reference.'],
 ];
 
 $lang = omoLoadTranslationBundle('omo_documents_create', $sourceLang);
@@ -149,7 +149,7 @@ if ($contextHolonId <= 0) {
     $disabledVisibilityTypes[ObjectVisibility::TYPE_CIRCLE] = true;
     $disabledVisibilityTypes[ObjectVisibility::TYPE_ROLE] = true;
     $visibilityHelpText = $organizationId > 0
-        ? 'Ce document n est pas lie a un holon. Les portees cercle et role ne sont pas disponibles.'
+        ? 'Ce document n’est pas lié à un holon. Les portées cercle et rôle ne sont pas disponibles.'
         : omoDocumentsCreateT('documents.create.visibility.help_outside_context');
     if ($organizationId > 0) {
         $visibilityHelpText = omoDocumentsCreateT('documents.create.visibility.help_no_holon');
@@ -1339,7 +1339,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         editLockLost = true;
         clearEditLockHeartbeatTimer();
         clearDraftSyncTimer();
-        setStatus(String(message || 'Ce document n est plus verrouille pour votre edition.'));
+        setStatus(String(message || 'Ce document n’est plus verrouillé pour votre édition.'));
         syncDictationToolbarButtons();
     }
 
@@ -1514,31 +1514,31 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
         htmlField.setToolbarButtonState('omoDocumentDictate', {
             label: isRecording ? 'En cours...' : 'Dicter',
-            title: isRecording ? 'Enregistrement en cours' : 'Demarrer une dictee',
+            title: isRecording ? 'Enregistrement en cours' : 'Démarrer une dictée',
             disabled: isRecording || isTranscribing || isRewriting || isSummarizing,
             hidden: !aiToolsVisible
         });
         htmlField.setToolbarButtonState('omoDocumentTranscript', {
-            label: isTranscribing ? 'Transcription...' : 'Transcript',
-            title: 'Arreter l enregistrement et transcrire',
+            label: isTranscribing ? 'Transcription...' : 'Transcrire',
+            title: 'Arrêter l’enregistrement et transcrire',
             disabled: !isRecording || isTranscribing || isRewriting || isSummarizing,
             hidden: !aiToolsVisible
         });
         htmlField.setToolbarButtonState('omoDocumentDictationCancel', {
             label: 'Annuler',
-            title: 'Annuler la dictee en cours',
+            title: 'Annuler la dictée en cours',
             disabled: (!isRecording && !isTranscribing),
             hidden: !aiToolsVisible || (!isRecording && !isTranscribing)
         });
         htmlField.setToolbarButtonState('omoDocumentRewrite', {
             label: isRewriting ? 'Rewrite...' : 'Rewrite',
-            title: isRewriting ? 'Reecriture en cours' : 'Reecrire la selection',
+            title: isRewriting ? 'Réécriture en cours' : 'Réécrire la sélection',
             disabled: isRecording || isTranscribing || isRewriting || isSummarizing,
             hidden: !aiToolsVisible
         });
         htmlField.setToolbarButtonState('omoDocumentSummarize', {
-            label: isSummarizing ? 'Resumer...' : 'Resumer',
-            title: isSummarizing ? 'Resume en cours' : 'Resumer la selection',
+            label: isSummarizing ? 'Résumer...' : 'Résumer',
+            title: isSummarizing ? 'Résumé en cours' : 'Résumer la sélection',
             disabled: isRecording || isTranscribing || isRewriting || isSummarizing,
             hidden: !aiToolsVisible
         });
@@ -1574,18 +1574,18 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         }
 
         if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError') {
-            return 'Aucun micro n est disponible sur cet appareil.';
+            return 'Aucun micro n’est disponible sur cet appareil.';
         }
 
         if (errorName === 'AbortError') {
-            return 'La dictee a ete interrompue.';
+            return 'La dictée a été interrompue.';
         }
 
         if (error && error.message) {
             return String(error.message);
         }
 
-        return 'Impossible d utiliser la dictee pour le moment.';
+        return 'Impossible d’utiliser la dictée pour le moment.';
     }
 
     function abortTranscriptionRequest() {
@@ -1760,7 +1760,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             name: 'omoDocumentEmbed',
             group: 'omo-embed',
             label: 'Document',
-            title: 'Inserer un document',
+            title: 'Insérer un document',
             className: 'note-btn-light',
             onClick: function () {
                 openDocumentEmbedPicker();
@@ -1782,7 +1782,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                 name: 'omoDocumentDictate',
                 group: 'omo-ai-tools',
                 label: 'Dicter',
-                title: 'Demarrer une dictee',
+                title: 'Démarrer une dictée',
                 className: 'note-btn-light',
                 hidden: true,
                 onClick: function () {
@@ -1792,8 +1792,8 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             customButtons.push({
                 name: 'omoDocumentTranscript',
                 group: 'omo-ai-tools',
-                label: 'Transcript',
-                title: 'Arreter l enregistrement et transcrire',
+                label: 'Transcrire',
+                title: 'Arrêter l’enregistrement et transcrire',
                 className: 'note-btn-light',
                 disabled: true,
                 hidden: true,
@@ -1805,20 +1805,20 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                 name: 'omoDocumentDictationCancel',
                 group: 'omo-ai-tools',
                 label: 'Annuler',
-                title: 'Annuler la dictee en cours',
+                title: 'Annuler la dictée en cours',
                 className: 'note-btn-light',
                 hidden: true,
                 disabled: true,
                 onClick: function () {
                     cleanupDictation({ discard: true });
-                    setDictationStatus('Dictee annulee.', 'error');
+                    setDictationStatus('Dictée annulée.', 'error');
                 }
             });
             customButtons.push({
                 name: 'omoDocumentRewrite',
                 group: 'omo-ai-tools',
                 label: 'Rewrite',
-                title: 'Reecrire la selection',
+                title: 'Réécrire la sélection',
                 className: 'note-btn-light',
                 hidden: true,
                 onClick: function () {
@@ -1828,8 +1828,8 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             customButtons.push({
                 name: 'omoDocumentSummarize',
                 group: 'omo-ai-tools',
-                label: 'Resumer',
-                title: 'Resumer la selection',
+                label: 'Résumer',
+                title: 'Résumer la sélection',
                 className: 'note-btn-light',
                 hidden: true,
                 onClick: function () {
@@ -1872,16 +1872,16 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             });
             htmlField.setToolbarButtonState('omoDocumentDictate', {
                 label: 'Dicter',
-                title: 'Demarrer une dictee'
+                title: 'Démarrer une dictée'
             });
             htmlField.setToolbarButtonState('omoDocumentTranscript', {
-                title: 'Arreter l enregistrement et transcrire'
+                title: 'Arrêter l’enregistrement et transcrire'
             });
             htmlField.setToolbarButtonState('omoDocumentRewrite', {
-                title: 'Reecrire la selection'
+                title: 'Réécrire la sélection'
             });
             htmlField.setToolbarButtonState('omoDocumentSummarize', {
-                title: 'Resumer la selection'
+                title: 'Résumer la sélection'
             });
         }
 
@@ -1927,7 +1927,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         }
 
         if (typeof window.MediaRecorder === 'undefined' || !navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
-            setDictationStatus('La dictee n est pas disponible sur ce navigateur.', 'error');
+            setDictationStatus('La dictée n’est pas disponible sur ce navigateur.', 'error');
             return;
         }
 
@@ -1955,7 +1955,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
             recorder.start();
             setDictationMode('recording');
-            setDictationStatus('Enregistrement en cours. Quand vous avez fini, cliquez sur Transcript.', 'live');
+            setDictationStatus('Enregistrement en cours. Quand vous avez terminé, cliquez sur Transcrire.', 'live');
         } catch (error) {
             cleanupDictation({ discard: true, keepStatus: true });
             setDictationStatus(formatDictationError(error), 'error');
@@ -2016,7 +2016,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             }
 
             if (!htmlField || typeof htmlField.insertTextAtCursor !== 'function') {
-                throw new Error('Impossible d inserer la transcription dans l editeur.');
+                throw new Error('Impossible d’insérer la transcription dans l’éditeur.');
             }
 
             htmlField.insertTextAtCursor(transcriptText);
@@ -2025,7 +2025,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             }
 
             setDictationMode('idle');
-            setDictationStatus('Transcript insere dans le document.', 'success');
+            setDictationStatus('Transcription insérée dans le document.', 'success');
         } catch (error) {
             setDictationMode('idle');
             setDictationStatus(formatDictationError(error), 'error');
@@ -2040,7 +2040,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         }
 
         if (!htmlField || typeof htmlField.getSelectedText !== 'function' || typeof htmlField.getPlainText !== 'function') {
-            setDictationStatus('Impossible d acceder a la selection dans l editeur.', 'error');
+            setDictationStatus('Impossible d’accéder à la sélection dans l’éditeur.', 'error');
             return;
         }
 
@@ -2053,7 +2053,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         const rewritesWholeDocument = normalizeRewriteComparisonText(selectedText) === normalizeRewriteComparisonText(fullText);
 
         if (selectedText === '') {
-            setDictationStatus('Selectionnez un bloc de texte avant de lancer Rewrite.', 'error');
+            setDictationStatus('Sélectionnez un bloc de texte avant de lancer la réécriture.', 'error');
             return;
         }
 
@@ -2063,7 +2063,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         }
 
         setRewriteMode('pending');
-        setDictationStatus('Reecriture en cours...', 'live');
+        setDictationStatus('Réécriture en cours...', 'live');
 
         try {
             const formData = new FormData();
@@ -2090,21 +2090,21 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             });
 
             if (!response.ok) {
-                throw new Error('Impossible de reecrire cette selection.');
+                throw new Error('Impossible de réécrire cette sélection.');
             }
 
             const payload = await response.json();
             if (!payload || payload.status !== true) {
-                throw new Error(payload && payload.message ? payload.message : 'Impossible de reecrire cette selection.');
+                throw new Error(payload && payload.message ? payload.message : 'Impossible de réécrire cette sélection.');
             }
 
             const rewrittenText = String(payload.text || '').trim();
             if (rewrittenText === '') {
-                throw new Error('La reecriture est vide.');
+                throw new Error('La réécriture est vide.');
             }
 
             if (typeof htmlField.replaceSelectionWithText !== 'function') {
-                throw new Error('Impossible de remplacer la selection dans l editeur.');
+                throw new Error('Impossible de remplacer la sélection dans l’éditeur.');
             }
 
             htmlField.replaceSelectionWithText(rewrittenText);
@@ -2113,11 +2113,11 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             }
 
             setRewriteMode('idle');
-            setDictationStatus('Selection reecrite.', 'success');
+            setDictationStatus('Sélection réécrite.', 'success');
         } catch (error) {
             setRewriteMode('idle');
             setDictationStatus(
-                error && error.message ? String(error.message) : 'Impossible de reecrire cette selection.',
+                error && error.message ? String(error.message) : 'Impossible de réécrire cette sélection.',
                 'error'
             );
         } finally {
@@ -2131,7 +2131,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         }
 
         if (!htmlField || typeof htmlField.getSelectedText !== 'function' || typeof htmlField.getPlainText !== 'function') {
-            setDictationStatus('Impossible d acceder a la selection dans l editeur.', 'error');
+            setDictationStatus('Impossible d’accéder à la sélection dans l’éditeur.', 'error');
             return;
         }
 
@@ -2143,7 +2143,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         const fullText = String(htmlField.getPlainText() || '').trim();
 
         if (selectedText === '') {
-            setDictationStatus('Selectionnez un bloc de texte avant de lancer Resumer.', 'error');
+            setDictationStatus('Sélectionnez un bloc de texte avant de lancer le résumé.', 'error');
             return;
         }
 
@@ -2153,7 +2153,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         }
 
         setSummarizeMode('pending');
-        setDictationStatus('Resume en cours...', 'live');
+        setDictationStatus('Résumé en cours...', 'live');
 
         try {
             const formData = new FormData();
@@ -2179,21 +2179,21 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             });
 
             if (!response.ok) {
-                throw new Error('Impossible de resumer cette selection.');
+                throw new Error('Impossible de résumer cette sélection.');
             }
 
             const payload = await response.json();
             if (!payload || payload.status !== true) {
-                throw new Error(payload && payload.message ? payload.message : 'Impossible de resumer cette selection.');
+                throw new Error(payload && payload.message ? payload.message : 'Impossible de résumer cette sélection.');
             }
 
             const summarizedText = String(payload.text || '').trim();
             if (summarizedText === '') {
-                throw new Error('Le resume est vide.');
+                throw new Error('Le résumé est vide.');
             }
 
             if (typeof htmlField.replaceSelectionWithText !== 'function') {
-                throw new Error('Impossible de remplacer la selection dans l editeur.');
+                throw new Error('Impossible de remplacer la sélection dans l’éditeur.');
             }
 
             htmlField.replaceSelectionWithText(summarizedText);
@@ -2202,11 +2202,11 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             }
 
             setSummarizeMode('idle');
-            setDictationStatus('Selection resumee.', 'success');
+            setDictationStatus('Sélection résumée.', 'success');
         } catch (error) {
             setSummarizeMode('idle');
             setDictationStatus(
-                error && error.message ? String(error.message) : 'Impossible de resumer cette selection.',
+                error && error.message ? String(error.message) : 'Impossible de résumer cette sélection.',
                 'error'
             );
         } finally {
@@ -2325,7 +2325,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         setStatus('');
 
         if (editLockLost) {
-            setStatus('Ce document n est plus verrouille pour votre edition. Rechargez le formulaire.');
+            setStatus('Ce document n’est plus verrouillé pour votre édition. Rechargez le formulaire.');
             return;
         }
 

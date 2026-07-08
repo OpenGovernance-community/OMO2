@@ -122,13 +122,13 @@ if (!is_array($result) || ($result['status'] ?? false) !== true) {
     http_response_code(422);
     echo json_encode(array(
         'status' => false,
-        'message' => trim((string)($result['text'] ?? 'Impossible de creer ce document.')),
+        'message' => trim((string)($result['text'] ?? 'Impossible de créer ce document.')),
     ));
     exit;
 }
 
 echo json_encode(array(
     'status' => true,
-    'message' => $documentId > 0 ? 'Document mis a jour.' : 'Document cree.',
+    'message' => $documentId > 0 ? 'Document mis à jour.' : 'Document créé.',
     'id' => (int)$document->getId(),
 ));

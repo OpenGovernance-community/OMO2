@@ -90,13 +90,13 @@ if (!$isSuccess) {
     http_response_code(422);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Impossible d enregistrer ce lien.',
+        'message' => 'Impossible d’enregistrer ce lien.',
     ));
     exit;
 }
 
 echo json_encode(array(
     'status' => true,
-    'message' => $shareId > 0 ? 'Lien mis a jour.' : 'Lien cree.',
+    'message' => $shareId > 0 ? 'Lien mis à jour.' : 'Lien créé.',
     'shareUrl' => $shareLink->buildShareUrl(),
 ));
