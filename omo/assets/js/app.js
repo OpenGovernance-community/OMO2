@@ -507,6 +507,17 @@ function omoGetTranslationLocale() {
     return /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/.test(locale) ? locale : '';
 }
 
+function omoGetUrlResolutionBase() {
+    if (typeof document !== 'undefined' && typeof document.baseURI === 'string') {
+        const baseUri = document.baseURI.trim();
+        if (baseUri !== '') {
+            return baseUri;
+        }
+    }
+
+    return window.location.href;
+}
+
 function omoResolveAppUrl(url) {
     if (typeof url !== 'string' || url.trim() === '') {
         return url;
@@ -525,7 +536,7 @@ function omoResolveAppUrl(url) {
     const translationLocale = omoGetTranslationLocale();
 
     try {
-        const parsedUrl = new URL(resolvedUrl, window.location.origin);
+        const parsedUrl = new URL(resolvedUrl, omoGetUrlResolutionBase());
         const isAbsolute = /^[a-z][a-z0-9+\-.]*:/i.test(resolvedUrl);
 
         if (parsedUrl.origin !== window.location.origin) {
@@ -4238,7 +4249,7 @@ function omoOpenSearchDocumentResult(documentUrl, title) {
 
     let parsedUrl = null;
     try {
-        parsedUrl = new URL(omoResolveAppUrl(resolvedUrl), window.location.origin);
+        parsedUrl = new URL(omoResolveAppUrl(resolvedUrl), omoGetUrlResolutionBase());
     } catch (error) {
         parsedUrl = null;
     }
