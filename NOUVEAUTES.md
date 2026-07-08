@@ -2,6 +2,16 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-08
+
+Le choix explicite de langue dans le profil reprend maintenant bien la main sur l affichage. Si un compte gardait encore une ancienne preference en base, le cookie mis a jour par le selecteur etait auparavant ignore au profit de cette valeur stale, ce qui pouvait laisser l interface en anglais meme apres avoir choisi `Francais`.
+
+Le chargeur de traductions traite maintenant la langue source comme un affichage direct, sans creer de bundle `fr` vide marque `outdated`. Pour les autres langues, le comportement reste non bloquant: la page affiche tout de suite les textes deja disponibles, lance le refresh en arriere-plan si le bundle est manquant ou obsolete, puis la traduction complete est utilisee au chargement suivant.
+
+Les textes source francais des bundles ont ete relus et corriges sur les parcours Documents et sur l authentification partagee. Les accents, apostrophes, libelles de boutons et quelques formulations trop bancales ou trop brutes ont ete remis dans un francais plus propre, avec aussi un meilleur singulier/pluriel sur certains messages.
+
+Le module Team a recu la meme passe de relecture sur ses textes source francais. Les vues cartes, compacte et carte geo, la popup d actions membre et les messages de retour API affichent maintenant des accents corrects et des libelles plus naturels, y compris pour les textes autour de la geolocalisation.
+
 ## 2026-07-07
 
 Dans le menu `Deplacer` des documents OMO, la liste des destinations tient maintenant compte du droit reel `CAN_CREATE_DOCUMENT`. Les holons et dossiers proposes sont filtres selon les permissions effectives de la personne connectee, et l action serveur refuse aussi un deplacement manuel vers une destination non autorisee.

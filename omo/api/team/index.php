@@ -80,7 +80,7 @@ if (!$organization->canViewDetail()) {
     <div class="omo-team omo-panel-view">
         <div class="omo-panel-view__body">
             <div class="omo-panel-view__body_content">
-                <div class="omo-team__empty omo-empty-state">Acces refuse a cette organisation.</div>
+                <div class="omo-team__empty omo-empty-state">Accès refusé à cette organisation.</div>
             </div>
         </div>
     </div>
@@ -98,7 +98,7 @@ if (
     <div class="omo-team omo-panel-view">
         <div class="omo-panel-view__body">
             <div class="omo-panel-view__body_content">
-                <div class="omo-team__empty omo-empty-state">Acces refuse a la liste des personnes.</div>
+                <div class="omo-team__empty omo-empty-state">Accès refusé à la liste des personnes.</div>
             </div>
         </div>
     </div>
@@ -134,7 +134,7 @@ if ($hasStructureContext && $currentHolonId > 0 && (int)$currentHolon->getId() !
         <div class="omo-team omo-panel-view">
             <div class="omo-panel-view__body">
                 <div class="omo-panel-view__body_content">
-                    <div class="omo-team__empty omo-empty-state">Acces refuse a ce holon.</div>
+                    <div class="omo-team__empty omo-empty-state">Accès refusé à ce holon.</div>
                 </div>
             </div>
         </div>
@@ -368,15 +368,15 @@ $currentHolonTemplateLabel = $hasStructureContext
 if ($currentHolonTemplateLabel === '') {
     $currentHolonTemplateLabel = $currentHolonTypeLabel;
 }
-$teamEmptyMessage = "Aucune personne n'est encore liee a ce " . $currentHolonTypeLabel . '.';
-$teamMapEmptyMessage = "Aucun membre n'a encore de position geographique dans ce contexte.";
+$teamEmptyMessage = "Aucune personne n'est encore liée à ce " . $currentHolonTypeLabel . '.';
+$teamMapEmptyMessage = "Aucun membre n'a encore de position géographique dans ce contexte.";
 
 if ($teamScope === 'global') {
-    $teamEmptyMessage = "Aucune personne n'est encore liee a cette organisation.";
-    $teamMapEmptyMessage = "Aucun membre n'a encore de position geographique dans cette organisation.";
+    $teamEmptyMessage = "Aucune personne n'est encore liée à cette organisation.";
+    $teamMapEmptyMessage = "Aucun membre n'a encore de position géographique dans cette organisation.";
 } elseif ($teamScope === 'descendants') {
-    $teamEmptyMessage = "Aucune personne n'est encore liee a ce contexte et a ses descendants.";
-    $teamMapEmptyMessage = "Aucun membre n'a encore de position geographique dans ce contexte et ses descendants.";
+    $teamEmptyMessage = "Aucune personne n'est encore liée à ce contexte et à ses descendants.";
+    $teamMapEmptyMessage = "Aucun membre n'a encore de position géographique dans ce contexte et ses descendants.";
 }
 
 $canAddCurrentHolonMembers = $hasStructureContext ? $currentHolon->isAllowed('CAN_ADD_MEMBER') : false;
@@ -456,7 +456,7 @@ if ($leafletMapsEnabled) {
                     <div
                         class="omo-scope-toggle omo-team__scope-toggle"
                         role="tablist"
-                        aria-label="Portee des membres"
+                        aria-label="Portée des membres"
                         data-omo-scope-switch="<?= omoApiEscape($teamScope) ?>"
                         style="--omo-scope-option-count: <?= (int)count($availableTeamScopes) ?>; --omo-scope-active-index: <?= (int)$teamScopeActiveIndex ?>;"
                     >
@@ -479,7 +479,7 @@ if ($leafletMapsEnabled) {
                     <button type="button" class="omo-team__view-button omo-segmented__button is-active" data-team-view-button="cards" aria-pressed="true">Cartes</button>
                     <button type="button" class="omo-team__view-button omo-segmented__button" data-team-view-button="compact" aria-pressed="false">Compact</button>
                     <?php if ($leafletMapsEnabled): ?>
-                    <button type="button" class="omo-team__view-button omo-segmented__button" data-team-view-button="map" aria-pressed="false">Carte geo</button>
+                    <button type="button" class="omo-team__view-button omo-segmented__button" data-team-view-button="map" aria-pressed="false">Carte géo</button>
                     <?php endif; ?>
                 </div>
             </div>
@@ -620,8 +620,8 @@ if ($leafletMapsEnabled) {
                 <div class="omo-team__compact-list generic-file-list__table">
                     <div class="omo-team__compact-list-header generic-file-list__header">
                         <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--name">Nom</div>
-                        <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--firstname">Prenom</div>
-                        <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--phone">Telephone</div>
+                        <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--firstname">Prénom</div>
+                        <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--phone">Téléphone</div>
                         <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--email">E-mail</div>
                     </div>
                     <?php foreach ($memberCards as $card): ?>
@@ -664,14 +664,14 @@ if ($leafletMapsEnabled) {
                         } else {
                             if ($card['isContextAdmin']) {
                                 $compactPrivilegeLabels[] = array(
-                                    'label' => 'Admin contexte',
+                                    'label' => 'Admin du contexte',
                                     'className' => 'omo-team__compact-badge',
                                 );
                             }
 
                             if ($card['isOrganizationAdmin']) {
                                 $compactPrivilegeLabels[] = array(
-                                    'label' => 'Admin organisation',
+                                    'label' => "Admin de l'organisation",
                                     'className' => 'omo-team__compact-badge omo-team__compact-badge--organization',
                                 );
                             }
@@ -721,7 +721,7 @@ if ($leafletMapsEnabled) {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="omo-team__compact-cell generic-file-list__cell" data-label="Telephone">
+                                <div class="omo-team__compact-cell generic-file-list__cell" data-label="Téléphone">
                                     <span class="<?= $compactPhone === '' ? 'omo-team__compact-placeholder' : '' ?>"><?= omoApiEscape($compactPhone !== '' ? $compactPhone : '-') ?></span>
                                 </div>
                                 <div class="omo-team__compact-cell generic-file-list__cell" data-label="E-mail">
@@ -743,7 +743,7 @@ if ($leafletMapsEnabled) {
             <?php else: ?>
                 <div class="omo-team__map-shell">
                     <div class="omo-team__map-summary">
-                        <?= omoApiEscape(count($mapMembers)) ?> membre<?= count($mapMembers) > 1 ? 's' : '' ?> geolocalise<?= count($mapMembers) > 1 ? 's' : '' ?>.
+                        <?= omoApiEscape(count($mapMembers)) ?> membre<?= count($mapMembers) > 1 ? 's' : '' ?> géolocalisé<?= count($mapMembers) > 1 ? 's' : '' ?>.
                     </div>
                     <div id="omo-team-map" class="omo-team__map" data-team-map="1"></div>
                 </div>
@@ -1636,12 +1636,12 @@ function omoTeamEnsureMapReady() {
                 popupBits.push('<span class="omo-team__map-popup-badge omo-team__map-popup-badge--admin">Admin du contexte</span>');
             }
             if (member.isOrganizationAdmin) {
-                popupBits.push('<span class="omo-team__map-popup-badge">Admin organisation</span>');
+                popupBits.push('<span class="omo-team__map-popup-badge">Admin de l\'organisation</span>');
             }
             popupBits.push('</div>');
 
             popupBits.push('<div class="omo-team__map-popup-meta">');
-            popupBits.push('<div class="omo-team__map-popup-meta-row"><div class="omo-team__map-popup-meta-label">E-mail</div><div class="omo-team__map-popup-meta-value">' + omoTeamEscapeHtml(member.email || 'Non renseigne') + '</div></div>');
+            popupBits.push('<div class="omo-team__map-popup-meta-row"><div class="omo-team__map-popup-meta-label">E-mail</div><div class="omo-team__map-popup-meta-value">' + omoTeamEscapeHtml(member.email || 'Non renseigné') + '</div></div>');
             popupBits.push('<div class="omo-team__map-popup-meta-row"><div class="omo-team__map-popup-meta-label">Ajout</div><div class="omo-team__map-popup-meta-value">' + omoTeamEscapeHtml(member.joinedAtLabel || 'N/A') + '</div></div>');
             popupBits.push('<div class="omo-team__map-popup-meta-row"><div class="omo-team__map-popup-meta-label">Connexion</div><div class="omo-team__map-popup-meta-value">' + omoTeamEscapeHtml(member.lastSeenLabel || 'Jamais') + '</div></div>');
             popupBits.push('</div>');
@@ -1845,7 +1845,7 @@ $(document)
     }
 
     if (action === 'cancel_invitation') {
-        confirmationMessage = 'Annuler l invitation envoyee a ' + displayName + ' ?';
+        confirmationMessage = 'Annuler l\'invitation envoyée à ' + displayName + ' ?';
     } else if (action === 'remove') {
         confirmationMessage = 'Retirer ' + displayName + ' du contexte ' + contextLabel + ' ?';
     } else if (action === 'grant_admin') {

@@ -5,19 +5,19 @@ use dbObject\Document;
 use dbObject\Organization;
 
 $sourceLang = [
-    'documents.move.error.invalid' => ['text' => 'Le document a deplacer est invalide.', 'context' => 'Error shown when the source document id is invalid.'],
-    'documents.move.error.not_found' => ['text' => 'Le document demande est introuvable.', 'context' => 'Error shown when the source document cannot be loaded.'],
+    'documents.move.error.invalid' => ['text' => 'Le document à déplacer est invalide.', 'context' => 'Error shown when the source document id is invalid.'],
+    'documents.move.error.not_found' => ['text' => 'Le document demandé est introuvable.', 'context' => 'Error shown when the source document cannot be loaded.'],
     'documents.move.error.organization_not_found' => ['text' => 'Organisation introuvable.', 'context' => 'Error shown when the document organization cannot be loaded.'],
-    'documents.move.error.forbidden' => ['text' => 'Vous n avez pas les droits pour deplacer ce document.', 'context' => 'Error shown when the user cannot move the document.'],
-    'documents.move.error.no_destination' => ['text' => 'Aucune destination compatible n a ete trouvee pour ce document.', 'context' => 'Error shown when no destination is available.'],
-    'documents.move.field.destination' => ['text' => 'Ou ca va', 'context' => 'Label shown above the destination picker.'],
+    'documents.move.error.forbidden' => ['text' => 'Vous n’avez pas le droit de déplacer ce document.', 'context' => 'Error shown when the user cannot move the document.'],
+    'documents.move.error.no_destination' => ['text' => 'Aucune destination compatible n’a été trouvée pour ce document.', 'context' => 'Error shown when no destination is available.'],
+    'documents.move.field.destination' => ['text' => 'Destination', 'context' => 'Label shown above the destination picker.'],
     'documents.move.field.search_placeholder' => ['text' => 'Rechercher une destination', 'context' => 'Search placeholder used in the move dialog.'],
     'documents.move.action.cancel' => ['text' => 'Annuler', 'context' => 'Button used to cancel document moving.'],
-    'documents.move.action.submit' => ['text' => 'Deplacer', 'context' => 'Button used to submit document moving.'],
+    'documents.move.action.submit' => ['text' => 'Déplacer', 'context' => 'Button used to submit document moving.'],
     'documents.move.status.invalid_destination' => ['text' => 'Choisissez une destination valide.', 'context' => 'Hint or error shown when no valid destination is selected.'],
-    'documents.move.status.select_other' => ['text' => 'Selectionnez une autre destination pour activer le deplacement.', 'context' => 'Hint shown when the current destination is selected.'],
+    'documents.move.status.select_other' => ['text' => 'Sélectionnez une autre destination pour activer le déplacement.', 'context' => 'Hint shown when the current destination is selected.'],
     'documents.move.status.no_match' => ['text' => 'Aucune destination correspondante', 'context' => 'Option shown when the destination search yields no result.'],
-    'documents.move.status.submit_other' => ['text' => 'Selectionnez une autre destination avant de deplacer ce document.', 'context' => 'Error shown when trying to submit with the current destination.'],
+    'documents.move.status.submit_other' => ['text' => 'Sélectionnez une autre destination avant de déplacer ce document.', 'context' => 'Error shown when trying to submit with the current destination.'],
 ];
 
 $lang = omoLoadTranslationBundle('omo_documents_move', $sourceLang);
@@ -75,7 +75,7 @@ if ($documentId <= 0) {
         <div class="omo-document-move__header generic-drawer-header generic-drawer-header--sticky">
             <div class="generic-drawer-header__copy omo-document-move__header-copy">
                 <div class="generic-card-title generic-card-title--eyebrow">Document</div>
-                <h3 class="generic-card-title generic-card-title--medium">Deplacer un document</h3>
+                <h3 class="generic-card-title generic-card-title--medium">Déplacer un document</h3>
             </div>
         </div>
         <div class="omo-document-move__shell">
@@ -309,7 +309,7 @@ function submitMove(event) {
         })
         .then(function (result) {
             if (!result.ok || !result.data || result.data.status !== 'ok') {
-                throw new Error(result.data && result.data.message ? result.data.message : "Impossible de deplacer le document.");
+                throw new Error(result.data && result.data.message ? result.data.message : "Impossible de déplacer le document.");
             }
 
             closeMovePopup();
@@ -324,7 +324,7 @@ function submitMove(event) {
                 elements.submit.disabled = false;
             }
 
-            showStatus(error && error.message ? error.message : "Impossible de deplacer le document.", 'error');
+            showStatus(error && error.message ? error.message : "Impossible de déplacer le document.", 'error');
         });
 }
 
