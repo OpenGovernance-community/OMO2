@@ -140,10 +140,14 @@
             return;
         }
 
+        var resolvedUrl = (typeof window.omoResolveAppUrl === 'function')
+            ? window.omoResolveAppUrl(url)
+            : url;
+
         runContainerCleanup(container);
         container.innerHTML = '<div class="loading">' + getConfigTextValue('translations.loadingLabel', 'Chargement...') + '</div>';
 
-        fetch(url, {
+        fetch(resolvedUrl, {
             credentials: 'same-origin',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'
@@ -370,6 +374,9 @@
         var drawer = document.getElementById('commonTopbarDrawer');
         var body = document.getElementById('commonTopbarDrawerBody');
         var titleNode = document.getElementById('commonTopbarDrawerTitle');
+        var resolvedContent = mode === 'iframe' && typeof window.omoResolveAppUrl === 'function'
+            ? window.omoResolveAppUrl(content)
+            : content;
 
         if (!drawer || !body || !titleNode) {
             return;
@@ -382,7 +389,7 @@
         body.classList.remove('common-topbar-drawer__body--iframe');
         if (mode === 'iframe') {
             body.classList.add('common-topbar-drawer__body--iframe');
-            body.innerHTML = '<iframe class="common-topbar-drawer__iframe" src="' + content + '"></iframe>';
+            body.innerHTML = '<iframe class="common-topbar-drawer__iframe" src="' + resolvedContent + '"></iframe>';
             bindIframeThemeSync(body.querySelector('iframe'));
         } else if (mode === 'fetch') {
             renderRemoteContent(body, content);
@@ -399,6 +406,9 @@
         var modal = document.getElementById('commonTopbarModal');
         var body = document.getElementById('commonTopbarModalBody');
         var titleNode = document.getElementById('commonTopbarModalTitle');
+        var resolvedContent = mode === 'iframe' && typeof window.omoResolveAppUrl === 'function'
+            ? window.omoResolveAppUrl(content)
+            : content;
 
         if (!modal || !body || !titleNode) {
             return;
@@ -409,7 +419,7 @@
         resetModalPanelOffset();
         titleNode.textContent = title || getConfigTextValue('modal.defaultTitle', 'Panneau');
         if (mode === 'iframe') {
-            body.innerHTML = '<iframe class="common-topbar-modal__iframe" src="' + content + '"></iframe>';
+            body.innerHTML = '<iframe class="common-topbar-modal__iframe" src="' + resolvedContent + '"></iframe>';
             bindIframeThemeSync(body.querySelector('iframe'));
         } else if (mode === 'fetch') {
             renderRemoteContent(body, content);

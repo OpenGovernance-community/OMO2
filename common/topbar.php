@@ -138,6 +138,12 @@ function commonRenderTopbar(array $options = [])
     $currentLocalePreference = function_exists('translationBundleGetRequestLocalePreference')
         ? translationBundleGetRequestLocalePreference('lang')
         : $currentLocale;
+    $systemLocale = function_exists('translationBundleResolveBrowserLocale')
+        ? translationBundleResolveBrowserLocale(
+            function_exists('translationBundleGetSupportedLocales') ? translationBundleGetSupportedLocales() : [],
+            'fr'
+        )
+        : $currentLocale;
     $helpItems = array_values($options['helpItems'] ?? []);
     $faqHelpIndex = null;
     foreach ($helpItems as $index => $item) {
@@ -244,6 +250,7 @@ function commonRenderTopbar(array $options = [])
                 'colorStyleOceanBlueLabel' => (string)($options['profile']['preferences']['colorStyleOceanBlueLabel'] ?? 'Ocean Blue'),
                 'currentLocale' => (string)($options['profile']['preferences']['currentLocale'] ?? $currentLocalePreference),
                 'resolvedLocale' => (string)($options['profile']['preferences']['resolvedLocale'] ?? $currentLocale),
+                'systemLocale' => (string)($options['profile']['preferences']['systemLocale'] ?? $systemLocale),
                 'systemLabel' => (string)($options['profile']['preferences']['systemLabel'] ?? 'Systeme'),
                 'themeSystemLabel' => (string)($options['profile']['preferences']['themeSystemLabel'] ?? 'Systeme'),
                 'themeLightLabel' => (string)($options['profile']['preferences']['themeLightLabel'] ?? 'Clair'),
@@ -315,9 +322,13 @@ function commonRenderTopbar(array $options = [])
     $currentLanguageTileLabel = function_exists('translationBundleGetSimpleLocaleLabel')
         ? translationBundleGetSimpleLocaleLabel($currentLocaleCode, 'fr')
         : strtoupper(substr($currentLocaleCode, 0, 2));
-    $resolvedLocaleLabel = function_exists('translationBundleGetSimpleLocaleLabel')
-        ? translationBundleGetSimpleLocaleLabel((string)$config['profile']['preferences']['resolvedLocale'], 'fr')
-        : strtoupper(substr((string)$config['profile']['preferences']['resolvedLocale'], 0, 2));
+    $systemLocaleCode = trim((string)$config['profile']['preferences']['systemLocale']);
+    if ($systemLocaleCode === '') {
+        $systemLocaleCode = trim((string)$config['profile']['preferences']['resolvedLocale']);
+    }
+    $systemLocaleLabel = function_exists('translationBundleGetSimpleLocaleLabel')
+        ? translationBundleGetSimpleLocaleLabel($systemLocaleCode, 'fr')
+        : strtoupper(substr($systemLocaleCode, 0, 2));
 
     if (!$assetsLoaded) {
         commonRenderTopbarJqueryAssets();
@@ -532,7 +543,7 @@ function commonRenderTopbar(array $options = [])
                                                     type="button"
                                                     class="common-topbar-profile-preference__option<?= $config['profile']['preferences']['currentLocale'] === 'system' ? ' is-active' : '' ?>"
                                                     data-topbar-language-option="system"
-                                                ><?= htmlspecialchars($config['profile']['preferences']['systemLabel']) ?> (<?= htmlspecialchars($resolvedLocaleLabel) ?>)</button>
+                                                ><?= htmlspecialchars($config['profile']['preferences']['systemLabel']) ?> (<?= htmlspecialchars($systemLocaleLabel) ?>)</button>
                                                 <?php foreach ($config['profile']['preferences']['languageOptions'] as $languageOption): ?>
                                                     <?php $languageOptionLocale = (string)($languageOption['locale'] ?? ''); ?>
                                                     <button

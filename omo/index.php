@@ -1409,6 +1409,7 @@ window.omoConfig = <?=
             'name' => $organizationContext['name'],
             'host' => $organizationContext['host'],
             'routeMode' => $organizationContext['routeMode'] ?? 'host',
+            'translationLocale' => omoGetTranslationLocale(),
             'rootHolonId' => $organizationRootHolonId,
             'structureEnabled' => $isStructureApplicationEnabled,
             'orgLookupError' => $organizationContext['error'],

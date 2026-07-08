@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__, 3) . '/common/leaflet_helper.php';
+require_once dirname(__DIR__, 3) . '/common/team/translations.php';
 
 use dbObject\ArrayUserOrganization;
 use dbObject\Holon;
@@ -8,20 +9,9 @@ use dbObject\Organization;
 use dbObject\User;
 use dbObject\UserOrganization;
 
-function omoTeamHolonTypeLabel(Holon $holon)
+function omoTeamHolonTypeLabel(Holon $holon, ?array $lang = null, ?array $sourceLang = null)
 {
-    switch ((int)$holon->get('IDtypeholon')) {
-        case 4:
-            return 'organisation';
-        case 3:
-            return 'groupe';
-        case 2:
-            return 'cercle';
-        case 1:
-            return 'rôle';
-        default:
-            return 'holon';
-    }
+    return omoTeamHolonTypeLabelByTypeId((int)$holon->get('IDtypeholon'), $lang, $sourceLang);
 }
 
 function omoTeamNormalizeLatLong($value)
@@ -44,6 +34,9 @@ function omoTeamNormalizeLatLong($value)
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 $currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
+$sourceLang = omoTeamSourceLang();
+$lang = omoTeamLoadTranslationBundle();
+$teamLocale = omoGetTranslationLocale();
 
 if ($organizationId <= 0) {
     http_response_code(400);
@@ -51,7 +44,7 @@ if ($organizationId <= 0) {
     <div class="omo-team omo-panel-view">
         <div class="omo-panel-view__body">
             <div class="omo-panel-view__body_content">
-                <div class="omo-team__empty omo-empty-state">Organisation invalide.</div>
+                <div class="omo-team__empty omo-empty-state"><?= omoApiEscape(omoTeamT('team.error.invalid_organization', [], $lang, $sourceLang)) ?></div>
             </div>
         </div>
     </div>
@@ -66,7 +59,7 @@ if (!$organization->load($organizationId)) {
     <div class="omo-team omo-panel-view">
         <div class="omo-panel-view__body">
             <div class="omo-panel-view__body_content">
-                <div class="omo-team__empty omo-empty-state">Organisation introuvable.</div>
+                <div class="omo-team__empty omo-empty-state"><?= omoApiEscape(omoTeamT('team.popup.organization_not_found', [], $lang, $sourceLang)) ?></div>
             </div>
         </div>
     </div>
@@ -80,7 +73,7 @@ if (!$organization->canViewDetail()) {
     <div class="omo-team omo-panel-view">
         <div class="omo-panel-view__body">
             <div class="omo-panel-view__body_content">
-                <div class="omo-team__empty omo-empty-state">Accès refusé à cette organisation.</div>
+                <div class="omo-team__empty omo-empty-state"><?= omoApiEscape(omoTeamT('team.error.people_forbidden', [], $lang, $sourceLang)) ?></div>
             </div>
         </div>
     </div>
@@ -98,7 +91,7 @@ if (
     <div class="omo-team omo-panel-view">
         <div class="omo-panel-view__body">
             <div class="omo-panel-view__body_content">
-                <div class="omo-team__empty omo-empty-state">Accès refusé à la liste des personnes.</div>
+                <div class="omo-team__empty omo-empty-state"><?= omoApiEscape(omoTeamT('team.popup.organization_forbidden', [], $lang, $sourceLang)) ?></div>
             </div>
         </div>
     </div>
@@ -118,7 +111,7 @@ if ($hasStructureContext && $currentHolonId > 0 && (int)$currentHolon->getId() !
         <div class="omo-team omo-panel-view">
             <div class="omo-panel-view__body">
                 <div class="omo-panel-view__body_content">
-                    <div class="omo-team__empty omo-empty-state">Holon introuvable pour cette organisation.</div>
+                    <div class="omo-team__empty omo-empty-state"><?= omoApiEscape(omoTeamT('team.popup.context_not_found', [], $lang, $sourceLang)) ?></div>
                 </div>
             </div>
         </div>
@@ -134,7 +127,7 @@ if ($hasStructureContext && $currentHolonId > 0 && (int)$currentHolon->getId() !
         <div class="omo-team omo-panel-view">
             <div class="omo-panel-view__body">
                 <div class="omo-panel-view__body_content">
-                    <div class="omo-team__empty omo-empty-state">Accès refusé à ce holon.</div>
+                    <div class="omo-team__empty omo-empty-state"><?= omoApiEscape(omoTeamT('team.popup.context_forbidden', [], $lang, $sourceLang)) ?></div>
                 </div>
             </div>
         </div>
@@ -150,9 +143,9 @@ $availableTeamScopes = omoApiGetAvailableContextScopes($canToggleTeamScope, $cur
 $teamScope = omoApiNormalizeContextScope($_GET['team_scope'] ?? 'contextual', $availableTeamScopes);
 $teamScopeActiveIndex = omoApiResolveContextScopeIndex($teamScope, $availableTeamScopes);
 $teamScopeLabels = array(
-    'contextual' => 'Contextuel',
-    'descendants' => 'Descendants',
-    'global' => 'Global',
+    'contextual' => omoTeamT('team.scope.contextual', [], $lang, $sourceLang),
+    'descendants' => omoTeamT('team.scope.descendants', [], $lang, $sourceLang),
+    'global' => omoTeamT('team.scope.global', [], $lang, $sourceLang),
 );
 
 $rawMemberCards = array();
@@ -208,8 +201,12 @@ if ($hasStructureContext) {
 
 $memberCards = [];
 
+$intlLocale = str_replace('-', '_', trim((string)$teamLocale));
+if ($intlLocale === '') {
+    $intlLocale = 'fr';
+}
 $formatter = class_exists('IntlDateFormatter')
-    ? new IntlDateFormatter('fr_CH', IntlDateFormatter::MEDIUM, IntlDateFormatter::NONE)
+    ? new IntlDateFormatter($intlLocale, IntlDateFormatter::MEDIUM, IntlDateFormatter::NONE)
     : null;
 
 $formatDate = static function ($value) use ($formatter): string {
@@ -227,13 +224,18 @@ $formatDate = static function ($value) use ($formatter): string {
     return $value->format('d.m.Y');
 };
 
-$formatLastSeenLabel = static function ($organizationDate, $globalDate) use ($formatDate): string {
+$formatLastSeenLabel = static function ($organizationDate, $globalDate) use ($formatDate, $lang, $sourceLang): string {
     $organizationLabel = $organizationDate instanceof DateTimeInterface ? $formatDate($organizationDate) : '';
     $globalLabel = $globalDate instanceof DateTimeInterface ? $formatDate($globalDate) : '';
 
     if ($organizationLabel !== '') {
         if ($globalLabel !== '') {
-            return $organizationLabel . ' (générale : ' . $globalLabel . ')';
+            return omoTeamT(
+                'team.member.last_seen_global',
+                ['organization' => $organizationLabel, 'global' => $globalLabel],
+                $lang,
+                $sourceLang
+            );
         }
 
         return $organizationLabel;
@@ -330,7 +332,7 @@ foreach ($rawMemberCards as $rawCard) {
 
     $memberCards[] = array(
         'userId' => $userId,
-        'displayName' => $displayName !== '' ? $displayName : ('Utilisateur ' . $userId),
+        'displayName' => $displayName !== '' ? $displayName : omoTeamT('team.member.user_fallback', ['userId' => (string)$userId], $lang, $sourceLang),
         'firstName' => $firstName,
         'lastName' => $lastName,
         'phone' => $phone,
@@ -361,22 +363,24 @@ usort($memberCards, static function (array $left, array $right): int {
     );
 });
 
-$currentHolonTypeLabel = $hasStructureContext ? omoTeamHolonTypeLabel($currentHolon) : 'organisation';
+$currentHolonTypeLabel = $hasStructureContext
+    ? omoTeamHolonTypeLabel($currentHolon, $lang, $sourceLang)
+    : omoTeamT('team.holon_type.organization', [], $lang, $sourceLang);
 $currentHolonTemplateLabel = $hasStructureContext
     ? trim((string)$currentHolon->getTemplateLabel(true))
-    : 'organisation';
+    : omoTeamT('team.holon_type.organization', [], $lang, $sourceLang);
 if ($currentHolonTemplateLabel === '') {
     $currentHolonTemplateLabel = $currentHolonTypeLabel;
 }
-$teamEmptyMessage = "Aucune personne n'est encore liée à ce " . $currentHolonTypeLabel . '.';
-$teamMapEmptyMessage = "Aucun membre n'a encore de position géographique dans ce contexte.";
+$teamEmptyMessage = omoTeamT('team.empty.contextual', ['context_type' => $currentHolonTypeLabel], $lang, $sourceLang);
+$teamMapEmptyMessage = omoTeamT('team.map.empty.contextual', [], $lang, $sourceLang);
 
 if ($teamScope === 'global') {
-    $teamEmptyMessage = "Aucune personne n'est encore liée à cette organisation.";
-    $teamMapEmptyMessage = "Aucun membre n'a encore de position géographique dans cette organisation.";
+    $teamEmptyMessage = omoTeamT('team.empty.global', [], $lang, $sourceLang);
+    $teamMapEmptyMessage = omoTeamT('team.map.empty.global', [], $lang, $sourceLang);
 } elseif ($teamScope === 'descendants') {
-    $teamEmptyMessage = "Aucune personne n'est encore liée à ce contexte et à ses descendants.";
-    $teamMapEmptyMessage = "Aucun membre n'a encore de position géographique dans ce contexte et ses descendants.";
+    $teamEmptyMessage = omoTeamT('team.empty.descendants', [], $lang, $sourceLang);
+    $teamMapEmptyMessage = omoTeamT('team.map.empty.descendants', [], $lang, $sourceLang);
 }
 
 $canAddCurrentHolonMembers = $hasStructureContext ? $currentHolon->isAllowed('CAN_ADD_MEMBER') : false;
@@ -434,7 +438,7 @@ if ($leafletMapsEnabled) {
                 </span>
                 <div class="omo-panel-view__header-copy">
                     <div class="omo-team__title-row">
-                        <h2 class="omo-panel-view__title">Team</h2>
+                        <h2 class="omo-panel-view__title"><?= omoApiEscape(omoTeamT('team.title', [], $lang, $sourceLang)) ?></h2>
                         <span class="omo-panel-view__count"><?= omoApiEscape(count($memberCards)) ?></span>
                     </div>
                 </div>
@@ -446,7 +450,7 @@ if ($leafletMapsEnabled) {
                         class="generic-action-button generic-action-button--main omo-team__add-member-button"
                         data-team-open-member-popup="1"
                         data-hid="<?= (int)$currentHolon->getId() ?>"
-                    >Ajouter un membre</button>
+                    ><?= omoApiEscape(omoTeamT('team.action.add_member', [], $lang, $sourceLang)) ?></button>
                 </div>
             <?php endif; ?>
         </div>
@@ -456,7 +460,7 @@ if ($leafletMapsEnabled) {
                     <div
                         class="omo-scope-toggle omo-team__scope-toggle"
                         role="tablist"
-                        aria-label="Portée des membres"
+                        aria-label="<?= omoApiEscape(omoTeamT('team.scope.members_aria', [], $lang, $sourceLang)) ?>"
                         data-omo-scope-switch="<?= omoApiEscape($teamScope) ?>"
                         style="--omo-scope-option-count: <?= (int)count($availableTeamScopes) ?>; --omo-scope-active-index: <?= (int)$teamScopeActiveIndex ?>;"
                     >
@@ -475,11 +479,11 @@ if ($leafletMapsEnabled) {
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
-                <div class="omo-segmented omo-team__view-switch" role="tablist" aria-label="Choix de la vue">
-                    <button type="button" class="omo-team__view-button omo-segmented__button is-active" data-team-view-button="cards" aria-pressed="true">Cartes</button>
-                    <button type="button" class="omo-team__view-button omo-segmented__button" data-team-view-button="compact" aria-pressed="false">Compact</button>
+                <div class="omo-segmented omo-team__view-switch" role="tablist" aria-label="<?= omoApiEscape(omoTeamT('team.view.choice_aria', [], $lang, $sourceLang)) ?>">
+                    <button type="button" class="omo-team__view-button omo-segmented__button is-active" data-team-view-button="cards" aria-pressed="true"><?= omoApiEscape(omoTeamT('team.view.cards', [], $lang, $sourceLang)) ?></button>
+                    <button type="button" class="omo-team__view-button omo-segmented__button" data-team-view-button="compact" aria-pressed="false"><?= omoApiEscape(omoTeamT('team.view.compact', [], $lang, $sourceLang)) ?></button>
                     <?php if ($leafletMapsEnabled): ?>
-                    <button type="button" class="omo-team__view-button omo-segmented__button" data-team-view-button="map" aria-pressed="false">Carte géo</button>
+                    <button type="button" class="omo-team__view-button omo-segmented__button" data-team-view-button="map" aria-pressed="false"><?= omoApiEscape(omoTeamT('team.view.map', [], $lang, $sourceLang)) ?></button>
                     <?php endif; ?>
                 </div>
             </div>
@@ -506,7 +510,7 @@ if ($leafletMapsEnabled) {
                         <?php if ($card['canViewDetail']): ?>
                         tabindex="0"
                         role="button"
-                        aria-label="Ouvrir le profil contextuel de <?= omoApiEscape($card['displayName']) ?>"
+                        aria-label="<?= omoApiEscape(omoTeamT('team.member.open_contextual_profile', ['name' => (string)$card['displayName']], $lang, $sourceLang)) ?>"
                         <?php endif; ?>
                     >
                         <div class="omo-team-card__banner">
@@ -518,7 +522,7 @@ if ($leafletMapsEnabled) {
                                         data-team-member-menu-toggle="1"
                                         aria-haspopup="menu"
                                         aria-expanded="false"
-                                        aria-label="Actions pour <?= omoApiEscape($card['displayName']) ?>"
+                                        aria-label="<?= omoApiEscape(omoTeamT('team.member.actions_for', ['name' => (string)$card['displayName']], $lang, $sourceLang)) ?>"
                                     >...</button>
                                     <div class="omo-team-card__menu-panel" data-team-member-menu-panel="1" hidden>
                                         <?php if ($canRemoveCurrentHolonMembers && $card['isPending']): ?>
@@ -527,7 +531,7 @@ if ($leafletMapsEnabled) {
                                                 class="omo-team-card__menu-item omo-team-card__menu-item--danger"
                                                 data-member-action="cancel_invitation"
                                                 data-user-id="<?= (int)$card['userId'] ?>"
-                                            >Annuler l'invitation</button>
+                                            ><?= omoApiEscape(omoTeamT('team.action.cancel_invitation', [], $lang, $sourceLang)) ?></button>
                                         <?php endif; ?>
                                         <?php if ($canRemoveCurrentHolonMembers && !$card['isPending']): ?>
                                             <button
@@ -535,7 +539,7 @@ if ($leafletMapsEnabled) {
                                                 class="omo-team-card__menu-item omo-team-card__menu-item--danger"
                                                 data-member-action="remove"
                                                 data-user-id="<?= (int)$card['userId'] ?>"
-                                            >Retirer du contexte <?= omoApiEscape($currentHolonTemplateLabel) ?></button>
+                                            ><?= omoApiEscape(omoTeamT('team.action.remove_from_context', ['context' => (string)$currentHolonTemplateLabel], $lang, $sourceLang)) ?></button>
                                         <?php endif; ?>
                                         <?php if ($canGrantCurrentHolonAdmin && !$card['isPending']): ?>
                                             <button
@@ -543,7 +547,9 @@ if ($leafletMapsEnabled) {
                                                 class="omo-team-card__menu-item"
                                                 data-member-action="<?= $card['isContextAdmin'] ? 'revoke_admin' : 'grant_admin' ?>"
                                                 data-user-id="<?= (int)$card['userId'] ?>"
-                                            ><?= $card['isContextAdmin'] ? 'Retirer le statut admin du contexte ' : 'Définir comme admin du contexte ' ?><?= omoApiEscape($currentHolonTemplateLabel) ?></button>
+                                            ><?= omoApiEscape($card['isContextAdmin']
+                                                ? omoTeamT('team.action.revoke_context_admin', ['context' => (string)$currentHolonTemplateLabel], $lang, $sourceLang)
+                                                : omoTeamT('team.action.grant_context_admin', ['context' => (string)$currentHolonTemplateLabel], $lang, $sourceLang)) ?></button>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -559,7 +565,7 @@ if ($leafletMapsEnabled) {
                             <?php else: ?>
                                 <div class="omo-team-card__photo-placeholder">
                                     <span class="omo-team-card__initials"><?= omoApiEscape($card['initials']) ?></span>
-                                    <span class="omo-team-card__photo-label">Photo à venir</span>
+                                    <span class="omo-team-card__photo-label"><?= omoApiEscape(omoTeamT('team.member.photo_coming', [], $lang, $sourceLang)) ?></span>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -574,33 +580,33 @@ if ($leafletMapsEnabled) {
                                 </div>
 
                                 <?php if ($card['isPending']): ?>
-                                    <span class="omo-team-card__badge omo-team-card__badge--pending">En attente</span>
+                                    <span class="omo-team-card__badge omo-team-card__badge--pending"><?= omoApiEscape(omoTeamT('team.member.pending', [], $lang, $sourceLang)) ?></span>
                                 <?php elseif ($card['isContextAdmin']): ?>
-                                    <span class="omo-team-card__badge">Admin</span>
+                                    <span class="omo-team-card__badge"><?= omoApiEscape(omoTeamT('team.member.admin_short', [], $lang, $sourceLang)) ?></span>
                                 <?php endif; ?>
                             </div>
 
                             <div class="omo-team-card__meta">
                                 <div class="omo-team-card__meta-row">
-                                    <span class="omo-team-card__meta-label">E-mail</span>
+                                    <span class="omo-team-card__meta-label"><?= omoApiEscape(omoTeamT('team.member.email', [], $lang, $sourceLang)) ?></span>
                                     <span class="omo-team-card__meta-value<?= $card['email'] === '' ? ' omo-team-card__meta-value--muted' : '' ?>">
-                                        <?= omoApiEscape($card['email'] !== '' ? $card['email'] : 'Non renseigné') ?>
+                                        <?= omoApiEscape($card['email'] !== '' ? $card['email'] : omoTeamT('team.member.not_provided', [], $lang, $sourceLang)) ?>
                                     </span>
                                 </div>
                             </div>
 
                             <div class="omo-team-card__dates">
                                 <div class="omo-team-card__date">
-                                    <span class="omo-team-card__date-label">Ajout</span>
+                                    <span class="omo-team-card__date-label"><?= omoApiEscape(omoTeamT('team.member.added', [], $lang, $sourceLang)) ?></span>
                                     <span class="omo-team-card__date-value<?= $card['joinedAtLabel'] === '' ? ' omo-team-card__date-value--muted' : '' ?>">
                                         <?= omoApiEscape($card['joinedAtLabel'] !== '' ? $card['joinedAtLabel'] : 'N/A') ?>
                                     </span>
                                 </div>
 
                                 <div class="omo-team-card__date">
-                                    <span class="omo-team-card__date-label">Connexion</span>
+                                    <span class="omo-team-card__date-label"><?= omoApiEscape(omoTeamT('team.member.last_connection', [], $lang, $sourceLang)) ?></span>
                                     <span class="omo-team-card__date-value<?= $card['lastSeenLabel'] === '' ? ' omo-team-card__date-value--muted' : '' ?>">
-                                        <?= omoApiEscape($card['lastSeenLabel'] !== '' ? $card['lastSeenLabel'] : 'Jamais') ?>
+                                        <?= omoApiEscape($card['lastSeenLabel'] !== '' ? $card['lastSeenLabel'] : omoTeamT('team.member.never', [], $lang, $sourceLang)) ?>
                                     </span>
                                 </div>
                             </div>
@@ -619,10 +625,10 @@ if ($leafletMapsEnabled) {
             <div class="omo-team__compact-list-shell">
                 <div class="omo-team__compact-list generic-file-list__table">
                     <div class="omo-team__compact-list-header generic-file-list__header">
-                        <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--name">Nom</div>
-                        <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--firstname">Prénom</div>
-                        <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--phone">Téléphone</div>
-                        <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--email">E-mail</div>
+                        <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--name"><?= omoApiEscape(omoTeamT('team.column.name', [], $lang, $sourceLang)) ?></div>
+                        <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--firstname"><?= omoApiEscape(omoTeamT('team.column.first_name', [], $lang, $sourceLang)) ?></div>
+                        <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--phone"><?= omoApiEscape(omoTeamT('team.column.phone', [], $lang, $sourceLang)) ?></div>
+                        <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--email"><?= omoApiEscape(omoTeamT('team.member.email', [], $lang, $sourceLang)) ?></div>
                     </div>
                     <?php foreach ($memberCards as $card): ?>
                         <?php
@@ -658,20 +664,20 @@ if ($leafletMapsEnabled) {
 
                         if ($card['isPending']) {
                             $compactPrivilegeLabels[] = array(
-                                'label' => 'En attente',
+                                    'label' => omoTeamT('team.member.pending', [], $lang, $sourceLang),
                                 'className' => 'omo-team__compact-badge omo-team__compact-badge--pending',
                             );
                         } else {
                             if ($card['isContextAdmin']) {
                                 $compactPrivilegeLabels[] = array(
-                                    'label' => 'Admin du contexte',
+                                    'label' => omoTeamT('team.member.admin_context', [], $lang, $sourceLang),
                                     'className' => 'omo-team__compact-badge',
                                 );
                             }
 
                             if ($card['isOrganizationAdmin']) {
                                 $compactPrivilegeLabels[] = array(
-                                    'label' => "Admin de l'organisation",
+                                    'label' => omoTeamT('team.member.admin_organization', [], $lang, $sourceLang),
                                     'className' => 'omo-team__compact-badge omo-team__compact-badge--organization',
                                 );
                             }
@@ -684,11 +690,11 @@ if ($leafletMapsEnabled) {
                                 data-open-user-context="1"
                                 tabindex="0"
                                 role="button"
-                                aria-label="Ouvrir le profil contextuel de <?= omoApiEscape($card['displayName']) ?>"
+                                aria-label="<?= omoApiEscape(omoTeamT('team.member.open_contextual_profile', ['name' => (string)$card['displayName']], $lang, $sourceLang)) ?>"
                                 <?php endif; ?>
                                 data-user-id="<?= (int)$card['userId'] ?>"
                             >
-                                <div class="omo-team__compact-cell omo-team__compact-cell--identity generic-file-list__cell generic-file-list__cell--name" data-label="Identite">
+                                <div class="omo-team__compact-cell omo-team__compact-cell--identity generic-file-list__cell generic-file-list__cell--name" data-label="<?= omoApiEscape(omoTeamT('team.column.identity', [], $lang, $sourceLang)) ?>">
                                     <div class="omo-team__compact-name-main generic-file-list__name-main">
                                         <?php if ($card['photoUrl'] !== ''): ?>
                                             <img
@@ -721,10 +727,10 @@ if ($leafletMapsEnabled) {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="omo-team__compact-cell generic-file-list__cell" data-label="Téléphone">
+                                <div class="omo-team__compact-cell generic-file-list__cell" data-label="<?= omoApiEscape(omoTeamT('team.column.phone', [], $lang, $sourceLang)) ?>">
                                     <span class="<?= $compactPhone === '' ? 'omo-team__compact-placeholder' : '' ?>"><?= omoApiEscape($compactPhone !== '' ? $compactPhone : '-') ?></span>
                                 </div>
-                                <div class="omo-team__compact-cell generic-file-list__cell" data-label="E-mail">
+                                <div class="omo-team__compact-cell generic-file-list__cell" data-label="<?= omoApiEscape(omoTeamT('team.member.email', [], $lang, $sourceLang)) ?>">
                                     <span class="<?= $card['email'] === '' ? 'omo-team__compact-placeholder' : '' ?>"><?= omoApiEscape($card['email'] !== '' ? $card['email'] : '-') ?></span>
                                 </div>
                             </div>
@@ -743,7 +749,7 @@ if ($leafletMapsEnabled) {
             <?php else: ?>
                 <div class="omo-team__map-shell">
                     <div class="omo-team__map-summary">
-                        <?= omoApiEscape(count($mapMembers)) ?> membre<?= count($mapMembers) > 1 ? 's' : '' ?> géolocalisé<?= count($mapMembers) > 1 ? 's' : '' ?>.
+                        <?= omoApiEscape(omoTeamT('team.map.summary', ['count' => (string)count($mapMembers)], $lang, $sourceLang)) ?>
                     </div>
                     <div id="omo-team-map" class="omo-team__map" data-team-map="1"></div>
                 </div>
@@ -1420,11 +1426,34 @@ if ($leafletMapsEnabled) {
 }
 </style>
 
+<?php
+$teamJsTranslations = [
+    'userFallback' => omoTeamT('team.member.user_fallback', ['userId' => '{userId}'], $lang, $sourceLang),
+    'pending' => omoTeamT('team.member.pending', [], $lang, $sourceLang),
+    'adminContext' => omoTeamT('team.member.admin_context', [], $lang, $sourceLang),
+    'adminOrganization' => omoTeamT('team.member.admin_organization', [], $lang, $sourceLang),
+    'email' => omoTeamT('team.member.email', [], $lang, $sourceLang),
+    'notProvided' => omoTeamT('team.member.not_provided', [], $lang, $sourceLang),
+    'added' => omoTeamT('team.member.added', [], $lang, $sourceLang),
+    'lastConnection' => omoTeamT('team.member.last_connection', [], $lang, $sourceLang),
+    'never' => omoTeamT('team.member.never', [], $lang, $sourceLang),
+    'openProfile' => omoTeamT('team.map.open_profile', [], $lang, $sourceLang),
+    'addMemberTitle' => omoTeamT('team.action.add_member', [], $lang, $sourceLang),
+    'thisMember' => omoTeamT('team.member.this_member', [], $lang, $sourceLang),
+    'confirmCancelInvitation' => omoTeamT('team.confirm.cancel_invitation', ['name' => '{name}'], $lang, $sourceLang),
+    'confirmRemove' => omoTeamT('team.confirm.remove', ['name' => '{name}', 'context' => '{context}'], $lang, $sourceLang),
+    'confirmGrantAdmin' => omoTeamT('team.confirm.grant_context_admin', ['name' => '{name}', 'context' => '{context}'], $lang, $sourceLang),
+    'confirmRevokeAdmin' => omoTeamT('team.confirm.revoke_context_admin', ['name' => '{name}', 'context' => '{context}'], $lang, $sourceLang),
+    'updateFailed' => omoTeamT('team.message.update_failed', [], $lang, $sourceLang),
+    'updateFailedLater' => omoTeamT('team.message.update_failed_later', [], $lang, $sourceLang),
+];
+?>
 <script>
 var omoTeamViewStorageKey = <?= json_encode('omo-team-view:' . (int)$organizationId . ':' . ($hasStructureContext ? (int)$currentHolon->getId() : 0), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 var omoTeamMapEnabled = <?= $leafletMapsEnabled ? 'true' : 'false' ?>;
 var omoTeamMapMembers = <?= json_encode($mapMemberPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 var omoTeamInitialScope = <?= json_encode($teamScope, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+var omoTeamText = <?= json_encode($teamJsTranslations, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 var omoTeamLeafletMap = null;
 var omoTeamLeafletLayer = null;
 var omoTeamLeafletTileState = {layer: null, theme: null};
@@ -1436,6 +1465,20 @@ function omoTeamEscapeHtml(value) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+function omoTeamFormatText(template, variables) {
+    let text = String(template == null ? '' : template);
+    if (!variables || typeof variables !== 'object') {
+        return text;
+    }
+
+    Object.keys(variables).forEach(function (key) {
+        const value = variables[key] == null ? '' : String(variables[key]);
+        text = text.split('{' + key + '}').join(value);
+    });
+
+    return text;
 }
 
 function omoTeamNormalizeScope(scopeValue) {
@@ -1613,13 +1656,13 @@ function omoTeamEnsureMapReady() {
 
             popupBits.push('<div class="omo-team__map-popup-head">');
             if (member.photoUrl) {
-                popupBits.push('<img class="omo-team__map-popup-photo" src="' + omoTeamEscapeHtml(member.photoUrl) + '" alt="' + omoTeamEscapeHtml(member.displayName || ('Utilisateur ' + member.userId)) + '">');
+                popupBits.push('<img class="omo-team__map-popup-photo" src="' + omoTeamEscapeHtml(member.photoUrl) + '" alt="' + omoTeamEscapeHtml(member.displayName || omoTeamFormatText(omoTeamText.userFallback, {userId: member.userId})) + '">');
             } else {
                 popupBits.push('<div class="omo-team__map-popup-photo-placeholder">' + omoTeamEscapeHtml(member.initials || 'P') + '</div>');
             }
 
             popupBits.push('<div class="omo-team__map-popup-identity">');
-            popupBits.push('<div class="omo-team__map-popup-name">' + omoTeamEscapeHtml(member.displayName || ('Utilisateur ' + member.userId)) + '</div>');
+            popupBits.push('<div class="omo-team__map-popup-name">' + omoTeamEscapeHtml(member.displayName || omoTeamFormatText(omoTeamText.userFallback, {userId: member.userId})) + '</div>');
             if (member.secondary) {
                 popupBits.push('<div class="omo-team__map-popup-secondary">' + omoTeamEscapeHtml(member.secondary) + '</div>');
             } else if (member.email) {
@@ -1630,24 +1673,24 @@ function omoTeamEnsureMapReady() {
 
             popupBits.push('<div class="omo-team__map-popup-badges">');
             if (member.isPending) {
-                popupBits.push('<span class="omo-team__map-popup-badge omo-team__map-popup-badge--pending">En attente</span>');
+                popupBits.push('<span class="omo-team__map-popup-badge omo-team__map-popup-badge--pending">' + omoTeamEscapeHtml(omoTeamText.pending) + '</span>');
             }
             if (member.isContextAdmin) {
-                popupBits.push('<span class="omo-team__map-popup-badge omo-team__map-popup-badge--admin">Admin du contexte</span>');
+                popupBits.push('<span class="omo-team__map-popup-badge omo-team__map-popup-badge--admin">' + omoTeamEscapeHtml(omoTeamText.adminContext) + '</span>');
             }
             if (member.isOrganizationAdmin) {
-                popupBits.push('<span class="omo-team__map-popup-badge">Admin de l\'organisation</span>');
+                popupBits.push('<span class="omo-team__map-popup-badge">' + omoTeamEscapeHtml(omoTeamText.adminOrganization) + '</span>');
             }
             popupBits.push('</div>');
 
             popupBits.push('<div class="omo-team__map-popup-meta">');
-            popupBits.push('<div class="omo-team__map-popup-meta-row"><div class="omo-team__map-popup-meta-label">E-mail</div><div class="omo-team__map-popup-meta-value">' + omoTeamEscapeHtml(member.email || 'Non renseigné') + '</div></div>');
-            popupBits.push('<div class="omo-team__map-popup-meta-row"><div class="omo-team__map-popup-meta-label">Ajout</div><div class="omo-team__map-popup-meta-value">' + omoTeamEscapeHtml(member.joinedAtLabel || 'N/A') + '</div></div>');
-            popupBits.push('<div class="omo-team__map-popup-meta-row"><div class="omo-team__map-popup-meta-label">Connexion</div><div class="omo-team__map-popup-meta-value">' + omoTeamEscapeHtml(member.lastSeenLabel || 'Jamais') + '</div></div>');
+            popupBits.push('<div class="omo-team__map-popup-meta-row"><div class="omo-team__map-popup-meta-label">' + omoTeamEscapeHtml(omoTeamText.email) + '</div><div class="omo-team__map-popup-meta-value">' + omoTeamEscapeHtml(member.email || omoTeamText.notProvided) + '</div></div>');
+            popupBits.push('<div class="omo-team__map-popup-meta-row"><div class="omo-team__map-popup-meta-label">' + omoTeamEscapeHtml(omoTeamText.added) + '</div><div class="omo-team__map-popup-meta-value">' + omoTeamEscapeHtml(member.joinedAtLabel || 'N/A') + '</div></div>');
+            popupBits.push('<div class="omo-team__map-popup-meta-row"><div class="omo-team__map-popup-meta-label">' + omoTeamEscapeHtml(omoTeamText.lastConnection) + '</div><div class="omo-team__map-popup-meta-value">' + omoTeamEscapeHtml(member.lastSeenLabel || omoTeamText.never) + '</div></div>');
             popupBits.push('</div>');
 
             if (member.canViewDetail) {
-                popupBits.push('<button type="button" class="omo-team__map-popup-action" data-map-popup-open-user="' + Number(member.userId) + '">Ouvrir la fiche</button>');
+                popupBits.push('<button type="button" class="omo-team__map-popup-action" data-map-popup-open-user="' + Number(member.userId) + '">' + omoTeamEscapeHtml(omoTeamText.openProfile) + '</button>');
             }
 
             popupBits.push('</div>');
@@ -1815,7 +1858,7 @@ $(document)
     }
 
     window.commonTopbarOpenModal(
-        'Ajouter un membre',
+        omoTeamText.addMemberTitle,
         'api/holons/member_popup.php?hid=' + holonId,
         'fetch'
     );
@@ -1837,7 +1880,7 @@ $(document)
     const teamRoot = document.getElementById('omo-team-root');
     const currentTeamScope = omoTeamNormalizeScope(teamRoot ? teamRoot.getAttribute('data-team-scope') : omoTeamInitialScope);
     const contextLabel = <?= json_encode($currentHolonTemplateLabel, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-    const displayName = $.trim(card.find('.omo-team-card__identity h3').first().text()) || 'ce membre';
+    const displayName = $.trim(card.find('.omo-team-card__identity h3').first().text()) || omoTeamText.thisMember;
     let confirmationMessage = '';
 
     if (!action || !userId) {
@@ -1845,13 +1888,13 @@ $(document)
     }
 
     if (action === 'cancel_invitation') {
-        confirmationMessage = 'Annuler l\'invitation envoyée à ' + displayName + ' ?';
+        confirmationMessage = omoTeamFormatText(omoTeamText.confirmCancelInvitation, {name: displayName});
     } else if (action === 'remove') {
-        confirmationMessage = 'Retirer ' + displayName + ' du contexte ' + contextLabel + ' ?';
+        confirmationMessage = omoTeamFormatText(omoTeamText.confirmRemove, {name: displayName, context: contextLabel});
     } else if (action === 'grant_admin') {
-        confirmationMessage = 'Définir ' + displayName + ' comme admin du contexte ' + contextLabel + ' ?';
+        confirmationMessage = omoTeamFormatText(omoTeamText.confirmGrantAdmin, {name: displayName, context: contextLabel});
     } else if (action === 'revoke_admin') {
-        confirmationMessage = 'Retirer le statut admin de ' + displayName + ' pour le contexte ' + contextLabel + ' ?';
+        confirmationMessage = omoTeamFormatText(omoTeamText.confirmRevokeAdmin, {name: displayName, context: contextLabel});
     } else {
         return;
     }
@@ -1868,7 +1911,11 @@ $(document)
     formData.append('user_id', String(userId));
     formData.append('action', action);
 
-    fetch('/omo/api/team/member_action.php', {
+    const memberActionUrl = typeof window.omoResolveAppUrl === 'function'
+        ? window.omoResolveAppUrl('/omo/api/team/member_action.php')
+        : '/omo/api/team/member_action.php';
+
+    fetch(memberActionUrl, {
         method: 'POST',
         body: formData,
         credentials: 'same-origin',
@@ -1890,7 +1937,7 @@ $(document)
         button.prop('disabled', false);
 
         if (!result.ok || !result.data || !result.data.status) {
-            window.alert(result.data && result.data.message ? result.data.message : 'Impossible de mettre à jour ce membre.');
+            window.alert(result.data && result.data.message ? result.data.message : omoTeamText.updateFailed);
             return;
         }
 
@@ -1923,7 +1970,7 @@ $(document)
       })
       .catch(function () {
         button.prop('disabled', false);
-        window.alert('Impossible de mettre à jour ce membre pour le moment.');
+        window.alert(omoTeamText.updateFailedLater);
       });
   });
 </script>
