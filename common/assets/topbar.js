@@ -698,7 +698,9 @@
         }
 
         try {
-            base = new URL(rawUrl, window.location.origin);
+            base = new URL(rawUrl, (typeof document !== 'undefined' && typeof document.baseURI === 'string' && document.baseURI.trim() !== '')
+                ? document.baseURI
+                : window.location.href);
         } catch (error) {
             return rawUrl;
         }
