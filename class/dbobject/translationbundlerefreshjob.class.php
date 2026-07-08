@@ -97,13 +97,15 @@ class TranslationBundleRefreshJob extends DbObject
     {
         $existing = self::findByBundleLocaleHash($bundleKey, $locale, $sourceHash);
         if ($existing instanceof self) {
-            if ((string)$existing->get('status') === 'failed') {
+            $existingStatus = trim((string)$existing->get('status'));
+            if ($existingStatus === 'failed' || $existingStatus === 'completed') {
                 self::execute(
                     'UPDATE `translation_bundle_refresh_jobs`
-                     SET `status` = :status, `last_error` = NULL, `updated_at` = NOW(), `started_at` = NULL, `finished_at` = NULL
-                     WHERE `id` = :id',
+                     SET `status` = :status, `source_json` = :source_json, `last_error` = NULL, `updated_at` = NOW(), `started_at` = NULL, `finished_at` = NULL
+                      WHERE `id` = :id',
                     [
                         'status' => 'pending',
+                        'source_json' => (string)$sourceJson,
                         'id' => (int)$existing->getId(),
                     ]
                 );

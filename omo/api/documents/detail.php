@@ -6,7 +6,7 @@ $sourceLang = [
     'documents.detail.error.not_found' => ['text' => 'Document introuvable ou inaccessible.', 'context' => 'Error shown when the document cannot be loaded or viewed.'],
     'documents.detail.meta.updated' => ['text' => 'Mise à jour : {date}', 'context' => 'Metadata pill showing the last update date of the document.'],
     'documents.detail.meta.author' => ['text' => 'Par {name}', 'context' => 'Metadata pill showing the author of the document.'],
-    'documents.detail.meta.updated_by' => ['text' => 'Modifie par {name}', 'context' => 'Metadata pill showing who updated the document.'],
+    'documents.detail.meta.updated_by' => ['text' => 'Modifié par {name}', 'context' => 'Metadata pill showing who updated the document.'],
     'documents.detail.alt_texts.title' => ['text' => 'Versions texte', 'context' => 'Section title listing alternate text versions.'],
     'documents.detail.alt_texts.fallback' => ['text' => 'Version texte', 'context' => 'Fallback title for an alternate text variant.'],
     'documents.detail.media.title' => ['text' => 'Médias associés', 'context' => 'Section title listing associated media.'],

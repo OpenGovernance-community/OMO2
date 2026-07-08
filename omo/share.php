@@ -3,6 +3,7 @@ require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
 require_once dirname(__DIR__) . '/common/omo_public_pages.php';
 require_once dirname(__DIR__) . '/common/topbar.php';
+require_once __DIR__ . '/translations.php';
 
 $token = commonGetCurrentShareToken();
 $shareLink = commonGetCurrentShareLink(false);
@@ -275,6 +276,7 @@ window.omoConfig = <?= json_encode(array(
     'name' => (string)$organization->get('name'),
     'host' => commonGetRequestHost(),
     'routeMode' => 'share',
+    'translationLocale' => omoGetTranslationLocale(),
     'rootHolonId' => $organizationRootHolonId,
     'structureEnabled' => $isStructureApplicationEnabled,
     'orgLookupError' => null,

@@ -499,20 +499,20 @@ function omoGetShareToken() {
     return token !== '' ? token : null;
 }
 
+function omoGetTranslationLocale() {
+    const locale = window.omoConfig && typeof window.omoConfig.translationLocale === 'string'
+        ? window.omoConfig.translationLocale.trim().toLowerCase()
+        : '';
+
+    return /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/.test(locale) ? locale : '';
+}
+
 function omoResolveAppUrl(url) {
     if (typeof url !== 'string' || url.trim() === '') {
         return url;
     }
 
     const shareToken = omoGetShareToken();
-    if (!omoIsShareMode() || !shareToken) {
-        return url;
-    }
-
-    if (/^[a-z][a-z0-9+\-.]*:/i.test(url)) {
-        return url;
-    }
-
     let resolvedUrl = url;
     let hashPart = '';
     const hashIndex = resolvedUrl.indexOf('#');
@@ -522,11 +522,41 @@ function omoResolveAppUrl(url) {
         resolvedUrl = resolvedUrl.slice(0, hashIndex);
     }
 
-    if (!/[?&]token=/.test(resolvedUrl)) {
-        resolvedUrl += (resolvedUrl.indexOf('?') === -1 ? '?' : '&') + 'token=' + encodeURIComponent(shareToken);
-    }
+    const translationLocale = omoGetTranslationLocale();
 
-    return resolvedUrl + hashPart;
+    try {
+        const parsedUrl = new URL(resolvedUrl, window.location.origin);
+        const isAbsolute = /^[a-z][a-z0-9+\-.]*:/i.test(resolvedUrl);
+
+        if (parsedUrl.origin !== window.location.origin) {
+            return resolvedUrl + hashPart;
+        }
+
+        if (omoIsShareMode() && shareToken && !parsedUrl.searchParams.has('token')) {
+            parsedUrl.searchParams.set('token', shareToken);
+        }
+
+        if (translationLocale !== '' && !parsedUrl.searchParams.has('lang')) {
+            parsedUrl.searchParams.set('lang', translationLocale);
+        }
+
+        if (isAbsolute) {
+            return parsedUrl.toString() + hashPart;
+        }
+
+        return parsedUrl.pathname + parsedUrl.search + parsedUrl.hash + hashPart;
+    } catch (error) {
+        if (/[?&]lang=/.test(resolvedUrl)) {
+            return resolvedUrl + hashPart;
+        }
+
+        if (translationLocale === '') {
+            return resolvedUrl + hashPart;
+        }
+
+        resolvedUrl += (resolvedUrl.indexOf('?') === -1 ? '?' : '&') + 'lang=' + encodeURIComponent(translationLocale);
+        return resolvedUrl + hashPart;
+    }
 }
 
 function getNormalizedOmoPath() {

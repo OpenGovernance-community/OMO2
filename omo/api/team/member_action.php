@@ -1,11 +1,14 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
+require_once dirname(__DIR__, 3) . '/common/team/translations.php';
 
 use dbObject\Holon;
 use dbObject\Invitation;
 use dbObject\Organization;
 
 header('Content-Type: application/json; charset=UTF-8');
+$sourceLang = omoTeamSourceLang();
+$lang = omoTeamLoadTranslationBundle();
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_POST['oid'] ?? 0));
 $holonId = (int)($_POST['hid'] ?? 0);
@@ -16,7 +19,7 @@ if ($organizationId <= 0 || $holonId <= 0 || $userId <= 0 || $action === '') {
     http_response_code(400);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Action membre invalide.',
+        'message' => omoTeamT('team.api.invalid_action', [], $lang, $sourceLang),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -28,7 +31,7 @@ if (!$organization->load($organizationId) || !$holon->load($holonId) || !$organi
     http_response_code(404);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Contexte introuvable.',
+        'message' => omoTeamT('team.api.context_not_found', [], $lang, $sourceLang),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -39,7 +42,7 @@ switch ($action) {
             http_response_code(403);
             echo json_encode(array(
                 'status' => false,
-                'message' => "Vous n'avez pas le droit de modifier ce contexte.",
+                'message' => omoTeamT('team.api.no_right_modify_context', [], $lang, $sourceLang),
             ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -53,7 +56,7 @@ switch ($action) {
             http_response_code(403);
             echo json_encode(array(
                 'status' => false,
-                'message' => "Vous n'avez pas le droit de gerer le statut admin dans ce contexte.",
+                'message' => omoTeamT('team.api.no_right_manage_admin', [], $lang, $sourceLang),
             ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -65,7 +68,7 @@ switch ($action) {
             http_response_code(403);
             echo json_encode(array(
                 'status' => false,
-                'message' => "Vous n'avez pas le droit de gerer le statut admin dans ce contexte.",
+                'message' => omoTeamT('team.api.no_right_manage_admin', [], $lang, $sourceLang),
             ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -77,7 +80,7 @@ switch ($action) {
             http_response_code(403);
             echo json_encode(array(
                 'status' => false,
-                'message' => "Vous n'avez pas le droit de modifier ce contexte.",
+                'message' => omoTeamT('team.api.no_right_modify_context', [], $lang, $sourceLang),
             ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -87,7 +90,7 @@ switch ($action) {
             http_response_code(404);
             echo json_encode(array(
                 'status' => false,
-                'message' => "Aucune invitation en attente n'a ete trouvee pour cette personne.",
+                'message' => omoTeamT('team.api.pending_invitation_not_found', [], $lang, $sourceLang),
             ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -102,7 +105,7 @@ switch ($action) {
             http_response_code(403);
             echo json_encode(array(
                 'status' => false,
-                'message' => "Vous n'avez pas le droit d'ajouter un membre dans ce contexte.",
+                'message' => omoTeamT('team.api.no_right_add_member', [], $lang, $sourceLang),
             ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -112,7 +115,7 @@ switch ($action) {
             http_response_code(404);
             echo json_encode(array(
                 'status' => false,
-                'message' => "Aucune invitation admin en attente n'a ete trouvee pour cette personne.",
+                'message' => omoTeamT('team.api.pending_admin_invitation_not_found', [], $lang, $sourceLang),
             ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -121,14 +124,14 @@ switch ($action) {
             $pendingInvitation->sendEmail();
             $result = array(
                 'status' => true,
-                'message' => 'Invitation renvoyee.',
+                'message' => omoTeamT('team.api.invitation_resent', [], $lang, $sourceLang),
             );
         } catch (\Throwable $exception) {
             $result = array(
                 'status' => false,
                 'message' => trim((string)$exception->getMessage()) !== ''
                     ? (string)$exception->getMessage()
-                    : "L'invitation n'a pas pu etre renvoyee.",
+                    : omoTeamT('team.api.invitation_resend_failed', [], $lang, $sourceLang),
             );
         }
         break;
@@ -136,7 +139,7 @@ switch ($action) {
     default:
         $result = array(
             'status' => false,
-            'message' => 'Action inconnue.',
+            'message' => omoTeamT('team.api.unknown_action', [], $lang, $sourceLang),
         );
         break;
 }
@@ -147,5 +150,5 @@ if (!($result['status'] ?? false)) {
 
 echo json_encode(array(
     'status' => (bool)($result['status'] ?? false),
-    'message' => (string)($result['message'] ?? 'Action terminée.'),
+    'message' => (string)($result['message'] ?? omoTeamT('team.api.action_completed', [], $lang, $sourceLang)),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

@@ -53,7 +53,7 @@ $downloadResult = $organization->downloadDocumentFileFromNextcloud((string)$docu
 if (!is_array($downloadResult) || empty($downloadResult['status'])) {
     http_response_code(502);
     header('Content-Type: text/plain; charset=UTF-8');
-    echo trim((string)($downloadResult['text'] ?? 'Impossible de recuperer le fichier distant.'));
+    echo trim((string)($downloadResult['text'] ?? 'Impossible de récupérer le fichier distant.'));
     exit;
 }
 
