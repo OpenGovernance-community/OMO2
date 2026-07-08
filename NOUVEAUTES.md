@@ -12,6 +12,12 @@ Les textes source francais des bundles ont ete relus et corriges sur les parcour
 
 Le module Team a recu la meme passe de relecture sur ses textes source francais. Les vues cartes, compacte et carte geo, la popup d actions membre et les messages de retour API affichent maintenant des accents corrects et des libelles plus naturels, y compris pour les textes autour de la geolocalisation.
 
+Le libelle `Systeme (...)` des selecteurs de langue n affiche plus la langue forcee par une preference utilisateur. Il montre maintenant uniquement la langue detectee par le navigateur ou le poste, meme si l interface affiche temporairement une autre langue choisie explicitement.
+
+Le moteur de bundles relance a nouveau une traduction asynchrone quand une langue explicite comme `en` ou `de` est choisie mais que le bundle correspondant a ete vide ou supprime. Un ancien job `completed` pour le meme hash ne bloque plus la recreation effective du contenu traduit.
+
+Les appels d apps OMO transportent maintenant explicitement la locale resolue de la page via `lang`, y compris pour les drawers et modales charges en `fetch` ou en `iframe`. Cela evite qu un module recharge son contenu avec un fallback serveur different de la langue deja affichee. Le module Team a aussi ete rebranche sur son propre bundle de traduction pour que son drawer puisse a nouveau demander des jobs asynchrones dans les langues non source.
+
 ## 2026-07-07
 
 Dans le menu `Deplacer` des documents OMO, la liste des destinations tient maintenant compte du droit reel `CAN_CREATE_DOCUMENT`. Les holons et dossiers proposes sont filtres selon les permissions effectives de la personne connectee, et l action serveur refuse aussi un deplacement manuel vers une destination non autorisee.
