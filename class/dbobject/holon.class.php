@@ -1886,6 +1886,11 @@
 					throw new \RuntimeException("Aucun lien membre actif n'a été trouvé dans ce contexte.");
 				}
 
+				$scopeUpdateResult = \dbObject\Document::normalizeSelfScopedDocumentsForAuthorContext($organizationId, $userId);
+				if (!is_array($scopeUpdateResult) || empty($scopeUpdateResult['status'])) {
+					throw new \RuntimeException("Les portees des documents lies a ce membre n'ont pas pu etre mises a jour.");
+				}
+
 				$this->recordMemberRemovedHistory($memberUser, $organizationId, array_values($removedHolonIds), $membershipUpdated);
 
 				$pdo->commit();
@@ -1955,6 +1960,13 @@
 			$saveResult = $link->save();
 			if (!is_array($saveResult) || empty($saveResult['status'])) {
 				throw new \RuntimeException("Impossible d'attacher cette personne à ce holon.");
+			}
+
+			if (!$isActive) {
+				$scopeUpdateResult = \dbObject\Document::normalizeSelfScopedDocumentsForAuthorContext($this->resolveOrganizationId(), (int)$user->getId());
+				if (!is_array($scopeUpdateResult) || empty($scopeUpdateResult['status'])) {
+					throw new \RuntimeException("Impossible de mettre a jour les documents de cette personne.");
+				}
 			}
 
 			return $link;

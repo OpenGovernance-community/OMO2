@@ -23,6 +23,14 @@ $sourceLang = [
         'text' => 'Global',
         'context' => 'Label used to show documents from the whole organization.',
     ],
+    'documents.scope.view' => [
+        'text' => 'Voir',
+        'context' => 'Short label used before the document visibility scope in tooltips.',
+    ],
+    'documents.scope.edit' => [
+        'text' => 'Editer',
+        'context' => 'Short label used before the document edit scope in tooltips.',
+    ],
     'documents.empty.visible_global' => [
         'one' => 'Aucun document visible dans cette organisation. {count} fichier est caché.',
         'other' => 'Aucun document visible dans cette organisation. {count} fichiers sont cachés.',
@@ -233,6 +241,7 @@ $newDocumentUrl = '/omo/api/documents/create.php?oid=' . $currentOrganizationId 
 
 $documents = new \dbObject\ArrayDocument();
 $documentVisibilityRuleMap = array();
+$documentEditVisibilityRuleMap = array();
 $visibleDocumentsCount = 0;
 $totalDocumentsCount = 0;
 $hiddenDocumentsCount = 0;
@@ -247,6 +256,21 @@ if ($currentOrganizationId > 0) {
     $visibleDocumentsCount = max(0, (int)($visibilityStats['visible'] ?? 0));
     $totalDocumentsCount = max($visibleDocumentsCount, (int)($visibilityStats['loaded'] ?? 0));
     $hiddenDocumentsCount = max(0, (int)($visibilityStats['hidden'] ?? 0));
+
+    $documentIds = array();
+    foreach ($documents as $documentItem) {
+        if ($documentItem instanceof \dbObject\Document && (int)$documentItem->getId() > 0) {
+            $documentIds[] = (int)$documentItem->getId();
+        }
+    }
+
+    if (count($documentIds) > 0) {
+        $documentEditVisibilityRuleMap = ObjectVisibility::loadActiveRuleRows(
+            Document::getEditVisibilityObjectType(),
+            $documentIds,
+            $currentOrganizationId
+        );
+    }
 }
 
 $today = new DateTimeImmutable('today');
@@ -349,6 +373,10 @@ foreach ($documents as $document) {
         $currentOrganizationId,
         $documentVisibilityRuleMap[$documentId] ?? null
     );
+    $editVisibility = $document->getEditVisibilityDisplayData(
+        $currentOrganizationId,
+        $documentEditVisibilityRuleMap[$documentId] ?? null
+    );
     $isFolder = $document->isFolder();
     $isExternalLink = $document->isExternalLink();
     $canShareDocument = !$isFolder && $document->supportsHtmlContent();
@@ -390,13 +418,16 @@ foreach ($documents as $document) {
             : array(),
         'description' => trim((string)$document->get('description')),
         'keywords' => trim((string)$document->get('keywords')),
-        'canEdit' => $document->canEditInOrganizationContext($documentOrganizationId),
+        'canEdit' => !$document->isPvDocument() && $document->canEditInOrganizationContext($documentOrganizationId),
         'editUrl' => '/omo/api/documents/create.php?id=' . $documentId
             . ($documentOrganizationId > 0 ? '&oid=' . $documentOrganizationId : '')
             . ($documentHolonId > 0 ? '&cid=' . $documentHolonId : ''),
         'visibilityBadge' => (string)($visibility['badgeText'] ?? ''),
         'visibilityType' => (string)($visibility['type'] ?? ''),
         'visibilityIconUrl' => $resolveDocumentVisibilityIconUrl((string)($visibility['type'] ?? '')),
+        'editVisibilityBadge' => (string)($editVisibility['badgeText'] ?? ''),
+        'editVisibilityType' => (string)($editVisibility['type'] ?? ''),
+        'editVisibilityIconUrl' => $resolveDocumentVisibilityIconUrl((string)($editVisibility['type'] ?? '')),
         'dateLabel' => $formatDate($resolvedUpdatedAt, in_array($updatedGroupKey, ['earlier', 'too_far'], true)),
         'fullDateLabel' => $formatDate($resolvedCreatedAt, true),
         'timestamp' => $resolvedUpdatedAt instanceof DateTimeInterface ? (int)$resolvedUpdatedAt->getTimestamp() : 0,
@@ -583,18 +614,38 @@ if (!is_string($documentsPayload)) {
                                         <span class="omo-documents__date"><?= $escape($entry['dateLabel']) ?></span>
                                         <span class="omo-documents__title-line">
                                             <strong class="omo-documents__title"><?= $escape($entry['title']) ?></strong>
-                                            <?php if ($entry['visibilityBadge'] !== '' && $entry['visibilityIconUrl'] !== ''): ?>
+                                            <?php if (
+                                                $entry['visibilityBadge'] !== '' && $entry['visibilityIconUrl'] !== ''
+                                                && $entry['editVisibilityBadge'] !== '' && $entry['editVisibilityIconUrl'] !== ''
+                                            ): ?>
                                                 <span
-                                                    class="omo-documents__visibility-icon"
-                                                    role="img"
-                                                    aria-label="<?= $escape($entry['visibilityBadge']) ?>"
-                                                    title="<?= $escape($entry['visibilityBadge']) ?>"
+                                                    class="omo-documents__scope-capsule"
+                                                    aria-label="<?= $escape(
+                                                        omoDocumentsScopeT('documents.scope.view') . ': ' . $entry['visibilityBadge']
+                                                        . ' | '
+                                                        . omoDocumentsScopeT('documents.scope.edit') . ': ' . $entry['editVisibilityBadge']
+                                                    ) ?>"
+                                                    title="<?= $escape(
+                                                        omoDocumentsScopeT('documents.scope.view') . ': ' . $entry['visibilityBadge']
+                                                        . ' | '
+                                                        . omoDocumentsScopeT('documents.scope.edit') . ': ' . $entry['editVisibilityBadge']
+                                                    ) ?>"
                                                 >
-                                                    <img
-                                                        src="<?= $escape($entry['visibilityIconUrl']) ?>"
-                                                        alt=""
-                                                        loading="lazy"
-                                                    >
+                                                    <span class="omo-documents__scope-icon" aria-hidden="true">
+                                                        <img
+                                                            src="<?= $escape($entry['visibilityIconUrl']) ?>"
+                                                            alt=""
+                                                            loading="lazy"
+                                                        >
+                                                    </span>
+                                                    <span class="omo-documents__scope-separator" aria-hidden="true"></span>
+                                                    <span class="omo-documents__scope-icon" aria-hidden="true">
+                                                        <img
+                                                            src="<?= $escape($entry['editVisibilityIconUrl']) ?>"
+                                                            alt=""
+                                                            loading="lazy"
+                                                        >
+                                                    </span>
                                                 </span>
                                             <?php endif; ?>
                                         </span>
@@ -675,6 +726,7 @@ if (!is_string($documentsPayload)) {
                 const omoDocumentsDownloadIconUrl = '/omo/assets/images/documents/download.png';
                 const omoDocumentsFolderIconUrl = '/omo/assets/images/documents/folder.png';
                 const omoDocumentsLinkIconUrl = '/omo/assets/images/documents/link.png';
+                const omoDocumentsPvType = 'pv';
 
                 const omoDocumentsGetIconUrl = function (documentItem) {
                     if (documentItem && documentItem.isFolder) {
@@ -703,6 +755,10 @@ if (!is_string($documentsPayload)) {
 
                     if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === 'uploaded_file') {
                         return 'Fichier a telecharger';
+                    }
+
+                    if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsPvType) {
+                        return 'Proces verbal';
                     }
 
                     return 'Fichier';
@@ -1035,27 +1091,55 @@ if (!is_string($documentsPayload)) {
                                 iconBox.appendChild(faviconBadge);
                             };
 
-                            const createVisibilityIcon = function (documentItem) {
+                            const createVisibilityCapsule = function (documentItem) {
                                 const visibilityLabel = String(documentItem && documentItem.visibilityBadge ? documentItem.visibilityBadge : '').trim();
                                 const visibilityIconUrl = String(documentItem && documentItem.visibilityIconUrl ? documentItem.visibilityIconUrl : '').trim();
+                                const editVisibilityLabel = String(documentItem && documentItem.editVisibilityBadge ? documentItem.editVisibilityBadge : '').trim();
+                                const editVisibilityIconUrl = String(documentItem && documentItem.editVisibilityIconUrl ? documentItem.editVisibilityIconUrl : '').trim();
 
-                                if (visibilityLabel === '' || visibilityIconUrl === '') {
+                                if (
+                                    visibilityLabel === ''
+                                    || visibilityIconUrl === ''
+                                    || editVisibilityLabel === ''
+                                    || editVisibilityIconUrl === ''
+                                ) {
                                     return null;
                                 }
 
-                                const visibilityIcon = document.createElement('span');
-                                visibilityIcon.className = 'omo-documents__visibility-icon';
-                                visibilityIcon.setAttribute('role', 'img');
-                                visibilityIcon.setAttribute('aria-label', visibilityLabel);
-                                visibilityIcon.setAttribute('title', visibilityLabel);
+                                const tooltipLabel = <?= json_encode(omoDocumentsScopeT('documents.scope.view'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+                                    + ': ' + visibilityLabel
+                                    + ' | '
+                                    + <?= json_encode(omoDocumentsScopeT('documents.scope.edit'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+                                    + ': ' + editVisibilityLabel;
 
-                                const visibilityImage = document.createElement('img');
-                                visibilityImage.src = visibilityIconUrl;
-                                visibilityImage.alt = '';
-                                visibilityImage.loading = 'lazy';
+                                const capsule = document.createElement('span');
+                                capsule.className = 'omo-documents__scope-capsule';
+                                capsule.setAttribute('aria-label', tooltipLabel);
+                                capsule.setAttribute('title', tooltipLabel);
 
-                                visibilityIcon.appendChild(visibilityImage);
-                                return visibilityIcon;
+                                const buildScopeIcon = function (iconUrl) {
+                                    const icon = document.createElement('span');
+                                    icon.className = 'omo-documents__scope-icon';
+                                    icon.setAttribute('aria-hidden', 'true');
+
+                                    const image = document.createElement('img');
+                                    image.src = iconUrl;
+                                    image.alt = '';
+                                    image.loading = 'lazy';
+
+                                    icon.appendChild(image);
+                                    return icon;
+                                };
+
+                                const separator = document.createElement('span');
+                                separator.className = 'omo-documents__scope-separator';
+                                separator.setAttribute('aria-hidden', 'true');
+
+                                capsule.appendChild(buildScopeIcon(visibilityIconUrl));
+                                capsule.appendChild(separator);
+                                capsule.appendChild(buildScopeIcon(editVisibilityIconUrl));
+
+                                return capsule;
                             };
 
                             const childrenByParentId = new Map();
@@ -1172,9 +1256,9 @@ if (!is_string($documentsPayload)) {
                                     compactTitle.className = 'omo-documents__compact-title generic-file-list__title';
                                     compactTitle.textContent = documentItem.title || '';
                                     compactTitleStack.appendChild(compactTitle);
-                                    const compactVisibilityIcon = createVisibilityIcon(documentItem);
-                                    if (compactVisibilityIcon) {
-                                        compactTitleStack.appendChild(compactVisibilityIcon);
+                                    const compactScopeCapsule = createVisibilityCapsule(documentItem);
+                                    if (compactScopeCapsule) {
+                                        compactTitleStack.appendChild(compactScopeCapsule);
                                     }
 
                                     if (documentItem.isFolder) {
@@ -1288,6 +1372,11 @@ if (!is_string($documentsPayload)) {
                                         ? String(count) + ' element' + (count > 1 ? 's' : '')
                                         : 'Vide';
                                     eyebrow.appendChild(countLabel);
+                                } else if (String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsPvType) {
+                                    const countLabel = document.createElement('span');
+                                    countLabel.className = 'omo-documents__kind-detail';
+                                    countLabel.textContent = 'PV';
+                                    eyebrow.appendChild(countLabel);
                                 }
 
                                 eyebrow.appendChild(date);
@@ -1300,9 +1389,9 @@ if (!is_string($documentsPayload)) {
                                 title.className = 'omo-documents__title';
                                 title.textContent = documentItem.title || '';
                                 titleLine.appendChild(title);
-                                const visibilityIcon = createVisibilityIcon(documentItem);
-                                if (visibilityIcon) {
-                                    titleLine.appendChild(visibilityIcon);
+                                const scopeCapsule = createVisibilityCapsule(documentItem);
+                                if (scopeCapsule) {
+                                    titleLine.appendChild(scopeCapsule);
                                 }
                                 head.appendChild(titleLine);
 
@@ -3519,21 +3608,39 @@ if (!is_string($documentsPayload)) {
     word-break: break-word;
 }
 
-.omo-documents__visibility-icon {
+.omo-documents__scope-capsule {
     flex: 0 0 auto;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    width: 18px;
-    height: 18px;
-    opacity: 0.82;
+    gap: 6px;
+    min-height: 24px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 84%, var(--color-surface, #ffffff));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border, #d1d5db) 86%, transparent);
 }
 
-.omo-documents__visibility-icon img {
+.omo-documents__scope-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    opacity: 0.86;
+}
+
+.omo-documents__scope-icon img {
     display: block;
     width: 100%;
     height: 100%;
     object-fit: contain;
+}
+
+.omo-documents__scope-separator {
+    width: 1px;
+    height: 12px;
+    background: color-mix(in srgb, var(--color-text-light, #64748b) 32%, transparent);
+    border-radius: 999px;
 }
 
 .omo-documents__context {
@@ -3795,9 +3902,15 @@ if (!is_string($documentsPayload)) {
     word-break: break-word;
 }
 
-.omo-documents__item--compact .omo-documents__visibility-icon {
-    width: 16px;
-    height: 16px;
+.omo-documents__item--compact .omo-documents__scope-capsule {
+    min-height: 22px;
+    padding: 0 7px;
+    gap: 5px;
+}
+
+.omo-documents__item--compact .omo-documents__scope-icon {
+    width: 13px;
+    height: 13px;
 }
 
 .omo-documents__compact-count {

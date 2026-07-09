@@ -44,6 +44,7 @@
 			$organizationId = (int)$organizationId;
 			$ruleMap = is_array($ruleMap) ? $ruleMap : $this->getVisibilityRuleMap($organizationId);
 			$viewerContext = \dbObject\ObjectVisibility::buildCurrentViewerContext($organizationId);
+			$referenceDate = new \DateTimeImmutable();
 			$candidateVisibleDocuments = array();
 			$documentsById = array();
 			$loadedCount = 0;
@@ -68,6 +69,10 @@
 						'ownerUserId' => (int)$document->get('IDuser'),
 					)
 				)) {
+					continue;
+				}
+
+				if (!$document->isAvailableInDocumentsList($referenceDate)) {
 					continue;
 				}
 

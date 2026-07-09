@@ -1,0 +1,426 @@
+<?php
+require_once dirname(__DIR__) . '/bootstrap.php';
+require_once __DIR__ . '/invitations_shared.php';
+
+use dbObject\DbObject;
+use dbObject\Event;
+use dbObject\Holon;
+use dbObject\Organization;
+
+$sourceLang = array_merge([
+    'calendar.invitations.js_error' => [
+        'text' => 'Une erreur est survenue.',
+        'context' => 'Fallback error message shown by the event invitation popup JavaScript.',
+    ],
+    'calendar.invitations.js_request_error' => [
+        'text' => 'Impossible d enregistrer ces invites pour le moment.',
+        'context' => 'Network error shown by the event invitation popup JavaScript.',
+    ],
+], omoCalendarInvitationSourceLang());
+
+$lang = omoLoadTranslationBundle('omo_calendar_invitations_popup', $sourceLang);
+
+function omoCalendarInvitationsPopupT($key, array $variables = [])
+{
+    global $lang, $sourceLang;
+
+    return t($key, $variables, $lang, $sourceLang);
+}
+
+$organizationId = (int)($_SESSION['currentOrganization'] ?? ($_REQUEST['oid'] ?? 0));
+$currentHolonId = isset($_REQUEST['cid']) && is_numeric($_REQUEST['cid']) ? (int)$_REQUEST['cid'] : 0;
+$eventId = isset($_REQUEST['id']) && is_numeric($_REQUEST['id']) ? (int)$_REQUEST['id'] : 0;
+$currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+
+if ($organizationId <= 0 || $eventId <= 0 || $currentUserId <= 0) {
+    http_response_code(403);
+    ?>
+    <div class="omo-calendar-invitations-popup__empty"><?= omoApiEscape(omoCalendarInvitationsPopupT('calendar.invitations.empty_denied')) ?></div>
+    <?php
+    exit;
+}
+
+$organization = new Organization();
+$event = new Event();
+if (
+    !$organization->load($organizationId)
+    || !$organization->canViewDetail()
+    || !$event->load($eventId)
+    || (int)$event->get('IDorganization') !== $organizationId
+    || (int)$event->get('IDuser') !== $currentUserId
+) {
+    http_response_code(403);
+    ?>
+    <div class="omo-calendar-invitations-popup__empty"><?= omoApiEscape(omoCalendarInvitationsPopupT('calendar.invitations.empty_denied')) ?></div>
+    <?php
+    exit;
+}
+
+$effectiveHolon = null;
+if ($currentHolonId > 0) {
+    $candidateHolon = new Holon();
+    if ($candidateHolon->load($currentHolonId) && $organization->containsHolon($candidateHolon)) {
+        $effectiveHolon = $candidateHolon;
+    }
+}
+
+$eventHolonId = (int)$event->get('IDholon');
+if (!($effectiveHolon instanceof Holon) && $eventHolonId > 0) {
+    $candidateHolon = new Holon();
+    if ($candidateHolon->load($eventHolonId) && $organization->containsHolon($candidateHolon)) {
+        $effectiveHolon = $candidateHolon;
+    }
+}
+
+$targetHolonId = $effectiveHolon instanceof Holon ? (int)$effectiveHolon->getId() : $eventHolonId;
+$editorState = omoCalendarBuildInvitationEditorState(
+    $event,
+    $organization,
+    $organizationId,
+    $effectiveHolon,
+    $targetHolonId,
+    $targetHolonId,
+    true
+);
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    header('Content-Type: application/json; charset=UTF-8');
+
+    $selectedHolonIds = array_values(array_unique(array_filter(array_map('intval', $_POST['holon_ids'] ?? []), static function ($holonId) {
+        return $holonId > 0;
+    })));
+    $selectedUserIds = array_values(array_unique(array_filter(array_map('intval', $_POST['user_ids'] ?? []), static function ($userId) {
+        return $userId > 0;
+    })));
+    $selectedEmails = omoCalendarInvitationParseEmails($_POST['emails'] ?? '');
+
+    $pdo = DbObject::getPdo();
+    if (!$pdo) {
+        echo json_encode([
+            'status' => false,
+            'message' => omoCalendarInvitationsPopupT('calendar.invitations.db_error'),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    try {
+        $pdo->beginTransaction();
+
+        $applyResult = omoCalendarApplyInvitationSelections(
+            $event,
+            $organization,
+            $organizationId,
+            $selectedHolonIds,
+            $selectedUserIds,
+            $selectedEmails
+        );
+        if (empty($applyResult['status'])) {
+            throw new InvalidArgumentException(trim((string)($applyResult['message'] ?? omoCalendarInvitationsPopupT('calendar.invitations.save_error'))));
+        }
+
+        $pdo->commit();
+    } catch (InvalidArgumentException $exception) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        echo json_encode([
+            'status' => false,
+            'message' => trim((string)$exception->getMessage()) !== ''
+                ? trim((string)$exception->getMessage())
+                : omoCalendarInvitationsPopupT('calendar.invitations.save_error'),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        echo json_encode([
+            'status' => false,
+            'message' => omoCalendarInvitationsPopupT('calendar.invitations.save_error'),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    $detailUrl = '/omo/api/calendar/detail.php?oid=' . rawurlencode((string)$organizationId) . '&id=' . rawurlencode((string)(int)$event->getId());
+    if ($targetHolonId > 0) {
+        $detailUrl .= '&cid=' . rawurlencode((string)$targetHolonId);
+    }
+
+    echo json_encode([
+        'status' => true,
+        'message' => omoCalendarInvitationsPopupT('calendar.invitations.updated'),
+        'detailUrl' => $detailUrl,
+        'eventId' => (int)$event->getId(),
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+?>
+<style>
+.omo-calendar-invitations-popup {
+    display: grid;
+    gap: 0;
+    color: var(--color-text, #1f2937);
+}
+
+.omo-calendar-invitations-popup__header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.omo-calendar-invitations-popup__header-copy {
+    display: grid;
+    gap: 4px;
+}
+
+.omo-calendar-invitations-popup__shell {
+    display: grid;
+    gap: 16px;
+    padding: 16px 18px 18px;
+}
+
+.omo-calendar-invitations-editor,
+.omo-calendar-invitations-editor__tab-panel,
+.omo-calendar-invitations-editor__checklist,
+.omo-calendar-invitations-editor__member-list,
+.omo-calendar-invitations-editor__check-meta,
+.omo-calendar-invitations-editor__tree-node,
+.omo-calendar-invitations-editor__tree-children {
+    display: grid;
+    gap: 8px;
+}
+
+.omo-calendar-invitations-editor [hidden] {
+    display: none !important;
+}
+
+.omo-calendar-invitations-editor__tabs {
+    --generic-tabs-panel-padding-block: 14px;
+    --generic-tabs-panel-padding-inline: 14px;
+}
+
+.omo-calendar-invitations-editor__hint {
+    margin: 0;
+    color: var(--color-text-light, #64748b);
+    line-height: 1.6;
+}
+
+.omo-calendar-invitations-editor__filter {
+    width: 100%;
+}
+
+.omo-calendar-invitations-editor__empty {
+    margin: 0;
+    color: var(--color-text-light, #64748b);
+    font-style: italic;
+}
+
+.omo-calendar-invitations-editor__tree-row,
+.omo-calendar-invitations-editor__check {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.omo-calendar-invitations-editor__tree-toggle,
+.omo-calendar-invitations-editor__tree-spacer {
+    width: 28px;
+    min-width: 28px;
+    height: 28px;
+    margin-top: 2px;
+}
+
+.omo-calendar-invitations-editor__tree-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.12);
+    color: inherit;
+    cursor: pointer;
+}
+
+.omo-calendar-invitations-editor__tree-toggle span {
+    display: inline-block;
+    transition: transform 0.18s ease;
+}
+
+.omo-calendar-invitations-editor__tree-toggle[aria-expanded="false"] span {
+    transform: rotate(-90deg);
+}
+
+.omo-calendar-invitations-editor__tree-children {
+    margin-left: 18px;
+    padding-left: 14px;
+    border-left: 1px solid var(--topbar-panel-border, #dbe3ef);
+}
+
+.omo-calendar-invitations-editor__check-type,
+.omo-calendar-invitations-editor__member-email {
+    color: var(--color-text-light, #64748b);
+    font-size: 0.9rem;
+}
+
+.omo-calendar-invitations-editor__textarea {
+    min-height: 120px;
+}
+
+.omo-calendar-invitations-popup__feedback {
+    min-height: 22px;
+    color: #b91c1c;
+    font-weight: 600;
+}
+
+.omo-calendar-invitations-popup__feedback.is-success {
+    color: #15803d;
+}
+
+.omo-calendar-invitations-popup__empty {
+    padding: 18px;
+    color: var(--color-text, #1f2937);
+}
+
+.omo-calendar-invitations-popup__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+</style>
+
+<form
+    id="omoCalendarInvitationsPopupForm"
+    class="omo-calendar-invitations-popup"
+    action="/omo/api/calendar/invitations_popup.php?oid=<?= (int)$organizationId ?><?= $targetHolonId > 0 ? '&cid=' . (int)$targetHolonId : '' ?>&id=<?= (int)$event->getId() ?>"
+    method="post"
+>
+    <div class="omo-calendar-invitations-popup__header generic-drawer-header generic-drawer-header--sticky">
+        <div class="generic-drawer-header__copy omo-calendar-invitations-popup__header-copy">
+            <div class="generic-card-title generic-card-title--eyebrow">Calendrier</div>
+            <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoCalendarInvitationsPopupT('calendar.invitations.title')) ?></h3>
+        </div>
+    </div>
+    <div class="omo-calendar-invitations-popup__shell">
+        <?= omoCalendarRenderInvitationEditor($editorState, $lang, $sourceLang, 'omoApiEscape', [
+            'instanceId' => 'omoCalendarPopupInvitations',
+            'holonFieldName' => 'holon_ids[]',
+            'userFieldName' => 'user_ids[]',
+            'emailFieldName' => 'emails',
+            'showFooterHint' => false,
+        ]) ?>
+
+        <div id="omoCalendarInvitationsPopupFeedback" class="omo-calendar-invitations-popup__feedback"></div>
+
+        <div class="omo-calendar-invitations-popup__actions">
+            <button type="submit" id="omoCalendarInvitationsPopupSubmit" class="generic-action-button generic-action-button--main">
+                <?= omoApiEscape(omoCalendarInvitationsPopupT('calendar.invitations.submit')) ?>
+            </button>
+        </div>
+    </div>
+</form>
+
+<script>
+(function () {
+    var form = document.getElementById('omoCalendarInvitationsPopupForm');
+    var feedback = document.getElementById('omoCalendarInvitationsPopupFeedback');
+    var submitButton = document.getElementById('omoCalendarInvitationsPopupSubmit');
+
+    function initInvitationEditor(scope) {
+        if (!scope) {
+            return;
+        }
+
+        if (typeof window.omoCalendarInitInvitationEditors === 'function') {
+            window.omoCalendarInitInvitationEditors(scope);
+            return;
+        }
+
+        if (typeof window.initGenericComponents === 'function') {
+            window.initGenericComponents(scope);
+        }
+
+        Array.prototype.forEach.call(scope.querySelectorAll('[data-omo-calendar-holon-toggle]'), function (toggle) {
+            if (toggle.dataset.omoCalendarBound === '1') {
+                return;
+            }
+
+            toggle.dataset.omoCalendarBound = '1';
+            toggle.addEventListener('click', function (event) {
+                var node;
+                var children;
+                var isExpanded;
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                node = toggle.closest('[data-omo-calendar-holon-node]');
+                children = node ? node.querySelector('[data-omo-calendar-holon-children]') : null;
+                if (!children) {
+                    return;
+                }
+
+                isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+                toggle.setAttribute('aria-expanded', isExpanded ? 'false' : 'true');
+                children.hidden = isExpanded;
+            });
+        });
+    }
+
+    if (!form || !feedback || !submitButton) {
+        return;
+    }
+
+    initInvitationEditor(form);
+
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        feedback.textContent = '';
+        feedback.classList.remove('is-success');
+        submitButton.disabled = true;
+
+        fetch(form.getAttribute('action'), {
+            method: 'POST',
+            body: new FormData(form),
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(function (response) {
+                return response.json().then(function (data) {
+                    return {
+                        ok: response.ok,
+                        data: data
+                    };
+                });
+            })
+            .then(function (result) {
+                if (!result.ok || !result.data || !result.data.status) {
+                    feedback.textContent = result.data && result.data.message ? result.data.message : <?= json_encode(omoCalendarInvitationsPopupT('calendar.invitations.js_error')) ?>;
+                    submitButton.disabled = false;
+                    return;
+                }
+
+                feedback.textContent = result.data.message || <?= json_encode(omoCalendarInvitationsPopupT('calendar.invitations.updated')) ?>;
+                feedback.classList.add('is-success');
+
+                if (typeof window.commonTopbarCloseModal === 'function') {
+                    window.commonTopbarCloseModal();
+                }
+
+                if (result.data.detailUrl && typeof window.omoCalendarOpenEventDrawer === 'function') {
+                    window.omoCalendarOpenEventDrawer(result.data.detailUrl);
+                }
+                if (typeof window.omoCalendarRefreshCurrentView === 'function') {
+                    window.omoCalendarRefreshCurrentView();
+                }
+            })
+            .catch(function () {
+                feedback.textContent = <?= json_encode(omoCalendarInvitationsPopupT('calendar.invitations.js_request_error')) ?>;
+                submitButton.disabled = false;
+            });
+    });
+})();
+</script>

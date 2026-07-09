@@ -25,8 +25,18 @@ $documentType = trim((string)($_POST['document_type'] ?? ''));
 $externalUrl = trim((string)($_POST['external_url'] ?? ''));
 $openInNewWindow = !empty($_POST['open_in_new_window']);
 $visibilityType = trim((string)($_POST['visibility_type'] ?? 'organization'));
+$editVisibilityType = trim((string)($_POST['edit_visibility_type'] ?? 'self'));
 $isFolder = !empty($_POST['is_folder']) || trim(mb_strtolower($documentType, 'UTF-8')) === \dbObject\Document::TYPE_FOLDER;
 $parentDocumentId = isset($_POST['parent_document_id']) ? (int)$_POST['parent_document_id'] : 0;
+
+if (trim(mb_strtolower($documentType, 'UTF-8')) === \dbObject\Document::TYPE_PV) {
+    http_response_code(422);
+    echo json_encode(array(
+        'status' => false,
+        'message' => 'Le type PV est gere depuis le module de reunion.',
+    ));
+    exit;
+}
 
 if (
     $documentId <= 0
@@ -66,10 +76,17 @@ $payload = array(
     'open_in_new_window' => $openInNewWindow,
     'uploaded_file' => $_FILES['uploaded_file'] ?? null,
     'remove_uploaded_file' => !empty($_POST['remove_uploaded_file']),
-    'visibility_type' => $visibilityType,
     'is_folder' => $isFolder,
     'parent_document_id' => $parentDocumentId,
 );
+
+if (array_key_exists('visibility_type', $_POST)) {
+    $payload['visibility_type'] = $visibilityType;
+}
+
+if (array_key_exists('edit_visibility_type', $_POST)) {
+    $payload['edit_visibility_type'] = $editVisibilityType;
+}
 
 if ($documentId > 0) {
     if (!$document->load($documentId)) {

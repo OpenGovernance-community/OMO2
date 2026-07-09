@@ -1,18 +1,23 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
+require_once __DIR__ . '/invitations_shared.php';
 
 use dbObject\Event;
 use dbObject\Holon;
 use dbObject\Organization;
 
-$sourceLang = [
+$sourceLang = array_merge([
     'calendar.detail.badge' => [
-        'text' => 'Événement',
+        'text' => 'Evenement',
         'context' => 'Small eyebrow label shown above the event detail title.',
     ],
     'calendar.detail.action.edit' => [
         'text' => 'Modifier',
         'context' => 'Button used to open the event edit form from the event detail view.',
+    ],
+    'calendar.detail.action.open_document' => [
+        'text' => 'Consulter le document',
+        'context' => 'Button used to open the linked document from the event detail view.',
     ],
     'calendar.detail.section.schedule' => [
         'text' => 'Horaire',
@@ -26,16 +31,44 @@ $sourceLang = [
         'text' => 'Statut',
         'context' => 'Label of the status card inside the event detail view.',
     ],
+    'calendar.detail.section.location' => [
+        'text' => 'Lieu',
+        'context' => 'Label of the location card inside the event detail view.',
+    ],
+    'calendar.detail.section.document' => [
+        'text' => 'Document associe',
+        'context' => 'Label of the linked document card inside the event detail view.',
+    ],
+    'calendar.detail.section.invites' => [
+        'text' => 'Invites',
+        'context' => 'Label of the invitation summary card inside the event detail view.',
+    ],
     'calendar.detail.section.description' => [
         'text' => 'Description',
         'context' => 'Label of the description section inside the event detail view.',
     ],
     'calendar.detail.empty.description' => [
-        'text' => 'Aucune description pour cet événement.',
+        'text' => 'Aucune description pour cet evenement.',
         'context' => 'Fallback text shown when the event has no description.',
     ],
+    'calendar.detail.empty.location' => [
+        'text' => 'Aucun lieu precise.',
+        'context' => 'Fallback text shown when the event has no location yet.',
+    ],
+    'calendar.detail.empty.document' => [
+        'text' => 'Aucun document lie a cet evenement.',
+        'context' => 'Fallback text shown when the event has no linked document.',
+    ],
+    'calendar.detail.location.address' => [
+        'text' => 'Adresse',
+        'context' => 'Label shown before the physical address.',
+    ],
+    'calendar.detail.location.visio' => [
+        'text' => 'Visio',
+        'context' => 'Label shown before the virtual meeting URL.',
+    ],
     'calendar.detail.schedule.same_day' => [
-        'text' => '{date} de {start} à {end}',
+        'text' => '{date} de {start} a {end}',
         'context' => 'Schedule string used for an event starting and ending the same day.',
     ],
     'calendar.detail.schedule.range' => [
@@ -43,22 +76,22 @@ $sourceLang = [
         'context' => 'Schedule string used for an event spanning multiple days.',
     ],
     'calendar.detail.schedule.all_day_single' => [
-        'text' => 'Toute la journée du {date}',
+        'text' => 'Toute la journee du {date}',
         'context' => 'Schedule string used for a one-day all-day event.',
     ],
     'calendar.detail.schedule.all_day_range' => [
-        'text' => 'Journées complètes du {start} au {end}',
+        'text' => 'Journees completes du {start} au {end}',
         'context' => 'Schedule string used for a multi-day all-day event.',
     ],
     'calendar.detail.not_found' => [
-        'text' => 'Événement introuvable.',
+        'text' => 'Evenement introuvable.',
         'context' => 'Error shown when the requested event cannot be found.',
     ],
     'calendar.detail.organization_invalid' => [
         'text' => 'Organisation invalide.',
         'context' => 'Error shown when the organization is missing or inaccessible.',
     ],
-];
+], omoCalendarInvitationSourceLang());
 
 $lang = omoLoadTranslationBundle('omo_calendar_detail', $sourceLang);
 
@@ -185,6 +218,15 @@ $statusLabel = trim((string)($statusCatalog[$normalizedStatus]['label'] ?? $norm
 $title = trim((string)$event->get('title'));
 $description = trim((string)$event->get('description'));
 $scheduleLabel = omoCalendarDetailFormatSchedule($event);
+$locationData = $event->getLocationDisplayData();
+$associatedDocument = $event->getAssociatedDocument();
+$associatedDocumentUrl = $event->buildAssociatedDocumentDetailUrl($eventHolonId > 0 ? $eventHolonId : $currentHolonId);
+$invitationContext = [
+    'organizationId' => $organizationId,
+    'targetHolonId' => $editContextHolonId,
+    'effectiveHolon' => isset($eventHolon) && $eventHolon instanceof Holon ? $eventHolon : null,
+    'canEditInvitations' => $canEdit,
+];
 ?>
 <div class="omo-calendar-detail">
     <article class="generic-section generic-section--stack omo-calendar-detail__shell">
@@ -219,6 +261,52 @@ $scheduleLabel = omoCalendarDetailFormatSchedule($event);
             </section>
         </div>
 
+        <div class="omo-calendar-detail__supplementary-grid">
+            <section class="generic-soft-panel generic-soft-panel--stack omo-calendar-detail__content">
+                <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.location')) ?></h3>
+                <?php if (($locationData['mode'] ?? '') !== '' || ($locationData['address'] ?? '') !== '' || ($locationData['videoUrl'] ?? '') !== ''): ?>
+                    <?php if (trim((string)($locationData['modeLabel'] ?? '')) !== ''): ?>
+                        <div class="omo-calendar-detail__location-mode"><?= omoApiEscape((string)$locationData['modeLabel']) ?></div>
+                    <?php endif; ?>
+                    <?php if (trim((string)($locationData['address'] ?? '')) !== ''): ?>
+                        <div class="omo-calendar-detail__location-line">
+                            <strong><?= omoApiEscape(omoCalendarDetailT('calendar.detail.location.address')) ?></strong>
+                            <span><?= nl2br(omoApiEscape((string)$locationData['address'])) ?></span>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (trim((string)($locationData['videoUrl'] ?? '')) !== ''): ?>
+                        <div class="omo-calendar-detail__location-line">
+                            <strong><?= omoApiEscape(omoCalendarDetailT('calendar.detail.location.visio')) ?></strong>
+                            <a href="<?= omoApiEscape((string)$locationData['videoUrl']) ?>" target="_blank" rel="noopener noreferrer" class="omo-calendar-detail__link">
+                                <?= omoApiEscape((string)$locationData['videoUrl']) ?>
+                            </a>
+                        </div>
+                    <?php endif; ?>
+                <?php else: ?>
+                    <p class="omo-calendar-detail__empty"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.empty.location')) ?></p>
+                <?php endif; ?>
+            </section>
+
+            <section class="generic-soft-panel generic-soft-panel--stack omo-calendar-detail__content">
+                <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.document')) ?></h3>
+                <?php if ($associatedDocument instanceof \dbObject\Document): ?>
+                    <div class="omo-calendar-detail__document-head">
+                        <strong class="omo-calendar-detail__meta-value"><?= omoApiEscape(trim((string)$associatedDocument->get('title')) !== '' ? trim((string)$associatedDocument->get('title')) : ('Document #' . (int)$associatedDocument->getId())) ?></strong>
+                        <span class="omo-calendar-detail__document-type"><?= omoApiEscape($associatedDocument->getDocumentTypeLabel()) ?></span>
+                    </div>
+                    <?php if ($associatedDocumentUrl !== ''): ?>
+                        <button
+                            type="button"
+                            class="generic-action-button generic-action-button--secondary"
+                            data-omo-calendar-open-url="<?= omoApiEscape($associatedDocumentUrl) ?>"
+                        ><?= omoApiEscape(omoCalendarDetailT('calendar.detail.action.open_document')) ?></button>
+                    <?php endif; ?>
+                <?php else: ?>
+                    <p class="omo-calendar-detail__empty"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.empty.document')) ?></p>
+                <?php endif; ?>
+            </section>
+        </div>
+
         <section class="generic-soft-panel generic-soft-panel--stack omo-calendar-detail__content">
             <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.description')) ?></h3>
             <?php if ($description !== ''): ?>
@@ -227,6 +315,8 @@ $scheduleLabel = omoCalendarDetailFormatSchedule($event);
                 <p class="omo-calendar-detail__empty"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.empty.description')) ?></p>
             <?php endif; ?>
         </section>
+
+        <?= omoCalendarRenderInvitationSummarySection($event, $invitationContext, $lang, $sourceLang, 'omoApiEscape') ?>
     </article>
 
     <style>
@@ -267,10 +357,15 @@ $scheduleLabel = omoCalendarDetailFormatSchedule($event);
         flex-wrap: wrap;
     }
 
-    .omo-calendar-detail__meta-grid {
+    .omo-calendar-detail__meta-grid,
+    .omo-calendar-detail__supplementary-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 12px;
+    }
+
+    .omo-calendar-detail__supplementary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .omo-calendar-detail__meta-card {
@@ -292,6 +387,7 @@ $scheduleLabel = omoCalendarDetailFormatSchedule($event);
 
     .omo-calendar-detail__content {
         gap: 10px;
+        min-width: 0;
     }
 
     .omo-calendar-detail__description,
@@ -306,8 +402,62 @@ $scheduleLabel = omoCalendarDetailFormatSchedule($event);
         color: var(--color-text-light, #64748b);
     }
 
+    .omo-calendar-detail__location-mode,
+    .omo-calendar-detail__document-type {
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        min-height: 28px;
+        padding: 0 10px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #ffffff));
+        color: var(--color-text, #1f2937);
+        font-size: 0.85rem;
+        font-weight: 700;
+    }
+
+    .omo-calendar-detail__location-line {
+        display: grid;
+        gap: 4px;
+        color: var(--color-text, #1f2937);
+        line-height: 1.6;
+    }
+
+    .omo-calendar-detail__link {
+        color: var(--color-primary, #2563eb);
+        text-decoration: none;
+        word-break: break-word;
+    }
+
+    .omo-calendar-detail__link:hover {
+        text-decoration: underline;
+    }
+
+    .omo-calendar-detail__document-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .omo-calendar-detail__summary-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .omo-calendar-detail__summary-copy {
+        margin: 0;
+        color: var(--color-text-light, #64748b);
+        line-height: 1.6;
+    }
+
     @media (max-width: 760px) {
-        .omo-calendar-detail__meta-grid {
+        .omo-calendar-detail__meta-grid,
+        .omo-calendar-detail__supplementary-grid {
             grid-template-columns: 1fr;
         }
     }

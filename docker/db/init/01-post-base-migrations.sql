@@ -286,6 +286,31 @@ ON DUPLICATE KEY UPDATE
 ALTER TABLE `organization_application`
   ADD COLUMN IF NOT EXISTS `parameters` mediumtext DEFAULT NULL AFTER `active`;
 
+CREATE TABLE IF NOT EXISTS `event_invitation` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `IDevent` int(11) NOT NULL,
+    `IDholon` int(11) DEFAULT NULL,
+    `IDuser` int(11) DEFAULT NULL,
+    `email` varchar(250) DEFAULT NULL,
+    `display_name` varchar(190) DEFAULT NULL,
+    `invitation_type` varchar(30) NOT NULL,
+    `status` varchar(30) NOT NULL DEFAULT 'invited',
+    `parameters` mediumtext DEFAULT NULL,
+    `active` tinyint(1) NOT NULL DEFAULT 1,
+    `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+    `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uniq_event_invitation_holon` (`IDevent`, `IDholon`),
+    UNIQUE KEY `uniq_event_invitation_user` (`IDevent`, `IDuser`),
+    UNIQUE KEY `uniq_event_invitation_email` (`IDevent`, `email`),
+    KEY `idx_event_invitation_type` (`invitation_type`),
+    KEY `idx_event_invitation_status` (`status`),
+    KEY `idx_event_invitation_active` (`active`),
+    CONSTRAINT `fk_event_invitation_event` FOREIGN KEY (`IDevent`) REFERENCES `event` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_event_invitation_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_event_invitation_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT INTO `organization_application` (`IDorganization`, `IDapplication`, `position`, `active`)
 SELECT o.id, a.id, a.position, 1
 FROM `organization` o
@@ -317,6 +342,447 @@ ALTER TABLE `user_organization`
   ADD COLUMN IF NOT EXISTS `image` varchar(100) DEFAULT NULL AFTER `username`,
   ADD COLUMN IF NOT EXISTS `presentation` text DEFAULT NULL AFTER `email`,
   ADD COLUMN IF NOT EXISTS `latlong` varchar(100) DEFAULT NULL AFTER `presentation`;
+
+CREATE TABLE IF NOT EXISTS `tension` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDorganization` int(11) NOT NULL,
+  `IDholon` int(11) DEFAULT NULL,
+  `IDuser` int(11) NOT NULL,
+  `title` varchar(80) NOT NULL,
+  `description` text NOT NULL,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  `datemodification` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  KEY `idx_tension_organization` (`IDorganization`),
+  KEY `idx_tension_holon` (`IDholon`),
+  KEY `idx_tension_user` (`IDuser`),
+  KEY `idx_tension_creation` (`datecreation`),
+  KEY `idx_tension_active` (`active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `document`
+  ADD COLUMN IF NOT EXISTS `IDusercreation` int(11) DEFAULT NULL AFTER `IDuser`,
+  ADD COLUMN IF NOT EXISTS `contentedition` longtext DEFAULT NULL AFTER `content`,
+  ADD COLUMN IF NOT EXISTS `estDossier` tinyint(1) NOT NULL DEFAULT 0 AFTER `IDholon`,
+  ADD COLUMN IF NOT EXISTS `IDevent` int(11) DEFAULT NULL AFTER `IDholon`,
+  ADD COLUMN IF NOT EXISTS `IDdocument_parent` int(11) DEFAULT NULL AFTER `estDossier`,
+  ADD COLUMN IF NOT EXISTS `datecontentedition` datetime DEFAULT NULL AFTER `contentedition`,
+  ADD COLUMN IF NOT EXISTS `IDusermodification` int(11) DEFAULT NULL AFTER `datemodification`,
+  ADD COLUMN IF NOT EXISTS `dateedition` datetime DEFAULT NULL AFTER `datemodification`,
+  ADD COLUMN IF NOT EXISTS `IDuseredition` int(11) DEFAULT NULL AFTER `dateedition`,
+  ADD COLUMN IF NOT EXISTS `documenttype` varchar(30) NOT NULL DEFAULT 'html' AFTER `estDossier`,
+  ADD COLUMN IF NOT EXISTS `externalurl` varchar(2000) DEFAULT NULL AFTER `documenttype`,
+  ADD COLUMN IF NOT EXISTS `openinnewwindow` tinyint(1) NOT NULL DEFAULT 0 AFTER `externalurl`,
+  ADD COLUMN IF NOT EXISTS `storedfilepath` varchar(1000) DEFAULT NULL AFTER `openinnewwindow`,
+  ADD COLUMN IF NOT EXISTS `storedfilename` varchar(255) DEFAULT NULL AFTER `storedfilepath`,
+  ADD COLUMN IF NOT EXISTS `storedfilemime` varchar(255) DEFAULT NULL AFTER `storedfilename`,
+  ADD COLUMN IF NOT EXISTS `storedfilesize` int(11) DEFAULT NULL AFTER `storedfilemime`;
+
+UPDATE `document`
+SET `IDusercreation` = `IDuser`
+WHERE `IDusercreation` IS NULL
+  AND `IDuser` IS NOT NULL;
+
+UPDATE `document`
+SET `IDusermodification` = COALESCE(`IDusercreation`, `IDuser`)
+WHERE `IDusermodification` IS NULL;
+
+UPDATE `document`
+SET `documenttype` = 'folder'
+WHERE `estDossier` = 1
+  AND (`documenttype` IS NULL OR `documenttype` = '' OR `documenttype` = 'html');
+
+UPDATE `document`
+SET `documenttype` = 'html'
+WHERE `estDossier` = 0
+  AND (`documenttype` IS NULL OR `documenttype` = '');
+
+ALTER TABLE `document`
+  ADD KEY IF NOT EXISTS `idx_document_event` (`IDevent`),
+  ADD KEY IF NOT EXISTS `idx_document_parent` (`IDdocument_parent`),
+  ADD KEY IF NOT EXISTS `idx_document_folder` (`estDossier`),
+  ADD KEY IF NOT EXISTS `idx_document_user_creation` (`IDusercreation`),
+  ADD KEY IF NOT EXISTS `idx_document_user_modification` (`IDusermodification`),
+  ADD KEY IF NOT EXISTS `idx_document_draft_date` (`datecontentedition`),
+  ADD KEY IF NOT EXISTS `idx_document_editing_user` (`IDuseredition`),
+  ADD KEY IF NOT EXISTS `idx_document_editing_date` (`dateedition`),
+  ADD KEY IF NOT EXISTS `idx_document_type` (`documenttype`),
+  ADD KEY IF NOT EXISTS `idx_document_stored_file_path` (`storedfilepath`(255));
+
+SET @fk_document_parent_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.REFERENTIAL_CONSTRAINTS
+  WHERE CONSTRAINT_SCHEMA = DATABASE()
+    AND CONSTRAINT_NAME = 'fk_document_parent'
+);
+
+SET @fk_document_parent_sql := IF(
+  @fk_document_parent_exists = 0,
+  'ALTER TABLE `document` ADD CONSTRAINT `fk_document_parent` FOREIGN KEY (`IDdocument_parent`) REFERENCES `document` (`id`) ON DELETE CASCADE',
+  'SELECT 1'
+);
+
+PREPARE stmt FROM @fk_document_parent_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @fk_document_user_creation_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.REFERENTIAL_CONSTRAINTS
+  WHERE CONSTRAINT_SCHEMA = DATABASE()
+    AND CONSTRAINT_NAME = 'fk_document_user_creation'
+);
+
+SET @fk_document_user_creation_sql := IF(
+  @fk_document_user_creation_exists = 0,
+  'ALTER TABLE `document` ADD CONSTRAINT `fk_document_user_creation` FOREIGN KEY (`IDusercreation`) REFERENCES `user` (`id`) ON DELETE SET NULL',
+  'SELECT 1'
+);
+
+PREPARE stmt FROM @fk_document_user_creation_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @fk_document_user_modification_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.REFERENTIAL_CONSTRAINTS
+  WHERE CONSTRAINT_SCHEMA = DATABASE()
+    AND CONSTRAINT_NAME = 'fk_document_user_modification'
+);
+
+SET @fk_document_user_modification_sql := IF(
+  @fk_document_user_modification_exists = 0,
+  'ALTER TABLE `document` ADD CONSTRAINT `fk_document_user_modification` FOREIGN KEY (`IDusermodification`) REFERENCES `user` (`id`) ON DELETE SET NULL',
+  'SELECT 1'
+);
+
+PREPARE stmt FROM @fk_document_user_modification_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @fk_document_user_editing_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.REFERENTIAL_CONSTRAINTS
+  WHERE CONSTRAINT_SCHEMA = DATABASE()
+    AND CONSTRAINT_NAME = 'fk_document_user_editing'
+);
+
+SET @fk_document_user_editing_sql := IF(
+  @fk_document_user_editing_exists = 0,
+  'ALTER TABLE `document` ADD CONSTRAINT `fk_document_user_editing` FOREIGN KEY (`IDuseredition`) REFERENCES `user` (`id`) ON DELETE SET NULL',
+  'SELECT 1'
+);
+
+PREPARE stmt FROM @fk_document_user_editing_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+CREATE TABLE IF NOT EXISTS `event` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDorganization` int(11) NOT NULL,
+  `IDholon` int(11) DEFAULT NULL,
+  `IDuser` int(11) NOT NULL,
+  `title` varchar(190) NOT NULL,
+  `description` mediumtext DEFAULT NULL,
+  `status` varchar(20) NOT NULL DEFAULT 'draft',
+  `timezone` varchar(64) DEFAULT NULL,
+  `locationmode` varchar(20) DEFAULT NULL,
+  `locationaddress` varchar(1000) DEFAULT NULL,
+  `videomeetingurl` varchar(2000) DEFAULT NULL,
+  `start_at` datetime NOT NULL,
+  `end_at` datetime NOT NULL,
+  `is_all_day` tinyint(1) NOT NULL DEFAULT 0,
+  `parameters` mediumtext DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_event_org` (`IDorganization`),
+  KEY `idx_event_holon` (`IDholon`),
+  KEY `idx_event_user` (`IDuser`),
+  KEY `idx_event_status` (`status`),
+  KEY `idx_event_active` (`active`),
+  KEY `idx_event_start` (`start_at`),
+  KEY `idx_event_org_start` (`IDorganization`, `start_at`),
+  KEY `idx_event_location_mode` (`locationmode`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `event`
+  ADD COLUMN IF NOT EXISTS `locationmode` varchar(20) DEFAULT NULL AFTER `timezone`,
+  ADD COLUMN IF NOT EXISTS `locationaddress` varchar(1000) DEFAULT NULL AFTER `locationmode`,
+  ADD COLUMN IF NOT EXISTS `videomeetingurl` varchar(2000) DEFAULT NULL AFTER `locationaddress`;
+
+ALTER TABLE `event`
+  ADD KEY IF NOT EXISTS `idx_event_location_mode` (`locationmode`);
+
+SET @fk_event_org_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.REFERENTIAL_CONSTRAINTS
+  WHERE CONSTRAINT_SCHEMA = DATABASE()
+    AND CONSTRAINT_NAME = 'fk_event_org'
+);
+
+SET @fk_event_org_sql := IF(
+  @fk_event_org_exists = 0,
+  'ALTER TABLE `event` ADD CONSTRAINT `fk_event_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE',
+  'SELECT 1'
+);
+
+PREPARE stmt FROM @fk_event_org_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @fk_event_holon_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.REFERENTIAL_CONSTRAINTS
+  WHERE CONSTRAINT_SCHEMA = DATABASE()
+    AND CONSTRAINT_NAME = 'fk_event_holon'
+);
+
+SET @fk_event_holon_sql := IF(
+  @fk_event_holon_exists = 0,
+  'ALTER TABLE `event` ADD CONSTRAINT `fk_event_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE SET NULL',
+  'SELECT 1'
+);
+
+PREPARE stmt FROM @fk_event_holon_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @fk_document_event_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.REFERENTIAL_CONSTRAINTS
+  WHERE CONSTRAINT_SCHEMA = DATABASE()
+    AND CONSTRAINT_NAME = 'fk_document_event'
+);
+
+SET @fk_document_event_sql := IF(
+  @fk_document_event_exists = 0,
+  'ALTER TABLE `document` ADD CONSTRAINT `fk_document_event` FOREIGN KEY (`IDevent`) REFERENCES `event` (`id`) ON DELETE SET NULL',
+  'SELECT 1'
+);
+
+PREPARE stmt FROM @fk_document_event_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+CREATE TABLE IF NOT EXISTS `document_pv_point` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDdocument` int(11) NOT NULL,
+  `title` varchar(80) NOT NULL,
+  `IDuser_author` int(11) DEFAULT NULL,
+  `IDholon_concerned` int(11) DEFAULT NULL,
+  `content` mediumtext DEFAULT NULL,
+  `position` int(11) NOT NULL DEFAULT 1,
+  `desired_duration_minutes` int(11) DEFAULT NULL,
+  `actual_duration_minutes` int(11) DEFAULT NULL,
+  `pointtype` varchar(20) NOT NULL DEFAULT 'information',
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  `datemodification` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_document_pv_point_document` (`IDdocument`),
+  KEY `idx_document_pv_point_author` (`IDuser_author`),
+  KEY `idx_document_pv_point_holon` (`IDholon_concerned`),
+  KEY `idx_document_pv_point_position` (`IDdocument`, `position`),
+  KEY `idx_document_pv_point_type` (`pointtype`),
+  KEY `idx_document_pv_point_active` (`active`),
+  CONSTRAINT `fk_document_pv_point_document` FOREIGN KEY (`IDdocument`) REFERENCES `document` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_document_pv_point_holon_concerned` FOREIGN KEY (`IDholon_concerned`) REFERENCES `holon` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `document_pv_point_holon` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDdocument_pv_point` int(11) NOT NULL,
+  `IDholon` int(11) NOT NULL,
+  `position` int(11) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_document_pv_point_holon` (`IDdocument_pv_point`, `IDholon`),
+  KEY `idx_document_pv_point_holon_holon` (`IDholon`),
+  KEY `idx_document_pv_point_holon_position` (`IDdocument_pv_point`, `position`),
+  CONSTRAINT `fk_document_pv_point_holon_point` FOREIGN KEY (`IDdocument_pv_point`) REFERENCES `document_pv_point` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_document_pv_point_holon_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `document_pv_point_tension` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDdocument_pv_point` int(11) NOT NULL,
+  `IDtension` int(11) NOT NULL,
+  `position` int(11) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_document_pv_point_tension` (`IDdocument_pv_point`, `IDtension`),
+  KEY `idx_document_pv_point_tension_tension` (`IDtension`),
+  KEY `idx_document_pv_point_tension_position` (`IDdocument_pv_point`, `position`),
+  CONSTRAINT `fk_document_pv_point_tension_point` FOREIGN KEY (`IDdocument_pv_point`) REFERENCES `document_pv_point` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_document_pv_point_tension_tension` FOREIGN KEY (`IDtension`) REFERENCES `tension` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DELETE FROM `document_pv_point_tension`
+WHERE `id` BETWEEN 2331 AND 2333
+   OR `IDdocument_pv_point` BETWEEN 2311 AND 2313;
+
+DELETE FROM `document_pv_point_holon`
+WHERE `id` BETWEEN 2321 AND 2324
+   OR `IDdocument_pv_point` BETWEEN 2311 AND 2313;
+
+DELETE FROM `document_pv_point`
+WHERE `id` BETWEEN 2311 AND 2313
+   OR `IDdocument` = 2301;
+
+DELETE FROM `document`
+WHERE `id` = 2301;
+
+DELETE FROM `tension`
+WHERE `id` BETWEEN 9301 AND 9302;
+
+INSERT INTO `tension` (
+  `id`,
+  `IDorganization`,
+  `IDholon`,
+  `IDuser`,
+  `title`,
+  `description`,
+  `datecreation`,
+  `datemodification`,
+  `active`
+) VALUES
+  (
+    9301,
+    1,
+    687,
+    1,
+    'Suivi budget',
+    'Besoin de clarifier la projection budgetaire du prochain trimestre et les arbitrages a venir.',
+    '2026-07-09 08:40:00',
+    '2026-07-09 08:40:00',
+    1
+  ),
+  (
+    9302,
+    1,
+    686,
+    1,
+    'Charge equipe',
+    'Question ouverte sur la charge de travail actuelle et la repartition entre marketing et administration.',
+    '2026-07-09 08:45:00',
+    '2026-07-09 08:45:00',
+    1
+  );
+
+INSERT INTO `document` (
+  `id`,
+  `title`,
+  `description`,
+  `content`,
+  `keywords`,
+  `IDuser`,
+  `IDorganization`,
+  `IDholon`,
+  `datecreation`,
+  `datemodification`,
+  `version`,
+  `codeview`,
+  `codeedit`,
+  `documenttype`
+) VALUES (
+  2301,
+  'PV gouvernance 09.07.2026',
+  'Premier PV de demonstration pour verifier le viewer des points a l ordre du jour.',
+  '',
+  'pv,reunion,gouvernance',
+  1,
+  1,
+  678,
+  '2026-07-09 09:00:00',
+  '2026-07-09 11:15:00',
+  1,
+  '',
+  '',
+  'pv'
+);
+
+INSERT INTO `document_pv_point` (
+  `id`,
+  `IDdocument`,
+  `title`,
+  `IDuser_author`,
+  `IDholon_concerned`,
+  `content`,
+  `position`,
+  `desired_duration_minutes`,
+  `actual_duration_minutes`,
+  `pointtype`,
+  `active`,
+  `datecreation`,
+  `datemodification`
+) VALUES
+  (
+    2311,
+    2301,
+    'Budget',
+    1,
+    686,
+    '<p>Presentation rapide du cadrage budgetaire du trimestre.</p><p>Un point de vigilance reste ouvert sur la marge de securite disponible.</p>',
+    1,
+    10,
+    8,
+    'information',
+    1,
+    '2026-07-09 09:05:00',
+    '2026-07-09 09:15:00'
+  ),
+  (
+    2312,
+    2301,
+    'Campagne ete',
+    1,
+    687,
+    '<p>Consultation sur le rythme de diffusion et le niveau d effort soutenable pour l equipe.</p><ul><li>Besoin de sequence courte</li><li>Besoin de relais internes</li></ul>',
+    2,
+    20,
+    24,
+    'consultation',
+    1,
+    '2026-07-09 09:20:00',
+    '2026-07-09 09:50:00'
+  ),
+  (
+    2313,
+    2301,
+    'Validation',
+    1,
+    678,
+    '<p>Decision prise: valider le lancement d un test de deux semaines avec suivi budgetaire hebdomadaire.</p>',
+    3,
+    15,
+    12,
+    'decision',
+    1,
+    '2026-07-09 10:00:00',
+    '2026-07-09 10:20:00'
+  );
+
+INSERT INTO `document_pv_point_holon` (
+  `id`,
+  `IDdocument_pv_point`,
+  `IDholon`,
+  `position`
+) VALUES
+  (2321, 2311, 679, 1),
+  (2322, 2312, 686, 1),
+  (2323, 2312, 679, 2),
+  (2324, 2313, 687, 1);
+
+INSERT INTO `document_pv_point_tension` (
+  `id`,
+  `IDdocument_pv_point`,
+  `IDtension`,
+  `position`
+) VALUES
+  (2331, 2311, 9301, 1),
+  (2332, 2312, 9302, 1),
+  (2333, 2313, 9301, 1);
 
 -- Local Docker dev account bootstrap
 -- User 1 password plaintext: LocalAdmin123!
