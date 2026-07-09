@@ -287,7 +287,12 @@ if (!empty($enabledAppHashes['calendar']) && $currentUserId > 0) {
         }
 
         $eventHolonId = (int)$event->get('IDholon');
-        if ($limitToContextDescendants && ($eventHolonId <= 0 || !isset($descendantHolonIdMap[$eventHolonId]))) {
+        $eventHasExplicitInvitations = $event->hasExplicitInvitations();
+        if (
+            $limitToContextDescendants
+            && ($eventHolonId <= 0 || !isset($descendantHolonIdMap[$eventHolonId]))
+            && !$eventHasExplicitInvitations
+        ) {
             continue;
         }
 

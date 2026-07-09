@@ -2,6 +2,30 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-09
+
+Le module Documents sait maintenant afficher un nouveau type `pv` en lecture seule. Un document PV ouvre un viewer dedie qui liste les points a l ordre du jour, leur type, leurs durees, leur auteur, le holon concerne, les holons adresses, les tensions liees et leur contenu HTML.
+
+La base SQL a recu une nouvelle structure pour stocker ces points de PV et leurs liaisons vers plusieurs holons et plusieurs tensions, sans reutiliser l ancienne table `pv` historique. Un jeu de demo separe a aussi ete ajoute pour charger un premier PV testable, et le seed Docker local embarque maintenant ce cas de test avec le schema document attendu par le module.
+
+Le module Agenda sait maintenant decrire le lieu d un evenement en `presentiel`, `virtuel` ou `mixte`, avec une adresse, un lien de visio, ou les deux. Le detail de l evenement les affiche, l export calendrier reprend aussi le lieu et la visio, et un evenement peut desormais porter un document associe unique de type lien, HTML, telechargement ou PV.
+
+Quand un document est lie a un evenement depuis le formulaire Agenda, sa date de creation est alignee sur la date de l evenement pour le retrouver plus facilement dans les documents. Cette date suit aussi automatiquement les deplacements ulterieurs de l evenement, avec migration SQL et schema Docker alignes pour les nouveaux champs `event`.
+
+Les documents lies a un evenement ne remontent plus dans la liste Documents tant que l evenement n est pas termine. Leur `datecreation` est maintenant synchronisee sur la fin de l evenement, et la liste masque automatiquement les documents dont cette date est encore dans le futur, tout en laissant l acces direct via le module Agenda.
+
+Le rattachement Agenda/Documents a ete inverse: c est maintenant le document qui garde la reference vers l evenement. Cela prepare l ouverture vers plusieurs documents sur une meme rencontre et permet deja d afficher, dans le detail d un document lie, un resume de la rencontre associee avec son horaire, son lieu et son contexte.
+
+Le formulaire Agenda ne tente plus d embarquer l editeur complet du document associe. Il se contente maintenant de choisir un type, puis de creer un document vide avec des metadonnees par defaut modifiables ensuite dans le module Documents, y compris pour les types `lien externe` et `telechargement` qui peuvent donc exister sans URL ni fichier tant qu ils ne sont pas completes.
+
+Dans ce flux Agenda, le document peut a nouveau recevoir un nom saisi manuellement avant creation. Si le type choisi est `PV` et que ce nom est laisse vide, un titre par defaut du style `PV Nom evenement du date evenement` est genere, avec un mot-cle `PV` passe par la couche de traduction, et la visibilite par defaut du document cree est maintenant `organisation`.
+
+Les documents gerent maintenant une deuxieme portee, dediee a l edition. On peut donc definir separement qui voit un document et qui peut le modifier, avec les memes niveaux `public`, `organisation`, `cercle`, `role` et `moi`. Les nouveaux documents reprennent par defaut ces deux valeurs depuis les parametres de l application Documents, aux cotes de la configuration Nextcloud.
+
+Quand un document reste en portee `moi` pour la vue ou l edition, `moi` designe bien son auteur. Si cette personne quitte ensuite le role, le cercle ou l organisation qui porte le document, les portees `moi` restantes sont maintenant remplacees automatiquement par une portee de releve plus durable, prioritairement `role`, sinon `cercle`, sinon `organisation`.
+
+Le module Calendrier peut maintenant memoriser des invites explicites sur les evenements, en invitant des holons, des membres individuels ou des adresses e-mail externes. La creation et l edition d un evenement passent par un nouvel onglet `Invites`, pre-cochent le contexte courant pour limiter les oublis, et la fiche detail affiche ensuite un resume de cette liste avec un bouton `Edit` ouvrant une popup dediee.
+
 ## 2026-07-08
 
 Le repertoire local `tmp/` n est plus synchronise avec GitHub. Il est maintenant ignore par le depot, et les fichiers temporaires qui y etaient deja suivis ont ete retires de l index sans etre supprimes localement.
@@ -545,3 +569,9 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - 2026-07-06 : Les parametres specifiques aux applications OMO peuvent maintenant etre stockes dans `organization_application.parameters`. Le hub `Parametres` detecte les ecrans `/omo/api/<app>/params/index.php`, et l application Documents gere desormais sa configuration Nextcloud dans son propre panneau reserve au mode admin d organisation.
 - 2026-07-06 : La resolution de la configuration Nextcloud de Documents accepte maintenant aussi une URL WebDAV complete collee dans les parametres applicatifs et relit plus robustement le JSON stocke sur `organization_application.parameters`, afin d eviter des `404` lies a une URL dupliquee ou a un format de config intermediaire.
 - 2026-07-07 : La mini-carte de structure du volet gauche se met maintenant a jour automatiquement apres une modification de la liste des applications OMO. Elle se masque si l application `STRUCTURE` n est plus disponible, reapparait quand elle revient, et reste desactivee sur mobile pour ne pas reserver de place inutile.
+- 2026-07-09 : Les invitations d evenements pilotent maintenant aussi la visibilite des reunions dans le resume personnel OMO et dans l export CalDAV. Sans invitation explicite, l evenement reste visible aux membres du holon rattache, ou a toute l organisation s il n a pas de holon. Avec une liste d invites, seuls les holons, membres ou e-mails invites continuent d y acceder.
+- 2026-07-09 : Les onglets generiques ignorent maintenant correctement les jeux d onglets imbriques. Dans l editeur d evenement, cela retablit notamment la selection normale du premier onglet d invitations quand le panneau `Invites` contient lui-meme des sous-onglets.
+- 2026-07-09 : L editeur d invites des evenements propose maintenant un filtre rapide dans les onglets `Holons` et `Membres`. Le filtrage garde visibles les elements deja coches, ainsi que les branches parentes utiles dans l arbre des holons, pour faciliter les selections sans perdre le contexte.
+- 2026-07-09 : Le filtre rapide des invites force maintenant aussi le rendu CSS des elements `hidden` dans l editeur calendrier, pour eviter que des `display: grid` ou `display: flex` locaux empechent visuellement la disparition des lignes filtrees.
+- 2026-07-09 : Dans le resume personnel OMO, une invitation explicite a un evenement prime maintenant sur le simple filtre de contexte courant. Une reunion rattachee a un autre cercle reste donc visible a la personne explicitement invitee, meme si elle n appartient pas a ce cercle.
+- 2026-07-09 : La mini structure de la homepage OMO garde maintenant le nom de l element courant uniquement dans la capsule basse, et affiche les libelles de ses sous-cercles ou roles directs seulement quand leur taille a l ecran le permet.

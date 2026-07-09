@@ -7,6 +7,11 @@ $sourceLang = [
     'documents.detail.meta.updated' => ['text' => 'Mise à jour : {date}', 'context' => 'Metadata pill showing the last update date of the document.'],
     'documents.detail.meta.author' => ['text' => 'Par {name}', 'context' => 'Metadata pill showing the author of the document.'],
     'documents.detail.meta.updated_by' => ['text' => 'Modifié par {name}', 'context' => 'Metadata pill showing who updated the document.'],
+    'documents.detail.event.title' => ['text' => 'Rencontre associee', 'context' => 'Section title shown when a document is linked to an event.'],
+    'documents.detail.event.schedule' => ['text' => 'Horaire', 'context' => 'Label for the event schedule in the document detail summary.'],
+    'documents.detail.event.location' => ['text' => 'Lieu', 'context' => 'Label for the event location in the document detail summary.'],
+    'documents.detail.event.context' => ['text' => 'Contexte', 'context' => 'Label for the event context in the document detail summary.'],
+    'documents.detail.event.virtual_fallback' => ['text' => 'Visio', 'context' => 'Fallback location label when only a virtual meeting link exists.'],
     'documents.detail.alt_texts.title' => ['text' => 'Versions texte', 'context' => 'Section title listing alternate text versions.'],
     'documents.detail.alt_texts.fallback' => ['text' => 'Version texte', 'context' => 'Fallback title for an alternate text variant.'],
     'documents.detail.media.title' => ['text' => 'Médias associés', 'context' => 'Section title listing associated media.'],
@@ -84,6 +89,38 @@ $author = $document->getCreatedByDisplayName();
 $updatedBy = $document->getUpdatedByDisplayName();
 $visibility = $document->getVisibilityDisplayData($organizationId);
 $renderedContent = $document->getRenderedContentForCurrentViewer();
+$associatedEvent = $document->getAssociatedEvent();
+$associatedEventSchedule = '';
+$associatedEventLocation = '';
+$associatedEventContext = '';
+
+if ($associatedEvent instanceof \dbObject\Event) {
+    $startAt = $associatedEvent->get('start_at');
+    $endAt = $associatedEvent->get('end_at');
+    if ($startAt instanceof DateTimeInterface && $endAt instanceof DateTimeInterface) {
+        $associatedEventSchedule = $formatDateTime($startAt) . ' - ' . $formatDateTime($endAt);
+    }
+
+    $locationData = $associatedEvent->getLocationDisplayData();
+    $locationParts = array();
+    if (trim((string)($locationData['address'] ?? '')) !== '') {
+        $locationParts[] = trim((string)$locationData['address']);
+    }
+    if (trim((string)($locationData['videoUrl'] ?? '')) !== '') {
+        $locationParts[] = trim((string)$locationData['videoUrl']);
+    } elseif (count($locationParts) === 0 && trim((string)($locationData['mode'] ?? '')) === \dbObject\Event::LOCATION_MODE_VIRTUAL) {
+        $locationParts[] = omoDocumentsDetailT('documents.detail.event.virtual_fallback');
+    }
+    $associatedEventLocation = implode(' | ', $locationParts);
+
+    $associatedEventHolonId = (int)$associatedEvent->get('IDholon');
+    if ($associatedEventHolonId > 0) {
+        $eventHolon = new \dbObject\Holon();
+        if ($eventHolon->load($associatedEventHolonId)) {
+            $associatedEventContext = trim((string)$eventHolon->getLabel());
+        }
+    }
+}
 ?>
 <div class="omo-document-detail">
     <article class="omo-document-detail__article">
@@ -124,6 +161,35 @@ $renderedContent = $document->getRenderedContentForCurrentViewer();
                         <?php endif; ?>
                     <?php endforeach; ?>
                 </div>
+            <?php endif; ?>
+
+            <?php if ($associatedEvent instanceof \dbObject\Event): ?>
+                <section class="omo-document-detail__event omo-card">
+                    <h3 class="omo-document-detail__section-title"><?= $escape(omoDocumentsDetailT('documents.detail.event.title')) ?></h3>
+                    <div class="omo-document-detail__event-title">
+                        <?= $escape(trim((string)$associatedEvent->get('title')) !== '' ? trim((string)$associatedEvent->get('title')) : ('Evenement #' . (int)$associatedEvent->getId())) ?>
+                    </div>
+                    <div class="omo-document-detail__event-grid">
+                        <?php if ($associatedEventSchedule !== ''): ?>
+                            <div class="omo-document-detail__event-item">
+                                <span class="omo-document-detail__event-label"><?= $escape(omoDocumentsDetailT('documents.detail.event.schedule')) ?></span>
+                                <strong><?= $escape($associatedEventSchedule) ?></strong>
+                            </div>
+                        <?php endif; ?>
+                        <?php if ($associatedEventLocation !== ''): ?>
+                            <div class="omo-document-detail__event-item">
+                                <span class="omo-document-detail__event-label"><?= $escape(omoDocumentsDetailT('documents.detail.event.location')) ?></span>
+                                <strong><?= $escape($associatedEventLocation) ?></strong>
+                            </div>
+                        <?php endif; ?>
+                        <?php if ($associatedEventContext !== ''): ?>
+                            <div class="omo-document-detail__event-item">
+                                <span class="omo-document-detail__event-label"><?= $escape(omoDocumentsDetailT('documents.detail.event.context')) ?></span>
+                                <strong><?= $escape($associatedEventContext) ?></strong>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </section>
             <?php endif; ?>
         </header>
 
@@ -227,6 +293,36 @@ $renderedContent = $document->getRenderedContentForCurrentViewer();
 .omo-document-detail__summary {
     color: var(--color-text-light);
     line-height: 1.6;
+}
+
+.omo-document-detail__event {
+    display: grid;
+    gap: 12px;
+}
+
+.omo-document-detail__event-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.omo-document-detail__event-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.omo-document-detail__event-item {
+    display: grid;
+    gap: 6px;
+}
+
+.omo-document-detail__event-label {
+    color: var(--color-text-light);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
 }
 
 .omo-document-detail__section {
@@ -421,6 +517,10 @@ $renderedContent = $document->getRenderedContentForCurrentViewer();
 @media (max-width: 768px) {
     .omo-document-detail {
         padding: 14px;
+    }
+
+    .omo-document-detail__event-grid {
+        grid-template-columns: 1fr;
     }
 }
 </style>

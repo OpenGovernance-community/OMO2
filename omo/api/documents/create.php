@@ -2,6 +2,7 @@
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__, 3) . '/common/patreon.php';
 require_once dirname(__DIR__, 3) . '/common/openai_text.php';
+require_once dirname(__DIR__, 3) . '/common/object_visibility_selector.php';
 
 use dbObject\Document;
 use dbObject\Holon;
@@ -10,6 +11,7 @@ use dbObject\Organization;
 
 $sourceLang = [
     'documents.create.error.edit' => ['text' => 'Impossible de modifier ce document.', 'context' => 'Error shown when the document editor cannot be opened in edit mode.'],
+    'documents.create.error.pv_unsupported' => ['text' => 'Ce document PV se consulte ici mais se cree et se modifie depuis le module de reunion.', 'context' => 'Error shown when trying to edit a PV document from the generic documents editor.'],
     'documents.create.error.create' => ['text' => 'Impossible de créer un document dans ce contexte.', 'context' => 'Error shown when the document editor cannot be opened in creation mode.'],
     'documents.create.visibility.help_context_holon' => ['text' => 'Les portées cercle et rôle suivent automatiquement le holon du document.', 'context' => 'Visibility help text shown when the document has a contextual holon.'],
     'documents.create.visibility.help_no_holon' => ['text' => 'Ce document n’est pas lié à un holon. Les portées cercle et rôle ne sont pas disponibles.', 'context' => 'Visibility help text shown when the document has no holon but still belongs to an organization.'],
@@ -29,6 +31,7 @@ $sourceLang = [
     'documents.create.field.tags_placeholder' => ['text' => 'Ajouter un tag', 'context' => 'Placeholder shown in the tag input field.'],
     'documents.create.field.tags_hint' => ['text' => 'Écrivez un tag puis utilisez TAB ou une virgule pour le transformer en capsule.', 'context' => 'Hint shown below the tag editor field.'],
     'documents.create.field.tags_remove' => ['text' => 'Retirer le tag', 'context' => 'Accessible label prefix used to remove a tag from the editor.'],
+    'documents.create.field.edit_visibility' => ['text' => 'Edition', 'context' => 'Label of the document edit visibility field.'],
     'documents.create.field.visibility' => ['text' => 'Visibilité', 'context' => 'Label of the document visibility field.'],
     'documents.create.field.html' => ['text' => 'Contenu HTML', 'context' => 'Label of the HTML content area.'],
     'documents.create.field.external_url' => ['text' => 'URL externe', 'context' => 'Label of the external URL field.'],
@@ -87,6 +90,11 @@ if ($documentId > 0) {
     }
     $canUseForm = $isEditing;
 
+    if ($canUseForm && $document->isPvDocument()) {
+        $canUseForm = false;
+        $formErrorMessage = omoDocumentsCreateT('documents.create.error.pv_unsupported');
+    }
+
     if ($canUseForm) {
         $lockResult = $document->touchEditLock($organizationId, $currentUserId);
         if (!is_array($lockResult) || ($lockResult['status'] ?? false) !== true) {
@@ -108,7 +116,12 @@ $documentStoredFilename = '';
 $documentStoredFileMime = '';
 $documentStoredFileSize = 0;
 $isFolder = false;
-$selectedVisibilityType = ObjectVisibility::TYPE_ORGANIZATION;
+$selectedVisibilityType = $organizationId > 0
+    ? Document::getDefaultVisibilityTypeForOrganization($organizationId)
+    : ObjectVisibility::TYPE_ORGANIZATION;
+$selectedEditVisibilityType = $organizationId > 0
+    ? Document::getDefaultEditVisibilityTypeForOrganization($organizationId)
+    : Document::getDefaultEditVisibilityType();
 $disabledVisibilityTypes = array();
 $visibilityHelpText = omoDocumentsCreateT('documents.create.visibility.help_context_holon');
 $contextHolonId = $isEditing ? (int)$document->get('IDholon') : $holonId;
@@ -189,14 +202,34 @@ if ($isEditing) {
     }
     $visibilityRule = $document->getPrimaryVisibilityRuleRow();
     $selectedVisibilityType = ObjectVisibility::normalizeVisibilityType($visibilityRule['visibility_type'] ?? ObjectVisibility::TYPE_ORGANIZATION);
+    $editVisibilityRule = $document->getPrimaryEditVisibilityRuleRow();
+    $selectedEditVisibilityType = ObjectVisibility::normalizeVisibilityType($editVisibilityRule['visibility_type'] ?? Document::getDefaultEditVisibilityType());
 
     if ($organizationId <= 0) {
         $selectedVisibilityType = ObjectVisibility::TYPE_ORGANIZATION;
+        $selectedEditVisibilityType = Document::getDefaultEditVisibilityType();
     }
 }
 
+$selectedVisibilityType = Document::resolveCompatibleScopeTypeForHolonId(
+    $selectedVisibilityType,
+    $organizationId,
+    $contextHolonId > 0 ? $contextHolonId : null,
+    ObjectVisibility::TYPE_ORGANIZATION
+);
+$selectedEditVisibilityType = Document::resolveCompatibleScopeTypeForHolonId(
+    $selectedEditVisibilityType,
+    $organizationId,
+    $contextHolonId > 0 ? $contextHolonId : null,
+    Document::getDefaultEditVisibilityType()
+);
+
 if (!empty($disabledVisibilityTypes[$selectedVisibilityType])) {
     $selectedVisibilityType = ObjectVisibility::TYPE_ORGANIZATION;
+}
+
+if (!empty($disabledVisibilityTypes[$selectedEditVisibilityType])) {
+    $selectedEditVisibilityType = Document::getDefaultEditVisibilityType();
 }
 
 if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizationAccess($organizationId)) {
@@ -282,22 +315,31 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                         <?php endif; ?>
                     </label>
 
-                    <label class="omo-document-editor__field">
-                        <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.visibility')) ?></span>
-                        <select
-                            name="visibility_type"
-                            class="generic-form-control"
-                        >
-                            <?php foreach ($visibilityOptions as $optionValue => $optionLabel): ?>
-                                <option
-                                    value="<?= $escape($optionValue) ?>"
-                                    <?= $optionValue === $selectedVisibilityType ? ' selected' : '' ?>
-                                    <?= !empty($disabledVisibilityTypes[$optionValue]) ? ' disabled' : '' ?>
-                                ><?= $escape($optionLabel) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <span class="omo-document-editor__hint"><?= $escape($visibilityHelpText) ?></span>
-                    </label>
+                    <div class="omo-document-editor__field">
+                        <?= commonRenderObjectVisibilitySelector(array(
+                            'inputName' => 'visibility_type',
+                            'fieldLabel' => omoDocumentsCreateT('documents.create.field.visibility'),
+                            'ariaLabel' => omoDocumentsCreateT('documents.create.field.visibility'),
+                            'selectedValue' => $selectedVisibilityType,
+                            'optionLabels' => $visibilityOptions,
+                            'disabledValues' => $disabledVisibilityTypes,
+                            'idPrefix' => 'omo-document-visibility',
+                            'hint' => $visibilityHelpText,
+                        )) ?>
+                    </div>
+
+                    <div class="omo-document-editor__field">
+                        <?= commonRenderObjectVisibilitySelector(array(
+                            'inputName' => 'edit_visibility_type',
+                            'fieldLabel' => omoDocumentsCreateT('documents.create.field.edit_visibility'),
+                            'ariaLabel' => omoDocumentsCreateT('documents.create.field.edit_visibility'),
+                            'selectedValue' => $selectedEditVisibilityType,
+                            'optionLabels' => $visibilityOptions,
+                            'disabledValues' => $disabledVisibilityTypes,
+                            'idPrefix' => 'omo-document-edit-visibility',
+                            'hint' => $visibilityHelpText,
+                        )) ?>
+                    </div>
                 </div>
 
                 <label class="omo-document-editor__field">
@@ -448,7 +490,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
 .omo-document-editor__meta-row {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 16px;
     align-items: start;
 }

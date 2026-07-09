@@ -340,7 +340,7 @@
     return null;
   }
 
-  function drawNodeLabel(ctx, node, textColor) {
+  function drawNodeLabel(ctx, node, textColor, strokeColor) {
     if (!node || !node.name || node.r < 18) {
       return;
     }
@@ -355,6 +355,9 @@
     ctx.textBaseline = 'middle';
     ctx.fillStyle = String(textColor || 'rgba(15, 23, 42, 0.82)');
     ctx.font = '600 ' + fontSize + 'px system-ui, sans-serif';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = String(strokeColor || 'rgba(0, 0, 0, 0)');
+    ctx.lineWidth = Math.max(2, Math.min(4, fontSize * 0.24));
 
     words.forEach(function (word) {
       const candidate = currentLine ? currentLine + ' ' + word : word;
@@ -380,8 +383,52 @@
       }
 
       const y = node.y + ((index + 0.5) * fontSize * 1.15) - (totalHeight / 2);
+      if (strokeColor) {
+        ctx.strokeText(output, node.x, y);
+      }
       ctx.fillText(output, node.x, y);
     });
+  }
+
+  function isDirectChildNode(node, currentNode) {
+    if (!node || !currentNode || !node.parent || !node.parent.ID) {
+      return false;
+    }
+
+    return String(node.parent.ID) === String(currentNode.ID);
+  }
+
+  function shouldDrawInlineNodeLabel(node, currentNode, hoveredNode, screenR) {
+    if (!node || !currentNode || screenR < 18) {
+      return false;
+    }
+
+    const nodeId = String(node.ID || '');
+    const currentNodeId = String(currentNode.ID || '');
+
+    if (!nodeId || nodeId === currentNodeId) {
+      return false;
+    }
+
+    if (hoveredNode && nodeId === String(hoveredNode.ID || '')) {
+      return true;
+    }
+
+    return isDirectChildNode(node, currentNode) && screenR >= 22;
+  }
+
+  function getNodeLabelStyle(node, chartColors) {
+    if (String(node && node.type || '') === '1') {
+      return {
+        fill: chartColors.labelDark,
+        stroke: null
+      };
+    }
+
+    return {
+      fill: chartColors.labelLight,
+      stroke: chartColors.labelDark
+    };
   }
 
   function getPackTypeOrder(node) {
@@ -760,7 +807,6 @@
       const currentNode = getTargetNode();
       const hoveredNode = state.hoveredNodeId ? state.packedNodesById[String(state.hoveredNodeId)] : null;
       const rootNode = state.packedNodes.length ? state.packedNodes[0] : null;
-      const currentDepth = currentNode ? getNodeDepth(currentNode) : 0;
 
       ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
       ctx.clearRect(0, 0, state.width, state.height);
@@ -836,21 +882,18 @@
             ctx.stroke();
           }
 
-          const shouldAutoShowLabel = ((node.depth || 0) <= 1 && screenR >= 24)
-            && Number(node.depth || 0) >= currentDepth;
-
-          if (isHovered || isActive || shouldAutoShowLabel) {
+          if (shouldDrawInlineNodeLabel(node, currentNode, hoveredNode, screenR)) {
+            const labelStyle = getNodeLabelStyle(node, chartColors);
             labelsToDraw.push({
               node: labelNode,
-              color: String(node.type || '') === '1'
-                ? chartColors.labelDark
-                : chartColors.labelLight
+              color: labelStyle.fill,
+              stroke: labelStyle.stroke
             });
           }
         });
 
       labelsToDraw.forEach(function (labelEntry) {
-        drawNodeLabel(ctx, labelEntry.node, labelEntry.color);
+        drawNodeLabel(ctx, labelEntry.node, labelEntry.color, labelEntry.stroke);
       });
 
       updateTooltip();
