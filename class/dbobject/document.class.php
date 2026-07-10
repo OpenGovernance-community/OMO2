@@ -1938,6 +1938,31 @@
 			return true;
 		}
 
+		public function canViewDirectlyInOrganization(int $organizationId): bool
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
+				return false;
+			}
+
+			if (!$this->currentViewerCanAccessVisibility($organizationId)) {
+				return false;
+			}
+
+			foreach ($this->getParentFolderChain() as $parentFolder) {
+				if (
+					!($parentFolder instanceof \dbObject\Document)
+					|| !$parentFolder->isFolder()
+					|| (int)$parentFolder->get('IDorganization') !== $organizationId
+					|| !$parentFolder->currentViewerCanAccessVisibility($organizationId)
+				) {
+					return false;
+				}
+			}
+
+			return true;
+		}
+
 		public function assignOrganizationContext(int $organizationId, ?int $holonId = null)
 		{
 			$organizationId = (int)$organizationId;

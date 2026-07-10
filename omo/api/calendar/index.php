@@ -2516,7 +2516,13 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
                     event.preventDefault();
                     var targetUrl = openUrlButton.getAttribute('data-omo-calendar-open-url') || '';
+                    var targetTitle = openUrlButton.getAttribute('data-omo-calendar-open-url-title') || 'Document';
                     if (!targetUrl) {
+                        return;
+                    }
+
+                    if (typeof window.omoOpenSearchDocumentResult === 'function') {
+                        window.omoOpenSearchDocumentResult(targetUrl, targetTitle);
                         return;
                     }
 

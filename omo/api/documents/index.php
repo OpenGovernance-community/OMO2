@@ -353,6 +353,22 @@ $resolveDocumentVisibilityIconUrl = static function (string $visibilityType) use
     return (string)($documentVisibilityIconMap[$normalizedVisibilityType] ?? $documentVisibilityIconMap[ObjectVisibility::TYPE_ORGANIZATION]);
 };
 
+if ($hiddenDocumentsCount > 0) {
+    if ($documentScope === 'global') {
+        $documentsEmptyMessage = omoDocumentsScopeT('documents.empty.visible_global', ['count' => (string)$hiddenDocumentsCount]);
+    } elseif ($documentScope === 'descendants') {
+        $documentsEmptyMessage = omoDocumentsScopeT('documents.empty.visible_descendants', ['count' => (string)$hiddenDocumentsCount]);
+    } else {
+        $documentsEmptyMessage = omoDocumentsScopeT('documents.empty.visible_contextual', ['count' => (string)$hiddenDocumentsCount]);
+    }
+} elseif ($documentScope === 'global') {
+    $documentsEmptyMessage = omoDocumentsScopeT('documents.empty.available_global');
+} elseif ($documentScope === 'descendants') {
+    $documentsEmptyMessage = omoDocumentsScopeT('documents.empty.available_descendants');
+} else {
+    $documentsEmptyMessage = omoDocumentsScopeT('documents.empty.available_contextual');
+}
+
 $documentEntries = [];
 
 foreach ($documents as $document) {
@@ -450,11 +466,72 @@ foreach ($documents as $document) {
     ];
 }
 
+$requestedOpenDocumentPayload = null;
+if ($initialOpenDocumentId > 0) {
+    $requestedOpenDocument = new \dbObject\Document();
+    $requestedDocumentContextUrl = '/omo/api/documents/detail.php?id=' . $initialOpenDocumentId
+        . '&oid=' . $currentOrganizationId;
+
+    if ($requestedOpenDocument->load($initialOpenDocumentId)) {
+        $requestedDocumentId = (int)$requestedOpenDocument->getId();
+        $requestedDocumentHolonId = (int)$requestedOpenDocument->get('IDholon');
+        $requestedCreatedAt = $requestedOpenDocument->get('datecreation');
+        $requestedOpenDocumentVisited = [];
+        $requestedUpdatedAt = $requestedOpenDocument->getActivityDate($requestedOpenDocumentVisited);
+        $requestedResolvedCreatedAt = $requestedCreatedAt instanceof DateTimeInterface
+            ? $requestedCreatedAt
+            : ($requestedUpdatedAt instanceof DateTimeInterface ? $requestedUpdatedAt : null);
+        $requestedCanView = $requestedOpenDocument->canViewInOrganizationContext(
+            $currentOrganizationId,
+            $requestedDocumentHolonId > 0 ? $requestedDocumentHolonId : null
+        );
+
+        if ($requestedDocumentHolonId > 0) {
+            $requestedDocumentContextUrl .= '&cid=' . $requestedDocumentHolonId;
+        }
+
+        $requestedOpenDocumentPayload = [
+            'id' => $requestedDocumentId,
+            'contextUrl' => $requestedDocumentContextUrl,
+            'title' => $requestedCanView ? (string)$requestedOpenDocument->get('title') : '',
+            'fullDateLabel' => $requestedCanView ? $formatDate($requestedResolvedCreatedAt, true) : '',
+            'isFolder' => $requestedOpenDocument->isFolder(),
+            'openInNewWindow' => false,
+            'externalUrl' => '',
+            'canEdit' => $requestedCanView
+                && !$requestedOpenDocument->isPvDocument()
+                && $requestedOpenDocument->canEditInOrganizationContext($currentOrganizationId),
+            'editUrl' => $requestedCanView
+                ? '/omo/api/documents/create.php?id=' . $requestedDocumentId
+                    . '&oid=' . $currentOrganizationId
+                    . ($requestedDocumentHolonId > 0 ? '&cid=' . $requestedDocumentHolonId : '')
+                : '',
+        ];
+    } else {
+        if ($effectiveCurrentHolonId > 0) {
+            $requestedDocumentContextUrl .= '&cid=' . $effectiveCurrentHolonId;
+        }
+
+        $requestedOpenDocumentPayload = [
+            'id' => $initialOpenDocumentId,
+            'contextUrl' => $requestedDocumentContextUrl,
+            'title' => '',
+            'fullDateLabel' => '',
+            'isFolder' => false,
+            'openInNewWindow' => false,
+            'externalUrl' => '',
+            'canEdit' => false,
+            'editUrl' => '',
+        ];
+    }
+}
+
 $documentsPayload = json_encode(
     [
         'documents' => $documentEntries,
         'openDocumentId' => $initialOpenDocumentId > 0 ? $initialOpenDocumentId : 0,
         'openDocumentMode' => $initialOpenDocumentMode,
+        'requestedDocument' => $requestedOpenDocumentPayload,
         'groups' => array_map(
             static function (array $group): array {
                 return [
@@ -469,7 +546,7 @@ $documentsPayload = json_encode(
 );
 
 if (!is_string($documentsPayload)) {
-    $documentsPayload = '{"documents":[],"openDocumentId":0,"openDocumentMode":"detail","groups":[]}';
+    $documentsPayload = '{"documents":[],"openDocumentId":0,"openDocumentMode":"detail","requestedDocument":null,"groups":[]}';
 }
 ?>
 <div
@@ -553,26 +630,10 @@ if (!is_string($documentsPayload)) {
         </div>
     </div>
     <div class="omo-panel-view__body">
-        <?php if (count($documentEntries) === 0): ?>
-            <div class="omo-documents__empty omo-empty-state">
-                <?php if ($hiddenDocumentsCount > 0): ?>
-                    <?php if ($documentScope === 'global'): ?>
-                        <?= $escape(omoDocumentsScopeT('documents.empty.visible_global', ['count' => (string)$hiddenDocumentsCount])) ?>
-                    <?php elseif ($documentScope === 'descendants'): ?>
-                        <?= $escape(omoDocumentsScopeT('documents.empty.visible_descendants', ['count' => (string)$hiddenDocumentsCount])) ?>
-                    <?php else: ?>
-                        <?= $escape(omoDocumentsScopeT('documents.empty.visible_contextual', ['count' => (string)$hiddenDocumentsCount])) ?>
-                    <?php endif; ?>
-                <?php elseif ($documentScope === 'global'): ?>
-                    <?= $escape(omoDocumentsScopeT('documents.empty.available_global')) ?>
-                <?php elseif ($documentScope === 'descendants'): ?>
-                    <?= $escape(omoDocumentsScopeT('documents.empty.available_descendants')) ?>
-                <?php else: ?>
-                    <?= $escape(omoDocumentsScopeT('documents.empty.available_contextual')) ?>
-                <?php endif; ?>
-            </div>
-        <?php else: ?>
-            <div class="omo-documents__results generic-file-list" data-omo-documents-results data-generic-file-list>
+        <div class="omo-documents__results generic-file-list" data-omo-documents-results data-generic-file-list>
+            <?php if (count($documentEntries) === 0): ?>
+                <div class="omo-documents__empty omo-empty-state"><?= $escape($documentsEmptyMessage) ?></div>
+            <?php else: ?>
                 <?php
                 $currentGroupKey = null;
 
@@ -700,7 +761,8 @@ if (!is_string($documentsPayload)) {
                 <?php endforeach; ?>
                         </div>
                     </section>
-            </div>
+            <?php endif; ?>
+        </div>
 
             <div class="omo-overlay-drawer omo-documents__detail-drawer" data-omo-document-detail-drawer hidden>
                 <div class="omo-overlay-drawer__backdrop" data-omo-document-detail-close></div>
@@ -927,17 +989,16 @@ if (!is_string($documentsPayload)) {
                             }
 
                             const documents = Array.isArray(payload.documents) ? payload.documents.slice() : [];
+                            const requestedDocument = payload && payload.requestedDocument && typeof payload.requestedDocument === 'object'
+                                ? payload.requestedDocument
+                                : null;
                             const groups = Array.isArray(payload.groups) ? payload.groups : [];
+                            const emptyStateMessage = <?= json_encode($documentsEmptyMessage, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                             const folderStateCookieName = omoDocumentsBuildFolderStateCookieName(
                                 Number(panel.getAttribute('data-omo-document-oid') || 0),
                                 Number(panel.getAttribute('data-omo-document-cid') || 0),
                                 panel.getAttribute('data-omo-document-scope') || 'contextual'
                             );
-
-                            if (documents.length === 0) {
-                                panel.dataset.omoDocumentsReady = '1';
-                                return;
-                            }
 
                             panel.dataset.omoDocumentsReady = '1';
                             const savedPreferences = omoDocumentsReadPreferences();
@@ -1742,15 +1803,36 @@ if (!is_string($documentsPayload)) {
                                         }
 
                                         detailBody.innerHTML = data;
+                                        const temp = document.createElement('div');
+                                        temp.innerHTML = data;
+                                        syncDocumentDetailDrawerMetadata(temp, detailDrawer, documentItem.title || '', detailDescription ? detailDescription.textContent : '');
                                     },
                                     error: function () {
                                         if (requestToken !== detailRequestToken) {
                                             return;
                                         }
 
+                                        const responseHtml = arguments.length > 0
+                                            && arguments[0]
+                                            && typeof arguments[0].responseText === 'string'
+                                            ? String(arguments[0].responseText).trim()
+                                            : '';
+
+                                        if (responseHtml !== '') {
+                                            detailBody.innerHTML = responseHtml;
+                                            return;
+                                        }
+
                                         renderDetailError();
                                     }
                                 });
+                            };
+
+                            const renderEmptyState = function () {
+                                const emptyState = document.createElement('div');
+                                emptyState.className = 'omo-documents__empty omo-empty-state';
+                                emptyState.textContent = emptyStateMessage;
+                                results.replaceChildren(emptyState);
                             };
 
                             const renderByTemporal = function (sortMode) {
@@ -1846,6 +1928,13 @@ if (!is_string($documentsPayload)) {
                                 results.classList.toggle('generic-file-list--structured', state.density === 'compact');
                                 results.classList.toggle('generic-file-list--stacked-sticky', state.density === 'compact');
 
+                                if (documents.length === 0) {
+                                    renderEmptyState();
+                                    syncButtons('[data-omo-documents-sort]', state.sort, 'data-omo-documents-sort');
+                                    syncButtons('[data-omo-documents-density]', state.density, 'data-omo-documents-density');
+                                    return;
+                                }
+
                                 if (state.sort === 'alpha') {
                                     renderByAlpha();
                                 } else {
@@ -1912,6 +2001,31 @@ if (!is_string($documentsPayload)) {
                                 return '/omo/api/documents/index.php' + (query.length > 0 ? '?' + query.join('&') : '');
                             };
 
+                            const buildDirectDocumentPayload = function (documentId) {
+                                const resolvedDocumentId = Number(documentId || 0);
+                                if (!Number.isInteger(resolvedDocumentId) || resolvedDocumentId <= 0) {
+                                    return null;
+                                }
+
+                                const organizationId = Number(panel.getAttribute('data-omo-document-oid') || 0);
+                                if (!Number.isInteger(organizationId) || organizationId <= 0) {
+                                    return null;
+                                }
+
+                                return {
+                                    id: resolvedDocumentId,
+                                    contextUrl: '/omo/api/documents/detail.php?id='
+                                        + encodeURIComponent(String(resolvedDocumentId))
+                                        + '&oid='
+                                        + encodeURIComponent(String(organizationId)),
+                                    title: '',
+                                    fullDateLabel: '',
+                                    isFolder: false,
+                                    openInNewWindow: false,
+                                    externalUrl: ''
+                                };
+                            };
+
                             const refreshPanelForDocumentRoute = function (documentId, mode, scopeOverride) {
                                 if (typeof window.omoReplaceFetchedPanelRoot !== 'function') {
                                     return false;
@@ -1945,8 +2059,15 @@ if (!is_string($documentsPayload)) {
                                 const openMode = normalizeDocumentOpenMode(payload.openDocumentMode || 'detail');
                                 payload.openDocumentId = 0;
                                 payload.openDocumentMode = 'detail';
+                                payload.requestedDocument = null;
 
-                                const documentItem = findDocumentItemById(documentId);
+                                const documentItem = findDocumentItemById(documentId)
+                                    || (
+                                        requestedDocument
+                                        && Number(requestedDocument.id || 0) === documentId
+                                        ? requestedDocument
+                                        : null
+                                    );
                                 if (!documentItem) {
                                     return false;
                                 }
@@ -2126,15 +2247,22 @@ if (!is_string($documentsPayload)) {
                             render();
                             window.setTimeout(openInitialDocumentFromPayload, 0);
 
-                            if (!panel.__omoDocumentsRouteHandler) {
-                                panel.__omoDocumentsRouteHandler = function (routeEvent) {
-                                    const detail = routeEvent && routeEvent.detail ? routeEvent.detail : {};
-                                    const targetDocumentId = Number(detail.documentId || 0);
-                                    const targetMode = normalizeDocumentOpenMode(detail.mode || 'detail');
-                                    const rawForcedScope = String(detail.forcedScope || '').trim().toLowerCase();
+                            if (!panel.__omoDocumentsApplyRouteChange) {
+                                panel.__omoDocumentsApplyRouteChange = function (detail) {
+                                    if (!document.body.contains(panel)) {
+                                        return false;
+                                    }
+
+                                    const routeDetail = detail && typeof detail === 'object' ? detail : {};
+                                    const targetDocumentId = Number(routeDetail.documentId || 0);
+                                    const targetMode = normalizeDocumentOpenMode(routeDetail.mode || 'detail');
+                                    const rawForcedScope = String(routeDetail.forcedScope || '').trim().toLowerCase();
                                     const forcedScope = rawForcedScope !== ''
                                         ? normalizeDocumentScope(rawForcedScope)
                                         : '';
+                                    const fallbackDocumentScope = forcedScope !== ''
+                                        ? forcedScope
+                                        : 'global';
 
                                     if (targetDocumentId > 0) {
                                         const documentItem = findDocumentItemById(targetDocumentId);
@@ -2142,24 +2270,33 @@ if (!is_string($documentsPayload)) {
                                         if (targetMode === 'edit') {
                                             window.omoCloseDocumentDetailDrawer({ force: true });
                                             if (typeof window.omoOpenDocumentEditorFromDocumentId === 'function' && window.omoOpenDocumentEditorFromDocumentId(targetDocumentId)) {
-                                                return;
+                                                return true;
                                             }
-                                            if (refreshPanelForDocumentRoute(targetDocumentId, targetMode, forcedScope)) {
-                                                return;
+                                            if (refreshPanelForDocumentRoute(targetDocumentId, targetMode, fallbackDocumentScope)) {
+                                                return true;
                                             }
                                         }
 
                                         if (targetMode !== 'edit' && documentItem && typeof window.omoOpenDocumentDetailByPayload === 'function') {
                                             window.omoCloseDocumentEditorDrawer({ force: true });
                                             window.omoOpenDocumentDetailByPayload(documentItem, panel);
-                                            return;
+                                            return true;
+                                        }
+
+                                        if (targetMode !== 'edit' && typeof window.omoOpenDocumentDetailByPayload === 'function') {
+                                            const directDocumentPayload = buildDirectDocumentPayload(targetDocumentId);
+                                            if (directDocumentPayload) {
+                                                window.omoCloseDocumentEditorDrawer({ force: true });
+                                                window.omoOpenDocumentDetailByPayload(directDocumentPayload, panel);
+                                                return true;
+                                            }
                                         }
 
                                         if (targetMode !== 'edit') {
                                             window.omoCloseDocumentEditorDrawer({ force: true });
-                                            refreshPanelForDocumentRoute(targetDocumentId, targetMode, forcedScope);
+                                            return refreshPanelForDocumentRoute(targetDocumentId, targetMode, fallbackDocumentScope);
                                         }
-                                        return;
+                                        return false;
                                     }
 
                                     if (forcedScope !== '' && typeof window.omoSetDocumentsScope === 'function') {
@@ -2170,6 +2307,29 @@ if (!is_string($documentsPayload)) {
 
                                     window.omoCloseDocumentEditorDrawer({ force: true });
                                     closeDetailDrawer();
+                                    return true;
+                                };
+                            }
+
+                            window.omoHandleDocumentsRouteChange = function (detail) {
+                                const activePanel = document.getElementById('omo-documents-root');
+                                if (!(activePanel instanceof Element) || !document.body.contains(activePanel)) {
+                                    return false;
+                                }
+
+                                if (typeof activePanel.__omoDocumentsApplyRouteChange !== 'function') {
+                                    return false;
+                                }
+
+                                return activePanel.__omoDocumentsApplyRouteChange(detail) === true;
+                            };
+
+                            if (!panel.__omoDocumentsRouteHandler) {
+                                panel.__omoDocumentsRouteHandler = function (routeEvent) {
+                                    const detail = routeEvent && routeEvent.detail ? routeEvent.detail : {};
+                                    if (typeof panel.__omoDocumentsApplyRouteChange === 'function') {
+                                        panel.__omoDocumentsApplyRouteChange(detail);
+                                    }
                                 };
 
                                 window.addEventListener('omo-documents-route-change', panel.__omoDocumentsRouteHandler);
@@ -2198,8 +2358,6 @@ if (!is_string($documentsPayload)) {
                 window.omoInitDocumentsPanels();
             })();
             </script>
-        <?php endif; ?>
-
         <div class="omo-overlay-drawer omo-documents__editor-drawer" data-omo-document-editor-drawer hidden>
             <div class="omo-overlay-drawer__backdrop" data-omo-document-editor-close></div>
             <div class="omo-overlay-drawer__panel">
@@ -2772,6 +2930,37 @@ if (!is_string($documentsPayload)) {
                 }, 200);
             };
 
+            const syncDocumentDetailDrawerMetadata = function (sourceNode, drawer, fallbackTitle, fallbackDescription) {
+                if (!(drawer instanceof Element) || !(sourceNode instanceof Element)) {
+                    return;
+                }
+
+                const titleNode = drawer.querySelector('[data-omo-document-detail-title]');
+                const descriptionNode = drawer.querySelector('[data-omo-document-detail-description]');
+                const metadataNode = sourceNode.matches('[data-omo-document-drawer-title], [data-omo-document-drawer-description]')
+                    ? sourceNode
+                    : sourceNode.querySelector('[data-omo-document-drawer-title], [data-omo-document-drawer-description]');
+                const resolvedTitle = metadataNode
+                    ? String(metadataNode.getAttribute('data-omo-document-drawer-title') || '').trim()
+                    : '';
+                const resolvedDescription = metadataNode
+                    ? String(metadataNode.getAttribute('data-omo-document-drawer-description') || '').trim()
+                    : '';
+
+                if (titleNode) {
+                    titleNode.textContent = resolvedTitle !== ''
+                        ? resolvedTitle
+                        : String(fallbackTitle || '').trim() || 'Détail du document';
+                }
+
+                if (descriptionNode) {
+                    descriptionNode.textContent = resolvedDescription !== ''
+                        ? resolvedDescription
+                        : String(fallbackDescription || '').trim()
+                            || <?= json_encode(omoDocumentsScopeT('documents.drawer.detail_description'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+                }
+            };
+
             window.omoOpenDocumentDetailByPayload = function (documentItem, rootOverride) {
                 if (documentItem && documentItem.openInNewWindow && documentItem.externalUrl) {
                     if (openExternalDocumentWindow(documentItem)) {
@@ -2821,16 +3010,28 @@ if (!is_string($documentsPayload)) {
                     cache: 'no-store'
                 })
                     .then(function (response) {
-                        if (!response.ok) {
-                            throw new Error('document_detail_load_failed');
+                        return response.text().then(function (html) {
+                            return {
+                                ok: response.ok,
+                                html: html
+                            };
+                        });
+                    })
+                    .then(function (result) {
+                        const html = typeof result.html === 'string' ? result.html : '';
+                        if (html.trim() === '') {
+                            if (!result.ok) {
+                                throw new Error('document_detail_load_failed');
+                            }
+
+                            body.innerHTML = '';
+                            return;
                         }
 
-                        return response.text();
-                    })
-                    .then(function (html) {
                         const temp = document.createElement('div');
                         temp.innerHTML = html;
                         body.innerHTML = html;
+                        syncDocumentDetailDrawerMetadata(temp, drawer, title, descriptionNode ? descriptionNode.textContent : '');
                         executeFetchedScripts(temp);
                     })
                     .catch(function () {

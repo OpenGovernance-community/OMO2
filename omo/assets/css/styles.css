@@ -14,7 +14,8 @@
     --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
 
     /* NESTED DRAWERS */
-    --omo-overlay-drawer-panel-max-width: 860px;
+    --omo-overlay-drawer-panel-min-width: 860px;
+    --omo-overlay-drawer-panel-side-gap: 50px;
     --omo-overlay-drawer-enter-offset: 22px;
     --omo-overlay-drawer-z-index: 40;
     --omo-drawer-resizer-gap: 5px;
@@ -1936,7 +1937,7 @@ html[data-theme] .common-help-card p {
     position: absolute;
     top: 0;
     right: 0;
-    width: min(100%, var(--omo-overlay-drawer-panel-max-width));
+    width: min(100%, max(var(--omo-overlay-drawer-panel-min-width), calc(100% - var(--omo-overlay-drawer-panel-side-gap))));
     height: 100%;
     display: flex;
     flex-direction: column;
