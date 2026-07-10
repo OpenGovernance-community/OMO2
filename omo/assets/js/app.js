@@ -3718,17 +3718,29 @@ function handleRoute() {
     }
 
     if (isInSpecialDrawerOnlyRouteChange && activeMenuHash === 'documents') {
-        window.dispatchEvent(new CustomEvent('omo-documents-route-change', {
-            detail: {
-                documentId: documentRoute ? Number(documentRoute.documentId) : 0,
-                mode: documentRoute && documentRoute.mode ? String(documentRoute.mode) : 'detail',
-                forcedScope: activeForcedScope,
-                previousDocumentId: previousDocumentRoute ? Number(previousDocumentRoute.documentId) : 0,
-                previousMode: previousDocumentRoute && previousDocumentRoute.mode ? String(previousDocumentRoute.mode) : 'detail',
-                routeToken: routeToken,
-                previousRouteToken: previousState.routeToken || null
+        const documentRouteDetail = {
+            documentId: documentRoute ? Number(documentRoute.documentId) : 0,
+            mode: documentRoute && documentRoute.mode ? String(documentRoute.mode) : 'detail',
+            forcedScope: activeForcedScope,
+            previousDocumentId: previousDocumentRoute ? Number(previousDocumentRoute.documentId) : 0,
+            previousMode: previousDocumentRoute && previousDocumentRoute.mode ? String(previousDocumentRoute.mode) : 'detail',
+            routeToken: routeToken,
+            previousRouteToken: previousState.routeToken || null
+        };
+        let documentsRouteHandled = false;
+        if (typeof window.omoHandleDocumentsRouteChange === 'function') {
+            try {
+                documentsRouteHandled = window.omoHandleDocumentsRouteChange(documentRouteDetail) === true;
+            } catch (error) {
+                documentsRouteHandled = false;
             }
-        }));
+        }
+
+        if (!documentsRouteHandled) {
+            window.dispatchEvent(new CustomEvent('omo-documents-route-change', {
+                detail: documentRouteDetail
+            }));
+        }
     }
 
     if (drawerHandledByContextChange) {

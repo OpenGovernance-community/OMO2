@@ -867,6 +867,7 @@ $locationModeOptions = array_merge(
                                                 type="button"
                                                 class="generic-action-button generic-action-button--secondary"
                                                 data-omo-calendar-open-url="<?= omoApiEscape($associatedDocumentUrl) ?>"
+                                                data-omo-calendar-open-url-title="<?= omoApiEscape(trim((string)$associatedDocument->get('title')) !== '' ? trim((string)$associatedDocument->get('title')) : omoCalendarCreateT('calendar.create.document.empty_title')) ?>"
                                             ><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.open')) ?></button>
                                         <?php endif; ?>
                                     </div>

@@ -66,7 +66,10 @@ $document = new \dbObject\Document();
 
 if (
     !$document->load($documentId)
-    || !$document->canViewInOrganizationContext($organizationId, $holonId)
+    || (
+        !$document->canViewInOrganizationContext($organizationId, $holonId)
+        && !$document->canViewDirectlyInOrganization($organizationId)
+    )
 ) {
     http_response_code(404);
     ?>
@@ -89,6 +92,8 @@ $author = $document->getCreatedByDisplayName();
 $updatedBy = $document->getUpdatedByDisplayName();
 $visibility = $document->getVisibilityDisplayData($organizationId);
 $renderedContent = $document->getRenderedContentForCurrentViewer();
+$drawerTitle = trim((string)$document->get('title'));
+$drawerDescription = $createdAt instanceof DateTimeInterface ? $formatDateTime($createdAt) : '';
 $associatedEvent = $document->getAssociatedEvent();
 $associatedEventSchedule = '';
 $associatedEventLocation = '';
@@ -122,7 +127,11 @@ if ($associatedEvent instanceof \dbObject\Event) {
     }
 }
 ?>
-<div class="omo-document-detail">
+<div
+    class="omo-document-detail"
+    data-omo-document-drawer-title="<?= $escape($drawerTitle) ?>"
+    data-omo-document-drawer-description="<?= $escape($drawerDescription) ?>"
+>
     <article class="omo-document-detail__article">
         <header class="omo-document-detail__intro">
             <div class="omo-document-detail__meta">
@@ -264,17 +273,26 @@ if ($associatedEvent instanceof \dbObject\Event) {
 
 <style>
 .omo-document-detail {
+    --omo-document-detail-article-max-width: 920px;
+    --omo-document-detail-article-margin-inline: auto;
     min-height: 100%;
     padding: 20px;
     background: var(--color-bg);
+}
+
+.omo-overlay-drawer__body .omo-document-detail {
+    --omo-document-detail-article-max-width: none;
+    --omo-document-detail-article-margin-inline: 0;
 }
 
 .omo-document-detail__article {
     display: flex;
     flex-direction: column;
     gap: 18px;
-    max-width: 920px;
-    margin: 0 auto;
+    max-width: var(--omo-document-detail-article-max-width);
+    margin: 0;
+    margin-left: var(--omo-document-detail-article-margin-inline);
+    margin-right: var(--omo-document-detail-article-margin-inline);
 }
 
 .omo-document-detail__intro {
