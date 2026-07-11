@@ -712,6 +712,10 @@ $documentTypeOptions = omoCalendarDocumentTypeOptions($nextcloudDocumentsAvailab
 $associatedDocumentUrl = $associatedDocument instanceof Document
     ? $event->buildAssociatedDocumentDetailUrl($currentHolonId > 0 ? $currentHolonId : $defaultHolonId)
     : '';
+$associatedDocumentPvPreparationUrl = $associatedDocument instanceof Document
+    && $associatedDocument->canUserPrepareUpcomingPv($currentUserId, $organizationId)
+    ? $associatedDocument->buildUpcomingPvEditorUrl($organizationId)
+    : '';
 $locationModeOptions = array_merge(
     ['' => omoCalendarCreateT('calendar.create.field.location_mode_pending')],
     array_map(static function (array $definition): string {
@@ -868,6 +872,7 @@ $locationModeOptions = array_merge(
                                                 class="generic-action-button generic-action-button--secondary"
                                                 data-omo-calendar-open-url="<?= omoApiEscape($associatedDocumentUrl) ?>"
                                                 data-omo-calendar-open-url-title="<?= omoApiEscape(trim((string)$associatedDocument->get('title')) !== '' ? trim((string)$associatedDocument->get('title')) : omoCalendarCreateT('calendar.create.document.empty_title')) ?>"
+                                                data-omo-calendar-open-pv-editor-url="<?= omoApiEscape($associatedDocumentPvPreparationUrl) ?>"
                                             ><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.open')) ?></button>
                                         <?php endif; ?>
                                     </div>

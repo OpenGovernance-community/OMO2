@@ -2,7 +2,45 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-10
+
+Le module Documents peut maintenant creer des PV meme sans activer l Agenda. Le type `PV` apparait dans le formulaire de creation standard, la creation passe par le flux document habituel avec date de creation immediate, et l action `Editer` d un PV autonome ouvre ensuite directement le drawer PV special en pleine page au lieu de l ancien editeur generique.
+
+Les documents PV portent maintenant aussi une premiere notion d etape de workflow: `Preparation`, `Reunion`, `Relecture` et `Valide`. Cette etape est stockee en base sur le document, alignee dans le schema Docker, et un premier selecteur apparait dans l entete de l editeur PV pour preparer les futurs comportements specifiques a chaque phase.
+
+La liste des documents affiche maintenant aussi une icone dediee pour les PV, distincte des fichiers generiques, afin de les reperer plus vite visuellement.
+
+L editeur PV optimise encore l espace de preparation: l entete du document est maintenant place dans la colonne d edition a droite, la colonne d ordre du jour prend toute la hauteur, et le recapitulatif temporel combine maintenant un anneau d agenda avec points traites, points restants et marge ou depassement, plus un Time Timer interieur pour le temps reel restant.
+
+La liste d ordre du jour de l editeur PV est plus compacte: les points restent colles en haut, chaque ligne a un seul cadre commun avec poignee a gauche et case traitee a droite, tandis que les boutons monter/descendre sont maintenant dans les cartes editables. Le glisser-deposer affiche aussi un repere d insertion plus explicite.
+
+Les cartes editables des points de PV gagnent encore en densite: le numero, le titre et la duree estimee tiennent sur une meme ligne, la duree se modifie inline, et l auteur peut associer son point a un role concerne parmi les roles qui lui sont attribues dans le contexte du PV. L entete generale du PV defile maintenant avec la zone de contenu plutot que de rester figee au-dessus des points.
+
+Les editeurs HTML simples bases sur Summernote n affichent plus la phrase technique d aide sous le champ. Leur zone de saisie grandit maintenant avec le contenu au lieu d ajouter un ascenseur interne, ce qui rend notamment l edition des points de PV plus naturelle.
+
+La barre d outils des editeurs HTML simples reste maintenant sticky en haut de l editeur pendant le defilement. Les points de PV tres longs gardent donc les actions de mise en forme accessibles sans devoir remonter au debut du point.
+
+Les types de points de PV utilisent maintenant des icones dediees pour `information`, `consultation` et `decision`. Dans l editeur, les points modifiables affichent un switch compact a icones seules pres de la duree; en lecture seule, la capsule coloree conserve son libelle et ajoute l icone.
+
+L editeur PV protege maintenant les brouillons locaux: le bouton `Enregistrer` reste grise tant qu aucun changement n est present, devient une action principale des qu un point est modifie, signale les modifications non enregistrees et demande confirmation avant une fermeture ou un rafraichissement navigateur.
+
+Le verrouillage des points de PV evite maintenant les faux blocages par soi-meme apres rechargement ou fermeture. Le jeton d edition reste stable pour le document dans la session courante, les verrous du meme utilisateur peuvent etre repris proprement, et les locks actifs sont liberes quand l editeur est ferme.
+
+L annulation d une fermeture de l editeur PV conserve maintenant correctement les boutons `Enregistrer` actifs sur les points qui ont encore des modifications locales.
+
+La protection de fermeture de l editeur PV est maintenant volontairement simple: elle demande confirmation uniquement si au moins un bouton `Enregistrer` est actif, sans recalculer ni modifier l etat des points pendant la fermeture.
+
+Lorsqu un point de PV est rerendu pendant un brouillon local, l etat du bouton `Enregistrer` actif est maintenant capture et restaure explicitement. Un refresh distant du point ne peut donc plus desactiver le bouton alors que le contenu local est encore modifie.
+
+La liste des roles concernes dans l editeur PV est plus fiable: elle utilise le cercle d ancrage du document ou, si besoin, celui de l evenement associe, accepte les roles attribues dans tout le sous-arbre du cercle et retombe sur les roles de l utilisateur dans l organisation si aucun role contextualise n est trouve.
+
 ## 2026-07-09
+
+L editeur plein ecran des PV a ete compacte pour mieux preparer une reunion: le titre du document, le nom de la rencontre, l horaire et le lieu ne s affichent plus qu une seule fois en tete, la colonne de gauche montre une liste d ordre du jour plus dense avec sujet, auteur, duree estimee et case `traite`, et les points peuvent maintenant etre reordonnes par glisser-deposer avec synchronisation immediate de la colonne d edition. Le statut `traite` est aussi persiste en base avec migration SQL et alignement Docker.
+
+L editeur PV avant reunion sait maintenant aussi suivre les changements distants: les points embarquent une vraie date de modification et un dernier modificateur, la page poll regulierement les mises a jour des autres participants, et un verrou temporaire par point s active des qu on commence a editer pour limiter les collisions. Les brouillons locaux sont conserves pendant les rerendus et pendant les reordonnancements.
+
+La colonne de gauche de l editeur PV reprend maintenant aussi l esprit du module historique `/pv/` avec un recapitulatif de timing colle en bas. On y voit la duree de la reunion, le temps restant pendant la reunion, la somme des durees prevues et celle des points encore non traites, plus un petit graphique circulaire distinguant les points traites, les points restants et la marge ou le depassement.
 
 Le menu `Export` du panneau Structure propose maintenant `JSON`, `XML` et `CSV`. Les trois sorties embarquent aussi les droits des holons et des holon templates, avec le format compact complet en `JSON`, une variante structuree en `XML`, et une vue a plat en `CSV` ou les permissions sont listees par code et portee dans une cellule.
 
@@ -585,6 +623,19 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - 2026-07-10 : Le reroutage interne du module Documents tolere maintenant aussi un echec du helper global et retombe proprement sur son evenement de route habituel. Une erreur JS locale dans ce helper ne bloque donc plus l ouverture d un document au clic ni via changement de hash.
 - 2026-07-10 : Le viewer direct des Documents ne depend plus de la presence du document dans la liste courante. Un document masque de la liste parce qu il est date dans le futur peut maintenant quand meme s ouvrir par hash ou URL si ses droits de visibilite le permettent dans l organisation, y compris pour les PV consultes avant la reunion.
 - 2026-07-10 : Le contenu detail d un document peut maintenant piloter lui-meme l entete du sous-drawer Documents. Le vrai nom du fichier ou du document remonte donc depuis la vue detail apres chargement, y compris pour les ouvertures directes hors liste.
+- 2026-07-10 : Les PV associes a une reunion future s ouvrent maintenant dans un drawer horizontal dedie en haut de page, inspire d EasyPV. Les invites de la reunion peuvent y preparer le PV avant le debut, voir tous les points, ajouter les leurs et n editer que les points dont ils sont auteurs, sans perdre le contenu charge quand ils ferment puis rouvrent ce drawer.
+- 2026-07-10 : Le drawer special de preparation des PV avant reunion s ouvre maintenant en vrai plein ecran sur OMO, pleine largeur et pleine hauteur du viewport, au lieu de rester contraint a la zone de contenu laterale.
+- 2026-07-10 : Ce drawer plein ecran de preparation des PV se comporte maintenant comme un vrai panneau de reunion. Il descend plus visiblement depuis le haut, passe au-dessus de toute l interface OMO, et peut se replier en laissant une languette centrale avec le nom du document pour rouvrir rapidement la reunion pendant la navigation.
+- 2026-07-10 : La languette centrale des PV est maintenant vraiment placee sous le panneau de reunion ouvert. Le top drawer reserve une bande basse pour cette poignee, et en mode replie le panneau peut remonter completement hors ecran tant que la languette reste disponible pour le rouvrir.
+- 2026-07-10 : La poignee des PV suit maintenant visuellement le mouvement du top drawer au lieu de sauter entre le bas et le haut. Elle reste centree et collee au bord du panneau, ce qui renforce l effet d onglet attache au drawer.
+- 2026-07-10 : La languette de reunion des PV garde maintenant en permanence des angles arrondis uniquement en bas, sans espace avec le drawer quand il est ouvert. Sa hauteur a aussi ete reduite pour rester legerement inferieure a celle de la topbar OMO.
+- 2026-07-10 : Le top drawer de preparation des PV laisse maintenant passer les clics sur le reste de l interface OMO. Seuls son contenu interactif et sa languette de reunion capturent encore les interactions, ce qui facilite la navigation pendant la preparation.
+- 2026-07-10 : La languette de reunion des PV propose maintenant aussi une petite croix de fermeture definitive. Elle masque completement la reunion ouverte, vide son etat conserve et retire sa route hash, de sorte qu il faut repasser par le calendrier pour la rouvrir.
+- 2026-07-10 : L editeur de PV avant reunion n a plus besoin d une route hash dediee pour s ouvrir. Depuis le calendrier et depuis la liste Documents, un PV preparable s ouvre maintenant directement dans son top drawer sans modifier l URL, et il disparait naturellement au rechargement de page.
+- 2026-07-10 : La fermeture ou la suppression de ce top drawer PV ne modifie plus non plus le hash courant. L editeur reste donc totalement independant de la navigation par URL, aussi bien a l ouverture qu a la fermeture.
+- 2026-07-10 : Une ouverture de document via hash `#documents-d...` repasse maintenant toujours par le viewer normal, y compris pour les PV. L editeur de preparation PV n est plus declenche que par des clics directs qui le demandent explicitement, ce qui retablit l affichage correct des PV deja passes.
+- 2026-07-10 : Depuis la liste Documents elle-meme, un clic sur un document n ouvre plus jamais l editeur PV avant reunion. Le module Documents repasse systematiquement par son hash et par le viewer normal, tandis que l ouverture directe de l editeur reste reservee aux boutons du calendrier.
+- 2026-07-10 : L editeur de preparation des PV propose maintenant aussi un separateur vertical draggable entre la liste des points et la zone de contenu. Chaque colonne possede son propre scroll, et leur largeur peut etre ajustee a la souris comme dans l ecran principal OMO.
 - 2026-07-10 : Les drawers internes OMO ne sont plus bloques a une largeur fixe sur grand ecran. Ils occupent maintenant toute la largeur disponible moins une bande de 50px, tout en gardant le comportement plein ecran des qu il n y a plus assez de place.
 - 2026-07-10 : Le detail d un document suit maintenant aussi cette largeur et ne recentre plus son article a `920px` quand il est affiche dans un sous-drawer OMO. Hors overlay, sa presentation centree reste inchangee.
 - 2026-07-09 : La mini structure de la homepage OMO garde maintenant le nom de l element courant uniquement dans la capsule basse, et affiche les libelles de ses sous-cercles ou roles directs seulement quand leur taille a l ecran le permet.

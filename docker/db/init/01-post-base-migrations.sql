@@ -7,6 +7,83 @@ ALTER TABLE `organization`
   ADD COLUMN IF NOT EXISTS `latlong` varchar(100) DEFAULT NULL AFTER `color`,
   ADD COLUMN IF NOT EXISTS `parameters` mediumtext DEFAULT NULL AFTER `latlong`;
 
+ALTER TABLE `document`
+  ADD COLUMN IF NOT EXISTS `pvstage` varchar(30) DEFAULT NULL AFTER `documenttype`,
+  ADD KEY IF NOT EXISTS `idx_document_pvstage` (`pvstage`);
+
+UPDATE `document`
+SET `pvstage` = 'preparation'
+WHERE `documenttype` = 'pv'
+  AND (`pvstage` IS NULL OR TRIM(`pvstage`) = '');
+
+SET @document_pv_point_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.TABLES
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'document_pv_point'
+);
+
+SET @document_pv_point_handled_sql := IF(
+  @document_pv_point_exists = 1,
+  'ALTER TABLE `document_pv_point` ADD COLUMN IF NOT EXISTS `is_handled` tinyint(1) NOT NULL DEFAULT 0 AFTER `pointtype`',
+  'SELECT 1'
+);
+
+PREPARE stmt FROM @document_pv_point_handled_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @document_pv_point_sync_sql := IF(
+  @document_pv_point_exists = 1,
+  'ALTER TABLE `document_pv_point`
+    ADD COLUMN IF NOT EXISTS `IDuser_modification` int(11) DEFAULT NULL AFTER `IDuser_author`,
+    ADD COLUMN IF NOT EXISTS `IDuser_editing` int(11) DEFAULT NULL AFTER `IDuser_modification`,
+    ADD COLUMN IF NOT EXISTS `edit_lock_token` varchar(80) DEFAULT NULL AFTER `IDuser_editing`,
+    ADD COLUMN IF NOT EXISTS `dateedition` datetime DEFAULT NULL AFTER `datemodification`,
+    ADD KEY IF NOT EXISTS `idx_document_pv_point_modification_user` (`IDuser_modification`),
+    ADD KEY IF NOT EXISTS `idx_document_pv_point_editing_user` (`IDuser_editing`),
+    ADD KEY IF NOT EXISTS `idx_document_pv_point_dateedition` (`dateedition`)',
+  'SELECT 1'
+);
+
+PREPARE stmt FROM @document_pv_point_sync_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @fk_document_pv_point_modification_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.REFERENTIAL_CONSTRAINTS
+  WHERE CONSTRAINT_SCHEMA = DATABASE()
+    AND CONSTRAINT_NAME = 'fk_document_pv_point_modification_user'
+);
+
+SET @fk_document_pv_point_editing_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.REFERENTIAL_CONSTRAINTS
+  WHERE CONSTRAINT_SCHEMA = DATABASE()
+    AND CONSTRAINT_NAME = 'fk_document_pv_point_editing_user'
+);
+
+SET @fk_document_pv_point_modification_sql := IF(
+  @document_pv_point_exists = 1 AND @fk_document_pv_point_modification_exists = 0,
+  'ALTER TABLE `document_pv_point` ADD CONSTRAINT `fk_document_pv_point_modification_user` FOREIGN KEY (`IDuser_modification`) REFERENCES `user` (`id`) ON DELETE SET NULL',
+  'SELECT 1'
+);
+
+SET @fk_document_pv_point_editing_sql := IF(
+  @document_pv_point_exists = 1 AND @fk_document_pv_point_editing_exists = 0,
+  'ALTER TABLE `document_pv_point` ADD CONSTRAINT `fk_document_pv_point_editing_user` FOREIGN KEY (`IDuser_editing`) REFERENCES `user` (`id`) ON DELETE SET NULL',
+  'SELECT 1'
+);
+
+PREPARE stmt FROM @fk_document_pv_point_modification_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+PREPARE stmt FROM @fk_document_pv_point_editing_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 -- Translation bundle storage
 CREATE TABLE IF NOT EXISTS `translation_bundles` (
     `id` int(11) NOT NULL AUTO_INCREMENT,

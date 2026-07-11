@@ -2117,6 +2117,12 @@ function updateExternalPanelDrawerPosition(drawer = null) {
         return;
     }
 
+    if (externalDrawer.classList.contains('omo-external-panel-drawer--top-sheet')) {
+        externalDrawer.style.left = '0';
+        externalDrawer.style.width = '100%';
+        return;
+    }
+
     if (omoIsMobileLayout()) {
         const compactSidebarWidth = omoGetCompactSidebarWidth();
         externalDrawer.style.left = compactSidebarWidth + 'px';
@@ -2155,13 +2161,33 @@ function omoEnsureExternalPanelDrawer() {
             + '    </div>'
             + '  </div>'
             + '  <div class="omo-overlay-drawer__body" data-omo-external-panel-drawer-body></div>'
-            + '</div>';
+            + '</div>'
+            + '<button type="button" class="omo-external-panel-drawer__peek-toggle" data-omo-external-panel-drawer-peek-toggle="1" hidden>'
+            + '  <span class="omo-external-panel-drawer__peek-label" data-omo-external-panel-drawer-peek-label>Edition</span>'
+            + '  <span class="omo-external-panel-drawer__peek-dismiss" data-omo-external-panel-drawer-peek-dismiss="1" role="button" aria-label="Fermer la reunion" title="Fermer la reunion">&times;</span>'
+            + '</button>';
 
         drawer.querySelectorAll('[data-omo-external-panel-drawer-close="1"]').forEach(function (button) {
             button.addEventListener('click', function () {
                 omoCloseExternalPanelDrawer();
             });
         });
+
+        const peekToggle = drawer.querySelector('[data-omo-external-panel-drawer-peek-toggle="1"]');
+        if (peekToggle) {
+            peekToggle.addEventListener('click', function () {
+                omoToggleExternalPanelDrawerPeek();
+            });
+        }
+
+        const peekDismiss = drawer.querySelector('[data-omo-external-panel-drawer-peek-dismiss="1"]');
+        if (peekDismiss) {
+            peekDismiss.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                omoDismissExternalPanelDrawer();
+            });
+        }
 
         content.appendChild(drawer);
     }
@@ -2276,13 +2302,52 @@ function omoRefreshExternalPanelDrawerHost(target = null) {
     return false;
 }
 
+function omoCanCloseExternalPanelDrawer(drawer = null, settings = {}) {
+    if (settings && settings.skipCloseGuard === true) {
+        return true;
+    }
+
+    if (typeof window.omoPvEditorConfirmCanClose !== 'function') {
+        return true;
+    }
+
+    try {
+        return window.omoPvEditorConfirmCanClose({
+            drawer: drawer || document.getElementById('omoExternalPanelDrawer'),
+            settings: settings || {}
+        }) !== false;
+    } catch (error) {
+        return true;
+    }
+}
+
 function omoCloseExternalPanelDrawer() {
+    const settings = arguments.length > 0 && arguments[0] && typeof arguments[0] === 'object'
+        ? arguments[0]
+        : {};
     const drawer = document.getElementById('omoExternalPanelDrawer');
     if (!drawer) {
         return;
     }
 
+    if (!omoCanCloseExternalPanelDrawer(drawer, settings)) {
+        return;
+    }
+
+    const closeRouteToken = settings.force === true
+        ? null
+        : omoNormalizeHashToken(settings.closeRouteToken || drawer.dataset.omoCloseRouteToken || '');
+    const keepMounted = settings.forceReset === true
+        ? false
+        : drawer.dataset.omoKeepMounted === '1';
+    const peekToggle = drawer.querySelector('[data-omo-external-panel-drawer-peek-toggle="1"]');
+
+    drawer.classList.remove('is-peek');
     drawer.classList.remove('is-open');
+    drawer.dataset.omoPeekState = '0';
+    if (peekToggle) {
+        peekToggle.setAttribute('aria-expanded', 'false');
+    }
     window.setTimeout(function () {
         if (drawer.classList.contains('is-open')) {
             return;
@@ -2290,10 +2355,14 @@ function omoCloseExternalPanelDrawer() {
 
         drawer.hidden = true;
         const body = drawer.querySelector('[data-omo-external-panel-drawer-body]');
-        if (body) {
+        if (body && !keepMounted) {
             body.innerHTML = '';
         }
     }, 200);
+
+    if (closeRouteToken && typeof window.omoOpenDrawerHashState === 'function') {
+        window.omoOpenDrawerHashState(closeRouteToken);
+    }
 }
 
 function omoFormatExternalDrawerTitle(routeToken = '') {
@@ -2318,6 +2387,45 @@ function omoFormatExternalDrawerTitle(routeToken = '') {
     return 'Edition';
 }
 
+function omoSetExternalPanelDrawerPeekState(drawer = null, shouldPeek = false) {
+    const externalDrawer = drawer || document.getElementById('omoExternalPanelDrawer');
+    if (!externalDrawer || !externalDrawer.classList.contains('omo-external-panel-drawer--top-sheet')) {
+        return false;
+    }
+
+    const nextPeekState = shouldPeek === true;
+    const peekToggle = externalDrawer.querySelector('[data-omo-external-panel-drawer-peek-toggle="1"]');
+
+    externalDrawer.classList.toggle('is-peek', nextPeekState);
+    externalDrawer.dataset.omoPeekState = nextPeekState ? '1' : '0';
+
+    if (peekToggle) {
+        peekToggle.setAttribute('aria-expanded', nextPeekState ? 'false' : 'true');
+    }
+
+    return true;
+}
+
+function omoToggleExternalPanelDrawerPeek(forcePeek = null) {
+    const drawer = document.getElementById('omoExternalPanelDrawer');
+    if (!drawer || !drawer.classList.contains('omo-external-panel-drawer--top-sheet') || !drawer.classList.contains('is-open')) {
+        return false;
+    }
+
+    const nextPeekState = forcePeek === null
+        ? !drawer.classList.contains('is-peek')
+        : forcePeek === true;
+
+    return omoSetExternalPanelDrawerPeekState(drawer, nextPeekState);
+}
+
+function omoDismissExternalPanelDrawer() {
+    omoCloseExternalPanelDrawer({
+        force: true,
+        forceReset: true
+    });
+}
+
 function omoOpenExternalPanelDrawer(options = {}) {
     const drawer = omoEnsureExternalPanelDrawer();
     if (!drawer) {
@@ -2329,9 +2437,23 @@ function omoOpenExternalPanelDrawer(options = {}) {
     const mode = String(options.mode || 'fetch').trim().toLowerCase();
     const title = String(options.title || 'Edition').trim() || 'Edition';
     const description = String(options.description || '').trim();
+    const variant = String(options.variant || '').trim().toLowerCase();
+    const persistKey = String(options.persistKey || '').trim();
+    const keepMounted = options.keepMountedOnClose === true;
+    const closeRouteToken = omoNormalizeHashToken(options.closeRouteToken || '');
     const body = drawer.querySelector('[data-omo-external-panel-drawer-body]');
     const titleNode = drawer.querySelector('[data-omo-external-panel-drawer-title]');
     const descriptionNode = drawer.querySelector('[data-omo-external-panel-drawer-description]');
+    const peekToggle = drawer.querySelector('[data-omo-external-panel-drawer-peek-toggle="1"]');
+    const peekLabelNode = drawer.querySelector('[data-omo-external-panel-drawer-peek-label]');
+    const currentPersistKey = String(drawer.dataset.omoPersistKey || '').trim();
+    const currentContentUrl = String(drawer.dataset.omoExternalContentUrl || '').trim();
+    const canReuseMountedContent = keepMounted
+        && persistKey !== ''
+        && currentPersistKey === persistKey
+        && currentContentUrl === url
+        && body
+        && body.childNodes.length > 0;
 
     if (!body || !url) {
         return false;
@@ -2344,9 +2466,27 @@ function omoOpenExternalPanelDrawer(options = {}) {
     drawer.dataset.omoHostPanelUrl = hostContext.hostPanelUrl || '';
     drawer.dataset.omoHostOid = String(hostContext.oid || 0);
     drawer.dataset.omoHostCid = String(hostContext.cid || 0);
+    drawer.dataset.omoPersistKey = persistKey;
+    drawer.dataset.omoKeepMounted = keepMounted ? '1' : '0';
+    drawer.dataset.omoExternalContentUrl = url;
+    drawer.dataset.omoCloseRouteToken = closeRouteToken || '';
+    drawer.classList.toggle('omo-external-panel-drawer--top-sheet', variant === 'top-sheet');
+    drawer.classList.remove('is-peek');
+    drawer.dataset.omoPeekState = '0';
 
     if (titleNode) {
         titleNode.textContent = title;
+    }
+
+    if (peekToggle) {
+        const isTopSheet = variant === 'top-sheet';
+        peekToggle.hidden = !isTopSheet;
+        peekToggle.setAttribute('aria-expanded', 'true');
+        peekToggle.setAttribute('title', title);
+    }
+
+    if (peekLabelNode) {
+        peekLabelNode.textContent = title;
     }
 
     if (descriptionNode) {
@@ -2366,7 +2506,9 @@ function omoOpenExternalPanelDrawer(options = {}) {
     });
 
     if (mode === 'fetch') {
-        loadContent(body, url, 'panel');
+        if (!canReuseMountedContent) {
+            loadContent(body, url, 'panel');
+        }
         return true;
     }
 

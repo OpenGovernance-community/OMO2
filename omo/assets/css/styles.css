@@ -94,11 +94,23 @@
 .omo-document-pv__point-duration {
     display: inline-flex;
     align-items: center;
+    gap: 5px;
     min-height: 28px;
     padding: 0 12px;
     border-radius: 999px;
     font-size: 0.8rem;
     font-weight: 700;
+}
+
+.omo-document-pv__point-type-icon {
+    width: 15px;
+    height: 15px;
+    object-fit: contain;
+    opacity: 0.78;
+}
+
+html[data-theme="dark"] .omo-document-pv__point-type-icon {
+    filter: invert(1);
 }
 
 .omo-document-pv__point-type {
@@ -1921,6 +1933,95 @@ html[data-theme] .common-help-card p {
     max-width: none;
 }
 
+.omo-external-panel-drawer--top-sheet {
+    --omo-external-panel-peek-height: 44px;
+    --omo-external-panel-peek-gap: 0px;
+    --omo-external-panel-peek-offset: calc(var(--omo-external-panel-peek-height) + var(--omo-external-panel-peek-gap));
+    position: fixed;
+    inset: 0;
+    z-index: 2400;
+    pointer-events: none;
+}
+
+.omo-external-panel-drawer--top-sheet .omo-overlay-drawer__panel {
+    top: 0;
+    right: 0;
+    left: 0;
+    width: 100vw;
+    height: calc(100vh - var(--omo-external-panel-peek-offset));
+    max-width: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: 0 30px 80px -28px rgba(15, 23, 42, 0.45);
+    pointer-events: auto;
+    transform: translateY(calc(-100% - var(--omo-external-panel-peek-offset)));
+    transition: opacity 0.28s ease, transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform, opacity;
+}
+
+.omo-external-panel-drawer__peek-toggle {
+    position: fixed;
+    left: 50%;
+    top: calc(100vh - var(--omo-external-panel-peek-height));
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: min(50vw, 760px);
+    min-width: 280px;
+    max-width: calc(100vw - 32px);
+    min-height: var(--omo-external-panel-peek-height);
+    padding: 0 22px;
+    border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 80%, white 20%);
+    border-radius: 0 0 18px 18px;
+    background: color-mix(in srgb, var(--color-surface, #ffffff) 92%, white 8%);
+    color: var(--color-text, #0f172a);
+    box-shadow: 0 18px 40px -28px rgba(15, 23, 42, 0.42);
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%);
+    transition: top 0.42s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.24s ease, border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.omo-external-panel-drawer__peek-dismiss {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    color: var(--color-text-light, #64748b);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+    transform: translateY(-50%);
+    transition: background 0.18s ease, color 0.18s ease;
+}
+
+.omo-external-panel-drawer__peek-dismiss:hover {
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 12%, transparent);
+    color: var(--color-primary, #2563eb);
+}
+
+.omo-external-panel-drawer__peek-toggle:hover {
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 36%, var(--color-border, #d1d5db));
+    color: var(--color-primary, #2563eb);
+}
+
+.omo-external-panel-drawer__peek-label {
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+    font-weight: 700;
+}
+
 .omo-overlay-drawer__backdrop,
 .omo-overlay-drawer__panel {
     opacity: 0;
@@ -1960,6 +2061,38 @@ html[data-theme] .common-help-card p {
 
 .omo-overlay-drawer.is-open .omo-overlay-drawer__panel {
     transform: translateX(0);
+}
+
+.omo-external-panel-drawer--top-sheet.is-open {
+    pointer-events: none;
+}
+
+.omo-external-panel-drawer--top-sheet .omo-overlay-drawer__backdrop {
+    pointer-events: none;
+}
+
+.omo-external-panel-drawer--top-sheet.is-open .omo-overlay-drawer__panel {
+    transform: translateY(0);
+}
+
+.omo-external-panel-drawer--top-sheet.is-open .omo-external-panel-drawer__peek-toggle {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.omo-external-panel-drawer--top-sheet.is-peek .omo-overlay-drawer__backdrop {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.omo-external-panel-drawer--top-sheet.is-peek .omo-overlay-drawer__panel {
+    transform: translateY(calc(-100% - var(--omo-external-panel-peek-offset)));
+    pointer-events: none;
+}
+
+.omo-external-panel-drawer--top-sheet.is-peek .omo-external-panel-drawer__peek-toggle {
+    top: 0;
+    pointer-events: auto;
 }
 
 .omo-overlay-drawer__header {
@@ -2136,6 +2269,18 @@ button.omo-card {
 
     .omo-overlay-drawer__panel {
         width: 100%;
+    }
+
+    .omo-external-panel-drawer--top-sheet .omo-overlay-drawer__panel {
+        left: 0;
+        right: 0;
+        width: 100vw;
+        height: calc(100vh - var(--omo-external-panel-peek-offset));
+    }
+
+    .omo-external-panel-drawer__peek-toggle {
+        width: min(92vw, 760px);
+        min-width: 0;
     }
 
     .omo-overlay-drawer__header {

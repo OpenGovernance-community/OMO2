@@ -6,6 +6,7 @@ class DocumentPvPoint extends DbObject
     public const TYPE_INFORMATION = 'information';
     public const TYPE_CONSULTATION = 'consultation';
     public const TYPE_DECISION = 'decision';
+    public const EDIT_LOCK_TIMEOUT_SECONDS = 120;
 
     public static function tableName()
     {
@@ -17,11 +18,11 @@ class DocumentPvPoint extends DbObject
         return [
             [['IDdocument', 'title', 'pointtype'], 'required'],
             [['id', 'position', 'desired_duration_minutes', 'actual_duration_minutes'], 'integer'],
-            [['IDdocument', 'IDuser_author', 'IDholon_concerned'], 'fk'],
-            [['title', 'pointtype'], 'string'],
+            [['IDdocument', 'IDuser_author', 'IDholon_concerned', 'IDuser_modification', 'IDuser_editing'], 'fk'],
+            [['title', 'pointtype', 'edit_lock_token'], 'string'],
             [['content'], 'html'],
-            [['active'], 'boolean'],
-            [['datecreation', 'datemodification'], 'datetime'],
+            [['active', 'is_handled'], 'boolean'],
+            [['datecreation', 'datemodification', 'dateedition'], 'datetime'],
             [['id'], 'safe'],
         ];
     }
@@ -39,7 +40,12 @@ class DocumentPvPoint extends DbObject
             'desired_duration_minutes' => 'Duree souhaitee',
             'actual_duration_minutes' => 'Duree reelle',
             'pointtype' => 'Type',
+            'IDuser_modification' => 'Derniere modification',
+            'IDuser_editing' => 'Edition en cours',
+            'edit_lock_token' => 'Jeton de verrou',
+            'is_handled' => 'Traite',
             'active' => 'Actif',
+            'dateedition' => 'Date edition',
             'datecreation' => 'Creation',
             'datemodification' => 'Mise a jour',
         ];
@@ -56,6 +62,10 @@ class DocumentPvPoint extends DbObject
             'desired_duration_minutes' => 'Duree visee en minutes.',
             'actual_duration_minutes' => 'Duree observee en minutes.',
             'pointtype' => 'Nature du point: information, consultation ou decision.',
+            'IDuser_modification' => 'Derniere personne ayant change ce point, son ordre ou son statut.',
+            'IDuser_editing' => 'Personne qui detient actuellement le verrou d edition.',
+            'edit_lock_token' => 'Jeton technique de verrouillage d une session d edition.',
+            'is_handled' => 'Indique si le point a deja ete traite en reunion.',
         ];
     }
 
@@ -64,6 +74,7 @@ class DocumentPvPoint extends DbObject
         return [
             'title' => 80,
             'pointtype' => 20,
+            'edit_lock_token' => 80,
         ];
     }
 
@@ -174,6 +185,108 @@ class DocumentPvPoint extends DbObject
         }
 
         return trim((string)$holon->getFullDisplayName());
+    }
+
+    protected static function resolveDocumentContextCircleId(\dbObject\Document $document): int
+    {
+        $documentHolonId = (int)$document->get('IDholon');
+        if ($documentHolonId <= 0 && method_exists($document, 'getAssociatedEvent')) {
+            $event = $document->getAssociatedEvent();
+            if ($event instanceof \dbObject\Event) {
+                $documentHolonId = (int)$event->get('IDholon');
+            }
+        }
+
+        if ($documentHolonId <= 0) {
+            return 0;
+        }
+
+        $holon = new \dbObject\Holon();
+        if (!$holon->load($documentHolonId)) {
+            return 0;
+        }
+
+        $circle = $holon->getContainingCircle(true);
+        return $circle instanceof \dbObject\Holon ? (int)$circle->getId() : 0;
+    }
+
+    public static function buildConcernedHolonOptionsForDocument(\dbObject\Document $document, int $userId): array
+    {
+        $userId = (int)$userId;
+        $organizationId = (int)$document->get('IDorganization');
+        if ($userId <= 0 || $organizationId <= 0) {
+            return [];
+        }
+
+        $contextCircleId = self::resolveDocumentContextCircleId($document);
+        $rows = self::fetchAll(
+            "SELECT DISTINCT h.id
+            FROM user_holon uh
+            INNER JOIN holon h
+                ON h.id = uh.IDholon
+            WHERE uh.IDuser = :user_id
+              AND COALESCE(uh.active, 1) = 1
+              AND h.IDorganization = :organization_id
+              AND h.IDtypeholon = 1
+              AND COALESCE(h.active, 1) = 1
+              AND COALESCE(h.visible, 1) = 1
+            ORDER BY h.IDholon_parent ASC, h.name ASC, h.id ASC",
+            [
+                'user_id' => $userId,
+                'organization_id' => $organizationId,
+            ]
+        );
+
+        if (!is_array($rows)) {
+            return [];
+        }
+
+        $options = [];
+        $fallbackOptions = [];
+        foreach ($rows as $row) {
+            $holonId = (int)($row['id'] ?? 0);
+            if ($holonId <= 0 || isset($fallbackOptions[$holonId])) {
+                continue;
+            }
+
+            $holon = new \dbObject\Holon();
+            if (!$holon->load($holonId)) {
+                continue;
+            }
+
+            $label = trim((string)$holon->getFullDisplayName());
+            if ($label === '') {
+                $label = 'Role #' . $holonId;
+            }
+
+            $entry = [
+                'id' => $holonId,
+                'label' => $label,
+            ];
+            $fallbackOptions[$holonId] = $entry;
+
+            if ($contextCircleId <= 0 || $holon->isDescendantOf($contextCircleId, true)) {
+                $options[$holonId] = $entry;
+            }
+        }
+
+        return array_values(count($options) > 0 ? $options : $fallbackOptions);
+    }
+
+    public static function concernedHolonIsAllowedForDocument(\dbObject\Document $document, int $userId, int $holonId): bool
+    {
+        $holonId = (int)$holonId;
+        if ($holonId <= 0) {
+            return true;
+        }
+
+        foreach (self::buildConcernedHolonOptionsForDocument($document, $userId) as $option) {
+            if ((int)($option['id'] ?? 0) === $holonId) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function getPointTypeLabel(): string
@@ -289,6 +402,223 @@ class DocumentPvPoint extends DbObject
         return max(0, (int)$value);
     }
 
+    public function isHandled(): bool
+    {
+        return (int)$this->get('is_handled') === 1;
+    }
+
+    public static function getEditLockTimeoutSeconds(): int
+    {
+        return self::EDIT_LOCK_TIMEOUT_SECONDS;
+    }
+
+    public function getEditingUserId(): int
+    {
+        return (int)$this->get('IDuser_editing');
+    }
+
+    public function getModificationUserId(): int
+    {
+        return (int)$this->get('IDuser_modification');
+    }
+
+    public function getEditingLockToken(): string
+    {
+        return trim((string)$this->get('edit_lock_token'));
+    }
+
+    public function getEditingUserDisplayName(int $organizationId = 0): string
+    {
+        return self::resolveUserDisplayNameById($this->getEditingUserId(), $organizationId);
+    }
+
+    public function getModificationUserDisplayName(int $organizationId = 0): string
+    {
+        return self::resolveUserDisplayNameById($this->getModificationUserId(), $organizationId);
+    }
+
+    public function isEditLockActive(?\DateTimeInterface $referenceDate = null): bool
+    {
+        $editingUserId = $this->getEditingUserId();
+        $editingDate = $this->get('dateedition');
+        if ($editingUserId <= 0 || !($editingDate instanceof \DateTimeInterface)) {
+            return false;
+        }
+
+        $referenceTimestamp = $referenceDate instanceof \DateTimeInterface
+            ? (int)$referenceDate->getTimestamp()
+            : time();
+
+        return ((int)$editingDate->getTimestamp() + self::getEditLockTimeoutSeconds()) >= $referenceTimestamp;
+    }
+
+    public function isLockedByOtherSession(int $userId = 0, string $lockToken = ''): bool
+    {
+        if (!$this->isEditLockActive()) {
+            return false;
+        }
+
+        $lockToken = trim($lockToken);
+        if ($lockToken !== '' && $this->getEditingLockToken() === $lockToken) {
+            return false;
+        }
+
+        $userId = (int)$userId;
+        return $this->getEditingUserId() > 0 && ($userId <= 0 || $this->getEditingUserId() !== $userId);
+    }
+
+    protected function buildEditLockConflictResult(int $currentUserId = 0, string $currentLockToken = '', int $organizationId = 0): array
+    {
+        $editingUserId = $this->getEditingUserId();
+        $editingDate = $this->get('dateedition');
+        $editingUserName = $this->getEditingUserDisplayName($organizationId);
+        $isOwnedByCurrentUser = $currentUserId > 0 && $editingUserId === $currentUserId;
+        $isOwnedByCurrentSession = $currentLockToken !== '' && $this->getEditingLockToken() === trim($currentLockToken);
+        $message = $isOwnedByCurrentUser
+            ? 'Ce point est deja en cours d edition dans une autre session.'
+            : 'Ce point est deja en cours d edition.';
+
+        if (!$isOwnedByCurrentUser && $editingUserName !== '') {
+            $message .= ' Utilisateur: ' . $editingUserName . '.';
+        }
+
+        $message .= ' Reessayez dans quelques minutes.';
+
+        return [
+            'status' => false,
+            'text' => $message,
+            'lock' => [
+                'userId' => $editingUserId,
+                'userName' => $editingUserName,
+                'date' => $editingDate instanceof \DateTimeInterface ? $editingDate : null,
+                'isOwnedByCurrentUser' => $isOwnedByCurrentUser,
+                'isOwnedByCurrentSession' => $isOwnedByCurrentSession,
+                'timeoutSeconds' => self::getEditLockTimeoutSeconds(),
+            ],
+        ];
+    }
+
+    public function touchEditLock(int $organizationId, int $userId, string $lockToken): array
+    {
+        $organizationId = (int)$organizationId;
+        $userId = (int)$userId;
+        $lockToken = trim($lockToken);
+
+        if ((int)$this->getId() <= 0 || $organizationId <= 0 || $userId <= 0 || $lockToken === '') {
+            return [
+                'status' => false,
+                'text' => 'Requete de verrou invalide.',
+            ];
+        }
+
+        $document = new \dbObject\Document();
+        if (
+            !$document->load((int)$this->get('IDdocument'))
+            || (int)$document->get('IDorganization') !== $organizationId
+            || !$document->canUserOpenPvEditor($userId, $organizationId)
+        ) {
+            return [
+                'status' => false,
+                'text' => 'Acces refuse.',
+            ];
+        }
+
+        $now = new \DateTimeImmutable();
+        if (
+            $this->isEditLockActive($now)
+            && $this->getEditingLockToken() !== $lockToken
+            && $this->getEditingUserId() !== $userId
+        ) {
+            return $this->buildEditLockConflictResult($userId, $lockToken, $organizationId);
+        }
+
+        $result = self::execute(
+            "UPDATE document_pv_point
+            SET IDuser_editing = :user_id,
+                edit_lock_token = :lock_token,
+                dateedition = :editing_date
+            WHERE id = :point_id",
+            [
+                'user_id' => $userId,
+                'lock_token' => $lockToken,
+                'editing_date' => $now->format('Y-m-d H:i:s'),
+                'point_id' => (int)$this->getId(),
+            ]
+        );
+        if (!$result || !$this->load((int)$this->getId())) {
+            return [
+                'status' => false,
+                'text' => 'Impossible de verrouiller ce point.',
+            ];
+        }
+
+        return [
+            'status' => true,
+            'text' => 'Verrou d edition actif.',
+            'lock' => [
+                'userId' => $userId,
+                'userName' => $this->getEditingUserDisplayName($organizationId),
+                'date' => $now,
+                'isOwnedByCurrentUser' => true,
+                'isOwnedByCurrentSession' => true,
+                'timeoutSeconds' => self::getEditLockTimeoutSeconds(),
+            ],
+        ];
+    }
+
+    public function releaseEditLock(int $userId, string $lockToken = ''): array
+    {
+        $userId = (int)$userId;
+        $lockToken = trim($lockToken);
+        if ((int)$this->getId() <= 0 || $userId <= 0) {
+            return [
+                'status' => false,
+                'text' => 'Verrou introuvable.',
+            ];
+        }
+
+        if (!$this->isEditLockActive()) {
+            return [
+                'status' => true,
+                'text' => 'Aucun verrou a liberer.',
+            ];
+        }
+
+        if ($this->getEditingUserId() !== $userId) {
+            return [
+                'status' => true,
+                'text' => 'Aucun verrou a liberer.',
+            ];
+        }
+
+        if ($lockToken !== '' && $this->getEditingLockToken() !== '' && $this->getEditingLockToken() !== $lockToken) {
+            return [
+                'status' => true,
+                'text' => 'Verrou conserve par une autre session.',
+            ];
+        }
+
+        $result = self::execute(
+            "UPDATE document_pv_point
+            SET IDuser_editing = NULL,
+                edit_lock_token = NULL,
+                dateedition = NULL
+            WHERE id = :point_id",
+            ['point_id' => (int)$this->getId()]
+        );
+        if (!$result || !$this->load((int)$this->getId())) {
+            return [
+                'status' => false,
+                'text' => 'Impossible de liberer le verrou d edition.',
+            ];
+        }
+
+        return [
+            'status' => true,
+            'text' => 'Verrou d edition libere.',
+        ];
+    }
+
     public function getRenderedContentForViewer(int $organizationId = 0): string
     {
         $content = trim((string)$this->get('content'));
@@ -300,9 +630,19 @@ class DocumentPvPoint extends DbObject
         return $renderer->renderResolvedHtmlForViewer($content, max(0, $organizationId));
     }
 
-    public function buildViewerData(int $organizationId = 0): array
+    public function buildViewerData(int $organizationId = 0, int $currentUserId = 0, string $currentLockToken = ''): array
     {
         $position = (int)$this->get('position');
+        $editingDate = $this->get('dateedition');
+        $modificationDate = $this->get('datemodification');
+        $isLockActive = $this->isEditLockActive();
+        $isLockedByOther = $this->isLockedByOtherSession($currentUserId, $currentLockToken);
+        $isLockOwnedByCurrentSession = $isLockActive
+            && $currentLockToken !== ''
+            && $this->getEditingLockToken() === $currentLockToken;
+        $isLockOwnedByCurrentUser = $isLockActive
+            && $currentUserId > 0
+            && $this->getEditingUserId() === $currentUserId;
 
         return [
             'id' => (int)$this->getId(),
@@ -312,13 +652,48 @@ class DocumentPvPoint extends DbObject
             'pointType' => self::normalizePointType($this->get('pointtype')),
             'pointTypeLabel' => $this->getPointTypeLabel(),
             'authorLabel' => $this->getAuthorDisplayName($organizationId),
+            'concernedHolonId' => (int)$this->get('IDholon_concerned'),
             'concernedHolonLabel' => $this->getConcernedHolonLabel(),
             'addressedHolons' => $this->getAddressedHolonItems(),
             'tensions' => $this->getTensionItems(),
             'desiredDurationMinutes' => $this->getDurationMinutesValue('desired_duration_minutes'),
             'actualDurationMinutes' => $this->getDurationMinutesValue('actual_duration_minutes'),
+            'isHandled' => $this->isHandled(),
+            'lastModifiedByUserId' => $this->getModificationUserId(),
+            'lastModifiedByLabel' => $this->getModificationUserDisplayName($organizationId),
+            'lastModifiedAtIso' => $modificationDate instanceof \DateTimeInterface ? $modificationDate->format(DATE_ATOM) : '',
+            'lastModifiedAtTimestamp' => $modificationDate instanceof \DateTimeInterface ? (int)$modificationDate->getTimestamp() : 0,
+            'lock' => [
+                'isActive' => $isLockActive,
+                'isLockedByOther' => $isLockedByOther,
+                'isOwnedByCurrentUser' => $isLockOwnedByCurrentUser,
+                'isOwnedByCurrentSession' => $isLockOwnedByCurrentSession,
+                'userId' => $this->getEditingUserId(),
+                'userLabel' => $this->getEditingUserDisplayName($organizationId),
+                'token' => $this->getEditingLockToken(),
+                'dateIso' => $editingDate instanceof \DateTimeInterface ? $editingDate->format(DATE_ATOM) : '',
+                'timestamp' => $editingDate instanceof \DateTimeInterface ? (int)$editingDate->getTimestamp() : 0,
+            ],
             'contentHtml' => $this->getRenderedContentForViewer($organizationId),
         ];
+    }
+
+    public function isEditableByUser(int $userId): bool
+    {
+        $userId = (int)$userId;
+        return $userId > 0 && $userId === (int)$this->get('IDuser_author');
+    }
+
+    public function buildEditorData(int $organizationId = 0, int $currentUserId = 0, string $currentLockToken = ''): array
+    {
+        $data = $this->buildViewerData($organizationId, $currentUserId, $currentLockToken);
+        $data['authorUserId'] = (int)$this->get('IDuser_author');
+        $data['contentRaw'] = trim((string)$this->get('content'));
+        $data['isEditable'] = $this->isEditableByUser($currentUserId);
+        $data['isLockedByOther'] = !empty($data['lock']['isLockedByOther']);
+        $data['canEditNow'] = $data['isEditable'] && !$data['isLockedByOther'];
+
+        return $data;
     }
 
     public function save()
@@ -335,6 +710,7 @@ class DocumentPvPoint extends DbObject
         $this->set('pointtype', self::normalizePointType($this->get('pointtype')));
         $this->set('desired_duration_minutes', $desiredDuration);
         $this->set('actual_duration_minutes', $actualDuration);
+        $this->set('is_handled', $this->isHandled());
 
         if ($title === '') {
             return [
@@ -374,6 +750,18 @@ class DocumentPvPoint extends DbObject
             $this->set('IDuser_author', null);
         }
 
+        if ((int)$this->get('IDuser_modification') <= 0) {
+            $this->set('IDuser_modification', null);
+        }
+
+        if ((int)$this->get('IDuser_editing') <= 0) {
+            $this->set('IDuser_editing', null);
+        }
+
+        if (trim((string)$this->get('edit_lock_token')) === '') {
+            $this->set('edit_lock_token', null);
+        }
+
         if ((int)$this->get('IDholon_concerned') <= 0) {
             $this->set('IDholon_concerned', null);
         }
@@ -394,6 +782,172 @@ class DocumentPvPoint extends DbObject
         $this->set('datemodification', $now);
 
         return parent::save();
+    }
+
+    public static function reorderForDocument(int $documentId, array $pointIds): array
+    {
+        $documentId = (int)$documentId;
+        if ($documentId <= 0) {
+            return [
+                'status' => false,
+                'message' => 'Document PV invalide.',
+            ];
+        }
+
+        $normalizedPointIds = [];
+        foreach ($pointIds as $pointId) {
+            $pointId = (int)$pointId;
+            if ($pointId > 0) {
+                $normalizedPointIds[$pointId] = $pointId;
+            }
+        }
+        $normalizedPointIds = array_values($normalizedPointIds);
+
+        $currentRows = self::fetchAll(
+            "SELECT id
+            FROM document_pv_point
+            WHERE IDdocument = :document_id
+              AND COALESCE(active, 1) = 1",
+            ['document_id' => $documentId]
+        );
+        if (!is_array($currentRows)) {
+            return [
+                'status' => false,
+                'message' => 'Impossible de charger les points du PV.',
+            ];
+        }
+
+        $currentPointIds = [];
+        foreach ($currentRows as $row) {
+            $pointId = (int)($row['id'] ?? 0);
+            if ($pointId > 0) {
+                $currentPointIds[$pointId] = $pointId;
+            }
+        }
+        $currentPointIds = array_values($currentPointIds);
+        sort($currentPointIds);
+
+        $comparisonPointIds = $normalizedPointIds;
+        sort($comparisonPointIds);
+        if ($comparisonPointIds !== $currentPointIds) {
+            return [
+                'status' => false,
+                'message' => 'La liste des points a reordonner est incomplete.',
+            ];
+        }
+
+        foreach ($normalizedPointIds as $index => $pointId) {
+            $result = self::execute(
+                "UPDATE document_pv_point
+                SET position = :position,
+                    datemodification = :updated_at
+                WHERE IDdocument = :document_id
+                  AND id = :point_id",
+                [
+                    'position' => $index + 1,
+                    'updated_at' => date('Y-m-d H:i:s'),
+                    'document_id' => $documentId,
+                    'point_id' => $pointId,
+                ]
+            );
+            if (!$result) {
+                return [
+                    'status' => false,
+                    'message' => 'Impossible de reordonner les points du PV.',
+                ];
+            }
+        }
+
+        return [
+            'status' => true,
+        ];
+    }
+
+    public static function reorderForDocumentByUser(int $documentId, array $pointIds, int $userId = 0): array
+    {
+        $userId = (int)$userId;
+        $documentId = (int)$documentId;
+        if ($documentId <= 0) {
+            return [
+                'status' => false,
+                'message' => 'Document PV invalide.',
+            ];
+        }
+
+        $normalizedPointIds = [];
+        foreach ($pointIds as $pointId) {
+            $pointId = (int)$pointId;
+            if ($pointId > 0) {
+                $normalizedPointIds[$pointId] = $pointId;
+            }
+        }
+        $normalizedPointIds = array_values($normalizedPointIds);
+
+        $currentRows = self::fetchAll(
+            "SELECT id
+            FROM document_pv_point
+            WHERE IDdocument = :document_id
+              AND COALESCE(active, 1) = 1",
+            ['document_id' => $documentId]
+        );
+        if (!is_array($currentRows)) {
+            return [
+                'status' => false,
+                'message' => 'Impossible de charger les points du PV.',
+            ];
+        }
+
+        $currentPointIds = [];
+        foreach ($currentRows as $row) {
+            $pointId = (int)($row['id'] ?? 0);
+            if ($pointId > 0) {
+                $currentPointIds[$pointId] = $pointId;
+            }
+        }
+        $currentPointIds = array_values($currentPointIds);
+        sort($currentPointIds);
+
+        $comparisonPointIds = $normalizedPointIds;
+        sort($comparisonPointIds);
+        if ($comparisonPointIds !== $currentPointIds) {
+            return [
+                'status' => false,
+                'message' => 'La liste des points a reordonner est incomplete.',
+            ];
+        }
+
+        $updatedAt = date('Y-m-d H:i:s');
+        foreach ($normalizedPointIds as $index => $pointId) {
+            $parameters = [
+                'position' => $index + 1,
+                'updated_at' => $updatedAt,
+                'document_id' => $documentId,
+                'point_id' => $pointId,
+            ];
+            $sql = "UPDATE document_pv_point
+                SET position = :position,
+                    datemodification = :updated_at";
+            if ($userId > 0) {
+                $sql .= ",
+                    IDuser_modification = :user_id";
+                $parameters['user_id'] = $userId;
+            }
+            $sql .= "
+                WHERE IDdocument = :document_id
+                  AND id = :point_id";
+
+            $result = self::execute($sql, $parameters);
+            if (!$result) {
+                return [
+                    'status' => false,
+                    'message' => 'Impossible de reordonner les points du PV.',
+                ];
+            }
+        }
+
+        return [
+            'status' => true,
+        ];
     }
 }
 

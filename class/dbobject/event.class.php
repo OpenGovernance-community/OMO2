@@ -486,6 +486,47 @@ class Event extends DbObject
         return $url;
     }
 
+    public function isUpcoming(?\DateTimeInterface $referenceDate = null): bool
+    {
+        $startAt = $this->get('start_at');
+        if (!($startAt instanceof \DateTimeInterface)) {
+            return false;
+        }
+
+        if (!($referenceDate instanceof \DateTimeInterface)) {
+            $timezone = $startAt->getTimezone();
+            $referenceDate = $timezone instanceof \DateTimeZone
+                ? new \DateTimeImmutable('now', $timezone)
+                : new \DateTimeImmutable('now');
+        }
+
+        return $startAt > $referenceDate;
+    }
+
+    public function canUserPrepareUpcomingPv(int $userId, int $organizationId = 0, string $viewerEmail = ''): bool
+    {
+        $userId = (int)$userId;
+        $organizationId = (int)$organizationId;
+
+        if ($userId <= 0 || !$this->isUpcoming()) {
+            return false;
+        }
+
+        if ($organizationId <= 0) {
+            $organizationId = (int)$this->get('IDorganization');
+        }
+
+        if ($organizationId <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
+            return false;
+        }
+
+        if ($userId === (int)$this->get('IDuser')) {
+            return true;
+        }
+
+        return $this->isVisibleToInvitationViewer($userId, $organizationId, $viewerEmail);
+    }
+
     public function syncAssociatedDocumentEventDate()
     {
         $documents = $this->getAssociatedDocuments();
