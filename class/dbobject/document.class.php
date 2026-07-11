@@ -8,6 +8,10 @@
 		public const TYPE_UPLOADED_FILE = 'uploaded_file';
 		public const TYPE_FOLDER = 'folder';
 		public const TYPE_PV = 'pv';
+		public const PV_STAGE_PREPARATION = 'preparation';
+		public const PV_STAGE_MEETING = 'meeting';
+		public const PV_STAGE_REVIEW = 'review';
+		public const PV_STAGE_VALIDATED = 'validated';
 		public const EDIT_VISIBILITY_OBJECT_TYPE = 'document_edit';
 		public const DEFAULT_EDIT_VISIBILITY_TYPE = \dbObject\ObjectVisibility::TYPE_SELF;
 
@@ -22,7 +26,7 @@
 			return [
 				[['title'], 'required'],						// Champs obligatoires
 				[['id', 'version', 'estDossier', 'openinnewwindow', 'storedfilesize'], 'integer'],				// Nombres entiers
-				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime'], 'string'],	// Chaines de caractere
+				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'pvstage', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime'], 'string'],	// Chaines de caractere
 				[['description', 'content', 'contentedition'], 'text'],			// Textes libres
 				[['datecreation', 'datemodification', 'dateedition', 'datecontentedition'], 'datetime'],	// Date avec precision des heures
 				[['IDuser', 'IDusercreation', 'IDusermodification', 'IDuseredition', 'IDorganization', 'IDholon', 'IDdocument_parent', 'IDevent'], 'fk'],	// Cles etrangeres
@@ -57,6 +61,7 @@
 				'codeview' => 'Code d affichage',
 				'codeedit' => 'Code d edition',
 				'documenttype' => 'Type de document',
+				'pvstage' => 'Etape du PV',
 				'externalurl' => 'URL externe',
 				'openinnewwindow' => 'Ouvrir dans une nouvelle fenetre',
 				'storedfilepath' => 'Chemin distant du fichier',
@@ -86,6 +91,7 @@
 				'dateedition' => 'Date du dernier signal de presence pendant l edition',
 				'datecontentedition' => 'Date de mise a jour du brouillon temporaire',
 				'documenttype' => 'Permet de distinguer les documents HTML, les liens externes et les dossiers',
+				'pvstage' => 'Etape actuelle du flux d un document PV: preparation, reunion, relecture ou valide',
 				'externalurl' => 'Adresse du site a ouvrir pour un document de type lien externe',
 				'openinnewwindow' => 'Ouvre le lien externe directement dans une autre fenetre',
 				'storedfilepath' => 'Chemin du fichier sur le stockage Nextcloud de l organisation',
@@ -100,6 +106,7 @@
 		{
 			return [
 				'title' => 100,									// Nombre de caracteres maximum
+				'pvstage' => 30,
 				'externalurl' => 2000,
 				'storedfilepath' => 1000,
 				'storedfilename' => 255,
@@ -633,6 +640,97 @@
 			return $event;
 		}
 
+		public function canUserPrepareUpcomingPv(int $userId = 0, int $organizationId = 0): bool
+		{
+			$userId = (int)$userId;
+			$organizationId = $organizationId > 0
+				? (int)$organizationId
+				: (int)$this->get('IDorganization');
+
+			if (
+				!$this->isPvDocument()
+				|| $userId <= 0
+				|| $organizationId <= 0
+				|| (int)$this->get('IDorganization') !== $organizationId
+			) {
+				return false;
+			}
+
+			$event = $this->getAssociatedEvent();
+			if (!($event instanceof \dbObject\Event) || !$event->isUpcoming()) {
+				return false;
+			}
+
+			if ($this->canEditInOrganizationContext($organizationId, $userId, false)) {
+				return true;
+			}
+
+			return $event->canUserPrepareUpcomingPv($userId, $organizationId);
+		}
+
+		public function canUserOpenPvEditor(int $userId = 0, int $organizationId = 0): bool
+		{
+			$userId = (int)$userId;
+			$organizationId = $organizationId > 0
+				? (int)$organizationId
+				: (int)$this->get('IDorganization');
+
+			if (
+				!$this->isPvDocument()
+				|| $userId <= 0
+				|| $organizationId <= 0
+				|| (int)$this->get('IDorganization') !== $organizationId
+			) {
+				return false;
+			}
+
+			$event = $this->getAssociatedEvent();
+			if ($event instanceof \dbObject\Event) {
+				if ($this->canEditInOrganizationContext($organizationId, $userId, false)) {
+					return true;
+				}
+
+				if (!$event->isUpcoming()) {
+					return false;
+				}
+
+				return $event->canUserPrepareUpcomingPv($userId, $organizationId);
+			}
+
+			return $this->canEditInOrganizationContext($organizationId, $userId, false);
+		}
+
+		public function hasUpcomingAssociatedEvent(): bool
+		{
+			if (!$this->isPvDocument()) {
+				return false;
+			}
+
+			$event = $this->getAssociatedEvent();
+			return $event instanceof \dbObject\Event && $event->isUpcoming();
+		}
+
+		public function buildPvEditorUrl(int $organizationId = 0): string
+		{
+			$organizationId = $organizationId > 0
+				? (int)$organizationId
+				: (int)$this->get('IDorganization');
+
+			if (!$this->isPvDocument() || (int)$this->getId() <= 0 || $organizationId <= 0) {
+				return '';
+			}
+
+			return '/omo/api/documents/pv_editor.php?id='
+				. rawurlencode((string)(int)$this->getId())
+				. '&oid='
+				. rawurlencode((string)$organizationId);
+		}
+
+		public function buildUpcomingPvEditorUrl(int $organizationId = 0): string
+		{
+			return $this->buildPvEditorUrl($organizationId);
+		}
+
 		public function isFolder(): bool
 		{
 			return (bool)$this->get('estDossier');
@@ -658,6 +756,86 @@
 			}
 
 			return self::TYPE_HTML;
+		}
+
+		public static function getPvStageOptions(): array
+		{
+			return [
+				self::PV_STAGE_PREPARATION => 'Preparation',
+				self::PV_STAGE_MEETING => 'Reunion',
+				self::PV_STAGE_REVIEW => 'Relecture',
+				self::PV_STAGE_VALIDATED => 'Valide',
+			];
+		}
+
+		public static function normalizePvStage($rawStage): string
+		{
+			$stage = trim(mb_strtolower((string)$rawStage, 'UTF-8'));
+			$options = self::getPvStageOptions();
+			if (isset($options[$stage])) {
+				return $stage;
+			}
+
+			return self::PV_STAGE_PREPARATION;
+		}
+
+		public function getPvStage(): string
+		{
+			if (!$this->isPvDocument()) {
+				return '';
+			}
+
+			return self::normalizePvStage($this->get('pvstage'));
+		}
+
+		public function getPvStageLabel(): string
+		{
+			$stage = $this->getPvStage();
+			$options = self::getPvStageOptions();
+			return (string)($options[$stage] ?? $options[self::PV_STAGE_PREPARATION]);
+		}
+
+		public function canManagePvStage(int $organizationId = 0, ?int $userId = null): bool
+		{
+			if (!$this->isPvDocument()) {
+				return false;
+			}
+
+			$organizationId = $organizationId > 0
+				? (int)$organizationId
+				: (int)$this->get('IDorganization');
+
+			if ($organizationId <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
+				return false;
+			}
+
+			return $this->canEditInOrganizationContext($organizationId, $userId, false);
+		}
+
+		public function updatePvStageInOrganizationContext(int $organizationId, int $userId, string $stage): array
+		{
+			$organizationId = (int)$organizationId;
+			$userId = (int)$userId;
+
+			if ((int)$this->getId() <= 0 || !$this->isPvDocument()) {
+				return [
+					'status' => false,
+					'text' => 'Document PV introuvable.',
+				];
+			}
+
+			if (!$this->canManagePvStage($organizationId, $userId)) {
+				return [
+					'status' => false,
+					'text' => 'Acces refuse.',
+				];
+			}
+
+			$this->set('pvstage', self::normalizePvStage($stage));
+			$this->set('IDusermodification', $userId);
+			$this->set('datemodification', new \DateTimeImmutable());
+
+			return $this->save();
 		}
 
 		public static function getDocumentTypeCatalog(): array
@@ -1413,6 +1591,14 @@
 
 				$pointData = $point->buildViewerData($organizationId);
 				$pointTypeClass = preg_replace('/[^a-z0-9_-]+/i', '-', (string)($pointData['pointType'] ?? 'information'));
+				$pointTypeIconMap = array(
+					'information' => '/omo/assets/images/documents/pv-point-type/information.png',
+					'consultation' => '/omo/assets/images/documents/pv-point-type/consultation.png',
+					'decision' => '/omo/assets/images/documents/pv-point-type/decision.png',
+				);
+				$pointTypeIcon = isset($pointTypeIconMap[$pointTypeClass])
+					? $pointTypeIconMap[$pointTypeClass]
+					: $pointTypeIconMap['information'];
 				$pointFields = '';
 				$pointFields .= self::buildPvFieldHtml('Auteur', (string)($pointData['authorLabel'] ?? ''));
 				$pointFields .= self::buildPvFieldHtml('Holon concerne', (string)($pointData['concernedHolonLabel'] ?? ''));
@@ -1428,6 +1614,7 @@
 				$html .= '<div class="omo-document-pv__point-main">';
 				$html .= '<div class="omo-document-pv__point-topline">';
 				$html .= '<span class="omo-document-pv__point-type omo-document-pv__point-type--' . self::escapeViewerText($pointTypeClass) . '">'
+					. '<img src="' . self::escapeViewerText($pointTypeIcon) . '" alt="" aria-hidden="true" class="omo-document-pv__point-type-icon">'
 					. self::escapeViewerText((string)($pointData['pointTypeLabel'] ?? 'Information'))
 					. '</span>';
 
@@ -2201,6 +2388,7 @@
 			$this->set('keywords', $keywords);
 			$this->set('estDossier', $isFolder ? 1 : 0);
 			$this->set('documenttype', $documentType);
+			$this->set('pvstage', $documentType === self::TYPE_PV ? self::normalizePvStage($values['pv_stage'] ?? null) : null);
 			$this->set('externalurl', $externalUrl !== '' ? $externalUrl : null);
 			$this->set('openinnewwindow', $openInNewWindow ? 1 : 0);
 			$this->set('IDevent', $eventId > 0 ? $eventId : null);
@@ -2443,6 +2631,11 @@
 			$this->set('content', $content);
 			$this->set('keywords', $keywords);
 			$this->set('documenttype', $documentType);
+			if ($documentType === self::TYPE_PV) {
+				$this->set('pvstage', self::normalizePvStage($values['pv_stage'] ?? $this->get('pvstage')));
+			} else {
+				$this->set('pvstage', null);
+			}
 			$this->set('externalurl', $externalUrl !== '' ? $externalUrl : null);
 			$this->set('openinnewwindow', $openInNewWindow ? 1 : 0);
 			if ($documentType !== self::TYPE_HTML) {

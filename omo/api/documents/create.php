@@ -11,7 +11,7 @@ use dbObject\Organization;
 
 $sourceLang = [
     'documents.create.error.edit' => ['text' => 'Impossible de modifier ce document.', 'context' => 'Error shown when the document editor cannot be opened in edit mode.'],
-    'documents.create.error.pv_unsupported' => ['text' => 'Ce document PV se consulte ici mais se cree et se modifie depuis le module de reunion.', 'context' => 'Error shown when trying to edit a PV document from the generic documents editor.'],
+    'documents.create.error.pv_unsupported' => ['text' => 'Ce document PV se cree ici, mais son contenu se modifie via l editeur PV dedie.', 'context' => 'Error shown when trying to edit a PV document from the generic documents editor.'],
     'documents.create.error.create' => ['text' => 'Impossible de créer un document dans ce contexte.', 'context' => 'Error shown when the document editor cannot be opened in creation mode.'],
     'documents.create.visibility.help_context_holon' => ['text' => 'Les portées cercle et rôle suivent automatiquement le holon du document.', 'context' => 'Visibility help text shown when the document has a contextual holon.'],
     'documents.create.visibility.help_no_holon' => ['text' => 'Ce document n’est pas lié à un holon. Les portées cercle et rôle ne sont pas disponibles.', 'context' => 'Visibility help text shown when the document has no holon but still belongs to an organization.'],
@@ -21,6 +21,7 @@ $sourceLang = [
     'documents.create.type.html' => ['text' => 'Document HTML', 'context' => 'Option label for HTML documents.'],
     'documents.create.type.external' => ['text' => 'Lien externe', 'context' => 'Option label for external links.'],
     'documents.create.type.uploaded' => ['text' => 'Fichier téléversé', 'context' => 'Option label for uploaded files.'],
+    'documents.create.type.pv' => ['text' => 'PV', 'context' => 'Option label for PV documents.'],
     'documents.create.type.folder' => ['text' => 'Dossier', 'context' => 'Option label for folders.'],
     'documents.create.field.title' => ['text' => 'Titre', 'context' => 'Label of the document title field.'],
     'documents.create.field.title_placeholder' => ['text' => 'Nom du document', 'context' => 'Placeholder shown in the document title field.'],
@@ -38,6 +39,7 @@ $sourceLang = [
     'documents.create.field.external_url_placeholder' => ['text' => 'https://example.com/', 'context' => 'Placeholder shown in the external URL field.'],
     'documents.create.field.external_url_hint' => ['text' => 'Utilisez une adresse complète en http:// ou https://.', 'context' => 'Hint shown below the external URL field.'],
     'documents.create.field.open_new_window' => ['text' => 'Ouvrir dans une nouvelle fenêtre', 'context' => 'Checkbox label used for external links.'],
+    'documents.create.field.pv_hint' => ['text' => 'Le contenu du PV se preparera ensuite dans l editeur PV dedie.', 'context' => 'Hint shown when creating a PV document from the generic document creator.'],
     'documents.create.field.upload' => ['text' => 'Fichier', 'context' => 'Label of the uploaded file field.'],
     'documents.create.upload.hint_nextcloud' => ['text' => 'Le fichier sera envoyé vers le stockage Nextcloud configuré pour cette organisation.', 'context' => 'Hint shown when Nextcloud storage is available.'],
     'documents.create.upload.hint_missing' => ['text' => 'Aucun stockage Nextcloud n’est configuré pour cette organisation.', 'context' => 'Hint shown when no Nextcloud storage is configured.'],
@@ -308,6 +310,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                             <?php if ($nextcloudDocumentsAvailable || $documentType === Document::TYPE_UPLOADED_FILE): ?>
                                 <option value="<?= $escape(Document::TYPE_UPLOADED_FILE) ?>" <?= $documentType === Document::TYPE_UPLOADED_FILE ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.uploaded')) ?></option>
                             <?php endif; ?>
+                            <option value="<?= $escape(Document::TYPE_PV) ?>" <?= $documentType === Document::TYPE_PV ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.pv')) ?></option>
                             <option value="<?= $escape(Document::TYPE_FOLDER) ?>" <?= $documentType === Document::TYPE_FOLDER ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.folder')) ?></option>
                         </select>
                         <?php if ($isEditing): ?>
@@ -396,6 +399,10 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                         <div class="omo-document-editor__html" data-omo-document-editor-html></div>
                         <div class="omo-document-editor__dictation-status" data-omo-document-dictation-status hidden></div>
                     </div>
+                </div>
+
+                <div class="omo-document-editor__field" data-omo-document-pv-section<?= $documentType !== Document::TYPE_PV ? ' hidden' : '' ?>>
+                    <span class="omo-document-editor__hint"><?= $escape(omoDocumentsCreateT('documents.create.field.pv_hint')) ?></span>
                 </div>
 
                 <div class="omo-document-editor__external-section" data-omo-document-external-section<?= $documentType !== Document::TYPE_EXTERNAL_LINK ? ' hidden' : '' ?>>
@@ -749,6 +756,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     const tagsInput = form.querySelector('[data-omo-document-tags-input]');
     const tagsHiddenInput = form.querySelector('[data-omo-document-tags-hidden]');
     const contentSection = form.querySelector('[data-omo-document-content-section]');
+    const pvSection = form.querySelector('[data-omo-document-pv-section]');
     const externalSection = form.querySelector('[data-omo-document-external-section]');
     const uploadSection = form.querySelector('[data-omo-document-upload-section]');
     const externalUrlField = form.querySelector('[data-omo-document-external-url]');
@@ -810,11 +818,16 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
     function syncTypeUi() {
         const isHtmlDocument = isHtmlTypeSelected();
+        const isPvDocument = getSelectedDocumentType() === 'pv';
         const isExternalLink = getSelectedDocumentType() === 'external_link';
         const isUploadedFile = isUploadedFileTypeSelected();
 
         if (contentSection) {
             contentSection.hidden = !isHtmlDocument;
+        }
+
+        if (pvSection) {
+            pvSection.hidden = !isPvDocument;
         }
 
         if (externalSection) {
@@ -1936,12 +1949,17 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             return;
         }
 
-        if (window.omoSimpleHtmlField && typeof window.omoSimpleHtmlField.mount === 'function') {
+        const htmlFieldVersion = '20260711-sticky-toolbar';
+        if (
+            window.omoSimpleHtmlField
+            && typeof window.omoSimpleHtmlField.mount === 'function'
+            && String(window.omoSimpleHtmlField.version || '') === htmlFieldVersion
+        ) {
             mountHtmlField();
             return;
         }
 
-        const scriptSelector = 'script[data-omo-simple-html-field-script="1"]';
+        const scriptSelector = 'script[data-omo-simple-html-field-script="1"][data-omo-simple-html-field-version="' + htmlFieldVersion + '"]';
         const existingScript = document.querySelector(scriptSelector);
         if (existingScript) {
             if (existingScript.getAttribute('data-loaded') === '1') {
@@ -1953,9 +1971,10 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         }
 
         const script = document.createElement('script');
-        script.src = '/omo/assets/js/simple-html-field.js';
+        script.src = '/omo/assets/js/simple-html-field.js?v=' + encodeURIComponent(htmlFieldVersion);
         script.async = false;
         script.setAttribute('data-omo-simple-html-field-script', '1');
+        script.setAttribute('data-omo-simple-html-field-version', htmlFieldVersion);
         script.onload = function () {
             script.setAttribute('data-loaded', '1');
             mountHtmlField();

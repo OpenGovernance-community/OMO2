@@ -29,15 +29,6 @@ $editVisibilityType = trim((string)($_POST['edit_visibility_type'] ?? 'self'));
 $isFolder = !empty($_POST['is_folder']) || trim(mb_strtolower($documentType, 'UTF-8')) === \dbObject\Document::TYPE_FOLDER;
 $parentDocumentId = isset($_POST['parent_document_id']) ? (int)$_POST['parent_document_id'] : 0;
 
-if (trim(mb_strtolower($documentType, 'UTF-8')) === \dbObject\Document::TYPE_PV) {
-    http_response_code(422);
-    echo json_encode(array(
-        'status' => false,
-        'message' => 'Le type PV est gere depuis le module de reunion.',
-    ));
-    exit;
-}
-
 if (
     $documentId <= 0
     && !\dbObject\Document::canCreateInOrganizationContext(

@@ -84,7 +84,8 @@ INSERT INTO `document` (
   `version`,
   `codeview`,
   `codeedit`,
-  `documenttype`
+  `documenttype`,
+  `pvstage`
 ) VALUES (
   2301,
   'PV gouvernance 09.07.2026',
@@ -99,7 +100,8 @@ INSERT INTO `document` (
   1,
   '',
   '',
-  'pv'
+  'pv',
+  'preparation'
 );
 
 INSERT INTO `document_pv_point` (
@@ -113,6 +115,7 @@ INSERT INTO `document_pv_point` (
   `desired_duration_minutes`,
   `actual_duration_minutes`,
   `pointtype`,
+  `is_handled`,
   `active`,
   `datecreation`,
   `datemodification`
@@ -129,6 +132,7 @@ INSERT INTO `document_pv_point` (
     8,
     'information',
     1,
+    1,
     '2026-07-09 09:05:00',
     '2026-07-09 09:15:00'
   ),
@@ -143,6 +147,7 @@ INSERT INTO `document_pv_point` (
     20,
     24,
     'consultation',
+    0,
     1,
     '2026-07-09 09:20:00',
     '2026-07-09 09:50:00'
@@ -158,6 +163,7 @@ INSERT INTO `document_pv_point` (
     15,
     12,
     'decision',
+    1,
     1,
     '2026-07-09 10:00:00',
     '2026-07-09 10:20:00'

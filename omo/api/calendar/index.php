@@ -2517,7 +2517,21 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     event.preventDefault();
                     var targetUrl = openUrlButton.getAttribute('data-omo-calendar-open-url') || '';
                     var targetTitle = openUrlButton.getAttribute('data-omo-calendar-open-url-title') || 'Document';
+                    var targetPvEditorUrl = openUrlButton.getAttribute('data-omo-calendar-open-pv-editor-url') || '';
                     if (!targetUrl) {
+                        return;
+                    }
+
+                    if (targetPvEditorUrl && typeof window.omoOpenExternalPanelDrawer === 'function') {
+                        window.omoOpenExternalPanelDrawer({
+                            url: targetPvEditorUrl,
+                            mode: 'fetch',
+                            title: targetTitle,
+                            description: 'Preparation du PV avant la reunion.',
+                            variant: 'top-sheet',
+                            persistKey: 'omo-pv-preparation-calendar-' + targetPvEditorUrl,
+                            keepMountedOnClose: true
+                        });
                         return;
                     }
 

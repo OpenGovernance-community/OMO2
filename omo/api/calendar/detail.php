@@ -221,6 +221,10 @@ $scheduleLabel = omoCalendarDetailFormatSchedule($event);
 $locationData = $event->getLocationDisplayData();
 $associatedDocument = $event->getAssociatedDocument();
 $associatedDocumentUrl = $event->buildAssociatedDocumentDetailUrl($eventHolonId > 0 ? $eventHolonId : $currentHolonId);
+$associatedDocumentPvPreparationUrl = $associatedDocument instanceof \dbObject\Document
+    && $associatedDocument->canUserPrepareUpcomingPv($currentUserId, $organizationId)
+    ? $associatedDocument->buildUpcomingPvEditorUrl($organizationId)
+    : '';
 $invitationContext = [
     'organizationId' => $organizationId,
     'targetHolonId' => $editContextHolonId,
@@ -300,6 +304,7 @@ $invitationContext = [
                             class="generic-action-button generic-action-button--secondary"
                             data-omo-calendar-open-url="<?= omoApiEscape($associatedDocumentUrl) ?>"
                             data-omo-calendar-open-url-title="<?= omoApiEscape(trim((string)$associatedDocument->get('title')) !== '' ? trim((string)$associatedDocument->get('title')) : ('Document #' . (int)$associatedDocument->getId())) ?>"
+                            data-omo-calendar-open-pv-editor-url="<?= omoApiEscape($associatedDocumentPvPreparationUrl) ?>"
                         ><?= omoApiEscape(omoCalendarDetailT('calendar.detail.action.open_document')) ?></button>
                     <?php endif; ?>
                 <?php else: ?>

@@ -229,11 +229,12 @@ $availableDocumentScopes = omoApiGetAvailableContextScopes($canToggleDocumentSco
 $documentScope = omoApiNormalizeContextScope($requestedDocumentScope, $availableDocumentScopes);
 $documentScopeActiveIndex = omoApiResolveContextScopeIndex($documentScope, $availableDocumentScopes);
 $descendantHolonIds = omoApiGetDescendantHolonIds($currentContextHolon);
+$currentUserId = (int)commonGetCurrentUserId();
 $canCreateDocument = $organization->getId() > 0
     && Document::canCreateInOrganizationContext(
         $currentOrganizationId,
         $effectiveCurrentHolonId > 0 ? $effectiveCurrentHolonId : null,
-        (int)commonGetCurrentUserId(),
+        $currentUserId,
         0,
         true
     );
@@ -393,6 +394,11 @@ foreach ($documents as $document) {
         $currentOrganizationId,
         $documentEditVisibilityRuleMap[$documentId] ?? null
     );
+    $canOpenPvEditor = $document->canUserOpenPvEditor($currentUserId, $currentOrganizationId);
+    $hasUpcomingPvEvent = $document->hasUpcomingAssociatedEvent();
+    $pvPreparationUrl = $canOpenPvEditor
+        ? $document->buildPvEditorUrl($currentOrganizationId)
+        : '';
     $isFolder = $document->isFolder();
     $isExternalLink = $document->isExternalLink();
     $canShareDocument = !$isFolder && $document->supportsHtmlContent();
@@ -413,6 +419,7 @@ foreach ($documents as $document) {
         'externalUrl' => $document->getExternalUrl(),
         'openInNewWindow' => $document->shouldOpenExternalLinkInNewWindow(),
         'canShare' => $canShareDocument,
+        'pvPreparationUrl' => $pvPreparationUrl,
         'parentDocumentId' => $parentDocumentId > 0 ? $parentDocumentId : 0,
         'contextLabel' => $documentScope !== 'contextual'
             ? trim((string)$document->getOrganizationContextLabel())
@@ -434,10 +441,15 @@ foreach ($documents as $document) {
             : array(),
         'description' => trim((string)$document->get('description')),
         'keywords' => trim((string)$document->get('keywords')),
-        'canEdit' => !$document->isPvDocument() && $document->canEditInOrganizationContext($documentOrganizationId),
-        'editUrl' => '/omo/api/documents/create.php?id=' . $documentId
-            . ($documentOrganizationId > 0 ? '&oid=' . $documentOrganizationId : '')
-            . ($documentHolonId > 0 ? '&cid=' . $documentHolonId : ''),
+        'hasUpcomingPvEvent' => $hasUpcomingPvEvent,
+        'canEdit' => $document->isPvDocument()
+            ? $canOpenPvEditor
+            : $document->canEditInOrganizationContext($documentOrganizationId),
+        'editUrl' => $document->isPvDocument()
+            ? $pvPreparationUrl
+            : ('/omo/api/documents/create.php?id=' . $documentId
+                . ($documentOrganizationId > 0 ? '&oid=' . $documentOrganizationId : '')
+                . ($documentHolonId > 0 ? '&cid=' . $documentHolonId : '')),
         'visibilityBadge' => (string)($visibility['badgeText'] ?? ''),
         'visibilityType' => (string)($visibility['type'] ?? ''),
         'visibilityIconUrl' => $resolveDocumentVisibilityIconUrl((string)($visibility['type'] ?? '')),
@@ -485,6 +497,8 @@ if ($initialOpenDocumentId > 0) {
             $currentOrganizationId,
             $requestedDocumentHolonId > 0 ? $requestedDocumentHolonId : null
         );
+        $requestedCanOpenPvEditor = $requestedOpenDocument->canUserOpenPvEditor($currentUserId, $currentOrganizationId);
+        $requestedCanOpenDirectly = $requestedCanView || $requestedCanOpenPvEditor;
 
         if ($requestedDocumentHolonId > 0) {
             $requestedDocumentContextUrl .= '&cid=' . $requestedDocumentHolonId;
@@ -493,19 +507,26 @@ if ($initialOpenDocumentId > 0) {
         $requestedOpenDocumentPayload = [
             'id' => $requestedDocumentId,
             'contextUrl' => $requestedDocumentContextUrl,
-            'title' => $requestedCanView ? (string)$requestedOpenDocument->get('title') : '',
-            'fullDateLabel' => $requestedCanView ? $formatDate($requestedResolvedCreatedAt, true) : '',
+            'title' => $requestedCanOpenDirectly ? (string)$requestedOpenDocument->get('title') : '',
+            'fullDateLabel' => $requestedCanOpenDirectly ? $formatDate($requestedResolvedCreatedAt, true) : '',
+            'documentType' => $requestedCanOpenDirectly ? $requestedOpenDocument->getDocumentType() : '',
             'isFolder' => $requestedOpenDocument->isFolder(),
             'openInNewWindow' => false,
             'externalUrl' => '',
-            'canEdit' => $requestedCanView
-                && !$requestedOpenDocument->isPvDocument()
-                && $requestedOpenDocument->canEditInOrganizationContext($currentOrganizationId),
-            'editUrl' => $requestedCanView
-                ? '/omo/api/documents/create.php?id=' . $requestedDocumentId
-                    . '&oid=' . $currentOrganizationId
-                    . ($requestedDocumentHolonId > 0 ? '&cid=' . $requestedDocumentHolonId : '')
+            'pvPreparationUrl' => $requestedCanOpenPvEditor
+                ? $requestedOpenDocument->buildPvEditorUrl($currentOrganizationId)
                 : '',
+            'hasUpcomingPvEvent' => $requestedCanOpenDirectly ? $requestedOpenDocument->hasUpcomingAssociatedEvent() : false,
+            'canEdit' => $requestedOpenDocument->isPvDocument()
+                ? $requestedCanOpenPvEditor
+                : ($requestedCanView && $requestedOpenDocument->canEditInOrganizationContext($currentOrganizationId)),
+            'editUrl' => $requestedOpenDocument->isPvDocument()
+                ? ($requestedCanOpenPvEditor ? $requestedOpenDocument->buildPvEditorUrl($currentOrganizationId) : '')
+                : ($requestedCanView
+                    ? '/omo/api/documents/create.php?id=' . $requestedDocumentId
+                        . '&oid=' . $currentOrganizationId
+                        . ($requestedDocumentHolonId > 0 ? '&cid=' . $requestedDocumentHolonId : '')
+                    : ''),
         ];
     } else {
         if ($effectiveCurrentHolonId > 0) {
@@ -517,9 +538,12 @@ if ($initialOpenDocumentId > 0) {
             'contextUrl' => $requestedDocumentContextUrl,
             'title' => '',
             'fullDateLabel' => '',
+            'documentType' => '',
             'isFolder' => false,
             'openInNewWindow' => false,
             'externalUrl' => '',
+            'pvPreparationUrl' => '',
+            'hasUpcomingPvEvent' => false,
             'canEdit' => false,
             'editUrl' => '',
         ];
@@ -668,6 +692,7 @@ if (!is_string($documentsPayload)) {
                                     data-omo-document-context-url="<?= $escape($entry['contextUrl']) ?>"
                                     data-omo-document-external-url="<?= $escape($entry['externalUrl']) ?>"
                                     data-omo-document-open-in-new-window="<?= !empty($entry['openInNewWindow']) ? '1' : '0' ?>"
+                                    data-omo-document-pv-editor-url="<?= $escape($entry['pvPreparationUrl'] ?? '') ?>"
                                     data-omo-document-title="<?= $escape($entry['title']) ?>"
                                     data-omo-document-full-date="<?= $escape($entry['fullDateLabel']) ?>"
                                 >
@@ -788,6 +813,7 @@ if (!is_string($documentsPayload)) {
                 const omoDocumentsDownloadIconUrl = '/omo/assets/images/documents/download.png';
                 const omoDocumentsFolderIconUrl = '/omo/assets/images/documents/folder.png';
                 const omoDocumentsLinkIconUrl = '/omo/assets/images/documents/link.png';
+                const omoDocumentsPvIconUrl = '/omo/assets/images/documents/pv.png';
                 const omoDocumentsPvType = 'pv';
 
                 const omoDocumentsGetIconUrl = function (documentItem) {
@@ -801,6 +827,10 @@ if (!is_string($documentsPayload)) {
 
                     if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === 'uploaded_file') {
                         return omoDocumentsDownloadIconUrl;
+                    }
+
+                    if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsPvType) {
+                        return omoDocumentsPvIconUrl;
                     }
 
                     return omoDocumentsFileIconUrl;
@@ -1253,6 +1283,7 @@ if (!is_string($documentsPayload)) {
                                     container.setAttribute('data-omo-document-context-url', documentItem.contextUrl || '');
                                     container.setAttribute('data-omo-document-external-url', documentItem.externalUrl || '');
                                     container.setAttribute('data-omo-document-open-in-new-window', documentItem.openInNewWindow ? '1' : '0');
+                                    container.setAttribute('data-omo-document-pv-editor-url', documentItem.pvPreparationUrl || '');
                                     container.setAttribute('data-omo-document-title', documentItem.title || '');
                                     container.setAttribute('data-omo-document-full-date', documentItem.fullDateLabel || '');
                                 }
@@ -2022,7 +2053,8 @@ if (!is_string($documentsPayload)) {
                                     fullDateLabel: '',
                                     isFolder: false,
                                     openInNewWindow: false,
-                                    externalUrl: ''
+                                    externalUrl: '',
+                                    pvPreparationUrl: ''
                                 };
                             };
 
@@ -2256,6 +2288,8 @@ if (!is_string($documentsPayload)) {
                                     const routeDetail = detail && typeof detail === 'object' ? detail : {};
                                     const targetDocumentId = Number(routeDetail.documentId || 0);
                                     const targetMode = normalizeDocumentOpenMode(routeDetail.mode || 'detail');
+                                    const previousDocumentId = Number(routeDetail.previousDocumentId || 0);
+                                    const previousMode = normalizeDocumentOpenMode(routeDetail.previousMode || 'detail');
                                     const rawForcedScope = String(routeDetail.forcedScope || '').trim().toLowerCase();
                                     const forcedScope = rawForcedScope !== ''
                                         ? normalizeDocumentScope(rawForcedScope)
@@ -2266,9 +2300,14 @@ if (!is_string($documentsPayload)) {
 
                                     if (targetDocumentId > 0) {
                                         const documentItem = findDocumentItemById(targetDocumentId);
+                                        const shouldPreferPanelRefresh = targetMode !== 'edit'
+                                            && !documentItem;
 
                                         if (targetMode === 'edit') {
                                             window.omoCloseDocumentDetailDrawer({ force: true });
+                                            if (typeof window.omoCloseDocumentPvPreparationDrawer === 'function') {
+                                                window.omoCloseDocumentPvPreparationDrawer({ force: true });
+                                            }
                                             if (typeof window.omoOpenDocumentEditorFromDocumentId === 'function' && window.omoOpenDocumentEditorFromDocumentId(targetDocumentId)) {
                                                 return true;
                                             }
@@ -2277,24 +2316,31 @@ if (!is_string($documentsPayload)) {
                                             }
                                         }
 
+                                        if (shouldPreferPanelRefresh && refreshPanelForDocumentRoute(targetDocumentId, targetMode, fallbackDocumentScope)) {
+                                            return true;
+                                        }
+
                                         if (targetMode !== 'edit' && documentItem && typeof window.omoOpenDocumentDetailByPayload === 'function') {
                                             window.omoCloseDocumentEditorDrawer({ force: true });
                                             window.omoOpenDocumentDetailByPayload(documentItem, panel);
                                             return true;
                                         }
 
-                                        if (targetMode !== 'edit' && typeof window.omoOpenDocumentDetailByPayload === 'function') {
-                                            const directDocumentPayload = buildDirectDocumentPayload(targetDocumentId);
-                                            if (directDocumentPayload) {
-                                                window.omoCloseDocumentEditorDrawer({ force: true });
-                                                window.omoOpenDocumentDetailByPayload(directDocumentPayload, panel);
-                                                return true;
-                                            }
-                                        }
-
                                         if (targetMode !== 'edit') {
                                             window.omoCloseDocumentEditorDrawer({ force: true });
-                                            return refreshPanelForDocumentRoute(targetDocumentId, targetMode, fallbackDocumentScope);
+                                            if (refreshPanelForDocumentRoute(targetDocumentId, targetMode, fallbackDocumentScope)) {
+                                                return true;
+                                            }
+
+                                            if (typeof window.omoOpenDocumentDetailByPayload === 'function') {
+                                                const directDocumentPayload = buildDirectDocumentPayload(targetDocumentId);
+                                                if (directDocumentPayload) {
+                                                    window.omoOpenDocumentDetailByPayload(directDocumentPayload, panel);
+                                                    return true;
+                                                }
+                                            }
+
+                                            return false;
                                         }
                                         return false;
                                     }
@@ -2306,6 +2352,9 @@ if (!is_string($documentsPayload)) {
                                     }
 
                                     window.omoCloseDocumentEditorDrawer({ force: true });
+                                    if (typeof window.omoCloseDocumentPvPreparationDrawer === 'function') {
+                                        window.omoCloseDocumentPvPreparationDrawer({ force: true });
+                                    }
                                     closeDetailDrawer();
                                     return true;
                                 };
@@ -2898,6 +2947,16 @@ if (!is_string($documentsPayload)) {
                 openEditorDrawer(url, title, description);
             };
 
+            window.omoCloseDocumentPvPreparationDrawer = function (options) {
+                if (typeof window.omoCloseExternalPanelDrawer !== 'function') {
+                    return;
+                }
+
+                window.omoCloseExternalPanelDrawer(options && typeof options === 'object'
+                    ? options
+                    : {});
+            };
+
             window.omoCloseDocumentDetailDrawer = function (options) {
                 const settings = options && typeof options === 'object'
                     ? options
@@ -2961,6 +3020,42 @@ if (!is_string($documentsPayload)) {
                 }
             };
 
+            window.omoOpenDocumentPvPreparationByPayload = function (documentItem) {
+                const preparationUrl = String(documentItem && documentItem.pvPreparationUrl ? documentItem.pvPreparationUrl : '').trim();
+                const documentId = Number(documentItem && documentItem.id ? documentItem.id : 0);
+                const title = String(documentItem && documentItem.title ? documentItem.title : '').trim();
+                const fullDate = String(documentItem && documentItem.fullDateLabel ? documentItem.fullDateLabel : '').trim();
+                const hasUpcomingPvEvent = !!(documentItem && documentItem.hasUpcomingPvEvent);
+
+                if (
+                    preparationUrl === ''
+                    || !Number.isInteger(documentId)
+                    || documentId <= 0
+                    || typeof window.omoOpenExternalPanelDrawer !== 'function'
+                ) {
+                    return false;
+                }
+
+                window.omoCloseDocumentEditorDrawer({ force: true });
+                window.omoCloseDocumentDetailDrawer({ force: true });
+
+                return window.omoOpenExternalPanelDrawer({
+                    url: preparationUrl,
+                    mode: 'fetch',
+                    title: title !== '' ? title : (hasUpcomingPvEvent ? 'Preparation du PV' : 'Edition du PV'),
+                    description: hasUpcomingPvEvent
+                        ? (fullDate !== ''
+                            ? 'Preparation ouverte avant la reunion du ' + fullDate + '.'
+                            : 'Preparation du PV avant la reunion.')
+                        : (fullDate !== ''
+                            ? 'Edition du PV cree le ' + fullDate + '.'
+                            : 'Edition du PV.'),
+                    variant: 'top-sheet',
+                    persistKey: 'omo-pv-preparation-' + String(documentId),
+                    keepMountedOnClose: true
+                }) === true;
+            };
+
             window.omoOpenDocumentDetailByPayload = function (documentItem, rootOverride) {
                 if (documentItem && documentItem.openInNewWindow && documentItem.externalUrl) {
                     if (openExternalDocumentWindow(documentItem)) {
@@ -2982,6 +3077,8 @@ if (!is_string($documentsPayload)) {
                 if (!drawer || !body || detailUrl === '' || (documentItem && documentItem.isFolder)) {
                     return false;
                 }
+
+                window.omoCloseDocumentPvPreparationDrawer({ force: true });
 
                 if (titleNode) {
                     titleNode.textContent = title !== '' ? title : 'Détail du document';
@@ -3042,9 +3139,19 @@ if (!is_string($documentsPayload)) {
             };
 
             window.omoOpenDocumentEditorByPayload = function (documentItem) {
-                if (!documentItem || !documentItem.canEdit || !documentItem.editUrl) {
+                if (!documentItem || !documentItem.canEdit) {
                     return false;
                 }
+
+                if (String(documentItem.documentType || '').trim().toLowerCase() === 'pv') {
+                    return window.omoOpenDocumentPvPreparationByPayload(documentItem);
+                }
+
+                if (!documentItem.editUrl) {
+                    return false;
+                }
+
+                window.omoCloseDocumentPvPreparationDrawer({ force: true });
 
                 openEditorDrawer(
                     String(documentItem.editUrl || '').trim(),
@@ -3061,9 +3168,11 @@ if (!is_string($documentsPayload)) {
 
                 const documentId = Number(trigger.getAttribute('data-omo-document-id') || 0);
                 const documentPayload = {
+                    id: documentId,
                     contextUrl: String(trigger.getAttribute('data-omo-document-context-url') || '').trim(),
                     externalUrl: String(trigger.getAttribute('data-omo-document-external-url') || '').trim(),
                     openInNewWindow: String(trigger.getAttribute('data-omo-document-open-in-new-window') || '').trim() === '1',
+                    pvPreparationUrl: String(trigger.getAttribute('data-omo-document-pv-editor-url') || '').trim(),
                     title: String(trigger.getAttribute('data-omo-document-title') || '').trim(),
                     fullDateLabel: String(trigger.getAttribute('data-omo-document-full-date') || '').trim()
                 };
@@ -3106,6 +3215,16 @@ if (!is_string($documentsPayload)) {
                     return false;
                 }
 
+                const root = getDocumentsRoot();
+                const documentItem = findDocumentPayloadItemById(resolvedDocumentId, root);
+                if (
+                    documentItem
+                    && String(documentItem.documentType || '').trim().toLowerCase() === 'pv'
+                    && window.omoOpenDocumentEditorByPayload(documentItem)
+                ) {
+                    return true;
+                }
+
                 const routeToken = buildDocumentRouteToken(resolvedDocumentId, 'edit');
                 const hashState = typeof window.omoParsePopupHashState === 'function'
                     ? window.omoParsePopupHashState()
@@ -3117,8 +3236,6 @@ if (!is_string($documentsPayload)) {
                     return true;
                 }
 
-                const root = getDocumentsRoot();
-                const documentItem = findDocumentPayloadItemById(resolvedDocumentId, root);
                 if (documentItem && window.omoOpenDocumentEditorByPayload(documentItem)) {
                     return true;
                 }

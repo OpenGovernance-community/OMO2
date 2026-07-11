@@ -533,7 +533,7 @@ $omoHolonTemplateTexts = [
 
 <?php if ($editorData !== null): ?>
 <script src="/omo/assets/js/sized-image-field.js"></script>
-<script src="/omo/assets/js/simple-html-field.js"></script>
+<script src="/omo/assets/js/simple-html-field.js?v=20260711-sticky-toolbar"></script>
 <script src="/common/assets/multiline-list-paste.js"></script>
 <script>
 (() => {
