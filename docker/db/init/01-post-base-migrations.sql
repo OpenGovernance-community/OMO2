@@ -9,7 +9,9 @@ ALTER TABLE `organization`
 
 ALTER TABLE `document`
   ADD COLUMN IF NOT EXISTS `pvstage` varchar(30) DEFAULT NULL AFTER `documenttype`,
-  ADD KEY IF NOT EXISTS `idx_document_pvstage` (`pvstage`);
+  ADD COLUMN IF NOT EXISTS `IDuser_pv_editor` int(11) DEFAULT NULL AFTER `IDuseredition`,
+  ADD KEY IF NOT EXISTS `idx_document_pvstage` (`pvstage`),
+  ADD KEY IF NOT EXISTS `idx_document_pv_editor` (`IDuser_pv_editor`);
 
 UPDATE `document`
 SET `pvstage` = 'preparation'
@@ -37,10 +39,12 @@ SET @document_pv_point_sync_sql := IF(
   @document_pv_point_exists = 1,
   'ALTER TABLE `document_pv_point`
     ADD COLUMN IF NOT EXISTS `IDuser_modification` int(11) DEFAULT NULL AFTER `IDuser_author`,
+    ADD COLUMN IF NOT EXISTS `author_email` varchar(250) DEFAULT NULL AFTER `IDuser_author`,
     ADD COLUMN IF NOT EXISTS `IDuser_editing` int(11) DEFAULT NULL AFTER `IDuser_modification`,
     ADD COLUMN IF NOT EXISTS `edit_lock_token` varchar(80) DEFAULT NULL AFTER `IDuser_editing`,
     ADD COLUMN IF NOT EXISTS `dateedition` datetime DEFAULT NULL AFTER `datemodification`,
     ADD KEY IF NOT EXISTS `idx_document_pv_point_modification_user` (`IDuser_modification`),
+    ADD KEY IF NOT EXISTS `idx_document_pv_point_author_email` (`author_email`),
     ADD KEY IF NOT EXISTS `idx_document_pv_point_editing_user` (`IDuser_editing`),
     ADD KEY IF NOT EXISTS `idx_document_pv_point_dateedition` (`dateedition`)',
   'SELECT 1'
@@ -337,6 +341,7 @@ VALUES
     ('CAN_CREATE_DOCUMENT', 'Creer des fichiers', 'Autorise la creation de fichiers dans le contexte cible.', NOW(), NOW()),
     ('CAN_CREATE_DECISION', 'Creer des prises de decision', 'Autorise la creation de prises de decision dans le contexte cible.', NOW(), NOW()),
     ('CAN_CREATE_EVENT', 'Creer des dates', 'Autorise la creation de dates dans le contexte cible.', NOW(), NOW()),
+    ('CAN_CLAIM_PV', 'Devenir secretaire de PV', 'Autorise a prendre le role de secretaire pendant une reunion associee a un PV.', NOW(), NOW()),
     ('CAN_CREATE_FAQ', 'Creer des FAQ', 'Autorise la creation de FAQ dans le contexte cible.', NOW(), NOW())
 ON DUPLICATE KEY UPDATE
     `title` = VALUES(`title`),
@@ -386,6 +391,29 @@ CREATE TABLE IF NOT EXISTS `event_invitation` (
     CONSTRAINT `fk_event_invitation_event` FOREIGN KEY (`IDevent`) REFERENCES `event` (`id`) ON DELETE CASCADE,
     CONSTRAINT `fk_event_invitation_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE,
     CONSTRAINT `fk_event_invitation_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `event_attendance` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `IDevent` int(11) NOT NULL,
+    `IDuser` int(11) DEFAULT NULL,
+    `email` varchar(250) DEFAULT NULL,
+    `display_name` varchar(190) DEFAULT NULL,
+    `is_present` tinyint(1) NOT NULL DEFAULT 0,
+    `IDuser_checked_by` int(11) DEFAULT NULL,
+    `checked_at` datetime DEFAULT NULL,
+    `active` tinyint(1) NOT NULL DEFAULT 1,
+    `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+    `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uniq_event_attendance_user` (`IDevent`, `IDuser`),
+    UNIQUE KEY `uniq_event_attendance_email` (`IDevent`, `email`),
+    KEY `idx_event_attendance_present` (`is_present`),
+    KEY `idx_event_attendance_checked_by` (`IDuser_checked_by`),
+    KEY `idx_event_attendance_active` (`active`),
+    CONSTRAINT `fk_event_attendance_event` FOREIGN KEY (`IDevent`) REFERENCES `event` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_event_attendance_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_event_attendance_checked_by` FOREIGN KEY (`IDuser_checked_by`) REFERENCES `user` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `organization_application` (`IDorganization`, `IDapplication`, `position`, `active`)
@@ -644,11 +672,29 @@ PREPARE stmt FROM @fk_document_event_sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
+SET @fk_document_pv_editor_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.REFERENTIAL_CONSTRAINTS
+  WHERE CONSTRAINT_SCHEMA = DATABASE()
+    AND CONSTRAINT_NAME = 'fk_document_pv_editor'
+);
+
+SET @fk_document_pv_editor_sql := IF(
+  @fk_document_pv_editor_exists = 0,
+  'ALTER TABLE `document` ADD CONSTRAINT `fk_document_pv_editor` FOREIGN KEY (`IDuser_pv_editor`) REFERENCES `user` (`id`) ON DELETE SET NULL',
+  'SELECT 1'
+);
+
+PREPARE stmt FROM @fk_document_pv_editor_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 CREATE TABLE IF NOT EXISTS `document_pv_point` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `IDdocument` int(11) NOT NULL,
   `title` varchar(80) NOT NULL,
   `IDuser_author` int(11) DEFAULT NULL,
+  `author_email` varchar(250) DEFAULT NULL,
   `IDholon_concerned` int(11) DEFAULT NULL,
   `content` mediumtext DEFAULT NULL,
   `position` int(11) NOT NULL DEFAULT 1,
@@ -661,6 +707,7 @@ CREATE TABLE IF NOT EXISTS `document_pv_point` (
   PRIMARY KEY (`id`),
   KEY `idx_document_pv_point_document` (`IDdocument`),
   KEY `idx_document_pv_point_author` (`IDuser_author`),
+  KEY `idx_document_pv_point_author_email` (`author_email`),
   KEY `idx_document_pv_point_holon` (`IDholon_concerned`),
   KEY `idx_document_pv_point_position` (`IDdocument`, `position`),
   KEY `idx_document_pv_point_type` (`pointtype`),

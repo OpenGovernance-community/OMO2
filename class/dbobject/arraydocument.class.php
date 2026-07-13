@@ -45,6 +45,9 @@
 			$ruleMap = is_array($ruleMap) ? $ruleMap : $this->getVisibilityRuleMap($organizationId);
 			$viewerContext = \dbObject\ObjectVisibility::buildCurrentViewerContext($organizationId);
 			$referenceDate = new \DateTimeImmutable();
+			$viewerUserId = function_exists('commonGetCurrentUserId')
+				? (int)\commonGetCurrentUserId()
+				: (int)($_SESSION['currentUser'] ?? 0);
 			$candidateVisibleDocuments = array();
 			$documentsById = array();
 			$loadedCount = 0;
@@ -61,14 +64,23 @@
 				$documentOrganizationId = (int)$document->get('IDorganization');
 				$resolvedOrganizationId = $organizationId > 0 ? $organizationId : $documentOrganizationId;
 
-				if (!\dbObject\ObjectVisibility::viewerCanAccessRule(
+				$canAccessVisibility = \dbObject\ObjectVisibility::viewerCanAccessRule(
 					$ruleMap[$documentId] ?? null,
 					$viewerContext,
 					array(
 						'organizationId' => $resolvedOrganizationId,
 						'ownerUserId' => (int)$document->get('IDuser'),
 					)
-				)) {
+				);
+
+				$hasPvPreValidationAccess = $document->isPvDocument()
+					&& !$document->isPvValidated()
+					&& $document->canUserAccessPvBeforeValidation($viewerUserId, $resolvedOrganizationId);
+				if (!$canAccessVisibility && !$hasPvPreValidationAccess) {
+					continue;
+				}
+
+				if (!$document->canUserPassPvMeetingVisibilityGate($viewerUserId, $resolvedOrganizationId, $referenceDate)) {
 					continue;
 				}
 

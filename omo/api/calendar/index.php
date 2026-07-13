@@ -2527,7 +2527,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                             url: targetPvEditorUrl,
                             mode: 'fetch',
                             title: targetTitle,
-                            description: 'Preparation du PV avant la reunion.',
+                            description: 'Edition du PV.',
                             variant: 'top-sheet',
                             persistKey: 'omo-pv-preparation-calendar-' + targetPvEditorUrl,
                             keepMountedOnClose: true

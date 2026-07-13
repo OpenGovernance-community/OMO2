@@ -3,6 +3,7 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/invitations_shared.php';
 
 use dbObject\DbObject;
+use dbObject\Document;
 use dbObject\Event;
 use dbObject\Holon;
 use dbObject\Organization;
@@ -47,7 +48,6 @@ if (
     || !$organization->canViewDetail()
     || !$event->load($eventId)
     || (int)$event->get('IDorganization') !== $organizationId
-    || (int)$event->get('IDuser') !== $currentUserId
 ) {
     http_response_code(403);
     ?>
@@ -55,6 +55,42 @@ if (
     <?php
     exit;
 }
+
+$pvDocumentId = 0;
+$canEditInvitations = (int)$event->get('IDuser') === $currentUserId;
+foreach ($event->getAssociatedDocuments() as $associatedDocument) {
+    if (
+        !($associatedDocument instanceof Document)
+        || !$associatedDocument->isPvDocument()
+        || $associatedDocument->getPvStage() !== Document::PV_STAGE_PREPARATION
+        || !$associatedDocument->canUserManagePvDocument($currentUserId)
+    ) {
+        continue;
+    }
+
+    $canEditInvitations = true;
+    $pvDocumentId = (int)$associatedDocument->getId();
+    break;
+}
+
+if (!$canEditInvitations) {
+    http_response_code(403);
+    ?>
+    <div class="omo-calendar-invitations-popup__empty"><?= omoApiEscape(omoCalendarInvitationsPopupT('calendar.invitations.empty_denied')) ?></div>
+    <?php
+    exit;
+}
+
+$isPvEditorRequest = !empty($_REQUEST['pv_editor']);
+if ($isPvEditorRequest && $pvDocumentId <= 0) {
+    http_response_code(403);
+    ?>
+    <div class="omo-calendar-invitations-popup__empty"><?= omoApiEscape(omoCalendarInvitationsPopupT('calendar.invitations.empty_denied')) ?></div>
+    <?php
+    exit;
+}
+
+$isPvEditorContext = $isPvEditorRequest && $pvDocumentId > 0;
 
 $effectiveHolon = null;
 if ($currentHolonId > 0) {
@@ -153,6 +189,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'message' => omoCalendarInvitationsPopupT('calendar.invitations.updated'),
         'detailUrl' => $detailUrl,
         'eventId' => (int)$event->getId(),
+        'pvEditorContext' => $isPvEditorContext,
+        'pvDocumentId' => $pvDocumentId,
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -410,7 +448,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     window.commonTopbarCloseModal();
                 }
 
-                if (result.data.detailUrl && typeof window.omoCalendarOpenEventDrawer === 'function') {
+                if (result.data.pvEditorContext && typeof window.CustomEvent === 'function') {
+                    window.dispatchEvent(new CustomEvent('omo:pv-invitations-updated', {
+                        detail: {
+                            documentId: Number(result.data.pvDocumentId || 0)
+                        }
+                    }));
+                }
+
+                if (!result.data.pvEditorContext && result.data.detailUrl && typeof window.omoCalendarOpenEventDrawer === 'function') {
                     window.omoCalendarOpenEventDrawer(result.data.detailUrl);
                 }
                 if (typeof window.omoCalendarRefreshCurrentView === 'function') {

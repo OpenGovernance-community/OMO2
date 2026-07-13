@@ -91,9 +91,11 @@ if ($documentId > 0) {
 
     $organizationId = (int)$document->get('IDorganization');
 
+    $canManagePvDocument = $document->isPvDocument()
+        && $document->canUserManagePvDocument($currentUserId);
     if (
         ($organizationId > 0 && !commonCurrentUserHasOrganizationAccess($organizationId))
-        || !$document->canEditInOrganizationContext($organizationId, $currentUserId, false)
+        || (!$canManagePvDocument && !$document->canEditInOrganizationContext($organizationId, $currentUserId, false))
     ) {
         http_response_code(403);
         echo json_encode(array(

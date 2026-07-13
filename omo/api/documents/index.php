@@ -402,6 +402,11 @@ foreach ($documents as $document) {
     $isFolder = $document->isFolder();
     $isExternalLink = $document->isExternalLink();
     $canShareDocument = !$isFolder && $document->supportsHtmlContent();
+    $documentTitle = (string)$document->get('title');
+    $listTitle = $documentTitle;
+    if ($document->isPvDocument() && !$document->isPvValidated()) {
+        $listTitle .= ' (' . $document->getPvStageLabel() . ')';
+    }
     $createdGroupIndex = sharedGetRelativeDateGroupIndexForDate($resolvedCreatedAt, $groups, $today);
     $createdGroup = $groups[$createdGroupIndex] ?? ['key' => 'too_far', 'label' => omoDocumentsScopeT('documents.group.too_far')];
     $createdGroupKey = (string)($createdGroup['key'] ?? 'too_far');
@@ -412,7 +417,8 @@ foreach ($documents as $document) {
     $documentEntries[] = [
         'id' => $documentId,
         'href' => '/memo/' . $documentId,
-        'title' => (string)$document->get('title'),
+        'title' => $documentTitle,
+        'listTitle' => $listTitle,
         'documentType' => $document->getDocumentType(),
         'isFolder' => $isFolder,
         'isExternalLink' => $isExternalLink,
@@ -497,6 +503,12 @@ if ($initialOpenDocumentId > 0) {
             $currentOrganizationId,
             $requestedDocumentHolonId > 0 ? $requestedDocumentHolonId : null
         );
+        if ($requestedOpenDocument->isPvDocument()) {
+            $hasPvInvitationAccess = !$requestedOpenDocument->isPvValidated()
+                && $requestedOpenDocument->canUserAccessPvBeforeValidation($currentUserId, $currentOrganizationId);
+            $requestedCanView = $requestedOpenDocument->canUserPassPvMeetingVisibilityGate($currentUserId, $currentOrganizationId)
+                && ($hasPvInvitationAccess || $requestedCanView);
+        }
         $requestedCanOpenPvEditor = $requestedOpenDocument->canUserOpenPvEditor($currentUserId, $currentOrganizationId);
         $requestedCanOpenDirectly = $requestedCanView || $requestedCanOpenPvEditor;
 
@@ -692,6 +704,7 @@ if (!is_string($documentsPayload)) {
                                     data-omo-document-context-url="<?= $escape($entry['contextUrl']) ?>"
                                     data-omo-document-external-url="<?= $escape($entry['externalUrl']) ?>"
                                     data-omo-document-open-in-new-window="<?= !empty($entry['openInNewWindow']) ? '1' : '0' ?>"
+                                    data-omo-document-type="<?= $escape($entry['documentType']) ?>"
                                     data-omo-document-pv-editor-url="<?= $escape($entry['pvPreparationUrl'] ?? '') ?>"
                                     data-omo-document-title="<?= $escape($entry['title']) ?>"
                                     data-omo-document-full-date="<?= $escape($entry['fullDateLabel']) ?>"
@@ -699,7 +712,7 @@ if (!is_string($documentsPayload)) {
                                     <div class="omo-documents__item-head">
                                         <span class="omo-documents__date"><?= $escape($entry['dateLabel']) ?></span>
                                         <span class="omo-documents__title-line">
-                                            <strong class="omo-documents__title"><?= $escape($entry['title']) ?></strong>
+                                            <strong class="omo-documents__title"><?= $escape($entry['listTitle']) ?></strong>
                                             <?php if (
                                                 $entry['visibilityBadge'] !== '' && $entry['visibilityIconUrl'] !== ''
                                                 && $entry['editVisibilityBadge'] !== '' && $entry['editVisibilityIconUrl'] !== ''
@@ -1283,6 +1296,7 @@ if (!is_string($documentsPayload)) {
                                     container.setAttribute('data-omo-document-context-url', documentItem.contextUrl || '');
                                     container.setAttribute('data-omo-document-external-url', documentItem.externalUrl || '');
                                     container.setAttribute('data-omo-document-open-in-new-window', documentItem.openInNewWindow ? '1' : '0');
+                                    container.setAttribute('data-omo-document-type', documentItem.documentType || '');
                                     container.setAttribute('data-omo-document-pv-editor-url', documentItem.pvPreparationUrl || '');
                                     container.setAttribute('data-omo-document-title', documentItem.title || '');
                                     container.setAttribute('data-omo-document-full-date', documentItem.fullDateLabel || '');
@@ -1346,7 +1360,7 @@ if (!is_string($documentsPayload)) {
 
                                     const compactTitle = document.createElement('strong');
                                     compactTitle.className = 'omo-documents__compact-title generic-file-list__title';
-                                    compactTitle.textContent = documentItem.title || '';
+                                    compactTitle.textContent = documentItem.listTitle || documentItem.title || '';
                                     compactTitleStack.appendChild(compactTitle);
                                     const compactScopeCapsule = createVisibilityCapsule(documentItem);
                                     if (compactScopeCapsule) {
@@ -1479,7 +1493,7 @@ if (!is_string($documentsPayload)) {
                                 titleLine.className = 'omo-documents__title-line';
                                 const title = document.createElement('strong');
                                 title.className = 'omo-documents__title';
-                                title.textContent = documentItem.title || '';
+                                title.textContent = documentItem.listTitle || documentItem.title || '';
                                 titleLine.appendChild(title);
                                 const scopeCapsule = createVisibilityCapsule(documentItem);
                                 if (scopeCapsule) {
@@ -1805,6 +1819,15 @@ if (!is_string($documentsPayload)) {
 
                             const openDocumentDetail = function (documentItem) {
                                 if (!detailDrawer || !detailBody || !documentItem || !documentItem.id || documentItem.isFolder) {
+                                    return;
+                                }
+
+                                if (
+                                    String(documentItem.documentType || '').trim().toLowerCase() === 'pv'
+                                    && String(documentItem.pvPreparationUrl || '').trim() !== ''
+                                    && typeof window.omoOpenDocumentPvPreparationByPayload === 'function'
+                                    && window.omoOpenDocumentPvPreparationByPayload(documentItem)
+                                ) {
                                     return;
                                 }
 
@@ -3172,6 +3195,7 @@ if (!is_string($documentsPayload)) {
                     contextUrl: String(trigger.getAttribute('data-omo-document-context-url') || '').trim(),
                     externalUrl: String(trigger.getAttribute('data-omo-document-external-url') || '').trim(),
                     openInNewWindow: String(trigger.getAttribute('data-omo-document-open-in-new-window') || '').trim() === '1',
+                    documentType: String(trigger.getAttribute('data-omo-document-type') || '').trim(),
                     pvPreparationUrl: String(trigger.getAttribute('data-omo-document-pv-editor-url') || '').trim(),
                     title: String(trigger.getAttribute('data-omo-document-title') || '').trim(),
                     fullDateLabel: String(trigger.getAttribute('data-omo-document-full-date') || '').trim()
@@ -3186,6 +3210,14 @@ if (!is_string($documentsPayload)) {
 
                 if (documentPayload.openInNewWindow && documentPayload.externalUrl !== '') {
                     return openExternalDocumentWindow(documentPayload) ? false : true;
+                }
+
+                if (
+                    documentPayload.documentType.toLowerCase() === 'pv'
+                    && documentPayload.pvPreparationUrl !== ''
+                    && window.omoOpenDocumentPvPreparationByPayload(documentPayload)
+                ) {
+                    return false;
                 }
 
                 const routeToken = buildDocumentRouteToken(documentId, 'detail');

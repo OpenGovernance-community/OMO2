@@ -220,10 +220,18 @@ $description = trim((string)$event->get('description'));
 $scheduleLabel = omoCalendarDetailFormatSchedule($event);
 $locationData = $event->getLocationDisplayData();
 $associatedDocument = $event->getAssociatedDocument();
-$associatedDocumentUrl = $event->buildAssociatedDocumentDetailUrl($eventHolonId > 0 ? $eventHolonId : $currentHolonId);
+$canOpenAssociatedDocument = $associatedDocument instanceof \dbObject\Document
+    && (
+        $associatedDocument->isPvDocument() && !$associatedDocument->isPvValidated()
+            ? $associatedDocument->canUserAccessPvBeforeValidation($currentUserId, $organizationId)
+            : $associatedDocument->canViewDirectlyInOrganization($organizationId)
+    );
+$associatedDocumentUrl = $canOpenAssociatedDocument
+    ? $event->buildAssociatedDocumentDetailUrl($eventHolonId > 0 ? $eventHolonId : $currentHolonId)
+    : '';
 $associatedDocumentPvPreparationUrl = $associatedDocument instanceof \dbObject\Document
-    && $associatedDocument->canUserPrepareUpcomingPv($currentUserId, $organizationId)
-    ? $associatedDocument->buildUpcomingPvEditorUrl($organizationId)
+    && $associatedDocument->canUserOpenPvEditor($currentUserId, $organizationId)
+    ? $associatedDocument->buildPvEditorUrl($organizationId)
     : '';
 $invitationContext = [
     'organizationId' => $organizationId,
