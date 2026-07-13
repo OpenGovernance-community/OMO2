@@ -63,13 +63,22 @@ if ($documentId <= 0) {
 }
 
 $document = new \dbObject\Document();
+$currentUserId = (int)commonGetCurrentUserId();
+$canAccessDocument = false;
+if ($documentId > 0 && $organizationId > 0 && $document->load($documentId)) {
+	$hasPvInvitationAccess = $document->isPvDocument()
+		&& !$document->isPvValidated()
+		&& $document->canUserAccessPvBeforeValidation($currentUserId, $organizationId);
+	$canAccessDocument = $document->canUserPassPvMeetingVisibilityGate($currentUserId, $organizationId)
+		&& (
+			$hasPvInvitationAccess
+			|| $document->canViewInOrganizationContext($organizationId, $holonId)
+			|| $document->canViewDirectlyInOrganization($organizationId)
+		);
+}
 
 if (
-    !$document->load($documentId)
-    || (
-        !$document->canViewInOrganizationContext($organizationId, $holonId)
-        && !$document->canViewDirectlyInOrganization($organizationId)
-    )
+    !$canAccessDocument
 ) {
     http_response_code(404);
     ?>

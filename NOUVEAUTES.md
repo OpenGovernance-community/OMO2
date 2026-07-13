@@ -2,6 +2,54 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-13
+
+Pendant la phase `Preparation`, le secretaire d un PV, ou son createur tant qu aucun secretaire n est attribue, peut maintenant ouvrir le bouton `Inviter` directement depuis l editeur. Il reutilise la liste d invitations du Calendrier et la mise a jour est reprise dans l editeur sans recharger la page.
+
+Les fonctions PV et Calendrier ne dependent plus implicitement de toutes les applications: sans `TEAM`, la liste de presence disparait de l editeur et son endpoint ne peut plus etre utilise. Sans `structure`, les evenements n affichent plus de rattachement ni d onglet holons; les membres actifs de l organisation constituent alors la liste d invites par defaut, y compris pour la liste de presence quand `TEAM` reste actif.
+
+La creation ou la simple edition d une organisation n active plus automatiquement toutes les applications OMO disponibles. Une nouvelle organisation demarre maintenant sans application connectee, puis la barre de gauche permet d ajouter seulement celles souhaitees.
+
+La popup `profil_scope.php` recharge maintenant explicitement les helpers partages du profil utilisateur avant de calculer l anniversaire et la date de naissance. Cela evite un fatal error en production quand le fragment `current` tente d appeler `commonUserProfileBuildBirthdaySummary()`.
+
+L etape d un PV est maintenant representee dans son editeur par une barre de processus compacte, composee de fleches colorees. L etape courante apparait en couleur pleine, les autres restent attenuees et les personnes autorisees peuvent changer d etape directement en cliquant sur le segment correspondant, avec confirmation conservee pour la validation irreversible.
+
+Les segments de cette barre de processus s imbriquent maintenant visuellement sans espace parasite: chaque etape recoit exactement la pointe de la precedente dans son encoche gauche et se termine elle-meme en fleche vers l etape suivante.
+
+La liste Documents affiche maintenant l etape des PV non valides a toute personne qui peut consulter le document, et non plus uniquement a son createur ou son secretaire. L etape finale `Valide` reste volontairement implicite.
+
+Pour une personne non invitee a une reunion, un PV associe ne devient visible qu une fois les deux conditions reunies: il est `Valide` et l heure de debut de la reunion est atteinte. Cette meme regle protege aussi les ouvertures directes par URL; les invites, le createur et le secretaire gardent leur acces de travail habituel.
+
+Le selecteur `Information` / `Consultation` / `Decision` des points de PV suit maintenant la navigation clavier d un groupe radio: `Tab` atteint uniquement le choix actif, puis les fleches gauche et droite changent de type.
+
+Lorsqu un PV est valide, son editeur se ferme automatiquement apres la sauvegarde de l etape et ouvre le viewer en lecture seule via sa route hash Documents. Un brouillon local encore non enregistre demande confirmation avant cette transition finale.
+
+## 2026-07-12
+
+L editeur PV affiche maintenant aussi une vraie liste de presence dans l entete de droite quand le document est lie a une reunion du calendrier. Les personnes invitees y apparaissent avec une case a cocher pour signaler leur presence, y compris quand l invitation vient d un holon et doit donc etre deduite a partir de ses membres actuels.
+
+Les PV peuvent maintenant avoir un secretaire, enregistre directement sur le document. Le droit contextuel `CAN_CLAIM_PV` permet de prendre ce role; lorsqu il cree un PV, son createur le recoit automatiquement s il possede ce droit. Le secretaire peut reordonner les points, modifier tous leurs contenus et attribuer un point a une autre personne invitee avec les roles correspondants. Les autres auteurs gardent la modification de leurs propres points. Un PV passe en etape `Valide` devient entierement non modifiable.
+
+L ouverture d un PV suit maintenant son etape de travail, aussi bien depuis Documents que depuis le bouton `Voir le document` du Calendrier: les PV restent editables en `Preparation` et `Reunion`; en `Relecture`, seul le secretaire ouvre l editeur; et un PV `Valide` ouvre toujours le viewer en lecture seule.
+
+La liste Documents ne montre desormais un PV lie a une reunion qu en `Relecture` ou `Valide`, sauf pour son createur et son secretaire qui le retrouvent toujours. Leur ligne indique son etape entre parentheses, hors `Valide`. Le secretaire, ou le createur tant qu aucun secretaire n est designe, gere les metadonnees, l ordre, la presence et les etapes; les auteurs restent limites a leurs propres points. Valider un PV demande maintenant une confirmation explicite et verrouille irreversiblement toute modification.
+
+L entete de l editeur PV permet maintenant au secretaire, ou au createur sans secretaire, de modifier directement le titre, la description et la portee de visualisation du document. Ces champs restent discrets, se sauvegardent sans ouvrir l editeur generique et participent a la protection contre une fermeture avec des modifications non enregistrees.
+
+La synchronisation distante de l editeur PV inclut maintenant aussi son entete. Une empreinte basee sur la date de modification du document, son titre, sa description, son etape, son secretaire et sa visibilite evite tout rerendu inutile; les changements recents d un autre poste sont repris, tandis qu un brouillon local de metadonnees reste protege.
+
+Les invites qui consultent le PV dans l editeur voient maintenant aussi le titre et la description de l entete se mettre a jour a distance. Les libelles en lecture seule utilisent le meme payload synchronise que les champs editables du secretaire.
+
+Les titres des points a l ordre du jour ne sont plus limites a trois mots. Cette ancienne recommandation ne bloque plus ni la saisie ni les sauvegardes des PV.
+
+Avant sa validation, un PV lie a une reunion n est plus accessible qu a ses invites, son createur et son secretaire, y compris par URL directe. Le bouton `Consulter le document` dans le detail Calendrier suit cette restriction; apres `Valide`, la visibilite normale du document est a nouveau appliquee.
+
+Seul le secretaire peut maintenant marquer un point comme traite. Cet etat place immediatement le point en lecture seule pour tout le monde, y compris le secretaire, jusqu a ce qu il le decoche.
+
+Les synchronisations distantes de l editeur PV ne remplacent plus une carte qui contient un brouillon, une sauvegarde active ou le focus courant. Elles conservent aussi la position de la carte active, ou de la carte centrale, lorsque des contenus ou l entete changent a distance.
+
+Le rerendu selectif ne deplace plus inutilement les cartes quand leur ordre reste identique. L element qui avait le focus, avec sa position de curseur ou sa selection, est restaure apres une synchronisation distante afin de maintenir la frappe continue.
+
 ## 2026-07-10
 
 Le module Documents peut maintenant creer des PV meme sans activer l Agenda. Le type `PV` apparait dans le formulaire de creation standard, la creation passe par le flux document habituel avec date de creation immediate, et l action `Editer` d un PV autonome ouvre ensuite directement le drawer PV special en pleine page au lieu de l ancien editeur generique.
@@ -32,7 +80,7 @@ La protection de fermeture de l editeur PV est maintenant volontairement simple:
 
 Lorsqu un point de PV est rerendu pendant un brouillon local, l etat du bouton `Enregistrer` actif est maintenant capture et restaure explicitement. Un refresh distant du point ne peut donc plus desactiver le bouton alors que le contenu local est encore modifie.
 
-La liste des roles concernes dans l editeur PV est plus fiable: elle utilise le cercle d ancrage du document ou, si besoin, celui de l evenement associe, accepte les roles attribues dans tout le sous-arbre du cercle et retombe sur les roles de l utilisateur dans l organisation si aucun role contextualise n est trouve.
+La liste des roles concernes dans l editeur PV est plus fiable: elle reutilise maintenant la mecanique d affectations visibles du contexte courant, comme les vues de profil/contexte, en partant du cercle d ancrage du document ou de l evenement associe et en retombant sur la structure de l organisation si necessaire.
 
 ## 2026-07-09
 
@@ -594,6 +642,9 @@ Dans l editeur de templates de holons, la barre sticky de sauvegarde vient maint
 
 ## Calendrier, CardDAV Et CalDAV
 
+- 2026-07-13 : Les points des PV peuvent maintenant etre portes soit par un membre de l organisation, soit par une adresse e-mail externe issue des invites de la reunion. Les auteurs externes restent disponibles dans le selecteur et ne recoivent pas de role ou holon concerne.
+- 2026-07-13 : Le rafraichissement automatique de l editeur de PV compare maintenant une empreinte du vrai contenu des points. Les pulsations de verrou locales et une liste de presence inchangee ne reconstruisent plus les cartes, ce qui preserve la saisie, les menus ouverts et la position de scroll.
+
 Le calendrier OMO devient plus exploitable au quotidien avec plusieurs vues, une edition plus simple et un comportement plus stable. En complement, des points d entree CardDAV et CalDAV ont ete poses pour preparer les usages de synchronisation avec des outils externes.
 
 ## Stabilite Generale
@@ -639,3 +690,4 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - 2026-07-10 : Les drawers internes OMO ne sont plus bloques a une largeur fixe sur grand ecran. Ils occupent maintenant toute la largeur disponible moins une bande de 50px, tout en gardant le comportement plein ecran des qu il n y a plus assez de place.
 - 2026-07-10 : Le detail d un document suit maintenant aussi cette largeur et ne recentre plus son article a `920px` quand il est affiche dans un sous-drawer OMO. Hors overlay, sa presentation centree reste inchangee.
 - 2026-07-09 : La mini structure de la homepage OMO garde maintenant le nom de l element courant uniquement dans la capsule basse, et affiche les libelles de ses sous-cercles ou roles directs seulement quand leur taille a l ecran le permet.
+- 2026-07-13 : Les verrous d edition des points de PV sont maintenant aussi liberes lors d une vraie sortie de page, y compris apres confirmation d un rechargement ou d une navigation navigateur. Un fallback `fetch` avec `keepalive` complete le beacon; les verrous actifs restent renouvelles toutes les 30 secondes et un verrou sans signal devient automatiquement inactif apres 120 secondes.

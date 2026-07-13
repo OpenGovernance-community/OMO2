@@ -24,10 +24,26 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.field.duration_short' => ['text' => '{minutes} min', 'context' => 'Short duration label used in compact PV point rows.'],
         'documents.pv_editor.field.duration_empty' => ['text' => '-- min', 'context' => 'Fallback duration label used when no desired duration is set.'],
         'documents.pv_editor.field.stage' => ['text' => 'Etape', 'context' => 'Label of the PV workflow stage selector.'],
+        'documents.pv_editor.field.document_title' => ['text' => 'Titre du PV', 'context' => 'Label for the editable PV document title.'],
+        'documents.pv_editor.field.document_description' => ['text' => 'Description', 'context' => 'Label for the editable PV document description.'],
+        'documents.pv_editor.field.document_visibility' => ['text' => 'Visibilite', 'context' => 'Label for the PV document view visibility selector.'],
+        'documents.pv_editor.state.metadata_dirty' => ['text' => 'Modifications non enregistrees', 'context' => 'State shown when PV document metadata has local changes.'],
         'documents.pv_editor.field.stage.preparation' => ['text' => 'Preparation', 'context' => 'Option label for the preparation stage of a PV.'],
         'documents.pv_editor.field.stage.meeting' => ['text' => 'Reunion', 'context' => 'Option label for the meeting stage of a PV.'],
         'documents.pv_editor.field.stage.review' => ['text' => 'Relecture', 'context' => 'Option label for the review stage of a PV.'],
         'documents.pv_editor.field.stage.validated' => ['text' => 'Valide', 'context' => 'Option label for the validated stage of a PV.'],
+        'documents.pv_editor.field.attendance' => ['text' => 'Liste de presence', 'context' => 'Label shown above the attendance checklist of invited people in the PV editor header.'],
+        'documents.pv_editor.field.attendance_empty' => ['text' => 'Aucune personne invitee pour le moment.', 'context' => 'Empty state shown when the event linked to the PV has no resolved invitees.'],
+        'documents.pv_editor.field.attendance_present' => ['text' => 'Present', 'context' => 'Checkbox label used to mark an invited person as present in the PV editor.'],
+        'documents.pv_editor.field.attendance_count' => ['text' => '{present}/{total} presents', 'context' => 'Compact summary shown next to the attendance checklist title in the PV editor.'],
+        'documents.pv_editor.field.pv_editor' => ['text' => 'Editeur du PV', 'context' => 'Label of the person acting as PV secretary.'],
+        'documents.pv_editor.action.claim_pv_editor' => ['text' => 'Devenir editeur', 'context' => 'Button used to claim the PV secretary role.'],
+        'documents.pv_editor.action.invite' => ['text' => 'Inviter', 'context' => 'Button used by the PV secretary to edit the event invitation list during preparation.'],
+        'documents.pv_editor.popup.invite_title' => ['text' => 'Invites', 'context' => 'Title of the invitation popup opened from the PV editor.'],
+        'documents.pv_editor.notice.pv_editor_empty' => ['text' => 'Aucun editeur attribue.', 'context' => 'State shown when no one has claimed the PV secretary role.'],
+        'documents.pv_editor.notice.pv_editor_active' => ['text' => 'Vous etes editeur du PV.', 'context' => 'State shown to the PV secretary.'],
+        'documents.pv_editor.notice.pv_editor_can_edit' => ['text' => 'Vous pouvez modifier ce point car vous etes l editeur du PV.', 'context' => 'Helper text shown when the PV secretary edits a point.'],
+        'documents.pv_editor.field.author' => ['text' => 'Porte par', 'context' => 'Label of the person assigned to a PV point.'],
         'documents.pv_editor.field.handled' => ['text' => 'Traite', 'context' => 'Label for the handled checkbox of a PV point.'],
         'documents.pv_editor.field.concerned_holon' => ['text' => 'Holon concerne', 'context' => 'Label showing the main holon concerned by a PV point.'],
         'documents.pv_editor.field.concerned_holon_empty' => ['text' => 'Sans role', 'context' => 'Empty option for the concerned role selector of a PV point.'],
@@ -51,6 +67,7 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.notice.updated_by' => ['text' => 'Mis a jour par {user}.', 'context' => 'Short helper shown when a point was last updated by another user.'],
         'documents.pv_editor.notice.stage_readonly' => ['text' => 'Seules les personnes qui peuvent editer le document peuvent changer cette etape.', 'context' => 'Helper shown below the PV stage selector when it is read only.'],
         'documents.pv_editor.warning.unsaved_close' => ['text' => 'Des modifications non enregistrees n ont pas ete sauvegardees. Fermer quand meme ?', 'context' => 'Browser confirmation shown before closing the PV editor with unsaved changes.'],
+        'documents.pv_editor.warning.validate_irreversible' => ['text' => 'Valider ce PV est irreversible. Il ne sera plus possible de le modifier. Continuer ?', 'context' => 'Confirmation shown before changing a PV stage to validated.'],
         'documents.pv_editor.summary.meeting_duration' => ['text' => 'Duree reunion', 'context' => 'Label for the total meeting duration in the PV editor timing summary.'],
         'documents.pv_editor.summary.remaining_time' => ['text' => 'Temps restant', 'context' => 'Label for the remaining meeting time when the meeting is in progress.'],
         'documents.pv_editor.summary.points_duration' => ['text' => 'Duree des points', 'context' => 'Label for the total planned duration of PV points.'],
@@ -94,6 +111,18 @@ function omoDocumentsPvEditorBuildUiText(callable $translate = null): array
         'stageMeeting' => $resolve('documents.pv_editor.field.stage.meeting', 'Reunion'),
         'stageReview' => $resolve('documents.pv_editor.field.stage.review', 'Relecture'),
         'stageValidated' => $resolve('documents.pv_editor.field.stage.validated', 'Valide'),
+        'attendance' => $resolve('documents.pv_editor.field.attendance', 'Liste de presence'),
+        'attendanceEmpty' => $resolve('documents.pv_editor.field.attendance_empty', 'Aucune personne invitee pour le moment.'),
+        'attendancePresent' => $resolve('documents.pv_editor.field.attendance_present', 'Present'),
+        'attendanceCount' => $resolve('documents.pv_editor.field.attendance_count', '{present}/{total} presents'),
+        'pvEditor' => $resolve('documents.pv_editor.field.pv_editor', 'Editeur du PV'),
+        'claimPvEditor' => $resolve('documents.pv_editor.action.claim_pv_editor', 'Devenir editeur'),
+        'invite' => $resolve('documents.pv_editor.action.invite', 'Inviter'),
+        'inviteTitle' => $resolve('documents.pv_editor.popup.invite_title', 'Invites'),
+        'pvEditorEmpty' => $resolve('documents.pv_editor.notice.pv_editor_empty', 'Aucun editeur attribue.'),
+        'pvEditorActive' => $resolve('documents.pv_editor.notice.pv_editor_active', 'Vous etes editeur du PV.'),
+        'pvEditorCanEdit' => $resolve('documents.pv_editor.notice.pv_editor_can_edit', 'Vous pouvez modifier ce point car vous etes l editeur du PV.'),
+        'author' => $resolve('documents.pv_editor.field.author', 'Porte par'),
         'handled' => $resolve('documents.pv_editor.field.handled', 'Traite'),
         'concernedHolon' => $resolve('documents.pv_editor.field.concerned_holon', 'Holon concerne'),
         'concernedHolonEmpty' => $resolve('documents.pv_editor.field.concerned_holon_empty', 'Sans role'),
@@ -167,6 +196,38 @@ function omoDocumentsPvEditorAttachConcernedHolonOptions(array $pointData, array
     return $pointData;
 }
 
+function omoDocumentsPvEditorBuildAttendancePayloadFromDocument(\dbObject\Document $document, int $organizationId): ?array
+{
+    $event = method_exists($document, 'getAssociatedEvent')
+        ? $document->getAssociatedEvent()
+        : null;
+    if (!($event instanceof \dbObject\Event)) {
+        return null;
+    }
+
+    $entries = $event->getAttendanceEntries($organizationId);
+    $presentCount = 0;
+    foreach ($entries as $entry) {
+        if (!empty($entry['isPresent'])) {
+            $presentCount++;
+        }
+    }
+
+    return [
+        'eventId' => (int)$event->getId(),
+        'presentCount' => $presentCount,
+        'totalCount' => count($entries),
+        'entries' => array_values(array_map(static function (array $entry): array {
+            return [
+                'identityKey' => (string)($entry['identityKey'] ?? ''),
+                'displayLabel' => (string)($entry['displayLabel'] ?? ''),
+                'secondaryLabel' => (string)($entry['secondaryLabel'] ?? ''),
+                'isPresent' => !empty($entry['isPresent']),
+            ];
+        }, $entries)),
+    ];
+}
+
 function omoDocumentsPvEditorRenderChipGroup(string $label, array $items, string $modifier = ''): string
 {
     if (trim($label) === '' || count($items) === 0) {
@@ -212,12 +273,13 @@ function omoDocumentsPvEditorRenderNavItem(array $pointData, array $uiText): str
         $metaParts[] = str_replace('{user}', trim((string)$pointData['lock']['userLabel']), (string)($uiText['lockedOther'] ?? 'Edition en cours par {user}.'));
     }
 
+    $reorderHandle = !empty($pointData['canReorder'])
+        ? '  <span class="omo-pv-editor__nav-handle generic-drag-handle generic-drag-handle--static" draggable="true" data-omo-pv-point-drag-handle="' . $pointId . '" title="' . omoDocumentsPvEditorEscape((string)($uiText['reorder'] ?? 'Reordonner les points')) . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['reorder'] ?? 'Reordonner les points')) . '">::</span>'
+        : '  <span class="omo-pv-editor__nav-handle omo-pv-editor__nav-handle--disabled" aria-hidden="true"></span>';
+    $handledDisabled = empty($pointData['canToggleHandled']) ? ' disabled' : '';
+
     return '<div class="omo-pv-editor__nav-row' . (!empty($pointData['isHandled']) ? ' is-handled' : '') . '" data-omo-pv-point-nav-row="' . $pointId . '">'
-        . '  <span class="omo-pv-editor__nav-handle generic-drag-handle generic-drag-handle--static"'
-        . '      draggable="true"'
-        . '      data-omo-pv-point-drag-handle="' . $pointId . '"'
-        . '      title="' . omoDocumentsPvEditorEscape((string)($uiText['reorder'] ?? 'Reordonner les points')) . '"'
-        . '      aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['reorder'] ?? 'Reordonner les points')) . '">::</span>'
+        . $reorderHandle
         . '  <button type="button" class="omo-pv-editor__nav-item" data-omo-pv-point-nav-target="' . $pointId . '">'
         . '      <span class="omo-pv-editor__nav-titleline">'
         . '          <span class="omo-pv-editor__nav-order">' . omoDocumentsPvEditorEscape((string)($pointData['positionLabel'] ?? '--')) . '</span>'
@@ -227,7 +289,7 @@ function omoDocumentsPvEditorRenderNavItem(array $pointData, array $uiText): str
         . '  </button>'
         . '  <div class="omo-pv-editor__nav-actions">'
         . '  <label class="omo-pv-editor__nav-check" title="' . omoDocumentsPvEditorEscape((string)($uiText['handled'] ?? 'Traite')) . '">'
-        . '      <input type="checkbox" data-omo-pv-point-handled="' . $pointId . '"' . (!empty($pointData['isHandled']) ? ' checked' : '') . '>'
+        . '      <input type="checkbox" data-omo-pv-point-handled="' . $pointId . '"' . (!empty($pointData['isHandled']) ? ' checked' : '') . $handledDisabled . '>'
         . '      <span class="omo-pv-editor__nav-check-label">' . omoDocumentsPvEditorEscape((string)($uiText['handled'] ?? 'Traite')) . '</span>'
         . '  </label>'
         . '  </div>'
@@ -252,6 +314,8 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
 
     $isEditable = !empty($pointData['isEditable']);
     $canEditNow = !empty($pointData['canEditNow']);
+    $canAssignAuthor = !empty($pointData['canAssignAuthor']);
+    $canReorder = !empty($pointData['canReorder']);
     $chips = '';
     $addressedHolons = is_array($pointData['addressedHolons'] ?? null) ? $pointData['addressedHolons'] : [];
     $tensions = is_array($pointData['tensions'] ?? null) ? $pointData['tensions'] : [];
@@ -263,6 +327,9 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
     }
 
     $authorLabel = trim((string)($pointData['authorLabel'] ?? ''));
+    $authorValue = trim((string)($pointData['authorValue'] ?? ''));
+    $authorOptions = is_array($pointData['authorOptions'] ?? null) ? $pointData['authorOptions'] : [];
+    $authorHolonOptions = is_array($pointData['authorHolonOptions'] ?? null) ? $pointData['authorHolonOptions'] : [];
     $concernedHolonId = (int)($pointData['concernedHolonId'] ?? 0);
     $concernedHolonOptions = is_array($pointData['concernedHolonOptions'] ?? null) ? $pointData['concernedHolonOptions'] : [];
     $durationValue = isset($pointData['desiredDurationMinutes']) ? (int)$pointData['desiredDurationMinutes'] : 0;
@@ -302,7 +369,9 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
             $html .= '<button type="button" class="omo-segmented__button omo-pv-editor__type-switch-button' . ($isSelected ? ' is-active' : '') . '"'
                 . ' data-omo-pv-point-type-option="' . $pointId . '"'
                 . ' data-omo-pv-point-type-value="' . omoDocumentsPvEditorEscape($optionValue) . '"'
-                . ' aria-pressed="' . ($isSelected ? 'true' : 'false') . '"'
+                . ' role="radio"'
+                . ' aria-checked="' . ($isSelected ? 'true' : 'false') . '"'
+                . ' tabindex="' . ($isSelected ? '0' : '-1') . '"'
                 . ' title="' . omoDocumentsPvEditorEscape($optionLabel) . '"'
                 . ' aria-label="' . omoDocumentsPvEditorEscape($optionLabel) . '">'
                 . '<img src="' . omoDocumentsPvEditorEscape($optionIcon) . '" alt="" aria-hidden="true" class="omo-pv-editor__point-type-icon">'
@@ -323,7 +392,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
     } elseif (!empty($pointData['isHandled'])) {
         $html .= '      <span class="omo-pv-editor__point-ownership">' . omoDocumentsPvEditorEscape((string)$uiText['handledState']) . '</span>';
     }
-    if ($canEditNow) {
+    if ($canReorder) {
         $html .= '      <span class="omo-pv-editor__point-reorder-actions">';
         $html .= '          <button type="button" class="omo-pv-editor__point-move-button" data-omo-pv-point-move="' . $pointId . '" data-omo-pv-point-move-direction="up" title="' . omoDocumentsPvEditorEscape((string)($uiText['moveUp'] ?? 'Monter')) . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['moveUp'] ?? 'Monter')) . '">&uarr;</button>';
         $html .= '          <button type="button" class="omo-pv-editor__point-move-button" data-omo-pv-point-move="' . $pointId . '" data-omo-pv-point-move-direction="down" title="' . omoDocumentsPvEditorEscape((string)($uiText['moveDown'] ?? 'Descendre')) . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['moveDown'] ?? 'Descendre')) . '">&darr;</button>';
@@ -331,8 +400,24 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
     }
     $html .= '    </div>';
     $html .= '    <div class="omo-pv-editor__point-meta-line">';
-    $html .= '      <span class="omo-pv-editor__point-author">' . omoDocumentsPvEditorEscape($authorLabel !== '' ? $authorLabel : (string)($uiText['readonly'] ?? 'Lecture seule')) . '</span>';
-    if ($canEditNow) {
+    if ($canAssignAuthor) {
+        $html .= '      <label class="omo-pv-editor__point-author-select-shell">';
+        $html .= '          <span class="omo-pv-editor__point-concerned-label">' . omoDocumentsPvEditorEscape((string)$uiText['author']) . '</span>';
+        $html .= '          <select class="omo-pv-editor__point-concerned-select" data-omo-pv-point-author="' . $pointId . '" data-omo-pv-point-author-holons="' . omoDocumentsPvEditorEscape((string)json_encode($authorHolonOptions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) . '">';
+        foreach ($authorOptions as $option) {
+            $optionValue = trim((string)($option['value'] ?? ''));
+            $optionLabel = trim((string)($option['label'] ?? ''));
+            if ($optionValue === '' || $optionLabel === '') {
+                continue;
+            }
+            $html .= '<option value="' . omoDocumentsPvEditorEscape($optionValue) . '"' . ($optionValue === $authorValue ? ' selected' : '') . '>' . omoDocumentsPvEditorEscape($optionLabel) . '</option>';
+        }
+        $html .= '          </select>';
+        $html .= '      </label>';
+    } else {
+        $html .= '      <span class="omo-pv-editor__point-author">' . omoDocumentsPvEditorEscape($authorLabel !== '' ? $authorLabel : (string)($uiText['readonly'] ?? 'Lecture seule')) . '</span>';
+    }
+    if ($canEditNow && !empty($pointData['hasStructureApplication'])) {
         $html .= '      <label class="omo-pv-editor__point-concerned">';
         $html .= '          <span class="omo-pv-editor__point-concerned-label">' . omoDocumentsPvEditorEscape((string)$uiText['concernedHolon']) . '</span>';
         $html .= '          <select class="omo-pv-editor__point-concerned-select" data-omo-pv-point-concerned-holon="' . $pointId . '" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['concernedHolon']) . '">';
@@ -347,7 +432,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
         }
         $html .= '          </select>';
         $html .= '      </label>';
-    } elseif (trim((string)($pointData['concernedHolonLabel'] ?? '')) !== '') {
+    } elseif (!empty($pointData['hasStructureApplication']) && trim((string)($pointData['concernedHolonLabel'] ?? '')) !== '') {
         $html .= '      <span class="omo-pv-editor__point-concerned-readonly">' . omoDocumentsPvEditorEscape(trim((string)$pointData['concernedHolonLabel'])) . '</span>';
     }
     $html .= '    </div>';
@@ -364,7 +449,9 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
         $html .= '  <textarea hidden data-omo-pv-point-content-source="' . $pointId . '">' . omoDocumentsPvEditorEscape((string)($pointData['contentRaw'] ?? '')) . '</textarea>';
         $html .= '</div>';
         $html .= '<div class="omo-pv-editor__point-footer">';
-        $footerNoteParts = [(string)$uiText['ownerOnly']];
+        $footerNoteParts = [!empty($pointData['isPvEditor'])
+            ? (string)$uiText['pvEditorCanEdit']
+            : (string)$uiText['ownerOnly']];
         if ($updateInfo !== '') {
             $footerNoteParts[] = $updateInfo;
         }
@@ -401,14 +488,20 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
 function omoDocumentsPvEditorBuildPointPayload(array $pointData, array $uiText): array
 {
     $lockData = is_array($pointData['lock'] ?? null) ? $pointData['lock'] : [];
+    $authorOptionValues = [];
+    foreach ((array)($pointData['authorOptions'] ?? []) as $authorOption) {
+        $authorOptionValues[] = trim((string)($authorOption['value'] ?? ''));
+    }
 
     return [
         'id' => (int)($pointData['id'] ?? 0),
         'title' => (string)($pointData['title'] ?? ''),
+        'authorValue' => (string)($pointData['authorValue'] ?? ''),
         'position' => (int)($pointData['position'] ?? 0),
         'concernedHolonId' => (int)($pointData['concernedHolonId'] ?? 0),
         'desiredDurationMinutes' => isset($pointData['desiredDurationMinutes']) ? (int)$pointData['desiredDurationMinutes'] : 0,
         'isHandled' => !empty($pointData['isHandled']),
+        'syncVersion' => hash('sha256', (string)($pointData['syncVersion'] ?? '') . '|' . implode('|', $authorOptionValues)),
         'lastModifiedAtIso' => (string)($pointData['lastModifiedAtIso'] ?? ''),
         'lastModifiedAtTimestamp' => (int)($pointData['lastModifiedAtTimestamp'] ?? 0),
         'lastModifiedByUserId' => (int)($pointData['lastModifiedByUserId'] ?? 0),

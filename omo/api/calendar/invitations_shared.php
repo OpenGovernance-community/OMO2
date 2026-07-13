@@ -336,24 +336,38 @@ if (!function_exists('omoCalendarBuildInvitationEditorState')) {
             ? omoCalendarExtractInvitationSelections($event)
             : ['holon_ids' => [], 'user_ids' => [], 'emails' => [], 'count' => 0];
 
-        $selectedHolonIds = $selectionState['holon_ids'];
+        $hasStructureApplication = $organization->isStructureApplicationEnabled();
+
+        $memberships = new ArrayUserOrganization();
+        if ($organizationId > 0) {
+            $memberships->loadActiveForOrganization($organizationId);
+        }
+
+        $selectedHolonIds = $hasStructureApplication ? $selectionState['holon_ids'] : [];
         if (
-            $preferDefaultHolonSelection
+            $hasStructureApplication
+            && $preferDefaultHolonSelection
             && $selectionState['count'] === 0
             && $defaultHolonId > 0
         ) {
             $selectedHolonIds = [$defaultHolonId];
         }
 
-        $rootHolon = $organization->getEnabledStructuralRootHolon();
+        $selectedUserIds = $selectionState['user_ids'];
+        if (!$hasStructureApplication && $selectionState['count'] === 0) {
+            $selectedUserIds = [];
+            foreach ($memberships as $membership) {
+                $userId = (int)$membership->get('IDuser');
+                if ($userId > 0) {
+                    $selectedUserIds[] = $userId;
+                }
+            }
+        }
+
+        $rootHolon = $hasStructureApplication ? $organization->getEnabledStructuralRootHolon() : null;
         $holonTree = $rootHolon instanceof Holon
             ? omoCalendarBuildInvitationHolonTreeData($rootHolon, $organization, $selectedHolonIds, $targetHolonId)
             : null;
-
-        $memberships = new ArrayUserOrganization();
-        if ($organizationId > 0) {
-            $memberships->loadActiveForOrganization($organizationId);
-        }
 
         return [
             'organization' => $organization,
@@ -361,12 +375,12 @@ if (!function_exists('omoCalendarBuildInvitationEditorState')) {
             'organizationId' => $organizationId,
             'targetHolonId' => $targetHolonId,
             'selectedHolonIds' => $selectedHolonIds,
-            'selectedUserIds' => $selectionState['user_ids'],
+            'selectedUserIds' => $selectedUserIds,
             'selectedEmails' => $selectionState['emails'],
             'hasExplicitInvitations' => $selectionState['count'] > 0,
-            'usesDefaultHolonSelection' => $selectionState['count'] === 0 && $defaultHolonId > 0,
+            'usesDefaultHolonSelection' => $hasStructureApplication && $selectionState['count'] === 0 && $defaultHolonId > 0,
             'holonTree' => $holonTree,
-            'hasHolonStructure' => is_array($holonTree),
+            'hasHolonStructure' => $hasStructureApplication && is_array($holonTree),
             'memberships' => $memberships,
             'defaultHolonId' => $defaultHolonId,
         ];
@@ -390,6 +404,10 @@ if (!function_exists('omoCalendarApplyInvitationSelections')) {
             return $userId > 0;
         })));
         $selectedEmails = omoCalendarInvitationParseEmails($selectedEmails);
+
+        if (!$organization->isStructureApplicationEnabled()) {
+            $selectedHolonIds = [];
+        }
 
         $validHolonLabels = [];
         foreach ($selectedHolonIds as $holonId) {

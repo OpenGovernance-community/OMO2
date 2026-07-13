@@ -19,7 +19,7 @@ class DocumentPvPoint extends DbObject
             [['IDdocument', 'title', 'pointtype'], 'required'],
             [['id', 'position', 'desired_duration_minutes', 'actual_duration_minutes'], 'integer'],
             [['IDdocument', 'IDuser_author', 'IDholon_concerned', 'IDuser_modification', 'IDuser_editing'], 'fk'],
-            [['title', 'pointtype', 'edit_lock_token'], 'string'],
+            [['title', 'author_email', 'pointtype', 'edit_lock_token'], 'string'],
             [['content'], 'html'],
             [['active', 'is_handled'], 'boolean'],
             [['datecreation', 'datemodification', 'dateedition'], 'datetime'],
@@ -34,6 +34,7 @@ class DocumentPvPoint extends DbObject
             'IDdocument' => 'Document PV',
             'title' => 'Titre',
             'IDuser_author' => 'Auteur',
+            'author_email' => 'E-mail auteur externe',
             'IDholon_concerned' => 'Holon concerne',
             'content' => 'Texte HTML',
             'position' => 'Ordre',
@@ -54,8 +55,9 @@ class DocumentPvPoint extends DbObject
     public static function attributeDescriptions()
     {
         return [
-            'title' => 'Titre court de trois mots maximum.',
+            'title' => 'Titre du point a l ordre du jour.',
             'IDuser_author' => 'Membre qui porte ou presente ce point.',
+            'author_email' => 'Adresse e-mail de la personne externe qui porte ce point.',
             'IDholon_concerned' => 'Holon principal directement concerne par ce point.',
             'content' => 'Contenu HTML formate du point.',
             'position' => 'Ordre d affichage dans le PV.',
@@ -73,6 +75,7 @@ class DocumentPvPoint extends DbObject
     {
         return [
             'title' => 80,
+            'author_email' => 250,
             'pointtype' => 20,
             'edit_lock_token' => 80,
         ];
@@ -103,25 +106,6 @@ class DocumentPvPoint extends DbObject
         return array_key_exists($value, self::getPointTypeCatalog())
             ? $value
             : self::TYPE_INFORMATION;
-    }
-
-    public static function countTitleWords($title): int
-    {
-        $title = trim((string)$title);
-        if ($title === '') {
-            return 0;
-        }
-
-        $parts = preg_split('/\s+/u', $title);
-        if (!is_array($parts)) {
-            return 0;
-        }
-
-        $parts = array_values(array_filter($parts, static function ($part) {
-            return trim((string)$part) !== '';
-        }));
-
-        return count($parts);
     }
 
     protected static function resolveNextPositionForDocument(int $documentId): int
@@ -173,6 +157,11 @@ class DocumentPvPoint extends DbObject
         return trim((string)$user->get('email'));
     }
 
+    public static function getUserDisplayNameForOrganization(int $userId, int $organizationId = 0): string
+    {
+        return self::resolveUserDisplayNameById($userId, $organizationId);
+    }
+
     protected static function resolveHolonLabelById(int $holonId): string
     {
         if ($holonId <= 0) {
@@ -219,58 +208,53 @@ class DocumentPvPoint extends DbObject
         }
 
         $contextCircleId = self::resolveDocumentContextCircleId($document);
-        $rows = self::fetchAll(
-            "SELECT DISTINCT h.id
-            FROM user_holon uh
-            INNER JOIN holon h
-                ON h.id = uh.IDholon
-            WHERE uh.IDuser = :user_id
-              AND COALESCE(uh.active, 1) = 1
-              AND h.IDorganization = :organization_id
-              AND h.IDtypeholon = 1
-              AND COALESCE(h.active, 1) = 1
-              AND COALESCE(h.visible, 1) = 1
-            ORDER BY h.IDholon_parent ASC, h.name ASC, h.id ASC",
-            [
-                'user_id' => $userId,
-                'organization_id' => $organizationId,
-            ]
-        );
+        $contextHolon = new \dbObject\Holon();
+        $assignments = [];
 
-        if (!is_array($rows)) {
-            return [];
+        if ($contextCircleId > 0 && $contextHolon->load($contextCircleId)) {
+            $assignments = $contextHolon->getVisibleRoleAssignmentsForUser($userId, [
+                'organizationId' => $organizationId,
+                'includeDescendants' => true,
+            ]);
+        }
+
+        if (count($assignments) === 0) {
+            $rootHolon = null;
+            $organization = new \dbObject\Organization();
+            if ($organization->load($organizationId)) {
+                $rootHolon = $organization->getEnabledStructuralRootHolon();
+            }
+
+            if ($rootHolon instanceof \dbObject\Holon) {
+                $assignments = $rootHolon->getVisibleRoleAssignmentsForUser($userId, [
+                    'organizationId' => $organizationId,
+                    'includeDescendants' => true,
+                ]);
+            }
         }
 
         $options = [];
-        $fallbackOptions = [];
-        foreach ($rows as $row) {
-            $holonId = (int)($row['id'] ?? 0);
-            if ($holonId <= 0 || isset($fallbackOptions[$holonId])) {
+        foreach ($assignments as $assignment) {
+            $holonId = (int)($assignment['holonId'] ?? 0);
+            if ($holonId <= 0 || isset($options[$holonId])) {
                 continue;
             }
 
-            $holon = new \dbObject\Holon();
-            if (!$holon->load($holonId)) {
-                continue;
+            $label = trim((string)($assignment['name'] ?? ''));
+            if ($label === '') {
+                $label = self::resolveHolonLabelById($holonId);
             }
-
-            $label = trim((string)$holon->getFullDisplayName());
             if ($label === '') {
                 $label = 'Role #' . $holonId;
             }
 
-            $entry = [
+            $options[$holonId] = [
                 'id' => $holonId,
                 'label' => $label,
             ];
-            $fallbackOptions[$holonId] = $entry;
-
-            if ($contextCircleId <= 0 || $holon->isDescendantOf($contextCircleId, true)) {
-                $options[$holonId] = $entry;
-            }
         }
 
-        return array_values(count($options) > 0 ? $options : $fallbackOptions);
+        return array_values($options);
     }
 
     public static function concernedHolonIsAllowedForDocument(\dbObject\Document $document, int $userId, int $holonId): bool
@@ -298,7 +282,12 @@ class DocumentPvPoint extends DbObject
 
     public function getAuthorDisplayName(int $organizationId = 0): string
     {
-        return self::resolveUserDisplayNameById((int)$this->get('IDuser_author'), $organizationId);
+        $userLabel = self::resolveUserDisplayNameById((int)$this->get('IDuser_author'), $organizationId);
+        if ($userLabel !== '') {
+            return $userLabel;
+        }
+
+        return trim((string)$this->get('author_email'));
     }
 
     public function getConcernedHolonLabel(): string
@@ -643,6 +632,20 @@ class DocumentPvPoint extends DbObject
         $isLockOwnedByCurrentUser = $isLockActive
             && $currentUserId > 0
             && $this->getEditingUserId() === $currentUserId;
+        $syncVersion = hash('sha256', (string)json_encode([
+            'position' => $position,
+            'title' => trim((string)$this->get('title')),
+            'author_user_id' => (int)$this->get('IDuser_author'),
+            'author_email' => trim((string)$this->get('author_email')),
+            'concerned_holon_id' => (int)$this->get('IDholon_concerned'),
+            'content' => (string)$this->get('content'),
+            'desired_duration_minutes' => $this->getDurationMinutesValue('desired_duration_minutes'),
+            'actual_duration_minutes' => $this->getDurationMinutesValue('actual_duration_minutes'),
+            'pointtype' => self::normalizePointType($this->get('pointtype')),
+            'is_handled' => $this->isHandled(),
+            'active' => !empty($this->get('active')),
+            'modification_user_id' => $this->getModificationUserId(),
+        ], JSON_UNESCAPED_SLASHES));
 
         return [
             'id' => (int)$this->getId(),
@@ -652,6 +655,7 @@ class DocumentPvPoint extends DbObject
             'pointType' => self::normalizePointType($this->get('pointtype')),
             'pointTypeLabel' => $this->getPointTypeLabel(),
             'authorLabel' => $this->getAuthorDisplayName($organizationId),
+            'authorEmail' => trim((string)$this->get('author_email')),
             'concernedHolonId' => (int)$this->get('IDholon_concerned'),
             'concernedHolonLabel' => $this->getConcernedHolonLabel(),
             'addressedHolons' => $this->getAddressedHolonItems(),
@@ -663,6 +667,7 @@ class DocumentPvPoint extends DbObject
             'lastModifiedByLabel' => $this->getModificationUserDisplayName($organizationId),
             'lastModifiedAtIso' => $modificationDate instanceof \DateTimeInterface ? $modificationDate->format(DATE_ATOM) : '',
             'lastModifiedAtTimestamp' => $modificationDate instanceof \DateTimeInterface ? (int)$modificationDate->getTimestamp() : 0,
+            'syncVersion' => $syncVersion,
             'lock' => [
                 'isActive' => $isLockActive,
                 'isLockedByOther' => $isLockedByOther,
@@ -688,6 +693,9 @@ class DocumentPvPoint extends DbObject
     {
         $data = $this->buildViewerData($organizationId, $currentUserId, $currentLockToken);
         $data['authorUserId'] = (int)$this->get('IDuser_author');
+        $data['authorValue'] = (int)$this->get('IDuser_author') > 0
+            ? 'user:' . (int)$this->get('IDuser_author')
+            : (trim((string)$this->get('author_email')) !== '' ? 'email:' . trim((string)$this->get('author_email')) : '');
         $data['contentRaw'] = trim((string)$this->get('content'));
         $data['isEditable'] = $this->isEditableByUser($currentUserId);
         $data['isLockedByOther'] = !empty($data['lock']['isLockedByOther']);
@@ -719,13 +727,6 @@ class DocumentPvPoint extends DbObject
             ];
         }
 
-        if (self::countTitleWords($title) > 3) {
-            return [
-                'status' => false,
-                'text' => 'Le titre du point doit contenir au maximum 3 mots.',
-            ];
-        }
-
         if ($documentId <= 0) {
             return [
                 'status' => false,
@@ -748,6 +749,19 @@ class DocumentPvPoint extends DbObject
 
         if ((int)$this->get('IDuser_author') <= 0) {
             $this->set('IDuser_author', null);
+        }
+
+        $authorEmail = trim(mb_strtolower((string)$this->get('author_email'), 'UTF-8'));
+        if ($authorEmail !== '' && !filter_var($authorEmail, FILTER_VALIDATE_EMAIL)) {
+            return [
+                'status' => false,
+                'text' => 'L adresse e-mail de l auteur est invalide.',
+            ];
+        }
+        $this->set('author_email', $authorEmail !== '' ? $authorEmail : null);
+        if ($authorEmail !== '') {
+            $this->set('IDuser_author', null);
+            $this->set('IDholon_concerned', null);
         }
 
         if ((int)$this->get('IDuser_modification') <= 0) {

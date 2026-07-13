@@ -29,7 +29,7 @@
 				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'pvstage', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime'], 'string'],	// Chaines de caractere
 				[['description', 'content', 'contentedition'], 'text'],			// Textes libres
 				[['datecreation', 'datemodification', 'dateedition', 'datecontentedition'], 'datetime'],	// Date avec precision des heures
-				[['IDuser', 'IDusercreation', 'IDusermodification', 'IDuseredition', 'IDorganization', 'IDholon', 'IDdocument_parent', 'IDevent'], 'fk'],	// Cles etrangeres
+				[['IDuser', 'IDusercreation', 'IDusermodification', 'IDuseredition', 'IDuser_pv_editor', 'IDorganization', 'IDholon', 'IDdocument_parent', 'IDevent'], 'fk'],	// Cles etrangeres
 				[['id'], 'safe'],								// Champs proteges
 			];
 		}
@@ -51,6 +51,7 @@
 				'IDorganization' => 'Organisation',
 				'IDholon' => 'Holon',
 				'IDevent' => 'Evenement associe',
+				'IDuser_pv_editor' => 'Secretaire du PV',
 				'estDossier' => 'Dossier',
 				'IDdocument_parent' => 'Dossier parent',
 				'datecreation' => 'Date de creation',
@@ -92,6 +93,7 @@
 				'datecontentedition' => 'Date de mise a jour du brouillon temporaire',
 				'documenttype' => 'Permet de distinguer les documents HTML, les liens externes et les dossiers',
 				'pvstage' => 'Etape actuelle du flux d un document PV: preparation, reunion, relecture ou valide',
+				'IDuser_pv_editor' => 'Personne qui tient le PV pendant la reunion et peut modifier tous les points.',
 				'externalurl' => 'Adresse du site a ouvrir pour un document de type lien externe',
 				'openinnewwindow' => 'Ouvre le lien externe directement dans une autre fenetre',
 				'storedfilepath' => 'Chemin du fichier sur le stockage Nextcloud de l organisation',
@@ -523,6 +525,13 @@
 
 		public function isAvailableInDocumentsList(?\DateTimeInterface $referenceDate = null): bool
 		{
+			if ($this->isPvDocument()) {
+				$userId = function_exists('commonGetCurrentUserId')
+					? (int)\commonGetCurrentUserId()
+					: (int)($_SESSION['currentUser'] ?? 0);
+				return $this->isVisibleInDocumentsListForUser($userId, $referenceDate);
+			}
+
 			$referenceDate = $referenceDate ?: new \DateTimeImmutable();
 			$createdAt = $this->get('datecreation');
 			if (!($createdAt instanceof \DateTimeInterface)) {
@@ -640,6 +649,364 @@
 			return $event;
 		}
 
+		public function getPvEditorUserId(): int
+		{
+			return $this->isPvDocument() ? (int)$this->get('IDuser_pv_editor') : 0;
+		}
+
+		public function isPvEditor(int $userId): bool
+		{
+			return $userId > 0 && $userId === $this->getPvEditorUserId();
+		}
+
+		public function isPvCreatorOrEditor(int $userId): bool
+		{
+			return $this->isPvDocument()
+				&& $userId > 0
+				&& ($userId === (int)$this->get('IDuser') || $this->isPvEditor($userId));
+		}
+
+		public function canUserManagePvDocument(int $userId): bool
+		{
+			if (!$this->isPvDocument() || $this->isPvValidated() || $userId <= 0) {
+				return false;
+			}
+
+			return $this->isPvEditor($userId)
+				|| ($this->getPvEditorUserId() <= 0 && $userId === (int)$this->get('IDuser'));
+		}
+
+		public function isVisibleInDocumentsListForUser(int $userId, ?\DateTimeInterface $referenceDate = null): bool
+		{
+			if (!$this->isPvDocument()) {
+				return true;
+			}
+
+			if ($this->isPvCreatorOrEditor($userId)) {
+				return true;
+			}
+
+			if (!($this->getAssociatedEvent() instanceof \dbObject\Event)) {
+				return true;
+			}
+
+			if ($this->canUserAccessPvBeforeValidation($userId)) {
+				$stage = $this->getPvStage();
+				return $stage === self::PV_STAGE_REVIEW || $stage === self::PV_STAGE_VALIDATED;
+			}
+
+			return $this->isPvValidated()
+				&& $this->hasAssociatedEventStarted($referenceDate);
+		}
+
+		public function hasAssociatedEventStarted(?\DateTimeInterface $referenceDate = null): bool
+		{
+			$event = $this->getAssociatedEvent();
+			$startAt = $event instanceof \dbObject\Event ? $event->get('start_at') : null;
+			if (!($startAt instanceof \DateTimeInterface)) {
+				return false;
+			}
+
+			if (!($referenceDate instanceof \DateTimeInterface)) {
+				$timezone = $startAt->getTimezone();
+				$referenceDate = $timezone instanceof \DateTimeZone
+					? new \DateTimeImmutable('now', $timezone)
+					: new \DateTimeImmutable('now');
+			}
+
+			return $startAt <= $referenceDate;
+		}
+
+		public function canUserPassPvMeetingVisibilityGate(int $userId, int $organizationId = 0, ?\DateTimeInterface $referenceDate = null): bool
+		{
+			if (!$this->isPvDocument()) {
+				return true;
+			}
+
+			$organizationId = $organizationId > 0 ? (int)$organizationId : (int)$this->get('IDorganization');
+			if ($organizationId <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
+				return false;
+			}
+
+			if (!($this->getAssociatedEvent() instanceof \dbObject\Event)) {
+				return true;
+			}
+
+			return $this->canUserAccessPvBeforeValidation($userId, $organizationId)
+				|| ($this->isPvValidated() && $this->hasAssociatedEventStarted($referenceDate));
+		}
+
+		public function canUserAccessPvBeforeValidation(int $userId, int $organizationId = 0): bool
+		{
+			$organizationId = $organizationId > 0 ? (int)$organizationId : (int)$this->get('IDorganization');
+			if (
+				!$this->isPvDocument()
+				|| $userId <= 0
+				|| $organizationId <= 0
+				|| (int)$this->get('IDorganization') !== $organizationId
+			) {
+				return false;
+			}
+
+			if ($this->isPvCreatorOrEditor($userId)) {
+				return true;
+			}
+
+			$event = $this->getAssociatedEvent();
+			if ($event instanceof \dbObject\Event) {
+				return $event->isVisibleToInvitationViewer($userId, $organizationId);
+			}
+
+			return $this->canViewDirectlyInOrganization($organizationId);
+		}
+
+		public function getPvPermissionHolon(int $organizationId = 0)
+		{
+			$organizationId = $organizationId > 0 ? (int)$organizationId : (int)$this->get('IDorganization');
+			if ($organizationId <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
+				return null;
+			}
+
+			$holonId = (int)$this->get('IDholon');
+			if ($holonId <= 0) {
+				$event = $this->getAssociatedEvent();
+				if ($event instanceof \dbObject\Event) {
+					$holonId = (int)$event->get('IDholon');
+				}
+			}
+
+			return self::resolveCreationPermissionHolon($organizationId, $holonId > 0 ? $holonId : null);
+		}
+
+		public function canUserClaimPvEditor(int $organizationId, int $userId): bool
+		{
+			if (!$this->isPvDocument() || $this->isPvValidated() || $userId <= 0 || $this->getPvEditorUserId() > 0) {
+				return false;
+			}
+
+			$permissionHolon = $this->getPvPermissionHolon($organizationId);
+			return $permissionHolon instanceof \dbObject\Holon
+				&& (int)$permissionHolon->getId() > 0
+				&& $permissionHolon->isAllowed('CAN_CLAIM_PV', false, $userId);
+		}
+
+		public function claimPvEditor(int $organizationId, int $userId): array
+		{
+			if (!$this->canUserClaimPvEditor($organizationId, $userId)) {
+				return array('status' => false, 'text' => 'Acces refuse.');
+			}
+
+			$this->set('IDuser_pv_editor', $userId);
+			$this->set('IDusermodification', $userId);
+			$this->set('datemodification', new \DateTimeImmutable());
+			$saveResult = $this->save();
+			if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
+				return array('status' => false, 'text' => 'Impossible de devenir editeur du PV.');
+			}
+
+			$this->load((int)$this->getId());
+			if (!$this->isPvEditor($userId)) {
+				return array('status' => false, 'text' => 'Le PV est deja attribue a une autre personne.');
+			}
+
+			return array('status' => true);
+		}
+
+		public function canUserEditPvPoint(\dbObject\DocumentPvPoint $point, int $userId): bool
+		{
+			if (!$this->isPvDocument() || $this->isPvValidated() || $point->isHandled() || (int)$point->get('IDdocument') !== (int)$this->getId()) {
+				return false;
+			}
+
+			return $this->isPvEditor($userId) || $point->isEditableByUser($userId);
+		}
+
+		public function canUserReorderPvPoints(int $userId): bool
+		{
+			return $this->canUserManagePvDocument($userId);
+		}
+
+		public function getInvitations(bool $activeOnly = false)
+		{
+			$items = new \dbObject\ArrayDocumentInvitation();
+			$params = ['where' => [['field' => 'IDdocument', 'value' => (int)$this->getId()]]];
+			if ($activeOnly) {
+				$params['where'][] = ['field' => 'active', 'value' => 1];
+			}
+			$items->load($params);
+			return $items;
+		}
+
+		public function getInvitationEntries(int $organizationId = 0): array
+		{
+			$organizationId = $organizationId > 0 ? $organizationId : (int)$this->get('IDorganization');
+			$entries = [];
+			foreach ($this->getInvitations(true) as $invitation) {
+				if (!($invitation instanceof \dbObject\DocumentInvitation) || \dbObject\DocumentInvitation::normalizeStatus($invitation->get('status')) === \dbObject\DocumentInvitation::STATUS_REVOKED) {
+					continue;
+				}
+				$type = \dbObject\DocumentInvitation::normalizeType($invitation->get('invitation_type'));
+				if ($type === \dbObject\DocumentInvitation::TYPE_HOLON) {
+					$holon = new \dbObject\Holon();
+					if ($holon->load((int)$invitation->get('IDholon'))) {
+						foreach ($holon->getAssociatedMemberUserIds(['organizationId' => $organizationId, 'skipPermissionFilter' => true]) as $userId) {
+							$entries['user:' . (int)$userId] = ['userId' => (int)$userId, 'email' => '', 'displayLabel' => '', 'identityKey' => 'user:' . (int)$userId];
+						}
+					}
+					continue;
+				}
+				if ($type === \dbObject\DocumentInvitation::TYPE_USER) {
+					$userId = (int)$invitation->get('IDuser');
+					if ($userId > 0) {
+						$entries['user:' . $userId] = ['userId' => $userId, 'email' => '', 'displayLabel' => trim((string)$invitation->get('display_name')), 'identityKey' => 'user:' . $userId];
+					}
+					continue;
+				}
+				$email = trim(mb_strtolower((string)$invitation->get('email'), 'UTF-8'));
+				if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+					$entries['email:' . $email] = ['userId' => 0, 'email' => $email, 'displayLabel' => trim((string)$invitation->get('display_name')), 'identityKey' => 'email:' . $email];
+				}
+			}
+			foreach ($entries as &$entry) {
+				if ((int)$entry['userId'] > 0 && trim((string)$entry['displayLabel']) === '') {
+					$entry['displayLabel'] = \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization((int)$entry['userId'], $organizationId);
+				}
+				if (trim((string)$entry['displayLabel']) === '') {
+					$entry['displayLabel'] = (string)$entry['email'];
+				}
+			}
+			unset($entry);
+			return array_values($entries);
+		}
+
+		public function getInvitationAttendanceEntries(int $organizationId = 0): array
+		{
+			$entries = $this->getInvitationEntries($organizationId);
+			foreach ($entries as &$entry) {
+				$attendance = new \dbObject\DocumentAttendance();
+				$loaded = (int)($entry['userId'] ?? 0) > 0
+					? $attendance->load([['IDdocument', (int)$this->getId()], ['IDuser', (int)$entry['userId']]])
+					: $attendance->load([['IDdocument', (int)$this->getId()], ['email', (string)($entry['email'] ?? '')]]);
+				$entry['isPresent'] = $loaded && !empty($attendance->get('is_present'));
+			}
+			unset($entry);
+			return $entries;
+		}
+
+		public function setInvitationAttendance(int $organizationId, int $checkedByUserId, string $identityKey, bool $isPresent): array
+		{
+			foreach ($this->getInvitationEntries($organizationId) as $entry) {
+				if ((string)($entry['identityKey'] ?? '') !== $identityKey) {
+					continue;
+				}
+				$attendance = new \dbObject\DocumentAttendance();
+				$userId = (int)($entry['userId'] ?? 0);
+				$loaded = $userId > 0
+					? $attendance->load([['IDdocument', (int)$this->getId()], ['IDuser', $userId]])
+					: $attendance->load([['IDdocument', (int)$this->getId()], ['email', (string)($entry['email'] ?? '')]]);
+				if (!$loaded) {
+					$attendance->set('IDdocument', (int)$this->getId());
+					$attendance->set('IDuser', $userId > 0 ? $userId : null);
+					$attendance->set('email', $userId > 0 ? null : (string)($entry['email'] ?? ''));
+				}
+				$attendance->set('display_name', (string)($entry['displayLabel'] ?? ''));
+				$attendance->set('is_present', $isPresent ? 1 : 0);
+				$attendance->set('IDuser_checked_by', $checkedByUserId);
+				$attendance->set('checked_at', new \DateTimeImmutable());
+				$attendance->set('active', 1);
+				return $attendance->save();
+			}
+			return ['status' => false, 'text' => 'Participant introuvable.'];
+		}
+
+		public function getPvPointAuthorOptions(int $organizationId = 0): array
+		{
+			$organizationId = $organizationId > 0 ? (int)$organizationId : (int)$this->get('IDorganization');
+			if (!$this->isPvDocument() || $organizationId <= 0) {
+				return array();
+			}
+
+			$userIds = array();
+			$externalAuthors = array();
+			$event = $this->getAssociatedEvent();
+			if ($event instanceof \dbObject\Event) {
+				foreach ($event->getAttendanceEntries($organizationId) as $entry) {
+					$userId = (int)($entry['userId'] ?? 0);
+					if ($userId > 0) {
+						$userIds[$userId] = $userId;
+						continue;
+					}
+
+					$email = trim(mb_strtolower((string)($entry['email'] ?? ''), 'UTF-8'));
+					if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+						$label = trim((string)($entry['displayLabel'] ?? ''));
+						$externalAuthors[$email] = $label !== '' && $label !== $email
+							? ($label . ' (' . $email . ')')
+							: $email;
+					}
+				}
+			} else {
+				$memberships = new \dbObject\ArrayUserOrganization();
+				$memberships->loadActiveForOrganization($organizationId);
+				foreach ($memberships as $membership) {
+					if ($membership instanceof \dbObject\UserOrganization) {
+						$userId = (int)$membership->get('IDuser');
+						if ($userId > 0) {
+							$userIds[$userId] = $userId;
+						}
+					}
+				}
+			}
+
+			$authorRows = self::fetchAll(
+				'SELECT DISTINCT IDuser_author, author_email FROM document_pv_point WHERE IDdocument = :document_id',
+				array('document_id' => (int)$this->getId())
+			);
+			foreach ((array)$authorRows as $row) {
+				$userId = (int)($row['IDuser_author'] ?? 0);
+				if ($userId > 0) {
+					$userIds[$userId] = $userId;
+				}
+
+				$email = trim(mb_strtolower((string)($row['author_email'] ?? ''), 'UTF-8'));
+				if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) && !isset($externalAuthors[$email])) {
+					$externalAuthors[$email] = $email;
+				}
+			}
+
+			$creatorId = (int)$this->get('IDuser');
+			if ($creatorId > 0) {
+				$userIds[$creatorId] = $creatorId;
+			}
+
+			$options = array();
+			foreach ($userIds as $userId) {
+				$label = \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($userId, $organizationId);
+				if ($label !== '') {
+					$options[] = array(
+						'value' => 'user:' . $userId,
+						'userId' => $userId,
+						'email' => '',
+						'label' => $label,
+					);
+				}
+			}
+
+			foreach ($externalAuthors as $email => $label) {
+				$options[] = array(
+					'value' => 'email:' . $email,
+					'userId' => 0,
+					'email' => $email,
+					'label' => $label,
+				);
+			}
+
+			usort($options, static function (array $left, array $right): int {
+				return strcasecmp((string)$left['label'], (string)$right['label']);
+			});
+			return $options;
+		}
+
 		public function canUserPrepareUpcomingPv(int $userId = 0, int $organizationId = 0): bool
 		{
 			$userId = (int)$userId;
@@ -684,20 +1051,28 @@
 				return false;
 			}
 
-			$event = $this->getAssociatedEvent();
-			if ($event instanceof \dbObject\Event) {
-				if ($this->canEditInOrganizationContext($organizationId, $userId, false)) {
-					return true;
-				}
-
-				if (!$event->isUpcoming()) {
-					return false;
-				}
-
-				return $event->canUserPrepareUpcomingPv($userId, $organizationId);
+			if ($this->isPvValidated()) {
+				return false;
 			}
 
-			return $this->canEditInOrganizationContext($organizationId, $userId, false);
+			$event = $this->getAssociatedEvent();
+			if ($event instanceof \dbObject\Event && !$this->canUserAccessPvBeforeValidation($userId, $organizationId)) {
+				return false;
+			}
+
+			if ($this->getPvStage() === self::PV_STAGE_REVIEW && !$this->canUserManagePvDocument($userId)) {
+				return false;
+			}
+
+			if ($this->canUserManagePvDocument($userId) || $this->canEditInOrganizationContext($organizationId, $userId, false)) {
+				return true;
+			}
+
+			if ($event instanceof \dbObject\Event) {
+				return $this->canUserAccessPvBeforeValidation($userId, $organizationId);
+			}
+
+			return $this->canViewDirectlyInOrganization($organizationId);
 		}
 
 		public function hasUpcomingAssociatedEvent(): bool
@@ -795,9 +1170,14 @@
 			return (string)($options[$stage] ?? $options[self::PV_STAGE_PREPARATION]);
 		}
 
+		public function isPvValidated(): bool
+		{
+			return $this->isPvDocument() && $this->getPvStage() === self::PV_STAGE_VALIDATED;
+		}
+
 		public function canManagePvStage(int $organizationId = 0, ?int $userId = null): bool
 		{
-			if (!$this->isPvDocument()) {
+			if (!$this->isPvDocument() || $this->isPvValidated()) {
 				return false;
 			}
 
@@ -809,7 +1189,15 @@
 				return false;
 			}
 
-			return $this->canEditInOrganizationContext($organizationId, $userId, false);
+			$resolvedUserId = $userId !== null
+				? (int)$userId
+				: (
+					function_exists('commonGetCurrentUserId')
+						? (int)\commonGetCurrentUserId()
+						: (int)($_SESSION['currentUser'] ?? 0)
+				);
+
+			return $this->canUserManagePvDocument($resolvedUserId);
 		}
 
 		public function updatePvStageInOrganizationContext(int $organizationId, int $userId, string $stage): array
@@ -2132,6 +2520,13 @@
 				return false;
 			}
 
+			$currentUserId = function_exists('commonGetCurrentUserId')
+				? (int)\commonGetCurrentUserId()
+				: (int)($_SESSION['currentUser'] ?? 0);
+			if ($this->isPvDocument() && $this->isPvCreatorOrEditor($currentUserId)) {
+				return true;
+			}
+
 			if (!$this->currentViewerCanAccessVisibility($organizationId)) {
 				return false;
 			}
@@ -2481,6 +2876,17 @@
 					return $contextSaveResult;
 				}
 
+				if ($documentType === self::TYPE_PV && $this->canUserClaimPvEditor($organizationId, $userId)) {
+					$this->set('IDuser_pv_editor', $userId);
+					$pvEditorSaveResult = $this->save();
+					if (!is_array($pvEditorSaveResult) || ($pvEditorSaveResult['status'] ?? false) !== true) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+						return $pvEditorSaveResult;
+					}
+				}
+
 				$visibilityType = $this->normalizeScopeTypeForCurrentContext(
 					$visibilityType,
 					\dbObject\ObjectVisibility::TYPE_ORGANIZATION
@@ -2566,7 +2972,15 @@
 				);
 			}
 
-			if ($userId <= 0 || !$this->canEditInOrganizationContext($organizationId, $userId, false)) {
+			$canManagePvDocument = $this->isPvDocument() && $this->canUserManagePvDocument($userId);
+			if ($userId <= 0 || (!$canManagePvDocument && !$this->canEditInOrganizationContext($organizationId, $userId, false))) {
+				return array(
+					'status' => false,
+					'text' => 'Acces refuse.',
+				);
+			}
+
+			if ($this->isPvDocument() && !$canManagePvDocument) {
 				return array(
 					'status' => false,
 					'text' => 'Acces refuse.',

@@ -298,7 +298,8 @@ if (!$organization->load($organizationId) || !$organization->canViewDetail()) {
     exit;
 }
 
-$rootHolon = $organization->getEnabledStructuralRootHolon();
+$hasStructureApplication = $organization->isStructureApplicationEnabled($currentUserId);
+$rootHolon = $hasStructureApplication ? $organization->getEnabledStructuralRootHolon($currentUserId) : null;
 $nextcloudDocumentsAvailable = $organization->hasNextcloudDocumentStorage();
 
 $event = new Event();
@@ -329,8 +330,11 @@ if ($eventId > 0) {
 $associatedDocument = $isEditMode ? $event->getAssociatedDocument() : null;
 
 $holons = new ArrayHolon();
-$holons->loadVisibilityTargetsForOrganization($organizationId, [2, 1]);
-$holonOptions = $holons->buildVisibilityTargetOptions();
+$holonOptions = [];
+if ($hasStructureApplication) {
+    $holons->loadVisibilityTargetsForOrganization($organizationId, [2, 1]);
+    $holonOptions = $holons->buildVisibilityTargetOptions();
+}
 $allowedHolonIds = [];
 
 foreach (['circle', 'role'] as $typeKey) {
@@ -399,7 +403,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $title = trim((string)($_POST['title'] ?? ''));
     $description = trim((string)($_POST['description'] ?? ''));
-    $selectedHolonId = isset($_POST['IDholon']) ? (int)$_POST['IDholon'] : 0;
+    $selectedHolonId = $hasStructureApplication && isset($_POST['IDholon']) ? (int)$_POST['IDholon'] : 0;
     $startAt = omoCalendarParseLocalDateTime($_POST['start_at'] ?? '');
     $endAt = omoCalendarParseLocalDateTime($_POST['end_at'] ?? '');
     $isAllDay = !empty($_POST['is_all_day']);
@@ -409,9 +413,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $requestedDocumentType = trim((string)($_POST['document_type'] ?? ''));
     $documentTitle = trim((string)($_POST['document_title'] ?? ''));
-    $selectedInvitationHolonIds = array_values(array_unique(array_filter(array_map('intval', $_POST['invitation_holon_ids'] ?? []), static function ($holonId) {
+    $selectedInvitationHolonIds = $hasStructureApplication ? array_values(array_unique(array_filter(array_map('intval', $_POST['invitation_holon_ids'] ?? []), static function ($holonId) {
         return $holonId > 0;
-    })));
+    }))) : [];
     $selectedInvitationUserIds = array_values(array_unique(array_filter(array_map('intval', $_POST['invitation_user_ids'] ?? []), static function ($userId) {
         return $userId > 0;
     })));
@@ -709,12 +713,18 @@ $videoMeetingUrlDefault = trim((string)($locationDisplayData['videoUrl'] ?? ''))
 $documentTypeDefault = $associatedDocument instanceof Document ? $associatedDocument->getDocumentType() : '';
 $documentTitleDefault = '';
 $documentTypeOptions = omoCalendarDocumentTypeOptions($nextcloudDocumentsAvailable);
-$associatedDocumentUrl = $associatedDocument instanceof Document
+$canOpenAssociatedDocument = $associatedDocument instanceof Document
+    && (
+        $associatedDocument->isPvDocument() && !$associatedDocument->isPvValidated()
+            ? $associatedDocument->canUserAccessPvBeforeValidation($currentUserId, $organizationId)
+            : $associatedDocument->canViewDirectlyInOrganization($organizationId)
+    );
+$associatedDocumentUrl = $canOpenAssociatedDocument
     ? $event->buildAssociatedDocumentDetailUrl($currentHolonId > 0 ? $currentHolonId : $defaultHolonId)
     : '';
 $associatedDocumentPvPreparationUrl = $associatedDocument instanceof Document
-    && $associatedDocument->canUserPrepareUpcomingPv($currentUserId, $organizationId)
-    ? $associatedDocument->buildUpcomingPvEditorUrl($organizationId)
+    && $associatedDocument->canUserOpenPvEditor($currentUserId, $organizationId)
+    ? $associatedDocument->buildPvEditorUrl($organizationId)
     : '';
 $locationModeOptions = array_merge(
     ['' => omoCalendarCreateT('calendar.create.field.location_mode_pending')],
@@ -760,6 +770,7 @@ $locationModeOptions = array_merge(
                                 >
                             </label>
 
+                            <?php if ($hasStructureApplication): ?>
                             <label class="omo-calendar-create__field">
                                 <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.holon')) ?></span>
                                 <select name="IDholon" class="generic-form-control" data-omo-calendar-context-holon>
@@ -773,6 +784,7 @@ $locationModeOptions = array_merge(
                                     <?php endforeach; ?>
                                 </select>
                             </label>
+                            <?php endif; ?>
 
                             <label class="omo-calendar-create__field">
                                 <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.start')) ?></span>

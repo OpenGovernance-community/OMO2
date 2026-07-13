@@ -322,6 +322,53 @@ class Event extends DbObject
         return $membershipCache[$cacheKey];
     }
 
+    protected function organizationHasStructureApplication($organizationId): bool
+    {
+        static $cache = [];
+
+        $organizationId = (int)$organizationId;
+        if ($organizationId <= 0) {
+            return false;
+        }
+
+        if (array_key_exists($organizationId, $cache)) {
+            return $cache[$organizationId];
+        }
+
+        $organization = new \dbObject\Organization();
+        $applicationUserId = (int)$this->get('IDuser');
+        $cache[$organizationId] = $organization->load($organizationId)
+            && $organization->isStructureApplicationEnabled($applicationUserId > 0 ? $applicationUserId : null);
+        return $cache[$organizationId];
+    }
+
+    protected function getOrganizationMemberUserIds($organizationId): array
+    {
+        static $cache = [];
+
+        $organizationId = (int)$organizationId;
+        if ($organizationId <= 0) {
+            return [];
+        }
+
+        if (isset($cache[$organizationId])) {
+            return $cache[$organizationId];
+        }
+
+        $memberships = new \dbObject\ArrayUserOrganization();
+        $memberships->loadActiveForOrganization($organizationId);
+        $userIds = [];
+        foreach ($memberships as $membership) {
+            $userId = (int)$membership->get('IDuser');
+            if ($userId > 0) {
+                $userIds[$userId] = $userId;
+            }
+        }
+
+        $cache[$organizationId] = array_values($userIds);
+        return $cache[$organizationId];
+    }
+
     protected function getViewerScopedEmail($userId, $organizationId): string
     {
         static $emailCache = [];
@@ -345,6 +392,27 @@ class Event extends DbObject
 
         $emailCache[$cacheKey] = self::normalizeInvitationEmail($user->getScopedEmail($organizationId));
         return $emailCache[$cacheKey];
+    }
+
+    protected function getViewerDisplayName($userId, $organizationId): string
+    {
+        static $displayNameCache = [];
+
+        $userId = (int)$userId;
+        $organizationId = (int)$organizationId;
+        if ($userId <= 0 || $organizationId <= 0) {
+            return '';
+        }
+
+        $cacheKey = $organizationId . ':' . $userId;
+        if (isset($displayNameCache[$cacheKey])) {
+            return $displayNameCache[$cacheKey];
+        }
+
+        $link = new \dbObject\UserHolon();
+        $link->set('IDuser', $userId);
+        $displayNameCache[$cacheKey] = trim((string)$link->getUserDisplayName($organizationId));
+        return $displayNameCache[$cacheKey];
     }
 
     protected function getEffectiveInvitationTargets($organizationId): array
@@ -414,7 +482,236 @@ class Event extends DbObject
             return $targets;
         }
 
+        if (!$this->organizationHasStructureApplication($organizationId)) {
+            $targets['userIds'] = $this->getOrganizationMemberUserIds($organizationId);
+        }
+
         return $targets;
+    }
+
+    protected function getAttendanceDisplayNameMap($organizationId): array
+    {
+        $organizationId = (int)$organizationId;
+        $map = [
+            'users' => [],
+            'emails' => [],
+        ];
+
+        foreach ($this->getInvitations(true) as $invitation) {
+            if (!($invitation instanceof \dbObject\EventInvitation)) {
+                continue;
+            }
+
+            if (\dbObject\EventInvitation::normalizeStatus($invitation->get('status')) === \dbObject\EventInvitation::STATUS_REVOKED) {
+                continue;
+            }
+
+            $type = \dbObject\EventInvitation::normalizeType($invitation->get('invitation_type'));
+            $displayName = trim((string)$invitation->get('display_name'));
+
+            if ($type === \dbObject\EventInvitation::TYPE_USER) {
+                $userId = (int)$invitation->get('IDuser');
+                if ($userId > 0 && $displayName !== '' && !isset($map['users'][$userId])) {
+                    $map['users'][$userId] = $displayName;
+                }
+                continue;
+            }
+
+            if ($type === \dbObject\EventInvitation::TYPE_EMAIL) {
+                $email = self::normalizeInvitationEmail($invitation->get('email'));
+                if ($email !== '' && $displayName !== '' && !isset($map['emails'][$email])) {
+                    $map['emails'][$email] = $displayName;
+                }
+            }
+        }
+
+        return $map;
+    }
+
+    protected function getAttendanceRowsByIdentity(): array
+    {
+        if ((int)$this->getId() <= 0 || !self::tableExists('event_attendance')) {
+            return [];
+        }
+
+        $rows = self::fetchAll(
+            "SELECT
+                id,
+                IDuser,
+                email,
+                display_name,
+                is_present,
+                IDuser_checked_by,
+                checked_at,
+                active
+            FROM event_attendance
+            WHERE IDevent = :event_id
+              AND active = 1",
+            [
+                'event_id' => (int)$this->getId(),
+            ]
+        );
+
+        if (!is_array($rows)) {
+            return [];
+        }
+
+        $indexedRows = [];
+        foreach ($rows as $row) {
+            $userId = (int)($row['IDuser'] ?? 0);
+            if ($userId > 0) {
+                $indexedRows['user:' . $userId] = $row;
+                continue;
+            }
+
+            $email = self::normalizeInvitationEmail($row['email'] ?? '');
+            if ($email !== '') {
+                $indexedRows['email:' . $email] = $row;
+            }
+        }
+
+        return $indexedRows;
+    }
+
+    public function getAttendanceEntries($organizationId = 0): array
+    {
+        $organizationId = (int)$organizationId > 0 ? (int)$organizationId : (int)$this->get('IDorganization');
+        if ((int)$this->getId() <= 0 || $organizationId <= 0) {
+            return [];
+        }
+
+        $targets = $this->getEffectiveInvitationTargets($organizationId);
+        $displayNameMap = $this->getAttendanceDisplayNameMap($organizationId);
+        $attendanceRows = $this->getAttendanceRowsByIdentity();
+        $entries = [];
+        $knownUserEmails = [];
+
+        foreach ((array)($targets['userIds'] ?? []) as $userId) {
+            $userId = (int)$userId;
+            if ($userId <= 0) {
+                continue;
+            }
+
+            $displayName = trim((string)($displayNameMap['users'][$userId] ?? ''));
+            if ($displayName === '') {
+                $displayName = $this->getViewerDisplayName($userId, $organizationId);
+            }
+            if ($displayName === '') {
+                $displayName = 'Utilisateur #' . $userId;
+            }
+
+            $email = $this->getViewerScopedEmail($userId, $organizationId);
+            if ($email !== '') {
+                $knownUserEmails[$email] = true;
+            }
+
+            $identityKey = 'user:' . $userId;
+            $attendanceRow = $attendanceRows[$identityKey] ?? null;
+            $entries[$identityKey] = [
+                'identityKey' => $identityKey,
+                'userId' => $userId,
+                'email' => $email,
+                'displayLabel' => $displayName,
+                'secondaryLabel' => $email,
+                'isPresent' => !empty($attendanceRow['is_present']),
+            ];
+        }
+
+        foreach ((array)($targets['emails'] ?? []) as $email) {
+            $normalizedEmail = self::normalizeInvitationEmail($email);
+            if ($normalizedEmail === '' || isset($knownUserEmails[$normalizedEmail])) {
+                continue;
+            }
+
+            $identityKey = 'email:' . $normalizedEmail;
+            $attendanceRow = $attendanceRows[$identityKey] ?? null;
+            $displayName = trim((string)($displayNameMap['emails'][$normalizedEmail] ?? ''));
+            if ($displayName === '') {
+                $displayName = trim((string)($attendanceRow['display_name'] ?? ''));
+            }
+            if ($displayName === '') {
+                $displayName = $normalizedEmail;
+            }
+
+            $entries[$identityKey] = [
+                'identityKey' => $identityKey,
+                'userId' => 0,
+                'email' => $normalizedEmail,
+                'displayLabel' => $displayName,
+                'secondaryLabel' => $displayName !== $normalizedEmail ? $normalizedEmail : '',
+                'isPresent' => !empty($attendanceRow['is_present']),
+            ];
+        }
+
+        $entries = array_values($entries);
+        usort($entries, static function (array $left, array $right) {
+            return strcmp(
+                mb_strtolower((string)($left['displayLabel'] ?? ''), 'UTF-8'),
+                mb_strtolower((string)($right['displayLabel'] ?? ''), 'UTF-8')
+            );
+        });
+
+        return $entries;
+    }
+
+    public function setAttendancePresence($organizationId, $checkedByUserId, $identityKey, $isPresent): array
+    {
+        $organizationId = (int)$organizationId > 0 ? (int)$organizationId : (int)$this->get('IDorganization');
+        $checkedByUserId = (int)$checkedByUserId;
+        $identityKey = trim((string)$identityKey);
+
+        if ((int)$this->getId() <= 0 || $organizationId <= 0 || $checkedByUserId <= 0 || $identityKey === '') {
+            return [
+                'status' => false,
+                'text' => 'Contexte de presence invalide.',
+            ];
+        }
+
+        $entries = $this->getAttendanceEntries($organizationId);
+        $entry = null;
+        foreach ($entries as $candidate) {
+            if ((string)($candidate['identityKey'] ?? '') === $identityKey) {
+                $entry = $candidate;
+                break;
+            }
+        }
+
+        if (!is_array($entry)) {
+            return [
+                'status' => false,
+                'text' => 'Participant introuvable pour cette reunion.',
+            ];
+        }
+
+        $attendance = new \dbObject\EventAttendance();
+        $lookup = false;
+        $userId = (int)($entry['userId'] ?? 0);
+        $email = self::normalizeInvitationEmail($entry['email'] ?? '');
+        if ($userId > 0) {
+            $lookup = $attendance->load([
+                ['IDevent', (int)$this->getId()],
+                ['IDuser', $userId],
+            ]);
+        } elseif ($email !== '') {
+            $lookup = $attendance->load([
+                ['IDevent', (int)$this->getId()],
+                ['email', $email],
+            ]);
+        }
+
+        if (!$lookup) {
+            $attendance->set('IDevent', (int)$this->getId());
+            $attendance->set('IDuser', $userId > 0 ? $userId : null);
+            $attendance->set('email', $userId <= 0 && $email !== '' ? $email : null);
+        }
+
+        $attendance->set('display_name', trim((string)($entry['displayLabel'] ?? '')) !== '' ? trim((string)$entry['displayLabel']) : null);
+        $attendance->set('is_present', !empty($isPresent) ? 1 : 0);
+        $attendance->set('IDuser_checked_by', $checkedByUserId);
+        $attendance->set('checked_at', new \DateTimeImmutable());
+        $attendance->set('active', 1);
+
+        return $attendance->save();
     }
 
     public function isVisibleToInvitationViewer($userId, $organizationId = 0, $viewerEmail = ''): bool
@@ -501,6 +798,24 @@ class Event extends DbObject
         }
 
         return $startAt > $referenceDate;
+    }
+
+    public function isInProgress(?\DateTimeInterface $referenceDate = null): bool
+    {
+        $startAt = $this->get('start_at');
+        $endAt = $this->get('end_at');
+        if (!($startAt instanceof \DateTimeInterface) || !($endAt instanceof \DateTimeInterface)) {
+            return false;
+        }
+
+        if (!($referenceDate instanceof \DateTimeInterface)) {
+            $timezone = $startAt->getTimezone();
+            $referenceDate = $timezone instanceof \DateTimeZone
+                ? new \DateTimeImmutable('now', $timezone)
+                : new \DateTimeImmutable('now');
+        }
+
+        return $startAt <= $referenceDate && $endAt >= $referenceDate;
     }
 
     public function canUserPrepareUpcomingPv(int $userId, int $organizationId = 0, string $viewerEmail = ''): bool
