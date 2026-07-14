@@ -1011,6 +1011,11 @@
 					throw new \RuntimeException("Le retrait de l'organisation n'a pas pu etre enregistre.");
 				}
 
+				$scopeUpdateResult = \dbObject\Document::normalizeSelfScopedDocumentsForAuthorContext((int)$this->getId(), $userId);
+				if (!is_array($scopeUpdateResult) || empty($scopeUpdateResult['status'])) {
+					throw new \RuntimeException("Les portees des documents lies a ce membre n'ont pas pu etre mises a jour.");
+				}
+
 				$pdo->commit();
 
 				return array(
@@ -1690,6 +1695,13 @@
 			$saveResult = $membership->save();
 			if (!is_array($saveResult) || empty($saveResult['status'])) {
 				throw new \RuntimeException("Impossible d'attacher cette personne a l'organisation.");
+			}
+
+			if (!$isActive) {
+				$scopeUpdateResult = \dbObject\Document::normalizeSelfScopedDocumentsForAuthorContext($organizationId, (int)$user->getId());
+				if (!is_array($scopeUpdateResult) || empty($scopeUpdateResult['status'])) {
+					throw new \RuntimeException("Impossible de mettre a jour les documents de cette personne.");
+				}
 			}
 
 			return $membership;
@@ -3557,7 +3569,7 @@
 				'parentDocumentId' => $currentParentDocumentId,
 				'pathLabel' => $currentPathLabel,
 			);
-			$data['canMove'] = $document->canEditInOrganizationContext((int)$this->getId());
+			$data['canMove'] = $document->canMoveInOrganizationContext((int)$this->getId(), $currentUserId);
 
 			if (!$data['canMove']) {
 				return $data;

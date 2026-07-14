@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
+require_once dirname(__DIR__, 4) . '/common/object_visibility_selector.php';
 
 $currentUserId = (int)commonGetCurrentUserId();
 $organizationId = (int)($_SESSION['currentOrganization'] ?? 0);
@@ -22,6 +23,9 @@ $nextcloudConfigured = omoDocumentsParamsHasNextcloudConfig($nextcloudConfig);
 $usesLegacyConfig = $organizationLoaded
     ? omoDocumentsParamsUsesLegacyNextcloudConfig($organization, $organizationApplication)
     : false;
+$visibilityDefaults = $organizationLoaded
+    ? omoDocumentsParamsGetVisibilityDefaults($organization, $organizationApplication)
+    : \dbObject\Document::getApplicationDefaultScopeTypes(0);
 $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-folder.png';
 ?>
 <div class="omo-documents-params" data-omo-documents-params-root>
@@ -125,6 +129,30 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
                         >
                         <span class="omo-documents-params__hint"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.folder_hint'), ENT_QUOTES, 'UTF-8') ?></span>
                     </label>
+
+                    <div class="omo-documents-params__field omo-documents-params__field--full">
+                        <?= commonRenderObjectVisibilitySelector(array(
+                            'inputName' => 'default_visibility_type',
+                            'fieldLabel' => omoDocumentsParamsT('documents.params.field.default_visibility'),
+                            'ariaLabel' => omoDocumentsParamsT('documents.params.field.default_visibility'),
+                            'selectedValue' => (string)($visibilityDefaults['visibilityType'] ?? \dbObject\ObjectVisibility::TYPE_ORGANIZATION),
+                            'optionLabels' => \dbObject\ObjectVisibility::getVisibilityTypeOptions(),
+                            'idPrefix' => 'omo-documents-default-visibility',
+                            'hint' => omoDocumentsParamsT('documents.params.field.default_visibility_hint'),
+                        )) ?>
+                    </div>
+
+                    <div class="omo-documents-params__field omo-documents-params__field--full">
+                        <?= commonRenderObjectVisibilitySelector(array(
+                            'inputName' => 'default_edit_visibility_type',
+                            'fieldLabel' => omoDocumentsParamsT('documents.params.field.default_edit_visibility'),
+                            'ariaLabel' => omoDocumentsParamsT('documents.params.field.default_edit_visibility'),
+                            'selectedValue' => (string)($visibilityDefaults['editVisibilityType'] ?? \dbObject\Document::getDefaultEditVisibilityType()),
+                            'optionLabels' => \dbObject\ObjectVisibility::getVisibilityTypeOptions(),
+                            'idPrefix' => 'omo-documents-default-edit-visibility',
+                            'hint' => omoDocumentsParamsT('documents.params.field.default_edit_visibility_hint'),
+                        )) ?>
+                    </div>
 
                     <?php if ($nextcloudConfigured): ?>
                         <label class="omo-documents-params__checkbox omo-documents-params__field--full">

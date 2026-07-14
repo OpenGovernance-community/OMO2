@@ -43,8 +43,12 @@
             return null;
         }
 
-        sourceTabs = toArray(container.querySelectorAll('[data-generic-tab]'));
-        sourcePanels = toArray(container.querySelectorAll('[data-generic-tab-panel]'));
+        sourceTabs = toArray(container.querySelectorAll('[data-generic-tab]')).filter(function (tab) {
+            return findClosestByAttribute(tab.parentNode, 'data-generic-tabs', document) === container;
+        });
+        sourcePanels = toArray(container.querySelectorAll('[data-generic-tab-panel]')).filter(function (panel) {
+            return findClosestByAttribute(panel.parentNode, 'data-generic-tabs', document) === container;
+        });
         tabs = [];
         panels = [];
 

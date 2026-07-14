@@ -149,6 +149,44 @@ class ArrayDecisionProcess extends ArrayDbObject
         $this->load($loadParams);
     }
 
+    public function loadVisibleForOrganization($organizationId, $userId): array
+    {
+        $organizationId = (int)$organizationId;
+        $userId = (int)$userId;
+        $this->exchangeArray([]);
+
+        if ($organizationId <= 0 || $userId <= 0) {
+            return [];
+        }
+
+        $scopedEmail = $this->resolveViewerScopedEmail($userId, $organizationId);
+        $rows = \dbObject\DecisionProcess::fetchListRowsForOrganization($organizationId, $userId, $scopedEmail);
+        $visibleDecisions = [];
+
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $decision = new \dbObject\DecisionProcess();
+            $decision->loadFromArray($row);
+            $decision->setId((int)($row['id'] ?? 0));
+            if ((int)$decision->getId() <= 0) {
+                continue;
+            }
+
+            $access = $this->resolveDecisionAccess($decision, $organizationId, $userId, $scopedEmail);
+            if (!is_array($access) || empty($access['canView'])) {
+                continue;
+            }
+
+            $visibleDecisions[] = $decision;
+        }
+
+        $this->exchangeArray($visibleDecisions);
+        return $visibleDecisions;
+    }
+
     public function buildPersonalSpaceSummary($organizationId, $userId, $holonId = 0, $previewLimit = 3)
     {
         $organizationId = (int)$organizationId;

@@ -73,6 +73,17 @@
 			];
 		}
 
+		public static function getVisibilityTypeDescriptions(): array
+		{
+			return [
+				self::TYPE_EVERYONE => 'Visible ou editable depuis l exterieur, sans appartenance a l organisation.',
+				self::TYPE_ORGANIZATION => 'Reserve aux membres de l organisation.',
+				self::TYPE_CIRCLE => 'Reserve aux membres du cercle concerne.',
+				self::TYPE_ROLE => 'Reserve aux membres du role concerne.',
+				self::TYPE_SELF => 'Reserve a la personne proprietaire du document.',
+			];
+		}
+
 		public static function normalizeVisibilityType($visibilityType): string
 		{
 			$visibilityType = trim(mb_strtolower((string)$visibilityType, 'UTF-8'));
@@ -302,14 +313,18 @@
 			return $ruleMap;
 		}
 
-		public static function buildFallbackRuleData($organizationId = 0): array
+		public static function buildFallbackRuleData($organizationId = 0, ?string $defaultVisibilityType = null): array
 		{
+			$visibilityType = $defaultVisibilityType !== null
+				? self::normalizeVisibilityType($defaultVisibilityType)
+				: self::TYPE_ORGANIZATION;
+
 			return [
 				'id' => 0,
 				'object_type' => '',
 				'object_id' => 0,
 				'IDorganization' => (int)$organizationId,
-				'visibility_type' => self::TYPE_ORGANIZATION,
+				'visibility_type' => $visibilityType,
 				'IDholon' => null,
 				'active' => 1,
 			];

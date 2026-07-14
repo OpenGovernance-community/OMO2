@@ -64,7 +64,17 @@ if (!is_array($result) || empty($result['status'])) {
     exit;
 }
 
+$defaultsResult = omoDocumentsParamsStoreVisibilityDefaults($organization, $_POST);
+if (!is_array($defaultsResult) || empty($defaultsResult['status'])) {
+    http_response_code(422);
+    echo json_encode(array(
+        'status' => false,
+        'message' => trim((string)($defaultsResult['text'] ?? omoDocumentsParamsT('documents.params.error.save_failed'))),
+    ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
 echo json_encode(array(
     'status' => true,
-    'message' => trim((string)($result['text'] ?? omoDocumentsParamsT('documents.params.feedback.saved'))),
+    'message' => trim((string)($defaultsResult['text'] ?? $result['text'] ?? omoDocumentsParamsT('documents.params.feedback.saved'))),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

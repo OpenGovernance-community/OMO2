@@ -102,6 +102,11 @@ class Permission extends DbObject
                 'description' => 'Autorise la creation de dates dans le contexte cible.',
                 'iscontextual' => true,
             ],
+            'CAN_CLAIM_PV' => [
+                'title' => 'Devenir secretaire de PV',
+                'description' => 'Autorise a prendre le role de secretaire pendant une reunion associee a un PV.',
+                'iscontextual' => true,
+            ],
             'CAN_CREATE_FAQ' => [
                 'title' => 'Creer des FAQ',
                 'description' => 'Autorise la creation de FAQ dans le contexte cible.',

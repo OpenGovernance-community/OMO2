@@ -4,6 +4,7 @@ require_once("../shared_functions.php");
 require_once("../common/auth.php");
 require_once("../common/patreon.php");
 require_once("../common/user_competence_ui.php");
+require_once("../common/user_profile_ui.php");
 require_once("../common/leaflet_helper.php");
 require_once(__DIR__ . "/profil_translation_helper.php");
 

@@ -24,6 +24,10 @@ if (!function_exists('omoDocumentsParamsSourceLang')) {
             'documents.params.field.password_placeholder_keep' => ['text' => 'Laisser vide pour conserver le mot de passe actuel', 'context' => 'Placeholder shown when a Nextcloud password already exists.'],
             'documents.params.field.folder' => ['text' => 'Dossier distant', 'context' => 'Label of the remote Nextcloud folder field.'],
             'documents.params.field.folder_hint' => ['text' => 'Optionnel. Si vide, OMO utilisera directement un dossier omo-documents à la racine du compte.', 'context' => 'Hint shown below the remote Nextcloud folder field.'],
+            'documents.params.field.default_visibility' => ['text' => 'Visibilite par defaut', 'context' => 'Label of the default document visibility selector in Documents settings.'],
+            'documents.params.field.default_edit_visibility' => ['text' => 'Edition par defaut', 'context' => 'Label of the default document edit visibility selector in Documents settings.'],
+            'documents.params.field.default_visibility_hint' => ['text' => 'Valeur initiale proposee lors de la creation d un document.', 'context' => 'Hint shown below the default visibility selector in Documents settings.'],
+            'documents.params.field.default_edit_visibility_hint' => ['text' => 'Definit qui peut modifier un nouveau document par defaut.', 'context' => 'Hint shown below the default edit visibility selector in Documents settings.'],
             'documents.params.field.clear' => ['text' => 'Supprimer cette configuration Nextcloud', 'context' => 'Checkbox label used to clear the Nextcloud configuration.'],
             'documents.params.action.save' => ['text' => 'Enregistrer', 'context' => 'Primary action used to save the Documents application settings screen.'],
             'documents.params.action.saving' => ['text' => 'Enregistrement...', 'context' => 'Primary action label shown while the Documents application settings are being saved.'],
@@ -348,6 +352,60 @@ if (!function_exists('omoDocumentsParamsStoreNextcloudConfig')) {
                 ? omoDocumentsParamsT('documents.params.feedback.cleared')
                 : omoDocumentsParamsT('documents.params.feedback.saved'),
             'config' => $allFieldsEmpty ? omoDocumentsParamsNormalizeNextcloudConfig(array()) : $normalizedConfig,
+        );
+    }
+}
+
+if (!function_exists('omoDocumentsParamsGetVisibilityDefaults')) {
+    function omoDocumentsParamsGetVisibilityDefaults(\dbObject\Organization $organization, ?\dbObject\OrganizationApplication $organizationApplication = null): array
+    {
+        $organizationId = (int)$organization->getId();
+        return \dbObject\Document::getApplicationDefaultScopeTypes($organizationId);
+    }
+}
+
+if (!function_exists('omoDocumentsParamsStoreVisibilityDefaults')) {
+    function omoDocumentsParamsStoreVisibilityDefaults(\dbObject\Organization $organization, array $values): array
+    {
+        $organizationId = (int)$organization->getId();
+        if ($organizationId <= 0) {
+            return array(
+                'status' => false,
+                'text' => omoDocumentsParamsT('documents.params.error.organization'),
+            );
+        }
+
+        $organizationApplication = omoDocumentsParamsGetApplicationLink($organizationId, true);
+        if (!$organizationApplication) {
+            return array(
+                'status' => false,
+                'text' => omoDocumentsParamsT('documents.params.error.unavailable'),
+            );
+        }
+
+        $parameters = $organizationApplication->getParametersArray();
+        $parameters['documentDefaults'] = array(
+            'visibilityType' => \dbObject\ObjectVisibility::normalizeVisibilityType(
+                (string)($values['default_visibility_type'] ?? \dbObject\Document::getDefaultVisibilityTypeForOrganization($organizationId))
+            ),
+            'editVisibilityType' => \dbObject\ObjectVisibility::normalizeVisibilityType(
+                (string)($values['default_edit_visibility_type'] ?? \dbObject\Document::getDefaultEditVisibilityTypeForOrganization($organizationId))
+            ),
+        );
+
+        $organizationApplication->setParametersArray($parameters);
+        $saveResult = $organizationApplication->save();
+        if (!is_array($saveResult) || empty($saveResult['status'])) {
+            return array(
+                'status' => false,
+                'text' => omoDocumentsParamsT('documents.params.error.save_failed'),
+            );
+        }
+
+        return array(
+            'status' => true,
+            'text' => omoDocumentsParamsT('documents.params.feedback.saved'),
+            'defaults' => $parameters['documentDefaults'],
         );
     }
 }
