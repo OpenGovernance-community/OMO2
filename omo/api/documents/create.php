@@ -2038,7 +2038,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                 ? new window.AbortController()
                 : null;
 
-            const response = await fetch('/omo/api/documents/transcribe.php', {
+            const response = await fetch('/omo/api/documents/html/transcribe.php', {
                 method: 'POST',
                 body: formData,
                 credentials: 'same-origin',
@@ -2126,7 +2126,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                 ? new window.AbortController()
                 : null;
 
-            const response = await fetch('/omo/api/documents/rewrite.php', {
+            const response = await fetch('/omo/api/documents/html/rewrite.php', {
                 method: 'POST',
                 body: formData,
                 credentials: 'same-origin',
@@ -2215,7 +2215,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                 ? new window.AbortController()
                 : null;
 
-            const response = await fetch('/omo/api/documents/summarize.php', {
+            const response = await fetch('/omo/api/documents/html/summarize.php', {
                 method: 'POST',
                 body: formData,
                 credentials: 'same-origin',

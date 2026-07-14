@@ -110,7 +110,7 @@ $associatedEventSchedule = '';
 $associatedEventLocation = '';
 $associatedEventContext = '';
 $pdfExportUrl = $document->isPvDocument()
-    ? '/omo/api/documents/export_pdf.php?id=' . rawurlencode((string)(int)$document->getId())
+    ? '/omo/api/documents/pv/export_pdf.php?id=' . rawurlencode((string)(int)$document->getId())
         . '&oid=' . rawurlencode((string)$organizationId)
     : '';
 
