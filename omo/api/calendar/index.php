@@ -1871,11 +1871,16 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
             var typeField = form.querySelector('[data-omo-calendar-document-type]');
             var allDocumentFields = form.querySelector('[data-omo-calendar-document-fields]');
+            var pvTemplateField = form.querySelector('[data-omo-calendar-pv-template-field]');
             var documentType = typeField ? String(typeField.value || '').trim() : '';
             var hasDocument = documentType !== '';
 
             if (allDocumentFields) {
                 allDocumentFields.hidden = !hasDocument;
+            }
+
+            if (pvTemplateField) {
+                pvTemplateField.hidden = documentType !== 'pv';
             }
         }
 

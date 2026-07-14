@@ -25,7 +25,7 @@
 		{
 			return [
 				[['title'], 'required'],						// Champs obligatoires
-				[['id', 'version', 'estDossier', 'openinnewwindow', 'storedfilesize'], 'integer'],				// Nombres entiers
+			[['id', 'version', 'estDossier', 'active', 'is_template', 'pv_editor_handover_open', 'openinnewwindow', 'storedfilesize'], 'integer'],				// Nombres entiers
 				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'pvstage', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime'], 'string'],	// Chaines de caractere
 				[['description', 'content', 'contentedition'], 'text'],			// Textes libres
 				[['datecreation', 'datemodification', 'dateedition', 'datecontentedition'], 'datetime'],	// Date avec precision des heures
@@ -39,6 +39,7 @@
 		{
 			return [
 				'id' => 'ID',
+				'active' => 'Actif',
 				'title' => 'Titre',
 				'description' => 'Resume',
 				'content' => 'Contenu',
@@ -52,6 +53,7 @@
 				'IDholon' => 'Holon',
 				'IDevent' => 'Evenement associe',
 				'IDuser_pv_editor' => 'Secretaire du PV',
+				'pv_editor_handover_open' => 'Passation du secretaire ouverte',
 				'estDossier' => 'Dossier',
 				'IDdocument_parent' => 'Dossier parent',
 				'datecreation' => 'Date de creation',
@@ -63,6 +65,7 @@
 				'codeedit' => 'Code d edition',
 				'documenttype' => 'Type de document',
 				'pvstage' => 'Etape du PV',
+				'is_template' => 'Modele de PV',
 				'externalurl' => 'URL externe',
 				'openinnewwindow' => 'Ouvrir dans une nouvelle fenetre',
 				'storedfilepath' => 'Chemin distant du fichier',
@@ -93,7 +96,9 @@
 				'datecontentedition' => 'Date de mise a jour du brouillon temporaire',
 				'documenttype' => 'Permet de distinguer les documents HTML, les liens externes et les dossiers',
 				'pvstage' => 'Etape actuelle du flux d un document PV: preparation, reunion, relecture ou valide',
+				'is_template' => 'Permet d utiliser la structure et le contenu de ce PV lors d une nouvelle creation',
 				'IDuser_pv_editor' => 'Personne qui tient le PV pendant la reunion et peut modifier tous les points.',
+				'pv_editor_handover_open' => 'Indique que le secretaire actuel autorise un invite a reprendre son role.',
 				'externalurl' => 'Adresse du site a ouvrir pour un document de type lien externe',
 				'openinnewwindow' => 'Ouvre le lien externe directement dans une autre fenetre',
 				'storedfilepath' => 'Chemin du fichier sur le stockage Nextcloud de l organisation',
@@ -120,6 +125,72 @@
 		public static function getOrder()
 		{
 			return "datecreation";
+		}
+
+		public function isArchived(): bool
+		{
+			return (int)$this->get('active') !== 1;
+		}
+
+		public function isPvTemplate(): bool
+		{
+			return $this->isPvDocument() && (int)$this->get('is_template') === 1;
+		}
+
+		public function canUseAsPvTemplate(int $organizationId): bool
+		{
+			return (int)$this->getId() > 0
+				&& !$this->isArchived()
+				&& $this->isPvTemplate()
+				&& (int)$this->get('IDorganization') === (int)$organizationId
+				&& $this->canViewDirectlyInOrganization($organizationId);
+		}
+
+		public function updatePvTemplateState(int $organizationId, int $userId, bool $isTemplate): array
+		{
+			if (
+				(int)$this->getId() <= 0
+				|| (int)$this->get('IDorganization') !== (int)$organizationId
+				|| !$this->isPvDocument()
+				|| !$this->canUserManagePvDocument($userId)
+			) {
+				return array('status' => false, 'text' => 'Acces refuse.');
+			}
+
+			$this->set('is_template', $isTemplate ? 1 : 0);
+			$this->set('IDusermodification', $userId);
+			$this->set('datemodification', new \DateTimeImmutable());
+
+			return $this->save();
+		}
+
+		public function canManageLifecycle(int $organizationId, int $userId): bool
+		{
+			$organizationId = (int)$organizationId;
+			$userId = (int)$userId;
+			if ($organizationId <= 0 || $userId <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
+				return false;
+			}
+
+			if ($this->isPvDocument()) {
+				return $this->isPvCreatorOrEditor($userId);
+			}
+
+			return $this->canEditInOrganizationContext($organizationId, $userId, false);
+		}
+
+		public function canDeleteDocument(): bool
+		{
+			if ($this->isPvDocument() || (int)$this->get('IDevent') > 0) {
+				return false;
+			}
+
+			$child = self::fetchRow(
+				'select `id` from `document` where `IDdocument_parent` = :document_id limit 1',
+				['document_id' => (int)$this->getId()]
+			);
+
+			return $child === false;
 		}
 
 		public static function getVisibilityObjectType(): string
@@ -586,6 +657,19 @@
 			return $this->currentViewerCanAccessEditVisibility($documentOrganizationId);
 		}
 
+		public function canMoveInOrganizationContext(int $organizationId, int $userId): bool
+		{
+			$organizationId = (int)$organizationId;
+			$userId = (int)$userId;
+
+			if ($organizationId <= 0 || $userId <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
+				return false;
+			}
+
+			return ($this->isPvDocument() && $this->canUserManagePvDocument($userId))
+				|| $this->canEditInOrganizationContext($organizationId, $userId, false);
+		}
+
 		protected function normalizeScopeTypeForCurrentContext(string $visibilityType, string $fallbackType): string
 		{
 			return self::resolveCompatibleScopeTypeForHolonId(
@@ -659,11 +743,16 @@
 			return $userId > 0 && $userId === $this->getPvEditorUserId();
 		}
 
+		public function isPvEditorHandoverOpen(): bool
+		{
+			return $this->isPvDocument() && (int)$this->get('pv_editor_handover_open') === 1;
+		}
+
 		public function isPvCreatorOrEditor(int $userId): bool
 		{
 			return $this->isPvDocument()
 				&& $userId > 0
-				&& ($userId === (int)$this->get('IDuser') || $this->isPvEditor($userId));
+				&& ($userId === $this->getCreatedByUserId() || $this->isPvEditor($userId));
 		}
 
 		public function canUserManagePvDocument(int $userId): bool
@@ -673,7 +762,7 @@
 			}
 
 			return $this->isPvEditor($userId)
-				|| ($this->getPvEditorUserId() <= 0 && $userId === (int)$this->get('IDuser'));
+				|| ($this->getPvEditorUserId() <= 0 && $userId === $this->getCreatedByUserId());
 		}
 
 		public function isVisibleInDocumentsListForUser(int $userId, ?\DateTimeInterface $referenceDate = null): bool
@@ -756,6 +845,9 @@
 			if ($event instanceof \dbObject\Event) {
 				return $event->isVisibleToInvitationViewer($userId, $organizationId);
 			}
+			if ($this->hasExplicitInvitations()) {
+				return $this->isUserInvited($userId, $organizationId);
+			}
 
 			return $this->canViewDirectlyInOrganization($organizationId);
 		}
@@ -767,27 +859,68 @@
 				return null;
 			}
 
-			$holonId = (int)$this->get('IDholon');
-			if ($holonId <= 0) {
-				$event = $this->getAssociatedEvent();
-				if ($event instanceof \dbObject\Event) {
-					$holonId = (int)$event->get('IDholon');
-				}
-			}
+			$holonId = $this->getPvContextHolonId();
 
 			return self::resolveCreationPermissionHolon($organizationId, $holonId > 0 ? $holonId : null);
 		}
 
+		public function getPvContextHolonId(): int
+		{
+			if (!$this->isPvDocument()) {
+				return 0;
+			}
+
+			$holonId = (int)$this->get('IDholon');
+			if ($holonId > 0) {
+				return $holonId;
+			}
+
+			$event = $this->getAssociatedEvent();
+			return $event instanceof \dbObject\Event ? (int)$event->get('IDholon') : 0;
+		}
+
 		public function canUserClaimPvEditor(int $organizationId, int $userId): bool
 		{
-			if (!$this->isPvDocument() || $this->isPvValidated() || $userId <= 0 || $this->getPvEditorUserId() > 0) {
+			if (!$this->isPvDocument() || $this->isPvValidated() || $userId <= 0) {
 				return false;
 			}
 
+			if ($this->getPvContextHolonId() <= 0 && $userId === $this->getCreatedByUserId()) {
+				return true;
+			}
+
 			$permissionHolon = $this->getPvPermissionHolon($organizationId);
-			return $permissionHolon instanceof \dbObject\Holon
-				&& (int)$permissionHolon->getId() > 0
+			if (!($permissionHolon instanceof \dbObject\Holon)) {
+				return false;
+			}
+
+			return (int)$permissionHolon->getId() > 0
 				&& $permissionHolon->isAllowed('CAN_CLAIM_PV', false, $userId);
+		}
+
+		public function canUserReplacePvEditor(int $organizationId, int $userId): bool
+		{
+			if (
+				!$this->isPvDocument()
+				|| $this->isPvValidated()
+				|| $userId <= 0
+				|| $this->getPvEditorUserId() <= 0
+				|| $this->isPvEditor($userId)
+				|| !$this->isPvEditorHandoverOpen()
+			) {
+				return false;
+			}
+
+			if ($this->canUserClaimPvEditor($organizationId, $userId)) {
+				return false;
+			}
+
+			$event = $this->getAssociatedEvent();
+			if ($event instanceof \dbObject\Event) {
+				return $event->isVisibleToInvitationViewer($userId, $organizationId);
+			}
+
+			return $this->hasExplicitInvitations() && $this->isUserInvited($userId, $organizationId);
 		}
 
 		public function claimPvEditor(int $organizationId, int $userId): array
@@ -797,6 +930,7 @@
 			}
 
 			$this->set('IDuser_pv_editor', $userId);
+			$this->set('pv_editor_handover_open', 0);
 			$this->set('IDusermodification', $userId);
 			$this->set('datemodification', new \DateTimeImmutable());
 			$saveResult = $this->save();
@@ -812,24 +946,82 @@
 			return array('status' => true);
 		}
 
+		public function openPvEditorHandover(int $userId): array
+		{
+			if (!$this->isPvEditor($userId) || $this->isPvValidated()) {
+				return array('status' => false, 'text' => 'Acces refuse.');
+			}
+
+			$this->set('pv_editor_handover_open', 1);
+			$this->set('IDusermodification', $userId);
+			$this->set('datemodification', new \DateTimeImmutable());
+			$saveResult = $this->save();
+			if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
+				return array('status' => false, 'text' => 'Impossible de passer la main pour ce PV.');
+			}
+
+			$this->load((int)$this->getId());
+			return array('status' => $this->isPvEditorHandoverOpen());
+		}
+
+		public function replacePvEditor(int $organizationId, int $userId): array
+		{
+			if (!$this->canUserReplacePvEditor($organizationId, $userId)) {
+				return array('status' => false, 'text' => 'Acces refuse.');
+			}
+
+			$this->set('IDuser_pv_editor', $userId);
+			$this->set('pv_editor_handover_open', 0);
+			$this->set('IDusermodification', $userId);
+			$this->set('datemodification', new \DateTimeImmutable());
+			$saveResult = $this->save();
+			if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
+				return array('status' => false, 'text' => 'Impossible de remplacer l editeur du PV.');
+			}
+
+			$this->load((int)$this->getId());
+			return array('status' => $this->isPvEditor($userId));
+		}
+
 		public function canUserEditPvPoint(\dbObject\DocumentPvPoint $point, int $userId): bool
 		{
 			if (!$this->isPvDocument() || $this->isPvValidated() || $point->isHandled() || (int)$point->get('IDdocument') !== (int)$this->getId()) {
 				return false;
 			}
 
-			return $this->isPvEditor($userId) || $point->isEditableByUser($userId);
+			return $this->canUserManagePvDocument($userId) || $point->isEditableByUser($userId);
 		}
 
 		public function canUserReorderPvPoints(int $userId): bool
 		{
-			return $this->canUserManagePvDocument($userId);
+			return $this->isPvDocument() && !$this->isPvValidated() && (
+				$this->canUserManagePvDocument($userId)
+				|| $this->getPvStage() === self::PV_STAGE_PREPARATION
+			);
+		}
+
+		public function canUserReorderPvItem(\dbObject\DocumentPvPoint $item, int $userId): bool
+		{
+			if (!$this->canUserReorderPvPoints($userId) || (int)$item->get('IDdocument') !== (int)$this->getId()) {
+				return false;
+			}
+
+			return $this->canUserManagePvDocument($userId)
+				|| (!$item->isGroup() && $this->getPvStage() === self::PV_STAGE_PREPARATION && $item->isEditableByUser($userId));
+		}
+
+		public function canUserCreatePvGroups(int $userId): bool
+		{
+			return !$this->isPvValidated() && $this->canUserManagePvDocument($userId);
 		}
 
 		public function getInvitations(bool $activeOnly = false)
 		{
 			$items = new \dbObject\ArrayDocumentInvitation();
-			$params = ['where' => [['field' => 'IDdocument', 'value' => (int)$this->getId()]]];
+			$params = ['where' => [
+				['field' => 'resource_type', 'value' => \dbObject\DocumentInvitation::resourceType()],
+				['field' => 'resource_id', 'value' => (int)$this->getId()],
+			]];
 			if ($activeOnly) {
 				$params['where'][] = ['field' => 'active', 'value' => 1];
 			}
@@ -850,7 +1042,7 @@
 					$holon = new \dbObject\Holon();
 					if ($holon->load((int)$invitation->get('IDholon'))) {
 						foreach ($holon->getAssociatedMemberUserIds(['organizationId' => $organizationId, 'skipPermissionFilter' => true]) as $userId) {
-							$entries['user:' . (int)$userId] = ['userId' => (int)$userId, 'email' => '', 'displayLabel' => '', 'identityKey' => 'user:' . (int)$userId];
+							$entries['user:' . (int)$userId] = ['userId' => (int)$userId, 'email' => '', 'displayLabel' => '', 'identityKey' => 'user:' . (int)$userId, 'accepted' => $invitation->get('accepted')];
 						}
 					}
 					continue;
@@ -858,13 +1050,13 @@
 				if ($type === \dbObject\DocumentInvitation::TYPE_USER) {
 					$userId = (int)$invitation->get('IDuser');
 					if ($userId > 0) {
-						$entries['user:' . $userId] = ['userId' => $userId, 'email' => '', 'displayLabel' => trim((string)$invitation->get('display_name')), 'identityKey' => 'user:' . $userId];
+						$entries['user:' . $userId] = ['userId' => $userId, 'email' => '', 'displayLabel' => trim((string)$invitation->get('display_name')), 'identityKey' => 'user:' . $userId, 'accepted' => $invitation->get('accepted')];
 					}
 					continue;
 				}
 				$email = trim(mb_strtolower((string)$invitation->get('email'), 'UTF-8'));
 				if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
-					$entries['email:' . $email] = ['userId' => 0, 'email' => $email, 'displayLabel' => trim((string)$invitation->get('display_name')), 'identityKey' => 'email:' . $email];
+					$entries['email:' . $email] = ['userId' => 0, 'email' => $email, 'displayLabel' => trim((string)$invitation->get('display_name')), 'identityKey' => 'email:' . $email, 'accepted' => $invitation->get('accepted')];
 				}
 			}
 			foreach ($entries as &$entry) {
@@ -879,15 +1071,66 @@
 			return array_values($entries);
 		}
 
+		public function hasExplicitInvitations(): bool
+		{
+			foreach ($this->getInvitations(true) as $invitation) {
+				if (
+					$invitation instanceof \dbObject\DocumentInvitation
+					&& \dbObject\DocumentInvitation::normalizeStatus($invitation->get('status')) !== \dbObject\DocumentInvitation::STATUS_REVOKED
+				) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		public function isUserInvited(int $userId, int $organizationId = 0): bool
+		{
+			if ($userId <= 0) {
+				return false;
+			}
+			$organizationId = $organizationId > 0 ? $organizationId : (int)$this->get('IDorganization');
+			$userEmails = array();
+			$user = new \dbObject\User();
+			if ($user->load($userId)) {
+				$email = trim(mb_strtolower((string)$user->get('email'), 'UTF-8'));
+				if ($email !== '') {
+					$userEmails[$email] = true;
+				}
+			}
+			$membership = new \dbObject\UserOrganization();
+			if ($membership->load([['IDorganization', $organizationId], ['IDuser', $userId]])) {
+				$email = trim(mb_strtolower((string)$membership->get('email'), 'UTF-8'));
+				if ($email !== '') {
+					$userEmails[$email] = true;
+				}
+			}
+			foreach ($this->getInvitationEntries($organizationId) as $entry) {
+				if ((int)($entry['userId'] ?? 0) === $userId) {
+					return true;
+				}
+				$email = trim(mb_strtolower((string)($entry['email'] ?? ''), 'UTF-8'));
+				if ($email !== '' && isset($userEmails[$email])) {
+					return true;
+				}
+			}
+			return false;
+		}
+
 		public function getInvitationAttendanceEntries(int $organizationId = 0): array
 		{
 			$entries = $this->getInvitationEntries($organizationId);
 			foreach ($entries as &$entry) {
 				$attendance = new \dbObject\DocumentAttendance();
-				$loaded = (int)($entry['userId'] ?? 0) > 0
-					? $attendance->load([['IDdocument', (int)$this->getId()], ['IDuser', (int)$entry['userId']]])
-					: $attendance->load([['IDdocument', (int)$this->getId()], ['email', (string)($entry['email'] ?? '')]]);
-				$entry['isPresent'] = $loaded && !empty($attendance->get('is_present'));
+				$conditions = [
+					['resource_type', \dbObject\DocumentAttendance::resourceType()],
+					['resource_id', (int)$this->getId()],
+				];
+				$conditions[] = (int)($entry['userId'] ?? 0) > 0
+					? ['IDuser', (int)$entry['userId']]
+					: ['email', (string)($entry['email'] ?? '')];
+				$loaded = $attendance->load($conditions);
+				$entry['isPresent'] = $loaded ? !empty($attendance->get('is_present')) : $entry['accepted'] === 1 || $entry['accepted'] === '1';
 			}
 			unset($entry);
 			return $entries;
@@ -899,12 +1142,14 @@
 				if ((string)($entry['identityKey'] ?? '') !== $identityKey) {
 					continue;
 				}
-				$attendance = new \dbObject\DocumentAttendance();
 				$userId = (int)($entry['userId'] ?? 0);
-				$loaded = $userId > 0
-					? $attendance->load([['IDdocument', (int)$this->getId()], ['IDuser', $userId]])
-					: $attendance->load([['IDdocument', (int)$this->getId()], ['email', (string)($entry['email'] ?? '')]]);
-				if (!$loaded) {
+				$attendance = new \dbObject\DocumentAttendance();
+				$conditions = [
+					['resource_type', \dbObject\DocumentAttendance::resourceType()],
+					['resource_id', (int)$this->getId()],
+					$userId > 0 ? ['IDuser', $userId] : ['email', (string)($entry['email'] ?? '')],
+				];
+				if (!$attendance->load($conditions)) {
 					$attendance->set('IDdocument', (int)$this->getId());
 					$attendance->set('IDuser', $userId > 0 ? $userId : null);
 					$attendance->set('email', $userId > 0 ? null : (string)($entry['email'] ?? ''));
@@ -914,7 +1159,17 @@
 				$attendance->set('IDuser_checked_by', $checkedByUserId);
 				$attendance->set('checked_at', new \DateTimeImmutable());
 				$attendance->set('active', 1);
-				return $attendance->save();
+				$saveResult = $attendance->save();
+				if (is_array($saveResult) && !empty($saveResult['status'])) {
+					foreach ($this->getInvitations(true) as $invitation) {
+						if ($invitation instanceof \dbObject\DocumentInvitation && $invitation->getIdentityKey() === $identityKey) {
+							$invitation->set('accepted', $isPresent ? 1 : 0);
+							$invitation->save();
+							break;
+						}
+					}
+				}
+				return $saveResult;
 			}
 			return ['status' => false, 'text' => 'Participant introuvable.'];
 		}
@@ -943,6 +1198,18 @@
 						$externalAuthors[$email] = $label !== '' && $label !== $email
 							? ($label . ' (' . $email . ')')
 							: $email;
+					}
+				}
+			} elseif (count($this->getInvitationEntries($organizationId)) > 0) {
+				foreach ($this->getInvitationEntries($organizationId) as $entry) {
+					$userId = (int)($entry['userId'] ?? 0);
+					if ($userId > 0) {
+						$userIds[$userId] = $userId;
+						continue;
+					}
+					$email = trim(mb_strtolower((string)($entry['email'] ?? ''), 'UTF-8'));
+					if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+						$externalAuthors[$email] = trim((string)($entry['displayLabel'] ?? '')) ?: $email;
 					}
 				}
 			} else {
@@ -1070,6 +1337,9 @@
 
 			if ($event instanceof \dbObject\Event) {
 				return $this->canUserAccessPvBeforeValidation($userId, $organizationId);
+			}
+			if ($this->hasExplicitInvitations()) {
+				return $this->isUserInvited($userId, $organizationId);
 			}
 
 			return $this->canViewDirectlyInOrganization($organizationId);
@@ -1493,6 +1763,24 @@
 			return (int)trim((string)$element->getAttribute('data-omo-document-id')) > 0;
 		}
 
+		protected static function isDecisionEmbedElement(\DOMElement $element): bool
+		{
+			if (trim((string)$element->getAttribute('data-omo-embed-type')) !== 'decision') {
+				return false;
+			}
+
+			return (int)trim((string)$element->getAttribute('data-omo-decision-id')) > 0;
+		}
+
+		protected static function isEventEmbedElement(\DOMElement $element): bool
+		{
+			if (trim((string)$element->getAttribute('data-omo-embed-type')) !== 'event') {
+				return false;
+			}
+
+			return (int)trim((string)$element->getAttribute('data-omo-event-id')) > 0;
+		}
+
 		protected static function buildDocumentEmbedDisplayHtml(
 			int $documentId,
 			string $title,
@@ -1510,10 +1798,13 @@
 				. ' data-omo-embed-type="document"'
 				. ' data-omo-document-id="' . (int)$documentId . '">';
 
-			$html .= '<div class="omo-document-embed__label">Document lie</div>';
-
 			if (trim($title) !== '') {
-				$html .= '<div class="omo-document-embed__title">' . htmlspecialchars(trim($title), ENT_QUOTES, 'UTF-8') . '</div>';
+				$documentUrl = '#documents-d' . (int)$documentId;
+				$html .= '<div class="omo-document-embed__title-wrap">'
+					. '<a class="omo-document-embed__title" href="' . htmlspecialchars($documentUrl, ENT_QUOTES, 'UTF-8') . '">'
+					. htmlspecialchars(trim($title), ENT_QUOTES, 'UTF-8') . '</a>'
+					. '<a class="omo-document-embed__external" href="' . htmlspecialchars($documentUrl, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener noreferrer" title="Ouvrir dans une nouvelle fenetre" aria-label="Ouvrir dans une nouvelle fenetre">&#8599;</a>'
+					. '</div>';
 			}
 
 			if (trim($description) !== '') {
@@ -1531,6 +1822,33 @@
 			$html .= '</div>';
 
 			return $html;
+		}
+
+		protected static function buildDecisionEmbedDisplayHtml(int $decisionId, string $title, string $type): string
+		{
+			$decisionUrl = '#decision-d' . $decisionId;
+			$html = '<div class="omo-decision-embed" data-omo-embed-type="decision" data-omo-decision-id="' . $decisionId . '">';
+			$html .= '<a class="omo-decision-embed__title" href="' . htmlspecialchars($decisionUrl, ENT_QUOTES, 'UTF-8') . '">'
+				. htmlspecialchars($title !== '' ? $title : ('Decision #' . $decisionId), ENT_QUOTES, 'UTF-8')
+				. '</a>';
+			if ($type !== '') {
+				$html .= '<div class="omo-decision-embed__type">' . htmlspecialchars($type, ENT_QUOTES, 'UTF-8') . '</div>';
+			}
+			return $html . '</div>';
+		}
+
+		protected static function buildEventEmbedDisplayHtml(int $eventId, string $title, string $schedule, string $description): string
+		{
+			$eventUrl = '#calendar-e' . $eventId;
+			$summary = trim(implode(' - ', array_filter(array(trim($schedule), trim($description)))));
+			$html = '<div class="omo-event-embed" data-omo-embed-type="event" data-omo-event-id="' . $eventId . '">';
+			$html .= '<a class="omo-event-embed__title" href="' . htmlspecialchars($eventUrl, ENT_QUOTES, 'UTF-8') . '">'
+				. htmlspecialchars($title !== '' ? $title : ('Evenement #' . $eventId), ENT_QUOTES, 'UTF-8')
+				. '</a>';
+			if ($summary !== '') {
+				$html .= '<div class="omo-event-embed__summary">' . htmlspecialchars($summary, ENT_QUOTES, 'UTF-8') . '</div>';
+			}
+			return $html . '</div>';
 		}
 
 		protected function renderExternalLinkForViewer(): string
@@ -1601,6 +1919,23 @@
 
 			if (self::isDocumentEmbedElement($node)) {
 				return $this->renderEmbeddedDocumentReference($node, $organizationId, $options);
+			}
+
+			if (self::isDecisionEmbedElement($node)) {
+				return self::buildDecisionEmbedDisplayHtml(
+					(int)$node->getAttribute('data-omo-decision-id'),
+					trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-decision-title')),
+					trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-decision-type'))
+				);
+			}
+
+			if (self::isEventEmbedElement($node)) {
+				return self::buildEventEmbedDisplayHtml(
+					(int)$node->getAttribute('data-omo-event-id'),
+					trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-event-title')),
+					trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-event-schedule')),
+					trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-event-description'))
+				);
 			}
 
 			$tagName = strtolower((string)$node->tagName);
@@ -1840,6 +2175,105 @@
 			return $points;
 		}
 
+		public function copyPvAgendaFromTemplate(\dbObject\Document $template, int $organizationId, int $userId): array
+		{
+			if (
+				(int)$this->getId() <= 0
+				|| !$this->isPvDocument()
+				|| (int)$this->get('IDorganization') !== $organizationId
+				|| !$template->canUseAsPvTemplate($organizationId)
+			) {
+				return array('status' => false, 'text' => 'Modele de PV invalide ou inaccessible.');
+			}
+
+			$sourceItems = $template->getPvPoints(true);
+			$childrenByParent = array();
+			foreach ($sourceItems as $sourceItem) {
+				if (!($sourceItem instanceof \dbObject\DocumentPvPoint) || (int)$sourceItem->getId() <= 0) {
+					continue;
+				}
+				$childrenByParent[max(0, (int)$sourceItem->get('IDparent'))][] = $sourceItem;
+			}
+
+			foreach ($childrenByParent as &$siblings) {
+				usort($siblings, static function ($left, $right): int {
+					$positionComparison = (int)$left->get('position') <=> (int)$right->get('position');
+					return $positionComparison !== 0
+						? $positionComparison
+						: (int)$left->getId() <=> (int)$right->getId();
+				});
+			}
+			unset($siblings);
+
+			$copiedIds = array();
+			$visitedIds = array();
+			$copyChildren = function (int $sourceParentId, int $targetParentId = 0) use (&$copyChildren, &$copiedIds, &$visitedIds, &$childrenByParent, $userId): array {
+				foreach ($childrenByParent[$sourceParentId] ?? array() as $sourceItem) {
+					$sourceItemId = (int)$sourceItem->getId();
+					if ($sourceItemId <= 0 || isset($visitedIds[$sourceItemId])) {
+						continue;
+					}
+					$visitedIds[$sourceItemId] = true;
+
+					$targetItem = new \dbObject\DocumentPvPoint();
+					$targetItem->set('IDdocument', (int)$this->getId());
+					$targetItem->set('item_type', $sourceItem->get('item_type'));
+					$targetItem->set('IDparent', $targetParentId > 0 ? $targetParentId : null);
+					$targetItem->set('title', $sourceItem->get('title'));
+					$targetItem->set('content', $sourceItem->isGroup() ? '' : $sourceItem->get('content'));
+					$targetItem->set('position', (int)$sourceItem->get('position'));
+					$targetItem->set('desired_duration_minutes', $sourceItem->isGroup() ? null : $sourceItem->get('desired_duration_minutes'));
+					$targetItem->set('actual_duration_minutes', null);
+					$targetItem->set('pointtype', $sourceItem->get('pointtype'));
+					$targetItem->set('IDuser_author', null);
+					$targetItem->set('author_email', null);
+					$targetItem->set('IDholon_concerned', null);
+					$targetItem->set('IDuser_modification', $userId > 0 ? $userId : null);
+					$targetItem->set('IDuser_editing', null);
+					$targetItem->set('edit_lock_token', null);
+					$targetItem->set('dateedition', null);
+					$targetItem->set('is_handled', 0);
+					$targetItem->set('active', 1);
+
+					$saveResult = $targetItem->save();
+					if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
+						return is_array($saveResult)
+							? $saveResult
+							: array('status' => false, 'text' => 'Impossible de copier un element du modele.');
+					}
+
+					$copiedIds[$sourceItemId] = (int)$targetItem->getId();
+					if ($sourceItem->isGroup()) {
+						$childrenResult = $copyChildren($sourceItemId, (int)$targetItem->getId());
+						if (($childrenResult['status'] ?? false) !== true) {
+							return $childrenResult;
+						}
+					}
+				}
+
+				return array('status' => true);
+			};
+
+			$copyResult = $copyChildren(0, 0);
+			if (($copyResult['status'] ?? false) !== true) {
+				return $copyResult;
+			}
+
+			// Invalid legacy parent links must not make an otherwise usable template fail.
+			foreach ($sourceItems as $sourceItem) {
+				if (!($sourceItem instanceof \dbObject\DocumentPvPoint) || isset($visitedIds[(int)$sourceItem->getId()])) {
+					continue;
+				}
+				$childrenByParent[0] = array($sourceItem);
+				$copyResult = $copyChildren(0, 0);
+				if (($copyResult['status'] ?? false) !== true) {
+					return $copyResult;
+				}
+			}
+
+			return array('status' => true, 'copiedCount' => count($copiedIds));
+		}
+
 		protected static function escapeViewerText($value): string
 		{
 			return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
@@ -1924,7 +2358,38 @@
 
 			$organizationId = (int)$this->get('IDorganization');
 			$points = $this->getPvPoints(true);
-			$pointCount = count($points);
+			$positionLabels = \dbObject\DocumentPvPoint::buildHierarchyPositionLabels($points);
+			$itemsByParent = array();
+			foreach ($points as $item) {
+				if (!($item instanceof \dbObject\DocumentPvPoint)) {
+					continue;
+				}
+				$itemsByParent[max(0, (int)$item->get('IDparent'))][] = $item;
+			}
+			foreach ($itemsByParent as &$siblings) {
+				usort($siblings, static function ($left, $right): int {
+					$positionComparison = (int)$left->get('position') <=> (int)$right->get('position');
+					return $positionComparison !== 0 ? $positionComparison : (int)$left->getId() <=> (int)$right->getId();
+				});
+			}
+			unset($siblings);
+			$orderedItems = array();
+			$visitedItemIds = array();
+			$appendItems = function (int $parentId, int $depth) use (&$appendItems, &$orderedItems, &$visitedItemIds, $itemsByParent): void {
+				foreach ($itemsByParent[$parentId] ?? array() as $item) {
+					$itemId = (int)$item->getId();
+					if ($itemId <= 0 || isset($visitedItemIds[$itemId])) {
+						continue;
+					}
+					$visitedItemIds[$itemId] = true;
+					$orderedItems[] = array('item' => $item, 'depth' => $depth);
+					if ($item->isGroup()) {
+						$appendItems($itemId, $depth + 1);
+					}
+				}
+			};
+			$appendItems(0, 0);
+			$pointCount = 0;
 			$totalDesiredMinutes = 0;
 			$totalActualMinutes = 0;
 			$hasDesiredMinutes = false;
@@ -1934,6 +2399,10 @@
 				if (!($point instanceof \dbObject\DocumentPvPoint)) {
 					continue;
 				}
+				if ($point->isGroup()) {
+					continue;
+				}
+				$pointCount += 1;
 
 				$desiredMinutes = $point->getDurationMinutesValue('desired_duration_minutes');
 				if ($desiredMinutes !== null) {
@@ -1972,12 +2441,23 @@
 
 			$html .= '<div class="omo-document-pv__points">';
 
-			foreach ($points as $point) {
+			foreach ($orderedItems as $orderedItem) {
+				$point = $orderedItem['item'] ?? null;
+				$depth = max(0, (int)($orderedItem['depth'] ?? 0));
 				if (!($point instanceof \dbObject\DocumentPvPoint)) {
 					continue;
 				}
 
+				if ($point->isGroup()) {
+					$html .= '<section class="omo-document-pv__group" style="margin-left:' . min(120, $depth * 18) . 'px">'
+						. '<h3 class="omo-document-pv__group-title"><span class="omo-document-pv__group-order">' . self::escapeViewerText((string)($positionLabels[(int)$point->getId()] ?? '')) . '</span>'
+						. self::escapeViewerText((string)$point->get('title')) . '</h3>'
+						. '</section>';
+					continue;
+				}
+
 				$pointData = $point->buildViewerData($organizationId);
+				$pointData['positionLabel'] = (string)($positionLabels[(int)$point->getId()] ?? '');
 				$pointTypeClass = preg_replace('/[^a-z0-9_-]+/i', '-', (string)($pointData['pointType'] ?? 'information'));
 				$pointTypeIconMap = array(
 					'information' => '/omo/assets/images/documents/pv-point-type/information.png',
@@ -1996,7 +2476,7 @@
 				$desiredLabel = self::formatPvDurationLabel($pointData['desiredDurationMinutes'] ?? null, 'souhaites');
 				$actualLabel = self::formatPvDurationLabel($pointData['actualDurationMinutes'] ?? null, 'reelles');
 
-				$html .= '<article class="omo-document-pv__point">';
+				$html .= '<article class="omo-document-pv__point" style="margin-left:' . min(120, $depth * 18) . 'px">';
 				$html .= '<header class="omo-document-pv__point-head">';
 				$html .= '<div class="omo-document-pv__point-order">' . self::escapeViewerText((string)($pointData['positionLabel'] ?? '')) . '</div>';
 				$html .= '<div class="omo-document-pv__point-main">';
@@ -2737,6 +3217,9 @@
 			$documentType = self::normalizeDocumentType($requestedDocumentType, $isFolder);
 			$allowEmptyTypePayload = !empty($values['allow_empty_type_payload']);
 			$eventId = isset($values['event_id']) ? (int)$values['event_id'] : 0;
+			$pvTemplateId = $documentType === self::TYPE_PV && isset($values['pv_template_id'])
+				? max(0, (int)$values['pv_template_id'])
+				: 0;
 			$uploadedFile = $documentType === self::TYPE_UPLOADED_FILE
 				? self::extractValidUploadedFile($values['uploaded_file'] ?? null)
 				: null;
@@ -2784,6 +3267,7 @@
 			$this->set('estDossier', $isFolder ? 1 : 0);
 			$this->set('documenttype', $documentType);
 			$this->set('pvstage', $documentType === self::TYPE_PV ? self::normalizePvStage($values['pv_stage'] ?? null) : null);
+			$this->set('is_template', 0);
 			$this->set('externalurl', $externalUrl !== '' ? $externalUrl : null);
 			$this->set('openinnewwindow', $openInNewWindow ? 1 : 0);
 			$this->set('IDevent', $eventId > 0 ? $eventId : null);
@@ -2936,6 +3420,26 @@
 					}
 
 					return $editVisibilitySaveResult;
+				}
+
+				if ($pvTemplateId > 0) {
+					$pvTemplate = new self();
+					if (!$pvTemplate->load($pvTemplateId)) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+						return array('status' => false, 'text' => 'Modele de PV introuvable.');
+					}
+
+					$templateCopyResult = $this->copyPvAgendaFromTemplate($pvTemplate, $organizationId, $userId);
+					if (!is_array($templateCopyResult) || ($templateCopyResult['status'] ?? false) !== true) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+						return is_array($templateCopyResult)
+							? $templateCopyResult
+							: array('status' => false, 'text' => 'Impossible de copier le modele de PV.');
+					}
 				}
 
 				if ($startedTransaction && $pdo->inTransaction()) {
@@ -3336,7 +3840,7 @@
 				);
 			}
 
-			if ($userId <= 0 || !$this->canEditInOrganizationContext($organizationId, $userId, false)) {
+			if ($userId <= 0 || !$this->canMoveInOrganizationContext($organizationId, $userId)) {
 				return array(
 					'status' => false,
 					'text' => 'Acces refuse.',

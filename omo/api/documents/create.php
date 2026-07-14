@@ -40,6 +40,9 @@ $sourceLang = [
     'documents.create.field.external_url_hint' => ['text' => 'Utilisez une adresse complète en http:// ou https://.', 'context' => 'Hint shown below the external URL field.'],
     'documents.create.field.open_new_window' => ['text' => 'Ouvrir dans une nouvelle fenêtre', 'context' => 'Checkbox label used for external links.'],
     'documents.create.field.pv_hint' => ['text' => 'Le contenu du PV se preparera ensuite dans l editeur PV dedie.', 'context' => 'Hint shown when creating a PV document from the generic document creator.'],
+    'documents.create.field.pv_template' => ['text' => 'Modele de base', 'context' => 'Label of the optional PV template selector.'],
+    'documents.create.field.pv_template_none' => ['text' => 'PV vide', 'context' => 'Empty option of the PV template selector.'],
+    'documents.create.field.pv_template_hint' => ['text' => 'Les groupes, points et contenus du modele seront copies sans leurs auteurs ni leurs invites.', 'context' => 'Help text below the PV template selector.'],
     'documents.create.field.upload' => ['text' => 'Fichier', 'context' => 'Label of the uploaded file field.'],
     'documents.create.upload.hint_nextcloud' => ['text' => 'Le fichier sera envoyé vers le stockage Nextcloud configuré pour cette organisation.', 'context' => 'Hint shown when Nextcloud storage is available.'],
     'documents.create.upload.hint_missing' => ['text' => 'Aucun stockage Nextcloud n’est configuré pour cette organisation.', 'context' => 'Hint shown when no Nextcloud storage is configured.'],
@@ -129,9 +132,30 @@ $visibilityHelpText = omoDocumentsCreateT('documents.create.visibility.help_cont
 $contextHolonId = $isEditing ? (int)$document->get('IDholon') : $holonId;
 $parentFolderTitle = '';
 $embeddableDocumentsPayload = array();
+$pvTemplatesPayload = array();
 $organization = new Organization();
 $organizationLoaded = $organizationId > 0 && $organization->load($organizationId);
 $nextcloudDocumentsAvailable = $organizationLoaded && $organization->hasNextcloudDocumentStorage();
+
+if (!$isEditing && $organizationLoaded) {
+    $pvTemplates = new \dbObject\ArrayDocument();
+    $pvTemplates->loadVisiblePvTemplatesForOrganization($organizationId);
+    foreach ($pvTemplates as $pvTemplate) {
+        if (!($pvTemplate instanceof Document) || (int)$pvTemplate->getId() <= 0) {
+            continue;
+        }
+
+        $templateLabel = trim((string)$pvTemplate->get('title'));
+        $templateParent = $pvTemplate->getParentDocument();
+        if ($templateParent instanceof Document && trim((string)$templateParent->get('title')) !== '') {
+            $templateLabel = trim((string)$templateParent->get('title')) . ' / ' . $templateLabel;
+        }
+        $pvTemplatesPayload[] = array(
+            'id' => (int)$pvTemplate->getId(),
+            'label' => $templateLabel !== '' ? $templateLabel : ('PV #' . (int)$pvTemplate->getId()),
+        );
+    }
+}
 
 if (!$isEditing && $parentDocumentId > 0) {
     $parentDocument = new Document();
@@ -402,6 +426,16 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                 </div>
 
                 <div class="omo-document-editor__field" data-omo-document-pv-section<?= $documentType !== Document::TYPE_PV ? ' hidden' : '' ?>>
+                    <label class="omo-document-editor__field">
+                        <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.pv_template')) ?></span>
+                        <select name="pv_template_id" class="generic-form-control">
+                            <option value="0"><?= $escape(omoDocumentsCreateT('documents.create.field.pv_template_none')) ?></option>
+                            <?php foreach ($pvTemplatesPayload as $pvTemplateOption): ?>
+                                <option value="<?= (int)$pvTemplateOption['id'] ?>"><?= $escape((string)$pvTemplateOption['label']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                    <span class="omo-document-editor__hint"><?= $escape(omoDocumentsCreateT('documents.create.field.pv_template_hint')) ?></span>
                     <span class="omo-document-editor__hint"><?= $escape(omoDocumentsCreateT('documents.create.field.pv_hint')) ?></span>
                 </div>
 
@@ -673,53 +707,6 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     border-color: color-mix(in srgb, #16a34a 26%, var(--color-border));
     background: color-mix(in srgb, #f0fdf4 88%, var(--color-surface));
     color: #166534;
-}
-
-.omo-document-embed-picker {
-    display: grid;
-    gap: 14px;
-}
-
-.omo-document-embed-picker__field {
-    display: grid;
-    gap: 8px;
-}
-
-.omo-document-embed-picker__label {
-    font-size: 0.92rem;
-    font-weight: 600;
-    color: var(--color-text);
-}
-
-.omo-document-embed-picker__select {
-    min-height: 240px;
-}
-
-.omo-document-embed-picker__preview {
-    display: grid;
-    gap: 6px;
-    padding: 12px 14px;
-    border-radius: 12px;
-    border: 1px solid var(--color-border);
-    background: var(--color-surface-alt);
-}
-
-.omo-document-embed-picker__preview-title {
-    font-weight: 700;
-    color: var(--color-text);
-}
-
-.omo-document-embed-picker__preview-context,
-.omo-document-embed-picker__preview-description {
-    color: var(--color-text-light);
-    font-size: 0.9rem;
-    line-height: 1.55;
-}
-
-.omo-document-embed-picker__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
 }
 
 @media (max-width: 768px) {
@@ -1949,7 +1936,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             return;
         }
 
-        const htmlFieldVersion = '20260711-sticky-toolbar';
+        const htmlFieldVersion = '20260714-compact-resource-embeds';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'

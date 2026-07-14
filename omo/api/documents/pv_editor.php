@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/pv_editor_helpers.php';
+require_once dirname(__DIR__, 3) . '/common/object_visibility_selector.php';
 
 $sourceLang = omoDocumentsPvEditorSourceLang();
 $lang = omoLoadTranslationBundle('omo_documents_pv_editor', $sourceLang);
@@ -71,15 +72,26 @@ $organization = new \dbObject\Organization();
 $hasOrganization = $organizationId > 0 && $organization->load($organizationId);
 $hasTeamApplication = $hasOrganization && $organization->isApplicationEnabled('team', $currentUserId);
 $hasStructureApplication = $hasOrganization && $organization->isStructureApplicationEnabled($currentUserId);
+$hasDocumentsApplication = $hasOrganization && $organization->isApplicationEnabled('documents', $currentUserId);
+$hasDecisionApplication = $hasOrganization && $organization->isApplicationEnabled('decision', $currentUserId);
+$hasCalendarApplication = $hasOrganization && $organization->isApplicationEnabled('calendar', $currentUserId);
 $hasUpcomingAssociatedEvent = $hasAssociatedEvent && $event->isUpcoming();
 $canManagePvStage = $document->canManagePvStage($organizationId, $currentUserId);
 $pvEditorUserId = $document->getPvEditorUserId();
 $pvEditorLabel = $pvEditorUserId > 0
     ? \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($pvEditorUserId, $organizationId)
     : '';
+$pvCreatorUserId = $document->getCreatedByUserId();
+$pvCreatorLabel = $pvCreatorUserId > 0
+    ? \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($pvCreatorUserId, $organizationId)
+    : '';
 $isPvEditor = $document->isPvEditor($currentUserId);
 $canManagePvDocument = $document->canUserManagePvDocument($currentUserId);
+$isPvTemplate = $document->isPvTemplate();
+$canCreatePvGroups = $document->canUserCreatePvGroups($currentUserId);
 $canClaimPvEditor = $document->canUserClaimPvEditor($organizationId, $currentUserId);
+$canReplacePvEditor = $document->canUserReplacePvEditor($organizationId, $currentUserId);
+$pvEditorHandoverOpen = $document->isPvEditorHandoverOpen();
 $isPvValidated = $document->isPvValidated();
 $locationData = $hasAssociatedEvent ? $event->getLocationDisplayData() : [];
 $locationParts = [];
@@ -104,19 +116,26 @@ $documentSyncVersion = hash('sha256', implode('|', [
     $documentModifiedAtValue,
     $document->getPvStage(),
     (string)$pvEditorUserId,
+    $pvEditorHandoverOpen ? '1' : '0',
     $documentTitle,
     $documentDescription,
     $documentVisibilityType,
+    $isPvTemplate ? '1' : '0',
 ]));
 $eventTitle = $hasAssociatedEvent
     ? (trim((string)$event->get('title')) !== ''
         ? trim((string)$event->get('title'))
         : ('Evenement #' . (int)$event->getId()))
     : '';
-$eventSchedule = trim(
-    ($eventStartAt instanceof DateTimeInterface ? $formatDateTime($eventStartAt) : '')
-    . ($eventEndAt instanceof DateTimeInterface ? ' - ' . $formatDateTime($eventEndAt) : '')
-);
+$eventSchedule = '';
+if ($eventStartAt instanceof DateTimeInterface) {
+    $eventSchedule = $formatDateTime($eventStartAt);
+    if ($eventEndAt instanceof DateTimeInterface) {
+        $eventSchedule .= $eventStartAt->format('Y-m-d') === $eventEndAt->format('Y-m-d')
+            ? ' - ' . $eventEndAt->format('H:i')
+            : ' - ' . $formatDateTime($eventEndAt);
+    }
+}
 $eventLocation = implode(' | ', $locationParts);
 $eventStartAtIso = $eventStartAt instanceof DateTimeInterface ? $eventStartAt->format(DATE_ATOM) : '';
 $eventEndAtIso = $eventEndAt instanceof DateTimeInterface ? $eventEndAt->format(DATE_ATOM) : '';
@@ -127,25 +146,110 @@ $pvStageOptions = [
     \dbObject\Document::PV_STAGE_REVIEW => omoDocumentsPvEditorT('documents.pv_editor.field.stage.review'),
     \dbObject\Document::PV_STAGE_VALIDATED => omoDocumentsPvEditorT('documents.pv_editor.field.stage.validated'),
 ];
-$hasPvInvitationEditor = $hasAssociatedEvent;
+$hasPvInvitationEditor = true;
 $canManagePvInvitations = $hasPvInvitationEditor
     && $pvStage === \dbObject\Document::PV_STAGE_PREPARATION
     && $canManagePvDocument;
-$pvInvitationPopupUrl = $hasPvInvitationEditor
-    ? '/omo/api/calendar/invitations_popup.php?oid=' . rawurlencode((string)$organizationId)
-        . '&id=' . rawurlencode((string)(int)$event->getId())
-        . '&pv_editor=1'
-    : '';
+$pvInvitationPopupUrl = '/omo/api/calendar/invitations_popup.php?oid=' . rawurlencode((string)$organizationId)
+    . ($hasAssociatedEvent
+        ? '&id=' . rawurlencode((string)(int)$event->getId())
+        : '&document_id=' . rawurlencode((string)(int)$document->getId()))
+    . '&pv_editor=1';
 
 $points = new \dbObject\ArrayDocumentPvPoint();
 $points->loadForDocument((int)$document->getId(), true);
+$pointPositionLabels = \dbObject\DocumentPvPoint::buildHierarchyPositionLabels($points);
 $authorOptions = $document->getPvPointAuthorOptions($organizationId);
 $pointCards = [];
 $pointNavItems = [];
 $pointPayloads = [];
+$embeddableDocumentsPayload = [];
+$embeddableDecisionsPayload = [];
+$embeddableEventsPayload = [];
 $attendancePayload = $hasTeamApplication
     ? omoDocumentsPvEditorBuildAttendancePayloadFromDocument($document, $organizationId)
     : null;
+
+if ($hasDocumentsApplication) {
+    $embeddableDocuments = new \dbObject\ArrayDocument();
+    $embeddableDocuments->loadVisibleForOrganizationContext($organizationId, 0, 'global');
+
+    foreach ($embeddableDocuments as $embeddableDocument) {
+        if (
+            !($embeddableDocument instanceof \dbObject\Document)
+            || !$embeddableDocument->canBeEmbedded()
+            || (int)$embeddableDocument->getId() <= 0
+            || (int)$embeddableDocument->getId() === (int)$document->getId()
+        ) {
+            continue;
+        }
+
+        $embeddableDocumentsPayload[] = [
+            'id' => (int)$embeddableDocument->getId(),
+            'title' => trim((string)$embeddableDocument->get('title')),
+            'description' => trim((string)$embeddableDocument->get('description')),
+            'contextLabel' => trim((string)$embeddableDocument->getOrganizationContextLabel()),
+        ];
+    }
+
+    usort($embeddableDocumentsPayload, static function (array $left, array $right): int {
+        return strnatcasecmp((string)($left['title'] ?? ''), (string)($right['title'] ?? ''));
+    });
+}
+
+if ($hasDecisionApplication) {
+    $embeddableDecisions = new \dbObject\ArrayDecisionProcess();
+    $decisionTypeLabels = [
+        \dbObject\DecisionProcess::TYPE_DECISION => omoDocumentsPvEditorT('documents.pv_editor.decision.type.decision'),
+        \dbObject\DecisionProcess::TYPE_CONSULTATION => omoDocumentsPvEditorT('documents.pv_editor.decision.type.consultation'),
+    ];
+
+    foreach ($embeddableDecisions->loadVisibleForOrganization($organizationId, $currentUserId) as $embeddableDecision) {
+        if (!($embeddableDecision instanceof \dbObject\DecisionProcess) || (int)$embeddableDecision->getId() <= 0) {
+            continue;
+        }
+
+        $decisionType = \dbObject\DecisionProcess::normalizeDecisionType($embeddableDecision->get('decision_type'));
+        $embeddableDecisionsPayload[] = [
+            'id' => (int)$embeddableDecision->getId(),
+            'title' => trim((string)$embeddableDecision->get('title')),
+            'typeLabel' => (string)($decisionTypeLabels[$decisionType] ?? $decisionType),
+        ];
+    }
+
+    usort($embeddableDecisionsPayload, static function (array $left, array $right): int {
+        return strnatcasecmp((string)($left['title'] ?? ''), (string)($right['title'] ?? ''));
+    });
+}
+
+if ($hasCalendarApplication) {
+    $embeddableEvents = new \dbObject\ArrayEvent();
+    $embeddableEvents->loadVisibleForOrganization($organizationId, $currentUserId);
+
+    foreach ($embeddableEvents as $embeddableEvent) {
+        if (!($embeddableEvent instanceof \dbObject\Event) || (int)$embeddableEvent->getId() <= 0) {
+            continue;
+        }
+
+        $startAt = $embeddableEvent->get('start_at');
+        $endAt = $embeddableEvent->get('end_at');
+        $scheduleLabel = trim(
+            ($startAt instanceof DateTimeInterface ? $formatDateTime($startAt) : '')
+            . ($endAt instanceof DateTimeInterface ? ' - ' . $formatDateTime($endAt) : '')
+        );
+        $embeddableEventsPayload[] = [
+            'id' => (int)$embeddableEvent->getId(),
+            'title' => trim((string)$embeddableEvent->get('title')),
+            'description' => trim((string)$embeddableEvent->get('description')),
+            'scheduleLabel' => $scheduleLabel,
+            'startAt' => $startAt instanceof DateTimeInterface ? $startAt->format(DATE_ATOM) : '',
+        ];
+    }
+
+    usort($embeddableEventsPayload, static function (array $left, array $right): int {
+        return strcmp((string)($left['startAt'] ?? ''), (string)($right['startAt'] ?? ''));
+    });
+}
 
 foreach ($points as $point) {
     if (!($point instanceof \dbObject\DocumentPvPoint) || (int)$point->getId() <= 0) {
@@ -153,9 +257,11 @@ foreach ($points as $point) {
     }
 
     $pointData = $point->buildEditorData($organizationId, $currentUserId, $editorToken);
+    $pointData['positionLabel'] = (string)($pointPositionLabels[(int)$point->getId()] ?? '--');
     $pointData['isEditable'] = $document->canUserEditPvPoint($point, $currentUserId);
     $pointData['canEditNow'] = !empty($pointData['isEditable']) && empty($pointData['lock']['isLockedByOther']);
-    $pointData['canReorder'] = $document->canUserReorderPvPoints($currentUserId);
+    $pointData['canReorder'] = $document->canUserReorderPvItem($point, $currentUserId);
+    $pointData['canEditGroup'] = $point->isGroup() && $document->canUserCreatePvGroups($currentUserId);
     $pointData['isPvEditor'] = $isPvEditor;
     $pointData['canToggleHandled'] = $canManagePvDocument;
     $pointData['canAssignAuthor'] = $canManagePvDocument;
@@ -178,7 +284,9 @@ foreach ($points as $point) {
             : []
     );
     $payload = omoDocumentsPvEditorBuildPointPayload($pointData, $uiText);
-    $pointCards[] = $payload['cardHtml'];
+    if (!$point->isGroup()) {
+        $pointCards[] = $payload['cardHtml'];
+    }
     $pointNavItems[] = $payload['navHtml'];
     $pointPayloads[] = $payload;
 }
@@ -198,31 +306,69 @@ foreach ($points as $point) {
         display: grid;
         grid-template-columns: minmax(220px, var(--omo-pv-editor-sidebar-width)) 10px minmax(0, 1fr);
         grid-template-rows: minmax(0, 1fr);
-        gap: 0 18px;
-        min-height: 100%;
+         min-height: 100%;
         height: 100%;
         max-height: 100%;
-        padding: 18px;
-        background: linear-gradient(180deg, color-mix(in srgb, var(--color-surface-alt, #f8fafc) 84%, white) 0%, var(--color-bg, #eef2ff) 100%);
+          background: linear-gradient(180deg, color-mix(in srgb, var(--color-surface-alt, #f8fafc) 84%, white) 0%, var(--color-bg, #eef2ff) 100%);
         overflow: hidden;
     }
 
     .omo-pv-editor__page-head {
         display: grid;
         gap: 12px;
-        align-items: end;
-        grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.95fr);
+        min-width: 0;
+    }
+
+    .omo-pv-editor__header-card {
+        display: grid;
+        gap: 20px 26px;
+        align-items: start;
+        grid-template-columns: minmax(270px, 1.15fr) minmax(320px, 0.95fr);
+        padding: 22px 24px;
     }
 
     .omo-pv-editor__page-title {
         display: grid;
-        gap: 6px;
+        grid-template-columns: 72px minmax(0, 1fr);
+        gap: 16px;
+        align-items: center;
+        min-width: 0;
+    }
+
+    .omo-pv-editor__identity-icon {
+        display: grid;
+        place-items: center;
+        width: 72px;
+        height: 72px;
+        border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 12%, var(--color-border, #d1d5db));
+        border-radius: 20px;
+        background: linear-gradient(145deg, #ffffff, color-mix(in srgb, var(--color-primary, #2563eb) 8%, #f8fbff));
+        box-shadow: 0 12px 28px -18px color-mix(in srgb, var(--color-primary, #2563eb) 48%, transparent);
+    }
+
+    .omo-pv-editor__identity-icon img {
+        display: block;
+        width: 46px;
+        height: 46px;
+        object-fit: contain;
+    }
+
+    .omo-pv-editor__identity-copy {
+        display: grid;
+        gap: 7px;
         min-width: 0;
     }
 
     .omo-pv-editor__page-title h2,
     .omo-pv-editor__page-title p {
         margin: 0;
+    }
+
+    .omo-pv-editor__page-title h2 {
+        color: var(--color-text, #10253a);
+        font-size: clamp(1.35rem, 2vw, 1.85rem);
+        font-weight: 820;
+        line-height: 1.15;
     }
 
     .omo-pv-editor__page-title p {
@@ -249,8 +395,9 @@ foreach ($points as $point) {
     }
 
     .omo-pv-editor__document-title-input {
-        font-size: 1.45rem;
-        font-weight: 750;
+        font-size: clamp(1.35rem, 2vw, 1.85rem);
+        font-weight: 820;
+        line-height: 1.15;
     }
 
     .omo-pv-editor__document-description-input {
@@ -271,14 +418,50 @@ foreach ($points as $point) {
         align-items: center;
         flex-wrap: wrap;
         gap: 8px;
-        margin-top: 3px;
+        min-height: 0;
     }
 
-    .omo-pv-editor__document-visibility-select {
-        width: auto;
-        min-width: 132px;
-        padding: 5px 26px 5px 8px;
-        font-size: 0.82rem;
+    .omo-pv-editor__document-visibility {
+        display: inline-flex;
+        align-items: center;
+        justify-self: end;
+        align-self: start;
+    }
+
+    .omo-pv-editor__document-visibility .omo-visibility-choice {
+        --omo-visibility-toggle-inset: 2px;
+    }
+
+    .omo-pv-editor__document-visibility .omo-visibility-choice__button {
+        min-width: 34px;
+        min-height: 30px;
+        padding: 5px 7px;
+    }
+
+    .omo-pv-editor__document-visibility .omo-visibility-choice__icon-shell {
+        width: 16px;
+        height: 16px;
+        flex-basis: 16px;
+    }
+
+    .omo-pv-editor__document-visibility .omo-visibility-choice__icon {
+        width: 15px;
+        height: 15px;
+    }
+
+    .omo-pv-editor__document-meta-save {
+        min-height: 32px;
+        padding-block: 6px;
+        animation: omoPvMetaSaveReveal 160ms ease-out both;
+    }
+
+    .omo-pv-editor__document-meta-save[hidden] {
+        display: none !important;
+    }
+
+    @keyframes omoPvMetaSaveReveal {
+        from { opacity: 0; transform: translateY(-3px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
     .omo-pv-editor__document-meta-status {
@@ -294,12 +477,117 @@ foreach ($points as $point) {
         gap: 8px;
     }
 
+    .omo-pv-editor__identity-copy .omo-pv-editor__page-meta {
+        justify-content: flex-start;
+    }
+
+    .omo-pv-editor__event-info {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        gap: 12px 24px;
+        min-width: 0;
+        padding: 13px 0 2px;
+        border-top: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 72%, transparent);
+    }
+
+    .omo-pv-editor__event-info-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        color: var(--color-text-light, #64748b);
+        font-size: 0.88rem;
+        line-height: 1.3;
+    }
+
+    .omo-pv-editor__event-info-item + .omo-pv-editor__event-info-item {
+        padding-left: 24px;
+        border-left: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 64%, transparent);
+    }
+
+    .omo-pv-editor__event-info-icon {
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        flex: 0 0 28px;
+        border-radius: 9px;
+        background: color-mix(in srgb, var(--color-primary, #2563eb) 8%, white);
+    }
+
+    .omo-pv-editor__event-info-icon img {
+        display: block;
+        width: 17px;
+        height: 17px;
+        object-fit: contain;
+    }
+
+    .omo-pv-editor__event-info-value {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .omo-pv-editor__event-info-item--schedule .omo-pv-editor__event-info-value,
+    .omo-pv-editor__event-info-item--location .omo-pv-editor__event-info-value {
+        color: var(--color-text, #10253a);
+        font-weight: 750;
+    }
+
     .omo-pv-editor__page-side {
         display: grid;
         gap: 10px;
         justify-items: stretch;
         align-content: start;
+        align-self: start;
         min-width: 0;
+    }
+
+    .omo-pv-editor__more-actions {
+        position: relative;
+        justify-self: end;
+    }
+
+    .omo-pv-editor__more-actions > summary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 30px;
+        border: 1px solid var(--color-border, #cbd5e1);
+        border-radius: 10px;
+        background: var(--color-surface, #fff);
+        cursor: pointer;
+        font-weight: 800;
+        list-style: none;
+    }
+
+    .omo-pv-editor__more-actions > summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .omo-pv-editor__more-actions-menu {
+        position: absolute;
+        z-index: 12;
+        top: calc(100% + 5px);
+        right: 0;
+        width: max-content;
+        min-width: 190px;
+        padding: 6px;
+        border: 1px solid var(--color-border, #cbd5e1);
+        border-radius: 12px;
+        background: var(--color-surface, #fff);
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+    }
+
+    .omo-pv-editor__more-actions-menu .generic-action-button {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .omo-pv-editor__header-card .omo-pv-editor__more-actions > summary {
+        width: 42px;
+        height: 38px;
     }
 
     .omo-pv-editor__meta-pill {
@@ -329,6 +617,10 @@ foreach ($points as $point) {
         overflow-x: auto;
         scrollbar-width: thin;
         isolation: isolate;
+        padding: 1px;
+        border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 76%, white);
+        border-radius: 15px;
+        background: color-mix(in srgb, var(--color-surface, #fff) 92%, transparent);
     }
 
     .omo-pv-editor__stage-option {
@@ -336,7 +628,7 @@ foreach ($points as $point) {
         position: relative;
         flex: 1 0 104px;
         min-width: 0;
-        height: 30px;
+        height: 46px;
         /* The extra 2px removes the anti-aliased seam between each interlocking pair. */
         margin-left: -24px;
         padding: 0 15px 0 30px;
@@ -346,7 +638,7 @@ foreach ($points as $point) {
         background: color-mix(in srgb, var(--omo-pv-stage-color) 43%, white 57%);
         color: color-mix(in srgb, var(--omo-pv-stage-color) 78%, #102a3c 22%);
         font: inherit;
-        font-size: 0.75rem;
+        font-size: 0.78rem;
         font-weight: 800;
         line-height: 1;
         letter-spacing: 0.01em;
@@ -354,6 +646,29 @@ foreach ($points as $point) {
         white-space: nowrap;
         cursor: pointer;
         transition: background 160ms ease, color 160ms ease, filter 160ms ease;
+    }
+
+    .omo-pv-editor__stage-option::before {
+        display: inline-grid;
+        place-items: center;
+        width: 24px;
+        height: 24px;
+        margin-right: 6px;
+        border: 1px solid color-mix(in srgb, var(--omo-pv-stage-color) 35%, white);
+        border-radius: 50%;
+        background: color-mix(in srgb, var(--omo-pv-stage-color) 10%, white);
+        color: var(--omo-pv-stage-color);
+        vertical-align: middle;
+    }
+
+    .omo-pv-editor__stage-option:nth-child(1)::before { content: "1"; }
+    .omo-pv-editor__stage-option:nth-child(2)::before { content: "2"; }
+    .omo-pv-editor__stage-option:nth-child(3)::before { content: "3"; }
+    .omo-pv-editor__stage-option:nth-child(4)::before { content: "4"; }
+
+    .omo-pv-editor__stage-option.is-active::before {
+        border-color: color-mix(in srgb, white 72%, transparent);
+        background: color-mix(in srgb, white 88%, transparent);
     }
 
     .omo-pv-editor__stage-option:first-child {
@@ -423,13 +738,50 @@ foreach ($points as $point) {
 
     .omo-pv-editor__attendance {
         display: grid;
-        gap: 8px;
+        grid-template-columns: 48px minmax(0, 1fr);
+        gap: 10px 14px;
+        align-items: center;
         width: 100%;
-        grid-column: 1 / -1;
-        padding: 10px 12px;
+        padding: 16px 20px;
         border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 78%, white 22%);
-        border-radius: 16px;
-        background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 62%, white 38%);
+        border-radius: 20px;
+        background:
+            radial-gradient(circle at 92% 50%, color-mix(in srgb, var(--color-primary, #2563eb) 8%, transparent), transparent 18%),
+            color-mix(in srgb, var(--color-surface, #fff) 95%, white);
+        box-shadow: 0 18px 40px -34px rgba(15, 23, 42, 0.42);
+    }
+
+    .omo-pv-editor__attendance-icon {
+        display: grid;
+        place-items: center;
+        width: 48px;
+        height: 48px;
+        border-radius: 15px;
+        background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, white);
+        color: var(--color-primary, #2563eb);
+    }
+
+    .omo-pv-editor__attendance-icon svg {
+        width: 27px;
+        height: 27px;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 1.8;
+    }
+
+    .omo-pv-editor__attendance-body {
+        display: grid;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .omo-pv-editor__attendance .omo-pv-editor__field-label {
+        color: var(--color-text, #10253a);
+        font-size: 0.95rem;
+        letter-spacing: 0;
+        text-transform: none;
     }
 
     .omo-pv-editor__attendance-head {
@@ -600,6 +952,85 @@ foreach ($points as $point) {
         transition: transform 140ms ease, margin 140ms ease;
     }
 
+    .omo-pv-editor__nav-group {
+        display: grid;
+        gap: 6px;
+        min-width: 0;
+        position: relative;
+    }
+
+    .omo-pv-editor__group-head {
+        display: grid;
+        grid-template-columns: auto auto auto minmax(0, 1fr);
+        align-items: center;
+        min-height: 38px;
+        overflow: hidden;
+        border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 22%, var(--color-border, #d1d5db));
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--color-primary, #2563eb) 7%, var(--color-surface, #fff));
+        position: relative;
+    }
+
+    .omo-pv-editor__group-toggle {
+        display: inline-grid;
+        place-items: center;
+        width: 28px;
+        height: 100%;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--color-text-light, #64748b);
+        cursor: pointer;
+    }
+
+    .omo-pv-editor__group-toggle span {
+        transition: transform 150ms ease;
+    }
+
+    .omo-pv-editor__nav-group.is-collapsed > .omo-pv-editor__group-head .omo-pv-editor__group-toggle span {
+        transform: rotate(-90deg);
+    }
+
+    .omo-pv-editor__group-title,
+    .omo-pv-editor__group-title-input {
+        min-width: 0;
+        margin: 0;
+        padding: 7px 9px 7px 2px;
+        border: 0;
+        background: transparent;
+        color: var(--color-text, #0f172a);
+        font: inherit;
+        font-weight: 750;
+    }
+
+    .omo-pv-editor__group-order {
+        min-width: 24px;
+        padding-inline: 6px;
+    }
+
+    .omo-pv-editor__group-title-input:focus {
+        outline: 0;
+        box-shadow: inset 0 -2px var(--color-primary, #2563eb);
+    }
+
+    .omo-pv-editor__group-children,
+    .omo-pv-editor__nav-root {
+        display: grid;
+        gap: 6px;
+        align-content: start;
+        min-width: 0;
+    }
+
+    .omo-pv-editor__group-children {
+        margin-left: 17px;
+        padding-left: 8px;
+        border-left: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 22%, transparent);
+    }
+
+    .omo-pv-editor__nav-group.is-collapsed > .omo-pv-editor__group-children {
+        display: none;
+    }
+
     .omo-pv-editor__nav-row.is-handled {
         opacity: 0.8;
     }
@@ -609,30 +1040,33 @@ foreach ($points as $point) {
         transform: scale(0.985);
     }
 
-    .omo-pv-editor__nav-drop-marker {
-        min-height: 42px;
-        border: 2px dashed color-mix(in srgb, var(--color-primary, #2563eb) 72%, white 28%);
-        border-radius: 14px;
-        background:
-            linear-gradient(
-                135deg,
-                color-mix(in srgb, var(--color-primary, #2563eb) 12%, transparent),
-                color-mix(in srgb, var(--color-primary, #2563eb) 4%, transparent)
-            );
-        box-shadow:
-            inset 0 0 0 1px color-mix(in srgb, var(--color-primary, #2563eb) 14%, transparent),
-            0 8px 20px color-mix(in srgb, var(--color-primary, #2563eb) 12%, transparent);
+    .omo-pv-editor__drop-indicator {
+        position: fixed;
+        z-index: 2147483000;
         pointer-events: none;
-        animation: omo-pv-drop-marker-pulse 900ms ease-in-out infinite alternate;
+        transition: left 60ms linear, top 60ms linear, width 60ms linear, height 60ms linear;
     }
 
-    @keyframes omo-pv-drop-marker-pulse {
-        from {
-            opacity: 0.78;
-        }
-        to {
-            opacity: 1;
-        }
+    .omo-pv-editor__drop-indicator--line {
+        height: 6px;
+        border-radius: 999px;
+        background: var(--color-primary, #2563eb);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary, #2563eb) 18%, transparent);
+    }
+
+    .omo-pv-editor__drop-indicator--inside {
+        display: grid;
+        place-items: center;
+        min-height: 38px;
+        border: 3px solid var(--color-primary, #2563eb);
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--color-primary, #2563eb) 15%, transparent);
+        box-shadow: 0 8px 24px color-mix(in srgb, var(--color-primary, #2563eb) 22%, transparent);
+        color: var(--color-primary, #2563eb);
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
     }
 
     .omo-pv-editor__nav-item {
@@ -654,6 +1088,11 @@ foreach ($points as $point) {
     .omo-pv-editor__nav-row.is-drop-before .omo-pv-editor__nav-item,
     .omo-pv-editor__nav-row.is-drop-after .omo-pv-editor__nav-item {
         background: color-mix(in srgb, var(--color-primary, #2563eb) 6%, transparent);
+    }
+
+    .omo-pv-editor__nav-group.is-drop-inside > .omo-pv-editor__group-head {
+        border-color: var(--color-primary, #2563eb);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 16%, transparent);
     }
 
     .omo-pv-editor__nav-order,
@@ -749,6 +1188,7 @@ foreach ($points as $point) {
 
     .omo-pv-editor__toolbar {
         display: flex;
+        gap: 8px;
         justify-content: flex-end;
     }
 
@@ -1002,11 +1442,67 @@ foreach ($points as $point) {
 
     .omo-pv-editor__secretary {
         grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 14px 22px;
+        padding-top: 18px;
+        border-top: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 74%, transparent);
+    }
+
+    .omo-pv-editor__secretary-people,
+    .omo-pv-editor__secretary-actions {
         display: flex;
         align-items: center;
         flex-wrap: wrap;
-        gap: 7px 10px;
-        padding-top: 2px;
+        gap: 10px 18px;
+        min-width: 0;
+    }
+
+    .omo-pv-editor__secretary-actions {
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .omo-pv-editor__person-block {
+        position: relative;
+        display: grid;
+        grid-template-columns: 40px minmax(0, 1fr);
+        gap: 10px;
+        align-items: center;
+        min-width: 170px;
+    }
+
+    .omo-pv-editor__person-block + .omo-pv-editor__person-block {
+        padding-left: 18px;
+        border-left: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 72%, transparent);
+    }
+
+    .omo-pv-editor__person-icon {
+        display: grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--color-primary, #2563eb) 8%, var(--color-surface-alt, #f8fafc));
+        color: color-mix(in srgb, var(--color-primary, #2563eb) 65%, var(--color-text, #0f172a));
+        font-size: 0.74rem;
+        font-weight: 900;
+    }
+
+    .omo-pv-editor__person-copy {
+        display: grid;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    .omo-pv-editor__person-copy .omo-pv-editor__field-label {
+        text-transform: none;
+        letter-spacing: 0;
+    }
+
+    .omo-pv-editor__header-card .generic-action-button {
+        min-height: 38px;
     }
 
     .omo-pv-editor__secretary-name {
@@ -1015,12 +1511,35 @@ foreach ($points as $point) {
     }
 
     .omo-pv-editor__secretary-state {
+        display: block;
         color: var(--color-success, #15803d);
-        font-size: 0.84rem;
+        font-size: 0.75rem;
+    }
+
+    .omo-pv-editor__secretary-state.is-waiting {
+        color: var(--color-primary, #2563eb);
     }
 
     .omo-pv-editor__secretary-claim {
-        margin-left: auto;
+        box-shadow: 0 10px 24px -16px color-mix(in srgb, var(--color-primary, #2563eb) 72%, transparent);
+    }
+
+    .omo-pv-editor__secretary-claim.is-waiting {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        opacity: 0.9;
+    }
+
+    .omo-pv-editor__secretary-claim-spinner {
+        width: 1em;
+        height: 1em;
+        flex: 0 0 auto;
+        animation: omo-pv-editor-handover-spin 0.9s linear infinite;
+    }
+
+    @keyframes omo-pv-editor-handover-spin {
+        to { transform: rotate(360deg); }
     }
 
     .omo-pv-editor__point-concerned-label {
@@ -1165,6 +1684,10 @@ foreach ($points as $point) {
         line-height: 1.2;
     }
 
+    .omo-pv-editor__timing-legend-item[hidden] {
+        display: none !important;
+    }
+
     .omo-pv-editor__timing-legend-swatch {
         width: 10px;
         height: 10px;
@@ -1178,7 +1701,7 @@ foreach ($points as $point) {
             overflow: visible;
         }
 
-        .omo-pv-editor__page-head {
+        .omo-pv-editor__header-card {
             grid-template-columns: 1fr;
         }
 
@@ -1188,8 +1711,24 @@ foreach ($points as $point) {
             justify-content: flex-start;
         }
 
+        .omo-pv-editor__document-visibility {
+            justify-self: end;
+        }
+
+        .omo-pv-editor__event-info {
+            align-items: flex-start;
+        }
+
         .omo-pv-editor__stage-help {
             text-align: left;
+        }
+
+        .omo-pv-editor__secretary {
+            grid-template-columns: 1fr;
+        }
+
+        .omo-pv-editor__secretary-actions {
+            justify-content: flex-start;
         }
 
         .omo-pv-editor__nav {
@@ -1219,11 +1758,81 @@ foreach ($points as $point) {
             grid-template-columns: 1fr;
         }
     }
+
+    @media (max-width: 620px) {
+        .omo-pv-editor__header-card {
+            padding: 16px;
+        }
+
+        .omo-pv-editor__page-title {
+            grid-template-columns: 52px minmax(0, 1fr);
+            gap: 11px;
+        }
+
+        .omo-pv-editor__identity-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 15px;
+        }
+
+        .omo-pv-editor__identity-icon img {
+            width: 34px;
+            height: 34px;
+        }
+
+        .omo-pv-editor__stage-option {
+            flex-basis: 92px;
+            height: 40px;
+            padding-right: 11px;
+            font-size: 0.7rem;
+        }
+
+        .omo-pv-editor__stage-option::before {
+            display: none;
+        }
+
+        .omo-pv-editor__person-block,
+        .omo-pv-editor__person-block + .omo-pv-editor__person-block {
+            width: 100%;
+            padding-left: 0;
+            border-left: 0;
+        }
+
+        .omo-pv-editor__attendance {
+            grid-template-columns: 38px minmax(0, 1fr);
+            padding: 13px 14px;
+        }
+
+        .omo-pv-editor__attendance-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+        }
+
+        .omo-pv-editor__attendance-icon svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .omo-pv-editor__event-info {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 9px;
+        }
+
+        .omo-pv-editor__event-info-item + .omo-pv-editor__event-info-item {
+            padding-left: 0;
+            border-left: 0;
+        }
+    }
     </style>
 
     <aside class="omo-pv-editor__sidebar">
         <section class="omo-pv-editor__panel omo-pv-editor__agenda-panel">
             <div class="omo-pv-editor__toolbar">
+                <?php if ($canCreatePvGroups): ?>
+                    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-editor-add-group><?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_group')) ?></button>
+                <?php endif; ?>
                 <button type="button" class="generic-action-button generic-action-button--main" data-omo-pv-editor-add-point<?= $isPvValidated ? ' disabled' : '' ?>><?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_point')) ?></button>
             </div>
             <div class="omo-pv-editor__nav" data-omo-pv-editor-nav>
@@ -1239,7 +1848,7 @@ foreach ($points as $point) {
             <div class="omo-pv-editor__timing-chart-shell">
                 <div class="omo-pv-editor__timing-chart" data-omo-pv-timing-chart="1">
                     <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
-                        <circle cx="50" cy="50" r="50" fill="#e2e8f0"></circle>
+                        <circle cx="50" cy="50" r="50" fill="#e2e8f0" data-omo-pv-timing-outer-base></circle>
                         <path data-omo-pv-timing-outer-handled fill="#22c55e"></path>
                         <path data-omo-pv-timing-outer-remaining fill="#f59e0b"></path>
                         <path data-omo-pv-timing-outer-buffer fill="#cbd5e1"></path>
@@ -1248,7 +1857,7 @@ foreach ($points as $point) {
                     </svg>
                     <div class="omo-pv-editor__timing-center">
                         <strong data-omo-pv-timing-center><?= $escape((string)$uiText['notStartedValue']) ?></strong>
-                        <span><?= $escape((string)$uiText['remainingTime']) ?></span>
+
                     </div>
                 </div>
                 <div class="omo-pv-editor__timing-legend">
@@ -1262,7 +1871,7 @@ foreach ($points as $point) {
                         <span><?= $escape((string)$uiText['remainingLegend']) ?></span>
                         <strong data-omo-pv-timing-legend-remaining><?= $escape((string)$uiText['notStartedValue']) ?></strong>
                     </div>
-                    <div class="omo-pv-editor__timing-legend-item">
+                    <div class="omo-pv-editor__timing-legend-item" data-omo-pv-timing-buffer-legend<?= $hasAssociatedEvent ? '' : ' hidden' ?>>
                         <span class="omo-pv-editor__timing-legend-swatch" style="background:#cbd5e1" data-omo-pv-timing-buffer-swatch></span>
                         <span data-omo-pv-timing-buffer-label><?= $escape((string)$uiText['marginLegend']) ?></span>
                         <strong data-omo-pv-timing-legend-buffer><?= $escape((string)$uiText['notStartedValue']) ?></strong>
@@ -1280,8 +1889,13 @@ foreach ($points as $point) {
     ></button>
 
     <section class="omo-pv-editor__main">
-        <section class="omo-pv-editor__panel omo-pv-editor__page-head">
+        <section class="omo-pv-editor__page-head">
+            <div class="omo-pv-editor__panel omo-pv-editor__header-card">
             <div class="omo-pv-editor__page-title">
+                <div class="omo-pv-editor__identity-icon" aria-hidden="true">
+                    <img src="/omo/assets/images/documents/pv.png" alt="">
+                </div>
+                <div class="omo-pv-editor__identity-copy">
                 <?php if ($canManagePvDocument): ?>
                     <div class="omo-pv-editor__document-meta-editor" data-omo-pv-document-meta-editor>
                         <input
@@ -1299,39 +1913,26 @@ foreach ($points as $point) {
                             data-omo-pv-document-description
                         ><?= $escape($documentDescription) ?></textarea>
                         <div class="omo-pv-editor__document-meta-actions">
-                            <select
-                                class="generic-form-control omo-pv-editor__document-visibility-select"
-                                aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.field.document_visibility')) ?>"
-                                data-omo-pv-document-visibility
-                            >
-                                <?php foreach ($documentVisibilityOptions as $visibilityValue => $visibilityLabel): ?>
-                                    <option value="<?= $escape($visibilityValue) ?>" <?= $documentVisibilityType === $visibilityValue ? ' selected' : '' ?>><?= $escape($visibilityLabel) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                            <button type="button" class="generic-action-button" data-omo-pv-document-meta-save disabled><?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.save')) ?></button>
+                            <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__document-meta-save" data-omo-pv-document-meta-save disabled hidden><?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.save')) ?></button>
                             <span class="omo-pv-editor__document-meta-status" data-omo-pv-document-meta-status></span>
                         </div>
                     </div>
-                    <?php if ($eventTitle !== ''): ?>
-                        <p><?= $escape($eventTitle) ?></p>
-                    <?php endif; ?>
                 <?php else: ?>
                     <h2 data-omo-pv-document-title-display><?= $escape($documentTitle) ?></h2>
                     <p data-omo-pv-document-description-display<?= $documentDescription === '' ? ' hidden' : '' ?>><?= $escape($documentDescription) ?></p>
-                    <?php if ($eventTitle !== ''): ?>
-                        <p><?= $escape($eventTitle) ?></p>
-                    <?php endif; ?>
                 <?php endif; ?>
+                </div>
             </div>
             <div class="omo-pv-editor__page-side">
-                <?php if ($eventSchedule !== '' || $eventLocation !== ''): ?>
-                    <div class="omo-pv-editor__page-meta">
-                        <?php if ($eventSchedule !== ''): ?>
-                            <span class="omo-pv-editor__meta-pill"><?= $escape($eventSchedule) ?></span>
-                        <?php endif; ?>
-                        <?php if ($eventLocation !== ''): ?>
-                            <span class="omo-pv-editor__meta-pill"><?= $escape($eventLocation) ?></span>
-                        <?php endif; ?>
+                <?php if ($canManagePvDocument): ?>
+                    <div class="omo-pv-editor__document-visibility" data-omo-pv-document-visibility>
+                        <?= commonRenderObjectVisibilitySelector(array(
+                            'inputName' => 'pv_document_visibility',
+                            'idPrefix' => 'pv-document-visibility',
+                            'ariaLabel' => omoDocumentsPvEditorT('documents.pv_editor.field.document_visibility'),
+                            'selectedValue' => $documentVisibilityType,
+                            'optionLabels' => $documentVisibilityOptions,
+                        )) ?>
                     </div>
                 <?php endif; ?>
                 <div class="omo-pv-editor__stage-field">
@@ -1352,19 +1953,80 @@ foreach ($points as $point) {
                     <div class="omo-pv-editor__stage-help"><?= $escape((string)$uiText['stageReadonly']) ?></div>
                 <?php endif; ?>
             </div>
+            <?php if ($eventTitle !== '' || $eventSchedule !== '' || $eventLocation !== ''): ?>
+                <div class="omo-pv-editor__event-info">
+                    <?php if ($eventTitle !== ''): ?>
+                        <div class="omo-pv-editor__event-info-item omo-pv-editor__event-info-item--title">
+                            <span class="omo-pv-editor__event-info-icon" aria-hidden="true"><img src="/omo/assets/images/documents/event-name.png" alt="" class="black-icon"></span>
+                            <span class="omo-pv-editor__event-info-value"><?= $escape($eventTitle) ?></span>
+                        </div>
+                    <?php endif; ?>
+                    <?php if ($eventSchedule !== ''): ?>
+                        <div class="omo-pv-editor__event-info-item omo-pv-editor__event-info-item--schedule">
+                            <span class="omo-pv-editor__event-info-icon" aria-hidden="true"><img src="/omo/assets/images/documents/event-schedule.png" alt="" class="black-icon"></span>
+                            <span class="omo-pv-editor__event-info-value"><?= $escape($eventSchedule) ?></span>
+                        </div>
+                    <?php endif; ?>
+                    <?php if ($eventLocation !== ''): ?>
+                        <div class="omo-pv-editor__event-info-item omo-pv-editor__event-info-item--location">
+                            <span class="omo-pv-editor__event-info-icon" aria-hidden="true"><img src="/omo/assets/images/documents/event-location.png" alt="" class="black-icon"></span>
+                            <span class="omo-pv-editor__event-info-value"><?= $escape($eventLocation) ?></span>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
             <div class="omo-pv-editor__secretary" data-omo-pv-secretary>
-                <span class="omo-pv-editor__field-label"><?= $escape((string)$uiText['pvEditor']) ?></span>
-                <span class="omo-pv-editor__secretary-name" data-omo-pv-secretary-name><?= $escape($pvEditorLabel !== '' ? $pvEditorLabel : (string)$uiText['pvEditorEmpty']) ?></span>
-                <?php if ($isPvEditor): ?>
-                    <span class="omo-pv-editor__secretary-state" data-omo-pv-secretary-state><?= $escape((string)$uiText['pvEditorActive']) ?></span>
-                <?php endif; ?>
-                <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__secretary-claim" data-omo-pv-claim-secretary<?= $canClaimPvEditor ? '' : ' hidden' ?>><?= $escape((string)$uiText['claimPvEditor']) ?></button>
-                <?php if ($pvInvitationPopupUrl !== ''): ?>
-                <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-invitations-url="<?= $escape($pvInvitationPopupUrl) ?>" data-omo-pv-invitations-title="<?= $escape((string)$uiText['inviteTitle']) ?>"<?= $canManagePvInvitations ? '' : ' hidden' ?>><?= $escape((string)$uiText['invite']) ?></button>
-                <?php endif; ?>
+                <div class="omo-pv-editor__secretary-people">
+                    <div class="omo-pv-editor__person-block">
+                        <span class="omo-pv-editor__person-icon" aria-hidden="true">AU</span>
+                        <span class="omo-pv-editor__person-copy">
+                            <span class="omo-pv-editor__field-label"><?= $escape((string)$uiText['initialAuthor']) ?></span>
+                            <span class="omo-pv-editor__secretary-name" data-omo-pv-initial-author><?= $escape($pvCreatorLabel !== '' ? $pvCreatorLabel : (string)$uiText['pvEditorEmpty']) ?></span>
+                        </span>
+                    </div>
+                    <div class="omo-pv-editor__person-block">
+                        <span class="omo-pv-editor__person-icon" aria-hidden="true">PV</span>
+                        <span class="omo-pv-editor__person-copy">
+                            <span class="omo-pv-editor__field-label"><?= $escape((string)$uiText['pvEditor']) ?></span>
+                            <span class="omo-pv-editor__secretary-name" data-omo-pv-secretary-name><?= $escape($pvEditorLabel !== '' ? $pvEditorLabel : (string)$uiText['pvEditorEmpty']) ?></span>
+                            <span class="omo-pv-editor__secretary-state<?= $isPvEditor && $pvEditorHandoverOpen ? ' is-waiting' : '' ?>" data-omo-pv-secretary-state<?= $isPvEditor ? '' : ' hidden' ?>><?= $escape($isPvEditor && $pvEditorHandoverOpen ? (string)$uiText['pvEditorHandoverWaiting'] : (string)$uiText['pvEditorActive']) ?></span>
+                        </span>
+                    </div>
+                </div>
+                <div class="omo-pv-editor__secretary-actions">
+                    <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__secretary-claim<?= $isPvEditor && $pvEditorHandoverOpen ? ' is-waiting' : '' ?>" data-omo-pv-claim-secretary data-omo-pv-secretary-action="<?= $escape($isPvEditor ? 'pass_pv_editor' : ($canClaimPvEditor ? 'claim_pv_editor' : 'replace_pv_editor')) ?>"<?= ($isPvEditor || $canClaimPvEditor || $canReplacePvEditor) ? '' : ' hidden' ?><?= $isPvEditor && $pvEditorHandoverOpen ? ' disabled' : '' ?>><?php if ($isPvEditor && $pvEditorHandoverOpen): ?><svg class="omo-pv-editor__secretary-claim-spinner" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="32 18"></circle></svg><span><?= $escape((string)$uiText['pvEditorHandoverWaiting']) ?></span><?php else: ?><?= $escape($isPvEditor ? (string)$uiText['passPvEditor'] : ($canClaimPvEditor && $pvEditorUserId > 0 ? (string)$uiText['reclaimPvEditor'] : ($canReplacePvEditor ? (string)$uiText['replacePvEditor'] : (string)$uiText['claimPvEditor']))) ?><?php endif; ?></button>
+                    <?php if ($pvInvitationPopupUrl !== ''): ?>
+                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-invitations-url="<?= $escape($pvInvitationPopupUrl) ?>" data-omo-pv-invitations-title="<?= $escape((string)$uiText['inviteTitle']) ?>"<?= $canManagePvInvitations ? '' : ' hidden' ?>><?= $escape((string)$uiText['invite']) ?></button>
+                    <?php endif; ?>
+                    <details class="omo-pv-editor__more-actions" data-omo-pv-more-actions>
+                        <summary aria-label="<?= $escape((string)$uiText['moreActions']) ?>" title="<?= $escape((string)$uiText['moreActions']) ?>">...</summary>
+                        <div class="omo-pv-editor__more-actions-menu">
+                            <a
+                                class="generic-action-button"
+                                href="<?= $escape('/omo/api/documents/export_pdf.php?id=' . rawurlencode((string)(int)$document->getId()) . '&oid=' . rawurlencode((string)$organizationId)) ?>"
+                                download
+                            ><?= $escape((string)$uiText['exportPdf']) ?></a>
+                            <?php if ($canManagePvDocument): ?>
+                                <button
+                                    type="button"
+                                    class="generic-action-button"
+                                    data-omo-pv-template-toggle
+                                    data-omo-pv-template-mark-label="<?= $escape((string)$uiText['markTemplate']) ?>"
+                                    data-omo-pv-template-unmark-label="<?= $escape((string)$uiText['unmarkTemplate']) ?>"
+                                    data-omo-pv-template-state="<?= $isPvTemplate ? '1' : '0' ?>"
+                                ><?= $escape($isPvTemplate ? (string)$uiText['unmarkTemplate'] : (string)$uiText['markTemplate']) ?></button>
+                            <?php endif; ?>
+                        </div>
+                    </details>
+                </div>
+            </div>
             </div>
             <?php if ($hasTeamApplication): ?>
             <div class="omo-pv-editor__attendance" data-omo-pv-attendance-root<?= is_array($attendancePayload) ? '' : ' hidden' ?>>
+                <div class="omo-pv-editor__attendance-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M16 20v-1.5a4.5 4.5 0 0 0-4.5-4.5h-4A4.5 4.5 0 0 0 3 18.5V20"></path><circle cx="9.5" cy="7" r="3.5"></circle><path d="M17 10a3 3 0 1 0 0-6M18 14c2.2.7 3 2.2 3 4.5V20"></path></svg>
+                </div>
+                <div class="omo-pv-editor__attendance-body">
                 <div class="omo-pv-editor__attendance-head">
                     <span class="omo-pv-editor__field-label"><?= $escape((string)$uiText['attendance']) ?></span>
                     <span class="omo-pv-editor__attendance-count" data-omo-pv-attendance-count>
@@ -1401,6 +2063,7 @@ foreach ($points as $point) {
                 <p class="omo-pv-editor__attendance-empty" data-omo-pv-attendance-empty<?= is_array($attendancePayload) && count((array)($attendancePayload['entries'] ?? [])) > 0 ? ' hidden' : '' ?>>
                     <?= $escape((string)$uiText['attendanceEmpty']) ?>
                 </p>
+                </div>
             </div>
             <?php endif; ?>
         </section>
@@ -1426,6 +2089,7 @@ foreach ($points as $point) {
     const pointsContainer = root.querySelector('[data-omo-pv-editor-points]');
     const mainPanel = root.querySelector('.omo-pv-editor__main');
     const addButton = root.querySelector('[data-omo-pv-editor-add-point]');
+    const addGroupButton = root.querySelector('[data-omo-pv-editor-add-group]');
     const resizer = root.querySelector('[data-omo-pv-editor-resizer]');
     const stageButtons = Array.from(root.querySelectorAll('[data-omo-pv-stage-option]'));
     const attendanceRoot = root.querySelector('[data-omo-pv-attendance-root]');
@@ -1433,7 +2097,9 @@ foreach ($points as $point) {
     const attendanceCount = root.querySelector('[data-omo-pv-attendance-count]');
     const attendanceEmpty = root.querySelector('[data-omo-pv-attendance-empty]');
     const secretaryName = root.querySelector('[data-omo-pv-secretary-name]');
+    const secretaryState = root.querySelector('[data-omo-pv-secretary-state]');
     const claimSecretaryButton = root.querySelector('[data-omo-pv-claim-secretary]');
+    const templateToggleButton = root.querySelector('[data-omo-pv-template-toggle]');
     const invitationsButton = root.querySelector('[data-omo-pv-invitations-url]');
     const documentTitleInput = root.querySelector('[data-omo-pv-document-title]');
     const documentDescriptionInput = root.querySelector('[data-omo-pv-document-description]');
@@ -1453,10 +2119,16 @@ foreach ($points as $point) {
         'canManagePvStage' => $canManagePvStage,
         'pvEditorUserId' => $pvEditorUserId,
         'pvEditorLabel' => $pvEditorLabel,
+        'pvCreatorUserId' => $pvCreatorUserId,
+        'pvCreatorLabel' => $pvCreatorLabel,
         'isPvEditor' => $isPvEditor,
         'canManagePvDocument' => $canManagePvDocument,
         'canClaimPvEditor' => $canClaimPvEditor,
+        'canReplacePvEditor' => $canReplacePvEditor,
+        'pvEditorHandoverOpen' => $pvEditorHandoverOpen,
         'isPvValidated' => $isPvValidated,
+        'isPvTemplate' => $isPvTemplate,
+        'canManagePvTemplate' => $canManagePvDocument,
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const initialAttendancePayload = <?= json_encode($attendancePayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const attendanceEnabled = <?= json_encode($hasTeamApplication) ?>;
@@ -1468,9 +2140,52 @@ foreach ($points as $point) {
     const dirtyLabel = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.state.dirty'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const unsavedCloseMessage = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.warning.unsaved_close'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const validateIrreversibleMessage = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.warning.validate_irreversible'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const unsavedHandoverMessage = <?= json_encode((string)$uiText['unsavedHandover'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const notStartedValue = <?= json_encode((string)$uiText['notStartedValue'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const marginLegendLabel = <?= json_encode((string)$uiText['marginLegend'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const overrunLegendLabel = <?= json_encode((string)$uiText['overrunLegend'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const canEmbedDocuments = <?= $hasDocumentsApplication ? 'true' : 'false' ?>;
+    const embeddableDocuments = <?= json_encode($embeddableDocumentsPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    const documentEmbedUi = <?= json_encode([
+        'buttonTitle' => omoDocumentsPvEditorT('documents.pv_editor.embed.button_title'),
+        'modalTitle' => omoDocumentsPvEditorT('documents.pv_editor.embed.modal_title'),
+        'search' => omoDocumentsPvEditorT('documents.pv_editor.embed.search'),
+        'searchPlaceholder' => omoDocumentsPvEditorT('documents.pv_editor.embed.search_placeholder'),
+        'visibleDocuments' => omoDocumentsPvEditorT('documents.pv_editor.embed.visible_documents'),
+        'none' => omoDocumentsPvEditorT('documents.pv_editor.embed.none'),
+        'insert' => omoDocumentsPvEditorT('documents.pv_editor.embed.insert'),
+        'cancel' => omoDocumentsPvEditorT('documents.pv_editor.action.cancel'),
+        'remove' => omoDocumentsPvEditorT('documents.pv_editor.action.remove_embed'),
+        'linkedLabel' => omoDocumentsPvEditorT('documents.pv_editor.embed.linked_label'),
+        'openExternal' => omoDocumentsPvEditorT('documents.pv_editor.embed.open_external'),
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const canEmbedDecisions = <?= $hasDecisionApplication ? 'true' : 'false' ?>;
+    const embeddableDecisions = <?= json_encode($embeddableDecisionsPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    const decisionEmbedUi = <?= json_encode([
+        'buttonTitle' => omoDocumentsPvEditorT('documents.pv_editor.decision.button_title'),
+        'modalTitle' => omoDocumentsPvEditorT('documents.pv_editor.decision.modal_title'),
+        'search' => omoDocumentsPvEditorT('documents.pv_editor.embed.search'),
+        'searchPlaceholder' => omoDocumentsPvEditorT('documents.pv_editor.embed.search_placeholder'),
+        'visibleDecisions' => omoDocumentsPvEditorT('documents.pv_editor.decision.visible'),
+        'none' => omoDocumentsPvEditorT('documents.pv_editor.embed.none'),
+        'insert' => omoDocumentsPvEditorT('documents.pv_editor.decision.insert'),
+        'cancel' => omoDocumentsPvEditorT('documents.pv_editor.action.cancel'),
+        'remove' => omoDocumentsPvEditorT('documents.pv_editor.action.remove_embed'),
+        'linkedLabel' => omoDocumentsPvEditorT('documents.pv_editor.decision.linked_label'),
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const canEmbedEvents = <?= $hasCalendarApplication ? 'true' : 'false' ?>;
+    const embeddableEvents = <?= json_encode($embeddableEventsPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    const eventEmbedUi = <?= json_encode([
+        'buttonTitle' => omoDocumentsPvEditorT('documents.pv_editor.event.button_title'),
+        'modalTitle' => omoDocumentsPvEditorT('documents.pv_editor.event.modal_title'),
+        'search' => omoDocumentsPvEditorT('documents.pv_editor.embed.search'),
+        'searchPlaceholder' => omoDocumentsPvEditorT('documents.pv_editor.embed.search_placeholder'),
+        'visibleEvents' => omoDocumentsPvEditorT('documents.pv_editor.event.visible'),
+        'none' => omoDocumentsPvEditorT('documents.pv_editor.embed.none'),
+        'insert' => omoDocumentsPvEditorT('documents.pv_editor.event.insert'),
+        'cancel' => omoDocumentsPvEditorT('documents.pv_editor.action.cancel'),
+        'remove' => omoDocumentsPvEditorT('documents.pv_editor.action.remove_embed'),
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const activeLockPointIds = new Set();
     const pendingLockPointIds = new Set();
     let knownPointSignatures = {};
@@ -1487,6 +2202,393 @@ foreach ($points as $point) {
     let lockHeartbeatTimer = null;
     let allowNextExternalClose = false;
 
+    function escapeDocumentEmbedHtml(value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function openPvEmbeddedResourceByHash(resourceHash) {
+        const normalizedHash = String(resourceHash || '').replace(/^#/, '');
+        if (!/^(?:(?:documents|decision)-d\d+|calendar-e\d+)$/.test(normalizedHash)) {
+            return;
+        }
+
+        if (typeof window.omoPeekPersistentExternalPanelDrawer === 'function') {
+            window.omoPeekPersistentExternalPanelDrawer({
+                persistKeyPrefix: 'omo-pv-preparation-',
+                contentSelector: '[data-omo-pv-editor-root]'
+            });
+        }
+
+        if (typeof window.omoSetDrawerHashState === 'function') {
+            window.omoSetDrawerHashState({routeToken: normalizedHash, open: true});
+            return;
+        }
+
+        window.location.hash = '#' + normalizedHash;
+    }
+
+    if (root instanceof Element) {
+        root.addEventListener('click', function (event) {
+            const targetNode = event.target && event.target.closest ? event.target : null;
+            const documentLink = targetNode ? targetNode.closest('.omo-document-embed a[href^="#documents-d"]') : null;
+            const decisionLink = targetNode ? targetNode.closest('.omo-decision-embed a[href^="#decision-d"]') : null;
+            const eventLink = targetNode ? targetNode.closest('.omo-event-embed a[href^="#calendar-e"]') : null;
+            const resourceLink = documentLink || decisionLink || eventLink;
+            if (!resourceLink || resourceLink.matches('[data-omo-document-embed-external], .omo-document-embed__external')) {
+                return;
+            }
+
+            const resourceHash = String(resourceLink.getAttribute('href') || '');
+            if (!/^#(?:(?:documents|decision)-d\d+|calendar-e\d+)$/.test(resourceHash)) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            openPvEmbeddedResourceByHash(resourceHash);
+        }, true);
+    }
+
+    function buildPvDocumentEmbedHtml(documentItem) {
+        const documentId = Number.parseInt(String(documentItem && documentItem.id || ''), 10);
+        if (!Number.isInteger(documentId) || documentId <= 0) {
+            return '';
+        }
+
+        const title = String(documentItem.title || '').trim() || ('Document #' + String(documentId));
+        const description = String(documentItem.description || '').trim();
+        const documentHash = '#documents-d' + String(documentId);
+        const externalUrl = String(window.location.pathname || '/omo/') + documentHash;
+        let html = '<span class="omo-document-embed" contenteditable="false" data-omo-embed-type="document"'
+            + ' data-omo-document-id="' + String(documentId) + '"'
+            + ' data-omo-document-title="' + escapeDocumentEmbedHtml(title) + '"';
+
+        if (description !== '') {
+            html += ' data-omo-document-description="' + escapeDocumentEmbedHtml(description) + '"';
+        }
+
+        html += '><strong><a class="omo-document-embed__title" href="' + documentHash + '">' + escapeDocumentEmbedHtml(title) + '</a>'
+            + '<a class="omo-document-embed__external" href="' + escapeDocumentEmbedHtml(externalUrl) + '" target="_blank" rel="noopener noreferrer" title="' + escapeDocumentEmbedHtml(documentEmbedUi.openExternal || '') + '" aria-label="' + escapeDocumentEmbedHtml(documentEmbedUi.openExternal || '') + '">&#8599;</a></strong>';
+        if (description !== '') {
+            html += '<em>' + escapeDocumentEmbedHtml(description) + '</em>';
+        }
+        return html + '</span>';
+    }
+
+    function openPvDocumentEmbedPicker(field, targetNode) {
+        if (
+            !canEmbedDocuments
+            || !field
+            || typeof field.createTemporaryCursorMarker !== 'function'
+            || typeof field.replaceMarkerWithHtml !== 'function'
+            || typeof window.commonTopbarOpenModal !== 'function'
+        ) {
+            return;
+        }
+
+        const currentDocumentId = targetNode instanceof Element
+            ? Number.parseInt(String(targetNode.getAttribute('data-omo-document-id') || ''), 10)
+            : 0;
+        let marker = targetNode ? null : field.createTemporaryCursorMarker();
+        let resolved = false;
+        const modalHtml = ''
+            + '<div class="omo-document-embed-picker">'
+            + '<label class="omo-document-embed-picker__field"><span class="omo-document-embed-picker__label">' + escapeDocumentEmbedHtml(documentEmbedUi.search || '') + '</span>'
+            + '<input type="search" class="generic-form-control" data-omo-pv-document-embed-search placeholder="' + escapeDocumentEmbedHtml(documentEmbedUi.searchPlaceholder || '') + '"></label>'
+            + '<label class="omo-document-embed-picker__field"><span class="omo-document-embed-picker__label">' + escapeDocumentEmbedHtml(documentEmbedUi.visibleDocuments || '') + '</span>'
+            + '<select class="generic-form-control omo-document-embed-picker__select" data-omo-pv-document-embed-select size="10"></select></label>'
+            + '<div class="omo-document-embed-picker__preview"><div class="omo-document-embed-picker__preview-title" data-omo-pv-document-embed-title></div>'
+            + '<div class="omo-document-embed-picker__preview-context" data-omo-pv-document-embed-context hidden></div>'
+            + '<div class="omo-document-embed-picker__preview-description" data-omo-pv-document-embed-description hidden></div></div>'
+            + '<div class="omo-document-embed-picker__actions">'
+            + (targetNode ? '<button type="button" class="generic-action-button generic-action-button--danger" data-omo-pv-embed-remove>' + escapeDocumentEmbedHtml(documentEmbedUi.remove || '') + '</button>' : '')
+            + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-document-embed-cancel>' + escapeDocumentEmbedHtml(documentEmbedUi.cancel || '') + '</button>'
+            + '<button type="button" class="generic-action-button generic-action-button--main" data-omo-pv-document-embed-insert disabled>' + escapeDocumentEmbedHtml(documentEmbedUi.insert || '') + '</button></div></div>';
+
+        window.commonTopbarOpenModal(documentEmbedUi.modalTitle || '', modalHtml, 'html');
+        const modalBody = document.getElementById('commonTopbarModalBody');
+        if (!(modalBody instanceof Element)) {
+            if (marker) field.removeTemporaryMarker(marker);
+            return;
+        }
+
+        const searchNode = modalBody.querySelector('[data-omo-pv-document-embed-search]');
+        const selectNode = modalBody.querySelector('[data-omo-pv-document-embed-select]');
+        const titleNode = modalBody.querySelector('[data-omo-pv-document-embed-title]');
+        const contextNode = modalBody.querySelector('[data-omo-pv-document-embed-context]');
+        const descriptionNode = modalBody.querySelector('[data-omo-pv-document-embed-description]');
+        const cancelButton = modalBody.querySelector('[data-omo-pv-document-embed-cancel]');
+        const insertButton = modalBody.querySelector('[data-omo-pv-document-embed-insert]');
+        const removeButton = modalBody.querySelector('[data-omo-pv-embed-remove]');
+        let selectedItem = null;
+
+        const cleanup = function () {
+            if (marker && typeof field.removeTemporaryMarker === 'function') {
+                field.removeTemporaryMarker(marker);
+            }
+            marker = null;
+        };
+        const render = function () {
+            const query = String(searchNode && searchNode.value || '').trim().toLowerCase();
+            const matches = embeddableDocuments.filter(function (item) {
+                return query === '' || [item.title, item.description, item.contextLabel].join(' ').toLowerCase().indexOf(query) >= 0;
+            });
+            if (selectNode) {
+                selectNode.innerHTML = '';
+                matches.forEach(function (item) {
+                    const option = document.createElement('option');
+                    option.value = String(item.id || '');
+                    option.textContent = String(item.title || '').trim() || ('Document #' + String(item.id || ''));
+                    selectNode.appendChild(option);
+                });
+                selectNode.disabled = matches.length === 0;
+            }
+            selectedItem = matches.find(function (item) { return Number(item.id) === currentDocumentId; }) || matches[0] || null;
+            if (selectNode && selectedItem) selectNode.value = String(selectedItem.id);
+            updatePreview();
+        };
+        const updatePreview = function () {
+            if (selectNode && selectNode.value !== '') {
+                selectedItem = embeddableDocuments.find(function (item) { return String(item.id || '') === String(selectNode.value); }) || null;
+            }
+            const title = selectedItem ? (String(selectedItem.title || '').trim() || ('Document #' + String(selectedItem.id || ''))) : String(documentEmbedUi.none || '');
+            if (titleNode) titleNode.textContent = title;
+            if (contextNode) {
+                contextNode.textContent = selectedItem ? String(selectedItem.contextLabel || '') : '';
+                contextNode.hidden = contextNode.textContent === '';
+            }
+            if (descriptionNode) {
+                descriptionNode.textContent = selectedItem ? String(selectedItem.description || '') : '';
+                descriptionNode.hidden = descriptionNode.textContent === '';
+            }
+            if (insertButton) insertButton.disabled = !selectedItem;
+        };
+
+        window.addEventListener('common-topbar-modal-close', function () {
+            if (!resolved) cleanup();
+        }, {once: true});
+        if (searchNode) {
+            searchNode.addEventListener('input', render);
+            searchNode.focus();
+        }
+        if (selectNode) selectNode.addEventListener('change', updatePreview);
+        if (cancelButton) cancelButton.addEventListener('click', function () {
+            cleanup();
+            if (typeof window.commonTopbarCloseModal === 'function') window.commonTopbarCloseModal();
+        });
+        if (removeButton) removeButton.addEventListener('click', function () {
+            if (targetNode && typeof field.removeNode === 'function') {
+                resolved = field.removeNode(targetNode);
+            }
+            if (typeof window.commonTopbarCloseModal === 'function') window.commonTopbarCloseModal();
+        });
+        if (insertButton) insertButton.addEventListener('click', function () {
+            const embedHtml = buildPvDocumentEmbedHtml(selectedItem);
+            if (embedHtml !== '' && targetNode && typeof field.replaceNodeWithHtml === 'function') {
+                resolved = true;
+                field.replaceNodeWithHtml(targetNode, embedHtml);
+            } else if (embedHtml !== '' && marker) {
+                resolved = true;
+                field.replaceMarkerWithHtml(marker, embedHtml);
+                marker = null;
+            }
+            if (typeof window.commonTopbarCloseModal === 'function') window.commonTopbarCloseModal();
+        });
+        render();
+    }
+
+    function buildPvDecisionEmbedHtml(decisionItem) {
+        const decisionId = Number.parseInt(String(decisionItem && decisionItem.id || ''), 10);
+        if (!Number.isInteger(decisionId) || decisionId <= 0) {
+            return '';
+        }
+
+        const title = String(decisionItem.title || '').trim() || ('Decision #' + String(decisionId));
+        const typeLabel = String(decisionItem.typeLabel || '').trim();
+        return '<span class="omo-decision-embed" contenteditable="false" data-omo-embed-type="decision"'
+            + ' data-omo-decision-id="' + String(decisionId) + '"'
+            + ' data-omo-decision-title="' + escapeDocumentEmbedHtml(title) + '"'
+            + (typeLabel !== '' ? ' data-omo-decision-type="' + escapeDocumentEmbedHtml(typeLabel) + '"' : '')
+            + '><strong><a class="omo-decision-embed__title" href="#decision-d' + String(decisionId) + '">' + escapeDocumentEmbedHtml(title) + '</a></strong>'
+            + (typeLabel !== '' ? '<em>' + escapeDocumentEmbedHtml(typeLabel) + '</em>' : '')
+            + '</span>';
+    }
+
+    function openPvDecisionEmbedPicker(field, targetNode) {
+        if (!canEmbedDecisions || !field || typeof field.createTemporaryCursorMarker !== 'function' || typeof field.replaceMarkerWithHtml !== 'function' || typeof window.commonTopbarOpenModal !== 'function') {
+            return;
+        }
+
+        const currentDecisionId = targetNode instanceof Element
+            ? Number.parseInt(String(targetNode.getAttribute('data-omo-decision-id') || ''), 10)
+            : 0;
+        let marker = targetNode ? null : field.createTemporaryCursorMarker();
+        let resolved = false;
+        const modalHtml = '<div class="omo-document-embed-picker">'
+            + '<label class="omo-document-embed-picker__field"><span class="omo-document-embed-picker__label">' + escapeDocumentEmbedHtml(decisionEmbedUi.search || '') + '</span><input type="search" class="generic-form-control" data-omo-pv-decision-embed-search placeholder="' + escapeDocumentEmbedHtml(decisionEmbedUi.searchPlaceholder || '') + '"></label>'
+            + '<label class="omo-document-embed-picker__field"><span class="omo-document-embed-picker__label">' + escapeDocumentEmbedHtml(decisionEmbedUi.visibleDecisions || '') + '</span><select class="generic-form-control omo-document-embed-picker__select" data-omo-pv-decision-embed-select size="10"></select></label>'
+            + '<div class="omo-document-embed-picker__preview"><div class="omo-document-embed-picker__preview-title" data-omo-pv-decision-embed-title></div><div class="omo-document-embed-picker__preview-context" data-omo-pv-decision-embed-type hidden></div></div>'
+            + '<div class="omo-document-embed-picker__actions">'
+            + (targetNode ? '<button type="button" class="generic-action-button generic-action-button--danger" data-omo-pv-embed-remove>' + escapeDocumentEmbedHtml(decisionEmbedUi.remove || '') + '</button>' : '')
+            + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-decision-embed-cancel>' + escapeDocumentEmbedHtml(decisionEmbedUi.cancel || '') + '</button><button type="button" class="generic-action-button generic-action-button--main" data-omo-pv-decision-embed-insert disabled>' + escapeDocumentEmbedHtml(decisionEmbedUi.insert || '') + '</button></div></div>';
+
+        window.commonTopbarOpenModal(decisionEmbedUi.modalTitle || '', modalHtml, 'html');
+        const modalBody = document.getElementById('commonTopbarModalBody');
+        if (!(modalBody instanceof Element)) {
+            if (marker) field.removeTemporaryMarker(marker);
+            return;
+        }
+
+        const searchNode = modalBody.querySelector('[data-omo-pv-decision-embed-search]');
+        const selectNode = modalBody.querySelector('[data-omo-pv-decision-embed-select]');
+        const titleNode = modalBody.querySelector('[data-omo-pv-decision-embed-title]');
+        const typeNode = modalBody.querySelector('[data-omo-pv-decision-embed-type]');
+        const cancelButton = modalBody.querySelector('[data-omo-pv-decision-embed-cancel]');
+        const insertButton = modalBody.querySelector('[data-omo-pv-decision-embed-insert]');
+        const removeButton = modalBody.querySelector('[data-omo-pv-embed-remove]');
+        let selectedItem = null;
+        const cleanup = function () { if (marker) field.removeTemporaryMarker(marker); marker = null; };
+        const updatePreview = function () {
+            if (selectNode && selectNode.value !== '') selectedItem = embeddableDecisions.find(function (item) { return String(item.id) === String(selectNode.value); }) || null;
+            if (titleNode) titleNode.textContent = selectedItem ? (String(selectedItem.title || '').trim() || ('Decision #' + String(selectedItem.id))) : String(decisionEmbedUi.none || '');
+            if (typeNode) { typeNode.textContent = selectedItem ? String(selectedItem.typeLabel || '') : ''; typeNode.hidden = typeNode.textContent === ''; }
+            if (insertButton) insertButton.disabled = !selectedItem;
+        };
+        const render = function () {
+            const query = String(searchNode && searchNode.value || '').trim().toLowerCase();
+            const matches = embeddableDecisions.filter(function (item) { return query === '' || [item.title, item.typeLabel].join(' ').toLowerCase().indexOf(query) >= 0; });
+            if (selectNode) {
+                selectNode.innerHTML = '';
+                matches.forEach(function (item) { const option = document.createElement('option'); option.value = String(item.id); option.textContent = (String(item.title || '').trim() || ('Decision #' + String(item.id))) + (item.typeLabel ? ' - ' + String(item.typeLabel) : ''); selectNode.appendChild(option); });
+                selectNode.disabled = matches.length === 0;
+            }
+            selectedItem = matches.find(function (item) { return Number(item.id) === currentDecisionId; }) || matches[0] || null;
+            if (selectNode && selectedItem) selectNode.value = String(selectedItem.id);
+            updatePreview();
+        };
+        window.addEventListener('common-topbar-modal-close', function () { if (!resolved) cleanup(); }, {once: true});
+        if (searchNode) { searchNode.addEventListener('input', render); searchNode.focus(); }
+        if (selectNode) selectNode.addEventListener('change', updatePreview);
+        if (cancelButton) cancelButton.addEventListener('click', function () { cleanup(); window.commonTopbarCloseModal(); });
+        if (removeButton) removeButton.addEventListener('click', function () { if (targetNode && typeof field.removeNode === 'function') resolved = field.removeNode(targetNode); window.commonTopbarCloseModal(); });
+        if (insertButton) insertButton.addEventListener('click', function () { const embedHtml = buildPvDecisionEmbedHtml(selectedItem); if (embedHtml !== '' && targetNode && typeof field.replaceNodeWithHtml === 'function') { resolved = true; field.replaceNodeWithHtml(targetNode, embedHtml); } else if (embedHtml !== '' && marker) { resolved = true; field.replaceMarkerWithHtml(marker, embedHtml); marker = null; } window.commonTopbarCloseModal(); });
+        render();
+    }
+
+    function buildPvEventEmbedHtml(eventItem) {
+        const eventId = Number.parseInt(String(eventItem && eventItem.id || ''), 10);
+        if (!Number.isInteger(eventId) || eventId <= 0) {
+            return '';
+        }
+
+        const title = String(eventItem.title || '').trim() || ('Evenement #' + String(eventId));
+        const scheduleLabel = String(eventItem.scheduleLabel || '').trim();
+        const description = String(eventItem.description || '').trim();
+        const summary = [scheduleLabel, description].filter(function (value) { return value !== ''; }).join(' - ');
+        return '<span class="omo-event-embed" contenteditable="false" data-omo-embed-type="event"'
+            + ' data-omo-event-id="' + String(eventId) + '"'
+            + ' data-omo-event-title="' + escapeDocumentEmbedHtml(title) + '"'
+            + (scheduleLabel !== '' ? ' data-omo-event-schedule="' + escapeDocumentEmbedHtml(scheduleLabel) + '"' : '')
+            + (description !== '' ? ' data-omo-event-description="' + escapeDocumentEmbedHtml(description) + '"' : '')
+            + '><strong><a class="omo-event-embed__title" href="#calendar-e' + String(eventId) + '">' + escapeDocumentEmbedHtml(title) + '</a></strong>'
+            + (summary !== '' ? '<em>' + escapeDocumentEmbedHtml(summary) + '</em>' : '')
+            + '</span>';
+    }
+
+    function openPvEventEmbedPicker(field, targetNode) {
+        if (!canEmbedEvents || !field || typeof field.createTemporaryCursorMarker !== 'function' || typeof field.replaceMarkerWithHtml !== 'function' || typeof window.commonTopbarOpenModal !== 'function') {
+            return;
+        }
+
+        const currentEventId = targetNode instanceof Element
+            ? Number.parseInt(String(targetNode.getAttribute('data-omo-event-id') || ''), 10)
+            : 0;
+        let marker = targetNode ? null : field.createTemporaryCursorMarker();
+        let resolved = false;
+        const modalHtml = '<div class="omo-document-embed-picker">'
+            + '<label class="omo-document-embed-picker__field"><span class="omo-document-embed-picker__label">' + escapeDocumentEmbedHtml(eventEmbedUi.search || '') + '</span><input type="search" class="generic-form-control" data-omo-pv-event-embed-search placeholder="' + escapeDocumentEmbedHtml(eventEmbedUi.searchPlaceholder || '') + '"></label>'
+            + '<label class="omo-document-embed-picker__field"><span class="omo-document-embed-picker__label">' + escapeDocumentEmbedHtml(eventEmbedUi.visibleEvents || '') + '</span><select class="generic-form-control omo-document-embed-picker__select" data-omo-pv-event-embed-select size="10"></select></label>'
+            + '<div class="omo-document-embed-picker__preview"><div class="omo-document-embed-picker__preview-title" data-omo-pv-event-embed-title></div><div class="omo-document-embed-picker__preview-context" data-omo-pv-event-embed-schedule hidden></div><div class="omo-document-embed-picker__preview-description" data-omo-pv-event-embed-description hidden></div></div>'
+            + '<div class="omo-document-embed-picker__actions">'
+            + (targetNode ? '<button type="button" class="generic-action-button generic-action-button--danger" data-omo-pv-embed-remove>' + escapeDocumentEmbedHtml(eventEmbedUi.remove || '') + '</button>' : '')
+            + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-event-embed-cancel>' + escapeDocumentEmbedHtml(eventEmbedUi.cancel || '') + '</button><button type="button" class="generic-action-button generic-action-button--main" data-omo-pv-event-embed-insert disabled>' + escapeDocumentEmbedHtml(eventEmbedUi.insert || '') + '</button></div></div>';
+
+        window.commonTopbarOpenModal(eventEmbedUi.modalTitle || '', modalHtml, 'html');
+        const modalBody = document.getElementById('commonTopbarModalBody');
+        if (!(modalBody instanceof Element)) {
+            if (marker) field.removeTemporaryMarker(marker);
+            return;
+        }
+
+        const searchNode = modalBody.querySelector('[data-omo-pv-event-embed-search]');
+        const selectNode = modalBody.querySelector('[data-omo-pv-event-embed-select]');
+        const titleNode = modalBody.querySelector('[data-omo-pv-event-embed-title]');
+        const scheduleNode = modalBody.querySelector('[data-omo-pv-event-embed-schedule]');
+        const descriptionNode = modalBody.querySelector('[data-omo-pv-event-embed-description]');
+        const cancelButton = modalBody.querySelector('[data-omo-pv-event-embed-cancel]');
+        const insertButton = modalBody.querySelector('[data-omo-pv-event-embed-insert]');
+        const removeButton = modalBody.querySelector('[data-omo-pv-embed-remove]');
+        let selectedItem = null;
+        const cleanup = function () { if (marker) field.removeTemporaryMarker(marker); marker = null; };
+        const updatePreview = function () {
+            if (selectNode && selectNode.value !== '') selectedItem = embeddableEvents.find(function (item) { return String(item.id) === String(selectNode.value); }) || null;
+            if (titleNode) titleNode.textContent = selectedItem ? (String(selectedItem.title || '').trim() || ('Evenement #' + String(selectedItem.id))) : String(eventEmbedUi.none || '');
+            if (scheduleNode) { scheduleNode.textContent = selectedItem ? String(selectedItem.scheduleLabel || '') : ''; scheduleNode.hidden = scheduleNode.textContent === ''; }
+            if (descriptionNode) { descriptionNode.textContent = selectedItem ? String(selectedItem.description || '') : ''; descriptionNode.hidden = descriptionNode.textContent === ''; }
+            if (insertButton) insertButton.disabled = !selectedItem;
+        };
+        const render = function () {
+            const query = String(searchNode && searchNode.value || '').trim().toLowerCase();
+            const matches = embeddableEvents.filter(function (item) { return query === '' || [item.title, item.scheduleLabel, item.description].join(' ').toLowerCase().indexOf(query) >= 0; });
+            if (selectNode) {
+                selectNode.innerHTML = '';
+                matches.forEach(function (item) { const option = document.createElement('option'); option.value = String(item.id); option.textContent = (String(item.title || '').trim() || ('Evenement #' + String(item.id))) + (item.scheduleLabel ? ' - ' + String(item.scheduleLabel) : ''); selectNode.appendChild(option); });
+                selectNode.disabled = matches.length === 0;
+            }
+            selectedItem = matches.find(function (item) { return Number(item.id) === currentEventId; }) || matches[0] || null;
+            if (selectNode && selectedItem) selectNode.value = String(selectedItem.id);
+            updatePreview();
+        };
+        window.addEventListener('common-topbar-modal-close', function () { if (!resolved) cleanup(); }, {once: true});
+        if (searchNode) { searchNode.addEventListener('input', render); searchNode.focus(); }
+        if (selectNode) selectNode.addEventListener('change', updatePreview);
+        if (cancelButton) cancelButton.addEventListener('click', function () { cleanup(); window.commonTopbarCloseModal(); });
+        if (removeButton) removeButton.addEventListener('click', function () { if (targetNode && typeof field.removeNode === 'function') resolved = field.removeNode(targetNode); window.commonTopbarCloseModal(); });
+        if (insertButton) insertButton.addEventListener('click', function () { const embedHtml = buildPvEventEmbedHtml(selectedItem); if (embedHtml !== '' && targetNode && typeof field.replaceNodeWithHtml === 'function') { resolved = true; field.replaceNodeWithHtml(targetNode, embedHtml); } else if (embedHtml !== '' && marker) { resolved = true; field.replaceMarkerWithHtml(marker, embedHtml); marker = null; } window.commonTopbarCloseModal(); });
+        render();
+    }
+
+    function getDocumentVisibilityValue() {
+        if (!(documentVisibilitySelect instanceof Element)) {
+            return '';
+        }
+
+        const checked = documentVisibilitySelect.querySelector('.omo-visibility-choice__input:checked');
+        return checked instanceof HTMLInputElement ? checked.value : '';
+    }
+
+    function setDocumentVisibilityValue(value) {
+        if (!(documentVisibilitySelect instanceof Element)) {
+            return;
+        }
+
+        const input = Array.from(documentVisibilitySelect.querySelectorAll('.omo-visibility-choice__input'))
+            .find(function (candidate) {
+                return candidate instanceof HTMLInputElement && candidate.value === String(value);
+            });
+        if (input instanceof HTMLInputElement) {
+            input.checked = true;
+            if (typeof window.omoSyncVisibilityChoices === 'function') {
+                window.omoSyncVisibilityChoices(documentVisibilitySelect);
+            }
+        }
+    }
+
     function resizeDocumentDescriptionInput() {
         if (!(documentDescriptionInput instanceof HTMLTextAreaElement)) {
             return;
@@ -1500,20 +2602,21 @@ foreach ($points as $point) {
         if (
             !(documentTitleInput instanceof HTMLInputElement)
             || !(documentDescriptionInput instanceof HTMLTextAreaElement)
-            || !(documentVisibilitySelect instanceof HTMLSelectElement)
+            || !(documentVisibilitySelect instanceof Element)
         ) {
             return false;
         }
 
         return documentTitleInput.value.trim() !== String(currentDocumentPayload.title || '').trim()
             || documentDescriptionInput.value.trim() !== String(currentDocumentPayload.description || '').trim()
-            || documentVisibilitySelect.value !== String(currentDocumentPayload.visibilityType || '');
+            || getDocumentVisibilityValue() !== String(currentDocumentPayload.visibilityType || '');
     }
 
     function syncDocumentMetadataUi() {
         const isDirty = documentMetadataIsDirty();
         if (documentMetaSaveButton instanceof HTMLButtonElement) {
             documentMetaSaveButton.disabled = !isDirty;
+            documentMetaSaveButton.hidden = !isDirty;
         }
         if (documentMetaStatus instanceof Element) {
             documentMetaStatus.textContent = isDirty ? <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.state.metadata_dirty'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?> : '';
@@ -1585,7 +2688,7 @@ foreach ($points as $point) {
     })();
 
     function ensureHtmlFieldLibrary(callback) {
-        const htmlFieldVersion = '20260711-sticky-toolbar';
+        const htmlFieldVersion = '20260714-removable-resource-embeds';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'
@@ -1623,7 +2726,7 @@ foreach ($points as $point) {
             return;
         }
 
-        const hasItems = nav.querySelector('[data-omo-pv-point-nav-row]') !== null;
+        const hasItems = nav.querySelector('[data-omo-pv-nav-node]') !== null;
         const emptyState = nav.querySelector('.omo-pv-editor__empty');
         if (hasItems && emptyState) {
             emptyState.remove();
@@ -1827,9 +2930,53 @@ foreach ($points as $point) {
             secretaryName.textContent = label !== '' ? label : <?= json_encode((string)$uiText['pvEditorEmpty'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         }
 
+        const isCurrentEditor = documentPayload.isPvEditor === true;
+        const isWaitingForReplacement = isCurrentEditor && documentPayload.pvEditorHandoverOpen === true;
+        if (secretaryState instanceof Element) {
+            secretaryState.hidden = !isCurrentEditor;
+            secretaryState.classList.toggle('is-waiting', isWaitingForReplacement);
+            secretaryState.textContent = isWaitingForReplacement
+                ? <?= json_encode((string)$uiText['pvEditorHandoverWaiting'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+                : <?= json_encode((string)$uiText['pvEditorActive'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        }
+
         if (claimSecretaryButton instanceof HTMLButtonElement) {
-            claimSecretaryButton.hidden = documentPayload.canClaimPvEditor !== true;
-            claimSecretaryButton.disabled = documentPayload.canClaimPvEditor !== true;
+            const canClaimEditor = documentPayload.canClaimPvEditor === true;
+            const canReplaceEditor = documentPayload.canReplacePvEditor === true;
+            const hasEditor = Number(documentPayload.pvEditorUserId || 0) > 0;
+            claimSecretaryButton.hidden = !isCurrentEditor && !canClaimEditor && !canReplaceEditor;
+            claimSecretaryButton.disabled = claimSecretaryButton.hidden || isWaitingForReplacement;
+            claimSecretaryButton.classList.toggle('is-waiting', isWaitingForReplacement);
+            claimSecretaryButton.dataset.omoPvSecretaryAction = isCurrentEditor
+                ? 'pass_pv_editor'
+                : (canClaimEditor ? 'claim_pv_editor' : 'replace_pv_editor');
+            claimSecretaryButton.replaceChildren();
+            if (isWaitingForReplacement) {
+                const spinner = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                spinner.setAttribute('class', 'omo-pv-editor__secretary-claim-spinner');
+                spinner.setAttribute('viewBox', '0 0 24 24');
+                spinner.setAttribute('aria-hidden', 'true');
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', '12');
+                circle.setAttribute('cy', '12');
+                circle.setAttribute('r', '8');
+                circle.setAttribute('fill', 'none');
+                circle.setAttribute('stroke', 'currentColor');
+                circle.setAttribute('stroke-width', '3');
+                circle.setAttribute('stroke-linecap', 'round');
+                circle.setAttribute('stroke-dasharray', '32 18');
+                spinner.appendChild(circle);
+                claimSecretaryButton.appendChild(spinner);
+                claimSecretaryButton.appendChild(document.createTextNode(<?= json_encode((string)$uiText['pvEditorHandoverWaiting'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>));
+            } else {
+                claimSecretaryButton.textContent = isCurrentEditor
+                    ? <?= json_encode((string)$uiText['passPvEditor'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+                    : (canClaimEditor
+                        ? (hasEditor
+                            ? <?= json_encode((string)$uiText['reclaimPvEditor'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+                            : <?= json_encode((string)$uiText['claimPvEditor'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>)
+                        : <?= json_encode((string)$uiText['replacePvEditor'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>);
+            }
         }
 
         if (invitationsButton instanceof HTMLButtonElement) {
@@ -1841,6 +2988,15 @@ foreach ($points as $point) {
 
         if (addButton instanceof HTMLButtonElement) {
             addButton.disabled = documentPayload.isPvValidated === true;
+        }
+
+        if (templateToggleButton instanceof HTMLButtonElement) {
+            const isTemplate = documentPayload.isPvTemplate === true;
+            templateToggleButton.dataset.omoPvTemplateState = isTemplate ? '1' : '0';
+            templateToggleButton.textContent = isTemplate
+                ? String(templateToggleButton.dataset.omoPvTemplateUnmarkLabel || '')
+                : String(templateToggleButton.dataset.omoPvTemplateMarkLabel || '');
+            templateToggleButton.disabled = documentPayload.canManagePvTemplate !== true;
         }
 
         if (documentTitleDisplay instanceof Element) {
@@ -1860,8 +3016,8 @@ foreach ($points as $point) {
                 documentDescriptionInput.value = String(documentPayload.description || '');
                 resizeDocumentDescriptionInput();
             }
-            if (documentVisibilitySelect instanceof HTMLSelectElement && documentPayload.visibilityType) {
-                documentVisibilitySelect.value = String(documentPayload.visibilityType);
+            if (documentVisibilitySelect instanceof Element && documentPayload.visibilityType) {
+                setDocumentVisibilityValue(documentPayload.visibilityType);
             }
         }
         syncDocumentMetadataUi();
@@ -2022,7 +3178,10 @@ foreach ($points as $point) {
     }
 
     function collectTimingPointState() {
-        return Object.keys(currentPointPayloads).map(function (pointId) {
+        return Object.keys(currentPointPayloads).filter(function (pointId) {
+            const payload = currentPointPayloads[pointId] || {};
+            return payload.isGroup !== true;
+        }).map(function (pointId) {
             const payload = currentPointPayloads[pointId] || {};
             const numericPointId = Number(pointId || 0);
             const card = root.querySelector('[data-omo-pv-point-card="' + numericPointId + '"]');
@@ -2135,6 +3294,7 @@ foreach ($points as $point) {
         const outerHandledNode = root.querySelector('[data-omo-pv-timing-outer-handled]');
         const outerRemainingNode = root.querySelector('[data-omo-pv-timing-outer-remaining]');
         const outerBufferNode = root.querySelector('[data-omo-pv-timing-outer-buffer]');
+        const outerBaseNode = root.querySelector('[data-omo-pv-timing-outer-base]');
         const centerNode = root.querySelector('[data-omo-pv-timing-center]');
         const handledLegendNode = root.querySelector('[data-omo-pv-timing-legend-handled]');
         const remainingLegendNode = root.querySelector('[data-omo-pv-timing-legend-remaining]');
@@ -2164,6 +3324,10 @@ foreach ($points as $point) {
             sectorNode.setAttribute('d', buildTimerSectorPath(timerRatio, 34));
         }
         if (outerHandledNode || outerRemainingNode || outerBufferNode) {
+            if (outerBaseNode) {
+                outerBaseNode.setAttribute('fill', meetingDurationMinutes > 0 ? '#e2e8f0' : 'transparent');
+            }
+
             let cursorRatio = 0;
             const applyOuterSegment = function (node, minutes) {
                 if (!node) {
@@ -2222,9 +3386,47 @@ foreach ($points as $point) {
 
             let field = null;
             suppressPointDirtyDuring(pointId, function () {
+                const customButtons = [];
+                if (canEmbedDocuments) {
+                    customButtons.push({
+                        name: 'omoPvDocumentEmbed',
+                        group: 'omo-pv-document-embed',
+                        label: 'Document',
+                        title: documentEmbedUi.buttonTitle || 'Inserer un document',
+                        className: 'note-btn-light omo-pv-editor__document-embed-button',
+                        onClick: function (context) {
+                            openPvDocumentEmbedPicker(context && context.api ? context.api : field);
+                        }
+                    });
+                }
+                if (canEmbedDecisions) {
+                    customButtons.push({
+                        name: 'omoPvDecisionEmbed',
+                        group: 'omo-pv-decision-embed',
+                        label: 'Decision',
+                        title: decisionEmbedUi.buttonTitle || 'Inserer une decision',
+                        className: 'note-btn-light omo-pv-editor__decision-embed-button',
+                        onClick: function (context) {
+                            openPvDecisionEmbedPicker(context && context.api ? context.api : field);
+                        }
+                    });
+                }
+                if (canEmbedEvents) {
+                    customButtons.push({
+                        name: 'omoPvEventEmbed',
+                        group: 'omo-pv-event-embed',
+                        label: 'Date',
+                        title: eventEmbedUi.buttonTitle || 'Inserer une date',
+                        className: 'note-btn-light omo-pv-editor__event-embed-button',
+                        onClick: function (context) {
+                            openPvEventEmbedPicker(context && context.api ? context.api : field);
+                        }
+                    });
+                }
                 field = window.omoSimpleHtmlField.mount(editorHost, {
                     value: String(sourceField.value || ''),
                     placeholder: <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.field.content'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                    customButtons: customButtons,
                     onChange: function () {
                         if (isPointDirtySuppressed(pointId)) {
                             return;
@@ -2232,6 +3434,28 @@ foreach ($points as $point) {
 
                         ensurePointLock(pointId);
                         markPointDirty(pointId, true);
+                    },
+                    onDoubleClick: function (context) {
+                        const targetNode = context && context.target && context.target.closest
+                            ? context.target
+                            : null;
+                        const documentEmbed = targetNode ? targetNode.closest('.omo-document-embed[data-omo-embed-type="document"]') : null;
+                        const decisionEmbed = targetNode ? targetNode.closest('.omo-decision-embed[data-omo-embed-type="decision"]') : null;
+                        const eventEmbed = targetNode ? targetNode.closest('.omo-event-embed[data-omo-embed-type="event"]') : null;
+                        if (!documentEmbed && !decisionEmbed && !eventEmbed) {
+                            return;
+                        }
+
+                        if (context && context.event && typeof context.event.preventDefault === 'function') {
+                            context.event.preventDefault();
+                        }
+                        if (documentEmbed) {
+                            openPvDocumentEmbedPicker(field, documentEmbed);
+                        } else if (decisionEmbed) {
+                            openPvDecisionEmbedPicker(field, decisionEmbed);
+                        } else if (eventEmbed) {
+                            openPvEventEmbedPicker(field, eventEmbed);
+                        }
                     }
                 });
             }, 220);
@@ -2601,6 +3825,12 @@ foreach ($points as $point) {
         }
 
         const pointId = Number(pointPayload.id || 0);
+        if (pointPayload.isGroup === true) {
+            mergeKnownPointSignature(pointPayload);
+            mergeCurrentPointPayload(pointPayload);
+            renderNavTreeFromPayloads();
+            return null;
+        }
         const temp = document.createElement('div');
         temp.innerHTML = String(pointPayload.cardHtml || '').trim();
         const nextCard = temp.firstElementChild;
@@ -2630,25 +3860,127 @@ foreach ($points as $point) {
             return null;
         }
 
-        const pointId = Number(pointPayload.id || 0);
-        const navTemp = document.createElement('div');
-        navTemp.innerHTML = String(pointPayload.navHtml || '').trim();
-        const nextNav = navTemp.firstElementChild;
-        if (!(nextNav instanceof Element)) {
-            return null;
-        }
-
-        const currentNav = root.querySelector('[data-omo-pv-point-nav-row="' + pointId + '"]');
-        if (currentNav && currentNav.parentNode) {
-            currentNav.parentNode.replaceChild(nextNav, currentNav);
-        } else {
-            nav.appendChild(nextNav);
-        }
-
         mergeKnownPointSignature(pointPayload);
         mergeCurrentPointPayload(pointPayload);
+        renderNavTreeFromPayloads();
         renderTimingSummary();
-        return nextNav;
+        return nav.querySelector('[data-omo-pv-nav-node="' + Number(pointPayload.id || 0) + '"]');
+    }
+
+    function getOrderedPointIdsFromPayloads() {
+        const childrenByParent = {};
+        Object.keys(currentPointPayloads).forEach(function (key) {
+            const item = currentPointPayloads[key];
+            if (!item || !item.id) return;
+            const parentId = Math.max(0, Number(item.parentId || 0));
+            if (!childrenByParent[parentId]) childrenByParent[parentId] = [];
+            childrenByParent[parentId].push(item);
+        });
+        Object.keys(childrenByParent).forEach(function (parentId) {
+            childrenByParent[parentId].sort(function (left, right) {
+                return Number(left.position || 0) - Number(right.position || 0) || Number(left.id || 0) - Number(right.id || 0);
+            });
+        });
+
+        const orderedPointIds = [];
+        const visited = new Set();
+        const walk = function (parentId) {
+            (childrenByParent[parentId] || []).forEach(function (item) {
+                const id = Number(item.id || 0);
+                if (id <= 0 || visited.has(id)) return;
+                visited.add(id);
+                if (item.isGroup === true) {
+                    walk(id);
+                } else {
+                    orderedPointIds.push(id);
+                }
+            });
+        };
+        walk(0);
+        Object.keys(currentPointPayloads).forEach(function (key) {
+            const item = currentPointPayloads[key];
+            const id = Number(item && item.id || 0);
+            if (id > 0 && item.isGroup !== true && !visited.has(id)) orderedPointIds.push(id);
+        });
+        return orderedPointIds;
+    }
+
+    function renderNavTreeFromPayloads() {
+        if (!(nav instanceof Element)) return;
+
+        const collapsedIds = new Set(Array.from(nav.querySelectorAll('[data-omo-pv-group].is-collapsed')).map(function (node) {
+            return Number(node.getAttribute('data-omo-pv-group') || 0);
+        }));
+        const activeInput = document.activeElement instanceof HTMLInputElement && document.activeElement.matches('[data-omo-pv-group-title]')
+            ? document.activeElement
+            : null;
+        const activeGroupId = activeInput ? Number(activeInput.getAttribute('data-omo-pv-group-title') || 0) : 0;
+        const activeValue = activeInput ? activeInput.value : '';
+        const selectionStart = activeInput ? activeInput.selectionStart : null;
+        const selectionEnd = activeInput ? activeInput.selectionEnd : null;
+
+        const items = Object.keys(currentPointPayloads).map(function (key) { return currentPointPayloads[key]; }).filter(function (item) {
+            return item && Number(item.id || 0) > 0;
+        });
+        if (items.length === 0) {
+            nav.innerHTML = '<div class="omo-empty-state omo-pv-editor__empty">' + escapeDocumentEmbedHtml(<?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.nav.empty'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>) + '</div>';
+            return;
+        }
+
+        const childrenByParent = {};
+        const itemsById = {};
+        items.forEach(function (item) { itemsById[Number(item.id || 0)] = item; });
+        items.forEach(function (item) {
+            const requestedParentId = Math.max(0, Number(item.parentId || 0));
+            const parentItem = itemsById[requestedParentId];
+            const parentId = requestedParentId > 0 && parentItem && parentItem.isGroup === true && requestedParentId !== Number(item.id || 0)
+                ? requestedParentId
+                : 0;
+            if (!childrenByParent[parentId]) childrenByParent[parentId] = [];
+            childrenByParent[parentId].push(item);
+        });
+        Object.keys(childrenByParent).forEach(function (parentId) {
+            childrenByParent[parentId].sort(function (left, right) {
+                return Number(left.position || 0) - Number(right.position || 0) || Number(left.id || 0) - Number(right.id || 0);
+            });
+        });
+
+        const rootNode = document.createElement('div');
+        rootNode.className = 'omo-pv-editor__nav-root';
+        rootNode.setAttribute('data-omo-pv-nav-children', '0');
+        const visited = new Set();
+        const appendChildren = function (parentId, container) {
+            (childrenByParent[parentId] || []).forEach(function (item) {
+                const id = Number(item.id || 0);
+                if (visited.has(id)) return;
+                visited.add(id);
+                const temp = document.createElement('div');
+                temp.innerHTML = String(item.navHtml || '').trim();
+                const node = temp.firstElementChild;
+                if (!(node instanceof Element)) return;
+                container.appendChild(node);
+                if (item.isGroup === true) {
+                    if (collapsedIds.has(id)) {
+                        node.classList.add('is-collapsed');
+                        const toggle = node.querySelector(':scope > .omo-pv-editor__group-head [data-omo-pv-group-toggle]');
+                        if (toggle) toggle.setAttribute('aria-expanded', 'false');
+                    }
+                    const childContainer = node.querySelector('[data-omo-pv-nav-children="' + id + '"]');
+                    if (childContainer) appendChildren(id, childContainer);
+                }
+            });
+        };
+        appendChildren(0, rootNode);
+        nav.replaceChildren(rootNode);
+
+        if (activeGroupId > 0) {
+            const nextInput = nav.querySelector('[data-omo-pv-group-title="' + activeGroupId + '"]');
+            if (nextInput instanceof HTMLInputElement) {
+                nextInput.value = activeValue;
+                nextInput.focus({preventScroll: true});
+                if (Number.isInteger(selectionStart) && Number.isInteger(selectionEnd)) nextInput.setSelectionRange(selectionStart, selectionEnd);
+            }
+        }
     }
 
     function isPointCardProtectedFromRemoteRefresh(card) {
@@ -2836,21 +4168,7 @@ foreach ($points as $point) {
     }
 
     function applyPointOrderToNav(pointIds) {
-        if (!Array.isArray(pointIds) || !nav) {
-            return;
-        }
-
-        const currentPointIds = collectNavPointIds();
-        if (currentPointIds.join('|') === pointIds.join('|')) {
-            return;
-        }
-
-        pointIds.forEach(function (pointId) {
-            const row = nav.querySelector('[data-omo-pv-point-nav-row="' + pointId + '"]');
-            if (row) {
-                nav.appendChild(row);
-            }
-        });
+        renderNavTreeFromPayloads();
     }
 
     function collectNavPointIds() {
@@ -2870,7 +4188,7 @@ foreach ($points as $point) {
             return false;
         }
 
-        const row = pointId > 0 ? nav.querySelector('[data-omo-pv-point-nav-row="' + pointId + '"]') : null;
+        const row = pointId > 0 ? nav.querySelector('[data-omo-pv-nav-node="' + pointId + '"]') : null;
         if (!(row instanceof Element)) {
             return false;
         }
@@ -2878,20 +4196,67 @@ foreach ($points as $point) {
         const sibling = direction === 'up'
             ? row.previousElementSibling
             : row.nextElementSibling;
-        if (!(sibling instanceof Element) || !sibling.matches('[data-omo-pv-point-nav-row]')) {
-            return false;
-        }
-
-        if (direction === 'up') {
-            sibling.insertAdjacentElement('beforebegin', row);
+        if (sibling instanceof Element && sibling.matches('[data-omo-pv-nav-node]')) {
+            if (direction === 'up') {
+                sibling.insertAdjacentElement('beforebegin', row);
+            } else {
+                sibling.insertAdjacentElement('afterend', row);
+            }
         } else {
-            sibling.insertAdjacentElement('afterend', row);
+            const parentGroup = row.parentElement instanceof Element
+                ? row.parentElement.closest('[data-omo-pv-group]')
+                : null;
+            if (!(parentGroup instanceof Element)) {
+                return false;
+            }
+
+            const adjacentGroup = direction === 'up'
+                ? parentGroup.previousElementSibling
+                : parentGroup.nextElementSibling;
+            if (adjacentGroup instanceof Element && adjacentGroup.matches('[data-omo-pv-group]')) {
+                const targetContainer = adjacentGroup.querySelector(':scope > [data-omo-pv-nav-children]');
+                if (!(targetContainer instanceof Element)) {
+                    return false;
+                }
+                if (direction === 'up') {
+                    targetContainer.appendChild(row);
+                } else {
+                    targetContainer.insertAdjacentElement('afterbegin', row);
+                }
+                adjacentGroup.classList.remove('is-collapsed');
+                const toggle = adjacentGroup.querySelector(':scope > .omo-pv-editor__group-head [data-omo-pv-group-toggle]');
+                if (toggle) toggle.setAttribute('aria-expanded', 'true');
+            } else if (direction === 'up') {
+                parentGroup.insertAdjacentElement('beforebegin', row);
+            } else {
+                parentGroup.insertAdjacentElement('afterend', row);
+            }
         }
 
-        const orderedPointIds = collectNavPointIds();
-        applyPointOrderToCards(orderedPointIds);
-        persistPointOrder(orderedPointIds);
+        const layout = collectNavLayout();
+        applyPointOrderToCards(layout.filter(function (item) {
+            const payload = currentPointPayloads[String(item.id)] || {};
+            return payload.isGroup !== true;
+        }).map(function (item) { return item.id; }));
+        persistPointOrder(layout);
         return true;
+    }
+
+    function collectNavLayout() {
+        const layout = [];
+        const walk = function (container, parentId) {
+            Array.from(container.children || []).forEach(function (node) {
+                if (!(node instanceof Element) || !node.matches('[data-omo-pv-nav-node]')) return;
+                const id = Number(node.getAttribute('data-omo-pv-nav-node') || 0);
+                if (!Number.isInteger(id) || id <= 0) return;
+                layout.push({id: id, parentId: parentId});
+                const childContainer = node.querySelector(':scope > [data-omo-pv-nav-children]');
+                if (childContainer instanceof Element) walk(childContainer, id);
+            });
+        };
+        const rootContainer = nav.querySelector(':scope > [data-omo-pv-nav-children="0"]');
+        if (rootContainer instanceof Element) walk(rootContainer, 0);
+        return layout;
     }
 
     function postPointAction(action, pointId, extraFields) {
@@ -2929,10 +4294,12 @@ foreach ($points as $point) {
         });
     }
 
-    function renderPointCollection(pointPayloads) {
+    function renderPointCollection(pointPayloads, forceRefresh) {
         if (!Array.isArray(pointPayloads)) {
             return;
         }
+
+        forceRefresh = forceRefresh === true;
 
         const scrollAnchor = captureMainScrollAnchor();
         const focusedEditor = captureFocusedPointEditor();
@@ -2950,7 +4317,7 @@ foreach ($points as $point) {
                 return;
             }
 
-            if (!pointHasRemoteChange(pointPayload)) {
+            if (!forceRefresh && !pointHasRemoteChange(pointPayload)) {
                 return;
             }
 
@@ -2975,8 +4342,15 @@ foreach ($points as $point) {
             }
         });
 
+        Object.keys(currentPointPayloads).forEach(function (pointId) {
+            if (!nextPointIdSet.has(String(pointId))) {
+                delete knownPointSignatures[String(pointId)];
+                delete currentPointPayloads[String(pointId)];
+            }
+        });
+
         applyPointOrderToNav(nextPointIds);
-        applyPointOrderToCards(nextPointIds);
+        applyPointOrderToCards(getOrderedPointIdsFromPayloads());
         syncEmptyNavState();
         renderTimingSummary();
         restoreMainScrollAnchor(scrollAnchor);
@@ -3164,15 +4538,13 @@ foreach ($points as $point) {
             });
     }
 
-    function persistPointOrder(pointIds) {
+    function persistPointOrder(layout) {
         const formData = new FormData();
         formData.append('action', 'reorder_points');
         formData.append('document_id', String(documentId));
         formData.append('oid', String(organizationId));
         formData.append('editor_token', editorToken);
-        pointIds.forEach(function (pointId) {
-            formData.append('point_ids[]', String(pointId));
-        });
+        formData.append('layout', JSON.stringify(Array.isArray(layout) ? layout : []));
 
         fetch(actionUrl, {
             method: 'POST',
@@ -3235,11 +4607,51 @@ foreach ($points as $point) {
             });
     }
 
+    function addGroup() {
+        if (!(addGroupButton instanceof HTMLButtonElement)) return;
+        addGroupButton.disabled = true;
+        postPointAction('add_group', 0)
+            .then(function (payload) {
+                if (!payload || !payload.point) throw new Error('add_group_failed');
+                mergeKnownPointSignature(payload.point);
+                mergeCurrentPointPayload(payload.point);
+                renderNavTreeFromPayloads();
+                const input = nav.querySelector('[data-omo-pv-group-title="' + Number(payload.point.id || 0) + '"]');
+                if (input instanceof HTMLInputElement) {
+                    input.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+                    input.focus();
+                    input.select();
+                }
+            })
+            .finally(function () {
+                addGroupButton.disabled = false;
+            });
+    }
+
+    function saveGroupTitle(input) {
+        if (!(input instanceof HTMLInputElement)) return;
+        const groupId = Number(input.getAttribute('data-omo-pv-group-title') || 0);
+        const title = input.value.trim();
+        if (groupId <= 0 || title === '') return;
+        input.disabled = true;
+        postPointAction('update_group', groupId, {title: title})
+            .then(function (payload) {
+                if (payload && payload.point) {
+                    mergeKnownPointSignature(payload.point);
+                    mergeCurrentPointPayload(payload.point);
+                    renderNavTreeFromPayloads();
+                }
+            })
+            .finally(function () {
+                if (input.isConnected) input.disabled = false;
+            });
+    }
+
     function saveDocumentMetadata() {
         if (
             !(documentTitleInput instanceof HTMLInputElement)
             || !(documentDescriptionInput instanceof HTMLTextAreaElement)
-            || !(documentVisibilitySelect instanceof HTMLSelectElement)
+            || !(documentVisibilitySelect instanceof Element)
             || !(documentMetaSaveButton instanceof HTMLButtonElement)
             || documentMetaSaveButton.disabled
         ) {
@@ -3254,7 +4666,7 @@ foreach ($points as $point) {
         postPointAction('update_document_metadata', 0, {
             title: documentTitleInput.value.trim(),
             description: documentDescriptionInput.value.trim(),
-            visibility_type: documentVisibilitySelect.value
+            visibility_type: getDocumentVisibilityValue()
         })
             .then(function (payload) {
                 mergeCurrentDocumentPayload(payload && payload.document ? payload.document : {});
@@ -3295,6 +4707,25 @@ foreach ($points as $point) {
     }
 
     root.addEventListener('click', function (event) {
+        const templateToggle = event.target.closest('[data-omo-pv-template-toggle]');
+        if (templateToggle instanceof HTMLButtonElement && root.contains(templateToggle)) {
+            event.preventDefault();
+            const nextState = templateToggle.dataset.omoPvTemplateState === '1' ? 0 : 1;
+            templateToggle.disabled = true;
+            postPointAction('set_pv_template', 0, { is_template: nextState })
+                .then(function (payload) {
+                    mergeCurrentDocumentPayload(payload && payload.document ? payload.document : {});
+                    const menu = templateToggle.closest('[data-omo-pv-more-actions]');
+                    if (menu instanceof HTMLDetailsElement) {
+                        menu.open = false;
+                    }
+                })
+                .finally(function () {
+                    templateToggle.disabled = currentDocumentPayload.canManagePvTemplate !== true;
+                });
+            return;
+        }
+
         const documentMetaSave = event.target.closest('[data-omo-pv-document-meta-save]');
         if (documentMetaSave && root.contains(documentMetaSave)) {
             event.preventDefault();
@@ -3384,25 +4815,50 @@ foreach ($points as $point) {
             return;
         }
 
+        const addGroupTrigger = event.target.closest('[data-omo-pv-editor-add-group]');
+        if (addGroupTrigger && root.contains(addGroupTrigger)) {
+            addGroup();
+            return;
+        }
+
+        const groupToggle = event.target.closest('[data-omo-pv-group-toggle]');
+        if (groupToggle && nav.contains(groupToggle)) {
+            const groupNode = groupToggle.closest('[data-omo-pv-group]');
+            if (groupNode) {
+                const collapsed = groupNode.classList.toggle('is-collapsed');
+                groupToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            }
+            return;
+        }
+
         const claimSecretaryButton = event.target.closest('[data-omo-pv-claim-secretary]');
         if (claimSecretaryButton && root.contains(claimSecretaryButton)) {
+            const secretaryAction = String(claimSecretaryButton.dataset.omoPvSecretaryAction || 'claim_pv_editor');
+            if (secretaryAction === 'pass_pv_editor' && hasUnsavedPointChanges()) {
+                window.alert(unsavedHandoverMessage);
+                return;
+            }
             claimSecretaryButton.disabled = true;
-            postPointAction('claim_pv_editor', 0, {})
+            postPointAction(secretaryAction, 0, {})
                 .then(function (payload) {
                     mergeCurrentDocumentPayload(payload && payload.document ? payload.document : {});
                     if (payload && Array.isArray(payload.points)) {
-                        renderPointCollection(payload.points);
+                        renderPointCollection(payload.points, true);
                     }
                 })
                 .finally(function () {
-                    if (claimSecretaryButton.hidden === false) {
-                        claimSecretaryButton.disabled = false;
-                    }
+                    syncPvEditorUi(currentDocumentPayload);
                 });
         }
     });
 
     root.addEventListener('change', function (event) {
+        const groupTitleInput = event.target.closest('[data-omo-pv-group-title]');
+        if (groupTitleInput && nav.contains(groupTitleInput)) {
+            saveGroupTitle(groupTitleInput);
+            return;
+        }
+
         const attendanceInput = event.target.closest('[data-omo-pv-attendance-toggle]');
         if (attendanceInput && root.contains(attendanceInput)) {
             toggleAttendance(
@@ -3458,18 +4914,40 @@ foreach ($points as $point) {
         }
 
         let draggedPointId = 0;
-        const dropMarker = document.createElement('div');
-        dropMarker.className = 'omo-pv-editor__nav-drop-marker';
-        dropMarker.setAttribute('data-omo-pv-drop-marker', '1');
-        dropMarker.setAttribute('aria-hidden', 'true');
+        let dropIntent = null;
+        const dropInsideLabel = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.group.drop_inside'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        const dropIndicator = document.createElement('div');
+        dropIndicator.className = 'omo-pv-editor__drop-indicator';
+        dropIndicator.setAttribute('aria-hidden', 'true');
+
+        const showDropIndicator = function (rect, mode) {
+            if (!(rect instanceof DOMRect) && (!rect || typeof rect.left !== 'number')) return;
+            if (!dropIndicator.isConnected) document.body.appendChild(dropIndicator);
+
+            if (mode === 'inside') {
+                dropIndicator.className = 'omo-pv-editor__drop-indicator omo-pv-editor__drop-indicator--inside';
+                dropIndicator.textContent = String(dropInsideLabel || '');
+                dropIndicator.style.left = Math.round(rect.left) + 'px';
+                dropIndicator.style.top = Math.round(rect.top) + 'px';
+                dropIndicator.style.width = Math.max(24, Math.round(rect.width)) + 'px';
+                dropIndicator.style.height = Math.max(38, Math.round(rect.height)) + 'px';
+                return;
+            }
+
+            dropIndicator.className = 'omo-pv-editor__drop-indicator omo-pv-editor__drop-indicator--line';
+            dropIndicator.textContent = '';
+            dropIndicator.style.left = Math.round(rect.left + 8) + 'px';
+            dropIndicator.style.top = Math.round((mode === 'after' ? rect.bottom : rect.top) - 3) + 'px';
+            dropIndicator.style.width = Math.max(24, Math.round(rect.width - 16)) + 'px';
+            dropIndicator.style.height = '6px';
+        };
 
         const clearDragState = function () {
-            nav.querySelectorAll('.is-drop-before, .is-drop-after, .is-dragging').forEach(function (node) {
-                node.classList.remove('is-drop-before', 'is-drop-after', 'is-dragging');
+            nav.querySelectorAll('.is-drop-before, .is-drop-after, .is-drop-inside, .is-dragging').forEach(function (node) {
+                node.classList.remove('is-drop-before', 'is-drop-after', 'is-drop-inside', 'is-dragging');
             });
-            if (dropMarker.parentNode) {
-                dropMarker.remove();
-            }
+            if (dropIndicator.isConnected) dropIndicator.remove();
+            dropIntent = null;
         };
 
         nav.addEventListener('dragstart', function (event) {
@@ -3480,7 +4958,7 @@ foreach ($points as $point) {
             }
 
             draggedPointId = Number(handle.getAttribute('data-omo-pv-point-drag-handle') || 0);
-            const row = draggedPointId > 0 ? nav.querySelector('[data-omo-pv-point-nav-row="' + draggedPointId + '"]') : null;
+            const row = draggedPointId > 0 ? nav.querySelector('[data-omo-pv-nav-node="' + draggedPointId + '"]') : null;
             if (!(row instanceof Element)) {
                 draggedPointId = 0;
                 event.preventDefault();
@@ -3495,51 +4973,97 @@ foreach ($points as $point) {
         });
 
         nav.addEventListener('dragover', function (event) {
-            const targetRow = event.target.closest('[data-omo-pv-point-nav-row]');
-            if (!targetRow || !draggedPointId) {
-                if (draggedPointId && dropMarker.parentNode) {
-                    event.preventDefault();
-                    if (event.dataTransfer) {
-                        event.dataTransfer.dropEffect = 'move';
-                    }
-                }
+            if (!draggedPointId) {
                 return;
             }
+
+            const sourceNode = nav.querySelector('[data-omo-pv-nav-node="' + draggedPointId + '"]');
+            const targetNode = event.target.closest('[data-omo-pv-nav-node]');
+            if (!(sourceNode instanceof Element)) return;
+
+            if (!targetNode) {
+                const targetContainer = event.target.closest('[data-omo-pv-nav-children]');
+                if (!(targetContainer instanceof Element) || sourceNode.contains(targetContainer)) return;
+                event.preventDefault();
+                nav.querySelectorAll('.is-drop-before, .is-drop-after, .is-drop-inside').forEach(function (node) {
+                    node.classList.remove('is-drop-before', 'is-drop-after', 'is-drop-inside');
+                });
+                dropIntent = { mode: 'inside', container: targetContainer };
+                const containerGroup = targetContainer.closest('[data-omo-pv-group]');
+                if (containerGroup instanceof Element) {
+                    containerGroup.classList.add('is-drop-inside');
+                    const groupHead = containerGroup.querySelector(':scope > .omo-pv-editor__group-head');
+                    if (groupHead instanceof Element) showDropIndicator(groupHead.getBoundingClientRect(), 'inside');
+                } else {
+                    const lastNode = targetContainer.querySelector(':scope > [data-omo-pv-nav-node]:last-child');
+                    showDropIndicator((lastNode || targetContainer).getBoundingClientRect(), 'after');
+                }
+                if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+                return;
+            }
+
+            if (targetNode === sourceNode || sourceNode.contains(targetNode)) return;
 
             event.preventDefault();
             if (event.dataTransfer) {
                 event.dataTransfer.dropEffect = 'move';
             }
-            nav.querySelectorAll('.is-drop-before, .is-drop-after').forEach(function (node) {
-                node.classList.remove('is-drop-before', 'is-drop-after');
+            nav.querySelectorAll('.is-drop-before, .is-drop-after, .is-drop-inside').forEach(function (node) {
+                node.classList.remove('is-drop-before', 'is-drop-after', 'is-drop-inside');
             });
 
-            const targetRect = targetRow.getBoundingClientRect();
-            const dropMode = event.clientY > (targetRect.top + targetRect.height / 2) ? 'after' : 'before';
-            targetRow.classList.add(dropMode === 'after' ? 'is-drop-after' : 'is-drop-before');
-            if (dropMode === 'after') {
-                targetRow.insertAdjacentElement('afterend', dropMarker);
+            const isGroup = targetNode.matches('[data-omo-pv-group]');
+            const targetHitbox = isGroup
+                ? targetNode.querySelector(':scope > .omo-pv-editor__group-head')
+                : targetNode;
+            const targetRect = (targetHitbox || targetNode).getBoundingClientRect();
+            const relativeY = Math.max(0, Math.min(targetRect.height, event.clientY - targetRect.top));
+            const dropMode = isGroup && relativeY >= targetRect.height * 0.28 && relativeY <= targetRect.height * 0.72
+                ? 'inside'
+                : (relativeY > targetRect.height / 2 ? 'after' : 'before');
+            targetNode.classList.add(dropMode === 'inside' ? 'is-drop-inside' : (dropMode === 'after' ? 'is-drop-after' : 'is-drop-before'));
+            showDropIndicator(targetRect, dropMode);
+            if (dropMode === 'inside') {
+                targetNode.classList.remove('is-collapsed');
+                const toggle = targetNode.querySelector(':scope > .omo-pv-editor__group-head [data-omo-pv-group-toggle]');
+                if (toggle) toggle.setAttribute('aria-expanded', 'true');
+                const childContainer = targetNode.querySelector(':scope > [data-omo-pv-nav-children]');
+                if (!(childContainer instanceof Element)) return;
+                dropIntent = { mode: 'inside', container: childContainer };
             } else {
-                targetRow.insertAdjacentElement('beforebegin', dropMarker);
+                dropIntent = { mode: dropMode, reference: targetNode };
             }
         });
 
         nav.addEventListener('drop', function (event) {
-            const sourceRow = draggedPointId > 0 ? nav.querySelector('[data-omo-pv-point-nav-row="' + draggedPointId + '"]') : null;
-            if (!(sourceRow instanceof Element) || !dropMarker.parentNode) {
+            const sourceRow = draggedPointId > 0 ? nav.querySelector('[data-omo-pv-nav-node="' + draggedPointId + '"]') : null;
+            if (!(sourceRow instanceof Element) || !dropIntent) {
                 clearDragState();
                 draggedPointId = 0;
                 return;
             }
 
             event.preventDefault();
+            if (dropIntent.mode === 'inside' && dropIntent.container instanceof Element) {
+                dropIntent.container.appendChild(sourceRow);
+            } else if (dropIntent.reference instanceof Element) {
+                if (dropIntent.mode === 'after') {
+                    dropIntent.reference.insertAdjacentElement('afterend', sourceRow);
+                } else {
+                    dropIntent.reference.insertAdjacentElement('beforebegin', sourceRow);
+                }
+            } else {
+                clearDragState();
+                draggedPointId = 0;
+                return;
+            }
 
-            dropMarker.insertAdjacentElement('beforebegin', sourceRow);
-            dropMarker.remove();
-
-            const orderedPointIds = collectNavPointIds();
-            applyPointOrderToCards(orderedPointIds);
-            persistPointOrder(orderedPointIds);
+            const layout = collectNavLayout();
+            applyPointOrderToCards(layout.filter(function (item) {
+                const payload = currentPointPayloads[String(item.id)] || {};
+                return payload.isGroup !== true;
+            }).map(function (item) { return item.id; }));
+            persistPointOrder(layout);
             clearDragState();
             draggedPointId = 0;
         });
@@ -3555,12 +5079,11 @@ foreach ($points as $point) {
                 return;
             }
 
-            nav.querySelectorAll('.is-drop-before, .is-drop-after').forEach(function (node) {
-                node.classList.remove('is-drop-before', 'is-drop-after');
+            nav.querySelectorAll('.is-drop-before, .is-drop-after, .is-drop-inside').forEach(function (node) {
+                node.classList.remove('is-drop-before', 'is-drop-after', 'is-drop-inside');
             });
-            if (dropMarker.parentNode) {
-                dropMarker.remove();
-            }
+            if (dropIndicator.isConnected) dropIndicator.remove();
+            dropIntent = null;
         });
     })();
 
@@ -3642,7 +5165,7 @@ foreach ($points as $point) {
             syncDocumentMetadataUi();
         });
     });
-    if (documentVisibilitySelect instanceof HTMLSelectElement) {
+    if (documentVisibilitySelect instanceof Element) {
         documentVisibilitySelect.addEventListener('change', syncDocumentMetadataUi);
     }
     if (invitationsButton instanceof HTMLButtonElement) {
@@ -3668,6 +5191,8 @@ foreach ($points as $point) {
     }
     updateKnownPointSignatures(initialPointPayloads);
     syncCurrentPointPayloads(initialPointPayloads);
+    renderNavTreeFromPayloads();
+    applyPointOrderToCards(getOrderedPointIdsFromPayloads());
     renderTimingSummary();
     startSyncPolling();
     startLockHeartbeat();

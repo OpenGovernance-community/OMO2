@@ -697,7 +697,7 @@ html[data-theme="dark"] .common-topbar-profile-preference__icon--theme-dark {
 .common-topbar-modal {
     position: fixed;
     inset: 0;
-    z-index: 1330;
+    z-index: 2500;
 }
 
 .common-topbar-modal__backdrop {

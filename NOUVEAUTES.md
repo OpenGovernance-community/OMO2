@@ -2,7 +2,43 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-14
+
+Le secretaire officiel d un PV peut maintenant passer la main sans perdre immediatement son attribution. Cette passation demande d abord que les modifications locales soient enregistrees, puis affiche une attente animee et ouvre le bouton de remplacement aux personnes invitees. Une personne disposant de `CAN_CLAIM_PV` peut a tout moment reprendre la responsabilite; un remplacant conserve la possibilite de sauvegarder un brouillon deja verrouille par sa session. Ces droits sont controles cote serveur et se synchronisent entre les editeurs ouverts.
+
+L entete de l editeur de PV a ete reorganise en une interface plus visuelle: identite du document et informations de reunion, processus en quatre etapes, auteur et secretaire, actions de gestion puis liste de presence dans une carte distincte. Lorsqu un evenement est associe, son nom, son horaire et son lieu occupent une ligne complete avec leurs pictogrammes. Le selecteur de visibilite compact surplombe maintenant les etapes, les horaires d une reunion tenue sur une seule journee ne repetent plus sa date de fin, et le bouton d enregistrement apparait sous la description uniquement lorsqu une modification doit etre sauvee. La composition reste compacte et s adapte aux ecrans etroits sans changer les mecanismes de sauvegarde ou de synchronisation.
+
+Les menus compacts de l editeur de PV, de la liste Documents et de la consultation en lecture seule proposent maintenant un export PDF telechargeable. Il reutilise le rendu de consultation et ses controles d acces pour produire un document A4 avec le titre, la description, les informations de reunion, les groupes imbriques et le contenu enregistre des points.
+
+Les images statiques locales des PV sont maintenant embarquees dans leur export PDF avec leur type MIME reel. Les chemins web relatifs, notamment les icones PNG des types de points, ne produisent plus d erreur d image introuvable dans DomPDF; les icones ont une taille explicite et les images de contenu conservent leurs proportions dans une zone limitee.
+
+Les PV peuvent maintenant etre enregistres comme modeles reutilisables depuis le menu compact de leur editeur. Lors de la creation d un PV depuis Documents ou depuis un evenement, les modeles visibles selon les droits d organisation, cercle ou role sont proposes; leur arborescence, leurs points, leurs durees et leurs contenus sont dupliques sans conserver de lien au modele, d invitations, d auteurs, de roles, de statut traite ni de verrou d edition.
+
+Les ordres du jour des PV peuvent maintenant etre structures en groupes imbriques. Le secretaire cree et renomme les groupes, chacun peut les ouvrir ou les replier, et les points se deplacent visuellement entre leurs niveaux par glisser-deposer ou avec les fleches, qui permettent aussi d entrer dans un groupe voisin et d en sortir. Un indicateur flottant stable distingue clairement l insertion entre deux elements du depot dans un groupe, sans deplacer la liste sous le curseur. Leur numerotation suit l arborescence (`4`, `4.1`, `4.2`, etc.). Pendant la preparation, un participant peut reclasser uniquement ses propres points sans modifier l ordre relatif des autres; le secretaire conserve la gestion complete de l arborescence.
+
 ## 2026-07-13
+
+Les documents disposent maintenant d une action `Archiver` et d une action `Supprimer` protegee: les PV, les documents lies a un evenement et les dossiers encore utilises sont uniquement archivables.
+
+Le menu `Deplacer` des documents reconnait maintenant l auteur initial ou le secretaire d un PV comme gestionnaire autorise, avec la meme verification appliquee par l API de deplacement.
+
+Un auteur initial sans secretaire dispose maintenant des memes droits complets que le secretaire du PV: reordonner, attribuer et editer les points, sous reserve des points deja traites.
+
+La prise du role de secretaire rafraichit maintenant immediatement les droits d edition de tous les points du PV, sans ecraser un brouillon local en cours.
+
+Le graphique de timing des PV sans evenement n affiche plus de zone de marge artificielle ni de ligne de marge dans sa legende, y compris lorsque la mise en page en grille est active.
+
+La visibilite du document PV se choisit maintenant avec le switch graphique commun et ses icones de portee, tout en conservant les infobulles et la sauvegarde des metadonnees.
+
+L auteur initial d un PV est maintenant affiche dans l editeur et conserve ses droits de gestion tant qu aucun secretaire n est affecte. Pour un PV sans holon de contexte, il devient le secretaire par defaut, independamment de `CAN_CLAIM_PV`; les PV rattaches a un holon continuent d appliquer cette permission.
+
+Les invitations des evenements, prises de decision, documents et futures ressources reposent maintenant sur un modele generique unique. Les adaptateurs metier existants restent compatibles, les anciennes invitations sont reprises par migration, et un PV sans evenement peut gerer directement ses propres holons, membres et adresses e-mail invites. La popup conserve correctement l identifiant du document lors de son enregistrement, y compris quand ce PV autonome ne possede aucun holon.
+
+Les modales communes de la topbar apparaissent maintenant au-dessus du drawer d edition des PV, afin que la popup `Inviter` reste accessible lorsqu elle est ouverte depuis cet editeur.
+
+Les invitations disposent maintenant d un champ de reponse `accepted`, distinct du statut technique de l invitation. Il est repris dans la liste de presence et synchronise avec les coches de presence, pour les evenements comme pour les PV autonomes.
+
+Un point de PV traite n affiche plus l aide indiquant que son auteur peut encore le modifier; il affiche directement son etat verrouille.
 
 Pendant la phase `Preparation`, le secretaire d un PV, ou son createur tant qu aucun secretaire n est attribue, peut maintenant ouvrir le bouton `Inviter` directement depuis l editeur. Il reutilise la liste d invitations du Calendrier et la mise a jour est reprise dans l editeur sans recharger la page.
 
@@ -691,3 +727,16 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - 2026-07-10 : Le detail d un document suit maintenant aussi cette largeur et ne recentre plus son article a `920px` quand il est affiche dans un sous-drawer OMO. Hors overlay, sa presentation centree reste inchangee.
 - 2026-07-09 : La mini structure de la homepage OMO garde maintenant le nom de l element courant uniquement dans la capsule basse, et affiche les libelles de ses sous-cercles ou roles directs seulement quand leur taille a l ecran le permet.
 - 2026-07-13 : Les verrous d edition des points de PV sont maintenant aussi liberes lors d une vraie sortie de page, y compris apres confirmation d un rechargement ou d une navigation navigateur. Un fallback `fetch` avec `keepalive` complete le beacon; les verrous actifs restent renouvelles toutes les 30 secondes et un verrou sans signal devient automatiquement inactif apres 120 secondes.
+- 2026-07-14 : L editeur Summernote des points de PV peut maintenant inserer un document visible via un bouton dedie. Le selecteur reprend la mecanique Documents et produit un bloc de document lie dans le contenu; il n est propose que lorsque l application `DOCUMENTS` est activee.
+- 2026-07-14 : Les blocs Documents inseres dans un point de PV utilisent maintenant une structure HTML valide et preservee par le sanitiseur serveur. Leur lien et leur cadre restent donc presents apres enregistrement et rechargement du point; le bouton Summernote affiche aussi l icone Documents de facon fiable.
+- 2026-07-14 : Les inclusions de documents conservees dans un point de PV utilisent aussi le rendu HTML partage hors edition. Leur cadre reste donc visible apres une sauvegarde, y compris lorsque le point est reaffiche en lecture seule.
+- 2026-07-14 : Les points de PV peuvent maintenant aussi inclure une decision visible via un bouton Summernote carre. Le bloc conserve le titre et le type de la decision apres sauvegarde, avec le meme mecanisme de sanitation partage que les inclusions de documents.
+- 2026-07-14 : Le type d une decision integree est maintenant affiche dans une capsule au sein de son bloc, en edition comme en lecture seule, afin de preparer des variantes visuelles selon les futures phases de decision.
+- 2026-07-14 : Les inclusions de documents et decisions dans les points de PV peuvent maintenant etre modifiees par double-clic. Le chargement du champ HTML est aussi versionne pour que les navigateurs recents recoivent bien le sanitiseur qui conserve les nouveaux blocs de decisions.
+- 2026-07-14 : Les documents inclus dans un point de PV ouvrent desormais leur detail par hash sans navigation complete. Une action secondaire permet aussi de les ouvrir dans un nouvel onglet.
+- 2026-07-14 : L ouverture interne d un document depuis un point de PV conserve maintenant le drawer de reunion. Le PV se replie automatiquement dans sa languette persistante pendant que le detail du document s ouvre, au lieu d etre ferme et de perdre son contexte de travail.
+- 2026-07-14 : Les blocs de documents gardent maintenant leur cadre `Document lie` dans tous les etats de rendu de l editeur PV. Les blocs de scrutins utilisent aussi la navigation interne par hash et replient le PV sans le fermer, comme les documents lies.
+- 2026-07-14 : Les documents et scrutins inseres dans les points de PV sont maintenant presentes sous forme de cartes compactes : vignette a gauche, titre sur une ligne et resume limite a deux lignes pour les documents.
+- 2026-07-14 : Les cartes de documents et scrutins des PV ne repetent plus leur libelle `lie`. Les marges de paragraphes Summernote sont aussi neutralisees autour de ces inclusions pour rapprocher titre, resume et cartes successives.
+- 2026-07-14 : Les points de PV peuvent maintenant referencer une date deja programmee via un bloc Calendrier compact. Le selecteur ne s affiche que si Calendar est actif, conserve le bloc a la sauvegarde et ouvre l evenement par son hash tout en repliant le PV.
+- 2026-07-14 : Les selecteurs de documents, decisions et dates integres aux points de PV permettent maintenant aussi de supprimer un bloc existant. Les popups recoivent egalement une marge interne pour mieux respirer.

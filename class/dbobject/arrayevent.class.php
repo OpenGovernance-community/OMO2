@@ -48,6 +48,34 @@ class ArrayEvent extends ArrayDbObject
         }
     }
 
+    public function loadVisibleForOrganization($organizationId, $userId, $includeInactive = false)
+    {
+        $organizationId = (int)$organizationId;
+        $userId = (int)$userId;
+        $this->exchangeArray([]);
+
+        if ($organizationId <= 0 || $userId <= 0) {
+            return;
+        }
+
+        $allEvents = new self();
+        $allEvents->loadForOrganization($organizationId, $includeInactive);
+
+        foreach ($allEvents as $event) {
+            if (!($event instanceof Event)) {
+                continue;
+            }
+
+            if (Event::normalizeStatus($event->get('status')) === Event::STATUS_CANCELLED) {
+                continue;
+            }
+
+            if ((int)$event->get('IDuser') === $userId || $event->isVisibleToInvitationViewer($userId, $organizationId)) {
+                $this[] = $event;
+            }
+        }
+    }
+
     public function loadForHolon($holonId, $includeInactive = false)
     {
         $holonId = (int)$holonId;

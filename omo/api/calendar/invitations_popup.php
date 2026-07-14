@@ -4,7 +4,9 @@ require_once __DIR__ . '/invitations_shared.php';
 
 use dbObject\DbObject;
 use dbObject\Document;
+use dbObject\DocumentInvitation;
 use dbObject\Event;
+use dbObject\EventInvitation;
 use dbObject\Holon;
 use dbObject\Organization;
 
@@ -31,9 +33,10 @@ function omoCalendarInvitationsPopupT($key, array $variables = [])
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_REQUEST['oid'] ?? 0));
 $currentHolonId = isset($_REQUEST['cid']) && is_numeric($_REQUEST['cid']) ? (int)$_REQUEST['cid'] : 0;
 $eventId = isset($_REQUEST['id']) && is_numeric($_REQUEST['id']) ? (int)$_REQUEST['id'] : 0;
+$documentId = isset($_REQUEST['document_id']) && is_numeric($_REQUEST['document_id']) ? (int)$_REQUEST['document_id'] : 0;
 $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
 
-if ($organizationId <= 0 || $eventId <= 0 || $currentUserId <= 0) {
+if ($organizationId <= 0 || ($eventId <= 0 && $documentId <= 0) || $currentUserId <= 0) {
     http_response_code(403);
     ?>
     <div class="omo-calendar-invitations-popup__empty"><?= omoApiEscape(omoCalendarInvitationsPopupT('calendar.invitations.empty_denied')) ?></div>
@@ -43,12 +46,11 @@ if ($organizationId <= 0 || $eventId <= 0 || $currentUserId <= 0) {
 
 $organization = new Organization();
 $event = new Event();
-if (
-    !$organization->load($organizationId)
-    || !$organization->canViewDetail()
-    || !$event->load($eventId)
-    || (int)$event->get('IDorganization') !== $organizationId
-) {
+$document = new Document();
+$resource = null;
+$invitationClass = EventInvitation::class;
+$resourceField = 'IDevent';
+if (!$organization->load($organizationId) || !$organization->canViewDetail()) {
     http_response_code(403);
     ?>
     <div class="omo-calendar-invitations-popup__empty"><?= omoApiEscape(omoCalendarInvitationsPopupT('calendar.invitations.empty_denied')) ?></div>
@@ -57,20 +59,50 @@ if (
 }
 
 $pvDocumentId = 0;
-$canEditInvitations = (int)$event->get('IDuser') === $currentUserId;
-foreach ($event->getAssociatedDocuments() as $associatedDocument) {
+$canEditInvitations = false;
+if ($documentId > 0) {
     if (
-        !($associatedDocument instanceof Document)
-        || !$associatedDocument->isPvDocument()
-        || $associatedDocument->getPvStage() !== Document::PV_STAGE_PREPARATION
-        || !$associatedDocument->canUserManagePvDocument($currentUserId)
+        !$document->load($documentId)
+        || (int)$document->get('IDorganization') !== $organizationId
+        || !$document->isPvDocument()
+        || $document->getPvStage() !== Document::PV_STAGE_PREPARATION
+        || !$document->canUserManagePvDocument($currentUserId)
     ) {
-        continue;
+        http_response_code(403);
+        ?><div class="omo-calendar-invitations-popup__empty"><?= omoApiEscape(omoCalendarInvitationsPopupT('calendar.invitations.empty_denied')) ?></div><?php
+        exit;
     }
-
+    $resource = $document;
     $canEditInvitations = true;
-    $pvDocumentId = (int)$associatedDocument->getId();
-    break;
+    $pvDocumentId = (int)$document->getId();
+    $invitationClass = DocumentInvitation::class;
+    $resourceField = 'IDdocument';
+} else {
+    if (!$event->load($eventId) || (int)$event->get('IDorganization') !== $organizationId) {
+        http_response_code(403);
+        ?><div class="omo-calendar-invitations-popup__empty"><?= omoApiEscape(omoCalendarInvitationsPopupT('calendar.invitations.empty_denied')) ?></div><?php
+        exit;
+    }
+    $resource = $event;
+    $canEditInvitations = (int)$event->get('IDuser') === $currentUserId;
+    foreach ($event->getAssociatedDocuments() as $associatedDocument) {
+        if (!($associatedDocument instanceof Document) || !$associatedDocument->isPvDocument() || $associatedDocument->getPvStage() !== Document::PV_STAGE_PREPARATION || !$associatedDocument->canUserManagePvDocument($currentUserId)) {
+            continue;
+        }
+        $canEditInvitations = true;
+        $pvDocumentId = (int)$associatedDocument->getId();
+        break;
+    }
+}
+
+if ($resource === null) {
+    http_response_code(403);
+    ?><div class="omo-calendar-invitations-popup__empty"><?= omoApiEscape(omoCalendarInvitationsPopupT('calendar.invitations.empty_denied')) ?></div><?php
+    exit;
+}
+
+if ($documentId > 0) {
+    $canEditInvitations = true;
 }
 
 if (!$canEditInvitations) {
@@ -100,7 +132,7 @@ if ($currentHolonId > 0) {
     }
 }
 
-$eventHolonId = (int)$event->get('IDholon');
+$eventHolonId = (int)$resource->get('IDholon');
 if (!($effectiveHolon instanceof Holon) && $eventHolonId > 0) {
     $candidateHolon = new Holon();
     if ($candidateHolon->load($eventHolonId) && $organization->containsHolon($candidateHolon)) {
@@ -110,7 +142,7 @@ if (!($effectiveHolon instanceof Holon) && $eventHolonId > 0) {
 
 $targetHolonId = $effectiveHolon instanceof Holon ? (int)$effectiveHolon->getId() : $eventHolonId;
 $editorState = omoCalendarBuildInvitationEditorState(
-    $event,
+    $resource,
     $organization,
     $organizationId,
     $effectiveHolon,
@@ -118,6 +150,20 @@ $editorState = omoCalendarBuildInvitationEditorState(
     $targetHolonId,
     true
 );
+
+$popupActionQuery = ['oid' => $organizationId];
+if ($targetHolonId > 0) {
+    $popupActionQuery['cid'] = $targetHolonId;
+}
+if ($documentId > 0) {
+    $popupActionQuery['document_id'] = $documentId;
+} else {
+    $popupActionQuery['id'] = $eventId;
+}
+if ($isPvEditorRequest) {
+    $popupActionQuery['pv_editor'] = 1;
+}
+$popupActionUrl = '/omo/api/calendar/invitations_popup.php?' . http_build_query($popupActionQuery);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json; charset=UTF-8');
@@ -143,12 +189,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->beginTransaction();
 
         $applyResult = omoCalendarApplyInvitationSelections(
-            $event,
+            $resource,
             $organization,
             $organizationId,
             $selectedHolonIds,
             $selectedUserIds,
-            $selectedEmails
+            $selectedEmails,
+            $invitationClass,
+            $resourceField
         );
         if (empty($applyResult['status'])) {
             throw new InvalidArgumentException(trim((string)($applyResult['message'] ?? omoCalendarInvitationsPopupT('calendar.invitations.save_error'))));
@@ -179,16 +227,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    $detailUrl = '/omo/api/calendar/detail.php?oid=' . rawurlencode((string)$organizationId) . '&id=' . rawurlencode((string)(int)$event->getId());
-    if ($targetHolonId > 0) {
-        $detailUrl .= '&cid=' . rawurlencode((string)$targetHolonId);
+    $detailUrl = '';
+    if ($eventId > 0) {
+        $detailUrl = '/omo/api/calendar/detail.php?oid=' . rawurlencode((string)$organizationId) . '&id=' . rawurlencode((string)$eventId);
+        if ($targetHolonId > 0) {
+            $detailUrl .= '&cid=' . rawurlencode((string)$targetHolonId);
+        }
     }
 
     echo json_encode([
         'status' => true,
         'message' => omoCalendarInvitationsPopupT('calendar.invitations.updated'),
         'detailUrl' => $detailUrl,
-        'eventId' => (int)$event->getId(),
+        'eventId' => $eventId,
         'pvEditorContext' => $isPvEditorContext,
         'pvDocumentId' => $pvDocumentId,
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -331,7 +382,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <form
     id="omoCalendarInvitationsPopupForm"
     class="omo-calendar-invitations-popup"
-    action="/omo/api/calendar/invitations_popup.php?oid=<?= (int)$organizationId ?><?= $targetHolonId > 0 ? '&cid=' . (int)$targetHolonId : '' ?>&id=<?= (int)$event->getId() ?>"
+    action="<?= omoApiEscape($popupActionUrl) ?>"
     method="post"
 >
     <div class="omo-calendar-invitations-popup__header generic-drawer-header generic-drawer-header--sticky">

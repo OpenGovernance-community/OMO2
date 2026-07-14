@@ -1,15 +1,16 @@
 <?php
 namespace dbObject;
 
-class EventInvitation extends ResourceInvitation
+class DocumentAttendance extends ResourceAttendance
 {
     public static function resourceType()
     {
-        return 'event';
+        return 'document';
     }
 
     protected static function legacyResourceField()
     {
-        return 'IDevent';
+        return 'IDdocument';
     }
 }
+

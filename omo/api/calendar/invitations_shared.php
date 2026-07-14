@@ -3,6 +3,7 @@
 use dbObject\ArrayUserOrganization;
 use dbObject\Event;
 use dbObject\EventInvitation;
+use dbObject\ResourceInvitation;
 use dbObject\Holon;
 use dbObject\Organization;
 use dbObject\UserOrganization;
@@ -184,22 +185,22 @@ if (!function_exists('omoCalendarExtractInvitationSelections')) {
         $selectedUserIds = [];
         $selectedEmails = [];
 
-        if ($event instanceof Event) {
+        if (is_object($event) && method_exists($event, 'getInvitations')) {
             foreach ($event->getInvitations(true) as $invitation) {
                 if (
-                    !($invitation instanceof EventInvitation)
-                    || EventInvitation::normalizeStatus($invitation->get('status')) === EventInvitation::STATUS_REVOKED
+                    !($invitation instanceof ResourceInvitation)
+                    || ResourceInvitation::normalizeStatus($invitation->get('status')) === ResourceInvitation::STATUS_REVOKED
                 ) {
                     continue;
                 }
 
-                $type = EventInvitation::normalizeType($invitation->get('invitation_type'));
-                if ($type === EventInvitation::TYPE_HOLON) {
+                $type = ResourceInvitation::normalizeType($invitation->get('invitation_type'));
+                if ($type === ResourceInvitation::TYPE_HOLON) {
                     $selectedHolonIds[] = (int)$invitation->get('IDholon');
                     continue;
                 }
 
-                if ($type === EventInvitation::TYPE_USER) {
+                if ($type === ResourceInvitation::TYPE_USER) {
                     $selectedUserIds[] = (int)$invitation->get('IDuser');
                     continue;
                 }
@@ -324,7 +325,7 @@ if (!function_exists('omoCalendarRenderInvitationHolonTreeNode')) {
 
 if (!function_exists('omoCalendarBuildInvitationEditorState')) {
     function omoCalendarBuildInvitationEditorState(
-        ?Event $event,
+        $event,
         Organization $organization,
         int $organizationId,
         ?Holon $effectiveHolon,
@@ -332,7 +333,7 @@ if (!function_exists('omoCalendarBuildInvitationEditorState')) {
         int $defaultHolonId = 0,
         bool $preferDefaultHolonSelection = true
     ) {
-        $selectionState = $event instanceof Event
+        $selectionState = is_object($event) && method_exists($event, 'getInvitations')
             ? omoCalendarExtractInvitationSelections($event)
             : ['holon_ids' => [], 'user_ids' => [], 'emails' => [], 'count' => 0];
 
@@ -388,7 +389,7 @@ if (!function_exists('omoCalendarBuildInvitationEditorState')) {
 }
 
 if (!function_exists('omoCalendarApplyInvitationSelections')) {
-    function omoCalendarApplyInvitationSelections(Event $event, Organization $organization, int $organizationId, array $selectedHolonIds, array $selectedUserIds, $selectedEmails)
+    function omoCalendarApplyInvitationSelections($event, Organization $organization, int $organizationId, array $selectedHolonIds, array $selectedUserIds, $selectedEmails, string $invitationClass = EventInvitation::class, string $resourceField = 'IDevent')
     {
         if ((int)$event->getId() <= 0 || $organizationId <= 0) {
             return [
@@ -443,7 +444,7 @@ if (!function_exists('omoCalendarApplyInvitationSelections')) {
 
         $existingInvitations = [];
         foreach ($event->getInvitations(false) as $invitation) {
-            if ($invitation instanceof EventInvitation) {
+            if ($invitation instanceof ResourceInvitation) {
                 $existingInvitations[$invitation->getIdentityKey()] = $invitation;
             }
         }
@@ -451,41 +452,41 @@ if (!function_exists('omoCalendarApplyInvitationSelections')) {
         $desiredInvitations = [];
         foreach ($selectedHolonIds as $holonId) {
             $desiredInvitations['holon:' . $holonId] = [
-                'invitation_type' => EventInvitation::TYPE_HOLON,
+                'invitation_type' => ResourceInvitation::TYPE_HOLON,
                 'IDholon' => $holonId,
                 'display_name' => $validHolonLabels[$holonId] ?? '',
             ];
         }
         foreach ($selectedUserIds as $userId) {
             $desiredInvitations['user:' . $userId] = [
-                'invitation_type' => EventInvitation::TYPE_USER,
+                'invitation_type' => ResourceInvitation::TYPE_USER,
                 'IDuser' => $userId,
                 'display_name' => $validUserLabels[$userId] ?? '',
             ];
         }
         foreach ($selectedEmails as $email) {
             $desiredInvitations['email:' . $email] = [
-                'invitation_type' => EventInvitation::TYPE_EMAIL,
+                'invitation_type' => ResourceInvitation::TYPE_EMAIL,
                 'email' => $email,
                 'display_name' => '',
             ];
         }
 
         foreach ($desiredInvitations as $identityKey => $invitationData) {
-            $invitation = $existingInvitations[$identityKey] ?? new EventInvitation();
+            $invitation = $existingInvitations[$identityKey] ?? new $invitationClass();
             $existingParameters = $invitation->get('parameters');
             if (!is_array($existingParameters)) {
                 $existingParameters = json_decode(trim((string)$existingParameters), true);
             }
             $existingParameters = is_array($existingParameters) ? $existingParameters : [];
 
-            $invitation->set('IDevent', (int)$event->getId());
+            $invitation->set($resourceField, (int)$event->getId());
             $invitation->set('IDholon', isset($invitationData['IDholon']) ? (int)$invitationData['IDholon'] : null);
             $invitation->set('IDuser', isset($invitationData['IDuser']) ? (int)$invitationData['IDuser'] : null);
             $invitation->set('email', trim((string)($invitationData['email'] ?? '')) !== '' ? trim((string)$invitationData['email']) : null);
             $invitation->set('display_name', trim((string)($invitationData['display_name'] ?? '')) !== '' ? trim((string)$invitationData['display_name']) : null);
             $invitation->set('invitation_type', (string)$invitationData['invitation_type']);
-            $invitation->set('status', EventInvitation::STATUS_INVITED);
+            $invitation->set('status', ResourceInvitation::STATUS_INVITED);
             $invitation->set('active', 1);
             $invitation->set('parameters', $existingParameters);
 
@@ -504,7 +505,7 @@ if (!function_exists('omoCalendarApplyInvitationSelections')) {
             }
 
             $invitation->set('active', 0);
-            $invitation->set('status', EventInvitation::STATUS_REVOKED);
+            $invitation->set('status', ResourceInvitation::STATUS_REVOKED);
             $saveResult = $invitation->save();
             if (!is_array($saveResult) || empty($saveResult['status'])) {
                 return [

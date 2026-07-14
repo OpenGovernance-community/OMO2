@@ -70,9 +70,12 @@ function omoDocumentsPvEditorBuildPointResponsePayload(\dbObject\DocumentPvPoint
         $authorOptions = $document->getPvPointAuthorOptions($organizationId);
     }
     $pointData = $point->buildEditorData($organizationId, $currentUserId, $lockToken);
+    $positionLabels = \dbObject\DocumentPvPoint::buildHierarchyPositionLabelsForDocument((int)$point->get('IDdocument'));
+    $pointData['positionLabel'] = (string)($positionLabels[(int)$point->getId()] ?? '--');
     $pointData['isEditable'] = $document->canUserEditPvPoint($point, $currentUserId);
     $pointData['canEditNow'] = !empty($pointData['isEditable']) && empty($pointData['lock']['isLockedByOther']);
-    $pointData['canReorder'] = $document->canUserReorderPvPoints($currentUserId);
+    $pointData['canReorder'] = $document->canUserReorderPvItem($point, $currentUserId);
+    $pointData['canEditGroup'] = $point->isGroup() && $document->canUserCreatePvGroups($currentUserId);
     $pointData['isPvEditor'] = $document->isPvEditor($currentUserId);
     $pointData['canToggleHandled'] = $document->canUserManagePvDocument($currentUserId);
     $pointData['canAssignAuthor'] = $document->canUserManagePvDocument($currentUserId);
@@ -105,6 +108,7 @@ function omoDocumentsPvEditorBuildPointsPayloadForDocument(int $documentId, int 
     $hasDocument = $document->load($documentId);
     $hasStructureApplication = omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'structure');
     $authorOptions = $hasDocument ? $document->getPvPointAuthorOptions($organizationId) : [];
+    $positionLabels = \dbObject\DocumentPvPoint::buildHierarchyPositionLabels($points);
 
     $payload = [];
     foreach ($points as $point) {
@@ -113,9 +117,11 @@ function omoDocumentsPvEditorBuildPointsPayloadForDocument(int $documentId, int 
         }
 
         $pointData = $point->buildEditorData($organizationId, $currentUserId, $lockToken);
+        $pointData['positionLabel'] = (string)($positionLabels[(int)$point->getId()] ?? '--');
         $pointData['isEditable'] = $hasDocument && $document->canUserEditPvPoint($point, $currentUserId);
         $pointData['canEditNow'] = !empty($pointData['isEditable']) && empty($pointData['lock']['isLockedByOther']);
-        $pointData['canReorder'] = $hasDocument && $document->canUserReorderPvPoints($currentUserId);
+        $pointData['canReorder'] = $hasDocument && $document->canUserReorderPvItem($point, $currentUserId);
+        $pointData['canEditGroup'] = $hasDocument && $point->isGroup() && $document->canUserCreatePvGroups($currentUserId);
         $pointData['isPvEditor'] = $hasDocument && $document->isPvEditor($currentUserId);
         $pointData['canToggleHandled'] = $hasDocument && $document->canUserManagePvDocument($currentUserId);
         $pointData['canAssignAuthor'] = $hasDocument && $document->canUserManagePvDocument($currentUserId);
@@ -155,9 +161,11 @@ function omoDocumentsPvEditorBuildDocumentPayload(\dbObject\Document $document, 
         $modifiedAtValue,
         (string)$document->getPvStage(),
         (string)$pvEditorUserId,
+        $document->isPvEditorHandoverOpen() ? '1' : '0',
         trim((string)$document->get('title')),
         trim((string)$document->get('description')),
         (string)($visibility['type'] ?? \dbObject\ObjectVisibility::TYPE_ORGANIZATION),
+        $document->isPvTemplate() ? '1' : '0',
     ]);
     return [
         'id' => (int)$document->getId(),
@@ -172,10 +180,18 @@ function omoDocumentsPvEditorBuildDocumentPayload(\dbObject\Document $document, 
         'pvEditorLabel' => $pvEditorUserId > 0
             ? \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($pvEditorUserId, $organizationId)
             : '',
+        'pvCreatorUserId' => $document->getCreatedByUserId(),
+        'pvCreatorLabel' => $document->getCreatedByUserId() > 0
+            ? \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($document->getCreatedByUserId(), $organizationId)
+            : '',
         'isPvEditor' => $document->isPvEditor($currentUserId),
         'canManagePvDocument' => $document->canUserManagePvDocument($currentUserId),
         'canClaimPvEditor' => $document->canUserClaimPvEditor($organizationId, $currentUserId),
+        'canReplacePvEditor' => $document->canUserReplacePvEditor($organizationId, $currentUserId),
+        'pvEditorHandoverOpen' => $document->isPvEditorHandoverOpen(),
         'isPvValidated' => $document->isPvValidated(),
+        'isPvTemplate' => $document->isPvTemplate(),
+        'canManagePvTemplate' => $document->canUserManagePvDocument($currentUserId),
     ];
 }
 
@@ -194,12 +210,64 @@ $document = omoDocumentsPvEditorLoadDocumentOrFail($documentId, $organizationId,
 $hasTeamApplication = omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'team');
 $hasStructureApplication = omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'structure');
 
+if ($action === 'set_pv_template') {
+    $templateResult = $document->updatePvTemplateState(
+        $organizationId,
+        $currentUserId,
+        !empty($_POST['is_template'])
+    );
+    if (!is_array($templateResult) || ($templateResult['status'] ?? false) !== true) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => trim((string)($templateResult['text'] ?? 'Impossible de modifier le modele de PV.')),
+        ], 403);
+    }
+
+    omoDocumentsPvEditorJsonResponse([
+        'status' => true,
+        'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId),
+    ]);
+}
+
 if ($action === 'claim_pv_editor') {
     $claimResult = $document->claimPvEditor($organizationId, $currentUserId);
     if (!is_array($claimResult) || ($claimResult['status'] ?? false) !== true) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
             'message' => trim((string)($claimResult['text'] ?? 'Impossible de devenir editeur du PV.')),
+            'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId),
+        ], 403);
+    }
+
+    omoDocumentsPvEditorJsonResponse([
+        'status' => true,
+        'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId),
+        'points' => omoDocumentsPvEditorBuildPointsPayloadForDocument((int)$document->getId(), $organizationId, $currentUserId, $editorToken),
+    ]);
+}
+
+if ($action === 'pass_pv_editor') {
+    $handoverResult = $document->openPvEditorHandover($currentUserId);
+    if (!is_array($handoverResult) || ($handoverResult['status'] ?? false) !== true) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => trim((string)($handoverResult['text'] ?? 'Impossible de passer la main pour ce PV.')),
+            'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId),
+        ], 403);
+    }
+
+    omoDocumentsPvEditorJsonResponse([
+        'status' => true,
+        'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId),
+    ]);
+}
+
+if ($action === 'replace_pv_editor') {
+    $replaceResult = $document->replacePvEditor($organizationId, $currentUserId);
+    if (!is_array($replaceResult) || ($replaceResult['status'] ?? false) !== true) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => trim((string)($replaceResult['text'] ?? 'Impossible de remplacer l editeur du PV.')),
             'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId),
         ], 403);
     }
@@ -259,6 +327,7 @@ if ($action === 'add_point') {
     }
     $point = new \dbObject\DocumentPvPoint();
     $point->set('IDdocument', (int)$document->getId());
+    $point->set('item_type', \dbObject\DocumentPvPoint::ITEM_TYPE_POINT);
     $point->set('IDuser_author', $currentUserId);
     $point->set('IDuser_modification', $currentUserId);
     $point->set('title', omoDocumentsPvEditorActionT('documents.pv_editor.point.default_title'));
@@ -277,6 +346,67 @@ if ($action === 'add_point') {
     omoDocumentsPvEditorJsonResponse([
         'status' => true,
         'point' => omoDocumentsPvEditorBuildPointResponsePayload($point, $organizationId, $currentUserId),
+    ]);
+}
+
+if ($action === 'add_group') {
+    if (!$document->canUserCreatePvGroups($currentUserId)) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+        ], 403);
+    }
+
+    $group = new \dbObject\DocumentPvPoint();
+    $group->set('IDdocument', (int)$document->getId());
+    $group->set('item_type', \dbObject\DocumentPvPoint::ITEM_TYPE_GROUP);
+    $group->set('IDuser_modification', $currentUserId);
+    $group->set('title', omoDocumentsPvEditorActionT('documents.pv_editor.group.default_title'));
+    $group->set('pointtype', \dbObject\DocumentPvPoint::TYPE_INFORMATION);
+    $group->set('active', 1);
+    $saveResult = $group->save();
+    if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => trim((string)($saveResult['text'] ?? 'Impossible de creer le groupe.')),
+        ], 400);
+    }
+
+    omoDocumentsPvEditorJsonResponse([
+        'status' => true,
+        'point' => omoDocumentsPvEditorBuildPointResponsePayload($group, $organizationId, $currentUserId),
+    ]);
+}
+
+if ($action === 'update_group') {
+    $groupId = isset($_POST['point_id']) ? (int)$_POST['point_id'] : 0;
+    $group = new \dbObject\DocumentPvPoint();
+    if (
+        !$document->canUserCreatePvGroups($currentUserId)
+        || $groupId <= 0
+        || !$group->load($groupId)
+        || !$group->isGroup()
+        || (int)$group->get('IDdocument') !== (int)$document->getId()
+    ) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+        ], 403);
+    }
+
+    $group->set('title', trim((string)($_POST['title'] ?? '')));
+    $group->set('IDuser_modification', $currentUserId);
+    $saveResult = $group->save();
+    if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => trim((string)($saveResult['text'] ?? 'Impossible de sauver le groupe.')),
+        ], 400);
+    }
+
+    omoDocumentsPvEditorJsonResponse([
+        'status' => true,
+        'point' => omoDocumentsPvEditorBuildPointResponsePayload($group, $organizationId, $currentUserId),
     ]);
 }
 
@@ -337,11 +467,19 @@ if ($action === 'unlock_point') {
 if ($action === 'save_point') {
     $pointId = isset($_POST['point_id']) ? (int)$_POST['point_id'] : 0;
     $point = new \dbObject\DocumentPvPoint();
+    $canSaveLockedDraft = false;
+    if (
+        $pointId > 0
+        && $point->load($pointId)
+        && (int)$point->get('IDdocument') === (int)$document->getId()
+    ) {
+        // Allow only an already locked browser session to finish its draft after a handover.
+        $canSaveLockedDraft = $point->isEditLockOwnedByUserSession($currentUserId, $editorToken);
+    }
     if (
         $pointId <= 0
-        || !$point->load($pointId)
         || (int)$point->get('IDdocument') !== (int)$document->getId()
-        || !$document->canUserEditPvPoint($point, $currentUserId)
+        || (!$document->canUserEditPvPoint($point, $currentUserId) && !$canSaveLockedDraft)
     ) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
@@ -475,13 +613,13 @@ if ($action === 'reorder_points') {
         ], 403);
     }
 
-    $rawPointIds = $_POST['point_ids'] ?? [];
-    if (!is_array($rawPointIds)) {
-        $decoded = json_decode((string)$rawPointIds, true);
-        $rawPointIds = is_array($decoded) ? $decoded : [];
-    }
-
-    $reorderResult = \dbObject\DocumentPvPoint::reorderForDocumentByUser((int)$document->getId(), $rawPointIds, $currentUserId);
+    $layout = json_decode((string)($_POST['layout'] ?? ''), true);
+    $layout = is_array($layout) ? $layout : [];
+    $reorderResult = \dbObject\DocumentPvPoint::reorderHierarchyForDocumentByUser(
+        (int)$document->getId(),
+        $layout,
+        $currentUserId
+    );
     if (!is_array($reorderResult) || ($reorderResult['status'] ?? false) !== true) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
@@ -528,19 +666,11 @@ if ($action === 'toggle_attendance') {
     $event = method_exists($document, 'getAssociatedEvent')
         ? $document->getAssociatedEvent()
         : null;
-    if (!($event instanceof \dbObject\Event)) {
-        omoDocumentsPvEditorJsonResponse([
-            'status' => false,
-            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.unavailable'),
-        ], 400);
-    }
-
-    $saveResult = $event->setAttendancePresence(
-        $organizationId,
-        $currentUserId,
-        trim((string)($_POST['identity_key'] ?? '')),
-        !empty($_POST['is_present'])
-    );
+    $identityKey = trim((string)($_POST['identity_key'] ?? ''));
+    $isPresent = !empty($_POST['is_present']);
+    $saveResult = $event instanceof \dbObject\Event
+        ? $event->setAttendancePresence($organizationId, $currentUserId, $identityKey, $isPresent)
+        : $document->setInvitationAttendance($organizationId, $currentUserId, $identityKey, $isPresent);
     if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,

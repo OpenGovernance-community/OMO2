@@ -181,6 +181,51 @@
 				return $element;
 			}
 
+			if (self::isAllowedDecisionEmbedNode($node)) {
+				$element = $document->createElement('span');
+				$element->setAttribute('class', 'omo-decision-embed');
+				$element->setAttribute('contenteditable', 'false');
+				$element->setAttribute('data-omo-embed-type', 'decision');
+				$element->setAttribute('data-omo-decision-id', (string)self::getDecisionEmbedNodeId($node));
+
+				$title = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-decision-title'));
+				if ($title !== '') {
+					$element->setAttribute('data-omo-decision-title', $title);
+				}
+
+				$type = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-decision-type'));
+				if ($type !== '') {
+					$element->setAttribute('data-omo-decision-type', $type);
+				}
+
+				foreach (iterator_to_array($node->childNodes) as $childNode) {
+					self::appendSanitizedHtmlChild($element, self::sanitizeHtmlNode($childNode, $document));
+				}
+
+				return $element;
+			}
+
+			if (self::isAllowedEventEmbedNode($node)) {
+				$element = $document->createElement('span');
+				$element->setAttribute('class', 'omo-event-embed');
+				$element->setAttribute('contenteditable', 'false');
+				$element->setAttribute('data-omo-embed-type', 'event');
+				$element->setAttribute('data-omo-event-id', (string)self::getEventEmbedNodeId($node));
+
+				foreach (array('title', 'schedule', 'description') as $attributeName) {
+					$value = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-event-' . $attributeName));
+					if ($value !== '') {
+						$element->setAttribute('data-omo-event-' . $attributeName, $value);
+					}
+				}
+
+				foreach (iterator_to_array($node->childNodes) as $childNode) {
+					self::appendSanitizedHtmlChild($element, self::sanitizeHtmlNode($childNode, $document));
+				}
+
+				return $element;
+			}
+
 			$tagName = $sourceTagName === 'DIV' ? 'p' : strtolower($sourceTagName);
 			$allowedTags = array(
 				'p',
@@ -284,6 +329,42 @@
 			}
 
 			return self::getDocumentEmbedNodeId($node) > 0;
+		}
+
+		protected static function getDecisionEmbedNodeId(\DOMNode $node): int
+		{
+			return (int)trim((string)self::getDomNodeAttributeValue($node, 'data-omo-decision-id'));
+		}
+
+		protected static function isAllowedDecisionEmbedNode(\DOMNode $node): bool
+		{
+			if (!($node instanceof \DOMElement)) {
+				return false;
+			}
+
+			if (trim((string)$node->getAttribute('data-omo-embed-type')) !== 'decision') {
+				return false;
+			}
+
+			return self::getDecisionEmbedNodeId($node) > 0;
+		}
+
+		protected static function getEventEmbedNodeId(\DOMNode $node): int
+		{
+			return (int)trim((string)self::getDomNodeAttributeValue($node, 'data-omo-event-id'));
+		}
+
+		protected static function isAllowedEventEmbedNode(\DOMNode $node): bool
+		{
+			if (!($node instanceof \DOMElement)) {
+				return false;
+			}
+
+			if (trim((string)$node->getAttribute('data-omo-embed-type')) !== 'event') {
+				return false;
+			}
+
+			return self::getEventEmbedNodeId($node) > 0;
 		}
 
 		protected static function appendSanitizedHtmlChild(\DOMNode $parentNode, \DOMNode $childNode)

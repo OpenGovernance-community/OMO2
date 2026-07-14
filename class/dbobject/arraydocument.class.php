@@ -56,6 +56,10 @@
 				if (!($document instanceof \dbObject\Document) || (int)$document->getId() <= 0) {
 					continue;
 				}
+				if ($document->isArchived()) {
+					$loadedCount += 1;
+					continue;
+				}
 
 				$loadedCount += 1;
 				$documentsById[(int)$document->getId()] = $document;
@@ -160,6 +164,7 @@
 			$loadParams = array(
 				'where' => array(
 					array('field' => 'IDorganization', 'value' => $organizationId),
+					array('field' => 'active', 'value' => 1),
 				),
 				'orderBy' => array(
 					array('field' => 'datecreation', 'dir' => 'DESC'),
@@ -183,6 +188,33 @@
 
 			$this->load($loadParams);
 			return $this->filterVisibleForCurrentViewer($organizationId);
+		}
+
+		public function loadVisiblePvTemplatesForOrganization(int $organizationId): void
+		{
+			$this->exchangeArray([]);
+			if ($organizationId <= 0) {
+				return;
+			}
+
+			$this->load(array(
+				'where' => array(
+					array('field' => 'IDorganization', 'value' => $organizationId),
+					array('field' => 'active', 'value' => 1),
+					array('field' => 'documenttype', 'value' => \dbObject\Document::TYPE_PV),
+					array('field' => 'is_template', 'value' => 1),
+				),
+				'orderBy' => array(
+					array('field' => 'title', 'dir' => 'ASC'),
+					array('field' => 'id', 'dir' => 'ASC'),
+				),
+			));
+
+			$visibleTemplates = array_values(array_filter($this->getArrayCopy(), static function ($document) use ($organizationId): bool {
+				return $document instanceof \dbObject\Document
+					&& $document->canUseAsPvTemplate($organizationId);
+			}));
+			$this->exchangeArray($visibleTemplates);
 		}
 
 		public function loadRecentForOrganizationContext($organizationId, $holonId = 0, $limit = 5, $documentScope = 'contextual', array $descendantHolonIds = array())
