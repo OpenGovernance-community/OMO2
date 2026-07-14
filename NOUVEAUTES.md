@@ -4,6 +4,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-07-14
 
+Les auteurs et editeurs autorises peuvent maintenant supprimer un point PV directement depuis son editeur avec un bouton rouge de confirmation. Les points traites, les groupes et les points auxquels l utilisateur n a pas acces restent proteges.
+
 L API Documents est maintenant organisee par type sans casser les anciennes URL: le module complet des PV vit sous `omo/api/documents/pv`, les outils de contenu HTML sous `html`, et le telechargement des fichiers stockes sous `upload`. Les anciens points d entree restent de simples relais de compatibilite. La construction des donnees d un point PV est partagee entre le premier rendu, les sauvegardes et la synchronisation, avec un seul calcul des roles disponibles par reponse. L endpoint d actions PV refuse desormais les mutations par URL et accepte uniquement les requetes `POST`.
 
 Le secretaire officiel d un PV peut maintenant passer la main sans perdre immediatement son attribution. Cette passation demande d abord que les modifications locales soient enregistrees, puis affiche une attente animee et ouvre le bouton de remplacement aux personnes invitees. Une personne disposant de `CAN_CLAIM_PV` peut a tout moment reprendre la responsabilite; un remplacant conserve la possibilite de sauvegarder un brouillon deja verrouille par sa session. Ces droits sont controles cote serveur et se synchronisent entre les editeurs ouverts.
@@ -17,6 +19,20 @@ Les images statiques locales des PV sont maintenant embarquees dans leur export 
 Les PV peuvent maintenant etre enregistres comme modeles reutilisables depuis le menu compact de leur editeur. Lors de la creation d un PV depuis Documents ou depuis un evenement, les modeles visibles selon les droits d organisation, cercle ou role sont proposes; leur arborescence, leurs points, leurs durees et leurs contenus sont dupliques sans conserver de lien au modele, d invitations, d auteurs, de roles, de statut traite ni de verrou d edition.
 
 Les ordres du jour des PV peuvent maintenant etre structures en groupes imbriques. Le secretaire cree et renomme les groupes, chacun peut les ouvrir ou les replier, et les points se deplacent visuellement entre leurs niveaux par glisser-deposer ou avec les fleches, qui permettent aussi d entrer dans un groupe voisin et d en sortir. Un indicateur flottant stable distingue clairement l insertion entre deux elements du depot dans un groupe, sans deplacer la liste sous le curseur. Leur numerotation suit l arborescence (`4`, `4.1`, `4.2`, etc.). Pendant la preparation, un participant peut reclasser uniquement ses propres points sans modifier l ordre relatif des autres; le secretaire conserve la gestion complete de l arborescence.
+
+Les groupes affichent maintenant sous leur titre le nombre total de points qu ils contiennent et la duree cumulee de ces points, y compris dans les groupes imbriques. Ces indicateurs restent synchronises apres une modification, un deplacement ou une actualisation du PV.
+
+Le numero des groupes reste maintenant sur la ligne du titre, comme celui des points, tandis que le recapitulatif commence sous le numero sur la ligne inferieure. La fleche d ouverture ou de fermeture conserve sa place en premier.
+
+Les actions d ajout d un point ou d un groupe dans l editeur utilisent maintenant des boutons carres avec leurs pictogrammes, tout en conservant les libelles accessibles et les infobulles.
+
+La poignee de groupe couvre explicitement les deux lignes de son en-tete dans la grille, afin de rester etiree sur toute sa hauteur.
+
+L icone du bouton sombre d ajout de point est maintenant automatiquement inversee en blanc pour rester lisible sur son fond.
+
+Une zone poubelle apparait maintenant a gauche des actions pendant le deplacement d un point ou d un groupe. Un depot confirme supprime l element; les points contenus dans un groupe supprime sont conserves et remontent au niveau superieur.
+
+Le message indiquant que l utilisateur est editeur du PV est maintenant affiche uniquement lorsque son identifiant correspond effectivement a l editeur officiel courant, y compris apres une synchronisation ou une passation.
 
 ## 2026-07-13
 

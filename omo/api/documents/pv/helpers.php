@@ -11,6 +11,10 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.action.add_point' => ['text' => 'Ajouter un point', 'context' => 'Button used to add a new agenda point in the PV editor.'],
         'documents.pv_editor.action.add_group' => ['text' => 'Ajouter un groupe', 'context' => 'Button used to add a thematic group in the PV agenda.'],
         'documents.pv_editor.action.save' => ['text' => 'Enregistrer', 'context' => 'Button used to save a PV point.'],
+        'documents.pv_editor.action.delete_point' => ['text' => 'Supprimer le point', 'context' => 'Accessible label for deleting an editable PV agenda point.'],
+        'documents.pv_editor.action.delete_item' => ['text' => 'Supprimer l element', 'context' => 'Accessible label for the PV drag and drop deletion target.'],
+        'documents.pv_editor.warning.delete_point' => ['text' => 'Supprimer ce point et son contenu ?', 'context' => 'Confirmation shown before deleting a PV agenda point.'],
+        'documents.pv_editor.warning.delete_item' => ['text' => 'Supprimer cet element ? Les points dun groupe seront conserves.', 'context' => 'Confirmation shown before deleting a PV agenda item or group.'],
         'documents.pv_editor.action.saving' => ['text' => 'Enregistrement...', 'context' => 'Temporary label while saving a PV point.'],
         'documents.pv_editor.action.reordering' => ['text' => 'Reorganisation...', 'context' => 'Temporary label while PV points are being reordered.'],
         'documents.pv_editor.state.saved' => ['text' => 'Enregistre', 'context' => 'State label shown after a PV point has been saved.'],
@@ -91,6 +95,8 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.point.default_title' => ['text' => 'Nouveau point', 'context' => 'Default title used when creating a fresh PV point.'],
         'documents.pv_editor.group.default_title' => ['text' => 'Nouveau groupe', 'context' => 'Default title used when creating a PV agenda group.'],
         'documents.pv_editor.group.toggle' => ['text' => 'Ouvrir ou fermer le groupe', 'context' => 'Accessible label for toggling a PV agenda group.'],
+        'documents.pv_editor.group.points' => ['text' => 'points', 'context' => 'Unit label for the number of points summarized under a PV group.'],
+        'documents.pv_editor.group.minutes' => ['text' => 'min', 'context' => 'Unit label for the cumulative duration summarized under a PV group.'],
         'documents.pv_editor.group.drop_inside' => ['text' => 'Dans ce groupe', 'context' => 'Label shown in the drag and drop indicator when nesting an agenda item in a group.'],
         'documents.pv_editor.notice.schedule' => ['text' => 'Reunion prevue le {date}.', 'context' => 'Schedule sentence shown in the PV editor header.'],
         'documents.pv_editor.notice.event' => ['text' => 'Evenement associe', 'context' => 'Label used in the PV editor header for the linked event.'],
@@ -129,6 +135,9 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null): array
 
     return [
         'save' => $resolve('documents.pv_editor.action.save', 'Enregistrer'),
+        'deletePoint' => $resolve('documents.pv_editor.action.delete_point', 'Supprimer le point'),
+        'deleteItem' => $resolve('documents.pv_editor.action.delete_item', 'Supprimer l element'),
+        'deleteItemMessage' => $resolve('documents.pv_editor.warning.delete_item', 'Supprimer cet element ? Les points dun groupe seront conserves.'),
         'saving' => $resolve('documents.pv_editor.action.saving', 'Enregistrement...'),
         'reordering' => $resolve('documents.pv_editor.action.reordering', 'Reorganisation...'),
         'saved' => $resolve('documents.pv_editor.state.saved', 'Enregistre'),
@@ -199,6 +208,8 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null): array
         'defaultTitle' => $resolve('documents.pv_editor.point.default_title', 'Nouveau point'),
         'defaultGroupTitle' => $resolve('documents.pv_editor.group.default_title', 'Nouveau groupe'),
         'toggleGroup' => $resolve('documents.pv_editor.group.toggle', 'Ouvrir ou fermer le groupe'),
+        'groupPoints' => $resolve('documents.pv_editor.group.points', 'points'),
+        'groupMinutes' => $resolve('documents.pv_editor.group.minutes', 'min'),
     ];
 }
 
@@ -280,7 +291,8 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
     bool $hasStructureApplication,
     array $authorOptions,
     array $authorHolonOptions,
-    string $positionLabel
+    string $positionLabel,
+    array $groupSummary = []
 ): array {
     $pointData = $point->buildEditorData($organizationId, $currentUserId, $lockToken);
     $pointData['positionLabel'] = $positionLabel !== '' ? $positionLabel : '--';
@@ -288,12 +300,20 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
     $pointData['canEditNow'] = !empty($pointData['isEditable']) && empty($pointData['lock']['isLockedByOther']);
     $pointData['canReorder'] = $document->canUserReorderPvItem($point, $currentUserId);
     $pointData['canEditGroup'] = $point->isGroup() && $document->canUserCreatePvGroups($currentUserId);
+    $pointData['canDelete'] = !$pointData['isHandled']
+        && ($point->isGroup()
+            ? $pointData['canEditGroup']
+            : !empty($pointData['canEditNow']));
     $pointData['isPvEditor'] = $document->isPvEditor($currentUserId);
     $pointData['canToggleHandled'] = $document->canUserManagePvDocument($currentUserId);
     $pointData['canAssignAuthor'] = $document->canUserManagePvDocument($currentUserId);
     $pointData['hasStructureApplication'] = $hasStructureApplication;
     $pointData['authorOptions'] = $authorOptions;
     $pointData['authorHolonOptions'] = $authorHolonOptions;
+    if ($point->isGroup()) {
+        $pointData['groupPointCount'] = (int)($groupSummary['pointCount'] ?? 0);
+        $pointData['groupDurationMinutes'] = (int)($groupSummary['durationMinutes'] ?? 0);
+    }
 
     $pointData = omoDocumentsPvEditorAttachConcernedHolonOptions(
         $pointData,
@@ -361,6 +381,62 @@ function omoDocumentsPvEditorRenderChipGroup(string $label, array $items, string
     return $html;
 }
 
+function omoDocumentsPvEditorBuildGroupSummaryMap(iterable $points): array
+{
+    $itemsById = [];
+    $childrenByParent = [];
+    foreach ($points as $point) {
+        if (!($point instanceof \dbObject\DocumentPvPoint) || (int)$point->getId() <= 0) {
+            continue;
+        }
+
+        $pointId = (int)$point->getId();
+        $parentId = (int)$point->get('IDparent');
+        $itemsById[$pointId] = [
+            'isGroup' => $point->isGroup(),
+            'duration' => max(0, (int)$point->get('desired_duration_minutes')),
+        ];
+        $childrenByParent[$parentId > 0 ? $parentId : 0][] = $pointId;
+    }
+
+    $summaries = [];
+    $buildSummary = static function (int $groupId, array $trail = []) use (&$buildSummary, &$summaries, $itemsById, $childrenByParent): array {
+        if (isset($summaries[$groupId])) {
+            return $summaries[$groupId];
+        }
+        if (isset($trail[$groupId])) {
+            return ['pointCount' => 0, 'durationMinutes' => 0];
+        }
+
+        $trail[$groupId] = true;
+        $summary = ['pointCount' => 0, 'durationMinutes' => 0];
+        foreach ($childrenByParent[$groupId] ?? [] as $childId) {
+            $child = $itemsById[$childId] ?? null;
+            if (!is_array($child)) {
+                continue;
+            }
+            if (!empty($child['isGroup'])) {
+                $childSummary = $buildSummary($childId, $trail);
+                $summary['pointCount'] += (int)$childSummary['pointCount'];
+                $summary['durationMinutes'] += (int)$childSummary['durationMinutes'];
+            } else {
+                $summary['pointCount']++;
+                $summary['durationMinutes'] += (int)$child['duration'];
+            }
+        }
+
+        return $summaries[$groupId] = $summary;
+    };
+
+    foreach ($itemsById as $pointId => $item) {
+        if (!empty($item['isGroup'])) {
+            $buildSummary((int)$pointId);
+        }
+    }
+
+    return $summaries;
+}
+
 function omoDocumentsPvEditorRenderNavItem(array $pointData, array $uiText): string
 {
     $pointId = (int)($pointData['id'] ?? 0);
@@ -378,13 +454,16 @@ function omoDocumentsPvEditorRenderNavItem(array $pointData, array $uiText): str
         $titleHtml = !empty($pointData['canEditGroup'])
             ? '<input type="text" class="omo-pv-editor__group-title-input" maxlength="80" value="' . omoDocumentsPvEditorEscape($title) . '" data-omo-pv-group-title="' . $pointId . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['title'] ?? 'Titre')) . '">'
             : '<strong class="omo-pv-editor__group-title">' . omoDocumentsPvEditorEscape($title) . '</strong>';
+        $groupSummary = ((int)($pointData['groupPointCount'] ?? 0)) . ' ' . (string)($uiText['groupPoints'] ?? 'points')
+            . ' | ' . ((int)($pointData['groupDurationMinutes'] ?? 0)) . ' ' . (string)($uiText['groupMinutes'] ?? 'min');
 
-        return '<section class="omo-pv-editor__nav-group" data-omo-pv-nav-node="' . $pointId . '" data-omo-pv-group="' . $pointId . '" data-omo-pv-parent-id="' . (int)($pointData['parentId'] ?? 0) . '">'
+        $canDelete = !empty($pointData['canDelete']);
+        return '<section class="omo-pv-editor__nav-group" data-omo-pv-nav-node="' . $pointId . '" data-omo-pv-group="' . $pointId . '" data-omo-pv-parent-id="' . (int)($pointData['parentId'] ?? 0) . '" data-omo-pv-can-delete="' . ($canDelete ? '1' : '0') . '">'
             . '<div class="omo-pv-editor__group-head">'
             . $reorderHandle
             . '<button type="button" class="omo-pv-editor__group-toggle" data-omo-pv-group-toggle="' . $pointId . '" aria-expanded="true" title="' . omoDocumentsPvEditorEscape((string)($uiText['toggleGroup'] ?? 'Ouvrir ou fermer le groupe')) . '"><span aria-hidden="true">&#9662;</span></button>'
             . '<span class="omo-pv-editor__nav-order omo-pv-editor__group-order">' . omoDocumentsPvEditorEscape((string)($pointData['positionLabel'] ?? '--')) . '</span>'
-            . $titleHtml
+            . '<span class="omo-pv-editor__group-copy">' . $titleHtml . '<span class="omo-pv-editor__group-summary">' . omoDocumentsPvEditorEscape($groupSummary) . '</span></span>'
             . '</div>'
             . '<div class="omo-pv-editor__group-children" data-omo-pv-nav-children="' . $pointId . '"></div>'
             . '</section>';
@@ -406,7 +485,8 @@ function omoDocumentsPvEditorRenderNavItem(array $pointData, array $uiText): str
         : '  <span class="omo-pv-editor__nav-handle omo-pv-editor__nav-handle--disabled" aria-hidden="true"></span>';
     $handledDisabled = empty($pointData['canToggleHandled']) ? ' disabled' : '';
 
-    return '<div class="omo-pv-editor__nav-row' . (!empty($pointData['isHandled']) ? ' is-handled' : '') . '" data-omo-pv-nav-node="' . $pointId . '" data-omo-pv-parent-id="' . (int)($pointData['parentId'] ?? 0) . '" data-omo-pv-point-nav-row="' . $pointId . '">'
+    $canDelete = !empty($pointData['canDelete']);
+    return '<div class="omo-pv-editor__nav-row' . (!empty($pointData['isHandled']) ? ' is-handled' : '') . '" data-omo-pv-nav-node="' . $pointId . '" data-omo-pv-parent-id="' . (int)($pointData['parentId'] ?? 0) . '" data-omo-pv-point-nav-row="' . $pointId . '" data-omo-pv-can-delete="' . ($canDelete ? '1' : '0') . '">'
         . $reorderHandle
         . '  <button type="button" class="omo-pv-editor__nav-item" data-omo-pv-point-nav-target="' . $pointId . '">'
         . '      <span class="omo-pv-editor__nav-titleline">'
@@ -590,6 +670,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
         $html .= '  <div class="omo-pv-editor__point-actions">';
         $html .= '    <span class="omo-pv-editor__point-status" data-omo-pv-point-status="' . $pointId . '"></span>';
         $html .= '    <button type="button" class="generic-action-button omo-pv-editor__save-button" data-omo-pv-point-save="' . $pointId . '" disabled aria-disabled="true">' . omoDocumentsPvEditorEscape((string)$uiText['save']) . '</button>';
+        $html .= '    <button type="button" class="omo-pv-editor__delete-button" data-omo-pv-point-delete="' . $pointId . '" title="' . omoDocumentsPvEditorEscape((string)($uiText['deletePoint'] ?? 'Supprimer le point')) . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['deletePoint'] ?? 'Supprimer le point')) . '"><img src="/omo/assets/images/documents/poubelle.png" alt="" aria-hidden="true"></button>';
         $html .= '  </div>';
         $html .= '</div>';
     } else {

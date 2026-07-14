@@ -64,6 +64,9 @@ function omoDocumentsPvEditorBuildPointResponsePayload(\dbObject\DocumentPvPoint
     if (!$document->load((int)$point->get('IDdocument'))) {
         return [];
     }
+    $allPoints = new \dbObject\ArrayDocumentPvPoint();
+    $allPoints->loadForDocument((int)$document->getId(), true);
+    $groupSummaryMap = omoDocumentsPvEditorBuildGroupSummaryMap($allPoints);
     $authorOptions = $document->getPvPointAuthorOptions($organizationId);
     $authorHolonOptions = omoDocumentsPvEditorBuildAuthorHolonOptions(
         $document,
@@ -82,7 +85,8 @@ function omoDocumentsPvEditorBuildPointResponsePayload(\dbObject\DocumentPvPoint
         $hasStructureApplication,
         $authorOptions,
         $authorHolonOptions,
-        (string)($positionLabels[(int)$point->getId()] ?? '--')
+        (string)($positionLabels[(int)$point->getId()] ?? '--'),
+        $groupSummaryMap[(int)$point->getId()] ?? []
     );
 }
 
@@ -99,6 +103,7 @@ function omoDocumentsPvEditorBuildPointsPayloadForDocument(int $documentId, int 
         ? omoDocumentsPvEditorBuildAuthorHolonOptions($document, $authorOptions, $hasStructureApplication)
         : [];
     $positionLabels = \dbObject\DocumentPvPoint::buildHierarchyPositionLabels($points);
+    $groupSummaryMap = omoDocumentsPvEditorBuildGroupSummaryMap($points);
 
     $payload = [];
     foreach ($points as $point) {
@@ -119,7 +124,8 @@ function omoDocumentsPvEditorBuildPointsPayloadForDocument(int $documentId, int 
             $hasStructureApplication,
             $authorOptions,
             $authorHolonOptions,
-            (string)($positionLabels[(int)$point->getId()] ?? '--')
+            (string)($positionLabels[(int)$point->getId()] ?? '--'),
+            $groupSummaryMap[(int)$point->getId()] ?? []
         );
     }
 
@@ -553,6 +559,38 @@ if ($action === 'save_point') {
         'status' => true,
         'point' => omoDocumentsPvEditorBuildPointResponsePayload($point, $organizationId, $currentUserId),
         'message' => omoDocumentsPvEditorActionT('documents.pv_editor.state.saved'),
+    ]);
+}
+
+if ($action === 'delete_point') {
+    $pointId = isset($_POST['point_id']) ? (int)$_POST['point_id'] : 0;
+    $point = new \dbObject\DocumentPvPoint();
+    if (
+        $pointId <= 0
+        || !$point->load($pointId)
+        || (int)$point->get('IDdocument') !== (int)$document->getId()
+        || (! $point->isGroup()
+            && !$document->canUserEditPvPoint($point, $currentUserId))
+        || ($point->isGroup()
+            && !$document->canUserCreatePvGroups($currentUserId))
+    ) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+        ], 403);
+    }
+
+    if (!$point->delete()) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => 'Impossible de supprimer cet element.',
+        ], 400);
+    }
+
+    omoDocumentsPvEditorJsonResponse([
+        'status' => true,
+        'deletedPointId' => $pointId,
+        'points' => omoDocumentsPvEditorBuildPointsPayloadForDocument((int)$document->getId(), $organizationId, $currentUserId, $editorToken),
     ]);
 }
 
