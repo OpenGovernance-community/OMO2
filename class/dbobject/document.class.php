@@ -1365,7 +1365,7 @@
 				return '';
 			}
 
-			return '/omo/api/documents/pv_editor.php?id='
+			return '/omo/api/documents/pv/editor.php?id='
 				. rawurlencode((string)(int)$this->getId())
 				. '&oid='
 				. rawurlencode((string)$organizationId);
@@ -1886,7 +1886,7 @@
 				return '<div class="omo-document-file omo-document-file--empty">Aucun fichier n est actuellement televerse pour ce document.</div>';
 			}
 
-			$downloadUrl = '/omo/api/documents/download.php?id=' . (int)$this->getId();
+			$downloadUrl = '/omo/api/documents/upload/download.php?id=' . (int)$this->getId();
 			$fileSize = $this->getStoredFileSize();
 			$fileMeta = array();
 			if ($this->getStoredFileMimeType() !== '') {
