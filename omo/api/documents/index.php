@@ -448,7 +448,7 @@ foreach ($documents as $document) {
         'documentType' => $document->getDocumentType(),
         'canExportPdf' => $document->isPvDocument(),
         'pdfExportUrl' => $document->isPvDocument()
-            ? '/omo/api/documents/export_pdf.php?id=' . rawurlencode((string)$documentId)
+            ? '/omo/api/documents/pv/export_pdf.php?id=' . rawurlencode((string)$documentId)
                 . '&oid=' . rawurlencode((string)$currentOrganizationId)
             : '',
         'isFolder' => $isFolder,
