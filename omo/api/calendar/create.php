@@ -97,6 +97,18 @@ $sourceLang = array_merge([
         'text' => 'Nom du document',
         'context' => 'Optional label of the linked document title field.',
     ],
+    'calendar.create.field.pv_template' => [
+        'text' => 'Modele de PV',
+        'context' => 'Label of the optional PV template selector in event creation.',
+    ],
+    'calendar.create.field.pv_template_none' => [
+        'text' => 'PV vide',
+        'context' => 'Empty option of the PV template selector in event creation.',
+    ],
+    'calendar.create.field.pv_template_hint' => [
+        'text' => 'Les groupes, points et contenus du modele seront copies sans leurs auteurs ni leurs invites.',
+        'context' => 'Help text below the PV template selector in event creation.',
+    ],
     'calendar.create.document.help_create' => [
         'text' => 'Si vous choisissez un type, un document vide sera cree automatiquement avec le titre de l evenement, sa description et des tags par defaut. Vous pourrez ensuite le modifier depuis le module Documents.',
         'context' => 'Help text shown when the user chooses a linked document type from the event form.',
@@ -328,6 +340,25 @@ if ($eventId > 0) {
 }
 
 $associatedDocument = $isEditMode ? $event->getAssociatedDocument() : null;
+$pvTemplatesPayload = [];
+if (!$isEditMode) {
+    $pvTemplates = new \dbObject\ArrayDocument();
+    $pvTemplates->loadVisiblePvTemplatesForOrganization($organizationId);
+    foreach ($pvTemplates as $pvTemplate) {
+        if (!($pvTemplate instanceof Document) || (int)$pvTemplate->getId() <= 0) {
+            continue;
+        }
+        $templateLabel = trim((string)$pvTemplate->get('title'));
+        $templateParent = $pvTemplate->getParentDocument();
+        if ($templateParent instanceof Document && trim((string)$templateParent->get('title')) !== '') {
+            $templateLabel = trim((string)$templateParent->get('title')) . ' / ' . $templateLabel;
+        }
+        $pvTemplatesPayload[] = [
+            'id' => (int)$pvTemplate->getId(),
+            'label' => $templateLabel !== '' ? $templateLabel : ('PV #' . (int)$pvTemplate->getId()),
+        ];
+    }
+}
 
 $holons = new ArrayHolon();
 $holonOptions = [];
@@ -413,6 +444,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $requestedDocumentType = trim((string)($_POST['document_type'] ?? ''));
     $documentTitle = trim((string)($_POST['document_title'] ?? ''));
+    $pvTemplateId = isset($_POST['pv_template_id']) ? max(0, (int)$_POST['pv_template_id']) : 0;
     $selectedInvitationHolonIds = $hasStructureApplication ? array_values(array_unique(array_filter(array_map('intval', $_POST['invitation_holon_ids'] ?? []), static function ($holonId) {
         return $holonId > 0;
     }))) : [];
@@ -586,6 +618,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'keywords' => $defaultDocumentValues['keywords'],
                     'document_type' => $resolvedDocumentType,
                     'event_id' => (int)$event->getId(),
+                    'pv_template_id' => $pvTemplateId,
                     'allow_empty_type_payload' => 1,
                 ]
             );
@@ -910,6 +943,16 @@ $locationModeOptions = array_merge(
                                             value="<?= omoApiEscape($documentTitleDefault) ?>"
                                             maxlength="255"
                                         >
+                                    </label>
+                                    <label class="omo-calendar-create__field" data-omo-calendar-pv-template-field<?= $documentTypeDefault === Document::TYPE_PV ? '' : ' hidden' ?>>
+                                        <span class="omo-calendar-create__label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.pv_template')) ?></span>
+                                        <select name="pv_template_id" class="generic-form-control">
+                                            <option value="0"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.pv_template_none')) ?></option>
+                                            <?php foreach ($pvTemplatesPayload as $pvTemplateOption): ?>
+                                                <option value="<?= (int)$pvTemplateOption['id'] ?>"><?= omoApiEscape((string)$pvTemplateOption['label']) ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <span class="omo-calendar-create__hint"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.pv_template_hint')) ?></span>
                                     </label>
                                     <p class="omo-calendar-create__hint"><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.help_create')) ?></p>
                                     <p class="omo-calendar-create__notice"><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.created_notice')) ?></p>

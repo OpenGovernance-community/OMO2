@@ -12,6 +12,8 @@ $sourceLang = [
     'documents.detail.event.location' => ['text' => 'Lieu', 'context' => 'Label for the event location in the document detail summary.'],
     'documents.detail.event.context' => ['text' => 'Contexte', 'context' => 'Label for the event context in the document detail summary.'],
     'documents.detail.event.virtual_fallback' => ['text' => 'Visio', 'context' => 'Fallback location label when only a virtual meeting link exists.'],
+    'documents.detail.action.more' => ['text' => 'Plus d actions', 'context' => 'Accessible label for the read-only document action menu.'],
+    'documents.detail.action.export_pdf' => ['text' => 'Exporter en PDF', 'context' => 'Action used to download a PV document as a PDF file.'],
     'documents.detail.alt_texts.title' => ['text' => 'Versions texte', 'context' => 'Section title listing alternate text versions.'],
     'documents.detail.alt_texts.fallback' => ['text' => 'Version texte', 'context' => 'Fallback title for an alternate text variant.'],
     'documents.detail.media.title' => ['text' => 'Médias associés', 'context' => 'Section title listing associated media.'],
@@ -107,6 +109,10 @@ $associatedEvent = $document->getAssociatedEvent();
 $associatedEventSchedule = '';
 $associatedEventLocation = '';
 $associatedEventContext = '';
+$pdfExportUrl = $document->isPvDocument()
+    ? '/omo/api/documents/export_pdf.php?id=' . rawurlencode((string)(int)$document->getId())
+        . '&oid=' . rawurlencode((string)$organizationId)
+    : '';
 
 if ($associatedEvent instanceof \dbObject\Event) {
     $startAt = $associatedEvent->get('start_at');
@@ -143,6 +149,21 @@ if ($associatedEvent instanceof \dbObject\Event) {
 >
     <article class="omo-document-detail__article">
         <header class="omo-document-detail__intro">
+            <?php if ($pdfExportUrl !== ''): ?>
+                <div class="omo-document-detail__actions">
+                    <details class="omo-document-detail__more-actions">
+                        <summary
+                            aria-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.more')) ?>"
+                            title="<?= $escape(omoDocumentsDetailT('documents.detail.action.more')) ?>"
+                        >...</summary>
+                        <div class="omo-document-detail__more-actions-menu">
+                            <a class="generic-action-button" href="<?= $escape($pdfExportUrl) ?>" download>
+                                <?= $escape(omoDocumentsDetailT('documents.detail.action.export_pdf')) ?>
+                            </a>
+                        </div>
+                    </details>
+                </div>
+            <?php endif; ?>
             <div class="omo-document-detail__meta">
                 <?php if ($createdAt instanceof DateTimeInterface): ?>
                     <span class="omo-pill"><?= $escape($formatDateTime($createdAt)) ?></span>
@@ -308,6 +329,53 @@ if ($associatedEvent instanceof \dbObject\Event) {
     display: flex;
     flex-direction: column;
     gap: 14px;
+}
+
+.omo-document-detail__actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.omo-document-detail__more-actions {
+    position: relative;
+}
+
+.omo-document-detail__more-actions > summary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 30px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    cursor: pointer;
+    font-weight: 800;
+    list-style: none;
+}
+
+.omo-document-detail__more-actions > summary::-webkit-details-marker {
+    display: none;
+}
+
+.omo-document-detail__more-actions-menu {
+    position: absolute;
+    z-index: 12;
+    top: calc(100% + 5px);
+    right: 0;
+    width: max-content;
+    min-width: 190px;
+    padding: 6px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-surface);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+}
+
+.omo-document-detail__more-actions-menu .generic-action-button {
+    width: 100%;
+    justify-content: flex-start;
 }
 
 .omo-document-detail__meta,

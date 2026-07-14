@@ -763,7 +763,8 @@ class DecisionProcess extends DbObject
         $items = new \dbObject\ArrayDecisionInvitation();
         $params = [
             'where' => [
-                ['field' => 'IDdecision_process', 'value' => (int)$this->getId()],
+                ['field' => 'resource_type', 'value' => \dbObject\DecisionInvitation::resourceType()],
+                ['field' => 'resource_id', 'value' => (int)$this->getId()],
             ],
             'orderBy' => [
                 ['field' => 'created_at', 'dir' => 'ASC'],
@@ -1001,7 +1002,7 @@ class DecisionProcess extends DbObject
                 'DELETE FROM `decision_result` WHERE `IDdecision_process` = :decision_process_id',
                 'DELETE FROM `decision_response` WHERE `IDdecision_process` = :decision_process_id',
                 'DELETE FROM `decision_participant` WHERE `IDdecision_process` = :decision_process_id',
-                'DELETE FROM `decision_invitation` WHERE `IDdecision_process` = :decision_process_id',
+                "DELETE FROM `resource_invitation` WHERE `resource_type` = 'decision_process' AND `resource_id` = :decision_process_id",
                 'DELETE FROM `decision_proposal` WHERE `IDdecision_process` = :decision_process_id',
                 'DELETE FROM `decision_group` WHERE `IDdecision_process` = :decision_process_id',
             ];
@@ -1055,12 +1056,14 @@ class DecisionProcess extends DbObject
     {
         return (int)self::fetchValue(
             'SELECT COUNT(*)
-             FROM `decision_invitation`
-             WHERE `IDdecision_process` = :decision_process_id
+             FROM `resource_invitation`
+             WHERE `resource_type` = :resource_type
+               AND `resource_id` = :decision_process_id
                AND `active` = 1
                AND `status` != :revoked_status',
             [
                 'decision_process_id' => (int)$this->getId(),
+                'resource_type' => \dbObject\DecisionInvitation::resourceType(),
                 'revoked_status' => \dbObject\DecisionInvitation::STATUS_REVOKED,
             ]
         ) > 0;

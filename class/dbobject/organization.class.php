@@ -3569,7 +3569,7 @@
 				'parentDocumentId' => $currentParentDocumentId,
 				'pathLabel' => $currentPathLabel,
 			);
-			$data['canMove'] = $document->canEditInOrganizationContext((int)$this->getId());
+			$data['canMove'] = $document->canMoveInOrganizationContext((int)$this->getId(), $currentUserId);
 
 			if (!$data['canMove']) {
 				return $data;

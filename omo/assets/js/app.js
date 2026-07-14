@@ -2419,6 +2419,29 @@ function omoToggleExternalPanelDrawerPeek(forcePeek = null) {
     return omoSetExternalPanelDrawerPeekState(drawer, nextPeekState);
 }
 
+function omoPeekPersistentExternalPanelDrawer(options = {}) {
+    const drawer = document.getElementById('omoExternalPanelDrawer');
+    if (
+        !drawer
+        || !drawer.classList.contains('omo-external-panel-drawer--top-sheet')
+        || !drawer.classList.contains('is-open')
+        || drawer.dataset.omoKeepMounted !== '1'
+    ) {
+        return false;
+    }
+
+    const persistKeyPrefix = String(options.persistKeyPrefix || '').trim();
+    const contentSelector = String(options.contentSelector || '').trim();
+    if (persistKeyPrefix !== '' && !String(drawer.dataset.omoPersistKey || '').startsWith(persistKeyPrefix)) {
+        return false;
+    }
+    if (contentSelector !== '' && !drawer.querySelector(contentSelector)) {
+        return false;
+    }
+
+    return omoSetExternalPanelDrawerPeekState(drawer, true);
+}
+
 function omoDismissExternalPanelDrawer() {
     omoCloseExternalPanelDrawer({
         force: true,
@@ -4630,6 +4653,7 @@ window.omoRefreshExternalPanelDrawerHost = omoRefreshExternalPanelDrawerHost;
 window.omoCloseExternalPanelDrawer = omoCloseExternalPanelDrawer;
 window.omoOpenExternalPanelDrawer = omoOpenExternalPanelDrawer;
 window.omoOpenExternalRouteDrawer = omoOpenExternalRouteDrawer;
+window.omoPeekPersistentExternalPanelDrawer = omoPeekPersistentExternalPanelDrawer;
 window.omoParsePopupHashState = function () {
     return omoParseHashState(parseUrl().hash);
 };

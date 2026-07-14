@@ -6,6 +6,8 @@ class DocumentPvPoint extends DbObject
     public const TYPE_INFORMATION = 'information';
     public const TYPE_CONSULTATION = 'consultation';
     public const TYPE_DECISION = 'decision';
+    public const ITEM_TYPE_POINT = 'point';
+    public const ITEM_TYPE_GROUP = 'group';
     public const EDIT_LOCK_TIMEOUT_SECONDS = 120;
 
     public static function tableName()
@@ -18,8 +20,8 @@ class DocumentPvPoint extends DbObject
         return [
             [['IDdocument', 'title', 'pointtype'], 'required'],
             [['id', 'position', 'desired_duration_minutes', 'actual_duration_minutes'], 'integer'],
-            [['IDdocument', 'IDuser_author', 'IDholon_concerned', 'IDuser_modification', 'IDuser_editing'], 'fk'],
-            [['title', 'author_email', 'pointtype', 'edit_lock_token'], 'string'],
+            [['IDdocument', 'IDparent', 'IDuser_author', 'IDholon_concerned', 'IDuser_modification', 'IDuser_editing'], 'fk'],
+            [['title', 'item_type', 'author_email', 'pointtype', 'edit_lock_token'], 'string'],
             [['content'], 'html'],
             [['active', 'is_handled'], 'boolean'],
             [['datecreation', 'datemodification', 'dateedition'], 'datetime'],
@@ -32,6 +34,8 @@ class DocumentPvPoint extends DbObject
         return [
             'id' => 'ID',
             'IDdocument' => 'Document PV',
+            'item_type' => 'Type d element',
+            'IDparent' => 'Groupe parent',
             'title' => 'Titre',
             'IDuser_author' => 'Auteur',
             'author_email' => 'E-mail auteur externe',
@@ -56,6 +60,8 @@ class DocumentPvPoint extends DbObject
     {
         return [
             'title' => 'Titre du point a l ordre du jour.',
+            'item_type' => 'Distingue un point de contenu d un groupe de classement.',
+            'IDparent' => 'Groupe parent direct dans l ordre du jour.',
             'IDuser_author' => 'Membre qui porte ou presente ce point.',
             'author_email' => 'Adresse e-mail de la personne externe qui porte ce point.',
             'IDholon_concerned' => 'Holon principal directement concerne par ce point.',
@@ -75,6 +81,7 @@ class DocumentPvPoint extends DbObject
     {
         return [
             'title' => 80,
+            'item_type' => 20,
             'author_email' => 250,
             'pointtype' => 20,
             'edit_lock_token' => 80,
@@ -108,15 +115,78 @@ class DocumentPvPoint extends DbObject
             : self::TYPE_INFORMATION;
     }
 
-    protected static function resolveNextPositionForDocument(int $documentId): int
+    public static function normalizeItemType($value): string
+    {
+        return trim(mb_strtolower((string)$value, 'UTF-8')) === self::ITEM_TYPE_GROUP
+            ? self::ITEM_TYPE_GROUP
+            : self::ITEM_TYPE_POINT;
+    }
+
+    public function isGroup(): bool
+    {
+        return self::normalizeItemType($this->get('item_type')) === self::ITEM_TYPE_GROUP;
+    }
+
+    public static function buildHierarchyPositionLabels(iterable $items): array
+    {
+        $childrenByParent = [];
+        foreach ($items as $item) {
+            if (!($item instanceof self) || (int)$item->getId() <= 0) {
+                continue;
+            }
+            $childrenByParent[max(0, (int)$item->get('IDparent'))][] = $item;
+        }
+
+        foreach ($childrenByParent as &$siblings) {
+            usort($siblings, static function (self $left, self $right): int {
+                $positionComparison = (int)$left->get('position') <=> (int)$right->get('position');
+                return $positionComparison !== 0
+                    ? $positionComparison
+                    : (int)$left->getId() <=> (int)$right->getId();
+            });
+        }
+        unset($siblings);
+
+        $labels = [];
+        $visited = [];
+        $appendLabels = function (int $parentId, string $prefix = '') use (&$appendLabels, &$labels, &$visited, $childrenByParent): void {
+            $index = 0;
+            foreach ($childrenByParent[$parentId] ?? [] as $item) {
+                $itemId = (int)$item->getId();
+                if ($itemId <= 0 || isset($visited[$itemId])) {
+                    continue;
+                }
+                $visited[$itemId] = true;
+                $index++;
+                $label = $prefix === '' ? (string)$index : $prefix . '.' . $index;
+                $labels[$itemId] = $label;
+                if ($item->isGroup()) {
+                    $appendLabels($itemId, $label);
+                }
+            }
+        };
+        $appendLabels(0);
+
+        return $labels;
+    }
+
+    public static function buildHierarchyPositionLabelsForDocument(int $documentId): array
+    {
+        $items = new \dbObject\ArrayDocumentPvPoint();
+        $items->loadForDocument($documentId, true);
+        return self::buildHierarchyPositionLabels($items);
+    }
+
+    protected static function resolveNextPositionForDocument(int $documentId, int $parentId = 0): int
     {
         return max(
             1,
             (int)self::fetchValue(
                 "SELECT COALESCE(MAX(position), 0) + 1
                 FROM document_pv_point
-                WHERE IDdocument = :document_id",
-                ['document_id' => $documentId]
+                WHERE IDdocument = :document_id
+                  AND COALESCE(IDparent, 0) = :parent_id",
+                ['document_id' => $documentId, 'parent_id' => max(0, $parentId)]
             )
         );
     }
@@ -456,6 +526,16 @@ class DocumentPvPoint extends DbObject
         return $this->getEditingUserId() > 0 && ($userId <= 0 || $this->getEditingUserId() !== $userId);
     }
 
+    public function isEditLockOwnedByUserSession(int $userId, string $lockToken): bool
+    {
+        $lockToken = trim($lockToken);
+        return $userId > 0
+            && $lockToken !== ''
+            && $this->isEditLockActive()
+            && $this->getEditingUserId() === (int)$userId
+            && hash_equals($this->getEditingLockToken(), $lockToken);
+    }
+
     protected function buildEditLockConflictResult(int $currentUserId = 0, string $currentLockToken = '', int $organizationId = 0): array
     {
         $editingUserId = $this->getEditingUserId();
@@ -633,6 +713,8 @@ class DocumentPvPoint extends DbObject
             && $currentUserId > 0
             && $this->getEditingUserId() === $currentUserId;
         $syncVersion = hash('sha256', (string)json_encode([
+            'item_type' => self::normalizeItemType($this->get('item_type')),
+            'parent_id' => (int)$this->get('IDparent'),
             'position' => $position,
             'title' => trim((string)$this->get('title')),
             'author_user_id' => (int)$this->get('IDuser_author'),
@@ -649,6 +731,9 @@ class DocumentPvPoint extends DbObject
 
         return [
             'id' => (int)$this->getId(),
+            'itemType' => self::normalizeItemType($this->get('item_type')),
+            'isGroup' => $this->isGroup(),
+            'parentId' => (int)$this->get('IDparent'),
             'position' => $position,
             'positionLabel' => $position > 0 ? str_pad((string)$position, 2, '0', STR_PAD_LEFT) : '--',
             'title' => trim((string)$this->get('title')),
@@ -686,7 +771,7 @@ class DocumentPvPoint extends DbObject
     public function isEditableByUser(int $userId): bool
     {
         $userId = (int)$userId;
-        return $userId > 0 && $userId === (int)$this->get('IDuser_author');
+        return !$this->isGroup() && $userId > 0 && $userId === (int)$this->get('IDuser_author');
     }
 
     public function buildEditorData(int $organizationId = 0, int $currentUserId = 0, string $currentLockToken = ''): array
@@ -714,6 +799,7 @@ class DocumentPvPoint extends DbObject
         $actualDuration = $this->getDurationMinutesValue('actual_duration_minutes');
 
         $this->set('title', $title);
+        $this->set('item_type', self::normalizeItemType($this->get('item_type')));
         $this->set('content', $content);
         $this->set('pointtype', self::normalizePointType($this->get('pointtype')));
         $this->set('desired_duration_minutes', $desiredDuration);
@@ -742,9 +828,32 @@ class DocumentPvPoint extends DbObject
             ];
         }
 
+        $parentId = (int)$this->get('IDparent');
+        if ($parentId > 0) {
+            $parent = new self();
+            if (!$parent->load($parentId) || !$parent->isGroup() || (int)$parent->get('IDdocument') !== $documentId || $parentId === (int)$this->getId()) {
+                $parentId = 0;
+            }
+        }
+        $this->set('IDparent', $parentId > 0 ? $parentId : null);
+
         if ($position <= 0) {
-            $position = self::resolveNextPositionForDocument($documentId);
+            $position = self::resolveNextPositionForDocument($documentId, $parentId);
             $this->set('position', $position);
+        }
+
+        if ($this->isGroup()) {
+            $this->set('IDuser_author', null);
+            $this->set('author_email', null);
+            $this->set('IDholon_concerned', null);
+            $this->set('content', '');
+            $this->set('desired_duration_minutes', null);
+            $this->set('actual_duration_minutes', null);
+            $this->set('pointtype', self::TYPE_INFORMATION);
+            $this->set('is_handled', false);
+            $this->set('IDuser_editing', null);
+            $this->set('edit_lock_token', null);
+            $this->set('dateedition', null);
         }
 
         if ((int)$this->get('IDuser_author') <= 0) {
@@ -962,6 +1071,175 @@ class DocumentPvPoint extends DbObject
         return [
             'status' => true,
         ];
+    }
+
+    public static function reorderHierarchyForDocumentByUser(int $documentId, array $layout, int $userId): array
+    {
+        $documentId = (int)$documentId;
+        $userId = (int)$userId;
+        $document = new \dbObject\Document();
+        if ($documentId <= 0 || $userId <= 0 || !$document->load($documentId) || !$document->isPvDocument() || $document->isPvValidated()) {
+            return ['status' => false, 'message' => 'Document PV invalide.'];
+        }
+
+        $rows = self::fetchAll(
+            "SELECT id, COALESCE(IDparent, 0) AS parent_id, position, item_type, IDuser_author
+             FROM document_pv_point
+             WHERE IDdocument = :document_id
+               AND COALESCE(active, 1) = 1
+             ORDER BY COALESCE(IDparent, 0) ASC, position ASC, id ASC",
+            ['document_id' => $documentId]
+        );
+        if (!is_array($rows)) {
+            return ['status' => false, 'message' => 'Impossible de charger l ordre du jour.'];
+        }
+
+        $currentById = [];
+        $currentChildren = [];
+        foreach ($rows as $row) {
+            $id = (int)($row['id'] ?? 0);
+            $parentId = (int)($row['parent_id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+            $currentById[$id] = [
+                'id' => $id,
+                'parentId' => $parentId,
+                'position' => (int)($row['position'] ?? 0),
+                'itemType' => self::normalizeItemType($row['item_type'] ?? ''),
+                'authorUserId' => (int)($row['IDuser_author'] ?? 0),
+            ];
+            $currentChildren[$parentId][] = $id;
+        }
+
+        $submittedById = [];
+        $submittedChildren = [];
+        foreach ($layout as $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+            $id = (int)($entry['id'] ?? 0);
+            $parentId = max(0, (int)($entry['parentId'] ?? 0));
+            if ($id <= 0 || isset($submittedById[$id])) {
+                continue;
+            }
+            $submittedById[$id] = ['id' => $id, 'parentId' => $parentId];
+            $submittedChildren[$parentId][] = $id;
+        }
+
+        $currentIds = array_keys($currentById);
+        $submittedIds = array_keys($submittedById);
+        sort($currentIds);
+        sort($submittedIds);
+        if ($currentIds !== $submittedIds) {
+            return ['status' => false, 'message' => 'La structure de l ordre du jour est incomplete.'];
+        }
+
+        foreach ($submittedById as $id => $entry) {
+            $parentId = (int)$entry['parentId'];
+            if ($parentId === $id || ($parentId > 0 && (!isset($currentById[$parentId]) || $currentById[$parentId]['itemType'] !== self::ITEM_TYPE_GROUP))) {
+                return ['status' => false, 'message' => 'Le groupe cible est invalide.'];
+            }
+
+            $visited = [$id => true];
+            $ancestorId = $parentId;
+            while ($ancestorId > 0) {
+                if (isset($visited[$ancestorId]) || !isset($submittedById[$ancestorId])) {
+                    return ['status' => false, 'message' => 'Les groupes ne peuvent pas former une boucle.'];
+                }
+                $visited[$ancestorId] = true;
+                $ancestorId = (int)$submittedById[$ancestorId]['parentId'];
+            }
+        }
+
+        $canManage = $document->canUserManagePvDocument($userId);
+        if (!$canManage && $document->getPvStage() !== \dbObject\Document::PV_STAGE_PREPARATION) {
+            return ['status' => false, 'message' => 'Le deplacement des points personnels est limite a la preparation.'];
+        }
+
+        $movableIds = [];
+        foreach ($currentById as $id => $item) {
+            if ($canManage || ($item['itemType'] === self::ITEM_TYPE_POINT && $item['authorUserId'] === $userId)) {
+                $movableIds[$id] = true;
+            }
+        }
+        if (count($movableIds) === 0) {
+            return ['status' => false, 'message' => 'Aucun element ne peut etre deplace.'];
+        }
+
+        if (!$canManage) {
+            $parentIds = array_unique(array_merge(array_keys($currentChildren), array_keys($submittedChildren)));
+            foreach ($parentIds as $parentId) {
+                $before = array_values(array_filter($currentChildren[$parentId] ?? [], static function (int $id) use ($movableIds): bool {
+                    return !isset($movableIds[$id]);
+                }));
+                $after = array_values(array_filter($submittedChildren[$parentId] ?? [], static function (int $id) use ($movableIds): bool {
+                    return !isset($movableIds[$id]);
+                }));
+                if ($before !== $after) {
+                    return ['status' => false, 'message' => 'Vous ne pouvez deplacer que vos propres points.'];
+                }
+            }
+        }
+
+        $pdo = self::getPdo();
+        if (!$pdo) {
+            return ['status' => false, 'message' => 'Connexion a la base impossible.'];
+        }
+
+        $startedTransaction = false;
+        try {
+            $startedTransaction = !$pdo->inTransaction();
+            if ($startedTransaction) {
+                $pdo->beginTransaction();
+            }
+
+            $updatedAt = date('Y-m-d H:i:s');
+            foreach ($submittedChildren as $parentId => $childIds) {
+                foreach (array_values($childIds) as $index => $id) {
+                    $nextParentId = (int)$parentId;
+                    $nextPosition = $index + 1;
+                    if (
+                        (int)$currentById[$id]['parentId'] === $nextParentId
+                        && (int)$currentById[$id]['position'] === $nextPosition
+                    ) {
+                        continue;
+                    }
+
+                    $result = self::execute(
+                        "UPDATE document_pv_point
+                         SET IDparent = :parent_id,
+                             position = :position,
+                             IDuser_modification = :user_id,
+                             datemodification = :updated_at
+                         WHERE IDdocument = :document_id
+                           AND id = :item_id",
+                        [
+                            'parent_id' => $nextParentId > 0 ? $nextParentId : null,
+                            'position' => $nextPosition,
+                            'user_id' => $userId,
+                            'updated_at' => $updatedAt,
+                            'document_id' => $documentId,
+                            'item_id' => $id,
+                        ]
+                    );
+                    if ($result === false) {
+                        throw new \RuntimeException('pv_agenda_hierarchy_update_failed');
+                    }
+                }
+            }
+
+            if ($startedTransaction && $pdo->inTransaction()) {
+                $pdo->commit();
+            }
+        } catch (\Throwable $exception) {
+            if ($startedTransaction && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            return ['status' => false, 'message' => 'Impossible de sauver la structure de l ordre du jour.'];
+        }
+
+        return ['status' => true];
     }
 }
 

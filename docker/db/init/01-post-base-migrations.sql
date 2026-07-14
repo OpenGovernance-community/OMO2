@@ -416,6 +416,69 @@ CREATE TABLE IF NOT EXISTS `event_attendance` (
     CONSTRAINT `fk_event_attendance_checked_by` FOREIGN KEY (`IDuser_checked_by`) REFERENCES `user` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `resource_invitation` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `resource_type` varchar(50) NOT NULL,
+    `resource_id` int(11) NOT NULL,
+    `IDholon` int(11) DEFAULT NULL,
+    `IDuser` int(11) DEFAULT NULL,
+    `email` varchar(250) DEFAULT NULL,
+    `display_name` varchar(190) DEFAULT NULL,
+    `invitation_type` varchar(30) NOT NULL,
+    `status` varchar(30) NOT NULL DEFAULT 'invited',
+    `accepted` tinyint(1) DEFAULT NULL,
+    `parameters` mediumtext DEFAULT NULL,
+    `active` tinyint(1) NOT NULL DEFAULT 1,
+    `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+    `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uniq_resource_invitation_holon` (`resource_type`, `resource_id`, `IDholon`),
+    UNIQUE KEY `uniq_resource_invitation_user` (`resource_type`, `resource_id`, `IDuser`),
+    UNIQUE KEY `uniq_resource_invitation_email` (`resource_type`, `resource_id`, `email`),
+    KEY `idx_resource_invitation_resource` (`resource_type`, `resource_id`, `active`),
+    KEY `idx_resource_invitation_type` (`invitation_type`),
+    KEY `idx_resource_invitation_status` (`status`),
+    CONSTRAINT `fk_resource_invitation_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_resource_invitation_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `resource_attendance` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `resource_type` varchar(50) NOT NULL,
+    `resource_id` int(11) NOT NULL,
+    `IDuser` int(11) DEFAULT NULL,
+    `email` varchar(250) DEFAULT NULL,
+    `display_name` varchar(190) DEFAULT NULL,
+    `is_present` tinyint(1) NOT NULL DEFAULT 0,
+    `IDuser_checked_by` int(11) DEFAULT NULL,
+    `checked_at` datetime DEFAULT NULL,
+    `active` tinyint(1) NOT NULL DEFAULT 1,
+    `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+    `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uniq_resource_attendance_user` (`resource_type`, `resource_id`, `IDuser`),
+    UNIQUE KEY `uniq_resource_attendance_email` (`resource_type`, `resource_id`, `email`),
+    KEY `idx_resource_attendance_resource` (`resource_type`, `resource_id`, `active`),
+    KEY `idx_resource_attendance_present` (`is_present`),
+    CONSTRAINT `fk_resource_attendance_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_resource_attendance_checked_by` FOREIGN KEY (`IDuser_checked_by`) REFERENCES `user` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `resource_attendance` (`resource_type`, `resource_id`, `IDuser`, `email`, `display_name`, `is_present`, `IDuser_checked_by`, `checked_at`, `active`, `created_at`, `updated_at`)
+SELECT 'event', `IDevent`, `IDuser`, `email`, `display_name`, `is_present`, `IDuser_checked_by`, `checked_at`, `active`, `created_at`, `updated_at`
+FROM `event_attendance`
+ON DUPLICATE KEY UPDATE `display_name` = VALUES(`display_name`), `is_present` = VALUES(`is_present`), `IDuser_checked_by` = VALUES(`IDuser_checked_by`), `checked_at` = VALUES(`checked_at`), `active` = VALUES(`active`), `updated_at` = VALUES(`updated_at`);
+
+INSERT INTO `resource_invitation` (`resource_type`, `resource_id`, `IDholon`, `IDuser`, `email`, `display_name`, `invitation_type`, `status`, `parameters`, `active`, `created_at`, `updated_at`)
+SELECT 'event', `IDevent`, `IDholon`, `IDuser`, `email`, `display_name`, `invitation_type`, `status`, `parameters`, `active`, `created_at`, `updated_at`
+FROM `event_invitation`
+ON DUPLICATE KEY UPDATE `display_name` = VALUES(`display_name`), `status` = VALUES(`status`), `parameters` = VALUES(`parameters`), `active` = VALUES(`active`), `updated_at` = VALUES(`updated_at`);
+
+INSERT INTO `resource_invitation` (`resource_type`, `resource_id`, `IDholon`, `IDuser`, `email`, `display_name`, `invitation_type`, `status`, `parameters`, `active`, `created_at`, `updated_at`)
+SELECT 'decision_process', `IDdecision_process`, `IDholon`, `IDuser`, `email`, `display_name`, `invitation_type`, `status`, `parameters`, `active`, `created_at`, `updated_at`
+FROM `decision_invitation`
+ON DUPLICATE KEY UPDATE `display_name` = VALUES(`display_name`), `status` = VALUES(`status`), `parameters` = VALUES(`parameters`), `active` = VALUES(`active`), `updated_at` = VALUES(`updated_at`);
+
 INSERT INTO `organization_application` (`IDorganization`, `IDapplication`, `position`, `active`)
 SELECT o.id, a.id, a.position, 1
 FROM `organization` o

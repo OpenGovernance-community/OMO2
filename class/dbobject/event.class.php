@@ -252,7 +252,8 @@ class Event extends DbObject
         $items = new \dbObject\ArrayEventInvitation();
         $params = [
             'where' => [
-                ['field' => 'IDevent', 'value' => (int)$this->getId()],
+                ['field' => 'resource_type', 'value' => \dbObject\EventInvitation::resourceType()],
+                ['field' => 'resource_id', 'value' => (int)$this->getId()],
             ],
             'orderBy' => [
                 ['field' => 'created_at', 'dir' => 'ASC'],
@@ -530,7 +531,7 @@ class Event extends DbObject
 
     protected function getAttendanceRowsByIdentity(): array
     {
-        if ((int)$this->getId() <= 0 || !self::tableExists('event_attendance')) {
+        if ((int)$this->getId() <= 0 || !self::tableExists('resource_attendance')) {
             return [];
         }
 
@@ -544,11 +545,13 @@ class Event extends DbObject
                 IDuser_checked_by,
                 checked_at,
                 active
-            FROM event_attendance
-            WHERE IDevent = :event_id
+            FROM resource_attendance
+            WHERE resource_type = :resource_type
+              AND resource_id = :event_id
               AND active = 1",
             [
                 'event_id' => (int)$this->getId(),
+                'resource_type' => \dbObject\EventAttendance::resourceType(),
             ]
         );
 
@@ -573,6 +576,34 @@ class Event extends DbObject
         return $indexedRows;
     }
 
+    protected function getInvitationAcceptanceByIdentity($organizationId): array
+    {
+        $accepted = [];
+        foreach ($this->getInvitations(true) as $invitation) {
+            if (!($invitation instanceof \dbObject\EventInvitation) || \dbObject\EventInvitation::normalizeStatus($invitation->get('status')) === \dbObject\EventInvitation::STATUS_REVOKED) {
+                continue;
+            }
+            $value = $invitation->get('accepted');
+            if ($value === null || $value === '') {
+                continue;
+            }
+            $type = \dbObject\EventInvitation::normalizeType($invitation->get('invitation_type'));
+            if ($type === \dbObject\EventInvitation::TYPE_USER) {
+                $accepted['user:' . (int)$invitation->get('IDuser')] = (bool)$value;
+            } elseif ($type === \dbObject\EventInvitation::TYPE_EMAIL) {
+                $email = self::normalizeInvitationEmail($invitation->get('email'));
+                if ($email !== '') {
+                    $accepted['email:' . $email] = (bool)$value;
+                }
+            } elseif ($type === \dbObject\EventInvitation::TYPE_HOLON && (bool)$value) {
+                foreach ($this->getInvitationMembershipUserIds((int)$invitation->get('IDholon'), (int)$organizationId) as $userId) {
+                    $accepted['user:' . (int)$userId] = true;
+                }
+            }
+        }
+        return $accepted;
+    }
+
     public function getAttendanceEntries($organizationId = 0): array
     {
         $organizationId = (int)$organizationId > 0 ? (int)$organizationId : (int)$this->get('IDorganization');
@@ -583,6 +614,7 @@ class Event extends DbObject
         $targets = $this->getEffectiveInvitationTargets($organizationId);
         $displayNameMap = $this->getAttendanceDisplayNameMap($organizationId);
         $attendanceRows = $this->getAttendanceRowsByIdentity();
+        $invitationAcceptance = $this->getInvitationAcceptanceByIdentity($organizationId);
         $entries = [];
         $knownUserEmails = [];
 
@@ -613,7 +645,9 @@ class Event extends DbObject
                 'email' => $email,
                 'displayLabel' => $displayName,
                 'secondaryLabel' => $email,
-                'isPresent' => !empty($attendanceRow['is_present']),
+                'isPresent' => $attendanceRow !== null
+                    ? !empty($attendanceRow['is_present'])
+                    : !empty($invitationAcceptance[$identityKey]),
             ];
         }
 
@@ -639,7 +673,9 @@ class Event extends DbObject
                 'email' => $normalizedEmail,
                 'displayLabel' => $displayName,
                 'secondaryLabel' => $displayName !== $normalizedEmail ? $normalizedEmail : '',
-                'isPresent' => !empty($attendanceRow['is_present']),
+                'isPresent' => $attendanceRow !== null
+                    ? !empty($attendanceRow['is_present'])
+                    : !empty($invitationAcceptance[$identityKey]),
             ];
         }
 
@@ -689,12 +725,14 @@ class Event extends DbObject
         $email = self::normalizeInvitationEmail($entry['email'] ?? '');
         if ($userId > 0) {
             $lookup = $attendance->load([
-                ['IDevent', (int)$this->getId()],
+                ['resource_type', \dbObject\EventAttendance::resourceType()],
+                ['resource_id', (int)$this->getId()],
                 ['IDuser', $userId],
             ]);
         } elseif ($email !== '') {
             $lookup = $attendance->load([
-                ['IDevent', (int)$this->getId()],
+                ['resource_type', \dbObject\EventAttendance::resourceType()],
+                ['resource_id', (int)$this->getId()],
                 ['email', $email],
             ]);
         }
@@ -710,8 +748,17 @@ class Event extends DbObject
         $attendance->set('IDuser_checked_by', $checkedByUserId);
         $attendance->set('checked_at', new \DateTimeImmutable());
         $attendance->set('active', 1);
-
-        return $attendance->save();
+        $saveResult = $attendance->save();
+        if (is_array($saveResult) && !empty($saveResult['status'])) {
+            foreach ($this->getInvitations(true) as $invitation) {
+                if ($invitation instanceof \dbObject\EventInvitation && $invitation->getIdentityKey() === $identityKey) {
+                    $invitation->set('accepted', !empty($isPresent) ? 1 : 0);
+                    $invitation->save();
+                    break;
+                }
+            }
+        }
+        return $saveResult;
     }
 
     public function isVisibleToInvitationViewer($userId, $organizationId = 0, $viewerEmail = ''): bool
