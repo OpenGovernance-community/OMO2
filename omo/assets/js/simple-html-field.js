@@ -1,7 +1,12 @@
 (function (window, document) {
     'use strict';
 
-    if (window.omoSimpleHtmlField) {
+    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260714-resource-embeds';
+
+    if (
+        window.omoSimpleHtmlField
+        && String(window.omoSimpleHtmlField.version || '') === OMO_SIMPLE_HTML_FIELD_VERSION
+    ) {
         return;
     }
 
@@ -32,9 +37,10 @@
         style.textContent = ''
             + '.omo-simple-html-field{display:grid;gap:10px;}'
             + '.omo-simple-html-field .note-editor.note-frame{border:1px solid var(--color-border,#d1d5db);border-radius:14px;background:var(--color-surface,#fff);}'
-            + '.omo-simple-html-field .note-toolbar{border-bottom:1px solid var(--color-border,#d1d5db);background:color-mix(in srgb,var(--color-surface-alt,#f8fafc) 70%,white);border-top-left-radius:14px;border-top-right-radius:14px;padding:8px;}'
+            + '.omo-simple-html-field .note-toolbar{position:sticky;top:0;z-index:6;border-bottom:1px solid var(--color-border,#d1d5db);background:color-mix(in srgb,var(--color-surface-alt,#f8fafc) 88%,white);border-top-left-radius:14px;border-top-right-radius:14px;padding:8px;box-shadow:0 8px 18px -18px rgba(15,23,42,.45);}'
             + '.omo-simple-html-field .note-btn{border-radius:10px;border-color:var(--color-border,#d1d5db);}'
-            + '.omo-simple-html-field .note-editing-area .note-editable{min-height:140px;padding:14px;line-height:1.55;color:var(--color-text,#1f2937);}'
+            + '.omo-simple-html-field .note-editing-area{overflow:visible;}'
+            + '.omo-simple-html-field .note-editing-area .note-editable{min-height:140px;height:auto!important;overflow-y:hidden!important;padding:14px;line-height:1.55;color:var(--color-text,#1f2937);}'
             + '.omo-simple-html-field .note-placeholder{color:var(--color-text-light,#6b7280);}'
             + '.omo-simple-html-field .note-statusbar{display:none;}'
             + '.omo-simple-html-field .note-editable h1,.omo-simple-html-render h1{margin:0 0 .6em;font-size:1.8rem;line-height:1.15;font-weight:850;color:var(--color-text,#1f2937);}'
@@ -55,6 +61,14 @@
             + '.omo-simple-html-field .note-editable .omo-document-embed > p:nth-child(3),.omo-simple-html-render .omo-document-embed > p:nth-child(3){margin:6px 0 0;color:var(--color-text-light,#6b7280);font-size:13px;line-height:1.5;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed > strong:first-child,.omo-simple-html-render .omo-document-embed > strong:first-child{display:block;margin:0 0 6px;color:var(--color-text-light,#6b7280);font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed > strong:nth-of-type(2),.omo-simple-html-render .omo-document-embed > strong:nth-of-type(2){display:block;margin:0;color:var(--color-text,#1f2937);font-weight:700;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed,.omo-pv-editor .omo-simple-html-render .omo-document-embed,.omo-pv-editor .omo-simple-html-render .omo-decision-embed,.omo-pv-editor .omo-simple-html-render .omo-event-embed{position:relative;min-height:54px;margin-bottom:10px;padding:9px 12px 9px 58px;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed:before,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed:before,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed:before,.omo-pv-editor .omo-simple-html-render .omo-document-embed:before,.omo-pv-editor .omo-simple-html-render .omo-decision-embed:before,.omo-pv-editor .omo-simple-html-render .omo-event-embed:before{content:"";position:absolute;top:50%;left:14px;width:30px;height:30px;transform:translateY(-50%);background:var(--color-primary,#2563eb);-webkit-mask:url("/omo/images/tools/documents-folder.png") center/contain no-repeat;mask:url("/omo/images/tools/documents-folder.png") center/contain no-repeat;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed:before,.omo-pv-editor .omo-simple-html-render .omo-decision-embed:before{background:#7c3aed;-webkit-mask-image:url("/omo/images/tools/decision.png");mask-image:url("/omo/images/tools/decision.png");}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed:before,.omo-pv-editor .omo-simple-html-render .omo-event-embed:before{background:#0f766e;-webkit-mask-image:url("/omo/images/tools/calendar.png");mask-image:url("/omo/images/tools/calendar.png");}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>strong:first-of-type:not(:only-of-type),.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed>strong:first-of-type:not(:only-of-type),.omo-pv-editor .omo-simple-html-render .omo-document-embed__label,.omo-pv-editor .omo-simple-html-render .omo-decision-embed__label{display:none;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-render .omo-document-embed__title,.omo-pv-editor .omo-simple-html-render .omo-decision-embed__title,.omo-pv-editor .omo-simple-html-render .omo-event-embed__title{display:block;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:1;line-clamp:1;text-overflow:ellipsis;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>em,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed>em,.omo-pv-editor .omo-simple-html-render .omo-document-embed__description,.omo-pv-editor .omo-simple-html-render .omo-event-embed__summary{display:-webkit-box;overflow:hidden;margin-top:3px;color:var(--color-text-light,#6b7280);font-size:12px;font-style:normal;line-height:1.3;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-document-embed),.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-decision-embed),.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-event-embed){margin:0 0 10px;}'
             + '.omo-simple-html-field__meta{font-size:12px;line-height:1.45;color:var(--color-text-light,#6b7280);}'
             + '.omo-simple-html-render{line-height:1.55;word-break:break-word;white-space:normal;}'
             + '.omo-simple-html-render > :first-child{margin-top:0;}'
@@ -180,6 +194,18 @@
         return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
     }
 
+    function getDecisionEmbedElementId(element) {
+        const rawValue = getElementAttributeValue(element, 'data-omo-decision-id').trim();
+        const parsed = Number.parseInt(rawValue, 10);
+        return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+    }
+
+    function getEventEmbedElementId(element) {
+        const rawValue = getElementAttributeValue(element, 'data-omo-event-id').trim();
+        const parsed = Number.parseInt(rawValue, 10);
+        return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+    }
+
     function isTemporaryCursorMarkerElement(element) {
         return !!(element && element.nodeType === 1 && getElementAttributeValue(element, 'data-omo-cursor-marker').trim() !== '');
     }
@@ -191,6 +217,24 @@
 
         return getElementAttributeValue(element, 'data-omo-embed-type').trim() === 'document'
             && getDocumentEmbedElementId(element) > 0;
+    }
+
+    function isAllowedDecisionEmbedElement(element) {
+        if (!element || element.nodeType !== 1) {
+            return false;
+        }
+
+        return getElementAttributeValue(element, 'data-omo-embed-type').trim() === 'decision'
+            && getDecisionEmbedElementId(element) > 0;
+    }
+
+    function isAllowedEventEmbedElement(element) {
+        if (!element || element.nodeType !== 1) {
+            return false;
+        }
+
+        return getElementAttributeValue(element, 'data-omo-embed-type').trim() === 'event'
+            && getEventEmbedElementId(element) > 0;
     }
 
     function buildSanitizedNode(sourceNode, ownerDocument) {
@@ -235,6 +279,51 @@
             if (description) {
                 embedNode.setAttribute('data-omo-document-description', description);
             }
+
+            Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
+                appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument));
+            });
+
+            return embedNode;
+        }
+
+        if (isAllowedDecisionEmbedElement(sourceNode)) {
+            const embedNode = ownerDocument.createElement('span');
+            embedNode.setAttribute('class', 'omo-decision-embed');
+            embedNode.setAttribute('contenteditable', 'false');
+            embedNode.setAttribute('data-omo-embed-type', 'decision');
+            embedNode.setAttribute('data-omo-decision-id', String(getDecisionEmbedElementId(sourceNode)));
+
+            const title = getElementAttributeValue(sourceNode, 'data-omo-decision-title').trim();
+            if (title) {
+                embedNode.setAttribute('data-omo-decision-title', title);
+            }
+
+            const type = getElementAttributeValue(sourceNode, 'data-omo-decision-type').trim();
+            if (type) {
+                embedNode.setAttribute('data-omo-decision-type', type);
+            }
+
+            Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
+                appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument));
+            });
+
+            return embedNode;
+        }
+
+        if (isAllowedEventEmbedElement(sourceNode)) {
+            const embedNode = ownerDocument.createElement('span');
+            embedNode.setAttribute('class', 'omo-event-embed');
+            embedNode.setAttribute('contenteditable', 'false');
+            embedNode.setAttribute('data-omo-embed-type', 'event');
+            embedNode.setAttribute('data-omo-event-id', String(getEventEmbedElementId(sourceNode)));
+
+            ['title', 'schedule', 'description'].forEach(function (attributeName) {
+                const value = getElementAttributeValue(sourceNode, 'data-omo-event-' + attributeName).trim();
+                if (value) {
+                    embedNode.setAttribute('data-omo-event-' + attributeName, value);
+                }
+            });
 
             Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
                 appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument));
@@ -400,6 +489,7 @@
             placeholder: 'Saisissez du contenu HTML simple.',
             disabled: false,
             height: 180,
+            minHeight: null,
             customButtons: [],
             onChange: null,
             onDoubleClick: null
@@ -432,7 +522,6 @@
         container.innerHTML = ''
             + '<div class="omo-simple-html-field">'
             + '  <textarea id="' + escapeHtml(textareaId) + '"></textarea>'
-            + '  <div class="omo-simple-html-field__meta">Edition HTML via Summernote: titres H1 a H3, citation, gras, italic, listes, liens et tableaux simples.</div>'
             + '</div>';
 
         const textarea = container.querySelector('textarea');
@@ -457,6 +546,31 @@
 
         function getEditableElement() {
             return container.querySelector('.note-editable');
+        }
+
+        function resizeEditableToContent() {
+            const editable = getEditableElement();
+            if (!editable) {
+                return;
+            }
+
+            const minimumHeight = Math.max(80, Number(state.minHeight || state.height || 180));
+            editable.style.minHeight = minimumHeight + 'px';
+            editable.style.height = 'auto';
+            editable.style.overflowY = 'hidden';
+            editable.style.height = Math.max(minimumHeight, editable.scrollHeight) + 'px';
+        }
+
+        function scheduleResizeEditableToContent() {
+            const schedule = typeof window.requestAnimationFrame === 'function'
+                ? window.requestAnimationFrame.bind(window)
+                : function (callback) { window.setTimeout(callback, 16); };
+
+            schedule(function () {
+                if (!destroyed) {
+                    resizeEditableToContent();
+                }
+            });
         }
 
         function cloneRange(range) {
@@ -549,6 +663,7 @@
             if (initialized && $editor) {
                 $editor.summernote('code', state.value);
                 saveRange();
+                scheduleResizeEditableToContent();
             }
 
             if (typeof state.onChange === 'function') {
@@ -1018,7 +1133,8 @@
                 $editor.summernote({
                     lang: 'fr-FR',
                     placeholder: state.placeholder,
-                    height: Number(state.height || 180),
+                    minHeight: Math.max(80, Number(state.minHeight || state.height || 180)),
+                    maxHeight: null,
                     dialogsInBody: true,
                     disableDragAndDrop: true,
                     styleTags: [
@@ -1034,6 +1150,7 @@
                         onChange: function (contents) {
                             setRawValue(contents);
                             saveRange();
+                            scheduleResizeEditableToContent();
                             emitChange();
                         },
                         onFocus: function () {
@@ -1044,6 +1161,7 @@
                         },
                         onKeyup: function () {
                             saveRange();
+                            scheduleResizeEditableToContent();
                         },
                         onMouseup: function () {
                             saveRange();
@@ -1058,9 +1176,11 @@
 
                 initialized = true;
                 saveRange();
+                scheduleResizeEditableToContent();
 
                 const editable = getEditableElement();
                 if (editable) {
+                    editable.addEventListener('input', scheduleResizeEditableToContent);
                     editable.addEventListener('dblclick', function (event) {
                         saveRange();
                         emitDoubleClick(event.target || null, event);
@@ -1079,6 +1199,7 @@
             });
 
         container.__omoSimpleHtmlField = {
+            version: OMO_SIMPLE_HTML_FIELD_VERSION,
             getValue: getValue,
             setValue: setValue,
             focus: function () {
@@ -1125,6 +1246,7 @@
     }
 
     window.omoSimpleHtmlField = {
+        version: OMO_SIMPLE_HTML_FIELD_VERSION,
         mount: mount,
         sanitizeHtml: sanitizeHtml,
         renderPreviewHtml: renderPreviewHtml

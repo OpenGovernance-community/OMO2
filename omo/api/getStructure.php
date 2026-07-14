@@ -8,6 +8,42 @@ function omoGetStructurePanelSourceLang(): array
             'text' => 'Export',
             'context' => 'Structure action menu item used to export the current structure.',
         ],
+        'structure.actions.export.download' => [
+            'text' => 'Telecharger',
+            'context' => 'Button label used in the structure export modal to start a file download.',
+        ],
+        'structure.actions.export.format.csv' => [
+            'text' => 'CSV',
+            'context' => 'Label used for the CSV structure export format.',
+        ],
+        'structure.actions.export.format.csv_description' => [
+            'text' => 'Vue a plat des holons. Les droits sont listes dans une cellule avec leur code et leur portee.',
+            'context' => 'Description shown for the CSV structure export format.',
+        ],
+        'structure.actions.export.format.json' => [
+            'text' => 'JSON',
+            'context' => 'Label used for the JSON structure export format.',
+        ],
+        'structure.actions.export.format.json_description' => [
+            'text' => 'Format complet pour reimporter la structure. Il inclut aussi les droits des holons et des templates.',
+            'context' => 'Description shown for the JSON structure export format.',
+        ],
+        'structure.actions.export.format.xml' => [
+            'text' => 'XML',
+            'context' => 'Label used for the XML structure export format.',
+        ],
+        'structure.actions.export.format.xml_description' => [
+            'text' => 'Format structure et lisible, avec les memes codes de droits que le JSON.',
+            'context' => 'Description shown for the XML structure export format.',
+        ],
+        'structure.actions.export.modal_intro' => [
+            'text' => 'Choisissez le format d export de cette structure.',
+            'context' => 'Intro text shown in the structure export modal.',
+        ],
+        'structure.actions.export.modal_title' => [
+            'text' => 'Exporter la structure',
+            'context' => 'Modal title shown when choosing a structure export format.',
+        ],
         'structure.actions.menu_aria' => [
             'text' => 'Actions',
             'context' => 'Aria label for the structure action menu toggle button.',
@@ -215,6 +251,15 @@ $canExportStructure = !$isShareMode && (int)commonGetCurrentUserId() > 0 && comm
 $structureTranslations = [
     'actionsMenuAria' => t('structure.actions.menu_aria'),
     'actionsExport' => t('structure.actions.export'),
+    'exportDownloadLabel' => t('structure.actions.export.download'),
+    'exportFormatCsvLabel' => t('structure.actions.export.format.csv'),
+    'exportFormatCsvDescription' => t('structure.actions.export.format.csv_description'),
+    'exportFormatJsonLabel' => t('structure.actions.export.format.json'),
+    'exportFormatJsonDescription' => t('structure.actions.export.format.json_description'),
+    'exportFormatXmlLabel' => t('structure.actions.export.format.xml'),
+    'exportFormatXmlDescription' => t('structure.actions.export.format.xml_description'),
+    'exportModalIntro' => t('structure.actions.export.modal_intro'),
+    'exportModalTitle' => t('structure.actions.export.modal_title'),
     'actionsPrint' => t('structure.actions.print'),
     'actionsShare' => t('structure.actions.share'),
     'browserGenericName' => t('structure.browser.generic_name'),
@@ -776,6 +821,100 @@ function escapeHtml(text) {
       "'": "&#039;"
     }[char];
   });
+}
+
+function buildStructureExportUrl(format) {
+  const route = getCurrentRoute();
+  const currentHolonId = omoGetCurrentStructureHolonId();
+  let exportUrl = "api/exportStructure.php?oid=" + encodeURIComponent(route.oid || 0);
+
+  if (currentHolonId > 0) {
+    exportUrl += "&cid=" + encodeURIComponent(currentHolonId);
+  }
+
+  if (format) {
+    exportUrl += "&format=" + encodeURIComponent(String(format));
+  }
+
+  if (typeof window.omoResolveAppUrl === "function") {
+    exportUrl = window.omoResolveAppUrl(exportUrl);
+  }
+
+  return exportUrl;
+}
+
+function getStructureExportFormats() {
+  return [
+    {
+      key: "json",
+      label: structureTranslations.exportFormatJsonLabel || "JSON",
+      description: structureTranslations.exportFormatJsonDescription || ""
+    },
+    {
+      key: "xml",
+      label: structureTranslations.exportFormatXmlLabel || "XML",
+      description: structureTranslations.exportFormatXmlDescription || ""
+    },
+    {
+      key: "csv",
+      label: structureTranslations.exportFormatCsvLabel || "CSV",
+      description: structureTranslations.exportFormatCsvDescription || ""
+    }
+  ];
+}
+
+function buildStructureExportModalHtml() {
+  const formats = getStructureExportFormats();
+  let html = '<div class="generic-section generic-section--stack">';
+
+  if (structureTranslations.exportModalIntro) {
+    html += '<p>' + escapeHtml(structureTranslations.exportModalIntro) + '</p>';
+  }
+
+  formats.forEach(function (format) {
+    const key = String(format && format.key ? format.key : "").trim();
+    if (key === "") {
+      return;
+    }
+
+    const label = String(format && format.label ? format.label : key.toUpperCase()).trim();
+    const description = String(format && format.description ? format.description : "").trim();
+
+    html += '<section class="generic-soft-panel generic-soft-panel--stack">';
+    html += '<h3 class="generic-card-title generic-card-title--small">' + escapeHtml(label) + '</h3>';
+    if (description !== "") {
+      html += '<p>' + escapeHtml(description) + '</p>';
+    }
+    html += '<button type="button" class="generic-action-button generic-action-button--main"'
+      + ' data-omo-structure-export-format-button="1"'
+      + ' data-omo-structure-export-format="' + escapeHtml(key) + '"'
+      + '>'
+      + escapeHtml(structureTranslations.exportDownloadLabel || "Telecharger")
+      + '</button>';
+    html += '</section>';
+  });
+
+  html += '</div>';
+  return html;
+}
+
+function startStructureExportDownload(format) {
+  const resolvedFormat = String(format || "json").trim() || "json";
+  const exportUrl = buildStructureExportUrl(resolvedFormat);
+  window.open(exportUrl, "_blank", "noopener");
+}
+
+function openStructureExportModal() {
+  if (typeof window.commonTopbarOpenModal !== "function") {
+    startStructureExportDownload("json");
+    return;
+  }
+
+  window.commonTopbarOpenModal(
+    structureTranslations.exportModalTitle || structureTranslations.actionsExport || "Exporter la structure",
+    buildStructureExportModalHtml(),
+    "html"
+  );
 }
 
 function colorToTransparentFill(color, alpha, fallback) {
@@ -1673,102 +1812,106 @@ $(document).on("click", "[data-omo-role-detail-toggle]", function (event) {
   updateRoleListResults();
 });
 
-$(document).on("click", "#omoStructureActionsToggle", function (event) {
-  event.preventDefault();
-  event.stopPropagation();
-  $("#omoStructureActions").toggleClass("is-open");
-});
+$(document)
+  .off("click.omoStructureActionsToggle", "#omoStructureActionsToggle")
+  .on("click.omoStructureActionsToggle", "#omoStructureActionsToggle", function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+    $("#omoStructureActions").toggleClass("is-open");
+  });
 
-$(document).on("click", function (event) {
-  if (!$(event.target).closest("#omoStructureActions").length) {
-    omoCloseStructureActions();
-  }
-});
+$(document)
+  .off("click.omoStructureActionsOutside")
+  .on("click.omoStructureActionsOutside", function (event) {
+    if (!$(event.target).closest("#omoStructureActions").length) {
+      omoCloseStructureActions();
+    }
+  });
 
-$(document).on("keydown", function (event) {
-  if (event.key === "Escape") {
-    omoCloseStructureActions();
-  }
-});
+$(document)
+  .off("keydown.omoStructureActionsEscape")
+  .on("keydown.omoStructureActionsEscape", function (event) {
+    if (event.key === "Escape") {
+      omoCloseStructureActions();
+    }
+  });
 
-$(document).on("click", "#omoStructureCanvasWarningDismiss", function (event) {
-  event.preventDefault();
-  event.stopPropagation();
-  collapseStructureCanvasWarning();
-});
+$(document)
+  .off("click.omoStructureCanvasWarningDismiss", "#omoStructureCanvasWarningDismiss")
+  .on("click.omoStructureCanvasWarningDismiss", "#omoStructureCanvasWarningDismiss", function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+    collapseStructureCanvasWarning();
+  });
 
-$(document).on("click", "#omoStructureCanvasWarningRestore", function (event) {
-  event.preventDefault();
-  event.stopPropagation();
-  expandStructureCanvasWarning();
-});
+$(document)
+  .off("click.omoStructureCanvasWarningRestore", "#omoStructureCanvasWarningRestore")
+  .on("click.omoStructureCanvasWarningRestore", "#omoStructureCanvasWarningRestore", function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+    expandStructureCanvasWarning();
+  });
 
 if (typeof window !== "undefined") {
   window.addEventListener("beforeprint", prepareStructureForPrint);
   window.addEventListener("afterprint", restoreStructureAfterPrint);
 }
 
-$(document).on("click", "[data-omo-structure-action]", function (event) {
-  event.preventDefault();
+$(document)
+  .off("click.omoStructureAction", "[data-omo-structure-action]")
+  .on("click.omoStructureAction", "[data-omo-structure-action]", function (event) {
+    event.preventDefault();
 
-  const action = String($(this).data("omo-structure-action") || "").trim();
-  omoCloseStructureActions();
+    const action = String($(this).data("omo-structure-action") || "").trim();
+    omoCloseStructureActions();
 
-  if (action === "print") {
-    prepareStructureForPrint();
-    window.print();
-    return;
-  }
+    if (action === "print") {
+      prepareStructureForPrint();
+      window.print();
+      return;
+    }
 
-  if (action === "export") {
-    if (!canExportStructure) {
+    if (action === "export") {
+      if (!canExportStructure) {
+        return;
+      }
+      openStructureExportModal();
+      return;
+    }
+
+    if (action !== "share" || !canCreateShareLink) {
+      return;
+    }
+
+    if (typeof window.commonTopbarOpenModal !== "function") {
       return;
     }
 
     const route = getCurrentRoute();
     const currentHolonId = omoGetCurrentStructureHolonId();
-    let exportUrl = "api/exportStructure.php?oid=" + encodeURIComponent(route.oid || 0);
+    let popupUrl = "api/shares/popup.php?oid=" + encodeURIComponent(route.oid || 0);
 
     if (currentHolonId > 0) {
-      exportUrl += "&cid=" + encodeURIComponent(currentHolonId);
+      popupUrl += "&cid=" + encodeURIComponent(currentHolonId);
     }
 
     if (typeof window.omoResolveAppUrl === "function") {
-      exportUrl = window.omoResolveAppUrl(exportUrl);
+      popupUrl = window.omoResolveAppUrl(popupUrl);
     }
 
-    const link = document.createElement("a");
-    link.href = exportUrl;
-    link.download = "";
-    link.rel = "noopener";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    return;
-  }
+    window.commonTopbarOpenModal(structureTranslations.shareModalTitle, popupUrl, "fetch");
+  });
 
-  if (action !== "share" || !canCreateShareLink) {
-    return;
-  }
-
-  if (typeof window.commonTopbarOpenModal !== "function") {
-    return;
-  }
-
-  const route = getCurrentRoute();
-  const currentHolonId = omoGetCurrentStructureHolonId();
-  let popupUrl = "api/shares/popup.php?oid=" + encodeURIComponent(route.oid || 0);
-
-  if (currentHolonId > 0) {
-    popupUrl += "&cid=" + encodeURIComponent(currentHolonId);
-  }
-
-  if (typeof window.omoResolveAppUrl === "function") {
-    popupUrl = window.omoResolveAppUrl(popupUrl);
-  }
-
-  window.commonTopbarOpenModal(structureTranslations.shareModalTitle, popupUrl, "fetch");
-});
+$(document)
+  .off("click.omoStructureExportFormat", "[data-omo-structure-export-format-button]")
+  .on("click.omoStructureExportFormat", "[data-omo-structure-export-format-button]", function (event) {
+    event.preventDefault();
+    const format = String($(this).data("omo-structure-export-format") || "").trim();
+    if (typeof window.commonTopbarCloseModal === "function") {
+      window.commonTopbarCloseModal();
+    }
+    startStructureExportDownload(format);
+  });
 
     const structureDataUrl = <?= json_encode($structureDataUrl, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
     const initialCid = (function () {
