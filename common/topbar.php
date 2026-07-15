@@ -262,7 +262,7 @@ function commonRenderTopbar(array $options = [])
             'details' => [
                 'nameLabel' => (string)($options['profile']['details']['nameLabel'] ?? 'Nom'),
                 'emailLabel' => (string)($options['profile']['details']['emailLabel'] ?? 'E-mail'),
-                'usernameLabel' => (string)($options['profile']['details']['usernameLabel'] ?? 'Identifiant'),
+            'usernameLabel' => (string)($options['profile']['details']['usernameLabel'] ?? "Nom d'utilisateur"),
                 'emptyValueLabel' => (string)($options['profile']['details']['emptyValueLabel'] ?? 'Non renseigne'),
             ],
             'data' => commonResolveTopbarProfileData($organizationContext, $options['profile'] ?? []),
@@ -471,15 +471,16 @@ function commonRenderTopbar(array $options = [])
         <?php if (!empty($config['profile']['enabled'])): ?>
         <div class="common-topbar__menu-wrap">
             <button type="button" class="common-topbar__action common-topbar__action--square common-topbar__profile" data-topbar-menu-trigger="profile">
-                <span class="common-topbar__avatar"<?= empty($config['profile']['data']['photoUrl']) ? ' style="' . htmlspecialchars($profileAvatarStyle, ENT_QUOTES, 'UTF-8') . '"' : '' ?>>
+                <span class="common-topbar__avatar" data-common-topbar-avatar<?= empty($config['profile']['data']['photoUrl']) ? ' style="' . htmlspecialchars($profileAvatarStyle, ENT_QUOTES, 'UTF-8') . '"' : '' ?>>
                     <?php if (!empty($config['profile']['data']['photoUrl'])): ?>
                         <img
                             src="<?= htmlspecialchars((string)$config['profile']['data']['photoUrl']) ?>"
                             alt="<?= htmlspecialchars($profileDisplayName) ?>"
                             class="common-topbar__avatar-image"
+                            data-common-topbar-avatar-image
                         >
                     <?php else: ?>
-                        <span class="common-topbar__avatar-initial" aria-hidden="true"><?= htmlspecialchars($profileInitials) ?></span>
+                        <span class="common-topbar__avatar-initial" data-common-topbar-avatar-initial aria-hidden="true"><?= htmlspecialchars($profileInitials) ?></span>
                     <?php endif; ?>
                 </span>
                 <span class="common-topbar__action-label"><?= htmlspecialchars($config['profile']['buttonLabel']) ?></span>
@@ -487,19 +488,20 @@ function commonRenderTopbar(array $options = [])
             <div class="common-topbar__menu common-topbar__menu--right" data-topbar-menu="profile">
                 <div class="common-topbar-profile-panel" data-common-topbar-profile-panel>
                     <section class="common-topbar-profile-panel__section common-topbar-profile-panel__section--media">
-                        <div class="common-topbar-profile-card generic-section">
+                        <div class="common-topbar-profile-card generic-section" data-common-topbar-profile-media>
                             <?php if (!empty($config['profile']['data']['photoUrl'])): ?>
                                 <img
                                     src="<?= htmlspecialchars((string)$config['profile']['data']['photoUrl']) ?>"
                                     alt="<?= htmlspecialchars($profileDisplayName) ?>"
                                     class="common-topbar-profile-card__photo"
+                                    data-common-topbar-profile-photo
                                 >
                             <?php else: ?>
-                                <div class="common-topbar-profile-card__placeholder" style="<?= htmlspecialchars($profileAvatarStyle, ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"><?= htmlspecialchars($profileInitials) ?></div>
+                                <div class="common-topbar-profile-card__placeholder" data-common-topbar-profile-placeholder style="<?= htmlspecialchars($profileAvatarStyle, ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"><?= htmlspecialchars($profileInitials) ?></div>
                             <?php endif; ?>
                             <div class="common-topbar-profile-card__identity">
-                                <strong><?= htmlspecialchars($profileDisplayName) ?></strong>
-                                <span><?= htmlspecialchars((string)($config['profile']['data']['email'] ?: $config['profile']['summaryFallback'])) ?></span>
+                                <strong data-common-topbar-display-name><?= htmlspecialchars($profileDisplayName) ?></strong>
+                                <span data-common-topbar-email><?= htmlspecialchars((string)($config['profile']['data']['email'] ?: $config['profile']['summaryFallback'])) ?></span>
                             </div>
                         </div>
                     </section>
@@ -508,15 +510,15 @@ function commonRenderTopbar(array $options = [])
                         <div class="common-topbar-profile-details generic-section">
                             <div class="common-topbar-profile-details__row">
                                 <span class="common-topbar-profile-details__label"><?= htmlspecialchars($config['profile']['details']['nameLabel']) ?></span>
-                                <span class="common-topbar-profile-details__value"><?= htmlspecialchars($profileDisplayName) ?></span>
+                                <span class="common-topbar-profile-details__value" data-common-topbar-detail-name><?= htmlspecialchars($profileDisplayName) ?></span>
                             </div>
                             <div class="common-topbar-profile-details__row">
                                 <span class="common-topbar-profile-details__label"><?= htmlspecialchars($config['profile']['details']['emailLabel']) ?></span>
-                                <span class="common-topbar-profile-details__value"><?= htmlspecialchars((string)($config['profile']['data']['email'] ?: $config['profile']['details']['emptyValueLabel'])) ?></span>
+                                <span class="common-topbar-profile-details__value" data-common-topbar-detail-email><?= htmlspecialchars((string)($config['profile']['data']['email'] ?: $config['profile']['details']['emptyValueLabel'])) ?></span>
                             </div>
                             <div class="common-topbar-profile-details__row">
                                 <span class="common-topbar-profile-details__label"><?= htmlspecialchars($config['profile']['details']['usernameLabel']) ?></span>
-                                <span class="common-topbar-profile-details__value"><?= htmlspecialchars((string)($config['profile']['data']['username'] ?: $config['profile']['details']['emptyValueLabel'])) ?></span>
+                                <span class="common-topbar-profile-details__value" data-common-topbar-detail-username><?= htmlspecialchars((string)($config['profile']['data']['username'] ?: $config['profile']['details']['emptyValueLabel'])) ?></span>
                             </div>
                         </div>
                     </section>

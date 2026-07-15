@@ -1685,7 +1685,7 @@ foreach ($competenceRows as $competenceRow) {
                                             </div>
                                         </div>
                                         <div class="omo-user-context__meta-item">
-                                            <div class="omo-user-context__meta-label generic-card-title generic-card-title--small">Identifiant</div>
+                                            <div class="omo-user-context__meta-label generic-card-title generic-card-title--small">Nom d'utilisateur</div>
                                             <div class="omo-user-context__meta-value<?= $username === '' ? ' omo-user-context__meta-value--muted' : '' ?>">
                                                 <?= omoApiEscape($username !== '' ? $username : 'Non renseigne') ?>
                                             </div>

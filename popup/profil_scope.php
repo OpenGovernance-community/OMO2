@@ -253,6 +253,7 @@ function profilRenderProfileFragment($scope, \dbObject\User $user, $organization
     (function () {
         var currentScript = document.currentScript;
         var fragment = currentScript ? currentScript.closest('.profile-panel__scope-fragment') : null;
+        var profileDirtyKey = <?= json_encode('profile_' . $scope, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         var passwordFieldActionBlockedMessage = <?= json_encode(profilPopupT('profile.popup.password.js.paste_blocked'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         var jqueryRequiredMessage = <?= json_encode(profilPopupT('profile.popup.scope.jquery_required'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
@@ -312,6 +313,16 @@ function profilRenderProfileFragment($scope, \dbObject\User $user, $organization
 
         decorateAdminEditForm();
         initPasswordToggle();
+        var profileForm = fragment.querySelector('#formulaire-edit');
+        if (profileForm) {
+            var markProfileDirty = function () {
+                if (typeof window.profileMarkDirty === 'function') {
+                    window.profileMarkDirty(profileDirtyKey);
+                }
+            };
+            profileForm.addEventListener('input', markProfileDirty);
+            profileForm.addEventListener('change', markProfileDirty);
+        }
         if (typeof window.commonInitPasswordPolicy === 'function') {
             window.commonInitPasswordPolicy(fragment);
         }
@@ -522,6 +533,7 @@ function profilRenderCompetenceFragment(array $scopes, \dbObject\User $user, $cu
         var editTitle = <?= json_encode(profilPopupT('profile.popup.competence.editor.edit_title'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         var addLabel = <?= json_encode(profilPopupT('profile.popup.competence.add'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         var saveLabel = <?= json_encode(profilPopupT('profile.popup.competence.save'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        var profileDirtyKey = <?= json_encode('profile_competence_' . $scopeValue, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         var editorForm = fragment.querySelector('[data-profile-competence-form="1"]');
         var editorTitle = editorForm ? editorForm.querySelector('[data-profile-competence-editor-title]') : null;
         var submitButton = editorForm ? editorForm.querySelector('[data-profile-competence-submit-label="1"]') : null;
@@ -531,6 +543,21 @@ function profilRenderCompetenceFragment(array $scopes, \dbObject\User $user, $cu
 
         if (!fragment) {
             return;
+        }
+
+        if (editorForm) {
+            Array.prototype.forEach.call(editorForm.querySelectorAll('input, select, textarea'), function (field) {
+                field.addEventListener('input', function () {
+                    if (typeof window.profileMarkDirty === 'function') {
+                        window.profileMarkDirty(profileDirtyKey);
+                    }
+                });
+                field.addEventListener('change', function () {
+                    if (typeof window.profileMarkDirty === 'function') {
+                        window.profileMarkDirty(profileDirtyKey);
+                    }
+                });
+            });
         }
 
         function setFeedback(message, type) {
@@ -674,6 +701,9 @@ function profilRenderCompetenceFragment(array $scopes, \dbObject\User $user, $cu
                 deleteButton.hidden = true;
             }
             editorForm.hidden = true;
+            if (typeof window.profileMarkClean === 'function') {
+                window.profileMarkClean(profileDirtyKey);
+            }
         }
 
         if (createButton) {
@@ -734,6 +764,9 @@ function profilRenderCompetenceFragment(array $scopes, \dbObject\User $user, $cu
                         }
 
                         setFeedback(result.message || saveSuccessMessage, 'success');
+                        if (typeof window.profileMarkClean === 'function') {
+                            window.profileMarkClean(profileDirtyKey);
+                        }
                         reloadFragment();
                     })
                     .catch(function () {
@@ -783,6 +816,9 @@ function profilRenderCompetenceFragment(array $scopes, \dbObject\User $user, $cu
                         }
 
                         setFeedback(result.message || deleteSuccessMessage, 'success');
+                        if (typeof window.profileMarkClean === 'function') {
+                            window.profileMarkClean(profileDirtyKey);
+                        }
                         reloadFragment();
                     })
                     .catch(function () {

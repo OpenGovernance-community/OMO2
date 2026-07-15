@@ -30,7 +30,7 @@
 				'id' => 'ID',
 				'IDuser' => 'Personne',
 				'IDorganization' => 'Organisation',
-				'username' => 'Identifiant',
+				'username' => 'Nom d\'utilisateur',
 				'email' => 'E-mail',
 				'presentation' => 'Presentation',
 				'image' => 'Photo',
@@ -46,7 +46,7 @@
 			return [
 				'IDuser' => 'Utilisateur associe a cette organisation.',
 				'IDorganization' => 'Organisation concernee par ce lien.',
-				'username' => 'Identifiant affiche specifiquement dans cette organisation. Laissez vide pour utiliser la valeur generale.',
+				'username' => 'Nom d\'utilisateur affiche specifiquement dans cette organisation. Laissez vide pour utiliser la valeur generale.',
 				'email' => 'Adresse e-mail affichee specifiquement dans cette organisation. Laissez vide pour utiliser la valeur generale.',
 				'presentation' => 'Presentation visible uniquement dans cette organisation. Laissez vide pour reutiliser la presentation generale.',
 				'image' => 'Photo de profil specifique a cette organisation. Si elle est vide, la photo generale est utilisee.',

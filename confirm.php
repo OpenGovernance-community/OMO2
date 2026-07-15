@@ -57,7 +57,7 @@
 			$content.="<li class='common-password-policy__rule' data-password-rule='upper'>Au moins une majuscule</li>";
 			$content.="<li class='common-password-policy__rule' data-password-rule='digit'>Au moins un chiffre</li>";
 			$content.="<li class='common-password-policy__rule' data-password-rule='special'>Au moins un caractere special ou un espace</li>";
-			$content.="<li class='common-password-policy__rule' data-password-rule='email'>Evitez de reprendre votre e-mail ou votre identifiant</li>";
+		$content.="<li class='common-password-policy__rule' data-password-rule='email'>Evitez de reprendre votre e-mail ou votre nom d'utilisateur</li>";
 			$content.="</ul>";
 			$content.="<span class='common-password-policy__match' data-password-match aria-live='polite'>Retapez le meme mot de passe pour confirmation.</span>";
 			$content.="</div>";

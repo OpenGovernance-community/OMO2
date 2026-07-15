@@ -123,7 +123,7 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Name field label in the OMO topbar profile panel.',
         ],
         'topbar.profile.details.username' => [
-            'text' => 'Identifiant',
+            'text' => "Nom d'utilisateur",
             'context' => 'Username field label in the OMO topbar profile panel.',
         ],
         'topbar.profile.edit_label' => [

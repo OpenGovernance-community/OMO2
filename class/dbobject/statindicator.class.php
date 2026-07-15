@@ -6,6 +6,12 @@ class StatIndicator extends DbObject
     const REFERENCE_NONE = 'none';
     const REFERENCE_CEILING = 'ceiling';
     const REFERENCE_OBJECTIVE = 'objective';
+    const FREQUENCY_DAILY = 'daily';
+    const FREQUENCY_WEEKLY = 'weekly';
+    const FREQUENCY_MONTHLY = 'monthly';
+    const FREQUENCY_QUARTERLY = 'quarterly';
+    const FREQUENCY_SEMIANNUAL = 'semiannual';
+    const FREQUENCY_YEARLY = 'yearly';
 
     public static function tableName()
     {
@@ -18,7 +24,7 @@ class StatIndicator extends DbObject
             [['IDorganization', 'name', 'reference_type'], 'required'],
             [['id'], 'integer'],
             [['IDorganization', 'IDholon', 'IDuser'], 'fk'],
-            [['name', 'source_url', 'reference_type'], 'string'],
+            [['name', 'source_url', 'reference_type', 'measurement_frequency', 'measurement_schedule'], 'string'],
             [['description'], 'text'],
             [['active'], 'boolean'],
             [['created_at', 'updated_at'], 'datetime'],
@@ -37,6 +43,8 @@ class StatIndicator extends DbObject
             'description' => 'Description',
             'source_url' => 'URL de la source',
             'reference_type' => 'Type de référence',
+            'measurement_frequency' => 'Fréquence de mesure',
+            'measurement_schedule' => 'Moment attendu',
             'active' => 'Actif',
             'created_at' => 'Création',
             'updated_at' => 'Mise à jour',
@@ -49,6 +57,8 @@ class StatIndicator extends DbObject
             'IDholon' => 'Contexte dans lequel cet indicateur est défini.',
             'source_url' => 'Lien vers la donnée, le rapport ou l outil à l origine de la mesure.',
             'reference_type' => 'Un plafond reste horizontal. Un objectif peut suivre une trajectoire composée de plusieurs points.',
+            'measurement_frequency' => 'Cadence attendue pour la saisie des valeurs.',
+            'measurement_schedule' => 'Heure, jour ou mois attendu selon la cadence. Cette information est facultative.',
         ];
     }
 
@@ -58,6 +68,8 @@ class StatIndicator extends DbObject
             'name' => 190,
             'source_url' => 2000,
             'reference_type' => 20,
+            'measurement_frequency' => 20,
+            'measurement_schedule' => 20,
         ];
     }
 
@@ -83,6 +95,53 @@ class StatIndicator extends DbObject
             : self::REFERENCE_NONE;
     }
 
+    public static function getMeasurementFrequencyCatalog()
+    {
+        return [
+            self::FREQUENCY_DAILY => self::FREQUENCY_DAILY,
+            self::FREQUENCY_WEEKLY => self::FREQUENCY_WEEKLY,
+            self::FREQUENCY_MONTHLY => self::FREQUENCY_MONTHLY,
+            self::FREQUENCY_QUARTERLY => self::FREQUENCY_QUARTERLY,
+            self::FREQUENCY_SEMIANNUAL => self::FREQUENCY_SEMIANNUAL,
+            self::FREQUENCY_YEARLY => self::FREQUENCY_YEARLY,
+        ];
+    }
+
+    public static function normalizeMeasurementFrequency($value)
+    {
+        $value = trim(mb_strtolower((string)$value, 'UTF-8'));
+        return array_key_exists($value, self::getMeasurementFrequencyCatalog()) ? $value : null;
+    }
+
+    public static function normalizeMeasurementSchedule($frequency, $value)
+    {
+        $frequency = self::normalizeMeasurementFrequency($frequency);
+        $value = trim((string)$value);
+        if ($frequency === null || $value === '') {
+            return null;
+        }
+
+        if ($frequency === self::FREQUENCY_DAILY) {
+            return preg_match('/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/', $value) ? $value : null;
+        }
+
+        $limits = [
+            self::FREQUENCY_WEEKLY => [1, 7],
+            self::FREQUENCY_MONTHLY => [1, 31],
+            self::FREQUENCY_QUARTERLY => [1, 3],
+            self::FREQUENCY_SEMIANNUAL => [1, 6],
+            self::FREQUENCY_YEARLY => [1, 12],
+        ];
+        if (!isset($limits[$frequency]) || !ctype_digit($value)) {
+            return null;
+        }
+
+        $numericValue = (int)$value;
+        return $numericValue >= $limits[$frequency][0] && $numericValue <= $limits[$frequency][1]
+            ? (string)$numericValue
+            : null;
+    }
+
     public static function sanitizeSourceUrl($value)
     {
         $value = trim((string)$value);
@@ -102,6 +161,9 @@ class StatIndicator extends DbObject
     public function save()
     {
         $this->set('reference_type', self::normalizeReferenceType($this->get('reference_type')));
+        $measurementFrequency = self::normalizeMeasurementFrequency($this->get('measurement_frequency'));
+        $this->set('measurement_frequency', $measurementFrequency);
+        $this->set('measurement_schedule', self::normalizeMeasurementSchedule($measurementFrequency, $this->get('measurement_schedule')));
 
         $sourceUrl = trim((string)$this->get('source_url'));
         if ($sourceUrl !== '') {
