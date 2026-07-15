@@ -274,18 +274,27 @@ function commonOpenAiSummarizeSelectedDocumentText($selectedText, $fullText, arr
     $title = trim((string)($options['title'] ?? ''));
     $preferredModel = trim((string)($options['model'] ?? commonOpenAiGetRewriteModel()));
     $candidateModels = commonOpenAiBuildRewriteModelFallbacks($preferredModel);
+    $isPvSummary = !empty($options['pv_summary']);
 
-    $systemPrompt = 'You shorten selected French document text while preserving meaning, accuracy, and coherence. '
-        . 'Return only a JSON object with one key named summarized_text. '
-        . 'The output must stay in French, keep the original tone, and remain easy to read. '
-        . 'Target roughly half the length of the selected text. '
-        . 'Do not add commentary, markdown, bullet points, or titles unless they already exist inside the selected text. '
-        . 'Output plain text with paragraph breaks only.';
+    $systemPrompt = $isPvSummary
+        ? 'You write a concise French summary of a meeting report. '
+            . 'Return only a JSON object with one key named summarized_text. '
+            . 'Highlight the main topics, important discussions, decisions, and outcomes. '
+            . 'Make the result informative and engaging so the reader wants to read the full report. '
+            . 'Use one paragraph maximum, with no title, bullet points, markdown, or commentary.'
+        : 'You shorten selected French document text while preserving meaning, accuracy, and coherence. '
+            . 'Return only a JSON object with one key named summarized_text. '
+            . 'The output must stay in French, keep the original tone, and remain easy to read. '
+            . 'Target roughly half the length of the selected text. '
+            . 'Do not add commentary, markdown, bullet points, or titles unless they already exist inside the selected text. '
+            . 'Output plain text with paragraph breaks only.';
 
     $userPayload = array(
-        'task' => 'summarize_document_selection',
+        'task' => $isPvSummary ? 'summarize_meeting_report' : 'summarize_document_selection',
         'title' => $title,
-        'instruction' => 'Shorten only the selected passage to about half its length while keeping it aligned with the style and terminology of the rest of the document.',
+        'instruction' => $isPvSummary
+            ? 'Summarize the complete PV in one engaging paragraph. Mention the key themes and the most significant points without inventing facts.'
+            : 'Shorten only the selected passage to about half its length while keeping it aligned with the style and terminology of the rest of the document.',
         'selected_text' => $selectedText,
         'full_document_text' => $fullText,
     );
@@ -307,7 +316,7 @@ function commonOpenAiSummarizeSelectedDocumentText($selectedText, $fullText, arr
                 ),
             ),
             'temperature' => 0.2,
-            'max_tokens' => 900,
+            'max_tokens' => $isPvSummary ? 500 : 900,
         ));
 
         if (empty($result['status'])) {
