@@ -4,6 +4,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-07-15
 
+La recherche globale de la topbar et sa popup proposent maintenant une periode ajustable entre la creation de l organisation et aujourd hui. Dans la topbar, elle est placee sous les modules coches. Les champs date compacts encadrent un curseur aligne en bas, a deux poignees superposees au rail avec des reperes annuels discrets; ils restent synchronises avec le slider. Le filtre est applique cote serveur aux resultats de chaque module puis conserve pendant le traitement asynchrone et la restauration de la recherche.
+
 La mise a jour du profil rafraichit maintenant le contexte `getOrg.php`, le drawer actif et le menu `Profil` des l enregistrement ou la fermeture du formulaire. Les drawers fermes sont vides afin de recharger leurs donnees a leur prochaine ouverture.
 
 Les libelles visibles de compte utilisent maintenant uniformement `Nom d'utilisateur` pour designer le nom de connexion.
