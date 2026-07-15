@@ -2711,6 +2711,15 @@ body.view-right .panel-right {
     margin-right: auto;
 }
 
+/* Summernote link pickers must sit above the external PV drawer. */
+.note-modal {
+    z-index: 2600 !important;
+}
+
+.note-modal-backdrop {
+    z-index: 2590 !important;
+}
+
 .omo-pv-editor .note-btn.omo-pv-editor__document-embed-button {
     width: 34px;
     height: 34px;
