@@ -4,6 +4,16 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-07-15
 
+L editeur de PV propose maintenant un bouton de resume automatique: le titre, la description, l evenement et les points sont transmis a l IA, puis le resultat remplace localement la description et reste a enregistrer.
+
+Le resume automatique des PV respecte maintenant la configuration de l instance: Patreon limite l acces lorsqu il est configure, tandis qu une instance sans Patreon autorise l IA avec une cle OpenAI disponible.
+
+Le resume automatique des PV produit maintenant un paragraphe unique mettant en avant les themes, sujets et resultats principaux, avec une formulation concise et attractive.
+
+Le bouton de resume automatique est maintenant disponible uniquement pendant la phase de relecture.
+
+La visibilite du bouton de resume se synchronise maintenant immediatement lorsque l etape du PV change, sans rechargement de l editeur.
+
 La recherche globale de la topbar et sa popup proposent maintenant une periode ajustable entre la creation de l organisation et aujourd hui. Dans la topbar, elle est placee sous les modules coches. Les champs date compacts encadrent un curseur aligne en bas, a deux poignees superposees au rail avec des reperes annuels discrets; ils restent synchronises avec le slider. Le filtre est applique cote serveur aux resultats de chaque module puis conserve pendant le traitement asynchrone et la restauration de la recherche.
 
 La mise a jour du profil rafraichit maintenant le contexte `getOrg.php`, le drawer actif et le menu `Profil` des l enregistrement ou la fermeture du formulaire. Les drawers fermes sont vides afin de recharger leurs donnees a leur prochaine ouverture.
