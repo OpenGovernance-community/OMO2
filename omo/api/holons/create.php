@@ -1419,6 +1419,32 @@ function closeCreateDrawer() {
     }
 }
 
+function refreshStructureViews(targetHolonId, options) {
+    const cid = targetHolonId === null || targetHolonId === undefined || targetHolonId === ''
+        ? null
+        : Number(targetHolonId);
+    const refreshOptions = options && typeof options === 'object'
+        ? options
+        : {};
+    const detail = {
+        cid: Number.isNaN(cid) ? null : cid,
+        quickZoom: Boolean(refreshOptions.quickZoom)
+    };
+
+    if (typeof window.omoReloadStructureAndFocus === 'function') {
+        return window.omoReloadStructureAndFocus(detail.cid, refreshOptions)
+            .catch(function () {
+                return null;
+            });
+    }
+
+    window.dispatchEvent(new CustomEvent('omo-structure-refresh', {
+        detail: detail
+    }));
+
+    return Promise.resolve(null);
+}
+
 // Enregistre holon courant
 function saveHolon(event) {
     event.preventDefault();
@@ -1518,12 +1544,9 @@ function saveHolon(event) {
 
                 loadContent(typeof omoGetLeftPanelContentSelector === 'function' ? omoGetLeftPanelContentSelector() : '#panel-left', leftUrl);
 
-                window.dispatchEvent(new CustomEvent('omo-structure-refresh', {
-                    detail: {
-                        cid: targetHolonId > 0 ? targetHolonId : null,
-                        quickZoom: externalStructureHost ? false : true
-                    }
-                }));
+                refreshStructureViews(targetHolonId > 0 ? targetHolonId : null, {
+                    quickZoom: externalStructureHost ? false : true
+                });
 
                 if (externalDrawerContext) {
                     closeCreateDrawer();
@@ -1550,16 +1573,11 @@ function saveHolon(event) {
                 }
 
                 const parentHolonId = Number((result.data.holon && result.data.holon.parentId) || state.data.contextHolonId || 0);
-                const refreshPromise = typeof window.omoReloadStructureAndFocus === 'function'
-                    ? window.omoReloadStructureAndFocus(parentHolonId > 0 ? parentHolonId : null, {
-                        quickZoom: true
-                    })
-                    : Promise.resolve();
+                const refreshPromise = refreshStructureViews(parentHolonId > 0 ? parentHolonId : null, {
+                    quickZoom: true
+                });
 
                 refreshPromise
-                    .catch(function () {
-                        return null;
-                    })
                     .then(function () {
                         if (externalDrawerContext) {
                             closeCreateDrawer();
@@ -1584,12 +1602,9 @@ function saveHolon(event) {
 
                 loadContent(typeof omoGetLeftPanelContentSelector === 'function' ? omoGetLeftPanelContentSelector() : '#panel-left', leftUrl);
 
-                window.dispatchEvent(new CustomEvent('omo-structure-refresh', {
-                    detail: {
-                        cid: targetHolonId > 0 ? targetHolonId : null,
-                        quickZoom: externalStructureHost ? false : true
-                    }
-                }));
+                refreshStructureViews(targetHolonId > 0 ? targetHolonId : null, {
+                    quickZoom: externalStructureHost ? false : true
+                });
 
                 if (externalDrawerContext) {
                     closeCreateDrawer();

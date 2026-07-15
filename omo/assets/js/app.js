@@ -161,7 +161,7 @@ function omoGetUserProfile() {
                         <span class="omo-profile-details__value omo-profile-details__value--muted">${profile.phone ? omoEscapeHtml(profile.phone) : 'Non renseigné'}</span>
                     </div>
                     <div class="omo-profile-details__row">
-                        <span class="omo-profile-details__label">Identifiant</span>
+                        <span class="omo-profile-details__label">Nom d'utilisateur</span>
                         <span class="omo-profile-details__value">${profile.username ? omoEscapeHtml(profile.username) : 'Non renseigné'}</span>
                     </div>
                 </div>
@@ -1292,6 +1292,97 @@ function refreshDrawer(id, url) {
 
     return true;
 }
+
+function omoClearClosedDrawers() {
+    $('.drawer').each(function () {
+        const drawer = $(this);
+
+        if (drawer.hasClass('open')) {
+            return;
+        }
+
+        const content = drawer.find('.drawer-content');
+        const request = content.data('omoXhr');
+        if (request && request.readyState !== 4 && typeof request.abort === 'function') {
+            request.abort();
+        }
+
+        content.removeData('omoXhr');
+        content.removeData('omoRequestId');
+        content.empty();
+        drawer.removeData('omo-drawer-url');
+    });
+
+    const externalDrawer = document.getElementById('omoExternalPanelDrawer');
+    if (!externalDrawer || externalDrawer.classList.contains('is-open')) {
+        return;
+    }
+
+    const externalBody = externalDrawer.querySelector('[data-omo-external-panel-drawer-body]');
+    const externalRequest = externalBody ? $(externalBody).data('omoXhr') : null;
+    if (externalRequest && externalRequest.readyState !== 4 && typeof externalRequest.abort === 'function') {
+        externalRequest.abort();
+    }
+
+    if (externalBody) {
+        $(externalBody).removeData('omoXhr');
+        $(externalBody).removeData('omoRequestId');
+        externalBody.innerHTML = '';
+    }
+    delete externalDrawer.dataset.omoExternalContentUrl;
+    delete externalDrawer.dataset.omoPersistKey;
+}
+
+function omoRefreshUserProfileDependentViews() {
+    const route = typeof parseUrl === 'function' ? parseUrl() : {};
+    const organizationId = Number((route && route.oid) || (window.omoConfig && window.omoConfig.oid) || 0);
+    const holonId = Number(route && route.cid ? route.cid : 0);
+
+    if (organizationId > 0) {
+        let leftUrl = 'api/getOrg.php?oid=' + encodeURIComponent(organizationId);
+        if (holonId > 0) {
+            leftUrl += '&cid=' + encodeURIComponent(holonId);
+        }
+        loadContent(omoGetLeftPanelContentSelector(), leftUrl);
+    }
+
+    $('.drawer.open').each(function () {
+        const drawer = $(this);
+        const drawerId = String(drawer.attr('id') || '');
+        const drawerUrl = String(drawer.data('omo-drawer-url') || '');
+
+        if (drawerId !== '' && drawerUrl !== '') {
+            refreshDrawer(drawerId, drawerUrl);
+        }
+    });
+
+    const externalDrawer = document.getElementById('omoExternalPanelDrawer');
+    if (externalDrawer && externalDrawer.classList.contains('is-open')) {
+        const externalUrl = String(externalDrawer.dataset.omoExternalContentUrl || '');
+        const externalBody = externalDrawer.querySelector('[data-omo-external-panel-drawer-body]');
+
+        if (externalUrl !== '' && externalBody) {
+            loadContent(externalBody, externalUrl, 'panel');
+        }
+    }
+
+    omoClearClosedDrawers();
+}
+
+window.addEventListener('common-user-profile-change', function () {
+    omoRefreshUserProfileDependentViews();
+});
+
+window.addEventListener('common-user-profile-updated', function (event) {
+    const profile = event && event.detail && event.detail.profile;
+
+    if (!profile || !window.omoConfig) {
+        return;
+    }
+
+    window.omoConfig.userProfile = profile;
+    omoEnsureProfilePanel();
+});
 
 function omoIsMobileLayout() {
     return typeof window.matchMedia === 'function'

@@ -3,6 +3,9 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
 
 use dbObject\StatIndicator;
+use dbObject\StatIndicatorGroup;
+use dbObject\StatIndicatorGroupItem;
+use dbObject\StatIndicatorImport;
 use dbObject\StatIndicatorReferencePoint;
 use dbObject\StatIndicatorValue;
 
@@ -170,6 +173,16 @@ if ($action === 'save_indicator') {
     }
 
     $referenceType = StatIndicator::normalizeReferenceType($_POST['reference_type'] ?? StatIndicator::REFERENCE_NONE);
+    $rawMeasurementFrequency = trim((string)($_POST['measurement_frequency'] ?? ''));
+    $measurementFrequency = StatIndicator::normalizeMeasurementFrequency($rawMeasurementFrequency);
+    if ($rawMeasurementFrequency !== '' && $measurementFrequency === null) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.schedule'), [], 422);
+    }
+    $rawMeasurementSchedule = trim((string)($_POST['measurement_schedule'] ?? ''));
+    $measurementSchedule = StatIndicator::normalizeMeasurementSchedule($measurementFrequency, $rawMeasurementSchedule);
+    if ($rawMeasurementSchedule !== '' && $measurementSchedule === null) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.schedule'), [], 422);
+    }
     try {
         $referencePoints = omoStatsActionParseReferencePoints($referenceType, $_POST['reference_points'] ?? []);
     } catch (\InvalidArgumentException $exception) {
@@ -188,6 +201,8 @@ if ($action === 'save_indicator') {
     $indicator->set('description', trim((string)($_POST['description'] ?? '')));
     $indicator->set('source_url', $sourceUrl !== '' ? $sourceUrl : null);
     $indicator->set('reference_type', $referenceType);
+    $indicator->set('measurement_frequency', $measurementFrequency);
+    $indicator->set('measurement_schedule', $measurementSchedule);
 
     $pdo = \dbObject\DbObject::getPdo();
     $startedTransaction = false;
@@ -293,6 +308,247 @@ if ($action === 'delete_value') {
     }
 
     omoStatsActionRespond(true);
+}
+
+if ($action === 'delete_indicator') {
+    $indicatorId = isset($_POST['indicator_id']) && is_numeric($_POST['indicator_id']) ? (int)$_POST['indicator_id'] : 0;
+    $indicator = omoStatsLoadIndicator($indicatorId, $organizationId);
+    if (!($indicator instanceof StatIndicator)) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.not_found'), [], 404);
+    }
+    if (!$indicator->canEdit()) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
+    }
+    $indicator->set('active', 0);
+    $result = $indicator->save();
+    if (!is_array($result) || empty($result['status'])) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.save'), [], 500);
+    }
+    omoStatsActionRespond(true, '', ['id' => $indicatorId]);
+}
+
+if ($action === 'import_indicator') {
+    if (!omoStatsCanManageContext($context)) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
+    }
+    $indicatorId = isset($_POST['indicator_id']) && is_numeric($_POST['indicator_id']) ? (int)$_POST['indicator_id'] : 0;
+    $indicator = omoStatsLoadIndicator($indicatorId, $organizationId);
+    if (!($indicator instanceof StatIndicator)) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.selection'), [], 422);
+    }
+
+    $targetHolonId = ($context['currentHolon'] ?? null) instanceof \dbObject\Holon
+        ? (int)$context['currentHolon']->getId()
+        : 0;
+    if ((int)$indicator->get('IDholon') === $targetHolonId) {
+        omoStatsActionRespond(true, '', ['id' => (int)$indicator->getId(), 'existing' => true]);
+    }
+    $existingImports = new \dbObject\ArrayStatIndicatorImport();
+    $existingImports->loadForContext($organizationId, $targetHolonId);
+    foreach ($existingImports as $existingImport) {
+        if ((int)$existingImport->get('IDstatindicator') === (int)$indicator->getId()) {
+            omoStatsActionRespond(true, '', ['id' => (int)$existingImport->getId(), 'existing' => true]);
+        }
+    }
+
+    $import = new StatIndicatorImport();
+    $import->set('IDorganization', $organizationId);
+    $import->set('IDholon', $targetHolonId > 0 ? $targetHolonId : null);
+    $import->set('IDstatindicator', (int)$indicator->getId());
+    $import->set('active', 1);
+    $result = $import->save();
+    if (!is_array($result) || empty($result['status'])) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.save'), [], 500);
+    }
+    omoStatsActionRespond(true, '', ['id' => (int)$import->getId()]);
+}
+
+if ($action === 'update_import') {
+    $importId = isset($_POST['import_id']) && is_numeric($_POST['import_id']) ? (int)$_POST['import_id'] : 0;
+    $import = omoStatsLoadImport($importId, $organizationId);
+    if (!($import instanceof StatIndicatorImport) || !omoStatsCanEditContextResource($import, $context)) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
+    }
+    $indicatorId = isset($_POST['indicator_id']) && is_numeric($_POST['indicator_id']) ? (int)$_POST['indicator_id'] : 0;
+    $indicator = omoStatsLoadIndicator($indicatorId, $organizationId);
+    if (!($indicator instanceof StatIndicator)) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.selection'), [], 422);
+    }
+    if ((int)$indicator->get('IDholon') === (int)$import->get('IDholon')) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.selection'), [], 422);
+    }
+    $existingImports = new \dbObject\ArrayStatIndicatorImport();
+    $existingImports->loadForContext($organizationId, (int)$import->get('IDholon'));
+    foreach ($existingImports as $existingImport) {
+        if ((int)$existingImport->getId() !== $importId && (int)$existingImport->get('IDstatindicator') === $indicatorId) {
+            omoStatsActionRespond(false, omoStatsT('stats.error.selection'), [], 422);
+        }
+    }
+    $import->set('IDstatindicator', $indicatorId);
+    $result = $import->save();
+    if (!is_array($result) || empty($result['status'])) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.save'), [], 500);
+    }
+    omoStatsActionRespond(true, '', ['id' => $importId]);
+}
+
+if ($action === 'delete_import') {
+    $importId = isset($_POST['import_id']) && is_numeric($_POST['import_id']) ? (int)$_POST['import_id'] : 0;
+    $import = omoStatsLoadImport($importId, $organizationId);
+    if (!($import instanceof StatIndicatorImport) || !omoStatsCanEditContextResource($import, $context)) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
+    }
+    $import->set('active', 0);
+    $result = $import->save();
+    if (!is_array($result) || empty($result['status'])) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.save'), [], 500);
+    }
+    omoStatsActionRespond(true, '', ['id' => $importId]);
+}
+
+if ($action === 'update_group') {
+    $groupId = isset($_POST['group_id']) && is_numeric($_POST['group_id']) ? (int)$_POST['group_id'] : 0;
+    $group = omoStatsLoadGroup($groupId, $organizationId);
+    if (!($group instanceof StatIndicatorGroup) || !omoStatsCanEditContextResource($group, $context)) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
+    }
+    $name = trim((string)($_POST['name'] ?? ''));
+    if ($name === '') {
+        omoStatsActionRespond(false, omoStatsT('stats.error.group_name'), [], 422);
+    }
+    $rawIndicatorIds = $_POST['indicator_ids'] ?? [];
+    $indicatorIds = is_array($rawIndicatorIds) ? $rawIndicatorIds : [];
+    $indicatorIds = array_values(array_unique(array_filter(array_map('intval', $indicatorIds), static function ($id) {
+        return $id > 0;
+    })));
+    if (count($indicatorIds) === 0) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.selection'), [], 422);
+    }
+    foreach ($indicatorIds as $indicatorId) {
+        if (!omoStatsLoadIndicator($indicatorId, $organizationId)) {
+            omoStatsActionRespond(false, omoStatsT('stats.error.selection'), [], 422);
+        }
+    }
+
+    $pdo = \dbObject\DbObject::getPdo();
+    $startedTransaction = false;
+    try {
+        if ($pdo && !$pdo->inTransaction()) {
+            $pdo->beginTransaction();
+            $startedTransaction = true;
+        }
+        $group->set('name', mb_substr($name, 0, 190, 'UTF-8'));
+        $group->set('display_mode', StatIndicatorGroup::normalizeDisplayMode($_POST['display_mode'] ?? null));
+        $groupResult = $group->save();
+        if (!is_array($groupResult) || empty($groupResult['status'])) {
+            throw new \RuntimeException(omoStatsT('stats.error.save'));
+        }
+        foreach ($group->getItems() as $existingItem) {
+            if ($existingItem instanceof StatIndicatorGroupItem && !$existingItem->delete()) {
+                throw new \RuntimeException(omoStatsT('stats.error.save'));
+            }
+        }
+        foreach ($indicatorIds as $position => $indicatorId) {
+            $item = new StatIndicatorGroupItem();
+            $item->set('IDstatindicatorgroup', $groupId);
+            $item->set('IDstatindicator', $indicatorId);
+            $item->set('position', $position + 1);
+            $itemResult = $item->save();
+            if (!is_array($itemResult) || empty($itemResult['status'])) {
+                throw new \RuntimeException(omoStatsT('stats.error.save'));
+            }
+        }
+        if ($startedTransaction && $pdo && $pdo->inTransaction()) {
+            $pdo->commit();
+        }
+    } catch (\Throwable $exception) {
+        if ($startedTransaction && $pdo && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        omoStatsActionRespond(false, $exception->getMessage() ?: omoStatsT('stats.error.save'), [], 500);
+    }
+    omoStatsActionRespond(true, '', ['id' => $groupId]);
+}
+
+if ($action === 'delete_group') {
+    $groupId = isset($_POST['group_id']) && is_numeric($_POST['group_id']) ? (int)$_POST['group_id'] : 0;
+    $group = omoStatsLoadGroup($groupId, $organizationId);
+    if (!($group instanceof StatIndicatorGroup) || !omoStatsCanEditContextResource($group, $context)) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
+    }
+    $group->set('active', 0);
+    $result = $group->save();
+    if (!is_array($result) || empty($result['status'])) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.save'), [], 500);
+    }
+    omoStatsActionRespond(true, '', ['id' => $groupId]);
+}
+
+if ($action === 'create_group') {
+    if (!omoStatsCanManageContext($context)) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
+    }
+    $name = trim((string)($_POST['name'] ?? ''));
+    if ($name === '') {
+        omoStatsActionRespond(false, omoStatsT('stats.error.group_name'), [], 422);
+    }
+    $rawIndicatorIds = $_POST['indicator_ids'] ?? [];
+    $indicatorIds = is_array($rawIndicatorIds) ? $rawIndicatorIds : [];
+    $indicatorIds = array_values(array_unique(array_filter(array_map('intval', $indicatorIds), static function ($id) {
+        return $id > 0;
+    })));
+    if (count($indicatorIds) === 0) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.selection'), [], 422);
+    }
+    $indicators = [];
+    foreach ($indicatorIds as $indicatorId) {
+        $indicator = omoStatsLoadIndicator($indicatorId, $organizationId);
+        if (!($indicator instanceof StatIndicator)) {
+            omoStatsActionRespond(false, omoStatsT('stats.error.selection'), [], 422);
+        }
+        $indicators[] = $indicator;
+    }
+
+    $pdo = \dbObject\DbObject::getPdo();
+    $startedTransaction = false;
+    try {
+        if ($pdo && !$pdo->inTransaction()) {
+            $pdo->beginTransaction();
+            $startedTransaction = true;
+        }
+        $group = new StatIndicatorGroup();
+        $group->set('IDorganization', $organizationId);
+        $group->set('IDholon', ($context['currentHolon'] ?? null) instanceof \dbObject\Holon
+            ? (int)$context['currentHolon']->getId()
+            : null);
+        $group->set('IDuser', $currentUserId > 0 ? $currentUserId : null);
+        $group->set('name', mb_substr($name, 0, 190, 'UTF-8'));
+        $group->set('display_mode', StatIndicatorGroup::normalizeDisplayMode($_POST['display_mode'] ?? null));
+        $group->set('active', 1);
+        $groupResult = $group->save();
+        if (!is_array($groupResult) || empty($groupResult['status']) || (int)$group->getId() <= 0) {
+            throw new \RuntimeException(omoStatsT('stats.error.save'));
+        }
+        foreach ($indicators as $position => $indicator) {
+            $item = new StatIndicatorGroupItem();
+            $item->set('IDstatindicatorgroup', (int)$group->getId());
+            $item->set('IDstatindicator', (int)$indicator->getId());
+            $item->set('position', $position + 1);
+            $itemResult = $item->save();
+            if (!is_array($itemResult) || empty($itemResult['status'])) {
+                throw new \RuntimeException(omoStatsT('stats.error.save'));
+            }
+        }
+        if ($startedTransaction && $pdo && $pdo->inTransaction()) {
+            $pdo->commit();
+        }
+    } catch (\Throwable $exception) {
+        if ($startedTransaction && $pdo && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        omoStatsActionRespond(false, $exception->getMessage() ?: omoStatsT('stats.error.save'), [], 500);
+    }
+    omoStatsActionRespond(true, '', ['id' => (int)$group->getId()]);
 }
 
 omoStatsActionRespond(false, omoStatsT('stats.error.action'), [], 400);

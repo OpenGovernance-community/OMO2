@@ -68,6 +68,19 @@ if (!function_exists('omoStatsEditInputNumber')) {
 $referencePoints = $indicatorId > 0
     ? omoStatsCollectionItems($indicator->getReferencePoints(), StatIndicatorReferencePoint::class)
     : [];
+$measurementFrequency = StatIndicator::normalizeMeasurementFrequency($indicator->get('measurement_frequency'));
+$measurementSchedule = StatIndicator::normalizeMeasurementSchedule($measurementFrequency, $indicator->get('measurement_schedule'));
+$measurementFrequencyOptions = [['value' => '', 'label' => omoStatsT('stats.frequency.none')]];
+foreach (StatIndicator::getMeasurementFrequencyCatalog() as $frequency) {
+    $measurementFrequencyOptions[] = [
+        'value' => $frequency,
+        'label' => omoStatsMeasurementFrequencyLabel($frequency),
+    ];
+}
+$measurementScheduleOptions = [];
+foreach (StatIndicator::getMeasurementFrequencyCatalog() as $frequency) {
+    $measurementScheduleOptions[$frequency] = omoStatsMeasurementScheduleOptions($frequency);
+}
 
 if (count($referencePoints) === 0) {
     $startPoint = new StatIndicatorReferencePoint();
@@ -87,6 +100,28 @@ usort($referencePoints, static function (StatIndicatorReferencePoint $left, Stat
 
 ob_start();
 ?>
+<section class="generic-soft-panel omo-stats-schedule" data-omo-stats-schedule>
+    <div class="omo-stats-schedule__heading">
+        <div>
+            <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoStatsT('stats.form.schedule_title')) ?></h3>
+            <p><?= omoApiEscape(omoStatsT('stats.form.schedule_help')) ?></p>
+        </div>
+    </div>
+    <div class="omo-stats-schedule__fields">
+        <label class="omo-stats-field">
+            <span><?= omoApiEscape(omoStatsT('stats.form.frequency')) ?></span>
+            <select class="generic-form-control" name="measurement_frequency" data-omo-stats-measurement-frequency>
+                <?php foreach ($measurementFrequencyOptions as $option): ?>
+                    <option value="<?= omoApiEscape((string)$option['value']) ?>"<?= (string)$option['value'] === (string)$measurementFrequency ? ' selected' : '' ?>><?= omoApiEscape((string)$option['label']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </label>
+        <label class="omo-stats-field" data-omo-stats-measurement-schedule-field>
+            <span><?= omoApiEscape(omoStatsT('stats.form.schedule')) ?></span>
+            <select class="generic-form-control" name="measurement_schedule" data-omo-stats-measurement-schedule data-selected-schedule="<?= omoApiEscape((string)$measurementSchedule) ?>"></select>
+        </label>
+    </div>
+</section>
 <div class="omo-stats-reference-editor" data-omo-stats-reference-editor>
     <div class="omo-stats-reference-editor__heading">
         <div>
@@ -183,6 +218,9 @@ $params = [
     editor.dataset.omoStatsEditorReady = '1';
 
     var typeField = editor.querySelector('[data-omo-stats-reference-type]');
+    var measurementFrequencyField = editor.querySelector('[data-omo-stats-measurement-frequency]');
+    var measurementScheduleField = editor.querySelector('[data-omo-stats-measurement-schedule]');
+    var measurementScheduleWrapper = editor.querySelector('[data-omo-stats-measurement-schedule-field]');
     var referenceEditor = editor.querySelector('[data-omo-stats-reference-editor]');
     var referenceRail = editor.querySelector('[data-omo-stats-reference-rail]');
     var pointList = editor.querySelector('[data-omo-stats-reference-points]');
@@ -193,6 +231,29 @@ $params = [
         'value' => omoStatsT('stats.form.point_value'),
         'remove' => omoStatsT('stats.form.remove_point'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    var measurementScheduleOptions = <?= json_encode($measurementScheduleOptions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+
+    function syncMeasurementSchedule(resetSelection) {
+        if (!measurementScheduleField || !measurementFrequencyField) {
+            return;
+        }
+        var frequency = measurementFrequencyField.value;
+        var options = measurementScheduleOptions[frequency] || [];
+        var selectedValue = resetSelection ? '' : (measurementScheduleField.dataset.selectedSchedule || measurementScheduleField.value || '');
+        measurementScheduleField.innerHTML = '';
+        options.forEach(function (option) {
+            var optionElement = document.createElement('option');
+            optionElement.value = option.value;
+            optionElement.textContent = option.label;
+            optionElement.selected = option.value === selectedValue;
+            measurementScheduleField.appendChild(optionElement);
+        });
+        if (measurementScheduleWrapper) {
+            measurementScheduleWrapper.hidden = options.length === 0;
+        }
+        measurementScheduleField.disabled = options.length === 0;
+        measurementScheduleField.dataset.selectedSchedule = '';
+    }
 
     function rows() {
         return Array.prototype.slice.call(editor.querySelectorAll('[data-omo-stats-reference-point]'));
@@ -327,6 +388,11 @@ $params = [
     if (typeField) {
         typeField.addEventListener('change', syncReferenceType);
     }
+    if (measurementFrequencyField) {
+        measurementFrequencyField.addEventListener('change', function () {
+            syncMeasurementSchedule(true);
+        });
+    }
     if (addButton) {
         addButton.addEventListener('click', addIntermediatePoint);
     }
@@ -357,7 +423,16 @@ $params = [
         });
     }
 
+    var saveButton = document.getElementById('btn_submit');
+    if (saveButton) {
+        saveButton.addEventListener('click', function (event) {
+            saveButton.disabled = true;
+            saveButton.setAttribute('aria-busy', 'true');
+        }, true);
+    }
+
     reindexRows();
+    syncMeasurementSchedule(false);
     syncReferenceType();
     renderReferenceRail();
 })();

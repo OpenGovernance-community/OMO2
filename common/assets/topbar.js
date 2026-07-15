@@ -34,6 +34,131 @@
         return typeof current === 'string' && current !== '' ? current : fallback;
     }
 
+    function isProfileModalUrl(url) {
+        return /(?:^|\/)popup\/profil\.php(?:[?#]|$)/i.test(String(url || ''));
+    }
+
+    function setProfileText(selector, value, fallback) {
+        var node = document.querySelector(selector);
+
+        if (node) {
+            node.textContent = value || fallback;
+        }
+    }
+
+    function renderProfileAvatar(container, profile, imageClass, initialClass) {
+        var image;
+        var initial;
+
+        if (!container) {
+            return;
+        }
+
+        container.innerHTML = '';
+        if (profile.photoUrl) {
+            image = document.createElement('img');
+            image.src = String(profile.photoUrl);
+            image.alt = String(profile.displayName || 'Profil');
+            image.className = imageClass;
+            container.appendChild(image);
+            container.removeAttribute('style');
+            return;
+        }
+
+        initial = document.createElement('span');
+        initial.className = initialClass;
+        initial.setAttribute('aria-hidden', 'true');
+        initial.textContent = String(profile.initials || 'P');
+        container.appendChild(initial);
+        if (profile.avatarStyle) {
+            container.setAttribute('style', String(profile.avatarStyle));
+        }
+    }
+
+    function updateProfileMenu(profile) {
+        var triggerAvatar = document.querySelector('[data-common-topbar-avatar]');
+        var media = document.querySelector('[data-common-topbar-profile-media]');
+        var mediaAvatar = media
+            ? media.querySelector('.common-topbar-profile-card__photo, .common-topbar-profile-card__placeholder')
+            : null;
+        var emptyValue = getConfigTextValue('profile.details.emptyValueLabel', 'Non renseigne');
+        var summaryFallback = getConfigTextValue('profile.summaryFallback', 'Resume du profil');
+
+        profile = profile && typeof profile === 'object' ? profile : {};
+        renderProfileAvatar(triggerAvatar, profile, 'common-topbar__avatar-image', 'common-topbar__avatar-initial');
+
+        if (triggerAvatar && profile.photoUrl) {
+            triggerAvatar.removeAttribute('style');
+        }
+
+        if (media && mediaAvatar) {
+            if (profile.photoUrl) {
+                var mediaImage = document.createElement('img');
+                mediaImage.src = String(profile.photoUrl);
+                mediaImage.alt = String(profile.displayName || 'Profil');
+                mediaImage.className = 'common-topbar-profile-card__photo';
+                mediaImage.setAttribute('data-common-topbar-profile-photo', '');
+                mediaAvatar.replaceWith(mediaImage);
+            } else {
+                var mediaPlaceholder = document.createElement('div');
+                mediaPlaceholder.className = 'common-topbar-profile-card__placeholder';
+                mediaPlaceholder.setAttribute('data-common-topbar-profile-placeholder', '');
+                mediaPlaceholder.setAttribute('aria-hidden', 'true');
+                mediaPlaceholder.textContent = String(profile.initials || 'P');
+                if (profile.avatarStyle) {
+                    mediaPlaceholder.setAttribute('style', String(profile.avatarStyle));
+                }
+                mediaAvatar.replaceWith(mediaPlaceholder);
+            }
+        }
+
+        setProfileText('[data-common-topbar-display-name]', String(profile.displayName || ''), 'Profil');
+        setProfileText('[data-common-topbar-email]', String(profile.email || ''), summaryFallback);
+        setProfileText('[data-common-topbar-detail-name]', String(profile.displayName || ''), emptyValue);
+        setProfileText('[data-common-topbar-detail-email]', String(profile.email || ''), emptyValue);
+        setProfileText('[data-common-topbar-detail-username]', String(profile.username || ''), emptyValue);
+    }
+
+    function notifyUserProfileChanged(reason) {
+        var profileUrl = '/ajax/user_profile.php?_=' + Date.now();
+
+        window.dispatchEvent(new CustomEvent('common-user-profile-change', {
+            detail: {
+                reason: String(reason || 'change')
+            }
+        }));
+
+        fetch(profileUrl, {
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('profile_load');
+                }
+
+                return response.json();
+            })
+            .then(function (payload) {
+                if (!payload || !payload.status || !payload.profile) {
+                    throw new Error('profile_payload');
+                }
+
+                updateProfileMenu(payload.profile);
+                window.dispatchEvent(new CustomEvent('common-user-profile-updated', {
+                    detail: {
+                        reason: String(reason || 'change'),
+                        profile: payload.profile
+                    }
+                }));
+            })
+            .catch(function () {
+            });
+    }
+
     function runContainerCleanup(container) {
         if (!container || container.id !== 'commonTopbarModalBody') {
             return;
@@ -417,6 +542,7 @@
         closeDrawer();
         closeModal();
         resetModalPanelOffset();
+        body.setAttribute('data-topbar-modal-url', String(content || ''));
         titleNode.textContent = title || getConfigTextValue('modal.defaultTitle', 'Panneau');
         if (mode === 'iframe') {
             body.innerHTML = '<iframe class="common-topbar-modal__iframe" src="' + resolvedContent + '"></iframe>';
@@ -456,7 +582,12 @@
         var modal = document.getElementById('commonTopbarModal');
         var body = document.getElementById('commonTopbarModalBody');
         var wasHidden = !modal || modal.hidden;
+        var modalUrl = body ? body.getAttribute('data-topbar-modal-url') || '' : '';
+        var closeGuard = window.commonTopbarModalCanClose;
         if (!modal) {
+            return;
+        }
+        if (!wasHidden && typeof closeGuard === 'function' && closeGuard() === false) {
             return;
         }
         stopModalDrag();
@@ -468,10 +599,21 @@
             body.removeAttribute('data-omo-popup-key');
             body.removeAttribute('data-omo-popup-url');
             body.removeAttribute('data-omo-popup-live-sync');
+            body.removeAttribute('data-topbar-modal-url');
         }
         document.body.classList.remove('common-topbar-modal-open');
         if (!wasHidden) {
-            window.dispatchEvent(new CustomEvent('common-topbar-modal-close'));
+            if (window.commonTopbarModalCanClose === closeGuard) {
+                window.commonTopbarModalCanClose = null;
+            }
+            window.dispatchEvent(new CustomEvent('common-topbar-modal-close', {
+                detail: {
+                    url: modalUrl
+                }
+            }));
+            if (isProfileModalUrl(modalUrl)) {
+                notifyUserProfileChanged('close');
+            }
         }
     }
 
@@ -1214,6 +1356,7 @@
     window.commonTopbarCloseModal = closeModal;
     window.commonTopbarOpenDrawer = openDrawer;
     window.commonTopbarCloseDrawer = closeDrawer;
+    window.commonTopbarRefreshUserProfile = notifyUserProfileChanged;
     window.commonTopbarRefreshModalContent = function (url) {
         var body = document.getElementById('commonTopbarModalBody');
         if (!body || !url) {

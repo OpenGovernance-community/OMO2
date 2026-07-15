@@ -47,7 +47,7 @@
 
 		public static function attributeDescriptions() {
 			return [
-				'username' => 'Un identifiant utilise pour vous identifier dans une equipe, comme des initiales.',
+				'username' => 'Un nom d\'utilisateur utilise pour vous identifier dans une equipe, comme des initiales.',
 				'firstname' => 'Simplement votre prenom.',
 				'lastname' => 'Simplement votre nom de famille.',
 				'presentation' => 'Petit texte de presentation partage entre les organisations, sauf si une organisation le remplace localement.',
