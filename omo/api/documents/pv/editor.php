@@ -1,6 +1,8 @@
 <?php
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once __DIR__ . '/helpers.php';
+require_once dirname(__DIR__, 4) . '/common/patreon.php';
+require_once dirname(__DIR__, 4) . '/common/openai_text.php';
 require_once dirname(__DIR__, 4) . '/common/object_visibility_selector.php';
 
 $sourceLang = omoDocumentsPvEditorSourceLang();
@@ -75,6 +77,14 @@ $hasStructureApplication = $hasOrganization && $organization->isStructureApplica
 $hasDocumentsApplication = $hasOrganization && $organization->isApplicationEnabled('documents', $currentUserId);
 $hasDecisionApplication = $hasOrganization && $organization->isApplicationEnabled('decision', $currentUserId);
 $hasCalendarApplication = $hasOrganization && $organization->isApplicationEnabled('calendar', $currentUserId);
+$openAiAvailable = commonOpenAiGetApiKey() !== '';
+$patreonGateEnabled = function_exists('patreonSupportUiIsEnabled') && patreonSupportUiIsEnabled();
+$patreonConnected = false;
+if ($patreonGateEnabled && $currentUserId > 0) {
+    $patreonConnection = \dbObject\UserPatreon::findByUserId($currentUserId);
+    $patreonConnected = $patreonConnection !== false && $patreonConnection->isConnected();
+}
+$canUseAiTools = $openAiAvailable && (!$patreonGateEnabled || $patreonConnected);
 $hasUpcomingAssociatedEvent = $hasAssociatedEvent && $event->isUpcoming();
 $canManagePvStage = $document->canManagePvStage($organizationId, $currentUserId);
 $pvEditorUserId = $document->getPvEditorUserId();
@@ -2034,6 +2044,9 @@ foreach ($points as $point) {
                         ><?= $escape($documentDescription) ?></textarea>
                         <div class="omo-pv-editor__document-meta-actions">
                             <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__document-meta-save" data-omo-pv-document-meta-save disabled hidden><?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.save')) ?></button>
+                            <?php if ($canUseAiTools): ?>
+                                <button type="button" class="generic-action-button generic-action-button--secondary omo-pv-editor__document-meta-summary" data-omo-pv-document-auto-summary<?= $document->getPvStage() !== \dbObject\Document::PV_STAGE_REVIEW ? ' hidden' : '' ?>><?= $escape((string)$uiText['autoSummary']) ?></button>
+                            <?php endif; ?>
                             <span class="omo-pv-editor__document-meta-status" data-omo-pv-document-meta-status></span>
                         </div>
                     </div>
@@ -2226,6 +2239,7 @@ foreach ($points as $point) {
     const documentDescriptionInput = root.querySelector('[data-omo-pv-document-description]');
     const documentVisibilitySelect = root.querySelector('[data-omo-pv-document-visibility]');
     const documentMetaSaveButton = root.querySelector('[data-omo-pv-document-meta-save]');
+    const documentAutoSummaryButton = root.querySelector('[data-omo-pv-document-auto-summary]');
     const documentMetaStatus = root.querySelector('[data-omo-pv-document-meta-status]');
     const documentTitleDisplay = root.querySelector('[data-omo-pv-document-title-display]');
     const documentDescriptionDisplay = root.querySelector('[data-omo-pv-document-description-display]');
@@ -2258,6 +2272,9 @@ foreach ($points as $point) {
     const saveLabel = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.action.save'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const savingLabel = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.action.saving'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const savedLabel = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.state.saved'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const autoSummaryLoadingLabel = <?= json_encode((string)$uiText['autoSummaryLoading'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const autoSummaryReadyLabel = <?= json_encode((string)$uiText['autoSummaryReady'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    let autoSummaryPending = false;
     const dirtyLabel = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.state.dirty'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const unsavedCloseMessage = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.warning.unsaved_close'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const deletePointMessage = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.warning.delete_point'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -2758,6 +2775,11 @@ foreach ($points as $point) {
 
     function syncDocumentMetadataUi() {
         const isDirty = documentMetadataIsDirty();
+        const canGenerateAutoSummary = currentDocumentPayload.pvStage === 'review';
+        if (documentAutoSummaryButton instanceof HTMLButtonElement) {
+            documentAutoSummaryButton.hidden = !canGenerateAutoSummary;
+            documentAutoSummaryButton.disabled = autoSummaryPending || !canGenerateAutoSummary;
+        }
         if (documentMetaSaveButton instanceof HTMLButtonElement) {
             documentMetaSaveButton.disabled = !isDirty;
             documentMetaSaveButton.hidden = !isDirty;
@@ -3205,6 +3227,7 @@ foreach ($points as $point) {
         knownDocumentSyncVersion = String(currentDocumentPayload.syncVersion || knownDocumentSyncVersion || '');
         syncDocumentStageUi(currentDocumentPayload);
         syncPvEditorUi(currentDocumentPayload);
+        syncDocumentMetadataUi();
     }
 
     function formatAttendanceCount(presentCount, totalCount) {
@@ -4977,6 +5000,62 @@ foreach ($points as $point) {
             })
             .finally(function () {
                 syncDocumentMetadataUi();
+        });
+    }
+
+    function generateDocumentAutoSummary() {
+        if (
+            autoSummaryPending
+            || !(documentAutoSummaryButton instanceof HTMLButtonElement)
+            || !(documentDescriptionInput instanceof HTMLTextAreaElement)
+            || currentDocumentPayload.pvStage !== 'review'
+        ) {
+            return;
+        }
+
+        autoSummaryPending = true;
+        documentAutoSummaryButton.disabled = true;
+        if (documentMetaStatus instanceof Element) {
+            documentMetaStatus.textContent = autoSummaryLoadingLabel;
+        }
+
+        const formData = new FormData();
+        formData.append('oid', String(organizationId));
+        formData.append('document_id', String(documentId));
+        fetch('/omo/api/documents/pv/summarize.php', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            body: formData
+        })
+            .then(function (response) {
+                return response.json().catch(function () { return null; }).then(function (payload) {
+                    if (!response.ok || !payload || payload.status !== true) {
+                        throw new Error(payload && payload.message ? payload.message : 'Impossible de generer le resume.');
+                    }
+                    return payload;
+                });
+            })
+            .then(function (payload) {
+                const summary = String(payload.text || '').trim();
+                if (summary === '') {
+                    throw new Error('Le resume genere est vide.');
+                }
+                documentDescriptionInput.value = summary;
+                resizeDocumentDescriptionInput();
+                syncDocumentMetadataUi();
+                if (documentMetaStatus instanceof Element) {
+                    documentMetaStatus.textContent = autoSummaryReadyLabel;
+                }
+            })
+            .catch(function (error) {
+                if (documentMetaStatus instanceof Element) {
+                    documentMetaStatus.textContent = error && error.message ? error.message : 'Impossible de generer le resume.';
+                }
+            })
+            .finally(function () {
+                autoSummaryPending = false;
+                syncDocumentMetadataUi();
             });
     }
 
@@ -5026,6 +5105,13 @@ foreach ($points as $point) {
         if (documentMetaSave && root.contains(documentMetaSave)) {
             event.preventDefault();
             saveDocumentMetadata();
+            return;
+        }
+
+        const documentAutoSummary = event.target.closest('[data-omo-pv-document-auto-summary]');
+        if (documentAutoSummary && root.contains(documentAutoSummary)) {
+            event.preventDefault();
+            generateDocumentAutoSummary();
             return;
         }
 
