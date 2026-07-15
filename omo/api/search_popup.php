@@ -9,6 +9,7 @@ if (!function_exists('omoSearchPopupGetScopeLabels')) {
             'team' => 'Team',
             'calendar' => 'Calendrier',
             'documents' => 'Documents',
+            'pv' => 'PV',
             'decision' => 'Decisions',
             'faq' => 'FAQ',
             'tutorials' => 'Tutoriels',
@@ -23,6 +24,7 @@ if (!function_exists('omoSearchPopupGetScopeLabels')) {
             'team' => 'team',
             'calendar' => 'calendar',
             'documents' => 'documents',
+            'pv' => 'documents',
             'decision' => 'decision',
         );
 
@@ -471,7 +473,7 @@ if (!function_exists('omoSearchPopupRenderContent')) {
                         } elseif ($module === 'calendar' && !empty($action['eventId'])) {
                             $buttonAttributes = ' data-omo-search-open-calendar-event-id="' . (int)$action['eventId'] . '"'
                                 . ' data-omo-search-open-calendar-event-holon="' . (int)($action['holonId'] ?? 0) . '"';
-                        } elseif ($module === 'documents' && !empty($action['documentUrl'])) {
+                        } elseif (in_array($module, array('documents', 'pv'), true) && !empty($action['documentUrl'])) {
                             $buttonAttributes = ' data-omo-search-open-document="' . htmlspecialchars((string)$action['documentUrl'], ENT_QUOTES, 'UTF-8') . '"'
                                 . ' data-omo-search-document-title="' . htmlspecialchars((string)($result['title'] ?? 'Document'), ENT_QUOTES, 'UTF-8') . '"';
                         } elseif ($module === 'decision' && !empty($action['decisionId'])) {
