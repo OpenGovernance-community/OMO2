@@ -1541,7 +1541,12 @@
 
 		public function canBeEmbedded(): bool
 		{
-			return !$this->isFolder() && $this->supportsHtmlContent();
+			return !$this->isFolder()
+				&& (
+					$this->supportsHtmlContent()
+					|| $this->isExternalLink()
+					|| $this->isUploadedFile()
+				);
 		}
 
 		public static function sanitizeExternalUrl($url): string

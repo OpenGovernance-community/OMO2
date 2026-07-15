@@ -1528,6 +1528,27 @@ function omoParseCalendarEventRouteToken(routeToken = null) {
     };
 }
 
+function omoParseStatsIndicatorRouteToken(routeToken = null) {
+    const normalizedRouteToken = omoNormalizeHashToken(routeToken);
+    if (!normalizedRouteToken) {
+        return null;
+    }
+
+    const indicatorMatch = normalizedRouteToken.match(/^(?:stats-i|stats-indicator-)(\d+)$/i);
+    if (!indicatorMatch) {
+        return null;
+    }
+
+    const indicatorId = Number(indicatorMatch[1]);
+    if (!Number.isInteger(indicatorId) || indicatorId <= 0) {
+        return null;
+    }
+
+    return {
+        indicatorId: indicatorId
+    };
+}
+
 function omoParseDocumentRouteToken(routeToken = null) {
     const normalizedRouteToken = omoNormalizeHashToken(routeToken);
     if (!normalizedRouteToken) {
@@ -1594,6 +1615,15 @@ function omoBuildCalendarEventRouteToken(eventId) {
     return `calendar-e${resolvedEventId}`;
 }
 
+function omoBuildStatsIndicatorRouteToken(indicatorId) {
+    const resolvedIndicatorId = Number(indicatorId);
+    if (!Number.isInteger(resolvedIndicatorId) || resolvedIndicatorId <= 0) {
+        return null;
+    }
+
+    return `stats-i${resolvedIndicatorId}`;
+}
+
 function omoBuildDocumentRouteToken(documentId, mode = 'detail') {
     const resolvedDocumentId = Number(documentId);
     if (!Number.isInteger(resolvedDocumentId) || resolvedDocumentId <= 0) {
@@ -1620,6 +1650,10 @@ function omoGetMenuHashForRouteToken(routeToken = null) {
 
     if (omoParseCalendarEventRouteToken(normalizedRouteToken)) {
         return 'calendar';
+    }
+
+    if (omoParseStatsIndicatorRouteToken(normalizedRouteToken)) {
+        return 'stats';
     }
 
     if (omoParseDocumentRouteToken(normalizedRouteToken)) {
@@ -1787,6 +1821,15 @@ function omoResolveSpecialDrawerRoute(routeToken, oid = null, cid = null, option
         return {
             drawer: 'drawer_calendar',
             url: `api/calendar/index.php?open_event_id=${encodeURIComponent(calendarEventRoute.eventId)}`,
+            navigationMode: 'drawer'
+        };
+    }
+
+    const statsIndicatorRoute = omoParseStatsIndicatorRouteToken(normalizedRouteToken);
+    if (statsIndicatorRoute) {
+        return {
+            drawer: 'drawer_stats',
+            url: `api/stats/index.php?open_indicator_id=${encodeURIComponent(statsIndicatorRoute.indicatorId)}&stats_scope=global`,
             navigationMode: 'drawer'
         };
     }
@@ -3845,6 +3888,8 @@ function handleRoute() {
     const previousDecisionRoute = omoParseDecisionRouteToken(previousState.routeToken);
     const calendarEventRoute = omoParseCalendarEventRouteToken(routeToken);
     const previousCalendarEventRoute = omoParseCalendarEventRouteToken(previousState.routeToken);
+    const statsIndicatorRoute = omoParseStatsIndicatorRouteToken(routeToken);
+    const previousStatsIndicatorRoute = omoParseStatsIndicatorRouteToken(previousState.routeToken);
     const documentRoute = omoParseDocumentRouteToken(routeToken);
     const previousDocumentRoute = omoParseDocumentRouteToken(previousState.routeToken);
     const isInSpecialDrawerOnlyRouteChange = !drawerHandledByContextChange
@@ -3855,6 +3900,7 @@ function handleRoute() {
         && (
             activeMenuHash === 'decision'
             || activeMenuHash === 'calendar'
+            || activeMenuHash === 'stats'
             || activeMenuHash === 'documents'
         );
 
@@ -3876,6 +3922,17 @@ function handleRoute() {
             detail: {
                 eventId: calendarEventRoute ? Number(calendarEventRoute.eventId) : 0,
                 previousEventId: previousCalendarEventRoute ? Number(previousCalendarEventRoute.eventId) : 0,
+                routeToken: routeToken,
+                previousRouteToken: previousState.routeToken || null
+            }
+        }));
+    }
+
+    if (isInSpecialDrawerOnlyRouteChange && activeMenuHash === 'stats') {
+        window.dispatchEvent(new CustomEvent('omo-stats-route-change', {
+            detail: {
+                indicatorId: statsIndicatorRoute ? Number(statsIndicatorRoute.indicatorId) : 0,
+                previousIndicatorId: previousStatsIndicatorRoute ? Number(previousStatsIndicatorRoute.indicatorId) : 0,
                 routeToken: routeToken,
                 previousRouteToken: previousState.routeToken || null
             }
@@ -4640,6 +4697,7 @@ window.omoOpenMemberActionsPopup = omoOpenMemberActionsPopup;
 window.omoNormalizeRouteCid = omoNormalizeRouteCid;
 window.omoBuildDecisionRouteToken = omoBuildDecisionRouteToken;
 window.omoBuildCalendarEventRouteToken = omoBuildCalendarEventRouteToken;
+window.omoBuildStatsIndicatorRouteToken = omoBuildStatsIndicatorRouteToken;
 window.omoOpenSearchCalendarEventResult = omoOpenSearchCalendarEventResult;
 window.omoOpenSearchDecisionResult = omoOpenSearchDecisionResult;
 window.omoBuildDocumentRouteToken = omoBuildDocumentRouteToken;

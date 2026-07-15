@@ -2,6 +2,16 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-15
+
+L application contextuelle Indicateurs dispose maintenant de ses fondations completes: affichages en cartes ou en liste compacte, portees contextuelle, descendante et globale, graphiques historiques, ouverture par navigation hash dans un sous-drawer et formulaire de creation ou de modification reutilisant `adminEdit`.
+
+Les mesures et la reference sont volontairement separees. Une mesure reste un simple couple valeur/date, ajoutable rapidement et supprimable depuis l historique. La courbe de reference possede ses propres extremites datees et peut recevoir autant de points intermediaires positionnes en pourcentage que necessaire, sur le modele des stops d un degrade. Les plafonds restent horizontaux tandis que les objectifs peuvent suivre une trajectoire personnalisee.
+
+Les indicateurs, leurs mesures et leurs points de reference reposent sur trois `dbObject` normalises et une migration ordonnee. Cette structure laisse la place aux futurs imports entre cercles, indicateurs composes et series issues automatiquement des donnees du logiciel sans les confondre avec les saisies manuelles actuelles.
+
+Le changement de vue masque maintenant explicitement le panneau inactif, y compris lorsque les styles generiques de liste imposent leur propre mode d affichage.
+
 ## 2026-07-14
 
 Les auteurs et editeurs autorises peuvent maintenant supprimer un point PV directement depuis son editeur avec un bouton rouge de confirmation. Les points traites, les groupes et les points auxquels l utilisateur n a pas acces restent proteges.
@@ -37,6 +47,8 @@ Le message indiquant que l utilisateur est editeur du PV est maintenant affiche 
 La recherche globale propose maintenant une rubrique PV distincte lorsque l application Documents est active. Elle recherche dans les titres et le contenu des points d ordre du jour, sans melanger les PV avec les autres documents et en conservant leurs controles de visibilite.
 
 Les resultats PV de cette rubrique utilisent maintenant le meme bouton Ouvrir que les documents et conduisent vers le document trouve.
+
+Les blocs de reference inseres dans les PV peuvent maintenant cibler les documents HTML, les liens URL et les fichiers televerses. Les dossiers et les PV restent exclus de ce selecteur.
 
 ## 2026-07-13
 
