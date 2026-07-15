@@ -4335,6 +4335,15 @@ function omoGetTopbarSearchScopes() {
         });
     });
 
+    if (scopes.some(function (scope) { return scope.id === 'documents'; })
+        && !scopes.some(function (scope) { return scope.id === 'pv'; })) {
+        scopes.push({
+            id: 'pv',
+            label: 'PV',
+            checked: false
+        });
+    }
+
     const faqScope = omoGetTopbarSearchHelpScope('faq');
     if (faqScope) {
         scopes.push(faqScope);
