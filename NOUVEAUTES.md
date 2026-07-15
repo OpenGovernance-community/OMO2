@@ -14,6 +14,8 @@ Le bouton de resume automatique est maintenant disponible uniquement pendant la 
 
 La visibilite du bouton de resume se synchronise maintenant immediatement lorsque l etape du PV change, sans rechargement de l editeur.
 
+Le helper OpenAI n appelle plus `curl_close`, desormais deprecie en PHP 8.5.
+
 La recherche globale de la topbar et sa popup proposent maintenant une periode ajustable entre la creation de l organisation et aujourd hui. Dans la topbar, elle est placee sous les modules coches. Les champs date compacts encadrent un curseur aligne en bas, a deux poignees superposees au rail avec des reperes annuels discrets; ils restent synchronises avec le slider. Le filtre est applique cote serveur aux resultats de chaque module puis conserve pendant le traitement asynchrone et la restauration de la recherche.
 
 La mise a jour du profil rafraichit maintenant le contexte `getOrg.php`, le drawer actif et le menu `Profil` des l enregistrement ou la fermeture du formulaire. Les drawers fermes sont vides afin de recharger leurs donnees a leur prochaine ouverture.
