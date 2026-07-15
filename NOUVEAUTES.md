@@ -34,6 +34,10 @@ Une zone poubelle apparait maintenant a gauche des actions pendant le deplacemen
 
 Le message indiquant que l utilisateur est editeur du PV est maintenant affiche uniquement lorsque son identifiant correspond effectivement a l editeur officiel courant, y compris apres une synchronisation ou une passation.
 
+La recherche globale propose maintenant une rubrique PV distincte lorsque l application Documents est active. Elle recherche dans les titres et le contenu des points d ordre du jour, sans melanger les PV avec les autres documents et en conservant leurs controles de visibilite.
+
+Les resultats PV de cette rubrique utilisent maintenant le meme bouton Ouvrir que les documents et conduisent vers le document trouve.
+
 ## 2026-07-13
 
 Les documents disposent maintenant d une action `Archiver` et d une action `Supprimer` protegee: les PV, les documents lies a un evenement et les dossiers encore utilises sont uniquement archivables.
