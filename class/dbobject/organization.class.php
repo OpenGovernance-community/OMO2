@@ -7668,7 +7668,7 @@
 			return $results;
 		}
 
-		protected function searchTopbarDocumentResults($query, array $terms, $limit = 12, array $viewerContext = array())
+		protected function searchTopbarDocumentResults($query, array $terms, $limit = 12, array $viewerContext = array(), $documentType = null)
 		{
 			if ((int)$this->getId() <= 0 || count($terms) === 0) {
 				return array();
@@ -7677,11 +7677,15 @@
 			$params = array(
 				'organization_id' => (int)$this->getId(),
 			);
+			$isPvSearch = $documentType === \dbObject\Document::TYPE_PV;
+			$params['document_type_pv'] = \dbObject\Document::TYPE_PV;
 
 			$titleExpr = "LOWER(COALESCE(d.title, ''))";
 			$descriptionExpr = "LOWER(COALESCE(d.description, ''))";
 			$keywordsExpr = "LOWER(COALESCE(d.keywords, ''))";
 			$contentExpr = "LOWER(COALESCE(d.content, ''))";
+			$pvPointTitleExpr = $isPvSearch ? "LOWER(COALESCE(pv_search.point_titles, ''))" : '0';
+			$pvPointContentExpr = $isPvSearch ? "LOWER(COALESCE(pv_search.point_contents, ''))" : '0';
 
 			$titleScoreSql = self::buildTopbarSearchScoreSql($titleExpr, $terms, $params, 'document_title', array(
 				'exact' => 100,
@@ -7703,13 +7707,33 @@
 				'prefix' => 12,
 				'like' => 6,
 			));
+			$pvPointTitleScoreSql = self::buildTopbarSearchScoreSql($pvPointTitleExpr, $terms, $params, 'document_pv_point_title', array(
+				'exact' => 44,
+				'prefix' => 28,
+				'like' => 14,
+			));
+			$pvPointContentScoreSql = self::buildTopbarSearchScoreSql($pvPointContentExpr, $terms, $params, 'document_pv_point_content', array(
+				'exact' => 30,
+				'prefix' => 18,
+				'like' => 9,
+			));
 			$preFilterSql = self::buildTopbarSearchAnyMatchSql(
-				array($titleExpr, $descriptionExpr, $keywordsExpr, $contentExpr),
+				array($titleExpr, $descriptionExpr, $keywordsExpr, $contentExpr, $pvPointTitleExpr, $pvPointContentExpr),
 				$terms,
 				$params,
 				'document_prefilter'
 			);
 			$limitSql = max(1, (int)$limit);
+
+			$documentTypeSql = $isPvSearch
+				? 'AND d.documenttype = :document_type_pv'
+				: 'AND COALESCE(d.documenttype, \'\') <> :document_type_pv';
+			$pvJoinSql = $isPvSearch
+				? "LEFT JOIN (\n\t\t\t\t\tSELECT IDdocument, GROUP_CONCAT(COALESCE(title, '') SEPARATOR ' ') AS point_titles, GROUP_CONCAT(COALESCE(content, '') SEPARATOR ' ') AS point_contents\n\t\t\t\t\tFROM document_pv_point\n\t\t\t\t\tWHERE item_type = 'point'\n\t\t\t\t\tGROUP BY IDdocument\n\t\t\t\t) pv_search ON pv_search.IDdocument = d.id"
+				: '';
+			$pvSelectSql = $isPvSearch
+				? 'pv_search.point_titles, pv_search.point_contents'
+				: "'' AS point_titles, '' AS point_contents";
 
 			$rows = self::fetchAll(
 				"SELECT
@@ -7721,9 +7745,12 @@
 					d.IDholon,
 					d.datecreation,
 					d.datemodification,
-					(" . $titleScoreSql . " + " . $descriptionScoreSql . " + " . $keywordsScoreSql . " + " . $contentScoreSql . ") AS relevance
+					(" . $titleScoreSql . " + " . $descriptionScoreSql . " + " . $keywordsScoreSql . " + " . $contentScoreSql . " + " . $pvPointTitleScoreSql . " + " . $pvPointContentScoreSql . ") AS relevance,
+					" . $pvSelectSql . "
 				FROM document d
+				" . $pvJoinSql . "
 				WHERE d.IDorganization = :organization_id
+				  " . $documentTypeSql . "
 				  AND " . $preFilterSql . "
 				HAVING relevance > 0
 				ORDER BY relevance DESC, d.datemodification DESC, d.datecreation DESC, d.id DESC
@@ -7748,17 +7775,20 @@
 				}
 
 				$subtitle = $document->getOrganizationContextLabel();
-				$snippetSource = trim((string)($row['description'] ?? '')) !== ''
+				$pvSnippetSource = trim((string)($row['point_titles'] ?? '') . ' ' . (string)($row['point_contents'] ?? ''));
+				$snippetSource = $isPvSearch && $pvSnippetSource !== ''
+					? $pvSnippetSource
+					: (trim((string)($row['description'] ?? '')) !== ''
 					? (string)($row['description'] ?? '')
-					: ((trim((string)($row['keywords'] ?? '')) !== '' ? (string)($row['keywords'] ?? '') : (string)($row['content'] ?? '')));
+					: ((trim((string)($row['keywords'] ?? '')) !== '' ? (string)($row['keywords'] ?? '') : (string)($row['content'] ?? ''))));
 				$detailUrl = '/omo/api/documents/detail.php?id=' . (int)$document->getId() . '&oid=' . (int)$this->getId();
 				if ((int)$document->get('IDholon') > 0) {
 					$detailUrl .= '&cid=' . (int)$document->get('IDholon');
 				}
 
 				$results[] = array(
-					'module' => 'documents',
-					'moduleLabel' => 'Documents',
+					'module' => $isPvSearch ? 'pv' : 'documents',
+					'moduleLabel' => $isPvSearch ? 'PV' : 'Documents',
 					'title' => trim((string)$document->get('title')) !== '' ? (string)$document->get('title') : ('Document #' . (int)$document->getId()),
 					'subtitle' => $subtitle,
 					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
@@ -8187,6 +8217,7 @@
 				'team' => 'team',
 				'calendar' => 'calendar',
 				'documents' => 'documents',
+				'pv' => 'documents',
 				'decision' => 'decision',
 			);
 			$enabledScopes = array();
@@ -8233,6 +8264,7 @@
 				'team' => 0,
 				'calendar' => 0,
 				'documents' => 0,
+				'pv' => 0,
 				'decision' => 0,
 				'faq' => 0,
 				'tutorials' => 0,
@@ -8263,8 +8295,14 @@
 				}
 
 				if (isset($normalizedScopes['documents'])) {
-					$scopeResults = $this->searchTopbarDocumentResults($query, $terms, $perScopeLimit, $viewerContext);
+					$scopeResults = $this->searchTopbarDocumentResults($query, $terms, $perScopeLimit, $viewerContext, 'non_pv');
 					$counts['documents'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
+
+				if (isset($normalizedScopes['pv'])) {
+					$scopeResults = $this->searchTopbarDocumentResults($query, $terms, $perScopeLimit, $viewerContext, \dbObject\Document::TYPE_PV);
+					$counts['pv'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
 
@@ -8293,8 +8331,9 @@
 				'calendar' => 3,
 				'decision' => 4,
 				'documents' => 5,
-				'faq' => 6,
-				'tutorials' => 7,
+				'pv' => 6,
+				'faq' => 7,
+				'tutorials' => 8,
 			);
 
 			usort($results, function ($left, $right) use ($moduleOrder) {
