@@ -142,6 +142,7 @@ CREATE TABLE IF NOT EXISTS `search_job` (
     `status` varchar(20) NOT NULL DEFAULT 'queued',
     `query` text NOT NULL,
     `scopesjson` mediumtext DEFAULT NULL,
+    `timerangejson` mediumtext DEFAULT NULL,
     `viewercontextjson` mediumtext DEFAULT NULL,
     `resultjson` longtext DEFAULT NULL,
     `errormessage` text DEFAULT NULL,

@@ -90,6 +90,44 @@ function commonRenderTopbarJqueryAssets()
     $jqueryLoaded = true;
 }
 
+function commonRenderTopbarSearchPeriod(array $period, $idPrefix = 'commonTopbar')
+{
+    $minDate = trim((string)($period['minDate'] ?? ''));
+    $maxDate = trim((string)($period['maxDate'] ?? ''));
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $minDate) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $maxDate) || $minDate > $maxDate) {
+        return;
+    }
+
+    $startDate = trim((string)($period['startDate'] ?? $minDate));
+    $endDate = trim((string)($period['endDate'] ?? $maxDate));
+    if ($startDate < $minDate || $startDate > $maxDate) {
+        $startDate = $minDate;
+    }
+    if ($endDate < $startDate || $endDate > $maxDate) {
+        $endDate = $maxDate;
+    }
+    $prefix = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)$idPrefix);
+    ?>
+    <div class="common-topbar__search-period" data-topbar-search-period>
+        <div class="common-topbar__search-period-row">
+            <label class="common-topbar__search-period-field">
+                <span><?= htmlspecialchars((string)($period['startLabel'] ?? 'Du')) ?></span>
+                <input type="date" id="<?= htmlspecialchars($prefix) ?>SearchPeriodStart" class="generic-form-control" min="<?= htmlspecialchars($minDate) ?>" max="<?= htmlspecialchars($maxDate) ?>" value="<?= htmlspecialchars($startDate) ?>" data-topbar-search-period-start>
+            </label>
+            <div class="common-topbar__search-period-sliders" data-topbar-search-period-sliders>
+                <input type="range" min="0" max="1000" value="0" step="1" data-topbar-search-period-start-slider aria-label="<?= htmlspecialchars((string)($period['startLabel'] ?? 'Du')) ?>">
+                <input type="range" min="0" max="1000" value="1000" step="1" data-topbar-search-period-end-slider aria-label="<?= htmlspecialchars((string)($period['endLabel'] ?? 'Au')) ?>">
+                <div class="common-topbar__search-period-years" data-topbar-search-period-years aria-hidden="true"></div>
+            </div>
+            <label class="common-topbar__search-period-field">
+                <span><?= htmlspecialchars((string)($period['endLabel'] ?? 'Au')) ?></span>
+                <input type="date" id="<?= htmlspecialchars($prefix) ?>SearchPeriodEnd" class="generic-form-control" min="<?= htmlspecialchars($minDate) ?>" max="<?= htmlspecialchars($maxDate) ?>" value="<?= htmlspecialchars($endDate) ?>" data-topbar-search-period-end>
+            </label>
+        </div>
+    </div>
+    <?php
+}
+
 function commonRenderTopbar(array $options = [])
 {
     static $assetsLoaded = false;
@@ -192,6 +230,13 @@ function commonRenderTopbar(array $options = [])
             'scopeLabel' => (string)($options['search']['scopeLabel'] ?? 'Chercher dans'),
             'scopeHint' => (string)($options['search']['scopeHint'] ?? ''),
             'advancedHint' => (string)($options['search']['advancedHint'] ?? 'D autres filtres avances pourront s ajouter ici.'),
+            'period' => [
+                'minDate' => (string)($options['search']['periodMinDate'] ?? ''),
+                'maxDate' => (string)($options['search']['periodMaxDate'] ?? ''),
+                'label' => (string)($options['search']['periodLabel'] ?? 'Periode'),
+                'startLabel' => (string)($options['search']['periodStartLabel'] ?? 'Du'),
+                'endLabel' => (string)($options['search']['periodEndLabel'] ?? 'Au'),
+            ],
         ],
         'bugReport' => [
             'enabled' => !empty($options['bugReport']['enabled']),
@@ -411,6 +456,7 @@ function commonRenderTopbar(array $options = [])
                     <?php else: ?>
                     <div class="common-topbar__search-panel-hint"><?= htmlspecialchars($config['search']['advancedHint']) ?></div>
                     <?php endif; ?>
+                    <?php commonRenderTopbarSearchPeriod($config['search']['period']); ?>
                 </form>
             </div>
         </div>

@@ -668,6 +668,7 @@
 					child.title,
 					child.description,
 					child.image,
+					child.datecreation,
 					COALESCE(child.IDorganization, (SELECT MIN(op_owner.IDorganization) FROM organization_parcours op_owner WHERE op_owner.IDparcours = child.id)) AS owner_organization_id,
 					" . (self::hasApplicationColumn() ? "child.IDapplication AS linked_application_id" : "NULL AS linked_application_id") . ",
 					" . self::buildIsPackSelectSql('child') . ",
@@ -696,7 +697,7 @@
 					AND lm.IDparcours = child.id
 					AND lm.IDuser = :user_id
 				WHERE " . implode(" AND ", $where) . "
-				GROUP BY child.id, child.title, child.description, child.image, child.IDorganization" . (self::hasApplicationColumn() ? ", child.IDapplication" : "") . (self::hasIsPackColumn() ? ", child.ispack" : "") . "
+				GROUP BY child.id, child.title, child.description, child.image, child.datecreation, child.IDorganization" . (self::hasApplicationColumn() ? ", child.IDapplication" : "") . (self::hasIsPackColumn() ? ", child.ispack" : "") . "
 				ORDER BY MIN(COALESCE(op_pack.position, 0)) ASC, MIN(COALESCE(pp.position, 0)) ASC, child.title ASC, child.id ASC",
 				(function () use ($organizationId, $userId, $includeHidden) {
 					$params = [
@@ -761,6 +762,7 @@
 					p.title,
 					p.description,
 					p.image,
+					p.datecreation,
 					" . $ownerOrganizationSelect . ",
 					" . $applicationSelect . ",
 					" . $isPackSelect . ",
@@ -784,7 +786,7 @@
 					AND lm.IDparcours = p.id
 					AND lm.IDuser = :user_id
 				WHERE " . implode(" AND ", $where) . "
-				GROUP BY p.id, p.title, p.description, p.image, p.IDorganization" . $applicationGroupBy . $isPackGroupBy . ", op.position, op.everybody" . $anonymousGroupBy . "
+				GROUP BY p.id, p.title, p.description, p.image, p.datecreation, p.IDorganization" . $applicationGroupBy . $isPackGroupBy . ", op.position, op.everybody" . $anonymousGroupBy . "
 				ORDER BY op.position ASC, p.title ASC
 			";
 
@@ -825,6 +827,7 @@
 					p.title,
 					p.description,
 					p.image,
+					p.datecreation,
 					" . $ownerOrganizationSelect . ",
 					" . $applicationSelect . ",
 					" . $isPackSelect . ",
@@ -864,7 +867,7 @@
 						: "1=1") . "
 				  )
 				  AND " . self::buildPrerequisiteVisibilityWhereSql('p', $userId) . "
-				GROUP BY p.id, p.title, p.description, p.image, p.IDorganization" . $applicationGroupBy . $isPackGroupBy . ", op.position, op.everybody" . $anonymousGroupBy . "
+				GROUP BY p.id, p.title, p.description, p.image, p.datecreation, p.IDorganization" . $applicationGroupBy . $isPackGroupBy . ", op.position, op.everybody" . $anonymousGroupBy . "
 				ORDER BY op.position ASC, p.title ASC
 			";
 
@@ -901,6 +904,7 @@
 					p.title,
 					p.description,
 					p.image,
+					p.datecreation,
 					" . $ownerOrganizationSelect . ",
 					" . $applicationSelect . ",
 					" . $isPackSelect . ",
@@ -940,7 +944,7 @@
 						: "1=1") . "
 				  )
 				  AND " . self::buildPrerequisiteVisibilityWhereSql('p', $userId) . "
-				GROUP BY p.id, p.title, p.description, p.image, p.IDorganization" . $applicationGroupBy . $isPackGroupBy . ", op.position, op.everybody" . $anonymousGroupBy . "
+				GROUP BY p.id, p.title, p.description, p.image, p.datecreation, p.IDorganization" . $applicationGroupBy . $isPackGroupBy . ", op.position, op.everybody" . $anonymousGroupBy . "
 				ORDER BY op.position ASC, p.title ASC
 			";
 
