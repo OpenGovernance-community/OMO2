@@ -708,6 +708,152 @@
         );
     }
 
+    function getSearchPeriodState(form) {
+        if (!form) {
+            return { startDate: '', endDate: '' };
+        }
+
+        var startInput = form.querySelector('[data-topbar-search-period-start]');
+        var endInput = form.querySelector('[data-topbar-search-period-end]');
+        return {
+            startDate: startInput ? String(startInput.value || '') : '',
+            endDate: endInput ? String(endInput.value || '') : ''
+        };
+    }
+
+    function initializeSearchPeriod(form) {
+        if (!form) {
+            return;
+        }
+
+        var period = form.querySelector('[data-topbar-search-period]');
+        if (!period || period.getAttribute('data-topbar-search-period-bound') === '1') {
+            return;
+        }
+
+        var startInput = period.querySelector('[data-topbar-search-period-start]');
+        var endInput = period.querySelector('[data-topbar-search-period-end]');
+        var startSlider = period.querySelector('[data-topbar-search-period-start-slider]');
+        var endSlider = period.querySelector('[data-topbar-search-period-end-slider]');
+        if (!startInput || !endInput || !startSlider || !endSlider) {
+            return;
+        }
+
+        function toDay(value) {
+            var match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            return match ? Math.floor(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])) / 86400000) : null;
+        }
+
+        function toDate(day) {
+            var date = new Date(Number(day) * 86400000);
+            return date.getUTCFullYear() + '-' + String(date.getUTCMonth() + 1).padStart(2, '0') + '-' + String(date.getUTCDate()).padStart(2, '0');
+        }
+
+        var minDay = toDay(startInput.min);
+        var maxDay = toDay(startInput.max);
+        if (minDay === null || maxDay === null || minDay > maxDay) {
+            return;
+        }
+
+        function renderYearMarks() {
+            var yearContainer = period.querySelector('[data-topbar-search-period-years]');
+            if (!yearContainer) {
+                return;
+            }
+
+            var marks = [];
+            var seenYears = {};
+            var minYear = new Date(minDay * 86400000).getUTCFullYear();
+            var maxYear = new Date(maxDay * 86400000).getUTCFullYear();
+
+            function addMark(year, day) {
+                if (seenYears[year]) {
+                    return;
+                }
+                seenYears[year] = true;
+                marks.push({ year: year, day: day });
+            }
+
+            addMark(minYear, minDay);
+            for (var year = minYear + 1; year <= maxYear; year += 1) {
+                var yearDay = Math.floor(Date.UTC(year, 0, 1) / 86400000);
+                if (yearDay >= minDay && yearDay <= maxDay) {
+                    addMark(year, yearDay);
+                }
+            }
+
+            if (!seenYears[maxYear]) {
+                addMark(maxYear, maxDay);
+            }
+
+            yearContainer.innerHTML = '';
+            marks.forEach(function (mark) {
+                var label = document.createElement('span');
+                var ratio = (mark.day - minDay) / Math.max(1, maxDay - minDay);
+                label.className = 'common-topbar__search-period-year';
+                label.style.left = String(Math.max(0, Math.min(1, ratio)) * 100) + '%';
+                label.textContent = String(mark.year);
+                yearContainer.appendChild(label);
+            });
+        }
+
+        function clampDay(value) {
+            return Math.max(minDay, Math.min(maxDay, value));
+        }
+
+        function dayToSlider(day) {
+            return Math.round(((clampDay(day) - minDay) / Math.max(1, maxDay - minDay)) * 1000);
+        }
+
+        function sliderToDay(value) {
+            return clampDay(minDay + Math.round((Number(value) / 1000) * (maxDay - minDay)));
+        }
+
+        function syncFromDates(changed) {
+            var startDay = toDay(startInput.value);
+            var endDay = toDay(endInput.value);
+            startDay = startDay === null ? minDay : clampDay(startDay);
+            endDay = endDay === null ? maxDay : clampDay(endDay);
+            if (startDay > endDay) {
+                if (changed === 'end') {
+                    startDay = endDay;
+                } else {
+                    endDay = startDay;
+                }
+            }
+            startInput.value = toDate(startDay);
+            endInput.value = toDate(endDay);
+            startSlider.value = String(dayToSlider(startDay));
+            endSlider.value = String(dayToSlider(endDay));
+        }
+
+        function syncFromSliders(changed) {
+            var startDay = sliderToDay(startSlider.value);
+            var endDay = sliderToDay(endSlider.value);
+            if (startDay > endDay) {
+                if (changed === 'end') {
+                    startDay = endDay;
+                    startSlider.value = String(dayToSlider(startDay));
+                } else {
+                    endDay = startDay;
+                    endSlider.value = String(dayToSlider(endDay));
+                }
+            }
+            startInput.value = toDate(startDay);
+            endInput.value = toDate(endDay);
+        }
+
+        startInput.addEventListener('change', function () { syncFromDates('start'); });
+        endInput.addEventListener('change', function () { syncFromDates('end'); });
+        startSlider.addEventListener('input', function () { syncFromSliders('start'); });
+        endSlider.addEventListener('input', function () { syncFromSliders('end'); });
+        renderYearMarks();
+        syncFromDates('start');
+        period.setAttribute('data-topbar-search-period-bound', '1');
+    }
+
+    window.commonTopbarInitializeSearchPeriod = initializeSearchPeriod;
+
     function handleSearchSubmit(event) {
         event.preventDefault();
 
@@ -720,6 +866,7 @@
         var searchState = {
             query: query,
             scopes: readSelectedSearchScopes(form),
+            dateRange: getSearchPeriodState(form),
             config: config
         };
 
@@ -1245,6 +1392,7 @@
                 menu.classList.add('is-open');
                 if (name === 'search') {
                     renderSearchScopes(menu);
+                    initializeSearchPeriod(menu.querySelector('[data-topbar-search-form]'));
                     focusSearchInput(menu.querySelector('[data-topbar-search-input]'));
                 }
             }
