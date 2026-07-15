@@ -235,12 +235,12 @@ function autoInstallGetFieldDefinitions()
                 ],
                 [
                     'key' => 'INSTALL_ADMIN_USERNAME',
-                    'label' => 'Identifiant',
+                    'label' => "Nom d'utilisateur",
                     'type' => 'text',
                     'required' => false,
                     'persist' => false,
                     'placeholder' => 'Optionnel',
-                    'help' => 'Si vide, l identifiant sera derive de l adresse e-mail.',
+                    'help' => "Si vide, le nom d'utilisateur sera derive de l adresse e-mail.",
                 ],
                 [
                     'key' => 'INSTALL_ADMIN_PASSWORD',
@@ -1626,7 +1626,7 @@ function autoInstallRenderPage(array $definitions, array $values, array $errors,
                                                 <li class="auto-install-password-rule" data-password-rule="upper">Au moins une majuscule</li>
                                                 <li class="auto-install-password-rule" data-password-rule="digit">Au moins un chiffre</li>
                                                 <li class="auto-install-password-rule" data-password-rule="special">Au moins un caractere special ou un espace</li>
-                                                <li class="auto-install-password-rule" data-password-rule="email">Evitez de reprendre votre e-mail ou votre identifiant</li>
+                                                <li class="auto-install-password-rule" data-password-rule="email">Evitez de reprendre votre e-mail ou votre nom d'utilisateur</li>
                                             </ul>
                                         </div>
                                     <?php endif; ?>

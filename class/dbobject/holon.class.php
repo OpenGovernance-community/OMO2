@@ -203,11 +203,53 @@
 			return $template->load($templateId) ? $template : null;
 		}
 
+		protected function getTemplateLineageHolons()
+		{
+			$lineage = array();
+			$current = $this->getTemplateHolon();
+			$guard = 0;
+
+			while ($current && (int)$current->getId() > 0 && $guard < 100) {
+				$currentId = (int)$current->getId();
+				if (isset($lineage[$currentId])) {
+					break;
+				}
+
+				$lineage[$currentId] = $current;
+				$current = $current->getTemplateHolon();
+				$guard += 1;
+			}
+
+			return array_values($lineage);
+		}
+
+		public function getTemplateLineageIds()
+		{
+			return array_values(array_map(function ($template) {
+				return (int)$template->getId();
+			}, $this->getTemplateLineageHolons()));
+		}
+
+		public function getMandatoryTemplateAncestorIds()
+		{
+			$mandatoryTemplateIds = array();
+
+			foreach ($this->getTemplateLineageHolons() as $template) {
+				$templateId = (int)$template->getId();
+				if ($templateId <= 0 || !(bool)$template->get('mandatory')) {
+					continue;
+				}
+
+				$mandatoryTemplateIds[$templateId] = $templateId;
+			}
+
+			return array_values($mandatoryTemplateIds);
+		}
+
 		// Verifie template obligatoire
 		public function isMandatoryTemplateInstance()
 		{
-			$template = $this->getTemplateHolon();
-			return $template ? (bool)$template->get('mandatory') : false;
+			return count($this->getMandatoryTemplateAncestorIds()) > 0;
 		}
 
 		// Verifie nom verrouille
@@ -312,13 +354,34 @@
 				return 0;
 			}
 
+			$mandatoryTemplateIds = $this->getMandatoryTemplateAncestorIds();
+			$mandatoryTemplateIdMap = array_fill_keys(array_map('intval', $mandatoryTemplateIds), true);
 			$count = 0;
 			foreach ($parentHolon->getChildren() as $child) {
 				if ((int)$child->getId() === (int)$this->getId()) {
 					continue;
 				}
 
-				if ((int)$child->get('IDholon_template') !== $templateId) {
+				$childTemplateId = (int)$child->get('IDholon_template');
+				if ($childTemplateId <= 0) {
+					continue;
+				}
+
+				if (count($mandatoryTemplateIdMap) > 0) {
+					$childLineageIds = $child->getTemplateLineageIds();
+					$matchesMandatoryConstraints = true;
+
+					foreach ($mandatoryTemplateIdMap as $mandatoryTemplateId => $unused) {
+						if (!in_array((int)$mandatoryTemplateId, $childLineageIds, true)) {
+							$matchesMandatoryConstraints = false;
+							break;
+						}
+					}
+
+					if (!$matchesMandatoryConstraints) {
+						continue;
+					}
+				} elseif ($childTemplateId !== $templateId) {
 					continue;
 				}
 
@@ -328,6 +391,11 @@
 			return $count;
 		}
 
+		public function isLastMandatoryTemplateInstance()
+		{
+			return $this->isMandatoryTemplateInstance() && $this->countSiblingTemplateInstances() === 0;
+		}
+
 		// Controle suppression noeud
 		public function canDelete()
 		{
@@ -335,7 +403,7 @@
 				return false;
 			}
 
-			if ($this->isMandatoryTemplateInstance() && $this->countSiblingTemplateInstances() === 0) {
+			if ($this->isLastMandatoryTemplateInstance()) {
 				return false;
 			}
 

@@ -4,13 +4,47 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-07-15
 
+La mise a jour du profil rafraichit maintenant le contexte `getOrg.php`, le drawer actif et le menu `Profil` des l enregistrement ou la fermeture du formulaire. Les drawers fermes sont vides afin de recharger leurs donnees a leur prochaine ouverture.
+
+Les libelles visibles de compte utilisent maintenant uniformement `Nom d'utilisateur` pour designer le nom de connexion.
+
+Le menu `Profil` avertit aussi avant la fermeture ou le changement d onglet lorsqu un formulaire contient des donnees non sauvegardees.
+
 L application contextuelle Indicateurs dispose maintenant de ses fondations completes: affichages en cartes ou en liste compacte, portees contextuelle, descendante et globale, graphiques historiques, ouverture par navigation hash dans un sous-drawer et formulaire de creation ou de modification reutilisant `adminEdit`.
 
 Les mesures et la reference sont volontairement separees. Une mesure reste un simple couple valeur/date, ajoutable rapidement et supprimable depuis l historique. La courbe de reference possede ses propres extremites datees et peut recevoir autant de points intermediaires positionnes en pourcentage que necessaire, sur le modele des stops d un degrade. Les plafonds restent horizontaux tandis que les objectifs peuvent suivre une trajectoire personnalisee.
 
 Les indicateurs, leurs mesures et leurs points de reference reposent sur trois `dbObject` normalises et une migration ordonnee. Cette structure laisse la place aux futurs imports entre cercles, indicateurs composes et series issues automatiquement des donnees du logiciel sans les confondre avec les saisies manuelles actuelles.
 
+Chaque indicateur simple peut maintenant definir un rythme de mesure attendu: jour, semaine, mois, trimestre, semestre ou annee. Le moment associe est adapte a la cadence (heure, jour, cycle de mois) et reste facultatif, afin de pouvoir plus tard estimer le respect du rythme a partir de l historique lorsqu aucune echeance precise n est fixee.
+
+Les indicateurs dont la derniere valeur n est plus dans les temps sont maintenant signales par un degrade rouge et une courbe rouge. Le statut utilise l echeance configuree ou, a defaut de moment, la periode choisie depuis la derniere mesure. Les imports et groupes heritent automatiquement du statut depasse de leurs sources.
+
+Les Indicateurs peuvent maintenant etre importes dans un autre contexte via le menu `...`, sans dupliquer leur historique ni leur source. La recherche rapide ne propose que les indicateurs visibles de l organisation. En portee descendante ou globale, une serie importee n apparait pas deux fois lorsque son contexte d origine est deja inclus.
+
+Le meme menu permet de composer un groupe d indicateurs selectionnes. Un groupe peut afficher les courbes de chaque serie superposees ou additionner les valeurs mesurees a la meme date; il reste une composition de references et ne modifie jamais les donnees sources.
+
+Le calcul des groupes en mode somme interpole maintenant lineairement chaque serie aux dates des autres mesures avant de les additionner. Une valeur intermediaire est donc correctement prise en compte au lieu de ne sommer que les points strictement synchrones; hors de la periode connue d une serie, sa contribution est simplement nulle.
+
+Les groupes additionnes normalisent aussi leurs dates avant le calcul: heure pour une periode courte, jour pour plusieurs semaines ou mois, puis semaine pour les historiques longs. Une serie plus frequente conserve une precision adaptee a sa cadence mediane, tandis que plusieurs saisies dans le meme creneau n engendrent plus de points distincts.
+
+Les imports et cumuls peuvent maintenant etre modifies depuis leur menu d actions: la source d un import peut etre remplacee, et un groupe peut etre renomme, changer de mode ou de sources. Ils peuvent aussi etre retires du contexte courant sans supprimer les indicateurs d origine.
+
+La page des indicateurs propose maintenant un classement alphabetique ou par temporalite de mesure. Les resultats sont regroupes par separateur, comme les documents; un cumul reprend la frequence la plus rapprochee de ses indicateurs sources.
+
+Les selecteurs de classement et de densite sont maintenant regroupes sur une seule ligne dans l entete des indicateurs.
+
+Les fenetres de selection Summernote dans l editeur de PV passent maintenant au-dessus du drawer au lieu d etre masquees derriere lui.
+
+Le choix de modele PV dans la creation de documents est maintenant masque pour les types URL, HTML, fichier et dossier; il apparait uniquement pour les PV.
+
+Les cartes et lignes compactes des groupes d indicateurs ouvrent maintenant un detail grand format dans le drawer. Le graphique reprend les axes et la periode complete, avec une legende qui identifie chaque indicateur source et son contexte.
+
+Dans le detail grand format d un groupe additionne, les courbes sources restent visibles en transparence derriere la somme principale. Les cartes et lignes compactes conservent uniquement la courbe additionnee. La legende du detail reprend les couleurs des sources avec un segment explicite et distingue la courbe calculee des indicateurs qui la composent.
+
 Le changement de vue masque maintenant explicitement le panneau inactif, y compris lorsque les styles generiques de liste imposent leur propre mode d affichage.
+
+Le bouton d enregistrement des indicateurs est maintenant desactive des le premier clic pour eviter les creations en double, tout en restant reutilisable si le serveur renvoie une erreur. Les cartes et la vue compacte proposent aussi un menu `...` pour modifier ou masquer un indicateur; ses valeurs historiques sont conservees.
 
 ## 2026-07-14
 
@@ -774,3 +808,7 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - 2026-07-14 : Les cartes de documents et scrutins des PV ne repetent plus leur libelle `lie`. Les marges de paragraphes Summernote sont aussi neutralisees autour de ces inclusions pour rapprocher titre, resume et cartes successives.
 - 2026-07-14 : Les points de PV peuvent maintenant referencer une date deja programmee via un bloc Calendrier compact. Le selecteur ne s affiche que si Calendar est actif, conserve le bloc a la sauvegarde et ouvre l evenement par son hash tout en repliant le PV.
 - 2026-07-14 : Les selecteurs de documents, decisions et dates integres aux points de PV permettent maintenant aussi de supprimer un bloc existant. Les popups recoivent egalement une marge interne pour mieux respirer.
+- 2026-07-15 : Les groupes de la mini structure OMO utilisent maintenant un pointille plus fin et plus court, avec un trace a `1px`, pour alleger leur rendu dans la homepage.
+- 2026-07-15 : L ajout ou l edition d un holon depuis le menu contextuel `getOrg.php` relance maintenant aussi le vrai refresh partage des vues Structure. La mini structure de la homepage se recharge donc en meme temps que le drawer Structure, au lieu de rester sur un etat visuel stale.
+- 2026-07-15 : Dans la mini structure OMO, la selection d un role affiche maintenant aussi le nom du role courant et les libelles de ses elements freres dans le meme cercle, au lieu de se limiter aux enfants du noeud courant.
+- 2026-07-15 : L action `Supprimer` n apparait plus dans `getOrg.php` pour la derniere instance d un role obligatoire. Le controle regarde maintenant toute la chaine de templates heritee afin de bloquer aussi les roles derives d un modele obligatoire.

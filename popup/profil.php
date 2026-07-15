@@ -668,10 +668,33 @@ function profilFormatAmountCents($value)
 (function () {
     var root = document.getElementById("profilePanelRoot");
     var initialTabButton = root ? root.querySelector(".generic-tabs__tab.is-active[data-profile-fragment-panel]") : null;
+    var activeProfileTabButton = initialTabButton;
     var invalidResponseMessage = <?= json_encode(profilPopupT('profile.popup.js.invalid_response'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     var scopeLoadingMessage = <?= json_encode(profilPopupT('profile.popup.scope.loading'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     var scopeLoadErrorMessage = <?= json_encode(profilPopupT('profile.popup.scope.load_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     var disconnectConfirmMessage = <?= json_encode(profilPopupT('profile.popup.js.disconnect_confirm'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    var unsavedChangesMessage = <?= json_encode(profilPopupT('profile.popup.js.unsaved_changes'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    var dirtyForms = Object.create(null);
+
+    window.profileMarkDirty = function (key) {
+        dirtyForms[String(key || 'profile')] = true;
+    };
+
+    window.profileMarkClean = function (key) {
+        delete dirtyForms[String(key || 'profile')];
+    };
+
+    window.profileResetDirty = function () {
+        dirtyForms = Object.create(null);
+    };
+
+    window.commonTopbarModalCanClose = function () {
+        if (Object.keys(dirtyForms).length === 0) {
+            return true;
+        }
+
+        return window.confirm(unsavedChangesMessage);
+    };
 
     function parseJsonResponse(text) {
         try {
@@ -812,6 +835,10 @@ function profilFormatAmountCents($value)
 
     window.profileHandleGeneralSaved = function () {
         var targetUrl = buildProfileModalUrl("general", "general");
+        window.profileResetDirty();
+        if (window.commonTopbarRefreshUserProfile) {
+            window.commonTopbarRefreshUserProfile("save");
+        }
         if (window.commonTopbarRefreshModalContent) {
             window.commonTopbarRefreshModalContent(targetUrl);
         }
@@ -822,6 +849,10 @@ function profilFormatAmountCents($value)
 
     window.profileHandleOrganizationSaved = function () {
         var targetUrl = buildProfileModalUrl("organization", "organization");
+        window.profileResetDirty();
+        if (window.commonTopbarRefreshUserProfile) {
+            window.commonTopbarRefreshUserProfile("save");
+        }
         if (window.commonTopbarRefreshModalContent) {
             window.commonTopbarRefreshModalContent(targetUrl);
         }
@@ -835,6 +866,28 @@ function profilFormatAmountCents($value)
             var panelId = button.getAttribute("data-profile-fragment-panel") || "";
             var panel = panelId !== "" ? document.getElementById(panelId) : null;
             var host = panel ? panel.querySelector('[data-profile-fragment-host="1"]') : null;
+            var activeButton = activeProfileTabButton;
+
+            if (activeButton !== button && !window.commonTopbarModalCanClose()) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                return;
+            }
+            if (activeButton !== button) {
+                window.profileResetDirty();
+                if (root) {
+                    Array.prototype.forEach.call(root.querySelectorAll('[data-profile-fragment-host="1"]'), function (otherHost) {
+                        if (otherHost === host) {
+                            return;
+                        }
+
+                        otherHost.removeAttribute("data-profile-fragment-loaded");
+                        otherHost.innerHTML = "";
+                    });
+                }
+                activeProfileTabButton = button;
+            }
+
             loadFragmentHost(host, false);
         });
     });

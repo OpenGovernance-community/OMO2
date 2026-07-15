@@ -398,6 +398,14 @@
     return String(node.parent.ID) === String(currentNode.ID);
   }
 
+  function isSameLevelSiblingNode(node, currentNode) {
+    if (!node || !currentNode || !node.parent || !currentNode.parent || !node.parent.ID || !currentNode.parent.ID) {
+      return false;
+    }
+
+    return String(node.parent.ID) === String(currentNode.parent.ID);
+  }
+
   function shouldDrawInlineNodeLabel(node, currentNode, hoveredNode, screenR) {
     if (!node || !currentNode || screenR < 18) {
       return false;
@@ -405,13 +413,26 @@
 
     const nodeId = String(node.ID || '');
     const currentNodeId = String(currentNode.ID || '');
+    const currentNodeType = String(currentNode.type || '');
 
-    if (!nodeId || nodeId === currentNodeId) {
+    if (!nodeId) {
       return false;
     }
 
     if (hoveredNode && nodeId === String(hoveredNode.ID || '')) {
       return true;
+    }
+
+    if (currentNodeType === '1') {
+      if (nodeId === currentNodeId) {
+        return screenR >= 18;
+      }
+
+      return isSameLevelSiblingNode(node, currentNode) && screenR >= 22;
+    }
+
+    if (nodeId === currentNodeId) {
+      return false;
     }
 
     return isDirectChildNode(node, currentNode) && screenR >= 22;
@@ -854,8 +875,8 @@
 
           if (String(node.type || '') === '3') {
             ctx.fillStyle = 'rgba(0,0,0,0)';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([10, 10]);
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
             ctx.strokeStyle = getNodeStroke(node, nodeOpacity, chartColors) || chartColors.strokeSoft;
             ctx.stroke();
             ctx.fill();

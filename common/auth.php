@@ -503,7 +503,7 @@ function commonGetAuthSharedSourceLang(): array
             'context' => 'Password input placeholder in the shared authentication user interface.'
         ],
         'auth.placeholder.username' => [
-            'text' => 'username',
+            'text' => "Nom d'utilisateur",
             'context' => 'Email input placeholder when the organization domain is appended automatically in the shared authentication user interface.'
         ],
         'auth.remember_me' => [
@@ -747,7 +747,7 @@ function commonGetAuthJsSourceLang(): array
             'context' => 'Error shown in the shared authentication JavaScript component when the password reset email could not be sent.'
         ],
         'auth.error.invalid_credentials' => [
-            'text' => 'Identifiants invalides.',
+            'text' => "Nom d'utilisateur ou mot de passe invalide.",
             'context' => 'Error shown in the shared authentication JavaScript component when the provided email and password do not match an account.'
         ],
         'auth.error.missing_password' => [

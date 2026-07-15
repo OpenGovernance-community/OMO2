@@ -541,6 +541,10 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     gap: 8px;
 }
 
+.omo-document-editor [hidden] {
+    display: none !important;
+}
+
 .omo-document-editor__tag-editor {
     display: flex;
     flex-wrap: wrap;
