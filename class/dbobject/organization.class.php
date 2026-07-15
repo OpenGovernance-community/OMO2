@@ -17,6 +17,7 @@
 			return [
 				[['name'], 'required'],								// Champs obligatoires
 				[['id'], 'integer'],								// Nombres entiers
+				[['datecreation'], 'datetime'],
 				[['name','shortname','domain'], 'string'],	// Chaines de caractere
 				[['latlong'], 'latlong'],
 				[['parameters'], 'parameters'],
@@ -39,6 +40,7 @@
 				'logo' => 'Logo',
 				'banner' => 'Banniere',
 				'color' => 'Couleur',
+				'datecreation' => 'Date de creation',
 			];
 		}
 
@@ -6310,6 +6312,39 @@
 			return array_slice($terms, 0, 6);
 		}
 
+		protected static function normalizeTopbarSearchDateRange(array $dateRange = array())
+		{
+			$result = array('startDate' => '', 'endDate' => '');
+			foreach (array('startDate', 'endDate') as $key) {
+				$value = trim((string)($dateRange[$key] ?? ''));
+				$date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+				$errors = \DateTimeImmutable::getLastErrors();
+				if ($date instanceof \DateTimeImmutable && ($errors === false || ((int)$errors['warning_count'] === 0 && (int)$errors['error_count'] === 0)) && $date->format('Y-m-d') === $value) {
+					$result[$key] = $value;
+				}
+			}
+			if ($result['startDate'] !== '' && $result['endDate'] !== '' && $result['startDate'] > $result['endDate']) {
+				$result['endDate'] = $result['startDate'];
+			}
+			return $result;
+		}
+
+		protected static function filterTopbarSearchResultsByDateRange(array $results, array $dateRange, $limit)
+		{
+			$startDate = (string)($dateRange['startDate'] ?? '');
+			$endDate = (string)($dateRange['endDate'] ?? '');
+			$filtered = array();
+			foreach ($results as $result) {
+				$resultDate = substr(trim((string)($result['_searchDate'] ?? '')), 0, 10);
+				if (($startDate !== '' || $endDate !== '') && ($resultDate === '' || ($startDate !== '' && $resultDate < $startDate) || ($endDate !== '' && $resultDate > $endDate))) {
+					continue;
+				}
+				unset($result['_searchDate']);
+				$filtered[] = $result;
+			}
+			return array_slice($filtered, 0, max(1, (int)$limit));
+		}
+
 		protected static function buildTopbarSearchScoreSql($expression, array $terms, array &$params, $prefix, array $weights = array())
 		{
 			if (count($terms) === 0) {
@@ -7131,6 +7166,7 @@
 					}))),
 					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
 					'relevance' => $totalScore,
+					'_searchDate' => (string)$faq->get('created'),
 					'action' => array(
 						'type' => 'faq',
 						'faqId' => (int)$faq->getId(),
@@ -7197,6 +7233,7 @@
 					'subtitle' => $isPack ? 'Pack' : 'Parcours',
 					'excerpt' => self::buildTopbarSearchSnippet($description !== '' ? $description : $title, $query, 100, 220),
 					'relevance' => $totalScore,
+					'_searchDate' => (string)($parcoursRow['datecreation'] ?? ''),
 					'_sortKind' => 1,
 					'action' => array(
 						'type' => 'tutorial',
@@ -7224,6 +7261,7 @@
 						m.title,
 						m.resume,
 						m.html,
+						m.datecreation,
 						pm.IDparcours,
 						pm.branch
 					FROM mission m
@@ -7314,6 +7352,7 @@
 						'subtitle' => implode(' | ', $subtitleParts),
 						'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
 						'relevance' => $missionScore,
+						'_searchDate' => (string)($missionRow['datecreation'] ?? ''),
 						'_sortKind' => 2,
 						'action' => array(
 							'type' => 'tutorial',
@@ -7362,6 +7401,7 @@
 					h.name,
 					h.templatename,
 					h.IDtypeholon,
+					h.datecreation,
 					h.datemodification
 				FROM holon h
 				WHERE h.IDholon_org = :root_holon_id
@@ -7464,6 +7504,7 @@
 					'subtitle' => $subtitle,
 					'excerpt' => $matchedExcerpt,
 					'relevance' => $totalScore,
+					'_searchDate' => (string)($row['datecreation'] ?? ''),
 					'datemodification' => (string)($row['datemodification'] ?? ''),
 					'action' => array(
 						'type' => 'structure',
@@ -7658,6 +7699,7 @@
 					'subtitle' => implode(' - ', $subtitleParts),
 					'excerpt' => $excerpt,
 					'relevance' => (int)($row['relevance'] ?? 0),
+					'_searchDate' => (string)($row['membership_created_at'] ?? ''),
 					'action' => array(
 						'type' => 'user',
 						'userId' => (int)($row['id'] ?? 0),
@@ -7793,6 +7835,7 @@
 					'subtitle' => $subtitle,
 					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
 					'relevance' => (int)($row['relevance'] ?? 0),
+					'_searchDate' => (string)($row['datecreation'] ?? ''),
 					'action' => array(
 						'type' => 'document',
 						'documentId' => (int)$document->getId(),
@@ -8056,6 +8099,7 @@
 					'subtitle' => $subtitle,
 					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
 					'relevance' => (int)($row['relevance'] ?? 0),
+					'_searchDate' => (string)($row['created_at'] ?? ''),
 					'action' => array(
 						'type' => 'decision',
 						'decisionId' => (int)$decision->getId(),
@@ -8195,6 +8239,7 @@
 					}))),
 					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
 					'relevance' => (int)($row['relevance'] ?? 0),
+					'_searchDate' => (string)($row['start_at'] ?? ''),
 					'action' => array(
 						'type' => 'calendar_event',
 						'eventId' => (int)$event->getId(),
@@ -8255,6 +8300,8 @@
 			$terms = self::buildTopbarSearchTerms($query);
 			$limit = isset($options['limit']) ? max(1, (int)$options['limit']) : 30;
 			$perScopeLimit = isset($options['perScopeLimit']) ? max(1, (int)$options['perScopeLimit']) : 12;
+			$expandedPerScopeLimit = $perScopeLimit * 8;
+			$dateRange = self::normalizeTopbarSearchDateRange(is_array($options['dateRange'] ?? null) ? $options['dateRange'] : array());
 			$canSearchPeople = array_key_exists('canSearchPeople', $options)
 				? (bool)$options['canSearchPeople']
 				: self::topbarSearchViewerCanSearchPeople($viewerContext, (int)$this->getId());
@@ -8277,49 +8324,49 @@
 				&& self::topbarSearchViewerHasOrganizationAccess($viewerContext, (int)$this->getId())
 			) {
 				if (isset($normalizedScopes['structure'])) {
-					$scopeResults = $this->searchTopbarStructureResults($query, $terms, $perScopeLimit, $viewerContext);
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarStructureResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
 					$counts['structure'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
 
 				if ($canSearchPeople && isset($normalizedScopes['team'])) {
-					$scopeResults = $this->searchTopbarTeamResults($query, $terms, $perScopeLimit, $viewerContext);
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarTeamResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
 					$counts['team'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
 
 				if (isset($normalizedScopes['calendar'])) {
-					$scopeResults = $this->searchTopbarCalendarResults($query, $terms, $perScopeLimit, $viewerContext);
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarCalendarResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
 					$counts['calendar'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
 
 				if (isset($normalizedScopes['documents'])) {
-					$scopeResults = $this->searchTopbarDocumentResults($query, $terms, $perScopeLimit, $viewerContext, 'non_pv');
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarDocumentResults($query, $terms, $expandedPerScopeLimit, $viewerContext, 'non_pv'), $dateRange, $perScopeLimit);
 					$counts['documents'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
 
 				if (isset($normalizedScopes['pv'])) {
-					$scopeResults = $this->searchTopbarDocumentResults($query, $terms, $perScopeLimit, $viewerContext, \dbObject\Document::TYPE_PV);
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarDocumentResults($query, $terms, $expandedPerScopeLimit, $viewerContext, \dbObject\Document::TYPE_PV), $dateRange, $perScopeLimit);
 					$counts['pv'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
 
 				if (isset($normalizedScopes['decision'])) {
-					$scopeResults = $this->searchTopbarDecisionResults($query, $terms, $perScopeLimit, $viewerContext);
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarDecisionResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
 					$counts['decision'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
 
 				if (isset($normalizedScopes['faq'])) {
-					$scopeResults = $this->searchTopbarFaqResults($query, $terms, $perScopeLimit, $viewerContext);
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarFaqResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
 					$counts['faq'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
 
 				if (isset($normalizedScopes['tutorials'])) {
-					$scopeResults = $this->searchTopbarTutorialResults($query, $terms, $perScopeLimit, $viewerContext);
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarTutorialResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
 					$counts['tutorials'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}

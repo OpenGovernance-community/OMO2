@@ -13,7 +13,7 @@
 			return [
 				[['id'], 'required'],
 				[['id', 'IDorganization', 'currentholonid', 'viewerref', 'attempts'], 'integer'],
-				[['query', 'scopesjson', 'viewercontextjson', 'resultjson', 'errormessage'], 'text'],
+				[['query', 'scopesjson', 'timerangejson', 'viewercontextjson', 'resultjson', 'errormessage'], 'text'],
 				[['jobtype', 'status', 'viewertype', 'requesttoken'], 'string'],
 				[['datecreation', 'datemodification', 'datestarted', 'datefinished'], 'datetime'],
 				[['id'], 'safe'],
@@ -28,6 +28,7 @@
 				'status' => 'Statut',
 				'query' => 'Recherche',
 				'scopesjson' => 'Scopes',
+				'timerangejson' => 'Periode',
 				'viewercontextjson' => 'Contexte viewer',
 				'resultjson' => 'Resultat JSON',
 				'errormessage' => 'Erreur',
@@ -116,6 +117,7 @@
 			$job->set('status', 'queued');
 			$job->set('query', trim((string)$query));
 			$job->set('scopesjson', json_encode(array_values($scopes), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+			$job->set('timerangejson', json_encode(self::normalizeDateRange($options['dateRange'] ?? array()), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 			$job->set('viewercontextjson', json_encode($viewerContext, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 			$job->set('resultjson', null);
 			$job->set('errormessage', null);
@@ -217,6 +219,31 @@
 		{
 			$decoded = json_decode((string)$this->get('viewercontextjson'), true);
 			return is_array($decoded) ? $decoded : array();
+		}
+
+		public function getDateRange()
+		{
+			$decoded = json_decode((string)$this->get('timerangejson'), true);
+			return self::normalizeDateRange(is_array($decoded) ? $decoded : array());
+		}
+
+		protected static function normalizeDateRange(array $dateRange)
+		{
+			$result = array('startDate' => '', 'endDate' => '');
+			foreach (array('startDate', 'endDate') as $key) {
+				$value = trim((string)($dateRange[$key] ?? ''));
+				$date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+				$errors = \DateTimeImmutable::getLastErrors();
+				if ($date instanceof \DateTimeImmutable && ($errors === false || ((int)$errors['warning_count'] === 0 && (int)$errors['error_count'] === 0)) && $date->format('Y-m-d') === $value) {
+					$result[$key] = $value;
+				}
+			}
+
+			if ($result['startDate'] !== '' && $result['endDate'] !== '' && $result['startDate'] > $result['endDate']) {
+				$result['endDate'] = $result['startDate'];
+			}
+
+			return $result;
 		}
 
 		public function getResultPayload()
@@ -377,6 +404,7 @@
 						'limit' => 36,
 						'perScopeLimit' => 14,
 						'viewerContext' => $job->getViewerContext(),
+						'dateRange' => $job->getDateRange(),
 					)
 				);
 

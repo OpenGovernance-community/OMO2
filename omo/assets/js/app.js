@@ -2763,6 +2763,11 @@ function omoNormalizeSearchPopupScopes(scopes = []) {
     return normalizedScopes;
 }
 
+function omoNormalizeSearchPopupDate(value) {
+    const normalizedValue = String(value || '').trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(normalizedValue) ? normalizedValue : '';
+}
+
 function omoNormalizeSearchPopupEntry(entry = null) {
     const rawEntry = entry && typeof entry === 'object'
         ? entry
@@ -2770,6 +2775,8 @@ function omoNormalizeSearchPopupEntry(entry = null) {
     const normalizedContext = omoNormalizeSearchPopupContext(rawEntry);
     const query = String(rawEntry.query || '').trim();
     const scopes = omoNormalizeSearchPopupScopes(rawEntry.scopes || []);
+    const startDate = omoNormalizeSearchPopupDate(rawEntry.startDate);
+    const endDate = omoNormalizeSearchPopupDate(rawEntry.endDate);
     const parsedJobId = Number(rawEntry.jobId || 0);
     const jobToken = String(rawEntry.jobToken || '').trim();
     const parsedSavedAt = Number(rawEntry.savedAt || Date.now());
@@ -2784,6 +2791,8 @@ function omoNormalizeSearchPopupEntry(entry = null) {
     return {
         query: query,
         scopes: scopes,
+        startDate: startDate,
+        endDate: endDate,
         oid: normalizedContext.oid,
         cid: normalizedContext.cid,
         jobId: Number.isInteger(parsedJobId) && parsedJobId > 0 ? parsedJobId : null,
@@ -2893,7 +2902,7 @@ function omoSearchPopupContextsMatch(entry, context = null) {
         && (normalizedEntry.cid || null) === (normalizedContext.cid || null);
 }
 
-function omoSetSearchPopupPendingState(query, scopes = [], context = null) {
+function omoSetSearchPopupPendingState(query, scopes = [], context = null, dateRange = {}) {
     const normalizedContext = omoNormalizeSearchPopupContext(
         context && typeof context === 'object'
             ? context
@@ -2910,6 +2919,8 @@ function omoSetSearchPopupPendingState(query, scopes = [], context = null) {
     state.pending = {
         query: normalizedQuery,
         scopes: normalizedScopes,
+        startDate: omoNormalizeSearchPopupDate(dateRange.startDate),
+        endDate: omoNormalizeSearchPopupDate(dateRange.endDate),
         oid: normalizedContext.oid,
         cid: normalizedContext.cid,
         jobId: null,
@@ -2984,6 +2995,8 @@ function omoRegisterSearchPopupJobState(options = {}) {
     const normalizedEntry = omoNormalizeSearchPopupEntry({
         query: rawOptions.query,
         scopes: rawOptions.scopes,
+        startDate: rawOptions.startDate,
+        endDate: rawOptions.endDate,
         oid: rawOptions.oid || rawOptions.organizationId,
         cid: rawOptions.cid || rawOptions.currentHolonId,
         jobId: rawOptions.jobId,
@@ -3322,6 +3335,12 @@ function omoResolveSearchPopupRoute(popupId, currentRoute) {
         queryParts.push(`restore_job_token=${encodeURIComponent(resolvedState.jobToken)}`);
     } else if (resolvedState && resolvedState.query !== '') {
         queryParts.push(`q=${encodeURIComponent(resolvedState.query)}`);
+        if (resolvedState.startDate) {
+            queryParts.push(`date_start=${encodeURIComponent(resolvedState.startDate)}`);
+        }
+        if (resolvedState.endDate) {
+            queryParts.push(`date_end=${encodeURIComponent(resolvedState.endDate)}`);
+        }
         resolvedState.scopes.forEach(function (scopeId) {
             queryParts.push(`scopes[]=${encodeURIComponent(scopeId)}`);
         });
@@ -3521,6 +3540,10 @@ function omoOpenSearchPopupHashState(query, scopes = [], options = {}) {
         : { oid: null, cid: null, hash: null };
     const context = omoNormalizeSearchPopupContext(route);
     const normalizedJobId = Number(rawOptions.jobId || 0);
+    const dateRange = {
+        startDate: omoNormalizeSearchPopupDate(rawOptions.startDate),
+        endDate: omoNormalizeSearchPopupDate(rawOptions.endDate)
+    };
     const popupId = Number.isInteger(normalizedJobId) && normalizedJobId > 0
         ? normalizedJobId
         : null;
@@ -3529,7 +3552,7 @@ function omoOpenSearchPopupHashState(query, scopes = [], options = {}) {
         return false;
     }
 
-    omoSetSearchPopupPendingState(normalizedQuery, normalizedScopes, context);
+    omoSetSearchPopupPendingState(normalizedQuery, normalizedScopes, context, dateRange);
 
     const hashState = omoParseHashState(route.hash || null);
     const nextHash = omoBuildHashFromState(
@@ -4543,7 +4566,10 @@ function omoHandleTopbarSearch(query, config, searchState) {
         return true;
     }
 
-    return omoOpenSearchPopupHashState(trimmedQuery, selectedScopeIds);
+    const dateRange = searchState && searchState.dateRange && typeof searchState.dateRange === 'object'
+        ? searchState.dateRange
+        : {};
+    return omoOpenSearchPopupHashState(trimmedQuery, selectedScopeIds, dateRange);
 }
 
 function omoOpenSearchStructureResult(holonId) {
