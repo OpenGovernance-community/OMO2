@@ -69,7 +69,7 @@
 				self::TYPE_ORGANIZATION => 'Organisation',
 				self::TYPE_CIRCLE => 'Cercle',
 				self::TYPE_ROLE => 'Role',
-				self::TYPE_SELF => 'Moi uniquement',
+				self::TYPE_SELF => 'Propriétaire uniquement',
 			];
 		}
 
@@ -537,7 +537,7 @@
 			}
 		}
 
-		public static function buildDisplayData($ruleRow, int $organizationId = 0): array
+		public static function buildDisplayData($ruleRow, int $organizationId = 0, array $objectContext = []): array
 		{
 			$ruleRow = is_array($ruleRow)
 				? $ruleRow
@@ -546,6 +546,14 @@
 			$targetHolonId = (int)($ruleRow['IDholon'] ?? 0);
 			$typeLabels = self::getVisibilityTypeOptions();
 			$typeLabel = (string)($typeLabels[$visibilityType] ?? $typeLabels[self::TYPE_ORGANIZATION]);
+
+			if ($visibilityType === self::TYPE_SELF) {
+				$ownerLabel = trim((string)($objectContext['ownerLabel'] ?? ''));
+				if ($ownerLabel !== '') {
+					$typeLabel = $ownerLabel . ' uniquement';
+				}
+			}
+
 			$targetLabel = '';
 
 			if ($targetHolonId > 0 && self::requiresHolonTarget($visibilityType)) {

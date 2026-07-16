@@ -190,7 +190,7 @@ ob_start();
 <input type="hidden" name="cid" value="<?= (int)$currentHolonId ?>">
 <div class="omo-stats-editor__actions">
     <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-stats-cancel-editor data-indicator-id="<?= (int)$indicatorId ?>"><?= omoApiEscape(omoStatsT('stats.action.cancel')) ?></button>
-    <button type="submit" class="generic-action-button generic-action-button--main"><?= omoApiEscape(omoStatsT('stats.action.save')) ?></button>
+    <button type="submit" class="generic-action-button generic-action-button--main" data-omo-stats-save-editor><?= omoApiEscape(omoStatsT('stats.action.save')) ?></button>
 </div>
 <?php
 $afterTableHtml = ob_get_clean();
@@ -203,6 +203,12 @@ $params = [
 ];
 ?>
 <div class="omo-stats-editor" data-omo-stats-editor data-indicator-id="<?= (int)$indicatorId ?>">
+    <div
+        hidden
+        data-omo-subdrawer-header
+        data-omo-subdrawer-title="<?= omoApiEscape(omoStatsT($indicatorId > 0 ? 'stats.form.edit_title' : 'stats.form.create_title')) ?>"
+        data-omo-subdrawer-description="<?= omoApiEscape(omoStatsT('stats.form.intro')) ?>"
+    ></div>
     <section class="generic-hero-panel accent omo-stats-editor__intro">
         <h2 class="generic-card-title generic-card-title--large"><?= omoApiEscape(omoStatsT($indicatorId > 0 ? 'stats.form.edit_title' : 'stats.form.create_title')) ?></h2>
         <p><?= omoApiEscape(omoStatsT('stats.form.intro')) ?></p>
@@ -216,6 +222,28 @@ $params = [
         return;
     }
     editor.dataset.omoStatsEditorReady = '1';
+
+    var editorForm = editor.querySelector('form');
+    var cancelEditorButton = editor.querySelector('[data-omo-stats-cancel-editor]');
+    var saveEditorButton = editor.querySelector('[data-omo-stats-save-editor]');
+    if (editorForm && window.omoStatsDrawer && typeof window.omoStatsDrawer.setHeader === 'function') {
+        if (!editorForm.id) {
+            editorForm.id = 'omoStatsIndicatorForm';
+        }
+        if (cancelEditorButton) {
+            cancelEditorButton.setAttribute('form', editorForm.id);
+        }
+        if (saveEditorButton) {
+            saveEditorButton.setAttribute('form', editorForm.id);
+        }
+        window.omoStatsDrawer.setHeader({
+            title: <?= json_encode(omoStatsT($indicatorId > 0 ? 'stats.form.edit_title' : 'stats.form.create_title'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+            description: <?= json_encode(omoStatsT('stats.form.intro'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+            actions: [cancelEditorButton, saveEditorButton].filter(function (button) {
+                return button instanceof HTMLElement;
+            })
+        });
+    }
 
     var typeField = editor.querySelector('[data-omo-stats-reference-type]');
     var measurementFrequencyField = editor.querySelector('[data-omo-stats-measurement-frequency]');

@@ -1,7 +1,7 @@
 (function (window, document) {
     'use strict';
 
-    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260714-resource-embeds';
+    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260716-pv-indicator-readonly';
 
     if (
         window.omoSimpleHtmlField
@@ -36,9 +36,9 @@
         const style = document.createElement('style');
         style.textContent = ''
             + '.omo-simple-html-field{display:grid;gap:10px;}'
-            + '.omo-simple-html-field .note-editor.note-frame{border:1px solid var(--color-border,#d1d5db);border-radius:14px;background:var(--color-surface,#fff);}'
-            + '.omo-simple-html-field .note-toolbar{position:sticky;top:0;z-index:6;border-bottom:1px solid var(--color-border,#d1d5db);background:color-mix(in srgb,var(--color-surface-alt,#f8fafc) 88%,white);border-top-left-radius:14px;border-top-right-radius:14px;padding:8px;box-shadow:0 8px 18px -18px rgba(15,23,42,.45);}'
-            + '.omo-simple-html-field .note-btn{border-radius:10px;border-color:var(--color-border,#d1d5db);}'
+            + '.omo-simple-html-field .note-editor.note-frame{border:1px solid var(--color-border,#d1d5db);border-radius:var(--radius-md);background:var(--color-surface,#fff);}'
+            + '.omo-simple-html-field .note-toolbar{position:sticky;top:0;z-index:6;border-bottom:1px solid var(--color-border,#d1d5db);background:color-mix(in srgb,var(--color-surface-alt,#f8fafc) 88%,white);border-top-left-radius:var(--radius-md);border-top-right-radius:var(--radius-md);padding:8px;box-shadow:0 8px 18px -18px rgba(15,23,42,.45);}'
+            + '.omo-simple-html-field .note-btn{border-radius:var(--radius-md);border-color:var(--color-border,#d1d5db);}'
             + '.omo-simple-html-field .note-editing-area{overflow:visible;}'
             + '.omo-simple-html-field .note-editing-area .note-editable{min-height:140px;height:auto!important;overflow-y:hidden!important;padding:14px;line-height:1.55;color:var(--color-text,#1f2937);}'
             + '.omo-simple-html-field .note-placeholder{color:var(--color-text-light,#6b7280);}'
@@ -51,11 +51,14 @@
             + '.omo-simple-html-field .note-editable th,.omo-simple-html-field .note-editable td,.omo-simple-html-render th,.omo-simple-html-render td{padding:9px 12px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,var(--color-text,#1f2937) 12%);text-align:left;vertical-align:top;}'
             + '.omo-simple-html-field .note-editable th,.omo-simple-html-render th{background:color-mix(in srgb,var(--color-surface-alt,#f8fafc) 82%,var(--color-text,#1f2937) 18%);font-weight:700;}'
             + '.omo-simple-html-field .note-editable tbody tr:nth-child(even),.omo-simple-html-render tbody tr:nth-child(even){background:color-mix(in srgb,var(--color-surface,#fff) 92%,var(--color-surface-alt,#f8fafc) 8%);}'
-            + '.omo-simple-html-field .note-editable .omo-document-embed,.omo-simple-html-render .omo-document-embed{display:block;margin:0 0 1em;padding:12px 14px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,#2563eb 12%);border-radius:14px;background:color-mix(in srgb,var(--color-surface,#fff) 90%,#eff6ff 10%);box-shadow:0 10px 24px -20px rgba(37,99,235,.45);cursor:pointer;white-space:normal;line-height:1.5;}'
+            + '.omo-simple-html-field .note-editable .omo-document-embed,.omo-simple-html-render .omo-document-embed{display:block;margin:0 0 1em;padding:12px 14px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,#2563eb 12%);border-radius:var(--radius-md);background:color-mix(in srgb,var(--color-surface,#fff) 90%,#eff6ff 10%);box-shadow:0 10px 24px -20px rgba(37,99,235,.45);cursor:pointer;white-space:normal;line-height:1.5;}'
+            + '.omo-simple-html-field .note-editable .omo-decision-embed,.omo-simple-html-field .note-editable .omo-event-embed,.omo-simple-html-render .omo-decision-embed,.omo-simple-html-render .omo-event-embed{display:block;margin:0 0 1em;padding:12px 14px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,#2563eb 12%);border-radius:var(--radius-md);background:color-mix(in srgb,var(--color-surface,#fff) 90%,#eff6ff 10%);box-shadow:0 10px 24px -20px rgba(37,99,235,.45);cursor:pointer;white-space:normal;line-height:1.5;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed:last-child,.omo-simple-html-render .omo-document-embed:last-child{margin-bottom:0;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed__label,.omo-simple-html-render .omo-document-embed__label{display:block;margin:0 0 6px;color:var(--color-text-light,#6b7280);font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed__title,.omo-simple-html-render .omo-document-embed__title{display:block;margin:0;color:var(--color-text,#1f2937);font-weight:700;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed__description,.omo-simple-html-render .omo-document-embed__description{display:block;margin:6px 0 0;color:var(--color-text-light,#6b7280);font-size:13px;line-height:1.5;}'
+            + '.omo-simple-html-field .note-editable .omo-decision-embed__title,.omo-simple-html-field .note-editable .omo-event-embed__title,.omo-simple-html-render .omo-decision-embed__title,.omo-simple-html-render .omo-event-embed__title{display:block;margin:0;color:var(--color-text,#1f2937);font-weight:700;}'
+            + '.omo-simple-html-field .note-editable .omo-decision-embed__summary,.omo-simple-html-field .note-editable .omo-event-embed__summary,.omo-simple-html-render .omo-decision-embed__summary,.omo-simple-html-render .omo-event-embed__summary{display:block;margin:6px 0 0;color:var(--color-text-light,#6b7280);font-size:13px;line-height:1.5;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed > p:first-child,.omo-simple-html-render .omo-document-embed > p:first-child{margin:0 0 6px;color:var(--color-text-light,#6b7280);font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed > p:nth-child(2),.omo-simple-html-render .omo-document-embed > p:nth-child(2){margin:0;color:var(--color-text,#1f2937);font-weight:700;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed > p:nth-child(3),.omo-simple-html-render .omo-document-embed > p:nth-child(3){margin:6px 0 0;color:var(--color-text-light,#6b7280);font-size:13px;line-height:1.5;}'
@@ -67,8 +70,25 @@
             + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed:before,.omo-pv-editor .omo-simple-html-render .omo-event-embed:before{background:#0f766e;-webkit-mask-image:url("/omo/images/tools/calendar.png");mask-image:url("/omo/images/tools/calendar.png");}'
             + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>strong:first-of-type:not(:only-of-type),.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed>strong:first-of-type:not(:only-of-type),.omo-pv-editor .omo-simple-html-render .omo-document-embed__label,.omo-pv-editor .omo-simple-html-render .omo-decision-embed__label{display:none;}'
             + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-render .omo-document-embed__title,.omo-pv-editor .omo-simple-html-render .omo-decision-embed__title,.omo-pv-editor .omo-simple-html-render .omo-event-embed__title{display:block;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:1;line-clamp:1;text-overflow:ellipsis;}'
-            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>em,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed>em,.omo-pv-editor .omo-simple-html-render .omo-document-embed__description,.omo-pv-editor .omo-simple-html-render .omo-event-embed__summary{display:-webkit-box;overflow:hidden;margin-top:3px;color:var(--color-text-light,#6b7280);font-size:12px;font-style:normal;line-height:1.3;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>em,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed>em,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed>em,.omo-pv-editor .omo-simple-html-render .omo-document-embed__description,.omo-pv-editor .omo-simple-html-render .omo-decision-embed__summary,.omo-pv-editor .omo-simple-html-render .omo-event-embed__summary{display:-webkit-box;overflow:hidden;margin-top:3px;color:var(--color-text-light,#6b7280);font-size:12px;font-style:normal;line-height:1.3;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;}'
             + '.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-document-embed),.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-decision-embed),.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-event-embed){margin:0 0 10px;}'
+            + '.omo-simple-html-field .note-editable .omo-indicator-embed,.omo-simple-html-render .omo-indicator-embed{display:block;margin:0 0 1em;padding:12px 14px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 84%,#2563eb 16%);border-radius:var(--radius-md);background:color-mix(in srgb,var(--color-surface,#fff) 90%,#eff6ff 10%);box-shadow:0 10px 24px -20px rgba(37,99,235,.45);cursor:pointer;white-space:normal;line-height:1.35;}'
+            + '.omo-indicator-embed--overdue{border-color:color-mix(in srgb,#dc2626 36%,var(--color-border,#d1d5db));background:color-mix(in srgb,var(--color-surface,#fff) 92%,#fef2f2 8%);}'
+            + '.omo-indicator-embed__title{display:block;color:var(--color-text,#1f2937);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}'
+            + '.omo-indicator-embed__body{display:grid;grid-template-columns:minmax(90px,1fr) auto;gap:12px;align-items:center;margin-top:7px;}'
+            + '.omo-indicator-embed__chart{display:block;min-width:0;color:#2563eb;}'
+            + '.omo-indicator-embed--overdue .omo-indicator-embed__chart{color:#dc2626;}'
+            + '.omo-indicator-embed__chart svg{display:block;width:100%;height:46px;overflow:visible;}'
+            + '.omo-indicator-embed__chart .omo-stats-chart__line{fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;}'
+            + '.omo-indicator-embed__chart .omo-stats-chart__reference{fill:none;stroke:color-mix(in srgb,currentColor 42%,transparent);stroke-width:1.7;stroke-dasharray:4 3;}'
+            + '.omo-indicator-embed__chart .omo-stats-chart__point{fill:currentColor;stroke:var(--color-surface,#fff);stroke-width:1.5;}'
+            + '.omo-indicator-embed__values{display:grid;justify-items:end;gap:1px;min-width:76px;color:var(--color-text-light,#6b7280);font-size:12px;text-align:right;}'
+            + '.omo-indicator-embed__values b{color:var(--color-text,#1f2937);font-size:1.05rem;}'
+            + '.omo-indicator-embed__values time{font-size:11px;}'
+            + '.omo-indicator-embed__values em{font-style:normal;color:#b91c1c;font-weight:700;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-indicator-embed,.omo-pv-editor .omo-simple-html-render .omo-indicator-embed{margin-bottom:10px;padding:9px 12px;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-indicator-embed){margin:0 0 10px;}'
+            + '.omo-pv-editor__indicator-embed-button{min-width:34px!important;font-size:0!important;background-image:url("/omo/images/tools/stats.png")!important;background-position:center!important;background-repeat:no-repeat!important;background-size:20px 20px!important;}'
             + '.omo-simple-html-field__meta{font-size:12px;line-height:1.45;color:var(--color-text-light,#6b7280);}'
             + '.omo-simple-html-render{line-height:1.55;word-break:break-word;white-space:normal;}'
             + '.omo-simple-html-render > :first-child{margin-top:0;}'
@@ -206,6 +226,12 @@
         return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
     }
 
+    function getIndicatorEmbedElementId(element) {
+        const rawValue = getElementAttributeValue(element, 'data-omo-indicator-id').trim();
+        const parsed = Number.parseInt(rawValue, 10);
+        return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+    }
+
     function isTemporaryCursorMarkerElement(element) {
         return !!(element && element.nodeType === 1 && getElementAttributeValue(element, 'data-omo-cursor-marker').trim() !== '');
     }
@@ -235,6 +261,79 @@
 
         return getElementAttributeValue(element, 'data-omo-embed-type').trim() === 'event'
             && getEventEmbedElementId(element) > 0;
+    }
+
+    function isAllowedIndicatorEmbedElement(element) {
+        return !!element
+            && element.nodeType === 1
+            && getElementAttributeValue(element, 'data-omo-embed-type').trim() === 'indicator'
+            && getIndicatorEmbedElementId(element) > 0;
+    }
+
+    function isSafeSvgNumber(value) {
+        return /^-?\d+(?:\.\d+)?$/.test(String(value || '').trim());
+    }
+
+    function isSafeSvgPoints(value) {
+        const normalizedValue = String(value || '').trim();
+        return normalizedValue.length <= 4000 && /^-?[\d.]+,-?[\d.]+(?:\s+-?[\d.]+,-?[\d.]+)*$/.test(normalizedValue);
+    }
+
+    function appendSanitizedIndicatorChart(embedNode, sourceNode, ownerDocument) {
+        const sourceChart = sourceNode.querySelector && sourceNode.querySelector('svg.omo-stats-chart');
+        if (!sourceChart) {
+            return;
+        }
+
+        const chart = ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        chart.setAttribute('class', 'omo-stats-chart omo-stats-chart--compact');
+        chart.setAttribute('viewBox', '0 0 180 54');
+        chart.setAttribute('aria-hidden', 'true');
+        ['polyline', 'circle'].forEach(function (tagName) {
+            Array.from(sourceChart.querySelectorAll(tagName)).forEach(function (sourceShape) {
+                const className = String(sourceShape.getAttribute('class') || '');
+                if (tagName === 'polyline' && !/^omo-stats-chart__line(?: omo-stats-chart__line--(?:background|sum))?$/.test(className) && className !== 'omo-stats-chart__reference') {
+                    return;
+                }
+                if (tagName === 'circle' && className !== 'omo-stats-chart__point') {
+                    return;
+                }
+
+                const shape = ownerDocument.createElementNS('http://www.w3.org/2000/svg', tagName);
+                shape.setAttribute('class', className);
+                if (tagName === 'polyline') {
+                    const points = String(sourceShape.getAttribute('points') || '').trim();
+                    if (!isSafeSvgPoints(points)) {
+                        return;
+                    }
+                    shape.setAttribute('points', points);
+                    const strokeStyle = String(sourceShape.getAttribute('style') || '').trim();
+                    if (/^stroke:\s*#[0-9a-f]{6};?$/i.test(strokeStyle)) {
+                        shape.setAttribute('style', strokeStyle);
+                    }
+                } else {
+                    const cx = String(sourceShape.getAttribute('cx') || '').trim();
+                    const cy = String(sourceShape.getAttribute('cy') || '').trim();
+                    const radius = String(sourceShape.getAttribute('r') || '').trim();
+                    if (!isSafeSvgNumber(cx) || !isSafeSvgNumber(cy) || !isSafeSvgNumber(radius)) {
+                        return;
+                    }
+                    shape.setAttribute('cx', cx);
+                    shape.setAttribute('cy', cy);
+                    shape.setAttribute('r', radius);
+                }
+                chart.appendChild(shape);
+            });
+        });
+
+        if (chart.childNodes.length === 0) {
+            return;
+        }
+
+        const chartWrapper = ownerDocument.createElement('span');
+        chartWrapper.setAttribute('class', 'omo-indicator-embed__chart');
+        chartWrapper.appendChild(chart);
+        embedNode.appendChild(chartWrapper);
     }
 
     function buildSanitizedNode(sourceNode, ownerDocument) {
@@ -304,6 +403,11 @@
                 embedNode.setAttribute('data-omo-decision-type', type);
             }
 
+            const summary = getElementAttributeValue(sourceNode, 'data-omo-decision-summary').trim();
+            if (summary) {
+                embedNode.setAttribute('data-omo-decision-summary', summary);
+            }
+
             Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
                 appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument));
             });
@@ -318,7 +422,7 @@
             embedNode.setAttribute('data-omo-embed-type', 'event');
             embedNode.setAttribute('data-omo-event-id', String(getEventEmbedElementId(sourceNode)));
 
-            ['title', 'schedule', 'description'].forEach(function (attributeName) {
+            ['title', 'schedule', 'location', 'description'].forEach(function (attributeName) {
                 const value = getElementAttributeValue(sourceNode, 'data-omo-event-' + attributeName).trim();
                 if (value) {
                     embedNode.setAttribute('data-omo-event-' + attributeName, value);
@@ -329,6 +433,50 @@
                 appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument));
             });
 
+            return embedNode;
+        }
+
+        if (isAllowedIndicatorEmbedElement(sourceNode)) {
+            const embedNode = ownerDocument.createElement('span');
+            const isOverdue = getElementAttributeValue(sourceNode, 'data-omo-indicator-overdue').trim() === '1';
+            embedNode.setAttribute('class', 'omo-indicator-embed' + (isOverdue ? ' omo-indicator-embed--overdue' : ''));
+            embedNode.setAttribute('contenteditable', 'false');
+            embedNode.setAttribute('data-omo-embed-type', 'indicator');
+            embedNode.setAttribute('data-omo-indicator-id', String(getIndicatorEmbedElementId(sourceNode)));
+            const indicatorKind = getElementAttributeValue(sourceNode, 'data-omo-indicator-kind').trim() === 'group' ? 'group' : 'indicator';
+            embedNode.setAttribute('data-omo-indicator-kind', indicatorKind);
+            ['title', 'value', 'date', 'status', 'context'].forEach(function (attributeName) {
+                const value = getElementAttributeValue(sourceNode, 'data-omo-indicator-' + attributeName).trim();
+                if (value) {
+                    embedNode.setAttribute('data-omo-indicator-' + attributeName, value);
+                }
+            });
+            if (isOverdue) {
+                embedNode.setAttribute('data-omo-indicator-overdue', '1');
+            }
+
+            const title = getElementAttributeValue(sourceNode, 'data-omo-indicator-title').trim() || ('Indicateur #' + String(getIndicatorEmbedElementId(sourceNode)));
+            const titleNode = ownerDocument.createElement('strong');
+            const linkNode = ownerDocument.createElement('a');
+            linkNode.setAttribute('class', 'omo-indicator-embed__title');
+            linkNode.setAttribute('href', indicatorKind === 'group' ? '#stats' : ('#stats-i' + String(getIndicatorEmbedElementId(sourceNode))));
+            linkNode.textContent = title;
+            titleNode.appendChild(linkNode);
+            embedNode.appendChild(titleNode);
+
+            const bodyNode = ownerDocument.createElement('span');
+            bodyNode.setAttribute('class', 'omo-indicator-embed__body');
+            appendSanitizedIndicatorChart(bodyNode, sourceNode, ownerDocument);
+            const valuesNode = ownerDocument.createElement('span');
+            valuesNode.setAttribute('class', 'omo-indicator-embed__values');
+            const valueLabel = getElementAttributeValue(sourceNode, 'data-omo-indicator-value').trim();
+            const dateLabel = getElementAttributeValue(sourceNode, 'data-omo-indicator-date').trim();
+            const statusLabel = getElementAttributeValue(sourceNode, 'data-omo-indicator-status').trim();
+            if (valueLabel) { const valueNode = ownerDocument.createElement('b'); valueNode.textContent = valueLabel; valuesNode.appendChild(valueNode); }
+            if (dateLabel) { const dateNode = ownerDocument.createElement('time'); dateNode.textContent = dateLabel; valuesNode.appendChild(dateNode); }
+            if (statusLabel) { const statusNode = ownerDocument.createElement('em'); statusNode.textContent = statusLabel; valuesNode.appendChild(statusNode); }
+            bodyNode.appendChild(valuesNode);
+            embedNode.appendChild(bodyNode);
             return embedNode;
         }
 
@@ -1244,6 +1392,8 @@
 
         return '<div class="' + escapeHtml(classes.join(' ')) + '">' + safeValue + '</div>';
     }
+
+    ensureLocalStyles();
 
     window.omoSimpleHtmlField = {
         version: OMO_SIMPLE_HTML_FIELD_VERSION,

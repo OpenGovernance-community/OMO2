@@ -292,7 +292,7 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
         gap: 12px;
         padding: 12px 14px;
         border: 1px solid var(--topbar-panel-border, #e2e8f0);
-        border-radius: 14px;
+        border-radius: var(--radius-md);
         background: var(--topbar-panel-bg, #ffffff);
         transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
     }
@@ -322,7 +322,7 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
     .omo-app-picker__placeholder {
         min-height: 78px;
         border: 2px dashed color-mix(in srgb, var(--color-primary, #4f46e5) 46%, var(--topbar-panel-border, #e2e8f0));
-        border-radius: 14px;
+        border-radius: var(--radius-md);
         background:
             linear-gradient(
                 135deg,
@@ -336,7 +336,7 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
         width: 34px;
         min-width: 34px;
         border: 0;
-        border-radius: 10px;
+        border-radius: var(--radius-md);
         background: rgba(148, 163, 184, 0.14);
         color: #475569;
         cursor: grab;
@@ -377,7 +377,7 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
     .omo-app-picker__fallback-icon {
         width: 34px;
         height: 34px;
-        border-radius: 10px;
+        border-radius: var(--radius-md);
         display: inline-flex;
         align-items: center;
         justify-content: center;

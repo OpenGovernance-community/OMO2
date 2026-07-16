@@ -2,6 +2,38 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-16
+
+Le detail des evenements est maintenant organise en une carte de synthese (horaire, contexte, statut et lieu), puis en deux colonnes adaptees au sous-drawer : description, lieu et invites a gauche; document associe et informations rapides a droite. L entete du sous-drawer recoit directement le titre, le sous-titre et les actions du contenu charge. Il expose aussi une petite API JavaScript pour les prochains contenus qui devront les modifier ou y ajouter des boutons. Le bouton Fermer utilise le bouton generique et l action d enregistrement des formulaires de creation ou de modification est placee dans cet entete. Pendant une modification, Annuler revient au detail sans enregistrer et le bouton principal est simplement nomme Enregistrer.
+
+Les sous-drawers Documents, Decisions et Indicateurs reposent maintenant sur le meme controleur partage. Il normalise le bouton de fermeture et expose dans chaque application une API pour definir titre, sous-titre et boutons d entete; un contenu charge peut aussi declarer ces informations et deplacer ses actions dans l entete.
+
+Les actions principales sont aussi remontees dans les entetes lorsque le formulaire le permet : Modifier n apparait dans le detail d un document que pour une personne qui possede effectivement le droit d edition, et les formulaires Documents et Indicateurs placent Annuler et Enregistrer dans le sous-drawer tout en restant rattaches a leur formulaire.
+
+Les boutons Fermer et Annuler du formulaire Documents utilisent maintenant la meme fermeture du sous-drawer : nettoyage du brouillon et du verrou, puis retour au detail du document sans enregistrer. L action Annuler est aussi captee directement par le conteneur, y compris apres son deplacement dans l entete.
+
+Le detail d un groupe d indicateurs affiche maintenant le bouton Modifier le groupe dans son entete, lorsque les droits sur le contexte du groupe le permettent.
+
+Le detail et l edition des Documents partagent maintenant un seul sous-drawer. Modifier remplace son contenu sans superposer un second panneau, Fermer ferme toujours ce panneau, et Annuler revient au detail du document sans enregistrer.
+
+La creation et la modification des groupes d indicateurs utilisent maintenant le sous-drawer Indicateurs au lieu d une popup. La recherche, la selection multiple et le choix du mode restent disponibles, avec Annuler et Enregistrer dans l entete.
+
+Les droits de visualisation et d edition des documents indiquent maintenant directement le nom du proprietaire lorsqu ils lui sont reserves.
+
+Les liens vers des documents, decisions et evenements inclus dans les points de PV sont maintenant compacts. Ils conservent leur titre cliquable et un resume borne, les informations de participation ou de resultat pour une decision, et les horaires avec le lieu pour un evenement.
+
+L ouverture directe d un document depuis un lien avec hash attend maintenant que son panneau soit pret avant de consommer la demande. Un chargement initial un peu plus lent n ouvre donc plus seulement le holon.
+
+Le reordonnancement des points d ordre du jour conserve maintenant la nouvelle position d un point en cours d edition, sans ecraser son brouillon local.
+
+Les points de PV peuvent maintenant integrer un indicateur ou un groupe visible, cumule ou superpose. Le bloc conserve un lien, le mini graphique de suivi, la derniere valeur ou le nombre de membres, sa date et un signalement de retard, y compris lorsqu il est affiche en lecture seule. Le renderer du viewer reconstruit aussi les attributs du bloc securise, afin qu ils ne soient pas perdus lors de l affichage. Un clic replit le volet de reunion et utilise la navigation hash interne vers Stats, sans rechargement de page.
+
+Le statut `Vous etes editeur du PV.` respecte maintenant aussi l attribut `hidden` apres une passation. Il n apparait que pour la personne qui tient effectivement le PV.
+
+La liste de presence des PV affiche maintenant seulement le nom ou username de chaque invite. Son adresse e-mail reste disponible au survol et devient le libelle visible uniquement lorsqu aucun autre nom n est connu.
+
+Les cadres rectangulaires partages utilisent maintenant le token unique `--radius-md` defini dans les composants communs. Les anciennes valeurs fixes, ainsi que les anciens aliases `--radius-sm` et `--radius-lg`, ont ete migres ou retires dans les applications OMO, Memo, Circle et les ecrans partages; seuls les cercles, pastilles et formes volontairement asymetriques gardent leur rayon propre.
+
 ## 2026-07-15
 
 L editeur de PV propose maintenant un bouton de resume automatique: le titre, la description, l evenement et les points sont transmis a l IA, puis le resultat remplace localement la description et reste a enregistrer.

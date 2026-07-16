@@ -847,7 +847,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
             display: none;
             flex-direction: column;
             gap: 6px;
-            border-radius: 16px;
+            border-radius: var(--radius-md);
             border: 1px solid var(--color-border, #dbe4ee);
             background: var(--color-surface, #ffffff);
             box-shadow: 0 18px 42px color-mix(in srgb, var(--color-text, #0f172a) 16%, transparent);
@@ -862,7 +862,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
             min-height: 40px;
             padding: 10px 12px;
             border: 0;
-            border-radius: 12px;
+            border-radius: var(--radius-md);
             background: var(--color-surface-alt, #f8fafc);
             color: var(--color-text, #0f172a);
             text-align: left;

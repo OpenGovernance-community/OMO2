@@ -2251,7 +2251,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
             align-items: start;
             padding: 12px;
             border: 1px solid var(--color-border, #d1d5db);
-            border-radius: 14px;
+            border-radius: var(--radius-md);
             background: var(--color-surface, #fff);
         }
 
@@ -2278,7 +2278,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
         .omo-decision-vote__proposal-placeholder {
             min-height: 78px;
             border: 2px dashed color-mix(in srgb, var(--color-primary, #4f46e5) 46%, var(--color-border, #d1d5db));
-            border-radius: 14px;
+            border-radius: var(--radius-md);
             background: linear-gradient(135deg, rgba(79, 70, 229, 0.08), rgba(79, 70, 229, 0.03));
             box-sizing: border-box;
         }
@@ -2288,7 +2288,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
             min-width: 36px;
             min-height: 42px;
             border: 0;
-            border-radius: 10px;
+            border-radius: var(--radius-md);
             background: rgba(148, 163, 184, 0.14);
             color: #475569;
             cursor: grab;
@@ -2329,7 +2329,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
             gap: 6px;
             padding: 8px;
             border: 1px solid var(--color-border, #d1d5db);
-            border-radius: 12px;
+            border-radius: var(--radius-md);
             background: var(--color-surface, #ffffff);
             box-shadow: 0 16px 30px rgba(15, 23, 42, 0.14);
             z-index: 5;
@@ -2422,7 +2422,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
             gap: 4px;
             align-items: start;
             padding: 10px 12px;
-            border-radius: 12px;
+            border-radius: var(--radius-md);
             background: color-mix(in srgb, var(--color-text-light, #64748b) 8%, white);
         }
 

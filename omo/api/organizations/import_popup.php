@@ -60,7 +60,7 @@ if (
 }
 
 .omo-import-popup__hero {
-    --generic-hero-radius: 16px;
+    --generic-hero-radius: var(--radius-md);
 }
 
 .omo-import-popup__title {
@@ -78,7 +78,7 @@ if (
     flex-direction: column;
     gap: 14px;
     padding: 18px;
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     border: 1px solid var(--color-border, #d1d5db);
     background: var(--color-surface, #fff);
 }

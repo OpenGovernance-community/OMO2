@@ -146,7 +146,7 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
 }
     .omo-share-popup--error {
         padding: 18px;
-        border-radius: 16px;
+        border-radius: var(--radius-md);
         background: var(--color-surface-alt, #f0f2f5);
         color: var(--color-text-light, #6b7280);
         border: 1px solid var(--color-border, #e5e7eb);

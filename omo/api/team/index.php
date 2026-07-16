@@ -957,7 +957,7 @@ if ($leafletMapsEnabled) {
 .omo-team__map {
     width: 100%;
     min-height: 460px;
-    border-radius: 18px;
+    border-radius: var(--radius-md);
     overflow: hidden;
     border: 1px solid var(--color-border);
     background:
@@ -1078,7 +1078,7 @@ if ($leafletMapsEnabled) {
     justify-content: center;
     min-height: 34px;
     padding: 8px 12px;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     background: #0f766e;
     color: #ffffff;
     font-size: 0.8rem;
@@ -1092,7 +1092,7 @@ if ($leafletMapsEnabled) {
 }
 
 .leaflet-popup-content-wrapper {
-    border-radius: 16px;
+    border-radius: var(--radius-md);
 }
 
 .omo-team__grid {
@@ -1271,7 +1271,7 @@ if ($leafletMapsEnabled) {
     min-width: 220px;
     padding: 6px;
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--color-surface, #fff);
     box-shadow: var(--shadow-md, 0 12px 24px rgba(15, 23, 42, 0.14));
     display: flex;
@@ -1287,7 +1287,7 @@ if ($leafletMapsEnabled) {
     width: 100%;
     padding: 9px 11px;
     border: 0;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: transparent;
     color: var(--color-text);
     text-align: left;

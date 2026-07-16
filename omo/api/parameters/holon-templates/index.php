@@ -2953,7 +2953,7 @@ Promise.all([
 .omo-template-sidebar,
 .omo-template-form-panel {
     border: 1px solid var(--color-border);
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     box-shadow: var(--shadow-sm);
 }
 
@@ -2993,7 +2993,7 @@ Promise.all([
     display: grid;
     gap: 3px;
     padding: 12px 14px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface) 86%, var(--color-primary) 14%);
     border: 1px solid color-mix(in srgb, var(--color-border) 68%, var(--color-primary) 32%);
 }
@@ -3018,7 +3018,7 @@ Promise.all([
     display: grid;
     gap: 10px;
     padding: 14px;
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface) 88%, var(--color-surface-alt));
     border: 1px solid color-mix(in srgb, var(--color-border) 86%, transparent);
 }
@@ -3041,7 +3041,7 @@ Promise.all([
 .omo-template-properties__empty {
     padding: 16px;
     border: 1px dashed var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--color-surface-alt);
     color: var(--color-text-light);
 }
@@ -3069,7 +3069,7 @@ Promise.all([
     text-align: left;
     padding: 12px 13px;
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface-alt) 82%, var(--color-surface));
     color: var(--color-text);
     cursor: pointer;
@@ -3159,7 +3159,7 @@ Promise.all([
     justify-content: space-between;
     gap: 12px;
     padding: 12px 14px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     font-size: 0.95rem;
     border: 1px solid transparent;
     box-shadow: var(--shadow-sm);
@@ -3216,7 +3216,7 @@ Promise.all([
     gap: 14px;
     padding: 16px;
     border: 1px solid color-mix(in srgb, var(--color-border) 86%, transparent);
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface) 90%, var(--color-surface-alt));
 }
 
@@ -3305,7 +3305,7 @@ Promise.all([
     align-content: start;
     padding: 14px 15px;
     border: 1px solid var(--color-border);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: var(--color-surface-alt);
     cursor: pointer;
 }
@@ -3340,7 +3340,7 @@ Promise.all([
     gap: 12px;
     padding: 14px;
     border: 1px solid var(--color-border);
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     background: var(--color-surface);
 }
 
@@ -3388,7 +3388,7 @@ Promise.all([
     min-height: 44px;
     padding: 11px 12px;
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--color-surface-alt);
     color: var(--color-text);
     box-sizing: border-box;
@@ -3422,7 +3422,7 @@ Promise.all([
     align-items: start;
     padding: 12px;
     border: 1px solid var(--color-border);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface) 76%, var(--color-surface-alt));
 }
 
@@ -3515,7 +3515,7 @@ Promise.all([
     gap: 8px;
     padding: 9px 10px;
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--color-surface);
 }
 
@@ -3532,7 +3532,7 @@ Promise.all([
 .omo-template-property__inherited-block {
     padding: 14px;
     border: 1px dashed var(--color-border);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface-alt) 78%, var(--color-surface));
 }
 
@@ -3570,7 +3570,7 @@ Promise.all([
 
 .omo-template-property__detail-card {
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface-alt) 65%, var(--color-surface));
     overflow: hidden;
 }
@@ -3635,7 +3635,7 @@ Promise.all([
 .omo-template-property__empty-note {
     padding: 12px;
     border: 1px dashed var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     color: var(--color-text-light);
     background: var(--color-surface);
 }
@@ -3651,7 +3651,7 @@ Promise.all([
     padding: 16px 18px 18px;
     margin: 8px -18px -18px;
     border-top: 1px solid color-mix(in srgb, var(--color-border) 86%, transparent);
-    border-radius: 0 0 16px 16px;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
     background: color-mix(in srgb, var(--color-surface) 92%, var(--color-surface-alt));
     box-shadow: 0 -8px 24px color-mix(in srgb, var(--color-shadow) 8%, transparent);
     backdrop-filter: blur(6px);

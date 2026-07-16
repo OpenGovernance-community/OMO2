@@ -51,6 +51,8 @@ $sourceLang = [
     'documents.create.action.cancel' => ['text' => 'Annuler', 'context' => 'Secondary action used to close the document editor.'],
     'documents.create.action.save' => ['text' => 'Enregistrer', 'context' => 'Primary action used to save an existing document.'],
     'documents.create.action.create' => ['text' => 'Créer le document', 'context' => 'Primary action used to create a document.'],
+    'documents.create.title.create' => ['text' => 'Nouveau document', 'context' => 'Title shown in the document editor drawer for creation.'],
+    'documents.create.title.edit' => ['text' => 'Modifier le document', 'context' => 'Title shown in the document editor drawer for edition.'],
     'documents.create.embed.none' => ['text' => 'Aucun document sélectionné.', 'context' => 'Placeholder shown in the document embed picker preview.'],
     'documents.create.embed.search_placeholder' => ['text' => 'Titre, résumé ou contexte', 'context' => 'Search placeholder used in the document embed picker.'],
     'documents.create.embed.modal_title' => ['text' => 'Insérer un document', 'context' => 'Title of the document embed picker modal.'],
@@ -311,7 +313,29 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     <?php if (!$canUseForm): ?>
         <div class="omo-empty-state"><?= $escape($formErrorMessage !== '' ? $formErrorMessage : ($isEditing ? omoDocumentsCreateT('documents.create.error.edit') : omoDocumentsCreateT('documents.create.error.create'))) ?></div>
     <?php else: ?>
-        <form class="omo-document-editor__form" action="/omo/api/documents/save.php" method="post" enctype="multipart/form-data" data-omo-document-create-form>
+        <?php $documentFormId = 'omoDocumentEditorForm'; ?>
+        <div
+            hidden
+            data-omo-subdrawer-header
+            data-omo-subdrawer-title="<?= $escape(omoDocumentsCreateT($isEditing ? 'documents.create.title.edit' : 'documents.create.title.create')) ?>"
+            data-omo-subdrawer-description="<?= $escape($isEditing ? trim((string)$document->get('title')) : '') ?>"
+        >
+            <button
+                type="button"
+                form="<?= $escape($documentFormId) ?>"
+                class="generic-action-button generic-action-button--secondary"
+                data-omo-subdrawer-action
+                data-omo-document-editor-cancel
+            ><?= $escape(omoDocumentsCreateT('documents.create.action.cancel')) ?></button>
+            <button
+                type="submit"
+                form="<?= $escape($documentFormId) ?>"
+                class="generic-action-button generic-action-button--main"
+                data-omo-subdrawer-action
+                data-omo-document-editor-submit
+            ><?= $escape($isEditing ? omoDocumentsCreateT('documents.create.action.save') : omoDocumentsCreateT('documents.create.action.create')) ?></button>
+        </div>
+        <form id="<?= $escape($documentFormId) ?>" class="omo-document-editor__form" action="/omo/api/documents/save.php" method="post" enctype="multipart/form-data" data-omo-document-create-form>
             <input type="hidden" name="oid" value="<?= $escape($organizationId) ?>">
             <input type="hidden" name="cid" value="<?= $escape($contextHolonId) ?>">
             <input type="hidden" name="parent_document_id" value="<?= (int)$parentDocumentId ?>">
@@ -507,8 +531,6 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             <div class="omo-document-editor__status" data-omo-document-editor-status hidden></div>
 
             <div class="omo-document-editor__actions">
-                <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-document-editor-cancel><?= $escape(omoDocumentsCreateT('documents.create.action.cancel')) ?></button>
-                <button type="submit" class="generic-action-button generic-action-button--main" data-omo-document-editor-submit><?= $escape($isEditing ? omoDocumentsCreateT('documents.create.action.save') : omoDocumentsCreateT('documents.create.action.create')) ?></button>
             </div>
         </form>
     <?php endif; ?>
@@ -646,7 +668,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     display: grid;
     gap: 4px;
     padding: 12px 14px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     border: 1px solid var(--color-border);
     background: var(--color-surface-alt);
 }
@@ -672,7 +694,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
 .omo-document-editor__status {
     padding: 12px 14px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     border: 1px solid color-mix(in srgb, #dc2626 25%, var(--color-border));
     background: color-mix(in srgb, #fef2f2 88%, var(--color-surface));
     color: #991b1b;
@@ -687,7 +709,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 .omo-document-editor__dictation-status {
     margin-top: 10px;
     padding: 10px 12px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     border: 1px solid color-mix(in srgb, var(--color-border) 85%, #38bdf8 15%);
     background: color-mix(in srgb, var(--color-surface) 88%, #eff6ff 12%);
     color: var(--color-text-light);
@@ -740,7 +762,8 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     const htmlHost = form.querySelector('[data-omo-document-editor-html]');
     const statusNode = form.querySelector('[data-omo-document-editor-status]');
     const dictationStatusNode = form.querySelector('[data-omo-document-dictation-status]');
-    const cancelButton = form.querySelector('[data-omo-document-editor-cancel]');
+    const cancelButton = form.querySelector('[data-omo-document-editor-cancel]')
+        || document.querySelector('[data-omo-document-editor-cancel][form="' + form.id + '"]');
     const typeSelect = form.querySelector('[data-omo-document-type]');
     const tagsEditor = form.querySelector('[data-omo-document-tags-editor]');
     const tagsList = form.querySelector('[data-omo-document-tags-list]');
@@ -2285,6 +2308,9 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         form.querySelectorAll('input, textarea, select, button').forEach(function (field) {
             field.disabled = !!isSaving;
         });
+        document.querySelectorAll('[form="' + form.id + '"]').forEach(function (field) {
+            field.disabled = !!isSaving;
+        });
     }
 
     if (cancelButton) {
@@ -2294,7 +2320,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             cleanupSummarize({ keepStatus: true });
             releaseEditLock({ keepalive: true });
             if (typeof window.omoCloseDocumentEditorDrawer === 'function') {
-                window.omoCloseDocumentEditorDrawer();
+                window.omoCloseDocumentEditorDrawer({ returnToDetail: true });
             }
         });
     }
@@ -2423,7 +2449,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                     cleanupRewrite({ keepStatus: true });
                     cleanupSummarize({ keepStatus: true });
                     if (typeof window.omoCloseDocumentEditorDrawer === 'function') {
-                        window.omoCloseDocumentEditorDrawer();
+                        window.omoCloseDocumentEditorDrawer({ returnToDetail: true });
                     }
                 });
             })

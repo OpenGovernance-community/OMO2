@@ -1415,7 +1415,7 @@ function getLines(ctx, text, maxWidth, fontSize, titleFont) {
 		#role_list .data:has(.highlight) {display:block}
 		
 		
-.data_field	 {background:rgba(0,0,0,0.1); border-radius:5px; padding:5px;margin-bottom:10px;}	
+.data_field	 {background:rgba(0,0,0,0.1); border-radius:var(--radius-md); padding:5px;margin-bottom:10px;}
 .data_field::before {
 		content: attr(title) " :"; /* Texte à afficher avant la liste */
 		display: block; /* Pour que le texte soit affiché sur une nouvelle ligne */
@@ -1444,7 +1444,7 @@ function getLines(ctx, text, maxWidth, fontSize, titleFont) {
   right: 0;
   bottom: 0;
   background-color: #ccc; /* Couleur de fond du switch (désactivé) */
-  border-radius: 13px; /* Pour arrondir les bords */
+  border-radius: var(--radius-md); /* Pour arrondir les bords */
   transition: 0.2s; /* Animation fluide */
 font-size: 18px;
     padding: 2px 1px;
@@ -1553,8 +1553,8 @@ div#contentright:not(:has(input#toggleSwitch:checked)) div#role_list {
 	.leftTab {height:100%; width:100%}
 
 	.left {height:calc(100% - 100px);width:400px; padding:2px;}
-	.contentleft {height:calc(100% - 30px); border-radius:5px;}
-	.contentright {height:calc(100% - 4px); width:calc(100% - 4px); border-radius:5px;  overflow:hidden;position:absolute; left:2px; top:2px;}
+	.contentleft {height:calc(100% - 30px); border-radius:var(--radius-md);}
+	.contentright {height:calc(100% - 4px); width:calc(100% - 4px); border-radius:var(--radius-md);  overflow:hidden;position:absolute; left:2px; top:2px;}
 	.right {height:calc(100% - 100px); padding:2px; position:relative;}
 
 	
@@ -1570,7 +1570,7 @@ div#contentright:not(:has(input#toggleSwitch:checked)) div#role_list {
 	div#showpanel {display:none}
 
 
-	#menu {position:fixed; top:0px; right:20px; border-radius: 0px 0px 10px 10px; padding:10px;background-color:#FFFFFF;box-shadow: 5px 5px 10px rgba(0,0,0,0.5)}
+	#menu {position:fixed; top:0px; right:20px; border-radius: 0px 0px var(--radius-md) var(--radius-md); padding:10px;background-color:#FFFFFF;box-shadow: 5px 5px 10px rgba(0,0,0,0.5)}
 
 
 /* Adaptation graphique pour téléphone portable */
@@ -1581,7 +1581,7 @@ div#contentright:not(:has(input#toggleSwitch:checked)) div#role_list {
 		
 	}
 	@media screen and (max-width: 700px) {
-		td.left div#showPanel {display:block;width:40px; height:50px; position:absolute; right:-38px; bottom:30px; background: white; border-radius:0px 15px 15px 0px;overflow:hidden; border:2px solid var(--light-bg-color);border-width: 2px 2px 2px 0px; cursor:pointer; background-image:url(/img/loupe.png); background-size: contain;
+		td.left div#showPanel {display:block;width:40px; height:50px; position:absolute; right:-38px; bottom:30px; background: white; border-radius:0px var(--radius-md) var(--radius-md) 0px;overflow:hidden; border:2px solid var(--light-bg-color);border-width: 2px 2px 2px 0px; cursor:pointer; background-image:url(/img/loupe.png); background-size: contain;
         background-position: center;
         background-repeat: no-repeat;}
 		td.resize {display:none}
@@ -1791,7 +1791,7 @@ if (!isset($_GET["view"])) {
   background: #ff424d;
   color: white;
   padding: 0.4rem 1rem;
-  border-radius: 5px;
+  border-radius: var(--radius-md);
   text-decoration: none;
   font-weight: bold;
   white-space: nowrap;
