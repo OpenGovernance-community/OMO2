@@ -19,6 +19,10 @@ $sourceLang = array_merge([
         'text' => 'Consulter le document',
         'context' => 'Button used to open the linked document from the event detail view.',
     ],
+    'calendar.detail.header.subtitle' => [
+        'text' => 'Consultez les details puis modifiez si besoin.',
+        'context' => 'Short explanatory subtitle below the event detail heading.',
+    ],
     'calendar.detail.section.schedule' => [
         'text' => 'Horaire',
         'context' => 'Label of the schedule card inside the event detail view.',
@@ -46,6 +50,14 @@ $sourceLang = array_merge([
     'calendar.detail.section.description' => [
         'text' => 'Description',
         'context' => 'Label of the description section inside the event detail view.',
+    ],
+    'calendar.detail.section.quick_info' => [
+        'text' => 'Infos rapides',
+        'context' => 'Label of the quick event information card.',
+    ],
+    'calendar.detail.quick_info.created_at' => [
+        'text' => 'Cree le',
+        'context' => 'Label shown before the event creation date in the quick information card.',
     ],
     'calendar.detail.empty.description' => [
         'text' => 'Aucune description pour cet evenement.',
@@ -216,9 +228,18 @@ $statusCatalog = Event::getStatusCatalog();
 $normalizedStatus = Event::normalizeStatus($event->get('status'));
 $statusLabel = trim((string)($statusCatalog[$normalizedStatus]['label'] ?? $normalizedStatus));
 $title = trim((string)$event->get('title'));
+$eventTitle = $title !== '' ? $title : ('Evenement #' . (int)$event->getId());
 $description = trim((string)$event->get('description'));
 $scheduleLabel = omoCalendarDetailFormatSchedule($event);
 $locationData = $event->getLocationDisplayData();
+$locationSummary = trim((string)($locationData['modeLabel'] ?? ''));
+if ($locationSummary === '') {
+    $locationSummary = trim((string)($locationData['address'] ?? ''));
+}
+if ($locationSummary === '') {
+    $locationSummary = trim((string)($locationData['videoUrl'] ?? ''));
+}
+$createdAt = $event->get('created_at');
 $associatedDocument = $event->getAssociatedDocument();
 $canOpenAssociatedDocument = $associatedDocument instanceof \dbObject\Document
     && (
@@ -241,96 +262,143 @@ $invitationContext = [
 ];
 ?>
 <div class="omo-calendar-detail">
-    <article class="generic-section generic-section--stack omo-calendar-detail__shell">
-        <header class="omo-calendar-detail__header">
-            <div class="omo-calendar-detail__eyebrow"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.badge')) ?></div>
-            <div class="omo-calendar-detail__title-row">
-                <h2 class="generic-card-title generic-card-title--medium"><?= omoApiEscape($title !== '' ? $title : ('Evenement #' . (int)$event->getId())) ?></h2>
-                <?php if ($canEdit): ?>
-                    <button
-                        type="button"
-                        class="generic-action-button"
-                        data-omo-calendar-open-edit-url="<?= omoApiEscape($editUrl) ?>"
-                    ><?= omoApiEscape(omoCalendarDetailT('calendar.detail.action.edit')) ?></button>
-                <?php endif; ?>
-            </div>
-        </header>
+    <div
+        hidden
+        data-omo-calendar-drawer-header
+        data-omo-calendar-drawer-title="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.badge')) ?>"
+        data-omo-calendar-drawer-description="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.header.subtitle')) ?>"
+    >
+        <?php if ($canEdit): ?>
+            <button
+                type="button"
+                class="generic-action-button generic-action-button--main"
+                data-omo-calendar-drawer-action
+                data-omo-calendar-open-edit-url="<?= omoApiEscape($editUrl) ?>"
+            ><?= omoApiEscape(omoCalendarDetailT('calendar.detail.action.edit')) ?></button>
+        <?php endif; ?>
+    </div>
 
-        <div class="omo-calendar-detail__meta-grid">
-            <section class="generic-soft-panel generic-soft-panel--stack omo-calendar-detail__meta-card">
-                <span class="omo-calendar-detail__meta-label"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.schedule')) ?></span>
-                <strong class="omo-calendar-detail__meta-value"><?= omoApiEscape($scheduleLabel) ?></strong>
-            </section>
-
-            <section class="generic-soft-panel generic-soft-panel--stack omo-calendar-detail__meta-card">
-                <span class="omo-calendar-detail__meta-label"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.context')) ?></span>
-                <strong class="omo-calendar-detail__meta-value"><?= omoApiEscape($contextLabel !== '' ? $contextLabel : trim((string)$organization->get('name'))) ?></strong>
-            </section>
-
-            <section class="generic-soft-panel generic-soft-panel--stack omo-calendar-detail__meta-card">
-                <span class="omo-calendar-detail__meta-label"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.status')) ?></span>
-                <strong class="omo-calendar-detail__meta-value"><?= omoApiEscape($statusLabel) ?></strong>
-            </section>
-        </div>
-
-        <div class="omo-calendar-detail__supplementary-grid">
-            <section class="generic-soft-panel generic-soft-panel--stack omo-calendar-detail__content">
-                <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.location')) ?></h3>
-                <?php if (($locationData['mode'] ?? '') !== '' || ($locationData['address'] ?? '') !== '' || ($locationData['videoUrl'] ?? '') !== ''): ?>
-                    <?php if (trim((string)($locationData['modeLabel'] ?? '')) !== ''): ?>
-                        <div class="omo-calendar-detail__location-mode"><?= omoApiEscape((string)$locationData['modeLabel']) ?></div>
-                    <?php endif; ?>
-                    <?php if (trim((string)($locationData['address'] ?? '')) !== ''): ?>
-                        <div class="omo-calendar-detail__location-line">
-                            <strong><?= omoApiEscape(omoCalendarDetailT('calendar.detail.location.address')) ?></strong>
-                            <span><?= nl2br(omoApiEscape((string)$locationData['address'])) ?></span>
-                        </div>
-                    <?php endif; ?>
-                    <?php if (trim((string)($locationData['videoUrl'] ?? '')) !== ''): ?>
-                        <div class="omo-calendar-detail__location-line">
-                            <strong><?= omoApiEscape(omoCalendarDetailT('calendar.detail.location.visio')) ?></strong>
-                            <a href="<?= omoApiEscape((string)$locationData['videoUrl']) ?>" target="_blank" rel="noopener noreferrer" class="omo-calendar-detail__link">
-                                <?= omoApiEscape((string)$locationData['videoUrl']) ?>
-                            </a>
-                        </div>
-                    <?php endif; ?>
-                <?php else: ?>
-                    <p class="omo-calendar-detail__empty"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.empty.location')) ?></p>
-                <?php endif; ?>
-            </section>
-
-            <section class="generic-soft-panel generic-soft-panel--stack omo-calendar-detail__content">
-                <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.document')) ?></h3>
-                <?php if ($associatedDocument instanceof \dbObject\Document): ?>
-                    <div class="omo-calendar-detail__document-head">
-                        <strong class="omo-calendar-detail__meta-value"><?= omoApiEscape(trim((string)$associatedDocument->get('title')) !== '' ? trim((string)$associatedDocument->get('title')) : ('Document #' . (int)$associatedDocument->getId())) ?></strong>
-                        <span class="omo-calendar-detail__document-type"><?= omoApiEscape($associatedDocument->getDocumentTypeLabel()) ?></span>
+    <article class="generic-section generic-section--plain generic-section--stack omo-calendar-detail__shell">
+        <section class="generic-section generic-section--stack omo-calendar-detail__overview">
+            <h3 class="generic-card-title generic-card-title--large"><?= omoApiEscape($eventTitle) ?></h3>
+            <div class="omo-calendar-detail__meta-grid">
+                <div class="omo-calendar-detail__meta-card">
+                    <span class="omo-calendar-detail__meta-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M8 3v4M16 3v4M4 10h16"></path></svg>
+                    </span>
+                    <div>
+                        <span class="omo-calendar-detail__meta-label"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.schedule')) ?></span>
+                        <strong class="omo-calendar-detail__meta-value"><?= omoApiEscape($scheduleLabel) ?></strong>
                     </div>
-                    <?php if ($associatedDocumentUrl !== ''): ?>
-                        <button
-                            type="button"
-                            class="generic-action-button generic-action-button--secondary"
-                            data-omo-calendar-open-url="<?= omoApiEscape($associatedDocumentUrl) ?>"
-                            data-omo-calendar-open-url-title="<?= omoApiEscape(trim((string)$associatedDocument->get('title')) !== '' ? trim((string)$associatedDocument->get('title')) : ('Document #' . (int)$associatedDocument->getId())) ?>"
-                            data-omo-calendar-open-pv-editor-url="<?= omoApiEscape($associatedDocumentPvPreparationUrl) ?>"
-                        ><?= omoApiEscape(omoCalendarDetailT('calendar.detail.action.open_document')) ?></button>
-                    <?php endif; ?>
-                <?php else: ?>
-                    <p class="omo-calendar-detail__empty"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.empty.document')) ?></p>
-                <?php endif; ?>
-            </section>
-        </div>
-
-        <section class="generic-soft-panel generic-soft-panel--stack omo-calendar-detail__content">
-            <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.description')) ?></h3>
-            <?php if ($description !== ''): ?>
-                <div class="omo-calendar-detail__description"><?= nl2br(omoApiEscape($description)) ?></div>
-            <?php else: ?>
-                <p class="omo-calendar-detail__empty"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.empty.description')) ?></p>
-            <?php endif; ?>
+                </div>
+                <div class="omo-calendar-detail__meta-card">
+                    <span class="omo-calendar-detail__meta-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="6" r="3"></circle><circle cx="5" cy="17" r="3"></circle><circle cx="19" cy="17" r="3"></circle></svg>
+                    </span>
+                    <div>
+                        <span class="omo-calendar-detail__meta-label"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.context')) ?></span>
+                        <strong class="omo-calendar-detail__meta-value"><?= omoApiEscape($contextLabel !== '' ? $contextLabel : trim((string)$organization->get('name'))) ?></strong>
+                    </div>
+                </div>
+                <div class="omo-calendar-detail__meta-card">
+                    <span class="omo-calendar-detail__meta-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="8"></circle><path d="m8.5 12 2.3 2.3 4.8-5"></path></svg>
+                    </span>
+                    <div>
+                        <span class="omo-calendar-detail__meta-label"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.status')) ?></span>
+                        <strong class="omo-calendar-detail__meta-value omo-calendar-detail__status-value<?= $normalizedStatus === Event::STATUS_CONFIRMED ? ' is-confirmed' : '' ?>"><?= omoApiEscape($statusLabel) ?></strong>
+                    </div>
+                </div>
+                <div class="omo-calendar-detail__meta-card">
+                    <span class="omo-calendar-detail__meta-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false"><path d="M12 21s6-5.1 6-11a6 6 0 1 0-12 0c0 5.9 6 11 6 11Z"></path><circle cx="12" cy="10" r="2"></circle></svg>
+                    </span>
+                    <div>
+                        <span class="omo-calendar-detail__meta-label"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.location')) ?></span>
+                        <strong class="omo-calendar-detail__meta-value"><?= omoApiEscape($locationSummary !== '' ? $locationSummary : omoCalendarDetailT('calendar.detail.empty.location')) ?></strong>
+                    </div>
+                </div>
+            </div>
         </section>
 
-        <?= omoCalendarRenderInvitationSummarySection($event, $invitationContext, $lang, $sourceLang, 'omoApiEscape') ?>
+        <div class="omo-calendar-detail__content-grid">
+            <div class="omo-calendar-detail__primary-column">
+                <section class="generic-section generic-section--stack omo-calendar-detail__content">
+                    <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.description')) ?></h3>
+                    <?php if ($description !== ''): ?>
+                        <div class="omo-calendar-detail__description"><?= nl2br(omoApiEscape($description)) ?></div>
+                    <?php else: ?>
+                        <p class="omo-calendar-detail__empty"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.empty.description')) ?></p>
+                    <?php endif; ?>
+                </section>
+
+                <section class="generic-section generic-section--stack omo-calendar-detail__content">
+                    <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.location')) ?></h3>
+                    <?php if (($locationData['mode'] ?? '') !== '' || ($locationData['address'] ?? '') !== '' || ($locationData['videoUrl'] ?? '') !== ''): ?>
+                        <?php if (trim((string)($locationData['modeLabel'] ?? '')) !== ''): ?>
+                            <div class="omo-calendar-detail__location-mode"><?= omoApiEscape((string)$locationData['modeLabel']) ?></div>
+                        <?php endif; ?>
+                        <?php if (trim((string)($locationData['address'] ?? '')) !== ''): ?>
+                            <div class="omo-calendar-detail__location-line">
+                                <strong><?= omoApiEscape(omoCalendarDetailT('calendar.detail.location.address')) ?></strong>
+                                <span><?= nl2br(omoApiEscape((string)$locationData['address'])) ?></span>
+                            </div>
+                        <?php endif; ?>
+                        <?php if (trim((string)($locationData['videoUrl'] ?? '')) !== ''): ?>
+                            <div class="omo-calendar-detail__location-line">
+                                <strong><?= omoApiEscape(omoCalendarDetailT('calendar.detail.location.visio')) ?></strong>
+                                <a href="<?= omoApiEscape((string)$locationData['videoUrl']) ?>" target="_blank" rel="noopener noreferrer" class="omo-calendar-detail__link">
+                                    <?= omoApiEscape((string)$locationData['videoUrl']) ?>
+                                </a>
+                            </div>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <p class="omo-calendar-detail__empty"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.empty.location')) ?></p>
+                    <?php endif; ?>
+                </section>
+
+                <?= omoCalendarRenderInvitationSummarySection($event, $invitationContext, $lang, $sourceLang, 'omoApiEscape') ?>
+            </div>
+
+            <aside class="omo-calendar-detail__secondary-column">
+                <section class="generic-section generic-section--stack omo-calendar-detail__content">
+                    <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.document')) ?></h3>
+                    <?php if ($associatedDocument instanceof \dbObject\Document): ?>
+                        <div class="omo-calendar-detail__document-head">
+                            <strong class="omo-calendar-detail__meta-value"><?= omoApiEscape(trim((string)$associatedDocument->get('title')) !== '' ? trim((string)$associatedDocument->get('title')) : ('Document #' . (int)$associatedDocument->getId())) ?></strong>
+                            <span class="omo-calendar-detail__document-type"><?= omoApiEscape($associatedDocument->getDocumentTypeLabel()) ?></span>
+                        </div>
+                        <?php if ($associatedDocumentUrl !== ''): ?>
+                            <button
+                                type="button"
+                                class="generic-action-button generic-action-button--secondary"
+                                data-omo-calendar-open-url="<?= omoApiEscape($associatedDocumentUrl) ?>"
+                                data-omo-calendar-open-url-title="<?= omoApiEscape(trim((string)$associatedDocument->get('title')) !== '' ? trim((string)$associatedDocument->get('title')) : ('Document #' . (int)$associatedDocument->getId())) ?>"
+                                data-omo-calendar-open-pv-editor-url="<?= omoApiEscape($associatedDocumentPvPreparationUrl) ?>"
+                            ><?= omoApiEscape(omoCalendarDetailT('calendar.detail.action.open_document')) ?></button>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <p class="omo-calendar-detail__empty"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.empty.document')) ?></p>
+                    <?php endif; ?>
+                </section>
+
+                <section class="generic-section generic-section--stack omo-calendar-detail__content omo-calendar-detail__quick-info">
+                    <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.quick_info')) ?></h3>
+                    <dl class="omo-calendar-detail__quick-info-list">
+                        <div>
+                            <dt><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.status')) ?></dt>
+                            <dd class="omo-calendar-detail__status-value<?= $normalizedStatus === Event::STATUS_CONFIRMED ? ' is-confirmed' : '' ?>"><?= omoApiEscape($statusLabel) ?></dd>
+                        </div>
+                        <?php if ($createdAt instanceof \DateTimeInterface): ?>
+                            <div>
+                                <dt><?= omoApiEscape(omoCalendarDetailT('calendar.detail.quick_info.created_at')) ?></dt>
+                                <dd><?= omoApiEscape(omoCalendarDetailFormatDay($createdAt)) ?></dd>
+                            </div>
+                        <?php endif; ?>
+                    </dl>
+                </section>
+            </aside>
+        </div>
     </article>
 
     <style>
@@ -343,50 +411,65 @@ $invitationContext = [
         gap: 18px;
     }
 
-    .omo-calendar-detail__header {
+    .omo-calendar-detail__overview,
+    .omo-calendar-detail__content {
+        --generic-section-shadow: var(--shadow-sm, 0 4px 14px rgba(15, 23, 42, 0.08));
+    }
+
+    .omo-calendar-detail__overview {
+        gap: 20px;
+    }
+
+    .omo-calendar-detail__meta-grid {
         display: grid;
-        gap: 10px;
-    }
-
-    .omo-calendar-detail__eyebrow {
-        display: inline-flex;
-        align-items: center;
-        width: fit-content;
-        min-height: 28px;
-        padding: 0 10px;
-        border-radius: 999px;
-        background: color-mix(in srgb, var(--color-primary, #2563eb) 12%, var(--color-surface, #ffffff));
-        color: var(--color-text-light, #64748b);
-        font-size: 0.8rem;
-        font-weight: 700;
-        letter-spacing: 0.03em;
-        text-transform: uppercase;
-    }
-
-    .omo-calendar-detail__title-row {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 12px;
-        flex-wrap: wrap;
-    }
-
-    .omo-calendar-detail__meta-grid,
-    .omo-calendar-detail__supplementary-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 12px;
-    }
-
-    .omo-calendar-detail__supplementary-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0;
     }
 
     .omo-calendar-detail__meta-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        padding: 4px 16px;
+        border-left: 1px solid var(--color-border, #e5e7eb);
+    }
+
+    .omo-calendar-detail__meta-card:first-child {
+        padding-left: 0;
+        border-left: 0;
+    }
+
+    .omo-calendar-detail__meta-card > div {
+        display: grid;
+        gap: 4px;
         min-width: 0;
     }
 
+    .omo-calendar-detail__meta-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #ffffff));
+        color: var(--color-primary, #2563eb);
+    }
+
+    .omo-calendar-detail__meta-icon svg {
+        width: 22px;
+        height: 22px;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 1.8;
+    }
+
     .omo-calendar-detail__meta-label {
+        display: block;
         color: var(--color-text-light, #64748b);
         font-size: 0.8rem;
         font-weight: 700;
@@ -395,12 +478,32 @@ $invitationContext = [
     }
 
     .omo-calendar-detail__meta-value {
+        display: block;
         color: var(--color-text, #1f2937);
         line-height: 1.5;
+        overflow-wrap: anywhere;
+    }
+
+    .omo-calendar-detail__status-value.is-confirmed {
+        color: var(--color-success, #15803d);
+    }
+
+    .omo-calendar-detail__content-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.55fr) minmax(260px, 0.95fr);
+        align-items: start;
+        gap: 18px;
+    }
+
+    .omo-calendar-detail__primary-column,
+    .omo-calendar-detail__secondary-column {
+        display: grid;
+        gap: 14px;
+        min-width: 0;
     }
 
     .omo-calendar-detail__content {
-        gap: 10px;
+        gap: 12px;
         min-width: 0;
     }
 
@@ -455,6 +558,41 @@ $invitationContext = [
         flex-wrap: wrap;
     }
 
+    .omo-calendar-detail__quick-info-list {
+        display: grid;
+        gap: 0;
+        margin: 0;
+    }
+
+    .omo-calendar-detail__quick-info-list > div {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 0;
+        border-top: 1px solid var(--color-border, #e5e7eb);
+    }
+
+    .omo-calendar-detail__quick-info-list > div:first-child {
+        padding-top: 0;
+        border-top: 0;
+    }
+
+    .omo-calendar-detail__quick-info-list dt,
+    .omo-calendar-detail__quick-info-list dd {
+        margin: 0;
+    }
+
+    .omo-calendar-detail__quick-info-list dt {
+        color: var(--color-text-light, #64748b);
+    }
+
+    .omo-calendar-detail__quick-info-list dd {
+        color: var(--color-text, #1f2937);
+        font-weight: 700;
+        text-align: right;
+    }
+
     .omo-calendar-detail__summary-head {
         display: flex;
         align-items: center;
@@ -469,10 +607,38 @@ $invitationContext = [
         line-height: 1.6;
     }
 
-    @media (max-width: 760px) {
-        .omo-calendar-detail__meta-grid,
-        .omo-calendar-detail__supplementary-grid {
+    @media (max-width: 980px) {
+        .omo-calendar-detail__meta-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px 0;
+        }
+
+        .omo-calendar-detail__meta-card:nth-child(odd) {
+            padding-left: 0;
+            border-left: 0;
+        }
+
+        .omo-calendar-detail__content-grid {
             grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 620px) {
+        .omo-calendar-detail__meta-grid {
+            grid-template-columns: 1fr;
+            gap: 0;
+        }
+
+        .omo-calendar-detail__meta-card,
+        .omo-calendar-detail__meta-card:nth-child(odd) {
+            padding: 12px 0;
+            border-top: 1px solid var(--color-border, #e5e7eb);
+            border-left: 0;
+        }
+
+        .omo-calendar-detail__meta-card:first-child {
+            padding-top: 0;
+            border-top: 0;
         }
     }
     </style>

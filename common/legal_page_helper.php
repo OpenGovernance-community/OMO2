@@ -134,7 +134,7 @@ function commonRenderLegalPage(array $config): void
     .common-legal-page-card {
         background: var(--legal-surface);
         border: 1px solid var(--legal-border);
-        border-radius: 24px;
+        border-radius: var(--radius-md);
         padding: 28px;
         box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
     }
@@ -175,7 +175,7 @@ function commonRenderLegalPage(array $config): void
         padding: 14px 16px;
         border-left: 4px solid var(--legal-accent);
         background: var(--legal-note-bg);
-        border-radius: 12px;
+        border-radius: var(--radius-md);
     }
 
     .common-legal-page-content a {

@@ -354,7 +354,7 @@ $structureTranslations = [
   min-height: 44px;
   padding: 0 14px;
   border: 1px solid var(--color-border, #e5e7eb);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--color-surface, #ffffff) 96%, transparent);
   color: var(--color-text, #1f2937);
   font-size: 24px;
@@ -376,7 +376,7 @@ $structureTranslations = [
   min-width: 180px;
   padding: 8px;
   border: 1px solid var(--color-border, #e5e7eb);
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--color-surface, #ffffff) 98%, transparent);
   box-shadow: var(--shadow-md, 0 12px 24px rgba(0,0,0,0.12));
 }
@@ -390,7 +390,7 @@ $structureTranslations = [
   width: 100%;
   padding: 11px 12px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--color-text, #1f2937);
   font: inherit;
@@ -411,7 +411,7 @@ $structureTranslations = [
   max-width: min(420px, calc(100% - 32px));
   padding: 12px 14px;
   border: 1px solid #f5c2c7;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: #fff3cd;
   color: #7c2d12;
   box-shadow: var(--shadow-sm, 0 8px 18px rgba(0,0,0,0.08));
@@ -545,7 +545,7 @@ input:checked + .slider::before {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--color-border, #d1d5db);
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-md);
   background: var(--color-surface-alt, #f9fafb);
   color: inherit;
   font: inherit;
@@ -574,7 +574,7 @@ input:checked + .slider::before {
 .role-item-shell {
   display: grid;
   gap: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: var(--color-surface-alt, #f0f2f5);
   box-shadow: inset 0 0 0 1px transparent;
   overflow: hidden;
@@ -763,7 +763,7 @@ input:checked + .slider::before {
 
 .role-property-detail-card {
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--color-surface-alt, #f8fafc);
   border: 1px solid var(--color-border, #e5e7eb);
 }

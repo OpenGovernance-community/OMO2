@@ -4,6 +4,7 @@ require_once __DIR__ . '/helpers.php';
 require_once dirname(__DIR__, 4) . '/common/patreon.php';
 require_once dirname(__DIR__, 4) . '/common/openai_text.php';
 require_once dirname(__DIR__, 4) . '/common/object_visibility_selector.php';
+require_once dirname(__DIR__, 2) . '/stats/shared.php';
 
 $sourceLang = omoDocumentsPvEditorSourceLang();
 $lang = omoLoadTranslationBundle('omo_documents_pv_editor', $sourceLang);
@@ -77,6 +78,7 @@ $hasStructureApplication = $hasOrganization && $organization->isStructureApplica
 $hasDocumentsApplication = $hasOrganization && $organization->isApplicationEnabled('documents', $currentUserId);
 $hasDecisionApplication = $hasOrganization && $organization->isApplicationEnabled('decision', $currentUserId);
 $hasCalendarApplication = $hasOrganization && $organization->isApplicationEnabled('calendar', $currentUserId);
+$hasStatsApplication = $hasOrganization && $organization->isApplicationEnabled('stats', $currentUserId);
 $openAiAvailable = commonOpenAiGetApiKey() !== '';
 $patreonGateEnabled = function_exists('patreonSupportUiIsEnabled') && patreonSupportUiIsEnabled();
 $patreonConnected = false;
@@ -177,6 +179,7 @@ $pointPayloads = [];
 $embeddableDocumentsPayload = [];
 $embeddableDecisionsPayload = [];
 $embeddableEventsPayload = [];
+$embeddableIndicatorsPayload = [];
 $attendancePayload = $hasTeamApplication
     ? omoDocumentsPvEditorBuildAttendancePayloadFromDocument($document, $organizationId)
     : null;
@@ -225,6 +228,7 @@ if ($hasDecisionApplication) {
             'id' => (int)$embeddableDecision->getId(),
             'title' => trim((string)$embeddableDecision->get('title')),
             'typeLabel' => (string)($decisionTypeLabels[$decisionType] ?? $decisionType),
+            'summary' => $embeddableDecision->getCompactEmbedSummary(),
         ];
     }
 
@@ -248,17 +252,87 @@ if ($hasCalendarApplication) {
             ($startAt instanceof DateTimeInterface ? $formatDateTime($startAt) : '')
             . ($endAt instanceof DateTimeInterface ? ' - ' . $formatDateTime($endAt) : '')
         );
+        $locationData = $embeddableEvent->getLocationDisplayData();
+        $locationLabel = trim(implode(' | ', array_filter([
+            trim((string)($locationData['address'] ?? '')),
+            trim((string)($locationData['videoUrl'] ?? '')),
+        ])));
         $embeddableEventsPayload[] = [
             'id' => (int)$embeddableEvent->getId(),
             'title' => trim((string)$embeddableEvent->get('title')),
-            'description' => trim((string)$embeddableEvent->get('description')),
             'scheduleLabel' => $scheduleLabel,
+            'locationLabel' => $locationLabel,
             'startAt' => $startAt instanceof DateTimeInterface ? $startAt->format(DATE_ATOM) : '',
         ];
     }
 
     usort($embeddableEventsPayload, static function (array $left, array $right): int {
         return strcmp((string)($left['startAt'] ?? ''), (string)($right['startAt'] ?? ''));
+    });
+}
+
+if ($hasStatsApplication) {
+    $embeddableIndicators = new \dbObject\ArrayStatIndicator();
+    $embeddableIndicators->loadForContext($organizationId, 0, 'global');
+
+    foreach ($embeddableIndicators as $embeddableIndicator) {
+        if (!($embeddableIndicator instanceof \dbObject\StatIndicator) || (int)$embeddableIndicator->getId() <= 0) {
+            continue;
+        }
+
+        $indicatorValues = omoStatsCollectionItems($embeddableIndicator->getMeasurements(), \dbObject\StatIndicatorValue::class);
+        $indicatorReferencePoints = omoStatsCollectionItems($embeddableIndicator->getReferencePoints(), \dbObject\StatIndicatorReferencePoint::class);
+        $latestValue = count($indicatorValues) > 0 ? $indicatorValues[count($indicatorValues) - 1] : null;
+        $isOverdue = omoStatsIsIndicatorOverdue($embeddableIndicator);
+        $embeddableIndicatorsPayload[] = [
+            'id' => (int)$embeddableIndicator->getId(),
+            'kind' => 'indicator',
+            'title' => trim((string)$embeddableIndicator->get('name')),
+            'contextLabel' => omoStatsContextLabel($embeddableIndicator),
+            'valueLabel' => $latestValue instanceof \dbObject\StatIndicatorValue
+                ? omoStatsFormatNumber($latestValue->get('value'))
+                : omoDocumentsPvEditorT('documents.pv_editor.indicator.no_value'),
+            'dateLabel' => $latestValue instanceof \dbObject\StatIndicatorValue
+                ? omoStatsFormatDateTime($latestValue->get('measured_at'), false)
+                : '',
+            'statusLabel' => $isOverdue
+                ? omoDocumentsPvEditorT('documents.pv_editor.indicator.overdue')
+                : '',
+            'isOverdue' => $isOverdue,
+            'chartHtml' => omoStatsRenderChart($embeddableIndicator, $indicatorValues, $indicatorReferencePoints, 'compact', $isOverdue),
+        ];
+    }
+
+    $embeddableIndicatorGroups = new \dbObject\ArrayStatIndicatorGroup();
+    $embeddableIndicatorGroups->loadForContext($organizationId, 0, 'global');
+    foreach ($embeddableIndicatorGroups as $embeddableIndicatorGroup) {
+        if (!($embeddableIndicatorGroup instanceof \dbObject\StatIndicatorGroup) || !$embeddableIndicatorGroup->canView() || (int)$embeddableIndicatorGroup->getId() <= 0) {
+            continue;
+        }
+
+        $groupSeries = omoStatsGetGroupSeries($embeddableIndicatorGroup);
+        $groupMode = \dbObject\StatIndicatorGroup::normalizeDisplayMode($embeddableIndicatorGroup->get('display_mode'));
+        $groupMemberCount = count(omoStatsCollectionItems($embeddableIndicatorGroup->getItems(), \dbObject\StatIndicatorGroupItem::class));
+        $groupIsOverdue = omoStatsIsGroupOverdue($embeddableIndicatorGroup);
+        $embeddableIndicatorsPayload[] = [
+            'id' => (int)$embeddableIndicatorGroup->getId(),
+            'kind' => 'group',
+            'title' => trim((string)$embeddableIndicatorGroup->get('name')),
+            'contextLabel' => $groupMode === \dbObject\StatIndicatorGroup::DISPLAY_SUM
+                ? omoDocumentsPvEditorT('documents.pv_editor.indicator.group_sum')
+                : omoDocumentsPvEditorT('documents.pv_editor.indicator.group_overlay'),
+            'valueLabel' => omoDocumentsPvEditorT('documents.pv_editor.indicator.group_members', ['count' => $groupMemberCount]),
+            'dateLabel' => '',
+            'statusLabel' => $groupIsOverdue
+                ? omoDocumentsPvEditorT('documents.pv_editor.indicator.overdue')
+                : '',
+            'isOverdue' => $groupIsOverdue,
+            'chartHtml' => omoStatsRenderGroupChart($embeddableIndicatorGroup, $groupSeries, 'compact', $groupIsOverdue),
+        ];
+    }
+
+    usort($embeddableIndicatorsPayload, static function (array $left, array $right): int {
+        return strnatcasecmp((string)($left['title'] ?? ''), (string)($right['title'] ?? ''));
     });
 }
 
@@ -343,7 +417,7 @@ foreach ($points as $point) {
         width: 72px;
         height: 72px;
         border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 12%, var(--color-border, #d1d5db));
-        border-radius: 20px;
+        border-radius: var(--radius-md);
         background: linear-gradient(145deg, #ffffff, color-mix(in srgb, var(--color-primary, #2563eb) 8%, #f8fbff));
         box-shadow: 0 12px 28px -18px color-mix(in srgb, var(--color-primary, #2563eb) 48%, transparent);
     }
@@ -514,7 +588,7 @@ foreach ($points as $point) {
         width: 28px;
         height: 28px;
         flex: 0 0 28px;
-        border-radius: 9px;
+        border-radius: var(--radius-md);
         background: color-mix(in srgb, var(--color-primary, #2563eb) 8%, white);
     }
 
@@ -557,7 +631,7 @@ foreach ($points as $point) {
         width: 34px;
         height: 30px;
         border: 1px solid var(--color-border, #cbd5e1);
-        border-radius: 10px;
+        border-radius: var(--radius-md);
         background: var(--color-surface, #fff);
         cursor: pointer;
         font-weight: 800;
@@ -577,7 +651,7 @@ foreach ($points as $point) {
         min-width: 190px;
         padding: 6px;
         border: 1px solid var(--color-border, #cbd5e1);
-        border-radius: 12px;
+        border-radius: var(--radius-md);
         background: var(--color-surface, #fff);
         box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
     }
@@ -621,7 +695,7 @@ foreach ($points as $point) {
         isolation: isolate;
         padding: 1px;
         border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 76%, white);
-        border-radius: 15px;
+        border-radius: var(--radius-md);
         background: color-mix(in srgb, var(--color-surface, #fff) 92%, transparent);
     }
 
@@ -746,7 +820,7 @@ foreach ($points as $point) {
         width: 100%;
         padding: 16px 20px;
         border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 78%, white 22%);
-        border-radius: 20px;
+        border-radius: var(--radius-md);
         background:
             radial-gradient(circle at 92% 50%, color-mix(in srgb, var(--color-primary, #2563eb) 8%, transparent), transparent 18%),
             color-mix(in srgb, var(--color-surface, #fff) 95%, white);
@@ -758,7 +832,7 @@ foreach ($points as $point) {
         place-items: center;
         width: 48px;
         height: 48px;
-        border-radius: 15px;
+        border-radius: var(--radius-md);
         background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, white);
         color: var(--color-primary, #2563eb);
     }
@@ -831,8 +905,7 @@ foreach ($points as $point) {
         min-width: 0;
     }
 
-    .omo-pv-editor__attendance-name,
-    .omo-pv-editor__attendance-meta {
+    .omo-pv-editor__attendance-name {
         min-width: 0;
     }
 
@@ -840,11 +913,6 @@ foreach ($points as $point) {
         font-size: 0.86rem;
         font-weight: 600;
         color: var(--color-text, #0f172a);
-    }
-
-    .omo-pv-editor__attendance-meta {
-        color: var(--color-text-light, #64748b);
-        font-size: 0.8rem;
     }
 
     .omo-pv-editor__attendance-empty {
@@ -911,7 +979,7 @@ foreach ($points as $point) {
     .omo-pv-editor__panel {
         padding: 14px;
         border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 84%, white 16%);
-        border-radius: 20px;
+        border-radius: var(--radius-md);
         background: color-mix(in srgb, var(--color-surface, #ffffff) 92%, white 8%);
         box-shadow: 0 18px 40px -32px rgba(15, 23, 42, 0.35);
     }
@@ -949,7 +1017,7 @@ foreach ($points as $point) {
         position: relative;
         overflow: hidden;
         border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 84%, white 16%);
-        border-radius: 14px;
+        border-radius: var(--radius-md);
         background: color-mix(in srgb, var(--color-surface, #ffffff) 94%, transparent);
         transition: transform 140ms ease, margin 140ms ease;
     }
@@ -969,7 +1037,7 @@ foreach ($points as $point) {
         min-height: 38px;
         overflow: hidden;
         border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 22%, var(--color-border, #d1d5db));
-        border-radius: 12px;
+        border-radius: var(--radius-md);
         background: color-mix(in srgb, var(--color-primary, #2563eb) 7%, var(--color-surface, #fff));
         position: relative;
     }
@@ -1103,7 +1171,7 @@ foreach ($points as $point) {
         place-items: center;
         min-height: 38px;
         border: 3px solid var(--color-primary, #2563eb);
-        border-radius: 12px;
+        border-radius: var(--radius-md);
         background: color-mix(in srgb, var(--color-primary, #2563eb) 15%, transparent);
         box-shadow: 0 8px 24px color-mix(in srgb, var(--color-primary, #2563eb) 22%, transparent);
         color: var(--color-primary, #2563eb);
@@ -1244,7 +1312,7 @@ foreach ($points as $point) {
         margin-right: auto;
         padding: 9px;
         border: 1px dashed color-mix(in srgb, var(--color-danger, #dc2626) 62%, var(--color-border, #d1d5db));
-        border-radius: 10px;
+        border-radius: var(--radius-md);
         background: color-mix(in srgb, var(--color-danger, #dc2626) 8%, var(--color-surface, #fff));
         color: var(--color-danger, #dc2626);
         cursor: copy;
@@ -1583,7 +1651,7 @@ foreach ($points as $point) {
         place-items: center;
         width: 40px;
         height: 40px;
-        border-radius: 12px;
+        border-radius: var(--radius-md);
         background: color-mix(in srgb, var(--color-primary, #2563eb) 8%, var(--color-surface-alt, #f8fafc));
         color: color-mix(in srgb, var(--color-primary, #2563eb) 65%, var(--color-text, #0f172a));
         font-size: 0.74rem;
@@ -1614,6 +1682,10 @@ foreach ($points as $point) {
         display: block;
         color: var(--color-success, #15803d);
         font-size: 0.75rem;
+    }
+
+    .omo-pv-editor__secretary-state[hidden] {
+        display: none;
     }
 
     .omo-pv-editor__secretary-state.is-waiting {
@@ -1697,7 +1769,7 @@ foreach ($points as $point) {
         justify-content: center;
         padding: 10px;
         border: 0;
-        border-radius: 9px;
+        border-radius: var(--radius-md);
         background: #dc2626;
         color: #fff;
         cursor: pointer;
@@ -1901,7 +1973,7 @@ foreach ($points as $point) {
         .omo-pv-editor__identity-icon {
             width: 52px;
             height: 52px;
-            border-radius: 15px;
+            border-radius: var(--radius-md);
         }
 
         .omo-pv-editor__identity-icon img {
@@ -1935,7 +2007,7 @@ foreach ($points as $point) {
         .omo-pv-editor__attendance-icon {
             width: 38px;
             height: 38px;
-            border-radius: 12px;
+            border-radius: var(--radius-md);
         }
 
         .omo-pv-editor__attendance-icon svg {
@@ -2176,7 +2248,8 @@ foreach ($points as $point) {
                 <div class="omo-pv-editor__attendance-list" data-omo-pv-attendance-list>
                     <?php if (is_array($attendancePayload) && count((array)($attendancePayload['entries'] ?? [])) > 0): ?>
                         <?php foreach ((array)$attendancePayload['entries'] as $attendanceEntry): ?>
-                            <label class="omo-pv-editor__attendance-item">
+                            <?php $attendanceSecondaryLabel = trim((string)($attendanceEntry['secondaryLabel'] ?? '')); ?>
+                            <label class="omo-pv-editor__attendance-item"<?= $attendanceSecondaryLabel !== '' ? ' title="' . $escape($attendanceSecondaryLabel) . '"' : '' ?>>
                                 <input
                                     type="checkbox"
                                     data-omo-pv-attendance-toggle="<?= $escape((string)($attendanceEntry['identityKey'] ?? '')) ?>"
@@ -2185,9 +2258,6 @@ foreach ($points as $point) {
                                 >
                                 <span class="omo-pv-editor__attendance-copy">
                                     <span class="omo-pv-editor__attendance-name"><?= $escape((string)($attendanceEntry['displayLabel'] ?? '')) ?></span>
-                                    <?php if (trim((string)($attendanceEntry['secondaryLabel'] ?? '')) !== ''): ?>
-                                        <span class="omo-pv-editor__attendance-meta"><?= $escape(trim((string)$attendanceEntry['secondaryLabel'])) ?></span>
-                                    <?php endif; ?>
                                 </span>
                             </label>
                         <?php endforeach; ?>
@@ -2328,6 +2398,19 @@ foreach ($points as $point) {
         'cancel' => omoDocumentsPvEditorT('documents.pv_editor.action.cancel'),
         'remove' => omoDocumentsPvEditorT('documents.pv_editor.action.remove_embed'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const canEmbedIndicators = <?= $hasStatsApplication ? 'true' : 'false' ?>;
+    const embeddableIndicators = <?= json_encode($embeddableIndicatorsPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    const indicatorEmbedUi = <?= json_encode([
+        'buttonTitle' => omoDocumentsPvEditorT('documents.pv_editor.indicator.button_title'),
+        'modalTitle' => omoDocumentsPvEditorT('documents.pv_editor.indicator.modal_title'),
+        'search' => omoDocumentsPvEditorT('documents.pv_editor.embed.search'),
+        'searchPlaceholder' => omoDocumentsPvEditorT('documents.pv_editor.embed.search_placeholder'),
+        'visibleIndicators' => omoDocumentsPvEditorT('documents.pv_editor.indicator.visible'),
+        'none' => omoDocumentsPvEditorT('documents.pv_editor.embed.none'),
+        'insert' => omoDocumentsPvEditorT('documents.pv_editor.indicator.insert'),
+        'cancel' => omoDocumentsPvEditorT('documents.pv_editor.action.cancel'),
+        'remove' => omoDocumentsPvEditorT('documents.pv_editor.action.remove_embed'),
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const activeLockPointIds = new Set();
     const pendingLockPointIds = new Set();
     let knownPointSignatures = {};
@@ -2353,9 +2436,27 @@ foreach ($points as $point) {
             .replace(/'/g, '&#039;');
     }
 
+    function truncateDocumentEmbedSummary(value, maximumLength, maximumSentences) {
+        const limit = Number.isInteger(maximumLength) ? maximumLength : 420;
+        const sentenceLimit = Number.isInteger(maximumSentences) ? maximumSentences : 3;
+        let summary = String(value || '').replace(/\s+/g, ' ').trim();
+        if (summary === '') {
+            return '';
+        }
+
+        const sentences = summary.split(/(?<=[.!?])\s+/);
+        if (sentences.length > sentenceLimit) {
+            summary = sentences.slice(0, sentenceLimit).join(' ').trim() + '...';
+        }
+
+        return summary.length > limit
+            ? summary.slice(0, Math.max(1, limit - 3)).trim() + '...'
+            : summary;
+    }
+
     function openPvEmbeddedResourceByHash(resourceHash) {
         const normalizedHash = String(resourceHash || '').replace(/^#/, '');
-        if (!/^(?:(?:documents|decision)-d\d+|calendar-e\d+)$/.test(normalizedHash)) {
+        if (!/^(?:(?:documents|decision)-d\d+|calendar-e\d+|stats(?:-i\d+)?)$/.test(normalizedHash)) {
             return;
         }
 
@@ -2399,13 +2500,14 @@ foreach ($points as $point) {
             const documentLink = targetNode ? targetNode.closest('.omo-document-embed a[href^="#documents-d"]') : null;
             const decisionLink = targetNode ? targetNode.closest('.omo-decision-embed a[href^="#decision-d"]') : null;
             const eventLink = targetNode ? targetNode.closest('.omo-event-embed a[href^="#calendar-e"]') : null;
-            const resourceLink = documentLink || decisionLink || eventLink;
+            const indicatorLink = targetNode ? targetNode.closest('.omo-indicator-embed a[href^="#stats"]') : null;
+            const resourceLink = documentLink || decisionLink || eventLink || indicatorLink;
             if (!resourceLink || resourceLink.matches('[data-omo-document-embed-external], .omo-document-embed__external')) {
                 return;
             }
 
             const resourceHash = String(resourceLink.getAttribute('href') || '');
-            if (!/^#(?:(?:documents|decision)-d\d+|calendar-e\d+)$/.test(resourceHash)) {
+            if (!/^#(?:(?:documents|decision)-d\d+|calendar-e\d+|stats(?:-i\d+)?)$/.test(resourceHash)) {
                 return;
             }
 
@@ -2422,7 +2524,7 @@ foreach ($points as $point) {
         }
 
         const title = String(documentItem.title || '').trim() || ('Document #' + String(documentId));
-        const description = String(documentItem.description || '').trim();
+        const description = truncateDocumentEmbedSummary(documentItem.description || '');
         const documentHash = '#documents-d' + String(documentId);
         const externalUrl = String(window.location.pathname || '/omo/') + documentHash;
         let html = '<span class="omo-document-embed" contenteditable="false" data-omo-embed-type="document"'
@@ -2571,12 +2673,15 @@ foreach ($points as $point) {
 
         const title = String(decisionItem.title || '').trim() || ('Decision #' + String(decisionId));
         const typeLabel = String(decisionItem.typeLabel || '').trim();
+        const summary = String(decisionItem.summary || '').trim();
+        const displaySummary = [typeLabel, summary].filter(function (value) { return value !== ''; }).join(' - ');
         return '<span class="omo-decision-embed" contenteditable="false" data-omo-embed-type="decision"'
             + ' data-omo-decision-id="' + String(decisionId) + '"'
             + ' data-omo-decision-title="' + escapeDocumentEmbedHtml(title) + '"'
             + (typeLabel !== '' ? ' data-omo-decision-type="' + escapeDocumentEmbedHtml(typeLabel) + '"' : '')
+            + (summary !== '' ? ' data-omo-decision-summary="' + escapeDocumentEmbedHtml(summary) + '"' : '')
             + '><strong><a class="omo-decision-embed__title" href="#decision-d' + String(decisionId) + '">' + escapeDocumentEmbedHtml(title) + '</a></strong>'
-            + (typeLabel !== '' ? '<em>' + escapeDocumentEmbedHtml(typeLabel) + '</em>' : '')
+            + (displaySummary !== '' ? '<em>' + escapeDocumentEmbedHtml(displaySummary) + '</em>' : '')
             + '</span>';
     }
 
@@ -2593,7 +2698,7 @@ foreach ($points as $point) {
         const modalHtml = '<div class="omo-document-embed-picker">'
             + '<label class="omo-document-embed-picker__field"><span class="omo-document-embed-picker__label">' + escapeDocumentEmbedHtml(decisionEmbedUi.search || '') + '</span><input type="search" class="generic-form-control" data-omo-pv-decision-embed-search placeholder="' + escapeDocumentEmbedHtml(decisionEmbedUi.searchPlaceholder || '') + '"></label>'
             + '<label class="omo-document-embed-picker__field"><span class="omo-document-embed-picker__label">' + escapeDocumentEmbedHtml(decisionEmbedUi.visibleDecisions || '') + '</span><select class="generic-form-control omo-document-embed-picker__select" data-omo-pv-decision-embed-select size="10"></select></label>'
-            + '<div class="omo-document-embed-picker__preview"><div class="omo-document-embed-picker__preview-title" data-omo-pv-decision-embed-title></div><div class="omo-document-embed-picker__preview-context" data-omo-pv-decision-embed-type hidden></div></div>'
+            + '<div class="omo-document-embed-picker__preview"><div class="omo-document-embed-picker__preview-title" data-omo-pv-decision-embed-title></div><div class="omo-document-embed-picker__preview-context" data-omo-pv-decision-embed-type hidden></div><div class="omo-document-embed-picker__preview-description" data-omo-pv-decision-embed-summary hidden></div></div>'
             + '<div class="omo-document-embed-picker__actions">'
             + (targetNode ? '<button type="button" class="generic-action-button generic-action-button--danger" data-omo-pv-embed-remove>' + escapeDocumentEmbedHtml(decisionEmbedUi.remove || '') + '</button>' : '')
             + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-decision-embed-cancel>' + escapeDocumentEmbedHtml(decisionEmbedUi.cancel || '') + '</button><button type="button" class="generic-action-button generic-action-button--main" data-omo-pv-decision-embed-insert disabled>' + escapeDocumentEmbedHtml(decisionEmbedUi.insert || '') + '</button></div></div>';
@@ -2609,6 +2714,7 @@ foreach ($points as $point) {
         const selectNode = modalBody.querySelector('[data-omo-pv-decision-embed-select]');
         const titleNode = modalBody.querySelector('[data-omo-pv-decision-embed-title]');
         const typeNode = modalBody.querySelector('[data-omo-pv-decision-embed-type]');
+        const summaryNode = modalBody.querySelector('[data-omo-pv-decision-embed-summary]');
         const cancelButton = modalBody.querySelector('[data-omo-pv-decision-embed-cancel]');
         const insertButton = modalBody.querySelector('[data-omo-pv-decision-embed-insert]');
         const removeButton = modalBody.querySelector('[data-omo-pv-embed-remove]');
@@ -2618,11 +2724,12 @@ foreach ($points as $point) {
             if (selectNode && selectNode.value !== '') selectedItem = embeddableDecisions.find(function (item) { return String(item.id) === String(selectNode.value); }) || null;
             if (titleNode) titleNode.textContent = selectedItem ? (String(selectedItem.title || '').trim() || ('Decision #' + String(selectedItem.id))) : String(decisionEmbedUi.none || '');
             if (typeNode) { typeNode.textContent = selectedItem ? String(selectedItem.typeLabel || '') : ''; typeNode.hidden = typeNode.textContent === ''; }
+            if (summaryNode) { summaryNode.textContent = selectedItem ? String(selectedItem.summary || '') : ''; summaryNode.hidden = summaryNode.textContent === ''; }
             if (insertButton) insertButton.disabled = !selectedItem;
         };
         const render = function () {
             const query = String(searchNode && searchNode.value || '').trim().toLowerCase();
-            const matches = embeddableDecisions.filter(function (item) { return query === '' || [item.title, item.typeLabel].join(' ').toLowerCase().indexOf(query) >= 0; });
+            const matches = embeddableDecisions.filter(function (item) { return query === '' || [item.title, item.typeLabel, item.summary].join(' ').toLowerCase().indexOf(query) >= 0; });
             if (selectNode) {
                 selectNode.innerHTML = '';
                 matches.forEach(function (item) { const option = document.createElement('option'); option.value = String(item.id); option.textContent = (String(item.title || '').trim() || ('Decision #' + String(item.id))) + (item.typeLabel ? ' - ' + String(item.typeLabel) : ''); selectNode.appendChild(option); });
@@ -2649,13 +2756,13 @@ foreach ($points as $point) {
 
         const title = String(eventItem.title || '').trim() || ('Evenement #' + String(eventId));
         const scheduleLabel = String(eventItem.scheduleLabel || '').trim();
-        const description = String(eventItem.description || '').trim();
-        const summary = [scheduleLabel, description].filter(function (value) { return value !== ''; }).join(' - ');
+        const locationLabel = truncateDocumentEmbedSummary(eventItem.locationLabel || '', 420, 1);
+        const summary = [scheduleLabel, locationLabel].filter(function (value) { return value !== ''; }).join(' - ');
         return '<span class="omo-event-embed" contenteditable="false" data-omo-embed-type="event"'
             + ' data-omo-event-id="' + String(eventId) + '"'
             + ' data-omo-event-title="' + escapeDocumentEmbedHtml(title) + '"'
             + (scheduleLabel !== '' ? ' data-omo-event-schedule="' + escapeDocumentEmbedHtml(scheduleLabel) + '"' : '')
-            + (description !== '' ? ' data-omo-event-description="' + escapeDocumentEmbedHtml(description) + '"' : '')
+            + (locationLabel !== '' ? ' data-omo-event-location="' + escapeDocumentEmbedHtml(locationLabel) + '"' : '')
             + '><strong><a class="omo-event-embed__title" href="#calendar-e' + String(eventId) + '">' + escapeDocumentEmbedHtml(title) + '</a></strong>'
             + (summary !== '' ? '<em>' + escapeDocumentEmbedHtml(summary) + '</em>' : '')
             + '</span>';
@@ -2700,12 +2807,12 @@ foreach ($points as $point) {
             if (selectNode && selectNode.value !== '') selectedItem = embeddableEvents.find(function (item) { return String(item.id) === String(selectNode.value); }) || null;
             if (titleNode) titleNode.textContent = selectedItem ? (String(selectedItem.title || '').trim() || ('Evenement #' + String(selectedItem.id))) : String(eventEmbedUi.none || '');
             if (scheduleNode) { scheduleNode.textContent = selectedItem ? String(selectedItem.scheduleLabel || '') : ''; scheduleNode.hidden = scheduleNode.textContent === ''; }
-            if (descriptionNode) { descriptionNode.textContent = selectedItem ? String(selectedItem.description || '') : ''; descriptionNode.hidden = descriptionNode.textContent === ''; }
+            if (descriptionNode) { descriptionNode.textContent = selectedItem ? String(selectedItem.locationLabel || '') : ''; descriptionNode.hidden = descriptionNode.textContent === ''; }
             if (insertButton) insertButton.disabled = !selectedItem;
         };
         const render = function () {
             const query = String(searchNode && searchNode.value || '').trim().toLowerCase();
-            const matches = embeddableEvents.filter(function (item) { return query === '' || [item.title, item.scheduleLabel, item.description].join(' ').toLowerCase().indexOf(query) >= 0; });
+            const matches = embeddableEvents.filter(function (item) { return query === '' || [item.title, item.scheduleLabel, item.locationLabel].join(' ').toLowerCase().indexOf(query) >= 0; });
             if (selectNode) {
                 selectNode.innerHTML = '';
                 matches.forEach(function (item) { const option = document.createElement('option'); option.value = String(item.id); option.textContent = (String(item.title || '').trim() || ('Evenement #' + String(item.id))) + (item.scheduleLabel ? ' - ' + String(item.scheduleLabel) : ''); selectNode.appendChild(option); });
@@ -2721,6 +2828,100 @@ foreach ($points as $point) {
         if (cancelButton) cancelButton.addEventListener('click', function () { cleanup(); window.commonTopbarCloseModal(); });
         if (removeButton) removeButton.addEventListener('click', function () { if (targetNode && typeof field.removeNode === 'function') resolved = field.removeNode(targetNode); window.commonTopbarCloseModal(); });
         if (insertButton) insertButton.addEventListener('click', function () { const embedHtml = buildPvEventEmbedHtml(selectedItem); if (embedHtml !== '' && targetNode && typeof field.replaceNodeWithHtml === 'function') { resolved = true; field.replaceNodeWithHtml(targetNode, embedHtml); } else if (embedHtml !== '' && marker) { resolved = true; field.replaceMarkerWithHtml(marker, embedHtml); marker = null; } window.commonTopbarCloseModal(); });
+        render();
+    }
+
+    function buildPvIndicatorEmbedHtml(indicatorItem) {
+        const indicatorId = Number.parseInt(String(indicatorItem && indicatorItem.id || ''), 10);
+        if (!Number.isInteger(indicatorId) || indicatorId <= 0) {
+            return '';
+        }
+
+        const title = String(indicatorItem.title || '').trim() || ('Indicateur #' + String(indicatorId));
+        const indicatorKind = String(indicatorItem && indicatorItem.kind || '').trim() === 'group' ? 'group' : 'indicator';
+        const routeHash = indicatorKind === 'group' ? 'stats' : ('stats-i' + String(indicatorId));
+        const valueLabel = String(indicatorItem.valueLabel || '').trim();
+        const dateLabel = String(indicatorItem.dateLabel || '').trim();
+        const statusLabel = String(indicatorItem.statusLabel || '').trim();
+        const contextLabel = String(indicatorItem.contextLabel || '').trim();
+        const chartHtml = String(indicatorItem.chartHtml || '').trim();
+        return '<span class="omo-indicator-embed' + (indicatorItem && indicatorItem.isOverdue ? ' omo-indicator-embed--overdue' : '') + '" contenteditable="false" data-omo-embed-type="indicator"'
+            + ' data-omo-indicator-id="' + String(indicatorId) + '"'
+            + ' data-omo-indicator-kind="' + indicatorKind + '"'
+            + ' data-omo-indicator-title="' + escapeDocumentEmbedHtml(title) + '"'
+            + (valueLabel !== '' ? ' data-omo-indicator-value="' + escapeDocumentEmbedHtml(valueLabel) + '"' : '')
+            + (dateLabel !== '' ? ' data-omo-indicator-date="' + escapeDocumentEmbedHtml(dateLabel) + '"' : '')
+            + (statusLabel !== '' ? ' data-omo-indicator-status="' + escapeDocumentEmbedHtml(statusLabel) + '"' : '')
+            + (contextLabel !== '' ? ' data-omo-indicator-context="' + escapeDocumentEmbedHtml(contextLabel) + '"' : '')
+            + (indicatorItem && indicatorItem.isOverdue ? ' data-omo-indicator-overdue="1"' : '')
+            + '><strong><a class="omo-indicator-embed__title" href="#' + routeHash + '">' + escapeDocumentEmbedHtml(title) + '</a></strong>'
+            + '<span class="omo-indicator-embed__body">'
+            + (chartHtml !== '' ? '<span class="omo-indicator-embed__chart">' + chartHtml + '</span>' : '')
+            + '<span class="omo-indicator-embed__values"><b>' + escapeDocumentEmbedHtml(valueLabel) + '</b>'
+            + (dateLabel !== '' ? '<time>' + escapeDocumentEmbedHtml(dateLabel) + '</time>' : '')
+            + (statusLabel !== '' ? '<em>' + escapeDocumentEmbedHtml(statusLabel) + '</em>' : '')
+            + '</span></span></span>';
+    }
+
+    function openPvIndicatorEmbedPicker(field, targetNode) {
+        if (!canEmbedIndicators || !field || typeof field.createTemporaryCursorMarker !== 'function' || typeof field.replaceMarkerWithHtml !== 'function' || typeof window.commonTopbarOpenModal !== 'function') {
+            return;
+        }
+
+        const currentIndicatorId = targetNode instanceof Element
+            ? Number.parseInt(String(targetNode.getAttribute('data-omo-indicator-id') || ''), 10)
+            : 0;
+        const currentIndicatorKind = targetNode instanceof Element && String(targetNode.getAttribute('data-omo-indicator-kind') || '') === 'group'
+            ? 'group'
+            : 'indicator';
+        let marker = targetNode ? null : field.createTemporaryCursorMarker();
+        let resolved = false;
+        const modalHtml = '<div class="omo-document-embed-picker">'
+            + '<label class="omo-document-embed-picker__field"><span class="omo-document-embed-picker__label">' + escapeDocumentEmbedHtml(indicatorEmbedUi.search || '') + '</span><input type="search" class="generic-form-control" data-omo-pv-indicator-embed-search placeholder="' + escapeDocumentEmbedHtml(indicatorEmbedUi.searchPlaceholder || '') + '"></label>'
+            + '<label class="omo-document-embed-picker__field"><span class="omo-document-embed-picker__label">' + escapeDocumentEmbedHtml(indicatorEmbedUi.visibleIndicators || '') + '</span><select class="generic-form-control omo-document-embed-picker__select" data-omo-pv-indicator-embed-select size="10"></select></label>'
+            + '<div class="omo-document-embed-picker__preview omo-document-embed-picker__preview--indicator" data-omo-pv-indicator-embed-preview></div>'
+            + '<div class="omo-document-embed-picker__actions">'
+            + (targetNode ? '<button type="button" class="generic-action-button generic-action-button--danger" data-omo-pv-embed-remove>' + escapeDocumentEmbedHtml(indicatorEmbedUi.remove || '') + '</button>' : '')
+            + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-indicator-embed-cancel>' + escapeDocumentEmbedHtml(indicatorEmbedUi.cancel || '') + '</button><button type="button" class="generic-action-button generic-action-button--main" data-omo-pv-indicator-embed-insert disabled>' + escapeDocumentEmbedHtml(indicatorEmbedUi.insert || '') + '</button></div></div>';
+
+        window.commonTopbarOpenModal(indicatorEmbedUi.modalTitle || '', modalHtml, 'html');
+        const modalBody = document.getElementById('commonTopbarModalBody');
+        if (!(modalBody instanceof Element)) {
+            if (marker) field.removeTemporaryMarker(marker);
+            return;
+        }
+
+        const searchNode = modalBody.querySelector('[data-omo-pv-indicator-embed-search]');
+        const selectNode = modalBody.querySelector('[data-omo-pv-indicator-embed-select]');
+        const previewNode = modalBody.querySelector('[data-omo-pv-indicator-embed-preview]');
+        const cancelButton = modalBody.querySelector('[data-omo-pv-indicator-embed-cancel]');
+        const insertButton = modalBody.querySelector('[data-omo-pv-indicator-embed-insert]');
+        const removeButton = modalBody.querySelector('[data-omo-pv-embed-remove]');
+        let selectedItem = null;
+        const cleanup = function () { if (marker) field.removeTemporaryMarker(marker); marker = null; };
+        const updatePreview = function () {
+            if (selectNode && selectNode.value !== '') selectedItem = embeddableIndicators.find(function (item) { return String(item.id) === String(selectNode.value); }) || null;
+            if (previewNode) previewNode.innerHTML = selectedItem ? buildPvIndicatorEmbedHtml(selectedItem) : escapeDocumentEmbedHtml(indicatorEmbedUi.none || '');
+            if (insertButton) insertButton.disabled = !selectedItem;
+        };
+        const render = function () {
+            const query = String(searchNode && searchNode.value || '').trim().toLowerCase();
+            const matches = embeddableIndicators.filter(function (item) { return query === '' || [item.title, item.contextLabel, item.valueLabel, item.statusLabel].join(' ').toLowerCase().indexOf(query) >= 0; });
+            if (selectNode) {
+                selectNode.innerHTML = '';
+                matches.forEach(function (item) { const option = document.createElement('option'); option.value = String(item.id); option.textContent = (String(item.title || '').trim() || ('Indicateur #' + String(item.id))) + (item.valueLabel ? ' - ' + String(item.valueLabel) : ''); selectNode.appendChild(option); });
+                selectNode.disabled = matches.length === 0;
+            }
+            selectedItem = matches.find(function (item) { return Number(item.id) === currentIndicatorId && String(item.kind || 'indicator') === currentIndicatorKind; }) || matches[0] || null;
+            if (selectNode && selectedItem) selectNode.value = String(selectedItem.id);
+            updatePreview();
+        };
+        window.addEventListener('common-topbar-modal-close', function () { if (!resolved) cleanup(); }, {once: true});
+        if (searchNode) { searchNode.addEventListener('input', render); searchNode.focus(); }
+        if (selectNode) selectNode.addEventListener('change', updatePreview);
+        if (cancelButton) cancelButton.addEventListener('click', function () { cleanup(); window.commonTopbarCloseModal(); });
+        if (removeButton) removeButton.addEventListener('click', function () { if (targetNode && typeof field.removeNode === 'function') resolved = field.removeNode(targetNode); window.commonTopbarCloseModal(); });
+        if (insertButton) insertButton.addEventListener('click', function () { const embedHtml = buildPvIndicatorEmbedHtml(selectedItem); if (embedHtml !== '' && targetNode && typeof field.replaceNodeWithHtml === 'function') { resolved = true; field.replaceNodeWithHtml(targetNode, embedHtml); } else if (embedHtml !== '' && marker) { resolved = true; field.replaceMarkerWithHtml(marker, embedHtml); marker = null; } window.commonTopbarCloseModal(); });
         render();
     }
 
@@ -2854,7 +3055,7 @@ foreach ($points as $point) {
     })();
 
     function ensureHtmlFieldLibrary(callback) {
-        const htmlFieldVersion = '20260714-removable-resource-embeds';
+        const htmlFieldVersion = '20260716-pv-indicator-readonly';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'
@@ -3317,11 +3518,8 @@ foreach ($points as $point) {
             copy.appendChild(name);
 
             const secondaryLabel = String(entry.secondaryLabel || '').trim();
-            if (secondaryLabel !== '') {
-                const meta = document.createElement('span');
-                meta.className = 'omo-pv-editor__attendance-meta';
-                meta.textContent = secondaryLabel;
-                copy.appendChild(meta);
+            if (secondaryLabel !== '' && secondaryLabel !== name.textContent) {
+                label.title = secondaryLabel;
             }
 
             label.appendChild(checkbox);
@@ -3619,6 +3817,18 @@ foreach ($points as $point) {
                         }
                     });
                 }
+                if (canEmbedIndicators) {
+                    customButtons.push({
+                        name: 'omoPvIndicatorEmbed',
+                        group: 'omo-pv-indicator-embed',
+                        label: 'Indicateur',
+                        title: indicatorEmbedUi.buttonTitle || 'Inserer un indicateur',
+                        className: 'note-btn-light omo-pv-editor__indicator-embed-button',
+                        onClick: function (context) {
+                            openPvIndicatorEmbedPicker(context && context.api ? context.api : field);
+                        }
+                    });
+                }
                 field = window.omoSimpleHtmlField.mount(editorHost, {
                     value: String(sourceField.value || ''),
                     placeholder: <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.field.content'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
@@ -3638,7 +3848,8 @@ foreach ($points as $point) {
                         const documentEmbed = targetNode ? targetNode.closest('.omo-document-embed[data-omo-embed-type="document"]') : null;
                         const decisionEmbed = targetNode ? targetNode.closest('.omo-decision-embed[data-omo-embed-type="decision"]') : null;
                         const eventEmbed = targetNode ? targetNode.closest('.omo-event-embed[data-omo-embed-type="event"]') : null;
-                        if (!documentEmbed && !decisionEmbed && !eventEmbed) {
+                        const indicatorEmbed = targetNode ? targetNode.closest('.omo-indicator-embed[data-omo-embed-type="indicator"]') : null;
+                        if (!documentEmbed && !decisionEmbed && !eventEmbed && !indicatorEmbed) {
                             return;
                         }
 
@@ -3651,6 +3862,8 @@ foreach ($points as $point) {
                             openPvDecisionEmbedPicker(field, decisionEmbed);
                         } else if (eventEmbed) {
                             openPvEventEmbedPicker(field, eventEmbed);
+                        } else if (indicatorEmbed) {
+                            openPvIndicatorEmbedPicker(field, indicatorEmbed);
                         }
                     }
                 });
@@ -4595,6 +4808,10 @@ foreach ($points as $point) {
             }
 
             if (isPointCardProtectedFromRemoteRefresh(currentCard)) {
+                // Keep the local draft DOM, but still accept its server-side position.
+                // Otherwise a reordered point in edit mode is rebuilt from its old
+                // position until the point itself is saved.
+                mergeKnownPointSignature(pointPayload);
                 return;
             }
 
@@ -5603,6 +5820,10 @@ foreach ($points as $point) {
             releaseActiveLocksWithBeacon();
         }
     });
+
+    if (root.querySelector('.omo-simple-html-render')) {
+        ensureHtmlFieldLibrary(function () {});
+    }
 
     mountEditableCards(root);
     [documentTitleInput, documentDescriptionInput].forEach(function (input) {

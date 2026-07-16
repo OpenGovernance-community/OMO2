@@ -205,7 +205,7 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 			width: 100%;
 			height: 20px;
 			background: var(--progress-bg);
-			border-radius: 10px;
+			border-radius: var(--radius-md);
 			overflow: hidden;
 			margin-bottom: 20px;
 		}

@@ -239,7 +239,7 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
     padding: 20px;
     text-align: left;
     cursor: pointer;
-    border-radius: 22px;
+    border-radius: var(--radius-md);
     border-color: color-mix(in srgb, var(--color-primary, #2563eb) 12%, var(--color-border, #d1d5db));
     background:
         radial-gradient(circle at top right, color-mix(in srgb, var(--color-primary, #2563eb) 10%, transparent), transparent 38%),
@@ -282,7 +282,7 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
     width: 64px;
     height: 64px;
     min-width: 64px;
-    border-radius: 18px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #ffffff));
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary, #2563eb) 12%, var(--color-border, #d1d5db));
 }

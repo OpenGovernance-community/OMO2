@@ -195,7 +195,7 @@ $brandHref = $shareLink->buildShareUrl($initialCid);
         max-width: 520px;
         padding: 24px;
         border: 1px solid var(--color-border, #e5e7eb);
-        border-radius: 18px;
+        border-radius: var(--radius-md);
         background: var(--color-surface, #ffffff);
         box-shadow: var(--shadow-md, 0 12px 24px rgba(0,0,0,0.12));
     }

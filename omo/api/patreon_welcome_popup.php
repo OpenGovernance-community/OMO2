@@ -124,7 +124,7 @@ if (!$patreonConfigured) {
     width: 100%;
     max-width: 760px;
     margin: 0 auto;
-    border-radius: 18px;
+    border-radius: var(--radius-md);
     background: #020617;
     aspect-ratio: 16 / 9;
 }
@@ -164,7 +164,7 @@ if (!$patreonConfigured) {
 
 .omo-patreon-welcome__status {
     padding: 11px 14px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     font-weight: 600;
 }
 

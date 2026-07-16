@@ -23,10 +23,6 @@
     --omo-left-structure-min-height: 120px;
     --omo-left-structure-resizer-size: 10px;
 
-    /* RADIUS */
-    --radius-sm: 6px;
-    --radius-md: 10px;
-
     /* TRANSITIONS */
     --transition: 0.2s ease;
 }
@@ -79,7 +75,7 @@
     display: grid;
     gap: 14px;
     padding: 18px;
-    border-radius: 18px;
+    border-radius: var(--radius-md);
     border: 1px solid color-mix(in srgb, var(--color-border) 86%, #0f766e 14%);
     background: color-mix(in srgb, var(--color-surface) 92%, #ecfeff 8%);
     box-shadow: 0 16px 34px -30px rgba(15, 23, 42, 0.3);
@@ -98,7 +94,7 @@
     justify-content: center;
     width: 48px;
     height: 48px;
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface));
     color: color-mix(in srgb, var(--color-primary) 84%, #0f172a 16%);
     font-weight: 800;
@@ -250,7 +246,7 @@ html[data-theme="dark"] .omo-document-pv__point-type-icon {
 .omo-document-pv__empty {
     margin: 0;
     padding: 18px;
-    border-radius: 18px;
+    border-radius: var(--radius-md);
     border: 1px dashed color-mix(in srgb, var(--color-border) 82%, #0f766e 18%);
     background: color-mix(in srgb, var(--color-surface) 94%, #f0fdfa 6%);
     color: var(--color-text-light);
@@ -269,7 +265,7 @@ html[data-theme="dark"] .omo-document-pv__point-type-icon {
     .omo-document-pv__point-order {
         width: 40px;
         height: 40px;
-        border-radius: 14px;
+        border-radius: var(--radius-md);
         font-size: 0.85rem;
     }
 }
@@ -527,7 +523,7 @@ body {
 
 .omo-personal-space__hero,
 .omo-personal-space__card {
-    --generic-section-radius: 22px;
+    --generic-section-radius: var(--radius-md);
     --generic-section-shadow: 0 14px 28px color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
@@ -553,7 +549,7 @@ body {
 
 .omo-personal-space__section-action {
     border: 0;
-    border-radius: 13px;
+    border-radius: var(--radius-md);
     background: 
 color-mix(in srgb, var(--color-primary) 14%, var(--color-surface-alt));
     color: var(--color-text, #0f172a);
@@ -593,7 +589,7 @@ color-mix(in srgb, var(--color-primary) 14%, var(--color-surface-alt));
     gap: 6px;
     width: 100%;
     border: 1px solid color-mix(in srgb, var(--color-border) 88%, transparent);
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface) 84%, transparent);
     padding: 14px 15px;
     text-align: left;
@@ -731,7 +727,7 @@ color-mix(in srgb, var(--color-primary) 14%, var(--color-surface-alt));
     );
     background-size: 400% 100%;
     animation: shimmer 1.4s infinite;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     margin-bottom: 10px;
 }
 
@@ -937,7 +933,7 @@ color-mix(in srgb, var(--color-primary) 14%, var(--color-surface-alt));
 
     padding: 6px 10px;
     font-size: 12px;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
 
     pointer-events: none;
     white-space: nowrap;
@@ -1068,7 +1064,7 @@ html[data-theme] .common-help-card p {
     width: 100%;
     padding: 10px 12px;
     border: 1px solid var(--topbar-input-border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     background: var(--topbar-input-bg);
     color: var(--topbar-menu-text);
     outline: none;
@@ -1295,7 +1291,7 @@ html[data-theme] .common-help-card p {
     --omo-panel-view-app-icon-accent: var(--color-primary, #2563eb);
     width: 38px;
     height: 38px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1691,7 +1687,7 @@ html[data-theme] .common-help-card p {
         min-width: 42px;
         min-height: 42px;
         padding: 0;
-        border-radius: 0 0 0 12px !important;
+        border-radius: 0 0 0 var(--radius-md) !important;
         border-top: 0;
         border-right: 0;
         display: inline-flex;
@@ -1999,7 +1995,7 @@ html[data-theme] .common-help-card p {
     min-height: var(--omo-external-panel-peek-height);
     padding: 0 22px;
     border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 80%, white 20%);
-    border-radius: 0 0 18px 18px;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
     background: color-mix(in srgb, var(--color-surface, #ffffff) 92%, white 8%);
     color: var(--color-text, #0f172a);
     box-shadow: 0 18px 40px -28px rgba(15, 23, 42, 0.42);
@@ -2156,6 +2152,12 @@ html[data-theme] .common-help-card p {
 .omo-overlay-drawer__close:hover {
     border-color: var(--color-primary);
     color: var(--color-primary);
+}
+
+.omo-overlay-drawer__close.generic-action-button {
+    min-height: 42px;
+    padding: 10px 16px;
+    border-radius: var(--radius-md);
 }
 
 .omo-overlay-drawer__body {
@@ -2684,7 +2686,7 @@ body.view-right .panel-right {
     display: grid;
     gap: 6px;
     padding: 12px 14px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     border: 1px solid var(--color-border);
     background: var(--color-surface-alt);
 }
@@ -2791,7 +2793,7 @@ body.view-right .panel-right {
     margin: 0 0 1em;
     padding: 12px 14px;
     border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 88%, #2563eb 12%);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface, #fff) 90%, #eff6ff 10%);
     box-shadow: 0 10px 24px -20px rgba(37, 99, 235, 0.45);
     white-space: normal;
@@ -2823,7 +2825,7 @@ body.view-right .panel-right {
     margin: 0 0 1em;
     padding: 12px 14px;
     border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 88%, #7c3aed 12%);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface, #fff) 90%, #f5f3ff 10%);
     box-shadow: 0 10px 24px -20px rgba(124, 58, 237, 0.45);
     white-space: normal;
@@ -2836,7 +2838,7 @@ body.view-right .panel-right {
     margin: 0 0 1em;
     padding: 12px 14px;
     border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 88%, #0f766e 12%);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface, #fff) 90%, #ecfdf5 10%);
     box-shadow: 0 10px 24px -20px rgba(15, 118, 110, 0.45);
     white-space: normal;
@@ -2912,7 +2914,7 @@ body.view-right .panel-right {
     justify-content: center;
     width: 20px;
     height: 20px;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     color: var(--color-text-light, #6b7280);
     font-size: 14px;
     line-height: 1;

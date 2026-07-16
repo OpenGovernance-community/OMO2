@@ -14,6 +14,7 @@ $sourceLang = [
     'documents.detail.event.virtual_fallback' => ['text' => 'Visio', 'context' => 'Fallback location label when only a virtual meeting link exists.'],
     'documents.detail.action.more' => ['text' => 'Plus d actions', 'context' => 'Accessible label for the read-only document action menu.'],
     'documents.detail.action.export_pdf' => ['text' => 'Exporter en PDF', 'context' => 'Action used to download a PV document as a PDF file.'],
+    'documents.detail.action.edit' => ['text' => 'Modifier', 'context' => 'Button opening the document editor from the document detail drawer.'],
     'documents.detail.alt_texts.title' => ['text' => 'Versions texte', 'context' => 'Section title listing alternate text versions.'],
     'documents.detail.alt_texts.fallback' => ['text' => 'Version texte', 'context' => 'Fallback title for an alternate text variant.'],
     'documents.detail.media.title' => ['text' => 'Médias associés', 'context' => 'Section title listing associated media.'],
@@ -113,6 +114,13 @@ $pdfExportUrl = $document->isPvDocument()
     ? '/omo/api/documents/pv/export_pdf.php?id=' . rawurlencode((string)(int)$document->getId())
         . '&oid=' . rawurlencode((string)$organizationId)
     : '';
+$canEditDocument = !$document->isPvDocument()
+    && $document->canEditInOrganizationContext($organizationId, $currentUserId);
+$editUrl = $canEditDocument
+    ? '/omo/api/documents/create.php?oid=' . rawurlencode((string)$organizationId)
+        . ($holonId > 0 ? '&cid=' . rawurlencode((string)$holonId) : '')
+        . '&id=' . rawurlencode((string)(int)$document->getId())
+    : '';
 
 if ($associatedEvent instanceof \dbObject\Event) {
     $startAt = $associatedEvent->get('start_at');
@@ -147,6 +155,22 @@ if ($associatedEvent instanceof \dbObject\Event) {
     data-omo-document-drawer-title="<?= $escape($drawerTitle) ?>"
     data-omo-document-drawer-description="<?= $escape($drawerDescription) ?>"
 >
+    <div
+        hidden
+        data-omo-subdrawer-header
+        data-omo-subdrawer-title="<?= $escape($drawerTitle) ?>"
+        data-omo-subdrawer-description="<?= $escape($drawerDescription) ?>"
+    >
+        <?php if ($editUrl !== ''): ?>
+            <button
+                type="button"
+                class="generic-action-button generic-action-button--main"
+                data-omo-subdrawer-action
+                data-omo-document-open-editor-url="<?= $escape($editUrl) ?>"
+            ><?= $escape(omoDocumentsDetailT('documents.detail.action.edit')) ?></button>
+        <?php endif; ?>
+    </div>
+
     <article class="omo-document-detail__article">
         <header class="omo-document-detail__intro">
             <?php if ($pdfExportUrl !== ''): ?>
@@ -347,7 +371,7 @@ if ($associatedEvent instanceof \dbObject\Event) {
     width: 34px;
     height: 30px;
     border: 1px solid var(--color-border);
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     background: var(--color-surface);
     color: var(--color-text);
     cursor: pointer;
@@ -368,7 +392,7 @@ if ($associatedEvent instanceof \dbObject\Event) {
     min-width: 190px;
     padding: 6px;
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--color-surface);
     box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
 }
@@ -471,7 +495,7 @@ if ($associatedEvent instanceof \dbObject\Event) {
     width: 100%;
     min-height: 72vh;
     border: 1px solid var(--color-border);
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     background: #fff;
 }
 
@@ -479,7 +503,7 @@ if ($associatedEvent instanceof \dbObject\Event) {
     display: grid;
     gap: 10px;
     padding: 16px 18px;
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     border: 1px solid color-mix(in srgb, var(--color-border) 85%, #2563eb 15%);
     background: color-mix(in srgb, var(--color-surface) 92%, #eff6ff 8%);
 }
@@ -509,7 +533,7 @@ if ($associatedEvent instanceof \dbObject\Event) {
     gap: 10px;
     margin: 0 0 1em;
     padding: 14px 16px;
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     border: 1px solid color-mix(in srgb, var(--color-border) 85%, #2563eb 15%);
     background: color-mix(in srgb, var(--color-surface) 90%, #eff6ff 10%);
 }

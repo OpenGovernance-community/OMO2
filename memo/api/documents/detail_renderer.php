@@ -231,7 +231,7 @@ if (!function_exists('memoRenderDocumentDetail')) {
     width: 100%;
     min-height: 72vh;
     border: 1px solid var(--color-border);
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     background: #fff;
 }
 
@@ -240,7 +240,7 @@ if (!function_exists('memoRenderDocumentDetail')) {
     display: grid;
     gap: 10px;
     padding: 16px 18px;
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     border: 1px solid color-mix(in srgb, var(--color-border) 85%, #2563eb 15%);
     background: color-mix(in srgb, var(--color-surface) 92%, #eff6ff 8%);
 }
