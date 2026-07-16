@@ -45,7 +45,7 @@
     min-width: 230px;
     padding: 7px;
     border: 1px solid var(--color-border, #d1d5db);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--color-surface, #fff);
     box-shadow: 0 16px 30px rgba(15, 23, 42, 0.16);
 }
@@ -57,7 +57,7 @@
 .omo-stats__more-menu-panel button {
     padding: 10px 12px;
     border: 0;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: transparent;
     color: var(--color-text, #1f2937);
     cursor: pointer;
@@ -206,7 +206,7 @@
     height: 34px;
     padding: 0;
     border: 1px solid var(--color-border, #d1d5db);
-    border-radius: 9px;
+    border-radius: var(--radius-md);
     background: var(--color-surface, #fff);
     color: var(--color-text-light, #64748b);
     cursor: pointer;
@@ -230,7 +230,7 @@
     min-width: 190px;
     padding: 6px;
     border: 1px solid var(--color-border, #d1d5db);
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     background: var(--color-surface, #fff);
     box-shadow: 0 16px 30px rgba(15, 23, 42, 0.16);
 }
@@ -242,7 +242,7 @@
 .omo-stats-item-menu__panel button {
     padding: 9px 10px;
     border: 0;
-    border-radius: 7px;
+    border-radius: var(--radius-md);
     background: transparent;
     color: var(--color-text, #1f2937);
     cursor: pointer;
@@ -263,7 +263,7 @@
 .omo-stats-card__chart {
     min-height: 150px;
     overflow: hidden;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background:
         linear-gradient(180deg, color-mix(in srgb, var(--omo-stats-accent) 4%, var(--color-surface, #fff)), var(--color-surface-alt, #f8fafc));
 }
@@ -453,7 +453,7 @@
     min-width: 0;
     padding: 10px 12px;
     border: 1px solid var(--color-border, #d1d5db);
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     background: var(--color-surface-alt, #f8fafc);
 }
 
@@ -596,7 +596,7 @@
 .omo-stats-value-list {
     display: grid;
     border: 1px solid var(--color-border, #d1d5db);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     overflow: hidden;
 }
 
@@ -733,7 +733,7 @@
     width: 16px;
     height: 20px;
     border: 3px solid var(--color-surface, #fff);
-    border-radius: 5px 5px 9px 9px;
+    border-radius: var(--radius-md) var(--radius-md) var(--radius-md) var(--radius-md);
     background: var(--omo-stats-reference);
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--omo-stats-reference) 64%, var(--color-border, #d1d5db)), 0 4px 10px rgba(15, 23, 42, 0.16);
     transform: translateX(-50%);

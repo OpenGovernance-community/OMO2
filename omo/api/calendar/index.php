@@ -1548,7 +1548,8 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     <p class="omo-overlay-drawer__description" data-omo-calendar-editor-description><?= omoApiEscape(omoCalendarT('calendar.drawer.description')) ?></p>
                 </div>
                 <div class="generic-drawer-header__actions">
-                    <button type="button" class="omo-overlay-drawer__close" data-omo-calendar-editor-close>Fermer</button>
+                    <div class="omo-calendar__drawer-custom-actions" data-omo-calendar-editor-actions></div>
+                    <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary" data-omo-calendar-editor-close>Fermer</button>
                 </div>
             </div>
             <div class="omo-overlay-drawer__body" data-omo-calendar-editor-body></div>
@@ -1565,6 +1566,11 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
         var drawer = root.querySelector('[data-omo-calendar-editor-drawer]');
         var drawerBody = root.querySelector('[data-omo-calendar-editor-body]');
+        var drawerTitle = root.querySelector('[data-omo-calendar-editor-title]');
+        var drawerDescription = root.querySelector('[data-omo-calendar-editor-description]');
+        var drawerActions = root.querySelector('[data-omo-calendar-editor-actions]');
+        var defaultDrawerTitle = drawerTitle ? drawerTitle.textContent : '';
+        var defaultDrawerDescription = drawerDescription ? drawerDescription.textContent : '';
         var currentUrl = root.getAttribute('data-omo-calendar-current-url') || '';
         var currentView = root.getAttribute('data-omo-calendar-view') || 'month';
         function normalizeScopeName(scopeName) {
@@ -2102,11 +2108,103 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             rememberScheduleState(form);
         }
 
+        function setDrawerHeader(options) {
+            var settings = options && typeof options === 'object' ? options : {};
+            var hasTitle = Object.prototype.hasOwnProperty.call(settings, 'title');
+            var hasDescription = Object.prototype.hasOwnProperty.call(settings, 'description')
+                || Object.prototype.hasOwnProperty.call(settings, 'subtitle');
+            var hasActions = Object.prototype.hasOwnProperty.call(settings, 'actions');
+            var description = Object.prototype.hasOwnProperty.call(settings, 'subtitle')
+                ? settings.subtitle
+                : settings.description;
+
+            if (drawerTitle && hasTitle) {
+                drawerTitle.textContent = settings.title || '';
+            }
+
+            if (drawerDescription && hasDescription) {
+                drawerDescription.textContent = description || '';
+                drawerDescription.hidden = !description;
+            }
+
+            if (!drawerActions || !hasActions) {
+                return;
+            }
+
+            drawerActions.innerHTML = '';
+            (Array.isArray(settings.actions) ? settings.actions : []).forEach(function (action) {
+                var button;
+                if (action instanceof HTMLElement) {
+                    drawerActions.appendChild(action);
+                    return;
+                }
+
+                if (!action || typeof action !== 'object' || !action.label) {
+                    return;
+                }
+
+                button = document.createElement('button');
+                button.type = action.type || 'button';
+                button.className = action.className || 'generic-action-button';
+                button.textContent = action.label;
+                if (action.attributes && typeof action.attributes === 'object') {
+                    Object.keys(action.attributes).forEach(function (name) {
+                        button.setAttribute(name, String(action.attributes[name]));
+                    });
+                }
+                if (typeof action.onClick === 'function') {
+                    button.addEventListener('click', action.onClick);
+                }
+                drawerActions.appendChild(button);
+            });
+        }
+
+        function resetDrawerHeader() {
+            setDrawerHeader({
+                title: defaultDrawerTitle,
+                description: defaultDrawerDescription,
+                actions: []
+            });
+        }
+
+        function applyDrawerHeaderFromContent(content) {
+            var header = content ? content.querySelector('[data-omo-calendar-drawer-header]') : null;
+            if (!header) {
+                resetDrawerHeader();
+                return;
+            }
+
+            setDrawerHeader({
+                title: header.getAttribute('data-omo-calendar-drawer-title') || defaultDrawerTitle,
+                description: header.getAttribute('data-omo-calendar-drawer-description') || '',
+                actions: Array.prototype.slice.call(header.querySelectorAll('[data-omo-calendar-drawer-action]'))
+            });
+        }
+
+        window.omoCalendarDrawer = window.omoCalendarDrawer || {};
+        window.omoCalendarDrawer.setHeader = setDrawerHeader;
+        window.omoCalendarDrawer.setTitle = function (title) {
+            setDrawerHeader({ title: title });
+        };
+        window.omoCalendarDrawer.setSubtitle = function (subtitle) {
+            setDrawerHeader({ subtitle: subtitle });
+        };
+        window.omoCalendarDrawer.addButton = function (button) {
+            if (!drawerActions) {
+                return;
+            }
+            setDrawerHeader({
+                actions: Array.prototype.slice.call(drawerActions.children).concat([button])
+            });
+        };
+        window.omoCalendarDrawer.resetHeader = resetDrawerHeader;
+
         function setDrawerLoading() {
             if (!drawerBody) {
                 return;
             }
 
+            resetDrawerHeader();
             drawerBody.innerHTML = '<div class="generic-section"><?= omoApiEscape(omoCalendarT('calendar.loading')) ?></div>';
         }
 
@@ -2115,6 +2213,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 return;
             }
 
+            resetDrawerHeader();
             drawerBody.innerHTML = '<div class="generic-section"><?= omoApiEscape(omoCalendarT('calendar.error.load_form')) ?></div>';
         }
 
@@ -2178,6 +2277,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 }
 
                 drawerBody.innerHTML = html;
+                applyDrawerHeaderFromContent(drawerBody);
                 if (typeof window.initGenericComponents === 'function') {
                     window.initGenericComponents(drawerBody);
                 }
@@ -2493,8 +2593,18 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             });
         });
 
-        if (drawerBody) {
-            drawerBody.addEventListener('click', function (event) {
+        if (drawer) {
+            drawer.addEventListener('click', function (event) {
+                var cancelButton = event.target.closest('[data-omo-calendar-open-detail-url]');
+                if (cancelButton) {
+                    event.preventDefault();
+                    var cancelDetailUrl = cancelButton.getAttribute('data-omo-calendar-open-detail-url') || '';
+                    if (cancelDetailUrl) {
+                        openDrawerWithUrl(cancelDetailUrl);
+                    }
+                    return;
+                }
+
                 var editButton = event.target.closest('[data-omo-calendar-open-edit-url]');
                 if (!editButton) {
                     var invitationButton = event.target.closest('[data-omo-calendar-open-invitations-url]');
@@ -2558,6 +2668,9 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 openDrawerWithUrl(editUrl);
             });
 
+        }
+
+        if (drawerBody) {
             drawerBody.addEventListener('change', function (event) {
                 var form = event.target && event.target.form ? event.target.form : null;
                 if (form && form.matches('[data-omo-calendar-create-form]')) {
@@ -2593,6 +2706,9 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
                 var feedback = form.querySelector('[data-omo-calendar-create-feedback]');
                 var submitButton = form.querySelector('[data-omo-calendar-create-submit]');
+                if (!submitButton && form.id) {
+                    submitButton = drawer.querySelector('[data-omo-calendar-create-submit][form="' + form.id + '"]');
+                }
                 var formData = new FormData(form);
 
                 if (submitButton) {
@@ -2738,7 +2854,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 .omo-calendar__app-icon {
     width: 38px;
     height: 38px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -3028,7 +3144,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     display: grid;
     gap: 4px;
     padding: 8px 9px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-primary, #2563eb) 9%, var(--color-surface, #ffffff));
     border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 16%, var(--color-border, #dbe2ea));
 }
@@ -3111,7 +3227,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     overflow: auto;
     overscroll-behavior: contain;
     border: 1px solid color-mix(in srgb, var(--color-border, #dbe2ea) 82%, white 18%);
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     background: var(--color-surface, #ffffff);
 }
 
@@ -3195,7 +3311,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     display: grid;
     gap: 3px;
     padding: 8px 9px;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-primary, #2563eb) 9%, var(--color-surface, #ffffff));
     border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 16%, var(--color-border, #dbe2ea));
 }
@@ -3264,7 +3380,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     display: grid;
     gap: 4px;
     padding: 7px 8px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-primary, #2563eb) 9%, var(--color-surface, #ffffff));
     border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 18%, var(--color-border, #dbe2ea));
     box-shadow: 0 8px 20px -18px rgba(15, 23, 42, 0.32);
@@ -3436,6 +3552,13 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     padding: 0;
 }
 
+.omo-calendar__drawer-custom-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 @media (max-width: 920px) {
     .omo-calendar__weekday-row,
     .omo-calendar__grid {
@@ -3530,7 +3653,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         width: 16px;
         min-height: 100%;
         padding: 0;
-        border-radius: 8px;
+        border-radius: var(--radius-md);
         font-size: 14px;
         line-height: 1;
         overflow: hidden;
@@ -3566,7 +3689,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     }
 
     .omo-calendar__new-button.omo-mobile-corner-action {
-        border-radius: 0 0 0 12px !important;
+        border-radius: 0 0 0 var(--radius-md) !important;
     }
 
     .omo-calendar__header-secondary {

@@ -237,7 +237,7 @@ $documentHtml = '<!doctype html><html lang="fr"><head><meta charset="UTF-8"><sty
     . '.omo-document-pv__group { margin-top:5mm; padding:2mm 3mm; border-left:4px solid #2d7c8f; background:#edf6f7; page-break-after:avoid; }'
     . '.omo-document-pv__group-title { margin:0; color:#16485a; font-size:13pt; }'
     . '.omo-document-pv__group-order { margin-right:2mm; color:#68838f; }'
-    . '.omo-document-pv__point { margin-top:4mm; padding:4mm; border:1px solid #ccdce3; border-radius:5px; page-break-inside:auto; }'
+    . '.omo-document-pv__point { margin-top:4mm; padding:4mm; border:1px solid #ccdce3; border-radius:var(--radius-md); page-break-inside:auto; }'
     . '.omo-document-pv__point-head { display:table; width:100%; page-break-after:avoid; }'
     . '.omo-document-pv__point-order { display:table-cell; width:12mm; color:#51707e; font-size:12pt; font-weight:bold; vertical-align:top; }'
     . '.omo-document-pv__point-main { display:table-cell; vertical-align:top; }'

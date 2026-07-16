@@ -91,6 +91,15 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.event.modal_title' => ['text' => 'Inserer une date programmee', 'context' => 'Title of the calendar event picker opened from a PV point editor.'],
         'documents.pv_editor.event.visible' => ['text' => 'Dates programmees visibles', 'context' => 'Label for the visible calendar events list in the PV point picker.'],
         'documents.pv_editor.event.insert' => ['text' => 'Inserer la date', 'context' => 'Button confirming insertion of a calendar event in a PV point.'],
+        'documents.pv_editor.indicator.button_title' => ['text' => 'Inserer un indicateur', 'context' => 'Tooltip for the indicator insertion button in a PV point editor.'],
+        'documents.pv_editor.indicator.modal_title' => ['text' => 'Inserer un indicateur', 'context' => 'Title of the indicator picker opened from a PV point editor.'],
+        'documents.pv_editor.indicator.visible' => ['text' => 'Indicateurs visibles', 'context' => 'Label for the visible indicators list in the PV point picker.'],
+        'documents.pv_editor.indicator.insert' => ['text' => 'Inserer l indicateur', 'context' => 'Button confirming insertion of an indicator in a PV point.'],
+        'documents.pv_editor.indicator.no_value' => ['text' => 'Aucune valeur', 'context' => 'Fallback shown for an embedded indicator without a measurement.'],
+        'documents.pv_editor.indicator.overdue' => ['text' => 'En retard', 'context' => 'Status shown for an embedded overdue indicator.'],
+        'documents.pv_editor.indicator.group_sum' => ['text' => 'Groupe cumule', 'context' => 'Type label for an embedded summed indicator group.'],
+        'documents.pv_editor.indicator.group_overlay' => ['text' => 'Groupe superpose', 'context' => 'Type label for an embedded overlay indicator group.'],
+        'documents.pv_editor.indicator.group_members' => ['one' => '{count} indicateur', 'other' => '{count} indicateurs', 'context' => 'Member count shown for an embedded indicator group.'],
         'documents.pv_editor.field.pointtype.information' => ['text' => 'Information', 'context' => 'Option label for an informational PV point.'],
         'documents.pv_editor.field.pointtype.consultation' => ['text' => 'Consultation', 'context' => 'Option label for a consultation PV point.'],
         'documents.pv_editor.field.pointtype.decision' => ['text' => 'Decision', 'context' => 'Option label for a decision PV point.'],
@@ -351,10 +360,21 @@ function omoDocumentsPvEditorBuildAttendancePayloadFromDocument(\dbObject\Docume
         'presentCount' => $presentCount,
         'totalCount' => count($entries),
         'entries' => array_values(array_map(static function (array $entry): array {
+            $displayLabel = trim((string)($entry['displayLabel'] ?? ''));
+            $secondaryLabel = trim((string)($entry['secondaryLabel'] ?? ''));
+            $email = trim((string)($entry['email'] ?? ''));
+            if ($displayLabel === '') {
+                $displayLabel = $secondaryLabel !== '' ? $secondaryLabel : $email;
+                $secondaryLabel = '';
+            }
+            if ($secondaryLabel === '' && $email !== '' && $email !== $displayLabel) {
+                $secondaryLabel = $email;
+            }
+
             return [
                 'identityKey' => (string)($entry['identityKey'] ?? ''),
-                'displayLabel' => (string)($entry['displayLabel'] ?? ''),
-                'secondaryLabel' => (string)($entry['secondaryLabel'] ?? ''),
+                'displayLabel' => $displayLabel,
+                'secondaryLabel' => $secondaryLabel,
                 'isPresent' => !empty($entry['isPresent']),
             ];
         }, $entries)),

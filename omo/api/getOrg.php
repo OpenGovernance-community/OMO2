@@ -1127,7 +1127,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     min-width: 140px;
     padding: 6px;
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--color-surface, #fff);
     box-shadow: var(--shadow-md, 0 12px 24px rgba(15, 23, 42, 0.14));
     display: flex;
@@ -1144,7 +1144,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     width: 100%;
     padding: 9px 11px;
     border: 0;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: transparent;
     color: var(--color-text);
     text-align: left;
@@ -1241,7 +1241,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 
 .section-detail-card {
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface-alt) 65%, var(--color-surface));
     overflow: hidden;
 }
@@ -1266,7 +1266,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 .section-inherited {
     padding: 10px 12px;
     margin-bottom: 12px;
-    border-radius: var(--radius-sm, 8px);
+    border-radius: var(--radius-md);
     background: var(--color-surface-alt, #f0f2f5);
     border: 1px dashed var(--color-border);
 }
@@ -1296,7 +1296,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     width: 100%;
     padding: 10px 12px;
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     background: var(--color-surface-alt, #f0f2f5);
     color: var(--color-text);
     cursor: pointer;

@@ -153,7 +153,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
 
 .omo-setup-panel__section {
     --generic-section-padding-block: 18px;
-    --generic-section-radius: 16px;
+    --generic-section-radius: var(--radius-md);
     --generic-section-shadow: var(--shadow-sm, 0 2px 6px rgba(15, 23, 42, 0.05));
 }
 
@@ -173,7 +173,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
     width: 100%;
     padding: 0;
     border: 1px solid var(--color-border, #d1d5db);
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     overflow: hidden;
     background: var(--color-surface, #fff);
     color: inherit;
@@ -217,7 +217,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
     right: 12px;
     width: 62px;
     height: 62px;
-    border-radius: 18px;
+    border-radius: var(--radius-md);
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.38);
     background: rgba(255, 255, 255, 0.18);
@@ -287,7 +287,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
 .omo-org-info-panel__hero {
     position: relative;
     min-height: 180px;
-    border-radius: 18px;
+    border-radius: var(--radius-md);
     overflow: hidden;
     border: 1px solid var(--color-border, #d1d5db);
     background: var(--color-surface-alt, #dbeafe);
@@ -320,7 +320,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
 .omo-org-info-panel__card {
     background: var(--color-surface, #fff);
     border: 1px solid var(--color-border, #d1d5db);
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     padding: 16px;
     box-shadow: var(--shadow-sm, 0 2px 6px rgba(15, 23, 42, 0.05));
 }
@@ -342,7 +342,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
     flex-direction: column;
     gap: 4px;
     padding: 12px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--color-surface-alt, #f8fafc);
 }
 
@@ -580,7 +580,7 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
 .omo-org-info-panel__hero {
     position: relative;
     min-height: 180px;
-    border-radius: 18px;
+    border-radius: var(--radius-md);
     overflow: hidden;
     border: 1px solid var(--color-border, #d1d5db);
     background: var(--color-surface-alt, #dbeafe);
@@ -613,7 +613,7 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
 .omo-org-info-panel__card {
     background: var(--color-surface, #fff);
     border: 1px solid var(--color-border, #d1d5db);
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     padding: 16px;
     box-shadow: var(--shadow-sm, 0 2px 6px rgba(15, 23, 42, 0.05));
 }
@@ -635,7 +635,7 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
     flex-direction: column;
     gap: 4px;
     padding: 12px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--color-surface-alt, #f8fafc);
 }
 

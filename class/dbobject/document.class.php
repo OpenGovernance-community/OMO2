@@ -1636,6 +1636,31 @@
 			return $cache[$userId];
 		}
 
+		protected static function resolveOwnerDisplayNameById(int $userId, int $organizationId = 0): string
+		{
+			static $cache = array();
+
+			$userId = (int)$userId;
+			$organizationId = (int)$organizationId;
+			if ($userId <= 0) {
+				return '';
+			}
+
+			$cacheKey = $userId . ':' . $organizationId;
+			if (array_key_exists($cacheKey, $cache)) {
+				return $cache[$cacheKey];
+			}
+
+			$user = new \dbObject\User();
+			if (!$user->load($userId)) {
+				$cache[$cacheKey] = '';
+				return '';
+			}
+
+			$cache[$cacheKey] = trim((string)$user->getScopedDisplayName($organizationId));
+			return $cache[$cacheKey];
+		}
+
 		public function getCreatedByUserId(): int
 		{
 			$userId = (int)$this->get('IDusercreation');
@@ -1786,6 +1811,15 @@
 			return (int)trim((string)$element->getAttribute('data-omo-event-id')) > 0;
 		}
 
+		protected static function isIndicatorEmbedElement(\DOMElement $element): bool
+		{
+			if (trim((string)$element->getAttribute('data-omo-embed-type')) !== 'indicator') {
+				return false;
+			}
+
+			return (int)trim((string)$element->getAttribute('data-omo-indicator-id')) > 0;
+		}
+
 		protected static function buildDocumentEmbedDisplayHtml(
 			int $documentId,
 			string $title,
@@ -1829,23 +1863,49 @@
 			return $html;
 		}
 
-		protected static function buildDecisionEmbedDisplayHtml(int $decisionId, string $title, string $type): string
+		protected static function truncateEmbeddedReferenceSummary(string $value, int $maximumLength = 420, int $maximumSentences = 3): string
+		{
+			$value = trim(strip_tags($value));
+			$value = preg_replace('/\s+/u', ' ', $value);
+			$value = trim(is_string($value) ? $value : '');
+			if ($value === '') {
+				return '';
+			}
+
+			$sentences = preg_split('/(?<=[.!?])\s+/u', $value) ?: array($value);
+			if (count($sentences) > $maximumSentences) {
+				$value = trim(implode(' ', array_slice($sentences, 0, $maximumSentences))) . '...';
+			}
+
+			if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+				if (mb_strlen($value, 'UTF-8') > $maximumLength) {
+					return rtrim(mb_substr($value, 0, max(1, $maximumLength - 3), 'UTF-8')) . '...';
+				}
+			} elseif (strlen($value) > $maximumLength) {
+				return rtrim(substr($value, 0, max(1, $maximumLength - 3))) . '...';
+			}
+
+			return $value;
+		}
+
+		protected static function buildDecisionEmbedDisplayHtml(int $decisionId, string $title, string $type, string $summary = ''): string
 		{
 			$decisionUrl = '#decision-d' . $decisionId;
+			$summary = trim(implode(' - ', array_filter(array(trim($type), trim($summary)))));
 			$html = '<div class="omo-decision-embed" data-omo-embed-type="decision" data-omo-decision-id="' . $decisionId . '">';
 			$html .= '<a class="omo-decision-embed__title" href="' . htmlspecialchars($decisionUrl, ENT_QUOTES, 'UTF-8') . '">'
 				. htmlspecialchars($title !== '' ? $title : ('Decision #' . $decisionId), ENT_QUOTES, 'UTF-8')
 				. '</a>';
-			if ($type !== '') {
-				$html .= '<div class="omo-decision-embed__type">' . htmlspecialchars($type, ENT_QUOTES, 'UTF-8') . '</div>';
+			if ($summary !== '') {
+				$html .= '<div class="omo-decision-embed__summary">' . htmlspecialchars($summary, ENT_QUOTES, 'UTF-8') . '</div>';
 			}
 			return $html . '</div>';
 		}
 
-		protected static function buildEventEmbedDisplayHtml(int $eventId, string $title, string $schedule, string $description): string
+		protected static function buildEventEmbedDisplayHtml(int $eventId, string $title, string $schedule, string $location): string
 		{
 			$eventUrl = '#calendar-e' . $eventId;
-			$summary = trim(implode(' - ', array_filter(array(trim($schedule), trim($description)))));
+			$summary = trim(implode(' - ', array_filter(array(trim($schedule), trim($location)))));
 			$html = '<div class="omo-event-embed" data-omo-embed-type="event" data-omo-event-id="' . $eventId . '">';
 			$html .= '<a class="omo-event-embed__title" href="' . htmlspecialchars($eventUrl, ENT_QUOTES, 'UTF-8') . '">'
 				. htmlspecialchars($title !== '' ? $title : ('Evenement #' . $eventId), ENT_QUOTES, 'UTF-8')
@@ -1854,6 +1914,89 @@
 				$html .= '<div class="omo-event-embed__summary">' . htmlspecialchars($summary, ENT_QUOTES, 'UTF-8') . '</div>';
 			}
 			return $html . '</div>';
+		}
+
+		protected static function renderIndicatorEmbedChart(\DOMElement $element): string
+		{
+			$sourceCharts = $element->getElementsByTagName('svg');
+			$sourceChart = $sourceCharts->length > 0 ? $sourceCharts->item(0) : null;
+			if (!($sourceChart instanceof \DOMElement) || strpos(' ' . $sourceChart->getAttribute('class') . ' ', ' omo-stats-chart ') === false) {
+				return '';
+			}
+
+			$shapes = '';
+			foreach (array('polyline', 'circle') as $tagName) {
+				foreach (iterator_to_array($sourceChart->getElementsByTagName($tagName)) as $sourceShape) {
+					if (!($sourceShape instanceof \DOMElement)) {
+						continue;
+					}
+
+					$className = trim((string)$sourceShape->getAttribute('class'));
+					if ($tagName === 'polyline' && $className !== 'omo-stats-chart__reference' && !preg_match('/^omo-stats-chart__line(?: omo-stats-chart__line--(?:background|sum))?$/', $className)) {
+						continue;
+					}
+					if ($tagName === 'circle' && $className !== 'omo-stats-chart__point') {
+						continue;
+					}
+
+					if ($tagName === 'polyline') {
+						$points = trim((string)$sourceShape->getAttribute('points'));
+						if (strlen($points) > 4000 || !preg_match('/^-?[0-9.]+,-?[0-9.]+(?:\s+-?[0-9.]+,-?[0-9.]+)*$/', $points)) {
+							continue;
+						}
+						$style = trim((string)$sourceShape->getAttribute('style'));
+						$styleAttribute = preg_match('/^stroke:\s*#[0-9a-f]{6};?$/i', $style)
+							? ' style="' . htmlspecialchars($style, ENT_QUOTES, 'UTF-8') . '"'
+							: '';
+						$shapes .= '<polyline class="' . htmlspecialchars($className, ENT_QUOTES, 'UTF-8') . '" points="' . htmlspecialchars($points, ENT_QUOTES, 'UTF-8') . '"' . $styleAttribute . '></polyline>';
+						continue;
+					}
+
+					$cx = trim((string)$sourceShape->getAttribute('cx'));
+					$cy = trim((string)$sourceShape->getAttribute('cy'));
+					$radius = trim((string)$sourceShape->getAttribute('r'));
+					if (!preg_match('/^-?[0-9.]+$/', $cx) || !preg_match('/^-?[0-9.]+$/', $cy) || !preg_match('/^-?[0-9.]+$/', $radius)) {
+						continue;
+					}
+					$shapes .= '<circle class="' . htmlspecialchars($className, ENT_QUOTES, 'UTF-8') . '" cx="' . htmlspecialchars($cx, ENT_QUOTES, 'UTF-8') . '" cy="' . htmlspecialchars($cy, ENT_QUOTES, 'UTF-8') . '" r="' . htmlspecialchars($radius, ENT_QUOTES, 'UTF-8') . '"></circle>';
+				}
+			}
+
+			return $shapes === ''
+				? ''
+				: '<span class="omo-indicator-embed__chart"><svg class="omo-stats-chart omo-stats-chart--compact" viewBox="0 0 180 54" aria-hidden="true">' . $shapes . '</svg></span>';
+		}
+
+		protected static function buildIndicatorEmbedDisplayHtml(\DOMElement $element): string
+		{
+			$indicatorId = (int)$element->getAttribute('data-omo-indicator-id');
+			$indicatorKind = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-kind')) === 'group' ? 'group' : 'indicator';
+			$isOverdue = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-overdue')) === '1';
+			$title = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-title'));
+			$value = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-value'));
+			$date = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-date'));
+			$status = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-status'));
+			$title = $title !== '' ? $title : ('Indicateur #' . $indicatorId);
+			$targetUrl = $indicatorKind === 'group' ? '#stats' : ('#stats-i' . $indicatorId);
+
+			$html = '<span class="omo-indicator-embed' . ($isOverdue ? ' omo-indicator-embed--overdue' : '') . '"'
+				. ' data-omo-embed-type="indicator"'
+				. ' data-omo-indicator-id="' . $indicatorId . '"'
+				. ' data-omo-indicator-kind="' . $indicatorKind . '">';
+			$html .= '<strong><a class="omo-indicator-embed__title" href="' . htmlspecialchars($targetUrl, ENT_QUOTES, 'UTF-8') . '">'
+				. htmlspecialchars($title, ENT_QUOTES, 'UTF-8')
+				. '</a></strong>';
+			$html .= '<span class="omo-indicator-embed__body">' . self::renderIndicatorEmbedChart($element) . '<span class="omo-indicator-embed__values">';
+			if ($value !== '') {
+				$html .= '<b>' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '</b>';
+			}
+			if ($date !== '') {
+				$html .= '<time>' . htmlspecialchars($date, ENT_QUOTES, 'UTF-8') . '</time>';
+			}
+			if ($status !== '') {
+				$html .= '<em>' . htmlspecialchars($status, ENT_QUOTES, 'UTF-8') . '</em>';
+			}
+			return $html . '</span></span></span>';
 		}
 
 		protected function renderExternalLinkForViewer(): string
@@ -1930,7 +2073,8 @@
 				return self::buildDecisionEmbedDisplayHtml(
 					(int)$node->getAttribute('data-omo-decision-id'),
 					trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-decision-title')),
-					trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-decision-type'))
+					trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-decision-type')),
+					trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-decision-summary'))
 				);
 			}
 
@@ -1939,8 +2083,13 @@
 					(int)$node->getAttribute('data-omo-event-id'),
 					trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-event-title')),
 					trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-event-schedule')),
-					trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-event-description'))
+					trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-event-location'))
+					?: trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-event-description'))
 				);
+			}
+
+			if (self::isIndicatorEmbedElement($node)) {
+				return self::buildIndicatorEmbedDisplayHtml($node);
 			}
 
 			$tagName = strtolower((string)$node->tagName);
@@ -1983,6 +2132,10 @@
 			$targetDocumentId = (int)trim((string)$element->getAttribute('data-omo-document-id'));
 			$fallbackTitle = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-document-title'));
 			$fallbackDescription = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-document-description'));
+			$isCompactEmbed = !empty($options['compactEmbeds']);
+			if ($isCompactEmbed) {
+				$fallbackDescription = self::truncateEmbeddedReferenceSummary($fallbackDescription);
+			}
 
 			if ($targetDocumentId <= 0) {
 				return self::buildDocumentEmbedDisplayHtml(0, $fallbackTitle, $fallbackDescription, '', 'unresolved', 'Reference invalide.');
@@ -2032,6 +2185,18 @@
 					'',
 					'forbidden',
 					'Document non accessible dans ce contexte.'
+				);
+			}
+
+			if ($isCompactEmbed) {
+				return self::buildDocumentEmbedDisplayHtml(
+					$targetDocumentId,
+					$targetTitle !== '' ? $targetTitle : $fallbackTitle,
+					self::truncateEmbeddedReferenceSummary(
+						$targetDescription !== '' ? $targetDescription : $fallbackDescription
+					),
+					'',
+					'compact'
 				);
 			}
 
@@ -4226,10 +4391,15 @@
 			$organizationId = (int)$organizationId > 0
 				? (int)$organizationId
 				: (int)$this->get('IDorganization');
+			$ownerUserId = (int)$this->get('IDuser');
 
 			return \dbObject\ObjectVisibility::buildDisplayData(
 				is_array($ruleRow) ? $ruleRow : $this->getPrimaryVisibilityRuleRow(),
-				$organizationId
+				$organizationId,
+				array(
+					'ownerUserId' => $ownerUserId,
+					'ownerLabel' => self::resolveOwnerDisplayNameById($ownerUserId, $organizationId),
+				)
 			);
 		}
 
@@ -4258,10 +4428,15 @@
 			$organizationId = (int)$organizationId > 0
 				? (int)$organizationId
 				: (int)$this->get('IDorganization');
+			$ownerUserId = (int)$this->get('IDuser');
 
 			return \dbObject\ObjectVisibility::buildDisplayData(
 				is_array($ruleRow) ? $ruleRow : $this->getPrimaryEditVisibilityRuleRow(),
-				$organizationId
+				$organizationId,
+				array(
+					'ownerUserId' => $ownerUserId,
+					'ownerLabel' => self::resolveOwnerDisplayNameById($ownerUserId, $organizationId),
+				)
 			);
 		}
 

@@ -43,15 +43,28 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
     data-indicator-id="<?= (int)$indicatorId ?>"
     data-detail-url="<?= omoApiEscape($detailUrl) ?>"
 >
+    <div
+        hidden
+        data-omo-subdrawer-header
+        data-omo-subdrawer-title="<?= omoApiEscape((string)$indicator->get('name')) ?>"
+        data-omo-subdrawer-description="<?= omoApiEscape(trim((string)$indicator->get('description')) !== '' ? (string)$indicator->get('description') : omoStatsT('stats.detail.description_empty')) ?>"
+    >
+        <?php if ($canEdit): ?>
+            <button
+                type="button"
+                class="generic-action-button generic-action-button--main"
+                data-omo-subdrawer-action
+                data-omo-stats-open-editor-url="<?= omoApiEscape($editUrl) ?>"
+            ><?= omoApiEscape(omoStatsT('stats.action.edit')) ?></button>
+        <?php endif; ?>
+    </div>
+
     <section class="generic-hero-panel accent omo-stats-detail__hero">
         <div class="omo-stats-detail__hero-main">
             <div>
                 <span class="generic-card-title generic-card-title--eyebrow"><?= omoApiEscape($contextLabel) ?></span>
                 <h2 class="generic-card-title generic-card-title--large"><?= omoApiEscape((string)$indicator->get('name')) ?></h2>
             </div>
-            <?php if ($canEdit): ?>
-                <button type="button" class="generic-action-button" data-omo-stats-open-editor-url="<?= omoApiEscape($editUrl) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit')) ?></button>
-            <?php endif; ?>
         </div>
         <p class="omo-stats-detail__description"><?= omoApiEscape(trim((string)$indicator->get('description')) !== '' ? (string)$indicator->get('description') : omoStatsT('stats.detail.description_empty')) ?></p>
         <div class="omo-stats-detail__meta">

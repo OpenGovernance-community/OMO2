@@ -39,7 +39,7 @@ if (!checklogin()) {
         .styleguide-header {
             --generic-hero-gap: 12px;
             --generic-hero-padding: 24px;
-            --generic-hero-radius: 24px;
+            --generic-hero-radius: var(--radius-md);
             --generic-hero-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
         }
 
@@ -71,7 +71,7 @@ if (!checklogin()) {
         .styleguide-code {
             margin: 0;
             padding: 12px 14px;
-            border-radius: 14px;
+            border-radius: var(--radius-md);
             background: #0f172a;
             color: #e2e8f0;
             font: 13px/1.5 Consolas, "Courier New", monospace;

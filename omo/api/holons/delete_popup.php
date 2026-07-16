@@ -262,7 +262,7 @@ $typeLabel = strtolower((string)$holon->getTemplateLabel(true));
 
         .omo-holon-delete__warning {
             padding: 12px 14px;
-            border-radius: 12px;
+            border-radius: var(--radius-md);
             background: color-mix(in srgb, #dc2626 10%, white);
             color: #991b1b;
             border: 1px solid color-mix(in srgb, #dc2626 22%, transparent);

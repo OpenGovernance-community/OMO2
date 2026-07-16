@@ -225,7 +225,7 @@ if (!function_exists('omoSearchPopupRenderStyles')) {
         .omo-search-popup__stat {
             min-width: 92px;
             padding: 10px 12px;
-            border-radius: 14px;
+            border-radius: var(--radius-md);
             background: var(--omo-search-popup-card-background);
             border: 1px solid var(--omo-search-popup-card-border);
             appearance: none;
@@ -304,7 +304,7 @@ if (!function_exists('omoSearchPopupRenderStyles')) {
         .omo-search-popup__empty,
         .omo-search-popup__status-card {
             padding: 18px;
-            border-radius: 16px;
+            border-radius: var(--radius-md);
             border: 1px solid var(--omo-search-popup-card-border);
             background: var(--omo-search-popup-card-background);
             color: var(--omo-search-popup-muted-text);

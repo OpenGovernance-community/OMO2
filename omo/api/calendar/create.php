@@ -150,8 +150,12 @@ $sourceLang = array_merge([
         'context' => 'Submit button label of the event creation form.',
     ],
     'calendar.edit.submit' => [
-        'text' => 'Enregistrer les modifications',
+        'text' => 'Enregistrer',
         'context' => 'Submit button label of the event edition form.',
+    ],
+    'calendar.edit.cancel' => [
+        'text' => 'Annuler',
+        'context' => 'Button returning from the event edition form to the event detail without saving.',
     ],
     'calendar.create.success' => [
         'text' => 'Evenement cree.',
@@ -765,15 +769,45 @@ $locationModeOptions = array_merge(
         return (string)($definition['label'] ?? '');
     }, Event::getLocationModeCatalog())
 );
+$calendarFormId = 'omoCalendarCreateForm';
+$drawerTitle = omoCalendarCreateT($isEditMode ? 'calendar.edit.title' : 'calendar.create.title');
+$drawerDescription = omoCalendarCreateT($isEditMode ? 'calendar.edit.description' : 'calendar.create.description');
+$drawerSubmitLabel = omoCalendarCreateT($isEditMode ? 'calendar.edit.submit' : 'calendar.create.submit');
+$cancelDetailUrl = '';
+if ($isEditMode) {
+    $cancelDetailContextHolonId = $currentHolonId > 0 ? $currentHolonId : $defaultHolonId;
+    $cancelDetailUrl = '/omo/api/calendar/detail.php?oid=' . rawurlencode((string)$organizationId)
+        . ($cancelDetailContextHolonId > 0 ? '&cid=' . rawurlencode((string)$cancelDetailContextHolonId) : '')
+        . '&id=' . rawurlencode((string)(int)$event->getId());
+}
 ?>
 <div class="omo-calendar-create">
-    <div class="generic-section generic-section--stack omo-calendar-create__shell">
-        <div class="omo-calendar-create__head">
-            <h2 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoCalendarCreateT($isEditMode ? 'calendar.edit.title' : 'calendar.create.title')) ?></h2>
-            <p class="omo-calendar-create__text"><?= omoApiEscape(omoCalendarCreateT($isEditMode ? 'calendar.edit.description' : 'calendar.create.description')) ?></p>
-        </div>
+    <div
+        hidden
+        data-omo-calendar-drawer-header
+        data-omo-calendar-drawer-title="<?= omoApiEscape($drawerTitle) ?>"
+        data-omo-calendar-drawer-description="<?= omoApiEscape($drawerDescription) ?>"
+    >
+        <?php if ($cancelDetailUrl !== ''): ?>
+            <button
+                type="button"
+                class="generic-action-button generic-action-button--secondary"
+                data-omo-calendar-drawer-action
+                data-omo-calendar-open-detail-url="<?= omoApiEscape($cancelDetailUrl) ?>"
+            ><?= omoApiEscape(omoCalendarCreateT('calendar.edit.cancel')) ?></button>
+        <?php endif; ?>
+        <button
+            type="submit"
+            form="<?= omoApiEscape($calendarFormId) ?>"
+            class="generic-action-button generic-action-button--main"
+            data-omo-calendar-drawer-action
+            data-omo-calendar-create-submit
+        ><?= omoApiEscape($drawerSubmitLabel) ?></button>
+    </div>
 
+    <div class="generic-section generic-section--stack omo-calendar-create__shell">
         <form
+            id="<?= omoApiEscape($calendarFormId) ?>"
             class="omo-calendar-create__form"
             method="post"
             action="/omo/api/calendar/create.php?oid=<?= (int)$organizationId ?><?= $currentHolonId > 0 ? '&cid=' . (int)$currentHolonId : '' ?><?= $isEditMode ? '&id=' . (int)$event->getId() : '' ?>"
@@ -975,9 +1009,6 @@ $locationModeOptions = array_merge(
 
             <div class="omo-calendar-create__footer">
                 <div class="omo-calendar-create__feedback" data-omo-calendar-create-feedback></div>
-                <button type="submit" class="generic-action-button generic-action-button--main" data-omo-calendar-create-submit>
-                    <?= omoApiEscape(omoCalendarCreateT($isEditMode ? 'calendar.edit.submit' : 'calendar.create.submit')) ?>
-                </button>
             </div>
         </form>
     </div>

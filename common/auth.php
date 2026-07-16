@@ -1978,7 +1978,7 @@ function commonSendLoginCode($userId, $email, array $organizationContext, $remem
 <table width='100%' cellpadding='0' cellspacing='0'>
 <tr>
 <td align='center'>
-<table width='600' cellpadding='0' cellspacing='0' style='background:white; border-radius:8px; overflow:hidden;'>
+<table width='600' cellpadding='0' cellspacing='0' style='background:white; border-radius:var(--radius-md); overflow:hidden;'>
 <tr>
 <td style='background:$color; text-align:center; padding:30px 20px; position:relative;'>
     " . ($banner ? "<div style='background:url($banner) center/cover; opacity:0.3; position:absolute; inset:0;'></div>" : "") . "
@@ -1996,7 +1996,7 @@ function commonSendLoginCode($userId, $email, array $organizationContext, $remem
 <td style='padding:30px; text-align:center;'>
     <h3 style='margin-top:0;'>" . htmlspecialchars(commonAuthT('auth.email.body.connection_heading', [], $lang, $sourceLang)) . "</h3>
     <p style='color:#555;'>" . htmlspecialchars(commonAuthT('auth.email.body.enter_code', [], $lang, $sourceLang)) . "</p>
-    <div style='display:inline-block;padding:16px 22px;background:#f3f4f6;border-radius:12px;border:1px solid #e5e7eb;font:700 32px/1.2 Consolas, Monaco, monospace;letter-spacing:0.22em;color:#111827;margin-top:10px;'>
+    <div style='display:inline-block;padding:16px 22px;background:#f3f4f6;border-radius:var(--radius-md);border:1px solid #e5e7eb;font:700 32px/1.2 Consolas, Monaco, monospace;letter-spacing:0.22em;color:#111827;margin-top:10px;'>
         $loginCode
     </div>
     <p style='margin:22px 0 0; color:#555;'>" . htmlspecialchars(commonAuthT('auth.email.body.open_link', [], $lang, $sourceLang)) . "</p>
@@ -2100,7 +2100,7 @@ function commonSendPasswordResetEmail(\dbObject\User $user, array $organizationC
 <table width='100%' cellpadding='0' cellspacing='0'>
 <tr>
 <td align='center'>
-<table width='600' cellpadding='0' cellspacing='0' style='background:white; border-radius:8px; overflow:hidden;'>
+<table width='600' cellpadding='0' cellspacing='0' style='background:white; border-radius:var(--radius-md); overflow:hidden;'>
 <tr>
 <td style='background:$color; text-align:center; padding:30px 20px; position:relative;'>
     " . ($banner ? "<div style='background:url($banner) center/cover; opacity:0.3; position:absolute; inset:0;'></div>" : "") . "

@@ -75,7 +75,7 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 /* CARD */
 .kanban-card {
     background: var(--color-surface-alt);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     padding: 10px;
     box-shadow: var(--shadow-sm);
     cursor: grab;
@@ -100,7 +100,7 @@ require_once dirname(__DIR__) . '/bootstrap.php';
     height: 50px;
     background: rgba(79, 70, 229, 0.1);
     border: 2px dashed var(--color-primary);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
 }
 </style>
 <script>

@@ -1745,7 +1745,7 @@ root.addEventListener('click', function (event) {
 .omo-holon-create__footer,
 .omo-holon-create__property,
 .omo-holon-create__empty {
-    --generic-section-radius: 16px;
+    --generic-section-radius: var(--radius-md);
     --generic-section-shadow: var(--shadow-sm);
 }
 
@@ -1776,7 +1776,7 @@ root.addEventListener('click', function (event) {
 
 .omo-holon-create__status {
     padding: 12px 14px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     border: 1px solid transparent;
     box-shadow: var(--shadow-sm);
 }
@@ -1896,7 +1896,7 @@ root.addEventListener('click', function (event) {
 .omo-holon-create__permission-summary {
     --generic-soft-panel-padding-block: 12px;
     --generic-soft-panel-padding-inline: 14px;
-    --generic-soft-panel-radius: 14px;
+    --generic-soft-panel-radius: var(--radius-md);
     color: var(--color-text);
 }
 
@@ -1930,7 +1930,7 @@ root.addEventListener('click', function (event) {
     align-items: flex-start;
     gap: 3px;
     padding: 8px 10px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     border: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-border));
     background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
     min-width: 120px;
@@ -1962,7 +1962,7 @@ root.addEventListener('click', function (event) {
     align-items: start;
     padding: 14px;
     border: 1px solid var(--color-border);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: var(--color-surface-alt);
 }
 
@@ -2016,7 +2016,7 @@ root.addEventListener('click', function (event) {
 .omo-holon-create__media-card {
     --generic-soft-panel-padding-block: 14px;
     --generic-soft-panel-padding-inline: 14px;
-    --generic-soft-panel-radius: 16px;
+    --generic-soft-panel-radius: var(--radius-md);
     --generic-soft-panel-background: var(--color-surface);
 }
 
@@ -2032,7 +2032,7 @@ textarea.omo-holon-create__property-value {
     min-height: 110px;
     padding: 11px 12px;
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--color-surface-alt);
     color: var(--color-text);
     font: inherit;
@@ -2142,7 +2142,7 @@ textarea.omo-holon-create__property-value:focus {
 .omo-holon-create__inherited {
     padding: 14px;
     border: 1px dashed var(--color-border);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface-alt) 80%, var(--color-surface));
 }
 
@@ -2158,7 +2158,7 @@ textarea.omo-holon-create__property-value:focus {
 .omo-holon-create__empty-note {
     padding: 12px;
     border: 1px dashed var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--color-surface-alt);
 }
 
@@ -2174,7 +2174,7 @@ textarea.omo-holon-create__property-value:focus {
     gap: 8px;
     padding: 10px 12px;
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--color-surface);
 }
 
@@ -2218,7 +2218,7 @@ textarea.omo-holon-create__property-value:focus {
 
 .omo-holon-create__detail-card {
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface-alt) 65%, var(--color-surface));
     overflow: hidden;
 }

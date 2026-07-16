@@ -716,6 +716,7 @@ function commonRenderTopbar(array $options = [])
     </div>
 </div>
 
+<script src="/common/drawer/subdrawer.js"></script>
 <script>
 window.commonTopbarConfig = <?= json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>
