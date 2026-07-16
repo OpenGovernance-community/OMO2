@@ -887,6 +887,173 @@ class DecisionProcess extends DbObject
         );
     }
 
+    protected static function truncateCompactEmbedSummary(string $value, int $maximumLength = 420): string
+    {
+        $value = trim(strip_tags($value));
+        $value = preg_replace('/\s+/u', ' ', $value);
+        $value = trim(is_string($value) ? $value : '');
+        if ($value === '') {
+            return '';
+        }
+
+        $sentences = preg_split('/(?<=[.!?])\s+/u', $value) ?: array($value);
+        if (count($sentences) > 3) {
+            $value = trim(implode(' ', array_slice($sentences, 0, 3))) . '...';
+        }
+
+        if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+            if (mb_strlen($value, 'UTF-8') > $maximumLength) {
+                return rtrim(mb_substr($value, 0, max(1, $maximumLength - 3), 'UTF-8')) . '...';
+            }
+        } elseif (strlen($value) > $maximumLength) {
+            return rtrim(substr($value, 0, max(1, $maximumLength - 3))) . '...';
+        }
+
+        return $value;
+    }
+
+    protected static function normalizeCompactEmbedResponseParameters($value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        $decoded = json_decode(trim((string)$value), true);
+        return is_array($decoded) ? $decoded : array();
+    }
+
+    protected function getCompactEmbedComputedResult(): string
+    {
+        $method = self::normalizeEvaluationMethod($this->get('evaluation_method'));
+        $items = array();
+
+        foreach ($this->getResponses(\dbObject\DecisionResponse::STATUS_SUBMITTED) as $response) {
+            if (!($response instanceof \dbObject\DecisionResponse)) {
+                continue;
+            }
+
+            $parameters = self::normalizeCompactEmbedResponseParameters($response->get('parameters'));
+            $items[] = is_array($parameters[$method] ?? null) ? $parameters[$method] : array();
+        }
+
+        if (count($items) === 0) {
+            return '';
+        }
+
+        if ($method === self::METHOD_SIMPLE_VOTE) {
+            $votes = array();
+            foreach ($items as $item) {
+                $titles = is_array($item['selected_titles'] ?? null)
+                    ? $item['selected_titles']
+                    : array($item['selected_title'] ?? '');
+                foreach ($titles as $title) {
+                    $title = trim((string)$title);
+                    if ($title !== '') {
+                        $votes[$title] = (int)($votes[$title] ?? 0) + 1;
+                    }
+                }
+            }
+
+            arsort($votes, SORT_NUMERIC);
+            $title = trim((string)array_key_first($votes));
+            if ($title !== '') {
+                return 'En tete : ' . $title . ' (' . (string)$votes[$title] . ' voix).';
+            }
+        }
+
+        $firstProposalResults = array();
+        foreach ($items as $item) {
+            $details = is_array($item['details'] ?? null) ? $item['details'] : array();
+            foreach ($details as $detail) {
+                if (!is_array($detail)) {
+                    continue;
+                }
+
+                $title = trim((string)($detail['title'] ?? ''));
+                if ($title === '') {
+                    continue;
+                }
+
+                if (!isset($firstProposalResults[$title])) {
+                    $firstProposalResults[$title] = array();
+                }
+
+                $value = $method === self::METHOD_CONSENT
+                    ? trim((string)($detail['choice'] ?? ''))
+                    : trim((string)($detail['mention'] ?? ''));
+                if ($value !== '') {
+                    $firstProposalResults[$title][$value] = (int)($firstProposalResults[$title][$value] ?? 0) + 1;
+                }
+            }
+        }
+
+        $title = trim((string)array_key_first($firstProposalResults));
+        $resultValues = is_array($firstProposalResults[$title] ?? null) ? $firstProposalResults[$title] : array();
+        if ($title === '' || count($resultValues) === 0) {
+            return '';
+        }
+
+        arsort($resultValues, SORT_NUMERIC);
+        $value = trim((string)array_key_first($resultValues));
+        if ($value === '') {
+            return '';
+        }
+
+        if ($method === self::METHOD_CONSENT) {
+            $labels = array(
+                'favor' => 'pour',
+                'no_objection' => 'sans objection',
+                'objection' => 'objection',
+            );
+            return $title . ' : ' . (string)($resultValues[$value] ?? 0) . ' ' . (string)($labels[$value] ?? $value) . '.';
+        }
+
+        return $title . ' : ' . $value . '.';
+    }
+
+    public function getCompactEmbedSummary(): string
+    {
+        $status = $this->resolveAutomaticStatus();
+        if (in_array($status, [self::STATUS_RESULTS, self::STATUS_ARCHIVED], true)) {
+            $result = $this->getResult();
+            $summary = $result instanceof \dbObject\DecisionResult
+                ? self::truncateCompactEmbedSummary((string)$result->get('summary'))
+                : '';
+
+            if ($summary === '') {
+                $summary = self::truncateCompactEmbedSummary($this->getCompactEmbedComputedResult());
+            }
+
+            return $summary !== '' ? $summary : 'Resultats disponibles.';
+        }
+
+        $participantCount = 0;
+        foreach ($this->getParticipants(true) as $participant) {
+            if (!($participant instanceof \dbObject\DecisionParticipant)) {
+                continue;
+            }
+
+            $participantStatus = \dbObject\DecisionParticipant::normalizeStatus($participant->get('status'));
+            if (in_array($participantStatus, [
+                \dbObject\DecisionParticipant::STATUS_DECLINED,
+                \dbObject\DecisionParticipant::STATUS_REVOKED,
+            ], true)) {
+                continue;
+            }
+
+            $participantCount++;
+        }
+
+        if ($participantCount <= 0) {
+            return $this->isParticipationOpen()
+                ? 'Participation ouverte.'
+                : 'Participation a venir.';
+        }
+
+        $submittedParticipantCount = count($this->getSubmittedResponseParticipantIds());
+        return (string)$submittedParticipantCount . '/' . (string)$participantCount . ' participations.';
+    }
+
     public function hasSubmittedResponses()
     {
         return $this->getSubmittedResponseCount() > 0;

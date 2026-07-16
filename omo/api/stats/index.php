@@ -543,17 +543,19 @@ $displayItemCount = count($statsEntries);
         <div class="omo-overlay-drawer__panel">
             <div class="omo-overlay-drawer__header generic-drawer-header generic-drawer-header--sticky">
                 <div class="omo-overlay-drawer__header-copy generic-drawer-header__copy">
-                    <h3 class="omo-overlay-drawer__title"><?= omoApiEscape(omoStatsT('stats.drawer.title')) ?></h3>
-                    <p class="omo-overlay-drawer__description"><?= omoApiEscape(omoStatsT('stats.drawer.description')) ?></p>
+                    <h3 class="omo-overlay-drawer__title" data-omo-subdrawer-title><?= omoApiEscape(omoStatsT('stats.drawer.title')) ?></h3>
+                    <p class="omo-overlay-drawer__description" data-omo-subdrawer-description><?= omoApiEscape(omoStatsT('stats.drawer.description')) ?></p>
                 </div>
                 <div class="generic-drawer-header__actions">
-                    <button type="button" class="omo-overlay-drawer__close" data-omo-stats-drawer-close><?= omoApiEscape(omoStatsT('stats.action.close')) ?></button>
+                    <div class="omo-stats__drawer-custom-actions" data-omo-subdrawer-actions></div>
+                    <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary" data-omo-stats-drawer-close><?= omoApiEscape(omoStatsT('stats.action.close')) ?></button>
                 </div>
             </div>
             <div class="omo-overlay-drawer__body" data-omo-stats-drawer-body></div>
         </div>
     </div>
 </div>
+<script src="/common/drawer/subdrawer.js"></script>
 <script>
 (function () {
     var root = document.getElementById('omo-stats-root');
@@ -564,6 +566,13 @@ $displayItemCount = count($statsEntries);
 
     var drawer = root.querySelector('[data-omo-stats-drawer]');
     var drawerBody = root.querySelector('[data-omo-stats-drawer-body]');
+    var drawerController = drawer && typeof window.omoCreateSubdrawerController === 'function'
+        ? window.omoCreateSubdrawerController({ drawer: drawer })
+        : null;
+    if (drawerController) {
+        drawer.__omoSubdrawerController = drawerController;
+        window.omoStatsDrawer = drawerController;
+    }
     var currentUrl = root.getAttribute('data-omo-stats-current-url') || '';
     var createUrl = root.getAttribute('data-omo-stats-create-url') || '';
     var detailBaseUrl = root.getAttribute('data-omo-stats-detail-url') || '';
@@ -712,6 +721,9 @@ $displayItemCount = count($statsEntries);
         if (!drawerBody) {
             return;
         }
+        if (drawerController) {
+            drawerController.resetHeader();
+        }
         drawerBody.innerHTML = '<div class="generic-section' + (isError ? ' omo-stats-feedback is-error' : '') + '"></div>';
         drawerBody.firstElementChild.textContent = message;
     }
@@ -740,6 +752,9 @@ $displayItemCount = count($statsEntries);
                 return false;
             }
             drawerBody.innerHTML = html;
+            if (drawerController) {
+                drawerController.applyContentHeader(drawerBody);
+            }
             if (typeof window.initGenericComponents === 'function') {
                 window.initGenericComponents(drawerBody);
             }
@@ -850,7 +865,159 @@ $displayItemCount = count($statsEntries);
         }
     }
 
+    function openGroupDrawerEditor(editData) {
+        if (!drawer || !drawerBody) {
+            return;
+        }
+
+        var isEditing = editData && typeof editData === 'object';
+        var groupId = isEditing ? Number(editData.id || 0) : 0;
+        var selectedIds = isEditing && Array.isArray(editData.indicatorIds)
+            ? editData.indicatorIds.map(function (id) { return String(id); })
+            : [];
+        var formId = 'omoStatsGroupEditorForm';
+        var items = getPickerItems();
+        var formHtml = '<form id="' + formId + '" class="omo-stats-picker omo-stats-group-editor" data-omo-stats-group-editor-form>'
+            + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.groupName) + '</span><input type="text" class="generic-form-control" data-omo-stats-group-editor-name required></label>'
+            + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.search) + '</span><input type="search" class="generic-form-control" data-omo-stats-group-editor-search placeholder="' + escapeHtml(texts.searchPlaceholder) + '"></label>'
+            + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.visible) + '</span><select class="generic-form-control omo-stats-picker__select" data-omo-stats-group-editor-select size="10" multiple></select></label>'
+            + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.groupMode) + '</span><select class="generic-form-control" data-omo-stats-group-editor-mode><option value="overlay">' + escapeHtml(texts.overlay) + '</option><option value="sum">' + escapeHtml(texts.sum) + '</option></select></label>'
+            + '<div class="omo-stats-feedback" data-omo-stats-group-editor-feedback role="status"></div>'
+            + '</form>';
+
+        drawerBody.innerHTML = formHtml;
+        drawer.hidden = false;
+        window.requestAnimationFrame(function () {
+            drawer.classList.add('is-open');
+        });
+
+        var form = drawerBody.querySelector('[data-omo-stats-group-editor-form]');
+        var nameInput = drawerBody.querySelector('[data-omo-stats-group-editor-name]');
+        var searchInput = drawerBody.querySelector('[data-omo-stats-group-editor-search]');
+        var select = drawerBody.querySelector('[data-omo-stats-group-editor-select]');
+        var modeInput = drawerBody.querySelector('[data-omo-stats-group-editor-mode]');
+        var feedback = drawerBody.querySelector('[data-omo-stats-group-editor-feedback]');
+        var cancelButton = document.createElement('button');
+        var saveButton = document.createElement('button');
+
+        if (!form || !nameInput || !select || !modeInput) {
+            setDrawerMessage(texts.loadError, true);
+            return;
+        }
+
+        nameInput.value = isEditing ? String(editData.name || '') : '';
+        modeInput.value = isEditing ? String(editData.displayMode || 'overlay') : 'overlay';
+
+        function retainVisibleSelection() {
+            selectedIds = Array.prototype.map.call(select.selectedOptions, function (option) {
+                return option.value;
+            }).concat(selectedIds.filter(function (id) {
+                return !Array.prototype.some.call(select.options, function (option) {
+                    return option.value === id;
+                });
+            }));
+            selectedIds = selectedIds.filter(function (id, index, values) {
+                return values.indexOf(id) === index;
+            });
+        }
+
+        function renderOptions() {
+            retainVisibleSelection();
+
+            var query = String(searchInput ? searchInput.value : '').trim().toLocaleLowerCase();
+            select.innerHTML = '';
+            items.forEach(function (item) {
+                var haystack = [item.name, item.context, item.description].join(' ').toLocaleLowerCase();
+                if (query && haystack.indexOf(query) === -1) {
+                    return;
+                }
+                var option = document.createElement('option');
+                option.value = String(item.id || '');
+                option.textContent = String(item.name || '') + (item.context ? ' - ' + String(item.context) : '');
+                option.selected = selectedIds.indexOf(option.value) !== -1;
+                select.appendChild(option);
+            });
+        }
+
+        cancelButton.type = 'button';
+        cancelButton.className = 'generic-action-button generic-action-button--secondary';
+        cancelButton.textContent = texts.cancel;
+        cancelButton.addEventListener('click', function () {
+            if (Number.isInteger(groupId) && groupId > 0) {
+                openDrawerWithUrl(buildGroupDetailUrl(groupId));
+                return;
+            }
+            closeDrawer({ force: true });
+        });
+
+        saveButton.type = 'submit';
+        saveButton.setAttribute('form', formId);
+        saveButton.className = 'generic-action-button generic-action-button--main';
+        saveButton.textContent = isEditing ? texts.update : texts.createGroup;
+
+        if (drawerController) {
+            drawerController.setHeader({
+                title: isEditing ? texts.editGroupTitle : texts.groupTitle,
+                description: '',
+                actions: [cancelButton, saveButton]
+            });
+        }
+
+        renderOptions();
+        nameInput.focus();
+        if (searchInput) {
+            searchInput.addEventListener('input', renderOptions);
+        }
+
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            retainVisibleSelection();
+            var selectedIndicatorIds = selectedIds.filter(Boolean);
+            var formData = new FormData();
+            formData.append('stats_action', isEditing ? 'update_group' : 'create_group');
+            formData.append('oid', root.getAttribute('data-omo-stats-oid') || '');
+            formData.append('cid', root.getAttribute('data-omo-stats-cid') || '');
+            if (isEditing) {
+                formData.append('group_id', String(groupId));
+            }
+            formData.append('name', nameInput.value || '');
+            formData.append('display_mode', modeInput.value || 'overlay');
+            selectedIndicatorIds.forEach(function (id) {
+                formData.append('indicator_ids[]', id);
+            });
+
+            saveButton.disabled = true;
+            cancelButton.disabled = true;
+            if (feedback) {
+                feedback.textContent = '';
+                feedback.className = 'omo-stats-feedback';
+            }
+
+            postFormData(formData).then(function (payload) {
+                listNeedsRefresh = true;
+                var savedGroupId = Number(payload && payload.id ? payload.id : groupId);
+                if (Number.isInteger(savedGroupId) && savedGroupId > 0) {
+                    openDrawerWithUrl(buildGroupDetailUrl(savedGroupId));
+                    return;
+                }
+                closeDrawer({ force: true });
+            }).catch(function (error) {
+                if (feedback) {
+                    feedback.textContent = error.message || texts.loadError;
+                    feedback.className = 'omo-stats-feedback is-error';
+                }
+                saveButton.disabled = false;
+                cancelButton.disabled = false;
+            });
+        });
+    }
+
     function openContextPicker(mode, editData) {
+        if (mode === 'group') {
+            openGroupDrawerEditor(editData);
+            return;
+        }
+
         if (typeof window.commonTopbarOpenModal !== 'function') {
             return;
         }
@@ -1202,8 +1369,8 @@ $displayItemCount = count($statsEntries);
         button.addEventListener('click', closeDrawer);
     });
 
-    if (drawerBody) {
-        drawerBody.addEventListener('click', function (event) {
+    if (drawer) {
+        drawer.addEventListener('click', function (event) {
             var editButton = event.target.closest('[data-omo-stats-open-editor-url]');
             if (editButton) {
                 event.preventDefault();
@@ -1246,6 +1413,9 @@ $displayItemCount = count($statsEntries);
             });
         });
 
+    }
+
+    if (drawerBody) {
         drawerBody.addEventListener('submit', function (event) {
             var form = event.target.closest('[data-omo-stats-add-value-form]');
             if (!form) {

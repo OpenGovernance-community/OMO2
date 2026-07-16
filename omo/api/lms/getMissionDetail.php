@@ -132,7 +132,7 @@ if ($m) {
 
 	  .lms-login-invite button {
 		  border: 0;
-		  border-radius: 10px;
+		  border-radius: var(--radius-md);
 		  padding: 10px 14px;
 		  background: var(--color-primary, #004663);
 		  color: var(--color-text-inverse, #fff);
@@ -143,7 +143,7 @@ if ($m) {
 		  margin-top: 24px;
 		  padding: 18px;
 		  border: 1px solid var(--border-color, #d8e0e8);
-		  border-radius: 18px;
+		  border-radius: var(--radius-md);
 		  background: var(--bg-header, #f8fbfd);
 	  }
 
@@ -161,7 +161,7 @@ if ($m) {
 
 	  .lms-homework-item {
 		  border: 1px solid var(--border-color, #d9e3ea);
-		  border-radius: 14px;
+		  border-radius: var(--radius-md);
 		  background: var(--bg-card, #fff);
 		  overflow: hidden;
 	  }
@@ -215,7 +215,7 @@ if ($m) {
 		  width: 28px;
 		  height: 28px;
 		  border: 2px solid color-mix(in srgb, var(--border-color, #90a4b4) 85%, var(--text-light, #5f6f7f));
-		  border-radius: 8px;
+		  border-radius: var(--radius-md);
 		  background: var(--bg-card, #fff);
 		  cursor: pointer;
 		  margin: 0;
@@ -253,7 +253,7 @@ if ($m) {
 
 	  .lms-homework-expand {
 		  border: 1px solid var(--border-color, #c9d5df);
-		  border-radius: 10px;
+		  border-radius: var(--radius-md);
 		  padding: 8px 12px;
 		  background: var(--bg-card, #fff);
 		  color: var(--text-main, #22313f);
@@ -299,7 +299,7 @@ if ($m) {
 
 	  .quiz-info {
 		  padding: 14px 16px;
-		  border-radius: 14px;
+		  border-radius: var(--radius-md);
 		  border: 1px solid var(--border-color, #d8e0e8);
 		  background: var(--bg-header, #eff5f8);
 		  color: var(--text-main, #264052);
@@ -318,7 +318,7 @@ if ($m) {
 	  .quiz {
 		  padding: 18px;
 		  border: 1px solid var(--border-color, #d8e0e8);
-		  border-radius: 18px;
+		  border-radius: var(--radius-md);
 		  background: var(--bg-card, #ffffff);
 		  color: var(--text-main, #22313f);
 	  }
@@ -347,7 +347,7 @@ if ($m) {
 		  margin: 10px 0 0;
 		  padding: 12px 14px;
 		  border: 1px solid var(--border-color, #d8e0e8);
-		  border-radius: 12px;
+		  border-radius: var(--radius-md);
 		  background: color-mix(in srgb, var(--bg-card, #ffffff) 82%, var(--bg-header, #f8fbfd));
 		  color: var(--text-main, #22313f);
 		  cursor: pointer;

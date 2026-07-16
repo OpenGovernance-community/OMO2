@@ -83,7 +83,7 @@ if ($currentUserId > 0 && $featureEnabled) {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        border-radius: 20px;
+        border-radius: var(--radius-md);
         background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #ffffff));
         border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 18%, var(--color-border, #e5e7eb));
         box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
@@ -144,7 +144,7 @@ if ($currentUserId > 0 && $featureEnabled) {
     .omo-bug-report-popup__file-input {
         padding: 10px 12px;
         border: 1px dashed var(--color-border, #cbd5e1);
-        border-radius: 12px;
+        border-radius: var(--radius-md);
         background: var(--color-surface-alt, #f8fafc);
     }
 

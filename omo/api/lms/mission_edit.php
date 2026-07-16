@@ -147,7 +147,7 @@ $params['afterTableHtml'] = ob_get_clean();
 .lms-mission-related {
     padding: 20px 22px;
     border: 1px solid var(--border-color);
-    border-radius: 18px;
+    border-radius: var(--radius-md);
     background: var(--bg-card);
     box-shadow: var(--shadow);
 .lms-mission-editor-header {
@@ -194,7 +194,7 @@ $params['afterTableHtml'] = ob_get_clean();
     align-items: start;
     padding: 14px 16px;
     border: 1px solid var(--border-color);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: var(--bg-main);
     position: relative;
 }
@@ -218,7 +218,7 @@ $params['afterTableHtml'] = ob_get_clean();
     width: 34px;
     height: 34px;
     border: 0;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -235,7 +235,7 @@ $params['afterTableHtml'] = ob_get_clean();
     min-width: 180px;
     padding: 8px;
     border: 1px solid var(--border-color);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: var(--bg-card);
     box-shadow: 0 16px 40px rgba(15,23,42,0.16);
     display: none;
@@ -253,7 +253,7 @@ $params['afterTableHtml'] = ob_get_clean();
     color: var(--text-main);
     text-align: left;
     padding: 10px 12px;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     cursor: pointer;
 }
 
@@ -312,7 +312,7 @@ $params['afterTableHtml'] = ob_get_clean();
 .lms-mission-related__item {
     padding: 14px 16px;
     border: 1px solid var(--border-color);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: var(--bg-main);
     position: relative;
 }
@@ -459,7 +459,7 @@ $params['afterTableHtml'] = ob_get_clean();
 
 .lms-mission-creator-form__field .note-editor {
     border-color: var(--color-border, #d1d5db);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     overflow: hidden;
     background: var(--color-surface, #ffffff);
 }
@@ -497,7 +497,7 @@ $params['afterTableHtml'] = ob_get_clean();
     align-items: end;
     padding: 12px;
     border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--bg-main);
 }
 
@@ -539,7 +539,7 @@ $params['afterTableHtml'] = ob_get_clean();
     max-height: min(78vh, 760px);
     margin: 7vh auto 0;
     padding: 18px;
-    border-radius: 20px;
+    border-radius: var(--radius-md);
     background: var(--bg-card);
     box-shadow: 0 28px 80px rgba(15,23,42,0.28);
     display: grid;
@@ -590,7 +590,7 @@ $params['afterTableHtml'] = ob_get_clean();
     align-items: start;
     padding: 14px 16px;
     border: 1px solid var(--border-color);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: var(--bg-main);
 }
 
@@ -612,7 +612,7 @@ $params['afterTableHtml'] = ob_get_clean();
 
 .lms-parcours-mission-picker__empty {
     padding: 16px 18px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--primary) 7%, var(--bg-main));
 }
 

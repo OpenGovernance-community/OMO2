@@ -243,7 +243,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .password-reset-card {
             overflow: hidden;
-            border-radius: 24px;
+            border-radius: var(--radius-md);
             background: var(--auth-surface-solid);
             box-shadow: var(--auth-shadow-lg);
             border: 1px solid rgba(148, 163, 184, 0.22);
@@ -333,7 +333,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .password-reset-status {
             padding: 14px 16px;
-            border-radius: 14px;
+            border-radius: var(--radius-md);
             font-weight: 600;
             line-height: 1.45;
         }

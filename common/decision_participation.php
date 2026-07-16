@@ -1534,7 +1534,7 @@ if (empty($context['status'])) {
             gap: 4px;
             text-align: center;
             padding: 10px 12px;
-            border-radius: 16px;
+            border-radius: var(--radius-md);
             background: color-mix(in srgb, var(--color-surface, #ffffff) 92%, transparent);
             border: 1px solid color-mix(in srgb, var(--color-border, #cbd5e1) 90%, transparent);
             box-shadow: 0 16px 30px rgba(15, 23, 42, 0.06);
@@ -1593,7 +1593,7 @@ if (empty($context['status'])) {
         .decision-public-access-request {
             --generic-section-padding-block: clamp(22px, 3vw, 30px);
             --generic-section-padding-inline: clamp(18px, 3vw, 28px);
-            --generic-section-radius: 24px;
+            --generic-section-radius: var(--radius-md);
             --generic-section-border: color-mix(in srgb, var(--decision-public-accent) 16%, var(--color-border, #d1d5db));
             --generic-section-background:
                 radial-gradient(circle at top right, color-mix(in srgb, var(--decision-public-accent) 12%, transparent), transparent 42%),
@@ -1782,7 +1782,7 @@ if (empty($context['status'])) {
             }
 
             .decision-public-access-request {
-                --generic-section-radius: 18px;
+                --generic-section-radius: var(--radius-md);
                 --generic-section-padding-block: 18px;
                 --generic-section-padding-inline: 16px;
                 --generic-section-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);

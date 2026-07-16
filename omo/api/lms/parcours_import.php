@@ -57,7 +57,7 @@ $importableParcours = \dbObject\Parcours::fetchImportableForOrganization($organi
 .lms-import-parcours-hero,
 .lms-import-parcours-card {
     padding: 20px 22px;
-    border-radius: 18px;
+    border-radius: var(--radius-md);
     background: var(--bg-card);
     box-shadow: var(--shadow);
 }
@@ -113,7 +113,7 @@ $importableParcours = \dbObject\Parcours::fetchImportableForOrganization($organi
     align-items: start;
     padding: 14px 16px;
     border: 1px solid var(--border-color);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: var(--bg-main);
 }
 
@@ -176,7 +176,7 @@ $importableParcours = \dbObject\Parcours::fetchImportableForOrganization($organi
 
 .lms-import-parcours-empty {
     padding: 16px 18px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--primary) 7%, var(--bg-main));
 }
 

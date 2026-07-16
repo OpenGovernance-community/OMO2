@@ -1306,7 +1306,7 @@ if (!is_string($documentsPayload)) {
 .memo-documents__compact-icon-box {
     width: 42px;
     height: 42px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface-alt) 86%, #dbeafe 14%);
     display: inline-flex;
     align-items: center;
@@ -1378,7 +1378,7 @@ if (!is_string($documentsPayload)) {
     height: 34px;
     padding: 0 8px;
     border: 1px solid var(--color-border);
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface) 92%, white);
     color: var(--color-text);
     cursor: pointer;
@@ -1397,7 +1397,7 @@ if (!is_string($documentsPayload)) {
     max-width: calc(100vw - 24px);
     padding: 6px;
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--color-surface);
     box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
     z-index: 5000;
@@ -1412,7 +1412,7 @@ if (!is_string($documentsPayload)) {
     width: 100%;
     padding: 9px 10px;
     border: 0;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: transparent;
     color: var(--color-text);
     text-align: left;

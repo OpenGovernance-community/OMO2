@@ -178,7 +178,7 @@ if ($requestFragment === 'items') {
 		gap: 8px;
 		padding: 12px 14px;
 		border: 1px solid var(--topbar-panel-border, #dbe3ef);
-		border-radius: 14px;
+		border-radius: var(--radius-md);
 		background: var(--topbar-panel-bg, #ffffff);
 	}
 
@@ -262,7 +262,7 @@ if ($requestFragment === 'items') {
 		display: grid;
 		gap: 8px;
 		padding: 10px 12px;
-		border-radius: 12px;
+		border-radius: var(--radius-md);
 		border: 1px solid var(--topbar-panel-border, #dbe3ef);
 		background: rgba(148, 163, 184, 0.06);
 	}
@@ -289,7 +289,7 @@ if ($requestFragment === 'items') {
 
 	.omo-holon-history-popup__diff-value {
 		padding: 8px 10px;
-		border-radius: 10px;
+		border-radius: var(--radius-md);
 		font-size: 0.84rem;
 		line-height: 1.5;
 		white-space: pre-wrap;
@@ -314,14 +314,14 @@ if ($requestFragment === 'items') {
 	.omo-holon-history-popup__diff-inline-added {
 		color: #166534;
 		background: rgba(22, 163, 74, 0.12);
-		border-radius: 6px;
+		border-radius: var(--radius-md);
 		padding: 0 2px;
 	}
 
 	.omo-holon-history-popup__diff-inline-removed {
 		color: #991b1b;
 		background: rgba(220, 38, 38, 0.12);
-		border-radius: 6px;
+		border-radius: var(--radius-md);
 		padding: 0 2px;
 		text-decoration: line-through;
 	}
@@ -333,7 +333,7 @@ if ($requestFragment === 'items') {
 
 	.omo-holon-history-popup__diff-list-item {
 		padding: 7px 9px;
-		border-radius: 9px;
+		border-radius: var(--radius-md);
 		font-size: 0.83rem;
 		line-height: 1.45;
 		background: rgba(255, 255, 255, 0.72);
@@ -373,7 +373,7 @@ if ($requestFragment === 'items') {
 
 	.omo-holon-history-popup__diff-empty {
 		padding: 10px 12px;
-		border-radius: 10px;
+		border-radius: var(--radius-md);
 		background: rgba(15, 23, 42, 0.05);
 		font-size: 0.82rem;
 		line-height: 1.45;

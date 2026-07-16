@@ -104,7 +104,7 @@ if ($organizationId > 0 && $organization->load($organizationId)) {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        border-radius: 22px;
+        border-radius: var(--radius-md);
         background: color-mix(in srgb, #f59e0b 12%, var(--color-surface, #ffffff));
         border: 1px solid color-mix(in srgb, #f59e0b 24%, var(--color-border, #e5e7eb));
         box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);

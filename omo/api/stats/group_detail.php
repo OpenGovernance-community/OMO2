@@ -7,6 +7,7 @@ use dbObject\StatIndicatorGroup;
 use dbObject\StatIndicatorGroupItem;
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
+$currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
 $groupId = isset($_GET['id']) && is_numeric($_GET['id']) ? (int)$_GET['id'] : 0;
 $group = omoStatsLoadGroup($groupId, $organizationId);
 
@@ -16,11 +17,13 @@ if (!($group instanceof StatIndicatorGroup)) {
     exit;
 }
 
+$context = omoStatsResolveContext($organizationId, $currentHolonId);
+$canEdit = !empty($context['status']) && omoStatsCanEditContextResource($group, $context);
+$groupItems = omoStatsCollectionItems($group->getItems(), StatIndicatorGroupItem::class);
+$indicatorIds = [];
 $sourceIndicators = [];
-foreach ($group->getItems() as $item) {
-    if (!($item instanceof StatIndicatorGroupItem)) {
-        continue;
-    }
+foreach ($groupItems as $item) {
+    $indicatorIds[] = (int)$item->get('IDstatindicator');
     $indicator = $item->getIndicator();
     if ($indicator instanceof StatIndicator && $indicator->canView()) {
         $sourceIndicators[] = $indicator;
@@ -40,6 +43,25 @@ foreach ($series as $seriesIndex => $seriesItem) {
 }
 ?>
 <article class="omo-stats-group-detail<?= $isOverdue ? ' omo-stats-group-detail--overdue' : '' ?>" data-omo-stats-group-detail data-group-id="<?= (int)$groupId ?>">
+    <div
+        hidden
+        data-omo-subdrawer-header
+        data-omo-subdrawer-title="<?= omoApiEscape((string)$group->get('name')) ?>"
+        data-omo-subdrawer-description="<?= omoApiEscape(omoStatsT('stats.card.group')) ?>"
+    >
+        <?php if ($canEdit): ?>
+            <button
+                type="button"
+                class="generic-action-button generic-action-button--main"
+                data-omo-subdrawer-action
+                data-omo-stats-edit-group="<?= (int)$groupId ?>"
+                data-omo-stats-group-name="<?= omoApiEscape((string)$group->get('name')) ?>"
+                data-omo-stats-group-mode="<?= omoApiEscape((string)$group->get('display_mode')) ?>"
+                data-omo-stats-group-indicators="<?= omoApiEscape(json_encode($indicatorIds)) ?>"
+            ><?= omoApiEscape(omoStatsT('stats.action.edit_group')) ?></button>
+        <?php endif; ?>
+    </div>
+
     <section class="generic-hero-panel accent omo-stats-detail__hero">
         <div class="omo-stats-detail__hero-main">
             <div>

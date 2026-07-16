@@ -846,11 +846,12 @@ if (!is_string($documentsPayload)) {
                 <div class="omo-overlay-drawer__panel">
                     <div class="omo-overlay-drawer__header generic-drawer-header">
                         <div class="omo-overlay-drawer__header-copy generic-drawer-header__copy">
-                            <h3 class="omo-overlay-drawer__title" data-omo-document-detail-title><?= $escape(omoDocumentsScopeT('documents.drawer.detail_title')) ?></h3>
-                            <p class="omo-overlay-drawer__description" data-omo-document-detail-description><?= $escape(omoDocumentsScopeT('documents.drawer.detail_description')) ?></p>
+                            <h3 class="omo-overlay-drawer__title" data-omo-subdrawer-title data-omo-document-detail-title><?= $escape(omoDocumentsScopeT('documents.drawer.detail_title')) ?></h3>
+                            <p class="omo-overlay-drawer__description" data-omo-subdrawer-description data-omo-document-detail-description><?= $escape(omoDocumentsScopeT('documents.drawer.detail_description')) ?></p>
                         </div>
                         <div class="generic-drawer-header__actions">
-                            <button type="button" class="omo-overlay-drawer__close" data-omo-document-detail-close><?= $escape(omoDocumentsScopeT('documents.drawer.close')) ?></button>
+                            <div class="omo-documents__drawer-custom-actions" data-omo-subdrawer-actions></div>
+                            <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary" data-omo-document-detail-close><?= $escape(omoDocumentsScopeT('documents.drawer.close')) ?></button>
                         </div>
                     </div>
                     <div class="omo-overlay-drawer__body" data-omo-document-detail-body></div>
@@ -858,6 +859,7 @@ if (!is_string($documentsPayload)) {
             </div>
 
             <script type="application/json" data-omo-documents-data><?= $documentsPayload ?></script>
+            <script src="/common/drawer/subdrawer.js"></script>
             <script>
             (function () {
                 const omoDocumentsPreferencesStorageKey = 'omoDocumentsDisplayPreferences';
@@ -1057,6 +1059,14 @@ if (!is_string($documentsPayload)) {
                             const detailBody = detailDrawer ? detailDrawer.querySelector('[data-omo-document-detail-body]') : null;
                             const detailTitle = detailDrawer ? detailDrawer.querySelector('[data-omo-document-detail-title]') : null;
                             const detailDescription = detailDrawer ? detailDrawer.querySelector('[data-omo-document-detail-description]') : null;
+                            const detailDrawerController = detailDrawer && typeof window.omoCreateSubdrawerController === 'function'
+                                ? (detailDrawer.__omoSubdrawerController || window.omoCreateSubdrawerController({ drawer: detailDrawer }))
+                                : null;
+
+                            if (detailDrawerController) {
+                                detailDrawer.__omoSubdrawerController = detailDrawerController;
+                                window.omoDocumentsDetailDrawer = detailDrawerController;
+                            }
 
                             if (!results || !dataNode) {
                                 return;
@@ -1790,6 +1800,19 @@ if (!is_string($documentsPayload)) {
                                     return;
                                 }
 
+                                if (detailDrawerController) {
+                                    detailDrawerController.setHeader({
+                                        title: documentItem && documentItem.title
+                                            ? documentItem.title
+                                            : <?= json_encode(omoDocumentsScopeT('documents.drawer.detail_title'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                                        description: documentItem && documentItem.fullDateLabel
+                                            ? 'Document créé le ' + documentItem.fullDateLabel + '.'
+                                            : <?= json_encode(omoDocumentsScopeT('documents.drawer.detail_description'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                                        actions: []
+                                    });
+                                    return;
+                                }
+
                                 detailTitle.textContent = documentItem && documentItem.title
                                     ? documentItem.title
                                     : 'Détail du document';
@@ -1825,6 +1848,21 @@ if (!is_string($documentsPayload)) {
                                     }
                                 }, 200);
                             };
+
+                            if (detailDrawer) {
+                                detailDrawer.addEventListener('click', function (event) {
+                                    const editButton = event.target.closest('[data-omo-document-open-editor-url]');
+                                    if (!editButton) {
+                                        return;
+                                    }
+
+                                    event.preventDefault();
+                                    const editUrl = String(editButton.getAttribute('data-omo-document-open-editor-url') || '').trim();
+                                    if (editUrl !== '' && typeof window.omoOpenDocumentEditorDrawer === 'function') {
+                                        window.omoOpenDocumentEditorDrawer(editUrl, 'Modifier le document', 'Modification du document dans le contexte courant.');
+                                    }
+                                });
+                            }
 
                             const renderDetailLoading = function () {
                                 if (!detailBody) {
@@ -1908,6 +1946,9 @@ if (!is_string($documentsPayload)) {
                                         const temp = document.createElement('div');
                                         temp.innerHTML = data;
                                         syncDocumentDetailDrawerMetadata(temp, detailDrawer, documentItem.title || '', detailDescription ? detailDescription.textContent : '');
+                                        if (detailDrawerController) {
+                                            detailDrawerController.applyContentHeader(detailBody);
+                                        }
                                     },
                                     error: function () {
                                         if (requestToken !== detailRequestToken) {
@@ -2160,9 +2201,6 @@ if (!is_string($documentsPayload)) {
                                 }
 
                                 const openMode = normalizeDocumentOpenMode(payload.openDocumentMode || 'detail');
-                                payload.openDocumentId = 0;
-                                payload.openDocumentMode = 'detail';
-                                payload.requestedDocument = null;
 
                                 const documentItem = findDocumentItemById(documentId)
                                     || (
@@ -2175,19 +2213,35 @@ if (!is_string($documentsPayload)) {
                                     return false;
                                 }
 
+                                let opened = false;
                                 if (openMode === 'edit' && typeof window.omoOpenDocumentEditorByPayload === 'function') {
-                                    return window.omoOpenDocumentEditorByPayload(documentItem, panel) === true;
+                                    opened = window.omoOpenDocumentEditorByPayload(documentItem, panel) === true;
+                                } else if (openMode !== 'edit' && typeof window.omoOpenDocumentDetailByPayload === 'function') {
+                                    opened = window.omoOpenDocumentDetailByPayload(documentItem, panel) === true;
                                 }
 
-                                if (openMode === 'edit') {
+                                if (!opened) {
                                     return false;
                                 }
 
-                                if (typeof window.omoOpenDocumentDetailByPayload !== 'function') {
-                                    return false;
+                                payload.openDocumentId = 0;
+                                payload.openDocumentMode = 'detail';
+                                payload.requestedDocument = null;
+                                return true;
+                            };
+
+                            const retryInitialDocumentOpen = function (attempt) {
+                                if (!document.body.contains(panel)) {
+                                    return;
                                 }
 
-                                return window.omoOpenDocumentDetailByPayload(documentItem, panel) === true;
+                                if (openInitialDocumentFromPayload() || attempt >= 8) {
+                                    return;
+                                }
+
+                                window.setTimeout(function () {
+                                    retryInitialDocumentOpen(attempt + 1);
+                                }, 50);
                             };
 
                             panel.querySelectorAll('[data-omo-documents-sort]').forEach(function (button) {
@@ -2348,7 +2402,9 @@ if (!is_string($documentsPayload)) {
                             });
 
                             render();
-                            window.setTimeout(openInitialDocumentFromPayload, 0);
+                            window.setTimeout(function () {
+                                retryInitialDocumentOpen(0);
+                            }, 0);
 
                             if (!panel.__omoDocumentsApplyRouteChange) {
                                 panel.__omoDocumentsApplyRouteChange = function (detail) {
@@ -2375,7 +2431,6 @@ if (!is_string($documentsPayload)) {
                                             && !documentItem;
 
                                         if (targetMode === 'edit') {
-                                            window.omoCloseDocumentDetailDrawer({ force: true });
                                             if (
                                                 typeof window.omoPreserveDocumentPvPreparationDrawer !== 'function'
                                                 || !window.omoPreserveDocumentPvPreparationDrawer()
@@ -2397,13 +2452,13 @@ if (!is_string($documentsPayload)) {
                                         }
 
                                         if (targetMode !== 'edit' && documentItem && typeof window.omoOpenDocumentDetailByPayload === 'function') {
-                                            window.omoCloseDocumentEditorDrawer({ force: true });
+                                            window.omoCloseDocumentEditorDrawer({ force: true, preserveDrawer: true });
                                             window.omoOpenDocumentDetailByPayload(documentItem, panel);
                                             return true;
                                         }
 
                                         if (targetMode !== 'edit') {
-                                            window.omoCloseDocumentEditorDrawer({ force: true });
+                                            window.omoCloseDocumentEditorDrawer({ force: true, preserveDrawer: true });
                                             if (refreshPanelForDocumentRoute(targetDocumentId, targetMode, fallbackDocumentScope)) {
                                                 return true;
                                             }
@@ -2488,22 +2543,6 @@ if (!is_string($documentsPayload)) {
                 window.omoInitDocumentsPanels();
             })();
             </script>
-        <div class="omo-overlay-drawer omo-documents__editor-drawer" data-omo-document-editor-drawer hidden>
-            <div class="omo-overlay-drawer__backdrop" data-omo-document-editor-close></div>
-            <div class="omo-overlay-drawer__panel">
-                <div class="omo-overlay-drawer__header generic-drawer-header">
-                    <div class="omo-overlay-drawer__header-copy generic-drawer-header__copy">
-                        <h3 class="omo-overlay-drawer__title" data-omo-document-editor-title><?= $escape(omoDocumentsScopeT('documents.drawer.editor_title')) ?></h3>
-                        <p class="omo-overlay-drawer__description" data-omo-document-editor-description><?= $escape(omoDocumentsScopeT('documents.drawer.editor_description')) ?></p>
-                    </div>
-                    <div class="generic-drawer-header__actions">
-                        <button type="button" class="omo-overlay-drawer__close" data-omo-document-editor-close><?= $escape(omoDocumentsScopeT('documents.drawer.close')) ?></button>
-                    </div>
-                </div>
-                <div class="omo-overlay-drawer__body" data-omo-document-editor-body></div>
-            </div>
-        </div>
-
         <script>
         (function () {
             const normalizeDocumentScope = function (scopeValue) {
@@ -2817,15 +2856,44 @@ if (!is_string($documentsPayload)) {
 
             function openEditorDrawer(url, title, description) {
                 const root = getDocumentsRoot();
-                const drawer = root ? root.querySelector('[data-omo-document-editor-drawer]') : null;
-                const body = drawer ? drawer.querySelector('[data-omo-document-editor-body]') : null;
-                const titleNode = drawer ? drawer.querySelector('[data-omo-document-editor-title]') : null;
-                const descriptionNode = drawer ? drawer.querySelector('[data-omo-document-editor-description]') : null;
+                const drawer = root ? root.querySelector('[data-omo-document-detail-drawer]') : null;
+                const body = drawer ? drawer.querySelector('[data-omo-document-detail-body]') : null;
+                const titleNode = drawer ? drawer.querySelector('[data-omo-document-detail-title]') : null;
+                const descriptionNode = drawer ? drawer.querySelector('[data-omo-document-detail-description]') : null;
+                const drawerController = drawer && typeof window.omoCreateSubdrawerController === 'function'
+                    ? (drawer.__omoSubdrawerController || window.omoCreateSubdrawerController({ drawer: drawer }))
+                    : null;
                 const targetUrl = String(url || '').trim();
 
                 if (!drawer || !body || targetUrl === '') {
                     return;
                 }
+
+                if (drawer.dataset.omoDocumentDrawerMode === 'edit' && typeof cleanupDocumentEditorDrawer === 'function') {
+                    cleanupDocumentEditorDrawer(drawer);
+                }
+
+                if (drawerController) {
+                    drawer.__omoSubdrawerController = drawerController;
+                    window.omoDocumentsEditorDrawer = drawerController;
+                    drawerController.setHeader({
+                        title: String(title || <?= json_encode(omoDocumentsScopeT('documents.drawer.editor_title'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>).trim() || <?= json_encode(omoDocumentsScopeT('documents.drawer.editor_title'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                        description: String(description || <?= json_encode(omoDocumentsScopeT('documents.drawer.editor_description'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>).trim()
+                            || <?= json_encode(omoDocumentsScopeT('documents.drawer.editor_description'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                        actions: []
+                    });
+                }
+
+                try {
+                    const editorUrl = new URL(targetUrl, window.location.origin);
+                    const documentId = Number(editorUrl.searchParams.get('id') || 0);
+                    drawer.dataset.omoDocumentDrawerDocumentId = Number.isInteger(documentId) && documentId > 0
+                        ? String(documentId)
+                        : '';
+                } catch (error) {
+                    drawer.dataset.omoDocumentDrawerDocumentId = '';
+                }
+                drawer.dataset.omoDocumentDrawerMode = 'edit';
 
                 if (titleNode) {
                     titleNode.textContent = String(title || <?= json_encode(omoDocumentsScopeT('documents.drawer.editor_title'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>).trim() || <?= json_encode(omoDocumentsScopeT('documents.drawer.editor_title'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -2863,6 +2931,9 @@ if (!is_string($documentsPayload)) {
                         const temp = document.createElement('div');
                         temp.innerHTML = html;
                         body.innerHTML = html;
+                        if (drawerController) {
+                            drawerController.applyContentHeader(body);
+                        }
                         executeFetchedScripts(temp);
                     })
                     .catch(function () {
@@ -2887,6 +2958,31 @@ if (!is_string($documentsPayload)) {
                 }
 
                 let url = '/omo/api/documents/create.php?oid=' + encodeURIComponent(String(organizationId));
+                if (Number.isInteger(holonId) && holonId > 0) {
+                    url += '&cid=' + encodeURIComponent(String(holonId));
+                }
+
+                url += '&id=' + encodeURIComponent(String(resolvedDocumentId));
+                return url;
+            }
+
+            function buildDocumentDetailUrl(documentId, rootOverride) {
+                const resolvedDocumentId = Number(documentId || 0);
+                if (!Number.isInteger(resolvedDocumentId) || resolvedDocumentId <= 0) {
+                    return '';
+                }
+
+                const root = rootOverride instanceof Element
+                    ? rootOverride
+                    : getDocumentsRoot();
+                const organizationId = Number(root && root.getAttribute('data-omo-document-oid') || 0);
+                const holonId = Number(root && root.getAttribute('data-omo-document-cid') || 0);
+
+                if (!Number.isInteger(organizationId) || organizationId <= 0) {
+                    return '';
+                }
+
+                let url = '/omo/api/documents/detail.php?oid=' + encodeURIComponent(String(organizationId));
                 if (Number.isInteger(holonId) && holonId > 0) {
                     url += '&cid=' + encodeURIComponent(String(holonId));
                 }
@@ -2974,38 +3070,58 @@ if (!is_string($documentsPayload)) {
                 }
             }
 
+            const cleanupDocumentEditorDrawer = function (drawer) {
+                if (!(drawer instanceof Element) || drawer.dataset.omoDocumentDrawerMode !== 'edit') {
+                    return;
+                }
+
+                window.dispatchEvent(new CustomEvent('omo-document-editor-drawer-close'));
+                drawer.dataset.omoDocumentDrawerMode = '';
+            };
+
             window.omoCloseDocumentEditorDrawer = function (options) {
                 const settings = options && typeof options === 'object'
                     ? options
                     : {};
+                const root = getDocumentsRoot();
+                const drawer = root ? root.querySelector('[data-omo-document-detail-drawer]') : null;
+                const documentId = Number(drawer && drawer.dataset.omoDocumentDrawerDocumentId || 0);
                 const hashState = typeof window.omoParsePopupHashState === 'function'
                     ? window.omoParsePopupHashState()
                     : null;
                 const routeToken = hashState && hashState.routeToken ? String(hashState.routeToken) : '';
-                if (settings.force !== true && /^(?:documents|document)-de\d+$/i.test(routeToken) && typeof window.omoOpenDrawerHashState === 'function') {
-                    window.omoOpenDrawerHashState('documents');
-                    return;
-                }
-
-                const root = getDocumentsRoot();
-                const drawer = root ? root.querySelector('[data-omo-document-editor-drawer]') : null;
-                const body = drawer ? drawer.querySelector('[data-omo-document-editor-body]') : null;
+                const editingDocumentMatch = routeToken.match(/^(?:documents|document)-de(\d+)$/i);
 
                 if (!drawer) {
                     return;
                 }
 
-                window.dispatchEvent(new CustomEvent('omo-document-editor-drawer-close'));
-                drawer.classList.remove('is-open');
+                cleanupDocumentEditorDrawer(drawer);
 
-                window.setTimeout(function () {
-                    if (!drawer.classList.contains('is-open')) {
-                        drawer.hidden = true;
-                        if (body) {
-                            body.innerHTML = '';
-                        }
+                if (settings.returnToDetail === true && Number.isInteger(documentId) && documentId > 0) {
+                    if (editingDocumentMatch && settings.force !== true && typeof window.omoOpenDrawerHashState === 'function') {
+                        window.omoOpenDrawerHashState('documents-d' + editingDocumentMatch[1]);
+                        return;
                     }
-                }, 200);
+
+                    const documentItem = findDocumentPayloadItemById(documentId, root) || {
+                        id: documentId,
+                        contextUrl: buildDocumentDetailUrl(documentId, root)
+                    };
+                    drawer.dataset.omoDocumentDrawerMode = 'detail';
+                    window.omoOpenDocumentDetailByPayload(documentItem, root);
+                    return;
+                }
+
+                if (settings.preserveDrawer === true) {
+                    return;
+                }
+
+                if (settings.force !== true && editingDocumentMatch && typeof window.omoOpenDrawerHashState === 'function') {
+                    window.omoOpenDrawerHashState('documents');
+                }
+
+                window.omoCloseDocumentDetailDrawer({ force: true });
             };
 
             window.omoRefreshDocumentsPanel = function () {
@@ -3057,9 +3173,8 @@ if (!is_string($documentsPayload)) {
                     ? window.omoParsePopupHashState()
                     : null;
                 const routeToken = hashState && hashState.routeToken ? String(hashState.routeToken) : '';
-                if (settings.force !== true && /^(?:documents|document)-(?:d)?\d+$/i.test(routeToken) && typeof window.omoOpenDrawerHashState === 'function') {
+                if (settings.force !== true && /^(?:documents|document)-(?:d(?:e)?)?\d+$/i.test(routeToken) && typeof window.omoOpenDrawerHashState === 'function') {
                     window.omoOpenDrawerHashState('documents');
-                    return;
                 }
 
                 const root = getDocumentsRoot();
@@ -3070,6 +3185,9 @@ if (!is_string($documentsPayload)) {
                     return;
                 }
 
+                cleanupDocumentEditorDrawer(drawer);
+                drawer.dataset.omoDocumentDrawerMode = '';
+                drawer.dataset.omoDocumentDrawerDocumentId = '';
                 drawer.classList.remove('is-open');
                 window.setTimeout(function () {
                     if (!drawer.classList.contains('is-open')) {
@@ -3174,6 +3292,10 @@ if (!is_string($documentsPayload)) {
                     window.omoCloseDocumentPvPreparationDrawer({ force: true });
                 }
 
+                cleanupDocumentEditorDrawer(drawer);
+                drawer.dataset.omoDocumentDrawerMode = 'detail';
+                drawer.dataset.omoDocumentDrawerDocumentId = String(documentItem && documentItem.id ? documentItem.id : '');
+
                 if (titleNode) {
                     titleNode.textContent = title !== '' ? title : 'Détail du document';
                 }
@@ -3223,6 +3345,9 @@ if (!is_string($documentsPayload)) {
                         temp.innerHTML = html;
                         body.innerHTML = html;
                         syncDocumentDetailDrawerMetadata(temp, drawer, title, descriptionNode ? descriptionNode.textContent : '');
+                        if (drawer.__omoSubdrawerController) {
+                            drawer.__omoSubdrawerController.applyContentHeader(body);
+                        }
                         executeFetchedScripts(temp);
                     })
                     .catch(function () {
@@ -3714,11 +3839,18 @@ if (!is_string($documentsPayload)) {
                 positionDocumentMenu(activeDocumentMenuToggle);
             });
 
-            root.querySelectorAll('[data-omo-document-editor-close]').forEach(function (button) {
-                button.addEventListener('click', function () {
-                    window.omoCloseDocumentEditorDrawer();
-                });
-            });
+            const documentDrawer = root.querySelector('[data-omo-document-detail-drawer]');
+            if (documentDrawer) {
+                documentDrawer.addEventListener('click', function (event) {
+                    if (!(event.target instanceof Element) || !event.target.closest('[data-omo-document-editor-cancel]')) {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    window.omoCloseDocumentEditorDrawer({ returnToDetail: true });
+                }, true);
+            }
 
             root.querySelectorAll('[data-omo-document-detail-close]').forEach(function (button) {
                 button.addEventListener('click', function () {
@@ -3795,12 +3927,18 @@ if (!is_string($documentsPayload)) {
     grid-area: scope;
 }
 
-.omo-documents__editor-drawer .omo-overlay-drawer__body {
+.omo-documents__detail-drawer[data-omo-document-drawer-mode="edit"] .omo-overlay-drawer__body {
     padding: 0;
 }
 
-.omo-documents__detail-drawer,
-.omo-documents__editor-drawer {
+.omo-documents__drawer-custom-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.omo-documents__detail-drawer {
     z-index: 6000;
 }
 
@@ -3905,7 +4043,7 @@ if (!is_string($documentsPayload)) {
     padding: 0;
     padding-right: 56px;
     overflow: hidden;
-    border-radius: 22px;
+    border-radius: var(--radius-md);
     transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
 }
 
@@ -4000,7 +4138,7 @@ if (!is_string($documentsPayload)) {
     color: var(--color-text-light);
     font-size: 0.9rem;
     padding: 8px 12px 4px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, #fef3c7 28%, var(--color-surface));
 }
 
@@ -4026,7 +4164,7 @@ if (!is_string($documentsPayload)) {
     position: relative;
     width: 56px;
     height: 56px;
-    border-radius: 18px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface) 76%, white 24%);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border) 78%, white 22%);
 }
@@ -4197,7 +4335,7 @@ if (!is_string($documentsPayload)) {
     height: 34px;
     padding: 0 8px;
     border: 1px solid var(--color-border);
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface) 92%, white);
     color: var(--color-text);
     cursor: pointer;
@@ -4216,7 +4354,7 @@ if (!is_string($documentsPayload)) {
     max-width: calc(100vw - 24px);
     padding: 6px;
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--color-surface);
     box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
     z-index: 5000;
@@ -4231,7 +4369,7 @@ if (!is_string($documentsPayload)) {
     width: 100%;
     padding: 9px 10px;
     border: 0;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: transparent;
     color: var(--color-text);
     text-align: left;
@@ -4339,7 +4477,7 @@ if (!is_string($documentsPayload)) {
 .omo-documents__item--compact .omo-documents__icon-box {
     width: 34px;
     height: 34px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
 }
 
 .omo-documents__item--compact .omo-documents__icon {
@@ -4542,7 +4680,7 @@ if (!is_string($documentsPayload)) {
     width: 30px;
     height: 30px;
     padding: 0;
-    border-radius: 9px;
+    border-radius: var(--radius-md);
 }
 
 .omo-documents__item--compact .omo-documents__context,
@@ -4614,7 +4752,7 @@ if (!is_string($documentsPayload)) {
     .omo-documents__icon-box {
         width: 42px;
         height: 42px;
-        border-radius: 14px;
+        border-radius: var(--radius-md);
     }
 
     .omo-documents__icon {
@@ -4728,7 +4866,7 @@ if (!is_string($documentsPayload)) {
         min-width: 42px;
         max-width: 42px;
         flex: 0 0 42px;
-        border-radius: 0 0 0 12px !important;
+        border-radius: 0 0 0 var(--radius-md) !important;
     }
 
     .omo-documents__header-actions {

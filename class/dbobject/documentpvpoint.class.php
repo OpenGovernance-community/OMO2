@@ -696,7 +696,9 @@ class DocumentPvPoint extends DbObject
         }
 
         $renderer = new \dbObject\Document();
-        return $renderer->renderResolvedHtmlForViewer($content, max(0, $organizationId));
+        return $renderer->renderResolvedHtmlForViewer($content, max(0, $organizationId), array(
+            'compactEmbeds' => true,
+        ));
     }
 
     public function buildViewerData(int $organizationId = 0, int $currentUserId = 0, string $currentLockToken = ''): array
