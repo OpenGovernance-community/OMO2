@@ -617,9 +617,11 @@
 			return;
 		}
 
-		$audioUrl = "https://api.telegram.org/file/bot".TOKEN."/".$filePath;
-		$audioContent = @file_get_contents($audioUrl);
-		if ($audioContent === false) {
+		$download = telegramDownloadFile($filePath);
+		$traceJson = json_encode($download['trace'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+		error_log('[telegram-audio-download] '.($traceJson !== false ? $traceJson : 'Unable to encode download trace.'));
+
+		if (!$download['ok']) {
 			if ($waitMessageId) {
 				deleteMessage($chatId, $waitMessageId, $threadId);
 			}
@@ -627,6 +629,7 @@
 			return;
 		}
 
+		$audioContent = $download['content'];
 		$tempFilePath = tempnam(sys_get_temp_dir(), 'audio');
 		file_put_contents($tempFilePath, $audioContent);
 
