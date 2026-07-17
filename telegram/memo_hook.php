@@ -1026,12 +1026,28 @@
 			return;
 		}
 
-		$resumePrompt = "Résume le texte suivant en maximum 150 caractères, sans titre ni commentaire :\n".$response->text;
-		$resume = trim((string)say($resumePrompt));
-
+		$metadataPrompt = "Return exactly three lines for the following text. TITLE: a concise document title. SUMMARY: a French summary of at most 150 characters. KEYWORDS: three to five French keywords separated only by commas. Do not use markdown or add any other text.\n".$response->text;
+		$metadata = (string)say($metadataPrompt);
 		$title = "Mémo vocal";
+		$resume = '';
+		$keywords = '';
+		if (preg_match('/^TITLE\s*:\s*(.+)$/mi', $metadata, $titleMatch)) {
+			$title = trim($titleMatch[1], " \t\n\r\0\x0B*\"");
+		}
+		if ($title === '') {
+			$title = "Mémo vocal";
+		}
+		if (preg_match('/^SUMMARY\s*:\s*(.+)$/mi', $metadata, $resumeMatch)) {
+			$resume = trim($resumeMatch[1], " \t\n\r\0\x0B*\"");
+		}
+		if (preg_match('/^KEYWORDS\s*:\s*(.+)$/mi', $metadata, $keywordsMatch)) {
+			$keywordItems = array_filter(array_map(function ($keyword) {
+				return trim(ltrim((string)$keyword, '#'));
+			}, explode(',', $keywordsMatch[1])));
+			$keywords = implode(', ', array_unique($keywordItems));
+		}
+
 		$content = (string)$response->text;
-		$hash = '';
 
 		$doc = null;
 		if ($user->getId() > 0) {
@@ -1042,7 +1058,7 @@
 				$doc->set("title", $title);
 				$doc->set("description", $resume);
 				$doc->set("content", $content);
-				$doc->set("keywords", $hash);
+				$doc->set("keywords", $keywords);
 				$doc->set("IDuser", $user->getId());
 
 				if (($message['chat']['id'] ?? null) != ($message['from']['id'] ?? null)) {
@@ -1080,9 +1096,6 @@
 		}
 
 		$messageText = "\xE2\xAC\x86 ".($resume !== '' ? $resume : "Mémo vocal enregistré.");
-		if ($hash !== '') {
-			$messageText .= "\n".$hash;
-		}
 		if ($doc && $doc->getId() > 0) {
 			$messageText .= "\n".formatDocumentLink($doc);
 		}
