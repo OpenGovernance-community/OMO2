@@ -1,12 +1,16 @@
 <?php
-	function say($demand) {
+	function say($demand, $systemInstruction = null) {
 
 		ini_set('default_socket_timeout', 240);
 		
 		$system_param=array();
 		$data=array();
 
-		$system_param[]=array('role' => 'system', 'content' => 'Tu es un assistant spécialisé dans les synthèses efficaces et pertinentes. Tu ne rajoute pas de titre, de fioritures ou de contexte aux résumés et listes produits.');
+		$defaultSystemInstruction = 'Tu es un assistant spécialisé dans les synthèses efficaces et pertinentes. Tu ne rajoute pas de titre, de fioritures ou de contexte aux résumés et listes produits.';
+		$systemInstruction = is_string($systemInstruction) && trim($systemInstruction) !== ''
+			? $systemInstruction
+			: $defaultSystemInstruction;
+		$system_param[]=array('role' => 'system', 'content' => $systemInstruction);
 
 		// Endpoint de l'API de l'OpenAI
 		$apiUrl = 'https://api.openai.com/v1/chat/completions';
