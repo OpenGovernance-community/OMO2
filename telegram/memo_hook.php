@@ -993,7 +993,7 @@
 		telegramTraceLog('telegram_download.result', is_array($download['trace'] ?? null) ? $download['trace'] : array(
 			'ok' => $download['ok'] ?? false,
 		));
-		$traceJson = json_encode($download['trace'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+		$traceJson = json_encode($download['trace'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
 		error_log('[telegram-audio-download] '.($traceJson !== false ? $traceJson : 'Unable to encode download trace.'));
 
 		if (!$download['ok']) {

@@ -68,9 +68,31 @@
 				// Sinon, redimentionne l'image
 				// ************************************************
 				// Charger l'image depuis l'URL, en fonction du type
-				$opts = array('http' => array('header'=> 'Cookie: ' . $_SERVER['HTTP_COOKIE']."\r\n"));
-				$context = stream_context_create($opts);
-				$image = imagecreatefromstring(file_get_contents((strpos($url,"://")>0?$url:$_SERVER['DOCUMENT_ROOT'].$url),false,$context));
+				$imageSource = strpos($url, "://") > 0 ? $url : $_SERVER['DOCUMENT_ROOT'].$url;
+				$imageContent = false;
+				if (strpos($imageSource, "://") > 0 && function_exists('curl_init')) {
+					$ch = curl_init($imageSource);
+					$curlHeaders = array();
+					if (!empty($_SERVER['HTTP_COOKIE'])) {
+						$curlHeaders[] = 'Cookie: '.$_SERVER['HTTP_COOKIE'];
+					}
+					curl_setopt_array($ch, array(
+						CURLOPT_RETURNTRANSFER => true,
+						CURLOPT_FOLLOWLOCATION => true,
+						CURLOPT_MAXREDIRS => 3,
+						CURLOPT_CONNECTTIMEOUT => 15,
+						CURLOPT_TIMEOUT => 60,
+						CURLOPT_HTTPHEADER => $curlHeaders,
+					));
+					$imageContent = curl_exec($ch);
+				} elseif (strpos($imageSource, "://") === false) {
+					$imageContent = @file_get_contents($imageSource);
+				}
+				$image = $imageContent !== false ? imagecreatefromstring($imageContent) : false;
+				if ($image === false) {
+					http_response_code(502);
+					die('Unable to load image');
+				}
 				
 
 

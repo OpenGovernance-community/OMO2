@@ -51,19 +51,28 @@ $data = array(
 );
 print_r ($data);
 // Options pour la requête
-$options = array(
-    'http' => array(
-        'method' => 'POST',
-        'header' => 'Content-Type: application/json',
-        'content' => json_encode($data)
-    )
-);
+	$payload = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	$options = array(
+		'headers' => array('Content-Type: application/json'),
+		'payload_bytes' => is_string($payload) ? strlen($payload) : 0,
+	);
 print_r ($options);
 // Création du contexte de la requête
-$context = stream_context_create($options);
-
 // Exécution de la requête et récupération de la réponse
-$response = json_decode(file_get_contents($url, false, $context));
+$responseRaw = false;
+if (is_string($payload) && function_exists('curl_init')) {
+	$ch = curl_init($url);
+	curl_setopt_array($ch, array(
+		CURLOPT_POST => true,
+		CURLOPT_HTTPHEADER => array('Content-Type: application/json'),
+		CURLOPT_POSTFIELDS => $payload,
+		CURLOPT_RETURNTRANSFER => true,
+		CURLOPT_CONNECTTIMEOUT => 15,
+		CURLOPT_TIMEOUT => 240,
+	));
+	$responseRaw = curl_exec($ch);
+}
+$response = is_string($responseRaw) ? json_decode($responseRaw) : null;
 echo "<p>Reponse brut</p>";
 print_r ($response);
 echo "<h3>Ma réponse:</h3>";
