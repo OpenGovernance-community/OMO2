@@ -181,6 +181,114 @@
 				return $element;
 			}
 
+			if (self::isAllowedDecisionEmbedNode($node)) {
+				$element = $document->createElement('span');
+				$element->setAttribute('class', 'omo-decision-embed');
+				$element->setAttribute('contenteditable', 'false');
+				$element->setAttribute('data-omo-embed-type', 'decision');
+				$element->setAttribute('data-omo-decision-id', (string)self::getDecisionEmbedNodeId($node));
+
+				$title = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-decision-title'));
+				if ($title !== '') {
+					$element->setAttribute('data-omo-decision-title', $title);
+				}
+
+				$type = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-decision-type'));
+				if ($type !== '') {
+					$element->setAttribute('data-omo-decision-type', $type);
+				}
+
+				$summary = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-decision-summary'));
+				if ($summary !== '') {
+					$element->setAttribute('data-omo-decision-summary', $summary);
+				}
+
+				foreach (iterator_to_array($node->childNodes) as $childNode) {
+					self::appendSanitizedHtmlChild($element, self::sanitizeHtmlNode($childNode, $document));
+				}
+
+				return $element;
+			}
+
+			if (self::isAllowedEventEmbedNode($node)) {
+				$element = $document->createElement('span');
+				$element->setAttribute('class', 'omo-event-embed');
+				$element->setAttribute('contenteditable', 'false');
+				$element->setAttribute('data-omo-embed-type', 'event');
+				$element->setAttribute('data-omo-event-id', (string)self::getEventEmbedNodeId($node));
+
+				foreach (array('title', 'schedule', 'location', 'description') as $attributeName) {
+					$value = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-event-' . $attributeName));
+					if ($value !== '') {
+						$element->setAttribute('data-omo-event-' . $attributeName, $value);
+					}
+				}
+
+				foreach (iterator_to_array($node->childNodes) as $childNode) {
+					self::appendSanitizedHtmlChild($element, self::sanitizeHtmlNode($childNode, $document));
+				}
+
+				return $element;
+			}
+
+			if (self::isAllowedIndicatorEmbedNode($node)) {
+				$indicatorId = self::getIndicatorEmbedNodeId($node);
+				$isOverdue = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-overdue')) === '1';
+				$element = $document->createElement('span');
+				$element->setAttribute('class', 'omo-indicator-embed' . ($isOverdue ? ' omo-indicator-embed--overdue' : ''));
+				$element->setAttribute('contenteditable', 'false');
+				$element->setAttribute('data-omo-embed-type', 'indicator');
+				$element->setAttribute('data-omo-indicator-id', (string)$indicatorId);
+				$indicatorKind = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-kind')) === 'group' ? 'group' : 'indicator';
+				$element->setAttribute('data-omo-indicator-kind', $indicatorKind);
+
+				foreach (array('title', 'value', 'date', 'status', 'context') as $attributeName) {
+					$value = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-' . $attributeName));
+					if ($value !== '') {
+						$element->setAttribute('data-omo-indicator-' . $attributeName, $value);
+					}
+				}
+				if ($isOverdue) {
+					$element->setAttribute('data-omo-indicator-overdue', '1');
+				}
+
+				$title = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-title'));
+				$titleNode = $document->createElement('strong');
+				$linkNode = $document->createElement('a');
+				$linkNode->setAttribute('class', 'omo-indicator-embed__title');
+				$linkNode->setAttribute('href', $indicatorKind === 'group' ? '#stats' : ('#stats-i' . $indicatorId));
+				$linkNode->appendChild($document->createTextNode($title !== '' ? $title : ('Indicateur #' . $indicatorId)));
+				$titleNode->appendChild($linkNode);
+				$element->appendChild($titleNode);
+
+				$bodyNode = $document->createElement('span');
+				$bodyNode->setAttribute('class', 'omo-indicator-embed__body');
+				self::appendSanitizedIndicatorChart($bodyNode, $node, $document);
+				$valuesNode = $document->createElement('span');
+				$valuesNode->setAttribute('class', 'omo-indicator-embed__values');
+				$valueLabel = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-value'));
+				$dateLabel = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-date'));
+				$statusLabel = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-status'));
+				if ($valueLabel !== '') {
+					$valueNode = $document->createElement('b');
+					$valueNode->appendChild($document->createTextNode($valueLabel));
+					$valuesNode->appendChild($valueNode);
+				}
+				if ($dateLabel !== '') {
+					$dateNode = $document->createElement('time');
+					$dateNode->appendChild($document->createTextNode($dateLabel));
+					$valuesNode->appendChild($dateNode);
+				}
+				if ($statusLabel !== '') {
+					$statusNode = $document->createElement('em');
+					$statusNode->appendChild($document->createTextNode($statusLabel));
+					$valuesNode->appendChild($statusNode);
+				}
+				$bodyNode->appendChild($valuesNode);
+				$element->appendChild($bodyNode);
+				return $element;
+			}
+
 			$tagName = $sourceTagName === 'DIV' ? 'p' : strtolower($sourceTagName);
 			$allowedTags = array(
 				'p',
@@ -284,6 +392,120 @@
 			}
 
 			return self::getDocumentEmbedNodeId($node) > 0;
+		}
+
+		protected static function getDecisionEmbedNodeId(\DOMNode $node): int
+		{
+			return (int)trim((string)self::getDomNodeAttributeValue($node, 'data-omo-decision-id'));
+		}
+
+		protected static function isAllowedDecisionEmbedNode(\DOMNode $node): bool
+		{
+			if (!($node instanceof \DOMElement)) {
+				return false;
+			}
+
+			if (trim((string)$node->getAttribute('data-omo-embed-type')) !== 'decision') {
+				return false;
+			}
+
+			return self::getDecisionEmbedNodeId($node) > 0;
+		}
+
+		protected static function getEventEmbedNodeId(\DOMNode $node): int
+		{
+			return (int)trim((string)self::getDomNodeAttributeValue($node, 'data-omo-event-id'));
+		}
+
+		protected static function getIndicatorEmbedNodeId(\DOMNode $node): int
+		{
+			return (int)trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-id'));
+		}
+
+		protected static function isAllowedIndicatorEmbedNode(\DOMNode $node): bool
+		{
+			return $node instanceof \DOMElement
+				&& trim((string)$node->getAttribute('data-omo-embed-type')) === 'indicator'
+				&& self::getIndicatorEmbedNodeId($node) > 0;
+		}
+
+		protected static function appendSanitizedIndicatorChart(\DOMNode $parentNode, \DOMNode $sourceNode, \DOMDocument $document): void
+		{
+			if (!($sourceNode instanceof \DOMElement)) {
+				return;
+			}
+
+			$sourceCharts = $sourceNode->getElementsByTagName('svg');
+			$sourceChart = $sourceCharts->length > 0 ? $sourceCharts->item(0) : null;
+			if (!($sourceChart instanceof \DOMElement) || strpos(' ' . $sourceChart->getAttribute('class') . ' ', ' omo-stats-chart ') === false) {
+				return;
+			}
+
+			$chartNode = $document->createElement('svg');
+			$chartNode->setAttribute('class', 'omo-stats-chart omo-stats-chart--compact');
+			$chartNode->setAttribute('viewBox', '0 0 180 54');
+			$chartNode->setAttribute('aria-hidden', 'true');
+			foreach (array('polyline', 'circle') as $tagName) {
+				foreach (iterator_to_array($sourceChart->getElementsByTagName($tagName)) as $sourceShape) {
+					if (!($sourceShape instanceof \DOMElement)) {
+						continue;
+					}
+					$className = trim((string)$sourceShape->getAttribute('class'));
+					if ($tagName === 'polyline' && $className !== 'omo-stats-chart__reference' && !preg_match('/^omo-stats-chart__line(?: omo-stats-chart__line--(?:background|sum))?$/', $className)) {
+						continue;
+					}
+					if ($tagName === 'circle' && $className !== 'omo-stats-chart__point') {
+						continue;
+					}
+
+					$shapeNode = $document->createElement($tagName);
+					$shapeNode->setAttribute('class', $className);
+					if ($tagName === 'polyline') {
+						$points = trim((string)$sourceShape->getAttribute('points'));
+						if (strlen($points) > 4000 || !preg_match('/^-?[0-9.]+,-?[0-9.]+(?:\s+-?[0-9.]+,-?[0-9.]+)*$/', $points)) {
+							continue;
+						}
+						$shapeNode->setAttribute('points', $points);
+						$strokeStyle = trim((string)$sourceShape->getAttribute('style'));
+						if (preg_match('/^stroke:\s*#[0-9a-f]{6};?$/i', $strokeStyle)) {
+							$shapeNode->setAttribute('style', $strokeStyle);
+						}
+					} else {
+						$cx = trim((string)$sourceShape->getAttribute('cx'));
+						$cy = trim((string)$sourceShape->getAttribute('cy'));
+						$radius = trim((string)$sourceShape->getAttribute('r'));
+						if (!preg_match('/^-?[0-9.]+$/', $cx) || !preg_match('/^-?[0-9.]+$/', $cy) || !preg_match('/^-?[0-9.]+$/', $radius)) {
+							continue;
+						}
+						$shapeNode->setAttribute('cx', $cx);
+						$shapeNode->setAttribute('cy', $cy);
+						$shapeNode->setAttribute('r', $radius);
+					}
+					$chartNode->appendChild($shapeNode);
+				}
+			}
+
+			if (!$chartNode->hasChildNodes()) {
+				return;
+			}
+
+			$wrapper = $document->createElement('span');
+			$wrapper->setAttribute('class', 'omo-indicator-embed__chart');
+			$wrapper->appendChild($chartNode);
+			$parentNode->appendChild($wrapper);
+		}
+
+		protected static function isAllowedEventEmbedNode(\DOMNode $node): bool
+		{
+			if (!($node instanceof \DOMElement)) {
+				return false;
+			}
+
+			if (trim((string)$node->getAttribute('data-omo-embed-type')) !== 'event') {
+				return false;
+			}
+
+			return self::getEventEmbedNodeId($node) > 0;
 		}
 
 		protected static function appendSanitizedHtmlChild(\DOMNode $parentNode, \DOMNode $childNode)

@@ -161,7 +161,7 @@ $requestMessage = $isMemberRequest ? $invitation->getRequestMessage() : '';
 		}
 		.invitation-card {
 			overflow: hidden;
-			border-radius: 24px;
+			border-radius: var(--radius-md);
 			background: #ffffff;
 			box-shadow: 0 24px 60px rgba(15, 23, 42, 0.14);
 			border: 1px solid rgba(148, 163, 184, 0.22);
@@ -235,7 +235,7 @@ $requestMessage = $isMemberRequest ? $invitation->getRequestMessage() : '';
 		}
 		.invitation-status {
 			padding: 14px 16px;
-			border-radius: 14px;
+			border-radius: var(--radius-md);
 			font-weight: 600;
 			line-height: 1.45;
 		}

@@ -157,7 +157,7 @@ $brandHref = $shareLink->buildShareUrl($initialCid);
     <script src="/shared_functions.js"></script>
     <script>sharedApplyDocumentTheme();</script>
     <link rel="stylesheet" href="/common/assets/omo_public_pages.css">
-    <link rel="stylesheet" href="/omo/assets/css/styles.css">
+    <link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260714-pv-groups">
     <base href="/omo/">
     <style>
     :root {
@@ -195,7 +195,7 @@ $brandHref = $shareLink->buildShareUrl($initialCid);
         max-width: 520px;
         padding: 24px;
         border: 1px solid var(--color-border, #e5e7eb);
-        border-radius: 18px;
+        border-radius: var(--radius-md);
         background: var(--color-surface, #ffffff);
         box-shadow: var(--shadow-md, 0 12px 24px rgba(0,0,0,0.12));
     }
@@ -295,7 +295,7 @@ window.omoConfig = <?= json_encode(array(
     'shareAllowsPeopleDetail' => $shareLink->allowsPeopleDetail(),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>
-<script src="/omo/assets/js/app.js"></script>
+<script src="/omo/assets/js/app.js?v=20260714-persistent-top-drawer"></script>
 <script src="/omo/assets/js/structure-mini-map.js"></script>
 <script>
 $(document).ready(function () {

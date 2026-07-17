@@ -216,7 +216,7 @@ if (empty($context['status']) || !($decision instanceof DecisionProcess) || empt
     <title><?= $escape(t('decisions.qr_sheet.title', [], $lang, $sourceLang)) ?></title>
     <style>
         body{margin:0;font-family:Arial,sans-serif;background:#f6f7fb;color:#122033}
-        .omo-decision-qr-sheet__error{max-width:720px;margin:48px auto;padding:32px;border-radius:20px;background:#fff;box-shadow:0 18px 40px rgba(15,23,42,.08)}
+        .omo-decision-qr-sheet__error{max-width:720px;margin:48px auto;padding:32px;border-radius:var(--radius-md);background:#fff;box-shadow:0 18px 40px rgba(15,23,42,.08)}
     </style>
 </head>
 <body>
@@ -275,7 +275,7 @@ if (
     <title><?= $escape(t('decisions.qr_sheet.title', [], $lang, $sourceLang)) ?></title>
     <style>
         body{margin:0;font-family:Arial,sans-serif;background:#f6f7fb;color:#122033}
-        .omo-decision-qr-sheet__error{max-width:720px;margin:48px auto;padding:32px;border-radius:20px;background:#fff;box-shadow:0 18px 40px rgba(15,23,42,.08)}
+        .omo-decision-qr-sheet__error{max-width:720px;margin:48px auto;padding:32px;border-radius:var(--radius-md);background:#fff;box-shadow:0 18px 40px rgba(15,23,42,.08)}
     </style>
 </head>
 <body>
@@ -352,22 +352,22 @@ usort($participantCards, static function (array $left, array $right): int {
         .omo-decision-qr-sheet__button--main{background:var(--omo-qr-text);color:#fff}
         .omo-decision-qr-sheet__button--secondary{background:var(--omo-qr-panel);color:var(--omo-qr-text);box-shadow:0 8px 24px rgba(15,23,42,.08)}
         .omo-decision-qr-sheet__summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:24px}
-        .omo-decision-qr-sheet__summary-card{padding:16px 18px;border-radius:18px;background:var(--omo-qr-panel);box-shadow:0 12px 30px rgba(15,23,42,.07)}
+        .omo-decision-qr-sheet__summary-card{padding:16px 18px;border-radius:var(--radius-md);background:var(--omo-qr-panel);box-shadow:0 12px 30px rgba(15,23,42,.07)}
         .omo-decision-qr-sheet__summary-label{display:block;margin-bottom:6px;color:var(--omo-qr-muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
         .omo-decision-qr-sheet__summary-value{display:block;font-size:16px;font-weight:700;line-height:1.35}
         .omo-decision-qr-sheet__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
-        .omo-decision-qr-sheet__card{display:flex;flex-direction:column;gap:14px;align-items:stretch;padding:16px;border:1px dashed var(--omo-qr-line);border-radius:24px;background:var(--omo-qr-panel)}
+        .omo-decision-qr-sheet__card{display:flex;flex-direction:column;gap:14px;align-items:stretch;padding:16px;border:1px dashed var(--omo-qr-line);border-radius:var(--radius-md);background:var(--omo-qr-panel)}
         .omo-decision-qr-sheet__participant{display:flex;flex-direction:column;gap:10px;min-width:0}
         .omo-decision-qr-sheet__participant-name{margin:0;font-size:22px;line-height:1.15;word-break:break-word}
         .omo-decision-qr-sheet__decision-title{margin:0;font-size:16px;line-height:1.25;font-weight:700;word-break:break-word}
         .omo-decision-qr-sheet__meta{display:grid;gap:8px}
-        .omo-decision-qr-sheet__meta-line{padding:10px 12px;border-radius:14px;background:var(--omo-qr-panel-soft)}
+        .omo-decision-qr-sheet__meta-line{padding:10px 12px;border-radius:var(--radius-md);background:var(--omo-qr-panel-soft)}
         .omo-decision-qr-sheet__meta-label{display:block;margin-bottom:4px;color:var(--omo-qr-muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
         .omo-decision-qr-sheet__meta-value{display:block;font-size:13px;line-height:1.4;word-break:break-word}
         .omo-decision-qr-sheet__organizer-line{display:block}
-        .omo-decision-qr-sheet__qr{display:flex;align-items:center;justify-content:center;padding:12px;border-radius:20px;background:#fff;border:1px solid var(--omo-qr-line);align-self:center}
+        .omo-decision-qr-sheet__qr{display:flex;align-items:center;justify-content:center;padding:12px;border-radius:var(--radius-md);background:#fff;border:1px solid var(--omo-qr-line);align-self:center}
         .omo-decision-qr-sheet__qr img{display:block;width:100%;max-width:164px;height:auto}
-        .omo-decision-qr-sheet__empty{padding:32px;border-radius:22px;background:var(--omo-qr-panel);box-shadow:0 12px 30px rgba(15,23,42,.07);color:var(--omo-qr-muted)}
+        .omo-decision-qr-sheet__empty{padding:32px;border-radius:var(--radius-md);background:var(--omo-qr-panel);box-shadow:0 12px 30px rgba(15,23,42,.07);color:var(--omo-qr-muted)}
         @media (max-width:980px){
             .omo-decision-qr-sheet__summary{grid-template-columns:repeat(2,minmax(0,1fr))}
             .omo-decision-qr-sheet__grid{grid-template-columns:1fr}
@@ -391,15 +391,15 @@ usort($participantCards, static function (array $left, array $right): int {
             .omo-decision-qr-sheet__grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8mm}
             .omo-decision-qr-sheet__summary-card,
             .omo-decision-qr-sheet__card{box-shadow:none}
-            .omo-decision-qr-sheet__card{break-inside:avoid;page-break-inside:avoid;gap:3mm;padding:4mm;border-radius:10px;min-height:62mm}
+            .omo-decision-qr-sheet__card{break-inside:avoid;page-break-inside:avoid;gap:3mm;padding:4mm;border-radius:var(--radius-md);min-height:62mm}
             .omo-decision-qr-sheet__participant{gap:2mm}
             .omo-decision-qr-sheet__participant-name{font-size:14pt}
             .omo-decision-qr-sheet__decision-title{font-size:10pt}
             .omo-decision-qr-sheet__meta{gap:2mm}
-            .omo-decision-qr-sheet__meta-line{padding:2.2mm 2.5mm;border-radius:6px}
+            .omo-decision-qr-sheet__meta-line{padding:2.2mm 2.5mm;border-radius:var(--radius-md)}
             .omo-decision-qr-sheet__meta-label{font-size:7pt;margin-bottom:1mm}
             .omo-decision-qr-sheet__meta-value{font-size:8pt;line-height:1.25}
-            .omo-decision-qr-sheet__qr{padding:2mm;border-radius:8px}
+            .omo-decision-qr-sheet__qr{padding:2mm;border-radius:var(--radius-md)}
             .omo-decision-qr-sheet__qr img{max-width:30mm}
         }
     </style>

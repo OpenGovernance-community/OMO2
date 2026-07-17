@@ -24,6 +24,9 @@ if (!function_exists('commonBuildOmoPublicOrganizationContext')) {
             'logo' => (string)$organization->get('logo'),
             'banner' => (string)$organization->get('banner'),
             'color' => trim((string)$organization->get('color')),
+            'datecreation' => $organization->get('datecreation') instanceof \DateTimeInterface
+                ? $organization->get('datecreation')->format('Y-m-d')
+                : '',
             'host' => commonGetRequestHost(),
         ];
     }

@@ -87,7 +87,7 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
 
     .omo-share-popup--error {
         padding: 18px;
-        border-radius: 16px;
+        border-radius: var(--radius-md);
         background: var(--color-surface-alt, #f0f2f5);
         color: var(--color-text-light, #6b7280);
         border: 1px solid var(--color-border, #e5e7eb);
@@ -135,7 +135,7 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
     .omo-share-popup__card {
         --generic-section-gap: 10px;
         --generic-section-padding-inline: 16px;
-        --generic-section-radius: 16px;
+        --generic-section-radius: var(--radius-md);
         --generic-section-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.05));
     }
 
@@ -235,7 +235,7 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
         --generic-soft-panel-gap: 12px;
         --generic-soft-panel-padding-block: 16px;
         --generic-soft-panel-padding-inline: 16px;
-        --generic-soft-panel-radius: 16px;
+        --generic-soft-panel-radius: var(--radius-md);
     }
 
     .omo-share-popup__check {

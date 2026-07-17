@@ -48,6 +48,34 @@ class ArrayEvent extends ArrayDbObject
         }
     }
 
+    public function loadVisibleForOrganization($organizationId, $userId, $includeInactive = false)
+    {
+        $organizationId = (int)$organizationId;
+        $userId = (int)$userId;
+        $this->exchangeArray([]);
+
+        if ($organizationId <= 0 || $userId <= 0) {
+            return;
+        }
+
+        $allEvents = new self();
+        $allEvents->loadForOrganization($organizationId, $includeInactive);
+
+        foreach ($allEvents as $event) {
+            if (!($event instanceof Event)) {
+                continue;
+            }
+
+            if (Event::normalizeStatus($event->get('status')) === Event::STATUS_CANCELLED) {
+                continue;
+            }
+
+            if ((int)$event->get('IDuser') === $userId || $event->isVisibleToInvitationViewer($userId, $organizationId)) {
+                $this[] = $event;
+            }
+        }
+    }
+
     public function loadForHolon($holonId, $includeInactive = false)
     {
         $holonId = (int)$holonId;
@@ -361,39 +389,11 @@ class ArrayEvent extends ArrayDbObject
         $organizationId = (int)$organizationId;
         $userId = (int)$userId;
 
-        if (
-            $organizationId <= 0
-            || $userId <= 0
-            || (int)$event->getId() <= 0
-            || (int)$event->get('IDorganization') !== $organizationId
-            || (int)$event->get('active') !== 1
-            || \dbObject\Event::normalizeStatus($event->get('status')) === \dbObject\Event::STATUS_CANCELLED
-        ) {
+        if ($organizationId <= 0 || $userId <= 0 || (int)$event->getId() <= 0) {
             return false;
         }
 
-        $eventHolonId = (int)$event->get('IDholon');
-        if ($eventHolonId <= 0) {
-            return true;
-        }
-
-        $eventHolon = new \dbObject\Holon();
-        if (
-            !$eventHolon->load($eventHolonId)
-            || !(bool)$eventHolon->get('active')
-            || !(bool)$eventHolon->get('visible')
-        ) {
-            return false;
-        }
-
-        return in_array(
-            $userId,
-            $eventHolon->getAssociatedMemberUserIds([
-                'organizationId' => $organizationId,
-                'skipPermissionFilter' => true,
-            ]),
-            true
-        );
+        return $event->isVisibleToInvitationViewer($userId, $organizationId);
     }
 
     public function loadUpcomingForPersonalSpace($organizationId, $userId, $limit = 5, $referenceStart = null)

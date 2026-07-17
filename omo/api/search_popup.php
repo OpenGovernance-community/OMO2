@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
+require_once dirname(__DIR__, 2) . '/common/topbar.php';
+require_once dirname(__DIR__) . '/topbar.php';
 
 if (!function_exists('omoSearchPopupGetScopeLabels')) {
     function omoSearchPopupGetScopeLabels(?\dbObject\Organization $organization = null)
@@ -9,6 +11,7 @@ if (!function_exists('omoSearchPopupGetScopeLabels')) {
             'team' => 'Team',
             'calendar' => 'Calendrier',
             'documents' => 'Documents',
+            'pv' => 'PV',
             'decision' => 'Decisions',
             'faq' => 'FAQ',
             'tutorials' => 'Tutoriels',
@@ -23,6 +26,7 @@ if (!function_exists('omoSearchPopupGetScopeLabels')) {
             'team' => 'team',
             'calendar' => 'calendar',
             'documents' => 'documents',
+            'pv' => 'documents',
             'decision' => 'decision',
         );
 
@@ -60,6 +64,34 @@ if (!function_exists('omoSearchPopupResolveScopes')) {
         }
 
         return $selectedScopes;
+    }
+}
+
+if (!function_exists('omoSearchPopupResolveDateRange')) {
+    function omoSearchPopupResolveDateRange($startDate, $endDate, \dbObject\Organization $organization)
+    {
+        $organizationCreatedAt = $organization->get('datecreation');
+        $minDate = $organizationCreatedAt instanceof \DateTimeInterface
+            ? $organizationCreatedAt->format('Y-m-d')
+            : date('Y-m-d');
+        $maxDate = date('Y-m-d');
+        $startDate = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$startDate) ? (string)$startDate : $minDate;
+        $endDate = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$endDate) ? (string)$endDate : $maxDate;
+        $startDate = max($minDate, min($maxDate, $startDate));
+        $endDate = max($minDate, min($maxDate, $endDate));
+        if ($startDate > $endDate) {
+            $endDate = $startDate;
+        }
+
+        return array(
+            'minDate' => $minDate,
+            'maxDate' => $maxDate,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'label' => omoTopbarTranslate('topbar.search.period'),
+            'startLabel' => omoTopbarTranslate('topbar.search.period_start'),
+            'endLabel' => omoTopbarTranslate('topbar.search.period_end'),
+        );
     }
 }
 
@@ -193,7 +225,7 @@ if (!function_exists('omoSearchPopupRenderStyles')) {
         .omo-search-popup__stat {
             min-width: 92px;
             padding: 10px 12px;
-            border-radius: 14px;
+            border-radius: var(--radius-md);
             background: var(--omo-search-popup-card-background);
             border: 1px solid var(--omo-search-popup-card-border);
             appearance: none;
@@ -272,7 +304,7 @@ if (!function_exists('omoSearchPopupRenderStyles')) {
         .omo-search-popup__empty,
         .omo-search-popup__status-card {
             padding: 18px;
-            border-radius: 16px;
+            border-radius: var(--radius-md);
             border: 1px solid var(--omo-search-popup-card-border);
             background: var(--omo-search-popup-card-background);
             color: var(--omo-search-popup-muted-text);
@@ -365,7 +397,7 @@ if (!function_exists('omoSearchPopupRenderStats')) {
 }
 
 if (!function_exists('omoSearchPopupRenderSearchForm')) {
-    function omoSearchPopupRenderSearchForm($query, array $selectedScopes, array $scopeLabels, $escape)
+    function omoSearchPopupRenderSearchForm($query, array $selectedScopes, array $scopeLabels, array $dateRange, $escape)
     {
         $ui = omoSearchPopupGetUiStrings();
         ?>
@@ -399,6 +431,7 @@ if (!function_exists('omoSearchPopupRenderSearchForm')) {
                         <?php endforeach; ?>
                     </div>
                 </div>
+                <?php commonRenderTopbarSearchPeriod($dateRange, 'omoSearchPopup'); ?>
             </form>
         </div>
         <?php
@@ -471,7 +504,7 @@ if (!function_exists('omoSearchPopupRenderContent')) {
                         } elseif ($module === 'calendar' && !empty($action['eventId'])) {
                             $buttonAttributes = ' data-omo-search-open-calendar-event-id="' . (int)$action['eventId'] . '"'
                                 . ' data-omo-search-open-calendar-event-holon="' . (int)($action['holonId'] ?? 0) . '"';
-                        } elseif ($module === 'documents' && !empty($action['documentUrl'])) {
+                        } elseif (in_array($module, array('documents', 'pv'), true) && !empty($action['documentUrl'])) {
                             $buttonAttributes = ' data-omo-search-open-document="' . htmlspecialchars((string)$action['documentUrl'], ENT_QUOTES, 'UTF-8') . '"'
                                 . ' data-omo-search-document-title="' . htmlspecialchars((string)($result['title'] ?? 'Document'), ENT_QUOTES, 'UTF-8') . '"';
                         } elseif ($module === 'decision' && !empty($action['decisionId'])) {
@@ -643,6 +676,7 @@ if (!$organization->load($organizationId) || !$organization->canViewDetail()) {
 
 $scopeLabels = omoSearchPopupGetScopeLabels($organization);
 $selectedScopes = omoSearchPopupResolveScopes($_GET['scopes'] ?? array(), $scopeLabels);
+$dateRange = omoSearchPopupResolveDateRange($_GET['date_start'] ?? '', $_GET['date_end'] ?? '', $organization);
 $viewerContext = \dbObject\SearchJob::buildViewerContextFromGlobals($organizationId, $currentHolonId);
 $restoreJobId = isset($_GET['restore_job_id']) ? (int)$_GET['restore_job_id'] : 0;
 $restoreJobToken = trim((string)($_GET['restore_job_token'] ?? ''));
@@ -655,12 +689,15 @@ if (!$isPartial && $restoreJobId > 0 && $restoreJobToken !== '') {
     if ($restoredJob && $restoredJob->matchesViewerContext($viewerContext)) {
         $query = trim((string)$restoredJob->get('query'));
         $selectedScopes = omoSearchPopupResolveScopes($restoredJob->getScopes(), $scopeLabels);
+        $dateRange = omoSearchPopupResolveDateRange($restoredJob->getDateRange()['startDate'] ?? '', $restoredJob->getDateRange()['endDate'] ?? '', $organization);
         $restoredPayload = omoSearchPopupBuildJobPayload($restoredJob);
         $clientJobState = array(
             'jobId' => (int)$restoredJob->getId(),
             'jobToken' => (string)$restoredJob->get('requesttoken'),
             'query' => $query,
             'scopes' => array_values($selectedScopes),
+            'startDate' => $dateRange['startDate'],
+            'endDate' => $dateRange['endDate'],
             'organizationId' => (int)$organizationId,
             'currentHolonId' => (int)$currentHolonId,
             'syncHash' => false,
@@ -690,6 +727,7 @@ if ($isPartial) {
 
     $query = trim((string)$job->get('query'));
     $selectedScopes = omoSearchPopupResolveScopes($job->getScopes(), $scopeLabels);
+    $dateRange = omoSearchPopupResolveDateRange($job->getDateRange()['startDate'] ?? '', $job->getDateRange()['endDate'] ?? '', $organization);
     $jobPayload = omoSearchPopupBuildJobPayload($job);
 
     omoSearchPopupRenderContent($query, $selectedScopes, $scopeLabels, $jobPayload, $escape);
@@ -704,7 +742,7 @@ omoSearchPopupRenderStyles();
     data-omo-search-popup-oid="<?= (int)$organizationId ?>"
     data-omo-search-popup-cid="<?= (int)$currentHolonId ?>"
 >
-    <?php omoSearchPopupRenderSearchForm($query, $selectedScopes, $scopeLabels, $escape); ?>
+    <?php omoSearchPopupRenderSearchForm($query, $selectedScopes, $scopeLabels, $dateRange, $escape); ?>
     <div data-omo-search-popup-content>
         <?php
         if ($restoredPayload !== null) {
@@ -742,6 +780,7 @@ omoSearchPopupRenderStyles();
         } else {
             $job = \dbObject\SearchJob::createTopbarJob($organization, $query, array_values($selectedScopes), $viewerContext, array(
                 'currentHolonId' => $currentHolonId,
+                'dateRange' => $dateRange,
             ));
 
             if (!$job) {
@@ -763,6 +802,8 @@ omoSearchPopupRenderStyles();
                     'jobToken' => (string)$job->get('requesttoken'),
                     'query' => $query,
                     'scopes' => array_values($selectedScopes),
+                    'startDate' => $dateRange['startDate'],
+                    'endDate' => $dateRange['endDate'],
                     'organizationId' => (int)$organizationId,
                     'currentHolonId' => (int)$currentHolonId,
                     'syncHash' => true,
@@ -814,6 +855,10 @@ omoSearchPopupRenderStyles();
 
     root.dataset.omoSearchPopupUiBound = '1';
 
+    if (typeof window.commonTopbarInitializeSearchPeriod === 'function') {
+        window.commonTopbarInitializeSearchPeriod(searchForm);
+    }
+
     function buildPopupUrl(query, scopes) {
         var queryParts = [
             'q=' + encodeURIComponent(String(query || '').trim())
@@ -825,6 +870,15 @@ omoSearchPopupRenderStyles();
 
         if (Number.isInteger(currentHolonId) && currentHolonId > 0) {
             queryParts.push('cid=' + encodeURIComponent(currentHolonId));
+        }
+
+        var startDateInput = root.querySelector('[data-topbar-search-period-start]');
+        var endDateInput = root.querySelector('[data-topbar-search-period-end]');
+        if (startDateInput && startDateInput.value) {
+            queryParts.push('date_start=' + encodeURIComponent(startDateInput.value));
+        }
+        if (endDateInput && endDateInput.value) {
+            queryParts.push('date_end=' + encodeURIComponent(endDateInput.value));
         }
 
         (Array.isArray(scopes) ? scopes : []).forEach(function (scopeId) {
@@ -863,8 +917,14 @@ omoSearchPopupRenderStyles();
 
         var query = String(searchInput.value || '').trim();
         var scopes = getSelectedScopes();
+        var startDateInput = root.querySelector('[data-topbar-search-period-start]');
+        var endDateInput = root.querySelector('[data-topbar-search-period-end]');
+        var dateRange = {
+            startDate: startDateInput ? String(startDateInput.value || '') : '',
+            endDate: endDateInput ? String(endDateInput.value || '') : ''
+        };
 
-        if (typeof window.omoOpenSearchPopupHashState === 'function' && window.omoOpenSearchPopupHashState(query, scopes)) {
+        if (typeof window.omoOpenSearchPopupHashState === 'function' && window.omoOpenSearchPopupHashState(query, scopes, dateRange)) {
             return;
         }
 

@@ -133,7 +133,7 @@
     min-width: 88px;
     padding: 9px 12px;
     border: 1px solid var(--auth-border);
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     background: var(--auth-input-bg);
     color: var(--auth-page-text);
     font: inherit;
@@ -144,7 +144,7 @@
     width: 100%;
     max-width: 100%;
     border: 1px solid var(--auth-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     overflow: hidden;
     background: var(--auth-input-bg);
     box-sizing: border-box;
@@ -225,7 +225,7 @@
     flex-direction: column;
     gap: 10px;
     padding: 14px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--auth-panel-bg);
     border: 1px solid var(--auth-border);
     color: var(--auth-panel-text);
@@ -240,7 +240,7 @@
 .auth-code-box input,
 .auth-password-box input {
     border: 1px solid var(--auth-border);
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     padding: 12px 14px;
     font-size: 16px;
     background: var(--auth-input-bg);
@@ -251,7 +251,7 @@
 .auth-code-box button,
 .auth-submit {
     border: 0;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     padding: 14px 18px;
     font-size: 16px;
     font-weight: 600;
@@ -270,7 +270,7 @@
     flex-direction: column;
     gap: 10px;
     padding: 14px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--auth-panel-bg);
     border: 1px solid var(--auth-border);
     color: var(--auth-panel-text);
@@ -352,7 +352,7 @@
 .auth-state-card {
     width: min(100%, 560px);
     padding: 28px;
-    border-radius: 24px;
+    border-radius: var(--radius-md);
     background: var(--auth-surface-solid);
     box-shadow: var(--auth-shadow-lg);
 }
@@ -434,7 +434,7 @@
     width: 100%;
     box-sizing: border-box;
     border: 1px solid var(--auth-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     padding: 13px 14px;
     font-size: 16px;
     background: var(--auth-input-bg);
@@ -458,7 +458,7 @@
     gap: 14px;
     align-items: center;
     border: 1px solid var(--auth-border);
-    border-radius: 18px;
+    border-radius: var(--radius-md);
     background: var(--auth-input-bg);
 }
 
@@ -466,7 +466,7 @@
 .auth-org-logo-placeholder {
     width: 56px;
     height: 56px;
-    border-radius: 16px;
+    border-radius: var(--radius-md);
 }
 
 .auth-org-logo {
@@ -519,7 +519,7 @@ body.auth-state-page--scrollable {
     margin: 0 auto;
     padding: clamp(18px, 2.2vw, 28px);
     border: 1px solid var(--color-border, var(--auth-border));
-    border-radius: var(--radius-md, 10px);
+    border-radius: var(--radius-md);
     background: var(--color-surface, var(--auth-surface-solid));
     box-shadow: none;
 }
@@ -540,7 +540,7 @@ body.auth-state-page--scrollable {
     margin-bottom: 18px;
     padding: 8px 14px;
     border: 1px solid var(--color-border, var(--auth-border));
-    border-radius: var(--radius-sm, 6px);
+    border-radius: var(--radius-md);
     background: var(--color-surface-alt, #f3f4f6);
     color: var(--color-text-light, var(--auth-page-muted));
     font-size: 13px;
@@ -565,7 +565,7 @@ body.auth-state-page--scrollable {
     flex-direction: column;
     min-width: 0;
     overflow: hidden;
-    border-radius: var(--radius-md, 10px);
+    border-radius: var(--radius-md);
     border-color: var(--color-border, var(--auth-border));
     background: var(--color-surface, #fff);
     box-shadow: none;
@@ -636,7 +636,7 @@ body.auth-state-page--scrollable {
     flex: 0 0 auto;
     width: 60px;
     height: 60px;
-    border-radius: var(--radius-sm, 6px);
+    border-radius: var(--radius-md);
     border: 2px solid var(--color-surface, #fff);
     background: var(--color-surface, #fff);
     box-shadow: none;
@@ -680,7 +680,7 @@ body.auth-state-page--scrollable {
     min-height: 34px;
     padding: 0 12px;
     border: 1px solid var(--color-border, var(--auth-border));
-    border-radius: var(--radius-sm, 6px);
+    border-radius: var(--radius-md);
     background: var(--color-surface-alt, #f3f4f6);
     font-size: 12px;
     line-height: 1;

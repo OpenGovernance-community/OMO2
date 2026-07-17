@@ -1,8 +1,6 @@
     @import url('/common/assets/components.css');
 
     :root {
-    --radius-md: 12px;
-    --radius-lg: 18px;
     --shadow-sm: 0 8px 18px rgba(0, 0, 0, 0.06);
     --shadow-md: 0 12px 24px rgba(0, 0, 0, 0.12);
     }

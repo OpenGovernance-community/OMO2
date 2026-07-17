@@ -185,6 +185,7 @@ function countChar(objet, limit) {
 
 // Ouvre et ferme la fenêtre popup
 function showPopup(target, title=null, close=true) {
+	$("#popup").data("popup-target", target);
 	$("#popup_content").load(target);
 	$("#popupbackground").show();
 	$("#popupbackground").animate({
@@ -199,6 +200,17 @@ function showPopup(target, title=null, close=true) {
 }
 	
 function closePopup() {
+	var popupTarget = String($("#popup").data("popup-target") || "");
+	if (/(?:^|\/)popup\/profil\.php(?:[?#]|$)/i.test(popupTarget) && typeof window.commonTopbarModalCanClose === "function" && window.commonTopbarModalCanClose() === false) {
+		return;
+	}
+	if (/(?:^|\/)popup\/profil\.php(?:[?#]|$)/i.test(popupTarget) && typeof window.commonTopbarRefreshUserProfile === "function") {
+		window.commonTopbarRefreshUserProfile("close");
+	}
+	if (/(?:^|\/)popup\/profil\.php(?:[?#]|$)/i.test(popupTarget) && typeof window.commonTopbarModalCanClose === "function") {
+		window.commonTopbarModalCanClose = null;
+	}
+	$("#popup").removeData("popup-target");
 	$("#popupbackground").animate({
 		opacity:0,
 	  }, 500, function() {

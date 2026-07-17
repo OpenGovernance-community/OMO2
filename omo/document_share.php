@@ -160,7 +160,7 @@ $documentDescription = trim((string)($livePayload['description'] ?? ''));
         gap: 10px;
         margin: 0 0 1em;
         padding: 14px 16px;
-        border-radius: 16px;
+        border-radius: var(--radius-md);
         border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 85%, #2563eb 15%);
         background: color-mix(in srgb, var(--color-surface, #fff) 90%, #eff6ff 10%);
     }

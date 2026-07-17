@@ -190,7 +190,7 @@ $renderJson = static function ($value) {
         .debug-panel {
             background: var(--panel);
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: var(--radius-md);
             padding: 18px 20px;
             box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
         }
@@ -226,7 +226,7 @@ $renderJson = static function ($value) {
 
         .debug-item {
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: var(--radius-md);
             padding: 12px 14px;
             background: #fff;
         }
@@ -267,7 +267,7 @@ $renderJson = static function ($value) {
         pre {
             margin: 0;
             padding: 14px;
-            border-radius: 12px;
+            border-radius: var(--radius-md);
             background: #0f172a;
             color: #dbe7ff;
             overflow: auto;

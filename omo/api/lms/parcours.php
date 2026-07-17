@@ -60,7 +60,7 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 	<style>
 		:root {
 			<?php if ($organizationColor !== ''): ?>
-			--color-primary: <?php echo htmlspecialchars($organizationColor); ?>;
+			--primary: <?php echo htmlspecialchars($organizationColor); ?>;
 			<?php endif; ?>
 		}
 	</style>
@@ -205,7 +205,7 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 			width: 100%;
 			height: 20px;
 			background: var(--progress-bg);
-			border-radius: 10px;
+			border-radius: var(--radius-md);
 			overflow: hidden;
 			margin-bottom: 20px;
 		}

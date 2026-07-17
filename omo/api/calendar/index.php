@@ -1548,7 +1548,8 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     <p class="omo-overlay-drawer__description" data-omo-calendar-editor-description><?= omoApiEscape(omoCalendarT('calendar.drawer.description')) ?></p>
                 </div>
                 <div class="generic-drawer-header__actions">
-                    <button type="button" class="omo-overlay-drawer__close" data-omo-calendar-editor-close>Fermer</button>
+                    <div class="omo-calendar__drawer-custom-actions" data-omo-calendar-editor-actions></div>
+                    <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary" data-omo-calendar-editor-close>Fermer</button>
                 </div>
             </div>
             <div class="omo-overlay-drawer__body" data-omo-calendar-editor-body></div>
@@ -1565,6 +1566,11 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
         var drawer = root.querySelector('[data-omo-calendar-editor-drawer]');
         var drawerBody = root.querySelector('[data-omo-calendar-editor-body]');
+        var drawerTitle = root.querySelector('[data-omo-calendar-editor-title]');
+        var drawerDescription = root.querySelector('[data-omo-calendar-editor-description]');
+        var drawerActions = root.querySelector('[data-omo-calendar-editor-actions]');
+        var defaultDrawerTitle = drawerTitle ? drawerTitle.textContent : '';
+        var defaultDrawerDescription = drawerDescription ? drawerDescription.textContent : '';
         var currentUrl = root.getAttribute('data-omo-calendar-current-url') || '';
         var currentView = root.getAttribute('data-omo-calendar-view') || 'month';
         function normalizeScopeName(scopeName) {
@@ -1835,11 +1841,370 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             rememberScheduleState(form);
         }
 
+        function syncLocationFields(form) {
+            if (!form) {
+                return;
+            }
+
+            var modeField = form.querySelector('[data-omo-calendar-location-mode]');
+            var addressField = form.querySelector('[data-omo-calendar-location-address-field]');
+            var videoField = form.querySelector('[data-omo-calendar-location-video-field]');
+            var modeValue = modeField ? String(modeField.value || '').trim() : '';
+            var showAddress = modeValue === 'in_person' || modeValue === 'hybrid';
+            var showVideo = modeValue === 'virtual' || modeValue === 'hybrid';
+
+            if (addressField) {
+                addressField.hidden = !showAddress;
+                var addressInput = addressField.querySelector('input[name="location_address"]');
+                if (addressInput) {
+                    addressInput.required = showAddress;
+                }
+            }
+
+            if (videoField) {
+                videoField.hidden = !showVideo;
+                var videoInput = videoField.querySelector('input[name="video_meeting_url"]');
+                if (videoInput) {
+                    videoInput.required = showVideo;
+                }
+            }
+        }
+
+        function syncDocumentFields(form) {
+            if (!form) {
+                return;
+            }
+
+            var typeField = form.querySelector('[data-omo-calendar-document-type]');
+            var allDocumentFields = form.querySelector('[data-omo-calendar-document-fields]');
+            var pvTemplateField = form.querySelector('[data-omo-calendar-pv-template-field]');
+            var documentType = typeField ? String(typeField.value || '').trim() : '';
+            var hasDocument = documentType !== '';
+
+            if (allDocumentFields) {
+                allDocumentFields.hidden = !hasDocument;
+            }
+
+            if (pvTemplateField) {
+                pvTemplateField.hidden = documentType !== 'pv';
+            }
+        }
+
+        function syncInvitationDefaultHolonSelection(editor, nextHolonId) {
+            if (!editor || editor.getAttribute('data-omo-calendar-uses-default-selection') !== '1') {
+                return;
+            }
+
+            var holonId = Number(nextHolonId || '0');
+            if (!Number.isInteger(holonId) || holonId < 0) {
+                holonId = 0;
+            }
+
+            Array.prototype.forEach.call(editor.querySelectorAll('input[name="invitation_holon_ids[]"]'), function (field) {
+                field.checked = holonId > 0 && Number(field.value || '0') === holonId;
+            });
+
+            editor.dataset.omoCalendarDefaultHolonId = String(holonId);
+            syncInvitationEditorFilters(editor);
+        }
+
+        function normalizeInvitationFilterText(value) {
+            var normalized = String(value || '').toLowerCase();
+
+            if (typeof normalized.normalize === 'function') {
+                normalized = normalized.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            }
+
+            return normalized.replace(/\s+/g, ' ').trim();
+        }
+
+        function getInvitationHolonChildrenContainer(node) {
+            if (!node || !node.children) {
+                return null;
+            }
+
+            for (var index = 0; index < node.children.length; index += 1) {
+                var child = node.children[index];
+                if (child && child.hasAttribute && child.hasAttribute('data-omo-calendar-holon-children')) {
+                    return child;
+                }
+            }
+
+            return null;
+        }
+
+        function filterInvitationHolonNode(node, query) {
+            if (!node) {
+                return false;
+            }
+
+            var searchText = normalizeInvitationFilterText(node.getAttribute('data-omo-calendar-search-text') || node.textContent || '');
+            var row = node.querySelector('.omo-calendar-invitations-editor__tree-row');
+            var checkbox = row ? row.querySelector('input[type="checkbox"]') : null;
+            var toggle = row ? row.querySelector('[data-omo-calendar-holon-toggle]') : null;
+            var childrenContainer = getInvitationHolonChildrenContainer(node);
+            var keepChecked = !!(checkbox && checkbox.checked);
+            var matchesSelf = query === '' || searchText.indexOf(query) !== -1;
+            var hasVisibleChild = false;
+
+            if (childrenContainer && childrenContainer.children) {
+                Array.prototype.forEach.call(childrenContainer.children, function (childNode) {
+                    if (!childNode || !childNode.hasAttribute || !childNode.hasAttribute('data-omo-calendar-holon-node')) {
+                        return;
+                    }
+
+                    if (filterInvitationHolonNode(childNode, query)) {
+                        hasVisibleChild = true;
+                    }
+                });
+            }
+
+            var isVisible = query === '' ? true : (matchesSelf || keepChecked || hasVisibleChild);
+            node.hidden = !isVisible;
+
+            if (childrenContainer) {
+                if (query === '') {
+                    var isExpanded = !toggle || toggle.getAttribute('aria-expanded') === 'true';
+                    childrenContainer.hidden = !isExpanded;
+                } else {
+                    childrenContainer.hidden = !hasVisibleChild;
+                }
+            }
+
+            return isVisible;
+        }
+
+        function syncInvitationHolonFilter(editor) {
+            if (!editor) {
+                return;
+            }
+
+            var filterField = editor.querySelector('[data-omo-calendar-holon-filter]');
+            var holonList = editor.querySelector('[data-omo-calendar-holon-list]');
+            var emptyState = editor.querySelector('[data-omo-calendar-holon-empty]');
+            var query = normalizeInvitationFilterText(filterField ? filterField.value : '');
+            var hasVisibleResult = false;
+
+            if (holonList && holonList.children) {
+                Array.prototype.forEach.call(holonList.children, function (node) {
+                    if (!node || !node.hasAttribute || !node.hasAttribute('data-omo-calendar-holon-node')) {
+                        return;
+                    }
+
+                    if (filterInvitationHolonNode(node, query)) {
+                        hasVisibleResult = true;
+                    }
+                });
+            }
+
+            if (emptyState) {
+                emptyState.hidden = query === '' || hasVisibleResult;
+            }
+        }
+
+        function syncInvitationMemberFilter(editor) {
+            if (!editor) {
+                return;
+            }
+
+            var filterField = editor.querySelector('[data-omo-calendar-member-filter]');
+            var memberList = editor.querySelector('[data-omo-calendar-member-list]');
+            var emptyState = editor.querySelector('[data-omo-calendar-member-empty]');
+            var query = normalizeInvitationFilterText(filterField ? filterField.value : '');
+            var hasVisibleResult = false;
+
+            Array.prototype.forEach.call(editor.querySelectorAll('[data-omo-calendar-member-item]'), function (item) {
+                var checkbox = item.querySelector('input[type="checkbox"]');
+                var searchText = normalizeInvitationFilterText(item.getAttribute('data-omo-calendar-search-text') || item.textContent || '');
+                var keepChecked = !!(checkbox && checkbox.checked);
+                var isVisible = query === '' || searchText.indexOf(query) !== -1 || keepChecked;
+
+                item.hidden = !isVisible;
+                if (isVisible) {
+                    hasVisibleResult = true;
+                }
+            });
+
+            if (memberList) {
+                memberList.hidden = false;
+            }
+
+            if (emptyState) {
+                emptyState.hidden = query === '' || hasVisibleResult;
+            }
+        }
+
+        function syncInvitationEditorFilters(editor) {
+            if (!editor) {
+                return;
+            }
+
+            syncInvitationHolonFilter(editor);
+            syncInvitationMemberFilter(editor);
+        }
+
+        function initCalendarInvitationEditors(scope) {
+            var rootScope = scope && scope.querySelectorAll ? scope : document;
+
+            if (typeof window.initGenericComponents === 'function') {
+                window.initGenericComponents(rootScope);
+            }
+
+            Array.prototype.forEach.call(rootScope.querySelectorAll('[data-omo-calendar-invitations-editor]'), function (editor) {
+                if (editor.dataset.omoCalendarInvitationsReady === '1') {
+                    return;
+                }
+
+                editor.dataset.omoCalendarInvitationsReady = '1';
+
+                Array.prototype.forEach.call(editor.querySelectorAll('[data-omo-calendar-holon-toggle]'), function (toggle) {
+                    toggle.addEventListener('click', function (event) {
+                        var node;
+                        var children;
+                        var isExpanded;
+
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        node = toggle.closest('[data-omo-calendar-holon-node]');
+                        children = node ? node.querySelector('[data-omo-calendar-holon-children]') : null;
+                        if (!children) {
+                            return;
+                        }
+
+                        isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+                        toggle.setAttribute('aria-expanded', isExpanded ? 'false' : 'true');
+                        children.hidden = isExpanded;
+                        syncInvitationEditorFilters(editor);
+                    });
+                });
+
+                Array.prototype.forEach.call(editor.querySelectorAll('[data-omo-calendar-holon-filter], [data-omo-calendar-member-filter]'), function (field) {
+                    field.addEventListener('input', function () {
+                        syncInvitationEditorFilters(editor);
+                    });
+                });
+
+                editor.addEventListener('change', function () {
+                    if (editor.getAttribute('data-omo-calendar-uses-default-selection') === '1') {
+                        editor.setAttribute('data-omo-calendar-uses-default-selection', '0');
+                    }
+
+                    syncInvitationEditorFilters(editor);
+                });
+
+                syncInvitationEditorFilters(editor);
+            });
+        }
+
+        function syncCalendarCreateFormState(form) {
+            if (!form) {
+                return;
+            }
+
+            syncLocationFields(form);
+            syncDocumentFields(form);
+            initCalendarInvitationEditors(form);
+            rememberScheduleState(form);
+        }
+
+        function setDrawerHeader(options) {
+            var settings = options && typeof options === 'object' ? options : {};
+            var hasTitle = Object.prototype.hasOwnProperty.call(settings, 'title');
+            var hasDescription = Object.prototype.hasOwnProperty.call(settings, 'description')
+                || Object.prototype.hasOwnProperty.call(settings, 'subtitle');
+            var hasActions = Object.prototype.hasOwnProperty.call(settings, 'actions');
+            var description = Object.prototype.hasOwnProperty.call(settings, 'subtitle')
+                ? settings.subtitle
+                : settings.description;
+
+            if (drawerTitle && hasTitle) {
+                drawerTitle.textContent = settings.title || '';
+            }
+
+            if (drawerDescription && hasDescription) {
+                drawerDescription.textContent = description || '';
+                drawerDescription.hidden = !description;
+            }
+
+            if (!drawerActions || !hasActions) {
+                return;
+            }
+
+            drawerActions.innerHTML = '';
+            (Array.isArray(settings.actions) ? settings.actions : []).forEach(function (action) {
+                var button;
+                if (action instanceof HTMLElement) {
+                    drawerActions.appendChild(action);
+                    return;
+                }
+
+                if (!action || typeof action !== 'object' || !action.label) {
+                    return;
+                }
+
+                button = document.createElement('button');
+                button.type = action.type || 'button';
+                button.className = action.className || 'generic-action-button';
+                button.textContent = action.label;
+                if (action.attributes && typeof action.attributes === 'object') {
+                    Object.keys(action.attributes).forEach(function (name) {
+                        button.setAttribute(name, String(action.attributes[name]));
+                    });
+                }
+                if (typeof action.onClick === 'function') {
+                    button.addEventListener('click', action.onClick);
+                }
+                drawerActions.appendChild(button);
+            });
+        }
+
+        function resetDrawerHeader() {
+            setDrawerHeader({
+                title: defaultDrawerTitle,
+                description: defaultDrawerDescription,
+                actions: []
+            });
+        }
+
+        function applyDrawerHeaderFromContent(content) {
+            var header = content ? content.querySelector('[data-omo-calendar-drawer-header]') : null;
+            if (!header) {
+                resetDrawerHeader();
+                return;
+            }
+
+            setDrawerHeader({
+                title: header.getAttribute('data-omo-calendar-drawer-title') || defaultDrawerTitle,
+                description: header.getAttribute('data-omo-calendar-drawer-description') || '',
+                actions: Array.prototype.slice.call(header.querySelectorAll('[data-omo-calendar-drawer-action]'))
+            });
+        }
+
+        window.omoCalendarDrawer = window.omoCalendarDrawer || {};
+        window.omoCalendarDrawer.setHeader = setDrawerHeader;
+        window.omoCalendarDrawer.setTitle = function (title) {
+            setDrawerHeader({ title: title });
+        };
+        window.omoCalendarDrawer.setSubtitle = function (subtitle) {
+            setDrawerHeader({ subtitle: subtitle });
+        };
+        window.omoCalendarDrawer.addButton = function (button) {
+            if (!drawerActions) {
+                return;
+            }
+            setDrawerHeader({
+                actions: Array.prototype.slice.call(drawerActions.children).concat([button])
+            });
+        };
+        window.omoCalendarDrawer.resetHeader = resetDrawerHeader;
+
         function setDrawerLoading() {
             if (!drawerBody) {
                 return;
             }
 
+            resetDrawerHeader();
             drawerBody.innerHTML = '<div class="generic-section"><?= omoApiEscape(omoCalendarT('calendar.loading')) ?></div>';
         }
 
@@ -1848,6 +2213,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 return;
             }
 
+            resetDrawerHeader();
             drawerBody.innerHTML = '<div class="generic-section"><?= omoApiEscape(omoCalendarT('calendar.error.load_form')) ?></div>';
         }
 
@@ -1911,7 +2277,11 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 }
 
                 drawerBody.innerHTML = html;
-                rememberScheduleState(drawerBody.querySelector('[data-omo-calendar-create-form]'));
+                applyDrawerHeaderFromContent(drawerBody);
+                if (typeof window.initGenericComponents === 'function') {
+                    window.initGenericComponents(drawerBody);
+                }
+                syncCalendarCreateFormState(drawerBody.querySelector('[data-omo-calendar-create-form]'));
             }).catch(function () {
                 if (localToken !== requestToken) {
                     return;
@@ -1938,6 +2308,100 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 url: resolveUrl(targetUrl)
             });
         }
+
+        function escapeCalendarHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function askDeleteAssociatedDocuments(button) {
+            if (button.getAttribute('data-omo-calendar-delete-has-documents') !== '1') {
+                return Promise.resolve(false);
+            }
+
+            var title = button.getAttribute('data-omo-calendar-delete-documents-title') || 'Documents associés';
+            var question = button.getAttribute('data-omo-calendar-delete-documents-question') || 'Voulez-vous supprimer les documents associés ?';
+            var yesLabel = button.getAttribute('data-omo-calendar-delete-documents-yes') || 'Oui';
+            var noLabel = button.getAttribute('data-omo-calendar-delete-documents-no') || 'Non';
+
+            if (typeof window.commonTopbarOpenModal !== 'function') {
+                return Promise.resolve(window.confirm(question));
+            }
+
+            return new Promise(function (resolve) {
+                var settled = false;
+                var modalCloseHandler;
+
+                function settle(value) {
+                    if (settled) {
+                        return;
+                    }
+
+                    settled = true;
+                    if (modalCloseHandler) {
+                        window.removeEventListener('common-topbar-modal-close', modalCloseHandler);
+                    }
+                    if (typeof window.commonTopbarCloseModal === 'function') {
+                        window.commonTopbarCloseModal();
+                    }
+                    resolve(value === true);
+                }
+
+                window.commonTopbarOpenModal(
+                    title,
+                    '<div class="omo-calendar__delete-documents-dialog">'
+                        + '<p data-omo-calendar-delete-documents-question></p>'
+                        + '<div class="omo-calendar__delete-documents-actions">'
+                        + '<button type="button" class="generic-action-button generic-action-button--main" data-omo-calendar-delete-documents-choice="yes">' + escapeCalendarHtml(yesLabel) + '</button>'
+                        + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-calendar-delete-documents-choice="no">' + escapeCalendarHtml(noLabel) + '</button>'
+                        + '</div>'
+                        + '</div>',
+                    'html'
+                );
+
+                var modalBody = document.getElementById('commonTopbarModalBody');
+                if (!modalBody) {
+                    settle(false);
+                    return;
+                }
+
+                var questionNode = modalBody.querySelector('[data-omo-calendar-delete-documents-question]');
+                if (questionNode) {
+                    questionNode.textContent = question;
+                }
+
+                modalCloseHandler = function () {
+                    settle(false);
+                };
+                window.addEventListener('common-topbar-modal-close', modalCloseHandler);
+                modalBody.querySelectorAll('[data-omo-calendar-delete-documents-choice]').forEach(function (choiceButton) {
+                    choiceButton.addEventListener('click', function () {
+                        settle(choiceButton.getAttribute('data-omo-calendar-delete-documents-choice') === 'yes');
+                    });
+                });
+            });
+        }
+
+        window.omoCalendarOpenEventDrawer = function (url) {
+            if (!url) {
+                return;
+            }
+
+            openDrawerWithUrl(url);
+        };
+
+        window.omoCalendarRefreshCurrentView = function () {
+            if (drawer && !drawer.hidden && drawer.classList.contains('is-open')) {
+                return;
+            }
+
+            refreshCalendar(currentUrl);
+        };
+        window.omoCalendarInitInvitationEditors = initCalendarInvitationEditors;
 
         function syncViewButtons(nextView) {
             root.querySelectorAll('[data-omo-calendar-set-view]').forEach(function (button) {
@@ -2206,10 +2670,114 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             });
         });
 
-        if (drawerBody) {
-            drawerBody.addEventListener('click', function (event) {
+        if (drawer) {
+            drawer.addEventListener('click', function (event) {
+                var cancelButton = event.target.closest('[data-omo-calendar-open-detail-url]');
+                if (cancelButton) {
+                    event.preventDefault();
+                    var cancelDetailUrl = cancelButton.getAttribute('data-omo-calendar-open-detail-url') || '';
+                    if (cancelDetailUrl) {
+                        openDrawerWithUrl(cancelDetailUrl);
+                    }
+                    return;
+                }
+
+                var deleteButton = event.target.closest('[data-omo-calendar-delete-url]');
+                if (deleteButton) {
+                    event.preventDefault();
+
+                    var deleteUrl = deleteButton.getAttribute('data-omo-calendar-delete-url') || '';
+                    var confirmationMessage = deleteButton.getAttribute('data-omo-calendar-delete-confirm') || '';
+                    var fallbackError = deleteButton.getAttribute('data-omo-calendar-delete-error') || 'Impossible de supprimer cet evenement.';
+                    if (!deleteUrl || (confirmationMessage !== '' && !window.confirm(confirmationMessage))) {
+                        return;
+                    }
+
+                    deleteButton.disabled = true;
+                    askDeleteAssociatedDocuments(deleteButton).then(function (deleteDocuments) {
+                        var requestBody = new URLSearchParams();
+                        requestBody.set('delete_documents', deleteDocuments ? '1' : '0');
+
+                        return fetch(resolveUrl(deleteUrl), {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                            },
+                            body: requestBody.toString()
+                        });
+                    }).then(function (response) {
+                        return response.json();
+                    }).then(function (payload) {
+                        if (!payload || payload.status !== true) {
+                            throw new Error(payload && payload.message ? payload.message : fallbackError);
+                        }
+
+                        if (typeof window.omoInvalidateMainRightPanel === 'function') {
+                            window.omoInvalidateMainRightPanel();
+                        }
+
+                        closeDrawer();
+                        refreshCalendar(currentUrl);
+                    }).catch(function (error) {
+                        window.alert(error && error.message ? error.message : fallbackError);
+                        deleteButton.disabled = false;
+                    });
+                    return;
+                }
+
                 var editButton = event.target.closest('[data-omo-calendar-open-edit-url]');
                 if (!editButton) {
+                    var invitationButton = event.target.closest('[data-omo-calendar-open-invitations-url]');
+                    if (invitationButton) {
+                        event.preventDefault();
+                        if (typeof window.commonTopbarOpenModal !== 'function') {
+                            return;
+                        }
+
+                        var invitationUrl = invitationButton.getAttribute('data-omo-calendar-open-invitations-url') || '';
+                        var invitationTitle = invitationButton.getAttribute('data-omo-calendar-open-invitations-title') || 'Invites';
+                        if (!invitationUrl) {
+                            return;
+                        }
+
+                        window.commonTopbarOpenModal(invitationTitle, resolveUrl(invitationUrl), 'fetch');
+                        return;
+                    }
+
+                    var openUrlButton = event.target.closest('[data-omo-calendar-open-url]');
+                    if (!openUrlButton) {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    var targetUrl = openUrlButton.getAttribute('data-omo-calendar-open-url') || '';
+                    var targetTitle = openUrlButton.getAttribute('data-omo-calendar-open-url-title') || 'Document';
+                    var targetPvEditorUrl = openUrlButton.getAttribute('data-omo-calendar-open-pv-editor-url') || '';
+                    if (!targetUrl) {
+                        return;
+                    }
+
+                    if (targetPvEditorUrl && typeof window.omoOpenExternalPanelDrawer === 'function') {
+                        window.omoOpenExternalPanelDrawer({
+                            url: targetPvEditorUrl,
+                            mode: 'fetch',
+                            title: targetTitle,
+                            description: 'Edition du PV.',
+                            variant: 'top-sheet',
+                            persistKey: 'omo-pv-preparation-calendar-' + targetPvEditorUrl,
+                            keepMountedOnClose: true
+                        });
+                        return;
+                    }
+
+                    if (typeof window.omoOpenSearchDocumentResult === 'function') {
+                        window.omoOpenSearchDocumentResult(targetUrl, targetTitle);
+                        return;
+                    }
+
+                    openDrawerWithUrl(targetUrl);
                     return;
                 }
 
@@ -2222,7 +2790,22 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 openDrawerWithUrl(editUrl);
             });
 
+        }
+
+        if (drawerBody) {
             drawerBody.addEventListener('change', function (event) {
+                var form = event.target && event.target.form ? event.target.form : null;
+                if (form && form.matches('[data-omo-calendar-create-form]')) {
+                    syncLocationFields(form);
+                    syncDocumentFields(form);
+                    if (event.target.matches('[data-omo-calendar-context-holon]')) {
+                        syncInvitationDefaultHolonSelection(
+                            form.querySelector('[data-omo-calendar-invitations-editor]'),
+                            event.target.value
+                        );
+                    }
+                }
+
                 var startField = event.target.closest('input[name="start_at"]');
                 if (!startField) {
                     var scheduleField = event.target.closest('input[name="end_at"]');
@@ -2245,6 +2828,9 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
                 var feedback = form.querySelector('[data-omo-calendar-create-feedback]');
                 var submitButton = form.querySelector('[data-omo-calendar-create-submit]');
+                if (!submitButton && form.id) {
+                    submitButton = drawer.querySelector('[data-omo-calendar-create-submit][form="' + form.id + '"]');
+                }
                 var formData = new FormData(form);
 
                 if (submitButton) {
@@ -2274,8 +2860,12 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                         window.omoInvalidateMainRightPanel();
                     }
 
-                    closeDrawer();
-                    refreshCalendar(currentUrl);
+                    if (payload.detailUrl) {
+                        openDrawerWithUrl(payload.detailUrl);
+                    } else {
+                        closeDrawer();
+                        refreshCalendar(currentUrl);
+                    }
                 }).catch(function (error) {
                     if (!feedback) {
                         return;
@@ -2348,6 +2938,24 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     min-height: 100%;
 }
 
+.omo-calendar__delete-documents-dialog {
+    display: grid;
+    gap: 18px;
+}
+
+.omo-calendar__delete-documents-dialog p {
+    margin: 0;
+    color: var(--color-text, #1f2937);
+    line-height: 1.5;
+}
+
+.omo-calendar__delete-documents-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 .omo-calendar > .omo-panel-view__body {
     gap: 0;
     overflow: hidden;
@@ -2386,7 +2994,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 .omo-calendar__app-icon {
     width: 38px;
     height: 38px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -2676,7 +3284,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     display: grid;
     gap: 4px;
     padding: 8px 9px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-primary, #2563eb) 9%, var(--color-surface, #ffffff));
     border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 16%, var(--color-border, #dbe2ea));
 }
@@ -2759,7 +3367,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     overflow: auto;
     overscroll-behavior: contain;
     border: 1px solid color-mix(in srgb, var(--color-border, #dbe2ea) 82%, white 18%);
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     background: var(--color-surface, #ffffff);
 }
 
@@ -2843,7 +3451,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     display: grid;
     gap: 3px;
     padding: 8px 9px;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-primary, #2563eb) 9%, var(--color-surface, #ffffff));
     border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 16%, var(--color-border, #dbe2ea));
 }
@@ -2912,7 +3520,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     display: grid;
     gap: 4px;
     padding: 7px 8px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-primary, #2563eb) 9%, var(--color-surface, #ffffff));
     border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 18%, var(--color-border, #dbe2ea));
     box-shadow: 0 8px 20px -18px rgba(15, 23, 42, 0.32);
@@ -3084,6 +3692,13 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     padding: 0;
 }
 
+.omo-calendar__drawer-custom-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 @media (max-width: 920px) {
     .omo-calendar__weekday-row,
     .omo-calendar__grid {
@@ -3178,7 +3793,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         width: 16px;
         min-height: 100%;
         padding: 0;
-        border-radius: 8px;
+        border-radius: var(--radius-md);
         font-size: 14px;
         line-height: 1;
         overflow: hidden;
@@ -3214,7 +3829,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     }
 
     .omo-calendar__new-button.omo-mobile-corner-action {
-        border-radius: 0 0 0 12px !important;
+        border-radius: 0 0 0 var(--radius-md) !important;
     }
 
     .omo-calendar__header-secondary {
