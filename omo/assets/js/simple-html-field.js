@@ -1,7 +1,12 @@
 (function (window, document) {
     'use strict';
 
-    if (window.omoSimpleHtmlField) {
+    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260716-pv-indicator-readonly';
+
+    if (
+        window.omoSimpleHtmlField
+        && String(window.omoSimpleHtmlField.version || '') === OMO_SIMPLE_HTML_FIELD_VERSION
+    ) {
         return;
     }
 
@@ -12,6 +17,7 @@
 
     let stylesInjected = false;
     let dependencyPromise = null;
+    let cursorMarkerCounter = 0;
 
     function escapeHtml(value) {
         return String(value || '')
@@ -30,12 +36,59 @@
         const style = document.createElement('style');
         style.textContent = ''
             + '.omo-simple-html-field{display:grid;gap:10px;}'
-            + '.omo-simple-html-field .note-editor.note-frame{border:1px solid var(--color-border,#d1d5db);border-radius:14px;background:var(--color-surface,#fff);}'
-            + '.omo-simple-html-field .note-toolbar{border-bottom:1px solid var(--color-border,#d1d5db);background:color-mix(in srgb,var(--color-surface-alt,#f8fafc) 70%,white);border-top-left-radius:14px;border-top-right-radius:14px;padding:8px;}'
-            + '.omo-simple-html-field .note-btn{border-radius:10px;border-color:var(--color-border,#d1d5db);}'
-            + '.omo-simple-html-field .note-editing-area .note-editable{min-height:140px;padding:14px;line-height:1.55;color:var(--color-text,#1f2937);}'
+            + '.omo-simple-html-field .note-editor.note-frame{border:1px solid var(--color-border,#d1d5db);border-radius:var(--radius-md);background:var(--color-surface,#fff);}'
+            + '.omo-simple-html-field .note-toolbar{position:sticky;top:0;z-index:6;border-bottom:1px solid var(--color-border,#d1d5db);background:color-mix(in srgb,var(--color-surface-alt,#f8fafc) 88%,white);border-top-left-radius:var(--radius-md);border-top-right-radius:var(--radius-md);padding:8px;box-shadow:0 8px 18px -18px rgba(15,23,42,.45);}'
+            + '.omo-simple-html-field .note-btn{border-radius:var(--radius-md);border-color:var(--color-border,#d1d5db);}'
+            + '.omo-simple-html-field .note-editing-area{overflow:visible;}'
+            + '.omo-simple-html-field .note-editing-area .note-editable{min-height:140px;height:auto!important;overflow-y:hidden!important;padding:14px;line-height:1.55;color:var(--color-text,#1f2937);}'
             + '.omo-simple-html-field .note-placeholder{color:var(--color-text-light,#6b7280);}'
             + '.omo-simple-html-field .note-statusbar{display:none;}'
+            + '.omo-simple-html-field .note-editable h1,.omo-simple-html-render h1{margin:0 0 .6em;font-size:1.8rem;line-height:1.15;font-weight:850;color:var(--color-text,#1f2937);}'
+            + '.omo-simple-html-field .note-editable h2,.omo-simple-html-render h2{margin:0 0 .55em;font-size:1.45rem;line-height:1.2;font-weight:800;color:var(--color-text,#1f2937);}'
+            + '.omo-simple-html-field .note-editable h3,.omo-simple-html-render h3{margin:0 0 .5em;font-size:1.16rem;line-height:1.25;font-weight:750;color:var(--color-text,#1f2937);}'
+            + '.omo-simple-html-field .note-editable blockquote,.omo-simple-html-render blockquote{margin:0 0 1em;padding:.2em 0 .2em 1em;border-left:3px solid color-mix(in srgb,var(--color-primary,#2563eb) 38%,var(--color-border,#d1d5db));color:var(--color-text-light,#6b7280);font-style:italic;}'
+            + '.omo-simple-html-field .note-editable table,.omo-simple-html-render table{width:100%;max-width:100%;margin:0 0 1em;border-collapse:collapse;border-spacing:0;font-size:.97em;}'
+            + '.omo-simple-html-field .note-editable th,.omo-simple-html-field .note-editable td,.omo-simple-html-render th,.omo-simple-html-render td{padding:9px 12px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,var(--color-text,#1f2937) 12%);text-align:left;vertical-align:top;}'
+            + '.omo-simple-html-field .note-editable th,.omo-simple-html-render th{background:color-mix(in srgb,var(--color-surface-alt,#f8fafc) 82%,var(--color-text,#1f2937) 18%);font-weight:700;}'
+            + '.omo-simple-html-field .note-editable tbody tr:nth-child(even),.omo-simple-html-render tbody tr:nth-child(even){background:color-mix(in srgb,var(--color-surface,#fff) 92%,var(--color-surface-alt,#f8fafc) 8%);}'
+            + '.omo-simple-html-field .note-editable .omo-document-embed,.omo-simple-html-render .omo-document-embed{display:block;margin:0 0 1em;padding:12px 14px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,#2563eb 12%);border-radius:var(--radius-md);background:color-mix(in srgb,var(--color-surface,#fff) 90%,#eff6ff 10%);box-shadow:0 10px 24px -20px rgba(37,99,235,.45);cursor:pointer;white-space:normal;line-height:1.5;}'
+            + '.omo-simple-html-field .note-editable .omo-decision-embed,.omo-simple-html-field .note-editable .omo-event-embed,.omo-simple-html-render .omo-decision-embed,.omo-simple-html-render .omo-event-embed{display:block;margin:0 0 1em;padding:12px 14px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,#2563eb 12%);border-radius:var(--radius-md);background:color-mix(in srgb,var(--color-surface,#fff) 90%,#eff6ff 10%);box-shadow:0 10px 24px -20px rgba(37,99,235,.45);cursor:pointer;white-space:normal;line-height:1.5;}'
+            + '.omo-simple-html-field .note-editable .omo-document-embed:last-child,.omo-simple-html-render .omo-document-embed:last-child{margin-bottom:0;}'
+            + '.omo-simple-html-field .note-editable .omo-document-embed__label,.omo-simple-html-render .omo-document-embed__label{display:block;margin:0 0 6px;color:var(--color-text-light,#6b7280);font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}'
+            + '.omo-simple-html-field .note-editable .omo-document-embed__title,.omo-simple-html-render .omo-document-embed__title{display:block;margin:0;color:var(--color-text,#1f2937);font-weight:700;}'
+            + '.omo-simple-html-field .note-editable .omo-document-embed__description,.omo-simple-html-render .omo-document-embed__description{display:block;margin:6px 0 0;color:var(--color-text-light,#6b7280);font-size:13px;line-height:1.5;}'
+            + '.omo-simple-html-field .note-editable .omo-decision-embed__title,.omo-simple-html-field .note-editable .omo-event-embed__title,.omo-simple-html-render .omo-decision-embed__title,.omo-simple-html-render .omo-event-embed__title{display:block;margin:0;color:var(--color-text,#1f2937);font-weight:700;}'
+            + '.omo-simple-html-field .note-editable .omo-decision-embed__summary,.omo-simple-html-field .note-editable .omo-event-embed__summary,.omo-simple-html-render .omo-decision-embed__summary,.omo-simple-html-render .omo-event-embed__summary{display:block;margin:6px 0 0;color:var(--color-text-light,#6b7280);font-size:13px;line-height:1.5;}'
+            + '.omo-simple-html-field .note-editable .omo-document-embed > p:first-child,.omo-simple-html-render .omo-document-embed > p:first-child{margin:0 0 6px;color:var(--color-text-light,#6b7280);font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}'
+            + '.omo-simple-html-field .note-editable .omo-document-embed > p:nth-child(2),.omo-simple-html-render .omo-document-embed > p:nth-child(2){margin:0;color:var(--color-text,#1f2937);font-weight:700;}'
+            + '.omo-simple-html-field .note-editable .omo-document-embed > p:nth-child(3),.omo-simple-html-render .omo-document-embed > p:nth-child(3){margin:6px 0 0;color:var(--color-text-light,#6b7280);font-size:13px;line-height:1.5;}'
+            + '.omo-simple-html-field .note-editable .omo-document-embed > strong:first-child,.omo-simple-html-render .omo-document-embed > strong:first-child{display:block;margin:0 0 6px;color:var(--color-text-light,#6b7280);font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}'
+            + '.omo-simple-html-field .note-editable .omo-document-embed > strong:nth-of-type(2),.omo-simple-html-render .omo-document-embed > strong:nth-of-type(2){display:block;margin:0;color:var(--color-text,#1f2937);font-weight:700;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed,.omo-pv-editor .omo-simple-html-render .omo-document-embed,.omo-pv-editor .omo-simple-html-render .omo-decision-embed,.omo-pv-editor .omo-simple-html-render .omo-event-embed{position:relative;min-height:54px;margin-bottom:10px;padding:9px 12px 9px 58px;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed:before,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed:before,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed:before,.omo-pv-editor .omo-simple-html-render .omo-document-embed:before,.omo-pv-editor .omo-simple-html-render .omo-decision-embed:before,.omo-pv-editor .omo-simple-html-render .omo-event-embed:before{content:"";position:absolute;top:50%;left:14px;width:30px;height:30px;transform:translateY(-50%);background:var(--color-primary,#2563eb);-webkit-mask:url("/omo/images/tools/documents-folder.png") center/contain no-repeat;mask:url("/omo/images/tools/documents-folder.png") center/contain no-repeat;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed:before,.omo-pv-editor .omo-simple-html-render .omo-decision-embed:before{background:#7c3aed;-webkit-mask-image:url("/omo/images/tools/decision.png");mask-image:url("/omo/images/tools/decision.png");}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed:before,.omo-pv-editor .omo-simple-html-render .omo-event-embed:before{background:#0f766e;-webkit-mask-image:url("/omo/images/tools/calendar.png");mask-image:url("/omo/images/tools/calendar.png");}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>strong:first-of-type:not(:only-of-type),.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed>strong:first-of-type:not(:only-of-type),.omo-pv-editor .omo-simple-html-render .omo-document-embed__label,.omo-pv-editor .omo-simple-html-render .omo-decision-embed__label{display:none;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-render .omo-document-embed__title,.omo-pv-editor .omo-simple-html-render .omo-decision-embed__title,.omo-pv-editor .omo-simple-html-render .omo-event-embed__title{display:block;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:1;line-clamp:1;text-overflow:ellipsis;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>em,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed>em,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed>em,.omo-pv-editor .omo-simple-html-render .omo-document-embed__description,.omo-pv-editor .omo-simple-html-render .omo-decision-embed__summary,.omo-pv-editor .omo-simple-html-render .omo-event-embed__summary{display:-webkit-box;overflow:hidden;margin-top:3px;color:var(--color-text-light,#6b7280);font-size:12px;font-style:normal;line-height:1.3;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-document-embed),.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-decision-embed),.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-event-embed){margin:0 0 10px;}'
+            + '.omo-simple-html-field .note-editable .omo-indicator-embed,.omo-simple-html-render .omo-indicator-embed{display:block;margin:0 0 1em;padding:12px 14px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 84%,#2563eb 16%);border-radius:var(--radius-md);background:color-mix(in srgb,var(--color-surface,#fff) 90%,#eff6ff 10%);box-shadow:0 10px 24px -20px rgba(37,99,235,.45);cursor:pointer;white-space:normal;line-height:1.35;}'
+            + '.omo-indicator-embed--overdue{border-color:color-mix(in srgb,#dc2626 36%,var(--color-border,#d1d5db));background:color-mix(in srgb,var(--color-surface,#fff) 92%,#fef2f2 8%);}'
+            + '.omo-indicator-embed__title{display:block;color:var(--color-text,#1f2937);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}'
+            + '.omo-indicator-embed__body{display:grid;grid-template-columns:minmax(90px,1fr) auto;gap:12px;align-items:center;margin-top:7px;}'
+            + '.omo-indicator-embed__chart{display:block;min-width:0;color:#2563eb;}'
+            + '.omo-indicator-embed--overdue .omo-indicator-embed__chart{color:#dc2626;}'
+            + '.omo-indicator-embed__chart svg{display:block;width:100%;height:46px;overflow:visible;}'
+            + '.omo-indicator-embed__chart .omo-stats-chart__line{fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;}'
+            + '.omo-indicator-embed__chart .omo-stats-chart__reference{fill:none;stroke:color-mix(in srgb,currentColor 42%,transparent);stroke-width:1.7;stroke-dasharray:4 3;}'
+            + '.omo-indicator-embed__chart .omo-stats-chart__point{fill:currentColor;stroke:var(--color-surface,#fff);stroke-width:1.5;}'
+            + '.omo-indicator-embed__values{display:grid;justify-items:end;gap:1px;min-width:76px;color:var(--color-text-light,#6b7280);font-size:12px;text-align:right;}'
+            + '.omo-indicator-embed__values b{color:var(--color-text,#1f2937);font-size:1.05rem;}'
+            + '.omo-indicator-embed__values time{font-size:11px;}'
+            + '.omo-indicator-embed__values em{font-style:normal;color:#b91c1c;font-weight:700;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-indicator-embed,.omo-pv-editor .omo-simple-html-render .omo-indicator-embed{margin-bottom:10px;padding:9px 12px;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-indicator-embed){margin:0 0 10px;}'
+            + '.omo-pv-editor__indicator-embed-button{min-width:34px!important;font-size:0!important;background-image:url("/omo/images/tools/stats.png")!important;background-position:center!important;background-repeat:no-repeat!important;background-size:20px 20px!important;}'
             + '.omo-simple-html-field__meta{font-size:12px;line-height:1.45;color:var(--color-text-light,#6b7280);}'
             + '.omo-simple-html-render{line-height:1.55;word-break:break-word;white-space:normal;}'
             + '.omo-simple-html-render > :first-child{margin-top:0;}'
@@ -147,6 +200,142 @@
         parentNode.appendChild(childNode);
     }
 
+    function getElementAttributeValue(element, attributeName) {
+        if (!element || element.nodeType !== 1 || !element.hasAttribute(attributeName)) {
+            return '';
+        }
+
+        return String(element.getAttribute(attributeName) || '');
+    }
+
+    function getDocumentEmbedElementId(element) {
+        const rawValue = getElementAttributeValue(element, 'data-omo-document-id').trim();
+        const parsed = Number.parseInt(rawValue, 10);
+        return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+    }
+
+    function getDecisionEmbedElementId(element) {
+        const rawValue = getElementAttributeValue(element, 'data-omo-decision-id').trim();
+        const parsed = Number.parseInt(rawValue, 10);
+        return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+    }
+
+    function getEventEmbedElementId(element) {
+        const rawValue = getElementAttributeValue(element, 'data-omo-event-id').trim();
+        const parsed = Number.parseInt(rawValue, 10);
+        return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+    }
+
+    function getIndicatorEmbedElementId(element) {
+        const rawValue = getElementAttributeValue(element, 'data-omo-indicator-id').trim();
+        const parsed = Number.parseInt(rawValue, 10);
+        return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+    }
+
+    function isTemporaryCursorMarkerElement(element) {
+        return !!(element && element.nodeType === 1 && getElementAttributeValue(element, 'data-omo-cursor-marker').trim() !== '');
+    }
+
+    function isAllowedDocumentEmbedElement(element) {
+        if (!element || element.nodeType !== 1) {
+            return false;
+        }
+
+        return getElementAttributeValue(element, 'data-omo-embed-type').trim() === 'document'
+            && getDocumentEmbedElementId(element) > 0;
+    }
+
+    function isAllowedDecisionEmbedElement(element) {
+        if (!element || element.nodeType !== 1) {
+            return false;
+        }
+
+        return getElementAttributeValue(element, 'data-omo-embed-type').trim() === 'decision'
+            && getDecisionEmbedElementId(element) > 0;
+    }
+
+    function isAllowedEventEmbedElement(element) {
+        if (!element || element.nodeType !== 1) {
+            return false;
+        }
+
+        return getElementAttributeValue(element, 'data-omo-embed-type').trim() === 'event'
+            && getEventEmbedElementId(element) > 0;
+    }
+
+    function isAllowedIndicatorEmbedElement(element) {
+        return !!element
+            && element.nodeType === 1
+            && getElementAttributeValue(element, 'data-omo-embed-type').trim() === 'indicator'
+            && getIndicatorEmbedElementId(element) > 0;
+    }
+
+    function isSafeSvgNumber(value) {
+        return /^-?\d+(?:\.\d+)?$/.test(String(value || '').trim());
+    }
+
+    function isSafeSvgPoints(value) {
+        const normalizedValue = String(value || '').trim();
+        return normalizedValue.length <= 4000 && /^-?[\d.]+,-?[\d.]+(?:\s+-?[\d.]+,-?[\d.]+)*$/.test(normalizedValue);
+    }
+
+    function appendSanitizedIndicatorChart(embedNode, sourceNode, ownerDocument) {
+        const sourceChart = sourceNode.querySelector && sourceNode.querySelector('svg.omo-stats-chart');
+        if (!sourceChart) {
+            return;
+        }
+
+        const chart = ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        chart.setAttribute('class', 'omo-stats-chart omo-stats-chart--compact');
+        chart.setAttribute('viewBox', '0 0 180 54');
+        chart.setAttribute('aria-hidden', 'true');
+        ['polyline', 'circle'].forEach(function (tagName) {
+            Array.from(sourceChart.querySelectorAll(tagName)).forEach(function (sourceShape) {
+                const className = String(sourceShape.getAttribute('class') || '');
+                if (tagName === 'polyline' && !/^omo-stats-chart__line(?: omo-stats-chart__line--(?:background|sum))?$/.test(className) && className !== 'omo-stats-chart__reference') {
+                    return;
+                }
+                if (tagName === 'circle' && className !== 'omo-stats-chart__point') {
+                    return;
+                }
+
+                const shape = ownerDocument.createElementNS('http://www.w3.org/2000/svg', tagName);
+                shape.setAttribute('class', className);
+                if (tagName === 'polyline') {
+                    const points = String(sourceShape.getAttribute('points') || '').trim();
+                    if (!isSafeSvgPoints(points)) {
+                        return;
+                    }
+                    shape.setAttribute('points', points);
+                    const strokeStyle = String(sourceShape.getAttribute('style') || '').trim();
+                    if (/^stroke:\s*#[0-9a-f]{6};?$/i.test(strokeStyle)) {
+                        shape.setAttribute('style', strokeStyle);
+                    }
+                } else {
+                    const cx = String(sourceShape.getAttribute('cx') || '').trim();
+                    const cy = String(sourceShape.getAttribute('cy') || '').trim();
+                    const radius = String(sourceShape.getAttribute('r') || '').trim();
+                    if (!isSafeSvgNumber(cx) || !isSafeSvgNumber(cy) || !isSafeSvgNumber(radius)) {
+                        return;
+                    }
+                    shape.setAttribute('cx', cx);
+                    shape.setAttribute('cy', cy);
+                    shape.setAttribute('r', radius);
+                }
+                chart.appendChild(shape);
+            });
+        });
+
+        if (chart.childNodes.length === 0) {
+            return;
+        }
+
+        const chartWrapper = ownerDocument.createElement('span');
+        chartWrapper.setAttribute('class', 'omo-indicator-embed__chart');
+        chartWrapper.appendChild(chart);
+        embedNode.appendChild(chartWrapper);
+    }
+
     function buildSanitizedNode(sourceNode, ownerDocument) {
         if (!sourceNode) {
             return ownerDocument.createDocumentFragment();
@@ -169,9 +358,141 @@
             return ownerDocument.createDocumentFragment();
         }
 
+        if (isTemporaryCursorMarkerElement(sourceNode)) {
+            return ownerDocument.createDocumentFragment();
+        }
+
+        if (isAllowedDocumentEmbedElement(sourceNode)) {
+            const embedNode = ownerDocument.createElement('span');
+            embedNode.setAttribute('class', 'omo-document-embed');
+            embedNode.setAttribute('contenteditable', 'false');
+            embedNode.setAttribute('data-omo-embed-type', 'document');
+            embedNode.setAttribute('data-omo-document-id', String(getDocumentEmbedElementId(sourceNode)));
+
+            const title = getElementAttributeValue(sourceNode, 'data-omo-document-title').trim();
+            if (title) {
+                embedNode.setAttribute('data-omo-document-title', title);
+            }
+
+            const description = getElementAttributeValue(sourceNode, 'data-omo-document-description').trim();
+            if (description) {
+                embedNode.setAttribute('data-omo-document-description', description);
+            }
+
+            Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
+                appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument));
+            });
+
+            return embedNode;
+        }
+
+        if (isAllowedDecisionEmbedElement(sourceNode)) {
+            const embedNode = ownerDocument.createElement('span');
+            embedNode.setAttribute('class', 'omo-decision-embed');
+            embedNode.setAttribute('contenteditable', 'false');
+            embedNode.setAttribute('data-omo-embed-type', 'decision');
+            embedNode.setAttribute('data-omo-decision-id', String(getDecisionEmbedElementId(sourceNode)));
+
+            const title = getElementAttributeValue(sourceNode, 'data-omo-decision-title').trim();
+            if (title) {
+                embedNode.setAttribute('data-omo-decision-title', title);
+            }
+
+            const type = getElementAttributeValue(sourceNode, 'data-omo-decision-type').trim();
+            if (type) {
+                embedNode.setAttribute('data-omo-decision-type', type);
+            }
+
+            const summary = getElementAttributeValue(sourceNode, 'data-omo-decision-summary').trim();
+            if (summary) {
+                embedNode.setAttribute('data-omo-decision-summary', summary);
+            }
+
+            Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
+                appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument));
+            });
+
+            return embedNode;
+        }
+
+        if (isAllowedEventEmbedElement(sourceNode)) {
+            const embedNode = ownerDocument.createElement('span');
+            embedNode.setAttribute('class', 'omo-event-embed');
+            embedNode.setAttribute('contenteditable', 'false');
+            embedNode.setAttribute('data-omo-embed-type', 'event');
+            embedNode.setAttribute('data-omo-event-id', String(getEventEmbedElementId(sourceNode)));
+
+            ['title', 'schedule', 'location', 'description'].forEach(function (attributeName) {
+                const value = getElementAttributeValue(sourceNode, 'data-omo-event-' + attributeName).trim();
+                if (value) {
+                    embedNode.setAttribute('data-omo-event-' + attributeName, value);
+                }
+            });
+
+            Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
+                appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument));
+            });
+
+            return embedNode;
+        }
+
+        if (isAllowedIndicatorEmbedElement(sourceNode)) {
+            const embedNode = ownerDocument.createElement('span');
+            const isOverdue = getElementAttributeValue(sourceNode, 'data-omo-indicator-overdue').trim() === '1';
+            embedNode.setAttribute('class', 'omo-indicator-embed' + (isOverdue ? ' omo-indicator-embed--overdue' : ''));
+            embedNode.setAttribute('contenteditable', 'false');
+            embedNode.setAttribute('data-omo-embed-type', 'indicator');
+            embedNode.setAttribute('data-omo-indicator-id', String(getIndicatorEmbedElementId(sourceNode)));
+            const indicatorKind = getElementAttributeValue(sourceNode, 'data-omo-indicator-kind').trim() === 'group' ? 'group' : 'indicator';
+            embedNode.setAttribute('data-omo-indicator-kind', indicatorKind);
+            ['title', 'value', 'date', 'status', 'context'].forEach(function (attributeName) {
+                const value = getElementAttributeValue(sourceNode, 'data-omo-indicator-' + attributeName).trim();
+                if (value) {
+                    embedNode.setAttribute('data-omo-indicator-' + attributeName, value);
+                }
+            });
+            if (isOverdue) {
+                embedNode.setAttribute('data-omo-indicator-overdue', '1');
+            }
+
+            const title = getElementAttributeValue(sourceNode, 'data-omo-indicator-title').trim() || ('Indicateur #' + String(getIndicatorEmbedElementId(sourceNode)));
+            const titleNode = ownerDocument.createElement('strong');
+            const linkNode = ownerDocument.createElement('a');
+            linkNode.setAttribute('class', 'omo-indicator-embed__title');
+            linkNode.setAttribute('href', indicatorKind === 'group' ? '#stats' : ('#stats-i' + String(getIndicatorEmbedElementId(sourceNode))));
+            linkNode.textContent = title;
+            titleNode.appendChild(linkNode);
+            embedNode.appendChild(titleNode);
+
+            const bodyNode = ownerDocument.createElement('span');
+            bodyNode.setAttribute('class', 'omo-indicator-embed__body');
+            appendSanitizedIndicatorChart(bodyNode, sourceNode, ownerDocument);
+            const valuesNode = ownerDocument.createElement('span');
+            valuesNode.setAttribute('class', 'omo-indicator-embed__values');
+            const valueLabel = getElementAttributeValue(sourceNode, 'data-omo-indicator-value').trim();
+            const dateLabel = getElementAttributeValue(sourceNode, 'data-omo-indicator-date').trim();
+            const statusLabel = getElementAttributeValue(sourceNode, 'data-omo-indicator-status').trim();
+            if (valueLabel) { const valueNode = ownerDocument.createElement('b'); valueNode.textContent = valueLabel; valuesNode.appendChild(valueNode); }
+            if (dateLabel) { const dateNode = ownerDocument.createElement('time'); dateNode.textContent = dateLabel; valuesNode.appendChild(dateNode); }
+            if (statusLabel) { const statusNode = ownerDocument.createElement('em'); statusNode.textContent = statusLabel; valuesNode.appendChild(statusNode); }
+            bodyNode.appendChild(valuesNode);
+            embedNode.appendChild(bodyNode);
+            return embedNode;
+        }
+
         const normalizedTagName = sourceTagName === 'DIV' ? 'P' : sourceTagName;
         const allowedTags = {
             P: true,
+            H1: true,
+            H2: true,
+            H3: true,
+            BLOCKQUOTE: true,
+            TABLE: true,
+            THEAD: true,
+            TBODY: true,
+            TR: true,
+            TH: true,
+            TD: true,
             BR: true,
             STRONG: true,
             B: true,
@@ -219,6 +540,19 @@
         }
 
         const elementNode = ownerDocument.createElement(normalizedTagName.toLowerCase());
+        if (normalizedTagName === 'TH' || normalizedTagName === 'TD') {
+            const colspan = Number.parseInt(sourceNode.getAttribute('colspan') || '', 10);
+            const rowspan = Number.parseInt(sourceNode.getAttribute('rowspan') || '', 10);
+
+            if (Number.isInteger(colspan) && colspan > 1) {
+                elementNode.setAttribute('colspan', String(colspan));
+            }
+
+            if (Number.isInteger(rowspan) && rowspan > 1) {
+                elementNode.setAttribute('rowspan', String(rowspan));
+            }
+        }
+
         Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
             appendSanitizedChild(elementNode, buildSanitizedNode(childNode, ownerDocument));
         });
@@ -261,6 +595,34 @@
         return normalizeHtmlValue(sanitized);
     }
 
+    function buildTextInsertionHtml(text) {
+        const normalizedText = String(text || '')
+            .replace(/\r\n?/g, '\n')
+            .trim();
+
+        if (!normalizedText) {
+            return '';
+        }
+
+        return escapeHtml(normalizedText).replace(/\n/g, '<br>');
+    }
+
+    function normalizePlainText(text) {
+        return String(text || '')
+            .replace(/\r\n?/g, '\n')
+            .replace(/\u00a0/g, ' ')
+            .replace(/[ \t]+\n/g, '\n')
+            .replace(/\n{3,}/g, '\n\n')
+            .replace(/[ \t]{2,}/g, ' ')
+            .trim();
+    }
+
+    function htmlToPlainText(html) {
+        const temp = document.createElement('div');
+        temp.innerHTML = sanitizeHtml(html);
+        return normalizePlainText(temp.innerText || temp.textContent || '');
+    }
+
     function mount(container, options) {
         if (!container) {
             return null;
@@ -274,7 +636,11 @@
             value: '',
             placeholder: 'Saisissez du contenu HTML simple.',
             disabled: false,
-            height: 180
+            height: 180,
+            minHeight: null,
+            customButtons: [],
+            onChange: null,
+            onDoubleClick: null
         }, options || {});
 
         const safeInitialValue = sanitizeHtml(state.value);
@@ -283,12 +649,27 @@
         let destroyed = false;
         let initialized = false;
         let $editor = null;
+        let nativeSavedRange = null;
+        const toolbarButtons = {};
+        const toolbarButtonState = {};
+        const customToolbarButtons = Array.isArray(state.customButtons)
+            ? state.customButtons.filter(function (buttonConfig) {
+                return buttonConfig && String(buttonConfig.name || '').trim() !== '';
+            }).map(function (buttonConfig) {
+                const normalizedConfig = Object.assign({}, buttonConfig);
+                normalizedConfig.name = String(buttonConfig.name || '').trim();
+                normalizedConfig.group = String(buttonConfig.group || 'custom').trim() || 'custom';
+                normalizedConfig.label = String(buttonConfig.label || buttonConfig.name || '').trim() || normalizedConfig.name;
+                normalizedConfig.title = String(buttonConfig.title || buttonConfig.label || buttonConfig.name || '').trim() || normalizedConfig.label;
+                normalizedConfig.className = String(buttonConfig.className || '').trim();
+                return normalizedConfig;
+            })
+            : [];
 
         container.setAttribute('data-omo-html-field', '1');
         container.innerHTML = ''
             + '<div class="omo-simple-html-field">'
             + '  <textarea id="' + escapeHtml(textareaId) + '"></textarea>'
-            + '  <div class="omo-simple-html-field__meta">Edition HTML via Summernote: gras, italic, listes et liens.</div>'
             + '</div>';
 
         const textarea = container.querySelector('textarea');
@@ -311,12 +692,501 @@
             return sanitizeHtml(state.value);
         }
 
+        function getEditableElement() {
+            return container.querySelector('.note-editable');
+        }
+
+        function resizeEditableToContent() {
+            const editable = getEditableElement();
+            if (!editable) {
+                return;
+            }
+
+            const minimumHeight = Math.max(80, Number(state.minHeight || state.height || 180));
+            editable.style.minHeight = minimumHeight + 'px';
+            editable.style.height = 'auto';
+            editable.style.overflowY = 'hidden';
+            editable.style.height = Math.max(minimumHeight, editable.scrollHeight) + 'px';
+        }
+
+        function scheduleResizeEditableToContent() {
+            const schedule = typeof window.requestAnimationFrame === 'function'
+                ? window.requestAnimationFrame.bind(window)
+                : function (callback) { window.setTimeout(callback, 16); };
+
+            schedule(function () {
+                if (!destroyed) {
+                    resizeEditableToContent();
+                }
+            });
+        }
+
+        function cloneRange(range) {
+            if (!range || typeof range.cloneRange !== 'function') {
+                return null;
+            }
+
+            try {
+                return range.cloneRange();
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function captureCurrentSelectionRange() {
+            const selection = window.getSelection ? window.getSelection() : null;
+            const editable = getEditableElement();
+
+            if (!selection || selection.rangeCount === 0 || !editable) {
+                return null;
+            }
+
+            const range = selection.getRangeAt(0);
+            const commonNode = range.commonAncestorContainer;
+            if (commonNode !== editable && !editable.contains(commonNode)) {
+                return null;
+            }
+
+            return cloneRange(range);
+        }
+
+        function restoreNativeSavedRange() {
+            const editable = getEditableElement();
+            const selection = window.getSelection ? window.getSelection() : null;
+            if (!editable || !selection || !nativeSavedRange) {
+                return false;
+            }
+
+            try {
+                const commonNode = nativeSavedRange.commonAncestorContainer;
+                if (commonNode !== editable && !editable.contains(commonNode)) {
+                    return false;
+                }
+
+                selection.removeAllRanges();
+                selection.addRange(nativeSavedRange);
+                return true;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        function restoreRange() {
+            if (initialized && $editor) {
+                try {
+                    $editor.summernote('restoreRange');
+                } catch (error) {
+                    // ignore selection restore issues
+                }
+            }
+
+            restoreNativeSavedRange();
+        }
+
+        function getSelectionRange() {
+            restoreRange();
+            const selection = window.getSelection ? window.getSelection() : null;
+            const editable = getEditableElement();
+
+            if (!selection || selection.rangeCount === 0) {
+                return null;
+            }
+
+            const range = selection.getRangeAt(0);
+            if (!editable) {
+                return range;
+            }
+
+            const commonNode = range.commonAncestorContainer;
+            if (commonNode === editable || editable.contains(commonNode)) {
+                return range;
+            }
+
+            return null;
+        }
+
         function setValue(nextValue) {
             setRawValue(nextValue);
 
             if (initialized && $editor) {
                 $editor.summernote('code', state.value);
+                saveRange();
+                scheduleResizeEditableToContent();
             }
+
+            if (typeof state.onChange === 'function') {
+                try {
+                    state.onChange(getValue(), container.__omoSimpleHtmlField || null);
+                } catch (error) {
+                }
+            }
+        }
+
+        function saveRange() {
+            if (initialized && $editor) {
+                try {
+                    $editor.summernote('saveRange');
+                } catch (error) {
+                    // ignore selection save issues
+                }
+            }
+
+            nativeSavedRange = captureCurrentSelectionRange();
+        }
+
+        function emitChange() {
+            if (typeof state.onChange === 'function') {
+                try {
+                    state.onChange(getValue(), container.__omoSimpleHtmlField || null);
+                } catch (error) {
+                }
+            }
+        }
+
+        function emitDoubleClick(targetNode, event) {
+            if (typeof state.onDoubleClick === 'function') {
+                try {
+                    state.onDoubleClick({
+                        target: targetNode || null,
+                        event: event || null,
+                        api: container.__omoSimpleHtmlField || null
+                    });
+                } catch (error) {
+                }
+            }
+        }
+
+        function applyToolbarButtonState(name, nextState) {
+            const buttonName = String(name || '').trim();
+            if (!buttonName) {
+                return;
+            }
+
+            toolbarButtonState[buttonName] = Object.assign({}, toolbarButtonState[buttonName] || {}, nextState || {});
+            const $button = toolbarButtons[buttonName];
+            if (!$button || !$button.length) {
+                return;
+            }
+
+            const resolvedState = toolbarButtonState[buttonName];
+            const label = resolvedState && resolvedState.label !== undefined
+                ? String(resolvedState.label || '')
+                : null;
+            const title = resolvedState && resolvedState.title !== undefined
+                ? String(resolvedState.title || '')
+                : null;
+            const isDisabled = !!(resolvedState && resolvedState.disabled);
+            const isHidden = !!(resolvedState && resolvedState.hidden);
+            const isActive = !!(resolvedState && resolvedState.active);
+
+            if (label !== null) {
+                $button.html(escapeHtml(label));
+            }
+
+            if (title !== null) {
+                $button.attr('title', title);
+                $button.attr('aria-label', title);
+            }
+
+            $button.prop('disabled', isDisabled);
+            $button.toggleClass('disabled', isDisabled);
+            $button.attr('aria-disabled', isDisabled ? 'true' : 'false');
+            $button.toggleClass('is-active', isActive);
+            $button.attr('aria-hidden', isHidden ? 'true' : 'false');
+            $button.css('display', isHidden ? 'none' : '');
+
+            const $group = $button.closest('.note-btn-group');
+            if ($group && $group.length) {
+                const hasVisibleButtons = $group.find('button').toArray().some(function (groupButton) {
+                    return window.getComputedStyle(groupButton).display !== 'none';
+                });
+                $group.css('display', hasVisibleButtons ? '' : 'none');
+            }
+        }
+
+        function insertHtmlAtCursor(nextHtml) {
+            const safeHtml = sanitizeHtml(nextHtml);
+            if (!safeHtml) {
+                return '';
+            }
+
+            if (initialized && $editor) {
+                try {
+                    $editor.summernote('focus');
+                    restoreRange();
+
+                    const selectionRange = getSelectionRange();
+                    if (selectionRange) {
+                        const temp = document.createElement('div');
+                        const selection = window.getSelection ? window.getSelection() : null;
+                        temp.innerHTML = safeHtml;
+
+                        const nodes = Array.from(temp.childNodes || []);
+                        let lastInsertedNode = null;
+                        const fragment = document.createDocumentFragment();
+
+                        nodes.forEach(function (node) {
+                            lastInsertedNode = node;
+                            fragment.appendChild(node);
+                        });
+
+                        selectionRange.deleteContents();
+                        selectionRange.insertNode(fragment);
+
+                        if (selection && lastInsertedNode) {
+                            const collapsedRange = document.createRange();
+                            collapsedRange.setStartAfter(lastInsertedNode);
+                            collapsedRange.collapse(true);
+                            selection.removeAllRanges();
+                            selection.addRange(collapsedRange);
+                        }
+                    } else {
+                        $editor.summernote('pasteHTML', safeHtml);
+                    }
+
+                    saveRange();
+                    setRawValue($editor.summernote('code'));
+                } catch (error) {
+                    setRawValue((state.value || '') + safeHtml);
+                    $editor.summernote('code', state.value);
+                    saveRange();
+                }
+
+                return safeHtml;
+            }
+
+            setRawValue((state.value || '') + safeHtml);
+            return safeHtml;
+        }
+
+        function insertTextAtCursor(text) {
+            return insertHtmlAtCursor(buildTextInsertionHtml(text));
+        }
+
+        function replaceNodeWithHtml(targetNode, nextHtml) {
+            const safeHtml = sanitizeHtml(nextHtml);
+            const editable = getEditableElement();
+
+            if (!safeHtml || !editable || !targetNode || !editable.contains(targetNode)) {
+                return insertHtmlAtCursor(safeHtml);
+            }
+
+            const temp = document.createElement('div');
+            temp.innerHTML = safeHtml;
+
+            const nodes = Array.from(temp.childNodes || []);
+            if (!nodes.length) {
+                return '';
+            }
+
+            const fragment = document.createDocumentFragment();
+            let lastInsertedNode = null;
+            nodes.forEach(function (node) {
+                lastInsertedNode = node;
+                fragment.appendChild(node);
+            });
+
+            targetNode.replaceWith(fragment);
+
+            if (window.getSelection && lastInsertedNode) {
+                const selection = window.getSelection();
+                const range = document.createRange();
+                range.setStartAfter(lastInsertedNode);
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+
+            saveRange();
+
+            if (initialized && $editor) {
+                setRawValue($editor.summernote('code'));
+            } else {
+                setRawValue(editable.innerHTML);
+            }
+
+            emitChange();
+            return safeHtml;
+        }
+
+        function buildCursorMarkerNode() {
+            const markerNode = document.createElement('span');
+            cursorMarkerCounter += 1;
+            markerNode.setAttribute('data-omo-cursor-marker', 'omo-cursor-marker-' + String(cursorMarkerCounter));
+            markerNode.setAttribute('contenteditable', 'false');
+            markerNode.className = 'omo-html-cursor-marker';
+            return markerNode;
+        }
+
+        function createTemporaryCursorMarker() {
+            const editable = getEditableElement();
+            if (!editable) {
+                return null;
+            }
+
+            restoreRange();
+            let range = getSelectionRange();
+            if (!range) {
+                range = document.createRange();
+                range.selectNodeContents(editable);
+                range.collapse(false);
+            } else {
+                range = cloneRange(range) || range;
+            }
+
+            const markerNode = buildCursorMarkerNode();
+
+            try {
+                range.deleteContents();
+                range.insertNode(markerNode);
+            } catch (error) {
+                editable.appendChild(markerNode);
+            }
+
+            if (window.getSelection) {
+                const selection = window.getSelection();
+                const caretRange = document.createRange();
+                caretRange.setStartAfter(markerNode);
+                caretRange.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(caretRange);
+            }
+
+            saveRange();
+            return markerNode;
+        }
+
+        function replaceMarkerWithHtml(markerNode, nextHtml) {
+            const editable = getEditableElement();
+            const safeHtml = sanitizeHtml(nextHtml);
+
+            if (!editable || !markerNode || !editable.contains(markerNode)) {
+                return insertHtmlAtCursor(safeHtml);
+            }
+
+            const temp = document.createElement('div');
+            temp.innerHTML = safeHtml;
+            const nodes = Array.from(temp.childNodes || []);
+            const fragment = document.createDocumentFragment();
+            let lastInsertedNode = null;
+
+            nodes.forEach(function (node) {
+                lastInsertedNode = node;
+                fragment.appendChild(node);
+            });
+
+            markerNode.replaceWith(fragment);
+
+            if (window.getSelection) {
+                const selection = window.getSelection();
+                const range = document.createRange();
+                if (lastInsertedNode) {
+                    range.setStartAfter(lastInsertedNode);
+                } else {
+                    range.selectNodeContents(editable);
+                    range.collapse(false);
+                }
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+
+            saveRange();
+
+            if (initialized && $editor) {
+                setRawValue($editor.summernote('code'));
+            } else {
+                setRawValue(editable.innerHTML);
+            }
+
+            emitChange();
+            return safeHtml;
+        }
+
+        function removeTemporaryMarker(markerNode) {
+            const editable = getEditableElement();
+            if (!editable || !markerNode || !editable.contains(markerNode)) {
+                return false;
+            }
+
+            if (window.getSelection) {
+                const selection = window.getSelection();
+                const range = document.createRange();
+                range.setStartBefore(markerNode);
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+
+            markerNode.remove();
+            saveRange();
+            return true;
+        }
+
+        function removeNode(targetNode) {
+            const editable = getEditableElement();
+            if (!editable || !targetNode || !editable.contains(targetNode)) {
+                return false;
+            }
+
+            const nextSibling = targetNode.nextSibling;
+            const previousSibling = targetNode.previousSibling;
+            targetNode.remove();
+
+            if (window.getSelection) {
+                const selection = window.getSelection();
+                const range = document.createRange();
+
+                if (nextSibling && editable.contains(nextSibling)) {
+                    range.setStartBefore(nextSibling);
+                } else if (previousSibling && editable.contains(previousSibling)) {
+                    range.setStartAfter(previousSibling);
+                } else {
+                    range.selectNodeContents(editable);
+                    range.collapse(false);
+                }
+
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+
+            saveRange();
+
+            if (initialized && $editor) {
+                setRawValue($editor.summernote('code'));
+            } else {
+                setRawValue(editable.innerHTML);
+            }
+
+            emitChange();
+            return true;
+        }
+
+        function getSelectedText() {
+            const range = getSelectionRange();
+            if (!range) {
+                return '';
+            }
+
+            const fragment = range.cloneContents();
+            const temp = document.createElement('div');
+            temp.appendChild(fragment);
+
+            return normalizePlainText(temp.innerText || temp.textContent || '');
+        }
+
+        function hasSelection() {
+            const range = getSelectionRange();
+            return !!(range && !range.collapsed && normalizePlainText(range.toString()) !== '');
+        }
+
+        function getPlainText() {
+            return htmlToPlainText(getValue());
+        }
+
+        function replaceSelectionWithText(text) {
+            return insertTextAtCursor(text);
         }
 
         function destroy() {
@@ -343,21 +1213,106 @@
                     return;
                 }
 
+                const toolbar = [
+                    ['style', ['style']],
+                    ['font', ['bold', 'italic', 'underline', 'clear']],
+                    ['para', ['ul', 'ol']],
+                    ['insert', ['link', 'table']]
+                ];
+                const toolbarGroups = {};
+                const buttonsConfig = {};
+
+                customToolbarButtons.forEach(function (buttonConfig) {
+                    if (!toolbarGroups[buttonConfig.group]) {
+                        toolbarGroups[buttonConfig.group] = [];
+                    }
+
+                    toolbarGroups[buttonConfig.group].push(buttonConfig.name);
+                    buttonsConfig[buttonConfig.name] = function () {
+                        const ui = window.jQuery && window.jQuery.summernote
+                            ? window.jQuery.summernote.ui
+                            : null;
+
+                        if (!ui) {
+                            return window.jQuery('<button type="button"></button>').text(buttonConfig.label);
+                        }
+
+                        const $button = ui.button({
+                            contents: escapeHtml(buttonConfig.label),
+                            tooltip: buttonConfig.title,
+                            className: buttonConfig.className,
+                            click: function (event) {
+                                if (typeof buttonConfig.onClick === 'function') {
+                                    buttonConfig.onClick({
+                                        event: event,
+                                        name: buttonConfig.name,
+                                        api: container.__omoSimpleHtmlField || null
+                                    });
+                                }
+                            }
+                        }).render();
+
+                        toolbarButtons[buttonConfig.name] = $button;
+                        if ($button && $button.length) {
+                            const buttonNode = $button.get(0);
+                            if (buttonNode) {
+                                buttonNode.addEventListener('mousedown', saveRange);
+                                buttonNode.addEventListener('pointerdown', saveRange);
+                            }
+                        }
+                        $button.attr('data-omo-toolbar-button-name', buttonConfig.name);
+                        applyToolbarButtonState(buttonConfig.name, {
+                            label: buttonConfig.label,
+                            title: buttonConfig.title,
+                            hidden: !!buttonConfig.hidden,
+                            disabled: !!buttonConfig.disabled,
+                            active: !!buttonConfig.active
+                        });
+
+                        return $button;
+                    };
+                });
+
+                Object.keys(toolbarGroups).forEach(function (groupName) {
+                    toolbar.push([groupName, toolbarGroups[groupName]]);
+                });
+
                 $editor = window.jQuery(textarea);
                 $editor.summernote({
                     lang: 'fr-FR',
                     placeholder: state.placeholder,
-                    height: Number(state.height || 180),
+                    minHeight: Math.max(80, Number(state.minHeight || state.height || 180)),
+                    maxHeight: null,
                     dialogsInBody: true,
                     disableDragAndDrop: true,
-                    toolbar: [
-                        ['font', ['bold', 'italic', 'underline', 'clear']],
-                        ['para', ['ul', 'ol']],
-                        ['insert', ['link']]
+                    styleTags: [
+                        'p',
+                        { title: 'Titre 1', tag: 'h1', className: '', value: 'h1' },
+                        { title: 'Titre 2', tag: 'h2', className: '', value: 'h2' },
+                        { title: 'Titre 3', tag: 'h3', className: '', value: 'h3' },
+                        { title: 'Citation', tag: 'blockquote', className: '', value: 'blockquote' }
                     ],
+                    toolbar: toolbar,
+                    buttons: buttonsConfig,
                     callbacks: {
                         onChange: function (contents) {
                             setRawValue(contents);
+                            saveRange();
+                            scheduleResizeEditableToContent();
+                            emitChange();
+                        },
+                        onFocus: function () {
+                            saveRange();
+                        },
+                        onBlur: function () {
+                            saveRange();
+                        },
+                        onKeyup: function () {
+                            saveRange();
+                            scheduleResizeEditableToContent();
+                        },
+                        onMouseup: function () {
+                            saveRange();
                         }
                     }
                 });
@@ -368,6 +1323,17 @@
                 }
 
                 initialized = true;
+                saveRange();
+                scheduleResizeEditableToContent();
+
+                const editable = getEditableElement();
+                if (editable) {
+                    editable.addEventListener('input', scheduleResizeEditableToContent);
+                    editable.addEventListener('dblclick', function (event) {
+                        saveRange();
+                        emitDoubleClick(event.target || null, event);
+                    });
+                }
             })
             .catch(function (error) {
                 if (destroyed) {
@@ -381,6 +1347,7 @@
             });
 
         container.__omoSimpleHtmlField = {
+            version: OMO_SIMPLE_HTML_FIELD_VERSION,
             getValue: getValue,
             setValue: setValue,
             focus: function () {
@@ -388,6 +1355,21 @@
                     $editor.summernote('focus');
                 }
             },
+            saveRange: saveRange,
+            restoreRange: restoreRange,
+            insertHtmlAtCursor: insertHtmlAtCursor,
+            createTemporaryCursorMarker: createTemporaryCursorMarker,
+            replaceMarkerWithHtml: replaceMarkerWithHtml,
+            removeTemporaryMarker: removeTemporaryMarker,
+            insertTextAtCursor: insertTextAtCursor,
+            replaceNodeWithHtml: replaceNodeWithHtml,
+            removeNode: removeNode,
+            replaceSelectionWithText: replaceSelectionWithText,
+            getSelectedText: getSelectedText,
+            hasSelection: hasSelection,
+            getPlainText: getPlainText,
+            getEditableElement: getEditableElement,
+            setToolbarButtonState: applyToolbarButtonState,
             destroy: destroy
         };
         container.__omoSimpleHtmlFieldDestroy = destroy;
@@ -411,7 +1393,10 @@
         return '<div class="' + escapeHtml(classes.join(' ')) + '">' + safeValue + '</div>';
     }
 
+    ensureLocalStyles();
+
     window.omoSimpleHtmlField = {
+        version: OMO_SIMPLE_HTML_FIELD_VERSION,
         mount: mount,
         sanitizeHtml: sanitizeHtml,
         renderPreviewHtml: renderPreviewHtml

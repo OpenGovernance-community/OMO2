@@ -1,160 +1,90 @@
 -- @migration
-SET @rename_question_table = (
-	SELECT IF(
-		EXISTS (
-			SELECT 1
-			FROM information_schema.TABLES
-			WHERE TABLE_SCHEMA = DATABASE()
-			  AND TABLE_NAME = 'faq'
-		)
-		AND NOT EXISTS (
-			SELECT 1
-			FROM information_schema.TABLES
-			WHERE TABLE_SCHEMA = DATABASE()
-			  AND TABLE_NAME = 'question'
-		),
-		'RENAME TABLE `faq` TO `question`',
-		'SELECT 1'
-	)
-);
-PREPARE stmt FROM @rename_question_table;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+-- LMS quiz storage must stay separate from the FAQ module.
+-- This migration now creates dedicated `question*` tables without renaming or
+-- altering any `faq*` table.
 
-SET @rename_question_choice_table = (
-	SELECT IF(
-		EXISTS (
-			SELECT 1
-			FROM information_schema.TABLES
-			WHERE TABLE_SCHEMA = DATABASE()
-			  AND TABLE_NAME = 'faq_choice'
-		)
-		AND NOT EXISTS (
-			SELECT 1
-			FROM information_schema.TABLES
-			WHERE TABLE_SCHEMA = DATABASE()
-			  AND TABLE_NAME = 'question_choice'
-		),
-		'RENAME TABLE `faq_choice` TO `question_choice`',
-		'SELECT 1'
-	)
-);
-PREPARE stmt FROM @rename_question_choice_table;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+SET NAMES utf8mb4;
 
-SET @rename_mission_question_table = (
-	SELECT IF(
-		EXISTS (
-			SELECT 1
-			FROM information_schema.TABLES
-			WHERE TABLE_SCHEMA = DATABASE()
-			  AND TABLE_NAME = 'mission_faq'
-		)
-		AND NOT EXISTS (
-			SELECT 1
-			FROM information_schema.TABLES
-			WHERE TABLE_SCHEMA = DATABASE()
-			  AND TABLE_NAME = 'mission_question'
-		),
-		'RENAME TABLE `mission_faq` TO `mission_question`',
-		'SELECT 1'
-	)
-);
-PREPARE stmt FROM @rename_mission_question_table;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+CREATE TABLE IF NOT EXISTS `question` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDhowto` int(11) DEFAULT NULL,
+  `question` varchar(255) NOT NULL,
+  `answer` text NOT NULL,
+  `detail` text DEFAULT NULL,
+  `displayorder` int(11) DEFAULT 0,
+  `isactive` tinyint(1) DEFAULT 1,
+  `created` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_question_displayorder` (`displayorder`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-SET @rename_user_question_response_table = (
-	SELECT IF(
-		EXISTS (
-			SELECT 1
-			FROM information_schema.TABLES
-			WHERE TABLE_SCHEMA = DATABASE()
-			  AND TABLE_NAME = 'user_faq_response'
-		)
-		AND NOT EXISTS (
-			SELECT 1
-			FROM information_schema.TABLES
-			WHERE TABLE_SCHEMA = DATABASE()
-			  AND TABLE_NAME = 'user_question_response'
-		),
-		'RENAME TABLE `user_faq_response` TO `user_question_response`',
-		'SELECT 1'
-	)
-);
-PREPARE stmt FROM @rename_user_question_response_table;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `question`
+  ADD COLUMN IF NOT EXISTS `IDhowto` int(11) DEFAULT NULL AFTER `id`,
+  ADD COLUMN IF NOT EXISTS `question` varchar(255) NOT NULL AFTER `IDhowto`,
+  ADD COLUMN IF NOT EXISTS `answer` text DEFAULT NULL AFTER `question`,
+  ADD COLUMN IF NOT EXISTS `detail` text DEFAULT NULL AFTER `answer`,
+  ADD COLUMN IF NOT EXISTS `displayorder` int(11) DEFAULT 0 AFTER `detail`,
+  ADD COLUMN IF NOT EXISTS `isactive` tinyint(1) DEFAULT 1 AFTER `displayorder`,
+  ADD COLUMN IF NOT EXISTS `created` datetime NOT NULL DEFAULT current_timestamp() AFTER `isactive`,
+  ADD COLUMN IF NOT EXISTS `updated` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() AFTER `created`;
 
-SET @rename_question_choice_column = (
-	SELECT IF(
-		EXISTS (
-			SELECT 1
-			FROM information_schema.COLUMNS
-			WHERE TABLE_SCHEMA = DATABASE()
-			  AND TABLE_NAME = 'question_choice'
-			  AND COLUMN_NAME = 'IDfaq'
-		)
-		AND NOT EXISTS (
-			SELECT 1
-			FROM information_schema.COLUMNS
-			WHERE TABLE_SCHEMA = DATABASE()
-			  AND TABLE_NAME = 'question_choice'
-			  AND COLUMN_NAME = 'IDquestion'
-		),
-		'ALTER TABLE `question_choice` CHANGE `IDfaq` `IDquestion` int(11) DEFAULT NULL',
-		'SELECT 1'
-	)
-);
-PREPARE stmt FROM @rename_question_choice_column;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `question`
+  ADD KEY IF NOT EXISTS `idx_question_displayorder` (`displayorder`);
 
-SET @rename_mission_question_column = (
-	SELECT IF(
-		EXISTS (
-			SELECT 1
-			FROM information_schema.COLUMNS
-			WHERE TABLE_SCHEMA = DATABASE()
-			  AND TABLE_NAME = 'mission_question'
-			  AND COLUMN_NAME = 'IDfaq'
-		)
-		AND NOT EXISTS (
-			SELECT 1
-			FROM information_schema.COLUMNS
-			WHERE TABLE_SCHEMA = DATABASE()
-			  AND TABLE_NAME = 'mission_question'
-			  AND COLUMN_NAME = 'IDquestion'
-		),
-		'ALTER TABLE `mission_question` CHANGE `IDfaq` `IDquestion` int(11) DEFAULT NULL',
-		'SELECT 1'
-	)
-);
-PREPARE stmt FROM @rename_mission_question_column;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+CREATE TABLE IF NOT EXISTS `question_choice` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDquestion` int(11) DEFAULT NULL,
+  `label` mediumtext DEFAULT NULL,
+  `is_correct` tinyint(1) DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_question_choice_question` (`IDquestion`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-SET @rename_user_question_response_column = (
-	SELECT IF(
-		EXISTS (
-			SELECT 1
-			FROM information_schema.COLUMNS
-			WHERE TABLE_SCHEMA = DATABASE()
-			  AND TABLE_NAME = 'user_question_response'
-			  AND COLUMN_NAME = 'IDfaq'
-		)
-		AND NOT EXISTS (
-			SELECT 1
-			FROM information_schema.COLUMNS
-			WHERE TABLE_SCHEMA = DATABASE()
-			  AND TABLE_NAME = 'user_question_response'
-			  AND COLUMN_NAME = 'IDquestion'
-		),
-		'ALTER TABLE `user_question_response` CHANGE `IDfaq` `IDquestion` int(11) DEFAULT NULL',
-		'SELECT 1'
-	)
-);
-PREPARE stmt FROM @rename_user_question_response_column;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+ALTER TABLE `question_choice`
+  ADD COLUMN IF NOT EXISTS `IDquestion` int(11) DEFAULT NULL AFTER `id`,
+  ADD COLUMN IF NOT EXISTS `label` mediumtext DEFAULT NULL AFTER `IDquestion`,
+  ADD COLUMN IF NOT EXISTS `is_correct` tinyint(1) DEFAULT 0 AFTER `label`;
+
+ALTER TABLE `question_choice`
+  ADD KEY IF NOT EXISTS `idx_question_choice_question` (`IDquestion`);
+
+CREATE TABLE IF NOT EXISTS `mission_question` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDmission` int(11) DEFAULT NULL,
+  `IDquestion` int(11) DEFAULT NULL,
+  `position` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_mission_question` (`IDmission`, `IDquestion`),
+  KEY `idx_mission_question_position` (`IDmission`, `position`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `mission_question`
+  ADD COLUMN IF NOT EXISTS `IDmission` int(11) DEFAULT NULL AFTER `id`,
+  ADD COLUMN IF NOT EXISTS `IDquestion` int(11) DEFAULT NULL AFTER `IDmission`,
+  ADD COLUMN IF NOT EXISTS `position` int(11) DEFAULT NULL AFTER `IDquestion`;
+
+ALTER TABLE `mission_question`
+  ADD UNIQUE KEY IF NOT EXISTS `uniq_mission_question` (`IDmission`, `IDquestion`),
+  ADD KEY IF NOT EXISTS `idx_mission_question_position` (`IDmission`, `position`);
+
+CREATE TABLE IF NOT EXISTS `user_question_response` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDuser` int(11) DEFAULT NULL,
+  `IDquestion` int(11) DEFAULT NULL,
+  `IDchoice` int(11) DEFAULT NULL,
+  `IDmission` int(11) DEFAULT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_user_question_response_lookup` (`IDuser`, `IDmission`, `IDquestion`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `user_question_response`
+  ADD COLUMN IF NOT EXISTS `IDuser` int(11) DEFAULT NULL AFTER `id`,
+  ADD COLUMN IF NOT EXISTS `IDquestion` int(11) DEFAULT NULL AFTER `IDuser`,
+  ADD COLUMN IF NOT EXISTS `IDchoice` int(11) DEFAULT NULL AFTER `IDquestion`,
+  ADD COLUMN IF NOT EXISTS `IDmission` int(11) DEFAULT NULL AFTER `IDchoice`,
+  ADD COLUMN IF NOT EXISTS `created_at` datetime DEFAULT current_timestamp() AFTER `IDmission`;
+
+ALTER TABLE `user_question_response`
+  ADD KEY IF NOT EXISTS `idx_user_question_response_lookup` (`IDuser`, `IDmission`, `IDquestion`);

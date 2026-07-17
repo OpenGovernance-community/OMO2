@@ -75,7 +75,7 @@
             '    display: grid;',
             '    gap: 14px;',
             '    padding: 18px;',
-            '    border-radius: 18px;',
+            '    border-radius: var(--radius-md);',
             '    border: 1px solid rgba(37, 99, 235, 0.18);',
             '    background: rgba(255, 255, 255, 0.98);',
             '    box-shadow: 0 22px 48px rgba(15, 23, 42, 0.18);',

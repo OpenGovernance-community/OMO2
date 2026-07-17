@@ -1,10 +1,10 @@
-<?php
+﻿<?php
 	require_once($_SERVER['DOCUMENT_ROOT']."/config.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared_functions.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared/openai.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared/telegram.php");
 
-	$minTimeMessage = 10; // Durée minimum en seconde du message pour justifier une transformation
+	$minTimeMessage = 10; // Duree minimum en seconde du message pour justifier une transformation
 
 	function saveLocalSession($data, $name) {
 		if (!is_dir("data")) {
@@ -70,6 +70,244 @@
 		return "votre compte";
 	}
 
+	function clearTelegramConnectState(\stdClass $sessionData): void {
+		unset($sessionData->connect);
+	}
+
+	function beginTelegramConnectFlow(int $actorId): \stdClass {
+		$sessionData = loadLocalSession($actorId);
+		clearTelegramConnectState($sessionData);
+		$sessionData->connect = (object) array(
+			'step' => 'await_email',
+			'startedAt' => time(),
+		);
+		saveLocalSession($sessionData, $actorId);
+		return $sessionData;
+	}
+
+	function startTelegramConnectCodeRequest(int $actorId, \dbObject\User $targetUser): array {
+		$email = trim((string)$targetUser->get('email'));
+		if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+			return array(
+				'status' => false,
+				'message' => "Ce compte n'a pas d'adresse e-mail valide.",
+			);
+		}
+
+		$organizationContext = commonResolveOrganizationContext(1);
+		$loginRequest = commonSendLoginCode((int)$targetUser->getId(), $email, $organizationContext, 0, '/');
+		if ($loginRequest === false || empty($loginRequest['request_token'])) {
+			return array(
+				'status' => false,
+				'message' => "Impossible d'envoyer le code pour le moment.",
+			);
+		}
+
+		$sessionData = loadLocalSession($actorId);
+		$sessionData->connect = (object) array(
+			'step' => 'await_code',
+			'userId' => (int)$targetUser->getId(),
+			'email' => $email,
+			'requestToken' => (string)$loginRequest['request_token'],
+			'expiresAt' => time() + 300,
+		);
+		saveLocalSession($sessionData, $actorId);
+
+		$message = !empty($loginRequest['delivery_failed'])
+			? "Le code a peut-etre deja ete envoye a ".$email.". Si vous le recevez, repondez ici avec ce code dans les 5 minutes."
+			: "Un code a ete envoye a ".$email.". Repondez ici avec ce code dans les 5 minutes.";
+
+		return array(
+			'status' => true,
+			'message' => $message,
+		);
+	}
+
+	function completeTelegramConnectFlow(int $actorId, string $rawCode): array {
+		$sessionData = loadLocalSession($actorId);
+		$connectState = isset($sessionData->connect) && is_object($sessionData->connect)
+			? $sessionData->connect
+			: null;
+
+		if (!$connectState || ($connectState->step ?? '') !== 'await_code') {
+			return array(
+				'status' => false,
+				'message' => "Aucune connexion n'est en attente. Envoyez /connect pour recommencer.",
+			);
+		}
+
+		$requestToken = trim((string)($connectState->requestToken ?? ''));
+		$userId = (int)($connectState->userId ?? 0);
+		$code = commonNormalizeLoginCode($rawCode);
+
+		if ($requestToken === '' || $userId <= 0) {
+			clearTelegramConnectState($sessionData);
+			saveLocalSession($sessionData, $actorId);
+			return array(
+				'status' => false,
+				'message' => "La demande de connexion est invalide. Envoyez /connect pour recommencer.",
+			);
+		}
+
+		if (strlen($code) !== 6) {
+			return array(
+				'status' => false,
+				'message' => "Veuillez saisir le code complet a 6 caracteres.",
+			);
+		}
+
+		$loginToken = \dbObject\UserLoginToken::findByToken($requestToken);
+		if (!$loginToken) {
+			clearTelegramConnectState($sessionData);
+			saveLocalSession($sessionData, $actorId);
+			return array(
+				'status' => false,
+				'message' => "Le code n'est plus valide. Envoyez /connect pour recommencer.",
+			);
+		}
+
+		if ((int)$loginToken->get('IDuser') !== $userId || (int)$loginToken->get('used') > 0) {
+			clearTelegramConnectState($sessionData);
+			saveLocalSession($sessionData, $actorId);
+			return array(
+				'status' => false,
+				'message' => "Le code n'est plus valide. Envoyez /connect pour recommencer.",
+			);
+		}
+
+		$expiresAt = $loginToken->get('expires_at');
+		if (!$expiresAt instanceof \DateTimeInterface || $expiresAt <= new \DateTime()) {
+			clearTelegramConnectState($sessionData);
+			saveLocalSession($sessionData, $actorId);
+			return array(
+				'status' => false,
+				'message' => "Le code a expire. Envoyez /connect pour recommencer.",
+			);
+		}
+
+		if ((int)$loginToken->get('attempt_count') >= 5) {
+			clearTelegramConnectState($sessionData);
+			saveLocalSession($sessionData, $actorId);
+			return array(
+				'status' => false,
+				'message' => "Trop d'essais. Envoyez /connect pour recommencer.",
+			);
+		}
+
+		if (!password_verify($code, (string)$loginToken->get('code_hash'))) {
+			$loginToken->incrementAttemptCount();
+			$remainingAttempts = max(0, 5 - (int)$loginToken->get('attempt_count'));
+			if ($remainingAttempts <= 0) {
+				clearTelegramConnectState($sessionData);
+				saveLocalSession($sessionData, $actorId);
+				return array(
+					'status' => false,
+					'message' => "Trop d'essais. Envoyez /connect pour recommencer.",
+				);
+			}
+
+			return array(
+				'status' => false,
+				'message' => "Code incorrect. Il reste ".$remainingAttempts." essai(s).",
+			);
+		}
+
+		$targetUser = new \dbObject\User();
+		if (!$targetUser->load($userId)) {
+			$loginToken->markUsed();
+			clearTelegramConnectState($sessionData);
+			saveLocalSession($sessionData, $actorId);
+			return array(
+				'status' => false,
+				'message' => "Le compte utilisateur est introuvable.",
+			);
+		}
+
+		$alreadyLinkedUser = loadTelegramUserByActorId($actorId);
+		if ($alreadyLinkedUser->getId() > 0 && (int)$alreadyLinkedUser->getId() !== $userId) {
+			$alreadyLinkedUser->set('telegramID', null);
+			$alreadyLinkedUser->save();
+		}
+
+		$targetUser->set('telegramID', (string)$actorId);
+		$saveResult = $targetUser->save();
+		$loginToken->markUsed();
+
+		if (!is_array($saveResult) || empty($saveResult['status'])) {
+			return array(
+				'status' => false,
+				'message' => "Le compte Telegram n'a pas pu etre enregistre.",
+			);
+		}
+
+		clearTelegramConnectState($sessionData);
+		saveLocalSession($sessionData, $actorId);
+
+		return array(
+			'status' => true,
+			'message' => "Connexion confirmee avec ".getTelegramConnectedUserLabel($targetUser).".",
+		);
+	}
+
+	function handleTelegramConnectConversation(array $message, \dbObject\User $user): bool {
+		$text = isset($message['text']) ? trim((string)$message['text']) : '';
+		$actorId = isset($message['from']['id']) ? (int)$message['from']['id'] : 0;
+		$chatId = $message['chat']['id'] ?? null;
+		$threadId = getMessageThreadId($message);
+		if ($text === '' || $actorId <= 0 || $chatId === null) {
+			return false;
+		}
+
+		if (($message['chat']['id'] ?? null) != ($message['from']['id'] ?? null)) {
+			return false;
+		}
+
+		$sessionData = loadLocalSession($actorId);
+		$connectState = isset($sessionData->connect) && is_object($sessionData->connect)
+			? $sessionData->connect
+			: null;
+		if (!$connectState || !isset($connectState->step)) {
+			return false;
+		}
+
+		if (preg_match('/^\/cancel/i', $text)) {
+			clearTelegramConnectState($sessionData);
+			saveLocalSession($sessionData, $actorId);
+			sendMessage($chatId, "Connexion annulee.", null, $threadId);
+			return true;
+		}
+
+		if (preg_match('/^\//', $text)) {
+			return false;
+		}
+
+		if (($connectState->step ?? '') === 'await_email') {
+			$email = strtolower(trim($text));
+			if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+				sendMessage($chatId, "Veuillez repondre avec une adresse e-mail valide, ou /cancel.", null, $threadId);
+				return true;
+			}
+
+			$targetUser = new \dbObject\User();
+			if (!$targetUser->load(array('email', $email))) {
+				sendMessage($chatId, "Aucun compte n'a ete trouve avec cette adresse. Reessayez ou envoyez /cancel.", null, $threadId);
+				return true;
+			}
+
+			$result = startTelegramConnectCodeRequest($actorId, $targetUser);
+			sendMessage($chatId, $result['message'] ?? "Impossible d'envoyer le code.", null, $threadId);
+			return true;
+		}
+
+		if (($connectState->step ?? '') === 'await_code') {
+			$result = completeTelegramConnectFlow($actorId, $text);
+			sendMessage($chatId, $result['message'] ?? "Impossible de verifier le code.", null, $threadId);
+			return true;
+		}
+
+		return false;
+	}
+
 	function formatDocumentLink(\dbObject\Document $document): string {
 		return appBuildAbsoluteUrl("/memo/".$document->getId().($document->get("codeview") ? "/".$document->get("codeview") : ""));
 	}
@@ -78,7 +316,7 @@
 		return array(
 			array(
 				array('text' => 'Options', 'callback_data' => 'btn_options'),
-				array('text' => 'Delete', 'callback_data' => 'btn_delete'),
+				array('text' => 'Delete', 'callback_data' => 'btn_delete', 'style' => 'danger'),
 			),
 			array(
 				array('text' => 'Share', 'callback_data' => 'btn_share'),
@@ -90,11 +328,11 @@
 	function buildDeleteButtons(): array {
 		return array(
 			array(
-				array('text' => 'Le résumé', 'callback_data' => 'btn_del_resume'),
-				array('text' => 'Le fichier', 'callback_data' => 'btn_del_file'),
+				array('text' => 'Le résumé', 'callback_data' => 'btn_del_resume', 'style' => 'danger'),
+				array('text' => 'Le fichier', 'callback_data' => 'btn_del_file', 'style' => 'danger'),
 			),
 			array(
-				array('text' => 'Tout', 'callback_data' => 'btn_del_all'),
+				array('text' => 'Tout', 'callback_data' => 'btn_del_all', 'style' => 'danger'),
 				array('text' => 'Annuler', 'callback_data' => 'btn_del_cancel'),
 			),
 		);
@@ -157,6 +395,18 @@
 		return $typeLabel." : ".($name !== '' ? $name : 'Sans nom');
 	}
 
+	function telegramUserCanCreateDocumentInHolon(\dbObject\User $user, \dbObject\Organization $organization, \dbObject\Holon $holon): bool {
+		$userId = (int)$user->getId();
+		$organizationId = (int)$organization->getId();
+		$holonId = (int)$holon->getId();
+
+		if ($userId <= 0 || $organizationId <= 0 || $holonId <= 0) {
+			return false;
+		}
+
+		return $holon->isAllowed('CAN_CREATE_DOCUMENT', false, $userId);
+	}
+
 	function getVisibleHolonChildren(\dbObject\Holon $holon): array {
 		$children = array();
 		foreach ($holon->getChildren() as $child) {
@@ -170,10 +420,50 @@
 		return $children;
 	}
 
-	function collectHolonDescendantOptions(\dbObject\Holon $holon, string $prefix = ''): array {
+	function holonHasDocumentCreationDestination(\dbObject\User $user, \dbObject\Organization $organization, \dbObject\Holon $holon, array &$availabilityCache = array()): bool {
+		$cacheKey = (int)$user->getId().'_'.(int)$organization->getId().'_'.(int)$holon->getId();
+		if (array_key_exists($cacheKey, $availabilityCache)) {
+			return (bool)$availabilityCache[$cacheKey];
+		}
+
+		if (telegramUserCanCreateDocumentInHolon($user, $organization, $holon)) {
+			$availabilityCache[$cacheKey] = true;
+			return true;
+		}
+
+		foreach (getVisibleHolonChildren($holon) as $child) {
+			if (holonHasDocumentCreationDestination($user, $organization, $child, $availabilityCache)) {
+				$availabilityCache[$cacheKey] = true;
+				return true;
+			}
+		}
+
+		$availabilityCache[$cacheKey] = false;
+		return false;
+	}
+
+	function getCreatableVisibleHolonChildren(\dbObject\User $user, \dbObject\Organization $organization, \dbObject\Holon $holon, array &$availabilityCache = array()): array {
+		$children = array();
+
+		foreach (getVisibleHolonChildren($holon) as $child) {
+			if (!holonHasDocumentCreationDestination($user, $organization, $child, $availabilityCache)) {
+				continue;
+			}
+
+			$children[] = $child;
+		}
+
+		return $children;
+	}
+
+	function collectHolonDescendantNavigationOptions(\dbObject\User $user, \dbObject\Organization $organization, \dbObject\Holon $holon, string $prefix = '', array &$availabilityCache = array()): array {
 		$options = array();
 
 		foreach (getVisibleHolonChildren($holon) as $child) {
+			if (!holonHasDocumentCreationDestination($user, $organization, $child, $availabilityCache)) {
+				continue;
+			}
+
 			$label = $prefix !== ''
 				? $prefix." > ".buildHolonChoiceLabel($child)
 				: buildHolonChoiceLabel($child);
@@ -181,9 +471,10 @@
 			$options[] = array(
 				'holon' => $child,
 				'label' => $label,
+				'action' => telegramUserCanCreateDocumentInHolon($user, $organization, $child) ? 'done' : 'nav',
 			);
 
-			$options = array_merge($options, collectHolonDescendantOptions($child, $label));
+			$options = array_merge($options, collectHolonDescendantNavigationOptions($user, $organization, $child, $label, $availabilityCache));
 		}
 
 		return $options;
@@ -216,8 +507,34 @@
 		}
 
 		if ($selectedOrganizationId <= 0) {
+			$availableOrganizations = array();
 			$buttons = array();
+
 			foreach ($organizations as $organization) {
+				$organizationRootHolon = $organization->getStructuralRootHolon();
+				if (
+					!($organizationRootHolon instanceof \dbObject\Holon)
+					|| (int)$organizationRootHolon->getId() <= 0
+					|| !holonHasDocumentCreationDestination($user, $organization, $organizationRootHolon)
+				) {
+					continue;
+				}
+
+				$availableOrganizations[] = $organization;
+			}
+
+			if (count($availableOrganizations) === 0) {
+				return array(
+					'text' => "Aucune organisation accessible avec droit de creation de document n'est disponible pour classer ce memo.",
+					'buttons' => array(
+						array(
+							array('text' => 'Fermer', 'callback_data' => 'btn_classify_cancel'),
+						),
+					),
+				);
+			}
+
+			foreach ($availableOrganizations as $organization) {
 				$buttons[] = array(
 					array(
 						'text' => trim((string)$organization->get('name')),
@@ -247,7 +564,7 @@
 				'text' => "Impossible de trouver la structure de cette organisation.",
 				'buttons' => array(
 					array(
-						array('text' => 'Changer d’organisation', 'callback_data' => 'btn_classify_root'),
+						array('text' => "Changer d'organisation", 'callback_data' => 'btn_classify_root'),
 					),
 					array(
 						array('text' => 'Annuler', 'callback_data' => 'btn_classify_cancel'),
@@ -272,18 +589,23 @@
 
 		$currentPath = buildHolonPathLabel($organization, $selectedHolon);
 		$currentNode = $selectedHolon ?: $rootHolon;
-		$children = getVisibleHolonChildren($currentNode);
-		$descendantOptions = collectHolonDescendantOptions($currentNode);
+		$availabilityCache = array();
+		$canFinishHere = telegramUserCanCreateDocumentInHolon($user, $organization, $currentNode);
+		$children = getCreatableVisibleHolonChildren($user, $organization, $currentNode, $availabilityCache);
+		$descendantOptions = collectHolonDescendantNavigationOptions($user, $organization, $currentNode, '', $availabilityCache);
 		$useIncrementalMode = count($descendantOptions) > 4;
+		$hasDescendantDestination = count($descendantOptions) > 0;
 
-		$buttons = array(
-			array(
+		$buttons = array();
+		if ($canFinishHere) {
+			$buttons[] = array(
 				array(
 					'text' => 'Terminer ici',
 					'callback_data' => 'btn_classify_done_'.$organization->getId().'_'.($selectedHolon ? $selectedHolon->getId() : 0),
+					'style' => 'success',
 				),
-			),
-		);
+			);
+		}
 
 		if ($selectedHolon) {
 			$parentHolon = $selectedHolon->getParentHolon();
@@ -298,14 +620,14 @@
 					'callback_data' => 'btn_classify_nav_'.$organization->getId().'_'.$backTargetHolonId,
 				),
 				array(
-					'text' => 'Changer d’organisation',
+					'text' => "Changer d'organisation",
 					'callback_data' => 'btn_classify_root',
 				),
 			);
 		} else {
 			$buttons[] = array(
 				array(
-					'text' => 'Changer d’organisation',
+					'text' => "Changer d'organisation",
 					'callback_data' => 'btn_classify_root',
 				),
 			);
@@ -317,15 +639,18 @@
 					array(
 						'text' => buildHolonChoiceLabel($child),
 						'callback_data' => 'btn_classify_nav_'.$organization->getId().'_'.$child->getId(),
+						'style' => 'primary',
 					),
 				);
 			}
 		} else {
 			foreach ($descendantOptions as $option) {
+				$callbackAction = ($option['action'] ?? '') === 'nav' ? 'btn_classify_nav_' : 'btn_classify_done_';
 				$buttons[] = array(
 					array(
 						'text' => $option['label'],
-						'callback_data' => 'btn_classify_done_'.$organization->getId().'_'.$option['holon']->getId(),
+						'callback_data' => $callbackAction.$organization->getId().'_'.$option['holon']->getId(),
+						'style' => 'primary',
 					),
 				);
 			}
@@ -336,12 +661,20 @@
 		);
 
 		$text = "Classer ce mémo\n\nEmplacement sélectionné : ".$currentPath;
-		if (count($descendantOptions) > 0 && !$useIncrementalMode) {
-			$text .= "\n\nChoisissez directement une destination ci-dessous, ou utilisez \"Terminer ici\" pour valider cet emplacement.";
+		if (!$canFinishHere && !$hasDescendantDestination) {
+			$text .= "\n\nAucune destination avec droit de creation de document n'est disponible ici.";
+		} elseif ($hasDescendantDestination && !$useIncrementalMode) {
+			$text .= $canFinishHere
+				? "\n\nChoisissez directement un emplacement ou un sous-niveau ci-dessous, ou utilisez \"Terminer ici\" pour valider cet emplacement."
+				: "\n\nChoisissez directement un sous-niveau ou une destination autorisee ci-dessous.";
 		} elseif (count($children) > 0) {
-			$text .= "\n\nChoisissez un sous-niveau, ou utilisez \"Terminer ici\" pour valider cet emplacement.";
+			$text .= $canFinishHere
+				? "\n\nChoisissez un sous-niveau, ou utilisez \"Terminer ici\" pour valider cet emplacement."
+				: "\n\nChoisissez un sous-niveau autorise ci-dessous.";
 		} else {
-			$text .= "\n\nAucun sous-niveau supplémentaire n'est disponible ici. Vous pouvez terminer maintenant.";
+			$text .= $canFinishHere
+				? "\n\nAucun sous-niveau supplémentaire n'est disponible ici. Vous pouvez terminer maintenant."
+				: "\n\nAucun sous-niveau supplémentaire autorise n'est disponible ici.";
 		}
 
 		return array(
@@ -514,6 +847,22 @@
 
 			$organizationId = (int)$matches[1];
 			$holonId = (int)$matches[2];
+			if (!\dbObject\Document::canCreateInOrganizationContext($organizationId, $holonId > 0 ? $holonId : null, (int)$user->getId(), 0, false)) {
+				editMessageText(
+					$chatId,
+					(int)$message['message_id'],
+					"Vous n'avez pas le droit de classer ce document a cet emplacement.",
+					array(
+						array(
+							array('text' => 'Reclasser', 'callback_data' => 'btn_classify'),
+						),
+					),
+					$threadId
+				);
+				answerCallbackQuery($callbackId, "Action non autorisee.");
+				return;
+			}
+
 			$result = $document->assignOrganizationContext($organizationId, $holonId > 0 ? $holonId : null);
 
 			if (!empty($result['status'])) {
@@ -825,18 +1174,25 @@
 			return;
 		}
 
-		if (preg_match('/^\/connect/', $text)) {
+		if (handleTelegramConnectConversation($message, $user)) {
+			return;
+		}
+
+		if (preg_match('/^\/connect\b/i', $text)) {
 			if (($message['chat']['id'] ?? null) == ($message['from']['id'] ?? null)) {
+				beginTelegramConnectFlow($actorId);
+				$messageText = "Envoyez l'adresse e-mail de votre compte pour connecter Telegram.";
 				if ($user->getId() > 0) {
-					sendMessage($chatId, "Connexion confirmée avec ".getTelegramConnectedUserLabel($user).".", null, $threadId);
-				} else {
-					sendMessage($chatId, "Pour connecter EasyMEMO à votre compte Telegram, éditez les paramètres de votre compte avec la valeur suivante pour le champ TelegramID: ".$chatId, null, $threadId);
+					$messageText .= "\nCompte actuellement lie: ".getTelegramConnectedUserLabel($user).".";
 				}
+				$messageText .= "\nVous pouvez envoyer /cancel pour annuler.";
+				sendMessage($chatId, $messageText, null, $threadId);
 			} else {
-				sendMessage($chatId, "Pour connecter ce groupe à un projet, éditer les propriétés du projet avec les informations suivantes:\n\nChat ID: ".$chatId.", Group: ".$threadId, null, $threadId);
+				sendMessage($chatId, "Pour connecter ce groupe a un projet, editer les proprietes du projet avec les informations suivantes:\n\nChat ID: ".$chatId.", Group: ".$threadId, null, $threadId);
 			}
 			return;
 		}
+
 
 		if (preg_match('/^\/time/', $text)) {
 			$current = new DateTime();
