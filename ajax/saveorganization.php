@@ -76,11 +76,6 @@ if (empty($saveResult["status"]) || (int)$organization->getId() <= 0) {
     exit;
 }
 
-$applicationInitResult = $organization->ensureDefaultApplicationLinks();
-if (!is_array($applicationInitResult) || empty($applicationInitResult['status'])) {
-    error_log('organization application init failed for org ' . (int)$organization->getId());
-}
-
 if (!$isEditMode) {
     $basicParcoursResult = $organization->instantiateBasicParcours();
     if (is_array($basicParcoursResult) && empty($basicParcoursResult['status'])) {

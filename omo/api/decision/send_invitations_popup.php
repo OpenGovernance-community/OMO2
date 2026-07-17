@@ -221,7 +221,7 @@ $canSendAll = !$isDraft && $allRecipientCount > 0;
     min-width: 240px;
     padding: 8px;
     border: 1px solid var(--topbar-panel-border, #dbe3ef);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: var(--topbar-panel-bg, #ffffff);
     box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
     display: grid;

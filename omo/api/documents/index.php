@@ -23,6 +23,14 @@ $sourceLang = [
         'text' => 'Global',
         'context' => 'Label used to show documents from the whole organization.',
     ],
+    'documents.scope.view' => [
+        'text' => 'Voir',
+        'context' => 'Short label used before the document visibility scope in tooltips.',
+    ],
+    'documents.scope.edit' => [
+        'text' => 'Editer',
+        'context' => 'Short label used before the document edit scope in tooltips.',
+    ],
     'documents.empty.visible_global' => [
         'one' => 'Aucun document visible dans cette organisation. {count} fichier est caché.',
         'other' => 'Aucun document visible dans cette organisation. {count} fichiers sont cachés.',
@@ -105,6 +113,30 @@ $sourceLang = [
     'documents.action.loading' => [
         'text' => 'Chargement...',
         'context' => 'Loading state shown while a document drawer is loading.',
+    ],
+    'documents.menu.archive' => [
+        'text' => 'Archiver',
+        'context' => 'Menu action used to hide a document from the document list.',
+    ],
+    'documents.menu.export_pdf' => [
+        'text' => 'Exporter en PDF',
+        'context' => 'Menu action used to download a PV document as a PDF file.',
+    ],
+    'documents.menu.delete' => [
+        'text' => 'Supprimer',
+        'context' => 'Menu action used to permanently delete an unreferenced document.',
+    ],
+    'documents.menu.confirm_archive' => [
+        'text' => 'Archiver ce document ? Il ne sera plus visible dans la liste.',
+        'context' => 'Confirmation shown before archiving a document.',
+    ],
+    'documents.menu.confirm_delete' => [
+        'text' => 'Supprimer definitivement ce document ?',
+        'context' => 'Confirmation shown before permanently deleting a document.',
+    ],
+    'documents.menu.action_error' => [
+        'text' => 'Action impossible.',
+        'context' => 'Fallback error shown when a document lifecycle action fails.',
     ],
     'documents.error.load_document' => [
         'text' => 'Impossible de charger ce document.',
@@ -221,11 +253,12 @@ $availableDocumentScopes = omoApiGetAvailableContextScopes($canToggleDocumentSco
 $documentScope = omoApiNormalizeContextScope($requestedDocumentScope, $availableDocumentScopes);
 $documentScopeActiveIndex = omoApiResolveContextScopeIndex($documentScope, $availableDocumentScopes);
 $descendantHolonIds = omoApiGetDescendantHolonIds($currentContextHolon);
+$currentUserId = (int)commonGetCurrentUserId();
 $canCreateDocument = $organization->getId() > 0
     && Document::canCreateInOrganizationContext(
         $currentOrganizationId,
         $effectiveCurrentHolonId > 0 ? $effectiveCurrentHolonId : null,
-        (int)commonGetCurrentUserId(),
+        $currentUserId,
         0,
         true
     );
@@ -233,6 +266,7 @@ $newDocumentUrl = '/omo/api/documents/create.php?oid=' . $currentOrganizationId 
 
 $documents = new \dbObject\ArrayDocument();
 $documentVisibilityRuleMap = array();
+$documentEditVisibilityRuleMap = array();
 $visibleDocumentsCount = 0;
 $totalDocumentsCount = 0;
 $hiddenDocumentsCount = 0;
@@ -247,6 +281,21 @@ if ($currentOrganizationId > 0) {
     $visibleDocumentsCount = max(0, (int)($visibilityStats['visible'] ?? 0));
     $totalDocumentsCount = max($visibleDocumentsCount, (int)($visibilityStats['loaded'] ?? 0));
     $hiddenDocumentsCount = max(0, (int)($visibilityStats['hidden'] ?? 0));
+
+    $documentIds = array();
+    foreach ($documents as $documentItem) {
+        if ($documentItem instanceof \dbObject\Document && (int)$documentItem->getId() > 0) {
+            $documentIds[] = (int)$documentItem->getId();
+        }
+    }
+
+    if (count($documentIds) > 0) {
+        $documentEditVisibilityRuleMap = ObjectVisibility::loadActiveRuleRows(
+            Document::getEditVisibilityObjectType(),
+            $documentIds,
+            $currentOrganizationId
+        );
+    }
 }
 
 $today = new DateTimeImmutable('today');
@@ -329,6 +378,22 @@ $resolveDocumentVisibilityIconUrl = static function (string $visibilityType) use
     return (string)($documentVisibilityIconMap[$normalizedVisibilityType] ?? $documentVisibilityIconMap[ObjectVisibility::TYPE_ORGANIZATION]);
 };
 
+if ($hiddenDocumentsCount > 0) {
+    if ($documentScope === 'global') {
+        $documentsEmptyMessage = omoDocumentsScopeT('documents.empty.visible_global', ['count' => (string)$hiddenDocumentsCount]);
+    } elseif ($documentScope === 'descendants') {
+        $documentsEmptyMessage = omoDocumentsScopeT('documents.empty.visible_descendants', ['count' => (string)$hiddenDocumentsCount]);
+    } else {
+        $documentsEmptyMessage = omoDocumentsScopeT('documents.empty.visible_contextual', ['count' => (string)$hiddenDocumentsCount]);
+    }
+} elseif ($documentScope === 'global') {
+    $documentsEmptyMessage = omoDocumentsScopeT('documents.empty.available_global');
+} elseif ($documentScope === 'descendants') {
+    $documentsEmptyMessage = omoDocumentsScopeT('documents.empty.available_descendants');
+} else {
+    $documentsEmptyMessage = omoDocumentsScopeT('documents.empty.available_contextual');
+}
+
 $documentEntries = [];
 
 foreach ($documents as $document) {
@@ -349,9 +414,25 @@ foreach ($documents as $document) {
         $currentOrganizationId,
         $documentVisibilityRuleMap[$documentId] ?? null
     );
+    $editVisibility = $document->getEditVisibilityDisplayData(
+        $currentOrganizationId,
+        $documentEditVisibilityRuleMap[$documentId] ?? null
+    );
+    $canOpenPvEditor = $document->canUserOpenPvEditor($currentUserId, $currentOrganizationId);
+    $canMoveDocument = $document->canMoveInOrganizationContext($documentOrganizationId, $currentUserId);
+    $canManageLifecycle = $document->canManageLifecycle($documentOrganizationId, $currentUserId);
+    $hasUpcomingPvEvent = $document->hasUpcomingAssociatedEvent();
+    $pvPreparationUrl = $canOpenPvEditor
+        ? $document->buildPvEditorUrl($currentOrganizationId)
+        : '';
     $isFolder = $document->isFolder();
     $isExternalLink = $document->isExternalLink();
     $canShareDocument = !$isFolder && $document->supportsHtmlContent();
+    $documentTitle = (string)$document->get('title');
+    $listTitle = $documentTitle;
+    if ($document->isPvDocument() && !$document->isPvValidated()) {
+        $listTitle .= ' (' . $document->getPvStageLabel() . ')';
+    }
     $createdGroupIndex = sharedGetRelativeDateGroupIndexForDate($resolvedCreatedAt, $groups, $today);
     $createdGroup = $groups[$createdGroupIndex] ?? ['key' => 'too_far', 'label' => omoDocumentsScopeT('documents.group.too_far')];
     $createdGroupKey = (string)($createdGroup['key'] ?? 'too_far');
@@ -362,13 +443,20 @@ foreach ($documents as $document) {
     $documentEntries[] = [
         'id' => $documentId,
         'href' => '/memo/' . $documentId,
-        'title' => (string)$document->get('title'),
+        'title' => $documentTitle,
+        'listTitle' => $listTitle,
         'documentType' => $document->getDocumentType(),
+        'canExportPdf' => $document->isPvDocument(),
+        'pdfExportUrl' => $document->isPvDocument()
+            ? '/omo/api/documents/pv/export_pdf.php?id=' . rawurlencode((string)$documentId)
+                . '&oid=' . rawurlencode((string)$currentOrganizationId)
+            : '',
         'isFolder' => $isFolder,
         'isExternalLink' => $isExternalLink,
         'externalUrl' => $document->getExternalUrl(),
         'openInNewWindow' => $document->shouldOpenExternalLinkInNewWindow(),
         'canShare' => $canShareDocument,
+        'pvPreparationUrl' => $pvPreparationUrl,
         'parentDocumentId' => $parentDocumentId > 0 ? $parentDocumentId : 0,
         'contextLabel' => $documentScope !== 'contextual'
             ? trim((string)$document->getOrganizationContextLabel())
@@ -390,13 +478,24 @@ foreach ($documents as $document) {
             : array(),
         'description' => trim((string)$document->get('description')),
         'keywords' => trim((string)$document->get('keywords')),
-        'canEdit' => $document->canEditInOrganizationContext($documentOrganizationId),
-        'editUrl' => '/omo/api/documents/create.php?id=' . $documentId
-            . ($documentOrganizationId > 0 ? '&oid=' . $documentOrganizationId : '')
-            . ($documentHolonId > 0 ? '&cid=' . $documentHolonId : ''),
+        'hasUpcomingPvEvent' => $hasUpcomingPvEvent,
+        'canMove' => $canMoveDocument,
+        'canArchive' => $canManageLifecycle && !$document->isArchived(),
+        'canDelete' => $canManageLifecycle && $document->canDeleteDocument(),
+        'canEdit' => $document->isPvDocument()
+            ? $canOpenPvEditor
+            : $document->canEditInOrganizationContext($documentOrganizationId),
+        'editUrl' => $document->isPvDocument()
+            ? $pvPreparationUrl
+            : ('/omo/api/documents/create.php?id=' . $documentId
+                . ($documentOrganizationId > 0 ? '&oid=' . $documentOrganizationId : '')
+                . ($documentHolonId > 0 ? '&cid=' . $documentHolonId : '')),
         'visibilityBadge' => (string)($visibility['badgeText'] ?? ''),
         'visibilityType' => (string)($visibility['type'] ?? ''),
         'visibilityIconUrl' => $resolveDocumentVisibilityIconUrl((string)($visibility['type'] ?? '')),
+        'editVisibilityBadge' => (string)($editVisibility['badgeText'] ?? ''),
+        'editVisibilityType' => (string)($editVisibility['type'] ?? ''),
+        'editVisibilityIconUrl' => $resolveDocumentVisibilityIconUrl((string)($editVisibility['type'] ?? '')),
         'dateLabel' => $formatDate($resolvedUpdatedAt, in_array($updatedGroupKey, ['earlier', 'too_far'], true)),
         'fullDateLabel' => $formatDate($resolvedCreatedAt, true),
         'timestamp' => $resolvedUpdatedAt instanceof DateTimeInterface ? (int)$resolvedUpdatedAt->getTimestamp() : 0,
@@ -419,11 +518,90 @@ foreach ($documents as $document) {
     ];
 }
 
+$requestedOpenDocumentPayload = null;
+if ($initialOpenDocumentId > 0) {
+    $requestedOpenDocument = new \dbObject\Document();
+    $requestedDocumentContextUrl = '/omo/api/documents/detail.php?id=' . $initialOpenDocumentId
+        . '&oid=' . $currentOrganizationId;
+
+    if ($requestedOpenDocument->load($initialOpenDocumentId)) {
+        $requestedDocumentId = (int)$requestedOpenDocument->getId();
+        $requestedDocumentHolonId = (int)$requestedOpenDocument->get('IDholon');
+        $requestedCreatedAt = $requestedOpenDocument->get('datecreation');
+        $requestedOpenDocumentVisited = [];
+        $requestedUpdatedAt = $requestedOpenDocument->getActivityDate($requestedOpenDocumentVisited);
+        $requestedResolvedCreatedAt = $requestedCreatedAt instanceof DateTimeInterface
+            ? $requestedCreatedAt
+            : ($requestedUpdatedAt instanceof DateTimeInterface ? $requestedUpdatedAt : null);
+        $requestedCanView = $requestedOpenDocument->canViewInOrganizationContext(
+            $currentOrganizationId,
+            $requestedDocumentHolonId > 0 ? $requestedDocumentHolonId : null
+        );
+        if ($requestedOpenDocument->isPvDocument()) {
+            $hasPvInvitationAccess = !$requestedOpenDocument->isPvValidated()
+                && $requestedOpenDocument->canUserAccessPvBeforeValidation($currentUserId, $currentOrganizationId);
+            $requestedCanView = $requestedOpenDocument->canUserPassPvMeetingVisibilityGate($currentUserId, $currentOrganizationId)
+                && ($hasPvInvitationAccess || $requestedCanView);
+        }
+        $requestedCanOpenPvEditor = $requestedOpenDocument->canUserOpenPvEditor($currentUserId, $currentOrganizationId);
+        $requestedCanOpenDirectly = $requestedCanView || $requestedCanOpenPvEditor;
+
+        if ($requestedDocumentHolonId > 0) {
+            $requestedDocumentContextUrl .= '&cid=' . $requestedDocumentHolonId;
+        }
+
+        $requestedOpenDocumentPayload = [
+            'id' => $requestedDocumentId,
+            'contextUrl' => $requestedDocumentContextUrl,
+            'title' => $requestedCanOpenDirectly ? (string)$requestedOpenDocument->get('title') : '',
+            'fullDateLabel' => $requestedCanOpenDirectly ? $formatDate($requestedResolvedCreatedAt, true) : '',
+            'documentType' => $requestedCanOpenDirectly ? $requestedOpenDocument->getDocumentType() : '',
+            'isFolder' => $requestedOpenDocument->isFolder(),
+            'openInNewWindow' => false,
+            'externalUrl' => '',
+            'pvPreparationUrl' => $requestedCanOpenPvEditor
+                ? $requestedOpenDocument->buildPvEditorUrl($currentOrganizationId)
+                : '',
+            'hasUpcomingPvEvent' => $requestedCanOpenDirectly ? $requestedOpenDocument->hasUpcomingAssociatedEvent() : false,
+            'canEdit' => $requestedOpenDocument->isPvDocument()
+                ? $requestedCanOpenPvEditor
+                : ($requestedCanView && $requestedOpenDocument->canEditInOrganizationContext($currentOrganizationId)),
+            'editUrl' => $requestedOpenDocument->isPvDocument()
+                ? ($requestedCanOpenPvEditor ? $requestedOpenDocument->buildPvEditorUrl($currentOrganizationId) : '')
+                : ($requestedCanView
+                    ? '/omo/api/documents/create.php?id=' . $requestedDocumentId
+                        . '&oid=' . $currentOrganizationId
+                        . ($requestedDocumentHolonId > 0 ? '&cid=' . $requestedDocumentHolonId : '')
+                    : ''),
+        ];
+    } else {
+        if ($effectiveCurrentHolonId > 0) {
+            $requestedDocumentContextUrl .= '&cid=' . $effectiveCurrentHolonId;
+        }
+
+        $requestedOpenDocumentPayload = [
+            'id' => $initialOpenDocumentId,
+            'contextUrl' => $requestedDocumentContextUrl,
+            'title' => '',
+            'fullDateLabel' => '',
+            'documentType' => '',
+            'isFolder' => false,
+            'openInNewWindow' => false,
+            'externalUrl' => '',
+            'pvPreparationUrl' => '',
+            'hasUpcomingPvEvent' => false,
+            'canEdit' => false,
+            'editUrl' => '',
+        ];
+    }
+}
+
 $documentsPayload = json_encode(
     [
         'documents' => $documentEntries,
         'openDocumentId' => $initialOpenDocumentId > 0 ? $initialOpenDocumentId : 0,
         'openDocumentMode' => $initialOpenDocumentMode,
+        'requestedDocument' => $requestedOpenDocumentPayload,
         'groups' => array_map(
             static function (array $group): array {
                 return [
@@ -438,7 +616,7 @@ $documentsPayload = json_encode(
 );
 
 if (!is_string($documentsPayload)) {
-    $documentsPayload = '{"documents":[],"openDocumentId":0,"openDocumentMode":"detail","groups":[]}';
+    $documentsPayload = '{"documents":[],"openDocumentId":0,"openDocumentMode":"detail","requestedDocument":null,"groups":[]}';
 }
 ?>
 <div
@@ -522,26 +700,10 @@ if (!is_string($documentsPayload)) {
         </div>
     </div>
     <div class="omo-panel-view__body">
-        <?php if (count($documentEntries) === 0): ?>
-            <div class="omo-documents__empty omo-empty-state">
-                <?php if ($hiddenDocumentsCount > 0): ?>
-                    <?php if ($documentScope === 'global'): ?>
-                        <?= $escape(omoDocumentsScopeT('documents.empty.visible_global', ['count' => (string)$hiddenDocumentsCount])) ?>
-                    <?php elseif ($documentScope === 'descendants'): ?>
-                        <?= $escape(omoDocumentsScopeT('documents.empty.visible_descendants', ['count' => (string)$hiddenDocumentsCount])) ?>
-                    <?php else: ?>
-                        <?= $escape(omoDocumentsScopeT('documents.empty.visible_contextual', ['count' => (string)$hiddenDocumentsCount])) ?>
-                    <?php endif; ?>
-                <?php elseif ($documentScope === 'global'): ?>
-                    <?= $escape(omoDocumentsScopeT('documents.empty.available_global')) ?>
-                <?php elseif ($documentScope === 'descendants'): ?>
-                    <?= $escape(omoDocumentsScopeT('documents.empty.available_descendants')) ?>
-                <?php else: ?>
-                    <?= $escape(omoDocumentsScopeT('documents.empty.available_contextual')) ?>
-                <?php endif; ?>
-            </div>
-        <?php else: ?>
-            <div class="omo-documents__results generic-file-list" data-omo-documents-results data-generic-file-list>
+        <div class="omo-documents__results generic-file-list" data-omo-documents-results data-generic-file-list>
+            <?php if (count($documentEntries) === 0): ?>
+                <div class="omo-documents__empty omo-empty-state"><?= $escape($documentsEmptyMessage) ?></div>
+            <?php else: ?>
                 <?php
                 $currentGroupKey = null;
 
@@ -576,25 +738,47 @@ if (!is_string($documentsPayload)) {
                                     data-omo-document-context-url="<?= $escape($entry['contextUrl']) ?>"
                                     data-omo-document-external-url="<?= $escape($entry['externalUrl']) ?>"
                                     data-omo-document-open-in-new-window="<?= !empty($entry['openInNewWindow']) ? '1' : '0' ?>"
+                                    data-omo-document-type="<?= $escape($entry['documentType']) ?>"
+                                    data-omo-document-pv-editor-url="<?= $escape($entry['pvPreparationUrl'] ?? '') ?>"
                                     data-omo-document-title="<?= $escape($entry['title']) ?>"
                                     data-omo-document-full-date="<?= $escape($entry['fullDateLabel']) ?>"
                                 >
                                     <div class="omo-documents__item-head">
                                         <span class="omo-documents__date"><?= $escape($entry['dateLabel']) ?></span>
                                         <span class="omo-documents__title-line">
-                                            <strong class="omo-documents__title"><?= $escape($entry['title']) ?></strong>
-                                            <?php if ($entry['visibilityBadge'] !== '' && $entry['visibilityIconUrl'] !== ''): ?>
+                                            <strong class="omo-documents__title"><?= $escape($entry['listTitle']) ?></strong>
+                                            <?php if (
+                                                $entry['visibilityBadge'] !== '' && $entry['visibilityIconUrl'] !== ''
+                                                && $entry['editVisibilityBadge'] !== '' && $entry['editVisibilityIconUrl'] !== ''
+                                            ): ?>
                                                 <span
-                                                    class="omo-documents__visibility-icon"
-                                                    role="img"
-                                                    aria-label="<?= $escape($entry['visibilityBadge']) ?>"
-                                                    title="<?= $escape($entry['visibilityBadge']) ?>"
+                                                    class="omo-documents__scope-capsule"
+                                                    aria-label="<?= $escape(
+                                                        omoDocumentsScopeT('documents.scope.view') . ': ' . $entry['visibilityBadge']
+                                                        . ' | '
+                                                        . omoDocumentsScopeT('documents.scope.edit') . ': ' . $entry['editVisibilityBadge']
+                                                    ) ?>"
+                                                    title="<?= $escape(
+                                                        omoDocumentsScopeT('documents.scope.view') . ': ' . $entry['visibilityBadge']
+                                                        . ' | '
+                                                        . omoDocumentsScopeT('documents.scope.edit') . ': ' . $entry['editVisibilityBadge']
+                                                    ) ?>"
                                                 >
-                                                    <img
-                                                        src="<?= $escape($entry['visibilityIconUrl']) ?>"
-                                                        alt=""
-                                                        loading="lazy"
-                                                    >
+                                                    <span class="omo-documents__scope-icon" aria-hidden="true">
+                                                        <img
+                                                            src="<?= $escape($entry['visibilityIconUrl']) ?>"
+                                                            alt=""
+                                                            loading="lazy"
+                                                        >
+                                                    </span>
+                                                    <span class="omo-documents__scope-separator" aria-hidden="true"></span>
+                                                    <span class="omo-documents__scope-icon" aria-hidden="true">
+                                                        <img
+                                                            src="<?= $escape($entry['editVisibilityIconUrl']) ?>"
+                                                            alt=""
+                                                            loading="lazy"
+                                                        >
+                                                    </span>
                                                 </span>
                                             <?php endif; ?>
                                         </span>
@@ -627,7 +811,7 @@ if (!is_string($documentsPayload)) {
                                         <div class="omo-documents__keywords"><?= $escape($entry['keywords']) ?></div>
                                     <?php endif; ?>
                                 </div>
-                                <?php if (!empty($entry['canEdit']) || !empty($entry['canShare'])): ?>
+                                <?php if (!empty($entry['canEdit']) || !empty($entry['canMove']) || !empty($entry['canArchive']) || !empty($entry['canDelete']) || !empty($entry['canShare']) || !empty($entry['canExportPdf'])): ?>
                                     <div class="omo-documents__menu" data-omo-document-menu="1">
                                         <button
                                             type="button"
@@ -637,8 +821,13 @@ if (!is_string($documentsPayload)) {
                                             data-omo-document-menu-title="<?= $escape($entry['title']) ?>"
                                             data-omo-document-menu-edit-url="<?= $escape($entry['editUrl']) ?>"
                                             data-omo-document-menu-can-edit="<?= !empty($entry['canEdit']) ? '1' : '0' ?>"
+                                            data-omo-document-menu-can-move="<?= !empty($entry['canMove']) ? '1' : '0' ?>"
+                                            data-omo-document-menu-can-archive="<?= !empty($entry['canArchive']) ? '1' : '0' ?>"
+                                            data-omo-document-menu-can-delete="<?= !empty($entry['canDelete']) ? '1' : '0' ?>"
                                             data-omo-document-menu-is-folder="<?= !empty($entry['isFolder']) ? '1' : '0' ?>"
                                             data-omo-document-menu-can-share="<?= !empty($entry['canShare']) ? '1' : '0' ?>"
+                                            data-omo-document-menu-can-export-pdf="<?= !empty($entry['canExportPdf']) ? '1' : '0' ?>"
+                                            data-omo-document-menu-pdf-url="<?= $escape((string)($entry['pdfExportUrl'] ?? '')) ?>"
                                             aria-haspopup="menu"
                                             aria-expanded="false"
                                             aria-label="Actions pour <?= $escape($entry['title']) ?>"
@@ -649,18 +838,20 @@ if (!is_string($documentsPayload)) {
                 <?php endforeach; ?>
                         </div>
                     </section>
-            </div>
+            <?php endif; ?>
+        </div>
 
             <div class="omo-overlay-drawer omo-documents__detail-drawer" data-omo-document-detail-drawer hidden>
                 <div class="omo-overlay-drawer__backdrop" data-omo-document-detail-close></div>
                 <div class="omo-overlay-drawer__panel">
                     <div class="omo-overlay-drawer__header generic-drawer-header">
                         <div class="omo-overlay-drawer__header-copy generic-drawer-header__copy">
-                            <h3 class="omo-overlay-drawer__title" data-omo-document-detail-title><?= $escape(omoDocumentsScopeT('documents.drawer.detail_title')) ?></h3>
-                            <p class="omo-overlay-drawer__description" data-omo-document-detail-description><?= $escape(omoDocumentsScopeT('documents.drawer.detail_description')) ?></p>
+                            <h3 class="omo-overlay-drawer__title" data-omo-subdrawer-title data-omo-document-detail-title><?= $escape(omoDocumentsScopeT('documents.drawer.detail_title')) ?></h3>
+                            <p class="omo-overlay-drawer__description" data-omo-subdrawer-description data-omo-document-detail-description><?= $escape(omoDocumentsScopeT('documents.drawer.detail_description')) ?></p>
                         </div>
                         <div class="generic-drawer-header__actions">
-                            <button type="button" class="omo-overlay-drawer__close" data-omo-document-detail-close><?= $escape(omoDocumentsScopeT('documents.drawer.close')) ?></button>
+                            <div class="omo-documents__drawer-custom-actions" data-omo-subdrawer-actions></div>
+                            <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary" data-omo-document-detail-close><?= $escape(omoDocumentsScopeT('documents.drawer.close')) ?></button>
                         </div>
                     </div>
                     <div class="omo-overlay-drawer__body" data-omo-document-detail-body></div>
@@ -668,6 +859,7 @@ if (!is_string($documentsPayload)) {
             </div>
 
             <script type="application/json" data-omo-documents-data><?= $documentsPayload ?></script>
+            <script src="/common/drawer/subdrawer.js"></script>
             <script>
             (function () {
                 const omoDocumentsPreferencesStorageKey = 'omoDocumentsDisplayPreferences';
@@ -675,6 +867,8 @@ if (!is_string($documentsPayload)) {
                 const omoDocumentsDownloadIconUrl = '/omo/assets/images/documents/download.png';
                 const omoDocumentsFolderIconUrl = '/omo/assets/images/documents/folder.png';
                 const omoDocumentsLinkIconUrl = '/omo/assets/images/documents/link.png';
+                const omoDocumentsPvIconUrl = '/omo/assets/images/documents/pv.png';
+                const omoDocumentsPvType = 'pv';
 
                 const omoDocumentsGetIconUrl = function (documentItem) {
                     if (documentItem && documentItem.isFolder) {
@@ -687,6 +881,10 @@ if (!is_string($documentsPayload)) {
 
                     if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === 'uploaded_file') {
                         return omoDocumentsDownloadIconUrl;
+                    }
+
+                    if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsPvType) {
+                        return omoDocumentsPvIconUrl;
                     }
 
                     return omoDocumentsFileIconUrl;
@@ -703,6 +901,10 @@ if (!is_string($documentsPayload)) {
 
                     if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === 'uploaded_file') {
                         return 'Fichier a telecharger';
+                    }
+
+                    if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsPvType) {
+                        return 'Proces verbal';
                     }
 
                     return 'Fichier';
@@ -857,6 +1059,14 @@ if (!is_string($documentsPayload)) {
                             const detailBody = detailDrawer ? detailDrawer.querySelector('[data-omo-document-detail-body]') : null;
                             const detailTitle = detailDrawer ? detailDrawer.querySelector('[data-omo-document-detail-title]') : null;
                             const detailDescription = detailDrawer ? detailDrawer.querySelector('[data-omo-document-detail-description]') : null;
+                            const detailDrawerController = detailDrawer && typeof window.omoCreateSubdrawerController === 'function'
+                                ? (detailDrawer.__omoSubdrawerController || window.omoCreateSubdrawerController({ drawer: detailDrawer }))
+                                : null;
+
+                            if (detailDrawerController) {
+                                detailDrawer.__omoSubdrawerController = detailDrawerController;
+                                window.omoDocumentsDetailDrawer = detailDrawerController;
+                            }
 
                             if (!results || !dataNode) {
                                 return;
@@ -871,17 +1081,16 @@ if (!is_string($documentsPayload)) {
                             }
 
                             const documents = Array.isArray(payload.documents) ? payload.documents.slice() : [];
+                            const requestedDocument = payload && payload.requestedDocument && typeof payload.requestedDocument === 'object'
+                                ? payload.requestedDocument
+                                : null;
                             const groups = Array.isArray(payload.groups) ? payload.groups : [];
+                            const emptyStateMessage = <?= json_encode($documentsEmptyMessage, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                             const folderStateCookieName = omoDocumentsBuildFolderStateCookieName(
                                 Number(panel.getAttribute('data-omo-document-oid') || 0),
                                 Number(panel.getAttribute('data-omo-document-cid') || 0),
                                 panel.getAttribute('data-omo-document-scope') || 'contextual'
                             );
-
-                            if (documents.length === 0) {
-                                panel.dataset.omoDocumentsReady = '1';
-                                return;
-                            }
 
                             panel.dataset.omoDocumentsReady = '1';
                             const savedPreferences = omoDocumentsReadPreferences();
@@ -1035,27 +1244,55 @@ if (!is_string($documentsPayload)) {
                                 iconBox.appendChild(faviconBadge);
                             };
 
-                            const createVisibilityIcon = function (documentItem) {
+                            const createVisibilityCapsule = function (documentItem) {
                                 const visibilityLabel = String(documentItem && documentItem.visibilityBadge ? documentItem.visibilityBadge : '').trim();
                                 const visibilityIconUrl = String(documentItem && documentItem.visibilityIconUrl ? documentItem.visibilityIconUrl : '').trim();
+                                const editVisibilityLabel = String(documentItem && documentItem.editVisibilityBadge ? documentItem.editVisibilityBadge : '').trim();
+                                const editVisibilityIconUrl = String(documentItem && documentItem.editVisibilityIconUrl ? documentItem.editVisibilityIconUrl : '').trim();
 
-                                if (visibilityLabel === '' || visibilityIconUrl === '') {
+                                if (
+                                    visibilityLabel === ''
+                                    || visibilityIconUrl === ''
+                                    || editVisibilityLabel === ''
+                                    || editVisibilityIconUrl === ''
+                                ) {
                                     return null;
                                 }
 
-                                const visibilityIcon = document.createElement('span');
-                                visibilityIcon.className = 'omo-documents__visibility-icon';
-                                visibilityIcon.setAttribute('role', 'img');
-                                visibilityIcon.setAttribute('aria-label', visibilityLabel);
-                                visibilityIcon.setAttribute('title', visibilityLabel);
+                                const tooltipLabel = <?= json_encode(omoDocumentsScopeT('documents.scope.view'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+                                    + ': ' + visibilityLabel
+                                    + ' | '
+                                    + <?= json_encode(omoDocumentsScopeT('documents.scope.edit'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+                                    + ': ' + editVisibilityLabel;
 
-                                const visibilityImage = document.createElement('img');
-                                visibilityImage.src = visibilityIconUrl;
-                                visibilityImage.alt = '';
-                                visibilityImage.loading = 'lazy';
+                                const capsule = document.createElement('span');
+                                capsule.className = 'omo-documents__scope-capsule';
+                                capsule.setAttribute('aria-label', tooltipLabel);
+                                capsule.setAttribute('title', tooltipLabel);
 
-                                visibilityIcon.appendChild(visibilityImage);
-                                return visibilityIcon;
+                                const buildScopeIcon = function (iconUrl) {
+                                    const icon = document.createElement('span');
+                                    icon.className = 'omo-documents__scope-icon';
+                                    icon.setAttribute('aria-hidden', 'true');
+
+                                    const image = document.createElement('img');
+                                    image.src = iconUrl;
+                                    image.alt = '';
+                                    image.loading = 'lazy';
+
+                                    icon.appendChild(image);
+                                    return icon;
+                                };
+
+                                const separator = document.createElement('span');
+                                separator.className = 'omo-documents__scope-separator';
+                                separator.setAttribute('aria-hidden', 'true');
+
+                                capsule.appendChild(buildScopeIcon(visibilityIconUrl));
+                                capsule.appendChild(separator);
+                                capsule.appendChild(buildScopeIcon(editVisibilityIconUrl));
+
+                                return capsule;
                             };
 
                             const childrenByParentId = new Map();
@@ -1108,6 +1345,8 @@ if (!is_string($documentsPayload)) {
                                     container.setAttribute('data-omo-document-context-url', documentItem.contextUrl || '');
                                     container.setAttribute('data-omo-document-external-url', documentItem.externalUrl || '');
                                     container.setAttribute('data-omo-document-open-in-new-window', documentItem.openInNewWindow ? '1' : '0');
+                                    container.setAttribute('data-omo-document-type', documentItem.documentType || '');
+                                    container.setAttribute('data-omo-document-pv-editor-url', documentItem.pvPreparationUrl || '');
                                     container.setAttribute('data-omo-document-title', documentItem.title || '');
                                     container.setAttribute('data-omo-document-full-date', documentItem.fullDateLabel || '');
                                 }
@@ -1170,11 +1409,11 @@ if (!is_string($documentsPayload)) {
 
                                     const compactTitle = document.createElement('strong');
                                     compactTitle.className = 'omo-documents__compact-title generic-file-list__title';
-                                    compactTitle.textContent = documentItem.title || '';
+                                    compactTitle.textContent = documentItem.listTitle || documentItem.title || '';
                                     compactTitleStack.appendChild(compactTitle);
-                                    const compactVisibilityIcon = createVisibilityIcon(documentItem);
-                                    if (compactVisibilityIcon) {
-                                        compactTitleStack.appendChild(compactVisibilityIcon);
+                                    const compactScopeCapsule = createVisibilityCapsule(documentItem);
+                                    if (compactScopeCapsule) {
+                                        compactTitleStack.appendChild(compactScopeCapsule);
                                     }
 
                                     if (documentItem.isFolder) {
@@ -1288,6 +1527,11 @@ if (!is_string($documentsPayload)) {
                                         ? String(count) + ' element' + (count > 1 ? 's' : '')
                                         : 'Vide';
                                     eyebrow.appendChild(countLabel);
+                                } else if (String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsPvType) {
+                                    const countLabel = document.createElement('span');
+                                    countLabel.className = 'omo-documents__kind-detail';
+                                    countLabel.textContent = 'PV';
+                                    eyebrow.appendChild(countLabel);
                                 }
 
                                 eyebrow.appendChild(date);
@@ -1298,11 +1542,11 @@ if (!is_string($documentsPayload)) {
                                 titleLine.className = 'omo-documents__title-line';
                                 const title = document.createElement('strong');
                                 title.className = 'omo-documents__title';
-                                title.textContent = documentItem.title || '';
+                                title.textContent = documentItem.listTitle || documentItem.title || '';
                                 titleLine.appendChild(title);
-                                const visibilityIcon = createVisibilityIcon(documentItem);
-                                if (visibilityIcon) {
-                                    titleLine.appendChild(visibilityIcon);
+                                const scopeCapsule = createVisibilityCapsule(documentItem);
+                                if (scopeCapsule) {
+                                    titleLine.appendChild(scopeCapsule);
                                 }
                                 head.appendChild(titleLine);
 
@@ -1373,7 +1617,11 @@ if (!is_string($documentsPayload)) {
                             const createMenu = function (documentItem) {
                                 if (
                                     (!documentItem.canEdit || !documentItem.editUrl)
+                                    && !documentItem.canMove
+                                    && !documentItem.canArchive
+                                    && !documentItem.canDelete
                                     && !documentItem.canShare
+                                    && !documentItem.canExportPdf
                                 ) {
                                     return null;
                                 }
@@ -1390,8 +1638,13 @@ if (!is_string($documentsPayload)) {
                                 toggle.setAttribute('data-omo-document-menu-title', String(documentItem.title || ''));
                                 toggle.setAttribute('data-omo-document-menu-edit-url', String(documentItem.editUrl || ''));
                                 toggle.setAttribute('data-omo-document-menu-can-edit', documentItem.canEdit ? '1' : '0');
+                                toggle.setAttribute('data-omo-document-menu-can-move', documentItem.canMove ? '1' : '0');
+                                toggle.setAttribute('data-omo-document-menu-can-archive', documentItem.canArchive ? '1' : '0');
+                                toggle.setAttribute('data-omo-document-menu-can-delete', documentItem.canDelete ? '1' : '0');
                                 toggle.setAttribute('data-omo-document-menu-is-folder', documentItem.isFolder ? '1' : '0');
                                 toggle.setAttribute('data-omo-document-menu-can-share', documentItem.canShare ? '1' : '0');
+                                toggle.setAttribute('data-omo-document-menu-can-export-pdf', documentItem.canExportPdf ? '1' : '0');
+                                toggle.setAttribute('data-omo-document-menu-pdf-url', String(documentItem.pdfExportUrl || ''));
                                 toggle.setAttribute('aria-haspopup', 'menu');
                                 toggle.setAttribute('aria-expanded', 'false');
                                 toggle.setAttribute('aria-label', 'Actions pour ' + String(documentItem.title || 'ce document'));
@@ -1547,6 +1800,19 @@ if (!is_string($documentsPayload)) {
                                     return;
                                 }
 
+                                if (detailDrawerController) {
+                                    detailDrawerController.setHeader({
+                                        title: documentItem && documentItem.title
+                                            ? documentItem.title
+                                            : <?= json_encode(omoDocumentsScopeT('documents.drawer.detail_title'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                                        description: documentItem && documentItem.fullDateLabel
+                                            ? 'Document créé le ' + documentItem.fullDateLabel + '.'
+                                            : <?= json_encode(omoDocumentsScopeT('documents.drawer.detail_description'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                                        actions: []
+                                    });
+                                    return;
+                                }
+
                                 detailTitle.textContent = documentItem && documentItem.title
                                     ? documentItem.title
                                     : 'Détail du document';
@@ -1582,6 +1848,21 @@ if (!is_string($documentsPayload)) {
                                     }
                                 }, 200);
                             };
+
+                            if (detailDrawer) {
+                                detailDrawer.addEventListener('click', function (event) {
+                                    const editButton = event.target.closest('[data-omo-document-open-editor-url]');
+                                    if (!editButton) {
+                                        return;
+                                    }
+
+                                    event.preventDefault();
+                                    const editUrl = String(editButton.getAttribute('data-omo-document-open-editor-url') || '').trim();
+                                    if (editUrl !== '' && typeof window.omoOpenDocumentEditorDrawer === 'function') {
+                                        window.omoOpenDocumentEditorDrawer(editUrl, 'Modifier le document', 'Modification du document dans le contexte courant.');
+                                    }
+                                });
+                            }
 
                             const renderDetailLoading = function () {
                                 if (!detailBody) {
@@ -1627,6 +1908,15 @@ if (!is_string($documentsPayload)) {
                                     return;
                                 }
 
+                                if (
+                                    String(documentItem.documentType || '').trim().toLowerCase() === 'pv'
+                                    && String(documentItem.pvPreparationUrl || '').trim() !== ''
+                                    && typeof window.omoOpenDocumentPvPreparationByPayload === 'function'
+                                    && window.omoOpenDocumentPvPreparationByPayload(documentItem)
+                                ) {
+                                    return;
+                                }
+
                                 if (documentItem.openInNewWindow && documentItem.externalUrl) {
                                     openExternalDocumentWindow(documentItem);
                                     return;
@@ -1653,15 +1943,39 @@ if (!is_string($documentsPayload)) {
                                         }
 
                                         detailBody.innerHTML = data;
+                                        const temp = document.createElement('div');
+                                        temp.innerHTML = data;
+                                        syncDocumentDetailDrawerMetadata(temp, detailDrawer, documentItem.title || '', detailDescription ? detailDescription.textContent : '');
+                                        if (detailDrawerController) {
+                                            detailDrawerController.applyContentHeader(detailBody);
+                                        }
                                     },
                                     error: function () {
                                         if (requestToken !== detailRequestToken) {
                                             return;
                                         }
 
+                                        const responseHtml = arguments.length > 0
+                                            && arguments[0]
+                                            && typeof arguments[0].responseText === 'string'
+                                            ? String(arguments[0].responseText).trim()
+                                            : '';
+
+                                        if (responseHtml !== '') {
+                                            detailBody.innerHTML = responseHtml;
+                                            return;
+                                        }
+
                                         renderDetailError();
                                     }
                                 });
+                            };
+
+                            const renderEmptyState = function () {
+                                const emptyState = document.createElement('div');
+                                emptyState.className = 'omo-documents__empty omo-empty-state';
+                                emptyState.textContent = emptyStateMessage;
+                                results.replaceChildren(emptyState);
                             };
 
                             const renderByTemporal = function (sortMode) {
@@ -1757,6 +2071,13 @@ if (!is_string($documentsPayload)) {
                                 results.classList.toggle('generic-file-list--structured', state.density === 'compact');
                                 results.classList.toggle('generic-file-list--stacked-sticky', state.density === 'compact');
 
+                                if (documents.length === 0) {
+                                    renderEmptyState();
+                                    syncButtons('[data-omo-documents-sort]', state.sort, 'data-omo-documents-sort');
+                                    syncButtons('[data-omo-documents-density]', state.density, 'data-omo-documents-density');
+                                    return;
+                                }
+
                                 if (state.sort === 'alpha') {
                                     renderByAlpha();
                                 } else {
@@ -1823,6 +2144,32 @@ if (!is_string($documentsPayload)) {
                                 return '/omo/api/documents/index.php' + (query.length > 0 ? '?' + query.join('&') : '');
                             };
 
+                            const buildDirectDocumentPayload = function (documentId) {
+                                const resolvedDocumentId = Number(documentId || 0);
+                                if (!Number.isInteger(resolvedDocumentId) || resolvedDocumentId <= 0) {
+                                    return null;
+                                }
+
+                                const organizationId = Number(panel.getAttribute('data-omo-document-oid') || 0);
+                                if (!Number.isInteger(organizationId) || organizationId <= 0) {
+                                    return null;
+                                }
+
+                                return {
+                                    id: resolvedDocumentId,
+                                    contextUrl: '/omo/api/documents/detail.php?id='
+                                        + encodeURIComponent(String(resolvedDocumentId))
+                                        + '&oid='
+                                        + encodeURIComponent(String(organizationId)),
+                                    title: '',
+                                    fullDateLabel: '',
+                                    isFolder: false,
+                                    openInNewWindow: false,
+                                    externalUrl: '',
+                                    pvPreparationUrl: ''
+                                };
+                            };
+
                             const refreshPanelForDocumentRoute = function (documentId, mode, scopeOverride) {
                                 if (typeof window.omoReplaceFetchedPanelRoot !== 'function') {
                                     return false;
@@ -1854,27 +2201,47 @@ if (!is_string($documentsPayload)) {
                                 }
 
                                 const openMode = normalizeDocumentOpenMode(payload.openDocumentMode || 'detail');
-                                payload.openDocumentId = 0;
-                                payload.openDocumentMode = 'detail';
 
-                                const documentItem = findDocumentItemById(documentId);
+                                const documentItem = findDocumentItemById(documentId)
+                                    || (
+                                        requestedDocument
+                                        && Number(requestedDocument.id || 0) === documentId
+                                        ? requestedDocument
+                                        : null
+                                    );
                                 if (!documentItem) {
                                     return false;
                                 }
 
+                                let opened = false;
                                 if (openMode === 'edit' && typeof window.omoOpenDocumentEditorByPayload === 'function') {
-                                    return window.omoOpenDocumentEditorByPayload(documentItem, panel) === true;
+                                    opened = window.omoOpenDocumentEditorByPayload(documentItem, panel) === true;
+                                } else if (openMode !== 'edit' && typeof window.omoOpenDocumentDetailByPayload === 'function') {
+                                    opened = window.omoOpenDocumentDetailByPayload(documentItem, panel) === true;
                                 }
 
-                                if (openMode === 'edit') {
+                                if (!opened) {
                                     return false;
                                 }
 
-                                if (typeof window.omoOpenDocumentDetailByPayload !== 'function') {
-                                    return false;
+                                payload.openDocumentId = 0;
+                                payload.openDocumentMode = 'detail';
+                                payload.requestedDocument = null;
+                                return true;
+                            };
+
+                            const retryInitialDocumentOpen = function (attempt) {
+                                if (!document.body.contains(panel)) {
+                                    return;
                                 }
 
-                                return window.omoOpenDocumentDetailByPayload(documentItem, panel) === true;
+                                if (openInitialDocumentFromPayload() || attempt >= 8) {
+                                    return;
+                                }
+
+                                window.setTimeout(function () {
+                                    retryInitialDocumentOpen(attempt + 1);
+                                }, 50);
                             };
 
                             panel.querySelectorAll('[data-omo-documents-sort]').forEach(function (button) {
@@ -2035,42 +2402,78 @@ if (!is_string($documentsPayload)) {
                             });
 
                             render();
-                            window.setTimeout(openInitialDocumentFromPayload, 0);
+                            window.setTimeout(function () {
+                                retryInitialDocumentOpen(0);
+                            }, 0);
 
-                            if (!panel.__omoDocumentsRouteHandler) {
-                                panel.__omoDocumentsRouteHandler = function (routeEvent) {
-                                    const detail = routeEvent && routeEvent.detail ? routeEvent.detail : {};
-                                    const targetDocumentId = Number(detail.documentId || 0);
-                                    const targetMode = normalizeDocumentOpenMode(detail.mode || 'detail');
-                                    const rawForcedScope = String(detail.forcedScope || '').trim().toLowerCase();
+                            if (!panel.__omoDocumentsApplyRouteChange) {
+                                panel.__omoDocumentsApplyRouteChange = function (detail) {
+                                    if (!document.body.contains(panel)) {
+                                        return false;
+                                    }
+
+                                    const routeDetail = detail && typeof detail === 'object' ? detail : {};
+                                    const targetDocumentId = Number(routeDetail.documentId || 0);
+                                    const targetMode = normalizeDocumentOpenMode(routeDetail.mode || 'detail');
+                                    const previousDocumentId = Number(routeDetail.previousDocumentId || 0);
+                                    const previousMode = normalizeDocumentOpenMode(routeDetail.previousMode || 'detail');
+                                    const rawForcedScope = String(routeDetail.forcedScope || '').trim().toLowerCase();
                                     const forcedScope = rawForcedScope !== ''
                                         ? normalizeDocumentScope(rawForcedScope)
                                         : '';
+                                    const fallbackDocumentScope = forcedScope !== ''
+                                        ? forcedScope
+                                        : 'global';
 
                                     if (targetDocumentId > 0) {
                                         const documentItem = findDocumentItemById(targetDocumentId);
+                                        const shouldPreferPanelRefresh = targetMode !== 'edit'
+                                            && !documentItem;
 
                                         if (targetMode === 'edit') {
-                                            window.omoCloseDocumentDetailDrawer({ force: true });
+                                            if (
+                                                typeof window.omoPreserveDocumentPvPreparationDrawer !== 'function'
+                                                || !window.omoPreserveDocumentPvPreparationDrawer()
+                                            ) {
+                                                if (typeof window.omoCloseDocumentPvPreparationDrawer === 'function') {
+                                                    window.omoCloseDocumentPvPreparationDrawer({ force: true });
+                                                }
+                                            }
                                             if (typeof window.omoOpenDocumentEditorFromDocumentId === 'function' && window.omoOpenDocumentEditorFromDocumentId(targetDocumentId)) {
-                                                return;
+                                                return true;
                                             }
-                                            if (refreshPanelForDocumentRoute(targetDocumentId, targetMode, forcedScope)) {
-                                                return;
+                                            if (refreshPanelForDocumentRoute(targetDocumentId, targetMode, fallbackDocumentScope)) {
+                                                return true;
                                             }
+                                        }
+
+                                        if (shouldPreferPanelRefresh && refreshPanelForDocumentRoute(targetDocumentId, targetMode, fallbackDocumentScope)) {
+                                            return true;
                                         }
 
                                         if (targetMode !== 'edit' && documentItem && typeof window.omoOpenDocumentDetailByPayload === 'function') {
-                                            window.omoCloseDocumentEditorDrawer({ force: true });
+                                            window.omoCloseDocumentEditorDrawer({ force: true, preserveDrawer: true });
                                             window.omoOpenDocumentDetailByPayload(documentItem, panel);
-                                            return;
+                                            return true;
                                         }
 
                                         if (targetMode !== 'edit') {
-                                            window.omoCloseDocumentEditorDrawer({ force: true });
-                                            refreshPanelForDocumentRoute(targetDocumentId, targetMode, forcedScope);
+                                            window.omoCloseDocumentEditorDrawer({ force: true, preserveDrawer: true });
+                                            if (refreshPanelForDocumentRoute(targetDocumentId, targetMode, fallbackDocumentScope)) {
+                                                return true;
+                                            }
+
+                                            if (typeof window.omoOpenDocumentDetailByPayload === 'function') {
+                                                const directDocumentPayload = buildDirectDocumentPayload(targetDocumentId);
+                                                if (directDocumentPayload) {
+                                                    window.omoOpenDocumentDetailByPayload(directDocumentPayload, panel);
+                                                    return true;
+                                                }
+                                            }
+
+                                            return false;
                                         }
-                                        return;
+                                        return false;
                                     }
 
                                     if (forcedScope !== '' && typeof window.omoSetDocumentsScope === 'function') {
@@ -2080,7 +2483,38 @@ if (!is_string($documentsPayload)) {
                                     }
 
                                     window.omoCloseDocumentEditorDrawer({ force: true });
+                                    if (
+                                        typeof window.omoPreserveDocumentPvPreparationDrawer !== 'function'
+                                        || !window.omoPreserveDocumentPvPreparationDrawer()
+                                    ) {
+                                        if (typeof window.omoCloseDocumentPvPreparationDrawer === 'function') {
+                                            window.omoCloseDocumentPvPreparationDrawer({ force: true });
+                                        }
+                                    }
                                     closeDetailDrawer();
+                                    return true;
+                                };
+                            }
+
+                            window.omoHandleDocumentsRouteChange = function (detail) {
+                                const activePanel = document.getElementById('omo-documents-root');
+                                if (!(activePanel instanceof Element) || !document.body.contains(activePanel)) {
+                                    return false;
+                                }
+
+                                if (typeof activePanel.__omoDocumentsApplyRouteChange !== 'function') {
+                                    return false;
+                                }
+
+                                return activePanel.__omoDocumentsApplyRouteChange(detail) === true;
+                            };
+
+                            if (!panel.__omoDocumentsRouteHandler) {
+                                panel.__omoDocumentsRouteHandler = function (routeEvent) {
+                                    const detail = routeEvent && routeEvent.detail ? routeEvent.detail : {};
+                                    if (typeof panel.__omoDocumentsApplyRouteChange === 'function') {
+                                        panel.__omoDocumentsApplyRouteChange(detail);
+                                    }
                                 };
 
                                 window.addEventListener('omo-documents-route-change', panel.__omoDocumentsRouteHandler);
@@ -2109,24 +2543,6 @@ if (!is_string($documentsPayload)) {
                 window.omoInitDocumentsPanels();
             })();
             </script>
-        <?php endif; ?>
-
-        <div class="omo-overlay-drawer omo-documents__editor-drawer" data-omo-document-editor-drawer hidden>
-            <div class="omo-overlay-drawer__backdrop" data-omo-document-editor-close></div>
-            <div class="omo-overlay-drawer__panel">
-                <div class="omo-overlay-drawer__header generic-drawer-header">
-                    <div class="omo-overlay-drawer__header-copy generic-drawer-header__copy">
-                        <h3 class="omo-overlay-drawer__title" data-omo-document-editor-title><?= $escape(omoDocumentsScopeT('documents.drawer.editor_title')) ?></h3>
-                        <p class="omo-overlay-drawer__description" data-omo-document-editor-description><?= $escape(omoDocumentsScopeT('documents.drawer.editor_description')) ?></p>
-                    </div>
-                    <div class="generic-drawer-header__actions">
-                        <button type="button" class="omo-overlay-drawer__close" data-omo-document-editor-close><?= $escape(omoDocumentsScopeT('documents.drawer.close')) ?></button>
-                    </div>
-                </div>
-                <div class="omo-overlay-drawer__body" data-omo-document-editor-body></div>
-            </div>
-        </div>
-
         <script>
         (function () {
             const normalizeDocumentScope = function (scopeValue) {
@@ -2440,15 +2856,44 @@ if (!is_string($documentsPayload)) {
 
             function openEditorDrawer(url, title, description) {
                 const root = getDocumentsRoot();
-                const drawer = root ? root.querySelector('[data-omo-document-editor-drawer]') : null;
-                const body = drawer ? drawer.querySelector('[data-omo-document-editor-body]') : null;
-                const titleNode = drawer ? drawer.querySelector('[data-omo-document-editor-title]') : null;
-                const descriptionNode = drawer ? drawer.querySelector('[data-omo-document-editor-description]') : null;
+                const drawer = root ? root.querySelector('[data-omo-document-detail-drawer]') : null;
+                const body = drawer ? drawer.querySelector('[data-omo-document-detail-body]') : null;
+                const titleNode = drawer ? drawer.querySelector('[data-omo-document-detail-title]') : null;
+                const descriptionNode = drawer ? drawer.querySelector('[data-omo-document-detail-description]') : null;
+                const drawerController = drawer && typeof window.omoCreateSubdrawerController === 'function'
+                    ? (drawer.__omoSubdrawerController || window.omoCreateSubdrawerController({ drawer: drawer }))
+                    : null;
                 const targetUrl = String(url || '').trim();
 
                 if (!drawer || !body || targetUrl === '') {
                     return;
                 }
+
+                if (drawer.dataset.omoDocumentDrawerMode === 'edit' && typeof cleanupDocumentEditorDrawer === 'function') {
+                    cleanupDocumentEditorDrawer(drawer);
+                }
+
+                if (drawerController) {
+                    drawer.__omoSubdrawerController = drawerController;
+                    window.omoDocumentsEditorDrawer = drawerController;
+                    drawerController.setHeader({
+                        title: String(title || <?= json_encode(omoDocumentsScopeT('documents.drawer.editor_title'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>).trim() || <?= json_encode(omoDocumentsScopeT('documents.drawer.editor_title'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                        description: String(description || <?= json_encode(omoDocumentsScopeT('documents.drawer.editor_description'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>).trim()
+                            || <?= json_encode(omoDocumentsScopeT('documents.drawer.editor_description'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                        actions: []
+                    });
+                }
+
+                try {
+                    const editorUrl = new URL(targetUrl, window.location.origin);
+                    const documentId = Number(editorUrl.searchParams.get('id') || 0);
+                    drawer.dataset.omoDocumentDrawerDocumentId = Number.isInteger(documentId) && documentId > 0
+                        ? String(documentId)
+                        : '';
+                } catch (error) {
+                    drawer.dataset.omoDocumentDrawerDocumentId = '';
+                }
+                drawer.dataset.omoDocumentDrawerMode = 'edit';
 
                 if (titleNode) {
                     titleNode.textContent = String(title || <?= json_encode(omoDocumentsScopeT('documents.drawer.editor_title'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>).trim() || <?= json_encode(omoDocumentsScopeT('documents.drawer.editor_title'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -2486,6 +2931,9 @@ if (!is_string($documentsPayload)) {
                         const temp = document.createElement('div');
                         temp.innerHTML = html;
                         body.innerHTML = html;
+                        if (drawerController) {
+                            drawerController.applyContentHeader(body);
+                        }
                         executeFetchedScripts(temp);
                     })
                     .catch(function () {
@@ -2510,6 +2958,31 @@ if (!is_string($documentsPayload)) {
                 }
 
                 let url = '/omo/api/documents/create.php?oid=' + encodeURIComponent(String(organizationId));
+                if (Number.isInteger(holonId) && holonId > 0) {
+                    url += '&cid=' + encodeURIComponent(String(holonId));
+                }
+
+                url += '&id=' + encodeURIComponent(String(resolvedDocumentId));
+                return url;
+            }
+
+            function buildDocumentDetailUrl(documentId, rootOverride) {
+                const resolvedDocumentId = Number(documentId || 0);
+                if (!Number.isInteger(resolvedDocumentId) || resolvedDocumentId <= 0) {
+                    return '';
+                }
+
+                const root = rootOverride instanceof Element
+                    ? rootOverride
+                    : getDocumentsRoot();
+                const organizationId = Number(root && root.getAttribute('data-omo-document-oid') || 0);
+                const holonId = Number(root && root.getAttribute('data-omo-document-cid') || 0);
+
+                if (!Number.isInteger(organizationId) || organizationId <= 0) {
+                    return '';
+                }
+
+                let url = '/omo/api/documents/detail.php?oid=' + encodeURIComponent(String(organizationId));
                 if (Number.isInteger(holonId) && holonId > 0) {
                     url += '&cid=' + encodeURIComponent(String(holonId));
                 }
@@ -2597,38 +3070,58 @@ if (!is_string($documentsPayload)) {
                 }
             }
 
+            const cleanupDocumentEditorDrawer = function (drawer) {
+                if (!(drawer instanceof Element) || drawer.dataset.omoDocumentDrawerMode !== 'edit') {
+                    return;
+                }
+
+                window.dispatchEvent(new CustomEvent('omo-document-editor-drawer-close'));
+                drawer.dataset.omoDocumentDrawerMode = '';
+            };
+
             window.omoCloseDocumentEditorDrawer = function (options) {
                 const settings = options && typeof options === 'object'
                     ? options
                     : {};
+                const root = getDocumentsRoot();
+                const drawer = root ? root.querySelector('[data-omo-document-detail-drawer]') : null;
+                const documentId = Number(drawer && drawer.dataset.omoDocumentDrawerDocumentId || 0);
                 const hashState = typeof window.omoParsePopupHashState === 'function'
                     ? window.omoParsePopupHashState()
                     : null;
                 const routeToken = hashState && hashState.routeToken ? String(hashState.routeToken) : '';
-                if (settings.force !== true && /^(?:documents|document)-de\d+$/i.test(routeToken) && typeof window.omoOpenDrawerHashState === 'function') {
-                    window.omoOpenDrawerHashState('documents');
-                    return;
-                }
-
-                const root = getDocumentsRoot();
-                const drawer = root ? root.querySelector('[data-omo-document-editor-drawer]') : null;
-                const body = drawer ? drawer.querySelector('[data-omo-document-editor-body]') : null;
+                const editingDocumentMatch = routeToken.match(/^(?:documents|document)-de(\d+)$/i);
 
                 if (!drawer) {
                     return;
                 }
 
-                window.dispatchEvent(new CustomEvent('omo-document-editor-drawer-close'));
-                drawer.classList.remove('is-open');
+                cleanupDocumentEditorDrawer(drawer);
 
-                window.setTimeout(function () {
-                    if (!drawer.classList.contains('is-open')) {
-                        drawer.hidden = true;
-                        if (body) {
-                            body.innerHTML = '';
-                        }
+                if (settings.returnToDetail === true && Number.isInteger(documentId) && documentId > 0) {
+                    if (editingDocumentMatch && settings.force !== true && typeof window.omoOpenDrawerHashState === 'function') {
+                        window.omoOpenDrawerHashState('documents-d' + editingDocumentMatch[1]);
+                        return;
                     }
-                }, 200);
+
+                    const documentItem = findDocumentPayloadItemById(documentId, root) || {
+                        id: documentId,
+                        contextUrl: buildDocumentDetailUrl(documentId, root)
+                    };
+                    drawer.dataset.omoDocumentDrawerMode = 'detail';
+                    window.omoOpenDocumentDetailByPayload(documentItem, root);
+                    return;
+                }
+
+                if (settings.preserveDrawer === true) {
+                    return;
+                }
+
+                if (settings.force !== true && editingDocumentMatch && typeof window.omoOpenDrawerHashState === 'function') {
+                    window.omoOpenDrawerHashState('documents');
+                }
+
+                window.omoCloseDocumentDetailDrawer({ force: true });
             };
 
             window.omoRefreshDocumentsPanel = function () {
@@ -2651,6 +3144,27 @@ if (!is_string($documentsPayload)) {
                 openEditorDrawer(url, title, description);
             };
 
+            window.omoCloseDocumentPvPreparationDrawer = function (options) {
+                if (typeof window.omoCloseExternalPanelDrawer !== 'function') {
+                    return;
+                }
+
+                window.omoCloseExternalPanelDrawer(options && typeof options === 'object'
+                    ? options
+                    : {});
+            };
+
+            window.omoPreserveDocumentPvPreparationDrawer = function () {
+                if (typeof window.omoPeekPersistentExternalPanelDrawer !== 'function') {
+                    return false;
+                }
+
+                return window.omoPeekPersistentExternalPanelDrawer({
+                    persistKeyPrefix: 'omo-pv-preparation-',
+                    contentSelector: '[data-omo-pv-editor-root]'
+                }) === true;
+            };
+
             window.omoCloseDocumentDetailDrawer = function (options) {
                 const settings = options && typeof options === 'object'
                     ? options
@@ -2659,9 +3173,8 @@ if (!is_string($documentsPayload)) {
                     ? window.omoParsePopupHashState()
                     : null;
                 const routeToken = hashState && hashState.routeToken ? String(hashState.routeToken) : '';
-                if (settings.force !== true && /^(?:documents|document)-(?:d)?\d+$/i.test(routeToken) && typeof window.omoOpenDrawerHashState === 'function') {
+                if (settings.force !== true && /^(?:documents|document)-(?:d(?:e)?)?\d+$/i.test(routeToken) && typeof window.omoOpenDrawerHashState === 'function') {
                     window.omoOpenDrawerHashState('documents');
-                    return;
                 }
 
                 const root = getDocumentsRoot();
@@ -2672,6 +3185,9 @@ if (!is_string($documentsPayload)) {
                     return;
                 }
 
+                cleanupDocumentEditorDrawer(drawer);
+                drawer.dataset.omoDocumentDrawerMode = '';
+                drawer.dataset.omoDocumentDrawerDocumentId = '';
                 drawer.classList.remove('is-open');
                 window.setTimeout(function () {
                     if (!drawer.classList.contains('is-open')) {
@@ -2681,6 +3197,73 @@ if (!is_string($documentsPayload)) {
                         }
                     }
                 }, 200);
+            };
+
+            const syncDocumentDetailDrawerMetadata = function (sourceNode, drawer, fallbackTitle, fallbackDescription) {
+                if (!(drawer instanceof Element) || !(sourceNode instanceof Element)) {
+                    return;
+                }
+
+                const titleNode = drawer.querySelector('[data-omo-document-detail-title]');
+                const descriptionNode = drawer.querySelector('[data-omo-document-detail-description]');
+                const metadataNode = sourceNode.matches('[data-omo-document-drawer-title], [data-omo-document-drawer-description]')
+                    ? sourceNode
+                    : sourceNode.querySelector('[data-omo-document-drawer-title], [data-omo-document-drawer-description]');
+                const resolvedTitle = metadataNode
+                    ? String(metadataNode.getAttribute('data-omo-document-drawer-title') || '').trim()
+                    : '';
+                const resolvedDescription = metadataNode
+                    ? String(metadataNode.getAttribute('data-omo-document-drawer-description') || '').trim()
+                    : '';
+
+                if (titleNode) {
+                    titleNode.textContent = resolvedTitle !== ''
+                        ? resolvedTitle
+                        : String(fallbackTitle || '').trim() || 'Détail du document';
+                }
+
+                if (descriptionNode) {
+                    descriptionNode.textContent = resolvedDescription !== ''
+                        ? resolvedDescription
+                        : String(fallbackDescription || '').trim()
+                            || <?= json_encode(omoDocumentsScopeT('documents.drawer.detail_description'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+                }
+            };
+
+            window.omoOpenDocumentPvPreparationByPayload = function (documentItem) {
+                const preparationUrl = String(documentItem && documentItem.pvPreparationUrl ? documentItem.pvPreparationUrl : '').trim();
+                const documentId = Number(documentItem && documentItem.id ? documentItem.id : 0);
+                const title = String(documentItem && documentItem.title ? documentItem.title : '').trim();
+                const fullDate = String(documentItem && documentItem.fullDateLabel ? documentItem.fullDateLabel : '').trim();
+                const hasUpcomingPvEvent = !!(documentItem && documentItem.hasUpcomingPvEvent);
+
+                if (
+                    preparationUrl === ''
+                    || !Number.isInteger(documentId)
+                    || documentId <= 0
+                    || typeof window.omoOpenExternalPanelDrawer !== 'function'
+                ) {
+                    return false;
+                }
+
+                window.omoCloseDocumentEditorDrawer({ force: true });
+                window.omoCloseDocumentDetailDrawer({ force: true });
+
+                return window.omoOpenExternalPanelDrawer({
+                    url: preparationUrl,
+                    mode: 'fetch',
+                    title: title !== '' ? title : (hasUpcomingPvEvent ? 'Preparation du PV' : 'Edition du PV'),
+                    description: hasUpcomingPvEvent
+                        ? (fullDate !== ''
+                            ? 'Preparation ouverte avant la reunion du ' + fullDate + '.'
+                            : 'Preparation du PV avant la reunion.')
+                        : (fullDate !== ''
+                            ? 'Edition du PV cree le ' + fullDate + '.'
+                            : 'Edition du PV.'),
+                    variant: 'top-sheet',
+                    persistKey: 'omo-pv-preparation-' + String(documentId),
+                    keepMountedOnClose: true
+                }) === true;
             };
 
             window.omoOpenDocumentDetailByPayload = function (documentItem, rootOverride) {
@@ -2704,6 +3287,14 @@ if (!is_string($documentsPayload)) {
                 if (!drawer || !body || detailUrl === '' || (documentItem && documentItem.isFolder)) {
                     return false;
                 }
+
+                if (!window.omoPreserveDocumentPvPreparationDrawer()) {
+                    window.omoCloseDocumentPvPreparationDrawer({ force: true });
+                }
+
+                cleanupDocumentEditorDrawer(drawer);
+                drawer.dataset.omoDocumentDrawerMode = 'detail';
+                drawer.dataset.omoDocumentDrawerDocumentId = String(documentItem && documentItem.id ? documentItem.id : '');
 
                 if (titleNode) {
                     titleNode.textContent = title !== '' ? title : 'Détail du document';
@@ -2732,16 +3323,31 @@ if (!is_string($documentsPayload)) {
                     cache: 'no-store'
                 })
                     .then(function (response) {
-                        if (!response.ok) {
-                            throw new Error('document_detail_load_failed');
+                        return response.text().then(function (html) {
+                            return {
+                                ok: response.ok,
+                                html: html
+                            };
+                        });
+                    })
+                    .then(function (result) {
+                        const html = typeof result.html === 'string' ? result.html : '';
+                        if (html.trim() === '') {
+                            if (!result.ok) {
+                                throw new Error('document_detail_load_failed');
+                            }
+
+                            body.innerHTML = '';
+                            return;
                         }
 
-                        return response.text();
-                    })
-                    .then(function (html) {
                         const temp = document.createElement('div');
                         temp.innerHTML = html;
                         body.innerHTML = html;
+                        syncDocumentDetailDrawerMetadata(temp, drawer, title, descriptionNode ? descriptionNode.textContent : '');
+                        if (drawer.__omoSubdrawerController) {
+                            drawer.__omoSubdrawerController.applyContentHeader(body);
+                        }
                         executeFetchedScripts(temp);
                     })
                     .catch(function () {
@@ -2752,8 +3358,20 @@ if (!is_string($documentsPayload)) {
             };
 
             window.omoOpenDocumentEditorByPayload = function (documentItem) {
-                if (!documentItem || !documentItem.canEdit || !documentItem.editUrl) {
+                if (!documentItem || !documentItem.canEdit) {
                     return false;
+                }
+
+                if (String(documentItem.documentType || '').trim().toLowerCase() === 'pv') {
+                    return window.omoOpenDocumentPvPreparationByPayload(documentItem);
+                }
+
+                if (!documentItem.editUrl) {
+                    return false;
+                }
+
+                if (!window.omoPreserveDocumentPvPreparationDrawer()) {
+                    window.omoCloseDocumentPvPreparationDrawer({ force: true });
                 }
 
                 openEditorDrawer(
@@ -2771,9 +3389,12 @@ if (!is_string($documentsPayload)) {
 
                 const documentId = Number(trigger.getAttribute('data-omo-document-id') || 0);
                 const documentPayload = {
+                    id: documentId,
                     contextUrl: String(trigger.getAttribute('data-omo-document-context-url') || '').trim(),
                     externalUrl: String(trigger.getAttribute('data-omo-document-external-url') || '').trim(),
                     openInNewWindow: String(trigger.getAttribute('data-omo-document-open-in-new-window') || '').trim() === '1',
+                    documentType: String(trigger.getAttribute('data-omo-document-type') || '').trim(),
+                    pvPreparationUrl: String(trigger.getAttribute('data-omo-document-pv-editor-url') || '').trim(),
                     title: String(trigger.getAttribute('data-omo-document-title') || '').trim(),
                     fullDateLabel: String(trigger.getAttribute('data-omo-document-full-date') || '').trim()
                 };
@@ -2787,6 +3408,14 @@ if (!is_string($documentsPayload)) {
 
                 if (documentPayload.openInNewWindow && documentPayload.externalUrl !== '') {
                     return openExternalDocumentWindow(documentPayload) ? false : true;
+                }
+
+                if (
+                    documentPayload.documentType.toLowerCase() === 'pv'
+                    && documentPayload.pvPreparationUrl !== ''
+                    && window.omoOpenDocumentPvPreparationByPayload(documentPayload)
+                ) {
+                    return false;
                 }
 
                 const routeToken = buildDocumentRouteToken(documentId, 'detail');
@@ -2816,6 +3445,16 @@ if (!is_string($documentsPayload)) {
                     return false;
                 }
 
+                const root = getDocumentsRoot();
+                const documentItem = findDocumentPayloadItemById(resolvedDocumentId, root);
+                if (
+                    documentItem
+                    && String(documentItem.documentType || '').trim().toLowerCase() === 'pv'
+                    && window.omoOpenDocumentEditorByPayload(documentItem)
+                ) {
+                    return true;
+                }
+
                 const routeToken = buildDocumentRouteToken(resolvedDocumentId, 'edit');
                 const hashState = typeof window.omoParsePopupHashState === 'function'
                     ? window.omoParsePopupHashState()
@@ -2827,8 +3466,6 @@ if (!is_string($documentsPayload)) {
                     return true;
                 }
 
-                const root = getDocumentsRoot();
-                const documentItem = findDocumentPayloadItemById(resolvedDocumentId, root);
                 if (documentItem && window.omoOpenDocumentEditorByPayload(documentItem)) {
                     return true;
                 }
@@ -2881,15 +3518,43 @@ if (!is_string($documentsPayload)) {
                 const documentTitle = String(toggle && toggle.getAttribute('data-omo-document-menu-title') || '').trim();
                 const editUrl = String(toggle && toggle.getAttribute('data-omo-document-menu-edit-url') || '').trim();
                 const canEdit = String(toggle && toggle.getAttribute('data-omo-document-menu-can-edit') || '') === '1';
+                const canMove = String(toggle && toggle.getAttribute('data-omo-document-menu-can-move') || '') === '1';
+                const canArchive = String(toggle && toggle.getAttribute('data-omo-document-menu-can-archive') || '') === '1';
+                const canDelete = String(toggle && toggle.getAttribute('data-omo-document-menu-can-delete') || '') === '1';
                 const isFolder = String(toggle && toggle.getAttribute('data-omo-document-menu-is-folder') || '') === '1';
                 const canShare = String(toggle && toggle.getAttribute('data-omo-document-menu-can-share') || '') === '1';
+                const canExportPdf = String(toggle && toggle.getAttribute('data-omo-document-menu-can-export-pdf') || '') === '1';
+                const pdfExportUrl = String(toggle && toggle.getAttribute('data-omo-document-menu-pdf-url') || '').trim();
                 const fragment = ownerDocument.createDocumentFragment();
 
-                if (canEdit && Number.isInteger(documentId) && documentId > 0) {
+                if (canExportPdf && pdfExportUrl !== '') {
+                    fragment.appendChild(buildDocumentMenuItem(<?= json_encode(omoDocumentsScopeT('documents.menu.export_pdf'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>, {
+                        'data-omo-document-menu-action': 'export-pdf',
+                        'data-omo-document-export-pdf-url': pdfExportUrl
+                    }));
+                }
+
+                if (canMove && Number.isInteger(documentId) && documentId > 0) {
                     fragment.appendChild(buildDocumentMenuItem('Déplacer', {
                         'data-omo-document-menu-action': 'move',
                         'data-omo-document-move': '1',
                         'data-omo-document-move-id': String(documentId)
+                    }));
+                }
+
+                if (canArchive && Number.isInteger(documentId) && documentId > 0) {
+                    fragment.appendChild(buildDocumentMenuItem(<?= json_encode(omoDocumentsScopeT('documents.menu.archive'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>, {
+                        'data-omo-document-menu-action': 'archive',
+                        'data-omo-document-lifecycle': 'archive',
+                        'data-omo-document-lifecycle-id': String(documentId)
+                    }));
+                }
+
+                if (canDelete && Number.isInteger(documentId) && documentId > 0) {
+                    fragment.appendChild(buildDocumentMenuItem(<?= json_encode(omoDocumentsScopeT('documents.menu.delete'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>, {
+                        'data-omo-document-menu-action': 'delete',
+                        'data-omo-document-lifecycle': 'delete',
+                        'data-omo-document-lifecycle-id': String(documentId)
                     }));
                 }
 
@@ -2949,6 +3614,39 @@ if (!is_string($documentsPayload)) {
                 floatingMenu.style.visibility = '';
             }
 
+            async function runDocumentLifecycleAction(actionButton) {
+                const action = String(actionButton && actionButton.getAttribute('data-omo-document-lifecycle') || '').trim().toLowerCase();
+                const documentId = Number(actionButton && actionButton.getAttribute('data-omo-document-lifecycle-id') || 0);
+                if (!['archive', 'delete'].includes(action) || !Number.isInteger(documentId) || documentId <= 0) {
+                    return false;
+                }
+
+                const message = action === 'delete'
+                    ? <?= json_encode(omoDocumentsScopeT('documents.menu.confirm_delete'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+                    : <?= json_encode(omoDocumentsScopeT('documents.menu.confirm_archive'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+                if (!window.confirm(message)) {
+                    return true;
+                }
+
+                const response = await fetch('/omo/api/documents/lifecycle_action.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({id: documentId, action: action})
+                });
+                const payload = await response.json();
+                if (!response.ok || !payload || payload.status !== true) {
+                    window.alert(String(payload && payload.message || <?= json_encode(omoDocumentsScopeT('documents.menu.action_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>));
+                    return true;
+                }
+
+                if (typeof window.omoRefreshDocumentsPanel === 'function') {
+                    await window.omoRefreshDocumentsPanel();
+                } else {
+                    window.location.reload();
+                }
+                return true;
+            }
+
             function runDocumentMenuAction(actionButton) {
                 const action = String(actionButton && actionButton.getAttribute('data-omo-document-menu-action') || '').trim().toLowerCase();
                 if (action === '') {
@@ -2956,6 +3654,27 @@ if (!is_string($documentsPayload)) {
                 }
 
                 closeDocumentMenus();
+
+                if (action === 'export-pdf') {
+                    const pdfExportUrl = String(actionButton.getAttribute('data-omo-document-export-pdf-url') || '').trim();
+                    if (pdfExportUrl === '') {
+                        return false;
+                    }
+
+                    const downloadLink = ownerDocument.createElement('a');
+                    downloadLink.href = pdfExportUrl;
+                    downloadLink.download = '';
+                    downloadLink.hidden = true;
+                    ownerDocument.body.appendChild(downloadLink);
+                    downloadLink.click();
+                    downloadLink.remove();
+                    return true;
+                }
+
+                if (action === 'archive' || action === 'delete') {
+                    runDocumentLifecycleAction(actionButton);
+                    return true;
+                }
 
                 if (action === 'move') {
                     openDocumentMovePopup(actionButton.getAttribute('data-omo-document-move-id'));
@@ -3120,11 +3839,18 @@ if (!is_string($documentsPayload)) {
                 positionDocumentMenu(activeDocumentMenuToggle);
             });
 
-            root.querySelectorAll('[data-omo-document-editor-close]').forEach(function (button) {
-                button.addEventListener('click', function () {
-                    window.omoCloseDocumentEditorDrawer();
-                });
-            });
+            const documentDrawer = root.querySelector('[data-omo-document-detail-drawer]');
+            if (documentDrawer) {
+                documentDrawer.addEventListener('click', function (event) {
+                    if (!(event.target instanceof Element) || !event.target.closest('[data-omo-document-editor-cancel]')) {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    window.omoCloseDocumentEditorDrawer({ returnToDetail: true });
+                }, true);
+            }
 
             root.querySelectorAll('[data-omo-document-detail-close]').forEach(function (button) {
                 button.addEventListener('click', function () {
@@ -3201,12 +3927,18 @@ if (!is_string($documentsPayload)) {
     grid-area: scope;
 }
 
-.omo-documents__editor-drawer .omo-overlay-drawer__body {
+.omo-documents__detail-drawer[data-omo-document-drawer-mode="edit"] .omo-overlay-drawer__body {
     padding: 0;
 }
 
-.omo-documents__detail-drawer,
-.omo-documents__editor-drawer {
+.omo-documents__drawer-custom-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.omo-documents__detail-drawer {
     z-index: 6000;
 }
 
@@ -3311,7 +4043,7 @@ if (!is_string($documentsPayload)) {
     padding: 0;
     padding-right: 56px;
     overflow: hidden;
-    border-radius: 22px;
+    border-radius: var(--radius-md);
     transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
 }
 
@@ -3406,7 +4138,7 @@ if (!is_string($documentsPayload)) {
     color: var(--color-text-light);
     font-size: 0.9rem;
     padding: 8px 12px 4px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, #fef3c7 28%, var(--color-surface));
 }
 
@@ -3432,7 +4164,7 @@ if (!is_string($documentsPayload)) {
     position: relative;
     width: 56px;
     height: 56px;
-    border-radius: 18px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface) 76%, white 24%);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border) 78%, white 22%);
 }
@@ -3519,21 +4251,39 @@ if (!is_string($documentsPayload)) {
     word-break: break-word;
 }
 
-.omo-documents__visibility-icon {
+.omo-documents__scope-capsule {
     flex: 0 0 auto;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    width: 18px;
-    height: 18px;
-    opacity: 0.82;
+    gap: 6px;
+    min-height: 24px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 84%, var(--color-surface, #ffffff));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border, #d1d5db) 86%, transparent);
 }
 
-.omo-documents__visibility-icon img {
+.omo-documents__scope-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    opacity: 0.86;
+}
+
+.omo-documents__scope-icon img {
     display: block;
     width: 100%;
     height: 100%;
     object-fit: contain;
+}
+
+.omo-documents__scope-separator {
+    width: 1px;
+    height: 12px;
+    background: color-mix(in srgb, var(--color-text-light, #64748b) 32%, transparent);
+    border-radius: 999px;
 }
 
 .omo-documents__context {
@@ -3585,7 +4335,7 @@ if (!is_string($documentsPayload)) {
     height: 34px;
     padding: 0 8px;
     border: 1px solid var(--color-border);
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface) 92%, white);
     color: var(--color-text);
     cursor: pointer;
@@ -3604,7 +4354,7 @@ if (!is_string($documentsPayload)) {
     max-width: calc(100vw - 24px);
     padding: 6px;
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--color-surface);
     box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
     z-index: 5000;
@@ -3619,7 +4369,7 @@ if (!is_string($documentsPayload)) {
     width: 100%;
     padding: 9px 10px;
     border: 0;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: transparent;
     color: var(--color-text);
     text-align: left;
@@ -3727,7 +4477,7 @@ if (!is_string($documentsPayload)) {
 .omo-documents__item--compact .omo-documents__icon-box {
     width: 34px;
     height: 34px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
 }
 
 .omo-documents__item--compact .omo-documents__icon {
@@ -3795,9 +4545,15 @@ if (!is_string($documentsPayload)) {
     word-break: break-word;
 }
 
-.omo-documents__item--compact .omo-documents__visibility-icon {
-    width: 16px;
-    height: 16px;
+.omo-documents__item--compact .omo-documents__scope-capsule {
+    min-height: 22px;
+    padding: 0 7px;
+    gap: 5px;
+}
+
+.omo-documents__item--compact .omo-documents__scope-icon {
+    width: 13px;
+    height: 13px;
 }
 
 .omo-documents__compact-count {
@@ -3924,7 +4680,7 @@ if (!is_string($documentsPayload)) {
     width: 30px;
     height: 30px;
     padding: 0;
-    border-radius: 9px;
+    border-radius: var(--radius-md);
 }
 
 .omo-documents__item--compact .omo-documents__context,
@@ -3996,7 +4752,7 @@ if (!is_string($documentsPayload)) {
     .omo-documents__icon-box {
         width: 42px;
         height: 42px;
-        border-radius: 14px;
+        border-radius: var(--radius-md);
     }
 
     .omo-documents__icon {
@@ -4110,7 +4866,7 @@ if (!is_string($documentsPayload)) {
         min-width: 42px;
         max-width: 42px;
         flex: 0 0 42px;
-        border-radius: 0 0 0 12px !important;
+        border-radius: 0 0 0 var(--radius-md) !important;
     }
 
     .omo-documents__header-actions {

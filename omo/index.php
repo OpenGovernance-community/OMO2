@@ -553,8 +553,10 @@ if (!commonGetCurrentUserId() && !$isDemoGuest) {
 $currentUserName = $isDemoGuest ? t('app.user.demo') : commonGetCurrentUserDisplayName();
 $currentUserId = commonGetCurrentUserId();
 $isSiteAdmin = !$isDemoGuest && commonCurrentUserIsSiteAdminModeEnabled();
+$omoOrganizationAccentColor = commonGetOrganizationAccentColor($organizationContext, '#004663');
+$omoOrganizationAccentColorCss = htmlspecialchars($omoOrganizationAccentColor, ENT_QUOTES, 'UTF-8');
 $omoPwaHeadHtml = omoBuildPwaHeadHtml(
-    commonGetOrganizationAccentColor($organizationContext, '#004663'),
+    $omoOrganizationAccentColor,
     omoBuildManifestIconUrlForContext($organizationContext, 192),
     ($organizationContext['name'] ?? 'OMO') ?: 'OMO',
     omoBuildManifestUrlForContext($organizationContext)
@@ -717,7 +719,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <title><?= htmlspecialchars(t('app.directory.page_title')) ?></title>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-    <link rel="stylesheet" href="/omo/assets/css/styles.css">
+    <link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260714-pv-groups">
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
 <body class="auth-state-page auth-state-page--scrollable auth-state-page--themed auth-state-page--with-topbar">
@@ -847,7 +849,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
             display: none;
             flex-direction: column;
             gap: 6px;
-            border-radius: 16px;
+            border-radius: var(--radius-md);
             border: 1px solid var(--color-border, #dbe4ee);
             background: var(--color-surface, #ffffff);
             box-shadow: 0 18px 42px color-mix(in srgb, var(--color-text, #0f172a) 16%, transparent);
@@ -862,7 +864,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
             min-height: 40px;
             padding: 10px 12px;
             border: 0;
-            border-radius: 12px;
+            border-radius: var(--radius-md);
             background: var(--color-surface-alt, #f8fafc);
             color: var(--color-text, #0f172a);
             text-align: left;
@@ -1271,13 +1273,19 @@ if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-omo-organization-accent>
 <head>
     <meta charset="UTF-8">
     <title><?= htmlspecialchars(t('app.main.page_title')) ?></title>
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-    <link rel="stylesheet" href="/omo/assets/css/styles.css">
+    <link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260714-pv-groups">
+    <style>
+        html[data-omo-organization-accent] {
+            --omo-organization-accent: <?= $omoOrganizationAccentColorCss ?>;
+            --color-primary: var(--omo-organization-accent);
+        }
+    </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <base href="/omo/">
 </head>
@@ -1439,7 +1447,8 @@ window.omoConfig = <?=
 <?php if ($isSiteAdmin) { ?>
 <script src="/omo/assets/js/site-update.js"></script>
 <?php } ?>
-<script src="assets/js/app.js"></script>
+<script src="assets/js/simple-html-field.js?v=20260716-pv-indicator-readonly"></script>
+<script src="assets/js/app.js?v=20260714-persistent-top-drawer"></script>
 <script src="assets/js/structure-mini-map.js"></script>
 
 <script>

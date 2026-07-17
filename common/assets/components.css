@@ -1,11 +1,15 @@
 @import url('/common/assets/theme.css');
 
+:root {
+    --radius-md: 6px;
+}
+
 .generic-section,
 .omo-card {
     --generic-section-padding-block: 16px;
     --generic-section-padding-inline: 18px;
     --generic-section-border: var(--color-border, #e5e7eb);
-    --generic-section-radius: 18px;
+    --generic-section-radius: var(--radius-md);
     --generic-section-background: var(--color-surface, #ffffff);
     --generic-section-shadow: none;
     display: block;
@@ -54,7 +58,7 @@
     background: var(--generic-soft-panel-background);
 }
 .generic-soft-panel {
-    --generic-soft-panel-radius: 12px;
+    --generic-soft-panel-radius: var(--radius-md);
 }
 
 .generic-soft-panel--stack {
@@ -65,7 +69,7 @@
 .generic-hero-panel {
     --generic-hero-gap: 8px;
     --generic-hero-padding: 18px;
-    --generic-hero-radius: 18px;
+    --generic-hero-radius: var(--radius-md);
     --generic-hero-border: var(--color-border, #e5e7eb);
     --generic-hero-background:
         linear-gradient(
@@ -138,6 +142,24 @@
     flex-wrap: wrap;
 }
 
+[data-omo-subdrawer-actions] {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.omo-resource-picker { display: grid; grid-template-columns: minmax(300px, 0.7fr) minmax(0, 1fr); gap: 18px; }
+.omo-resource-picker__navigation { border-right: 1px solid var(--color-border); padding-right: 14px; }
+.omo-holon-scope-picker__modes.omo-scope-toggle { width: 100%; }
+.omo-holon-scope-picker__map { position: relative; height: clamp(340px, 42vh, 460px); margin-top: 14px; overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface-alt); }
+.omo-holon-scope-picker__canvas { display: block; width: 100%; height: 100%; }
+.omo-holon-scope-picker__tooltip { position: absolute; left: 12px; bottom: 12px; z-index: 2; max-width: calc(100% - 24px); overflow: hidden; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--color-border) 88%, transparent); border-radius: 999px; background: color-mix(in srgb, var(--color-surface) 88%, transparent); box-shadow: var(--shadow-sm); color: var(--color-text); font-size: 0.75rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; backdrop-filter: blur(10px); }
+.omo-resource-picker__quick-search { position: relative; display: block; }
+.omo-resource-picker__quick-search img { position: absolute; z-index: 1; top: 50%; left: 12px; width: 18px; height: 18px; opacity: 0.65; pointer-events: none; transform: translateY(-50%); }
+.omo-resource-picker__quick-search .generic-form-control { padding-left: 42px; }
+@media (max-width: 768px) { .omo-resource-picker { display: block; } .omo-resource-picker__navigation { display: none; } }
+
 .generic-card-title {
     margin: 0;
     font-weight: 600;
@@ -195,7 +217,7 @@ html[data-theme="dark"] .black-icon,
     min-height: 42px;
     padding: 10px 16px;
     border: 1px solid transparent;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--color-surface-alt, #f0f2f5);
     color: var(--color-text, #1f2937);
     font: inherit;
@@ -231,6 +253,22 @@ html[data-theme="dark"] .black-icon,
     border-color: color-mix(in srgb, #dc2626 30%, var(--color-border, #e5e7eb));
 }
 
+.generic-action-button--icon-only {
+    width: 42px;
+    min-width: 42px;
+    padding-inline: 10px;
+}
+
+.generic-action-button--icon-only svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
 .generic-action-button:not(:disabled):hover {
     transform: translateY(-1px);
 }
@@ -260,7 +298,7 @@ html[data-theme="dark"] .black-icon,
     --generic-drag-handle-min-width: 34px;
     --generic-drag-handle-min-height: 34px;
     --generic-drag-handle-padding: 8px 10px;
-    --generic-drag-handle-radius: 10px;
+    --generic-drag-handle-radius: var(--radius-md);
     --generic-drag-handle-border: color-mix(in srgb, var(--color-primary, #2563eb) 25%, var(--color-border, #d1d5db));
     --generic-drag-handle-background: color-mix(in srgb, var(--color-primary, #2563eb) 8%, var(--color-surface, #ffffff));
     --generic-drag-handle-color: var(--color-text-light, #64748b);
@@ -303,7 +341,7 @@ html[data-theme="dark"] .black-icon,
     --generic-form-control-padding-inline: 12px;
     --generic-form-control-border: var(--color-border, #d1d5db);
     --generic-form-control-border-focus: color-mix(in srgb, var(--color-primary, #2563eb) 52%, var(--generic-form-control-border));
-    --generic-form-control-radius: 12px;
+    --generic-form-control-radius: var(--radius-md);
     --generic-form-control-background: var(--color-bg, #f8fafc);
     --generic-form-control-background-focus: var(--color-surface, #ffffff);
     --generic-form-control-color: var(--color-text, #1f2937);
@@ -430,7 +468,7 @@ textarea.generic-form-control {
     overflow: auto;
     padding: 8px;
     border: 1px solid var(--color-border, #d1d5db);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: var(--color-surface, #ffffff);
     box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
 }
@@ -471,14 +509,14 @@ textarea.generic-form-control {
     --generic-tabs-list-border: var(--color-border, #d1d5db);
     --generic-tabs-panel-padding-block: 16px;
     --generic-tabs-panel-padding-inline: 18px;
-    --generic-tabs-panel-radius: 18px;
+    --generic-tabs-panel-radius: var(--radius-md);
     --generic-tabs-panel-border: var(--color-border, #d1d5db);
     --generic-tabs-panel-background: var(--color-surface, #ffffff);
     --generic-tabs-panel-shadow: none;
     --generic-tabs-tab-gap: 4px;
     --generic-tabs-tab-padding-block: 11px;
     --generic-tabs-tab-padding-inline: 16px;
-    --generic-tabs-tab-radius: 14px;
+    --generic-tabs-tab-radius: var(--radius-md);
     --generic-tabs-tab-color: var(--color-text-light, #6b7280);
     --generic-tabs-tab-background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 86%, transparent);
     --generic-tabs-tab-border: transparent;
@@ -810,7 +848,7 @@ textarea.generic-form-control {
 .generic-file-list--structured .generic-file-list__icon-box {
     width: 34px;
     height: 34px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1002,7 +1040,7 @@ textarea.generic-form-control {
     height: 34px;
     padding: 0 8px;
     border: 1px solid var(--generic-file-list-border);
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--generic-file-list-surface) 92%, white);
     color: var(--color-text, #1f2937);
     cursor: pointer;
@@ -1085,7 +1123,7 @@ textarea.generic-form-control {
 }
 
 .omo-card {
-    --generic-section-radius: var(--radius-md, 12px);
+    --generic-section-radius: var(--radius-md);
     --generic-section-shadow: var(--shadow-sm, none);
     color: inherit;
 }
@@ -1093,7 +1131,7 @@ textarea.generic-form-control {
 .generic-accordion--card {
     --generic-section-padding-block: 14px;
     --generic-section-padding-inline: 14px;
-    --generic-section-radius: var(--radius-md, 12px);
+    --generic-section-radius: var(--radius-md);
     --generic-section-shadow: var(--shadow-sm, none);
 }
 
@@ -1148,7 +1186,7 @@ textarea.generic-form-control {
     margin-top: 10px;
     padding: 14px 18px;
     border: 1px solid #dbe4ee;
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
     color: #0f172a;
     font-weight: 700;
@@ -1163,7 +1201,7 @@ textarea.generic-form-control {
     padding: 18px;
     border: 1px solid #dbe4ee;
     border-top: 0;
-    border-radius: 0 0 16px 16px;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
     background: #ffffff;
 }
 
@@ -1171,7 +1209,7 @@ textarea.generic-form-control {
     min-height: 44px;
     padding: 10px 18px;
     border: 0;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: #2563eb;
     color: #fff;
     font-weight: 700;
@@ -1184,7 +1222,7 @@ textarea.generic-form-control {
     gap: 10px;
     padding: 14px 16px;
     border: 1px solid var(--color-border, #d1d5db);
-    border-radius: 16px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-primary, #2563eb) 4%, var(--color-surface-alt, #f8fafc));
 }
 

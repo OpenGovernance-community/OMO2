@@ -211,7 +211,7 @@ $params = array(
 .lms-parcours-missions {
     padding: 20px 22px;
     border: 1px solid var(--border-color);
-    border-radius: 18px;
+    border-radius: var(--radius-md);
     background: var(--bg-card);
     box-shadow: var(--shadow);
 }
@@ -249,7 +249,7 @@ $params = array(
 
 .lms-parcours-missions__empty {
     padding: 16px 18px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--primary) 7%, var(--bg-main));
     color: var(--text-light);
 }
@@ -266,7 +266,7 @@ $params = array(
     align-items: stretch;
     padding: 14px 16px;
     border: 1px solid var(--border-color);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: var(--bg-main);
     position: relative;
 }
@@ -299,7 +299,7 @@ $params = array(
     width: 34px;
     height: 34px;
     border: 0;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -316,7 +316,7 @@ $params = array(
     min-width: 140px;
     padding: 8px;
     border: 1px solid var(--border-color);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: var(--bg-card);
     box-shadow: 0 16px 40px rgba(15,23,42,0.16);
     display: none;
@@ -334,7 +334,7 @@ $params = array(
     color: var(--text-main);
     text-align: left;
     padding: 10px 12px;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     cursor: pointer;
 }
 
@@ -390,7 +390,7 @@ $params = array(
     max-height: min(78vh, 760px);
     margin: 7vh auto 0;
     padding: 18px;
-    border-radius: 20px;
+    border-radius: var(--radius-md);
     background: var(--bg-card);
     box-shadow: 0 28px 80px rgba(15,23,42,0.28);
     display: grid;
@@ -449,7 +449,7 @@ $params = array(
     gap: 14px;
     padding: 14px 16px;
     border: 1px solid var(--border-color);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: var(--bg-main);
 }
 
@@ -465,7 +465,7 @@ $params = array(
 
 .lms-parcours-mission-picker__empty {
     padding: 16px 18px;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--primary) 7%, var(--bg-main));
     color: var(--text-light);
 }

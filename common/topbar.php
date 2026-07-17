@@ -90,6 +90,44 @@ function commonRenderTopbarJqueryAssets()
     $jqueryLoaded = true;
 }
 
+function commonRenderTopbarSearchPeriod(array $period, $idPrefix = 'commonTopbar')
+{
+    $minDate = trim((string)($period['minDate'] ?? ''));
+    $maxDate = trim((string)($period['maxDate'] ?? ''));
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $minDate) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $maxDate) || $minDate > $maxDate) {
+        return;
+    }
+
+    $startDate = trim((string)($period['startDate'] ?? $minDate));
+    $endDate = trim((string)($period['endDate'] ?? $maxDate));
+    if ($startDate < $minDate || $startDate > $maxDate) {
+        $startDate = $minDate;
+    }
+    if ($endDate < $startDate || $endDate > $maxDate) {
+        $endDate = $maxDate;
+    }
+    $prefix = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)$idPrefix);
+    ?>
+    <div class="common-topbar__search-period" data-topbar-search-period>
+        <div class="common-topbar__search-period-row">
+            <label class="common-topbar__search-period-field">
+                <span><?= htmlspecialchars((string)($period['startLabel'] ?? 'Du')) ?></span>
+                <input type="date" id="<?= htmlspecialchars($prefix) ?>SearchPeriodStart" class="generic-form-control" min="<?= htmlspecialchars($minDate) ?>" max="<?= htmlspecialchars($maxDate) ?>" value="<?= htmlspecialchars($startDate) ?>" data-topbar-search-period-start>
+            </label>
+            <div class="common-topbar__search-period-sliders" data-topbar-search-period-sliders>
+                <input type="range" min="0" max="1000" value="0" step="1" data-topbar-search-period-start-slider aria-label="<?= htmlspecialchars((string)($period['startLabel'] ?? 'Du')) ?>">
+                <input type="range" min="0" max="1000" value="1000" step="1" data-topbar-search-period-end-slider aria-label="<?= htmlspecialchars((string)($period['endLabel'] ?? 'Au')) ?>">
+                <div class="common-topbar__search-period-years" data-topbar-search-period-years aria-hidden="true"></div>
+            </div>
+            <label class="common-topbar__search-period-field">
+                <span><?= htmlspecialchars((string)($period['endLabel'] ?? 'Au')) ?></span>
+                <input type="date" id="<?= htmlspecialchars($prefix) ?>SearchPeriodEnd" class="generic-form-control" min="<?= htmlspecialchars($minDate) ?>" max="<?= htmlspecialchars($maxDate) ?>" value="<?= htmlspecialchars($endDate) ?>" data-topbar-search-period-end>
+            </label>
+        </div>
+    </div>
+    <?php
+}
+
 function commonRenderTopbar(array $options = [])
 {
     static $assetsLoaded = false;
@@ -192,6 +230,13 @@ function commonRenderTopbar(array $options = [])
             'scopeLabel' => (string)($options['search']['scopeLabel'] ?? 'Chercher dans'),
             'scopeHint' => (string)($options['search']['scopeHint'] ?? ''),
             'advancedHint' => (string)($options['search']['advancedHint'] ?? 'D autres filtres avances pourront s ajouter ici.'),
+            'period' => [
+                'minDate' => (string)($options['search']['periodMinDate'] ?? ''),
+                'maxDate' => (string)($options['search']['periodMaxDate'] ?? ''),
+                'label' => (string)($options['search']['periodLabel'] ?? 'Periode'),
+                'startLabel' => (string)($options['search']['periodStartLabel'] ?? 'Du'),
+                'endLabel' => (string)($options['search']['periodEndLabel'] ?? 'Au'),
+            ],
         ],
         'bugReport' => [
             'enabled' => !empty($options['bugReport']['enabled']),
@@ -262,7 +307,7 @@ function commonRenderTopbar(array $options = [])
             'details' => [
                 'nameLabel' => (string)($options['profile']['details']['nameLabel'] ?? 'Nom'),
                 'emailLabel' => (string)($options['profile']['details']['emailLabel'] ?? 'E-mail'),
-                'usernameLabel' => (string)($options['profile']['details']['usernameLabel'] ?? 'Identifiant'),
+            'usernameLabel' => (string)($options['profile']['details']['usernameLabel'] ?? "Nom d'utilisateur"),
                 'emptyValueLabel' => (string)($options['profile']['details']['emptyValueLabel'] ?? 'Non renseigne'),
             ],
             'data' => commonResolveTopbarProfileData($organizationContext, $options['profile'] ?? []),
@@ -334,6 +379,7 @@ function commonRenderTopbar(array $options = [])
         commonRenderTopbarJqueryAssets();
         echo '<link rel="stylesheet" href="/common/assets/components.css">' . PHP_EOL;
         echo '<script src="/common/assets/components.js" defer></script>' . PHP_EOL;
+        echo '<script src="/common/holon_scope_picker.js" defer></script>' . PHP_EOL;
         echo '<link rel="stylesheet" href="/common/assets/topbar.css">' . PHP_EOL;
         echo '<script src="/common/assets/topbar.js" defer></script>' . PHP_EOL;
         $assetsLoaded = true;
@@ -411,6 +457,7 @@ function commonRenderTopbar(array $options = [])
                     <?php else: ?>
                     <div class="common-topbar__search-panel-hint"><?= htmlspecialchars($config['search']['advancedHint']) ?></div>
                     <?php endif; ?>
+                    <?php commonRenderTopbarSearchPeriod($config['search']['period']); ?>
                 </form>
             </div>
         </div>
@@ -471,15 +518,16 @@ function commonRenderTopbar(array $options = [])
         <?php if (!empty($config['profile']['enabled'])): ?>
         <div class="common-topbar__menu-wrap">
             <button type="button" class="common-topbar__action common-topbar__action--square common-topbar__profile" data-topbar-menu-trigger="profile">
-                <span class="common-topbar__avatar"<?= empty($config['profile']['data']['photoUrl']) ? ' style="' . htmlspecialchars($profileAvatarStyle, ENT_QUOTES, 'UTF-8') . '"' : '' ?>>
+                <span class="common-topbar__avatar" data-common-topbar-avatar<?= empty($config['profile']['data']['photoUrl']) ? ' style="' . htmlspecialchars($profileAvatarStyle, ENT_QUOTES, 'UTF-8') . '"' : '' ?>>
                     <?php if (!empty($config['profile']['data']['photoUrl'])): ?>
                         <img
                             src="<?= htmlspecialchars((string)$config['profile']['data']['photoUrl']) ?>"
                             alt="<?= htmlspecialchars($profileDisplayName) ?>"
                             class="common-topbar__avatar-image"
+                            data-common-topbar-avatar-image
                         >
                     <?php else: ?>
-                        <span class="common-topbar__avatar-initial" aria-hidden="true"><?= htmlspecialchars($profileInitials) ?></span>
+                        <span class="common-topbar__avatar-initial" data-common-topbar-avatar-initial aria-hidden="true"><?= htmlspecialchars($profileInitials) ?></span>
                     <?php endif; ?>
                 </span>
                 <span class="common-topbar__action-label"><?= htmlspecialchars($config['profile']['buttonLabel']) ?></span>
@@ -487,19 +535,20 @@ function commonRenderTopbar(array $options = [])
             <div class="common-topbar__menu common-topbar__menu--right" data-topbar-menu="profile">
                 <div class="common-topbar-profile-panel" data-common-topbar-profile-panel>
                     <section class="common-topbar-profile-panel__section common-topbar-profile-panel__section--media">
-                        <div class="common-topbar-profile-card generic-section">
+                        <div class="common-topbar-profile-card generic-section" data-common-topbar-profile-media>
                             <?php if (!empty($config['profile']['data']['photoUrl'])): ?>
                                 <img
                                     src="<?= htmlspecialchars((string)$config['profile']['data']['photoUrl']) ?>"
                                     alt="<?= htmlspecialchars($profileDisplayName) ?>"
                                     class="common-topbar-profile-card__photo"
+                                    data-common-topbar-profile-photo
                                 >
                             <?php else: ?>
-                                <div class="common-topbar-profile-card__placeholder" style="<?= htmlspecialchars($profileAvatarStyle, ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"><?= htmlspecialchars($profileInitials) ?></div>
+                                <div class="common-topbar-profile-card__placeholder" data-common-topbar-profile-placeholder style="<?= htmlspecialchars($profileAvatarStyle, ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"><?= htmlspecialchars($profileInitials) ?></div>
                             <?php endif; ?>
                             <div class="common-topbar-profile-card__identity">
-                                <strong><?= htmlspecialchars($profileDisplayName) ?></strong>
-                                <span><?= htmlspecialchars((string)($config['profile']['data']['email'] ?: $config['profile']['summaryFallback'])) ?></span>
+                                <strong data-common-topbar-display-name><?= htmlspecialchars($profileDisplayName) ?></strong>
+                                <span data-common-topbar-email><?= htmlspecialchars((string)($config['profile']['data']['email'] ?: $config['profile']['summaryFallback'])) ?></span>
                             </div>
                         </div>
                     </section>
@@ -508,15 +557,15 @@ function commonRenderTopbar(array $options = [])
                         <div class="common-topbar-profile-details generic-section">
                             <div class="common-topbar-profile-details__row">
                                 <span class="common-topbar-profile-details__label"><?= htmlspecialchars($config['profile']['details']['nameLabel']) ?></span>
-                                <span class="common-topbar-profile-details__value"><?= htmlspecialchars($profileDisplayName) ?></span>
+                                <span class="common-topbar-profile-details__value" data-common-topbar-detail-name><?= htmlspecialchars($profileDisplayName) ?></span>
                             </div>
                             <div class="common-topbar-profile-details__row">
                                 <span class="common-topbar-profile-details__label"><?= htmlspecialchars($config['profile']['details']['emailLabel']) ?></span>
-                                <span class="common-topbar-profile-details__value"><?= htmlspecialchars((string)($config['profile']['data']['email'] ?: $config['profile']['details']['emptyValueLabel'])) ?></span>
+                                <span class="common-topbar-profile-details__value" data-common-topbar-detail-email><?= htmlspecialchars((string)($config['profile']['data']['email'] ?: $config['profile']['details']['emptyValueLabel'])) ?></span>
                             </div>
                             <div class="common-topbar-profile-details__row">
                                 <span class="common-topbar-profile-details__label"><?= htmlspecialchars($config['profile']['details']['usernameLabel']) ?></span>
-                                <span class="common-topbar-profile-details__value"><?= htmlspecialchars((string)($config['profile']['data']['username'] ?: $config['profile']['details']['emptyValueLabel'])) ?></span>
+                                <span class="common-topbar-profile-details__value" data-common-topbar-detail-username><?= htmlspecialchars((string)($config['profile']['data']['username'] ?: $config['profile']['details']['emptyValueLabel'])) ?></span>
                             </div>
                         </div>
                     </section>
@@ -668,6 +717,7 @@ function commonRenderTopbar(array $options = [])
     </div>
 </div>
 
+<script src="/common/drawer/subdrawer.js"></script>
 <script>
 window.commonTopbarConfig = <?= json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>

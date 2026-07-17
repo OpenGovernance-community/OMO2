@@ -120,7 +120,7 @@ foreach ($parcours as $parcoursItem) {
     <style>
         :root {
             <?php if ($organizationColor !== ''): ?>
-            --color-primary: <?php echo htmlspecialchars($organizationColor); ?>;
+            --primary: <?php echo htmlspecialchars($organizationColor); ?>;
             <?php endif; ?>
         }
     </style>
@@ -290,7 +290,7 @@ foreach ($parcours as $parcoursItem) {
             z-index: 2;
             width: 42px;
             height: 42px;
-            border-radius: 14px;
+            border-radius: var(--radius-md);
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -362,7 +362,7 @@ foreach ($parcours as $parcoursItem) {
             width: 40px;
             height: 40px;
             border: 0;
-            border-radius: 14px;
+            border-radius: var(--radius-md);
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -381,7 +381,7 @@ foreach ($parcours as $parcoursItem) {
             min-width: 170px;
             padding: 8px;
             border: 1px solid var(--border-color);
-            border-radius: 14px;
+            border-radius: var(--radius-md);
             background: var(--bg-card);
             box-shadow: 0 16px 40px rgba(15,23,42,0.16);
             display: none;
@@ -398,7 +398,7 @@ foreach ($parcours as $parcoursItem) {
             color: var(--text-main);
             text-align: left;
             padding: 10px 12px;
-            border-radius: 10px;
+            border-radius: var(--radius-md);
             cursor: pointer;
         }
 

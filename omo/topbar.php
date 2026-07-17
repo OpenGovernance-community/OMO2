@@ -123,7 +123,7 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Name field label in the OMO topbar profile panel.',
         ],
         'topbar.profile.details.username' => [
-            'text' => 'Identifiant',
+            'text' => "Nom d'utilisateur",
             'context' => 'Username field label in the OMO topbar profile panel.',
         ],
         'topbar.profile.edit_label' => [
@@ -226,9 +226,17 @@ function omoGetTopbarSourceLang(): array
             'text' => 'Chercher dans',
             'context' => 'Label shown above the scoped filters in the OMO topbar search panel.',
         ],
-        'topbar.search.scope_hint' => [
-            'text' => 'La recherche de la topbar n agit que sur les modules coches.',
-            'context' => 'Hint shown below the scoped filters in the OMO topbar search panel.',
+        'topbar.search.period' => [
+            'text' => 'Periode',
+            'context' => 'Label shown above the date range filter in the OMO topbar search panel.',
+        ],
+        'topbar.search.period_start' => [
+            'text' => 'Du',
+            'context' => 'Label for the start date of the OMO topbar search period.',
+        ],
+        'topbar.search.period_end' => [
+            'text' => 'Au',
+            'context' => 'Label for the end date of the OMO topbar search period.',
         ],
         'topbar.search.submit' => [
             'text' => 'Lancer',
@@ -431,7 +439,11 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
             'callback' => 'omoHandleTopbarSearch',
             'scopeProvider' => 'omoGetTopbarSearchScopes',
             'scopeLabel' => omoTopbarTranslate('topbar.search.scope'),
-            'scopeHint' => omoTopbarTranslate('topbar.search.scope_hint'),
+            'periodLabel' => omoTopbarTranslate('topbar.search.period'),
+            'periodStartLabel' => omoTopbarTranslate('topbar.search.period_start'),
+            'periodEndLabel' => omoTopbarTranslate('topbar.search.period_end'),
+            'periodMinDate' => (string)($organizationContext['datecreation'] ?? ''),
+            'periodMaxDate' => date('Y-m-d'),
             'advancedHint' => omoTopbarTranslate('topbar.search.advanced_hint'),
         ],
         'bugReport' => [

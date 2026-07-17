@@ -403,7 +403,7 @@ if (!function_exists('omoDecisionRenderVoteWeightEditorAssets')) {
             . '.omo-decision-vote-weight-editor__content{display:grid;gap:12px;}'
             . '.omo-decision-vote-weight-editor__content[hidden]{display:none !important;}'
             . '.omo-decision-vote-weight-editor__list{display:grid;gap:10px;}'
-            . '.omo-decision-vote-weight-editor__row{display:grid;grid-template-columns:minmax(88px,120px) minmax(0,1fr) auto;gap:10px;align-items:end;padding:12px;border:1px solid var(--color-border,#d1d5db);border-radius:12px;background:var(--color-surface,#fff);}'
+            . '.omo-decision-vote-weight-editor__row{display:grid;grid-template-columns:minmax(88px,120px) minmax(0,1fr) auto;gap:10px;align-items:end;padding:12px;border:1px solid var(--color-border,#d1d5db);border-radius:var(--radius-md);background:var(--color-surface,#fff);}'
             . '.omo-decision-vote-weight-editor__row--locked{background:var(--color-surface-alt,#f8fafc);border-style:dashed;}'
             . '.omo-decision-vote-weight-editor__field{display:grid;gap:6px;min-width:0;}'
             . '.omo-decision-vote-weight-editor__actions{display:flex;align-items:flex-end;justify-content:flex-end;min-height:100%;}'
@@ -2184,7 +2184,7 @@ if (!function_exists('omoDecisionSendParticipantAccessCodeEmail')) {
         $messageLines[] = 'A bientot,';
         $messageLines[] = $organizationName;
 
-        $codeHtml = '<div style="display:inline-block;padding:16px 22px;background:#f3f4f6;border-radius:12px;border:1px solid #e5e7eb;font:700 32px/1.2 Consolas, Monaco, monospace;letter-spacing:0.22em;color:#111827;">'
+        $codeHtml = '<div style="display:inline-block;padding:16px 22px;background:#f3f4f6;border-radius:var(--radius-md);border:1px solid #e5e7eb;font:700 32px/1.2 Consolas, Monaco, monospace;letter-spacing:0.22em;color:#111827;">'
             . commonMailEscape((string)($codeResult['code'] ?? ''))
             . '</div>';
         if ($expiresLabel !== '') {
@@ -2193,7 +2193,7 @@ if (!function_exists('omoDecisionSendParticipantAccessCodeEmail')) {
         if ($directAccessUrl !== '') {
             $codeHtml .= '<div style="margin-top:18px;">'
                 . '<p style="margin:0 0 8px;color:#111827;line-height:1.6;"><strong>Lien direct personnel</strong></p>'
-                . '<div style="padding:12px 14px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;word-break:break-all;line-height:1.6;">'
+                . '<div style="padding:12px 14px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:var(--radius-md);word-break:break-all;line-height:1.6;">'
                 . '<a href="' . commonMailEscape($directAccessUrl) . '" style="color:#2563eb;text-decoration:none;">' . commonMailEscape($directAccessUrl) . '</a>'
                 . '</div>'
                 . '</div>';

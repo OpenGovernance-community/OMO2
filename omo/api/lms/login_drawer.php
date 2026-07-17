@@ -28,7 +28,7 @@ $config = [
 	padding: 24px;
 	background: rgba(255, 255, 255, 0.96);
 	border: 1px solid var(--auth-border, #e5e7eb);
-	border-radius: 18px;
+	border-radius: var(--radius-md);
 	box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08);
 }
 
@@ -43,7 +43,6 @@ $config = [
 <?php if ($organizationColor !== ''): ?>
 <style>
 	:root {
-		--color-primary: <?php echo htmlspecialchars($organizationColor); ?>;
 		--auth-primary: <?php echo htmlspecialchars($organizationColor); ?>;
 	}
 </style>

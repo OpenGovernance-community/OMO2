@@ -1540,7 +1540,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
             gap: 10px;
             align-items: center;
             padding: 12px;
-            border-radius: 14px;
+            border-radius: var(--radius-md);
             border: 1px solid color-mix(in srgb, var(--color-text-light, #64748b) 14%, white);
             background: white;
         }
@@ -1551,7 +1551,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
 
         .omo-decision-consent__proposal-placeholder {
             border: 1px dashed color-mix(in srgb, var(--color-primary, #2563eb) 32%, white);
-            border-radius: 14px;
+            border-radius: var(--radius-md);
             background: color-mix(in srgb, var(--color-primary, #2563eb) 6%, white);
         }
 
@@ -1587,7 +1587,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
             gap: 6px;
             padding: 8px;
             border: 1px solid var(--color-border, #d1d5db);
-            border-radius: 12px;
+            border-radius: var(--radius-md);
             background: var(--color-surface, #ffffff);
             box-shadow: 0 16px 30px rgba(15, 23, 42, 0.14);
             z-index: 5;
@@ -1657,7 +1657,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
             width: 100%;
             min-height: 58px;
             padding: 10px 12px;
-            border-radius: 14px;
+            border-radius: var(--radius-md);
             border: 1px solid var(--omo-consent-choice-border);
             background: var(--omo-consent-choice-bg);
             text-align: left;
@@ -1738,7 +1738,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
             display: grid;
             gap: 12px;
             padding: 14px;
-            border-radius: 16px;
+            border-radius: var(--radius-md);
             border: 1px solid color-mix(in srgb, var(--color-text-light, #64748b) 14%, white);
             background: white;
         }

@@ -17,6 +17,7 @@
 			return [
 				[['name'], 'required'],								// Champs obligatoires
 				[['id'], 'integer'],								// Nombres entiers
+				[['datecreation'], 'datetime'],
 				[['name','shortname','domain'], 'string'],	// Chaines de caractere
 				[['latlong'], 'latlong'],
 				[['parameters'], 'parameters'],
@@ -39,6 +40,7 @@
 				'logo' => 'Logo',
 				'banner' => 'Banniere',
 				'color' => 'Couleur',
+				'datecreation' => 'Date de creation',
 			];
 		}
 
@@ -1011,6 +1013,11 @@
 					throw new \RuntimeException("Le retrait de l'organisation n'a pas pu etre enregistre.");
 				}
 
+				$scopeUpdateResult = \dbObject\Document::normalizeSelfScopedDocumentsForAuthorContext((int)$this->getId(), $userId);
+				if (!is_array($scopeUpdateResult) || empty($scopeUpdateResult['status'])) {
+					throw new \RuntimeException("Les portees des documents lies a ce membre n'ont pas pu etre mises a jour.");
+				}
+
 				$pdo->commit();
 
 				return array(
@@ -1690,6 +1697,13 @@
 			$saveResult = $membership->save();
 			if (!is_array($saveResult) || empty($saveResult['status'])) {
 				throw new \RuntimeException("Impossible d'attacher cette personne a l'organisation.");
+			}
+
+			if (!$isActive) {
+				$scopeUpdateResult = \dbObject\Document::normalizeSelfScopedDocumentsForAuthorContext($organizationId, (int)$user->getId());
+				if (!is_array($scopeUpdateResult) || empty($scopeUpdateResult['status'])) {
+					throw new \RuntimeException("Impossible de mettre a jour les documents de cette personne.");
+				}
 			}
 
 			return $membership;
@@ -3557,7 +3571,7 @@
 				'parentDocumentId' => $currentParentDocumentId,
 				'pathLabel' => $currentPathLabel,
 			);
-			$data['canMove'] = $document->canEditInOrganizationContext((int)$this->getId());
+			$data['canMove'] = $document->canMoveInOrganizationContext((int)$this->getId(), $currentUserId);
 
 			if (!$data['canMove']) {
 				return $data;
@@ -6298,6 +6312,39 @@
 			return array_slice($terms, 0, 6);
 		}
 
+		protected static function normalizeTopbarSearchDateRange(array $dateRange = array())
+		{
+			$result = array('startDate' => '', 'endDate' => '');
+			foreach (array('startDate', 'endDate') as $key) {
+				$value = trim((string)($dateRange[$key] ?? ''));
+				$date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+				$errors = \DateTimeImmutable::getLastErrors();
+				if ($date instanceof \DateTimeImmutable && ($errors === false || ((int)$errors['warning_count'] === 0 && (int)$errors['error_count'] === 0)) && $date->format('Y-m-d') === $value) {
+					$result[$key] = $value;
+				}
+			}
+			if ($result['startDate'] !== '' && $result['endDate'] !== '' && $result['startDate'] > $result['endDate']) {
+				$result['endDate'] = $result['startDate'];
+			}
+			return $result;
+		}
+
+		protected static function filterTopbarSearchResultsByDateRange(array $results, array $dateRange, $limit)
+		{
+			$startDate = (string)($dateRange['startDate'] ?? '');
+			$endDate = (string)($dateRange['endDate'] ?? '');
+			$filtered = array();
+			foreach ($results as $result) {
+				$resultDate = substr(trim((string)($result['_searchDate'] ?? '')), 0, 10);
+				if (($startDate !== '' || $endDate !== '') && ($resultDate === '' || ($startDate !== '' && $resultDate < $startDate) || ($endDate !== '' && $resultDate > $endDate))) {
+					continue;
+				}
+				unset($result['_searchDate']);
+				$filtered[] = $result;
+			}
+			return array_slice($filtered, 0, max(1, (int)$limit));
+		}
+
 		protected static function buildTopbarSearchScoreSql($expression, array $terms, array &$params, $prefix, array $weights = array())
 		{
 			if (count($terms) === 0) {
@@ -7119,6 +7166,7 @@
 					}))),
 					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
 					'relevance' => $totalScore,
+					'_searchDate' => (string)$faq->get('created'),
 					'action' => array(
 						'type' => 'faq',
 						'faqId' => (int)$faq->getId(),
@@ -7185,6 +7233,7 @@
 					'subtitle' => $isPack ? 'Pack' : 'Parcours',
 					'excerpt' => self::buildTopbarSearchSnippet($description !== '' ? $description : $title, $query, 100, 220),
 					'relevance' => $totalScore,
+					'_searchDate' => (string)($parcoursRow['datecreation'] ?? ''),
 					'_sortKind' => 1,
 					'action' => array(
 						'type' => 'tutorial',
@@ -7212,6 +7261,7 @@
 						m.title,
 						m.resume,
 						m.html,
+						m.datecreation,
 						pm.IDparcours,
 						pm.branch
 					FROM mission m
@@ -7302,6 +7352,7 @@
 						'subtitle' => implode(' | ', $subtitleParts),
 						'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
 						'relevance' => $missionScore,
+						'_searchDate' => (string)($missionRow['datecreation'] ?? ''),
 						'_sortKind' => 2,
 						'action' => array(
 							'type' => 'tutorial',
@@ -7350,6 +7401,7 @@
 					h.name,
 					h.templatename,
 					h.IDtypeholon,
+					h.datecreation,
 					h.datemodification
 				FROM holon h
 				WHERE h.IDholon_org = :root_holon_id
@@ -7452,6 +7504,7 @@
 					'subtitle' => $subtitle,
 					'excerpt' => $matchedExcerpt,
 					'relevance' => $totalScore,
+					'_searchDate' => (string)($row['datecreation'] ?? ''),
 					'datemodification' => (string)($row['datemodification'] ?? ''),
 					'action' => array(
 						'type' => 'structure',
@@ -7646,6 +7699,7 @@
 					'subtitle' => implode(' - ', $subtitleParts),
 					'excerpt' => $excerpt,
 					'relevance' => (int)($row['relevance'] ?? 0),
+					'_searchDate' => (string)($row['membership_created_at'] ?? ''),
 					'action' => array(
 						'type' => 'user',
 						'userId' => (int)($row['id'] ?? 0),
@@ -7656,7 +7710,7 @@
 			return $results;
 		}
 
-		protected function searchTopbarDocumentResults($query, array $terms, $limit = 12, array $viewerContext = array())
+		protected function searchTopbarDocumentResults($query, array $terms, $limit = 12, array $viewerContext = array(), $documentType = null)
 		{
 			if ((int)$this->getId() <= 0 || count($terms) === 0) {
 				return array();
@@ -7665,11 +7719,15 @@
 			$params = array(
 				'organization_id' => (int)$this->getId(),
 			);
+			$isPvSearch = $documentType === \dbObject\Document::TYPE_PV;
+			$params['document_type_pv'] = \dbObject\Document::TYPE_PV;
 
 			$titleExpr = "LOWER(COALESCE(d.title, ''))";
 			$descriptionExpr = "LOWER(COALESCE(d.description, ''))";
 			$keywordsExpr = "LOWER(COALESCE(d.keywords, ''))";
 			$contentExpr = "LOWER(COALESCE(d.content, ''))";
+			$pvPointTitleExpr = $isPvSearch ? "LOWER(COALESCE(pv_search.point_titles, ''))" : '0';
+			$pvPointContentExpr = $isPvSearch ? "LOWER(COALESCE(pv_search.point_contents, ''))" : '0';
 
 			$titleScoreSql = self::buildTopbarSearchScoreSql($titleExpr, $terms, $params, 'document_title', array(
 				'exact' => 100,
@@ -7691,13 +7749,33 @@
 				'prefix' => 12,
 				'like' => 6,
 			));
+			$pvPointTitleScoreSql = self::buildTopbarSearchScoreSql($pvPointTitleExpr, $terms, $params, 'document_pv_point_title', array(
+				'exact' => 44,
+				'prefix' => 28,
+				'like' => 14,
+			));
+			$pvPointContentScoreSql = self::buildTopbarSearchScoreSql($pvPointContentExpr, $terms, $params, 'document_pv_point_content', array(
+				'exact' => 30,
+				'prefix' => 18,
+				'like' => 9,
+			));
 			$preFilterSql = self::buildTopbarSearchAnyMatchSql(
-				array($titleExpr, $descriptionExpr, $keywordsExpr, $contentExpr),
+				array($titleExpr, $descriptionExpr, $keywordsExpr, $contentExpr, $pvPointTitleExpr, $pvPointContentExpr),
 				$terms,
 				$params,
 				'document_prefilter'
 			);
 			$limitSql = max(1, (int)$limit);
+
+			$documentTypeSql = $isPvSearch
+				? 'AND d.documenttype = :document_type_pv'
+				: 'AND COALESCE(d.documenttype, \'\') <> :document_type_pv';
+			$pvJoinSql = $isPvSearch
+				? "LEFT JOIN (\n\t\t\t\t\tSELECT IDdocument, GROUP_CONCAT(COALESCE(title, '') SEPARATOR ' ') AS point_titles, GROUP_CONCAT(COALESCE(content, '') SEPARATOR ' ') AS point_contents\n\t\t\t\t\tFROM document_pv_point\n\t\t\t\t\tWHERE item_type = 'point'\n\t\t\t\t\tGROUP BY IDdocument\n\t\t\t\t) pv_search ON pv_search.IDdocument = d.id"
+				: '';
+			$pvSelectSql = $isPvSearch
+				? 'pv_search.point_titles, pv_search.point_contents'
+				: "'' AS point_titles, '' AS point_contents";
 
 			$rows = self::fetchAll(
 				"SELECT
@@ -7709,9 +7787,12 @@
 					d.IDholon,
 					d.datecreation,
 					d.datemodification,
-					(" . $titleScoreSql . " + " . $descriptionScoreSql . " + " . $keywordsScoreSql . " + " . $contentScoreSql . ") AS relevance
+					(" . $titleScoreSql . " + " . $descriptionScoreSql . " + " . $keywordsScoreSql . " + " . $contentScoreSql . " + " . $pvPointTitleScoreSql . " + " . $pvPointContentScoreSql . ") AS relevance,
+					" . $pvSelectSql . "
 				FROM document d
+				" . $pvJoinSql . "
 				WHERE d.IDorganization = :organization_id
+				  " . $documentTypeSql . "
 				  AND " . $preFilterSql . "
 				HAVING relevance > 0
 				ORDER BY relevance DESC, d.datemodification DESC, d.datecreation DESC, d.id DESC
@@ -7736,21 +7817,25 @@
 				}
 
 				$subtitle = $document->getOrganizationContextLabel();
-				$snippetSource = trim((string)($row['description'] ?? '')) !== ''
+				$pvSnippetSource = trim((string)($row['point_titles'] ?? '') . ' ' . (string)($row['point_contents'] ?? ''));
+				$snippetSource = $isPvSearch && $pvSnippetSource !== ''
+					? $pvSnippetSource
+					: (trim((string)($row['description'] ?? '')) !== ''
 					? (string)($row['description'] ?? '')
-					: ((trim((string)($row['keywords'] ?? '')) !== '' ? (string)($row['keywords'] ?? '') : (string)($row['content'] ?? '')));
+					: ((trim((string)($row['keywords'] ?? '')) !== '' ? (string)($row['keywords'] ?? '') : (string)($row['content'] ?? ''))));
 				$detailUrl = '/omo/api/documents/detail.php?id=' . (int)$document->getId() . '&oid=' . (int)$this->getId();
 				if ((int)$document->get('IDholon') > 0) {
 					$detailUrl .= '&cid=' . (int)$document->get('IDholon');
 				}
 
 				$results[] = array(
-					'module' => 'documents',
-					'moduleLabel' => 'Documents',
+					'module' => $isPvSearch ? 'pv' : 'documents',
+					'moduleLabel' => $isPvSearch ? 'PV' : 'Documents',
 					'title' => trim((string)$document->get('title')) !== '' ? (string)$document->get('title') : ('Document #' . (int)$document->getId()),
 					'subtitle' => $subtitle,
 					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
 					'relevance' => (int)($row['relevance'] ?? 0),
+					'_searchDate' => (string)($row['datecreation'] ?? ''),
 					'action' => array(
 						'type' => 'document',
 						'documentId' => (int)$document->getId(),
@@ -8014,6 +8099,7 @@
 					'subtitle' => $subtitle,
 					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
 					'relevance' => (int)($row['relevance'] ?? 0),
+					'_searchDate' => (string)($row['created_at'] ?? ''),
 					'action' => array(
 						'type' => 'decision',
 						'decisionId' => (int)$decision->getId(),
@@ -8153,6 +8239,7 @@
 					}))),
 					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
 					'relevance' => (int)($row['relevance'] ?? 0),
+					'_searchDate' => (string)($row['start_at'] ?? ''),
 					'action' => array(
 						'type' => 'calendar_event',
 						'eventId' => (int)$event->getId(),
@@ -8175,6 +8262,7 @@
 				'team' => 'team',
 				'calendar' => 'calendar',
 				'documents' => 'documents',
+				'pv' => 'documents',
 				'decision' => 'decision',
 			);
 			$enabledScopes = array();
@@ -8212,6 +8300,8 @@
 			$terms = self::buildTopbarSearchTerms($query);
 			$limit = isset($options['limit']) ? max(1, (int)$options['limit']) : 30;
 			$perScopeLimit = isset($options['perScopeLimit']) ? max(1, (int)$options['perScopeLimit']) : 12;
+			$expandedPerScopeLimit = $perScopeLimit * 8;
+			$dateRange = self::normalizeTopbarSearchDateRange(is_array($options['dateRange'] ?? null) ? $options['dateRange'] : array());
 			$canSearchPeople = array_key_exists('canSearchPeople', $options)
 				? (bool)$options['canSearchPeople']
 				: self::topbarSearchViewerCanSearchPeople($viewerContext, (int)$this->getId());
@@ -8221,6 +8311,7 @@
 				'team' => 0,
 				'calendar' => 0,
 				'documents' => 0,
+				'pv' => 0,
 				'decision' => 0,
 				'faq' => 0,
 				'tutorials' => 0,
@@ -8233,43 +8324,49 @@
 				&& self::topbarSearchViewerHasOrganizationAccess($viewerContext, (int)$this->getId())
 			) {
 				if (isset($normalizedScopes['structure'])) {
-					$scopeResults = $this->searchTopbarStructureResults($query, $terms, $perScopeLimit, $viewerContext);
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarStructureResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
 					$counts['structure'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
 
 				if ($canSearchPeople && isset($normalizedScopes['team'])) {
-					$scopeResults = $this->searchTopbarTeamResults($query, $terms, $perScopeLimit, $viewerContext);
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarTeamResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
 					$counts['team'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
 
 				if (isset($normalizedScopes['calendar'])) {
-					$scopeResults = $this->searchTopbarCalendarResults($query, $terms, $perScopeLimit, $viewerContext);
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarCalendarResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
 					$counts['calendar'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
 
 				if (isset($normalizedScopes['documents'])) {
-					$scopeResults = $this->searchTopbarDocumentResults($query, $terms, $perScopeLimit, $viewerContext);
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarDocumentResults($query, $terms, $expandedPerScopeLimit, $viewerContext, 'non_pv'), $dateRange, $perScopeLimit);
 					$counts['documents'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
 
+				if (isset($normalizedScopes['pv'])) {
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarDocumentResults($query, $terms, $expandedPerScopeLimit, $viewerContext, \dbObject\Document::TYPE_PV), $dateRange, $perScopeLimit);
+					$counts['pv'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
+
 				if (isset($normalizedScopes['decision'])) {
-					$scopeResults = $this->searchTopbarDecisionResults($query, $terms, $perScopeLimit, $viewerContext);
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarDecisionResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
 					$counts['decision'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
 
 				if (isset($normalizedScopes['faq'])) {
-					$scopeResults = $this->searchTopbarFaqResults($query, $terms, $perScopeLimit, $viewerContext);
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarFaqResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
 					$counts['faq'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
 
 				if (isset($normalizedScopes['tutorials'])) {
-					$scopeResults = $this->searchTopbarTutorialResults($query, $terms, $perScopeLimit, $viewerContext);
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarTutorialResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
 					$counts['tutorials'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
@@ -8281,8 +8378,9 @@
 				'calendar' => 3,
 				'decision' => 4,
 				'documents' => 5,
-				'faq' => 6,
-				'tutorials' => 7,
+				'pv' => 6,
+				'faq' => 7,
+				'tutorials' => 8,
 			);
 
 			usort($results, function ($left, $right) use ($moduleOrder) {

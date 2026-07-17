@@ -1422,11 +1422,12 @@ if (!is_string($payloadJson)) {
                 <div class="omo-overlay-drawer__panel">
                     <div class="omo-overlay-drawer__header generic-drawer-header">
                         <div class="omo-overlay-drawer__header-copy generic-drawer-header__copy">
-                            <h3 class="omo-overlay-drawer__title" data-omo-decision-editor-title><?= $escape(t('decisions.index.action.open_editor_title', [], $lang, $sourceLang)) ?></h3>
-                            <p class="omo-overlay-drawer__description" data-omo-decision-editor-description><?= $escape(t('decisions.index.description', [], $lang, $sourceLang)) ?></p>
+                            <h3 class="omo-overlay-drawer__title" data-omo-subdrawer-title data-omo-decision-editor-title><?= $escape(t('decisions.index.action.open_editor_title', [], $lang, $sourceLang)) ?></h3>
+                            <p class="omo-overlay-drawer__description" data-omo-subdrawer-description data-omo-decision-editor-description><?= $escape(t('decisions.index.description', [], $lang, $sourceLang)) ?></p>
                         </div>
                         <div class="generic-drawer-header__actions">
-                            <button type="button" class="omo-overlay-drawer__close" data-omo-decision-editor-close>Fermer</button>
+                            <div data-omo-subdrawer-actions></div>
+                            <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary" data-omo-decision-editor-close>Fermer</button>
                         </div>
                     </div>
                     <div class="omo-overlay-drawer__body omo-decisions__editor-body" data-omo-decision-editor-body></div>
@@ -1436,6 +1437,7 @@ if (!is_string($payloadJson)) {
 </div>
 </div>
 
+<script src="/common/drawer/subdrawer.js"></script>
 <link rel="stylesheet" href="/common/choice/decision_cards.css">
 <script src="/common/choice/decision_cards.js"></script>
 
@@ -1452,7 +1454,7 @@ if (!is_string($payloadJson)) {
 }
 
 .omo-decisions__app-icon {
-    --omo-panel-view-app-icon-accent: #0f766e;
+    --omo-panel-view-app-icon-accent: var(--color-primary, #2563eb);
 }
 
 .omo-decisions__header-actions {
@@ -1812,7 +1814,7 @@ if (!is_string($payloadJson)) {
     height: 34px;
     padding: 0 8px;
     border: 1px solid var(--color-border, #d1d5db);
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface, #ffffff) 92%, white);
     color: var(--color-text, #1f2937);
     cursor: pointer;
@@ -1842,7 +1844,7 @@ if (!is_string($payloadJson)) {
     max-width: calc(100vw - 24px);
     padding: 6px;
     border: 1px solid var(--color-border, #d1d5db);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--color-surface, #ffffff);
     box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
     z-index: 5000;
@@ -1857,7 +1859,7 @@ if (!is_string($payloadJson)) {
     width: 100%;
     padding: 9px 10px;
     border: 0;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: transparent;
     color: var(--color-text, #1f2937);
     text-align: left;
@@ -1953,7 +1955,7 @@ if (!is_string($payloadJson)) {
         min-width: 42px;
         max-width: 42px;
         flex: 0 0 42px;
-        border-radius: 0 0 0 12px !important;
+        border-radius: 0 0 0 var(--radius-md) !important;
     }
 
     .omo-decisions__header-secondary {
@@ -2043,6 +2045,13 @@ const elements = {
     editorDescription: root.querySelector('[data-omo-decision-editor-description]'),
     editorBody: root.querySelector('[data-omo-decision-editor-body]')
 };
+const decisionDrawerController = elements.editorDrawer && typeof window.omoCreateSubdrawerController === 'function'
+    ? window.omoCreateSubdrawerController({ drawer: elements.editorDrawer })
+    : null;
+if (decisionDrawerController) {
+    elements.editorDrawer.__omoSubdrawerController = decisionDrawerController;
+    window.omoDecisionDrawer = decisionDrawerController;
+}
 const collator = typeof Intl !== 'undefined' && typeof Intl.Collator === 'function'
     ? new Intl.Collator('fr', { sensitivity: 'base', numeric: true })
     : null;
@@ -2529,6 +2538,14 @@ openDecisionEditor = function (url, title, description) {
         return;
     }
 
+    if (decisionDrawerController) {
+        decisionDrawerController.setHeader({
+            title: resolvedTitle,
+            description: description || '',
+            actions: []
+        });
+    }
+
     if (elements.editorTitle) {
         elements.editorTitle.textContent = resolvedTitle;
     }
@@ -2557,6 +2574,10 @@ openDecisionEditor = function (url, title, description) {
                 window.jQuery(elements.editorBody).html(data);
             } else {
                 elements.editorBody.innerHTML = data;
+            }
+
+            if (decisionDrawerController) {
+                decisionDrawerController.applyContentHeader(elements.editorBody);
             }
 
             if (typeof window.omoDecisionVoteInit === 'function') {

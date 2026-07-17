@@ -59,14 +59,14 @@ if (!function_exists('commonRenderMailLayout')) {
 <table width='100%' cellpadding='0' cellspacing='0'>
 <tr>
 <td align='center' style='padding:24px 12px;'>
-<table width='640' cellpadding='0' cellspacing='0' style='max-width:640px; width:100%; background:white; border-radius:18px; overflow:hidden; box-shadow:0 16px 40px rgba(15, 23, 42, 0.08);'>
+<table width='640' cellpadding='0' cellspacing='0' style='max-width:640px; width:100%; background:white; border-radius:var(--radius-md); overflow:hidden; box-shadow:0 16px 40px rgba(15, 23, 42, 0.08);'>
 <tr>
 <td style='background:" . commonMailEscape($brandColor) . "; text-align:center; padding:32px 24px; position:relative;'>
     " . ($bannerUrl !== '' ? "<div style='background:url(" . commonMailEscape($bannerUrl) . ") center/cover; opacity:0.22; position:absolute; inset:0;'></div>" : "") . "
     <div style='position:relative;'>
         " . ($logoUrl !== '' ? "
-        <div style='width:84px;height:84px;border-radius:24px;background:white;margin:0 auto 14px;padding:8px;box-sizing:border-box;'>
-            <img src='" . commonMailEscape($logoUrl) . "' alt='' style='width:100%;height:100%;object-fit:cover;border-radius:18px;display:block;'>
+        <div style='width:84px;height:84px;border-radius:var(--radius-md);background:white;margin:0 auto 14px;padding:8px;box-sizing:border-box;'>
+            <img src='" . commonMailEscape($logoUrl) . "' alt='' style='width:100%;height:100%;object-fit:cover;border-radius:var(--radius-md);display:block;'>
         </div>
         " : "") . "
         " . ($brandName !== '' ? "<div style='color:white; font-size:13px; letter-spacing:0.08em; text-transform:uppercase; opacity:0.88; margin-bottom:10px;'>" . commonMailEscape($brandName) . "</div>" : "") . "
@@ -78,7 +78,7 @@ if (!function_exists('commonRenderMailLayout')) {
 <td style='padding:32px 32px 28px;'>
     " . $introHtml . "
     " . $bodyHtml . "
-    " . ($detailsHtml !== '' ? "<div style='margin:18px 0 0; padding:18px 20px; border:1px solid #dbe3ef; border-radius:16px; background:#f8fafc;'>" . $detailsHtml . "</div>" : "") . "
+    " . ($detailsHtml !== '' ? "<div style='margin:18px 0 0; padding:18px 20px; border:1px solid #dbe3ef; border-radius:var(--radius-md); background:#f8fafc;'>" . $detailsHtml . "</div>" : "") . "
     " . ($buttonLabel !== '' && $buttonUrl !== '' ? "
     <div style='margin:24px 0 0; text-align:center;'>
         <a href='" . commonMailEscape($buttonUrl) . "' style='display:inline-block; padding:13px 22px; background:" . commonMailEscape($brandColor) . "; color:white; text-decoration:none; border-radius:999px; font-weight:700;'>

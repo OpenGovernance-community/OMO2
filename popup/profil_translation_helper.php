@@ -75,7 +75,7 @@ function profilPopupGetSourceLang(): array
             'context' => 'Label shown for the active profile email summary item.',
         ],
         'profile.popup.active.username.label' => [
-            'text' => 'Identifiant affiché',
+            'text' => "Nom d'utilisateur affiche",
             'context' => 'Label shown for the active profile username summary item.',
         ],
         'profile.popup.active.fullname.label' => [
@@ -189,6 +189,10 @@ function profilPopupGetSourceLang(): array
         'profile.popup.js.invalid_response' => [
             'text' => 'Réponse serveur invalide.',
             'context' => 'Fallback JavaScript error message shown when an AJAX endpoint returns invalid JSON.',
+        ],
+        'profile.popup.js.unsaved_changes' => [
+            'text' => 'Des données ne sont pas encore sauvegardées. Voulez-vous vraiment quitter ce formulaire ?',
+            'context' => 'Confirmation shown before closing or replacing a profile form with unsaved changes.',
         ],
         'profile.popup.js.disconnect_confirm' => [
             'text' => 'Déconnecter le compte Patreon de ce profil ?',
@@ -307,7 +311,7 @@ function profilPopupGetSourceLang(): array
             'context' => 'Password policy rule shown in the profile popup.',
         ],
         'profile.popup.password.policy.rule.email' => [
-            'text' => "Évitez de reprendre votre e-mail ou votre identifiant",
+            'text' => "Évitez de reprendre votre e-mail ou votre nom d'utilisateur",
             'context' => 'Advisory password policy rule shown in the profile popup.',
         ],
         'profile.popup.scope.jquery_required' => [

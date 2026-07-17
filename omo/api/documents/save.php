@@ -25,8 +25,10 @@ $documentType = trim((string)($_POST['document_type'] ?? ''));
 $externalUrl = trim((string)($_POST['external_url'] ?? ''));
 $openInNewWindow = !empty($_POST['open_in_new_window']);
 $visibilityType = trim((string)($_POST['visibility_type'] ?? 'organization'));
+$editVisibilityType = trim((string)($_POST['edit_visibility_type'] ?? 'self'));
 $isFolder = !empty($_POST['is_folder']) || trim(mb_strtolower($documentType, 'UTF-8')) === \dbObject\Document::TYPE_FOLDER;
 $parentDocumentId = isset($_POST['parent_document_id']) ? (int)$_POST['parent_document_id'] : 0;
+$pvTemplateId = isset($_POST['pv_template_id']) ? max(0, (int)$_POST['pv_template_id']) : 0;
 
 if (
     $documentId <= 0
@@ -66,10 +68,18 @@ $payload = array(
     'open_in_new_window' => $openInNewWindow,
     'uploaded_file' => $_FILES['uploaded_file'] ?? null,
     'remove_uploaded_file' => !empty($_POST['remove_uploaded_file']),
-    'visibility_type' => $visibilityType,
     'is_folder' => $isFolder,
     'parent_document_id' => $parentDocumentId,
+    'pv_template_id' => $pvTemplateId,
 );
+
+if (array_key_exists('visibility_type', $_POST)) {
+    $payload['visibility_type'] = $visibilityType;
+}
+
+if (array_key_exists('edit_visibility_type', $_POST)) {
+    $payload['edit_visibility_type'] = $editVisibilityType;
+}
 
 if ($documentId > 0) {
     if (!$document->load($documentId)) {
@@ -83,9 +93,11 @@ if ($documentId > 0) {
 
     $organizationId = (int)$document->get('IDorganization');
 
+    $canManagePvDocument = $document->isPvDocument()
+        && $document->canUserManagePvDocument($currentUserId);
     if (
         ($organizationId > 0 && !commonCurrentUserHasOrganizationAccess($organizationId))
-        || !$document->canEditInOrganizationContext($organizationId, $currentUserId, false)
+        || (!$canManagePvDocument && !$document->canEditInOrganizationContext($organizationId, $currentUserId, false))
     ) {
         http_response_code(403);
         echo json_encode(array(

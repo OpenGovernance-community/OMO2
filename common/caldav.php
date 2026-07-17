@@ -495,6 +495,11 @@ if (!function_exists('commonCalDavBuildEventCalendarData')) {
         $createdAt = commonCalDavResolveEventCreatedAt($event);
         $title = trim((string)$event->get('title'));
         $description = trim((string)$event->get('description'));
+        $locationData = method_exists($event, 'getLocationDisplayData')
+            ? (array)$event->getLocationDisplayData()
+            : array();
+        $locationAddress = trim((string)($locationData['address'] ?? ''));
+        $videoMeetingUrl = trim((string)($locationData['videoUrl'] ?? ''));
         $lines = array(
             'BEGIN:VCALENDAR',
             'VERSION:2.0',
@@ -518,6 +523,16 @@ if (!function_exists('commonCalDavBuildEventCalendarData')) {
 
         if ($description !== '') {
             $lines[] = 'DESCRIPTION:' . commonCalDavEscapeText($description);
+        }
+
+        if ($locationAddress !== '') {
+            $lines[] = 'LOCATION:' . commonCalDavEscapeText($locationAddress);
+        } elseif ($videoMeetingUrl !== '') {
+            $lines[] = 'LOCATION:' . commonCalDavEscapeText('Visio');
+        }
+
+        if ($videoMeetingUrl !== '') {
+            $lines[] = 'URL:' . commonCalDavEscapeText($videoMeetingUrl);
         }
 
         $organizationName = trim((string)$organization->get('name'));
@@ -638,10 +653,15 @@ if (!function_exists('commonCalDavLoadCalendarsForViewer')) {
 
             $events = new ArrayEvent();
             $events->loadForOrganization($organizationId, false);
+            $viewerScopedEmail = trim(mb_strtolower((string)$viewer->getScopedEmail($organizationId), 'UTF-8'));
 
             $eventResources = array();
             foreach ($events as $event) {
                 if (!$event instanceof Event) {
+                    continue;
+                }
+
+                if (!$event->isVisibleToInvitationViewer($viewerUserId, $organizationId, $viewerScopedEmail)) {
                     continue;
                 }
 

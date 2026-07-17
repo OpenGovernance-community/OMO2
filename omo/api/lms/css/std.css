@@ -13,7 +13,7 @@
     --text-light: var(--color-text-light, #6b7280);
 
     --border-color: var(--color-border, #d1d5db);
-    --border-radius: 12px;
+    --border-radius: var(--radius-md);
     --shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
     --disabled: color-mix(in srgb, var(--text-main) 18%, var(--bg-card));
     --progress-bg: color-mix(in srgb, var(--border-color) 64%, var(--bg-card));
@@ -38,7 +38,7 @@ button {
     background: var(--primary);
     color: var(--color-text-inverse, #ffffff);
     border: 1px solid color-mix(in srgb, var(--primary) 72%, transparent);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
 }
 
 button:hover {
