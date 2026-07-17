@@ -49,6 +49,22 @@
 		return $value;
 	}
 
+	function telegramTraceNormalizeValue($value) {
+		if (is_array($value)) {
+			$normalized = array();
+			foreach ($value as $key => $item) {
+				$normalized[$key] = telegramTraceNormalizeValue($item);
+			}
+			return $normalized;
+		}
+
+		if (is_string($value) && $value !== '' && !preg_match('//u', $value)) {
+			return '[base64]'.base64_encode($value);
+		}
+
+		return $value;
+	}
+
 	function telegramTraceLog($event, $context = array()) {
 		$logDirectory = __DIR__.'/../telegram/data';
 		$logPath = $logDirectory.'/telegram_trace.log';
@@ -59,7 +75,7 @@
 		$entry = array(
 			'time' => date('c'),
 			'event' => (string)$event,
-			'context' => is_array($context) ? $context : array('value' => $context),
+			'context' => telegramTraceNormalizeValue(is_array($context) ? $context : array('value' => $context)),
 		);
 		if (!empty($GLOBALS['telegramTraceId'])) {
 			$entry['trace_id'] = (string)$GLOBALS['telegramTraceId'];
@@ -128,31 +144,32 @@
 			return null;
 		}
 
-		$result = false;
+		if (!function_exists('curl_init')) {
+			error_log('[telegram-api] cURL extension is not available');
+			return null;
+		}
 
-		if (function_exists('curl_init')) {
-			$ch = curl_init($url);
-			curl_setopt($ch, CURLOPT_POST, true);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-			curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+		$ch = curl_init($url);
+		curl_setopt_array($ch, array(
+			CURLOPT_POST => true,
+			CURLOPT_RETURNTRANSFER => true,
+			CURLOPT_HTTPHEADER => array(
 				'Content-Type: application/json; charset=UTF-8',
 				'Accept: application/json',
-			));
-			curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-			$result = curl_exec($ch);
-		} else {
-			$context = stream_context_create(array(
-				'http' => array(
-					'method' => 'POST',
-					'header' => implode("\r\n", array(
-						'Content-Type: application/json; charset=UTF-8',
-						'Accept: application/json',
-					)),
-					'content' => $payload,
-					'ignore_errors' => true,
-				),
-			));
-			$result = @file_get_contents($url, false, $context);
+			),
+			CURLOPT_POSTFIELDS => $payload,
+			CURLOPT_CONNECTTIMEOUT => 15,
+			CURLOPT_TIMEOUT => 60,
+			CURLOPT_FAILONERROR => false,
+		));
+		$requestCallback = function () use ($ch) {
+			return curl_exec($ch);
+		};
+		$result = function_exists('telegramTraceRun')
+			? telegramTraceRun('telegram_api_'.$method, $requestCallback)
+			: $requestCallback();
+		if ($result === false) {
+			error_log('[telegram-api] method='.$method.', curl_errno='.curl_errno($ch).', curl_error='.curl_error($ch));
 		}
 
 		if ($result === false) {

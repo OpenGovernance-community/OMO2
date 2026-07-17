@@ -283,7 +283,6 @@
 			$curlError = curl_error($curl);
 			$httpCode = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
 			$headerSize = (int)curl_getinfo($curl, CURLINFO_HEADER_SIZE);
-			curl_close($curl);
 
 			if ($response === false) {
 				return array(
