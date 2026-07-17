@@ -1,4 +1,10 @@
 (function () {
+    if (window.__omoInstallScriptInitialized === true) {
+        return;
+    }
+
+    window.__omoInstallScriptInitialized = true;
+
     const OMO_INSTALL_NEXT_PROMPT_COOKIE = 'omo-install-next-prompt-at';
     const OMO_INSTALL_REFUSAL_COUNT_COOKIE = 'omo-install-refusal-count';
     const OMO_INSTALL_NEVER_COOKIE = 'omo-install-never';
@@ -222,13 +228,15 @@
         }
 
         window.addEventListener('load', function () {
-            navigator.serviceWorker.register(OMO_SW_URL, {
-                scope: OMO_SW_SCOPE,
-                updateViaCache: 'none'
-            }).then(function (registration) {
-                if (registration && typeof registration.update === 'function') {
-                    registration.update();
+            navigator.serviceWorker.getRegistration(OMO_SW_SCOPE).then(function (registration) {
+                if (registration) {
+                    return registration;
                 }
+
+                return navigator.serviceWorker.register(OMO_SW_URL, {
+                    scope: OMO_SW_SCOPE,
+                    updateViaCache: 'none'
+                });
             }).catch(function (error) {
                 console.error('Impossible d\'enregistrer le service worker OMO.', error);
             });

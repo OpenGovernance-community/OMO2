@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS `homework` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(150) NOT NULL,
   `detail` text DEFAULT NULL,
+  `onlyAdmin` tinyint(1) NOT NULL DEFAULT 0,
   `position` int(11) DEFAULT NULL,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
   `dateupdate` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),

@@ -6,10 +6,63 @@
 		return commonGetConfiguredEnvironmentSubdomains();
 	}
 
-	function appGetCookieDomain($host = null) {
+	function appNormalizeCookieHost($host = null) {
 		$host = is_string($host) && $host !== '' ? strtolower($host) : strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
 		$host = trim((string)$host);
+		return preg_replace('/:\d+$/', '', $host);
+	}
+
+	function appGetConfiguredCookieRootHost() {
+		$host = strtolower(trim((string)commonReadRuntimeEnvValue('COOKIE_ROOT_HOST', '')));
 		$host = preg_replace('/:\d+$/', '', $host);
+
+		if ($host === '' || $host === 'localhost' || preg_match('/(^|\.)localhost$/', $host)) {
+			return '';
+		}
+
+		return $host;
+	}
+
+	function appHostMatchesCookieRootHost($host, $rootHost) {
+		$host = appNormalizeCookieHost($host);
+		$rootHost = appNormalizeCookieHost($rootHost);
+
+		if ($host === '' || $rootHost === '') {
+			return false;
+		}
+
+		if ($host === $rootHost) {
+			return true;
+		}
+
+		return substr($host, -strlen('.' . $rootHost)) === '.' . $rootHost;
+	}
+
+	function appGetCookieScopeMode($host = null) {
+		$mode = strtolower(trim((string)commonReadRuntimeEnvValue('COOKIE_SCOPE_MODE', 'auto')));
+		if (in_array($mode, ['host', 'environment', 'parent'], true)) {
+			return $mode;
+		}
+
+		$configuredRootHost = appGetConfiguredCookieRootHost();
+		if ($configuredRootHost !== '' && appHostMatchesCookieRootHost($host, $configuredRootHost)) {
+			return 'environment';
+		}
+
+		if (appGetEnvironmentSubdomain($host) !== '') {
+			return 'host';
+		}
+
+		return 'parent';
+	}
+
+	function appGetParentCookieDomain($host = null) {
+		$host = appNormalizeCookieHost($host);
+		$configuredRootHost = appGetConfiguredCookieRootHost();
+
+		if ($configuredRootHost !== '' && appHostMatchesCookieRootHost($host, $configuredRootHost)) {
+			return '.' . $configuredRootHost;
+		}
 
 		if ($host === '' || filter_var($host, FILTER_VALIDATE_IP)) {
 			return '';
@@ -24,17 +77,62 @@
 			return '';
 		}
 
-		$rootPartCount = 2;
-		if (count($parts) >= 3) {
-			$environmentCandidate = strtolower((string)($parts[count($parts) - 3] ?? ''));
+		return '.' . implode('.', array_slice($parts, -2));
+	}
 
-			if (in_array($environmentCandidate, appGetReservedEnvironmentSubdomains(), true)) {
+	function appGetEnvironmentCookieDomain($host = null) {
+		$host = appNormalizeCookieHost($host);
+		$configuredRootHost = appGetConfiguredCookieRootHost();
 
-				$rootPartCount = 3;
+		if ($configuredRootHost !== '' && appHostMatchesCookieRootHost($host, $configuredRootHost)) {
+			return '.' . $configuredRootHost;
+		}
+
+		if ($host === '' || filter_var($host, FILTER_VALIDATE_IP)) {
+			return '';
+		}
+
+		if ($host === 'localhost' || preg_match('/(^|\.)localhost$/', $host)) {
+			return '';
+		}
+
+		$parts = array_values(array_filter(explode('.', $host)));
+		if (count($parts) < 3) {
+			return '';
+		}
+
+		$environmentCandidate = strtolower((string)($parts[count($parts) - 3] ?? ''));
+		if (!in_array($environmentCandidate, appGetReservedEnvironmentSubdomains(), true)) {
+			return '';
+		}
+
+		return '.' . implode('.', array_slice($parts, -3));
+	}
+
+	function appGetCookieDomain($host = null) {
+		$host = appNormalizeCookieHost($host);
+
+		if ($host === '' || filter_var($host, FILTER_VALIDATE_IP)) {
+			return '';
+		}
+
+		if ($host === 'localhost' || preg_match('/(^|\.)localhost$/', $host)) {
+			return '';
+		}
+
+		$scopeMode = appGetCookieScopeMode($host);
+		if ($scopeMode === 'host') {
+			return '';
+		}
+
+		if ($scopeMode === 'environment') {
+			$environmentDomain = appGetEnvironmentCookieDomain($host);
+			if ($environmentDomain !== '') {
+				return $environmentDomain;
 			}
 		}
 
-		return '.' . implode('.', array_slice($parts, -$rootPartCount));
+		return appGetParentCookieDomain($host);
 	}
 
 	function appShouldUseSecureCookies() {
@@ -98,6 +196,141 @@
 		return trim((string)($GLOBALS['lastMailError'] ?? ''));
 	}
 
+	function appMailNormalizeAddress($email) {
+		$email = trim((string)$email);
+		if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+			return '';
+		}
+
+		return function_exists('mb_strtolower')
+			? mb_strtolower($email, 'UTF-8')
+			: strtolower($email);
+	}
+
+	function appMailExtractAddresses($value, $allowTuple = false) {
+		$addresses = [];
+
+		if (is_array($value)) {
+			$isTuple = $allowTuple
+				&& isset($value[0], $value[1])
+				&& !is_array($value[0])
+				&& !is_array($value[1])
+				&& appMailNormalizeAddress($value[0]) !== ''
+				&& appMailNormalizeAddress($value[1]) === '';
+			if ($isTuple) {
+				$normalized = appMailNormalizeAddress($value[0]);
+				if ($normalized !== '') {
+					$addresses[$normalized] = $normalized;
+				}
+
+				return array_values($addresses);
+			}
+
+			foreach ($value as $item) {
+				foreach (appMailExtractAddresses($item, $allowTuple) as $address) {
+					$addresses[$address] = $address;
+				}
+			}
+
+			return array_values($addresses);
+		}
+
+		$normalized = appMailNormalizeAddress($value);
+		if ($normalized !== '') {
+			$addresses[$normalized] = $normalized;
+		}
+
+		return array_values($addresses);
+	}
+
+	function appMailPatreonSupportIsAvailable() {
+		if (function_exists('patreonSupportUiIsEnabled')) {
+			return patreonSupportUiIsEnabled();
+		}
+
+		if (trim((string)($GLOBALS['patreonClientId'] ?? '')) === '') {
+			return false;
+		}
+
+		if (trim((string)($GLOBALS['patreonClientSecret'] ?? '')) === '') {
+			return false;
+		}
+
+		$redirectUri = trim((string)($GLOBALS['patreonRedirectUri'] ?? ''));
+		if ($redirectUri === '' || preg_match('#^https?://#i', $redirectUri) !== 1) {
+			return false;
+		}
+
+		if (!function_exists('curl_init')) {
+			return false;
+		}
+
+		if (!class_exists('\\dbObject\\UserPatreon')) {
+			return false;
+		}
+
+		return \dbObject\UserPatreon::isStorageAvailable();
+	}
+
+	function appMailShouldAppendPatreonFooter($from, $to, $body) {
+		$body = (string)$body;
+		if ($body === '' || stripos($body, 'patreon.com/cw/OpenGovernance') !== false) {
+			return false;
+		}
+
+		if (!appMailPatreonSupportIsAvailable()) {
+			return false;
+		}
+
+		if (!class_exists('\\dbObject\\UserPatreon')) {
+			return false;
+		}
+
+		if (isset($_SESSION['currentUser']) && \dbObject\UserPatreon::hasConnectedUserId((int)$_SESSION['currentUser'])) {
+			return false;
+		}
+
+		$addresses = array_merge(appMailExtractAddresses($from, true), appMailExtractAddresses($to));
+		if (\dbObject\UserPatreon::hasConnectedEmails($addresses)) {
+			return false;
+		}
+
+		return true;
+	}
+
+	function appMailAppendPatreonFooter($body, $isHtml) {
+		$body = (string)$body;
+		$patreonUrl = 'https://www.patreon.com/cw/OpenGovernance';
+
+		if ($isHtml) {
+			$footerHtml = '<div style="margin-top:28px; padding-top:18px; border-top:1px solid #e2e8f0;">'
+				. '<p style="margin:0 0 8px; color:#64748b; font-size:13px; line-height:1.6;">'
+				. 'Vous pouvez aussi soutenir le developpement du projet sur Patreon.'
+				. '</p>'
+				. '<p style="margin:0;">'
+				. '<a href="' . htmlspecialchars($patreonUrl, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener noreferrer" style="color:#d1365f; font-weight:600; text-decoration:none;">'
+				. 'Soutenir le projet sur Patreon'
+				. '</a>'
+				. '</p>'
+				. '</div>';
+
+			if (preg_match('/<\/body\s*>/i', $body)) {
+				return preg_replace('/<\/body\s*>/i', $footerHtml . '</body>', $body, 1);
+			}
+
+			if (preg_match('/<\/html\s*>/i', $body)) {
+				return preg_replace('/<\/html\s*>/i', $footerHtml . '</html>', $body, 1);
+			}
+
+			return $body . "\n" . $footerHtml;
+		}
+
+		return rtrim($body)
+			. "\n\n---\n"
+			. "Vous pouvez aussi soutenir le developpement du projet sur Patreon :\n"
+			. $patreonUrl;
+	}
+
 	function appBuildAbsoluteUrl($path = '') {
 		$path = (string)$path;
 		$baseUrl = appGetCurrentSiteBaseUrl();
@@ -133,11 +366,118 @@
 		return $options;
 	}
 
+	function appBuildCookieOptionsForDomain($expires = 0, $httpOnly = true, $domain = '') {
+		$options = [
+			'expires' => (int)$expires,
+			'path' => '/',
+			'secure' => appShouldUseSecureCookies(),
+			'httponly' => (bool)$httpOnly,
+			'samesite' => 'Lax',
+		];
+
+		$domain = trim((string)$domain);
+		if ($domain !== '') {
+			$options['domain'] = $domain;
+		}
+
+		return $options;
+	}
+
 	function appBuildSessionCookieOptions($host = null) {
 		$options = appBuildCookieOptions(0, true, $host);
 		unset($options['expires']);
 		$options['lifetime'] = 0;
 		return $options;
+	}
+
+	function appGetCookieDomainCandidates($host = null) {
+		$host = appNormalizeCookieHost($host);
+		$candidates = [''];
+
+		foreach ([appGetCookieDomain($host), appGetEnvironmentCookieDomain($host), appGetParentCookieDomain($host)] as $domain) {
+			$domain = trim((string)$domain);
+			if ($domain !== '' && !in_array($domain, $candidates, true)) {
+				$candidates[] = $domain;
+			}
+		}
+
+		return $candidates;
+	}
+
+	function appShouldScopeSensitiveCookieNames($host = null) {
+		return appGetEnvironmentSubdomain($host) !== '' || appGetCookieScopeMode($host) === 'host';
+	}
+
+	function appGetCookieScopeKey($host = null) {
+		$domain = ltrim((string)appGetCookieDomain($host), '.');
+		if ($domain !== '') {
+			return $domain;
+		}
+
+		return appNormalizeCookieHost($host);
+	}
+
+	function appBuildScopedCookieName($baseName, $host = null) {
+		$baseName = trim((string)$baseName);
+		if ($baseName === '' || !appShouldScopeSensitiveCookieNames($host)) {
+			return $baseName;
+		}
+
+		$suffix = preg_replace('/[^a-z0-9]+/i', '_', strtolower((string)appGetCookieScopeKey($host)));
+		$suffix = trim((string)$suffix, '_');
+		if ($suffix === '') {
+			return $baseName;
+		}
+
+		return $baseName . '_' . $suffix;
+	}
+
+	function appGetCurrentUserCookieName($host = null) {
+		return appBuildScopedCookieName('currentUser', $host);
+	}
+
+	function appGetCurrentCodeCookieName($host = null) {
+		return appBuildScopedCookieName('currentCode', $host);
+	}
+
+	function appGetSessionCookieName($host = null) {
+		return appBuildScopedCookieName('PHPSESSID', $host);
+	}
+
+	function appGetLegacySessionCookieNames($host = null) {
+		$host = appNormalizeCookieHost($host);
+		$currentName = appGetSessionCookieName($host);
+		$legacyNames = [];
+		$hostSpecificName = appBuildScopedCookieName('PHPSESSID', $host);
+
+		if ($hostSpecificName !== '' && $hostSpecificName !== $currentName) {
+			$legacyNames[] = $hostSpecificName;
+		}
+
+		$normalizedHostSuffix = preg_replace('/[^a-z0-9]+/i', '_', strtolower((string)$host));
+		$normalizedHostSuffix = trim((string)$normalizedHostSuffix, '_');
+		if ($normalizedHostSuffix !== '') {
+			$legacyHostOnlyName = 'PHPSESSID_' . $normalizedHostSuffix;
+			if ($legacyHostOnlyName !== $currentName && !in_array($legacyHostOnlyName, $legacyNames, true)) {
+				$legacyNames[] = $legacyHostOnlyName;
+			}
+		}
+
+		return $legacyNames;
+	}
+
+	function appExpireCookieAcrossDomains($name, $httpOnly = true, $host = null) {
+		$name = trim((string)$name);
+		if ($name === '') {
+			return false;
+		}
+
+		$expired = false;
+		foreach (appGetCookieDomainCandidates($host) as $domain) {
+			$expired = setcookie($name, '', appBuildCookieOptionsForDomain(time() - 3600, $httpOnly, $domain)) || $expired;
+		}
+
+		return $expired;
 	}
 
 	function appSetCookie($name, $value, $expires = 0, $httpOnly = true, $host = null) {
@@ -150,8 +490,12 @@
 
 	require_once("config.php");
 	if (session_status() === PHP_SESSION_NONE) {
+		session_name(appGetSessionCookieName());
 		session_set_cookie_params(appBuildSessionCookieOptions());
 		session_start();
+		foreach (appGetLegacySessionCookieNames() as $legacySessionCookieName) {
+			appExpireCookieAcrossDomains($legacySessionCookieName, true);
+		}
 	}
 
 	require __DIR__ . '/vendor/autoload.php';
@@ -218,14 +562,20 @@
 			return true;
 		}
 		// Pas loggé, est-ce que les cookie permettent de retrouver l'utilisateur?
-		if (isset($_COOKIE["currentUser"]) && isset($_COOKIE["currentCode"])) {
+		$currentUserCookieName = appGetCurrentUserCookieName();
+		$currentCodeCookieName = appGetCurrentCodeCookieName();
+		$currentUserCookieValue = $_COOKIE[$currentUserCookieName] ?? ($_COOKIE["currentUser"] ?? null);
+		$currentCodeCookieValue = $_COOKIE[$currentCodeCookieName] ?? ($_COOKIE["currentCode"] ?? null);
+		if ($currentUserCookieValue !== null && $currentCodeCookieValue !== null) {
 			// Charge l'utilisateur corrspondant
 			$user=new \dbObject\User();
-			$user->load([["id",$_COOKIE["currentUser"]],["password",$_COOKIE["currentCode"]]]);
+			$user->load([["id",$currentUserCookieValue],["password",$currentCodeCookieValue]]);
 			if ($user->get("id")>0) {
 				// Redéfini les cookie pour 30 jours supplémentaires
-				appSetCookie('currentUser', (string)$user->get("id"), time()+60*60*24*30, false);
-				appSetCookie('currentCode', (string)$user->get("password"), time()+60*60*24*30, false);
+				appSetCookie($currentUserCookieName, (string)$user->get("id"), time()+60*60*24*30, false);
+				appSetCookie($currentCodeCookieName, (string)$user->get("password"), time()+60*60*24*30, false);
+				appExpireCookieAcrossDomains('currentUser', false);
+				appExpireCookieAcrossDomains('currentCode', false);
 				
 				// Initialise la variable de session
 				$_SESSION["currentUser"]=$user->get("id");
@@ -236,6 +586,10 @@
 				return true;
 			} else {
 				// Pas trouvé de correspondance
+				appExpireCookieAcrossDomains($currentUserCookieName, false);
+				appExpireCookieAcrossDomains($currentCodeCookieName, false);
+				appExpireCookieAcrossDomains('currentUser', false);
+				appExpireCookieAcrossDomains('currentCode', false);
 				return false;
 			}
 		}
@@ -255,10 +609,14 @@
 		$mail->Host = $GLOBALS["mailHost"];
 		$mail->Port = $GLOBALS["mailPort"];
 		$mailSecure = strtolower(trim((string)($GLOBALS["mailSecure"] ?? '')));
-		if ($mailSecure === 'tls') {
+		if ($mailSecure === 'starttls' || $mailSecure === 'tls') {
 			$mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
 		} elseif ($mailSecure === 'ssl') {
-			$mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+			if ((int)$mail->Port === 587) {
+				$mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+			} else {
+				$mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+			}
 		} else {
 			$mail->SMTPSecure = $mailSecure;
 		}
@@ -293,8 +651,13 @@
 
 		// Sujet et corps du message
 		$mail->Subject = $subject;
+		$isHtmlBody = strip_tags($body)!=$body;
+		if (appMailShouldAppendPatreonFooter($from, $to, $body)) {
+			$body = appMailAppendPatreonFooter($body, $isHtmlBody);
+			$isHtmlBody = strip_tags($body)!=$body;
+		}
 		$mail->Body = $body;
-		if (strip_tags($body)!=$body)
+		if ($isHtmlBody)
 			$mail->IsHTML(true);  
 		
 		// Envoi de l'e-mail

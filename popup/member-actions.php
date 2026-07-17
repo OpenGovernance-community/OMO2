@@ -1,34 +1,26 @@
 <?php
 require_once dirname(__DIR__) . '/omo/api/bootstrap.php';
+require_once dirname(__DIR__) . '/common/team/translations.php';
 
 use dbObject\Holon;
 use dbObject\Organization;
 use dbObject\User;
 
-function omoMemberActionsHolonTypeLabel(Holon $holon)
+function omoMemberActionsHolonTypeLabel(Holon $holon, ?array $lang = null, ?array $sourceLang = null)
 {
-    switch ((int)$holon->get('IDtypeholon')) {
-        case 4:
-            return 'organisation';
-        case 3:
-            return 'groupe';
-        case 2:
-            return 'cercle';
-        case 1:
-            return 'rôle';
-        default:
-            return 'contexte';
-    }
+    return omoTeamHolonTypeLabelByTypeId((int)$holon->get('IDtypeholon'), $lang, $sourceLang);
 }
 
 $organizationId = (int)($_GET['oid'] ?? ($_SESSION['currentOrganization'] ?? 0));
 $userId = (int)($_GET['id'] ?? 0);
 $currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
+$sourceLang = omoTeamSourceLang();
+$lang = omoTeamLoadTranslationBundle();
 
 if ($organizationId <= 0 || $userId <= 0) {
     http_response_code(400);
     ?>
-    <div class="omo-member-actions omo-member-actions--error">Contexte membre invalide.</div>
+    <div class="omo-member-actions omo-member-actions--error"><?= htmlspecialchars(omoTeamT('team.popup.invalid_member_context', [], $lang, $sourceLang)) ?></div>
     <?php
     exit;
 }
@@ -37,7 +29,7 @@ $organization = new Organization();
 if (!$organization->load($organizationId)) {
     http_response_code(404);
     ?>
-    <div class="omo-member-actions omo-member-actions--error">Organisation introuvable.</div>
+    <div class="omo-member-actions omo-member-actions--error"><?= htmlspecialchars(omoTeamT('team.popup.organization_not_found', [], $lang, $sourceLang)) ?></div>
     <?php
     exit;
 }
@@ -45,16 +37,16 @@ if (!$organization->load($organizationId)) {
 if (!$organization->canViewDetail()) {
     http_response_code(403);
     ?>
-    <div class="omo-member-actions omo-member-actions--error">Acces refuse a cette organisation.</div>
+    <div class="omo-member-actions omo-member-actions--error"><?= htmlspecialchars(omoTeamT('team.popup.organization_forbidden', [], $lang, $sourceLang)) ?></div>
     <?php
     exit;
 }
 
-$rootHolon = $organization->getStructuralRootHolon();
+$rootHolon = $organization->getEnabledStructuralRootHolon();
 if ($rootHolon === null) {
     http_response_code(404);
     ?>
-    <div class="omo-member-actions omo-member-actions--error">Aucun contexte organisationnel n'est disponible.</div>
+    <div class="omo-member-actions omo-member-actions--error"><?= htmlspecialchars(omoTeamT('team.popup.organization_context_missing', [], $lang, $sourceLang)) ?></div>
     <?php
     exit;
 }
@@ -65,7 +57,7 @@ if ($currentHolonId > 0 && (int)$rootHolon->getId() !== $currentHolonId) {
     if (!$candidate->load($currentHolonId) || !$candidate->isDescendantOf($rootHolon->getId())) {
         http_response_code(404);
         ?>
-        <div class="omo-member-actions omo-member-actions--error">Contexte introuvable pour cette organisation.</div>
+        <div class="omo-member-actions omo-member-actions--error"><?= htmlspecialchars(omoTeamT('team.popup.context_not_found', [], $lang, $sourceLang)) ?></div>
         <?php
         exit;
     }
@@ -73,7 +65,7 @@ if ($currentHolonId > 0 && (int)$rootHolon->getId() !== $currentHolonId) {
     if (!$candidate->canViewDetail()) {
         http_response_code(403);
         ?>
-        <div class="omo-member-actions omo-member-actions--error">Acces refuse a ce contexte.</div>
+        <div class="omo-member-actions omo-member-actions--error"><?= htmlspecialchars(omoTeamT('team.popup.context_forbidden', [], $lang, $sourceLang)) ?></div>
         <?php
         exit;
     }
@@ -85,7 +77,7 @@ $user = new User();
 if (!$user->load($userId)) {
     http_response_code(404);
     ?>
-    <div class="omo-member-actions omo-member-actions--error">Utilisateur introuvable.</div>
+    <div class="omo-member-actions omo-member-actions--error"><?= htmlspecialchars(omoTeamT('team.popup.user_not_found', [], $lang, $sourceLang)) ?></div>
     <?php
     exit;
 }
@@ -93,7 +85,7 @@ if (!$user->load($userId)) {
 if (!$user->canViewDetail()) {
     http_response_code(403);
     ?>
-    <div class="omo-member-actions omo-member-actions--error">Acces refuse a cet utilisateur.</div>
+    <div class="omo-member-actions omo-member-actions--error"><?= htmlspecialchars(omoTeamT('team.popup.user_forbidden', [], $lang, $sourceLang)) ?></div>
     <?php
     exit;
 }
@@ -111,7 +103,7 @@ $contextAdminUserIds = array_fill_keys($currentHolon->getDirectContextAdminUserI
 $isContextAdmin = isset($contextAdminUserIds[$userId]);
 $currentHolonTemplateLabel = trim((string)$currentHolon->getTemplateLabel(true));
 if ($currentHolonTemplateLabel === '') {
-    $currentHolonTemplateLabel = omoMemberActionsHolonTypeLabel($currentHolon);
+    $currentHolonTemplateLabel = omoMemberActionsHolonTypeLabel($currentHolon, $lang, $sourceLang);
 }
 
 $currentHolonName = trim((string)$currentHolon->getDisplayName());
@@ -125,7 +117,7 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
     data-hid="<?= (int)$currentHolon->getId() ?>"
     data-root-hid="<?= (int)$rootHolon->getId() ?>"
     data-context-label="<?= htmlspecialchars((string)$currentHolonTemplateLabel, ENT_QUOTES, 'UTF-8') ?>"
-    data-display-name="<?= htmlspecialchars((string)($displayName !== '' ? $displayName : ('Utilisateur ' . $userId)), ENT_QUOTES, 'UTF-8') ?>"
+    data-display-name="<?= htmlspecialchars((string)($displayName !== '' ? $displayName : omoTeamT('team.member.user_fallback', ['userId' => (string)$userId], $lang, $sourceLang)), ENT_QUOTES, 'UTF-8') ?>"
 >
     <style>
     .omo-member-actions {
@@ -231,45 +223,47 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
     </style>
 
     <div class="omo-member-actions__hero generic-hero-panel">
-        <div class="omo-member-actions__eyebrow generic-card-title generic-card-title--eyebrow">Actions contextuelles</div>
-        <h2 class="generic-card-title generic-card-title--large"><?= htmlspecialchars((string)($displayName !== '' ? $displayName : ('Utilisateur ' . $userId))) ?></h2>
+        <div class="omo-member-actions__eyebrow generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoTeamT('team.popup.contextual_actions', [], $lang, $sourceLang)) ?></div>
+        <h2 class="generic-card-title generic-card-title--large"><?= htmlspecialchars((string)($displayName !== '' ? $displayName : omoTeamT('team.member.user_fallback', ['userId' => (string)$userId], $lang, $sourceLang))) ?></h2>
         <?php if ($secondaryLabel !== ''): ?>
             <div class="omo-member-actions__secondary"><?= htmlspecialchars($secondaryLabel) ?></div>
         <?php endif; ?>
         <div class="omo-member-actions__secondary">
-            Contexte: <?= htmlspecialchars($currentHolonTemplateLabel) ?>
+            <?= htmlspecialchars(omoTeamT('team.popup.context_prefix', [], $lang, $sourceLang)) ?>: <?= htmlspecialchars($currentHolonTemplateLabel) ?>
             <?php if ($currentHolonName !== ''): ?>
                 · <?= htmlspecialchars($currentHolonName) ?>
             <?php endif; ?>
         </div>
         <div class="omo-member-actions__badge-row">
             <?php if ($isPending): ?>
-                <span class="omo-member-actions__badge omo-member-actions__badge--pending">En attente</span>
+                <span class="omo-member-actions__badge omo-member-actions__badge--pending"><?= htmlspecialchars(omoTeamT('team.member.pending', [], $lang, $sourceLang)) ?></span>
             <?php endif; ?>
             <?php if ($isContextAdmin): ?>
-                <span class="omo-member-actions__badge">Admin du contexte</span>
+                <span class="omo-member-actions__badge"><?= htmlspecialchars(omoTeamT('team.member.admin_context', [], $lang, $sourceLang)) ?></span>
             <?php endif; ?>
         </div>
     </div>
 
     <div class="omo-member-actions__section generic-section generic-section--stack">
-        <h3 class="generic-card-title generic-card-title--medium">Gestion du membre</h3>
+        <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoTeamT('team.popup.member_management', [], $lang, $sourceLang)) ?></h3>
         <?php if (!$canManageCurrentHolonMembers): ?>
-            <p>Vous n’avez pas les droits pour modifier ce <?= htmlspecialchars($currentHolonTemplateLabel) ?>.</p>
+            <p><?= htmlspecialchars(omoTeamT('team.popup.no_manage_rights', ['context' => (string)$currentHolonTemplateLabel], $lang, $sourceLang)) ?></p>
         <?php else: ?>
-            <p>Choisissez l’action à appliquer dans ce <?= htmlspecialchars($currentHolonTemplateLabel) ?>.</p>
+            <p><?= htmlspecialchars(omoTeamT('team.popup.choose_action', ['context' => (string)$currentHolonTemplateLabel], $lang, $sourceLang)) ?></p>
             <div class="omo-member-actions__actions">
                 <button
                     type="button"
                     class="omo-member-actions__button generic-action-button generic-action-button--danger"
                     data-member-popup-action="remove"
-                >Retirer du contexte <?= htmlspecialchars($currentHolonTemplateLabel) ?></button>
+                ><?= htmlspecialchars(omoTeamT('team.action.remove_from_context', ['context' => (string)$currentHolonTemplateLabel], $lang, $sourceLang)) ?></button>
                 <?php if (!$isPending): ?>
                     <button
                         type="button"
                         class="omo-member-actions__button generic-action-button generic-action-button--secondary"
                         data-member-popup-action="<?= $isContextAdmin ? 'revoke_admin' : 'grant_admin' ?>"
-                    ><?= htmlspecialchars($isContextAdmin ? 'Retirer le statut admin du contexte ' : 'Définir comme admin du contexte ') ?><?= htmlspecialchars($currentHolonTemplateLabel) ?></button>
+                    ><?= htmlspecialchars($isContextAdmin
+                        ? omoTeamT('team.action.revoke_context_admin', ['context' => (string)$currentHolonTemplateLabel], $lang, $sourceLang)
+                        : omoTeamT('team.action.grant_context_admin', ['context' => (string)$currentHolonTemplateLabel], $lang, $sourceLang)) ?></button>
                 <?php endif; ?>
             </div>
         <?php endif; ?>
@@ -280,6 +274,16 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
 
 <script>
 (function () {
+    const memberActionsText = <?= json_encode([
+        'defaultContextLabel' => omoTeamT('team.holon_type.context', [], $lang, $sourceLang),
+        'defaultMemberLabel' => omoTeamT('team.member.this_member', [], $lang, $sourceLang),
+        'confirmRemove' => omoTeamT('team.confirm.remove', ['name' => '{name}', 'context' => '{context}'], $lang, $sourceLang),
+        'confirmGrantAdmin' => omoTeamT('team.confirm.grant_context_admin', ['name' => '{name}', 'context' => '{context}'], $lang, $sourceLang),
+        'confirmRevokeAdmin' => omoTeamT('team.confirm.revoke_context_admin', ['name' => '{name}', 'context' => '{context}'], $lang, $sourceLang),
+        'updateFailed' => omoTeamT('team.message.update_failed', [], $lang, $sourceLang),
+        'updateSuccess' => omoTeamT('team.message.update_success', [], $lang, $sourceLang),
+        'updateFailedLater' => omoTeamT('team.message.update_failed_later', [], $lang, $sourceLang),
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const root = document.getElementById('omoMemberActionsPopup');
     const feedback = document.getElementById('omoMemberActionsFeedback');
 
@@ -291,8 +295,18 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
     const organizationId = Number(root.getAttribute('data-oid') || 0);
     const currentHolonId = Number(root.getAttribute('data-hid') || 0);
     const rootHolonId = Number(root.getAttribute('data-root-hid') || 0);
-    const contextLabel = String(root.getAttribute('data-context-label') || '').trim() || 'contexte';
-    const displayName = String(root.getAttribute('data-display-name') || '').trim() || 'ce membre';
+    const contextLabel = String(root.getAttribute('data-context-label') || '').trim() || memberActionsText.defaultContextLabel;
+    const displayName = String(root.getAttribute('data-display-name') || '').trim() || memberActionsText.defaultMemberLabel;
+
+    function formatText(template, variables) {
+        let text = String(template || '');
+
+        Object.keys(variables || {}).forEach(function (key) {
+            text = text.split('{' + key + '}').join(String(variables[key] == null ? '' : variables[key]));
+        });
+
+        return text;
+    }
 
     function setFeedback(message, isError) {
         feedback.textContent = message || '';
@@ -336,11 +350,11 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
             }
 
             if (action === 'remove') {
-                confirmationMessage = 'Retirer ' + displayName + ' du contexte ' + contextLabel + ' ?';
+                confirmationMessage = formatText(memberActionsText.confirmRemove, {name: displayName, context: contextLabel});
             } else if (action === 'grant_admin') {
-                confirmationMessage = 'Définir ' + displayName + ' comme admin du contexte ' + contextLabel + ' ?';
+                confirmationMessage = formatText(memberActionsText.confirmGrantAdmin, {name: displayName, context: contextLabel});
             } else if (action === 'revoke_admin') {
-                confirmationMessage = 'Retirer le statut admin de ' + displayName + ' pour le contexte ' + contextLabel + ' ?';
+                confirmationMessage = formatText(memberActionsText.confirmRevokeAdmin, {name: displayName, context: contextLabel});
             } else {
                 return;
             }
@@ -358,7 +372,11 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
             formData.append('user_id', String(userId));
             formData.append('action', action);
 
-            fetch('/omo/api/team/member_action.php', {
+            const memberActionUrl = typeof window.omoResolveAppUrl === 'function'
+                ? window.omoResolveAppUrl('/omo/api/team/member_action.php')
+                : '/omo/api/team/member_action.php';
+
+            fetch(memberActionUrl, {
                 method: 'POST',
                 body: formData,
                 credentials: 'same-origin',
@@ -380,11 +398,11 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
                     button.disabled = false;
 
                     if (!result.ok || !result.data || !result.data.status) {
-                        setFeedback(result.data && result.data.message ? result.data.message : 'Impossible de mettre à jour ce membre.', true);
+                        setFeedback(result.data && result.data.message ? result.data.message : memberActionsText.updateFailed, true);
                         return;
                     }
 
-                    setFeedback(result.data.message || 'Mise à jour effectuée.', false);
+                    setFeedback(result.data.message || memberActionsText.updateSuccess, false);
                     refreshContext();
 
                     window.setTimeout(function () {
@@ -397,7 +415,7 @@ $canManageCurrentHolonMembers = $currentHolon->canEdit();
                 })
                 .catch(function () {
                     button.disabled = false;
-                    setFeedback('Impossible de mettre à jour ce membre pour le moment.', true);
+                    setFeedback(memberActionsText.updateFailedLater, true);
                 });
         });
     });
