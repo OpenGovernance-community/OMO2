@@ -24,9 +24,11 @@ if (!function_exists('omoCurrentUserCanManageOrganizationApplications')) {
             return false;
         }
 
-        $permissionSet = commonGetCurrentUserOrganizationPermissionSet($organizationId, (bool)$forcePermissionRefresh);
-        $scope = $permissionSet['permissions']['CAN_ADD_APP'] ?? null;
-
-        return is_array($scope) && !empty($scope['organization']);
+        return commonCurrentUserHasPermission(
+            'CAN_ADD_APP',
+            null,
+            $organizationId,
+            (bool)$forcePermissionRefresh
+        );
     }
 }

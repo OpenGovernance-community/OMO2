@@ -2309,6 +2309,83 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             });
         }
 
+        function escapeCalendarHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function askDeleteAssociatedDocuments(button) {
+            if (button.getAttribute('data-omo-calendar-delete-has-documents') !== '1') {
+                return Promise.resolve(false);
+            }
+
+            var title = button.getAttribute('data-omo-calendar-delete-documents-title') || 'Documents associés';
+            var question = button.getAttribute('data-omo-calendar-delete-documents-question') || 'Voulez-vous supprimer les documents associés ?';
+            var yesLabel = button.getAttribute('data-omo-calendar-delete-documents-yes') || 'Oui';
+            var noLabel = button.getAttribute('data-omo-calendar-delete-documents-no') || 'Non';
+
+            if (typeof window.commonTopbarOpenModal !== 'function') {
+                return Promise.resolve(window.confirm(question));
+            }
+
+            return new Promise(function (resolve) {
+                var settled = false;
+                var modalCloseHandler;
+
+                function settle(value) {
+                    if (settled) {
+                        return;
+                    }
+
+                    settled = true;
+                    if (modalCloseHandler) {
+                        window.removeEventListener('common-topbar-modal-close', modalCloseHandler);
+                    }
+                    if (typeof window.commonTopbarCloseModal === 'function') {
+                        window.commonTopbarCloseModal();
+                    }
+                    resolve(value === true);
+                }
+
+                window.commonTopbarOpenModal(
+                    title,
+                    '<div class="omo-calendar__delete-documents-dialog">'
+                        + '<p data-omo-calendar-delete-documents-question></p>'
+                        + '<div class="omo-calendar__delete-documents-actions">'
+                        + '<button type="button" class="generic-action-button generic-action-button--main" data-omo-calendar-delete-documents-choice="yes">' + escapeCalendarHtml(yesLabel) + '</button>'
+                        + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-calendar-delete-documents-choice="no">' + escapeCalendarHtml(noLabel) + '</button>'
+                        + '</div>'
+                        + '</div>',
+                    'html'
+                );
+
+                var modalBody = document.getElementById('commonTopbarModalBody');
+                if (!modalBody) {
+                    settle(false);
+                    return;
+                }
+
+                var questionNode = modalBody.querySelector('[data-omo-calendar-delete-documents-question]');
+                if (questionNode) {
+                    questionNode.textContent = question;
+                }
+
+                modalCloseHandler = function () {
+                    settle(false);
+                };
+                window.addEventListener('common-topbar-modal-close', modalCloseHandler);
+                modalBody.querySelectorAll('[data-omo-calendar-delete-documents-choice]').forEach(function (choiceButton) {
+                    choiceButton.addEventListener('click', function () {
+                        settle(choiceButton.getAttribute('data-omo-calendar-delete-documents-choice') === 'yes');
+                    });
+                });
+            });
+        }
+
         window.omoCalendarOpenEventDrawer = function (url) {
             if (!url) {
                 return;
@@ -2605,6 +2682,51 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     return;
                 }
 
+                var deleteButton = event.target.closest('[data-omo-calendar-delete-url]');
+                if (deleteButton) {
+                    event.preventDefault();
+
+                    var deleteUrl = deleteButton.getAttribute('data-omo-calendar-delete-url') || '';
+                    var confirmationMessage = deleteButton.getAttribute('data-omo-calendar-delete-confirm') || '';
+                    var fallbackError = deleteButton.getAttribute('data-omo-calendar-delete-error') || 'Impossible de supprimer cet evenement.';
+                    if (!deleteUrl || (confirmationMessage !== '' && !window.confirm(confirmationMessage))) {
+                        return;
+                    }
+
+                    deleteButton.disabled = true;
+                    askDeleteAssociatedDocuments(deleteButton).then(function (deleteDocuments) {
+                        var requestBody = new URLSearchParams();
+                        requestBody.set('delete_documents', deleteDocuments ? '1' : '0');
+
+                        return fetch(resolveUrl(deleteUrl), {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                            },
+                            body: requestBody.toString()
+                        });
+                    }).then(function (response) {
+                        return response.json();
+                    }).then(function (payload) {
+                        if (!payload || payload.status !== true) {
+                            throw new Error(payload && payload.message ? payload.message : fallbackError);
+                        }
+
+                        if (typeof window.omoInvalidateMainRightPanel === 'function') {
+                            window.omoInvalidateMainRightPanel();
+                        }
+
+                        closeDrawer();
+                        refreshCalendar(currentUrl);
+                    }).catch(function (error) {
+                        window.alert(error && error.message ? error.message : fallbackError);
+                        deleteButton.disabled = false;
+                    });
+                    return;
+                }
+
                 var editButton = event.target.closest('[data-omo-calendar-open-edit-url]');
                 if (!editButton) {
                     var invitationButton = event.target.closest('[data-omo-calendar-open-invitations-url]');
@@ -2814,6 +2936,24 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     flex-direction: column;
     gap: 0;
     min-height: 100%;
+}
+
+.omo-calendar__delete-documents-dialog {
+    display: grid;
+    gap: 18px;
+}
+
+.omo-calendar__delete-documents-dialog p {
+    margin: 0;
+    color: var(--color-text, #1f2937);
+    line-height: 1.5;
+}
+
+.omo-calendar__delete-documents-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 .omo-calendar > .omo-panel-view__body {

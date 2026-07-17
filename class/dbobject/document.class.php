@@ -179,9 +179,9 @@
 			return $this->canEditInOrganizationContext($organizationId, $userId, false);
 		}
 
-		public function canDeleteDocument(): bool
+		public function canDeleteDocument(bool $allowEventDocument = false): bool
 		{
-			if ($this->isPvDocument() || (int)$this->get('IDevent') > 0) {
+			if (!$allowEventDocument && (int)$this->get('IDevent') > 0) {
 				return false;
 			}
 
@@ -191,6 +191,67 @@
 			);
 
 			return $child === false;
+		}
+
+		protected function deleteResourceRows(): bool
+		{
+			$invitations = new \dbObject\ArrayDocumentInvitation();
+			$invitations->load([
+				'where' => [
+					['field' => 'resource_type', 'value' => \dbObject\DocumentInvitation::resourceType()],
+					['field' => 'resource_id', 'value' => (int)$this->getId()],
+				],
+			]);
+
+			foreach ($invitations as $invitation) {
+				if (!$invitation->delete()) {
+					return false;
+				}
+			}
+
+			$attendance = new \dbObject\ArrayDocumentAttendance();
+			$attendance->load([
+				'where' => [
+					['field' => 'resource_type', 'value' => \dbObject\DocumentAttendance::resourceType()],
+					['field' => 'resource_id', 'value' => (int)$this->getId()],
+				],
+			]);
+
+			foreach ($attendance as $attendanceRow) {
+				if (!$attendanceRow->delete()) {
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		public function delete()
+		{
+			$pdo = self::getPdo();
+			$startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
+
+			try {
+				if ($startedTransaction) {
+					$pdo->beginTransaction();
+				}
+
+				if (!$this->deleteResourceRows() || !parent::delete()) {
+					throw new \RuntimeException('document_delete_failed');
+				}
+
+				if ($startedTransaction && $pdo->inTransaction()) {
+					$pdo->commit();
+				}
+
+				return true;
+			} catch (\Throwable $exception) {
+				if ($startedTransaction && $pdo->inTransaction()) {
+					$pdo->rollBack();
+				}
+
+				return false;
+			}
 		}
 
 		public static function getVisibilityObjectType(): string
@@ -1964,7 +2025,7 @@
 
 			return $shapes === ''
 				? ''
-				: '<span class="omo-indicator-embed__chart"><svg class="omo-stats-chart omo-stats-chart--compact" viewBox="0 0 180 54" aria-hidden="true">' . $shapes . '</svg></span>';
+				: '<span class="omo-indicator-embed__chart"><svg xmlns="http://www.w3.org/2000/svg" class="omo-stats-chart omo-stats-chart--compact" width="180" height="54" viewBox="0 0 180 54" aria-hidden="true">' . $shapes . '</svg></span>';
 		}
 
 		protected static function buildIndicatorEmbedDisplayHtml(\DOMElement $element): string

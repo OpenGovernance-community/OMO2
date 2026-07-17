@@ -120,7 +120,7 @@ foreach ($parcours as $parcoursItem) {
     <style>
         :root {
             <?php if ($organizationColor !== ''): ?>
-            --color-primary: <?php echo htmlspecialchars($organizationColor); ?>;
+            --primary: <?php echo htmlspecialchars($organizationColor); ?>;
             <?php endif; ?>
         }
     </style>

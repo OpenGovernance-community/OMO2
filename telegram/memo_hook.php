@@ -395,24 +395,6 @@
 		return $typeLabel." : ".($name !== '' ? $name : 'Sans nom');
 	}
 
-	function getTelegramDocumentCreationPermissionSet(\dbObject\User $user, \dbObject\Organization $organization): array {
-		static $permissionSetCache = array();
-
-		$userId = (int)$user->getId();
-		$organizationId = (int)$organization->getId();
-		$cacheKey = $userId.'_'.$organizationId;
-
-		if (!isset($permissionSetCache[$cacheKey])) {
-			$permissionSetCache[$cacheKey] = \dbObject\HolonPermission::buildUserPermissionSetForOrganization(
-				$userId,
-				$organizationId,
-				array('CAN_CREATE_DOCUMENT')
-			);
-		}
-
-		return is_array($permissionSetCache[$cacheKey]) ? $permissionSetCache[$cacheKey] : array();
-	}
-
 	function telegramUserCanCreateDocumentInHolon(\dbObject\User $user, \dbObject\Organization $organization, \dbObject\Holon $holon): bool {
 		$userId = (int)$user->getId();
 		$organizationId = (int)$organization->getId();
@@ -422,27 +404,7 @@
 			return false;
 		}
 
-		$permissionSet = getTelegramDocumentCreationPermissionSet($user, $organization);
-		if (empty($permissionSet['definedPermissionKeys']['CAN_CREATE_DOCUMENT'])) {
-			return \dbObject\Permission::existsKey('CAN_CREATE_DOCUMENT');
-		}
-
-		$scope = $permissionSet['permissions']['CAN_CREATE_DOCUMENT'] ?? null;
-		if (!is_array($scope)) {
-			return false;
-		}
-
-		if (!empty($scope['organization']) || !empty($scope['exact'][$holonId])) {
-			return true;
-		}
-
-		foreach (array_keys($scope['subtree'] ?? array()) as $rootHolonId) {
-			if ($holon->isDescendantOf((int)$rootHolonId, true)) {
-				return true;
-			}
-		}
-
-		return false;
+		return $holon->isAllowed('CAN_CREATE_DOCUMENT', false, $userId);
 	}
 
 	function getVisibleHolonChildren(\dbObject\Holon $holon): array {
