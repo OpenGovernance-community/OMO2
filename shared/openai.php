@@ -22,8 +22,17 @@
 		$payload = json_encode($params, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 		if ($payload === false) {
 			error_log('[openai-say] request_json_error='.json_last_error_msg());
+			if (function_exists('telegramTraceLog')) {
+				telegramTraceLog('openai_say.request_json_error', array('json_error' => json_last_error_msg()));
+			}
 			return "";
-		}	
+		}
+		if (function_exists('telegramTraceLog')) {
+			telegramTraceLog('openai_say.started', array(
+				'model' => MODEL,
+				'request_bytes' => strlen($payload),
+			));
+		}
 
 		// Configuration de la requête HTTP
 		$options = array(
@@ -67,6 +76,13 @@
 			$jsonError = json_last_error_msg();
 			if (isset($responseData['choices'][0]['message'])) {
 				error_log('[openai-say] status='.($httpStatus !== '' ? $httpStatus : 'unknown').', model='.MODEL.', request_bytes='.strlen($payload).', response_bytes='.strlen($response));
+				if (function_exists('telegramTraceLog')) {
+					telegramTraceLog('openai_say.success', array(
+						'status' => $httpStatus !== '' ? $httpStatus : 'unknown',
+						'response_bytes' => strlen($response),
+						'generated_bytes' => isset($responseData['choices'][0]['message']['content']) ? strlen((string)$responseData['choices'][0]['message']['content']) : 0,
+					));
+				}
 				$generatedText = $responseData['choices'][0]['message']['content'];
 				return $generatedText;
 			} else {
@@ -84,6 +100,13 @@
 					$traceJson = json_encode($trace, JSON_UNESCAPED_SLASHES);
 				}
 				error_log('[openai-say] response_without_message='.($traceJson !== false ? $traceJson : 'trace_encoding_failed'));
+				if (function_exists('telegramTraceLog')) {
+					telegramTraceLog('openai_say.response_without_message', array(
+						'status' => $httpStatus !== '' ? $httpStatus : 'unknown',
+						'json_error' => $jsonError,
+						'response_preview' => function_exists('telegramTracePreview') ? telegramTracePreview($response) : substr($response, 0, 4000),
+					));
+				}
 				// Rien à dire non plus
 				return "";
 			}
@@ -96,6 +119,12 @@
 			);
 			$traceJson = json_encode($trace, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 			error_log('[openai-say] request_failed='.($traceJson !== false ? $traceJson : 'trace_encoding_failed'));
+			if (function_exists('telegramTraceLog')) {
+				telegramTraceLog('openai_say.request_failed', array(
+					'status' => $httpStatus !== '' ? $httpStatus : 'unknown',
+					'php_error' => is_array($lastPhpError) ? ($lastPhpError['message'] ?? 'unknown') : 'unknown',
+				));
+			}
 			// Rien à faire, le texte n'était pas solicité
 			return "";
 		}	
