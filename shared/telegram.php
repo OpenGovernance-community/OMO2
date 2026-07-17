@@ -38,6 +38,79 @@
 		return $value;
 	}
 
+	function telegramTracePreview($value, $limit = 4000) {
+		$value = (string)$value;
+		if (strlen($value) > $limit) {
+			$value = substr($value, 0, $limit).'...[truncated]';
+		}
+		if ($value !== '' && !preg_match('//u', $value)) {
+			return '[base64]'.base64_encode($value);
+		}
+		return $value;
+	}
+
+	function telegramTraceLog($event, $context = array()) {
+		$logDirectory = __DIR__.'/../telegram/data';
+		$logPath = $logDirectory.'/telegram_trace.log';
+		if (!is_dir($logDirectory)) {
+			@mkdir($logDirectory, 0777, true);
+		}
+
+		$entry = array(
+			'time' => date('c'),
+			'event' => (string)$event,
+			'context' => is_array($context) ? $context : array('value' => $context),
+		);
+		if (!empty($GLOBALS['telegramTraceId'])) {
+			$entry['trace_id'] = (string)$GLOBALS['telegramTraceId'];
+		}
+		$line = json_encode($entry, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		if ($line === false) {
+			$entry['context'] = array('trace_encoding_error' => json_last_error_msg());
+			$line = json_encode($entry, JSON_UNESCAPED_SLASHES);
+		}
+		if (is_string($line)) {
+			$written = @file_put_contents($logPath, $line.PHP_EOL, FILE_APPEND | LOCK_EX);
+			if ($written === false) {
+				error_log('[telegram-trace] unable_to_write='.$logPath);
+			}
+		}
+	}
+
+	function telegramTraceSetId($traceId) {
+		$GLOBALS['telegramTraceId'] = (string)$traceId;
+	}
+
+	function telegramTraceRun($event, callable $callback) {
+		$warnings = array();
+		set_error_handler(function ($severity, $message, $file, $line) use (&$warnings, $event) {
+			$warnings[] = array(
+				'severity' => $severity,
+				'message' => (string)$message,
+				'file' => (string)$file,
+				'line' => (int)$line,
+			);
+			return false;
+		});
+
+		try {
+			$result = call_user_func($callback);
+		} catch (\Throwable $exception) {
+			telegramTraceLog($event.'.exception', array(
+				'exception' => get_class($exception),
+				'message' => $exception->getMessage(),
+			));
+			throw $exception;
+		} finally {
+			restore_error_handler();
+		}
+
+		if (count($warnings) > 0) {
+			telegramTraceLog($event.'.warnings', array('warnings' => $warnings));
+		}
+		return $result;
+	}
+
 	function telegramApiRequest($method, $params = array()) {
 		$method = trim((string)$method);
 		if ($method === '') {

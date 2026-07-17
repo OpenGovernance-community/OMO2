@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 	require_once($_SERVER['DOCUMENT_ROOT']."/config.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared_functions.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared/openai.php");
@@ -946,7 +946,18 @@
 			return;
 		}
 
+		telegramTraceSetId(date('YmdHis').'-'.substr(md5(uniqid('', true)), 0, 8));
+		telegramTraceLog('voice.received', array(
+			'actor_id' => $actorId,
+			'chat_id' => $chatId,
+			'duration' => $duration,
+			'file_id' => $fileId,
+		));
+
 		$waitMessageId = sendMessage($chatId, "Un petit moment, je retranscris tout ça...", null, $threadId);
+		telegramTraceLog('voice.wait_message', array(
+			'message_id' => $waitMessageId,
+		));
 
 		set_time_limit(240);
 		ignore_user_abort(true);
@@ -956,9 +967,21 @@
 			fastcgi_finish_request();
 		}
 
-		$fileInfo = getTelegramFile($fileId);
-		$filePath = $fileInfo['result']['file_path'] ?? null;
+		$fileInfo = telegramTraceRun('telegram_get_file', function () use ($fileId) {
+			return getTelegramFile($fileId);
+		});
+		telegramTraceLog('telegram_get_file.result', array(
+			'ok' => is_array($fileInfo) ? ($fileInfo['ok'] ?? null) : null,
+			'error_code' => is_array($fileInfo) ? ($fileInfo['error_code'] ?? null) : null,
+			'has_file_path' => is_array($fileInfo) && isset($fileInfo['result']['file_path']),
+			'file_size' => is_array($fileInfo) ? ($fileInfo['result']['file_size'] ?? null) : null,
+		));
+		$filePath = is_array($fileInfo) ? ($fileInfo['result']['file_path'] ?? null) : null;
 		if (!$filePath) {
+			telegramTraceLog('voice.get_file_failed', array(
+				'error_code' => is_array($fileInfo) ? ($fileInfo['error_code'] ?? null) : null,
+				'file_info' => is_array($fileInfo) ? $fileInfo : null,
+			));
 			if ($waitMessageId) {
 				deleteMessage($chatId, $waitMessageId, $threadId);
 			}
@@ -967,10 +990,17 @@
 		}
 
 		$download = telegramDownloadFile($filePath);
+		telegramTraceLog('telegram_download.result', is_array($download['trace'] ?? null) ? $download['trace'] : array(
+			'ok' => $download['ok'] ?? false,
+		));
 		$traceJson = json_encode($download['trace'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 		error_log('[telegram-audio-download] '.($traceJson !== false ? $traceJson : 'Unable to encode download trace.'));
 
 		if (!$download['ok']) {
+			telegramTraceLog('telegram_download.failed', array(
+				'file_path' => $filePath,
+				'trace' => $download['trace'] ?? null,
+			));
 			if ($waitMessageId) {
 				deleteMessage($chatId, $waitMessageId, $threadId);
 			}
@@ -980,7 +1010,20 @@
 
 		$audioContent = $download['content'];
 		$tempFilePath = tempnam(sys_get_temp_dir(), 'audio');
-		file_put_contents($tempFilePath, $audioContent);
+		$audioBytesWritten = $tempFilePath !== false ? file_put_contents($tempFilePath, $audioContent) : false;
+		telegramTraceLog('audio_file.ready', array(
+			'bytes' => strlen($audioContent),
+			'bytes_written' => $audioBytesWritten,
+			'temp_file' => $tempFilePath !== false ? basename($tempFilePath) : null,
+		));
+		if ($tempFilePath === false || $audioBytesWritten === false) {
+			telegramTraceLog('audio_file.write_failed', array('bytes' => strlen($audioContent)));
+			if ($waitMessageId) {
+				deleteMessage($chatId, $waitMessageId, $threadId);
+			}
+			sendMessage($chatId, "Désolé, je n'ai pas réussi à préparer le fichier audio.", null, $threadId);
+			return;
+		}
 
 		$headers = array(
 			'Authorization: Bearer ' . OpenAI,
@@ -1000,11 +1043,27 @@
 		));
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
-		$responseRaw = curl_exec($ch);
-		$curlError = curl_errno($ch) ? curl_error($ch) : null;
+		$responseRaw = telegramTraceRun('openai_transcription_request', function () use ($ch) {
+			return curl_exec($ch);
+		});
+		$curlErrorNumber = curl_errno($ch);
+		$curlError = $curlErrorNumber ? curl_error($ch) : null;
+		$transcriptionHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+		telegramTraceLog('openai_transcription.result', array(
+			'curl_errno' => $curlErrorNumber,
+			'curl_error' => $curlError,
+			'http_code' => $transcriptionHttpCode,
+			'response_bytes' => $responseRaw === false ? 0 : strlen((string)$responseRaw),
+			'response_preview' => $responseRaw === false ? '' : telegramTracePreview($responseRaw),
+		));
 		@unlink($tempFilePath);
 
 		if ($curlError || !$responseRaw) {
+			telegramTraceLog('openai_transcription.failed', array(
+				'curl_errno' => $curlErrorNumber,
+				'curl_error' => $curlError,
+				'http_code' => $transcriptionHttpCode,
+			));
 			if ($waitMessageId) {
 				deleteMessage($chatId, $waitMessageId, $threadId);
 			}
@@ -1013,7 +1072,18 @@
 		}
 
 		$response = json_decode($responseRaw);
+		$transcriptionJsonError = json_last_error_msg();
+		telegramTraceLog('openai_transcription.decoded', array(
+			'json_error' => $transcriptionJsonError,
+			'is_object' => is_object($response),
+			'text_bytes' => is_object($response) && isset($response->text) ? strlen((string)$response->text) : 0,
+			'text_preview' => is_object($response) && isset($response->text) ? telegramTracePreview($response->text) : '',
+		));
 		if (!is_object($response) || !isset($response->text) || trim((string)$response->text) === '') {
+			telegramTraceLog('openai_transcription.invalid', array(
+				'json_error' => $transcriptionJsonError,
+				'response_preview' => telegramTracePreview($responseRaw),
+			));
 			if ($waitMessageId) {
 				deleteMessage($chatId, $waitMessageId, $threadId);
 			}
@@ -1022,14 +1092,35 @@
 		}
 
 		$prompt = "une mise en page lisible, exhaustive, optimisée pour la lecture et structurée du texte (si nécessaire avec des titres ou des listes à puce)";
-		$readable = say("Peux-tu générer un JSON pour le texte suivant, comprenant 4 entrée: une entrée 'titre' avec un titre pour ce document, une entrée 'resume' avec un résumé du texte en maximum 150 caractères, une entrée 'contenu' avec ".$prompt.", et finalement une entrée 'hashtag' contenant un tableau avec 3 à 5 mots clés pertinents pour ce texte? Voici le texte : \n".$response->text);
+		$formatPrompt = "Peux-tu générer un JSON pour le texte suivant, comprenant 4 entrée: une entrée 'titre' avec un titre pour ce document, une entrée 'resume' avec un résumé du texte en maximum 150 caractères, une entrée 'contenu' avec ".$prompt.", et finalement une entrée 'hashtag' contenant un tableau avec 3 à 5 mots clés pertinents pour ce texte? Voici le texte : \n".$response->text;
+		telegramTraceLog('openai_format.started', array(
+			'transcription_bytes' => strlen((string)$response->text),
+			'request_bytes' => strlen($formatPrompt),
+			'text_preview' => telegramTracePreview($response->text),
+		));
+		$readable = telegramTraceRun('openai_format_request', function () use ($formatPrompt) {
+			return say($formatPrompt);
+		});
+		telegramTraceLog('openai_format.result', array(
+			'readable_bytes' => strlen((string)$readable),
+			'readable_preview' => telegramTracePreview($readable),
+		));
 
 		$dataerr = json_decode("{}");
 		$dataerr->GPTreturn = $readable;
 		saveLocalSession($dataerr, "error_log");
 
 		$readableJson = extractJsonObjectFromText((string)$readable);
+		telegramTraceLog('json.extract', array(
+			'input_bytes' => strlen((string)$readable),
+			'extracted' => $readableJson !== null,
+			'json_bytes' => $readableJson === null ? 0 : strlen($readableJson),
+			'json_preview' => $readableJson === null ? '' : telegramTracePreview($readableJson),
+		));
 		if ($readableJson === null) {
+			telegramTraceLog('json.extract_failed', array(
+				'readable_preview' => telegramTracePreview($readable),
+			));
 			if ($waitMessageId) {
 				deleteMessage($chatId, $waitMessageId, $threadId);
 			}
@@ -1041,12 +1132,25 @@
 		saveLocalSession($dataerr, "error_log");
 
 		$readableObject = json_decode($readableJson);
+		$readableJsonError = json_last_error_msg();
+		telegramTraceLog('json.decode', array(
+			'json_error' => $readableJsonError,
+			'is_object' => is_object($readableObject),
+			'has_title' => is_object($readableObject) && isset($readableObject->titre),
+			'has_resume' => is_object($readableObject) && isset($readableObject->resume),
+			'has_content' => is_object($readableObject) && isset($readableObject->contenu),
+			'has_hashtags' => is_object($readableObject) && isset($readableObject->hashtag),
+		));
 		if (
 			!is_object($readableObject)
 			|| !isset($readableObject->titre)
 			|| !isset($readableObject->resume)
 			|| !isset($readableObject->contenu)
 		) {
+			telegramTraceLog('json.invalid', array(
+				'json_error' => $readableJsonError,
+				'json_preview' => telegramTracePreview($readableJson),
+			));
 			if ($waitMessageId) {
 				deleteMessage($chatId, $waitMessageId, $threadId);
 			}
@@ -1078,6 +1182,11 @@
 			$user->refreshDbh();
 
 			try {
+				telegramTraceLog('document.save.started', array(
+					'user_id' => $user->getId(),
+					'title_bytes' => strlen($title),
+					'content_bytes' => strlen($content),
+				));
 				$doc = new \dbObject\Document();
 				$doc->set("title", $title !== '' ? $title : "Mémo vocal");
 				$doc->set("description", $resume);
@@ -1110,8 +1219,15 @@
 				$media->set("IDstorage", 1); // Telegram
 				$media->set("accesskey", $fileId);
 				$media->save();
+				telegramTraceLog('document.save.completed', array(
+					'document_id' => $doc->getId(),
+				));
 			} catch (\Exception $e) {
 				$doc = null;
+				telegramTraceLog('document.save.failed', array(
+					'exception' => get_class($e),
+					'message' => $e->getMessage(),
+				));
 				sendMessage($chatId, "Désolé, problème de génération du fichier...", null, $threadId);
 			}
 		}
@@ -1131,6 +1247,10 @@
 		}
 
 		$messageId = sendMessage($chatId, $messageText, $buttons, $threadId);
+		telegramTraceLog('voice.completed', array(
+			'document_id' => $doc && $doc->getId() > 0 ? $doc->getId() : null,
+			'response_message_id' => $messageId,
+		));
 		if ($messageId !== null) {
 			$data->lastID = $messageId;
 		}
