@@ -67,7 +67,6 @@
 			));
 			curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
 			$result = curl_exec($ch);
-			curl_close($ch);
 		} else {
 			$context = stream_context_create(array(
 				'http' => array(
@@ -192,8 +191,6 @@
 		$curlErrorNumber = curl_errno($ch);
 		$curlError = curl_error($ch);
 		$info = curl_getinfo($ch);
-		curl_close($ch);
-
 		$httpCode = isset($info['http_code']) ? (int)$info['http_code'] : 0;
 		$ok = $content !== false && $httpCode >= 200 && $httpCode < 300;
 		$trace = array(

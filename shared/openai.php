@@ -47,12 +47,17 @@
 		}
 
 		$httpStatus = '';
-		if (isset($http_response_header) && is_array($http_response_header)) {
-			foreach ($http_response_header as $header) {
+		$httpHeaders = array();
+		if (function_exists('http_get_last_response_headers')) {
+			$lastHeaders = http_get_last_response_headers();
+			$httpHeaders = is_array($lastHeaders) ? $lastHeaders : array();
+		} elseif (isset($http_response_header) && is_array($http_response_header)) {
+			$httpHeaders = $http_response_header;
+		}
+		foreach ($httpHeaders as $header) {
 				if (stripos((string)$header, 'HTTP/') === 0) {
 					$httpStatus = (string)$header;
 				}
-			}
 		}
 
 		// Si la requête a réussi, décodez la réponse JSON
