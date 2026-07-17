@@ -15,6 +15,34 @@ $sourceLang = array_merge([
         'text' => 'Modifier',
         'context' => 'Button used to open the event edit form from the event detail view.',
     ],
+    'calendar.detail.action.delete' => [
+        'text' => 'Supprimer',
+        'context' => 'Accessible label of the icon button used to delete an event from its detail view.',
+    ],
+    'calendar.detail.confirm_delete' => [
+        'text' => 'Supprimer cet evenement ?',
+        'context' => 'Confirmation message shown before deleting an event.',
+    ],
+    'calendar.detail.delete_error' => [
+        'text' => 'Impossible de supprimer cet evenement.',
+        'context' => 'Fallback error shown when deleting an event fails.',
+    ],
+    'calendar.detail.delete_documents_title' => [
+        'text' => 'Documents associés',
+        'context' => 'Title of the choice dialog shown before deleting documents linked to an event.',
+    ],
+    'calendar.detail.delete_documents_question' => [
+        'text' => 'Voulez-vous supprimer les documents associés ?',
+        'context' => 'Question shown before deleting documents linked to an event.',
+    ],
+    'calendar.detail.delete_documents_yes' => [
+        'text' => 'Oui',
+        'context' => 'Choice that deletes documents linked to the event.',
+    ],
+    'calendar.detail.delete_documents_no' => [
+        'text' => 'Non',
+        'context' => 'Choice that keeps documents linked to the event.',
+    ],
     'calendar.detail.action.open_document' => [
         'text' => 'Consulter le document',
         'context' => 'Button used to open the linked document from the event detail view.',
@@ -216,6 +244,15 @@ if ($eventHolonId > 0) {
     $contextLabel = trim((string)$eventHolon->getDisplayName());
 }
 
+$deletePermissionHolon = $eventHolonId > 0 && isset($eventHolon) && $eventHolon instanceof Holon
+    ? $eventHolon
+    : $rootHolon;
+$canDelete = $currentUserId > 0
+    && (
+        $deletePermissionHolon instanceof Holon
+            ? $deletePermissionHolon->isAllowed('CAN_DELETE_EVENT', false, $currentUserId)
+            : commonCurrentUserHasOrganizationAccess($organizationId)
+    );
 $canEdit = $currentUserId > 0 && (int)$event->get('IDuser') === $currentUserId;
 $editContextHolonId = $currentHolonId > 0 ? $currentHolonId : $eventHolonId;
 $editUrl = '/omo/api/calendar/create.php?oid=' . rawurlencode((string)$organizationId);
@@ -223,6 +260,8 @@ if ($editContextHolonId > 0) {
     $editUrl .= '&cid=' . rawurlencode((string)$editContextHolonId);
 }
 $editUrl .= '&id=' . rawurlencode((string)$eventId);
+$deleteUrl = '/omo/api/calendar/delete.php?oid=' . rawurlencode((string)$organizationId)
+    . '&id=' . rawurlencode((string)$eventId);
 
 $statusCatalog = Event::getStatusCatalog();
 $normalizedStatus = Event::normalizeStatus($event->get('status'));
@@ -268,13 +307,36 @@ $invitationContext = [
         data-omo-calendar-drawer-title="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.badge')) ?>"
         data-omo-calendar-drawer-description="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.header.subtitle')) ?>"
     >
-        <?php if ($canEdit): ?>
-            <button
-                type="button"
-                class="generic-action-button generic-action-button--main"
-                data-omo-calendar-drawer-action
-                data-omo-calendar-open-edit-url="<?= omoApiEscape($editUrl) ?>"
-            ><?= omoApiEscape(omoCalendarDetailT('calendar.detail.action.edit')) ?></button>
+        <?php if ($canEdit || $canDelete): ?>
+            <?php if ($canEdit): ?>
+                <button
+                    type="button"
+                    class="generic-action-button generic-action-button--main"
+                    data-omo-calendar-drawer-action
+                    data-omo-calendar-open-edit-url="<?= omoApiEscape($editUrl) ?>"
+                ><?= omoApiEscape(omoCalendarDetailT('calendar.detail.action.edit')) ?></button>
+            <?php endif; ?>
+            <?php if ($canDelete): ?>
+                <button
+                    type="button"
+                    class="generic-action-button generic-action-button--danger generic-action-button--icon-only"
+                    data-omo-calendar-drawer-action
+                    data-omo-calendar-delete-url="<?= omoApiEscape($deleteUrl) ?>"
+                    data-omo-calendar-delete-confirm="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.confirm_delete')) ?>"
+                    data-omo-calendar-delete-error="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.delete_error')) ?>"
+                    data-omo-calendar-delete-has-documents="<?= $associatedDocument instanceof \dbObject\Document ? '1' : '0' ?>"
+                    data-omo-calendar-delete-documents-title="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.delete_documents_title')) ?>"
+                    data-omo-calendar-delete-documents-question="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.delete_documents_question')) ?>"
+                    data-omo-calendar-delete-documents-yes="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.delete_documents_yes')) ?>"
+                    data-omo-calendar-delete-documents-no="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.delete_documents_no')) ?>"
+                    title="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.action.delete')) ?>"
+                    aria-label="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.action.delete')) ?>"
+                >
+                    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                        <path d="M5 7h14M10 11v6M14 11v6M9 7V5h6v2m-9 0 1 13h10l1-13"></path>
+                    </svg>
+                </button>
+            <?php endif; ?>
         <?php endif; ?>
     </div>
 

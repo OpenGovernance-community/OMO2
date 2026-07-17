@@ -342,6 +342,7 @@ VALUES
     ('CAN_CREATE_DOCUMENT', 'Creer des fichiers', 'Autorise la creation de fichiers dans le contexte cible.', NOW(), NOW()),
     ('CAN_CREATE_DECISION', 'Creer des prises de decision', 'Autorise la creation de prises de decision dans le contexte cible.', NOW(), NOW()),
     ('CAN_CREATE_EVENT', 'Creer des dates', 'Autorise la creation de dates dans le contexte cible.', NOW(), NOW()),
+    ('CAN_DELETE_EVENT', 'Supprimer des dates', 'Autorise la suppression de dates dans le contexte cible.', NOW(), NOW()),
     ('CAN_CLAIM_PV', 'Devenir secretaire de PV', 'Autorise a prendre le role de secretaire pendant une reunion associee a un PV.', NOW(), NOW()),
     ('CAN_CREATE_FAQ', 'Creer des FAQ', 'Autorise la creation de FAQ dans le contexte cible.', NOW(), NOW())
 ON DUPLICATE KEY UPDATE

@@ -31,7 +31,11 @@ foreach ($groupItems as $item) {
 }
 $series = omoStatsGetGroupSeries($group);
 $isOverdue = omoStatsIsGroupOverdue($group);
+$chartData = omoStatsBuildGroupChartData($group, $series, $isOverdue);
 $displayMode = StatIndicatorGroup::normalizeDisplayMode($group->get('display_mode'));
+$headerDescription = $displayMode === StatIndicatorGroup::DISPLAY_SUM
+    ? omoStatsT('stats.group.mode.sum')
+    : omoStatsT('stats.group.mode.overlay');
 $colors = ['#2563eb', '#db2777', '#059669', '#d97706', '#7c3aed', '#0891b2'];
 $seriesColors = [];
 foreach ($series as $seriesIndex => $seriesItem) {
@@ -47,7 +51,7 @@ foreach ($series as $seriesIndex => $seriesItem) {
         hidden
         data-omo-subdrawer-header
         data-omo-subdrawer-title="<?= omoApiEscape((string)$group->get('name')) ?>"
-        data-omo-subdrawer-description="<?= omoApiEscape(omoStatsT('stats.card.group')) ?>"
+        data-omo-subdrawer-description="<?= omoApiEscape($headerDescription) ?>"
     >
         <?php if ($canEdit): ?>
             <button
@@ -62,24 +66,18 @@ foreach ($series as $seriesIndex => $seriesItem) {
         <?php endif; ?>
     </div>
 
-    <section class="generic-hero-panel accent omo-stats-detail__hero">
-        <div class="omo-stats-detail__hero-main">
-            <div>
-                <span class="generic-card-title generic-card-title--eyebrow"><?= omoApiEscape(omoStatsT('stats.card.group')) ?></span>
-                <h2 class="generic-card-title generic-card-title--large"><?= omoApiEscape((string)$group->get('name')) ?></h2>
-            </div>
-            <span class="omo-stats-card__value-count"><?= omoApiEscape(omoStatsT('stats.card.member_count', ['count' => count($sourceIndicators)])) ?></span>
-        </div>
-        <div class="omo-stats-detail__meta">
+    <div class="omo-stats-detail__meta omo-stats-detail__meta--compact">
+        <span><strong><?= omoApiEscape(omoStatsT('stats.card.member_count', ['count' => count($sourceIndicators)])) ?></strong></span>
             <?php if ($isOverdue): ?>
                 <span class="omo-stats-overdue-label"><?= omoApiEscape(omoStatsT('stats.card.overdue')) ?></span>
             <?php endif; ?>
-            <span><strong><?= omoApiEscape(omoStatsT('stats.group.mode')) ?> :</strong> <?= omoApiEscape($displayMode === StatIndicatorGroup::DISPLAY_SUM ? omoStatsT('stats.group.mode.sum') : omoStatsT('stats.group.mode.overlay')) ?></span>
-        </div>
-    </section>
+    </div>
 
     <section class="generic-section omo-stats-detail__chart-panel">
-        <?= omoStatsRenderGroupChart($group, $series, 'large', $isOverdue) ?>
+        <div class="omo-stats-interactive-chart" data-omo-stats-interactive-chart>
+            <?= omoStatsRenderGroupChart($group, $series, 'large', $isOverdue, true) ?>
+            <?= omoStatsRenderInteractiveChartRange($chartData) ?>
+        </div>
     </section>
 
     <section class="generic-section omo-stats-group-detail__sources">
@@ -104,3 +102,4 @@ foreach ($series as $seriesIndex => $seriesItem) {
         </div>
     </section>
 </article>
+<script src="/omo/api/stats/chart.js"></script>

@@ -2722,7 +2722,10 @@ body.view-right .panel-right {
     z-index: 2590 !important;
 }
 
-.omo-pv-editor .note-btn.omo-pv-editor__document-embed-button {
+.omo-pv-editor .note-btn.omo-pv-editor__document-embed-button,
+.omo-pv-editor .note-btn.omo-pv-editor__decision-embed-button,
+.omo-pv-editor .note-btn.omo-pv-editor__event-embed-button,
+.omo-pv-editor .note-btn.omo-pv-editor__indicator-embed-button {
     width: 34px;
     height: 34px;
     min-width: 34px;
@@ -2744,16 +2747,6 @@ body.view-right .panel-right {
     pointer-events: none;
 }
 
-.omo-pv-editor .note-btn.omo-pv-editor__decision-embed-button {
-    width: 34px;
-    height: 34px;
-    min-width: 34px;
-    padding: 0;
-    color: transparent !important;
-    font-size: 0 !important;
-    background-image: none !important;
-}
-
 .omo-pv-editor .note-btn.omo-pv-editor__decision-embed-button::before {
     content: '';
     display: block;
@@ -2766,16 +2759,6 @@ body.view-right .panel-right {
     pointer-events: none;
 }
 
-.omo-pv-editor .note-btn.omo-pv-editor__event-embed-button {
-    width: 34px;
-    height: 34px;
-    min-width: 34px;
-    padding: 0;
-    color: transparent !important;
-    font-size: 0 !important;
-    background-image: none !important;
-}
-
 .omo-pv-editor .note-btn.omo-pv-editor__event-embed-button::before {
     content: '';
     display: block;
@@ -2785,6 +2768,18 @@ body.view-right .panel-right {
     background: #0f766e;
     -webkit-mask: url('/omo/images/tools/calendar.png') center / contain no-repeat;
     mask: url('/omo/images/tools/calendar.png') center / contain no-repeat;
+    pointer-events: none;
+}
+
+.omo-pv-editor .note-btn.omo-pv-editor__indicator-embed-button::before {
+    content: '';
+    display: block;
+    width: 17px;
+    height: 17px;
+    margin: auto;
+    background: #0369a1;
+    -webkit-mask: url('/omo/images/tools/stats.png') center / contain no-repeat;
+    mask: url('/omo/images/tools/stats.png') center / contain no-repeat;
     pointer-events: none;
 }
 
