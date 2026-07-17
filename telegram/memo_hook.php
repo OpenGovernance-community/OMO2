@@ -1002,7 +1002,6 @@
 
 		$responseRaw = curl_exec($ch);
 		$curlError = curl_errno($ch) ? curl_error($ch) : null;
-		curl_close($ch);
 		@unlink($tempFilePath);
 
 		if ($curlError || !$responseRaw) {
