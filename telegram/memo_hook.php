@@ -802,6 +802,29 @@
 			return;
 		}
 
+		$command = strtolower((string)preg_replace('/@[^\s]+$/', '', strtok($text, " \t\r\n")));
+		if ($command === '/help') {
+			$help = "Commandes disponibles:\n".
+				"/help - Afficher cette aide\n".
+				"/whois - Afficher le nom du serveur\n".
+				"/connect - Connecter le compte ou le groupe\n".
+				"/time - Afficher l'heure du serveur\n".
+				"/start - Activer le traitement des messages\n".
+				"/stop - Desactiver le traitement des messages\n".
+				"/delete - Supprimer le dernier message du bot";
+			sendMessage($chatId, $help, null, $threadId);
+			return;
+		}
+
+		if ($command === '/whois') {
+			$serverName = function_exists('gethostname') ? gethostname() : false;
+			if (!$serverName) {
+				$serverName = $_SERVER['SERVER_NAME'] ?? 'unknown';
+			}
+			sendMessage($chatId, "Serveur: ".(string)$serverName, null, $threadId);
+			return;
+		}
+
 		if (preg_match('/^\/connect/', $text)) {
 			if (($message['chat']['id'] ?? null) == ($message['from']['id'] ?? null)) {
 				if ($user->getId() > 0) {
