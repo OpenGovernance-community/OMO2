@@ -38,95 +38,6 @@
 		return $value;
 	}
 
-	function telegramTracePreview($value, $limit = 4000) {
-		$value = (string)$value;
-		if (strlen($value) > $limit) {
-			$value = substr($value, 0, $limit).'...[truncated]';
-		}
-		if ($value !== '' && !preg_match('//u', $value)) {
-			return '[base64]'.base64_encode($value);
-		}
-		return $value;
-	}
-
-	function telegramTraceNormalizeValue($value) {
-		if (is_array($value)) {
-			$normalized = array();
-			foreach ($value as $key => $item) {
-				$normalized[$key] = telegramTraceNormalizeValue($item);
-			}
-			return $normalized;
-		}
-
-		if (is_string($value) && $value !== '' && !preg_match('//u', $value)) {
-			return '[base64]'.base64_encode($value);
-		}
-
-		return $value;
-	}
-
-	function telegramTraceLog($event, $context = array()) {
-		$logDirectory = __DIR__.'/../telegram/data';
-		$logPath = $logDirectory.'/telegram_trace.log';
-		if (!is_dir($logDirectory)) {
-			@mkdir($logDirectory, 0777, true);
-		}
-
-		$entry = array(
-			'time' => date('c'),
-			'event' => (string)$event,
-			'context' => telegramTraceNormalizeValue(is_array($context) ? $context : array('value' => $context)),
-		);
-		if (!empty($GLOBALS['telegramTraceId'])) {
-			$entry['trace_id'] = (string)$GLOBALS['telegramTraceId'];
-		}
-		$line = json_encode($entry, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-		if ($line === false) {
-			$entry['context'] = array('trace_encoding_error' => json_last_error_msg());
-			$line = json_encode($entry, JSON_UNESCAPED_SLASHES);
-		}
-		if (is_string($line)) {
-			$written = @file_put_contents($logPath, $line.PHP_EOL, FILE_APPEND | LOCK_EX);
-			if ($written === false) {
-				error_log('[telegram-trace] unable_to_write='.$logPath);
-			}
-		}
-	}
-
-	function telegramTraceSetId($traceId) {
-		$GLOBALS['telegramTraceId'] = (string)$traceId;
-	}
-
-	function telegramTraceRun($event, callable $callback) {
-		$warnings = array();
-		set_error_handler(function ($severity, $message, $file, $line) use (&$warnings, $event) {
-			$warnings[] = array(
-				'severity' => $severity,
-				'message' => (string)$message,
-				'file' => (string)$file,
-				'line' => (int)$line,
-			);
-			return false;
-		});
-
-		try {
-			$result = call_user_func($callback);
-		} catch (\Throwable $exception) {
-			telegramTraceLog($event.'.exception', array(
-				'exception' => get_class($exception),
-				'message' => $exception->getMessage(),
-			));
-			throw $exception;
-		} finally {
-			restore_error_handler();
-		}
-
-		if (count($warnings) > 0) {
-			telegramTraceLog($event.'.warnings', array('warnings' => $warnings));
-		}
-		return $result;
-	}
-
 	function telegramApiRequest($method, $params = array()) {
 		$method = trim((string)$method);
 		if ($method === '') {
@@ -145,7 +56,6 @@
 		}
 
 		if (!function_exists('curl_init')) {
-			error_log('[telegram-api] cURL extension is not available');
 			return null;
 		}
 
@@ -162,16 +72,7 @@
 			CURLOPT_TIMEOUT => 60,
 			CURLOPT_FAILONERROR => false,
 		));
-		$requestCallback = function () use ($ch) {
-			return curl_exec($ch);
-		};
-		$result = function_exists('telegramTraceRun')
-			? telegramTraceRun('telegram_api_'.$method, $requestCallback)
-			: $requestCallback();
-		if ($result === false) {
-			error_log('[telegram-api] method='.$method.', curl_errno='.curl_errno($ch).', curl_error='.curl_error($ch));
-		}
-
+		$result = curl_exec($ch);
 		if ($result === false) {
 			return null;
 		}
@@ -252,17 +153,6 @@
 	function telegramDownloadFile($file_path) {
 		$file_path = ltrim((string)$file_path, '/');
 		$url = "https://api.telegram.org/file/bot".TOKEN."/".$file_path;
-		$debugLines = array();
-		$token = (string)TOKEN;
-
-		$debugCallback = function ($handle, $type, $data) use (&$debugLines, $token) {
-			$line = (string)$data;
-			if ($token !== '') {
-				$line = str_replace($token, '[REDACTED_TOKEN]', $line);
-			}
-			$debugLines[] = trim($line);
-			return strlen((string)$data);
-		};
 
 		$ch = curl_init($url);
 		curl_setopt_array($ch, array(
@@ -272,38 +162,16 @@
 			CURLOPT_CONNECTTIMEOUT => 15,
 			CURLOPT_TIMEOUT => 240,
 			CURLOPT_FAILONERROR => false,
-			CURLOPT_VERBOSE => true,
-			CURLOPT_DEBUGFUNCTION => $debugCallback,
 			CURLOPT_USERAGENT => 'SystemDD Telegram file downloader',
 		));
 
 		$content = curl_exec($ch);
-		$curlErrorNumber = curl_errno($ch);
-		$curlError = curl_error($ch);
-		$info = curl_getinfo($ch);
-		$httpCode = isset($info['http_code']) ? (int)$info['http_code'] : 0;
+		$httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
 		$ok = $content !== false && $httpCode >= 200 && $httpCode < 300;
-		$trace = array(
-			'url' => str_replace($token, '[REDACTED_TOKEN]', $url),
-			'http_code' => $httpCode,
-			'curl_errno' => $curlErrorNumber,
-			'curl_error' => $curlError,
-			'content_type' => $info['content_type'] ?? null,
-			'download_size' => $content === false ? 0 : strlen($content),
-			'total_time' => $info['total_time'] ?? null,
-			'namelookup_time' => $info['namelookup_time'] ?? null,
-			'connect_time' => $info['connect_time'] ?? null,
-			'pretransfer_time' => $info['pretransfer_time'] ?? null,
-			'starttransfer_time' => $info['starttransfer_time'] ?? null,
-			'primary_ip' => $info['primary_ip'] ?? null,
-			'primary_port' => $info['primary_port'] ?? null,
-			'debug' => substr(implode("\n", $debugLines), 0, 8000),
-		);
 
 		return array(
 			'ok' => $ok,
 			'content' => $ok ? $content : false,
-			'trace' => $trace,
 		);
 	}
 ?>
