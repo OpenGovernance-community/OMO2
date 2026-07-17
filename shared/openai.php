@@ -51,8 +51,9 @@
 		if (function_exists('http_get_last_response_headers')) {
 			$lastHeaders = http_get_last_response_headers();
 			$httpHeaders = is_array($lastHeaders) ? $lastHeaders : array();
-		} elseif (isset($http_response_header) && is_array($http_response_header)) {
-			$httpHeaders = $http_response_header;
+		} else {
+			$legacyHeaders = ${'http_response_header'} ?? null;
+			$httpHeaders = is_array($legacyHeaders) ? $legacyHeaders : array();
 		}
 		foreach ($httpHeaders as $header) {
 				if (stripos((string)$header, 'HTTP/') === 0) {
