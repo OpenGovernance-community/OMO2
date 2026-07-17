@@ -39,7 +39,7 @@ if (!checklogin()) {
         .styleguide-header {
             --generic-hero-gap: 12px;
             --generic-hero-padding: 24px;
-            --generic-hero-radius: 24px;
+            --generic-hero-radius: var(--radius-md);
             --generic-hero-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
         }
 
@@ -71,7 +71,7 @@ if (!checklogin()) {
         .styleguide-code {
             margin: 0;
             padding: 12px 14px;
-            border-radius: 14px;
+            border-radius: var(--radius-md);
             background: #0f172a;
             color: #e2e8f0;
             font: 13px/1.5 Consolas, "Courier New", monospace;
@@ -139,6 +139,28 @@ if (!checklogin()) {
             gap: 8px;
         }
 
+        .styleguide-file-list-demo {
+            max-height: 460px;
+            overflow: auto;
+            padding: 0;
+        }
+
+        .styleguide-file-list-root {
+            --generic-file-list-surface: #ffffff;
+            --generic-file-list-surface-alt: #f8fafc;
+            --generic-file-list-title-gap: 18px;
+            --generic-file-list-table-margin-inline: 12px;
+        }
+
+        .styleguide-file-list-root .generic-file-list__group-title {
+            padding: 15px 12px;
+            font-size: 0.9rem;
+        }
+
+        .styleguide-file-list-root .generic-file-list__row {
+            min-height: 64px;
+        }
+
         @media (max-width: 640px) {
             body {
                 padding: 16px;
@@ -152,7 +174,7 @@ if (!checklogin()) {
 </head>
 <body>
     <main class="styleguide-shell">
-        <section class="styleguide-header generic-hero-panel generic-hero-panel--accent">
+        <section class="styleguide-header generic-hero-panel accent">
             <div class="generic-card-title generic-card-title--eyebrow">Reference partagee</div>
             <h1 class="generic-card-title generic-card-title--large">Styleguide des composants generiques</h1>
             <p class="styleguide-lead">
@@ -165,9 +187,11 @@ if (!checklogin()) {
                 <span class="styleguide-pill">generic-hero-panel</span>
                 <span class="styleguide-pill">generic-card-title</span>
                 <span class="styleguide-pill">generic-action-button</span>
+                <span class="styleguide-pill">generic-drag-handle</span>
                 <span class="styleguide-pill">generic-form-control</span>
                 <span class="styleguide-pill">generic-tabs</span>
                 <span class="styleguide-pill">generic-accordion</span>
+                <span class="styleguide-pill">generic-file-list</span>
             </div>
         </section>
 
@@ -207,7 +231,7 @@ generic-card-title--large</pre>
                     <div class="generic-card-title generic-card-title--small">Soft panel</div>
                     <div class="styleguide-note">Sous-bloc interieur ou zone de details.</div>
                 </div>
-                <div class="generic-hero-panel generic-hero-panel--accent styleguide-surface">
+                <div class="generic-hero-panel accent styleguide-surface">
                     <div class="styleguide-stack">
                         <div class="generic-card-title generic-card-title--eyebrow">Hero accent</div>
                         <div class="generic-card-title generic-card-title--big">Panneau de mise en avant</div>
@@ -230,6 +254,23 @@ generic-action-button generic-action-button--danger</pre>
         </section>
 
         <section class="generic-section generic-section--stack">
+            <div class="generic-card-title generic-card-title--eyebrow">Poignees</div>
+            <div class="styleguide-grid">
+                <div class="generic-soft-panel generic-soft-panel--stack">
+                    <div class="styleguide-row">
+                        <button type="button" class="generic-drag-handle" aria-label="Deplacer">::</button>
+                        <button type="button" class="generic-drag-handle generic-drag-handle--stretch" aria-label="Deplacer">::</button>
+                        <span class="generic-drag-handle generic-drag-handle--static">::</span>
+                    </div>
+                    <div class="styleguide-note">Utiliser cette primitive pour les listes reordonnables au lieu de recreer une poignee locale.</div>
+                </div>
+                <pre class="styleguide-code">button.generic-drag-handle
+button.generic-drag-handle.generic-drag-handle--stretch
+span.generic-drag-handle.generic-drag-handle--static</pre>
+            </div>
+        </section>
+
+        <section class="generic-section generic-section--stack">
             <div class="generic-card-title generic-card-title--eyebrow">Champs</div>
             <div class="styleguide-grid">
                 <form class="styleguide-form generic-soft-panel generic-soft-panel--stack">
@@ -248,16 +289,41 @@ generic-action-button generic-action-button--danger</pre>
                         <span class="styleguide-label">Textarea</span>
                         <textarea class="generic-form-control" rows="4">Texte multi-lignes de demonstration.</textarea>
                     </label>
+                    <label class="styleguide-field">
+                        <span class="styleguide-label">Select editable</span>
+                        <div class="generic-editable-select" data-generic-editable-select>
+                            <div class="generic-editable-select__control">
+                                <input
+                                    type="text"
+                                    class="generic-form-control generic-editable-select__input"
+                                    value="Introduction"
+                                    placeholder="Saisir ou choisir"
+                                    data-generic-editable-select-input
+                                >
+                                <button type="button" class="generic-editable-select__toggle" data-generic-editable-select-toggle aria-label="Afficher les options"></button>
+                            </div>
+                            <div class="generic-editable-select__panel" data-generic-editable-select-panel hidden>
+                                <button type="button" class="generic-editable-select__option" data-generic-editable-select-option="Accueil">Accueil</button>
+                                <button type="button" class="generic-editable-select__option" data-generic-editable-select-option="Introduction">Introduction</button>
+                                <button type="button" class="generic-editable-select__option" data-generic-editable-select-option="Prise en main">Prise en main</button>
+                                <div class="generic-editable-select__empty" data-generic-editable-select-empty hidden>Aucune valeur existante.</div>
+                            </div>
+                        </div>
+                    </label>
                 </form>
                 <pre class="styleguide-code">input.generic-form-control
 select.generic-form-control
 textarea.generic-form-control
+div.generic-editable-select[data-generic-editable-select]
 
 Overrides possibles via variables:
 --generic-form-control-border
 --generic-form-control-background
 --generic-form-control-background-focus
---generic-form-control-textarea-min-height</pre>
+--generic-form-control-textarea-min-height
+
+JS disponible apres injection dynamique:
+window.initGenericEditableSelects(container);</pre>
             </div>
         </section>
 
@@ -342,6 +408,218 @@ window.initGenericTabs(container);</pre>
                         </div>
                     </div>
                 </div>
+            </div>
+        </section>
+
+        <section class="generic-section generic-section--stack">
+            <div class="generic-card-title generic-card-title--eyebrow">File List</div>
+            <div class="styleguide-grid">
+                <div class="styleguide-file-list-demo generic-soft-panel">
+                    <div class="generic-file-list generic-file-list--structured generic-file-list--stacked-sticky styleguide-file-list-root" data-generic-file-list>
+                        <section class="generic-file-list__group">
+                            <h3 class="generic-card-title generic-card-title--small generic-file-list__group-title">Aujourd hui</h3>
+                            <div class="generic-file-list__table">
+                                <div class="generic-file-list__header">
+                                    <div class="generic-file-list__header-cell">Nom</div>
+                                    <div class="generic-file-list__header-cell">Type</div>
+                                    <div class="generic-file-list__header-cell">Tags</div>
+                                    <div class="generic-file-list__header-cell">Modifie le</div>
+                                </div>
+
+                                <article class="generic-file-list__item-shell generic-file-list__item-shell--folder generic-file-list__item-shell--with-menu">
+                                    <div class="generic-accordion generic-accordion--collapsible generic-file-list__folder" data-generic-accordion>
+                                        <div class="generic-accordion__header generic-file-list__folder-header">
+                                            <button type="button" class="generic-file-list__folder-toggle" data-generic-accordion-toggle>
+                                                <div class="generic-file-list__row">
+                                                    <div class="generic-file-list__cell generic-file-list__cell--name">
+                                                        <div class="generic-file-list__name-main">
+                                                            <span class="generic-file-list__icon-box"><span class="generic-file-list__icon-symbol">D</span></span>
+                                                            <div class="generic-file-list__title-block">
+                                                                <div class="generic-file-list__title-row">
+                                                                    <strong class="generic-file-list__title">Mon dossier</strong>
+                                                                    <span class="generic-file-list__count">3 elements</span>
+                                                                </div>
+                                                                <div class="generic-file-list__meta-line">Organisation &gt; Equipe produit</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="generic-file-list__cell" data-label="Type">
+                                                        <span class="generic-file-list__type">Dossier</span>
+                                                    </div>
+                                                    <div class="generic-file-list__cell" data-label="Tags">
+                                                        <div class="generic-file-list__tag-list">
+                                                            <span class="generic-file-list__tag">#pilotage</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="generic-file-list__cell generic-file-list__cell--date" data-label="Modifie le">5 juin 2026</div>
+                                                </div>
+                                                <span class="generic-accordion__toggle generic-file-list__folder-chevron" aria-hidden="true">&#9662;</span>
+                                            </button>
+                                            <div class="generic-file-list__menu">
+                                                <button type="button" class="generic-file-list__menu-toggle">...</button>
+                                            </div>
+                                        </div>
+                                        <div class="generic-accordion__content generic-file-list__folder-content">
+                                            <div class="generic-file-list__children">
+                                                <article class="generic-file-list__item-shell generic-file-list__item-shell--with-menu">
+                                                    <div class="generic-file-list__row">
+                                                        <div class="generic-file-list__cell generic-file-list__cell--name">
+                                                            <div class="generic-file-list__name-main">
+                                                                <span class="generic-file-list__icon-box"><span class="generic-file-list__icon-symbol">F</span></span>
+                                                                <div class="generic-file-list__title-block">
+                                                                    <div class="generic-file-list__title-row">
+                                                                        <strong class="generic-file-list__title">Bilan annuel</strong>
+                                                                    </div>
+                                                                    <div class="generic-file-list__meta-line">Organisation &gt; Equipe produit</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="generic-file-list__cell" data-label="Type">
+                                                            <span class="generic-file-list__type">Document</span>
+                                                        </div>
+                                                        <div class="generic-file-list__cell" data-label="Tags">
+                                                            <div class="generic-file-list__tag-list">
+                                                                <span class="generic-file-list__tag">#bilan</span>
+                                                                <span class="generic-file-list__tag">#annuel</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="generic-file-list__cell generic-file-list__cell--date" data-label="Modifie le">4 juin 2026</div>
+                                                    </div>
+                                                    <div class="generic-file-list__menu">
+                                                        <button type="button" class="generic-file-list__menu-toggle">...</button>
+                                                    </div>
+                                                </article>
+
+                                                <article class="generic-file-list__item-shell generic-file-list__item-shell--with-menu">
+                                                    <div class="generic-file-list__row">
+                                                        <div class="generic-file-list__cell generic-file-list__cell--name">
+                                                            <div class="generic-file-list__name-main">
+                                                                <span class="generic-file-list__icon-box"><span class="generic-file-list__icon-symbol">F</span></span>
+                                                                <div class="generic-file-list__title-block">
+                                                                    <div class="generic-file-list__title-row">
+                                                                        <strong class="generic-file-list__title">Checklist budget</strong>
+                                                                    </div>
+                                                                    <div class="generic-file-list__meta-line">Organisation &gt; Equipe produit</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="generic-file-list__cell" data-label="Type">
+                                                            <span class="generic-file-list__type">Document</span>
+                                                        </div>
+                                                        <div class="generic-file-list__cell" data-label="Tags">
+                                                            <div class="generic-file-list__tag-list">
+                                                                <span class="generic-file-list__tag">#budget</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="generic-file-list__cell generic-file-list__cell--date" data-label="Modifie le">3 juin 2026</div>
+                                                    </div>
+                                                    <div class="generic-file-list__menu">
+                                                        <button type="button" class="generic-file-list__menu-toggle">...</button>
+                                                    </div>
+                                                </article>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </article>
+
+                                <article class="generic-file-list__item-shell generic-file-list__item-shell--with-menu">
+                                    <div class="generic-file-list__row">
+                                        <div class="generic-file-list__cell generic-file-list__cell--name">
+                                            <div class="generic-file-list__name-main">
+                                                <span class="generic-file-list__icon-box"><span class="generic-file-list__icon-symbol">F</span></span>
+                                                <div class="generic-file-list__title-block">
+                                                    <div class="generic-file-list__title-row">
+                                                        <strong class="generic-file-list__title">Referentiel gouvernance</strong>
+                                                    </div>
+                                                    <div class="generic-file-list__meta-line">Organisation &gt; Conseil</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="generic-file-list__cell" data-label="Type">
+                                            <span class="generic-file-list__type">Document</span>
+                                        </div>
+                                        <div class="generic-file-list__cell" data-label="Tags">
+                                            <div class="generic-file-list__tag-list">
+                                                <span class="generic-file-list__tag">#gouvernance</span>
+                                                <span class="generic-file-list__tag">#process</span>
+                                            </div>
+                                        </div>
+                                        <div class="generic-file-list__cell generic-file-list__cell--date" data-label="Modifie le">2 juin 2026</div>
+                                    </div>
+                                    <div class="generic-file-list__menu">
+                                        <button type="button" class="generic-file-list__menu-toggle">...</button>
+                                    </div>
+                                </article>
+                            </div>
+                        </section>
+
+                        <section class="generic-file-list__group">
+                            <h3 class="generic-card-title generic-card-title--small generic-file-list__group-title">Cette semaine</h3>
+                            <div class="generic-file-list__table">
+                                <div class="generic-file-list__header">
+                                    <div class="generic-file-list__header-cell">Nom</div>
+                                    <div class="generic-file-list__header-cell">Type</div>
+                                    <div class="generic-file-list__header-cell">Tags</div>
+                                    <div class="generic-file-list__header-cell">Modifie le</div>
+                                </div>
+
+                                <article class="generic-file-list__item-shell generic-file-list__item-shell--with-menu">
+                                    <div class="generic-file-list__row">
+                                        <div class="generic-file-list__cell generic-file-list__cell--name">
+                                            <div class="generic-file-list__name-main">
+                                                <span class="generic-file-list__icon-box"><span class="generic-file-list__icon-symbol">F</span></span>
+                                                <div class="generic-file-list__title-block">
+                                                    <div class="generic-file-list__title-row">
+                                                        <strong class="generic-file-list__title">Compte rendu retro</strong>
+                                                    </div>
+                                                    <div class="generic-file-list__meta-line">Organisation &gt; Equipe produit</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="generic-file-list__cell" data-label="Type">
+                                            <span class="generic-file-list__type">Document</span>
+                                        </div>
+                                        <div class="generic-file-list__cell" data-label="Tags">
+                                            <div class="generic-file-list__tag-list">
+                                                <span class="generic-file-list__tag">#retro</span>
+                                            </div>
+                                        </div>
+                                        <div class="generic-file-list__cell generic-file-list__cell--date" data-label="Modifie le">1 juin 2026</div>
+                                    </div>
+                                    <div class="generic-file-list__menu">
+                                        <button type="button" class="generic-file-list__menu-toggle">...</button>
+                                    </div>
+                                </article>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+                <pre class="styleguide-code">&lt;div class="generic-file-list generic-file-list--structured generic-file-list--stacked-sticky"
+    data-generic-file-list&gt;
+    &lt;section class="generic-file-list__group"&gt;
+        &lt;h3 class="generic-file-list__group-title"&gt;Aujourd hui&lt;/h3&gt;
+        &lt;div class="generic-file-list__table"&gt;
+            &lt;div class="generic-file-list__header"&gt;...&lt;/div&gt;
+            &lt;article class="generic-file-list__item-shell"&gt;
+                &lt;div class="generic-file-list__row"&gt;...&lt;/div&gt;
+            &lt;/article&gt;
+            &lt;article class="generic-file-list__item-shell generic-file-list__item-shell--folder"&gt;
+                &lt;div class="generic-accordion generic-accordion--collapsible generic-file-list__folder"
+                    data-generic-accordion&gt;
+                    &lt;div class="generic-file-list__folder-header"&gt;...&lt;/div&gt;
+                    &lt;div class="generic-file-list__folder-content"&gt;...&lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/article&gt;
+        &lt;/div&gt;
+    &lt;/section&gt;
+&lt;/div&gt;
+
+Init auto:
+data-generic-file-list
+
+Resync manuel si besoin:
+window.initGenericFileLists(container)
+window.syncGenericFileLists(container)</pre>
             </div>
         </section>
 

@@ -15,7 +15,7 @@
 			return [
 				[['id'], 'required'],				// Champs obligatoires
 				[['id'], 'integer'],					
-				[['name','templatename','accesskey'], 'string'],			// Texte libre
+				[['name','nomcomplet','templatename','accesskey'], 'string'],			// Texte libre
 				[['icon','banner'], 'sizedimage'],			// Images illustratives
 				[['datecreation','datemodification'], 'datetime'],	// Date avec precision des heures
 				[['IDuser','IDtypeholon','IDholon_parent','IDholon_template','IDorganization','IDholon_org'], 'fk'],				// Cle etrangeres
@@ -31,6 +31,7 @@
 			return [
 				'id' => 'ID',
 				'name' => 'Nom',
+				'nomcomplet' => 'Nom complet',
 				'IDholon_org' => 'Organisation',
 				'IDuser' => 'Createur et administrateur',
 				'datecreation' => 'Date de creation',
@@ -55,9 +56,18 @@
 			];
 		}
 
+		public static function attributeDescriptions()
+		{
+			return [
+				'name' => 'Nom court utilise dans la representation graphique, les chemins et les choix de contexte.',
+				'nomcomplet' => 'Nom complet facultatif utilise dans les vues textuelles.',
+			];
+		}
+
 		public static function attributeLength()
 		{
 			return [
+				'nomcomplet' => 255,
 				'icon' => [[500, 500], [180, 180]],
 				'banner' => [[960, 540], [480, 270]],
 			];
@@ -135,6 +145,52 @@
 			return $user->load($currentUserId) && $user->hasOrganizationAccess($organizationId);
 		}
 
+		protected function userIsAllowed($userId, $permissionKey, $useSessionCache = false)
+		{
+			$userId = (int)$userId;
+			$permissionKey = trim((string)$permissionKey);
+			$organizationId = $this->resolveOrganizationId();
+
+			if ($userId <= 0 || $organizationId <= 0 || $permissionKey === '') {
+				return false;
+			}
+
+			if (function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($userId, $organizationId)) {
+				return true;
+			}
+
+			$currentUserId = function_exists('commonGetCurrentUserId')
+				? (int)\commonGetCurrentUserId()
+				: (int)($_SESSION['currentUser'] ?? 0);
+			if (
+				$useSessionCache
+				&& $currentUserId > 0
+				&& $currentUserId === $userId
+				&& function_exists('commonCurrentUserHasPermission')
+			) {
+				return \commonCurrentUserHasPermission($permissionKey, $this, $organizationId);
+			}
+
+			return \dbObject\HolonPermission::userHasPermissionForHolonContext(
+				$userId,
+				$organizationId,
+				$permissionKey,
+				(int)$this->getId()
+			);
+		}
+
+		public function isAllowed($permissionKey, $useSessionCache = true, $userId = 0)
+		{
+			$userId = (int)$userId;
+			if ($userId <= 0) {
+				$userId = function_exists('commonGetCurrentUserId')
+					? (int)\commonGetCurrentUserId()
+					: (int)($_SESSION['currentUser'] ?? 0);
+			}
+
+			return $this->userIsAllowed($userId, $permissionKey, $useSessionCache);
+		}
+
 		// Charge template lie
 		public function getTemplateHolon()
 		{
@@ -147,11 +203,53 @@
 			return $template->load($templateId) ? $template : null;
 		}
 
+		protected function getTemplateLineageHolons()
+		{
+			$lineage = array();
+			$current = $this->getTemplateHolon();
+			$guard = 0;
+
+			while ($current && (int)$current->getId() > 0 && $guard < 100) {
+				$currentId = (int)$current->getId();
+				if (isset($lineage[$currentId])) {
+					break;
+				}
+
+				$lineage[$currentId] = $current;
+				$current = $current->getTemplateHolon();
+				$guard += 1;
+			}
+
+			return array_values($lineage);
+		}
+
+		public function getTemplateLineageIds()
+		{
+			return array_values(array_map(function ($template) {
+				return (int)$template->getId();
+			}, $this->getTemplateLineageHolons()));
+		}
+
+		public function getMandatoryTemplateAncestorIds()
+		{
+			$mandatoryTemplateIds = array();
+
+			foreach ($this->getTemplateLineageHolons() as $template) {
+				$templateId = (int)$template->getId();
+				if ($templateId <= 0 || !(bool)$template->get('mandatory')) {
+					continue;
+				}
+
+				$mandatoryTemplateIds[$templateId] = $templateId;
+			}
+
+			return array_values($mandatoryTemplateIds);
+		}
+
 		// Verifie template obligatoire
 		public function isMandatoryTemplateInstance()
 		{
-			$template = $this->getTemplateHolon();
-			return $template ? (bool)$template->get('mandatory') : false;
+			return count($this->getMandatoryTemplateAncestorIds()) > 0;
 		}
 
 		// Verifie nom verrouille
@@ -256,13 +354,34 @@
 				return 0;
 			}
 
+			$mandatoryTemplateIds = $this->getMandatoryTemplateAncestorIds();
+			$mandatoryTemplateIdMap = array_fill_keys(array_map('intval', $mandatoryTemplateIds), true);
 			$count = 0;
 			foreach ($parentHolon->getChildren() as $child) {
 				if ((int)$child->getId() === (int)$this->getId()) {
 					continue;
 				}
 
-				if ((int)$child->get('IDholon_template') !== $templateId) {
+				$childTemplateId = (int)$child->get('IDholon_template');
+				if ($childTemplateId <= 0) {
+					continue;
+				}
+
+				if (count($mandatoryTemplateIdMap) > 0) {
+					$childLineageIds = $child->getTemplateLineageIds();
+					$matchesMandatoryConstraints = true;
+
+					foreach ($mandatoryTemplateIdMap as $mandatoryTemplateId => $unused) {
+						if (!in_array((int)$mandatoryTemplateId, $childLineageIds, true)) {
+							$matchesMandatoryConstraints = false;
+							break;
+						}
+					}
+
+					if (!$matchesMandatoryConstraints) {
+						continue;
+					}
+				} elseif ($childTemplateId !== $templateId) {
 					continue;
 				}
 
@@ -272,6 +391,11 @@
 			return $count;
 		}
 
+		public function isLastMandatoryTemplateInstance()
+		{
+			return $this->isMandatoryTemplateInstance() && $this->countSiblingTemplateInstances() === 0;
+		}
+
 		// Controle suppression noeud
 		public function canDelete()
 		{
@@ -279,7 +403,7 @@
 				return false;
 			}
 
-			if ($this->isMandatoryTemplateInstance() && $this->countSiblingTemplateInstances() === 0) {
+			if ($this->isLastMandatoryTemplateInstance()) {
 				return false;
 			}
 
@@ -455,6 +579,11 @@
 				$idField => (string)$this->getId(),
 				$typeField => (string)$type,
 			);
+
+			$fullName = trim((string)$this->get('nomcomplet'));
+			if ($fullName !== '') {
+				$node['fullName'] = $fullName;
+			}
 
 			$color = $this->getEffectiveColor();
 			if ($color !== '') {
@@ -743,6 +872,41 @@
 			return $rows;
 		}
 
+		public function getCompactExportPermissionRows()
+		{
+			$assignmentsByPermissionKey = \dbObject\HolonPermission::getAssignmentKeyMapForHolon((int)$this->getId());
+			if (!is_array($assignmentsByPermissionKey) || count($assignmentsByPermissionKey) === 0) {
+				return array();
+			}
+
+			$rows = array();
+			ksort($assignmentsByPermissionKey);
+
+			foreach ($assignmentsByPermissionKey as $permissionKey => $ranges) {
+				$permissionKey = trim((string)$permissionKey);
+				if ($permissionKey === '') {
+					continue;
+				}
+
+				$ranges = is_array($ranges) ? array_values($ranges) : array();
+				sort($ranges);
+
+				foreach ($ranges as $range) {
+					$range = trim((string)$range);
+					if ($range === '') {
+						continue;
+					}
+
+					$rows[] = array(
+						'permissionKey' => $permissionKey,
+						'range' => $range,
+					);
+				}
+			}
+
+			return $rows;
+		}
+
 		public function toCompactExportRecord($rootHolonId = 0, array $options = array())
 		{
 			$options = array_merge(array(
@@ -755,6 +919,10 @@
 				'typeId' => (int)$this->get('IDtypeholon'),
 				'name' => (string)$this->get('name'),
 			);
+
+			if (trim((string)$this->get('nomcomplet')) !== '') {
+				$record['fullName'] = (string)$this->get('nomcomplet');
+			}
 
 			if (!empty($options['role']) && (string)$options['role'] !== 'structure') {
 				$record['role'] = (string)$options['role'];
@@ -829,6 +997,11 @@
 				$record['properties'] = $propertyRows;
 			}
 
+			$permissionRows = $this->getCompactExportPermissionRows();
+			if (count($permissionRows) > 0) {
+				$record['permissions'] = $permissionRows;
+			}
+
 			return $record;
 		}
 
@@ -845,6 +1018,16 @@
 			}
 
 			return 'Holon ' . (int)$this->getId();
+		}
+
+		public function getFullDisplayName()
+		{
+			$fullName = trim((string)$this->get('nomcomplet'));
+			if ($fullName !== '') {
+				return $fullName;
+			}
+
+			return $this->getDisplayName();
 		}
 
 		protected static function buildMemberSortKey($value)
@@ -968,6 +1151,7 @@
 						'displayName' => $membership->getUserDisplayName(),
 						'photoUrl' => $membership->getProfilePhotoUrl(),
 						'initials' => $membership->getUserInitials(),
+						'avatarSeed' => $membership->getAvatarSeedLabel(),
 						'holonIds' => array((int)$this->getId()),
 						'isPending' => $isPending,
 						'canViewDetail' => $permission['canViewDetail'],
@@ -979,6 +1163,7 @@
 					$cardsByUserId[$userId]['displayName'] = $membership->getUserDisplayName();
 					$cardsByUserId[$userId]['photoUrl'] = $membership->getProfilePhotoUrl();
 					$cardsByUserId[$userId]['initials'] = $membership->getUserInitials();
+					$cardsByUserId[$userId]['avatarSeed'] = $membership->getAvatarSeedLabel();
 					$cardsByUserId[$userId]['isPending'] = false;
 					$cardsByUserId[$userId]['canViewDetail'] = $permission['canViewDetail'];
 				}
@@ -1026,11 +1211,133 @@
 			}
 
 			foreach ($this->getChildren() as $child) {
-				$child->collectMemberScopeHolonIds(true, $bucket, $visited);
+				$childTypeId = (int)$child->get('IDtypeholon');
+				if ($childTypeId === 1) {
+					$child->collectMemberScopeHolonIds(true, $bucket, $visited);
+					continue;
+				}
+
+				if ((int)$this->get('IDtypeholon') === 4) {
+					$child->collectMemberScopeHolonIds(true, $bucket, $visited);
+				}
 			}
 		}
 
-		protected function loadVisibleMemberLinkRows(array $holonIds, $organizationId)
+		protected function collectRoleScopeHolonIds($includeDescendants = true, &$bucket = array(), &$visited = array())
+		{
+			$holonId = (int)$this->getId();
+			if ($holonId <= 0 || isset($visited[$holonId])) {
+				return;
+			}
+
+			$visited[$holonId] = true;
+			if ((int)$this->get('IDtypeholon') === 1) {
+				$bucket[$holonId] = $holonId;
+			}
+
+			if (!$includeDescendants) {
+				return;
+			}
+
+			foreach ($this->getChildren() as $child) {
+				$child->collectRoleScopeHolonIds(true, $bucket, $visited);
+			}
+		}
+
+		protected function collectLinkRoleIdsForEnglobingCircleMembership($targetCircleId, &$bucket = array(), &$visited = array())
+		{
+			$targetCircleId = (int)$targetCircleId;
+			$holonId = (int)$this->getId();
+			if ($targetCircleId <= 0 || $holonId <= 0 || isset($visited[$holonId])) {
+				return;
+			}
+
+			$visited[$holonId] = true;
+
+			foreach ($this->getChildren() as $child) {
+				$childId = (int)$child->getId();
+				if ($childId <= 0) {
+					continue;
+				}
+
+				$childTypeId = (int)$child->get('IDtypeholon');
+				if ($childTypeId === 1) {
+					if (!(bool)$child->getEffectiveTemplateBooleanField('link')) {
+						continue;
+					}
+
+					$containingCircle = $child->getContainingCircle();
+					$englobingCircle = $containingCircle ? $containingCircle->getContainingCircle() : null;
+					if ($englobingCircle && (int)$englobingCircle->getId() === $targetCircleId) {
+						$bucket[$childId] = $childId;
+					}
+
+					continue;
+				}
+
+				if (in_array($childTypeId, array(2, 3), true)) {
+					$child->collectLinkRoleIdsForEnglobingCircleMembership($targetCircleId, $bucket, $visited);
+				}
+			}
+		}
+
+		protected function loadCalculatedCircleMemberLinkRows($organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0 || (int)$this->get('IDtypeholon') !== 2) {
+				return array();
+			}
+
+			$linkRoleIds = array();
+			$visitedHolonIds = array();
+			$this->collectLinkRoleIdsForEnglobingCircleMembership((int)$this->getId(), $linkRoleIds, $visitedHolonIds);
+			$linkRoleIds = array_values(array_unique(array_filter(array_map('intval', $linkRoleIds), function ($holonId) {
+				return $holonId > 0;
+			})));
+
+			if (count($linkRoleIds) === 0) {
+				return array();
+			}
+
+			$adminLinks = new \dbObject\ArrayUserHolon();
+			$adminLinks->loadActiveForHolonIds($linkRoleIds);
+			$adminMapByHolonId = array();
+
+			foreach ($adminLinks as $link) {
+				$roleHolonId = (int)$link->get('IDholon');
+				$userId = (int)$link->get('IDuser');
+				if ($roleHolonId <= 0 || $userId <= 0 || !$link->isHolonAdmin()) {
+					continue;
+				}
+
+				if (!isset($adminMapByHolonId[$roleHolonId])) {
+					$adminMapByHolonId[$roleHolonId] = array();
+				}
+
+				$adminMapByHolonId[$roleHolonId][$userId] = true;
+			}
+
+			if (count($adminMapByHolonId) === 0) {
+				return array();
+			}
+
+			$candidateRows = $this->loadVisibleMemberLinkRows($linkRoleIds, $organizationId, false);
+			$rows = array();
+
+			foreach ($candidateRows as $row) {
+				$roleHolonId = (int)($row['holon_id'] ?? 0);
+				$userId = (int)($row['user_id'] ?? 0);
+				if ($roleHolonId <= 0 || $userId <= 0 || empty($adminMapByHolonId[$roleHolonId][$userId])) {
+					continue;
+				}
+
+				$rows[] = $row;
+			}
+
+			return $rows;
+		}
+
+		protected function loadVisibleMemberLinkRows(array $holonIds, $organizationId, $includeCalculatedMembers = true)
 		{
 			$organizationId = (int)$organizationId;
 			$holonIds = array_values(array_unique(array_filter(array_map('intval', $holonIds), function ($holonId) {
@@ -1045,7 +1352,6 @@
 			$params = array(
 				'uo_organization_id' => $organizationId,
 				'inv_pending_organization_id' => $organizationId,
-				'inv_accepted_organization_id' => $organizationId,
 			);
 
 			foreach ($holonIds as $index => $holonId) {
@@ -1059,20 +1365,13 @@
 					uh.IDuser AS user_id,
 					uh.IDholon AS holon_id,
 					uh.active AS holon_active,
-					CASE
-						WHEN uh.active = 1 THEN 1
-						WHEN COALESCE(uo.active, 0) = 1 AND inv_accepted.id IS NOT NULL THEN 1
-						ELSE 0
-					END AS holon_effective_active,
+					uh.active AS holon_effective_active,
 					COALESCE(uo.active, 0) AS organization_active,
 					CASE
 						WHEN inv.id IS NULL THEN 0
 						ELSE 1
 					END AS has_pending_invitation,
-					CASE
-						WHEN inv_accepted.id IS NULL THEN 0
-						ELSE 1
-					END AS has_accepted_invitation
+					0 AS has_accepted_invitation
 				FROM user_holon uh
 				INNER JOIN `user` u ON u.id = uh.IDuser
 				LEFT JOIN user_organization uo
@@ -1084,18 +1383,10 @@
 					AND inv.status = 'pending'
 					AND inv.active = 1
 					AND (inv.dateexpiration IS NULL OR inv.dateexpiration > NOW())
-				LEFT JOIN invitation inv_accepted
-					ON inv_accepted.IDorganization = :inv_accepted_organization_id
-					AND inv_accepted.IDuser = uh.IDuser
-					AND inv_accepted.status = 'accepted'
 				WHERE uh.IDholon IN (" . implode(', ', $placeholders) . ")
 				  AND (
 					uh.active = 1
 					OR inv.id IS NOT NULL
-					OR (
-						COALESCE(uo.active, 0) = 1
-						AND inv_accepted.id IS NOT NULL
-					)
 				  )
 				ORDER BY
 					COALESCE(NULLIF(u.lastname, ''), NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,
@@ -1105,37 +1396,62 @@
 			";
 
 			$rows = \dbObject\DbObject::fetchAll($query, $params);
-			if ($rows !== false) {
+			if ($rows === false) {
+				$rows = null;
+			}
+
+			if ($rows === null) {
+				$fallbackQuery = "
+					SELECT DISTINCT
+						uh.IDuser AS user_id,
+						uh.IDholon AS holon_id,
+						uh.active AS holon_active,
+						uh.active AS holon_effective_active,
+						1 AS organization_active,
+						0 AS has_pending_invitation,
+						0 AS has_accepted_invitation
+					FROM user_holon uh
+					INNER JOIN `user` u ON u.id = uh.IDuser
+					WHERE uh.IDholon IN (" . implode(', ', $placeholders) . ")
+					  AND uh.active = 1
+					ORDER BY
+						COALESCE(NULLIF(u.lastname, ''), NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,
+						COALESCE(NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,
+						u.id ASC,
+						uh.IDholon ASC
+				";
+
+				$fallbackParams = array();
+				foreach ($holonIds as $index => $holonId) {
+					$fallbackParams['holon_' . $index] = $holonId;
+				}
+
+				$rows = \dbObject\DbObject::fetchAll($fallbackQuery, $fallbackParams);
+				$rows = $rows !== false ? $rows : array();
+			}
+
+			if (!$includeCalculatedMembers) {
 				return $rows;
 			}
 
-			$fallbackQuery = "
-				SELECT DISTINCT
-					uh.IDuser AS user_id,
-					uh.IDholon AS holon_id,
-					uh.active AS holon_active,
-					uh.active AS holon_effective_active,
-					1 AS organization_active,
-					0 AS has_pending_invitation,
-					0 AS has_accepted_invitation
-				FROM user_holon uh
-				INNER JOIN `user` u ON u.id = uh.IDuser
-				WHERE uh.IDholon IN (" . implode(', ', $placeholders) . ")
-				  AND uh.active = 1
-				ORDER BY
-					COALESCE(NULLIF(u.lastname, ''), NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,
-					COALESCE(NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,
-					u.id ASC,
-					uh.IDholon ASC
-			";
-
-			$fallbackParams = array();
-			foreach ($holonIds as $index => $holonId) {
-				$fallbackParams['holon_' . $index] = $holonId;
+			$calculatedRows = $this->loadCalculatedCircleMemberLinkRows($organizationId);
+			if (count($calculatedRows) === 0) {
+				return $rows;
 			}
 
-			$rows = \dbObject\DbObject::fetchAll($fallbackQuery, $fallbackParams);
-			return $rows !== false ? $rows : array();
+			$mergedRows = array();
+			$rowKeys = array();
+			foreach (array_merge($rows, $calculatedRows) as $row) {
+				$rowKey = (int)($row['user_id'] ?? 0) . ':' . (int)($row['holon_id'] ?? 0);
+				if ($rowKey === '0:0' || isset($rowKeys[$rowKey])) {
+					continue;
+				}
+
+				$rowKeys[$rowKey] = true;
+				$mergedRows[] = $row;
+			}
+
+			return $mergedRows;
 		}
 
 		public function getAssociatedMemberCards(array $options = array())
@@ -1176,6 +1492,7 @@
 						'displayName' => $link->getUserDisplayName((int)$options['organizationId']),
 						'photoUrl' => $link->getProfilePhotoUrl((int)$options['organizationId']),
 						'initials' => $link->getUserInitials((int)$options['organizationId']),
+						'avatarSeed' => $link->getAvatarSeedLabel((int)$options['organizationId']),
 						'holonIds' => array(),
 						'isPending' => false,
 						'canViewDetail' => $permission['canViewDetail'],
@@ -1301,7 +1618,8 @@
 
 			$scopeHolonIds = array();
 			$visitedHolonIds = array();
-			$this->collectMemberScopeHolonIds((bool)$options['includeDescendants'], $scopeHolonIds, $visitedHolonIds);
+			$this->collectRoleScopeHolonIds((bool)$options['includeDescendants'], $scopeHolonIds, $visitedHolonIds);
+			$scopeHolonIds = array_values($scopeHolonIds);
 
 			$linkRows = $this->loadVisibleMemberLinkRows($scopeHolonIds, (int)$options['organizationId']);
 			$assignmentsByHolonId = array();
@@ -1406,11 +1724,14 @@
 			$userId = (int)$userId;
 			$isAdmin = (bool)$isAdmin;
 			$organizationId = (int)$organizationId > 0 ? (int)$organizationId : $this->resolveOrganizationId();
+			$currentUserId = function_exists('commonGetCurrentUserId')
+				? (int)\commonGetCurrentUserId()
+				: (int)($_SESSION['currentUser'] ?? 0);
 
-			if (!$this->canEdit()) {
+			if (!$this->userIsAllowed($currentUserId, 'CAN_ADD_ADMIN', false)) {
 				return array(
 					'status' => false,
-					'message' => "Vous n'avez pas le droit de modifier ce contexte.",
+					'message' => "Vous n'avez pas le droit de gerer le statut admin dans ce contexte.",
 				);
 			}
 
@@ -1504,7 +1825,6 @@
 						throw new \RuntimeException("Le statut admin n'a pas pu être enregistré.");
 					}
 				}
-
 				$pdo->commit();
 				return array(
 					'status' => true,
@@ -1558,7 +1878,13 @@
 			try {
 				$pdo->beginTransaction();
 
+				$memberUser = new \dbObject\User();
+				if (!$memberUser->load($userId)) {
+					$memberUser->setId($userId);
+				}
+
 				$updatedLinkCount = 0;
+				$removedHolonIds = array();
 				$scopeHolonIds = array();
 				$visitedHolonIds = array();
 				$this->collectMemberScopeHolonIds((bool)$options['includeDescendants'], $scopeHolonIds, $visitedHolonIds);
@@ -1599,6 +1925,10 @@
 							}
 
 							$updatedLinkCount += 1;
+							$removedHolonId = (int)$link->get('IDholon');
+							if ($removedHolonId > 0) {
+								$removedHolonIds[$removedHolonId] = $removedHolonId;
+							}
 						}
 					}
 				}
@@ -1623,6 +1953,13 @@
 				if ($updatedLinkCount === 0 && !$membershipUpdated) {
 					throw new \RuntimeException("Aucun lien membre actif n'a été trouvé dans ce contexte.");
 				}
+
+				$scopeUpdateResult = \dbObject\Document::normalizeSelfScopedDocumentsForAuthorContext($organizationId, $userId);
+				if (!is_array($scopeUpdateResult) || empty($scopeUpdateResult['status'])) {
+					throw new \RuntimeException("Les portees des documents lies a ce membre n'ont pas pu etre mises a jour.");
+				}
+
+				$this->recordMemberRemovedHistory($memberUser, $organizationId, array_values($removedHolonIds), $membershipUpdated);
 
 				$pdo->commit();
 				return array(
@@ -1693,6 +2030,13 @@
 				throw new \RuntimeException("Impossible d'attacher cette personne à ce holon.");
 			}
 
+			if (!$isActive) {
+				$scopeUpdateResult = \dbObject\Document::normalizeSelfScopedDocumentsForAuthorContext($this->resolveOrganizationId(), (int)$user->getId());
+				if (!is_array($scopeUpdateResult) || empty($scopeUpdateResult['status'])) {
+					throw new \RuntimeException("Impossible de mettre a jour les documents de cette personne.");
+				}
+			}
+
 			return $link;
 		}
 
@@ -1707,6 +2051,15 @@
 			}
 
 			return true;
+		}
+
+		protected function hasActiveOrganizationMembership(\dbObject\User $user, $organizationId)
+		{
+			$membership = new \dbObject\UserOrganization();
+			return $membership->load(array(
+				array('IDuser', (int)$user->getId()),
+				array('IDorganization', (int)$organizationId),
+			)) && (bool)$membership->get('active');
 		}
 
 		protected function getHistoryTypeLabel()
@@ -1735,6 +2088,84 @@
 			}
 
 			return $typeLabel . ' ' . $name;
+		}
+
+		protected function buildMemberHistoryAuthorData($organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			$authorUserId = (int)\commonGetCurrentUserId();
+			$authorLabel = 'Utilisateur';
+
+			if ($authorUserId > 0) {
+				$author = new \dbObject\User();
+				if ($author->load($authorUserId)) {
+					$authorLabel = trim((string)$author->getScopedDisplayName($organizationId));
+				}
+			}
+
+			if ($authorLabel === '') {
+				$authorLabel = 'Utilisateur ' . $authorUserId;
+			}
+
+			return array(
+				'userId' => $authorUserId,
+				'label' => $authorLabel,
+			);
+		}
+
+		protected function buildMemberHistoryUserLabel(\dbObject\User $memberUser, $organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			$memberLabel = trim((string)$memberUser->getScopedDisplayName($organizationId));
+			if ($memberLabel === '') {
+				$memberLabel = trim((string)$memberUser->get('email'));
+			}
+			if ($memberLabel === '') {
+				$memberLabel = 'Utilisateur ' . (int)$memberUser->getId();
+			}
+
+			return $memberLabel;
+		}
+
+		protected function buildHistoryHolonReferenceToken($holonId)
+		{
+			$holonId = (int)$holonId;
+			if ($holonId <= 0) {
+				return '';
+			}
+
+			if ($holonId === (int)$this->getId()) {
+				return \dbObject\History::buildReferenceToken('holon', $holonId, $this->getHistoryReferenceLabel());
+			}
+
+			$holon = new \dbObject\Holon();
+			$holonLabel = 'Holon ' . $holonId;
+			if ($holon->load($holonId)) {
+				$holonLabel = $holon->getHistoryReferenceLabel();
+			}
+
+			return \dbObject\History::buildReferenceToken('holon', $holonId, $holonLabel);
+		}
+
+		protected function buildHistoryHolonReferenceList(array $holonIds)
+		{
+			$tokens = array();
+			$seenHolonIds = array();
+
+			foreach ($holonIds as $holonId) {
+				$holonId = (int)$holonId;
+				if ($holonId <= 0 || isset($seenHolonIds[$holonId])) {
+					continue;
+				}
+
+				$seenHolonIds[$holonId] = true;
+				$token = $this->buildHistoryHolonReferenceToken($holonId);
+				if ($token !== '') {
+					$tokens[] = $token;
+				}
+			}
+
+			return $tokens;
 		}
 
 		protected function recordMemberAddedHistory(\dbObject\User $memberUser, $organizationId)
@@ -1787,6 +2218,59 @@
 			}
 		}
 
+		protected function recordMemberRemovedHistory(\dbObject\User $memberUser, $organizationId, array $removedHolonIds = array(), $membershipUpdated = false)
+		{
+			$organizationId = (int)$organizationId;
+			$authorData = $this->buildMemberHistoryAuthorData($organizationId);
+			$authorUserId = (int)($authorData['userId'] ?? 0);
+			$authorLabel = (string)($authorData['label'] ?? 'Utilisateur');
+			$memberLabel = $this->buildMemberHistoryUserLabel($memberUser, $organizationId);
+			$holonTokens = $this->buildHistoryHolonReferenceList($removedHolonIds);
+
+			if (count($holonTokens) === 0) {
+				$holonTokens[] = \dbObject\History::buildReferenceToken('holon', (int)$this->getId(), $this->getHistoryReferenceLabel());
+			}
+
+			if (count($holonTokens) === 1) {
+				$content = \dbObject\History::buildReferenceToken('user', (int)$memberUser->getId(), $memberLabel)
+					. ' a ete retire du '
+					. $holonTokens[0]
+					. ' par '
+					. \dbObject\History::buildReferenceToken('user', $authorUserId, $authorLabel)
+					. '.';
+			} else {
+				$content = \dbObject\History::buildReferenceToken('user', (int)$memberUser->getId(), $memberLabel)
+					. ' a ete retire des holons suivants par '
+					. \dbObject\History::buildReferenceToken('user', $authorUserId, $authorLabel)
+					. ' : '
+					. implode(', ', $holonTokens)
+					. '.';
+			}
+
+			if (!empty($membershipUpdated) && $this->isOrganizationHolon()) {
+				$content .= ' Son adhesion a aussi ete retiree de l organisation.';
+			}
+
+			$saveResult = \dbObject\History::createEntry(
+				$organizationId,
+				$authorUserId,
+				'holon_member_removed',
+				$content,
+				array(
+					'IDtargetuser' => (int)$memberUser->getId(),
+					'IDholon' => (int)$this->getId(),
+					'authorUserId' => $authorUserId,
+					'removedHolonIds' => array_values(array_map('intval', $removedHolonIds)),
+					'membershipUpdated' => !empty($membershipUpdated),
+				),
+				(int)$this->getContainingCircleId(false)
+			);
+
+			if (!is_array($saveResult) || empty($saveResult['status'])) {
+				throw new \RuntimeException("L'historique du retrait n'a pas pu etre enregistre.");
+			}
+		}
+
 		protected function resolveMemberUser($userId = 0, $email = '')
 		{
 			$userId = (int)$userId;
@@ -1826,10 +2310,13 @@
 
 		public function addMember($userId = 0, $email = '')
 		{
-			if (!$this->canEdit()) {
+			$currentUserId = function_exists('commonGetCurrentUserId')
+				? (int)\commonGetCurrentUserId()
+				: (int)($_SESSION['currentUser'] ?? 0);
+			if (!$this->userIsAllowed($currentUserId, 'CAN_ADD_MEMBER', false)) {
 				return array(
 					'status' => false,
-					'message' => "Vous n'avez pas le droit de modifier ce holon.",
+					'message' => "Vous n'avez pas le droit d'ajouter un membre dans ce contexte.",
 				);
 			}
 
@@ -1853,9 +2340,35 @@
 				$pdo->beginTransaction();
 
 				$user = $this->resolveMemberUser($userId, $email);
-				$requiresInvitation = $this->requiresInvitationForUser($user, $organizationId);
+				$invitationIssue = array();
+				$pendingInvitation = \dbObject\Invitation::findPendingForOrganizationUser($organizationId, (int)$user->getId());
+				$hasActiveOrganizationMembership = $this->hasActiveOrganizationMembership($user, $organizationId);
+				$requiresInvitation = !$hasActiveOrganizationMembership && !($pendingInvitation instanceof \dbObject\Invitation);
+				$canApprovePendingRequest = $pendingInvitation instanceof \dbObject\Invitation && $pendingInvitation->isMemberInitiatedRequest();
+				$keepsPendingInvitation = $pendingInvitation instanceof \dbObject\Invitation
+					&& !$hasActiveOrganizationMembership
+					&& !$canApprovePendingRequest;
+				$isPendingAdd = $requiresInvitation || $keepsPendingInvitation;
 
-				if ($requiresInvitation) {
+				if ($canApprovePendingRequest) {
+					$approvalResult = $pendingInvitation->approveByAdmin([
+						'approvedByUserId' => $currentUserId,
+						'sendConfirmationEmail' => false,
+					]);
+					if (!($approvalResult['status'] ?? false)) {
+						throw new \RuntimeException((string)($approvalResult['message'] ?? "L'ajout en attente n'a pas pu etre finalise."));
+					}
+
+					$this->ensureOrganizationMembership($user, $organizationId, true);
+					if (!$this->isOrganizationHolon()) {
+						$this->ensureHolonMembership($user, true);
+					}
+				} elseif ($keepsPendingInvitation) {
+					$this->ensureOrganizationMembership($user, $organizationId, false);
+					if (!$this->isOrganizationHolon()) {
+						$this->ensureHolonMembership($user, false);
+					}
+				} elseif ($requiresInvitation) {
 					$this->ensureOrganizationMembership($user, $organizationId, false);
 					if (!$this->isOrganizationHolon()) {
 						$this->ensureHolonMembership($user, false);
@@ -1884,7 +2397,7 @@
 
 				return array(
 					'status' => true,
-					'message' => $requiresInvitation
+					'message' => $isPendingAdd
 						? (
 							!empty($invitationIssue['created'])
 								? 'Invitation envoyée : ' . trim((string)$user->get('email'))
@@ -1896,7 +2409,7 @@
 								: 'Membre ajouté.'
 						),
 					'userId' => (int)$user->getId(),
-					'pending' => $requiresInvitation,
+					'pending' => $isPendingAdd,
 				);
 			} catch (\Throwable $exception) {
 				if ($pdo->inTransaction()) {
@@ -2352,6 +2865,7 @@
 				'parentId' => (int)$this->get('IDholon_parent'),
 				'inheritsFromId' => (int)$this->get('IDholon_template'),
 				'rootHolonId' => (int)$rootHolonId,
+				'permissionAssignments' => \dbObject\HolonPermission::getAssignmentKeyMapForHolon((int)$this->getId()),
 				'properties' => $this->getTemplatePropertyDefinitions(),
 				'children' => $children,
 			);
@@ -2385,6 +2899,7 @@
 				'parentId' => (int)$this->get('IDholon_parent'),
 				'inheritsFromId' => (int)$this->get('IDholon_template'),
 				'rootHolonId' => (int)$rootHolonId,
+				'permissionAssignments' => \dbObject\HolonPermission::getAssignmentKeyMapForHolon((int)$this->getId()),
 				'properties' => $this->getTemplatePropertyDefinitions(),
 				'children' => array(),
 			);

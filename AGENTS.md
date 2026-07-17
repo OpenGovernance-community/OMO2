@@ -8,6 +8,7 @@
 - Keep French accents in user-visible strings when the product copy is meant to display them.
 - Do not replace intended visible accents with ASCII unless explicitly requested.
 - Prefer the existing dbObject autoload over direct `require_once` of dbObject class files. Only add a direct class include when a file is intentionally isolated from the shared bootstrap that normally initializes autoloading.
+- In `dbObject::rules()`, never declare a foreign key field in an `integer` rule. Foreign keys must live only in their `fk` rule, otherwise `adminEdit` can render them as plain text inputs instead of automatic selects.
 - Name SQL migrations with an explicit sortable sequence when several files share the same date, using `YYYY-MM-DD-NN-description.sql`, so dependency order is guaranteed by filename sorting.
 - For PHP-rendered UI translations, keep the module or page source strings close to the file that renders them, define a local `$sourceLang` array with `text` or `one`/`other` plus `context`, load a single bundle once near the top of the file, and render visible text through `t(...)` or a shared wrapper instead of hardcoding strings in markup.
 - For shared JavaScript used by multiple pages, do not duplicate translated strings in every page. Prefer a dedicated PHP JSON endpoint under a shared location such as `/common/jstranslation/`, keep the JS source strings in one shared PHP file, load one bundle server-side, and let the JS fetch that payload at startup with a small local fallback only when needed.
@@ -15,4 +16,12 @@
 - For PHP background workers, cron scripts, and async CLI dispatch, do not trust `PHP_BINARY` blindly on hosted environments. It may point to `php-fpm` or `php-cgi` under FPM. Prefer an explicit CLI binary, reject FPM/CGI executables for worker launchers, and add enough logging to diagnose failed async dispatch.
 - Before adding page-local CSS for panels, titles, buttons, form fields, or accordions, first check whether an existing generic primitive in `/common/assets/components.css` should be reused or extended.
 - Prefer `generic-section`, `generic-soft-panel`, `generic-hero-panel`, `generic-card-title`, `generic-action-button`, `generic-form-control`, and `generic-accordion` over duplicating the same structure with local selectors.
+- For sortable list grips and reorder handles, prefer `generic-drag-handle` with modifiers like `generic-drag-handle--stretch` instead of rebuilding per-module handle styles.
+- For drawer headers that need the standard full-width gradient band, prefer `generic-drawer-header`, `generic-drawer-header__copy`, `generic-drawer-header__actions`, and `generic-drawer-header--sticky` instead of rebuilding the same header locally in each app.
 - When a page directly combines shared design tokens like border, radius, surface, spacing, and text styles in a repeated pattern, stop and consider creating or extending a generic reusable object instead of duplicating the CSS.
+- Before creating a new shared helper or asset, first try to reuse an existing predefined object, component, or shared style primitive. Avoid duplication before deciding on file placement.
+- Prefer the simplest implementation that keeps the code safe and clear. Do not multiply helper functions, layers, or abstractions for a one-off need; extract them mainly when the same logic is reused in several places or when it meaningfully improves safety.
+- When several connected apps share the same UI rendering pattern and no existing shared primitive fits, place the shared CSS, browser scripts, and PHP rendering helpers under `/common/<module>/` instead of duplicating them inside each app.
+- For decision-related shared UI between apps, prefer `/common/choice/` for shared CSS, JS, and rendering helpers so `/omo/` and `/choice/` can evolve or be removed independently.
+- Keep data access helpers out of those shared UI folders: SQL and shared data logic must stay centralized in the related `dbObject` classes.
+- Maintain `NOUVEAUTES.md` at the repository root. After each meaningful functional or technical change, add or update a short entry so the file stays current.

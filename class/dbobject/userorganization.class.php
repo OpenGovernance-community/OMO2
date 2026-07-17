@@ -30,7 +30,7 @@
 				'id' => 'ID',
 				'IDuser' => 'Personne',
 				'IDorganization' => 'Organisation',
-				'username' => 'Identifiant',
+				'username' => 'Nom d\'utilisateur',
 				'email' => 'E-mail',
 				'presentation' => 'Presentation',
 				'image' => 'Photo',
@@ -46,7 +46,7 @@
 			return [
 				'IDuser' => 'Utilisateur associe a cette organisation.',
 				'IDorganization' => 'Organisation concernee par ce lien.',
-				'username' => 'Identifiant affiche specifiquement dans cette organisation. Laissez vide pour utiliser la valeur generale.',
+				'username' => 'Nom d\'utilisateur affiche specifiquement dans cette organisation. Laissez vide pour utiliser la valeur generale.',
 				'email' => 'Adresse e-mail affichee specifiquement dans cette organisation. Laissez vide pour utiliser la valeur generale.',
 				'presentation' => 'Presentation visible uniquement dans cette organisation. Laissez vide pour reutiliser la presentation generale.',
 				'image' => 'Photo de profil specifique a cette organisation. Si elle est vide, la photo generale est utilisee.',
@@ -109,6 +109,14 @@
 			return $this->getScopedEmail();
 		}
 
+		public function getAvatarSeedLabel()
+		{
+			return \commonBuildAvatarSeedLabel(
+				$this->getUserDisplayName(),
+				$this->getScopedEmail()
+			);
+		}
+
 		public function getUserInitials()
 		{
 			$user = $this->get('user');
@@ -121,41 +129,11 @@
 				});
 
 				if (count($parts) > 0) {
-					$initials = '';
-					foreach ($parts as $part) {
-						$initials .= mb_substr($part, 0, 1, 'UTF-8');
-						if (mb_strlen($initials, 'UTF-8') >= 2) {
-							break;
-						}
-					}
-
-					if ($initials !== '') {
-						return mb_strtoupper($initials, 'UTF-8');
-					}
+					return User::buildInitials(implode(' ', $parts));
 				}
 			}
 
-			$label = $this->getUserDisplayName();
-			$words = preg_split('/\s+/u', $label) ?: [];
-			$initials = '';
-
-			foreach ($words as $word) {
-				$word = trim((string)$word);
-				if ($word === '') {
-					continue;
-				}
-
-				$initials .= mb_substr($word, 0, 1, 'UTF-8');
-				if (mb_strlen($initials, 'UTF-8') >= 2) {
-					break;
-				}
-			}
-
-			if ($initials === '') {
-				$initials = mb_substr($label, 0, 1, 'UTF-8');
-			}
-
-			return mb_strtoupper($initials !== '' ? $initials : 'P', 'UTF-8');
+			return User::buildInitials($this->getUserDisplayName());
 		}
 
 		public function isOrganizationAdmin()

@@ -8,6 +8,42 @@ function omoGetStructurePanelSourceLang(): array
             'text' => 'Export',
             'context' => 'Structure action menu item used to export the current structure.',
         ],
+        'structure.actions.export.download' => [
+            'text' => 'Telecharger',
+            'context' => 'Button label used in the structure export modal to start a file download.',
+        ],
+        'structure.actions.export.format.csv' => [
+            'text' => 'CSV',
+            'context' => 'Label used for the CSV structure export format.',
+        ],
+        'structure.actions.export.format.csv_description' => [
+            'text' => 'Vue a plat des holons. Les droits sont listes dans une cellule avec leur code et leur portee.',
+            'context' => 'Description shown for the CSV structure export format.',
+        ],
+        'structure.actions.export.format.json' => [
+            'text' => 'JSON',
+            'context' => 'Label used for the JSON structure export format.',
+        ],
+        'structure.actions.export.format.json_description' => [
+            'text' => 'Format complet pour reimporter la structure. Il inclut aussi les droits des holons et des templates.',
+            'context' => 'Description shown for the JSON structure export format.',
+        ],
+        'structure.actions.export.format.xml' => [
+            'text' => 'XML',
+            'context' => 'Label used for the XML structure export format.',
+        ],
+        'structure.actions.export.format.xml_description' => [
+            'text' => 'Format structure et lisible, avec les memes codes de droits que le JSON.',
+            'context' => 'Description shown for the XML structure export format.',
+        ],
+        'structure.actions.export.modal_intro' => [
+            'text' => 'Choisissez le format d export de cette structure.',
+            'context' => 'Intro text shown in the structure export modal.',
+        ],
+        'structure.actions.export.modal_title' => [
+            'text' => 'Exporter la structure',
+            'context' => 'Modal title shown when choosing a structure export format.',
+        ],
         'structure.actions.menu_aria' => [
             'text' => 'Actions',
             'context' => 'Aria label for the structure action menu toggle button.',
@@ -56,6 +92,22 @@ function omoGetStructurePanelSourceLang(): array
             'text' => 'Aucune structure disponible pour cette organisation.',
             'context' => 'Message shown when the current organization has no visible structure to display.',
         ],
+        'structure.message.disabled' => [
+            'text' => 'L app Structure est desactivee pour cette organisation.',
+            'context' => 'Message shown when the Structure app is disabled for the current organization.',
+        ],
+        'structure.placeholder.action' => [
+            'text' => 'Ouvrir l app Structure',
+            'context' => 'Call to action shown in the main structure panel when the organization has no structure yet.',
+        ],
+        'structure.placeholder.text' => [
+            'text' => 'Aucune structure n est encore definie pour cette organisation. Ouvrez l app Structure dans la leftbar pour creer une structure vide, importer un export ou partir d un modele.',
+            'context' => 'Informational text shown in the main structure panel when the organization has no structure yet.',
+        ],
+        'structure.placeholder.title' => [
+            'text' => 'Aucune structure',
+            'context' => 'Title shown in the main structure panel when the organization has no structure yet.',
+        ],
         'structure.share.modal_title' => [
             'text' => 'Partager la structure',
             'context' => 'Modal title used when opening the share dialog from the structure action menu.',
@@ -87,10 +139,73 @@ function omoGetStructurePanelSourceLang(): array
     ];
 }
 
+function omoRenderStructureEmptyPlaceholder(array $lang, array $sourceLang): void
+{
+    ?>
+<div class="omo-structure-empty-panel">
+    <div class="generic-section omo-structure-empty-panel__card">
+        <div class="generic-card-title omo-structure-empty-panel__title"><?= omoApiEscape(t('structure.placeholder.title', [], $lang, $sourceLang)) ?></div>
+        <p class="omo-structure-empty-panel__text"><?= omoApiEscape(t('structure.placeholder.text', [], $lang, $sourceLang)) ?></p>
+        <button type="button" class="generic-action-button generic-action-button--main" data-omo-open-structure-drawer="1"><?= omoApiEscape(t('structure.placeholder.action', [], $lang, $sourceLang)) ?></button>
+    </div>
+</div>
+
+<style>
+.omo-structure-empty-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
+    padding: 24px;
+}
+
+.omo-structure-empty-panel__card {
+    max-width: 560px;
+    width: 100%;
+}
+
+.omo-structure-empty-panel__title {
+    margin-bottom: 12px;
+}
+
+.omo-structure-empty-panel__text {
+    margin: 0 0 16px;
+    line-height: 1.5;
+    color: var(--color-text-light, #6b7280);
+}
+</style>
+
+<script>
+$(document)
+  .off('click.omoStructureEmptyDrawer', '[data-omo-open-structure-drawer="1"]')
+  .on('click.omoStructureEmptyDrawer', '[data-omo-open-structure-drawer="1"]', function () {
+    if (typeof window.omoOpenDrawerHashState !== 'function') {
+        return;
+    }
+
+    window.omoOpenDrawerHashState('structure');
+  });
+</script>
+    <?php
+}
+
+function omoRenderStructureDisabledPlaceholder(array $lang, array $sourceLang): void
+{
+    ?>
+<div class="omo-structure-empty-panel">
+    <div class="generic-section omo-structure-empty-panel__card">
+        <div class="generic-card-title omo-structure-empty-panel__title"><?= omoApiEscape(t('structure.actions.menu_aria', [], $lang, $sourceLang)) ?></div>
+        <p class="omo-structure-empty-panel__text"><?= omoApiEscape(t('structure.message.disabled', [], $lang, $sourceLang)) ?></p>
+    </div>
+</div>
+    <?php
+}
+
 $sourceLang = omoGetStructurePanelSourceLang();
 $lang = translationBundleInit('omo_get_structure_panel', omoGetTranslationLocale(), $sourceLang);
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
+$drawerMode = isset($_GET['drawer']) && (string)$_GET['drawer'] === '1';
 if ($organizationId > 0) {
     $organization = new \dbObject\Organization();
     if ($organization->load($organizationId) && !$organization->canViewDetail()) {
@@ -99,9 +214,19 @@ if ($organizationId > 0) {
         exit;
     }
 
-    if ($organization->load($organizationId) && $organization->getStructuralRootHolon() === null) {
-        require_once __DIR__ . '/organization_setup_panel.php';
-        omoRenderOrganizationSetupPanel($organization);
+    if ($organization->load($organizationId) && !$organization->isStructureApplicationEnabled()) {
+        http_response_code(404);
+        omoRenderStructureDisabledPlaceholder($lang, $sourceLang);
+        exit;
+    }
+
+    if ($organization->load($organizationId) && $organization->getEnabledStructuralRootHolon() === null) {
+        if ($drawerMode) {
+            require_once __DIR__ . '/organization_setup_panel.php';
+            omoRenderOrganizationSetupPanel($organization);
+        } else {
+            omoRenderStructureEmptyPlaceholder($lang, $sourceLang);
+        }
         exit;
     }
 }
@@ -126,6 +251,15 @@ $canExportStructure = !$isShareMode && (int)commonGetCurrentUserId() > 0 && comm
 $structureTranslations = [
     'actionsMenuAria' => t('structure.actions.menu_aria'),
     'actionsExport' => t('structure.actions.export'),
+    'exportDownloadLabel' => t('structure.actions.export.download'),
+    'exportFormatCsvLabel' => t('structure.actions.export.format.csv'),
+    'exportFormatCsvDescription' => t('structure.actions.export.format.csv_description'),
+    'exportFormatJsonLabel' => t('structure.actions.export.format.json'),
+    'exportFormatJsonDescription' => t('structure.actions.export.format.json_description'),
+    'exportFormatXmlLabel' => t('structure.actions.export.format.xml'),
+    'exportFormatXmlDescription' => t('structure.actions.export.format.xml_description'),
+    'exportModalIntro' => t('structure.actions.export.modal_intro'),
+    'exportModalTitle' => t('structure.actions.export.modal_title'),
     'actionsPrint' => t('structure.actions.print'),
     'actionsShare' => t('structure.actions.share'),
     'browserGenericName' => t('structure.browser.generic_name'),
@@ -220,7 +354,7 @@ $structureTranslations = [
   min-height: 44px;
   padding: 0 14px;
   border: 1px solid var(--color-border, #e5e7eb);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--color-surface, #ffffff) 96%, transparent);
   color: var(--color-text, #1f2937);
   font-size: 24px;
@@ -242,7 +376,7 @@ $structureTranslations = [
   min-width: 180px;
   padding: 8px;
   border: 1px solid var(--color-border, #e5e7eb);
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--color-surface, #ffffff) 98%, transparent);
   box-shadow: var(--shadow-md, 0 12px 24px rgba(0,0,0,0.12));
 }
@@ -256,7 +390,7 @@ $structureTranslations = [
   width: 100%;
   padding: 11px 12px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--color-text, #1f2937);
   font: inherit;
@@ -277,7 +411,7 @@ $structureTranslations = [
   max-width: min(420px, calc(100% - 32px));
   padding: 12px 14px;
   border: 1px solid #f5c2c7;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: #fff3cd;
   color: #7c2d12;
   box-shadow: var(--shadow-sm, 0 8px 18px rgba(0,0,0,0.08));
@@ -411,7 +545,7 @@ input:checked + .slider::before {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--color-border, #d1d5db);
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-md);
   background: var(--color-surface-alt, #f9fafb);
   color: inherit;
   font: inherit;
@@ -440,7 +574,7 @@ input:checked + .slider::before {
 .role-item-shell {
   display: grid;
   gap: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: var(--color-surface-alt, #f0f2f5);
   box-shadow: inset 0 0 0 1px transparent;
   overflow: hidden;
@@ -448,13 +582,15 @@ input:checked + .slider::before {
 }
 
 .role-item-shell.match-direct {
-  background: #fff7d6;
-  box-shadow: inset 0 0 0 1px rgba(217, 119, 6, 0.22);
+  background: color-mix(in srgb, var(--color-surface-alt, #f0f2f5) 68%, #f59e0b 32%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary, #2563eb) 8%, #d97706 92%);
+  color: var(--color-text, #1f2937);
 }
 
 .role-item-shell.match-content {
-  background: #eef6ff;
-  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.18);
+  background: color-mix(in srgb, var(--color-surface-alt, #f0f2f5) 78%, var(--color-primary, #2563eb) 22%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-surface, #ffffff) 78%, var(--color-primary, #2563eb) 22%);
+  color: var(--color-text, #1f2937);
 }
 
 .role-item-main {
@@ -549,10 +685,11 @@ input:checked + .slider::before {
 }
 
 .role-highlight {
-  background: #fff3a3;
-  color: inherit;
+  background: color-mix(in srgb, var(--color-surface, #ffffff) 46%, #facc15 54%);
+  color: var(--color-text, #1f2937);
   padding: 0 1px;
   border-radius: 2px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-surface, #ffffff) 70%, #ca8a04 30%);
 }
 
 .role-list-empty {
@@ -626,7 +763,7 @@ input:checked + .slider::before {
 
 .role-property-detail-card {
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--color-surface-alt, #f8fafc);
   border: 1px solid var(--color-border, #e5e7eb);
 }
@@ -670,6 +807,7 @@ input:checked + .slider::before {
     </div>
 
   <script>
+(function () {
 
 const structureTranslations = <?= json_encode($structureTranslations, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
@@ -683,6 +821,100 @@ function escapeHtml(text) {
       "'": "&#039;"
     }[char];
   });
+}
+
+function buildStructureExportUrl(format) {
+  const route = getCurrentRoute();
+  const currentHolonId = omoGetCurrentStructureHolonId();
+  let exportUrl = "api/exportStructure.php?oid=" + encodeURIComponent(route.oid || 0);
+
+  if (currentHolonId > 0) {
+    exportUrl += "&cid=" + encodeURIComponent(currentHolonId);
+  }
+
+  if (format) {
+    exportUrl += "&format=" + encodeURIComponent(String(format));
+  }
+
+  if (typeof window.omoResolveAppUrl === "function") {
+    exportUrl = window.omoResolveAppUrl(exportUrl);
+  }
+
+  return exportUrl;
+}
+
+function getStructureExportFormats() {
+  return [
+    {
+      key: "json",
+      label: structureTranslations.exportFormatJsonLabel || "JSON",
+      description: structureTranslations.exportFormatJsonDescription || ""
+    },
+    {
+      key: "xml",
+      label: structureTranslations.exportFormatXmlLabel || "XML",
+      description: structureTranslations.exportFormatXmlDescription || ""
+    },
+    {
+      key: "csv",
+      label: structureTranslations.exportFormatCsvLabel || "CSV",
+      description: structureTranslations.exportFormatCsvDescription || ""
+    }
+  ];
+}
+
+function buildStructureExportModalHtml() {
+  const formats = getStructureExportFormats();
+  let html = '<div class="generic-section generic-section--stack">';
+
+  if (structureTranslations.exportModalIntro) {
+    html += '<p>' + escapeHtml(structureTranslations.exportModalIntro) + '</p>';
+  }
+
+  formats.forEach(function (format) {
+    const key = String(format && format.key ? format.key : "").trim();
+    if (key === "") {
+      return;
+    }
+
+    const label = String(format && format.label ? format.label : key.toUpperCase()).trim();
+    const description = String(format && format.description ? format.description : "").trim();
+
+    html += '<section class="generic-soft-panel generic-soft-panel--stack">';
+    html += '<h3 class="generic-card-title generic-card-title--small">' + escapeHtml(label) + '</h3>';
+    if (description !== "") {
+      html += '<p>' + escapeHtml(description) + '</p>';
+    }
+    html += '<button type="button" class="generic-action-button generic-action-button--main"'
+      + ' data-omo-structure-export-format-button="1"'
+      + ' data-omo-structure-export-format="' + escapeHtml(key) + '"'
+      + '>'
+      + escapeHtml(structureTranslations.exportDownloadLabel || "Telecharger")
+      + '</button>';
+    html += '</section>';
+  });
+
+  html += '</div>';
+  return html;
+}
+
+function startStructureExportDownload(format) {
+  const resolvedFormat = String(format || "json").trim() || "json";
+  const exportUrl = buildStructureExportUrl(resolvedFormat);
+  window.open(exportUrl, "_blank", "noopener");
+}
+
+function openStructureExportModal() {
+  if (typeof window.commonTopbarOpenModal !== "function") {
+    startStructureExportDownload("json");
+    return;
+  }
+
+  window.commonTopbarOpenModal(
+    structureTranslations.exportModalTitle || structureTranslations.actionsExport || "Exporter la structure",
+    buildStructureExportModalHtml(),
+    "html"
+  );
 }
 
 function colorToTransparentFill(color, alpha, fallback) {
@@ -734,10 +966,106 @@ function colorToTransparentFill(color, alpha, fallback) {
   return fallbackColor;
 }
 
+const structureColorParserCanvas = typeof document !== "undefined" ? document.createElement("canvas") : null;
+const structureColorParserContext = structureColorParserCanvas ? structureColorParserCanvas.getContext("2d") : null;
+
+function parseColorChannels(color, fallback) {
+  const candidates = [
+    String(color || "").trim(),
+    String(fallback || "").trim()
+  ];
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    let effectiveColor = candidates[index];
+
+    if (!effectiveColor) {
+      continue;
+    }
+
+    if (structureColorParserContext) {
+      try {
+        structureColorParserContext.fillStyle = "#000000";
+        structureColorParserContext.fillStyle = effectiveColor;
+        effectiveColor = String(structureColorParserContext.fillStyle || effectiveColor).trim();
+      } catch (error) {
+      }
+    }
+
+    const hexMatch = effectiveColor.match(/^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i);
+    if (hexMatch) {
+      let hex = hexMatch[1];
+      if (hex.length === 3 || hex.length === 4) {
+        hex = hex.split("").map(function (char) { return char + char; }).join("");
+      }
+
+      return {
+        red: parseInt(hex.slice(0, 2), 16),
+        green: parseInt(hex.slice(2, 4), 16),
+        blue: parseInt(hex.slice(4, 6), 16),
+        alpha: hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1
+      };
+    }
+
+    const rgbMatch = effectiveColor.match(/^rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*([0-9.]+)\s*)?\)$/i);
+    if (rgbMatch) {
+      return {
+        red: Math.max(0, Math.min(255, Number(rgbMatch[1]))),
+        green: Math.max(0, Math.min(255, Number(rgbMatch[2]))),
+        blue: Math.max(0, Math.min(255, Number(rgbMatch[3]))),
+        alpha: rgbMatch[4] !== undefined ? Math.max(0, Math.min(1, Number(rgbMatch[4]))) : 1
+      };
+    }
+  }
+
+  return null;
+}
+
+function colorToDesaturatedGray(color, fallback) {
+  const channels = parseColorChannels(color, fallback);
+
+  if (!channels) {
+    return String(fallback || color || "");
+  }
+
+  const gray = Math.round(
+    (channels.red * 0.299) +
+    (channels.green * 0.587) +
+    (channels.blue * 0.114)
+  );
+
+  if (channels.alpha < 1) {
+    return "rgba(" + gray + ", " + gray + ", " + gray + ", " + channels.alpha + ")";
+  }
+
+  return "rgb(" + gray + ", " + gray + ", " + gray + ")";
+}
+
+function roleHasAttachedUsers(node) {
+  if (String(node && node.type || "") !== "1") {
+    return true;
+  }
+
+  return Array.isArray(node.userIds) && node.userIds.length > 0;
+}
+
+function getNodeDisplayColor(node, fallbackColor) {
+  const baseColor = String(node && node.mycolor || fallbackColor || "").trim();
+
+  if (!baseColor) {
+    return "";
+  }
+
+  if (!roleHasAttachedUsers(node)) {
+    return colorToDesaturatedGray(baseColor, fallbackColor);
+  }
+
+  return baseColor;
+}
+
 function getListColor(node) {
   if (node.type == "4") return node.mycolor || chartColors.rootFill;
   if (node.type == "2" || node.type == "3") return colorToTransparentFill(node.mycolor, 0.12, chartColors.groupFill);
-  return node.mycolor || chartColors.roleFill;
+  return getNodeDisplayColor(node, chartColors.roleFill);
 }
 
 function getGroupStrokeColor(node) {
@@ -1051,6 +1379,10 @@ function getPropertyDisplayLabel(entry) {
   return String(entry && (entry.name || entry.shortname || entry.key) || "").trim();
 }
 
+function getNodeListLabel(node) {
+  return String(node && (node.fullName || node.name) || "").trim();
+}
+
 function getNodePropertyEntries(node) {
   const data = node && node.data && typeof node.data === "object" ? node.data : null;
 
@@ -1244,7 +1576,9 @@ function filterListNode(node, normalizedQuery) {
     };
   }
 
-  const matchesLabel = normalizeSearchText(node.name || "").includes(normalizedQuery);
+  const listLabel = getNodeListLabel(node);
+  const matchesLabel = normalizeSearchText(listLabel).includes(normalizedQuery)
+    || (listLabel !== String(node.name || "").trim() && normalizeSearchText(node.name || "").includes(normalizedQuery));
   const matchesContent = normalizeSearchText(getNodeContentSearchText(node)).includes(normalizedQuery);
 
   if (!matchesLabel && !matchesContent && filteredChildren.length === 0) {
@@ -1263,6 +1597,7 @@ function filterListNode(node, normalizedQuery) {
 function renderNodeList(entry, searchQuery) {
   const node = entry.node;
   const children = Array.isArray(entry.children) ? entry.children : [];
+  const listLabel = getNodeListLabel(node);
   const color = getListColor(node);
   const nodeId = String(node.ID || "");
   const escapedNodeId = escapeHtml(nodeId);
@@ -1303,7 +1638,7 @@ function renderNodeList(entry, searchQuery) {
             <button type="button" class="role-item" data-omo-cid="${escapedNodeId}" data-omo-root="${node.type == "4" ? "1" : "0"}">
               <span class="role-dot" style="${dotStyle}"></span>
               <span class="role-text">
-                <span class="role-label">${highlightLabel(node.name || "", searchQuery)}</span>
+                <span class="role-label">${highlightLabel(listLabel, searchQuery)}</span>
                 ${entry.matchExcerpt ? `<span class="role-excerpt">${entry.matchExcerpt}</span>` : ``}
               </span>
             </button>
@@ -1477,105 +1812,124 @@ $(document).on("click", "[data-omo-role-detail-toggle]", function (event) {
   updateRoleListResults();
 });
 
-$(document).on("click", "#omoStructureActionsToggle", function (event) {
-  event.preventDefault();
-  event.stopPropagation();
-  $("#omoStructureActions").toggleClass("is-open");
-});
+$(document)
+  .off("click.omoStructureActionsToggle", "#omoStructureActionsToggle")
+  .on("click.omoStructureActionsToggle", "#omoStructureActionsToggle", function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+    $("#omoStructureActions").toggleClass("is-open");
+  });
 
-$(document).on("click", function (event) {
-  if (!$(event.target).closest("#omoStructureActions").length) {
-    omoCloseStructureActions();
-  }
-});
+$(document)
+  .off("click.omoStructureActionsOutside")
+  .on("click.omoStructureActionsOutside", function (event) {
+    if (!$(event.target).closest("#omoStructureActions").length) {
+      omoCloseStructureActions();
+    }
+  });
 
-$(document).on("keydown", function (event) {
-  if (event.key === "Escape") {
-    omoCloseStructureActions();
-  }
-});
+$(document)
+  .off("keydown.omoStructureActionsEscape")
+  .on("keydown.omoStructureActionsEscape", function (event) {
+    if (event.key === "Escape") {
+      omoCloseStructureActions();
+    }
+  });
 
-$(document).on("click", "#omoStructureCanvasWarningDismiss", function (event) {
-  event.preventDefault();
-  event.stopPropagation();
-  collapseStructureCanvasWarning();
-});
+$(document)
+  .off("click.omoStructureCanvasWarningDismiss", "#omoStructureCanvasWarningDismiss")
+  .on("click.omoStructureCanvasWarningDismiss", "#omoStructureCanvasWarningDismiss", function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+    collapseStructureCanvasWarning();
+  });
 
-$(document).on("click", "#omoStructureCanvasWarningRestore", function (event) {
-  event.preventDefault();
-  event.stopPropagation();
-  expandStructureCanvasWarning();
-});
+$(document)
+  .off("click.omoStructureCanvasWarningRestore", "#omoStructureCanvasWarningRestore")
+  .on("click.omoStructureCanvasWarningRestore", "#omoStructureCanvasWarningRestore", function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+    expandStructureCanvasWarning();
+  });
 
 if (typeof window !== "undefined") {
   window.addEventListener("beforeprint", prepareStructureForPrint);
   window.addEventListener("afterprint", restoreStructureAfterPrint);
 }
 
-$(document).on("click", "[data-omo-structure-action]", function (event) {
-  event.preventDefault();
+$(document)
+  .off("click.omoStructureAction", "[data-omo-structure-action]")
+  .on("click.omoStructureAction", "[data-omo-structure-action]", function (event) {
+    event.preventDefault();
 
-  const action = String($(this).data("omo-structure-action") || "").trim();
-  omoCloseStructureActions();
+    const action = String($(this).data("omo-structure-action") || "").trim();
+    omoCloseStructureActions();
 
-  if (action === "print") {
-    prepareStructureForPrint();
-    window.print();
-    return;
-  }
+    if (action === "print") {
+      prepareStructureForPrint();
+      window.print();
+      return;
+    }
 
-  if (action === "export") {
-    if (!canExportStructure) {
+    if (action === "export") {
+      if (!canExportStructure) {
+        return;
+      }
+      openStructureExportModal();
+      return;
+    }
+
+    if (action !== "share" || !canCreateShareLink) {
+      return;
+    }
+
+    if (typeof window.commonTopbarOpenModal !== "function") {
       return;
     }
 
     const route = getCurrentRoute();
     const currentHolonId = omoGetCurrentStructureHolonId();
-    let exportUrl = "api/exportStructure.php?oid=" + encodeURIComponent(route.oid || 0);
+    let popupUrl = "api/shares/popup.php?oid=" + encodeURIComponent(route.oid || 0);
 
     if (currentHolonId > 0) {
-      exportUrl += "&cid=" + encodeURIComponent(currentHolonId);
+      popupUrl += "&cid=" + encodeURIComponent(currentHolonId);
     }
 
     if (typeof window.omoResolveAppUrl === "function") {
-      exportUrl = window.omoResolveAppUrl(exportUrl);
+      popupUrl = window.omoResolveAppUrl(popupUrl);
     }
 
-    const link = document.createElement("a");
-    link.href = exportUrl;
-    link.download = "";
-    link.rel = "noopener";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    return;
-  }
+    window.commonTopbarOpenModal(structureTranslations.shareModalTitle, popupUrl, "fetch");
+  });
 
-  if (action !== "share" || !canCreateShareLink) {
-    return;
-  }
-
-  if (typeof window.commonTopbarOpenModal !== "function") {
-    return;
-  }
-
-  const route = getCurrentRoute();
-  const currentHolonId = omoGetCurrentStructureHolonId();
-  let popupUrl = "api/shares/popup.php?oid=" + encodeURIComponent(route.oid || 0);
-
-  if (currentHolonId > 0) {
-    popupUrl += "&cid=" + encodeURIComponent(currentHolonId);
-  }
-
-  if (typeof window.omoResolveAppUrl === "function") {
-    popupUrl = window.omoResolveAppUrl(popupUrl);
-  }
-
-  window.commonTopbarOpenModal(structureTranslations.shareModalTitle, popupUrl, "fetch");
-});
+$(document)
+  .off("click.omoStructureExportFormat", "[data-omo-structure-export-format-button]")
+  .on("click.omoStructureExportFormat", "[data-omo-structure-export-format-button]", function (event) {
+    event.preventDefault();
+    const format = String($(this).data("omo-structure-export-format") || "").trim();
+    if (typeof window.commonTopbarCloseModal === "function") {
+      window.commonTopbarCloseModal();
+    }
+    startStructureExportDownload(format);
+  });
 
     const structureDataUrl = <?= json_encode($structureDataUrl, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
-    const initialCid = <?= (int)$initialCid ?>;
+    const initialCid = (function () {
+      const requestedCid = <?= (int)$initialCid ?>;
+      if (requestedCid > 0) {
+        return requestedCid;
+      }
+
+      if (typeof parseUrl === "function") {
+        const route = parseUrl();
+        const routeCid = Number(route && route.cid ? route.cid : 0);
+        if (Number.isInteger(routeCid) && routeCid > 0) {
+          return routeCid;
+        }
+      }
+
+      return 0;
+    })();
     const canCreateShareLink = <?= $canCreateShareLink ? 'true' : 'false' ?>;
     const canExportStructure = <?= $canExportStructure ? 'true' : 'false' ?>;
     let root = null;
@@ -1878,6 +2232,12 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
       const settings = Object.assign({
         quickZoom: false
       }, options || {});
+      const previousZoomState = {
+        centerX: zoomInfo && Number.isFinite(zoomInfo.centerX) ? zoomInfo.centerX : null,
+        centerY: zoomInfo && Number.isFinite(zoomInfo.centerY) ? zoomInfo.centerY : null,
+        scale: zoomInfo && Number.isFinite(zoomInfo.scale) ? zoomInfo.scale : null,
+        view: Array.isArray(vOld) ? vOld.slice() : null
+      };
 
       structureReloadPromise = loadStructureData()
         .then(function() {
@@ -1889,7 +2249,10 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
             currentnode = root;
           }
 
-          drawAll();
+          drawAll({
+            skipInitialFocus: !settings.quickZoom,
+            zoomState: !settings.quickZoom ? previousZoomState : null
+          });
 
           if (settings.quickZoom) {
             const quickTargetNode = nodeId ? findPackedNodeById(nodeId) : root;
@@ -1919,10 +2282,6 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
 
       return structureReloadPromise;
     }
-
-    window.omoReloadStructureAndFocus = function(nodeId, options) {
-      return reloadStructureAndFocus(nodeId, options);
-    };
 
     function focusStructureNode(nodeId, options) {
       if (!root || !Array.isArray(nodes)) {
@@ -2340,9 +2699,10 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
           chosenContext.fillStyle = node.color;
           chosenContext.fill();
         } else {
+          const displayColor = getNodeDisplayColor(node, node.type == "4" ? chartColors.rootFill : chartColors.roleFill);
           chosenContext.fillStyle = (node.type == "3" || node.type == "2")
             ? colorToTransparentFill(node.mycolor, 0.06 + (0.16 * nodeOpacity), colorCircle(node.depth))
-            : colorToTransparentFill(node.mycolor, nodeOpacity, node.type == "4" ? chartColors.rootFill : chartColors.roleFill);
+            : colorToTransparentFill(displayColor, nodeOpacity, node.type == "4" ? chartColors.rootFill : chartColors.roleFill);
 
           if (node.type == "3") {
             chosenContext.fillStyle = "rgba(0,0,0,0)";
@@ -2356,7 +2716,7 @@ $(document).on("click", "[data-omo-structure-action]", function (event) {
             chosenContext.setLineDash([]);
             chosenContext.strokeStyle = colorToTransparentFill("#ffffff", 0.15 + (0.35 * nodeOpacity), "rgba(255,255,255,0.5)");
             chosenContext.stroke();
-            chosenContext.fillStyle = colorToTransparentFill(node.mycolor, nodeOpacity, chartColors.rootFill);
+            chosenContext.fillStyle = colorToTransparentFill(displayColor, nodeOpacity, chartColors.rootFill);
             chosenContext.fill();
           } else {
             chosenContext.setLineDash([]);
@@ -2563,10 +2923,17 @@ function getNodeFromEvent(event) {
 
 
 function buildCanvas() {
-  d3.select("#chart").html("");
-
   const chartEl = document.getElementById("chart");
+  if (!chartEl) {
+    return false;
+  }
+
   const rect = chartEl.getBoundingClientRect();
+  if (!rect || rect.width <= 0 || rect.height <= 0) {
+    return false;
+  }
+
+  d3.select(chartEl).html("");
   const dpr = window.devicePixelRatio || 1;
 
   chartwidth = Math.max(1, Math.floor(rect.width * dpr));
@@ -2600,6 +2967,7 @@ function buildCanvas() {
     .style("display", "none");
 
   hiddenContext = hiddenCanvas.node().getContext("2d", { willReadFrequently: true });
+  return true;
 }
 
 function showCanvasTooltip(node, event) {
@@ -2753,7 +3121,12 @@ function getChartColors() {
 
     let chartColors = getChartColors();
 
-    function drawAll() {
+    function drawAll(options) {
+      const settings = Object.assign({
+        skipInitialFocus: false,
+        zoomState: null
+      }, options || {});
+
       if (!root) {
         renderStructureMessage(structureTranslations.noStructure);
         return;
@@ -2762,7 +3135,9 @@ function getChartColors() {
       chartColors = getChartColors();
       removeColorNodes(root);
 
-      buildCanvas();
+      if (!buildCanvas()) {
+        return;
+      }
       applyStructureCanvasPickingIssue(null);
 
       const canvasPickingProbe = probeStructureCanvasPicking();
@@ -2821,24 +3196,92 @@ function getChartColors() {
 
       renderRoleList();
       bindEvents();
+
+      if (
+        settings.skipInitialFocus
+        && settings.zoomState
+        && Number.isFinite(settings.zoomState.centerX)
+        && Number.isFinite(settings.zoomState.centerY)
+        && Number.isFinite(settings.zoomState.scale)
+        && Array.isArray(settings.zoomState.view)
+        && settings.zoomState.view.length === 3
+      ) {
+        zoomInfo = {
+          centerX: settings.zoomState.centerX,
+          centerY: settings.zoomState.centerY,
+          scale: settings.zoomState.scale
+        };
+        vOld = settings.zoomState.view.slice();
+        drawCanvas(context, false);
+        drawCanvas(hiddenContext, true);
+        return;
+      }
+
       quickZoomToCanvas(currentnode);
     }
 
 
  let chartResizeObserver = null;
 let resizeRaf = null;
+let structureDrawerCleanupCallbacks = [];
+let unregisterStructureDrawerViewTarget = null;
+
+function registerStructureDrawerWindowListener(type, handler) {
+  window.addEventListener(type, handler);
+  structureDrawerCleanupCallbacks.push(function () {
+    window.removeEventListener(type, handler);
+  });
+}
+
+function destroyStructureDrawerView() {
+  if (typeof unregisterStructureDrawerViewTarget === "function") {
+    unregisterStructureDrawerViewTarget();
+    unregisterStructureDrawerViewTarget = null;
+  }
+
+  if (chartResizeObserver) {
+    chartResizeObserver.disconnect();
+    chartResizeObserver = null;
+  }
+
+  if (resizeRaf) {
+    cancelAnimationFrame(resizeRaf);
+    resizeRaf = null;
+  }
+
+  structureDrawerCleanupCallbacks.forEach(function (cleanup) {
+    try {
+      cleanup();
+    } catch (error) {
+    }
+  });
+  structureDrawerCleanupCallbacks = [];
+}
 
 function scheduleDrawAll() {
   if (resizeRaf) return;
 
   resizeRaf = requestAnimationFrame(function() {
     resizeRaf = null;
+    const chartEl = document.getElementById("chart");
+    if (!chartEl) {
+      return;
+    }
     drawAll();
   });
 }
 
 function startChart() {
+  if (typeof window.omoDestroyStructureDrawerView === "function") {
+    window.omoDestroyStructureDrawerView();
+  }
+
+  window.omoDestroyStructureDrawerView = destroyStructureDrawerView;
+
   const chartEl = document.getElementById("chart");
+  if (!chartEl) {
+    return;
+  }
 
   if (chartResizeObserver) {
     chartResizeObserver.disconnect();
@@ -2850,19 +3293,18 @@ function startChart() {
 
   chartResizeObserver.observe(chartEl);
 
+  if (typeof window.omoRegisterStructureViewTarget === "function") {
+    unregisterStructureDrawerViewTarget = window.omoRegisterStructureViewTarget("drawer-structure", {
+      reloadAndFocus: reloadStructureAndFocus,
+      getCurrentHolonId: omoGetCurrentStructureHolonId
+    });
+  }
+
   loadStructureData()
     .then(function() {
       drawAll();
 
-      if (window.omoStructureFocusHandler) {
-        window.removeEventListener("omo-structure-focus", window.omoStructureFocusHandler);
-      }
-
-      if (window.omoStructureRefreshHandler) {
-        window.removeEventListener("omo-structure-refresh", window.omoStructureRefreshHandler);
-      }
-
-      window.omoStructureFocusHandler = function (event) {
+      const structureFocusHandler = function (event) {
         const cid = event && event.detail ? event.detail.cid : null;
         const quickZoom = Boolean(event && event.detail && event.detail.quickZoom);
         focusStructureNode(cid, {
@@ -2870,18 +3312,33 @@ function startChart() {
         });
       };
 
-      window.omoStructureRefreshHandler = function (event) {
+      const structureRefreshHandler = function (event) {
         const cid = event && event.detail ? event.detail.cid : null;
+        const quickZoom = event && event.detail && Object.prototype.hasOwnProperty.call(event.detail, 'quickZoom')
+          ? Boolean(event.detail.quickZoom)
+          : true;
         reloadStructureAndFocus(cid, {
-          quickZoom: true
+          quickZoom: quickZoom
         });
       };
 
-      if (window.omoStructureMemberHighlightHandler) {
-        window.removeEventListener("omo-structure-member-highlight", window.omoStructureMemberHighlightHandler);
-      }
+      const structureDrawerOpenHandler = function (event) {
+        const cid = event && event.detail && Object.prototype.hasOwnProperty.call(event.detail, 'cid')
+          ? event.detail.cid
+          : null;
 
-      window.omoStructureMemberHighlightHandler = function (event) {
+        scheduleDrawAll();
+        window.setTimeout(function () {
+          if (!document.getElementById("chart")) {
+            return;
+          }
+          focusStructureNode(cid, {
+            quickZoom: true
+          });
+        }, 30);
+      };
+
+      const structureMemberHighlightHandler = function (event) {
         const userId = event && event.detail ? Number(event.detail.userId || 0) : 0;
         highlightedMemberUserId = userId > 0 ? userId : null;
 
@@ -2893,9 +3350,16 @@ function startChart() {
         drawCanvas(hiddenContext, true);
       };
 
-      window.addEventListener("omo-structure-focus", window.omoStructureFocusHandler);
-      window.addEventListener("omo-structure-refresh", window.omoStructureRefreshHandler);
-      window.addEventListener("omo-structure-member-highlight", window.omoStructureMemberHighlightHandler);
+      registerStructureDrawerWindowListener("omo-structure-focus", structureFocusHandler);
+      registerStructureDrawerWindowListener("omo-structure-refresh", structureRefreshHandler);
+      registerStructureDrawerWindowListener("omo-structure-drawer-open", structureDrawerOpenHandler);
+      registerStructureDrawerWindowListener("omo-structure-member-highlight", structureMemberHighlightHandler);
+
+      if (initialCid > 0) {
+        focusStructureNode(initialCid, {
+          quickZoom: true
+        });
+      }
     })
     .catch(function(error) {
       root = null;
@@ -2929,4 +3393,5 @@ window.addEventListener("omo-theme-change", function () {
   waitForD3(startChart);
 
 
+})();
   </script>

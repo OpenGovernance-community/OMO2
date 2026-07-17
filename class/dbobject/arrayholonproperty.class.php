@@ -3,13 +3,24 @@
 
 	class ArrayHolonProperty extends ArrayDbObject
 	{
+		protected const GROUP_CONCAT_MAX_LEN = 16777215;
 		
 		public static function objectName() {
 			return "\dbObject\HolonProperty";
 		}
+
+		protected function ensureSessionGroupConcatCapacity()
+		{
+			// The inherited property chain can contain long JSON lists.
+			// Raise the session cap so GROUP_CONCAT does not cut values mid-string.
+			\dbObject\DbObject::execute(
+				"SET SESSION group_concat_max_len = " . (int)self::GROUP_CONCAT_MAX_LEN
+			);
+		}
 		
 		public function loadAllValues($node) {
 			if (!is_numeric($node)) $node=$node->get("id");
+			$this->ensureSessionGroupConcatCapacity();
 			
 			// Crée la requête
 			$query="WITH RECURSIVE ParentTree AS (

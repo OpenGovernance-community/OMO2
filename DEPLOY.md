@@ -65,6 +65,29 @@ Ce mode demande une configuration speciale de l'hebergement :
 - serveur web capable d'accepter les sous-domaines
 - idealement cookies partages entre sous-domaines
 
+### Portee des cookies
+
+Le projet supporte aussi un reglage de portee pour eviter qu'un environnement `dev`, `beta` ou `deploy` ne reutilise les cookies d'un autre site :
+
+```env
+COOKIE_SCOPE_MODE=auto
+```
+
+Modes disponibles :
+
+- `auto` : isole par defaut `dev`, `beta` et `deploy` en cookies host-only, tout en gardant le partage classique sur le domaine principal
+- `host` : force des cookies limites au host courant
+- `environment` : partage les cookies dans un environnement du type `*.dev.domaine.com`
+- `parent` : partage les cookies dans tout `*.domaine.com`
+
+Si une instance de dev doit partager la session entre `dev.domaine.com` et `*.dev.domaine.com` sans partager avec la prod, definir aussi :
+
+```env
+COOKIE_ROOT_HOST=dev.domaine.com
+```
+
+Cette valeur devient prioritaire pour la portee reelle des cookies et pour leurs noms scopes.
+
 ## 4. Appliquer les migrations SQL versionnees
 
 Apres l'installation initiale, ou lors d'une mise a jour du code, appliquer les migrations SQL si necessaire :
