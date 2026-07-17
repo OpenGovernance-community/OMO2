@@ -1027,20 +1027,21 @@
 		}
 
 		$metadataPrompt = "Return exactly three lines for the following text. TITLE: a concise document title. SUMMARY: a French summary of at most 150 characters. KEYWORDS: three to five French keywords separated only by commas. Do not use markdown or add any other text.\n".$response->text;
-		$metadata = (string)say($metadataPrompt);
+		$metadataSystemInstruction = "You generate document metadata. Always return the requested TITLE, SUMMARY, and KEYWORDS lines exactly, even when the source text is in French.";
+		$metadata = (string)say($metadataPrompt, $metadataSystemInstruction);
 		$title = "Mémo vocal";
 		$resume = '';
 		$keywords = '';
-		if (preg_match('/^TITLE\s*:\s*(.+)$/mi', $metadata, $titleMatch)) {
+		if (preg_match('/^(?:TITLE|TITRE)\s*:\s*(.+)$/miu', $metadata, $titleMatch)) {
 			$title = trim($titleMatch[1], " \t\n\r\0\x0B*\"");
 		}
 		if ($title === '') {
 			$title = "Mémo vocal";
 		}
-		if (preg_match('/^SUMMARY\s*:\s*(.+)$/mi', $metadata, $resumeMatch)) {
+		if (preg_match('/^(?:SUMMARY|RESUME|RÉSUMÉ)\s*:\s*(.+)$/miu', $metadata, $resumeMatch)) {
 			$resume = trim($resumeMatch[1], " \t\n\r\0\x0B*\"");
 		}
-		if (preg_match('/^KEYWORDS\s*:\s*(.+)$/mi', $metadata, $keywordsMatch)) {
+		if (preg_match('/^(?:KEYWORDS|MOTS[ _-]*CLES|MOTS[ _-]*CLÉS)\s*:\s*(.+)$/miu', $metadata, $keywordsMatch)) {
 			$keywordItems = array_filter(array_map(function ($keyword) {
 				return trim(ltrim((string)$keyword, '#'));
 			}, explode(',', $keywordsMatch[1])));
