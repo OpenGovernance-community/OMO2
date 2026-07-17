@@ -71,6 +71,10 @@ if (!$accessGranted) {
 
 $event = $document->getAssociatedEvent();
 $hasAssociatedEvent = $event instanceof \dbObject\Event;
+$resourcePickerInitialHolonId = (int)$document->get('IDholon');
+if ($resourcePickerInitialHolonId <= 0 && $hasAssociatedEvent) {
+    $resourcePickerInitialHolonId = (int)$event->get('IDholon');
+}
 $organization = new \dbObject\Organization();
 $hasOrganization = $organizationId > 0 && $organization->load($organizationId);
 $hasTeamApplication = $hasOrganization && $organization->isApplicationEnabled('team', $currentUserId);
@@ -200,6 +204,7 @@ if ($hasDocumentsApplication) {
 
         $embeddableDocumentsPayload[] = [
             'id' => (int)$embeddableDocument->getId(),
+            'contextHolonId' => (int)$embeddableDocument->get('IDholon'),
             'title' => trim((string)$embeddableDocument->get('title')),
             'description' => trim((string)$embeddableDocument->get('description')),
             'contextLabel' => trim((string)$embeddableDocument->getOrganizationContextLabel()),
@@ -226,6 +231,7 @@ if ($hasDecisionApplication) {
         $decisionType = \dbObject\DecisionProcess::normalizeDecisionType($embeddableDecision->get('decision_type'));
         $embeddableDecisionsPayload[] = [
             'id' => (int)$embeddableDecision->getId(),
+            'contextHolonId' => (int)$embeddableDecision->get('IDholon'),
             'title' => trim((string)$embeddableDecision->get('title')),
             'typeLabel' => (string)($decisionTypeLabels[$decisionType] ?? $decisionType),
             'summary' => $embeddableDecision->getCompactEmbedSummary(),
@@ -259,6 +265,7 @@ if ($hasCalendarApplication) {
         ])));
         $embeddableEventsPayload[] = [
             'id' => (int)$embeddableEvent->getId(),
+            'contextHolonId' => (int)$embeddableEvent->get('IDholon'),
             'title' => trim((string)$embeddableEvent->get('title')),
             'scheduleLabel' => $scheduleLabel,
             'locationLabel' => $locationLabel,
@@ -287,6 +294,7 @@ if ($hasStatsApplication) {
         $embeddableIndicatorsPayload[] = [
             'id' => (int)$embeddableIndicator->getId(),
             'kind' => 'indicator',
+            'contextHolonId' => (int)$embeddableIndicator->get('IDholon'),
             'title' => trim((string)$embeddableIndicator->get('name')),
             'contextLabel' => omoStatsContextLabel($embeddableIndicator),
             'valueLabel' => $latestValue instanceof \dbObject\StatIndicatorValue
@@ -317,6 +325,7 @@ if ($hasStatsApplication) {
         $embeddableIndicatorsPayload[] = [
             'id' => (int)$embeddableIndicatorGroup->getId(),
             'kind' => 'group',
+            'contextHolonId' => (int)$embeddableIndicatorGroup->get('IDholon'),
             'title' => trim((string)$embeddableIndicatorGroup->get('name')),
             'contextLabel' => $groupMode === \dbObject\StatIndicatorGroup::DISPLAY_SUM
                 ? omoDocumentsPvEditorT('documents.pv_editor.indicator.group_sum')
@@ -2357,12 +2366,20 @@ foreach ($points as $point) {
     const groupPointsLabel = <?= json_encode((string)$uiText['groupPoints'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const groupMinutesLabel = <?= json_encode((string)$uiText['groupMinutes'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const canEmbedDocuments = <?= $hasDocumentsApplication ? 'true' : 'false' ?>;
+    const resourcePickerOrganizationId = <?= (int)$organizationId ?>;
+    const resourcePickerInitialHolonId = <?= (int)$resourcePickerInitialHolonId ?>;
+    const resourcePickerScopeUi = <?= json_encode([
+        'local' => omoDocumentsPvEditorT('documents.pv_editor.embed.scope_local'),
+        'descendants' => omoDocumentsPvEditorT('documents.pv_editor.embed.scope_descendants'),
+        'global' => omoDocumentsPvEditorT('documents.pv_editor.embed.scope_global'),
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const embeddableDocuments = <?= json_encode($embeddableDocumentsPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     const documentEmbedUi = <?= json_encode([
         'buttonTitle' => omoDocumentsPvEditorT('documents.pv_editor.embed.button_title'),
         'modalTitle' => omoDocumentsPvEditorT('documents.pv_editor.embed.modal_title'),
         'search' => omoDocumentsPvEditorT('documents.pv_editor.embed.search'),
         'searchPlaceholder' => omoDocumentsPvEditorT('documents.pv_editor.embed.search_placeholder'),
+        'quickSearchPlaceholder' => omoDocumentsPvEditorT('documents.pv_editor.embed.quick_search_placeholder'),
         'visibleDocuments' => omoDocumentsPvEditorT('documents.pv_editor.embed.visible_documents'),
         'none' => omoDocumentsPvEditorT('documents.pv_editor.embed.none'),
         'insert' => omoDocumentsPvEditorT('documents.pv_editor.embed.insert'),
@@ -2378,6 +2395,7 @@ foreach ($points as $point) {
         'modalTitle' => omoDocumentsPvEditorT('documents.pv_editor.decision.modal_title'),
         'search' => omoDocumentsPvEditorT('documents.pv_editor.embed.search'),
         'searchPlaceholder' => omoDocumentsPvEditorT('documents.pv_editor.embed.search_placeholder'),
+        'quickSearchPlaceholder' => omoDocumentsPvEditorT('documents.pv_editor.embed.quick_search_placeholder'),
         'visibleDecisions' => omoDocumentsPvEditorT('documents.pv_editor.decision.visible'),
         'none' => omoDocumentsPvEditorT('documents.pv_editor.embed.none'),
         'insert' => omoDocumentsPvEditorT('documents.pv_editor.decision.insert'),
@@ -2392,6 +2410,7 @@ foreach ($points as $point) {
         'modalTitle' => omoDocumentsPvEditorT('documents.pv_editor.event.modal_title'),
         'search' => omoDocumentsPvEditorT('documents.pv_editor.embed.search'),
         'searchPlaceholder' => omoDocumentsPvEditorT('documents.pv_editor.embed.search_placeholder'),
+        'quickSearchPlaceholder' => omoDocumentsPvEditorT('documents.pv_editor.embed.quick_search_placeholder'),
         'visibleEvents' => omoDocumentsPvEditorT('documents.pv_editor.event.visible'),
         'none' => omoDocumentsPvEditorT('documents.pv_editor.embed.none'),
         'insert' => omoDocumentsPvEditorT('documents.pv_editor.event.insert'),
@@ -2405,6 +2424,7 @@ foreach ($points as $point) {
         'modalTitle' => omoDocumentsPvEditorT('documents.pv_editor.indicator.modal_title'),
         'search' => omoDocumentsPvEditorT('documents.pv_editor.embed.search'),
         'searchPlaceholder' => omoDocumentsPvEditorT('documents.pv_editor.embed.search_placeholder'),
+        'quickSearchPlaceholder' => omoDocumentsPvEditorT('documents.pv_editor.embed.quick_search_placeholder'),
         'visibleIndicators' => omoDocumentsPvEditorT('documents.pv_editor.indicator.visible'),
         'none' => omoDocumentsPvEditorT('documents.pv_editor.embed.none'),
         'insert' => omoDocumentsPvEditorT('documents.pv_editor.indicator.insert'),
@@ -2452,6 +2472,25 @@ foreach ($points as $point) {
         return summary.length > limit
             ? summary.slice(0, Math.max(1, limit - 3)).trim() + '...'
             : summary;
+    }
+
+    function mountPvResourceScopePicker(modalBody, selector, render) {
+        const host = modalBody instanceof Element ? modalBody.querySelector(selector) : null;
+        if (!(host instanceof Element) || typeof window.omoMountHolonScopePicker !== 'function') {
+            const picker = host instanceof Element ? host.closest('.omo-resource-picker') : null;
+            if (picker instanceof Element) {
+                picker.classList.remove('omo-resource-picker');
+            }
+            return null;
+        }
+
+        return window.omoMountHolonScopePicker({
+            host: host,
+            organizationId: resourcePickerOrganizationId,
+            initialHolonId: resourcePickerInitialHolonId,
+            labels: resourcePickerScopeUi,
+            onChange: render
+        });
     }
 
     function openPvEmbeddedResourceByHash(resourceHash) {
@@ -2560,18 +2599,17 @@ foreach ($points as $point) {
         let marker = targetNode ? null : field.createTemporaryCursorMarker();
         let resolved = false;
         const modalHtml = ''
-            + '<div class="omo-document-embed-picker">'
-            + '<label class="omo-document-embed-picker__field"><span class="omo-document-embed-picker__label">' + escapeDocumentEmbedHtml(documentEmbedUi.search || '') + '</span>'
-            + '<input type="search" class="generic-form-control" data-omo-pv-document-embed-search placeholder="' + escapeDocumentEmbedHtml(documentEmbedUi.searchPlaceholder || '') + '"></label>'
-            + '<label class="omo-document-embed-picker__field"><span class="omo-document-embed-picker__label">' + escapeDocumentEmbedHtml(documentEmbedUi.visibleDocuments || '') + '</span>'
-            + '<select class="generic-form-control omo-document-embed-picker__select" data-omo-pv-document-embed-select size="10"></select></label>'
+            + '<div class="omo-document-embed-picker omo-resource-picker">'
+            + '<aside class="omo-resource-picker__navigation" data-omo-pv-document-embed-scope></aside>'
+            + '<div class="omo-resource-picker__content">'
+            + '<label class="omo-resource-picker__quick-search"><img src="/common/assets/icon-topbar-search.png" alt="" aria-hidden="true"><input type="search" class="generic-form-control" data-omo-pv-document-embed-search aria-label="' + escapeDocumentEmbedHtml(documentEmbedUi.search || '') + '" placeholder="' + escapeDocumentEmbedHtml(documentEmbedUi.quickSearchPlaceholder || '') + '"></label>'
+            + '<div class="omo-document-embed-picker__field"><select class="generic-form-control omo-document-embed-picker__select" data-omo-pv-document-embed-select aria-label="' + escapeDocumentEmbedHtml(documentEmbedUi.visibleDocuments || '') + '" size="10"></select></div>'
             + '<div class="omo-document-embed-picker__preview"><div class="omo-document-embed-picker__preview-title" data-omo-pv-document-embed-title></div>'
-            + '<div class="omo-document-embed-picker__preview-context" data-omo-pv-document-embed-context hidden></div>'
             + '<div class="omo-document-embed-picker__preview-description" data-omo-pv-document-embed-description hidden></div></div>'
             + '<div class="omo-document-embed-picker__actions">'
             + (targetNode ? '<button type="button" class="generic-action-button generic-action-button--danger" data-omo-pv-embed-remove>' + escapeDocumentEmbedHtml(documentEmbedUi.remove || '') + '</button>' : '')
             + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-document-embed-cancel>' + escapeDocumentEmbedHtml(documentEmbedUi.cancel || '') + '</button>'
-            + '<button type="button" class="generic-action-button generic-action-button--main" data-omo-pv-document-embed-insert disabled>' + escapeDocumentEmbedHtml(documentEmbedUi.insert || '') + '</button></div></div>';
+            + '<button type="button" class="generic-action-button generic-action-button--main" data-omo-pv-document-embed-insert disabled>' + escapeDocumentEmbedHtml(documentEmbedUi.insert || '') + '</button></div></div></div>';
 
         window.commonTopbarOpenModal(documentEmbedUi.modalTitle || '', modalHtml, 'html');
         const modalBody = document.getElementById('commonTopbarModalBody');
@@ -2583,12 +2621,12 @@ foreach ($points as $point) {
         const searchNode = modalBody.querySelector('[data-omo-pv-document-embed-search]');
         const selectNode = modalBody.querySelector('[data-omo-pv-document-embed-select]');
         const titleNode = modalBody.querySelector('[data-omo-pv-document-embed-title]');
-        const contextNode = modalBody.querySelector('[data-omo-pv-document-embed-context]');
         const descriptionNode = modalBody.querySelector('[data-omo-pv-document-embed-description]');
         const cancelButton = modalBody.querySelector('[data-omo-pv-document-embed-cancel]');
         const insertButton = modalBody.querySelector('[data-omo-pv-document-embed-insert]');
         const removeButton = modalBody.querySelector('[data-omo-pv-embed-remove]');
         let selectedItem = null;
+        let scopePicker = null;
 
         const cleanup = function () {
             if (marker && typeof field.removeTemporaryMarker === 'function') {
@@ -2599,7 +2637,8 @@ foreach ($points as $point) {
         const render = function () {
             const query = String(searchNode && searchNode.value || '').trim().toLowerCase();
             const matches = embeddableDocuments.filter(function (item) {
-                return query === '' || [item.title, item.description, item.contextLabel].join(' ').toLowerCase().indexOf(query) >= 0;
+                return (!scopePicker || scopePicker.matches(item.contextHolonId))
+                    && (query === '' || [item.title, item.description, item.contextLabel].join(' ').toLowerCase().indexOf(query) >= 0);
             });
             if (selectNode) {
                 selectNode.innerHTML = '';
@@ -2621,16 +2660,14 @@ foreach ($points as $point) {
             }
             const title = selectedItem ? (String(selectedItem.title || '').trim() || ('Document #' + String(selectedItem.id || ''))) : String(documentEmbedUi.none || '');
             if (titleNode) titleNode.textContent = title;
-            if (contextNode) {
-                contextNode.textContent = selectedItem ? String(selectedItem.contextLabel || '') : '';
-                contextNode.hidden = contextNode.textContent === '';
-            }
             if (descriptionNode) {
                 descriptionNode.textContent = selectedItem ? String(selectedItem.description || '') : '';
                 descriptionNode.hidden = descriptionNode.textContent === '';
             }
             if (insertButton) insertButton.disabled = !selectedItem;
         };
+
+        scopePicker = mountPvResourceScopePicker(modalBody, '[data-omo-pv-document-embed-scope]', render);
 
         window.addEventListener('common-topbar-modal-close', function () {
             if (!resolved) cleanup();
@@ -2695,13 +2732,15 @@ foreach ($points as $point) {
             : 0;
         let marker = targetNode ? null : field.createTemporaryCursorMarker();
         let resolved = false;
-        const modalHtml = '<div class="omo-document-embed-picker">'
-            + '<label class="omo-document-embed-picker__field"><span class="omo-document-embed-picker__label">' + escapeDocumentEmbedHtml(decisionEmbedUi.search || '') + '</span><input type="search" class="generic-form-control" data-omo-pv-decision-embed-search placeholder="' + escapeDocumentEmbedHtml(decisionEmbedUi.searchPlaceholder || '') + '"></label>'
-            + '<label class="omo-document-embed-picker__field"><span class="omo-document-embed-picker__label">' + escapeDocumentEmbedHtml(decisionEmbedUi.visibleDecisions || '') + '</span><select class="generic-form-control omo-document-embed-picker__select" data-omo-pv-decision-embed-select size="10"></select></label>'
+        const modalHtml = '<div class="omo-document-embed-picker omo-resource-picker">'
+            + '<aside class="omo-resource-picker__navigation" data-omo-pv-decision-embed-scope></aside>'
+            + '<div class="omo-resource-picker__content">'
+            + '<label class="omo-resource-picker__quick-search"><img src="/common/assets/icon-topbar-search.png" alt="" aria-hidden="true"><input type="search" class="generic-form-control" data-omo-pv-decision-embed-search aria-label="' + escapeDocumentEmbedHtml(decisionEmbedUi.search || '') + '" placeholder="' + escapeDocumentEmbedHtml(decisionEmbedUi.quickSearchPlaceholder || '') + '"></label>'
+            + '<div class="omo-document-embed-picker__field"><select class="generic-form-control omo-document-embed-picker__select" data-omo-pv-decision-embed-select aria-label="' + escapeDocumentEmbedHtml(decisionEmbedUi.visibleDecisions || '') + '" size="10"></select></div>'
             + '<div class="omo-document-embed-picker__preview"><div class="omo-document-embed-picker__preview-title" data-omo-pv-decision-embed-title></div><div class="omo-document-embed-picker__preview-context" data-omo-pv-decision-embed-type hidden></div><div class="omo-document-embed-picker__preview-description" data-omo-pv-decision-embed-summary hidden></div></div>'
             + '<div class="omo-document-embed-picker__actions">'
             + (targetNode ? '<button type="button" class="generic-action-button generic-action-button--danger" data-omo-pv-embed-remove>' + escapeDocumentEmbedHtml(decisionEmbedUi.remove || '') + '</button>' : '')
-            + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-decision-embed-cancel>' + escapeDocumentEmbedHtml(decisionEmbedUi.cancel || '') + '</button><button type="button" class="generic-action-button generic-action-button--main" data-omo-pv-decision-embed-insert disabled>' + escapeDocumentEmbedHtml(decisionEmbedUi.insert || '') + '</button></div></div>';
+            + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-decision-embed-cancel>' + escapeDocumentEmbedHtml(decisionEmbedUi.cancel || '') + '</button><button type="button" class="generic-action-button generic-action-button--main" data-omo-pv-decision-embed-insert disabled>' + escapeDocumentEmbedHtml(decisionEmbedUi.insert || '') + '</button></div></div></div>';
 
         window.commonTopbarOpenModal(decisionEmbedUi.modalTitle || '', modalHtml, 'html');
         const modalBody = document.getElementById('commonTopbarModalBody');
@@ -2719,6 +2758,7 @@ foreach ($points as $point) {
         const insertButton = modalBody.querySelector('[data-omo-pv-decision-embed-insert]');
         const removeButton = modalBody.querySelector('[data-omo-pv-embed-remove]');
         let selectedItem = null;
+        let scopePicker = null;
         const cleanup = function () { if (marker) field.removeTemporaryMarker(marker); marker = null; };
         const updatePreview = function () {
             if (selectNode && selectNode.value !== '') selectedItem = embeddableDecisions.find(function (item) { return String(item.id) === String(selectNode.value); }) || null;
@@ -2729,7 +2769,7 @@ foreach ($points as $point) {
         };
         const render = function () {
             const query = String(searchNode && searchNode.value || '').trim().toLowerCase();
-            const matches = embeddableDecisions.filter(function (item) { return query === '' || [item.title, item.typeLabel, item.summary].join(' ').toLowerCase().indexOf(query) >= 0; });
+            const matches = embeddableDecisions.filter(function (item) { return (!scopePicker || scopePicker.matches(item.contextHolonId)) && (query === '' || [item.title, item.typeLabel, item.summary].join(' ').toLowerCase().indexOf(query) >= 0); });
             if (selectNode) {
                 selectNode.innerHTML = '';
                 matches.forEach(function (item) { const option = document.createElement('option'); option.value = String(item.id); option.textContent = (String(item.title || '').trim() || ('Decision #' + String(item.id))) + (item.typeLabel ? ' - ' + String(item.typeLabel) : ''); selectNode.appendChild(option); });
@@ -2739,6 +2779,7 @@ foreach ($points as $point) {
             if (selectNode && selectedItem) selectNode.value = String(selectedItem.id);
             updatePreview();
         };
+        scopePicker = mountPvResourceScopePicker(modalBody, '[data-omo-pv-decision-embed-scope]', render);
         window.addEventListener('common-topbar-modal-close', function () { if (!resolved) cleanup(); }, {once: true});
         if (searchNode) { searchNode.addEventListener('input', render); searchNode.focus(); }
         if (selectNode) selectNode.addEventListener('change', updatePreview);
@@ -2778,13 +2819,15 @@ foreach ($points as $point) {
             : 0;
         let marker = targetNode ? null : field.createTemporaryCursorMarker();
         let resolved = false;
-        const modalHtml = '<div class="omo-document-embed-picker">'
-            + '<label class="omo-document-embed-picker__field"><span class="omo-document-embed-picker__label">' + escapeDocumentEmbedHtml(eventEmbedUi.search || '') + '</span><input type="search" class="generic-form-control" data-omo-pv-event-embed-search placeholder="' + escapeDocumentEmbedHtml(eventEmbedUi.searchPlaceholder || '') + '"></label>'
-            + '<label class="omo-document-embed-picker__field"><span class="omo-document-embed-picker__label">' + escapeDocumentEmbedHtml(eventEmbedUi.visibleEvents || '') + '</span><select class="generic-form-control omo-document-embed-picker__select" data-omo-pv-event-embed-select size="10"></select></label>'
+        const modalHtml = '<div class="omo-document-embed-picker omo-resource-picker">'
+            + '<aside class="omo-resource-picker__navigation" data-omo-pv-event-embed-scope></aside>'
+            + '<div class="omo-resource-picker__content">'
+            + '<label class="omo-resource-picker__quick-search"><img src="/common/assets/icon-topbar-search.png" alt="" aria-hidden="true"><input type="search" class="generic-form-control" data-omo-pv-event-embed-search aria-label="' + escapeDocumentEmbedHtml(eventEmbedUi.search || '') + '" placeholder="' + escapeDocumentEmbedHtml(eventEmbedUi.quickSearchPlaceholder || '') + '"></label>'
+            + '<div class="omo-document-embed-picker__field"><select class="generic-form-control omo-document-embed-picker__select" data-omo-pv-event-embed-select aria-label="' + escapeDocumentEmbedHtml(eventEmbedUi.visibleEvents || '') + '" size="10"></select></div>'
             + '<div class="omo-document-embed-picker__preview"><div class="omo-document-embed-picker__preview-title" data-omo-pv-event-embed-title></div><div class="omo-document-embed-picker__preview-context" data-omo-pv-event-embed-schedule hidden></div><div class="omo-document-embed-picker__preview-description" data-omo-pv-event-embed-description hidden></div></div>'
             + '<div class="omo-document-embed-picker__actions">'
             + (targetNode ? '<button type="button" class="generic-action-button generic-action-button--danger" data-omo-pv-embed-remove>' + escapeDocumentEmbedHtml(eventEmbedUi.remove || '') + '</button>' : '')
-            + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-event-embed-cancel>' + escapeDocumentEmbedHtml(eventEmbedUi.cancel || '') + '</button><button type="button" class="generic-action-button generic-action-button--main" data-omo-pv-event-embed-insert disabled>' + escapeDocumentEmbedHtml(eventEmbedUi.insert || '') + '</button></div></div>';
+            + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-event-embed-cancel>' + escapeDocumentEmbedHtml(eventEmbedUi.cancel || '') + '</button><button type="button" class="generic-action-button generic-action-button--main" data-omo-pv-event-embed-insert disabled>' + escapeDocumentEmbedHtml(eventEmbedUi.insert || '') + '</button></div></div></div>';
 
         window.commonTopbarOpenModal(eventEmbedUi.modalTitle || '', modalHtml, 'html');
         const modalBody = document.getElementById('commonTopbarModalBody');
@@ -2802,6 +2845,7 @@ foreach ($points as $point) {
         const insertButton = modalBody.querySelector('[data-omo-pv-event-embed-insert]');
         const removeButton = modalBody.querySelector('[data-omo-pv-embed-remove]');
         let selectedItem = null;
+        let scopePicker = null;
         const cleanup = function () { if (marker) field.removeTemporaryMarker(marker); marker = null; };
         const updatePreview = function () {
             if (selectNode && selectNode.value !== '') selectedItem = embeddableEvents.find(function (item) { return String(item.id) === String(selectNode.value); }) || null;
@@ -2812,7 +2856,7 @@ foreach ($points as $point) {
         };
         const render = function () {
             const query = String(searchNode && searchNode.value || '').trim().toLowerCase();
-            const matches = embeddableEvents.filter(function (item) { return query === '' || [item.title, item.scheduleLabel, item.locationLabel].join(' ').toLowerCase().indexOf(query) >= 0; });
+            const matches = embeddableEvents.filter(function (item) { return (!scopePicker || scopePicker.matches(item.contextHolonId)) && (query === '' || [item.title, item.scheduleLabel, item.locationLabel].join(' ').toLowerCase().indexOf(query) >= 0); });
             if (selectNode) {
                 selectNode.innerHTML = '';
                 matches.forEach(function (item) { const option = document.createElement('option'); option.value = String(item.id); option.textContent = (String(item.title || '').trim() || ('Evenement #' + String(item.id))) + (item.scheduleLabel ? ' - ' + String(item.scheduleLabel) : ''); selectNode.appendChild(option); });
@@ -2822,6 +2866,7 @@ foreach ($points as $point) {
             if (selectNode && selectedItem) selectNode.value = String(selectedItem.id);
             updatePreview();
         };
+        scopePicker = mountPvResourceScopePicker(modalBody, '[data-omo-pv-event-embed-scope]', render);
         window.addEventListener('common-topbar-modal-close', function () { if (!resolved) cleanup(); }, {once: true});
         if (searchNode) { searchNode.addEventListener('input', render); searchNode.focus(); }
         if (selectNode) selectNode.addEventListener('change', updatePreview);
@@ -2863,6 +2908,11 @@ foreach ($points as $point) {
             + '</span></span></span>';
     }
 
+    function getPvIndicatorEmbedItemKey(indicatorItem) {
+        const kind = String(indicatorItem && indicatorItem.kind || '') === 'group' ? 'group' : 'indicator';
+        return kind + ':' + String(indicatorItem && indicatorItem.id || '');
+    }
+
     function openPvIndicatorEmbedPicker(field, targetNode) {
         if (!canEmbedIndicators || !field || typeof field.createTemporaryCursorMarker !== 'function' || typeof field.replaceMarkerWithHtml !== 'function' || typeof window.commonTopbarOpenModal !== 'function') {
             return;
@@ -2876,13 +2926,15 @@ foreach ($points as $point) {
             : 'indicator';
         let marker = targetNode ? null : field.createTemporaryCursorMarker();
         let resolved = false;
-        const modalHtml = '<div class="omo-document-embed-picker">'
-            + '<label class="omo-document-embed-picker__field"><span class="omo-document-embed-picker__label">' + escapeDocumentEmbedHtml(indicatorEmbedUi.search || '') + '</span><input type="search" class="generic-form-control" data-omo-pv-indicator-embed-search placeholder="' + escapeDocumentEmbedHtml(indicatorEmbedUi.searchPlaceholder || '') + '"></label>'
-            + '<label class="omo-document-embed-picker__field"><span class="omo-document-embed-picker__label">' + escapeDocumentEmbedHtml(indicatorEmbedUi.visibleIndicators || '') + '</span><select class="generic-form-control omo-document-embed-picker__select" data-omo-pv-indicator-embed-select size="10"></select></label>'
+        const modalHtml = '<div class="omo-document-embed-picker omo-resource-picker">'
+            + '<aside class="omo-resource-picker__navigation" data-omo-pv-indicator-embed-scope></aside>'
+            + '<div class="omo-resource-picker__content">'
+            + '<label class="omo-resource-picker__quick-search"><img src="/common/assets/icon-topbar-search.png" alt="" aria-hidden="true"><input type="search" class="generic-form-control" data-omo-pv-indicator-embed-search aria-label="' + escapeDocumentEmbedHtml(indicatorEmbedUi.search || '') + '" placeholder="' + escapeDocumentEmbedHtml(indicatorEmbedUi.quickSearchPlaceholder || '') + '"></label>'
+            + '<div class="omo-document-embed-picker__field"><select class="generic-form-control omo-document-embed-picker__select" data-omo-pv-indicator-embed-select aria-label="' + escapeDocumentEmbedHtml(indicatorEmbedUi.visibleIndicators || '') + '" size="10"></select></div>'
             + '<div class="omo-document-embed-picker__preview omo-document-embed-picker__preview--indicator" data-omo-pv-indicator-embed-preview></div>'
             + '<div class="omo-document-embed-picker__actions">'
             + (targetNode ? '<button type="button" class="generic-action-button generic-action-button--danger" data-omo-pv-embed-remove>' + escapeDocumentEmbedHtml(indicatorEmbedUi.remove || '') + '</button>' : '')
-            + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-indicator-embed-cancel>' + escapeDocumentEmbedHtml(indicatorEmbedUi.cancel || '') + '</button><button type="button" class="generic-action-button generic-action-button--main" data-omo-pv-indicator-embed-insert disabled>' + escapeDocumentEmbedHtml(indicatorEmbedUi.insert || '') + '</button></div></div>';
+            + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-indicator-embed-cancel>' + escapeDocumentEmbedHtml(indicatorEmbedUi.cancel || '') + '</button><button type="button" class="generic-action-button generic-action-button--main" data-omo-pv-indicator-embed-insert disabled>' + escapeDocumentEmbedHtml(indicatorEmbedUi.insert || '') + '</button></div></div></div>';
 
         window.commonTopbarOpenModal(indicatorEmbedUi.modalTitle || '', modalHtml, 'html');
         const modalBody = document.getElementById('commonTopbarModalBody');
@@ -2898,24 +2950,26 @@ foreach ($points as $point) {
         const insertButton = modalBody.querySelector('[data-omo-pv-indicator-embed-insert]');
         const removeButton = modalBody.querySelector('[data-omo-pv-embed-remove]');
         let selectedItem = null;
+        let scopePicker = null;
         const cleanup = function () { if (marker) field.removeTemporaryMarker(marker); marker = null; };
         const updatePreview = function () {
-            if (selectNode && selectNode.value !== '') selectedItem = embeddableIndicators.find(function (item) { return String(item.id) === String(selectNode.value); }) || null;
+            if (selectNode && selectNode.value !== '') selectedItem = embeddableIndicators.find(function (item) { return getPvIndicatorEmbedItemKey(item) === String(selectNode.value); }) || null;
             if (previewNode) previewNode.innerHTML = selectedItem ? buildPvIndicatorEmbedHtml(selectedItem) : escapeDocumentEmbedHtml(indicatorEmbedUi.none || '');
             if (insertButton) insertButton.disabled = !selectedItem;
         };
         const render = function () {
             const query = String(searchNode && searchNode.value || '').trim().toLowerCase();
-            const matches = embeddableIndicators.filter(function (item) { return query === '' || [item.title, item.contextLabel, item.valueLabel, item.statusLabel].join(' ').toLowerCase().indexOf(query) >= 0; });
+            const matches = embeddableIndicators.filter(function (item) { return (!scopePicker || scopePicker.matches(item.contextHolonId)) && (query === '' || [item.title, item.contextLabel, item.valueLabel, item.statusLabel].join(' ').toLowerCase().indexOf(query) >= 0); });
             if (selectNode) {
                 selectNode.innerHTML = '';
-                matches.forEach(function (item) { const option = document.createElement('option'); option.value = String(item.id); option.textContent = (String(item.title || '').trim() || ('Indicateur #' + String(item.id))) + (item.valueLabel ? ' - ' + String(item.valueLabel) : ''); selectNode.appendChild(option); });
+                matches.forEach(function (item) { const option = document.createElement('option'); option.value = getPvIndicatorEmbedItemKey(item); option.textContent = (String(item.title || '').trim() || ('Indicateur #' + String(item.id))) + (item.valueLabel ? ' - ' + String(item.valueLabel) : ''); selectNode.appendChild(option); });
                 selectNode.disabled = matches.length === 0;
             }
             selectedItem = matches.find(function (item) { return Number(item.id) === currentIndicatorId && String(item.kind || 'indicator') === currentIndicatorKind; }) || matches[0] || null;
-            if (selectNode && selectedItem) selectNode.value = String(selectedItem.id);
+            if (selectNode && selectedItem) selectNode.value = getPvIndicatorEmbedItemKey(selectedItem);
             updatePreview();
         };
+        scopePicker = mountPvResourceScopePicker(modalBody, '[data-omo-pv-indicator-embed-scope]', render);
         window.addEventListener('common-topbar-modal-close', function () { if (!resolved) cleanup(); }, {once: true});
         if (searchNode) { searchNode.addEventListener('input', render); searchNode.focus(); }
         if (selectNode) selectNode.addEventListener('change', updatePreview);

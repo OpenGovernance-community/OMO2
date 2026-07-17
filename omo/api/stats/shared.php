@@ -85,7 +85,6 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.error.schedule' => ['text' => 'Le rythme de mesure est invalide.', 'context' => 'Validation error for an invalid expected measurement frequency or moment.'],
             'stats.detail.tab.chart' => ['text' => 'Graphique', 'context' => 'Tab showing the large chart.'],
             'stats.detail.tab.values' => ['text' => 'Valeurs', 'context' => 'Tab showing dated values.'],
-            'stats.detail.description_empty' => ['text' => 'Aucune description.', 'context' => 'Fallback for an indicator without description.'],
             'stats.detail.source' => ['text' => 'Consulter la source', 'context' => 'External link to the indicator source.'],
             'stats.detail.reference' => ['text' => 'Référence', 'context' => 'Label for the reference type.'],
             'stats.detail.reference_none' => ['text' => 'Sans courbe de référence', 'context' => 'Indicator reference type label for no reference.'],
@@ -100,6 +99,9 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.detail.add_title' => ['text' => 'Ajouter la valeur du moment', 'context' => 'Heading above the quick value form.'],
             'stats.detail.add_help' => ['text' => 'La date et l heure actuelles sont proposées automatiquement.', 'context' => 'Help below the quick value form heading.'],
             'stats.detail.add' => ['text' => 'Ajouter la valeur', 'context' => 'Submit button for a new dated value.'],
+            'stats.detail.range.label' => ['text' => 'Periode affichee', 'context' => 'Label above the interactive chart time range selector.'],
+            'stats.detail.range.start' => ['text' => 'Debut de la periode affichee', 'context' => 'Accessible label for the start handle of the chart time range selector.'],
+            'stats.detail.range.end' => ['text' => 'Fin de la periode affichee', 'context' => 'Accessible label for the end handle of the chart time range selector.'],
             'stats.detail.confirm_delete' => ['text' => 'Supprimer définitivement cette valeur ?', 'context' => 'Confirmation before deleting one value.'],
             'stats.form.create_title' => ['text' => 'Nouvel indicateur', 'context' => 'Heading of the create indicator form.'],
             'stats.form.edit_title' => ['text' => 'Modifier l indicateur', 'context' => 'Heading of the edit indicator form.'],
@@ -158,6 +160,8 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.form.endpoint' => ['text' => 'Extrémité datée', 'context' => 'Badge shown on reference curve endpoint rows.'],
             'stats.form.intermediate' => ['text' => 'Point intermédiaire', 'context' => 'Badge shown on intermediate reference curve rows.'],
             'stats.chart.empty' => ['text' => 'Pas encore de données à représenter.', 'context' => 'Empty chart message.'],
+            'stats.chart.tooltip.value' => ['text' => 'Valeur', 'context' => 'Tooltip label for a chart point value.'],
+            'stats.chart.tooltip.date' => ['text' => 'Date', 'context' => 'Tooltip label for a chart point date.'],
             'stats.import.title' => ['text' => 'Importer un indicateur', 'context' => 'Title of the indicator import picker modal.'],
             'stats.import.edit_title' => ['text' => 'Modifier la source importée', 'context' => 'Title of the indicator import edit picker modal.'],
             'stats.import.search' => ['text' => 'Rechercher', 'context' => 'Label for the indicator picker search field.'],
@@ -565,6 +569,54 @@ if (!function_exists('omoStatsFormatNumber')) {
     }
 }
 
+if (!function_exists('omoStatsResolveChartScale')) {
+    function omoStatsResolveChartScale($minValue, $maxValue, $targetIntervals = 4)
+    {
+        $minValue = (float)$minValue;
+        $maxValue = (float)$maxValue;
+        if ($maxValue < $minValue) {
+            $swap = $minValue;
+            $minValue = $maxValue;
+            $maxValue = $swap;
+        }
+
+        $targetIntervals = max(1, (int)$targetIntervals);
+        $valueRange = $maxValue - $minValue;
+        if ($valueRange < 0.000000001) {
+            $valueRange = max(1.0, abs($maxValue) * 0.2);
+            $minValue -= $valueRange / 2;
+            $maxValue += $valueRange / 2;
+        }
+
+        $rawStep = $valueRange / $targetIntervals;
+        $power = pow(10, floor(log10($rawStep)));
+        $normalizedStep = $rawStep / $power;
+        if ($normalizedStep < 1.5) {
+            $niceStep = 1;
+        } elseif ($normalizedStep < 3) {
+            $niceStep = 2;
+        } elseif ($normalizedStep < 7) {
+            $niceStep = 5;
+        } else {
+            $niceStep = 10;
+        }
+        $step = $niceStep * $power;
+
+        $scaleMin = floor($minValue / $step) * $step;
+        $scaleMax = ceil($maxValue / $step) * $step;
+        $scaleMin = abs($scaleMin) < ($step * 0.000000001) ? 0.0 : $scaleMin;
+        $scaleMax = abs($scaleMax) < ($step * 0.000000001) ? 0.0 : $scaleMax;
+        $intervals = max(1, (int)round(($scaleMax - $scaleMin) / $step));
+
+        return [
+            'min' => $scaleMin,
+            'max' => $scaleMax,
+            'step' => $step,
+            'intervals' => $intervals,
+        ];
+    }
+}
+
 if (!function_exists('omoStatsFormatDateTime')) {
     function omoStatsFormatDateTime($value, $withTime = true)
     {
@@ -573,6 +625,15 @@ if (!function_exists('omoStatsFormatDateTime')) {
         }
 
         return $value->format($withTime ? 'd.m.Y H:i' : 'd.m.Y');
+    }
+}
+
+if (!function_exists('omoStatsFormatChartPointTooltip')) {
+    function omoStatsFormatChartPointTooltip(array $point)
+    {
+        $timestamp = isset($point['timestamp']) ? (int)$point['timestamp'] : 0;
+        return omoStatsT('stats.chart.tooltip.value') . ' : ' . omoStatsFormatNumber($point['value'] ?? '')
+            . "\n" . omoStatsT('stats.chart.tooltip.date') . ' : ' . date('d.m.Y H:i', $timestamp);
     }
 }
 
@@ -669,13 +730,9 @@ if (!function_exists('omoStatsResolveReferenceSeries')) {
     }
 }
 
-if (!function_exists('omoStatsRenderChart')) {
-    function omoStatsRenderChart(StatIndicator $indicator, array $values, array $referencePoints, $variant = 'card', $isOverdue = null)
+if (!function_exists('omoStatsGetIndicatorChartSeries')) {
+    function omoStatsGetIndicatorChartSeries(StatIndicator $indicator, array $values, array $referencePoints)
     {
-        $variant = in_array($variant, ['compact', 'card', 'large'], true) ? $variant : 'card';
-        if ($isOverdue === null) {
-            $isOverdue = omoStatsIsIndicatorOverdue($indicator);
-        }
         $measureSeries = [];
         foreach ($values as $value) {
             if (!($value instanceof StatIndicatorValue)) {
@@ -694,9 +751,153 @@ if (!function_exists('omoStatsRenderChart')) {
         usort($measureSeries, static function (array $left, array $right) {
             return $left['timestamp'] <=> $right['timestamp'];
         });
+
         $referenceSeries = StatIndicator::normalizeReferenceType($indicator->get('reference_type')) === StatIndicator::REFERENCE_NONE
             ? []
             : omoStatsResolveReferenceSeries($referencePoints, $values);
+
+        return [
+            'measure' => $measureSeries,
+            'reference' => $referenceSeries,
+        ];
+    }
+}
+
+if (!function_exists('omoStatsBuildIndicatorChartData')) {
+    function omoStatsBuildIndicatorChartData(StatIndicator $indicator, array $values, array $referencePoints, $isOverdue = null)
+    {
+        if ($isOverdue === null) {
+            $isOverdue = omoStatsIsIndicatorOverdue($indicator);
+        }
+        $series = omoStatsGetIndicatorChartSeries($indicator, $values, $referencePoints);
+        return [
+            'type' => 'indicator',
+            'label' => (string)$indicator->get('name'),
+            'measure' => $series['measure'],
+            'reference' => $series['reference'],
+            'overdue' => (bool)$isOverdue,
+            'tooltip' => [
+                'value' => omoStatsT('stats.chart.tooltip.value'),
+                'date' => omoStatsT('stats.chart.tooltip.date'),
+            ],
+        ];
+    }
+}
+
+if (!function_exists('omoStatsBuildGroupChartData')) {
+    function omoStatsBuildGroupChartData(StatIndicatorGroup $group, array $series, $isOverdue = null)
+    {
+        if ($isOverdue === null) {
+            $isOverdue = omoStatsIsGroupOverdue($group);
+        }
+        $dataSeries = [];
+        foreach ($series as $seriesIndex => $seriesItem) {
+            $points = [];
+            foreach (($seriesItem['points'] ?? []) as $point) {
+                if (!is_numeric($point['timestamp'] ?? null) || !is_numeric($point['value'] ?? null)) {
+                    continue;
+                }
+                $points[] = [
+                    'timestamp' => (int)$point['timestamp'],
+                    'value' => (float)$point['value'],
+                ];
+            }
+            if (count($points) === 0) {
+                continue;
+            }
+            $dataSeries[] = [
+                'points' => $points,
+                'background' => !empty($seriesItem['is_background']),
+                'sum' => !empty($seriesItem['is_sum']),
+                'sourceIndex' => isset($seriesItem['source_index']) ? (int)$seriesItem['source_index'] : (int)$seriesIndex,
+            ];
+        }
+        return [
+            'type' => 'group',
+            'label' => (string)$group->get('name'),
+            'series' => $dataSeries,
+            'overdue' => (bool)$isOverdue,
+            'tooltip' => [
+                'value' => omoStatsT('stats.chart.tooltip.value'),
+                'date' => omoStatsT('stats.chart.tooltip.date'),
+            ],
+        ];
+    }
+}
+
+if (!function_exists('omoStatsChartRangeDays')) {
+    function omoStatsChartRangeDays(array $chartData)
+    {
+        $timestamps = [];
+        if (($chartData['type'] ?? '') === 'group') {
+            foreach (($chartData['series'] ?? []) as $seriesItem) {
+                foreach (($seriesItem['points'] ?? []) as $point) {
+                    if (is_numeric($point['timestamp'] ?? null)) {
+                        $timestamps[] = (int)$point['timestamp'];
+                    }
+                }
+            }
+        } else {
+            foreach (['measure', 'reference'] as $seriesKey) {
+                foreach (($chartData[$seriesKey] ?? []) as $point) {
+                    if (is_numeric($point['timestamp'] ?? null)) {
+                        $timestamps[] = (int)$point['timestamp'];
+                    }
+                }
+            }
+        }
+        if (count($timestamps) === 0) {
+            return null;
+        }
+        return [
+            'start' => (int)floor(min($timestamps) / 86400),
+            'end' => (int)floor(max($timestamps) / 86400),
+        ];
+    }
+}
+
+if (!function_exists('omoStatsRenderInteractiveChartRange')) {
+    function omoStatsRenderInteractiveChartRange(array $chartData)
+    {
+        $range = omoStatsChartRangeDays($chartData);
+        if ($range === null || $range['start'] >= $range['end']) {
+            return '';
+        }
+        $json = json_encode($chartData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($json === false) {
+            return '';
+        }
+        $start = (int)$range['start'];
+        $end = (int)$range['end'];
+        return '<div class="omo-stats-chart-range" data-omo-stats-chart-range'
+            . ' data-omo-stats-chart-data="' . omoApiEscape($json) . '"'
+            . ' data-start-day="' . $start . '" data-end-day="' . $end . '">'
+            . '<div class="omo-stats-chart-range__header">'
+            . '<strong>' . omoApiEscape(omoStatsT('stats.detail.range.label')) . '</strong>'
+            . '<output data-omo-stats-chart-range-output></output>'
+            . '</div>'
+            . '<div class="omo-stats-chart-range__track">'
+            . '<span class="omo-stats-chart-range__selection" data-omo-stats-chart-range-selection></span>'
+            . '<input type="range" min="' . $start . '" max="' . $end . '" step="1" value="' . $start . '" aria-label="' . omoApiEscape(omoStatsT('stats.detail.range.start')) . '" data-omo-stats-chart-range-start>'
+            . '<input type="range" min="' . $start . '" max="' . $end . '" step="1" value="' . $end . '" aria-label="' . omoApiEscape(omoStatsT('stats.detail.range.end')) . '" data-omo-stats-chart-range-end>'
+            . '</div>'
+            . '<div class="omo-stats-chart-range__limits" aria-hidden="true">'
+            . '<span data-omo-stats-chart-range-min></span><span data-omo-stats-chart-range-max></span>'
+            . '</div>'
+            . '</div>';
+    }
+}
+
+if (!function_exists('omoStatsRenderChart')) {
+    function omoStatsRenderChart(StatIndicator $indicator, array $values, array $referencePoints, $variant = 'card', $isOverdue = null, $withTooltips = false)
+    {
+        $variant = in_array($variant, ['compact', 'card', 'large'], true) ? $variant : 'card';
+        if ($isOverdue === null) {
+            $isOverdue = omoStatsIsIndicatorOverdue($indicator);
+        }
+        $chartSeries = omoStatsGetIndicatorChartSeries($indicator, $values, $referencePoints);
+        $measureSeries = $chartSeries['measure'];
+        $referenceSeries = $chartSeries['reference'];
 
         if (count($measureSeries) === 0 && count($referenceSeries) === 0) {
             return '<div class="omo-stats-chart-empty">' . omoApiEscape(omoStatsT('stats.chart.empty')) . '</div>';
@@ -720,17 +921,9 @@ if (!function_exists('omoStatsRenderChart')) {
             $maxTimestamp += 43200;
         }
 
-        $minValue = min($numbers);
-        $maxValue = max($numbers);
-        if (abs($maxValue - $minValue) < 0.000001) {
-            $valuePadding = max(1.0, abs($maxValue) * 0.1);
-            $minValue -= $valuePadding;
-            $maxValue += $valuePadding;
-        } else {
-            $valuePadding = ($maxValue - $minValue) * 0.12;
-            $minValue -= $valuePadding;
-            $maxValue += $valuePadding;
-        }
+        $chartScale = omoStatsResolveChartScale(min($numbers), max($numbers));
+        $minValue = $chartScale['min'];
+        $maxValue = $chartScale['max'];
 
         $mapPoint = static function (array $point) use ($minTimestamp, $maxTimestamp, $minValue, $maxValue, $paddingLeft, $paddingTop, $plotWidth, $plotHeight) {
             $x = $paddingLeft + (($point['timestamp'] - $minTimestamp) / ($maxTimestamp - $minTimestamp)) * $plotWidth;
@@ -751,10 +944,10 @@ if (!function_exists('omoStatsRenderChart')) {
         $svg .= '<defs><linearGradient id="' . $chartId . '-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity="0.24"/><stop offset="1" stop-color="currentColor" stop-opacity="0.02"/></linearGradient></defs>';
 
         if ($variant === 'large') {
-            for ($gridIndex = 0; $gridIndex <= 4; $gridIndex++) {
-                $ratio = $gridIndex / 4;
+            for ($gridIndex = 0; $gridIndex <= $chartScale['intervals']; $gridIndex++) {
+                $ratio = $gridIndex / $chartScale['intervals'];
                 $gridY = round($paddingTop + ($plotHeight * $ratio), 2);
-                $gridValue = $maxValue - (($maxValue - $minValue) * $ratio);
+                $gridValue = $maxValue - ($chartScale['step'] * $gridIndex);
                 $svg .= '<line class="omo-stats-chart__grid" x1="' . $paddingLeft . '" y1="' . $gridY . '" x2="' . ($width - $paddingRight) . '" y2="' . $gridY . '"/>';
                 $svg .= '<text class="omo-stats-chart__axis-label" x="' . ($paddingLeft - 10) . '" y="' . ($gridY + 4) . '" text-anchor="end">' . omoApiEscape(omoStatsFormatNumber($gridValue)) . '</text>';
             }
@@ -771,12 +964,20 @@ if (!function_exists('omoStatsRenderChart')) {
                 $svg .= '<polyline class="omo-stats-chart__line" points="' . $coordinateString($measureCoordinates) . '"/>';
             }
             if ($variant !== 'compact') {
-                foreach ($measureCoordinates as $point) {
-                    $svg .= '<circle class="omo-stats-chart__point" cx="' . $point[0] . '" cy="' . $point[1] . '" r="' . ($variant === 'large' ? 4 : 3) . '"/>';
+                foreach ($measureCoordinates as $pointIndex => $point) {
+                    $pointTooltip = $withTooltips ? omoStatsFormatChartPointTooltip($measureSeries[$pointIndex]) : '';
+                    $pointTooltipAttributes = $withTooltips
+                        ? ' data-omo-stats-chart-tooltip="' . omoApiEscape($pointTooltip) . '" tabindex="0" aria-label="' . omoApiEscape($pointTooltip) . '"'
+                        : '';
+                    $svg .= '<circle class="omo-stats-chart__point" cx="' . $point[0] . '" cy="' . $point[1] . '" r="' . ($variant === 'large' ? 4 : 3) . '"' . $pointTooltipAttributes . '/>';
                 }
             } else {
                 $lastPoint = $measureCoordinates[count($measureCoordinates) - 1];
-                $svg .= '<circle class="omo-stats-chart__point" cx="' . $lastPoint[0] . '" cy="' . $lastPoint[1] . '" r="2.5"/>';
+                $pointTooltip = $withTooltips ? omoStatsFormatChartPointTooltip($measureSeries[count($measureSeries) - 1]) : '';
+                $pointTooltipAttributes = $withTooltips
+                    ? ' data-omo-stats-chart-tooltip="' . omoApiEscape($pointTooltip) . '" tabindex="0" aria-label="' . omoApiEscape($pointTooltip) . '"'
+                    : '';
+                $svg .= '<circle class="omo-stats-chart__point" cx="' . $lastPoint[0] . '" cy="' . $lastPoint[1] . '" r="2.5"' . $pointTooltipAttributes . '/>';
             }
         }
 
@@ -960,7 +1161,7 @@ if (!function_exists('omoStatsGetGroupSeries')) {
 }
 
 if (!function_exists('omoStatsRenderGroupChart')) {
-    function omoStatsRenderGroupChart(StatIndicatorGroup $group, array $series, $variant = 'card', $isOverdue = null)
+    function omoStatsRenderGroupChart(StatIndicatorGroup $group, array $series, $variant = 'card', $isOverdue = null, $withTooltips = false)
     {
         $variant = in_array($variant, ['compact', 'card', 'large'], true) ? $variant : 'card';
         if ($isOverdue === null) {
@@ -994,17 +1195,9 @@ if (!function_exists('omoStatsRenderGroupChart')) {
             $minTimestamp -= 43200;
             $maxTimestamp += 43200;
         }
-        $minValue = min($values);
-        $maxValue = max($values);
-        if (abs($maxValue - $minValue) < 0.000001) {
-            $paddingValue = max(1, abs($maxValue) * 0.1);
-            $minValue -= $paddingValue;
-            $maxValue += $paddingValue;
-        } else {
-            $paddingValue = ($maxValue - $minValue) * 0.12;
-            $minValue -= $paddingValue;
-            $maxValue += $paddingValue;
-        }
+        $chartScale = omoStatsResolveChartScale(min($values), max($values));
+        $minValue = $chartScale['min'];
+        $maxValue = $chartScale['max'];
 
         $plotWidth = $width - $paddingLeft - $paddingRight;
         $plotHeight = $height - $paddingTop - $paddingBottom;
@@ -1017,10 +1210,10 @@ if (!function_exists('omoStatsRenderGroupChart')) {
         $colors = ['#2563eb', '#db2777', '#059669', '#d97706', '#7c3aed', '#0891b2'];
         $svg = '<svg class="omo-stats-chart omo-stats-chart--' . omoApiEscape($variant) . ' omo-stats-chart--group' . ($isOverdue ? ' omo-stats-chart--overdue' : '') . '" viewBox="0 0 ' . $width . ' ' . $height . '" role="img" aria-label="' . omoApiEscape((string)$group->get('name')) . '">';
         if ($variant === 'large') {
-            for ($gridIndex = 0; $gridIndex <= 4; $gridIndex++) {
-                $ratio = $gridIndex / 4;
+            for ($gridIndex = 0; $gridIndex <= $chartScale['intervals']; $gridIndex++) {
+                $ratio = $gridIndex / $chartScale['intervals'];
                 $gridY = round($paddingTop + ($plotHeight * $ratio), 2);
-                $gridValue = $maxValue - (($maxValue - $minValue) * $ratio);
+                $gridValue = $maxValue - ($chartScale['step'] * $gridIndex);
                 $svg .= '<line class="omo-stats-chart__grid" x1="' . $paddingLeft . '" y1="' . $gridY . '" x2="' . ($width - $paddingRight) . '" y2="' . $gridY . '"/>';
                 $svg .= '<text class="omo-stats-chart__axis-label" x="' . ($paddingLeft - 10) . '" y="' . ($gridY + 4) . '" text-anchor="end">' . omoApiEscape(omoStatsFormatNumber($gridValue)) . '</text>';
             }
@@ -1043,8 +1236,12 @@ if (!function_exists('omoStatsRenderGroupChart')) {
                 $svg .= '<polyline class="' . $lineClass . '" style="stroke:' . $color . '" points="' . $coordinateString . '"/>';
             }
             if ($variant !== 'compact' && !$isBackground) {
-                foreach ($coordinates as $point) {
-                    $svg .= '<circle class="omo-stats-chart__point" style="stroke:' . $color . '" cx="' . $point[0] . '" cy="' . $point[1] . '" r="' . ($variant === 'large' ? 4 : 3) . '"/>';
+                foreach ($coordinates as $pointIndex => $point) {
+                    $pointTooltip = $withTooltips ? omoStatsFormatChartPointTooltip($seriesItem['points'][$pointIndex]) : '';
+                    $pointTooltipAttributes = $withTooltips
+                        ? ' data-omo-stats-chart-tooltip="' . omoApiEscape($pointTooltip) . '" tabindex="0" aria-label="' . omoApiEscape($pointTooltip) . '"'
+                        : '';
+                    $svg .= '<circle class="omo-stats-chart__point" style="stroke:' . $color . '" cx="' . $point[0] . '" cy="' . $point[1] . '" r="' . ($variant === 'large' ? 4 : 3) . '"' . $pointTooltipAttributes . '/>';
                 }
             }
         }

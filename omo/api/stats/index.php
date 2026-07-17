@@ -418,13 +418,6 @@ $displayItemCount = count($statsEntries);
                 <?php if ($displayItemCount === 0): ?>
                     <div class="omo-empty-state"><?= omoApiEscape(omoStatsT($emptyKey)) ?></div>
                 <?php else: ?>
-                    <div class="generic-file-list__table">
-                        <div class="generic-file-list__header">
-                            <div class="generic-file-list__header-cell"><?= omoApiEscape(omoStatsT('stats.column.indicator')) ?></div>
-                            <div class="generic-file-list__header-cell"><?= omoApiEscape(omoStatsT('stats.column.context')) ?></div>
-                            <div class="generic-file-list__header-cell"><?= omoApiEscape(omoStatsT('stats.column.latest')) ?></div>
-                            <div class="generic-file-list__header-cell"><?= omoApiEscape(omoStatsT('stats.column.history')) ?></div>
-                        </div>
                         <?php $currentStatsCategory = null; ?>
                         <?php foreach ($statsEntries as $statsEntry): ?>
                             <?php
@@ -439,7 +432,13 @@ $displayItemCount = count($statsEntries);
                             ?>
                                 <section class="omo-panel-group generic-file-list__group omo-stats__sort-group">
                                     <h3 class="omo-panel-group__title generic-file-list__group-title"><?= omoApiEscape($currentStatsCategory) ?></h3>
-                                    <div class="omo-stats-compact__sort-group-items">
+                                    <div class="omo-stats-compact__sort-group-table omo-panel-view__body_content generic-file-list__table">
+                                        <div class="generic-file-list__header">
+                                            <div class="generic-file-list__header-cell"><?= omoApiEscape(omoStatsT('stats.column.indicator')) ?></div>
+                                            <div class="generic-file-list__header-cell"><?= omoApiEscape(omoStatsT('stats.column.context')) ?></div>
+                                            <div class="generic-file-list__header-cell"><?= omoApiEscape(omoStatsT('stats.column.latest')) ?></div>
+                                            <div class="generic-file-list__header-cell"><?= omoApiEscape(omoStatsT('stats.column.history')) ?></div>
+                                        </div>
                             <?php endif; ?>
                             <?php if ($statsEntry['kind'] === 'group'): ?>
                             <?php $groupItem = $statsEntry['data']; $group = $groupItem['group']; ?>
@@ -532,7 +531,6 @@ $displayItemCount = count($statsEntries);
                                     </div>
                                 </section>
                         <?php endif; ?>
-                    </div>
                 <?php endif; ?>
             </section>
         </div>
@@ -684,7 +682,7 @@ $displayItemCount = count($statsEntries);
                 var source = String(script.getAttribute('src') || '').trim();
                 if (source) {
                     var existing = Array.prototype.some.call(document.querySelectorAll('script[src]'), function (candidate) {
-                        return String(candidate.getAttribute('src') || '') === source;
+                        return candidate !== script && String(candidate.getAttribute('src') || '') === source;
                     });
                     if (existing) {
                         return null;
@@ -761,6 +759,9 @@ $displayItemCount = count($statsEntries);
             return executeFetchedScripts(drawerBody).then(function () {
                 if (typeof window.initGenericComponents === 'function') {
                     window.initGenericComponents(drawerBody);
+                }
+                if (typeof window.omoStatsInitInteractiveCharts === 'function') {
+                    window.omoStatsInitInteractiveCharts(drawerBody);
                 }
                 return true;
             });

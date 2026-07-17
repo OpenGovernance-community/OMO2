@@ -43,7 +43,6 @@ $config = [
 <?php if ($organizationColor !== ''): ?>
 <style>
 	:root {
-		--color-primary: <?php echo htmlspecialchars($organizationColor); ?>;
 		--auth-primary: <?php echo htmlspecialchars($organizationColor); ?>;
 	}
 </style>

@@ -149,6 +149,17 @@
     flex-wrap: wrap;
 }
 
+.omo-resource-picker { display: grid; grid-template-columns: minmax(300px, 0.7fr) minmax(0, 1fr); gap: 18px; }
+.omo-resource-picker__navigation { border-right: 1px solid var(--color-border); padding-right: 14px; }
+.omo-holon-scope-picker__modes.omo-scope-toggle { width: 100%; }
+.omo-holon-scope-picker__map { position: relative; height: clamp(340px, 42vh, 460px); margin-top: 14px; overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface-alt); }
+.omo-holon-scope-picker__canvas { display: block; width: 100%; height: 100%; }
+.omo-holon-scope-picker__tooltip { position: absolute; left: 12px; bottom: 12px; z-index: 2; max-width: calc(100% - 24px); overflow: hidden; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--color-border) 88%, transparent); border-radius: 999px; background: color-mix(in srgb, var(--color-surface) 88%, transparent); box-shadow: var(--shadow-sm); color: var(--color-text); font-size: 0.75rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; backdrop-filter: blur(10px); }
+.omo-resource-picker__quick-search { position: relative; display: block; }
+.omo-resource-picker__quick-search img { position: absolute; z-index: 1; top: 50%; left: 12px; width: 18px; height: 18px; opacity: 0.65; pointer-events: none; transform: translateY(-50%); }
+.omo-resource-picker__quick-search .generic-form-control { padding-left: 42px; }
+@media (max-width: 768px) { .omo-resource-picker { display: block; } .omo-resource-picker__navigation { display: none; } }
+
 .generic-card-title {
     margin: 0;
     font-weight: 600;
@@ -240,6 +251,22 @@ html[data-theme="dark"] .black-icon,
     background: color-mix(in srgb, #dc2626 12%, var(--color-surface, #ffffff));
     color: #dc2626;
     border-color: color-mix(in srgb, #dc2626 30%, var(--color-border, #e5e7eb));
+}
+
+.generic-action-button--icon-only {
+    width: 42px;
+    min-width: 42px;
+    padding-inline: 10px;
+}
+
+.generic-action-button--icon-only svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 .generic-action-button:not(:disabled):hover {

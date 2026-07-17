@@ -1454,7 +1454,7 @@ if (!is_string($payloadJson)) {
 }
 
 .omo-decisions__app-icon {
-    --omo-panel-view-app-icon-accent: #0f766e;
+    --omo-panel-view-app-icon-accent: var(--color-primary, #2563eb);
 }
 
 .omo-decisions__header-actions {

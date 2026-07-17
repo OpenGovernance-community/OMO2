@@ -2,7 +2,45 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-17
+
+- Les droits sont maintenant autorises par defaut pour les membres d une organisation tant qu aucun holon ne les configure. Des qu un droit est attribue quelque part dans l organisation, il doit etre accorde explicitement selon l arbre des droits.
+
+- L affichage compact des indicateurs repete maintenant l entete de colonnes dans chaque bloc temporel ou alphabetique, tandis que le separateur de bloc reste colle aux bords et la liste conserve la marge interne de Documents.
+
+- La mini-navigation et les boutons conservent maintenant la couleur definie par l organisation, independamment de la couleur propre aux applications ouvertes, notamment Calendrier et Decisions. Les modules utilisent des variables d accent locales et ne redéfinissent plus `--color-primary`.
+
+- Les indicateurs des PV sont maintenant styles dans l export PDF avec une mise en page compatible Dompdf, incluant la courbe SVG, les points, la valeur et la date.
+
+- Les courbes SVG des indicateurs sont maintenant converties en images SVG embarquees pour l export PDF, car Dompdf gere ces SVG via les images mais pas de maniere fiable lorsqu ils sont directement integres dans le HTML.
+
+- L export PDF des PV utilise de nouveau une valeur CSS compatible avec Dompdf; les variables CSS du navigateur ne sont plus injectees dans la feuille de style PDF.
+
+- Les styles des indicateurs integres aux PV valides sont maintenant charges des l ouverture de l application, y compris en lecture seule; l affichage ne depend plus d un passage prealable par l editeur.
+
+- La suppression definitive d un document nettoie maintenant explicitement ses invitations et presences associees, en plus des points de PV deja supprimes par cascade.
+
+- La suppression d un evenement propose maintenant de supprimer aussi ses documents associes avec un choix Oui/Non; les documents sont traites dans la meme transaction et les PV orphelins peuvent ensuite etre supprimes depuis Documents.
+
+- Ajout du droit contextuel `CAN_DELETE_EVENT` pour separer la creation d evenements de leur suppression; le bouton et l endpoint de suppression verifient maintenant ce droit dans le contexte de l evenement.
+
+- Ajout d une suppression d evenement depuis son detail, avec confirmation, bouton poubelle dans l entete et controle d autorisation cote serveur.
+
+Les details des indicateurs proposent maintenant un curseur a deux poignées pour limiter la periode visible. Le graphique est redessine localement avec ses dates et son echelle verticale recalculees selon la selection; le chargement du script necessaire au redessin est aussi correctement initialise dans le sous-drawer. Les cartes et mini-graphiques restent inchanges.
+
+Lorsque la selection commence ou se termine entre deux mesures, les graphiques ajoutent maintenant une valeur interpolee sur la borne du slider afin de conserver la portion de courbe visible, meme en presence d un grand intervalle entre les mesures.
+
+Les points des graphiques de detail affichent maintenant une infobulle native avec leur valeur et leur date de mesure exactes, y compris apres une selection temporelle et son redessin.
+
+Cette infobulle est maintenant remplacee par une fenetre maison qui apparait immediatement au survol du point, se repositionne pour rester visible dans la fenetre et reprend le style des infobulles de Structure.
+
+Les details des indicateurs et des groupes ne repetent plus leur grand panneau de titre dans le contenu. Le nom reste dans l entete du sous-drawer, dont le sous-titre indique maintenant la methode de suivi; le gain de hauteur rend le graphique et sa legende plus accessibles sur petit ecran.
+
+Les graphiques des indicateurs utilisent maintenant une echelle verticale arrondie sur des pas lisibles (1, 2, 5 puis dizaines, centaines, etc.), avec des bornes alignees sur ces graduations.
+
 ## 2026-07-16
+
+Les selecteurs Documents, Decisions, Evenements et Indicateurs des points de PV proposent maintenant une navigation holarchique graphique sur canvas et une portee locale, descendants ou globale. La liste se filtre selon le holon et la portee choisis, par defaut sur les descendants du contexte; un clic zoome la carte sur le holon choisi. La colonne de navigation conserve une hauteur stable, affiche le holon selectionne ou survole dans la carte, et la recherche rapide avec icone remplace les anciens libelles. Sur petit ecran, la navigation est masquee et la recherche globale reste disponible.
 
 Le detail des evenements est maintenant organise en une carte de synthese (horaire, contexte, statut et lieu), puis en deux colonnes adaptees au sous-drawer : description, lieu et invites a gauche; document associe et informations rapides a droite. L entete du sous-drawer recoit directement le titre, le sous-titre et les actions du contenu charge. Il expose aussi une petite API JavaScript pour les prochains contenus qui devront les modifier ou y ajouter des boutons. Le bouton Fermer utilise le bouton generique et l action d enregistrement des formulaires de creation ou de modification est placee dans cet entete. Pendant une modification, Annuler revient au detail sans enregistrer et le bouton principal est simplement nomme Enregistrer.
 
