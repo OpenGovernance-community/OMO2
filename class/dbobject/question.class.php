@@ -46,6 +46,13 @@
 			return "displayorder, id";
 		}
 
+		public static function getNextDisplayOrder()
+		{
+			return (int)self::fetchValue(
+				"SELECT COALESCE(MAX(displayorder), 0) + 1 FROM question"
+			);
+		}
+
 		public function getChoices() {
 			$choices = new \dbObject\ArrayQuestionChoice();
 			$choices->load([
@@ -59,7 +66,21 @@
 			return $choices;
 		}
 
+		protected static function shuffleChoicesForDisplay(array $choices)
+		{
+			if (count($choices) <= 1) {
+				return $choices;
+			}
+
+			shuffle($choices);
+			return $choices;
+		}
+
 		public static function fetchQuestionsForMission($missionId) {
+			if (!self::tableExists('mission_question')) {
+				return [];
+			}
+
 			$query = "
 				SELECT f.id, f.question
 				FROM mission_question mq
@@ -87,6 +108,12 @@
 					}
 				}
 
+				foreach ($row['choices'] as &$choiceRow) {
+					unset($choiceRow['is_correct']);
+				}
+				unset($choiceRow);
+
+				$row['choices'] = self::shuffleChoicesForDisplay($row['choices']);
 				$row['multiple'] = $correctCount > 1;
 			}
 

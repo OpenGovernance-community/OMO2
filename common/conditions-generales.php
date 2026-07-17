@@ -1,156 +1,146 @@
 <?php
-require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../shared_functions.php';
+require_once __DIR__ . '/legal_page_helper.php';
 
 $siteTitle = trim((string)($GLOBALS['siteTitle'] ?? 'Le site'));
-?>
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Conditions générales - <?= htmlspecialchars($siteTitle) ?></title>
-	<style>
-		:root {
-			--cg-bg: #f8fafc;
-			--cg-card: #ffffff;
-			--cg-text: #0f172a;
-			--cg-muted: #475569;
-			--cg-accent: #2563eb;
-			--cg-border: #dbe4ee;
-		}
+$locale = commonLegalResolveLocale();
+$sourceLang = array_merge(commonGetLegalSharedSourceLang(), [
+    'legal.terms.page_title' => [
+        'text' => 'Conditions générales - {siteTitle}',
+        'context' => 'Browser page title for the terms and conditions page.',
+    ],
+    'legal.terms.document_title' => [
+        'text' => 'Conditions générales d’utilisation',
+        'context' => 'Main heading on the terms and conditions page.',
+    ],
+    'legal.terms.intro.temporary' => [
+        'text' => 'Cette page constitue une version temporaire des conditions générales d’utilisation de <strong>{siteTitle}</strong>.',
+        'context' => 'Introductory paragraph on the terms and conditions page.',
+    ],
+    'legal.terms.section.1.title' => [
+        'text' => '1. Objet',
+        'context' => 'Section title on the terms and conditions page.',
+    ],
+    'legal.terms.section.1.body' => [
+        'text' => 'Le présent site propose des services numériques, des contenus, des fonctionnalités et des espaces d’interaction destinés à ses utilisateurs. Les présentes conditions ont pour objet de définir, à titre provisoire, le cadre général d’utilisation du service.',
+        'context' => 'Section body on the terms and conditions page.',
+    ],
+    'legal.terms.section.2.title' => [
+        'text' => '2. Acceptation',
+        'context' => 'Section title on the terms and conditions page.',
+    ],
+    'legal.terms.section.2.body' => [
+        'text' => 'L’utilisation du site implique l’acceptation des présentes conditions générales, dans leur version en vigueur au moment de la consultation ou de l’utilisation du service.',
+        'context' => 'Section body on the terms and conditions page.',
+    ],
+    'legal.terms.section.3.title' => [
+        'text' => '3. Accès au service',
+        'context' => 'Section title on the terms and conditions page.',
+    ],
+    'legal.terms.section.3.body' => [
+        'text' => 'L’éditeur s’efforce d’assurer un accès raisonnable au service, sans garantie d’accessibilité permanente, de disponibilité continue ou d’absence d’erreur.',
+        'context' => 'Section body on the terms and conditions page.',
+    ],
+    'legal.terms.section.4.title' => [
+        'text' => '4. Compte utilisateur',
+        'context' => 'Section title on the terms and conditions page.',
+    ],
+    'legal.terms.section.4.body' => [
+        'text' => 'Certaines fonctionnalités peuvent nécessiter la création ou l’utilisation d’un compte. L’utilisateur s’engage à fournir des informations exactes et à ne pas détourner le service de son usage normal.',
+        'context' => 'Section body on the terms and conditions page.',
+    ],
+    'legal.terms.section.5.title' => [
+        'text' => '5. Services tiers',
+        'context' => 'Section title on the terms and conditions page.',
+    ],
+    'legal.terms.section.5.body' => [
+        'text' => 'Le site peut s’interfacer avec des services externes, notamment des plateformes tierces d’authentification, de paiement, de soutien ou d’abonnement. L’utilisation de ces services reste également soumise aux conditions propres de leurs éditeurs.',
+        'context' => 'Section body on the terms and conditions page.',
+    ],
+    'legal.terms.section.6.title' => [
+        'text' => '6. Limitation de responsabilité',
+        'context' => 'Section title on the terms and conditions page.',
+    ],
+    'legal.terms.section.6.body' => [
+        'text' => 'Cette version provisoire est fournie à des fins de préfiguration. Tant que la version définitive n’a pas été publiée, aucun élément de cette page ne doit être interprété comme une rédaction juridique finale ou comme un engagement exhaustif.',
+        'context' => 'Section body on the terms and conditions page.',
+    ],
+    'legal.terms.section.7.title' => [
+        'text' => '7. Évolution du document',
+        'context' => 'Section title on the terms and conditions page.',
+    ],
+    'legal.terms.section.7.body' => [
+        'text' => 'Ces conditions générales pourront être modifiées, complétées ou remplacées à tout moment par une version définitive plus complète.',
+        'context' => 'Section body on the terms and conditions page.',
+    ],
+    'legal.terms.note' => [
+        'text' => 'Document de travail à compléter. Prévoir ensuite l’ajout des mentions légales, des dispositions sur les données personnelles, des modalités d’abonnement, des conditions de résiliation et du droit applicable.',
+        'context' => 'Closing note on the terms and conditions page.',
+    ],
+]);
+$lang = commonLegalLoadBundle('common_legal_terms_page', $sourceLang, $locale);
 
-		* {
-			box-sizing: border-box;
-		}
-
-		body {
-			margin: 0;
-			font-family: Arial, Helvetica, sans-serif;
-			background: linear-gradient(180deg, #eff6ff 0%, var(--cg-bg) 220px);
-			color: var(--cg-text);
-		}
-
-		.cg-shell {
-			max-width: 920px;
-			margin: 0 auto;
-			padding: 32px 20px 48px;
-		}
-
-		.cg-card {
-			background: var(--cg-card);
-			border: 1px solid var(--cg-border);
-			border-radius: 24px;
-			padding: 28px;
-			box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
-		}
-
-		h1 {
-			margin: 0 0 10px;
-			font-size: 32px;
-			line-height: 1.15;
-		}
-
-		h2 {
-			margin-top: 28px;
-			font-size: 20px;
-		}
-
-		p, li {
-			line-height: 1.7;
-			color: var(--cg-muted);
-		}
-
-		.cg-badge {
-			display: inline-block;
-			margin-bottom: 14px;
-			padding: 6px 10px;
-			border-radius: 999px;
-			background: #dbeafe;
-			color: var(--cg-accent);
-			font-size: 13px;
-			font-weight: 700;
-			letter-spacing: .02em;
-		}
-
-		.cg-note {
-			margin-top: 22px;
-			padding: 14px 16px;
-			border-left: 4px solid var(--cg-accent);
-			background: #f8fbff;
-			border-radius: 12px;
-		}
-
-		a {
-			color: var(--cg-accent);
-		}
-	</style>
-</head>
-<body>
-	<div class="cg-shell">
-		<div class="cg-card">
-			<div class="cg-badge">Version provisoire</div>
-			<h1>Conditions générales d'utilisation</h1>
-			<p>
-				Cette page constitue une version temporaire des conditions générales d'utilisation de
-				<strong><?= htmlspecialchars($siteTitle) ?></strong>.
-				Elle est publiée afin de permettre l'activation technique de certaines intégrations
-				et sera complétée, relue et validée ultérieurement.
-			</p>
-
-			<h2>1. Objet</h2>
-			<p>
-				Le présent site propose des services numériques, contenus, fonctionnalités et espaces
-				d'interaction destinés à ses utilisateurs. Les présentes conditions ont pour objet de
-				définir, à titre provisoire, le cadre général d'utilisation du service.
-			</p>
-
-			<h2>2. Acceptation</h2>
-			<p>
-				L'utilisation du site implique l'acceptation des présentes conditions générales, dans
-				leur version en vigueur au moment de la consultation ou de l'utilisation du service.
-			</p>
-
-			<h2>3. Accès au service</h2>
-			<p>
-				L'éditeur s'efforce d'assurer un accès raisonnable au service, sans garantie
-				d'accessibilité permanente, de disponibilité continue ou d'absence d'erreur.
-			</p>
-
-			<h2>4. Compte utilisateur</h2>
-			<p>
-				Certaines fonctionnalités peuvent nécessiter la création ou l'utilisation d'un compte.
-				L'utilisateur s'engage à fournir des informations exactes et à ne pas détourner le
-				service de son usage normal.
-			</p>
-
-			<h2>5. Services tiers</h2>
-			<p>
-				Le site peut s'interfacer avec des services externes, notamment des plateformes
-				tierces d'authentification, de paiement, de soutien ou d'abonnement. L'utilisation de
-				ces services reste également soumise aux conditions propres de leurs éditeurs.
-			</p>
-
-			<h2>6. Limitation de responsabilité</h2>
-			<p>
-				Cette version provisoire est fournie à des fins de préfiguration. Tant que la version
-				définitive n'a pas été publiée, aucun élément de cette page ne doit être interprété
-				comme une rédaction juridique finale ou comme un engagement exhaustif.
-			</p>
-
-			<h2>7. Évolution du document</h2>
-			<p>
-				Ces conditions générales pourront être modifiées, complétées ou remplacées à tout
-				moment par une version définitive plus complète.
-			</p>
-
-			<div class="cg-note">
-				<p>
-					Document de travail à compléter. Prévoir ensuite l'ajout des mentions légales,
-					des dispositions sur les données personnelles, des modalités d'abonnement, des
-					conditions de résiliation et du droit applicable.
-				</p>
-			</div>
-		</div>
-	</div>
-</body>
-</html>
+commonRenderLegalPage([
+    'siteTitle' => $siteTitle,
+    'locale' => $locale,
+    'pageTitle' => commonLegalT('legal.terms.page_title', ['siteTitle' => $siteTitle], $lang, $sourceLang),
+    'documentTitle' => commonLegalT('legal.terms.document_title', [], $lang, $sourceLang),
+    'badge' => commonLegalT('legal.shared.badge.temporary', [], $lang, $sourceLang),
+    'accent' => '#2563eb',
+    'accentSoft' => '#dbeafe',
+    'backgroundStart' => '#eff6ff',
+    'pageBackground' => '#f8fafc',
+    'noteBackground' => '#f8fbff',
+    'borderColor' => '#dbe4ee',
+    'intro' => [
+        commonLegalT('legal.terms.intro.temporary', ['siteTitle' => $siteTitle], $lang, $sourceLang),
+        commonLegalT('legal.shared.intro.activation_notice', [], $lang, $sourceLang),
+    ],
+    'sections' => [
+        [
+            'title' => commonLegalT('legal.terms.section.1.title', [], $lang, $sourceLang),
+            'paragraphs' => [
+                commonLegalT('legal.terms.section.1.body', [], $lang, $sourceLang),
+            ],
+        ],
+        [
+            'title' => commonLegalT('legal.terms.section.2.title', [], $lang, $sourceLang),
+            'paragraphs' => [
+                commonLegalT('legal.terms.section.2.body', [], $lang, $sourceLang),
+            ],
+        ],
+        [
+            'title' => commonLegalT('legal.terms.section.3.title', [], $lang, $sourceLang),
+            'paragraphs' => [
+                commonLegalT('legal.terms.section.3.body', [], $lang, $sourceLang),
+            ],
+        ],
+        [
+            'title' => commonLegalT('legal.terms.section.4.title', [], $lang, $sourceLang),
+            'paragraphs' => [
+                commonLegalT('legal.terms.section.4.body', [], $lang, $sourceLang),
+            ],
+        ],
+        [
+            'title' => commonLegalT('legal.terms.section.5.title', [], $lang, $sourceLang),
+            'paragraphs' => [
+                commonLegalT('legal.terms.section.5.body', [], $lang, $sourceLang),
+            ],
+        ],
+        [
+            'title' => commonLegalT('legal.terms.section.6.title', [], $lang, $sourceLang),
+            'paragraphs' => [
+                commonLegalT('legal.terms.section.6.body', [], $lang, $sourceLang),
+            ],
+        ],
+        [
+            'title' => commonLegalT('legal.terms.section.7.title', [], $lang, $sourceLang),
+            'paragraphs' => [
+                commonLegalT('legal.terms.section.7.body', [], $lang, $sourceLang),
+            ],
+        ],
+    ],
+    'note' => [
+        commonLegalT('legal.terms.note', [], $lang, $sourceLang),
+    ],
+]);

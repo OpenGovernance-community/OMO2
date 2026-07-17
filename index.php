@@ -50,13 +50,20 @@
 	}
 
 	require_once __DIR__ . '/config.php';
-	require_once __DIR__ . '/common/patreon.php';
 	homepageRegisterAutoloader();
+	require_once __DIR__ . '/common/auth.php';
+	require_once __DIR__ . '/common/leaflet_helper.php';
+	require_once __DIR__ . '/common/patreon.php';
 
 	$patreonHomepageEnabled = patreonSupportUiIsEnabled();
 	$homepagePatreonContributors = $patreonHomepageEnabled && class_exists('\\dbObject\\UserPatreon')
 		? \dbObject\UserPatreon::getHomepageContributorCards(5)
 		: ['items' => [], 'totalCount' => 0, 'extraCount' => 0];
+	$homepageOrganizationMapRows = class_exists('\\dbObject\\Organization')
+		? \dbObject\Organization::fetchPublicMapRows()
+		: array();
+	$homepageLeafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafletMapsEnabled();
+	$homepageOrganizationMapJson = json_encode($homepageOrganizationMapRows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -77,6 +84,9 @@
 		<!-- Bootstrap (for html editor) Summernote-->
 		<link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet">
 		<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.bundle.min.js"></script>
+<?php if ($homepageLeafletMapsEnabled): ?>
+<?php commonRenderLeafletAssets(); ?>
+<?php endif; ?>
 <script>
 	$(window).on("scroll", function () {
 		$("#bkg_illustration").css('top', -$(window).scrollTop()/2);
@@ -278,6 +288,82 @@
   color: #0b4e63;
   border: 1px solid rgba(11, 110, 122, 0.1);
   font-weight: bold;
+}
+
+.home-organization-map {
+  display: grid;
+  gap: 1.2rem;
+  padding: 1.4rem;
+  border-radius: 16px;
+  border: 1px solid rgba(9, 49, 71, 0.16);
+  background: linear-gradient(180deg, rgba(247, 251, 255, 0.98), rgba(236, 244, 252, 0.92));
+  box-shadow: 0 18px 36px rgba(8, 35, 52, 0.12);
+}
+
+.home-organization-map__header h2,
+.home-organization-map__header p {
+  margin: 0;
+}
+
+.home-organization-map__header {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.home-organization-map__header p {
+  color: #3f5364;
+  line-height: 1.55;
+}
+
+.home-organization-map__canvas {
+  min-height: 420px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(9, 49, 71, 0.12);
+  background:
+    radial-gradient(circle at top left, rgba(26, 130, 163, 0.12), transparent 32%),
+    linear-gradient(180deg, rgba(224, 242, 254, 0.95), rgba(255, 255, 255, 0.98));
+}
+
+.home-organization-map__empty {
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px dashed rgba(11, 110, 122, 0.28);
+  color: #355267;
+}
+
+.home-organization-map__popup {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 180px;
+}
+
+.home-organization-map__popup strong {
+  color: #123247;
+}
+
+.home-organization-map__popup-logo,
+.home-organization-map__popup-placeholder {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  flex: 0 0 42px;
+}
+
+.home-organization-map__popup-logo {
+  object-fit: cover;
+  background: #e5eef6;
+}
+
+.home-organization-map__popup-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  background: linear-gradient(135deg, #0b6e7a, #1a82a3);
 }
 
 .intro_txt {
@@ -526,6 +612,22 @@ padding:15px;
     </div>
   </section>
 
+  <?php if (!empty($homepageOrganizationMapRows)): ?>
+  <section class="home-organization-map">
+    <div class="home-organization-map__header">
+      <h2>Des organisations utilisent deja OMO</h2>
+      <p>Cette carte publique n affiche que des informations d organisation explicitement marquees comme lisibles sans connexion. Les donnees sensibles restent hors de portee.</p>
+    </div>
+
+    <?php if ($homepageLeafletMapsEnabled): ?>
+      <div id="homepageOrganizationMap" class="home-organization-map__canvas"></div>
+    <?php else: ?>
+      <div class="home-organization-map__empty">La carte n est pas disponible sur ce serveur pour le moment, mais la liste publique des organisations reste visible ci-dessous.</div>
+    <?php endif; ?>
+
+  </section>
+  <?php endif; ?>
+
   <?php if ($patreonHomepageEnabled && !empty($homepagePatreonContributors['items'])): ?>
   <section class="home-contributors">
     <div class="home-contributors__header">
@@ -652,6 +754,78 @@ padding:15px;
 
 </body>
 <script>
+const homepageOrganizationMapRows = <?= is_string($homepageOrganizationMapJson) ? $homepageOrganizationMapJson : '[]' ?>;
+
+function initHomepageOrganizationMap() {
+  if (!Array.isArray(homepageOrganizationMapRows) || homepageOrganizationMapRows.length === 0) {
+    return;
+  }
+
+  const mapElement = document.getElementById('homepageOrganizationMap');
+  if (!mapElement || typeof window.L === 'undefined') {
+    return;
+  }
+
+  const defaultCenter = [46.8182, 8.2275];
+  const map = L.map(mapElement, {
+    scrollWheelZoom: false
+  }).setView(defaultCenter, 7);
+  const tileState = { layer: null, theme: null };
+  if (typeof window.commonBindLeafletTheme === 'function') {
+    window.commonBindLeafletTheme(map, tileState);
+  }
+
+  const bounds = [];
+  homepageOrganizationMapRows.forEach((organizationRow) => {
+    const latlong = organizationRow && organizationRow.latlong ? organizationRow.latlong : null;
+    const lat = latlong ? Number(latlong.lat) : NaN;
+    const lng = latlong ? Number(latlong.long) : NaN;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return;
+    }
+
+    const markerColor = String((organizationRow && organizationRow.color) || '#0b6e7a');
+    const marker = L.circleMarker([lat, lng], {
+      radius: 9,
+      color: markerColor,
+      weight: 2,
+      fillColor: markerColor,
+      fillOpacity: 0.72
+    }).addTo(map);
+
+    const safeName = String((organizationRow && organizationRow.name) || 'Organisation');
+    const safeLogo = String((organizationRow && organizationRow.logo) || '');
+    const safeColor = String((organizationRow && organizationRow.color) || '#0b6e7a');
+    const safeInitial = safeName.trim() ? safeName.trim().charAt(0).toUpperCase() : 'O';
+    const popupHtml = [
+      '<div class="home-organization-map__popup">',
+      safeLogo
+        ? '<img class="home-organization-map__popup-logo" src="' + safeLogo.replace(/"/g, '&quot;') + '" alt="' + safeName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '">'
+        : '<span class="home-organization-map__popup-placeholder" style="background:' + safeColor.replace(/"/g, '&quot;') + ';">' + safeInitial.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>',
+      '<strong>' + safeName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</strong>',
+      '</div>'
+    ].join('');
+    marker.bindPopup(popupHtml);
+    bounds.push([lat, lng]);
+  });
+
+  if (bounds.length > 0) {
+    map.fitBounds(bounds, {
+      padding: [30, 30],
+      maxZoom: 9
+    });
+  }
+
+  window.setTimeout(() => map.invalidateSize(), 0);
+  window.setTimeout(() => map.invalidateSize(), 250);
+}
+
+if (typeof window.commonWhenLeafletReady === 'function') {
+  window.commonWhenLeafletReady(initHomepageOrganizationMap);
+} else {
+  window.addEventListener('load', initHomepageOrganizationMap);
+}
+
 const intro = document.getElementById('intro');
 const textBlock = intro.querySelector('.vertical');
 const btn = document.getElementById('toggleText');

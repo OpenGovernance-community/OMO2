@@ -27,7 +27,7 @@ function patreonRenderCallbackPage($title, $message, $isSuccess)
 			max-width: 560px;
 			margin: 40px auto;
 			padding: 24px;
-			border-radius: 18px;
+			border-radius: var(--radius-md);
 			background: #ffffff;
 			box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
 			border: 1px solid #e2e8f0;

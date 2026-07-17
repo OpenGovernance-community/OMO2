@@ -2,10 +2,12 @@
 require_once __DIR__ . '/includes/env.php';
 require_once __DIR__ . '/includes/auto_install.php';
 
-$autoInstallEnvPath = __DIR__ . '/.env';
+$autoInstallEnvPath = envGetPrimaryEnvPath();
 autoInstallBootstrap($autoInstallEnvPath);
 
-loadEnv($autoInstallEnvPath);
+foreach (envGetRuntimeEnvPaths() as $runtimeEnvPath) {
+    loadEnv($runtimeEnvPath);
+}
 
 // Identite du site
 $GLOBALS['siteTitle'] = envValue('SITE_TITLE', 'EasyPV');
@@ -23,6 +25,7 @@ $GLOBALS['dbPassword'] = envValue('DB_PASS', '');
 $GLOBALS['OpenAI'] = envValue('OPENAI_API_KEY', '');
 $GLOBALS['openAiUploadApiKey'] = envValue('OPENAI_UPLOAD_API_KEY', $GLOBALS['OpenAI']);
 $GLOBALS['openAiTranslationModel'] = envValue('OPENAI_TRANSLATION_MODEL', envValue('OPENAI_MODEL', 'gpt-4o'));
+$GLOBALS['stadiaMapsApiKey'] = envValue('STADIA_MAPS_API_KEY', '');
 
 // Config du mail
 $GLOBALS['mailHost'] = envValue('MAIL_HOST', 'mail.infomaniak.com');

@@ -70,6 +70,12 @@ if ($organizationId <= 0) {
                                     <small id="omo-holon-create-name-help"></small>
                                 </label>
 
+                                <label class="omo-holon-create__field omo-holon-create__field--full">
+                                    <span>Nom complet</span>
+                                    <input type="text" id="omo-holon-create-full-name" class="generic-form-control" maxlength="255">
+                                    <small>Optionnel. Utilise dans la vue liste et dans la fiche contexte.</small>
+                                </label>
+
                             </div>
 
                             <div class="omo-holon-create__template-meta" id="omo-holon-create-template-meta"></div>
@@ -86,6 +92,36 @@ if ($organizationId <= 0) {
                             </div>
 
                             <div class="omo-holon-create__properties" id="omo-holon-create-properties"></div>
+                        </section>
+
+                        <section class="omo-holon-create__section generic-section generic-section--stack">
+                            <div class="omo-holon-create__section-head">
+                                <div>
+                                    <div class="omo-holon-create__section-title generic-card-title generic-card-title--eyebrow">Droits</div>
+                                    <p class="omo-holon-create__section-description">
+                                        Ce holon peut aussi porter des droits directs pour ses membres.
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    class="generic-action-button generic-action-button--secondary"
+                                    id="omo-holon-create-permissions-toggle"
+                                    aria-expanded="false"
+                                    aria-controls="omo-holon-create-permissions-editor"
+                                >Editer</button>
+                            </div>
+
+                            <div class="omo-holon-create__permission-summary generic-soft-panel" id="omo-holon-create-permissions-summary">
+                                <div class="omo-holon-create__permission-summary-line">
+                                    <div class="omo-holon-create__permission-summary-label">Droits herites</div>
+                                    <div class="omo-holon-create__permission-summary-empty">aucun</div>
+                                </div>
+                                <div class="omo-holon-create__permission-summary-line">
+                                    <div class="omo-holon-create__permission-summary-label">Droits associes au holon</div>
+                                    <div class="omo-holon-create__permission-summary-empty">aucun</div>
+                                </div>
+                            </div>
+                            <div class="omo-holon-create__permissions" id="omo-holon-create-permissions-editor" hidden></div>
                         </section>
                         </div>
                         <section class="omo-holon-create__section generic-section generic-section--stack">
@@ -145,7 +181,8 @@ if ($organizationId <= 0) {
 
 <?php if ($editorData !== null && $errorMessage === ''): ?>
 <script src="/omo/assets/js/sized-image-field.js"></script>
-<script src="/omo/assets/js/simple-html-field.js"></script>
+<script src="/omo/assets/js/simple-html-field.js?v=20260714-compact-resource-embeds"></script>
+<script src="/common/assets/multiline-list-paste.js"></script>
 <script>
 (() => {
 const state = {
@@ -163,6 +200,7 @@ const elements = {
     form: root.querySelector('#omo-holon-create-form'),
     template: root.querySelector('#omo-holon-create-template'),
     name: root.querySelector('#omo-holon-create-name'),
+    fullName: root.querySelector('#omo-holon-create-full-name'),
     colorEnabled: root.querySelector('#omo-holon-create-color-enabled'),
     colorBody: root.querySelector('#omo-holon-create-color-body'),
     color: root.querySelector('#omo-holon-create-color'),
@@ -170,6 +208,9 @@ const elements = {
     bannerField: root.querySelector('#omo-holon-create-banner-field'),
     meta: root.querySelector('#omo-holon-create-template-meta'),
     properties: root.querySelector('#omo-holon-create-properties'),
+    permissions: root.querySelector('#omo-holon-create-permissions-editor'),
+    permissionSummary: root.querySelector('#omo-holon-create-permissions-summary'),
+    permissionToggle: root.querySelector('#omo-holon-create-permissions-toggle'),
     hint: root.querySelector('#omo-holon-create-hint'),
     nameHelp: root.querySelector('#omo-holon-create-name-help'),
     cancel: root.querySelector('#omo-holon-create-cancel')
@@ -179,6 +220,34 @@ const mediaFields = {
     icon: null,
     banner: null
 };
+
+function waitForGlobalLibrary(globalKey, timeoutMs) {
+    const key = String(globalKey || '').trim();
+    const maxWait = Number(timeoutMs || 4000);
+    if (key !== '' && window[key]) {
+        return Promise.resolve(true);
+    }
+
+    return new Promise(function (resolve) {
+        const startedAt = Date.now();
+
+        function checkAvailability() {
+            if (key !== '' && window[key]) {
+                resolve(true);
+                return;
+            }
+
+            if (Date.now() - startedAt >= maxWait) {
+                resolve(false);
+                return;
+            }
+
+            window.setTimeout(checkAvailability, 30);
+        }
+
+        checkAvailability();
+    });
+}
 
 // Échappe texte HTML
 function escapeHtml(value) {
@@ -216,6 +285,342 @@ function renderHtmlPreview(value, className) {
 }
 
 // Liste les modèles
+function getPermissionCatalog() {
+    return Array.isArray(state.data.permissionCatalog) ? state.data.permissionCatalog : [];
+}
+
+function getPermissionRangeOptions() {
+    return Array.isArray(state.data.permissionRanges) ? state.data.permissionRanges : [];
+}
+
+function getInheritedPermissions() {
+    const editingHolon = getEditingHolon();
+    return editingHolon && editingHolon.inheritedPermissions && typeof editingHolon.inheritedPermissions === 'object'
+        ? editingHolon.inheritedPermissions
+        : {};
+}
+
+function normalizePermissionRanges(value) {
+    const ranges = Array.isArray(value) ? value : (String(value || '').trim() !== '' ? [value] : []);
+    const normalized = [];
+    const seen = new Set();
+
+    ranges.forEach(function (range) {
+        const normalizedRange = String(range || '').trim();
+        if (!normalizedRange || seen.has(normalizedRange)) {
+            return;
+        }
+
+        seen.add(normalizedRange);
+        normalized.push(normalizedRange);
+    });
+
+    return normalized;
+}
+
+function getPermissionRangeLabel(rangeKey, rangeOptions) {
+    const range = (rangeOptions || []).find(function (item) {
+        return String(item.key || '') === String(rangeKey || '');
+    });
+
+    return range ? String(range.label || range.key || '') : String(rangeKey || '');
+}
+
+function readPermissions() {
+    if (!elements.permissions) {
+        return {};
+    }
+
+    const assignments = {};
+    Array.from(elements.permissions.querySelectorAll('[data-permission-key]')).forEach(function (row) {
+        const permissionKey = String(row.getAttribute('data-permission-key') || '').trim();
+        if (!permissionKey) {
+            return;
+        }
+
+        const selectedRanges = Array.from(row.querySelectorAll('[data-permission-token]')).map(function (token) {
+            return String(token.getAttribute('data-permission-token') || '').trim();
+        }).filter(function (range) {
+            return range !== '';
+        });
+
+        if (selectedRanges.length) {
+            assignments[permissionKey] = selectedRanges;
+        }
+    });
+
+    return assignments;
+}
+
+function buildPermissionSummary(assignments) {
+    const permissionCatalog = getPermissionCatalog();
+    const titles = Object.keys(assignments || {}).map(function (permissionKey) {
+        const permission = permissionCatalog.find(function (item) {
+            return String(item && item.key ? item.key : '') === String(permissionKey || '');
+        });
+
+        return permission ? String(permission.title || permission.key || '').trim() : String(permissionKey || '').trim();
+    }).filter(Boolean).sort(function (left, right) {
+        return left.localeCompare(right, 'fr', { sensitivity: 'base' });
+    });
+
+    if (!titles.length) {
+        return 'Droits associes au holon: aucun';
+    }
+
+    return 'Droits associes au holon: ' + titles.join(', ');
+}
+
+function getPermissionTitle(permissionKey) {
+    const permissionCatalog = getPermissionCatalog();
+    const permission = permissionCatalog.find(function (item) {
+        return String(item && item.key ? item.key : '') === String(permissionKey || '');
+    });
+
+    return permission ? String(permission.title || permission.key || '').trim() : String(permissionKey || '').trim();
+}
+
+function renderPermissionSummaryCapsules(items, emptyText) {
+    if (!Array.isArray(items) || !items.length) {
+        return '<div class="omo-holon-create__permission-summary-empty">' + escapeHtml(emptyText || 'aucun') + '</div>';
+    }
+
+    return '<div class="omo-holon-create__permission-summary-capsules">'
+        + items.map(function (item) {
+            return ''
+                + '<div class="omo-holon-create__permission-pill">'
+                + '  <div class="omo-holon-create__permission-pill-title">' + escapeHtml(String(item.title || '')) + '</div>'
+                + '  <div class="omo-holon-create__permission-pill-scope">' + escapeHtml(String(item.scope || '')) + '</div>'
+                + '</div>';
+        }).join('')
+        + '</div>';
+}
+
+function buildLocalPermissionSummaryItems(assignments) {
+    const defaultRangeOptions = getPermissionRangeOptions();
+
+    return Object.keys(assignments || {}).map(function (permissionKey) {
+        const ranges = normalizePermissionRanges(assignments[permissionKey]);
+        if (!ranges.length) {
+            return null;
+        }
+
+        const permissionCatalog = getPermissionCatalog();
+        const permission = permissionCatalog.find(function (item) {
+            return String(item && item.key ? item.key : '') === String(permissionKey || '');
+        });
+        const rangeOptions = permission && Array.isArray(permission.rangeOptions) && permission.rangeOptions.length
+            ? permission.rangeOptions
+            : defaultRangeOptions;
+
+        return {
+            title: getPermissionTitle(permissionKey),
+            scope: ranges.map(function (rangeKey) {
+                return getPermissionRangeLabel(rangeKey, rangeOptions);
+            }).filter(Boolean).join(' · ')
+        };
+    }).filter(Boolean).sort(function (left, right) {
+        return String(left.title || '').localeCompare(String(right.title || ''), 'fr', { sensitivity: 'base' });
+    });
+}
+
+function buildInheritedPermissionSummary(inheritedPermissions) {
+    return Object.keys(inheritedPermissions || {}).map(function (permissionKey) {
+        const permission = inheritedPermissions && inheritedPermissions[permissionKey] ? inheritedPermissions[permissionKey] : null;
+        const visibleItems = permission && Array.isArray(permission.visibleItems) ? permission.visibleItems : [];
+
+        return {
+            title: permission ? String(permission.name || permission.shortname || permissionKey || '').trim() : String(permissionKey || '').trim(),
+            scope: visibleItems.map(function (item) {
+                return String(item && item.label ? item.label : '').trim();
+            }).filter(Boolean).join(' · ')
+        };
+    }).filter(function (item) {
+        return String(item.title || '').trim() !== '';
+    }).sort(function (left, right) {
+        return String(left.title || '').localeCompare(String(right.title || ''), 'fr', { sensitivity: 'base' });
+    });
+}
+
+function syncPermissionSummary() {
+    if (!elements.permissionSummary) {
+        return;
+    }
+
+    const permissionCatalog = getPermissionCatalog();
+    if (!permissionCatalog.length) {
+        elements.permissionSummary.innerHTML = ''
+            + '<div class="omo-holon-create__permission-summary-line">'
+            + '  <div class="omo-holon-create__permission-summary-label">Droits herites</div>'
+            + '  <div class="omo-holon-create__permission-summary-empty">aucun droit disponible</div>'
+            + '</div>'
+            + '<div class="omo-holon-create__permission-summary-line">'
+            + '  <div class="omo-holon-create__permission-summary-label">Droits associes au holon</div>'
+            + '  <div class="omo-holon-create__permission-summary-empty">aucun droit disponible</div>'
+            + '</div>';
+        return;
+    }
+
+    const inheritedItems = buildInheritedPermissionSummary(getInheritedPermissions());
+    const localItems = buildLocalPermissionSummaryItems(readPermissions());
+    elements.permissionSummary.innerHTML = ''
+        + '<div class="omo-holon-create__permission-summary-line">'
+        + '  <div class="omo-holon-create__permission-summary-label">Droits herites</div>'
+        +      renderPermissionSummaryCapsules(inheritedItems, 'aucun')
+        + '</div>'
+        + '<div class="omo-holon-create__permission-summary-line">'
+        + '  <div class="omo-holon-create__permission-summary-label">Droits associes au holon</div>'
+        +      renderPermissionSummaryCapsules(localItems, 'aucun')
+        + '</div>';
+}
+
+function setPermissionEditorExpanded(isExpanded) {
+    if (elements.permissions) {
+        elements.permissions.hidden = !isExpanded;
+    }
+
+    if (elements.permissionToggle) {
+        elements.permissionToggle.textContent = isExpanded ? 'Fermer' : 'Editer';
+        elements.permissionToggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+    }
+}
+
+function setPermissionRowRanges(row, selectedRanges, rangeOptions) {
+    const tokensContainer = row.querySelector('[data-permission-tokens]');
+    const select = row.querySelector('[data-permission-select]');
+    const normalizedRanges = normalizePermissionRanges(selectedRanges);
+
+    if (!tokensContainer) {
+        return;
+    }
+
+    if (!normalizedRanges.length) {
+        tokensContainer.innerHTML = '<span class="omo-holon-create__permission-empty">Aucune portee selectionnee.</span>';
+    } else {
+        tokensContainer.innerHTML = normalizedRanges.map(function (rangeKey) {
+            return ''
+                + '<span class="omo-holon-create__permission-token" data-permission-token="' + escapeHtml(rangeKey) + '">'
+                + '  <span>' + escapeHtml(getPermissionRangeLabel(rangeKey, rangeOptions)) + '</span>'
+                + '  <button type="button" class="omo-holon-create__permission-token-remove" data-permission-remove="' + escapeHtml(rangeKey) + '" aria-label="Retirer cette portee">&times;</button>'
+                + '</span>';
+        }).join('');
+    }
+
+    if (select) {
+        select.value = '';
+    }
+
+    syncPermissionSummary();
+}
+
+function bindPermissionRow(row, rangeOptions) {
+    const select = row.querySelector('[data-permission-select]');
+    if (!select || String(select.dataset.bound || '') === '1') {
+        return;
+    }
+
+    select.dataset.bound = '1';
+    select.addEventListener('change', function () {
+        const nextRange = String(select.value || '').trim();
+        if (!nextRange) {
+            return;
+        }
+
+        const currentRanges = Array.from(row.querySelectorAll('[data-permission-token]')).map(function (token) {
+            return String(token.getAttribute('data-permission-token') || '').trim();
+        });
+        currentRanges.push(nextRange);
+        setPermissionRowRanges(row, currentRanges, rangeOptions);
+    });
+
+    row.addEventListener('click', function (event) {
+        const removeButton = event.target instanceof Element
+            ? event.target.closest('[data-permission-remove]')
+            : null;
+        if (!removeButton) {
+            return;
+        }
+
+        const removedRange = String(removeButton.getAttribute('data-permission-remove') || '').trim();
+        const remainingRanges = Array.from(row.querySelectorAll('[data-permission-token]')).map(function (token) {
+            return String(token.getAttribute('data-permission-token') || '').trim();
+        }).filter(function (range) {
+            return range !== '' && range !== removedRange;
+        });
+
+        setPermissionRowRanges(row, remainingRanges, rangeOptions);
+    });
+}
+
+function renderPermissions(permissionAssignments) {
+    const permissionCatalog = getPermissionCatalog();
+    const defaultRangeOptions = getPermissionRangeOptions();
+    const assignments = permissionAssignments && typeof permissionAssignments === 'object'
+        ? permissionAssignments
+        : {};
+
+    if (!elements.permissions) {
+        return;
+    }
+
+    if (!permissionCatalog.length) {
+        elements.permissions.innerHTML = '<div class="omo-holon-create__empty-note">Aucun droit n est disponible.</div>';
+        syncPermissionSummary();
+        return;
+    }
+
+    let html = '<div class="omo-holon-create__permission-table">';
+    permissionCatalog.forEach(function (permission) {
+        const permissionRangeOptions = Array.isArray(permission.rangeOptions) && permission.rangeOptions.length
+            ? permission.rangeOptions
+            : defaultRangeOptions;
+
+        html += ''
+            + '<div class="omo-holon-create__permission-row" data-permission-key="' + escapeHtml(permission.key) + '">'
+            + '  <div class="omo-holon-create__permission-main">'
+            + '      <div class="omo-holon-create__permission-title">' + escapeHtml(permission.title || permission.key) + '</div>'
+            + '      <div class="omo-holon-create__permission-meta">' + escapeHtml(permission.key) + '</div>';
+
+        if (String(permission.description || '').trim() !== '') {
+            html += '<div class="omo-holon-create__permission-description">' + escapeHtml(permission.description) + '</div>';
+        }
+
+        html += ''
+            + '  </div>'
+            + '  <div class="omo-holon-create__permission-picker">'
+            + '      <div class="omo-holon-create__permission-tokens" data-permission-tokens></div>'
+            + '      <select class="omo-holon-create__permission-select generic-form-control" data-permission-select>'
+            + '          <option value="">Ajouter une portee...</option>';
+
+        permissionRangeOptions.forEach(function (range) {
+            html += '<option value="' + escapeHtml(range.key) + '">' + escapeHtml(range.label || range.key) + '</option>';
+        });
+
+        html += ''
+            + '      </select>'
+            + '  </div>'
+            + '</div>';
+    });
+    html += '</div>';
+
+    elements.permissions.innerHTML = html;
+
+    Array.from(elements.permissions.querySelectorAll('[data-permission-key]')).forEach(function (row) {
+        const permissionKey = String(row.getAttribute('data-permission-key') || '').trim();
+        const permission = permissionCatalog.find(function (item) {
+            return String(item && item.key ? item.key : '') === permissionKey;
+        }) || null;
+        const permissionRangeOptions = permission && Array.isArray(permission.rangeOptions) && permission.rangeOptions.length
+            ? permission.rangeOptions
+            : defaultRangeOptions;
+
+        bindPermissionRow(row, permissionRangeOptions);
+        setPermissionRowRanges(row, assignments[permissionKey], permissionRangeOptions);
+    });
+
+    syncPermissionSummary();
+}
+
 function getTemplates() {
     return Array.isArray(state.data.templateCatalog) ? state.data.templateCatalog : [];
 }
@@ -446,6 +851,16 @@ function renderSimpleListInput(listItemType, values) {
 }
 
 // Rend champ propriété
+if (window.genericMultilineListPaste && typeof window.genericMultilineListPaste.attach === 'function') {
+    window.genericMultilineListPaste.attach(root, {
+        inputSelector: '.omo-holon-create__property-value-item',
+        rowSelector: '.omo-holon-create__list-row',
+        listSelector: '.omo-holon-create__list',
+        itemsSelector: '.omo-holon-create__list-items',
+        renderRow: renderSimpleListRow
+    });
+}
+
 function renderPropertyInput(property) {
     const formatId = Number(property.formatId || 0);
     const localValue = property.value !== undefined && property.value !== null
@@ -896,7 +1311,11 @@ function fillFormFromState() {
 
     if (editingHolon) {
         elements.name.value = String(editingHolon.name || '');
+        if (elements.fullName) {
+            elements.fullName.value = String(editingHolon.fullName || '');
+        }
         syncTemplateSelection(Number(editingHolon.templateId || 0), editingHolon.properties || []);
+        renderPermissions(editingHolon.permissionAssignments || {});
         if (isTemplateEditing()) {
             if (elements.visible) {
                 elements.visible.checked = Boolean(editingHolon.visible);
@@ -912,7 +1331,11 @@ function fillFormFromState() {
     }
 
     elements.name.value = '';
+    if (elements.fullName) {
+        elements.fullName.value = '';
+    }
     elements.name.disabled = false;
+    renderPermissions({});
     if (elements.visible) {
         elements.visible.checked = false;
     }
@@ -969,7 +1392,21 @@ function isHashManagedCreateDrawer() {
     return /^holon-create-\d+$/i.test(getCurrentDrawerRouteToken());
 }
 
+function getExternalDrawerContext() {
+    if (typeof window.omoGetExternalPanelDrawerContext !== 'function') {
+        return null;
+    }
+
+    return window.omoGetExternalPanelDrawerContext(root);
+}
+
 function closeCreateDrawer() {
+    const externalDrawerContext = getExternalDrawerContext();
+    if (externalDrawerContext && typeof window.omoCloseExternalPanelDrawer === 'function') {
+        window.omoCloseExternalPanelDrawer();
+        return;
+    }
+
     if (isHashManagedHolonEditorDrawer() && typeof window.omoSetDrawerHashState === 'function') {
         window.omoSetDrawerHashState({
             open: false
@@ -982,6 +1419,32 @@ function closeCreateDrawer() {
     }
 }
 
+function refreshStructureViews(targetHolonId, options) {
+    const cid = targetHolonId === null || targetHolonId === undefined || targetHolonId === ''
+        ? null
+        : Number(targetHolonId);
+    const refreshOptions = options && typeof options === 'object'
+        ? options
+        : {};
+    const detail = {
+        cid: Number.isNaN(cid) ? null : cid,
+        quickZoom: Boolean(refreshOptions.quickZoom)
+    };
+
+    if (typeof window.omoReloadStructureAndFocus === 'function') {
+        return window.omoReloadStructureAndFocus(detail.cid, refreshOptions)
+            .catch(function () {
+                return null;
+            });
+    }
+
+    window.dispatchEvent(new CustomEvent('omo-structure-refresh', {
+        detail: detail
+    }));
+
+    return Promise.resolve(null);
+}
+
 // Enregistre holon courant
 function saveHolon(event) {
     event.preventDefault();
@@ -992,41 +1455,54 @@ function saveHolon(event) {
 
     clearStatus();
 
-    const payload = {
-        templateId: Number(elements.template.value || 0),
-        name: String(elements.name.value || '').trim(),
-        color: Boolean(elements.colorEnabled && elements.colorEnabled.checked)
-            ? String(elements.color && elements.color.value ? elements.color.value : '')
-            : '',
-        icon: mediaFields.icon ? mediaFields.icon.getValue() : '',
-        banner: mediaFields.banner ? mediaFields.banner.getValue() : '',
-        properties: readProperties()
-    };
-
-    if (isTemplateEditing()) {
-        payload.visible = Boolean(elements.visible && elements.visible.checked);
-        payload.mandatory = Boolean(elements.mandatory && elements.mandatory.checked);
-        payload.link = Boolean(elements.link && elements.link.checked);
+    const pendingMediaFlushes = [];
+    if (mediaFields.icon && typeof mediaFields.icon.flushPending === 'function') {
+        pendingMediaFlushes.push(mediaFields.icon.flushPending());
+    }
+    if (mediaFields.banner && typeof mediaFields.banner.flushPending === 'function') {
+        pendingMediaFlushes.push(mediaFields.banner.flushPending());
     }
 
-    let saveUrl = '/omo/api/holons/save.php?cid=' + Number(state.data.contextHolonId || 0);
-    if (getMode() === 'edit' && Number(state.data.holonId || 0) > 0) {
-        saveUrl += '&hid=' + Number(state.data.holonId || 0);
-    }
+    Promise.all(pendingMediaFlushes)
+        .then(function () {
+            const payload = {
+                templateId: Number(elements.template.value || 0),
+                name: String(elements.name.value || '').trim(),
+                fullName: String(elements.fullName && elements.fullName.value ? elements.fullName.value : '').trim(),
+                color: Boolean(elements.colorEnabled && elements.colorEnabled.checked)
+                    ? String(elements.color && elements.color.value ? elements.color.value : '')
+                    : '',
+                icon: mediaFields.icon ? mediaFields.icon.getValue() : '',
+                banner: mediaFields.banner ? mediaFields.banner.getValue() : '',
+                permissions: readPermissions(),
+                properties: readProperties()
+            };
 
-    const formData = new FormData();
-    formData.append('payload', JSON.stringify(payload));
-    if (mediaFields.icon) {
-        mediaFields.icon.appendToFormData(formData);
-    }
-    if (mediaFields.banner) {
-        mediaFields.banner.appendToFormData(formData);
-    }
+            if (isTemplateEditing()) {
+                payload.visible = Boolean(elements.visible && elements.visible.checked);
+                payload.mandatory = Boolean(elements.mandatory && elements.mandatory.checked);
+                payload.link = Boolean(elements.link && elements.link.checked);
+            }
 
-    fetch(saveUrl, {
-        method: 'POST',
-        body: formData
-    })
+            let saveUrl = '/omo/api/holons/save.php?cid=' + Number(state.data.contextHolonId || 0);
+            if (getMode() === 'edit' && Number(state.data.holonId || 0) > 0) {
+                saveUrl += '&hid=' + Number(state.data.holonId || 0);
+            }
+
+            const formData = new FormData();
+            formData.append('payload', JSON.stringify(payload));
+            if (mediaFields.icon) {
+                mediaFields.icon.appendToFormData(formData);
+            }
+            if (mediaFields.banner) {
+                mediaFields.banner.appendToFormData(formData);
+            }
+
+            return fetch(saveUrl, {
+                method: 'POST',
+                body: formData
+            });
+        })
         .then(function (response) {
             return response.json().then(function (data) {
                 return {
@@ -1050,23 +1526,38 @@ function saveHolon(event) {
                     hash: null
                 };
             const targetHolonId = Number(result.data.holon.id || 0);
+            const externalDrawerContext = getExternalDrawerContext();
+            const externalStructureHost = externalDrawerContext
+                && String(externalDrawerContext.hostRouteToken || '').trim().toLowerCase() === 'structure';
+            const currentRouteCid = Number(route && route.cid ? route.cid : 0);
+            const shouldNavigate = targetHolonId > 0
+                && typeof navigate === 'function'
+                && Number(route && route.oid ? route.oid : 0) > 0
+                && currentRouteCid !== targetHolonId;
 
-            if (getMode() === 'edit' && typeof loadContent === 'function') {
+            if (getMode() === 'edit' && typeof loadContent === 'function' && !shouldNavigate) {
                 let leftUrl = 'api/getOrg.php?oid=' + Number(route.oid || state.data.organizationId || 0);
 
                 if (targetHolonId > 0) {
                     leftUrl += '&cid=' + targetHolonId;
                 }
 
-                loadContent('#panel-left', leftUrl);
+                loadContent(typeof omoGetLeftPanelContentSelector === 'function' ? omoGetLeftPanelContentSelector() : '#panel-left', leftUrl);
 
-                window.dispatchEvent(new CustomEvent('omo-structure-refresh', {
-                    detail: {
-                        cid: targetHolonId > 0 ? targetHolonId : null
+                refreshStructureViews(targetHolonId > 0 ? targetHolonId : null, {
+                    quickZoom: externalStructureHost ? false : true
+                });
+
+                if (externalDrawerContext) {
+                    closeCreateDrawer();
+                    if (
+                        typeof window.omoRefreshExternalPanelDrawerHost === 'function'
+                        && !externalStructureHost
+                        && !shouldNavigate
+                    ) {
+                        window.omoRefreshExternalPanelDrawerHost(externalDrawerContext.drawer);
                     }
-                }));
-
-                if (hashManagedEditorDrawer && typeof window.omoSetDrawerHashState === 'function') {
+                } else if (hashManagedEditorDrawer && typeof window.omoSetDrawerHashState === 'function') {
                     window.omoSetDrawerHashState({
                         open: false,
                         replace: true
@@ -1074,24 +1565,60 @@ function saveHolon(event) {
                 } else {
                     closeCreateDrawer();
                 }
-            } else if (typeof navigate === 'function') {
+            } else if (typeof navigate === 'function' && shouldNavigate) {
+                if (externalStructureHost) {
+                    closeCreateDrawer();
+                    navigate(route.oid, targetHolonId, hashManagedCreateDrawer ? null : (route.hash || null));
+                    return;
+                }
+
                 const parentHolonId = Number((result.data.holon && result.data.holon.parentId) || state.data.contextHolonId || 0);
-                const refreshPromise = typeof window.omoReloadStructureAndFocus === 'function'
-                    ? window.omoReloadStructureAndFocus(parentHolonId > 0 ? parentHolonId : null, {
-                        quickZoom: true
-                    })
-                    : Promise.resolve();
+                const refreshPromise = refreshStructureViews(parentHolonId > 0 ? parentHolonId : null, {
+                    quickZoom: true
+                });
 
                 refreshPromise
-                    .catch(function () {
-                        return null;
-                    })
                     .then(function () {
+                        if (externalDrawerContext) {
+                            closeCreateDrawer();
+                        }
+
                         navigate(route.oid, targetHolonId, hashManagedCreateDrawer ? null : (route.hash || null));
+
+                        if (
+                            externalDrawerContext
+                            && !externalStructureHost
+                            && typeof window.omoRefreshExternalPanelDrawerHost === 'function'
+                        ) {
+                            window.omoRefreshExternalPanelDrawerHost(externalDrawerContext.drawer);
+                        }
                     });
+            } else if (typeof loadContent === 'function') {
+                let leftUrl = 'api/getOrg.php?oid=' + Number(route.oid || state.data.organizationId || 0);
+
+                if (targetHolonId > 0) {
+                    leftUrl += '&cid=' + targetHolonId;
+                }
+
+                loadContent(typeof omoGetLeftPanelContentSelector === 'function' ? omoGetLeftPanelContentSelector() : '#panel-left', leftUrl);
+
+                refreshStructureViews(targetHolonId > 0 ? targetHolonId : null, {
+                    quickZoom: externalStructureHost ? false : true
+                });
+
+                if (externalDrawerContext) {
+                    closeCreateDrawer();
+                    if (!externalStructureHost && typeof window.omoRefreshExternalPanelDrawerHost === 'function') {
+                        window.omoRefreshExternalPanelDrawerHost(externalDrawerContext.drawer);
+                    }
+                }
             }
 
             if (getMode() === 'edit') {
+                return;
+            }
+
+            if (externalDrawerContext) {
                 return;
             }
 
@@ -1114,7 +1641,12 @@ function saveHolon(event) {
         });
 }
 
-fillFormFromState();
+Promise.all([
+    waitForGlobalLibrary('omoSizedImageField', 5000),
+    waitForGlobalLibrary('omoSimpleHtmlField', 5000)
+]).finally(function () {
+    fillFormFromState();
+});
 
 elements.template.addEventListener('change', function () {
     renderEditorMeta(getCurrentTemplate(), readProperties());
@@ -1123,6 +1655,13 @@ elements.template.addEventListener('change', function () {
 if (elements.colorEnabled) {
     elements.colorEnabled.addEventListener('change', function () {
         syncColorField();
+    });
+}
+
+if (elements.permissionToggle) {
+    elements.permissionToggle.addEventListener('click', function () {
+        const isExpanded = !(elements.permissions && elements.permissions.hidden === false);
+        setPermissionEditorExpanded(isExpanded);
     });
 }
 
@@ -1206,9 +1745,7 @@ root.addEventListener('click', function (event) {
 .omo-holon-create__footer,
 .omo-holon-create__property,
 .omo-holon-create__empty {
-    --generic-section-border: var(--color-border);
-    --generic-section-radius: 16px;
-    --generic-section-background: var(--color-surface);
+    --generic-section-radius: var(--radius-md);
     --generic-section-shadow: var(--shadow-sm);
 }
 
@@ -1219,7 +1756,6 @@ root.addEventListener('click', function (event) {
 .omo-holon-create__section,
 .omo-holon-create__footer,
 .omo-holon-create__empty {
-    --generic-section-padding-block: 16px;
     --generic-section-padding-inline: 16px;
 }
 
@@ -1240,7 +1776,7 @@ root.addEventListener('click', function (event) {
 
 .omo-holon-create__status {
     padding: 12px 14px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     border: 1px solid transparent;
     box-shadow: var(--shadow-sm);
 }
@@ -1353,12 +1889,134 @@ root.addEventListener('click', function (event) {
     margin-top: 8px;
 }
 
+.omo-holon-create__permissions[hidden] {
+    display: none !important;
+}
+
+.omo-holon-create__permission-summary {
+    --generic-soft-panel-padding-block: 12px;
+    --generic-soft-panel-padding-inline: 14px;
+    --generic-soft-panel-radius: var(--radius-md);
+    color: var(--color-text);
+}
+
+.omo-holon-create__permission-summary-line + .omo-holon-create__permission-summary-line {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid color-mix(in srgb, var(--color-border) 78%, transparent);
+}
+
+.omo-holon-create__permission-summary-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--color-text);
+    margin-bottom: 8px;
+}
+
+.omo-holon-create__permission-summary-capsules {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.omo-holon-create__permission-summary-empty {
+    color: var(--color-text-light);
+    line-height: 1.45;
+}
+
+.omo-holon-create__permission-pill {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-border));
+    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+    min-width: 120px;
+    max-width: 100%;
+}
+
+.omo-holon-create__permission-pill-title {
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: var(--color-text);
+    line-height: 1.25;
+}
+
+.omo-holon-create__permission-pill-scope {
+    font-size: 0.68rem;
+    color: var(--color-text-light);
+    line-height: 1.2;
+}
+
+.omo-holon-create__permission-table {
+    display: grid;
+    gap: 12px;
+}
+
+.omo-holon-create__permission-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(240px, 0.9fr);
+    gap: 12px;
+    align-items: start;
+    padding: 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-alt);
+}
+
+.omo-holon-create__permission-main {
+    display: grid;
+    gap: 6px;
+}
+
+.omo-holon-create__permission-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.omo-holon-create__permission-meta,
+.omo-holon-create__permission-description,
+.omo-holon-create__permission-empty {
+    color: var(--color-text-light);
+    line-height: 1.45;
+}
+
+.omo-holon-create__permission-picker,
+.omo-holon-create__permission-tokens {
+    display: grid;
+    gap: 8px;
+}
+
+.omo-holon-create__permission-token {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+    max-width: 100%;
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+    border: 1px solid color-mix(in srgb, var(--color-primary) 22%, transparent);
+    color: var(--color-text);
+}
+
+.omo-holon-create__permission-token-remove {
+    border: 0;
+    background: transparent;
+    color: var(--color-text-light);
+    cursor: pointer;
+    font: inherit;
+    line-height: 1;
+    padding: 0;
+}
+
 .omo-holon-create__media-card {
-    --generic-soft-panel-gap: 10px;
     --generic-soft-panel-padding-block: 14px;
     --generic-soft-panel-padding-inline: 14px;
-    --generic-soft-panel-radius: 16px;
-    --generic-soft-panel-border: var(--color-border);
+    --generic-soft-panel-radius: var(--radius-md);
     --generic-soft-panel-background: var(--color-surface);
 }
 
@@ -1368,31 +2026,13 @@ root.addEventListener('click', function (event) {
     color: var(--color-text);
 }
 
-.omo-holon-create__field .generic-form-control {
-    --generic-form-control-border: var(--color-border);
-    --generic-form-control-background: var(--color-surface-alt);
-    --generic-form-control-background-focus: var(--color-surface);
-    --generic-form-control-color: var(--color-text);
-}
-
-.omo-holon-create__field textarea.generic-form-control {
-    --generic-form-control-textarea-min-height: 110px;
-}
-
-.omo-holon-create__property-value {
-    --generic-form-control-border: var(--color-border);
-    --generic-form-control-background: var(--color-surface-alt);
-    --generic-form-control-background-focus: var(--color-surface);
-    --generic-form-control-color: var(--color-text);
-}
-
 textarea.omo-holon-create__property-value {
     display: block;
     width: 100%;
     min-height: 110px;
     padding: 11px 12px;
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--color-surface-alt);
     color: var(--color-text);
     font: inherit;
@@ -1502,7 +2142,7 @@ textarea.omo-holon-create__property-value:focus {
 .omo-holon-create__inherited {
     padding: 14px;
     border: 1px dashed var(--color-border);
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface-alt) 80%, var(--color-surface));
 }
 
@@ -1518,7 +2158,7 @@ textarea.omo-holon-create__property-value:focus {
 .omo-holon-create__empty-note {
     padding: 12px;
     border: 1px dashed var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--color-surface-alt);
 }
 
@@ -1534,7 +2174,7 @@ textarea.omo-holon-create__property-value:focus {
     gap: 8px;
     padding: 10px 12px;
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--color-surface);
 }
 
@@ -1578,7 +2218,7 @@ textarea.omo-holon-create__property-value:focus {
 
 .omo-holon-create__detail-card {
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--color-surface-alt) 65%, var(--color-surface));
     overflow: hidden;
 }
@@ -1646,6 +2286,10 @@ textarea.omo-holon-create__property-value:focus {
 @media (max-width: 1024px) {
     .omo-holon-create__layout,
     .omo-holon-create__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .omo-holon-create__permission-row {
         grid-template-columns: 1fr;
     }
 

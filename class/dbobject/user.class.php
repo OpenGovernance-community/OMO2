@@ -15,6 +15,7 @@
 				[['id'], 'integer'],
 				[['username', 'email', 'firstname', 'lastname', 'code', 'telegramID'], 'string'],
 				[['presentation'], 'text'],
+				[['latlong'], 'latlong'],
 				[['password'], 'password'],
 				[['image'], 'sizedimage'],
 				[['parameters', 'param_easypv', 'param_easymemo', 'param_easycircle'], 'parameters'],
@@ -32,6 +33,7 @@
 				'firstname' => 'Prenom',
 				'lastname' => 'Nom',
 				'presentation' => 'Presentation',
+				'latlong' => 'Position geographique',
 				'birthdate' => 'Date de naissance',
 				'email' => 'E-mail',
 				'image' => 'Image de profil',
@@ -45,10 +47,11 @@
 
 		public static function attributeDescriptions() {
 			return [
-				'username' => 'Un identifiant utilise pour vous identifier dans une equipe, comme des initiales.',
+				'username' => 'Un nom d\'utilisateur utilise pour vous identifier dans une equipe, comme des initiales.',
 				'firstname' => 'Simplement votre prenom.',
 				'lastname' => 'Simplement votre nom de famille.',
 				'presentation' => 'Petit texte de presentation partage entre les organisations, sauf si une organisation le remplace localement.',
+				'latlong' => 'Position geographique generale, partagee dans toutes les organisations.',
 				'birthdate' => 'Date de naissance facultative, utilisee pour afficher le prochain anniversaire.',
 				'email' => 'L\'adresse e-mail utilisee pour vous connecter et pour vous envoyer les messages du systeme.',
 				'telegramID' => 'Identifiant numerique utilise pour associer votre compte Telegram.',
@@ -62,6 +65,7 @@
 				'firstname' => 25,
 				'lastname' => 25,
 				'presentation' => 2000,
+				'latlong' => 100,
 				'email' => 30,
 				'telegramID' => 100,
 			];
@@ -127,6 +131,102 @@
 			$organizations = new ArrayOrganization();
 			$organizations->loadAccessibleForUser($this->getId());
 			return $organizations;
+		}
+
+		public function getPendingOrganizationInvitations()
+		{
+			return \dbObject\Invitation::findPendingForUser((int)$this->getId());
+		}
+
+		public static function findByLoginIdentifier($identifier)
+		{
+			$normalizedIdentifier = trim(mb_strtolower((string)$identifier, 'UTF-8'));
+			if ($normalizedIdentifier === '') {
+				return null;
+			}
+
+			$query = "
+				SELECT
+					u.id
+				FROM `user` u
+				WHERE LOWER(u.email) = :identity
+				ORDER BY u.id ASC
+			";
+
+			$rows = self::fetchAll($query, array(
+				'identity' => $normalizedIdentifier,
+			));
+
+			if (!is_array($rows) || count($rows) === 0) {
+				return null;
+			}
+
+			$matchedUserIds = array();
+
+			foreach ($rows as $row) {
+				$userId = (int)($row['id'] ?? 0);
+				if ($userId <= 0) {
+					continue;
+				}
+
+				$matchedUserIds[$userId] = $userId;
+			}
+
+			if (count($matchedUserIds) !== 1) {
+				return null;
+			}
+
+			$userId = (int)reset($matchedUserIds);
+			if ($userId <= 0) {
+				return null;
+			}
+
+			$user = new self();
+			return $user->load($userId) ? $user : null;
+		}
+
+		public static function debugLoginIdentifierMatchSummary($identifier)
+		{
+			$normalizedIdentifier = trim(mb_strtolower((string)$identifier, 'UTF-8'));
+			$summary = array(
+				'normalizedIdentifier' => $normalizedIdentifier,
+				'globalEmailMatches' => 0,
+				'organizationEmailMatches' => 0,
+				'resolvedUserIds' => array(),
+			);
+
+			if ($normalizedIdentifier === '') {
+				return $summary;
+			}
+
+			$rows = self::fetchAll(
+				"SELECT
+					u.id,
+					1 AS global_email_match
+				FROM `user` u
+				WHERE LOWER(u.email) = :identity
+				ORDER BY u.id ASC",
+				array(
+					'identity' => $normalizedIdentifier,
+				)
+			);
+
+			if (!is_array($rows)) {
+				return $summary;
+			}
+
+			$userIds = array();
+			foreach ($rows as $row) {
+				$userId = (int)($row['id'] ?? 0);
+				if ($userId > 0) {
+					$userIds[$userId] = $userId;
+				}
+
+				$summary['globalEmailMatches'] += (int)($row['global_email_match'] ?? 0);
+			}
+
+			$summary['resolvedUserIds'] = array_values($userIds);
+			return $summary;
 		}
 
 		protected static function loadActiveOrganizationIdsForUser($userId)
@@ -202,7 +302,10 @@
 				return true;
 			}
 
-			if (function_exists('commonUserIsSiteAdmin') && \commonUserIsSiteAdmin($currentUserId)) {
+			$currentOrganizationId = function_exists('commonGetCurrentUserOrganizationId')
+				? (int)\commonGetCurrentUserOrganizationId()
+				: (int)($_SESSION['currentOrganization'] ?? 0);
+			if (function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($currentUserId, $currentOrganizationId)) {
 				$cache[$cacheKey] = true;
 				return true;
 			}
@@ -247,6 +350,77 @@
 			]) ? $membership : false;
 
 			return $cache[$cacheKey] ?: null;
+		}
+
+		public function getSharedOrganizationMembershipsForViewer($viewerUserId)
+		{
+			$memberships = new \dbObject\ArrayUserOrganization();
+			$memberships->loadCardDavSharedForViewerAndUser((int)$viewerUserId, (int)$this->getId());
+			return $memberships;
+		}
+
+		public static function buildInitials($label, $fallback = 'P')
+		{
+			$label = trim((string)$label);
+			$fallback = trim((string)$fallback);
+			if ($fallback === '') {
+				$fallback = 'P';
+			}
+
+			if ($label === '') {
+				$label = $fallback;
+			}
+
+			$initials = '';
+			$tokens = preg_split('/[\s\.\-_@]+/u', $label) ?: array();
+
+			foreach ($tokens as $token) {
+				$token = trim((string)$token);
+				if ($token === '') {
+					continue;
+				}
+
+				if (function_exists('mb_substr')) {
+					$initials .= mb_substr($token, 0, 1, 'UTF-8');
+					if (mb_strlen($initials, 'UTF-8') >= 2) {
+						break;
+					}
+				} else {
+					$initials .= substr($token, 0, 1);
+					if (strlen($initials) >= 2) {
+						break;
+					}
+				}
+			}
+
+			$collapsed = preg_replace('/[\s\.\-_@]+/u', '', $label);
+			if (!is_string($collapsed)) {
+				$collapsed = '';
+			}
+
+			if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+				$collapsedLength = mb_strlen($collapsed, 'UTF-8');
+				$offset = mb_strlen($initials, 'UTF-8');
+				while ($collapsed !== '' && mb_strlen($initials, 'UTF-8') < 2 && $offset < $collapsedLength) {
+					$initials .= mb_substr($collapsed, $offset, 1, 'UTF-8');
+					$offset++;
+				}
+			} else {
+				$collapsedLength = strlen($collapsed);
+				$offset = strlen($initials);
+				while ($collapsed !== '' && strlen($initials) < 2 && $offset < $collapsedLength) {
+					$initials .= substr($collapsed, $offset, 1);
+					$offset++;
+				}
+			}
+
+			if ($initials === '') {
+				$initials = $fallback;
+			}
+
+			return function_exists('mb_strtoupper')
+				? mb_strtoupper($initials, 'UTF-8')
+				: strtoupper($initials);
 		}
 
 		public function getProfilePhotoUrl()
@@ -302,6 +476,16 @@
 			}
 
 			return $this->getScopedEmail($organizationId);
+		}
+
+		public function getScopedInitials($organizationId = 0)
+		{
+			$membership = $this->getOrganizationMembership($organizationId);
+			if ($membership && method_exists($membership, 'getUserInitials')) {
+				return $membership->getUserInitials();
+			}
+
+			return self::buildInitials($this->getScopedDisplayName($organizationId));
 		}
 
 		public function getScopedPresentation($organizationId = 0)
