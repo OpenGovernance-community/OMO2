@@ -102,6 +102,11 @@ class Permission extends DbObject
                 'description' => 'Autorise la creation de dates dans le contexte cible.',
                 'iscontextual' => true,
             ],
+            'CAN_DELETE_EVENT' => [
+                'title' => 'Supprimer des dates',
+                'description' => 'Autorise la suppression de dates dans le contexte cible.',
+                'iscontextual' => true,
+            ],
             'CAN_CLAIM_PV' => [
                 'title' => 'Devenir secretaire de PV',
                 'description' => 'Autorise a prendre le role de secretaire pendant une reunion associee a un PV.',

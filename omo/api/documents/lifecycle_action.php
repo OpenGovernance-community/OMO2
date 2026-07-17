@@ -32,7 +32,7 @@ if (!commonCurrentUserHasOrganizationAccess($organizationId) || !$document->canM
 }
 
 if ($action === 'delete' && !$document->canDeleteDocument()) {
-    $error('Ce document doit etre archive car il est utilise ailleurs ou appartient au module PV.', 422);
+    $error('Ce document ne peut pas etre supprime car il est utilise ailleurs ou contient encore des documents.', 422);
 }
 
 if ($action === 'archive') {

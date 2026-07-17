@@ -553,8 +553,10 @@ if (!commonGetCurrentUserId() && !$isDemoGuest) {
 $currentUserName = $isDemoGuest ? t('app.user.demo') : commonGetCurrentUserDisplayName();
 $currentUserId = commonGetCurrentUserId();
 $isSiteAdmin = !$isDemoGuest && commonCurrentUserIsSiteAdminModeEnabled();
+$omoOrganizationAccentColor = commonGetOrganizationAccentColor($organizationContext, '#004663');
+$omoOrganizationAccentColorCss = htmlspecialchars($omoOrganizationAccentColor, ENT_QUOTES, 'UTF-8');
 $omoPwaHeadHtml = omoBuildPwaHeadHtml(
-    commonGetOrganizationAccentColor($organizationContext, '#004663'),
+    $omoOrganizationAccentColor,
     omoBuildManifestIconUrlForContext($organizationContext, 192),
     ($organizationContext['name'] ?? 'OMO') ?: 'OMO',
     omoBuildManifestUrlForContext($organizationContext)
@@ -1271,13 +1273,19 @@ if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-omo-organization-accent>
 <head>
     <meta charset="UTF-8">
     <title><?= htmlspecialchars(t('app.main.page_title')) ?></title>
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
     <link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260714-pv-groups">
+    <style>
+        html[data-omo-organization-accent] {
+            --omo-organization-accent: <?= $omoOrganizationAccentColorCss ?>;
+            --color-primary: var(--omo-organization-accent);
+        }
+    </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <base href="/omo/">
 </head>
@@ -1439,6 +1447,7 @@ window.omoConfig = <?=
 <?php if ($isSiteAdmin) { ?>
 <script src="/omo/assets/js/site-update.js"></script>
 <?php } ?>
+<script src="assets/js/simple-html-field.js?v=20260716-pv-indicator-readonly"></script>
 <script src="assets/js/app.js?v=20260714-persistent-top-drawer"></script>
 <script src="assets/js/structure-mini-map.js"></script>
 

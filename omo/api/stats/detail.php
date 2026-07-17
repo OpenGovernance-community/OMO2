@@ -27,6 +27,15 @@ $contextLabel = omoStatsContextLabel($indicator);
 $measurementFrequency = StatIndicator::normalizeMeasurementFrequency($indicator->get('measurement_frequency'));
 $measurementSchedule = omoStatsMeasurementScheduleLabel($measurementFrequency, $indicator->get('measurement_schedule'));
 $isOverdue = omoStatsIsIndicatorOverdue($indicator);
+$chartData = omoStatsBuildIndicatorChartData($indicator, $values, $referencePoints, $isOverdue);
+$headerDescriptionParts = [omoStatsReferenceTypeLabel($indicator->get('reference_type'))];
+if ($measurementFrequency !== null) {
+    $headerDescriptionParts[] = omoStatsMeasurementFrequencyLabel($measurementFrequency);
+}
+if ($measurementSchedule !== '') {
+    $headerDescriptionParts[] = $measurementSchedule;
+}
+$headerDescription = implode(' · ', $headerDescriptionParts);
 $editUrl = '/omo/api/stats/edit.php?oid=' . rawurlencode((string)$organizationId) . '&id=' . rawurlencode((string)$indicatorId);
 if ($currentHolonId > 0) {
     $editUrl .= '&cid=' . rawurlencode((string)$currentHolonId);
@@ -47,7 +56,7 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
         hidden
         data-omo-subdrawer-header
         data-omo-subdrawer-title="<?= omoApiEscape((string)$indicator->get('name')) ?>"
-        data-omo-subdrawer-description="<?= omoApiEscape(trim((string)$indicator->get('description')) !== '' ? (string)$indicator->get('description') : omoStatsT('stats.detail.description_empty')) ?>"
+        data-omo-subdrawer-description="<?= omoApiEscape($headerDescription) ?>"
     >
         <?php if ($canEdit): ?>
             <button
@@ -59,24 +68,10 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
         <?php endif; ?>
     </div>
 
-    <section class="generic-hero-panel accent omo-stats-detail__hero">
-        <div class="omo-stats-detail__hero-main">
-            <div>
-                <span class="generic-card-title generic-card-title--eyebrow"><?= omoApiEscape($contextLabel) ?></span>
-                <h2 class="generic-card-title generic-card-title--large"><?= omoApiEscape((string)$indicator->get('name')) ?></h2>
-            </div>
-        </div>
-        <p class="omo-stats-detail__description"><?= omoApiEscape(trim((string)$indicator->get('description')) !== '' ? (string)$indicator->get('description') : omoStatsT('stats.detail.description_empty')) ?></p>
-        <div class="omo-stats-detail__meta">
+    <div class="omo-stats-detail__meta omo-stats-detail__meta--compact">
+        <span><strong><?= omoApiEscape(omoStatsT('stats.card.context')) ?> :</strong> <?= omoApiEscape($contextLabel) ?></span>
             <?php if ($isOverdue): ?>
                 <span class="omo-stats-overdue-label"><?= omoApiEscape(omoStatsT('stats.card.overdue')) ?></span>
-            <?php endif; ?>
-            <span><strong><?= omoApiEscape(omoStatsT('stats.detail.reference')) ?> :</strong> <?= omoApiEscape(omoStatsReferenceTypeLabel($indicator->get('reference_type'))) ?></span>
-            <?php if ($measurementFrequency !== null): ?>
-                <span><strong><?= omoApiEscape(omoStatsT('stats.detail.frequency')) ?> :</strong> <?= omoApiEscape(omoStatsMeasurementFrequencyLabel($measurementFrequency)) ?></span>
-            <?php endif; ?>
-            <?php if ($measurementSchedule !== ''): ?>
-                <span><strong><?= omoApiEscape(omoStatsT('stats.detail.schedule')) ?> :</strong> <?= omoApiEscape($measurementSchedule) ?></span>
             <?php endif; ?>
             <?php if ($latestValue instanceof StatIndicatorValue): ?>
                 <span><strong><?= omoApiEscape(omoStatsT('stats.detail.latest')) ?> :</strong> <?= omoApiEscape(omoStatsFormatNumber($latestValue->get('value'))) ?> · <?= omoApiEscape(omoStatsFormatDateTime($latestValue->get('measured_at'))) ?></span>
@@ -85,7 +80,6 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
                 <a href="<?= omoApiEscape($sourceUrl) ?>" target="_blank" rel="noopener noreferrer"><?= omoApiEscape(omoStatsT('stats.detail.source')) ?></a>
             <?php endif; ?>
         </div>
-    </section>
 
     <div class="generic-tabs omo-stats-detail__tabs" data-generic-tabs>
         <div class="generic-tabs__list">
@@ -94,7 +88,10 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
         </div>
         <div class="generic-tabs__panels">
             <section id="<?= omoApiEscape($tabPrefix) ?>-chart" class="generic-tabs__panel omo-stats-detail__chart-panel" data-generic-tab-panel>
-                <?= omoStatsRenderChart($indicator, $values, $referencePoints, 'large', $isOverdue) ?>
+                <div class="omo-stats-interactive-chart" data-omo-stats-interactive-chart>
+                    <?= omoStatsRenderChart($indicator, $values, $referencePoints, 'large', $isOverdue, true) ?>
+                    <?= omoStatsRenderInteractiveChartRange($chartData) ?>
+                </div>
                 <div class="omo-stats-detail__legend">
                     <span class="omo-stats-detail__legend-item omo-stats-detail__legend-item--measure"><?= omoApiEscape(omoStatsT('stats.detail.tab.values')) ?></span>
                     <?php if (StatIndicator::normalizeReferenceType($indicator->get('reference_type')) !== StatIndicator::REFERENCE_NONE): ?>
@@ -156,3 +153,4 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
         </form>
     <?php endif; ?>
 </article>
+<script src="/omo/api/stats/chart.js"></script>

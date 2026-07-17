@@ -1090,7 +1090,8 @@ class HolonPermission extends DbObject
 
         $permissionSet = self::buildUserPermissionSetForOrganization($userId, $organizationId, [$permissionKey]);
         if (empty($permissionSet['definedPermissionKeys'][$permissionKey])) {
-            return false;
+            // An unconfigured permission is open to organization members.
+            return self::hasActiveUserOrganizationMembership($userId, $organizationId);
         }
 
         $scope = $permissionSet['permissions'][$permissionKey] ?? null;

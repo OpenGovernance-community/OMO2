@@ -1605,7 +1605,8 @@ function commonCurrentUserHasPermission($permissionKey, $contextHolon = null, $o
 
     $permissionSet = commonGetCurrentUserOrganizationPermissionSet($organizationId, $forceRefresh);
     if (empty($permissionSet['definedPermissionKeys'][$permissionKey])) {
-        return false;
+        // An unconfigured permission is open to organization members.
+        return commonUserHasOrganizationMembership($currentUserId, $organizationId);
     }
 
     $scope = $permissionSet['permissions'][$permissionKey] ?? null;

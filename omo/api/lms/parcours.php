@@ -60,7 +60,7 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 	<style>
 		:root {
 			<?php if ($organizationColor !== ''): ?>
-			--color-primary: <?php echo htmlspecialchars($organizationColor); ?>;
+			--primary: <?php echo htmlspecialchars($organizationColor); ?>;
 			<?php endif; ?>
 		}
 	</style>
