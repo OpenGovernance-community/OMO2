@@ -123,16 +123,19 @@ foreach ($indicatorItems as $indicator) {
     $values = omoStatsCollectionItems($indicator->getMeasurements(), StatIndicatorValue::class);
     $referencePoints = omoStatsCollectionItems($indicator->getReferencePoints(), StatIndicatorReferencePoint::class);
     $latestValue = count($values) > 0 ? $values[count($values) - 1] : null;
+    $overdueInfo = omoStatsGetIndicatorOverdueInfo($indicator);
     $indicatorViewData[] = [
         'indicator' => $indicator,
         'values' => $values,
         'referencePoints' => $referencePoints,
         'latestValue' => $latestValue,
+        'referencePercentage' => omoStatsGetIndicatorReferencePercentage($indicator, $latestValue, $referencePoints),
         'contextLabel' => $importedIndicatorLabels[(int)$indicator->getId()] ?? omoStatsContextLabel($indicator),
         'isImported' => isset($importedIndicatorLabels[(int)$indicator->getId()]),
         'importId' => $importedIndicatorIds[(int)$indicator->getId()] ?? 0,
         'canEditImport' => $importedIndicatorEditable[(int)$indicator->getId()] ?? false,
-        'isOverdue' => omoStatsIsIndicatorOverdue($indicator),
+        'isOverdue' => (bool)$overdueInfo['is_overdue'],
+        'overdueDays' => (int)$overdueInfo['overdue_days'],
     ];
 }
 $groupViewData = [];
@@ -141,13 +144,26 @@ foreach ($groupItems as $group) {
         continue;
     }
     $series = omoStatsGetGroupSeries($group);
+    $latestSumValue = omoStatsGetGroupLatestSumValue($group, $series);
+    $groupReferencePoints = omoStatsGetGroupReferencePoints($group);
+    $groupReferencePointData = array_map(static function ($point) {
+        $pointAt = $point->get('point_at');
+        return [
+            'position_percent' => (float)$point->get('position_percent'),
+            'point_at' => $pointAt instanceof DateTimeInterface ? $pointAt->format('Y-m-d\\TH:i') : '',
+            'value' => (float)$point->get('value'),
+        ];
+    }, $groupReferencePoints);
     $groupViewData[] = [
         'group' => $group,
         'series' => $series,
+        'latestSumValue' => $latestSumValue,
         'memberCount' => count(omoStatsCollectionItems($group->getItems(), \dbObject\StatIndicatorGroupItem::class)),
         'indicatorIds' => array_values(array_map(static function ($item) {
             return $item instanceof \dbObject\StatIndicatorGroupItem ? (int)$item->get('IDstatindicator') : 0;
         }, omoStatsCollectionItems($group->getItems(), \dbObject\StatIndicatorGroupItem::class))),
+        'referenceType' => StatIndicator::normalizeReferenceType($group->get('reference_type')),
+        'referencePoints' => array_values($groupReferencePointData),
         'canEdit' => omoStatsCanEditContextResource($group, $context),
         'isOverdue' => omoStatsIsGroupOverdue($group),
     ];
@@ -228,7 +244,7 @@ foreach ($pickerItems as $indicator) {
 }
 $displayItemCount = count($statsEntries);
 ?>
-<link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260715-7">
+<link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260718-reference-points-drag-v5">
 <div
     class="omo-stats omo-panel-view"
     id="omo-stats-root"
@@ -255,17 +271,16 @@ $displayItemCount = count($statsEntries);
                         <h2 class="omo-panel-view__title"><?= omoApiEscape(omoStatsT('stats.title')) ?></h2>
                         <span class="omo-panel-view__count"><?= $displayItemCount ?></span>
                     </div>
-                    <p class="omo-panel-view__description"><?= omoApiEscape(omoStatsT('stats.description')) ?></p>
                 </div>
             </div>
             <?php if ($canCreate): ?>
                 <div class="omo-stats__header-actions">
                     <button type="button" class="generic-action-button generic-action-button--main omo-mobile-corner-action" data-omo-stats-open-create><?= omoApiEscape(omoStatsT('stats.action.new')) ?></button>
-                    <div class="omo-stats__more-menu" data-omo-stats-more-menu>
-                        <button type="button" class="generic-action-button generic-action-button--secondary omo-stats__more-toggle" data-omo-stats-more-toggle aria-label="<?= omoApiEscape(omoStatsT('stats.action.more')) ?>" aria-expanded="false">...</button>
-                        <div class="omo-stats__more-menu-panel" data-omo-stats-more-panel hidden>
-                            <button type="button" data-omo-stats-open-import><?= omoApiEscape(omoStatsT('stats.action.import')) ?></button>
-                            <button type="button" data-omo-stats-open-group><?= omoApiEscape(omoStatsT('stats.action.group')) ?></button>
+                    <div class="omo-stats__more-menu generic-menu" data-omo-stats-more-menu>
+                        <button type="button" class="generic-menu-toggle omo-stats__more-toggle" data-omo-stats-more-toggle aria-label="<?= omoApiEscape(omoStatsT('stats.action.more')) ?>" aria-expanded="false">...</button>
+                        <div class="omo-stats__more-menu-panel generic-menu-panel generic-menu-panel--wide" data-omo-stats-more-panel hidden>
+                            <button type="button" class="generic-menu-item" data-omo-stats-open-import><?= omoApiEscape(omoStatsT('stats.action.import')) ?></button>
+                            <button type="button" class="generic-menu-item" data-omo-stats-open-group><?= omoApiEscape(omoStatsT('stats.action.group')) ?></button>
                         </div>
                     </div>
                 </div>
@@ -329,7 +344,7 @@ $displayItemCount = count($statsEntries);
                                     <div class="omo-stats-grid omo-stats__sort-group-items">
                             <?php endif; ?>
                             <?php if ($statsEntry['kind'] === 'group'): ?>
-                            <?php $groupItem = $statsEntry['data']; $group = $groupItem['group']; ?>
+                            <?php $groupItem = $statsEntry['data']; $group = $groupItem['group']; $latestSumValue = $groupItem['latestSumValue']; ?>
                             <article
                                 class="generic-section omo-stats-card omo-stats-card--group<?= $groupItem['isOverdue'] ? ' omo-stats-card--overdue' : '' ?>"
                                 data-omo-stats-group-id="<?= (int)$group->getId() ?>"
@@ -342,25 +357,41 @@ $displayItemCount = count($statsEntries);
                                         <span class="generic-card-title generic-card-title--eyebrow"><?= omoApiEscape(omoStatsT('stats.card.group')) ?></span>
                                         <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape((string)$group->get('name')) ?></h3>
                                     </div>
-                                    <span class="omo-stats-card__value-count"><?= omoApiEscape(omoStatsT('stats.card.member_count', ['count' => $groupItem['memberCount']])) ?></span>
+                                    <span class="omo-stats-card__value-count<?= $groupItem['canEdit'] ? ' omo-stats-card__value-count--with-menu' : '' ?>"><?= omoApiEscape(omoStatsT('stats.card.member_count', ['count' => $groupItem['memberCount']])) ?></span>
                                     <?php if ($groupItem['canEdit']): ?>
-                                        <div class="omo-stats-item-menu" data-omo-stats-item-menu>
-                                            <button type="button" class="omo-stats-item-menu__toggle" data-omo-stats-item-menu-toggle aria-label="<?= omoApiEscape(omoStatsT('stats.action.more')) ?>" aria-expanded="false">...</button>
-                                            <div class="omo-stats-item-menu__panel" data-omo-stats-item-menu-panel hidden>
-                                                <button type="button" data-omo-stats-edit-group="<?= (int)$group->getId() ?>" data-omo-stats-group-name="<?= omoApiEscape((string)$group->get('name')) ?>" data-omo-stats-group-mode="<?= omoApiEscape((string)$group->get('display_mode')) ?>" data-omo-stats-group-indicators="<?= omoApiEscape(json_encode($groupItem['indicatorIds'])) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_group')) ?></button>
-                                                <button type="button" data-omo-stats-delete-group="<?= (int)$group->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_group')) ?></button>
+                                        <div class="omo-stats-item-menu generic-menu" data-omo-stats-item-menu>
+                                            <button type="button" class="omo-stats-item-menu__toggle generic-menu-toggle" data-omo-stats-item-menu-toggle aria-label="<?= omoApiEscape(omoStatsT('stats.action.more')) ?>" aria-expanded="false">...</button>
+                                            <div class="omo-stats-item-menu__panel generic-menu-panel generic-menu-panel--wide" data-omo-stats-item-menu-panel hidden>
+                                                <button type="button" class="generic-menu-item" data-omo-stats-open-editor-url="<?= omoApiEscape($groupDetailBaseUrl . '&id=' . rawurlencode((string)$group->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.detail')) ?></button>
+                                                <button type="button" class="generic-menu-item" data-omo-stats-edit-group="<?= (int)$group->getId() ?>" data-omo-stats-group-name="<?= omoApiEscape((string)$group->get('name')) ?>" data-omo-stats-group-mode="<?= omoApiEscape((string)$group->get('display_mode')) ?>" data-omo-stats-group-indicators="<?= omoApiEscape(json_encode($groupItem['indicatorIds'])) ?>" data-omo-stats-group-reference-type="<?= omoApiEscape($groupItem['referenceType']) ?>" data-omo-stats-group-reference-points="<?= omoApiEscape(json_encode($groupItem['referencePoints'])) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_group')) ?></button>
+                                                <button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-group="<?= (int)$group->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_group')) ?></button>
                                             </div>
                                         </div>
                                     <?php endif; ?>
                                 </div>
                                 <div class="omo-stats-card__chart"><?= omoStatsRenderGroupChart($group, $groupItem['series'], 'card', $groupItem['isOverdue']) ?></div>
-                                <div class="omo-stats-card__footer"><span><?= omoApiEscape(StatIndicatorGroup::normalizeDisplayMode($group->get('display_mode')) === StatIndicatorGroup::DISPLAY_SUM ? omoStatsT('stats.group.mode.sum') : omoStatsT('stats.group.mode.overlay')) ?></span></div>
+                                <div class="omo-stats-card__footer">
+                                    <?php if (is_array($latestSumValue)): ?>
+                                        <span><?= omoApiEscape(omoStatsT('stats.card.latest')) ?></span>
+                                        <span class="omo-stats-card__latest-value">
+                                            <strong><?= omoApiEscape(omoStatsFormatNumber($latestSumValue['value'])) ?></strong>
+                                            <?php if (is_numeric($latestSumValue['referencePercentage'] ?? null)): ?>
+                                                <span class="omo-stats-reference-percentage">(<?= omoApiEscape(omoStatsFormatNumber($latestSumValue['referencePercentage'])) ?>%)</span>
+                                            <?php endif; ?>
+                                        </span>
+                                        <time><?= omoApiEscape(date('d.m.Y', (int)$latestSumValue['timestamp'])) ?></time>
+                                    <?php else: ?>
+                                        <span><?= omoApiEscape(StatIndicatorGroup::normalizeDisplayMode($group->get('display_mode')) === StatIndicatorGroup::DISPLAY_SUM ? omoStatsT('stats.group.mode.sum') : omoStatsT('stats.group.mode.overlay')) ?></span>
+                                    <?php endif; ?>
+                                </div>
                             </article>
                             <?php else: ?>
                             <?php $item = $statsEntry['data']; ?>
                             <?php
                             $indicator = $item['indicator'];
                             $latestValue = $item['latestValue'];
+                            $referencePercentage = $item['referencePercentage'];
+                            $overdueDays = $item['overdueDays'];
                             $indicatorName = trim((string)$indicator->get('name'));
                             ?>
                             <article
@@ -375,17 +406,18 @@ $displayItemCount = count($statsEntries);
                                         <span class="generic-card-title generic-card-title--eyebrow"><?= omoApiEscape((string)$item['contextLabel']) ?></span>
                                         <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape($indicatorName) ?></h3>
                                     </div>
-                                    <span class="omo-stats-card__value-count"><?= omoApiEscape(omoStatsT('stats.card.value_count', ['count' => count($item['values'])])) ?></span>
+                                    <span class="omo-stats-card__value-count<?= $indicator->canEdit() ? ' omo-stats-card__value-count--with-menu' : '' ?>"><?= omoApiEscape(omoStatsT('stats.card.value_count', ['count' => count($item['values'])])) ?></span>
                                     <?php if ($item['isImported'] ? $item['canEditImport'] : $indicator->canEdit()): ?>
-                                        <div class="omo-stats-item-menu" data-omo-stats-item-menu>
-                                            <button type="button" class="omo-stats-item-menu__toggle" data-omo-stats-item-menu-toggle aria-label="<?= omoApiEscape(omoStatsT('stats.action.more')) ?>" aria-expanded="false">...</button>
-                                            <div class="omo-stats-item-menu__panel" data-omo-stats-item-menu-panel hidden>
+                                        <div class="omo-stats-item-menu generic-menu" data-omo-stats-item-menu>
+                                            <button type="button" class="omo-stats-item-menu__toggle generic-menu-toggle" data-omo-stats-item-menu-toggle aria-label="<?= omoApiEscape(omoStatsT('stats.action.more')) ?>" aria-expanded="false">...</button>
+                                            <div class="omo-stats-item-menu__panel generic-menu-panel generic-menu-panel--wide" data-omo-stats-item-menu-panel hidden>
                                                 <?php if ($item['isImported']): ?>
-                                                    <button type="button" data-omo-stats-edit-import="<?= (int)$item['importId'] ?>" data-omo-stats-indicator-id="<?= (int)$indicator->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_import')) ?></button>
-                                                    <button type="button" data-omo-stats-delete-import="<?= (int)$item['importId'] ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_import')) ?></button>
+                                                    <button type="button" class="generic-menu-item" data-omo-stats-edit-import="<?= (int)$item['importId'] ?>" data-omo-stats-indicator-id="<?= (int)$indicator->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_import')) ?></button>
+                                                    <button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-import="<?= (int)$item['importId'] ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_import')) ?></button>
                                                 <?php else: ?>
-                                                    <button type="button" data-omo-stats-open-editor-url="<?= omoApiEscape($detailBaseUrl . '&id=' . rawurlencode((string)$indicator->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit')) ?></button>
-                                                    <button type="button" data-omo-stats-delete-indicator="<?= (int)$indicator->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_indicator')) ?></button>
+                                                    <button type="button" class="generic-menu-item" data-omo-stats-open-editor-url="<?= omoApiEscape($detailBaseUrl . '&id=' . rawurlencode((string)$indicator->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.detail')) ?></button>
+                                                    <button type="button" class="generic-menu-item" data-omo-stats-open-editor-url="<?= omoApiEscape($createUrl . '&id=' . rawurlencode((string)$indicator->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit')) ?></button>
+                                                    <button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-indicator="<?= (int)$indicator->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_indicator')) ?></button>
                                                 <?php endif; ?>
                                             </div>
                                         </div>
@@ -395,10 +427,22 @@ $displayItemCount = count($statsEntries);
                                     <?= omoStatsRenderChart($indicator, $item['values'], $item['referencePoints'], 'card', $item['isOverdue']) ?>
                                 </div>
                                 <div class="omo-stats-card__footer">
-                                    <span><?= omoApiEscape(omoStatsT('stats.card.latest')) ?></span>
+                                    <span class="omo-stats-card__latest-label">
+                                        <span><?= omoApiEscape(omoStatsT('stats.card.latest')) ?></span>
+                                        <?php if ($item['isOverdue'] && $overdueDays > 0): ?>
+                                            <span class="omo-stats-card__overdue-days"><?= omoApiEscape(omoStatsT('stats.card.overdue_days', ['count' => $overdueDays])) ?></span>
+                                        <?php endif; ?>
+                                    </span>
                                     <?php if ($latestValue instanceof StatIndicatorValue): ?>
-                                        <strong><?= omoApiEscape(omoStatsFormatNumber($latestValue->get('value'))) ?></strong>
-                                        <time><?= omoApiEscape(omoStatsFormatDateTime($latestValue->get('measured_at'), false)) ?></time>
+                                        <span class="omo-stats-card__latest-reading">
+                                            <span class="omo-stats-card__latest-value">
+                                                <strong><?= omoApiEscape(omoStatsFormatNumber($latestValue->get('value'))) ?></strong>
+                                                <?php if (is_numeric($referencePercentage)): ?>
+                                                    <span class="omo-stats-reference-percentage">(<?= omoApiEscape(omoStatsFormatNumber($referencePercentage)) ?>%)</span>
+                                                <?php endif; ?>
+                                            </span>
+                                            <time><?= omoApiEscape(omoStatsFormatDateTime($latestValue->get('measured_at'), false)) ?></time>
+                                        </span>
                                     <?php else: ?>
                                         <strong class="omo-stats-card__empty-value"><?= omoApiEscape(omoStatsT('stats.card.no_value')) ?></strong>
                                     <?php endif; ?>
@@ -441,7 +485,7 @@ $displayItemCount = count($statsEntries);
                                         </div>
                             <?php endif; ?>
                             <?php if ($statsEntry['kind'] === 'group'): ?>
-                            <?php $groupItem = $statsEntry['data']; $group = $groupItem['group']; ?>
+                            <?php $groupItem = $statsEntry['data']; $group = $groupItem['group']; $latestSumValue = $groupItem['latestSumValue']; ?>
                             <article class="generic-file-list__item-shell">
                                 <div
                                     class="generic-file-list__row omo-stats-compact__row omo-stats-compact__row--group<?= $groupItem['isOverdue'] ? ' omo-stats-compact__row--overdue' : '' ?>"
@@ -451,11 +495,12 @@ $displayItemCount = count($statsEntries);
                                     aria-label="<?= omoApiEscape(omoStatsT('stats.card.open', ['name' => (string)$group->get('name')])) ?>"
                                 >
                                     <?php if ($groupItem['canEdit']): ?>
-                                        <div class="omo-stats-item-menu" data-omo-stats-item-menu>
-                                            <button type="button" class="omo-stats-item-menu__toggle" data-omo-stats-item-menu-toggle aria-label="<?= omoApiEscape(omoStatsT('stats.action.more')) ?>" aria-expanded="false">...</button>
-                                            <div class="omo-stats-item-menu__panel" data-omo-stats-item-menu-panel hidden>
-                                                <button type="button" data-omo-stats-edit-group="<?= (int)$group->getId() ?>" data-omo-stats-group-name="<?= omoApiEscape((string)$group->get('name')) ?>" data-omo-stats-group-mode="<?= omoApiEscape((string)$group->get('display_mode')) ?>" data-omo-stats-group-indicators="<?= omoApiEscape(json_encode($groupItem['indicatorIds'])) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_group')) ?></button>
-                                                <button type="button" data-omo-stats-delete-group="<?= (int)$group->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_group')) ?></button>
+                                        <div class="omo-stats-item-menu generic-menu" data-omo-stats-item-menu>
+                                            <button type="button" class="omo-stats-item-menu__toggle generic-menu-toggle" data-omo-stats-item-menu-toggle aria-label="<?= omoApiEscape(omoStatsT('stats.action.more')) ?>" aria-expanded="false">...</button>
+                                            <div class="omo-stats-item-menu__panel generic-menu-panel generic-menu-panel--wide" data-omo-stats-item-menu-panel hidden>
+                                                <button type="button" class="generic-menu-item" data-omo-stats-open-editor-url="<?= omoApiEscape($groupDetailBaseUrl . '&id=' . rawurlencode((string)$group->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.detail')) ?></button>
+                                                <button type="button" class="generic-menu-item" data-omo-stats-edit-group="<?= (int)$group->getId() ?>" data-omo-stats-group-name="<?= omoApiEscape((string)$group->get('name')) ?>" data-omo-stats-group-mode="<?= omoApiEscape((string)$group->get('display_mode')) ?>" data-omo-stats-group-indicators="<?= omoApiEscape(json_encode($groupItem['indicatorIds'])) ?>" data-omo-stats-group-reference-type="<?= omoApiEscape($groupItem['referenceType']) ?>" data-omo-stats-group-reference-points="<?= omoApiEscape(json_encode($groupItem['referencePoints'])) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_group')) ?></button>
+                                                <button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-group="<?= (int)$group->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_group')) ?></button>
                                             </div>
                                         </div>
                                     <?php endif; ?>
@@ -469,7 +514,19 @@ $displayItemCount = count($statsEntries);
                                         </div>
                                     </div>
                                     <div class="generic-file-list__cell" data-label="<?= omoApiEscape(omoStatsT('stats.column.context')) ?>"><?= omoApiEscape(omoStatsT('stats.card.group')) ?></div>
-                                    <div class="generic-file-list__cell omo-stats-compact__latest" data-label="<?= omoApiEscape(omoStatsT('stats.column.latest')) ?>"><span><?= omoApiEscape(StatIndicatorGroup::normalizeDisplayMode($group->get('display_mode')) === StatIndicatorGroup::DISPLAY_SUM ? omoStatsT('stats.group.mode.sum') : omoStatsT('stats.group.mode.overlay')) ?></span></div>
+                                    <div class="generic-file-list__cell omo-stats-compact__latest" data-label="<?= omoApiEscape(omoStatsT('stats.column.latest')) ?>">
+                                        <?php if (is_array($latestSumValue)): ?>
+                                            <span class="omo-stats-compact__latest-value">
+                                                <strong><?= omoApiEscape(omoStatsFormatNumber($latestSumValue['value'])) ?></strong>
+                                                <?php if (is_numeric($latestSumValue['referencePercentage'] ?? null)): ?>
+                                                    <span class="omo-stats-reference-percentage">(<?= omoApiEscape(omoStatsFormatNumber($latestSumValue['referencePercentage'])) ?>%)</span>
+                                                <?php endif; ?>
+                                            </span>
+                                            <time><?= omoApiEscape(date('d.m.Y', (int)$latestSumValue['timestamp'])) ?></time>
+                                        <?php else: ?>
+                                            <span><?= omoApiEscape(StatIndicatorGroup::normalizeDisplayMode($group->get('display_mode')) === StatIndicatorGroup::DISPLAY_SUM ? omoStatsT('stats.group.mode.sum') : omoStatsT('stats.group.mode.overlay')) ?></span>
+                                        <?php endif; ?>
+                                    </div>
                                     <div class="generic-file-list__cell omo-stats-compact__chart" data-label="<?= omoApiEscape(omoStatsT('stats.column.history')) ?>"><?= omoStatsRenderGroupChart($group, $groupItem['series'], 'compact', $groupItem['isOverdue']) ?></div>
                                 </div>
                             </article>
@@ -478,6 +535,7 @@ $displayItemCount = count($statsEntries);
                             <?php
                             $indicator = $item['indicator'];
                             $latestValue = $item['latestValue'];
+                            $referencePercentage = $item['referencePercentage'];
                             $indicatorName = trim((string)$indicator->get('name'));
                             ?>
                             <article class="generic-file-list__item-shell">
@@ -489,15 +547,16 @@ $displayItemCount = count($statsEntries);
                                     aria-label="<?= omoApiEscape(omoStatsT('stats.card.open', ['name' => $indicatorName])) ?>"
                                 >
                                     <?php if ($item['isImported'] ? $item['canEditImport'] : $indicator->canEdit()): ?>
-                                        <div class="omo-stats-item-menu" data-omo-stats-item-menu>
-                                            <button type="button" class="omo-stats-item-menu__toggle" data-omo-stats-item-menu-toggle aria-label="<?= omoApiEscape(omoStatsT('stats.action.more')) ?>" aria-expanded="false">...</button>
-                                            <div class="omo-stats-item-menu__panel" data-omo-stats-item-menu-panel hidden>
+                                        <div class="omo-stats-item-menu generic-menu" data-omo-stats-item-menu>
+                                            <button type="button" class="omo-stats-item-menu__toggle generic-menu-toggle" data-omo-stats-item-menu-toggle aria-label="<?= omoApiEscape(omoStatsT('stats.action.more')) ?>" aria-expanded="false">...</button>
+                                            <div class="omo-stats-item-menu__panel generic-menu-panel generic-menu-panel--wide" data-omo-stats-item-menu-panel hidden>
                                                 <?php if ($item['isImported']): ?>
-                                                    <button type="button" data-omo-stats-edit-import="<?= (int)$item['importId'] ?>" data-omo-stats-indicator-id="<?= (int)$indicator->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_import')) ?></button>
-                                                    <button type="button" data-omo-stats-delete-import="<?= (int)$item['importId'] ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_import')) ?></button>
+                                                    <button type="button" class="generic-menu-item" data-omo-stats-edit-import="<?= (int)$item['importId'] ?>" data-omo-stats-indicator-id="<?= (int)$indicator->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_import')) ?></button>
+                                                    <button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-import="<?= (int)$item['importId'] ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_import')) ?></button>
                                                 <?php else: ?>
-                                                    <button type="button" data-omo-stats-open-editor-url="<?= omoApiEscape($detailBaseUrl . '&id=' . rawurlencode((string)$indicator->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit')) ?></button>
-                                                    <button type="button" data-omo-stats-delete-indicator="<?= (int)$indicator->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_indicator')) ?></button>
+                                                    <button type="button" class="generic-menu-item" data-omo-stats-open-editor-url="<?= omoApiEscape($detailBaseUrl . '&id=' . rawurlencode((string)$indicator->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.detail')) ?></button>
+                                                    <button type="button" class="generic-menu-item" data-omo-stats-open-editor-url="<?= omoApiEscape($createUrl . '&id=' . rawurlencode((string)$indicator->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit')) ?></button>
+                                                    <button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-indicator="<?= (int)$indicator->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_indicator')) ?></button>
                                                 <?php endif; ?>
                                             </div>
                                         </div>
@@ -514,7 +573,12 @@ $displayItemCount = count($statsEntries);
                                     <div class="generic-file-list__cell" data-label="<?= omoApiEscape(omoStatsT('stats.column.context')) ?>"><?= omoApiEscape((string)$item['contextLabel']) ?></div>
                                     <div class="generic-file-list__cell omo-stats-compact__latest" data-label="<?= omoApiEscape(omoStatsT('stats.column.latest')) ?>">
                                         <?php if ($latestValue instanceof StatIndicatorValue): ?>
-                                            <strong><?= omoApiEscape(omoStatsFormatNumber($latestValue->get('value'))) ?></strong>
+                                            <span class="omo-stats-compact__latest-value">
+                                                <strong><?= omoApiEscape(omoStatsFormatNumber($latestValue->get('value'))) ?></strong>
+                                                <?php if (is_numeric($referencePercentage)): ?>
+                                                    <span class="omo-stats-reference-percentage">(<?= omoApiEscape(omoStatsFormatNumber($referencePercentage)) ?>%)</span>
+                                                <?php endif; ?>
+                                            </span>
                                             <time><?= omoApiEscape(omoStatsFormatDateTime($latestValue->get('measured_at'), false)) ?></time>
                                         <?php else: ?>
                                             <span>—</span>
@@ -554,6 +618,7 @@ $displayItemCount = count($statsEntries);
     </div>
 </div>
 <script src="/common/drawer/subdrawer.js"></script>
+<script src="/omo/api/stats/reference-editor.js?v=20260718-group-reference"></script>
 <script>
 (function () {
     var root = document.getElementById('omo-stats-root');
@@ -603,7 +668,125 @@ $displayItemCount = count($statsEntries);
         'add' => omoStatsT('stats.action.add'),
         'update' => omoStatsT('stats.action.update'),
         'createGroup' => omoStatsT('stats.action.create_group'),
+        'referenceTitle' => omoStatsT('stats.form.reference_title'),
+        'referenceHelp' => omoStatsT('stats.form.reference_help'),
+        'referenceNone' => omoStatsT('stats.form.reference_none'),
+        'referenceCeiling' => omoStatsT('stats.form.reference_ceiling'),
+        'referenceObjective' => omoStatsT('stats.form.reference_objective'),
+        'addReferencePoint' => omoStatsT('stats.form.add_point'),
+        'referenceEndpoint' => omoStatsT('stats.form.endpoint'),
+        'referenceIntermediate' => omoStatsT('stats.form.intermediate'),
+        'referencePosition' => omoStatsT('stats.form.position'),
+        'referenceDate' => omoStatsT('stats.form.point_date'),
+        'referenceDateAuto' => omoStatsT('stats.form.point_date_auto'),
+        'referenceValue' => omoStatsT('stats.form.point_value'),
+        'removeReferencePoint' => omoStatsT('stats.form.remove_point'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+
+    var statsMenuOwnerDocument = root.ownerDocument || document;
+    var floatingStatsMenu = statsMenuOwnerDocument.querySelector('[data-omo-stats-floating-menu="1"]');
+    if (!floatingStatsMenu) {
+        floatingStatsMenu = statsMenuOwnerDocument.createElement('div');
+        floatingStatsMenu.className = 'omo-stats-item-menu__panel generic-menu-panel generic-menu-panel--wide generic-menu-panel--floating omo-stats-item-menu__panel--floating';
+        floatingStatsMenu.setAttribute('data-omo-stats-floating-menu', '1');
+        floatingStatsMenu.setAttribute('role', 'menu');
+        floatingStatsMenu.hidden = true;
+        statsMenuOwnerDocument.body.appendChild(floatingStatsMenu);
+    }
+    var activeStatsMenuToggle = null;
+    var floatingStatsMenuActions = new WeakMap();
+
+    function positionStatsFloatingMenu(toggle) {
+        if (!(toggle instanceof Element) || !toggle.isConnected) {
+            closeStatsItemMenus();
+            return;
+        }
+
+        floatingStatsMenu.hidden = false;
+        floatingStatsMenu.style.visibility = 'hidden';
+        floatingStatsMenu.style.top = '0px';
+        floatingStatsMenu.style.left = '0px';
+
+        var toggleRect = toggle.getBoundingClientRect();
+        var menuRect = floatingStatsMenu.getBoundingClientRect();
+        var viewportPadding = 12;
+        var gap = 8;
+        var top = toggleRect.bottom + gap;
+        var left = toggleRect.right - menuRect.width;
+
+        if (top + menuRect.height > window.innerHeight - viewportPadding) {
+            top = Math.max(viewportPadding, toggleRect.top - menuRect.height - gap);
+        }
+        if (left + menuRect.width > window.innerWidth - viewportPadding) {
+            left = Math.max(viewportPadding, window.innerWidth - menuRect.width - viewportPadding);
+        }
+        if (left < viewportPadding) {
+            left = viewportPadding;
+        }
+
+        floatingStatsMenu.style.top = String(Math.round(top)) + 'px';
+        floatingStatsMenu.style.left = String(Math.round(left)) + 'px';
+        floatingStatsMenu.style.visibility = '';
+    }
+
+    function closeStatsItemMenus() {
+        root.querySelectorAll('[data-omo-stats-item-menu]').forEach(function (menu) {
+            menu.classList.remove('is-open');
+        });
+        root.querySelectorAll('[data-omo-stats-item-menu-panel]').forEach(function (panel) {
+            panel.hidden = true;
+        });
+        root.querySelectorAll('[data-omo-stats-item-menu-toggle]').forEach(function (toggle) {
+            toggle.setAttribute('aria-expanded', 'false');
+        });
+        activeStatsMenuToggle = null;
+        floatingStatsMenu.hidden = true;
+        floatingStatsMenu.style.visibility = '';
+        floatingStatsMenu.replaceChildren();
+    }
+
+    function openStatsItemMenu(toggle) {
+        var menu = toggle ? toggle.closest('[data-omo-stats-item-menu]') : null;
+        var panel = menu ? menu.querySelector('[data-omo-stats-item-menu-panel]') : null;
+        var shouldOpen = !!toggle && !!panel && (activeStatsMenuToggle !== toggle || floatingStatsMenu.hidden);
+        closeStatsItemMenus();
+
+        if (!shouldOpen) {
+            return;
+        }
+
+        var fragment = statsMenuOwnerDocument.createDocumentFragment();
+        Array.prototype.forEach.call(panel.children, function (originalAction) {
+            if (!(originalAction instanceof Element)) {
+                return;
+            }
+            var floatingAction = originalAction.cloneNode(true);
+            floatingAction.setAttribute('data-omo-stats-floating-menu-action', '1');
+            floatingAction.setAttribute('role', 'menuitem');
+            floatingStatsMenuActions.set(floatingAction, originalAction);
+            fragment.appendChild(floatingAction);
+        });
+        floatingStatsMenu.replaceChildren(fragment);
+        if (!floatingStatsMenu.childElementCount) {
+            return;
+        }
+
+        activeStatsMenuToggle = toggle;
+        menu.classList.add('is-open');
+        toggle.setAttribute('aria-expanded', 'true');
+        positionStatsFloatingMenu(toggle);
+    }
+
+    window.addEventListener('resize', function () {
+        if (activeStatsMenuToggle) {
+            positionStatsFloatingMenu(activeStatsMenuToggle);
+        }
+    });
+    statsMenuOwnerDocument.addEventListener('scroll', function () {
+        if (activeStatsMenuToggle) {
+            positionStatsFloatingMenu(activeStatsMenuToggle);
+        }
+    }, true);
 
     function resolveUrl(url) {
         return typeof window.omoResolveAppUrl === 'function' ? window.omoResolveAppUrl(url) : url;
@@ -883,6 +1066,14 @@ $displayItemCount = count($statsEntries);
             + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.search) + '</span><input type="search" class="generic-form-control" data-omo-stats-group-editor-search placeholder="' + escapeHtml(texts.searchPlaceholder) + '"></label>'
             + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.visible) + '</span><select class="generic-form-control omo-stats-picker__select" data-omo-stats-group-editor-select size="10" multiple></select></label>'
             + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.groupMode) + '</span><select class="generic-form-control" data-omo-stats-group-editor-mode><option value="overlay">' + escapeHtml(texts.overlay) + '</option><option value="sum">' + escapeHtml(texts.sum) + '</option></select></label>'
+            + '<div class="omo-stats-group-reference-editor" data-omo-stats-reference-editor>'
+            + '<label class="omo-stats-field"><span>' + escapeHtml(texts.referenceTitle) + '</span><select class="generic-form-control" name="reference_type" data-omo-stats-reference-type><option value="none">' + escapeHtml(texts.referenceNone) + '</option><option value="ceiling">' + escapeHtml(texts.referenceCeiling) + '</option><option value="objective">' + escapeHtml(texts.referenceObjective) + '</option></select></label>'
+            + '<section class="omo-stats-reference-editor" data-omo-stats-reference-panel>'
+            + '<div class="omo-stats-reference-editor__heading"><div><h3 class="generic-card-title generic-card-title--big">' + escapeHtml(texts.referenceTitle) + '</h3><p>' + escapeHtml(texts.referenceHelp) + '</p></div><button type="button" class="generic-action-button generic-action-button--secondary" data-omo-stats-add-reference-point>' + escapeHtml(texts.addReferencePoint) + '</button></div>'
+            + '<div class="omo-stats-reference-editor__rail" data-omo-stats-reference-rail></div>'
+            + '<div class="omo-stats-reference-editor__points" data-omo-stats-reference-points></div>'
+            + '</section>'
+            + '</div>'
             + '<div class="omo-stats-feedback" data-omo-stats-group-editor-feedback role="status"></div>'
             + '</form>';
 
@@ -897,6 +1088,7 @@ $displayItemCount = count($statsEntries);
         var searchInput = drawerBody.querySelector('[data-omo-stats-group-editor-search]');
         var select = drawerBody.querySelector('[data-omo-stats-group-editor-select]');
         var modeInput = drawerBody.querySelector('[data-omo-stats-group-editor-mode]');
+        var referenceTypeInput = drawerBody.querySelector('[data-omo-stats-reference-type]');
         var feedback = drawerBody.querySelector('[data-omo-stats-group-editor-feedback]');
         var cancelButton = document.createElement('button');
         var saveButton = document.createElement('button');
@@ -908,6 +1100,23 @@ $displayItemCount = count($statsEntries);
 
         nameInput.value = isEditing ? String(editData.name || '') : '';
         modeInput.value = isEditing ? String(editData.displayMode || 'overlay') : 'overlay';
+        if (referenceTypeInput) {
+            referenceTypeInput.value = isEditing ? String(editData.referenceType || 'none') : 'none';
+        }
+        if (typeof window.omoStatsInitReferenceEditor === 'function') {
+            window.omoStatsInitReferenceEditor(drawerBody, {
+                points: isEditing && Array.isArray(editData.referencePoints) ? editData.referencePoints : [],
+                labels: {
+                    endpoint: texts.referenceEndpoint,
+                    intermediate: texts.referenceIntermediate,
+                    position: texts.referencePosition,
+                    date: texts.referenceDate,
+                    dateAuto: texts.referenceDateAuto,
+                    value: texts.referenceValue,
+                    remove: texts.removeReferencePoint
+                }
+            });
+        }
 
         function retainVisibleSelection() {
             selectedIds = Array.prototype.map.call(select.selectedOptions, function (option) {
@@ -983,6 +1192,12 @@ $displayItemCount = count($statsEntries);
             }
             formData.append('name', nameInput.value || '');
             formData.append('display_mode', modeInput.value || 'overlay');
+            formData.append('reference_type', referenceTypeInput ? referenceTypeInput.value : 'none');
+            Array.prototype.forEach.call(form.querySelectorAll('[name^="reference_points["]'), function (field) {
+                if (!field.disabled) {
+                    formData.append(field.name, field.value || '');
+                }
+            });
             selectedIndicatorIds.forEach(function (id) {
                 formData.append('indicator_ids[]', id);
             });
@@ -1199,19 +1414,7 @@ $displayItemCount = count($statsEntries);
         if (toggle) {
             event.preventDefault();
             event.stopPropagation();
-            var menu = toggle.closest('[data-omo-stats-item-menu]');
-            var panel = menu ? menu.querySelector('[data-omo-stats-item-menu-panel]') : null;
-            if (panel) {
-                var isOpen = !panel.hidden;
-                root.querySelectorAll('[data-omo-stats-item-menu-panel]').forEach(function (candidate) {
-                    candidate.hidden = true;
-                });
-                root.querySelectorAll('[data-omo-stats-item-menu-toggle]').forEach(function (candidate) {
-                    candidate.setAttribute('aria-expanded', 'false');
-                });
-                panel.hidden = isOpen;
-                toggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
-            }
+            openStatsItemMenu(toggle);
             return;
         }
 
@@ -1248,6 +1451,15 @@ $displayItemCount = count($statsEntries);
                 id: editGroupButton.getAttribute('data-omo-stats-edit-group') || '',
                 name: editGroupButton.getAttribute('data-omo-stats-group-name') || '',
                 displayMode: editGroupButton.getAttribute('data-omo-stats-group-mode') || 'overlay',
+                referenceType: editGroupButton.getAttribute('data-omo-stats-group-reference-type') || 'none',
+                referencePoints: (function () {
+                    try {
+                        var points = JSON.parse(editGroupButton.getAttribute('data-omo-stats-group-reference-points') || '[]');
+                        return Array.isArray(points) ? points : [];
+                    } catch (error) {
+                        return [];
+                    }
+                })(),
                 indicatorIds: Array.isArray(groupIndicatorIds) ? groupIndicatorIds : []
             });
             return;
@@ -1318,16 +1530,25 @@ $displayItemCount = count($statsEntries);
         });
     });
 
-    document.addEventListener('click', function (event) {
+    statsMenuOwnerDocument.addEventListener('click', function (event) {
+        var floatingAction = event.target.closest('[data-omo-stats-floating-menu-action]');
+        if (floatingAction) {
+            event.preventDefault();
+            event.stopPropagation();
+            var originalAction = floatingStatsMenuActions.get(floatingAction);
+            closeStatsItemMenus();
+            if (originalAction && originalAction.isConnected) {
+                originalAction.click();
+            }
+            return;
+        }
+        if (event.target.closest('[data-omo-stats-floating-menu]')) {
+            return;
+        }
         if (event.target.closest('[data-omo-stats-item-menu]')) {
             return;
         }
-        root.querySelectorAll('[data-omo-stats-item-menu-panel]').forEach(function (panel) {
-            panel.hidden = true;
-        });
-        root.querySelectorAll('[data-omo-stats-item-menu-toggle]').forEach(function (toggle) {
-            toggle.setAttribute('aria-expanded', 'false');
-        });
+        closeStatsItemMenus();
     });
 
     var createButton = root.querySelector('[data-omo-stats-open-create]');
@@ -1346,11 +1567,17 @@ $displayItemCount = count($statsEntries);
             var isOpen = !morePanel.hidden;
             morePanel.hidden = isOpen;
             moreToggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+            if (moreMenu) {
+                moreMenu.classList.toggle('is-open', !isOpen);
+            }
         });
         document.addEventListener('click', function (event) {
             if (moreMenu && !moreMenu.contains(event.target)) {
                 morePanel.hidden = true;
                 moreToggle.setAttribute('aria-expanded', 'false');
+                if (moreMenu) {
+                    moreMenu.classList.remove('is-open');
+                }
             }
         });
     }
@@ -1361,6 +1588,9 @@ $displayItemCount = count($statsEntries);
             }
             if (moreToggle) {
                 moreToggle.setAttribute('aria-expanded', 'false');
+            }
+            if (moreMenu) {
+                moreMenu.classList.remove('is-open');
             }
             openContextPicker(button.hasAttribute('data-omo-stats-open-group') ? 'group' : 'import');
         });

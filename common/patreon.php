@@ -92,6 +92,35 @@ function patreonCanManageOrganizationRouting($userId, $minimumAmountCents = 2000
 	return (int)$connection->get('currently_entitled_amount_cents') > $minimumAmountCents;
 }
 
+function patreonUserCanUseAi($userId)
+{
+	$userId = (int)$userId;
+	if ($userId <= 0) {
+		return false;
+	}
+
+	if (!patreonSupportUiIsEnabled()) {
+		return true;
+	}
+
+	$user = new \dbObject\User();
+	if ($user->load($userId) && $user->isSiteAdmin()) {
+		return true;
+	}
+
+	if (!class_exists('\\dbObject\\UserPatreon') || !\dbObject\UserPatreon::isStorageAvailable()) {
+		return false;
+	}
+
+	$connection = \dbObject\UserPatreon::findByUserId($userId);
+	if (!($connection instanceof \dbObject\UserPatreon) || !$connection->isConnected()) {
+		return false;
+	}
+
+	return (string)$connection->get('patron_status') === 'active_patron'
+		&& (int)$connection->get('currently_entitled_amount_cents') > 0;
+}
+
 function patreonGetConfigurationMessage($context = 'api')
 {
 	$issues = patreonGetConfigurationIssues($context);

@@ -1,6 +1,7 @@
 <?php
 	require_once($_SERVER['DOCUMENT_ROOT']."/config.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared_functions.php");
+	require_once($_SERVER['DOCUMENT_ROOT']."/common/patreon.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared/openai.php");
 	require_once($_SERVER['DOCUMENT_ROOT']."/shared/telegram.php");
 
@@ -938,6 +939,16 @@
 		$threadId = getMessageThreadId($message);
 
 		if ($actorId <= 0 || $chatId === null || !isset($message['voice'])) {
+			return;
+		}
+
+		if (!patreonUserCanUseAi((int)$user->getId())) {
+			sendMessage(
+				$chatId,
+				"Les fonctions IA sont reservees aux contributeurs Patreon payants. Connectez votre compte avec /connect puis soutenez le projet sur Patreon pour utiliser la transcription audio.",
+				null,
+				$threadId
+			);
 			return;
 		}
 

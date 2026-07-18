@@ -80,14 +80,7 @@ $canCreate = false;
 $canUseForm = $canCreate;
 $formErrorMessage = '';
 $openAiAvailable = commonOpenAiGetApiKey() !== '';
-$patreonConnected = false;
-
-if ($currentUserId > 0 && patreonSupportUiIsEnabled()) {
-    $patreonConnection = \dbObject\UserPatreon::findByUserId($currentUserId);
-    $patreonConnected = $patreonConnection !== false && $patreonConnection->isConnected();
-}
-
-$canUseAiTools = $openAiAvailable && $patreonConnected;
+$canUseAiTools = $openAiAvailable && patreonUserCanUseAi($currentUserId);
 
 if ($documentId > 0) {
     $isEditing = $document->load($documentId);
@@ -1963,7 +1956,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             return;
         }
 
-        const htmlFieldVersion = '20260714-compact-resource-embeds';
+        const htmlFieldVersion = '20260718-pv-indicator-overdue-days';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'

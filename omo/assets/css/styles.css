@@ -1262,6 +1262,10 @@ html[data-theme] .common-help-card p {
     align-items: initial;
 }
 
+.omo-panel-view__header--stacked > .omo-panel-view__header-secondary {
+    margin-top: 5px;
+}
+
 .omo-panel-view__header-main,
 .omo-panel-view__header-secondary {
     display: grid;

@@ -812,10 +812,10 @@ if (!is_string($documentsPayload)) {
                                     <?php endif; ?>
                                 </div>
                                 <?php if (!empty($entry['canEdit']) || !empty($entry['canMove']) || !empty($entry['canArchive']) || !empty($entry['canDelete']) || !empty($entry['canShare']) || !empty($entry['canExportPdf'])): ?>
-                                    <div class="omo-documents__menu" data-omo-document-menu="1">
+                                    <div class="omo-documents__menu generic-menu" data-omo-document-menu="1">
                                         <button
                                             type="button"
-                                            class="omo-documents__menu-toggle"
+                                            class="omo-documents__menu-toggle generic-menu-toggle"
                                             data-omo-document-menu-toggle="1"
                                             data-omo-document-menu-document-id="<?= (int)$entry['id'] ?>"
                                             data-omo-document-menu-title="<?= $escape($entry['title']) ?>"
@@ -1627,12 +1627,12 @@ if (!is_string($documentsPayload)) {
                                 }
 
                                 const menu = document.createElement('div');
-                                menu.className = 'omo-documents__menu generic-file-list__menu';
+                                menu.className = 'omo-documents__menu generic-menu generic-file-list__menu';
                                 menu.setAttribute('data-omo-document-menu', '1');
 
                                 const toggle = document.createElement('button');
                                 toggle.type = 'button';
-                                toggle.className = 'omo-documents__menu-toggle generic-file-list__menu-toggle';
+                                toggle.className = 'omo-documents__menu-toggle generic-menu-toggle generic-file-list__menu-toggle';
                                 toggle.setAttribute('data-omo-document-menu-toggle', '1');
                                 toggle.setAttribute('data-omo-document-menu-document-id', String(documentItem.id || '0'));
                                 toggle.setAttribute('data-omo-document-menu-title', String(documentItem.title || ''));
@@ -3491,7 +3491,7 @@ if (!is_string($documentsPayload)) {
             root.dataset.omoDocumentsDrawerReady = '1';
             const ownerDocument = root.ownerDocument || document;
             const floatingMenu = ownerDocument.createElement('div');
-            floatingMenu.className = 'omo-documents__menu-panel omo-documents__menu-panel--floating';
+            floatingMenu.className = 'omo-documents__menu-panel generic-menu-panel generic-menu-panel--floating omo-documents__menu-panel--floating';
             floatingMenu.setAttribute('data-omo-document-floating-menu', '1');
             floatingMenu.setAttribute('role', 'menu');
             floatingMenu.hidden = true;
@@ -3502,7 +3502,7 @@ if (!is_string($documentsPayload)) {
             function buildDocumentMenuItem(label, attributes) {
                 const button = ownerDocument.createElement('button');
                 button.type = 'button';
-                button.className = 'omo-documents__menu-item';
+                button.className = 'omo-documents__menu-item generic-menu-item';
                 button.setAttribute('role', 'menuitem');
                 button.textContent = label;
 
@@ -4334,50 +4334,6 @@ if (!is_string($documentsPayload)) {
     min-width: 34px;
     height: 34px;
     padding: 0 8px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--color-surface) 92%, white);
-    color: var(--color-text);
-    cursor: pointer;
-}
-
-.omo-documents__menu.is-open .omo-documents__menu-toggle {
-    border-color: color-mix(in srgb, var(--color-primary) 36%, var(--color-border));
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
-}
-
-.omo-documents__menu-panel {
-    position: fixed;
-    top: 0;
-    left: 0;
-    min-width: 140px;
-    max-width: calc(100vw - 24px);
-    padding: 6px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-surface);
-    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
-    z-index: 5000;
-}
-
-.omo-documents__menu-panel--floating[hidden] {
-    display: none;
-}
-
-.omo-documents__menu-item {
-    display: block;
-    width: 100%;
-    padding: 9px 10px;
-    border: 0;
-    border-radius: var(--radius-md);
-    background: transparent;
-    color: var(--color-text);
-    text-align: left;
-    cursor: pointer;
-}
-
-.omo-documents__menu-item:hover {
-    background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
 }
 
 .omo-documents__meta-row {
