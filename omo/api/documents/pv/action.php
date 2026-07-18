@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once __DIR__ . '/helpers.php';
+require_once dirname(__DIR__, 2) . '/stats/shared.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 
@@ -53,6 +54,17 @@ function omoDocumentsPvEditorOrganizationHasApplication(int $organizationId, int
         && $organization->load($organizationId)
         && $organization->isApplicationEnabled($applicationHash, $userId);
     return $cache[$cacheKey];
+}
+
+function omoDocumentsPvEditorHasValidSessionToken(int $organizationId, int $documentId, int $userId, string $token): bool
+{
+    if ($organizationId <= 0 || $documentId <= 0 || $userId <= 0 || $token === '') {
+        return false;
+    }
+
+    $sessionKey = $organizationId . ':' . $documentId . ':' . $userId;
+    $storedToken = trim((string)($_SESSION['omo_pv_editor_tokens'][$sessionKey] ?? ''));
+    return $storedToken !== '' && hash_equals($storedToken, $token);
 }
 
 function omoDocumentsPvEditorBuildPointResponsePayload(\dbObject\DocumentPvPoint $point, int $organizationId, int $currentUserId): array
@@ -303,6 +315,80 @@ if ($action === 'update_document_metadata') {
     omoDocumentsPvEditorJsonResponse([
         'status' => true,
         'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId),
+    ]);
+}
+
+if ($action === 'add_indicator_value') {
+    if (!omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'stats')) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+        ], 403);
+    }
+
+    if (!omoDocumentsPvEditorHasValidSessionToken($organizationId, $documentId, $currentUserId, $editorToken)) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+        ], 403);
+    }
+
+    $indicatorId = isset($_POST['indicator_id']) ? (int)$_POST['indicator_id'] : 0;
+    $indicator = omoStatsLoadIndicator($indicatorId, $organizationId);
+    if (!($indicator instanceof \dbObject\StatIndicator)) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+        ], 403);
+    }
+
+    $pointId = isset($_POST['point_id']) ? (int)$_POST['point_id'] : 0;
+    if ($pointId > 0) {
+        $point = new \dbObject\DocumentPvPoint();
+        if (!$point->load($pointId) || (int)$point->get('IDdocument') !== (int)$document->getId()) {
+            omoDocumentsPvEditorJsonResponse([
+                'status' => false,
+                'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+            ], 403);
+        }
+    }
+
+    $isPvEditor = $document->isPvEditor($currentUserId);
+    if (!$indicator->canEdit() && !$isPvEditor) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+        ], 403);
+    }
+
+    $rawValue = str_replace([' ', ','], ['', '.'], trim((string)($_POST['value'] ?? '')));
+    if ($rawValue === '' || !is_numeric($rawValue)) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.indicator.value_error'),
+        ], 422);
+    }
+
+    $value = new \dbObject\StatIndicatorValue();
+    $value->set('IDstatindicator', (int)$indicator->getId());
+    $value->set('IDuser', $currentUserId > 0 ? $currentUserId : null);
+    $value->set('value', (float)$rawValue);
+    $value->set('measured_at', new \DateTime('now'));
+    $saveResult = $value->save();
+    if (!is_array($saveResult) || empty($saveResult['status'])) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.indicator.value_error'),
+        ], 500);
+    }
+
+    omoDocumentsPvEditorJsonResponse([
+        'status' => true,
+        'indicator' => omoDocumentsPvEditorBuildIndicatorEmbedPayload(
+            $indicator,
+            $isPvEditor,
+            'omoDocumentsPvEditorActionT'
+        ),
     ]);
 }
 

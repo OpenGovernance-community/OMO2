@@ -4,11 +4,60 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-07-18
 
+- Le menu des groupes propose maintenant lui aussi un acces distinct au detail et a la modification.
+- Le menu des indicateurs distingue maintenant l ouverture du detail et l acces direct au formulaire de modification.
+- Le compteur d indicateurs des cartes de groupe laisse maintenant lui aussi la place au menu d actions.
+- La date de la derniere valeur est maintenant directement placee sous la valeur sur les cartes d indicateurs en retard.
+- Les cartes d indicateurs en retard indiquent maintenant le nombre de jours de retard sous leur derniere valeur, et leur compteur de valeurs laisse la place au menu d actions.
+- Les groupes en somme affichent maintenant leur derniere valeur agregee, sa date et son pourcentage par rapport a leur reference.
+- Les courbes de reference des indicateurs et des groupes utilisent maintenant le meme gris.
+- Les groupes peuvent maintenant recevoir une courbe de reference avec le meme editeur interactif que les indicateurs; les points sont stockes dans la table de references partagee.
+- La date de la derniere valeur occupe maintenant une ligne distincte dans la vue compacte des indicateurs, y compris face aux styles generiques des listes.
+- Les valeurs actuelles des indicateurs avec courbe de reference affichent maintenant leur rapport a la reference interpolee a la meme date, sous la forme valeur (pourcentage).
+- Les dates des points intermediaires de la courbe de reference sont calculees automatiquement selon leur position entre les deux extremites. Ces points peuvent aussi etre deplaces directement sur la ligne de la courbe.
+- Le deplacement et la saisie des positions des points de reference utilisent maintenant un pas de 0,2 %.
+- Le deplacement des points sur la ligne de reference ne reagit maintenant qu a un appui maintenu, avec des poignees plus faciles a attraper.
+- Les poignees de deplacement des points intermediaires reprennent maintenant le meme aspect que les points d extremite.
+- Les poignees de la courbe utilisent maintenant des elements neutres plutot que des boutons, afin d eviter les styles globaux des actions.
+- Le deplacement d une poignee de courbe continue maintenant a etre suivi meme lorsque le pointeur sort legerement du rail ou de la poignee.
+- Les poignees du rail sont maintenant correctement reliees aux lignes de formulaire correspondantes, afin que leur deplacement modifie bien le pourcentage et la date.
+- Les graphiques des indicateurs avec courbe de reference utilisent maintenant la duree de cette courbe dans les petits affichages. Dans le detail, le curseur s ouvre par defaut sur cette meme periode tout en laissant l historique accessible.
+- Les petits graphiques interpolent maintenant aussi la mesure au debut et a la fin de la periode de reference lorsque des valeurs existent de part et d autre.
+- Les petits graphiques des indicateurs sans reference sont maintenant limites aux douze dernieres periodes de leur frequence de mesure. Les vues grandes continuent d afficher tout l historique.
+- Les petits graphiques des groupes combines appliquent maintenant eux aussi cette fenetre de douze periodes, en retenant la duree necessaire la plus large lorsque les frequences different.
+- L ouverture du detail des indicateurs et groupes preselectionne maintenant elle aussi les douze dernieres periodes, tout en conservant la possibilite d afficher l historique complet.
+- Pour les indicateurs avec courbe de reference, la selection initiale du detail revient prioritairement aux dates de cette courbe ; les douze periodes restent la regle pour les autres.
+- Lorsqu une integration Patreon est configuree, les fonctions IA sont reservees aux contributeurs actifs avec une contribution courante strictement positive. Sans Patreon configure, elles restent ouvertes si OpenAI est disponible. Les super-admins conservent cet acces. Le bot Telegram informe les personnes non contributrices avant toute transcription audio.
 - Le bot Telegram accueille maintenant les utilisateurs avec /start, indique le compte relie et permet a /cancel de supprimer effectivement cette liaison.
 - EasyMEMO utilise maintenant le scroll de la page pour la liste des documents. Son entete defile d abord avec le contenu, puis reste colle avec un decalage negatif : le resume sort de l ecran, tandis que l icone, le titre, son compteur compact et les selecteurs d affichage restent accessibles en haut, y compris sur telephone.
 - La visualisation d un document EasyMEMO s ouvre dans un drawer fixe a la fenetre. Son contenu repart en haut a chaque ouverture et son entete conserve le bouton Fermer pendant le scroll.
 - EasyMEMO charge aussi les styles des indicateurs pour afficher correctement leurs graphiques dans les PV.
 - Les liens d acces directs EasyMEMO affichent maintenant le titre du document et permettent de faire defiler tout son contenu.
+- Les indicateurs inseres dans les points de PV affichent maintenant clairement leur statut A jour ou En retard. Dans l editeur Summernote, les personnes autorisees sur l indicateur et l editeur du PV peuvent aussi ajouter directement une valeur datee du moment, avec un controle serveur dedie au contexte de la reunion.
+- L affichage des indicateurs dans les points de PV est maintenant plus compact : le graphique est place a gauche dans une petite carte en degrade, avec bornes arrondies, nom et pastille de statut a cote, puis une saisie de valeur reduite sous la mesure actuelle avec un bouton +.
+- Les indicateurs de PV ont maintenant une saisie placee directement sous la valeur et une description affichee sur trois lignes maximum sous leur titre.
+- Le cadre general des indicateurs de PV est conserve comme celui des cartes Documents et Decisions, avec un second cadre reserve au graphique dans un format proche du 16:9.
+- La sauvegarde de l editeur normal des indicateurs fonctionne maintenant aussi lorsque ses boutons sont places dans l entete du drawer.
+- Le bloc indicateur des PV repartit maintenant le graphique, le texte et les valeurs en trois zones : graphique plafonne a 210 px, texte sur une ligne de titre et trois lignes de description, puis colonne de valeurs fixe.
+- L ordre des deux colonnes de droite est maintenant force : texte au centre et valeurs a droite.
+- Les reperes haut et bas du graphique sont maintenant alignes sur la zone utile de la courbe, avec la marge interne du SVG.
+- Les reperes du graphique suivent maintenant directement la zone compacte du SVG, centree dans le cadre 16:9, sans modifier les proportions de la courbe.
+- L echelle min/max des graphiques compacts est maintenant integree directement au SVG, avec les memes coordonnees que la courbe.
+- Les styles de l echelle integree sont conserves dans les graphiques exportes en PDF.
+- Les indicateurs en retard affichent maintenant le nombre de jours de retard ; les retards inferieurs ou egaux a 10 % de la periode restent en jaune avant de passer au rouge.
+- Les graphiques des indicateurs dans Stats affichent maintenant une echelle min/max simple et homogene dans les cartes comme dans la vue compacte.
+- Les libelles d echelle des cartes Stats disposent maintenant d une marge interne de 5 px a gauche.
+- La phrase descriptive sous le titre de la page Stats a ete retiree pour alleger l en-tete.
+- Les entetes de drawers avec selecteurs d affichage utilisent maintenant un espacement uniforme de 5 px entre le titre et la seconde ligne de controles.
+- La vue compacte de Stats reserve maintenant la place du menu d actions a droite sur toutes les lignes, y compris celles qui n ont pas de menu.
+- Les menus d actions des indicateurs et groupes Stats sont maintenant flottants et se repositionnent automatiquement pour eviter les recouvrements et les sorties de l ecran.
+- Les menus d actions des Documents, Decisions et Stats, y compris la liste Memo, partagent maintenant les memes primitives generiques de bouton, panneau et action.
+- Les panneaux de menus generiques respectent maintenant toujours l attribut hidden, meme lorsqu une page leur applique un affichage local.
+- Les menus generiques utilisent maintenant une typographie legerement plus compacte.
+- La vue compacte du Calendrier propose maintenant l edition directe des evenements dont l utilisateur est le createur.
+- Le menu compact du Calendrier propose aussi la suppression des evenements lorsque le droit CAN_DELETE_EVENT est accorde, avec confirmation et gestion des documents associes.
+- La vue compacte du Calendrier affiche maintenant les colonnes dans l ordre date, evenement, horaire puis contexte.
+- Le badge EV sans signification a ete retire de la vue compacte du Calendrier.
 
 ## 2026-07-17
 

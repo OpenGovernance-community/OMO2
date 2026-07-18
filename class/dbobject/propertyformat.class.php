@@ -234,15 +234,17 @@
 			if (self::isAllowedIndicatorEmbedNode($node)) {
 				$indicatorId = self::getIndicatorEmbedNodeId($node);
 				$isOverdue = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-overdue')) === '1';
+				$overdueSeverity = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-overdue-severity')) === 'warning' ? 'warning' : 'error';
+				$hasStatus = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-status')) !== '';
 				$element = $document->createElement('span');
-				$element->setAttribute('class', 'omo-indicator-embed' . ($isOverdue ? ' omo-indicator-embed--overdue' : ''));
+				$element->setAttribute('class', 'omo-indicator-embed' . ($isOverdue ? ($overdueSeverity === 'warning' ? ' omo-indicator-embed--warning' : ' omo-indicator-embed--overdue') : ($hasStatus ? ' omo-indicator-embed--current' : '')));
 				$element->setAttribute('contenteditable', 'false');
 				$element->setAttribute('data-omo-embed-type', 'indicator');
 				$element->setAttribute('data-omo-indicator-id', (string)$indicatorId);
 				$indicatorKind = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-kind')) === 'group' ? 'group' : 'indicator';
 				$element->setAttribute('data-omo-indicator-kind', $indicatorKind);
 
-				foreach (array('title', 'value', 'date', 'status', 'context') as $attributeName) {
+				foreach (array('title', 'description', 'value', 'date', 'status', 'context', 'chart-min', 'chart-max', 'overdue-severity') as $attributeName) {
 					$value = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-' . $attributeName));
 					if ($value !== '') {
 						$element->setAttribute('data-omo-indicator-' . $attributeName, $value);
@@ -253,6 +255,7 @@
 				}
 
 				$title = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-title'));
+				$description = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-description'));
 				$titleNode = $document->createElement('strong');
 				$linkNode = $document->createElement('a');
 				$linkNode->setAttribute('class', 'omo-indicator-embed__title');
@@ -260,10 +263,23 @@
 				$linkNode->appendChild($document->createTextNode($title !== '' ? $title : ('Indicateur #' . $indicatorId)));
 				$titleNode->appendChild($linkNode);
 				$element->appendChild($titleNode);
+				if ($description !== '') {
+					$descriptionNode = $document->createElement('span');
+					$descriptionNode->setAttribute('class', 'omo-indicator-embed__description');
+					$descriptionNode->appendChild($document->createTextNode($description));
+					$element->appendChild($descriptionNode);
+				}
 
-				$bodyNode = $document->createElement('span');
-				$bodyNode->setAttribute('class', 'omo-indicator-embed__body');
-				self::appendSanitizedIndicatorChart($bodyNode, $node, $document);
+				$mainNode = $document->createElement('span');
+				$mainNode->setAttribute('class', 'omo-indicator-embed__main');
+				self::appendSanitizedIndicatorChart($mainNode, $node, $document);
+				$copyNode = $document->createElement('span');
+				$copyNode->setAttribute('class', 'omo-indicator-embed__copy');
+				$copyNode->appendChild($titleNode);
+				if ($description !== '') {
+					$copyNode->appendChild($descriptionNode);
+				}
+				$mainNode->appendChild($copyNode);
 				$valuesNode = $document->createElement('span');
 				$valuesNode->setAttribute('class', 'omo-indicator-embed__values');
 				$valueLabel = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-value'));
@@ -284,8 +300,8 @@
 					$statusNode->appendChild($document->createTextNode($statusLabel));
 					$valuesNode->appendChild($statusNode);
 				}
-				$bodyNode->appendChild($valuesNode);
-				$element->appendChild($bodyNode);
+				$mainNode->appendChild($valuesNode);
+				$element->appendChild($mainNode);
 				return $element;
 			}
 
@@ -445,7 +461,7 @@
 			$chartNode->setAttribute('class', 'omo-stats-chart omo-stats-chart--compact');
 			$chartNode->setAttribute('viewBox', '0 0 180 54');
 			$chartNode->setAttribute('aria-hidden', 'true');
-			foreach (array('polyline', 'circle') as $tagName) {
+			foreach (array('polyline', 'circle', 'line', 'text') as $tagName) {
 				foreach (iterator_to_array($sourceChart->getElementsByTagName($tagName)) as $sourceShape) {
 					if (!($sourceShape instanceof \DOMElement)) {
 						continue;
@@ -455,6 +471,12 @@
 						continue;
 					}
 					if ($tagName === 'circle' && $className !== 'omo-stats-chart__point') {
+						continue;
+					}
+					if ($tagName === 'line' && $className !== 'omo-stats-chart__scale-line') {
+						continue;
+					}
+					if ($tagName === 'text' && $className !== 'omo-stats-chart__scale-label') {
 						continue;
 					}
 
@@ -470,7 +492,7 @@
 						if (preg_match('/^stroke:\s*#[0-9a-f]{6};?$/i', $strokeStyle)) {
 							$shapeNode->setAttribute('style', $strokeStyle);
 						}
-					} else {
+					} elseif ($tagName === 'circle') {
 						$cx = trim((string)$sourceShape->getAttribute('cx'));
 						$cy = trim((string)$sourceShape->getAttribute('cy'));
 						$radius = trim((string)$sourceShape->getAttribute('r'));
@@ -480,6 +502,28 @@
 						$shapeNode->setAttribute('cx', $cx);
 						$shapeNode->setAttribute('cy', $cy);
 						$shapeNode->setAttribute('r', $radius);
+					} elseif ($tagName === 'line') {
+						$x1 = trim((string)$sourceShape->getAttribute('x1'));
+						$y1 = trim((string)$sourceShape->getAttribute('y1'));
+						$x2 = trim((string)$sourceShape->getAttribute('x2'));
+						$y2 = trim((string)$sourceShape->getAttribute('y2'));
+						if (!preg_match('/^-?[0-9.]+$/', $x1) || !preg_match('/^-?[0-9.]+$/', $y1) || !preg_match('/^-?[0-9.]+$/', $x2) || !preg_match('/^-?[0-9.]+$/', $y2)) {
+							continue;
+						}
+						$shapeNode->setAttribute('x1', $x1);
+						$shapeNode->setAttribute('y1', $y1);
+						$shapeNode->setAttribute('x2', $x2);
+						$shapeNode->setAttribute('y2', $y2);
+					} else {
+						$x = trim((string)$sourceShape->getAttribute('x'));
+						$y = trim((string)$sourceShape->getAttribute('y'));
+						$label = trim((string)$sourceShape->textContent);
+						if (!preg_match('/^-?[0-9.]+$/', $x) || !preg_match('/^-?[0-9.]+$/', $y) || !preg_match('/^-?[0-9.,\s]+$/', $label)) {
+							continue;
+						}
+						$shapeNode->setAttribute('x', $x);
+						$shapeNode->setAttribute('y', $y);
+						$shapeNode->appendChild($document->createTextNode($label));
 					}
 					$chartNode->appendChild($shapeNode);
 				}
@@ -491,7 +535,10 @@
 
 			$wrapper = $document->createElement('span');
 			$wrapper->setAttribute('class', 'omo-indicator-embed__chart');
-			$wrapper->appendChild($chartNode);
+			$plotNode = $document->createElement('span');
+			$plotNode->setAttribute('class', 'omo-indicator-embed__chart-plot');
+			$plotNode->appendChild($chartNode);
+			$wrapper->appendChild($plotNode);
 			$parentNode->appendChild($wrapper);
 		}
 

@@ -11,9 +11,9 @@ class StatIndicatorReferencePoint extends DbObject
     public static function rules()
     {
         return [
-            [['IDstatindicator', 'position_percent', 'value'], 'required'],
+            [['position_percent', 'value'], 'required'],
             [['id'], 'integer'],
-            [['IDstatindicator'], 'fk'],
+            [['IDstatindicator', 'IDstatindicatorgroup'], 'fk'],
             [['position_percent', 'value'], 'float'],
             [['point_at', 'created_at', 'updated_at'], 'datetime'],
             [['id'], 'safe'],
@@ -25,6 +25,7 @@ class StatIndicatorReferencePoint extends DbObject
         return [
             'id' => 'ID',
             'IDstatindicator' => 'Indicateur',
+            'IDstatindicatorgroup' => 'Groupe',
             'position_percent' => 'Position',
             'value' => 'Valeur de référence',
             'point_at' => 'Date du point',
@@ -62,16 +63,30 @@ class StatIndicatorReferencePoint extends DbObject
         return $indicator->load((int)$this->get('IDstatindicator')) ? $indicator : null;
     }
 
+    public function getGroup()
+    {
+        $group = new \dbObject\StatIndicatorGroup();
+        return $group->load((int)$this->get('IDstatindicatorgroup')) ? $group : null;
+    }
+
     public function canView()
     {
         $indicator = $this->getIndicator();
-        return $indicator instanceof \dbObject\StatIndicator && $indicator->canView();
+        if ($indicator instanceof \dbObject\StatIndicator) {
+            return $indicator->canView();
+        }
+        $group = $this->getGroup();
+        return $group instanceof \dbObject\StatIndicatorGroup && $group->canView();
     }
 
     public function canEdit()
     {
         $indicator = $this->getIndicator();
-        return $indicator instanceof \dbObject\StatIndicator && $indicator->canEdit();
+        if ($indicator instanceof \dbObject\StatIndicator) {
+            return $indicator->canEdit();
+        }
+        $group = $this->getGroup();
+        return $group instanceof \dbObject\StatIndicatorGroup && $group->canEdit();
     }
 }
 

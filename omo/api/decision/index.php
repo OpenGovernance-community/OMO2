@@ -1813,69 +1813,13 @@ if (!is_string($payloadJson)) {
     min-width: 34px;
     height: 34px;
     padding: 0 8px;
-    border: 1px solid var(--color-border, #d1d5db);
-    border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--color-surface, #ffffff) 92%, white);
     color: var(--color-text, #1f2937);
-    cursor: pointer;
 }
 
 .omo-decisions-card__menu-toggle {
     min-width: 42px;
     padding-left: 12px;
     padding-right: 12px;
-}
-
-.omo-decisions__compact-menu.is-open .omo-decisions__compact-menu-toggle {
-    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 36%, var(--color-border, #d1d5db));
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 12%, transparent);
-}
-
-.omo-decisions__compact-menu.is-open .omo-decisions-card__menu-toggle {
-    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 36%, var(--color-border, #d1d5db));
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 12%, transparent);
-}
-
-.omo-decisions__menu-panel {
-    position: fixed;
-    top: 0;
-    left: 0;
-    min-width: 140px;
-    max-width: calc(100vw - 24px);
-    padding: 6px;
-    border: 1px solid var(--color-border, #d1d5db);
-    border-radius: var(--radius-md);
-    background: var(--color-surface, #ffffff);
-    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
-    z-index: 5000;
-}
-
-.omo-decisions__menu-panel--floating[hidden] {
-    display: none;
-}
-
-.omo-decisions__menu-item {
-    display: block;
-    width: 100%;
-    padding: 9px 10px;
-    border: 0;
-    border-radius: var(--radius-md);
-    background: transparent;
-    color: var(--color-text, #1f2937);
-    text-align: left;
-    cursor: pointer;
-}
-
-.omo-decisions__menu-item:hover {
-    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #ffffff));
-}
-
-.omo-decisions__menu-item--danger {
-    color: var(--color-danger, #dc2626);
-}
-
-.omo-decisions__menu-item--danger:hover {
-    background: color-mix(in srgb, var(--color-danger, #dc2626) 10%, var(--color-surface, #ffffff));
 }
 
 .omo-decisions__state[hidden] {
@@ -3127,7 +3071,7 @@ function buildDecisionActionMenuToggle(item, actions, className) {
 
     const toggle = document.createElement('button');
     toggle.type = 'button';
-    toggle.className = String(className || '').trim() || 'omo-decisions__compact-menu-toggle';
+    toggle.className = (String(className || '').trim() || 'omo-decisions__compact-menu-toggle') + ' generic-menu-toggle';
     toggle.setAttribute('data-omo-decision-compact-menu-toggle', '1');
     toggle.setAttribute('data-omo-decision-compact-menu-actions', JSON.stringify(resolvedActions));
     toggle.setAttribute('data-omo-decision-compact-menu-title', String(item && item.title ? item.title : ''));
@@ -3148,7 +3092,7 @@ function buildCompactActionMenu(item) {
     }
 
     const menu = document.createElement('div');
-    menu.className = 'omo-decisions__compact-menu generic-file-list__menu';
+    menu.className = 'omo-decisions__compact-menu generic-menu generic-file-list__menu';
     menu.setAttribute('data-omo-decision-compact-menu', '1');
 
     const toggle = buildDecisionActionMenuToggle(item, actions, 'omo-decisions__compact-menu-toggle generic-file-list__menu-toggle');
@@ -3168,13 +3112,13 @@ function buildDetailedActionMenuButton(item) {
     }
 
     const menu = document.createElement('div');
-    menu.className = 'omo-decisions__compact-menu';
+    menu.className = 'omo-decisions__compact-menu generic-menu';
     menu.setAttribute('data-omo-decision-compact-menu', '1');
 
     const toggle = buildDecisionActionMenuToggle(
         item,
         actions,
-        'generic-action-button generic-action-button--secondary omo-decisions-card__action omo-decisions-card__menu-toggle'
+        'omo-decisions-card__action omo-decisions-card__menu-toggle'
     );
     if (!toggle) {
         return null;
@@ -3660,7 +3604,7 @@ const ownerDocument = root.ownerDocument || document;
 let floatingCompactMenu = ownerDocument.querySelector('[data-omo-decision-floating-menu="1"]');
 if (!floatingCompactMenu) {
     floatingCompactMenu = ownerDocument.createElement('div');
-    floatingCompactMenu.className = 'omo-decisions__menu-panel omo-decisions__menu-panel--floating';
+    floatingCompactMenu.className = 'omo-decisions__menu-panel generic-menu-panel generic-menu-panel--floating omo-decisions__menu-panel--floating';
     floatingCompactMenu.setAttribute('data-omo-decision-floating-menu', '1');
     floatingCompactMenu.setAttribute('role', 'menu');
     floatingCompactMenu.hidden = true;
@@ -3676,9 +3620,9 @@ function buildCompactMenuItem(action, title, description) {
         ? action.requestPayload
         : {};
     button.type = 'button';
-    button.className = 'omo-decisions__menu-item';
+    button.className = 'omo-decisions__menu-item generic-menu-item';
     if (String(action && action.variant ? action.variant : '').trim() === 'danger') {
-        button.classList.add('omo-decisions__menu-item--danger');
+        button.classList.add('omo-decisions__menu-item--danger', 'generic-menu-item--danger');
     }
     button.setAttribute('data-omo-decision-compact-menu-action', '1');
     button.setAttribute('role', 'menuitem');
