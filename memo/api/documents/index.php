@@ -135,16 +135,16 @@ if (!is_string($documentsPayload)) {
     <div class="omo-panel-view__header omo-panel-view__header--stacked memo-documents__header">
         <div class="omo-panel-view__header-main memo-documents__header-main">
             <div class="omo-panel-view__title-cluster">
-                <span class="omo-panel-view__app-icon memo-documents__app-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                        <path d="M14 3.5v4a1.5 1.5 0 0 0 1.5 1.5h4"></path>
-                        <path d="M8 13h8"></path>
-                        <path d="M8 17h5"></path>
-                        <path d="M13.5 3.5H8A2.5 2.5 0 0 0 5.5 6v12A2.5 2.5 0 0 0 8 20.5h8A2.5 2.5 0 0 0 18.5 18V8.5z"></path>
-                    </svg>
-                </span>
                 <div class="omo-panel-view__header-copy">
                     <div class="memo-documents__title-row">
+                        <span class="omo-panel-view__app-icon memo-documents__app-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" focusable="false">
+                                <path d="M14 3.5v4a1.5 1.5 0 0 0 1.5 1.5h4"></path>
+                                <path d="M8 13h8"></path>
+                                <path d="M8 17h5"></path>
+                                <path d="M13.5 3.5H8A2.5 2.5 0 0 0 5.5 6v12A2.5 2.5 0 0 0 8 20.5h8A2.5 2.5 0 0 0 18.5 18V8.5z"></path>
+                            </svg>
+                        </span>
                         <h1 class="omo-panel-view__title">Mes documents</h1>
                         <span class="omo-panel-view__count memo-documents__count">
                             <?= (int)count($documentEntries) ?> document<?= count($documentEntries) > 1 ? 's' : '' ?>
@@ -185,10 +185,9 @@ if (!is_string($documentsPayload)) {
     <div class="omo-overlay-drawer memo-documents__detail-drawer" data-memo-document-drawer hidden>
         <div class="omo-overlay-drawer__backdrop" data-memo-document-drawer-close></div>
         <div class="omo-overlay-drawer__panel">
-            <div class="omo-overlay-drawer__header generic-drawer-header">
+            <div class="omo-overlay-drawer__header generic-drawer-header generic-drawer-header--sticky">
                 <div class="omo-overlay-drawer__header-copy generic-drawer-header__copy">
                     <h3 class="omo-overlay-drawer__title" data-memo-document-drawer-title>Détail du document</h3>
-                    <p class="omo-overlay-drawer__description">Lecture du document dans EasyMEMO.</p>
                 </div>
                 <div class="generic-drawer-header__actions">
                     <button type="button" class="omo-overlay-drawer__close" data-memo-document-drawer-close>Fermer</button>
@@ -246,6 +245,35 @@ if (!is_string($documentsPayload)) {
 
     if (!payloadNode || !results) {
         return;
+    }
+
+    const memoHeader = root.querySelector('.memo-documents__header');
+    if (memoHeader) {
+        const memoHeaderActions = memoHeader.querySelector('.memo-documents__header-actions');
+        const memoHeaderTitle = memoHeader.querySelector('.memo-documents__title-row');
+        let headerUpdateScheduled = false;
+        const syncMemoHeader = function () {
+            headerUpdateScheduled = false;
+            const headerHeight = Math.ceil(memoHeader.offsetHeight);
+            const actionsTop = memoHeaderActions ? Math.max(0, memoHeaderActions.offsetTop) : headerHeight;
+            const titleHeight = memoHeaderTitle ? Math.ceil(memoHeaderTitle.offsetHeight) : 0;
+            const stickyTop = Math.min(0, titleHeight - actionsTop);
+            const visibleHeaderHeight = Math.max(0, headerHeight + stickyTop);
+            root.style.setProperty('--memo-documents-header-sticky-top', stickyTop + 'px');
+            root.style.setProperty('--memo-documents-sticky-header-height', visibleHeaderHeight + 'px');
+        };
+        const scheduleMemoHeaderSync = function () {
+            if (headerUpdateScheduled) {
+                return;
+            }
+            headerUpdateScheduled = true;
+            window.requestAnimationFrame(syncMemoHeader);
+        };
+        window.addEventListener('resize', scheduleMemoHeaderSync);
+        if (typeof ResizeObserver !== 'undefined') {
+            new ResizeObserver(scheduleMemoHeaderSync).observe(memoHeader);
+        }
+        scheduleMemoHeaderSync();
     }
 
     let payload = null;
@@ -747,6 +775,7 @@ if (!is_string($documentsPayload)) {
             return;
         }
 
+        drawerBody.scrollTop = 0;
         drawer.hidden = false;
         requestAnimationFrame(function () {
             drawer.classList.add('is-open');
@@ -780,6 +809,7 @@ if (!is_string($documentsPayload)) {
             return;
         }
 
+        drawerBody.scrollTop = 0;
         drawerBody.innerHTML = '<div class="loading"><div class="omo-empty-state">Chargement...</div></div>';
     };
 
@@ -804,6 +834,7 @@ if (!is_string($documentsPayload)) {
             return;
         }
 
+        drawerBody.scrollTop = 0;
         drawerBody.innerHTML = '<div class="loading"><div class="omo-empty-state">Impossible de charger ce document.</div></div>';
     };
 
@@ -1009,6 +1040,7 @@ if (!is_string($documentsPayload)) {
                 }
 
                 drawerBody.innerHTML = html;
+                drawerBody.scrollTop = 0;
                 if (updateHistory !== false) {
                     updateHistoryUrl(documentItem.id);
                 }
@@ -1203,16 +1235,23 @@ if (!is_string($documentsPayload)) {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    height: 100%;
+    height: auto;
     min-height: 0;
+    overflow: visible;
 }
 
 .memo-documents__header {
     gap: 18px;
+    position: sticky;
+    top: var(--memo-documents-header-sticky-top, 0px);
 }
 
 .memo-documents__header-main {
     align-items: flex-start;
+}
+
+.memo-documents .omo-panel-view__header-copy {
+    flex: 1 1 auto;
 }
 
 .memo-documents__app-icon svg {
@@ -1230,6 +1269,12 @@ if (!is_string($documentsPayload)) {
     align-items: center;
     gap: 12px;
     flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    width: 100%;
+    background: var(--color-surface);
+    padding-top:10px;
 }
 
 .memo-documents__subtitle {
@@ -1249,9 +1294,10 @@ if (!is_string($documentsPayload)) {
 }
 
 .memo-documents .omo-panel-view__body {
-    min-height: 0;
-    overflow-y: auto;
-    padding-right: 6px;
+    flex: 0 0 auto;
+    min-height: auto;
+    overflow: visible;
+    padding-right: 0;
 }
 
 .memo-documents__group {
@@ -1262,6 +1308,7 @@ if (!is_string($documentsPayload)) {
 
 .memo-documents__group-title {
     margin: 0;
+    top: var(--memo-documents-sticky-header-height, 0px);
 }
 
 .memo-documents__item-shell {
@@ -1293,6 +1340,11 @@ if (!is_string($documentsPayload)) {
 .memo-documents__detail-drawer,
 .memo-documents__editor-drawer {
     z-index: 6000;
+}
+
+.memo-documents__detail-drawer {
+    position: fixed;
+    inset: 0;
 }
 
 .memo-documents__item-frame {
