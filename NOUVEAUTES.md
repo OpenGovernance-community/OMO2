@@ -4,6 +4,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-07-18
 
+- Le bot Telegram accueille maintenant les utilisateurs avec /start, indique le compte relie et permet a /cancel de supprimer effectivement cette liaison.
 - EasyMEMO utilise maintenant le scroll de la page pour la liste des documents. Son entete defile d abord avec le contenu, puis reste colle avec un decalage negatif : le resume sort de l ecran, tandis que l icone, le titre, son compteur compact et les selecteurs d affichage restent accessibles en haut, y compris sur telephone.
 - La visualisation d un document EasyMEMO s ouvre dans un drawer fixe a la fenetre. Son contenu repart en haut a chaque ouverture et son entete conserve le bouton Fermer pendant le scroll.
 - EasyMEMO charge aussi les styles des indicateurs pour afficher correctement leurs graphiques dans les PV.
