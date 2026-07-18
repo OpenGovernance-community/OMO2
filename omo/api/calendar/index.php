@@ -35,6 +35,42 @@ $sourceLang = [
         'text' => "Aujourd'hui",
         'context' => 'Button used to return to the current month in the calendar application.',
     ],
+    'calendar.action.edit' => [
+        'text' => 'Editer',
+        'context' => 'Action shown in the compact event menu for events the current user can edit.',
+    ],
+    'calendar.action.delete' => [
+        'text' => 'Supprimer',
+        'context' => 'Action shown in the compact event menu for events the current user can delete.',
+    ],
+    'calendar.action.more' => [
+        'text' => 'Actions',
+        'context' => 'Accessible label for the compact event action menu.',
+    ],
+    'calendar.confirm.delete' => [
+        'text' => 'Supprimer cet evenement ?',
+        'context' => 'Confirmation shown before deleting an event from the compact menu.',
+    ],
+    'calendar.error.delete' => [
+        'text' => 'Impossible de supprimer cet evenement.',
+        'context' => 'Fallback error shown when deleting an event from the compact menu fails.',
+    ],
+    'calendar.delete.documents.title' => [
+        'text' => 'Documents associes',
+        'context' => 'Title of the choice dialog shown before deleting documents linked to an event.',
+    ],
+    'calendar.delete.documents.question' => [
+        'text' => 'Voulez-vous supprimer les documents associes ?',
+        'context' => 'Question shown before deleting documents linked to an event.',
+    ],
+    'calendar.delete.documents.yes' => [
+        'text' => 'Oui',
+        'context' => 'Choice that deletes documents linked to the event.',
+    ],
+    'calendar.delete.documents.no' => [
+        'text' => 'Non',
+        'context' => 'Choice that keeps documents linked to the event.',
+    ],
     'calendar.view.month' => [
         'text' => 'Mois',
         'context' => 'Label used for the monthly calendar view switch.',
@@ -813,6 +849,28 @@ foreach ($events as $event) {
     $isInCurrentContext = !$canToggleScope || $eventHolonId === 0 || $eventHolonId === $currentHolonId;
     $isInDescendantContext = $isInCurrentContext || ($eventHolonId > 0 && isset($descendantHolonIdMap[$eventHolonId]));
     $isPersonallyRelevant = $eventPersonallyRelevantForViewer($event);
+    $canEditEvent = $currentUserId > 0 && (int)$event->get('IDuser') === $currentUserId;
+    $deletePermissionHolon = $rootHolon;
+    if ($eventHolonId > 0) {
+        $eventPermissionHolon = new Holon();
+        if ($eventPermissionHolon->load($eventHolonId)) {
+            $deletePermissionHolon = $eventPermissionHolon;
+        }
+    }
+    $canDeleteEvent = $currentUserId > 0
+        && (
+            $deletePermissionHolon instanceof Holon
+                ? $deletePermissionHolon->isAllowed('CAN_DELETE_EVENT', false, $currentUserId)
+                : commonCurrentUserHasOrganizationAccess($organizationId)
+        );
+    $eventHasAssociatedDocuments = $canDeleteEvent && count($event->getAssociatedDocuments()) > 0;
+    $eventEditUrl = '/omo/api/calendar/create.php?oid=' . rawurlencode((string)$organizationId)
+        . '&id=' . rawurlencode((string)$eventId);
+    $eventDeleteUrl = '/omo/api/calendar/delete.php?oid=' . rawurlencode((string)$organizationId)
+        . '&id=' . rawurlencode((string)$eventId);
+    if ($currentHolonId > 0) {
+        $eventEditUrl .= '&cid=' . rawurlencode((string)$currentHolonId);
+    }
 
     foreach ($calendarScopes as $scopeKey) {
         $includeEvent = $scopeKey === 'global'
@@ -877,6 +935,11 @@ foreach ($events as $event) {
                 'status' => $eventStatus,
                 'statusLabel' => $eventStatusLabel,
                 'holonLabel' => $eventHolonLabel,
+                'canEdit' => $canEditEvent,
+                'editUrl' => $eventEditUrl,
+                'canDelete' => $canDeleteEvent,
+                'deleteUrl' => $eventDeleteUrl,
+                'hasAssociatedDocuments' => $eventHasAssociatedDocuments,
                 'sort' => (int)$startAt->format('U'),
                 'isFaded' => $isFadedInScope,
                 'isRouteTarget' => $openEventTargetId > 0 && $eventId === $openEventTargetId,
@@ -1487,19 +1550,20 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                                 <h3 class="omo-panel-group__title generic-file-list__group-title"><?= omoApiEscape((string)$section['label']) ?></h3>
                                 <div class="omo-calendar__list generic-file-list__table">
                                     <div class="omo-calendar__list-header generic-file-list__header">
+                                        <div class="omo-calendar__list-header-cell generic-file-list__header-cell"><?= omoApiEscape(omoCalendarT('calendar.list.column.date')) ?></div>
                                         <div class="omo-calendar__list-header-cell generic-file-list__header-cell"><?= omoApiEscape(omoCalendarT('calendar.list.column.event')) ?></div>
                                         <div class="omo-calendar__list-header-cell generic-file-list__header-cell"><?= omoApiEscape(omoCalendarT('calendar.list.column.schedule')) ?></div>
                                         <div class="omo-calendar__list-header-cell generic-file-list__header-cell"><?= omoApiEscape(omoCalendarT('calendar.list.column.context')) ?></div>
-                                        <div class="omo-calendar__list-header-cell generic-file-list__header-cell"><?= omoApiEscape(omoCalendarT('calendar.list.column.date')) ?></div>
                                     </div>
                                     <?php foreach ($section['items'] as $item): ?>
                                         <article class="omo-calendar__item-shell generic-file-list__item-shell is-status-<?= omoApiEscape($item['status']) ?><?= !empty($item['isFaded']) ? ' is-faded' : '' ?><?= !empty($item['isRouteTarget']) ? ' is-route-target' : '' ?>" data-omo-calendar-event-id="<?= (int)$item['id'] ?>">
                                             <div class="omo-calendar__list-item generic-file-list__row">
+                                                <div class="omo-calendar__list-date generic-file-list__cell generic-file-list__cell--date" data-label="<?= omoApiEscape(omoCalendarT('calendar.list.column.date')) ?>">
+                                                    <span class="omo-calendar__list-weekday"><?= omoApiEscape($item['weekdayLabel']) ?></span>
+                                                    <strong><?= omoApiEscape($item['dateLabel']) ?></strong>
+                                                </div>
                                                 <div class="omo-calendar__list-cell omo-calendar__list-cell--name generic-file-list__cell generic-file-list__cell--name" data-label="<?= omoApiEscape(omoCalendarT('calendar.list.column.event')) ?>">
                                                     <div class="omo-calendar__list-name-main generic-file-list__name-main">
-                                                        <span class="omo-calendar__list-icon generic-file-list__icon-box" aria-hidden="true">
-                                                            <span class="omo-calendar__list-icon-symbol generic-file-list__icon-symbol">EV</span>
-                                                        </span>
                                                         <div class="omo-calendar__list-title-block generic-file-list__title-block">
                                                             <div class="omo-calendar__list-title-row generic-file-list__title-row">
                                                                 <strong class="omo-calendar__list-title generic-file-list__title"><?= omoApiEscape($item['title']) ?></strong>
@@ -1523,11 +1587,32 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                                                         <span class="omo-calendar__list-holon"><?= omoApiEscape($item['holonLabel'] !== '' ? $item['holonLabel'] : omoCalendarT('calendar.context.organization')) ?></span>
                                                     </div>
                                                 </div>
-                                                <div class="omo-calendar__list-date generic-file-list__cell generic-file-list__cell--date" data-label="<?= omoApiEscape(omoCalendarT('calendar.list.column.date')) ?>">
-                                                    <span class="omo-calendar__list-weekday"><?= omoApiEscape($item['weekdayLabel']) ?></span>
-                                                    <strong><?= omoApiEscape($item['dateLabel']) ?></strong>
-                                                </div>
                                             </div>
+                                            <?php if (!empty($item['canEdit']) || !empty($item['canDelete'])): ?>
+                                                <div class="omo-calendar__event-menu generic-menu generic-file-list__menu" data-omo-calendar-event-menu>
+                                                    <button type="button" class="generic-menu-toggle generic-file-list__menu-toggle" data-omo-calendar-event-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="<?= omoApiEscape(omoCalendarT('calendar.action.more')) ?>">...</button>
+                                                    <div class="generic-menu-panel" data-omo-calendar-event-menu-panel role="menu" hidden>
+                                                        <?php if (!empty($item['canEdit'])): ?>
+                                                            <button type="button" class="generic-menu-item" data-omo-calendar-open-edit-url="<?= omoApiEscape($item['editUrl']) ?>" role="menuitem"><?= omoApiEscape(omoCalendarT('calendar.action.edit')) ?></button>
+                                                        <?php endif; ?>
+                                                        <?php if (!empty($item['canDelete'])): ?>
+                                                            <button
+                                                                type="button"
+                                                                class="generic-menu-item generic-menu-item--danger"
+                                                                data-omo-calendar-delete-url="<?= omoApiEscape($item['deleteUrl']) ?>"
+                                                                data-omo-calendar-delete-confirm="<?= omoApiEscape(omoCalendarT('calendar.confirm.delete')) ?>"
+                                                                data-omo-calendar-delete-error="<?= omoApiEscape(omoCalendarT('calendar.error.delete')) ?>"
+                                                                data-omo-calendar-delete-has-documents="<?= !empty($item['hasAssociatedDocuments']) ? '1' : '0' ?>"
+                                                                data-omo-calendar-delete-documents-title="<?= omoApiEscape(omoCalendarT('calendar.delete.documents.title')) ?>"
+                                                                data-omo-calendar-delete-documents-question="<?= omoApiEscape(omoCalendarT('calendar.delete.documents.question')) ?>"
+                                                                data-omo-calendar-delete-documents-yes="<?= omoApiEscape(omoCalendarT('calendar.delete.documents.yes')) ?>"
+                                                                data-omo-calendar-delete-documents-no="<?= omoApiEscape(omoCalendarT('calendar.delete.documents.no')) ?>"
+                                                                role="menuitem"
+                                                            ><?= omoApiEscape(omoCalendarT('calendar.action.delete')) ?></button>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
                                         </article>
                                     <?php endforeach; ?>
                                 </div>
@@ -1592,6 +1677,138 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             initialOpenEventId = 0;
         }
         var initialOpenEventDrawerOpened = false;
+        var calendarMenuOwnerDocument = root.ownerDocument || document;
+        var floatingCalendarMenu = calendarMenuOwnerDocument.querySelector('[data-omo-calendar-floating-menu="1"]');
+        if (!floatingCalendarMenu) {
+            floatingCalendarMenu = calendarMenuOwnerDocument.createElement('div');
+            floatingCalendarMenu.className = 'generic-menu-panel generic-menu-panel--floating';
+            floatingCalendarMenu.setAttribute('data-omo-calendar-floating-menu', '1');
+            floatingCalendarMenu.setAttribute('role', 'menu');
+            floatingCalendarMenu.hidden = true;
+            calendarMenuOwnerDocument.body.appendChild(floatingCalendarMenu);
+        }
+        var activeCalendarMenuToggle = null;
+
+        function positionCalendarMenu(toggle) {
+            if (!(toggle instanceof Element) || !toggle.isConnected) {
+                closeCalendarMenus();
+                return;
+            }
+
+            floatingCalendarMenu.hidden = false;
+            floatingCalendarMenu.style.visibility = 'hidden';
+            floatingCalendarMenu.style.top = '0px';
+            floatingCalendarMenu.style.left = '0px';
+
+            var toggleRect = toggle.getBoundingClientRect();
+            var menuRect = floatingCalendarMenu.getBoundingClientRect();
+            var viewportPadding = 12;
+            var gap = 8;
+            var top = toggleRect.bottom + gap;
+            var left = toggleRect.right - menuRect.width;
+
+            if (top + menuRect.height > window.innerHeight - viewportPadding) {
+                top = Math.max(viewportPadding, toggleRect.top - menuRect.height - gap);
+            }
+            if (left + menuRect.width > window.innerWidth - viewportPadding) {
+                left = Math.max(viewportPadding, window.innerWidth - menuRect.width - viewportPadding);
+            }
+            if (left < viewportPadding) {
+                left = viewportPadding;
+            }
+
+            floatingCalendarMenu.style.top = String(Math.round(top)) + 'px';
+            floatingCalendarMenu.style.left = String(Math.round(left)) + 'px';
+            floatingCalendarMenu.style.visibility = '';
+        }
+
+        function closeCalendarMenus() {
+            root.querySelectorAll('[data-omo-calendar-event-menu]').forEach(function (menu) {
+                menu.classList.remove('is-open');
+            });
+            root.querySelectorAll('[data-omo-calendar-event-menu-toggle]').forEach(function (toggle) {
+                toggle.setAttribute('aria-expanded', 'false');
+            });
+            activeCalendarMenuToggle = null;
+            floatingCalendarMenu.hidden = true;
+            floatingCalendarMenu.style.visibility = '';
+            floatingCalendarMenu.replaceChildren();
+        }
+
+        function openCalendarMenu(toggle) {
+            var menu = toggle ? toggle.closest('[data-omo-calendar-event-menu]') : null;
+            var panel = menu ? menu.querySelector('[data-omo-calendar-event-menu-panel]') : null;
+            var shouldOpen = !!toggle && !!panel && (activeCalendarMenuToggle !== toggle || floatingCalendarMenu.hidden);
+            closeCalendarMenus();
+
+            if (!shouldOpen) {
+                return;
+            }
+
+            var fragment = calendarMenuOwnerDocument.createDocumentFragment();
+            Array.prototype.forEach.call(panel.children, function (originalAction) {
+                if (!(originalAction instanceof Element)) {
+                    return;
+                }
+
+                var floatingAction = originalAction.cloneNode(true);
+                floatingAction.setAttribute('data-omo-calendar-floating-menu-action', '1');
+                fragment.appendChild(floatingAction);
+            });
+            floatingCalendarMenu.replaceChildren(fragment);
+            if (!floatingCalendarMenu.childElementCount) {
+                return;
+            }
+
+            activeCalendarMenuToggle = toggle;
+            menu.classList.add('is-open');
+            toggle.setAttribute('aria-expanded', 'true');
+            positionCalendarMenu(toggle);
+        }
+
+        window.addEventListener('resize', function () {
+            if (activeCalendarMenuToggle) {
+                positionCalendarMenu(activeCalendarMenuToggle);
+            }
+        });
+        calendarMenuOwnerDocument.addEventListener('scroll', function () {
+            if (activeCalendarMenuToggle) {
+                positionCalendarMenu(activeCalendarMenuToggle);
+            }
+        }, true);
+
+        calendarMenuOwnerDocument.addEventListener('click', function (event) {
+            var floatingAction = event.target.closest('[data-omo-calendar-floating-menu-action]');
+            if (floatingAction) {
+                event.preventDefault();
+                event.stopPropagation();
+                if (floatingAction.hasAttribute('data-omo-calendar-delete-url')) {
+                    closeCalendarMenus();
+                    deleteCalendarEvent(floatingAction);
+                    return;
+                }
+                var editUrl = floatingAction.getAttribute('data-omo-calendar-open-edit-url') || '';
+                closeCalendarMenus();
+                if (editUrl) {
+                    openDrawerWithUrl(editUrl);
+                }
+                return;
+            }
+
+            var toggle = event.target.closest('[data-omo-calendar-event-menu-toggle]');
+            if (toggle && root.contains(toggle)) {
+                event.preventDefault();
+                event.stopPropagation();
+                openCalendarMenu(toggle);
+                return;
+            }
+
+            if (event.target.closest('[data-omo-calendar-floating-menu], [data-omo-calendar-event-menu]')) {
+                return;
+            }
+
+            closeCalendarMenus();
+        });
 
         function getCurrentRouteToken() {
             if (typeof window.omoParsePopupHashState !== 'function') {
@@ -2386,6 +2603,51 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             });
         }
 
+        function deleteCalendarEvent(deleteButton) {
+            if (!(deleteButton instanceof Element)) {
+                return;
+            }
+
+            var deleteUrl = deleteButton.getAttribute('data-omo-calendar-delete-url') || '';
+            var confirmationMessage = deleteButton.getAttribute('data-omo-calendar-delete-confirm') || '';
+            var fallbackError = deleteButton.getAttribute('data-omo-calendar-delete-error') || 'Impossible de supprimer cet evenement.';
+            if (!deleteUrl || (confirmationMessage !== '' && !window.confirm(confirmationMessage))) {
+                return;
+            }
+
+            deleteButton.disabled = true;
+            askDeleteAssociatedDocuments(deleteButton).then(function (deleteDocuments) {
+                var requestBody = new URLSearchParams();
+                requestBody.set('delete_documents', deleteDocuments ? '1' : '0');
+
+                return fetch(resolveUrl(deleteUrl), {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                    },
+                    body: requestBody.toString()
+                });
+            }).then(function (response) {
+                return response.json();
+            }).then(function (payload) {
+                if (!payload || payload.status !== true) {
+                    throw new Error(payload && payload.message ? payload.message : fallbackError);
+                }
+
+                if (typeof window.omoInvalidateMainRightPanel === 'function') {
+                    window.omoInvalidateMainRightPanel();
+                }
+
+                closeDrawer();
+                refreshCalendar(currentUrl);
+            }).catch(function (error) {
+                window.alert(error && error.message ? error.message : fallbackError);
+                deleteButton.disabled = false;
+            });
+        }
+
         window.omoCalendarOpenEventDrawer = function (url) {
             if (!url) {
                 return;
@@ -2685,45 +2947,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 var deleteButton = event.target.closest('[data-omo-calendar-delete-url]');
                 if (deleteButton) {
                     event.preventDefault();
-
-                    var deleteUrl = deleteButton.getAttribute('data-omo-calendar-delete-url') || '';
-                    var confirmationMessage = deleteButton.getAttribute('data-omo-calendar-delete-confirm') || '';
-                    var fallbackError = deleteButton.getAttribute('data-omo-calendar-delete-error') || 'Impossible de supprimer cet evenement.';
-                    if (!deleteUrl || (confirmationMessage !== '' && !window.confirm(confirmationMessage))) {
-                        return;
-                    }
-
-                    deleteButton.disabled = true;
-                    askDeleteAssociatedDocuments(deleteButton).then(function (deleteDocuments) {
-                        var requestBody = new URLSearchParams();
-                        requestBody.set('delete_documents', deleteDocuments ? '1' : '0');
-
-                        return fetch(resolveUrl(deleteUrl), {
-                            method: 'POST',
-                            credentials: 'same-origin',
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
-                            },
-                            body: requestBody.toString()
-                        });
-                    }).then(function (response) {
-                        return response.json();
-                    }).then(function (payload) {
-                        if (!payload || payload.status !== true) {
-                            throw new Error(payload && payload.message ? payload.message : fallbackError);
-                        }
-
-                        if (typeof window.omoInvalidateMainRightPanel === 'function') {
-                            window.omoInvalidateMainRightPanel();
-                        }
-
-                        closeDrawer();
-                        refreshCalendar(currentUrl);
-                    }).catch(function (error) {
-                        window.alert(error && error.message ? error.message : fallbackError);
-                        deleteButton.disabled = false;
-                    });
+                    deleteCalendarEvent(deleteButton);
                     return;
                 }
 
@@ -2981,7 +3205,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 }
 
 .omo-calendar__header-secondary {
-    margin-top: 12px;
+    margin-top: 5px;
 }
 
 .omo-calendar__title-cluster {
@@ -3559,14 +3783,14 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 }
 
 .omo-calendar__results.generic-file-list {
-    --generic-file-list-columns: minmax(0, 2.4fr) minmax(150px, 1.1fr) minmax(140px, 1fr) minmax(106px, 0.78fr);
+    --generic-file-list-columns: minmax(106px, 0.78fr) minmax(0, 2.4fr) minmax(150px, 1.1fr) minmax(140px, 1fr);
     --generic-file-list-title-gap: 18px;
     --generic-file-list-table-margin-inline: 12px;
     --generic-file-list-padding-inline-start: 16px;
     --generic-file-list-padding-inline-end: 18px;
     --generic-file-list-header-padding-block: 14px;
     --generic-file-list-row-padding-block: 12px;
-    --generic-file-list-menu-space: 0px;
+    --generic-file-list-menu-space: 44px;
     display: grid;
 }
 
@@ -3636,7 +3860,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 .omo-calendar__list-name-main {
     display: flex;
     align-items: flex-start;
-    gap: 12px;
+    gap: 0;
     min-width: 0;
 }
 

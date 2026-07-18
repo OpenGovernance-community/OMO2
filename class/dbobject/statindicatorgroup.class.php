@@ -14,10 +14,10 @@ class StatIndicatorGroup extends DbObject
     public static function rules()
     {
         return [
-            [['IDorganization', 'name', 'display_mode'], 'required'],
+            [['IDorganization', 'name', 'display_mode', 'reference_type'], 'required'],
             [['id'], 'integer'],
             [['IDorganization', 'IDholon', 'IDuser'], 'fk'],
-            [['name', 'display_mode'], 'string'],
+            [['name', 'display_mode', 'reference_type'], 'string'],
             [['active'], 'boolean'],
             [['created_at', 'updated_at'], 'datetime'],
             [['id'], 'safe'],
@@ -33,6 +33,7 @@ class StatIndicatorGroup extends DbObject
             'IDuser' => 'Createur',
             'name' => 'Nom',
             'display_mode' => 'Affichage',
+            'reference_type' => 'Type de reference',
             'active' => 'Actif',
             'created_at' => 'Creation',
             'updated_at' => 'Mise a jour',
@@ -50,6 +51,7 @@ class StatIndicatorGroup extends DbObject
     public function save()
     {
         $this->set('display_mode', self::normalizeDisplayMode($this->get('display_mode')));
+        $this->set('reference_type', StatIndicator::normalizeReferenceType($this->get('reference_type')));
         return parent::save();
     }
 
@@ -58,6 +60,30 @@ class StatIndicatorGroup extends DbObject
         $items = new ArrayStatIndicatorGroupItem();
         $items->loadForGroup((int)$this->getId());
         return $items;
+    }
+
+    public function getReferencePoints()
+    {
+        $points = new ArrayStatIndicatorReferencePoint();
+        $points->loadForGroup((int)$this->getId());
+        return $points;
+    }
+
+    public function getOrganization()
+    {
+        $organization = new Organization();
+        return $organization->load((int)$this->get('IDorganization')) ? $organization : null;
+    }
+
+    public function getHolon()
+    {
+        $holonId = (int)$this->get('IDholon');
+        if ($holonId <= 0) {
+            return null;
+        }
+
+        $holon = new Holon();
+        return $holon->load($holonId) ? $holon : null;
     }
 
     public function canView()
@@ -74,6 +100,28 @@ class StatIndicatorGroup extends DbObject
 
         $holon = new Holon();
         return $holon->load($holonId) && $holon->canViewDetail();
+    }
+
+    public function canEdit()
+    {
+        $currentUserId = function_exists('commonGetCurrentUserId')
+            ? (int)commonGetCurrentUserId()
+            : (int)($_SESSION['currentUser'] ?? 0);
+        if ($currentUserId <= 0) {
+            return false;
+        }
+
+        if ((int)$this->get('IDuser') === $currentUserId) {
+            return true;
+        }
+
+        $holon = $this->getHolon();
+        if ($holon instanceof Holon) {
+            return $holon->canEdit();
+        }
+
+        $organization = $this->getOrganization();
+        return $organization instanceof Organization && $organization->canEdit();
     }
 }
 ?>

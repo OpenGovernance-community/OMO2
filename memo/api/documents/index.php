@@ -349,7 +349,7 @@ if (!is_string($documentsPayload)) {
     const floatingMenu = ownerDocument.createElement('div');
     let activeDocumentMenuToggle = null;
 
-    floatingMenu.className = 'omo-documents__menu-panel omo-documents__menu-panel--floating';
+    floatingMenu.className = 'omo-documents__menu-panel generic-menu-panel generic-menu-panel--floating omo-documents__menu-panel--floating';
     floatingMenu.setAttribute('data-memo-document-floating-menu', '1');
     floatingMenu.setAttribute('role', 'menu');
     floatingMenu.hidden = true;
@@ -628,12 +628,12 @@ if (!is_string($documentsPayload)) {
 
         if (documentItem && documentItem.canEdit && documentItem.editUrl) {
             const menu = document.createElement('div');
-            menu.className = 'omo-documents__menu';
+            menu.className = 'omo-documents__menu generic-menu';
             menu.setAttribute('data-memo-document-menu', '1');
 
             const toggle = document.createElement('button');
             toggle.type = 'button';
-            toggle.className = 'omo-documents__menu-toggle';
+            toggle.className = 'omo-documents__menu-toggle generic-menu-toggle';
             toggle.textContent = '...';
             toggle.setAttribute('data-memo-document-menu-toggle', '1');
             toggle.setAttribute('data-memo-document-menu-document-id', String(documentItem.id || '0'));
@@ -909,7 +909,7 @@ if (!is_string($documentsPayload)) {
     const buildDocumentMenuItem = function (label, attributes) {
         const button = ownerDocument.createElement('button');
         button.type = 'button';
-        button.className = 'omo-documents__menu-item';
+        button.className = 'omo-documents__menu-item generic-menu-item';
         button.setAttribute('role', 'menuitem');
         button.textContent = label;
 
@@ -1433,50 +1433,6 @@ if (!is_string($documentsPayload)) {
     min-width: 34px;
     height: 34px;
     padding: 0 8px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--color-surface) 92%, white);
-    color: var(--color-text);
-    cursor: pointer;
-}
-
-.omo-documents__menu.is-open .omo-documents__menu-toggle {
-    border-color: color-mix(in srgb, var(--color-primary) 36%, var(--color-border));
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
-}
-
-.omo-documents__menu-panel {
-    position: fixed;
-    top: 0;
-    left: 0;
-    min-width: 140px;
-    max-width: calc(100vw - 24px);
-    padding: 6px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-surface);
-    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
-    z-index: 5000;
-}
-
-.omo-documents__menu-panel--floating[hidden] {
-    display: none;
-}
-
-.omo-documents__menu-item {
-    display: block;
-    width: 100%;
-    padding: 9px 10px;
-    border: 0;
-    border-radius: var(--radius-md);
-    background: transparent;
-    color: var(--color-text);
-    text-align: left;
-    cursor: pointer;
-}
-
-.omo-documents__menu-item:hover {
-    background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
 }
 
 .memo-documents__list--compact {

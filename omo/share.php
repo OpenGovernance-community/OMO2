@@ -157,7 +157,7 @@ $brandHref = $shareLink->buildShareUrl($initialCid);
     <script src="/shared_functions.js"></script>
     <script>sharedApplyDocumentTheme();</script>
     <link rel="stylesheet" href="/common/assets/omo_public_pages.css">
-    <link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260714-pv-groups">
+    <link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260718-drawer-header-gap">
     <base href="/omo/">
     <style>
     :root {

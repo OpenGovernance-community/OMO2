@@ -21,6 +21,7 @@ $values = omoStatsCollectionItems($indicator->getMeasurements(), StatIndicatorVa
 $referencePoints = omoStatsCollectionItems($indicator->getReferencePoints(), StatIndicatorReferencePoint::class);
 $valuesDescending = array_reverse($values);
 $latestValue = count($values) > 0 ? $values[count($values) - 1] : null;
+$latestReferencePercentage = omoStatsGetIndicatorReferencePercentage($indicator, $latestValue, $referencePoints);
 $canEdit = $indicator->canEdit();
 $sourceUrl = StatIndicator::sanitizeSourceUrl($indicator->get('source_url'));
 $contextLabel = omoStatsContextLabel($indicator);
@@ -74,7 +75,7 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
                 <span class="omo-stats-overdue-label"><?= omoApiEscape(omoStatsT('stats.card.overdue')) ?></span>
             <?php endif; ?>
             <?php if ($latestValue instanceof StatIndicatorValue): ?>
-                <span><strong><?= omoApiEscape(omoStatsT('stats.detail.latest')) ?> :</strong> <?= omoApiEscape(omoStatsFormatNumber($latestValue->get('value'))) ?> · <?= omoApiEscape(omoStatsFormatDateTime($latestValue->get('measured_at'))) ?></span>
+                <span class="omo-stats-detail__latest-value"><span><strong><?= omoApiEscape(omoStatsT('stats.detail.latest')) ?> :</strong> <?= omoApiEscape(omoStatsFormatNumber($latestValue->get('value'))) ?><?php if (is_numeric($latestReferencePercentage)): ?> <span class="omo-stats-reference-percentage">(<?= omoApiEscape(omoStatsFormatNumber($latestReferencePercentage)) ?>%)</span><?php endif; ?></span><time>· <?= omoApiEscape(omoStatsFormatDateTime($latestValue->get('measured_at'))) ?></time></span>
             <?php endif; ?>
             <?php if ($sourceUrl !== ''): ?>
                 <a href="<?= omoApiEscape($sourceUrl) ?>" target="_blank" rel="noopener noreferrer"><?= omoApiEscape(omoStatsT('stats.detail.source')) ?></a>
@@ -153,4 +154,4 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
         </form>
     <?php endif; ?>
 </article>
-<script src="/omo/api/stats/chart.js"></script>
+<script src="/omo/api/stats/chart.js?v=20260718-reference-range-default"></script>

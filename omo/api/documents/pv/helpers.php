@@ -101,6 +101,12 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.indicator.insert' => ['text' => 'Inserer l indicateur', 'context' => 'Button confirming insertion of an indicator in a PV point.'],
         'documents.pv_editor.indicator.no_value' => ['text' => 'Aucune valeur', 'context' => 'Fallback shown for an embedded indicator without a measurement.'],
         'documents.pv_editor.indicator.overdue' => ['text' => 'En retard', 'context' => 'Status shown for an embedded overdue indicator.'],
+        'documents.pv_editor.indicator.overdue_days' => ['one' => 'En retard de {count} jour', 'other' => 'En retard de {count} jours', 'context' => 'Status showing how many days an embedded indicator is overdue.'],
+        'documents.pv_editor.indicator.current' => ['text' => 'A jour', 'context' => 'Status shown for an embedded indicator whose latest measurement is on time.'],
+        'documents.pv_editor.indicator.value_placeholder' => ['text' => 'Nouvelle valeur', 'context' => 'Placeholder for the immediate measurement input in an embedded indicator.'],
+        'documents.pv_editor.indicator.add_value' => ['text' => 'Ajouter maintenant', 'context' => 'Button adding an immediate dated value to an embedded indicator.'],
+        'documents.pv_editor.indicator.value_saving' => ['text' => 'Ajout...', 'context' => 'Temporary label while an immediate indicator value is saved.'],
+        'documents.pv_editor.indicator.value_error' => ['text' => 'Impossible d ajouter cette valeur.', 'context' => 'Error shown when an immediate indicator value cannot be saved.'],
         'documents.pv_editor.indicator.group_sum' => ['text' => 'Groupe cumule', 'context' => 'Type label for an embedded summed indicator group.'],
         'documents.pv_editor.indicator.group_overlay' => ['text' => 'Groupe superpose', 'context' => 'Type label for an embedded overlay indicator group.'],
         'documents.pv_editor.indicator.group_members' => ['one' => '{count} indicateur', 'other' => '{count} indicateurs', 'context' => 'Member count shown for an embedded indicator group.'],
@@ -136,6 +142,52 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.summary.margin' => ['text' => 'Marge', 'context' => 'Legend label for unused meeting time in the PV editor chart.'],
         'documents.pv_editor.summary.overrun' => ['text' => 'Depassement', 'context' => 'Legend label for overrun beyond meeting duration in the PV editor chart.'],
         'documents.pv_editor.summary.not_started' => ['text' => '--', 'context' => 'Fallback value for remaining time when the meeting is not in progress.'],
+    ];
+}
+
+function omoDocumentsPvEditorBuildIndicatorEmbedPayload(\dbObject\StatIndicator $indicator, bool $isPvEditor = false, ?callable $translate = null): array
+{
+    $translate = $translate ?: static function (string $key): string {
+        return $key;
+    };
+    $values = omoStatsCollectionItems($indicator->getMeasurements(), \dbObject\StatIndicatorValue::class);
+    $referencePoints = omoStatsCollectionItems($indicator->getReferencePoints(), \dbObject\StatIndicatorReferencePoint::class);
+    $latestValue = count($values) > 0 ? $values[count($values) - 1] : null;
+    $referencePercentage = omoStatsGetIndicatorReferencePercentage($indicator, $latestValue, $referencePoints);
+    $overdueInfo = omoStatsGetIndicatorOverdueInfo($indicator);
+    $isOverdue = $overdueInfo['is_overdue'];
+    $hasFrequency = \dbObject\StatIndicator::normalizeMeasurementFrequency($indicator->get('measurement_frequency')) !== null;
+    $canAddValue = $indicator->canEdit() || $isPvEditor;
+    $chartSeries = omoStatsGetIndicatorChartSeries($indicator, $values, $referencePoints);
+    $chartNumbers = array_column(array_merge($chartSeries['measure'], $chartSeries['reference']), 'value');
+    $chartScale = count($chartNumbers) > 0
+        ? omoStatsResolveChartScale(min($chartNumbers), max($chartNumbers))
+        : null;
+
+    return [
+        'id' => (int)$indicator->getId(),
+        'kind' => 'indicator',
+        'contextHolonId' => (int)$indicator->get('IDholon'),
+        'title' => trim((string)$indicator->get('name')),
+        'description' => trim((string)$indicator->get('description')),
+        'contextLabel' => omoStatsContextLabel($indicator),
+        'valueLabel' => $latestValue instanceof \dbObject\StatIndicatorValue
+            ? omoStatsFormatNumber($latestValue->get('value')) . (is_numeric($referencePercentage) ? ' (' . omoStatsFormatNumber($referencePercentage) . '%)' : '')
+            : $translate('documents.pv_editor.indicator.no_value'),
+        'dateLabel' => $latestValue instanceof \dbObject\StatIndicatorValue
+            ? omoStatsFormatDateTime($latestValue->get('measured_at'), false)
+            : '',
+        'statusLabel' => $isOverdue
+            ? $translate('documents.pv_editor.indicator.overdue_days', ['count' => $overdueInfo['overdue_days']])
+            : ($hasFrequency && $latestValue instanceof \dbObject\StatIndicatorValue
+                ? $translate('documents.pv_editor.indicator.current')
+                : ''),
+        'isOverdue' => $isOverdue,
+        'overdueSeverity' => $overdueInfo['severity'],
+        'canAddValue' => $canAddValue,
+        'chartMinLabel' => is_array($chartScale) ? omoStatsFormatNumber($chartScale['min']) : '',
+        'chartMaxLabel' => is_array($chartScale) ? omoStatsFormatNumber($chartScale['max']) : '',
+        'chartHtml' => omoStatsRenderChart($indicator, $values, $referencePoints, 'compact', $isOverdue),
     ];
 }
 

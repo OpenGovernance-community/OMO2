@@ -120,6 +120,16 @@ function omoStatsActionParseReferencePoints($referenceType, $rawPoints)
         throw new \InvalidArgumentException(omoStatsT('stats.error.reference_dates'));
     }
 
+    $duration = $endAt->getTimestamp() - $startAt->getTimestamp();
+    foreach ($points as &$point) {
+        if ((float)$point['position_percent'] > 0.0 && (float)$point['position_percent'] < 100.0) {
+            $pointAt = \DateTime::createFromInterface($startAt);
+            $pointAt->setTimestamp((int)(round(($startAt->getTimestamp() + ($duration * ((float)$point['position_percent'] / 100.0))) / 60) * 60));
+            $point['point_at'] = $pointAt;
+        }
+    }
+    unset($point);
+
     if ($referenceType === StatIndicator::REFERENCE_CEILING) {
         $ceilingValue = (float)$points[0]['value'];
         foreach ($points as $point) {
@@ -429,6 +439,12 @@ if ($action === 'update_group') {
             omoStatsActionRespond(false, omoStatsT('stats.error.selection'), [], 422);
         }
     }
+    $referenceType = StatIndicator::normalizeReferenceType($_POST['reference_type'] ?? StatIndicator::REFERENCE_NONE);
+    try {
+        $referencePoints = omoStatsActionParseReferencePoints($referenceType, $_POST['reference_points'] ?? []);
+    } catch (\InvalidArgumentException $exception) {
+        omoStatsActionRespond(false, $exception->getMessage(), [], 422);
+    }
 
     $pdo = \dbObject\DbObject::getPdo();
     $startedTransaction = false;
@@ -439,6 +455,7 @@ if ($action === 'update_group') {
         }
         $group->set('name', mb_substr($name, 0, 190, 'UTF-8'));
         $group->set('display_mode', StatIndicatorGroup::normalizeDisplayMode($_POST['display_mode'] ?? null));
+        $group->set('reference_type', $referenceType);
         $groupResult = $group->save();
         if (!is_array($groupResult) || empty($groupResult['status'])) {
             throw new \RuntimeException(omoStatsT('stats.error.save'));
@@ -455,6 +472,22 @@ if ($action === 'update_group') {
             $item->set('position', $position + 1);
             $itemResult = $item->save();
             if (!is_array($itemResult) || empty($itemResult['status'])) {
+                throw new \RuntimeException(omoStatsT('stats.error.save'));
+            }
+        }
+        foreach ($group->getReferencePoints() as $existingPoint) {
+            if ($existingPoint instanceof StatIndicatorReferencePoint && !$existingPoint->delete()) {
+                throw new \RuntimeException(omoStatsT('stats.error.save'));
+            }
+        }
+        foreach ($referencePoints as $pointData) {
+            $point = new StatIndicatorReferencePoint();
+            $point->set('IDstatindicatorgroup', (int)$group->getId());
+            $point->set('position_percent', (float)$pointData['position_percent']);
+            $point->set('value', (float)$pointData['value']);
+            $point->set('point_at', $pointData['point_at']);
+            $pointResult = $point->save();
+            if (!is_array($pointResult) || empty($pointResult['status'])) {
                 throw new \RuntimeException(omoStatsT('stats.error.save'));
             }
         }
@@ -508,6 +541,12 @@ if ($action === 'create_group') {
         }
         $indicators[] = $indicator;
     }
+    $referenceType = StatIndicator::normalizeReferenceType($_POST['reference_type'] ?? StatIndicator::REFERENCE_NONE);
+    try {
+        $referencePoints = omoStatsActionParseReferencePoints($referenceType, $_POST['reference_points'] ?? []);
+    } catch (\InvalidArgumentException $exception) {
+        omoStatsActionRespond(false, $exception->getMessage(), [], 422);
+    }
 
     $pdo = \dbObject\DbObject::getPdo();
     $startedTransaction = false;
@@ -524,6 +563,7 @@ if ($action === 'create_group') {
         $group->set('IDuser', $currentUserId > 0 ? $currentUserId : null);
         $group->set('name', mb_substr($name, 0, 190, 'UTF-8'));
         $group->set('display_mode', StatIndicatorGroup::normalizeDisplayMode($_POST['display_mode'] ?? null));
+        $group->set('reference_type', $referenceType);
         $group->set('active', 1);
         $groupResult = $group->save();
         if (!is_array($groupResult) || empty($groupResult['status']) || (int)$group->getId() <= 0) {
@@ -536,6 +576,17 @@ if ($action === 'create_group') {
             $item->set('position', $position + 1);
             $itemResult = $item->save();
             if (!is_array($itemResult) || empty($itemResult['status'])) {
+                throw new \RuntimeException(omoStatsT('stats.error.save'));
+            }
+        }
+        foreach ($referencePoints as $pointData) {
+            $point = new StatIndicatorReferencePoint();
+            $point->set('IDstatindicatorgroup', (int)$group->getId());
+            $point->set('position_percent', (float)$pointData['position_percent']);
+            $point->set('value', (float)$pointData['value']);
+            $point->set('point_at', $pointData['point_at']);
+            $pointResult = $point->save();
+            if (!is_array($pointResult) || empty($pointResult['status'])) {
                 throw new \RuntimeException(omoStatsT('stats.error.save'));
             }
         }
