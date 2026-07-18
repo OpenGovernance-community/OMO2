@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
+require_once dirname(__DIR__, 4) . '/common/patreon.php';
 require_once dirname(__DIR__, 4) . '/common/openai_text.php';
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -27,6 +28,10 @@ if (
     || !commonCurrentUserHasOrganizationAccess($organizationId)
 ) {
     $jsonResponse(['status' => false, 'message' => 'Acces refuse.'], 403);
+}
+
+if (!patreonUserCanUseAi($currentUserId)) {
+    $jsonResponse(['status' => false, 'message' => 'Les fonctions IA sont reservees aux contributeurs Patreon actifs.'], 403);
 }
 
 $document = new \dbObject\Document();
