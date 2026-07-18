@@ -32,6 +32,7 @@ if ($currentUserId <= 0) {
     <script src="/shared_functions.js"></script>
     <link rel="stylesheet" href="/shared_css.css">
     <link rel="stylesheet" href="/omo/assets/css/styles.css">
+    <link rel="stylesheet" href="/omo/api/stats/stats.css">
     <script>sharedApplyDocumentTheme();</script>
     <style>
         html,
@@ -47,23 +48,21 @@ if ($currentUserId <= 0) {
             min-height: 100dvh;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow-x: hidden;
+            overflow-y: auto;
         }
 
         .memo-page__main {
             flex: 1 1 auto;
-            min-height: 0;
+            min-height: calc(100dvh - var(--topbar-height, 48px));
             padding: 24px;
-            overflow: hidden;
+            overflow: visible;
         }
 
         .memo-page__content {
             max-width: 1240px;
             margin: 0 auto;
-            height: 100%;
-            min-height: 0;
-            display: flex;
-            flex-direction: column;
+            min-height: 100%;
         }
 
         @media (max-width: 768px) {

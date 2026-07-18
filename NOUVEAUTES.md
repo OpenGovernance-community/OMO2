@@ -2,6 +2,13 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-18
+
+- EasyMEMO utilise maintenant le scroll de la page pour la liste des documents. Son entete defile d abord avec le contenu, puis reste colle avec un decalage negatif : le resume sort de l ecran, tandis que l icone, le titre et les selecteurs d affichage restent accessibles en haut, y compris sur telephone.
+- La visualisation d un document EasyMEMO s ouvre dans un drawer fixe a la fenetre. Son contenu repart en haut a chaque ouverture et son entete conserve le bouton Fermer pendant le scroll.
+- EasyMEMO charge aussi les styles des indicateurs pour afficher correctement leurs graphiques dans les PV.
+- Les liens d acces directs EasyMEMO affichent maintenant le titre du document et permettent de faire defiler tout son contenu.
+
 ## 2026-07-17
 
 - Les droits sont maintenant autorises par defaut pour les membres d une organisation tant qu aucun holon ne les configure. Des qu un droit est attribue quelque part dans l organisation, il doit etre accorde explicitement selon l arbre des droits.
