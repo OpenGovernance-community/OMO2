@@ -130,7 +130,7 @@ ob_start();
         </div>
         <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-stats-add-reference-point><?= omoApiEscape(omoStatsT('stats.form.add_point')) ?></button>
     </div>
-    <div class="omo-stats-reference-editor__rail" data-omo-stats-reference-rail aria-hidden="true"></div>
+    <div class="omo-stats-reference-editor__rail" data-omo-stats-reference-rail></div>
     <div class="omo-stats-reference-editor__points" data-omo-stats-reference-points>
         <?php foreach ($referencePoints as $pointIndex => $point): ?>
             <?php
@@ -149,14 +149,14 @@ ob_start();
                         value="<?= omoApiEscape(omoStatsEditInputNumber($position)) ?>"
                         min="0"
                         max="100"
-                        step="0.0001"
+                        step="0.2"
                         data-omo-stats-point-position
                         <?= $isEndpoint ? 'readonly' : '' ?>
                         required
                     >
                 </label>
-                <label class="omo-stats-field omo-stats-field--date"<?= $isEndpoint ? '' : ' hidden' ?>>
-                    <span><?= omoApiEscape(omoStatsT('stats.form.point_date')) ?></span>
+                <label class="omo-stats-field omo-stats-field--date">
+                    <span><?= omoApiEscape(omoStatsT($isEndpoint ? 'stats.form.point_date' : 'stats.form.point_date_auto')) ?></span>
                     <input
                         type="datetime-local"
                         class="generic-form-control"
@@ -164,6 +164,7 @@ ob_start();
                         value="<?= $pointAt instanceof DateTimeInterface ? omoApiEscape($pointAt->format('Y-m-d\TH:i')) : '' ?>"
                         data-omo-stats-point-date
                         <?= $isEndpoint ? 'required' : '' ?>
+                        <?= $isEndpoint ? '' : 'readonly aria-readonly="true"' ?>
                     >
                 </label>
                 <label class="omo-stats-field">
@@ -215,6 +216,7 @@ $params = [
     </section>
     <?php $indicator->display('adminEdit.php', $params); ?>
 </div>
+<script src="/omo/api/stats/reference-editor.js?v=20260718-group-reference"></script>
 <script>
 (function () {
     var editor = document.querySelector('[data-omo-stats-editor]');
@@ -235,6 +237,16 @@ $params = [
         }
         if (saveEditorButton) {
             saveEditorButton.setAttribute('form', editorForm.id);
+            saveEditorButton.type = 'button';
+            saveEditorButton.addEventListener('click', function (event) {
+                event.preventDefault();
+                if (typeof editorForm.requestSubmit === 'function') {
+                    editorForm.requestSubmit();
+                    return;
+                }
+
+                editorForm.dispatchEvent(new Event('submit', {bubbles: true, cancelable: true}));
+            });
         }
         window.omoStatsDrawer.setHeader({
             title: <?= json_encode(omoStatsT($indicatorId > 0 ? 'stats.form.edit_title' : 'stats.form.create_title'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
@@ -253,9 +265,11 @@ $params = [
     var referenceRail = editor.querySelector('[data-omo-stats-reference-rail]');
     var pointList = editor.querySelector('[data-omo-stats-reference-points]');
     var addButton = editor.querySelector('[data-omo-stats-add-reference-point]');
+    var referencePositionStep = 0.2;
     var labels = <?= json_encode([
         'intermediate' => omoStatsT('stats.form.intermediate'),
         'position' => omoStatsT('stats.form.position'),
+        'dateAuto' => omoStatsT('stats.form.point_date_auto'),
         'value' => omoStatsT('stats.form.point_value'),
         'remove' => omoStatsT('stats.form.remove_point'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -283,6 +297,14 @@ $params = [
         measurementScheduleField.dataset.selectedSchedule = '';
     }
 
+    var useSharedReferenceEditor = typeof window.omoStatsInitReferenceEditor === 'function';
+    if (useSharedReferenceEditor) {
+        window.omoStatsInitReferenceEditor(editor, {
+            labels: labels
+        });
+    }
+
+    if (!useSharedReferenceEditor) {
     function rows() {
         return Array.prototype.slice.call(editor.querySelectorAll('[data-omo-stats-reference-point]'));
     }
@@ -309,12 +331,102 @@ $params = [
         reindexRows();
     }
 
+    function getEndpointDates() {
+        var endpointRows = rows().filter(function (row) {
+            return row.getAttribute('data-endpoint') === '1';
+        }).sort(function (left, right) {
+            var leftPosition = left.querySelector('[data-omo-stats-point-position]');
+            var rightPosition = right.querySelector('[data-omo-stats-point-position]');
+            return Number(leftPosition ? leftPosition.value : 0) - Number(rightPosition ? rightPosition.value : 0);
+        });
+        if (endpointRows.length < 2) {
+            return null;
+        }
+
+        var startField = endpointRows[0].querySelector('[data-omo-stats-point-date]');
+        var endField = endpointRows[endpointRows.length - 1].querySelector('[data-omo-stats-point-date]');
+        var startAt = startField && startField.value ? new Date(startField.value) : null;
+        var endAt = endField && endField.value ? new Date(endField.value) : null;
+        if (!(startAt instanceof Date) || Number.isNaN(startAt.getTime()) || !(endAt instanceof Date) || Number.isNaN(endAt.getTime()) || endAt <= startAt) {
+            return null;
+        }
+        return {startAt: startAt, endAt: endAt};
+    }
+
+    function formatDateTimeLocal(date) {
+        function pad(value) {
+            return String(value).padStart(2, '0');
+        }
+        return String(date.getFullYear())
+            + '-' + pad(date.getMonth() + 1)
+            + '-' + pad(date.getDate())
+            + 'T' + pad(date.getHours())
+            + ':' + pad(date.getMinutes());
+    }
+
+    function syncIntermediateDates() {
+        var endpoints = getEndpointDates();
+        rows().forEach(function (row) {
+            if (row.getAttribute('data-endpoint') === '1') {
+                return;
+            }
+            var positionField = row.querySelector('[data-omo-stats-point-position]');
+            var dateField = row.querySelector('[data-omo-stats-point-date]');
+            if (!positionField || !dateField || !endpoints) {
+                if (dateField) {
+                    dateField.value = '';
+                }
+                return;
+            }
+            var position = Number(positionField.value || 0);
+            if (!Number.isFinite(position)) {
+                dateField.value = '';
+                return;
+            }
+            var timestamp = endpoints.startAt.getTime() + ((endpoints.endAt.getTime() - endpoints.startAt.getTime()) * (Math.max(0, Math.min(100, position)) / 100));
+            timestamp = Math.round(timestamp / 60000) * 60000;
+            dateField.value = formatDateTimeLocal(new Date(timestamp));
+        });
+    }
+
+    function getSliderBounds(row) {
+        var pointRows = rows().sort(function (left, right) {
+            var leftPosition = left.querySelector('[data-omo-stats-point-position]');
+            var rightPosition = right.querySelector('[data-omo-stats-point-position]');
+            return Number(leftPosition ? leftPosition.value : 0) - Number(rightPosition ? rightPosition.value : 0);
+        });
+        var rowIndex = pointRows.indexOf(row);
+        var previousPosition = rowIndex > 0 ? Number(pointRows[rowIndex - 1].querySelector('[data-omo-stats-point-position]').value || 0) : 0;
+        var nextPosition = rowIndex >= 0 && rowIndex < pointRows.length - 1 ? Number(pointRows[rowIndex + 1].querySelector('[data-omo-stats-point-position]').value || 100) : 100;
+        return {
+            min: row.getAttribute('data-endpoint') === '1' ? 0 : previousPosition + referencePositionStep,
+            max: row.getAttribute('data-endpoint') === '1' ? 100 : nextPosition - referencePositionStep,
+        };
+    }
+
+    function setRowPosition(row, position, shouldRenderRail) {
+        var positionField = row ? row.querySelector('[data-omo-stats-point-position]') : null;
+        if (!positionField || row.getAttribute('data-endpoint') === '1') {
+            return;
+        }
+        var bounds = getSliderBounds(row);
+        position = Math.max(bounds.min, Math.min(bounds.max, position));
+        position = Math.round(position / referencePositionStep) * referencePositionStep;
+        position = Math.max(bounds.min, Math.min(bounds.max, position));
+        position = Math.round(position * 10) / 10;
+        positionField.value = String(position);
+        syncIntermediateDates();
+        if (shouldRenderRail !== false) {
+            renderReferenceRail();
+        }
+    }
+
     function renderReferenceRail() {
         if (!referenceRail) {
             return;
         }
         referenceRail.innerHTML = '';
-        rows().forEach(function (row) {
+        rows().forEach(function (row, rowIndex) {
             var positionField = row.querySelector('[data-omo-stats-point-position]');
             var valueField = row.querySelector('[data-omo-stats-point-value]');
             var position = positionField ? Number(positionField.value || 0) : 0;
@@ -322,10 +434,21 @@ $params = [
                 position = 0;
             }
             position = Math.max(0, Math.min(100, position));
+            var isEndpoint = row.getAttribute('data-endpoint') === '1';
             var stop = document.createElement('span');
-            stop.className = 'omo-stats-reference-editor__stop' + (row.getAttribute('data-endpoint') === '1' ? ' is-endpoint' : '');
+            stop.className = 'omo-stats-reference-editor__stop' + (isEndpoint ? ' is-endpoint' : '');
             stop.style.left = String(position) + '%';
             stop.title = String(position) + ' % · ' + String(valueField ? valueField.value : '');
+            if (!isEndpoint) {
+                stop.setAttribute('data-omo-stats-reference-slider', '');
+                stop.setAttribute('data-omo-stats-reference-slider-index', String(rowIndex));
+                stop.setAttribute('role', 'slider');
+                stop.setAttribute('tabindex', '0');
+                stop.setAttribute('aria-valuemin', '0');
+                stop.setAttribute('aria-valuemax', '100');
+                stop.setAttribute('aria-valuenow', String(position));
+                stop.setAttribute('aria-label', labels.position + ' ' + String(position) + ' %');
+            }
             referenceRail.appendChild(stop);
         });
     }
@@ -398,17 +521,20 @@ $params = [
         row.setAttribute('data-endpoint', '0');
         row.innerHTML = ''
             + '<div class="omo-stats-reference-point__badge"></div>'
-            + '<label class="omo-stats-field"><span></span><input type="number" class="generic-form-control" name="reference_points[0][position_percent]" min="0" max="100" step="0.0001" data-omo-stats-point-position required></label>'
+            + '<label class="omo-stats-field"><span></span><input type="number" class="generic-form-control" name="reference_points[0][position_percent]" min="0" max="100" step="0.2" data-omo-stats-point-position required></label>'
+            + '<label class="omo-stats-field omo-stats-field--date"><span></span><input type="datetime-local" class="generic-form-control" name="reference_points[0][point_at]" data-omo-stats-point-date readonly aria-readonly="true"></label>'
             + '<label class="omo-stats-field"><span></span><input type="number" class="generic-form-control" name="reference_points[0][value]" step="any" data-omo-stats-point-value required></label>'
             + '<button type="button" class="generic-action-button generic-action-button--danger omo-stats-reference-point__remove" data-omo-stats-remove-reference-point></button>';
         row.querySelector('.omo-stats-reference-point__badge').textContent = labels.intermediate;
         row.querySelectorAll('.omo-stats-field span')[0].textContent = labels.position;
-        row.querySelectorAll('.omo-stats-field span')[1].textContent = labels.value;
+        row.querySelectorAll('.omo-stats-field span')[1].textContent = labels.dateAuto;
+        row.querySelectorAll('.omo-stats-field span')[2].textContent = labels.value;
         row.querySelector('[data-omo-stats-remove-reference-point]').textContent = labels.remove;
         row.querySelector('[data-omo-stats-point-position]').value = String(suggestPosition());
         row.querySelector('[data-omo-stats-point-value]').value = '';
         pointList.appendChild(row);
         sortPointRows();
+        syncIntermediateDates();
         renderReferenceRail();
         row.querySelector('[data-omo-stats-point-value]').focus();
     }
@@ -434,6 +560,7 @@ $params = [
             if (row && row.getAttribute('data-endpoint') !== '1') {
                 row.remove();
                 reindexRows();
+                syncIntermediateDates();
                 renderReferenceRail();
             }
         });
@@ -441,12 +568,114 @@ $params = [
             if (event.target.matches('[data-omo-stats-point-value]')) {
                 syncCeilingValues(event.target);
             }
+            syncIntermediateDates();
             renderReferenceRail();
         });
         pointList.addEventListener('change', function (event) {
             if (event.target.matches('[data-omo-stats-point-position]')) {
+                var positionRow = event.target.closest('[data-omo-stats-reference-point]');
                 sortPointRows();
+                if (positionRow && positionRow.getAttribute('data-endpoint') !== '1') {
+                    setRowPosition(positionRow, Number(event.target.value || 0), false);
+                }
+                syncIntermediateDates();
                 renderReferenceRail();
+            }
+        });
+    }
+
+    var activeReferenceSlider = null;
+    var activeReferencePointerId = null;
+
+    function getReferenceSliderRow(slider) {
+        var rowIndex = Number(slider ? slider.getAttribute('data-omo-stats-reference-slider-index') : -1);
+        var pointRows = rows();
+        return Number.isInteger(rowIndex) && rowIndex >= 0 && rowIndex < pointRows.length ? pointRows[rowIndex] : null;
+    }
+
+    function updateReferenceSliderFromPointer(slider, event) {
+        var row = getReferenceSliderRow(slider);
+        if (!row) {
+            return;
+        }
+        var railRect = referenceRail.getBoundingClientRect();
+        var position = ((event.clientX - railRect.left) / railRect.width) * 100;
+        setRowPosition(row, position, false);
+        var positionField = row.querySelector('[data-omo-stats-point-position]');
+        var valueField = row.querySelector('[data-omo-stats-point-value]');
+        var currentPosition = positionField ? positionField.value : '0';
+        slider.style.left = currentPosition + '%';
+        slider.title = currentPosition + ' % - ' + String(valueField ? valueField.value : '');
+        slider.setAttribute('aria-valuenow', currentPosition);
+        slider.setAttribute('aria-label', labels.position + ' ' + currentPosition + ' %');
+    }
+
+    function stopReferenceSliderDrag() {
+        if (!activeReferenceSlider) {
+            return;
+        }
+        if (activeReferencePointerId !== null && activeReferenceSlider.hasPointerCapture(activeReferencePointerId)) {
+            activeReferenceSlider.releasePointerCapture(activeReferencePointerId);
+        }
+        activeReferenceSlider.classList.remove('is-dragging');
+        activeReferenceSlider = null;
+        activeReferencePointerId = null;
+        renderReferenceRail();
+    }
+
+    if (referenceRail) {
+        referenceRail.addEventListener('pointerdown', function (event) {
+            var slider = event.target.closest('[data-omo-stats-reference-slider]');
+            if (!slider) {
+                return;
+            }
+            event.preventDefault();
+            activeReferenceSlider = slider;
+            activeReferencePointerId = event.pointerId;
+            slider.classList.add('is-dragging');
+            if (typeof slider.setPointerCapture === 'function') {
+                slider.setPointerCapture(event.pointerId);
+            }
+        });
+        document.addEventListener('pointermove', function (event) {
+            if (!activeReferenceSlider || activeReferencePointerId !== event.pointerId) {
+                return;
+            }
+            updateReferenceSliderFromPointer(activeReferenceSlider, event);
+        });
+        document.addEventListener('pointerup', function (event) {
+            if (activeReferencePointerId === event.pointerId) {
+                stopReferenceSliderDrag();
+            }
+        });
+        document.addEventListener('pointercancel', function (event) {
+            if (activeReferencePointerId === event.pointerId) {
+                stopReferenceSliderDrag();
+            }
+        });
+        referenceRail.addEventListener('keydown', function (event) {
+            var slider = event.target.closest('[data-omo-stats-reference-slider]');
+            if (!slider) {
+                return;
+            }
+            var row = getReferenceSliderRow(slider);
+            var positionField = row ? row.querySelector('[data-omo-stats-point-position]') : null;
+            if (!row || !positionField) {
+                return;
+            }
+            var delta = event.shiftKey ? 5 : 1;
+            if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+                event.preventDefault();
+                setRowPosition(row, Number(positionField.value || 0) - delta);
+            } else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                setRowPosition(row, Number(positionField.value || 0) + delta);
+            } else if (event.key === 'Home') {
+                event.preventDefault();
+                setRowPosition(row, 0);
+            } else if (event.key === 'End') {
+                event.preventDefault();
+                setRowPosition(row, 100);
             }
         });
     }
@@ -460,8 +689,10 @@ $params = [
     }
 
     reindexRows();
-    syncMeasurementSchedule(false);
     syncReferenceType();
+    syncIntermediateDates();
     renderReferenceRail();
+    }
+    syncMeasurementSchedule(false);
 })();
 </script>

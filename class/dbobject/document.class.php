@@ -1986,7 +1986,9 @@
 			}
 
 			$shapes = '';
-			foreach (array('polyline', 'circle') as $tagName) {
+			$hasScaleLine = $sourceChart->getElementsByTagName('line')->length > 0;
+			$hasScaleLabel = $sourceChart->getElementsByTagName('text')->length > 0;
+			foreach (array('polyline', 'circle', 'line', 'text') as $tagName) {
 				foreach (iterator_to_array($sourceChart->getElementsByTagName($tagName)) as $sourceShape) {
 					if (!($sourceShape instanceof \DOMElement)) {
 						continue;
@@ -1998,6 +2000,18 @@
 					}
 					if ($tagName === 'circle' && $className !== 'omo-stats-chart__point') {
 						continue;
+					}
+					if ($tagName === 'line' && $className !== 'omo-stats-chart__scale-line') {
+						continue;
+					}
+					if ($tagName === 'text' && $className !== 'omo-stats-chart__scale-label') {
+						continue;
+					}
+					if ($tagName === 'line') {
+						$hasScaleLine = true;
+					}
+					if ($tagName === 'text') {
+						$hasScaleLabel = true;
 					}
 
 					if ($tagName === 'polyline') {
@@ -2013,19 +2027,54 @@
 						continue;
 					}
 
-					$cx = trim((string)$sourceShape->getAttribute('cx'));
-					$cy = trim((string)$sourceShape->getAttribute('cy'));
-					$radius = trim((string)$sourceShape->getAttribute('r'));
-					if (!preg_match('/^-?[0-9.]+$/', $cx) || !preg_match('/^-?[0-9.]+$/', $cy) || !preg_match('/^-?[0-9.]+$/', $radius)) {
+					if ($tagName === 'circle') {
+						$cx = trim((string)$sourceShape->getAttribute('cx'));
+						$cy = trim((string)$sourceShape->getAttribute('cy'));
+						$radius = trim((string)$sourceShape->getAttribute('r'));
+						if (!preg_match('/^-?[0-9.]+$/', $cx) || !preg_match('/^-?[0-9.]+$/', $cy) || !preg_match('/^-?[0-9.]+$/', $radius)) {
+							continue;
+						}
+						$shapes .= '<circle class="' . htmlspecialchars($className, ENT_QUOTES, 'UTF-8') . '" cx="' . htmlspecialchars($cx, ENT_QUOTES, 'UTF-8') . '" cy="' . htmlspecialchars($cy, ENT_QUOTES, 'UTF-8') . '" r="' . htmlspecialchars($radius, ENT_QUOTES, 'UTF-8') . '"></circle>';
 						continue;
 					}
-					$shapes .= '<circle class="' . htmlspecialchars($className, ENT_QUOTES, 'UTF-8') . '" cx="' . htmlspecialchars($cx, ENT_QUOTES, 'UTF-8') . '" cy="' . htmlspecialchars($cy, ENT_QUOTES, 'UTF-8') . '" r="' . htmlspecialchars($radius, ENT_QUOTES, 'UTF-8') . '"></circle>';
+
+					if ($tagName === 'line') {
+						$x1 = trim((string)$sourceShape->getAttribute('x1'));
+						$y1 = trim((string)$sourceShape->getAttribute('y1'));
+						$x2 = trim((string)$sourceShape->getAttribute('x2'));
+						$y2 = trim((string)$sourceShape->getAttribute('y2'));
+						if (!preg_match('/^-?[0-9.]+$/', $x1) || !preg_match('/^-?[0-9.]+$/', $y1) || !preg_match('/^-?[0-9.]+$/', $x2) || !preg_match('/^-?[0-9.]+$/', $y2)) {
+							continue;
+						}
+						$shapes .= '<line class="' . htmlspecialchars($className, ENT_QUOTES, 'UTF-8') . '" x1="' . htmlspecialchars($x1, ENT_QUOTES, 'UTF-8') . '" y1="' . htmlspecialchars($y1, ENT_QUOTES, 'UTF-8') . '" x2="' . htmlspecialchars($x2, ENT_QUOTES, 'UTF-8') . '" y2="' . htmlspecialchars($y2, ENT_QUOTES, 'UTF-8') . '"></line>';
+						continue;
+					}
+
+					$x = trim((string)$sourceShape->getAttribute('x'));
+					$y = trim((string)$sourceShape->getAttribute('y'));
+					$label = trim((string)$sourceShape->textContent);
+					if (!preg_match('/^-?[0-9.]+$/', $x) || !preg_match('/^-?[0-9.]+$/', $y) || !preg_match('/^-?[0-9.,\s]+$/', $label)) {
+						continue;
+					}
+					$shapes .= '<text class="' . htmlspecialchars($className, ENT_QUOTES, 'UTF-8') . '" x="' . htmlspecialchars($x, ENT_QUOTES, 'UTF-8') . '" y="' . htmlspecialchars($y, ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</text>';
 				}
 			}
 
-			return $shapes === ''
-				? ''
-				: '<span class="omo-indicator-embed__chart"><svg xmlns="http://www.w3.org/2000/svg" class="omo-stats-chart omo-stats-chart--compact" width="180" height="54" viewBox="0 0 180 54" aria-hidden="true">' . $shapes . '</svg></span>';
+			if ($shapes === '') {
+				return '';
+			}
+
+			$chartMin = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-chart-min'));
+			$chartMax = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-chart-max'));
+			if (!$hasScaleLine && $chartMin !== '' && $chartMax !== '') {
+				$shapes .= '<line class="omo-stats-chart__scale-line" x1="20" y1="2" x2="178" y2="2"></line><line class="omo-stats-chart__scale-line" x1="20" y1="52" x2="178" y2="52"></line>';
+			}
+			if (!$hasScaleLabel && $chartMin !== '' && $chartMax !== '') {
+				$shapes .= '<text class="omo-stats-chart__scale-label" x="0" y="6">' . htmlspecialchars($chartMax, ENT_QUOTES, 'UTF-8') . '</text><text class="omo-stats-chart__scale-label" x="0" y="52">' . htmlspecialchars($chartMin, ENT_QUOTES, 'UTF-8') . '</text>';
+			}
+			$chartHtml = '<span class="omo-indicator-embed__chart"><span class="omo-indicator-embed__chart-plot">';
+			$chartHtml .= '<span class="omo-indicator-embed__chart-svg"><svg xmlns="http://www.w3.org/2000/svg" class="omo-stats-chart omo-stats-chart--compact" width="180" height="54" viewBox="0 0 180 54" aria-hidden="true">' . $shapes . '</svg></span>';
+			return $chartHtml . '</span></span>';
 		}
 
 		protected static function buildIndicatorEmbedDisplayHtml(\DOMElement $element): string
@@ -2033,21 +2082,29 @@
 			$indicatorId = (int)$element->getAttribute('data-omo-indicator-id');
 			$indicatorKind = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-kind')) === 'group' ? 'group' : 'indicator';
 			$isOverdue = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-overdue')) === '1';
+			$overdueSeverity = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-overdue-severity')) === 'warning' ? 'warning' : 'error';
 			$title = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-title'));
 			$value = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-value'));
 			$date = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-date'));
 			$status = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-status'));
+			$description = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-description'));
 			$title = $title !== '' ? $title : ('Indicateur #' . $indicatorId);
 			$targetUrl = $indicatorKind === 'group' ? '#stats' : ('#stats-i' . $indicatorId);
 
-			$html = '<span class="omo-indicator-embed' . ($isOverdue ? ' omo-indicator-embed--overdue' : '') . '"'
+			$html = '<span class="omo-indicator-embed' . ($isOverdue ? ($overdueSeverity === 'warning' ? ' omo-indicator-embed--warning' : ' omo-indicator-embed--overdue') : ($status !== '' ? ' omo-indicator-embed--current' : '')) . '"'
 				. ' data-omo-embed-type="indicator"'
 				. ' data-omo-indicator-id="' . $indicatorId . '"'
 				. ' data-omo-indicator-kind="' . $indicatorKind . '">';
+			$statusDotClass = $isOverdue ? ($overdueSeverity === 'warning' ? ' omo-indicator-embed__status-dot--warning' : ' omo-indicator-embed__status-dot--overdue') : ($status !== '' ? ' omo-indicator-embed__status-dot--current' : ' omo-indicator-embed__status-dot--unknown');
+			$html .= '<span class="omo-indicator-embed__main">' . self::renderIndicatorEmbedChart($element) . '<span class="omo-indicator-embed__copy">';
 			$html .= '<strong><a class="omo-indicator-embed__title" href="' . htmlspecialchars($targetUrl, ENT_QUOTES, 'UTF-8') . '">'
+				. '<span class="omo-indicator-embed__status-dot' . $statusDotClass . '" aria-hidden="true"></span><span>'
 				. htmlspecialchars($title, ENT_QUOTES, 'UTF-8')
-				. '</a></strong>';
-			$html .= '<span class="omo-indicator-embed__body">' . self::renderIndicatorEmbedChart($element) . '<span class="omo-indicator-embed__values">';
+				. '</span></a></strong>';
+			if ($description !== '') {
+				$html .= '<span class="omo-indicator-embed__description">' . htmlspecialchars($description, ENT_QUOTES, 'UTF-8') . '</span>';
+			}
+			$html .= '</span><span class="omo-indicator-embed__values">';
 			if ($value !== '') {
 				$html .= '<b>' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '</b>';
 			}
@@ -2057,7 +2114,7 @@
 			if ($status !== '') {
 				$html .= '<em>' . htmlspecialchars($status, ENT_QUOTES, 'UTF-8') . '</em>';
 			}
-			return $html . '</span></span></span>';
+			return $html . '</span></span></span></span>';
 		}
 
 		protected function renderExternalLinkForViewer(): string
