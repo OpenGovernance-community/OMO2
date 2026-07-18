@@ -176,11 +176,16 @@ function omoDocumentsPdfConvertIndicatorSvgs(string $html): string
 
     foreach ($svgNodes as $svgNode) {
         $isOverdue = false;
+        $isWarning = false;
         $ancestor = $svgNode->parentNode;
         while ($ancestor instanceof DOMElement) {
             $ancestorClasses = preg_split('/\s+/', trim($ancestor->getAttribute('class'))) ?: [];
             if (in_array('omo-indicator-embed--overdue', $ancestorClasses, true)) {
                 $isOverdue = true;
+                break;
+            }
+            if (in_array('omo-indicator-embed--warning', $ancestorClasses, true)) {
+                $isWarning = true;
                 break;
             }
             $ancestor = $ancestor->parentNode;
@@ -193,7 +198,7 @@ function omoDocumentsPdfConvertIndicatorSvgs(string $html): string
 
             $classNames = preg_split('/\s+/', trim($polyline->getAttribute('class'))) ?: [];
             $sourceStyle = trim($polyline->getAttribute('style'));
-            $stroke = $isOverdue ? '#dc2626' : '#2563eb';
+            $stroke = $isOverdue ? '#dc2626' : ($isWarning ? '#ca8a04' : '#2563eb');
             if (in_array('omo-stats-chart__reference', $classNames, true)) {
                 $stroke = '#7b9aa8';
             } elseif (preg_match('/stroke\s*:\s*(#[0-9a-f]{6})/i', $sourceStyle, $strokeMatch)) {
@@ -216,8 +221,33 @@ function omoDocumentsPdfConvertIndicatorSvgs(string $html): string
 
             $circle->setAttribute(
                 'style',
-                'fill:' . ($isOverdue ? '#dc2626' : '#2563eb') . ';stroke:#ffffff;stroke-width:1.5;'
+                'fill:' . ($isOverdue ? '#dc2626' : ($isWarning ? '#ca8a04' : '#2563eb')) . ';stroke:#ffffff;stroke-width:1.5;'
             );
+        }
+
+        foreach ($svgNode->getElementsByTagName('line') as $line) {
+            if (!($line instanceof DOMElement)) {
+                continue;
+            }
+
+            $classNames = preg_split('/\s+/', trim($line->getAttribute('class'))) ?: [];
+            if (in_array('omo-stats-chart__scale-line', $classNames, true)) {
+                $line->setAttribute(
+                    'style',
+                    'fill:none;stroke:#7b9aa8;stroke-width:1.2;stroke-dasharray:4 3;'
+                );
+            }
+        }
+
+        foreach ($svgNode->getElementsByTagName('text') as $text) {
+            if (!($text instanceof DOMElement)) {
+                continue;
+            }
+
+            $classNames = preg_split('/\s+/', trim($text->getAttribute('class'))) ?: [];
+            if (in_array('omo-stats-chart__scale-label', $classNames, true)) {
+                $text->setAttribute('style', 'fill:#71838d;font-size:9px;');
+            }
         }
 
         $svgMarkup = $dom->saveXML($svgNode);
@@ -361,21 +391,33 @@ $documentHtml = '<!doctype html><html lang="fr"><head><meta charset="UTF-8"><sty
     . '.omo-document-pv__point-content p { margin:0 0 2mm; }'
     . '.omo-document-pv__point-content img { display:block; width:auto; height:auto; max-width:70mm; max-height:70mm; margin:2mm 0; }'
     . '.omo-simple-html-embed { margin:2mm 0; padding:2.5mm; border:1px solid #ccdce3; background:#f7fafb; }'
-    . '.omo-indicator-embed { display:block; margin:2mm 0; padding:3mm; border:1px solid #cbdde5; background:#f7fafb; page-break-inside:avoid; }'
+    . '.omo-indicator-embed { display:block; margin:2mm 0; padding:3mm; border:1px solid #cbdde5; border-radius:5px; background:#f7fafb; page-break-inside:avoid; }'
     . '.omo-indicator-embed--overdue { border-color:#e6b8b8; background:#fff7f7; }'
-    . '.omo-indicator-embed__title { display:block; margin:0 0 2mm; color:#173b4d; font-weight:bold; }'
-    . '.omo-indicator-embed__body { display:table; width:100%; table-layout:fixed; }'
-    . '.omo-indicator-embed__chart { display:table-cell; width:72%; vertical-align:middle; }'
+    . '.omo-indicator-embed--warning { border-color:#ead58a; background:#fffdf0; }'
+    . '.omo-indicator-embed__main { display:table; width:100%; table-layout:fixed; }'
+    . '.omo-indicator-embed__chart { display:table-cell; width:33%; max-width:56mm; height:31.5mm; padding:2mm; border:1px solid #cbdde5; border-radius:3px; background:#f7fafb; vertical-align:middle; }'
+    . '.omo-indicator-embed--overdue .omo-indicator-embed__chart { border-color:#e6b8b8; background:#fff7f7; }'
+    . '.omo-indicator-embed--warning .omo-indicator-embed__chart { border-color:#ead58a; background:#fffdf0; }'
+    . '.omo-indicator-embed__copy { display:table-cell; width:auto; padding-left:3mm; vertical-align:middle; }'
+    . '.omo-indicator-embed__title { display:block; overflow:hidden; margin:0; color:#173b4d; font-weight:bold; white-space:nowrap; }'
+    . '.omo-indicator-embed__description { display:block; max-height:12mm; overflow:hidden; margin-top:1mm; color:#71838d; font-size:inherit; line-height:1.3; }'
+    . '.omo-indicator-embed__status-dot { display:inline-block; width:2mm; height:2mm; margin-right:1mm; border-radius:50%; background:#94a3b8; }'
+    . '.omo-indicator-embed__status-dot--current { background:#16a34a; }'
+    . '.omo-indicator-embed__status-dot--warning { background:#eab308; }'
+    . '.omo-indicator-embed__status-dot--overdue { background:#dc2626; }'
     . '.omo-indicator-embed__chart svg, .omo-indicator-embed__chart-image { display:block; width:100%; height:18mm; }'
     . '.omo-indicator-embed__chart .omo-stats-chart__line { fill:none; stroke:#2563eb; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }'
     . '.omo-indicator-embed__chart .omo-stats-chart__reference { fill:none; stroke:#7b9aa8; stroke-width:1.7; stroke-dasharray:4 3; }'
     . '.omo-indicator-embed__chart .omo-stats-chart__point { fill:#2563eb; stroke:#ffffff; stroke-width:1.5; }'
     . '.omo-indicator-embed--overdue .omo-indicator-embed__chart .omo-stats-chart__line { stroke:#dc2626; }'
     . '.omo-indicator-embed--overdue .omo-indicator-embed__chart .omo-stats-chart__point { fill:#dc2626; }'
+    . '.omo-indicator-embed--warning .omo-indicator-embed__chart .omo-stats-chart__line { stroke:#ca8a04; }'
+    . '.omo-indicator-embed--warning .omo-indicator-embed__chart .omo-stats-chart__point { fill:#ca8a04; }'
     . '.omo-indicator-embed__values { display:table-cell; width:28%; padding-left:3mm; color:#526b78; font-size:8pt; text-align:right; vertical-align:middle; }'
     . '.omo-indicator-embed__values b { display:block; color:#173b4d; font-size:11pt; }'
     . '.omo-indicator-embed__values time { display:block; font-size:8pt; }'
     . '.omo-indicator-embed__values em { display:block; margin-top:1mm; color:#b91c1c; font-style:normal; font-weight:bold; }'
+    . '.omo-indicator-embed--warning .omo-indicator-embed__values em { color:#a16207; }'
     . 'a { color:#126b86; text-decoration:none; }'
     . '.footer { margin-top:9mm; padding-top:2mm; border-top:1px solid #d9e3e8; color:#78909b; font-size:8pt; text-align:right; }'
     . '</style></head><body>'

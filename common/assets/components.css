@@ -1027,6 +1027,89 @@ textarea.generic-form-control {
     padding: 8px 12px 4px;
 }
 
+.generic-menu-toggle {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 8px;
+    border: 1px solid var(--generic-menu-border, var(--color-border, #d1d5db));
+    border-radius: var(--radius-md);
+    background: var(--generic-menu-surface, var(--color-surface, #ffffff));
+    color: var(--generic-menu-text, var(--color-text, #1f2937));
+    cursor: pointer;
+    font: inherit;
+    line-height: 1;
+}
+
+.generic-menu-toggle:hover,
+.generic-menu-toggle:focus-visible,
+.generic-menu.is-open > .generic-menu-toggle {
+    border-color: color-mix(in srgb, var(--generic-menu-accent, var(--color-primary, #2563eb)) 36%, var(--generic-menu-border, var(--color-border, #d1d5db)));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--generic-menu-accent, var(--color-primary, #2563eb)) 12%, transparent);
+    outline: none;
+}
+
+.generic-menu-toggle:hover,
+.generic-menu-toggle:focus-visible {
+    color: var(--generic-menu-accent, var(--color-primary, #2563eb));
+}
+
+.generic-menu-panel {
+    min-width: 140px;
+    max-width: calc(100vw - 24px);
+    padding: 6px;
+    border: 1px solid var(--generic-menu-border, var(--color-border, #d1d5db));
+    border-radius: var(--radius-md);
+    background: var(--generic-menu-surface, var(--color-surface, #ffffff));
+    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
+    box-sizing: border-box;
+}
+
+.generic-menu-panel--wide {
+    min-width: 190px;
+}
+
+.generic-menu-panel--floating {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 5000;
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+}
+
+.generic-menu-panel[hidden] {
+    display: none !important;
+}
+
+.generic-menu-item {
+    display: block;
+    width: 100%;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--generic-menu-text, var(--color-text, #1f2937));
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.9rem;
+    text-align: left;
+}
+
+.generic-menu-item:hover,
+.generic-menu-item:focus-visible {
+    background: var(--generic-menu-hover, color-mix(in srgb, var(--generic-menu-accent, var(--color-primary, #2563eb)) 10%, var(--generic-menu-surface, var(--color-surface, #ffffff))));
+    outline: none;
+}
+
+.generic-menu-item--danger {
+    color: var(--generic-menu-danger, var(--color-danger, #dc2626));
+}
+
+.generic-menu-item--danger:hover,
+.generic-menu-item--danger:focus-visible {
+    background: color-mix(in srgb, var(--generic-menu-danger, var(--color-danger, #dc2626)) 10%, var(--generic-menu-surface, var(--color-surface, #ffffff)));
+}
+
 .generic-file-list--structured .generic-file-list__menu {
     position: absolute;
     top: 50%;

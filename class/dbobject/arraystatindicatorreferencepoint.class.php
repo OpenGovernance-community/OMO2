@@ -26,6 +26,25 @@ class ArrayStatIndicatorReferencePoint extends ArrayDbObject
             ],
         ]);
     }
+
+    public function loadForGroup($groupId)
+    {
+        $this->exchangeArray([]);
+        $groupId = (int)$groupId;
+        if ($groupId <= 0) {
+            return;
+        }
+
+        $this->load([
+            'where' => [
+                ['field' => 'IDstatindicatorgroup', 'value' => $groupId],
+            ],
+            'orderBy' => [
+                ['field' => 'position_percent', 'dir' => 'ASC'],
+                ['field' => 'id', 'dir' => 'ASC'],
+            ],
+        ]);
+    }
 }
 
 ?>

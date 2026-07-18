@@ -1,7 +1,7 @@
 (function (window, document) {
     'use strict';
 
-    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260716-pv-indicator-readonly';
+    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260718-pv-indicator-overdue-days';
 
     if (
         window.omoSimpleHtmlField
@@ -72,22 +72,45 @@
             + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-render .omo-document-embed__title,.omo-pv-editor .omo-simple-html-render .omo-decision-embed__title,.omo-pv-editor .omo-simple-html-render .omo-event-embed__title{display:block;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:1;line-clamp:1;text-overflow:ellipsis;}'
             + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>em,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed>em,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed>em,.omo-pv-editor .omo-simple-html-render .omo-document-embed__description,.omo-pv-editor .omo-simple-html-render .omo-decision-embed__summary,.omo-pv-editor .omo-simple-html-render .omo-event-embed__summary{display:-webkit-box;overflow:hidden;margin-top:3px;color:var(--color-text-light,#6b7280);font-size:12px;font-style:normal;line-height:1.3;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;}'
             + '.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-document-embed),.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-decision-embed),.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-event-embed){margin:0 0 10px;}'
-            + '.omo-simple-html-field .note-editable .omo-indicator-embed,.omo-simple-html-render .omo-indicator-embed{display:block;margin:0 0 1em;padding:12px 14px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 84%,#2563eb 16%);border-radius:var(--radius-md);background:color-mix(in srgb,var(--color-surface,#fff) 90%,#eff6ff 10%);box-shadow:0 10px 24px -20px rgba(37,99,235,.45);cursor:pointer;white-space:normal;line-height:1.35;}'
+            + '.omo-simple-html-field .note-editable .omo-indicator-embed,.omo-simple-html-render .omo-indicator-embed{display:block;margin:0 0 1em;padding:12px 14px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,#2563eb 12%);border-radius:var(--radius-md);background:color-mix(in srgb,var(--color-surface,#fff) 90%,#eff6ff 10%);box-shadow:0 10px 24px -20px rgba(37,99,235,.45);cursor:pointer;white-space:normal;line-height:1.3;}'
             + '.omo-indicator-embed--overdue{border-color:color-mix(in srgb,#dc2626 36%,var(--color-border,#d1d5db));background:color-mix(in srgb,var(--color-surface,#fff) 92%,#fef2f2 8%);}'
-            + '.omo-indicator-embed__title{display:block;color:var(--color-text,#1f2937);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}'
-            + '.omo-indicator-embed__body{display:grid;grid-template-columns:minmax(90px,1fr) auto;gap:12px;align-items:center;margin-top:7px;}'
-            + '.omo-indicator-embed__chart{display:block;min-width:0;color:#2563eb;}'
+            + '.omo-indicator-embed--overdue .omo-indicator-embed__chart{border-color:color-mix(in srgb,#dc2626 36%,var(--color-border,#d1d5db));background:linear-gradient(135deg,color-mix(in srgb,#dc2626 10%,var(--color-surface,#fff)),color-mix(in srgb,#dc2626 4%,var(--color-surface-alt,#f8fafc)));}'
+            + '.omo-indicator-embed--warning{border-color:color-mix(in srgb,#eab308 42%,var(--color-border,#d1d5db));background:color-mix(in srgb,var(--color-surface,#fff) 94%,#fef9c3 6%);}'
+            + '.omo-indicator-embed--warning .omo-indicator-embed__chart{border-color:color-mix(in srgb,#eab308 42%,var(--color-border,#d1d5db));background:linear-gradient(135deg,color-mix(in srgb,#eab308 10%,var(--color-surface,#fff)),color-mix(in srgb,#eab308 4%,var(--color-surface-alt,#f8fafc)));}'
+            + '.omo-indicator-embed--current .omo-indicator-embed__values em{color:#15803d;}'
+            + '.omo-indicator-embed--warning .omo-indicator-embed__values em{color:#a16207;}'
+            + '.omo-indicator-embed__main{display:grid;grid-template-columns:minmax(0,210px) minmax(0,1fr) 128px;gap:12px;align-items:stretch;}'
+            + '.omo-indicator-embed__chart{grid-column:1;grid-row:1;position:relative;display:block;width:100%;max-width:210px;min-width:0;aspect-ratio:16 / 9;padding:6px 7px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 68%,#2563eb 32%);border-radius:var(--radius-md);background:linear-gradient(135deg,color-mix(in srgb,var(--color-primary,#2563eb) 9%,var(--color-surface,#fff)),color-mix(in srgb,var(--color-primary,#2563eb) 3%,var(--color-surface-alt,#f8fafc)));box-shadow:0 12px 26px -21px color-mix(in srgb,var(--color-primary,#2563eb) 68%,transparent);box-sizing:border-box;color:#2563eb;}'
+            + '.omo-indicator-embed__chart-plot{position:absolute;left:7px;right:7px;top:50%;aspect-ratio:180 / 54;transform:translateY(-50%);}'
+            + '.omo-indicator-embed__chart-svg{position:absolute;inset:0;display:block;width:100%;height:100%;}'
+            + '.omo-indicator-embed__chart-svg svg{display:block;width:100%;height:100%;overflow:visible;}'
+            + '.omo-indicator-embed__copy{grid-column:2;grid-row:1;display:flex;flex-direction:column;justify-content:center;min-width:0;gap:5px;}'
+            + '.omo-indicator-embed__title{display:flex;align-items:center;gap:6px;min-width:0;color:var(--color-text,#1f2937);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}'
+            + '.omo-indicator-embed__title>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}'
+            + '.omo-indicator-embed__description{display:-webkit-box;overflow:hidden;margin-top:1px;color:var(--color-text-light,#64748b);font-size:inherit;font-weight:400;line-height:1.3;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;}'
+            + '.omo-indicator-embed__status-dot{width:8px;height:8px;flex:0 0 auto;border-radius:999px;background:#94a3b8;box-shadow:0 0 0 3px color-mix(in srgb,#94a3b8 14%,transparent);}'
+            + '.omo-indicator-embed__status-dot--current{background:#16a34a;box-shadow:0 0 0 3px color-mix(in srgb,#16a34a 14%,transparent);}'
+            + '.omo-indicator-embed__status-dot--warning{background:#eab308;box-shadow:0 0 0 3px color-mix(in srgb,#eab308 18%,transparent);}'
+            + '.omo-indicator-embed__status-dot--overdue{background:#dc2626;box-shadow:0 0 0 3px color-mix(in srgb,#dc2626 14%,transparent);}'
+            + '.omo-indicator-embed--warning .omo-indicator-embed__chart{color:#ca8a04;}'
             + '.omo-indicator-embed--overdue .omo-indicator-embed__chart{color:#dc2626;}'
-            + '.omo-indicator-embed__chart svg{display:block;width:100%;height:46px;overflow:visible;}'
-            + '.omo-indicator-embed__chart .omo-stats-chart__line{fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;}'
-            + '.omo-indicator-embed__chart .omo-stats-chart__reference{fill:none;stroke:color-mix(in srgb,currentColor 42%,transparent);stroke-width:1.7;stroke-dasharray:4 3;}'
-            + '.omo-indicator-embed__chart .omo-stats-chart__point{fill:currentColor;stroke:var(--color-surface,#fff);stroke-width:1.5;}'
-            + '.omo-indicator-embed__values{display:grid;justify-items:end;gap:1px;min-width:76px;color:var(--color-text-light,#6b7280);font-size:12px;text-align:right;}'
+            + '.omo-indicator-embed--warning .omo-indicator-embed__chart .omo-stats-chart--overdue{color:#ca8a04;}'
+            + '.omo-indicator-embed__chart-svg .omo-stats-chart__line{fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;}'
+            + '.omo-indicator-embed__chart-svg .omo-stats-chart__reference{fill:none;stroke:color-mix(in srgb,currentColor 42%,transparent);stroke-width:1.7;stroke-dasharray:4 3;}'
+            + '.omo-indicator-embed__chart-svg .omo-stats-chart__point{fill:currentColor;stroke:var(--color-surface,#fff);stroke-width:1.5;}'
+            + '.omo-indicator-embed__chart-svg .omo-stats-chart__scale-line{fill:none;stroke:color-mix(in srgb,currentColor 48%,transparent);stroke-width:1.2;stroke-dasharray:4 3;}'
+            + '.omo-indicator-embed__chart-svg .omo-stats-chart__scale-label{fill:var(--color-text-light,#64748b);font-size:9px;}'
+            + '.omo-indicator-embed__values{grid-column:3;grid-row:1;display:grid;justify-items:end;align-content:center;gap:1px;width:128px;min-width:128px;color:var(--color-text-light,#6b7280);font-size:12px;text-align:right;}'
             + '.omo-indicator-embed__values b{color:var(--color-text,#1f2937);font-size:1.05rem;}'
             + '.omo-indicator-embed__values time{font-size:11px;}'
             + '.omo-indicator-embed__values em{font-style:normal;color:#b91c1c;font-weight:700;}'
             + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-indicator-embed,.omo-pv-editor .omo-simple-html-render .omo-indicator-embed{margin-bottom:10px;padding:9px 12px;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-indicator-embed__value-entry{display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-top:3px;padding-top:3px;border-top:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 72%,transparent);}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-indicator-embed__value-input{min-width:0;width:74px;padding:3px 6px;border:1px solid var(--color-border,#d1d5db);border-radius:var(--radius-md);background:var(--color-surface,#fff);color:var(--color-text,#1f2937);font-size:11px;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-indicator-embed__value-button{width:22px;height:22px;padding:0;border:0;border-radius:999px;background:var(--color-primary,#2563eb);color:#fff;font-size:16px;font-weight:800;line-height:1;cursor:pointer;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-indicator-embed__value-button:disabled{opacity:.55;cursor:wait;}'
             + '.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-indicator-embed){margin:0 0 10px;}'
+            + '@media (max-width:760px){.omo-indicator-embed__main{grid-template-columns:minmax(0,1fr) 120px;}.omo-indicator-embed__chart{grid-column:1 / -1;grid-row:1;}.omo-indicator-embed__copy{grid-column:1;grid-row:2;}.omo-indicator-embed__values{grid-column:2;grid-row:2;width:120px;min-width:120px;}}'
             + '.omo-pv-editor__indicator-embed-button{min-width:34px!important;font-size:0!important;background-image:url("/omo/images/tools/stats.png")!important;background-position:center!important;background-repeat:no-repeat!important;background-size:20px 20px!important;}'
             + '.omo-simple-html-field__meta{font-size:12px;line-height:1.45;color:var(--color-text-light,#6b7280);}'
             + '.omo-simple-html-render{line-height:1.55;word-break:break-word;white-space:normal;}'
@@ -326,14 +349,171 @@
             });
         });
 
+        ['line', 'text'].forEach(function (tagName) {
+            Array.from(sourceChart.querySelectorAll(tagName)).forEach(function (sourceShape) {
+                const className = String(sourceShape.getAttribute('class') || '');
+                if (tagName === 'line' && className !== 'omo-stats-chart__scale-line') {
+                    return;
+                }
+                if (tagName === 'text' && className !== 'omo-stats-chart__scale-label') {
+                    return;
+                }
+
+                const shape = ownerDocument.createElementNS('http://www.w3.org/2000/svg', tagName);
+                shape.setAttribute('class', className);
+                if (tagName === 'line') {
+                    const x1 = String(sourceShape.getAttribute('x1') || '').trim();
+                    const y1 = String(sourceShape.getAttribute('y1') || '').trim();
+                    const x2 = String(sourceShape.getAttribute('x2') || '').trim();
+                    const y2 = String(sourceShape.getAttribute('y2') || '').trim();
+                    if (![x1, y1, x2, y2].every(isSafeSvgNumber)) {
+                        return;
+                    }
+                    shape.setAttribute('x1', x1);
+                    shape.setAttribute('y1', y1);
+                    shape.setAttribute('x2', x2);
+                    shape.setAttribute('y2', y2);
+                } else {
+                    const x = String(sourceShape.getAttribute('x') || '').trim();
+                    const y = String(sourceShape.getAttribute('y') || '').trim();
+                    const label = String(sourceShape.textContent || '').trim();
+                    if (!isSafeSvgNumber(x) || !isSafeSvgNumber(y) || !/^-?[\d.,\s]+$/.test(label)) {
+                        return;
+                    }
+                    shape.setAttribute('x', x);
+                    shape.setAttribute('y', y);
+                    shape.textContent = label;
+                }
+                chart.appendChild(shape);
+            });
+        });
+
+        const chartMinLabel = getElementAttributeValue(sourceNode, 'data-omo-indicator-chart-min').trim();
+        const chartMaxLabel = getElementAttributeValue(sourceNode, 'data-omo-indicator-chart-max').trim();
+        if (chartMinLabel && chartMaxLabel && !chart.querySelector('.omo-stats-chart__scale-line')) {
+            const scaleLineTop = ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'line');
+            scaleLineTop.setAttribute('class', 'omo-stats-chart__scale-line');
+            scaleLineTop.setAttribute('x1', '20');
+            scaleLineTop.setAttribute('y1', '2');
+            scaleLineTop.setAttribute('x2', '178');
+            scaleLineTop.setAttribute('y2', '2');
+            chart.appendChild(scaleLineTop);
+            const scaleLineBottom = ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'line');
+            scaleLineBottom.setAttribute('class', 'omo-stats-chart__scale-line');
+            scaleLineBottom.setAttribute('x1', '20');
+            scaleLineBottom.setAttribute('y1', '52');
+            scaleLineBottom.setAttribute('x2', '178');
+            scaleLineBottom.setAttribute('y2', '52');
+            chart.appendChild(scaleLineBottom);
+        }
+        if (chartMinLabel && chartMaxLabel && !chart.querySelector('.omo-stats-chart__scale-label')) {
+            const scaleLabelTop = ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'text');
+            scaleLabelTop.setAttribute('class', 'omo-stats-chart__scale-label');
+            scaleLabelTop.setAttribute('x', '0');
+            scaleLabelTop.setAttribute('y', '6');
+            scaleLabelTop.textContent = chartMaxLabel;
+            chart.appendChild(scaleLabelTop);
+            const scaleLabelBottom = ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'text');
+            scaleLabelBottom.setAttribute('class', 'omo-stats-chart__scale-label');
+            scaleLabelBottom.setAttribute('x', '0');
+            scaleLabelBottom.setAttribute('y', '52');
+            scaleLabelBottom.textContent = chartMinLabel;
+            chart.appendChild(scaleLabelBottom);
+        }
+
         if (chart.childNodes.length === 0) {
             return;
         }
 
         const chartWrapper = ownerDocument.createElement('span');
-        chartWrapper.setAttribute('class', 'omo-indicator-embed__chart');
+        chartWrapper.setAttribute('class', 'omo-indicator-embed__chart-svg');
         chartWrapper.appendChild(chart);
         embedNode.appendChild(chartWrapper);
+    }
+
+    function refreshIndicatorValueControls(editable, ui) {
+        if (!editable) {
+            return;
+        }
+
+        const config = ui && typeof ui === 'object' ? ui : null;
+        const allowedIds = config && Array.isArray(config.allowedIndicatorIds)
+            ? config.allowedIndicatorIds.map(function (value) { return String(value); })
+            : [];
+        editable.querySelectorAll('.omo-indicator-embed[data-omo-embed-type="indicator"]').forEach(function (embedNode) {
+            const existingEntry = embedNode.querySelector('.omo-indicator-embed__value-entry');
+            if (existingEntry) {
+                existingEntry.remove();
+            }
+
+            const indicatorKind = getElementAttributeValue(embedNode, 'data-omo-indicator-kind').trim();
+            const indicatorId = String(getIndicatorEmbedElementId(embedNode));
+            if (!config || !config.enabled || indicatorKind === 'group' || allowedIds.indexOf(indicatorId) < 0) {
+                return;
+            }
+
+            const entryNode = editable.ownerDocument.createElement('span');
+            entryNode.setAttribute('class', 'omo-indicator-embed__value-entry');
+            entryNode.setAttribute('contenteditable', 'false');
+            const inputNode = editable.ownerDocument.createElement('input');
+            inputNode.setAttribute('class', 'omo-indicator-embed__value-input');
+            inputNode.setAttribute('type', 'text');
+            inputNode.setAttribute('inputmode', 'decimal');
+            inputNode.setAttribute('data-omo-indicator-value-input', '1');
+            inputNode.setAttribute('placeholder', String(config.placeholder || 'Nouvelle valeur'));
+            inputNode.setAttribute('aria-label', String(config.inputLabel || config.placeholder || 'Nouvelle valeur'));
+            inputNode.addEventListener('input', function (event) {
+                event.stopPropagation();
+            });
+            const buttonNode = editable.ownerDocument.createElement('button');
+            buttonNode.setAttribute('class', 'omo-indicator-embed__value-button');
+            buttonNode.setAttribute('type', 'button');
+            buttonNode.setAttribute('data-omo-indicator-add-value', '1');
+            buttonNode.setAttribute('aria-label', String(config.addLabel || 'Ajouter maintenant'));
+            buttonNode.setAttribute('title', String(config.addLabel || 'Ajouter maintenant'));
+            buttonNode.textContent = '+';
+            inputNode.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    buttonNode.click();
+                }
+            });
+            entryNode.appendChild(inputNode);
+            entryNode.appendChild(buttonNode);
+            const valuesNode = embedNode.querySelector('.omo-indicator-embed__values')
+                || embedNode.querySelector('.omo-indicator-embed__copy')
+                || embedNode;
+            valuesNode.appendChild(entryNode);
+        });
+    }
+
+    function emitIndicatorValueAdd(targetNode, event) {
+        if (!targetNode || !targetNode.closest) {
+            return;
+        }
+
+        const buttonNode = targetNode.closest('[data-omo-indicator-add-value="1"]');
+        if (!buttonNode) {
+            return;
+        }
+
+        const embedNode = buttonNode.closest('.omo-indicator-embed[data-omo-embed-type="indicator"]');
+        const inputNode = embedNode ? embedNode.querySelector('[data-omo-indicator-value-input="1"]') : null;
+        if (!embedNode || !inputNode) {
+            return;
+        }
+
+        if (event && typeof event.preventDefault === 'function') {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        return {
+            indicatorId: getIndicatorEmbedElementId(embedNode),
+            node: embedNode,
+            input: inputNode,
+            button: buttonNode,
+            api: null,
+        };
     }
 
     function buildSanitizedNode(sourceNode, ownerDocument) {
@@ -439,13 +619,15 @@
         if (isAllowedIndicatorEmbedElement(sourceNode)) {
             const embedNode = ownerDocument.createElement('span');
             const isOverdue = getElementAttributeValue(sourceNode, 'data-omo-indicator-overdue').trim() === '1';
-            embedNode.setAttribute('class', 'omo-indicator-embed' + (isOverdue ? ' omo-indicator-embed--overdue' : ''));
+            const overdueSeverity = getElementAttributeValue(sourceNode, 'data-omo-indicator-overdue-severity').trim() === 'warning' ? 'warning' : 'error';
+            const hasStatus = getElementAttributeValue(sourceNode, 'data-omo-indicator-status').trim() !== '';
+            embedNode.setAttribute('class', 'omo-indicator-embed' + (isOverdue ? (overdueSeverity === 'warning' ? ' omo-indicator-embed--warning' : ' omo-indicator-embed--overdue') : (hasStatus ? ' omo-indicator-embed--current' : '')));
             embedNode.setAttribute('contenteditable', 'false');
             embedNode.setAttribute('data-omo-embed-type', 'indicator');
             embedNode.setAttribute('data-omo-indicator-id', String(getIndicatorEmbedElementId(sourceNode)));
             const indicatorKind = getElementAttributeValue(sourceNode, 'data-omo-indicator-kind').trim() === 'group' ? 'group' : 'indicator';
             embedNode.setAttribute('data-omo-indicator-kind', indicatorKind);
-            ['title', 'value', 'date', 'status', 'context'].forEach(function (attributeName) {
+            ['title', 'description', 'value', 'date', 'status', 'context', 'chart-min', 'chart-max', 'overdue-severity'].forEach(function (attributeName) {
                 const value = getElementAttributeValue(sourceNode, 'data-omo-indicator-' + attributeName).trim();
                 if (value) {
                     embedNode.setAttribute('data-omo-indicator-' + attributeName, value);
@@ -456,17 +638,40 @@
             }
 
             const title = getElementAttributeValue(sourceNode, 'data-omo-indicator-title').trim() || ('Indicateur #' + String(getIndicatorEmbedElementId(sourceNode)));
+            const description = getElementAttributeValue(sourceNode, 'data-omo-indicator-description').trim();
+            const chartMinLabel = getElementAttributeValue(sourceNode, 'data-omo-indicator-chart-min').trim();
+            const chartMaxLabel = getElementAttributeValue(sourceNode, 'data-omo-indicator-chart-max').trim();
+            const chartNode = ownerDocument.createElement('span');
+            chartNode.setAttribute('class', 'omo-indicator-embed__chart');
+            const chartPlotNode = ownerDocument.createElement('span');
+            chartPlotNode.setAttribute('class', 'omo-indicator-embed__chart-plot');
+            appendSanitizedIndicatorChart(chartPlotNode, sourceNode, ownerDocument);
+            chartNode.appendChild(chartPlotNode);
             const titleNode = ownerDocument.createElement('strong');
             const linkNode = ownerDocument.createElement('a');
             linkNode.setAttribute('class', 'omo-indicator-embed__title');
             linkNode.setAttribute('href', indicatorKind === 'group' ? '#stats' : ('#stats-i' + String(getIndicatorEmbedElementId(sourceNode))));
-            linkNode.textContent = title;
+            const statusDotNode = ownerDocument.createElement('span');
+            statusDotNode.setAttribute('class', 'omo-indicator-embed__status-dot'
+                + (isOverdue ? (overdueSeverity === 'warning' ? ' omo-indicator-embed__status-dot--warning' : ' omo-indicator-embed__status-dot--overdue') : (hasStatus ? ' omo-indicator-embed__status-dot--current' : ' omo-indicator-embed__status-dot--unknown')));
+            statusDotNode.setAttribute('aria-hidden', 'true');
+            const titleTextNode = ownerDocument.createElement('span');
+            titleTextNode.textContent = title;
+            linkNode.appendChild(statusDotNode);
+            linkNode.appendChild(titleTextNode);
             titleNode.appendChild(linkNode);
-            embedNode.appendChild(titleNode);
-
-            const bodyNode = ownerDocument.createElement('span');
-            bodyNode.setAttribute('class', 'omo-indicator-embed__body');
-            appendSanitizedIndicatorChart(bodyNode, sourceNode, ownerDocument);
+            const mainNode = ownerDocument.createElement('span');
+            mainNode.setAttribute('class', 'omo-indicator-embed__main');
+            mainNode.appendChild(chartNode);
+            const copyNode = ownerDocument.createElement('span');
+            copyNode.setAttribute('class', 'omo-indicator-embed__copy');
+            copyNode.appendChild(titleNode);
+            if (description) {
+                const descriptionNode = ownerDocument.createElement('span');
+                descriptionNode.setAttribute('class', 'omo-indicator-embed__description');
+                descriptionNode.textContent = description;
+                copyNode.appendChild(descriptionNode);
+            }
             const valuesNode = ownerDocument.createElement('span');
             valuesNode.setAttribute('class', 'omo-indicator-embed__values');
             const valueLabel = getElementAttributeValue(sourceNode, 'data-omo-indicator-value').trim();
@@ -475,8 +680,9 @@
             if (valueLabel) { const valueNode = ownerDocument.createElement('b'); valueNode.textContent = valueLabel; valuesNode.appendChild(valueNode); }
             if (dateLabel) { const dateNode = ownerDocument.createElement('time'); dateNode.textContent = dateLabel; valuesNode.appendChild(dateNode); }
             if (statusLabel) { const statusNode = ownerDocument.createElement('em'); statusNode.textContent = statusLabel; valuesNode.appendChild(statusNode); }
-            bodyNode.appendChild(valuesNode);
-            embedNode.appendChild(bodyNode);
+            mainNode.appendChild(copyNode);
+            mainNode.appendChild(valuesNode);
+            embedNode.appendChild(mainNode);
             return embedNode;
         }
 
@@ -639,7 +845,10 @@
             height: 180,
             minHeight: null,
             customButtons: [],
+            indicatorValueUi: null,
             onChange: null,
+            onIndicatorValueAdd: null,
+            onReady: null,
             onDoubleClick: null
         }, options || {});
 
@@ -810,6 +1019,7 @@
 
             if (initialized && $editor) {
                 $editor.summernote('code', state.value);
+                refreshIndicatorValueControls(getEditableElement(), state.indicatorValueUi);
                 saveRange();
                 scheduleResizeEditableToContent();
             }
@@ -946,9 +1156,11 @@
 
                     saveRange();
                     setRawValue($editor.summernote('code'));
+                    refreshIndicatorValueControls(getEditableElement(), state.indicatorValueUi);
                 } catch (error) {
                     setRawValue((state.value || '') + safeHtml);
                     $editor.summernote('code', state.value);
+                    refreshIndicatorValueControls(getEditableElement(), state.indicatorValueUi);
                     saveRange();
                 }
 
@@ -963,9 +1175,10 @@
             return insertHtmlAtCursor(buildTextInsertionHtml(text));
         }
 
-        function replaceNodeWithHtml(targetNode, nextHtml) {
+        function replaceNodeWithHtml(targetNode, nextHtml, shouldEmitChange) {
             const safeHtml = sanitizeHtml(nextHtml);
             const editable = getEditableElement();
+            const emitChangeAfterReplace = shouldEmitChange !== false;
 
             if (!safeHtml || !editable || !targetNode || !editable.contains(targetNode)) {
                 return insertHtmlAtCursor(safeHtml);
@@ -1004,8 +1217,11 @@
             } else {
                 setRawValue(editable.innerHTML);
             }
+            refreshIndicatorValueControls(editable, state.indicatorValueUi);
 
-            emitChange();
+            if (emitChangeAfterReplace) {
+                emitChange();
+            }
             return safeHtml;
         }
 
@@ -1318,6 +1534,7 @@
                 });
 
                 $editor.summernote('code', state.value);
+                refreshIndicatorValueControls(getEditableElement(), state.indicatorValueUi);
                 if (state.disabled) {
                     $editor.summernote('disable');
                 }
@@ -1329,10 +1546,31 @@
                 const editable = getEditableElement();
                 if (editable) {
                     editable.addEventListener('input', scheduleResizeEditableToContent);
+                    editable.addEventListener('click', function (event) {
+                        const context = emitIndicatorValueAdd(event.target || null, event);
+                        if (context && typeof state.onIndicatorValueAdd === 'function') {
+                            context.api = container.__omoSimpleHtmlField || null;
+                            try {
+                                state.onIndicatorValueAdd(context);
+                            } catch (error) {
+                            }
+                        }
+                    });
                     editable.addEventListener('dblclick', function (event) {
+                        if (event.target && event.target.closest && event.target.closest('.omo-indicator-embed__value-entry')) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            return;
+                        }
                         saveRange();
                         emitDoubleClick(event.target || null, event);
                     });
+                }
+                if (typeof state.onReady === 'function') {
+                    try {
+                        state.onReady(container.__omoSimpleHtmlField || null);
+                    } catch (error) {
+                    }
                 }
             })
             .catch(function (error) {

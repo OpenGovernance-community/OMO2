@@ -226,8 +226,10 @@
                 sourceIndex: Number(seriesItem.sourceIndex || 0)
             };
         }).filter(function (seriesItem) { return seriesItem.points.length > 0; });
+        var reference = clipPoints(data.reference || [], startTimestamp, endTimestamp);
         var allPoints = [];
         series.forEach(function (seriesItem) { allPoints = allPoints.concat(seriesItem.points); });
+        allPoints = allPoints.concat(reference);
         if (!allPoints.length) {
             return '<div class="omo-stats-chart-empty">Pas encore de donnees a representer.</div>';
         }
@@ -256,6 +258,10 @@
                 });
             }
         });
+        var referenceCoordinates = reference.map(mapPoint);
+        if (referenceCoordinates.length > 1) {
+            svg += '<polyline class="omo-stats-chart__reference" points="' + coordinateString(referenceCoordinates) + '"/>';
+        }
         return svg + '</svg>';
     }
 
@@ -373,6 +379,15 @@
         range.__omoStatsChartReady = true;
         var minDay = Number(range.getAttribute('data-start-day') || startInput.min);
         var maxDay = Number(range.getAttribute('data-end-day') || endInput.max);
+        var initialStartDay = Number(range.getAttribute('data-initial-start-day'));
+        var initialEndDay = Number(range.getAttribute('data-initial-end-day'));
+
+        if (Number.isFinite(initialStartDay) && Number.isFinite(initialEndDay)) {
+            initialStartDay = Math.max(minDay, Math.min(maxDay, initialStartDay));
+            initialEndDay = Math.max(initialStartDay, Math.min(maxDay, initialEndDay));
+            startInput.value = String(initialStartDay);
+            endInput.value = String(initialEndDay);
+        }
 
         function update(activeInput) {
             if (Number(startInput.value) > Number(endInput.value)) {

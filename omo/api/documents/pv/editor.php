@@ -84,13 +84,7 @@ $hasDecisionApplication = $hasOrganization && $organization->isApplicationEnable
 $hasCalendarApplication = $hasOrganization && $organization->isApplicationEnabled('calendar', $currentUserId);
 $hasStatsApplication = $hasOrganization && $organization->isApplicationEnabled('stats', $currentUserId);
 $openAiAvailable = commonOpenAiGetApiKey() !== '';
-$patreonGateEnabled = function_exists('patreonSupportUiIsEnabled') && patreonSupportUiIsEnabled();
-$patreonConnected = false;
-if ($patreonGateEnabled && $currentUserId > 0) {
-    $patreonConnection = \dbObject\UserPatreon::findByUserId($currentUserId);
-    $patreonConnected = $patreonConnection !== false && $patreonConnection->isConnected();
-}
-$canUseAiTools = $openAiAvailable && (!$patreonGateEnabled || $patreonConnected);
+$canUseAiTools = $openAiAvailable && patreonUserCanUseAi($currentUserId);
 $hasUpcomingAssociatedEvent = $hasAssociatedEvent && $event->isUpcoming();
 $canManagePvStage = $document->canManagePvStage($organizationId, $currentUserId);
 $pvEditorUserId = $document->getPvEditorUserId();
@@ -287,28 +281,11 @@ if ($hasStatsApplication) {
             continue;
         }
 
-        $indicatorValues = omoStatsCollectionItems($embeddableIndicator->getMeasurements(), \dbObject\StatIndicatorValue::class);
-        $indicatorReferencePoints = omoStatsCollectionItems($embeddableIndicator->getReferencePoints(), \dbObject\StatIndicatorReferencePoint::class);
-        $latestValue = count($indicatorValues) > 0 ? $indicatorValues[count($indicatorValues) - 1] : null;
-        $isOverdue = omoStatsIsIndicatorOverdue($embeddableIndicator);
-        $embeddableIndicatorsPayload[] = [
-            'id' => (int)$embeddableIndicator->getId(),
-            'kind' => 'indicator',
-            'contextHolonId' => (int)$embeddableIndicator->get('IDholon'),
-            'title' => trim((string)$embeddableIndicator->get('name')),
-            'contextLabel' => omoStatsContextLabel($embeddableIndicator),
-            'valueLabel' => $latestValue instanceof \dbObject\StatIndicatorValue
-                ? omoStatsFormatNumber($latestValue->get('value'))
-                : omoDocumentsPvEditorT('documents.pv_editor.indicator.no_value'),
-            'dateLabel' => $latestValue instanceof \dbObject\StatIndicatorValue
-                ? omoStatsFormatDateTime($latestValue->get('measured_at'), false)
-                : '',
-            'statusLabel' => $isOverdue
-                ? omoDocumentsPvEditorT('documents.pv_editor.indicator.overdue')
-                : '',
-            'isOverdue' => $isOverdue,
-            'chartHtml' => omoStatsRenderChart($embeddableIndicator, $indicatorValues, $indicatorReferencePoints, 'compact', $isOverdue),
-        ];
+        $embeddableIndicatorsPayload[] = omoDocumentsPvEditorBuildIndicatorEmbedPayload(
+            $embeddableIndicator,
+            $isPvEditor,
+            'omoDocumentsPvEditorT'
+        );
     }
 
     $embeddableIndicatorGroups = new \dbObject\ArrayStatIndicatorGroup();
@@ -334,8 +311,9 @@ if ($hasStatsApplication) {
             'dateLabel' => '',
             'statusLabel' => $groupIsOverdue
                 ? omoDocumentsPvEditorT('documents.pv_editor.indicator.overdue')
-                : '',
+                : omoDocumentsPvEditorT('documents.pv_editor.indicator.current'),
             'isOverdue' => $groupIsOverdue,
+            'overdueSeverity' => $groupIsOverdue ? 'error' : 'none',
             'chartHtml' => omoStatsRenderGroupChart($embeddableIndicatorGroup, $groupSeries, 'compact', $groupIsOverdue),
         ];
     }
@@ -2431,6 +2409,15 @@ foreach ($points as $point) {
         'cancel' => omoDocumentsPvEditorT('documents.pv_editor.action.cancel'),
         'remove' => omoDocumentsPvEditorT('documents.pv_editor.action.remove_embed'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const indicatorValueUi = {
+        enabled: true,
+        allowedIndicatorIds: embeddableIndicators
+            .filter(function (item) { return String(item && item.kind || 'indicator') !== 'group' && item && item.canAddValue; })
+            .map(function (item) { return Number(item.id); }),
+        placeholder: <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.indicator.value_placeholder'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+        inputLabel: <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.indicator.value_placeholder'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+        addLabel: <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.indicator.add_value'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+    };
     const activeLockPointIds = new Set();
     const pendingLockPointIds = new Set();
     let knownPointSignatures = {};
@@ -2883,29 +2870,126 @@ foreach ($points as $point) {
         }
 
         const title = String(indicatorItem.title || '').trim() || ('Indicateur #' + String(indicatorId));
+        const description = String(indicatorItem.description || '').trim();
         const indicatorKind = String(indicatorItem && indicatorItem.kind || '').trim() === 'group' ? 'group' : 'indicator';
         const routeHash = indicatorKind === 'group' ? 'stats' : ('stats-i' + String(indicatorId));
         const valueLabel = String(indicatorItem.valueLabel || '').trim();
         const dateLabel = String(indicatorItem.dateLabel || '').trim();
         const statusLabel = String(indicatorItem.statusLabel || '').trim();
         const contextLabel = String(indicatorItem.contextLabel || '').trim();
+        const chartMinLabel = String(indicatorItem.chartMinLabel || '').trim();
+        const chartMaxLabel = String(indicatorItem.chartMaxLabel || '').trim();
         const chartHtml = String(indicatorItem.chartHtml || '').trim();
-        return '<span class="omo-indicator-embed' + (indicatorItem && indicatorItem.isOverdue ? ' omo-indicator-embed--overdue' : '') + '" contenteditable="false" data-omo-embed-type="indicator"'
+        const overdueSeverity = indicatorItem && indicatorItem.overdueSeverity === 'warning' ? 'warning' : 'error';
+        const statusClass = indicatorItem && indicatorItem.isOverdue
+            ? (overdueSeverity === 'warning' ? ' omo-indicator-embed--warning' : ' omo-indicator-embed--overdue')
+            : (statusLabel !== '' ? ' omo-indicator-embed--current' : '');
+        const statusDotClass = indicatorItem && indicatorItem.isOverdue
+            ? (overdueSeverity === 'warning' ? ' omo-indicator-embed__status-dot--warning' : ' omo-indicator-embed__status-dot--overdue')
+            : (statusLabel !== '' ? ' omo-indicator-embed__status-dot--current' : ' omo-indicator-embed__status-dot--unknown');
+        return '<span class="omo-indicator-embed' + statusClass + '" contenteditable="false" data-omo-embed-type="indicator"'
             + ' data-omo-indicator-id="' + String(indicatorId) + '"'
             + ' data-omo-indicator-kind="' + indicatorKind + '"'
             + ' data-omo-indicator-title="' + escapeDocumentEmbedHtml(title) + '"'
+            + (description !== '' ? ' data-omo-indicator-description="' + escapeDocumentEmbedHtml(description) + '"' : '')
             + (valueLabel !== '' ? ' data-omo-indicator-value="' + escapeDocumentEmbedHtml(valueLabel) + '"' : '')
             + (dateLabel !== '' ? ' data-omo-indicator-date="' + escapeDocumentEmbedHtml(dateLabel) + '"' : '')
             + (statusLabel !== '' ? ' data-omo-indicator-status="' + escapeDocumentEmbedHtml(statusLabel) + '"' : '')
             + (contextLabel !== '' ? ' data-omo-indicator-context="' + escapeDocumentEmbedHtml(contextLabel) + '"' : '')
+            + (chartMinLabel !== '' ? ' data-omo-indicator-chart-min="' + escapeDocumentEmbedHtml(chartMinLabel) + '"' : '')
+            + (chartMaxLabel !== '' ? ' data-omo-indicator-chart-max="' + escapeDocumentEmbedHtml(chartMaxLabel) + '"' : '')
+            + (indicatorItem && indicatorItem.isOverdue ? ' data-omo-indicator-overdue-severity="' + overdueSeverity + '"' : '')
             + (indicatorItem && indicatorItem.isOverdue ? ' data-omo-indicator-overdue="1"' : '')
-            + '><strong><a class="omo-indicator-embed__title" href="#' + routeHash + '">' + escapeDocumentEmbedHtml(title) + '</a></strong>'
-            + '<span class="omo-indicator-embed__body">'
-            + (chartHtml !== '' ? '<span class="omo-indicator-embed__chart">' + chartHtml + '</span>' : '')
+            + '><span class="omo-indicator-embed__main">'
+            + '<span class="omo-indicator-embed__chart">'
+            + '<span class="omo-indicator-embed__chart-plot">'
+            + (chartHtml !== '' ? '<span class="omo-indicator-embed__chart-svg">' + chartHtml + '</span>' : '')
+            + '</span></span>'
+            + '<span class="omo-indicator-embed__copy"><strong><a class="omo-indicator-embed__title" href="#' + routeHash + '"><span class="omo-indicator-embed__status-dot' + statusDotClass + '" aria-hidden="true"></span><span>' + escapeDocumentEmbedHtml(title) + '</span></a></strong>'
+            + (description !== '' ? '<span class="omo-indicator-embed__description">' + escapeDocumentEmbedHtml(description) + '</span>' : '')
+            + '</span>'
             + '<span class="omo-indicator-embed__values"><b>' + escapeDocumentEmbedHtml(valueLabel) + '</b>'
             + (dateLabel !== '' ? '<time>' + escapeDocumentEmbedHtml(dateLabel) + '</time>' : '')
             + (statusLabel !== '' ? '<em>' + escapeDocumentEmbedHtml(statusLabel) + '</em>' : '')
             + '</span></span></span>';
+    }
+
+    function addPvIndicatorValue(field, pointId, context) {
+        if (!field || !context || !context.node || !context.input || !context.button) {
+            return;
+        }
+
+        const rawValue = String(context.input.value || '').trim();
+        const indicatorId = Number.parseInt(String(context.indicatorId || ''), 10);
+        if (!rawValue || !Number.isInteger(indicatorId) || indicatorId <= 0) {
+            context.input.focus();
+            return;
+        }
+
+        context.input.disabled = true;
+        context.button.disabled = true;
+        const previousLabel = context.button.textContent;
+        context.button.textContent = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.indicator.value_saving'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        const formData = new FormData();
+        formData.append('action', 'add_indicator_value');
+        formData.append('document_id', String(documentId));
+        formData.append('oid', String(organizationId));
+        formData.append('editor_token', editorToken);
+        formData.append('point_id', String(pointId));
+        formData.append('indicator_id', String(indicatorId));
+        formData.append('value', rawValue);
+
+        fetch(actionUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: formData
+        })
+            .then(function (response) {
+                return response.json().then(function (payload) {
+                    if (!response.ok || !payload || payload.status !== true || !payload.indicator) {
+                        throw payload || new Error('indicator_value_failed');
+                    }
+                    return payload;
+                });
+            })
+            .then(function (payload) {
+                if (typeof field.replaceNodeWithHtml === 'function') {
+                    field.replaceNodeWithHtml(context.node, buildPvIndicatorEmbedHtml(payload.indicator), false);
+                }
+            })
+            .catch(function (payload) {
+                context.input.disabled = false;
+                context.button.disabled = false;
+                context.button.textContent = previousLabel;
+                if (window.alert) {
+                    window.alert(String(payload && payload.message || <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.indicator.value_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>));
+                }
+            });
+    }
+
+    function refreshPvIndicatorEmbedSnapshots(field) {
+        if (!field || typeof field.getEditableElement !== 'function' || typeof field.replaceNodeWithHtml !== 'function') {
+            return;
+        }
+
+        const editable = field.getEditableElement();
+        if (!editable) {
+            return;
+        }
+
+        editable.querySelectorAll('.omo-indicator-embed[data-omo-embed-type="indicator"]').forEach(function (embedNode) {
+            if (String(embedNode.getAttribute('data-omo-indicator-kind') || '') === 'group') {
+                return;
+            }
+
+            const indicatorId = Number.parseInt(String(embedNode.getAttribute('data-omo-indicator-id') || ''), 10);
+            const indicatorItem = embeddableIndicators.find(function (item) {
+                return String(item && item.kind || 'indicator') !== 'group' && Number(item && item.id) === indicatorId;
+            });
+            if (indicatorItem) {
+                field.replaceNodeWithHtml(embedNode, buildPvIndicatorEmbedHtml(indicatorItem), false);
+            }
+        });
     }
 
     function getPvIndicatorEmbedItemKey(indicatorItem) {
@@ -3109,7 +3193,7 @@ foreach ($points as $point) {
     })();
 
     function ensureHtmlFieldLibrary(callback) {
-        const htmlFieldVersion = '20260716-pv-indicator-readonly';
+        const htmlFieldVersion = '20260718-pv-indicator-overdue-days';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'
@@ -3887,6 +3971,7 @@ foreach ($points as $point) {
                     value: String(sourceField.value || ''),
                     placeholder: <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.field.content'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
                     customButtons: customButtons,
+                    indicatorValueUi: indicatorValueUi,
                     onChange: function () {
                         if (isPointDirtySuppressed(pointId)) {
                             return;
@@ -3894,6 +3979,12 @@ foreach ($points as $point) {
 
                         ensurePointLock(pointId);
                         markPointDirty(pointId, true);
+                    },
+                    onIndicatorValueAdd: function (context) {
+                        addPvIndicatorValue(field, pointId, context);
+                    },
+                    onReady: function (api) {
+                        refreshPvIndicatorEmbedSnapshots(api);
                     },
                     onDoubleClick: function (context) {
                         const targetNode = context && context.target && context.target.closest

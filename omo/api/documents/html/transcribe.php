@@ -1,10 +1,15 @@
 <?php
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
+require_once dirname(__DIR__, 4) . '/common/patreon.php';
 require_once dirname(__DIR__, 4) . '/common/openai_audio.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 
 $sourceLang = [
+    'documents.transcribe.error.contributor_required' => [
+        'text' => 'Les fonctions IA sont reservees aux contributeurs Patreon actifs.',
+        'context' => 'Error returned when the current user does not have access to AI features.',
+    ],
     'documents.transcribe.error.access_denied' => [
         'text' => 'Accès refusé.',
         'context' => 'Error returned when the current user cannot access the transcription endpoint.',
@@ -40,6 +45,15 @@ if ($organizationId <= 0 || $currentUserId <= 0 || !commonCurrentUserHasOrganiza
     echo json_encode(array(
         'status' => false,
         'message' => omoDocumentsTranscribeT('documents.transcribe.error.access_denied'),
+    ));
+    exit;
+}
+
+if (!patreonUserCanUseAi($currentUserId)) {
+    http_response_code(403);
+    echo json_encode(array(
+        'status' => false,
+        'message' => omoDocumentsTranscribeT('documents.transcribe.error.contributor_required'),
     ));
     exit;
 }

@@ -30,6 +30,14 @@ foreach ($groupItems as $item) {
     }
 }
 $series = omoStatsGetGroupSeries($group);
+$referencePointData = array_map(static function ($point) {
+    $pointAt = $point->get('point_at');
+    return [
+        'position_percent' => (float)$point->get('position_percent'),
+        'point_at' => $pointAt instanceof DateTimeInterface ? $pointAt->format('Y-m-d\\TH:i') : '',
+        'value' => (float)$point->get('value'),
+    ];
+}, omoStatsGetGroupReferencePoints($group));
 $isOverdue = omoStatsIsGroupOverdue($group);
 $chartData = omoStatsBuildGroupChartData($group, $series, $isOverdue);
 $displayMode = StatIndicatorGroup::normalizeDisplayMode($group->get('display_mode'));
@@ -62,6 +70,8 @@ foreach ($series as $seriesIndex => $seriesItem) {
                 data-omo-stats-group-name="<?= omoApiEscape((string)$group->get('name')) ?>"
                 data-omo-stats-group-mode="<?= omoApiEscape((string)$group->get('display_mode')) ?>"
                 data-omo-stats-group-indicators="<?= omoApiEscape(json_encode($indicatorIds)) ?>"
+                data-omo-stats-group-reference-type="<?= omoApiEscape(StatIndicator::normalizeReferenceType($group->get('reference_type'))) ?>"
+                data-omo-stats-group-reference-points="<?= omoApiEscape(json_encode(array_values($referencePointData))) ?>"
             ><?= omoApiEscape(omoStatsT('stats.action.edit_group')) ?></button>
         <?php endif; ?>
     </div>
@@ -102,4 +112,4 @@ foreach ($series as $seriesIndex => $seriesItem) {
         </div>
     </section>
 </article>
-<script src="/omo/api/stats/chart.js"></script>
+<script src="/omo/api/stats/chart.js?v=20260718-reference-range-default"></script>
