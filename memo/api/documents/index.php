@@ -147,7 +147,7 @@ if (!is_string($documentsPayload)) {
                         </span>
                         <h1 class="omo-panel-view__title">Mes documents</h1>
                         <span class="omo-panel-view__count memo-documents__count">
-                            <?= (int)count($documentEntries) ?> document<?= count($documentEntries) > 1 ? 's' : '' ?>
+                            <?= (int)count($documentEntries) ?>
                         </span>
                     </div>
                     <p class="omo-panel-view__subtitle memo-documents__subtitle">
@@ -1268,13 +1268,17 @@ if (!is_string($documentsPayload)) {
     display: flex;
     align-items: center;
     gap: 12px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     position: sticky;
     top: 0;
     z-index: 1;
     width: 100%;
     background: var(--color-surface);
     padding-top:10px;
+}
+
+.memo-documents__title-row .omo-panel-view__title {
+    white-space: nowrap;
 }
 
 .memo-documents__subtitle {
