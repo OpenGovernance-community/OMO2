@@ -70,6 +70,21 @@
 		return "votre compte";
 	}
 
+	function isTelegramPrivateChat(array $message): bool {
+		return isset($message['chat']['id'], $message['from']['id'])
+			&& (int)$message['chat']['id'] === (int)$message['from']['id'];
+	}
+
+	function disconnectTelegramUser(\dbObject\User $user): bool {
+		if ((int)$user->getId() <= 0) {
+			return false;
+		}
+
+		$user->set('telegramID', null);
+		$saveResult = $user->save();
+		return is_array($saveResult) ? !empty($saveResult['status']) : $saveResult === true;
+	}
+
 	function clearTelegramConnectState(\stdClass $sessionData): void {
 		unset($sessionData->connect);
 	}
@@ -268,13 +283,6 @@
 			: null;
 		if (!$connectState || !isset($connectState->step)) {
 			return false;
-		}
-
-		if (preg_match('/^\/cancel/i', $text)) {
-			clearTelegramConnectState($sessionData);
-			saveLocalSession($sessionData, $actorId);
-			sendMessage($chatId, "Connexion annulee.", null, $threadId);
-			return true;
 		}
 
 		if (preg_match('/^\//', $text)) {
@@ -1127,8 +1135,9 @@
 				"/help - Afficher cette aide\n".
 				"/whois - Afficher le nom du serveur\n".
 				"/connect - Connecter le compte ou le groupe\n".
+				"/cancel - Supprimer la connexion Telegram\n".
 				"/time - Afficher l'heure du serveur\n".
-				"/start - Activer le traitement des messages\n".
+				"/start - Afficher le statut de connexion\n".
 				"/stop - Desactiver le traitement des messages\n".
 				"/delete - Supprimer le dernier message du bot";
 			sendMessage($chatId, $help, null, $threadId);
@@ -1144,18 +1153,44 @@
 			return;
 		}
 
+		if ($command === '/cancel') {
+			if (!isTelegramPrivateChat($message)) {
+				sendMessage($chatId, "Envoyez /cancel dans une discussion privee avec le bot pour supprimer votre connexion Telegram.", null, $threadId);
+				return;
+			}
+
+			$sessionData = loadLocalSession($actorId);
+			clearTelegramConnectState($sessionData);
+			saveLocalSession($sessionData, $actorId);
+
+			if ($user->getId() <= 0) {
+				sendMessage($chatId, "Ce compte Telegram n'est relie a aucun utilisateur. Envoyez /connect pour vous connecter.", null, $threadId);
+				return;
+			}
+
+			$connectedUserLabel = getTelegramConnectedUserLabel($user);
+			if (disconnectTelegramUser($user)) {
+				sendMessage($chatId, "La connexion Telegram avec ".$connectedUserLabel." a ete supprimee. Envoyez /connect pour connecter un compte.", null, $threadId);
+			} else {
+				sendMessage($chatId, "Impossible de supprimer la connexion Telegram pour le moment. Reessayez plus tard.", null, $threadId);
+			}
+			return;
+		}
+
 		if (handleTelegramConnectConversation($message, $user)) {
 			return;
 		}
 
-		if (preg_match('/^\/connect\b/i', $text)) {
-			if (($message['chat']['id'] ?? null) == ($message['from']['id'] ?? null)) {
+		if ($command === '/connect') {
+			if (isTelegramPrivateChat($message)) {
 				beginTelegramConnectFlow($actorId);
 				$messageText = "Envoyez l'adresse e-mail de votre compte pour connecter Telegram.";
 				if ($user->getId() > 0) {
 					$messageText .= "\nCompte actuellement lie: ".getTelegramConnectedUserLabel($user).".";
+					$messageText .= "\nEnvoyez /cancel pour annuler et supprimer cette connexion.";
+				} else {
+					$messageText .= "\nVous pouvez envoyer /cancel pour annuler.";
 				}
-				$messageText .= "\nVous pouvez envoyer /cancel pour annuler.";
 				sendMessage($chatId, $messageText, null, $threadId);
 			} else {
 				sendMessage($chatId, "Pour connecter ce groupe a un projet, editer les proprietes du projet avec les informations suivantes:\n\nChat ID: ".$chatId.", Group: ".$threadId, null, $threadId);
@@ -1188,10 +1223,27 @@
 			return;
 		}
 
-		if (preg_match('/^\/start/', $text)) {
+		if ($command === '/start') {
 			$data = loadLocalSession($actorId);
 			$data->active = true;
 			saveLocalSession($data, $actorId);
+
+			if (!isTelegramPrivateChat($message)) {
+				sendMessage($chatId, "Bienvenue dans EasyMEMO. Envoyez /connect en message prive pour relier votre compte Telegram.", null, $threadId);
+				return;
+			}
+
+			if ($user->getId() > 0) {
+				sendMessage(
+					$chatId,
+					"Bienvenue dans EasyMEMO.\n\nCe compte Telegram est connecte a : ".getTelegramConnectedUserLabel($user).".\nSi ce n'est pas vous, envoyez /cancel pour supprimer cette connexion.",
+					null,
+					$threadId
+				);
+				return;
+			}
+
+			sendMessage($chatId, "Bienvenue dans EasyMEMO.\n\nCe compte Telegram n'est pas encore connecte. Envoyez /connect pour relier votre compte.", null, $threadId);
 			return;
 		}
 
