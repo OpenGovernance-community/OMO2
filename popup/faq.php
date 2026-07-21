@@ -22,8 +22,8 @@ $faqScope = \dbObject\FAQ::normalizePopupScope($_GET['faq_scope'] ?? null, $faqC
 $faqScopeActiveIndex = omoApiResolveContextScopeIndex($faqScope, $faqAvailableScopes);
 $faqScopeLabels = array(
 	'contextual' => 'Contextuel',
+	'children' => 'Enfants directs',
 	'descendants' => 'Descendants',
-	'global' => 'Global',
 );
 $currentUserId = function_exists('commonGetCurrentUserId')
 	? (int)commonGetCurrentUserId()
@@ -51,8 +51,8 @@ $contextOrganizationLabel = $contextOrganization instanceof \dbObject\Organizati
 $contextHolonLabel = $contextHolon instanceof \dbObject\Holon
 	? trim((string)$contextHolon->getDisplayName())
 	: '';
-$heroSubtitle = $faqScope === 'global'
-	? 'Aide partagee et reponses communes'
+$heroSubtitle = $faqScope === 'children'
+	? 'Aide du contexte et de ses enfants directs'
 	: ($faqScope === 'descendants'
 		? 'Aide du contexte et de ses descendants'
 		: 'Aide du contexte courant');
@@ -472,8 +472,8 @@ if ($canManageAllFaqs) {
 		background-image: url("/omo/assets/images/scope/descendants.png?v=20260622");
 	}
 
-	.faq-popup__scope-toggle-button[data-omo-scope-option="global"]::before {
-		background-image: url("/omo/assets/images/scope/global.png?v=20260622");
+	.faq-popup__scope-toggle-button[data-omo-scope-option="children"]::before {
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cg fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 4.5v4M4.5 13.5v-2.5H13.5v2.5M9 8.5v2.5'/%3E%3C/g%3E%3Ccircle cx='9' cy='3' r='2' fill='%23000'/%3E%3Ccircle cx='4.5' cy='15' r='2' fill='%23000'/%3E%3Ccircle cx='13.5' cy='15' r='2' fill='%23000'/%3E%3C/svg%3E");
 	}
 
 	.faq-popup__scope-toggle-button.is-active {
@@ -1307,7 +1307,10 @@ if ($canManageAllFaqs) {
 
 	function normalizeFaqScope(value) {
 		const normalizedScope = String(value || '').trim().toLowerCase();
-		if (normalizedScope === 'global' || normalizedScope === 'descendants') {
+		if (normalizedScope === 'global') {
+			return 'descendants';
+		}
+		if (normalizedScope === 'children' || normalizedScope === 'descendants') {
 			return normalizedScope;
 		}
 

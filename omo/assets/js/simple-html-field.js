@@ -1,7 +1,7 @@
 (function (window, document) {
     'use strict';
 
-    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260718-pv-indicator-overdue-days';
+    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260721-composite-property-fields-v5';
 
     if (
         window.omoSimpleHtmlField
@@ -52,26 +52,29 @@
             + '.omo-simple-html-field .note-editable th,.omo-simple-html-render th{background:color-mix(in srgb,var(--color-surface-alt,#f8fafc) 82%,var(--color-text,#1f2937) 18%);font-weight:700;}'
             + '.omo-simple-html-field .note-editable tbody tr:nth-child(even),.omo-simple-html-render tbody tr:nth-child(even){background:color-mix(in srgb,var(--color-surface,#fff) 92%,var(--color-surface-alt,#f8fafc) 8%);}'
             + '.omo-simple-html-field .note-editable .omo-document-embed,.omo-simple-html-render .omo-document-embed{display:block;margin:0 0 1em;padding:12px 14px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,#2563eb 12%);border-radius:var(--radius-md);background:color-mix(in srgb,var(--color-surface,#fff) 90%,#eff6ff 10%);box-shadow:0 10px 24px -20px rgba(37,99,235,.45);cursor:pointer;white-space:normal;line-height:1.5;}'
-            + '.omo-simple-html-field .note-editable .omo-decision-embed,.omo-simple-html-field .note-editable .omo-event-embed,.omo-simple-html-render .omo-decision-embed,.omo-simple-html-render .omo-event-embed{display:block;margin:0 0 1em;padding:12px 14px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,#2563eb 12%);border-radius:var(--radius-md);background:color-mix(in srgb,var(--color-surface,#fff) 90%,#eff6ff 10%);box-shadow:0 10px 24px -20px rgba(37,99,235,.45);cursor:pointer;white-space:normal;line-height:1.5;}'
+            + '.omo-simple-html-field .note-editable .omo-decision-embed,.omo-simple-html-field .note-editable .omo-event-embed,.omo-simple-html-field .note-editable .omo-project-embed,.omo-simple-html-render .omo-decision-embed,.omo-simple-html-render .omo-event-embed,.omo-simple-html-render .omo-project-embed{display:block;margin:0 0 1em;padding:12px 14px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,#2563eb 12%);border-radius:var(--radius-md);background:color-mix(in srgb,var(--color-surface,#fff) 90%,#eff6ff 10%);box-shadow:0 10px 24px -20px rgba(37,99,235,.45);cursor:pointer;white-space:normal;line-height:1.5;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed:last-child,.omo-simple-html-render .omo-document-embed:last-child{margin-bottom:0;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed__label,.omo-simple-html-render .omo-document-embed__label{display:block;margin:0 0 6px;color:var(--color-text-light,#6b7280);font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed__title,.omo-simple-html-render .omo-document-embed__title{display:block;margin:0;color:var(--color-text,#1f2937);font-weight:700;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed__description,.omo-simple-html-render .omo-document-embed__description{display:block;margin:6px 0 0;color:var(--color-text-light,#6b7280);font-size:13px;line-height:1.5;}'
             + '.omo-simple-html-field .note-editable .omo-decision-embed__title,.omo-simple-html-field .note-editable .omo-event-embed__title,.omo-simple-html-render .omo-decision-embed__title,.omo-simple-html-render .omo-event-embed__title{display:block;margin:0;color:var(--color-text,#1f2937);font-weight:700;}'
+            + '.omo-simple-html-field .note-editable .omo-project-embed>strong,.omo-simple-html-render .omo-project-embed>strong{display:flex;align-items:center;gap:6px;margin:0;color:var(--color-text,#1f2937);font-weight:700;}.omo-simple-html-field .note-editable .omo-project-embed>strong>a:first-child,.omo-simple-html-render .omo-project-embed>strong>a:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.omo-simple-html-field .note-editable .omo-project-embed>strong>a:nth-child(2),.omo-simple-html-render .omo-project-embed>strong>a:nth-child(2){flex:0 0 auto;font-size:13px;text-decoration:none;}.omo-simple-html-field .note-editable .omo-project-embed>strong>em,.omo-simple-html-render .omo-project-embed>strong>em{flex:0 0 auto;margin:0;padding:1px 5px;border-radius:999px;background:color-mix(in srgb,#2563eb 10%,var(--color-surface,#fff));color:#1d4ed8;font-size:11px;font-style:normal;font-weight:800;line-height:1.35;}.omo-simple-html-field .note-editable .omo-project-embed>em,.omo-simple-html-render .omo-project-embed>em{display:block;margin:5px 0 0;color:var(--color-text-light,#6b7280);font-size:12px;font-style:normal;line-height:1.35;}'
             + '.omo-simple-html-field .note-editable .omo-decision-embed__summary,.omo-simple-html-field .note-editable .omo-event-embed__summary,.omo-simple-html-render .omo-decision-embed__summary,.omo-simple-html-render .omo-event-embed__summary{display:block;margin:6px 0 0;color:var(--color-text-light,#6b7280);font-size:13px;line-height:1.5;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed > p:first-child,.omo-simple-html-render .omo-document-embed > p:first-child{margin:0 0 6px;color:var(--color-text-light,#6b7280);font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed > p:nth-child(2),.omo-simple-html-render .omo-document-embed > p:nth-child(2){margin:0;color:var(--color-text,#1f2937);font-weight:700;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed > p:nth-child(3),.omo-simple-html-render .omo-document-embed > p:nth-child(3){margin:6px 0 0;color:var(--color-text-light,#6b7280);font-size:13px;line-height:1.5;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed > strong:first-child,.omo-simple-html-render .omo-document-embed > strong:first-child{display:block;margin:0 0 6px;color:var(--color-text-light,#6b7280);font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed > strong:nth-of-type(2),.omo-simple-html-render .omo-document-embed > strong:nth-of-type(2){display:block;margin:0;color:var(--color-text,#1f2937);font-weight:700;}'
-            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed,.omo-pv-editor .omo-simple-html-render .omo-document-embed,.omo-pv-editor .omo-simple-html-render .omo-decision-embed,.omo-pv-editor .omo-simple-html-render .omo-event-embed{position:relative;min-height:54px;margin-bottom:10px;padding:9px 12px 9px 58px;}'
-            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed:before,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed:before,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed:before,.omo-pv-editor .omo-simple-html-render .omo-document-embed:before,.omo-pv-editor .omo-simple-html-render .omo-decision-embed:before,.omo-pv-editor .omo-simple-html-render .omo-event-embed:before{content:"";position:absolute;top:50%;left:14px;width:30px;height:30px;transform:translateY(-50%);background:var(--color-primary,#2563eb);-webkit-mask:url("/omo/images/tools/documents-folder.png") center/contain no-repeat;mask:url("/omo/images/tools/documents-folder.png") center/contain no-repeat;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed,.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed,.omo-pv-editor .omo-simple-html-render .omo-document-embed,.omo-pv-editor .omo-simple-html-render .omo-decision-embed,.omo-pv-editor .omo-simple-html-render .omo-event-embed,.omo-pv-editor .omo-simple-html-render .omo-project-embed{position:relative;min-height:54px;margin-bottom:10px;padding:9px 12px 9px 58px;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed:before,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed:before,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed:before,.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed:before,.omo-pv-editor .omo-simple-html-render .omo-document-embed:before,.omo-pv-editor .omo-simple-html-render .omo-decision-embed:before,.omo-pv-editor .omo-simple-html-render .omo-event-embed:before,.omo-pv-editor .omo-simple-html-render .omo-project-embed:before{content:"";position:absolute;top:50%;left:14px;width:30px;height:30px;transform:translateY(-50%);background:var(--color-primary,#2563eb);-webkit-mask:url("/omo/images/tools/documents-folder.png") center/contain no-repeat;mask:url("/omo/images/tools/documents-folder.png") center/contain no-repeat;}'
             + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed:before,.omo-pv-editor .omo-simple-html-render .omo-decision-embed:before{background:#7c3aed;-webkit-mask-image:url("/omo/images/tools/decision.png");mask-image:url("/omo/images/tools/decision.png");}'
             + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed:before,.omo-pv-editor .omo-simple-html-render .omo-event-embed:before{background:#0f766e;-webkit-mask-image:url("/omo/images/tools/calendar.png");mask-image:url("/omo/images/tools/calendar.png");}'
-            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>strong:first-of-type:not(:only-of-type),.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed>strong:first-of-type:not(:only-of-type),.omo-pv-editor .omo-simple-html-render .omo-document-embed__label,.omo-pv-editor .omo-simple-html-render .omo-decision-embed__label{display:none;}'
-            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-render .omo-document-embed__title,.omo-pv-editor .omo-simple-html-render .omo-decision-embed__title,.omo-pv-editor .omo-simple-html-render .omo-event-embed__title{display:block;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:1;line-clamp:1;text-overflow:ellipsis;}'
-            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>em,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed>em,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed>em,.omo-pv-editor .omo-simple-html-render .omo-document-embed__description,.omo-pv-editor .omo-simple-html-render .omo-decision-embed__summary,.omo-pv-editor .omo-simple-html-render .omo-event-embed__summary{display:-webkit-box;overflow:hidden;margin-top:3px;color:var(--color-text-light,#6b7280);font-size:12px;font-style:normal;line-height:1.3;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;}'
-            + '.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-document-embed),.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-decision-embed),.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-event-embed){margin:0 0 10px;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed:before,.omo-pv-editor .omo-simple-html-render .omo-project-embed:before{background:#2563eb;-webkit-mask-image:url("/omo/images/tools/product.png");mask-image:url("/omo/images/tools/product.png");}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>strong:first-of-type:not(:only-of-type),.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed>strong:first-of-type:not(:only-of-type),.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed>strong:first-of-type:not(:only-of-type),.omo-pv-editor .omo-simple-html-render .omo-document-embed__label,.omo-pv-editor .omo-simple-html-render .omo-decision-embed__label{display:none;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-render .omo-document-embed__title,.omo-pv-editor .omo-simple-html-render .omo-decision-embed__title,.omo-pv-editor .omo-simple-html-render .omo-event-embed__title{display:block;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:1;line-clamp:1;text-overflow:ellipsis;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>em,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed>em,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed>em,.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed>em,.omo-pv-editor .omo-simple-html-render .omo-document-embed__description,.omo-pv-editor .omo-simple-html-render .omo-decision-embed__summary,.omo-pv-editor .omo-simple-html-render .omo-event-embed__summary{display:-webkit-box;overflow:hidden;margin-top:3px;color:var(--color-text-light,#6b7280);font-size:12px;font-style:normal;line-height:1.3;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-document-embed),.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-decision-embed),.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-event-embed),.omo-pv-editor .omo-simple-html-field .note-editable p:has(>.omo-project-embed){margin:0 0 10px;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed,.omo-pv-editor .omo-simple-html-render .omo-project-embed{min-height:68px;}.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed>strong,.omo-pv-editor .omo-simple-html-render .omo-project-embed>strong{display:flex!important;align-items:center;gap:6px;min-width:0;overflow:hidden;white-space:normal;}.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed>strong>a:first-child,.omo-pv-editor .omo-simple-html-render .omo-project-embed>strong>a:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed>strong>a:nth-child(2),.omo-pv-editor .omo-simple-html-render .omo-project-embed>strong>a:nth-child(2){flex:0 0 auto;font-size:13px;text-decoration:none;}.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed>strong>em,.omo-pv-editor .omo-simple-html-render .omo-project-embed>strong>em{display:block!important;flex:0 0 auto;margin:0;padding:1px 5px;border-radius:999px;background:color-mix(in srgb,#2563eb 10%,var(--color-surface,#fff));color:#1d4ed8;font-size:11px;font-style:normal;font-weight:800;line-height:1.35;}.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed>em,.omo-pv-editor .omo-simple-html-render .omo-project-embed>em{display:block!important;overflow:hidden;margin-top:5px;white-space:nowrap;text-overflow:ellipsis;-webkit-line-clamp:unset;line-clamp:unset;}'
             + '.omo-simple-html-field .note-editable .omo-indicator-embed,.omo-simple-html-render .omo-indicator-embed{display:block;margin:0 0 1em;padding:12px 14px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,#2563eb 12%);border-radius:var(--radius-md);background:color-mix(in srgb,var(--color-surface,#fff) 90%,#eff6ff 10%);box-shadow:0 10px 24px -20px rgba(37,99,235,.45);cursor:pointer;white-space:normal;line-height:1.3;}'
             + '.omo-indicator-embed--overdue{border-color:color-mix(in srgb,#dc2626 36%,var(--color-border,#d1d5db));background:color-mix(in srgb,var(--color-surface,#fff) 92%,#fef2f2 8%);}'
             + '.omo-indicator-embed--overdue .omo-indicator-embed__chart{border-color:color-mix(in srgb,#dc2626 36%,var(--color-border,#d1d5db));background:linear-gradient(135deg,color-mix(in srgb,#dc2626 10%,var(--color-surface,#fff)),color-mix(in srgb,#dc2626 4%,var(--color-surface-alt,#f8fafc)));}'
@@ -243,6 +246,12 @@
         return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
     }
 
+    function getProjectEmbedElementId(element) {
+        const rawValue = getElementAttributeValue(element, 'data-omo-project-id').trim();
+        const parsed = Number.parseInt(rawValue, 10);
+        return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+    }
+
     function getEventEmbedElementId(element) {
         const rawValue = getElementAttributeValue(element, 'data-omo-event-id').trim();
         const parsed = Number.parseInt(rawValue, 10);
@@ -284,6 +293,15 @@
 
         return getElementAttributeValue(element, 'data-omo-embed-type').trim() === 'event'
             && getEventEmbedElementId(element) > 0;
+    }
+
+    function isAllowedProjectEmbedElement(element) {
+        if (!element || element.nodeType !== 1) {
+            return false;
+        }
+
+        return getElementAttributeValue(element, 'data-omo-embed-type').trim() === 'project'
+            && getProjectEmbedElementId(element) > 0;
     }
 
     function isAllowedIndicatorEmbedElement(element) {
@@ -608,6 +626,25 @@
                     embedNode.setAttribute('data-omo-event-' + attributeName, value);
                 }
             });
+
+            Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
+                appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument));
+            });
+
+            return embedNode;
+        }
+
+        if (isAllowedProjectEmbedElement(sourceNode)) {
+            const embedNode = ownerDocument.createElement('span');
+            embedNode.setAttribute('class', 'omo-project-embed');
+            embedNode.setAttribute('contenteditable', 'false');
+            embedNode.setAttribute('data-omo-embed-type', 'project');
+            embedNode.setAttribute('data-omo-project-id', String(getProjectEmbedElementId(sourceNode)));
+
+            const title = getElementAttributeValue(sourceNode, 'data-omo-project-title').trim();
+            if (title) {
+                embedNode.setAttribute('data-omo-project-title', title);
+            }
 
             Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
                 appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument));
@@ -1433,7 +1470,7 @@
                     ['style', ['style']],
                     ['font', ['bold', 'italic', 'underline', 'clear']],
                     ['para', ['ul', 'ol']],
-                    ['insert', ['link', 'table']]
+                    ['insert', ['link']]
                 ];
                 const toolbarGroups = {};
                 const buttonsConfig = {};

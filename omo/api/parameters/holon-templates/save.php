@@ -35,7 +35,10 @@ if (!$organization->load($organizationId)) {
 $contextHolonId = (int)($_GET['cid'] ?? $_POST['cid'] ?? 0);
 $holonId = (int)($_GET['hid'] ?? $_POST['hid'] ?? 0);
 $templateScope = strtolower(trim((string)($_GET['template_scope'] ?? $_POST['template_scope'] ?? 'contextual')));
-if ($templateScope !== 'global') {
+if ($templateScope === 'global') {
+    $templateScope = 'descendants';
+}
+if (!in_array($templateScope, array('contextual', 'children', 'descendants'), true)) {
     $templateScope = 'contextual';
 }
 

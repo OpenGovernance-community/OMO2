@@ -1,0 +1,822 @@
+.omo-projects {
+    min-height: 0;
+    height: 100%;
+    --omo-project-status-ready: #5b7ea6;
+    --omo-project-status-in-progress: #c69a4b;
+    --omo-project-status-blocked: #c47777;
+    --omo-project-status-review: #8d78a8;
+    --omo-project-status-done: #6b9b7f;
+    --omo-project-status-someday: #8993a3;
+}
+
+.omo-projects[data-omo-projects-preferences-pending="1"] {
+    visibility: hidden;
+}
+
+.omo-projects__app-icon {
+    color: #2563eb;
+}
+
+.omo-projects__app-icon svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.7;
+}
+
+.omo-projects__title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.omo-projects__header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.omo-projects__header-view-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.omo-projects__mobile-column-nav {
+    display: none;
+}
+
+.omo-projects__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.omo-projects__board {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(270px, 1fr);
+    gap: 14px;
+    width: 100%;
+    min-height: 0;
+    height: 100%;
+    padding: 4px 2px 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x proximity;
+}
+
+.omo-projects__column {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 360px;
+    overflow: hidden;
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: var(--radius-md, 14px);
+    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 78%, var(--color-surface, #fff));
+    box-shadow: var(--shadow-sm, 0 8px 20px rgba(15, 23, 42, .06));
+    scroll-snap-align: start;
+}
+
+.omo-projects__column-header {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 74px;
+    padding: 13px 14px 12px;
+    border-bottom: 1px solid var(--color-border, #e5e7eb);
+    background: color-mix(in srgb, var(--color-surface, #fff) 92%, var(--color-surface-alt, #f8fafc));
+    box-shadow: 0 10px 18px -18px rgba(15, 23, 42, .52);
+}
+
+.omo-projects__column-kicker {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--color-text-light, #64748b);
+    font-size: .68rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.omo-projects__column-header h3 {
+    margin: 0;
+    color: var(--color-text, #1f2937);
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.omo-projects__column-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--omo-project-status-color, var(--color-primary, #2563eb)) 16%, var(--color-surface, #fff));
+    color: var(--omo-project-status-color, var(--color-primary, #2563eb));
+    font-size: .78rem;
+    font-weight: 800;
+}
+
+.omo-projects__column-count--ready {
+    --omo-project-status-color: var(--omo-project-status-ready);
+}
+
+.omo-projects__column-count--in_progress {
+    --omo-project-status-color: var(--omo-project-status-in-progress);
+}
+
+.omo-projects__column-count--blocked {
+    --omo-project-status-color: var(--omo-project-status-blocked);
+}
+
+.omo-projects__column-count--review {
+    --omo-project-status-color: var(--omo-project-status-review);
+}
+
+.omo-projects__column-count--done {
+    --omo-project-status-color: var(--omo-project-status-done);
+}
+
+.omo-projects__column-count--someday {
+    --omo-project-status-color: var(--omo-project-status-someday);
+}
+
+.omo-projects__column-cards {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+    padding: 12px;
+    overflow-y: auto;
+}
+
+.generic-section.omo-project-card {
+    --generic-section-padding-block: 13px;
+    --generic-section-padding-inline: 13px;
+    --generic-section-border: color-mix(in srgb, var(--color-border, #e5e7eb) 86%, var(--color-primary, #2563eb) 14%);
+    --generic-section-background: var(--color-surface, #fff);
+    --generic-section-gap: 9px;
+    position: relative;
+    margin: 0;
+    border-left: 4px solid var(--omo-project-status-color, var(--color-border, #e5e7eb));
+    cursor: pointer;
+    transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+
+.omo-project-card:hover,
+.omo-project-card:focus-visible {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 48%, var(--color-border, #e5e7eb));
+    border-left-color: var(--omo-project-status-color, var(--color-primary, #2563eb));
+    box-shadow: var(--shadow-md, 0 12px 24px rgba(15, 23, 42, .11));
+    outline: none;
+}
+
+.omo-project-card.is-showing-children,
+.omo-project-list-item.is-showing-children {
+    border-color: color-mix(in srgb, var(--omo-project-status-color, var(--color-primary, #2563eb)) 70%, var(--color-border, #e5e7eb));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--omo-project-status-color, var(--color-primary, #2563eb)) 18%, transparent);
+}
+
+.omo-project-card.is-related-child,
+.omo-project-list-item.is-related-child {
+    z-index: 2;
+    border-color: color-mix(in srgb, var(--omo-project-status-color, var(--color-primary, #2563eb)) 74%, var(--color-border, #e5e7eb));
+    background: color-mix(in srgb, var(--omo-project-status-color, var(--color-primary, #2563eb)) 10%, var(--color-surface, #fff));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--omo-project-status-color, var(--color-primary, #2563eb)) 16%, transparent), var(--shadow-sm, 0 8px 20px rgba(15, 23, 42, .08));
+}
+
+.omo-project-card--ready,
+.omo-project-detail__subproject-item--ready,
+.omo-project-list-item--ready {
+    --omo-project-status-color: var(--omo-project-status-ready);
+}
+
+.omo-project-card--in_progress,
+.omo-project-detail__subproject-item--in_progress,
+.omo-project-list-item--in_progress {
+    --omo-project-status-color: var(--omo-project-status-in-progress);
+}
+
+.omo-project-card--blocked,
+.omo-project-detail__subproject-item--blocked,
+.omo-project-list-item--blocked {
+    --omo-project-status-color: var(--omo-project-status-blocked);
+}
+
+.omo-project-card--review,
+.omo-project-detail__subproject-item--review,
+.omo-project-list-item--review {
+    --omo-project-status-color: var(--omo-project-status-review);
+}
+
+.omo-project-card--done,
+.omo-project-detail__subproject-item--done,
+.omo-project-list-item--done {
+    --omo-project-status-color: var(--omo-project-status-done);
+}
+
+.omo-project-card--someday,
+.omo-project-detail__subproject-item--someday,
+.omo-project-list-item--someday {
+    --omo-project-status-color: var(--omo-project-status-someday);
+}
+
+.omo-project-card.dragging {
+    opacity: .45;
+}
+
+.omo-project-card__topline,
+.omo-project-card__meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+}
+
+.omo-project-card__topline-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.omo-project-card__menu {
+    position: relative;
+}
+
+.omo-project-card__menu-toggle {
+    min-width: 26px;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-color: transparent;
+    background: transparent;
+    color: var(--color-text-light, #64748b);
+    font-size: 1.1rem;
+}
+
+.omo-project-card__menu-panel {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 20;
+}
+
+.omo-project-card__size {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    min-height: 22px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #fff));
+    color: var(--color-primary, #2563eb);
+    font-size: .68rem;
+    font-weight: 900;
+    letter-spacing: .04em;
+}
+
+.omo-project-card__context,
+.omo-project-card__meta {
+    color: var(--color-text-light, #64748b);
+    font-size: .75rem;
+}
+
+.omo-project-card__context {
+    overflow: hidden;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.omo-project-card__grip {
+    color: var(--color-text-light, #64748b);
+    font-size: 1.1rem;
+    line-height: 1;
+    opacity: .55;
+}
+
+.omo-project-move-dialog {
+    display: grid;
+    gap: 14px;
+}
+
+.omo-project-move-dialog__hint {
+    margin: 0;
+    color: var(--color-text-light, #64748b);
+}
+
+.omo-project-move-dialog__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.omo-project-move-dialog__error {
+    margin: 0;
+    color: var(--color-danger, #dc2626);
+    font-size: .86rem;
+    font-weight: 700;
+}
+
+.omo-project-card__title {
+    margin: 0;
+    color: var(--color-text, #1f2937);
+    font-size: .98rem;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+.omo-project-card__meta span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.omo-project-card__meta time {
+    flex: 0 0 auto;
+    font-variant-numeric: tabular-nums;
+}
+
+.omo-project-status-bar {
+    display: flex;
+    width: 100%;
+    height: 6px;
+    min-height: 6px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--color-border, #e5e7eb);
+}
+
+.omo-project-status-bar__segment {
+    flex: 0 0 0;
+    min-width: 0;
+    border-right: 2px solid color-mix(in srgb, #fff 100%, transparent);
+}
+
+.omo-project-status-bar__segment:last-child {
+    border-right: 0;
+}
+
+.omo-project-status-bar__segment--ready {
+    background: var(--omo-project-status-ready);
+}
+
+.omo-project-status-bar__segment--in_progress {
+    background: var(--omo-project-status-in-progress);
+}
+
+.omo-project-status-bar__segment--blocked {
+    background: var(--omo-project-status-blocked);
+}
+
+.omo-project-status-bar__segment--review {
+    background: var(--omo-project-status-review);
+}
+
+.omo-project-status-bar__segment--done {
+    background: var(--omo-project-status-done);
+}
+
+.omo-project-status-bar__segment--someday {
+    background: var(--omo-project-status-someday);
+}
+
+.omo-project-detail__subprojects-bar {
+    margin-top: 2px;
+}
+
+.omo-project-detail__subprojects-list {
+    display: grid;
+    gap: 10px;
+}
+
+.omo-project-detail__subproject-item {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) minmax(110px, 28%);
+    gap: 14px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-left: 4px solid var(--omo-project-status-color, var(--color-border, #e5e7eb));
+    border-radius: var(--radius-md, 14px);
+    background: var(--color-surface-alt, #f8fafc);
+    cursor: pointer;
+    transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+
+.omo-project-detail__subproject-item:hover,
+.omo-project-detail__subproject-item:focus-visible {
+    border-color: color-mix(in srgb, var(--omo-project-status-color, var(--color-primary, #2563eb)) 48%, var(--color-border, #e5e7eb));
+    border-left-color: var(--omo-project-status-color, var(--color-primary, #2563eb));
+    box-shadow: var(--shadow-sm, 0 8px 20px rgba(15, 23, 42, .08));
+    outline: none;
+    transform: translateY(-1px);
+}
+
+.omo-project-detail__subproject-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    color: var(--omo-project-status-color, var(--color-primary, #2563eb));
+}
+
+.omo-project-detail__subproject-icon svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.7;
+}
+
+.omo-project-detail__subproject-icon img {
+    display: block;
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
+
+.omo-project-detail__subproject-copy {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+
+.omo-project-detail__subproject-copy strong {
+    overflow-wrap: anywhere;
+}
+
+.omo-project-detail__subproject-copy span {
+    color: var(--color-text-light, #64748b);
+    font-size: .76rem;
+}
+
+.omo-project-detail__subproject-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 7px;
+}
+
+.omo-project-detail__subproject-meta > span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.omo-project-detail__subproject-status-select {
+    min-height: 26px;
+    width: auto;
+    min-width: 112px;
+    padding: 3px 8px;
+    font-size: .74rem;
+    cursor: pointer;
+}
+
+.omo-project-detail__subproject-size {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 23px;
+    min-height: 22px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #fff));
+    color: var(--color-primary, #2563eb);
+    font-size: .68rem;
+    font-weight: 900;
+    letter-spacing: .04em;
+}
+
+.omo-project-detail__subproject-bar {
+    width: 100%;
+}
+
+.omo-project-card__status-control {
+    display: none;
+}
+
+.omo-projects__column-empty {
+    display: grid;
+    place-items: center;
+    min-height: 76px;
+    padding: 14px;
+    border: 1px dashed var(--color-border, #d1d5db);
+    border-radius: var(--radius-md, 14px);
+    color: var(--color-text-light, #64748b);
+    font-size: .8rem;
+    text-align: center;
+}
+
+.omo-projects__board-empty {
+    margin: 16px 0;
+}
+
+.omo-projects__list {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    margin: 0;
+    padding: 4px 2px 8px;
+    gap: 14px;
+    overflow-y: auto;
+}
+
+.omo-projects__list-group {
+    gap: 8px;
+    min-width: 0;
+}
+
+.omo-projects__list-group-items {
+    display: grid;
+    gap: 8px;
+}
+
+.omo-project-list-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 14px;
+    border: 1px solid color-mix(in srgb, var(--color-border, #e5e7eb) 86%, var(--color-primary, #2563eb) 14%);
+    border-left: 4px solid var(--omo-project-status-color, var(--color-border, #e5e7eb));
+    border-radius: var(--radius-md, 14px);
+    background: var(--color-surface, #fff);
+    cursor: pointer;
+    transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+
+.omo-project-list-item:hover,
+.omo-project-list-item:focus-visible {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--omo-project-status-color, var(--color-primary, #2563eb)) 48%, var(--color-border, #e5e7eb));
+    box-shadow: var(--shadow-sm, 0 8px 20px rgba(15, 23, 42, .08));
+    outline: none;
+}
+
+.omo-project-list-item__main {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+
+.omo-project-list-item__main > strong {
+    color: var(--color-text, #1f2937);
+    overflow-wrap: anywhere;
+}
+
+.omo-project-list-item__meta,
+.omo-project-list-item__planning {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    color: var(--color-text-light, #64748b);
+    font-size: .78rem;
+    font-weight: 700;
+}
+
+.omo-project-list-item__planning {
+    justify-content: flex-end;
+    text-align: right;
+}
+
+.omo-project-list-item__planning > span:last-child {
+    color: var(--color-text, #1f2937);
+}
+
+.omo-project-detail,
+.omo-project-form {
+    display: grid;
+    gap: 14px;
+}
+
+.omo-project-detail__hero,
+.omo-project-form__intro {
+    display: grid;
+    gap: 8px;
+}
+
+.omo-project-detail__hero h2,
+.omo-project-form__intro h2 {
+    overflow-wrap: anywhere;
+}
+
+.omo-project-detail__hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    color: var(--color-text-light, #64748b);
+    font-size: .82rem;
+    font-weight: 700;
+}
+
+.omo-project-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 25px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--omo-project-status-color, var(--color-primary, #2563eb)) 16%, var(--color-surface, #fff));
+    color: var(--omo-project-status-color, var(--color-primary, #2563eb));
+    font-size: .74rem;
+    font-weight: 800;
+}
+
+.omo-project-status--blocked {
+    --omo-project-status-color: var(--omo-project-status-blocked);
+}
+
+.omo-project-status--done {
+    --omo-project-status-color: var(--omo-project-status-done);
+}
+
+.omo-project-status--ready {
+    --omo-project-status-color: var(--omo-project-status-ready);
+}
+
+.omo-project-status--in_progress {
+    --omo-project-status-color: var(--omo-project-status-in-progress);
+}
+
+.omo-project-status--review {
+    --omo-project-status-color: var(--omo-project-status-review);
+}
+
+.omo-project-status--someday {
+    --omo-project-status-color: var(--omo-project-status-someday);
+}
+
+.omo-project-detail__section {
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+}
+
+.omo-project-detail__section h3 {
+    margin: 0;
+}
+
+.omo-project-detail__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.omo-project-detail__facts {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+}
+
+.omo-project-detail__facts div {
+    display: grid;
+    grid-template-columns: minmax(92px, .7fr) minmax(0, 1.3fr);
+    gap: 8px;
+    align-items: baseline;
+}
+
+.omo-project-detail__facts dt {
+    color: var(--color-text-light, #64748b);
+    font-size: .76rem;
+    font-weight: 700;
+}
+
+.omo-project-detail__facts dd,
+.omo-project-detail__value {
+    margin: 0;
+    color: var(--color-text, #1f2937);
+    font-size: .88rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.omo-project-detail__description,
+.omo-project-detail__muted,
+.omo-project-detail__created {
+    color: var(--color-text-light, #64748b);
+    font-size: .9rem;
+    line-height: 1.6;
+}
+
+.omo-project-detail__muted,
+.omo-project-detail__created {
+    margin: 0;
+}
+
+.omo-project-form #formulaire-edit {
+    display: grid;
+    gap: 12px;
+}
+
+@media (max-width: 760px) {
+    .omo-projects__header-actions .generic-action-button {
+        max-width: 48px;
+        overflow: hidden;
+        padding-inline: 12px;
+        font-size: 0;
+    }
+
+    .omo-projects__header-actions .generic-action-button::before {
+        content: '+';
+        font-size: 1.25rem;
+        line-height: 1;
+    }
+
+    .omo-projects__mobile-column-nav {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        min-width: 160px;
+    }
+
+    .omo-projects__mobile-column-nav .generic-action-button {
+        min-width: 34px;
+        min-height: 34px;
+        padding: 5px 9px;
+    }
+
+    .omo-projects__mobile-column-nav span {
+        min-width: 78px;
+        color: var(--color-text-light, #64748b);
+        font-size: .76rem;
+        font-weight: 800;
+        text-align: center;
+    }
+
+    .omo-projects__header-view-controls {
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .omo-projects__board {
+        grid-auto-columns: 100%;
+        gap: 0;
+        overflow-x: hidden;
+    }
+
+    .omo-projects__column {
+        display: none;
+        min-height: 0;
+        height: 100%;
+    }
+
+    .omo-projects__column.is-mobile-active {
+        display: flex;
+    }
+
+    .omo-project-card__status-control {
+        display: block;
+    }
+
+    .omo-project-card__status-control select {
+        min-height: 34px;
+        padding: 7px 9px;
+        font-size: .78rem;
+    }
+
+    .omo-project-detail__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .omo-project-detail__subproject-item {
+        grid-template-columns: 28px minmax(0, 1fr) minmax(90px, 34%);
+        gap: 10px;
+    }
+
+    .omo-project-list-item {
+        grid-template-columns: 1fr;
+        gap: 9px;
+    }
+
+    .omo-project-list-item__planning {
+        justify-content: flex-start;
+        text-align: left;
+    }
+}

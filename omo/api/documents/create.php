@@ -255,7 +255,7 @@ if (!empty($disabledVisibilityTypes[$selectedEditVisibilityType])) {
 
 if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizationAccess($organizationId)) {
     $visibleDocuments = new \dbObject\ArrayDocument();
-    $visibleDocuments->loadVisibleForOrganizationContext($organizationId, 0, 'global');
+    $visibleDocuments->loadVisibleForOrganization($organizationId);
     $holonTitleCache = array();
 
     foreach ($visibleDocuments as $visibleDocument) {
@@ -1956,7 +1956,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             return;
         }
 
-        const htmlFieldVersion = '20260718-pv-indicator-overdue-days';
+        const htmlFieldVersion = '20260720-pv-project-embed-metadata';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'

@@ -39,18 +39,20 @@ $statsSort = in_array($requestedStatsSort, ['temporal', 'alpha'], true)
     : 'temporal';
 $scopeLabels = [
     'contextual' => omoStatsT('stats.scope.contextual'),
+    'children' => omoStatsT('stats.scope.children'),
     'descendants' => omoStatsT('stats.scope.descendants'),
-    'global' => omoStatsT('stats.scope.global'),
 ];
-$descendantHolonIds = $statsScope === 'descendants' && $currentHolon instanceof Holon
-    ? omoApiGetDescendantHolonIds($currentHolon)
-    : [];
+$scopeHolonIds = $statsScope === 'children' && $currentHolon instanceof Holon
+    ? omoApiGetDirectChildScopeHolonIds($currentHolon)
+    : ($statsScope === 'descendants' && $currentHolon instanceof Holon
+        ? omoApiGetDescendantHolonIds($currentHolon)
+        : []);
 $indicators = new ArrayStatIndicator();
 $indicators->loadForContext(
     $organizationId,
     $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0,
     $statsScope,
-    $descendantHolonIds
+    $scopeHolonIds
 );
 $indicatorItems = omoStatsCollectionItems($indicators, StatIndicator::class);
 $indicatorById = [];
@@ -63,7 +65,7 @@ $imports->loadForContext(
     $organizationId,
     $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0,
     $statsScope,
-    $descendantHolonIds
+    $scopeHolonIds
 );
 $importedIndicatorLabels = [];
 $importedIndicatorIds = [];
@@ -89,12 +91,12 @@ $groups->loadForContext(
     $organizationId,
     $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0,
     $statsScope,
-    $descendantHolonIds
+    $scopeHolonIds
 );
 $groupItems = omoStatsCollectionItems($groups, StatIndicatorGroup::class);
 $canCreate = omoStatsCanManageContext($context);
-$emptyKey = $statsScope === 'global'
-    ? 'stats.empty.global'
+$emptyKey = $statsScope === 'children'
+    ? 'stats.empty.children'
     : ($statsScope === 'descendants' ? 'stats.empty.descendants' : 'stats.empty.contextual');
 
 $currentUrl = '/omo/api/stats/index.php?oid=' . rawurlencode((string)$organizationId);
@@ -135,6 +137,7 @@ foreach ($indicatorItems as $indicator) {
         'importId' => $importedIndicatorIds[(int)$indicator->getId()] ?? 0,
         'canEditImport' => $importedIndicatorEditable[(int)$indicator->getId()] ?? false,
         'isOverdue' => (bool)$overdueInfo['is_overdue'],
+        'overdueSeverity' => (string)$overdueInfo['severity'],
         'overdueDays' => (int)$overdueInfo['overdue_days'],
     ];
 }
@@ -165,7 +168,7 @@ foreach ($groupItems as $group) {
         'referenceType' => StatIndicator::normalizeReferenceType($group->get('reference_type')),
         'referencePoints' => array_values($groupReferencePointData),
         'canEdit' => omoStatsCanEditContextResource($group, $context),
-        'isOverdue' => omoStatsIsGroupOverdue($group),
+        'overdueSeverity' => omoStatsGetGroupOverdueInfo($group)['severity'],
     ];
 }
 
@@ -231,7 +234,7 @@ usort($statsEntries, static function (array $left, array $right) use ($statsSort
 });
 
 $pickerIndicators = new ArrayStatIndicator();
-$pickerIndicators->loadForContext($organizationId, 0, 'global');
+$pickerIndicators->loadForOrganization($organizationId);
 $pickerItems = omoStatsCollectionItems($pickerIndicators, StatIndicator::class);
 $pickerData = [];
 foreach ($pickerItems as $indicator) {
@@ -244,7 +247,7 @@ foreach ($pickerItems as $indicator) {
 }
 $displayItemCount = count($statsEntries);
 ?>
-<link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260718-reference-points-drag-v5">
+<link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260721-overdue-grace">
 <div
     class="omo-stats omo-panel-view"
     id="omo-stats-root"
@@ -344,9 +347,9 @@ $displayItemCount = count($statsEntries);
                                     <div class="omo-stats-grid omo-stats__sort-group-items">
                             <?php endif; ?>
                             <?php if ($statsEntry['kind'] === 'group'): ?>
-                            <?php $groupItem = $statsEntry['data']; $group = $groupItem['group']; $latestSumValue = $groupItem['latestSumValue']; ?>
+                            <?php $groupItem = $statsEntry['data']; $group = $groupItem['group']; $latestSumValue = $groupItem['latestSumValue']; $groupOverdueSeverity = $groupItem['overdueSeverity']; ?>
                             <article
-                                class="generic-section omo-stats-card omo-stats-card--group<?= $groupItem['isOverdue'] ? ' omo-stats-card--overdue' : '' ?>"
+                                class="generic-section omo-stats-card omo-stats-card--group<?= $groupOverdueSeverity === 'error' ? ' omo-stats-card--overdue' : ($groupOverdueSeverity === 'warning' ? ' omo-stats-card--warning' : '') ?>"
                                 data-omo-stats-group-id="<?= (int)$group->getId() ?>"
                                 tabindex="0"
                                 role="button"
@@ -369,7 +372,7 @@ $displayItemCount = count($statsEntries);
                                         </div>
                                     <?php endif; ?>
                                 </div>
-                                <div class="omo-stats-card__chart"><?= omoStatsRenderGroupChart($group, $groupItem['series'], 'card', $groupItem['isOverdue']) ?></div>
+                                <div class="omo-stats-card__chart"><?= omoStatsRenderGroupChart($group, $groupItem['series'], 'card', $groupOverdueSeverity) ?></div>
                                 <div class="omo-stats-card__footer">
                                     <?php if (is_array($latestSumValue)): ?>
                                         <span><?= omoApiEscape(omoStatsT('stats.card.latest')) ?></span>
@@ -391,11 +394,12 @@ $displayItemCount = count($statsEntries);
                             $indicator = $item['indicator'];
                             $latestValue = $item['latestValue'];
                             $referencePercentage = $item['referencePercentage'];
+                            $overdueSeverity = $item['overdueSeverity'];
                             $overdueDays = $item['overdueDays'];
                             $indicatorName = trim((string)$indicator->get('name'));
                             ?>
                             <article
-                                class="generic-section omo-stats-card<?= $item['isOverdue'] ? ' omo-stats-card--overdue' : '' ?>"
+                                class="generic-section omo-stats-card<?= $overdueSeverity === 'error' ? ' omo-stats-card--overdue' : ($overdueSeverity === 'warning' ? ' omo-stats-card--warning' : '') ?>"
                                 data-omo-stats-indicator-id="<?= (int)$indicator->getId() ?>"
                                 tabindex="0"
                                 role="button"
@@ -424,13 +428,15 @@ $displayItemCount = count($statsEntries);
                                     <?php endif; ?>
                                 </div>
                                 <div class="omo-stats-card__chart">
-                                    <?= omoStatsRenderChart($indicator, $item['values'], $item['referencePoints'], 'card', $item['isOverdue']) ?>
+                                    <?= omoStatsRenderChart($indicator, $item['values'], $item['referencePoints'], 'card', $overdueSeverity) ?>
                                 </div>
                                 <div class="omo-stats-card__footer">
                                     <span class="omo-stats-card__latest-label">
                                         <span><?= omoApiEscape(omoStatsT('stats.card.latest')) ?></span>
-                                        <?php if ($item['isOverdue'] && $overdueDays > 0): ?>
-                                            <span class="omo-stats-card__overdue-days"><?= omoApiEscape(omoStatsT('stats.card.overdue_days', ['count' => $overdueDays])) ?></span>
+                                        <?php if ($overdueSeverity === 'warning'): ?>
+                                            <span class="omo-stats-card__status omo-stats-card__status--warning"><?= omoApiEscape(omoStatsT('stats.card.to_complete')) ?></span>
+                                        <?php elseif ($overdueSeverity === 'error' && $overdueDays > 0): ?>
+                                            <span class="omo-stats-card__status omo-stats-card__status--overdue"><?= omoApiEscape(omoStatsT('stats.card.overdue_days', ['count' => $overdueDays])) ?></span>
                                         <?php endif; ?>
                                     </span>
                                     <?php if ($latestValue instanceof StatIndicatorValue): ?>
@@ -485,10 +491,10 @@ $displayItemCount = count($statsEntries);
                                         </div>
                             <?php endif; ?>
                             <?php if ($statsEntry['kind'] === 'group'): ?>
-                            <?php $groupItem = $statsEntry['data']; $group = $groupItem['group']; $latestSumValue = $groupItem['latestSumValue']; ?>
+                            <?php $groupItem = $statsEntry['data']; $group = $groupItem['group']; $latestSumValue = $groupItem['latestSumValue']; $groupOverdueSeverity = $groupItem['overdueSeverity']; ?>
                             <article class="generic-file-list__item-shell">
                                 <div
-                                    class="generic-file-list__row omo-stats-compact__row omo-stats-compact__row--group<?= $groupItem['isOverdue'] ? ' omo-stats-compact__row--overdue' : '' ?>"
+                                    class="generic-file-list__row omo-stats-compact__row omo-stats-compact__row--group<?= $groupOverdueSeverity === 'error' ? ' omo-stats-compact__row--overdue' : ($groupOverdueSeverity === 'warning' ? ' omo-stats-compact__row--warning' : '') ?>"
                                     data-omo-stats-group-id="<?= (int)$group->getId() ?>"
                                     tabindex="0"
                                     role="button"
@@ -527,7 +533,7 @@ $displayItemCount = count($statsEntries);
                                             <span><?= omoApiEscape(StatIndicatorGroup::normalizeDisplayMode($group->get('display_mode')) === StatIndicatorGroup::DISPLAY_SUM ? omoStatsT('stats.group.mode.sum') : omoStatsT('stats.group.mode.overlay')) ?></span>
                                         <?php endif; ?>
                                     </div>
-                                    <div class="generic-file-list__cell omo-stats-compact__chart" data-label="<?= omoApiEscape(omoStatsT('stats.column.history')) ?>"><?= omoStatsRenderGroupChart($group, $groupItem['series'], 'compact', $groupItem['isOverdue']) ?></div>
+                                    <div class="generic-file-list__cell omo-stats-compact__chart" data-label="<?= omoApiEscape(omoStatsT('stats.column.history')) ?>"><?= omoStatsRenderGroupChart($group, $groupItem['series'], 'compact', $groupOverdueSeverity) ?></div>
                                 </div>
                             </article>
                             <?php else: ?>
@@ -540,7 +546,7 @@ $displayItemCount = count($statsEntries);
                             ?>
                             <article class="generic-file-list__item-shell">
                                 <div
-                                    class="generic-file-list__row omo-stats-compact__row<?= $item['isOverdue'] ? ' omo-stats-compact__row--overdue' : '' ?>"
+                                    class="generic-file-list__row omo-stats-compact__row<?= $item['overdueSeverity'] === 'error' ? ' omo-stats-compact__row--overdue' : ($item['overdueSeverity'] === 'warning' ? ' omo-stats-compact__row--warning' : '') ?>"
                                     data-omo-stats-indicator-id="<?= (int)$indicator->getId() ?>"
                                     tabindex="0"
                                     role="button"
@@ -585,7 +591,7 @@ $displayItemCount = count($statsEntries);
                                         <?php endif; ?>
                                     </div>
                                     <div class="generic-file-list__cell omo-stats-compact__chart" data-label="<?= omoApiEscape(omoStatsT('stats.column.history')) ?>">
-                                        <?= omoStatsRenderChart($indicator, $item['values'], $item['referencePoints'], 'compact', $item['isOverdue']) ?>
+                                        <?= omoStatsRenderChart($indicator, $item['values'], $item['referencePoints'], 'compact', $item['overdueSeverity']) ?>
                                     </div>
                                 </div>
                             </article>
@@ -793,7 +799,10 @@ $displayItemCount = count($statsEntries);
     }
 
     function normalizeScope(scope) {
-        return scope === 'global' || scope === 'descendants' ? scope : 'contextual';
+        if (scope === 'global') {
+            return 'descendants';
+        }
+        return scope === 'children' || scope === 'descendants' ? scope : 'contextual';
     }
 
     function buildScopeUrl(scope) {

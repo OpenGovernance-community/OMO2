@@ -466,7 +466,7 @@ class FAQ extends DbObject
 			: null;
 
 		if ($organizationId <= 0) {
-			return array('global');
+			return array('contextual');
 		}
 
 		if (
@@ -479,12 +479,12 @@ class FAQ extends DbObject
 		if (
 			$currentHolon instanceof \dbObject\Holon
 			&& (int)$currentHolon->getId() > 0
-			&& !($rootHolon instanceof \dbObject\Holon && (int)$rootHolon->getId() === (int)$currentHolon->getId())
+			&& count($currentHolon->getChildren()) > 0
 		) {
+			$allowedScopes[] = 'children';
 			$allowedScopes[] = 'descendants';
 		}
 
-		$allowedScopes[] = 'global';
 		return $allowedScopes;
 	}
 
@@ -912,10 +912,6 @@ class FAQ extends DbObject
 	{
 		$scope = self::normalizePopupScope($scope, $context);
 		$viewerAccess = self::resolveViewerAccess($context);
-		if ($scope === 'global' && !empty($viewerAccess['canManageAllFaqs'])) {
-			return true;
-		}
-
 		$faqOrganizationId = $this->getResolvedOrganizationId();
 		$holon = $this->getContextHolon();
 		$parcoursId = self::hasParcoursColumn() ? (int)$this->get('IDparcours') : 0;
@@ -939,13 +935,14 @@ class FAQ extends DbObject
 				}
 			}
 		} elseif ($holon instanceof \dbObject\Holon) {
-			if ($scope === 'global') {
-				$matchesScope = $faqOrganizationId > 0 && $faqOrganizationId === $contextOrganizationId;
-			} elseif ($currentHolon && (int)$currentHolon->getId() > 0) {
+			if ($currentHolon && (int)$currentHolon->getId() > 0) {
 				$currentHolonId = (int)$currentHolon->getId();
 				$faqHolonId = (int)$holon->getId();
 
-				if ($scope === 'descendants') {
+				if ($scope === 'children') {
+					$matchesScope = $faqHolonId === $currentHolonId
+						|| (int)$holon->get('IDholon_parent') === $currentHolonId;
+				} elseif ($scope === 'descendants') {
 					$matchesScope = $holon->isDescendantOf($currentHolonId, true);
 				} else {
 					$matchesScope = $faqHolonId === $currentHolonId;
@@ -954,7 +951,8 @@ class FAQ extends DbObject
 				$matchesScope = false;
 			}
 		} else {
-			$matchesScope = $faqOrganizationId > 0 && $faqOrganizationId === $contextOrganizationId;
+			$matchesScope = $faqOrganizationId > 0
+				&& $faqOrganizationId === $contextOrganizationId;
 		}
 
 		if (!$matchesScope) {

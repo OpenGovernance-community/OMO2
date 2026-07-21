@@ -2,6 +2,66 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-21
+
+- Les selecteurs de portee des apps utilisent maintenant Local, Enfants directs et Descendants. Enfants directs inclut le contexte courant et ses enfants immediats. La portee Global a ete retiree; depuis la racine de l organisation, Descendants couvre toute la structure.
+- Les apps Calendrier et Documents reconnaissent maintenant le holon racine comme contexte courant lorsque l organisation est ouverte sans `cid`, ce qui affiche aussi Enfants directs et Descendants.
+- Les proprietes de type liste peuvent maintenant referencer des projets. Les editeurs de definitions, de templates et de holons proposent les projets actifs de l organisation, stockent leurs identifiants et affichent ensuite leurs titres dans les details et la vue Structure.
+- Les listes de projets presentent d abord les projets les plus importants, puis les priorites les plus urgentes (P1 avant P5).
+- Les projets affiches dans les proprietes de holon montrent maintenant leur priorite dans une pastille et une barre recursive de repartition des statuts de leurs sous-projets.
+- Le titre d un projet reference dans les proprietes de holon ouvre maintenant son detail dans le panneau droit via la route hash Projets.
+- Les cartes de projets referencees dans les proprietes de holon peuvent maintenant etre deployees pour charger a la demande leurs sous-projets directs.
+- Les proprietes proposent maintenant un texte avec detail HTML repliable, ainsi qu un format HTML avant et apres une liste.
+- Le format HTML et liste propose le meme choix de type d elements que les listes standard.
+- Les deux editeurs HTML du format composite utilisent maintenant le composant Summernote partage et conservent leurs valeurs a la sauvegarde.
+- La serialisation du format HTML et liste conserve maintenant toute sa structure JSON, y compris les deux blocs HTML et les elements de liste.
+- Les tableaux ne sont plus proposes dans le toolbar Summernote des proprietes HTML.
+- Le format HTML et liste n imbrique plus ses deux Summernotes et ses controles dans un label unique; les styles de libelle ne ciblent plus les elements internes de l editeur.
+- Tous les champs Summernote des editeurs de holons et de templates utilisent maintenant un conteneur de formulaire neutre au lieu d un label englobant.
+- L editeur de projet ne recharge plus la feuille des composants generiques dans son sous-drawer; les cartes Kanban utilisent maintenant les variables de generic-section sans changer d apparence a l ouverture du formulaire.
+- Les proprietes HTML et liste vides ne produisent plus de section vide dans le detail d un holon.
+- Les blocs HTML et les listes de projets des proprietes HTML et liste sont maintenant separes par un espacement regulier.
+- Les proprietes texte avec detail HTML sont maintenant affichees sans bordure, avec leur texte en gras et le controle de deplie place en bas a droite.
+- Le controle des proprietes texte avec detail HTML affiche maintenant le libelle Voir détail et utilise une fleche plus grande qui pivote de 90 degrés.
+
+## 2026-07-19
+
+- Le modele initial des projets est maintenant disponible avec titre, description HTML simple, statut, dates planifiees, priorite, importance, hierarchie parent-enfant, responsable, equipe et references vers plusieurs documents de l organisation. Le mode de capture futur pour Telegram distingue aussi les documents multiples du journal unique.
+- L application Projets affiche maintenant les vrais projets dans un Kanban filtrable par contexte local, descendants ou organisation. Les changements de statut se font par glisser-deposer ou selecteur mobile, et le detail ainsi que la creation s ouvrent dans un sous-drawer.
+- Le Kanban Projets utilise maintenant toute la hauteur disponible, sans laisser de zone vide sous les colonnes.
+
+## 2026-07-20
+
+- L application Projets propose maintenant une vue Liste, en plus du Kanban. Elle affiche tous les projets du contexte choisi, y compris les taches, et les regroupe par echeances relatives ou par priorites P1 a P5.
+- Le survol ou le focus d un projet dans la vue Liste met en evidence ses sous-projets directs visibles.
+- La sauvegarde d un projet actualise immediatement le Kanban ou la Liste en cours, tout en conservant leur position de defilement.
+- Le filtre Projets propose maintenant les enfants directs du holon courant, et la vue Liste peut regrouper les projets par holon dans les perimetres multi-holons.
+- Les choix de perimetre, de vue et de tri de l application Projets sont maintenant conserves localement pour chaque utilisateur de ce navigateur.
+- La restauration locale des choix de Projets masque l etat par defaut pendant le chargement afin d eviter un changement visuel tardif.
+- Les preferences de perimetre se replient temporairement sur Global depuis l organisation pour Descendants, et sur Local depuis un role sans enfant pour Enfants ou Descendants. Un cercle qui a des enfants conserve la preference enregistree.
+- Les tris par planification, priorite et holon restent aussi disponibles dans le Kanban et ordonnent les cartes au sein de chaque colonne.
+- Apres un changement de statut, le Kanban reapplique son tri tout en conservant son defilement horizontal.
+- Les actions Annuler et Enregistrer des formulaires projet sont maintenant placees dans l entete du sous-drawer, a cote de Fermer.
+- L editeur de PV peut maintenant inserer un bloc projet lie, avec son resume et un lien vers son detail. Le bouton et la carte compacte reprennent l icone Projets comme les autres inclusions; la carte affiche aussi priorite, taille, holon, responsable, statut et dates de planification.
+- Les actions Enregistrer et Supprimer d un point de PV sont maintenant placees a droite de la barre Summernote persistante, pour rester accessibles pendant l edition.
+- Les actions fixes de la barre Summernote des points de PV utilisent un format compact, pour ne pas augmenter inutilement la hauteur de la barre.
+- Le selecteur de projet d un point de PV propose maintenant deux onglets : choisir un projet existant ou en creer un rapidement puis l inserer directement.
+- La creation rapide de projet depuis un PV permet maintenant de choisir son holon sur la carte graphique et son responsable parmi les membres actifs de ce holon.
+- Le selecteur graphique de holon du selecteur de projet PV reste maintenant fixe a gauche, quel que soit l onglet choisi.
+- Le selecteur de holon du dialogue projet PV est aligne a gauche comme les autres selecteurs, et les actions de creation ou insertion restent visibles en bas du dialogue.
+- Le filtre de projets du dialogue PV inclut explicitement les projets locaux du role selectionne, y compris pendant l initialisation de sa portee.
+- Le selecteur de projets d un PV ne retire plus un projet selon la visibilite individuelle de son holon apres le chargement organisationnel, ce qui conserve les projets locaux de tous les roles accessibles dans le PV.
+- Les portees Local, Enfants, Descendants et Global de l app Projets utilisent maintenant la meme comparaison explicite apres chargement organisationnel, afin de rendre les projets locaux de chaque role de facon coherente.
+- La creation rapide de projet PV reconnait maintenant le holon organisationnel sans appeler de methode protegee, ce qui retablit la creation avec responsable.
+- Les cartes du Kanban affichent maintenant une barre coloree recursive indiquant l etat des feuilles de leur arborescence de sous-projets, avec une ponderation qui respecte la repartition de chaque niveau.
+- Les projets disposent maintenant d une taille S, M, L, XL ou XXL, utilisee comme coefficient de ponderation dans les barres de synthese. La taille M est appliquee par defaut.
+- Les projets existants peuvent maintenant etre modifies depuis le bouton d action de leur entete de detail, avec le meme formulaire que pour leur creation.
+- Le detail d un projet affiche maintenant sa barre recursive en pleine largeur, puis la liste de ses sous-projets avec leur propre barre de synthese.
+- Les feuilles rattachees a un projet dans le meme holon sont maintenant traitees comme des taches : elles restent visibles dans le detail du projet mais ne surchargent plus le Kanban. Elles redeviennent visibles si elles changent de contexte ou recoivent des sous-projets.
+- Les couleurs du Kanban sont maintenant plus douces mais plus lisibles, avec une barre verticale de statut sur chaque projet et des compteurs de colonnes colores selon leur etape.
+- La liste des sous-projets distingue maintenant visuellement les projets et les taches avec leurs icones respectives, en reutilisant l asset product de l application Projets.
+- Les sous-projets affichent maintenant leur responsable, leur statut et leur taille ; les taches peuvent changer de statut directement, et un clic ouvre le detail du sous-projet.
+
 ## 2026-07-18
 
 - Le menu des groupes propose maintenant lui aussi un acces distinct au detail et a la modification.
@@ -953,3 +1013,20 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - 2026-07-15 : L ajout ou l edition d un holon depuis le menu contextuel `getOrg.php` relance maintenant aussi le vrai refresh partage des vues Structure. La mini structure de la homepage se recharge donc en meme temps que le drawer Structure, au lieu de rester sur un etat visuel stale.
 - 2026-07-15 : Dans la mini structure OMO, la selection d un role affiche maintenant aussi le nom du role courant et les libelles de ses elements freres dans le meme cercle, au lieu de se limiter aux enfants du noeud courant.
 - 2026-07-15 : L action `Supprimer` n apparait plus dans `getOrg.php` pour la derniere instance d un role obligatoire. Le controle regarde maintenant toute la chaine de templates heritee afin de bloquer aussi les roles derives d un modele obligatoire.
+- Le changement de statut d'une tache depuis sa fiche recharge le detail et les barres recursives concernees ; le kanban est actualise a la fermeture du drawer.
+- Les details, editions et creations de projets utilisent maintenant des routes hash distinctes (`projects-d`, `projects-e`, `projects-new`) pour permettre la navigation avec les boutons precedent et suivant.
+- Les changements de route entre detail et edition des projets reutilisent maintenant le drawer interne sans recharger le drawer principal, ce qui preserve le kanban et sa position de defilement.
+- Les barres d'avancement des sous-projets affichent maintenant leurs segments dans un ordre stable : pret, en cours, bloque, a verifier, termine, puis un jour peut-etre.
+- Le menu contextuel des cartes projet permet maintenant de deplacer un projet avec la carte graphique des holons, d'archiver son arborescence et de supprimer definitivement un projet avec ses sous-projets.
+- Le deplacement de projet reconnait correctement les holons rattaches a une organisation par leur ancetre structurel.
+- Les lignes de sous-projets indiquent maintenant le holon concerne avant le responsable.
+- Une tache sans sous-projet reste visible dans son contexte lorsque son projet parent est hors du perimetre kanban courant.
+- Le survol d'une carte projet met maintenant en evidence ses enfants directs visibles dans le kanban.
+- La creation rapide d un projet depuis un PV actualise immediatement le drawer Projects ouvert; lorsqu il est ferme, son contenu en cache est vide pour etre recharge a la prochaine ouverture.
+- Les blocs Projet inseres dans un PV sont maintenant reconnus par le sanitiseur serveur et conservent leur mise en page, leurs liens et leurs metadonnees apres sauvegarde.
+- Un lien direct vers le detail d un projet ouvre maintenant aussi son sous-drawer lorsque les preferences locales Projects remplacent la vue initiale.
+- L ouverture d un projet depuis un bloc lie dans un PV relit maintenant le hash apres le chargement du drawer principal, afin d ouvrir de facon fiable son sous-drawer de detail.
+- Depuis une reunion ouverte dans la fenetre courante, un lien Projet relance aussi explicitement son detail apres le repli du drawer de reunion.
+- La fermeture du detail Projet depuis une reunion ne tente plus de charger un projet sans identifiant lorsque le hash revient a la vue Projects.
+- Les indicateurs a completer utilisent maintenant un avertissement jaune pendant un delai de grace adapte a leur frequence. Le retard devient rouge uniquement apres ce delai et affiche alors son nombre de jours.
+- Les graphiques combines reprennent maintenant la severite de leurs indicateurs : jaune quand ils sont seulement a completer, rouge uniquement lorsqu au moins un indicateur est reellement en retard.

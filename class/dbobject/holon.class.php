@@ -2518,7 +2518,7 @@
 		{
 			$localValue = isset($definition['value']) ? (string)$definition['value'] : '';
 			$inheritedValue = isset($definition['inheritedValue']) ? (string)$definition['inheritedValue'] : '';
-			$isList = (int)($definition['formatId'] ?? 0) === \dbObject\PropertyFormat::FORMAT_LIST;
+			$isList = \dbObject\PropertyFormat::isListFormat((int)($definition['formatId'] ?? 0));
 			$isLockedByAncestor = !empty($definition['inheritedLocked']);
 
 			if ($isLockedByAncestor) {
@@ -3012,7 +3012,7 @@
 				$property->set('IDpropertyformat', $propertyFormatId);
 				$listItemType = null;
 				$listHolonTypeIds = null;
-				if ($propertyFormatId === \dbObject\PropertyFormat::FORMAT_LIST) {
+				if (\dbObject\PropertyFormat::isListFormat($propertyFormatId)) {
 					$listItemType = \dbObject\Property::normalizeTemplateListItemType($definition['listItemType'] ?? '');
 					if ($listItemType === \dbObject\Property::LIST_ITEM_HOLON) {
 						$listHolonTypeIds = \dbObject\Property::serializeHolonTypeIds($definition['listHolonTypeIds'] ?? array());

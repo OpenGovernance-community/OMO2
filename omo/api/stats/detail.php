@@ -27,8 +27,9 @@ $sourceUrl = StatIndicator::sanitizeSourceUrl($indicator->get('source_url'));
 $contextLabel = omoStatsContextLabel($indicator);
 $measurementFrequency = StatIndicator::normalizeMeasurementFrequency($indicator->get('measurement_frequency'));
 $measurementSchedule = omoStatsMeasurementScheduleLabel($measurementFrequency, $indicator->get('measurement_schedule'));
-$isOverdue = omoStatsIsIndicatorOverdue($indicator);
-$chartData = omoStatsBuildIndicatorChartData($indicator, $values, $referencePoints, $isOverdue);
+$overdueInfo = omoStatsGetIndicatorOverdueInfo($indicator);
+$overdueSeverity = (string)$overdueInfo['severity'];
+$chartData = omoStatsBuildIndicatorChartData($indicator, $values, $referencePoints, $overdueSeverity);
 $headerDescriptionParts = [omoStatsReferenceTypeLabel($indicator->get('reference_type'))];
 if ($measurementFrequency !== null) {
     $headerDescriptionParts[] = omoStatsMeasurementFrequencyLabel($measurementFrequency);
@@ -48,7 +49,7 @@ if ($currentHolonId > 0) {
 $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
 ?>
 <article
-    class="omo-stats-detail<?= $isOverdue ? ' omo-stats-detail--overdue' : '' ?>"
+    class="omo-stats-detail<?= $overdueSeverity === 'error' ? ' omo-stats-detail--overdue' : ($overdueSeverity === 'warning' ? ' omo-stats-detail--warning' : '') ?>"
     data-omo-stats-detail
     data-indicator-id="<?= (int)$indicatorId ?>"
     data-detail-url="<?= omoApiEscape($detailUrl) ?>"
@@ -71,8 +72,10 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
 
     <div class="omo-stats-detail__meta omo-stats-detail__meta--compact">
         <span><strong><?= omoApiEscape(omoStatsT('stats.card.context')) ?> :</strong> <?= omoApiEscape($contextLabel) ?></span>
-            <?php if ($isOverdue): ?>
-                <span class="omo-stats-overdue-label"><?= omoApiEscape(omoStatsT('stats.card.overdue')) ?></span>
+            <?php if ($overdueSeverity === 'warning'): ?>
+                <span class="omo-stats-overdue-label omo-stats-overdue-label--warning"><?= omoApiEscape(omoStatsT('stats.card.to_complete')) ?></span>
+            <?php elseif ($overdueSeverity === 'error'): ?>
+                <span class="omo-stats-overdue-label"><?= omoApiEscape(omoStatsT('stats.card.overdue_days', ['count' => $overdueInfo['overdue_days']])) ?></span>
             <?php endif; ?>
             <?php if ($latestValue instanceof StatIndicatorValue): ?>
                 <span class="omo-stats-detail__latest-value"><span><strong><?= omoApiEscape(omoStatsT('stats.detail.latest')) ?> :</strong> <?= omoApiEscape(omoStatsFormatNumber($latestValue->get('value'))) ?><?php if (is_numeric($latestReferencePercentage)): ?> <span class="omo-stats-reference-percentage">(<?= omoApiEscape(omoStatsFormatNumber($latestReferencePercentage)) ?>%)</span><?php endif; ?></span><time>· <?= omoApiEscape(omoStatsFormatDateTime($latestValue->get('measured_at'))) ?></time></span>
@@ -90,7 +93,7 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
         <div class="generic-tabs__panels">
             <section id="<?= omoApiEscape($tabPrefix) ?>-chart" class="generic-tabs__panel omo-stats-detail__chart-panel" data-generic-tab-panel>
                 <div class="omo-stats-interactive-chart" data-omo-stats-interactive-chart>
-                    <?= omoStatsRenderChart($indicator, $values, $referencePoints, 'large', $isOverdue, true) ?>
+                    <?= omoStatsRenderChart($indicator, $values, $referencePoints, 'large', $overdueSeverity, true) ?>
                     <?= omoStatsRenderInteractiveChartRange($chartData) ?>
                 </div>
                 <div class="omo-stats-detail__legend">
@@ -154,4 +157,4 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
         </form>
     <?php endif; ?>
 </article>
-<script src="/omo/api/stats/chart.js?v=20260718-reference-range-default"></script>
+<script src="/omo/api/stats/chart.js?v=20260721-overdue-grace"></script>
