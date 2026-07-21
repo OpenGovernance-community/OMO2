@@ -15,13 +15,13 @@ $sourceLang = [
         'text' => 'Contextuel',
         'context' => 'Label used to show only documents from the current holon.',
     ],
+    'documents.scope.children' => [
+        'text' => 'Enfants directs',
+        'context' => 'Label used to show documents from the current holon and its direct children.',
+    ],
     'documents.scope.descendants' => [
         'text' => 'Descendants',
         'context' => 'Label used to show documents from the current holon and its descendants.',
-    ],
-    'documents.scope.global' => [
-        'text' => 'Global',
-        'context' => 'Label used to show documents from the whole organization.',
     ],
     'documents.scope.view' => [
         'text' => 'Voir',
@@ -31,10 +31,10 @@ $sourceLang = [
         'text' => 'Editer',
         'context' => 'Short label used before the document edit scope in tooltips.',
     ],
-    'documents.empty.visible_global' => [
-        'one' => 'Aucun document visible dans cette organisation. {count} fichier est caché.',
-        'other' => 'Aucun document visible dans cette organisation. {count} fichiers sont cachés.',
-        'context' => 'Empty state shown when hidden documents exist in global scope.',
+    'documents.empty.visible_children' => [
+        'one' => 'Aucun document visible pour ce contexte ou ses enfants directs. {count} fichier est caché.',
+        'other' => 'Aucun document visible pour ce contexte ou ses enfants directs. {count} fichiers sont cachés.',
+        'context' => 'Empty state shown when hidden documents exist in direct child scope.',
     ],
     'documents.empty.visible_contextual' => [
         'one' => 'Aucun document visible pour ce contexte. {count} fichier est caché.',
@@ -46,9 +46,9 @@ $sourceLang = [
         'other' => 'Aucun document visible pour ce contexte et ses descendants. {count} fichiers sont cachés.',
         'context' => 'Empty state shown when hidden documents exist in descendant scope.',
     ],
-    'documents.empty.available_global' => [
-        'text' => 'Aucun document disponible dans cette organisation.',
-        'context' => 'Empty state shown when no document exists in global scope.',
+    'documents.empty.available_children' => [
+        'text' => 'Aucun document disponible pour ce contexte ou ses enfants directs.',
+        'context' => 'Empty state shown when no document exists in direct child scope.',
     ],
     'documents.empty.available_contextual' => [
         'text' => 'Aucun document disponible pour ce contexte.',
@@ -247,12 +247,19 @@ if ($currentHolonId > 0) {
     }
 }
 
+if (!($currentContextHolon instanceof Holon) && $rootHolon instanceof Holon) {
+    $currentContextHolon = $rootHolon;
+    $currentHolonId = (int)$rootHolon->getId();
+}
+
 $effectiveCurrentHolonId = $currentContextHolon instanceof Holon ? (int)$currentContextHolon->getId() : 0;
 $canToggleDocumentScope = $organization->getId() > 0 && $rootHolon instanceof Holon;
 $availableDocumentScopes = omoApiGetAvailableContextScopes($canToggleDocumentScope, $currentContextHolon, $rootHolon);
 $documentScope = omoApiNormalizeContextScope($requestedDocumentScope, $availableDocumentScopes);
 $documentScopeActiveIndex = omoApiResolveContextScopeIndex($documentScope, $availableDocumentScopes);
-$descendantHolonIds = omoApiGetDescendantHolonIds($currentContextHolon);
+$scopeHolonIds = $documentScope === 'children'
+    ? omoApiGetDirectChildScopeHolonIds($currentContextHolon)
+    : omoApiGetDescendantHolonIds($currentContextHolon);
 $currentUserId = (int)commonGetCurrentUserId();
 $canCreateDocument = $organization->getId() > 0
     && Document::canCreateInOrganizationContext(
@@ -275,7 +282,7 @@ if ($currentOrganizationId > 0) {
         $currentOrganizationId,
         $effectiveCurrentHolonId,
         $documentScope,
-        $descendantHolonIds
+        $scopeHolonIds
     );
     $visibilityStats = $documents->getLastVisibilityStats();
     $visibleDocumentsCount = max(0, (int)($visibilityStats['visible'] ?? 0));
@@ -379,15 +386,15 @@ $resolveDocumentVisibilityIconUrl = static function (string $visibilityType) use
 };
 
 if ($hiddenDocumentsCount > 0) {
-    if ($documentScope === 'global') {
-        $documentsEmptyMessage = omoDocumentsScopeT('documents.empty.visible_global', ['count' => (string)$hiddenDocumentsCount]);
+    if ($documentScope === 'children') {
+        $documentsEmptyMessage = omoDocumentsScopeT('documents.empty.visible_children', ['count' => (string)$hiddenDocumentsCount]);
     } elseif ($documentScope === 'descendants') {
         $documentsEmptyMessage = omoDocumentsScopeT('documents.empty.visible_descendants', ['count' => (string)$hiddenDocumentsCount]);
     } else {
         $documentsEmptyMessage = omoDocumentsScopeT('documents.empty.visible_contextual', ['count' => (string)$hiddenDocumentsCount]);
     }
-} elseif ($documentScope === 'global') {
-    $documentsEmptyMessage = omoDocumentsScopeT('documents.empty.available_global');
+} elseif ($documentScope === 'children') {
+    $documentsEmptyMessage = omoDocumentsScopeT('documents.empty.available_children');
 } elseif ($documentScope === 'descendants') {
     $documentsEmptyMessage = omoDocumentsScopeT('documents.empty.available_descendants');
 } else {
@@ -932,9 +939,10 @@ if (!is_string($documentsPayload)) {
 
                 const omoDocumentsNormalizeScope = function (value) {
                     const normalizedScope = String(value || '').trim().toLowerCase();
-                    return normalizedScope === 'global' || normalizedScope === 'descendants'
-                        ? normalizedScope
-                        : 'contextual';
+                    if (normalizedScope === 'global') {
+                        return 'descendants';
+                    }
+                    return normalizedScope === 'children' || normalizedScope === 'descendants' ? normalizedScope : 'contextual';
                 };
 
                 const omoDocumentsReadSessionCookie = function (name) {
@@ -2423,7 +2431,7 @@ if (!is_string($documentsPayload)) {
                                         : '';
                                     const fallbackDocumentScope = forcedScope !== ''
                                         ? forcedScope
-                                        : 'global';
+                                        : 'descendants';
 
                                     if (targetDocumentId > 0) {
                                         const documentItem = findDocumentItemById(targetDocumentId);
@@ -2547,9 +2555,10 @@ if (!is_string($documentsPayload)) {
         (function () {
             const normalizeDocumentScope = function (scopeValue) {
                 const normalizedScope = String(scopeValue || '').trim().toLowerCase();
-                return normalizedScope === 'global' || normalizedScope === 'descendants'
-                    ? normalizedScope
-                    : 'contextual';
+                if (normalizedScope === 'global') {
+                    return 'descendants';
+                }
+                return normalizedScope === 'children' || normalizedScope === 'descendants' ? normalizedScope : 'contextual';
             };
 
             const resolveDocumentsScopePanel = function (panelCandidate) {
@@ -2721,9 +2730,10 @@ if (!is_string($documentsPayload)) {
 
             const normalizeDocumentScope = function (scopeValue) {
                 const normalizedScope = String(scopeValue || '').trim().toLowerCase();
-                return normalizedScope === 'global' || normalizedScope === 'descendants'
-                    ? normalizedScope
-                    : 'contextual';
+                if (normalizedScope === 'global') {
+                    return 'descendants';
+                }
+                return normalizedScope === 'children' || normalizedScope === 'descendants' ? normalizedScope : 'contextual';
             };
             const currentScope = normalizeDocumentScope(panel.getAttribute('data-omo-document-scope') || 'contextual');
             const targetScope = normalizeDocumentScope(button.getAttribute('data-omo-document-scope-toggle') || '');
@@ -2783,9 +2793,10 @@ if (!is_string($documentsPayload)) {
 
                 const normalizeDocumentScope = function (scopeValue) {
                     const normalizedScope = String(scopeValue || '').trim().toLowerCase();
-                    return normalizedScope === 'global' || normalizedScope === 'descendants'
-                        ? normalizedScope
-                        : 'contextual';
+                    if (normalizedScope === 'global') {
+                        return 'descendants';
+                    }
+                    return normalizedScope === 'children' || normalizedScope === 'descendants' ? normalizedScope : 'contextual';
                 };
                 const organizationId = Number(root.getAttribute('data-omo-document-oid') || 0);
                 const holonId = Number(root.getAttribute('data-omo-document-cid') || 0);

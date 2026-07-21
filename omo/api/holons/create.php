@@ -181,7 +181,7 @@ if ($organizationId <= 0) {
 
 <?php if ($editorData !== null && $errorMessage === ''): ?>
 <script src="/omo/assets/js/sized-image-field.js"></script>
-<script src="/omo/assets/js/simple-html-field.js?v=20260718-pv-indicator-overdue-days"></script>
+<script src="/omo/assets/js/simple-html-field.js?v=20260721-composite-property-fields-v5"></script>
 <script src="/common/assets/multiline-list-paste.js"></script>
 <script>
 (() => {
@@ -630,6 +630,10 @@ function getHolonCatalog() {
     return Array.isArray(state.data.holonCatalog) ? state.data.holonCatalog : [];
 }
 
+function getProjectCatalog() {
+    return Array.isArray(state.data.projectCatalog) ? state.data.projectCatalog : [];
+}
+
 // Trouve un modèle
 function findTemplate(templateId) {
     return getTemplates().find(function (template) {
@@ -895,7 +899,43 @@ function renderPropertyInput(property) {
                 + '</div>';
         }
 
+        if (String(property.listItemType || 'text') === 'project') {
+            const projectOptions = getProjectCatalog();
+            const selectedIds = parseStoredListValue(localValue).map(Number);
+
+            if (!projectOptions.length) {
+                return '<div class="omo-holon-create__empty-note">Aucun projet disponible.</div>';
+            }
+
+            return '<div class="omo-holon-create__check-grid">'
+                + projectOptions.map(function (project) {
+                    const checked = selectedIds.indexOf(Number(project.id)) >= 0 ? ' checked' : '';
+                    return ''
+                        + '<label class="omo-holon-create__check-option">'
+                        + '  <input type="checkbox" class="omo-holon-create__property-value omo-holon-create__property-value--project" value="' + Number(project.id) + '"' + checked + '>'
+                        + '  <span>' + escapeHtml(project.title) + (project.holonLabel ? '<small>' + escapeHtml(project.holonLabel) + '</small>' : '') + '</span>'
+                        + '</label>';
+                }).join('')
+                + '</div>';
+        }
+
         return renderSimpleListInput(property.listItemType || 'text', parseStoredListValue(localValue));
+    }
+
+    if (formatId === 6) {
+        let parts = {};
+        try { parts = JSON.parse(localValue) || {}; } catch (error) {}
+        return '<input type="text" class="omo-holon-create__property-value-text-html-title generic-form-control" value="' + escapeHtml(parts.text || '') + '" placeholder="Texte affiche">'
+            + '<textarea class="omo-holon-create__property-value-text-html-detail generic-form-control" rows="5" placeholder="Detail HTML">' + escapeHtml(parts.detail || '') + '</textarea>';
+    }
+
+    if (formatId === 7) {
+        let parts = {};
+        try { parts = JSON.parse(localValue) || {}; } catch (error) {}
+        const listControl = renderPropertyInput(Object.assign({}, property, { formatId: 2, value: JSON.stringify(Array.isArray(parts.items) ? parts.items : []) }));
+        return '<div class="omo-holon-create__composite-html" data-omo-composite-html="before" data-value="' + escapeHtml(parts.before || '') + '"></div>'
+            + '<div class="omo-holon-create__composite-list">' + listControl + '</div>'
+            + '<div class="omo-holon-create__composite-html" data-omo-composite-html="after" data-value="' + escapeHtml(parts.after || '') + '"></div>';
     }
 
     if (formatId === 3) {
@@ -923,6 +963,15 @@ function formatInheritedHolonItem(item) {
     return holon ? holon.pathLabel : String(item || '');
 }
 
+function formatInheritedProjectItem(item) {
+    const projectId = Number(item || 0);
+    const project = getProjectCatalog().find(function (entry) {
+        return Number(entry.id || 0) === projectId;
+    });
+
+    return project ? project.title : String(item || '');
+}
+
 // Rend valeur héritée
 function renderInheritedValue(property) {
     const inheritedValue = property.inheritedValue !== undefined && property.inheritedValue !== null
@@ -940,6 +989,9 @@ function renderInheritedValue(property) {
             }
             if (String(property.listItemType || 'text') === 'holon') {
                 return formatInheritedHolonItem(item);
+            }
+            if (String(property.listItemType || 'text') === 'project') {
+                return formatInheritedProjectItem(item);
             }
             return String(item || '');
         }).filter(Boolean);
@@ -1034,20 +1086,21 @@ function createPropertyRow(property, index) {
         + '      </div>'
         + '  </div>'
         + renderInheritedValue(property)
-        + '  <label class="omo-holon-create__field">'
+        + '  <' + ([5, 7].indexOf(Number(property.formatId || 0)) >= 0 ? 'div' : 'label') + ' class="omo-holon-create__field">'
         + '      <span>Valeur locale</span>'
         + '      <div class="omo-holon-create__property-input">' + renderPropertyInput(property) + '</div>'
-        + '  </label>'
+        + '  </' + ([5, 7].indexOf(Number(property.formatId || 0)) >= 0 ? 'div' : 'label') + '>'
         + '</div>';
 
-    if (Number(property.formatId || 0) === 5) {
-        const htmlEditorHost = row.querySelector('.omo-holon-create__html-editor');
+    if ([5, 7].indexOf(Number(property.formatId || 0)) >= 0) {
+        row.querySelectorAll('.omo-holon-create__html-editor, [data-omo-composite-html]').forEach(function (htmlEditorHost) {
         if (htmlEditorHost && window.omoSimpleHtmlField && typeof window.omoSimpleHtmlField.mount === 'function') {
             window.omoSimpleHtmlField.mount(htmlEditorHost, {
-                value: property.value !== undefined && property.value !== null ? String(property.value) : '',
+                value: htmlEditorHost.hasAttribute('data-omo-composite-html') ? String(htmlEditorHost.getAttribute('data-value') || '') : (property.value !== undefined && property.value !== null ? String(property.value) : ''),
                 placeholder: 'Renseignez une valeur locale si necessaire.'
             });
         }
+        });
     }
 
     return row;
@@ -1214,13 +1267,20 @@ function serializePropertyValue(row) {
         return '';
     }
 
-    if (htmlFieldHost && htmlFieldHost.__omoSimpleHtmlField && typeof htmlFieldHost.__omoSimpleHtmlField.getValue === 'function') {
+    if (formatId === 5 && htmlFieldHost && htmlFieldHost.__omoSimpleHtmlField && typeof htmlFieldHost.__omoSimpleHtmlField.getValue === 'function') {
         return String(htmlFieldHost.__omoSimpleHtmlField.getValue() || '');
     }
 
     if (formatId === 2) {
         if (listItemType === 'holon') {
             const selectedIds = Array.from(row.querySelectorAll('.omo-holon-create__property-value--holon:checked')).map(function (input) {
+                return Number(input.value || 0);
+            }).filter(Boolean);
+            return selectedIds.length ? JSON.stringify(selectedIds) : '';
+        }
+
+        if (listItemType === 'project') {
+            const selectedIds = Array.from(row.querySelectorAll('.omo-holon-create__property-value--project:checked')).map(function (input) {
                 return Number(input.value || 0);
             }).filter(Boolean);
             return selectedIds.length ? JSON.stringify(selectedIds) : '';
@@ -1246,6 +1306,24 @@ function serializePropertyValue(row) {
         }).filter(Boolean);
 
         return items.length ? JSON.stringify(items) : '';
+    }
+
+    if (formatId === 6) {
+        return JSON.stringify({
+            text: String((row.querySelector('.omo-holon-create__property-value-text-html-title') || {}).value || '').trim(),
+            detail: String((row.querySelector('.omo-holon-create__property-value-text-html-detail') || {}).value || '')
+        });
+    }
+
+    if (formatId === 7) {
+        const items = listItemType === 'project' ? Array.from(row.querySelectorAll('.omo-holon-create__property-value--project:checked')).map(function (input) { return Number(input.value || 0); }).filter(Boolean) : listItemType === 'holon' ? Array.from(row.querySelectorAll('.omo-holon-create__property-value--holon:checked')).map(function (input) { return Number(input.value || 0); }).filter(Boolean) : Array.from(row.querySelectorAll('.omo-holon-create__property-value-item')).map(function (input) { return String(input.value || '').trim(); }).filter(Boolean);
+        const beforeHost = row.querySelector('[data-omo-composite-html="before"]');
+        const afterHost = row.querySelector('[data-omo-composite-html="after"]');
+        return JSON.stringify({
+            before: beforeHost && beforeHost.__omoSimpleHtmlField ? String(beforeHost.__omoSimpleHtmlField.getValue() || '') : '',
+            items: items,
+            after: afterHost && afterHost.__omoSimpleHtmlField ? String(afterHost.__omoSimpleHtmlField.getValue() || '') : ''
+        });
     }
 
     const valueField = row.querySelector('.omo-holon-create__property-value');
@@ -1876,7 +1954,7 @@ root.addEventListener('click', function (event) {
     accent-color: var(--color-primary);
 }
 
-.omo-holon-create__field span {
+.omo-holon-create__field > span {
     display: block;
     font-size: 0.9rem;
     font-weight: 600;

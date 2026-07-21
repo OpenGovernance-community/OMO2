@@ -1368,6 +1368,13 @@ function formatListItemValue(item, entry) {
     return formatDateValue(item);
   }
 
+  if (String(entry && entry.listItemType || "") === "project") {
+    const projectId = Number(item && typeof item === "object" ? item.id : item);
+    return projectId > 0 && structureProjectTitles[projectId]
+      ? String(structureProjectTitles[projectId])
+      : String(item || "").trim();
+  }
+
   if (item && typeof item === "object" && !Array.isArray(item)) {
     return String(item.label || item.value || item.title || "").trim();
   }
@@ -1933,6 +1940,7 @@ $(document)
     const canCreateShareLink = <?= $canCreateShareLink ? 'true' : 'false' ?>;
     const canExportStructure = <?= $canExportStructure ? 'true' : 'false' ?>;
     let root = null;
+    let structureProjectTitles = {};
 
     let canvas, hiddenCanvas, context, hiddenContext;
     let pack, nodes, nodeCount, focus, currentnode, hoverNode = null;
@@ -2451,6 +2459,9 @@ $(document)
               return;
             }
 
+            structureProjectTitles = response && response.projectTitles && typeof response.projectTitles === "object"
+              ? response.projectTitles
+              : {};
             const normalizedRoot = normalizeStructureNode(response, 0);
 
             if (!normalizedRoot) {

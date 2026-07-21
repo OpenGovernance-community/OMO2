@@ -61,6 +61,10 @@ $formatDateTime = static function ($value) use ($formatter): string {
     return $value->format('d.m.Y H:i');
 };
 
+$formatProjectDate = static function ($value): string {
+    return $value instanceof DateTimeInterface ? $value->format('d.m.Y') : '';
+};
+
 if (!$accessGranted) {
     http_response_code(403);
     ?>
@@ -77,6 +81,15 @@ if ($resourcePickerInitialHolonId <= 0 && $hasAssociatedEvent) {
 }
 $organization = new \dbObject\Organization();
 $hasOrganization = $organizationId > 0 && $organization->load($organizationId);
+$projectEmbedCreateHolon = $resourcePickerInitialHolonId > 0 ? new \dbObject\Holon() : null;
+if (!($projectEmbedCreateHolon instanceof \dbObject\Holon) || !$projectEmbedCreateHolon->load($resourcePickerInitialHolonId)) {
+    $projectEmbedCreateHolon = $hasOrganization ? $organization->getEnabledStructuralRootHolon() : null;
+}
+$projectEmbedCreateHolonId = $projectEmbedCreateHolon instanceof \dbObject\Holon ? (int)$projectEmbedCreateHolon->getId() : 0;
+$projectEmbedCreateHolonLabel = $projectEmbedCreateHolon instanceof \dbObject\Holon ? trim((string)$projectEmbedCreateHolon->getDisplayName()) : '';
+$projectEmbedCreateResponsibleLabel = $currentUserId > 0
+    ? trim((string)\dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($currentUserId, $organizationId))
+    : '';
 $hasTeamApplication = $hasOrganization && $organization->isApplicationEnabled('team', $currentUserId);
 $hasStructureApplication = $hasOrganization && $organization->isStructureApplicationEnabled($currentUserId);
 $hasDocumentsApplication = $hasOrganization && $organization->isApplicationEnabled('documents', $currentUserId);
@@ -178,13 +191,14 @@ $embeddableDocumentsPayload = [];
 $embeddableDecisionsPayload = [];
 $embeddableEventsPayload = [];
 $embeddableIndicatorsPayload = [];
+$embeddableProjectsPayload = [];
 $attendancePayload = $hasTeamApplication
     ? omoDocumentsPvEditorBuildAttendancePayloadFromDocument($document, $organizationId)
     : null;
 
 if ($hasDocumentsApplication) {
     $embeddableDocuments = new \dbObject\ArrayDocument();
-    $embeddableDocuments->loadVisibleForOrganizationContext($organizationId, 0, 'global');
+    $embeddableDocuments->loadVisibleForOrganization($organizationId);
 
     foreach ($embeddableDocuments as $embeddableDocument) {
         if (
@@ -237,6 +251,39 @@ if ($hasDecisionApplication) {
     });
 }
 
+$embeddableProjects = new \dbObject\ArrayProject();
+$embeddableProjects->loadForOrganization($organizationId);
+foreach ($embeddableProjects as $embeddableProject) {
+    if (!($embeddableProject instanceof \dbObject\Project) || (int)$embeddableProject->getId() <= 0) {
+        continue;
+    }
+    $projectHolon = $embeddableProject->getHolon();
+    $projectSummary = trim(preg_replace('/\s+/', ' ', strip_tags((string)$embeddableProject->get('description'))));
+    $projectResponsibleId = (int)$embeddableProject->get('IDuser');
+    $projectStatus = \dbObject\Project::normalizeStatus($embeddableProject->get('status'));
+    $projectStatusCatalog = \dbObject\Project::getStatusCatalog();
+    $embeddableProjectsPayload[] = [
+        'id' => (int)$embeddableProject->getId(),
+        'contextHolonId' => (int)$embeddableProject->get('IDholon'),
+        'contextLabel' => $projectHolon instanceof \dbObject\Holon ? trim((string)$projectHolon->getDisplayName()) : '',
+        'title' => trim((string)$embeddableProject->get('title')),
+        'summary' => $projectSummary,
+        'responsibleLabel' => $projectResponsibleId > 0
+            ? trim((string)\dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($projectResponsibleId, $organizationId))
+            : '',
+        'statusLabel' => trim((string)($projectStatusCatalog[$projectStatus]['label'] ?? $projectStatus)),
+        'priorityLabel' => \dbObject\Project::normalizeLevel($embeddableProject->get('priority')) !== null
+            ? 'P' . (string)\dbObject\Project::normalizeLevel($embeddableProject->get('priority'))
+            : '',
+        'sizeLabel' => \dbObject\Project::normalizeSize($embeddableProject->get('project_size')),
+        'plannedStartLabel' => $formatProjectDate($embeddableProject->get('planned_start_date')),
+        'plannedEndLabel' => $formatProjectDate($embeddableProject->get('planned_end_date')),
+    ];
+}
+usort($embeddableProjectsPayload, static function (array $left, array $right): int {
+    return strnatcasecmp((string)($left['title'] ?? ''), (string)($right['title'] ?? ''));
+});
+
 if ($hasCalendarApplication) {
     $embeddableEvents = new \dbObject\ArrayEvent();
     $embeddableEvents->loadVisibleForOrganization($organizationId, $currentUserId);
@@ -274,7 +321,7 @@ if ($hasCalendarApplication) {
 
 if ($hasStatsApplication) {
     $embeddableIndicators = new \dbObject\ArrayStatIndicator();
-    $embeddableIndicators->loadForContext($organizationId, 0, 'global');
+    $embeddableIndicators->loadForOrganization($organizationId);
 
     foreach ($embeddableIndicators as $embeddableIndicator) {
         if (!($embeddableIndicator instanceof \dbObject\StatIndicator) || (int)$embeddableIndicator->getId() <= 0) {
@@ -289,7 +336,7 @@ if ($hasStatsApplication) {
     }
 
     $embeddableIndicatorGroups = new \dbObject\ArrayStatIndicatorGroup();
-    $embeddableIndicatorGroups->loadForContext($organizationId, 0, 'global');
+    $embeddableIndicatorGroups->loadForOrganization($organizationId);
     foreach ($embeddableIndicatorGroups as $embeddableIndicatorGroup) {
         if (!($embeddableIndicatorGroup instanceof \dbObject\StatIndicatorGroup) || !$embeddableIndicatorGroup->canView() || (int)$embeddableIndicatorGroup->getId() <= 0) {
             continue;
@@ -1747,6 +1794,44 @@ foreach ($points as $point) {
         gap: 10px;
     }
 
+    .omo-pv-editor .omo-simple-html-field .note-toolbar {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-pv-editor__point-actions--toolbar {
+        margin-left: auto;
+        padding-left: 8px;
+        border-left: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 76%, transparent);
+    }
+
+    .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-pv-editor__save-button,
+    .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-pv-editor__delete-button {
+        min-height: 28px;
+        height: 28px;
+    }
+
+    .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-pv-editor__save-button {
+        padding: 4px 9px;
+        font-size: 0.78rem;
+        line-height: 1;
+    }
+
+    .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-pv-editor__delete-button {
+        width: 28px;
+        min-width: 28px;
+        padding: 6px;
+    }
+
+    .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-pv-editor__point-status {
+        max-width: 130px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
     .omo-pv-editor__delete-button {
         width: 42px;
         height: 42px;
@@ -1782,6 +1867,16 @@ foreach ($points as $point) {
 
     .omo-pv-editor__save-button.is-saving:disabled {
         cursor: wait;
+    }
+
+    @media (max-width: 620px) {
+        .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-pv-editor__point-actions--toolbar {
+            width: 100%;
+            margin-left: 0;
+            padding: 6px 0 0;
+            border-top: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 76%, transparent);
+            border-left: 0;
+        }
     }
 
     .omo-pv-editor__empty {
@@ -2348,8 +2443,8 @@ foreach ($points as $point) {
     const resourcePickerInitialHolonId = <?= (int)$resourcePickerInitialHolonId ?>;
     const resourcePickerScopeUi = <?= json_encode([
         'local' => omoDocumentsPvEditorT('documents.pv_editor.embed.scope_local'),
+        'children' => omoDocumentsPvEditorT('documents.pv_editor.embed.scope_children'),
         'descendants' => omoDocumentsPvEditorT('documents.pv_editor.embed.scope_descendants'),
-        'global' => omoDocumentsPvEditorT('documents.pv_editor.embed.scope_global'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const embeddableDocuments = <?= json_encode($embeddableDocumentsPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     const documentEmbedUi = <?= json_encode([
@@ -2380,6 +2475,49 @@ foreach ($points as $point) {
         'cancel' => omoDocumentsPvEditorT('documents.pv_editor.action.cancel'),
         'remove' => omoDocumentsPvEditorT('documents.pv_editor.action.remove_embed'),
         'linkedLabel' => omoDocumentsPvEditorT('documents.pv_editor.decision.linked_label'),
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const canEmbedProjects = true;
+    const embeddableProjects = <?= json_encode($embeddableProjectsPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    const projectEmbedUi = <?= json_encode([
+        'buttonTitle' => omoDocumentsPvEditorT('documents.pv_editor.project.button_title'),
+        'modalTitle' => omoDocumentsPvEditorT('documents.pv_editor.project.modal_title'),
+        'search' => omoDocumentsPvEditorT('documents.pv_editor.embed.search'),
+        'quickSearchPlaceholder' => omoDocumentsPvEditorT('documents.pv_editor.embed.quick_search_placeholder'),
+        'visibleProjects' => omoDocumentsPvEditorT('documents.pv_editor.project.visible'),
+        'none' => omoDocumentsPvEditorT('documents.pv_editor.embed.none'),
+        'insert' => omoDocumentsPvEditorT('documents.pv_editor.project.insert'),
+        'cancel' => omoDocumentsPvEditorT('documents.pv_editor.action.cancel'),
+        'remove' => omoDocumentsPvEditorT('documents.pv_editor.action.remove_embed'),
+        'linkedLabel' => omoDocumentsPvEditorT('documents.pv_editor.project.linked_label'),
+        'openExternal' => omoDocumentsPvEditorT('documents.pv_editor.embed.open_external'),
+        'plannedDate' => omoDocumentsPvEditorT('documents.pv_editor.project.planned_date', ['date' => '{date}']),
+        'endDate' => omoDocumentsPvEditorT('documents.pv_editor.project.end_date', ['date' => '{date}']),
+        'tabExisting' => omoDocumentsPvEditorT('documents.pv_editor.project.tab_existing'),
+        'tabNew' => omoDocumentsPvEditorT('documents.pv_editor.project.tab_new'),
+        'tabsAria' => omoDocumentsPvEditorT('documents.pv_editor.project.tabs_aria'),
+        'titleLabel' => omoDocumentsPvEditorT('documents.pv_editor.project.title'),
+        'descriptionLabel' => omoDocumentsPvEditorT('documents.pv_editor.project.description'),
+        'statusLabel' => omoDocumentsPvEditorT('documents.pv_editor.project.status'),
+        'priorityLabel' => omoDocumentsPvEditorT('documents.pv_editor.project.priority'),
+        'sizeLabel' => omoDocumentsPvEditorT('documents.pv_editor.project.size'),
+        'startDateLabel' => omoDocumentsPvEditorT('documents.pv_editor.project.start_date'),
+        'endDateLabel' => omoDocumentsPvEditorT('documents.pv_editor.project.end_date_label'),
+        'holonLabel' => omoDocumentsPvEditorT('documents.pv_editor.project.holon'),
+        'responsibleLabel' => omoDocumentsPvEditorT('documents.pv_editor.project.responsible'),
+        'responsibleEmpty' => omoDocumentsPvEditorT('documents.pv_editor.project.responsible_empty'),
+        'membersLoading' => omoDocumentsPvEditorT('documents.pv_editor.project.members_loading'),
+        'membersEmpty' => omoDocumentsPvEditorT('documents.pv_editor.project.members_empty'),
+        'createInsert' => omoDocumentsPvEditorT('documents.pv_editor.project.create_insert'),
+        'createError' => omoDocumentsPvEditorT('documents.pv_editor.project.create_error'),
+        'statusOptions' => array_map(static fn ($status, $definition) => ['value' => $status, 'label' => (string)($definition['label'] ?? $status)], array_keys(\dbObject\Project::getStatusCatalog()), \dbObject\Project::getStatusCatalog()),
+        'sizeOptions' => \dbObject\Project::sizes(),
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const projectEmbedCreateContext = <?= json_encode([
+        'organizationId' => $organizationId,
+        'holonId' => $projectEmbedCreateHolonId,
+        'holonLabel' => $projectEmbedCreateHolonLabel,
+        'responsibleId' => $currentUserId,
+        'responsibleLabel' => $projectEmbedCreateResponsibleLabel,
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const canEmbedEvents = <?= $hasCalendarApplication ? 'true' : 'false' ?>;
     const embeddableEvents = <?= json_encode($embeddableEventsPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
@@ -2482,7 +2620,7 @@ foreach ($points as $point) {
 
     function openPvEmbeddedResourceByHash(resourceHash) {
         const normalizedHash = String(resourceHash || '').replace(/^#/, '');
-        if (!/^(?:(?:documents|decision)-d\d+|calendar-e\d+|stats(?:-i\d+)?)$/.test(normalizedHash)) {
+        if (!/^(?:(?:documents|decision|projects)-d\d+|calendar-e\d+|stats(?:-i\d+)?)$/.test(normalizedHash)) {
             return;
         }
 
@@ -2495,6 +2633,15 @@ foreach ($points as $point) {
 
         if (typeof window.omoSetDrawerHashState === 'function') {
             window.omoSetDrawerHashState({routeToken: normalizedHash, open: true});
+            if (/^projects-d\d+$/i.test(normalizedHash)) {
+                const openProjectDetail = function () {
+                    if (typeof window.omoOpenProjectRoute === 'function') {
+                        window.omoOpenProjectRoute(normalizedHash);
+                    }
+                };
+                window.setTimeout(openProjectDetail, 180);
+                window.setTimeout(openProjectDetail, 520);
+            }
             return;
         }
 
@@ -2527,13 +2674,14 @@ foreach ($points as $point) {
             const decisionLink = targetNode ? targetNode.closest('.omo-decision-embed a[href^="#decision-d"]') : null;
             const eventLink = targetNode ? targetNode.closest('.omo-event-embed a[href^="#calendar-e"]') : null;
             const indicatorLink = targetNode ? targetNode.closest('.omo-indicator-embed a[href^="#stats"]') : null;
-            const resourceLink = documentLink || decisionLink || eventLink || indicatorLink;
-            if (!resourceLink || resourceLink.matches('[data-omo-document-embed-external], .omo-document-embed__external')) {
+            const projectLink = targetNode ? targetNode.closest('.omo-project-embed a[href^="#projects-d"]') : null;
+            const resourceLink = documentLink || decisionLink || eventLink || indicatorLink || projectLink;
+            if (!resourceLink || resourceLink.matches('[data-omo-document-embed-external], .omo-document-embed__external, .omo-project-embed__external')) {
                 return;
             }
 
             const resourceHash = String(resourceLink.getAttribute('href') || '');
-            if (!/^#(?:(?:documents|decision)-d\d+|calendar-e\d+|stats(?:-i\d+)?)$/.test(resourceHash)) {
+            if (!/^#(?:(?:documents|decision|projects)-d\d+|calendar-e\d+|stats(?:-i\d+)?)$/.test(resourceHash)) {
                 return;
             }
 
@@ -2773,6 +2921,118 @@ foreach ($points as $point) {
         if (cancelButton) cancelButton.addEventListener('click', function () { cleanup(); window.commonTopbarCloseModal(); });
         if (removeButton) removeButton.addEventListener('click', function () { if (targetNode && typeof field.removeNode === 'function') resolved = field.removeNode(targetNode); window.commonTopbarCloseModal(); });
         if (insertButton) insertButton.addEventListener('click', function () { const embedHtml = buildPvDecisionEmbedHtml(selectedItem); if (embedHtml !== '' && targetNode && typeof field.replaceNodeWithHtml === 'function') { resolved = true; field.replaceNodeWithHtml(targetNode, embedHtml); } else if (embedHtml !== '' && marker) { resolved = true; field.replaceMarkerWithHtml(marker, embedHtml); marker = null; } window.commonTopbarCloseModal(); });
+        render();
+    }
+
+    function buildPvProjectEmbedHtml(projectItem) {
+        const projectId = Number.parseInt(String(projectItem && projectItem.id || ''), 10);
+        if (!Number.isInteger(projectId) || projectId <= 0) return '';
+        const title = String(projectItem.title || '').trim() || ('Projet #' + String(projectId));
+        const contextLabel = String(projectItem.contextLabel || '').trim();
+        const responsibleLabel = String(projectItem.responsibleLabel || '').trim();
+        const statusLabel = String(projectItem.statusLabel || '').trim();
+        const priorityLabel = String(projectItem.priorityLabel || '').trim();
+        const sizeLabel = String(projectItem.sizeLabel || '').trim();
+        const plannedStartLabel = String(projectItem.plannedStartLabel || '').trim();
+        const plannedEndLabel = String(projectItem.plannedEndLabel || '').trim();
+        const projectHash = '#projects-d' + String(projectId);
+        const externalUrl = String(window.location.pathname || '/omo/') + projectHash;
+        const metadata = [contextLabel, responsibleLabel, statusLabel];
+        if (plannedStartLabel !== '') metadata.push(String(projectEmbedUi.plannedDate || '').replace('{date}', plannedStartLabel));
+        if (plannedEndLabel !== '') metadata.push(String(projectEmbedUi.endDate || '').replace('{date}', plannedEndLabel));
+        return '<span class="omo-project-embed" contenteditable="false" data-omo-embed-type="project" data-omo-project-id="' + String(projectId) + '" data-omo-project-title="' + escapeDocumentEmbedHtml(title) + '"><strong><a href="' + projectHash + '">' + escapeDocumentEmbedHtml(title) + '</a><a class="omo-project-embed__external" href="' + escapeDocumentEmbedHtml(externalUrl) + '" target="_blank" rel="noopener noreferrer" title="' + escapeDocumentEmbedHtml(projectEmbedUi.openExternal || '') + '" aria-label="' + escapeDocumentEmbedHtml(projectEmbedUi.openExternal || '') + '">&#8599;</a>' + (priorityLabel !== '' ? '<em>' + escapeDocumentEmbedHtml(priorityLabel) + '</em>' : '') + (sizeLabel !== '' ? '<em>' + escapeDocumentEmbedHtml(sizeLabel) + '</em>' : '') + '</strong>' + (metadata.length > 0 ? '<em>' + escapeDocumentEmbedHtml(metadata.join(' · ')) + '</em>' : '') + '</span>';
+    }
+
+    function openPvProjectEmbedPicker(field, targetNode) {
+        if (!field || typeof field.createTemporaryCursorMarker !== 'function' || typeof window.commonTopbarOpenModal !== 'function') return;
+        const currentProjectId = targetNode instanceof Element ? Number.parseInt(String(targetNode.getAttribute('data-omo-project-id') || ''), 10) : 0;
+        let marker = targetNode ? null : field.createTemporaryCursorMarker(), resolved = false;
+        const tabPrefix = 'omo-pv-project-picker-' + Math.random().toString(36).slice(2, 10), existingTabId = tabPrefix + '-existing', newTabId = tabPrefix + '-new';
+        const statusOptions = Array.isArray(projectEmbedUi.statusOptions) ? projectEmbedUi.statusOptions : [], sizeOptions = Array.isArray(projectEmbedUi.sizeOptions) ? projectEmbedUi.sizeOptions : [];
+        const statusOptionsHtml = statusOptions.map(function (option) { return '<option value="' + escapeDocumentEmbedHtml(option.value || '') + '">' + escapeDocumentEmbedHtml(option.label || option.value || '') + '</option>'; }).join('');
+        const sizeOptionsHtml = sizeOptions.map(function (size) { return '<option value="' + escapeDocumentEmbedHtml(size) + '"' + (String(size) === 'M' ? ' selected' : '') + '>' + escapeDocumentEmbedHtml(size) + '</option>'; }).join('');
+        const html = '<div class="generic-tabs omo-document-embed-picker" data-generic-tabs><div class="generic-tabs__list" aria-label="' + escapeDocumentEmbedHtml(projectEmbedUi.tabsAria || '') + '"><button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="' + existingTabId + '">' + escapeDocumentEmbedHtml(projectEmbedUi.tabExisting || '') + '</button><button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="' + newTabId + '">' + escapeDocumentEmbedHtml(projectEmbedUi.tabNew || '') + '</button></div><div class="generic-tabs__panels"><section id="' + existingTabId + '" class="generic-tabs__panel" data-generic-tab-panel><div class="omo-resource-picker"><aside class="omo-resource-picker__navigation" data-omo-pv-project-embed-scope></aside><div class="omo-resource-picker__content"><label class="omo-resource-picker__quick-search"><input type="search" class="generic-form-control" data-omo-pv-project-embed-search placeholder="' + escapeDocumentEmbedHtml(projectEmbedUi.quickSearchPlaceholder || '') + '"></label><div class="omo-document-embed-picker__field"><select class="generic-form-control omo-document-embed-picker__select" data-omo-pv-project-embed-select size="10"></select></div><div class="omo-document-embed-picker__preview" data-omo-pv-project-embed-preview></div><div class="omo-document-embed-picker__actions">' + (targetNode ? '<button type="button" class="generic-action-button generic-action-button--danger" data-omo-pv-embed-remove>' + escapeDocumentEmbedHtml(projectEmbedUi.remove || '') + '</button>' : '') + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-project-embed-cancel>' + escapeDocumentEmbedHtml(projectEmbedUi.cancel || '') + '</button><button type="button" class="generic-action-button generic-action-button--main" data-omo-pv-project-embed-insert disabled>' + escapeDocumentEmbedHtml(projectEmbedUi.insert || '') + '</button></div></div></div></section><section id="' + newTabId + '" class="generic-tabs__panel" data-generic-tab-panel hidden><form data-omo-pv-project-create-form class="omo-document-embed-picker__quick-form"><label>' + escapeDocumentEmbedHtml(projectEmbedUi.titleLabel || '') + '<input required name="title" class="generic-form-control" type="text"></label><label>' + escapeDocumentEmbedHtml(projectEmbedUi.descriptionLabel || '') + '<textarea name="description" class="generic-form-control" rows="3"></textarea></label><div class="omo-document-embed-picker__quick-form-grid"><label>' + escapeDocumentEmbedHtml(projectEmbedUi.statusLabel || '') + '<select name="status" class="generic-form-control">' + statusOptionsHtml + '</select></label><label>' + escapeDocumentEmbedHtml(projectEmbedUi.priorityLabel || '') + '<select name="priority" class="generic-form-control"><option value=""></option><option value="1">P1</option><option value="2">P2</option><option value="3">P3</option><option value="4">P4</option><option value="5">P5</option></select></label><label>' + escapeDocumentEmbedHtml(projectEmbedUi.sizeLabel || '') + '<select name="project_size" class="generic-form-control">' + sizeOptionsHtml + '</select></label><label>' + escapeDocumentEmbedHtml(projectEmbedUi.startDateLabel || '') + '<input name="planned_start_date" class="generic-form-control" type="date"></label><label>' + escapeDocumentEmbedHtml(projectEmbedUi.endDateLabel || '') + '<input name="planned_end_date" class="generic-form-control" type="date"></label></div><div class="omo-document-embed-picker__actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-project-embed-cancel>' + escapeDocumentEmbedHtml(projectEmbedUi.cancel || '') + '</button><button type="submit" class="generic-action-button generic-action-button--main" data-omo-pv-project-create-submit>' + escapeDocumentEmbedHtml(projectEmbedUi.createInsert || '') + '</button></div></form></section></div></div>';
+        window.commonTopbarOpenModal(projectEmbedUi.modalTitle || '', html, 'html');
+        const body = document.getElementById('commonTopbarModalBody'); if (!(body instanceof Element)) { if (marker) field.removeTemporaryMarker(marker); return; }
+        const projectPickerTabs = body.querySelector('.generic-tabs.omo-document-embed-picker');
+        const projectScopeHost = body.querySelector('[data-omo-pv-project-embed-scope]');
+        const projectScopeNavigation = projectScopeHost ? projectScopeHost.closest('.omo-resource-picker__navigation') : null;
+        if (projectPickerTabs instanceof Element && projectScopeNavigation instanceof Element) {
+            const resourcePicker = projectScopeNavigation.closest('.omo-resource-picker');
+            if (resourcePicker instanceof Element) resourcePicker.classList.remove('omo-resource-picker');
+            projectPickerTabs.classList.add('omo-project-embed-picker');
+            projectPickerTabs.appendChild(projectScopeNavigation);
+        }
+        if (typeof window.initGenericComponents === 'function') window.initGenericComponents(body);
+        const search = body.querySelector('[data-omo-pv-project-embed-search]'), select = body.querySelector('[data-omo-pv-project-embed-select]'), preview = body.querySelector('[data-omo-pv-project-embed-preview]'), cancelButtons = Array.from(body.querySelectorAll('[data-omo-pv-project-embed-cancel]')), insert = body.querySelector('[data-omo-pv-project-embed-insert]'), remove = body.querySelector('[data-omo-pv-embed-remove]'), createForm = body.querySelector('[data-omo-pv-project-create-form]'), createSubmit = body.querySelector('[data-omo-pv-project-create-submit]'); let selected = null, scopePicker = null;
+        if (createForm instanceof HTMLFormElement) {
+            const enforceHolonMember = document.createElement('input');
+            enforceHolonMember.type = 'hidden';
+            enforceHolonMember.name = 'enforce_holon_member';
+            enforceHolonMember.value = '1';
+            createForm.appendChild(enforceHolonMember);
+            const responsibleField = document.createElement('label');
+            responsibleField.textContent = String(projectEmbedUi.responsibleLabel || '');
+            const responsibleSelect = document.createElement('select');
+            responsibleSelect.name = 'IDuser';
+            responsibleSelect.className = 'generic-form-control';
+            responsibleSelect.disabled = true;
+            const responsibleNote = document.createElement('small');
+            responsibleField.appendChild(responsibleSelect);
+            responsibleField.appendChild(responsibleNote);
+            createForm.insertBefore(responsibleField, createForm.firstChild);
+            let membersRequestId = 0;
+            const loadMembers = function (holonId) {
+                const requestId = ++membersRequestId;
+                responsibleSelect.disabled = true;
+                responsibleSelect.innerHTML = '<option value="">' + escapeDocumentEmbedHtml(projectEmbedUi.membersLoading || '') + '</option>';
+                responsibleNote.textContent = '';
+                fetch('/omo/api/projects/members.php?oid=' + encodeURIComponent(String(projectEmbedCreateContext.organizationId || 0)) + '&hid=' + encodeURIComponent(String(holonId || 0)), {credentials: 'same-origin'})
+                    .then(function (response) { return response.json(); })
+                    .then(function (payload) {
+                        if (requestId !== membersRequestId || !payload || !payload.success) return;
+                        projectEmbedCreateContext.holonId = Number(payload.holon && payload.holon.id || 0);
+                        projectEmbedCreateContext.holonLabel = String(payload.holon && payload.holon.label || '');
+                        const members = Array.isArray(payload.members) ? payload.members : [];
+                        responsibleSelect.innerHTML = '<option value="">' + escapeDocumentEmbedHtml(projectEmbedUi.responsibleEmpty || '') + '</option>';
+                        members.forEach(function (member) {
+                            const option = document.createElement('option');
+                            option.value = String(member.id || '');
+                            option.textContent = String(member.label || '');
+                            if (Number(member.id || 0) === Number(projectEmbedCreateContext.responsibleId || 0)) option.selected = true;
+                            responsibleSelect.appendChild(option);
+                        });
+                        if (members.length === 0) responsibleNote.textContent = String(projectEmbedUi.membersEmpty || '');
+                        responsibleSelect.disabled = false;
+                        const selectedOption = responsibleSelect.selectedOptions[0];
+                        projectEmbedCreateContext.responsibleId = Number(responsibleSelect.value || 0);
+                        projectEmbedCreateContext.responsibleLabel = selectedOption ? String(selectedOption.textContent || '') : '';
+                    })
+                    .catch(function () {
+                        if (requestId !== membersRequestId) return;
+                        responsibleSelect.innerHTML = '<option value="">' + escapeDocumentEmbedHtml(projectEmbedUi.responsibleEmpty || '') + '</option>';
+                        responsibleSelect.disabled = false;
+                    });
+            };
+            responsibleSelect.addEventListener('change', function () {
+                const selectedOption = responsibleSelect.selectedOptions[0];
+                projectEmbedCreateContext.responsibleId = Number(responsibleSelect.value || 0);
+                projectEmbedCreateContext.responsibleLabel = selectedOption ? String(selectedOption.textContent || '') : '';
+            });
+            createForm.__omoPvProjectLoadMembers = loadMembers;
+        }
+        const cleanup = function () { if (marker) field.removeTemporaryMarker(marker); marker = null; };
+        const insertProject = function (project) { const embed = buildPvProjectEmbedHtml(project); if (!embed) return false; if (targetNode && typeof field.replaceNodeWithHtml === 'function') { resolved = true; field.replaceNodeWithHtml(targetNode, embed); } else if (marker && typeof field.replaceMarkerWithHtml === 'function') { resolved = true; field.replaceMarkerWithHtml(marker, embed); marker = null; } else return false; window.commonTopbarCloseModal(); return true; };
+        const update = function () { if (select && select.value) selected = embeddableProjects.find(function (item) { return String(item.id) === String(select.value); }) || null; if (preview) preview.innerHTML = selected ? buildPvProjectEmbedHtml(selected) : escapeDocumentEmbedHtml(projectEmbedUi.none || ''); if (insert) insert.disabled = !selected; };
+        const render = function () { const query = String(search && search.value || '').trim().toLowerCase(), selectedHolonId = scopePicker && typeof scopePicker.getSelectedHolonId === 'function' ? Number(scopePicker.getSelectedHolonId() || 0) : 0, matches = embeddableProjects.filter(function (item) { const itemHolonId = Number(item.contextHolonId || 0); const matchesScope = !scopePicker || scopePicker.matches(itemHolonId) || (selectedHolonId > 0 && itemHolonId === selectedHolonId); return matchesScope && (query === '' || [item.title, item.contextLabel, item.summary].join(' ').toLowerCase().indexOf(query) >= 0); }); if (select) { select.innerHTML = ''; matches.forEach(function (item) { const option = document.createElement('option'); option.value = String(item.id); option.textContent = String(item.title || '').trim() || ('Projet #' + String(item.id)); select.appendChild(option); }); } selected = matches.find(function (item) { return Number(item.id) === currentProjectId; }) || matches[0] || null; if (select && selected) select.value = String(selected.id); update(); };
+        if (projectScopeHost instanceof Element && typeof window.omoMountHolonScopePicker === 'function') {
+            scopePicker = window.omoMountHolonScopePicker({host: projectScopeHost, organizationId: resourcePickerOrganizationId, initialHolonId: Number(projectEmbedCreateContext.holonId || resourcePickerInitialHolonId || 0), labels: resourcePickerScopeUi, onChange: function (holonId) { render(); if (createForm && typeof createForm.__omoPvProjectLoadMembers === 'function') createForm.__omoPvProjectLoadMembers(holonId); }});
+        } else {
+            scopePicker = mountPvResourceScopePicker(body, '[data-omo-pv-project-embed-scope]', render);
+            if (createForm && typeof createForm.__omoPvProjectLoadMembers === 'function') createForm.__omoPvProjectLoadMembers(projectEmbedCreateContext.holonId);
+        }
+        window.addEventListener('common-topbar-modal-close', function () { if (!resolved) cleanup(); }, {once: true}); if (search) search.addEventListener('input', render); if (select) select.addEventListener('change', update); cancelButtons.forEach(function (button) { button.addEventListener('click', function () { cleanup(); window.commonTopbarCloseModal(); }); }); if (remove) remove.addEventListener('click', function () { if (targetNode && typeof field.removeNode === 'function') resolved = field.removeNode(targetNode); window.commonTopbarCloseModal(); }); if (insert) insert.addEventListener('click', function () { if (selected) insertProject(selected); });
+        if (createForm instanceof HTMLFormElement) createForm.addEventListener('submit', function (event) { event.preventDefault(); const titleInput = createForm.elements.namedItem('title'), title = titleInput ? String(titleInput.value || '').trim() : ''; if (title === '') { if (titleInput && typeof titleInput.focus === 'function') titleInput.focus(); return; } if (createSubmit) createSubmit.disabled = true; const formData = new FormData(createForm); formData.set('project_action', 'save_project'); formData.set('oid', String(projectEmbedCreateContext.organizationId || 0)); formData.set('cid', String(projectEmbedCreateContext.holonId || 0)); formData.set('IDuser', String(projectEmbedCreateContext.responsibleId || 0)); fetch('/omo/api/projects/action.php', {method: 'POST', body: formData, credentials: 'same-origin'}).then(function (response) { return response.json(); }).then(function (payload) { const projectId = Number(payload && payload.id || 0); if (!payload || !payload.success || projectId <= 0) throw new Error(payload && payload.message ? payload.message : projectEmbedUi.createError || ''); const statusSelect = createForm.elements.namedItem('status'), sizeSelect = createForm.elements.namedItem('project_size'), prioritySelect = createForm.elements.namedItem('priority'), startInput = createForm.elements.namedItem('planned_start_date'), endInput = createForm.elements.namedItem('planned_end_date'), statusValue = statusSelect ? String(statusSelect.value || '') : '', statusOption = statusOptions.find(function (option) { return String(option.value) === statusValue; }) || {}, toDateLabel = function (input) { const value = input ? String(input.value || '') : ''; return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value.slice(8, 10) + '.' + value.slice(5, 7) + '.' + value.slice(0, 4) : ''; }, project = {id: projectId, title: title, summary: String(formData.get('description') || ''), contextHolonId: Number(projectEmbedCreateContext.holonId || 0), contextLabel: String(projectEmbedCreateContext.holonLabel || ''), responsibleLabel: String(projectEmbedCreateContext.responsibleLabel || ''), statusLabel: String(statusOption.label || statusValue), priorityLabel: prioritySelect && prioritySelect.value ? 'P' + String(prioritySelect.value) : '', sizeLabel: sizeSelect ? String(sizeSelect.value || 'M') : 'M', plannedStartLabel: toDateLabel(startInput), plannedEndLabel: toDateLabel(endInput)}; embeddableProjects.push(project); if (typeof window.omoRefreshProjectsDrawerAfterMutation === 'function') window.omoRefreshProjectsDrawerAfterMutation(); insertProject(project); }).catch(function (error) { window.alert(String(error && error.message || projectEmbedUi.createError || '')); }).finally(function () { if (createSubmit) createSubmit.disabled = false; }); });
         render();
     }
 
@@ -3193,7 +3453,7 @@ foreach ($points as $point) {
     })();
 
     function ensureHtmlFieldLibrary(callback) {
-        const htmlFieldVersion = '20260718-pv-indicator-overdue-days';
+        const htmlFieldVersion = '20260720-pv-project-embed-metadata';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'
@@ -3943,6 +4203,12 @@ foreach ($points as $point) {
                         }
                     });
                 }
+                if (canEmbedProjects) {
+                    customButtons.push({
+                        name: 'omoPvProjectEmbed', group: 'omo-pv-project-embed', label: 'Projet', title: projectEmbedUi.buttonTitle || 'Inserer un projet', className: 'note-btn-light omo-pv-editor__project-embed-button',
+                        onClick: function (context) { openPvProjectEmbedPicker(context && context.api ? context.api : field); }
+                    });
+                }
                 if (canEmbedEvents) {
                     customButtons.push({
                         name: 'omoPvEventEmbed',
@@ -3985,6 +4251,12 @@ foreach ($points as $point) {
                     },
                     onReady: function (api) {
                         refreshPvIndicatorEmbedSnapshots(api);
+                        const toolbar = editorHost.querySelector('.note-toolbar');
+                        const pointActions = card.querySelector('.omo-pv-editor__point-actions');
+                        if (toolbar instanceof Element && pointActions instanceof Element) {
+                            pointActions.classList.add('omo-pv-editor__point-actions--toolbar');
+                            toolbar.appendChild(pointActions);
+                        }
                     },
                     onDoubleClick: function (context) {
                         const targetNode = context && context.target && context.target.closest
@@ -3992,9 +4264,10 @@ foreach ($points as $point) {
                             : null;
                         const documentEmbed = targetNode ? targetNode.closest('.omo-document-embed[data-omo-embed-type="document"]') : null;
                         const decisionEmbed = targetNode ? targetNode.closest('.omo-decision-embed[data-omo-embed-type="decision"]') : null;
+                        const projectEmbed = targetNode ? targetNode.closest('.omo-project-embed[data-omo-embed-type="project"]') : null;
                         const eventEmbed = targetNode ? targetNode.closest('.omo-event-embed[data-omo-embed-type="event"]') : null;
                         const indicatorEmbed = targetNode ? targetNode.closest('.omo-indicator-embed[data-omo-embed-type="indicator"]') : null;
-                        if (!documentEmbed && !decisionEmbed && !eventEmbed && !indicatorEmbed) {
+                        if (!documentEmbed && !decisionEmbed && !projectEmbed && !eventEmbed && !indicatorEmbed) {
                             return;
                         }
 
@@ -4005,6 +4278,8 @@ foreach ($points as $point) {
                             openPvDocumentEmbedPicker(field, documentEmbed);
                         } else if (decisionEmbed) {
                             openPvDecisionEmbedPicker(field, decisionEmbed);
+                        } else if (projectEmbed) {
+                            openPvProjectEmbedPicker(field, projectEmbed);
                         } else if (eventEmbed) {
                             openPvEventEmbedPicker(field, eventEmbed);
                         } else if (indicatorEmbed) {

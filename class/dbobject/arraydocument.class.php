@@ -143,7 +143,7 @@
 			$organizationId = (int)$organizationId;
 			$holonId = (int)$holonId;
 			$documentScope = trim(mb_strtolower((string)$documentScope, 'UTF-8'));
-			if (!in_array($documentScope, array('contextual', 'descendants', 'global'), true)) {
+			if (!in_array($documentScope, array('contextual', 'children', 'descendants'), true)) {
 				$documentScope = 'contextual';
 			}
 			$descendantHolonIds = array_values(array_unique(array_filter(array_map('intval', $descendantHolonIds), static function ($candidateHolonId) {
@@ -172,13 +172,13 @@
 				),
 			);
 
-			if ($documentScope === 'descendants') {
+			if ($documentScope === 'children' || $documentScope === 'descendants') {
 				if (count($descendantHolonIds) === 0) {
 					return array();
 				}
 
 				$loadParams['where'][] = array('field' => 'IDholon', 'op' => 'in', 'value' => $descendantHolonIds);
-			} elseif ($documentScope !== 'global') {
+			} else {
 				if ($holonId > 0) {
 					$loadParams['where'][] = array('field' => 'IDholon', 'value' => $holonId);
 				} else {
@@ -187,6 +187,34 @@
 			}
 
 			$this->load($loadParams);
+			return $this->filterVisibleForCurrentViewer($organizationId);
+		}
+
+		public function loadVisibleForOrganization($organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			$this->exchangeArray([]);
+			$this->lastVisibilityStats = array(
+				'loaded' => 0,
+				'visible' => 0,
+				'hidden' => 0,
+			);
+
+			if ($organizationId <= 0) {
+				return array();
+			}
+
+			$this->load(array(
+				'where' => array(
+					array('field' => 'IDorganization', 'value' => $organizationId),
+					array('field' => 'active', 'value' => 1),
+				),
+				'orderBy' => array(
+					array('field' => 'datecreation', 'dir' => 'DESC'),
+					array('field' => 'id', 'dir' => 'DESC'),
+				),
+			));
+
 			return $this->filterVisibleForCurrentViewer($organizationId);
 		}
 

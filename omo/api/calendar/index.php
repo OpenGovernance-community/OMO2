@@ -19,13 +19,13 @@ $sourceLang = [
         'text' => 'Contextuel',
         'context' => 'Label used to show only events from the current context.',
     ],
+    'calendar.scope.children' => [
+        'text' => 'Enfants directs',
+        'context' => 'Label used to show events from the current holon and its direct children.',
+    ],
     'calendar.scope.descendants' => [
         'text' => 'Descendants',
         'context' => 'Label used to show events from the current holon and its descendants.',
-    ],
-    'calendar.scope.global' => [
-        'text' => 'Global',
-        'context' => 'Label used to show all events from the organization.',
     ],
     'calendar.action.add' => [
         'text' => 'Ajouter un événement',
@@ -247,7 +247,7 @@ function omoCalendarParseView($rawValue)
     return in_array($view, ['month', 'week', 'day', 'list'], true) ? $view : 'month';
 }
 
-function omoCalendarParseScope($rawValue, array $allowedScopes = ['contextual', 'descendants', 'global'])
+function omoCalendarParseScope($rawValue, array $allowedScopes = ['contextual', 'children', 'descendants'])
 {
     return omoApiNormalizeContextScope($rawValue, $allowedScopes);
 }
@@ -680,11 +680,17 @@ if ($currentHolonId > 0) {
     $currentHolon = $candidateHolon;
 }
 
+if (!($currentHolon instanceof Holon) && $rootHolon instanceof Holon) {
+    $currentHolon = $rootHolon;
+    $currentHolonId = (int)$rootHolon->getId();
+}
+
 $canToggleScope = $organization->getId() > 0 && $rootHolon instanceof Holon;
 $calendarScopes = omoApiGetAvailableContextScopes($canToggleScope, $currentHolon, $rootHolon);
 $calendarScope = omoCalendarParseScope($requestedScopeRaw, $calendarScopes);
 $calendarScopeActiveIndex = omoApiResolveContextScopeIndex($calendarScope, $calendarScopes);
 $descendantHolonIdMap = omoApiGetDescendantHolonIdMap($currentHolon);
+$directChildHolonIdMap = omoApiGetDirectChildHolonIdMap($currentHolon);
 
 if (
     $requestedScopeRaw === ''
@@ -692,13 +698,16 @@ if (
     && ($currentHolonId <= 0 || $currentHolonId !== $openedEventHolonId)
 ) {
     if (
+        isset($directChildHolonIdMap[$openedEventHolonId])
+        && in_array('children', $calendarScopes, true)
+    ) {
+        $calendarScope = 'children';
+    } elseif (
         $currentHolon instanceof Holon
         && ($openedEventHolonId === (int)$currentHolon->getId() || isset($descendantHolonIdMap[$openedEventHolonId]))
         && in_array('descendants', $calendarScopes, true)
     ) {
         $calendarScope = 'descendants';
-    } elseif (in_array('global', $calendarScopes, true)) {
-        $calendarScope = 'global';
     }
 }
 
@@ -847,6 +856,7 @@ foreach ($events as $event) {
     $eventHolonLabel = $resolveHolonLabel($eventHolonId);
     $isAllDay = (bool)$event->get('is_all_day');
     $isInCurrentContext = !$canToggleScope || $eventHolonId === 0 || $eventHolonId === $currentHolonId;
+    $isInDirectChildContext = $isInCurrentContext || ($eventHolonId > 0 && isset($directChildHolonIdMap[$eventHolonId]));
     $isInDescendantContext = $isInCurrentContext || ($eventHolonId > 0 && isset($descendantHolonIdMap[$eventHolonId]));
     $isPersonallyRelevant = $eventPersonallyRelevantForViewer($event);
     $canEditEvent = $currentUserId > 0 && (int)$event->get('IDuser') === $currentUserId;
@@ -873,8 +883,9 @@ foreach ($events as $event) {
     }
 
     foreach ($calendarScopes as $scopeKey) {
-        $includeEvent = $scopeKey === 'global'
-            || ($scopeKey === 'descendants' ? $isInDescendantContext : $isInCurrentContext);
+        $includeEvent = $scopeKey === 'children'
+            ? $isInDirectChildContext
+            : ($scopeKey === 'descendants' ? $isInDescendantContext : $isInCurrentContext);
         if (!$includeEvent) {
             continue;
         }
@@ -1659,9 +1670,11 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         var currentUrl = root.getAttribute('data-omo-calendar-current-url') || '';
         var currentView = root.getAttribute('data-omo-calendar-view') || 'month';
         function normalizeScopeName(scopeName) {
-            return scopeName === 'global' || scopeName === 'descendants'
-                ? scopeName
-                : 'contextual';
+            var normalizedScope = String(scopeName || '').trim().toLowerCase();
+            if (normalizedScope === 'global') {
+                return 'descendants';
+            }
+            return normalizedScope === 'children' || normalizedScope === 'descendants' ? normalizedScope : 'contextual';
         }
 
         var currentScope = normalizeScopeName(root.getAttribute('data-omo-calendar-scope') || 'contextual');

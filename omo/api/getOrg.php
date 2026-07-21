@@ -1,11 +1,14 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/common/avatar.php';
+require_once __DIR__ . '/projects/shared.php';
 use dbObject\ArrayOrganization;
+use dbObject\ArrayProject;
 use dbObject\Holon;
 use dbObject\HolonPermission;
 use dbObject\Permission;
 use dbObject\PropertyFormat;
+use dbObject\Project;
 
 function omoGetOrgPanelSourceLang(): array
 {
@@ -53,6 +56,10 @@ function omoGetOrgPanelSourceLang(): array
         'leftbar.detail.item_fallback' => [
             'text' => 'Element',
             'context' => 'Fallback title for a detail card item in the left panel when no title is available.',
+        ],
+        'leftbar.detail.show' => [
+            'text' => 'Voir détail',
+            'context' => 'Label shown beside the control that expands the HTML detail of a text property.',
         ],
         'leftbar.detail.property_fallback' => [
             'text' => 'Propriete {propertyId}',
@@ -113,6 +120,18 @@ function omoGetOrgPanelSourceLang(): array
         'leftbar.members.view_all' => [
             'text' => 'Voir tout',
             'context' => 'Button label to open the complete team drawer from the left panel.',
+        ],
+        'leftbar.project.children.empty' => [
+            'text' => 'Aucun sous-projet direct.',
+            'context' => 'Message shown when expanding a project reference without direct subprojects.',
+        ],
+        'leftbar.project.children.error' => [
+            'text' => 'Impossible de charger les sous-projets.',
+            'context' => 'Message shown when loading direct subprojects of a project reference fails.',
+        ],
+        'leftbar.project.children.loading' => [
+            'text' => 'Chargement des sous-projets...',
+            'context' => 'Temporary message while direct subprojects of a project reference are loading.',
         ],
     ];
 }
@@ -194,11 +213,106 @@ function omoFormatListItemValue($item, array $entry)
         return $holonLabelCache[$holonId];
     }
 
+    if ($listItemType === 'project') {
+        static $projectTitleCache = array();
+
+        $projectId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+        if ($projectId <= 0) {
+            return is_scalar($item) ? trim((string)$item) : '';
+        }
+
+        if (!isset($projectTitleCache[$projectId])) {
+            $project = new Project();
+            $projectTitleCache[$projectId] = ($project->load($projectId)
+                && (int)$project->get('IDorganization') === (int)($_SESSION['currentOrganization'] ?? 0))
+                ? trim((string)$project->get('title'))
+                : '';
+        }
+
+        return $projectTitleCache[$projectId];
+    }
+
     if (is_array($item)) {
         return trim((string)($item['label'] ?? $item['value'] ?? ''));
     }
 
     return trim((string)$item);
+}
+
+function omoGetProjectReferenceData($projectId)
+{
+    static $projectsById = null;
+    static $childrenByParent = null;
+    static $statusSummaryMemo = array();
+
+    $projectId = (int)$projectId;
+    if ($projectId <= 0) {
+        return null;
+    }
+
+    if ($projectsById === null) {
+        $projectsById = array();
+        $childrenByParent = array();
+        $projects = new ArrayProject();
+        $projects->loadForOrganization((int)($_SESSION['currentOrganization'] ?? 0));
+
+        foreach ($projects as $project) {
+            $id = (int)$project->getId();
+            if ($id <= 0) {
+                continue;
+            }
+
+            $projectsById[$id] = $project;
+            $parentId = (int)$project->get('IDproject_parent');
+            if ($parentId > 0) {
+                $childrenByParent[$parentId][] = $project;
+            }
+        }
+    }
+
+    if (!isset($projectsById[$projectId])) {
+        return null;
+    }
+
+    $project = $projectsById[$projectId];
+    return array(
+        'project' => $project,
+        'statusSummary' => omoProjectsBuildStatusBar($project, $childrenByParent, $statusSummaryMemo),
+    );
+}
+
+function omoRenderProjectReferenceItem($item, $source = '')
+{
+    $projectId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+    $referenceData = omoGetProjectReferenceData($projectId);
+    if ($referenceData === null) {
+        return '';
+    }
+
+    $project = $referenceData['project'];
+    $title = trim((string)$project->get('title'));
+    if ($title === '') {
+        return '';
+    }
+
+    $priority = Project::normalizeLevel($project->get('priority'));
+    $className = 'section-project-reference';
+    if ($source !== '') {
+        $className .= ' is-' . $source;
+    }
+
+    $html = '<li class="' . omoApiEscape($className) . '" data-omo-project-reference data-project-id="' . $projectId . '" tabindex="0">';
+    $html .= '<div class="section-project-reference__head">';
+    $html .= '<a class="section-project-reference__title" data-omo-project-reference-title href="#projects-d' . $projectId . '">' . omoApiEscape($title) . '</a>';
+    if ($priority !== null) {
+        $html .= '<span class="section-project-reference__priority section-project-reference__priority--p' . (int)$priority . '">P' . (int)$priority . '</span>';
+    }
+    $html .= '</div>';
+    $html .= omoProjectsRenderStatusBar($referenceData['statusSummary'], 'section-project-reference__status-bar');
+    $html .= '<div class="section-project-reference__children" data-omo-project-reference-children hidden></div>';
+    $html .= '</li>';
+
+    return $html;
 }
 
 function omoNormalizeDetailedListItem($item)
@@ -240,6 +354,10 @@ function omoRenderFormattedList(array $items, array $entry, $className = 'sectio
 {
     $html = '<ul class="' . omoApiEscape($className) . '">';
     foreach ($items as $item) {
+        if ((string)($entry['listItemType'] ?? '') === 'project') {
+            $html .= omoRenderProjectReferenceItem($item);
+            continue;
+        }
         $formattedItem = omoFormatListItemValue($item, $entry);
         if ($formattedItem === '') {
             continue;
@@ -295,6 +413,10 @@ function omoRenderMixedList(array $ancestorItems, array $currentItems, array $en
 
     $html = '<ul class="' . omoApiEscape($className) . '">';
     foreach ($descriptors as $descriptor) {
+        if ((string)($entry['listItemType'] ?? '') === 'project') {
+            $html .= omoRenderProjectReferenceItem($descriptor['item'], $descriptor['source']);
+            continue;
+        }
         $formattedItem = omoFormatListItemValue($descriptor['item'], $entry);
         if ($formattedItem === '') {
             continue;
@@ -352,11 +474,39 @@ function omoRenderSectionBody(array $entry)
     $effective = trim((string)($entry['effectiveValue'] ?? ''));
     $formatId = (int)($entry['formatId'] ?? 0);
 
-    if ($effective === '') {
+    if (PropertyFormat::isEmptyValue($formatId, $effective)) {
         return '';
     }
 
-    if ($formatId === 2) {
+    if ($formatId === PropertyFormat::FORMAT_TEXT_HTML) {
+        $parts = PropertyFormat::getTextHtmlParts($effective);
+        $summary = $parts['text'] !== '' ? $parts['text'] : t('leftbar.detail.item_fallback');
+        if (PropertyFormat::isEmptyValue(PropertyFormat::FORMAT_HTML, $parts['detail'])) {
+            return '<div class="section-text-html__plain">' . omoApiEscape($summary) . '</div>';
+        }
+
+        $html = '<details class="section-text-html"><summary class="section-text-html__summary">' . omoApiEscape($summary) . '<span class="section-text-html__toggle"><span>' . omoApiEscape(t('leftbar.detail.show')) . '</span><span class="section-text-html__arrow" aria-hidden="true">&#9656;</span></span></summary>';
+        $html .= omoRenderHtmlBlock($parts['detail'], 'section-text-html__body section-html');
+        return $html . '</details>';
+    }
+
+    if ($formatId === PropertyFormat::FORMAT_HTML_LIST) {
+        $parts = PropertyFormat::getHtmlListParts($effective);
+        if (PropertyFormat::isEmptyValue(PropertyFormat::FORMAT_HTML_LIST, $parts)) {
+            return '';
+        }
+        $html = '<div class="section-html-list">';
+        $html .= omoRenderHtmlBlock($parts['before'], 'section-html section-html--before-list');
+        $listEntry = $entry;
+        $listEntry['value'] = json_encode($parts['items'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $listEntry['ancestor'] = '';
+        $listEntry['effectiveValue'] = $listEntry['value'];
+        $html .= omoRenderMixedList(array(), $parts['items'], $listEntry);
+        $html .= omoRenderHtmlBlock($parts['after'], 'section-html section-html--after-list');
+        return $html . '</div>';
+    }
+
+    if ($formatId === PropertyFormat::FORMAT_LIST) {
         $currentItems = omoParseListItems($value);
         $ancestorItems = omoParseListItems($ancestor);
         if ((string)($entry['listItemType'] ?? '') === 'detail') {
@@ -400,6 +550,10 @@ function omoEntryHasLocalDisplayValue(array $entry)
 
     if ($formatId === PropertyFormat::FORMAT_HTML) {
         return !PropertyFormat::isEmptyValue(PropertyFormat::FORMAT_HTML, $value);
+    }
+
+    if (in_array($formatId, array(PropertyFormat::FORMAT_TEXT_HTML, PropertyFormat::FORMAT_HTML_LIST), true)) {
+        return !PropertyFormat::isEmptyValue($formatId, $value);
     }
 
     return trim((string)$value) !== '';
@@ -483,8 +637,9 @@ function omoBuildSections(Holon $holon)
     $sections = array();
 
     foreach ($entries as $entry) {
-        $effective = trim((string)($entry['effectiveValue'] ?? ''));
-        if ($effective === '') {
+        $effective = $entry['effectiveValue'] ?? '';
+        $formatId = (int)($entry['formatId'] ?? 0);
+        if (PropertyFormat::isEmptyValue($formatId, $effective)) {
             continue;
         }
 
@@ -1224,6 +1379,11 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     margin: 0;
 }
 
+.section-html-list {
+    display: grid;
+    gap: 10px;
+}
+
 .section-list li {
     font-size: 14px;
     line-height: 1.4;
@@ -1231,6 +1391,135 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 
 .section-list li.is-inherited {
     font-style: italic;
+    color: var(--color-text-light);
+}
+
+.section-list .section-project-reference {
+    list-style: none;
+    display: grid;
+    gap: 6px;
+    padding: 8px 10px;
+    margin-left: -18px;
+    border: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--color-surface-alt) 56%, var(--color-surface));
+    cursor: pointer;
+}
+
+.section-list .section-project-reference.is-inherited {
+    font-style: normal;
+}
+
+.section-project-reference__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.section-project-reference__title {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-weight: 650;
+    color: inherit;
+    text-decoration: none;
+}
+
+.section-project-reference__title:hover,
+.section-project-reference__title:focus-visible {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+.section-project-reference__priority {
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 750;
+    line-height: 1;
+}
+
+.section-project-reference__priority--p1 { background: #d95d68; }
+.section-project-reference__priority--p2 { background: #e2855d; }
+.section-project-reference__priority--p3 { background: #bd9250; }
+.section-project-reference__priority--p4 { background: #6e9a80; }
+.section-project-reference__priority--p5 { background: #778aa3; }
+
+.section-project-reference__status-bar {
+    display: flex;
+    width: 100%;
+    height: 6px;
+    min-height: 6px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--color-border, #e5e7eb);
+}
+
+.section-project-reference__status-bar .omo-project-status-bar__segment {
+    flex: 0 0 0;
+    min-width: 0;
+    border-right: 2px solid color-mix(in srgb, #fff 100%, transparent);
+}
+
+.section-project-reference__status-bar .omo-project-status-bar__segment:last-child { border-right: 0; }
+.section-project-reference__status-bar .omo-project-status-bar__segment--ready { background: #5e88d5; }
+.section-project-reference__status-bar .omo-project-status-bar__segment--in_progress { background: #d0a857; }
+.section-project-reference__status-bar .omo-project-status-bar__segment--blocked { background: #d67272; }
+.section-project-reference__status-bar .omo-project-status-bar__segment--review { background: #9884c7; }
+.section-project-reference__status-bar .omo-project-status-bar__segment--done { background: #6fa98d; }
+.section-project-reference__status-bar .omo-project-status-bar__segment--someday { background: #99a3b1; }
+
+.section-project-reference__children {
+    display: grid;
+    gap: 6px;
+    padding-top: 2px;
+}
+
+.section-project-reference__children[hidden] { display: none; }
+
+.section-project-reference__children-list {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.section-project-reference__child {
+    display: grid;
+    gap: 4px;
+    padding: 7px 8px;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-surface) 70%, var(--color-surface-alt));
+}
+
+.section-project-reference__child-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-project-reference__child-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.section-project-reference__child-title:hover,
+.section-project-reference__child-title:focus-visible { color: var(--color-primary); text-decoration: underline; }
+
+.section-project-reference__children-empty,
+.section-project-reference__children-error,
+.section-project-reference__children-loading {
+    font-size: 12px;
     color: var(--color-text-light);
 }
 
@@ -1261,6 +1550,53 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     font-size: 14px;
     line-height: 1.5;
     white-space: pre-line;
+}
+
+.section-text-html,
+.section-text-html__plain {
+    display: grid;
+    gap: 8px;
+}
+
+.section-text-html__summary {
+    padding: 0;
+    cursor: pointer;
+    font-weight: 700;
+    list-style: none;
+}
+
+.section-text-html__summary::-webkit-details-marker {
+    display: none;
+}
+
+.section-text-html__toggle {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 5px;
+    color: var(--color-text-light);
+    font-size: 0.9em;
+    font-weight: 400;
+    line-height: 1;
+    text-align: right;
+}
+
+.section-text-html__arrow {
+    display: inline-block;
+    font-size: 1.35em;
+    line-height: 0.75;
+    transition: transform 0.18s ease;
+}
+
+.section-text-html[open] .section-text-html__arrow {
+    transform: rotate(90deg);
+}
+
+.section-text-html__body {
+    padding: 0;
+    font-size: 14px;
+    line-height: 1.5;
 }
 
 .section-inherited {
@@ -1663,5 +1999,69 @@ $(document)
     } catch (error) {
         console.error(<?= json_encode(t('leftbar.copy_link.error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>, error);
     }
+  });
+
+function omoToggleProjectReferenceChildren(card) {
+    const projectId = Number($(card).data('project-id'));
+    const host = $(card).find('[data-omo-project-reference-children]').first();
+    if (!projectId || !host.length) {
+        return;
+    }
+
+    if (host.data('loaded') === 1) {
+        host.prop('hidden', !host.prop('hidden'));
+        return;
+    }
+
+    host.prop('hidden', false).html('<div class="section-project-reference__children-loading"><?= omoApiEscape(t('leftbar.project.children.loading')) ?></div>');
+    $.ajax({
+        url: '/omo/api/projects/children.php?id=' + encodeURIComponent(projectId),
+        method: 'GET',
+        cache: false,
+        dataType: 'html'
+    }).done(function (html) {
+        host.data('loaded', 1).html(html || '<div class="section-project-reference__children-empty"><?= omoApiEscape(t('leftbar.project.children.empty')) ?></div>');
+    }).fail(function () {
+        host.html('<div class="section-project-reference__children-error"><?= omoApiEscape(t('leftbar.project.children.error')) ?></div>');
+    });
+}
+
+$(document).off('click.omoOrgProjectReference', '#panel-left [data-omo-project-reference]');
+
+$(document)
+  .off('click.omoOrgProjectReferenceTitle', '#panel-left [data-omo-project-reference-title]')
+  .on('click.omoOrgProjectReferenceTitle', '#panel-left [data-omo-project-reference-title]', function (event) {
+    event.stopPropagation();
+  });
+
+window.omoToggleProjectReferenceChildren = omoToggleProjectReferenceChildren;
+if (!window.omoOrgProjectReferenceCaptureBound) {
+    window.omoOrgProjectReferenceCaptureBound = true;
+    document.addEventListener('click', function (event) {
+        const card = event.target.closest('#panel-left [data-omo-project-reference]');
+        if (!card) {
+            return;
+        }
+        if (event.target.closest('[data-omo-project-reference-title], [data-omo-project-reference-children], button, input, select, textarea')) {
+            return;
+        }
+        if (typeof window.omoToggleProjectReferenceChildren === 'function') {
+            window.omoToggleProjectReferenceChildren(card);
+        }
+    }, true);
+}
+
+$(document)
+  .off('keydown.omoOrgProjectReference', '#panel-left [data-omo-project-reference]')
+  .on('keydown.omoOrgProjectReference', '#panel-left [data-omo-project-reference]', function (event) {
+    if ($(event.target).closest('[data-omo-project-reference-title], [data-omo-project-reference-children], button, input, select, textarea').length) {
+        return;
+    }
+    if (event.key !== 'Enter' && event.key !== ' ') {
+        return;
+    }
+
+    event.preventDefault();
+    omoToggleProjectReferenceChildren(this);
   });
 </script>

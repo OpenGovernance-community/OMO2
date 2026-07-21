@@ -15,8 +15,8 @@ if (!function_exists('omoStatsSourceLang')) {
         return [
             'stats.title' => ['text' => 'Indicateurs', 'context' => 'Main title of the contextual steering indicators application.'],
             'stats.scope.contextual' => ['text' => 'Contextuel', 'context' => 'Scope label for indicators defined in the current holon.'],
+            'stats.scope.children' => ['text' => 'Enfants directs', 'context' => 'Scope label for indicators defined in the current holon and its direct children.'],
             'stats.scope.descendants' => ['text' => 'Descendants', 'context' => 'Scope label for indicators in the current holon and descendants.'],
-            'stats.scope.global' => ['text' => 'Global', 'context' => 'Scope label for all organization indicators.'],
             'stats.view.cards' => ['text' => 'Cartes', 'context' => 'Button switching the indicator list to cards.'],
             'stats.view.compact' => ['text' => 'Compact', 'context' => 'Button switching the indicator list to compact rows.'],
             'stats.controls.sort.aria' => ['text' => 'Classement des indicateurs', 'context' => 'Accessible label for the indicator sorting selector.'],
@@ -45,8 +45,8 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.detail.confirm_delete_import' => ['text' => 'Retirer cet indicateur du contexte ?', 'context' => 'Confirmation before removing a contextual import.'],
             'stats.detail.confirm_delete_group' => ['text' => 'Retirer ce groupe du contexte ?', 'context' => 'Confirmation before removing a contextual indicator group.'],
             'stats.empty.contextual' => ['text' => 'Aucun indicateur n est encore défini dans ce contexte.', 'context' => 'Empty state for the contextual scope.'],
+            'stats.empty.children' => ['text' => 'Aucun indicateur n est encore défini dans ce contexte ou ses enfants directs.', 'context' => 'Empty state for the direct child scope.'],
             'stats.empty.descendants' => ['text' => 'Aucun indicateur n est encore défini dans ce contexte ou ses descendants.', 'context' => 'Empty state for the descendants scope.'],
-            'stats.empty.global' => ['text' => 'Aucun indicateur n est encore défini dans cette organisation.', 'context' => 'Empty state for the global scope.'],
             'stats.card.latest' => ['text' => 'Dernière valeur', 'context' => 'Label introducing the latest indicator value on a card.'],
             'stats.card.no_value' => ['text' => 'Aucune valeur', 'context' => 'Card fallback when an indicator has no dated values.'],
             'stats.card.value_count' => ['one' => '{count} valeur', 'other' => '{count} valeurs', 'context' => 'Count of dated values attached to an indicator.'],
@@ -55,6 +55,7 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.card.group' => ['text' => 'Groupe', 'context' => 'Label on a composite indicator group card.'],
             'stats.card.member_count' => ['one' => '{count} indicateur', 'other' => '{count} indicateurs', 'context' => 'Number of indicators in a group.'],
             'stats.card.overdue' => ['text' => 'Valeur dépassée', 'context' => 'Label shown when an indicator has passed its expected measurement deadline.'],
+            'stats.card.to_complete' => ['text' => 'À compléter', 'context' => 'Label shown when an indicator is due but still within its grace period.'],
             'stats.card.overdue_days' => ['one' => 'En retard de {count} jour', 'other' => 'En retard de {count} jours', 'context' => 'Delay shown below the latest value label on an overdue indicator card.'],
             'stats.card.open' => ['text' => 'Ouvrir l indicateur {name}', 'context' => 'Accessible label on an interactive indicator card or row.'],
             'stats.column.indicator' => ['text' => 'Indicateur', 'context' => 'Compact list column for the indicator identity.'],
@@ -394,7 +395,15 @@ if (!function_exists('omoStatsGetIndicatorOverdueInfo')) {
             StatIndicator::FREQUENCY_SEMIANNUAL => '+6 months',
             StatIndicator::FREQUENCY_YEARLY => '+1 year',
         ];
-        if (!isset($periodModifiers[$frequency])) {
+        $graceModifiers = [
+            StatIndicator::FREQUENCY_DAILY => '+1 hour',
+            StatIndicator::FREQUENCY_WEEKLY => '+1 day',
+            StatIndicator::FREQUENCY_MONTHLY => '+1 week',
+            StatIndicator::FREQUENCY_QUARTERLY => '+1 month',
+            StatIndicator::FREQUENCY_SEMIANNUAL => '+1 month',
+            StatIndicator::FREQUENCY_YEARLY => '+1 month',
+        ];
+        if (!isset($periodModifiers[$frequency], $graceModifiers[$frequency])) {
             return $emptyResult;
         }
 
@@ -417,15 +426,16 @@ if (!function_exists('omoStatsGetIndicatorOverdueInfo')) {
             return $emptyResult;
         }
 
-        $overdueSeconds = max(1, $now->getTimestamp() - $dueDate->getTimestamp());
+        $overdueSeconds = max(0, $now->getTimestamp() - $dueDate->getTimestamp());
         $periodEnd = $dueDate->modify($periodModifiers[$frequency]);
         $periodSeconds = max(1, $periodEnd->getTimestamp() - $dueDate->getTimestamp());
-        $severity = $overdueSeconds <= ($periodSeconds * 0.1) ? 'warning' : 'error';
+        $graceEnd = $dueDate->modify($graceModifiers[$frequency]);
+        $severity = $now->getTimestamp() < $graceEnd->getTimestamp() ? 'warning' : 'error';
 
         return [
             'is_overdue' => true,
             'severity' => $severity,
-            'overdue_days' => max(1, (int)ceil($overdueSeconds / 86400)),
+            'overdue_days' => $severity === 'error' ? max(1, (int)ceil($overdueSeconds / 86400)) : 0,
             'overdue_seconds' => $overdueSeconds,
             'period_seconds' => $periodSeconds,
         ];
@@ -439,19 +449,38 @@ if (!function_exists('omoStatsIsIndicatorOverdue')) {
     }
 }
 
-if (!function_exists('omoStatsIsGroupOverdue')) {
-    function omoStatsIsGroupOverdue(StatIndicatorGroup $group, ?DateTimeInterface $referenceDate = null)
+if (!function_exists('omoStatsGetGroupOverdueInfo')) {
+    function omoStatsGetGroupOverdueInfo(StatIndicatorGroup $group, ?DateTimeInterface $referenceDate = null): array
     {
+        $severity = 'none';
         foreach ($group->getItems() as $item) {
             if (!($item instanceof StatIndicatorGroupItem)) {
                 continue;
             }
             $indicator = $item->getIndicator();
-            if ($indicator instanceof StatIndicator && $indicator->canView() && omoStatsIsIndicatorOverdue($indicator, $referenceDate)) {
-                return true;
+            if (!($indicator instanceof StatIndicator) || !$indicator->canView()) {
+                continue;
+            }
+            $indicatorSeverity = omoStatsGetIndicatorOverdueInfo($indicator, $referenceDate)['severity'];
+            if ($indicatorSeverity === 'error') {
+                $severity = 'error';
+                break;
+            }
+            if ($indicatorSeverity === 'warning') {
+                $severity = 'warning';
             }
         }
-        return false;
+        return [
+            'is_overdue' => $severity !== 'none',
+            'severity' => $severity,
+        ];
+    }
+}
+
+if (!function_exists('omoStatsIsGroupOverdue')) {
+    function omoStatsIsGroupOverdue(StatIndicatorGroup $group, ?DateTimeInterface $referenceDate = null)
+    {
+        return omoStatsGetGroupOverdueInfo($group, $referenceDate)['is_overdue'];
     }
 }
 
@@ -1063,8 +1092,9 @@ if (!function_exists('omoStatsBuildIndicatorChartData')) {
     function omoStatsBuildIndicatorChartData(StatIndicator $indicator, array $values, array $referencePoints, $isOverdue = null)
     {
         if ($isOverdue === null) {
-            $isOverdue = omoStatsIsIndicatorOverdue($indicator);
+            $isOverdue = omoStatsGetIndicatorOverdueInfo($indicator)['severity'];
         }
+        $overdueSeverity = is_string($isOverdue) ? $isOverdue : ($isOverdue ? 'error' : 'none');
         $series = omoStatsGetIndicatorChartSeries($indicator, $values, $referencePoints);
         return [
             'type' => 'indicator',
@@ -1073,7 +1103,8 @@ if (!function_exists('omoStatsBuildIndicatorChartData')) {
             'reference' => $series['reference'],
             'defaultRange' => omoStatsReferenceTimestampRange($series['reference'])
                 ?: omoStatsSmallIndicatorTimestampRange($indicator, $series['measure']),
-            'overdue' => (bool)$isOverdue,
+            'overdue' => $overdueSeverity !== 'none',
+            'overdueSeverity' => $overdueSeverity,
             'tooltip' => [
                 'value' => omoStatsT('stats.chart.tooltip.value'),
                 'date' => omoStatsT('stats.chart.tooltip.date'),
@@ -1086,8 +1117,9 @@ if (!function_exists('omoStatsBuildGroupChartData')) {
     function omoStatsBuildGroupChartData(StatIndicatorGroup $group, array $series, $isOverdue = null)
     {
         if ($isOverdue === null) {
-            $isOverdue = omoStatsIsGroupOverdue($group);
+            $isOverdue = omoStatsGetGroupOverdueInfo($group)['severity'];
         }
+        $overdueSeverity = is_string($isOverdue) ? $isOverdue : ($isOverdue ? 'error' : 'none');
         $dataSeries = [];
         foreach ($series as $seriesIndex => $seriesItem) {
             $points = [];
@@ -1118,7 +1150,8 @@ if (!function_exists('omoStatsBuildGroupChartData')) {
             'reference' => $referenceSeries,
             'defaultRange' => omoStatsReferenceTimestampRange($referenceSeries)
                 ?: omoStatsSmallGroupTimestampRange($series),
-            'overdue' => (bool)$isOverdue,
+            'overdue' => $overdueSeverity !== 'none',
+            'overdueSeverity' => $overdueSeverity,
             'tooltip' => [
                 'value' => omoStatsT('stats.chart.tooltip.value'),
                 'date' => omoStatsT('stats.chart.tooltip.date'),
@@ -1249,8 +1282,9 @@ if (!function_exists('omoStatsRenderChart')) {
     {
         $variant = in_array($variant, ['compact', 'card', 'large'], true) ? $variant : 'card';
         if ($isOverdue === null) {
-            $isOverdue = omoStatsIsIndicatorOverdue($indicator);
+            $isOverdue = omoStatsGetIndicatorOverdueInfo($indicator)['severity'];
         }
+        $overdueSeverity = is_string($isOverdue) ? $isOverdue : ($isOverdue ? 'error' : 'none');
         $chartSeries = omoStatsGetIndicatorChartSeries($indicator, $values, $referencePoints);
         $measureSeries = $chartSeries['measure'];
         $referenceSeries = $chartSeries['reference'];
@@ -1305,7 +1339,7 @@ if (!function_exists('omoStatsRenderChart')) {
         };
 
         $chartId = 'omo-stats-chart-' . (int)$indicator->getId() . '-' . $variant . '-' . substr(md5((string)count($measureSeries) . ':' . (string)count($referenceSeries)), 0, 8);
-        $svg = '<svg class="omo-stats-chart omo-stats-chart--' . omoApiEscape($variant) . ($isOverdue ? ' omo-stats-chart--overdue' : '') . '" viewBox="0 0 ' . $width . ' ' . $height . '" role="img" aria-label="' . omoApiEscape((string)$indicator->get('name')) . '">';
+        $svg = '<svg class="omo-stats-chart omo-stats-chart--' . omoApiEscape($variant) . ($overdueSeverity === 'error' ? ' omo-stats-chart--overdue' : ($overdueSeverity === 'warning' ? ' omo-stats-chart--warning' : '')) . '" viewBox="0 0 ' . $width . ' ' . $height . '" role="img" aria-label="' . omoApiEscape((string)$indicator->get('name')) . '">';
         $svg .= '<defs><linearGradient id="' . $chartId . '-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity="0.24"/><stop offset="1" stop-color="currentColor" stop-opacity="0.02"/></linearGradient></defs>';
 
         if ($variant === 'large') {
@@ -1532,8 +1566,9 @@ if (!function_exists('omoStatsRenderGroupChart')) {
     {
         $variant = in_array($variant, ['compact', 'card', 'large'], true) ? $variant : 'card';
         if ($isOverdue === null) {
-            $isOverdue = omoStatsIsGroupOverdue($group);
+            $isOverdue = omoStatsGetGroupOverdueInfo($group)['severity'];
         }
+        $overdueSeverity = is_string($isOverdue) ? $isOverdue : ($isOverdue ? 'error' : 'none');
         $referenceSeries = omoStatsGetGroupReferenceSeries($group);
         $referenceRange = omoStatsReferenceTimestampRange($referenceSeries);
         $renderSeries = $series;
@@ -1602,7 +1637,7 @@ if (!function_exists('omoStatsRenderGroupChart')) {
             ];
         };
         $colors = ['#2563eb', '#db2777', '#059669', '#d97706', '#7c3aed', '#0891b2'];
-        $svg = '<svg class="omo-stats-chart omo-stats-chart--' . omoApiEscape($variant) . ' omo-stats-chart--group' . ($isOverdue ? ' omo-stats-chart--overdue' : '') . '" viewBox="0 0 ' . $width . ' ' . $height . '" role="img" aria-label="' . omoApiEscape((string)$group->get('name')) . '">';
+        $svg = '<svg class="omo-stats-chart omo-stats-chart--' . omoApiEscape($variant) . ' omo-stats-chart--group' . ($overdueSeverity === 'error' ? ' omo-stats-chart--overdue' : ($overdueSeverity === 'warning' ? ' omo-stats-chart--warning' : '')) . '" viewBox="0 0 ' . $width . ' ' . $height . '" role="img" aria-label="' . omoApiEscape((string)$group->get('name')) . '">';
         if ($variant === 'large') {
             for ($gridIndex = 0; $gridIndex <= $chartScale['intervals']; $gridIndex++) {
                 $ratio = $gridIndex / $chartScale['intervals'];

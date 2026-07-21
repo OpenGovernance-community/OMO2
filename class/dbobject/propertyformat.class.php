@@ -9,6 +9,8 @@
 		public const FORMAT_NUMBER = 3;
 		public const FORMAT_DATE = 4;
 		public const FORMAT_HTML = 5;
+		public const FORMAT_TEXT_HTML = 6;
+		public const FORMAT_HTML_LIST = 7;
 
 	    public static function tableName()
 		{
@@ -45,6 +47,8 @@
 				array('id' => self::FORMAT_NUMBER, 'name' => 'Chiffre'),
 				array('id' => self::FORMAT_DATE, 'name' => 'Date'),
 				array('id' => self::FORMAT_HTML, 'name' => 'HTML'),
+				array('id' => self::FORMAT_TEXT_HTML, 'name' => 'Texte avec detail HTML'),
+				array('id' => self::FORMAT_HTML_LIST, 'name' => 'HTML et liste'),
 			);
 		}
 
@@ -65,8 +69,46 @@
 			return (int)$formatId === self::FORMAT_HTML;
 		}
 
+		public static function isListFormat($formatId)
+		{
+			return in_array((int)$formatId, array(self::FORMAT_LIST, self::FORMAT_HTML_LIST), true);
+		}
+
+		public static function getTextHtmlParts($value)
+		{
+			$decoded = is_array($value) ? $value : json_decode((string)$value, true);
+			if (!is_array($decoded)) {
+				$decoded = array('text' => is_scalar($value) ? (string)$value : '', 'detail' => '');
+			}
+			return array(
+				'text' => trim((string)($decoded['text'] ?? '')),
+				'detail' => self::sanitizeHtml($decoded['detail'] ?? ''),
+			);
+		}
+
+		public static function getHtmlListParts($value)
+		{
+			$decoded = is_array($value) ? $value : json_decode((string)$value, true);
+			if (!is_array($decoded)) {
+				$decoded = array('before' => '', 'items' => array(), 'after' => '');
+			}
+			return array(
+				'before' => self::sanitizeHtml($decoded['before'] ?? ''),
+				'items' => is_array($decoded['items'] ?? null) ? array_values($decoded['items']) : array(),
+				'after' => self::sanitizeHtml($decoded['after'] ?? ''),
+			);
+		}
+
 		public static function normalizeValueForStorage($formatId, $value)
 		{
+			if ((int)$formatId === self::FORMAT_TEXT_HTML) {
+				return json_encode(self::getTextHtmlParts($value), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			}
+
+			if ((int)$formatId === self::FORMAT_HTML_LIST) {
+				return json_encode(self::getHtmlListParts($value), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			}
+
 			$normalizedValue = is_scalar($value) ? (string)$value : '';
 
 			if (self::isHtmlFormat($formatId)) {
@@ -78,6 +120,17 @@
 
 		public static function isEmptyValue($formatId, $value)
 		{
+			if ((int)$formatId === self::FORMAT_TEXT_HTML) {
+				$parts = self::getTextHtmlParts($value);
+				return $parts['text'] === '' && self::isEmptyValue(self::FORMAT_HTML, $parts['detail']);
+			}
+
+			if ((int)$formatId === self::FORMAT_HTML_LIST) {
+				$parts = self::getHtmlListParts($value);
+				return self::isEmptyValue(self::FORMAT_HTML, $parts['before'])
+					&& count($parts['items']) === 0
+					&& self::isEmptyValue(self::FORMAT_HTML, $parts['after']);
+			}
 			$normalizedValue = self::normalizeValueForStorage($formatId, $value);
 
 			if (!self::isHtmlFormat($formatId)) {
@@ -222,6 +275,25 @@
 					if ($value !== '') {
 						$element->setAttribute('data-omo-event-' . $attributeName, $value);
 					}
+				}
+
+				foreach (iterator_to_array($node->childNodes) as $childNode) {
+					self::appendSanitizedHtmlChild($element, self::sanitizeHtmlNode($childNode, $document));
+				}
+
+				return $element;
+			}
+
+			if (self::isAllowedProjectEmbedNode($node)) {
+				$element = $document->createElement('span');
+				$element->setAttribute('class', 'omo-project-embed');
+				$element->setAttribute('contenteditable', 'false');
+				$element->setAttribute('data-omo-embed-type', 'project');
+				$element->setAttribute('data-omo-project-id', (string)self::getProjectEmbedNodeId($node));
+
+				$title = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-project-title'));
+				if ($title !== '') {
+					$element->setAttribute('data-omo-project-title', $title);
 				}
 
 				foreach (iterator_to_array($node->childNodes) as $childNode) {
@@ -426,6 +498,24 @@
 			}
 
 			return self::getDecisionEmbedNodeId($node) > 0;
+		}
+
+		protected static function getProjectEmbedNodeId(\DOMNode $node): int
+		{
+			return (int)trim((string)self::getDomNodeAttributeValue($node, 'data-omo-project-id'));
+		}
+
+		protected static function isAllowedProjectEmbedNode(\DOMNode $node): bool
+		{
+			if (!($node instanceof \DOMElement)) {
+				return false;
+			}
+
+			if (trim((string)$node->getAttribute('data-omo-embed-type')) !== 'project') {
+				return false;
+			}
+
+			return self::getProjectEmbedNodeId($node) > 0;
 		}
 
 		protected static function getEventEmbedNodeId(\DOMNode $node): int

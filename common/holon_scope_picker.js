@@ -409,18 +409,24 @@
         return draw;
     }
 
-    function flatten(node, depth, nodes, descendants) {
+    function flatten(node, depth, nodes, descendants, directChildren) {
         if (!node || typeof node !== 'object') {
             return [];
         }
         var id = normalizeId(node.ID);
         var childIds = [];
+        var directChildIds = [];
         (Array.isArray(node.children) ? node.children : []).forEach(function (child) {
-            childIds = childIds.concat(flatten(child, depth + 1, nodes, descendants));
+            var childId = normalizeId(child && child.ID);
+            if (childId > 0) {
+                directChildIds.push(childId);
+            }
+            childIds = childIds.concat(flatten(child, depth + 1, nodes, descendants, directChildren));
         });
         if (id > 0) {
             nodes.push({ id: id, label: String(node.name || ''), color: String(node.mycolor || ''), depth: depth });
             descendants[id] = [id].concat(childIds);
+            directChildren[id] = directChildIds;
             return descendants[id];
         }
         return childIds;
@@ -431,10 +437,12 @@
         var host = settings.host instanceof Element ? settings.host : null;
         var organizationId = normalizeId(settings.organizationId);
         var selectedHolonId = normalizeId(settings.initialHolonId);
-        var scope = selectedHolonId > 0 ? 'descendants' : 'global';
-        var scopeIndex = scope === 'descendants' ? 1 : 2;
+        var showModes = settings.showModes !== false;
+        var scope = 'descendants';
+        var scopeIndex = 2;
         var nodes = [];
         var descendants = Object.create(null);
+        var directChildren = Object.create(null);
         var labels = settings.labels || {};
         var redrawMap = function () {};
 
@@ -442,28 +450,28 @@
             return { matches: function () { return true; } };
         }
 
-        host.innerHTML = '<div class="omo-holon-scope-picker__modes omo-scope-toggle" role="tablist" data-omo-scope-switch="' + scope + '" style="--omo-scope-option-count: 3; --omo-scope-active-index: ' + String(scopeIndex) + ';">'
+        host.innerHTML = (showModes ? '<div class="omo-holon-scope-picker__modes omo-scope-toggle" role="tablist" data-omo-scope-switch="' + scope + '" style="--omo-scope-option-count: 3; --omo-scope-active-index: ' + String(scopeIndex) + ';">'
             + '<button type="button" class="omo-scope-toggle__button" data-omo-holon-scope="local" data-omo-scope-option="contextual" data-omo-scope-index="0" aria-pressed="false"><span class="omo-scope-toggle__text">' + escapeHtml(labels.local) + '</span></button>'
-            + '<button type="button" class="omo-scope-toggle__button' + (scope === 'descendants' ? ' is-active' : '') + '" data-omo-holon-scope="descendants" data-omo-scope-option="descendants" data-omo-scope-index="1" aria-pressed="' + (scope === 'descendants' ? 'true' : 'false') + '"><span class="omo-scope-toggle__text">' + escapeHtml(labels.descendants) + '</span></button>'
-            + '<button type="button" class="omo-scope-toggle__button' + (scope === 'global' ? ' is-active' : '') + '" data-omo-holon-scope="global" data-omo-scope-option="global" data-omo-scope-index="2" aria-pressed="' + (scope === 'global' ? 'true' : 'false') + '"><span class="omo-scope-toggle__text">' + escapeHtml(labels.global) + '</span></button></div>'
+            + '<button type="button" class="omo-scope-toggle__button" data-omo-holon-scope="children" data-omo-scope-option="children" data-omo-scope-index="1" aria-pressed="false"><span class="omo-scope-toggle__text">' + escapeHtml(labels.children) + '</span></button>'
+            + '<button type="button" class="omo-scope-toggle__button is-active" data-omo-holon-scope="descendants" data-omo-scope-option="descendants" data-omo-scope-index="2" aria-pressed="true"><span class="omo-scope-toggle__text">' + escapeHtml(labels.descendants) + '</span></button></div>' : '')
             + '<div class="omo-holon-scope-picker__map" data-omo-holon-scope-map></div>';
         var map = host.querySelector('[data-omo-holon-scope-map]');
 
         function matches(value) {
-            if (scope === 'global') {
-                return true;
-            }
             var id = normalizeId(value);
             if (selectedHolonId <= 0) {
                 return false;
             }
-            return scope === 'local'
-                ? id === selectedHolonId
+            if (scope === 'local') {
+                return id === selectedHolonId;
+            }
+            return scope === 'children'
+                ? id === selectedHolonId || (directChildren[selectedHolonId] || []).indexOf(id) !== -1
                 : (descendants[selectedHolonId] || []).indexOf(id) !== -1;
         }
 
         function notify() {
-            var scopeIndex = scope === 'local' ? 0 : (scope === 'descendants' ? 1 : 2);
+            var scopeIndex = scope === 'local' ? 0 : (scope === 'children' ? 1 : 2);
             var scopeToggle = host.querySelector('[data-omo-scope-switch]');
             if (scopeToggle) {
                 scopeToggle.setAttribute('data-omo-scope-switch', scope);
@@ -475,7 +483,7 @@
                 button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
             });
             if (typeof settings.onChange === 'function') {
-                settings.onChange();
+                settings.onChange(selectedHolonId);
             }
             redrawMap();
         }
@@ -483,7 +491,7 @@
         host.addEventListener('click', function (event) {
             var scopeButton = event.target.closest('[data-omo-holon-scope]');
             if (scopeButton) {
-                scope = scopeButton.getAttribute('data-omo-holon-scope') || 'global';
+                scope = scopeButton.getAttribute('data-omo-holon-scope') || 'descendants';
                 notify();
                 return;
             }
@@ -492,7 +500,10 @@
         fetch('/omo/api/getStructureData.php?oid=' + encodeURIComponent(String(organizationId)), { credentials: 'same-origin' })
             .then(function (response) { return response.ok ? response.json() : null; })
             .then(function (data) {
-                flatten(data, 0, nodes, descendants);
+                if (selectedHolonId <= 0) {
+                    selectedHolonId = normalizeId(data && data.ID);
+                }
+                flatten(data, 0, nodes, descendants, directChildren);
                 if (!map) { return; }
                 return ensureD3().then(function () {
                     if (!map.isConnected) {
@@ -507,6 +518,9 @@
             })
             .catch(function () {});
 
-        return { matches: matches };
+        return {
+            matches: matches,
+            getSelectedHolonId: function () { return selectedHolonId; }
+        };
     };
 })(window);

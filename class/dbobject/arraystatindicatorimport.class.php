@@ -15,10 +15,10 @@ class ArrayStatIndicatorImport extends ArrayDbObject
             ['field' => 'IDorganization', 'value' => (int)$organizationId],
             ['field' => 'active', 'value' => 1],
         ];
-        if ($scope === 'descendants') {
+        if ($scope === 'children' || $scope === 'descendants') {
             $ids = array_values(array_filter(array_map('intval', $descendantHolonIds)));
             $where[] = ['field' => 'IDholon', 'op' => 'in', 'value' => $ids];
-        } elseif ($scope !== 'global') {
+        } else {
             $where[] = (int)$holonId > 0
                 ? ['field' => 'IDholon', 'value' => (int)$holonId]
                 : ['field' => 'IDholon', 'op' => 'is null'];

@@ -237,13 +237,13 @@ $sourceLang = [
         'text' => 'Contextuel',
         'context' => 'Label used to show only decisions from the current holon context.',
     ],
+    'decisions.index.scope.children' => [
+        'text' => 'Enfants directs',
+        'context' => 'Label used to show decisions from the current holon and its direct children.',
+    ],
     'decisions.index.scope.descendants' => [
         'text' => 'Descendants',
         'context' => 'Label used to show decisions from the current holon and its descendants.',
-    ],
-    'decisions.index.scope.global' => [
-        'text' => 'Global',
-        'context' => 'Label used to show all visible decisions from the organization.',
     ],
     'decisions.index.filters.status.all' => [
         'text' => 'Toutes',
@@ -746,6 +746,7 @@ $availableDecisionScopes = omoApiGetAvailableContextScopes($canToggleDecisionSco
 $decisionScope = omoApiNormalizeContextScope($requestedDecisionScope, $availableDecisionScopes);
 $decisionScopeActiveIndex = omoApiResolveContextScopeIndex($decisionScope, $availableDecisionScopes);
 $allowedDescendantHolonIds = omoApiGetDescendantHolonIdMap($currentContextHolon);
+$allowedDirectChildHolonIds = omoApiGetDirectChildScopeHolonIdMap($currentContextHolon);
 $normalizedCurrentHolonId = omoDecisionNormalizeContextHolonId($organization, $currentHolonId);
 $isNonRootHolonContext = $currentContextHolon instanceof Holon
     && $rootHolon instanceof Holon
@@ -831,7 +832,7 @@ foreach ($decisionRows as $row) {
     }
 
     $holonId = (int)$decision->get('IDholon');
-    if ($isNonRootHolonContext && ($decisionScope === 'contextual' || $decisionScope === 'descendants') && $holonId <= 0) {
+    if ($isNonRootHolonContext && in_array($decisionScope, ['contextual', 'children', 'descendants'], true) && $holonId <= 0) {
         continue;
     }
 
@@ -841,6 +842,15 @@ foreach ($decisionRows as $row) {
 
     if ($decisionScope === 'descendants' && $currentContextHolon && $holonId > 0 && !isset($allowedDescendantHolonIds[$holonId])) {
         continue;
+    }
+
+    if ($decisionScope === 'children') {
+        if ($isNonRootHolonContext && $holonId <= 0) {
+            continue;
+        }
+        if ($holonId > 0 && !isset($allowedDirectChildHolonIds[$holonId])) {
+            continue;
+        }
     }
 
     $status = DecisionProcess::normalizeStatus($decision->get('status'));
@@ -2113,9 +2123,10 @@ function omoDecisionsWritePreferences(preferences) {
 
 function omoDecisionGetCurrentScope() {
     const normalizedScope = String(root.getAttribute('data-omo-decision-scope') || 'contextual').trim().toLowerCase();
-    return normalizedScope === 'global' || normalizedScope === 'descendants'
-        ? normalizedScope
-        : 'contextual';
+    if (normalizedScope === 'global') {
+        return 'descendants';
+    }
+    return normalizedScope === 'children' || normalizedScope === 'descendants' ? normalizedScope : 'contextual';
 }
 
 window.omoToggleDecisionsScope = function (button, event) {
@@ -2142,9 +2153,10 @@ window.omoToggleDecisionsScope = function (button, event) {
 
     const normalizeDecisionScope = function (scopeValue) {
         const normalizedScope = String(scopeValue || '').trim().toLowerCase();
-        return normalizedScope === 'global' || normalizedScope === 'descendants'
-            ? normalizedScope
-            : 'contextual';
+        if (normalizedScope === 'global') {
+            return 'descendants';
+        }
+        return normalizedScope === 'children' || normalizedScope === 'descendants' ? normalizedScope : 'contextual';
     };
     const currentScope = normalizeDecisionScope(panel.getAttribute('data-omo-decision-scope') || 'contextual');
     const targetScope = normalizeDecisionScope(button.getAttribute('data-omo-decision-scope-toggle') || '');

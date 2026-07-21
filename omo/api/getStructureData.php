@@ -4,6 +4,7 @@ require_once __DIR__ . '/bootstrap.php';
 header('Content-Type: application/json; charset=UTF-8');
 
 use dbObject\ArrayOrganization;
+use dbObject\ArrayProject;
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 if ($organizationId <= 0) {
@@ -93,6 +94,17 @@ $representation = $navigationRoot->toRepresentationArray(array(
     'includeMemberUserIds' => !(function_exists('commonGetCurrentShareToken') && commonGetCurrentShareToken() !== '' && !commonCurrentShareAllowsPeople()),
     'organizationId' => $organizationId,
 ));
+
+$projectTitles = array();
+$projects = new ArrayProject();
+$projects->loadForOrganization($organizationId);
+foreach ($projects as $project) {
+    $projectId = (int)$project->getId();
+    if ($projectId > 0) {
+        $projectTitles[$projectId] = trim((string)$project->get('title'));
+    }
+}
+$representation['projectTitles'] = $projectTitles;
 
 if ((int)$navigationRoot->getId() !== (int)$root->getId() && (int)$navigationRoot->get('IDtypeholon') !== 4) {
     $representation['type'] = '4';

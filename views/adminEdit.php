@@ -13,9 +13,11 @@
 require_once dirname(__DIR__) . '/common/leaflet_helper.php';
 require_once dirname(__DIR__) . '/common/admin_edit_translation.php';
 ?>
+<?php if (!isset($params['includeComponentAssets']) || $params['includeComponentAssets'] !== false) { ?>
 <link rel="stylesheet" href="/common/assets/components.css">
+<?php } ?>
 <style>
-    .navTab a {
+    .admin-edit .navTab a {
         border: 1px solid var(--admin-edit-border-strong, #cbd5e1);
         display: inline-flex;
         align-items: center;
@@ -878,7 +880,7 @@ $adminEditCharCountTemplate = adminEditTranslate('admin_edit.length.progress', [
     }
 </script>
 <style>
-    :root {
+    .admin-edit {
         --admin-edit-primary: var(--color-primary, #004663);
         --admin-edit-surface: var(--color-surface, #ffffff);
         --admin-edit-surface-alt: var(--color-surface-alt, #f0f2f5);
@@ -887,9 +889,6 @@ $adminEditCharCountTemplate = adminEditTranslate('admin_edit.length.progress', [
         --admin-edit-text: var(--color-text, #111827);
         --admin-edit-muted: var(--color-text-light, #6b7280);
         --admin-edit-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
-    }
-
-    .admin-edit {
         color: var(--admin-edit-text);
     }
 
@@ -945,20 +944,20 @@ $adminEditCharCountTemplate = adminEditTranslate('admin_edit.length.progress', [
         box-shadow: var(--admin-edit-shadow);
     }
 
-    table.dbobjecttable {
+    .admin-edit table.dbobjecttable {
         width: 100%;
         border-collapse: separate;
         border-spacing: 0 14px;
     }
 
-    table.dbobjecttable > tbody > tr > th,
-    table.dbobjecttable > tbody > tr > td,
-    table.dbobjecttable > tr > th,
-    table.dbobjecttable > tr > td {
+    .admin-edit table.dbobjecttable > tbody > tr > th,
+    .admin-edit table.dbobjecttable > tbody > tr > td,
+    .admin-edit table.dbobjecttable > tr > th,
+    .admin-edit table.dbobjecttable > tr > td {
         vertical-align: top;
     }
 
-    table.dbobjecttable th {
+    .admin-edit table.dbobjecttable th {
         width: 240px;
         min-width: 220px;
         text-align: left;
@@ -968,44 +967,44 @@ $adminEditCharCountTemplate = adminEditTranslate('admin_edit.length.progress', [
         line-height: 1.45;
     }
 
-    table.dbobjecttable td {
+    .admin-edit table.dbobjecttable td {
         padding: 0;
     }
 
-    table.dbobjecttable td > input:not([type='checkbox']):not([type='radio']):not([type='button']):not([type='submit']):not([type='hidden']),
-    table.dbobjecttable td > select,
-    table.dbobjecttable td > textarea,
-    table.dbobjecttable td > table,
-    table.dbobjecttable td > div,
-    table.dbobjecttable td > p,
-    table.dbobjecttable td > hr {
+    .admin-edit table.dbobjecttable td > input:not([type='checkbox']):not([type='radio']):not([type='button']):not([type='submit']):not([type='hidden']),
+    .admin-edit table.dbobjecttable td > select,
+    .admin-edit table.dbobjecttable td > textarea,
+    .admin-edit table.dbobjecttable td > table,
+    .admin-edit table.dbobjecttable td > div,
+    .admin-edit table.dbobjecttable td > p,
+    .admin-edit table.dbobjecttable td > hr {
         margin-top: 0;
     }
 
-    table.dbobjecttable td > input:not([type='checkbox']):not([type='radio']):not([type='button']):not([type='submit']):not([type='hidden']),
-    table.dbobjecttable td > select,
-    table.dbobjecttable td > textarea,
-    table.dbobjecttable td > table,
-    table.dbobjecttable td > div:not(.char_count):not(.field_help),
-    table.dbobjecttable td > p,
-    table.dbobjecttable td > hr,
-    table.dbobjecttable td > h1,
-    table.dbobjecttable td > h2 {
+    .admin-edit table.dbobjecttable td > input:not([type='checkbox']):not([type='radio']):not([type='button']):not([type='submit']):not([type='hidden']),
+    .admin-edit table.dbobjecttable td > select,
+    .admin-edit table.dbobjecttable td > textarea,
+    .admin-edit table.dbobjecttable td > table,
+    .admin-edit table.dbobjecttable td > div:not(.char_count):not(.field_help),
+    .admin-edit table.dbobjecttable td > p,
+    .admin-edit table.dbobjecttable td > hr,
+    .admin-edit table.dbobjecttable td > h1,
+    .admin-edit table.dbobjecttable td > h2 {
         display: block;
         width: 100%;
         box-sizing: border-box;
     }
 
-    table.dbobjecttable td > table {
+    .admin-edit table.dbobjecttable td > table {
         border-collapse: separate;
         border-spacing: 12px 0;
     }
 
-    table.dbobjecttable td > table td {
+    .admin-edit table.dbobjecttable td > table td {
         padding: 0;
     }
 
-    table.dbobjecttable td > table td:first-child {
+    .admin-edit table.dbobjecttable td > table td:first-child {
         padding-left: 0;
     }
 
@@ -1173,13 +1172,13 @@ $adminEditCharCountTemplate = adminEditTranslate('admin_edit.length.progress', [
         margin: 8px 0;
     }
 
-    .char_count {
+    .admin-edit .char_count {
         margin-top: 8px;
         color: var(--color-text-light, #64748b);
         font-size: 0.85rem;
     }
 
-    .field_help {
+    .admin-edit .field_help {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -1194,12 +1193,12 @@ $adminEditCharCountTemplate = adminEditTranslate('admin_edit.length.progress', [
         cursor: help;
     }
 
-    .required-star {
+    .admin-edit .required-star {
         margin-left: 6px;
         color: #dc2626;
     }
 
-    .star-rating {
+    .admin-edit .star-rating {
         display: inline-flex;
         gap: 6px;
         padding: 10px 14px;
@@ -1208,22 +1207,22 @@ $adminEditCharCountTemplate = adminEditTranslate('admin_edit.length.progress', [
         background: var(--admin-edit-surface);
     }
 
-    .star-rating span {
+    .admin-edit .star-rating span {
         cursor: pointer;
         font-size: 1.5rem;
         color: #cbd5e1;
     }
 
-    .star-rating span.active {
+    .admin-edit .star-rating span.active {
         color: #f59e0b;
     }
 
-    .drag_img,
-    [id^='imgContainer_'] {
+    .admin-edit .drag_img,
+    .admin-edit [id^='imgContainer_'] {
         border-radius: 18px;
     }
 
-    [id^='imgContainer_'] {
+    .admin-edit [id^='imgContainer_'] {
         overflow: hidden;
         border: 1px solid var(--admin-edit-border-strong) !important;
         background: color-mix(in srgb, var(--admin-edit-surface-alt) 80%, var(--admin-edit-surface));
@@ -1243,36 +1242,36 @@ $adminEditCharCountTemplate = adminEditTranslate('admin_edit.length.progress', [
             border-radius: 18px;
         }
 
-        table.dbobjecttable,
-        table.dbobjecttable tbody,
-        table.dbobjecttable tr,
-        table.dbobjecttable th,
-        table.dbobjecttable td {
+        .admin-edit table.dbobjecttable,
+        .admin-edit table.dbobjecttable tbody,
+        .admin-edit table.dbobjecttable tr,
+        .admin-edit table.dbobjecttable th,
+        .admin-edit table.dbobjecttable td {
             display: block;
             width: 100%;
         }
 
-        table.dbobjecttable {
+        .admin-edit table.dbobjecttable {
             border-spacing: 0;
         }
 
-        table.dbobjecttable tr {
+        .admin-edit table.dbobjecttable tr {
             margin-bottom: 18px;
         }
 
-        table.dbobjecttable th {
+        .admin-edit table.dbobjecttable th {
             min-width: 0;
             padding: 0 0 8px;
         }
 
-        table.dbobjecttable td > table,
-        table.dbobjecttable td > table tr,
-        table.dbobjecttable td > table td {
+        .admin-edit table.dbobjecttable td > table,
+        .admin-edit table.dbobjecttable td > table tr,
+        .admin-edit table.dbobjecttable td > table td {
             display: block;
             width: 100%;
         }
 
-        table.dbobjecttable td > table td + td {
+        .admin-edit table.dbobjecttable td > table td + td {
             margin-top: 12px;
         }
     }
