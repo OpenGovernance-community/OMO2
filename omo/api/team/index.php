@@ -144,8 +144,8 @@ $teamScope = omoApiNormalizeContextScope($_GET['team_scope'] ?? 'contextual', $a
 $teamScopeActiveIndex = omoApiResolveContextScopeIndex($teamScope, $availableTeamScopes);
 $teamScopeLabels = array(
     'contextual' => omoTeamT('team.scope.contextual', [], $lang, $sourceLang),
+    'children' => omoTeamT('team.scope.children', [], $lang, $sourceLang),
     'descendants' => omoTeamT('team.scope.descendants', [], $lang, $sourceLang),
-    'global' => omoTeamT('team.scope.global', [], $lang, $sourceLang),
 );
 
 $rawMemberCards = array();
@@ -155,15 +155,36 @@ $directContextMemberUserIds = array();
 if ($hasStructureContext) {
     $directContextMemberUserIds = array_fill_keys($currentHolon->getDirectMemberUserIds($organizationId), true);
 
-    if ($teamScope === 'global' && $rootHolon instanceof Holon) {
-        $rawMemberCards = $rootHolon->getAssociatedMemberCards(array(
-            'organizationId' => $organizationId,
-            'includeDescendants' => true,
-        ));
-    } elseif ($teamScope === 'contextual') {
+    if ($teamScope === 'contextual') {
         $rawMemberCards = $currentHolon->getAssociatedMemberCards(array(
             'organizationId' => $organizationId,
         ));
+    } elseif ($teamScope === 'children') {
+        $memberCardsByUserId = array();
+        foreach ($currentHolon->getAssociatedMemberCards(array(
+            'organizationId' => $organizationId,
+            'includeDescendants' => false,
+        )) as $currentHolonMemberCard) {
+            $memberUserId = (int)($currentHolonMemberCard['userId'] ?? 0);
+            if ($memberUserId > 0) {
+                $memberCardsByUserId[$memberUserId] = $currentHolonMemberCard;
+            }
+        }
+        foreach ($currentHolon->getChildren() as $directChildHolon) {
+            if (!omoApiIsStructuralScopeHolon($directChildHolon, $currentHolon)) {
+                continue;
+            }
+            foreach ($directChildHolon->getAssociatedMemberCards(array(
+                'organizationId' => $organizationId,
+                'includeDescendants' => false,
+            )) as $directChildMemberCard) {
+                $memberUserId = (int)($directChildMemberCard['userId'] ?? 0);
+                if ($memberUserId > 0) {
+                    $memberCardsByUserId[$memberUserId] = $directChildMemberCard;
+                }
+            }
+        }
+        $rawMemberCards = array_values($memberCardsByUserId);
     } else {
         $rawMemberCards = $currentHolon->getAssociatedMemberCards(array(
             'organizationId' => $organizationId,
@@ -375,9 +396,9 @@ if ($currentHolonTemplateLabel === '') {
 $teamEmptyMessage = omoTeamT('team.empty.contextual', ['context_type' => $currentHolonTypeLabel], $lang, $sourceLang);
 $teamMapEmptyMessage = omoTeamT('team.map.empty.contextual', [], $lang, $sourceLang);
 
-if ($teamScope === 'global') {
-    $teamEmptyMessage = omoTeamT('team.empty.global', [], $lang, $sourceLang);
-    $teamMapEmptyMessage = omoTeamT('team.map.empty.global', [], $lang, $sourceLang);
+if ($teamScope === 'children') {
+    $teamEmptyMessage = omoTeamT('team.empty.children', [], $lang, $sourceLang);
+    $teamMapEmptyMessage = omoTeamT('team.map.empty.children', [], $lang, $sourceLang);
 } elseif ($teamScope === 'descendants') {
     $teamEmptyMessage = omoTeamT('team.empty.descendants', [], $lang, $sourceLang);
     $teamMapEmptyMessage = omoTeamT('team.map.empty.descendants', [], $lang, $sourceLang);
@@ -1483,9 +1504,10 @@ function omoTeamFormatText(template, variables) {
 
 function omoTeamNormalizeScope(scopeValue) {
     const normalizedScope = String(scopeValue || '').trim().toLowerCase();
-    return normalizedScope === 'global' || normalizedScope === 'descendants'
-        ? normalizedScope
-        : 'contextual';
+    if (normalizedScope === 'global') {
+        return 'descendants';
+    }
+    return normalizedScope === 'children' || normalizedScope === 'descendants' ? normalizedScope : 'contextual';
 }
 
 function omoTeamBuildScopeUrl(scopeValue) {

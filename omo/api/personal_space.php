@@ -347,7 +347,7 @@ if ($organizationRootHolon instanceof Holon) {
     if ($currentContextHolon instanceof Holon && (int)$currentContextHolon->getId() !== (int)$organizationRootHolon->getId()) {
         $personalSpaceForcedOpenScope = 'descendants';
     } else {
-        $personalSpaceForcedOpenScope = 'global';
+        $personalSpaceForcedOpenScope = 'descendants';
     }
 }
 

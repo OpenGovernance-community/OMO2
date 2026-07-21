@@ -3017,7 +3017,10 @@
 		protected function normalizeTemplateEditorScope($scope = 'contextual')
 		{
 			$scope = strtolower(trim((string)$scope));
-			return $scope === 'global' ? 'global' : 'contextual';
+			if ($scope === 'global') {
+				$scope = 'descendants';
+			}
+			return in_array($scope, array('contextual', 'children', 'descendants'), true) ? $scope : 'contextual';
 		}
 
 		public function getHolonTemplateEditorData($contextHolonId = 0, $scope = 'contextual')
@@ -3040,6 +3043,7 @@
 					'permissionCatalog' => \dbObject\Permission::getEditorCatalog(),
 					'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
 					'templateCatalog' => array(),
+					'projectCatalog' => array(),
 					'templates' => array(),
 				);
 			}
@@ -3072,6 +3076,7 @@
 				'permissionCatalog' => \dbObject\Permission::getEditorCatalog(),
 				'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
 				'templateCatalog' => array(),
+				'projectCatalog' => $this->getProjectListEditorCatalog(),
 				'templates' => array(),
 			);
 
@@ -3087,9 +3092,36 @@
 			$data['formats'] = $this->buildEditorPropertyFormats($formats);
 
 			$templateCatalogSource = $this->getAvailableTemplateDefinitionHolons($contextHolon ? (int)$contextHolon->getId() : 0);
-			$templateTreeSource = $scope === 'global'
-				? $this->getAllTemplateDefinitionHolons()
-				: $this->getTemplateDefinitionHolons($contextHolon ? (int)$contextHolon->getId() : 0);
+			$scopeContextHolonIds = $contextHolon ? array((int)$contextHolon->getId()) : array();
+			if ($scope === 'children' && $contextHolon) {
+				$scopeContextHolonIds = array((int)$contextHolon->getId());
+				foreach ($contextHolon->getChildren() as $childHolon) {
+					if (!$childHolon->isTemplateNode((int)$rootHolon->getId())) {
+						$scopeContextHolonIds[] = (int)$childHolon->getId();
+					}
+				}
+			} elseif ($scope === 'descendants' && $contextHolon) {
+				$scopeContextHolonIds = array();
+				$collectStructuralHolonIds = function ($holon) use (&$collectStructuralHolonIds, &$scopeContextHolonIds, $rootHolon) {
+					$holonId = (int)$holon->getId();
+					if ($holonId <= 0 || in_array($holonId, $scopeContextHolonIds, true)) {
+						return;
+					}
+					$scopeContextHolonIds[] = $holonId;
+					foreach ($holon->getChildren() as $childHolon) {
+						if (!$childHolon->isTemplateNode((int)$rootHolon->getId())) {
+							$collectStructuralHolonIds($childHolon);
+						}
+					}
+				};
+				$collectStructuralHolonIds($contextHolon);
+			}
+			$scopeContextHolonIdMap = count($scopeContextHolonIds) > 0
+				? array_fill_keys(array_map('intval', $scopeContextHolonIds), true)
+				: array();
+			$templateTreeSource = array_values(array_filter($this->getAllTemplateDefinitionHolons(), function ($template) use ($scopeContextHolonIdMap) {
+				return isset($scopeContextHolonIdMap[(int)$template->get('IDholon_parent')]);
+			}));
 			$definitionHolonMetaCache = array();
 
 			$resolveDefinitionHolonMeta = function ($definitionHolonId) use (&$definitionHolonMetaCache) {
@@ -3256,6 +3288,7 @@
 				'permissionCatalog' => \dbObject\Permission::getEditorCatalog(),
 				'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
 				'templateCatalog' => array(),
+				'projectCatalog' => $this->getProjectListEditorCatalog(),
 				'templates' => array(
 					$this->buildHolonDefinitionEditorNode($holon, (int)$rootHolon->getId()),
 				),
@@ -3297,6 +3330,47 @@
 			foreach ($holon->getChildren() as $child) {
 				$this->buildSelectableHolonCatalog($child, $catalog, $rootHolonId, $currentPath);
 			}
+		}
+
+		protected function getProjectListEditorCatalog()
+		{
+			$projects = new \dbObject\ArrayProject();
+			$projects->loadForOrganization((int)$this->getId());
+			$catalog = array();
+
+			foreach ($projects as $project) {
+				$projectId = (int)$project->getId();
+				if ($projectId <= 0) {
+					continue;
+				}
+
+				$holon = $project->getHolon();
+				$catalog[] = array(
+					'id' => $projectId,
+					'title' => trim((string)$project->get('title')),
+					'holonLabel' => $holon ? $holon->getFullDisplayName() : '',
+					'importance' => \dbObject\Project::normalizeLevel($project->get('importance')),
+					'priority' => \dbObject\Project::normalizeLevel($project->get('priority')),
+				);
+			}
+
+			usort($catalog, function ($left, $right) {
+				$leftImportance = $left['importance'] === null ? -1 : (int)$left['importance'];
+				$rightImportance = $right['importance'] === null ? -1 : (int)$right['importance'];
+				if ($leftImportance !== $rightImportance) {
+					return $rightImportance <=> $leftImportance;
+				}
+
+				$leftPriority = $left['priority'] === null ? PHP_INT_MAX : (int)$left['priority'];
+				$rightPriority = $right['priority'] === null ? PHP_INT_MAX : (int)$right['priority'];
+				if ($leftPriority !== $rightPriority) {
+					return $leftPriority <=> $rightPriority;
+				}
+
+				return strcasecmp((string)$left['title'], (string)$right['title']);
+			});
+
+			return $catalog;
 		}
 
 		protected function canMoveHolonToParent(\dbObject\Holon $holon, \dbObject\Holon $targetParent, ?\dbObject\Holon $rootHolon = null)
@@ -3607,7 +3681,7 @@
 			}
 
 			$folderDocuments = new \dbObject\ArrayDocument();
-			$folderDocuments->loadVisibleForOrganizationContext((int)$this->getId(), 0, 'global');
+			$folderDocuments->loadVisibleForOrganization((int)$this->getId());
 			foreach ($folderDocuments as $folderDocument) {
 				if (
 					!($folderDocument instanceof \dbObject\Document)
@@ -3925,6 +3999,7 @@
 				'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
 				'templateCatalog' => array(),
 				'holonCatalog' => array(),
+				'projectCatalog' => array(),
 				'holon' => null,
 			);
 
@@ -3998,6 +4073,7 @@
 			}
 
 			$this->buildSelectableHolonCatalog($rootHolon, $data['holonCatalog'], (int)$rootHolon->getId());
+			$data['projectCatalog'] = $this->getProjectListEditorCatalog();
 
 			if ($editingHolon && $data['canEdit']) {
 				$data['holon'] = array_merge(array(
@@ -5533,7 +5609,7 @@
 					);
 					$effectiveValue = '';
 
-					if ($formatId === \dbObject\PropertyFormat::FORMAT_LIST) {
+					if (\dbObject\PropertyFormat::isListFormat($formatId)) {
 						$effectiveItems = !empty($definition['effectiveLocked'])
 							? $parseListValue($inheritedValue)
 							: array_values(array_unique(array_merge($parseListValue($inheritedValue), $parseListValue($localValue)), SORT_REGULAR));

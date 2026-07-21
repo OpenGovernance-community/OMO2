@@ -182,7 +182,10 @@
         var measureCoordinates = measure.map(mapPoint);
         var referenceCoordinates = reference.map(mapPoint);
         var chartId = 'omo-stats-interactive-' + (++chartSequence);
-        var classes = 'omo-stats-chart omo-stats-chart--large' + (data.overdue ? ' omo-stats-chart--overdue' : '');
+        var overdueClass = data.overdueSeverity === 'warning'
+            ? ' omo-stats-chart--warning'
+            : (data.overdue ? ' omo-stats-chart--overdue' : '');
+        var classes = 'omo-stats-chart omo-stats-chart--large' + overdueClass;
         var svg = '<svg class="' + classes + '" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="' + escapeXml(data.label) + '">';
         svg += '<defs><linearGradient id="' + chartId + '-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity="0.24"/><stop offset="1" stop-color="currentColor" stop-opacity="0.02"/></linearGradient></defs>';
         svg += buildAxis(scale, paddingTop, plotHeight, paddingLeft, width, paddingRight);
@@ -240,7 +243,10 @@
             return [Math.round(x * 100) / 100, Math.round(y * 100) / 100];
         };
         var chartId = 'omo-stats-interactive-' + (++chartSequence);
-        var classes = 'omo-stats-chart omo-stats-chart--large omo-stats-chart--group' + (data.overdue ? ' omo-stats-chart--overdue' : '');
+        var overdueClass = data.overdueSeverity === 'warning'
+            ? ' omo-stats-chart--warning'
+            : (data.overdue ? ' omo-stats-chart--overdue' : '');
+        var classes = 'omo-stats-chart omo-stats-chart--large omo-stats-chart--group' + overdueClass;
         var svg = '<svg class="' + classes + '" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="' + escapeXml(data.label) + '">';
         svg += buildAxis(scale, paddingTop, plotHeight, paddingLeft, width, paddingRight);
         svg += '<text class="omo-stats-chart__axis-label" x="' + paddingLeft + '" y="' + (height - 12) + '">' + formatDay(startDay) + '</text>';

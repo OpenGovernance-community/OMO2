@@ -22,8 +22,8 @@ $faqScope = \dbObject\FAQ::normalizePopupScope($_GET['faq_scope'] ?? null, $faqC
 $faqScopeActiveIndex = omoApiResolveContextScopeIndex($faqScope, $faqAvailableScopes);
 $faqScopeLabels = array(
 	'contextual' => 'Contextuel',
+	'children' => 'Enfants directs',
 	'descendants' => 'Descendants',
-	'global' => 'Global',
 );
 $currentUserId = function_exists('commonGetCurrentUserId')
 	? (int)commonGetCurrentUserId()
@@ -51,8 +51,8 @@ $contextOrganizationLabel = $contextOrganization instanceof \dbObject\Organizati
 $contextHolonLabel = $contextHolon instanceof \dbObject\Holon
 	? trim((string)$contextHolon->getDisplayName())
 	: '';
-$heroSubtitle = $faqScope === 'global'
-	? 'Aide partagee et reponses communes'
+$heroSubtitle = $faqScope === 'children'
+	? 'Aide du contexte et de ses enfants directs'
 	: ($faqScope === 'descendants'
 		? 'Aide du contexte et de ses descendants'
 		: 'Aide du contexte courant');
@@ -472,8 +472,8 @@ if ($canManageAllFaqs) {
 		background-image: url("/omo/assets/images/scope/descendants.png?v=20260622");
 	}
 
-	.faq-popup__scope-toggle-button[data-omo-scope-option="global"]::before {
-		background-image: url("/omo/assets/images/scope/global.png?v=20260622");
+	.faq-popup__scope-toggle-button[data-omo-scope-option="children"]::before {
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cg fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 4.5v4M4.5 13.5v-2.5H13.5v2.5M9 8.5v2.5'/%3E%3C/g%3E%3Ccircle cx='9' cy='3' r='2' fill='%23000'/%3E%3Ccircle cx='4.5' cy='15' r='2' fill='%23000'/%3E%3Ccircle cx='13.5' cy='15' r='2' fill='%23000'/%3E%3C/svg%3E");
 	}
 
 	.faq-popup__scope-toggle-button.is-active {
@@ -1285,6 +1285,7 @@ if ($canManageAllFaqs) {
 	const reloadUrl = root.getAttribute('data-faq-reload-url') || '/popup/faq.php';
 	let currentViewToken = null;
 	let refreshRequestId = 0;
+	let detailRequestId = 0;
 	let currentVisibleLimit = defaultVisibleLimit;
 
 	if (modalBody) {
@@ -1307,7 +1308,10 @@ if ($canManageAllFaqs) {
 
 	function normalizeFaqScope(value) {
 		const normalizedScope = String(value || '').trim().toLowerCase();
-		if (normalizedScope === 'global' || normalizedScope === 'descendants') {
+		if (normalizedScope === 'global') {
+			return 'descendants';
+		}
+		if (normalizedScope === 'children' || normalizedScope === 'descendants') {
 			return normalizedScope;
 		}
 
@@ -1402,6 +1406,57 @@ if ($canManageAllFaqs) {
 		});
 	}
 
+	function initFaqRichTextFields(container) {
+		if (!container || typeof window.adminEditInitHtmlFields !== 'function') {
+			return Promise.resolve();
+		}
+
+		try {
+			return Promise.resolve(window.adminEditInitHtmlFields(container));
+		} catch (error) {
+			return Promise.resolve();
+		}
+	}
+
+	function destroyFaqRichTextFields(container) {
+		if (!container) {
+			return;
+		}
+
+		if (typeof window.adminEditDestroyHtmlFields === 'function') {
+			try {
+				window.adminEditDestroyHtmlFields(container);
+				return;
+			} catch (error) {
+			}
+		}
+
+		if (!window.jQuery || !window.jQuery.fn) {
+			return;
+		}
+
+		window.jQuery(container).find('textarea.summernote').each(function () {
+			const field = window.jQuery(this);
+			if (typeof field.summernote === 'function' && (field.data('adminEditSummernoteBound') === true || field.next('.note-editor').length > 0)) {
+				try {
+					field.val(field.summernote('code'));
+					field.summernote('destroy');
+				} catch (error) {
+				}
+			}
+			field.removeData('adminEditSummernoteBound');
+		});
+	}
+
+	function clearFaqView(container) {
+		if (!container) {
+			return;
+		}
+
+		destroyFaqRichTextFields(container);
+		container.innerHTML = '';
+	}
+
 	function setLoadingState(isLoading, nextScope) {
 		const activeRoot = document.getElementById('faqPopupRoot');
 		if (!activeRoot) {
@@ -1459,12 +1514,14 @@ if ($canManageAllFaqs) {
 					throw new Error('faq_popup_reload_invalid');
 				}
 
+				const scriptSource = temp.cloneNode(true);
+
 				if (typeof window.__omoPopupCleanup === 'function') {
 					window.__omoPopupCleanup();
 				}
 
 				activeRoot.parentNode.replaceChild(nextRoot, activeRoot);
-				executeFetchedScripts(temp);
+				executeFetchedScripts(scriptSource);
 			})
 			.catch(function () {
 				setLoadingState(false);
@@ -1533,11 +1590,12 @@ if ($canManageAllFaqs) {
 
 	function showList(options) {
 		const config = options || {};
+		detailRequestId++;
 		currentViewToken = 'faq';
 		root.classList.remove('faq-popup--detail-open');
 		if (detailView) {
 			detailView.hidden = true;
-			detailView.innerHTML = '';
+			clearFaqView(detailView);
 		}
 		if (editorView) {
 			editorView.hidden = true;
@@ -1553,14 +1611,16 @@ if ($canManageAllFaqs) {
 			return;
 		}
 
+		detailRequestId++;
 		currentViewToken = 'faq-create';
 		root.classList.add('faq-popup--detail-open');
 		if (detailView) {
 			detailView.hidden = true;
-			detailView.innerHTML = '';
+			clearFaqView(detailView);
 		}
 		editorView.hidden = false;
 		syncScopeSelectors(editorView);
+		initFaqRichTextFields(editorView);
 	}
 
 	function showDetail(id, options) {
@@ -1569,11 +1629,13 @@ if ($canManageAllFaqs) {
 			return;
 		}
 
+		const requestId = ++detailRequestId;
 		currentViewToken = 'faq-' + Number(id);
 		root.classList.add('faq-popup--detail-open');
 		if (editorView) {
 			editorView.hidden = true;
 		}
+		clearFaqView(detailView);
 		detailView.hidden = false;
 		detailView.innerHTML = '<div class="faq-popup__helper">Chargement...</div>';
 
@@ -1599,10 +1661,19 @@ if ($canManageAllFaqs) {
 				return response.text();
 			})
 			.then(function (html) {
+				if (requestId !== detailRequestId || !document.documentElement.contains(root)) {
+					return;
+				}
+
+				clearFaqView(detailView);
 				detailView.innerHTML = html;
 				syncScopeSelectors(detailView);
+				initFaqRichTextFields(detailView);
 			})
 			.catch(function () {
+				if (requestId !== detailRequestId || !document.documentElement.contains(root)) {
+					return;
+				}
 				detailView.innerHTML = '<div class="faq-popup__no-result">Impossible de charger cette FAQ pour le moment.</div>';
 			});
 	}
@@ -2214,8 +2285,10 @@ if ($canManageAllFaqs) {
 	window.addEventListener('omo-popup-route-update', syncFromHash);
 
 	window.__omoPopupCleanup = function () {
+		detailRequestId++;
 		window.removeEventListener('hashchange', syncFromHash);
 		window.removeEventListener('omo-popup-route-update', syncFromHash);
+		destroyFaqRichTextFields(root);
 		if (modalBody) {
 			modalBody.removeAttribute('data-omo-faq-modal');
 			modalBody.removeAttribute('data-omo-popup-key');

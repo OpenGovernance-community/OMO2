@@ -30,12 +30,12 @@ class ArrayStatIndicator extends ArrayDbObject
             ],
         ];
 
-        if ($scope === 'descendants') {
+        if ($scope === 'children' || $scope === 'descendants') {
             $descendantHolonIds = array_values(array_unique(array_filter(array_map('intval', $descendantHolonIds), static function ($candidateId) {
                 return $candidateId > 0;
             })));
             $params['where'][] = ['field' => 'IDholon', 'op' => 'in', 'value' => $descendantHolonIds];
-        } elseif ($scope !== 'global') {
+        } else {
             $params['where'][] = $holonId > 0
                 ? ['field' => 'IDholon', 'value' => $holonId]
                 : ['field' => 'IDholon', 'op' => 'is null'];
@@ -43,6 +43,33 @@ class ArrayStatIndicator extends ArrayDbObject
 
         $loaded = new self();
         $loaded->load($params);
+
+        foreach ($loaded as $indicator) {
+            if ($indicator instanceof \dbObject\StatIndicator && $indicator->canView()) {
+                $this[] = $indicator;
+            }
+        }
+    }
+
+    public function loadForOrganization($organizationId)
+    {
+        $this->exchangeArray([]);
+        $organizationId = (int)$organizationId;
+        if ($organizationId <= 0) {
+            return;
+        }
+
+        $loaded = new self();
+        $loaded->load([
+            'where' => [
+                ['field' => 'IDorganization', 'value' => $organizationId],
+                ['field' => 'active', 'value' => 1],
+            ],
+            'orderBy' => [
+                ['field' => 'name', 'dir' => 'ASC'],
+                ['field' => 'id', 'dir' => 'ASC'],
+            ],
+        ]);
 
         foreach ($loaded as $indicator) {
             if ($indicator instanceof \dbObject\StatIndicator && $indicator->canView()) {

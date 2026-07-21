@@ -1,6 +1,7 @@
 .omo-stats {
     --omo-stats-accent: #2563eb;
     --omo-stats-reference: #7b9aa8;
+    --omo-stats-warning: #ca8a04;
     --omo-stats-overdue: #dc2626;
 }
 
@@ -220,6 +221,11 @@
         linear-gradient(180deg, color-mix(in srgb, var(--omo-stats-overdue) 14%, var(--color-surface, #fff)), color-mix(in srgb, var(--omo-stats-overdue) 4%, var(--color-surface-alt, #f8fafc)));
 }
 
+.omo-stats-card--warning .omo-stats-card__chart {
+    background:
+        linear-gradient(180deg, color-mix(in srgb, var(--omo-stats-warning) 15%, var(--color-surface, #fff)), color-mix(in srgb, var(--omo-stats-warning) 4%, var(--color-surface-alt, #f8fafc)));
+}
+
 .omo-stats-card__footer {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -239,10 +245,17 @@
     gap: 2px;
 }
 
-.omo-stats-card__overdue-days {
-    color: var(--omo-stats-overdue);
+.omo-stats-card__status {
     font-size: 0.76rem;
     font-weight: 700;
+}
+
+.omo-stats-card__status--warning {
+    color: var(--omo-stats-warning);
+}
+
+.omo-stats-card__status--overdue {
+    color: var(--omo-stats-overdue);
 }
 
 .omo-stats-card__latest-value,
@@ -299,6 +312,10 @@
 
 .omo-stats-chart--overdue {
     color: var(--omo-stats-overdue);
+}
+
+.omo-stats-chart--warning {
+    color: var(--omo-stats-warning);
 }
 
 .omo-stats-chart__grid {
@@ -450,9 +467,22 @@
     box-shadow: 0 0 0 5px color-mix(in srgb, var(--omo-stats-overdue) 12%, transparent);
 }
 
+.omo-stats-compact__row--warning {
+    box-shadow: inset 4px 0 0 var(--omo-stats-warning);
+}
+
+.omo-stats-compact__row--warning .omo-stats-compact__dot {
+    background: var(--omo-stats-warning);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--omo-stats-warning) 12%, transparent);
+}
+
 .omo-stats-overdue-label {
     color: var(--omo-stats-overdue);
     font-weight: 800;
+}
+
+.omo-stats-overdue-label--warning {
+    color: var(--omo-stats-warning);
 }
 
 .omo-stats-compact__dot {

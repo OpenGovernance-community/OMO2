@@ -295,7 +295,7 @@ window.omoConfig = <?= json_encode(array(
     'shareAllowsPeopleDetail' => $shareLink->allowsPeopleDetail(),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>
-<script src="/omo/assets/js/app.js?v=20260714-persistent-top-drawer"></script>
+<script src="/omo/assets/js/app.js?v=20260720-projects-drawer-refresh"></script>
 <script src="/omo/assets/js/structure-mini-map.js"></script>
 <script>
 $(document).ready(function () {

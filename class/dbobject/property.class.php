@@ -9,6 +9,7 @@
 		public const LIST_ITEM_DATE = 'date';
 		public const LIST_ITEM_DETAIL = 'detail';
 		public const LIST_ITEM_HOLON = 'holon';
+		public const LIST_ITEM_PROJECT = 'project';
 
 	    public static function tableName()
 		{
@@ -82,6 +83,7 @@
 				array('id' => self::LIST_ITEM_DATE, 'name' => 'Date'),
 				array('id' => self::LIST_ITEM_DETAIL, 'name' => 'Liste detaillee'),
 				array('id' => self::LIST_ITEM_HOLON, 'name' => 'Holon'),
+				array('id' => self::LIST_ITEM_PROJECT, 'name' => 'Projet'),
 			);
 		}
 
@@ -92,6 +94,7 @@
 				array('id' => self::LIST_ITEM_NUMBER, 'name' => 'Chiffre'),
 				array('id' => self::LIST_ITEM_DATE, 'name' => 'Date'),
 				array('id' => self::LIST_ITEM_DETAIL, 'name' => 'Liste detaillee'),
+				array('id' => self::LIST_ITEM_PROJECT, 'name' => 'Projet'),
 			);
 		}
 
@@ -104,6 +107,7 @@
 				self::LIST_ITEM_DATE,
 				self::LIST_ITEM_DETAIL,
 				self::LIST_ITEM_HOLON,
+				self::LIST_ITEM_PROJECT,
 			);
 
 			return in_array($value, $allowed, true) ? $value : self::LIST_ITEM_TEXT;
