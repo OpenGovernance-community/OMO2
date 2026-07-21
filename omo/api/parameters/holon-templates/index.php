@@ -3,6 +3,7 @@ require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/translation.php';
 
 use dbObject\Organization;
+use dbObject\Holon;
 
 function omoHolonTemplateEscape($value)
 {
@@ -15,9 +16,7 @@ $targetHolonId = (int)($_GET['hid'] ?? 0);
 $selectedTemplateId = (int)($_GET['tid'] ?? 0);
 $isCompactMode = !empty($_GET['compact']);
 $templateScope = strtolower(trim((string)($_GET['template_scope'] ?? 'contextual')));
-if ($templateScope !== 'global') {
-    $templateScope = 'contextual';
-}
+$availableTemplateScopes = ['contextual'];
 $organization = new Organization();
 $editorData = null;
 $errorMessage = '';
@@ -31,6 +30,15 @@ if ($organizationId <= 0) {
     $errorMessage = omoHolonTemplateT('parameters.holon_templates.error.structure_required');
 } else {
     $rootHolon = $organization->getEnabledStructuralRootHolon();
+    $templateContextHolon = $rootHolon;
+    if ($contextHolonId > 0) {
+        $contextCandidate = new Holon();
+        if ($contextCandidate->load($contextHolonId) && $organization->containsHolon($contextCandidate)) {
+            $templateContextHolon = $contextCandidate;
+        }
+    }
+    $availableTemplateScopes = omoApiGetAvailableContextScopes(true, $templateContextHolon, $rootHolon);
+    $templateScope = omoApiNormalizeContextScope($templateScope, $availableTemplateScopes);
     if ($targetHolonId > 0) {
         $editorData = $organization->getHolonDefinitionEditorData($targetHolonId);
     }
@@ -58,7 +66,8 @@ if ($organizationId <= 0) {
 $omoHolonTemplateTexts = [
     'scopeAria' => omoHolonTemplateT('parameters.holon_templates.scope.aria'),
     'scopeContextual' => omoHolonTemplateT('parameters.holon_templates.scope.contextual'),
-    'scopeGlobal' => omoHolonTemplateT('parameters.holon_templates.scope.global'),
+    'scopeChildren' => omoHolonTemplateT('parameters.holon_templates.scope.children'),
+    'scopeDescendants' => omoHolonTemplateT('parameters.holon_templates.scope.descendants'),
     'mediaIconLabel' => omoHolonTemplateT('parameters.holon_templates.media.icon_label'),
     'mediaBannerLabel' => omoHolonTemplateT('parameters.holon_templates.media.banner_label'),
     'permissionSelf' => omoHolonTemplateT('parameters.holon_templates.permission.self'),
@@ -111,6 +120,7 @@ $omoHolonTemplateTexts = [
     'propertyHelpListDate' => omoHolonTemplateT('parameters.holon_templates.property.help.list_date'),
     'propertyHelpListDetail' => omoHolonTemplateT('parameters.holon_templates.property.help.list_detail'),
     'propertyHelpListHolon' => omoHolonTemplateT('parameters.holon_templates.property.help.list_holon'),
+    'propertyHelpListProject' => omoHolonTemplateT('parameters.holon_templates.property.help.list_project'),
     'statusCloseMessage' => omoHolonTemplateT('parameters.holon_templates.status.close_message'),
     'badgeActiveInheritance' => omoHolonTemplateT('parameters.holon_templates.badge.active_inheritance'),
     'selectionHintDefinition' => omoHolonTemplateT('parameters.holon_templates.form.selection_hint_definition'),
@@ -155,30 +165,24 @@ $omoHolonTemplateTexts = [
                             role="tablist"
                             aria-label="<?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.scope.aria'), ENT_QUOTES, 'UTF-8') ?>"
                             data-omo-scope-switch="<?= omoHolonTemplateEscape($templateScope) ?>"
+                            style="--omo-scope-option-count: <?= (int)count($availableTemplateScopes) ?>; --omo-scope-active-index: <?= (int)omoApiResolveContextScopeIndex($templateScope, $availableTemplateScopes) ?>;"
                         >
-                            <button
-                                type="button"
-                                class="omo-scope-toggle__button<?= $templateScope === 'contextual' ? ' is-active' : '' ?>"
-                                aria-label="<?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.scope.contextual'), ENT_QUOTES, 'UTF-8') ?>"
-                                data-omo-template-scope-toggle="contextual"
-                                data-omo-scope-option="contextual"
-                                aria-pressed="<?= $templateScope === 'contextual' ? 'true' : 'false' ?>"
-                            ><span class="omo-scope-toggle__text"><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.scope.contextual'), ENT_QUOTES, 'UTF-8') ?></span></button>
-                            <button
-                                type="button"
-                                class="omo-scope-toggle__button<?= $templateScope === 'global' ? ' is-active' : '' ?>"
-                                aria-label="<?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.scope.global'), ENT_QUOTES, 'UTF-8') ?>"
-                                data-omo-template-scope-toggle="global"
-                                data-omo-scope-option="global"
-                                aria-pressed="<?= $templateScope === 'global' ? 'true' : 'false' ?>"
-                            ><span class="omo-scope-toggle__text"><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.scope.global'), ENT_QUOTES, 'UTF-8') ?></span></button>
+                            <?php foreach ($availableTemplateScopes as $scopeIndex => $scopeKey): ?>
+                                <?php $scopeLabel = omoHolonTemplateT('parameters.holon_templates.scope.' . $scopeKey); ?>
+                                <button
+                                    type="button"
+                                    class="omo-scope-toggle__button<?= $templateScope === $scopeKey ? ' is-active' : '' ?>"
+                                    aria-label="<?= htmlspecialchars($scopeLabel, ENT_QUOTES, 'UTF-8') ?>"
+                                    data-omo-template-scope-toggle="<?= omoHolonTemplateEscape($scopeKey) ?>"
+                                    data-omo-scope-option="<?= omoHolonTemplateEscape($scopeKey) ?>"
+                                    data-omo-scope-index="<?= (int)$scopeIndex ?>"
+                                    aria-pressed="<?= $templateScope === $scopeKey ? 'true' : 'false' ?>"
+                                ><span class="omo-scope-toggle__text"><?= htmlspecialchars($scopeLabel, ENT_QUOTES, 'UTF-8') ?></span></button>
+                            <?php endforeach; ?>
                         </div>
                         <div class="omo-scope-toolbar__note">
-                            <?php if ($templateScope === 'global'): ?>
-                                <strong><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.scope.note_global_prefix'), ENT_QUOTES, 'UTF-8') ?></strong> <?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.scope.note_global'), ENT_QUOTES, 'UTF-8') ?>
-                            <?php else: ?>
-                                <strong><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.scope.note_contextual_prefix'), ENT_QUOTES, 'UTF-8') ?></strong> <?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.scope.note_contextual', ['contextName' => ($editorData['contextHolonName'] ?? ($editorData['organizationName'] ?? omoHolonTemplateT('parameters.holon_templates.scope.current_context_fallback')))]), ENT_QUOTES, 'UTF-8') ?>
-                            <?php endif; ?>
+                            <strong><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.scope.note_' . $templateScope . '_prefix'), ENT_QUOTES, 'UTF-8') ?></strong>
+                            <?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.scope.note_' . $templateScope, ['contextName' => ($editorData['contextHolonName'] ?? ($editorData['organizationName'] ?? omoHolonTemplateT('parameters.holon_templates.scope.current_context_fallback')))]), ENT_QUOTES, 'UTF-8') ?>
                         </div>
                     </div>
                 </div>
@@ -533,7 +537,7 @@ $omoHolonTemplateTexts = [
 
 <?php if ($editorData !== null): ?>
 <script src="/omo/assets/js/sized-image-field.js"></script>
-<script src="/omo/assets/js/simple-html-field.js?v=20260718-pv-indicator-overdue-days"></script>
+<script src="/omo/assets/js/simple-html-field.js?v=20260721-composite-property-fields-v5"></script>
 <script src="/common/assets/multiline-list-paste.js"></script>
 <script>
 (() => {
@@ -640,10 +644,16 @@ function omoHolonTemplateBootstrapInitialRender() {
     }
 }
 
+function omoHolonTemplateNormalizeScope(scope) {
+    const normalizedScope = String(scope || '').trim().toLowerCase();
+    if (normalizedScope === 'global') {
+        return 'descendants';
+    }
+    return normalizedScope === 'children' || normalizedScope === 'descendants' ? normalizedScope : 'contextual';
+}
+
 function omoHolonTemplateGetScope() {
-    return String(omoHolonTemplatePageRoot.getAttribute('data-omo-template-scope') || 'contextual').trim().toLowerCase() === 'global'
-        ? 'global'
-        : 'contextual';
+    return omoHolonTemplateNormalizeScope(omoHolonTemplatePageRoot.getAttribute('data-omo-template-scope') || 'contextual');
 }
 
 function omoHolonTemplateIsHolonDefinitionMode() {
@@ -651,7 +661,7 @@ function omoHolonTemplateIsHolonDefinitionMode() {
 }
 
 function omoHolonTemplateBuildScopeUrl(scope, options) {
-    const resolvedScope = String(scope || '').trim().toLowerCase() === 'global' ? 'global' : 'contextual';
+    const resolvedScope = omoHolonTemplateNormalizeScope(scope);
     const settings = options && typeof options === 'object' ? options : {};
     const query = [];
     const requestedContextHolonId = Number(omoHolonTemplatePageRoot.getAttribute('data-omo-template-cid') || 0);
@@ -677,7 +687,7 @@ function omoHolonTemplateSetScopeLoadingState(isLoading, nextScope) {
 
     const scopeSwitch = omoHolonTemplatePageRoot.querySelector('[data-omo-scope-switch]');
     if (scopeSwitch && nextScope) {
-        scopeSwitch.setAttribute('data-omo-scope-switch', String(nextScope).trim().toLowerCase() === 'global' ? 'global' : 'contextual');
+        scopeSwitch.setAttribute('data-omo-scope-switch', omoHolonTemplateNormalizeScope(nextScope));
     }
 
     omoHolonTemplatePageRoot.querySelectorAll('[data-omo-template-scope-toggle]').forEach(function (button) {
@@ -686,7 +696,7 @@ function omoHolonTemplateSetScopeLoadingState(isLoading, nextScope) {
 }
 
 function omoHolonTemplateReloadPage(scope, options) {
-    const targetScope = String(scope || '').trim().toLowerCase() === 'global' ? 'global' : 'contextual';
+    const targetScope = omoHolonTemplateNormalizeScope(scope);
     const targetUrl = omoHolonTemplateBuildScopeUrl(targetScope, options);
 
     if (typeof window.omoReplaceFetchedPanelRoot !== 'function') {
@@ -935,7 +945,7 @@ function omoHolonTemplateGetVisiblePropertyValue(property) {
         return inheritedValue;
     }
 
-    if (Number(normalizedProperty.formatId || 0) === 2) {
+    if ([2, 7].indexOf(Number(normalizedProperty.formatId || 0)) >= 0) {
         const mergedItems = [];
         const seen = new Set();
 
@@ -1407,7 +1417,7 @@ function omoHolonTemplateRenderTreeNodes(nodes) {
         const childCount = Array.isArray(node.children) ? node.children.length : 0;
         const definedInId = Number(node.definedInId || 0);
         const definedInName = String(node.definedInName || '').trim();
-        const isForeignContext = omoHolonTemplateGetScope() === 'global'
+        const isForeignContext = omoHolonTemplateGetScope() !== 'contextual'
             && definedInId > 0
             && definedInId !== Number(omoHolonTemplateState.data.contextHolonId || 0);
 
@@ -1588,11 +1598,11 @@ function omoHolonTemplateCreatePropertyRow(property) {
         + '          <select class="omo-template-property__format">' + formatOptions + '</select>'
         + '      </label>'
         + '  </div>'
-        + '  <label class="omo-field omo-template-property__value-field">'
+        + '  <' + ([5, 7].indexOf(propertyFormatId) >= 0 ? 'div' : 'label') + ' class="omo-field omo-template-property__value-field">'
         + '      <span>Valeur heritee par defaut</span>'
         + '      <div class="omo-template-property__value-control">' + omoHolonTemplateRenderValueInputHtml(propertyFormatId, propertyValue) + '</div>'
         + '      <small>Si cette valeur reste vide, chaque holon derive pourra definir librement son contenu.</small>'
-        + '  </label>'
+        + '  </' + ([5, 7].indexOf(propertyFormatId) >= 0 ? 'div' : 'label') + '>'
         + '  <div class="omo-template-property__actions">'
         + '      <button type="button" class="omo-button omo-button--ghost" data-property-move="-1">Monter</button>'
         + '      <button type="button" class="omo-button omo-button--ghost" data-property-move="1">Descendre</button>'
@@ -1777,6 +1787,9 @@ function omoHolonTemplateGetListHelpText(property) {
     if (listItemType === 'holon') {
         return omoHolonTemplateTexts.propertyHelpListHolon || '';
     }
+    if (listItemType === 'project') {
+        return omoHolonTemplateTexts.propertyHelpListProject || '';
+    }
     return omoHolonTemplateTexts.propertyHelpListText || '';
 }
 
@@ -1798,7 +1811,7 @@ function omoHolonTemplateGetValueHelpText(formatId, property) {
 }
 
 function omoHolonTemplateRenderListConfigHtml(property) {
-    if (Number(property.formatId || 0) !== 2) {
+    if ([2, 7].indexOf(Number(property.formatId || 0)) < 0) {
         return '';
     }
 
@@ -1864,7 +1877,45 @@ function omoHolonTemplateRenderValueInputHtml(property) {
                 + '</div>';
         }
 
+        if (String(normalizedProperty.listItemType) === 'project') {
+            const projectOptions = omoHolonTemplateState.data.projectCatalog || [];
+
+            if (!projectOptions.length) {
+                return '<div class="omo-template-property__empty-note">Aucun projet disponible.</div>';
+            }
+
+            return '<div class="omo-template-property__check-grid">'
+                + projectOptions.map(function (project) {
+                    const checked = listValues.map(Number).indexOf(Number(project.id)) >= 0 ? ' checked' : '';
+                    return ''
+                        + '<label class="omo-template-property__check-option">'
+                        + '  <input type="checkbox" class="omo-template-property__value omo-template-property__value--project" value="' + Number(project.id) + '"' + checked + valueDisabled + '>'
+                        + '  <span>' + omoHolonTemplateEscapeHtml(project.title) + (project.holonLabel ? ' <small>' + omoHolonTemplateEscapeHtml(project.holonLabel) + '</small>' : '') + '</span>'
+                        + '</label>';
+                }).join('')
+                + '</div>';
+        }
+
         return omoHolonTemplateRenderSimpleListInput(normalizedProperty.listItemType, listValues, !normalizedProperty.canEditValue);
+    }
+
+    if (formatId === 6) {
+        let parts = {};
+        try { parts = JSON.parse(safeValue) || {}; } catch (error) {}
+        return '<input type="text" class="omo-template-property__value-text-html-title" value="' + omoHolonTemplateEscapeHtml(parts.text || '') + '" placeholder="Texte affiche"' + valueDisabled + '>'
+            + '<textarea class="omo-template-property__value-text-html-detail" rows="5" placeholder="Detail HTML"' + valueDisabled + '>' + omoHolonTemplateEscapeHtml(parts.detail || '') + '</textarea>';
+    }
+
+    if (formatId === 7) {
+        let parts = {};
+        try { parts = JSON.parse(safeValue) || {}; } catch (error) {}
+        const listControl = omoHolonTemplateRenderValueInputHtml(Object.assign({}, normalizedProperty, {
+            formatId: 2,
+            value: JSON.stringify(Array.isArray(parts.items) ? parts.items : [])
+        }));
+        return '<div class="omo-template-property__composite-html" data-omo-composite-html="before" data-value="' + omoHolonTemplateEscapeHtml(parts.before || '') + '"></div>'
+            + '<div class="omo-template-property__composite-list">' + listControl + '</div>'
+            + '<div class="omo-template-property__composite-html" data-omo-composite-html="after" data-value="' + omoHolonTemplateEscapeHtml(parts.after || '') + '"></div>';
     }
 
     if (formatId === 3) {
@@ -1947,11 +1998,11 @@ function omoHolonTemplateCreatePropertyRow(property) {
         + '      </label>'
         + '  </div>'
         + omoHolonTemplateRenderListConfigHtml(normalizedProperty)
-        + '  <label class="omo-field omo-template-property__value-field">'
+        + '  <' + ([5, 7].indexOf(Number(normalizedProperty.formatId || 0)) >= 0 ? 'div' : 'label') + ' class="omo-field omo-template-property__value-field">'
         + '      <span>Valeur heritee par defaut</span>'
         + '      <div class="omo-template-property__value-control">' + omoHolonTemplateRenderValueInputHtml(normalizedProperty) + '</div>'
         + '      <small class="omo-template-property__value-help">' + omoHolonTemplateEscapeHtml(omoHolonTemplateGetValueHelpText(normalizedProperty.formatId, normalizedProperty)) + '</small>'
-        + '  </label>'
+        + '  </' + ([5, 7].indexOf(Number(normalizedProperty.formatId || 0)) >= 0 ? 'div' : 'label') + '>'
         + '  <div class="omo-template-property__actions">'
         + '      <button type="button" class="omo-button omo-button--ghost" data-property-move="-1">Monter</button>'
         + '      <button type="button" class="omo-button omo-button--ghost" data-property-move="1">Descendre</button>'
@@ -1973,13 +2024,20 @@ function omoHolonTemplateRefreshPropertyIndexes() {
 
 function omoHolonTemplateSerializePropertyValue(row, formatId, listItemType) {
     const htmlFieldHost = row.querySelector('[data-omo-html-field="1"]');
-    if (htmlFieldHost && htmlFieldHost.__omoSimpleHtmlField && typeof htmlFieldHost.__omoSimpleHtmlField.getValue === 'function') {
+    if (Number(formatId || 0) === 5 && htmlFieldHost && htmlFieldHost.__omoSimpleHtmlField && typeof htmlFieldHost.__omoSimpleHtmlField.getValue === 'function') {
         return String(htmlFieldHost.__omoSimpleHtmlField.getValue() || '');
     }
 
     if (Number(formatId || 0) === 2) {
         if (String(listItemType || 'text') === 'holon') {
             const selectedIds = Array.from(row.querySelectorAll('.omo-template-property__value--holon:checked')).map(function (input) {
+                return Number(input.value || 0);
+            }).filter(Boolean);
+            return selectedIds.length ? JSON.stringify(selectedIds) : '';
+        }
+
+        if (String(listItemType || 'text') === 'project') {
+            const selectedIds = Array.from(row.querySelectorAll('.omo-template-property__value--project:checked')).map(function (input) {
                 return Number(input.value || 0);
             }).filter(Boolean);
             return selectedIds.length ? JSON.stringify(selectedIds) : '';
@@ -2004,6 +2062,34 @@ function omoHolonTemplateSerializePropertyValue(row, formatId, listItemType) {
             return String(input.value || '').trim();
         }).filter(Boolean);
         return items.length ? JSON.stringify(items) : '';
+    }
+
+    if (Number(formatId || 0) === 6) {
+        return JSON.stringify({
+            text: String((row.querySelector('.omo-template-property__value-text-html-title') || {}).value || '').trim(),
+            detail: String((row.querySelector('.omo-template-property__value-text-html-detail') || {}).value || '')
+        });
+    }
+
+    if (Number(formatId || 0) === 7) {
+        let items = [];
+        if (String(listItemType || 'text') === 'holon' || String(listItemType || 'text') === 'project') {
+            const modifier = String(listItemType || 'text') === 'holon' ? 'holon' : 'project';
+            items = Array.from(row.querySelectorAll('.omo-template-property__value--' + modifier + ':checked')).map(function (input) { return Number(input.value || 0); }).filter(Boolean);
+        } else if (String(listItemType || 'text') === 'detail') {
+            items = Array.from(row.querySelectorAll('.omo-template-list-input__row--detail')).map(function (detailRow) {
+                return { title: String((detailRow.querySelector('.omo-template-property__value-item--detail-title') || {}).value || '').trim(), description: String((detailRow.querySelector('.omo-template-property__value-item--detail-description') || {}).value || '').trim() };
+            }).filter(function (item) { return item.title || item.description; });
+        } else {
+            items = Array.from(row.querySelectorAll('.omo-template-property__value-item')).map(function (input) { return String(input.value || '').trim(); }).filter(Boolean);
+        }
+        const beforeHost = row.querySelector('[data-omo-composite-html="before"]');
+        const afterHost = row.querySelector('[data-omo-composite-html="after"]');
+        return JSON.stringify({
+            before: beforeHost && beforeHost.__omoSimpleHtmlField ? String(beforeHost.__omoSimpleHtmlField.getValue() || '') : '',
+            items: items,
+            after: afterHost && afterHost.__omoSimpleHtmlField ? String(afterHost.__omoSimpleHtmlField.getValue() || '') : ''
+        });
     }
 
     const valueField = row.querySelector('.omo-template-property__value');
@@ -2083,13 +2169,14 @@ function omoHolonTemplateCreatePropertyRow(property) {
     const valueFieldTitle = normalizedProperty.isInherited
         ? (normalizedProperty.canEditValue ? (omoHolonTemplateTexts.propertyValueLocalAdded || '') : (omoHolonTemplateTexts.propertyValueDefault || ''))
         : (omoHolonTemplateTexts.propertyValueDefault || '');
+    const valueFieldTag = [5, 7].indexOf(Number(normalizedProperty.formatId || 0)) >= 0 ? 'div' : 'label';
     const valueEditorHtml = normalizedProperty.isInherited && !normalizedProperty.canEditValue
         ? ''
-        : '<label class="omo-field omo-template-property__value-field">'
+        : '<' + valueFieldTag + ' class="omo-field omo-template-property__value-field">'
             + '      <span>' + omoHolonTemplateEscapeHtml(valueFieldTitle) + '</span>'
             + '      <div class="omo-template-property__value-control">' + omoHolonTemplateRenderValueInputHtml(normalizedProperty) + '</div>'
             + '      <small class="omo-template-property__value-help">' + omoHolonTemplateEscapeHtml(omoHolonTemplateGetValueHelpText(normalizedProperty.formatId, normalizedProperty)) + '</small>'
-            + '  </label>';
+            + '  </' + valueFieldTag + '>';
 
     row.innerHTML = ''
         + '<div class="omo-template-property__index"></div>'
@@ -2115,15 +2202,15 @@ function omoHolonTemplateCreatePropertyRow(property) {
         + '  </div>'
         + '</div>';
 
-    if (Number(normalizedProperty.formatId || 0) === 5) {
-        const htmlEditorHost = row.querySelector('.omo-template-property__html-editor');
-        if (htmlEditorHost && window.omoSimpleHtmlField && typeof window.omoSimpleHtmlField.mount === 'function') {
+    if ([5, 7].indexOf(Number(normalizedProperty.formatId || 0)) >= 0) {
+        row.querySelectorAll('.omo-template-property__html-editor, [data-omo-composite-html]').forEach(function (htmlEditorHost) {
+            if (!window.omoSimpleHtmlField || typeof window.omoSimpleHtmlField.mount !== 'function') { return; }
             window.omoSimpleHtmlField.mount(htmlEditorHost, {
-                value: normalizedProperty.value !== undefined && normalizedProperty.value !== null ? String(normalizedProperty.value) : '',
+                value: htmlEditorHost.hasAttribute('data-omo-composite-html') ? String(htmlEditorHost.getAttribute('data-value') || '') : (normalizedProperty.value !== undefined && normalizedProperty.value !== null ? String(normalizedProperty.value) : ''),
                 placeholder: omoHolonTemplateTexts.propertyPlaceholderEmpty || '',
                 disabled: !normalizedProperty.canEditValue
             });
-        }
+        });
     }
 
     return row;
@@ -2189,6 +2276,14 @@ function omoHolonTemplateFormatInheritedItem(item, property) {
             return Number(entry.id) === templateId;
         });
         return template ? template.name : rawValue;
+    }
+
+    if (listItemType === 'project') {
+        const projectId = Number(item || 0);
+        const project = (omoHolonTemplateState.data.projectCatalog || []).find(function (entry) {
+            return Number(entry.id) === projectId;
+        });
+        return project ? project.title : rawValue;
     }
 
     if (listItemType === 'detail') {
@@ -2725,12 +2820,12 @@ if (omoHolonTemplateElements.root) {
             const targetTemplateId = Number(selectButton.getAttribute('data-template-select') || 0);
             const targetContextId = Number(selectButton.getAttribute('data-template-context-id') || 0);
             if (
-                omoHolonTemplateGetScope() === 'global'
+                omoHolonTemplateGetScope() !== 'contextual'
                 && targetTemplateId > 0
                 && targetContextId > 0
                 && targetContextId !== Number(omoHolonTemplateState.data.contextHolonId || 0)
             ) {
-                omoHolonTemplateReloadPage('global', {
+                omoHolonTemplateReloadPage('contextual', {
                     contextHolonId: targetContextId,
                     templateId: targetTemplateId
                 });
@@ -3373,7 +3468,7 @@ Promise.all([
     accent-color: var(--color-primary);
 }
 
-.omo-field span {
+.omo-field > span {
     display: block;
     font-size: 0.88rem;
     font-weight: 600;

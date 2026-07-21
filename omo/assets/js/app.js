@@ -1293,6 +1293,41 @@ function refreshDrawer(id, url) {
     return true;
 }
 
+function omoRefreshProjectsDrawerAfterMutation() {
+    const drawerReference = omoResolveDrawer('drawer_projects');
+    const drawer = drawerReference.drawer;
+
+    if (!drawer.length) {
+        return Promise.resolve(false);
+    }
+
+    if (!drawer.hasClass('open')) {
+        const content = drawer.find('.drawer-content');
+        const request = content.data('omoXhr');
+        if (request && request.readyState !== 4 && typeof request.abort === 'function') {
+            request.abort();
+        }
+
+        content.removeData('omoXhr');
+        content.removeData('omoRequestId');
+        content.empty();
+        drawer.removeData('omo-drawer-url');
+        return Promise.resolve(false);
+    }
+
+    if (typeof window.omoProjectsAfterSave === 'function') {
+        return Promise.resolve(window.omoProjectsAfterSave()).then(function () {
+            return true;
+        }).catch(function () {
+            const currentUrl = String(drawer.data('omo-drawer-url') || '');
+            return currentUrl !== '' ? refreshDrawer('drawer_projects', currentUrl) : false;
+        });
+    }
+
+    const currentUrl = String(drawer.data('omo-drawer-url') || '');
+    return Promise.resolve(currentUrl !== '' ? refreshDrawer('drawer_projects', currentUrl) : false);
+}
+
 function omoClearClosedDrawers() {
     $('.drawer').each(function () {
         const drawer = $(this);
@@ -1675,6 +1710,54 @@ function omoParseDocumentRouteToken(routeToken = null) {
     };
 }
 
+function omoParseProjectRouteToken(routeToken = null) {
+    const normalizedRouteToken = omoNormalizeHashToken(routeToken);
+    if (!normalizedRouteToken) {
+        return null;
+    }
+
+    if (normalizedRouteToken === 'projects-new') {
+        return {
+            projectId: 0,
+            mode: 'create'
+        };
+    }
+
+    const projectEditMatch = normalizedRouteToken.match(/^projects-e(\d+)$/i);
+    if (projectEditMatch) {
+        const projectId = Number(projectEditMatch[1]);
+        return Number.isInteger(projectId) && projectId > 0
+            ? { projectId: projectId, mode: 'edit' }
+            : null;
+    }
+
+    const projectDetailMatch = normalizedRouteToken.match(/^projects-d(\d+)$/i);
+    if (!projectDetailMatch) {
+        return null;
+    }
+
+    const projectId = Number(projectDetailMatch[1]);
+    return Number.isInteger(projectId) && projectId > 0
+        ? { projectId: projectId, mode: 'detail' }
+        : null;
+}
+
+function omoBuildProjectRouteToken(projectId, mode = 'detail') {
+    const resolvedProjectId = Number(projectId);
+    const normalizedMode = String(mode || 'detail').trim().toLowerCase();
+    if (normalizedMode === 'create') {
+        return 'projects-new';
+    }
+
+    if (!Number.isInteger(resolvedProjectId) || resolvedProjectId <= 0) {
+        return null;
+    }
+
+    return normalizedMode === 'edit'
+        ? `projects-e${resolvedProjectId}`
+        : `projects-d${resolvedProjectId}`;
+}
+
 function omoBuildDecisionRouteToken(decisionId, mode = 'default') {
     const resolvedDecisionId = Number(decisionId);
     if (!Number.isInteger(resolvedDecisionId) || resolvedDecisionId <= 0) {
@@ -1751,6 +1834,10 @@ function omoGetMenuHashForRouteToken(routeToken = null) {
         return 'documents';
     }
 
+    if (omoParseProjectRouteToken(normalizedRouteToken)) {
+        return 'projects';
+    }
+
     return normalizedRouteToken;
 }
 
@@ -1758,9 +1845,10 @@ let omoPendingDrawerRouteOptions = null;
 
 function omoNormalizeDrawerForcedScope(scopeValue) {
     const normalizedScope = String(scopeValue || '').trim().toLowerCase();
-    return normalizedScope === 'contextual' || normalizedScope === 'descendants' || normalizedScope === 'global'
-        ? normalizedScope
-        : '';
+    if (normalizedScope === 'global') {
+        return 'descendants';
+    }
+    return normalizedScope === 'contextual' || normalizedScope === 'children' || normalizedScope === 'descendants' ? normalizedScope : '';
 }
 
 function omoSetPendingDrawerRouteOptions(routeToken, options = {}) {
@@ -1895,7 +1983,7 @@ function omoResolveSpecialDrawerRoute(routeToken, oid = null, cid = null, option
 
     const decisionRoute = omoParseDecisionRouteToken(normalizedRouteToken);
     if (decisionRoute) {
-        let url = `api/decision/index.php?open_decision_id=${encodeURIComponent(decisionRoute.decisionId)}&decision_scope=global`;
+        let url = `api/decision/index.php?open_decision_id=${encodeURIComponent(decisionRoute.decisionId)}&decision_scope=descendants`;
         if (decisionRoute.mode && decisionRoute.mode !== 'default') {
             url += `&open_decision_mode=${encodeURIComponent(decisionRoute.mode)}`;
         }
@@ -1920,20 +2008,34 @@ function omoResolveSpecialDrawerRoute(routeToken, oid = null, cid = null, option
     if (statsIndicatorRoute) {
         return {
             drawer: 'drawer_stats',
-            url: `api/stats/index.php?open_indicator_id=${encodeURIComponent(statsIndicatorRoute.indicatorId)}&stats_scope=global`,
+            url: `api/stats/index.php?open_indicator_id=${encodeURIComponent(statsIndicatorRoute.indicatorId)}&stats_scope=descendants`,
             navigationMode: 'drawer'
         };
     }
 
     const documentRoute = omoParseDocumentRouteToken(normalizedRouteToken);
     if (documentRoute) {
-        let url = `api/documents/index.php?open_document_id=${encodeURIComponent(documentRoute.documentId)}&document_scope=global`;
+        let url = `api/documents/index.php?open_document_id=${encodeURIComponent(documentRoute.documentId)}&document_scope=descendants`;
         if (documentRoute.mode && documentRoute.mode !== 'detail') {
             url += `&open_document_mode=${encodeURIComponent(documentRoute.mode)}`;
         }
 
         return {
             drawer: 'drawer_documents',
+            url: url,
+            navigationMode: 'drawer'
+        };
+    }
+
+    const projectRoute = omoParseProjectRouteToken(normalizedRouteToken);
+    if (projectRoute) {
+        let url = 'api/projects/index.php?open_project_mode=' + encodeURIComponent(projectRoute.mode);
+        if (projectRoute.projectId > 0) {
+            url += '&open_project_id=' + encodeURIComponent(projectRoute.projectId);
+        }
+
+        return {
+            drawer: 'drawer_projects',
             url: url,
             navigationMode: 'drawer'
         };
@@ -4006,6 +4108,8 @@ function handleRoute() {
     const previousStatsIndicatorRoute = omoParseStatsIndicatorRouteToken(previousState.routeToken);
     const documentRoute = omoParseDocumentRouteToken(routeToken);
     const previousDocumentRoute = omoParseDocumentRouteToken(previousState.routeToken);
+    const projectRoute = omoParseProjectRouteToken(routeToken);
+    const previousProjectRoute = omoParseProjectRouteToken(previousState.routeToken);
     const isInSpecialDrawerOnlyRouteChange = !drawerHandledByContextChange
         && routeChanged
         && !popupChanged
@@ -4016,6 +4120,7 @@ function handleRoute() {
             || activeMenuHash === 'calendar'
             || activeMenuHash === 'stats'
             || activeMenuHash === 'documents'
+            || activeMenuHash === 'projects'
         );
 
     if (isInSpecialDrawerOnlyRouteChange && activeMenuHash === 'decision') {
@@ -4077,6 +4182,19 @@ function handleRoute() {
                 detail: documentRouteDetail
             }));
         }
+    }
+
+    if (isInSpecialDrawerOnlyRouteChange && activeMenuHash === 'projects') {
+        window.dispatchEvent(new CustomEvent('omo-projects-route-change', {
+            detail: {
+                projectId: projectRoute ? Number(projectRoute.projectId) : 0,
+                mode: projectRoute && projectRoute.mode ? String(projectRoute.mode) : 'detail',
+                previousProjectId: previousProjectRoute ? Number(previousProjectRoute.projectId) : 0,
+                previousMode: previousProjectRoute && previousProjectRoute.mode ? String(previousProjectRoute.mode) : 'detail',
+                routeToken: routeToken,
+                previousRouteToken: previousState.routeToken || null
+            }
+        }));
     }
 
     if (drawerHandledByContextChange) {
@@ -4815,6 +4933,7 @@ window.omoNormalizeRouteCid = omoNormalizeRouteCid;
 window.omoBuildDecisionRouteToken = omoBuildDecisionRouteToken;
 window.omoBuildCalendarEventRouteToken = omoBuildCalendarEventRouteToken;
 window.omoBuildStatsIndicatorRouteToken = omoBuildStatsIndicatorRouteToken;
+window.omoBuildProjectRouteToken = omoBuildProjectRouteToken;
 window.omoOpenSearchCalendarEventResult = omoOpenSearchCalendarEventResult;
 window.omoOpenSearchDecisionResult = omoOpenSearchDecisionResult;
 window.omoBuildDocumentRouteToken = omoBuildDocumentRouteToken;

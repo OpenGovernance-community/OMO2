@@ -38,8 +38,9 @@ $referencePointData = array_map(static function ($point) {
         'value' => (float)$point->get('value'),
     ];
 }, omoStatsGetGroupReferencePoints($group));
-$isOverdue = omoStatsIsGroupOverdue($group);
-$chartData = omoStatsBuildGroupChartData($group, $series, $isOverdue);
+$groupOverdueInfo = omoStatsGetGroupOverdueInfo($group);
+$groupOverdueSeverity = (string)$groupOverdueInfo['severity'];
+$chartData = omoStatsBuildGroupChartData($group, $series, $groupOverdueSeverity);
 $displayMode = StatIndicatorGroup::normalizeDisplayMode($group->get('display_mode'));
 $headerDescription = $displayMode === StatIndicatorGroup::DISPLAY_SUM
     ? omoStatsT('stats.group.mode.sum')
@@ -54,7 +55,7 @@ foreach ($series as $seriesIndex => $seriesItem) {
     }
 }
 ?>
-<article class="omo-stats-group-detail<?= $isOverdue ? ' omo-stats-group-detail--overdue' : '' ?>" data-omo-stats-group-detail data-group-id="<?= (int)$groupId ?>">
+<article class="omo-stats-group-detail<?= $groupOverdueSeverity === 'error' ? ' omo-stats-group-detail--overdue' : ($groupOverdueSeverity === 'warning' ? ' omo-stats-group-detail--warning' : '') ?>" data-omo-stats-group-detail data-group-id="<?= (int)$groupId ?>">
     <div
         hidden
         data-omo-subdrawer-header
@@ -78,14 +79,16 @@ foreach ($series as $seriesIndex => $seriesItem) {
 
     <div class="omo-stats-detail__meta omo-stats-detail__meta--compact">
         <span><strong><?= omoApiEscape(omoStatsT('stats.card.member_count', ['count' => count($sourceIndicators)])) ?></strong></span>
-            <?php if ($isOverdue): ?>
+            <?php if ($groupOverdueSeverity === 'warning'): ?>
+                <span class="omo-stats-overdue-label omo-stats-overdue-label--warning"><?= omoApiEscape(omoStatsT('stats.card.to_complete')) ?></span>
+            <?php elseif ($groupOverdueSeverity === 'error'): ?>
                 <span class="omo-stats-overdue-label"><?= omoApiEscape(omoStatsT('stats.card.overdue')) ?></span>
             <?php endif; ?>
     </div>
 
     <section class="generic-section omo-stats-detail__chart-panel">
         <div class="omo-stats-interactive-chart" data-omo-stats-interactive-chart>
-            <?= omoStatsRenderGroupChart($group, $series, 'large', $isOverdue, true) ?>
+            <?= omoStatsRenderGroupChart($group, $series, 'large', $groupOverdueSeverity, true) ?>
             <?= omoStatsRenderInteractiveChartRange($chartData) ?>
         </div>
     </section>
@@ -112,4 +115,4 @@ foreach ($series as $seriesIndex => $seriesItem) {
         </div>
     </section>
 </article>
-<script src="/omo/api/stats/chart.js?v=20260718-reference-range-default"></script>
+<script src="/omo/api/stats/chart.js?v=20260721-overdue-grace"></script>

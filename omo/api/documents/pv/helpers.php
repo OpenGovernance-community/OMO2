@@ -75,8 +75,8 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.embed.search_placeholder' => ['text' => 'Titre, resume ou contexte', 'context' => 'Placeholder for the document picker search field.'],
         'documents.pv_editor.embed.quick_search_placeholder' => ['text' => 'Recherche rapide', 'context' => 'Placeholder for the compact resource picker search field.'],
         'documents.pv_editor.embed.scope_local' => ['text' => 'Local', 'context' => 'Scope filtering resources attached to the selected holon only.'],
+        'documents.pv_editor.embed.scope_children' => ['text' => 'Enfants directs', 'context' => 'Scope filtering resources attached to the selected holon and its direct children.'],
         'documents.pv_editor.embed.scope_descendants' => ['text' => 'Descendants', 'context' => 'Scope filtering resources attached to the selected holon and its descendants.'],
-        'documents.pv_editor.embed.scope_global' => ['text' => 'Global', 'context' => 'Scope showing all visible resources in the organization.'],
         'documents.pv_editor.embed.visible_documents' => ['text' => 'Documents visibles', 'context' => 'Label for the visible documents list in the PV point picker.'],
         'documents.pv_editor.embed.none' => ['text' => 'Aucun document selectionne.', 'context' => 'Empty preview shown in the PV point document picker.'],
         'documents.pv_editor.embed.insert' => ['text' => 'Inserer le document', 'context' => 'Button confirming insertion of a document in a PV point.'],
@@ -91,6 +91,30 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.decision.linked_label' => ['text' => 'Decision liee', 'context' => 'Label displayed above an embedded decision in a PV point.'],
         'documents.pv_editor.decision.type.decision' => ['text' => 'Decision', 'context' => 'Label for an embedded decision type.'],
         'documents.pv_editor.decision.type.consultation' => ['text' => 'Consultation', 'context' => 'Label for an embedded consultation type.'],
+        'documents.pv_editor.project.button_title' => ['text' => 'Inserer un projet', 'context' => 'Tooltip for the project insertion button in a PV point editor.'],
+        'documents.pv_editor.project.modal_title' => ['text' => 'Inserer un projet', 'context' => 'Title of the project picker opened from a PV point editor.'],
+        'documents.pv_editor.project.visible' => ['text' => 'Projets visibles', 'context' => 'Label for the visible projects list in the PV point picker.'],
+        'documents.pv_editor.project.insert' => ['text' => 'Inserer le projet', 'context' => 'Button confirming insertion of a project in a PV point.'],
+        'documents.pv_editor.project.linked_label' => ['text' => 'Projet lie', 'context' => 'Label displayed above an embedded project link in a PV point.'],
+        'documents.pv_editor.project.planned_date' => ['text' => 'Planifie {date}', 'context' => 'Planned start date displayed in an embedded project card.'],
+        'documents.pv_editor.project.end_date' => ['text' => 'Fin {date}', 'context' => 'Planned end date displayed in an embedded project card.'],
+        'documents.pv_editor.project.tab_existing' => ['text' => 'Projet existant', 'context' => 'Tab used to select an existing project for a PV point.'],
+        'documents.pv_editor.project.tab_new' => ['text' => 'Nouveau projet', 'context' => 'Tab used to create a new project from a PV point.'],
+        'documents.pv_editor.project.tabs_aria' => ['text' => 'Choix du projet', 'context' => 'Accessible label for the project picker tabs.'],
+        'documents.pv_editor.project.title' => ['text' => 'Titre du projet', 'context' => 'Label for the quick project creation title field.'],
+        'documents.pv_editor.project.description' => ['text' => 'Description', 'context' => 'Label for the quick project creation description field.'],
+        'documents.pv_editor.project.status' => ['text' => 'Statut', 'context' => 'Label for the quick project creation status field.'],
+        'documents.pv_editor.project.priority' => ['text' => 'Priorite', 'context' => 'Label for the quick project creation priority field.'],
+        'documents.pv_editor.project.size' => ['text' => 'Taille', 'context' => 'Label for the quick project creation size field.'],
+        'documents.pv_editor.project.start_date' => ['text' => 'Debut planifie', 'context' => 'Label for the quick project creation planned start date field.'],
+        'documents.pv_editor.project.end_date_label' => ['text' => 'Fin planifiee', 'context' => 'Label for the quick project creation planned end date field.'],
+        'documents.pv_editor.project.holon' => ['text' => 'Holon concerne', 'context' => 'Label for the quick project creation holon picker.'],
+        'documents.pv_editor.project.responsible' => ['text' => 'Responsable', 'context' => 'Label for the quick project creation responsible member field.'],
+        'documents.pv_editor.project.responsible_empty' => ['text' => 'Sans responsable', 'context' => 'Empty option for the quick project creation responsible member field.'],
+        'documents.pv_editor.project.members_loading' => ['text' => 'Chargement des membres...', 'context' => 'Temporary label while loading the selected holon members.'],
+        'documents.pv_editor.project.members_empty' => ['text' => 'Aucun membre disponible dans ce holon.', 'context' => 'Empty state for the quick project creation responsible member field.'],
+        'documents.pv_editor.project.create_insert' => ['text' => 'Creer et inserer', 'context' => 'Button that creates and inserts a project into a PV point.'],
+        'documents.pv_editor.project.create_error' => ['text' => 'Impossible de creer le projet.', 'context' => 'Error shown when quick project creation fails.'],
         'documents.pv_editor.event.button_title' => ['text' => 'Inserer une date', 'context' => 'Tooltip for the calendar event insertion button in a PV point editor.'],
         'documents.pv_editor.event.modal_title' => ['text' => 'Inserer une date programmee', 'context' => 'Title of the calendar event picker opened from a PV point editor.'],
         'documents.pv_editor.event.visible' => ['text' => 'Dates programmees visibles', 'context' => 'Label for the visible calendar events list in the PV point picker.'],
@@ -101,6 +125,7 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.indicator.insert' => ['text' => 'Inserer l indicateur', 'context' => 'Button confirming insertion of an indicator in a PV point.'],
         'documents.pv_editor.indicator.no_value' => ['text' => 'Aucune valeur', 'context' => 'Fallback shown for an embedded indicator without a measurement.'],
         'documents.pv_editor.indicator.overdue' => ['text' => 'En retard', 'context' => 'Status shown for an embedded overdue indicator.'],
+        'documents.pv_editor.indicator.to_complete' => ['text' => 'À compléter', 'context' => 'Status shown for an embedded indicator within its grace period.'],
         'documents.pv_editor.indicator.overdue_days' => ['one' => 'En retard de {count} jour', 'other' => 'En retard de {count} jours', 'context' => 'Status showing how many days an embedded indicator is overdue.'],
         'documents.pv_editor.indicator.current' => ['text' => 'A jour', 'context' => 'Status shown for an embedded indicator whose latest measurement is on time.'],
         'documents.pv_editor.indicator.value_placeholder' => ['text' => 'Nouvelle valeur', 'context' => 'Placeholder for the immediate measurement input in an embedded indicator.'],
@@ -177,17 +202,19 @@ function omoDocumentsPvEditorBuildIndicatorEmbedPayload(\dbObject\StatIndicator 
         'dateLabel' => $latestValue instanceof \dbObject\StatIndicatorValue
             ? omoStatsFormatDateTime($latestValue->get('measured_at'), false)
             : '',
-        'statusLabel' => $isOverdue
-            ? $translate('documents.pv_editor.indicator.overdue_days', ['count' => $overdueInfo['overdue_days']])
+        'statusLabel' => $overdueInfo['severity'] === 'warning'
+            ? $translate('documents.pv_editor.indicator.to_complete')
+            : ($isOverdue
+                ? $translate('documents.pv_editor.indicator.overdue_days', ['count' => $overdueInfo['overdue_days']])
             : ($hasFrequency && $latestValue instanceof \dbObject\StatIndicatorValue
                 ? $translate('documents.pv_editor.indicator.current')
-                : ''),
+                : '')),
         'isOverdue' => $isOverdue,
         'overdueSeverity' => $overdueInfo['severity'],
         'canAddValue' => $canAddValue,
         'chartMinLabel' => is_array($chartScale) ? omoStatsFormatNumber($chartScale['min']) : '',
         'chartMaxLabel' => is_array($chartScale) ? omoStatsFormatNumber($chartScale['max']) : '',
-        'chartHtml' => omoStatsRenderChart($indicator, $values, $referencePoints, 'compact', $isOverdue),
+        'chartHtml' => omoStatsRenderChart($indicator, $values, $referencePoints, 'compact', $overdueInfo['severity']),
     ];
 }
 
