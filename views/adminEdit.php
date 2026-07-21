@@ -1537,6 +1537,10 @@ echo "</div>";
                 }
 
                 return window.jQuery;
+            })
+            .catch(function (error) {
+                window.adminEditSummernoteInitPromise = null;
+                throw error;
             });
 
         return window.adminEditSummernoteInitPromise;
@@ -1556,6 +1560,29 @@ echo "</div>";
                 } catch (error) {
                 }
             }
+        });
+    }
+
+    function adminEditDestroyHtmlFields(scope) {
+        if (!window.jQuery || !window.jQuery.fn) {
+            return;
+        }
+
+        var root = scope || document;
+        window.jQuery(root).find('textarea.summernote').each(function () {
+            var field = window.jQuery(this);
+            var isBound = field.data('adminEditSummernoteBound') === true
+                || field.next('.note-editor').length > 0;
+
+            if (isBound && typeof field.summernote === 'function') {
+                try {
+                    field.val(field.summernote('code'));
+                    field.summernote('destroy');
+                } catch (error) {
+                }
+            }
+
+            field.removeData('adminEditSummernoteBound');
         });
     }
 
@@ -1600,6 +1627,10 @@ echo "</div>";
         return adminEditEnsureSummernoteAssets()
             .then(function ($) {
                 Array.prototype.forEach.call(textareas, function (textarea) {
+                    if (!document.documentElement.contains(textarea)) {
+                        return;
+                    }
+
                     var field = $(textarea);
                     if (field.data('adminEditSummernoteBound') === true) {
                         return;

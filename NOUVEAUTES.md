@@ -1030,3 +1030,4 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - La fermeture du detail Projet depuis une reunion ne tente plus de charger un projet sans identifiant lorsque le hash revient a la vue Projects.
 - Les indicateurs a completer utilisent maintenant un avertissement jaune pendant un delai de grace adapte a leur frequence. Le retard devient rouge uniquement apres ce delai et affiche alors son nombre de jours.
 - Les graphiques combines reprennent maintenant la severite de leurs indicateurs : jaune quand ils sont seulement a completer, rouge uniquement lorsqu au moins un indicateur est reellement en retard.
+- L editeur de FAQ nettoie maintenant ses instances Summernote avant chaque remplacement de popup ou de vue. La creation reste disponible lors des ouvertures successives, et le formulaire d edition initialise explicitement son editeur riche apres son chargement asynchrone.
