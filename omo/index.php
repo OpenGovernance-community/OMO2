@@ -734,7 +734,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
             'description' => t('app.directory.import.description'),
             'actionLabel' => t('app.directory.import.action'),
             'badge' => t('app.directory.import.badge'),
-            'imageUrl' => '/omo/images/organization-setup/import.png',
+            'imageUrl' => '/omo/assets/images/directory/import-organization.png',
             'accentColor' => '#0f766e',
             'initial' => 'I',
         ]];
