@@ -110,6 +110,10 @@ $sourceLang = [
         'text' => 'Fermer',
         'context' => 'Button label used to close document drawers.',
     ],
+    'documents.upload_missing.badge' => [
+        'text' => 'Fichier absent',
+        'context' => 'Warning badge shown on an uploaded document without a stored file.',
+    ],
     'documents.action.loading' => [
         'text' => 'Chargement...',
         'context' => 'Loading state shown while a document drawer is loading.',
@@ -453,6 +457,7 @@ foreach ($documents as $document) {
         'title' => $documentTitle,
         'listTitle' => $listTitle,
         'documentType' => $document->getDocumentType(),
+        'isMissingUploadedFile' => $document->hasMissingUploadedFile(),
         'canExportPdf' => $document->isPvDocument(),
         'pdfExportUrl' => $document->isPvDocument()
             ? '/omo/api/documents/pv/export_pdf.php?id=' . rawurlencode((string)$documentId)
@@ -735,7 +740,7 @@ if (!is_string($documentsPayload)) {
                         <h3 class="omo-panel-group__title generic-file-list__group-title"><?= $escape($entry['groupLabel']) ?></h3>
                         <div class="omo-documents__list omo-panel-view__body_content">
                 <?php endif; ?>
-                            <article class="omo-documents__item-shell generic-file-list__item-shell">
+                            <article class="omo-documents__item-shell generic-file-list__item-shell<?= !empty($entry['isMissingUploadedFile']) ? ' omo-documents__item-shell--missing-upload' : '' ?>">
                                 <div
                                     class="omo-documents__item omo-card omo-card--interactive"
                                     role="button"
@@ -754,6 +759,9 @@ if (!is_string($documentsPayload)) {
                                         <span class="omo-documents__date"><?= $escape($entry['dateLabel']) ?></span>
                                         <span class="omo-documents__title-line">
                                             <strong class="omo-documents__title"><?= $escape($entry['listTitle']) ?></strong>
+                                            <?php if (!empty($entry['isMissingUploadedFile'])): ?>
+                                                <span class="omo-documents__missing-upload-badge"><?= $escape(omoDocumentsScopeT('documents.upload_missing.badge')) ?></span>
+                                            <?php endif; ?>
                                             <?php if (
                                                 $entry['visibilityBadge'] !== '' && $entry['visibilityIconUrl'] !== ''
                                                 && $entry['editVisibilityBadge'] !== '' && $entry['editVisibilityIconUrl'] !== ''
@@ -876,6 +884,7 @@ if (!is_string($documentsPayload)) {
                 const omoDocumentsLinkIconUrl = '/omo/assets/images/documents/link.png';
                 const omoDocumentsPvIconUrl = '/omo/assets/images/documents/pv.png';
                 const omoDocumentsPvType = 'pv';
+                const omoDocumentsMissingUploadedFileLabel = <?= json_encode(omoDocumentsScopeT('documents.upload_missing.badge'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
                 const omoDocumentsGetIconUrl = function (documentItem) {
                     if (documentItem && documentItem.isFolder) {
@@ -1364,6 +1373,7 @@ if (!is_string($documentsPayload)) {
                                         ? 'omo-documents__item--folder-card'
                                         : 'omo-documents__item--file-card'
                                 );
+                                container.classList.toggle('omo-documents__item--missing-upload', !!documentItem.isMissingUploadedFile);
 
                                 const frame = document.createElement('div');
                                 frame.className = 'omo-documents__item-frame';
@@ -1419,6 +1429,12 @@ if (!is_string($documentsPayload)) {
                                     compactTitle.className = 'omo-documents__compact-title generic-file-list__title';
                                     compactTitle.textContent = documentItem.listTitle || documentItem.title || '';
                                     compactTitleStack.appendChild(compactTitle);
+                                    if (documentItem.isMissingUploadedFile) {
+                                        const compactMissingUpload = document.createElement('span');
+                                        compactMissingUpload.className = 'omo-documents__missing-upload-badge';
+                                        compactMissingUpload.textContent = omoDocumentsMissingUploadedFileLabel;
+                                        compactTitleStack.appendChild(compactMissingUpload);
+                                    }
                                     const compactScopeCapsule = createVisibilityCapsule(documentItem);
                                     if (compactScopeCapsule) {
                                         compactTitleStack.appendChild(compactScopeCapsule);
@@ -1552,6 +1568,12 @@ if (!is_string($documentsPayload)) {
                                 title.className = 'omo-documents__title';
                                 title.textContent = documentItem.listTitle || documentItem.title || '';
                                 titleLine.appendChild(title);
+                                if (documentItem.isMissingUploadedFile) {
+                                    const missingUpload = document.createElement('span');
+                                    missingUpload.className = 'omo-documents__missing-upload-badge';
+                                    missingUpload.textContent = omoDocumentsMissingUploadedFileLabel;
+                                    titleLine.appendChild(missingUpload);
+                                }
                                 const scopeCapsule = createVisibilityCapsule(documentItem);
                                 if (scopeCapsule) {
                                     titleLine.appendChild(scopeCapsule);
@@ -1686,6 +1708,9 @@ if (!is_string($documentsPayload)) {
 
                                 if (state.density === 'compact') {
                                     shell.classList.add('omo-documents__item-shell--compact');
+                                }
+                                if (documentItem.isMissingUploadedFile) {
+                                    shell.classList.add('omo-documents__item-shell--missing-upload');
                                 }
 
                                 if (documentItem.isFolder) {
@@ -4398,6 +4423,32 @@ if (!is_string($documentsPayload)) {
 .omo-documents__item--file-card .omo-documents__icon-box {
     background: color-mix(in srgb, var(--color-surface-alt) 84%, white 16%);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border) 84%, white 16%);
+}
+
+.omo-documents__item-shell--missing-upload .omo-documents__item {
+    border-color: color-mix(in srgb, #dc2626 72%, var(--color-border));
+    background: color-mix(in srgb, #fef2f2 78%, var(--color-surface));
+    box-shadow: inset 4px 0 0 #dc2626, 0 14px 32px -30px rgba(185, 28, 28, 0.44);
+}
+
+.omo-documents__item-shell--missing-upload .omo-documents__icon-box {
+    background: color-mix(in srgb, #fee2e2 74%, var(--color-surface));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, #dc2626 45%, var(--color-border));
+}
+
+.omo-documents__missing-upload-badge {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: #fee2e2;
+    color: #b91c1c;
+    font-size: 0.74rem;
+    font-weight: 800;
+    line-height: 1;
+    box-shadow: inset 0 0 0 1px rgba(185, 28, 28, 0.24);
 }
 
 .omo-documents__item:hover,
