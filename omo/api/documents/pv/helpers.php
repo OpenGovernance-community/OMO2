@@ -140,6 +140,7 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.indicator.group_overlay' => ['text' => 'Groupe superpose', 'context' => 'Type label for an embedded overlay indicator group.'],
         'documents.pv_editor.indicator.group_members' => ['one' => '{count} indicateur', 'other' => '{count} indicateurs', 'context' => 'Member count shown for an embedded indicator group.'],
         'documents.pv_editor.field.pointtype.information' => ['text' => 'Information', 'context' => 'Option label for an informational PV point.'],
+        'documents.pv_editor.field.pointtype.normal' => ['text' => 'Normal', 'context' => 'Option label for a normal PV point.'],
         'documents.pv_editor.field.pointtype.consultation' => ['text' => 'Consultation', 'context' => 'Option label for a consultation PV point.'],
         'documents.pv_editor.field.pointtype.decision' => ['text' => 'Decision', 'context' => 'Option label for a decision PV point.'],
         'documents.pv_editor.nav.empty' => ['text' => 'Aucun point pour le moment.', 'context' => 'Empty state shown in the left navigation when the PV has no points.'],
@@ -288,6 +289,7 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null): array
         'tensions' => $resolve('documents.pv_editor.field.tensions', 'Tensions'),
         'content' => $resolve('documents.pv_editor.field.content', 'Contenu'),
         'information' => $resolve('documents.pv_editor.field.pointtype.information', 'Information'),
+        'normal' => $resolve('documents.pv_editor.field.pointtype.normal', 'Normal'),
         'consultation' => $resolve('documents.pv_editor.field.pointtype.consultation', 'Consultation'),
         'decision' => $resolve('documents.pv_editor.field.pointtype.decision', 'Decision'),
         'reorder' => $resolve('documents.pv_editor.notice.reorder', 'Reordonner les points'),
@@ -627,6 +629,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
     $pointTypeLabel = trim((string)($pointData['pointTypeLabel'] ?? ($uiText[$pointType] ?? $pointType)));
     $pointTypeIcons = [
         'information' => '/omo/assets/images/documents/pv-point-type/information.png',
+        'normal' => '/omo/assets/images/documents/pv-point-type/information.png',
         'consultation' => '/omo/assets/images/documents/pv-point-type/consultation.png',
         'decision' => '/omo/assets/images/documents/pv-point-type/decision.png',
     ];
@@ -685,6 +688,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
         $html .= '      <div class="omo-segmented omo-pv-editor__type-switch" role="radiogroup" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['type']) . '">';
         foreach ([
             'information' => (string)$uiText['information'],
+            'normal' => (string)$uiText['normal'],
             'consultation' => (string)$uiText['consultation'],
             'decision' => (string)$uiText['decision'],
         ] as $optionValue => $optionLabel) {

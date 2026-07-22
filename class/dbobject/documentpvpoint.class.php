@@ -4,6 +4,7 @@ namespace dbObject;
 class DocumentPvPoint extends DbObject
 {
     public const TYPE_INFORMATION = 'information';
+    public const TYPE_NORMAL = 'normal';
     public const TYPE_CONSULTATION = 'consultation';
     public const TYPE_DECISION = 'decision';
     public const ITEM_TYPE_POINT = 'point';
@@ -69,7 +70,7 @@ class DocumentPvPoint extends DbObject
             'position' => 'Ordre d affichage dans le PV.',
             'desired_duration_minutes' => 'Duree visee en minutes.',
             'actual_duration_minutes' => 'Duree observee en minutes.',
-            'pointtype' => 'Nature du point: information, consultation ou decision.',
+            'pointtype' => 'Nature du point: information, normal, consultation ou decision.',
             'IDuser_modification' => 'Derniere personne ayant change ce point, son ordre ou son statut.',
             'IDuser_editing' => 'Personne qui detient actuellement le verrou d edition.',
             'edit_lock_token' => 'Jeton technique de verrouillage d une session d edition.',
@@ -102,6 +103,7 @@ class DocumentPvPoint extends DbObject
     {
         return [
             self::TYPE_INFORMATION => 'Information',
+            self::TYPE_NORMAL => 'Normal',
             self::TYPE_CONSULTATION => 'Consultation',
             self::TYPE_DECISION => 'Decision',
         ];

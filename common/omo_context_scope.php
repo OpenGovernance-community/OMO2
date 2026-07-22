@@ -109,13 +109,33 @@ if (!function_exists('omoApiGetDirectChildHolonIds')) {
         }
 
         $holonIds = [];
-        foreach ($currentHolon->getChildren() as $childHolon) {
-            if (omoApiIsStructuralScopeHolon($childHolon, $currentHolon)) {
-                $holonIds[] = (int)$childHolon->getId();
-            }
-        }
+        $visitedGroupIds = [];
+        $appendChildren = static function (Holon $parentHolon) use (&$appendChildren, &$holonIds, &$visitedGroupIds, $currentHolon) {
+            foreach ($parentHolon->getChildren() as $childHolon) {
+                if (!omoApiIsStructuralScopeHolon($childHolon, $currentHolon)) {
+                    continue;
+                }
 
-        return array_values(array_unique($holonIds));
+                $childHolonId = (int)$childHolon->getId();
+                if ($childHolonId <= 0) {
+                    continue;
+                }
+
+                if ((int)$childHolon->get('IDtypeholon') === 3) {
+                    if (isset($visitedGroupIds[$childHolonId])) {
+                        continue;
+                    }
+                    $visitedGroupIds[$childHolonId] = true;
+                    $appendChildren($childHolon);
+                    continue;
+                }
+
+                $holonIds[$childHolonId] = $childHolonId;
+            }
+        };
+        $appendChildren($currentHolon);
+
+        return array_values($holonIds);
     }
 }
 

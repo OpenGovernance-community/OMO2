@@ -13,7 +13,7 @@
 		public const PV_STAGE_REVIEW = 'review';
 		public const PV_STAGE_VALIDATED = 'validated';
 		public const EDIT_VISIBILITY_OBJECT_TYPE = 'document_edit';
-		public const DEFAULT_EDIT_VISIBILITY_TYPE = \dbObject\ObjectVisibility::TYPE_SELF;
+		public const DEFAULT_EDIT_VISIBILITY_TYPE = \dbObject\ObjectVisibility::TYPE_ROLE;
 
 	    public static function tableName()
 		{
@@ -328,7 +328,9 @@
 			}
 
 			if ($holonId <= 0) {
-				return $fallbackType;
+				return \dbObject\ObjectVisibility::requiresHolonTarget($fallbackType)
+					? \dbObject\ObjectVisibility::TYPE_SELF
+					: $fallbackType;
 			}
 
 			$holon = new \dbObject\Holon();
@@ -1639,6 +1641,11 @@
 			return $this->isUploadedFile() && trim((string)$this->get('storedfilepath')) !== '';
 		}
 
+		public function hasMissingUploadedFile(): bool
+		{
+			return $this->isUploadedFile() && !$this->hasStoredFile();
+		}
+
 		public function getStoredFileDownloadName(): string
 		{
 			$filename = trim((string)$this->get('storedfilename'));
@@ -2923,6 +2930,7 @@
 				$pointTypeClass = preg_replace('/[^a-z0-9_-]+/i', '-', (string)($pointData['pointType'] ?? 'information'));
 				$pointTypeIconMap = array(
 					'information' => '/omo/assets/images/documents/pv-point-type/information.png',
+					'normal' => '/omo/assets/images/documents/pv-point-type/information.png',
 					'consultation' => '/omo/assets/images/documents/pv-point-type/consultation.png',
 					'decision' => '/omo/assets/images/documents/pv-point-type/decision.png',
 				);

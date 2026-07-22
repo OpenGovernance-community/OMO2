@@ -115,6 +115,7 @@ $documentOpenInNewWindow = false;
 $documentStoredFilename = '';
 $documentStoredFileMime = '';
 $documentStoredFileSize = 0;
+$documentHasStoredFile = false;
 $isFolder = false;
 $selectedVisibilityType = $organizationId > 0
     ? Document::getDefaultVisibilityTypeForOrganization($organizationId)
@@ -213,6 +214,7 @@ if ($isEditing) {
     $documentStoredFilename = $document->getStoredFileDownloadName();
     $documentStoredFileMime = $document->getStoredFileMimeType();
     $documentStoredFileSize = $document->getStoredFileSize();
+    $documentHasStoredFile = $document->hasStoredFile();
     $isFolder = $document->isFolder();
     $parentDocumentId = (int)$document->get('IDdocument_parent');
     if ($parentDocumentId > 0) {
@@ -501,7 +503,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                         </span>
                     </label>
 
-                    <?php if ($documentType === Document::TYPE_UPLOADED_FILE && $documentStoredFilename !== ''): ?>
+                    <?php if ($documentType === Document::TYPE_UPLOADED_FILE && $documentHasStoredFile): ?>
                         <div class="omo-document-editor__upload-current">
                             <div class="omo-document-editor__upload-current-title"><?= $escape(omoDocumentsCreateT('documents.create.upload.current')) ?></div>
                             <div class="omo-document-editor__upload-current-name"><?= $escape($documentStoredFilename) ?></div>
@@ -768,7 +770,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     const uploadSection = form.querySelector('[data-omo-document-upload-section]');
     const externalUrlField = form.querySelector('[data-omo-document-external-url]');
     const uploadInput = form.querySelector('[data-omo-document-upload-input]');
-    const uploadHasExistingFile = <?= $documentType === Document::TYPE_UPLOADED_FILE && $documentStoredFilename !== '' ? 'true' : 'false' ?>;
+    const uploadHasExistingFile = <?= $documentType === Document::TYPE_UPLOADED_FILE && $documentHasStoredFile ? 'true' : 'false' ?>;
     const aiToolsEnabled = <?= $canUseAiTools ? 'true' : 'false' ?>;
     const initialHtmlValue = <?= json_encode($documentContent, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     const embeddableDocuments = <?= json_encode($embeddableDocumentsPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
