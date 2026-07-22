@@ -1648,6 +1648,32 @@ echo "</div>";
     }
 
     $(function () {
+        function beginAdminEditPending(form) {
+            if (typeof window.omoBeginPendingAction === "function") {
+                return window.omoBeginPendingAction(form);
+            }
+
+            if ($(form).data("admin-edit-pending") === true) {
+                return false;
+            }
+
+            $(form).data("admin-edit-pending", true);
+            $(form).find("button, input[type='submit'], input[type='button']").prop("disabled", true);
+            $("[form='" + form.id + "']").prop("disabled", true);
+            return true;
+        }
+
+        function endAdminEditPending(form) {
+            if (typeof window.omoEndPendingAction === "function") {
+                window.omoEndPendingAction(form);
+                return;
+            }
+
+            $(form).removeData("admin-edit-pending");
+            $(form).find("button, input[type='submit'], input[type='button']").prop("disabled", false);
+            $("[form='" + form.id + "']").prop("disabled", false);
+        }
+
         adminEditInitHtmlFields(document);
 
         $(".required").each(function () {
@@ -1696,6 +1722,8 @@ echo "</div>";
                     alert(data);
                     $("#btn_submit").prop("disabled", false);
                 } else {
+                    // Transfer the validation lock to the form-wide save lock.
+                    $("#btn_submit").prop("disabled", false);
                     $("#formulaire-edit").submit();
                 }
 
@@ -1715,6 +1743,9 @@ echo "</div>";
             var url = $(form).attr('action');
             adminEditSyncHtmlFields(form);
             var formData = new FormData(form);
+            if (!beginAdminEditPending(form)) {
+                return;
+            }
 
             console.log("=== SUBMIT START ===");
 
@@ -1764,6 +1795,7 @@ echo "</div>";
                     } catch (e) {
                         console.error("Réponse non JSON :", data);
                         alert("Erreur serveur");
+                        endAdminEditPending(form);
                         return;
                     }
 
@@ -1789,19 +1821,19 @@ echo "</div>";
                         <?php  } else { ?>
 
                         alert("Données enregistrées");
-                        $("#btn_submit").prop("disabled", false);
+                        endAdminEditPending(form);
 
                         <?php  } ?>
 
                     } else {
                         alert(response.message);
-                        $("#btn_submit").prop("disabled", false);
+                        endAdminEditPending(form);
                     }
                 },
 
                 error: function () {
                     alert("Une erreur s'est produite. Veuillez réessayer plus tard.");
-                    $("#btn_submit").prop("disabled", false);
+                    endAdminEditPending(form);
                 }
             });
 

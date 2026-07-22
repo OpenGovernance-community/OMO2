@@ -1675,6 +1675,23 @@ function omoParseStatsIndicatorRouteToken(routeToken = null) {
     };
 }
 
+function omoParseChecklistRouteToken(routeToken = null) {
+    const normalizedRouteToken = omoNormalizeHashToken(routeToken);
+    if (!normalizedRouteToken) {
+        return null;
+    }
+
+    const checklistMatch = normalizedRouteToken.match(/^checklist-c(\d+)$/i);
+    if (!checklistMatch) {
+        return null;
+    }
+
+    const checklistId = Number(checklistMatch[1]);
+    return Number.isInteger(checklistId) && checklistId > 0
+        ? { checklistId: checklistId }
+        : null;
+}
+
 function omoParseDocumentRouteToken(routeToken = null) {
     const normalizedRouteToken = omoNormalizeHashToken(routeToken);
     if (!normalizedRouteToken) {
@@ -1798,6 +1815,13 @@ function omoBuildStatsIndicatorRouteToken(indicatorId) {
     return `stats-i${resolvedIndicatorId}`;
 }
 
+function omoBuildChecklistRouteToken(checklistId) {
+    const resolvedChecklistId = Number(checklistId);
+    return Number.isInteger(resolvedChecklistId) && resolvedChecklistId > 0
+        ? `checklist-c${resolvedChecklistId}`
+        : null;
+}
+
 function omoBuildDocumentRouteToken(documentId, mode = 'detail') {
     const resolvedDocumentId = Number(documentId);
     if (!Number.isInteger(resolvedDocumentId) || resolvedDocumentId <= 0) {
@@ -1828,6 +1852,10 @@ function omoGetMenuHashForRouteToken(routeToken = null) {
 
     if (omoParseStatsIndicatorRouteToken(normalizedRouteToken)) {
         return 'stats';
+    }
+
+    if (omoParseChecklistRouteToken(normalizedRouteToken)) {
+        return 'checklist';
     }
 
     if (omoParseDocumentRouteToken(normalizedRouteToken)) {
@@ -2009,6 +2037,15 @@ function omoResolveSpecialDrawerRoute(routeToken, oid = null, cid = null, option
         return {
             drawer: 'drawer_stats',
             url: `api/stats/index.php?open_indicator_id=${encodeURIComponent(statsIndicatorRoute.indicatorId)}&stats_scope=descendants`,
+            navigationMode: 'drawer'
+        };
+    }
+
+    const checklistRoute = omoParseChecklistRouteToken(normalizedRouteToken);
+    if (checklistRoute) {
+        return {
+            drawer: 'drawer_checklist',
+            url: `api/checklist/index.php?open_checklist_id=${encodeURIComponent(checklistRoute.checklistId)}`,
             navigationMode: 'drawer'
         };
     }
@@ -4106,6 +4143,8 @@ function handleRoute() {
     const previousCalendarEventRoute = omoParseCalendarEventRouteToken(previousState.routeToken);
     const statsIndicatorRoute = omoParseStatsIndicatorRouteToken(routeToken);
     const previousStatsIndicatorRoute = omoParseStatsIndicatorRouteToken(previousState.routeToken);
+    const checklistRoute = omoParseChecklistRouteToken(routeToken);
+    const previousChecklistRoute = omoParseChecklistRouteToken(previousState.routeToken);
     const documentRoute = omoParseDocumentRouteToken(routeToken);
     const previousDocumentRoute = omoParseDocumentRouteToken(previousState.routeToken);
     const projectRoute = omoParseProjectRouteToken(routeToken);
@@ -4119,6 +4158,7 @@ function handleRoute() {
             activeMenuHash === 'decision'
             || activeMenuHash === 'calendar'
             || activeMenuHash === 'stats'
+            || activeMenuHash === 'checklist'
             || activeMenuHash === 'documents'
             || activeMenuHash === 'projects'
         );
@@ -4152,6 +4192,17 @@ function handleRoute() {
             detail: {
                 indicatorId: statsIndicatorRoute ? Number(statsIndicatorRoute.indicatorId) : 0,
                 previousIndicatorId: previousStatsIndicatorRoute ? Number(previousStatsIndicatorRoute.indicatorId) : 0,
+                routeToken: routeToken,
+                previousRouteToken: previousState.routeToken || null
+            }
+        }));
+    }
+
+    if (isInSpecialDrawerOnlyRouteChange && activeMenuHash === 'checklist') {
+        window.dispatchEvent(new CustomEvent('omo-checklist-route-change', {
+            detail: {
+                checklistId: checklistRoute ? Number(checklistRoute.checklistId) : 0,
+                previousChecklistId: previousChecklistRoute ? Number(previousChecklistRoute.checklistId) : 0,
                 routeToken: routeToken,
                 previousRouteToken: previousState.routeToken || null
             }
@@ -4923,6 +4974,88 @@ function omoReplaceFetchedPanelRoot(options = {}) {
         });
 }
 
+const OMO_RUNTIME_MAINTENANCE_MIN_INTERVAL_MS = 60000;
+let omoRuntimeMaintenanceLastRunAt = Date.now();
+let omoRuntimeMaintenanceInFlight = false;
+let omoRuntimeMaintenanceReloadingForSession = false;
+
+function omoRunRuntimeMaintenance(options = {}) {
+    const force = options.force === true;
+    const now = Date.now();
+
+    if (
+        omoRuntimeMaintenanceInFlight
+        || (!force && now - omoRuntimeMaintenanceLastRunAt < OMO_RUNTIME_MAINTENANCE_MIN_INTERVAL_MS)
+        || (navigator.onLine === false)
+    ) {
+        return Promise.resolve(null);
+    }
+
+    omoRuntimeMaintenanceInFlight = true;
+    omoRuntimeMaintenanceLastRunAt = now;
+
+    return fetch('/omo/api/runtime_maintenance.php', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        cache: 'no-store'
+    }).then(function (response) {
+        if (response.status === 401) {
+            if (!omoRuntimeMaintenanceReloadingForSession) {
+                omoRuntimeMaintenanceReloadingForSession = true;
+                window.location.reload();
+            }
+            return null;
+        }
+        if (!response.ok) {
+            throw new Error('omo_runtime_maintenance_failed');
+        }
+        return response.json();
+    }).then(function (result) {
+        if (!result || result.status !== true) {
+            return result;
+        }
+
+        window.dispatchEvent(new CustomEvent('omo-runtime-maintenance', {
+            detail: result
+        }));
+        return result;
+    }).catch(function (error) {
+        if (!omoRuntimeMaintenanceReloadingForSession) {
+            console.warn('OMO runtime maintenance failed.', error);
+        }
+        return null;
+    }).finally(function () {
+        omoRuntimeMaintenanceInFlight = false;
+    });
+}
+
+function omoInstallRuntimeMaintenanceTriggers() {
+    window.addEventListener('focus', function () {
+        omoRunRuntimeMaintenance();
+    });
+
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') {
+            omoRunRuntimeMaintenance();
+        }
+    });
+
+    window.addEventListener('online', function () {
+        omoRunRuntimeMaintenance({force: true});
+    });
+
+    window.addEventListener('pageshow', function (event) {
+        if (event.persisted) {
+            omoRunRuntimeMaintenance({force: true});
+        }
+    });
+}
+
+omoInstallRuntimeMaintenanceTriggers();
+
 window.omoRefreshSidebar = omoRefreshSidebar;
 window.omoResetMainRightPanel = omoResetMainRightPanel;
 window.omoInvalidateMainRightPanel = omoInvalidateMainRightPanel;
@@ -4933,6 +5066,7 @@ window.omoNormalizeRouteCid = omoNormalizeRouteCid;
 window.omoBuildDecisionRouteToken = omoBuildDecisionRouteToken;
 window.omoBuildCalendarEventRouteToken = omoBuildCalendarEventRouteToken;
 window.omoBuildStatsIndicatorRouteToken = omoBuildStatsIndicatorRouteToken;
+window.omoBuildChecklistRouteToken = omoBuildChecklistRouteToken;
 window.omoBuildProjectRouteToken = omoBuildProjectRouteToken;
 window.omoOpenSearchCalendarEventResult = omoOpenSearchCalendarEventResult;
 window.omoOpenSearchDecisionResult = omoOpenSearchDecisionResult;
@@ -4946,6 +5080,7 @@ window.omoOpenSearchUserResult = omoOpenSearchUserResult;
 window.omoRegisterSearchPopupJobState = omoRegisterSearchPopupJobState;
 window.omoOpenUserContextPopup = omoOpenUserContextPopup;
 window.omoReplaceFetchedPanelRoot = omoReplaceFetchedPanelRoot;
+window.omoRunRuntimeMaintenance = omoRunRuntimeMaintenance;
 window.omoResolveAppUrl = omoResolveAppUrl;
 window.omoIsShareMode = omoIsShareMode;
 window.omoBuildHashFromState = omoBuildHashFromState;
@@ -5062,3 +5197,116 @@ window.omoOpenFaqHashState = function (id, options = {}) {
         replace: options.replace === true
     });
 };
+
+window.omoOpenProjectEmbedRoute = function (routeToken, options = {}) {
+    const normalizedRouteToken = omoNormalizeHashToken(routeToken);
+    if (!/^projects-d\d+$/i.test(normalizedRouteToken || '')) {
+        return false;
+    }
+
+    const sourceElement = options.sourceElement instanceof Element ? options.sourceElement : null;
+    const pvRoot = sourceElement
+        ? sourceElement.closest('[data-omo-pv-editor-root]')
+        : null;
+    if (pvRoot instanceof Element) {
+        omoPeekPersistentExternalPanelDrawer({
+            persistKeyPrefix: 'omo-pv-preparation-',
+            contentSelector: '[data-omo-pv-editor-root]'
+        });
+    }
+
+    omoSetDrawerHashState({
+        routeToken: normalizedRouteToken,
+        open: true
+    });
+
+    const openProjectDetail = function () {
+        if (typeof window.omoOpenProjectRoute === 'function') {
+            window.omoOpenProjectRoute(normalizedRouteToken);
+        }
+    };
+    window.setTimeout(openProjectDetail, 180);
+    window.setTimeout(openProjectDetail, 520);
+    return true;
+};
+
+if (!window.omoProjectEmbedLinksBound) {
+    window.omoProjectEmbedLinksBound = true;
+    document.addEventListener('click', function (event) {
+        const link = event.target instanceof Element
+            ? event.target.closest('a.omo-project-embed__child-title[href^="#projects-d"]')
+            : null;
+        if (!(link instanceof HTMLAnchorElement) || !(link.closest('[data-omo-pv-editor-root]') instanceof Element)) {
+            return;
+        }
+
+        if (window.omoOpenProjectEmbedRoute(String(link.getAttribute('href') || ''), {
+            sourceElement: link
+        })) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }
+    }, true);
+}
+
+if (!window.omoProjectEmbedChildrenBound) {
+    window.omoProjectEmbedChildrenBound = true;
+    document.addEventListener('click', function (event) {
+        const toggle = event.target instanceof Element
+            ? event.target.closest('[data-omo-project-embed-toggle]')
+            : null;
+        if (!(toggle instanceof HTMLButtonElement)) {
+            return;
+        }
+
+        const projectNode = toggle.closest('[data-omo-project-node], .omo-project-embed[data-omo-embed-type="project"]');
+        const childrenHost = projectNode ? projectNode.querySelector('[data-omo-project-embed-children]') : null;
+        const projectId = projectNode ? Number(projectNode.getAttribute('data-omo-project-id') || 0) : 0;
+        if (!(projectNode instanceof Element) || !(childrenHost instanceof Element) || !Number.isInteger(projectId) || projectId <= 0) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+
+        if (childrenHost.dataset.omoProjectChildrenLoaded === '1') {
+            const nextHidden = !childrenHost.hidden;
+            childrenHost.hidden = nextHidden;
+            toggle.setAttribute('aria-expanded', nextHidden ? 'false' : 'true');
+            return;
+        }
+
+        const labelSource = projectNode.closest('[data-omo-project-embed-runtime], .omo-project-embed[data-omo-embed-type="project"]') || projectNode;
+        const loadingLabel = String(labelSource.getAttribute('data-omo-project-children-loading') || 'Chargement des sous-projets...');
+        const inlineChildren = projectNode.closest('[data-omo-project-embed-runtime]') instanceof Element;
+        childrenHost.hidden = false;
+        childrenHost.textContent = loadingLabel;
+        childrenHost.className = 'omo-project-embed__children-loading';
+        toggle.disabled = true;
+
+        fetch('/omo/api/projects/children.php?id=' + encodeURIComponent(String(projectId)) + '&embed=pv' + (inlineChildren ? '&inline=1' : ''), {
+            credentials: 'same-origin',
+            cache: 'no-store'
+        }).then(function (response) {
+            if (!response.ok) {
+                throw new Error('Project children unavailable');
+            }
+            return response.text();
+        }).then(function (html) {
+            childrenHost.dataset.omoProjectChildrenLoaded = '1';
+            childrenHost.className = 'omo-project-embed__children';
+            childrenHost.innerHTML = html;
+            if (html.trim() === '') {
+                childrenHost.textContent = String(labelSource.getAttribute('data-omo-project-children-empty') || 'Aucun sous-projet direct.');
+                childrenHost.classList.add('omo-project-embed__children-empty');
+            }
+            toggle.setAttribute('aria-expanded', 'true');
+        }).catch(function () {
+            childrenHost.className = 'omo-project-embed__children-error';
+            childrenHost.textContent = String(labelSource.getAttribute('data-omo-project-children-error') || 'Impossible de charger les sous-projets.');
+            toggle.setAttribute('aria-expanded', 'false');
+        }).finally(function () {
+            toggle.disabled = false;
+        });
+    }, true);
+}

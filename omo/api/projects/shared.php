@@ -180,6 +180,30 @@ if (!function_exists('omoProjectsCanManageContext')) {
     }
 }
 
+if (!function_exists('omoProjectsCanCreateContext')) {
+    function omoProjectsCanCreateContext(array $context)
+    {
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        if ($currentUserId <= 0) {
+            return false;
+        }
+
+        $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
+        $currentHolon = $context['currentHolon'] ?? null;
+        if ($currentHolon instanceof Holon) {
+            return $currentHolon->isAllowed('CAN_CREATE_PROJECT', $useSessionCache, $currentUserId);
+        }
+
+        $organization = $context['organization'] ?? null;
+        $rootHolon = $context['rootHolon'] ?? null;
+        if ($rootHolon instanceof Holon) {
+            return $rootHolon->isAllowed('CAN_CREATE_PROJECT', $useSessionCache, $currentUserId);
+        }
+
+        return $organization instanceof Organization && $organization->canEdit();
+    }
+}
+
 if (!function_exists('omoProjectsCanManageProject')) {
     function omoProjectsCanManageProject(Project $project, array $context)
     {
@@ -287,136 +311,10 @@ if (!function_exists('omoProjectsGetUserLabel')) {
     }
 }
 
-if (!function_exists('omoProjectsCreateEmptyStatusSummary')) {
-    function omoProjectsCreateEmptyStatusSummary()
-    {
-        return [
-            'total' => 0,
-            'counts' => array_fill_keys(Project::statuses(), 0),
-            'weights' => array_fill_keys(Project::statuses(), 0.0),
-            'leaves' => [],
-        ];
-    }
-}
-
-if (!function_exists('omoProjectsMergeStatusSummaries')) {
-    function omoProjectsMergeStatusSummaries(array $summary, array $addition)
-    {
-        foreach (Project::statuses() as $status) {
-            $summary['counts'][$status] = (int)($summary['counts'][$status] ?? 0) + (int)($addition['counts'][$status] ?? 0);
-            $summary['weights'][$status] = (float)($summary['weights'][$status] ?? 0) + (float)($addition['weights'][$status] ?? 0);
-        }
-        $summary['total'] += (int)($addition['total'] ?? 0);
-        if (!empty($addition['leaves']) && is_array($addition['leaves'])) {
-            $summary['leaves'] = array_merge($summary['leaves'], $addition['leaves']);
-        }
-        return $summary;
-    }
-}
-
-if (!function_exists('omoProjectsScaleStatusSummary')) {
-    function omoProjectsScaleStatusSummary(array $summary, $factor)
-    {
-        $factor = (float)$factor;
-        foreach ($summary['weights'] as $status => $weight) {
-            $summary['weights'][$status] = (float)$weight * $factor;
-        }
-        foreach ($summary['leaves'] as &$leaf) {
-            $leaf['weight'] = (float)($leaf['weight'] ?? 0) * $factor;
-        }
-        unset($leaf);
-        return $summary;
-    }
-}
-
-if (!function_exists('omoProjectsGetChildrenWeight')) {
-    function omoProjectsGetChildrenWeight(array $children)
-    {
-        $weight = 0;
-        foreach ($children as $child) {
-            if ($child instanceof Project) {
-                $weight += Project::getSizeWeight($child->get('project_size'));
-            }
-        }
-        return $weight > 0 ? $weight : 1;
-    }
-}
-
-if (!function_exists('omoProjectsGetLeafStatusSummary')) {
-    function omoProjectsCreateLeafStatusSummary(Project $project)
-    {
-        $status = Project::normalizeStatus($project->get('status'));
-        $summary = omoProjectsCreateEmptyStatusSummary();
-        $summary['total'] = 1;
-        $summary['counts'][$status] = 1;
-        $summary['weights'][$status] = 1.0;
-        $summary['leaves'][] = ['status' => $status, 'weight' => 1.0];
-        return $summary;
-    }
-
-    function omoProjectsGetLeafStatusSummary(Project $project, array $childrenByParent, array &$memo = [], array &$path = [])
-    {
-        $projectId = (int)$project->getId();
-        if ($projectId <= 0) {
-            return omoProjectsCreateEmptyStatusSummary();
-        }
-        if (isset($memo[$projectId])) {
-            return $memo[$projectId];
-        }
-        if (isset($path[$projectId])) {
-            return omoProjectsCreateEmptyStatusSummary();
-        }
-
-        $path[$projectId] = true;
-        $children = $childrenByParent[$projectId] ?? [];
-        $summary = omoProjectsCreateEmptyStatusSummary();
-        if (count($children) === 0) {
-            $summary = omoProjectsCreateLeafStatusSummary($project);
-        } else {
-            $childrenWeight = omoProjectsGetChildrenWeight($children);
-            foreach ($children as $child) {
-                if ($child instanceof Project) {
-                    $summary = omoProjectsMergeStatusSummaries(
-                        $summary,
-                        omoProjectsScaleStatusSummary(
-                            omoProjectsGetLeafStatusSummary($child, $childrenByParent, $memo, $path),
-                            Project::getSizeWeight($child->get('project_size')) / $childrenWeight
-                        )
-                    );
-                }
-            }
-        }
-        unset($path[$projectId]);
-        $memo[$projectId] = $summary;
-        return $summary;
-    }
-}
-
 if (!function_exists('omoProjectsBuildStatusBar')) {
     function omoProjectsBuildStatusBar(Project $project, array $childrenByParent, array &$memo = [], $includeSelfWhenLeaf = false)
     {
-        $children = $childrenByParent[(int)$project->getId()] ?? [];
-        if (count($children) === 0) {
-            return $includeSelfWhenLeaf
-                ? omoProjectsCreateLeafStatusSummary($project)
-                : omoProjectsCreateEmptyStatusSummary();
-        }
-
-        $summary = omoProjectsCreateEmptyStatusSummary();
-        $childrenWeight = omoProjectsGetChildrenWeight($children);
-        $path = [(int)$project->getId() => true];
-        foreach ($children as $child) {
-            if ($child instanceof Project) {
-                $summary = omoProjectsMergeStatusSummaries(
-                    $summary,
-                    omoProjectsScaleStatusSummary(
-                        omoProjectsGetLeafStatusSummary($child, $childrenByParent, $memo, $path),
-                        Project::getSizeWeight($child->get('project_size')) / $childrenWeight
-                    )
-                );
-            }
-        }
-        return $summary;
+        return Project::buildChildrenStatusSummary($project, $childrenByParent, $memo, $includeSelfWhenLeaf);
     }
 }
 
@@ -451,15 +349,16 @@ if (!function_exists('omoProjectsStatusSummaryLabel')) {
 }
 
 if (!function_exists('omoProjectsRenderStatusBar')) {
-    function omoProjectsRenderStatusBar(array $summary, $extraClass = '')
+    function omoProjectsRenderStatusBar(array $summary, $extraClass = '', $elementTag = 'div')
     {
         if ((int)($summary['total'] ?? 0) <= 0 || empty($summary['leaves'])) {
             return '';
         }
 
+        $elementTag = strtolower(trim((string)$elementTag)) === 'span' ? 'span' : 'div';
         $className = trim('omo-project-status-bar ' . (string)$extraClass);
         $label = omoProjectsStatusSummaryLabel($summary);
-        $html = '<div class="' . omoApiEscape($className) . '" role="img" aria-label="' . omoApiEscape($label) . '" title="' . omoApiEscape($label) . '">';
+        $html = '<' . $elementTag . ' class="' . omoApiEscape($className) . '" role="img" aria-label="' . omoApiEscape($label) . '" title="' . omoApiEscape($label) . '">';
         $weightsByStatus = array_fill_keys(omoProjectsStatusDisplayOrder(), 0.0);
         foreach ($summary['leaves'] as $leaf) {
             $status = Project::normalizeStatus($leaf['status'] ?? '');
@@ -475,6 +374,6 @@ if (!function_exists('omoProjectsRenderStatusBar')) {
             }
             $html .= '<span class="omo-project-status-bar__segment omo-project-status-bar__segment--' . omoApiEscape($status) . '" style="flex: 0 0 ' . omoApiEscape(number_format($segmentWidth, 6, '.', '')) . '%;" aria-hidden="true"></span>';
         }
-        return $html . '</div>';
+        return $html . '</' . $elementTag . '>';
     }
 }

@@ -416,11 +416,21 @@
         var id = normalizeId(node.ID);
         var childIds = [];
         var directChildIds = [];
-        (Array.isArray(node.children) ? node.children : []).forEach(function (child) {
-            var childId = normalizeId(child && child.ID);
-            if (childId > 0) {
-                directChildIds.push(childId);
+        var appendDirectChildren = function (candidate) {
+            if (!candidate || typeof candidate !== 'object') {
+                return;
             }
+            if (String(candidate.type || '') === '3') {
+                (Array.isArray(candidate.children) ? candidate.children : []).forEach(appendDirectChildren);
+                return;
+            }
+            var candidateId = normalizeId(candidate.ID);
+            if (candidateId > 0) {
+                directChildIds.push(candidateId);
+            }
+        };
+        (Array.isArray(node.children) ? node.children : []).forEach(function (child) {
+            appendDirectChildren(child);
             childIds = childIds.concat(flatten(child, depth + 1, nodes, descendants, directChildren));
         });
         if (id > 0) {

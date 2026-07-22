@@ -1,12 +1,12 @@
 .omo-projects {
     min-height: 0;
     height: 100%;
-    --omo-project-status-ready: #5b7ea6;
-    --omo-project-status-in-progress: #c69a4b;
-    --omo-project-status-blocked: #c47777;
-    --omo-project-status-review: #8d78a8;
-    --omo-project-status-done: #6b9b7f;
-    --omo-project-status-someday: #8993a3;
+    --omo-project-status-ready: var(--project-status-ready, #5b7ea6);
+    --omo-project-status-in-progress: var(--project-status-in-progress, #c69a4b);
+    --omo-project-status-blocked: var(--project-status-blocked, #c47777);
+    --omo-project-status-review: var(--project-status-review, #8d78a8);
+    --omo-project-status-done: var(--project-status-done, #6b9b7f);
+    --omo-project-status-someday: var(--project-status-someday, #8993a3);
 }
 
 .omo-projects[data-omo-projects-preferences-pending="1"] {
@@ -615,14 +615,12 @@
     gap: 14px;
 }
 
-.omo-project-detail__hero,
-.omo-project-form__intro {
+.omo-project-detail__hero {
     display: grid;
     gap: 8px;
 }
 
-.omo-project-detail__hero h2,
-.omo-project-form__intro h2 {
+.omo-project-detail__hero h2 {
     overflow-wrap: anywhere;
 }
 

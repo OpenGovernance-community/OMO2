@@ -210,6 +210,10 @@
 				return $document->createDocumentFragment();
 			}
 
+			if ($node instanceof \DOMElement && $node->hasAttribute('data-omo-project-embed-runtime')) {
+				return $document->createDocumentFragment();
+			}
+
 			if (self::isAllowedDocumentEmbedNode($node)) {
 				$element = $document->createElement('span');
 				$element->setAttribute('class', 'omo-document-embed');

@@ -115,6 +115,10 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.project.members_empty' => ['text' => 'Aucun membre disponible dans ce holon.', 'context' => 'Empty state for the quick project creation responsible member field.'],
         'documents.pv_editor.project.create_insert' => ['text' => 'Creer et inserer', 'context' => 'Button that creates and inserts a project into a PV point.'],
         'documents.pv_editor.project.create_error' => ['text' => 'Impossible de creer le projet.', 'context' => 'Error shown when quick project creation fails.'],
+        'documents.pv_editor.project.children' => ['text' => 'Sous-projets', 'context' => 'Label of the dynamic direct subprojects review in a PV project embed.'],
+        'documents.pv_editor.project.children_loading' => ['text' => 'Chargement des sous-projets...', 'context' => 'Temporary text while loading direct subprojects in a PV project embed.'],
+        'documents.pv_editor.project.children_empty' => ['text' => 'Aucun sous-projet direct.', 'context' => 'Empty state for the direct subprojects review in a PV project embed.'],
+        'documents.pv_editor.project.children_error' => ['text' => 'Impossible de charger les sous-projets.', 'context' => 'Error while loading direct subprojects in a PV project embed.'],
         'documents.pv_editor.event.button_title' => ['text' => 'Inserer une date', 'context' => 'Tooltip for the calendar event insertion button in a PV point editor.'],
         'documents.pv_editor.event.modal_title' => ['text' => 'Inserer une date programmee', 'context' => 'Title of the calendar event picker opened from a PV point editor.'],
         'documents.pv_editor.event.visible' => ['text' => 'Dates programmees visibles', 'context' => 'Label for the visible calendar events list in the PV point picker.'],
@@ -136,6 +140,7 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.indicator.group_overlay' => ['text' => 'Groupe superpose', 'context' => 'Type label for an embedded overlay indicator group.'],
         'documents.pv_editor.indicator.group_members' => ['one' => '{count} indicateur', 'other' => '{count} indicateurs', 'context' => 'Member count shown for an embedded indicator group.'],
         'documents.pv_editor.field.pointtype.information' => ['text' => 'Information', 'context' => 'Option label for an informational PV point.'],
+        'documents.pv_editor.field.pointtype.normal' => ['text' => 'Normal', 'context' => 'Option label for a normal PV point.'],
         'documents.pv_editor.field.pointtype.consultation' => ['text' => 'Consultation', 'context' => 'Option label for a consultation PV point.'],
         'documents.pv_editor.field.pointtype.decision' => ['text' => 'Decision', 'context' => 'Option label for a decision PV point.'],
         'documents.pv_editor.nav.empty' => ['text' => 'Aucun point pour le moment.', 'context' => 'Empty state shown in the left navigation when the PV has no points.'],
@@ -284,6 +289,7 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null): array
         'tensions' => $resolve('documents.pv_editor.field.tensions', 'Tensions'),
         'content' => $resolve('documents.pv_editor.field.content', 'Contenu'),
         'information' => $resolve('documents.pv_editor.field.pointtype.information', 'Information'),
+        'normal' => $resolve('documents.pv_editor.field.pointtype.normal', 'Normal'),
         'consultation' => $resolve('documents.pv_editor.field.pointtype.consultation', 'Consultation'),
         'decision' => $resolve('documents.pv_editor.field.pointtype.decision', 'Decision'),
         'reorder' => $resolve('documents.pv_editor.notice.reorder', 'Reordonner les points'),
@@ -623,6 +629,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
     $pointTypeLabel = trim((string)($pointData['pointTypeLabel'] ?? ($uiText[$pointType] ?? $pointType)));
     $pointTypeIcons = [
         'information' => '/omo/assets/images/documents/pv-point-type/information.png',
+        'normal' => '/omo/assets/images/documents/pv-point-type/information.png',
         'consultation' => '/omo/assets/images/documents/pv-point-type/consultation.png',
         'decision' => '/omo/assets/images/documents/pv-point-type/decision.png',
     ];
@@ -681,6 +688,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
         $html .= '      <div class="omo-segmented omo-pv-editor__type-switch" role="radiogroup" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['type']) . '">';
         foreach ([
             'information' => (string)$uiText['information'],
+            'normal' => (string)$uiText['normal'],
             'consultation' => (string)$uiText['consultation'],
             'decision' => (string)$uiText['decision'],
         ] as $optionValue => $optionLabel) {

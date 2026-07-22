@@ -117,6 +117,16 @@ class Permission extends DbObject
                 'description' => 'Autorise la creation de FAQ dans le contexte cible.',
                 'iscontextual' => true,
             ],
+            'CAN_CREATE_PROJECT' => [
+                'title' => 'Creer des projets',
+                'description' => 'Autorise la creation de projets dans le contexte cible.',
+                'iscontextual' => true,
+            ],
+            'CAN_CREATE_INDICATOR' => [
+                'title' => 'Creer des indicateurs',
+                'description' => 'Autorise la creation d indicateurs dans le contexte cible.',
+                'iscontextual' => true,
+            ],
             'CAN_ADD_APP' => [
                 'title' => 'Gerer les applications',
                 'description' => 'Autorise la gestion des applications actives et de leur ordre dans l organisation.',
