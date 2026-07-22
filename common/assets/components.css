@@ -2,6 +2,12 @@
 
 :root {
     --radius-md: 6px;
+    --project-status-someday: #8993a3;
+    --project-status-ready: #5b7ea6;
+    --project-status-in-progress: #c69a4b;
+    --project-status-blocked: #c47777;
+    --project-status-review: #8d78a8;
+    --project-status-done: #6b9b7f;
 }
 
 .generic-section,

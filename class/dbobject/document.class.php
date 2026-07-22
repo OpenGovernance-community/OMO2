@@ -1872,6 +1872,15 @@
 			return (int)trim((string)$element->getAttribute('data-omo-event-id')) > 0;
 		}
 
+		protected static function isProjectEmbedElement(\DOMElement $element): bool
+		{
+			if (trim((string)$element->getAttribute('data-omo-embed-type')) !== 'project') {
+				return false;
+			}
+
+			return (int)trim((string)$element->getAttribute('data-omo-project-id')) > 0;
+		}
+
 		protected static function isIndicatorEmbedElement(\DOMElement $element): bool
 		{
 			if (trim((string)$element->getAttribute('data-omo-embed-type')) !== 'indicator') {
@@ -1975,6 +1984,167 @@
 				$html .= '<div class="omo-event-embed__summary">' . htmlspecialchars($summary, ENT_QUOTES, 'UTF-8') . '</div>';
 			}
 			return $html . '</div>';
+		}
+
+		protected static function getProjectEmbedTree(int $organizationId): array
+		{
+			static $trees = array();
+			if (isset($trees[$organizationId])) {
+				return $trees[$organizationId];
+			}
+
+			$tree = array(
+				'projectsById' => array(),
+				'childrenByParent' => array(),
+			);
+			if ($organizationId <= 0) {
+				$trees[$organizationId] = $tree;
+				return $tree;
+			}
+
+			$projects = new \dbObject\ArrayProject();
+			$projects->loadForOrganization($organizationId);
+			foreach ($projects as $project) {
+				if (!($project instanceof \dbObject\Project) || (int)$project->getId() <= 0) {
+					continue;
+				}
+
+				$projectId = (int)$project->getId();
+				$tree['projectsById'][$projectId] = $project;
+				$parentId = (int)$project->get('IDproject_parent');
+				if ($parentId > 0) {
+					$tree['childrenByParent'][$parentId][] = $project;
+				}
+			}
+
+			$trees[$organizationId] = $tree;
+			return $tree;
+		}
+
+		protected static function getProjectStatusDisplayOrder(): array
+		{
+			return array(
+				\dbObject\Project::STATUS_READY,
+				\dbObject\Project::STATUS_IN_PROGRESS,
+				\dbObject\Project::STATUS_BLOCKED,
+				\dbObject\Project::STATUS_REVIEW,
+				\dbObject\Project::STATUS_DONE,
+				\dbObject\Project::STATUS_SOMEDAY,
+			);
+		}
+
+		protected static function buildProjectStatusBarDisplayHtml(array $summary): string
+		{
+			if ((int)($summary['total'] ?? 0) <= 0 || empty($summary['leaves'])) {
+				return '';
+			}
+
+			$statusCatalog = \dbObject\Project::getStatusCatalog();
+			$weightsByStatus = array_fill_keys(self::getProjectStatusDisplayOrder(), 0.0);
+			foreach ($summary['leaves'] as $leaf) {
+				$status = \dbObject\Project::normalizeStatus($leaf['status'] ?? '');
+				if (array_key_exists($status, $weightsByStatus)) {
+					$weightsByStatus[$status] += max(0, (float)($leaf['weight'] ?? 0));
+				}
+			}
+
+			$labelParts = array();
+			$html = '<span class="omo-project-status-bar" role="img"';
+			foreach (self::getProjectStatusDisplayOrder() as $status) {
+				$count = (int)($summary['counts'][$status] ?? 0);
+				if ($count > 0) {
+					$percentage = rtrim(rtrim(number_format($weightsByStatus[$status] * 100, 1, '.', ''), '0'), '.');
+					$labelParts[] = (string)($statusCatalog[$status]['label'] ?? $status) . ': ' . $count . ' (' . $percentage . '%)';
+				}
+			}
+			$label = 'Etat des sous-projets: ' . implode(', ', $labelParts);
+			$html .= ' aria-label="' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '" title="' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '">';
+			foreach (self::getProjectStatusDisplayOrder() as $status) {
+				$segmentWidth = max(0, min(100, $weightsByStatus[$status] * 100));
+				if ($segmentWidth <= 0) {
+					continue;
+				}
+				$html .= '<span class="omo-project-status-bar__segment omo-project-status-bar__segment--'
+					. htmlspecialchars($status, ENT_QUOTES, 'UTF-8')
+					. '" style="flex:0 0 ' . htmlspecialchars(number_format($segmentWidth, 6, '.', ''), ENT_QUOTES, 'UTF-8')
+					. '%;width:' . htmlspecialchars(number_format($segmentWidth, 6, '.', ''), ENT_QUOTES, 'UTF-8')
+					. '%;" aria-hidden="true"></span>';
+			}
+			return $html . '</span>';
+		}
+
+		protected static function buildProjectEmbedDisplayHtml(\dbObject\Project $project, array $summary, bool $hasDirectChildren, string $fallbackTitle = ''): string
+		{
+			$projectId = (int)$project->getId();
+			$title = trim((string)$project->get('title'));
+			$title = $title !== '' ? $title : ($fallbackTitle !== '' ? $fallbackTitle : ('Projet #' . $projectId));
+			$projectUrl = '#projects-d' . $projectId;
+			$status = \dbObject\Project::normalizeStatus($project->get('status'));
+			$statusCatalog = \dbObject\Project::getStatusCatalog();
+			$projectHolon = $project->getHolon();
+			$contextLabel = $projectHolon instanceof \dbObject\Holon
+				? trim((string)$projectHolon->getDisplayName())
+				: '';
+			$responsible = $project->getResponsible();
+			$responsibleLabel = '';
+			if (is_object($responsible)) {
+				$responsibleLabel = trim(trim((string)$responsible->get('firstname')) . ' ' . trim((string)$responsible->get('lastname')));
+				if ($responsibleLabel === '') {
+					$responsibleLabel = trim((string)$responsible->get('username'));
+				}
+				if ($responsibleLabel === '') {
+					$responsibleLabel = trim((string)$responsible->get('email'));
+				}
+			}
+			$priority = \dbObject\Project::normalizeLevel($project->get('priority'));
+			$size = \dbObject\Project::normalizeSize($project->get('project_size'));
+			$metadata = array_filter(array(
+				$contextLabel,
+				$responsibleLabel,
+			));
+
+			$html = '<div class="omo-project-embed omo-project-embed--resolved" data-omo-project-node data-omo-embed-type="project" data-omo-project-id="' . $projectId
+				. '" data-omo-project-children-loading="Chargement des sous-projets..." data-omo-project-children-empty="Aucun sous-projet direct." data-omo-project-children-error="Impossible de charger les sous-projets.">';
+			$html .= '<div class="omo-project-embed__head"><a class="omo-project-embed__title" href="'
+				. htmlspecialchars($projectUrl, ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</a>';
+			$html .= '<a class="omo-project-embed__external" href="' . htmlspecialchars($projectUrl, ENT_QUOTES, 'UTF-8')
+				. '" target="_blank" rel="noopener noreferrer" aria-label="Ouvrir le projet dans une nouvelle fenetre" title="Ouvrir le projet dans une nouvelle fenetre">&#8599;</a>';
+			$html .= '<span class="omo-project-embed__status omo-project-embed__status--' . htmlspecialchars($status, ENT_QUOTES, 'UTF-8') . '">'
+				. htmlspecialchars((string)($statusCatalog[$status]['label'] ?? $status), ENT_QUOTES, 'UTF-8') . '</span>';
+			if ($priority !== null) {
+				$html .= '<span class="omo-project-embed__priority">P' . (int)$priority . '</span>';
+			}
+			if ($size !== '') {
+				$html .= '<span class="omo-project-embed__size">' . htmlspecialchars($size, ENT_QUOTES, 'UTF-8') . '</span>';
+			}
+			$html .= '</div>';
+			if (count($metadata) > 0) {
+				$html .= '<span class="omo-project-embed__meta">' . htmlspecialchars(implode(' - ', $metadata), ENT_QUOTES, 'UTF-8') . '</span>';
+			}
+			if ($hasDirectChildren) {
+				$html .= '<button type="button" class="omo-project-embed__toggle" data-omo-project-embed-toggle aria-expanded="false" aria-label="Afficher les sous-projets de '
+					. htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '"><span class="omo-project-embed__toggle-label">Sous-projets</span>'
+					. self::buildProjectStatusBarDisplayHtml($summary) . '</button>';
+				$html .= '<div class="omo-project-embed__children" data-omo-project-embed-children hidden></div>';
+			}
+			return $html . '</div>';
+		}
+
+		protected static function renderEmbeddedProjectReference(\DOMElement $element, int $organizationId): string
+		{
+			$projectId = (int)$element->getAttribute('data-omo-project-id');
+			$fallbackTitle = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-project-title'));
+			$tree = self::getProjectEmbedTree($organizationId);
+			$project = $tree['projectsById'][$projectId] ?? null;
+			if (!($project instanceof \dbObject\Project)) {
+				return '<span class="omo-project-embed" data-omo-embed-type="project" data-omo-project-id="' . $projectId . '">'
+					. htmlspecialchars($fallbackTitle !== '' ? $fallbackTitle : ('Projet #' . $projectId), ENT_QUOTES, 'UTF-8') . '</span>';
+			}
+
+			$statusSummaryMemo = array();
+			$childrenByParent = (array)($tree['childrenByParent'] ?? array());
+			$summary = \dbObject\Project::buildChildrenStatusSummary($project, $childrenByParent, $statusSummaryMemo);
+			return self::buildProjectEmbedDisplayHtml($project, $summary, !empty($childrenByParent[$projectId]), $fallbackTitle);
 		}
 
 		protected static function renderIndicatorEmbedChart(\DOMElement $element): string
@@ -2204,6 +2374,10 @@
 					trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-event-location'))
 					?: trim((string)self::getDocumentEmbedAttributeValue($node, 'data-omo-event-description'))
 				);
+			}
+
+			if (self::isProjectEmbedElement($node)) {
+				return self::renderEmbeddedProjectReference($node, $organizationId);
 			}
 
 			if (self::isIndicatorEmbedElement($node)) {

@@ -293,6 +293,7 @@ if ($currentHolonId > 0) {
 $detailUrl = '/omo/api/projects/detail.php?oid=' . rawurlencode((string)$organizationId);
 $actionUrl = '/omo/api/projects/action.php';
 $canManage = omoProjectsCanManageContext($context);
+$canCreate = omoProjectsCanCreateContext($context);
 $emptyKey = 'projects.empty.' . $projectScope;
 $projectTexts = [
     'loading' => omoProjectsT('projects.loading'),
@@ -309,7 +310,7 @@ $projectTexts = [
     'cancel' => omoProjectsT('projects.action.cancel'),
 ];
 ?>
-<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260721-projects-v9">
+<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260722-project-status-colors">
 <div
     class="omo-projects omo-panel-view"
     id="omo-projects-root"
@@ -343,7 +344,7 @@ $projectTexts = [
                     </div>
                 </div>
             </div>
-            <?php if ($canManage): ?>
+            <?php if ($canCreate): ?>
                 <div class="omo-projects__header-actions">
                     <button type="button" class="generic-action-button generic-action-button--main omo-mobile-corner-action" data-omo-projects-open-create><?= omoApiEscape(omoProjectsT('projects.action.new')) ?></button>
                 </div>
@@ -531,4 +532,4 @@ $projectTexts = [
     </div>
 </div>
 <script src="/common/drawer/subdrawer.js"></script>
-<script src="/omo/api/projects/projects.js?v=20260720-projects-v20"></script>
+<script src="/omo/api/projects/projects.js?v=20260722-runtime-maintenance"></script>

@@ -8,7 +8,7 @@ class ArrayProject extends ArrayDbObject
         return '\\dbObject\\Project';
     }
 
-    public function loadForOrganization($organizationId, $activeOnly = true)
+    public function loadForOrganization($organizationId, $activeOnly = true, $projectKind = Project::KIND_STANDARD)
     {
         $this->exchangeArray([]);
         $organizationId = (int)$organizationId;
@@ -18,6 +18,7 @@ class ArrayProject extends ArrayDbObject
 
         $where = [
             ['field' => 'IDorganization', 'value' => $organizationId],
+            ['field' => 'project_kind', 'value' => Project::normalizeKind($projectKind)],
         ];
         if ($activeOnly) {
             $where[] = ['field' => 'active', 'value' => 1];
@@ -32,7 +33,7 @@ class ArrayProject extends ArrayDbObject
         ]);
     }
 
-    public function loadForParent($parentId, $activeOnly = true)
+    public function loadForParent($parentId, $activeOnly = true, $projectKind = Project::KIND_STANDARD)
     {
         $this->exchangeArray([]);
         $parentId = (int)$parentId;
@@ -42,6 +43,7 @@ class ArrayProject extends ArrayDbObject
 
         $where = [
             ['field' => 'IDproject_parent', 'value' => $parentId],
+            ['field' => 'project_kind', 'value' => Project::normalizeKind($projectKind)],
         ];
         if ($activeOnly) {
             $where[] = ['field' => 'active', 'value' => 1];
@@ -72,6 +74,7 @@ class ArrayProject extends ArrayDbObject
         $where = [
             ['field' => 'IDorganization', 'value' => $organizationId],
             ['field' => 'active', 'value' => 1],
+            ['field' => 'project_kind', 'value' => Project::KIND_STANDARD],
         ];
 
         if ($scope === 'descendants') {
@@ -110,6 +113,11 @@ class ArrayProject extends ArrayDbObject
                 ['field' => 'id', 'dir' => 'DESC'],
             ],
         ]);
+    }
+
+    public function loadTemplatesForOrganization($organizationId, $activeOnly = true)
+    {
+        $this->loadForOrganization($organizationId, $activeOnly, Project::KIND_CHECKLIST_TEMPLATE);
     }
 }
 ?>
