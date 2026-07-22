@@ -2,8 +2,34 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-22
+
+- Les checklists Conteneur peuvent maintenant porter une recurrence sur chacun de leurs elements independants. Chaque echeance cree directement un projet simple affecte au role de l element, sans creer de projet parent de conteneur; les occurrences sont conservees pour empecher les doublons. Les frequences et les moments sont identiques a ceux des indicateurs et le traitement est integre a la maintenance OMO lors du retour au premier plan.
+- Les projets generes par ces occurrences ajoutent maintenant leur periode au titre (par exemple `Cloture comptable - 1er trimestre 2026` ou `Salaires - 25 juillet 2026`) afin de distinguer les echeances successives.
+- Les elements recurrents permettent maintenant d indiquer une anticipation d affichage et un delai de realisation. Le projet peut ainsi apparaitre avant sa date planifiee et recevoir automatiquement une date limite.
+- Les projets issus des elements de checklist, y compris dans les checklists lancees a la demande et les projets termines non archives, sont maintenant representes directement dans chaque bloc par des barres colorees selon leur statut. Leur infobulle indique les dates planifiee et limite; le nombre d occurrences de conteneur actives apparait aussi dans la liste principale.
+- Chaque barre d occurrence est limitee a 100 pixels et se reduit avec les autres barres lorsque l espace disponible manque.
+- Les couleurs des statuts de projet sont maintenant declarees comme variables partagees; les barres Checklist et les vues Projets utilisent la meme palette, avec le statut A verifier en violet.
+- Cliquer une barre d occurrence active ouvre maintenant le projet associe dans l application Projets via la navigation par hash.
+- Les infobulles des barres de projet indiquent maintenant aussi le libelle du statut, en plus des dates planifiee et limite.
+- Les projets en retard affichent maintenant une icone d alerte superposee au debut de leur barre, tout en conservant la couleur de leur statut.
+- Le detail d une checklist utilise maintenant une route hash `checklist-c<ID>`. Apres l ouverture d un projet lie, le bouton precedent du navigateur revient donc directement a la checklist ouverte.
+- Le sous-drawer Checklist reprend maintenant la largeur partagee des autres applications OMO, sans largeur locale qui pouvait depasser son panneau parent.
+- L activation manuelle d une checklist permet maintenant de nommer son instance. Le nom est pre-rempli avec celui du processus et devient le titre modifiable du projet racine cree.
+- Le bloc Instances en cours est masque pour les checklists Conteneur, dont le suivi passe entierement par les barres de leurs elements.
+- Les conteneurs ne proposent plus les options de parent, de visibilite, de dependance ou de delai des checklists de processus; leurs elements restent des taches simples pilotees uniquement par leur recurrence eventuelle.
+- Lorsque OMO revient au premier plan, retrouve le reseau ou restaure une page conservee par le navigateur, il relance maintenant sa maintenance legere sans recharger toute l application. Les projets de checklist arrives a echeance sont alors generes; une session expiree provoque un rechargement pour reprendre le parcours de connexion. Les vues Projets et Checklist se rafraichissent sans interrompre un sous-drawer ouvert.
+
 ## 2026-07-21
 
+- Les projets inseres dans les PV affichent maintenant une barre recursive dynamique de repartition des statuts de leurs sous-projets. Chaque barre peut etre deployee a son tour et charge seulement ses enfants directs; les lignes indiquent leur contexte et leur responsable. Le statut, la priorite et la taille du projet sont affiches dans des capsules dans l entete, avec un fond clair et un texte fonce derives de leur couleur, y compris pour les blocs deja inseres lors de leur reouverture. Le rendu lecture seule reserve aussi un retrait pour l icone projet. Dans Summernote, cette revue est integree temporairement a la carte projet sans etre enregistree dans le contenu du PV; en lecture seule, le controle Sous-projets est masque pour garder la carte compacte. Le rendu reste a jour dans le lecteur et dans l export PDF. Les titres des sous-projets ouvrent leur detail par la navigation interne, en repliant la reunion sans recharger la page.
+- Les checklists disponibles a la demande peuvent maintenant etre activees avec une date de reference. Chaque activation cree une instance et son projet racine, planifie les etapes autour de cette date y compris avant celle-ci avec des delais negatifs, cree les projets deja exigibles et conserve les suivants en attente jusqu a leur echeance. Les instances ouvertes apparaissent dans le detail et leur nombre dans la liste principale; une instance est terminee lorsque son projet racine passe au statut Termine.
+- Les checklists proposent maintenant un troisieme mode de declenchement, Conteneur. Ce mode regroupe des elements sans pouvoir lancer la checklist elle-meme et efface toute planification residuelle lors de son enregistrement.
+- Les etapes d une checklist sont maintenant presentees selon leur ordre probable d apparition : elements immediats, delais croissants et dependances placees apres les elements requis. Le delai d une chaine de dependances est cumule pour conserver un deroulement coherent, tandis que l ordre de creation ne sert plus que de departage.
+- Les boutons d enregistrement des formulaires Checklist et des editeurs generiques sont maintenant grises pendant la sauvegarde afin d eviter les doubles creations. Le verrou couvre aussi les actions placees dans l entete d un drawer et se libere apres une erreur pour permettre de reessayer; le partage de documents a ete aligne sur cette mecanique.
+- L application Checklist propose un premier flux complet : liste par contexte, enfants directs ou descendants, creation progressive des informations generales puis ajout et edition des etapes une par une depuis la vue de detail. Les projets-modeles gardent leur hierarchie, leur affectation par holon, leurs delais, dependances et recurrence. Le module utilise le nom `checklist` de bout en bout et reste accessible directement avec la route `#checklist`.
+- Les projets distinguent maintenant les projets operationnels des modeles de checklist, qui restent hors des vues Projet ordinaires et conservent leur affectation par holon.
+- Les indicateurs et les futurs declencheurs de checklist utilisent desormais le meme contrat de recurrence pour les frequences et les moments attendus.
 - Les selecteurs de portee des apps utilisent maintenant Local, Enfants directs et Descendants. Enfants directs inclut le contexte courant et ses enfants immediats. La portee Global a ete retiree; depuis la racine de l organisation, Descendants couvre toute la structure.
 - Les apps Calendrier et Documents reconnaissent maintenant le holon racine comme contexte courant lorsque l organisation est ouverte sans `cid`, ce qui affiche aussi Enfants directs et Descendants.
 - Les proprietes de type liste peuvent maintenant referencer des projets. Les editeurs de definitions, de templates et de holons proposent les projets actifs de l organisation, stockent leurs identifiants et affichent ensuite leurs titres dans les details et la vue Structure.
@@ -23,6 +49,9 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Les blocs HTML et les listes de projets des proprietes HTML et liste sont maintenant separes par un espacement regulier.
 - Les proprietes texte avec detail HTML sont maintenant affichees sans bordure, avec leur texte en gras et le controle de deplie place en bas a droite.
 - Le controle des proprietes texte avec detail HTML affiche maintenant le libelle Voir détail et utilise une fleche plus grande qui pivote de 90 degrés.
+- Un double-clic dans une colonne du Kanban Projets ouvre maintenant la creation d un projet avec le statut de la colonne deja selectionne.
+- Le formulaire de projet place maintenant l action principale avant Annuler et ne repete plus le titre ni le texte d introduction sous l entete.
+- Les droits contextuels CAN_CREATE_PROJECT et CAN_CREATE_INDICATOR sont maintenant disponibles et protegent la creation des projets et des indicateurs.
 
 ## 2026-07-19
 

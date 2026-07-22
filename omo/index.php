@@ -1,13 +1,13 @@
 <?php
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
-require_once dirname(__DIR__) . '/common/faq_fake_cron.php';
+require_once dirname(__DIR__) . '/common/omo_fake_cron.php';
 require_once dirname(__DIR__) . '/common/topbar.php';
 require_once dirname(__DIR__) . '/common/patreon.php';
 require_once dirname(__DIR__) . '/common/translation_bundles.php';
 require_once __DIR__ . '/topbar.php';
 
-faq_maybe_run_fake_cron();
+omo_run_fake_cron_maintenance(50);
 
 $sourceLang = [
     'app.access_denied.message' => [
@@ -719,7 +719,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <title><?= htmlspecialchars(t('app.directory.page_title')) ?></title>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260720-pv-project-picker-sticky-actions">
+<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260722-pv-project-embed-readonly">
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
 <body class="auth-state-page auth-state-page--scrollable auth-state-page--themed auth-state-page--with-topbar">
@@ -1279,7 +1279,7 @@ if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
     <title><?= htmlspecialchars(t('app.main.page_title')) ?></title>
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260720-pv-project-picker-sticky-actions">
+<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260722-pv-project-embed-readonly">
     <style>
         html[data-omo-organization-accent] {
             --omo-organization-accent: <?= $omoOrganizationAccentColorCss ?>;
@@ -1447,8 +1447,8 @@ window.omoConfig = <?=
 <?php if ($isSiteAdmin) { ?>
 <script src="/omo/assets/js/site-update.js"></script>
 <?php } ?>
-<script src="assets/js/simple-html-field.js?v=20260721-composite-property-fields-v5"></script>
-<script src="assets/js/app.js?v=20260720-projects-drawer-refresh"></script>
+<script src="assets/js/simple-html-field.js?v=20260722-pv-project-embed-icon-spacing"></script>
+<script src="assets/js/app.js?v=20260722-checklist-detail-route"></script>
 <script src="assets/js/structure-mini-map.js"></script>
 
 <script>

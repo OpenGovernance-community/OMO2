@@ -6,12 +6,12 @@ class StatIndicator extends DbObject
     const REFERENCE_NONE = 'none';
     const REFERENCE_CEILING = 'ceiling';
     const REFERENCE_OBJECTIVE = 'objective';
-    const FREQUENCY_DAILY = 'daily';
-    const FREQUENCY_WEEKLY = 'weekly';
-    const FREQUENCY_MONTHLY = 'monthly';
-    const FREQUENCY_QUARTERLY = 'quarterly';
-    const FREQUENCY_SEMIANNUAL = 'semiannual';
-    const FREQUENCY_YEARLY = 'yearly';
+    const FREQUENCY_DAILY = RecurrenceSchedule::FREQUENCY_DAILY;
+    const FREQUENCY_WEEKLY = RecurrenceSchedule::FREQUENCY_WEEKLY;
+    const FREQUENCY_MONTHLY = RecurrenceSchedule::FREQUENCY_MONTHLY;
+    const FREQUENCY_QUARTERLY = RecurrenceSchedule::FREQUENCY_QUARTERLY;
+    const FREQUENCY_SEMIANNUAL = RecurrenceSchedule::FREQUENCY_SEMIANNUAL;
+    const FREQUENCY_YEARLY = RecurrenceSchedule::FREQUENCY_YEARLY;
 
     public static function tableName()
     {
@@ -97,49 +97,17 @@ class StatIndicator extends DbObject
 
     public static function getMeasurementFrequencyCatalog()
     {
-        return [
-            self::FREQUENCY_DAILY => self::FREQUENCY_DAILY,
-            self::FREQUENCY_WEEKLY => self::FREQUENCY_WEEKLY,
-            self::FREQUENCY_MONTHLY => self::FREQUENCY_MONTHLY,
-            self::FREQUENCY_QUARTERLY => self::FREQUENCY_QUARTERLY,
-            self::FREQUENCY_SEMIANNUAL => self::FREQUENCY_SEMIANNUAL,
-            self::FREQUENCY_YEARLY => self::FREQUENCY_YEARLY,
-        ];
+        return RecurrenceSchedule::getFrequencyCatalog();
     }
 
     public static function normalizeMeasurementFrequency($value)
     {
-        $value = trim(mb_strtolower((string)$value, 'UTF-8'));
-        return array_key_exists($value, self::getMeasurementFrequencyCatalog()) ? $value : null;
+        return RecurrenceSchedule::normalizeFrequency($value);
     }
 
     public static function normalizeMeasurementSchedule($frequency, $value)
     {
-        $frequency = self::normalizeMeasurementFrequency($frequency);
-        $value = trim((string)$value);
-        if ($frequency === null || $value === '') {
-            return null;
-        }
-
-        if ($frequency === self::FREQUENCY_DAILY) {
-            return preg_match('/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/', $value) ? $value : null;
-        }
-
-        $limits = [
-            self::FREQUENCY_WEEKLY => [1, 7],
-            self::FREQUENCY_MONTHLY => [1, 31],
-            self::FREQUENCY_QUARTERLY => [1, 3],
-            self::FREQUENCY_SEMIANNUAL => [1, 6],
-            self::FREQUENCY_YEARLY => [1, 12],
-        ];
-        if (!isset($limits[$frequency]) || !ctype_digit($value)) {
-            return null;
-        }
-
-        $numericValue = (int)$value;
-        return $numericValue >= $limits[$frequency][0] && $numericValue <= $limits[$frequency][1]
-            ? (string)$numericValue
-            : null;
+        return RecurrenceSchedule::normalizeSchedule($frequency, $value);
     }
 
     public static function sanitizeSourceUrl($value)

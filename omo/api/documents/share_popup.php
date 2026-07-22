@@ -602,25 +602,48 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
             event.preventDefault();
             setFeedback('', false);
 
-            const response = await fetch('/omo/api/documents/share_create.php', {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: new FormData(form)
-            });
-
-            const payload = await response.json().catch(function () {
-                return null;
-            });
-
-            if (!response.ok || !payload || payload.status !== true) {
-                setFeedback(payload && payload.message ? payload.message : 'Enregistrement impossible.', false);
+            const formData = new FormData(form);
+            if (
+                typeof window.omoBeginPendingAction === 'function'
+                && !window.omoBeginPendingAction(form)
+            ) {
                 return;
             }
 
-            refreshPopup(payload.message || 'Lien enregistre.', true);
+            const submitButton = form.querySelector('[type="submit"]');
+            if (typeof window.omoBeginPendingAction !== 'function' && submitButton) {
+                submitButton.disabled = true;
+            }
+
+            try {
+                const response = await fetch('/omo/api/documents/share_create.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                });
+
+                const payload = await response.json().catch(function () {
+                    return null;
+                });
+
+                if (!response.ok || !payload || payload.status !== true) {
+                    setFeedback(payload && payload.message ? payload.message : 'Enregistrement impossible.', false);
+                    return;
+                }
+
+                refreshPopup(payload.message || 'Lien enregistre.', true);
+            } catch (error) {
+                setFeedback('Enregistrement impossible.', false);
+            } finally {
+                if (typeof window.omoEndPendingAction === 'function') {
+                    window.omoEndPendingAction(form);
+                } else if (submitButton) {
+                    submitButton.disabled = false;
+                }
+            }
         });
     };
 

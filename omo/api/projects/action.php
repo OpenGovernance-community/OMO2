@@ -86,11 +86,12 @@ if ($projectId > 0) {
 }
 
 $canManageContext = omoProjectsCanManageContext($context);
+$canCreateProject = omoProjectsCanCreateContext($context);
 if (
     $currentUserId <= 0
     || ($existingProject instanceof Project
         ? !omoProjectsCanManageProject($existingProject, $context)
-        : !$canManageContext)
+        : !$canCreateProject)
 ) {
     omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
 }

@@ -30,7 +30,7 @@ if ($isEdit) {
         exit;
     }
 } else {
-    if (!omoProjectsCanManageContext($context)) {
+    if (!omoProjectsCanCreateContext($context)) {
         http_response_code(403);
         echo '<div class="omo-empty-state">' . omoApiEscape(omoProjectsT('projects.error.forbidden')) . '</div>';
         exit;
@@ -38,7 +38,8 @@ if ($isEdit) {
     $project->set('IDorganization', $organizationId);
     $project->set('IDholon', $context['currentHolon'] instanceof Holon ? (int)$context['currentHolon']->getId() : null);
     $project->set('IDuser', function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : null);
-    $project->set('status', Project::STATUS_SOMEDAY);
+    $requestedStatus = isset($_GET['status']) ? (string)$_GET['status'] : Project::STATUS_SOMEDAY;
+    $project->set('status', Project::normalizeStatus($requestedStatus));
     $project->set('capture_mode', Project::CAPTURE_MULTIPLE_DOCUMENTS);
     $project->set('project_size', Project::SIZE_M);
 }
@@ -77,22 +78,18 @@ $params = [
         data-omo-subdrawer-description="<?= omoApiEscape(omoProjectsT($isEdit ? 'projects.form.edit_description' : 'projects.form.description')) ?>"
     >
         <button
+            type="submit"
+            form="formulaire-edit"
+            class="generic-action-button generic-action-button--main"
+            data-omo-subdrawer-action
+        ><?= omoApiEscape(omoProjectsT($isEdit ? 'projects.form.edit_submit' : 'projects.form.submit')) ?></button>
+        <button
             type="button"
             form="formulaire-edit"
             class="generic-action-button generic-action-button--secondary"
             data-omo-subdrawer-action
             data-omo-projects-cancel-create
         ><?= omoApiEscape(omoProjectsT('projects.action.cancel')) ?></button>
-        <button
-            type="submit"
-            form="formulaire-edit"
-            class="generic-action-button generic-action-button--main"
-            data-omo-subdrawer-action
-        ><?= omoApiEscape(omoProjectsT($isEdit ? 'projects.form.edit_submit' : 'projects.form.submit')) ?></button>
     </div>
-    <section class="generic-hero-panel accent omo-project-form__intro">
-        <h2 class="generic-card-title generic-card-title--large"><?= omoApiEscape(omoProjectsT($isEdit ? 'projects.form.edit_title' : 'projects.form.title')) ?></h2>
-        <p><?= omoApiEscape(omoProjectsT($isEdit ? 'projects.form.edit_description' : 'projects.form.description')) ?></p>
-    </section>
     <?php $project->display('adminEdit.php', $params); ?>
 </div>

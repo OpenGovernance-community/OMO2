@@ -310,60 +310,7 @@ if (!function_exists('omoStatsGetIndicatorMeasurementTimestamps')) {
 if (!function_exists('omoStatsBuildMeasurementDueDate')) {
     function omoStatsBuildMeasurementDueDate($frequency, $schedule, DateTimeImmutable $now)
     {
-        $frequency = StatIndicator::normalizeMeasurementFrequency($frequency);
-        $schedule = StatIndicator::normalizeMeasurementSchedule($frequency, $schedule);
-        if ($frequency === null || $schedule === null) {
-            return null;
-        }
-
-        if ($frequency === StatIndicator::FREQUENCY_DAILY) {
-            [$hour, $minute] = array_map('intval', explode(':', $schedule));
-            $due = $now->setTime($hour, $minute, 0);
-            return $due > $now ? $due->modify('-1 day') : $due;
-        }
-
-        $currentDay = $now->setTime(0, 0, 0);
-        if ($frequency === StatIndicator::FREQUENCY_WEEKLY) {
-            $targetDay = (int)$schedule;
-            $daysBack = ((int)$currentDay->format('N') - $targetDay + 7) % 7;
-            return $currentDay->modify('-' . $daysBack . ' days');
-        }
-
-        $currentMonth = (int)$now->format('n');
-        $currentYear = (int)$now->format('Y');
-        if ($frequency === StatIndicator::FREQUENCY_MONTHLY) {
-            $targetMonth = $currentMonth;
-            $targetDay = min((int)$schedule, (int)$now->format('t'));
-            $due = $now->setDate($currentYear, $targetMonth, $targetDay)->setTime(0, 0, 0);
-            if ($due > $now) {
-                $due = $due->modify('-1 month');
-                $targetDay = min((int)$schedule, (int)$due->format('t'));
-                $due = $due->setDate((int)$due->format('Y'), (int)$due->format('n'), $targetDay)->setTime(0, 0, 0);
-            }
-            return $due;
-        }
-
-        $cycleLength = $frequency === StatIndicator::FREQUENCY_QUARTERLY ? 3 : 6;
-        if ($frequency === StatIndicator::FREQUENCY_QUARTERLY || $frequency === StatIndicator::FREQUENCY_SEMIANNUAL) {
-            $anchorMonth = (int)$schedule;
-            $offset = ($currentMonth - $anchorMonth + 12) % $cycleLength;
-            $targetMonth = $currentMonth - $offset;
-            $targetYear = $currentYear;
-            if ($targetMonth < 1) {
-                $targetMonth += 12;
-                $targetYear--;
-            }
-            $due = $now->setDate($targetYear, $targetMonth, 1)->setTime(0, 0, 0);
-            return $due > $now ? $due->modify('-' . $cycleLength . ' months') : $due;
-        }
-
-        if ($frequency === StatIndicator::FREQUENCY_YEARLY) {
-            $targetMonth = (int)$schedule;
-            $due = $now->setDate($currentYear, $targetMonth, 1)->setTime(0, 0, 0);
-            return $due > $now ? $due->modify('-1 year') : $due;
-        }
-
-        return null;
+        return \dbObject\RecurrenceSchedule::getPreviousOccurrence($frequency, $schedule, $now);
     }
 }
 
@@ -532,6 +479,30 @@ if (!function_exists('omoStatsCanManageContext')) {
         $currentHolon = $context['currentHolon'] ?? null;
         if ($currentHolon instanceof Holon) {
             return $currentHolon->canEdit();
+        }
+
+        $organization = $context['organization'] ?? null;
+        return $organization instanceof Organization && $organization->canEdit();
+    }
+}
+
+if (!function_exists('omoStatsCanCreateContext')) {
+    function omoStatsCanCreateContext(array $context)
+    {
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        if ($currentUserId <= 0) {
+            return false;
+        }
+
+        $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
+        $currentHolon = $context['currentHolon'] ?? null;
+        if ($currentHolon instanceof Holon) {
+            return $currentHolon->isAllowed('CAN_CREATE_INDICATOR', $useSessionCache, $currentUserId);
+        }
+
+        $rootHolon = $context['rootHolon'] ?? null;
+        if ($rootHolon instanceof Holon) {
+            return $rootHolon->isAllowed('CAN_CREATE_INDICATOR', $useSessionCache, $currentUserId);
         }
 
         $organization = $context['organization'] ?? null;

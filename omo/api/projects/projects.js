@@ -43,6 +43,7 @@
     var rootNeedsRefresh = false;
     var initialOpenProjectId = Number(root.getAttribute('data-omo-projects-open-project-id') || 0);
     var initialOpenProjectMode = root.getAttribute('data-omo-projects-open-project-mode') || '';
+    var pendingCreateStatus = '';
 
     try {
         columns = JSON.parse(root.getAttribute('data-omo-projects-columns') || '[]');
@@ -141,6 +142,7 @@
             setLoadingState: setLoading,
             beforeReplace: function () {
                 window.removeEventListener('omo-projects-route-change', handleProjectRouteChange);
+                window.removeEventListener('omo-runtime-maintenance', handleRuntimeMaintenance);
             }
         }).then(function (nextRoot) {
             restoreContentScrollPosition(nextRoot, scrollPosition);
@@ -157,6 +159,19 @@
         }
         drawerBody.innerHTML = '<div class="generic-section omo-projects-feedback' + (isError ? ' is-error' : '') + '"></div>';
         drawerBody.firstElementChild.textContent = String(message || '');
+    }
+
+    function handleRuntimeMaintenance(event) {
+        var result = event && event.detail ? event.detail : {};
+        var createdCount = Number(result.checklistProjectsCreated || 0);
+        if (!Number.isInteger(createdCount) || createdCount <= 0) {
+            return;
+        }
+        if (drawer && drawer.classList.contains('is-open')) {
+            rootNeedsRefresh = true;
+            return;
+        }
+        refreshRoot(currentUrl, {preserveScroll: true});
     }
 
     function executeFetchedScripts(container) {
@@ -379,6 +394,14 @@
         return createUrl + '&id=' + encodeURIComponent(String(projectId));
     }
 
+    function buildCreateUrl(status) {
+        var normalizedStatus = String(status || '').trim().toLowerCase();
+        if (columns.indexOf(normalizedStatus) === -1) {
+            normalizedStatus = '';
+        }
+        return createUrl + (normalizedStatus !== '' ? '&status=' + encodeURIComponent(normalizedStatus) : '');
+    }
+
     function navigateProject(projectId, mode, fallbackUrl) {
         var routeToken = buildProjectRouteToken(projectId, mode);
         if (routeToken && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== getCurrentRouteToken()) {
@@ -386,7 +409,9 @@
             return;
         }
 
-        openDrawerWithUrl(fallbackUrl || (mode === 'edit' ? buildEditUrl(projectId) : buildDetailUrl(projectId)));
+        openDrawerWithUrl(fallbackUrl || (mode === 'create'
+            ? buildCreateUrl(pendingCreateStatus)
+            : (mode === 'edit' ? buildEditUrl(projectId) : buildDetailUrl(projectId))));
     }
 
     function updateColumnCounts() {
@@ -680,7 +705,19 @@
 
     root.querySelectorAll('[data-omo-projects-open-create]').forEach(function (button) {
         button.addEventListener('click', function () {
-            navigateProject(0, 'create', createUrl);
+            pendingCreateStatus = '';
+            navigateProject(0, 'create', buildCreateUrl(''));
+        });
+    });
+
+    root.querySelectorAll('[data-omo-projects-column]').forEach(function (column) {
+        column.addEventListener('dblclick', function (event) {
+            if (event.target.closest('[data-omo-project-card], button, select, input, textarea, a, [contenteditable="true"]')) {
+                return;
+            }
+
+            pendingCreateStatus = column.getAttribute('data-omo-projects-column') || '';
+            navigateProject(0, 'create', buildCreateUrl(pendingCreateStatus));
         });
     });
 
@@ -962,7 +999,7 @@
         }
 
         var targetUrl = mode === 'create'
-            ? createUrl
+            ? buildCreateUrl(pendingCreateStatus)
             : (mode === 'edit' ? buildEditUrl(projectId) : buildDetailUrl(projectId));
         if (!targetUrl) {
             return false;
@@ -1001,6 +1038,7 @@
     }
 
     window.addEventListener('omo-projects-route-change', handleProjectRouteChange);
+    window.addEventListener('omo-runtime-maintenance', handleRuntimeMaintenance);
 
     updateColumnCounts();
     updateMobileColumn();

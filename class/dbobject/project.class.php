@@ -3,6 +3,9 @@ namespace dbObject;
 
 class Project extends DbObject
 {
+    public const KIND_STANDARD = 'standard';
+    public const KIND_CHECKLIST_TEMPLATE = 'checklist_template';
+
     public const STATUS_SOMEDAY = 'someday';
     public const STATUS_READY = 'ready';
     public const STATUS_IN_PROGRESS = 'in_progress';
@@ -29,8 +32,8 @@ class Project extends DbObject
         return [
             [['IDorganization', 'title'], 'required'],
             [['id', 'priority', 'importance'], 'integer'],
-            [['IDorganization', 'IDholon', 'IDuser', 'IDproject_parent', 'IDdocument_journal'], 'fk'],
-            [['title', 'status', 'capture_mode', 'project_size'], 'string'],
+            [['IDorganization', 'IDholon', 'IDuser', 'IDproject_parent', 'IDdocument_journal', 'IDproject_template'], 'fk'],
+            [['title', 'status', 'capture_mode', 'project_size', 'project_kind'], 'string'],
             [['description'], 'html'],
             [['planned_start_date', 'planned_end_date'], 'date'],
             [['created_at', 'updated_at'], 'datetime'],
@@ -48,6 +51,8 @@ class Project extends DbObject
             'IDuser' => 'Responsable',
             'IDproject_parent' => 'Projet parent',
             'IDdocument_journal' => 'Document journal',
+            'project_kind' => 'Type de projet',
+            'IDproject_template' => 'Projet modele',
             'title' => 'Titre',
             'description' => 'Description',
             'status' => 'Statut',
@@ -74,6 +79,8 @@ class Project extends DbObject
             'importance' => 'Niveau a considerer quand le temps disponible manque.',
             'capture_mode' => 'Indique si les captures Telegram doivent creer plusieurs documents ou alimenter un journal unique.',
             'project_size' => 'Taille relative du projet, utilisee pour ponderer sa place dans les barres de synthese.',
+            'project_kind' => 'Distingue un projet operationnel d un projet utilise comme modele de checklist.',
+            'IDproject_template' => 'Projet modele a l origine de cette instance.',
         ];
     }
 
@@ -84,6 +91,7 @@ class Project extends DbObject
             'status' => 20,
             'capture_mode' => 30,
             'project_size' => 3,
+            'project_kind' => 30,
         ];
     }
 
@@ -113,6 +121,10 @@ class Project extends DbObject
                 [self::SIZE_L, self::SIZE_L],
                 [self::SIZE_XL, self::SIZE_XL],
                 [self::SIZE_XXL, self::SIZE_XXL],
+            ],
+            'project_kind' => [
+                [self::KIND_STANDARD, 'Projet'],
+                [self::KIND_CHECKLIST_TEMPLATE, 'Modele de checklist'],
             ],
         ];
     }
@@ -186,6 +198,17 @@ class Project extends DbObject
             : self::STATUS_SOMEDAY;
     }
 
+    public static function kinds()
+    {
+        return [self::KIND_STANDARD, self::KIND_CHECKLIST_TEMPLATE];
+    }
+
+    public static function normalizeKind($value)
+    {
+        $value = trim(mb_strtolower((string)$value, 'UTF-8'));
+        return in_array($value, self::kinds(), true) ? $value : self::KIND_STANDARD;
+    }
+
     public static function normalizeCaptureMode($value)
     {
         $value = trim(mb_strtolower((string)$value, 'UTF-8'));
@@ -219,6 +242,127 @@ class Project extends DbObject
         return array_search(self::normalizeSize($value), self::sizes(), true) + 1;
     }
 
+    public static function createEmptyStatusSummary()
+    {
+        return [
+            'total' => 0,
+            'counts' => array_fill_keys(self::statuses(), 0),
+            'weights' => array_fill_keys(self::statuses(), 0.0),
+            'leaves' => [],
+        ];
+    }
+
+    public static function mergeStatusSummaries(array $summary, array $addition)
+    {
+        foreach (self::statuses() as $status) {
+            $summary['counts'][$status] = (int)($summary['counts'][$status] ?? 0) + (int)($addition['counts'][$status] ?? 0);
+            $summary['weights'][$status] = (float)($summary['weights'][$status] ?? 0) + (float)($addition['weights'][$status] ?? 0);
+        }
+        $summary['total'] += (int)($addition['total'] ?? 0);
+        if (!empty($addition['leaves']) && is_array($addition['leaves'])) {
+            $summary['leaves'] = array_merge($summary['leaves'], $addition['leaves']);
+        }
+        return $summary;
+    }
+
+    public static function scaleStatusSummary(array $summary, $factor)
+    {
+        $factor = (float)$factor;
+        foreach ($summary['weights'] as $status => $weight) {
+            $summary['weights'][$status] = (float)$weight * $factor;
+        }
+        foreach ($summary['leaves'] as &$leaf) {
+            $leaf['weight'] = (float)($leaf['weight'] ?? 0) * $factor;
+        }
+        unset($leaf);
+        return $summary;
+    }
+
+    public static function getChildrenWeight(array $children)
+    {
+        $weight = 0;
+        foreach ($children as $child) {
+            if ($child instanceof self) {
+                $weight += self::getSizeWeight($child->get('project_size'));
+            }
+        }
+        return $weight > 0 ? $weight : 1;
+    }
+
+    public static function createLeafStatusSummary(Project $project)
+    {
+        $status = self::normalizeStatus($project->get('status'));
+        $summary = self::createEmptyStatusSummary();
+        $summary['total'] = 1;
+        $summary['counts'][$status] = 1;
+        $summary['weights'][$status] = 1.0;
+        $summary['leaves'][] = ['status' => $status, 'weight' => 1.0];
+        return $summary;
+    }
+
+    public static function getLeafStatusSummary(Project $project, array $childrenByParent, array &$memo = [], array &$path = [])
+    {
+        $projectId = (int)$project->getId();
+        if ($projectId <= 0) {
+            return self::createEmptyStatusSummary();
+        }
+        if (isset($memo[$projectId])) {
+            return $memo[$projectId];
+        }
+        if (isset($path[$projectId])) {
+            return self::createEmptyStatusSummary();
+        }
+
+        $path[$projectId] = true;
+        $children = $childrenByParent[$projectId] ?? [];
+        $summary = self::createEmptyStatusSummary();
+        if (count($children) === 0) {
+            $summary = self::createLeafStatusSummary($project);
+        } else {
+            $childrenWeight = self::getChildrenWeight($children);
+            foreach ($children as $child) {
+                if ($child instanceof self) {
+                    $summary = self::mergeStatusSummaries(
+                        $summary,
+                        self::scaleStatusSummary(
+                            self::getLeafStatusSummary($child, $childrenByParent, $memo, $path),
+                            self::getSizeWeight($child->get('project_size')) / $childrenWeight
+                        )
+                    );
+                }
+            }
+        }
+        unset($path[$projectId]);
+        $memo[$projectId] = $summary;
+        return $summary;
+    }
+
+    public static function buildChildrenStatusSummary(Project $project, array $childrenByParent, array &$memo = [], $includeSelfWhenLeaf = false)
+    {
+        $children = $childrenByParent[(int)$project->getId()] ?? [];
+        if (count($children) === 0) {
+            return $includeSelfWhenLeaf
+                ? self::createLeafStatusSummary($project)
+                : self::createEmptyStatusSummary();
+        }
+
+        $summary = self::createEmptyStatusSummary();
+        $childrenWeight = self::getChildrenWeight($children);
+        $path = [(int)$project->getId() => true];
+        foreach ($children as $child) {
+            if ($child instanceof self) {
+                $summary = self::mergeStatusSummaries(
+                    $summary,
+                    self::scaleStatusSummary(
+                        self::getLeafStatusSummary($child, $childrenByParent, $memo, $path),
+                        self::getSizeWeight($child->get('project_size')) / $childrenWeight
+                    )
+                );
+            }
+        }
+        return $summary;
+    }
+
     public static function normalizeLevel($value)
     {
         if ($value === null || $value === '') {
@@ -231,6 +375,7 @@ class Project extends DbObject
 
     public function save()
     {
+        $this->set('project_kind', self::normalizeKind($this->get('project_kind')));
         $this->set('status', self::normalizeStatus($this->get('status')));
         $this->set('capture_mode', self::normalizeCaptureMode($this->get('capture_mode')));
         $this->set('project_size', self::normalizeSize($this->get('project_size')));
@@ -244,6 +389,33 @@ class Project extends DbObject
         $this->set('updated_at', $now);
 
         return parent::save();
+    }
+
+    public static function createFromChecklistTemplate(Project $template, $parentProjectId, \DateTimeInterface $plannedStart, $titleOverride = null, $plannedEnd = null)
+    {
+        $project = new self();
+        $project->set('IDorganization', (int)$template->get('IDorganization'));
+        $project->set('IDholon', (int)$template->get('IDholon') ?: null);
+        $project->set('IDuser', null);
+        $project->set('IDproject_parent', (int)$parentProjectId > 0 ? (int)$parentProjectId : null);
+        $project->set('IDdocument_journal', null);
+        $project->set('project_kind', self::KIND_STANDARD);
+        $project->set('IDproject_template', (int)$template->getId());
+        $title = trim((string)$titleOverride);
+        $project->set('title', $title !== '' ? $title : (string)$template->get('title'));
+        $project->set('description', (string)$template->get('description'));
+        $project->set('status', self::STATUS_READY);
+        $project->set('planned_start_date', $plannedStart->format('Y-m-d'));
+        $project->set('planned_end_date', $plannedEnd instanceof \DateTimeInterface ? $plannedEnd->format('Y-m-d') : null);
+        $project->set('priority', $template->get('priority'));
+        $project->set('importance', $template->get('importance'));
+        $project->set('capture_mode', $template->get('capture_mode'));
+        $project->set('project_size', $template->get('project_size'));
+        $project->set('active', 1);
+        $result = $project->save();
+        return is_array($result) && !empty($result['status']) && (int)$project->getId() > 0
+            ? $project
+            : null;
     }
 
     public function getOrganization()
@@ -313,8 +485,23 @@ class Project extends DbObject
     public function getChildren()
     {
         $projects = new ArrayProject();
-        $projects->loadForParent((int)$this->getId());
+        $projects->loadForParent(
+            (int)$this->getId(),
+            true,
+            self::normalizeKind($this->get('project_kind'))
+        );
         return $projects;
+    }
+
+    public function getTemplateSource()
+    {
+        $templateId = (int)$this->get('IDproject_template');
+        if ($templateId <= 0) {
+            return null;
+        }
+
+        $project = new self();
+        return $project->load($templateId) ? $project : null;
     }
 
     public function canUseAsParent(Project $parent)
