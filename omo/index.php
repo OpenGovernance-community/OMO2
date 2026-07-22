@@ -1,13 +1,13 @@
 <?php
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
-require_once dirname(__DIR__) . '/common/faq_fake_cron.php';
+require_once dirname(__DIR__) . '/common/omo_fake_cron.php';
 require_once dirname(__DIR__) . '/common/topbar.php';
 require_once dirname(__DIR__) . '/common/patreon.php';
 require_once dirname(__DIR__) . '/common/translation_bundles.php';
 require_once __DIR__ . '/topbar.php';
 
-faq_maybe_run_fake_cron();
+omo_run_fake_cron_maintenance(50);
 
 $sourceLang = [
     'app.access_denied.message' => [
@@ -69,6 +69,30 @@ $sourceLang = [
     'app.directory.create.title' => [
         'text' => 'Créer une nouvelle organisation',
         'context' => 'Title shown on the create organization card.',
+    ],
+    'app.directory.import.action' => [
+        'text' => 'Choisir un export',
+        'context' => 'Action label displayed on the organization import card.',
+    ],
+    'app.directory.import.aria_label' => [
+        'text' => 'Importer une organisation existante',
+        'context' => 'Aria label for the organization import card button.',
+    ],
+    'app.directory.import.badge' => [
+        'text' => 'Migration',
+        'context' => 'Badge shown on the organization import card.',
+    ],
+    'app.directory.import.description' => [
+        'text' => 'Structure, membres, documents, projets et calendrier',
+        'context' => 'Subtitle shown on the organization import card.',
+    ],
+    'app.directory.import.modal_title' => [
+        'text' => 'Importer une organisation',
+        'context' => 'Title shown in the organization import modal.',
+    ],
+    'app.directory.import.title' => [
+        'text' => 'Importer une organisation',
+        'context' => 'Title shown on the organization import card.',
     ],
     'app.directory.description.empty.patreon_connect' => [
         'text' => "Votre compte est bien connecté, mais il n'est rattaché à aucune organisation pour le moment. Connectez Patreon ci-dessous pour pouvoir en créer une nouvelle.",
@@ -678,8 +702,8 @@ if ($isOrganizationHub && !$isDemoGuest) {
     $directoryDescriptionKey = $organizationCount > 0
         ? 'app.directory.description.with_results'
         : ($showPatreonConnectCard ? 'app.directory.description.empty.patreon_connect' : 'app.directory.description.empty');
-    $directoryActionCard = $showPatreonConnectCard
-        ? [
+    $directoryActionCards = $showPatreonConnectCard
+        ? [[
             'id' => 'omoPatreonConnectCard',
             'cardAction' => 'patreon-connect',
             'ariaLabel' => t('app.directory.patreon_connect.aria_label'),
@@ -690,8 +714,8 @@ if ($isOrganizationHub && !$isDemoGuest) {
             'imageUrl' => '/omo/assets/images/directory/patreon-connect.png',
             'accentColor' => '#ff424d',
             'initial' => 'P',
-        ]
-        : [
+        ]]
+        : [[
             'id' => 'omoCreateOrganizationCard',
             'cardAction' => 'create',
             'ariaLabel' => t('app.directory.create.aria_label'),
@@ -702,7 +726,18 @@ if ($isOrganizationHub && !$isDemoGuest) {
             'imageUrl' => '/omo/assets/images/directory/new-organization.png',
             'accentColor' => '#2563eb',
             'initial' => '+',
-        ];
+        ], [
+            'id' => 'omoImportOrganizationCard',
+            'cardAction' => 'import',
+            'ariaLabel' => t('app.directory.import.aria_label'),
+            'title' => t('app.directory.import.title'),
+            'description' => t('app.directory.import.description'),
+            'actionLabel' => t('app.directory.import.action'),
+            'badge' => t('app.directory.import.badge'),
+            'imageUrl' => '/omo/assets/images/directory/import-organization.png',
+            'accentColor' => '#0f766e',
+            'initial' => 'I',
+        ]];
     $directoryJsTranslations = [
         'actionError' => t('app.directory.js.action_error'),
         'defaultOrganizationName' => t('app.directory.js.default_organization_name'),
@@ -719,7 +754,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <title><?= htmlspecialchars(t('app.directory.page_title')) ?></title>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260720-pv-project-picker-sticky-actions">
+<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260722-pv-project-embed-readonly">
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
 <body class="auth-state-page auth-state-page--scrollable auth-state-page--themed auth-state-page--with-topbar">
@@ -742,7 +777,9 @@ if ($isOrganizationHub && !$isDemoGuest) {
             <?php foreach ($organizationDirectoryCards as $directoryCardData) {
                 omoRenderDirectoryCard($directoryCardData);
             } ?>
-            <?php omoRenderDirectoryActionCard($directoryActionCard); ?>
+            <?php foreach ($directoryActionCards as $directoryActionCard) { ?>
+                <?php omoRenderDirectoryActionCard($directoryActionCard); ?>
+            <?php } ?>
         </div>
         </div>
         <?php if (count($templateDirectoryCards) > 0) { ?>
@@ -918,11 +955,14 @@ if ($isOrganizationHub && !$isDemoGuest) {
     <script>
         (function () {
             var createButton = document.getElementById('omoCreateOrganizationCard');
+            var importButton = document.getElementById('omoImportOrganizationCard');
             var patreonConnectButton = document.getElementById('omoPatreonConnectCard');
             var organizationActionUrl = '/omo/api/organizations/card_action.php';
             var organizationCreateUrl = <?= json_encode($organizationCreateUrl, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
             var organizationCreateTopbarRoute = <?= json_encode($organizationCreateTopbarRoute, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
             var organizationCreateModalTitle = <?= json_encode(t('app.directory.create.modal_title'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+            var organizationImportUrl = '/omo/api/organizations/create_import_popup.php';
+            var organizationImportModalTitle = <?= json_encode(t('app.directory.import.modal_title'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
             var shouldAutoOpenOrganizationCreateModal = <?= $shouldAutoOpenOrganizationCreateModal ? 'true' : 'false' ?>;
             var patreonConnectUrl = '/common/patreon_connect.php';
 
@@ -954,6 +994,15 @@ if ($isOrganizationHub && !$isDemoGuest) {
                 }
 
                 window.location.href = organizationCreateUrl;
+            }
+
+            function openImportModal() {
+                if (typeof window.commonTopbarOpenModal === 'function') {
+                    window.commonTopbarOpenModal(organizationImportModalTitle, organizationImportUrl, 'fetch');
+                    return;
+                }
+
+                window.location.href = organizationImportUrl;
             }
 
             function consumeOrganizationCreateTopbarRoute() {
@@ -1004,6 +1053,10 @@ if ($isOrganizationHub && !$isDemoGuest) {
 
             if (createButton) {
                 createButton.addEventListener('click', openCreateModal);
+            }
+
+            if (importButton) {
+                importButton.addEventListener('click', openImportModal);
             }
 
             if (patreonConnectButton) {
@@ -1279,7 +1332,7 @@ if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
     <title><?= htmlspecialchars(t('app.main.page_title')) ?></title>
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260720-pv-project-picker-sticky-actions">
+<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260722-pv-project-embed-readonly">
     <style>
         html[data-omo-organization-accent] {
             --omo-organization-accent: <?= $omoOrganizationAccentColorCss ?>;
@@ -1447,8 +1500,8 @@ window.omoConfig = <?=
 <?php if ($isSiteAdmin) { ?>
 <script src="/omo/assets/js/site-update.js"></script>
 <?php } ?>
-<script src="assets/js/simple-html-field.js?v=20260721-composite-property-fields-v5"></script>
-<script src="assets/js/app.js?v=20260720-projects-drawer-refresh"></script>
+<script src="assets/js/simple-html-field.js?v=20260722-pv-project-embed-icon-spacing"></script>
+<script src="assets/js/app.js?v=20260722-checklist-detail-route"></script>
 <script src="assets/js/structure-mini-map.js"></script>
 
 <script>

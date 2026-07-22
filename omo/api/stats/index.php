@@ -94,7 +94,8 @@ $groups->loadForContext(
     $scopeHolonIds
 );
 $groupItems = omoStatsCollectionItems($groups, StatIndicatorGroup::class);
-$canCreate = omoStatsCanManageContext($context);
+$canManage = omoStatsCanManageContext($context);
+$canCreateIndicator = omoStatsCanCreateContext($context);
 $emptyKey = $statsScope === 'children'
     ? 'stats.empty.children'
     : ($statsScope === 'descendants' ? 'stats.empty.descendants' : 'stats.empty.contextual');
@@ -276,16 +277,20 @@ $displayItemCount = count($statsEntries);
                     </div>
                 </div>
             </div>
-            <?php if ($canCreate): ?>
+            <?php if ($canCreateIndicator || $canManage): ?>
                 <div class="omo-stats__header-actions">
-                    <button type="button" class="generic-action-button generic-action-button--main omo-mobile-corner-action" data-omo-stats-open-create><?= omoApiEscape(omoStatsT('stats.action.new')) ?></button>
-                    <div class="omo-stats__more-menu generic-menu" data-omo-stats-more-menu>
-                        <button type="button" class="generic-menu-toggle omo-stats__more-toggle" data-omo-stats-more-toggle aria-label="<?= omoApiEscape(omoStatsT('stats.action.more')) ?>" aria-expanded="false">...</button>
-                        <div class="omo-stats__more-menu-panel generic-menu-panel generic-menu-panel--wide" data-omo-stats-more-panel hidden>
-                            <button type="button" class="generic-menu-item" data-omo-stats-open-import><?= omoApiEscape(omoStatsT('stats.action.import')) ?></button>
-                            <button type="button" class="generic-menu-item" data-omo-stats-open-group><?= omoApiEscape(omoStatsT('stats.action.group')) ?></button>
+                    <?php if ($canCreateIndicator): ?>
+                        <button type="button" class="generic-action-button generic-action-button--main omo-mobile-corner-action" data-omo-stats-open-create><?= omoApiEscape(omoStatsT('stats.action.new')) ?></button>
+                    <?php endif; ?>
+                    <?php if ($canManage): ?>
+                        <div class="omo-stats__more-menu generic-menu" data-omo-stats-more-menu>
+                            <button type="button" class="generic-menu-toggle omo-stats__more-toggle" data-omo-stats-more-toggle aria-label="<?= omoApiEscape(omoStatsT('stats.action.more')) ?>" aria-expanded="false">...</button>
+                            <div class="omo-stats__more-menu-panel generic-menu-panel generic-menu-panel--wide" data-omo-stats-more-panel hidden>
+                                <button type="button" class="generic-menu-item" data-omo-stats-open-import><?= omoApiEscape(omoStatsT('stats.action.import')) ?></button>
+                                <button type="button" class="generic-menu-item" data-omo-stats-open-group><?= omoApiEscape(omoStatsT('stats.action.group')) ?></button>
+                            </div>
                         </div>
-                    </div>
+                    <?php endif; ?>
                 </div>
             <?php endif; ?>
         </div>

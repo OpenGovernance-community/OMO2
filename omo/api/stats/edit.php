@@ -27,7 +27,7 @@ if ($indicatorId > 0 && !$indicator->canEdit()) {
     echo '<div class="omo-empty-state">' . omoApiEscape(omoStatsT('stats.error.forbidden')) . '</div>';
     exit;
 }
-if ($indicatorId <= 0 && !omoStatsCanManageContext($context)) {
+if ($indicatorId <= 0 && !omoStatsCanCreateContext($context)) {
     http_response_code(403);
     echo '<div class="omo-empty-state">' . omoApiEscape(omoStatsT('stats.error.forbidden')) . '</div>';
     exit;

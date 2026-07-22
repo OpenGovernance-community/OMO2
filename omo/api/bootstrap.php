@@ -40,7 +40,13 @@ if (!function_exists('omoApiCanBypassOrganizationAccessCheck')) {
             return false;
         }
 
-        return $requestPath === '/omo/api/organization/access_request_popup.php';
+        $allowedPaths = array(
+            '/omo/api/organization/access_request_popup.php',
+            '/omo/api/organizations/create_import_popup.php',
+            '/omo/api/organizations/create_import.php',
+        );
+
+        return in_array($requestPath, $allowedPaths, true);
     }
 }
 

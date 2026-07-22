@@ -415,7 +415,9 @@ VALUES
     ('CAN_CREATE_EVENT', 'Creer des dates', 'Autorise la creation de dates dans le contexte cible.', NOW(), NOW()),
     ('CAN_DELETE_EVENT', 'Supprimer des dates', 'Autorise la suppression de dates dans le contexte cible.', NOW(), NOW()),
     ('CAN_CLAIM_PV', 'Devenir secretaire de PV', 'Autorise a prendre le role de secretaire pendant une reunion associee a un PV.', NOW(), NOW()),
-    ('CAN_CREATE_FAQ', 'Creer des FAQ', 'Autorise la creation de FAQ dans le contexte cible.', NOW(), NOW())
+    ('CAN_CREATE_FAQ', 'Creer des FAQ', 'Autorise la creation de FAQ dans le contexte cible.', NOW(), NOW()),
+    ('CAN_CREATE_PROJECT', 'Creer des projets', 'Autorise la creation de projets dans le contexte cible.', NOW(), NOW()),
+    ('CAN_CREATE_INDICATOR', 'Creer des indicateurs', 'Autorise la creation d indicateurs dans le contexte cible.', NOW(), NOW())
 ON DUPLICATE KEY UPDATE
     `title` = VALUES(`title`),
     `description` = VALUES(`description`),

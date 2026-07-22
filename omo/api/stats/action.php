@@ -166,7 +166,7 @@ if ($action === 'save_indicator') {
     if ($indicatorId > 0 && !$indicator->canEdit()) {
         omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
     }
-    if ($indicatorId <= 0 && !omoStatsCanManageContext($context)) {
+    if ($indicatorId <= 0 && !omoStatsCanCreateContext($context)) {
         omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
     }
 

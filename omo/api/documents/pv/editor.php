@@ -271,6 +271,7 @@ foreach ($embeddableProjects as $embeddableProject) {
         'responsibleLabel' => $projectResponsibleId > 0
             ? trim((string)\dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($projectResponsibleId, $organizationId))
             : '',
+        'status' => $projectStatus,
         'statusLabel' => trim((string)($projectStatusCatalog[$projectStatus]['label'] ?? $projectStatus)),
         'priorityLabel' => \dbObject\Project::normalizeLevel($embeddableProject->get('priority')) !== null
             ? 'P' . (string)\dbObject\Project::normalizeLevel($embeddableProject->get('priority'))
@@ -2108,6 +2109,150 @@ foreach ($points as $point) {
             border-left: 0;
         }
     }
+
+    .omo-pv-editor .note-editable .omo-pv-editor__project-review {
+        display: block;
+        margin: 7px 0 10px;
+        padding: 7px 9px;
+        border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 84%, #2563eb 16%);
+        border-radius: var(--radius-sm);
+        background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 72%, var(--color-surface, #fff));
+    }
+
+    .omo-pv-editor .note-editable .omo-pv-editor__project-review-toggle {
+        display: grid;
+        grid-template-columns: auto minmax(70px, 1fr);
+        gap: 8px;
+        align-items: center;
+        width: 100%;
+        padding: 2px 0;
+        border: 0;
+        background: transparent;
+        color: var(--color-text-light, #64748b);
+        cursor: pointer;
+        font: inherit;
+        text-align: left;
+    }
+
+    .omo-pv-editor .note-editable .omo-pv-editor__project-review-label {
+        font-size: 0.72rem;
+        font-weight: 750;
+    }
+
+    .omo-pv-editor .note-editable .omo-project-embed__status {
+        --omo-project-status-color: #99a3b1;
+        --omo-project-status-text: #4d5968;
+        display: inline-flex !important;
+        align-items: center;
+        min-height: 18px;
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--omo-project-status-color) 19%, var(--color-surface, #fff)) !important;
+        color: var(--omo-project-status-text) !important;
+        font-size: 0.68rem !important;
+        font-style: normal !important;
+        font-weight: 750 !important;
+        line-height: 1.2;
+    }
+
+    .omo-pv-editor .note-editable .omo-project-embed__status--ready { --omo-project-status-color: #5e88d5; --omo-project-status-text: #294c8b; }
+    .omo-pv-editor .note-editable .omo-project-embed__status--in_progress { --omo-project-status-color: #d0a857; --omo-project-status-text: #735518; }
+    .omo-pv-editor .note-editable .omo-project-embed__status--blocked { --omo-project-status-color: #d67272; --omo-project-status-text: #842f35; }
+    .omo-pv-editor .note-editable .omo-project-embed__status--review { --omo-project-status-color: #9884c7; --omo-project-status-text: #5f4b91; }
+    .omo-pv-editor .note-editable .omo-project-embed__status--done { --omo-project-status-color: #6fa98d; --omo-project-status-text: #2f6d4a; }
+    .omo-pv-editor .note-editable .omo-project-embed__status--someday { --omo-project-status-color: #99a3b1; --omo-project-status-text: #4d5968; }
+
+    .omo-pv-editor .note-editable .omo-project-status-bar {
+        display: flex;
+        width: 100%;
+        height: 6px;
+        min-height: 6px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: var(--color-border, #d1d5db);
+    }
+
+    .omo-pv-editor .note-editable .omo-project-status-bar__segment {
+        min-width: 0;
+        border-right: 2px solid color-mix(in srgb, #fff 100%, transparent);
+    }
+
+    .omo-pv-editor .note-editable .omo-project-status-bar__segment:last-child { border-right: 0; }
+    .omo-pv-editor .note-editable .omo-project-status-bar__segment--ready { background: #5e88d5; }
+    .omo-pv-editor .note-editable .omo-project-status-bar__segment--in_progress { background: #d0a857; }
+    .omo-pv-editor .note-editable .omo-project-status-bar__segment--blocked { background: #d67272; }
+    .omo-pv-editor .note-editable .omo-project-status-bar__segment--review { background: #9884c7; }
+    .omo-pv-editor .note-editable .omo-project-status-bar__segment--done { background: #6fa98d; }
+    .omo-pv-editor .note-editable .omo-project-status-bar__segment--someday { background: #99a3b1; }
+
+    .omo-pv-editor .note-editable .omo-pv-editor__project-review-children {
+        display: block;
+        padding-top: 7px;
+    }
+
+    .omo-pv-editor .note-editable .omo-pv-editor__project-review-children[hidden] { display: none; }
+
+    .omo-pv-editor .note-editable .omo-project-embed__children-list {
+        display: grid;
+        gap: 6px;
+    }
+
+    .omo-pv-editor .note-editable .omo-project-embed__child {
+        display: grid;
+        gap: 5px;
+        padding: 6px 7px;
+        border-radius: var(--radius-sm);
+        background: color-mix(in srgb, var(--color-surface, #fff) 70%, var(--color-surface-alt, #f8fafc));
+    }
+
+    .omo-pv-editor .note-editable .omo-project-embed__child-head {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(65px, 38%);
+        gap: 7px;
+        align-items: center;
+    }
+
+    .omo-pv-editor .note-editable .omo-project-embed__child-copy {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px 6px;
+        align-items: baseline;
+        min-width: 0;
+    }
+
+    .omo-pv-editor .note-editable .omo-project-embed__child-title {
+        color: var(--color-text, #0f172a);
+        font-size: 0.8rem;
+        font-weight: 650;
+        text-decoration: none;
+    }
+
+    .omo-pv-editor .note-editable .omo-project-embed__child-meta {
+        color: var(--color-text-light, #64748b);
+        font-size: 0.7rem;
+        white-space: nowrap;
+    }
+
+    .omo-pv-editor .note-editable .omo-project-embed__child-toggle {
+        display: block;
+        width: 100%;
+        padding: 3px 0;
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+    }
+
+    .omo-pv-editor .note-editable .omo-project-embed__child > .omo-project-embed__children {
+        display: block;
+        margin-left: 8px;
+        padding-top: 3px;
+    }
+
+    .omo-pv-editor .note-editable .omo-pv-editor__project-review-loading {
+        display: block;
+        color: var(--color-text-light, #64748b);
+        font-size: 0.78rem;
+    }
     </style>
 
     <aside class="omo-pv-editor__sidebar">
@@ -2509,6 +2654,10 @@ foreach ($points as $point) {
         'membersEmpty' => omoDocumentsPvEditorT('documents.pv_editor.project.members_empty'),
         'createInsert' => omoDocumentsPvEditorT('documents.pv_editor.project.create_insert'),
         'createError' => omoDocumentsPvEditorT('documents.pv_editor.project.create_error'),
+        'childrenLabel' => omoDocumentsPvEditorT('documents.pv_editor.project.children'),
+        'childrenLoading' => omoDocumentsPvEditorT('documents.pv_editor.project.children_loading'),
+        'childrenEmpty' => omoDocumentsPvEditorT('documents.pv_editor.project.children_empty'),
+        'childrenError' => omoDocumentsPvEditorT('documents.pv_editor.project.children_error'),
         'statusOptions' => array_map(static fn ($status, $definition) => ['value' => $status, 'label' => (string)($definition['label'] ?? $status)], array_keys(\dbObject\Project::getStatusCatalog()), \dbObject\Project::getStatusCatalog()),
         'sizeOptions' => \dbObject\Project::sizes(),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -2624,6 +2773,11 @@ foreach ($points as $point) {
             return;
         }
 
+        if (/^projects-d\d+$/i.test(normalizedHash) && typeof window.omoOpenProjectEmbedRoute === 'function') {
+            window.omoOpenProjectEmbedRoute(normalizedHash, {sourceElement: root});
+            return;
+        }
+
         if (typeof window.omoPeekPersistentExternalPanelDrawer === 'function') {
             window.omoPeekPersistentExternalPanelDrawer({
                 persistKeyPrefix: 'omo-pv-preparation-',
@@ -2633,15 +2787,6 @@ foreach ($points as $point) {
 
         if (typeof window.omoSetDrawerHashState === 'function') {
             window.omoSetDrawerHashState({routeToken: normalizedHash, open: true});
-            if (/^projects-d\d+$/i.test(normalizedHash)) {
-                const openProjectDetail = function () {
-                    if (typeof window.omoOpenProjectRoute === 'function') {
-                        window.omoOpenProjectRoute(normalizedHash);
-                    }
-                };
-                window.setTimeout(openProjectDetail, 180);
-                window.setTimeout(openProjectDetail, 520);
-            }
             return;
         }
 
@@ -2930,6 +3075,7 @@ foreach ($points as $point) {
         const title = String(projectItem.title || '').trim() || ('Projet #' + String(projectId));
         const contextLabel = String(projectItem.contextLabel || '').trim();
         const responsibleLabel = String(projectItem.responsibleLabel || '').trim();
+        const status = String(projectItem.status || '').trim();
         const statusLabel = String(projectItem.statusLabel || '').trim();
         const priorityLabel = String(projectItem.priorityLabel || '').trim();
         const sizeLabel = String(projectItem.sizeLabel || '').trim();
@@ -2937,10 +3083,15 @@ foreach ($points as $point) {
         const plannedEndLabel = String(projectItem.plannedEndLabel || '').trim();
         const projectHash = '#projects-d' + String(projectId);
         const externalUrl = String(window.location.pathname || '/omo/') + projectHash;
-        const metadata = [contextLabel, responsibleLabel, statusLabel];
+        const metadata = [contextLabel, responsibleLabel];
         if (plannedStartLabel !== '') metadata.push(String(projectEmbedUi.plannedDate || '').replace('{date}', plannedStartLabel));
         if (plannedEndLabel !== '') metadata.push(String(projectEmbedUi.endDate || '').replace('{date}', plannedEndLabel));
-        return '<span class="omo-project-embed" contenteditable="false" data-omo-embed-type="project" data-omo-project-id="' + String(projectId) + '" data-omo-project-title="' + escapeDocumentEmbedHtml(title) + '"><strong><a href="' + projectHash + '">' + escapeDocumentEmbedHtml(title) + '</a><a class="omo-project-embed__external" href="' + escapeDocumentEmbedHtml(externalUrl) + '" target="_blank" rel="noopener noreferrer" title="' + escapeDocumentEmbedHtml(projectEmbedUi.openExternal || '') + '" aria-label="' + escapeDocumentEmbedHtml(projectEmbedUi.openExternal || '') + '">&#8599;</a>' + (priorityLabel !== '' ? '<em>' + escapeDocumentEmbedHtml(priorityLabel) + '</em>' : '') + (sizeLabel !== '' ? '<em>' + escapeDocumentEmbedHtml(sizeLabel) + '</em>' : '') + '</strong>' + (metadata.length > 0 ? '<em>' + escapeDocumentEmbedHtml(metadata.join(' · ')) + '</em>' : '') + '</span>';
+        const statusClass = /^(?:someday|ready|in_progress|blocked|review|done)$/.test(status) ? status : '';
+        const statusCapsule = statusLabel !== ''
+            ? '<em class="omo-project-embed__status' + (statusClass !== '' ? ' omo-project-embed__status--' + statusClass : '') + '">' + escapeDocumentEmbedHtml(statusLabel) + '</em>'
+            : '';
+        const priorityCapsule = statusCapsule + (priorityLabel !== '' ? '<em>' + escapeDocumentEmbedHtml(priorityLabel) + '</em>' : '');
+        return '<span class="omo-project-embed" contenteditable="false" data-omo-embed-type="project" data-omo-project-id="' + String(projectId) + '" data-omo-project-title="' + escapeDocumentEmbedHtml(title) + '"><strong><a href="' + projectHash + '">' + escapeDocumentEmbedHtml(title) + '</a><a class="omo-project-embed__external" href="' + escapeDocumentEmbedHtml(externalUrl) + '" target="_blank" rel="noopener noreferrer" title="' + escapeDocumentEmbedHtml(projectEmbedUi.openExternal || '') + '" aria-label="' + escapeDocumentEmbedHtml(projectEmbedUi.openExternal || '') + '">&#8599;</a>' + priorityCapsule + (sizeLabel !== '' ? '<em>' + escapeDocumentEmbedHtml(sizeLabel) + '</em>' : '') + '</strong>' + (metadata.length > 0 ? '<em>' + escapeDocumentEmbedHtml(metadata.join(' · ')) + '</em>' : '') + '</span>';
     }
 
     function openPvProjectEmbedPicker(field, targetNode) {
@@ -3022,7 +3173,7 @@ foreach ($points as $point) {
             createForm.__omoPvProjectLoadMembers = loadMembers;
         }
         const cleanup = function () { if (marker) field.removeTemporaryMarker(marker); marker = null; };
-        const insertProject = function (project) { const embed = buildPvProjectEmbedHtml(project); if (!embed) return false; if (targetNode && typeof field.replaceNodeWithHtml === 'function') { resolved = true; field.replaceNodeWithHtml(targetNode, embed); } else if (marker && typeof field.replaceMarkerWithHtml === 'function') { resolved = true; field.replaceMarkerWithHtml(marker, embed); marker = null; } else return false; window.commonTopbarCloseModal(); return true; };
+        const insertProject = function (project) { const embed = buildPvProjectEmbedHtml(project); if (!embed) return false; if (targetNode && typeof field.replaceNodeWithHtml === 'function') { resolved = true; field.replaceNodeWithHtml(targetNode, embed); } else if (marker && typeof field.replaceMarkerWithHtml === 'function') { resolved = true; field.replaceMarkerWithHtml(marker, embed); marker = null; } else return false; window.setTimeout(function () { refreshPvProjectEmbedReviews(field); }, 0); window.commonTopbarCloseModal(); return true; };
         const update = function () { if (select && select.value) selected = embeddableProjects.find(function (item) { return String(item.id) === String(select.value); }) || null; if (preview) preview.innerHTML = selected ? buildPvProjectEmbedHtml(selected) : escapeDocumentEmbedHtml(projectEmbedUi.none || ''); if (insert) insert.disabled = !selected; };
         const render = function () { const query = String(search && search.value || '').trim().toLowerCase(), selectedHolonId = scopePicker && typeof scopePicker.getSelectedHolonId === 'function' ? Number(scopePicker.getSelectedHolonId() || 0) : 0, matches = embeddableProjects.filter(function (item) { const itemHolonId = Number(item.contextHolonId || 0); const matchesScope = !scopePicker || scopePicker.matches(itemHolonId) || (selectedHolonId > 0 && itemHolonId === selectedHolonId); return matchesScope && (query === '' || [item.title, item.contextLabel, item.summary].join(' ').toLowerCase().indexOf(query) >= 0); }); if (select) { select.innerHTML = ''; matches.forEach(function (item) { const option = document.createElement('option'); option.value = String(item.id); option.textContent = String(item.title || '').trim() || ('Projet #' + String(item.id)); select.appendChild(option); }); } selected = matches.find(function (item) { return Number(item.id) === currentProjectId; }) || matches[0] || null; if (select && selected) select.value = String(selected.id); update(); };
         if (projectScopeHost instanceof Element && typeof window.omoMountHolonScopePicker === 'function') {
@@ -3032,7 +3183,7 @@ foreach ($points as $point) {
             if (createForm && typeof createForm.__omoPvProjectLoadMembers === 'function') createForm.__omoPvProjectLoadMembers(projectEmbedCreateContext.holonId);
         }
         window.addEventListener('common-topbar-modal-close', function () { if (!resolved) cleanup(); }, {once: true}); if (search) search.addEventListener('input', render); if (select) select.addEventListener('change', update); cancelButtons.forEach(function (button) { button.addEventListener('click', function () { cleanup(); window.commonTopbarCloseModal(); }); }); if (remove) remove.addEventListener('click', function () { if (targetNode && typeof field.removeNode === 'function') resolved = field.removeNode(targetNode); window.commonTopbarCloseModal(); }); if (insert) insert.addEventListener('click', function () { if (selected) insertProject(selected); });
-        if (createForm instanceof HTMLFormElement) createForm.addEventListener('submit', function (event) { event.preventDefault(); const titleInput = createForm.elements.namedItem('title'), title = titleInput ? String(titleInput.value || '').trim() : ''; if (title === '') { if (titleInput && typeof titleInput.focus === 'function') titleInput.focus(); return; } if (createSubmit) createSubmit.disabled = true; const formData = new FormData(createForm); formData.set('project_action', 'save_project'); formData.set('oid', String(projectEmbedCreateContext.organizationId || 0)); formData.set('cid', String(projectEmbedCreateContext.holonId || 0)); formData.set('IDuser', String(projectEmbedCreateContext.responsibleId || 0)); fetch('/omo/api/projects/action.php', {method: 'POST', body: formData, credentials: 'same-origin'}).then(function (response) { return response.json(); }).then(function (payload) { const projectId = Number(payload && payload.id || 0); if (!payload || !payload.success || projectId <= 0) throw new Error(payload && payload.message ? payload.message : projectEmbedUi.createError || ''); const statusSelect = createForm.elements.namedItem('status'), sizeSelect = createForm.elements.namedItem('project_size'), prioritySelect = createForm.elements.namedItem('priority'), startInput = createForm.elements.namedItem('planned_start_date'), endInput = createForm.elements.namedItem('planned_end_date'), statusValue = statusSelect ? String(statusSelect.value || '') : '', statusOption = statusOptions.find(function (option) { return String(option.value) === statusValue; }) || {}, toDateLabel = function (input) { const value = input ? String(input.value || '') : ''; return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value.slice(8, 10) + '.' + value.slice(5, 7) + '.' + value.slice(0, 4) : ''; }, project = {id: projectId, title: title, summary: String(formData.get('description') || ''), contextHolonId: Number(projectEmbedCreateContext.holonId || 0), contextLabel: String(projectEmbedCreateContext.holonLabel || ''), responsibleLabel: String(projectEmbedCreateContext.responsibleLabel || ''), statusLabel: String(statusOption.label || statusValue), priorityLabel: prioritySelect && prioritySelect.value ? 'P' + String(prioritySelect.value) : '', sizeLabel: sizeSelect ? String(sizeSelect.value || 'M') : 'M', plannedStartLabel: toDateLabel(startInput), plannedEndLabel: toDateLabel(endInput)}; embeddableProjects.push(project); if (typeof window.omoRefreshProjectsDrawerAfterMutation === 'function') window.omoRefreshProjectsDrawerAfterMutation(); insertProject(project); }).catch(function (error) { window.alert(String(error && error.message || projectEmbedUi.createError || '')); }).finally(function () { if (createSubmit) createSubmit.disabled = false; }); });
+        if (createForm instanceof HTMLFormElement) createForm.addEventListener('submit', function (event) { event.preventDefault(); const titleInput = createForm.elements.namedItem('title'), title = titleInput ? String(titleInput.value || '').trim() : ''; if (title === '') { if (titleInput && typeof titleInput.focus === 'function') titleInput.focus(); return; } if (createSubmit) createSubmit.disabled = true; const formData = new FormData(createForm); formData.set('project_action', 'save_project'); formData.set('oid', String(projectEmbedCreateContext.organizationId || 0)); formData.set('cid', String(projectEmbedCreateContext.holonId || 0)); formData.set('IDuser', String(projectEmbedCreateContext.responsibleId || 0)); fetch('/omo/api/projects/action.php', {method: 'POST', body: formData, credentials: 'same-origin'}).then(function (response) { return response.json(); }).then(function (payload) { const projectId = Number(payload && payload.id || 0); if (!payload || !payload.success || projectId <= 0) throw new Error(payload && payload.message ? payload.message : projectEmbedUi.createError || ''); const statusSelect = createForm.elements.namedItem('status'), sizeSelect = createForm.elements.namedItem('project_size'), prioritySelect = createForm.elements.namedItem('priority'), startInput = createForm.elements.namedItem('planned_start_date'), endInput = createForm.elements.namedItem('planned_end_date'), statusValue = statusSelect ? String(statusSelect.value || '') : '', statusOption = statusOptions.find(function (option) { return String(option.value) === statusValue; }) || {}, toDateLabel = function (input) { const value = input ? String(input.value || '') : ''; return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value.slice(8, 10) + '.' + value.slice(5, 7) + '.' + value.slice(0, 4) : ''; }, project = {id: projectId, title: title, summary: String(formData.get('description') || ''), contextHolonId: Number(projectEmbedCreateContext.holonId || 0), contextLabel: String(projectEmbedCreateContext.holonLabel || ''), responsibleLabel: String(projectEmbedCreateContext.responsibleLabel || ''), status: statusValue, statusLabel: String(statusOption.label || statusValue), priorityLabel: prioritySelect && prioritySelect.value ? 'P' + String(prioritySelect.value) : '', sizeLabel: sizeSelect ? String(sizeSelect.value || 'M') : 'M', plannedStartLabel: toDateLabel(startInput), plannedEndLabel: toDateLabel(endInput)}; embeddableProjects.push(project); if (typeof window.omoRefreshProjectsDrawerAfterMutation === 'function') window.omoRefreshProjectsDrawerAfterMutation(); insertProject(project); }).catch(function (error) { window.alert(String(error && error.message || projectEmbedUi.createError || '')); }).finally(function () { if (createSubmit) createSubmit.disabled = false; }); });
         render();
     }
 
@@ -3252,6 +3403,98 @@ foreach ($points as $point) {
         });
     }
 
+    function refreshPvProjectEmbedReviews(field) {
+        if (!field || typeof field.getEditableElement !== 'function') {
+            return;
+        }
+
+        const editable = field.getEditableElement();
+        if (!(editable instanceof Element)) {
+            return;
+        }
+
+        editable.querySelectorAll('[data-omo-project-embed-runtime]').forEach(function (runtime) {
+            runtime.remove();
+        });
+
+        editable.querySelectorAll('.omo-project-embed[data-omo-embed-type="project"]').forEach(function (embedNode) {
+            const projectId = Number.parseInt(String(embedNode.getAttribute('data-omo-project-id') || ''), 10);
+            if (!Number.isInteger(projectId) || projectId <= 0) {
+                return;
+            }
+
+            fetch('/omo/api/projects/children.php?id=' + encodeURIComponent(String(projectId)) + '&embed=pv&format=json', {
+                credentials: 'same-origin',
+                cache: 'no-store'
+            }).then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Project review unavailable');
+                }
+                return response.json();
+            }).then(function (payload) {
+                if (!payload || !payload.success || !embedNode.isConnected) {
+                    return;
+                }
+
+                const status = String(payload.status || '').trim();
+                const statusLabel = String(payload.statusLabel || '').trim();
+                const header = embedNode.querySelector(':scope > strong');
+                if (header instanceof Element && statusLabel !== '') {
+                    header.querySelectorAll(':scope > .omo-project-embed__status').forEach(function (statusNode) {
+                        statusNode.remove();
+                    });
+
+                    const metadata = Array.from(embedNode.children).find(function (child) {
+                        return child instanceof HTMLElement && child.tagName === 'EM';
+                    });
+                    if (metadata instanceof HTMLElement) {
+                        const parts = String(metadata.textContent || '').split(' · ');
+                        const lastPart = String(parts[parts.length - 1] || '').trim();
+                        const knownStatusLabels = projectEmbedUi.statusOptions.map(function (option) {
+                            return String(option && option.label || '').trim();
+                        });
+                        if (knownStatusLabels.indexOf(lastPart) >= 0) {
+                            parts.pop();
+                            metadata.textContent = parts.join(' · ');
+                            if (String(metadata.textContent || '').trim() === '') {
+                                metadata.remove();
+                            }
+                        }
+                    }
+
+                    const statusNode = document.createElement('em');
+                    statusNode.className = 'omo-project-embed__status'
+                        + (/^(?:someday|ready|in_progress|blocked|review|done)$/.test(status) ? ' omo-project-embed__status--' + status : '');
+                    statusNode.textContent = statusLabel;
+                    const firstCapsule = header.querySelector(':scope > em');
+                    header.insertBefore(statusNode, firstCapsule || null);
+                }
+
+                if (!payload.hasChildren || !payload.statusBarHtml) {
+                    return;
+                }
+
+                const runtime = document.createElement('span');
+                runtime.className = 'omo-pv-editor__project-review';
+                runtime.setAttribute('contenteditable', 'false');
+                runtime.setAttribute('data-omo-project-embed-runtime', '1');
+                runtime.setAttribute('data-omo-project-node', '');
+                runtime.setAttribute('data-omo-project-id', String(projectId));
+                runtime.setAttribute('data-omo-project-children-loading', String(projectEmbedUi.childrenLoading || ''));
+                runtime.setAttribute('data-omo-project-children-empty', String(projectEmbedUi.childrenEmpty || ''));
+                runtime.setAttribute('data-omo-project-children-error', String(projectEmbedUi.childrenError || ''));
+                runtime.innerHTML = '<button type="button" class="omo-pv-editor__project-review-toggle" data-omo-project-embed-toggle aria-expanded="false">'
+                    + '<span class="omo-pv-editor__project-review-label">' + escapeDocumentEmbedHtml(projectEmbedUi.childrenLabel || '') + '</span>'
+                    + String(payload.statusBarHtml) + '</button>'
+                    + '<span class="omo-pv-editor__project-review-children omo-project-embed__children" data-omo-project-embed-children hidden></span>';
+
+                embedNode.appendChild(runtime);
+            }).catch(function () {
+                // The embedded project remains editable when its live review cannot be loaded.
+            });
+        });
+    }
+
     function getPvIndicatorEmbedItemKey(indicatorItem) {
         const kind = String(indicatorItem && indicatorItem.kind || '') === 'group' ? 'group' : 'indicator';
         return kind + ':' + String(indicatorItem && indicatorItem.id || '');
@@ -3453,7 +3696,7 @@ foreach ($points as $point) {
     })();
 
     function ensureHtmlFieldLibrary(callback) {
-        const htmlFieldVersion = '20260720-pv-project-embed-metadata';
+        const htmlFieldVersion = '20260722-pv-project-embed-icon-spacing';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'
@@ -4251,6 +4494,7 @@ foreach ($points as $point) {
                     },
                     onReady: function (api) {
                         refreshPvIndicatorEmbedSnapshots(api);
+                        refreshPvProjectEmbedReviews(api);
                         const toolbar = editorHost.querySelector('.note-toolbar');
                         const pointActions = card.querySelector('.omo-pv-editor__point-actions');
                         if (toolbar instanceof Element && pointActions instanceof Element) {

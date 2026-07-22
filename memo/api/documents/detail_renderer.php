@@ -251,6 +251,12 @@ if (!function_exists('memoRenderDocumentDetail')) {
     color: var(--color-text-light);
 }
 
+.memo-document-detail__content .omo-document-file--empty {
+    color: #b91c1c;
+    border-color: rgba(220, 38, 38, 0.42);
+    background: #fef2f2;
+}
+
 .memo-document-detail__content .omo-document-file__title,
 .memo-document-detail__content .omo-document-embed__title {
     font-weight: 700;

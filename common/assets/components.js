@@ -652,6 +652,7 @@
     function collectPendingActionControls(root) {
         var selector = 'button, input[type="submit"], input[type="button"]';
         var controls = [];
+        var formId;
 
         if (!root || root.nodeType !== 1) {
             return controls;
@@ -661,6 +662,24 @@
 
         if (typeof root.matches === 'function' && root.matches(selector)) {
             controls.unshift(root);
+        }
+
+        // Drawer action bars often live outside the form and target it through
+        // the HTML `form` attribute. They must share the same pending state.
+        if (root.tagName === 'FORM') {
+            formId = String(root.getAttribute('id') || '');
+            if (formId !== '') {
+                toArray(document.querySelectorAll('[form]')).forEach(function (control) {
+                    if (
+                        control.getAttribute('form') === formId
+                        && typeof control.matches === 'function'
+                        && control.matches(selector)
+                        && controls.indexOf(control) === -1
+                    ) {
+                        controls.push(control);
+                    }
+                });
+            }
         }
 
         return controls;

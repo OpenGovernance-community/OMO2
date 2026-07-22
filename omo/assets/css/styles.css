@@ -243,6 +243,272 @@ html[data-theme="dark"] .omo-document-pv__point-type-icon {
     margin-bottom: 0;
 }
 
+.omo-document-pv .omo-project-embed--resolved {
+    display: grid;
+    gap: 7px;
+    margin: 0 0 12px;
+    padding: 11px 13px;
+    border: 1px solid color-mix(in srgb, var(--color-border) 82%, #2563eb 18%);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--color-surface) 92%, #eff6ff 8%);
+    box-shadow: 0 10px 24px -20px rgba(37, 99, 235, 0.45);
+    line-height: 1.4;
+}
+
+.omo-document-pv .omo-project-embed__head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+}
+
+.omo-document-pv .omo-project-embed__title {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-text);
+    font-weight: 750;
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.omo-document-pv .omo-project-embed__title:hover,
+.omo-document-pv .omo-project-embed__title:focus-visible,
+.omo-document-pv .omo-project-embed__child-title:hover,
+.omo-document-pv .omo-project-embed__child-title:focus-visible {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+.omo-document-pv .omo-project-embed__external {
+    flex: 0 0 auto;
+    color: var(--color-text-light);
+    font-size: 0.86rem;
+    text-decoration: none;
+}
+
+.omo-document-pv .omo-project-embed__meta {
+    color: var(--color-text-light);
+    font-size: 0.76rem;
+}
+
+.omo-document-pv .omo-project-embed__status,
+.omo-document-pv .omo-project-embed:not(.omo-project-embed--resolved) > strong > .omo-project-embed__status {
+    --omo-project-status-color: #99a3b1;
+    --omo-project-status-text: #4d5968;
+    justify-self: start;
+    display: inline-flex;
+    align-items: center;
+    min-height: 20px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--omo-project-status-color) 19%, var(--color-surface, #fff));
+    color: var(--omo-project-status-text);
+    font-size: 0.72rem;
+    font-style: normal;
+    font-weight: 750;
+    line-height: 1.2;
+}
+
+.omo-document-pv .omo-project-embed__status--ready { --omo-project-status-color: #5e88d5; --omo-project-status-text: #294c8b; }
+.omo-document-pv .omo-project-embed__status--in_progress { --omo-project-status-color: #d0a857; --omo-project-status-text: #735518; }
+.omo-document-pv .omo-project-embed__status--blocked { --omo-project-status-color: #d67272; --omo-project-status-text: #842f35; }
+.omo-document-pv .omo-project-embed__status--review { --omo-project-status-color: #9884c7; --omo-project-status-text: #5f4b91; }
+.omo-document-pv .omo-project-embed__status--done { --omo-project-status-color: #6fa98d; --omo-project-status-text: #2f6d4a; }
+.omo-document-pv .omo-project-embed__status--someday { --omo-project-status-color: #99a3b1; --omo-project-status-text: #4d5968; }
+
+.omo-document-pv .omo-project-embed__priority,
+.omo-document-pv .omo-project-embed__size,
+.omo-pv-editor .omo-simple-html-render .omo-project-embed__priority,
+.omo-pv-editor .omo-simple-html-render .omo-project-embed__size {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    min-height: 20px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: color-mix(in srgb, #2563eb 11%, var(--color-surface, #fff));
+    color: #1d4ed8;
+    font-size: 0.72rem;
+    font-weight: 750;
+    line-height: 1.2;
+}
+
+.omo-pv-editor .omo-simple-html-render .omo-project-embed__head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+}
+
+.omo-pv-editor .omo-simple-html-render .omo-project-embed__title {
+    min-width: 0;
+    overflow: hidden;
+    font-weight: 750;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.omo-pv-editor .omo-simple-html-render .omo-project-embed__external {
+    flex: 0 0 auto;
+}
+
+.omo-pv-editor .omo-simple-html-render .omo-project-embed__status {
+    --omo-project-status-color: #99a3b1;
+    --omo-project-status-text: #4d5968;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    min-height: 20px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--omo-project-status-color) 19%, var(--color-surface, #fff));
+    color: var(--omo-project-status-text);
+    font-size: 0.72rem;
+    font-style: normal;
+    font-weight: 750;
+    line-height: 1.2;
+}
+
+.omo-pv-editor .omo-simple-html-render .omo-project-embed__status--ready { --omo-project-status-color: #5e88d5; --omo-project-status-text: #294c8b; }
+.omo-pv-editor .omo-simple-html-render .omo-project-embed__status--in_progress { --omo-project-status-color: #d0a857; --omo-project-status-text: #735518; }
+.omo-pv-editor .omo-simple-html-render .omo-project-embed__status--blocked { --omo-project-status-color: #d67272; --omo-project-status-text: #842f35; }
+.omo-pv-editor .omo-simple-html-render .omo-project-embed__status--review { --omo-project-status-color: #9884c7; --omo-project-status-text: #5f4b91; }
+.omo-pv-editor .omo-simple-html-render .omo-project-embed__status--done { --omo-project-status-color: #6fa98d; --omo-project-status-text: #2f6d4a; }
+.omo-pv-editor .omo-simple-html-render .omo-project-embed__status--someday { --omo-project-status-color: #99a3b1; --omo-project-status-text: #4d5968; }
+
+/* Keep the lazy subproject review available in the markup, but do not show it in the read-only PV. */
+.omo-pv-editor .omo-simple-html-render .omo-project-embed__toggle,
+.omo-pv-editor .omo-simple-html-render .omo-project-embed__children {
+    display: none !important;
+}
+
+.omo-document-pv .omo-project-embed__toggle {
+    display: grid;
+    grid-template-columns: auto minmax(70px, 1fr);
+    gap: 9px;
+    align-items: center;
+    width: 100%;
+    margin: 1px 0 0;
+    padding: 5px 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-text-light);
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+}
+
+.omo-document-pv .omo-project-embed__toggle:hover .omo-project-status-bar,
+.omo-document-pv .omo-project-embed__toggle:focus-visible .omo-project-status-bar {
+    outline: 2px solid color-mix(in srgb, var(--color-primary) 48%, transparent);
+    outline-offset: 3px;
+}
+
+.omo-document-pv .omo-project-embed__toggle-label {
+    font-size: 0.72rem;
+    font-weight: 750;
+}
+
+.omo-document-pv .omo-project-status-bar {
+    display: flex;
+    width: 100%;
+    height: 6px;
+    min-height: 6px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--color-border);
+}
+
+.omo-document-pv .omo-project-status-bar__segment {
+    min-width: 0;
+    border-right: 2px solid color-mix(in srgb, #fff 100%, transparent);
+}
+
+.omo-document-pv .omo-project-status-bar__segment:last-child { border-right: 0; }
+.omo-document-pv .omo-project-status-bar__segment--ready { background: #5e88d5; }
+.omo-document-pv .omo-project-status-bar__segment--in_progress { background: #d0a857; }
+.omo-document-pv .omo-project-status-bar__segment--blocked { background: #d67272; }
+.omo-document-pv .omo-project-status-bar__segment--review { background: #9884c7; }
+.omo-document-pv .omo-project-status-bar__segment--done { background: #6fa98d; }
+.omo-document-pv .omo-project-status-bar__segment--someday { background: #99a3b1; }
+
+.omo-document-pv .omo-project-embed__children[hidden] { display: none; }
+
+.omo-document-pv .omo-project-embed__children-list {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 2px 0 0;
+    list-style: none;
+}
+
+.omo-document-pv .omo-project-embed__child {
+    display: grid;
+    gap: 5px;
+    padding: 7px 8px;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-surface-alt) 64%, var(--color-surface));
+}
+
+.omo-document-pv .omo-project-embed__child-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(70px, 38%);
+    gap: 8px;
+    align-items: center;
+}
+
+.omo-document-pv .omo-project-embed__child-copy {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 7px;
+    align-items: baseline;
+    min-width: 0;
+}
+
+.omo-document-pv .omo-project-embed__child-title {
+    color: var(--color-text);
+    font-size: 0.82rem;
+    font-weight: 650;
+    text-decoration: none;
+}
+
+.omo-document-pv .omo-project-embed__child-meta {
+    color: var(--color-text-light);
+    font-size: 0.72rem;
+    white-space: nowrap;
+}
+
+.omo-document-pv .omo-project-embed__child-toggle {
+    display: block;
+    width: 100%;
+    padding: 4px 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.omo-document-pv .omo-project-embed__child-toggle:hover .omo-project-status-bar,
+.omo-document-pv .omo-project-embed__child-toggle:focus-visible .omo-project-status-bar {
+    outline: 2px solid color-mix(in srgb, var(--color-primary) 48%, transparent);
+    outline-offset: 3px;
+}
+
+.omo-document-pv .omo-project-embed__child > .omo-project-embed__children {
+    display: block;
+    margin-left: 9px;
+    padding-top: 3px;
+}
+
+.omo-document-pv .omo-project-embed__children-loading,
+.omo-document-pv .omo-project-embed__children-empty,
+.omo-document-pv .omo-project-embed__children-error {
+    display: block;
+    padding-top: 2px;
+    color: var(--color-text-light);
+    font-size: 0.78rem;
+}
+
 .omo-document-pv__empty {
     margin: 0;
     padding: 18px;
