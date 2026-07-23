@@ -2429,7 +2429,7 @@
 			return isset($statusMap[$legacyStatusId]) ? $statusMap[$legacyStatusId] : \dbObject\Project::STATUS_READY;
 		}
 
-		protected static function omo1ImportUserMembership(\dbObject\Organization $organization, $userId, $isAdmin, array $record = array())
+		protected static function omo1ImportUserMembership(\dbObject\Organization $organization, $userId, $isAdmin, array $record = array(), $isActive = true)
 		{
 			$userId = (int)$userId;
 			if ($userId <= 0) {
@@ -2442,7 +2442,7 @@
 				$membership->set('IDorganization', (int)$organization->getId());
 			}
 
-			$membership->set('active', true);
+			$membership->set('active', (bool)$isActive);
 			if (!empty($record['username'])) {
 				$membership->set('username', self::omo1ImportLimitText($record['username'], 250));
 			}
@@ -2470,7 +2470,7 @@
 			self::omo1ImportSave($membership, 'Le lien membre n a pas pu etre cree');
 		}
 
-		protected static function omo1ImportMembers(\dbObject\Organization $organization, array $records, $actorUserId, array &$userIdMap, array &$stats, array &$warnings)
+		protected static function omo1ImportMembers(\dbObject\Organization $organization, array $records, $actorUserId, array &$userIdMap, array &$pendingUserIds, array &$pendingInvitations, array &$stats, array &$warnings)
 		{
 			foreach ($records as $record) {
 				if (!is_array($record)) {
@@ -2510,16 +2510,30 @@
 					self::omo1ImportSave($user, 'Le compte membre n a pas pu etre cree');
 				}
 
-				$userIdMap[$sourceId] = (int)$user->getId();
+				$targetUserId = (int)$user->getId();
+				$userIdMap[$sourceId] = $targetUserId;
 				$isAdmin = !empty($record['organizationMembership']['isAdmin']);
-				self::omo1ImportUserMembership($organization, (int)$user->getId(), $isAdmin, $record);
+				$isActor = $targetUserId === (int)$actorUserId;
+				self::omo1ImportUserMembership($organization, $targetUserId, $isAdmin, $record, $isActor);
+				if (!$isActor) {
+					$pendingUserIds[$targetUserId] = true;
+					$invitationIssue = \dbObject\Invitation::issue(
+						(int)$organization->getId(),
+						$targetUserId,
+						(int)$actorUserId,
+						trim((string)$user->get('email'))
+					);
+					if (!empty($invitationIssue['created']) && isset($invitationIssue['invitation'])) {
+						$pendingInvitations[(int)$invitationIssue['invitation']->getId()] = $invitationIssue['invitation'];
+					}
+				}
 				$stats['members'] += 1;
 			}
 
 			self::omo1ImportUserMembership($organization, (int)$actorUserId, true);
 		}
 
-		protected static function omo1ImportRoleAssignments(array $records, array $userIdMap, array $holonIdMap, array &$stats)
+		protected static function omo1ImportRoleAssignments(array $records, array $userIdMap, array $holonIdMap, array $pendingUserIds, array &$stats)
 		{
 			foreach ($records as $record) {
 				if (!is_array($record)) {
@@ -2543,7 +2557,7 @@
 						$link->set('IDuser', $targetUserId);
 						$link->set('IDholon', $targetHolonId);
 					}
-					$link->set('active', true);
+					$link->set('active', !isset($pendingUserIds[$targetUserId]));
 					self::omo1ImportSave($link, 'Une attribution de role n a pas pu etre creee');
 					$stats['roleAssignments'] += 1;
 				}
@@ -3151,13 +3165,15 @@
 				$documentProjectSourceMap = array();
 				$projectIdMap = array();
 				$eventIdMap = array();
-				$stats = array('members' => 0, 'roleAssignments' => 0, 'documents' => 0, 'projects' => 0, 'tasks' => 0, 'indicators' => 0, 'indicatorValues' => 0, 'calendar' => 0, 'pv' => 0, 'pvPoints' => 0);
+				$pendingUserIds = array();
+				$pendingInvitations = array();
+				$stats = array('members' => 0, 'invitations' => 0, 'roleAssignments' => 0, 'documents' => 0, 'projects' => 0, 'tasks' => 0, 'indicators' => 0, 'indicatorValues' => 0, 'calendar' => 0, 'pv' => 0, 'pvPoints' => 0);
 				$warnings = array();
 
 				if ($selectedModules['members']) {
 					$memberRecords = self::omo1ImportModuleRecords($payload, 'members');
-					self::omo1ImportMembers($organization, $memberRecords, $actorUserId, $userIdMap, $stats, $warnings);
-					self::omo1ImportRoleAssignments($memberRecords, $userIdMap, $holonIdMap, $stats);
+					self::omo1ImportMembers($organization, $memberRecords, $actorUserId, $userIdMap, $pendingUserIds, $pendingInvitations, $stats, $warnings);
+					self::omo1ImportRoleAssignments($memberRecords, $userIdMap, $holonIdMap, $pendingUserIds, $stats);
 				}
 				if ($selectedModules['documents']) {
 					self::omo1ImportDocuments($organization, self::omo1ImportModuleRecords($payload, 'documents'), $actorUserId, $userIdMap, $holonIdMap, $documentIdMap, $documentProjectSourceMap, $stats, $warnings);
@@ -3178,6 +3194,14 @@
 					self::omo1ImportPvs($organization, self::omo1ImportModuleRecords($payload, 'pv'), $actorUserId, $userIdMap, $holonIdMap, $eventIdMap, $stats);
 				}
 				$pdo->commit();
+				foreach ($pendingInvitations as $pendingInvitation) {
+					try {
+						$pendingInvitation->sendEmail();
+						$stats['invitations'] += 1;
+					} catch (\Throwable $exception) {
+						$warnings[] = 'L invitation pour ' . trim((string)$pendingInvitation->get('email')) . ' n a pas pu etre envoyee.';
+					}
+				}
 
 				return array(
 					'status' => true,
