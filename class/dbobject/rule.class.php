@@ -179,7 +179,7 @@ class Rule extends DbObject
         return $holon instanceof Holon && $holon->canEdit();
     }
 
-    public function isReviewDue(\DateTimeInterface $date = null)
+    public function isReviewDue(?\DateTimeInterface $date = null)
     {
         $reviewDate = $this->normalizeDate($this->get('review_date'));
         if (!$reviewDate) {
@@ -190,7 +190,7 @@ class Rule extends DbObject
         return $reviewDate <= new \DateTimeImmutable($date->format('Y-m-d'));
     }
 
-    public function isValidAt(\DateTimeInterface $date = null)
+    public function isValidAt(?\DateTimeInterface $date = null)
     {
         $expirationDate = $this->normalizeDate($this->get('expiration_date'));
         if (!$expirationDate) {
