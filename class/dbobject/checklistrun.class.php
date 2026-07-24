@@ -98,6 +98,39 @@ class ChecklistRun extends DbObject
         return $items;
     }
 
+    public function getPvReviewItems()
+    {
+        $statusCatalog = Project::getStatusCatalog();
+        $reviewItems = [];
+        foreach ($this->getItems() as $runItem) {
+            if (!($runItem instanceof ChecklistRunItem)) {
+                continue;
+            }
+            $templateItem = $runItem->getTemplateItem();
+            $templateProject = $templateItem instanceof ChecklistItem ? $templateItem->getProjectTemplate() : null;
+            $project = $runItem->getProject();
+            if ($project instanceof Project && (int)$project->get('active') !== 1) {
+                continue;
+            }
+            $status = $project instanceof Project ? Project::normalizeStatus($project->get('status')) : '';
+            $state = ChecklistRunItem::normalizeState($runItem->get('state'));
+            $sizedProject = $project instanceof Project ? $project : $templateProject;
+            $size = $sizedProject instanceof Project ? Project::normalizeSize($sizedProject->get('project_size')) : Project::SIZE_M;
+            $metadata = $sizedProject instanceof Project ? $sizedProject->getReviewMetadata() : [];
+            $reviewItems[] = [
+                'title' => $project instanceof Project ? trim((string)$project->get('title')) : ($templateProject instanceof Project ? trim((string)$templateProject->get('title')) : ''),
+                'projectId' => $project instanceof Project ? (int)$project->getId() : 0,
+                'status' => $status,
+                'statusLabel' => $status !== '' ? (string)($statusCatalog[$status]['label'] ?? $status) : ($state === ChecklistRunItem::STATE_BLOCKED ? 'Bloque' : 'En attente'),
+                'size' => $size,
+                'weight' => Project::getSizeWeight($size),
+                'holonLabel' => (string)($metadata['holonLabel'] ?? ''),
+                'responsibleLabel' => (string)($metadata['responsibleLabel'] ?? ''),
+            ];
+        }
+        return $reviewItems;
+    }
+
     public function getChecklist()
     {
         $checklist = new Checklist();
@@ -123,6 +156,116 @@ class ChecklistRun extends DbObject
         return $this->get('scheduled_for');
     }
 
+    public function synchronizeItemActivations($referenceDateTime = null)
+    {
+        if (self::normalizeStatus($this->get('status')) !== self::STATUS_RUNNING) {
+            return ['completedCount' => 0, 'releasedCount' => 0, 'activatedCount' => 0];
+        }
+
+        $now = $referenceDateTime instanceof \DateTimeImmutable
+            ? $referenceDateTime
+            : new \DateTimeImmutable($referenceDateTime === null ? 'now' : (string)$referenceDateTime);
+        $counts = ['completedCount' => 0, 'releasedCount' => 0, 'activatedCount' => 0];
+        $remainingPasses = 100;
+        $madeProgress = true;
+
+        while ($madeProgress && $remainingPasses-- > 0) {
+            $madeProgress = false;
+            $itemsByTemplateId = [];
+            foreach ($this->getItems() as $runItem) {
+                if ($runItem instanceof ChecklistRunItem) {
+                    $itemsByTemplateId[(int)$runItem->get('IDchecklistitem')] = $runItem;
+                }
+            }
+
+            foreach ($itemsByTemplateId as $runItem) {
+                if (ChecklistRunItem::normalizeState($runItem->get('state')) !== ChecklistRunItem::STATE_CREATED) {
+                    continue;
+                }
+                $project = $runItem->getProject();
+                if (!($project instanceof Project) || Project::normalizeStatus($project->get('status')) !== Project::STATUS_DONE) {
+                    continue;
+                }
+                $runItem->set('state', ChecklistRunItem::STATE_COMPLETED);
+                $result = $runItem->save();
+                if (is_array($result) && !empty($result['status'])) {
+                    $counts['completedCount']++;
+                    $madeProgress = true;
+                }
+            }
+
+            if ($madeProgress) {
+                continue;
+            }
+
+            foreach ($itemsByTemplateId as $runItem) {
+                if (ChecklistRunItem::normalizeState($runItem->get('state')) !== ChecklistRunItem::STATE_BLOCKED) {
+                    continue;
+                }
+                $templateItem = $runItem->getTemplateItem();
+                if (!($templateItem instanceof ChecklistItem)) {
+                    continue;
+                }
+
+                $activationAt = null;
+                $hasDependency = false;
+                $dependenciesCompleted = true;
+                foreach ($templateItem->getDependencies() as $dependency) {
+                    if (!($dependency instanceof ChecklistItemDependency)) {
+                        continue;
+                    }
+                    $hasDependency = true;
+                    $requiredRunItem = $itemsByTemplateId[(int)$dependency->get('IDchecklistitem_required')] ?? null;
+                    if (!($requiredRunItem instanceof ChecklistRunItem) || ChecklistRunItem::normalizeState($requiredRunItem->get('state')) !== ChecklistRunItem::STATE_COMPLETED) {
+                        $dependenciesCompleted = false;
+                        break;
+                    }
+                    $completedAt = $requiredRunItem->get('completed_at');
+                    $completionDate = $completedAt instanceof \DateTimeInterface
+                        ? \DateTimeImmutable::createFromInterface($completedAt)
+                        : $now;
+                    $plannedStartAt = ChecklistItem::shiftDate(
+                        $completionDate,
+                        (int)$dependency->get('delay_value'),
+                        $dependency->get('delay_unit')
+                    );
+                    $candidateActivationAt = ChecklistItem::shiftDate(
+                        $plannedStartAt,
+                        -$templateItem->getDisplayLeadValue(),
+                        $templateItem->getDisplayLeadUnit()
+                    );
+                    if (!($activationAt instanceof \DateTimeImmutable) || $candidateActivationAt > $activationAt) {
+                        $activationAt = $candidateActivationAt;
+                    }
+                }
+                if (!$hasDependency || !$dependenciesCompleted || !($activationAt instanceof \DateTimeImmutable)) {
+                    continue;
+                }
+
+                $runItem->set('activation_at', $activationAt);
+                $runItem->set('state', ChecklistRunItem::STATE_WAITING);
+                $result = $runItem->save();
+                if (is_array($result) && !empty($result['status'])) {
+                    $counts['releasedCount']++;
+                    $madeProgress = true;
+                }
+            }
+
+            if ($madeProgress) {
+                continue;
+            }
+
+            foreach ($itemsByTemplateId as $runItem) {
+                if ($runItem->activateIfDue($now)) {
+                    $counts['activatedCount']++;
+                    $madeProgress = true;
+                }
+            }
+        }
+
+        return $counts;
+    }
+
     public function syncStatusFromRootProject()
     {
         if (self::normalizeStatus($this->get('status')) !== self::STATUS_RUNNING) {
@@ -143,9 +286,17 @@ class ChecklistRun extends DbObject
         $runs->loadRunning($limit);
         $updatedCount = 0;
         foreach ($runs as $run) {
-            if ($run instanceof self && $run->syncStatusFromRootProject()) {
-                $updatedCount++;
+            if (!($run instanceof self)) {
+                continue;
             }
+            if ($run->syncStatusFromRootProject()) {
+                $updatedCount++;
+                continue;
+            }
+            $sync = $run->synchronizeItemActivations();
+            $updatedCount += (int)($sync['completedCount'] ?? 0)
+                + (int)($sync['releasedCount'] ?? 0)
+                + (int)($sync['activatedCount'] ?? 0);
         }
         return $updatedCount;
     }

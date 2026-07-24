@@ -158,6 +158,7 @@ foreach ($groupItems as $group) {
             'value' => (float)$point->get('value'),
         ];
     }, $groupReferencePoints);
+    $groupReferenceType = StatIndicator::normalizeReferenceType($group->get('reference_type'));
     $groupViewData[] = [
         'group' => $group,
         'series' => $series,
@@ -166,8 +167,12 @@ foreach ($groupItems as $group) {
         'indicatorIds' => array_values(array_map(static function ($item) {
             return $item instanceof \dbObject\StatIndicatorGroupItem ? (int)$item->get('IDstatindicator') : 0;
         }, omoStatsCollectionItems($group->getItems(), \dbObject\StatIndicatorGroupItem::class))),
-        'referenceType' => StatIndicator::normalizeReferenceType($group->get('reference_type')),
+        'referenceType' => $groupReferenceType,
         'referencePoints' => array_values($groupReferencePointData),
+        'ceilingValue' => $groupReferenceType === StatIndicator::REFERENCE_CEILING
+            ? omoStatsGetCeilingValue($groupReferencePoints)
+            : null,
+        'chartMinValue' => is_numeric($group->get('chart_min_value')) ? (float)$group->get('chart_min_value') : null,
         'canEdit' => omoStatsCanEditContextResource($group, $context),
         'overdueSeverity' => omoStatsGetGroupOverdueInfo($group)['severity'],
     ];
@@ -248,7 +253,7 @@ foreach ($pickerItems as $indicator) {
 }
 $displayItemCount = count($statsEntries);
 ?>
-<link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260721-overdue-grace">
+<link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260724-ceiling-minimum">
 <div
     class="omo-stats omo-panel-view"
     id="omo-stats-root"
@@ -371,7 +376,7 @@ $displayItemCount = count($statsEntries);
                                             <button type="button" class="omo-stats-item-menu__toggle generic-menu-toggle" data-omo-stats-item-menu-toggle aria-label="<?= omoApiEscape(omoStatsT('stats.action.more')) ?>" aria-expanded="false">...</button>
                                             <div class="omo-stats-item-menu__panel generic-menu-panel generic-menu-panel--wide" data-omo-stats-item-menu-panel hidden>
                                                 <button type="button" class="generic-menu-item" data-omo-stats-open-editor-url="<?= omoApiEscape($groupDetailBaseUrl . '&id=' . rawurlencode((string)$group->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.detail')) ?></button>
-                                                <button type="button" class="generic-menu-item" data-omo-stats-edit-group="<?= (int)$group->getId() ?>" data-omo-stats-group-name="<?= omoApiEscape((string)$group->get('name')) ?>" data-omo-stats-group-mode="<?= omoApiEscape((string)$group->get('display_mode')) ?>" data-omo-stats-group-indicators="<?= omoApiEscape(json_encode($groupItem['indicatorIds'])) ?>" data-omo-stats-group-reference-type="<?= omoApiEscape($groupItem['referenceType']) ?>" data-omo-stats-group-reference-points="<?= omoApiEscape(json_encode($groupItem['referencePoints'])) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_group')) ?></button>
+                                                <button type="button" class="generic-menu-item" data-omo-stats-edit-group="<?= (int)$group->getId() ?>" data-omo-stats-group-name="<?= omoApiEscape((string)$group->get('name')) ?>" data-omo-stats-group-mode="<?= omoApiEscape((string)$group->get('display_mode')) ?>" data-omo-stats-group-indicators="<?= omoApiEscape(json_encode($groupItem['indicatorIds'])) ?>" data-omo-stats-group-reference-type="<?= omoApiEscape($groupItem['referenceType']) ?>" data-omo-stats-group-reference-points="<?= omoApiEscape(json_encode($groupItem['referencePoints'])) ?>" data-omo-stats-group-ceiling-value="<?= omoApiEscape((string)($groupItem['ceilingValue'] ?? '')) ?>" data-omo-stats-group-chart-min-value="<?= omoApiEscape((string)($groupItem['chartMinValue'] ?? '')) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_group')) ?></button>
                                                 <button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-group="<?= (int)$group->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_group')) ?></button>
                                             </div>
                                         </div>
@@ -510,7 +515,7 @@ $displayItemCount = count($statsEntries);
                                             <button type="button" class="omo-stats-item-menu__toggle generic-menu-toggle" data-omo-stats-item-menu-toggle aria-label="<?= omoApiEscape(omoStatsT('stats.action.more')) ?>" aria-expanded="false">...</button>
                                             <div class="omo-stats-item-menu__panel generic-menu-panel generic-menu-panel--wide" data-omo-stats-item-menu-panel hidden>
                                                 <button type="button" class="generic-menu-item" data-omo-stats-open-editor-url="<?= omoApiEscape($groupDetailBaseUrl . '&id=' . rawurlencode((string)$group->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.detail')) ?></button>
-                                                <button type="button" class="generic-menu-item" data-omo-stats-edit-group="<?= (int)$group->getId() ?>" data-omo-stats-group-name="<?= omoApiEscape((string)$group->get('name')) ?>" data-omo-stats-group-mode="<?= omoApiEscape((string)$group->get('display_mode')) ?>" data-omo-stats-group-indicators="<?= omoApiEscape(json_encode($groupItem['indicatorIds'])) ?>" data-omo-stats-group-reference-type="<?= omoApiEscape($groupItem['referenceType']) ?>" data-omo-stats-group-reference-points="<?= omoApiEscape(json_encode($groupItem['referencePoints'])) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_group')) ?></button>
+                                                <button type="button" class="generic-menu-item" data-omo-stats-edit-group="<?= (int)$group->getId() ?>" data-omo-stats-group-name="<?= omoApiEscape((string)$group->get('name')) ?>" data-omo-stats-group-mode="<?= omoApiEscape((string)$group->get('display_mode')) ?>" data-omo-stats-group-indicators="<?= omoApiEscape(json_encode($groupItem['indicatorIds'])) ?>" data-omo-stats-group-reference-type="<?= omoApiEscape($groupItem['referenceType']) ?>" data-omo-stats-group-reference-points="<?= omoApiEscape(json_encode($groupItem['referencePoints'])) ?>" data-omo-stats-group-ceiling-value="<?= omoApiEscape((string)($groupItem['ceilingValue'] ?? '')) ?>" data-omo-stats-group-chart-min-value="<?= omoApiEscape((string)($groupItem['chartMinValue'] ?? '')) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_group')) ?></button>
                                                 <button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-group="<?= (int)$group->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_group')) ?></button>
                                             </div>
                                         </div>
@@ -629,7 +634,7 @@ $displayItemCount = count($statsEntries);
     </div>
 </div>
 <script src="/common/drawer/subdrawer.js"></script>
-<script src="/omo/api/stats/reference-editor.js?v=20260718-group-reference"></script>
+<script src="/omo/api/stats/reference-editor.js?v=20260724-ceiling"></script>
 <script>
 (function () {
     var root = document.getElementById('omo-stats-root');
@@ -684,6 +689,10 @@ $displayItemCount = count($statsEntries);
         'referenceNone' => omoStatsT('stats.form.reference_none'),
         'referenceCeiling' => omoStatsT('stats.form.reference_ceiling'),
         'referenceObjective' => omoStatsT('stats.form.reference_objective'),
+        'ceilingTitle' => omoStatsT('stats.form.ceiling_title'),
+        'ceilingHelp' => omoStatsT('stats.form.ceiling_help'),
+        'ceilingValue' => omoStatsT('stats.form.ceiling_value'),
+        'chartMinValue' => omoStatsT('stats.detail.chart_min_value'),
         'addReferencePoint' => omoStatsT('stats.form.add_point'),
         'referenceEndpoint' => omoStatsT('stats.form.endpoint'),
         'referenceIntermediate' => omoStatsT('stats.form.intermediate'),
@@ -1080,8 +1089,10 @@ $displayItemCount = count($statsEntries);
             + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.search) + '</span><input type="search" class="generic-form-control" data-omo-stats-group-editor-search placeholder="' + escapeHtml(texts.searchPlaceholder) + '"></label>'
             + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.visible) + '</span><select class="generic-form-control omo-stats-picker__select" data-omo-stats-group-editor-select size="10" multiple></select></label>'
             + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.groupMode) + '</span><select class="generic-form-control" data-omo-stats-group-editor-mode><option value="overlay">' + escapeHtml(texts.overlay) + '</option><option value="sum">' + escapeHtml(texts.sum) + '</option></select></label>'
+            + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.chartMinValue) + '</span><input type="number" class="generic-form-control" data-omo-stats-group-editor-chart-min-value step="any"></label>'
             + '<div class="omo-stats-group-reference-editor" data-omo-stats-reference-editor>'
             + '<label class="omo-stats-field"><span>' + escapeHtml(texts.referenceTitle) + '</span><select class="generic-form-control" name="reference_type" data-omo-stats-reference-type><option value="none">' + escapeHtml(texts.referenceNone) + '</option><option value="ceiling">' + escapeHtml(texts.referenceCeiling) + '</option><option value="objective">' + escapeHtml(texts.referenceObjective) + '</option></select></label>'
+            + '<section class="generic-soft-panel omo-stats-ceiling-editor" data-omo-stats-ceiling-editor hidden><div class="omo-stats-ceiling-editor__heading"><h3 class="generic-card-title generic-card-title--big">' + escapeHtml(texts.ceilingTitle) + '</h3><p>' + escapeHtml(texts.ceilingHelp) + '</p></div><label class="omo-stats-field"><span>' + escapeHtml(texts.ceilingValue) + '</span><input type="number" class="generic-form-control" name="ceiling_value" data-omo-stats-ceiling-value step="any"></label></section>'
             + '<section class="omo-stats-reference-editor" data-omo-stats-reference-panel>'
             + '<div class="omo-stats-reference-editor__heading"><div><h3 class="generic-card-title generic-card-title--big">' + escapeHtml(texts.referenceTitle) + '</h3><p>' + escapeHtml(texts.referenceHelp) + '</p></div><button type="button" class="generic-action-button generic-action-button--secondary" data-omo-stats-add-reference-point>' + escapeHtml(texts.addReferencePoint) + '</button></div>'
             + '<div class="omo-stats-reference-editor__rail" data-omo-stats-reference-rail></div>'
@@ -1102,7 +1113,9 @@ $displayItemCount = count($statsEntries);
         var searchInput = drawerBody.querySelector('[data-omo-stats-group-editor-search]');
         var select = drawerBody.querySelector('[data-omo-stats-group-editor-select]');
         var modeInput = drawerBody.querySelector('[data-omo-stats-group-editor-mode]');
+        var chartMinValueInput = drawerBody.querySelector('[data-omo-stats-group-editor-chart-min-value]');
         var referenceTypeInput = drawerBody.querySelector('[data-omo-stats-reference-type]');
+        var ceilingValueInput = drawerBody.querySelector('[data-omo-stats-ceiling-value]');
         var feedback = drawerBody.querySelector('[data-omo-stats-group-editor-feedback]');
         var cancelButton = document.createElement('button');
         var saveButton = document.createElement('button');
@@ -1114,8 +1127,18 @@ $displayItemCount = count($statsEntries);
 
         nameInput.value = isEditing ? String(editData.name || '') : '';
         modeInput.value = isEditing ? String(editData.displayMode || 'overlay') : 'overlay';
+        if (chartMinValueInput) {
+            chartMinValueInput.value = isEditing && editData.chartMinValue !== null && editData.chartMinValue !== undefined
+                ? String(editData.chartMinValue)
+                : '';
+        }
         if (referenceTypeInput) {
             referenceTypeInput.value = isEditing ? String(editData.referenceType || 'none') : 'none';
+        }
+        if (ceilingValueInput) {
+            ceilingValueInput.value = isEditing && editData.ceilingValue !== null && editData.ceilingValue !== undefined
+                ? String(editData.ceilingValue)
+                : '';
         }
         if (typeof window.omoStatsInitReferenceEditor === 'function') {
             window.omoStatsInitReferenceEditor(drawerBody, {
@@ -1206,7 +1229,11 @@ $displayItemCount = count($statsEntries);
             }
             formData.append('name', nameInput.value || '');
             formData.append('display_mode', modeInput.value || 'overlay');
+            formData.append('chart_min_value', chartMinValueInput ? chartMinValueInput.value || '' : '');
             formData.append('reference_type', referenceTypeInput ? referenceTypeInput.value : 'none');
+            if (ceilingValueInput && !ceilingValueInput.disabled) {
+                formData.append('ceiling_value', ceilingValueInput.value || '');
+            }
             Array.prototype.forEach.call(form.querySelectorAll('[name^="reference_points["]'), function (field) {
                 if (!field.disabled) {
                     formData.append(field.name, field.value || '');
@@ -1466,6 +1493,8 @@ $displayItemCount = count($statsEntries);
                 name: editGroupButton.getAttribute('data-omo-stats-group-name') || '',
                 displayMode: editGroupButton.getAttribute('data-omo-stats-group-mode') || 'overlay',
                 referenceType: editGroupButton.getAttribute('data-omo-stats-group-reference-type') || 'none',
+                ceilingValue: editGroupButton.getAttribute('data-omo-stats-group-ceiling-value') || '',
+                chartMinValue: editGroupButton.getAttribute('data-omo-stats-group-chart-min-value') || '',
                 referencePoints: (function () {
                     try {
                         var points = JSON.parse(editGroupButton.getAttribute('data-omo-stats-group-reference-points') || '[]');

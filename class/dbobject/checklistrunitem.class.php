@@ -188,7 +188,25 @@ class ChecklistRunItem extends DbObject
                 $pdo->beginTransaction();
                 $startedTransaction = true;
             }
-            $project = Project::createFromChecklistTemplate($templateProject, $parentProjectId, $activationAt);
+            $referenceAt = $run->getReferenceAt();
+            $referenceDate = $referenceAt instanceof \DateTimeInterface
+                ? \DateTimeImmutable::createFromInterface($referenceAt)
+                : $activationAt;
+            $plannedStartAt = $templateItem->calculatePlannedStartAt($referenceDate);
+            if (!($plannedStartAt instanceof \DateTimeImmutable)) {
+                $plannedStartAt = ChecklistItem::shiftDate(
+                    $activationAt,
+                    $templateItem->getDisplayLeadValue(),
+                    $templateItem->getDisplayLeadUnit()
+                );
+            }
+            $project = Project::createFromChecklistTemplate(
+                $templateProject,
+                $parentProjectId,
+                $plannedStartAt,
+                null,
+                $templateItem->getDeadlineAt($plannedStartAt)
+            );
             if (!($project instanceof Project)) {
                 throw new \RuntimeException('Unable to instantiate checklist project.');
             }

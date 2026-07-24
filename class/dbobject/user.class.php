@@ -83,6 +83,45 @@
 			return $this->resolveViewPermission(true);
 		}
 
+		public static function buildHistoricalPlaceholderEmail($organizationId, $sourceUserId)
+		{
+			return 'h-' . substr(sha1((int)$organizationId . ':' . (int)$sourceUserId), 0, 16) . '@invalid';
+		}
+
+		public static function getOrCreateHistoricalPlaceholder($organizationId, \dbObject\User $sourceUser)
+		{
+			$organizationId = (int)$organizationId;
+			$sourceUserId = (int)$sourceUser->getId();
+			if ($organizationId <= 0 || $sourceUserId <= 0) {
+				throw new \RuntimeException('Le compte historique demande est invalide.');
+			}
+
+			$email = self::buildHistoricalPlaceholderEmail($organizationId, $sourceUserId);
+			$placeholder = new self();
+			if ($placeholder->load(array(array('email', $email)))) {
+				return $placeholder;
+			}
+
+			$placeholder->set('email', $email);
+			$placeholder->set('firstname', (string)$sourceUser->get('firstname'));
+			$placeholder->set('lastname', (string)$sourceUser->get('lastname'));
+			$placeholder->set('username', (string)$sourceUser->get('username'));
+			$placeholder->set('active', false);
+			$placeholder->set('siteadmin', false);
+			$placeholder->set('parameters', array('historical_placeholder' => true));
+			$saveResult = $placeholder->save();
+			if (!is_array($saveResult) || empty($saveResult['status']) || (int)$placeholder->getId() <= 0) {
+				throw new \RuntimeException('Le compte historique n a pas pu etre cree.');
+			}
+
+			return $placeholder;
+		}
+
+		public function isHistoricalPlaceholder()
+		{
+			return !empty($this->getParameter('historical_placeholder'));
+		}
+
 		public function canEdit() {
 			if (isset($_SESSION["currentUser"]) && $_SESSION["currentUser"] == $this->getId()) {
 				return true;
@@ -282,6 +321,9 @@
 
 			$targetUserId = (int)$this->getId();
 			if ($targetUserId <= 0) {
+				return false;
+			}
+			if ($this->isHistoricalPlaceholder()) {
 				return false;
 			}
 

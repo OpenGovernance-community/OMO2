@@ -53,6 +53,10 @@ if (
 $responsible = $project->getResponsible();
 $parent = $project->getParent();
 $canEdit = omoProjectsCanManageProject($project, $context);
+$currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+$canCreateSubproject = $projectHolon instanceof Holon
+    ? $projectHolon->isAllowed('CAN_CREATE_PROJECT', true, $currentUserId)
+    : omoProjectsCanCreateContext($context);
 $editUrl = '/omo/api/projects/create.php?oid=' . rawurlencode((string)$organizationId) . '&id=' . rawurlencode((string)$projectId);
 if ((int)($_GET['cid'] ?? 0) > 0) {
     $editUrl .= '&cid=' . rawurlencode((string)(int)$_GET['cid']);
@@ -69,6 +73,7 @@ $createdAt = $project->get('created_at');
 $allProjects = new ArrayProject();
 $allProjects->loadForOrganization($organizationId);
 $projectsByParent = [];
+$attachableProjects = [];
 foreach ($allProjects as $allProject) {
     if (!($allProject instanceof Project) || (int)$allProject->getId() <= 0) {
         continue;
@@ -77,7 +82,40 @@ foreach ($allProjects as $allProject) {
     if ($parentId > 0) {
         $projectsByParent[$parentId][] = $allProject;
     }
+
+    $candidateHolon = $allProject->getHolon();
+    if (
+        !$canEdit
+        || (int)$allProject->getId() === (int)$project->getId()
+        || (int)$allProject->get('active') !== 1
+        || (int)$allProject->get('IDproject_parent') > 0
+        || Project::normalizeKind($allProject->get('project_kind')) !== Project::KIND_STANDARD
+        || !$allProject->canUseAsParent($project)
+        || !omoProjectsCanManageProject($allProject, $context)
+        || ($candidateHolon instanceof Holon && (
+            !($rootHolon instanceof Holon)
+            || !$candidateHolon->isDescendantOf((int)$rootHolon->getId(), true)
+            || !$candidateHolon->canViewDetail()
+        ))
+    ) {
+        continue;
+    }
+
+    $attachableProjects[] = [
+        'id' => (int)$allProject->getId(),
+        'title' => trim((string)$allProject->get('title')),
+        'holonId' => $candidateHolon instanceof Holon ? (int)$candidateHolon->getId() : 0,
+        'context' => $candidateHolon instanceof Holon
+            ? trim((string)$candidateHolon->getDisplayName())
+            : trim((string)$organization->get('name')),
+    ];
 }
+$newSubprojectUrl = '/omo/api/projects/create.php?oid=' . rawurlencode((string)$organizationId)
+    . '&parent_id=' . rawurlencode((string)$projectId);
+if ($projectHolon instanceof Holon) {
+    $newSubprojectUrl .= '&cid=' . rawurlencode((string)$projectHolon->getId());
+}
+$hasSubprojectActions = $canCreateSubproject || count($attachableProjects) > 0;
 $subprojects = $projectsByParent[(int)$project->getId()] ?? [];
 $statusSummaryMemo = [];
 $projectStatusSummary = omoProjectsBuildStatusBar($project, $projectsByParent, $statusSummaryMemo);
@@ -90,7 +128,12 @@ $detailStatusOptions = [
     Project::STATUS_SOMEDAY,
 ];
 ?>
-<div class="omo-project-detail" data-omo-project-detail="<?= (int)$project->getId() ?>">
+<div
+    class="omo-project-detail"
+    data-omo-project-detail="<?= (int)$project->getId() ?>"
+    data-omo-project-holon-id="<?= $projectHolon instanceof Holon ? (int)$projectHolon->getId() : 0 ?>"
+    data-omo-project-attach-candidates="<?= omoApiEscape(json_encode($attachableProjects, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
+>
     <div
         hidden
         data-omo-subdrawer-header
@@ -125,12 +168,25 @@ $detailStatusOptions = [
         <?php endif; ?>
     </section>
 
-    <?php if (count($subprojects) > 0): ?>
+    <?php if (count($subprojects) > 0 || $hasSubprojectActions): ?>
         <section class="generic-section omo-project-detail__section omo-project-detail__subprojects">
-            <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoProjectsT('projects.detail.subprojects')) ?></h3>
-            <?= omoProjectsRenderStatusBar($projectStatusSummary, 'omo-project-detail__subprojects-bar') ?>
-            <div class="omo-project-detail__subprojects-list">
-                <?php foreach ($subprojects as $subproject): ?>
+            <div class="omo-project-detail__subprojects-heading">
+                <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoProjectsT('projects.detail.subprojects')) ?></h3>
+                <?php if ($hasSubprojectActions): ?>
+                    <div class="omo-project-detail__subprojects-actions">
+                        <?php if ($canCreateSubproject): ?>
+                            <button type="button" class="generic-action-button generic-action-button--main" data-omo-project-detail-new-subproject-url="<?= omoApiEscape($newSubprojectUrl) ?>"><?= omoApiEscape(omoProjectsT('projects.detail.subprojects_new')) ?></button>
+                        <?php endif; ?>
+                        <?php if (count($attachableProjects) > 0): ?>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-project-detail-attach-subproject><?= omoApiEscape(omoProjectsT('projects.action.attach')) ?></button>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+            <?php if (count($subprojects) > 0): ?>
+                <?= omoProjectsRenderStatusBar($projectStatusSummary, 'omo-project-detail__subprojects-bar') ?>
+                <div class="omo-project-detail__subprojects-list">
+                    <?php foreach ($subprojects as $subproject): ?>
                     <?php
                     $subprojectStatus = Project::normalizeStatus($subproject->get('status'));
                     $subprojectSummary = omoProjectsBuildStatusBar($subproject, $projectsByParent, $statusSummaryMemo, true);
@@ -175,8 +231,11 @@ $detailStatusOptions = [
                             </select>
                         <?php endif; ?>
                     </article>
-                <?php endforeach; ?>
-            </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <p class="omo-project-detail__muted"><?= omoApiEscape(omoProjectsT('projects.detail.subprojects_empty')) ?></p>
+            <?php endif; ?>
         </section>
     <?php endif; ?>
     <div class="omo-project-detail__grid">

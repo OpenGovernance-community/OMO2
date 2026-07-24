@@ -1,7 +1,7 @@
 (function (window, document) {
     'use strict';
 
-    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260722-pv-project-embed-icon-spacing';
+    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260724-pv-embed-status';
 
     if (
         window.omoSimpleHtmlField
@@ -52,7 +52,7 @@
             + '.omo-simple-html-field .note-editable th,.omo-simple-html-render th{background:color-mix(in srgb,var(--color-surface-alt,#f8fafc) 82%,var(--color-text,#1f2937) 18%);font-weight:700;}'
             + '.omo-simple-html-field .note-editable tbody tr:nth-child(even),.omo-simple-html-render tbody tr:nth-child(even){background:color-mix(in srgb,var(--color-surface,#fff) 92%,var(--color-surface-alt,#f8fafc) 8%);}'
             + '.omo-simple-html-field .note-editable .omo-document-embed,.omo-simple-html-render .omo-document-embed{display:block;margin:0 0 1em;padding:12px 14px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,#2563eb 12%);border-radius:var(--radius-md);background:color-mix(in srgb,var(--color-surface,#fff) 90%,#eff6ff 10%);box-shadow:0 10px 24px -20px rgba(37,99,235,.45);cursor:pointer;white-space:normal;line-height:1.5;}'
-            + '.omo-simple-html-field .note-editable .omo-decision-embed,.omo-simple-html-field .note-editable .omo-event-embed,.omo-simple-html-field .note-editable .omo-project-embed,.omo-simple-html-render .omo-decision-embed,.omo-simple-html-render .omo-event-embed,.omo-simple-html-render .omo-project-embed{display:block;margin:0 0 1em;padding:12px 14px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,#2563eb 12%);border-radius:var(--radius-md);background:color-mix(in srgb,var(--color-surface,#fff) 90%,#eff6ff 10%);box-shadow:0 10px 24px -20px rgba(37,99,235,.45);cursor:pointer;white-space:normal;line-height:1.5;}'
+            + '.omo-simple-html-field .note-editable .omo-decision-embed,.omo-simple-html-field .note-editable .omo-event-embed,.omo-simple-html-field .note-editable .omo-project-embed,.omo-simple-html-field .note-editable .omo-checklist-embed,.omo-simple-html-render .omo-decision-embed,.omo-simple-html-render .omo-event-embed,.omo-simple-html-render .omo-project-embed,.omo-simple-html-render .omo-checklist-embed{display:block;margin:0 0 1em;padding:12px 14px;border:1px solid color-mix(in srgb,var(--color-border,#d1d5db) 88%,#2563eb 12%);border-radius:var(--radius-md);background:color-mix(in srgb,var(--color-surface,#fff) 90%,#eff6ff 10%);box-shadow:0 10px 24px -20px rgba(37,99,235,.45);cursor:pointer;white-space:normal;line-height:1.5;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed:last-child,.omo-simple-html-render .omo-document-embed:last-child{margin-bottom:0;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed__label,.omo-simple-html-render .omo-document-embed__label{display:block;margin:0 0 6px;color:var(--color-text-light,#6b7280);font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed__title,.omo-simple-html-render .omo-document-embed__title{display:block;margin:0;color:var(--color-text,#1f2937);font-weight:700;}'
@@ -65,11 +65,15 @@
             + '.omo-simple-html-field .note-editable .omo-document-embed > p:nth-child(3),.omo-simple-html-render .omo-document-embed > p:nth-child(3){margin:6px 0 0;color:var(--color-text-light,#6b7280);font-size:13px;line-height:1.5;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed > strong:first-child,.omo-simple-html-render .omo-document-embed > strong:first-child{display:block;margin:0 0 6px;color:var(--color-text-light,#6b7280);font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}'
             + '.omo-simple-html-field .note-editable .omo-document-embed > strong:nth-of-type(2),.omo-simple-html-render .omo-document-embed > strong:nth-of-type(2){display:block;margin:0;color:var(--color-text,#1f2937);font-weight:700;}'
-            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed,.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed,.omo-pv-editor .omo-simple-html-render .omo-document-embed,.omo-pv-editor .omo-simple-html-render .omo-decision-embed,.omo-pv-editor .omo-simple-html-render .omo-event-embed,.omo-pv-editor .omo-simple-html-render .omo-project-embed{position:relative;min-height:54px;margin-bottom:10px;padding:9px 12px 9px 58px;}'
-            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed:before,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed:before,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed:before,.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed:before,.omo-pv-editor .omo-simple-html-render .omo-document-embed:before,.omo-pv-editor .omo-simple-html-render .omo-decision-embed:before,.omo-pv-editor .omo-simple-html-render .omo-event-embed:before,.omo-pv-editor .omo-simple-html-render .omo-project-embed:before{content:"";position:absolute;top:50%;left:14px;width:30px;height:30px;transform:translateY(-50%);background:var(--color-primary,#2563eb);-webkit-mask:url("/omo/images/tools/documents-folder.png") center/contain no-repeat;mask:url("/omo/images/tools/documents-folder.png") center/contain no-repeat;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed,.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed,.omo-pv-editor .omo-simple-html-field .note-editable .omo-checklist-embed,.omo-pv-editor .omo-simple-html-render .omo-document-embed,.omo-pv-editor .omo-simple-html-render .omo-decision-embed,.omo-pv-editor .omo-simple-html-render .omo-event-embed,.omo-pv-editor .omo-simple-html-render .omo-project-embed,.omo-pv-editor .omo-simple-html-render .omo-checklist-embed{position:relative;min-height:54px;margin-bottom:10px;padding:9px 12px 9px 58px;}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed:before,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed:before,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed:before,.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed:before,.omo-pv-editor .omo-simple-html-field .note-editable .omo-checklist-embed:before,.omo-pv-editor .omo-simple-html-render .omo-document-embed:before,.omo-pv-editor .omo-simple-html-render .omo-decision-embed:before,.omo-pv-editor .omo-simple-html-render .omo-event-embed:before,.omo-pv-editor .omo-simple-html-render .omo-project-embed:before,.omo-pv-editor .omo-simple-html-render .omo-checklist-embed:before{content:"";position:absolute;top:50%;left:14px;width:30px;height:30px;transform:translateY(-50%);background:var(--color-primary,#2563eb);-webkit-mask:url("/omo/images/tools/documents-folder.png") center/contain no-repeat;mask:url("/omo/images/tools/documents-folder.png") center/contain no-repeat;}'
             + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed:before,.omo-pv-editor .omo-simple-html-render .omo-decision-embed:before{background:#7c3aed;-webkit-mask-image:url("/omo/images/tools/decision.png");mask-image:url("/omo/images/tools/decision.png");}'
             + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed:before,.omo-pv-editor .omo-simple-html-render .omo-event-embed:before{background:#0f766e;-webkit-mask-image:url("/omo/images/tools/calendar.png");mask-image:url("/omo/images/tools/calendar.png");}'
             + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed:before,.omo-pv-editor .omo-simple-html-render .omo-project-embed:before{background:#2563eb;-webkit-mask-image:url("/omo/images/tools/product.png");mask-image:url("/omo/images/tools/product.png");}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-checklist-embed:before,.omo-pv-editor .omo-simple-html-render .omo-checklist-embed:before{background:#0f766e;-webkit-mask-image:url("/omo/images/tools/checklist.png");mask-image:url("/omo/images/tools/checklist.png");}'
+            + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-checklist-embed>strong,.omo-pv-editor .omo-simple-html-render .omo-checklist-embed .omo-project-embed__head{display:block;margin:0;font-weight:750;}.omo-pv-editor .omo-simple-html-field .note-editable .omo-checklist-embed a,.omo-pv-editor .omo-simple-html-render .omo-checklist-embed a{color:var(--color-text,#1f2937);text-decoration:none;}.omo-checklist-embed__review{display:grid;gap:4px;margin-top:7px;}.omo-checklist-embed__review-label{font-size:11px;font-weight:750;color:var(--color-text-light,#64748b);}.omo-checklist-embed__review.is-overdue .omo-checklist-embed__review-label{color:#b45309;}.omo-pv-editor .note-editable .omo-checklist-embed__container-toggle{display:block;width:100%;padding:3px 0;border:0;background:transparent;cursor:pointer;}.omo-pv-editor .note-editable .omo-checklist-embed__container-toggle:hover,.omo-pv-editor .note-editable .omo-checklist-embed__container-toggle.is-expanded{filter:brightness(.96);}.omo-pv-editor .note-editable .omo-checklist-embed__instances{display:grid;gap:5px;}.omo-pv-editor .note-editable .omo-checklist-embed__instance{display:grid;gap:3px;}.omo-pv-editor .note-editable .omo-checklist-embed__instance-toggle{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:4px 5px;border:0;border-radius:var(--radius-sm);background:transparent;color:var(--color-text,#1f2937);cursor:pointer;font:inherit;text-align:left;}.omo-pv-editor .note-editable .omo-checklist-embed__instance-toggle:hover,.omo-pv-editor .note-editable .omo-checklist-embed__instance-toggle.is-expanded{background:color-mix(in srgb,var(--color-primary,#2563eb) 8%,transparent);}.omo-pv-editor .note-editable .omo-checklist-embed__instance-title{min-width:0;overflow:hidden;font-size:.78rem;font-weight:700;text-overflow:ellipsis;white-space:nowrap;}.omo-pv-editor .note-editable .omo-checklist-embed__instance-bar{display:block;min-height:7px;}.omo-pv-editor .note-editable .omo-checklist-embed__items-bar{height:7px;}.omo-pv-editor .note-editable .omo-checklist-embed__item-segment{display:flex;min-width:0;}.omo-pv-editor .note-editable .omo-checklist-embed__item-segment .omo-project-status-bar__segment{width:100%;}.omo-pv-editor .note-editable .omo-checklist-embed__item-segment:last-child .omo-project-status-bar__segment{border-right:0;}.omo-pv-editor .note-editable .omo-checklist-embed__items-list{display:grid;gap:4px;margin-top:2px;}.omo-pv-editor .note-editable .omo-checklist-embed__item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 5px;border-radius:var(--radius-sm);background:color-mix(in srgb,var(--color-surface,#fff) 70%,var(--color-surface-alt,#f8fafc));}.omo-pv-editor .note-editable .omo-checklist-embed__item-copy{display:flex;flex-wrap:wrap;gap:3px 6px;align-items:baseline;min-width:0;}.omo-pv-editor .note-editable .omo-checklist-embed__item .omo-project-embed__child-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.omo-pv-editor .note-editable .omo-checklist-embed__item-summary{display:flex;flex:0 1 42%;justify-content:flex-end;min-width:64px;}.omo-pv-editor .note-editable .omo-checklist-embed__item-summary.is-project-summary{min-width:92px;}.omo-pv-editor .note-editable .omo-checklist-embed__item-summary.is-project-summary .omo-project-status-bar{width:100%;}'
+            + '.omo-pv-editor .note-editable .omo-checklist-embed__complete-archive{flex:0 0 auto;min-height:22px;padding:3px 6px;font-size:.68rem;line-height:1.1;white-space:nowrap;}.omo-pv-editor .note-editable .omo-checklist-embed__complete-archive:disabled{cursor:wait;opacity:.6;}'
+            + '.omo-pv-editor .note-editable .omo-checklist-embed__empty-runs{display:block;margin:4px 0 0;color:var(--color-text-light,#64748b);font-size:.78rem;font-style:italic;line-height:1.35;}'
             + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>strong:first-of-type:not(:only-of-type),.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed>strong:first-of-type:not(:only-of-type),.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed>strong:first-of-type:not(:only-of-type),.omo-pv-editor .omo-simple-html-render .omo-document-embed__label,.omo-pv-editor .omo-simple-html-render .omo-decision-embed__label{display:none;}'
             + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed>strong:last-of-type,.omo-pv-editor .omo-simple-html-render .omo-document-embed__title,.omo-pv-editor .omo-simple-html-render .omo-decision-embed__title,.omo-pv-editor .omo-simple-html-render .omo-event-embed__title{display:block;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:1;line-clamp:1;text-overflow:ellipsis;}'
             + '.omo-pv-editor .omo-simple-html-field .note-editable .omo-document-embed>em,.omo-pv-editor .omo-simple-html-field .note-editable .omo-decision-embed>em,.omo-pv-editor .omo-simple-html-field .note-editable .omo-event-embed>em,.omo-pv-editor .omo-simple-html-field .note-editable .omo-project-embed>em,.omo-pv-editor .omo-simple-html-render .omo-document-embed__description,.omo-pv-editor .omo-simple-html-render .omo-decision-embed__summary,.omo-pv-editor .omo-simple-html-render .omo-event-embed__summary{display:-webkit-box;overflow:hidden;margin-top:3px;color:var(--color-text-light,#6b7280);font-size:12px;font-style:normal;line-height:1.3;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;}'
@@ -101,7 +105,11 @@
             + '.omo-indicator-embed--overdue .omo-indicator-embed__chart{color:#dc2626;}'
             + '.omo-indicator-embed--warning .omo-indicator-embed__chart .omo-stats-chart--overdue{color:#ca8a04;}'
             + '.omo-indicator-embed__chart-svg .omo-stats-chart__line{fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;}'
+            + '.omo-indicator-embed__chart-svg .omo-stats-chart__line--background{stroke-width:2;opacity:.18;}'
+            + '.omo-indicator-embed__chart-svg .omo-stats-chart__line--sum{stroke-width:4;}'
             + '.omo-indicator-embed__chart-svg .omo-stats-chart__reference{fill:none;stroke:color-mix(in srgb,currentColor 42%,transparent);stroke-width:1.7;stroke-dasharray:4 3;}'
+            + '.omo-indicator-embed__chart-svg .omo-stats-chart__reference--ceiling{stroke-dasharray:none;stroke-width:3;}'
+            + '.omo-indicator-embed__chart-svg .omo-stats-chart__baseline{fill:none;stroke:color-mix(in srgb,var(--color-text-light,#64748b) 72%,transparent);stroke-width:1.5;stroke-dasharray:3 5;}'
             + '.omo-indicator-embed__chart-svg .omo-stats-chart__point{fill:currentColor;stroke:var(--color-surface,#fff);stroke-width:1.5;}'
             + '.omo-indicator-embed__chart-svg .omo-stats-chart__scale-line{fill:none;stroke:color-mix(in srgb,currentColor 48%,transparent);stroke-width:1.2;stroke-dasharray:4 3;}'
             + '.omo-indicator-embed__chart-svg .omo-stats-chart__scale-label{fill:var(--color-text-light,#64748b);font-size:9px;}'
@@ -254,6 +262,11 @@
         return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
     }
 
+    function getChecklistEmbedElementId(element) {
+        const parsed = Number.parseInt(getElementAttributeValue(element, 'data-omo-checklist-id').trim(), 10);
+        return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+    }
+
     function getEventEmbedElementId(element) {
         const rawValue = getElementAttributeValue(element, 'data-omo-event-id').trim();
         const parsed = Number.parseInt(rawValue, 10);
@@ -306,6 +319,12 @@
             && getProjectEmbedElementId(element) > 0;
     }
 
+    function isAllowedChecklistEmbedElement(element) {
+        return !!element && element.nodeType === 1
+            && getElementAttributeValue(element, 'data-omo-embed-type').trim() === 'checklist'
+            && getChecklistEmbedElementId(element) > 0;
+    }
+
     function isAllowedIndicatorEmbedElement(element) {
         return !!element
             && element.nodeType === 1
@@ -322,6 +341,18 @@
         return normalizedValue.length <= 4000 && /^-?[\d.]+,-?[\d.]+(?:\s+-?[\d.]+,-?[\d.]+)*$/.test(normalizedValue);
     }
 
+    function getIndicatorEmbedStatusLabel(element) {
+        const attributeValue = getElementAttributeValue(element, 'data-omo-indicator-status').trim();
+        if (attributeValue) {
+            return attributeValue;
+        }
+
+        const statusNode = element && element.querySelector
+            ? element.querySelector('.omo-indicator-embed__values em')
+            : null;
+        return statusNode ? String(statusNode.textContent || '').trim() : '';
+    }
+
     function appendSanitizedIndicatorChart(embedNode, sourceNode, ownerDocument) {
         const sourceChart = sourceNode.querySelector && sourceNode.querySelector('svg.omo-stats-chart');
         if (!sourceChart) {
@@ -329,7 +360,8 @@
         }
 
         const chart = ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        chart.setAttribute('class', 'omo-stats-chart omo-stats-chart--compact');
+        const indicatorKind = getElementAttributeValue(sourceNode, 'data-omo-indicator-kind').trim() === 'group' ? 'group' : 'indicator';
+        chart.setAttribute('class', 'omo-stats-chart omo-stats-chart--compact' + (indicatorKind === 'group' ? ' omo-stats-chart--group' : ''));
         chart.setAttribute('viewBox', '0 0 180 54');
         chart.setAttribute('aria-hidden', 'true');
         ['polyline', 'circle'].forEach(function (tagName) {
@@ -372,7 +404,11 @@
         ['line', 'text'].forEach(function (tagName) {
             Array.from(sourceChart.querySelectorAll(tagName)).forEach(function (sourceShape) {
                 const className = String(sourceShape.getAttribute('class') || '');
-                if (tagName === 'line' && className !== 'omo-stats-chart__scale-line') {
+                if (tagName === 'line' && [
+                    'omo-stats-chart__scale-line',
+                    'omo-stats-chart__reference omo-stats-chart__reference--ceiling',
+                    'omo-stats-chart__baseline'
+                ].indexOf(className) < 0) {
                     return;
                 }
                 if (tagName === 'text' && className !== 'omo-stats-chart__scale-label') {
@@ -562,7 +598,7 @@
             return ownerDocument.createDocumentFragment();
         }
 
-        if (sourceNode.hasAttribute('data-omo-project-embed-runtime')) {
+        if (sourceNode.hasAttribute('data-omo-project-embed-runtime') || sourceNode.hasAttribute('data-omo-checklist-embed-runtime')) {
             return ownerDocument.createDocumentFragment();
         }
 
@@ -659,23 +695,50 @@
             return embedNode;
         }
 
+        if (isAllowedChecklistEmbedElement(sourceNode)) {
+            const embedNode = ownerDocument.createElement('span');
+            embedNode.setAttribute('class', 'omo-checklist-embed');
+            embedNode.setAttribute('contenteditable', 'false');
+            embedNode.setAttribute('data-omo-embed-type', 'checklist');
+            embedNode.setAttribute('data-omo-checklist-id', String(getChecklistEmbedElementId(sourceNode)));
+            const title = getElementAttributeValue(sourceNode, 'data-omo-checklist-title').trim();
+            if (title) { embedNode.setAttribute('data-omo-checklist-title', title); }
+            ['STRONG', 'EM'].forEach(function (tagName) {
+                const childNode = Array.from(sourceNode.children || []).find(function (candidate) {
+                    return String(candidate.tagName || '').toUpperCase() === tagName;
+                });
+                if (childNode) appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument));
+            });
+            return embedNode;
+        }
+
         if (isAllowedIndicatorEmbedElement(sourceNode)) {
             const embedNode = ownerDocument.createElement('span');
-            const isOverdue = getElementAttributeValue(sourceNode, 'data-omo-indicator-overdue').trim() === '1';
-            const overdueSeverity = getElementAttributeValue(sourceNode, 'data-omo-indicator-overdue-severity').trim() === 'warning' ? 'warning' : 'error';
-            const hasStatus = getElementAttributeValue(sourceNode, 'data-omo-indicator-status').trim() !== '';
+            const sourceClassName = ' ' + String(sourceNode.getAttribute('class') || '').trim() + ' ';
+            const isOverdue = getElementAttributeValue(sourceNode, 'data-omo-indicator-overdue').trim() === '1'
+                || sourceClassName.indexOf(' omo-indicator-embed--overdue ') >= 0
+                || sourceClassName.indexOf(' omo-indicator-embed--warning ') >= 0;
+            const overdueSeverity = getElementAttributeValue(sourceNode, 'data-omo-indicator-overdue-severity').trim() === 'warning'
+                || sourceClassName.indexOf(' omo-indicator-embed--warning ') >= 0
+                ? 'warning'
+                : 'error';
+            const statusLabel = getIndicatorEmbedStatusLabel(sourceNode);
+            const hasStatus = statusLabel !== '' || sourceClassName.indexOf(' omo-indicator-embed--current ') >= 0;
             embedNode.setAttribute('class', 'omo-indicator-embed' + (isOverdue ? (overdueSeverity === 'warning' ? ' omo-indicator-embed--warning' : ' omo-indicator-embed--overdue') : (hasStatus ? ' omo-indicator-embed--current' : '')));
             embedNode.setAttribute('contenteditable', 'false');
             embedNode.setAttribute('data-omo-embed-type', 'indicator');
             embedNode.setAttribute('data-omo-indicator-id', String(getIndicatorEmbedElementId(sourceNode)));
             const indicatorKind = getElementAttributeValue(sourceNode, 'data-omo-indicator-kind').trim() === 'group' ? 'group' : 'indicator';
             embedNode.setAttribute('data-omo-indicator-kind', indicatorKind);
-            ['title', 'description', 'value', 'date', 'status', 'context', 'chart-min', 'chart-max', 'overdue-severity'].forEach(function (attributeName) {
+            ['title', 'description', 'value', 'date', 'context', 'chart-min', 'chart-max', 'overdue-severity'].forEach(function (attributeName) {
                 const value = getElementAttributeValue(sourceNode, 'data-omo-indicator-' + attributeName).trim();
                 if (value) {
                     embedNode.setAttribute('data-omo-indicator-' + attributeName, value);
                 }
             });
+            if (statusLabel) {
+                embedNode.setAttribute('data-omo-indicator-status', statusLabel);
+            }
             if (isOverdue) {
                 embedNode.setAttribute('data-omo-indicator-overdue', '1');
             }
@@ -719,7 +782,6 @@
             valuesNode.setAttribute('class', 'omo-indicator-embed__values');
             const valueLabel = getElementAttributeValue(sourceNode, 'data-omo-indicator-value').trim();
             const dateLabel = getElementAttributeValue(sourceNode, 'data-omo-indicator-date').trim();
-            const statusLabel = getElementAttributeValue(sourceNode, 'data-omo-indicator-status').trim();
             if (valueLabel) { const valueNode = ownerDocument.createElement('b'); valueNode.textContent = valueLabel; valuesNode.appendChild(valueNode); }
             if (dateLabel) { const dateNode = ownerDocument.createElement('time'); dateNode.textContent = dateLabel; valuesNode.appendChild(dateNode); }
             if (statusLabel) { const statusNode = ownerDocument.createElement('em'); statusNode.textContent = statusLabel; valuesNode.appendChild(statusNode); }

@@ -72,9 +72,9 @@ function omoChecklistActionDetailUrl($organizationId, $checklistId, $currentHolo
     return $url;
 }
 
-function omoChecklistActionCloneProject(Project $template, $parentProjectId, DateTimeInterface $plannedStart, $titleOverride = null)
+function omoChecklistActionCloneProject(Project $template, $parentProjectId, DateTimeInterface $plannedStart, $titleOverride = null, $plannedEnd = null)
 {
-    $project = Project::createFromChecklistTemplate($template, $parentProjectId, $plannedStart, $titleOverride);
+    $project = Project::createFromChecklistTemplate($template, $parentProjectId, $plannedStart, $titleOverride, $plannedEnd);
     if (!($project instanceof Project)) {
         throw new RuntimeException(omoChecklistT('checklist.error.save'));
     }
@@ -308,11 +308,13 @@ if ($action === 'activate_checklist') {
             }
             $activationType = ChecklistItem::normalizeActivationType($item->get('activation_type'));
             $activationAt = $item->calculateActivationAt($referenceAt, $now);
+            $plannedStartAt = $item->calculatePlannedStartAt($referenceAt);
             $plans[$itemId] = [
                 'item' => $item,
                 'template' => $templateProject,
                 'activationType' => $activationType,
                 'activationAt' => $activationAt,
+                'plannedStartAt' => $plannedStartAt,
                 'parentTemplateId' => (int)$templateProject->get('IDproject_parent'),
                 'project' => null,
             ];
@@ -336,7 +338,11 @@ if ($action === 'activate_checklist') {
                 $plan['project'] = omoChecklistActionCloneProject(
                     $plan['template'],
                     (int)$generatedProjectIds[$parentTemplateId],
-                    $plan['activationAt']
+                    $plan['plannedStartAt'] instanceof DateTimeImmutable ? $plan['plannedStartAt'] : $plan['activationAt'],
+                    null,
+                    $plan['plannedStartAt'] instanceof DateTimeImmutable
+                        ? $plan['item']->getDeadlineAt($plan['plannedStartAt'])
+                        : null
                 );
                 $generatedProjectIds[(int)$plan['template']->getId()] = (int)$plan['project']->getId();
                 $madeProgress = true;
@@ -418,16 +424,16 @@ if ($action === 'save_item') {
         omoChecklistActionRespond(false, omoChecklistT('checklist.error.item_relation'), [], 422);
     }
     $delayUnit = $delayUnit ?: ChecklistItem::DELAY_DAY;
+    $displayLeadValue = max(0, min(3650, (int)($_POST['display_lead_value'] ?? 0)));
+    $displayLeadUnit = ChecklistItem::normalizeDelayUnit($_POST['display_lead_unit'] ?? ChecklistItem::DELAY_DAY) ?: ChecklistItem::DELAY_DAY;
+    $executionDurationValue = max(0, min(3650, (int)($_POST['execution_duration_value'] ?? 0)));
+    $executionDurationUnit = ChecklistItem::normalizeDelayUnit($_POST['execution_duration_unit'] ?? ChecklistItem::DELAY_DAY) ?: ChecklistItem::DELAY_DAY;
 
     $primaryTrigger = omoChecklistGetPrimaryTrigger($checklist);
     $isContainerChecklist = $primaryTrigger instanceof ChecklistTrigger
         && ChecklistTrigger::normalizeTriggerType($primaryTrigger->get('trigger_type')) === ChecklistTrigger::TYPE_CONTAINER;
     $recurrenceFrequency = null;
     $recurrenceSchedule = null;
-    $recurrenceDisplayLeadValue = 0;
-    $recurrenceDisplayLeadUnit = ChecklistItem::DELAY_DAY;
-    $recurrenceExecutionDurationValue = 0;
-    $recurrenceExecutionDurationUnit = ChecklistItem::DELAY_DAY;
     if ($isContainerChecklist) {
         $recurrenceFrequency = RecurrenceSchedule::normalizeFrequency($_POST['recurrence_frequency'] ?? '');
         if ($recurrenceFrequency !== null) {
@@ -435,10 +441,6 @@ if ($action === 'save_item') {
             if ($recurrenceSchedule === null) {
                 omoChecklistActionRespond(false, omoChecklistT('checklist.error.schedule'), [], 422);
             }
-            $recurrenceDisplayLeadValue = max(0, min(3650, (int)($_POST['recurrence_display_lead_value'] ?? 0)));
-            $recurrenceDisplayLeadUnit = ChecklistItem::normalizeDelayUnit($_POST['recurrence_display_lead_unit'] ?? ChecklistItem::DELAY_DAY) ?: ChecklistItem::DELAY_DAY;
-            $recurrenceExecutionDurationValue = max(0, min(3650, (int)($_POST['recurrence_execution_duration_value'] ?? 0)));
-            $recurrenceExecutionDurationUnit = ChecklistItem::normalizeDelayUnit($_POST['recurrence_execution_duration_unit'] ?? ChecklistItem::DELAY_DAY) ?: ChecklistItem::DELAY_DAY;
         }
     }
 
@@ -552,6 +554,10 @@ if ($action === 'save_item') {
         $item->set('activation_type', $activationType);
         $item->set('delay_value', $activationType === ChecklistItem::ACTIVATION_AFTER_START ? $delayValue : 0);
         $item->set('delay_unit', $activationType === ChecklistItem::ACTIVATION_AFTER_START && $delayValue !== 0 ? $delayUnit : null);
+        $item->set('display_lead_value', $displayLeadValue);
+        $item->set('display_lead_unit', $displayLeadValue > 0 ? $displayLeadUnit : null);
+        $item->set('execution_duration_value', $executionDurationValue);
+        $item->set('execution_duration_unit', $executionDurationValue > 0 ? $executionDurationUnit : null);
         $item->set('active', 1);
         omoChecklistActionSaveObject($item);
 
@@ -581,14 +587,14 @@ if ($action === 'save_item') {
                 : ChecklistItem::DELAY_DAY;
             $scheduleChanged = RecurrenceSchedule::normalizeFrequency($recurrence->get('frequency')) !== $recurrenceFrequency
                 || RecurrenceSchedule::normalizeSchedule($recurrence->get('frequency'), $recurrence->get('schedule')) !== $recurrenceSchedule
-                || $existingLeadValue !== $recurrenceDisplayLeadValue
-                || $existingLeadUnit !== $recurrenceDisplayLeadUnit;
+                || $existingLeadValue !== $displayLeadValue
+                || $existingLeadUnit !== $displayLeadUnit;
             $recurrence->set('frequency', $recurrenceFrequency);
             $recurrence->set('schedule', $recurrenceSchedule);
-            $recurrence->set('display_lead_value', $recurrenceDisplayLeadValue);
-            $recurrence->set('display_lead_unit', $recurrenceDisplayLeadUnit);
-            $recurrence->set('execution_duration_value', $recurrenceExecutionDurationValue);
-            $recurrence->set('execution_duration_unit', $recurrenceExecutionDurationUnit);
+            $recurrence->set('display_lead_value', $displayLeadValue);
+            $recurrence->set('display_lead_unit', $displayLeadValue > 0 ? $displayLeadUnit : null);
+            $recurrence->set('execution_duration_value', $executionDurationValue);
+            $recurrence->set('execution_duration_unit', $executionDurationValue > 0 ? $executionDurationUnit : null);
             $recurrence->set('enabled', 1);
             if ($scheduleChanged || !($recurrence->get('next_trigger_at') instanceof DateTimeInterface)) {
                 $nextOccurrenceAt = RecurrenceSchedule::getNextOccurrence($recurrenceFrequency, $recurrenceSchedule, new DateTimeImmutable());

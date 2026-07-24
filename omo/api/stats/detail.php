@@ -27,6 +27,7 @@ $sourceUrl = StatIndicator::sanitizeSourceUrl($indicator->get('source_url'));
 $contextLabel = omoStatsContextLabel($indicator);
 $measurementFrequency = StatIndicator::normalizeMeasurementFrequency($indicator->get('measurement_frequency'));
 $measurementSchedule = omoStatsMeasurementScheduleLabel($measurementFrequency, $indicator->get('measurement_schedule'));
+$chartMinValue = is_numeric($indicator->get('chart_min_value')) ? (float)$indicator->get('chart_min_value') : null;
 $overdueInfo = omoStatsGetIndicatorOverdueInfo($indicator);
 $overdueSeverity = (string)$overdueInfo['severity'];
 $chartData = omoStatsBuildIndicatorChartData($indicator, $values, $referencePoints, $overdueSeverity);
@@ -79,6 +80,9 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
             <?php endif; ?>
             <?php if ($latestValue instanceof StatIndicatorValue): ?>
                 <span class="omo-stats-detail__latest-value"><span><strong><?= omoApiEscape(omoStatsT('stats.detail.latest')) ?> :</strong> <?= omoApiEscape(omoStatsFormatNumber($latestValue->get('value'))) ?><?php if (is_numeric($latestReferencePercentage)): ?> <span class="omo-stats-reference-percentage">(<?= omoApiEscape(omoStatsFormatNumber($latestReferencePercentage)) ?>%)</span><?php endif; ?></span><time>· <?= omoApiEscape(omoStatsFormatDateTime($latestValue->get('measured_at'))) ?></time></span>
+            <?php endif; ?>
+            <?php if ($chartMinValue !== null): ?>
+                <span><strong><?= omoApiEscape(omoStatsT('stats.detail.chart_min_value')) ?> :</strong> <?= omoApiEscape(omoStatsFormatNumber($chartMinValue)) ?></span>
             <?php endif; ?>
             <?php if ($sourceUrl !== ''): ?>
                 <a href="<?= omoApiEscape($sourceUrl) ?>" target="_blank" rel="noopener noreferrer"><?= omoApiEscape(omoStatsT('stats.detail.source')) ?></a>
@@ -157,4 +161,4 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
         </form>
     <?php endif; ?>
 </article>
-<script src="/omo/api/stats/chart.js?v=20260721-overdue-grace"></script>
+<script src="/omo/api/stats/chart.js?v=20260724-scale-bounds"></script>

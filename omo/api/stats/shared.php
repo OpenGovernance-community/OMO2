@@ -80,6 +80,8 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.error.reference_endpoints' => ['text' => 'Les points à 0 % et 100 % sont obligatoires et doivent avoir une date.', 'context' => 'Validation error for missing dated reference endpoints.'],
             'stats.error.reference_dates' => ['text' => 'La date de fin de la référence doit être postérieure à sa date de début.', 'context' => 'Validation error for inverted endpoint dates.'],
             'stats.error.ceiling' => ['text' => 'Tous les points d un plafond doivent utiliser la même valeur.', 'context' => 'Validation error when a ceiling is not horizontal.'],
+            'stats.error.ceiling_value' => ['text' => 'La valeur du plafond est obligatoire.', 'context' => 'Validation error for a missing or invalid ceiling value.'],
+            'stats.error.chart_min_value' => ['text' => 'La valeur basse du graphique est invalide.', 'context' => 'Validation error for a malformed chart lower value.'],
             'stats.error.save' => ['text' => 'Impossible d enregistrer l indicateur.', 'context' => 'Generic indicator persistence error.'],
             'stats.error.value_save' => ['text' => 'Impossible d enregistrer cette valeur.', 'context' => 'Generic indicator value persistence error.'],
             'stats.error.selection' => ['text' => 'Selectionnez au moins un indicateur visible.', 'context' => 'Validation error for an empty or invalid indicator selection.'],
@@ -95,6 +97,7 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.detail.latest' => ['text' => 'Valeur actuelle', 'context' => 'Label for the latest value in indicator detail.'],
             'stats.detail.frequency' => ['text' => 'Fréquence attendue', 'context' => 'Label for the expected measurement frequency in indicator detail.'],
             'stats.detail.schedule' => ['text' => 'Moment attendu', 'context' => 'Label for the optional expected measurement moment in indicator detail.'],
+            'stats.detail.chart_min_value' => ['text' => 'Valeur basse', 'context' => 'Label for the optional lower chart value in indicator detail.'],
             'stats.detail.no_values' => ['text' => 'Aucune valeur n a encore été enregistrée.', 'context' => 'Empty state in the indicator value list.'],
             'stats.detail.value_date' => ['text' => 'Date', 'context' => 'Heading for the dated value date.'],
             'stats.detail.value' => ['text' => 'Valeur', 'context' => 'Heading for the dated value number.'],
@@ -154,6 +157,9 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.form.reference_none' => ['text' => 'Aucune référence', 'context' => 'Reference type select option for none.'],
             'stats.form.reference_ceiling' => ['text' => 'Plafond horizontal', 'context' => 'Reference type select option for ceiling.'],
             'stats.form.reference_objective' => ['text' => 'Objectif ou trajectoire', 'context' => 'Reference type select option for objective.'],
+            'stats.form.ceiling_title' => ['text' => 'Plafond', 'context' => 'Heading of the simple ceiling reference editor.'],
+            'stats.form.ceiling_help' => ['text' => 'Saisissez une valeur unique. Le repère sera affiché sur toute la période visible du graphique.', 'context' => 'Help text for the simple ceiling reference editor.'],
+            'stats.form.ceiling_value' => ['text' => 'Valeur du plafond', 'context' => 'Label for the simple ceiling value input.'],
             'stats.form.position' => ['text' => 'Position (%)', 'context' => 'Reference point editor position label.'],
             'stats.form.point_date' => ['text' => 'Date', 'context' => 'Reference point editor endpoint date label.'],
             'stats.form.point_date_auto' => ['text' => 'Date calculée', 'context' => 'Reference point editor calculated intermediate date label.'],
@@ -765,6 +771,40 @@ if (!function_exists('omoStatsResolveReferenceSeries')) {
     }
 }
 
+if (!function_exists('omoStatsGetCeilingValue')) {
+    function omoStatsGetCeilingValue(array $referencePoints)
+    {
+        foreach ($referencePoints as $point) {
+            if ($point instanceof StatIndicatorReferencePoint && is_numeric($point->get('value'))) {
+                return (float)$point->get('value');
+            }
+        }
+
+        return null;
+    }
+}
+
+if (!function_exists('omoStatsGetSeriesValueRange')) {
+    function omoStatsGetSeriesValueRange(array $series)
+    {
+        $values = [];
+        foreach ($series as $point) {
+            if (is_numeric($point['value'] ?? null)) {
+                $values[] = (float)$point['value'];
+            }
+        }
+
+        if (count($values) === 0) {
+            return null;
+        }
+
+        return [
+            'min' => min($values),
+            'max' => max($values),
+        ];
+    }
+}
+
 if (!function_exists('omoStatsGetIndicatorChartSeries')) {
     function omoStatsGetIndicatorChartSeries(StatIndicator $indicator, array $values, array $referencePoints)
     {
@@ -787,13 +827,18 @@ if (!function_exists('omoStatsGetIndicatorChartSeries')) {
             return $left['timestamp'] <=> $right['timestamp'];
         });
 
-        $referenceSeries = StatIndicator::normalizeReferenceType($indicator->get('reference_type')) === StatIndicator::REFERENCE_NONE
-            ? []
-            : omoStatsResolveReferenceSeries($referencePoints, $values);
+        $referenceType = StatIndicator::normalizeReferenceType($indicator->get('reference_type'));
+        $referenceSeries = $referenceType === StatIndicator::REFERENCE_OBJECTIVE
+            ? omoStatsResolveReferenceSeries($referencePoints, $values)
+            : [];
+        $ceilingValue = $referenceType === StatIndicator::REFERENCE_CEILING
+            ? omoStatsGetCeilingValue($referencePoints)
+            : null;
 
         return [
             'measure' => $measureSeries,
             'reference' => $referenceSeries,
+            'ceiling' => $ceilingValue,
         ];
     }
 }
@@ -808,11 +853,20 @@ if (!function_exists('omoStatsGetGroupReferencePoints')) {
 if (!function_exists('omoStatsGetGroupReferenceSeries')) {
     function omoStatsGetGroupReferenceSeries(StatIndicatorGroup $group)
     {
-        if (StatIndicator::normalizeReferenceType($group->get('reference_type')) === StatIndicator::REFERENCE_NONE) {
+        if (StatIndicator::normalizeReferenceType($group->get('reference_type')) !== StatIndicator::REFERENCE_OBJECTIVE) {
             return [];
         }
 
         return omoStatsResolveReferenceSeries(omoStatsGetGroupReferencePoints($group));
+    }
+}
+
+if (!function_exists('omoStatsGetGroupCeilingValue')) {
+    function omoStatsGetGroupCeilingValue(StatIndicatorGroup $group)
+    {
+        return StatIndicator::normalizeReferenceType($group->get('reference_type')) === StatIndicator::REFERENCE_CEILING
+            ? omoStatsGetCeilingValue(omoStatsGetGroupReferencePoints($group))
+            : null;
     }
 }
 
@@ -844,10 +898,12 @@ if (!function_exists('omoStatsGetGroupLatestSumValue')) {
             return null;
         }
 
-        $referenceValue = omoStatsGetReferenceValueAtTimestamp(
-            omoStatsGetGroupReferenceSeries($group),
-            $latestPoint['timestamp']
-        );
+        $referenceValue = StatIndicator::normalizeReferenceType($group->get('reference_type')) === StatIndicator::REFERENCE_CEILING
+            ? omoStatsGetGroupCeilingValue($group)
+            : omoStatsGetReferenceValueAtTimestamp(
+                omoStatsGetGroupReferenceSeries($group),
+                $latestPoint['timestamp']
+            );
         $latestPoint['referencePercentage'] = is_numeric($referenceValue) && abs((float)$referenceValue) >= 0.000000001
             ? round(($latestPoint['value'] / (float)$referenceValue) * 100, 2)
             : null;
@@ -900,6 +956,13 @@ if (!function_exists('omoStatsGetIndicatorReferencePercentage')) {
             || !is_numeric($value->get('value'))
         ) {
             return null;
+        }
+
+        if (StatIndicator::normalizeReferenceType($indicator->get('reference_type')) === StatIndicator::REFERENCE_CEILING) {
+            $ceilingValue = omoStatsGetCeilingValue($referencePoints);
+            return is_numeric($ceilingValue) && abs((float)$ceilingValue) >= 0.000000001
+                ? round(((float)$value->get('value') / (float)$ceilingValue) * 100, 2)
+                : null;
         }
 
         $measuredAt = $value->get('measured_at');
@@ -1059,6 +1122,44 @@ if (!function_exists('omoStatsSmallGroupTimestampRange')) {
     }
 }
 
+if (!function_exists('omoStatsChartSeriesTimestampRange')) {
+    function omoStatsChartSeriesTimestampRange(array $series, ?array $limits = null)
+    {
+        $timestamps = [];
+        foreach ($series as $point) {
+            if (!is_numeric($point['timestamp'] ?? null)) {
+                continue;
+            }
+            $timestamp = (int)$point['timestamp'];
+            if (
+                $limits !== null
+                && ($timestamp < (int)$limits['start'] || $timestamp > (int)$limits['end'])
+            ) {
+                continue;
+            }
+            $timestamps[] = $timestamp;
+        }
+
+        return count($timestamps) > 0
+            ? ['start' => min($timestamps), 'end' => max($timestamps)]
+            : null;
+    }
+}
+
+if (!function_exists('omoStatsGroupedChartSeriesTimestampRange')) {
+    function omoStatsGroupedChartSeriesTimestampRange(array $series, ?array $limits = null)
+    {
+        $points = [];
+        foreach ($series as $seriesItem) {
+            foreach (($seriesItem['points'] ?? []) as $point) {
+                $points[] = $point;
+            }
+        }
+
+        return omoStatsChartSeriesTimestampRange($points, $limits);
+    }
+}
+
 if (!function_exists('omoStatsBuildIndicatorChartData')) {
     function omoStatsBuildIndicatorChartData(StatIndicator $indicator, array $values, array $referencePoints, $isOverdue = null)
     {
@@ -1072,8 +1173,13 @@ if (!function_exists('omoStatsBuildIndicatorChartData')) {
             'label' => (string)$indicator->get('name'),
             'measure' => $series['measure'],
             'reference' => $series['reference'],
+            'ceiling' => $series['ceiling'],
+            'minimumValue' => is_numeric($indicator->get('chart_min_value')) ? (float)$indicator->get('chart_min_value') : null,
             'defaultRange' => omoStatsReferenceTimestampRange($series['reference'])
-                ?: omoStatsSmallIndicatorTimestampRange($indicator, $series['measure']),
+                ?: omoStatsChartSeriesTimestampRange(
+                    $series['measure'],
+                    omoStatsSmallIndicatorTimestampRange($indicator, $series['measure'])
+                ),
             'overdue' => $overdueSeverity !== 'none',
             'overdueSeverity' => $overdueSeverity,
             'tooltip' => [
@@ -1114,13 +1220,19 @@ if (!function_exists('omoStatsBuildGroupChartData')) {
             ];
         }
         $referenceSeries = omoStatsGetGroupReferenceSeries($group);
+        $ceilingValue = omoStatsGetGroupCeilingValue($group);
         return [
             'type' => 'group',
             'label' => (string)$group->get('name'),
             'series' => $dataSeries,
             'reference' => $referenceSeries,
+            'ceiling' => $ceilingValue,
+            'minimumValue' => is_numeric($group->get('chart_min_value')) ? (float)$group->get('chart_min_value') : null,
             'defaultRange' => omoStatsReferenceTimestampRange($referenceSeries)
-                ?: omoStatsSmallGroupTimestampRange($series),
+                ?: omoStatsGroupedChartSeriesTimestampRange(
+                    $dataSeries,
+                    omoStatsSmallGroupTimestampRange($series)
+                ),
             'overdue' => $overdueSeverity !== 'none',
             'overdueSeverity' => $overdueSeverity,
             'tooltip' => [
@@ -1259,6 +1371,8 @@ if (!function_exists('omoStatsRenderChart')) {
         $chartSeries = omoStatsGetIndicatorChartSeries($indicator, $values, $referencePoints);
         $measureSeries = $chartSeries['measure'];
         $referenceSeries = $chartSeries['reference'];
+        $ceilingValue = is_numeric($chartSeries['ceiling'] ?? null) ? (float)$chartSeries['ceiling'] : null;
+        $minimumValue = is_numeric($indicator->get('chart_min_value')) ? (float)$indicator->get('chart_min_value') : null;
 
         if (count($measureSeries) === 0 && count($referenceSeries) === 0) {
             return '<div class="omo-stats-chart-empty">' . omoApiEscape(omoStatsT('stats.chart.empty')) . '</div>';
@@ -1273,6 +1387,7 @@ if (!function_exists('omoStatsRenderChart')) {
         $plotWidth = max(1, $width - $paddingLeft - $paddingRight);
         $plotHeight = max(1, $height - $paddingTop - $paddingBottom);
         $referenceRange = omoStatsReferenceTimestampRange($referenceSeries);
+        $displayTimeRange = $referenceRange;
         if ($referenceRange !== null) {
             $measureSeries = omoStatsClipChartSeries($measureSeries, $referenceRange['start'], $referenceRange['end']);
         } elseif ($variant !== 'large') {
@@ -1284,8 +1399,14 @@ if (!function_exists('omoStatsRenderChart')) {
         $allSeries = array_merge($measureSeries, $referenceSeries);
         $timestamps = array_column($allSeries, 'timestamp');
         $numbers = array_column($allSeries, 'value');
-        $minTimestamp = $referenceRange !== null ? $referenceRange['start'] : min($timestamps);
-        $maxTimestamp = $referenceRange !== null ? $referenceRange['end'] : max($timestamps);
+        if ($ceilingValue !== null) {
+            $numbers[] = $ceilingValue;
+        }
+        if ($minimumValue !== null) {
+            $numbers[] = $minimumValue;
+        }
+        $minTimestamp = $displayTimeRange !== null ? $displayTimeRange['start'] : min($timestamps);
+        $maxTimestamp = $displayTimeRange !== null ? $displayTimeRange['end'] : max($timestamps);
         if ($maxTimestamp <= $minTimestamp) {
             $minTimestamp -= 43200;
             $maxTimestamp += 43200;
@@ -1303,6 +1424,13 @@ if (!function_exists('omoStatsRenderChart')) {
 
         $measureCoordinates = array_map($mapPoint, $measureSeries);
         $referenceCoordinates = array_map($mapPoint, $referenceSeries);
+        $measureValueRange = omoStatsGetSeriesValueRange($measureSeries);
+        $minimumLineValue = $minimumValue !== null
+            && $measureValueRange !== null
+            && $minimumValue >= $measureValueRange['min']
+            && $minimumValue <= $measureValueRange['max']
+            ? $minimumValue
+            : null;
         $coordinateString = static function (array $coordinates) {
             return implode(' ', array_map(static function (array $point) {
                 return $point[0] . ',' . $point[1];
@@ -1353,6 +1481,14 @@ if (!function_exists('omoStatsRenderChart')) {
 
         if (count($referenceCoordinates) > 1) {
             $svg .= '<polyline class="omo-stats-chart__reference" points="' . $coordinateString($referenceCoordinates) . '"/>';
+        }
+        if ($ceilingValue !== null) {
+            $ceilingY = $mapPoint(['timestamp' => $minTimestamp, 'value' => $ceilingValue])[1];
+            $svg .= '<line class="omo-stats-chart__reference omo-stats-chart__reference--ceiling" x1="' . $paddingLeft . '" y1="' . $ceilingY . '" x2="' . ($width - $paddingRight) . '" y2="' . $ceilingY . '"/>';
+        }
+        if ($minimumLineValue !== null) {
+            $minimumY = $mapPoint(['timestamp' => $minTimestamp, 'value' => $minimumLineValue])[1];
+            $svg .= '<line class="omo-stats-chart__baseline" x1="' . $paddingLeft . '" y1="' . $minimumY . '" x2="' . ($width - $paddingRight) . '" y2="' . $minimumY . '"/>';
         }
 
         omoStatsAppendSimpleChartScale($svg, $variant, $width, $height, $paddingLeft, $paddingRight, $paddingTop, $paddingBottom, $minValue, $maxValue);
@@ -1541,7 +1677,11 @@ if (!function_exists('omoStatsRenderGroupChart')) {
         }
         $overdueSeverity = is_string($isOverdue) ? $isOverdue : ($isOverdue ? 'error' : 'none');
         $referenceSeries = omoStatsGetGroupReferenceSeries($group);
+        $groupCeilingValue = omoStatsGetGroupCeilingValue($group);
+        $ceilingValue = is_numeric($groupCeilingValue) ? (float)$groupCeilingValue : null;
+        $minimumValue = is_numeric($group->get('chart_min_value')) ? (float)$group->get('chart_min_value') : null;
         $referenceRange = omoStatsReferenceTimestampRange($referenceSeries);
+        $displayTimeRange = $referenceRange;
         $renderSeries = $series;
         if ($referenceRange !== null) {
             $renderSeries = array_values(array_filter($series, static function (array $seriesItem) {
@@ -1584,20 +1724,37 @@ if (!function_exists('omoStatsRenderGroupChart')) {
         $paddingTop = $variant === 'large' ? 24 : ($variant === 'compact' ? 3 : 18);
         $paddingBottom = $variant === 'large' ? 42 : ($variant === 'compact' ? 3 : 18);
         $allPoints = [];
+        $measurePoints = [];
         foreach ($renderSeries as $seriesItem) {
             $allPoints = array_merge($allPoints, $seriesItem['points']);
+            if (empty($seriesItem['is_reference'])) {
+                $measurePoints = array_merge($measurePoints, $seriesItem['points']);
+            }
         }
         $timestamps = array_column($allPoints, 'timestamp');
         $values = array_column($allPoints, 'value');
-        $minTimestamp = min($timestamps);
-        $maxTimestamp = max($timestamps);
-        if ($minTimestamp === $maxTimestamp) {
+        if ($ceilingValue !== null) {
+            $values[] = $ceilingValue;
+        }
+        if ($minimumValue !== null) {
+            $values[] = $minimumValue;
+        }
+        $minTimestamp = $displayTimeRange !== null ? $displayTimeRange['start'] : min($timestamps);
+        $maxTimestamp = $displayTimeRange !== null ? $displayTimeRange['end'] : max($timestamps);
+        if ($maxTimestamp <= $minTimestamp) {
             $minTimestamp -= 43200;
             $maxTimestamp += 43200;
         }
         $chartScale = omoStatsResolveChartScale(min($values), max($values));
         $minValue = $chartScale['min'];
         $maxValue = $chartScale['max'];
+        $measureValueRange = omoStatsGetSeriesValueRange($measurePoints);
+        $minimumLineValue = $minimumValue !== null
+            && $measureValueRange !== null
+            && $minimumValue >= $measureValueRange['min']
+            && $minimumValue <= $measureValueRange['max']
+            ? $minimumValue
+            : null;
 
         $plotWidth = $width - $paddingLeft - $paddingRight;
         $plotHeight = $height - $paddingTop - $paddingBottom;
@@ -1648,6 +1805,14 @@ if (!function_exists('omoStatsRenderGroupChart')) {
                     $svg .= '<circle class="omo-stats-chart__point" style="stroke:' . $color . '" cx="' . $point[0] . '" cy="' . $point[1] . '" r="' . ($variant === 'large' ? 4 : 3) . '"' . $pointTooltipAttributes . '/>';
                 }
             }
+        }
+        if ($ceilingValue !== null) {
+            $ceilingY = $mapPoint(['timestamp' => $minTimestamp, 'value' => $ceilingValue])[1];
+            $svg .= '<line class="omo-stats-chart__reference omo-stats-chart__reference--ceiling" x1="' . $paddingLeft . '" y1="' . $ceilingY . '" x2="' . ($width - $paddingRight) . '" y2="' . $ceilingY . '"/>';
+        }
+        if ($minimumLineValue !== null) {
+            $minimumY = $mapPoint(['timestamp' => $minTimestamp, 'value' => $minimumLineValue])[1];
+            $svg .= '<line class="omo-stats-chart__baseline" x1="' . $paddingLeft . '" y1="' . $minimumY . '" x2="' . ($width - $paddingRight) . '" y2="' . $minimumY . '"/>';
         }
         omoStatsAppendSimpleChartScale($svg, $variant, $width, $height, $paddingLeft, $paddingRight, $paddingTop, $paddingBottom, $minValue, $maxValue);
         return $svg . '</svg>';

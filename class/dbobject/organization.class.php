@@ -886,6 +886,80 @@
 			return true;
 		}
 
+		protected function removeUserHolonLinks($userId, array $holonIds)
+		{
+			$holonIds = array_values(array_unique(array_filter(array_map('intval', $holonIds))));
+			if (count($holonIds) === 0) {
+				return true;
+			}
+			$params = array('user_id' => (int)$userId);
+			$placeholders = self::buildIntPlaceholders($holonIds, 'holon', $params);
+			$rows = self::fetchAll("SELECT id FROM user_holon WHERE IDuser = :user_id AND IDholon IN (" . implode(', ', $placeholders) . ')', $params);
+			if ($rows === false) {
+				return false;
+			}
+			foreach ($rows as $row) {
+				$link = new \dbObject\UserHolon();
+				if ($link->load((int)($row['id'] ?? 0)) && !$link->delete()) {
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		public function disconnectUserPreservingHistory($userId)
+		{
+			$organizationId = (int)$this->getId();
+			$userId = (int)$userId;
+			if ($organizationId <= 0 || $userId <= 0) {
+				return array('status' => false, 'message' => 'Membre ou organisation invalide.');
+			}
+			$user = new \dbObject\User();
+			if (!$user->load($userId) || $user->isHistoricalPlaceholder()) {
+				return array('status' => false, 'message' => 'Le compte a retirer est introuvable.');
+			}
+			$pdo = \dbObject\DbObject::getPdo();
+			if (!$pdo) {
+				return array('status' => false, 'message' => 'Connexion base de donnees indisponible.');
+			}
+
+			try {
+				$ownsTransaction = !$pdo->inTransaction();
+				if ($ownsTransaction) {
+					$pdo->beginTransaction();
+				}
+				$ghostUser = \dbObject\User::getOrCreateHistoricalPlaceholder($organizationId, $user);
+				$scopeUpdateResult = \dbObject\Document::normalizeSelfScopedDocumentsForAuthorContext($organizationId, $userId);
+				if (!is_array($scopeUpdateResult) || empty($scopeUpdateResult['status'])) {
+					throw new \RuntimeException('Les portees des documents lies a ce membre n ont pas pu etre mises a jour.');
+				}
+				$handlers = array('Project', 'ProjectUser', 'StatIndicator', 'StatIndicatorValue', 'Document', 'DocumentPvPoint', 'Event', 'History', 'Tension');
+				foreach ($handlers as $handler) {
+					$className = '\\dbObject\\' . $handler;
+					if (!$className::handleUserDeparture($organizationId, $userId, (int)$ghostUser->getId())) {
+						throw new \RuntimeException('Les references de ' . $handler . ' n ont pas pu etre mises a jour.');
+					}
+				}
+				if (!$this->removeUserHolonLinks($userId, $this->getOrganizationHolonIds())) {
+					throw new \RuntimeException('Les liens aux holons n ont pas pu etre retires.');
+				}
+				$membership = $this->getMembership($userId);
+				if ($membership && !$membership->delete()) {
+					throw new \RuntimeException('L adhesion a l organisation n a pas pu etre retiree.');
+				}
+				if ($ownsTransaction && $pdo->inTransaction()) {
+					$pdo->commit();
+				}
+				return array('status' => true, 'ghostUserId' => (int)$ghostUser->getId());
+			} catch (\Throwable $exception) {
+				if (isset($ownsTransaction) && $ownsTransaction && $pdo->inTransaction()) {
+					$pdo->rollBack();
+				}
+				return array('status' => false, 'message' => $exception->getMessage());
+			}
+		}
+
 		protected function deleteOrganizationDocuments(array $holonIds)
 		{
 			$organizationId = (int)$this->getId();
@@ -1002,19 +1076,9 @@
 			try {
 				$pdo->beginTransaction();
 
-				if (!$this->deactivateUserHolonLinks($userId, $this->getOrganizationHolonIds())) {
-					throw new \RuntimeException("Le retrait des roles et cercles n'a pas pu etre finalise.");
-				}
-
-				$membership->set('active', false);
-				$saveResult = $membership->setOrganizationAdmin(false);
-				if (!is_array($saveResult) || empty($saveResult['status'])) {
-					throw new \RuntimeException("Le retrait de l'organisation n'a pas pu etre enregistre.");
-				}
-
-				$scopeUpdateResult = \dbObject\Document::normalizeSelfScopedDocumentsForAuthorContext((int)$this->getId(), $userId);
-				if (!is_array($scopeUpdateResult) || empty($scopeUpdateResult['status'])) {
-					throw new \RuntimeException("Les portees des documents lies a ce membre n'ont pas pu etre mises a jour.");
+				$departureResult = $this->disconnectUserPreservingHistory($userId);
+				if (empty($departureResult['status'])) {
+					throw new \RuntimeException((string)($departureResult['message'] ?? 'Le retrait du membre n a pas pu etre finalise.'));
 				}
 
 				$pdo->commit();
@@ -2429,6 +2493,11 @@
 			return isset($statusMap[$legacyStatusId]) ? $statusMap[$legacyStatusId] : \dbObject\Project::STATUS_READY;
 		}
 
+		protected static function omo1ImportProjectIsArchived($legacyStatusId)
+		{
+			return (int)$legacyStatusId === 64;
+		}
+
 		protected static function omo1ImportUserMembership(\dbObject\Organization $organization, $userId, $isAdmin, array $record = array(), $isActive = true)
 		{
 			$userId = (int)$userId;
@@ -2662,7 +2731,7 @@
 				if ($createdAt) {
 					$project->set('created_at', $createdAt);
 				}
-				$project->set('active', true);
+				$project->set('active', !self::omo1ImportProjectIsArchived($record['legacyStatusId'] ?? 0));
 				self::omo1ImportSave($project, 'Un projet n a pas pu etre cree');
 				$projectIdMap[$sourceId] = (int)$project->getId();
 				$stats['projects'] += 1;
@@ -3007,8 +3076,13 @@
 					$historyRecord = $historyById[$sourceHistoryId];
 					$pointHolonSourceId = (int)($historyRecord['sourceHolonId'] ?? 0);
 					$pointHolonId = isset($holonIdMap[$pointHolonSourceId]) ? (int)$holonIdMap[$pointHolonSourceId] : null;
-					$pointSourceUserId = (int)($historyRecord['sourceUserId'] ?? 0);
-					$pointUserId = isset($userIdMap[$pointSourceUserId]) ? (int)$userIdMap[$pointSourceUserId] : $targetUserId;
+					$pointSourceUserId = !empty($pointGroup['isTension'])
+						? (int)($historyRecord['sourceTensionUserId'] ?? 0)
+						: (int)($historyRecord['sourceUserId'] ?? 0);
+					if ($pointSourceUserId <= 0 && !empty($pointGroup['isTension'])) {
+						$pointSourceUserId = (int)($historyRecord['sourceUserId'] ?? 0);
+					}
+					$pointUserId = isset($userIdMap[$pointSourceUserId]) ? (int)$userIdMap[$pointSourceUserId] : null;
 					$title = !empty($pointGroup['isTension'])
 						? self::omo1ImportPlainText($historyRecord['tensionTitle'] ?? '', 120)
 						: self::omo1ImportPlainText($historyRecord['title'] ?? '', 120);
@@ -3027,7 +3101,7 @@
 					$point->set('content', $content);
 					$point->set('pointtype', ($historyRecord['legacyPointType'] ?? '') === 'information'
 						? \dbObject\DocumentPvPoint::TYPE_INFORMATION
-						: \dbObject\DocumentPvPoint::TYPE_NORMAL);
+						: \dbObject\DocumentPvPoint::TYPE_CONSULTATION);
 					$point->set('position', max(1, (int)($historyRecord['position'] ?? 1)));
 					$point->set('IDuser_author', $pointUserId);
 					$point->set('IDuser_modification', $targetUserId);
@@ -7037,6 +7111,65 @@
 				'status' => true,
 				'message' => 'Modele enregistre.',
 				'template' => $template->toTemplateEditorArray((int)$rootHolon->getId()),
+				'data' => $this->getHolonTemplateEditorData((int)$contextHolon->getId(), $scope),
+			);
+		}
+
+		public function deleteHolonTemplateDefinition($templateId = 0, $userId = 0, $contextHolonId = 0, $scope = 'contextual')
+		{
+			$rootHolon = $this->getStructuralRootHolon();
+			$contextHolon = $this->getTemplateContextHolon($contextHolonId);
+			$templateId = (int)$templateId;
+			$scope = $this->normalizeTemplateEditorScope($scope);
+
+			if (!$rootHolon || !$contextHolon || $templateId <= 0) {
+				return array(
+					'status' => false,
+					'message' => 'Le modele a supprimer est invalide.',
+				);
+			}
+
+			if (!$contextHolon->canEdit()) {
+				return array(
+					'status' => false,
+					'message' => "Vous n'avez pas les droits pour modifier les modeles de ce holon.",
+				);
+			}
+
+			$template = new \dbObject\Holon();
+			if (
+				!$template->load($templateId)
+				|| !$template->isTemplateNode((int)$rootHolon->getId())
+				|| (int)$template->get('IDholon_parent') !== (int)$contextHolon->getId()
+			) {
+				return array(
+					'status' => false,
+					'message' => 'Le modele a supprimer est introuvable.',
+				);
+			}
+
+			if (!$template->canDelete()) {
+				return array(
+					'status' => false,
+					'message' => "Vous n'avez pas les droits pour supprimer ce modele.",
+				);
+			}
+
+			$templateName = $template->getDisplayName();
+			if (!$template->delete()) {
+				return array(
+					'status' => false,
+					'message' => "Le modele n'a pas pu etre supprime.",
+				);
+			}
+
+			return array(
+				'status' => true,
+				'message' => 'Modele supprime.',
+				'template' => array(
+					'id' => $templateId,
+					'name' => $templateName,
+				),
 				'data' => $this->getHolonTemplateEditorData((int)$contextHolon->getId(), $scope),
 			);
 		}

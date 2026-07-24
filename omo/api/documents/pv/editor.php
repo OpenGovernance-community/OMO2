@@ -192,6 +192,7 @@ $embeddableDecisionsPayload = [];
 $embeddableEventsPayload = [];
 $embeddableIndicatorsPayload = [];
 $embeddableProjectsPayload = [];
+$embeddableChecklistsPayload = [];
 $attendancePayload = $hasTeamApplication
     ? omoDocumentsPvEditorBuildAttendancePayloadFromDocument($document, $organizationId)
     : null;
@@ -284,6 +285,26 @@ foreach ($embeddableProjects as $embeddableProject) {
 usort($embeddableProjectsPayload, static function (array $left, array $right): int {
     return strnatcasecmp((string)($left['title'] ?? ''), (string)($right['title'] ?? ''));
 });
+
+if ($hasOrganization && $organization->isApplicationEnabled('checklist', $currentUserId)) {
+    $embeddableChecklists = new \dbObject\ArrayChecklist();
+    $embeddableChecklists->loadForOrganization($organizationId, true);
+    foreach ($embeddableChecklists as $embeddableChecklist) {
+        if (!($embeddableChecklist instanceof \dbObject\Checklist) || \dbObject\Checklist::normalizeStatus($embeddableChecklist->get('status')) === \dbObject\Checklist::STATUS_RETIRED) { continue; }
+        $checklistRoot = $embeddableChecklist->getTemplateRoot();
+        if (!($checklistRoot instanceof \dbObject\Project)) { continue; }
+        $checklistHolon = $checklistRoot->getHolon();
+        $review = $embeddableChecklist->getPvReviewSummary();
+        $embeddableChecklistsPayload[] = [
+            'id' => (int)$embeddableChecklist->getId(),
+            'contextHolonId' => (int)$checklistRoot->get('IDholon'),
+            'contextLabel' => $checklistHolon instanceof \dbObject\Holon ? trim((string)$checklistHolon->getDisplayName()) : '',
+            'title' => trim((string)$review['title']),
+            'summary' => !empty($review['isContainer']) ? omoDocumentsPvEditorT('documents.pv_editor.checklist.review_container') : omoDocumentsPvEditorT('documents.pv_editor.checklist.review_runs'),
+        ];
+    }
+    usort($embeddableChecklistsPayload, static fn (array $left, array $right): int => strnatcasecmp((string)($left['title'] ?? ''), (string)($right['title'] ?? '')));
+}
 
 if ($hasCalendarApplication) {
     $embeddableEvents = new \dbObject\ArrayEvent();
@@ -2668,6 +2689,24 @@ foreach ($points as $point) {
         'responsibleId' => $currentUserId,
         'responsibleLabel' => $projectEmbedCreateResponsibleLabel,
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const canEmbedChecklists = <?= count($embeddableChecklistsPayload) > 0 ? 'true' : 'false' ?>;
+    const canCompleteChecklistProjects = <?= $canManagePvDocument ? 'true' : 'false' ?>;
+    const embeddableChecklists = <?= json_encode($embeddableChecklistsPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    const checklistEmbedUi = <?= json_encode([
+        'buttonTitle' => omoDocumentsPvEditorT('documents.pv_editor.checklist.button_title'),
+        'modalTitle' => omoDocumentsPvEditorT('documents.pv_editor.checklist.modal_title'),
+        'quickSearchPlaceholder' => omoDocumentsPvEditorT('documents.pv_editor.embed.quick_search_placeholder'),
+        'visible' => omoDocumentsPvEditorT('documents.pv_editor.checklist.visible'),
+        'none' => omoDocumentsPvEditorT('documents.pv_editor.embed.none'),
+        'insert' => omoDocumentsPvEditorT('documents.pv_editor.checklist.insert'),
+        'cancel' => omoDocumentsPvEditorT('documents.pv_editor.action.cancel'),
+        'remove' => omoDocumentsPvEditorT('documents.pv_editor.action.remove_embed'),
+        'completeArchive' => omoDocumentsPvEditorT('documents.pv_editor.checklist.complete_archive'),
+        'completeArchiving' => omoDocumentsPvEditorT('documents.pv_editor.checklist.complete_archiving'),
+        'completeArchiveError' => omoDocumentsPvEditorT('documents.pv_editor.checklist.complete_archive_error'),
+        'emptyRuns' => omoDocumentsPvEditorT('documents.pv_editor.checklist.empty_runs'),
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const checklistRunReviewCache = new Map();
     const canEmbedEvents = <?= $hasCalendarApplication ? 'true' : 'false' ?>;
     const embeddableEvents = <?= json_encode($embeddableEventsPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     const eventEmbedUi = <?= json_encode([
@@ -2769,7 +2808,7 @@ foreach ($points as $point) {
 
     function openPvEmbeddedResourceByHash(resourceHash) {
         const normalizedHash = String(resourceHash || '').replace(/^#/, '');
-        if (!/^(?:(?:documents|decision|projects)-d\d+|calendar-e\d+|stats(?:-i\d+)?)$/.test(normalizedHash)) {
+        if (!/^(?:(?:documents|decision|projects)-d\d+|checklist-c\d+|calendar-e\d+|stats(?:-i\d+)?)$/.test(normalizedHash)) {
             return;
         }
 
@@ -2815,18 +2854,40 @@ foreach ($points as $point) {
 
         root.addEventListener('click', function (event) {
             const targetNode = event.target && event.target.closest ? event.target : null;
+            const checklistArchiveButton = targetNode ? targetNode.closest('[data-omo-checklist-complete-archive]') : null;
+            if (checklistArchiveButton instanceof HTMLButtonElement) {
+                event.preventDefault();
+                event.stopPropagation();
+                completePvChecklistProject(checklistArchiveButton);
+                return;
+            }
+            const checklistContainerToggle = targetNode ? targetNode.closest('[data-omo-checklist-container-toggle]') : null;
+            if (checklistContainerToggle instanceof HTMLButtonElement) {
+                event.preventDefault();
+                event.stopPropagation();
+                loadPvChecklistContainerReview(checklistContainerToggle);
+                return;
+            }
+            const checklistRunToggle = targetNode ? targetNode.closest('[data-omo-checklist-run-toggle]') : null;
+            if (checklistRunToggle instanceof HTMLButtonElement) {
+                event.preventDefault();
+                event.stopPropagation();
+                loadPvChecklistRunReview(checklistRunToggle);
+                return;
+            }
             const documentLink = targetNode ? targetNode.closest('.omo-document-embed a[href^="#documents-d"]') : null;
             const decisionLink = targetNode ? targetNode.closest('.omo-decision-embed a[href^="#decision-d"]') : null;
             const eventLink = targetNode ? targetNode.closest('.omo-event-embed a[href^="#calendar-e"]') : null;
             const indicatorLink = targetNode ? targetNode.closest('.omo-indicator-embed a[href^="#stats"]') : null;
-            const projectLink = targetNode ? targetNode.closest('.omo-project-embed a[href^="#projects-d"]') : null;
-            const resourceLink = documentLink || decisionLink || eventLink || indicatorLink || projectLink;
+            const projectLink = targetNode ? targetNode.closest('.omo-project-embed a[href^="#projects-d"], .omo-checklist-embed .omo-project-embed__child-title[href^="#projects-d"], .omo-checklist-embed .omo-checklist-embed__item-segment[href^="#projects-d"]') : null;
+            const checklistLink = targetNode ? targetNode.closest('.omo-checklist-embed a[href^="#checklist-c"]') : null;
+            const resourceLink = documentLink || decisionLink || eventLink || indicatorLink || projectLink || checklistLink;
             if (!resourceLink || resourceLink.matches('[data-omo-document-embed-external], .omo-document-embed__external, .omo-project-embed__external')) {
                 return;
             }
 
             const resourceHash = String(resourceLink.getAttribute('href') || '');
-            if (!/^#(?:(?:documents|decision|projects)-d\d+|calendar-e\d+|stats(?:-i\d+)?)$/.test(resourceHash)) {
+            if (!/^#(?:(?:documents|decision|projects)-d\d+|checklist-c\d+|calendar-e\d+|stats(?:-i\d+)?)$/.test(resourceHash)) {
                 return;
             }
 
@@ -3067,6 +3128,33 @@ foreach ($points as $point) {
         if (removeButton) removeButton.addEventListener('click', function () { if (targetNode && typeof field.removeNode === 'function') resolved = field.removeNode(targetNode); window.commonTopbarCloseModal(); });
         if (insertButton) insertButton.addEventListener('click', function () { const embedHtml = buildPvDecisionEmbedHtml(selectedItem); if (embedHtml !== '' && targetNode && typeof field.replaceNodeWithHtml === 'function') { resolved = true; field.replaceNodeWithHtml(targetNode, embedHtml); } else if (embedHtml !== '' && marker) { resolved = true; field.replaceMarkerWithHtml(marker, embedHtml); marker = null; } window.commonTopbarCloseModal(); });
         render();
+    }
+
+    function buildPvChecklistEmbedHtml(item) {
+        const checklistId = Number.parseInt(String(item && item.id || ''), 10);
+        if (!Number.isInteger(checklistId) || checklistId <= 0) return '';
+        const title = String(item.title || '').trim() || ('Checklist #' + String(checklistId));
+        const summary = String(item.contextLabel || '').trim();
+        return '<span class="omo-checklist-embed" contenteditable="false" data-omo-embed-type="checklist" data-omo-checklist-id="' + String(checklistId) + '" data-omo-checklist-title="' + escapeDocumentEmbedHtml(title) + '"><strong><a href="#checklist-c' + String(checklistId) + '">' + escapeDocumentEmbedHtml(title) + '</a></strong>' + (summary ? '<em>' + escapeDocumentEmbedHtml(summary) + '</em>' : '') + '</span>';
+    }
+
+    function openPvChecklistEmbedPicker(field, targetNode) {
+        if (!canEmbedChecklists || !field || typeof field.createTemporaryCursorMarker !== 'function' || typeof window.commonTopbarOpenModal !== 'function') return;
+        const currentId = targetNode instanceof Element ? Number(targetNode.getAttribute('data-omo-checklist-id') || 0) : 0;
+        let marker = targetNode ? null : field.createTemporaryCursorMarker(), resolved = false, selected = null;
+        const html = '<div class="omo-document-embed-picker omo-resource-picker"><aside class="omo-resource-picker__navigation" data-omo-pv-checklist-scope></aside><div class="omo-resource-picker__content"><label class="omo-resource-picker__quick-search"><input type="search" class="generic-form-control" data-omo-pv-checklist-search placeholder="' + escapeDocumentEmbedHtml(checklistEmbedUi.quickSearchPlaceholder || '') + '"></label><div class="omo-document-embed-picker__field"><select class="generic-form-control omo-document-embed-picker__select" data-omo-pv-checklist-select size="10" aria-label="' + escapeDocumentEmbedHtml(checklistEmbedUi.visible || '') + '"></select></div><div class="omo-document-embed-picker__preview" data-omo-pv-checklist-preview></div><div class="omo-document-embed-picker__actions">' + (targetNode ? '<button type="button" class="generic-action-button generic-action-button--danger" data-omo-pv-checklist-remove>' + escapeDocumentEmbedHtml(checklistEmbedUi.remove || '') + '</button>' : '') + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-checklist-cancel>' + escapeDocumentEmbedHtml(checklistEmbedUi.cancel || '') + '</button><button type="button" class="generic-action-button generic-action-button--main" data-omo-pv-checklist-insert disabled>' + escapeDocumentEmbedHtml(checklistEmbedUi.insert || '') + '</button></div></div></div>';
+        window.commonTopbarOpenModal(checklistEmbedUi.modalTitle || '', html, 'html');
+        const body = document.getElementById('commonTopbarModalBody'); if (!(body instanceof Element)) { if (marker) field.removeTemporaryMarker(marker); return; }
+        const search = body.querySelector('[data-omo-pv-checklist-search]'), select = body.querySelector('[data-omo-pv-checklist-select]'), preview = body.querySelector('[data-omo-pv-checklist-preview]'), insert = body.querySelector('[data-omo-pv-checklist-insert]');
+        let scopePicker = null;
+        const cleanup = function () { if (marker) field.removeTemporaryMarker(marker); marker = null; };
+        const update = function () { selected = embeddableChecklists.find(function (entry) { return String(entry.id) === String(select && select.value || ''); }) || null; if (preview) preview.innerHTML = selected ? buildPvChecklistEmbedHtml(selected) : escapeDocumentEmbedHtml(checklistEmbedUi.none || ''); if (insert) insert.disabled = !selected; };
+        const render = function () { const query = String(search && search.value || '').trim().toLowerCase(); const matches = embeddableChecklists.filter(function (entry) { const holonId = Number(entry.contextHolonId || 0); const inScope = !scopePicker || scopePicker.matches(holonId); return inScope && (query === '' || [entry.title, entry.contextLabel, entry.summary].join(' ').toLowerCase().indexOf(query) >= 0); }); if (select) { select.innerHTML = ''; matches.forEach(function (entry) { const option = document.createElement('option'); option.value = String(entry.id); option.textContent = String(entry.title || ''); select.appendChild(option); }); select.value = String((matches.find(function (entry) { return Number(entry.id) === currentId; }) || matches[0] || {}).id || ''); } update(); };
+        scopePicker = mountPvResourceScopePicker(body, '[data-omo-pv-checklist-scope]', render);
+        body.querySelectorAll('[data-omo-pv-checklist-cancel]').forEach(function (button) { button.addEventListener('click', function () { cleanup(); window.commonTopbarCloseModal(); }); });
+        const remove = body.querySelector('[data-omo-pv-checklist-remove]'); if (remove) remove.addEventListener('click', function () { if (targetNode) resolved = field.removeNode(targetNode); window.commonTopbarCloseModal(); });
+        if (search) search.addEventListener('input', render); if (select) select.addEventListener('change', update); if (insert) insert.addEventListener('click', function () { const embed = buildPvChecklistEmbedHtml(selected); if (!embed) return; if (targetNode) resolved = field.replaceNodeWithHtml(targetNode, embed); else if (marker) { resolved = field.replaceMarkerWithHtml(marker, embed); marker = null; } if (resolved) window.setTimeout(function () { refreshPvChecklistEmbedReviews(field); }, 0); window.commonTopbarCloseModal(); });
+        window.addEventListener('common-topbar-modal-close', function () { if (!resolved) cleanup(); }, {once: true}); render();
     }
 
     function buildPvProjectEmbedHtml(projectItem) {
@@ -3495,6 +3583,310 @@ foreach ($points as $point) {
         });
     }
 
+    function getPvChecklistRunReview(runId) {
+        const normalizedRunId = Number(runId || 0);
+        if (!Number.isInteger(normalizedRunId) || normalizedRunId <= 0) {
+            return Promise.reject(new Error('Invalid checklist run'));
+        }
+        if (checklistRunReviewCache.has(normalizedRunId)) {
+            return checklistRunReviewCache.get(normalizedRunId);
+        }
+        const request = fetch('/omo/api/checklist/pv_run_review.php?id=' + encodeURIComponent(String(normalizedRunId)), {
+            credentials: 'same-origin',
+            cache: 'no-store'
+        }).then(function (response) {
+            if (!response.ok) {
+                throw new Error('Checklist run unavailable');
+            }
+            return response.json();
+        }).then(function (payload) {
+            if (!payload || !payload.success) {
+                throw new Error('Checklist run unavailable');
+            }
+            return payload;
+        }).catch(function (error) {
+            checklistRunReviewCache.delete(normalizedRunId);
+            throw error;
+        });
+        checklistRunReviewCache.set(normalizedRunId, request);
+        return request;
+    }
+
+    function buildPvChecklistRunItemsBar(items) {
+        let html = '<span class="omo-project-status-bar omo-checklist-embed__items-bar">';
+        (Array.isArray(items) ? items : []).forEach(function (item) {
+            const projectId = Number(item && item.projectId || 0);
+            const status = String(item && item.status || 'someday');
+            const statusClass = /^(?:someday|ready|in_progress|blocked|review|done)$/.test(status) ? status : 'someday';
+            const title = escapeDocumentEmbedHtml(String(item && item.title || 'Element'));
+            const statusLabel = escapeDocumentEmbedHtml(String(item && item.statusLabel || 'En attente'));
+            const size = escapeDocumentEmbedHtml(String(item && item.size || 'M'));
+            const weight = Math.max(1, Number(item && item.weight || 1));
+            const tooltip = title + ' - ' + statusLabel + ' - ' + size;
+            const segment = '<span class="omo-project-status-bar__segment omo-project-status-bar__segment--' + statusClass + '" style="flex:1 1 0" title="' + tooltip + '"></span>';
+            html += projectId > 0
+                ? '<a href="#projects-d' + String(projectId) + '" class="omo-checklist-embed__item-segment" style="flex:' + String(weight) + ' 1 0">' + segment + '</a>'
+                : '<span class="omo-project-status-bar__segment omo-project-status-bar__segment--' + statusClass + '" style="flex:' + String(weight) + ' 1 0" title="' + tooltip + '"></span>';
+        });
+        return html + '</span>';
+    }
+
+    function buildPvChecklistItemsList(items) {
+        let html = '<span class="omo-checklist-embed__items-list">';
+        (Array.isArray(items) ? items : []).forEach(function (item) {
+            const projectId = Number(item && item.projectId || 0);
+            const status = String(item && item.status || 'someday');
+            const statusClass = /^(?:someday|ready|in_progress|blocked|review|done)$/.test(status) ? status : 'someday';
+            const title = escapeDocumentEmbedHtml(String(item && item.title || 'Element'));
+            const statusLabel = escapeDocumentEmbedHtml(String(item && item.statusLabel || 'En attente'));
+            const roleLabel = String(item && item.holonLabel || '').trim();
+            const responsibleLabel = String(item && item.responsibleLabel || '').trim();
+            const metadata = [roleLabel, responsibleLabel].filter(function (label) { return label !== ''; });
+            const titleHtml = projectId > 0
+                ? '<a class="omo-project-embed__child-title" href="#projects-d' + String(projectId) + '">' + title + '</a>'
+                : '<span class="omo-project-embed__child-title">' + title + '</span>';
+            html += '<span class="omo-checklist-embed__item"><span class="omo-project-embed__child-copy omo-checklist-embed__item-copy">' + titleHtml
+                + (metadata.length > 0 ? '<span class="omo-project-embed__child-meta">' + escapeDocumentEmbedHtml(metadata.join(' - ')) + '</span>' : '')
+                + '</span>'
+                + '<span class="omo-checklist-embed__item-summary"' + (projectId > 0 ? ' data-omo-checklist-item-project-summary="' + String(projectId) + '"' : '') + '><span class="omo-project-embed__status omo-project-embed__status--' + statusClass + '">' + statusLabel + '</span></span>'
+                + (canCompleteChecklistProjects && projectId > 0 ? '<button type="button" class="generic-action-button generic-action-button--secondary omo-checklist-embed__complete-archive" data-omo-checklist-complete-archive data-omo-project-id="' + String(projectId) + '">' + escapeDocumentEmbedHtml(String(checklistEmbedUi.completeArchive || '')) + '</button>' : '')
+                + '</span>';
+        });
+        return html + '</span>';
+    }
+
+    function refreshPvChecklistRunItemSubprojectBars(childrenHost) {
+        childrenHost.querySelectorAll('[data-omo-checklist-item-project-summary]').forEach(function (summaryNode) {
+            const projectId = Number(summaryNode.getAttribute('data-omo-checklist-item-project-summary') || 0);
+            if (!Number.isInteger(projectId) || projectId <= 0) return;
+            fetch('/omo/api/projects/children.php?id=' + encodeURIComponent(String(projectId)) + '&embed=pv&format=json', {
+                credentials: 'same-origin',
+                cache: 'no-store'
+            }).then(function (response) {
+                if (!response.ok) throw new Error('Project review unavailable');
+                return response.json();
+            }).then(function (payload) {
+                if (!payload || !payload.success || !payload.hasChildren || !payload.statusBarHtml || !summaryNode.isConnected) return;
+                summaryNode.innerHTML = String(payload.statusBarHtml);
+                summaryNode.classList.add('is-project-summary');
+            }).catch(function () {});
+        });
+    }
+
+    function refreshPvChecklistEmbedReviews(field) {
+        const editable = field && typeof field.getEditableElement === 'function' ? field.getEditableElement() : null;
+        if (!(editable instanceof Element)) return;
+        const expandedStates = new Map();
+        editable.querySelectorAll('.omo-checklist-embed[data-omo-embed-type="checklist"]').forEach(function (embedNode) {
+            const checklistId = Number(embedNode.getAttribute('data-omo-checklist-id') || 0);
+            const runtime = embedNode.querySelector('[data-omo-checklist-embed-runtime]');
+            const childrenHost = runtime ? runtime.querySelector('[data-omo-checklist-run-children]') : null;
+            if (checklistId <= 0 || !(runtime instanceof Element) || !(childrenHost instanceof Element) || childrenHost.hidden) return;
+            const containerToggle = runtime.querySelector('[data-omo-checklist-container-toggle][aria-expanded="true"]');
+            if (containerToggle instanceof HTMLButtonElement) {
+                expandedStates.set(checklistId, {type: 'container'});
+                return;
+            }
+            const runToggle = runtime.querySelector('[data-omo-checklist-run-toggle][aria-expanded="true"]');
+            const runId = runToggle instanceof HTMLButtonElement ? Number(runToggle.getAttribute('data-omo-checklist-run-id') || 0) : 0;
+            if (Number.isInteger(runId) && runId > 0) {
+                expandedStates.set(checklistId, {type: 'run', runId: runId});
+            }
+        });
+        checklistRunReviewCache.clear();
+        editable.querySelectorAll('[data-omo-checklist-embed-runtime]').forEach(function (node) { node.remove(); });
+        editable.querySelectorAll('.omo-checklist-embed[data-omo-embed-type="checklist"]').forEach(function (embedNode) {
+            const checklistId = Number(embedNode.getAttribute('data-omo-checklist-id') || 0); if (checklistId <= 0) return;
+            fetch('/omo/api/checklist/pv_review.php?id=' + encodeURIComponent(String(checklistId)), {credentials: 'same-origin', cache: 'no-store'}).then(function (response) { return response.json(); }).then(function (payload) {
+                if (!payload || !payload.success || !embedNode.isConnected) return;
+                const runtime = document.createElement('span'); runtime.className = 'omo-checklist-embed__review' + (Number(payload.overdueCount || 0) > 0 ? ' is-overdue' : ''); runtime.setAttribute('contenteditable', 'false'); runtime.setAttribute('data-omo-checklist-embed-runtime', '1');
+                const entries = Array.isArray(payload.entries) ? payload.entries : [];
+                const hasNoRuns = !payload.isContainer && entries.length === 0;
+                const label = payload.isContainer ? 'Elements recurrents' : 'Instances en cours';
+                let overview = '';
+                if (payload.isContainer) {
+                    overview = '<button type="button" class="omo-checklist-embed__container-toggle" data-omo-checklist-container-toggle aria-expanded="false"><span class="omo-project-status-bar">';
+                    entries.forEach(function (entry) {
+                        const projectId = Number(entry && entry.projectId || 0);
+                        const status = String(entry && entry.status || 'someday');
+                        const weight = Math.max(1, Number(entry && entry.weight || 1));
+                        if (projectId > 0 && /^(?:someday|ready|in_progress|blocked|review|done)$/.test(status)) overview += '<span class="omo-project-status-bar__segment omo-project-status-bar__segment--' + status + '" style="flex:' + String(weight) + ' 1 0" title="' + escapeDocumentEmbedHtml(String(entry.title || '')) + '"></span>';
+                    });
+                    overview += '</span></button>';
+                } else {
+                    overview = '<span class="omo-checklist-embed__instances">';
+                    if (!hasNoRuns) {
+                        entries.forEach(function (entry) {
+                            const runId = Number(entry && entry.runId || 0);
+                            const status = String(entry && entry.status || 'someday');
+                            if (runId <= 0) return;
+                            const statusClass = /^(?:someday|ready|in_progress|blocked|review|done)$/.test(status) ? status : 'someday';
+                            overview += '<span class="omo-checklist-embed__instance"><button type="button" class="omo-checklist-embed__instance-toggle" data-omo-checklist-run-toggle data-omo-checklist-run-id="' + String(runId) + '" aria-expanded="false">'
+                                + '<span class="omo-checklist-embed__instance-title">' + escapeDocumentEmbedHtml(String(entry.title || 'Instance')) + '</span>'
+                                + '<span class="omo-project-embed__status omo-project-embed__status--' + statusClass + '">' + escapeDocumentEmbedHtml(String(entry.statusLabel || status)) + '</span></button>'
+                                + '<span class="omo-checklist-embed__instance-bar" data-omo-checklist-run-bar="' + String(runId) + '"></span></span>';
+                        });
+                    }
+                    overview += '</span>';
+                }
+                const labelHtml = hasNoRuns
+                    ? '<em class="omo-checklist-embed__empty-runs">' + escapeDocumentEmbedHtml(String(checklistEmbedUi.emptyRuns || 'Aucune instance en cours.')) + '</em>'
+                    : escapeDocumentEmbedHtml(label) + (Number(payload.overdueCount || 0) > 0 ? ' &#9888;' : '');
+                runtime.innerHTML = '<span class="omo-checklist-embed__review-label">' + labelHtml + '</span>' + overview
+                    + '<span class="omo-pv-editor__project-review-children omo-project-embed__children omo-checklist-embed__children" data-omo-checklist-run-children hidden></span>';
+                if (payload.isContainer) {
+                    runtime.__omoChecklistContainerItems = entries;
+                }
+                embedNode.appendChild(runtime);
+                if (!payload.isContainer) {
+                    entries.forEach(function (entry) {
+                        const runId = Number(entry && entry.runId || 0);
+                        const barHost = runtime.querySelector('[data-omo-checklist-run-bar="' + String(runId) + '"]');
+                        if (!(barHost instanceof Element) || runId <= 0) return;
+                        getPvChecklistRunReview(runId).then(function (runPayload) {
+                            if (!barHost.isConnected) return;
+                            const items = Array.isArray(runPayload.items) ? runPayload.items : [];
+                            if (items.length > 0) barHost.innerHTML = buildPvChecklistRunItemsBar(items);
+                        }).catch(function () {});
+                    });
+                }
+                const expandedState = expandedStates.get(checklistId);
+                if (expandedState && expandedState.type === 'container') {
+                    const containerToggle = runtime.querySelector('[data-omo-checklist-container-toggle]');
+                    if (containerToggle instanceof HTMLButtonElement) loadPvChecklistContainerReview(containerToggle);
+                } else if (expandedState && expandedState.type === 'run') {
+                    const runToggle = runtime.querySelector('[data-omo-checklist-run-toggle][data-omo-checklist-run-id="' + String(expandedState.runId) + '"]');
+                    if (runToggle instanceof HTMLButtonElement) loadPvChecklistRunReview(runToggle);
+                }
+            }).catch(function () {});
+        });
+    }
+
+    function loadPvChecklistRunReview(toggle) {
+        const runtime = toggle.closest('[data-omo-checklist-embed-runtime]');
+        const childrenHost = runtime ? runtime.querySelector('[data-omo-checklist-run-children]') : null;
+        const runId = Number(toggle.getAttribute('data-omo-checklist-run-id') || 0);
+        if (!(runtime instanceof Element) || !(childrenHost instanceof Element) || !Number.isInteger(runId) || runId <= 0) {
+            return;
+        }
+
+        if (childrenHost.dataset.omoChecklistRunId === String(runId) && !childrenHost.hidden) {
+            childrenHost.hidden = true;
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.classList.remove('is-expanded');
+            return;
+        }
+
+        runtime.querySelectorAll('[data-omo-checklist-run-toggle]').forEach(function (button) {
+            button.setAttribute('aria-expanded', 'false');
+            button.classList.remove('is-expanded');
+        });
+        childrenHost.hidden = false;
+        childrenHost.textContent = 'Chargement des elements...';
+        childrenHost.className = 'omo-pv-editor__project-review-children omo-project-embed__children omo-checklist-embed__children omo-project-embed__children-loading';
+        toggle.disabled = true;
+
+        getPvChecklistRunReview(runId).then(function (payload) {
+            if (!runtime.isConnected) {
+                throw new Error('Checklist run unavailable');
+            }
+            const items = Array.isArray(payload.items) ? payload.items : [];
+            childrenHost.dataset.omoChecklistRunId = String(runId);
+            childrenHost.className = 'omo-pv-editor__project-review-children omo-project-embed__children omo-checklist-embed__children';
+            if (items.length === 0) {
+                childrenHost.textContent = 'Aucun element dans cette instance.';
+            } else {
+                childrenHost.innerHTML = buildPvChecklistItemsList(items);
+                refreshPvChecklistRunItemSubprojectBars(childrenHost);
+            }
+            toggle.setAttribute('aria-expanded', 'true');
+            toggle.classList.add('is-expanded');
+        }).catch(function () {
+            childrenHost.className = 'omo-pv-editor__project-review-children omo-project-embed__children omo-checklist-embed__children omo-project-embed__children-error';
+            childrenHost.textContent = 'Impossible de charger les elements de cette instance.';
+            childrenHost.hidden = false;
+            toggle.setAttribute('aria-expanded', 'false');
+        }).finally(function () {
+            toggle.disabled = false;
+        });
+    }
+
+    function loadPvChecklistContainerReview(toggle) {
+        const runtime = toggle.closest('[data-omo-checklist-embed-runtime]');
+        const childrenHost = runtime ? runtime.querySelector('[data-omo-checklist-run-children]') : null;
+        const items = runtime && Array.isArray(runtime.__omoChecklistContainerItems) ? runtime.__omoChecklistContainerItems : [];
+        if (!(runtime instanceof Element) || !(childrenHost instanceof Element)) {
+            return;
+        }
+        if (childrenHost.dataset.omoChecklistReviewType === 'container' && !childrenHost.hidden) {
+            childrenHost.hidden = true;
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.classList.remove('is-expanded');
+            return;
+        }
+
+        childrenHost.hidden = false;
+        childrenHost.dataset.omoChecklistReviewType = 'container';
+        childrenHost.className = 'omo-pv-editor__project-review-children omo-project-embed__children omo-checklist-embed__children';
+        if (items.length === 0) {
+            childrenHost.textContent = 'Aucun element recurrent actif.';
+        } else {
+            childrenHost.innerHTML = buildPvChecklistItemsList(items);
+            refreshPvChecklistRunItemSubprojectBars(childrenHost);
+        }
+        toggle.setAttribute('aria-expanded', 'true');
+        toggle.classList.add('is-expanded');
+    }
+
+    function completePvChecklistProject(button) {
+        const projectId = Number(button.getAttribute('data-omo-project-id') || 0);
+        if (!canCompleteChecklistProjects || button.disabled || !Number.isInteger(projectId) || projectId <= 0) {
+            return;
+        }
+        const previousLabel = button.textContent;
+        button.disabled = true;
+        button.textContent = String(checklistEmbedUi.completeArchiving || '');
+        const formData = new FormData();
+        formData.append('action', 'complete_archive_checklist_project');
+        formData.append('document_id', String(documentId));
+        formData.append('oid', String(organizationId));
+        formData.append('editor_token', editorToken);
+        formData.append('project_id', String(projectId));
+        fetch(actionUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: formData
+        }).then(function (response) {
+            return response.json().then(function (payload) {
+                if (!response.ok || !payload || payload.status !== true) {
+                    throw payload || new Error('checklist_project_archive_failed');
+                }
+                return payload;
+            });
+        }).then(function () {
+            if (typeof window.omoRefreshProjectsDrawerAfterMutation === 'function') {
+                window.omoRefreshProjectsDrawerAfterMutation();
+            }
+            const editorHost = button.closest('[data-omo-pv-point-editor-host]');
+            const fieldContainer = button.closest('.omo-simple-html-field');
+            const field = editorHost && editorHost.__omoPvPointField
+                ? editorHost.__omoPvPointField
+                : (fieldContainer && fieldContainer.__omoSimpleHtmlField);
+            if (field && typeof field.getEditableElement === 'function') {
+                refreshPvChecklistEmbedReviews(field);
+            }
+        }).catch(function (payload) {
+            if (window.alert) {
+                window.alert(String(payload && payload.message || checklistEmbedUi.completeArchiveError || ''));
+            }
+        }).finally(function () {
+            if (button.isConnected) {
+                button.disabled = false;
+                button.textContent = previousLabel;
+            }
+        });
+    }
+
     function getPvIndicatorEmbedItemKey(indicatorItem) {
         const kind = String(indicatorItem && indicatorItem.kind || '') === 'group' ? 'group' : 'indicator';
         return kind + ':' + String(indicatorItem && indicatorItem.id || '');
@@ -3696,7 +4088,7 @@ foreach ($points as $point) {
     })();
 
     function ensureHtmlFieldLibrary(callback) {
-        const htmlFieldVersion = '20260722-pv-project-embed-icon-spacing';
+        const htmlFieldVersion = '20260724-pv-embed-status';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'
@@ -4452,6 +4844,9 @@ foreach ($points as $point) {
                         onClick: function (context) { openPvProjectEmbedPicker(context && context.api ? context.api : field); }
                     });
                 }
+                if (canEmbedChecklists) {
+                    customButtons.push({ name: 'omoPvChecklistEmbed', group: 'omo-pv-checklist-embed', label: 'Checklist', title: checklistEmbedUi.buttonTitle || 'Inserer une checklist', className: 'note-btn-light omo-pv-editor__checklist-embed-button', onClick: function (context) { openPvChecklistEmbedPicker(context && context.api ? context.api : field); } });
+                }
                 if (canEmbedEvents) {
                     customButtons.push({
                         name: 'omoPvEventEmbed',
@@ -4495,6 +4890,7 @@ foreach ($points as $point) {
                     onReady: function (api) {
                         refreshPvIndicatorEmbedSnapshots(api);
                         refreshPvProjectEmbedReviews(api);
+                        refreshPvChecklistEmbedReviews(api);
                         const toolbar = editorHost.querySelector('.note-toolbar');
                         const pointActions = card.querySelector('.omo-pv-editor__point-actions');
                         if (toolbar instanceof Element && pointActions instanceof Element) {
@@ -4509,9 +4905,10 @@ foreach ($points as $point) {
                         const documentEmbed = targetNode ? targetNode.closest('.omo-document-embed[data-omo-embed-type="document"]') : null;
                         const decisionEmbed = targetNode ? targetNode.closest('.omo-decision-embed[data-omo-embed-type="decision"]') : null;
                         const projectEmbed = targetNode ? targetNode.closest('.omo-project-embed[data-omo-embed-type="project"]') : null;
+                        const checklistEmbed = targetNode ? targetNode.closest('.omo-checklist-embed[data-omo-embed-type="checklist"]') : null;
                         const eventEmbed = targetNode ? targetNode.closest('.omo-event-embed[data-omo-embed-type="event"]') : null;
                         const indicatorEmbed = targetNode ? targetNode.closest('.omo-indicator-embed[data-omo-embed-type="indicator"]') : null;
-                        if (!documentEmbed && !decisionEmbed && !projectEmbed && !eventEmbed && !indicatorEmbed) {
+                        if (!documentEmbed && !decisionEmbed && !projectEmbed && !checklistEmbed && !eventEmbed && !indicatorEmbed) {
                             return;
                         }
 
@@ -4524,6 +4921,8 @@ foreach ($points as $point) {
                             openPvDecisionEmbedPicker(field, decisionEmbed);
                         } else if (projectEmbed) {
                             openPvProjectEmbedPicker(field, projectEmbed);
+                        } else if (checklistEmbed) {
+                            openPvChecklistEmbedPicker(field, checklistEmbed);
                         } else if (eventEmbed) {
                             openPvEventEmbedPicker(field, eventEmbed);
                         } else if (indicatorEmbed) {

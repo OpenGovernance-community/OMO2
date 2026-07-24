@@ -63,6 +63,20 @@ $recurrenceExecutionDurationValue = $recurrence instanceof ChecklistItemRecurren
 $recurrenceExecutionDurationUnit = $recurrence instanceof ChecklistItemRecurrence
     ? (string)($recurrence->get('execution_duration_unit') ?: ChecklistItem::DELAY_DAY)
     : ChecklistItem::DELAY_DAY;
+$displayLeadValue = $isEdit ? max(0, (int)$item->get('display_lead_value')) : 0;
+$displayLeadUnit = $isEdit
+    ? (string)($item->get('display_lead_unit') ?: ChecklistItem::DELAY_DAY)
+    : ChecklistItem::DELAY_DAY;
+$executionDurationValue = $isEdit ? max(0, (int)$item->get('execution_duration_value')) : 0;
+$executionDurationUnit = $isEdit
+    ? (string)($item->get('execution_duration_unit') ?: ChecklistItem::DELAY_DAY)
+    : ChecklistItem::DELAY_DAY;
+if ($isContainerChecklist && $recurrence instanceof ChecklistItemRecurrence && $displayLeadValue === 0 && $executionDurationValue === 0) {
+    $displayLeadValue = $recurrenceDisplayLeadValue;
+    $displayLeadUnit = $recurrenceDisplayLeadUnit;
+    $executionDurationValue = $recurrenceExecutionDurationValue;
+    $executionDurationUnit = $recurrenceExecutionDurationUnit;
+}
 $recurrenceScheduleOptions = [];
 foreach (RecurrenceSchedule::getFrequencyCatalog() as $frequencyKey) {
     $recurrenceScheduleOptions[$frequencyKey] = omoChecklistScheduleOptions($frequencyKey);
@@ -192,6 +206,40 @@ if ($currentHolonId > 0) {
                         <?php endforeach; ?>
                     </select>
                 </label>
+                <div class="generic-soft-panel omo-checklist-field omo-checklist-field--wide">
+                    <div class="omo-checklist-item-editor__header">
+                        <div>
+                            <h3 class="generic-card-title"><?= omoApiEscape(omoChecklistT('checklist.form.item_timing')) ?></h3>
+                            <p><?= omoApiEscape(omoChecklistT('checklist.form.item_timing_help')) ?></p>
+                        </div>
+                    </div>
+                    <div class="omo-checklist-form-grid">
+                        <label class="omo-checklist-field">
+                            <span><?= omoApiEscape(omoChecklistT('checklist.form.display_lead')) ?></span>
+                            <input class="generic-form-control" type="number" name="display_lead_value" value="<?= (int)$displayLeadValue ?>" min="0" max="3650" step="1">
+                        </label>
+                        <label class="omo-checklist-field">
+                            <span><?= omoApiEscape(omoChecklistT('checklist.form.display_lead_unit')) ?></span>
+                            <select class="generic-form-control" name="display_lead_unit">
+                                <?php foreach ([ChecklistItem::DELAY_DAY, ChecklistItem::DELAY_WEEK, ChecklistItem::DELAY_MONTH] as $unit): ?>
+                                    <option value="<?= omoApiEscape($unit) ?>"<?= $displayLeadUnit === $unit ? ' selected' : '' ?>><?= omoApiEscape(omoChecklistT('checklist.delay.' . $unit)) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                        <label class="omo-checklist-field">
+                            <span><?= omoApiEscape(omoChecklistT('checklist.form.execution_duration')) ?></span>
+                            <input class="generic-form-control" type="number" name="execution_duration_value" value="<?= (int)$executionDurationValue ?>" min="0" max="3650" step="1">
+                        </label>
+                        <label class="omo-checklist-field">
+                            <span><?= omoApiEscape(omoChecklistT('checklist.form.execution_duration_unit')) ?></span>
+                            <select class="generic-form-control" name="execution_duration_unit">
+                                <?php foreach ([ChecklistItem::DELAY_DAY, ChecklistItem::DELAY_WEEK, ChecklistItem::DELAY_MONTH] as $unit): ?>
+                                    <option value="<?= omoApiEscape($unit) ?>"<?= $executionDurationUnit === $unit ? ' selected' : '' ?>><?= omoApiEscape(omoChecklistT('checklist.delay.' . $unit)) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                    </div>
+                </div>
                 <?php if ($isContainerChecklist): ?>
                     <div class="generic-soft-panel omo-checklist-field omo-checklist-field--wide" data-checklist-item-recurrence>
                         <div class="omo-checklist-item-editor__header">
@@ -207,30 +255,6 @@ if ($currentHolonId > 0) {
                                     <option value=""><?= omoApiEscape(omoChecklistT('checklist.schedule.none')) ?></option>
                                     <?php foreach (RecurrenceSchedule::getFrequencyCatalog() as $frequencyOption): ?>
                                         <option value="<?= omoApiEscape($frequencyOption) ?>"<?= $recurrenceFrequency === $frequencyOption ? ' selected' : '' ?>><?= omoApiEscape(omoChecklistFrequencyLabel($frequencyOption)) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </label>
-                            <label class="omo-checklist-field" data-checklist-item-recurrence-option<?= $recurrenceFrequency === null ? ' hidden' : '' ?>>
-                                <span><?= omoApiEscape(omoChecklistT('checklist.form.display_lead')) ?></span>
-                                <input class="generic-form-control" type="number" name="recurrence_display_lead_value" value="<?= (int)$recurrenceDisplayLeadValue ?>" min="0" max="3650" step="1">
-                            </label>
-                            <label class="omo-checklist-field" data-checklist-item-recurrence-option<?= $recurrenceFrequency === null ? ' hidden' : '' ?>>
-                                <span><?= omoApiEscape(omoChecklistT('checklist.form.display_lead_unit')) ?></span>
-                                <select class="generic-form-control" name="recurrence_display_lead_unit">
-                                    <?php foreach ([ChecklistItem::DELAY_DAY, ChecklistItem::DELAY_WEEK, ChecklistItem::DELAY_MONTH] as $unit): ?>
-                                        <option value="<?= omoApiEscape($unit) ?>"<?= $recurrenceDisplayLeadUnit === $unit ? ' selected' : '' ?>><?= omoApiEscape(omoChecklistT('checklist.delay.' . $unit)) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </label>
-                            <label class="omo-checklist-field" data-checklist-item-recurrence-option<?= $recurrenceFrequency === null ? ' hidden' : '' ?>>
-                                <span><?= omoApiEscape(omoChecklistT('checklist.form.execution_duration')) ?></span>
-                                <input class="generic-form-control" type="number" name="recurrence_execution_duration_value" value="<?= (int)$recurrenceExecutionDurationValue ?>" min="0" max="3650" step="1">
-                            </label>
-                            <label class="omo-checklist-field" data-checklist-item-recurrence-option<?= $recurrenceFrequency === null ? ' hidden' : '' ?>>
-                                <span><?= omoApiEscape(omoChecklistT('checklist.form.execution_duration_unit')) ?></span>
-                                <select class="generic-form-control" name="recurrence_execution_duration_unit">
-                                    <?php foreach ([ChecklistItem::DELAY_DAY, ChecklistItem::DELAY_WEEK, ChecklistItem::DELAY_MONTH] as $unit): ?>
-                                        <option value="<?= omoApiEscape($unit) ?>"<?= $recurrenceExecutionDurationUnit === $unit ? ' selected' : '' ?>><?= omoApiEscape(omoChecklistT('checklist.delay.' . $unit)) ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </label>
