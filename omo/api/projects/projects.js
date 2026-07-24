@@ -18,7 +18,7 @@
     var actionUrl = root.getAttribute('data-omo-projects-action-url') || '';
     var routeCid = Number(root.getAttribute('data-omo-projects-cid') || 0);
     var currentView = root.getAttribute('data-omo-projects-view') === 'list' ? 'list' : 'kanban';
-    var currentListSort = ['priority', 'holon'].indexOf(root.getAttribute('data-omo-projects-list-sort')) !== -1
+    var currentListSort = ['priority', 'importance', 'holon'].indexOf(root.getAttribute('data-omo-projects-list-sort')) !== -1
         ? root.getAttribute('data-omo-projects-list-sort')
         : 'planned';
     var displayPreferencesStorageKey = 'omo.projects.display-preferences.v1';
@@ -277,7 +277,7 @@
         var query = ['oid=' + encodeURIComponent(String(organizationId))];
         var nextScope = scope === 'global' ? 'descendants' : (scope === 'descendants' || scope === 'children' ? scope : 'contextual');
         var nextView = view === 'list' ? 'list' : 'kanban';
-        var nextListSort = listSort === 'priority' || listSort === 'holon' ? listSort : 'planned';
+        var nextListSort = listSort === 'priority' || listSort === 'importance' || listSort === 'holon' ? listSort : 'planned';
         if (routeCid > 0) {
             query.push('cid=' + encodeURIComponent(String(routeCid)));
         }
@@ -315,7 +315,7 @@
             window.localStorage.setItem(displayPreferencesStorageKey, JSON.stringify({
                 scope: scope === 'global' ? 'descendants' : (scope === 'descendants' || scope === 'children' ? scope : 'contextual'),
                 view: view === 'list' ? 'list' : 'kanban',
-                sort: listSort === 'priority' || listSort === 'holon' ? listSort : 'planned'
+                sort: listSort === 'priority' || listSort === 'importance' || listSort === 'holon' ? listSort : 'planned'
             }));
         } catch (error) {
             // Local storage can be unavailable in private or restricted browsing contexts.
@@ -344,7 +344,7 @@
         var nextView = preferences.view === 'list' ? 'list' : currentView;
         var preferredSort = String(preferences.sort || '');
         var canUseHolonSort = nextScope === 'descendants' || nextScope === 'children';
-        var nextSort = preferredSort === 'priority' || preferredSort === 'planned'
+        var nextSort = preferredSort === 'priority' || preferredSort === 'importance' || preferredSort === 'planned'
             ? preferredSort
             : (preferredSort === 'holon' && canUseHolonSort ? 'holon' : currentListSort);
 
@@ -915,6 +915,30 @@
             event.stopPropagation();
             var editProjectId = Number(editButton.getAttribute('data-omo-projects-edit-project-id') || 0);
             navigateProject(editProjectId, 'edit', editButton.getAttribute('data-omo-projects-open-edit-url') || '');
+            return;
+        }
+
+        var breadcrumb = event.target.closest('[data-omo-project-breadcrumb]');
+        if (breadcrumb) {
+            event.preventDefault();
+            var breadcrumbProjectId = Number(breadcrumb.getAttribute('data-project-id') || 0);
+            if (breadcrumbProjectId > 0) {
+                navigateProject(breadcrumbProjectId, 'detail', buildDetailUrl(breadcrumbProjectId));
+            }
+            return;
+        }
+
+        var expandBreadcrumb = event.target.closest('[data-omo-project-breadcrumb-expand]');
+        if (expandBreadcrumb) {
+            event.preventDefault();
+            var breadcrumbNavigation = expandBreadcrumb.closest('.omo-project-detail__breadcrumb');
+            var extraBreadcrumbs = breadcrumbNavigation ? breadcrumbNavigation.querySelector('[data-omo-project-breadcrumb-extra]') : null;
+            if (extraBreadcrumbs) {
+                extraBreadcrumbs.hidden = false;
+                expandBreadcrumb.setAttribute('aria-expanded', 'true');
+                var collapsedBreadcrumb = breadcrumbNavigation.querySelector('[data-omo-project-breadcrumb-collapse]');
+                if (collapsedBreadcrumb) collapsedBreadcrumb.hidden = true;
+            }
             return;
         }
 

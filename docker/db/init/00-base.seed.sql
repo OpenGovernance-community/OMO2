@@ -136,13 +136,14 @@ CREATE TABLE `checklist` (
   CONSTRAINT `fk_checklist_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_checklist_previous` FOREIGN KEY (`IDchecklist_previous`) REFERENCES `checklist` (`id`),
   CONSTRAINT `fk_checklist_template_root` FOREIGN KEY (`IDproject_template_root`) REFERENCES `project` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `checklist` WRITE;
 /*!40000 ALTER TABLE `checklist` DISABLE KEYS */;
 INSERT INTO `checklist` VALUES
-(1,1,NULL,1,NULL,'draft',NULL,1,'2026-07-23 15:52:32','2026-07-23 15:52:32',NULL);
+(1,1,NULL,1,NULL,'published',NULL,1,'2026-07-23 15:52:32','2026-07-24 09:32:36','2026-07-24 09:32:36'),
+(2,1,NULL,18,NULL,'published',NULL,1,'2026-07-24 09:20:19','2026-07-24 09:22:38','2026-07-24 09:22:38');
 /*!40000 ALTER TABLE `checklist` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `checklist_item`;
@@ -171,14 +172,18 @@ CREATE TABLE `checklist_item` (
   KEY `idx_checklist_item_activation` (`activation_type`,`active`),
   CONSTRAINT `fk_checklist_item_checklist` FOREIGN KEY (`IDchecklist`) REFERENCES `checklist` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_checklist_item_project` FOREIGN KEY (`IDproject_template`) REFERENCES `project` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `checklist_item` WRITE;
 /*!40000 ALTER TABLE `checklist_item` DISABLE KEYS */;
 INSERT INTO `checklist_item` VALUES
-(1,1,2,'item_feb0add0b2b8b4a1','after_start',-5,'day',0,NULL,0,NULL,0,1,'2026-07-23 15:53:45','2026-07-23 15:53:45'),
-(2,1,3,'item_8cacc5a5254a7271','after_start',-1,'day',0,NULL,0,NULL,1,1,'2026-07-23 16:03:57','2026-07-23 16:03:57');
+(1,1,2,'item_feb0add0b2b8b4a1','after_start',-5,'day',0,NULL,0,NULL,0,1,'2026-07-23 15:53:45','2026-07-23 16:07:10'),
+(2,1,3,'item_8cacc5a5254a7271','after_start',-1,'day',0,NULL,0,NULL,1,1,'2026-07-23 16:03:57','2026-07-23 16:03:57'),
+(3,1,6,'item_fe8e72d603872cb4','immediate',0,NULL,0,NULL,3,'day',2,1,'2026-07-23 16:07:16','2026-07-23 16:08:07'),
+(4,2,19,'item_376c0b4e0f1f27a1','immediate',0,NULL,5,'day',10,'day',0,1,'2026-07-24 09:21:09','2026-07-24 09:21:09'),
+(5,2,20,'item_ace49d0a174c2f67','immediate',0,NULL,30,'day',30,'day',1,1,'2026-07-24 09:21:48','2026-07-24 09:21:48'),
+(6,2,21,'item_85538a65dd5b4c31','immediate',0,NULL,2,'day',3,'day',2,1,'2026-07-24 09:22:31','2026-07-24 09:22:31');
 /*!40000 ALTER TABLE `checklist_item` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `checklist_item_dependency`;
@@ -218,11 +223,13 @@ CREATE TABLE `checklist_item_occurrence` (
   KEY `idx_checklist_item_occurrence_project` (`IDproject`),
   CONSTRAINT `fk_checklist_item_occurrence_item` FOREIGN KEY (`IDchecklistitem`) REFERENCES `checklist_item` (`id`),
   CONSTRAINT `fk_checklist_item_occurrence_project` FOREIGN KEY (`IDproject`) REFERENCES `project` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `checklist_item_occurrence` WRITE;
 /*!40000 ALTER TABLE `checklist_item_occurrence` DISABLE KEYS */;
+INSERT INTO `checklist_item_occurrence` VALUES
+(1,6,'2026-07-25 00:00:00',22,'2026-07-24 09:22:43');
 /*!40000 ALTER TABLE `checklist_item_occurrence` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `checklist_item_recurrence`;
@@ -245,11 +252,15 @@ CREATE TABLE `checklist_item_recurrence` (
   UNIQUE KEY `uniq_checklist_item_recurrence` (`IDchecklistitem`),
   KEY `idx_checklist_item_recurrence_due` (`enabled`,`next_trigger_at`),
   CONSTRAINT `fk_checklist_item_recurrence_item` FOREIGN KEY (`IDchecklistitem`) REFERENCES `checklist_item` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `checklist_item_recurrence` WRITE;
 /*!40000 ALTER TABLE `checklist_item_recurrence` DISABLE KEYS */;
+INSERT INTO `checklist_item_recurrence` VALUES
+(1,4,'quarterly','1',5,'day',10,'day','2026-09-26 00:00:00',1,'2026-07-24 09:21:09','2026-07-24 09:21:09'),
+(2,5,'yearly','1',30,'day',30,'day','2026-12-02 00:00:00',1,'2026-07-24 09:21:48','2026-07-24 09:21:48'),
+(3,6,'monthly','25',2,'day',3,'day','2026-08-23 00:00:00',1,'2026-07-24 09:22:31','2026-07-24 09:22:43');
 /*!40000 ALTER TABLE `checklist_item_recurrence` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `checklist_run`;
@@ -282,11 +293,13 @@ CREATE TABLE `checklist_run` (
   CONSTRAINT `fk_checklist_run_project` FOREIGN KEY (`IDproject_root`) REFERENCES `project` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_checklist_run_trigger` FOREIGN KEY (`IDchecklisttrigger`) REFERENCES `checklist_trigger` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_checklist_run_user` FOREIGN KEY (`IDuser_created`) REFERENCES `user` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `checklist_run` WRITE;
 /*!40000 ALTER TABLE `checklist_run` DISABLE KEYS */;
+INSERT INTO `checklist_run` VALUES
+(1,1,1,1,708,23,1,'2026-08-01 00:00:00','running','2026-07-24 09:33:08','2026-07-24 09:33:08',NULL);
 /*!40000 ALTER TABLE `checklist_run` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `checklist_run_item`;
@@ -311,11 +324,15 @@ CREATE TABLE `checklist_run_item` (
   CONSTRAINT `fk_checklist_run_item_project` FOREIGN KEY (`IDproject`) REFERENCES `project` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_checklist_run_item_run` FOREIGN KEY (`IDchecklistrun`) REFERENCES `checklist_run` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_checklist_run_item_template` FOREIGN KEY (`IDchecklistitem`) REFERENCES `checklist_item` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `checklist_run_item` WRITE;
 /*!40000 ALTER TABLE `checklist_run_item` DISABLE KEYS */;
+INSERT INTO `checklist_run_item` VALUES
+(1,1,1,NULL,'2026-07-27 00:00:00','waiting','2026-07-24 09:33:08','2026-07-24 09:33:08',NULL,NULL),
+(2,1,2,NULL,'2026-07-31 00:00:00','waiting','2026-07-24 09:33:08','2026-07-24 09:33:08',NULL,NULL),
+(3,1,3,24,'2026-07-24 09:33:08','created','2026-07-24 09:33:08','2026-07-24 09:33:08','2026-07-24 09:33:08',NULL);
 /*!40000 ALTER TABLE `checklist_run_item` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `checklist_trigger`;
@@ -338,13 +355,14 @@ CREATE TABLE `checklist_trigger` (
   KEY `idx_checklist_trigger_due` (`trigger_type`,`enabled`,`next_trigger_at`),
   KEY `idx_checklist_trigger_frequency` (`frequency`),
   CONSTRAINT `fk_checklist_trigger_checklist` FOREIGN KEY (`IDchecklist`) REFERENCES `checklist` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `checklist_trigger` WRITE;
 /*!40000 ALTER TABLE `checklist_trigger` DISABLE KEYS */;
 INSERT INTO `checklist_trigger` VALUES
-(1,1,'primary','manual',NULL,NULL,NULL,'create_new',1,'2026-07-23 15:52:32','2026-07-23 15:52:32');
+(1,1,'primary','manual',NULL,NULL,NULL,'create_new',1,'2026-07-23 15:52:32','2026-07-24 09:32:36'),
+(2,2,'primary','container',NULL,NULL,NULL,'reuse_open',0,'2026-07-24 09:20:19','2026-07-24 09:22:38');
 /*!40000 ALTER TABLE `checklist_trigger` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `competence`;
@@ -653,15 +671,13 @@ CREATE TABLE `document` (
   CONSTRAINT `fk_document_user_creation` FOREIGN KEY (`IDusercreation`) REFERENCES `user` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_document_user_editing` FOREIGN KEY (`IDuseredition`) REFERENCES `user` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_document_user_modification` FOREIGN KEY (`IDusermodification`) REFERENCES `user` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=2302 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2306 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `document` WRITE;
 /*!40000 ALTER TABLE `document` DISABLE KEYS */;
 INSERT INTO `document` VALUES
 (9,'Analyse et Conséquences d\'un Test Fonctionnel','Evaluation d\'un test montrant son succès et les opportunités d\'amélioration.','<div><h2>Première section: Compte rendu</h2><ul><li>Rouge</li><li>Vert</li><li>Bleu</li></ul><h2>Deuxième partie: Conséquences à en tirer</h2><ol><li>Ça fonctionne</li><li>Ça peut être amélioré</li></ol></div>',NULL,NULL,NULL,1,1,NULL,NULL,NULL,0,1,'html',NULL,0,NULL,0,NULL,NULL,NULL,NULL,NULL,'2024-03-03 08:52:50',NULL,NULL,NULL,NULL,0,1,1,'',''),
-(2001,'Point rapide de coordination','Notes prises aujourd\'hui après un échange de synchronisation.','<h2>Décisions du jour</h2><p>Validation du plan de travail pour la semaine et clarification des priorités immédiates.</p>',NULL,NULL,'coordination,priorités,équipe',1,1,1,678,NULL,0,1,'html',NULL,0,NULL,0,NULL,NULL,NULL,NULL,NULL,'2026-04-23 09:12:00','2026-04-23 09:30:00',NULL,NULL,NULL,0,1,1,'',''),
-(2002,'Compte rendu atelier bénévoles','Résumé de l’atelier avec les bénévoles organisé hier soir.','<p>Retour sur les besoins d’accueil, la répartition des rôles et les prochaines disponibilités.</p>',NULL,NULL,'atelier,bénévoles,association',1,1,1,678,NULL,0,1,'html',NULL,0,NULL,0,NULL,NULL,NULL,NULL,NULL,'2026-04-22 19:15:00','2026-04-22 19:45:00',NULL,NULL,NULL,0,1,1,'',''),
 (2003,'Liste des actions urgentes','Document de travail pour les tâches à finaliser avant la fin de semaine.','<ul><li>Relancer les partenaires</li><li>Valider le budget</li><li>Préparer la réunion du lundi</li></ul>',NULL,NULL,'actions,urgent,suivi',1,1,1,679,NULL,0,1,'html',NULL,0,NULL,0,NULL,NULL,NULL,NULL,NULL,'2026-04-20 08:05:00','2026-04-20 08:20:00',NULL,NULL,NULL,0,1,1,'',''),
 (2004,'Préparation réunion trimestrielle','Première trame pour la réunion de gouvernance du trimestre.','<p>Ordre du jour provisoire, points de vigilance et sujets à arbitrer.</p>',NULL,NULL,'réunion,gouvernance,trimestre',1,1,1,687,NULL,0,1,'html',NULL,0,NULL,0,NULL,NULL,NULL,NULL,NULL,'2026-04-16 14:40:00','2026-04-17 07:55:00',NULL,NULL,NULL,0,1,1,'',''),
 (2005,'Retour sur les inscriptions','Analyse rapide du rythme des inscriptions et des canaux les plus efficaces.','<p>Les recommandations portent sur la simplification du formulaire et le rappel des échéances.</p>',NULL,NULL,'inscriptions,analyse,communication',1,1,1,687,NULL,0,1,'html',NULL,0,NULL,0,NULL,NULL,NULL,NULL,NULL,'2026-04-10 11:10:00','2026-04-10 11:55:00',NULL,NULL,NULL,0,1,1,'',''),
@@ -674,7 +690,7 @@ INSERT INTO `document` VALUES
 (2012,'Préparation séminaire d’été','Liste des besoins logistiques et des sujets à traiter pendant le séminaire.','<p>Repas, hébergement, ateliers et coordination de l’animation.</p>',NULL,NULL,'séminaire,été,logistique',1,1,1,NULL,NULL,0,1,'html',NULL,0,NULL,0,NULL,NULL,NULL,NULL,NULL,'2025-07-01 13:50:00','2025-07-02 08:30:00',NULL,NULL,NULL,0,1,1,'',''),
 (2013,'Feuille de route printemps 2025','Première version de la feuille de route pour les mois à venir.','<p>Définition des priorités, clarification des ressources disponibles et répartition des responsabilités.</p>',NULL,NULL,'feuille de route,stratégie,printemps',1,1,2,NULL,NULL,0,1,'html',NULL,0,NULL,0,NULL,NULL,NULL,NULL,NULL,'2025-05-21 10:05:00','2025-05-21 10:40:00',NULL,NULL,NULL,0,1,1,'',''),
 (2014,'Carnet de bord lancement annuel','Notes de cadrage prises au début du cycle annuel précédent.','<p>Objectifs de départ, points d’attention et premiers engagements opérationnels.</p>',NULL,NULL,'lancement,année,cadrage',1,1,1,NULL,NULL,0,1,'html',NULL,0,NULL,0,NULL,NULL,NULL,NULL,NULL,'2025-04-24 08:40:00','2025-04-24 09:15:00',NULL,NULL,NULL,0,1,1,'',''),
-(2301,'PV gouvernance 09.07.2026','Premier PV de demonstration pour verifier le viewer des points a l ordre du jour.','',NULL,NULL,'pv,reunion,gouvernance',1,NULL,1,678,NULL,0,1,'pv',NULL,0,NULL,0,NULL,NULL,NULL,NULL,NULL,'2026-07-09 09:00:00','2026-07-09 11:15:00',NULL,NULL,NULL,0,NULL,1,'','');
+(2305,'PV Réunion OP du 25.07.2026 09:00','Document associe a l evenement \"Réunion OP\".',NULL,NULL,NULL,'PV',1,1,1,678,4,0,1,'pv','preparation',0,NULL,0,NULL,NULL,NULL,NULL,NULL,'2026-07-25 10:00:00','2026-07-24 08:37:27',NULL,NULL,1,0,1,1,'f22d6d443864711b8001','c23361ca4a2be1758381');
 /*!40000 ALTER TABLE `document` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `document_pv_point`;
@@ -705,9 +721,6 @@ CREATE TABLE `document_pv_point` (
   PRIMARY KEY (`id`),
   KEY `idx_document_pv_point_document` (`IDdocument`),
   KEY `idx_document_pv_point_author` (`IDuser_author`),
-  KEY `idx_document_pv_point_modification_user` (`IDuser_modification`),
-  KEY `idx_document_pv_point_editing_user` (`IDuser_editing`),
-  KEY `idx_document_pv_point_dateedition` (`dateedition`),
   KEY `idx_document_pv_point_author_email` (`author_email`),
   KEY `idx_document_pv_point_holon` (`IDholon_concerned`),
   KEY `idx_document_pv_point_position` (`IDdocument`,`position`),
@@ -716,20 +729,23 @@ CREATE TABLE `document_pv_point` (
   KEY `idx_document_pv_point_parent` (`IDdocument`,`IDparent`,`position`),
   KEY `idx_document_pv_point_item_type` (`item_type`),
   KEY `fk_document_pv_point_parent` (`IDparent`),
+  KEY `idx_document_pv_point_modification_user` (`IDuser_modification`),
+  KEY `idx_document_pv_point_editing_user` (`IDuser_editing`),
+  KEY `idx_document_pv_point_dateedition` (`dateedition`),
   CONSTRAINT `fk_document_pv_point_document` FOREIGN KEY (`IDdocument`) REFERENCES `document` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_document_pv_point_editing_user` FOREIGN KEY (`IDuser_editing`) REFERENCES `user` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_document_pv_point_holon_concerned` FOREIGN KEY (`IDholon_concerned`) REFERENCES `holon` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_document_pv_point_modification_user` FOREIGN KEY (`IDuser_modification`) REFERENCES `user` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_document_pv_point_parent` FOREIGN KEY (`IDparent`) REFERENCES `document_pv_point` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=2314 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2318 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `document_pv_point` WRITE;
 /*!40000 ALTER TABLE `document_pv_point` DISABLE KEYS */;
 INSERT INTO `document_pv_point` VALUES
- (2311,2301,'point',NULL,'Budget',1,1,NULL,NULL,NULL,686,'<p>Presentation rapide du cadrage budgetaire du trimestre.</p><p>Un point de vigilance reste ouvert sur la marge de securite disponible.</p>',1,10,8,'information',0,1,'2026-07-09 09:05:00','2026-07-09 09:15:00',NULL),
- (2312,2301,'point',NULL,'Campagne ete',1,1,NULL,NULL,NULL,687,'<p>Consultation sur le rythme de diffusion et le niveau d effort soutenable pour l equipe.</p><ul><li>Besoin de sequence courte</li><li>Besoin de relais internes</li></ul>',2,20,24,'consultation',0,1,'2026-07-09 09:20:00','2026-07-09 09:50:00',NULL),
- (2313,2301,'point',NULL,'Validation',1,1,NULL,NULL,NULL,678,'<p>Decision prise: valider le lancement d un test de deux semaines avec suivi budgetaire hebdomadaire.</p>',3,15,12,'decision',0,1,'2026-07-09 10:00:00','2026-07-09 10:20:00',NULL);
+(2315,2305,'point',NULL,'Revue des indicateurs',1,1,NULL,NULL,NULL,NULL,'<h3>Indicateurs financiers</h3><p><span class=\"omo-indicator-embed omo-indicator-embed--current\" contenteditable=\"false\" data-omo-embed-type=\"indicator\" data-omo-indicator-id=\"1\" data-omo-indicator-kind=\"group\" data-omo-indicator-title=\"Liquidités\" data-omo-indicator-value=\"2 indicateurs\" data-omo-indicator-context=\"Groupe cumule\" data-omo-indicator-status=\"A jour\"><span class=\"omo-indicator-embed__main\"><span class=\"omo-indicator-embed__chart\"><span class=\"omo-indicator-embed__chart-plot\"><span class=\"omo-indicator-embed__chart-svg\"><svg class=\"omo-stats-chart omo-stats-chart--compact omo-stats-chart--group\" viewBox=\"0 0 180 54\" aria-hidden=\"true\"><polyline class=\"omo-stats-chart__line omo-stats-chart__line--sum\" points=\"3,11.07 91.43,10.76 94.28,10.78 177,11.22\" style=\"stroke:#2563eb\"></polyline><line class=\"omo-stats-chart__scale-line\" x1=\"21\" y1=\"3\" x2=\"177\" y2=\"3\"></line><line class=\"omo-stats-chart__scale-line\" x1=\"21\" y1=\"51\" x2=\"177\" y2=\"51\"></line><text class=\"omo-stats-chart__scale-label\" x=\"0\" y=\"7\">100 000</text><text class=\"omo-stats-chart__scale-label\" x=\"0\" y=\"51\">0</text></svg></span></span></span><span class=\"omo-indicator-embed__copy\"><strong><a class=\"omo-indicator-embed__title\" href=\"#stats\"><span class=\"omo-indicator-embed__status-dot omo-indicator-embed__status-dot--current\" aria-hidden=\"true\"></span><span>Liquidités</span></a></strong></span><span class=\"omo-indicator-embed__values\"><b>2 indicateurs</b><em>A jour</em></span></span></span><span class=\"omo-indicator-embed omo-indicator-embed--current\" contenteditable=\"false\" data-omo-embed-type=\"indicator\" data-omo-indicator-id=\"1\" data-omo-indicator-kind=\"indicator\" data-omo-indicator-title=\"Solde du compte bancaire\" data-omo-indicator-description=\"Cash disponible sur le compte bancaire\" data-omo-indicator-value=\"82 345\" data-omo-indicator-date=\"01.07.2026\" data-omo-indicator-context=\"Comptabilite et budget\" data-omo-indicator-chart-min=\"82 200\" data-omo-indicator-chart-max=\"83 600\" data-omo-indicator-status=\"A jour\"><span class=\"omo-indicator-embed__main\"><span class=\"omo-indicator-embed__chart\"><span class=\"omo-indicator-embed__chart-plot\"><span class=\"omo-indicator-embed__chart-svg\"><svg class=\"omo-stats-chart omo-stats-chart--compact\" viewBox=\"0 0 180 54\" aria-hidden=\"true\"><polyline class=\"omo-stats-chart__line\" points=\"2,6.62 91.44,5 178,7.31\"></polyline><circle class=\"omo-stats-chart__point\" cx=\"178\" cy=\"7.31\" r=\"2.5\"></circle><line class=\"omo-stats-chart__scale-line\" x1=\"20\" y1=\"2\" x2=\"178\" y2=\"2\"></line><line class=\"omo-stats-chart__scale-line\" x1=\"20\" y1=\"52\" x2=\"178\" y2=\"52\"></line><text class=\"omo-stats-chart__scale-label\" x=\"0\" y=\"6\">85 000</text><text class=\"omo-stats-chart__scale-label\" x=\"0\" y=\"52\">60 000</text></svg></span></span></span><span class=\"omo-indicator-embed__copy\"><strong><a class=\"omo-indicator-embed__title\" href=\"#stats-i1\"><span class=\"omo-indicator-embed__status-dot omo-indicator-embed__status-dot--current\" aria-hidden=\"true\"></span><span>Solde du compte bancaire</span></a></strong><span class=\"omo-indicator-embed__description\">Cash disponible sur le compte bancaire</span></span><span class=\"omo-indicator-embed__values\"><b>82 345</b><time>01.07.2026</time><em>A jour</em></span></span></span><span class=\"omo-indicator-embed omo-indicator-embed--current\" contenteditable=\"false\" data-omo-embed-type=\"indicator\" data-omo-indicator-id=\"2\" data-omo-indicator-kind=\"indicator\" data-omo-indicator-title=\"Solde en caisse\" data-omo-indicator-description=\"Montant disponible en liquide dans la caisse\" data-omo-indicator-value=\"536\" data-omo-indicator-date=\"01.07.2026\" data-omo-indicator-context=\"Comptabilite et budget\" data-omo-indicator-chart-min=\"300\" data-omo-indicator-chart-max=\"550\" data-omo-indicator-status=\"A jour\"><span class=\"omo-indicator-embed__main\"><span class=\"omo-indicator-embed__chart\"><span class=\"omo-indicator-embed__chart-plot\"><span class=\"omo-indicator-embed__chart-svg\"><svg class=\"omo-stats-chart omo-stats-chart--compact\" viewBox=\"0 0 180 54\" aria-hidden=\"true\"><polyline class=\"omo-stats-chart__line\" points=\"2,11.33 94.33,24.58 178,7.33\"></polyline><circle class=\"omo-stats-chart__point\" cx=\"178\" cy=\"7.33\" r=\"2.5\"></circle><line class=\"omo-stats-chart__scale-line\" x1=\"20\" y1=\"2\" x2=\"178\" y2=\"2\"></line><line class=\"omo-stats-chart__scale-line\" x1=\"20\" y1=\"52\" x2=\"178\" y2=\"52\"></line><text class=\"omo-stats-chart__scale-label\" x=\"0\" y=\"6\">600</text><text class=\"omo-stats-chart__scale-label\" x=\"0\" y=\"52\">0</text></svg></span></span></span><span class=\"omo-indicator-embed__copy\"><strong><a class=\"omo-indicator-embed__title\" href=\"#stats-i2\"><span class=\"omo-indicator-embed__status-dot omo-indicator-embed__status-dot--current\" aria-hidden=\"true\"></span><span>Solde en caisse</span></a></strong><span class=\"omo-indicator-embed__description\">Montant disponible en liquide dans la caisse</span></span><span class=\"omo-indicator-embed__values\"><b>536</b><time>01.07.2026</time><em>A jour</em></span></span></span><br></p>',1,NULL,NULL,'information',0,1,'2026-07-24 08:37:33','2026-07-24 09:54:44',NULL),
+(2316,2305,'point',NULL,'Revue des checklists',1,1,NULL,NULL,NULL,682,'<p><span class=\"omo-checklist-embed\" contenteditable=\"false\" data-omo-embed-type=\"checklist\" data-omo-checklist-id=\"2\" data-omo-checklist-title=\"Factures récurrentes\"><strong><a href=\"#checklist-c2\">Factures récurrentes</a></strong><em>Gestion administrative</em></span><span class=\"omo-checklist-embed\" contenteditable=\"false\" data-omo-embed-type=\"checklist\" data-omo-checklist-id=\"1\" data-omo-checklist-title=\"Processus d\'accueil des nouveaux et nouvelles\"><strong><a href=\"#checklist-c1\">Processus d\'accueil des nouveaux et nouvelles</a></strong><em>Inclusion</em></span><br></p>',2,NULL,NULL,'information',0,1,'2026-07-24 08:57:32','2026-07-24 07:37:32',NULL),
+(2317,2305,'point',NULL,'Revue des projets',1,1,NULL,NULL,NULL,NULL,'<h3>Projets stratégiques:</h3><p><span class=\"omo-project-embed\" contenteditable=\"false\" data-omo-embed-type=\"project\" data-omo-project-id=\"9\" data-omo-project-title=\"Consolider nos pratiques administratives\"><strong><a href=\"#projects-d9\">Consolider nos pratiques administratives</a><a href=\"/omo/c/678#projects-d9\" target=\"_blank\" rel=\"noopener noreferrer\">↗</a><em>En cours</em><em>En cours</em><em>En cours</em><em>P2</em><em>M</em></strong><em>Ancrage · Admin · Planifie 01.01.2026 · Fin 31.12.2026</em></span><span class=\"omo-project-embed\" contenteditable=\"false\" data-omo-embed-type=\"project\" data-omo-project-id=\"8\" data-omo-project-title=\"Elargir notre réseau professionnel\"><strong><a href=\"#projects-d8\">Elargir notre réseau professionnel</a><a href=\"/omo/c/678#projects-d8\" target=\"_blank\" rel=\"noopener noreferrer\">↗</a><em>En cours</em><em>En cours</em><em>En cours</em><em>P2</em><em>M</em></strong><em>Ancrage · Admin · Planifie 01.01.2026 · Fin 31.12.2026</em></span><span class=\"omo-project-embed\" contenteditable=\"false\" data-omo-embed-type=\"project\" data-omo-project-id=\"7\" data-omo-project-title=\"Refondre notre communication et notre marketing\"><strong><a href=\"#projects-d7\">Refondre notre communication et notre marketing</a><a href=\"/omo/c/678#projects-d7\" target=\"_blank\" rel=\"noopener noreferrer\">↗</a><em>En cours</em><em>En cours</em><em>En cours</em><em>P3</em><em>M</em></strong><em>Ancrage · Admin · Planifie 01.01.2026 · Fin 31.12.2026</em></span><br></p>',3,NULL,NULL,'information',0,1,'2026-07-24 09:00:17','2026-07-24 09:54:44',NULL);
 /*!40000 ALTER TABLE `document_pv_point` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `document_pv_point_holon`;
@@ -751,11 +767,6 @@ CREATE TABLE `document_pv_point_holon` (
 
 LOCK TABLES `document_pv_point_holon` WRITE;
 /*!40000 ALTER TABLE `document_pv_point_holon` DISABLE KEYS */;
-INSERT INTO `document_pv_point_holon` VALUES
-(2321,2311,679,1),
-(2322,2312,686,1),
-(2323,2312,679,2),
-(2324,2313,687,1);
 /*!40000 ALTER TABLE `document_pv_point_holon` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `document_pv_point_tension`;
@@ -777,10 +788,6 @@ CREATE TABLE `document_pv_point_tension` (
 
 LOCK TABLES `document_pv_point_tension` WRITE;
 /*!40000 ALTER TABLE `document_pv_point_tension` DISABLE KEYS */;
-INSERT INTO `document_pv_point_tension` VALUES
-(2331,2311,9301,1),
-(2332,2312,9302,1),
-(2333,2313,9301,1);
 /*!40000 ALTER TABLE `document_pv_point_tension` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `event`;
@@ -816,11 +823,13 @@ CREATE TABLE `event` (
   KEY `idx_event_location_mode` (`locationmode`),
   CONSTRAINT `fk_event_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_event_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `event` WRITE;
 /*!40000 ALTER TABLE `event` DISABLE KEYS */;
+INSERT INTO `event` VALUES
+(4,1,678,1,'Réunion OP',NULL,'confirmed','Europe/Zurich','virtual',NULL,'https://david.instantz.org','2026-07-25 09:00:00','2026-07-25 10:00:00',0,NULL,1,'2026-07-24 06:37:27','2026-07-24 06:37:27');
 /*!40000 ALTER TABLE `event` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `event_attendance`;
@@ -923,28 +932,28 @@ CREATE TABLE `faq` (
 LOCK TABLES `faq` WRITE;
 /*!40000 ALTER TABLE `faq` DISABLE KEYS */;
 INSERT INTO `faq` VALUES
-(1,NULL,NULL,NULL,'Ma première question','Réponse de ma première question',NULL,NULL,'Détail de la réponse de la première question',0,0,0,0,0,0,0,NULL,NULL,'2026-04-12 08:08:05','2026-07-23 11:51:09'),
-(2,NULL,NULL,NULL,'Ma deuxième question','Réponse de ma deuxième question',NULL,NULL,'Détail de la réponse de la deuxième question',0,0,0,0,0,0,0,NULL,NULL,'2026-04-12 08:08:05','2026-07-23 11:51:09'),
-(3201,NULL,NULL,NULL,'Comment ouvrir les outils d aide dans OMO ?','Ouvrez le bouton Aide dans la topbar pour retrouver la FAQ, les tutoriels et la visite guidee.',NULL,NULL,'<p>La zone Aide centralise les ressources utiles quand vous avez un doute ou que vous decouvrez un ecran.</p><p>La FAQ donne des reponses rapides, les tutoriels vont plus loin et la visite guidee explique les boutons visibles sur la page en cours.</p>',10,1,0,0,0,0,0,NULL,NULL,'2026-06-22 09:00:00','2026-06-22 09:00:00'),
-(3202,NULL,NULL,NULL,'Comment utiliser la recherche de la topbar ?','Tapez quelques mots cles dans la recherche puis ouvrez le resultat qui correspond a votre besoin.',NULL,NULL,'<p>La recherche de la topbar sert a retrouver rapidement un cercle, un role, un outil ou un acces utile.</p><p>Si plusieurs modules sont proposes, commencez par ceux qui correspondent a votre besoin puis affinez avec des mots simples et precis.</p>',20,1,0,0,0,0,0,NULL,NULL,'2026-06-22 09:05:00','2026-06-22 09:05:00'),
-(3203,NULL,NULL,NULL,'Comment changer ma langue ou mon theme ?','Ouvrez le menu Profil dans la topbar pour regler la langue et le theme d affichage.',NULL,NULL,'<p>Le menu Profil permet de retrouver les reglages personnels les plus utiles sans quitter votre espace de travail.</p><p>Vous pouvez y adapter la langue de l interface et choisir le theme qui vous convient le mieux pour votre usage quotidien.</p>',30,1,0,0,0,0,0,NULL,NULL,'2026-06-22 09:10:00','2026-06-22 09:10:00'),
-(3204,NULL,NULL,NULL,'A quoi sert le switch Contextuel / Global ?','Il permet de limiter la vue au contexte courant ou d elargir la liste a toute l organisation.',NULL,NULL,'<p>Le mode contextuel est pratique quand vous travaillez dans un cercle ou un role precis et que vous voulez rester centre sur ce perimetre.</p><p>Le mode global sert plutot a retrouver un element dans toute l organisation, meme en dehors du contexte actuellement ouvert.</p>',40,1,0,0,0,0,0,NULL,NULL,'2026-06-22 09:15:00','2026-06-22 09:15:00'),
-(3205,NULL,NULL,NULL,'Comment passer du tri Date au tri Alphabetique ?','Utilisez le controle de tri dans l entete du drawer pour choisir l ordre qui vous aide le plus.',NULL,NULL,'<p>Le tri par date est utile pour revoir ce qui vient d etre cree ou modifie recemment.</p><p>Le tri alphabetique est souvent plus confortable quand vous cherchez un nom connu dans une longue liste.</p>',50,1,0,0,0,0,0,NULL,NULL,'2026-06-22 09:20:00','2026-06-22 09:20:00'),
-(3206,NULL,NULL,NULL,'A quoi sert le mode Detail / Compact ?','Le mode Detail montre plus d informations par carte, tandis que Compact affiche plus d elements a l ecran.',NULL,NULL,'<p>Choisissez Detail quand vous voulez lire les resumes, les metadonnees ou mieux comparer plusieurs cartes.</p><p>Choisissez Compact quand vous voulez parcourir beaucoup d elements rapidement, en particulier sur mobile ou dans une colonne etroite.</p>',60,1,0,0,0,0,0,NULL,NULL,'2026-06-22 09:25:00','2026-06-22 09:25:00'),
-(3207,NULL,NULL,NULL,'Comment creer un document dans OMO ?','Ouvrez l app Documents puis utilisez le bouton Ajouter si votre role vous y autorise.',NULL,NULL,'<p>Sur grand ecran, le bouton de creation apparait dans l entete du module. Sur mobile, il peut etre reduit a une icone en haut a droite.</p><p>Si vous ne voyez pas ce bouton, cela signifie en general que votre contexte actuel ou vos droits ne permettent pas cette creation.</p>',70,1,0,0,0,0,0,NULL,NULL,'2026-06-22 09:30:00','2026-06-22 09:30:00'),
-(3208,NULL,NULL,NULL,'Comment modifier un document existant ?','Ouvrez le document puis lancez l action Editer depuis le drawer ou le menu prevu.',NULL,NULL,'<p>L edition passe par le formulaire du document et enregistre les changements dans le contexte de ce document.</p><p>Si un document appartient deja a une organisation ou a un holon, les droits de ce contexte continuent a s appliquer au moment de la sauvegarde.</p>',80,1,0,0,0,0,0,NULL,NULL,'2026-06-22 09:35:00','2026-06-22 09:35:00'),
-(3209,NULL,NULL,NULL,'A quoi sert l app Memo ?','Memo rassemble vos documents personnels et vos notes dans une vue simple a parcourir.',NULL,NULL,'<p>La liste Memo peut regrouper les documents dont vous etes l auteur, y compris quand ils proviennent de plusieurs holons.</p><p>Le detail se consulte ensuite dans un drawer interne, ce qui permet de rester dans le meme espace sans ouvrir une nouvelle page.</p>',90,1,0,0,0,0,0,NULL,NULL,'2026-06-22 09:40:00','2026-06-22 09:40:00'),
-(3210,NULL,NULL,NULL,'Comment reediter un memo depuis l app Memo ?','Ouvrez le menu ... sur un memo puis choisissez Editer.',NULL,NULL,'<p>L action Editer ouvre le formulaire du memo dans un drawer, avec un parcours proche de celui du module Documents.</p><p>Les memos sans contexte d organisation peuvent etre reedites par leur auteur, alors que les documents deja classes gardent les droits de leur contexte habituel.</p>',100,1,0,0,0,0,0,NULL,NULL,'2026-06-22 09:45:00','2026-06-22 09:45:00'),
-(3211,NULL,NULL,NULL,'Comment terminer ou classer un memo depuis Telegram ?','Utilisez les boutons proposes par le bot pour choisir une destination autorisee ou terminer dans le contexte courant.',NULL,NULL,'<p>Le bot ne propose que les destinations de classement qui restent autorisees pour votre contexte et vos droits.</p><p>Si le bouton Terminer ici ou certaines destinations ne sont pas visibles, cela signifie simplement que cette action nest pas disponible pour vous a cet endroit.</p>',110,1,0,0,0,0,0,NULL,NULL,'2026-06-22 09:50:00','2026-06-22 09:50:00'),
-(3212,NULL,NULL,NULL,'Comment creer une prise de decision ?','Ouvrez l app Decisions puis utilisez le bouton de creation disponible dans l entete si vous avez le droit necessaire.',NULL,NULL,'<p>La creation se fait dans le contexte courant, par exemple pour une organisation, un cercle ou un autre niveau de structure.</p><p>Prenez le temps de definir un titre clair, une description utile et les dates importantes avant de lancer la participation.</p>',120,1,0,0,0,0,0,NULL,NULL,'2026-06-22 09:55:00','2026-06-22 09:55:00'),
-(3213,NULL,NULL,NULL,'Comment participer a une decision avec un lien public ou un acces personnel ?','Ouvrez la page de participation recue par lien ou demandez votre acces personnel depuis l ecran public du scrutin.',NULL,NULL,'<p>Certaines decisions peuvent accepter la participation sans invitation classique, directement depuis un lien public partage par l organisateur.</p><p>Si ce nest pas le cas, utilisez la page Recevoir mon acces personnel pour demander un lien individuel avant de voter.</p>',130,1,0,0,0,0,0,NULL,NULL,'2026-06-22 10:00:00','2026-06-22 10:00:00'),
-(3214,NULL,NULL,NULL,'Comment noter des propositions en jugement majoritaire ?','Attribuez une mention a chaque proposition selon l echelle affichee, de la plus favorable a la moins favorable.',NULL,NULL,'<p>Le jugement majoritaire ne consiste pas a choisir une seule proposition. Vous evaluez chaque option avec la meme echelle.</p><p>Le resultat final compare ensuite la repartition des mentions pour aider a faire ressortir la proposition la plus solide.</p>',140,1,0,0,0,0,0,NULL,NULL,'2026-06-22 10:05:00','2026-06-22 10:05:00'),
-(3215,NULL,NULL,NULL,'Comment ajouter un evenement dans le calendrier ?','Ouvrez le calendrier puis utilisez le bouton Ajouter si votre contexte vous autorise a creer des dates.',NULL,NULL,'<p>Comme pour les autres modules, le bouton peut etre plein texte sur grand ecran ou reduit a une icone sur mobile.</p><p>Si vous ne pouvez pas creer de date a cet endroit, changez de contexte ou demandez a une personne administratrice de verifier vos droits.</p>',150,1,0,0,0,0,0,NULL,NULL,'2026-06-22 10:10:00','2026-06-22 10:10:00'),
-(3216,NULL,NULL,NULL,'Comment changer de vue dans le calendrier ?','Utilisez le selecteur Mois, Semaine, Jour ou Liste pour choisir la lecture la plus pratique.',NULL,NULL,'<p>Chaque vue repond a un besoin different: Mois pour la planification generale, Semaine ou Jour pour le detail, Liste pour un balayage rapide.</p><p>Sur mobile, ces vues peuvent apparaitre sous forme d icones plus compactes afin de laisser davantage de place au contenu.</p>',160,1,0,0,0,0,0,NULL,NULL,'2026-06-22 10:15:00','2026-06-22 10:15:00'),
-(3217,NULL,NULL,NULL,'Pourquoi je ne vois pas toujours le bouton Ajouter ?','Le bouton apparait seulement si vous avez la permission de creation dans le contexte ouvert.',NULL,NULL,'<p>Ce principe vaut notamment pour les documents, les prises de decision, les dates et la creation de FAQ.</p><p>Si vous pensez que ce bouton devrait etre disponible, verifiez le contexte courant ou demandez une verification des permissions sur le holon concerne.</p>',170,1,0,0,0,0,0,NULL,NULL,'2026-06-22 10:20:00','2026-06-22 10:20:00'),
-(3218,NULL,NULL,NULL,'Comment ajouter une question dans la FAQ ?','Ouvrez la FAQ du contexte voulu puis utilisez le bouton Ajouter une question si cette action est disponible.',NULL,NULL,'<p>Selon votre ecran, la nouvelle question peut etre creee au niveau du contexte courant, du niveau organisation ou dans un scope plus global.</p><p>Si aucun bouton de creation ne saffiche, cela signifie que la permission de creation de FAQ nest pas accordee dans ce contexte.</p>',180,1,0,0,0,0,0,NULL,NULL,'2026-06-22 10:25:00','2026-06-22 10:25:00'),
-(3219,NULL,NULL,NULL,'A quoi servent les votes sur les reponses de la FAQ ?','Les boutons de vote permettent de signaler si une reponse est utile afin de mieux mettre en avant les bonnes explications.',NULL,NULL,'<p>Quand une reponse vous aide vraiment, un vote positif aide a la faire remonter dans la FAQ.</p><p>Ces retours servent a rendre les questions les plus utiles plus visibles pour les autres membres de l organisation.</p>',190,1,0,0,0,0,0,NULL,NULL,'2026-06-22 10:30:00','2026-06-22 10:30:00'),
-(3220,NULL,NULL,NULL,'Comment faire apparaitre mon organisation sur la carte publique ?','Renseignez un emplacement dans les parametres de l organisation et verifiez que les informations utiles sont lisibles sans connexion.',NULL,NULL,'<p>La carte publique utilise un emplacement facultatif, generalement saisi en latitude et longitude dans les parametres de l organisation.</p><p>Seules les informations explicitement exposees comme publiques sont reprises sur cette carte, ce qui permet de garder le controle sur ce qui est visible sans connexion.</p>',200,1,0,0,0,0,0,NULL,NULL,'2026-06-22 10:35:00','2026-06-22 10:35:00');
+(1,NULL,NULL,NULL,'Ma première question','Réponse de ma première question',NULL,NULL,'Détail de la réponse de la première question',0,0,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-04-12 08:08:05','2026-07-23 11:51:09'),
+(2,NULL,NULL,NULL,'Ma deuxième question','Réponse de ma deuxième question',NULL,NULL,'Détail de la réponse de la deuxième question',0,0,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-04-12 08:08:05','2026-07-23 11:51:09'),
+(3201,NULL,NULL,NULL,'Comment ouvrir les outils d aide dans OMO ?','Ouvrez le bouton Aide dans la topbar pour retrouver la FAQ, les tutoriels et la visite guidee.',NULL,NULL,'<p>La zone Aide centralise les ressources utiles quand vous avez un doute ou que vous decouvrez un ecran.</p><p>La FAQ donne des reponses rapides, les tutoriels vont plus loin et la visite guidee explique les boutons visibles sur la page en cours.</p>',10,1,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-06-22 09:00:00','2026-06-22 09:00:00'),
+(3202,NULL,NULL,NULL,'Comment utiliser la recherche de la topbar ?','Tapez quelques mots cles dans la recherche puis ouvrez le resultat qui correspond a votre besoin.',NULL,NULL,'<p>La recherche de la topbar sert a retrouver rapidement un cercle, un role, un outil ou un acces utile.</p><p>Si plusieurs modules sont proposes, commencez par ceux qui correspondent a votre besoin puis affinez avec des mots simples et precis.</p>',20,1,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-06-22 09:05:00','2026-06-22 09:05:00'),
+(3203,NULL,NULL,NULL,'Comment changer ma langue ou mon theme ?','Ouvrez le menu Profil dans la topbar pour regler la langue et le theme d affichage.',NULL,NULL,'<p>Le menu Profil permet de retrouver les reglages personnels les plus utiles sans quitter votre espace de travail.</p><p>Vous pouvez y adapter la langue de l interface et choisir le theme qui vous convient le mieux pour votre usage quotidien.</p>',30,1,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-06-22 09:10:00','2026-06-22 09:10:00'),
+(3204,NULL,NULL,NULL,'A quoi sert le switch Contextuel / Global ?','Il permet de limiter la vue au contexte courant ou d elargir la liste a toute l organisation.',NULL,NULL,'<p>Le mode contextuel est pratique quand vous travaillez dans un cercle ou un role precis et que vous voulez rester centre sur ce perimetre.</p><p>Le mode global sert plutot a retrouver un element dans toute l organisation, meme en dehors du contexte actuellement ouvert.</p>',40,1,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-06-22 09:15:00','2026-06-22 09:15:00'),
+(3205,NULL,NULL,NULL,'Comment passer du tri Date au tri Alphabetique ?','Utilisez le controle de tri dans l entete du drawer pour choisir l ordre qui vous aide le plus.',NULL,NULL,'<p>Le tri par date est utile pour revoir ce qui vient d etre cree ou modifie recemment.</p><p>Le tri alphabetique est souvent plus confortable quand vous cherchez un nom connu dans une longue liste.</p>',50,1,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-06-22 09:20:00','2026-06-22 09:20:00'),
+(3206,NULL,NULL,NULL,'A quoi sert le mode Detail / Compact ?','Le mode Detail montre plus d informations par carte, tandis que Compact affiche plus d elements a l ecran.',NULL,NULL,'<p>Choisissez Detail quand vous voulez lire les resumes, les metadonnees ou mieux comparer plusieurs cartes.</p><p>Choisissez Compact quand vous voulez parcourir beaucoup d elements rapidement, en particulier sur mobile ou dans une colonne etroite.</p>',60,1,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-06-22 09:25:00','2026-06-22 09:25:00'),
+(3207,NULL,NULL,NULL,'Comment creer un document dans OMO ?','Ouvrez l app Documents puis utilisez le bouton Ajouter si votre role vous y autorise.',NULL,NULL,'<p>Sur grand ecran, le bouton de creation apparait dans l entete du module. Sur mobile, il peut etre reduit a une icone en haut a droite.</p><p>Si vous ne voyez pas ce bouton, cela signifie en general que votre contexte actuel ou vos droits ne permettent pas cette creation.</p>',70,1,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-06-22 09:30:00','2026-06-22 09:30:00'),
+(3208,NULL,NULL,NULL,'Comment modifier un document existant ?','Ouvrez le document puis lancez l action Editer depuis le drawer ou le menu prevu.',NULL,NULL,'<p>L edition passe par le formulaire du document et enregistre les changements dans le contexte de ce document.</p><p>Si un document appartient deja a une organisation ou a un holon, les droits de ce contexte continuent a s appliquer au moment de la sauvegarde.</p>',80,1,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-06-22 09:35:00','2026-06-22 09:35:00'),
+(3209,NULL,NULL,NULL,'A quoi sert l app Memo ?','Memo rassemble vos documents personnels et vos notes dans une vue simple a parcourir.',NULL,NULL,'<p>La liste Memo peut regrouper les documents dont vous etes l auteur, y compris quand ils proviennent de plusieurs holons.</p><p>Le detail se consulte ensuite dans un drawer interne, ce qui permet de rester dans le meme espace sans ouvrir une nouvelle page.</p>',90,1,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-06-22 09:40:00','2026-06-22 09:40:00'),
+(3210,NULL,NULL,NULL,'Comment reediter un memo depuis l app Memo ?','Ouvrez le menu ... sur un memo puis choisissez Editer.',NULL,NULL,'<p>L action Editer ouvre le formulaire du memo dans un drawer, avec un parcours proche de celui du module Documents.</p><p>Les memos sans contexte d organisation peuvent etre reedites par leur auteur, alors que les documents deja classes gardent les droits de leur contexte habituel.</p>',100,1,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-06-22 09:45:00','2026-06-22 09:45:00'),
+(3211,NULL,NULL,NULL,'Comment terminer ou classer un memo depuis Telegram ?','Utilisez les boutons proposes par le bot pour choisir une destination autorisee ou terminer dans le contexte courant.',NULL,NULL,'<p>Le bot ne propose que les destinations de classement qui restent autorisees pour votre contexte et vos droits.</p><p>Si le bouton Terminer ici ou certaines destinations ne sont pas visibles, cela signifie simplement que cette action nest pas disponible pour vous a cet endroit.</p>',110,1,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-06-22 09:50:00','2026-06-22 09:50:00'),
+(3212,NULL,NULL,NULL,'Comment creer une prise de decision ?','Ouvrez l app Decisions puis utilisez le bouton de creation disponible dans l entete si vous avez le droit necessaire.',NULL,NULL,'<p>La creation se fait dans le contexte courant, par exemple pour une organisation, un cercle ou un autre niveau de structure.</p><p>Prenez le temps de definir un titre clair, une description utile et les dates importantes avant de lancer la participation.</p>',120,1,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-06-22 09:55:00','2026-06-22 09:55:00'),
+(3213,NULL,NULL,NULL,'Comment participer a une decision avec un lien public ou un acces personnel ?','Ouvrez la page de participation recue par lien ou demandez votre acces personnel depuis l ecran public du scrutin.',NULL,NULL,'<p>Certaines decisions peuvent accepter la participation sans invitation classique, directement depuis un lien public partage par l organisateur.</p><p>Si ce nest pas le cas, utilisez la page Recevoir mon acces personnel pour demander un lien individuel avant de voter.</p>',130,1,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-06-22 10:00:00','2026-06-22 10:00:00'),
+(3214,NULL,NULL,NULL,'Comment noter des propositions en jugement majoritaire ?','Attribuez une mention a chaque proposition selon l echelle affichee, de la plus favorable a la moins favorable.',NULL,NULL,'<p>Le jugement majoritaire ne consiste pas a choisir une seule proposition. Vous evaluez chaque option avec la meme echelle.</p><p>Le resultat final compare ensuite la repartition des mentions pour aider a faire ressortir la proposition la plus solide.</p>',140,1,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-06-22 10:05:00','2026-06-22 10:05:00'),
+(3215,NULL,NULL,NULL,'Comment ajouter un evenement dans le calendrier ?','Ouvrez le calendrier puis utilisez le bouton Ajouter si votre contexte vous autorise a creer des dates.',NULL,NULL,'<p>Comme pour les autres modules, le bouton peut etre plein texte sur grand ecran ou reduit a une icone sur mobile.</p><p>Si vous ne pouvez pas creer de date a cet endroit, changez de contexte ou demandez a une personne administratrice de verifier vos droits.</p>',150,1,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-06-22 10:10:00','2026-06-22 10:10:00'),
+(3216,NULL,NULL,NULL,'Comment changer de vue dans le calendrier ?','Utilisez le selecteur Mois, Semaine, Jour ou Liste pour choisir la lecture la plus pratique.',NULL,NULL,'<p>Chaque vue repond a un besoin different: Mois pour la planification generale, Semaine ou Jour pour le detail, Liste pour un balayage rapide.</p><p>Sur mobile, ces vues peuvent apparaitre sous forme d icones plus compactes afin de laisser davantage de place au contenu.</p>',160,1,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-06-22 10:15:00','2026-06-22 10:15:00'),
+(3217,NULL,NULL,NULL,'Pourquoi je ne vois pas toujours le bouton Ajouter ?','Le bouton apparait seulement si vous avez la permission de creation dans le contexte ouvert.',NULL,NULL,'<p>Ce principe vaut notamment pour les documents, les prises de decision, les dates et la creation de FAQ.</p><p>Si vous pensez que ce bouton devrait etre disponible, verifiez le contexte courant ou demandez une verification des permissions sur le holon concerne.</p>',170,1,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-06-22 10:20:00','2026-06-22 10:20:00'),
+(3218,NULL,NULL,NULL,'Comment ajouter une question dans la FAQ ?','Ouvrez la FAQ du contexte voulu puis utilisez le bouton Ajouter une question si cette action est disponible.',NULL,NULL,'<p>Selon votre ecran, la nouvelle question peut etre creee au niveau du contexte courant, du niveau organisation ou dans un scope plus global.</p><p>Si aucun bouton de creation ne saffiche, cela signifie que la permission de creation de FAQ nest pas accordee dans ce contexte.</p>',180,1,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-06-22 10:25:00','2026-06-22 10:25:00'),
+(3219,NULL,NULL,NULL,'A quoi servent les votes sur les reponses de la FAQ ?','Les boutons de vote permettent de signaler si une reponse est utile afin de mieux mettre en avant les bonnes explications.',NULL,NULL,'<p>Quand une reponse vous aide vraiment, un vote positif aide a la faire remonter dans la FAQ.</p><p>Ces retours servent a rendre les questions les plus utiles plus visibles pour les autres membres de l organisation.</p>',190,1,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-06-22 10:30:00','2026-06-22 10:30:00'),
+(3220,NULL,NULL,NULL,'Comment faire apparaitre mon organisation sur la carte publique ?','Renseignez un emplacement dans les parametres de l organisation et verifiez que les informations utiles sont lisibles sans connexion.',NULL,NULL,'<p>La carte publique utilise un emplacement facultatif, generalement saisi en latitude et longitude dans les parametres de l organisation.</p><p>Seules les informations explicitement exposees comme publiques sont reprises sur cette carte, ce qui permet de garder le controle sur ce qui est visible sans connexion.</p>',200,1,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-06-22 10:35:00','2026-06-22 10:35:00');
 /*!40000 ALTER TABLE `faq` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `faq_choice`;
@@ -990,7 +999,7 @@ CREATE TABLE `history` (
   KEY `idx_history_datecreation` (`datecreation`),
   FULLTEXT KEY `ft_history_content` (`content`),
   CONSTRAINT `fk_history_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=33 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `history` WRITE;
@@ -1015,7 +1024,19 @@ INSERT INTO `history` VALUES
 (17,1,1,678,'holon_member_added','[user|1|Admin] a été ajouté au [holon|682|rôle Memoire] par [user|1|Admin].','{\"IDtargetuser\":1,\"IDholon\":682,\"authorUserId\":1}','2026-07-23 13:50:25',1),
 (18,1,1,678,'holon_member_removed','[user|1|Admin] a ete retire du [holon|683|rôle Operations] par [user|1|Admin].','{\"IDtargetuser\":1,\"IDholon\":683,\"authorUserId\":1,\"removedHolonIds\":[683],\"membershipUpdated\":false}','2026-07-23 13:50:34',1),
 (19,1,1,678,'holon_created','Creation de [holon|708|Inclusion (rôle)].','{\"IDholon\":708,\"after\":{\"holon\":{\"id\":708,\"name\":\"Inclusion\",\"fullName\":\"Inclusion\",\"typeId\":1,\"typeLabel\":\"Role\",\"parentId\":678,\"templateId\":675,\"inheritsFromName\":\"Role\",\"color\":\"\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":false,\"lockedName\":false,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":false,\"link\":false},\"properties\":{\"43\":{\"id\":43,\"name\":\"Raison d\'etre\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"Accueillir les nouveaux arrivants au sein de l\'organisation\",\"inheritedValue\":\"\",\"visibleValue\":\"Accueillir les nouveaux arrivants au sein de l\'organisation\",\"visibleItems\":[]},\"45\":{\"id\":45,\"name\":\"Domaines d\'autorite\",\"shortname\":\"domaines_d_autorite\",\"formatId\":2,\"formatName\":\"Liste\",\"listItemType\":\"text\",\"localValue\":\"\",\"inheritedValue\":\"\",\"visibleValue\":\"\",\"visibleItems\":[]},\"44\":{\"id\":44,\"name\":\"Attendus\",\"shortname\":\"attendus\",\"formatId\":2,\"formatName\":\"Liste\",\"listItemType\":\"text\",\"localValue\":\"\",\"inheritedValue\":\"\",\"visibleValue\":\"\",\"visibleItems\":[]}},\"permissions\":[]}}','2026-07-23 13:51:27',1),
-(20,1,1,678,'holon_member_added','[user|1|Admin] a été ajouté au [holon|708|rôle Inclusion] par [user|1|Admin].','{\"IDtargetuser\":1,\"IDholon\":708,\"authorUserId\":1}','2026-07-23 13:51:33',1);
+(20,1,1,678,'holon_member_added','[user|1|Admin] a été ajouté au [holon|708|rôle Inclusion] par [user|1|Admin].','{\"IDtargetuser\":1,\"IDholon\":708,\"authorUserId\":1}','2026-07-23 13:51:33',1),
+(21,1,1,NULL,'holon_updated','Modification de [holon|678|Ancrage (cercle)] :\n- la propriete [property|46|Strategie] a ete modifiee : {\"before\":\"<p><b>Cap à tenir:</b></p><p>Trouver notre place et professionnaliser nos services</p><p><b>Objectifs prioritaires:</b></p>\",\"items\":[8,7,9],\"after\":\"<p><b>Privilég[...].','{\"IDholon\":678,\"before\":{\"holon\":{\"id\":678,\"name\":\"Ancrage\",\"fullName\":\"\",\"typeId\":2,\"typeLabel\":\"Cercle\",\"parentId\":674,\"templateId\":676,\"inheritsFromName\":\"Cercle\",\"color\":\"\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":false,\"lockedName\":false,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":false,\"link\":false},\"properties\":{\"43\":{\"id\":43,\"name\":\"Raison d\'etre\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"Tenir ensemble la coherence globale de l\'organisation, ses priorites structurelles et la capacite des sous-cercles a agir dans un cadre commun.\",\"inheritedValue\":\"\",\"visibleValue\":\"Tenir ensemble la coherence globale de l\'organisation, ses priorites structurelles et la capacite des sous-cercles a agir dans un cadre commun.\",\"visibleItems\":[]},\"45\":{\"id\":45,\"name\":\"Domaines d\'autorite\",\"shortname\":\"domaines_d_autorite\",\"formatId\":2,\"formatName\":\"Liste\",\"listItemType\":\"text\",\"localValue\":\"Cadre de gouvernance courante, roles structurels transversaux, arbitrages inter-cercles et supervision de la capacite d\'execution globale.\",\"inheritedValue\":\"\",\"visibleValue\":\"[\\\"Cadre de gouvernance courante, roles structurels transversaux, arbitrages inter-cercles et supervision de la capacite d\'execution globale.\\\"]\",\"visibleItems\":[\"Cadre de gouvernance courante, roles structurels transversaux, arbitrages inter-cercles et supervision de la capacite d\'execution globale.\"]},\"44\":{\"id\":44,\"name\":\"Attendus\",\"shortname\":\"attendus\",\"formatId\":2,\"formatName\":\"Liste\",\"listItemType\":\"text\",\"localValue\":\"Porter les roles structurels de base, arbitrer les tensions de coordination, faire vivre les sous-cercles et assurer une articulation claire avec le CA.\",\"inheritedValue\":\"\",\"visibleValue\":\"[\\\"Porter les roles structurels de base, arbitrer les tensions de coordination, faire vivre les sous-cercles et assurer une articulation claire avec le CA.\\\"]\",\"visibleItems\":[\"Porter les roles structurels de base, arbitrer les tensions de coordination, faire vivre les sous-cercles et assurer une articulation claire avec le CA.\"]},\"46\":{\"id\":46,\"name\":\"Strategie\",\"shortname\":\"strategie\",\"formatId\":7,\"formatName\":\"HTML et liste\",\"listItemType\":\"project\",\"localValue\":\"Structurer progressivement l\'organisation autour de cercles specialises capables d\'apprendre sans perdre leur alignement global.\",\"inheritedValue\":\"\",\"visibleValue\":\"{\\\"before\\\":\\\"\\\",\\\"items\\\":[],\\\"after\\\":\\\"\\\"}\",\"visibleItems\":[]}},\"permissions\":[]},\"after\":{\"holon\":{\"id\":678,\"name\":\"Ancrage\",\"fullName\":\"\",\"typeId\":2,\"typeLabel\":\"Cercle\",\"parentId\":674,\"templateId\":676,\"inheritsFromName\":\"Cercle\",\"color\":\"\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":false,\"lockedName\":false,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":false,\"link\":false},\"properties\":{\"43\":{\"id\":43,\"name\":\"Raison d\'etre\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"Tenir ensemble la coherence globale de l\'organisation, ses priorites structurelles et la capacite des sous-cercles a agir dans un cadre commun.\",\"inheritedValue\":\"\",\"visibleValue\":\"Tenir ensemble la coherence globale de l\'organisation, ses priorites structurelles et la capacite des sous-cercles a agir dans un cadre commun.\",\"visibleItems\":[]},\"45\":{\"id\":45,\"name\":\"Domaines d\'autorite\",\"shortname\":\"domaines_d_autorite\",\"formatId\":2,\"formatName\":\"Liste\",\"listItemType\":\"text\",\"localValue\":\"[\\\"Cadre de gouvernance courante, roles structurels transversaux, arbitrages inter-cercles et supervision de la capacite d\'execution globale.\\\"]\",\"inheritedValue\":\"\",\"visibleValue\":\"[\\\"Cadre de gouvernance courante, roles structurels transversaux, arbitrages inter-cercles et supervision de la capacite d\'execution globale.\\\"]\",\"visibleItems\":[\"Cadre de gouvernance courante, roles structurels transversaux, arbitrages inter-cercles et supervision de la capacite d\'execution globale.\"]},\"44\":{\"id\":44,\"name\":\"Attendus\",\"shortname\":\"attendus\",\"formatId\":2,\"formatName\":\"Liste\",\"listItemType\":\"text\",\"localValue\":\"[\\\"Porter les roles structurels de base, arbitrer les tensions de coordination, faire vivre les sous-cercles et assurer une articulation claire avec le CA.\\\"]\",\"inheritedValue\":\"\",\"visibleValue\":\"[\\\"Porter les roles structurels de base, arbitrer les tensions de coordination, faire vivre les sous-cercles et assurer une articulation claire avec le CA.\\\"]\",\"visibleItems\":[\"Porter les roles structurels de base, arbitrer les tensions de coordination, faire vivre les sous-cercles et assurer une articulation claire avec le CA.\"]},\"46\":{\"id\":46,\"name\":\"Strategie\",\"shortname\":\"strategie\",\"formatId\":7,\"formatName\":\"HTML et liste\",\"listItemType\":\"project\",\"localValue\":\"{\\\"before\\\":\\\"<p><b>Cap à tenir:</b></p><p>Trouver notre place et professionnaliser nos services</p><p><b>Objectifs prioritaires:</b></p>\\\",\\\"items\\\":[8,7,9],\\\"after\\\":\\\"<p><b>Privilégier:</b></p><ul><li>Les événements locaux sur la dispersion géographique</li></ul>\\\"}\",\"inheritedValue\":\"\",\"visibleValue\":\"{\\\"before\\\":\\\"<p><b>Cap à tenir:</b></p><p>Trouver notre place et professionnaliser nos services</p><p><b>Objectifs prioritaires:</b></p>\\\",\\\"items\\\":[8,7,9],\\\"after\\\":\\\"<p><b>Privilégier:</b></p><ul><li>Les événements locaux sur la dispersion géographique</li></ul>\\\"}\",\"visibleItems\":[]}},\"permissions\":[]},\"changes\":[{\"type\":\"property_value_changed\",\"propertyId\":46,\"before\":{\"id\":46,\"name\":\"Strategie\",\"shortname\":\"strategie\",\"formatId\":7,\"formatName\":\"HTML et liste\",\"listItemType\":\"project\",\"localValue\":\"Structurer progressivement l\'organisation autour de cercles specialises capables d\'apprendre sans perdre leur alignement global.\",\"inheritedValue\":\"\",\"visibleValue\":\"{\\\"before\\\":\\\"\\\",\\\"items\\\":[],\\\"after\\\":\\\"\\\"}\",\"visibleItems\":[]},\"after\":{\"id\":46,\"name\":\"Strategie\",\"shortname\":\"strategie\",\"formatId\":7,\"formatName\":\"HTML et liste\",\"listItemType\":\"project\",\"localValue\":\"{\\\"before\\\":\\\"<p><b>Cap à tenir:</b></p><p>Trouver notre place et professionnaliser nos services</p><p><b>Objectifs prioritaires:</b></p>\\\",\\\"items\\\":[8,7,9],\\\"after\\\":\\\"<p><b>Privilégier:</b></p><ul><li>Les événements locaux sur la dispersion géographique</li></ul>\\\"}\",\"inheritedValue\":\"\",\"visibleValue\":\"{\\\"before\\\":\\\"<p><b>Cap à tenir:</b></p><p>Trouver notre place et professionnaliser nos services</p><p><b>Objectifs prioritaires:</b></p>\\\",\\\"items\\\":[8,7,9],\\\"after\\\":\\\"<p><b>Privilégier:</b></p><ul><li>Les événements locaux sur la dispersion géographique</li></ul>\\\"}\",\"visibleItems\":[]}}]}','2026-07-24 05:25:49',1),
+(22,1,1,678,'holon_updated','Modification de [holon|687|Marketing (cercle)] :\n- la propriete [property|46|Strategie] a ete modifiee : {\"before\":\"\",\"items\":[16,12],\"after\":\"\"}.','{\"IDholon\":687,\"before\":{\"holon\":{\"id\":687,\"name\":\"Marketing\",\"fullName\":\"\",\"typeId\":2,\"typeLabel\":\"Cercle\",\"parentId\":678,\"templateId\":676,\"inheritsFromName\":\"Cercle\",\"color\":\"\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":false,\"lockedName\":false,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":false,\"link\":false},\"properties\":{\"43\":{\"id\":43,\"name\":\"Raison d\'etre\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"Renforcer la visibilite de l\'organisation et la qualite de sa presence publique afin d\'attirer les bonnes relations, les bonnes opportunites et une meilleure lisibilite de sa proposition.\",\"inheritedValue\":\"\",\"visibleValue\":\"Renforcer la visibilite de l\'organisation et la qualite de sa presence publique afin d\'attirer les bonnes relations, les bonnes opportunites et une meilleure lisibilite de sa proposition.\",\"visibleItems\":[]},\"45\":{\"id\":45,\"name\":\"Domaines d\'autorite\",\"shortname\":\"domaines_d_autorite\",\"formatId\":2,\"formatName\":\"Liste\",\"listItemType\":\"text\",\"localValue\":\"Positionnement public, canaux de communication, campagnes de visibilite, relations de partenariat, calendrier editorial et suivi des retombees.\",\"inheritedValue\":\"\",\"visibleValue\":\"[\\\"Positionnement public, canaux de communication, campagnes de visibilite, relations de partenariat, calendrier editorial et suivi des retombees.\\\"]\",\"visibleItems\":[\"Positionnement public, canaux de communication, campagnes de visibilite, relations de partenariat, calendrier editorial et suivi des retombees.\"]},\"44\":{\"id\":44,\"name\":\"Attendus\",\"shortname\":\"attendus\",\"formatId\":2,\"formatName\":\"Liste\",\"listItemType\":\"text\",\"localValue\":\"Animer une presence coherente, produire des messages utiles, soutenir les campagnes prioritaires et faire circuler les retours du terrain vers le reste de l\'organisation.\",\"inheritedValue\":\"\",\"visibleValue\":\"[\\\"Animer une presence coherente, produire des messages utiles, soutenir les campagnes prioritaires et faire circuler les retours du terrain vers le reste de l\'organisation.\\\"]\",\"visibleItems\":[\"Animer une presence coherente, produire des messages utiles, soutenir les campagnes prioritaires et faire circuler les retours du terrain vers le reste de l\'organisation.\"]},\"46\":{\"id\":46,\"name\":\"Strategie\",\"shortname\":\"strategie\",\"formatId\":7,\"formatName\":\"HTML et liste\",\"listItemType\":\"project\",\"localValue\":\"Construire un dispositif de communication progressif, ancre dans les besoins reels du terrain et dans la capacite de production du cercle.\",\"inheritedValue\":\"\",\"visibleValue\":\"{\\\"before\\\":\\\"\\\",\\\"items\\\":[],\\\"after\\\":\\\"\\\"}\",\"visibleItems\":[]}},\"permissions\":[]},\"after\":{\"holon\":{\"id\":687,\"name\":\"Marketing\",\"fullName\":\"\",\"typeId\":2,\"typeLabel\":\"Cercle\",\"parentId\":678,\"templateId\":676,\"inheritsFromName\":\"Cercle\",\"color\":\"\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":false,\"lockedName\":false,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":false,\"link\":false},\"properties\":{\"43\":{\"id\":43,\"name\":\"Raison d\'etre\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"Renforcer la visibilite de l\'organisation et la qualite de sa presence publique afin d\'attirer les bonnes relations, les bonnes opportunites et une meilleure lisibilite de sa proposition.\",\"inheritedValue\":\"\",\"visibleValue\":\"Renforcer la visibilite de l\'organisation et la qualite de sa presence publique afin d\'attirer les bonnes relations, les bonnes opportunites et une meilleure lisibilite de sa proposition.\",\"visibleItems\":[]},\"45\":{\"id\":45,\"name\":\"Domaines d\'autorite\",\"shortname\":\"domaines_d_autorite\",\"formatId\":2,\"formatName\":\"Liste\",\"listItemType\":\"text\",\"localValue\":\"[\\\"Positionnement public, canaux de communication, campagnes de visibilite, relations de partenariat, calendrier editorial et suivi des retombees.\\\"]\",\"inheritedValue\":\"\",\"visibleValue\":\"[\\\"Positionnement public, canaux de communication, campagnes de visibilite, relations de partenariat, calendrier editorial et suivi des retombees.\\\"]\",\"visibleItems\":[\"Positionnement public, canaux de communication, campagnes de visibilite, relations de partenariat, calendrier editorial et suivi des retombees.\"]},\"44\":{\"id\":44,\"name\":\"Attendus\",\"shortname\":\"attendus\",\"formatId\":2,\"formatName\":\"Liste\",\"listItemType\":\"text\",\"localValue\":\"[\\\"Animer une presence coherente, produire des messages utiles, soutenir les campagnes prioritaires et faire circuler les retours du terrain vers le reste de l\'organisation.\\\"]\",\"inheritedValue\":\"\",\"visibleValue\":\"[\\\"Animer une presence coherente, produire des messages utiles, soutenir les campagnes prioritaires et faire circuler les retours du terrain vers le reste de l\'organisation.\\\"]\",\"visibleItems\":[\"Animer une presence coherente, produire des messages utiles, soutenir les campagnes prioritaires et faire circuler les retours du terrain vers le reste de l\'organisation.\"]},\"46\":{\"id\":46,\"name\":\"Strategie\",\"shortname\":\"strategie\",\"formatId\":7,\"formatName\":\"HTML et liste\",\"listItemType\":\"project\",\"localValue\":\"{\\\"before\\\":\\\"\\\",\\\"items\\\":[16,12],\\\"after\\\":\\\"\\\"}\",\"inheritedValue\":\"\",\"visibleValue\":\"{\\\"before\\\":\\\"\\\",\\\"items\\\":[16,12],\\\"after\\\":\\\"\\\"}\",\"visibleItems\":[]}},\"permissions\":[]},\"changes\":[{\"type\":\"property_value_changed\",\"propertyId\":46,\"before\":{\"id\":46,\"name\":\"Strategie\",\"shortname\":\"strategie\",\"formatId\":7,\"formatName\":\"HTML et liste\",\"listItemType\":\"project\",\"localValue\":\"Construire un dispositif de communication progressif, ancre dans les besoins reels du terrain et dans la capacite de production du cercle.\",\"inheritedValue\":\"\",\"visibleValue\":\"{\\\"before\\\":\\\"\\\",\\\"items\\\":[],\\\"after\\\":\\\"\\\"}\",\"visibleItems\":[]},\"after\":{\"id\":46,\"name\":\"Strategie\",\"shortname\":\"strategie\",\"formatId\":7,\"formatName\":\"HTML et liste\",\"listItemType\":\"project\",\"localValue\":\"{\\\"before\\\":\\\"\\\",\\\"items\\\":[16,12],\\\"after\\\":\\\"\\\"}\",\"inheritedValue\":\"\",\"visibleValue\":\"{\\\"before\\\":\\\"\\\",\\\"items\\\":[16,12],\\\"after\\\":\\\"\\\"}\",\"visibleItems\":[]}}]}','2026-07-24 05:42:21',1),
+(23,2,1,712,'holon_updated','Modification de [holon|714|Lien pilotage (rôle)] :\n- le parametre \"obligatoire\" a ete active.\n- le parametre \"nom verrouille\" a ete active.\n- le parametre \"unique\" a ete active.\n- le parametre \"lien\" a ete active.','{\"IDholon\":714,\"before\":{\"holon\":{\"id\":714,\"name\":\"Lien pilotage\",\"fullName\":\"\",\"typeId\":1,\"typeLabel\":\"Role\",\"parentId\":712,\"templateId\":0,\"inheritsFromName\":\"\",\"color\":\"\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":false,\"lockedName\":false,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":false,\"link\":false},\"properties\":{\"47\":{\"id\":47,\"name\":\"Raison d\'être\",\"shortname\":\"rde\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"S’assurer que l’activité du cercle réponde à sa raison d’être, ses objectifs et reste en cohérence avec la raison d’être et les valeurs de l’organisation, tout en prenant soin de ses membres et en assurant à chacun et chacune un rôle en adéquation avec ses compétences et sa motivation. Assurer la bonne circulation des informations entre le cercle et le cercle englobant, afin que les activités de tous et toutes se fassent dans une conscience de l’interdépendance des différents cercles.\",\"inheritedValue\":\"\",\"visibleValue\":\"S’assurer que l’activité du cercle réponde à sa raison d’être, ses objectifs et reste en cohérence avec la raison d’être et les valeurs de l’organisation, tout en prenant soin de ses membres et en assurant à chacun et chacune un rôle en adéquation avec ses compétences et sa motivation. Assurer la bonne circulation des informations entre le cercle et le cercle englobant, afin que les activités de tous et toutes se fassent dans une conscience de l’interdépendance des différents cercles.\",\"visibleItems\":[]}},\"permissions\":[]},\"after\":{\"holon\":{\"id\":714,\"name\":\"Lien pilotage\",\"fullName\":\"\",\"typeId\":1,\"typeLabel\":\"Role\",\"parentId\":712,\"templateId\":0,\"inheritsFromName\":\"\",\"color\":\"\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":true,\"lockedName\":true,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":true,\"link\":true},\"properties\":{\"47\":{\"id\":47,\"name\":\"Raison d\'être\",\"shortname\":\"rde\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"S’assurer que l’activité du cercle réponde à sa raison d’être, ses objectifs et reste en cohérence avec la raison d’être et les valeurs de l’organisation, tout en prenant soin de ses membres et en assurant à chacun et chacune un rôle en adéquation avec ses compétences et sa motivation. Assurer la bonne circulation des informations entre le cercle et le cercle englobant, afin que les activités de tous et toutes se fassent dans une conscience de l’interdépendance des différents cercles.\",\"inheritedValue\":\"\",\"visibleValue\":\"S’assurer que l’activité du cercle réponde à sa raison d’être, ses objectifs et reste en cohérence avec la raison d’être et les valeurs de l’organisation, tout en prenant soin de ses membres et en assurant à chacun et chacune un rôle en adéquation avec ses compétences et sa motivation. Assurer la bonne circulation des informations entre le cercle et le cercle englobant, afin que les activités de tous et toutes se fassent dans une conscience de l’interdépendance des différents cercles.\",\"visibleItems\":[]}},\"permissions\":[]},\"changes\":[{\"type\":\"field_changed\",\"field\":\"mandatory\",\"before\":false,\"after\":true},{\"type\":\"field_changed\",\"field\":\"lockedName\",\"before\":false,\"after\":true},{\"type\":\"field_changed\",\"field\":\"unique\",\"before\":false,\"after\":true},{\"type\":\"field_changed\",\"field\":\"link\",\"before\":false,\"after\":true}]}','2026-07-24 14:52:56',1),
+(24,2,1,712,'holon_updated','Modification de [holon|715|Mémoire (rôle)] :\n- le parametre \"obligatoire\" a ete active.\n- le parametre \"nom verrouille\" a ete active.\n- le parametre \"unique\" a ete active.','{\"IDholon\":715,\"before\":{\"holon\":{\"id\":715,\"name\":\"Mémoire\",\"fullName\":\"\",\"typeId\":1,\"typeLabel\":\"Role\",\"parentId\":712,\"templateId\":0,\"inheritsFromName\":\"\",\"color\":\"\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":false,\"lockedName\":false,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":false,\"link\":false},\"properties\":{\"47\":{\"id\":47,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"S’assurer d’un système d’information bien tenu, rendant accessible à tous et toutes les informations nécessaires à chaque rôle pour piloter ses activités, notamment en reportant toute décision et toute information partagée lors des réunions dans le système d’information.\",\"inheritedValue\":\"\",\"visibleValue\":\"S’assurer d’un système d’information bien tenu, rendant accessible à tous et toutes les informations nécessaires à chaque rôle pour piloter ses activités, notamment en reportant toute décision et toute information partagée lors des réunions dans le système d’information.\",\"visibleItems\":[]}},\"permissions\":[]},\"after\":{\"holon\":{\"id\":715,\"name\":\"Mémoire\",\"fullName\":\"\",\"typeId\":1,\"typeLabel\":\"Role\",\"parentId\":712,\"templateId\":0,\"inheritsFromName\":\"\",\"color\":\"\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":true,\"lockedName\":true,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":true,\"link\":false},\"properties\":{\"47\":{\"id\":47,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"S’assurer d’un système d’information bien tenu, rendant accessible à tous et toutes les informations nécessaires à chaque rôle pour piloter ses activités, notamment en reportant toute décision et toute information partagée lors des réunions dans le système d’information.\",\"inheritedValue\":\"\",\"visibleValue\":\"S’assurer d’un système d’information bien tenu, rendant accessible à tous et toutes les informations nécessaires à chaque rôle pour piloter ses activités, notamment en reportant toute décision et toute information partagée lors des réunions dans le système d’information.\",\"visibleItems\":[]}},\"permissions\":[]},\"changes\":[{\"type\":\"field_changed\",\"field\":\"mandatory\",\"before\":false,\"after\":true},{\"type\":\"field_changed\",\"field\":\"lockedName\",\"before\":false,\"after\":true},{\"type\":\"field_changed\",\"field\":\"unique\",\"before\":false,\"after\":true}]}','2026-07-24 14:53:09',1),
+(25,2,1,712,'holon_updated','Modification de [holon|713|Facilitation (rôle)] :\n- le parametre \"obligatoire\" a ete active.\n- le parametre \"nom verrouille\" a ete active.\n- le parametre \"unique\" a ete active.','{\"IDholon\":713,\"before\":{\"holon\":{\"id\":713,\"name\":\"Facilitation\",\"fullName\":\"\",\"typeId\":1,\"typeLabel\":\"Role\",\"parentId\":712,\"templateId\":710,\"inheritsFromName\":\"Rôle\",\"color\":\"\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":false,\"lockedName\":false,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":false,\"link\":false},\"properties\":{\"48\":{\"id\":48,\"name\":\"Attendus\",\"shortname\":\"redevability\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"fdsfsdfdsfds\",\"inheritedValue\":\"\",\"visibleValue\":\"fdsfsdfdsfds\",\"visibleItems\":[]},\"49\":{\"id\":49,\"name\":\"Domaines d\'autorité\",\"shortname\":\"domain\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"Domaine du rôle facilitation\",\"inheritedValue\":\"\",\"visibleValue\":\"Domaine du rôle facilitation\",\"visibleItems\":[]},\"47\":{\"id\":47,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"Assurer 2 des réunions menées avec efficacité et humanisme, permettant d’obtenir dans le temps imparti des résultats clairs et répondant aux problématiques amenées par les membres du cercle.\",\"inheritedValue\":\"\",\"visibleValue\":\"Assurer 2 des réunions menées avec efficacité et humanisme, permettant d’obtenir dans le temps imparti des résultats clairs et répondant aux problématiques amenées par les membres du cercle.\",\"visibleItems\":[]}},\"permissions\":[]},\"after\":{\"holon\":{\"id\":713,\"name\":\"Facilitation\",\"fullName\":\"\",\"typeId\":1,\"typeLabel\":\"Role\",\"parentId\":712,\"templateId\":710,\"inheritsFromName\":\"Rôle\",\"color\":\"\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":true,\"lockedName\":true,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":true,\"link\":false},\"properties\":{\"48\":{\"id\":48,\"name\":\"Attendus\",\"shortname\":\"redevability\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"fdsfsdfdsfds\",\"inheritedValue\":\"\",\"visibleValue\":\"fdsfsdfdsfds\",\"visibleItems\":[]},\"49\":{\"id\":49,\"name\":\"Domaines d\'autorité\",\"shortname\":\"domain\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"Domaine du rôle facilitation\",\"inheritedValue\":\"\",\"visibleValue\":\"Domaine du rôle facilitation\",\"visibleItems\":[]},\"47\":{\"id\":47,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"Assurer 2 des réunions menées avec efficacité et humanisme, permettant d’obtenir dans le temps imparti des résultats clairs et répondant aux problématiques amenées par les membres du cercle.\",\"inheritedValue\":\"\",\"visibleValue\":\"Assurer 2 des réunions menées avec efficacité et humanisme, permettant d’obtenir dans le temps imparti des résultats clairs et répondant aux problématiques amenées par les membres du cercle.\",\"visibleItems\":[]}},\"permissions\":[]},\"changes\":[{\"type\":\"field_changed\",\"field\":\"mandatory\",\"before\":false,\"after\":true},{\"type\":\"field_changed\",\"field\":\"lockedName\",\"before\":false,\"after\":true},{\"type\":\"field_changed\",\"field\":\"unique\",\"before\":false,\"after\":true}]}','2026-07-24 14:53:22',1),
+(26,2,1,NULL,'holon_updated','Modification de [holon|710|Rôle (rôle)] :\n- la propriete [property|51|Raison d\'être] a ete ajoutee.','{\"IDholon\":710,\"before\":{\"holon\":{\"id\":710,\"name\":\"Rôle\",\"fullName\":\"\",\"typeId\":1,\"typeLabel\":\"Role\",\"parentId\":709,\"templateId\":0,\"inheritsFromName\":\"\",\"color\":\"\",\"icon\":\"\",\"banner\":\"\",\"visible\":false,\"mandatory\":false,\"lockedName\":false,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":false,\"link\":false},\"properties\":[],\"permissions\":[]},\"after\":{\"holon\":{\"id\":710,\"name\":\"Rôle\",\"fullName\":\"\",\"typeId\":1,\"typeLabel\":\"Role\",\"parentId\":709,\"templateId\":0,\"inheritsFromName\":\"\",\"color\":\"\",\"icon\":\"\",\"banner\":\"\",\"visible\":false,\"mandatory\":false,\"lockedName\":false,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":false,\"link\":false},\"properties\":{\"51\":{\"id\":51,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"\",\"inheritedValue\":\"\",\"visibleValue\":\"\",\"visibleItems\":[]}},\"permissions\":[]},\"changes\":[{\"type\":\"property_added\",\"propertyId\":51,\"after\":{\"id\":51,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"\",\"inheritedValue\":\"\",\"visibleValue\":\"\",\"visibleItems\":[]}}]}','2026-07-24 14:54:54',1),
+(27,2,1,712,'holon_updated','Modification de [holon|714|Lien pilotage (rôle)] :\n- le modele parent a ete defini sur \"Rôle\".\n- la propriete [property|51|Raison d\'être] a ete ajoutee.','{\"IDholon\":714,\"before\":{\"holon\":{\"id\":714,\"name\":\"Lien pilotage\",\"fullName\":\"\",\"typeId\":1,\"typeLabel\":\"Role\",\"parentId\":712,\"templateId\":0,\"inheritsFromName\":\"\",\"color\":\"\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":true,\"lockedName\":true,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":true,\"link\":true},\"properties\":{\"47\":{\"id\":47,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"S’assurer que l’activité du cercle réponde à sa raison d’être, ses objectifs et reste en cohérence avec la raison d’être et les valeurs de l’organisation, tout en prenant soin de ses membres et en assurant à chacun et chacune un rôle en adéquation avec ses compétences et sa motivation. Assurer la bonne circulation des informations entre le cercle et le cercle englobant, afin que les activités de tous et toutes se fassent dans une conscience de l’interdépendance des différents cercles.\",\"inheritedValue\":\"\",\"visibleValue\":\"S’assurer que l’activité du cercle réponde à sa raison d’être, ses objectifs et reste en cohérence avec la raison d’être et les valeurs de l’organisation, tout en prenant soin de ses membres et en assurant à chacun et chacune un rôle en adéquation avec ses compétences et sa motivation. Assurer la bonne circulation des informations entre le cercle et le cercle englobant, afin que les activités de tous et toutes se fassent dans une conscience de l’interdépendance des différents cercles.\",\"visibleItems\":[]}},\"permissions\":[]},\"after\":{\"holon\":{\"id\":714,\"name\":\"Lien pilotage\",\"fullName\":\"\",\"typeId\":1,\"typeLabel\":\"Role\",\"parentId\":712,\"templateId\":710,\"inheritsFromName\":\"Rôle\",\"color\":\"\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":true,\"lockedName\":true,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":true,\"link\":true},\"properties\":{\"47\":{\"id\":47,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"S’assurer que l’activité du cercle réponde à sa raison d’être, ses objectifs et reste en cohérence avec la raison d’être et les valeurs de l’organisation, tout en prenant soin de ses membres et en assurant à chacun et chacune un rôle en adéquation avec ses compétences et sa motivation. Assurer la bonne circulation des informations entre le cercle et le cercle englobant, afin que les activités de tous et toutes se fassent dans une conscience de l’interdépendance des différents cercles.\",\"inheritedValue\":\"\",\"visibleValue\":\"S’assurer que l’activité du cercle réponde à sa raison d’être, ses objectifs et reste en cohérence avec la raison d’être et les valeurs de l’organisation, tout en prenant soin de ses membres et en assurant à chacun et chacune un rôle en adéquation avec ses compétences et sa motivation. Assurer la bonne circulation des informations entre le cercle et le cercle englobant, afin que les activités de tous et toutes se fassent dans une conscience de l’interdépendance des différents cercles.\",\"visibleItems\":[]},\"51\":{\"id\":51,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"S’assurer que l’activité du cercle réponde à sa raison d’être, ses objectifs et reste en cohérence avec la raison d’être et les valeurs de l’organisation, tout en prenant soin de ses membres et en assurant à chacun et chacune un rôle en adéquation avec ses compétences et sa motivation. Assurer la bonne circulation des informations entre le cercle et le cercle englobant, afin que les activités de tous et toutes se fassent dans une conscience de l’interdépendance des différents cercles.\",\"inheritedValue\":\"\",\"visibleValue\":\"\",\"visibleItems\":[]}},\"permissions\":[]},\"changes\":[{\"type\":\"field_changed\",\"field\":\"inheritsFromName\",\"before\":\"\",\"after\":\"Rôle\"},{\"type\":\"property_added\",\"propertyId\":51,\"after\":{\"id\":51,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"S’assurer que l’activité du cercle réponde à sa raison d’être, ses objectifs et reste en cohérence avec la raison d’être et les valeurs de l’organisation, tout en prenant soin de ses membres et en assurant à chacun et chacune un rôle en adéquation avec ses compétences et sa motivation. Assurer la bonne circulation des informations entre le cercle et le cercle englobant, afin que les activités de tous et toutes se fassent dans une conscience de l’interdépendance des différents cercles.\",\"inheritedValue\":\"\",\"visibleValue\":\"\",\"visibleItems\":[]}}]}','2026-07-24 14:56:02',1),
+(28,2,1,712,'holon_updated','Modification de [holon|715|Mémoire (rôle)] :\n- le modele parent a ete defini sur \"Rôle\".\n- la propriete [property|51|Raison d\'être] a ete ajoutee.','{\"IDholon\":715,\"before\":{\"holon\":{\"id\":715,\"name\":\"Mémoire\",\"fullName\":\"\",\"typeId\":1,\"typeLabel\":\"Role\",\"parentId\":712,\"templateId\":0,\"inheritsFromName\":\"\",\"color\":\"\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":true,\"lockedName\":true,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":true,\"link\":false},\"properties\":{\"47\":{\"id\":47,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"S’assurer d’un système d’information bien tenu, rendant accessible à tous et toutes les informations nécessaires à chaque rôle pour piloter ses activités, notamment en reportant toute décision et toute information partagée lors des réunions dans le système d’information.\",\"inheritedValue\":\"\",\"visibleValue\":\"S’assurer d’un système d’information bien tenu, rendant accessible à tous et toutes les informations nécessaires à chaque rôle pour piloter ses activités, notamment en reportant toute décision et toute information partagée lors des réunions dans le système d’information.\",\"visibleItems\":[]}},\"permissions\":[]},\"after\":{\"holon\":{\"id\":715,\"name\":\"Mémoire\",\"fullName\":\"\",\"typeId\":1,\"typeLabel\":\"Role\",\"parentId\":712,\"templateId\":710,\"inheritsFromName\":\"Rôle\",\"color\":\"\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":true,\"lockedName\":true,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":true,\"link\":false},\"properties\":{\"47\":{\"id\":47,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"S’assurer d’un système d’information bien tenu, rendant accessible à tous et toutes les informations nécessaires à chaque rôle pour piloter ses activités, notamment en reportant toute décision et toute information partagée lors des réunions dans le système d’information.\",\"inheritedValue\":\"\",\"visibleValue\":\"S’assurer d’un système d’information bien tenu, rendant accessible à tous et toutes les informations nécessaires à chaque rôle pour piloter ses activités, notamment en reportant toute décision et toute information partagée lors des réunions dans le système d’information.\",\"visibleItems\":[]},\"51\":{\"id\":51,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"S’assurer d’un système d’information bien tenu, rendant accessible à tous et toutes les informations nécessaires à chaque rôle pour piloter ses activités, notamment en reportant toute décision et toute information partagée lors des réunions dans le système d’information.\",\"inheritedValue\":\"\",\"visibleValue\":\"S’assurer d’un système d’information bien tenu, rendant accessible à tous et toutes les informations nécessaires à chaque rôle pour piloter ses activités, notamment en reportant toute décision et toute information partagée lors des réunions dans le système d’information.\",\"visibleItems\":[]}},\"permissions\":[]},\"changes\":[{\"type\":\"field_changed\",\"field\":\"inheritsFromName\",\"before\":\"\",\"after\":\"Rôle\"},{\"type\":\"property_added\",\"propertyId\":51,\"after\":{\"id\":51,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"S’assurer d’un système d’information bien tenu, rendant accessible à tous et toutes les informations nécessaires à chaque rôle pour piloter ses activités, notamment en reportant toute décision et toute information partagée lors des réunions dans le système d’information.\",\"inheritedValue\":\"\",\"visibleValue\":\"S’assurer d’un système d’information bien tenu, rendant accessible à tous et toutes les informations nécessaires à chaque rôle pour piloter ses activités, notamment en reportant toute décision et toute information partagée lors des réunions dans le système d’information.\",\"visibleItems\":[]}}]}','2026-07-24 14:56:43',1),
+(29,2,1,712,'holon_created','Creation de [holon|722|Facilitation (rôle)].','{\"IDholon\":722,\"after\":{\"holon\":{\"id\":722,\"name\":\"Facilitation\",\"fullName\":\"\",\"typeId\":1,\"typeLabel\":\"Role\",\"parentId\":712,\"templateId\":713,\"inheritsFromName\":\"Facilitation\",\"color\":\"\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":false,\"lockedName\":false,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":false,\"link\":false},\"properties\":{\"48\":{\"id\":48,\"name\":\"Attendus\",\"shortname\":\"attendus\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"\",\"inheritedValue\":\"fdsfsdfdsfds\",\"visibleValue\":\"fdsfsdfdsfds\",\"visibleItems\":[]},\"51\":{\"id\":51,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"\",\"inheritedValue\":\"\",\"visibleValue\":\"\",\"visibleItems\":[]},\"49\":{\"id\":49,\"name\":\"Domaines d\'autorité\",\"shortname\":\"domaines_d_autorite\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"\",\"inheritedValue\":\"Domaine du rôle facilitation\",\"visibleValue\":\"Domaine du rôle facilitation\",\"visibleItems\":[]},\"47\":{\"id\":47,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"\",\"inheritedValue\":\"Assurer 2 des réunions menées avec efficacité et humanisme, permettant d’obtenir dans le temps imparti des résultats clairs et répondant aux problématiques amenées par les membres du cercle.\",\"visibleValue\":\"Assurer 2 des réunions menées avec efficacité et humanisme, permettant d’obtenir dans le temps imparti des résultats clairs et répondant aux problématiques amenées par les membres du cercle.\",\"visibleItems\":[]}},\"permissions\":[]}}','2026-07-24 14:57:01',1),
+(30,2,1,712,'holon_updated','Modification de [holon|714|Lien pilotage (rôle)] :\n- la couleur a ete modifiee.','{\"IDholon\":714,\"before\":{\"holon\":{\"id\":714,\"name\":\"Lien pilotage\",\"fullName\":\"\",\"typeId\":1,\"typeLabel\":\"Role\",\"parentId\":712,\"templateId\":710,\"inheritsFromName\":\"Rôle\",\"color\":\"\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":true,\"lockedName\":true,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":true,\"link\":true},\"properties\":{\"51\":{\"id\":51,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"S’assurer que l’activité du cercle réponde à sa raison d’être, ses objectifs et reste en cohérence avec la raison d’être et les valeurs de l’organisation, tout en prenant soin de ses membres et en assurant à chacun et chacune un rôle en adéquation avec ses compétences et sa motivation. Assurer la bonne circulation des informations entre le cercle et le cercle englobant, afin que les activités de tous et toutes se fassent dans une conscience de l’interdépendance des différents cercles.\",\"inheritedValue\":\"\",\"visibleValue\":\"\",\"visibleItems\":[]}},\"permissions\":[]},\"after\":{\"holon\":{\"id\":714,\"name\":\"Lien pilotage\",\"fullName\":\"\",\"typeId\":1,\"typeLabel\":\"Role\",\"parentId\":712,\"templateId\":710,\"inheritsFromName\":\"Rôle\",\"color\":\"#f52d0a\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":true,\"lockedName\":true,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":true,\"link\":true},\"properties\":{\"51\":{\"id\":51,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"S’assurer que l’activité du cercle réponde à sa raison d’être, ses objectifs et reste en cohérence avec la raison d’être et les valeurs de l’organisation, tout en prenant soin de ses membres et en assurant à chacun et chacune un rôle en adéquation avec ses compétences et sa motivation. Assurer la bonne circulation des informations entre le cercle et le cercle englobant, afin que les activités de tous et toutes se fassent dans une conscience de l’interdépendance des différents cercles.\",\"inheritedValue\":\"\",\"visibleValue\":\"\",\"visibleItems\":[]}},\"permissions\":[]},\"changes\":[{\"type\":\"field_changed\",\"field\":\"color\",\"before\":\"\",\"after\":\"#f52d0a\"}]}','2026-07-24 15:06:49',1),
+(31,2,1,712,'holon_updated','Modification de [holon|715|Mémoire (rôle)] :\n- la couleur a ete modifiee.','{\"IDholon\":715,\"before\":{\"holon\":{\"id\":715,\"name\":\"Mémoire\",\"fullName\":\"\",\"typeId\":1,\"typeLabel\":\"Role\",\"parentId\":712,\"templateId\":710,\"inheritsFromName\":\"Rôle\",\"color\":\"\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":true,\"lockedName\":true,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":true,\"link\":false},\"properties\":{\"51\":{\"id\":51,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"S’assurer d’un système d’information bien tenu, rendant accessible à tous et toutes les informations nécessaires à chaque rôle pour piloter ses activités, notamment en reportant toute décision et toute information partagée lors des réunions dans le système d’information.\",\"inheritedValue\":\"\",\"visibleValue\":\"S’assurer d’un système d’information bien tenu, rendant accessible à tous et toutes les informations nécessaires à chaque rôle pour piloter ses activités, notamment en reportant toute décision et toute information partagée lors des réunions dans le système d’information.\",\"visibleItems\":[]}},\"permissions\":[]},\"after\":{\"holon\":{\"id\":715,\"name\":\"Mémoire\",\"fullName\":\"\",\"typeId\":1,\"typeLabel\":\"Role\",\"parentId\":712,\"templateId\":710,\"inheritsFromName\":\"Rôle\",\"color\":\"#f5740a\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":true,\"lockedName\":true,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":true,\"link\":false},\"properties\":{\"51\":{\"id\":51,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"S’assurer d’un système d’information bien tenu, rendant accessible à tous et toutes les informations nécessaires à chaque rôle pour piloter ses activités, notamment en reportant toute décision et toute information partagée lors des réunions dans le système d’information.\",\"inheritedValue\":\"\",\"visibleValue\":\"S’assurer d’un système d’information bien tenu, rendant accessible à tous et toutes les informations nécessaires à chaque rôle pour piloter ses activités, notamment en reportant toute décision et toute information partagée lors des réunions dans le système d’information.\",\"visibleItems\":[]}},\"permissions\":[]},\"changes\":[{\"type\":\"field_changed\",\"field\":\"color\",\"before\":\"\",\"after\":\"#f5740a\"}]}','2026-07-24 15:07:03',1),
+(32,2,1,712,'holon_updated','Modification de [holon|713|Facilitation (rôle)] :\n- la couleur a ete modifiee.','{\"IDholon\":713,\"before\":{\"holon\":{\"id\":713,\"name\":\"Facilitation\",\"fullName\":\"\",\"typeId\":1,\"typeLabel\":\"Role\",\"parentId\":712,\"templateId\":710,\"inheritsFromName\":\"Rôle\",\"color\":\"\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":true,\"lockedName\":true,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":true,\"link\":false},\"properties\":{\"48\":{\"id\":48,\"name\":\"Attendus\",\"shortname\":\"attendus\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"fdsfsdfdsfds\",\"inheritedValue\":\"\",\"visibleValue\":\"fdsfsdfdsfds\",\"visibleItems\":[]},\"51\":{\"id\":51,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"\",\"inheritedValue\":\"\",\"visibleValue\":\"\",\"visibleItems\":[]},\"49\":{\"id\":49,\"name\":\"Domaines d\'autorité\",\"shortname\":\"domaines_d_autorite\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"Domaine du rôle facilitation\",\"inheritedValue\":\"\",\"visibleValue\":\"Domaine du rôle facilitation\",\"visibleItems\":[]},\"47\":{\"id\":47,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"Assurer 2 des réunions menées avec efficacité et humanisme, permettant d’obtenir dans le temps imparti des résultats clairs et répondant aux problématiques amenées par les membres du cercle.\",\"inheritedValue\":\"\",\"visibleValue\":\"Assurer 2 des réunions menées avec efficacité et humanisme, permettant d’obtenir dans le temps imparti des résultats clairs et répondant aux problématiques amenées par les membres du cercle.\",\"visibleItems\":[]}},\"permissions\":[]},\"after\":{\"holon\":{\"id\":713,\"name\":\"Facilitation\",\"fullName\":\"\",\"typeId\":1,\"typeLabel\":\"Role\",\"parentId\":712,\"templateId\":710,\"inheritsFromName\":\"Rôle\",\"color\":\"#f59f0a\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":true,\"lockedName\":true,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":true,\"link\":false},\"properties\":{\"48\":{\"id\":48,\"name\":\"Attendus\",\"shortname\":\"attendus\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"fdsfsdfdsfds\",\"inheritedValue\":\"\",\"visibleValue\":\"fdsfsdfdsfds\",\"visibleItems\":[]},\"49\":{\"id\":49,\"name\":\"Domaines d\'autorité\",\"shortname\":\"domaines_d_autorite\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"Domaine du rôle facilitation\",\"inheritedValue\":\"\",\"visibleValue\":\"Domaine du rôle facilitation\",\"visibleItems\":[]},\"51\":{\"id\":51,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"\",\"inheritedValue\":\"\",\"visibleValue\":\"\",\"visibleItems\":[]},\"47\":{\"id\":47,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"Assurer 2 des réunions menées avec efficacité et humanisme, permettant d’obtenir dans le temps imparti des résultats clairs et répondant aux problématiques amenées par les membres du cercle.\",\"inheritedValue\":\"\",\"visibleValue\":\"Assurer 2 des réunions menées avec efficacité et humanisme, permettant d’obtenir dans le temps imparti des résultats clairs et répondant aux problématiques amenées par les membres du cercle.\",\"visibleItems\":[]}},\"permissions\":[]},\"changes\":[{\"type\":\"field_changed\",\"field\":\"color\",\"before\":\"\",\"after\":\"#f59f0a\"}]}','2026-07-24 15:07:15',1);
 /*!40000 ALTER TABLE `history` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `holon`;
@@ -1055,70 +1076,20 @@ CREATE TABLE `holon` (
   CONSTRAINT `fk_holon_parent` FOREIGN KEY (`IDholon_parent`) REFERENCES `holon` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_holon_root` FOREIGN KEY (`IDholon_org`) REFERENCES `holon` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_holon_template` FOREIGN KEY (`IDholon_template`) REFERENCES `holon` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=709 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=723 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `holon` WRITE;
 /*!40000 ALTER TABLE `holon` DISABLE KEYS */;
 INSERT INTO `holon` VALUES
-(-1,NULL,'Basic',NULL,NULL,NULL,NULL,NULL,NULL,'2024-12-09 04:00:04',NULL,1,1,0,0,0,0,0,0,'Basic',NULL,NULL,NULL,NULL),
-(1,NULL,'Nom organisation',NULL,NULL,NULL,NULL,NULL,1,'2024-11-30 09:50:26',NULL,1,1,0,0,0,0,0,0,'Organisation basique',4,NULL,NULL,NULL),
+(1,NULL,'OpenMyOrganization',NULL,NULL,NULL,NULL,NULL,1,'2024-11-30 09:50:26',NULL,1,1,0,0,0,0,0,0,'Organisation basique',4,NULL,NULL,NULL),
 (2,NULL,NULL,NULL,NULL,NULL,NULL,1,1,'2024-11-30 09:50:26',NULL,1,0,0,0,0,0,0,0,'Rôle',1,1,NULL,NULL),
 (3,NULL,NULL,NULL,NULL,NULL,NULL,1,1,'2024-11-30 09:51:41',NULL,1,0,0,0,0,0,0,0,'Cercle',2,1,NULL,NULL),
 (4,NULL,NULL,NULL,NULL,NULL,NULL,1,1,'2024-11-30 09:53:13',NULL,1,0,0,0,0,0,0,0,'Groupe',3,1,NULL,NULL),
-(5,NULL,'Nom organisation',NULL,NULL,NULL,NULL,NULL,1,'2024-11-30 09:50:26',NULL,1,1,0,0,0,0,0,0,'Organisation classique',4,NULL,-1,NULL),
-(6,NULL,NULL,NULL,NULL,NULL,NULL,5,1,'2024-11-30 09:50:26',NULL,1,0,0,0,0,0,0,0,'Rôle',1,5,-1,NULL),
-(7,NULL,NULL,NULL,NULL,NULL,NULL,5,1,'2024-12-03 09:51:41',NULL,1,0,0,0,0,0,0,0,'Cercle',2,5,-1,NULL),
-(8,NULL,NULL,NULL,NULL,NULL,NULL,5,1,'2024-12-03 09:53:13',NULL,1,0,0,0,0,0,0,0,'Groupe',3,5,-1,NULL),
-(9,NULL,'Ancrage',NULL,NULL,NULL,NULL,5,1,'2024-12-03 09:51:41',NULL,1,1,0,0,0,0,0,0,NULL,2,5,7,NULL),
-(10,NULL,'CA',NULL,NULL,NULL,NULL,5,1,'2024-12-03 09:51:41',NULL,1,1,0,0,0,0,0,0,NULL,2,5,7,NULL),
-(11,NULL,'Lien pilotage',NULL,NULL,NULL,NULL,5,1,'2024-12-03 13:02:06',NULL,1,1,0,0,0,0,0,0,'Lien pilotage',1,9,6,NULL),
-(12,NULL,'Facilitation',NULL,NULL,NULL,NULL,5,1,'2024-12-03 13:02:06',NULL,1,1,0,0,0,0,0,0,'Rôle facilitation',1,9,6,NULL),
-(13,NULL,'Mémoire',NULL,NULL,NULL,NULL,5,1,'2024-12-03 13:02:06',NULL,1,1,0,0,0,0,0,0,'Rôle mémoire',1,9,6,NULL),
-(14,NULL,'Opérations',NULL,NULL,NULL,NULL,5,1,'2024-12-03 13:02:06',NULL,1,1,0,0,0,0,0,0,NULL,1,9,6,NULL),
-(15,NULL,'Président',NULL,NULL,NULL,NULL,5,1,'2024-12-04 05:30:56',NULL,1,1,0,0,0,0,0,0,NULL,1,10,6,NULL),
-(16,NULL,'Trésorier',NULL,NULL,NULL,NULL,5,1,'2024-12-04 05:30:56',NULL,1,1,0,0,0,0,0,0,NULL,1,10,6,NULL),
-(637,NULL,'Nom organisation',NULL,NULL,NULL,NULL,NULL,16,'2024-11-30 09:50:26',NULL,1,1,0,0,0,0,0,0,'Organisation classique',4,NULL,-1,NULL),
-(638,NULL,NULL,NULL,NULL,NULL,NULL,637,1,'2024-12-03 09:51:41',NULL,1,0,0,0,0,0,0,0,'Cercle',2,637,-1,NULL),
-(639,NULL,'Ancrage',NULL,NULL,NULL,NULL,637,1,'2024-12-03 09:51:41',NULL,1,1,0,0,0,0,0,0,NULL,2,637,638,NULL),
-(640,NULL,NULL,NULL,NULL,NULL,NULL,637,1,'2024-11-30 09:50:26',NULL,1,0,0,0,0,0,0,0,'Rôle',1,637,-1,NULL),
-(641,NULL,'Facilitation',NULL,NULL,NULL,NULL,637,1,'2024-12-03 13:02:06',NULL,1,1,0,0,0,0,0,0,'Rôle facilitation',1,639,640,NULL),
-(642,NULL,'Lien pilotage',NULL,NULL,NULL,NULL,637,1,'2024-12-03 13:02:06',NULL,1,1,0,0,0,0,0,0,'Lien pilotage',1,639,6,NULL),
-(643,NULL,'Mémoire',NULL,NULL,NULL,NULL,637,1,'2024-12-03 13:02:06',NULL,1,1,0,0,0,0,0,0,'Rôle mémoire',1,639,6,NULL),
-(644,NULL,'Opérations',NULL,NULL,NULL,NULL,637,1,'2024-12-03 13:02:06',NULL,1,1,0,0,0,0,0,0,NULL,1,639,6,NULL),
-(645,NULL,'CA',NULL,NULL,NULL,NULL,637,1,'2024-12-03 09:51:41',NULL,1,1,0,0,0,0,0,0,NULL,2,637,7,NULL),
-(646,NULL,'Président',NULL,NULL,NULL,NULL,637,1,'2024-12-04 05:30:56',NULL,1,1,0,0,0,0,0,0,NULL,1,645,6,NULL),
-(647,NULL,'Trésorier',NULL,NULL,NULL,NULL,637,1,'2024-12-04 05:30:56',NULL,1,1,0,0,0,0,0,0,NULL,1,645,6,NULL),
-(648,NULL,'Forum de la Coopération',NULL,NULL,NULL,NULL,NULL,16,'2024-11-30 09:50:26',NULL,1,1,0,0,0,0,0,0,'Organisation classique',4,NULL,-1,NULL),
-(649,NULL,NULL,NULL,NULL,NULL,NULL,648,1,'2024-12-03 09:51:41',NULL,1,0,0,0,0,0,0,0,'Cercle',2,648,-1,NULL),
-(650,NULL,'Ancrage',NULL,NULL,NULL,NULL,648,1,'2024-12-03 09:51:41',NULL,1,1,0,0,0,0,0,0,NULL,2,648,649,NULL),
-(651,NULL,NULL,NULL,NULL,NULL,NULL,648,1,'2024-11-30 09:50:26',NULL,1,0,0,0,0,0,0,0,'Rôle',1,648,-1,NULL),
-(652,NULL,'Facilitation',NULL,NULL,NULL,NULL,648,1,'2024-12-03 13:02:06',NULL,1,1,0,0,0,0,0,0,'Rôle facilitation',1,650,651,NULL),
-(653,NULL,'Lien pilotage',NULL,NULL,NULL,NULL,648,1,'2024-12-03 13:02:06',NULL,1,1,0,0,0,0,0,0,'Lien pilotage',1,650,6,NULL),
-(654,NULL,'Mémoire',NULL,NULL,NULL,NULL,648,1,'2024-12-03 13:02:06',NULL,1,1,0,0,0,0,0,0,'Rôle mémoire',1,650,6,NULL),
-(655,NULL,'Opérations',NULL,NULL,NULL,NULL,648,1,'2024-12-03 13:02:06',NULL,1,1,0,0,0,0,0,0,NULL,1,650,6,NULL),
-(656,NULL,'fdsfds',NULL,NULL,NULL,NULL,648,16,'2025-08-03 16:36:49',NULL,1,1,0,0,0,0,0,0,NULL,2,650,649,NULL),
-(657,NULL,'Facilitation',NULL,NULL,NULL,NULL,648,16,'2025-08-03 16:36:49',NULL,1,1,0,0,0,0,0,0,NULL,1,656,652,NULL),
-(658,NULL,'CA',NULL,NULL,NULL,NULL,648,1,'2024-12-03 09:51:41',NULL,1,1,0,0,0,0,0,0,NULL,2,648,7,NULL),
-(659,NULL,'Président',NULL,NULL,NULL,NULL,648,1,'2024-12-04 05:30:56',NULL,1,1,0,0,0,0,0,0,NULL,1,658,6,NULL),
-(660,NULL,'Trésorier',NULL,NULL,NULL,NULL,648,1,'2024-12-04 05:30:56',NULL,1,1,0,0,0,0,0,0,NULL,1,658,6,NULL),
-(661,NULL,'Forum de la Coopération',NULL,NULL,NULL,NULL,NULL,16,'2024-11-30 09:50:26',NULL,1,1,0,0,0,0,0,0,'Organisation classique',4,NULL,-1,NULL),
-(662,NULL,NULL,NULL,NULL,NULL,NULL,661,1,'2024-12-03 09:51:41',NULL,1,0,0,0,0,0,0,0,'Cercle',2,661,-1,NULL),
-(663,NULL,'Ancrage',NULL,NULL,NULL,NULL,661,1,'2024-12-03 09:51:41',NULL,1,1,0,0,0,0,0,0,NULL,2,661,662,NULL),
-(664,NULL,NULL,NULL,NULL,NULL,NULL,661,1,'2024-11-30 09:50:26',NULL,1,0,0,0,0,0,0,0,'Rôle',1,661,-1,NULL),
-(665,NULL,'Facilitation',NULL,NULL,NULL,NULL,661,1,'2024-12-03 13:02:06',NULL,1,1,0,0,0,0,0,0,'Rôle facilitation',1,663,664,NULL),
-(666,NULL,'Lien pilotage',NULL,NULL,NULL,NULL,661,1,'2024-12-03 13:02:06',NULL,1,1,0,0,0,0,0,0,'Lien pilotage',1,663,6,NULL),
-(667,NULL,'Mémoire',NULL,NULL,NULL,NULL,661,1,'2024-12-03 13:02:06',NULL,1,1,0,0,0,0,0,0,'Rôle mémoire',1,663,6,NULL),
-(668,NULL,'Opérations',NULL,NULL,NULL,NULL,661,1,'2024-12-03 13:02:06',NULL,1,1,0,0,0,0,0,0,NULL,1,663,6,NULL),
-(669,NULL,'fdsfds',NULL,NULL,NULL,NULL,661,16,'2025-08-03 16:37:02',NULL,1,1,0,0,0,0,0,0,NULL,2,663,662,NULL),
-(670,NULL,'Facilitation',NULL,NULL,NULL,NULL,661,16,'2025-08-03 16:37:02',NULL,1,1,0,0,0,0,0,0,NULL,1,669,665,NULL),
-(671,NULL,'CA',NULL,NULL,NULL,NULL,661,1,'2024-12-03 09:51:41',NULL,1,1,0,0,0,0,0,0,NULL,2,661,7,NULL),
-(672,NULL,'Président',NULL,NULL,NULL,NULL,661,1,'2024-12-04 05:30:56',NULL,1,1,0,0,0,0,0,0,NULL,1,671,6,NULL),
-(673,NULL,'Trésorier',NULL,NULL,NULL,NULL,661,1,'2024-12-04 05:30:56',NULL,1,1,0,0,0,0,0,0,NULL,1,671,6,NULL),
-(674,1,'Organisation Demo Holacratique',NULL,NULL,NULL,NULL,NULL,1,'2026-04-19 16:46:34',NULL,1,1,0,0,0,0,0,0,'Organisation classique',4,NULL,-1,NULL),
+(674,1,'OpenMyOrganization',NULL,'#005c8a',NULL,NULL,NULL,1,'2026-04-19 16:46:34',NULL,1,1,0,0,0,0,0,0,NULL,4,NULL,NULL,NULL),
 (675,NULL,'Role',NULL,NULL,NULL,NULL,674,1,'2026-04-19 16:46:34',NULL,1,0,0,0,0,0,0,0,'Role',1,674,NULL,NULL),
-(676,NULL,NULL,NULL,NULL,NULL,NULL,674,1,'2026-04-19 16:46:34',NULL,1,0,0,0,0,0,0,0,'Cercle',2,674,-1,NULL),
-(677,NULL,NULL,NULL,NULL,NULL,NULL,674,1,'2026-04-19 16:46:34',NULL,1,0,0,0,0,0,0,0,'Groupe',3,674,-1,NULL),
+(676,NULL,'Cercle',NULL,NULL,NULL,NULL,674,1,'2026-04-19 16:46:34',NULL,1,0,0,0,0,0,0,0,'Cercle',2,674,NULL,NULL),
+(677,NULL,NULL,NULL,NULL,NULL,NULL,674,1,'2026-04-19 16:46:34',NULL,1,0,0,0,0,0,0,0,'Groupe',3,674,NULL,NULL),
 (678,NULL,'Ancrage',NULL,NULL,NULL,NULL,674,1,'2026-04-19 16:46:34',NULL,1,1,0,0,0,0,0,0,NULL,2,674,676,NULL),
 (679,NULL,'CA',NULL,NULL,NULL,NULL,674,1,'2026-04-19 16:46:34',NULL,1,1,0,0,0,0,0,0,NULL,2,674,676,NULL),
 (680,NULL,'Lien pilotage',NULL,'#f55c0a',NULL,NULL,674,1,'2026-04-19 16:46:34',NULL,1,1,1,1,0,0,1,1,'Lien pilotage',1,678,675,NULL),
@@ -1143,7 +1114,18 @@ INSERT INTO `holon` VALUES
 (705,NULL,'Memoire',NULL,NULL,NULL,NULL,674,1,'2026-07-23 13:47:37',NULL,1,1,0,0,0,0,0,0,NULL,1,687,682,NULL),
 (706,NULL,'Facilitation',NULL,NULL,NULL,NULL,674,1,'2026-07-23 13:47:45',NULL,1,1,0,0,0,0,0,0,NULL,1,687,681,NULL),
 (707,NULL,'Lien pilotage',NULL,NULL,NULL,NULL,674,1,'2026-07-23 13:47:54',NULL,1,1,0,0,0,0,0,0,NULL,1,687,680,NULL),
-(708,NULL,'Inclusion','Inclusion',NULL,NULL,NULL,674,1,'2026-07-23 13:51:27',NULL,1,1,0,0,0,0,0,0,NULL,1,678,675,NULL);
+(708,NULL,'Inclusion','Inclusion',NULL,NULL,NULL,674,1,'2026-07-23 13:51:27',NULL,1,1,0,0,0,0,0,0,NULL,1,678,675,NULL),
+(709,2,'Exemple de modèle',NULL,NULL,NULL,NULL,709,1,'2026-07-24 14:37:17',NULL,1,1,0,0,0,0,0,0,'Modèle de base',4,NULL,NULL,NULL),
+(710,NULL,'Rôle',NULL,NULL,NULL,NULL,709,1,'2026-07-24 14:37:17',NULL,1,0,0,0,0,0,0,0,'Rôle',1,709,NULL,NULL),
+(711,NULL,'Cercle',NULL,NULL,NULL,NULL,709,1,'2026-07-24 14:37:17',NULL,1,0,0,0,0,0,0,0,'Cercle',2,709,NULL,NULL),
+(712,NULL,'Ancrage',NULL,NULL,NULL,NULL,709,1,'2026-07-24 14:37:17',NULL,1,1,0,0,0,0,0,0,NULL,2,709,711,NULL),
+(713,NULL,'Facilitation',NULL,'#f59f0a',NULL,NULL,709,1,'2026-07-24 14:37:17',NULL,1,1,1,1,0,0,1,0,'Facilitation',1,712,710,NULL),
+(714,NULL,'Lien pilotage',NULL,'#f52d0a',NULL,NULL,709,1,'2026-07-24 14:37:17',NULL,1,1,1,1,0,0,1,1,'Lien pilotage',1,712,710,NULL),
+(715,NULL,'Mémoire',NULL,'#f5740a',NULL,NULL,709,1,'2026-07-24 14:37:17',NULL,1,1,1,1,0,0,1,0,'Mémoire',1,712,710,NULL),
+(716,NULL,'Opérations',NULL,NULL,NULL,NULL,709,1,'2026-07-24 14:37:17',NULL,1,1,0,0,0,0,0,0,NULL,1,712,NULL,NULL),
+(719,NULL,'CA',NULL,NULL,NULL,NULL,709,1,'2026-07-24 14:37:17',NULL,1,1,0,0,0,0,0,0,NULL,2,709,NULL,NULL),
+(720,NULL,'Président',NULL,NULL,NULL,NULL,709,1,'2026-07-24 14:37:17',NULL,1,1,0,0,0,0,0,0,NULL,1,719,NULL,NULL),
+(721,NULL,'Trésorier',NULL,NULL,NULL,NULL,709,1,'2026-07-24 14:37:17',NULL,1,1,0,0,0,0,0,0,NULL,1,719,NULL,NULL);
 /*!40000 ALTER TABLE `holon` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `holon_permission`;
@@ -1221,7 +1203,7 @@ CREATE TABLE `holonproperty` (
   CONSTRAINT `fk_holonproperty_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_holonproperty_property` FOREIGN KEY (`IDproperty`) REFERENCES `property` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_holonproperty_user_modification` FOREIGN KEY (`IDusermodification`) REFERENCES `user` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=215 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=235 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `holonproperty` WRITE;
@@ -1238,63 +1220,10 @@ INSERT INTO `holonproperty` VALUES
 (9,3,3,NULL,3,NULL,NULL,0,0,1),
 (10,1,4,NULL,4,NULL,NULL,0,0,1),
 (11,3,4,NULL,4,NULL,NULL,0,0,1),
-(12,5,5,NULL,1,NULL,NULL,0,0,1),
-(14,7,5,NULL,1,NULL,NULL,0,0,1),
-(15,5,6,NULL,2,NULL,NULL,0,0,1),
-(16,6,6,NULL,2,NULL,NULL,0,0,1),
-(17,7,6,NULL,2,NULL,NULL,0,0,1),
-(18,5,7,NULL,3,NULL,NULL,0,0,1),
-(19,6,7,NULL,3,NULL,NULL,0,0,1),
-(20,7,7,NULL,3,NULL,NULL,0,0,1),
-(21,5,8,NULL,4,NULL,NULL,0,0,1),
-(22,7,8,NULL,4,NULL,NULL,0,0,1),
-(23,11,5,'S’assurer que l’activité du cercle réponde à sa raison d’être, ses objectifs et reste en cohérence avec la raison d’être et les valeurs de l’organisation, tout en prenant soin de ses membres et en assurant à chacun et chacune un rôle en adéquation avec ses compétences et sa motivation. Assurer la bonne circulation des informations entre le cercle et le cercle englobant, afin que les activités de tous et toutes se fassent dans une conscience de l’interdépendance des différents cercles.',NULL,NULL,NULL,0,0,1),
-(24,12,5,'Assurer des réunions menées avec efficacité et humanisme, permettant d’obtenir dans le temps imparti des résultats clairs et répondant aux problématiques amenées par les membres du cercle.',NULL,NULL,NULL,0,0,1),
-(25,13,5,'S’assurer d’un système d’information bien tenu, rendant accessible à tous et toutes les informations nécessaires à chaque rôle pour piloter ses activités, notamment en reportant toute décision et toute information partagée lors des réunions dans le système d’information.',NULL,NULL,NULL,0,0,1),
-(26,6,5,NULL,NULL,NULL,NULL,0,0,1),
-(83,638,31,NULL,1,NULL,NULL,0,0,1),
-(84,638,32,NULL,2,NULL,NULL,0,0,1),
-(85,638,33,NULL,3,NULL,NULL,0,0,1),
-(86,638,34,NULL,4,NULL,NULL,0,0,1),
-(87,641,31,'Raison d\'être du rôle mémoire',NULL,NULL,NULL,0,0,1),
-(88,642,31,'Raison d\'être du rôle facilitateur',NULL,NULL,NULL,0,0,1),
-(89,643,31,'Raison d\'être du lien pilotage',NULL,NULL,NULL,0,0,1),
-(90,649,35,NULL,1,NULL,NULL,0,0,1),
-(91,649,36,NULL,2,NULL,NULL,0,0,1),
-(92,649,37,NULL,3,NULL,NULL,0,0,1),
-(93,649,38,NULL,4,NULL,NULL,0,0,1),
-(94,652,35,'Assurer 2 des réunions menées avec efficacité et humanisme, permettant d’obtenir dans le temps imparti des résultats clairs et répondant aux problématiques amenées par les membres du cercle.',NULL,NULL,NULL,0,0,1),
-(95,652,37,'Domaine du rôle facilitation',NULL,NULL,NULL,0,0,1),
-(96,652,36,'fdsfsdfdsfds',NULL,NULL,NULL,0,0,1),
-(97,653,35,'S’assurer que l’activité du cercle réponde à sa raison d’être, ses objectifs et reste en cohérence avec la raison d’être et les valeurs de l’organisation, tout en prenant soin de ses membres et en assurant à chacun et chacune un rôle en adéquation avec ses compétences et sa motivation. Assurer la bonne circulation des informations entre le cercle et le cercle englobant, afin que les activités de tous et toutes se fassent dans une conscience de l’interdépendance des différents cercles.',NULL,NULL,NULL,0,0,1),
-(98,654,35,'S’assurer d’un système d’information bien tenu, rendant accessible à tous et toutes les informations nécessaires à chaque rôle pour piloter ses activités, notamment en reportant toute décision et toute information partagée lors des réunions dans le système d’information.',NULL,NULL,NULL,0,0,1),
-(99,656,35,'fdsfsd',NULL,NULL,NULL,0,0,1),
-(100,656,37,'fdsfds',NULL,NULL,NULL,0,0,1),
-(101,656,36,'dsffds',NULL,NULL,NULL,0,0,1),
-(102,656,38,'fdsfsd',NULL,NULL,NULL,0,0,1),
-(103,657,35,'fsfdf',NULL,NULL,NULL,0,0,1),
-(104,657,37,'fdsfds',NULL,NULL,NULL,0,0,1),
-(105,657,36,'fdsfds',NULL,NULL,NULL,0,0,1),
-(106,662,39,NULL,1,NULL,NULL,0,0,1),
-(107,662,40,NULL,2,NULL,NULL,0,0,1),
-(108,662,41,NULL,3,NULL,NULL,0,0,1),
-(109,662,42,NULL,4,NULL,NULL,0,0,1),
-(110,665,39,'Assurer 2 des réunions menées avec efficacité et humanisme, permettant d’obtenir dans le temps imparti des résultats clairs et répondant aux problématiques amenées par les membres du cercle.',NULL,NULL,NULL,0,0,1),
-(111,665,41,'Domaine du rôle facilitation',NULL,NULL,NULL,0,0,1),
-(112,665,40,'fdsfsdfdsfds',NULL,NULL,NULL,0,0,1),
-(113,666,39,'S’assurer que l’activité du cercle réponde à sa raison d’être, ses objectifs et reste en cohérence avec la raison d’être et les valeurs de l’organisation, tout en prenant soin de ses membres et en assurant à chacun et chacune un rôle en adéquation avec ses compétences et sa motivation. Assurer la bonne circulation des informations entre le cercle et le cercle englobant, afin que les activités de tous et toutes se fassent dans une conscience de l’interdépendance des différents cercles.',NULL,NULL,NULL,0,0,1),
-(114,667,39,'S’assurer d’un système d’information bien tenu, rendant accessible à tous et toutes les informations nécessaires à chaque rôle pour piloter ses activités, notamment en reportant toute décision et toute information partagée lors des réunions dans le système d’information.',NULL,NULL,NULL,0,0,1),
-(115,669,39,'fdsfsd',NULL,NULL,NULL,0,0,1),
-(116,669,41,'fdsfds',NULL,NULL,NULL,0,0,1),
-(117,669,40,'dsffds',NULL,NULL,NULL,0,0,1),
-(118,669,42,'fdsfsd',NULL,NULL,NULL,0,0,1),
-(119,670,39,'fsfdf',NULL,NULL,NULL,0,0,1),
-(120,670,41,'fdsfds',NULL,NULL,NULL,0,0,1),
-(121,670,40,'fdsfds',NULL,NULL,NULL,0,0,1),
 (122,674,43,'Rendre possible une gouvernance distribuee, lisible et apprenante, dans laquelle chaque cercle sait ou il contribue et avec quelle marge d\'autonomie.',1,NULL,NULL,0,0,1),
-(123,674,44,'Donner un cap commun, soutenir la prise de role, assurer un cadre de decision fiable et permettre aux sous-cercles de cooperer sans confusion structurelle.',3,NULL,NULL,0,0,1),
-(124,674,45,'Architecture generale de la gouvernance, definition des espaces de responsabilite, arbitrage des tensions de structure et cadre d\'evolution de l\'organisation.',2,NULL,NULL,0,0,1),
-(125,674,46,'Construire une demonstration riche et pedagogique, suffisamment vivante pour tester la navigation, les vues et la lecture de contenu sans toucher au modele de base.',4,NULL,NULL,0,0,1),
+(123,674,44,'[\"Donner un cap commun, soutenir la prise de role, assurer un cadre de decision fiable et permettre aux sous-cercles de cooperer sans confusion structurelle.\"]',3,'2026-07-24 16:36:31',1,0,0,1),
+(124,674,45,'[\"Architecture generale de la gouvernance, definition des espaces de responsabilite, arbitrage des tensions de structure et cadre d\'evolution de l\'organisation.\"]',2,'2026-07-24 16:36:31',1,0,0,1),
+(125,674,46,NULL,4,'2026-07-24 16:36:31',1,0,0,1),
 (126,675,43,NULL,1,NULL,NULL,1,0,1),
 (127,675,44,NULL,3,NULL,NULL,0,0,1),
 (128,675,45,NULL,2,NULL,NULL,0,0,1),
@@ -1302,10 +1231,10 @@ INSERT INTO `holonproperty` VALUES
 (130,676,44,NULL,3,NULL,NULL,0,0,1),
 (131,676,45,NULL,2,NULL,NULL,0,0,1),
 (132,676,46,NULL,4,NULL,NULL,0,0,1),
-(133,678,43,'Tenir ensemble la coherence globale de l\'organisation, ses priorites structurelles et la capacite des sous-cercles a agir dans un cadre commun.',NULL,NULL,NULL,0,0,1),
-(134,678,44,'Porter les roles structurels de base, arbitrer les tensions de coordination, faire vivre les sous-cercles et assurer une articulation claire avec le CA.',NULL,NULL,NULL,0,0,1),
-(135,678,45,'Cadre de gouvernance courante, roles structurels transversaux, arbitrages inter-cercles et supervision de la capacite d\'execution globale.',NULL,NULL,NULL,0,0,1),
-(136,678,46,'Structurer progressivement l\'organisation autour de cercles specialises capables d\'apprendre sans perdre leur alignement global.',NULL,NULL,NULL,0,0,1),
+(133,678,43,'Tenir ensemble la coherence globale de l\'organisation, ses priorites structurelles et la capacite des sous-cercles a agir dans un cadre commun.',1,NULL,NULL,0,0,1),
+(134,678,44,'[\"Porter les roles structurels de base, arbitrer les tensions de coordination, faire vivre les sous-cercles et assurer une articulation claire avec le CA.\"]',3,'2026-07-24 07:25:49',1,0,0,1),
+(135,678,45,'[\"Cadre de gouvernance courante, roles structurels transversaux, arbitrages inter-cercles et supervision de la capacite d\'execution globale.\"]',2,'2026-07-24 07:25:49',1,0,0,1),
+(136,678,46,'{\"before\":\"<p><b>Cap à tenir:</b></p><p>Trouver notre place et professionnaliser nos services</p><p><b>Objectifs prioritaires:</b></p>\",\"items\":[8,7,9],\"after\":\"<p><b>Privilégier:</b></p><ul><li>Les événements locaux sur la dispersion géographique</li></ul>\"}',4,'2026-07-24 07:25:49',1,0,0,1),
 (137,679,43,'Garantir la solidite institutionnelle, la responsabilite fiduciaire et la tenue des engagements de l\'organisation sur ses enjeux de gouvernance formelle.',NULL,NULL,NULL,0,0,1),
 (138,679,44,'Suivre les obligations du conseil, veiller aux grands equilibres, soutenir les decisions engageantes et offrir un cadre de redevabilite au niveau strategique.',NULL,NULL,NULL,0,0,1),
 (139,679,45,'Questions statutaires, decisions engageant l\'organisation, surveillance budgetaire de haut niveau et responsabilites institutionnelles du conseil.',NULL,NULL,NULL,0,0,1),
@@ -1331,10 +1260,10 @@ INSERT INTO `holonproperty` VALUES
 (159,686,44,'Tenir a jour les processus, clarifier les responsabilites, fiabiliser les echeances et permettre aux autres cercles de trouver rapidement les informations administratives utiles.',NULL,NULL,NULL,0,0,1),
 (160,686,45,'Processus administratifs courants, coordination documentaire, calendrier administratif interne, relation fournisseurs de support et cadre de suivi budgetaire du quotidien.',NULL,NULL,NULL,0,0,1),
 (161,686,46,'Stabiliser d\'abord les flux recurrent, puis standardiser ce qui peut l\'etre sans rigidifier les interactions avec les autres cercles.',NULL,NULL,NULL,0,0,1),
-(162,687,43,'Renforcer la visibilite de l\'organisation et la qualite de sa presence publique afin d\'attirer les bonnes relations, les bonnes opportunites et une meilleure lisibilite de sa proposition.',NULL,NULL,NULL,0,0,1),
-(163,687,44,'Animer une presence coherente, produire des messages utiles, soutenir les campagnes prioritaires et faire circuler les retours du terrain vers le reste de l\'organisation.',NULL,NULL,NULL,0,0,1),
-(164,687,45,'Positionnement public, canaux de communication, campagnes de visibilite, relations de partenariat, calendrier editorial et suivi des retombees.',NULL,NULL,NULL,0,0,1),
-(165,687,46,'Construire un dispositif de communication progressif, ancre dans les besoins reels du terrain et dans la capacite de production du cercle.',NULL,NULL,NULL,0,0,1),
+(162,687,43,'Renforcer la visibilite de l\'organisation et la qualite de sa presence publique afin d\'attirer les bonnes relations, les bonnes opportunites et une meilleure lisibilite de sa proposition.',1,NULL,NULL,0,0,1),
+(163,687,44,'[\"Animer une presence coherente, produire des messages utiles, soutenir les campagnes prioritaires et faire circuler les retours du terrain vers le reste de l\'organisation.\"]',3,'2026-07-24 07:42:21',1,0,0,1),
+(164,687,45,'[\"Positionnement public, canaux de communication, campagnes de visibilite, relations de partenariat, calendrier editorial et suivi des retombees.\"]',2,'2026-07-24 07:42:21',1,0,0,1),
+(165,687,46,'{\"before\":\"\",\"items\":[16,12],\"after\":\"\"}',4,'2026-07-24 07:42:21',1,0,0,1),
 (175,691,43,'Faire avancer le flux operationnel du cercle Administration pour que les besoins internes trouvent une reponse concrete et suivie.',NULL,NULL,NULL,0,0,1),
 (176,691,44,'Suivre les demandes en cours, coordonner les actions transversales et reduire les points de friction.',NULL,NULL,NULL,0,0,1),
 (177,691,45,'Coordination quotidienne du travail, priorisation des demandes et synchronisation des roles operationnels du cercle.',NULL,NULL,NULL,0,0,1),
@@ -1365,7 +1294,20 @@ INSERT INTO `holonproperty` VALUES
 (211,699,46,'Chercher d\'abord la regularite et la coherence editoriale avant la sophistication des formats, afin que la presence digitale gagne en credibilite et en lisibilite dans la duree.',NULL,NULL,NULL,0,0,1),
 (212,700,46,'Consolider quelques partenariats a forte valeur relationnelle avant d\'elargir le reseau, afin de faire de chaque lien externe un point d\'appui concret pour la visibilite de l\'organisation.',NULL,NULL,NULL,0,0,1),
 (213,701,46,'Capitaliser sur les contenus qui expliquent le mieux la proposition de valeur de l\'organisation, puis decliner cette matiere en campagnes, formats courts et supports reutilisables.',NULL,NULL,NULL,0,0,1),
-(214,708,43,'Accueillir les nouveaux arrivants au sein de l\'organisation',1,'2026-07-23 15:51:27',1,0,0,1);
+(214,708,43,'Accueillir les nouveaux arrivants au sein de l\'organisation',1,'2026-07-23 15:51:27',1,0,0,1),
+(215,711,47,NULL,1,NULL,NULL,0,0,1),
+(216,711,48,NULL,2,NULL,NULL,0,0,1),
+(217,711,49,NULL,3,NULL,NULL,0,0,1),
+(218,711,50,NULL,4,NULL,NULL,0,0,1),
+(219,713,47,'Assurer 2 des réunions menées avec efficacité et humanisme, permettant d’obtenir dans le temps imparti des résultats clairs et répondant aux problématiques amenées par les membres du cercle.',4,'2026-07-24 16:37:17',1,0,0,1),
+(220,713,49,'Domaine du rôle facilitation',3,'2026-07-24 16:37:17',1,0,0,1),
+(221,713,48,'fdsfsdfdsfds',1,'2026-07-24 16:37:17',1,0,0,1),
+(222,714,47,'S’assurer que l’activité du cercle réponde à sa raison d’être, ses objectifs et reste en cohérence avec la raison d’être et les valeurs de l’organisation, tout en prenant soin de ses membres et en assurant à chacun et chacune un rôle en adéquation avec ses compétences et sa motivation. Assurer la bonne circulation des informations entre le cercle et le cercle englobant, afin que les activités de tous et toutes se fassent dans une conscience de l’interdépendance des différents cercles.',1,'2026-07-24 16:37:17',1,0,0,0),
+(223,715,47,'S’assurer d’un système d’information bien tenu, rendant accessible à tous et toutes les informations nécessaires à chaque rôle pour piloter ses activités, notamment en reportant toute décision et toute information partagée lors des réunions dans le système d’information.',1,'2026-07-24 16:37:17',1,0,0,0),
+(231,710,51,NULL,1,NULL,NULL,0,0,1),
+(232,714,51,'S’assurer que l’activité du cercle réponde à sa raison d’être, ses objectifs et reste en cohérence avec la raison d’être et les valeurs de l’organisation, tout en prenant soin de ses membres et en assurant à chacun et chacune un rôle en adéquation avec ses compétences et sa motivation. Assurer la bonne circulation des informations entre le cercle et le cercle englobant, afin que les activités de tous et toutes se fassent dans une conscience de l’interdépendance des différents cercles.',1,'2026-07-24 16:56:02',1,0,1,1),
+(233,715,51,'S’assurer d’un système d’information bien tenu, rendant accessible à tous et toutes les informations nécessaires à chaque rôle pour piloter ses activités, notamment en reportant toute décision et toute information partagée lors des réunions dans le système d’information.',1,'2026-07-24 16:56:43',1,0,0,1),
+(234,713,51,NULL,2,NULL,NULL,0,0,1);
 /*!40000 ALTER TABLE `holonproperty` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `homework`;
@@ -1561,6 +1503,39 @@ LOCK TABLES `mission_question` WRITE;
 /*!40000 ALTER TABLE `mission_question` DISABLE KEYS */;
 /*!40000 ALTER TABLE `mission_question` ENABLE KEYS */;
 UNLOCK TABLES;
+DROP TABLE IF EXISTS `object_visibility`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `object_visibility` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `version` int(11) NOT NULL DEFAULT 1,
+  `object_type` varchar(60) NOT NULL,
+  `object_id` int(11) NOT NULL,
+  `IDorganization` int(11) DEFAULT NULL,
+  `visibility_type` varchar(30) NOT NULL DEFAULT 'organization',
+  `IDholon` int(11) DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `datecreation` datetime DEFAULT NULL,
+  `datemodification` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_object_visibility_object` (`object_type`,`object_id`,`active`),
+  KEY `idx_object_visibility_org` (`IDorganization`,`active`),
+  KEY `idx_object_visibility_holon` (`IDholon`),
+  KEY `idx_object_visibility_type` (`visibility_type`),
+  CONSTRAINT `fk_object_visibility_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_object_visibility_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `object_visibility` WRITE;
+/*!40000 ALTER TABLE `object_visibility` DISABLE KEYS */;
+INSERT INTO `object_visibility` VALUES
+(2,1,'document',2304,1,'organization',NULL,1,'2026-07-24 08:31:39','2026-07-24 08:31:39'),
+(3,1,'document_edit',2304,1,'self',NULL,1,'2026-07-24 08:31:39','2026-07-24 08:31:39'),
+(4,1,'document',2305,1,'organization',NULL,1,'2026-07-24 08:37:27','2026-07-24 08:37:27'),
+(5,1,'document_edit',2305,1,'self',NULL,1,'2026-07-24 08:37:27','2026-07-24 08:37:27');
+/*!40000 ALTER TABLE `object_visibility` ENABLE KEYS */;
+UNLOCK TABLES;
 DROP TABLE IF EXISTS `organization`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1583,7 +1558,7 @@ LOCK TABLES `organization` WRITE;
 /*!40000 ALTER TABLE `organization` DISABLE KEYS */;
 INSERT INTO `organization` VALUES
 (1,'OpenMyOrganization','org1','org1.opengov.tools','/img/org1-logo.svg','/img/org1-banner.svg','#0f766e','46.204391;6.143158',NULL,'2026-04-01 00:00:00'),
-(2,'Org2','org2','org2.opengov.tools','/img/org2-logo.svg','/img/org2-banner.svg','#1D4ED8','46.519653;6.632273',NULL,'2026-04-01 00:00:00');
+(2,'Exemple de modèle','org2','org2.opengov.tools','/img/org2-logo.svg','/img/org2-banner.svg','#1d4ed8','46.519653;6.632273',NULL,'2026-04-01 00:00:00');
 /*!40000 ALTER TABLE `organization` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `organization_application`;
@@ -1607,21 +1582,21 @@ CREATE TABLE `organization_application` (
 LOCK TABLES `organization_application` WRITE;
 /*!40000 ALTER TABLE `organization_application` DISABLE KEYS */;
 INSERT INTO `organization_application` VALUES
-(1,1,1,10,1,NULL),
+(1,1,1,3,1,NULL),
 (2,2,1,10,1,NULL),
-(3,1,2,20,1,NULL),
+(3,1,2,4,1,'{\"importanceCalculationVersion\":3,\"importanceCalculation\":{\"parentWeight\":0.9,\"depthPenalty\":0.15}}'),
 (4,2,2,20,1,NULL),
-(5,1,3,30,1,NULL),
+(5,1,3,5,0,NULL),
 (6,2,3,30,1,NULL),
-(7,1,4,40,1,NULL),
+(7,1,4,6,1,NULL),
 (8,2,4,40,1,NULL),
-(9,1,5,50,1,NULL),
+(9,1,5,7,1,NULL),
 (10,2,5,50,1,NULL),
-(11,1,6,60,1,NULL),
+(11,1,6,8,1,NULL),
 (12,2,6,60,1,NULL),
-(16,1,7,8,1,NULL),
-(17,1,8,9,1,NULL),
-(18,1,9,65,1,NULL),
+(16,1,7,1,1,NULL),
+(17,1,8,2,1,NULL),
+(18,1,9,9,1,NULL),
 (19,2,9,65,1,NULL),
 (20,2,7,8,1,NULL),
 (21,2,8,9,1,NULL);
@@ -1792,6 +1767,7 @@ CREATE TABLE `project` (
   `planned_end_date` date DEFAULT NULL,
   `priority` tinyint(3) DEFAULT NULL,
   `importance` tinyint(3) DEFAULT NULL,
+  `calculated_importance` decimal(10,8) NOT NULL DEFAULT 0.00000000,
   `project_size` varchar(3) NOT NULL DEFAULT 'M',
   `capture_mode` varchar(30) NOT NULL DEFAULT 'multiple_documents',
   `active` tinyint(1) NOT NULL DEFAULT 1,
@@ -1807,21 +1783,41 @@ CREATE TABLE `project` (
   KEY `idx_project_active` (`active`),
   KEY `idx_project_kind` (`project_kind`),
   KEY `idx_project_template` (`IDproject_template`),
+  KEY `idx_project_calculated_importance` (`calculated_importance`),
   CONSTRAINT `fk_project_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_project_journal` FOREIGN KEY (`IDdocument_journal`) REFERENCES `document` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_project_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_project_parent` FOREIGN KEY (`IDproject_parent`) REFERENCES `project` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_project_template` FOREIGN KEY (`IDproject_template`) REFERENCES `project` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_project_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `project` WRITE;
 /*!40000 ALTER TABLE `project` DISABLE KEYS */;
 INSERT INTO `project` VALUES
-(1,1,708,NULL,NULL,NULL,'checklist_template',NULL,'Processus d\'accueil des nouveaux et nouvelles','Ensemble des étapes à suivre pour accueillir une nouvelle personne au sein de l\'organisation.','someday',NULL,NULL,NULL,NULL,'M','multiple_documents',1,'2026-07-23 15:52:32','2026-07-23 15:52:32'),
-(2,1,708,NULL,1,NULL,'checklist_template',NULL,'Créer l\'adresse e-mail du nouveau venu',NULL,'someday',NULL,NULL,4,NULL,'S','multiple_documents',1,'2026-07-23 15:53:45','2026-07-23 15:53:45'),
-(3,1,708,NULL,1,NULL,'checklist_template',NULL,'Un restaurant est réservé pour le premier repas de midi',NULL,'someday',NULL,NULL,3,NULL,'S','multiple_documents',1,'2026-07-23 16:03:57','2026-07-23 16:03:57');
+(1,1,708,NULL,NULL,NULL,'checklist_template',NULL,'Processus d\'accueil des nouveaux et nouvelles','Ensemble des étapes à suivre pour accueillir une nouvelle personne au sein de l\'organisation.','someday',NULL,NULL,NULL,NULL,0.00000000,'M','multiple_documents',1,'2026-07-23 15:52:32','2026-07-24 09:32:36'),
+(2,1,708,NULL,1,NULL,'checklist_template',NULL,'Créer l\'adresse e-mail du nouveau venu',NULL,'someday',NULL,NULL,4,NULL,0.00000000,'S','multiple_documents',1,'2026-07-23 15:53:45','2026-07-23 16:07:10'),
+(3,1,708,NULL,1,NULL,'checklist_template',NULL,'Un restaurant est réservé pour le premier repas de midi',NULL,'someday',NULL,NULL,3,NULL,0.00000000,'S','multiple_documents',1,'2026-07-23 16:03:57','2026-07-23 16:03:57'),
+(6,1,708,NULL,1,NULL,'checklist_template',NULL,'Un dîner est organisé avec le nouvel arrivant',NULL,'someday',NULL,NULL,3,4,0.00000000,'S','multiple_documents',1,'2026-07-23 16:07:16','2026-07-23 16:08:07'),
+(7,1,678,1,NULL,NULL,'standard',NULL,'Refondre notre communication et notre marketing',NULL,'in_progress','2026-01-01','2026-12-31',1,5,0.86070798,'M','multiple_documents',1,'2026-07-24 07:19:44','2026-07-24 13:03:44'),
+(8,1,678,1,NULL,NULL,'standard',NULL,'Elargir notre réseau professionnel',NULL,'in_progress','2026-01-01','2026-12-31',2,5,0.86070798,'M','multiple_documents',1,'2026-07-24 07:20:48','2026-07-24 10:45:47'),
+(9,1,678,1,NULL,NULL,'standard',NULL,'Consolider nos pratiques administratives',NULL,'in_progress','2026-01-01','2026-12-31',2,5,0.86070798,'M','multiple_documents',1,'2026-07-24 07:21:59','2026-07-24 10:53:06'),
+(10,1,693,NULL,9,NULL,'standard',NULL,'Identifier un logiciel de compta professionnel',NULL,'ready',NULL,NULL,3,3,0.81520577,'M','multiple_documents',1,'2026-07-24 07:30:44','2026-07-24 12:22:08'),
+(11,1,692,1,NULL,NULL,'standard',NULL,'Créer une checklist avec les charges administratives récurrentes',NULL,'review',NULL,'2026-06-30',3,2,0.15940704,'M','multiple_documents',1,'2026-07-24 07:32:37','2026-07-24 10:45:47'),
+(12,1,687,NULL,7,NULL,'standard',NULL,'Refondre notre site Internet',NULL,'in_progress',NULL,NULL,5,5,0.86070798,'M','multiple_documents',1,'2026-07-24 07:34:36','2026-07-24 12:22:08'),
+(13,1,699,NULL,12,NULL,'standard',NULL,'Les maquettes du nouveau site sont évaluées par un panel représentatif de nos utilisateurs.',NULL,'ready',NULL,NULL,NULL,NULL,0.86070798,'M','multiple_documents',1,'2026-07-24 07:35:38','2026-07-24 12:22:08'),
+(14,1,699,NULL,12,NULL,'standard',NULL,'La refonte du nouveau site est confiée à un prestataire.',NULL,'blocked',NULL,NULL,NULL,NULL,0.86070798,'M','multiple_documents',1,'2026-07-24 07:36:41','2026-07-24 12:22:08'),
+(15,1,699,1,14,NULL,'standard',NULL,'Un prestataire est identifié',NULL,'done',NULL,NULL,NULL,NULL,0.86070798,'M','multiple_documents',1,'2026-07-24 07:37:57','2026-07-24 12:22:08'),
+(16,1,687,NULL,7,NULL,'standard',NULL,'Moderniser notre charte graphique',NULL,'done',NULL,NULL,5,5,0.86070798,'M','multiple_documents',1,'2026-07-24 07:41:01','2026-07-24 12:22:08'),
+(17,1,686,NULL,14,NULL,'standard',NULL,'Le budget disponible pour le site est défini',NULL,'ready',NULL,NULL,1,5,0.86070798,'M','multiple_documents',1,'2026-07-24 07:52:44','2026-07-24 14:24:23'),
+(18,1,692,NULL,NULL,NULL,'checklist_template',NULL,'Factures récurrentes',NULL,'someday',NULL,NULL,NULL,NULL,0.00000000,'M','multiple_documents',1,'2026-07-24 09:20:19','2026-07-24 09:22:38'),
+(19,1,692,NULL,18,NULL,'checklist_template',NULL,'Payer la TVA',NULL,'someday',NULL,NULL,5,3,0.00000000,'M','multiple_documents',1,'2026-07-24 09:21:09','2026-07-24 09:21:09'),
+(20,1,692,NULL,18,NULL,'checklist_template',NULL,'Clôturer la compta',NULL,'someday',NULL,NULL,4,4,0.00000000,'XL','multiple_documents',1,'2026-07-24 09:21:48','2026-07-24 09:21:48'),
+(21,1,692,NULL,18,NULL,'checklist_template',NULL,'Payer les salaires',NULL,'someday',NULL,NULL,4,4,0.00000000,'M','multiple_documents',1,'2026-07-24 09:22:31','2026-07-24 09:22:31'),
+(22,1,692,NULL,NULL,NULL,'standard',21,'Payer les salaires - 25 juillet 2026',NULL,'ready','2026-07-25','2026-07-28',4,4,0.47822111,'M','multiple_documents',1,'2026-07-24 09:22:43','2026-07-24 10:45:47'),
+(23,1,708,NULL,NULL,NULL,'standard',1,'Processus d\'accueil de Jean-Claude','Ensemble des étapes à suivre pour accueillir une nouvelle personne au sein de l\'organisation.','ready','2026-08-01',NULL,NULL,NULL,0.00000000,'M','multiple_documents',1,'2026-07-24 09:33:08','2026-07-24 12:01:33'),
+(24,1,708,NULL,23,NULL,'standard',6,'Un dîner est organisé avec le nouvel arrivant',NULL,'ready','2026-08-01','2026-08-04',3,4,0.75000000,'S','multiple_documents',1,'2026-07-24 09:33:08','2026-07-24 12:22:08');
 /*!40000 ALTER TABLE `project` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `project_document`;
@@ -1885,7 +1881,7 @@ CREATE TABLE `property` (
   PRIMARY KEY (`id`),
   KEY `idx_property_root_holon` (`IDholon_organization`),
   CONSTRAINT `fk_property_root_holon` FOREIGN KEY (`IDholon_organization`) REFERENCES `holon` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=47 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Propriétés assignées à des tempales (holons)';
+) ENGINE=InnoDB AUTO_INCREMENT=52 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Propriétés assignées à des tempales (holons)';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `property` WRITE;
@@ -1895,26 +1891,15 @@ INSERT INTO `property` VALUES
 (2,'redevability','Attendus',1,NULL,NULL,1,'2024-03-05 16:59:41',NULL,1),
 (3,'domain','Domaines d\'autorité',1,NULL,NULL,1,'2024-03-05 16:59:50',NULL,1),
 (4,'strat','Stratégie',1,NULL,NULL,1,'2024-12-03 13:09:48',NULL,1),
-(5,'rde','Raison d\'être',1,NULL,NULL,5,'2024-03-05 16:59:41',1,1),
-(6,'redevability','Attendus',1,NULL,NULL,5,'2024-03-05 16:59:41',3,1),
-(7,'domain','Domaines d\'autorité',1,NULL,NULL,5,'2024-03-05 16:59:50',2,1),
-(8,'strat','Stratégie',1,NULL,NULL,5,'2024-12-03 13:09:48',4,1),
-(31,'rde','Raison d\'être',1,NULL,NULL,637,'2024-03-05 16:59:41',NULL,1),
-(32,'redevability','Attendus',1,NULL,NULL,637,'2024-03-05 16:59:41',NULL,1),
-(33,'domain','Domaines d\'autorité',1,NULL,NULL,637,'2024-03-05 16:59:50',NULL,1),
-(34,'strat','Stratégie',1,NULL,NULL,637,'2024-12-03 13:09:48',NULL,1),
-(35,'rde','Raison d\'être',1,NULL,NULL,648,'2024-03-05 16:59:41',NULL,1),
-(36,'redevability','Attendus',1,NULL,NULL,648,'2024-03-05 16:59:41',NULL,1),
-(37,'domain','Domaines d\'autorité',1,NULL,NULL,648,'2024-03-05 16:59:50',NULL,1),
-(38,'strat','Stratégie',1,NULL,NULL,648,'2024-12-03 13:09:48',NULL,1),
-(39,'rde','Raison d\'être',1,NULL,NULL,661,'2024-03-05 16:59:41',NULL,1),
-(40,'redevability','Attendus',1,NULL,NULL,661,'2024-03-05 16:59:41',NULL,1),
-(41,'domain','Domaines d\'autorité',1,NULL,NULL,661,'2024-03-05 16:59:50',NULL,1),
-(42,'strat','Stratégie',1,NULL,NULL,661,'2024-12-03 13:09:48',NULL,1),
 (43,'raison_d_etre','Raison d\'etre',1,NULL,NULL,674,'2026-04-19 16:46:34',1,1),
 (44,'attendus','Attendus',2,'text',NULL,674,'2026-04-19 16:46:34',3,1),
 (45,'domaines_d_autorite','Domaines d\'autorite',2,'text',NULL,674,'2026-04-19 16:46:34',2,1),
-(46,'strat','Strategie',1,NULL,NULL,674,'2026-04-19 16:46:34',4,1);
+(46,'strategie','Strategie',7,'project',NULL,674,'2026-04-19 16:46:34',4,1),
+(47,'raison_d_etre','Raison d\'être',1,NULL,NULL,709,'2026-07-24 14:37:17',4,1),
+(48,'attendus','Attendus',1,NULL,NULL,709,'2026-07-24 14:37:17',1,1),
+(49,'domaines_d_autorite','Domaines d\'autorité',1,NULL,NULL,709,'2026-07-24 14:37:17',3,1),
+(50,'strategie','Stratégie',1,NULL,NULL,709,'2026-07-24 14:37:17',4,1),
+(51,'raison_d_etre','Raison d\'être',1,NULL,NULL,709,'2026-07-24 14:54:54',1,1);
 /*!40000 ALTER TABLE `property` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `propertyformat`;
@@ -2083,11 +2068,14 @@ CREATE TABLE `resource_invitation` (
   KEY `fk_resource_invitation_user` (`IDuser`),
   CONSTRAINT `fk_resource_invitation_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_resource_invitation_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `resource_invitation` WRITE;
 /*!40000 ALTER TABLE `resource_invitation` DISABLE KEYS */;
+INSERT INTO `resource_invitation` VALUES
+(1,'event',3,693,NULL,NULL,'Comptabilite et budget','holon','invited',NULL,'[]',1,'2026-07-24 06:31:39','2026-07-24 06:31:39'),
+(2,'event',4,678,NULL,NULL,'Ancrage','holon','invited',NULL,'[]',1,'2026-07-24 06:37:27','2026-07-24 06:37:27');
 /*!40000 ALTER TABLE `resource_invitation` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `rule`;
@@ -2184,11 +2172,14 @@ CREATE TABLE `stat_indicator` (
   CONSTRAINT `fk_stat_indicator_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_stat_indicator_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_stat_indicator_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `stat_indicator` WRITE;
 /*!40000 ALTER TABLE `stat_indicator` DISABLE KEYS */;
+INSERT INTO `stat_indicator` VALUES
+(1,1,693,1,'Solde du compte bancaire','Cash disponible sur le compte bancaire','https://bas.ch','none','monthly','1',60000.000000,1,'2026-07-23 16:11:14','2026-07-24 08:45:24'),
+(2,1,693,1,'Solde en caisse','Montant disponible en liquide dans la caisse',NULL,'none','monthly','1',0.000000,1,'2026-07-23 16:15:03','2026-07-24 08:44:54');
 /*!40000 ALTER TABLE `stat_indicator` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `stat_indicator_group`;
@@ -2213,11 +2204,13 @@ CREATE TABLE `stat_indicator_group` (
   CONSTRAINT `fk_stat_indicator_group_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_stat_indicator_group_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_stat_indicator_group_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `stat_indicator_group` WRITE;
 /*!40000 ALTER TABLE `stat_indicator_group` DISABLE KEYS */;
+INSERT INTO `stat_indicator_group` VALUES
+(1,1,678,1,'Liquidités','sum','none',0.000000,1,'2026-07-23 14:17:05','2026-07-23 14:17:05');
 /*!40000 ALTER TABLE `stat_indicator_group` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `stat_indicator_group_item`;
@@ -2235,11 +2228,14 @@ CREATE TABLE `stat_indicator_group_item` (
   KEY `idx_stat_indicator_group_item_indicator` (`IDstatindicator`),
   CONSTRAINT `fk_stat_indicator_group_item_group` FOREIGN KEY (`IDstatindicatorgroup`) REFERENCES `stat_indicator_group` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_stat_indicator_group_item_indicator` FOREIGN KEY (`IDstatindicator`) REFERENCES `stat_indicator` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `stat_indicator_group_item` WRITE;
 /*!40000 ALTER TABLE `stat_indicator_group_item` DISABLE KEYS */;
+INSERT INTO `stat_indicator_group_item` VALUES
+(11,1,1,1,'2026-07-24 06:44:10'),
+(12,1,2,2,'2026-07-24 06:44:10');
 /*!40000 ALTER TABLE `stat_indicator_group_item` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `stat_indicator_import`;
@@ -2286,7 +2282,7 @@ CREATE TABLE `stat_indicator_reference_point` (
   KEY `idx_stat_indicator_reference_group` (`IDstatindicatorgroup`),
   CONSTRAINT `fk_stat_indicator_reference_indicator` FOREIGN KEY (`IDstatindicator`) REFERENCES `stat_indicator` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_stat_indicator_reference_point_group` FOREIGN KEY (`IDstatindicatorgroup`) REFERENCES `stat_indicator_group` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `stat_indicator_reference_point` WRITE;
@@ -2309,11 +2305,18 @@ CREATE TABLE `stat_indicator_value` (
   KEY `idx_stat_indicator_value_user` (`IDuser`),
   CONSTRAINT `fk_stat_indicator_value_indicator` FOREIGN KEY (`IDstatindicator`) REFERENCES `stat_indicator` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_stat_indicator_value_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `stat_indicator_value` WRITE;
 /*!40000 ALTER TABLE `stat_indicator_value` DISABLE KEYS */;
+INSERT INTO `stat_indicator_value` VALUES
+(1,1,1,82345.000000,'2026-07-01 16:11:00','2026-07-23 16:12:41','2026-07-23 16:12:41'),
+(2,1,1,83498.000000,'2026-06-01 16:12:00','2026-07-23 16:12:55','2026-07-23 16:12:55'),
+(4,2,1,536.000000,'2026-07-01 16:15:00','2026-07-23 16:15:36','2026-07-23 16:15:36'),
+(5,2,1,329.000000,'2026-06-02 16:15:00','2026-07-23 16:15:57','2026-07-23 16:15:57'),
+(6,2,1,488.000000,'2026-05-01 16:15:00','2026-07-23 16:16:27','2026-07-23 16:16:27'),
+(7,1,1,82691.000000,'2026-05-01 16:19:00','2026-07-23 16:19:58','2026-07-23 16:19:58');
 /*!40000 ALTER TABLE `stat_indicator_value` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `tension`;
@@ -2498,7 +2501,7 @@ CREATE TABLE `user` (
 LOCK TABLES `user` WRITE;
 /*!40000 ALTER TABLE `user` DISABLE KEYS */;
 INSERT INTO `user` VALUES
-(1,'admin@omo.test',NULL,NULL,NULL,NULL,NULL,'Admin',NULL,'$2y$10$IbIoX862O2WQD/baKTL8x.CfqU9ArcphckXpsg7UqD9d6cPMc2M4i','2026-04-21 09:01:00','2026-07-23 13:59:25',1,1,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
+(1,'admin@omo.test',NULL,NULL,NULL,NULL,NULL,'Admin',NULL,'$2y$10$ES6a68iJbT4z8MxzjNBMoOEtBAn7HJCEqdUnTdBNXQGSerKh.ZQC6','2026-04-21 09:01:00','2026-07-23 13:59:25',1,1,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `user` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `user_competence`;
@@ -2686,7 +2689,7 @@ LOCK TABLES `user_organization` WRITE;
 /*!40000 ALTER TABLE `user_organization` DISABLE KEYS */;
 INSERT INTO `user_organization` VALUES
 (1,1,1,NULL,NULL,'admin@omo.test',NULL,NULL,'{\"isAdmin\":true}','2026-04-21 12:20:00','2026-07-23 13:59:25',1),
-(2,1,2,NULL,NULL,NULL,NULL,NULL,'{\"isAdmin\":true}','2026-04-21 12:25:00',NULL,1);
+(2,1,2,'Admin',NULL,'admin@omo.test',NULL,NULL,'{\"isAdmin\":true}','2026-04-21 12:25:00',NULL,1);
 /*!40000 ALTER TABLE `user_organization` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `user_patreon`;
@@ -2777,29 +2780,6 @@ INSERT INTO `user_remember` VALUES
 (2,1,'aaa1f5df7bd344491268df922a68381ec463e7be9153450dc3a6f421b09cc2d3','2026-05-23 14:09:43','172.19.0.1','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36','Chrome','Windows','2026-04-23 12:09:43');
 /*!40000 ALTER TABLE `user_remember` ENABLE KEYS */;
 UNLOCK TABLES;
-DROP TABLE IF EXISTS `object_visibility`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE `object_visibility` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `version` int(11) NOT NULL DEFAULT 1,
-  `object_type` varchar(60) NOT NULL,
-  `object_id` int(11) NOT NULL,
-  `IDorganization` int(11) DEFAULT NULL,
-  `visibility_type` varchar(30) NOT NULL DEFAULT 'organization',
-  `IDholon` int(11) DEFAULT NULL,
-  `active` tinyint(1) NOT NULL DEFAULT 1,
-  `datecreation` datetime DEFAULT NULL,
-  `datemodification` datetime DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_object_visibility_object` (`object_type`,`object_id`,`active`),
-  KEY `idx_object_visibility_org` (`IDorganization`,`active`),
-  KEY `idx_object_visibility_holon` (`IDholon`),
-  KEY `idx_object_visibility_type` (`visibility_type`),
-  CONSTRAINT `fk_object_visibility_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_object_visibility_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

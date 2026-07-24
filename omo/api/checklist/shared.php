@@ -105,7 +105,7 @@ if (!function_exists('omoChecklistSourceLang')) {
             'checklist.form.dependency' => ['text' => 'Après l élément', 'context' => 'Checklist item dependency field.'],
             'checklist.form.select_item' => ['text' => 'Choisir un élément...', 'context' => 'Empty checklist item relation option.'],
             'checklist.form.priority' => ['text' => 'Priorité', 'context' => 'Checklist item priority field.'],
-            'checklist.form.importance' => ['text' => 'Importance', 'context' => 'Checklist item importance field.'],
+            'checklist.form.importance' => ['text' => 'Importance strategique', 'context' => 'Checklist item importance field.'],
             'checklist.form.size' => ['text' => 'Taille', 'context' => 'Checklist item size field.'],
             'checklist.activation.immediate' => ['text' => 'Visible immédiatement', 'context' => 'Immediate checklist item activation.'],
             'checklist.activation.after_start' => ['text' => 'Selon la date de référence', 'context' => 'Checklist item activation relative to the run reference date.'],

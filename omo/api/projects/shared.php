@@ -27,10 +27,12 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.sort.aria' => ['text' => 'Classer les projets', 'context' => 'Accessible label for the project list sort selector.'],
             'projects.sort.planned' => ['text' => 'Planification', 'context' => 'Project list sort button.'],
             'projects.sort.priority' => ['text' => 'Priorite', 'context' => 'Project list sort button.'],
+            'projects.sort.importance' => ['text' => 'Importance strategique', 'context' => 'Project list sort button.'],
             'projects.sort.holon' => ['text' => 'Holon', 'context' => 'Project list sort button.'],
             'projects.list.planned.overdue' => ['text' => 'En retard', 'context' => 'Project list planned group for past dates.'],
-            'projects.list.planned.today' => ['text' => 'Aujourd hui', 'context' => 'Project list planned group for today.'],
+            'projects.list.planned.in_progress' => ['text' => 'En cours', 'context' => 'Project list planned group for projects currently within their planned dates.'],
             'projects.list.planned.tomorrow' => ['text' => 'Demain', 'context' => 'Project list planned group for tomorrow.'],
+            'projects.list.planned.after_tomorrow' => ['text' => 'Apres-demain', 'context' => 'Project list planned group for the day after tomorrow.'],
             'projects.list.planned.this_week' => ['text' => 'Cette semaine', 'context' => 'Project list planned group for the rest of this week.'],
             'projects.list.planned.next_week' => ['text' => 'La semaine prochaine', 'context' => 'Project list planned group for next week.'],
             'projects.list.planned.later' => ['text' => 'Plus tard', 'context' => 'Project list planned group for future dates.'],
@@ -68,6 +70,8 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.drawer.title' => ['text' => 'Projet', 'context' => 'Default title of the project subdrawer.'],
             'projects.drawer.description' => ['text' => 'Details et informations du projet.', 'context' => 'Default description of the project subdrawer.'],
             'projects.detail.badge' => ['text' => 'Projet', 'context' => 'Eyebrow label shown above the project detail title.'],
+            'projects.detail.breadcrumb' => ['text' => 'Projets parents', 'context' => 'Accessible label for the project parent breadcrumb.'],
+            'projects.detail.breadcrumb.expand' => ['text' => 'Afficher tous les projets parents', 'context' => 'Accessible title for the collapsed project breadcrumb button.'],
             'projects.detail.description' => ['text' => 'Description', 'context' => 'Project detail description section label.'],
             'projects.detail.context' => ['text' => 'Contexte', 'context' => 'Project detail holon section label.'],
             'projects.detail.schedule' => ['text' => 'Dates planifiees', 'context' => 'Project detail planned dates section label.'],
@@ -75,7 +79,9 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.detail.responsible' => ['text' => 'Responsable', 'context' => 'Project detail responsible person label.'],
             'projects.detail.status' => ['text' => 'Statut', 'context' => 'Project detail status label.'],
             'projects.detail.priority' => ['text' => 'Priorite', 'context' => 'Project detail priority label.'],
-            'projects.detail.importance' => ['text' => 'Importance', 'context' => 'Project detail importance label.'],
+            'projects.detail.importance' => ['text' => 'Importance strategique', 'context' => 'Project detail importance label.'],
+            'projects.detail.calculated_importance' => ['text' => 'Importance strategique calculee', 'context' => 'Server-calculated project importance label.'],
+            'projects.detail.calculated_importance_help' => ['text' => 'Calculee a partir de l importance strategique declaree, de la chaine de projets et de la position holarchique.', 'context' => 'Help text for server-calculated project importance.'],
             'projects.detail.size' => ['text' => 'Taille', 'context' => 'Project detail project size label.'],
             'projects.detail.parent' => ['text' => 'Projet parent', 'context' => 'Project detail parent label.'],
             'projects.detail.subprojects' => ['text' => 'Sous-projets', 'context' => 'Project detail subprojects section label.'],
@@ -87,7 +93,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.detail.date_start' => ['text' => 'Debut', 'context' => 'Planned start date label.'],
             'projects.detail.date_end' => ['text' => 'Fin', 'context' => 'Planned end date label.'],
             'projects.subprojects.label' => ['text' => 'Etat des sous-projets', 'context' => 'Accessible label for the recursive subproject status bar.'],
-            'projects.detail.priority_level' => ['one' => '{count}/5', 'other' => '{count}/5', 'context' => 'Project priority level.'],
+            'projects.detail.priority_level' => ['one' => 'P{count}', 'other' => 'P{count}', 'context' => 'Project priority level.'],
             'projects.detail.importance_level' => ['one' => '{count}/5', 'other' => '{count}/5', 'context' => 'Project importance level.'],
             'projects.form.title' => ['text' => 'Nouveau projet', 'context' => 'Project creation form title.'],
             'projects.form.description' => ['text' => 'Definissez le but, les dates et le niveau d attention du projet.', 'context' => 'Project creation form introduction.'],
@@ -111,7 +117,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.priority.none' => ['text' => 'Non definie', 'context' => 'Empty option for project priority.'],
             'projects.importance.none' => ['text' => 'Non definie', 'context' => 'Empty option for project importance.'],
             'projects.field.priority' => ['text' => 'Priorite', 'context' => 'Project creation priority field label.'],
-            'projects.field.importance' => ['text' => 'Importance', 'context' => 'Project creation importance field label.'],
+            'projects.field.importance' => ['text' => 'Importance strategique', 'context' => 'Project creation importance field label.'],
             'projects.field.status' => ['text' => 'Statut initial', 'context' => 'Project creation status field label.'],
             'projects.field.start_date' => ['text' => 'Debut planifie', 'context' => 'Project planned start date field label.'],
             'projects.field.end_date' => ['text' => 'Fin planifiee', 'context' => 'Project planned end date field label.'],
@@ -180,6 +186,8 @@ if (!function_exists('omoProjectsResolveContext')) {
         if ($organizationId <= 0 || !$organization->load($organizationId) || !$organization->canViewDetail()) {
             return ['status' => false, 'message' => omoProjectsT('projects.error.organization')];
         }
+
+        \dbObject\ProjectImportanceCalculator::ensureOrganizationInitialized($organizationId);
 
         $rootHolon = $organization->getEnabledStructuralRootHolon();
         $currentHolon = $rootHolon instanceof Holon ? $rootHolon : null;

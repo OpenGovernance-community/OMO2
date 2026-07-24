@@ -1142,14 +1142,24 @@ function buildPropertiesForTemplate(template, sourceProperties) {
 // Rend options modèles
 function renderTemplateOptions(preferredTemplateId) {
     const templates = getTemplates();
+    const templateNameCounts = templates.reduce(function (counts, template) {
+        const name = String(template.name || '').trim();
+        if (name) {
+            counts.set(name, (counts.get(name) || 0) + 1);
+        }
+        return counts;
+    }, new Map());
 
     elements.template.innerHTML = '';
     templates.forEach(function (template, index) {
         const option = document.createElement('option');
+        const name = String(template.name || '').trim();
+        const contextName = String(template.definedInName || '').trim();
+        const hasDuplicateName = (templateNameCounts.get(name) || 0) > 1;
         option.value = Number(template.id);
-        option.textContent = template.definedInName && Number(template.definedInId || 0) !== Number(state.data.contextHolonId || 0)
-            ? template.name + ' · ' + template.definedInName
-            : template.name;
+        option.textContent = hasDuplicateName && contextName
+            ? name + ' (' + contextName + ')'
+            : name;
         option.selected = Number(preferredTemplateId || 0) === Number(template.id) || (!preferredTemplateId && index === 0);
         elements.template.appendChild(option);
     });
@@ -1173,10 +1183,6 @@ function renderTemplateMeta(template, sourceProperties) {
     const meta = [];
     meta.push('<span class="omo-holon-create__chip omo-holon-create__chip--accent">' + escapeHtml(template.typeLabel || '') + '</span>');
     meta.push('<span class="omo-holon-create__chip">' + (Array.isArray(template.properties) ? template.properties.length : 0) + ' propriété' + ((template.properties || []).length > 1 ? 's' : '') + '</span>');
-    if (template.definedInName && Number(template.definedInId || 0) !== Number(state.data.contextHolonId || 0)) {
-        meta.push('<span class="omo-holon-create__chip">Défini dans ' + escapeHtml(template.definedInName) + '</span>');
-    }
-
     elements.meta.innerHTML = meta.join('');
     elements.hint.textContent = getMode() === 'edit'
         ? 'Le type et les propriétés suivent le modèle sélectionné.'
@@ -1218,9 +1224,6 @@ function renderEditorMeta(template, sourceProperties) {
     }
     meta.push('<span class="omo-holon-create__chip">' + propertyCount + ' propriété' + (propertyCount > 1 ? 's' : '') + '</span>');
 
-    if (template && template.definedInName && Number(template.definedInId || 0) !== Number(state.data.contextHolonId || 0)) {
-        meta.push('<span class="omo-holon-create__chip">Défini dans ' + escapeHtml(template.definedInName) + '</span>');
-    }
     if (isTemplateEditing() && !template) {
         meta.push('<span class="omo-holon-create__chip">Sans modèle parent</span>');
     }

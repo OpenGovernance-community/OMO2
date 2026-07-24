@@ -346,16 +346,26 @@ $(document).ready(function () {
     function applyLeftPanelStructureHeight(heightValue) {
         const numericHeight = Number(heightValue);
 
-        if (!leftShell.length || !structurePanel.length || !Number.isFinite(numericHeight) || numericHeight <= 0) {
-            return;
+        if (!leftShell.length || !structurePanel.length || !Number.isFinite(numericHeight) || numericHeight < 0) {
+            return null;
         }
 
         const shellHeight = leftShell.height() || leftPanel.height() || 0;
         const minHeight = 120;
+        const collapseThreshold = minHeight / 2;
         const maxHeight = shellHeight > 0 ? Math.max(minHeight, Math.floor(shellHeight * 0.72)) : numericHeight;
+
+        if (numericHeight < collapseThreshold) {
+            leftShell.addClass('omo-left-panel-shell--structure-collapsed');
+            leftShell.css('--omo-left-structure-height', '0px');
+            return 0;
+        }
+
         const nextHeight = Math.max(minHeight, Math.min(maxHeight, Math.round(numericHeight)));
 
+        leftShell.removeClass('omo-left-panel-shell--structure-collapsed');
         leftShell.css('--omo-left-structure-height', nextHeight + 'px');
+        return nextHeight;
     }
 
     // Charger largeur sauvegardée
@@ -442,10 +452,10 @@ $(document).ready(function () {
         if (isStructureResizing) {
             isStructureResizing = false;
 
-            const finalHeight = structurePanel.outerHeight();
-            if (finalHeight) {
-                localStorage.setItem('omoLeftStructureHeight', finalHeight);
-            }
+            const finalHeight = leftShell.hasClass('omo-left-panel-shell--structure-collapsed')
+                ? 0
+                : structurePanel.outerHeight();
+            localStorage.setItem('omoLeftStructureHeight', finalHeight || 0);
 
             window.dispatchEvent(new CustomEvent('omo-left-structure-resize'));
         }

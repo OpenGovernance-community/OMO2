@@ -269,7 +269,7 @@ if ($currentHolonId > 0) {
                     <span><?= omoApiEscape(omoChecklistT('checklist.form.priority')) ?></span>
                     <select class="generic-form-control" name="priority">
                         <option value="">—</option>
-                        <?php for ($level = 1; $level <= 5; $level++): ?><option value="<?= $level ?>"<?= (int)$project->get('priority') === $level ? ' selected' : '' ?>><?= $level ?>/5</option><?php endfor; ?>
+                        <?php for ($level = 1; $level <= 5; $level++): ?><option value="<?= $level ?>"<?= (int)$project->get('priority') === $level ? ' selected' : '' ?>>P<?= $level ?></option><?php endfor; ?>
                     </select>
                 </label>
                 <label class="omo-checklist-field">

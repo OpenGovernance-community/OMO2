@@ -682,6 +682,12 @@ body {
     overflow: hidden;
 }
 
+.omo-left-panel-shell--structure-collapsed .omo-left-panel-shell__structure {
+    flex-basis: 0;
+    min-height: 0;
+    border-top: 0;
+}
+
 .omo-left-panel-shell__structure-host {
     position: relative;
     width: 100%;
