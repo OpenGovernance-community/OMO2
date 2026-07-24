@@ -4,6 +4,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-07-24
 
+- Les controles de validite et de revision des rules declarent maintenant explicitement leur date nullable, ce qui elimine leurs avertissements de depreciation sous PHP 8.5.
 - Le compte administrateur de demonstration de la base Docker utilise maintenant le mot de passe `1234`. L assistant d installation serveur continue de definir le mot de passe choisi lors de sa configuration.
 - Le seed de base de donnees a ete regenere depuis la base locale de demonstration. Les reinitialisations Docker et les premieres installations serveur importent le meme snapshot complet, avec les nouvelles donnees de demo.
 - L organisation systeme #1 est maintenant protegee contre toute suppression. Ses administrateurs ne peuvent pas non plus la quitter; sa carte OMO remplace ces actions par une information sur son usage pour les messages et les tutoriels de base.
