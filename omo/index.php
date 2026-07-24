@@ -171,6 +171,10 @@ $sourceLang = [
         'text' => 'Supprimer',
         'context' => 'Menu item label used to delete an organization from the directory page.',
     ],
+    'app.directory.menu.system_organization_notice' => [
+        'text' => "Cette organisation de base est utilisée par le système pour les messages et les tutoriels. Elle ne peut pas être supprimée et ses administrateurs ne peuvent pas la quitter.",
+        'context' => 'Notice shown instead of destructive actions for the protected system organization card.',
+    ],
     'app.directory.menu.leave' => [
         'text' => 'Quitter',
         'context' => 'Menu item label used to leave an organization from the directory page.',
@@ -386,12 +390,18 @@ function omoBuildDirectoryCardData(array $directoryEntry, $currentUserId)
     $organizationHostLabel = commonBuildOrganizationAccessLabel((int)$accessibleOrganization->getId(), $organizationShortname, commonGetRootHost());
     $invitationPendingHolons = $pendingInvitation ? $pendingInvitation->getPendingHolons() : [];
     $isTemplateOrganization = $accessibleOrganization->isSharedAsTemplate();
+    $isSystemOrganization = $accessibleOrganization->isSystemOrganization();
+    $isSystemOrganizationAdmin = $isSystemOrganization
+        && $organizationMembership
+        && $organizationMembership->isOrganizationAdmin();
 
     return [
         'organization' => $accessibleOrganization,
         'pendingInvitation' => $pendingInvitation,
         'organizationMembership' => $organizationMembership,
         'canDeleteOrganization' => $accessibleOrganization->canDelete(),
+        'isSystemOrganization' => $isSystemOrganization,
+        'isSystemOrganizationAdmin' => $isSystemOrganizationAdmin,
         'organizationName' => $organizationName,
         'organizationUrl' => $organizationUrl,
         'organizationLogo' => trim((string)$accessibleOrganization->get('logo')),
@@ -426,6 +436,8 @@ function omoRenderDirectoryCard(array $directoryCardData)
     $pendingInvitation = $directoryCardData['pendingInvitation'];
     $organizationMembership = $directoryCardData['organizationMembership'];
     $canDeleteOrganization = !empty($directoryCardData['canDeleteOrganization']);
+    $isSystemOrganization = !empty($directoryCardData['isSystemOrganization']);
+    $isSystemOrganizationAdmin = !empty($directoryCardData['isSystemOrganizationAdmin']);
     $organizationName = (string)$directoryCardData['organizationName'];
     $organizationUrl = (string)$directoryCardData['organizationUrl'];
     $organizationLogo = (string)$directoryCardData['organizationLogo'];
@@ -459,17 +471,23 @@ function omoRenderDirectoryCard(array $directoryCardData)
                         aria-label="<?= htmlspecialchars(t('app.directory.menu.actions_aria_label', ['organizationName' => $organizationName])) ?>"
                     >...</button>
                     <div class="omo-org-card-menu__panel" data-omo-org-menu-panel>
+                        <?php if (!$isSystemOrganizationAdmin) { ?>
                         <button
                             type="button"
                             class="omo-org-card-menu__item"
                             data-omo-org-action="leave"
                         ><?= htmlspecialchars(t('app.directory.menu.leave')) ?></button>
+                        <?php } ?>
                         <?php if ($canDeleteOrganization) { ?>
                         <button
                             type="button"
                             class="omo-org-card-menu__item omo-org-card-menu__item--danger"
                             data-omo-org-action="delete"
                         ><?= htmlspecialchars(t('app.directory.menu.delete')) ?></button>
+                        <?php } elseif ($isSystemOrganization) { ?>
+                        <div class="omo-org-card-menu__notice" role="note">
+                            <?= htmlspecialchars(t('app.directory.menu.system_organization_notice')) ?>
+                        </div>
                         <?php } ?>
                     </div>
                 </div>
@@ -921,6 +939,15 @@ if ($isOrganizationHub && !$isDemoGuest) {
 
         .omo-org-card-menu__item--danger:hover {
             background: color-mix(in srgb, #dc2626 18%, var(--color-surface, #ffffff));
+        }
+
+        .omo-org-card-menu__notice {
+            padding: 10px 12px;
+            border-radius: var(--radius-md);
+            background: color-mix(in srgb, #f59e0b 12%, var(--color-surface, #ffffff));
+            color: color-mix(in srgb, #92400e 86%, var(--color-text, #0f172a));
+            font-size: 13px;
+            line-height: 1.4;
         }
 
         .auth-org-card--directory-action {

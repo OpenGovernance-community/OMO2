@@ -246,14 +246,19 @@ $formTexts = [
             <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoProjectsT('projects.form.attention')) ?></h3>
             <div class="omo-project-form__grid">
                 <?php foreach (['priority', 'importance'] as $levelField): ?>
-                    <?php $levelValue = $levelField === 'priority' ? $selectedPriority : $selectedImportance; ?>
+                    <?php
+                    $isPriority = $levelField === 'priority';
+                    $levelValue = $isPriority ? $selectedPriority : $selectedImportance;
+                    $sliderValue = $isPriority && $levelValue > 0 ? 6 - $levelValue : $levelValue;
+                    ?>
                     <div class="omo-project-form__field omo-project-form__level-field">
                         <div class="omo-project-form__label-row">
                             <label for="omo-project-<?= $levelField ?>"><?= omoApiEscape(omoProjectsT('projects.field.' . $levelField)) ?></label>
-                            <output for="omo-project-<?= $levelField ?>" data-omo-project-level-output><?= $levelValue > 0 ? $levelValue . '/5' : omoApiEscape(omoProjectsT('projects.level.none')) ?></output>
+                            <output for="omo-project-<?= $levelField ?>" data-omo-project-level-output><?= $levelValue > 0 ? ($isPriority ? 'P' . $levelValue : $levelValue . '/5') : omoApiEscape(omoProjectsT('projects.level.none')) ?></output>
                         </div>
-                        <input id="omo-project-<?= $levelField ?>" class="omo-project-form__level-input" type="range" name="<?= $levelField ?>" min="0" max="5" step="1" value="<?= $levelValue ?>" data-omo-project-level-input>
-                        <div class="omo-project-form__level-scale" aria-hidden="true"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+                        <?php if ($isPriority): ?><input type="hidden" name="priority" value="<?= $levelValue ?>" data-omo-project-priority-value><?php endif; ?>
+                        <input id="omo-project-<?= $levelField ?>" class="omo-project-form__level-input" type="range" name="<?= $isPriority ? 'priority_slider' : $levelField ?>" min="0" max="5" step="1" value="<?= $sliderValue ?>" data-omo-project-level-input data-omo-project-level-kind="<?= $isPriority ? 'priority' : 'importance' ?>">
+                        <div class="omo-project-form__level-scale" aria-hidden="true"><?php if ($isPriority): ?><span>0</span><span>P5</span><span>P4</span><span>P3</span><span>P2</span><span>P1</span><?php else: ?><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><?php endif; ?></div>
                     </div>
                 <?php endforeach; ?>
             </div>
@@ -308,11 +313,23 @@ $formTexts = [
     }
 
     root.querySelectorAll('[data-omo-project-level-input]').forEach(function (input) {
-        var output = input.closest('.omo-project-form__level-field').querySelector('[data-omo-project-level-output]');
-        input.addEventListener('input', function () {
+        var field = input.closest('.omo-project-form__level-field');
+        var output = field.querySelector('[data-omo-project-level-output]');
+        var kind = input.getAttribute('data-omo-project-level-kind');
+        var priorityValue = field.querySelector('[data-omo-project-priority-value]');
+        var updateLevel = function () {
             var value = Number(input.value || 0);
-            if (output) output.textContent = value > 0 ? String(value) + '/5' : '<?= omoApiEscape(omoProjectsT('projects.level.none')) ?>';
-        });
+            var actualValue = kind === 'priority' && value > 0 ? 6 - value : value;
+            if (priorityValue) priorityValue.value = String(actualValue);
+            if (output) output.textContent = actualValue > 0
+                ? (kind === 'priority' ? 'P' + String(actualValue) : String(actualValue) + '/5')
+                : '<?= omoApiEscape(omoProjectsT('projects.level.none')) ?>';
+            input.setAttribute('aria-valuetext', actualValue > 0
+                ? (kind === 'priority' ? 'P' + String(actualValue) : String(actualValue) + '/5')
+                : '<?= omoApiEscape(omoProjectsT('projects.level.none')) ?>');
+        };
+        input.addEventListener('input', updateLevel);
+        updateLevel();
     });
 
     root.querySelector('[data-omo-project-parent-picker]').addEventListener('click', function () {

@@ -6,6 +6,8 @@
 
 	class Organization extends DbObject
 	{
+		public const SYSTEM_ORGANIZATION_ID = 1;
+
 	    public static function tableName()
 		{
 			return 'organization'; // Nom de la table correspondante
@@ -687,7 +689,12 @@
 
 		public function canDelete()
 		{
-			return $this->canEdit();
+			return !$this->isSystemOrganization() && $this->canEdit();
+		}
+
+		public function isSystemOrganization()
+		{
+			return (int)$this->getId() === self::SYSTEM_ORGANIZATION_ID;
 		}
 
 		public function countActiveAdminMemberships($excludeUserId = 0)
@@ -1050,6 +1057,13 @@
 			}
 
 			$isSelfRemoval = $actorUserId > 0 && $actorUserId === $userId;
+			if ($isSelfRemoval && $this->isSystemOrganization() && $membership->isOrganizationAdmin()) {
+				return array(
+					'status' => false,
+					'message' => 'Un admin ne peut pas quitter l organisation de base.',
+				);
+			}
+
 			$actorIsAdmin = $this->isUserOrganizationAdmin($actorUserId);
 			if (!$isSelfRemoval && !$actorIsAdmin) {
 				return array(
@@ -4836,17 +4850,19 @@
 
 			foreach ($scopeHolon->getChildren() as $child) {
 				$childTemplateId = (int)$child->get('IDholon_template');
+				$isVisibleTemplateOriginal = (bool)$child->get('visible')
+					&& trim((string)$child->get('templatename')) !== '';
 				if (
 					(int)$child->getId() !== $excludedHolonId
-					&& $childTemplateId > 0
+					&& ($childTemplateId > 0 || $isVisibleTemplateOriginal)
 				) {
-					if ($childTemplateId === $templateId) {
+					if ($childTemplateId === $templateId || ($isVisibleTemplateOriginal && (int)$child->getId() === $templateId)) {
 						return true;
 					}
 
 					$instanceTemplate = new \dbObject\Holon();
 					if (
-						$instanceTemplate->load($childTemplateId)
+						$instanceTemplate->load($isVisibleTemplateOriginal ? (int)$child->getId() : $childTemplateId)
 						&& $this->templateMatchesUniqueFamily($selectedTemplate, $instanceTemplate)
 					) {
 						return true;
@@ -6882,6 +6898,8 @@
 			if (in_array((int)$holon->get('IDtypeholon'), array(2, 3), true)) {
 				$this->createMandatoryChildrenForCircle($holon, (int)$rootHolon->getId(), $userId);
 			}
+
+			\dbObject\ProjectImportanceCalculator::recalculateForHolonHierarchyChange((int)$this->getId());
 
 			return array(
 				'status' => true,

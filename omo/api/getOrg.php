@@ -274,11 +274,12 @@ function omoGetProjectReferenceData($projectId)
         return null;
     }
 
-    $project = $projectsById[$projectId];
-    return array(
-        'project' => $project,
-        'statusSummary' => omoProjectsBuildStatusBar($project, $childrenByParent, $statusSummaryMemo),
-    );
+	$project = $projectsById[$projectId];
+	return array(
+		'project' => $project,
+		'statusSummary' => omoProjectsBuildStatusBar($project, $childrenByParent, $statusSummaryMemo),
+		'hasDirectChildren' => !empty($childrenByParent[$projectId]),
+	);
 }
 
 function omoRenderProjectReferenceItem($item, $source = '')
@@ -295,21 +296,31 @@ function omoRenderProjectReferenceItem($item, $source = '')
         return '';
     }
 
-    $priority = Project::normalizeLevel($project->get('priority'));
+	$priority = Project::normalizeLevel($project->get('priority'));
+	$status = Project::normalizeStatus($project->get('status'));
+	$statusCatalog = Project::getStatusCatalog();
+	$statusLabel = (string)($statusCatalog[$status]['label'] ?? $status);
+	$hasDirectChildren = !empty($referenceData['hasDirectChildren']);
     $className = 'section-project-reference';
     if ($source !== '') {
         $className .= ' is-' . $source;
     }
 
-    $html = '<li class="' . omoApiEscape($className) . '" data-omo-project-reference data-project-id="' . $projectId . '" tabindex="0">';
-    $html .= '<div class="section-project-reference__head">';
+	$html = '<li class="' . omoApiEscape($className) . '" data-omo-project-reference data-project-id="' . $projectId . '">';
+	$html .= '<div class="section-project-reference__head">';
+	$html .= '<span class="section-project-reference__status-dot section-project-reference__status-dot--' . omoApiEscape($status) . '"'
+		. ' role="img" aria-label="' . omoApiEscape($statusLabel) . '" title="' . omoApiEscape($statusLabel) . '"></span>';
     $html .= '<a class="section-project-reference__title" data-omo-project-reference-title href="#projects-d' . $projectId . '">' . omoApiEscape($title) . '</a>';
     if ($priority !== null) {
-        $html .= '<span class="section-project-reference__priority section-project-reference__priority--p' . (int)$priority . '">P' . (int)$priority . '</span>';
+        $html .= '<span class="generic-project-priority generic-project-priority--p' . (int)$priority . '">P' . (int)$priority . '</span>';
     }
-    $html .= '</div>';
-    $html .= omoProjectsRenderStatusBar($referenceData['statusSummary'], 'section-project-reference__status-bar');
-    $html .= '<div class="section-project-reference__children" data-omo-project-reference-children hidden></div>';
+	$html .= '</div>';
+	if ($hasDirectChildren) {
+		$html .= '<button type="button" class="section-project-reference__status-toggle" data-omo-project-reference-toggle aria-expanded="false" aria-label="Afficher les sous-projets de ' . omoApiEscape($title) . '">';
+		$html .= omoProjectsRenderStatusBar($referenceData['statusSummary'], 'section-project-reference__status-bar');
+		$html .= '</button>';
+		$html .= '<div class="section-project-reference__children" data-omo-project-reference-children hidden></div>';
+	}
     $html .= '</li>';
 
     return $html;
@@ -1084,7 +1095,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 }
 
 .crumb {
-    cursor: pointer;
+    cursor: default;
 }
 
 .crumb:hover {
@@ -1431,24 +1442,21 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     text-decoration: underline;
 }
 
-.section-project-reference__priority {
-    display: inline-grid;
-    place-items: center;
+.section-project-reference__status-dot {
     flex: 0 0 auto;
-    width: 24px;
-    height: 24px;
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
-    color: #fff;
-    font-size: 10px;
-    font-weight: 750;
-    line-height: 1;
+    background: #99a3b1;
+    box-shadow: 0 0 0 3px color-mix(in srgb, #99a3b1 18%, transparent);
 }
 
-.section-project-reference__priority--p1 { background: #d95d68; }
-.section-project-reference__priority--p2 { background: #e2855d; }
-.section-project-reference__priority--p3 { background: #bd9250; }
-.section-project-reference__priority--p4 { background: #6e9a80; }
-.section-project-reference__priority--p5 { background: #778aa3; }
+.section-project-reference__status-dot--ready { background: #5e88d5; box-shadow: 0 0 0 3px color-mix(in srgb, #5e88d5 18%, transparent); }
+.section-project-reference__status-dot--in_progress { background: #d0a857; box-shadow: 0 0 0 3px color-mix(in srgb, #d0a857 18%, transparent); }
+.section-project-reference__status-dot--blocked { background: #d67272; box-shadow: 0 0 0 3px color-mix(in srgb, #d67272 18%, transparent); }
+.section-project-reference__status-dot--review { background: #9884c7; box-shadow: 0 0 0 3px color-mix(in srgb, #9884c7 18%, transparent); }
+.section-project-reference__status-dot--done { background: #6fa98d; box-shadow: 0 0 0 3px color-mix(in srgb, #6fa98d 18%, transparent); }
+.section-project-reference__status-dot--someday { background: #99a3b1; box-shadow: 0 0 0 3px color-mix(in srgb, #99a3b1 18%, transparent); }
 
 .section-project-reference__status-bar {
     display: flex;
@@ -1458,6 +1466,21 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     overflow: hidden;
     border-radius: 999px;
     background: var(--color-border, #e5e7eb);
+}
+
+.section-project-reference__status-toggle {
+    display: block;
+    width: 100%;
+    padding: 3px 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.section-project-reference__status-toggle:hover .section-project-reference__status-bar,
+.section-project-reference__status-toggle:focus-visible .section-project-reference__status-bar {
+    outline: 2px solid color-mix(in srgb, var(--color-primary) 42%, transparent);
+    outline-offset: 2px;
 }
 
 .section-project-reference__status-bar .omo-project-status-bar__segment {
@@ -1502,6 +1525,11 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.section-project-reference__child > .section-project-reference__children {
+    margin-left: 8px;
+    padding-top: 4px;
 }
 
 .section-project-reference__child-title {
@@ -2001,19 +2029,26 @@ $(document)
     }
   });
 
-function omoToggleProjectReferenceChildren(card) {
+function omoToggleProjectReferenceChildren(card, toggle) {
     const projectId = Number($(card).data('project-id'));
-    const host = $(card).find('[data-omo-project-reference-children]').first();
+    const host = $(card).children('[data-omo-project-reference-children]').first();
     if (!projectId || !host.length) {
         return;
     }
 
     if (host.data('loaded') === 1) {
-        host.prop('hidden', !host.prop('hidden'));
+        const nextHidden = !host.prop('hidden');
+        host.prop('hidden', nextHidden);
+        if (toggle) {
+            toggle.setAttribute('aria-expanded', nextHidden ? 'false' : 'true');
+        }
         return;
     }
 
     host.prop('hidden', false).html('<div class="section-project-reference__children-loading"><?= omoApiEscape(t('leftbar.project.children.loading')) ?></div>');
+    if (toggle) {
+        toggle.disabled = true;
+    }
     $.ajax({
         url: '/omo/api/projects/children.php?id=' + encodeURIComponent(projectId),
         method: 'GET',
@@ -2021,8 +2056,18 @@ function omoToggleProjectReferenceChildren(card) {
         dataType: 'html'
     }).done(function (html) {
         host.data('loaded', 1).html(html || '<div class="section-project-reference__children-empty"><?= omoApiEscape(t('leftbar.project.children.empty')) ?></div>');
+        if (toggle) {
+            toggle.setAttribute('aria-expanded', 'true');
+        }
     }).fail(function () {
         host.html('<div class="section-project-reference__children-error"><?= omoApiEscape(t('leftbar.project.children.error')) ?></div>');
+        if (toggle) {
+            toggle.setAttribute('aria-expanded', 'false');
+        }
+    }).always(function () {
+        if (toggle) {
+            toggle.disabled = false;
+        }
     });
 }
 
@@ -2038,30 +2083,20 @@ window.omoToggleProjectReferenceChildren = omoToggleProjectReferenceChildren;
 if (!window.omoOrgProjectReferenceCaptureBound) {
     window.omoOrgProjectReferenceCaptureBound = true;
     document.addEventListener('click', function (event) {
-        const card = event.target.closest('#panel-left [data-omo-project-reference]');
+        const toggle = event.target.closest('#panel-left [data-omo-project-reference-toggle]');
+        if (!toggle) {
+            return;
+        }
+        const card = toggle.closest('[data-omo-project-reference]');
         if (!card) {
             return;
         }
-        if (event.target.closest('[data-omo-project-reference-title], [data-omo-project-reference-children], button, input, select, textarea')) {
-            return;
-        }
+        event.preventDefault();
+        event.stopPropagation();
         if (typeof window.omoToggleProjectReferenceChildren === 'function') {
-            window.omoToggleProjectReferenceChildren(card);
+            window.omoToggleProjectReferenceChildren(card, toggle);
         }
     }, true);
 }
 
-$(document)
-  .off('keydown.omoOrgProjectReference', '#panel-left [data-omo-project-reference]')
-  .on('keydown.omoOrgProjectReference', '#panel-left [data-omo-project-reference]', function (event) {
-    if ($(event.target).closest('[data-omo-project-reference-title], [data-omo-project-reference-children], button, input, select, textarea').length) {
-        return;
-    }
-    if (event.key !== 'Enter' && event.key !== ' ') {
-        return;
-    }
-
-    event.preventDefault();
-    omoToggleProjectReferenceChildren(this);
-  });
 </script>
