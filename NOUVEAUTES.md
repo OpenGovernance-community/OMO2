@@ -4,6 +4,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-07-24
 
+- La mise a jour automatique du site detaille maintenant les fichiers modifies localement, signale ceux egalement modifies par le patch distant et permet a l admin de lancer explicitement une synchronisation forcee. Cette action remplace les modifications locales suivies par Git, tandis que les fichiers non suivis sont conserves.
 - Les controles de validite et de revision des rules declarent maintenant explicitement leur date nullable, ce qui elimine leurs avertissements de depreciation sous PHP 8.5.
 - Le compte administrateur de demonstration de la base Docker utilise maintenant le mot de passe `1234`. L assistant d installation serveur continue de definir le mot de passe choisi lors de sa configuration.
 - Le seed de base de donnees a ete regenere depuis la base locale de demonstration. Les reinitialisations Docker et les premieres installations serveur importent le meme snapshot complet, avec les nouvelles donnees de demo.
