@@ -158,5 +158,80 @@ class Checklist extends DbObject
         }
         return $items;
     }
+
+    public function getPvReviewSummary()
+    {
+        $templateRoot = $this->getTemplateRoot();
+        $title = $templateRoot instanceof Project ? trim((string)$templateRoot->get('title')) : '';
+        $trigger = null;
+        foreach ($this->getTriggers(false) as $candidate) {
+            if ($candidate instanceof ChecklistTrigger) {
+                $trigger = $candidate;
+                break;
+            }
+        }
+        $isContainer = $trigger instanceof ChecklistTrigger
+            && ChecklistTrigger::normalizeTriggerType($trigger->get('trigger_type')) === ChecklistTrigger::TYPE_CONTAINER;
+        $projects = [];
+        if ($isContainer) {
+            foreach ($this->getItems(true) as $item) {
+                if (!($item instanceof ChecklistItem)) {
+                    continue;
+                }
+                $occurrences = new ArrayChecklistItemOccurrence();
+                $occurrences->loadForItem((int)$item->getId());
+                foreach ($occurrences as $occurrence) {
+                    $project = $occurrence instanceof ChecklistItemOccurrence ? $occurrence->getProject() : null;
+                    if ($project instanceof Project && (int)$project->get('active') === 1) {
+                        $projects[] = ['project' => $project, 'runId' => 0];
+                    }
+                }
+            }
+        } else {
+            foreach ($this->getOpenRuns() as $run) {
+                $project = $run instanceof ChecklistRun ? $run->getRootProject() : null;
+                if ($project instanceof Project && (int)$project->get('active') === 1) {
+                    $projects[] = ['project' => $project, 'runId' => (int)$run->getId()];
+                }
+            }
+        }
+        $counts = array_fill_keys([
+            Project::STATUS_READY, Project::STATUS_IN_PROGRESS, Project::STATUS_BLOCKED,
+            Project::STATUS_REVIEW, Project::STATUS_DONE, Project::STATUS_SOMEDAY,
+        ], 0);
+        $overdueCount = 0;
+        $today = new \DateTimeImmutable('today');
+        $statusCatalog = Project::getStatusCatalog();
+        $entries = [];
+        foreach ($projects as $projectEntry) {
+            $project = $projectEntry['project'];
+            $metadata = $project->getReviewMetadata();
+            $status = Project::normalizeStatus($project->get('status'));
+            $counts[$status] = (int)($counts[$status] ?? 0) + 1;
+            $deadline = $project->get('planned_end_date');
+            if ($status !== Project::STATUS_DONE && $deadline instanceof \DateTimeInterface && $deadline < $today) {
+                $overdueCount++;
+            }
+            $entries[] = [
+                'projectId' => (int)$project->getId(),
+                'runId' => (int)($projectEntry['runId'] ?? 0),
+                'title' => trim((string)$project->get('title')),
+                'status' => $status,
+                'statusLabel' => (string)($statusCatalog[$status]['label'] ?? $status),
+                'size' => Project::normalizeSize($project->get('project_size')),
+                'weight' => Project::getSizeWeight($project->get('project_size')),
+                'holonLabel' => (string)($metadata['holonLabel'] ?? ''),
+                'responsibleLabel' => (string)($metadata['responsibleLabel'] ?? ''),
+            ];
+        }
+        return [
+            'title' => $title,
+            'isContainer' => $isContainer,
+            'total' => count($entries),
+            'counts' => $counts,
+            'overdueCount' => $overdueCount,
+            'entries' => $entries,
+        ];
+    }
 }
 ?>

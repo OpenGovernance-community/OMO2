@@ -94,6 +94,8 @@ if (!function_exists('omoChecklistSourceLang')) {
             'checklist.form.activation' => ['text' => 'Visibilité', 'context' => 'Checklist item activation field.'],
             'checklist.form.item_recurrence' => ['text' => 'Récurrence de cet élément', 'context' => 'Recurring schedule section for a container checklist item.'],
             'checklist.form.item_recurrence_help' => ['text' => 'Chaque occurrence crée un projet simple pour le rôle choisi. Vous pouvez le faire apparaître en avance et définir son délai de réalisation.', 'context' => 'Explanation for independent recurring checklist item projects.'],
+            'checklist.form.item_timing' => ['text' => 'Visibilité et délai', 'context' => 'Shared scheduling section for every checklist item.'],
+            'checklist.form.item_timing_help' => ['text' => 'Faites apparaître le projet avant sa date prévue et fixez son délai de réalisation. Ces paramètres s appliquent à chaque élément.', 'context' => 'Explanation for visibility and completion timing shared by every checklist item.'],
             'checklist.form.display_lead' => ['text' => 'Afficher en avance', 'context' => 'How long before the scheduled date a recurring project becomes visible.'],
             'checklist.form.display_lead_unit' => ['text' => 'Unité d anticipation', 'context' => 'Unit for recurring project display lead time.'],
             'checklist.form.execution_duration' => ['text' => 'Délai de réalisation', 'context' => 'How long a recurring project can be completed.'],

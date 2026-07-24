@@ -17,6 +17,8 @@
         var typeField = editor.querySelector('[data-omo-stats-reference-type]') || host.querySelector('[data-omo-stats-reference-type]');
         var nestedReferencePanel = editor.querySelector('[data-omo-stats-reference-panel]');
         var referencePanel = nestedReferencePanel || editor;
+        var ceilingEditor = host.querySelector('[data-omo-stats-ceiling-editor]');
+        var ceilingValueField = ceilingEditor ? ceilingEditor.querySelector('[data-omo-stats-ceiling-value]') : null;
         var referenceRail = editor.querySelector('[data-omo-stats-reference-rail]');
         var pointList = editor.querySelector('[data-omo-stats-reference-points]');
         var addButton = editor.querySelector('[data-omo-stats-add-reference-point]');
@@ -163,7 +165,7 @@
         }
 
         function syncCeilingValues(sourceField) {
-            if (!typeField || typeField.value !== 'ceiling') {
+            if (ceilingEditor || !typeField || typeField.value !== 'ceiling') {
                 return;
             }
             var pointRows = rows();
@@ -182,21 +184,33 @@
 
         function syncReferenceType() {
             var type = typeField ? typeField.value : 'none';
+            var usesSimpleCeiling = Boolean(ceilingEditor);
             if (nestedReferencePanel) {
-                referencePanel.hidden = type === 'none';
+                referencePanel.hidden = usesSimpleCeiling ? type !== 'objective' : type === 'none';
             } else {
-                editor.hidden = type === 'none';
+                editor.hidden = usesSimpleCeiling ? type !== 'objective' : type === 'none';
             }
             Array.prototype.forEach.call(referencePanel.querySelectorAll('input, button'), function (field) {
                 if (!field.matches('[data-omo-stats-add-reference-point]')) {
-                    field.disabled = type === 'none';
+                    field.disabled = usesSimpleCeiling ? type !== 'objective' : type === 'none';
                 }
             });
+            if (ceilingEditor) {
+                ceilingEditor.hidden = type !== 'ceiling';
+                Array.prototype.forEach.call(ceilingEditor.querySelectorAll('input, button'), function (field) {
+                    field.disabled = type !== 'ceiling';
+                });
+                if (ceilingValueField) {
+                    ceilingValueField.required = type === 'ceiling';
+                }
+            }
             if (addButton) {
                 addButton.hidden = type !== 'objective';
                 addButton.disabled = type !== 'objective';
             }
-            syncCeilingValues();
+            if (!usesSimpleCeiling) {
+                syncCeilingValues();
+            }
             renderReferenceRail();
         }
 

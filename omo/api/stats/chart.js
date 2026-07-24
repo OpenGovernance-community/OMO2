@@ -49,8 +49,17 @@
         return ' data-omo-stats-chart-tooltip="' + escapeXml(text) + '" tabindex="0" aria-label="' + escapeXml(text) + '"';
     }
 
-    function resolveScale(points) {
-        var values = points.map(function (point) { return Number(point.value); });
+    function resolveScale(points, extraValues) {
+        var values = points.map(function (point) { return Number(point.value); }).filter(Number.isFinite);
+        (extraValues || []).forEach(function (value) {
+            if (value === null || value === undefined || value === '') {
+                return;
+            }
+            var numericValue = Number(value);
+            if (Number.isFinite(numericValue)) {
+                values.push(numericValue);
+            }
+        });
         if (!values.length) {
             return null;
         }
@@ -81,6 +90,22 @@
             step: step,
             intervals: Math.max(1, Math.round((scaleMax - scaleMin) / step))
         };
+    }
+
+    function getVisibleMinimumLineValue(value, points) {
+        if (value === null || value === undefined || value === '') {
+            return null;
+        }
+        var numericValue = Number(value);
+        var measuredValues = (points || []).map(function (point) {
+            return Number(point.value);
+        }).filter(Number.isFinite);
+        if (!Number.isFinite(numericValue) || measuredValues.length === 0) {
+            return null;
+        }
+        var measuredMin = Math.min.apply(Math, measuredValues);
+        var measuredMax = Math.max.apply(Math, measuredValues);
+        return numericValue >= measuredMin && numericValue <= measuredMax ? numericValue : null;
     }
 
     function interpolatePoint(points, timestamp) {
@@ -173,7 +198,15 @@
         if (!allPoints.length) {
             return '<div class="omo-stats-chart-empty">Pas encore de donnees a representer.</div>';
         }
-        var scale = resolveScale(allPoints);
+        var ceilingValue = data.ceiling === null || data.ceiling === undefined || data.ceiling === ''
+            ? null
+            : Number(data.ceiling);
+        ceilingValue = Number.isFinite(ceilingValue) ? ceilingValue : null;
+        var minimumValue = data.minimumValue === null || data.minimumValue === undefined || data.minimumValue === ''
+            ? null
+            : Number(data.minimumValue);
+        minimumValue = Number.isFinite(minimumValue) ? minimumValue : null;
+        var scale = resolveScale(allPoints, [ceilingValue, minimumValue]);
         var mapPoint = function (point) {
             var x = paddingLeft + ((Number(point.timestamp) - startTimestamp) / (endTimestamp - startTimestamp)) * plotWidth;
             var y = paddingTop + (1 - ((Number(point.value) - scale.min) / (scale.max - scale.min))) * plotHeight;
@@ -181,6 +214,7 @@
         };
         var measureCoordinates = measure.map(mapPoint);
         var referenceCoordinates = reference.map(mapPoint);
+        var minimumLineValue = getVisibleMinimumLineValue(minimumValue, measure);
         var chartId = 'omo-stats-interactive-' + (++chartSequence);
         var overdueClass = data.overdueSeverity === 'warning'
             ? ' omo-stats-chart--warning'
@@ -206,6 +240,14 @@
         }
         if (referenceCoordinates.length > 1) {
             svg += '<polyline class="omo-stats-chart__reference" points="' + coordinateString(referenceCoordinates) + '"/>';
+        }
+        if (ceilingValue !== null) {
+            var ceilingY = mapPoint({timestamp: startTimestamp, value: ceilingValue})[1];
+            svg += '<line class="omo-stats-chart__reference omo-stats-chart__reference--ceiling" x1="' + paddingLeft + '" y1="' + ceilingY + '" x2="' + (width - paddingRight) + '" y2="' + ceilingY + '"/>';
+        }
+        if (minimumLineValue !== null) {
+            var minimumY = mapPoint({timestamp: startTimestamp, value: minimumLineValue})[1];
+            svg += '<line class="omo-stats-chart__baseline" x1="' + paddingLeft + '" y1="' + minimumY + '" x2="' + (width - paddingRight) + '" y2="' + minimumY + '"/>';
         }
         return svg + '</svg>';
     }
@@ -236,7 +278,15 @@
         if (!allPoints.length) {
             return '<div class="omo-stats-chart-empty">Pas encore de donnees a representer.</div>';
         }
-        var scale = resolveScale(allPoints);
+        var ceilingValue = data.ceiling === null || data.ceiling === undefined || data.ceiling === ''
+            ? null
+            : Number(data.ceiling);
+        ceilingValue = Number.isFinite(ceilingValue) ? ceilingValue : null;
+        var minimumValue = data.minimumValue === null || data.minimumValue === undefined || data.minimumValue === ''
+            ? null
+            : Number(data.minimumValue);
+        minimumValue = Number.isFinite(minimumValue) ? minimumValue : null;
+        var scale = resolveScale(allPoints, [ceilingValue, minimumValue]);
         var mapPoint = function (point) {
             var x = paddingLeft + ((Number(point.timestamp) - startTimestamp) / (endTimestamp - startTimestamp)) * plotWidth;
             var y = paddingTop + (1 - ((Number(point.value) - scale.min) / (scale.max - scale.min))) * plotHeight;
@@ -267,6 +317,15 @@
         var referenceCoordinates = reference.map(mapPoint);
         if (referenceCoordinates.length > 1) {
             svg += '<polyline class="omo-stats-chart__reference" points="' + coordinateString(referenceCoordinates) + '"/>';
+        }
+        if (ceilingValue !== null) {
+            var ceilingY = mapPoint({timestamp: startTimestamp, value: ceilingValue})[1];
+            svg += '<line class="omo-stats-chart__reference omo-stats-chart__reference--ceiling" x1="' + paddingLeft + '" y1="' + ceilingY + '" x2="' + (width - paddingRight) + '" y2="' + ceilingY + '"/>';
+        }
+        var minimumLineValue = getVisibleMinimumLineValue(minimumValue, allPoints.slice(0, allPoints.length - reference.length));
+        if (minimumLineValue !== null) {
+            var minimumY = mapPoint({timestamp: startTimestamp, value: minimumLineValue})[1];
+            svg += '<line class="omo-stats-chart__baseline" x1="' + paddingLeft + '" y1="' + minimumY + '" x2="' + (width - paddingRight) + '" y2="' + minimumY + '"/>';
         }
         return svg + '</svg>';
     }

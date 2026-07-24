@@ -307,10 +307,16 @@ $projectTexts = [
     'moveHint' => omoProjectsT('projects.move.hint'),
     'moveSubmit' => omoProjectsT('projects.move.submit'),
     'moveSelectRequired' => omoProjectsT('projects.move.select_required'),
+    'attachTitle' => omoProjectsT('projects.attach.title'),
+    'attachHint' => omoProjectsT('projects.attach.hint'),
+    'attachSearch' => omoProjectsT('projects.attach.search'),
+    'attachEmpty' => omoProjectsT('projects.attach.empty'),
+    'attachSubmit' => omoProjectsT('projects.attach.submit'),
+    'attachSelectRequired' => omoProjectsT('projects.attach.select_required'),
     'cancel' => omoProjectsT('projects.action.cancel'),
 ];
 ?>
-<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260722-project-status-colors">
+<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260724-subproject-actions">
 <div
     class="omo-projects omo-panel-view"
     id="omo-projects-root"
@@ -532,4 +538,4 @@ $projectTexts = [
     </div>
 </div>
 <script src="/common/drawer/subdrawer.js"></script>
-<script src="/omo/api/projects/projects.js?v=20260722-runtime-maintenance"></script>
+<script src="/omo/api/projects/projects.js?v=20260724-subproject-actions"></script>

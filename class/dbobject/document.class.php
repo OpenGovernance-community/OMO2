@@ -127,6 +127,12 @@
 			return "datecreation";
 		}
 
+		public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+		{
+			$params = array('organization_id' => (int)$organizationId, 'source_creation' => (int)$userId, 'source_owner' => (int)$userId, 'source_modification' => (int)$userId, 'source_edition' => (int)$userId, 'source_pv_editor' => (int)$userId, 'ghost_creation' => (int)$ghostUserId, 'ghost_owner' => (int)$ghostUserId, 'ghost_modification' => (int)$ghostUserId);
+			return self::execute("UPDATE document SET IDusercreation = CASE WHEN IDusercreation = :source_creation THEN :ghost_creation ELSE IDusercreation END, IDuser = CASE WHEN IDuser = :source_owner THEN CASE WHEN active = 0 THEN :ghost_owner ELSE NULL END ELSE IDuser END, IDusermodification = CASE WHEN IDusermodification = :source_modification THEN CASE WHEN active = 0 THEN :ghost_modification ELSE NULL END ELSE IDusermodification END, IDuseredition = CASE WHEN IDuseredition = :source_edition THEN NULL ELSE IDuseredition END, IDuser_pv_editor = CASE WHEN IDuser_pv_editor = :source_pv_editor THEN NULL ELSE IDuser_pv_editor END WHERE IDorganization = :organization_id", $params);
+		}
+
 		public function isArchived(): bool
 		{
 			return (int)$this->get('active') !== 1;
@@ -1888,6 +1894,12 @@
 			return (int)trim((string)$element->getAttribute('data-omo-project-id')) > 0;
 		}
 
+		protected static function isChecklistEmbedElement(\DOMElement $element): bool
+		{
+			return trim((string)$element->getAttribute('data-omo-embed-type')) === 'checklist'
+				&& (int)$element->getAttribute('data-omo-checklist-id') > 0;
+		}
+
 		protected static function isIndicatorEmbedElement(\DOMElement $element): bool
 		{
 			if (trim((string)$element->getAttribute('data-omo-embed-type')) !== 'indicator') {
@@ -2154,6 +2166,30 @@
 			return self::buildProjectEmbedDisplayHtml($project, $summary, !empty($childrenByParent[$projectId]), $fallbackTitle);
 		}
 
+		protected static function renderEmbeddedChecklistReference(\DOMElement $element, int $organizationId): string
+		{
+			$checklistId = (int)$element->getAttribute('data-omo-checklist-id');
+			$fallbackTitle = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-checklist-title'));
+			$checklist = new \dbObject\Checklist();
+			if ($checklistId <= 0 || !$checklist->load($checklistId) || (int)$checklist->get('IDorganization') !== $organizationId || (int)$checklist->get('active') !== 1) {
+				return '<span class="omo-checklist-embed" data-omo-embed-type="checklist">' . htmlspecialchars($fallbackTitle !== '' ? $fallbackTitle : 'Checklist', ENT_QUOTES, 'UTF-8') . '</span>';
+			}
+			$summary = $checklist->getPvReviewSummary();
+			$title = trim((string)($summary['title'] ?? '')) ?: $fallbackTitle;
+			$title = $title !== '' ? $title : ('Checklist #' . $checklistId);
+			$total = (int)($summary['total'] ?? 0);
+			$counts = (array)($summary['counts'] ?? []);
+			$html = '<div class="omo-checklist-embed omo-checklist-embed--resolved" data-omo-embed-type="checklist" data-omo-checklist-id="' . $checklistId . '">';
+			$html .= '<div class="omo-project-embed__head"><a class="omo-project-embed__title" href="#checklist-c' . $checklistId . '">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</a></div>';
+			$html .= '<span class="omo-checklist-embed__review-label">' . (!empty($summary['isContainer']) ? 'Elements recurrents' : 'Instances en cours') . ((int)($summary['overdueCount'] ?? 0) > 0 ? ' &#9888;' : '') . '</span>';
+			if ($total > 0) {
+				$html .= '<span class="omo-project-status-bar">';
+				foreach (self::getProjectStatusDisplayOrder() as $status) { $count = (int)($counts[$status] ?? 0); if ($count > 0) { $width = ($count / $total) * 100; $html .= '<span class="omo-project-status-bar__segment omo-project-status-bar__segment--' . htmlspecialchars($status, ENT_QUOTES, 'UTF-8') . '" style="flex-basis:' . number_format($width, 4, '.', '') . '%"></span>'; } }
+				$html .= '</span>';
+			}
+			return $html . '</div>';
+		}
+
 		protected static function renderIndicatorEmbedChart(\DOMElement $element): string
 		{
 			$sourceCharts = $element->getElementsByTagName('svg');
@@ -2163,8 +2199,8 @@
 			}
 
 			$shapes = '';
-			$hasScaleLine = $sourceChart->getElementsByTagName('line')->length > 0;
-			$hasScaleLabel = $sourceChart->getElementsByTagName('text')->length > 0;
+			$hasScaleLine = false;
+			$hasScaleLabel = false;
 			foreach (array('polyline', 'circle', 'line', 'text') as $tagName) {
 				foreach (iterator_to_array($sourceChart->getElementsByTagName($tagName)) as $sourceShape) {
 					if (!($sourceShape instanceof \DOMElement)) {
@@ -2178,7 +2214,11 @@
 					if ($tagName === 'circle' && $className !== 'omo-stats-chart__point') {
 						continue;
 					}
-					if ($tagName === 'line' && $className !== 'omo-stats-chart__scale-line') {
+					if ($tagName === 'line' && !in_array($className, array(
+						'omo-stats-chart__scale-line',
+						'omo-stats-chart__reference omo-stats-chart__reference--ceiling',
+						'omo-stats-chart__baseline',
+					), true)) {
 						continue;
 					}
 					if ($tagName === 'text' && $className !== 'omo-stats-chart__scale-label') {
@@ -2249,8 +2289,10 @@
 			if (!$hasScaleLabel && $chartMin !== '' && $chartMax !== '') {
 				$shapes .= '<text class="omo-stats-chart__scale-label" x="0" y="6">' . htmlspecialchars($chartMax, ENT_QUOTES, 'UTF-8') . '</text><text class="omo-stats-chart__scale-label" x="0" y="52">' . htmlspecialchars($chartMin, ENT_QUOTES, 'UTF-8') . '</text>';
 			}
+			$indicatorKind = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-indicator-kind')) === 'group' ? 'group' : 'indicator';
+			$chartClass = 'omo-stats-chart omo-stats-chart--compact' . ($indicatorKind === 'group' ? ' omo-stats-chart--group' : '');
 			$chartHtml = '<span class="omo-indicator-embed__chart"><span class="omo-indicator-embed__chart-plot">';
-			$chartHtml .= '<span class="omo-indicator-embed__chart-svg"><svg xmlns="http://www.w3.org/2000/svg" class="omo-stats-chart omo-stats-chart--compact" width="180" height="54" viewBox="0 0 180 54" aria-hidden="true">' . $shapes . '</svg></span>';
+			$chartHtml .= '<span class="omo-indicator-embed__chart-svg"><svg xmlns="http://www.w3.org/2000/svg" class="' . htmlspecialchars($chartClass, ENT_QUOTES, 'UTF-8') . '" width="180" height="54" viewBox="0 0 180 54" aria-hidden="true">' . $shapes . '</svg></span>';
 			return $chartHtml . '</span></span>';
 		}
 
@@ -2385,6 +2427,10 @@
 
 			if (self::isProjectEmbedElement($node)) {
 				return self::renderEmbeddedProjectReference($node, $organizationId);
+			}
+
+			if (self::isChecklistEmbedElement($node)) {
+				return self::renderEmbeddedChecklistReference($node, $organizationId);
 			}
 
 			if (self::isIndicatorEmbedElement($node)) {
@@ -2930,7 +2976,6 @@
 				$pointTypeClass = preg_replace('/[^a-z0-9_-]+/i', '-', (string)($pointData['pointType'] ?? 'information'));
 				$pointTypeIconMap = array(
 					'information' => '/omo/assets/images/documents/pv-point-type/information.png',
-					'normal' => '/omo/assets/images/documents/pv-point-type/information.png',
 					'consultation' => '/omo/assets/images/documents/pv-point-type/consultation.png',
 					'decision' => '/omo/assets/images/documents/pv-point-type/decision.png',
 				);

@@ -122,6 +122,41 @@ if ($action === 'update_status') {
     ]);
 }
 
+if ($action === 'attach_subproject') {
+    if (
+        !($existingProject instanceof Project)
+        || Project::normalizeKind($existingProject->get('project_kind')) !== Project::KIND_STANDARD
+    ) {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.not_found'), [], 404);
+    }
+
+    $childId = isset($_POST['child_id']) && is_numeric($_POST['child_id']) ? (int)$_POST['child_id'] : 0;
+    $childProject = new Project();
+    if (
+        $childId <= 0
+        || !$childProject->load($childId)
+        || (int)$childProject->get('IDorganization') !== $organizationId
+        || (int)$childProject->get('active') !== 1
+        || (int)$childProject->get('IDproject_parent') > 0
+        || Project::normalizeKind($childProject->get('project_kind')) !== Project::KIND_STANDARD
+        || !omoProjectsCanManageProject($childProject, $context)
+        || !$childProject->canUseAsParent($existingProject)
+    ) {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
+    }
+
+    $childProject->set('IDproject_parent', (int)$existingProject->getId());
+    $saveResult = $childProject->save();
+    if (!is_array($saveResult) || empty($saveResult['status'])) {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.save'), [], 422);
+    }
+
+    omoProjectsActionRespond(true, omoProjectsT('projects.success.save'), [
+        'id' => (int)$childProject->getId(),
+        'parentId' => (int)$existingProject->getId(),
+    ]);
+}
+
 if ($action === 'move_project') {
     if (!($existingProject instanceof Project)) {
         omoProjectsActionRespond(false, omoProjectsT('projects.error.not_found'), [], 404);
@@ -206,10 +241,27 @@ if ($title === '') {
 }
 
 $project = $existingProject instanceof Project ? $existingProject : new Project();
+$targetHolonId = isset($_POST['IDholon']) && is_numeric($_POST['IDholon'])
+    ? (int)$_POST['IDholon']
+    : (int)($project->get('IDholon') ?: ($context['currentHolon'] instanceof Holon ? $context['currentHolon']->getId() : 0));
+$targetHolon = new Holon();
+$rootHolon = $context['rootHolon'] ?? null;
+if (
+    $targetHolonId <= 0
+    || !$targetHolon->load($targetHolonId)
+    || !($rootHolon instanceof Holon)
+    || !$targetHolon->isDescendantOf((int)$rootHolon->getId(), true)
+    || !$targetHolon->canEdit()
+) {
+    omoProjectsActionRespond(false, omoProjectsT('projects.error.holon'), [], 422);
+}
+if ($projectId <= 0 && !$targetHolon->isAllowed('CAN_CREATE_PROJECT', false, $currentUserId)) {
+    omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
+}
 if ($projectId <= 0) {
     $project->set('IDorganization', $organizationId);
-    $project->set('IDholon', $context['currentHolon'] instanceof \dbObject\Holon ? (int)$context['currentHolon']->getId() : null);
 }
+$project->set('IDholon', $targetHolonId);
 $project->set('title', mb_substr($title, 0, 255, 'UTF-8'));
 $project->set('description', PropertyFormat::sanitizeHtml((string)($_POST['description'] ?? '')));
 $project->set('status', Project::normalizeStatus($_POST['status'] ?? Project::STATUS_SOMEDAY));
@@ -233,6 +285,9 @@ $parseDate = static function ($value) {
 
 $plannedStartDate = $parseDate($_POST['planned_start_date'] ?? null);
 $plannedEndDate = $parseDate($_POST['planned_end_date'] ?? null);
+if ($plannedStartDate instanceof \DateTimeInterface && $plannedEndDate instanceof \DateTimeInterface && $plannedEndDate < $plannedStartDate) {
+    omoProjectsActionRespond(false, omoProjectsT('projects.error.dates'), [], 422);
+}
 $project->set('planned_start_date', $plannedStartDate);
 $project->set('planned_end_date', $plannedEndDate);
 
@@ -247,8 +302,7 @@ if ($responsibleId > 0) {
     }
 }
 if ($responsibleId > 0 && (string)($_POST['enforce_holon_member'] ?? '') === '1') {
-    $projectHolon = $context['currentHolon'] ?? null;
-    $rootHolon = $context['rootHolon'] ?? null;
+    $projectHolon = $targetHolon;
     $isOrganizationHolon = $projectHolon instanceof Holon
         && $rootHolon instanceof Holon
         && (int)$projectHolon->getId() === (int)$rootHolon->getId();
@@ -270,6 +324,8 @@ if ($parentId > 0) {
     if (
         !$parent->load($parentId)
         || (int)$parent->get('IDorganization') !== $organizationId
+        || (int)$parent->get('active') !== 1
+        || Project::normalizeKind($parent->get('project_kind')) !== Project::KIND_STANDARD
         || !$project->canUseAsParent($parent)
     ) {
         $parentId = 0;

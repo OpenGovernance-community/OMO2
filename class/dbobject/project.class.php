@@ -134,6 +134,14 @@ class Project extends DbObject
         return 'created_at DESC, id DESC';
     }
 
+    public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+    {
+        return self::execute(
+            "UPDATE project SET IDuser = CASE WHEN active = 1 AND COALESCE(status, '') != :done_status THEN NULL ELSE :ghost_user_id END WHERE IDorganization = :organization_id AND IDuser = :user_id",
+            array('done_status' => self::STATUS_DONE, 'ghost_user_id' => (int)$ghostUserId, 'organization_id' => (int)$organizationId, 'user_id' => (int)$userId)
+        );
+    }
+
     public static function statuses()
     {
         return [
@@ -446,6 +454,26 @@ class Project extends DbObject
         return $user->load($userId) ? $user : null;
     }
 
+    public function getReviewMetadata()
+    {
+        $holon = $this->getHolon();
+        $responsible = $this->getResponsible();
+        $responsibleLabel = '';
+        if ($responsible instanceof User) {
+            $responsibleLabel = trim(trim((string)$responsible->get('firstname')) . ' ' . trim((string)$responsible->get('lastname')));
+            if ($responsibleLabel === '') {
+                $responsibleLabel = trim((string)$responsible->get('username'));
+            }
+            if ($responsibleLabel === '') {
+                $responsibleLabel = trim((string)$responsible->get('email'));
+            }
+        }
+        return [
+            'holonLabel' => $holon instanceof Holon ? trim((string)$holon->getDisplayName()) : '',
+            'responsibleLabel' => $responsibleLabel,
+        ];
+    }
+
     public function getParent()
     {
         $parentId = (int)$this->get('IDproject_parent');
@@ -491,6 +519,60 @@ class Project extends DbObject
             self::normalizeKind($this->get('project_kind'))
         );
         return $projects;
+    }
+
+    public function completeAndArchiveActiveTree()
+    {
+        if ((int)$this->getId() <= 0 || (int)$this->get('active') !== 1) {
+            return ['status' => false, 'affectedCount' => 0, 'projectIds' => []];
+        }
+
+        $tree = [];
+        $visited = [];
+        $collect = function (Project $project) use (&$collect, &$tree, &$visited): void {
+            $projectId = (int)$project->getId();
+            if ($projectId <= 0 || isset($visited[$projectId])) {
+                return;
+            }
+            $visited[$projectId] = true;
+            foreach ($project->getChildren() as $child) {
+                if ($child instanceof Project) {
+                    $collect($child);
+                }
+            }
+            $tree[] = $project;
+        };
+        $collect($this);
+
+        $pdo = DbObject::getPdo();
+        $startedTransaction = false;
+        try {
+            if ($pdo instanceof \PDO && !$pdo->inTransaction()) {
+                $pdo->beginTransaction();
+                $startedTransaction = true;
+            }
+            foreach ($tree as $treeProject) {
+                $treeProject->set('status', self::STATUS_DONE);
+                $treeProject->set('active', 0);
+                $result = $treeProject->save();
+                if (!is_array($result) || empty($result['status'])) {
+                    throw new \RuntimeException('Unable to complete and archive project tree.');
+                }
+            }
+            if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
+                $pdo->commit();
+            }
+            return [
+                'status' => true,
+                'affectedCount' => count($tree),
+                'projectIds' => array_map(static fn (Project $treeProject): int => (int)$treeProject->getId(), $tree),
+            ];
+        } catch (\Throwable $exception) {
+            if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            return ['status' => false, 'affectedCount' => 0, 'projectIds' => []];
+        }
     }
 
     public function getTemplateSource()

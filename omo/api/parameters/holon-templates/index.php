@@ -135,6 +135,10 @@ $omoHolonTemplateTexts = [
     'saveErrorOrganization' => omoHolonTemplateT('parameters.holon_templates.error.save_organization'),
     'saveErrorModel' => omoHolonTemplateT('parameters.holon_templates.error.save_model'),
     'savedModel' => omoHolonTemplateT('parameters.holon_templates.status.saved_model'),
+    'deleteModel' => omoHolonTemplateT('parameters.holon_templates.action.delete_model'),
+    'confirmDeleteModel' => omoHolonTemplateT('parameters.holon_templates.confirm.delete_model', ['templateName' => '{templateName}']),
+    'deleteErrorModel' => omoHolonTemplateT('parameters.holon_templates.error.delete_model'),
+    'deletedModel' => omoHolonTemplateT('parameters.holon_templates.status.deleted_model'),
 ];
 ?>
 <div
@@ -412,6 +416,12 @@ $omoHolonTemplateTexts = [
 
                         <div class="omo-template-form__footer">
                             <div class="omo-template-form__hint" id="omo-template-selection-hint"></div>
+                            <?php if (!$isHolonDefinitionMode): ?>
+                                <button type="button" class="omo-button omo-button--danger omo-template-delete-button" id="omo-template-delete" hidden>
+                                    <img src="/img/icon_delete.png" class="omo-template-delete-button__icon" alt="" aria-hidden="true">
+                                    <span><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.action.delete_model'), ENT_QUOTES, 'UTF-8') ?></span>
+                                </button>
+                            <?php endif; ?>
                             <?php if ($isCompactMode): ?>
                                 <button type="button" class="omo-button omo-button--ghost" id="omo-template-cancel"><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.action.close'), ENT_QUOTES, 'UTF-8') ?></button>
                             <?php endif; ?>
@@ -588,6 +598,7 @@ const omoHolonTemplateElements = {
     permissions: omoHolonTemplateRoot.querySelector('#omo-template-permissions'),
     selectionHint: omoHolonTemplateRoot.querySelector('#omo-template-selection-hint'),
     cancel: omoHolonTemplateRoot.querySelector('#omo-template-cancel'),
+    deleteButton: omoHolonTemplateRoot.querySelector('#omo-template-delete'),
     newChildButton: omoHolonTemplateRoot.querySelector('[data-template-action="new-child"]'),
     summary: omoHolonTemplateRoot.querySelector('#omo-template-summary'),
     formTitle: omoHolonTemplateRoot.querySelector('#omo-template-form-title'),
@@ -2477,6 +2488,10 @@ function omoHolonTemplateFillForm(template) {
 
     omoHolonTemplateElements.form.dataset.templateId = Number(current.id || 0);
     omoHolonTemplateElements.form.dataset.previousParentId = String(resolvedParentId);
+    if (omoHolonTemplateElements.deleteButton) {
+        omoHolonTemplateElements.deleteButton.hidden = !isExisting || isHolonDefinitionMode;
+        omoHolonTemplateElements.deleteButton.disabled = !isExisting || isHolonDefinitionMode;
+    }
     omoHolonTemplateToggleTypeField(effectiveInheritanceId > 0);
     omoHolonTemplateFillTypeOptions(effectiveTypeId);
     omoHolonTemplateBuildParentOptions(resolvedParentId, current.id);
@@ -2552,6 +2567,82 @@ function omoHolonTemplateReadProperties() {
     }).filter(function (property) {
         return property.name !== '';
     });
+}
+
+function omoHolonTemplateDelete() {
+    const templateId = Number(omoHolonTemplateElements.form.dataset.templateId || 0);
+    const template = omoHolonTemplateFind(templateId);
+    if (templateId <= 0 || !template || omoHolonTemplateIsHolonDefinitionMode()) {
+        return;
+    }
+
+    const templateName = String(template.name || '').trim() || String(omoHolonTemplateTexts.formModelTitle || '');
+    const confirmation = String(omoHolonTemplateTexts.confirmDeleteModel || '')
+        .replace('{templateName}', templateName);
+    if (!window.confirm(confirmation)) {
+        return;
+    }
+
+    if (
+        omoHolonTemplateElements.form
+        && typeof window.omoBeginPendingAction === 'function'
+        && !window.omoBeginPendingAction(omoHolonTemplateElements.form)
+    ) {
+        return;
+    }
+
+    omoHolonTemplateClearStatus();
+    const query = [];
+    if (Number(omoHolonTemplateState.data.contextHolonId || 0) > 0) {
+        query.push('cid=' + encodeURIComponent(String(omoHolonTemplateState.data.contextHolonId || 0)));
+    }
+    if (omoHolonTemplateGetScope() !== 'contextual') {
+        query.push('template_scope=' + encodeURIComponent(omoHolonTemplateGetScope()));
+    }
+
+    const formData = new FormData();
+    formData.append('template_id', String(templateId));
+
+    fetch('/omo/api/parameters/holon-templates/delete.php' + (query.length ? ('?' + query.join('&')) : ''), {
+        method: 'POST',
+        body: formData
+    })
+        .then(function (response) {
+            return response.json().then(function (data) {
+                return {
+                    ok: response.ok,
+                    data: data
+                };
+            });
+        })
+        .then(function (result) {
+            if (!result.ok || !result.data || result.data.status !== 'ok') {
+                throw new Error(result.data && result.data.message ? result.data.message : (omoHolonTemplateTexts.deleteErrorModel || ''));
+            }
+
+            omoHolonTemplateState.data = result.data.data || omoHolonTemplateState.data;
+            omoHolonTemplateState.selectedId = null;
+            omoHolonTemplateRenderTree();
+            omoHolonTemplateFillForm(omoHolonTemplateBuildDraft());
+            omoHolonTemplateShowStatus(result.data.message || (omoHolonTemplateTexts.deletedModel || ''), 'success');
+
+            if (omoHolonTemplateState.compactMode) {
+                window.dispatchEvent(new CustomEvent('omo-structure-refresh', {
+                    detail: {
+                        cid: Number(omoHolonTemplateState.data.contextHolonId || 0) || null,
+                        quickZoom: false
+                    }
+                }));
+            }
+        })
+        .catch(function (error) {
+            omoHolonTemplateShowStatus(error && error.message ? error.message : (omoHolonTemplateTexts.deleteErrorModel || ''), 'error');
+        })
+        .finally(function () {
+            if (omoHolonTemplateElements.form && typeof window.omoEndPendingAction === 'function') {
+                window.omoEndPendingAction(omoHolonTemplateElements.form);
+            }
+        });
 }
 
 function omoHolonTemplateSave(event) {
@@ -2743,6 +2834,10 @@ if (omoHolonTemplateElements.cancel) {
     omoHolonTemplateElements.cancel.addEventListener('click', function () {
         omoHolonTemplateCloseCompactDrawer();
     });
+}
+
+if (omoHolonTemplateElements.deleteButton) {
+    omoHolonTemplateElements.deleteButton.addEventListener('click', omoHolonTemplateDelete);
 }
 
 if (omoHolonTemplateElements.sharePublic) {
@@ -3797,8 +3892,24 @@ Promise.all([
 }
 
 .omo-button--danger {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: color-mix(in srgb, #dc2626 10%, var(--color-surface));
     color: #b91c1c;
     border-color: color-mix(in srgb, #dc2626 26%, var(--color-border));
+}
+
+.omo-button--danger:hover:not(:disabled) {
+    background: color-mix(in srgb, #dc2626 16%, var(--color-surface));
+    border-color: color-mix(in srgb, #dc2626 46%, var(--color-border));
+}
+
+.omo-template-delete-button__icon {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    opacity: 0.78;
 }
 
 @media (max-width: 1100px) {

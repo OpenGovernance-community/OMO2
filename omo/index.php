@@ -1500,7 +1500,7 @@ window.omoConfig = <?=
 <?php if ($isSiteAdmin) { ?>
 <script src="/omo/assets/js/site-update.js"></script>
 <?php } ?>
-<script src="assets/js/simple-html-field.js?v=20260722-pv-project-embed-icon-spacing"></script>
+<script src="assets/js/simple-html-field.js?v=20260724-pv-embed-status"></script>
 <script src="assets/js/app.js?v=20260722-checklist-detail-route"></script>
 <script src="assets/js/structure-mini-map.js"></script>
 

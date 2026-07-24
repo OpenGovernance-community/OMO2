@@ -4,7 +4,6 @@ namespace dbObject;
 class DocumentPvPoint extends DbObject
 {
     public const TYPE_INFORMATION = 'information';
-    public const TYPE_NORMAL = 'normal';
     public const TYPE_CONSULTATION = 'consultation';
     public const TYPE_DECISION = 'decision';
     public const ITEM_TYPE_POINT = 'point';
@@ -94,6 +93,11 @@ class DocumentPvPoint extends DbObject
         return 'position ASC, id ASC';
     }
 
+    public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+    {
+        return self::execute("UPDATE document_pv_point p INNER JOIN document d ON d.id = p.IDdocument SET p.IDuser_author = CASE WHEN p.IDuser_author = :source_author THEN CASE WHEN d.active = 0 OR d.pvstage = 'validated' THEN :ghost_author ELSE NULL END ELSE p.IDuser_author END, p.IDuser_modification = CASE WHEN p.IDuser_modification = :source_modification THEN NULL ELSE p.IDuser_modification END, p.IDuser_editing = CASE WHEN p.IDuser_editing = :source_editing THEN NULL ELSE p.IDuser_editing END WHERE d.IDorganization = :organization_id", array('source_author' => (int)$userId, 'source_modification' => (int)$userId, 'source_editing' => (int)$userId, 'ghost_author' => (int)$ghostUserId, 'organization_id' => (int)$organizationId));
+    }
+
     public static function hasPointTable(): bool
     {
         return self::tableExists(self::tableName());
@@ -103,7 +107,6 @@ class DocumentPvPoint extends DbObject
     {
         return [
             self::TYPE_INFORMATION => 'Information',
-            self::TYPE_NORMAL => 'Normal',
             self::TYPE_CONSULTATION => 'Consultation',
             self::TYPE_DECISION => 'Decision',
         ];
@@ -112,6 +115,10 @@ class DocumentPvPoint extends DbObject
     public static function normalizePointType($value): string
     {
         $value = trim(mb_strtolower((string)$value, 'UTF-8'));
+        if ($value === 'normal') {
+            return self::TYPE_CONSULTATION;
+        }
+
         return array_key_exists($value, self::getPointTypeCatalog())
             ? $value
             : self::TYPE_INFORMATION;

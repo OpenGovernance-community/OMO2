@@ -379,7 +379,7 @@ function commonRenderTopbar(array $options = [])
         commonRenderTopbarJqueryAssets();
         echo '<link rel="stylesheet" href="/common/assets/components.css">' . PHP_EOL;
         echo '<script src="/common/assets/components.js" defer></script>' . PHP_EOL;
-        echo '<script src="/common/holon_scope_picker.js?v=20260722-direct-group-scope" defer></script>' . PHP_EOL;
+        echo '<script src="/common/holon_scope_picker.js?v=20260724-holon-picker-label" defer></script>' . PHP_EOL;
         echo '<link rel="stylesheet" href="/common/assets/topbar.css">' . PHP_EOL;
         echo '<script src="/common/assets/topbar.js" defer></script>' . PHP_EOL;
         $assetsLoaded = true;

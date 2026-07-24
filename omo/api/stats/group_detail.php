@@ -38,6 +38,8 @@ $referencePointData = array_map(static function ($point) {
         'value' => (float)$point->get('value'),
     ];
 }, omoStatsGetGroupReferencePoints($group));
+$groupCeilingValue = omoStatsGetGroupCeilingValue($group);
+$chartMinValue = is_numeric($group->get('chart_min_value')) ? (float)$group->get('chart_min_value') : null;
 $groupOverdueInfo = omoStatsGetGroupOverdueInfo($group);
 $groupOverdueSeverity = (string)$groupOverdueInfo['severity'];
 $chartData = omoStatsBuildGroupChartData($group, $series, $groupOverdueSeverity);
@@ -73,12 +75,17 @@ foreach ($series as $seriesIndex => $seriesItem) {
                 data-omo-stats-group-indicators="<?= omoApiEscape(json_encode($indicatorIds)) ?>"
                 data-omo-stats-group-reference-type="<?= omoApiEscape(StatIndicator::normalizeReferenceType($group->get('reference_type'))) ?>"
                 data-omo-stats-group-reference-points="<?= omoApiEscape(json_encode(array_values($referencePointData))) ?>"
+                data-omo-stats-group-ceiling-value="<?= omoApiEscape((string)($groupCeilingValue ?? '')) ?>"
+                data-omo-stats-group-chart-min-value="<?= omoApiEscape((string)($chartMinValue ?? '')) ?>"
             ><?= omoApiEscape(omoStatsT('stats.action.edit_group')) ?></button>
         <?php endif; ?>
     </div>
 
     <div class="omo-stats-detail__meta omo-stats-detail__meta--compact">
         <span><strong><?= omoApiEscape(omoStatsT('stats.card.member_count', ['count' => count($sourceIndicators)])) ?></strong></span>
+        <?php if ($chartMinValue !== null): ?>
+            <span><strong><?= omoApiEscape(omoStatsT('stats.detail.chart_min_value')) ?> :</strong> <?= omoApiEscape(omoStatsFormatNumber($chartMinValue)) ?></span>
+        <?php endif; ?>
             <?php if ($groupOverdueSeverity === 'warning'): ?>
                 <span class="omo-stats-overdue-label omo-stats-overdue-label--warning"><?= omoApiEscape(omoStatsT('stats.card.to_complete')) ?></span>
             <?php elseif ($groupOverdueSeverity === 'error'): ?>
@@ -115,4 +122,4 @@ foreach ($series as $seriesIndex => $seriesItem) {
         </div>
     </section>
 </article>
-<script src="/omo/api/stats/chart.js?v=20260721-overdue-grace"></script>
+<script src="/omo/api/stats/chart.js?v=20260724-scale-bounds"></script>

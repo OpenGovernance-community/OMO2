@@ -530,7 +530,11 @@
 
         return {
             matches: matches,
-            getSelectedHolonId: function () { return selectedHolonId; }
+            getSelectedHolonId: function () { return selectedHolonId; },
+            getSelectedHolonLabel: function () {
+                var selectedNode = nodes.find(function (node) { return Number(node.id) === selectedHolonId; });
+                return selectedNode ? String(selectedNode.label || '') : '';
+            }
         };
     };
 })(window);

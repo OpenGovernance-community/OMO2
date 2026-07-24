@@ -26,6 +26,7 @@ class StatIndicator extends DbObject
             [['IDorganization', 'IDholon', 'IDuser'], 'fk'],
             [['name', 'source_url', 'reference_type', 'measurement_frequency', 'measurement_schedule'], 'string'],
             [['description'], 'text'],
+            [['chart_min_value'], 'float'],
             [['active'], 'boolean'],
             [['created_at', 'updated_at'], 'datetime'],
             [['id'], 'safe'],
@@ -45,6 +46,7 @@ class StatIndicator extends DbObject
             'reference_type' => 'Type de référence',
             'measurement_frequency' => 'Fréquence de mesure',
             'measurement_schedule' => 'Moment attendu',
+            'chart_min_value' => 'Valeur basse du graphique',
             'active' => 'Actif',
             'created_at' => 'Création',
             'updated_at' => 'Mise à jour',
@@ -59,6 +61,7 @@ class StatIndicator extends DbObject
             'reference_type' => 'Un plafond reste horizontal. Un objectif peut suivre une trajectoire composée de plusieurs points.',
             'measurement_frequency' => 'Cadence attendue pour la saisie des valeurs.',
             'measurement_schedule' => 'Heure, jour ou mois attendu selon la cadence. Cette information est facultative.',
+            'chart_min_value' => 'Borne facultative incluse dans l échelle verticale du graphique.',
         ];
     }
 
@@ -76,6 +79,11 @@ class StatIndicator extends DbObject
     public static function getOrder()
     {
         return 'name ASC, id ASC';
+    }
+
+    public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+    {
+        return self::execute("UPDATE stat_indicator SET IDuser = CASE WHEN active = 1 THEN NULL ELSE :ghost_user_id END WHERE IDorganization = :organization_id AND IDuser = :user_id", array('ghost_user_id' => (int)$ghostUserId, 'organization_id' => (int)$organizationId, 'user_id' => (int)$userId));
     }
 
     public static function getReferenceTypeCatalog()

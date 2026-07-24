@@ -896,6 +896,14 @@
 
 			try {
 				$pdo->beginTransaction();
+				$organization = $this->getOrganizationObject();
+				if (!$organization) {
+					throw new \RuntimeException("L'organisation de l'invitation est introuvable.");
+				}
+				$departureResult = $organization->disconnectUserPreservingHistory($userId);
+				if (empty($departureResult['status'])) {
+					throw new \RuntimeException((string)($departureResult['message'] ?? "Le retrait de l'invitation n'a pas pu etre finalise."));
+				}
 
 				if ($rootHolonId > 0) {
 					$linkIds = [];

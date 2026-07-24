@@ -86,6 +86,11 @@ class Event extends DbObject
         return 'start_at ASC, id ASC';
     }
 
+    public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+    {
+        return self::execute("UPDATE event SET IDuser = CASE WHEN end_at < NOW() THEN :ghost_user_id ELSE NULL END WHERE IDorganization = :organization_id AND IDuser = :user_id", array('ghost_user_id' => (int)$ghostUserId, 'organization_id' => (int)$organizationId, 'user_id' => (int)$userId));
+    }
+
     public static function getStatusCatalog()
     {
         return [
