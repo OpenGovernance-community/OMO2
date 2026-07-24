@@ -87,6 +87,9 @@ foreach ($children as $child) {
     }
 
     $priority = Project::normalizeLevel($child->get('priority'));
+    $status = Project::normalizeStatus($child->get('status'));
+    $statusCatalog = Project::getStatusCatalog();
+    $statusLabel = (string)($statusCatalog[$status]['label'] ?? $status);
     $summary = omoProjectsBuildStatusBar($child, $childrenByParent, $statusSummaryMemo, true);
     $renderedChildren++;
     if ($renderForProjectEmbed) {
@@ -116,14 +119,22 @@ foreach ($children as $child) {
         continue;
     }
 
-    $html .= '<li class="section-project-reference__child">';
+    $hasDirectChildren = !empty($childrenByParent[$childId]);
+    $html .= '<li class="section-project-reference__child" data-omo-project-reference data-project-id="' . $childId . '">';
     $html .= '<div class="section-project-reference__child-head">';
+    $html .= '<span class="section-project-reference__status-dot section-project-reference__status-dot--' . omoApiEscape($status) . '"'
+        . ' role="img" aria-label="' . omoApiEscape($statusLabel) . '" title="' . omoApiEscape($statusLabel) . '"></span>';
     $html .= '<a class="section-project-reference__child-title" href="#projects-d' . $childId . '">' . omoApiEscape($title) . '</a>';
     if ($priority !== null) {
-        $html .= '<span class="section-project-reference__priority section-project-reference__priority--p' . (int)$priority . '">P' . (int)$priority . '</span>';
+        $html .= '<span class="generic-project-priority generic-project-priority--p' . (int)$priority . '">P' . (int)$priority . '</span>';
     }
     $html .= '</div>';
-    $html .= omoProjectsRenderStatusBar($summary, 'section-project-reference__status-bar');
+    if ($hasDirectChildren) {
+        $html .= '<button type="button" class="section-project-reference__status-toggle" data-omo-project-reference-toggle aria-expanded="false" aria-label="Afficher les sous-projets de ' . omoApiEscape($title) . '">';
+        $html .= omoProjectsRenderStatusBar($summary, 'section-project-reference__status-bar');
+        $html .= '</button>';
+        $html .= '<div class="section-project-reference__children" data-omo-project-reference-children hidden></div>';
+    }
     $html .= '</li>';
 }
 $html .= '</' . $listTag . '>';

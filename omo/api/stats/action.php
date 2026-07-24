@@ -142,6 +142,45 @@ function omoStatsActionParseReferencePoints($referenceType, $rawPoints)
     return $points;
 }
 
+function omoStatsActionParseIndicatorReferencePoints($referenceType, $rawPoints, $rawCeilingValue)
+{
+    $referenceType = StatIndicator::normalizeReferenceType($referenceType);
+    if ($referenceType !== StatIndicator::REFERENCE_CEILING) {
+        return omoStatsActionParseReferencePoints($referenceType, $rawPoints);
+    }
+
+    $ceilingValue = omoStatsActionParseDecimal($rawCeilingValue);
+    if ($ceilingValue === null) {
+        throw new \InvalidArgumentException(omoStatsT('stats.error.ceiling_value'));
+    }
+
+    return [[
+        'position_percent' => 0.0,
+        'value' => $ceilingValue,
+        'point_at' => null,
+    ]];
+}
+
+function omoStatsActionParseGroupReferencePoints($referenceType, $rawPoints, $rawCeilingValue)
+{
+    return omoStatsActionParseIndicatorReferencePoints($referenceType, $rawPoints, $rawCeilingValue);
+}
+
+function omoStatsActionParseChartMinimumValue($rawValue)
+{
+    $rawValue = trim((string)$rawValue);
+    if ($rawValue === '') {
+        return null;
+    }
+
+    $value = omoStatsActionParseDecimal($rawValue);
+    if ($value === null) {
+        throw new \InvalidArgumentException(omoStatsT('stats.error.chart_min_value'));
+    }
+
+    return $value;
+}
+
 if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
     omoStatsActionRespond(false, omoStatsT('stats.error.method'), [], 405);
 }
@@ -194,7 +233,12 @@ if ($action === 'save_indicator') {
         omoStatsActionRespond(false, omoStatsT('stats.error.schedule'), [], 422);
     }
     try {
-        $referencePoints = omoStatsActionParseReferencePoints($referenceType, $_POST['reference_points'] ?? []);
+        $chartMinValue = omoStatsActionParseChartMinimumValue($_POST['chart_min_value'] ?? null);
+        $referencePoints = omoStatsActionParseIndicatorReferencePoints(
+            $referenceType,
+            $_POST['reference_points'] ?? [],
+            $_POST['ceiling_value'] ?? null
+        );
     } catch (\InvalidArgumentException $exception) {
         omoStatsActionRespond(false, $exception->getMessage(), [], 422);
     }
@@ -213,6 +257,7 @@ if ($action === 'save_indicator') {
     $indicator->set('reference_type', $referenceType);
     $indicator->set('measurement_frequency', $measurementFrequency);
     $indicator->set('measurement_schedule', $measurementSchedule);
+    $indicator->set('chart_min_value', $chartMinValue);
 
     $pdo = \dbObject\DbObject::getPdo();
     $startedTransaction = false;
@@ -441,7 +486,12 @@ if ($action === 'update_group') {
     }
     $referenceType = StatIndicator::normalizeReferenceType($_POST['reference_type'] ?? StatIndicator::REFERENCE_NONE);
     try {
-        $referencePoints = omoStatsActionParseReferencePoints($referenceType, $_POST['reference_points'] ?? []);
+        $chartMinValue = omoStatsActionParseChartMinimumValue($_POST['chart_min_value'] ?? null);
+        $referencePoints = omoStatsActionParseGroupReferencePoints(
+            $referenceType,
+            $_POST['reference_points'] ?? [],
+            $_POST['ceiling_value'] ?? null
+        );
     } catch (\InvalidArgumentException $exception) {
         omoStatsActionRespond(false, $exception->getMessage(), [], 422);
     }
@@ -456,6 +506,7 @@ if ($action === 'update_group') {
         $group->set('name', mb_substr($name, 0, 190, 'UTF-8'));
         $group->set('display_mode', StatIndicatorGroup::normalizeDisplayMode($_POST['display_mode'] ?? null));
         $group->set('reference_type', $referenceType);
+        $group->set('chart_min_value', $chartMinValue);
         $groupResult = $group->save();
         if (!is_array($groupResult) || empty($groupResult['status'])) {
             throw new \RuntimeException(omoStatsT('stats.error.save'));
@@ -543,7 +594,12 @@ if ($action === 'create_group') {
     }
     $referenceType = StatIndicator::normalizeReferenceType($_POST['reference_type'] ?? StatIndicator::REFERENCE_NONE);
     try {
-        $referencePoints = omoStatsActionParseReferencePoints($referenceType, $_POST['reference_points'] ?? []);
+        $chartMinValue = omoStatsActionParseChartMinimumValue($_POST['chart_min_value'] ?? null);
+        $referencePoints = omoStatsActionParseGroupReferencePoints(
+            $referenceType,
+            $_POST['reference_points'] ?? [],
+            $_POST['ceiling_value'] ?? null
+        );
     } catch (\InvalidArgumentException $exception) {
         omoStatsActionRespond(false, $exception->getMessage(), [], 422);
     }
@@ -564,6 +620,7 @@ if ($action === 'create_group') {
         $group->set('name', mb_substr($name, 0, 190, 'UTF-8'));
         $group->set('display_mode', StatIndicatorGroup::normalizeDisplayMode($_POST['display_mode'] ?? null));
         $group->set('reference_type', $referenceType);
+        $group->set('chart_min_value', $chartMinValue);
         $group->set('active', 1);
         $groupResult = $group->save();
         if (!is_array($groupResult) || empty($groupResult['status']) || (int)$group->getId() <= 0) {

@@ -451,6 +451,21 @@ padding:15px;
   max-width: 100%;
 }
 
+.project-presentation-video {
+  width: min(960px, 100%);
+  aspect-ratio: 16 / 9;
+  margin: 1.5rem auto 2rem;
+  background: #000;
+}
+
+.project-presentation-video iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 12px;
+}
+
 /* texte flexible sur 2 lignes max */
 .cta-text {
   display: -webkit-box;
@@ -557,7 +572,9 @@ padding:15px;
   </span>
   <img src="/img/down-arrow.png" alt="" class="arrow">
 </a>
-<a name='content' id='content'></a>
+<div class="project-presentation-video" id="content">
+  <iframe src="https://player.vimeo.com/video/1200446731" title="Project presentation video" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>
+</div>
 <div class="contentPres">
 
   <section class="bloc">

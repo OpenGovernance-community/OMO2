@@ -56,6 +56,11 @@
 			return "datecreation DESC, id DESC";
 		}
 
+		public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+		{
+			return self::execute("UPDATE history SET IDuser = :ghost_user_id, content = REPLACE(content, :source_token, :ghost_token) WHERE IDorganization = :organization_id AND IDuser = :user_id", array('ghost_user_id' => (int)$ghostUserId, 'source_token' => '[user|' . (int)$userId . '|', 'ghost_token' => '[user|' . (int)$ghostUserId . '|', 'organization_id' => (int)$organizationId, 'user_id' => (int)$userId));
+		}
+
 		public static function sanitizeReferenceLabel($label)
 		{
 			$label = trim((string)$label);

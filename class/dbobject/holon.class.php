@@ -252,6 +252,13 @@
 			return count($this->getMandatoryTemplateAncestorIds()) > 0;
 		}
 
+		public function isMandatoryVisibleTemplateOriginal()
+		{
+			return (bool)$this->get('visible')
+				&& (bool)$this->get('mandatory')
+				&& trim((string)$this->get('templatename')) !== '';
+		}
+
 		// Verifie nom verrouille
 		public function isNameLockedByTemplate()
 		{
@@ -363,12 +370,17 @@
 				}
 
 				$childTemplateId = (int)$child->get('IDholon_template');
-				if ($childTemplateId <= 0) {
+				$isVisibleTemplateOriginal = (bool)$child->get('visible')
+					&& trim((string)$child->get('templatename')) !== '';
+				if ($childTemplateId <= 0 && !$isVisibleTemplateOriginal) {
 					continue;
 				}
 
 				if (count($mandatoryTemplateIdMap) > 0) {
 					$childLineageIds = $child->getTemplateLineageIds();
+					if ($isVisibleTemplateOriginal) {
+						$childLineageIds[] = (int)$child->getId();
+					}
 					$matchesMandatoryConstraints = true;
 
 					foreach ($mandatoryTemplateIdMap as $mandatoryTemplateId => $unused) {
@@ -381,7 +393,7 @@
 					if (!$matchesMandatoryConstraints) {
 						continue;
 					}
-				} elseif ($childTemplateId !== $templateId) {
+				} elseif ($childTemplateId !== $templateId && (int)$child->getId() !== $templateId) {
 					continue;
 				}
 
@@ -404,6 +416,10 @@
 			}
 
 			if ($this->isLastMandatoryTemplateInstance()) {
+				return false;
+			}
+
+			if ($this->isMandatoryVisibleTemplateOriginal()) {
 				return false;
 			}
 

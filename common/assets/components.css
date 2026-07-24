@@ -8,7 +8,31 @@
     --project-status-blocked: #c47777;
     --project-status-review: #8d78a8;
     --project-status-done: #6b9b7f;
+    --project-priority-p1: #d95d68;
+    --project-priority-p2: #e2855d;
+    --project-priority-p3: #bd9250;
+    --project-priority-p4: #6e9a80;
+    --project-priority-p5: #778aa3;
 }
+
+.generic-project-priority {
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 750;
+    line-height: 1;
+}
+
+.generic-project-priority--p1 { background: var(--project-priority-p1); }
+.generic-project-priority--p2 { background: var(--project-priority-p2); }
+.generic-project-priority--p3 { background: var(--project-priority-p3); }
+.generic-project-priority--p4 { background: var(--project-priority-p4); }
+.generic-project-priority--p5 { background: var(--project-priority-p5); }
 
 .generic-section,
 .omo-card {

@@ -32,6 +32,7 @@ class Project extends DbObject
         return [
             [['IDorganization', 'title'], 'required'],
             [['id', 'priority', 'importance'], 'integer'],
+            [['calculated_importance'], 'float'],
             [['IDorganization', 'IDholon', 'IDuser', 'IDproject_parent', 'IDdocument_journal', 'IDproject_template'], 'fk'],
             [['title', 'status', 'capture_mode', 'project_size', 'project_kind'], 'string'],
             [['description'], 'html'],
@@ -59,7 +60,8 @@ class Project extends DbObject
             'planned_start_date' => 'Debut planifie',
             'planned_end_date' => 'Fin planifiee',
             'priority' => 'Priorite',
-            'importance' => 'Importance',
+            'importance' => 'Importance strategique',
+            'calculated_importance' => 'Importance strategique calculee',
             'capture_mode' => 'Mode de capture Telegram',
             'project_size' => 'Taille du projet',
             'active' => 'Actif',
@@ -76,7 +78,8 @@ class Project extends DbObject
             'planned_start_date' => 'Date a laquelle le projet devrait commencer.',
             'planned_end_date' => 'Date a laquelle le projet devrait etre termine.',
             'priority' => 'Niveau a considerer tant que les dates ne sont pas renseignees.',
-            'importance' => 'Niveau a considerer quand le temps disponible manque.',
+            'importance' => 'Niveau strategique a considerer quand le temps disponible manque.',
+            'calculated_importance' => 'Score calcule automatiquement a partir de l importance strategique declaree, de la chaine de projets et de la position holarchique.',
             'capture_mode' => 'Indique si les captures Telegram doivent creer plusieurs documents ou alimenter un journal unique.',
             'project_size' => 'Taille relative du projet, utilisee pour ponderer sa place dans les barres de synthese.',
             'project_kind' => 'Distingue un projet operationnel d un projet utilise comme modele de checklist.',
@@ -104,13 +107,18 @@ class Project extends DbObject
 
         $priorityValues = [['', 'Non definie']];
         for ($level = 1; $level <= 5; $level++) {
-            $priorityValues[] = [(string)$level, (string)$level . '/5'];
+            $priorityValues[] = [(string)$level, 'P' . (string)$level];
+        }
+
+        $importanceValues = [['', 'Non definie']];
+        for ($level = 1; $level <= 5; $level++) {
+            $importanceValues[] = [(string)$level, (string)$level . '/5'];
         }
 
         return [
             'status' => $statusValues,
             'priority' => $priorityValues,
-            'importance' => $priorityValues,
+            'importance' => $importanceValues,
             'capture_mode' => [
                 [self::CAPTURE_MULTIPLE_DOCUMENTS, 'Documents multiples'],
                 [self::CAPTURE_SINGLE_JOURNAL, 'Journal unique'],
@@ -132,6 +140,14 @@ class Project extends DbObject
     public static function getOrder()
     {
         return 'created_at DESC, id DESC';
+    }
+
+    public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+    {
+        return self::execute(
+            "UPDATE project SET IDuser = CASE WHEN active = 1 AND COALESCE(status, '') != :done_status THEN NULL ELSE :ghost_user_id END WHERE IDorganization = :organization_id AND IDuser = :user_id",
+            array('done_status' => self::STATUS_DONE, 'ghost_user_id' => (int)$ghostUserId, 'organization_id' => (int)$organizationId, 'user_id' => (int)$userId)
+        );
     }
 
     public static function statuses()
@@ -375,6 +391,13 @@ class Project extends DbObject
 
     public function save()
     {
+        $storedInputs = (int)$this->getId() > 0 ? self::getStoredImportanceInputs((int)$this->getId()) : null;
+        if (is_array($storedInputs) && array_key_exists('calculated_importance', $storedInputs)) {
+            // This field is server-owned. A value posted by a client must never replace it.
+            $this->set('calculated_importance', (float)$storedInputs['calculated_importance']);
+        } elseif ((int)$this->getId() <= 0) {
+            $this->set('calculated_importance', 0.0);
+        }
         $this->set('project_kind', self::normalizeKind($this->get('project_kind')));
         $this->set('status', self::normalizeStatus($this->get('status')));
         $this->set('capture_mode', self::normalizeCaptureMode($this->get('capture_mode')));
@@ -382,13 +405,49 @@ class Project extends DbObject
         $this->set('priority', self::normalizeLevel($this->get('priority')));
         $this->set('importance', self::normalizeLevel($this->get('importance')));
 
+        $parentId = (int)$this->get('IDproject_parent');
+        if ($parentId > 0) {
+            $parent = new self();
+            if (!$parent->load($parentId) || !$this->canUseAsParent($parent)) {
+                return ['status' => false, 'text' => 'Invalid project parent.'];
+            }
+        }
+
         $now = new \DateTime();
         if ((int)$this->getId() <= 0 && !($this->get('created_at') instanceof \DateTimeInterface)) {
             $this->set('created_at', $now);
         }
         $this->set('updated_at', $now);
 
-        return parent::save();
+        $result = parent::save();
+        if (!is_array($result) || empty($result['status']) || (int)$this->getId() <= 0) {
+            return $result;
+        }
+
+        $requiresRecalculation = !is_array($storedInputs)
+            || (int)($storedInputs['importance'] ?? 0) !== (int)$this->get('importance')
+            || (int)($storedInputs['IDproject_parent'] ?? 0) !== (int)$this->get('IDproject_parent')
+            || (int)($storedInputs['IDholon'] ?? 0) !== (int)$this->get('IDholon');
+        if ($requiresRecalculation && self::normalizeKind($this->get('project_kind')) === self::KIND_STANDARD) {
+            $scores = ProjectImportanceCalculator::recalculateBranch(
+                (int)$this->get('IDorganization'),
+                (int)$this->getId()
+            );
+            if (array_key_exists((int)$this->getId(), $scores)) {
+                $this->set('calculated_importance', (float)$scores[(int)$this->getId()]);
+            }
+        }
+
+        return $result;
+    }
+
+    private static function getStoredImportanceInputs($projectId): ?array
+    {
+        $row = self::fetchRow(
+            'SELECT IDorganization, IDproject_parent, IDholon, importance, calculated_importance FROM project WHERE id = :id LIMIT 1',
+            ['id' => (int)$projectId]
+        );
+        return is_array($row) ? $row : null;
     }
 
     public static function createFromChecklistTemplate(Project $template, $parentProjectId, \DateTimeInterface $plannedStart, $titleOverride = null, $plannedEnd = null)
@@ -446,6 +505,26 @@ class Project extends DbObject
         return $user->load($userId) ? $user : null;
     }
 
+    public function getReviewMetadata()
+    {
+        $holon = $this->getHolon();
+        $responsible = $this->getResponsible();
+        $responsibleLabel = '';
+        if ($responsible instanceof User) {
+            $responsibleLabel = trim(trim((string)$responsible->get('firstname')) . ' ' . trim((string)$responsible->get('lastname')));
+            if ($responsibleLabel === '') {
+                $responsibleLabel = trim((string)$responsible->get('username'));
+            }
+            if ($responsibleLabel === '') {
+                $responsibleLabel = trim((string)$responsible->get('email'));
+            }
+        }
+        return [
+            'holonLabel' => $holon instanceof Holon ? trim((string)$holon->getDisplayName()) : '',
+            'responsibleLabel' => $responsibleLabel,
+        ];
+    }
+
     public function getParent()
     {
         $parentId = (int)$this->get('IDproject_parent');
@@ -493,6 +572,60 @@ class Project extends DbObject
         return $projects;
     }
 
+    public function completeAndArchiveActiveTree()
+    {
+        if ((int)$this->getId() <= 0 || (int)$this->get('active') !== 1) {
+            return ['status' => false, 'affectedCount' => 0, 'projectIds' => []];
+        }
+
+        $tree = [];
+        $visited = [];
+        $collect = function (Project $project) use (&$collect, &$tree, &$visited): void {
+            $projectId = (int)$project->getId();
+            if ($projectId <= 0 || isset($visited[$projectId])) {
+                return;
+            }
+            $visited[$projectId] = true;
+            foreach ($project->getChildren() as $child) {
+                if ($child instanceof Project) {
+                    $collect($child);
+                }
+            }
+            $tree[] = $project;
+        };
+        $collect($this);
+
+        $pdo = DbObject::getPdo();
+        $startedTransaction = false;
+        try {
+            if ($pdo instanceof \PDO && !$pdo->inTransaction()) {
+                $pdo->beginTransaction();
+                $startedTransaction = true;
+            }
+            foreach ($tree as $treeProject) {
+                $treeProject->set('status', self::STATUS_DONE);
+                $treeProject->set('active', 0);
+                $result = $treeProject->save();
+                if (!is_array($result) || empty($result['status'])) {
+                    throw new \RuntimeException('Unable to complete and archive project tree.');
+                }
+            }
+            if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
+                $pdo->commit();
+            }
+            return [
+                'status' => true,
+                'affectedCount' => count($tree),
+                'projectIds' => array_map(static fn (Project $treeProject): int => (int)$treeProject->getId(), $tree),
+            ];
+        } catch (\Throwable $exception) {
+            if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            return ['status' => false, 'affectedCount' => 0, 'projectIds' => []];
+        }
+    }
+
     public function getTemplateSource()
     {
         $templateId = (int)$this->get('IDproject_template');
@@ -535,6 +668,27 @@ class Project extends DbObject
         }
 
         return true;
+    }
+
+    public function delete()
+    {
+        $projectId = (int)$this->getId();
+        $organizationId = (int)$this->get('IDorganization');
+        $childIds = self::fetchAll(
+            'SELECT id FROM project WHERE IDproject_parent = :parent_id',
+            ['parent_id' => $projectId]
+        );
+        $result = parent::delete();
+        if (!$result || $organizationId <= 0 || !is_array($childIds)) {
+            return $result;
+        }
+        foreach ($childIds as $childRow) {
+            $childId = (int)($childRow['id'] ?? 0);
+            if ($childId > 0) {
+                ProjectImportanceCalculator::recalculateBranch($organizationId, $childId);
+            }
+        }
+        return $result;
     }
 }
 ?>

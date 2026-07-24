@@ -29,7 +29,7 @@ $projectScope = omoApiNormalizeContextScope($_GET['project_scope'] ?? 'contextua
 $projectView = strtolower(trim((string)($_GET['project_view'] ?? 'kanban')));
 $projectView = $projectView === 'list' ? 'list' : 'kanban';
 $projectListSort = strtolower(trim((string)($_GET['project_sort'] ?? 'planned')));
-$projectListSort = in_array($projectListSort, ['priority', 'holon'], true) ? $projectListSort : 'planned';
+$projectListSort = in_array($projectListSort, ['priority', 'importance', 'holon'], true) ? $projectListSort : 'planned';
 if ($projectListSort === 'holon' && !in_array($projectScope, ['children', 'descendants'], true)) {
     $projectListSort = 'planned';
 }
@@ -128,6 +128,7 @@ foreach ($projects as $project) {
             ? $project->get('planned_end_date')->format('Y-m-d')
             : '',
         'priority' => Project::normalizeLevel($project->get('priority')),
+        'calculatedImportance' => max(0.0, min(1.0, (float)$project->get('calculated_importance'))),
         'subprojectSummary' => $subprojectSummary,
         'projectSize' => $projectSize,
     ];
@@ -158,6 +159,7 @@ foreach ($projects as $project) {
             ? $project->get('planned_end_date')->format('Y-m-d')
             : '',
         'priority' => Project::normalizeLevel($project->get('priority')),
+        'calculatedImportance' => max(0.0, min(1.0, (float)$project->get('calculated_importance'))),
         'projectSize' => Project::normalizeSize($project->get('project_size')),
     ];
 }
@@ -177,16 +179,23 @@ $compareProjectItems = static function (array $left, array $right) use ($project
         return strcmp((string)$first['endSort'], (string)$second['endSort']);
     };
 
-    if ($projectListSort === 'priority') {
-        $leftPriority = $left['priority'] === null ? PHP_INT_MAX : (int)$left['priority'];
-        $rightPriority = $right['priority'] === null ? PHP_INT_MAX : (int)$right['priority'];
-        if ($leftPriority !== $rightPriority) {
-            return $leftPriority <=> $rightPriority;
+    if ($projectListSort === 'importance') {
+        $importanceComparison = (float)($right['calculatedImportance'] ?? 0.0) <=> (float)($left['calculatedImportance'] ?? 0.0);
+        if ($importanceComparison !== 0) {
+            return $importanceComparison;
         }
     } elseif ($projectListSort === 'holon') {
         $holonComparison = strcasecmp((string)$left['holonLabel'], (string)$right['holonLabel']);
         if ($holonComparison !== 0) {
             return $holonComparison;
+        }
+    }
+
+    if ($projectListSort === 'priority') {
+        $leftPriority = $left['priority'] === null ? PHP_INT_MAX : (int)$left['priority'];
+        $rightPriority = $right['priority'] === null ? PHP_INT_MAX : (int)$right['priority'];
+        if ($leftPriority !== $rightPriority) {
+            return $leftPriority <=> $rightPriority;
         }
     }
 
@@ -203,7 +212,12 @@ foreach ($projectsByStatus as &$columnItems) {
 unset($columnItems);
 
 $listProjectGroups = [];
-if ($projectListSort === 'priority') {
+if ($projectListSort === 'importance') {
+    $listProjectGroups['importance'] = [
+        'label' => omoProjectsT('projects.sort.importance'),
+        'items' => $listProjectItems,
+    ];
+} elseif ($projectListSort === 'priority') {
     foreach ([1, 2, 3, 4, 5] as $priority) {
         $listProjectGroups['priority-' . $priority] = [
             'label' => 'P' . $priority,
@@ -234,12 +248,14 @@ if ($projectListSort === 'priority') {
 } else {
     $today = new \DateTimeImmutable('today');
     $tomorrow = $today->modify('+1 day');
+    $afterTomorrow = $today->modify('+2 days');
     $nextWeekStart = $today->modify('monday next week');
     $nextWeekEnd = $nextWeekStart->modify('+6 days');
     $listProjectGroups = [
         'overdue' => ['label' => omoProjectsT('projects.list.planned.overdue'), 'items' => []],
-        'today' => ['label' => omoProjectsT('projects.list.planned.today'), 'items' => []],
+        'in-progress' => ['label' => omoProjectsT('projects.list.planned.in_progress'), 'items' => []],
         'tomorrow' => ['label' => omoProjectsT('projects.list.planned.tomorrow'), 'items' => []],
+        'after-tomorrow' => ['label' => omoProjectsT('projects.list.planned.after_tomorrow'), 'items' => []],
         'this-week' => ['label' => omoProjectsT('projects.list.planned.this_week'), 'items' => []],
         'next-week' => ['label' => omoProjectsT('projects.list.planned.next_week'), 'items' => []],
         'later' => ['label' => omoProjectsT('projects.list.planned.later'), 'items' => []],
@@ -247,24 +263,24 @@ if ($projectListSort === 'priority') {
     ];
 
     foreach ($listProjectItems as $item) {
-        $scheduledDate = $item['startSort'] !== '' ? $item['startSort'] : $item['endSort'];
-        if ($scheduledDate === '') {
+        $startDate = $item['startSort'] !== '' ? new \DateTimeImmutable($item['startSort']) : null;
+        $endDate = $item['endSort'] !== '' ? new \DateTimeImmutable($item['endSort']) : null;
+        if ($endDate instanceof \DateTimeImmutable && $endDate < $today) {
+            $groupKey = 'overdue';
+        } elseif ($startDate instanceof \DateTimeImmutable && $startDate <= $today) {
+            $groupKey = 'in-progress';
+        } elseif (!($startDate instanceof \DateTimeImmutable)) {
             $groupKey = 'none';
+        } elseif ($startDate == $tomorrow) {
+            $groupKey = 'tomorrow';
+        } elseif ($startDate == $afterTomorrow) {
+            $groupKey = 'after-tomorrow';
+        } elseif ($startDate < $nextWeekStart) {
+            $groupKey = 'this-week';
+        } elseif ($startDate <= $nextWeekEnd) {
+            $groupKey = 'next-week';
         } else {
-            $date = new \DateTimeImmutable($scheduledDate);
-            if ($date < $today) {
-                $groupKey = 'overdue';
-            } elseif ($date == $today) {
-                $groupKey = 'today';
-            } elseif ($date == $tomorrow) {
-                $groupKey = 'tomorrow';
-            } elseif ($date < $nextWeekStart) {
-                $groupKey = 'this-week';
-            } elseif ($date <= $nextWeekEnd) {
-                $groupKey = 'next-week';
-            } else {
-                $groupKey = 'later';
-            }
+            $groupKey = 'later';
         }
         $listProjectGroups[$groupKey]['items'][] = $item;
     }
@@ -307,10 +323,16 @@ $projectTexts = [
     'moveHint' => omoProjectsT('projects.move.hint'),
     'moveSubmit' => omoProjectsT('projects.move.submit'),
     'moveSelectRequired' => omoProjectsT('projects.move.select_required'),
+    'attachTitle' => omoProjectsT('projects.attach.title'),
+    'attachHint' => omoProjectsT('projects.attach.hint'),
+    'attachSearch' => omoProjectsT('projects.attach.search'),
+    'attachEmpty' => omoProjectsT('projects.attach.empty'),
+    'attachSubmit' => omoProjectsT('projects.attach.submit'),
+    'attachSelectRequired' => omoProjectsT('projects.attach.select_required'),
     'cancel' => omoProjectsT('projects.action.cancel'),
 ];
 ?>
-<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260722-project-status-colors">
+<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260724-subproject-actions">
 <div
     class="omo-projects omo-panel-view"
     id="omo-projects-root"
@@ -375,6 +397,7 @@ $projectTexts = [
                 <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoProjectsT('projects.sort.aria')) ?>">
                     <button type="button" class="omo-segmented__button<?= $projectListSort === 'planned' ? ' is-active' : '' ?>" data-omo-projects-sort="planned" aria-pressed="<?= $projectListSort === 'planned' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.sort.planned')) ?></button>
                     <button type="button" class="omo-segmented__button<?= $projectListSort === 'priority' ? ' is-active' : '' ?>" data-omo-projects-sort="priority" aria-pressed="<?= $projectListSort === 'priority' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.sort.priority')) ?></button>
+                    <button type="button" class="omo-segmented__button<?= $projectListSort === 'importance' ? ' is-active' : '' ?>" data-omo-projects-sort="importance" aria-pressed="<?= $projectListSort === 'importance' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.sort.importance')) ?></button>
                     <?php if ($canSortProjectsByHolon): ?>
                         <button type="button" class="omo-segmented__button<?= $projectListSort === 'holon' ? ' is-active' : '' ?>" data-omo-projects-sort="holon" aria-pressed="<?= $projectListSort === 'holon' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.sort.holon')) ?></button>
                     <?php endif; ?>
@@ -436,6 +459,7 @@ $projectTexts = [
                                         <span class="omo-project-card__context"><?= omoApiEscape($item['contextLabel']) ?></span>
                                         <span class="omo-project-card__topline-actions">
                                             <span class="omo-project-card__size" title="<?= omoApiEscape(omoProjectsT('projects.detail.size')) ?>"><?= omoApiEscape($projectSize) ?></span>
+                                            <?php if ($item['priority'] !== null): ?><span class="generic-project-priority generic-project-priority--p<?= (int)$item['priority'] ?>" title="<?= omoApiEscape(omoProjectsT('projects.detail.priority')) ?>">P<?= (int)$item['priority'] ?></span><?php endif; ?>
                                             <?php if ($canManageProject): ?>
                                                 <div class="generic-menu omo-project-card__menu" data-omo-project-menu>
                                                     <button type="button" class="generic-menu-toggle omo-project-card__menu-toggle" data-omo-project-menu-toggle aria-expanded="false" aria-label="<?= omoApiEscape($projectTitle) ?>">&#8942;</button>
@@ -495,13 +519,13 @@ $projectTexts = [
                                                     <span><?= omoApiEscape($item['responsibleLabel']) ?></span>
                                                     <span class="omo-project-status omo-project-status--<?= omoApiEscape($item['status']) ?>"><?= omoApiEscape(omoProjectsStatusLabel($item['status'])) ?></span>
                                                     <span class="omo-project-detail__subproject-size"><?= omoApiEscape($item['projectSize']) ?></span>
+                                                    <?php if ($item['priority'] !== null): ?><span class="generic-project-priority generic-project-priority--p<?= (int)$item['priority'] ?>" title="<?= omoApiEscape(omoProjectsT('projects.detail.priority')) ?>">P<?= (int)$item['priority'] ?></span><?php endif; ?>
                                                 </div>
                                             </div>
                                             <div class="omo-project-list-item__planning">
                                                 <?php if ($item['startDate'] !== '' || $item['endDate'] !== ''): ?>
                                                     <span><?= omoApiEscape($item['startDate'] !== '' ? $item['startDate'] : omoProjectsT('projects.detail.none')) ?> - <?= omoApiEscape($item['endDate'] !== '' ? $item['endDate'] : omoProjectsT('projects.detail.none')) ?></span>
                                                 <?php endif; ?>
-                                                <?php if ($item['priority'] !== null): ?><span>P<?= omoApiEscape((string)$item['priority']) ?></span><?php endif; ?>
                                             </div>
                                         </article>
                                     <?php endforeach; ?>
@@ -532,4 +556,4 @@ $projectTexts = [
     </div>
 </div>
 <script src="/common/drawer/subdrawer.js"></script>
-<script src="/omo/api/projects/projects.js?v=20260722-runtime-maintenance"></script>
+<script src="/omo/api/projects/projects.js?v=20260724-project-breadcrumb-collapse-visibility"></script>

@@ -36,6 +36,15 @@ class ProjectUser extends DbObject
         return 'datecreation ASC, id ASC';
     }
 
+    public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+    {
+        $params = array('organization_id' => (int)$organizationId, 'user_id' => (int)$userId);
+        if (!self::execute("DELETE pu FROM project_user pu INNER JOIN project p ON p.id = pu.IDproject WHERE p.IDorganization = :organization_id AND pu.IDuser = :user_id AND p.active = 1 AND COALESCE(p.status, '') != 'done'", $params)) {
+            return false;
+        }
+        return self::execute("UPDATE project_user pu INNER JOIN project p ON p.id = pu.IDproject SET pu.IDuser = :ghost_user_id WHERE p.IDorganization = :organization_id AND pu.IDuser = :user_id", array('ghost_user_id' => (int)$ghostUserId, 'organization_id' => (int)$organizationId, 'user_id' => (int)$userId));
+    }
+
     public function save()
     {
         if ((int)$this->getId() <= 0 && !($this->get('datecreation') instanceof \DateTimeInterface)) {
