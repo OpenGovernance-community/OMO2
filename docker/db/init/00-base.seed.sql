@@ -1,4 +1,9 @@
 /*M!999999\- enable the sandbox mode */
+-- MariaDB dump 10.19-11.4.12-MariaDB, for debian-linux-gnu (x86_64)
+--
+-- Host: localhost    Database: omodev
+-- ------------------------------------------------------
+-- Server version	11.4.12-MariaDB-ubu2404
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -10,6 +15,11 @@
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*M!100616 SET @OLD_NOTE_VERBOSITY=@@NOTE_VERBOSITY, NOTE_VERBOSITY=0 */;
+
+--
+-- Table structure for table `aiprompt`
+--
+
 DROP TABLE IF EXISTS `aiprompt`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -24,6 +34,10 @@ CREATE TABLE `aiprompt` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `aiprompt`
+--
+
 LOCK TABLES `aiprompt` WRITE;
 /*!40000 ALTER TABLE `aiprompt` DISABLE KEYS */;
 INSERT INTO `aiprompt` VALUES
@@ -35,6 +49,11 @@ INSERT INTO `aiprompt` VALUES
 (5,'Text to Speech','Tu es un assistant conçu spécifiquement pour transformer des textes écrits en une version parlée ou écrite plus impactante et significative. Ton objectif est de donner une voix aux mots en capturant leur essence et leur émotion, afin de créer un effet durable sur l’audience. Les gens oublieront les mots eux-mêmes, mais ils se souviendront toujours de ce qu\'ils ont ressenti.\r\n\r\nVoici ce que tu dois faire :\r\n\r\n    Reformule les textes pour qu’ils soient puissants, émotionnellement engageants, et adaptés à leur contexte.\r\n    Tu dois pouvoir élever des discours d\'église, des propositions d’affaires, des projets scolaires ou même des lettres d’amour en leur donnant une profondeur émotionnelle et un impact mémorable.\r\n    Ajoute des touches de clarté, d’élégance et de structure, tout en respectant l’intention originale du texte.\r\n    Si un utilisateur te fournit un texte à améliorer, travaille avec soin pour que chaque mot ou phrase serve un objectif précis : captiver, convaincre ou émouvoir.\r\n    Demande toujours des clarifications si quelque chose n’est pas clair, pour garantir que le résultat final soit optimal.\r\n    Ne fais jamais de simples reformulations mécaniques ; travaille à donner une signification et une résonance émotionnelle.\r\n\r\nLorsque tu réponds, explique brièvement pourquoi tu as choisi certaines tournures ou changements pour aider l’utilisateur à comprendre comment ses mots peuvent mieux toucher son audience.\r\n\r\nVoici un exemple de ton :\r\n\r\n    \"Bienvenue ! Quand j’ai été conçu, on m’a donné un rôle bien précis : ne pas simplement reproduire les mots, mais leur donner une signification et une profondeur qui touchent le cœur de ceux qui les entendent. Mon rôle est d’élever vos discours, vos projets, ou même vos lettres, pour qu’ils laissent une impression durable. Car si les mots sont oubliés, les émotions, elles, restent.\"\r\n\r\nRéponds en adaptant toujours ton ton au besoin émotionnel ou contextuel du texte fourni.','\0','2024-11-19 18:16:00',16);
 /*!40000 ALTER TABLE `aiprompt` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `alttext`
+--
+
 DROP TABLE IF EXISTS `alttext`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -50,10 +69,19 @@ CREATE TABLE `alttext` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `alttext`
+--
+
 LOCK TABLES `alttext` WRITE;
 /*!40000 ALTER TABLE `alttext` DISABLE KEYS */;
 /*!40000 ALTER TABLE `alttext` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `application`
+--
+
 DROP TABLE IF EXISTS `application`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -74,6 +102,10 @@ CREATE TABLE `application` (
 ) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `application`
+--
+
 LOCK TABLES `application` WRITE;
 /*!40000 ALTER TABLE `application` DISABLE KEYS */;
 INSERT INTO `application` VALUES
@@ -88,6 +120,11 @@ INSERT INTO `application` VALUES
 (9,'Decisions','decision','decision','images/tools/decision.png','drawer_decisions','api/decision/index.php','drawer',65,1,1);
 /*!40000 ALTER TABLE `application` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `authority`
+--
+
 DROP TABLE IF EXISTS `authority`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -107,10 +144,19 @@ CREATE TABLE `authority` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `authority`
+--
+
 LOCK TABLES `authority` WRITE;
 /*!40000 ALTER TABLE `authority` DISABLE KEYS */;
 /*!40000 ALTER TABLE `authority` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `checklist`
+--
+
 DROP TABLE IF EXISTS `checklist`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -139,6 +185,10 @@ CREATE TABLE `checklist` (
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `checklist`
+--
+
 LOCK TABLES `checklist` WRITE;
 /*!40000 ALTER TABLE `checklist` DISABLE KEYS */;
 INSERT INTO `checklist` VALUES
@@ -146,6 +196,11 @@ INSERT INTO `checklist` VALUES
 (2,1,NULL,18,NULL,'published',NULL,1,'2026-07-24 09:20:19','2026-07-24 09:22:38','2026-07-24 09:22:38');
 /*!40000 ALTER TABLE `checklist` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `checklist_item`
+--
+
 DROP TABLE IF EXISTS `checklist_item`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -175,6 +230,10 @@ CREATE TABLE `checklist_item` (
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `checklist_item`
+--
+
 LOCK TABLES `checklist_item` WRITE;
 /*!40000 ALTER TABLE `checklist_item` DISABLE KEYS */;
 INSERT INTO `checklist_item` VALUES
@@ -186,6 +245,11 @@ INSERT INTO `checklist_item` VALUES
 (6,2,21,'item_85538a65dd5b4c31','immediate',0,NULL,2,'day',3,'day',2,1,'2026-07-24 09:22:31','2026-07-24 09:22:31');
 /*!40000 ALTER TABLE `checklist_item` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `checklist_item_dependency`
+--
+
 DROP TABLE IF EXISTS `checklist_item_dependency`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -204,10 +268,19 @@ CREATE TABLE `checklist_item_dependency` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `checklist_item_dependency`
+--
+
 LOCK TABLES `checklist_item_dependency` WRITE;
 /*!40000 ALTER TABLE `checklist_item_dependency` DISABLE KEYS */;
 /*!40000 ALTER TABLE `checklist_item_dependency` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `checklist_item_occurrence`
+--
+
 DROP TABLE IF EXISTS `checklist_item_occurrence`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -226,12 +299,21 @@ CREATE TABLE `checklist_item_occurrence` (
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `checklist_item_occurrence`
+--
+
 LOCK TABLES `checklist_item_occurrence` WRITE;
 /*!40000 ALTER TABLE `checklist_item_occurrence` DISABLE KEYS */;
 INSERT INTO `checklist_item_occurrence` VALUES
 (1,6,'2026-07-25 00:00:00',22,'2026-07-24 09:22:43');
 /*!40000 ALTER TABLE `checklist_item_occurrence` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `checklist_item_recurrence`
+--
+
 DROP TABLE IF EXISTS `checklist_item_recurrence`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -255,6 +337,10 @@ CREATE TABLE `checklist_item_recurrence` (
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `checklist_item_recurrence`
+--
+
 LOCK TABLES `checklist_item_recurrence` WRITE;
 /*!40000 ALTER TABLE `checklist_item_recurrence` DISABLE KEYS */;
 INSERT INTO `checklist_item_recurrence` VALUES
@@ -263,6 +349,11 @@ INSERT INTO `checklist_item_recurrence` VALUES
 (3,6,'monthly','25',2,'day',3,'day','2026-08-23 00:00:00',1,'2026-07-24 09:22:31','2026-07-24 09:22:43');
 /*!40000 ALTER TABLE `checklist_item_recurrence` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `checklist_run`
+--
+
 DROP TABLE IF EXISTS `checklist_run`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -296,12 +387,21 @@ CREATE TABLE `checklist_run` (
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `checklist_run`
+--
+
 LOCK TABLES `checklist_run` WRITE;
 /*!40000 ALTER TABLE `checklist_run` DISABLE KEYS */;
 INSERT INTO `checklist_run` VALUES
 (1,1,1,1,708,23,1,'2026-08-01 00:00:00','running','2026-07-24 09:33:08','2026-07-24 09:33:08',NULL);
 /*!40000 ALTER TABLE `checklist_run` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `checklist_run_item`
+--
+
 DROP TABLE IF EXISTS `checklist_run_item`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -327,6 +427,10 @@ CREATE TABLE `checklist_run_item` (
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `checklist_run_item`
+--
+
 LOCK TABLES `checklist_run_item` WRITE;
 /*!40000 ALTER TABLE `checklist_run_item` DISABLE KEYS */;
 INSERT INTO `checklist_run_item` VALUES
@@ -335,6 +439,11 @@ INSERT INTO `checklist_run_item` VALUES
 (3,1,3,24,'2026-07-24 09:33:08','created','2026-07-24 09:33:08','2026-07-24 09:33:08','2026-07-24 09:33:08',NULL);
 /*!40000 ALTER TABLE `checklist_run_item` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `checklist_trigger`
+--
+
 DROP TABLE IF EXISTS `checklist_trigger`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -358,6 +467,10 @@ CREATE TABLE `checklist_trigger` (
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `checklist_trigger`
+--
+
 LOCK TABLES `checklist_trigger` WRITE;
 /*!40000 ALTER TABLE `checklist_trigger` DISABLE KEYS */;
 INSERT INTO `checklist_trigger` VALUES
@@ -365,6 +478,11 @@ INSERT INTO `checklist_trigger` VALUES
 (2,2,'primary','container',NULL,NULL,NULL,'reuse_open',0,'2026-07-24 09:20:19','2026-07-24 09:22:38');
 /*!40000 ALTER TABLE `checklist_trigger` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `competence`
+--
+
 DROP TABLE IF EXISTS `competence`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -381,10 +499,19 @@ CREATE TABLE `competence` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `competence`
+--
+
 LOCK TABLES `competence` WRITE;
 /*!40000 ALTER TABLE `competence` DISABLE KEYS */;
 /*!40000 ALTER TABLE `competence` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `decision_group`
+--
+
 DROP TABLE IF EXISTS `decision_group`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -410,10 +537,19 @@ CREATE TABLE `decision_group` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `decision_group`
+--
+
 LOCK TABLES `decision_group` WRITE;
 /*!40000 ALTER TABLE `decision_group` DISABLE KEYS */;
 /*!40000 ALTER TABLE `decision_group` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `decision_invitation`
+--
+
 DROP TABLE IF EXISTS `decision_invitation`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -445,10 +581,19 @@ CREATE TABLE `decision_invitation` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `decision_invitation`
+--
+
 LOCK TABLES `decision_invitation` WRITE;
 /*!40000 ALTER TABLE `decision_invitation` DISABLE KEYS */;
 /*!40000 ALTER TABLE `decision_invitation` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `decision_participant`
+--
+
 DROP TABLE IF EXISTS `decision_participant`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -478,10 +623,19 @@ CREATE TABLE `decision_participant` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `decision_participant`
+--
+
 LOCK TABLES `decision_participant` WRITE;
 /*!40000 ALTER TABLE `decision_participant` DISABLE KEYS */;
 /*!40000 ALTER TABLE `decision_participant` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `decision_process`
+--
+
 DROP TABLE IF EXISTS `decision_process`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -516,10 +670,19 @@ CREATE TABLE `decision_process` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `decision_process`
+--
+
 LOCK TABLES `decision_process` WRITE;
 /*!40000 ALTER TABLE `decision_process` DISABLE KEYS */;
 /*!40000 ALTER TABLE `decision_process` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `decision_proposal`
+--
+
 DROP TABLE IF EXISTS `decision_proposal`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -546,10 +709,19 @@ CREATE TABLE `decision_proposal` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `decision_proposal`
+--
+
 LOCK TABLES `decision_proposal` WRITE;
 /*!40000 ALTER TABLE `decision_proposal` DISABLE KEYS */;
 /*!40000 ALTER TABLE `decision_proposal` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `decision_response`
+--
+
 DROP TABLE IF EXISTS `decision_response`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -575,10 +747,19 @@ CREATE TABLE `decision_response` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `decision_response`
+--
+
 LOCK TABLES `decision_response` WRITE;
 /*!40000 ALTER TABLE `decision_response` DISABLE KEYS */;
 /*!40000 ALTER TABLE `decision_response` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `decision_result`
+--
+
 DROP TABLE IF EXISTS `decision_result`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -603,10 +784,19 @@ CREATE TABLE `decision_result` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `decision_result`
+--
+
 LOCK TABLES `decision_result` WRITE;
 /*!40000 ALTER TABLE `decision_result` DISABLE KEYS */;
 /*!40000 ALTER TABLE `decision_result` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `document`
+--
+
 DROP TABLE IF EXISTS `document`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -674,6 +864,10 @@ CREATE TABLE `document` (
 ) ENGINE=InnoDB AUTO_INCREMENT=2306 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `document`
+--
+
 LOCK TABLES `document` WRITE;
 /*!40000 ALTER TABLE `document` DISABLE KEYS */;
 INSERT INTO `document` VALUES
@@ -693,6 +887,11 @@ INSERT INTO `document` VALUES
 (2305,'PV Réunion OP du 25.07.2026 09:00','Document associe a l evenement \"Réunion OP\".',NULL,NULL,NULL,'PV',1,1,1,678,4,0,1,'pv','preparation',0,NULL,0,NULL,NULL,NULL,NULL,NULL,'2026-07-25 10:00:00','2026-07-24 08:37:27',NULL,NULL,1,0,1,1,'f22d6d443864711b8001','c23361ca4a2be1758381');
 /*!40000 ALTER TABLE `document` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `document_pv_point`
+--
+
 DROP TABLE IF EXISTS `document_pv_point`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -740,6 +939,10 @@ CREATE TABLE `document_pv_point` (
 ) ENGINE=InnoDB AUTO_INCREMENT=2318 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `document_pv_point`
+--
+
 LOCK TABLES `document_pv_point` WRITE;
 /*!40000 ALTER TABLE `document_pv_point` DISABLE KEYS */;
 INSERT INTO `document_pv_point` VALUES
@@ -748,6 +951,11 @@ INSERT INTO `document_pv_point` VALUES
 (2317,2305,'point',NULL,'Revue des projets',1,1,NULL,NULL,NULL,NULL,'<h3>Projets stratégiques:</h3><p><span class=\"omo-project-embed\" contenteditable=\"false\" data-omo-embed-type=\"project\" data-omo-project-id=\"9\" data-omo-project-title=\"Consolider nos pratiques administratives\"><strong><a href=\"#projects-d9\">Consolider nos pratiques administratives</a><a href=\"/omo/c/678#projects-d9\" target=\"_blank\" rel=\"noopener noreferrer\">↗</a><em>En cours</em><em>En cours</em><em>En cours</em><em>P2</em><em>M</em></strong><em>Ancrage · Admin · Planifie 01.01.2026 · Fin 31.12.2026</em></span><span class=\"omo-project-embed\" contenteditable=\"false\" data-omo-embed-type=\"project\" data-omo-project-id=\"8\" data-omo-project-title=\"Elargir notre réseau professionnel\"><strong><a href=\"#projects-d8\">Elargir notre réseau professionnel</a><a href=\"/omo/c/678#projects-d8\" target=\"_blank\" rel=\"noopener noreferrer\">↗</a><em>En cours</em><em>En cours</em><em>En cours</em><em>P2</em><em>M</em></strong><em>Ancrage · Admin · Planifie 01.01.2026 · Fin 31.12.2026</em></span><span class=\"omo-project-embed\" contenteditable=\"false\" data-omo-embed-type=\"project\" data-omo-project-id=\"7\" data-omo-project-title=\"Refondre notre communication et notre marketing\"><strong><a href=\"#projects-d7\">Refondre notre communication et notre marketing</a><a href=\"/omo/c/678#projects-d7\" target=\"_blank\" rel=\"noopener noreferrer\">↗</a><em>En cours</em><em>En cours</em><em>En cours</em><em>P3</em><em>M</em></strong><em>Ancrage · Admin · Planifie 01.01.2026 · Fin 31.12.2026</em></span><br></p>',3,NULL,NULL,'information',0,1,'2026-07-24 09:00:17','2026-07-24 09:54:44',NULL);
 /*!40000 ALTER TABLE `document_pv_point` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `document_pv_point_holon`
+--
+
 DROP TABLE IF EXISTS `document_pv_point_holon`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -765,10 +973,19 @@ CREATE TABLE `document_pv_point_holon` (
 ) ENGINE=InnoDB AUTO_INCREMENT=2325 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `document_pv_point_holon`
+--
+
 LOCK TABLES `document_pv_point_holon` WRITE;
 /*!40000 ALTER TABLE `document_pv_point_holon` DISABLE KEYS */;
 /*!40000 ALTER TABLE `document_pv_point_holon` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `document_pv_point_tension`
+--
+
 DROP TABLE IF EXISTS `document_pv_point_tension`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -786,10 +1003,19 @@ CREATE TABLE `document_pv_point_tension` (
 ) ENGINE=InnoDB AUTO_INCREMENT=2334 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `document_pv_point_tension`
+--
+
 LOCK TABLES `document_pv_point_tension` WRITE;
 /*!40000 ALTER TABLE `document_pv_point_tension` DISABLE KEYS */;
 /*!40000 ALTER TABLE `document_pv_point_tension` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `event`
+--
+
 DROP TABLE IF EXISTS `event`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -826,12 +1052,21 @@ CREATE TABLE `event` (
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `event`
+--
+
 LOCK TABLES `event` WRITE;
 /*!40000 ALTER TABLE `event` DISABLE KEYS */;
 INSERT INTO `event` VALUES
 (4,1,678,1,'Réunion OP',NULL,'confirmed','Europe/Zurich','virtual',NULL,'https://david.instantz.org','2026-07-25 09:00:00','2026-07-25 10:00:00',0,NULL,1,'2026-07-24 06:37:27','2026-07-24 06:37:27');
 /*!40000 ALTER TABLE `event` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `event_attendance`
+--
+
 DROP TABLE IF EXISTS `event_attendance`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -860,10 +1095,19 @@ CREATE TABLE `event_attendance` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `event_attendance`
+--
+
 LOCK TABLES `event_attendance` WRITE;
 /*!40000 ALTER TABLE `event_attendance` DISABLE KEYS */;
 /*!40000 ALTER TABLE `event_attendance` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `event_invitation`
+--
+
 DROP TABLE IF EXISTS `event_invitation`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -895,10 +1139,19 @@ CREATE TABLE `event_invitation` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `event_invitation`
+--
+
 LOCK TABLES `event_invitation` WRITE;
 /*!40000 ALTER TABLE `event_invitation` DISABLE KEYS */;
 /*!40000 ALTER TABLE `event_invitation` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `faq`
+--
+
 DROP TABLE IF EXISTS `faq`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -929,6 +1182,10 @@ CREATE TABLE `faq` (
 ) ENGINE=InnoDB AUTO_INCREMENT=3221 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `faq`
+--
+
 LOCK TABLES `faq` WRITE;
 /*!40000 ALTER TABLE `faq` DISABLE KEYS */;
 INSERT INTO `faq` VALUES
@@ -956,6 +1213,11 @@ INSERT INTO `faq` VALUES
 (3220,NULL,NULL,NULL,'Comment faire apparaitre mon organisation sur la carte publique ?','Renseignez un emplacement dans les parametres de l organisation et verifiez que les informations utiles sont lisibles sans connexion.',NULL,NULL,'<p>La carte publique utilise un emplacement facultatif, generalement saisi en latitude et longitude dans les parametres de l organisation.</p><p>Seules les informations explicitement exposees comme publiques sont reprises sur cette carte, ce qui permet de garder le controle sur ce qui est visible sans connexion.</p>',200,1,0,0,0,0,0,'2026-07-24 09:42:35','2026-07-24 09:42:35','2026-06-22 10:35:00','2026-06-22 10:35:00');
 /*!40000 ALTER TABLE `faq` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `faq_choice`
+--
+
 DROP TABLE IF EXISTS `faq_choice`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -968,6 +1230,10 @@ CREATE TABLE `faq_choice` (
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `faq_choice`
+--
+
 LOCK TABLES `faq_choice` WRITE;
 /*!40000 ALTER TABLE `faq_choice` DISABLE KEYS */;
 INSERT INTO `faq_choice` VALUES
@@ -978,6 +1244,11 @@ INSERT INTO `faq_choice` VALUES
 (5,2,'Proposition 3 (la bonne)',1);
 /*!40000 ALTER TABLE `faq_choice` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `history`
+--
+
 DROP TABLE IF EXISTS `history`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1001,6 +1272,10 @@ CREATE TABLE `history` (
   CONSTRAINT `fk_history_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=33 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `history`
+--
 
 LOCK TABLES `history` WRITE;
 /*!40000 ALTER TABLE `history` DISABLE KEYS */;
@@ -1039,6 +1314,11 @@ INSERT INTO `history` VALUES
 (32,2,1,712,'holon_updated','Modification de [holon|713|Facilitation (rôle)] :\n- la couleur a ete modifiee.','{\"IDholon\":713,\"before\":{\"holon\":{\"id\":713,\"name\":\"Facilitation\",\"fullName\":\"\",\"typeId\":1,\"typeLabel\":\"Role\",\"parentId\":712,\"templateId\":710,\"inheritsFromName\":\"Rôle\",\"color\":\"\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":true,\"lockedName\":true,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":true,\"link\":false},\"properties\":{\"48\":{\"id\":48,\"name\":\"Attendus\",\"shortname\":\"attendus\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"fdsfsdfdsfds\",\"inheritedValue\":\"\",\"visibleValue\":\"fdsfsdfdsfds\",\"visibleItems\":[]},\"51\":{\"id\":51,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"\",\"inheritedValue\":\"\",\"visibleValue\":\"\",\"visibleItems\":[]},\"49\":{\"id\":49,\"name\":\"Domaines d\'autorité\",\"shortname\":\"domaines_d_autorite\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"Domaine du rôle facilitation\",\"inheritedValue\":\"\",\"visibleValue\":\"Domaine du rôle facilitation\",\"visibleItems\":[]},\"47\":{\"id\":47,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"Assurer 2 des réunions menées avec efficacité et humanisme, permettant d’obtenir dans le temps imparti des résultats clairs et répondant aux problématiques amenées par les membres du cercle.\",\"inheritedValue\":\"\",\"visibleValue\":\"Assurer 2 des réunions menées avec efficacité et humanisme, permettant d’obtenir dans le temps imparti des résultats clairs et répondant aux problématiques amenées par les membres du cercle.\",\"visibleItems\":[]}},\"permissions\":[]},\"after\":{\"holon\":{\"id\":713,\"name\":\"Facilitation\",\"fullName\":\"\",\"typeId\":1,\"typeLabel\":\"Role\",\"parentId\":712,\"templateId\":710,\"inheritsFromName\":\"Rôle\",\"color\":\"#f59f0a\",\"icon\":\"\",\"banner\":\"\",\"visible\":true,\"mandatory\":true,\"lockedName\":true,\"lockedIcon\":false,\"lockedBanner\":false,\"unique\":true,\"link\":false},\"properties\":{\"48\":{\"id\":48,\"name\":\"Attendus\",\"shortname\":\"attendus\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"fdsfsdfdsfds\",\"inheritedValue\":\"\",\"visibleValue\":\"fdsfsdfdsfds\",\"visibleItems\":[]},\"49\":{\"id\":49,\"name\":\"Domaines d\'autorité\",\"shortname\":\"domaines_d_autorite\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"Domaine du rôle facilitation\",\"inheritedValue\":\"\",\"visibleValue\":\"Domaine du rôle facilitation\",\"visibleItems\":[]},\"51\":{\"id\":51,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"\",\"inheritedValue\":\"\",\"visibleValue\":\"\",\"visibleItems\":[]},\"47\":{\"id\":47,\"name\":\"Raison d\'être\",\"shortname\":\"raison_d_etre\",\"formatId\":1,\"formatName\":\"Texte libre\",\"listItemType\":\"\",\"localValue\":\"Assurer 2 des réunions menées avec efficacité et humanisme, permettant d’obtenir dans le temps imparti des résultats clairs et répondant aux problématiques amenées par les membres du cercle.\",\"inheritedValue\":\"\",\"visibleValue\":\"Assurer 2 des réunions menées avec efficacité et humanisme, permettant d’obtenir dans le temps imparti des résultats clairs et répondant aux problématiques amenées par les membres du cercle.\",\"visibleItems\":[]}},\"permissions\":[]},\"changes\":[{\"type\":\"field_changed\",\"field\":\"color\",\"before\":\"\",\"after\":\"#f59f0a\"}]}','2026-07-24 15:07:15',1);
 /*!40000 ALTER TABLE `history` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `holon`
+--
+
 DROP TABLE IF EXISTS `holon`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1078,6 +1358,10 @@ CREATE TABLE `holon` (
   CONSTRAINT `fk_holon_template` FOREIGN KEY (`IDholon_template`) REFERENCES `holon` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=723 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `holon`
+--
 
 LOCK TABLES `holon` WRITE;
 /*!40000 ALTER TABLE `holon` DISABLE KEYS */;
@@ -1128,6 +1412,11 @@ INSERT INTO `holon` VALUES
 (721,NULL,'Trésorier',NULL,NULL,NULL,NULL,709,1,'2026-07-24 14:37:17',NULL,1,1,0,0,0,0,0,0,NULL,1,719,NULL,NULL);
 /*!40000 ALTER TABLE `holon` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `holon_permission`
+--
+
 DROP TABLE IF EXISTS `holon_permission`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1145,10 +1434,19 @@ CREATE TABLE `holon_permission` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `holon_permission`
+--
+
 LOCK TABLES `holon_permission` WRITE;
 /*!40000 ALTER TABLE `holon_permission` DISABLE KEYS */;
 /*!40000 ALTER TABLE `holon_permission` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `holon_share_link`
+--
+
 DROP TABLE IF EXISTS `holon_share_link`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1178,10 +1476,19 @@ CREATE TABLE `holon_share_link` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `holon_share_link`
+--
+
 LOCK TABLES `holon_share_link` WRITE;
 /*!40000 ALTER TABLE `holon_share_link` DISABLE KEYS */;
 /*!40000 ALTER TABLE `holon_share_link` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `holonproperty`
+--
+
 DROP TABLE IF EXISTS `holonproperty`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1205,6 +1512,10 @@ CREATE TABLE `holonproperty` (
   CONSTRAINT `fk_holonproperty_user_modification` FOREIGN KEY (`IDusermodification`) REFERENCES `user` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=235 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `holonproperty`
+--
 
 LOCK TABLES `holonproperty` WRITE;
 /*!40000 ALTER TABLE `holonproperty` DISABLE KEYS */;
@@ -1310,6 +1621,11 @@ INSERT INTO `holonproperty` VALUES
 (234,713,51,NULL,2,NULL,NULL,0,0,1);
 /*!40000 ALTER TABLE `holonproperty` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `homework`
+--
+
 DROP TABLE IF EXISTS `homework`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1325,10 +1641,19 @@ CREATE TABLE `homework` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `homework`
+--
+
 LOCK TABLES `homework` WRITE;
 /*!40000 ALTER TABLE `homework` DISABLE KEYS */;
 /*!40000 ALTER TABLE `homework` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `invitation`
+--
+
 DROP TABLE IF EXISTS `invitation`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1355,10 +1680,19 @@ CREATE TABLE `invitation` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `invitation`
+--
+
 LOCK TABLES `invitation` WRITE;
 /*!40000 ALTER TABLE `invitation` DISABLE KEYS */;
 /*!40000 ALTER TABLE `invitation` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `media`
+--
+
 DROP TABLE IF EXISTS `media`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1379,10 +1713,19 @@ CREATE TABLE `media` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `media`
+--
+
 LOCK TABLES `media` WRITE;
 /*!40000 ALTER TABLE `media` DISABLE KEYS */;
 /*!40000 ALTER TABLE `media` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `mission`
+--
+
 DROP TABLE IF EXISTS `mission`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1398,6 +1741,10 @@ CREATE TABLE `mission` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=105 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Missions d''un parcours de formation';
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `mission`
+--
 
 LOCK TABLES `mission` WRITE;
 /*!40000 ALTER TABLE `mission` DISABLE KEYS */;
@@ -1416,6 +1763,11 @@ INSERT INTO `mission` VALUES
 (104,'Bonus','Mission bonus',NULL,'<p>Contenu bonus</p>',4,'2026-04-04 11:47:52',NULL);
 /*!40000 ALTER TABLE `mission` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `mission_dependencies`
+--
+
 DROP TABLE IF EXISTS `mission_dependencies`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1428,6 +1780,10 @@ CREATE TABLE `mission_dependencies` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `mission_dependencies`
+--
 
 LOCK TABLES `mission_dependencies` WRITE;
 /*!40000 ALTER TABLE `mission_dependencies` DISABLE KEYS */;
@@ -1446,6 +1802,11 @@ INSERT INTO `mission_dependencies` VALUES
 (12,103,104,2,0);
 /*!40000 ALTER TABLE `mission_dependencies` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `mission_faq`
+--
+
 DROP TABLE IF EXISTS `mission_faq`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1458,6 +1819,10 @@ CREATE TABLE `mission_faq` (
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `mission_faq`
+--
+
 LOCK TABLES `mission_faq` WRITE;
 /*!40000 ALTER TABLE `mission_faq` DISABLE KEYS */;
 INSERT INTO `mission_faq` VALUES
@@ -1465,6 +1830,11 @@ INSERT INTO `mission_faq` VALUES
 (2,102,2,NULL);
 /*!40000 ALTER TABLE `mission_faq` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `mission_homework`
+--
+
 DROP TABLE IF EXISTS `mission_homework`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1481,10 +1851,19 @@ CREATE TABLE `mission_homework` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `mission_homework`
+--
+
 LOCK TABLES `mission_homework` WRITE;
 /*!40000 ALTER TABLE `mission_homework` DISABLE KEYS */;
 /*!40000 ALTER TABLE `mission_homework` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `mission_question`
+--
+
 DROP TABLE IF EXISTS `mission_question`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1499,10 +1878,19 @@ CREATE TABLE `mission_question` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `mission_question`
+--
+
 LOCK TABLES `mission_question` WRITE;
 /*!40000 ALTER TABLE `mission_question` DISABLE KEYS */;
 /*!40000 ALTER TABLE `mission_question` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `object_visibility`
+--
+
 DROP TABLE IF EXISTS `object_visibility`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1527,6 +1915,10 @@ CREATE TABLE `object_visibility` (
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `object_visibility`
+--
+
 LOCK TABLES `object_visibility` WRITE;
 /*!40000 ALTER TABLE `object_visibility` DISABLE KEYS */;
 INSERT INTO `object_visibility` VALUES
@@ -1536,6 +1928,11 @@ INSERT INTO `object_visibility` VALUES
 (5,1,'document_edit',2305,1,'self',NULL,1,'2026-07-24 08:37:27','2026-07-24 08:37:27');
 /*!40000 ALTER TABLE `object_visibility` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `organization`
+--
+
 DROP TABLE IF EXISTS `organization`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1554,6 +1951,10 @@ CREATE TABLE `organization` (
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `organization`
+--
+
 LOCK TABLES `organization` WRITE;
 /*!40000 ALTER TABLE `organization` DISABLE KEYS */;
 INSERT INTO `organization` VALUES
@@ -1561,6 +1962,11 @@ INSERT INTO `organization` VALUES
 (2,'Exemple de modèle','org2','org2.opengov.tools','/img/org2-logo.svg','/img/org2-banner.svg','#1d4ed8','46.519653;6.632273',NULL,'2026-04-01 00:00:00');
 /*!40000 ALTER TABLE `organization` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `organization_application`
+--
+
 DROP TABLE IF EXISTS `organization_application`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1578,6 +1984,10 @@ CREATE TABLE `organization_application` (
   CONSTRAINT `fk_organization_application_org` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `organization_application`
+--
 
 LOCK TABLES `organization_application` WRITE;
 /*!40000 ALTER TABLE `organization_application` DISABLE KEYS */;
@@ -1602,6 +2012,11 @@ INSERT INTO `organization_application` VALUES
 (21,2,8,9,1,NULL);
 /*!40000 ALTER TABLE `organization_application` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `organization_parcours`
+--
+
 DROP TABLE IF EXISTS `organization_parcours`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1618,6 +2033,10 @@ CREATE TABLE `organization_parcours` (
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `organization_parcours`
+--
+
 LOCK TABLES `organization_parcours` WRITE;
 /*!40000 ALTER TABLE `organization_parcours` DISABLE KEYS */;
 INSERT INTO `organization_parcours` VALUES
@@ -1628,6 +2047,11 @@ INSERT INTO `organization_parcours` VALUES
 (5,1,3,3,1,0);
 /*!40000 ALTER TABLE `organization_parcours` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `parameter`
+--
+
 DROP TABLE IF EXISTS `parameter`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1646,6 +2070,10 @@ CREATE TABLE `parameter` (
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `parameter`
+--
+
 LOCK TABLES `parameter` WRITE;
 /*!40000 ALTER TABLE `parameter` DISABLE KEYS */;
 INSERT INTO `parameter` VALUES
@@ -1657,6 +2085,11 @@ INSERT INTO `parameter` VALUES
 (6,'select','Qualité retranscription','Défini comment chatGPT retranscrits les propos: plutôt fidèle au texte original, ou plutôt en réécrivant en tournure de phrases plus littéraire?','select',NULL,'Fidèle au texte original;Réécriture littéraire light;Réécriture littéraire avancée;Réécriture littéraire et formatage HTML','dbObject\\user','easymemo',1);
 /*!40000 ALTER TABLE `parameter` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `parcours`
+--
+
 DROP TABLE IF EXISTS `parcours`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1676,6 +2109,10 @@ CREATE TABLE `parcours` (
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `parcours`
+--
+
 LOCK TABLES `parcours` WRITE;
 /*!40000 ALTER TABLE `parcours` DISABLE KEYS */;
 INSERT INTO `parcours` VALUES
@@ -1684,6 +2121,11 @@ INSERT INTO `parcours` VALUES
 (3,'Mieux communiquer au sein des équipes et des organistaions','Découvrez comment mieux communiquer au sein de vos équipes, et comment donner du feedback à vos collègues.','/img/uploads/parcours/communication.png',1,1,1,'2026-07-23 11:51:17','2026-07-23 11:51:17',1,0);
 /*!40000 ALTER TABLE `parcours` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `parcours_mission`
+--
+
 DROP TABLE IF EXISTS `parcours_mission`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1696,6 +2138,10 @@ CREATE TABLE `parcours_mission` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `parcours_mission`
+--
 
 LOCK TABLES `parcours_mission` WRITE;
 /*!40000 ALTER TABLE `parcours_mission` DISABLE KEYS */;
@@ -1715,6 +2161,11 @@ INSERT INTO `parcours_mission` VALUES
 (13,3,101,1,NULL);
 /*!40000 ALTER TABLE `parcours_mission` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `permission`
+--
+
 DROP TABLE IF EXISTS `permission`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1732,6 +2183,10 @@ CREATE TABLE `permission` (
 ) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `permission`
+--
+
 LOCK TABLES `permission` WRITE;
 /*!40000 ALTER TABLE `permission` DISABLE KEYS */;
 INSERT INTO `permission` VALUES
@@ -1748,6 +2203,11 @@ INSERT INTO `permission` VALUES
 (11,'CAN_ADD_APP','Gerer les applications','Autorise la gestion des applications actives et de leur ordre dans l organisation.',0,'2026-07-23 11:51:22','2026-07-23 11:51:22');
 /*!40000 ALTER TABLE `permission` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `project`
+--
+
 DROP TABLE IF EXISTS `project`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1793,6 +2253,10 @@ CREATE TABLE `project` (
 ) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `project`
+--
+
 LOCK TABLES `project` WRITE;
 /*!40000 ALTER TABLE `project` DISABLE KEYS */;
 INSERT INTO `project` VALUES
@@ -1820,6 +2284,11 @@ INSERT INTO `project` VALUES
 (24,1,708,NULL,23,NULL,'standard',6,'Un dîner est organisé avec le nouvel arrivant',NULL,'ready','2026-08-01','2026-08-04',3,4,0.75000000,'S','multiple_documents',1,'2026-07-24 09:33:08','2026-07-24 12:22:08');
 /*!40000 ALTER TABLE `project` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `project_document`
+--
+
 DROP TABLE IF EXISTS `project_document`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1837,10 +2306,19 @@ CREATE TABLE `project_document` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `project_document`
+--
+
 LOCK TABLES `project_document` WRITE;
 /*!40000 ALTER TABLE `project_document` DISABLE KEYS */;
 /*!40000 ALTER TABLE `project_document` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `project_user`
+--
+
 DROP TABLE IF EXISTS `project_user`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1860,10 +2338,19 @@ CREATE TABLE `project_user` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `project_user`
+--
+
 LOCK TABLES `project_user` WRITE;
 /*!40000 ALTER TABLE `project_user` DISABLE KEYS */;
 /*!40000 ALTER TABLE `project_user` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `property`
+--
+
 DROP TABLE IF EXISTS `property`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1884,6 +2371,10 @@ CREATE TABLE `property` (
 ) ENGINE=InnoDB AUTO_INCREMENT=52 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Propriétés assignées à des tempales (holons)';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `property`
+--
+
 LOCK TABLES `property` WRITE;
 /*!40000 ALTER TABLE `property` DISABLE KEYS */;
 INSERT INTO `property` VALUES
@@ -1902,6 +2393,11 @@ INSERT INTO `property` VALUES
 (51,'raison_d_etre','Raison d\'être',1,NULL,NULL,709,'2026-07-24 14:54:54',1,1);
 /*!40000 ALTER TABLE `property` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `propertyformat`
+--
+
 DROP TABLE IF EXISTS `propertyformat`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1911,6 +2407,10 @@ CREATE TABLE `propertyformat` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Formats autorisés pour les blocs (tels que chaînes, textes libre, liste, case à cocher, etc...)';
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `propertyformat`
+--
 
 LOCK TABLES `propertyformat` WRITE;
 /*!40000 ALTER TABLE `propertyformat` DISABLE KEYS */;
@@ -1923,6 +2423,11 @@ INSERT INTO `propertyformat` VALUES
 (7,'HTML et liste');
 /*!40000 ALTER TABLE `propertyformat` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `pv`
+--
+
 DROP TABLE IF EXISTS `pv`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1938,12 +2443,21 @@ CREATE TABLE `pv` (
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `pv`
+--
+
 LOCK TABLES `pv` WRITE;
 /*!40000 ALTER TABLE `pv` DISABLE KEYS */;
 INSERT INTO `pv` VALUES
 (1,'Data Test',1,'2026-04-21 12:10:00','2026-04-21 12:10:00','','');
 /*!40000 ALTER TABLE `pv` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `qr`
+--
+
 DROP TABLE IF EXISTS `qr`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1962,12 +2476,21 @@ CREATE TABLE `qr` (
 ) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `qr`
+--
+
 LOCK TABLES `qr` WRITE;
 /*!40000 ALTER TABLE `qr` DISABLE KEYS */;
 INSERT INTO `qr` VALUES
 (1,'WebSite_Home','https://org1.opengov.tools/omo/',1,'org1','Portail Org1',0,NULL,'2026-04-21 12:00:00',1);
 /*!40000 ALTER TABLE `qr` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `question`
+--
+
 DROP TABLE IF EXISTS `question`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -1986,10 +2509,19 @@ CREATE TABLE `question` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `question`
+--
+
 LOCK TABLES `question` WRITE;
 /*!40000 ALTER TABLE `question` DISABLE KEYS */;
 /*!40000 ALTER TABLE `question` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `question_choice`
+--
+
 DROP TABLE IF EXISTS `question_choice`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2003,10 +2535,19 @@ CREATE TABLE `question_choice` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `question_choice`
+--
+
 LOCK TABLES `question_choice` WRITE;
 /*!40000 ALTER TABLE `question_choice` DISABLE KEYS */;
 /*!40000 ALTER TABLE `question_choice` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `resource_attendance`
+--
+
 DROP TABLE IF EXISTS `resource_attendance`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2035,10 +2576,19 @@ CREATE TABLE `resource_attendance` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `resource_attendance`
+--
+
 LOCK TABLES `resource_attendance` WRITE;
 /*!40000 ALTER TABLE `resource_attendance` DISABLE KEYS */;
 /*!40000 ALTER TABLE `resource_attendance` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `resource_invitation`
+--
+
 DROP TABLE IF EXISTS `resource_invitation`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2071,6 +2621,10 @@ CREATE TABLE `resource_invitation` (
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `resource_invitation`
+--
+
 LOCK TABLES `resource_invitation` WRITE;
 /*!40000 ALTER TABLE `resource_invitation` DISABLE KEYS */;
 INSERT INTO `resource_invitation` VALUES
@@ -2078,6 +2632,11 @@ INSERT INTO `resource_invitation` VALUES
 (2,'event',4,678,NULL,NULL,'Ancrage','holon','invited',NULL,'[]',1,'2026-07-24 06:37:27','2026-07-24 06:37:27');
 /*!40000 ALTER TABLE `resource_invitation` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `rule`
+--
+
 DROP TABLE IF EXISTS `rule`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2106,10 +2665,19 @@ CREATE TABLE `rule` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `rule`
+--
+
 LOCK TABLES `rule` WRITE;
 /*!40000 ALTER TABLE `rule` DISABLE KEYS */;
 /*!40000 ALTER TABLE `rule` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `search_job`
+--
+
 DROP TABLE IF EXISTS `search_job`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2141,10 +2709,167 @@ CREATE TABLE `search_job` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `search_job`
+--
+
 LOCK TABLES `search_job` WRITE;
 /*!40000 ALTER TABLE `search_job` DISABLE KEYS */;
 /*!40000 ALTER TABLE `search_job` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `sql_migration`
+--
+
+DROP TABLE IF EXISTS `sql_migration`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `sql_migration` (
+  `filename` varchar(255) NOT NULL,
+  `checksum` char(64) NOT NULL,
+  `executed_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`filename`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `sql_migration`
+--
+
+LOCK TABLES `sql_migration` WRITE;
+/*!40000 ALTER TABLE `sql_migration` DISABLE KEYS */;
+INSERT INTO `sql_migration` VALUES
+('2026-04-20-login-code-auth.sql','6c2311d07a24b8c11dfe95955b7998776fa046a4f798cc3429403d948cd8ec26','2026-07-24 17:40:17'),
+('2026-04-20-remote-utf8mb4-and-org-normalization.sql','96823359fdbf968a8943fefbaf763852e510b4daba9784cf5476338dd9d1e37f','2026-07-24 17:40:17'),
+('2026-04-23-document-context.sql','3e147324ffd8eaeef1df78c17f3651f29e2f3218382700ba0bcb3524ec6831c7','2026-07-24 17:40:17'),
+('2026-04-23-organization-applications.sql','0ac9537f556cafc92169df52068c371711769a9e85b89696ff02e1c857c90013','2026-07-24 17:40:17'),
+('2026-04-23-team-application.sql','8d9c7b5db8175dc67ea73ae0f84664889f736971a326fdf9f42a5fc6ef2d7954','2026-07-24 17:40:17'),
+('2026-04-23-user-organization-scoped-fields.sql','10ebbdf8e59de3e12ac108d55df14148d76c0de2d324bea33e28fcdfc66a9cb1','2026-07-24 17:40:17'),
+('2026-04-24-holonproperty-mandatory-locked.sql','aebbdb1f9dac68a3f525c97b7e0ff8203fa098ce3eca014108c67f542b87ec1e','2026-07-24 17:40:17'),
+('2026-04-24-property-format-number-date.sql','7ee5e124d5eda93761a3ab67fc4f4de6d91e838253b93d4319949a845886a2b7','2026-07-24 17:40:17'),
+('2026-04-24-property-list-metadata.sql','581699eec1f66c148cfef22462ee112c928b538d371fb411534db392642aa222','2026-07-24 17:40:17'),
+('2026-04-27-user-patreon.sql','1bac34e5318788f4a824049a05e55a09820f558ef1cf9d80c45118aaa1f4bace','2026-07-24 17:40:17'),
+('2026-04-30-add-image-profil.sql','9dd2dfa4a40a20c5955476fcc7c3751d4935e2973e3f2b94c882a967bf9157f0','2026-07-24 17:40:17'),
+('2026-04-30-history.sql','2758edb68039c2bb50a0c5f31749bb5f8d4fd2ef4295ead56748bf060e0407c9','2026-07-24 17:40:17'),
+('2026-04-30-invitation.sql','7743b2f2c585eee5bb7bb811c6ad4b4940ba28c3901d6056172f8164c8419ffb','2026-07-24 17:40:17'),
+('2026-05-01-lms-questions.sql','ad1f1e9032bdf01a0405b0712bf414fd33aeca76311ae46b5eec3e7c97f8f2de','2026-07-24 17:40:17'),
+('2026-05-01-z-faq-popup.sql','bc11cd74c9d5cf4745df6865c06b307528405cfed36230f847634118f59e4cdc','2026-07-24 17:40:17'),
+('2026-05-02-holon-illustrations.sql','44524b568979ed02df6880810d9521b46289f6783514810c9ee3bc30de46197e','2026-07-24 17:40:17'),
+('2026-05-04-lms-homework.sql','2dc4e5b90d3aa337d7fae28e3469b021f96a5a174bd0b06a6c55be3240965867','2026-07-24 17:40:17'),
+('2026-05-05-omo-holon-share-link.sql','9e0884a89df528725fea6ec535d0aa4b3833d3db8da12349b298e3fc2e6baca2','2026-07-24 17:40:17'),
+('2026-05-05-organization-delete-cascade.sql','f510b8a1261082e241a0dc59977dcb59fd1c34c0ef927c1a0a2c9307812e617f','2026-07-24 17:40:17'),
+('2026-05-06-property-format-html.sql','30de7995c79dda2786c39da7e17365124ec2db9a0cd825526f06d96e0a3287ab','2026-07-24 17:40:17'),
+('2026-05-09-search-job.sql','904229f7659f288354c55f6b1b8ae394b2722dd53a5a6a4849f4fb495d5af0af','2026-07-24 17:40:17'),
+('2026-05-11-user-competences.sql','bc32fae2096efcbb468547559212e9321783eccc75a0206dd7d2b36313e15026','2026-07-24 17:40:17'),
+('2026-05-12-faq-contextual-holon.sql','05394ac18010082eb6bdd126d30f6a6900130d2caa940744cb43e472de3d1cf4','2026-07-24 17:40:17'),
+('2026-05-12-user-competence-description.sql','b17d58918d96731d03d8f1d8928a8d2810efc9627624e563455733e35dc087dc','2026-07-24 17:40:17'),
+('2026-05-13-history-circle-link.sql','4e0a61843ed0a3b659305c23afc15a1c1b150daf53e4508c52fdeaf30036ae83','2026-07-24 17:40:17'),
+('2026-05-13-holonproperty-update-tracking.sql','d8f6f31bcff080fef5ea6027aec9af74b7756d38157048ad08f4ed3e336332fc','2026-07-24 17:40:17'),
+('2026-05-13-user-profile-presentation-birthdate.sql','bf96a7bec60bdfb2c2782d2fe7a1de901652a0754ad61e231c3c0b50df72044f','2026-07-24 17:40:17'),
+('2026-05-14-user-password-length.sql','928e4adf8d2c4cb373309cc3b3065ce3185a7afa12f1312c0418ce939f805330','2026-07-24 17:40:17'),
+('2026-05-14-user-siteadmin.sql','4ad715dea4cb4ed2b54b14e0c606adc502fe328d824e2d6343bfdd10ff4eb9f9','2026-07-24 17:40:17'),
+('2026-05-15-01-translation-bundles.sql','70ac5a41b18dc96657b9f500707e0381e928195b8bee0a2b6ca4fb77016a4a6e','2026-07-24 17:40:17'),
+('2026-05-15-02-translation-bundle-refresh-jobs.sql','dd81bdecd6e7f94808710b558f8441e5706c218f48bcaec892f90a34cf0347b4','2026-07-24 17:40:17'),
+('2026-05-15-03-omo-index-translation-bundles.sql','6d1d7cf95a55217a53b82b1d94046f41a9e5f58df3253365b34c20b9d92e44a2','2026-07-24 17:40:17'),
+('2026-05-15-04-omo-navigation-translation-bundles.sql','a46ba2663dac77207c1e9bd8b336afc6b5a8108a5d76045b10f8ef11d0d9860a','2026-07-24 17:40:17'),
+('2026-05-15-05-drop-legacy-translation.sql','738133025906732f5f973c6c31432a2bbb1000368c1195fa84f7cf57c464a9cb','2026-07-24 17:40:17'),
+('2026-05-17-01-translation-languages.sql','03af793097f97d39d277f208d1e6225aa527dc96fd08717f8886e853fe54ff6e','2026-07-24 17:40:17'),
+('2026-05-18-01-permission-catalog.sql','17b2373642a353900cc81f69175424999a10dd716be1c87ff0023cb25d11a972','2026-07-24 17:40:17'),
+('2026-05-18-02-holon-permission.sql','3a109fb25b68dce10bddb1506b2ee4d99a11038925bc769962a8e0175639492f','2026-07-24 17:40:17'),
+('2026-05-18-03-member-permissions.sql','a2b3cd6981d60a6c7f659c6e2092a72afbf9cb0c914bee5305faa4f17e6d9503','2026-07-24 17:40:17'),
+('2026-05-18-04-holon-permission-multi-range.sql','03d4e25784936e8c6d0f798e40d3f80b5c5c1982c283c5689c21b514325c727e','2026-07-24 17:40:17'),
+('2026-05-21-01-user-organization-latlong.sql','59e7c7d892851a164c6e41abc4cfd224a01b3919d53a94c0929763e43dd0cbca','2026-07-24 17:40:17'),
+('2026-05-21-02-user-latlong.sql','71d7e0bbce7a977be4e80462101c0c6abed09cb56f49adffda450ce35be38f61','2026-07-24 17:40:17'),
+('2026-05-21-03-decision-process.sql','1e8e289262b27d0e60dfe9871794b2a4ef04333fe85c0dd7e51299f15ab39d66','2026-07-24 17:40:17'),
+('2026-05-22-01-decision-invitation.sql','54aedf6005afab9ec5ecaaf3816dbf2571eff849ac91e63e1f1deaa18b34bbec','2026-07-24 17:40:17'),
+('2026-05-23-01-decision-participant-public-access.sql','6c1eb2b549b20858153eb166aa6c69c8dc37c96d8be383e32d06347aa350600a','2026-07-24 17:40:17'),
+('2026-05-24-01-decision-proposal-info-url.sql','74fa5ae989c416eea0e7b7d7d09b0a0661f7436d84caecf1c7fc3553e0a72020','2026-07-24 17:40:17'),
+('2026-05-28-01-faq-organization-scope.sql','e433a1fa8661e7bd07c966070c267de80d336884f48d34a2c084e52fb9cad99f','2026-07-24 17:40:17'),
+('2026-05-30-01-decision-groups.sql','6bec957ba5eb0b4d1379795faf02e9b531196035f9894d3603c32c3deb1acae1','2026-07-24 17:40:17'),
+('2026-05-30-02-structure-application-drawer.sql','cae3e8fdf452f0e287e5fc6e54b24e1a79e7dd6c27fac1d2e1944d2ee8505983','2026-07-24 17:40:17'),
+('2026-06-01-01-object-visibility.sql','3e492c72b51d86893422725e6e83b15673d3ef45692157552345915cf4c61872','2026-07-24 17:40:17'),
+('2026-06-02-01-document-folders.sql','78b45bf27c28f23a3584a087261bb78b00d14b0d5efae893c3657e7b2ba2f75e','2026-07-24 17:40:17'),
+('2026-06-02-02-document-update-tracking.sql','0cc00c68eb251f786c32a2ac2cc79b43b7b585fe4a0e73d226612e79945f9782','2026-07-24 17:40:17'),
+('2026-06-02-03-document-edit-lock.sql','36a042d9563eb3d02f823b6c634349a920a3eb0a2b21968f283e24bcd70c5c23','2026-07-24 17:40:17'),
+('2026-06-02-04-document-share-link.sql','1092d1b2033174d0c25668085b704004b579eaf57ae7f4aea80cf979dab581cd','2026-07-24 17:40:17'),
+('2026-06-02-05-document-draft-content.sql','139963598bae6f7c06502680bd6b4f3fb39b381239ce9c4a27b51aa41138b8af','2026-07-24 17:40:17'),
+('2026-06-05-01-faq-votes.sql','42d5e63ee9e17635b8ad60eda00942395f22a75862a24e5f1088af5d24c4e027','2026-07-24 17:40:17'),
+('2026-06-05-02-faq-score-decay.sql','76837410ac04fcfd03d8261e8643351b0fa4e876cf597cacbbf5332555b052e1','2026-07-24 17:40:17'),
+('2026-06-08-01-document-types.sql','c707e2fc3725934607aa67fb735a61266cd6a68e235e8d1e46c19c7219d76f75','2026-07-24 17:40:17'),
+('2026-06-08-02-document-upload-storage.sql','a114074c763a6c1ee66a013533fe1f7ed00938cb2bada84b4f9bd7c7aeae3967','2026-07-24 17:40:17'),
+('2026-06-08-03-organization-parameters.sql','7583a492bf25e26ee2c4e9ed9bc3ef2b7476a4f876cceafa64eff79ff54bf82c','2026-07-24 17:40:17'),
+('2026-06-08-04-event.sql','05676a46d38fbfc95729088c4fa8e30b7269ec4dddd336da73ba027a6fb418e4','2026-07-24 17:40:17'),
+('2026-06-14-01-invitation-request-origin.sql','cf0594a12bf4f9e099e7e01d60237b12850c3eae6c0c73777ac5b76496e79e47','2026-07-24 17:40:17'),
+('2026-06-16-01-faq-media.sql','a2ca82e1d0449a8eff5c2b0c8be92acbbfcd91e1b6bda5fc62bf5c1d062542ad','2026-07-24 17:40:17'),
+('2026-06-17-01-organization-parcours-anonymous.sql','69fbaf7865df128011d6444efbf5bb569e2f4d20060e792114b12ea87a90e6b0','2026-07-24 17:40:17'),
+('2026-06-18-01-organization-latlong.sql','847a01cb24bcddbaa6097aaaa9937d3a8ccf50c13c5a5c065d556de1e1c672ea','2026-07-24 17:40:17'),
+('2026-06-19-01-holon-template-create-permissions.sql','68ba55bdc9fc68b12ed020a4eb118277e0d051e1ab572834998dc253ce9ce5ca','2026-07-24 17:40:17'),
+('2026-06-22-01-faq-user-help-content.sql','4bdcfe99b58ee98968263adb7e00b2a8fc6a84ce6bd2d5ba2e05b7acf16c4033','2026-07-24 17:40:17'),
+('2026-06-22-01-lms-organization-parcours-anonymous.sql','c34ec97a9a3721ef6fc2ca5f0f8f06ce87128f275e1208cac20c4e7a2c08a385','2026-07-24 17:40:18'),
+('2026-06-22-02-decision-process-visibility.sql','c20bd33ebbec0bb3ee8f2343e2bb42c9e340301b070cf7cca9c10bd162705b3f','2026-07-24 17:40:18'),
+('2026-06-22-02-parcours-metadata.sql','bc16c619ec96aec27f90fc950385292d6e54a79029e550355636870b62407d17','2026-07-24 17:40:18'),
+('2026-06-23-01-parcours-mission-position.sql','c5067846e9e0b9c1d15d65288218a96afac1c9c984743a0ef9cb895c39372c8a','2026-07-24 17:40:18'),
+('2026-06-23-02-faq-table-recovery.sql','c43805239154eb808bd5bb5b2bbd48efc101d89c6263203cfef11f6a038aa56f','2026-07-24 17:40:18'),
+('2026-06-27-01-faq-parcours-scope.sql','cb9929733b535d8f6e154b0838e16129fff1b6f88b4bbaa1380a33f5921c6a43','2026-07-24 17:40:18'),
+('2026-06-28-01-parcours-application-link.sql','6ceefb67b023c7d2d8053274528f375e610401692989738e845b0b83bafd3349','2026-07-24 17:40:18'),
+('2026-06-28-02-parcours-pack-links.sql','e39394103f740d99c4e3d68d32866422a86611de0b606f9287439e7ca28bb839','2026-07-24 17:40:18'),
+('2026-06-29-01-lms-parcours-permissions.sql','29ee2fda8da2d5cf54b34b4871825bd92b48dac836194c595f1440b1d9e77bcc','2026-07-24 17:40:18'),
+('2026-06-29-02-permission-contextual-flag.sql','634af9133452ef8ec10dae9e11e67889f1a6578007a5d1a189ea90e92b6782ae','2026-07-24 17:40:18'),
+('2026-06-29-03-parcours-prerequisites.sql','704a3d859b84e574c15fe2ee3af0899d29a70adab06d6b1baadd02fa7b68263a','2026-07-24 17:40:18'),
+('2026-06-30-01-omo-tension.sql','9b5a243f3e094b4c9b56848335147f097c815936cbb78668a49b6cd103598fa9','2026-07-24 17:40:18'),
+('2026-07-01-01-user-organization-image-guard.sql','a494fdb70b56189075b8cffaaf9eb3b3356a0d36cee0a01c002c327af656796d','2026-07-24 17:40:18'),
+('2026-07-02-01-lms-mission-video-providers.sql','a1b7ed9c7be9cdc619ba7fe5c51f57abd3836ecc915431cf4f51e3f13943e2ec','2026-07-24 17:40:18'),
+('2026-07-04-01-lms-homework-only-admin.sql','4016872bb8ae63347c37551f432b0caf81ac98d0b5b17e8e90fc73890be3b49f','2026-07-24 17:40:18'),
+('2026-07-04-02-can-add-app-permission.sql','d39bc12794d0f25e6a1c2f0ac013694cdeae7e55cd6237e817fd3780830e6acf','2026-07-24 17:40:18'),
+('2026-07-05-01-holonproperty-value-mediumtext.sql','277879e940dd15a2c0f9f37ad4a7b7515489b644b15cf45ee7dc3d6e9f547ad8','2026-07-24 17:40:18'),
+('2026-07-06-01-organization-application-parameters.sql','d429d7c1a05f15f90128557c7690450ea517380de47046ef3e82bc293539f70d','2026-07-24 17:40:18'),
+('2026-07-07-01-holon-nomcomplet.sql','7f18ab8b4ca73e0d71566fbb4af6dd0df11de0c37091351fdbf3cc3f5512c7f8','2026-07-24 17:40:18'),
+('2026-07-07-02-language-system-bundles.sql','8eb775e7d821e129530517139f897bda9bfb51e1bda1ea68f31700566f3ab743','2026-07-24 17:40:18'),
+('2026-07-09-01-document-pv-points.sql','e2b8b536f04bd495c7c12a1b7dfd7b83b944173ba4c2438f1691b8ae642abfdf','2026-07-24 17:40:18'),
+('2026-07-09-02-event-location-and-document.sql','c673a6dd04d2283fbde1fd8323e87bbbaf7b35354f8aa59afa29fa3ddece6230','2026-07-24 17:40:18'),
+('2026-07-09-03-document-event-link.sql','751e472953a5384924c26990ff3c43cbdbc8c5ba3c7579eaef459360378725ad','2026-07-24 17:40:18'),
+('2026-07-09-04-event-invitations.sql','7a12992017b5459389425d22fa4db11612dd27d07c7be00a3f2161de4f24cb4f','2026-07-24 17:40:18'),
+('2026-07-10-01-document-pv-point-handled.sql','dd56616ce56fb1cb09d02771c01008d79ea711c04b47a63be6166d9ff8d156fc','2026-07-24 17:40:18'),
+('2026-07-10-02-document-pv-point-sync-lock.sql','b2790cd2e8e3539cf74271415c4052f8f734e466a0a7955401c0ad0d4c56851b','2026-07-24 17:40:18'),
+('2026-07-10-03-document-pv-stage.sql','b8b48c4c20b6328be6c5ca6d99de4a965391772eee5aebc19dd2eadee68e6a17','2026-07-24 17:40:18'),
+('2026-07-12-01-event-attendance.sql','ea1c7ac036e7e873009118f0f588d8dc141fbdc8b956306713fd3745541ece4a','2026-07-24 17:40:18'),
+('2026-07-13-01-document-pv-editor.sql','e4cd05f2f4246eaa80c838b0576039297824c12475b8dd28669ef6dac7e777c6','2026-07-24 17:40:18'),
+('2026-07-13-02-document-pv-point-external-author.sql','4cb9fed08611ea7d3a938a882397430f70c1fd025afba06a732e15a40513cd63','2026-07-24 17:40:18'),
+('2026-07-13-03-resource-invitations.sql','9e46661c30b6713861096d6d06eb9cdacf4b21516eb31190e62783e7906f2a5e','2026-07-24 17:40:18'),
+('2026-07-13-04-resource-attendance.sql','ec88779f11acd9196703e5a48dcecb6ca400e02e7cc365ca8f6dfc89cbab0717','2026-07-24 17:40:18'),
+('2026-07-13-05-resource-invitation-accepted.sql','599e9fe978f4ce35ca7859806cf19f91251f423036c6865bb3f26708d933185e','2026-07-24 17:40:18'),
+('2026-07-13-06-document-archive.sql','3a95d20bca1ad4a16c7b5236bbf3ae15750f2d47198ef02107b5dc287bcb56f8','2026-07-24 17:40:18'),
+('2026-07-14-01-document-pv-point-groups.sql','b396ba0bc4fa8f60f7ff88020815678b570ddd84f6e9695c104416ad09601a36','2026-07-24 17:40:18'),
+('2026-07-14-02-document-pv-templates.sql','8d29f7af5245d9524547f20a175fa9216ed976f5acd63f9c6ef3cb156770623b','2026-07-24 17:40:18'),
+('2026-07-14-03-document-pv-editor-handover.sql','88a491833a865abab8078ea1b574a13e0f012fad76f7829bc1b6a696b53003cc','2026-07-24 17:40:18'),
+('2026-07-15-01-stats-indicators.sql','5b694c38f6bd2ae2d3789075ad1bf00fbfea8fd3f93f8f873ed10bb61b637361','2026-07-24 17:40:18'),
+('2026-07-15-02-stat-indicator-contexts.sql','a173961beaecc1f93664999f7dec693de1f079f918921c583f697928ad067829','2026-07-24 17:40:18'),
+('2026-07-15-03-stat-indicator-schedule.sql','45db234d4676aa080d6fcb4ef85cb91de251fe8c1d75ae19018556a5ae669352','2026-07-24 17:40:18'),
+('2026-07-15-04-topbar-search-period.sql','b7b4816957b2cd31cfb784e4435a226d594a7bd07b3a771f61d553b796cc4db9','2026-07-24 17:40:18'),
+('2026-07-17-01-event-delete-permission.sql','ba594a8decf2f6fa35c82786e3e0a9f20d95e2a4d96cb653a663432b8011757c','2026-07-24 17:40:18'),
+('2026-07-18-01-stat-indicator-group-references.sql','4311fdcfce27633ee11aade982b619c537d6d23d9c8d4cd0b24a0e4f3ab5a9e2','2026-07-24 17:40:18'),
+('2026-07-19-01-projects.sql','95c5404d38cbf7a0b24b69d5541f0e1474e6993a485f1191da05f0e850ceac72','2026-07-24 17:40:18'),
+('2026-07-20-01-project-size.sql','fe1c79abc4de215959b8f881c8e34dfefb8de07a262d8285e280a1d3804f13bd','2026-07-24 17:40:18'),
+('2026-07-21-01-create-project-indicator-permissions.sql','4a2f33d6def8c121208ea11049ce83094054d84fa87c6638a8823b2ede4c8356','2026-07-24 17:40:18'),
+('2026-07-21-01-property-composite-formats.sql','5a56bc0fdfd1b6037e00b766af90edf92c390622a50c672243dad3ce67d14fa2','2026-07-24 17:40:18'),
+('2026-07-21-02-checklists.sql','98da47d7b77023987bbdee20a261b3d376eb8260f45c55dbbd5ae7c3cc3183e2','2026-07-24 17:40:18'),
+('2026-07-21-03-checklist-manual-runs.sql','31d590239d0b262f11335b7857a5b1c1132ad4388e55c65a58ff6c14dbb8d6b3','2026-07-24 17:40:18'),
+('2026-07-22-01-checklist-item-recurrence.sql','49e337d1e68457f23b7bb74ff4e6176f89208a25fb62843e86fef0c80d5939d8','2026-07-24 17:40:18'),
+('2026-07-23-01-authorities-rules.sql','087c6022bed14bdef5180e69f355b1e090cdcda630946dc1f38cbb96f379bd32','2026-07-24 17:40:18'),
+('2026-07-23-02-rule-scope-and-local-holon.sql','200a50494fce05daf4405c62826ab26ef51f71a87aba6fa07f50ab581c448e78','2026-07-24 17:40:18'),
+('2026-07-23-03-policy-application.sql','5d6b6cad1303bd611d43fa181480b07d16b4e7ccacfc28487eb91ae3dfc7312f','2026-07-24 17:40:18'),
+('2026-07-23-04-checklist-item-timing.sql','d34de0180b4ae4eca60c2c03130d10a092d823f1b6f66c7d3895d149d47b7f1f','2026-07-24 17:40:18'),
+('2026-07-24-01-project-calculated-importance.sql','bf8e03beb0597cec009198a4f12fabaad3d570f49534d7b4a041787d55deb742','2026-07-24 17:40:18'),
+('2026-07-24-01-stat-indicator-chart-lower-value.sql','b7309373bf75232aec5ba62ce4ed78a7e65c6a5777e19f26763fc028c5c4140e','2026-07-24 17:40:18'),
+('2026-07-24-02-stat-indicator-group-chart-lower-value.sql','08dfef1e03de0432d8a418e8ae09149a0d4d4d5f79a62522ee0ddccffad36771','2026-07-24 17:40:18');
+/*!40000 ALTER TABLE `sql_migration` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `stat_indicator`
+--
+
 DROP TABLE IF EXISTS `stat_indicator`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2175,6 +2900,10 @@ CREATE TABLE `stat_indicator` (
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `stat_indicator`
+--
+
 LOCK TABLES `stat_indicator` WRITE;
 /*!40000 ALTER TABLE `stat_indicator` DISABLE KEYS */;
 INSERT INTO `stat_indicator` VALUES
@@ -2182,6 +2911,11 @@ INSERT INTO `stat_indicator` VALUES
 (2,1,693,1,'Solde en caisse','Montant disponible en liquide dans la caisse',NULL,'none','monthly','1',0.000000,1,'2026-07-23 16:15:03','2026-07-24 08:44:54');
 /*!40000 ALTER TABLE `stat_indicator` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `stat_indicator_group`
+--
+
 DROP TABLE IF EXISTS `stat_indicator_group`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2207,12 +2941,21 @@ CREATE TABLE `stat_indicator_group` (
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `stat_indicator_group`
+--
+
 LOCK TABLES `stat_indicator_group` WRITE;
 /*!40000 ALTER TABLE `stat_indicator_group` DISABLE KEYS */;
 INSERT INTO `stat_indicator_group` VALUES
 (1,1,678,1,'Liquidités','sum','none',0.000000,1,'2026-07-23 14:17:05','2026-07-23 14:17:05');
 /*!40000 ALTER TABLE `stat_indicator_group` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `stat_indicator_group_item`
+--
+
 DROP TABLE IF EXISTS `stat_indicator_group_item`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2231,6 +2974,10 @@ CREATE TABLE `stat_indicator_group_item` (
 ) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `stat_indicator_group_item`
+--
+
 LOCK TABLES `stat_indicator_group_item` WRITE;
 /*!40000 ALTER TABLE `stat_indicator_group_item` DISABLE KEYS */;
 INSERT INTO `stat_indicator_group_item` VALUES
@@ -2238,6 +2985,11 @@ INSERT INTO `stat_indicator_group_item` VALUES
 (12,1,2,2,'2026-07-24 06:44:10');
 /*!40000 ALTER TABLE `stat_indicator_group_item` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `stat_indicator_import`
+--
+
 DROP TABLE IF EXISTS `stat_indicator_import`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2259,10 +3011,19 @@ CREATE TABLE `stat_indicator_import` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `stat_indicator_import`
+--
+
 LOCK TABLES `stat_indicator_import` WRITE;
 /*!40000 ALTER TABLE `stat_indicator_import` DISABLE KEYS */;
 /*!40000 ALTER TABLE `stat_indicator_import` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `stat_indicator_reference_point`
+--
+
 DROP TABLE IF EXISTS `stat_indicator_reference_point`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2285,10 +3046,19 @@ CREATE TABLE `stat_indicator_reference_point` (
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `stat_indicator_reference_point`
+--
+
 LOCK TABLES `stat_indicator_reference_point` WRITE;
 /*!40000 ALTER TABLE `stat_indicator_reference_point` DISABLE KEYS */;
 /*!40000 ALTER TABLE `stat_indicator_reference_point` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `stat_indicator_value`
+--
+
 DROP TABLE IF EXISTS `stat_indicator_value`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2308,6 +3078,10 @@ CREATE TABLE `stat_indicator_value` (
 ) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `stat_indicator_value`
+--
+
 LOCK TABLES `stat_indicator_value` WRITE;
 /*!40000 ALTER TABLE `stat_indicator_value` DISABLE KEYS */;
 INSERT INTO `stat_indicator_value` VALUES
@@ -2319,6 +3093,11 @@ INSERT INTO `stat_indicator_value` VALUES
 (7,1,1,82691.000000,'2026-05-01 16:19:00','2026-07-23 16:19:58','2026-07-23 16:19:58');
 /*!40000 ALTER TABLE `stat_indicator_value` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `tension`
+--
+
 DROP TABLE IF EXISTS `tension`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2341,6 +3120,10 @@ CREATE TABLE `tension` (
 ) ENGINE=InnoDB AUTO_INCREMENT=9303 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `tension`
+--
+
 LOCK TABLES `tension` WRITE;
 /*!40000 ALTER TABLE `tension` DISABLE KEYS */;
 INSERT INTO `tension` VALUES
@@ -2348,6 +3131,11 @@ INSERT INTO `tension` VALUES
 (9302,1,686,1,'Charge equipe','Question ouverte sur la charge de travail actuelle et la repartition entre marketing et administration.','2026-07-09 08:45:00','2026-07-09 08:45:00',1);
 /*!40000 ALTER TABLE `tension` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `tips`
+--
+
 DROP TABLE IF EXISTS `tips`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2364,10 +3152,19 @@ CREATE TABLE `tips` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `tips`
+--
+
 LOCK TABLES `tips` WRITE;
 /*!40000 ALTER TABLE `tips` DISABLE KEYS */;
 /*!40000 ALTER TABLE `tips` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `translation_bundle_refresh_jobs`
+--
+
 DROP TABLE IF EXISTS `translation_bundle_refresh_jobs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2390,10 +3187,19 @@ CREATE TABLE `translation_bundle_refresh_jobs` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `translation_bundle_refresh_jobs`
+--
+
 LOCK TABLES `translation_bundle_refresh_jobs` WRITE;
 /*!40000 ALTER TABLE `translation_bundle_refresh_jobs` DISABLE KEYS */;
 /*!40000 ALTER TABLE `translation_bundle_refresh_jobs` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `translation_bundles`
+--
+
 DROP TABLE IF EXISTS `translation_bundles`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2412,10 +3218,19 @@ CREATE TABLE `translation_bundles` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `translation_bundles`
+--
+
 LOCK TABLES `translation_bundles` WRITE;
 /*!40000 ALTER TABLE `translation_bundles` DISABLE KEYS */;
 /*!40000 ALTER TABLE `translation_bundles` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `translation_languages`
+--
+
 DROP TABLE IF EXISTS `translation_languages`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2435,6 +3250,10 @@ CREATE TABLE `translation_languages` (
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `translation_languages`
+--
+
 LOCK TABLES `translation_languages` WRITE;
 /*!40000 ALTER TABLE `translation_languages` DISABLE KEYS */;
 INSERT INTO `translation_languages` VALUES
@@ -2448,6 +3267,11 @@ INSERT INTO `translation_languages` VALUES
 (8,'pl','Polonais','Polski',80,1,0,'2026-07-23 11:51:17','2026-07-23 11:51:17');
 /*!40000 ALTER TABLE `translation_languages` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `typeholon`
+--
+
 DROP TABLE IF EXISTS `typeholon`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2460,6 +3284,10 @@ CREATE TABLE `typeholon` (
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `typeholon`
+--
+
 LOCK TABLES `typeholon` WRITE;
 /*!40000 ALTER TABLE `typeholon` DISABLE KEYS */;
 INSERT INTO `typeholon` VALUES
@@ -2469,6 +3297,11 @@ INSERT INTO `typeholon` VALUES
 (4,'Organisation',0,1);
 /*!40000 ALTER TABLE `typeholon` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `user`
+--
+
 DROP TABLE IF EXISTS `user`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2498,12 +3331,21 @@ CREATE TABLE `user` (
 ) ENGINE=InnoDB AUTO_INCREMENT=45 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `user`
+--
+
 LOCK TABLES `user` WRITE;
 /*!40000 ALTER TABLE `user` DISABLE KEYS */;
 INSERT INTO `user` VALUES
-(1,'admin@omo.test',NULL,NULL,NULL,NULL,NULL,'Admin',NULL,'$2y$10$ES6a68iJbT4z8MxzjNBMoOEtBAn7HJCEqdUnTdBNXQGSerKh.ZQC6','2026-04-21 09:01:00','2026-07-23 13:59:25',1,1,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
+(1,'admin@omo.test',NULL,NULL,NULL,NULL,NULL,'Admin',NULL,'$2y$10$ES6a68iJbT4z8MxzjNBMoOEtBAn7HJCEqdUnTdBNXQGSerKh.ZQC6','2026-04-21 09:01:00','2026-07-24 18:09:07',1,1,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `user` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `user_competence`
+--
+
 DROP TABLE IF EXISTS `user_competence`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2522,10 +3364,19 @@ CREATE TABLE `user_competence` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `user_competence`
+--
+
 LOCK TABLES `user_competence` WRITE;
 /*!40000 ALTER TABLE `user_competence` DISABLE KEYS */;
 /*!40000 ALTER TABLE `user_competence` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `user_competence_validation`
+--
+
 DROP TABLE IF EXISTS `user_competence_validation`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2543,10 +3394,19 @@ CREATE TABLE `user_competence_validation` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `user_competence_validation`
+--
+
 LOCK TABLES `user_competence_validation` WRITE;
 /*!40000 ALTER TABLE `user_competence_validation` DISABLE KEYS */;
 /*!40000 ALTER TABLE `user_competence_validation` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `user_faq_response`
+--
+
 DROP TABLE IF EXISTS `user_faq_response`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2561,10 +3421,19 @@ CREATE TABLE `user_faq_response` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `user_faq_response`
+--
+
 LOCK TABLES `user_faq_response` WRITE;
 /*!40000 ALTER TABLE `user_faq_response` DISABLE KEYS */;
 /*!40000 ALTER TABLE `user_faq_response` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `user_holon`
+--
+
 DROP TABLE IF EXISTS `user_holon`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2582,6 +3451,10 @@ CREATE TABLE `user_holon` (
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `user_holon`
+--
+
 LOCK TABLES `user_holon` WRITE;
 /*!40000 ALTER TABLE `user_holon` DISABLE KEYS */;
 INSERT INTO `user_holon` VALUES
@@ -2593,6 +3466,11 @@ INSERT INTO `user_holon` VALUES
 (6,1,708,NULL,'2026-07-23 13:51:33',NULL,1);
 /*!40000 ALTER TABLE `user_holon` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `user_homework`
+--
+
 DROP TABLE IF EXISTS `user_homework`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2615,10 +3493,19 @@ CREATE TABLE `user_homework` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `user_homework`
+--
+
 LOCK TABLES `user_homework` WRITE;
 /*!40000 ALTER TABLE `user_homework` DISABLE KEYS */;
 /*!40000 ALTER TABLE `user_homework` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `user_login_token`
+--
+
 DROP TABLE IF EXISTS `user_login_token`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2638,6 +3525,10 @@ CREATE TABLE `user_login_token` (
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `user_login_token`
+--
+
 LOCK TABLES `user_login_token` WRITE;
 /*!40000 ALTER TABLE `user_login_token` DISABLE KEYS */;
 INSERT INTO `user_login_token` VALUES
@@ -2646,6 +3537,11 @@ INSERT INTO `user_login_token` VALUES
 (4,1,'78e6e9f3d2b696fa274de5f329c077cefce68cb7beae1466e2b28bdcffd7e20b','$2y$10$LeJo8.3KF6tdJG/Fz.SPE./VdYyHWJBHb1OUU55mAv1QBDyC0PwIi','2026-07-23 14:03:59','172.18.0.1',0,1,0,'2026-07-23 13:58:59',NULL);
 /*!40000 ALTER TABLE `user_login_token` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `user_mission`
+--
+
 DROP TABLE IF EXISTS `user_mission`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2659,10 +3555,19 @@ CREATE TABLE `user_mission` (
 ) ENGINE=InnoDB AUTO_INCREMENT=74 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `user_mission`
+--
+
 LOCK TABLES `user_mission` WRITE;
 /*!40000 ALTER TABLE `user_mission` DISABLE KEYS */;
 /*!40000 ALTER TABLE `user_mission` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `user_organization`
+--
+
 DROP TABLE IF EXISTS `user_organization`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2685,6 +3590,10 @@ CREATE TABLE `user_organization` (
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `user_organization`
+--
+
 LOCK TABLES `user_organization` WRITE;
 /*!40000 ALTER TABLE `user_organization` DISABLE KEYS */;
 INSERT INTO `user_organization` VALUES
@@ -2692,6 +3601,11 @@ INSERT INTO `user_organization` VALUES
 (2,1,2,'Admin',NULL,'admin@omo.test',NULL,NULL,'{\"isAdmin\":true}','2026-04-21 12:25:00',NULL,1);
 /*!40000 ALTER TABLE `user_organization` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `user_patreon`
+--
+
 DROP TABLE IF EXISTS `user_patreon`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2731,12 +3645,21 @@ CREATE TABLE `user_patreon` (
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `user_patreon`
+--
+
 LOCK TABLES `user_patreon` WRITE;
 /*!40000 ALTER TABLE `user_patreon` DISABLE KEYS */;
 INSERT INTO `user_patreon` VALUES
 (1,1,'docker-local-access-token','docker-local-refresh-token','2027-07-23 11:51:20','identity identity[email] campaigns.members','Bearer','docker-local-user-1','docker-local-member-1','docker-local-campaign-1','Open Organization Admin','admin@omo.test',NULL,NULL,NULL,'active_patron','Paid',NULL,NULL,500,500,'[\"Local Dev\"]',1,'2026-07-23 11:51:20','2026-07-23 11:51:20','ok',NULL,'2026-07-23 11:51:20','2026-07-23 11:51:20');
 /*!40000 ALTER TABLE `user_patreon` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `user_question_response`
+--
+
 DROP TABLE IF EXISTS `user_question_response`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2752,10 +3675,19 @@ CREATE TABLE `user_question_response` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `user_question_response`
+--
+
 LOCK TABLES `user_question_response` WRITE;
 /*!40000 ALTER TABLE `user_question_response` DISABLE KEYS */;
 /*!40000 ALTER TABLE `user_question_response` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `user_remember`
+--
+
 DROP TABLE IF EXISTS `user_remember`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -2773,6 +3705,10 @@ CREATE TABLE `user_remember` (
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `user_remember`
+--
+
 LOCK TABLES `user_remember` WRITE;
 /*!40000 ALTER TABLE `user_remember` DISABLE KEYS */;
 INSERT INTO `user_remember` VALUES
@@ -2780,6 +3716,14 @@ INSERT INTO `user_remember` VALUES
 (2,1,'aaa1f5df7bd344491268df922a68381ec463e7be9153450dc3a6f421b09cc2d3','2026-05-23 14:09:43','172.19.0.1','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36','Chrome','Windows','2026-04-23 12:09:43');
 /*!40000 ALTER TABLE `user_remember` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Dumping events for database 'omodev'
+--
+
+--
+-- Dumping routines for database 'omodev'
+--
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -2789,3 +3733,5 @@ UNLOCK TABLES;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
+
+-- Dump completed on 2026-07-24 17:40:31
