@@ -325,8 +325,8 @@ $formatDelay = static function ($value, $unit) {
                             <?php if (!$isContainerChecklist && ($activationType !== ChecklistItem::ACTIVATION_IMMEDIATE || $delayLabel !== omoChecklistT('checklist.detail.no_delay'))): ?><span><?= omoApiEscape($delayLabel) ?></span><?php endif; ?>
                             <?php if ($recurrenceLabel !== ''): ?><span><?= omoApiEscape($recurrenceLabel) ?></span><?php endif; ?>
                             <?php foreach ($recurrenceTimingLabels as $timingLabel): ?><span><?= omoApiEscape($timingLabel) ?></span><?php endforeach; ?>
-                            <?php if ($project->get('priority') !== null && $project->get('priority') !== ''): ?><span>P<?= (int)$project->get('priority') ?>/5</span><?php endif; ?>
-                            <?php if ($project->get('importance') !== null && $project->get('importance') !== ''): ?><span>I<?= (int)$project->get('importance') ?>/5</span><?php endif; ?>
+                            <?php if ($project->get('priority') !== null && $project->get('priority') !== ''): ?><span>P<?= (int)$project->get('priority') ?></span><?php endif; ?>
+                            <?php if ($project->get('importance') !== null && $project->get('importance') !== ''): ?><span>IS<?= (int)$project->get('importance') ?>/5</span><?php endif; ?>
                             <span><?= omoApiEscape(Project::normalizeSize($project->get('project_size'))) ?></span>
                         </div>
                     </div>

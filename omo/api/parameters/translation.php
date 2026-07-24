@@ -315,7 +315,9 @@ function omoHolonTemplateSourceLang()
         'parameters.holon_templates.field.logo_icon' => ['text' => 'Logo / Icône', 'context' => 'Title of the public icon card in the holon template editor.'],
         'parameters.holon_templates.action.close' => ['text' => 'Fermer', 'context' => 'Close button label used in compact mode for the holon template editor.'],
         'parameters.holon_templates.action.save_organization' => ['text' => "Enregistrer l'organisation", 'context' => 'Submit button label used in organization definition mode for the holon template editor.'],
-        'parameters.holon_templates.action.save_model' => ['text' => 'Enregistrer le modèle', 'context' => 'Submit button label used in template mode for the holon template editor.'],
+        'parameters.holon_templates.action.save_model' => ['text' => 'Enregistrer', 'context' => 'Submit button label used in template mode for the holon template editor.'],
+        'parameters.holon_templates.action.delete_model' => ['text' => 'Effacer', 'context' => 'Destructive action used to delete the selected holon template.'],
+        'parameters.holon_templates.confirm.delete_model' => ['text' => 'Effacer le modèle {templateName} ?\n\nSes sous-modèles seront également supprimés. Cette action est définitive.', 'context' => 'Confirmation shown before deleting a holon template and its child templates.'],
         'parameters.holon_templates.media.icon_label' => ['text' => 'Icône', 'context' => 'Media label passed to the sized image field for the icon in the holon template editor.'],
         'parameters.holon_templates.media.banner_label' => ['text' => 'Bannière', 'context' => 'Media label passed to the sized image field for the banner in the holon template editor.'],
         'parameters.holon_templates.permission.self' => ['text' => 'Élément courant', 'context' => 'Permission scope label used for the current holon in the holon template editor.'],
@@ -379,9 +381,11 @@ function omoHolonTemplateSourceLang()
         'parameters.holon_templates.form.new_model_description_short' => ['text' => 'Choisissez son type de base puis ajoutez les propriétés à transmettre.', 'context' => 'Short form description shown when editing a new holon template after selection changes.'],
         'parameters.holon_templates.status.saved_organization' => ['text' => 'Organisation enregistrée.', 'context' => 'Fallback success message returned when saving the organization definition succeeded.'],
         'parameters.holon_templates.status.saved_model' => ['text' => 'Modèle enregistré.', 'context' => 'Fallback success message returned when saving a holon template succeeded.'],
+        'parameters.holon_templates.status.deleted_model' => ['text' => 'Modèle supprimé.', 'context' => 'Success message returned when a holon template is deleted.'],
         'parameters.holon_templates.error.invalid_request' => ['text' => 'La requête envoyée est invalide.', 'context' => 'Error returned when the holon template save payload is invalid.'],
         'parameters.holon_templates.error.save_organization' => ['text' => "L'organisation n'a pas pu être enregistrée.", 'context' => 'Fallback error returned when saving the organization definition failed.'],
         'parameters.holon_templates.error.save_model' => ['text' => "Le modèle n'a pas pu être enregistré.", 'context' => 'Fallback error returned when saving a holon template failed.'],
+        'parameters.holon_templates.error.delete_model' => ['text' => "Le modèle n'a pas pu être supprimé.", 'context' => 'Fallback error returned when deleting a holon template failed.'],
     ];
 
     return $sourceLang;

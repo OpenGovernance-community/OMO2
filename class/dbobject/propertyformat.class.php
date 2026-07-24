@@ -210,7 +210,7 @@
 				return $document->createDocumentFragment();
 			}
 
-			if ($node instanceof \DOMElement && $node->hasAttribute('data-omo-project-embed-runtime')) {
+			if ($node instanceof \DOMElement && ($node->hasAttribute('data-omo-project-embed-runtime') || $node->hasAttribute('data-omo-checklist-embed-runtime'))) {
 				return $document->createDocumentFragment();
 			}
 
@@ -307,11 +307,47 @@
 				return $element;
 			}
 
+			if (self::isAllowedChecklistEmbedNode($node)) {
+				$element = $document->createElement('span');
+				$element->setAttribute('class', 'omo-checklist-embed');
+				$element->setAttribute('contenteditable', 'false');
+				$element->setAttribute('data-omo-embed-type', 'checklist');
+				$element->setAttribute('data-omo-checklist-id', (string)self::getChecklistEmbedNodeId($node));
+				$title = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-checklist-title'));
+				if ($title !== '') { $element->setAttribute('data-omo-checklist-title', $title); }
+				foreach (array('STRONG', 'EM') as $tagName) {
+					foreach (iterator_to_array($node->childNodes) as $childNode) {
+						if (!($childNode instanceof \DOMElement) || strtoupper((string)$childNode->nodeName) !== $tagName) {
+							continue;
+						}
+						self::appendSanitizedHtmlChild($element, self::sanitizeHtmlNode($childNode, $document));
+						break;
+					}
+				}
+				return $element;
+			}
+
 			if (self::isAllowedIndicatorEmbedNode($node)) {
 				$indicatorId = self::getIndicatorEmbedNodeId($node);
-				$isOverdue = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-overdue')) === '1';
-				$overdueSeverity = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-overdue-severity')) === 'warning' ? 'warning' : 'error';
-				$hasStatus = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-status')) !== '';
+				$sourceClassName = ' ' . trim((string)self::getDomNodeAttributeValue($node, 'class')) . ' ';
+				$isOverdue = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-overdue')) === '1'
+					|| strpos($sourceClassName, ' omo-indicator-embed--overdue ') !== false
+					|| strpos($sourceClassName, ' omo-indicator-embed--warning ') !== false;
+				$overdueSeverity = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-overdue-severity')) === 'warning'
+					|| strpos($sourceClassName, ' omo-indicator-embed--warning ') !== false
+					? 'warning'
+					: 'error';
+				$statusLabel = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-status'));
+				if ($statusLabel === '') {
+					foreach (iterator_to_array($node->getElementsByTagName('em')) as $statusNode) {
+						$parentNode = $statusNode->parentNode;
+						if ($parentNode instanceof \DOMElement && strpos(' ' . $parentNode->getAttribute('class') . ' ', ' omo-indicator-embed__values ') !== false) {
+							$statusLabel = trim((string)$statusNode->textContent);
+							break;
+						}
+					}
+				}
+				$hasStatus = $statusLabel !== '' || strpos($sourceClassName, ' omo-indicator-embed--current ') !== false;
 				$element = $document->createElement('span');
 				$element->setAttribute('class', 'omo-indicator-embed' . ($isOverdue ? ($overdueSeverity === 'warning' ? ' omo-indicator-embed--warning' : ' omo-indicator-embed--overdue') : ($hasStatus ? ' omo-indicator-embed--current' : '')));
 				$element->setAttribute('contenteditable', 'false');
@@ -320,11 +356,14 @@
 				$indicatorKind = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-kind')) === 'group' ? 'group' : 'indicator';
 				$element->setAttribute('data-omo-indicator-kind', $indicatorKind);
 
-				foreach (array('title', 'description', 'value', 'date', 'status', 'context', 'chart-min', 'chart-max', 'overdue-severity') as $attributeName) {
+				foreach (array('title', 'description', 'value', 'date', 'context', 'chart-min', 'chart-max', 'overdue-severity') as $attributeName) {
 					$value = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-' . $attributeName));
 					if ($value !== '') {
 						$element->setAttribute('data-omo-indicator-' . $attributeName, $value);
 					}
+				}
+				if ($statusLabel !== '') {
+					$element->setAttribute('data-omo-indicator-status', $statusLabel);
 				}
 				if ($isOverdue) {
 					$element->setAttribute('data-omo-indicator-overdue', '1');
@@ -336,7 +375,13 @@
 				$linkNode = $document->createElement('a');
 				$linkNode->setAttribute('class', 'omo-indicator-embed__title');
 				$linkNode->setAttribute('href', $indicatorKind === 'group' ? '#stats' : ('#stats-i' . $indicatorId));
-				$linkNode->appendChild($document->createTextNode($title !== '' ? $title : ('Indicateur #' . $indicatorId)));
+				$statusDotNode = $document->createElement('span');
+				$statusDotNode->setAttribute('class', 'omo-indicator-embed__status-dot' . ($isOverdue ? ($overdueSeverity === 'warning' ? ' omo-indicator-embed__status-dot--warning' : ' omo-indicator-embed__status-dot--overdue') : ($hasStatus ? ' omo-indicator-embed__status-dot--current' : ' omo-indicator-embed__status-dot--unknown')));
+				$statusDotNode->setAttribute('aria-hidden', 'true');
+				$linkNode->appendChild($statusDotNode);
+				$titleTextNode = $document->createElement('span');
+				$titleTextNode->appendChild($document->createTextNode($title !== '' ? $title : ('Indicateur #' . $indicatorId)));
+				$linkNode->appendChild($titleTextNode);
 				$titleNode->appendChild($linkNode);
 				$element->appendChild($titleNode);
 				if ($description !== '') {
@@ -360,7 +405,6 @@
 				$valuesNode->setAttribute('class', 'omo-indicator-embed__values');
 				$valueLabel = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-value'));
 				$dateLabel = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-date'));
-				$statusLabel = trim((string)self::getDomNodeAttributeValue($node, 'data-omo-indicator-status'));
 				if ($valueLabel !== '') {
 					$valueNode = $document->createElement('b');
 					$valueNode->appendChild($document->createTextNode($valueLabel));
@@ -522,6 +566,18 @@
 			return self::getProjectEmbedNodeId($node) > 0;
 		}
 
+		protected static function getChecklistEmbedNodeId(\DOMNode $node): int
+		{
+			return (int)trim((string)self::getDomNodeAttributeValue($node, 'data-omo-checklist-id'));
+		}
+
+		protected static function isAllowedChecklistEmbedNode(\DOMNode $node): bool
+		{
+			return $node instanceof \DOMElement
+				&& trim((string)$node->getAttribute('data-omo-embed-type')) === 'checklist'
+				&& self::getChecklistEmbedNodeId($node) > 0;
+		}
+
 		protected static function getEventEmbedNodeId(\DOMNode $node): int
 		{
 			return (int)trim((string)self::getDomNodeAttributeValue($node, 'data-omo-event-id'));
@@ -552,7 +608,8 @@
 			}
 
 			$chartNode = $document->createElement('svg');
-			$chartNode->setAttribute('class', 'omo-stats-chart omo-stats-chart--compact');
+			$indicatorKind = trim((string)self::getDomNodeAttributeValue($sourceNode, 'data-omo-indicator-kind')) === 'group' ? 'group' : 'indicator';
+			$chartNode->setAttribute('class', 'omo-stats-chart omo-stats-chart--compact' . ($indicatorKind === 'group' ? ' omo-stats-chart--group' : ''));
 			$chartNode->setAttribute('viewBox', '0 0 180 54');
 			$chartNode->setAttribute('aria-hidden', 'true');
 			foreach (array('polyline', 'circle', 'line', 'text') as $tagName) {
@@ -567,7 +624,11 @@
 					if ($tagName === 'circle' && $className !== 'omo-stats-chart__point') {
 						continue;
 					}
-					if ($tagName === 'line' && $className !== 'omo-stats-chart__scale-line') {
+					if ($tagName === 'line' && !in_array($className, array(
+						'omo-stats-chart__scale-line',
+						'omo-stats-chart__reference omo-stats-chart__reference--ceiling',
+						'omo-stats-chart__baseline',
+					), true)) {
 						continue;
 					}
 					if ($tagName === 'text' && $className !== 'omo-stats-chart__scale-label') {
@@ -631,7 +692,10 @@
 			$wrapper->setAttribute('class', 'omo-indicator-embed__chart');
 			$plotNode = $document->createElement('span');
 			$plotNode->setAttribute('class', 'omo-indicator-embed__chart-plot');
-			$plotNode->appendChild($chartNode);
+			$svgNode = $document->createElement('span');
+			$svgNode->setAttribute('class', 'omo-indicator-embed__chart-svg');
+			$svgNode->appendChild($chartNode);
+			$plotNode->appendChild($svgNode);
 			$wrapper->appendChild($plotNode);
 			$parentNode->appendChild($wrapper);
 		}

@@ -405,6 +405,22 @@
     margin-top: 2px;
 }
 
+.omo-project-detail__subprojects-heading,
+.omo-project-detail__subprojects-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.omo-project-detail__subprojects-heading {
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.omo-project-detail__subprojects-actions {
+    flex-wrap: wrap;
+}
+
 .omo-project-detail__subprojects-list {
     display: grid;
     gap: 10px;
@@ -615,23 +631,59 @@
     gap: 14px;
 }
 
-.omo-project-detail__hero {
-    display: grid;
-    gap: 8px;
-}
-
-.omo-project-detail__hero h2 {
-    overflow-wrap: anywhere;
-}
-
-.omo-project-detail__hero-meta {
+.omo-project-detail__breadcrumb {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: 4px 7px;
     color: var(--color-text-light, #64748b);
     font-size: .82rem;
     font-weight: 700;
+}
+
+.omo-project-detail__breadcrumb-link {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-primary, #2563eb);
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+}
+
+.omo-project-detail__breadcrumb-link:hover,
+.omo-project-detail__breadcrumb-link:focus-visible {
+    text-decoration: underline;
+}
+
+.omo-project-detail__breadcrumb-separator {
+    color: var(--color-text-light, #64748b);
+}
+
+.omo-project-detail__breadcrumb-expand {
+    min-width: 24px;
+    padding: 0 5px 3px;
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #fff));
+    color: var(--color-primary, #2563eb);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.omo-project-detail__breadcrumb-collapse,
+.omo-project-detail__breadcrumb-extra {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 7px;
+}
+
+.omo-project-detail__breadcrumb-collapse[hidden],
+.omo-project-detail__breadcrumb-extra[hidden] {
+    display: none !important;
 }
 
 .omo-project-status {
@@ -727,9 +779,120 @@
     margin: 0;
 }
 
-.omo-project-form #formulaire-edit {
+.omo-project-form__fields {
+    display: grid;
+    gap: 14px;
+}
+
+.omo-project-form__section {
+    min-width: 0;
+}
+
+.omo-project-form__field {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+
+.omo-project-form__field > label,
+.omo-project-form__label-row label {
+    color: var(--color-text, #1f2937);
+    font-size: .86rem;
+    font-weight: 800;
+}
+
+.omo-project-form__field small {
+    color: var(--color-text-light, #64748b);
+    font-size: .76rem;
+    line-height: 1.4;
+}
+
+.omo-project-form__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.omo-project-form__grid--assignment {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.omo-project-form__parent-control {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+}
+
+.omo-project-form__parent-control .generic-action-button {
+    min-height: 44px;
+    white-space: nowrap;
+}
+
+.omo-project-form__label-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.omo-project-form__label-row output {
+    color: var(--color-primary, #2563eb);
+    font-size: .82rem;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+}
+
+.omo-project-form__level-input {
+    width: 100%;
+    margin: 4px 0 0;
+    accent-color: var(--color-primary, #2563eb);
+}
+
+.omo-project-form__level-scale {
+    display: flex;
+    justify-content: space-between;
+    color: var(--color-text-light, #64748b);
+    font-size: .68rem;
+    font-weight: 700;
+}
+
+.omo-project-form__feedback {
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px solid color-mix(in srgb, #dc2626 30%, var(--color-border, #e5e7eb));
+    border-radius: var(--radius-md, 6px);
+    background: color-mix(in srgb, #dc2626 8%, var(--color-surface, #fff));
+    color: #b91c1c;
+    font-size: .86rem;
+    font-weight: 700;
+}
+
+.omo-project-parent-picker {
     display: grid;
     gap: 12px;
+}
+
+.omo-project-parent-picker .omo-resource-picker__content {
+    display: grid;
+    align-content: start;
+    gap: 12px;
+}
+
+.omo-project-parent-picker__select {
+    min-height: 250px;
+}
+
+.omo-project-parent-picker__empty {
+    margin: 0;
+    color: var(--color-text-light, #64748b);
+    font-size: .86rem;
+}
+
+.omo-project-parent-picker__actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 @media (max-width: 760px) {
@@ -800,6 +963,15 @@
     }
 
     .omo-project-detail__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .omo-project-form__grid,
+    .omo-project-form__grid--assignment {
+        grid-template-columns: 1fr;
+    }
+
+    .omo-project-form__parent-control {
         grid-template-columns: 1fr;
     }
 

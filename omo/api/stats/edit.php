@@ -68,6 +68,10 @@ if (!function_exists('omoStatsEditInputNumber')) {
 $referencePoints = $indicatorId > 0
     ? omoStatsCollectionItems($indicator->getReferencePoints(), StatIndicatorReferencePoint::class)
     : [];
+$referenceType = StatIndicator::normalizeReferenceType($indicator->get('reference_type'));
+$ceilingValue = $referenceType === StatIndicator::REFERENCE_CEILING
+    ? omoStatsGetCeilingValue($referencePoints)
+    : null;
 $measurementFrequency = StatIndicator::normalizeMeasurementFrequency($indicator->get('measurement_frequency'));
 $measurementSchedule = StatIndicator::normalizeMeasurementSchedule($measurementFrequency, $indicator->get('measurement_schedule'));
 $measurementFrequencyOptions = [['value' => '', 'label' => omoStatsT('stats.frequency.none')]];
@@ -82,7 +86,7 @@ foreach (StatIndicator::getMeasurementFrequencyCatalog() as $frequency) {
     $measurementScheduleOptions[$frequency] = omoStatsMeasurementScheduleOptions($frequency);
 }
 
-if (count($referencePoints) === 0) {
+if (count($referencePoints) === 0 && $referenceType !== StatIndicator::REFERENCE_CEILING) {
     $startPoint = new StatIndicatorReferencePoint();
     $startPoint->set('position_percent', 0);
     $startPoint->set('value', 0);
@@ -121,6 +125,24 @@ ob_start();
             <select class="generic-form-control" name="measurement_schedule" data-omo-stats-measurement-schedule data-selected-schedule="<?= omoApiEscape((string)$measurementSchedule) ?>"></select>
         </label>
     </div>
+</section>
+<section class="generic-soft-panel omo-stats-ceiling-editor" data-omo-stats-ceiling-editor hidden>
+    <div class="omo-stats-ceiling-editor__heading">
+        <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoStatsT('stats.form.ceiling_title')) ?></h3>
+        <p><?= omoApiEscape(omoStatsT('stats.form.ceiling_help')) ?></p>
+    </div>
+    <label class="omo-stats-field">
+        <span><?= omoApiEscape(omoStatsT('stats.form.ceiling_value')) ?></span>
+        <input
+            type="number"
+            class="generic-form-control"
+            name="ceiling_value"
+            value="<?= omoApiEscape(omoStatsEditInputNumber($ceilingValue)) ?>"
+            step="any"
+            required
+            data-omo-stats-ceiling-value
+        >
+    </label>
 </section>
 <div class="omo-stats-reference-editor" data-omo-stats-reference-editor>
     <div class="omo-stats-reference-editor__heading">
@@ -196,7 +218,7 @@ ob_start();
 <?php
 $afterTableHtml = ob_get_clean();
 $params = [
-    'fields' => ['name', 'description', 'source_url', 'reference_type'],
+    'fields' => ['name', 'description', 'source_url', 'chart_min_value', 'reference_type'],
     'buttons' => false,
     'action' => '/omo/api/stats/action.php',
     'success' => 'omoStatsAfterIndicatorSave()',
@@ -216,7 +238,7 @@ $params = [
     </section>
     <?php $indicator->display('adminEdit.php', $params); ?>
 </div>
-<script src="/omo/api/stats/reference-editor.js?v=20260718-group-reference"></script>
+<script src="/omo/api/stats/reference-editor.js?v=20260724-ceiling"></script>
 <script>
 (function () {
     var editor = document.querySelector('[data-omo-stats-editor]');
@@ -262,6 +284,8 @@ $params = [
     var measurementScheduleField = editor.querySelector('[data-omo-stats-measurement-schedule]');
     var measurementScheduleWrapper = editor.querySelector('[data-omo-stats-measurement-schedule-field]');
     var referenceEditor = editor.querySelector('[data-omo-stats-reference-editor]');
+    var ceilingEditor = editor.querySelector('[data-omo-stats-ceiling-editor]');
+    var ceilingValueField = editor.querySelector('[data-omo-stats-ceiling-value]');
     var referenceRail = editor.querySelector('[data-omo-stats-reference-rail]');
     var pointList = editor.querySelector('[data-omo-stats-reference-points]');
     var addButton = editor.querySelector('[data-omo-stats-add-reference-point]');
@@ -454,7 +478,7 @@ $params = [
     }
 
     function syncCeilingValues(sourceField) {
-        if (!typeField || typeField.value !== 'ceiling') {
+        if (ceilingEditor || !typeField || typeField.value !== 'ceiling') {
             return;
         }
         var pointRows = rows();
@@ -474,16 +498,27 @@ $params = [
     function syncReferenceType() {
         var type = typeField ? typeField.value : 'none';
         if (referenceEditor) {
-            referenceEditor.hidden = type === 'none';
+            referenceEditor.hidden = ceilingEditor ? type !== 'objective' : type === 'none';
             Array.prototype.forEach.call(referenceEditor.querySelectorAll('input, button'), function (field) {
-                field.disabled = type === 'none';
+                field.disabled = ceilingEditor ? type !== 'objective' : type === 'none';
             });
+        }
+        if (ceilingEditor) {
+            ceilingEditor.hidden = type !== 'ceiling';
+            Array.prototype.forEach.call(ceilingEditor.querySelectorAll('input, button'), function (field) {
+                field.disabled = type !== 'ceiling';
+            });
+            if (ceilingValueField) {
+                ceilingValueField.required = type === 'ceiling';
+            }
         }
         if (addButton) {
             addButton.hidden = type !== 'objective';
             addButton.disabled = type !== 'objective';
         }
-        syncCeilingValues();
+        if (!ceilingEditor) {
+            syncCeilingValues();
+        }
         renderReferenceRail();
     }
 

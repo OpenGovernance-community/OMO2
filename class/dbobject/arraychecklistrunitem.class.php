@@ -24,6 +24,22 @@ class ArrayChecklistRunItem extends ArrayDbObject
         ]);
     }
 
+    public function loadForProject($projectId)
+    {
+        $this->exchangeArray([]);
+        $projectId = (int)$projectId;
+        if ($projectId <= 0) {
+            return;
+        }
+        $this->load([
+            'where' => [['field' => 'IDproject', 'value' => $projectId]],
+            'orderBy' => [
+                ['field' => 'IDchecklistrun', 'dir' => 'ASC'],
+                ['field' => 'id', 'dir' => 'ASC'],
+            ],
+        ]);
+    }
+
     public function loadPending($dateTime, $limit = 50)
     {
         $this->exchangeArray([]);

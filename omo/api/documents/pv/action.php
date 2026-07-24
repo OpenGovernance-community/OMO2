@@ -318,6 +318,66 @@ if ($action === 'update_document_metadata') {
     ]);
 }
 
+if ($action === 'complete_archive_checklist_project') {
+    if (
+        !$document->canUserManagePvDocument($currentUserId)
+        || !omoDocumentsPvEditorHasValidSessionToken($organizationId, $documentId, $currentUserId, $editorToken)
+    ) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+        ], 403);
+    }
+
+    $projectId = isset($_POST['project_id']) ? (int)$_POST['project_id'] : 0;
+    $project = new \dbObject\Project();
+    if (
+        $projectId <= 0
+        || !$project->load($projectId)
+        || (int)$project->get('IDorganization') !== $organizationId
+        || (int)$project->get('active') !== 1
+        || \dbObject\Project::normalizeKind($project->get('project_kind')) !== \dbObject\Project::KIND_STANDARD
+        || (int)$project->get('IDproject_template') <= 0
+    ) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+        ], 403);
+    }
+
+    $archiveResult = $project->completeAndArchiveActiveTree();
+    if (!is_array($archiveResult) || empty($archiveResult['status'])) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.checklist.complete_archive_error'),
+        ], 422);
+    }
+
+    $activatedCount = 0;
+    $runIds = [];
+    foreach ((array)($archiveResult['projectIds'] ?? [$projectId]) as $affectedProjectId) {
+        $runItems = new \dbObject\ArrayChecklistRunItem();
+        $runItems->loadForProject((int)$affectedProjectId);
+        foreach ($runItems as $runItem) {
+            $run = $runItem instanceof \dbObject\ChecklistRunItem ? $runItem->getRun() : null;
+            if ($run instanceof \dbObject\ChecklistRun) {
+                $runIds[(int)$run->getId()] = $run;
+            }
+        }
+    }
+    foreach ($runIds as $run) {
+        $sync = $run->synchronizeItemActivations();
+        $activatedCount += (int)($sync['activatedCount'] ?? 0);
+    }
+
+    omoDocumentsPvEditorJsonResponse([
+        'status' => true,
+        'projectId' => $projectId,
+        'affectedCount' => (int)($archiveResult['affectedCount'] ?? 0),
+        'activatedCount' => $activatedCount,
+    ]);
+}
+
 if ($action === 'add_indicator_value') {
     if (!omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'stats')) {
         omoDocumentsPvEditorJsonResponse([

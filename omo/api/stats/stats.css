@@ -409,6 +409,17 @@
     stroke-linejoin: round;
 }
 
+.omo-stats-chart__reference--ceiling {
+    stroke-dasharray: none;
+    stroke-width: 3;
+}
+
+.omo-stats-chart__baseline {
+    stroke: color-mix(in srgb, var(--color-text-light, #64748b) 72%, transparent);
+    stroke-width: 1.5;
+    stroke-dasharray: 3 5;
+}
+
 .omo-stats-chart--compact .omo-stats-chart__reference {
     stroke-width: 1.8;
     stroke-dasharray: 5 4;
@@ -868,6 +879,22 @@
 
 .omo-stats-reference-editor[hidden] {
     display: none !important;
+}
+
+.omo-stats-ceiling-editor {
+    display: grid;
+    gap: 14px;
+    padding-top: 18px;
+    border-top: 1px solid var(--color-border, #d1d5db);
+}
+
+.omo-stats-ceiling-editor[hidden] {
+    display: none !important;
+}
+
+.omo-stats-ceiling-editor__heading {
+    display: grid;
+    gap: 6px;
 }
 
 .omo-stats-reference-editor__heading {
