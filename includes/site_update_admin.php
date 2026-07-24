@@ -396,27 +396,114 @@ function siteUpdateAdminBuildAvailableMessage($behindCount, array $remoteSummary
     return $behindCount . ' mises a jour sont disponibles. Derniere version : ' . $headline;
 }
 
-function siteUpdateAdminHasTrackedLocalChanges(array $context)
+function siteUpdateAdminCollectChangedPaths(array &$changesByPath, $output, $state)
+{
+    $paths = preg_split('/\0/', (string)$output);
+    foreach ($paths as $path) {
+        $path = (string)$path;
+        if ($path === '') {
+            continue;
+        }
+
+        if (!isset($changesByPath[$path])) {
+            $changesByPath[$path] = array(
+                'path' => $path,
+                'states' => array(),
+            );
+        }
+
+        if (!in_array($state, $changesByPath[$path]['states'], true)) {
+            $changesByPath[$path]['states'][] = $state;
+        }
+    }
+}
+
+function siteUpdateAdminGetLocalChanges(array $context)
 {
     $repoRoot = $context['repoRoot'];
-    $exitCode = 0;
-
-    siteUpdateAdminRunCommand(
-        array(siteUpdateAdminGetGitBinary(), 'diff', '--no-ext-diff', '--quiet', '--exit-code'),
-        $repoRoot,
-        $exitCode
+    $changesByPath = array();
+    $commands = array(
+        'modified' => array(siteUpdateAdminGetGitBinary(), 'diff', '--no-ext-diff', '--name-only', '-z'),
+        'indexed' => array(siteUpdateAdminGetGitBinary(), 'diff', '--no-ext-diff', '--cached', '--name-only', '-z'),
+        'untracked' => array(siteUpdateAdminGetGitBinary(), 'ls-files', '--others', '--exclude-standard', '-z'),
     );
-    if ($exitCode !== 0) {
-        return true;
+
+    foreach ($commands as $state => $parts) {
+        $exitCode = 0;
+        $output = siteUpdateAdminRunCommand($parts, $repoRoot, $exitCode);
+        if ($exitCode === 0) {
+            siteUpdateAdminCollectChangedPaths($changesByPath, $output, $state);
+        }
     }
 
-    siteUpdateAdminRunCommand(
-        array(siteUpdateAdminGetGitBinary(), 'diff', '--no-ext-diff', '--cached', '--quiet', '--exit-code'),
-        $repoRoot,
+    $changes = array_values($changesByPath);
+    usort($changes, static function ($left, $right) {
+        return strnatcasecmp((string)$left['path'], (string)$right['path']);
+    });
+
+    return $changes;
+}
+
+function siteUpdateAdminGetRemoteChangedPaths(array $context, $localCommit, $remoteCommit)
+{
+    if (trim((string)$localCommit) === '' || trim((string)$remoteCommit) === '' || $localCommit === $remoteCommit) {
+        return array();
+    }
+
+    $exitCode = 0;
+    $output = siteUpdateAdminRunCommand(
+        array(siteUpdateAdminGetGitBinary(), 'diff', '--no-ext-diff', '--name-only', '-z', $localCommit . '..' . $remoteCommit),
+        $context['repoRoot'],
         $exitCode
     );
 
-    return $exitCode !== 0;
+    if ($exitCode !== 0) {
+        return array();
+    }
+
+    return array_values(array_filter(preg_split('/\0/', (string)$output), static function ($path) {
+        return $path !== '';
+    }));
+}
+
+function siteUpdateAdminBuildLocalChangesPayload(array $context, $localCommit = '', $remoteCommit = '')
+{
+    $localChanges = siteUpdateAdminGetLocalChanges($context);
+    $remotePaths = array_flip(siteUpdateAdminGetRemoteChangedPaths($context, $localCommit, $remoteCommit));
+    $overlappingPaths = array();
+    $untrackedOverlappingPaths = array();
+    $trackedCount = 0;
+
+    foreach ($localChanges as &$change) {
+        $change['overlapsRemoteUpdate'] = isset($remotePaths[$change['path']]);
+        if ($change['overlapsRemoteUpdate']) {
+            $overlappingPaths[] = $change['path'];
+            if (in_array('untracked', $change['states'], true)) {
+                $untrackedOverlappingPaths[] = $change['path'];
+            }
+        }
+
+        if (array_intersect($change['states'], array('modified', 'indexed'))) {
+            $trackedCount++;
+        }
+    }
+    unset($change);
+
+    return array(
+        'hasTrackedChanges' => $trackedCount > 0,
+        'localChangeCount' => count($localChanges),
+        'trackedLocalChangeCount' => $trackedCount,
+        'overlappingLocalChangeCount' => count($overlappingPaths),
+        'overlappingLocalChangePaths' => $overlappingPaths,
+        'untrackedOverlappingLocalChangeCount' => count($untrackedOverlappingPaths),
+        'untrackedOverlappingLocalChangePaths' => $untrackedOverlappingPaths,
+        'localChanges' => $localChanges,
+    );
+}
+
+function siteUpdateAdminHasTrackedLocalChanges(array $localChangesPayload)
+{
+    return !empty($localChangesPayload['hasTrackedChanges']);
 }
 
 function siteUpdateAdminFormatCommandOutput($output, $maxLines = 12)
@@ -473,8 +560,9 @@ function siteUpdateAdminCheckVersionStatus()
     $localSummary = siteUpdateAdminGetCommitSummary($context, $context['localCommit']);
     $remoteSummary = siteUpdateAdminGetCommitSummary($context, $remoteCommit);
     $behindCount = siteUpdateAdminGetBehindCount($context, $context['localCommit'], $remoteCommit);
+    $localChangesPayload = siteUpdateAdminBuildLocalChangesPayload($context, $context['localCommit'], $remoteCommit);
 
-    return array(
+    return array_merge(array(
         'status' => true,
         'supported' => true,
         'updating' => false,
@@ -491,10 +579,10 @@ function siteUpdateAdminCheckVersionStatus()
         'message' => $remoteCommit !== $context['localCommit']
             ? siteUpdateAdminBuildAvailableMessage($behindCount, $remoteSummary)
             : 'Le site est deja a jour.',
-    );
+    ), $localChangesPayload);
 }
 
-function siteUpdateAdminRunUpdate($actorUserId)
+function siteUpdateAdminRunUpdate($actorUserId, $force = false)
 {
     $actorUserId = (int)$actorUserId;
     $lockHandle = siteUpdateAdminTryAcquireLock();
@@ -508,21 +596,51 @@ function siteUpdateAdminRunUpdate($actorUserId)
             throw new RuntimeException('La mise a jour automatique n est pas disponible sur ce serveur.');
         }
 
-        if (siteUpdateAdminHasTrackedLocalChanges($context)) {
-            throw new RuntimeException('Le depot contient des modifications locales. La mise a jour automatique est bloquee pour eviter un ecrasement.');
-        }
-
         $remoteCommit = siteUpdateAdminFetchRemoteCommit($context);
         $localCommit = (string)$context['localCommit'];
         $localSummary = siteUpdateAdminGetCommitSummary($context, $localCommit);
         $remoteSummary = siteUpdateAdminGetCommitSummary($context, $remoteCommit);
         $behindCount = siteUpdateAdminGetBehindCount($context, $localCommit, $remoteCommit);
+        $localChangesPayload = siteUpdateAdminBuildLocalChangesPayload($context, $localCommit, $remoteCommit);
+
+        if (!empty($localChangesPayload['untrackedOverlappingLocalChangeCount'])) {
+            return array_merge(array(
+                'status' => false,
+                'requiresManualLocalCleanup' => true,
+                'message' => 'La mise a jour est bloquee car des fichiers non suivis seraient remplaces par le patch distant. Deplacez ou supprimez-les manuellement avant de reessayer.',
+                'behindCount' => $behindCount,
+                'localCommit' => $localCommit,
+                'remoteCommit' => $remoteCommit,
+                'localHeadline' => (string)($localSummary['headline'] ?? ''),
+                'remoteHeadline' => (string)($remoteSummary['headline'] ?? ''),
+                'localDate' => (string)($localSummary['date'] ?? ''),
+                'remoteDate' => (string)($remoteSummary['date'] ?? ''),
+                'branch' => (string)$context['tracking'],
+            ), $localChangesPayload);
+        }
+
+        if (siteUpdateAdminHasTrackedLocalChanges($localChangesPayload) && !$force) {
+            return array_merge(array(
+                'status' => false,
+                'requiresForce' => true,
+                'message' => 'Le depot contient des modifications locales. La mise a jour automatique est bloquee pour eviter un ecrasement.',
+                'behindCount' => $behindCount,
+                'localCommit' => $localCommit,
+                'remoteCommit' => $remoteCommit,
+                'localHeadline' => (string)($localSummary['headline'] ?? ''),
+                'remoteHeadline' => (string)($remoteSummary['headline'] ?? ''),
+                'localDate' => (string)($localSummary['date'] ?? ''),
+                'remoteDate' => (string)($remoteSummary['date'] ?? ''),
+                'branch' => (string)$context['tracking'],
+            ), $localChangesPayload);
+        }
 
         siteUpdateAdminWriteState(array(
             'status' => 'running',
             'message' => 'Mise a jour en cours.',
             'startedAt' => gmdate('c'),
             'userId' => $actorUserId,
+            'forced' => (bool)$force,
             'branch' => (string)$context['tracking'],
             'behindCount' => $behindCount,
             'localCommit' => $localCommit,
@@ -546,6 +664,7 @@ function siteUpdateAdminRunUpdate($actorUserId)
                 'localDate' => (string)($localSummary['date'] ?? ''),
                 'remoteDate' => (string)($remoteSummary['date'] ?? ''),
                 'branch' => (string)$context['tracking'],
+                'forced' => (bool)$force,
             );
         }
 
@@ -565,6 +684,7 @@ function siteUpdateAdminRunUpdate($actorUserId)
             'message' => 'Synchronisation du code terminee. Application des migrations en cours.',
             'startedAt' => gmdate('c'),
             'userId' => $actorUserId,
+            'forced' => (bool)$force,
             'branch' => (string)$context['tracking'],
             'behindCount' => $behindCount,
             'localCommit' => $localCommit,
@@ -607,6 +727,7 @@ function siteUpdateAdminRunUpdate($actorUserId)
             'localDate' => (string)($updatedSummary['date'] ?? ''),
             'remoteDate' => (string)($remoteSummary['date'] ?? ''),
             'branch' => (string)$context['tracking'],
+            'forced' => (bool)$force,
             'migrationOutput' => siteUpdateAdminFormatCommandOutput($migrationOutput),
             'resetOutput' => siteUpdateAdminFormatCommandOutput($resetOutput),
         );
