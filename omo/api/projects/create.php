@@ -275,7 +275,7 @@ $formTexts = [
                         <label for="omo-project-capture-mode"><?= omoApiEscape(omoProjectsT('projects.field.capture_mode')) ?></label>
                         <select id="omo-project-capture-mode" class="generic-form-control" name="capture_mode">
                             <?php foreach (Project::getCaptureModeCatalog() as $captureMode => $catalog): ?>
-                                <option value="<?= omoApiEscape($captureMode) ?>"<?= $captureMode === $selectedCaptureMode ? ' selected' : '' ?>><?= omoApiEscape((string)$catalog['label']) ?></option>
+                                <option value="<?= omoApiEscape($captureMode) ?>"<?= $captureMode === $selectedCaptureMode ? ' selected' : '' ?>><?= omoApiEscape(omoProjectsCaptureModeLabel($captureMode)) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>

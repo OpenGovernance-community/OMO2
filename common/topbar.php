@@ -381,6 +381,8 @@ function commonRenderTopbar(array $options = [])
         echo '<script src="/common/assets/components.js" defer></script>' . PHP_EOL;
         echo '<script src="/common/holon_scope_picker.js?v=20260724-holon-picker-label" defer></script>' . PHP_EOL;
         echo '<link rel="stylesheet" href="/common/assets/topbar.css">' . PHP_EOL;
+        echo '<link rel="stylesheet" href="/common/notifications/notifications.css">' . PHP_EOL;
+        echo '<script src="/common/notifications/notifications.js" defer></script>' . PHP_EOL;
         echo '<script src="/common/assets/topbar.js" defer></script>' . PHP_EOL;
         $assetsLoaded = true;
     }
@@ -716,6 +718,8 @@ function commonRenderTopbar(array $options = [])
         <div class="common-topbar-drawer__body" id="commonTopbarDrawerBody"></div>
     </div>
 </div>
+
+<div class="common-notifications" id="commonNotifications" aria-live="polite" aria-atomic="false"></div>
 
 <script src="/common/drawer/subdrawer.js"></script>
 <script>

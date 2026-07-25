@@ -3671,7 +3671,7 @@ if (!is_string($documentsPayload)) {
                 });
                 const payload = await response.json();
                 if (!response.ok || !payload || payload.status !== true) {
-                    window.alert(String(payload && payload.message || <?= json_encode(omoDocumentsScopeT('documents.menu.action_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>));
+                    window.omoNotify(String(payload && payload.message || <?= json_encode(omoDocumentsScopeT('documents.menu.action_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>), 'error');
                     return true;
                 }
 
