@@ -88,8 +88,7 @@ foreach ($children as $child) {
 
     $priority = Project::normalizeLevel($child->get('priority'));
     $status = Project::normalizeStatus($child->get('status'));
-    $statusCatalog = Project::getStatusCatalog();
-    $statusLabel = (string)($statusCatalog[$status]['label'] ?? $status);
+    $statusLabel = omoProjectsStatusLabel($status);
     $summary = omoProjectsBuildStatusBar($child, $childrenByParent, $statusSummaryMemo, true);
     $renderedChildren++;
     if ($renderForProjectEmbed) {
@@ -105,7 +104,7 @@ foreach ($children as $child) {
         }
         $html .= '</span>';
         if ($hasDirectChildren) {
-            $html .= '<button type="button" class="omo-project-embed__child-toggle" data-omo-project-embed-toggle aria-expanded="false" aria-label="Afficher les sous-projets de ' . omoApiEscape($title) . '">';
+            $html .= '<button type="button" class="omo-project-embed__child-toggle" data-omo-project-embed-toggle aria-expanded="false" aria-label="' . omoApiEscape(omoProjectsT('projects.children.show_subprojects', ['title' => $title])) . '">';
             $html .= omoProjectsRenderStatusBar($summary, 'omo-project-embed__child-status-bar', ($renderJson || $renderInline) ? 'span' : 'div');
             $html .= '</button>';
         } else {
@@ -130,7 +129,7 @@ foreach ($children as $child) {
     }
     $html .= '</div>';
     if ($hasDirectChildren) {
-        $html .= '<button type="button" class="section-project-reference__status-toggle" data-omo-project-reference-toggle aria-expanded="false" aria-label="Afficher les sous-projets de ' . omoApiEscape($title) . '">';
+        $html .= '<button type="button" class="section-project-reference__status-toggle" data-omo-project-reference-toggle aria-expanded="false" aria-label="' . omoApiEscape(omoProjectsT('projects.children.show_subprojects', ['title' => $title])) . '">';
         $html .= omoProjectsRenderStatusBar($summary, 'section-project-reference__status-bar');
         $html .= '</button>';
         $html .= '<div class="section-project-reference__children" data-omo-project-reference-children hidden></div>';
@@ -142,14 +141,13 @@ $html .= '</' . $listTag . '>';
 if ($renderJson) {
     $parentSummary = omoProjectsBuildStatusBar($project, $childrenByParent, $statusSummaryMemo);
     $projectStatus = Project::normalizeStatus($project->get('status'));
-    $statusCatalog = Project::getStatusCatalog();
     header('Content-Type: application/json; charset=UTF-8');
     echo json_encode([
         'success' => true,
         'hasChildren' => $renderedChildren > 0,
         'statusBarHtml' => omoProjectsRenderStatusBar($parentSummary, 'omo-pv-editor__project-review-status-bar', 'span'),
         'status' => $projectStatus,
-        'statusLabel' => (string)($statusCatalog[$projectStatus]['label'] ?? $projectStatus),
+        'statusLabel' => omoProjectsStatusLabel($projectStatus),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }

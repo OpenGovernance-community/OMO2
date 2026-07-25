@@ -4,12 +4,18 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-07-25
 
+- Les libellés français des indicateurs utilisent maintenant les apostrophes et accents manquants dans les actions, formulaires, messages d erreur et états vides.
+- Le module Projets utilise maintenant son bundle de traduction pour les vues, les formulaires, les reponses JSON et les libelles d accessibilite; ses textes francais ont aussi ete corriges avec les accents et la ponctuation attendus.
+- Un systeme generique de notifications est maintenant utilise par OMO et ses drawers : les sauvegardes des parametres et plusieurs erreurs d action remontent en rouge ou en vert, restent affichees 10 secondes, se mettent en pause au survol, s empilent et peuvent etre fermees individuellement.
 - Dans la creation d un indicateur, le choix de la frequence remplit maintenant immediatement le selecteur du moment attendu, par exemple les jours du mois pour une frequence mensuelle.
 - Le logo de l organisation systeme #1 utilise maintenant l image PNG versionnee dans `/img`, avec une migration SQL reproductible.
 - La banniere de l organisation systeme #1 utilise maintenant l image PNG versionnee dans `/img`, redimensionnee a 1024 pixels de large.
 - Le contour du holon actuellement selectionne dans la mini-navigation de la structure est maintenant limite a 2 pixels.
 - La banniere de l organisation exemple #2 utilise maintenant l image PNG fournie, versionnee dans `/img` et redimensionnee a 1024 pixels de large.
 - Le logo de l organisation exemple #2 utilise maintenant l image PNG fournie, versionnee dans `/img`.
+- Une première maquette de statistiques globales est disponible dans le fichier racine `stats.php`, volontairement non référencé depuis l application.
+- Les dates de connexion sont maintenant séparées : la date globale est actualisée à la création ou à la restauration d une session, tandis que la date du rattachement est actualisée à l ouverture effective d une organisation.
+- La page racine `stats.php` affiche maintenant aussi le total des holons, les holons modifiés récemment et un graphique double des créations et modifications de holons.
 
 ## 2026-07-24
 

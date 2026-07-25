@@ -24,23 +24,23 @@
     var displayPreferencesStorageKey = 'omo.projects.display-preferences.v1';
     var columns = [];
     var texts = {
-        loading: 'Chargement du projet...',
+        loading: 'Chargement du projet…',
         loadingError: 'Impossible de charger ce projet.',
         emptyColumn: 'Aucun projet dans cette colonne.',
         statusUpdateError: 'Impossible de changer le statut.',
-        actionError: 'Impossible de mettre a jour le projet.',
-        deleteConfirm: 'Supprimer definitivement ce projet et ses {count} sous-projets ? Cette action est irreversible.',
-        archiveConfirm: 'Ce projet n est pas termine. L archiver quand meme ?',
-        moveTitle: 'Deplacer le projet',
+        actionError: 'Impossible de mettre à jour le projet.',
+        deleteConfirm: 'Supprimer définitivement ce projet et ses {count} sous-projets ? Cette action est irréversible.',
+        archiveConfirm: "Ce projet n'est pas terminé. L'archiver quand même ?",
+        moveTitle: 'Déplacer le projet',
         moveHint: 'Choisissez le holon de destination dans la structure.',
-        moveSubmit: 'Deplacer ici',
+        moveSubmit: 'Déplacer ici',
         moveSelectRequired: 'Choisissez un holon de destination.',
         attachTitle: 'Attacher un projet',
         attachHint: 'Choisissez un projet sans parent dans la structure.',
         attachSearch: 'Rechercher un projet',
-        attachEmpty: 'Aucun projet sans parent ne correspond a la recherche.',
+        attachEmpty: 'Aucun projet sans parent ne correspond à la recherche.',
         attachSubmit: 'Attacher',
-        attachSelectRequired: 'Choisissez un projet a attacher.',
+        attachSelectRequired: 'Choisissez un projet à attacher.',
         cancel: 'Annuler'
     };
     var mobileColumnIndex = 0;
@@ -506,7 +506,7 @@
             if (select) {
                 select.value = currentStatus;
             }
-            window.alert(error.message || texts.statusUpdateError);
+            window.omoNotify(error.message || texts.statusUpdateError, 'error');
         });
     }
 
@@ -577,7 +577,7 @@
 
     function openMoveDialog(card) {
         if (!card || typeof window.commonTopbarOpenModal !== 'function' || typeof window.omoMountHolonScopePicker !== 'function') {
-            window.alert(texts.actionError);
+            window.omoNotify(texts.actionError, 'error');
             return;
         }
 
@@ -647,7 +647,7 @@
 
     function openAttachSubprojectDialog(detail) {
         if (!detail || typeof window.commonTopbarOpenModal !== 'function' || typeof window.omoMountHolonScopePicker !== 'function') {
-            window.alert(texts.actionError);
+            window.omoNotify(texts.actionError, 'error');
             return;
         }
 
@@ -804,7 +804,7 @@
         postProjectAction(projectId, actionName).then(function () {
             refreshRoot(currentUrl);
         }).catch(function (actionError) {
-            window.alert(actionError.message || texts.actionError);
+            window.omoNotify(actionError.message || texts.actionError, 'error');
         });
     }
 
@@ -1068,7 +1068,7 @@
         }).catch(function (error) {
             select.value = previousStatus;
             select.disabled = false;
-            window.alert(error.message || texts.statusUpdateError);
+            window.omoNotify(error.message || texts.statusUpdateError, 'error');
         });
     });
 

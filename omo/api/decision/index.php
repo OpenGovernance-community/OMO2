@@ -3944,7 +3944,7 @@ function submitDecisionMenuAction(button) {
             return omoDecisionRefreshIndex({ silent: false });
         })
         .catch(function (error) {
-            window.alert(error && error.message ? error.message : (payload.text && payload.text.actionErrorUpdate ? payload.text.actionErrorUpdate : 'Impossible de mettre a jour cette prise de decision pour le moment.'));
+            window.omoNotify(error && error.message ? error.message : (payload.text && payload.text.actionErrorUpdate ? payload.text.actionErrorUpdate : 'Impossible de mettre a jour cette prise de decision pour le moment.'), 'error');
             return false;
         })
         .finally(function () {

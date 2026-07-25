@@ -1959,7 +1959,7 @@ $(document)
         button.prop('disabled', false);
 
         if (!result.ok || !result.data || !result.data.status) {
-            window.alert(result.data && result.data.message ? result.data.message : omoTeamText.updateFailed);
+            window.omoNotify(result.data && result.data.message ? result.data.message : omoTeamText.updateFailed, 'error');
             return;
         }
 
@@ -1992,7 +1992,7 @@ $(document)
       })
       .catch(function () {
         button.prop('disabled', false);
-        window.alert(omoTeamText.updateFailedLater);
+        window.omoNotify(omoTeamText.updateFailedLater, 'error');
       });
   });
 </script>

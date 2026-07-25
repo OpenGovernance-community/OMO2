@@ -5,6 +5,17 @@ const OMO_THEME_MEDIA_QUERY = typeof SHARED_THEME_MEDIA_QUERY === 'string'
     ? SHARED_THEME_MEDIA_QUERY
     : '(prefers-color-scheme: dark)';
 
+function omoNotify(message, type = 'error') {
+    if (typeof window.commonNotify === 'function') {
+        window.commonNotify(message, type);
+        return;
+    }
+
+    if (typeof window.alert === 'function') {
+        window.alert(message);
+    }
+}
+
 function omoGetThemePreference() {
     if (typeof sharedGetThemePreference === 'function') {
         return sharedGetThemePreference(OMO_THEME_STORAGE_KEY);
@@ -4520,7 +4531,7 @@ function omoShowTourMessage(title, message) {
         return;
     }
 
-    window.alert(message.replace(/<[^>]+>/g, ''));
+    omoNotify(message.replace(/<[^>]+>/g, ''), 'error');
 }
 
 function omoGetTourElement(stepDefinition) {
@@ -5067,6 +5078,7 @@ function omoInstallRuntimeMaintenanceTriggers() {
 omoInstallRuntimeMaintenanceTriggers();
 
 window.omoRefreshSidebar = omoRefreshSidebar;
+window.omoNotify = omoNotify;
 window.omoResetMainRightPanel = omoResetMainRightPanel;
 window.omoInvalidateMainRightPanel = omoInvalidateMainRightPanel;
 window.omoRefreshMainRightPanel = omoRefreshMainRightPanel;

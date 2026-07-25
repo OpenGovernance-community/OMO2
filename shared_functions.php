@@ -579,7 +579,7 @@
 				
 				// Initialise la variable de session
 				$_SESSION["currentUser"]=$user->get("id");
-				commonUpdateLastConnection((int)$user->get("id"));
+				commonUpdateGlobalLastConnection((int)$user->get("id"));
 				$_SESSION["userRef"]=$user;
 				
 				// Confirme que l'utilisateur a bien été trouvé
