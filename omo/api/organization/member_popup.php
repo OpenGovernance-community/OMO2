@@ -202,6 +202,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        function showFeedback(message, isError) {
+            if (typeof window.commonNotify === 'function') {
+                window.commonNotify(String(message || ''), isError ? 'error' : 'success');
+                feedback.textContent = '';
+                feedback.classList.remove('is-success');
+                return;
+            }
+
+            feedback.textContent = String(message || '');
+            feedback.classList.toggle('is-success', !isError && String(message || '') !== '');
+        }
+
         form.addEventListener('submit', function (event) {
             event.preventDefault();
 
@@ -209,7 +221,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             feedback.classList.remove('is-success');
 
             if (!emailInput.value.trim()) {
-                feedback.textContent = 'Saisissez une adresse e-mail.';
+                showFeedback('Saisissez une adresse e-mail.', true);
                 return;
             }
 
@@ -235,13 +247,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             })
             .then(function (result) {
                 if (!result.ok || !result.data || !result.data.status) {
-                    feedback.textContent = result.data && result.data.message ? result.data.message : 'Une erreur est survenue.';
+                    showFeedback(result.data && result.data.message ? result.data.message : 'Une erreur est survenue.', true);
                     submitButton.disabled = false;
                     return;
                 }
 
-                feedback.textContent = result.data.message || 'Invitation envoyee.';
-                feedback.classList.add('is-success');
+                showFeedback(result.data.message || 'Invitation envoyee.', false);
                 refreshParentPanel();
 
                 window.setTimeout(function () {
@@ -249,7 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }, 250);
             })
             .catch(function () {
-                feedback.textContent = 'Une erreur est survenue.';
+                showFeedback('Une erreur est survenue.', true);
                 submitButton.disabled = false;
             });
         });

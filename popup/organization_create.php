@@ -483,6 +483,14 @@ $organizationRoutingLockedMessage = "Le nom court et le domaine sont reserves au
         }
 
         function setFeedback(message, isError) {
+            if (message && typeof window.commonNotify === 'function') {
+                window.commonNotify(message, isError ? 'error' : 'success');
+                feedback.textContent = '';
+                feedback.className = 'organization-create-feedback';
+                feedback.style.display = 'none';
+                return;
+            }
+
             feedback.textContent = message || '';
             feedback.className = 'organization-create-feedback' + (message ? (isError ? ' is-error' : ' is-success') : '');
             feedback.style.display = message ? 'block' : 'none';

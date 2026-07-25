@@ -330,6 +330,11 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
         }
 
         function renderFeedback(message, isError) {
+            if (typeof window.commonNotify === 'function') {
+                window.commonNotify(String(message || ''), isError ? 'error' : 'success');
+                return;
+            }
+
             feedback.hidden = false;
             feedback.textContent = String(message || '');
             feedback.classList.toggle('is-error', !!isError);
