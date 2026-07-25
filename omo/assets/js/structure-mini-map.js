@@ -892,7 +892,7 @@
           if (isActive) {
             ctx.beginPath();
             ctx.arc(screenX, screenY, screenR, 0, Math.PI * 2);
-            ctx.lineWidth = Math.max(2.6, Math.min(6.5, screenR * 0.16));
+            ctx.lineWidth = 2;
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.92)';
             ctx.stroke();
           } else if (isHovered) {

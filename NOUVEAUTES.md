@@ -2,6 +2,15 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-25
+
+- Dans la creation d un indicateur, le choix de la frequence remplit maintenant immediatement le selecteur du moment attendu, par exemple les jours du mois pour une frequence mensuelle.
+- Le logo de l organisation systeme #1 utilise maintenant l image PNG versionnee dans `/img`, avec une migration SQL reproductible.
+- La banniere de l organisation systeme #1 utilise maintenant l image PNG versionnee dans `/img`, redimensionnee a 1024 pixels de large.
+- Le contour du holon actuellement selectionne dans la mini-navigation de la structure est maintenant limite a 2 pixels.
+- La banniere de l organisation exemple #2 utilise maintenant l image PNG fournie, versionnee dans `/img` et redimensionnee a 1024 pixels de large.
+- Le logo de l organisation exemple #2 utilise maintenant l image PNG fournie, versionnee dans `/img`.
+
 ## 2026-07-24
 
 - La mise a jour automatique du site detaille maintenant les fichiers modifies localement, signale ceux egalement modifies par le patch distant et permet a l admin de lancer explicitement une synchronisation forcee. Cette action remplace les modifications locales suivies par Git, tandis que les fichiers non suivis sont conserves.
