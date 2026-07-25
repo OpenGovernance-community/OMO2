@@ -321,6 +321,12 @@ $params = [
         measurementScheduleField.dataset.selectedSchedule = '';
     }
 
+    if (measurementFrequencyField) {
+        measurementFrequencyField.addEventListener('change', function () {
+            syncMeasurementSchedule(true);
+        });
+    }
+
     var useSharedReferenceEditor = typeof window.omoStatsInitReferenceEditor === 'function';
     if (useSharedReferenceEditor) {
         window.omoStatsInitReferenceEditor(editor, {
@@ -576,11 +582,6 @@ $params = [
 
     if (typeField) {
         typeField.addEventListener('change', syncReferenceType);
-    }
-    if (measurementFrequencyField) {
-        measurementFrequencyField.addEventListener('change', function () {
-            syncMeasurementSchedule(true);
-        });
     }
     if (addButton) {
         addButton.addEventListener('click', addIntermediatePoint);
