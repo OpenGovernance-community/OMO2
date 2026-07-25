@@ -1958,8 +1958,8 @@ CREATE TABLE `organization` (
 LOCK TABLES `organization` WRITE;
 /*!40000 ALTER TABLE `organization` DISABLE KEYS */;
 INSERT INTO `organization` VALUES
-(1,'OpenMyOrganization','org1','org1.opengov.tools','/img/org1-logo.svg','/img/org1-banner.svg','#0f766e','46.204391;6.143158',NULL,'2026-04-01 00:00:00'),
-(2,'Exemple de modèle','org2','org2.opengov.tools','/img/org2-logo.svg','/img/org2-banner.svg','#1d4ed8','46.519653;6.632273',NULL,'2026-04-01 00:00:00');
+(1,'OpenMyOrganization','org1','org1.opengov.tools','/img/org1-logo.png','/img/org1-banner.png','#0f766e','46.204391;6.143158',NULL,'2026-04-01 00:00:00'),
+(2,'Exemple de modèle','org2','org2.opengov.tools','/img/org2-logo.png','/img/org2-banner.png','#1d4ed8','46.519653;6.632273',NULL,'2026-04-01 00:00:00');
 /*!40000 ALTER TABLE `organization` ENABLE KEYS */;
 UNLOCK TABLES;
 
