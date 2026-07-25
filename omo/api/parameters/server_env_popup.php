@@ -375,6 +375,13 @@ $serverEnvClientTexts = [
             return;
         }
 
+        if (message && typeof window.commonNotify === 'function') {
+            window.commonNotify(message, type === 'success' ? 'success' : 'error');
+            node.textContent = '';
+            node.className = 'omo-server-env-popup__feedback';
+            return;
+        }
+
         node.textContent = message || '';
         node.className = 'omo-server-env-popup__feedback';
 

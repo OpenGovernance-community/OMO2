@@ -2656,7 +2656,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 closeDrawer();
                 refreshCalendar(currentUrl);
             }).catch(function (error) {
-                window.alert(error && error.message ? error.message : fallbackError);
+                window.omoNotify(error && error.message ? error.message : fallbackError, 'error');
                 deleteButton.disabled = false;
             });
         }

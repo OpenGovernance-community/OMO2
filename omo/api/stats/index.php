@@ -1380,7 +1380,7 @@ $displayItemCount = count($statsEntries);
                     }
                     return refreshRoot(currentUrl);
                 }).catch(function (error) {
-                    window.alert(error.message || texts.loadError);
+                    window.omoNotify(error.message || texts.loadError, 'error');
                     applyButton.disabled = false;
                 });
             });
@@ -1524,7 +1524,7 @@ $displayItemCount = count($statsEntries);
                 return refreshRoot(currentUrl);
             }).catch(function (error) {
                 deleteImportButton.disabled = false;
-                window.alert(error.message || texts.loadError);
+                window.omoNotify(error.message || texts.loadError, 'error');
             });
             return;
         }
@@ -1545,7 +1545,7 @@ $displayItemCount = count($statsEntries);
                 return refreshRoot(currentUrl);
             }).catch(function (error) {
                 deleteGroupButton.disabled = false;
-                window.alert(error.message || texts.loadError);
+                window.omoNotify(error.message || texts.loadError, 'error');
             });
             return;
         }
@@ -1569,7 +1569,7 @@ $displayItemCount = count($statsEntries);
             return refreshRoot(currentUrl);
         }).catch(function (error) {
             deleteButton.disabled = false;
-            window.alert(error.message || texts.loadError);
+            window.omoNotify(error.message || texts.loadError, 'error');
         });
     });
 
@@ -1683,7 +1683,7 @@ $displayItemCount = count($statsEntries);
                 return openDrawerWithUrl(detail ? detail.getAttribute('data-detail-url') : '');
             }).catch(function (error) {
                 deleteButton.disabled = false;
-                window.alert(error.message || texts.loadError);
+                window.omoNotify(error.message || texts.loadError, 'error');
             });
         });
 

@@ -963,11 +963,11 @@ function commonResolveLoginActivityOrganizationId($returnTo = null)
     return 0;
 }
 
-function commonUpdateLastConnection($userId, $returnTo = null, $activateUser = false)
+function commonUpdateGlobalLastConnection($userId, $activateUser = false)
 {
-    $userId = (int)$userId;
-    if ($userId <= 0) {
-        return false;
+	$userId = (int)$userId;
+	if ($userId <= 0) {
+		return false;
     }
 
     $now = new \DateTimeImmutable();
@@ -980,25 +980,39 @@ function commonUpdateLastConnection($userId, $returnTo = null, $activateUser = f
             $user->set('active', 1);
         }
 
-        $saveResult = $user->save();
-        $updated = !empty($saveResult['status']);
-    }
+		$saveResult = $user->save();
+		$updated = !empty($saveResult['status']);
+	}
 
-    $organizationId = commonResolveLoginActivityOrganizationId($returnTo);
-    if ($organizationId > 0) {
-        $membership = new \dbObject\UserOrganization();
-        if ($membership->load([
-            ['IDuser', $userId],
-            ['IDorganization', $organizationId],
-            ['active', 1],
-        ])) {
-            $membership->set('dateconnexion', $now);
-            $saveResult = $membership->save();
-            $updated = !empty($saveResult['status']) || $updated;
-        }
-    }
+	return $updated;
+}
 
-    return $updated;
+function commonUpdateOrganizationLastConnection($userId, $organizationId)
+{
+	$userId = (int)$userId;
+	$organizationId = (int)$organizationId;
+	if ($userId <= 0 || $organizationId <= 0) {
+		return false;
+	}
+
+	$now = new \DateTimeImmutable();
+	$membership = new \dbObject\UserOrganization();
+	if (!$membership->load([
+		['IDuser', $userId],
+		['IDorganization', $organizationId],
+		['active', 1],
+	])) {
+		return false;
+	}
+
+	$membership->set('dateconnexion', $now);
+	$saveResult = $membership->save();
+	return !empty($saveResult['status']);
+}
+
+function commonUpdateLastConnection($userId, $returnTo = null, $activateUser = false)
+{
+	return commonUpdateGlobalLastConnection($userId, $activateUser);
 }
 
 function commonRestoreRememberedUser()
@@ -1037,11 +1051,11 @@ function commonRestoreRememberedUser()
         return 0;
     }
 
-    unset($_SESSION['permissionCacheByOrganization']);
-    commonClearCurrentUserAllAdminModes();
-    $_SESSION['currentUser'] = (int)$remember->get('IDuser');
-    commonUpdateLastConnection((int)$_SESSION['currentUser']);
-    commonRefreshRememberedUser($remember);
+	unset($_SESSION['permissionCacheByOrganization']);
+	commonClearCurrentUserAllAdminModes();
+	$_SESSION['currentUser'] = (int)$remember->get('IDuser');
+	commonUpdateGlobalLastConnection((int)$_SESSION['currentUser']);
+	commonRefreshRememberedUser($remember);
     return (int)$_SESSION['currentUser'];
 }
 
@@ -2457,7 +2471,7 @@ function commonHandleMagicLoginVerify($defaultReturnTo = '/')
     $loginToken->markUsed();
     commonStorePendingLoginToken(null);
 
-    commonUpdateLastConnection((int)$loginToken->get('IDuser'), $returnTo, true);
+    commonUpdateGlobalLastConnection((int)$loginToken->get('IDuser'), true);
 
     session_regenerate_id(true);
     $_SESSION['currentUser'] = (int)$loginToken->get('IDuser');
@@ -2553,7 +2567,7 @@ function commonHandlePasswordLogin($defaultReturnTo = '/')
         commonExpireLegacyRememberCookie();
     }
 
-    commonUpdateLastConnection((int)$user->getId(), $returnTo, true);
+    commonUpdateGlobalLastConnection((int)$user->getId(), true);
 
     session_regenerate_id(true);
     $_SESSION['currentUser'] = (int)$user->getId();

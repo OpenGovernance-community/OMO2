@@ -79,13 +79,23 @@ $config = $organizationLoaded ? omoProjectsParamsGetConfig($organization) : \dbO
         var saveLabel = <?= json_encode(omoProjectsParamsT('projects.params.save'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         var savingLabel = <?= json_encode(omoProjectsParamsT('projects.params.saving'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         var refreshWeight = function () { if (input && localWeight) localWeight.textContent = String(Math.round((1 - Math.max(0, Math.min(1, Number(input.value) || 0))) * 100)) + ' %'; };
+        var showFeedback = function (message, isError) {
+            if (typeof window.commonNotify === 'function') {
+                window.commonNotify(String(message || ''), isError ? 'error' : 'success');
+                return;
+            }
+
+            feedback.hidden = false;
+            feedback.textContent = String(message || '');
+            feedback.className = 'omo-projects-params__feedback ' + (isError ? 'is-error' : 'is-success');
+        };
         if (input) input.addEventListener('input', refreshWeight);
         form.addEventListener('submit', function (event) {
             event.preventDefault(); submit.disabled = true; submit.textContent = savingLabel; feedback.hidden = true;
             window.fetch(form.action, { method: 'POST', body: new FormData(form), credentials: 'same-origin' })
                 .then(function (response) { return response.json(); })
-                .then(function (payload) { feedback.hidden = false; feedback.textContent = String(payload.message || ''); feedback.className = 'omo-projects-params__feedback ' + (payload.status ? 'is-success' : 'is-error'); })
-                .catch(function () { feedback.hidden = false; feedback.textContent = <?= json_encode(omoProjectsParamsT('projects.params.error.save'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>; feedback.className = 'omo-projects-params__feedback is-error'; })
+                .then(function (payload) { showFeedback(payload.message || '', !payload.status); })
+                .catch(function () { showFeedback(<?= json_encode(omoProjectsParamsT('projects.params.error.save'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>, true); })
                 .finally(function () { submit.disabled = false; submit.textContent = saveLabel; });
         });
     });

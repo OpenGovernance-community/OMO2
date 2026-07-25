@@ -2382,6 +2382,12 @@ function omoHolonTemplateShowStatus(message, tone) {
         omoHolonTemplateState.statusTimer = null;
     }
 
+    if (typeof window.commonNotify === 'function') {
+        omoHolonTemplateClearStatus();
+        window.commonNotify(message, tone === 'success' ? 'success' : 'error');
+        return;
+    }
+
     omoHolonTemplateElements.status.hidden = false;
     omoHolonTemplateElements.status.className = 'omo-template-editor__status is-' + tone;
     omoHolonTemplateElements.status.innerHTML = ''

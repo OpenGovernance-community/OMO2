@@ -559,6 +559,16 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
                 feedback.textContent = '';
                 feedback.classList.remove('is-success');
             };
+            var showFeedback = function (message, isError) {
+                if (typeof window.commonNotify === 'function') {
+                    window.commonNotify(String(message || ''), isError ? 'error' : 'success');
+                    clearFeedback();
+                    return;
+                }
+
+                feedback.textContent = String(message || '');
+                feedback.classList.toggle('is-success', !isError);
+            };
 
             var updateCardState = function (checkbox) {
                 var card = checkbox.closest('[data-omo-app-picker-card]');
@@ -633,13 +643,12 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
                     })
                     .then(function (data) {
                         if (!data || !data.status) {
-                            feedback.textContent = data && data.message ? data.message : appPickerText.genericError;
+                            showFeedback(data && data.message ? data.message : appPickerText.genericError, true);
                             submitButton.disabled = false;
                             return;
                         }
 
-                        feedback.textContent = data.message || appPickerText.savedSimple;
-                        feedback.classList.add('is-success');
+                        showFeedback(data.message || appPickerText.savedSimple, false);
 
                         if (typeof window.omoRefreshSidebar === 'function') {
                             window.omoRefreshSidebar(function () {
@@ -658,7 +667,7 @@ foreach ($activeOrganizationApplications as $organizationApplication) {
                         }
                     })
                     .catch(function () {
-                        feedback.textContent = appPickerText.saveLater;
+                        showFeedback(appPickerText.saveLater, true);
                         submitButton.disabled = false;
                     });
             });

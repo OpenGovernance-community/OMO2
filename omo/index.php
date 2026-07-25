@@ -1320,6 +1320,15 @@ if (
     exit;
 }
 
+if (
+    !$isDemoGuest
+    && $currentUserId > 0
+    && !$isOrganizationHub
+    && (int)($organizationContext['id'] ?? 0) > 0
+) {
+    commonUpdateOrganizationLastConnection($currentUserId, (int)$organizationContext['id']);
+}
+
 $currentUserProfile = [
     'displayName' => $currentUserName,
     'email' => '',
