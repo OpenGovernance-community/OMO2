@@ -1966,6 +1966,114 @@
 			return $rawValue;
 		}
 
+		protected function remapProjectReferenceItems($items, array $projectIdMap)
+		{
+			if (!is_array($items)) {
+				return $items;
+			}
+
+			$remapped = array();
+			foreach ($items as $item) {
+				if (is_array($item) && array_key_exists('id', $item)) {
+					$sourceProjectId = (int)$item['id'];
+					if ($sourceProjectId > 0 && !isset($projectIdMap[$sourceProjectId])) {
+						continue;
+					}
+					if ($sourceProjectId > 0) {
+						$item['id'] = (int)$projectIdMap[$sourceProjectId];
+					}
+					$remapped[] = $item;
+					continue;
+				}
+
+				if (is_scalar($item)) {
+					$sourceProjectId = (int)$item;
+					if ($sourceProjectId > 0) {
+						if (isset($projectIdMap[$sourceProjectId])) {
+							$remapped[] = (int)$projectIdMap[$sourceProjectId];
+						}
+						continue;
+					}
+				}
+
+				$remapped[] = $item;
+			}
+
+			return array_values($remapped);
+		}
+
+		protected function remapProjectReferenceValue($rawValue, array $projectIdMap)
+		{
+			$rawValue = is_scalar($rawValue) || $rawValue === null ? (string)$rawValue : '';
+			$trimmedValue = trim($rawValue);
+			if ($trimmedValue === '') {
+				return $rawValue;
+			}
+
+			$decoded = json_decode($trimmedValue, true);
+			if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
+				$sourceProjectId = (int)$trimmedValue;
+				return $sourceProjectId > 0 && isset($projectIdMap[$sourceProjectId])
+					? (string)$projectIdMap[$sourceProjectId]
+					: $rawValue;
+			}
+
+			if (array_key_exists('items', $decoded) && is_array($decoded['items'])) {
+				$decoded['items'] = $this->remapProjectReferenceItems($decoded['items'], $projectIdMap);
+			} elseif (array_is_list($decoded)) {
+				$decoded = $this->remapProjectReferenceItems($decoded, $projectIdMap);
+			} elseif (array_key_exists('id', $decoded)) {
+				$remapped = $this->remapProjectReferenceItems(array($decoded), $projectIdMap);
+				$decoded = $remapped[0] ?? array();
+			}
+
+			return json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		}
+
+		protected function remapImportedProjectPropertyValues(array $projectIdMap, array $taskIdMap)
+		{
+			$projectIdMap = $projectIdMap + $taskIdMap;
+
+			$rootHolon = $this->getStructuralRootHolon();
+			if (!($rootHolon instanceof \dbObject\Holon)) {
+				return;
+			}
+
+			$holons = new \dbObject\ArrayHolon();
+			$holons->load(array(
+				'whereAny' => array(
+					array('field' => 'IDorganization', 'value' => (int)$this->getId()),
+					array('field' => 'IDholon_org', 'value' => (int)$rootHolon->getId()),
+				),
+				'orderBy' => array(
+					array('field' => 'id', 'dir' => 'ASC'),
+				),
+			));
+
+			foreach ($holons as $holon) {
+				if (!($holon instanceof \dbObject\Holon)) {
+					continue;
+				}
+
+				foreach ($holon->getHolonProperties() as $holonProperty) {
+					$property = new \dbObject\Property();
+					if (!$property->load((int)$holonProperty->get('IDproperty'))
+						|| (string)$property->get('listitemtype') !== \dbObject\Property::LIST_ITEM_PROJECT) {
+						continue;
+					}
+
+					$currentValue = $holonProperty->get('value');
+					$remappedValue = $this->remapProjectReferenceValue($currentValue, $projectIdMap);
+					if ((string)$remappedValue === (string)$currentValue) {
+						continue;
+					}
+
+					$holonProperty->set('value', $remappedValue);
+					self::omo1ImportSave($holonProperty, 'Une liste de projets n a pas pu etre restauree');
+				}
+			}
+		}
+
 		protected function cloneStructuralPropertyValue(\dbObject\Property $property, $rawValue, array $holonIdMap)
 		{
 			$value = $this->remapHolonReferenceValueByListType($property->get('listitemtype'), $rawValue, $holonIdMap);
@@ -2100,8 +2208,10 @@
 				}
 
 				$formatId = (int)($definition['formatId'] ?? 0);
-				if (strtolower(trim((string)($definition['shortname'] ?? ''))) === 'strategie') {
-					$formatId = \dbObject\PropertyFormat::FORMAT_HTML;
+				if (strtolower(trim((string)($definition['shortname'] ?? ''))) === 'strategie' && $formatId <= 0) {
+					$formatId = ($definition['listItemType'] ?? '') === \dbObject\Property::LIST_ITEM_PROJECT
+						? \dbObject\PropertyFormat::FORMAT_HTML_LIST
+						: \dbObject\PropertyFormat::FORMAT_HTML;
 				}
 				$property = new \dbObject\Property();
 				$property->set('name', trim((string)($definition['name'] ?? '')) !== '' ? $definition['name'] : 'Propriete');
@@ -2736,16 +2846,24 @@
 				$project->set('IDuser', $targetUserId);
 				$project->set('title', $title !== '' ? $title : 'Projet OMO 1 #' . $sourceId);
 				$project->set('description', $record['description'] ?? null);
-				$project->set('status', self::omo1ImportProjectStatus($record['legacyStatusId'] ?? 0));
+				$project->set('status', array_key_exists('status', $record)
+					? \dbObject\Project::normalizeStatus($record['status'])
+					: self::omo1ImportProjectStatus($record['legacyStatusId'] ?? 0));
 				$project->set('planned_start_date', self::omo1ImportDate($record['plannedStartAt'] ?? null));
 				$project->set('planned_end_date', self::omo1ImportDate($record['plannedEndAt'] ?? null));
-				$project->set('project_size', \dbObject\Project::SIZE_M);
+				$project->set('priority', \dbObject\Project::normalizeLevel($record['priority'] ?? null));
+				$project->set('importance', \dbObject\Project::normalizeLevel($record['importance'] ?? null));
+				$project->set('calculated_importance', (float)($record['calculatedImportance'] ?? 0));
+				$project->set('capture_mode', \dbObject\Project::normalizeCaptureMode($record['captureMode'] ?? null));
+				$project->set('project_size', \dbObject\Project::normalizeSize($record['projectSize'] ?? \dbObject\Project::SIZE_M));
 				$project->set('project_kind', \dbObject\Project::KIND_STANDARD);
 				$createdAt = self::omo1ImportDate($record['createdAt'] ?? null);
 				if ($createdAt) {
 					$project->set('created_at', $createdAt);
 				}
-				$project->set('active', !self::omo1ImportProjectIsArchived($record['legacyStatusId'] ?? 0));
+				$project->set('active', array_key_exists('active', $record)
+					? (bool)$record['active']
+					: !self::omo1ImportProjectIsArchived($record['legacyStatusId'] ?? 0));
 				self::omo1ImportSave($project, 'Un projet n a pas pu etre cree');
 				$projectIdMap[$sourceId] = (int)$project->getId();
 				$stats['projects'] += 1;
@@ -2766,21 +2884,9 @@
 				self::omo1ImportSave($project, 'La hierarchie des projets n a pas pu etre recreee');
 			}
 
-			foreach ($documentIdMap as $sourceDocumentId => $targetDocumentId) {
-				$sourceProjectId = isset($documentProjectSourceMap[$sourceDocumentId]) ? (int)$documentProjectSourceMap[$sourceDocumentId] : 0;
-				$targetProjectId = isset($projectIdMap[$sourceProjectId]) ? (int)$projectIdMap[$sourceProjectId] : 0;
-				if ($targetProjectId <= 0 || (int)$targetDocumentId <= 0) {
-					continue;
-				}
-
-				$link = new \dbObject\ProjectDocument();
-				$link->set('IDproject', $targetProjectId);
-				$link->set('IDdocument', (int)$targetDocumentId);
-				self::omo1ImportSave($link, 'Un lien projet-document n a pas pu etre cree');
-			}
 		}
 
-		protected static function omo1ImportTasks(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array $projectIdMap, array &$stats)
+		protected static function omo1ImportTasks(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array $projectIdMap, array &$taskIdMap, array &$stats)
 		{
 			foreach ($records as $record) {
 				if (!is_array($record) || (int)($record['sourceId'] ?? 0) <= 0) {
@@ -2790,7 +2896,7 @@
 				$targetUserId = isset($userIdMap[$sourceUserId]) ? (int)$userIdMap[$sourceUserId] : (int)$actorUserId;
 				$sourceHolonId = (int)($record['sourceHolonId'] ?? 0);
 				$targetHolonId = isset($holonIdMap[$sourceHolonId]) ? (int)$holonIdMap[$sourceHolonId] : null;
-				$sourceProjectId = (int)($record['sourceProjectId'] ?? 0);
+				$sourceProjectId = (int)($record['sourceParentProjectId'] ?? ($record['sourceProjectId'] ?? 0));
 				$title = self::omo1ImportLimitText($record['title'] ?? '', 255);
 				$completedAt = $record['completedAt'] ?? null;
 				if (!self::omo1ImportDate($completedAt) && !empty($record['checks']) && is_array($record['checks'])) {
@@ -2808,18 +2914,187 @@
 				$task->set('IDproject_parent', isset($projectIdMap[$sourceProjectId]) ? (int)$projectIdMap[$sourceProjectId] : null);
 				$task->set('title', $title !== '' ? $title : 'Tache OMO 1 #' . (int)$record['sourceId']);
 				$task->set('description', $record['description'] ?? null);
-				$task->set('status', self::omo1ImportProjectStatus(0, $completedAt, $record['deletedAt'] ?? null));
+				$task->set('status', array_key_exists('status', $record)
+					? \dbObject\Project::normalizeStatus($record['status'])
+					: self::omo1ImportProjectStatus(0, $completedAt, $record['deletedAt'] ?? null));
 				$task->set('planned_start_date', self::omo1ImportDate($record['plannedStartAt'] ?? null));
 				$task->set('planned_end_date', self::omo1ImportDate($record['plannedEndAt'] ?? null));
-				$task->set('project_size', \dbObject\Project::SIZE_S);
+				$task->set('priority', \dbObject\Project::normalizeLevel($record['priority'] ?? null));
+				$task->set('importance', \dbObject\Project::normalizeLevel($record['importance'] ?? null));
+				$task->set('calculated_importance', (float)($record['calculatedImportance'] ?? 0));
+				$task->set('capture_mode', \dbObject\Project::normalizeCaptureMode($record['captureMode'] ?? null));
+				$task->set('project_size', \dbObject\Project::normalizeSize($record['projectSize'] ?? \dbObject\Project::SIZE_S));
 				$task->set('project_kind', \dbObject\Project::KIND_STANDARD);
 				$createdAt = self::omo1ImportDate($record['createdAt'] ?? null);
 				if ($createdAt) {
 					$task->set('created_at', $createdAt);
 				}
-				$task->set('active', true);
+				$task->set('active', array_key_exists('active', $record) ? (bool)$record['active'] : true);
 				self::omo1ImportSave($task, 'Une tache n a pas pu etre importee');
+				$taskIdMap[(int)$record['sourceId']] = (int)$task->getId();
 				$stats['tasks'] += 1;
+			}
+
+			foreach ($records as $record) {
+				$sourceId = (int)($record['sourceId'] ?? 0);
+				$targetTaskId = isset($taskIdMap[$sourceId]) ? (int)$taskIdMap[$sourceId] : 0;
+				$sourceParentId = (int)($record['sourceParentProjectId'] ?? ($record['sourceProjectId'] ?? 0));
+				if ($targetTaskId <= 0 || $sourceParentId <= 0 || !isset($taskIdMap[$sourceParentId])) {
+					continue;
+				}
+				$task = new \dbObject\Project();
+				if (!$task->load($targetTaskId)) {
+					continue;
+				}
+				$task->set('IDproject_parent', (int)$taskIdMap[$sourceParentId]);
+				self::omo1ImportSave($task, 'La hierarchie des sous-projets n a pas pu etre recreee');
+			}
+		}
+
+		protected static function omo1ImportLinkDocumentsToProjects(array $documentIdMap, array $documentProjectSourceMap, array $projectIdMap, array $taskIdMap)
+		{
+			foreach ($documentIdMap as $sourceDocumentId => $targetDocumentId) {
+				$sourceProjectId = (int)($documentProjectSourceMap[$sourceDocumentId] ?? 0);
+				$targetProjectId = (int)($projectIdMap[$sourceProjectId] ?? ($taskIdMap[$sourceProjectId] ?? 0));
+				if ($targetProjectId <= 0 || (int)$targetDocumentId <= 0) {
+					continue;
+				}
+				$link = new \dbObject\ProjectDocument();
+				if ($link->load([['IDproject', $targetProjectId], ['IDdocument', (int)$targetDocumentId]])) {
+					continue;
+				}
+				$link->set('IDproject', $targetProjectId);
+				$link->set('IDdocument', (int)$targetDocumentId);
+				self::omo1ImportSave($link, 'Un lien projet-document n a pas pu etre cree');
+			}
+		}
+
+		protected static function omo1ImportChecklistRecurrence(array $record)
+		{
+			$frequency = \dbObject\RecurrenceSchedule::normalizeFrequency($record['frequency'] ?? null);
+			$schedule = \dbObject\RecurrenceSchedule::normalizeSchedule($frequency, $record['schedule'] ?? null);
+			return array($frequency, $schedule);
+		}
+
+		protected static function omo1ImportChecklistTemplateProject(\dbObject\Organization $organization, $holonId, $userId, $title, $description, $isActive)
+		{
+			$template = new \dbObject\Project();
+			$template->set('IDorganization', (int)$organization->getId());
+			$template->set('IDholon', (int)$holonId > 0 ? (int)$holonId : null);
+			$template->set('IDuser', (int)$userId > 0 ? (int)$userId : null);
+			$template->set('title', self::omo1ImportLimitText($title, 255));
+			$template->set('description', $description ?: null);
+			$template->set('status', \dbObject\Project::STATUS_READY);
+			$template->set('project_size', \dbObject\Project::SIZE_S);
+			$template->set('project_kind', \dbObject\Project::KIND_CHECKLIST_TEMPLATE);
+			$template->set('active', (bool)$isActive);
+			self::omo1ImportSave($template, 'Un projet modele de checklist n a pas pu etre cree');
+			return $template;
+		}
+
+		protected static function omo1ImportChecklists(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array &$stats)
+		{
+			foreach ($records as $recordIndex => $record) {
+				if (!is_array($record)) {
+					continue;
+				}
+				$sourceHolonId = (int)($record['sourceHolonId'] ?? 0);
+				$targetHolonId = isset($holonIdMap[$sourceHolonId]) ? (int)$holonIdMap[$sourceHolonId] : 0;
+				if ($targetHolonId <= 0) {
+					continue;
+				}
+				$triggerData = isset($record['trigger']) && is_array($record['trigger']) ? $record['trigger'] : array();
+				$triggerType = \dbObject\ChecklistTrigger::normalizeTriggerType($triggerData['type'] ?? \dbObject\ChecklistTrigger::TYPE_CONTAINER);
+				$isStandalone = ($record['kind'] ?? '') === 'standalone' || $triggerType === \dbObject\ChecklistTrigger::TYPE_MANUAL;
+				$sourceUserId = (int)($record['sourceUserId'] ?? 0);
+				$targetUserId = isset($userIdMap[$sourceUserId]) ? (int)$userIdMap[$sourceUserId] : (int)$actorUserId;
+				$title = self::omo1ImportLimitText($record['title'] ?? '', 255);
+				if ($title === '') {
+					$title = $isStandalone ? 'Checklist OMO 1 #' . (int)($record['sourceId'] ?? ($recordIndex + 1)) : 'Checklists OMO 1';
+				}
+				$rootTemplate = self::omo1ImportChecklistTemplateProject(
+					$organization,
+					$targetHolonId,
+					$targetUserId,
+					$title,
+					$record['description'] ?? null,
+					!array_key_exists('active', $record) || (bool)$record['active']
+				);
+				$checklist = new \dbObject\Checklist();
+				$checklist->set('IDorganization', (int)$organization->getId());
+				$checklist->set('IDproject_template_root', (int)$rootTemplate->getId());
+				$checklist->set('IDchecklist_previous', null);
+				$checklist->set('IDdocument', null);
+				$checklist->set('status', \dbObject\Checklist::normalizeStatus($record['status'] ?? \dbObject\Checklist::STATUS_PUBLISHED));
+				$checklist->set('revision_note', $record['revisionNote'] ?? null);
+				$checklist->set('active', !array_key_exists('active', $record) || (bool)$record['active']);
+				self::omo1ImportSave($checklist, 'Une checklist n a pas pu etre creee');
+
+				$trigger = new \dbObject\ChecklistTrigger();
+				$trigger->set('IDchecklist', (int)$checklist->getId());
+				$trigger->set('stable_key', self::omo1ImportLimitText($triggerData['stableKey'] ?? 'primary', 64));
+				$trigger->set('trigger_type', $isStandalone ? \dbObject\ChecklistTrigger::TYPE_MANUAL : \dbObject\ChecklistTrigger::TYPE_CONTAINER);
+				$trigger->set('overlap_policy', \dbObject\ChecklistTrigger::normalizeOverlapPolicy($triggerData['overlapPolicy'] ?? \dbObject\ChecklistTrigger::OVERLAP_REUSE_OPEN));
+				$trigger->set('enabled', $isStandalone && (!array_key_exists('enabled', $triggerData) || (bool)$triggerData['enabled']));
+				self::omo1ImportSave($trigger, 'Le declencheur de checklist n a pas pu etre cree');
+				$stats['checklists'] += 1;
+
+				if ($isStandalone) {
+					continue;
+				}
+				$items = isset($record['items']) && is_array($record['items']) ? $record['items'] : array();
+				foreach ($items as $itemIndex => $itemRecord) {
+					if (!is_array($itemRecord)) {
+						continue;
+					}
+					$itemSourceUserId = (int)($itemRecord['sourceUserId'] ?? 0);
+					$itemUserId = isset($userIdMap[$itemSourceUserId]) ? (int)$userIdMap[$itemSourceUserId] : (int)$actorUserId;
+					$itemTitle = self::omo1ImportLimitText($itemRecord['title'] ?? '', 255);
+					if ($itemTitle === '') {
+						$itemTitle = 'Checklist OMO 1 #' . (int)($itemRecord['sourceId'] ?? ($itemIndex + 1));
+					}
+					$itemActive = !array_key_exists('active', $itemRecord) || (bool)$itemRecord['active'];
+					$itemTemplate = self::omo1ImportChecklistTemplateProject(
+						$organization,
+						$targetHolonId,
+						$itemUserId,
+						$itemTitle,
+						$itemRecord['description'] ?? null,
+						$itemActive
+					);
+					$item = new \dbObject\ChecklistItem();
+					$item->set('IDchecklist', (int)$checklist->getId());
+					$item->set('IDproject_template', (int)$itemTemplate->getId());
+					$item->set('stable_key', self::omo1ImportLimitText($itemRecord['stableKey'] ?? ('item_' . ($itemIndex + 1)), 64));
+					$activationData = isset($itemRecord['activation']) && is_array($itemRecord['activation']) ? $itemRecord['activation'] : array();
+					$activationType = \dbObject\ChecklistItem::normalizeActivationType($activationData['type'] ?? \dbObject\ChecklistItem::ACTIVATION_IMMEDIATE);
+					$item->set('activation_type', $activationType);
+					$item->set('delay_value', $activationType === \dbObject\ChecklistItem::ACTIVATION_AFTER_START ? (int)($activationData['delayValue'] ?? 0) : 0);
+					$item->set('delay_unit', $activationType === \dbObject\ChecklistItem::ACTIVATION_AFTER_START ? \dbObject\ChecklistItem::normalizeDelayUnit($activationData['delayUnit'] ?? null) : null);
+					$item->set('display_lead_value', max(0, (int)($activationData['displayLeadValue'] ?? 0)));
+					$item->set('display_lead_unit', \dbObject\ChecklistItem::normalizeDelayUnit($activationData['displayLeadUnit'] ?? null));
+					$item->set('execution_duration_value', max(0, (int)($activationData['executionDurationValue'] ?? 0)));
+					$item->set('execution_duration_unit', \dbObject\ChecklistItem::normalizeDelayUnit($activationData['executionDurationUnit'] ?? null));
+					$item->set('position', max(1, (int)($itemRecord['position'] ?? ($itemIndex + 1))));
+					$item->set('active', $itemActive);
+					self::omo1ImportSave($item, 'Un element de checklist n a pas pu etre cree');
+					list($frequency, $schedule) = self::omo1ImportChecklistRecurrence(isset($itemRecord['recurrence']) && is_array($itemRecord['recurrence']) ? $itemRecord['recurrence'] : array());
+					if ($frequency !== null && $schedule !== null) {
+						$recurrence = new \dbObject\ChecklistItemRecurrence();
+						$recurrence->set('IDchecklistitem', (int)$item->getId());
+						$recurrence->set('frequency', $frequency);
+						$recurrence->set('schedule', $schedule);
+						$recurrence->set('display_lead_value', max(0, (int)($itemRecord['recurrence']['displayLeadValue'] ?? 0)));
+						$recurrence->set('display_lead_unit', \dbObject\ChecklistItem::normalizeDelayUnit($itemRecord['recurrence']['displayLeadUnit'] ?? null));
+						$recurrence->set('execution_duration_value', max(0, (int)($itemRecord['recurrence']['executionDurationValue'] ?? 0)));
+						$recurrence->set('execution_duration_unit', \dbObject\ChecklistItem::normalizeDelayUnit($itemRecord['recurrence']['executionDurationUnit'] ?? null));
+						$recurrence->set('enabled', $itemActive);
+						$nextTriggerAt = \dbObject\RecurrenceSchedule::getNextOccurrence($frequency, $schedule, new \DateTimeImmutable());
+						$recurrence->set('next_trigger_at', $nextTriggerAt);
+						self::omo1ImportSave($recurrence, 'La recurrence de checklist n a pas pu etre creee');
+					}
+					$stats['checklistItems'] += 1;
+				}
 			}
 		}
 
@@ -3194,7 +3469,7 @@
 				return array('status' => false, 'message' => 'Le fichier doit etre un export OMO compact version 4.');
 			}
 
-			$availableModules = array('structure', 'members', 'documents', 'projects', 'tasks', 'indicators', 'calendar', 'pv');
+			$availableModules = array('structure', 'members', 'documents', 'projects', 'tasks', 'checklists', 'indicators', 'calendar', 'pv');
 			$sourceModules = isset($payload['modules']) && is_array($payload['modules']) ? $payload['modules'] : array();
 			$selectedModules = array();
 			foreach ($availableModules as $module) {
@@ -3252,10 +3527,11 @@
 				$documentIdMap = array();
 				$documentProjectSourceMap = array();
 				$projectIdMap = array();
+				$taskIdMap = array();
 				$eventIdMap = array();
 				$pendingUserIds = array();
 				$pendingInvitations = array();
-				$stats = array('members' => 0, 'invitations' => 0, 'roleAssignments' => 0, 'documents' => 0, 'projects' => 0, 'tasks' => 0, 'indicators' => 0, 'indicatorValues' => 0, 'calendar' => 0, 'pv' => 0, 'pvPoints' => 0);
+				$stats = array('members' => 0, 'invitations' => 0, 'roleAssignments' => 0, 'documents' => 0, 'projects' => 0, 'tasks' => 0, 'checklists' => 0, 'checklistItems' => 0, 'indicators' => 0, 'indicatorValues' => 0, 'calendar' => 0, 'pv' => 0, 'pvPoints' => 0);
 				$warnings = array();
 
 				if ($selectedModules['members']) {
@@ -3270,7 +3546,14 @@
 					self::omo1ImportProjects($organization, self::omo1ImportModuleRecords($payload, 'projects'), $actorUserId, $userIdMap, $holonIdMap, $documentIdMap, $documentProjectSourceMap, $projectIdMap, $stats);
 				}
 				if ($selectedModules['tasks']) {
-					self::omo1ImportTasks($organization, self::omo1ImportModuleRecords($payload, 'tasks'), $actorUserId, $userIdMap, $holonIdMap, $projectIdMap, $stats);
+					self::omo1ImportTasks($organization, self::omo1ImportModuleRecords($payload, 'tasks'), $actorUserId, $userIdMap, $holonIdMap, $projectIdMap, $taskIdMap, $stats);
+				}
+				if ($selectedModules['documents'] && ($selectedModules['projects'] || $selectedModules['tasks'])) {
+					self::omo1ImportLinkDocumentsToProjects($documentIdMap, $documentProjectSourceMap, $projectIdMap, $taskIdMap);
+				}
+				$organization->remapImportedProjectPropertyValues($projectIdMap, $taskIdMap);
+				if ($selectedModules['checklists']) {
+					self::omo1ImportChecklists($organization, self::omo1ImportModuleRecords($payload, 'checklists'), $actorUserId, $userIdMap, $holonIdMap, $stats);
 				}
 				if ($selectedModules['indicators']) {
 					self::omo1ImportIndicators($organization, self::omo1ImportModuleRecords($payload, 'indicators'), $actorUserId, $userIdMap, $holonIdMap, $stats);
@@ -8072,6 +8355,10 @@
 				return false;
 			}
 
+			if (!$faq->isLinkedApplicationVisibleInOrganization($organizationId)) {
+				return false;
+			}
+
 			if ($faq->isGeneric()) {
 				return true;
 			}
@@ -9258,6 +9545,173 @@
 			return $results;
 		}
 
+		protected function searchTopbarProjectResults($query, array $terms, $limit = 12, array $viewerContext = array())
+		{
+			if ((int)$this->getId() <= 0 || count($terms) === 0) {
+				return array();
+			}
+
+			$params = array(
+				'organization_id' => (int)$this->getId(),
+				'project_kind' => \dbObject\Project::KIND_STANDARD,
+			);
+			$titleExpr = "LOWER(COALESCE(p.title, ''))";
+			$descriptionExpr = "LOWER(COALESCE(p.description, ''))";
+			$titleScoreSql = self::buildTopbarSearchScoreSql($titleExpr, $terms, $params, 'project_title', array(
+				'exact' => 108,
+				'prefix' => 68,
+				'like' => 36,
+			));
+			$descriptionScoreSql = self::buildTopbarSearchScoreSql($descriptionExpr, $terms, $params, 'project_description', array(
+				'exact' => 34,
+				'prefix' => 22,
+				'like' => 12,
+			));
+			$preFilterSql = self::buildTopbarSearchAnyMatchSql(array($titleExpr, $descriptionExpr), $terms, $params, 'project_prefilter');
+			$rows = self::fetchAll(
+				"SELECT
+					p.id,
+					p.title,
+					p.description,
+					p.status,
+					p.priority,
+					p.IDholon,
+					p.created_at,
+					(" . $titleScoreSql . " + " . $descriptionScoreSql . ") AS relevance
+				FROM project p
+				WHERE p.IDorganization = :organization_id
+				  AND p.active = 1
+				  AND p.project_kind = :project_kind
+				  AND " . $preFilterSql . "
+				HAVING relevance > 0
+				ORDER BY relevance DESC, p.created_at DESC, p.id DESC
+				LIMIT " . max(1, (int)$limit),
+				$params
+			);
+			if ($rows === false) {
+				return array();
+			}
+
+			$results = array();
+			$statusCatalog = \dbObject\Project::getStatusCatalog();
+			foreach ($rows as $row) {
+				$holonId = (int)($row['IDholon'] ?? 0);
+				$subtitleParts = array();
+				if ($holonId > 0) {
+					$holon = new \dbObject\Holon();
+					if (!$holon->load($holonId) || !self::topbarSearchViewerCanViewHolon($holon, $viewerContext)) {
+						continue;
+					}
+					$subtitleParts[] = trim((string)$holon->getDisplayName());
+				}
+				$status = \dbObject\Project::normalizeStatus($row['status'] ?? '');
+				if (!empty($statusCatalog[$status]['label'])) {
+					$subtitleParts[] = (string)$statusCatalog[$status]['label'];
+				}
+				if ((int)($row['priority'] ?? 0) > 0) {
+					$subtitleParts[] = 'P' . (int)$row['priority'];
+				}
+
+				$title = trim((string)($row['title'] ?? ''));
+				$description = self::cleanTopbarSearchTextValue((string)($row['description'] ?? ''));
+				$excerptSource = self::getTopbarSearchTextScore($description, $terms) > 0
+					? $description
+					: $title;
+				$results[] = array(
+					'module' => 'projects',
+					'moduleLabel' => 'Projets',
+					'title' => $title !== '' ? $title : ('Projet #' . (int)($row['id'] ?? 0)),
+					'subtitle' => implode(' | ', array_filter($subtitleParts)),
+					'excerpt' => self::buildTopbarSearchSnippet($excerptSource, $query, 100, 220),
+					'relevance' => (int)($row['relevance'] ?? 0),
+					'_searchDate' => (string)($row['created_at'] ?? ''),
+					'action' => array(
+						'type' => 'project',
+						'projectId' => (int)($row['id'] ?? 0),
+						'holonId' => $holonId,
+					),
+				);
+			}
+
+			return $results;
+		}
+
+		protected function searchTopbarStatIndicatorResults($query, array $terms, $limit = 12, array $viewerContext = array())
+		{
+			if ((int)$this->getId() <= 0 || count($terms) === 0) {
+				return array();
+			}
+
+			$params = array('organization_id' => (int)$this->getId());
+			$nameExpr = "LOWER(COALESCE(si.name, ''))";
+			$descriptionExpr = "LOWER(COALESCE(si.description, ''))";
+			$sourceExpr = "LOWER(COALESCE(si.source_url, ''))";
+			$nameScoreSql = self::buildTopbarSearchScoreSql($nameExpr, $terms, $params, 'stats_name', array('exact' => 108, 'prefix' => 68, 'like' => 36));
+			$descriptionScoreSql = self::buildTopbarSearchScoreSql($descriptionExpr, $terms, $params, 'stats_description', array('exact' => 34, 'prefix' => 22, 'like' => 12));
+			$sourceScoreSql = self::buildTopbarSearchScoreSql($sourceExpr, $terms, $params, 'stats_source', array('exact' => 20, 'prefix' => 12, 'like' => 6));
+			$preFilterSql = self::buildTopbarSearchAnyMatchSql(array($nameExpr, $descriptionExpr, $sourceExpr), $terms, $params, 'stats_prefilter');
+			$rows = self::fetchAll(
+				"SELECT
+					si.id,
+					si.name,
+					si.description,
+					si.source_url,
+					si.measurement_frequency,
+					si.IDholon,
+					si.created_at,
+					(" . $nameScoreSql . " + " . $descriptionScoreSql . " + " . $sourceScoreSql . ") AS relevance
+				FROM stat_indicator si
+				WHERE si.IDorganization = :organization_id
+				  AND si.active = 1
+				  AND " . $preFilterSql . "
+				HAVING relevance > 0
+				ORDER BY relevance DESC, si.created_at DESC, si.id DESC
+				LIMIT " . max(1, (int)$limit),
+				$params
+			);
+			if ($rows === false) {
+				return array();
+			}
+
+			$results = array();
+			foreach ($rows as $row) {
+				$holonId = (int)($row['IDholon'] ?? 0);
+				$subtitleParts = array();
+				if ($holonId > 0) {
+					$holon = new \dbObject\Holon();
+					if (!$holon->load($holonId) || !self::topbarSearchViewerCanViewHolon($holon, $viewerContext)) {
+						continue;
+					}
+					$subtitleParts[] = trim((string)$holon->getDisplayName());
+				}
+				$frequency = trim((string)($row['measurement_frequency'] ?? ''));
+
+				$name = trim((string)($row['name'] ?? ''));
+				$description = self::cleanTopbarSearchTextValue((string)($row['description'] ?? ''));
+				$sourceUrl = trim((string)($row['source_url'] ?? ''));
+				$excerptSource = self::getTopbarSearchTextScore($description, $terms) > 0
+					? $description
+					: (self::getTopbarSearchTextScore($sourceUrl, $terms) > 0 ? $sourceUrl : $name);
+				$results[] = array(
+					'module' => 'stats',
+					'moduleLabel' => 'Indicateurs',
+					'title' => $name !== '' ? $name : ('Indicateur #' . (int)($row['id'] ?? 0)),
+					'subtitle' => implode(' | ', array_filter($subtitleParts)),
+					'excerpt' => self::buildTopbarSearchSnippet($excerptSource, $query, 100, 220),
+					'relevance' => (int)($row['relevance'] ?? 0),
+					'_searchDate' => (string)($row['created_at'] ?? ''),
+					'action' => array(
+						'type' => 'stat_indicator',
+						'indicatorId' => (int)($row['id'] ?? 0),
+						'holonId' => $holonId,
+						'measurementFrequency' => $frequency,
+					),
+				);
+			}
+
+			return $results;
+		}
+
 		protected function searchTopbarCalendarResults($query, array $terms, $limit = 12, array $viewerContext = array())
 		{
 			if ((int)$this->getId() <= 0 || count($terms) === 0) {
@@ -9411,6 +9865,8 @@
 				'documents' => 'documents',
 				'pv' => 'documents',
 				'decision' => 'decision',
+				'projects' => 'projects',
+				'stats' => 'stats',
 			);
 			$enabledScopes = array();
 			foreach ($scopeAppHashes as $scopeId => $hash) {
@@ -9462,6 +9918,8 @@
 				'decision' => 0,
 				'faq' => 0,
 				'tutorials' => 0,
+				'projects' => 0,
+				'stats' => 0,
 			);
 			$results = array();
 
@@ -9517,6 +9975,18 @@
 					$counts['tutorials'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
+
+				if (isset($normalizedScopes['projects'])) {
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarProjectResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
+					$counts['projects'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
+
+				if (isset($normalizedScopes['stats'])) {
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarStatIndicatorResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
+					$counts['stats'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
 			}
 
 			$moduleOrder = array(
@@ -9528,6 +9998,8 @@
 				'pv' => 6,
 				'faq' => 7,
 				'tutorials' => 8,
+				'projects' => 9,
+				'stats' => 10,
 			);
 
 			usort($results, function ($left, $right) use ($moduleOrder) {

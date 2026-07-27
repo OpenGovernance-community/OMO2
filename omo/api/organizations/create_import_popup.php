@@ -11,7 +11,8 @@ $sourceLang = array(
     'organization_import.field.name' => array('text' => 'Nom de la nouvelle organisation', 'context' => 'Organization name label in the organization import popup.'),
     'organization_import.field.name_hint' => array('text' => 'Laissez vide pour reprendre le nom de l export.', 'context' => 'Organization name hint in the organization import popup.'),
     'organization_import.field.sections' => array('text' => 'Contenu a importer', 'context' => 'Section picker legend in the organization import popup.'),
-    'organization_import.help' => array('text' => 'Cette action cree une nouvelle organisation. La structure est toujours importee. Les taches OMO 1 deviennent des projets enfants.', 'context' => 'Help text in the organization import popup.'),
+    'organization_import.help' => array('text' => 'Cette action cree une nouvelle organisation. La structure est toujours importee. Les taches OMO 1 deviennent des projets enfants et les checklistes recurrentes deviennent des conteneurs.', 'context' => 'Help text in the organization import popup.'),
+    'organization_import.module.checklists' => array('text' => 'Checklists', 'context' => 'Checklists module label in the organization import popup.'),
     'organization_import.loading' => array('text' => 'Import en cours...', 'context' => 'Loading label shown during organization import.'),
     'organization_import.module.calendar' => array('text' => 'Calendrier', 'context' => 'Calendar module label in the organization import popup.'),
     'organization_import.module.documents' => array('text' => 'Documents', 'context' => 'Documents module label in the organization import popup.'),
@@ -40,6 +41,7 @@ $modules = array(
     'documents' => t('organization_import.module.documents', array(), $lang, $sourceLang),
     'projects' => t('organization_import.module.projects', array(), $lang, $sourceLang),
     'tasks' => t('organization_import.module.tasks', array(), $lang, $sourceLang),
+    'checklists' => t('organization_import.module.checklists', array(), $lang, $sourceLang),
     'indicators' => t('organization_import.module.indicators', array(), $lang, $sourceLang),
     'calendar' => t('organization_import.module.calendar', array(), $lang, $sourceLang),
     'pv' => t('organization_import.module.pv', array(), $lang, $sourceLang),
@@ -117,7 +119,7 @@ $modules = array(
     var submitButton = root.querySelector('[data-omo-create-import-submit="1"]');
     var feedback = root.querySelector('[data-omo-create-import-feedback="1"]');
     var cancelButton = root.querySelector('[data-omo-create-import-cancel="1"]');
-    var moduleNames = ['structure', 'members', 'documents', 'projects', 'tasks', 'indicators', 'calendar', 'pv'];
+    var moduleNames = ['structure', 'members', 'documents', 'projects', 'tasks', 'checklists', 'indicators', 'calendar', 'pv'];
     var ui = <?= json_encode(array(
         'fileError' => t('organization_import.error.file', array(), $lang, $sourceLang),
         'genericError' => t('organization_import.error.generic', array(), $lang, $sourceLang),
@@ -128,6 +130,25 @@ $modules = array(
         feedback.hidden = !message;
         feedback.textContent = message || '';
         feedback.classList.toggle('is-error', !!isError);
+    }
+
+    function notifyGlobal(message, type) {
+        var text = String(message || '');
+        if (!text || typeof window.commonNotify !== 'function') {
+            return false;
+        }
+
+        window.commonNotify(text, type || 'error');
+        return true;
+    }
+
+    function showError(message) {
+        if (notifyGlobal(message, 'error')) {
+            setFeedback('', true);
+            return;
+        }
+
+        setFeedback(message, true);
     }
 
     function closeModal() {
@@ -162,7 +183,7 @@ $modules = array(
             if (!file) { return; }
             var reader = new FileReader();
             reader.onload = function () {
-                try { setModuleAvailability(JSON.parse(String(reader.result || ''))); } catch (error) { setFeedback(ui.genericError, true); }
+                try { setModuleAvailability(JSON.parse(String(reader.result || ''))); } catch (error) { showError(ui.genericError); }
             };
             reader.readAsText(file);
         });
@@ -188,18 +209,26 @@ $modules = array(
     if (!form) { return; }
     form.addEventListener('submit', function (event) {
         event.preventDefault();
-        if (!fileInput || !fileInput.files || !fileInput.files[0]) { setFeedback(ui.fileError, true); return; }
+        if (!fileInput || !fileInput.files || !fileInput.files[0]) { showError(ui.fileError); return; }
         submitButton.disabled = true;
         setFeedback(ui.loading, false);
         fetch('/omo/api/organizations/create_import.php', { method: 'POST', body: new FormData(form), credentials: 'same-origin' })
             .then(function (response) { return response.json().catch(function () { return null; }).then(function (data) { return { ok: response.ok, data: data }; }); })
             .then(function (result) {
                 if (!result.ok || !result.data || !result.data.status) { throw new Error(result.data && result.data.message ? result.data.message : ui.genericError); }
-                var warnings = Array.isArray(result.data.warnings) && result.data.warnings.length ? '\n\n' + result.data.warnings.join('\n') : '';
-                setFeedback((result.data.message || '') + warnings, false);
+                var message = result.data.message || '';
+                var warnings = Array.isArray(result.data.warnings) && result.data.warnings.length ? result.data.warnings.join('\n') : '';
+                var usedGlobalFeedback = false;
+                if (message) { usedGlobalFeedback = notifyGlobal(message, 'success') || usedGlobalFeedback; }
+                if (warnings) { usedGlobalFeedback = notifyGlobal(warnings, 'warning') || usedGlobalFeedback; }
+                if (usedGlobalFeedback) {
+                    setFeedback('', false);
+                } else {
+                    setFeedback(message + (warnings ? '\n\n' + warnings : ''), false);
+                }
                 if (result.data.redirect) { window.setTimeout(function () { window.location.href = result.data.redirect; }, 450); }
             })
-            .catch(function (error) { setFeedback(error && error.message ? error.message : ui.genericError, true); })
+            .catch(function (error) { showError(error && error.message ? error.message : ui.genericError); })
             .finally(function () { submitButton.disabled = false; });
     });
 })();

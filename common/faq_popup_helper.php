@@ -532,6 +532,9 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 		$selectedOrganizationId = (int)$faq->getResolvedOrganizationId();
 		$selectedHolonId = (int)$faq->get('IDholon');
 		$selectedParcoursId = \dbObject\FAQ::hasParcoursColumn() ? (int)$faq->get('IDparcours') : 0;
+		$canLinkApplication = \dbObject\FAQ::hasApplicationColumn()
+			&& ($canManageAllFaqs || $canManageOrganizationFaqs);
+		$selectedApplicationId = $canLinkApplication ? (int)$faq->get('IDapplication') : 0;
 		$contextOrganizationId = (int)($faqContext['organizationId'] ?? 0);
 		$contextOrganization = ($faqContext['organization'] ?? null) instanceof \dbObject\Organization
 			? $faqContext['organization']
@@ -551,6 +554,7 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 		$organizations = faqPopupLoadOrganizationOptions($faqContext, $faq);
 		$holons = faqPopupLoadHolonOptions($faqContext, $organizations);
 		$parcoursOptions = faqPopupLoadParcoursOptions($faqContext, $organizations);
+		$applicationOptions = $canLinkApplication ? \dbObject\Application::fetchFaqAttachmentOptions() : array();
 		$hasScopeControls = $canManageAllFaqs || $canManageOrganizationFaqs || !$isContextualOnly;
 
 		if (!$hasScopeControls) {
@@ -603,6 +607,30 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 						<?php endif; ?>
 					</select>
 				</div>
+				<?php if ($canLinkApplication): ?>
+					<div class="faq-popup__scope-field">
+						<label class="faq-popup__scope-label" for="faqScopeApplication">Application</label>
+						<select
+							class="faq-popup__scope-control"
+							id="faqScopeApplication"
+							name="IDapplication"
+						>
+							<option value="">Toutes les applications</option>
+							<?php foreach ($applicationOptions as $applicationOption): ?>
+								<?php
+								$applicationOptionId = (int)($applicationOption['id'] ?? 0);
+								$applicationOptionLabel = trim((string)($applicationOption['label'] ?? ''));
+								if ($applicationOptionId <= 0 || $applicationOptionLabel === '') {
+									continue;
+								}
+								?>
+								<option value="<?= $applicationOptionId ?>"<?= $selectedApplicationId === $applicationOptionId ? ' selected' : '' ?>>
+									<?= htmlspecialchars($applicationOptionLabel, ENT_QUOTES, 'UTF-8') ?>
+								</option>
+							<?php endforeach; ?>
+						</select>
+					</div>
+				<?php endif; ?>
 				<div class="faq-popup__scope-field" data-faq-scope-holon-shell>
 					<label class="faq-popup__scope-label" for="faqScopeHolon">Holon</label>
 					<select

@@ -61,10 +61,34 @@ if (empty($scope['status'])) {
 $faq = new \dbObject\FAQ();
 $data = $_POST;
 unset($data['id']);
+$linkedApplicationId = 0;
+if (\dbObject\FAQ::hasApplicationColumn() && $canManageFaqCollection) {
+	$linkedApplicationId = isset($data['IDapplication']) && is_numeric($data['IDapplication'])
+		? (int)$data['IDapplication']
+		: 0;
+}
+unset($data['IDapplication']);
 $faq->loadFromArray($data);
 $faq->set('IDorganization', $scope['organizationId'] ?? null);
 $faq->set('IDholon', $scope['holonId'] ?? null);
 $faq->set('IDparcours', $scope['parcoursId'] ?? null);
+if (\dbObject\FAQ::hasApplicationColumn() && $canManageFaqCollection) {
+	if ($linkedApplicationId > 0) {
+		$application = new \dbObject\Application();
+		if (!$application->load($linkedApplicationId) || (int)$application->getId() <= 0) {
+			echo json_encode([
+				'status' => false,
+				'success' => false,
+				'message' => 'Application invalide.',
+			], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			exit;
+		}
+
+		$faq->set('IDapplication', $linkedApplicationId);
+	} else {
+		$faq->set('IDapplication', null);
+	}
+}
 if (!$canManageFaqCollection) {
 	$faq->set('isactive', true);
 }

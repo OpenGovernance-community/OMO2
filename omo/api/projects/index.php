@@ -26,6 +26,10 @@ $currentHolon = $context['currentHolon'];
 $canToggleScope = $currentHolon instanceof Holon;
 $availableScopes = omoApiGetAvailableContextScopes($canToggleScope, $currentHolon, $rootHolon);
 $projectScope = omoApiNormalizeContextScope($_GET['project_scope'] ?? 'contextual', $availableScopes);
+$projectAssignment = strtolower(trim((string)($_GET['project_assignment'] ?? 'all')));
+$projectAssignment = $projectAssignment === 'mine' ? 'mine' : 'all';
+$currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+$projectQuickSearch = trim((string)($_GET['project_query'] ?? ''));
 $projectView = strtolower(trim((string)($_GET['project_view'] ?? 'kanban')));
 $projectView = $projectView === 'list' ? 'list' : 'kanban';
 $projectListSort = strtolower(trim((string)($_GET['project_sort'] ?? 'planned')));
@@ -33,7 +37,6 @@ $projectListSort = in_array($projectListSort, ['priority', 'importance', 'holon'
 if ($projectListSort === 'holon' && !in_array($projectScope, ['children', 'descendants'], true)) {
     $projectListSort = 'planned';
 }
-$canSortProjectsByHolon = in_array($projectScope, ['children', 'descendants'], true);
 $openProjectTargetId = isset($_GET['open_project_id']) && is_numeric($_GET['open_project_id']) ? (int)$_GET['open_project_id'] : 0;
 $openProjectMode = strtolower(trim((string)($_GET['open_project_mode'] ?? '')));
 if (!in_array($openProjectMode, ['detail', 'edit', 'create'], true)) {
@@ -44,7 +47,6 @@ if ($openProjectMode === 'create') {
 } elseif ($openProjectTargetId <= 0) {
     $openProjectMode = '';
 }
-$scopeActiveIndex = omoApiResolveContextScopeIndex($projectScope, $availableScopes);
 $descendantHolonIds = $projectScope === 'descendants' && $currentHolon instanceof Holon
     ? omoApiGetDescendantHolonIds($currentHolon)
     : [];
@@ -57,7 +59,11 @@ $allProjects->loadForOrganization($organizationId);
 $projects = new ArrayProject();
 $scopeCurrentHolonId = $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0;
 foreach ($allProjects as $allProject) {
-    if (!($allProject instanceof Project) || !omoProjectsScopeContainsProject($allProject, $projectScope, $scopeCurrentHolonId, $scopeHolonIds)) {
+    if (
+        !($allProject instanceof Project)
+        || !omoProjectsScopeContainsProject($allProject, $projectScope, $scopeCurrentHolonId, $scopeHolonIds)
+        || ($projectAssignment === 'mine' && (int)$allProject->get('IDuser') !== $currentUserId)
+    ) {
         continue;
     }
     $projects[] = $allProject;
@@ -300,6 +306,12 @@ if ($projectView === 'list') {
 if ($projectListSort !== 'planned') {
     $currentUrl .= '&project_sort=' . rawurlencode($projectListSort);
 }
+if ($projectAssignment === 'mine') {
+    $currentUrl .= '&project_assignment=mine';
+}
+if ($projectQuickSearch !== '') {
+    $currentUrl .= '&project_query=' . rawurlencode($projectQuickSearch);
+}
 
 $createUrl = '/omo/api/projects/create.php?oid=' . rawurlencode((string)$organizationId);
 if ($currentHolonId > 0) {
@@ -311,6 +323,9 @@ $actionUrl = '/omo/api/projects/action.php';
 $canManage = omoProjectsCanManageContext($context);
 $canCreate = omoProjectsCanCreateContext($context);
 $emptyKey = 'projects.empty.' . $projectScope;
+if ($projectAssignment === 'mine') {
+    $emptyKey = 'projects.empty.mine';
+}
 $projectTexts = [
     'loading' => omoProjectsT('projects.loading'),
     'loadingError' => omoProjectsT('projects.loading_error'),
@@ -330,15 +345,22 @@ $projectTexts = [
     'attachSubmit' => omoProjectsT('projects.attach.submit'),
     'attachSelectRequired' => omoProjectsT('projects.attach.select_required'),
     'cancel' => omoProjectsT('projects.action.cancel'),
+    'documentsLoading' => omoProjectsT('projects.detail.documents.loading'),
+    'documentsError' => omoProjectsT('projects.detail.documents.error'),
+    'documentsAdd' => omoProjectsT('projects.detail.documents.add'),
+    'taskDeleteConfirm' => omoProjectsT('projects.detail.task.delete_confirm'),
+    'archivesTitle' => omoProjectsT('projects.detail.archives.title'),
 ];
 ?>
-<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260724-subproject-actions">
+<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260727-project-saved-view">
 <div
     class="omo-projects omo-panel-view"
     id="omo-projects-root"
     data-omo-projects-oid="<?= (int)$organizationId ?>"
     data-omo-projects-cid="<?= $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0 ?>"
     data-omo-projects-scope="<?= omoApiEscape($projectScope) ?>"
+    data-omo-projects-assignment="<?= omoApiEscape($projectAssignment) ?>"
+    data-omo-projects-query="<?= omoApiEscape($projectQuickSearch) ?>"
     data-omo-projects-view="<?= omoApiEscape($projectView) ?>"
     data-omo-projects-list-sort="<?= omoApiEscape($projectListSort) ?>"
     data-omo-projects-current-url="<?= omoApiEscape($currentUrl) ?>"
@@ -373,44 +395,64 @@ $projectTexts = [
             <?php endif; ?>
         </div>
         <div class="omo-panel-view__header-secondary">
-            <div class="omo-scope-toolbar__main">
-                <?php if (count($availableScopes) > 1): ?>
-                    <div
-                        class="omo-scope-toggle"
-                        data-omo-scope-switch="<?= omoApiEscape($projectScope) ?>"
-                        style="--omo-scope-option-count: <?= count($availableScopes) ?>; --omo-scope-active-index: <?= (int)$scopeActiveIndex ?>;"
-                    >
-                        <?php foreach ($availableScopes as $scopeIndex => $scopeKey): ?>
-                            <button
-                                type="button"
-                                class="omo-scope-toggle__button<?= $projectScope === $scopeKey ? ' is-active' : '' ?>"
-                                data-omo-projects-scope="<?= omoApiEscape($scopeKey) ?>"
-                                data-omo-scope-option="<?= omoApiEscape($scopeKey) ?>"
-                                data-omo-scope-index="<?= (int)$scopeIndex ?>"
-                                aria-pressed="<?= $projectScope === $scopeKey ? 'true' : 'false' ?>"
-                            ><span class="omo-scope-toggle__text"><?= omoApiEscape(omoProjectsT('projects.scope.' . $scopeKey)) ?></span></button>
-                        <?php endforeach; ?>
+            <div class="omo-projects__filter-toolbar" data-omo-projects-filter-control role="group" aria-label="<?= omoApiEscape(omoProjectsT('projects.filters.aria')) ?>">
+                <div class="omo-projects__filter-input" aria-label="<?= omoApiEscape(omoProjectsT('projects.filters.aria')) ?>">
+                    <div class="omo-projects__filter-chips">
+                        <button type="button" class="omo-projects__filter-chip" data-omo-projects-filter-toggle aria-expanded="false" aria-controls="omo-projects-filter-panel"><?= omoApiEscape(omoProjectsT('projects.scope.' . $projectScope)) ?></button>
+                        <button type="button" class="omo-projects__filter-chip" data-omo-projects-filter-toggle aria-expanded="false" aria-controls="omo-projects-filter-panel"><?= omoApiEscape(omoProjectsT('projects.assignment.' . ($projectAssignment === 'mine' ? 'mine' : 'everyone'))) ?></button>
+                        <button type="button" class="omo-projects__filter-chip" data-omo-projects-filter-toggle aria-expanded="false" aria-controls="omo-projects-filter-panel"><?= omoApiEscape(omoProjectsT('projects.sort.' . $projectListSort)) ?></button>
+                        <button type="button" class="omo-projects__filter-chip" data-omo-projects-filter-toggle aria-expanded="false" aria-controls="omo-projects-filter-panel"><?= omoApiEscape(omoProjectsT('projects.view.' . $projectView)) ?></button>
                     </div>
-                <?php endif; ?>
+                    <label class="omo-projects__filter-search">
+                        <input type="search" class="generic-form-control" data-omo-projects-quick-search value="<?= omoApiEscape($projectQuickSearch) ?>" placeholder="<?= omoApiEscape(omoProjectsT('projects.search.placeholder')) ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.search.aria')) ?>" autocomplete="off">
+                    </label>
+                </div>
+                <section id="omo-projects-filter-panel" class="omo-projects__filter-panel generic-soft-panel generic-soft-panel--stack" data-omo-projects-filter-panel hidden>
+                    <div class="omo-projects__filter-panel-grid">
+                        <div class="omo-projects__filter-group">
+                            <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoProjectsT('projects.filters.scope')) ?></span>
+                            <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoProjectsT('projects.filters.scope')) ?>">
+                                <?php foreach ($availableScopes as $scopeKey): ?>
+                                    <button type="button" class="omo-segmented__button<?= $projectScope === $scopeKey ? ' is-active' : '' ?>" data-omo-projects-scope="<?= omoApiEscape($scopeKey) ?>" aria-pressed="<?= $projectScope === $scopeKey ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.scope.' . $scopeKey)) ?></button>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <div class="omo-projects__filter-group">
+                            <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoProjectsT('projects.filters.assignment')) ?></span>
+                            <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoProjectsT('projects.assignment.aria')) ?>">
+                                <button type="button" class="omo-segmented__button<?= $projectAssignment === 'mine' ? ' is-active' : '' ?>" data-omo-projects-assignment="mine" aria-pressed="<?= $projectAssignment === 'mine' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.assignment.mine')) ?></button>
+                                <button type="button" class="omo-segmented__button<?= $projectAssignment === 'all' ? ' is-active' : '' ?>" data-omo-projects-assignment="all" aria-pressed="<?= $projectAssignment === 'all' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.assignment.everyone')) ?></button>
+                            </div>
+                        </div>
+                        <div class="omo-projects__filter-group">
+                            <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoProjectsT('projects.filters.sort')) ?></span>
+                            <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoProjectsT('projects.sort.aria')) ?>">
+                                <button type="button" class="omo-segmented__button<?= $projectListSort === 'planned' ? ' is-active' : '' ?>" data-omo-projects-sort="planned" aria-pressed="<?= $projectListSort === 'planned' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.sort.planned')) ?></button>
+                                <button type="button" class="omo-segmented__button<?= $projectListSort === 'priority' ? ' is-active' : '' ?>" data-omo-projects-sort="priority" aria-pressed="<?= $projectListSort === 'priority' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.sort.priority')) ?></button>
+                                <button type="button" class="omo-segmented__button<?= $projectListSort === 'importance' ? ' is-active' : '' ?>" data-omo-projects-sort="importance" aria-pressed="<?= $projectListSort === 'importance' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.sort.importance')) ?></button>
+                                <?php if (in_array('children', $availableScopes, true) || in_array('descendants', $availableScopes, true)): ?>
+                                    <button type="button" class="omo-segmented__button<?= $projectListSort === 'holon' ? ' is-active' : '' ?>" data-omo-projects-sort="holon" aria-pressed="<?= $projectListSort === 'holon' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.sort.holon')) ?></button>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="omo-projects__filter-group">
+                            <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoProjectsT('projects.filters.view')) ?></span>
+                            <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoProjectsT('projects.view.aria')) ?>">
+                                <button type="button" class="omo-segmented__button<?= $projectView === 'kanban' ? ' is-active' : '' ?>" data-omo-projects-view="kanban" aria-pressed="<?= $projectView === 'kanban' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.view.kanban')) ?></button>
+                                <button type="button" class="omo-segmented__button<?= $projectView === 'list' ? ' is-active' : '' ?>" data-omo-projects-view="list" aria-pressed="<?= $projectView === 'list' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.view.list')) ?></button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="omo-projects__filter-panel-actions">
+                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-projects-filter-apply><?= omoApiEscape(omoProjectsT('projects.filters.apply')) ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--main" data-omo-projects-filter-save><?= omoApiEscape(omoProjectsT('projects.filters.save_view')) ?></button>
+                    </div>
+                </section>
             </div>
-            <div class="omo-projects__header-view-controls">
-                <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoProjectsT('projects.sort.aria')) ?>">
-                    <button type="button" class="omo-segmented__button<?= $projectListSort === 'planned' ? ' is-active' : '' ?>" data-omo-projects-sort="planned" aria-pressed="<?= $projectListSort === 'planned' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.sort.planned')) ?></button>
-                    <button type="button" class="omo-segmented__button<?= $projectListSort === 'priority' ? ' is-active' : '' ?>" data-omo-projects-sort="priority" aria-pressed="<?= $projectListSort === 'priority' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.sort.priority')) ?></button>
-                    <button type="button" class="omo-segmented__button<?= $projectListSort === 'importance' ? ' is-active' : '' ?>" data-omo-projects-sort="importance" aria-pressed="<?= $projectListSort === 'importance' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.sort.importance')) ?></button>
-                    <?php if ($canSortProjectsByHolon): ?>
-                        <button type="button" class="omo-segmented__button<?= $projectListSort === 'holon' ? ' is-active' : '' ?>" data-omo-projects-sort="holon" aria-pressed="<?= $projectListSort === 'holon' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.sort.holon')) ?></button>
-                    <?php endif; ?>
-                </div>
-                <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoProjectsT('projects.view.aria')) ?>">
-                    <button type="button" class="omo-segmented__button<?= $projectView === 'kanban' ? ' is-active' : '' ?>" data-omo-projects-view="kanban" aria-pressed="<?= $projectView === 'kanban' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.view.kanban')) ?></button>
-                    <button type="button" class="omo-segmented__button<?= $projectView === 'list' ? ' is-active' : '' ?>" data-omo-projects-view="list" aria-pressed="<?= $projectView === 'list' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.view.list')) ?></button>
-                </div>
-                <div class="omo-projects__mobile-column-nav" aria-label="<?= omoApiEscape(omoProjectsT('projects.title')) ?>"<?= $projectView === 'kanban' ? '' : ' hidden' ?>>
-                    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-projects-column-prev aria-label="<?= omoApiEscape(omoProjectsT('projects.column.previous')) ?>">&lsaquo;</button>
-                    <span data-omo-projects-column-label></span>
-                    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-projects-column-next aria-label="<?= omoApiEscape(omoProjectsT('projects.column.next')) ?>">&rsaquo;</button>
-                </div>
+            <div class="omo-projects__mobile-column-nav" aria-label="<?= omoApiEscape(omoProjectsT('projects.title')) ?>"<?= $projectView === 'kanban' ? '' : ' hidden' ?>>
+                <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-projects-column-prev aria-label="<?= omoApiEscape(omoProjectsT('projects.column.previous')) ?>">&lsaquo;</button>
+                <span data-omo-projects-column-label></span>
+                <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-projects-column-next aria-label="<?= omoApiEscape(omoProjectsT('projects.column.next')) ?>">&rsaquo;</button>
             </div>
         </div>
     </header>
@@ -449,6 +491,7 @@ $projectTexts = [
                                     data-project-parent-id="<?= (int)$project->get('IDproject_parent') ?>"
                                     data-project-status="<?= omoApiEscape($status) ?>"
                                     data-project-title="<?= omoApiEscape($projectTitle) ?>"
+                                    data-project-search="<?= omoApiEscape(trim($projectTitle . ' ' . $item['contextLabel'] . ' ' . $responsibleLabel . ' ' . omoProjectsStatusLabel($status))) ?>"
                                     data-project-holon-id="<?= (int)$project->get('IDholon') ?>"
                                     data-project-subproject-count="<?= (int)$subprojectCount ?>"
                                     tabindex="0"
@@ -506,12 +549,12 @@ $projectTexts = [
                 <?php else: ?>
                     <div class="generic-file-list generic-file-list--structured omo-projects__list" data-omo-projects-list>
                         <?php foreach ($listProjectGroups as $group): ?>
-                            <section class="generic-file-list__group omo-projects__list-group">
+                            <section class="generic-file-list__group omo-projects__list-group" data-omo-projects-list-group>
                                 <h3 class="generic-card-title generic-card-title--small generic-file-list__group-title"><?= omoApiEscape($group['label']) ?></h3>
                                 <div class="omo-projects__list-group-items">
                                     <?php foreach ($group['items'] as $item): ?>
                                         <?php $project = $item['project']; ?>
-                                        <article class="omo-project-list-item omo-project-list-item--<?= omoApiEscape($item['status']) ?>" data-omo-project-list-item data-project-id="<?= (int)$project->getId() ?>" data-project-parent-id="<?= (int)$project->get('IDproject_parent') ?>" tabindex="0" role="button" aria-label="<?= omoApiEscape((string)$project->get('title')) ?>">
+                                        <article class="omo-project-list-item omo-project-list-item--<?= omoApiEscape($item['status']) ?>" data-omo-project-list-item data-project-id="<?= (int)$project->getId() ?>" data-project-parent-id="<?= (int)$project->get('IDproject_parent') ?>" data-project-search="<?= omoApiEscape(trim((string)$project->get('title') . ' ' . $item['holonLabel'] . ' ' . $item['responsibleLabel'] . ' ' . omoProjectsStatusLabel($item['status']))) ?>" tabindex="0" role="button" aria-label="<?= omoApiEscape((string)$project->get('title')) ?>">
                                             <div class="omo-project-list-item__main">
                                                 <strong><?= omoApiEscape((string)$project->get('title')) ?></strong>
                                                 <div class="omo-project-list-item__meta">
@@ -535,6 +578,7 @@ $projectTexts = [
                     </div>
                 <?php endif; ?>
             <?php endif; ?>
+            <div class="omo-projects__search-empty omo-empty-state" data-omo-projects-search-empty hidden><?= omoApiEscape(omoProjectsT('projects.search.empty')) ?></div>
         </div>
     </div>
 
@@ -556,4 +600,4 @@ $projectTexts = [
     </div>
 </div>
 <script src="/common/drawer/subdrawer.js"></script>
-<script src="/omo/api/projects/projects.js?v=20260724-project-breadcrumb-collapse-visibility"></script>
+<script src="/omo/api/projects/projects.js?v=20260727-project-saved-view"></script>
