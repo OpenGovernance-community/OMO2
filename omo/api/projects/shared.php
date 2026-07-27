@@ -2,6 +2,7 @@
 
 use dbObject\Holon;
 use dbObject\Organization;
+use dbObject\ArrayProjectDocument;
 use dbObject\Project;
 
 if (!function_exists('omoProjectsSourceLang')) {
@@ -21,6 +22,19 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.scope.contextual' => ['text' => 'Local', 'context' => 'Scope showing projects attached to the current holon.'],
             'projects.scope.children' => ['text' => 'Enfants directs', 'context' => 'Scope showing projects attached to the current holon and its direct children.'],
             'projects.scope.descendants' => ['text' => 'Descendants', 'context' => 'Scope showing projects attached to the current holon and its descendants.'],
+            'projects.assignment.aria' => ['text' => 'Projets affichés', 'context' => 'Accessible label for the project assignment filter.'],
+            'projects.assignment.mine' => ['text' => 'Moi', 'context' => 'Project assignment filter showing projects assigned to the current user.'],
+            'projects.assignment.everyone' => ['text' => 'Tout le monde', 'context' => 'Project assignment filter showing projects assigned to anyone.'],
+            'projects.filters.aria' => ['text' => 'Filtres des projets', 'context' => 'Accessible label for the compact project filters control.'],
+            'projects.filters.scope' => ['text' => 'Contexte', 'context' => 'Heading for the project scope choices in the filters panel.'],
+            'projects.filters.assignment' => ['text' => 'Attribution', 'context' => 'Heading for the project assignment choices in the filters panel.'],
+            'projects.filters.sort' => ['text' => 'Ordre', 'context' => 'Heading for the project sorting choices in the filters panel.'],
+            'projects.filters.view' => ['text' => 'Représentation', 'context' => 'Heading for the project view choices in the filters panel.'],
+            'projects.filters.apply' => ['text' => 'Appliquer', 'context' => 'Button applying temporary project filter choices without saving them.'],
+            'projects.filters.save_view' => ['text' => 'Enregistrer cette vue', 'context' => 'Button applying and saving the project filter choices for the current holon.'],
+            'projects.search.aria' => ['text' => 'Filtrer les projets affichés', 'context' => 'Accessible label for the project quick search input.'],
+            'projects.search.placeholder' => ['text' => 'Filtrer les projets', 'context' => 'Placeholder for the project quick search input.'],
+            'projects.search.empty' => ['text' => 'Aucun projet ne correspond à cette recherche.', 'context' => 'Empty state when the project quick search hides every displayed project.'],
             'projects.view.aria' => ['text' => "Mode d'affichage", 'context' => 'Accessible label for the project display mode selector.'],
             'projects.view.kanban' => ['text' => 'Kanban', 'context' => 'Project display mode button.'],
             'projects.view.list' => ['text' => 'Liste', 'context' => 'Project display mode button.'],
@@ -41,6 +55,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.empty.contextual' => ['text' => 'Aucun projet dans ce contexte.', 'context' => 'Empty state for the local project scope.'],
             'projects.empty.children' => ['text' => 'Aucun projet dans ce contexte ou ses enfants directs.', 'context' => 'Empty state for the direct child holon scope.'],
             'projects.empty.descendants' => ['text' => 'Aucun projet dans ce contexte ou ses descendants.', 'context' => 'Empty state for the descendant project scope.'],
+            'projects.empty.mine' => ['text' => 'Aucun projet qui vous est attribué dans ce périmètre.', 'context' => 'Empty state when the current user has no assigned project in the selected scope.'],
             'projects.empty.column' => ['text' => 'Aucun projet dans cette colonne.', 'context' => 'Empty state for one empty Kanban column.'],
             'projects.loading' => ['text' => 'Chargement du projet…', 'context' => 'Loading message shown inside the project subdrawer.'],
             'projects.loading_error' => ['text' => 'Impossible de charger ce projet.', 'context' => 'Error shown when a project drawer cannot be loaded.'],
@@ -87,6 +102,19 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.detail.subprojects' => ['text' => 'Sous-projets', 'context' => 'Project detail subprojects section label.'],
             'projects.detail.subprojects_new' => ['text' => 'Nouveau', 'context' => 'Button creating a new subproject from a project detail.'],
             'projects.detail.subprojects_empty' => ['text' => 'Aucun sous-projet pour le moment.', 'context' => 'Empty state shown in the project detail subprojects section.'],
+            'projects.detail.tabs.information' => ['text' => 'Informations', 'context' => 'Project detail tab containing the project information.'],
+            'projects.detail.tabs.documents' => ['text' => 'Documents associés', 'context' => 'Project detail tab containing documents attached to the project.'],
+            'projects.detail.documents.empty' => ['text' => 'Aucun fichier à afficher', 'context' => 'Empty state for a project without attached documents.'],
+            'projects.detail.documents.add' => ['text' => 'Ajouter un fichier', 'context' => 'Action opening the documents application from an empty project document list.'],
+            'projects.detail.documents.added' => ['text' => 'Ajouté le {date}', 'context' => 'Date label shown for a document attached to a project.'],
+            'projects.detail.documents.loading' => ['text' => 'Chargement des documents…', 'context' => 'Loading state for lazy project documents.'],
+            'projects.detail.documents.error' => ['text' => 'Impossible de charger les documents du projet.', 'context' => 'Error state for lazy project documents.'],
+            'projects.detail.task.archive' => ['text' => 'Archiver', 'context' => 'Task action in the project detail status selector.'],
+            'projects.detail.task.delete' => ['text' => 'Supprimer', 'context' => 'Task action in the project detail status selector.'],
+            'projects.detail.task.delete_confirm' => ['text' => 'Supprimer définitivement cette tâche ? Cette action est irréversible.', 'context' => 'Confirmation before permanently deleting a task from the project detail.'],
+            'projects.detail.archives.link' => ['text' => 'Voir les archives', 'context' => 'Text link opening archived subprojects.'],
+            'projects.detail.archives.title' => ['text' => 'Projets archivés', 'context' => 'Title of the archived subprojects popup.'],
+            'projects.detail.archives.empty' => ['text' => 'Aucun projet archivé.', 'context' => 'Empty state for archived subprojects.'],
             'projects.detail.created' => ['text' => 'Créé le', 'context' => 'Project detail creation date label.'],
             'projects.detail.empty_description' => ['text' => 'Aucune description pour ce projet.', 'context' => 'Fallback when the project has no description.'],
             'projects.detail.none' => ['text' => 'Non renseigné', 'context' => 'Fallback for missing project metadata.'],
@@ -261,6 +289,20 @@ if (!function_exists('omoProjectsCanManageProject')) {
             return $projectHolon->canEdit();
         }
 
+        // A task without its own holon inherits the management right of its
+        // project chain. This keeps project-owned tasks editable even when
+        // they are not directly attached to a holon.
+        $parent = $project->getParent();
+        if (
+            $parent instanceof Project
+            && (int)$parent->getId() !== (int)$project->getId()
+            && (int)$parent->get('IDorganization') === (int)$project->get('IDorganization')
+            && (int)$parent->get('active') === 1
+            && omoProjectsCanManageProject($parent, $context)
+        ) {
+            return true;
+        }
+
         $organization = $context['organization'] ?? null;
         return $organization instanceof Organization && $organization->canEdit();
     }
@@ -317,6 +359,43 @@ if (!function_exists('omoProjectsFormatDate')) {
     function omoProjectsFormatDate($value)
     {
         return $value instanceof \DateTimeInterface ? $value->format('d.m.Y') : '';
+    }
+}
+
+if (!function_exists('omoProjectsGetVisibleDocuments')) {
+    function omoProjectsGetVisibleDocuments(Project $project, $organizationId, $projectHolon = null)
+    {
+        $projectDocuments = new ArrayProjectDocument();
+        $projectDocuments->loadForProject((int)$project->getId());
+        $visibleDocuments = [];
+
+        foreach ($projectDocuments as $projectDocument) {
+            $document = $projectDocument->getDocument();
+            if (
+                !is_object($document)
+                || (int)$document->get('IDorganization') !== (int)$organizationId
+                || $document->isArchived()
+                || !(
+                    $document->canViewInOrganizationContext(
+                        (int)$organizationId,
+                        $projectHolon instanceof Holon ? (int)$projectHolon->getId() : null
+                    )
+                    || $document->canViewDirectlyInOrganization((int)$organizationId)
+                )
+            ) {
+                continue;
+            }
+
+            $createdAt = $projectDocument->get('datecreation');
+            $visibleDocuments[] = [
+                'id' => (int)$document->getId(),
+                'title' => trim((string)$document->get('title')),
+                'type' => $document->getDocumentTypeLabel(),
+                'addedAt' => $createdAt instanceof \DateTimeInterface ? $createdAt->format('d.m.Y') : '',
+            ];
+        }
+
+        return $visibleDocuments;
     }
 }
 

@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
+require_once dirname(__DIR__, 3) . '/common/omo_fake_cron.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 @set_time_limit(0);
@@ -38,7 +39,7 @@ if (!is_array($payload)) {
     exit;
 }
 
-$availableModules = array('structure', 'members', 'documents', 'projects', 'tasks', 'indicators', 'calendar', 'pv');
+$availableModules = array('structure', 'members', 'documents', 'projects', 'tasks', 'checklists', 'indicators', 'calendar', 'pv');
 $requestedModules = array();
 $postedModules = isset($_POST['modules']) && is_array($_POST['modules']) ? $_POST['modules'] : array();
 foreach ($availableModules as $module) {
@@ -63,6 +64,7 @@ if (empty($result['status']) || !($result['organization'] ?? null) instanceof \d
 }
 
 $organization = $result['organization'];
+$maintenance = omo_run_fake_cron_maintenance(50);
 echo json_encode(array(
     'status' => true,
     'message' => (string)($result['message'] ?? 'La nouvelle organisation a ete importee.'),
@@ -75,4 +77,5 @@ echo json_encode(array(
     ),
     'stats' => $result['stats'] ?? array(),
     'warnings' => $result['warnings'] ?? array(),
+    'maintenance' => $maintenance,
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

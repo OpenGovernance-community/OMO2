@@ -2,6 +2,7 @@
 require_once __DIR__ . '/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/common/topbar.php';
 require_once dirname(__DIR__) . '/topbar.php';
+require_once __DIR__ . '/stats/shared.php';
 
 if (!function_exists('omoSearchPopupGetScopeLabels')) {
     function omoSearchPopupGetScopeLabels(?\dbObject\Organization $organization = null)
@@ -13,6 +14,8 @@ if (!function_exists('omoSearchPopupGetScopeLabels')) {
             'documents' => 'Documents',
             'pv' => 'PV',
             'decision' => 'Decisions',
+            'projects' => 'Projets',
+            'stats' => 'Indicateurs',
             'faq' => 'FAQ',
             'tutorials' => 'Tutoriels',
         );
@@ -28,6 +31,8 @@ if (!function_exists('omoSearchPopupGetScopeLabels')) {
             'documents' => 'documents',
             'pv' => 'documents',
             'decision' => 'decision',
+            'projects' => 'projects',
+            'stats' => 'stats',
         );
 
         foreach ($scopeAppHashes as $scopeId => $hash) {
@@ -496,6 +501,13 @@ if (!function_exists('omoSearchPopupRenderContent')) {
                         <?php
                         $module = (string)($result['module'] ?? '');
                         $action = is_array($result['action'] ?? null) ? $result['action'] : array();
+                        $subtitle = trim((string)($result['subtitle'] ?? ''));
+                        if ($module === 'stats' && !empty($action['measurementFrequency'])) {
+                            $frequencyLabel = omoStatsMeasurementFrequencyLabel($action['measurementFrequency']);
+                            if ($frequencyLabel !== '') {
+                                $subtitle = $subtitle !== '' ? $subtitle . ' | ' . $frequencyLabel : $frequencyLabel;
+                            }
+                        }
                         $buttonAttributes = '';
                         if ($module === 'structure' && !empty($action['holonId'])) {
                             $buttonAttributes = ' data-omo-search-open-structure="' . (int)$action['holonId'] . '"';
@@ -510,6 +522,12 @@ if (!function_exists('omoSearchPopupRenderContent')) {
                         } elseif ($module === 'decision' && !empty($action['decisionId'])) {
                             $buttonAttributes = ' data-omo-search-open-decision-id="' . (int)$action['decisionId'] . '"'
                                 . ' data-omo-search-open-decision-holon="' . (int)($action['holonId'] ?? 0) . '"';
+                        } elseif ($module === 'projects' && !empty($action['projectId'])) {
+                            $buttonAttributes = ' data-omo-search-open-project-id="' . (int)$action['projectId'] . '"'
+                                . ' data-omo-search-open-project-holon="' . (int)($action['holonId'] ?? 0) . '"';
+                        } elseif ($module === 'stats' && !empty($action['indicatorId'])) {
+                            $buttonAttributes = ' data-omo-search-open-stat-indicator-id="' . (int)$action['indicatorId'] . '"'
+                                . ' data-omo-search-open-stat-indicator-holon="' . (int)($action['holonId'] ?? 0) . '"';
                         } elseif ($module === 'faq' && !empty($action['faqId'])) {
                             $buttonAttributes = ' data-omo-search-open-faq="' . (int)$action['faqId'] . '"';
                         } elseif ($module === 'tutorials' && !empty($action['parcoursId'])) {
@@ -528,8 +546,8 @@ if (!function_exists('omoSearchPopupRenderContent')) {
 
                             <div class="omo-search-popup__result-body">
                                 <h4><?= $escape((string)($result['title'] ?? 'Resultat')) ?></h4>
-                                <?php if (trim((string)($result['subtitle'] ?? '')) !== ''): ?>
-                                    <div class="omo-search-popup__subtitle"><?= $escape((string)$result['subtitle']) ?></div>
+                                <?php if ($subtitle !== ''): ?>
+                                    <div class="omo-search-popup__subtitle"><?= $escape($subtitle) ?></div>
                                 <?php endif; ?>
                                 <?php if (trim((string)($result['excerpt'] ?? '')) !== ''): ?>
                                     <p class="omo-search-popup__excerpt"><?= $escape((string)$result['excerpt']) ?></p>
@@ -773,6 +791,8 @@ omoSearchPopupRenderStyles();
                     'calendar' => 0,
                     'documents' => 0,
                     'decision' => 0,
+                    'projects' => 0,
+                    'stats' => 0,
                     'faq' => 0,
                     'tutorials' => 0,
                 ),
@@ -1036,6 +1056,24 @@ omoSearchPopupRenderStyles();
             window.omoOpenSearchDecisionResult(
                 Number(decisionButton.getAttribute('data-omo-search-open-decision-id') || '0'),
                 Number(decisionButton.getAttribute('data-omo-search-open-decision-holon') || '0')
+            );
+            return;
+        }
+
+        var projectButton = event.target.closest('[data-omo-search-open-project-id]');
+        if (projectButton && typeof window.omoOpenSearchProjectResult === 'function') {
+            window.omoOpenSearchProjectResult(
+                Number(projectButton.getAttribute('data-omo-search-open-project-id') || '0'),
+                Number(projectButton.getAttribute('data-omo-search-open-project-holon') || '0')
+            );
+            return;
+        }
+
+        var indicatorButton = event.target.closest('[data-omo-search-open-stat-indicator-id]');
+        if (indicatorButton && typeof window.omoOpenSearchStatIndicatorResult === 'function') {
+            window.omoOpenSearchStatIndicatorResult(
+                Number(indicatorButton.getAttribute('data-omo-search-open-stat-indicator-id') || '0'),
+                Number(indicatorButton.getAttribute('data-omo-search-open-stat-indicator-holon') || '0')
             );
             return;
         }

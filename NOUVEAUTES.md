@@ -2,6 +2,23 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-27
+
+- L application Projets regroupe maintenant ses filtres de contexte, attribution, ordre et representation dans un champ compact : les choix actifs apparaissent en capsules et ouvrent un panneau commun vertical. Appliquer modifie la vue courante sans la memoriser, tandis que Enregistrer cette vue en fait la vue de base du holon pour la prochaine ouverture. Le champ propose aussi une recherche rapide locale qui masque correctement les projets sans correspondance.
+
+## 2026-07-26
+
+La recherche globale peut maintenant inclure les applications Projets et Indicateurs lorsqu elles sont actives. Leurs resultats respectent la periode et la visibilite du contexte, affichent un extrait contenant le terme trouve, puis ouvrent directement le detail correspondant par navigation hash. La frequence des indicateurs est traduite dans la langue de l interface.
+
+- Le menu Parametres propose maintenant un export JSON complet de l organisation, avec selection des modules, conservation de la structure et compatibilite avec l import OMO 2.
+- L import d organisation restaure maintenant les liens des proprietes de type liste de projets vers les projets et sous-projets importes.
+- Les proprietes `Strategie` de type HTML et liste conservent maintenant leur format composite lors de l import, au lieu d etre forcees en HTML simple.
+- L import d organisation repare maintenant les bases ou la migration des invitations etait enregistree sans avoir ajoute la colonne `request_origin`; les erreurs et avertissements de la popup passent aussi par les notifications centralisees.
+- L import d organisation declenche maintenant la maintenance cron simulee afin d activer immediatement les projets dus des checklistes importees.
+- Le seed Docker a ete regenere depuis la base MariaDB actuelle du conteneur. Il contient maintenant l etat courant des donnees ainsi que les 129 migrations enregistrees comme appliquees, pour permettre une restauration fidele apres recreation du volume.
+- Les FAQ peuvent maintenant etre liees de facon optionnelle a une application OMO. Le choix est regroupe dans le bloc Attachement et reserve aux administrateurs FAQ, comme le rattachement a un parcours; la base stocke ce lien, et les FAQ ainsi rattachees sont masquees quand l application correspondante n est pas activee dans l organisation courante.
+- La migration des FAQ repare aussi les bases dont `IDparcours` avait ete enregistree sans etre creee. Le seed Docker contient desormais ce schema et son historique de migration coherents.
+
 ## 2026-07-25
 
 - Les libellés français des indicateurs utilisent maintenant les apostrophes et accents manquants dans les actions, formulaires, messages d erreur et états vides.
@@ -68,6 +85,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - L import OMO 1 prend maintenant les proces-verbaux : chaque reunion exportee avec son historique devient un document PV lie a l evenement cree. Le titre du PV reprend la reunion et sa date; les mises en forme HTML des titres historiques sont conservees dans le contenu. Les entrees associees a une meme tension sont rassemblees dans un point unique portant le titre de la tension, avec les textes et actions lies dans son contenu. Les points d information OMO 1 restent identifies; les autres deviennent des points normaux.
 - Les points de PV issus d une tension reprennent maintenant l auteur de la tension OMO 1. Lorsque cette personne n est pas importee, le point reste sans auteur au lieu d etre attribue par erreur a la personne qui lance l import.
 - Les projets archives dans OMO 1 sont maintenant importes termines et inactifs dans OMO 2. Ils restent donc conserves dans les donnees, sans apparaitre dans les listes de projets actives.
+- Les checklistes OMO 1 sont maintenant exportees dans le format de containers OMO 2 et importees avec leurs projets modeles. Les checklistes a recurrence sont regroupees dans un container par role, avec une recurrence propre a chaque element; les checklistes sans declencheur temporel deviennent des checklistes individuelles a la demande. Leur historique de validation OMO 1 n est pas repris.
 - Une organisation creee par import OMO 1 reprend desormais la date de sa donnee historique la plus ancienne parmi les modules selectionnes. La recherche peut donc proposer toute la periode importee, au lieu d etre limitee a la date du jour de l import.
 - La propriete `Strategie` des structures OMO 1 est maintenant creee au format HTML. L import reconnait aussi ce champ dans les exports deja produits et assainit son contenu HTML avant enregistrement.
 - La carte `Importer une organisation` utilise maintenant son illustration dediee de chantier, dans le meme format que la carte de creation.
@@ -138,6 +156,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Un double-clic dans une colonne du Kanban Projets ouvre maintenant la creation d un projet avec le statut de la colonne deja selectionne.
 - Le formulaire de projet place maintenant l action principale avant Annuler et ne repete plus le titre ni le texte d introduction sous l entete.
 - Les droits contextuels CAN_CREATE_PROJECT et CAN_CREATE_INDICATOR sont maintenant disponibles et protegent la creation des projets et des indicateurs.
+- Le detail des projets propose maintenant un onglet Informations et un onglet Documents associes, avec ouverture des documents via leur route hash.
 
 ## 2026-07-19
 
@@ -1146,3 +1165,12 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - Les indicateurs a completer utilisent maintenant un avertissement jaune pendant un delai de grace adapte a leur frequence. Le retard devient rouge uniquement apres ce delai et affiche alors son nombre de jours.
 - Les graphiques combines reprennent maintenant la severite de leurs indicateurs : jaune quand ils sont seulement a completer, rouge uniquement lorsqu au moins un indicateur est reellement en retard.
 - L editeur de FAQ nettoie maintenant ses instances Summernote avant chaque remplacement de popup ou de vue. La creation reste disponible lors des ouvertures successives, et le formulaire d edition initialise explicitement son editeur riche apres son chargement asynchrone.
+- Les documents associes depuis le detail d un projet utilisent maintenant la navigation hash de l application.
+- Les documents associes d un projet sont maintenant charges uniquement a l ouverture de leur onglet.
+- L onglet Documents affiche un cadre d etat vide avec une action Ajouter un fichier lorsqu aucun document n est associe.
+- Le menu contextuel des cartes Projet reste maintenant au-dessus des cartes voisines lorsqu il est ouvert.
+- Les taches du detail Projet peuvent maintenant etre archivees ou supprimees depuis leur selecteur de statut, avec confirmation avant suppression.
+- L archivage ou la suppression d une tache retire maintenant directement sa ligne du detail Projet, sans recharger le drawer.
+- Les taches sans holon propre heritent maintenant des droits de gestion de leur projet parent pour le statut, l archivage et la suppression.
+- Le detail d un projet affiche maintenant un lien texte vers ses sous-projets archives, avec leur nombre et une popup chargee a la demande.
+- Le lien des archives est maintenant presente dans une capsule grise avec le nombre dans un rond blanc.
