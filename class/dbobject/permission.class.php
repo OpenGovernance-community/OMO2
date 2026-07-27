@@ -127,6 +127,36 @@ class Permission extends DbObject
                 'description' => 'Autorise la creation d indicateurs dans le contexte cible.',
                 'iscontextual' => true,
             ],
+            'CAN_EDIT_TEMPLATE_PROPERTIES' => [
+                'title' => 'Modifier les proprietes de templates',
+                'description' => 'Autorise la modification des proprietes definies par les templates dans le contexte cible.',
+                'iscontextual' => true,
+            ],
+            'CAN_ADD_TEMPLATE_PROPERTIES' => [
+                'title' => 'Ajouter des proprietes de templates',
+                'description' => 'Autorise l ajout de proprietes definies par les templates dans le contexte cible.',
+                'iscontextual' => true,
+            ],
+            'CAN_DELETE_TEMPLATE_PROPERTIES' => [
+                'title' => 'Supprimer les proprietes de templates',
+                'description' => 'Autorise le retrait des proprietes definies par les templates dans le contexte cible.',
+                'iscontextual' => true,
+            ],
+            'CAN_EDIT_HOLON_PROPERTIES' => [
+                'title' => 'Modifier les proprietes de holons',
+                'description' => 'Autorise la modification des proprietes ajoutees directement a un holon dans le contexte cible.',
+                'iscontextual' => true,
+            ],
+            'CAN_ADD_HOLON_PROPERTIES' => [
+                'title' => 'Ajouter des proprietes de holons',
+                'description' => 'Autorise l ajout de proprietes directement sur un holon dans le contexte cible.',
+                'iscontextual' => true,
+            ],
+            'CAN_DELETE_HOLON_PROPERTIES' => [
+                'title' => 'Supprimer les proprietes de holons',
+                'description' => 'Autorise le retrait des proprietes ajoutees directement a un holon dans le contexte cible.',
+                'iscontextual' => true,
+            ],
             'CAN_ADD_APP' => [
                 'title' => 'Gerer les applications',
                 'description' => 'Autorise la gestion des applications actives et de leur ordre dans l organisation.',

@@ -5,25 +5,32 @@ use dbObject\History;
 use dbObject\Holon;
 use dbObject\Organization;
 
+function omoHistoryParseUtcDate($value)
+{
+	$value = trim((string)$value);
+	if ($value === '') {
+		return null;
+	}
+
+	try {
+		return new DateTimeImmutable($value, new DateTimeZone('UTC'));
+	} catch (Throwable $exception) {
+		return null;
+	}
+}
+
 function omoRenderHolonHistoryItems(array $historyItems)
 {
 	ob_start();
 	foreach ($historyItems as $item):
 		$timestamp = 0;
-		if (!empty($item['datecreation'])) {
-			try {
-				$timestamp = (new DateTime((string)$item['datecreation']))->getTimestamp();
-			} catch (Throwable $exception) {
-				$timestamp = 0;
-			}
+		$historyDate = omoHistoryParseUtcDate($item['datecreation'] ?? '');
+		if ($historyDate instanceof DateTimeInterface) {
+			$timestamp = $historyDate->getTimestamp();
 		}
-		$dateLabel = trim((string)($item['datecreation'] ?? ''));
-		if ($dateLabel !== '') {
-			try {
-				$dateLabel = (new DateTime($dateLabel))->format('d.m.Y H:i');
-			} catch (Throwable $exception) {
-			}
-		}
+		$dateLabel = $historyDate instanceof DateTimeInterface
+			? $historyDate->format('d.m.Y H:i') . ' UTC'
+			: trim((string)($item['datecreation'] ?? ''));
 		$authorLabel = trim((string)($item['authorDisplayName'] ?? ''));
 		$actionLabel = trim((string)($item['actionLabel'] ?? ''));
 		$contentHtml = trim((string)($item['contentHtml'] ?? ''));
@@ -42,7 +49,7 @@ function omoRenderHolonHistoryItems(array $historyItems)
 		<article class="omo-holon-history-popup__item" data-history-timestamp="<?= (int)$timestamp ?>">
 			<div class="omo-holon-history-popup__meta">
 				<?php if ($dateLabel !== ''): ?>
-					<span><?= omoApiEscape($dateLabel) ?></span>
+					<span data-history-local-date="1" data-history-timestamp="<?= (int)$timestamp ?>"><?= omoApiEscape($dateLabel) ?></span>
 				<?php endif; ?>
 				<?php if ($authorLabel !== ''): ?>
 					<span>par <?= omoApiEscape($authorLabel) ?></span>
@@ -438,6 +445,41 @@ if ($requestFragment === 'items') {
 			}
 
 			return String(value).trim();
+		}
+
+		function formatHistoryDates(scope) {
+			var formatter;
+			var timezone = '';
+
+			if (!scope || !window.Intl || typeof window.Intl.DateTimeFormat !== 'function') {
+				return;
+			}
+
+			try {
+				timezone = window.Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+				formatter = new window.Intl.DateTimeFormat(undefined, {
+					day: '2-digit',
+					month: '2-digit',
+					year: 'numeric',
+					hour: '2-digit',
+					minute: '2-digit'
+				});
+			} catch (error) {
+				return;
+			}
+
+			scope.querySelectorAll('[data-history-local-date="1"]').forEach(function (element) {
+				var timestamp = Number(element.getAttribute('data-history-timestamp') || 0);
+				var date = timestamp > 0 ? new Date(timestamp * 1000) : null;
+				if (!date || Number.isNaN(date.getTime())) {
+					return;
+				}
+
+				element.textContent = formatter.format(date);
+				if (timezone) {
+					element.title = timezone;
+				}
+			});
 		}
 
 		function decodeHtmlToText(value) {
@@ -1236,6 +1278,67 @@ if ($requestFragment === 'items') {
 			}
 		}
 
+		function renderAuthorityDiff(payload, root) {
+			var beforeAuthority = safeObject(payload.before);
+			var afterAuthority = safeObject(payload.after);
+			var deletionPlan = safeObject(payload.deletionPlan);
+			var hasBefore = Object.keys(beforeAuthority).length > 0;
+			var hasAfter = Object.keys(afterAuthority).length > 0;
+			var authorityId = Number(payload.IDauthority || 0);
+			var section;
+			var hasChanges = false;
+
+			if (authorityId <= 0 || (!hasBefore && !hasAfter)) {
+				return;
+			}
+
+			section = createSection('Autorite');
+
+			[
+				{ key: 'label', title: 'Libelle' },
+				{ key: 'description', title: 'Description' },
+				{ key: 'parentLabel', title: 'Autorite parente' }
+			].forEach(function (field) {
+				var beforeValue = normalizeText(beforeAuthority[field.key] || '');
+				var afterValue = normalizeText(afterAuthority[field.key] || '');
+
+				if (hasBefore && hasAfter && beforeValue === afterValue) {
+					return;
+				}
+
+				if (!hasBefore && afterValue === '') {
+					return;
+				}
+				if (!hasAfter && beforeValue === '') {
+					return;
+				}
+
+				hasChanges = true;
+				renderScalarProperty(
+					section,
+					field.title,
+					beforeValue,
+					afterValue,
+					!hasBefore ? 'added' : (!hasAfter ? 'removed' : 'changed'),
+					{ useInlineWordDiff: true }
+				);
+			});
+
+			if (Object.keys(deletionPlan).length > 0) {
+				var planLines = [
+					'Autorite : ' + (deletionPlan.authority === 'reassign' ? 'remontee au holon parent' : 'supprimee'),
+					'Sous-autorites : ' + (deletionPlan.children === 'reassign' ? 'remontees au holon parent' : 'supprimees'),
+					'Regles concernees : ' + (deletionPlan.rules === 'reassign' ? 'remontees et a revoir sous 2 mois' : 'supprimees')
+				];
+				hasChanges = true;
+				renderScalarProperty(section, 'Traitement choisi', '', planLines.join('\n'), 'added', {});
+			}
+
+			if (hasChanges) {
+				root.appendChild(section);
+			}
+		}
+
 		function renderDiff(details) {
 			var container = details.querySelector('[data-history-diff-container="1"]');
 			var payloadBase64 = normalizeText(details.getAttribute('data-history-payload'));
@@ -1263,9 +1366,13 @@ if ($requestFragment === 'items') {
 				renderHolonFieldDiffs(payload, container);
 				renderPermissionDiffs(payload, container);
 				renderPropertyDiffs(payload, container);
+				renderAuthorityDiff(payload, container);
 			} else if (payload.after) {
 				renderCreatedState(payload, container);
 				renderCreatedPermissions(payload, container);
+				renderAuthorityDiff(payload, container);
+			} else if (payload.before) {
+				renderAuthorityDiff(payload, container);
 			}
 
 			if (!container.children.length) {
@@ -1435,6 +1542,7 @@ if ($requestFragment === 'items') {
 			var wrapper = document.createElement('div');
 			wrapper.innerHTML = html;
 			bindHistoryDiffDetails(wrapper);
+			formatHistoryDates(wrapper);
 
 			while (wrapper.firstChild) {
 				list.appendChild(wrapper.firstChild);
@@ -1528,6 +1636,7 @@ if ($requestFragment === 'items') {
 		}
 
 		bindHistoryDiffDetails(root);
+		formatHistoryDates(root);
 		regroupHistoryFeed();
 
 		scrollTarget.addEventListener('scroll', maybeLoadMoreHistory, { passive: true });

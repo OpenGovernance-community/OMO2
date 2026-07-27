@@ -3,6 +3,7 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
 
 use dbObject\PropertyFormat;
+use dbObject\Authority;
 use dbObject\Rule;
 
 header('Content-Type: application/json; charset=UTF-8');
@@ -13,7 +14,16 @@ $currentHolonId = isset($_POST['cid']) && is_numeric($_POST['cid']) ? (int)$_POS
 $context = omoPolicyResolveContext($organizationId, $currentHolonId);
 if (empty($context['status']) || !omoPolicyCanCreateLocalRule($context)) $respond(false, omoPolicyT('policy.error.forbidden'), 403);
 $rule = new Rule();
-$rule->set('IDholon', (int)$context['currentHolon']->getId());
+$authorityId = isset($_POST['authority_id']) && is_numeric($_POST['authority_id']) ? (int)$_POST['authority_id'] : 0;
+if ($authorityId > 0) {
+    $authority = new Authority();
+    if (!$authority->load($authorityId) || (int)$authority->get('IDholon') !== (int)$context['currentHolon']->getId()) {
+        $respond(false, omoPolicyT('policy.error.authority'), 422);
+    }
+    $rule->set('IDauthority', $authorityId);
+} else {
+    $rule->set('IDholon', (int)$context['currentHolon']->getId());
+}
 $rule->set('title', trim((string)($_POST['title'] ?? '')));
 $rule->set('intention', PropertyFormat::sanitizeHtml((string)($_POST['intention'] ?? '')));
 $rule->set('description', PropertyFormat::sanitizeHtml((string)($_POST['description'] ?? '')));

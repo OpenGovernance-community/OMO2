@@ -3,6 +3,8 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
 
 use dbObject\ArrayRule;
+use dbObject\Authority;
+use dbObject\Holon;
 use dbObject\Rule;
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
@@ -17,39 +19,239 @@ if (empty($context['status'])) {
 }
 
 $currentHolon = $context['currentHolon'];
+$rootHolon = $context['rootHolon'] ?? null;
+$availableScopes = omoApiGetAvailableContextScopes($currentHolon instanceof \dbObject\Holon, $currentHolon, $rootHolon);
+$policyScope = omoApiNormalizeContextScope($_GET['policy_scope'] ?? 'contextual', $availableScopes);
+$scopeHolonIds = $policyScope === 'children'
+    ? omoApiGetDirectChildScopeHolonIds($currentHolon)
+    : ($policyScope === 'descendants' ? omoApiGetDescendantHolonIds($currentHolon) : [(int)$currentHolon->getId()]);
 $rules = new ArrayRule();
-$rules->loadForPolicyContext($organizationId, $currentHolon);
+$rules->loadForPolicyContexts($organizationId, $scopeHolonIds);
+$policySort = omoPolicyNormalizeSort($_GET['policy_sort'] ?? 'alpha');
+$policyGroup = omoPolicyNormalizeGroup($_GET['policy_group'] ?? 'holon');
+$policyRuleEntries = [];
+foreach ($rules as $rule) {
+    if (!($rule instanceof Rule)) {
+        continue;
+    }
+
+    $policyRuleEntries[] = [
+        'rule' => $rule,
+        'holon' => $rule->getHolon(),
+        'authority' => $rule->getAuthority(),
+    ];
+}
+usort($policyRuleEntries, static function (array $left, array $right) use ($policySort) {
+    $leftRule = $left['rule'];
+    $rightRule = $right['rule'];
+    $dateField = $policySort === 'created' ? 'created_at' : ($policySort === 'updated' ? 'updated_at' : null);
+    if ($dateField !== null) {
+        $leftDate = $leftRule->get($dateField);
+        $rightDate = $rightRule->get($dateField);
+        $leftTimestamp = $leftDate instanceof DateTimeInterface ? $leftDate->getTimestamp() : 0;
+        $rightTimestamp = $rightDate instanceof DateTimeInterface ? $rightDate->getTimestamp() : 0;
+        if ($leftTimestamp !== $rightTimestamp) {
+            return $rightTimestamp <=> $leftTimestamp;
+        }
+    }
+
+    return strnatcasecmp((string)$leftRule->get('title'), (string)$rightRule->get('title'));
+});
+
+$policyGroupNodes = [];
+$policyRegisterNode = static function ($key, $label, $parentKey = null) use (&$policyGroupNodes) {
+    if (!isset($policyGroupNodes[$key])) {
+        $policyGroupNodes[$key] = [
+            'key' => $key,
+            'label' => $label,
+            'parent' => $parentKey,
+            'rules' => [],
+            'children' => [],
+        ];
+    } elseif ($policyGroupNodes[$key]['parent'] === null && $parentKey !== null) {
+        $policyGroupNodes[$key]['parent'] = $parentKey;
+    }
+
+    return $key;
+};
+$policyRegisterHolon = null;
+$policyRegisterHolon = static function ($holon, array $seen = []) use (&$policyRegisterHolon, $policyRegisterNode) {
+    if (!($holon instanceof Holon)) {
+        return null;
+    }
+
+    $holonId = (int)$holon->getId();
+    if ($holonId <= 0 || isset($seen[$holonId])) {
+        return null;
+    }
+    $seen[$holonId] = true;
+    $parent = $holon->getParentHolon();
+    $parentKey = $parent instanceof Holon ? $policyRegisterHolon($parent, $seen) : null;
+    return $policyRegisterNode('holon:' . $holonId, $holon->getFullDisplayName(), $parentKey);
+};
+$policyRegisterAuthority = null;
+$policyRegisterAuthority = static function ($authority, array $seen = []) use (&$policyRegisterAuthority, $policyRegisterNode) {
+    if (!($authority instanceof Authority)) {
+        return null;
+    }
+
+    $authorityId = (int)$authority->getId();
+    if ($authorityId <= 0 || isset($seen[$authorityId])) {
+        return null;
+    }
+    $seen[$authorityId] = true;
+    $parent = $authority->getParent();
+    $parentKey = $parent instanceof Authority ? $policyRegisterAuthority($parent, $seen) : null;
+    if ((int)$authority->get('is_shell') === 1) {
+        return $parentKey;
+    }
+    $label = trim((string)$authority->get('label'));
+    return $policyRegisterNode('authority:' . $authorityId, $label !== '' ? $label : omoPolicyT('policy.group.unnamed_authority'), $parentKey);
+};
+foreach ($policyRuleEntries as $entry) {
+    $ruleHolon = $entry['holon'];
+    $ruleAuthority = $entry['authority'];
+    if ($policyGroup === 'authority' && $ruleAuthority instanceof Authority) {
+        $nodeKey = $policyRegisterAuthority($ruleAuthority);
+    } elseif ($policyGroup === 'authority') {
+        $holonLabel = $ruleHolon instanceof Holon ? $ruleHolon->getFullDisplayName() : '-';
+        $nodeKey = $policyRegisterNode('local:' . ($ruleHolon instanceof Holon ? (int)$ruleHolon->getId() : 'unknown'), omoPolicyT('policy.group.local_rules', ['holon' => $holonLabel]));
+    } else {
+        $nodeKey = $policyRegisterHolon($ruleHolon);
+    }
+
+    if ($nodeKey === null) {
+        $nodeKey = $policyRegisterNode('unknown', omoPolicyT('policy.group.unknown'));
+    }
+    $policyGroupNodes[$nodeKey]['rules'][] = $entry;
+}
+foreach ($policyGroupNodes as $nodeKey => $node) {
+    $parentKey = $node['parent'];
+    if ($parentKey !== null && isset($policyGroupNodes[$parentKey])) {
+        $policyGroupNodes[$parentKey]['children'][] = $nodeKey;
+    }
+}
+$policyRootGroupKeys = [];
+foreach ($policyGroupNodes as $nodeKey => $node) {
+    if ($node['parent'] === null || !isset($policyGroupNodes[$node['parent']])) {
+        $policyRootGroupKeys[] = $nodeKey;
+    }
+}
+$policySortGroupKeys = static function (array $keys) use (&$policyGroupNodes) {
+    usort($keys, static function ($left, $right) use (&$policyGroupNodes) {
+        return strnatcasecmp($policyGroupNodes[$left]['label'], $policyGroupNodes[$right]['label']);
+    });
+    return $keys;
+};
+$policyRootGroupKeys = $policySortGroupKeys($policyRootGroupKeys);
 $canCreate = omoPolicyCanCreateLocalRule($context);
 $createUrl = '/omo/api/policy/edit.php?oid=' . rawurlencode((string)$organizationId) . '&cid=' . rawurlencode((string)$currentHolon->getId());
+$indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizationId) . '&cid=' . rawurlencode((string)$currentHolon->getId());
 ?>
-<div class="omo-policy omo-panel-view" id="omo-policy-root" data-policy-create-url="<?= omoApiEscape($createUrl) ?>" data-policy-load-error="<?= omoApiEscape(omoPolicyT('policy.error.load')) ?>" data-policy-save-error="<?= omoApiEscape(omoPolicyT('policy.error.save')) ?>">
-    <header class="omo-panel-view__header">
+<div class="omo-policy omo-panel-view" id="omo-policy-root" data-policy-oid="<?= (int)$organizationId ?>" data-policy-cid="<?= (int)$currentHolon->getId() ?>" data-policy-index-url="<?= omoApiEscape($indexUrl) ?>" data-policy-scope="<?= omoApiEscape($policyScope) ?>" data-policy-sort="<?= omoApiEscape($policySort) ?>" data-policy-group="<?= omoApiEscape($policyGroup) ?>" data-policy-create-url="<?= omoApiEscape($createUrl) ?>" data-policy-load-error="<?= omoApiEscape(omoPolicyT('policy.error.load')) ?>" data-policy-save-error="<?= omoApiEscape(omoPolicyT('policy.error.save')) ?>">
+    <header class="omo-panel-view__header omo-panel-view__header--stacked">
         <div class="omo-panel-view__header-main">
             <div class="omo-panel-view__title-cluster">
                 <div class="omo-panel-view__header-copy">
                     <div class="omo-panel-view__title-row"><h2 class="omo-panel-view__title"><?= omoApiEscape(omoPolicyT('policy.title')) ?></h2><span class="omo-panel-view__count"><?= count($rules) ?></span></div>
-                    <p class="omo-panel-view__description"><?= omoApiEscape(omoPolicyT('policy.description')) ?></p>
                 </div>
             </div>
             <?php if ($canCreate): ?><button type="button" class="generic-action-button generic-action-button--main omo-mobile-corner-action" data-policy-new><?= omoApiEscape(omoPolicyT('policy.new')) ?></button><?php endif; ?>
         </div>
+        <div class="omo-panel-view__header-secondary">
+            <div class="omo-context-filter" data-policy-filter-control role="group" aria-label="<?= omoApiEscape(omoPolicyT('policy.filters.aria')) ?>">
+                <div class="omo-context-filter__input">
+                    <div class="omo-context-filter__chips">
+                        <button type="button" class="omo-context-filter__chip" data-policy-filter-toggle aria-expanded="false" aria-controls="omo-policy-filter-panel"><?= omoApiEscape(omoPolicyT('policy.scope.' . $policyScope)) ?></button>
+                        <button type="button" class="omo-context-filter__chip" data-policy-filter-toggle aria-expanded="false" aria-controls="omo-policy-filter-panel"><?= omoApiEscape(omoPolicyT('policy.sort.' . $policySort)) ?></button>
+                        <button type="button" class="omo-context-filter__chip" data-policy-filter-toggle aria-expanded="false" aria-controls="omo-policy-filter-panel"><?= omoApiEscape(omoPolicyT('policy.group.' . $policyGroup)) ?></button>
+                    </div>
+                    <label class="omo-context-filter__search">
+                        <input type="search" class="generic-form-control" data-policy-quick-search placeholder="<?= omoApiEscape(omoPolicyT('policy.search.placeholder')) ?>" aria-label="<?= omoApiEscape(omoPolicyT('policy.search.aria')) ?>" autocomplete="off">
+                    </label>
+                </div>
+                <section id="omo-policy-filter-panel" class="omo-context-filter__panel generic-soft-panel generic-soft-panel--stack is-filter-hidden" data-policy-filter-panel>
+                    <div class="omo-context-filter__group">
+                        <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoPolicyT('policy.scope')) ?></span>
+                        <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoPolicyT('policy.scope')) ?>">
+                            <?php foreach ($availableScopes as $scopeKey): ?>
+                                <button type="button" class="omo-segmented__button<?= $policyScope === $scopeKey ? ' is-active' : '' ?>" data-policy-scope-choice="<?= omoApiEscape($scopeKey) ?>" aria-pressed="<?= $policyScope === $scopeKey ? 'true' : 'false' ?>"><?= omoApiEscape(omoPolicyT('policy.scope.' . $scopeKey)) ?></button>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <div class="omo-context-filter__group">
+                        <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoPolicyT('policy.sort')) ?></span>
+                        <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoPolicyT('policy.sort')) ?>">
+                            <?php foreach (['alpha', 'created', 'updated'] as $sortKey): ?>
+                                <button type="button" class="omo-segmented__button<?= $policySort === $sortKey ? ' is-active' : '' ?>" data-policy-sort-choice="<?= omoApiEscape($sortKey) ?>" aria-pressed="<?= $policySort === $sortKey ? 'true' : 'false' ?>"><?= omoApiEscape(omoPolicyT('policy.sort.' . $sortKey)) ?></button>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <div class="omo-context-filter__group">
+                        <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoPolicyT('policy.group')) ?></span>
+                        <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoPolicyT('policy.group')) ?>">
+                            <?php foreach (['holon', 'authority'] as $groupKey): ?>
+                                <button type="button" class="omo-segmented__button<?= $policyGroup === $groupKey ? ' is-active' : '' ?>" data-policy-group-choice="<?= omoApiEscape($groupKey) ?>" aria-pressed="<?= $policyGroup === $groupKey ? 'true' : 'false' ?>"><?= omoApiEscape(omoPolicyT('policy.group.' . $groupKey)) ?></button>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <div class="omo-context-filter__actions">
+                        <button type="button" class="generic-action-button generic-action-button--secondary" data-policy-filter-apply><?= omoApiEscape(omoPolicyT('policy.filters.apply')) ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--main" data-policy-filter-save><?= omoApiEscape(omoPolicyT('policy.filters.save_view')) ?></button>
+                    </div>
+                </section>
+            </div>
+        </div>
     </header>
     <div class="omo-panel-view__body"><div class="omo-panel-view__body_content generic-section generic-section--stack">
         <?php if (count($rules) === 0): ?>
-            <div class="omo-empty-state"><?= omoApiEscape(omoPolicyT('policy.empty')) ?></div>
+            <div class="omo-empty-state"><?= omoApiEscape(omoPolicyT('policy.empty.' . $policyScope)) ?></div>
         <?php else: ?>
-            <?php foreach ($rules as $rule): ?>
-                <?php if (!($rule instanceof Rule)): continue; endif; ?>
-                <article class="generic-soft-panel generic-soft-panel--stack">
+            <?php
+            $policyRenderRule = static function (array $entry) use ($organizationId) {
+                $rule = $entry['rule'];
+                $createdBy = $rule->getCreatedByUser();
+                $updatedBy = $rule->getUpdatedByUser();
+                $ruleHolon = $entry['holon'];
+                $ruleAuthority = $entry['authority'];
+                $createdDate = $rule->get('created_at') instanceof DateTimeInterface ? $rule->get('created_at')->format('d.m.Y H:i') : '';
+                $updatedDate = $rule->get('updated_at') instanceof DateTimeInterface ? $rule->get('updated_at')->format('d.m.Y H:i') : '';
+                $createdByLabel = $createdBy ? $createdBy->getScopedDisplayName($organizationId) : '-';
+                $updatedByLabel = $updatedBy ? $updatedBy->getScopedDisplayName($organizationId) : '-';
+                $holonLabel = $ruleHolon ? $ruleHolon->getFullDisplayName() : '-';
+                $authorityLabel = $ruleAuthority ? trim((string)$ruleAuthority->get('label')) : '';
+                ?>
+                <article class="generic-soft-panel generic-soft-panel--stack" data-policy-rule-card data-policy-rule-search="<?= omoApiEscape(trim(implode(' ', [(string)$rule->get('title'), strip_tags((string)$rule->get('description')), strip_tags((string)$rule->get('intention')), $holonLabel, $authorityLabel]))) ?>">
                     <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape((string)$rule->get('title')) ?></h3>
+                    <section class="generic-hero-panel accent"><h4 class="generic-card-title"><?= omoApiEscape(omoPolicyT('policy.description_label')) ?></h4><div><?= (string)$rule->get('description') ?></div></section>
                     <section><h4 class="generic-card-title"><?= omoApiEscape(omoPolicyT('policy.intention')) ?></h4><div><?= (string)$rule->get('intention') ?></div></section>
-                    <section><h4 class="generic-card-title"><?= omoApiEscape(omoPolicyT('policy.description_label')) ?></h4><div><?= (string)$rule->get('description') ?></div></section>
-                    <div class="generic-meta-row">
-                        <span><?= omoApiEscape(omoPolicyT('policy.review', ['date' => $rule->get('review_date') instanceof DateTimeInterface ? $rule->get('review_date')->format('d.m.Y') : ''])) ?></span>
-                        <span><?= omoApiEscape(omoPolicyT('policy.expiration', ['date' => $rule->get('expiration_date') instanceof DateTimeInterface ? $rule->get('expiration_date')->format('d.m.Y') : ''])) ?></span>
-                    </div>
+                    <details class="generic-section generic-accordion--card"><summary><small><?= omoApiEscape(omoPolicyT('policy.documentation')) ?></small></summary><div class="generic-meta-row"><small><?= omoApiEscape(omoPolicyT('policy.review', ['date' => $rule->get('review_date') instanceof DateTimeInterface ? $rule->get('review_date')->format('d.m.Y') : ''])) ?></small><small><?= omoApiEscape(omoPolicyT('policy.expiration', ['date' => $rule->get('expiration_date') instanceof DateTimeInterface ? $rule->get('expiration_date')->format('d.m.Y') : ''])) ?></small></div><div class="generic-meta-row"><small><?= omoApiEscape(omoPolicyT('policy.created', ['date' => $createdDate, 'user' => $createdByLabel])) ?></small><small><?= omoApiEscape(omoPolicyT('policy.updated', ['date' => $updatedDate, 'user' => $updatedByLabel])) ?></small></div><div class="generic-meta-row"><small><?= omoApiEscape(omoPolicyT('policy.holon', ['holon' => $holonLabel])) ?></small><?php if ($authorityLabel !== ''): ?><small><?= omoApiEscape(omoPolicyT('policy.authority', ['authority' => $authorityLabel])) ?></small><?php endif; ?></div></details>
                 </article>
-            <?php endforeach; ?>
+                <?php
+            };
+            $policyRenderGroups = null;
+            $policyRenderGroups = static function (array $keys, $prefix = '', $showRootTitles = true) use (&$policyRenderGroups, &$policyGroupNodes, $policySortGroupKeys, $policyRenderRule) {
+                foreach ($policySortGroupKeys($keys) as $index => $nodeKey) {
+                    $node = $policyGroupNodes[$nodeKey];
+                    $showTitle = $showRootTitles || $prefix !== '';
+                    $number = $prefix === '' ? (string)($index + 1) : $prefix . '.' . ($index + 1);
+                    $nextPrefix = $showTitle ? $number : '';
+                    ?>
+                    <section class="omo-policy__rule-group generic-file-list__group" data-policy-rule-group>
+                        <?php if ($showTitle): ?><h3 class="generic-file-list__group-title omo-policy__rule-group-title"><?= omoApiEscape($number . '. ' . $node['label']) ?></h3><?php endif; ?>
+                        <div class="omo-policy__rule-group-content generic-section generic-section--stack generic-section--plain">
+                            <?php foreach ($node['rules'] as $entry): $policyRenderRule($entry); endforeach; ?>
+                            <?php if (!empty($node['children'])): $policyRenderGroups($node['children'], $nextPrefix, true); endif; ?>
+                        </div>
+                    </section>
+                    <?php
+                }
+            };
+            ?>
+            <div class="omo-policy__groups generic-file-list generic-file-list--structured">
+                <?php $policyRenderGroups($policyRootGroupKeys, '', count($policyRootGroupKeys) > 1); ?>
+            </div>
+            <div class="omo-empty-state is-filter-hidden" data-policy-search-empty><?= omoApiEscape(omoPolicyT('policy.search.empty')) ?></div>
         <?php endif; ?>
     </div></div>
     <div class="omo-overlay-drawer" data-policy-drawer hidden>
@@ -64,6 +266,230 @@ $createUrl = '/omo/api/policy/edit.php?oid=' . rawurlencode((string)$organizatio
     root.dataset.ready = '1';
     var drawer = root.querySelector('[data-policy-drawer]');
     var body = root.querySelector('[data-policy-drawer-body]');
+    var filterControl = root.querySelector('[data-policy-filter-control]');
+    var filterPanel = root.querySelector('[data-policy-filter-panel]');
+    var quickSearchInput = root.querySelector('[data-policy-quick-search]');
+    var quickSearchEmpty = root.querySelector('[data-policy-search-empty]');
+    var pendingView = null;
+    var filterPanelIsOpen = false;
+    var savedViewsStorageKey = 'omo.policy.saved-views.v1';
+    var temporaryViewsStorageKey = 'omo.policy.session-views.v1';
+    var currentQuickSearch = '';
+    var refreshRoot = function (url) {
+        if (typeof window.omoReplaceFetchedPanelRoot !== 'function') {
+            window.location.href = url;
+            return;
+        }
+        window.omoReplaceFetchedPanelRoot({
+            rootSelector: '#omo-policy-root',
+            currentRoot: root,
+            url: url
+        });
+    };
+    var policyViewUrl = function (view) {
+        var url = root.dataset.policyIndexUrl;
+        if (view.scope !== 'contextual') url += '&policy_scope=' + encodeURIComponent(view.scope);
+        if (view.sort !== 'alpha') url += '&policy_sort=' + encodeURIComponent(view.sort);
+        if (view.group !== 'holon') url += '&policy_group=' + encodeURIComponent(view.group);
+        return url;
+    };
+    var policyPreferenceKey = function () {
+        return String(root.dataset.policyOid || '0') + ':' + String(root.dataset.policyCid || '0');
+    };
+    var normalizeView = function (view) {
+        view = view && typeof view === 'object' ? view : {};
+        var scope = view.scope === 'children' || view.scope === 'descendants' ? view.scope : 'contextual';
+        if (!filterPanel || !filterPanel.querySelector('[data-policy-scope-choice="' + scope + '"]')) scope = root.dataset.policyScope || 'contextual';
+        var sort = view.sort === 'created' || view.sort === 'updated' ? view.sort : 'alpha';
+        var group = view.group === 'authority' ? 'authority' : 'holon';
+        return {scope: scope, sort: sort, group: group};
+    };
+    var currentView = function () {
+        return normalizeView({
+            scope: root.dataset.policyScope || 'contextual',
+            sort: root.dataset.policySort || 'alpha',
+            group: root.dataset.policyGroup || 'holon'
+        });
+    };
+    var viewsMatch = function (left, right) {
+        return left.scope === right.scope && left.sort === right.sort && left.group === right.group;
+    };
+    var readPreference = function (storage) {
+        try {
+            var value = storage.getItem(storage === window.localStorage ? savedViewsStorageKey : temporaryViewsStorageKey);
+            var preferences = value ? JSON.parse(value) : null;
+            return preferences && typeof preferences === 'object' ? preferences[policyPreferenceKey()] : null;
+        } catch (error) {
+            return null;
+        }
+    };
+    var writePreference = function (storage, view) {
+        try {
+            var key = storage === window.localStorage ? savedViewsStorageKey : temporaryViewsStorageKey;
+            var value = storage.getItem(key);
+            var preferences = value ? JSON.parse(value) : {};
+            if (!preferences || typeof preferences !== 'object') preferences = {};
+            preferences[policyPreferenceKey()] = normalizeView(view);
+            storage.setItem(key, JSON.stringify(preferences));
+        } catch (error) {
+            // Storage can be unavailable in private or restricted browsing contexts.
+        }
+    };
+    var clearTemporaryPreference = function () {
+        try {
+            var value = window.sessionStorage.getItem(temporaryViewsStorageKey);
+            var preferences = value ? JSON.parse(value) : null;
+            if (!preferences || typeof preferences !== 'object') return;
+            delete preferences[policyPreferenceKey()];
+            window.sessionStorage.setItem(temporaryViewsStorageKey, JSON.stringify(preferences));
+        } catch (error) {
+            // Storage can be unavailable in private or restricted browsing contexts.
+        }
+    };
+    var syncPolicyGroupStickyOffsets = function () {
+        var titles = root.querySelectorAll('.omo-policy__rule-group-title');
+        titles.forEach(function (title) {
+            var offset = 0;
+            var depth = 0;
+            var group = title.closest('[data-policy-rule-group]');
+            var parent = group ? group.parentElement : null;
+            while (parent) {
+                var ancestorGroup = parent.closest('[data-policy-rule-group]');
+                if (!ancestorGroup) break;
+                var ancestorTitle = ancestorGroup.querySelector(':scope > .omo-policy__rule-group-title');
+                if (ancestorTitle && !ancestorGroup.classList.contains('is-filter-hidden')) {
+                    offset += Math.ceil(ancestorTitle.getBoundingClientRect().height);
+                    depth++;
+                }
+                parent = ancestorGroup.parentElement;
+            }
+            title.style.setProperty('--omo-policy-group-top', offset + 'px');
+            title.style.setProperty('--omo-policy-group-z', String(40 - depth));
+        });
+    };
+    var syncViewChoices = function () {
+        if (!filterPanel || pendingView === null) return;
+        pendingView = normalizeView(pendingView);
+        filterPanel.querySelectorAll('[data-policy-scope-choice]').forEach(function (button) {
+            var active = button.getAttribute('data-policy-scope-choice') === pendingView.scope;
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        filterPanel.querySelectorAll('[data-policy-sort-choice]').forEach(function (button) {
+            var active = button.getAttribute('data-policy-sort-choice') === pendingView.sort;
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        filterPanel.querySelectorAll('[data-policy-group-choice]').forEach(function (button) {
+            var active = button.getAttribute('data-policy-group-choice') === pendingView.group;
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+    };
+    var removeFilterOutsideHandler = function () {
+        document.removeEventListener('pointerdown', handleFilterOutsidePointerDown, true);
+    };
+    var closeFilterPanel = function (applyChanges, saveView) {
+        if (!filterPanelIsOpen) return;
+        filterPanelIsOpen = false;
+        filterPanel.classList.add('is-filter-hidden');
+        root.querySelectorAll('[data-policy-filter-toggle]').forEach(function (button) { button.setAttribute('aria-expanded', 'false'); });
+        removeFilterOutsideHandler();
+        if (!applyChanges || pendingView === null) {
+            pendingView = null;
+            return;
+        }
+        var nextView = normalizeView(pendingView);
+        pendingView = null;
+        if (saveView) {
+            writePreference(window.localStorage, nextView);
+            clearTemporaryPreference();
+        } else {
+            writePreference(window.sessionStorage, nextView);
+        }
+        if (!viewsMatch(nextView, currentView())) refreshRoot(policyViewUrl(nextView));
+    };
+    var handleFilterOutsidePointerDown = function (event) {
+        if (!filterControl || filterControl.contains(event.target)) return;
+        closeFilterPanel(true, false);
+    };
+    var openFilterPanel = function () {
+        if (!filterControl || !filterPanel || filterPanelIsOpen) return;
+        pendingView = currentView();
+        syncViewChoices();
+        filterPanel.classList.remove('is-filter-hidden');
+        filterPanelIsOpen = true;
+        root.querySelectorAll('[data-policy-filter-toggle]').forEach(function (button) { button.setAttribute('aria-expanded', 'true'); });
+        document.addEventListener('pointerdown', handleFilterOutsidePointerDown, true);
+    };
+    var normalizeQuickSearch = function (value) {
+        return String(value || '').toLocaleLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    };
+    var applyQuickSearch = function () {
+        var query = normalizeQuickSearch(currentQuickSearch);
+        var visibleCount = 0;
+        root.querySelectorAll('[data-policy-rule-card]').forEach(function (ruleCard) {
+            var searchableText = ruleCard.getAttribute('data-policy-rule-search') || ruleCard.textContent || '';
+            var matches = query === '' || normalizeQuickSearch(searchableText).indexOf(query) !== -1;
+            ruleCard.classList.toggle('is-filter-hidden', !matches);
+            if (matches) visibleCount++;
+        });
+        root.querySelectorAll('[data-policy-rule-group]').forEach(function (group) {
+            group.classList.toggle('is-filter-hidden', !group.querySelector('[data-policy-rule-card]:not(.is-filter-hidden)'));
+        });
+        syncPolicyGroupStickyOffsets();
+        if (quickSearchEmpty) quickSearchEmpty.classList.toggle('is-filter-hidden', query === '' || visibleCount > 0);
+    };
+    root.querySelectorAll('[data-policy-filter-toggle]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            if (filterPanelIsOpen) closeFilterPanel(true, false); else openFilterPanel();
+        });
+    });
+    if (filterPanel) {
+        filterPanel.addEventListener('click', function (event) {
+            if (event.target.closest('[data-policy-filter-apply]')) {
+                closeFilterPanel(true, false);
+                return;
+            }
+            if (event.target.closest('[data-policy-filter-save]')) {
+                closeFilterPanel(true, true);
+                return;
+            }
+            var scopeButton = event.target.closest('[data-policy-scope-choice]');
+            if (scopeButton) {
+                pendingView.scope = scopeButton.getAttribute('data-policy-scope-choice') || 'contextual';
+                syncViewChoices();
+                return;
+            }
+            var sortButton = event.target.closest('[data-policy-sort-choice]');
+            if (sortButton) {
+                pendingView.sort = sortButton.getAttribute('data-policy-sort-choice') || 'alpha';
+                syncViewChoices();
+                return;
+            }
+            var groupButton = event.target.closest('[data-policy-group-choice]');
+            if (groupButton) {
+                pendingView.group = groupButton.getAttribute('data-policy-group-choice') || 'holon';
+                syncViewChoices();
+            }
+        });
+        var preferredView = readPreference(window.sessionStorage) || readPreference(window.localStorage);
+        if (preferredView && !viewsMatch(normalizeView(preferredView), currentView())) {
+            refreshRoot(policyViewUrl(normalizeView(preferredView)));
+        }
+    }
+    if (quickSearchInput) {
+        quickSearchInput.addEventListener('input', function () {
+            currentQuickSearch = quickSearchInput.value || '';
+            applyQuickSearch();
+        });
+        quickSearchInput.addEventListener('search', function () {
+            currentQuickSearch = quickSearchInput.value || '';
+            applyQuickSearch();
+        });
+    }
+    window.requestAnimationFrame(syncPolicyGroupStickyOffsets);
+    window.addEventListener('resize', syncPolicyGroupStickyOffsets);
     var close = function () { drawer.classList.remove('is-open'); window.setTimeout(function () { if (!drawer.classList.contains('is-open')) { drawer.hidden = true; body.innerHTML = ''; } }, 220); };
     root.querySelectorAll('[data-policy-close]').forEach(function (button) { button.addEventListener('click', close); });
     var create = root.querySelector('[data-policy-new]');

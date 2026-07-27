@@ -11,10 +11,12 @@ if (empty($context['status']) || !omoPolicyCanCreateLocalRule($context)) {
     exit;
 }
 $today = new DateTimeImmutable('today');
+$authorities = omoPolicyGetDirectAuthorities($context['currentHolon']);
 ?>
 <form method="post" action="/omo/api/policy/action.php" class="generic-section generic-section--stack" data-policy-form>
     <input type="hidden" name="oid" value="<?= (int)$organizationId ?>"><input type="hidden" name="cid" value="<?= (int)$context['currentHolon']->getId() ?>">
     <label><?= omoApiEscape(omoPolicyT('policy.field.title')) ?><input class="generic-form-control" name="title" maxlength="255" required autofocus></label>
+    <label><?= omoApiEscape(omoPolicyT('policy.field.authority')) ?><select class="generic-form-control" name="authority_id"><option value="0"><?= omoApiEscape(omoPolicyT('policy.field.authority_local')) ?></option><?php foreach ($authorities as $authority): ?><?php if ($authority instanceof \dbObject\Authority): ?><option value="<?= (int)$authority->getId() ?>"><?= omoApiEscape((string)$authority->get('label')) ?></option><?php endif; ?><?php endforeach; ?></select></label>
     <label><?= omoApiEscape(omoPolicyT('policy.field.intention')) ?><textarea class="generic-form-control" name="intention" rows="4" required></textarea></label>
     <label><?= omoApiEscape(omoPolicyT('policy.field.description')) ?><textarea class="generic-form-control" name="description" rows="7" required></textarea></label>
     <label><?= omoApiEscape(omoPolicyT('policy.field.review_date')) ?><input class="generic-form-control" type="date" name="review_date" value="<?= $today->modify('+6 months')->format('Y-m-d') ?>" required></label>

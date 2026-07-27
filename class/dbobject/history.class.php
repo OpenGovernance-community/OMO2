@@ -88,6 +88,7 @@
 			$entry->set('action', trim((string)$action));
 			$entry->set('content', trim((string)$content));
 			$entry->set('parameters', count($parameters) > 0 ? $parameters : null);
+			$entry->set('datecreation', new \DateTimeImmutable('now', new \DateTimeZone('UTC')));
 			$entry->set('active', true);
 
 			return $entry->save();
@@ -494,6 +495,10 @@
 				'holon_updated' => 'Modification',
 				'holon_member_added' => 'Ajout de membre',
 				'holon_member_removed' => 'Retrait de membre',
+				'authority_updated' => 'Modification d autorite',
+				'authority_deleted' => 'Suppression d autorite',
+				'authority_reassigned' => 'Remontee d autorite',
+				'authority_complete_delegated' => 'Delegation complete d autorite',
 			);
 
 			if (isset($labels[$action])) {
