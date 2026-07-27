@@ -4,7 +4,52 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-07-27
 
+- L editeur de holon permet maintenant d ajouter, modifier et retirer des proprietes locales, avec nom, format, type de liste et valeur. Ces actions utilisent les droits de proprietes de holon et restent distinctes des proprietes heritees du template.
+- La fenetre Inserer un lien de Summernote adopte maintenant le theme sombre, y compris ses champs et ses actions espacees du bord, afin de conserver un contraste lisible.
+- Les droits distinguent maintenant les proprietes definies par un template de celles ajoutees directement sur un holon: ajout, modification et retrait disposent chacun de leur droit contextuel.
+- Une nouvelle page publique `index2.php` presente Open My Organization 2 sous l angle de la maturite organisationnelle. Elle detaille les principes, fonctionnalites, usages, possibilites de contribution et parcours de demonstration dans une mise en page responsive et accessible.
+- Les proprietes de type liste peuvent maintenant utiliser le type Autorite. Depuis la fiche d un holon, ce champ cree exclusivement de nouvelles autorites, rattachees au holon et a une autorite parente existante; le holon Organisation peut aussi creer les autorites racines sans parent. Le detail du holon les affiche ensuite sous forme de liste.
+- Les autorites affichees dans le detail d un holon indiquent maintenant leur nombre de delegations directes. Un clic sur leur nom affiche uniquement cette premiere liste d autorites deleguees.
+- La liste deroulee des delegations d autorite indique aussi le holon responsable de chaque autorite deleguee.
+- Le formulaire Nouvelle regle permet maintenant de rattacher la regle a une autorite directement confiee au holon courant, ou de la conserver locale a ce holon.
+- Les autorites disposent maintenant d une description facultative, renseignee a leur creation. Leur detail affiche l autorite dont elles heritent, leur description et leurs delegations directes.
+- L historique des proprietes remplace maintenant les identifiants bruts des projets et autorites par leurs libelles, et produit des apercus lisibles pour les listes et contenus HTML.
+- Dans les editeurs de proprietes, une autorite existante peut maintenant etre ouverte par un clic sur son nom, modifiee puis enregistree. La croix la supprime au prochain enregistrement; les delegations et regles restent rattachees a son parent lorsque cela est possible. Les modifications et suppressions disposent d entrees d historique explicites.
+- L editeur de holon utilise maintenant les notifications centralisees de l application pour signaler ses erreurs d enregistrement, avec son message local uniquement comme solution de repli hors de l interface OMO.
+- Les evenements d historique lies aux autorites sont maintenant rattaches explicitement au holon responsable, afin qu ils apparaissent dans l historique de sa fiche.
+- Les horodatages de l historique sont enregistres explicitement en UTC puis affiches dans le fuseau horaire detecte dans le navigateur de chaque utilisateur.
+- La suppression d une autorite dans les editeurs reste desormais visible avant enregistrement : la ligne est grisee et barree, et la meme croix permet d annuler cette suppression.
+- Les details des historiques de listes conservent maintenant les libelles des projets, holons et autorites au moment de la modification, au lieu d afficher leurs identifiants techniques.
+- Le detail d une modification d autorite affiche maintenant explicitement les anciennes et nouvelles valeurs du libelle, de la description et de l autorite parente.
+- Le choix d une autorite parente est maintenant limite aux autorites directement confiees au holon parent, avec une liste reduite a leurs seuls libelles.
+- La suppression d une autorite demande maintenant explicitement le devenir de l autorite, de ses sous-autorites et des regles attachees. Les elements conserves remontent au holon parent et a l autorite survivante la plus proche; les regles ainsi deplacees sont immediatement a revoir et expirent au plus tard deux mois plus tard.
+- Les choix de suppression affichent entre parentheses le nombre de sous-autorites et de regles effectivement concernees, recalcule selon les options selectionnees; les blocs sans element concerne ne sont pas affiches.
+- Lors du retrait d une autorite, la remontee au holon parent est maintenant le choix par defaut afin de privilegier la conservation des delegations.
+- La remontee d une autorite deplace aussi sa reference de la propriete Autorite vers le holon parent, afin que son affichage et son rattachement de donnees restent coherents.
+- La creation d une autorite commence maintenant par le choix de son parent et distingue delegation partielle et complete. Une delegation complete transmet toute la branche; une coquille en italique conserve le chemin lorsque le deplacement direct creerait un saut dans l arbre.
+- Les autorites et sous-autorites transmises par delegation complete restent toutes referencees dans la propriete du holon receveur apres l enregistrement du formulaire.
+- Lorsqu une delegation complete cree une coquille, ses regles sont transferees vers l autorite active. La coquille apparait en italique avec le statut deleguee, sans compteur de delegation.
+- Dans le detail d un holon, une branche d autorites detenue par ce meme holon est compacte en une seule autorite racine. Un clic affiche ensuite la hierarchie interne apres la description et avant les delegations vers d autres holons.
+- La liste du reglement affiche maintenant le holon, l autorite eventuelle, ainsi que les dates et personnes de creation et de derniere modification des regles. Ces personnes sont desormais enregistrees directement sur chaque nouvelle regle et modification.
+- Les cartes du reglement mettent maintenant le contenu normatif de la regle au premier plan, puis son intention. Les informations de suivi et de tracabilite sont repliees dans un volet discret.
+- Le Reglement propose maintenant le meme filtre compact de perimetre que les Projets : une barre pleine largeur sous le titre reunit la capsule de vue active, une recherche rapide et le menu Local, Enfants directs ou Descendants, avec les actions Appliquer et Enregistrer cette vue. Il affiche les regles effectivement applicables a au moins un holon du perimetre choisi.
+- Le Reglement propose maintenant aussi les capsules Ordre et Regroupement, memorisables avec le perimetre. Les regles peuvent etre ordonnees alphabetiquement, par creation ou par modification, puis presentees dans l arbre des holons ou des autorites avec des titres numerotes et sticky.
+- Les groupes imbriques du Reglement sont maintenant sans bordure. Le decalage de leurs titres sticky est calcule dans le navigateur selon la hauteur reelle de chaque titre parent, y compris lorsqu un libelle revient sur plusieurs lignes, et prime correctement sur le positionnement generique des listes.
+- Le menu des options d affichage du Reglement reste maintenant au-dessus des titres de rubrique sticky lorsqu il est ouvert.
+- Le regroupement du Reglement par autorite ignore maintenant les coquilles des delegations completes. Les autorites actives sont raccordees visuellement a leur premier ancetre actif, sans niveau de titre artificiel.
+- L editeur d autorites de l Organisation propose maintenant Sans racine. Ce choix affiche directement les champs de libelle et description pour creer ou modifier une autorite racine, meme lorsqu aucune autorite parente n existe encore.
+- La suppression d une autorite issue d une delegation complete annule maintenant cette delegation : la coquille source est reactivee et recueille les sous-autorites ou regles conservees, au lieu de rester inactive.
+- Lors de la suppression d un holon, ses autorites sont maintenant rattachees a son holon parent avec leurs branches et leurs references de proprietes. Les regles locales sont elles aussi conservees sur le parent; une delegation complete est annulee en reactivant sa coquille source.
+
 - L application Projets regroupe maintenant ses filtres de contexte, attribution, ordre et representation dans un champ compact : les choix actifs apparaissent en capsules et ouvrent un panneau commun vertical. Appliquer modifie la vue courante sans la memoriser, tandis que Enregistrer cette vue en fait la vue de base du holon pour la prochaine ouverture. Le champ propose aussi une recherche rapide locale qui masque correctement les projets sans correspondance.
+- L application Projets propose une premiere vue Gantt. Elle affiche les projets du perimetre sous forme d arbre, avec les sous-projets immediatement apres leur parent. Chaque borne de planification absente peut heriter de celle du parent ; les projets sans date effective restent visibles sans barre.
+- La vue Gantt garde maintenant les libelles de projets sur un fond opaque pendant le defilement. Le libelle compact de date reste dans sa barre, se fixe a cote de la colonne projet tant que la barre le permet, puis repart avec sa date de fin. La vue se positionne aussi automatiquement autour de la date du jour a l ouverture.
+- Les plages de dates du Gantt utilisent maintenant un format compact qui ne repete pas inutilement le mois ou l annee. Leur libelle reste limite a la largeur reelle de la barre et se termine par des points de suspension quand l espace manque.
+- L echelle du Gantt conserve maintenant au minimum 16 pixels par jour. Une barre d une seule journee occupe ainsi exactement la largeur d un jour, sans largeur minimale arbitraire.
+- Dans le Gantt, un clic sur la zone vide d une ligne recentre sa barre lorsqu elle est hors ecran. Les clics sur la barre datee ou sur la cellule gauche continuent d ouvrir le detail du projet.
+- Le Gantt met maintenant en evidence en rouge la cellule gauche des projets non termines dont la date de fin effective, propre ou heritee, est deja passee.
+- Dans la vue en liste triee par planification, les projets termines ne sont plus classes en retard lorsque leur date de fin est passee. Ils sont regroupes dans une section Termines placee tout en bas.
+- Le bouton Appliquer des filtres Projets conserve maintenant une vue temporaire prioritaire pendant toute la session de l onglet, y compris lors de la navigation. Enregistrer cette vue reste le seul moyen de remplacer la vue durable du holon et efface alors la variante temporaire.
 
 ## 2026-07-26
 

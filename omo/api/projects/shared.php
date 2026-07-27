@@ -38,6 +38,10 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.view.aria' => ['text' => "Mode d'affichage", 'context' => 'Accessible label for the project display mode selector.'],
             'projects.view.kanban' => ['text' => 'Kanban', 'context' => 'Project display mode button.'],
             'projects.view.list' => ['text' => 'Liste', 'context' => 'Project display mode button.'],
+            'projects.view.gantt' => ['text' => 'Gantt', 'context' => 'Project display mode button.'],
+            'projects.gantt.no_dates' => ['text' => 'Sans dates', 'context' => 'Project without effective planning dates in the Gantt view.'],
+            'projects.gantt.inherited' => ['text' => 'hérité', 'context' => 'Label showing that a Gantt planning date comes from a parent project.'],
+            'projects.gantt.overdue' => ['text' => 'En retard', 'context' => 'Label for an unfinished project whose planned end date has passed.'],
             'projects.sort.aria' => ['text' => 'Classer les projets', 'context' => 'Accessible label for the project list sort selector.'],
             'projects.sort.planned' => ['text' => 'Planification', 'context' => 'Project list sort button.'],
             'projects.sort.priority' => ['text' => 'Priorité', 'context' => 'Project list sort button.'],
@@ -51,6 +55,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.list.planned.next_week' => ['text' => 'La semaine prochaine', 'context' => 'Project list planned group for next week.'],
             'projects.list.planned.later' => ['text' => 'Plus tard', 'context' => 'Project list planned group for future dates.'],
             'projects.list.planned.none' => ['text' => 'Sans planification', 'context' => 'Project list planned group without dates.'],
+            'projects.list.done' => ['text' => 'Terminés', 'context' => 'Final project list group containing completed projects.'],
             'projects.list.priority.none' => ['text' => 'Sans priorité', 'context' => 'Project list priority group without priority.'],
             'projects.empty.contextual' => ['text' => 'Aucun projet dans ce contexte.', 'context' => 'Empty state for the local project scope.'],
             'projects.empty.children' => ['text' => 'Aucun projet dans ce contexte ou ses enfants directs.', 'context' => 'Empty state for the direct child holon scope.'],
@@ -359,6 +364,67 @@ if (!function_exists('omoProjectsFormatDate')) {
     function omoProjectsFormatDate($value)
     {
         return $value instanceof \DateTimeInterface ? $value->format('d.m.Y') : '';
+    }
+}
+
+if (!function_exists('omoProjectsFormatGanttDateRange')) {
+    function omoProjectsFormatGanttDateRange(\DateTimeInterface $start, \DateTimeInterface $end)
+    {
+        if ($start->format('Y-m-d') === $end->format('Y-m-d')) {
+            return $start->format('d.m.Y');
+        }
+        if ($start->format('Y-m') === $end->format('Y-m')) {
+            return $start->format('d') . '-' . $end->format('d.m.Y');
+        }
+        if ($start->format('Y') === $end->format('Y')) {
+            return $start->format('d.m') . '-' . $end->format('d.m.Y');
+        }
+        return $start->format('d.m.Y') . '-' . $end->format('d.m.Y');
+    }
+}
+
+if (!function_exists('omoProjectsResolveGanttDates')) {
+    function omoProjectsResolveGanttDates(Project $project, array $projectsById, array &$memo = [], array $path = [])
+    {
+        $projectId = (int)$project->getId();
+        if ($projectId > 0 && isset($memo[$projectId])) {
+            return $memo[$projectId];
+        }
+
+        $start = $project->get('planned_start_date');
+        $end = $project->get('planned_end_date');
+        $start = $start instanceof \DateTimeInterface ? \DateTimeImmutable::createFromInterface($start) : null;
+        $end = $end instanceof \DateTimeInterface ? \DateTimeImmutable::createFromInterface($end) : null;
+        $inheritedStart = false;
+        $inheritedEnd = false;
+        $parentId = (int)$project->get('IDproject_parent');
+
+        if ($parentId > 0 && !isset($path[$projectId])) {
+            $parent = $projectsById[$parentId] ?? null;
+            if ($parent instanceof Project && (int)$parent->getId() !== $projectId) {
+                $path[$projectId] = true;
+                $parentDates = omoProjectsResolveGanttDates($parent, $projectsById, $memo, $path);
+                if (!($start instanceof \DateTimeImmutable) && $parentDates['start'] instanceof \DateTimeImmutable) {
+                    $start = $parentDates['start'];
+                    $inheritedStart = true;
+                }
+                if (!($end instanceof \DateTimeImmutable) && $parentDates['end'] instanceof \DateTimeImmutable) {
+                    $end = $parentDates['end'];
+                    $inheritedEnd = true;
+                }
+            }
+        }
+
+        $dates = [
+            'start' => $start,
+            'end' => $end,
+            'inheritedStart' => $inheritedStart,
+            'inheritedEnd' => $inheritedEnd,
+        ];
+        if ($projectId > 0) {
+            $memo[$projectId] = $dates;
+        }
+        return $dates;
     }
 }
 

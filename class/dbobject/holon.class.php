@@ -2483,8 +2483,10 @@
 			$definition['inheritedLocked'] = !empty($definition['inheritedLocked']);
 			$definition['effectiveMandatory'] = $definition['inheritedMandatory'] || $definition['mandatory'];
 			$definition['effectiveLocked'] = $definition['inheritedLocked'] || $definition['locked'];
-			$definition['canDelete'] = !$definition['inheritedMandatory'];
-			$definition['canEditValue'] = !$definition['inheritedLocked'];
+			$definition['canDelete'] = !$definition['inheritedMandatory']
+				&& $this->isAllowed('CAN_DELETE_TEMPLATE_PROPERTIES');
+			$definition['canEditValue'] = !$definition['inheritedLocked']
+				&& $this->isAllowed('CAN_EDIT_TEMPLATE_PROPERTIES');
 
 			return $definition;
 		}
@@ -2713,7 +2715,7 @@
 					'inheritedLocked' => $effectiveLocked,
 					'effectiveMandatory' => $effectiveMandatory,
 					'effectiveLocked' => $effectiveLocked,
-					'canEditValue' => !$effectiveLocked,
+					'canEditValue' => !empty($definition['canEditValue']),
 				);
 			}
 
@@ -2724,15 +2726,23 @@
 		public function getHolonEditorPropertyDefinitions()
 		{
 			$definitionsByPropertyId = array();
+			$templatePropertyIds = array();
+			$templateCanEditProperties = false;
 
 			$templateId = (int)$this->get('IDholon_template');
 			if ($templateId > 0) {
 				$template = new self();
 				if ($template->load($templateId)) {
+					$templateCanEditProperties = $template->isAllowed('CAN_EDIT_TEMPLATE_PROPERTIES');
 					foreach ($template->getHolonCreationPropertyDefinitions() as $definition) {
 						$propertyId = (int)($definition['id'] ?? 0);
 						if ($propertyId > 0) {
+							$definition['isTemplateProperty'] = true;
+							$definition['isDirectProperty'] = false;
+							$definition['canEditDefinition'] = false;
+							$definition['canDelete'] = false;
 							$definitionsByPropertyId[$propertyId] = $definition;
+							$templatePropertyIds[$propertyId] = true;
 						}
 					}
 				}
@@ -2763,13 +2773,26 @@
 					'effectiveMandatory' => false,
 					'effectiveLocked' => false,
 					'canEditValue' => true,
+					'isTemplateProperty' => false,
+					'isDirectProperty' => true,
+					'canEditDefinition' => $this->isAllowed('CAN_EDIT_HOLON_PROPERTIES'),
+					'canDelete' => $this->isAllowed('CAN_DELETE_HOLON_PROPERTIES'),
 				);
 
 				$definition['value'] = $localValue !== null ? (string)$localValue : '';
 				$definition['inheritedValue'] = $inheritedValue !== null ? (string)$inheritedValue : (string)($definition['inheritedValue'] ?? '');
 				$definition['effectiveMandatory'] = (bool)$property->get('mandatory');
 				$definition['effectiveLocked'] = (bool)$property->get('locked');
-				$definition['canEditValue'] = !((bool)$property->get('locked'));
+				$definition['canEditValue'] = !((bool)$property->get('locked'))
+					&& (isset($templatePropertyIds[$propertyId])
+						? $templateCanEditProperties
+						: $this->isAllowed('CAN_EDIT_HOLON_PROPERTIES'));
+				$definition['isTemplateProperty'] = isset($templatePropertyIds[$propertyId]);
+				$definition['isDirectProperty'] = !isset($templatePropertyIds[$propertyId]);
+				$definition['canEditDefinition'] = !isset($templatePropertyIds[$propertyId])
+					&& $this->isAllowed('CAN_EDIT_HOLON_PROPERTIES');
+				$definition['canDelete'] = !isset($templatePropertyIds[$propertyId])
+					&& $this->isAllowed('CAN_DELETE_HOLON_PROPERTIES');
 				$definition['position'] = (int)($property->get('effective_position') ?: ($definition['position'] ?? 0));
 
 				$definitionsByPropertyId[$propertyId] = $definition;
@@ -2787,6 +2810,98 @@
 			});
 
 			return $definitions;
+		}
+
+		public function syncDirectEditorPropertyDefinitions(array $definitions, $organizationRootId)
+		{
+			$organizationRootId = (int)$organizationRootId;
+			$templatePropertyIds = array();
+			$template = $this->getTemplateHolon();
+			if ($template instanceof self) {
+				foreach ($template->getHolonCreationPropertyDefinitions() as $templateDefinition) {
+					$templatePropertyId = (int)($templateDefinition['id'] ?? 0);
+					if ($templatePropertyId > 0) {
+						$templatePropertyIds[$templatePropertyId] = true;
+					}
+				}
+			}
+
+			$resolvedDefinitions = array();
+			foreach ($definitions as $definition) {
+				if (!is_array($definition)) {
+					continue;
+				}
+
+				$propertyId = (int)($definition['id'] ?? 0);
+				if ($propertyId > 0 && isset($templatePropertyIds[$propertyId])) {
+					continue;
+				}
+
+				$propertyName = trim((string)($definition['name'] ?? ''));
+				$formatId = (int)($definition['formatId'] ?? 0);
+				if ($propertyName === '' || $formatId <= 0) {
+					continue;
+				}
+
+				$property = new \dbObject\Property();
+				if ($propertyId > 0) {
+					$existingHolonProperty = new \dbObject\HolonProperty();
+					if (!$existingHolonProperty->load(array(
+						array('IDholon', $this->getId()),
+						array('IDproperty', $propertyId),
+					))) {
+						continue;
+					}
+					$property->load($propertyId);
+				}
+				if ($property->getId() > 0 && (int)$property->get('IDholon_organization') !== $organizationRootId) {
+					continue;
+				}
+				if ($property->getId() <= 0) {
+					$property->set('IDholon_organization', $organizationRootId);
+				}
+
+				$property->set('name', $propertyName);
+				$property->set('shortname', trim((string)($definition['shortname'] ?? '')) !== '' ? $definition['shortname'] : \dbObject\Property::buildShortnameFromName($propertyName));
+				$property->set('IDpropertyformat', $formatId);
+				$listItemType = null;
+				$listHolonTypeIds = null;
+				if (\dbObject\PropertyFormat::isListFormat($formatId)) {
+					$listItemType = \dbObject\Property::normalizeTemplateListItemType($definition['listItemType'] ?? '');
+					if ($listItemType === \dbObject\Property::LIST_ITEM_HOLON) {
+						$listHolonTypeIds = \dbObject\Property::serializeHolonTypeIds($definition['listHolonTypeIds'] ?? array());
+					}
+				}
+				$property->set('listitemtype', $listItemType);
+				$property->set('listholontypeids', $listHolonTypeIds);
+				$property->set('position', (int)($definition['position'] ?? count($resolvedDefinitions) + 1));
+				$property->set('active', true);
+				$property->save();
+
+				if ((int)$property->getId() <= 0) {
+					continue;
+				}
+
+				$holonProperty = new \dbObject\HolonProperty();
+				$holonProperty->load(array(
+					array('IDholon', $this->getId()),
+					array('IDproperty', $property->getId()),
+				));
+				$holonProperty->set('IDholon', $this->getId());
+				$holonProperty->set('IDproperty', $property->getId());
+				$holonProperty->set('position', (int)($definition['position'] ?? count($resolvedDefinitions) + 1));
+				$holonProperty->set('mandatory', false);
+				$holonProperty->set('locked', false);
+				$holonProperty->set('active', true);
+				$holonProperty->save();
+
+				$definition['id'] = (int)$property->getId();
+				$definition['isTemplateProperty'] = false;
+				$definition['isDirectProperty'] = true;
+				$resolvedDefinitions[] = $definition;
+			}
+
+			return $resolvedDefinitions;
 		}
 
 		// Synchronise valeurs locales
@@ -2819,6 +2934,17 @@
 				$holonProperty = isset($existingByPropertyId[$propertyId]) ? $existingByPropertyId[$propertyId] : new \dbObject\HolonProperty();
 
 				if (\dbObject\PropertyFormat::isEmptyValue($formatId, $localValue)) {
+					if (!empty($definition['isDirectProperty'])) {
+						$holonProperty->set('IDholon', $this->getId());
+						$holonProperty->set('IDproperty', $propertyId);
+						$holonProperty->set('position', (int)($definition['position'] ?? 0));
+						$holonProperty->set('mandatory', false);
+						$holonProperty->set('locked', false);
+						$holonProperty->set('active', true);
+						$holonProperty->set('value', null);
+						$holonProperty->save();
+						continue;
+					}
 					if ($holonProperty->getId() > 0) {
 						$holonProperty->set('active', false);
 						$holonProperty->set('value', null);
@@ -3191,6 +3317,14 @@
 		{
 			foreach ($this->getDeletionChildren() as $child) {
 				if (!$child->delete()) {
+					return false;
+				}
+			}
+
+			$parentHolon = $this->getParentHolon();
+			if ($parentHolon instanceof self) {
+				$authorityTransfer = Authority::reassignForHolonDeletion($this, $parentHolon);
+				if (empty($authorityTransfer['status'])) {
 					return false;
 				}
 			}

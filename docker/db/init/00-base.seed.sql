@@ -2440,7 +2440,13 @@ INSERT INTO `permission` VALUES
 (8,'CAN_CREATE_FAQ','Creer des FAQ','Autorise la creation de FAQ dans le contexte cible.',1,'2026-07-23 11:51:18','2026-07-23 11:51:18'),
 (9,'CAN_CREATE_PROJECT','Creer des projets','Autorise la creation de projets dans le contexte cible.',1,'2026-07-23 11:51:18','2026-07-23 11:51:24'),
 (10,'CAN_CREATE_INDICATOR','Creer des indicateurs','Autorise la creation d indicateurs dans le contexte cible.',1,'2026-07-23 11:51:18','2026-07-23 11:51:24'),
-(11,'CAN_ADD_APP','Gerer les applications','Autorise la gestion des applications actives et de leur ordre dans l organisation.',0,'2026-07-23 11:51:22','2026-07-23 11:51:22');
+(11,'CAN_ADD_APP','Gerer les applications','Autorise la gestion des applications actives et de leur ordre dans l organisation.',0,'2026-07-23 11:51:22','2026-07-23 11:51:22'),
+(12,'CAN_EDIT_TEMPLATE_PROPERTIES','Modifier les proprietes de templates','Autorise la modification des proprietes definies par les templates dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-27 12:00:00'),
+(13,'CAN_ADD_TEMPLATE_PROPERTIES','Ajouter des proprietes de templates','Autorise l ajout de proprietes definies par les templates dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-27 12:00:00'),
+(14,'CAN_DELETE_TEMPLATE_PROPERTIES','Supprimer les proprietes de templates','Autorise le retrait des proprietes definies par les templates dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-27 12:00:00'),
+(15,'CAN_EDIT_HOLON_PROPERTIES','Modifier les proprietes de holons','Autorise la modification des proprietes ajoutees directement a un holon dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-27 12:00:00'),
+(16,'CAN_ADD_HOLON_PROPERTIES','Ajouter des proprietes de holons','Autorise l ajout de proprietes directement sur un holon dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-27 12:00:00'),
+(17,'CAN_DELETE_HOLON_PROPERTIES','Supprimer les proprietes de holons','Autorise le retrait des proprietes ajoutees directement a un holon dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-27 12:00:00');
 /*!40000 ALTER TABLE `permission` ENABLE KEYS */;
 UNLOCK TABLES;
 

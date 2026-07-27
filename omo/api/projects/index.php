@@ -31,7 +31,7 @@ $projectAssignment = $projectAssignment === 'mine' ? 'mine' : 'all';
 $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
 $projectQuickSearch = trim((string)($_GET['project_query'] ?? ''));
 $projectView = strtolower(trim((string)($_GET['project_view'] ?? 'kanban')));
-$projectView = $projectView === 'list' ? 'list' : 'kanban';
+$projectView = in_array($projectView, ['list', 'gantt'], true) ? $projectView : 'kanban';
 $projectListSort = strtolower(trim((string)($_GET['project_sort'] ?? 'planned')));
 $projectListSort = in_array($projectListSort, ['priority', 'importance', 'holon'], true) ? $projectListSort : 'planned';
 if ($projectListSort === 'holon' && !in_array($projectScope, ['children', 'descendants'], true)) {
@@ -212,6 +212,15 @@ $compareProjectItems = static function (array $left, array $right) use ($project
     return strcasecmp((string)$left['project']->get('title'), (string)$right['project']->get('title'));
 };
 usort($listProjectItems, $compareProjectItems);
+$activeListProjectItems = [];
+$completedListProjectItems = [];
+foreach ($listProjectItems as $item) {
+    if ($item['status'] === Project::STATUS_DONE) {
+        $completedListProjectItems[] = $item;
+    } else {
+        $activeListProjectItems[] = $item;
+    }
+}
 foreach ($projectsByStatus as &$columnItems) {
     usort($columnItems, $compareProjectItems);
 }
@@ -268,7 +277,7 @@ if ($projectListSort === 'importance') {
         'none' => ['label' => omoProjectsT('projects.list.planned.none'), 'items' => []],
     ];
 
-    foreach ($listProjectItems as $item) {
+    foreach ($activeListProjectItems as $item) {
         $startDate = $item['startSort'] !== '' ? new \DateTimeImmutable($item['startSort']) : null;
         $endDate = $item['endSort'] !== '' ? new \DateTimeImmutable($item['endSort']) : null;
         if ($endDate instanceof \DateTimeImmutable && $endDate < $today) {
@@ -291,7 +300,152 @@ if ($projectListSort === 'importance') {
         $listProjectGroups[$groupKey]['items'][] = $item;
     }
 }
+if ($projectListSort === 'planned') {
+    $listProjectGroups['done'] = [
+        'label' => omoProjectsT('projects.list.done'),
+        'items' => $completedListProjectItems,
+    ];
+}
 $listProjectGroups = array_filter($listProjectGroups, static fn (array $group): bool => count($group['items']) > 0);
+
+$ganttDateMemo = [];
+$ganttItemsById = [];
+$ganttChildrenByParent = [];
+foreach ($projects as $project) {
+    if (!($project instanceof Project) || (int)$project->getId() <= 0) {
+        continue;
+    }
+
+    $projectId = (int)$project->getId();
+    $resolvedDates = omoProjectsResolveGanttDates($project, $projectsById, $ganttDateMemo);
+    $effectiveStart = $resolvedDates['start'] instanceof \DateTimeImmutable ? $resolvedDates['start'] : $resolvedDates['end'];
+    $effectiveEnd = $resolvedDates['end'] instanceof \DateTimeImmutable ? $resolvedDates['end'] : $resolvedDates['start'];
+    if ($effectiveStart instanceof \DateTimeImmutable && $effectiveEnd instanceof \DateTimeImmutable && $effectiveEnd < $effectiveStart) {
+        $effectiveEnd = $effectiveStart;
+    }
+    $projectHolon = $project->getHolon();
+    $ganttItemsById[$projectId] = [
+        'project' => $project,
+        'status' => Project::normalizeStatus($project->get('status')),
+        'holonLabel' => $projectHolon instanceof Holon
+            ? trim((string)$projectHolon->getDisplayName())
+            : trim((string)$organization->get('name')),
+        'responsibleLabel' => omoProjectsGetUserLabel($project->getResponsible()),
+        'priority' => Project::normalizeLevel($project->get('priority')),
+        'calculatedImportance' => max(0.0, min(1.0, (float)$project->get('calculated_importance'))),
+        'plannedEnd' => $resolvedDates['end'] instanceof \DateTimeImmutable ? $resolvedDates['end'] : null,
+        'effectiveStart' => $effectiveStart,
+        'effectiveEnd' => $effectiveEnd,
+        'inheritedStart' => (bool)$resolvedDates['inheritedStart'],
+        'inheritedEnd' => (bool)$resolvedDates['inheritedEnd'],
+    ];
+}
+
+foreach ($ganttItemsById as $projectId => $item) {
+    $parentId = (int)$item['project']->get('IDproject_parent');
+    if ($parentId > 0 && isset($ganttItemsById[$parentId])) {
+        $ganttChildrenByParent[$parentId][] = $projectId;
+    }
+}
+$compareGanttProjectIds = static function (int $leftId, int $rightId) use ($ganttItemsById, $projectListSort): int {
+    $left = $ganttItemsById[$leftId];
+    $right = $ganttItemsById[$rightId];
+    if ($projectListSort === 'importance') {
+        $importanceComparison = (float)$right['calculatedImportance'] <=> (float)$left['calculatedImportance'];
+        if ($importanceComparison !== 0) {
+            return $importanceComparison;
+        }
+    } elseif ($projectListSort === 'priority') {
+        $leftPriority = $left['priority'] === null ? PHP_INT_MAX : (int)$left['priority'];
+        $rightPriority = $right['priority'] === null ? PHP_INT_MAX : (int)$right['priority'];
+        if ($leftPriority !== $rightPriority) {
+            return $leftPriority <=> $rightPriority;
+        }
+    } elseif ($projectListSort === 'holon') {
+        $holonComparison = strcasecmp((string)$left['holonLabel'], (string)$right['holonLabel']);
+        if ($holonComparison !== 0) {
+            return $holonComparison;
+        }
+    }
+    $leftStart = $left['effectiveStart'] instanceof \DateTimeImmutable ? $left['effectiveStart']->format('Y-m-d') : '';
+    $rightStart = $right['effectiveStart'] instanceof \DateTimeImmutable ? $right['effectiveStart']->format('Y-m-d') : '';
+    if ($leftStart === '' && $rightStart !== '') {
+        return 1;
+    }
+    if ($leftStart !== '' && $rightStart === '') {
+        return -1;
+    }
+    if ($leftStart !== $rightStart) {
+        return strcmp($leftStart, $rightStart);
+    }
+    return strcasecmp((string)$left['project']->get('title'), (string)$right['project']->get('title'));
+};
+foreach ($ganttChildrenByParent as &$childIds) {
+    usort($childIds, $compareGanttProjectIds);
+}
+unset($childIds);
+$ganttRootIds = [];
+foreach ($ganttItemsById as $projectId => $item) {
+    if (!isset($ganttItemsById[(int)$item['project']->get('IDproject_parent')])) {
+        $ganttRootIds[] = $projectId;
+    }
+}
+usort($ganttRootIds, $compareGanttProjectIds);
+$ganttRows = [];
+$ganttVisited = [];
+$appendGanttBranch = static function (int $projectId, int $depth) use (&$appendGanttBranch, &$ganttRows, &$ganttVisited, $ganttItemsById, $ganttChildrenByParent): void {
+    if (isset($ganttVisited[$projectId]) || !isset($ganttItemsById[$projectId])) {
+        return;
+    }
+    $ganttVisited[$projectId] = true;
+    $ganttRows[] = $ganttItemsById[$projectId] + ['depth' => $depth];
+    foreach ($ganttChildrenByParent[$projectId] ?? [] as $childId) {
+        $appendGanttBranch($childId, $depth + 1);
+    }
+};
+foreach ($ganttRootIds as $projectId) {
+    $appendGanttBranch($projectId, 0);
+}
+foreach (array_keys($ganttItemsById) as $projectId) {
+    $appendGanttBranch($projectId, 0);
+}
+
+$ganttDatedRows = array_values(array_filter($ganttRows, static fn (array $item): bool => $item['effectiveStart'] instanceof \DateTimeImmutable && $item['effectiveEnd'] instanceof \DateTimeImmutable));
+$ganttToday = new \DateTimeImmutable('today');
+if (count($ganttDatedRows) > 0) {
+    $ganttRangeStart = $ganttDatedRows[0]['effectiveStart'];
+    $ganttRangeEnd = $ganttDatedRows[0]['effectiveEnd'];
+    foreach ($ganttDatedRows as $item) {
+        if ($item['effectiveStart'] < $ganttRangeStart) {
+            $ganttRangeStart = $item['effectiveStart'];
+        }
+        if ($item['effectiveEnd'] > $ganttRangeEnd) {
+            $ganttRangeEnd = $item['effectiveEnd'];
+        }
+    }
+    $ganttRangeStart = $ganttRangeStart->modify('-7 days');
+    $ganttRangeEnd = $ganttRangeEnd->modify('+14 days');
+} else {
+    $ganttRangeStart = $ganttToday->modify('first day of this month');
+    $ganttRangeEnd = $ganttRangeStart->modify('+2 months')->modify('-1 day');
+}
+$ganttRangeDays = max(1, (int)$ganttRangeStart->diff($ganttRangeEnd)->format('%a') + 1);
+$ganttTimelineWidth = max(720, $ganttRangeDays * 16);
+$ganttDateOffset = static function (\DateTimeImmutable $date) use ($ganttRangeStart, $ganttRangeDays): float {
+    return max(0.0, min(100.0, ((int)$ganttRangeStart->diff($date)->format('%r%a') / $ganttRangeDays) * 100));
+};
+$ganttMonthHeaders = [];
+for ($month = $ganttRangeStart->modify('first day of this month'); $month <= $ganttRangeEnd; $month = $month->modify('first day of next month')) {
+    $monthEnd = $month->modify('last day of this month');
+    $segmentStart = $month < $ganttRangeStart ? $ganttRangeStart : $month;
+    $segmentEnd = $monthEnd > $ganttRangeEnd ? $ganttRangeEnd : $monthEnd;
+    $ganttMonthHeaders[] = [
+        'label' => $month->format('m.Y'),
+        'left' => $ganttDateOffset($segmentStart),
+        'width' => max(0.8, (((int)$segmentStart->diff($segmentEnd)->format('%a') + 1) / $ganttRangeDays) * 100),
+    ];
+}
+$ganttTodayOffset = $ganttToday >= $ganttRangeStart && $ganttToday <= $ganttRangeEnd ? $ganttDateOffset($ganttToday) : null;
 
 $currentUrl = '/omo/api/projects/index.php?oid=' . rawurlencode((string)$organizationId);
 if ($currentHolonId > 0) {
@@ -300,8 +454,8 @@ if ($currentHolonId > 0) {
 if ($projectScope !== 'contextual') {
     $currentUrl .= '&project_scope=' . rawurlencode($projectScope);
 }
-if ($projectView === 'list') {
-    $currentUrl .= '&project_view=list';
+if ($projectView !== 'kanban') {
+    $currentUrl .= '&project_view=' . rawurlencode($projectView);
 }
 if ($projectListSort !== 'planned') {
     $currentUrl .= '&project_sort=' . rawurlencode($projectListSort);
@@ -352,7 +506,7 @@ $projectTexts = [
     'archivesTitle' => omoProjectsT('projects.detail.archives.title'),
 ];
 ?>
-<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260727-project-saved-view">
+<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260727-project-gantt-overdue">
 <div
     class="omo-projects omo-panel-view"
     id="omo-projects-root"
@@ -384,7 +538,7 @@ $projectTexts = [
                 <div class="omo-panel-view__header-copy">
                     <div class="omo-projects__title-row">
                         <h2 class="omo-panel-view__title"><?= omoApiEscape(omoProjectsT('projects.title')) ?></h2>
-                        <span class="omo-panel-view__count"><?= (int)($projectView === 'list' ? count($listProjectItems) : $projectCount) ?></span>
+                        <span class="omo-panel-view__count"><?= (int)($projectView === 'list' ? count($listProjectItems) : ($projectView === 'gantt' ? count($ganttRows) : $projectCount)) ?></span>
                     </div>
                 </div>
             </div>
@@ -440,6 +594,7 @@ $projectTexts = [
                             <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoProjectsT('projects.view.aria')) ?>">
                                 <button type="button" class="omo-segmented__button<?= $projectView === 'kanban' ? ' is-active' : '' ?>" data-omo-projects-view="kanban" aria-pressed="<?= $projectView === 'kanban' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.view.kanban')) ?></button>
                                 <button type="button" class="omo-segmented__button<?= $projectView === 'list' ? ' is-active' : '' ?>" data-omo-projects-view="list" aria-pressed="<?= $projectView === 'list' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.view.list')) ?></button>
+                                <button type="button" class="omo-segmented__button<?= $projectView === 'gantt' ? ' is-active' : '' ?>" data-omo-projects-view="gantt" aria-pressed="<?= $projectView === 'gantt' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.view.gantt')) ?></button>
                             </div>
                         </div>
                     </div>
@@ -543,7 +698,7 @@ $projectTexts = [
             <?php if ($projectCount === 0): ?>
                 <div class="omo-projects__board-empty omo-empty-state"><?= omoApiEscape(omoProjectsT($emptyKey)) ?></div>
             <?php endif; ?>
-            <?php else: ?>
+            <?php elseif ($projectView === 'list'): ?>
                 <?php if (count($listProjectItems) === 0): ?>
                     <div class="omo-projects__board-empty omo-empty-state"><?= omoApiEscape(omoProjectsT($emptyKey)) ?></div>
                 <?php else: ?>
@@ -577,6 +732,59 @@ $projectTexts = [
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
+            <?php else: ?>
+                <?php if (count($ganttRows) === 0): ?>
+                    <div class="omo-projects__board-empty omo-empty-state"><?= omoApiEscape(omoProjectsT($emptyKey)) ?></div>
+                <?php else: ?>
+                    <div class="omo-projects__gantt" data-omo-projects-gantt>
+                        <div class="omo-projects__gantt-scroll" data-omo-projects-gantt-scroll>
+                            <div class="omo-projects__gantt-table" style="--omo-projects-gantt-timeline-width: <?= (int)$ganttTimelineWidth ?>px;">
+                                <div class="omo-projects__gantt-header">
+                                    <div class="omo-projects__gantt-project-header"><?= omoApiEscape(omoProjectsT('projects.title')) ?></div>
+                                    <div class="omo-projects__gantt-timeline omo-projects__gantt-timeline--header">
+                                        <?php foreach ($ganttMonthHeaders as $month): ?>
+                                            <span class="omo-projects__gantt-month" style="--omo-project-gantt-left: <?= number_format($month['left'], 4, '.', '') ?>%; --omo-project-gantt-width: <?= number_format($month['width'], 4, '.', '') ?>%;"><?= omoApiEscape($month['label']) ?></span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                                <?php foreach ($ganttRows as $item): ?>
+                                    <?php
+                                    $project = $item['project'];
+                                    $projectTitle = trim((string)$project->get('title'));
+                                    $hasDates = $item['effectiveStart'] instanceof \DateTimeImmutable && $item['effectiveEnd'] instanceof \DateTimeImmutable;
+                                    $dateLabel = '';
+                                    if ($hasDates) {
+                                        $dateLabel = omoProjectsFormatGanttDateRange($item['effectiveStart'], $item['effectiveEnd']);
+                                        if ($item['inheritedStart'] || $item['inheritedEnd']) {
+                                            $dateLabel .= ' (' . omoProjectsT('projects.gantt.inherited') . ')';
+                                        }
+                                    }
+                                    $barLeft = $hasDates ? $ganttDateOffset($item['effectiveStart']) : 0.0;
+                                    $barWidth = $hasDates ? (((int)$item['effectiveStart']->diff($item['effectiveEnd'])->format('%a') + 1) / $ganttRangeDays) * 100 : 0.0;
+                                    $isOverdue = $item['status'] !== Project::STATUS_DONE
+                                        && $item['plannedEnd'] instanceof \DateTimeImmutable
+                                        && $item['plannedEnd'] < $ganttToday;
+                                    $projectAriaLabel = trim($projectTitle . ' ' . $dateLabel . ($isOverdue ? ' ' . omoProjectsT('projects.gantt.overdue') : ''));
+                                    ?>
+                                    <article class="omo-project-gantt-row omo-project-gantt-row--<?= omoApiEscape($item['status']) ?><?= $isOverdue ? ' omo-project-gantt-row--overdue' : '' ?>" data-omo-project-gantt-item data-project-id="<?= (int)$project->getId() ?>" data-project-parent-id="<?= (int)$project->get('IDproject_parent') ?>" data-project-search="<?= omoApiEscape(trim($projectTitle . ' ' . $item['holonLabel'] . ' ' . $item['responsibleLabel'] . ' ' . omoProjectsStatusLabel($item['status']) . ($isOverdue ? ' ' . omoProjectsT('projects.gantt.overdue') : ''))) ?>" style="--omo-project-gantt-depth: <?= (int)$item['depth'] ?>;" tabindex="0" role="button" aria-label="<?= omoApiEscape($projectAriaLabel) ?>">
+                                        <div class="omo-project-gantt-row__project" data-omo-project-gantt-project<?= $isOverdue ? ' title="' . omoApiEscape(omoProjectsT('projects.gantt.overdue')) . '"' : '' ?>>
+                                            <strong><?= omoApiEscape($projectTitle) ?></strong>
+                                            <span><?= omoApiEscape($item['holonLabel']) ?> · <?= omoApiEscape($item['responsibleLabel']) ?></span>
+                                        </div>
+                                        <div class="omo-projects__gantt-timeline omo-project-gantt-row__timeline" data-omo-project-gantt-timeline>
+                                            <?php if ($ganttTodayOffset !== null): ?><span class="omo-projects__gantt-today" style="--omo-project-gantt-left: <?= number_format($ganttTodayOffset, 4, '.', '') ?>%;" aria-hidden="true"></span><?php endif; ?>
+                                            <?php if ($hasDates): ?>
+                                                <span class="omo-project-gantt-row__bar" data-omo-project-gantt-bar style="--omo-project-gantt-left: <?= number_format($barLeft, 4, '.', '') ?>%; --omo-project-gantt-width: <?= number_format($barWidth, 4, '.', '') ?>%;" title="<?= omoApiEscape($dateLabel) ?>"><span><?= omoApiEscape($dateLabel) ?></span></span>
+                                            <?php else: ?>
+                                                <span class="omo-project-gantt-row__no-dates"><?= omoApiEscape(omoProjectsT('projects.gantt.no_dates')) ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </article>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                <?php endif; ?>
             <?php endif; ?>
             <div class="omo-projects__search-empty omo-empty-state" data-omo-projects-search-empty hidden><?= omoApiEscape(omoProjectsT('projects.search.empty')) ?></div>
         </div>
@@ -600,4 +808,4 @@ $projectTexts = [
     </div>
 </div>
 <script src="/common/drawer/subdrawer.js"></script>
-<script src="/omo/api/projects/projects.js?v=20260727-project-saved-view"></script>
+<script src="/omo/api/projects/projects.js?v=20260727-project-session-view"></script>
