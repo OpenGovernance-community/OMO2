@@ -1047,6 +1047,10 @@ $breadcrumb = array_values(array_filter($currentHolon->getPathHolons(), function
 $sections = omoBuildSections($currentHolon);
 $childNavigation = omoBuildChildNavigation($currentHolon);
 $holonTypeLabel = omoGetHolonHeaderLabel($currentHolon);
+$holonIconUrl = trim((string)$currentHolon->getEffectiveIcon());
+if ($holonIconUrl === 'newimage') {
+    $holonIconUrl = '';
+}
 $selectedNodeClass = 'node_' . (int)$currentHolon->getId();
 $memberCards = $currentHolon->getAssociatedMemberCards(array(
     'organizationId' => $organizationId,
@@ -1148,7 +1152,12 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
             <?php endif; ?>
         <?php endforeach; ?>
     </div>
-            <h2 class="circle-title generic-card-title generic-card-title--section"><?= omoApiEscape($currentHolon->getFullDisplayName()) ?></h2>
+            <h2 class="circle-title generic-card-title generic-card-title--section">
+                <?php if ($holonIconUrl !== ''): ?>
+                    <img class="circle-title__icon" src="<?= omoApiEscape($holonIconUrl) ?>" alt="">
+                <?php endif; ?>
+                <span><?= omoApiEscape($currentHolon->getFullDisplayName()) ?></span>
+            </h2>
         </div>
         <div class="circle-meta">
             <?php if ($hasHolonActions): ?>
@@ -1420,7 +1429,19 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 }
 
 .circle-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin: 0;
+}
+
+.circle-title__icon {
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
 }
 
 .circle-members {
@@ -1467,8 +1488,8 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 }
 
 .circle-member--admin {
-    border: 3px solid var(--color-primary);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 18%, transparent), var(--shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.08));
+    border: 3px solid var(--color-surface, #fff);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.46), 0 0 0 1px rgba(15, 23, 42, 0.2);
 }
 
 .circle-member--add {

@@ -4934,7 +4934,9 @@
 
 			$data['formats'] = $this->buildEditorPropertyFormats($formats);
 
-			$templateCatalogSource = $this->getAvailableTemplateDefinitionHolons($contextHolon ? (int)$contextHolon->getId() : 0);
+			$templateCatalogSource = $scope === 'descendants'
+				? $this->getAllTemplateDefinitionHolons()
+				: $this->getAvailableTemplateDefinitionHolons($contextHolon ? (int)$contextHolon->getId() : 0);
 			$scopeContextHolonIds = $contextHolon ? array((int)$contextHolon->getId()) : array();
 			if ($scope === 'children' && $contextHolon) {
 				$scopeContextHolonIds = array((int)$contextHolon->getId());
@@ -8624,13 +8626,6 @@
 				);
 			}
 
-			if (!$contextHolon->canEdit()) {
-				return array(
-					'status' => false,
-					'message' => "Vous n'avez pas les droits pour modifier les modeles de ce holon.",
-				);
-			}
-
 			$templateName = trim((string)($payload['name'] ?? ''));
 			$iconValue = is_scalar($payload['icon'] ?? null) ? trim((string)$payload['icon']) : '';
 			$bannerValue = is_scalar($payload['banner'] ?? null) ? trim((string)$payload['banner']) : '';
@@ -8680,10 +8675,33 @@
 				);
 			}
 
-			if ($template->getId() > 0 && (int)$template->get('IDholon_parent') !== (int)$contextHolon->getId()) {
+			if ($template->getId() > 0) {
+				$templateContextHolon = $template->getParentHolon();
+				if (!$templateContextHolon || !$this->containsHolon($templateContextHolon)) {
+					return array(
+						'status' => false,
+						'message' => "Le contexte de definition du modele est invalide.",
+					);
+				}
+				$contextHolon = $templateContextHolon;
+			} else {
+				$definitionHolonId = (int)($payload['definitionHolonId'] ?? 0);
+				if ($definitionHolonId > 0 && $definitionHolonId !== (int)$rootHolon->getId()) {
+					$definitionHolon = new \dbObject\Holon();
+					if (!$definitionHolon->load($definitionHolonId) || !$this->containsHolon($definitionHolon)) {
+						return array(
+							'status' => false,
+							'message' => 'Le contexte de definition du modele est invalide.',
+						);
+					}
+					$contextHolon = $definitionHolon;
+				}
+			}
+
+			if (!$contextHolon->canEdit()) {
 				return array(
 					'status' => false,
-					'message' => "Ce modele n'est pas defini dans le holon courant.",
+					'message' => "Vous n'avez pas les droits pour modifier les modeles de ce holon.",
 				);
 			}
 
@@ -8865,7 +8883,10 @@
 				'status' => true,
 				'message' => 'Modele enregistre.',
 				'template' => $template->toTemplateEditorArray((int)$rootHolon->getId()),
-				'data' => $this->getHolonTemplateEditorData((int)$contextHolon->getId(), $scope),
+				'data' => $this->getHolonTemplateEditorData(
+					$scope === 'descendants' ? (int)$rootHolon->getId() : (int)$contextHolon->getId(),
+					$scope
+				),
 			);
 		}
 
@@ -8883,22 +8904,30 @@
 				);
 			}
 
-			if (!$contextHolon->canEdit()) {
-				return array(
-					'status' => false,
-					'message' => "Vous n'avez pas les droits pour modifier les modeles de ce holon.",
-				);
-			}
-
 			$template = new \dbObject\Holon();
 			if (
 				!$template->load($templateId)
 				|| !$template->isTemplateNode((int)$rootHolon->getId())
-				|| (int)$template->get('IDholon_parent') !== (int)$contextHolon->getId()
 			) {
 				return array(
 					'status' => false,
 					'message' => 'Le modele a supprimer est introuvable.',
+				);
+			}
+
+			$templateContextHolon = $template->getParentHolon();
+			if (!$templateContextHolon || !$this->containsHolon($templateContextHolon)) {
+				return array(
+					'status' => false,
+					'message' => 'Le modele a supprimer est introuvable.',
+				);
+			}
+			$contextHolon = $templateContextHolon;
+
+			if (!$contextHolon->canEdit()) {
+				return array(
+					'status' => false,
+					'message' => "Vous n'avez pas les droits pour modifier les modeles de ce holon.",
 				);
 			}
 
@@ -8924,7 +8953,10 @@
 					'id' => $templateId,
 					'name' => $templateName,
 				),
-				'data' => $this->getHolonTemplateEditorData((int)$contextHolon->getId(), $scope),
+				'data' => $this->getHolonTemplateEditorData(
+					$scope === 'descendants' ? (int)$rootHolon->getId() : (int)$contextHolon->getId(),
+					$scope
+				),
 			);
 		}
 
