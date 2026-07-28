@@ -638,7 +638,13 @@ function omoHolonTemplateInitColumnResize() {
     const layout = omoHolonTemplateRoot;
     const sidebar = omoHolonTemplateRoot.querySelector('.omo-template-sidebar');
     const handle = omoHolonTemplateElements.resizeHandle;
-    if (!layout || !sidebar || !handle) {
+    if (
+        !layout
+        || !sidebar
+        || !handle
+        || layout.classList.contains('omo-template-editor__layout--compact')
+        || layout.classList.contains('omo-template-editor__layout--holon-definition')
+    ) {
         return;
     }
 
@@ -967,11 +973,12 @@ function omoHolonTemplateResolveMediaState(kind, template, preserveCurrentValue)
         ? currentController.getValue()
         : String((template && template[kind]) || '');
     const inheritedLocked = Boolean(template && template['inheritedLocked' + suffix]);
+    const isHolonDefinitionMode = omoHolonTemplateIsHolonDefinitionMode();
 
     return {
-        value: inheritedLocked ? '' : localValue,
+        value: isHolonDefinitionMode && inheritedLocked ? '' : localValue,
         inheritedValue: String((template && template['inherited' + suffix]) || ''),
-        locked: Boolean(template && template['effectiveLocked' + suffix]),
+        locked: isHolonDefinitionMode && Boolean(template && template['effectiveLocked' + suffix]),
         inheritedLocked: inheritedLocked,
         localLocked: Boolean(template && template['locked' + suffix])
     };
@@ -997,8 +1004,8 @@ function omoHolonTemplateRenderMediaFields(template, preserveCurrentValue) {
         const mediaState = omoHolonTemplateResolveMediaState(kind, template, preserveCurrentValue);
         const config = omoHolonTemplateGetMediaDisplayConfig(kind);
         if (lockField) {
-            lockField.checked = Boolean(mediaState.localLocked || mediaState.inheritedLocked);
-            lockField.disabled = Boolean(mediaState.inheritedLocked);
+            lockField.checked = Boolean(mediaState.localLocked);
+            lockField.disabled = false;
             lockField.dataset.localValue = mediaState.localLocked ? '1' : '0';
         }
 
@@ -3024,12 +3031,12 @@ function omoHolonTemplateFillForm(template, options) {
         omoHolonTemplateElements.lockedName.checked = Boolean(current.lockedName);
     }
     if (omoHolonTemplateElements.lockedIcon) {
-        omoHolonTemplateElements.lockedIcon.checked = Boolean(current.lockedIcon || current.inheritedLockedIcon);
-        omoHolonTemplateElements.lockedIcon.disabled = Boolean(current.inheritedLockedIcon);
+        omoHolonTemplateElements.lockedIcon.checked = Boolean(current.lockedIcon);
+        omoHolonTemplateElements.lockedIcon.disabled = false;
     }
     if (omoHolonTemplateElements.lockedBanner) {
-        omoHolonTemplateElements.lockedBanner.checked = Boolean(current.lockedBanner || current.inheritedLockedBanner);
-        omoHolonTemplateElements.lockedBanner.disabled = Boolean(current.inheritedLockedBanner);
+        omoHolonTemplateElements.lockedBanner.checked = Boolean(current.lockedBanner);
+        omoHolonTemplateElements.lockedBanner.disabled = false;
     }
     if (omoHolonTemplateElements.unique) {
         omoHolonTemplateElements.unique.checked = Boolean(current.unique);

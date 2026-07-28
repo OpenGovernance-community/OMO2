@@ -1490,6 +1490,8 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 .circle-member--admin {
     border: 3px solid var(--color-surface, #fff);
     box-shadow: 0 4px 14px rgba(15, 23, 42, 0.46), 0 0 0 1px rgba(15, 23, 42, 0.2);
+    height:50px;
+    width:50px;
 }
 
 .circle-member--add {
