@@ -214,7 +214,6 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
                 data-omo-settings-drawer-title="<?= htmlspecialchars(omoParametersIndexT('parameters.index.card.holon_templates.title'), ENT_QUOTES, 'UTF-8') ?>"
                 data-omo-settings-drawer-url="/omo/api/parameters/holon-templates/index.php"
                 data-omo-settings-drawer-mode="fetch"
-                data-omo-settings-contextual="1"
             >
                 <span class="omo-settings__card-head">
                     <span class="omo-settings__card-icon-shell">

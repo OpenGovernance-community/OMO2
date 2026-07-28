@@ -274,6 +274,7 @@ function omoHolonTemplateSourceLang()
         'parameters.holon_templates.hero.template_mode' => ['text' => 'Créez une bibliothèque de modèles réutilisables pour vos cercles, rôles, projets et autres structures.', 'context' => 'Sidebar description shown in template mode for the holon template editor.'],
         'parameters.holon_templates.action.new_model' => ['text' => 'Nouveau modèle', 'context' => 'Primary button label used to create a new root holon template.'],
         'parameters.holon_templates.action.new_submodel' => ['text' => 'Sous-modèle', 'context' => 'Secondary button label used to create a child holon template.'],
+        'parameters.holon_templates.action.resize_columns' => ['text' => 'Ajuster la largeur des colonnes', 'context' => 'Accessible label for the draggable separator between the template tree and editor columns.'],
         'parameters.holon_templates.tree.current_holon' => ['text' => 'Holon édité', 'context' => 'Sidebar tree title shown in organization definition mode for the holon template editor.'],
         'parameters.holon_templates.tree.models' => ['text' => 'Arborescence des modèles', 'context' => 'Sidebar tree title shown in template mode for the holon template editor.'],
         'parameters.holon_templates.form.eyebrow' => ['text' => 'Édition', 'context' => 'Eyebrow shown above the form header in the holon template editor.'],
